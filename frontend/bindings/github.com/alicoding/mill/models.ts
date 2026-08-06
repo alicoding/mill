@@ -15,4 +15,11 @@ export interface HotkeyActivity {
     "binding": string;
     "success": boolean;
     "detail": string;
+
+    /**
+     * Result is the actual output copied to the clipboard, so the UI can
+     * show what a hotkey fire actually produced, not just its byte count.
+     * Empty on failure -- there's nothing successful to show.
+     */
+    "result": string;
 }
