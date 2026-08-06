@@ -2,12 +2,13 @@ import { useState, useEffect, useRef } from 'react'
 import {Events, WML} from "@wailsio/runtime";
 import {GreetService} from "../bindings/changeme";
 import SpecView from "./SpecView";
+import RunbookView from "./RunbookView";
 
 // Show the actual Wails version this project was generated against.
 const wailsVersion = "v3.0.0-beta.4";
 
 function App() {
-  const [view, setView] = useState<'demo' | 'spec'>('spec');
+  const [view, setView] = useState<'demo' | 'spec' | 'runbook'>('runbook');
   const [name, setName] = useState<string>('');
   const [time, setTime] = useState<string>('Listening for Time event...');
 
@@ -77,9 +78,12 @@ function App() {
   return (
     <>
       <nav className="view-switch">
+        <button className={view === 'runbook' ? 'is-active' : ''} onClick={() => setView('runbook')}>Runbook</button>
         <button className={view === 'spec' ? 'is-active' : ''} onClick={() => setView('spec')}>Spec</button>
         <button className={view === 'demo' ? 'is-active' : ''} onClick={() => setView('demo')}>Demo</button>
       </nav>
+
+      {view === 'runbook' && <RunbookView/>}
 
       {view === 'spec' && <SpecView/>}
 
