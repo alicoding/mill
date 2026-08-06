@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import type { LabelProps } from '@primer/react'
 import type { HotkeyActivity } from '../bindings/github.com/alicoding/mill/models'
 import type { Action } from '../bindings/github.com/alicoding/mill/internal/domain/runbook/models'
 import { ViewKind } from '../bindings/github.com/alicoding/mill/internal/domain/capabilities/models'
@@ -33,6 +34,19 @@ export function viewsEqual(a: View, b: View): boolean {
   if (a.kind !== b.kind) return false
   if (a.kind === 'placeholder' && b.kind === 'placeholder') return a.capabilityId === b.capabilityId
   return true
+}
+
+// Shared by CapabilityIndex, PlaceholderView, and the sidebar nav --
+// previously duplicated identically in the first two, DRYed up here
+// rather than left as two (soon three) copies.
+const STATUS_VARIANT: Record<string, LabelProps['variant']> = {
+  LOCKED: 'success',
+  OPEN: 'attention',
+  PARKED: 'secondary',
+}
+
+export function statusVariant(status: string): LabelProps['variant'] {
+  return STATUS_VARIANT[status] ?? 'secondary'
 }
 
 const MAX_ACTIVITY_ENTRIES = 50

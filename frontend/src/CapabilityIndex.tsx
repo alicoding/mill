@@ -1,15 +1,9 @@
 import { Browser } from '@wailsio/runtime'
-import { Heading, Label, Stack, Text, Button, type LabelProps } from '@primer/react'
+import { Heading, Label, Stack, Text, Button } from '@primer/react'
 import { CapabilitiesService } from '../bindings/github.com/alicoding/mill'
 import { ViewKind } from '../bindings/github.com/alicoding/mill/internal/domain/capabilities/models'
-import { useAppStore, viewFor } from './store'
+import { useAppStore, viewFor, statusVariant } from './store'
 import styles from './RunbookView.module.css'
-
-const STATUS_VARIANT: Record<string, LabelProps['variant']> = {
-  LOCKED: 'success',
-  OPEN: 'attention',
-  PARKED: 'secondary',
-}
 
 // Only meaningful in dev mode: task dev launches the binary with the repo
 // root as cwd, but a real installed build has no source tree to jump to
@@ -38,7 +32,7 @@ function CapabilityIndex() {
         {capabilities.map((c) => (
           <Stack key={c.ID} direction="horizontal" justify="space-between" align="center" gap="normal" data-testid="capability-row">
             <Stack direction="horizontal" gap="condensed" align="center">
-              <Label variant={STATUS_VARIANT[c.Status] ?? 'secondary'} size="small">{c.Status}</Label>
+              <Label variant={statusVariant(c.Status)} size="small">{c.Status}</Label>
               <Text size="small">{c.Label}</Text>
             </Stack>
             <Stack direction="horizontal" gap="condensed">
