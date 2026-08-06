@@ -97,7 +97,7 @@
 			isa = PBXProject;
 			attributes = {
 				LastUpgradeCheck = 1500;
-				ORGANIZATIONNAME = "My Company";
+				ORGANIZATIONNAME = "Ali Al Dallal";
 				TargetAttributes = {
 					C0DEBEEF0000000000000040 = {
 						CreatedOnToolsVersion = 15.0;
@@ -176,7 +176,7 @@
 			buildSettings = {
 				INFOPLIST_FILE = main/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "com.example.mill";
+				PRODUCT_BUNDLE_IDENTIFIER = "com.alicoding.mill";
 				PRODUCT_NAME = "Mill";
 				CODE_SIGNING_ALLOWED = NO;
 				SDKROOT = iphoneos;
@@ -188,7 +188,7 @@
 			buildSettings = {
 				INFOPLIST_FILE = main/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "com.example.mill";
+				PRODUCT_BUNDLE_IDENTIFIER = "com.alicoding.mill";
 				PRODUCT_NAME = "Mill";
 				CODE_SIGNING_ALLOWED = NO;
 				SDKROOT = iphoneos;

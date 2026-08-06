@@ -1,7 +1,7 @@
 [Desktop Entry]
 Version=1.0
 Name=Mill
-Comment=Guardrailed agentic workflow/recipe automation
+Comment=Guardrailed agentic-workflow automation
 # The Exec line includes %u to pass the URL to the application
 Exec=/usr/local/bin/mill %u
 Terminal=false
