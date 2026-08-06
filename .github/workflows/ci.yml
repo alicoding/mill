@@ -1,0 +1,85 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # Lints and builds frontend/dist once; Go jobs below need frontend/dist
+  # present (main.go embeds it via //go:embed all:frontend/dist), so they
+  # download it instead of rebuilding it redundantly per job/OS.
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+        working-directory: frontend
+      - run: npm run lint
+        working-directory: frontend
+      - run: npm run build
+        working-directory: frontend
+      - uses: actions/upload-artifact@v4
+        with:
+          name: frontend-dist
+          path: frontend/dist
+          retention-days: 1
+
+  lint-go:
+    runs-on: ubuntu-latest
+    needs: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: frontend-dist
+          path: frontend/dist
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+          cache: true
+      - uses: golangci/golangci-lint-action@v9
+        with:
+          version: v2.12
+
+  build-go:
+    needs: frontend
+    strategy:
+      matrix:
+        include:
+          # macOS: desktop build (default tags) — primary target, per SPEC.md.
+          # Needs Xcode CLI tools for the hotkey package's cgo/Objective-C
+          # backend; GitHub's macos-latest runners ship these preinstalled.
+          - os: macos-latest
+            build-args: .
+          # Linux: server-mode build only. Wails3 desktop mode needs
+          # GTK4/webkitgtk system packages on Linux; server mode needs none
+          # of that (no native window), so this stays a plain compile check.
+          - os: ubuntu-latest
+            build-args: -tags server .
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: frontend-dist
+          path: frontend/dist
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+          cache: true
+      # Scoped to the root package, not `./...`: build/ios, build/android
+      # etc. are gomobile-toolchain scaffold with no main() under a plain
+      # `go build` and are expected to fail linking outside that toolchain.
+      - run: go build ${{ matrix.build-args }}
+      - run: go vet ./...
