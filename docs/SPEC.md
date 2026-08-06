@@ -198,6 +198,22 @@ that environment, on something testable directly in this dev session:
   [`JohannesKaufmann/html-to-markdown`](https://github.com/JohannesKaufmann/html-to-markdown)
   v2 (MIT, pure Go, 3.7k★, actively maintained). `LOCKED` as the immediate
   next build step.
+- **Permissions UX pattern for when this needs Accessibility access**:
+  macOS supports deep-linking straight into a specific System Settings pane
+  via the `x-apple.systempreferences:` URL scheme (`open
+  "x-apple.systempreferences:com.apple.Keyboard-Settings.extension?Shortcuts"`,
+  confirmed via search) — this is the exact mechanism Hammerspoon itself
+  uses for its own "grant Accessibility permission" prompt, and Mill will
+  need the same prompt once hotkeys/simulated-paste land. Caveat: this is
+  not an official documented Apple API — it's community-reverse-engineered,
+  and identifiers have broken before across macOS System Settings rewrites
+  (confirmed: the pre-Ventura Accessibility deep-link stopped working when
+  Ventura rebuilt System Settings). Use it, but with a plain-language
+  fallback for when the link silently stops landing correctly — don't trust
+  it blindly, and verify the exact identifier against the target macOS
+  version at build time rather than assuming it still holds. `OPEN`
+  (exact identifiers, verify at implementation time) / `LOCKED` (the
+  show-current-state-and-deep-link pattern itself is worth using).
 
 ## 3. Capability composition — how nodes connect
 
