@@ -3,14 +3,12 @@ import {Events, WML} from "@wailsio/runtime";
 import {Label, UnderlineNav} from "@primer/react";
 import SpecView from "./SpecView";
 import RunbookView from "./RunbookView";
-import ActivityView, { type ActivityEntry } from "./ActivityView";
+import ActivityView from "./ActivityView";
 import { RunbookService } from "../bindings/github.com/alicoding/mill";
-import type { Action } from "../bindings/github.com/alicoding/mill/internal/domain/runbook/models";
+import { useAppStore } from "./store";
 
 // Show the actual Wails version this project was generated against.
 const wailsVersion = "v3.0.0-beta.4";
-
-const MAX_ACTIVITY_ENTRIES = 50;
 
 // import.meta.env.DEV is Vite's own built-in flag, not something Mill
 // wires up itself: true only for a real `vite serve` process (what
@@ -24,8 +22,8 @@ const isDevBuild = import.meta.env.DEV;
 function App() {
   const [view, setView] = useState<'spec' | 'runbook' | 'activity'>('runbook');
   const [time, setTime] = useState<string>('Listening for Time event...');
-  const [actions, setActions] = useState<Action[] | null>(null);
-  const [activity, setActivity] = useState<ActivityEntry[]>([]);
+  const setActions = useAppStore((s) => s.setActions);
+  const pushActivity = useAppStore((s) => s.pushActivity);
   // Captured once per mount -- correct for a Go-triggered relaunch (Go
   // isn't hot-reloadable, so a Go change forces a fresh mount) but not
   // for a frontend-only HMR edit, which updates live without remounting.
@@ -51,7 +49,7 @@ function App() {
 
   useEffect(() => {
     RunbookService.List().then((list) => setActions(list ?? [])).catch(console.error);
-  }, []);
+  }, [setActions]);
 
   // Subscribed here, not inside ActivityView/RunbookView, so a hotkey
   // fired while on a different tab is still captured -- the whole point
@@ -59,10 +57,9 @@ function App() {
   // which page happened to be open at the time.
   useEffect(() => {
     return Events.On('hotkey-activity', (evt) => {
-      const entry = { ...evt.data, id: crypto.randomUUID(), time: new Date().toLocaleTimeString() };
-      setActivity((prev) => [entry, ...prev].slice(0, MAX_ACTIVITY_ENTRIES));
+      pushActivity({ ...evt.data, id: crypto.randomUUID(), time: new Date().toLocaleTimeString() });
     });
-  }, []);
+  }, [pushActivity]);
 
   return (
     <div className="app-shell">
@@ -84,9 +81,9 @@ function App() {
         </UnderlineNav.Item>
       </UnderlineNav>
 
-      {view === 'runbook' && <RunbookView actions={actions}/>}
+      {view === 'runbook' && <RunbookView/>}
 
-      {view === 'activity' && <ActivityView activity={activity} actions={actions}/>}
+      {view === 'activity' && <ActivityView/>}
 
       {view === 'spec' && <SpecView/>}
 

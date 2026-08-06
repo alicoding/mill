@@ -3,8 +3,8 @@ import { Browser } from '@wailsio/runtime'
 import { Button, Heading, Label, type LabelProps, SkeletonBox, Stack, Text } from '@primer/react'
 import { BeakerIcon, KeyIcon, MarkdownIcon } from '@primer/octicons-react'
 import { RunbookService, HotkeyService } from '../bindings/github.com/alicoding/mill'
-import type { Action } from '../bindings/github.com/alicoding/mill/internal/domain/runbook/models'
 import { keyFromEventCode, modsFromEvent } from './keybinding'
+import { useAppStore } from './store'
 
 // Per-action leading icon. Falls back to KeyIcon for any future action not
 // listed here rather than rendering nothing.
@@ -41,11 +41,8 @@ function isAccessibilityError(message: string): boolean {
   return message.includes('Accessibility')
 }
 
-interface RunbookViewProps {
-  actions: Action[] | null
-}
-
-function RunbookView({ actions }: RunbookViewProps) {
+function RunbookView() {
+  const actions = useAppStore((s) => s.actions)
   const [runningId, setRunningId] = useState<string | null>(null)
   const [results, setResults] = useState<Record<string, string>>({})
   const [errors, setErrors] = useState<Record<string, string>>({})
