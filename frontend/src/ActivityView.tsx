@@ -1,15 +1,8 @@
 import { useState } from 'react'
 import { Heading, Label, Stack, Text } from '@primer/react'
 import { ChevronDownIcon, ChevronRightIcon, CheckCircleIcon, XCircleIcon } from '@primer/octicons-react'
-import type { HotkeyActivity } from '../bindings/github.com/alicoding/mill/models'
 import type { Action } from '../bindings/github.com/alicoding/mill/internal/domain/runbook/models'
-
-export type ActivityEntry = HotkeyActivity & { id: string; time: string }
-
-interface ActivityViewProps {
-  activity: ActivityEntry[]
-  actions: Action[] | null
-}
+import { useAppStore } from './store'
 
 function actionName(actions: Action[] | null, actionID: string): string {
   return actions?.find((a) => a.ID === actionID)?.Name ?? actionID
@@ -21,7 +14,9 @@ function actionName(actions: Action[] | null, actionID: string): string {
 // inside another page, it was indistinguishable from "the feed doesn't
 // work" when nothing had fired yet. Subscribed once at App.tsx (not here)
 // so it keeps collecting even while this tab isn't the active view.
-function ActivityView({ activity, actions }: ActivityViewProps) {
+function ActivityView() {
+  const activity = useAppStore((s) => s.activity)
+  const actions = useAppStore((s) => s.actions)
   // Which rows are expanded to show their full result. A Set, not a
   // single id, since comparing two past fires side by side is a
   // reasonable thing to want in a log view.
