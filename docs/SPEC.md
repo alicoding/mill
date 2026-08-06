@@ -38,6 +38,16 @@ not yet worth deciding).
 - Hard constraint: the guardrailed path must not be harder than the baseline
   of what a person can already do natively (copy/paste, running a command
   themselves by hand). If it is, nobody adopts it. `LOCKED`
+- **Scope filter, learned from the screenshot-to-clipboard tangent**: before
+  any capability goes into Mill, check whether the OS (or an existing
+  launcher like Alfred/Raycast) already does it simply and well. If yes,
+  Mill's job is at most to surface/point at it (a Runbook tip, not a
+  reimplementation) — reimplementing a solved OS capability is the §0
+  inner-platform trap aimed at macOS instead of at Hammerspoon. Mill earns
+  its keep specifically where there's no native answer at all: guardrailed
+  command execution, structure-preserving capture across inconsistent
+  sources, cross-session identity, workflow composition — genuine gaps, not
+  a "screenshot but ours" competitor to what already works. `LOCKED`
 
 ### 1.1 Hard constraints & delivery model
 
