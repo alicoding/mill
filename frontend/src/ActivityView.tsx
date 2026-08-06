@@ -3,6 +3,7 @@ import { Heading, Label, Stack, Text } from '@primer/react'
 import { ChevronDownIcon, ChevronRightIcon, CheckCircleIcon, XCircleIcon } from '@primer/octicons-react'
 import type { Action } from '../bindings/github.com/alicoding/mill/internal/domain/runbook/models'
 import { useAppStore } from './store'
+import styles from './RunbookView.module.css'
 
 function actionName(actions: Action[] | null, actionID: string): string {
   return actions?.find((a) => a.ID === actionID)?.Name ?? actionID
@@ -32,16 +33,16 @@ function ActivityView() {
   }
 
   return (
-    <div className="runbook">
+    <div className={`view-pane ${styles.runbook}`}>
       <Heading as="h1">Activity</Heading>
-      <Text as="p" className="runbook-subtitle">
+      <Text as="p" className={styles.subtitle}>
         What fired hotkeys actually did, in real time — hotkey triggers run
         headlessly and write straight to the clipboard, with no other
         feedback.
       </Text>
 
       {activity.length === 0 && (
-        <div className="runbook-empty">
+        <div className={styles.empty}>
           <Text as="p">No activity yet — press a bound hotkey to see it appear here.</Text>
         </div>
       )}
@@ -52,31 +53,31 @@ function ActivityView() {
             const canExpand = entry.result !== ''
             const isExpanded = expanded.has(entry.id)
             return (
-              <div key={entry.id} className="runbook-activity-entry">
+              <div key={entry.id} className={styles.activityEntry}>
                 <Stack
                   direction="horizontal"
                   align="center"
                   gap="condensed"
-                  className={`runbook-activity-row${canExpand ? ' runbook-activity-row-clickable' : ''}`}
+                  className={`${styles.activityRow}${canExpand ? ` ${styles.activityRowClickable}` : ''}`}
                   onClick={canExpand ? () => toggle(entry.id) : undefined}
                 >
                   {canExpand ? (
                     isExpanded ? <ChevronDownIcon size={12} /> : <ChevronRightIcon size={12} />
                   ) : (
-                    <span className="runbook-activity-spacer" />
+                    <span className={styles.activitySpacer} />
                   )}
                   {entry.success ? (
                     <CheckCircleIcon size={16} fill="var(--fgColor-success)" />
                   ) : (
                     <XCircleIcon size={16} fill="var(--fgColor-danger)" />
                   )}
-                  <Text size="small" className="runbook-muted">{entry.time}</Text>
+                  <Text size="small" className={styles.muted}>{entry.time}</Text>
                   <Label variant="secondary" size="small">{entry.binding}</Label>
                   <Text size="small">{actionName(actions, entry.actionID)}</Text>
-                  <Text size="small" className="runbook-muted">— {entry.detail}</Text>
+                  <Text size="small" className={styles.muted}>— {entry.detail}</Text>
                 </Stack>
                 {isExpanded && canExpand && (
-                  <pre className="runbook-result">{entry.result}</pre>
+                  <pre className={styles.result}>{entry.result}</pre>
                 )}
               </div>
             )

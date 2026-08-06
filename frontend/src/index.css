@@ -1,0 +1,97 @@
+/* Genuinely global styles only: design tokens, the html/body reset, and the
+   app's own flex-column layout root. Per-view visual styling lives in each
+   component's own *.module.css (Primer React v38's own guidance:
+   https://github.com/primer/react/discussions/7086 -- "prefer to use CSS
+   modules over styled-components and css variables over javascript
+   theming"). Imported once from main.tsx so Vite's own pipeline processes
+   it (hashed filename, minification, HMR) instead of the previous raw
+   <link> tag in index.html, which bypassed all of that. */
+
+:root {
+    /* Neon-night design tokens (Runbook/Spec use Primer's own tokens instead —
+       these remain for the app chrome: base background, footer, docs link). */
+    --ink: #06070f;
+    --text: #f4f6fb;
+    --muted: #9aa6c0;
+    --accent-2: #ff2d72;       /* pink, used for spec code/links */
+    --glass: rgba(255, 255, 255, 0.05);
+    --glass-border: rgba(255, 255, 255, 0.12);
+
+    /* Golden-ratio spacing scale (φ ≈ 1.618), used for the vertical rhythm. */
+    --s-2: 1rem;
+    --s-3: 1.618rem;   /* φ   */
+    --s-4: 2.618rem;   /* φ²  */
+    --s-5: 4.236rem;   /* φ³  */
+
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial,
+        sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
+    color-scheme: dark;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    -webkit-text-size-adjust: 100%;
+}
+
+* { box-sizing: border-box; }
+
+html {
+    background: var(--ink);
+    /* Matches Wails' own documented pattern for killing overscroll bounce:
+       https://wails.io/docs/guides/overscroll/ */
+    height: 100%;
+    overflow: hidden;
+}
+html, body {
+    margin: 0;
+    color: var(--text);
+}
+body {
+    height: 100%;
+    overflow-x: hidden;
+    /* Nothing in the chrome is selectable (it's an app, not a document); the
+       Spec view opts back in for its own content. */
+    -webkit-user-select: none;
+    user-select: none;
+    /* Drag the window by its background. Interactive controls opt out with
+       --wails-draggable: no-drag (the property inherits). */
+    --wails-draggable: drag;
+}
+
+/* Primer's ThemeProvider/BaseStyles wrap #root in their own plain <div>s
+   (verified by walking the live DOM, not assumed) that default to
+   display:block -- so body's own flex-column layout can't reach through
+   them to lay out nav/view/footer as siblings. Rather than chasing that
+   vendor-owned markup with display:contents (fragile: a future Primer
+   version could add/remove wrapper divs and silently break it again),
+   App.tsx owns an explicit .app-shell div as its actual layout root.
+   height uses viewport units, not %, because percentage heights need
+   every ancestor in the chain to have a definite height, and the Primer
+   wrapper divs above don't -- confirmed by stress-testing with 200
+   paragraphs of dummy content before landing this: with % or min-height,
+   the whole page grew to fit the content and the footer scrolled 7000px
+   away instead of the flex:1;min-height:0 pane below clipping internally.
+   Plain global class, not a CSS module, since App.tsx is the one place
+   that needs it and it's structural chrome rather than view content. */
+.app-shell {
+    height: 100vh;
+    height: 100dvh;
+    display: flex;
+    flex-direction: column;             /* content area + footer pinned to the bottom */
+    /* Respect mobile safe areas (notch / home indicator). No bottom padding:
+       the footer sits flush at the bottom edge. */
+    /* Wider outer margins on the golden scale (φ² top/right, φ³ left). */
+    padding: max(var(--s-4), env(safe-area-inset-top)) max(var(--s-4), env(safe-area-inset-right))
+             0 max(var(--s-5), env(safe-area-inset-left));
+}
+
+/* Scrollable content pane, shared by every view (Spec, Runbook, Activity):
+   the flex-shell above needs its middle child to fill exactly whatever
+   space is left between nav and footer, instead of guessing that height
+   with a max-height: calc(100vh - Npx) magic number -- see .app-shell's
+   comment. Shared across per-view CSS Modules via a plain global class
+   (applied alongside each view's own module class) rather than duplicating
+   this rule in three separate module files. */
+.view-pane {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+}
