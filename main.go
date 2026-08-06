@@ -5,9 +5,12 @@ import (
 
 	"log"
 	"log/slog"
+	"path/filepath"
 	"time"
 
+	"github.com/alicoding/mill/internal/adapters/settings"
 	"github.com/wailsapp/wails/v3/pkg/application"
+	"github.com/wailsapp/wails/v3/pkg/events"
 )
 
 // Wails uses Go's `embed` package to embed the frontend files into the binary.
@@ -62,8 +65,18 @@ func main() {
 	// hotkey firing) and Wails3's own system messages share one stream.
 	logger := application.DefaultLogger(slog.LevelInfo)
 
+	// application.Path resolves the OS-appropriate app-support directory
+	// (~/Library/Application Support on macOS, verified directly against
+	// its adrg/xdg backing) -- the same convention Alfred/Raycast/1Password
+	// use for their own persisted settings, not something Mill invents.
+	settingsPath := filepath.Join(application.Path(application.PathConfigHome), "mill", "settings.json")
+	settingsStore, err := settings.New(settingsPath)
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	runbook := &RunbookService{}
-	hotkeys := NewHotkeyService(runbook, logger)
+	hotkeys := NewHotkeyService(runbook, logger, settingsStore)
 
 	app := application.New(application.Options{
 		Name:        "mill",
@@ -80,6 +93,16 @@ func main() {
 		Mac: application.MacOptions{
 			ApplicationShouldTerminateAfterLastWindowClosed: true,
 		},
+	})
+
+	// Global hotkey registration needs the native run loop already
+	// spinning (see HotkeyService.RestoreBindings' doc comment) -- doing
+	// this from ServiceStartup, which runs before the run loop starts,
+	// would risk the exact silent-registration-failure class already
+	// documented in docs/SPEC.md §2.2. ApplicationStarted fires once the
+	// loop is actually live.
+	app.Event.OnApplicationEvent(events.Common.ApplicationStarted, func(*application.ApplicationEvent) {
+		hotkeys.RestoreBindings()
 	})
 
 	// Create a new window with the necessary options.
@@ -119,7 +142,7 @@ func main() {
 	}()
 
 	// Run the application. This blocks until the application has been exited.
-	err := app.Run()
+	err = app.Run()
 
 	// If an error occurred while running the application, log it and exit.
 	if err != nil {

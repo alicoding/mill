@@ -3,9 +3,8 @@
 
 /**
  * HotkeyService registers global (system-wide) hotkeys that trigger a
- * Runbook action. Assignments are in-memory only for now — they don't
- * survive an app restart. Persistence is a deliberate follow-up, not
- * built into this first pass.
+ * Runbook action. Assignments persist across restarts via the settings
+ * store (see RestoreBindings) -- see docs/SPEC.md §2.2.
  * 
  * The fire path (OS delivers a keypress -> action runs -> clipboard is
  * written) has no UI surface at all, unlike the Run button's inline
