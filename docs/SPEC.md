@@ -125,6 +125,47 @@ not yet worth deciding).
   registered, whether recipes are user-authored on a canvas or config-first
   with canvas as a later view.
 
+### 3.1 Raw material — root cause of the heredoc pain, not yet resolved
+
+The actual heredoc frustration (see the mise/Taskfile discussion) isn't
+about which task runner executes a shell string — it's that an LLM has to
+freehand-generate shell syntax at all. Four related ideas surfaced together,
+captured here before being lost, none yet resolved:
+
+- **Bring-your-own-model chat bridge**: Mill could expose a Claude-Code-like
+  agent loop where the user points it at any LLM (a local Ollama model, or
+  any API key) and that model drives Mill's tools directly — Mill as "a
+  bridge to your allowed folder," not itself an LLM client (consistent with
+  §1.1's no-AI-API-from-Mill-itself rule — the model is always brought by the
+  user/host, never bundled). Composability mechanism unclear — see below.
+- **Declarative/no-code action definition**: reference is Oscilar (fintech
+  no-code decisioning — configure an HTTP-request connector to a vendor like
+  TransUnion/Equifax with typed input/decision nodes wired into a workflow).
+  Applied to Mill: if a user has some CLI tool installed locally, expose it
+  as a typed "action" (declared inputs/outputs) instead of the LLM
+  freehand-generating a shell command to invoke it.
+- **Diff preview**: frustration that a prior AI tool had no file-diff
+  preview for a proposed change; floated IDE integration to get it. Likely
+  not a separate feature — probably the same PreToolUse-style preview
+  already planned in §8, just rendering a diff when the action is a
+  file write instead of a raw command. Confirm this framing once §8 is
+  worked.
+- **Structured primitive tools with swappable backends**: instead of the LLM
+  needing to remember shell invocations, Mill exposes stable primitives —
+  `Read()`, `Write()`, `Find()` — whose implementation can be Mill's own
+  default (e.g. `fd`/ripgrep-equivalent, or a RAG index) or something the
+  user brings themselves.
+
+**Leading candidate to evaluate**: this whole cluster — typed tool schemas,
+host/client separation enabling bring-your-own-model, "wrap a local CLI as a
+tool" — looks like exactly what **MCP (Model Context Protocol)** already
+standardizes. Not confirmed yet (a research pass is checking: Go SDK
+maturity/purity, whether MCP actually supports arbitrary model backends
+including local Ollama, whether any PreToolUse-equivalent interception hook
+exists in the spec, and whether the Oscilar-style workflow-canvas idea is
+in-scope for MCP at all or stays a separate layer on top). Do not build
+against MCP until that comes back. `OPEN`
+
 ## 4. Connectors
 
 - `OPEN`. Named so far: generic HTTP connector, Jira/Confluence as a
