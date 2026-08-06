@@ -39,6 +39,60 @@ not yet worth deciding).
   of what a person can already do natively (copy/paste, running a command
   themselves by hand). If it is, nobody adopts it. `LOCKED`
 
+### 1.1 Hard constraints & delivery model
+
+- No Rust anywhere in the toolchain or dependency tree. Reason: Rust isn't
+  available in the work Artifactory yet, so anything requiring it can't ship
+  there. This rules out e.g. Tauri as an alternative app shell. `LOCKED`
+- No AI API calls from Mill itself, and no phone-home telemetry of any kind.
+  Mill is the substrate that mediates/guards actions initiated by other
+  systems (an agent CLI, a chat client) — it is not itself an LLM client, and
+  it must run fully offline/on-prem with zero outbound calls it didn't
+  explicitly initiate on the user's own behalf via a user-configured
+  connector. `LOCKED`
+- Single binary, no separate CLI/backend split. Wails3 already satisfies
+  this (one Go binary embeds the compiled frontend) — this reinforces the
+  existing scaffold choice, no change needed. `LOCKED`
+- Install story: `git clone` + a documented local build, runnable on any work
+  machine that can install the app. No hosted-service dependency for the
+  core loop. `LOCKED`
+- CI/CD wired from day one, not bolted on later. `LOCKED`
+- Command/bash execution is mediated through Mill's own process (that's the
+  guardrail hook point), but the mechanism underneath should be standard OS
+  primitives (`os/exec`, a normal shell invocation) rather than a
+  custom-built sandboxing/process-isolation layer — compose what exists,
+  don't reinvent it. `OPEN` — confirm this reading is correct before it
+  drives design.
+- Architecture discipline: SOLID, DRY, DDD — proper domain/class separation
+  once real domain logic exists. Not retrofitted onto the current two-file
+  scaffold prematurely; applies as soon as actual capabilities land. `LOCKED`
+
+### 1.2 Working method
+
+- Research → Plan → Implement (the workflow Boris Cherny has described for
+  Claude Code) is the standing method for every capability added to Mill:
+  research what already exists before assuming it doesn't — a claimed
+  "nothing exists for X" must be backed by an actual search, not an
+  assumption (this is also the NIH guardrail from §0) — then plan/lock the
+  approach, then implement. `LOCKED`
+- DBOS and pueue were surfaced as possible durable-execution/process-queue
+  candidates from earlier M365-context research, and got conflated with each
+  other in that discussion — they're not the same kind of thing (DBOS is a
+  durable-execution library you embed and typically pairs with Postgres;
+  pueue is a standalone CLI/daemon for queueing shell commands). Neither has
+  been independently evaluated. `PARKED`
+- Concrete failure mode already hit once, worth locking as a hard filter for
+  §7's eventual candidate list: pueue was `brew install`ed on the work
+  machine for the M365 prototype, which (a) is written in Rust — disqualified
+  by §1.1 on its own — and (b) is a separately-installed daemon outside the
+  single binary, meaning anyone who `git clone`s Mill would also need to
+  install and keep it in sync via a package manager Mill doesn't control.
+  Generalized rule: **any process/job-queue mechanism must be embeddable
+  directly in the Go binary** (a library, not a separately-installed
+  daemon/CLI) — it cannot require Homebrew or any other external package
+  manager at install time. This doesn't pick a replacement yet (that's
+  §7's job), it just eliminates a whole class of candidate. `LOCKED`
+
 ## 2. Core primitive: Capture → Process → Apply
 
 - **Capture**: pull content from a source preserving structure (e.g. DOM copy
@@ -100,6 +154,13 @@ not yet worth deciding).
 - Ties into #5: a "session" spans a browser tab, an agent run, and possibly a
   background process, and Mill needs one identity that threads all three
   together so the user always knows which is which.
+- Hard filter on any candidate mechanism (queue, durable-execution engine,
+  job runner): must be embeddable directly in the Go binary — no
+  separately-installed daemon/CLI, no dependency on a package manager
+  (Homebrew etc.) at install time. See §1.2 for the pueue incident this came
+  from. Still `OPEN` which specific mechanism satisfies that (DBOS's fit
+  depends on whether it can run without a standalone Postgres server —
+  unevaluated).
 
 ## 8. Guardrails / policy
 
@@ -111,7 +172,84 @@ not yet worth deciding).
   (allowlist commands? path scoping? connector-level rules?), how a
   pass/fail/pending state is communicated in the UI.
 
-## 9. Open questions log
+## 9. Repo AI workflow (CLAUDE.md / SKILL.md / agent profiles)
+
+Methodology below is `LOCKED` (researched against current Anthropic docs and
+cross-checked against other agent frameworks). Which specific skills/agents
+actually get built is `OPEN` — the list below is candidates, not commitments.
+
+### 9.1 Conventions — `LOCKED`
+
+- **CLAUDE.md** is instructions-you-write, loaded in full every session —
+  keep it under ~200 lines (longer files measurably reduce instruction
+  adherence), concrete and verifiable ("run `task build`" not "build the
+  app"), structured with headers/bullets, and free of anything Claude can
+  derive itself from the codebase (directory layout, dependency lists).
+  Multi-step procedures or anything that only matters for part of the repo
+  belongs in a skill or a path-scoped rule (`.claude/rules/*.md`), not in
+  CLAUDE.md. `docs/SPEC.md` stays the living concept/architecture doc;
+  CLAUDE.md only points at it plus encodes standing process (Research →
+  Plan → Implement, the hard constraints) — the two must not duplicate
+  content, since duplication is exactly how they drift.
+- **SKILL.md** files use YAML frontmatter (only `description` is really
+  required) + a markdown body that loads on demand rather than every
+  session — this progressive disclosure is the entire point: put the
+  common-case instructions in the body, push large reference material
+  (specs, examples) into supporting files the skill only reads when needed.
+  The `description` is a trigger for auto-invocation: lead with the concrete
+  use case ("Use when adding a new connector type..." not "Helps with
+  connectors"), since Claude matches intent against this text. Skills follow
+  the open Agent Skills standard (agentskills.io), which is also what
+  Claude.ai and the Skills API consume — sticking to the standard fields
+  keeps a skill portable instead of Claude-Code-only.
+- **Agent/subagent profiles** are markdown + YAML frontmatter under
+  `.claude/agents/`: `name` and `description` are required, `description` is
+  the delegation trigger (same discipline as skill descriptions — lead with
+  when to use it, not what it is), `tools` is an explicit allowlist (omit to
+  inherit everything, which is the wrong default for anything narrow-purpose
+  like a read-only reviewer), and the markdown body is the subagent's entire
+  system prompt (it does not inherit the parent's). Two agent descriptions
+  should never overlap enough to make delegation ambiguous.
+- **Cross-framework check**: OpenAI's Agents SDK (instructions + tools +
+  explicit handoff list per agent), LangGraph (typed state passed between
+  named nodes, explicit edges), and CrewAI (role + goal + explicit tool list
+  per agent) all converge on the same shape Anthropic uses here — a scoped
+  system prompt, an explicit tool allowlist, and a natural-language
+  trigger/role description for routing. Nothing in this repo's setup is
+  Anthropic-idiosyncratic; adopting it isn't a lock-in risk.
+- Sources: Claude Code docs — memory (`/docs/en/memory`), skills
+  (`/docs/en/skills`), subagents (`/docs/en/sub-agents`), all at
+  `code.claude.com`; agentskills.io (Agent Skills open standard); OpenAI
+  Agents SDK, LangGraph, and CrewAI framework docs for the cross-check.
+
+### 9.2 Candidate skills/agents — `OPEN` (names + one-line justification only; none scaffolded yet)
+
+- **ddd-modeling-helper** (skill) — guides entity/value-object/aggregate
+  boundary decisions when domain logic starts landing (§1.1 SOLID/DRY/DDD
+  discipline), so the split isn't ad hoc per contributor.
+- **adr-writer** (skill) — turns an `OPEN` item in this doc into a proper
+  decision record once it's resolved, keeping §10's open-questions log
+  honest about what's actually been decided vs. still open.
+- **go-wails-conventions** (skill, path-scoped to `*.go` / `frontend/**`) —
+  house style for Go service structs, Wails3 binding patterns, and
+  React/TS conventions once there's enough surface area to standardize.
+- **spec-sync-checker** (skill or hook) — flags when code changes touch an
+  area `docs/SPEC.md` marks `OPEN`/`LOCKED` without a corresponding doc
+  update, so the living-spec promise in the doc's header doesn't silently
+  lapse.
+- **connector-scaffolder** (agent) — once §4's connector model is `LOCKED`,
+  generates the boilerplate for a new connector against the settled schema —
+  useful specifically to avoid point-solution drift per-connector (§0).
+- **guardrail-policy-reviewer** (agent) — once §8's policy model is
+  `LOCKED`, reviews a proposed guardrail/policy change for gaps before it's
+  trusted to gate real command execution.
+
+None of the above should be built before the section of the spec it depends
+on (§3, §4, §8, etc.) moves off `OPEN` — building the helper before the
+domain concept it encodes is settled is the inner-platform-effect failure
+mode from §0 repeating itself one level up.
+
+## 10. Open questions log
 
 - Node/canvas composition model (§3)
 - Credential/vault model for connectors (§4)
@@ -119,3 +257,5 @@ not yet worth deciding).
 - Env/shell determinism rules (§6)
 - Session identity model spanning tab + agent run + process (§7)
 - Policy authoring format and storage (§8)
+- Bash-execution-through-our-process-but-nothing-is-ours reading (§1.1) —
+  confirm with the user
