@@ -156,30 +156,67 @@ captured here before being lost, none yet resolved:
   default (e.g. `fd`/ripgrep-equivalent, or a RAG index) or something the
   user brings themselves.
 
-**Leading candidate to evaluate**: this whole cluster — typed tool schemas,
-host/client separation enabling bring-your-own-model, "wrap a local CLI as a
-tool" — looks like exactly what **MCP (Model Context Protocol)** already
-standardizes. A research pass is checking Go SDK maturity/purity, whether
-MCP genuinely supports arbitrary model backends including local Ollama,
-whether any PreToolUse-equivalent interception hook exists in the spec, and
-whether the [decisioning-vendor]-style workflow-canvas idea is in-scope for MCP at all or
-stays a separate layer on top. `OPEN`
+**MCP verdict: good fit, adopt as the capability-exposure layer.** `LOCKED`
+Researched and independently spot-checked (repo/release/go.mod/license all
+confirmed directly, not taken on the research pass's word alone):
 
-**Deployment note, not a design change**: MCP is currently blocked at the
-bank by IS&C, timeline for re-enablement unknown. The user's explicit
-instruction: this does not change the plan — MCP is "just a protocol," so
-Mill should still design its capability layer to speak/adopt it now
-(schema-compatible) rather than inventing a bespoke one, the same
-compose-don't-invent discipline as everywhere else in this doc (extends to
-the guardrail/hooks design too — adopt Anthropic's Hooks structure rather
-than a bespoke format). The block is operational timing, not a reason to
-deprioritize the design target. Worth checking once research lands: MCP has
-a local stdio transport (subprocess over stdin/stdout, no network egress)
-distinct from remote/network transports (SSE, streamable HTTP) — a bank
-IS&C block plausibly targets the network transports specifically, which
-would mean local stdio MCP is unaffected and usable today. Unverified,
-folded into the research pass. `LOCKED` (design direction) / `OPEN`
-(transport-scope detail, whether usable today)
+- **Go SDK**: [`modelcontextprotocol/go-sdk`](https://github.com/modelcontextprotocol/go-sdk)
+  — official, "maintained in collaboration with Google," v1.7.0
+  (2026-07-28). `go.mod` deps are 100% pure Go (`jsonschema-go`,
+  `segmentio/encoding`, `golang-jwt`, `x/oauth2`, `x/time`, `x/tools`, etc.)
+  — no cgo, no Rust, no Node/Python. Server *and* client roles both
+  implemented. Clean fit with the single-binary constraint. License
+  mid-transition MIT → Apache-2.0 (new code Apache-2.0; unrelicensed old
+  contributions stay MIT) — confirmed directly against the repo's `LICENSE`
+  file, worth a compliance glance given the bank context but not a blocker.
+- **Bring-your-own-model is real, not assumed**: the spec is explicit that
+  MCP "does not dictate how AI applications use LLMs" — the host owns the
+  model choice, Ollama-or-any-key is genuinely in-scope, this isn't Mill
+  inventing a workaround.
+- **Wrapping a local CLI as a typed tool is the mainstream pattern**, not a
+  novel use — see
+  [github-mcp-server](https://github.com/github/github-mcp-server) (32k★,
+  Go, single binary) as a real precedent.
+- **No PreToolUse-equivalent exists in the MCP spec** — that stays entirely
+  Mill's own responsibility, as expected. The Go SDK does expose a real seam
+  for it though: `Server.AddReceivingMiddleware(...)` wraps `tools/call`
+  before dispatch — the SDK's own examples only use it for response
+  caching, not approve/deny, so Mill would be writing the actual guardrail
+  logic, but the interception point already exists and doesn't need to be
+  built from scratch.
+- **No-code workflow canvas is confirmed out of scope for MCP** — its
+  primitives are flat tools/resources/prompts with no chaining semantics.
+  React Flow (§3's other reference) over MCP-exposed tools as nodes still
+  stands as the composition layer on top.
+- **Correction to the transport question**: local **stdio** transport is
+  confirmed to be pure local IPC — "newline-delimited messages over the
+  standard streams of a client-launched subprocess," zero network egress,
+  never touches [corporate-proxy] or any network security stack. Remote transports
+  (SSE, streamable HTTP) are the actual egress path and what enterprise
+  MCP-security policy typically targets. Not verified against the bank's
+  actual policy text — **worth asking IS&C directly** whether the block
+  names remote/HTTP MCP specifically, since local stdio MCP may already be
+  usable today regardless of the broader block.
+- **Prior art worth reading before designing Mill's own version**:
+  [mcphost](https://github.com/mark3labs/mcphost) (Go, Ollama-native, had
+  hook-based tool approval) — archived April 2026, successor project
+  "Kit." Closest existing thing to "Mill's idea #1," already attempted and
+  abandoned once; worth understanding why before repeating its shape.
+- **Alternatives checked, not just MCP confirmed in isolation**: Eino
+  (ByteDance) and langchaingo are agent *frameworks*, not protocols —
+  complementary at most, heavier than Mill needs, not competing options.
+  MCP isn't overkill here; the alternative would be hand-rolling the same
+  tool-schema contract worse.
+
+**Open conflict this surfaces, needs a decision**: §1.1 locks "Mill is not
+itself an LLM client — no AI API calls from Mill itself." Idea #1 above
+(Mill running a chat/agent loop that drives a user-supplied Ollama model)
+would make Mill an MCP **host**, which sits uneasily against that lock —
+even though Mill wouldn't be calling a *paid* API or phoning home, it would
+be the thing orchestrating a model's tool-calling loop, not just exposing
+tools to be orchestrated. Mill as MCP **server only** (exposing guardrailed
+tools, something else acts as host) fits §1.1 cleanly with zero tension.
+`OPEN` — this determines whether idea #1 is in scope at all.
 
 ## 4. Connectors
 
