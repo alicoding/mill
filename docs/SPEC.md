@@ -543,6 +543,23 @@ that environment, on something testable directly in this dev session:
   clicked "View status" on a placeholder → correct label/status/back-link
   rendered; clicked "Open in editor" on the process-tracking entry → VS
   Code opened the exact ADR file. `LOCKED`
+- **Every capability gets a top-nav entry, built or not** — extends the
+  index above: the main `UnderlineNav` (previously three hardcoded
+  `Runbook`/`Activity`/`Spec` items) is now driven by the same
+  `CapabilitiesService.List()` data, `.map()`ed straight into nav items,
+  so the full shape of the app is visible and clickable from the nav bar
+  itself, not just from inside the Spec tab. `Spec` stays a fixed,
+  non-capability entry (it's the directory/docs page, not a product
+  feature with a build status). `Capability.NavLabel` (falls back to
+  `Label` when empty) keeps the two already-built entries terse
+  ("Activity" in the nav vs. "Activity / event log" in the fuller index)
+  without a second hand-maintained label. `store.ts`'s `viewFor`/
+  `viewsEqual` helpers are shared between the nav and `CapabilityIndex` so
+  both surfaces navigate identically from one mapping, not two.
+  With all 7 capabilities plus Spec, the nav overflows the visible width
+  on a normal window — checked directly, not assumed: Primer's
+  `UnderlineNav` already handles this itself (a "More" dropdown for
+  anything that doesn't fit), so nothing extra was built for it. `LOCKED`
 - **Window/scroll layout researched against Wails3's own docs before
   touching CSS** — confirmed Wails3's window management (`MinWidth`/
   `MinHeight`/`MaxWidth`/`MaxHeight`/`Zoom`/etc. on `WebviewWindowOptions`)
