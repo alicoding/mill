@@ -4,7 +4,8 @@ import {Label, UnderlineNav} from "@primer/react";
 import SpecView from "./SpecView";
 import RunbookView from "./RunbookView";
 import ActivityView from "./ActivityView";
-import { RunbookService } from "../bindings/github.com/alicoding/mill";
+import PlaceholderView from "./PlaceholderView";
+import { RunbookService, CapabilitiesService } from "../bindings/github.com/alicoding/mill";
 import { useAppStore } from "./store";
 import styles from "./App.module.css";
 
@@ -21,10 +22,12 @@ const wailsVersion = "v3.0.0-beta.4";
 const isDevBuild = import.meta.env.DEV;
 
 function App() {
-  const [view, setView] = useState<'spec' | 'runbook' | 'activity'>('runbook');
+  const view = useAppStore((s) => s.view);
+  const setView = useAppStore((s) => s.setView);
   const [time, setTime] = useState<string>('Listening for Time event...');
   const setActions = useAppStore((s) => s.setActions);
   const pushActivity = useAppStore((s) => s.pushActivity);
+  const setCapabilities = useAppStore((s) => s.setCapabilities);
   // Captured once per mount -- correct for a Go-triggered relaunch (Go
   // isn't hot-reloadable, so a Go change forces a fresh mount) but not
   // for a frontend-only HMR edit, which updates live without remounting.
@@ -52,6 +55,10 @@ function App() {
     RunbookService.List().then((list) => setActions(list ?? [])).catch(console.error);
   }, [setActions]);
 
+  useEffect(() => {
+    CapabilitiesService.List().then((list) => setCapabilities(list ?? [])).catch(console.error);
+  }, [setCapabilities]);
+
   // Subscribed here, not inside ActivityView/RunbookView, so a hotkey
   // fired while on a different tab is still captured -- the whole point
   // of this feed is answering "did anything fire at all" regardless of
@@ -71,22 +78,24 @@ function App() {
       )}
 
       <UnderlineNav aria-label="Mill">
-        <UnderlineNav.Item aria-current={view === 'runbook' ? 'page' : undefined} onSelect={(e) => { e.preventDefault(); setView('runbook') }}>
+        <UnderlineNav.Item aria-current={view.kind === 'runbook' ? 'page' : undefined} onSelect={(e) => { e.preventDefault(); setView({ kind: 'runbook' }) }}>
           Runbook
         </UnderlineNav.Item>
-        <UnderlineNav.Item aria-current={view === 'activity' ? 'page' : undefined} onSelect={(e) => { e.preventDefault(); setView('activity') }}>
+        <UnderlineNav.Item aria-current={view.kind === 'activity' ? 'page' : undefined} onSelect={(e) => { e.preventDefault(); setView({ kind: 'activity' }) }}>
           Activity
         </UnderlineNav.Item>
-        <UnderlineNav.Item aria-current={view === 'spec' ? 'page' : undefined} onSelect={(e) => { e.preventDefault(); setView('spec') }}>
+        <UnderlineNav.Item aria-current={view.kind === 'spec' ? 'page' : undefined} onSelect={(e) => { e.preventDefault(); setView({ kind: 'spec' }) }}>
           Spec
         </UnderlineNav.Item>
       </UnderlineNav>
 
-      {view === 'runbook' && <RunbookView/>}
+      {view.kind === 'runbook' && <RunbookView/>}
 
-      {view === 'activity' && <ActivityView/>}
+      {view.kind === 'activity' && <ActivityView/>}
 
-      {view === 'spec' && <SpecView/>}
+      {view.kind === 'spec' && <SpecView/>}
+
+      {view.kind === 'placeholder' && <PlaceholderView capabilityId={view.capabilityId}/>}
 
       <hr className={styles.divider}/>
       <footer className={styles.footer}>

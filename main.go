@@ -84,6 +84,7 @@ func main() {
 		Logger:      logger,
 		Services: []application.Service{
 			application.NewService(&SpecService{}),
+			application.NewService(&CapabilitiesService{}),
 			application.NewService(runbook),
 			application.NewService(hotkeys),
 		},

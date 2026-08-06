@@ -503,6 +503,46 @@ that environment, on something testable directly in this dev session:
   marshal/restore logic is unit-tested against a fake `Store`, consistent
   with the rest of `HotkeyService` being otherwise real-OS-hotkey-only and
   not CI-testable (§1.3). `LOCKED`
+- **Capability status index, backed by real Go data, not parsed docs.**
+  First design considered parsing this very doc's `LOCKED`/`OPEN`/`PARKED`
+  tags out of its markdown (via `remark`/AST-walking) to drive an in-app
+  status index — correctly rejected: "SPEC.md was just a quick last night
+  thing," inferring structure from prose formatting that was never meant
+  as a schema is exactly the kind of fragile-clever thing that breaks
+  silently. The actual fix: Mill is a native app with a real backend, so
+  capability status is real application data, stored and projected the
+  same way `RunbookService.List()` already exposes Runbook actions —
+  typed Go structs over the existing Wails binding mechanism, zero new
+  frontend dependencies. `internal/domain/capabilities` (`List()`,
+  mirroring `internal/domain/runbook`'s shape) is the one authoritative
+  place capability status lives now; this doc's own tags stay
+  human-readable commentary, not something anything parses — a known,
+  accepted seam (the two could drift) rather than a forced
+  consistency-checker in this pass; `spec-sync-checker` (§9.2) is the
+  natural place to close that gap later. `CapabilitiesService` (thin
+  Wails binding, no logic of its own) exposes `List()` and a dev-only
+  `RepoPath()` (`os.Getwd()`, reliable specifically because `task dev`
+  launches with the repo root as cwd — confirmed this session). The Spec
+  tab's `CapabilityIndex` renders real rows from that data: a built
+  capability's row jumps straight to its page (`Runbook page` → Runbook
+  tab, `Activity / event log` → Activity tab — same §2.2 milestone, two
+  distinct entry points); a not-built one opens a generic `PlaceholderView`
+  (same Primer primitives as RunbookView's empty states — no dedicated
+  empty-state component in this Primer version) showing its status and a
+  way back; a capability with an `EditorPath` (no UI at all yet, e.g.
+  process tracking → `docs/adr/0004-execution-process-tracking.md`) gets
+  an additional dev-mode-only action opening `vscode://file/<repoPath>/
+  <editorPath>` via `Browser.OpenURL` — the same mechanism already used
+  for the Accessibility-settings deep link. `EditorPath` correctness is a
+  real test (`TestList_EditorPathsExist`), not just a shape check — it
+  must resolve to a file that exists today, never an aspirational one.
+  §5 (browser bridge) deliberately excluded from the registry: a separate
+  extension deliverable, not a Mill window page. Verified end-to-end on
+  the real desktop app (accessibility-driven UI automation, not assumed):
+  clicked "Go to page" for Runbook page → landed on the real Runbook tab;
+  clicked "View status" on a placeholder → correct label/status/back-link
+  rendered; clicked "Open in editor" on the process-tracking entry → VS
+  Code opened the exact ADR file. `LOCKED`
 - **Window/scroll layout researched against Wails3's own docs before
   touching CSS** — confirmed Wails3's window management (`MinWidth`/
   `MinHeight`/`MaxWidth`/`MaxHeight`/`Zoom`/etc. on `WebviewWindowOptions`)

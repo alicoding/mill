@@ -1,0 +1,47 @@
+import { Heading, Label, Text, Button } from '@primer/react'
+import { useAppStore } from './store'
+import styles from './RunbookView.module.css'
+
+const STATUS_VARIANT: Record<string, 'success' | 'attention' | 'secondary'> = {
+  LOCKED: 'success',
+  OPEN: 'attention',
+  PARKED: 'secondary',
+}
+
+interface PlaceholderViewProps {
+  capabilityId: string
+}
+
+// Generic "not built yet" page for any capability whose docs/SPEC.md
+// entry exists but has no real UI yet -- reuses RunbookView.module.css's
+// card/empty/muted classes rather than a bespoke stylesheet, matching
+// this session's CSS Modules decision (SPEC.md §1.3).
+function PlaceholderView({ capabilityId }: PlaceholderViewProps) {
+  const capability = useAppStore((s) => s.capabilities.find((c) => c.ID === capabilityId))
+  const setView = useAppStore((s) => s.setView)
+
+  return (
+    <div className={`view-pane ${styles.runbook}`}>
+      <Heading as="h1">{capability?.Label ?? 'Not built yet'}</Heading>
+      <Text as="p" className={styles.subtitle}>
+        This part of Mill hasn't been built yet.
+      </Text>
+
+      <div className={styles.card}>
+        {capability && (
+          <Label variant={STATUS_VARIANT[capability.Status] ?? 'secondary'}>
+            {capability.Status}
+          </Label>
+        )}
+        <Text as="p" size="small" className={styles.muted}>
+          See docs/SPEC.md §{capability?.SpecSection ?? '?'} for the current thinking on this.
+        </Text>
+        <Button size="small" onClick={() => setView({ kind: 'spec' })}>
+          Back to Spec
+        </Button>
+      </div>
+    </div>
+  )
+}
+
+export default PlaceholderView

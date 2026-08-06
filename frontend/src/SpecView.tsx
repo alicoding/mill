@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { marked } from 'marked'
 import { SpecService } from '../bindings/github.com/alicoding/mill'
+import CapabilityIndex from './CapabilityIndex'
 import styles from './SpecView.module.css'
 
 function SpecView() {
@@ -13,7 +14,10 @@ function SpecView() {
   }, [])
 
   return (
-    <article className={`view-pane ${styles.spec}`} dangerouslySetInnerHTML={{ __html: html }} />
+    <div className={`view-pane ${styles.spec}`}>
+      <CapabilityIndex />
+      <article dangerouslySetInnerHTML={{ __html: html }} />
+    </div>
   )
 }
 
