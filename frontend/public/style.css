@@ -451,6 +451,36 @@ input[type="text"] {
 }
 .runbook-item button:disabled { opacity: 0.6; cursor: default; }
 .runbook-item button:not(:disabled):hover { box-shadow: 0 6px 18px rgba(255, 45, 114, 0.4); }
+
+.runbook-item-controls { display: flex; align-items: center; gap: var(--s-1); flex-shrink: 0; }
+.runbook-shortcut { display: flex; align-items: center; gap: 6px; }
+.runbook-shortcut kbd {
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    font-size: 12px;
+    color: var(--text);
+    background: var(--glass-strong);
+    border: 1px solid var(--glass-border);
+    border-radius: 6px;
+    padding: 4px 8px;
+}
+.runbook-shortcut-set, .runbook-shortcut-edit, .runbook-shortcut-clear {
+    background: transparent !important;
+    border: 1px solid var(--glass-border) !important;
+    color: var(--muted) !important;
+    font-size: 12px !important;
+    font-weight: 500 !important;
+    padding: 6px 10px !important;
+    box-shadow: none !important;
+}
+.runbook-shortcut-set:hover, .runbook-shortcut-edit:hover, .runbook-shortcut-clear:hover {
+    color: var(--text) !important;
+    border-color: rgba(255, 77, 77, 0.45) !important;
+}
+.runbook-recording {
+    font-size: 12px;
+    color: var(--accent-2);
+    white-space: nowrap;
+}
 .runbook-result, .runbook-error {
     user-select: text;
     margin-top: var(--s-2);

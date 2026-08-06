@@ -176,10 +176,18 @@ that environment, on something testable directly in this dev session:
   run directly with a click (no hotkey required), similar to how many apps
   offer example/demo actions or default recipes out of the box. Answers
   "what should I see as a user" concretely instead of describing it.
-- Each action gets a **Run** button now; **assign a keyboard shortcut** per
-  action (Raycast/Alfred-style: click into a shortcut field, press the
-  combo, it's bound) is the deliberate next increment once running actions
-  works, not built in the same pass.
+- Each action gets a **Run** button; **assign a keyboard shortcut** per
+  action (Raycast/Alfred-style: click "Set shortcut," press the combo, it's
+  bound) is built. `HotkeyService` (`hotkeyservice.go`) wraps
+  `golang-design/hotkey`; on trigger it runs the action and writes the
+  result straight to the clipboard via `pbcopy`, completing the original
+  ask — select rich text, copy, hit the hotkey, paste normally anywhere.
+  Assignments are in-memory only (reset on app restart) — persistence is a
+  deliberate follow-up, not built yet. Integration risk checked before
+  building, not assumed: macOS requires hotkey registration to coexist with
+  the app's own native run loop, confirmed working via the library's own
+  Fyne example (registers from a background goroutine while `ShowAndRun`
+  owns the main thread) — same shape used here alongside Wails' `app.Run()`.
 - Design principle for that increment, from a real annoyance (macOS's
   default screenshot-to-clipboard shortcut is the awkward one, save-to-file
   got the easy keystroke): the easiest-to-press binding should be assignable
