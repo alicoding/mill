@@ -18,6 +18,7 @@ import (
 var (
 	readClipboardHTML  = clipboard.ReadHTML
 	writeClipboardHTML = clipboard.WriteHTML
+	writeClipboardText = clipboard.WriteText
 	htmlToMarkdown     = markdown.ToMarkdown
 )
 
@@ -69,18 +70,33 @@ func runLoadSampleHTML() (string, error) {
 	if err := writeClipboardHTML(sampleHTML); err != nil {
 		return "", fmt.Errorf("writing sample HTML to clipboard: %w", err)
 	}
+	// The returned string is UI-facing status (what the Run button/hotkey
+	// fire path displays or logs) -- it deliberately does NOT also get
+	// written to the clipboard by the caller. This action's whole job is
+	// leaving real HTML on the clipboard via writeClipboardHTML above; a
+	// caller that generically re-copies every action's return value would
+	// immediately clobber that HTML with this plain-text status message,
+	// which is exactly the bug this comment is here to prevent regressing.
 	return "Sample HTML is now on your clipboard — here it is, exactly as written (what you see is what's really there):\n\n" + sampleHTML, nil
 }
 
 func runClipboardHTMLToMarkdown() (string, error) {
 	html, err := readClipboardHTML()
 	if err != nil {
+		// A soft failure, not a Go error: there's nothing to overwrite the
+		// clipboard with, so unlike the success path below, this branch
+		// deliberately leaves the clipboard untouched -- writing this
+		// explainer text over whatever the user actually had copied would
+		// be its own small act of clipboard-clobbering.
 		return "No HTML found on the clipboard — only plain text (or nothing) was copied, so there's no structure to preserve. Copy something with real formatting (a heading, bold text, a list) and try again.", nil
 	}
 
 	md, err := htmlToMarkdown(html)
 	if err != nil {
 		return "", fmt.Errorf("converting clipboard HTML to markdown: %w", err)
+	}
+	if err := writeClipboardText(md); err != nil {
+		return "", fmt.Errorf("writing markdown to clipboard: %w", err)
 	}
 	return md, nil
 }

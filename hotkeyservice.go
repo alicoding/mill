@@ -7,7 +7,6 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/alicoding/mill/internal/adapters/clipboard"
 	"github.com/alicoding/mill/internal/adapters/hotkey"
 	"github.com/wailsapp/wails/v3/pkg/application"
 )
@@ -87,13 +86,15 @@ func (h *HotkeyService) Assign(actionID string, mods []string, key string) (stri
 				emitHotkeyActivity(actionID, label, false, err.Error(), "")
 				continue
 			}
-			if err := clipboard.WriteText(result); err != nil {
-				h.logger.Error("hotkey result clipboard write failed", "action", actionID, "binding", label, "error", err)
-				emitHotkeyActivity(actionID, label, false, "clipboard write failed: "+err.Error(), "")
-				continue
-			}
+			// No clipboard write here: each action owns writing its own
+			// result to the clipboard as part of its own Apply step (see
+			// internal/domain/runbook). A blanket clipboard.WriteText(result)
+			// here used to unconditionally overwrite whatever an action had
+			// already written -- e.g. load-sample-html writes real HTML,
+			// then had its own UI-facing status string immediately clobber
+			// it. Real bug, not hypothetical: hit it live.
 			h.logger.Info("hotkey action completed", "action", actionID, "binding", label, "output_bytes", len(result))
-			emitHotkeyActivity(actionID, label, true, fmt.Sprintf("copied to clipboard (%d bytes)", len(result)), result)
+			emitHotkeyActivity(actionID, label, true, fmt.Sprintf("completed (%d bytes)", len(result)), result)
 		}
 	}()
 
