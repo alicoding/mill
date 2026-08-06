@@ -68,6 +68,9 @@ implementing one option — surface the choice.
 
 ## Build / dev commands
 
+- `task setup:hooks` — run once after cloning: installs Lefthook's
+  pre-commit hooks (lint/vet/build, mirrors CI). Requires `brew install
+  lefthook golangci-lint` first.
 - `task dev` — run the app in dev mode with hot reload (frontend + backend).
 - `task build` — production build to `bin/`.
 - `wails3 dev` / `wails3 build` — underlying Wails3 CLI these Taskfile targets
