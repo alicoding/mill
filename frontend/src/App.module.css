@@ -65,12 +65,64 @@
     z-index: 2;
 }
 
-/* View switcher (Runbook / Spec) is Primer's UnderlineNav — no bespoke CSS
-   needed beyond drag/z-index. Attribute selector, not a class, so CSS
-   Modules leaves it as-is (nothing to scope). */
-nav[aria-label="Mill"] {
+/* PageLayout wrapper: needs a *resolved* height from .app-shell's flex
+   layout for PageLayoutWrapper/SidebarWrapper's own height:100% (Primer's
+   own CSS) to have anything to resolve against -- a flex item stretched
+   by flex-grow has a real used-height percentage children can reference,
+   unlike the earlier ThemeProvider/BaseStyles wrapper-div bug (those were
+   plain, unsized display:block divs with nothing to resolve against).
+   Confirmed by the same dummy-content stress test used for that fix. */
+.appBody {
     --wails-draggable: no-drag;
-    padding: 0 var(--s-3);
-    position: relative;
-    z-index: 1;
+    flex: 1 1 auto;
+    min-height: 0;
+}
+
+/* PageLayout.Content has no overflow/min-height of its own -- .view-pane
+   (index.css) supplies that, applied once here instead of on every view's
+   own root (each view still keeps its own padding/max-width via its own
+   CSS module). Only one view renders at a time, so Content doesn't need
+   to be a flex container itself -- normal block flow is enough for a
+   single child.
+
+   Getting that to actually clip took real debugging, not just adding
+   min-height:0 (confirmed by stress-testing with 200 paragraphs of dummy
+   content, same method as the earlier .app-shell fix -- each step below
+   was verified against the live computed styles, not assumed):
+
+   1. PageLayout's two internal wrapper divs between PageLayoutRoot and
+      Content (one row laying out Sidebar+Content side by side, one
+      column wrapping it) both defaulted to min-height:auto, so despite
+      PageLayoutRoot itself having a correctly bounded height (from
+      .appBody below), both wrappers grew to fit Content's full height
+      instead of clipping to it.
+   2. min-height:0 on both wrappers alone wasn't enough either: they sit
+      inside a flex-wrap:wrap container with align-items:normal, and a
+      wrapped line's cross-size isn't hard-clipped by min-height the way
+      a non-wrapping flex child's is -- content taller than the line
+      still overflows past it. height:100% + overflow:hidden forces the
+      actual clip.
+   3. Content (<main>, the .view-pane element) is a cross-axis child of
+      a flex-direction:row container, so flex-grow there sizes its
+      *width*, not height -- stretch was expected to size its height
+      automatically but didn't take effect in practice, so .view-pane
+      also needed an explicit height:100% once its parent (fixed by
+      step 2) actually had a real height to inherit.
+
+   Both wrapper divs are unnamed, hash-classed Primer internals with no
+   data-component hook to target directly (checked the live DOM, not
+   assumed) -- rather than depend on Primer's internal (and versioned)
+   class names the way the earlier ThemeProvider/BaseStyles issue
+   explicitly avoided, this selects them structurally: "whichever div
+   directly/one-level-removed contains the .view-pane element," which
+   stays correct regardless of what Primer calls that div internally or
+   how it changes across versions. This whole exercise is also the
+   concrete evidence that PageLayout is built for page-scroll websites,
+   not a fixed-viewport app shell -- worth remembering before reaching
+   for another PageLayout region expecting it to "just clip." */
+:global(div:has(> main.view-pane)),
+:global(div:has(> div > main.view-pane)) {
+    min-height: 0;
+    height: 100%;
+    overflow: hidden;
 }

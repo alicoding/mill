@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react'
 import {Events, WML} from "@wailsio/runtime";
-import {Label, UnderlineNav} from "@primer/react";
+import {Label, NavList, PageLayout} from "@primer/react";
 import SpecView from "./SpecView";
 import RunbookView from "./RunbookView";
 import ActivityView from "./ActivityView";
 import PlaceholderView from "./PlaceholderView";
 import { RunbookService, CapabilitiesService } from "../bindings/github.com/alicoding/mill";
-import { useAppStore, viewFor, viewsEqual } from "./store";
+import { useAppStore, viewFor, viewsEqual, statusVariant } from "./store";
 import styles from "./App.module.css";
 
 // Show the actual Wails version this project was generated against.
@@ -79,36 +79,54 @@ function App() {
       )}
 
       {/* Every capability gets a nav entry, built or not (docs/SPEC.md
-          §2.2) -- driven by CapabilitiesService's own data so the nav
-          bar always reflects Mill's actual shape, not just what's
-          shipped. Spec stays a fixed, non-capability entry: it's the
-          directory/docs page itself, not a product feature with a
-          build status. */}
-      <UnderlineNav aria-label="Mill">
-        {capabilities.map((c) => {
-          const target = viewFor(c);
-          return (
-            <UnderlineNav.Item
-              key={c.ID}
-              aria-current={viewsEqual(view, target) ? 'page' : undefined}
-              onSelect={(e) => { e.preventDefault(); setView(target) }}
+          §2.2) -- driven by CapabilitiesService's own data so the sidebar
+          always reflects Mill's actual shape, not just what's shipped.
+          PageLayout.Sidebar, not .Pane: verified directly against the
+          compiled CSS that .Pane stacks above/below content below 768px
+          (page-scroll-oriented, wrong fit here), while .Sidebar stays a
+          persistent side rail at any width -- see docs/SPEC.md. Spec
+          stays a fixed, non-capability entry: it's the directory/docs
+          page itself, not a product feature with a build status. */}
+      <PageLayout className={styles.appBody} containerWidth="full" padding="none" rowGap="none" columnGap="none">
+        <PageLayout.Sidebar width="small" responsiveVariant="default" divider="line" padding="condensed">
+          <NavList>
+            {capabilities.map((c) => {
+              const target = viewFor(c);
+              return (
+                <NavList.Item
+                  key={c.ID}
+                  href="#"
+                  aria-current={viewsEqual(view, target) ? 'page' : undefined}
+                  onClick={(e) => { e.preventDefault(); setView(target) }}
+                >
+                  {c.NavLabel || c.Label}
+                  <NavList.TrailingVisual>
+                    <Label variant={statusVariant(c.Status)} size="small">{c.Status}</Label>
+                  </NavList.TrailingVisual>
+                </NavList.Item>
+              );
+            })}
+            <NavList.Divider/>
+            <NavList.Item
+              href="#"
+              aria-current={view.kind === 'spec' ? 'page' : undefined}
+              onClick={(e) => { e.preventDefault(); setView({ kind: 'spec' }) }}
             >
-              {c.NavLabel || c.Label}
-            </UnderlineNav.Item>
-          );
-        })}
-        <UnderlineNav.Item aria-current={view.kind === 'spec' ? 'page' : undefined} onSelect={(e) => { e.preventDefault(); setView({ kind: 'spec' }) }}>
-          Spec
-        </UnderlineNav.Item>
-      </UnderlineNav>
+              Spec
+            </NavList.Item>
+          </NavList>
+        </PageLayout.Sidebar>
 
-      {view.kind === 'runbook' && <RunbookView/>}
+        <PageLayout.Content className="view-pane" padding="none">
+          {view.kind === 'runbook' && <RunbookView/>}
 
-      {view.kind === 'activity' && <ActivityView/>}
+          {view.kind === 'activity' && <ActivityView/>}
 
-      {view.kind === 'spec' && <SpecView/>}
+          {view.kind === 'spec' && <SpecView/>}
 
-      {view.kind === 'placeholder' && <PlaceholderView capabilityId={view.capabilityId}/>}
+          {view.kind === 'placeholder' && <PlaceholderView capabilityId={view.capabilityId}/>}
+        </PageLayout.Content>
+      </PageLayout>
 
       <hr className={styles.divider}/>
       <footer className={styles.footer}>

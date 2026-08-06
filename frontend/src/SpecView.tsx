@@ -14,7 +14,7 @@ function SpecView() {
   }, [])
 
   return (
-    <div className={`view-pane ${styles.spec}`}>
+    <div className={styles.spec}>
       <CapabilityIndex />
       <article dangerouslySetInnerHTML={{ __html: html }} />
     </div>

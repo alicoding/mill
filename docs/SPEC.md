@@ -543,23 +543,54 @@ that environment, on something testable directly in this dev session:
   clicked "View status" on a placeholder → correct label/status/back-link
   rendered; clicked "Open in editor" on the process-tracking entry → VS
   Code opened the exact ADR file. `LOCKED`
-- **Every capability gets a top-nav entry, built or not** — extends the
-  index above: the main `UnderlineNav` (previously three hardcoded
-  `Runbook`/`Activity`/`Spec` items) is now driven by the same
-  `CapabilitiesService.List()` data, `.map()`ed straight into nav items,
-  so the full shape of the app is visible and clickable from the nav bar
-  itself, not just from inside the Spec tab. `Spec` stays a fixed,
-  non-capability entry (it's the directory/docs page, not a product
-  feature with a build status). `Capability.NavLabel` (falls back to
-  `Label` when empty) keeps the two already-built entries terse
-  ("Activity" in the nav vs. "Activity / event log" in the fuller index)
-  without a second hand-maintained label. `store.ts`'s `viewFor`/
-  `viewsEqual` helpers are shared between the nav and `CapabilityIndex` so
-  both surfaces navigate identically from one mapping, not two.
-  With all 7 capabilities plus Spec, the nav overflows the visible width
-  on a normal window — checked directly, not assumed: Primer's
-  `UnderlineNav` already handles this itself (a "More" dropdown for
-  anything that doesn't fit), so nothing extra was built for it. `LOCKED`
+- **Every capability gets a nav entry, built or not — first as a top
+  `UnderlineNav`, then migrated to a `PageLayout`/`NavList` sidebar.**
+  The first pass made the top `UnderlineNav` data-driven from
+  `CapabilitiesService.List()`; with all 7 capabilities plus Spec that
+  immediately overflowed into Primer's own "More" dropdown, which
+  re-hid most of the app behind a click — directly working against the
+  "see the cohesive picture" goal this index exists for. Migrated to a
+  persistent sidebar instead, since a top bar doesn't scale as more
+  capabilities land and a sidebar does.
+  **`PageLayout.Sidebar`, not `PageLayout.Pane`** — checked directly
+  against the compiled CSS before choosing, not assumed: `.Pane` is
+  content-adjacent and page-scroll-oriented, responsively **stacking**
+  above/below content below 768px (`overflow:auto` is even gated to
+  `@media (min-width:768px)` in its own CSS) — Mill's `MinWidth: 640`
+  sits inside that stacking range, wrong fit for a persistent side
+  rail. `.Sidebar` stays inline at any width (`responsiveVariant:
+  'default'`) and has `height:100%`/`overflow:auto` unconditionally.
+  **Getting `PageLayout.Content` to actually clip (not just grow to fit
+  content, page-style) took real debugging**, via the same
+  200-paragraph dummy-content stress test used for the earlier
+  `.app-shell` fix, confirmed at each step against live computed
+  styles rather than assumed: PageLayout's own internal Sidebar+Content
+  row wrapper (an unnamed, hash-classed div with no `data-component`
+  hook) defaults to `min-height:auto`; fixing that wasn't enough either
+  since it sits in a `flex-wrap:wrap` container where a wrapped line's
+  cross-size isn't hard-clipped by `min-height` alone; and Content
+  itself sits in a `flex-direction:row` context where `flex-grow` sizes
+  width, not height. `App.module.css` targets the internal wrapper
+  structurally (`div:has(> main.view-pane)`, not Primer's hashed class
+  name — the same "don't chase vendor-owned markup" reasoning as the
+  earlier `ThemeProvider`/`BaseStyles` fix) with explicit `height:100%;
+  overflow:hidden`, and `.view-pane` itself gained an explicit
+  `height:100%`. **Net finding: `PageLayout` is built for page-scroll
+  websites, not a fixed-viewport app shell** — worth remembering before
+  reaching for another `PageLayout` region expecting it to "just clip."
+  `Capability.NavLabel` (falls back to `Label` when empty) keeps the
+  two built entries terse in the sidebar ("Activity" vs. the fuller
+  "Activity / event log" in the Spec-tab index) without a second
+  hand-maintained label; `store.ts`'s `viewFor`/`viewsEqual`/
+  `statusVariant` helpers are shared by the sidebar and
+  `CapabilityIndex` (previously duplicated) so both surfaces navigate
+  and badge identically from one mapping. The Spec-tab `CapabilityIndex`
+  stays — the sidebar is for quick jumping, the Spec tab is still the
+  fuller picture (status + "Go to page"/"View status"/"Open in editor"
+  together). Verified end-to-end on the real desktop app via
+  accessibility-driven UI automation: all 8 entries visible with no
+  overflow, clicking each lands on the right page/placeholder with the
+  active-state indicator following correctly. `LOCKED`
 - **Window/scroll layout researched against Wails3's own docs before
   touching CSS** — confirmed Wails3's window management (`MinWidth`/
   `MinHeight`/`MaxWidth`/`MaxHeight`/`Zoom`/etc. on `WebviewWindowOptions`)

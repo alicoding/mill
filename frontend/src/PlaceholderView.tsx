@@ -1,12 +1,6 @@
 import { Heading, Label, Text, Button } from '@primer/react'
-import { useAppStore } from './store'
+import { useAppStore, statusVariant } from './store'
 import styles from './RunbookView.module.css'
-
-const STATUS_VARIANT: Record<string, 'success' | 'attention' | 'secondary'> = {
-  LOCKED: 'success',
-  OPEN: 'attention',
-  PARKED: 'secondary',
-}
 
 interface PlaceholderViewProps {
   capabilityId: string
@@ -21,7 +15,7 @@ function PlaceholderView({ capabilityId }: PlaceholderViewProps) {
   const setView = useAppStore((s) => s.setView)
 
   return (
-    <div className={`view-pane ${styles.runbook}`}>
+    <div className={styles.runbook}>
       <Heading as="h1">{capability?.Label ?? 'Not built yet'}</Heading>
       <Text as="p" className={styles.subtitle}>
         This part of Mill hasn't been built yet.
@@ -29,7 +23,7 @@ function PlaceholderView({ capabilityId }: PlaceholderViewProps) {
 
       <div className={styles.card}>
         {capability && (
-          <Label variant={STATUS_VARIANT[capability.Status] ?? 'secondary'}>
+          <Label variant={statusVariant(capability.Status)}>
             {capability.Status}
           </Label>
         )}
