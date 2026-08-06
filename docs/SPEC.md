@@ -155,6 +155,34 @@ the execution itself. `OPEN` on the concrete implementation, `LOCKED` as the
 first thing to build once the browser bridge and hotkey pieces are
 researched.
 
+### 2.2 Actually-buildable-now milestone — the Runbook page
+
+§2.1 depends on two unresearched pieces (browser bridge, hotkey) and an
+environment (M365 in-browser) the assistant helping build Mill has no live
+access to (§1.2). This milestone de-risks the two pieces that don't require
+that environment, on something testable directly in this dev session:
+
+- A **Runbook page** — a list of available actions the user can browse and
+  run directly with a click (no hotkey required), similar to how many apps
+  offer example/demo actions or default recipes out of the box. Answers
+  "what should I see as a user" concretely instead of describing it.
+- Each action gets a **Run** button now; **assign a keyboard shortcut** per
+  action (Raycast/Alfred-style: click into a shortcut field, press the
+  combo, it's bound) is the deliberate next increment once running actions
+  works, not built in the same pass.
+- First seeded action: **clipboard → Markdown**, directly testing the
+  original Loop/structure-preservation pain point without needing M365 at
+  all — works with anything that puts real HTML on the clipboard.
+- Libraries verified directly (repo, license, `go.mod`, recent activity —
+  not taken on assumption): [`golang-design/hotkey`](https://github.com/golang-design/hotkey)
+  (MIT, cross-platform; macOS backend is cgo via Objective-C
+  (`hotkey_darwin.m`) since there's no pure-Go way to hook OS-level global
+  hotkeys — a C compiler dependency via Xcode CLI tools, already present,
+  not Rust/cargo, so §1.1 is unaffected) and
+  [`JohannesKaufmann/html-to-markdown`](https://github.com/JohannesKaufmann/html-to-markdown)
+  v2 (MIT, pure Go, 3.7k★, actively maintained). `LOCKED` as the immediate
+  next build step.
+
 ## 3. Capability composition — how nodes connect
 
 - `OPEN`. Reference lineage: n8n (typed node inputs/outputs, credentials

@@ -40,6 +40,7 @@ func main() {
 		Services: []application.Service{
 			application.NewService(&GreetService{}),
 			application.NewService(&SpecService{}),
+			application.NewService(&RunbookService{}),
 		},
 		Assets: application.AssetOptions{
 			Handler: application.AssetFileServerFS(assets),
