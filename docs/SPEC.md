@@ -101,6 +101,14 @@ not yet worth deciding).
   daemon/CLI) — it cannot require Homebrew or any other external package
   manager at install time. This doesn't pick a replacement yet (that's
   §7's job), it just eliminates a whole class of candidate. `LOCKED`
+- Access boundary: the actual work laptop this is being built for is behind
+  Zscaler at the bank and is not something the assistant helping design Mill
+  has any live access to — no inspecting the real clipboard, no observing
+  M365/Loop/Copilot behavior directly, no running commands against that
+  machine's real session. Design and research proceed from the user's
+  descriptions, not empirical testing against the real target environment,
+  unless the user explicitly runs something themselves and reports back.
+  `LOCKED`
 
 ## 2. Core primitive: Capture → Process → Apply
 
@@ -114,6 +122,38 @@ not yet worth deciding).
   "capture" is a DOM selection or an LLM tool-call request, and the "apply" is
   a paste or an actual command execution. `LOCKED` (as a shape) — the concrete
   node/connector model that implements it is `OPEN`.
+
+### 2.1 First concrete milestone — the M365 Copilot chat bridge
+
+The use case that should drive the first real build, not further
+architecture discussion. M365 Copilot chat proposes a command in its
+transcript; today the user manually reads it, runs it themselves, copies the
+output, pastes it back into the chat box, and hits enter. Wanted workflow:
+
+1. User reads the proposed command in the M365 Copilot chat (no live access
+   for Mill's design process into this — see §1.2's access-boundary note;
+   this all comes from the user's own machine at the time they use Mill).
+2. User presses a configurable hotkey. **The hotkey press is the guardrail
+   gesture** — a deliberate, human-initiated trigger, not a separate
+   blocking approval popup. See the open question in §8 about whether that's
+   sufficient or whether a lightweight preview still belongs in between.
+3. Mill captures the command (from clipboard, or via the browser bridge
+   reading the chat DOM directly — §5), executes it locally through Mill's
+   own guardrailed process (§6/§7 govern cwd/shell/logging), and gets the
+   result payload back.
+4. Mill applies the payload back into the chat's input box (auto-paste).
+5. Enter is either left to the user, or sent automatically by Mill — user
+   explicitly wants the option to have Mill do it, closing the loop
+   end-to-end with just the one hotkey press.
+
+This is Capture → Process → Apply instantiated concretely: Capture = read
+the proposed command from the chat, Process = execute it, Apply = paste the
+result back and optionally submit. It requires §5 (browser bridge, to read
+the chat DOM and write back into it), a global-hotkey mechanism (not yet
+researched — needs a pure-Go, non-cargo library, per §1.1), and §6/§7 for
+the execution itself. `OPEN` on the concrete implementation, `LOCKED` as the
+first thing to build once the browser bridge and hotkey pieces are
+researched.
 
 ## 3. Capability composition — how nodes connect
 
@@ -273,6 +313,18 @@ tools, something else acts as host) fits §1.1 cleanly with zero tension.
 - Not yet decided: where policy is authored/stored, what "policy" can express
   (allowlist commands? path scoping? connector-level rules?), how a
   pass/fail/pending state is communicated in the UI.
+- **Tension surfaced by §2.1's milestone, needs a decision**: the original
+  vision was an explicit preview-then-approve step before every action (a
+  popup/modal you review before it runs). The M365-bridge milestone instead
+  wants near-zero friction — hotkey press → run → auto-paste → optionally
+  auto-submit, no popup in between. Candidate resolution: for a
+  single-operator personal tool (the user is the only user of Mill, per
+  their own framing — not a shared/team product), the guardrail can be the
+  deliberate hotkey press itself (nothing runs without an intentional
+  trigger) backed by an audit log reviewable after the fact, rather than a
+  blocking pre-approval screen every time. A blocking preview would still
+  make sense if Mill is ever used where someone other than the operator
+  needs to approve actions. Not locked — needs the user's call. `OPEN`
 
 ## 9. Repo AI workflow (CLAUDE.md / SKILL.md / agent profiles)
 
