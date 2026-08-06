@@ -1,8 +1,8 @@
 # ADR-0001: Go module path and repo layout (internal/domain + internal/adapters)
 
 ## Status
-accepted — Phase 1 (module rename) shipped 2026-08-06; Phase 2 (internal/
-restructuring) not yet done
+accepted — Phase 1 (module rename) and Phase 2 (internal/domain +
+internal/adapters split) both shipped 2026-08-06
 
 ## Context
 Mill's Go side is currently `module changeme` (unchanged wails3-scaffold
