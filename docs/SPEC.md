@@ -167,29 +167,56 @@ and [`docs/adr/0002-cicd-pipeline-phased-rollout.md`](adr/0002-cicd-pipeline-pha
 - npm workspaces (`frontend/` + a future `browser-extension/`, §5) — not
   adopted yet, revisit when a real second JS package is scaffolded. `go.work`
   not applicable — single Go module is permanent per §1.1. `PARKED`
-- CI: GitHub Actions, phased rollout (ADR-0002). Phase 1 — module rename +
-  lint/build only, all merge-blocking (`golangci-lint` v2, ESLint flat
-  config, `go build` on macOS + Linux server-mode, `tsc && vite build`) —
-  shipped in `.github/workflows/ci.yml`. No test job yet: zero tests exist,
-  a job with nothing to run is theater. Precedent: wailsapp/wails's own v3
-  CI (native-OS matrix, no GoReleaser — wailsapp/wails#747 closed wont-fix).
-  Phase 2 (the `internal/` split above) rode on this CI with no new jobs
-  needed. `LOCKED` (Phases 1-2) / `OPEN` (Phases 3-4, sequencing in
-  ADR-0002)
-- Lefthook (Go, MIT, Evil Martians) runs the same checks locally as a
-  pre-commit hook (`lefthook.yml`), verified end-to-end (a deliberate lint
-  violation was caught and blocked, a clean commit passed) — requested
-  directly: keep the tree as clean as CI enforces, catch violations before
-  they're committed. `task setup:hooks` installs it once per clone.
+- CI: GitHub Actions, all four ADR-0002 phases shipped in
+  `.github/workflows/ci.yml` + `.github/workflows/release.yml`.
+  `golangci-lint` v2, ESLint flat config, Vitest, `go test -race -cover`,
+  `go build`/`go vet` (macOS desktop + Linux server-mode), Playwright E2E,
+  `govulncheck` (advisory only, still experimental upstream), all
+  merge-blocking except govulncheck. Precedent: wailsapp/wails's own v3 CI
+  (native-OS matrix, no GoReleaser — wailsapp/wails#747 closed wont-fix).
+  `LOCKED`
+- **Linux server-mode builds require `CGO_ENABLED=0` explicitly** — not
+  optional, confirmed by actually building natively in a linux/amd64
+  container, not assumed. Without it, Wails3's own
+  `internal/operatingsystem`/`internal/assetserver/webview` packages pull
+  in GTK4/webkitgtk-6.0 regardless of the `server` build tag. Matches
+  `build/docker/Dockerfile.server`'s own default — that answer was already
+  in the repo, just not applied to CI until this was caught. Applies to
+  any future Linux build/test/lint step touching the root package. `LOCKED`
+- `internal/adapters/hotkey` is split by build tag:
+  `hotkey_desktop.go` (`!server`, the real `golang.design/x/hotkey`-backed
+  implementation) and `hotkey_server.go` (`server`, a zero-dependency stub
+  returning a clear error) — not just a build-fix, architecturally correct
+  either way, since server mode has no native run loop to ever deliver a
+  keypress through. `LOCKED`
+- Lefthook (Go, MIT, Evil Martians) mirrors the same checks locally as a
+  pre-commit hook (`lefthook.yml`) — go vet/build/test, golangci-lint,
+  eslint, vitest, tsc — verified end-to-end (a deliberate lint violation
+  was caught and blocked, a clean commit passed). Playwright E2E is
+  deliberately NOT in the local hook (real server build + browser launch
+  is meaningfully slower than everything else there; suited to CI, not
+  every local commit). `task setup:hooks` installs it once per clone.
   `LOCKED`
 - `HotkeyService` cannot be exercised by headless/server-mode CI — no live
   macOS Cocoa run loop in that mode. Verification stays an explicit manual
   desktop-mode check (`.claude/skills/run-mill`), never a silent CI
-  skip/fake-pass. `LOCKED`
-- Release pipeline (native OS matrix, tag-triggered, no GoReleaser) is
-  ADR-0002 Phase 4, deferred until Phases 1-3 land. Server-mode Docker image
-  not part of v1 release scope — no confirmed hosted-deployment use case.
-  `PARKED`
+  skip/fake-pass. Same reasoning extends to `internal/adapters/clipboard`'s
+  real round-trip test (skipped specifically in CI, not just on non-macOS —
+  GitHub's `macos-latest` runners are headless, no GUI/pasteboard session
+  for `osascript` either) and to the Playwright E2E suite (asserts only
+  what's environment-independent — page load, both actions listed, Spec
+  content, the deterministic "no HTML on clipboard" path — never the
+  clipboard-dependent success content). `LOCKED`
+- Release pipeline (ADR-0002 Phase 4) ships **macOS only**, deliberately:
+  Linux desktop needs GTK4/webkitgtk-6.0 system packages never installed
+  or tested here; Windows needs a toolchain with zero local verification
+  possible from this macOS-only dev environment. Shipping CI for platforms
+  nobody's actually run it against is the exact mistake the CGO_ENABLED
+  finding above already caught once — not repeated for a release artifact
+  people would download. Windows/Linux desktop release builds `PARKED`,
+  revisit when there's a way to actually verify them. Server-mode Docker
+  image also not part of v1 release scope — no confirmed hosted-deployment
+  use case. `LOCKED` (macOS-only scope) / `PARKED` (the rest)
 
 ## 2. Core primitive: Capture → Process → Apply
 

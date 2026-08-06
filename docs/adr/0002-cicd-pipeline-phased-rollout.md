@@ -1,8 +1,10 @@
 # ADR-0002: CI/CD pipeline, phased rollout
 
 ## Status
-accepted — Phase 1 (module rename + lint/build CI) shipped 2026-08-06;
-Phases 2-4 not yet done
+accepted — all four phases shipped 2026-08-06. Phase 4 scoped to macOS
+only (Windows/Linux desktop builds parked, see Phase 4 section below for
+why); everything else shipped as designed, plus Lefthook (local pre-commit
+mirror of the same checks, requested directly) layered on top.
 
 ## Context
 Mill currently has zero CI (no `.github/` at all), zero lint config, zero
