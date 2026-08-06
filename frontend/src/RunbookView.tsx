@@ -1,11 +1,34 @@
 import { useEffect, useState } from 'react'
-import { Button, Heading, Label, Stack, Text } from '@primer/react'
+import { Button, Heading, Label, type LabelProps, SkeletonBox, Stack, Text } from '@primer/react'
+import { BeakerIcon, KeyIcon, MarkdownIcon } from '@primer/octicons-react'
 import { RunbookService, HotkeyService } from '../bindings/github.com/alicoding/mill'
 import type { Action } from '../bindings/github.com/alicoding/mill/internal/domain/runbook/models'
 import { keyFromEventCode, modsFromEvent } from './keybinding'
 
+// Per-action leading icon. Falls back to KeyIcon for any future action not
+// listed here rather than rendering nothing.
+const ACTION_ICONS: Record<string, typeof BeakerIcon> = {
+  'load-sample-html': BeakerIcon,
+  'clipboard-html-to-markdown': MarkdownIcon,
+}
+
+// SPEC.md §2.2's design principle: make it visible which bindings are
+// "easy reach" vs "deliberately awkward" so the user can rebalance them,
+// rather than just showing the combo with no sense of how easy it is to
+// press. Modifier count is a simple, defensible proxy for reach: macOS's
+// own awkward-vs-easy example (screenshot vs save-to-file) differs exactly
+// on how many modifiers are required.
+const MOD_SYMBOLS = ['⌘', '⌃', '⇧', '⌥']
+
+function reachTier(label: string): { text: string; variant: LabelProps['variant'] } {
+  const count = [...label].filter((ch) => MOD_SYMBOLS.includes(ch)).length
+  if (count <= 1) return { text: 'Easy reach', variant: 'success' }
+  if (count === 2) return { text: 'Moderate', variant: 'attention' }
+  return { text: 'Deliberately awkward', variant: 'danger' }
+}
+
 function RunbookView() {
-  const [actions, setActions] = useState<Action[]>([])
+  const [actions, setActions] = useState<Action[] | null>(null)
   const [runningId, setRunningId] = useState<string | null>(null)
   const [results, setResults] = useState<Record<string, string>>({})
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -70,48 +93,78 @@ function RunbookView() {
         Run an action directly, or assign it a global shortcut.
       </Text>
 
-      <Stack direction="vertical" gap="condensed">
-        {actions.map((action) => (
-          <div key={action.ID} className="runbook-card">
-            <Stack direction="horizontal" justify="space-between" align="start" gap="normal">
-              <div>
-                <Heading as="h2" variant="small">{action.Name}</Heading>
-                <Text size="small" className="runbook-muted">{action.Description}</Text>
-              </div>
+      {actions === null && (
+        <Stack direction="vertical" gap="condensed">
+          {[0, 1].map((i) => (
+            <div key={i} className="runbook-card">
+              <SkeletonBox height="1rem" width="40%" className="runbook-skeleton-line" />
+              <SkeletonBox height="0.8rem" width="80%" />
+            </div>
+          ))}
+        </Stack>
+      )}
 
-              <Stack direction="horizontal" align="center" gap="condensed" className="runbook-item-controls">
-                <Button onClick={() => run(action.ID)} disabled={runningId === action.ID} size="small">
-                  {runningId === action.ID ? 'Running…' : 'Run'}
-                </Button>
+      {actions !== null && actions.length === 0 && (
+        <div className="runbook-empty">
+          <Text as="p">No actions available yet.</Text>
+        </div>
+      )}
 
-                {recordingId === action.ID ? (
-                  <Text size="small" className="runbook-recording">Press a combo… (Esc to cancel)</Text>
-                ) : bindings[action.ID] ? (
-                  <>
-                    <Label variant="secondary">{bindings[action.ID]}</Label>
-                    <Button size="small" variant="invisible" onClick={() => setRecordingId(action.ID)}>Change</Button>
-                    <Button size="small" variant="invisible" onClick={() => clearBinding(action.ID)}>Clear</Button>
-                  </>
-                ) : (
-                  <Button size="small" variant="invisible" onClick={() => setRecordingId(action.ID)}>
-                    Set shortcut
-                  </Button>
+      {actions !== null && actions.length > 0 && (
+        <Stack direction="vertical" gap="condensed">
+          {actions.map((action) => {
+            const Icon = ACTION_ICONS[action.ID] ?? KeyIcon
+            return (
+              <div key={action.ID} className="runbook-card">
+                <Stack direction="horizontal" justify="space-between" align="start" gap="normal">
+                  <Stack direction="horizontal" gap="condensed" align="start">
+                    <span className="runbook-icon"><Icon size={16} /></span>
+                    <div>
+                      <Heading as="h2" variant="small">{action.Name}</Heading>
+                      <Text size="small" className="runbook-muted">{action.Description}</Text>
+                    </div>
+                  </Stack>
+
+                  <Stack direction="horizontal" align="center" gap="condensed" className="runbook-item-controls">
+                    <Button onClick={() => run(action.ID)} disabled={runningId === action.ID} size="small">
+                      {runningId === action.ID ? 'Running…' : 'Run'}
+                    </Button>
+
+                    {recordingId === action.ID ? (
+                      <Text size="small" className="runbook-recording">Press a combo… (Esc to cancel)</Text>
+                    ) : bindings[action.ID] ? (
+                      <>
+                        <Label variant="secondary">
+                          <KeyIcon size={12} /> {bindings[action.ID]}
+                        </Label>
+                        <Label variant={reachTier(bindings[action.ID]).variant} size="small">
+                          {reachTier(bindings[action.ID]).text}
+                        </Label>
+                        <Button size="small" variant="invisible" onClick={() => setRecordingId(action.ID)}>Change</Button>
+                        <Button size="small" variant="invisible" onClick={() => clearBinding(action.ID)}>Clear</Button>
+                      </>
+                    ) : (
+                      <Button size="small" variant="invisible" onClick={() => setRecordingId(action.ID)}>
+                        Set shortcut
+                      </Button>
+                    )}
+                  </Stack>
+                </Stack>
+
+                {bindingErrors[action.ID] && (
+                  <Text as="p" size="small" className="runbook-error">{bindingErrors[action.ID]}</Text>
                 )}
-              </Stack>
-            </Stack>
-
-            {bindingErrors[action.ID] && (
-              <Text as="p" size="small" className="runbook-error">{bindingErrors[action.ID]}</Text>
-            )}
-            {errors[action.ID] && (
-              <Text as="p" size="small" className="runbook-error">{errors[action.ID]}</Text>
-            )}
-            {results[action.ID] !== undefined && !errors[action.ID] && (
-              <pre className="runbook-result">{results[action.ID]}</pre>
-            )}
-          </div>
-        ))}
-      </Stack>
+                {errors[action.ID] && (
+                  <Text as="p" size="small" className="runbook-error">{errors[action.ID]}</Text>
+                )}
+                {results[action.ID] !== undefined && !errors[action.ID] && (
+                  <pre className="runbook-result">{results[action.ID]}</pre>
+                )}
+              </div>
+            )
+          })}
+        </Stack>
+      )}
     </div>
   )
 }
