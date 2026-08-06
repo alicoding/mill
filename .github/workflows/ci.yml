@@ -61,13 +61,25 @@ jobs:
           # Needs Xcode CLI tools for the hotkey package's cgo/Objective-C
           # backend; GitHub's macos-latest runners ship these preinstalled.
           - os: macos-latest
-            build-args: .
-          # Linux: server-mode build only. Wails3 desktop mode needs
-          # GTK4/webkitgtk system packages on Linux; server mode needs none
-          # of that (no native window), so this stays a plain compile check.
+            tags: ''
+            cgo: '1'
+          # Linux: server-mode build only. CGO_ENABLED=0 is required, not
+          # optional -- Wails3's own internal/operatingsystem and
+          # internal/assetserver/webview packages are cgo-gated onto
+          # GTK4/webkitgtk-6.0 pkg-config packages this runner doesn't have,
+          # and pull them in regardless of the `server` build tag unless
+          # cgo itself is disabled. Confirmed by actually building natively
+          # in a linux/amd64 container, not assumed: `go build -tags server
+          # .` fails on missing gtk4/webkitgtk-6.0 pkg-config with the
+          # default CGO_ENABLED=1, and only succeeds with CGO_ENABLED=0 --
+          # matching build/docker/Dockerfile.server's own default for
+          # exactly this reason.
           - os: ubuntu-latest
-            build-args: -tags server .
+            tags: server
+            cgo: '0'
     runs-on: ${{ matrix.os }}
+    env:
+      CGO_ENABLED: ${{ matrix.cgo }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
@@ -78,8 +90,52 @@ jobs:
         with:
           go-version: '1.25'
           cache: true
-      # Scoped to the root package, not `./...`: build/ios, build/android
-      # etc. are gomobile-toolchain scaffold with no main() under a plain
-      # `go build` and are expected to fail linking outside that toolchain.
-      - run: go build ${{ matrix.build-args }}
-      - run: go vet ./...
+      # Scoped to the root package + internal/, not `./...`: build/ios,
+      # build/android etc. are gomobile-toolchain scaffold with no main()
+      # outside that toolchain, and frontend/node_modules happens to bundle
+      # unrelated vendored Go source neither is part of Mill's own build.
+      - run: go build ${{ matrix.tags && format('-tags {0}', matrix.tags) || '' }} .
+      - run: go vet ${{ matrix.tags && format('-tags {0}', matrix.tags) || '' }} . ./internal/...
+
+  test-go:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+          cache: true
+      # -tags server: internal/adapters/hotkey's desktop-tagged file needs
+      # cgo + X11 dev headers this runner doesn't have; the server-tagged
+      # stub has zero cgo deps and is what's actually exercised here either
+      # way (hotkey has no automated tests -- see docs/adr/0002, it can't
+      # be verified headlessly regardless of build tag). Doesn't need
+      # frontend/dist: internal/ packages never reference main.go's
+      # //go:embed.
+      - run: go test -tags server ./internal/... -race -cover
+
+  govulncheck:
+    # macos-latest, not ubuntu-latest: govulncheck-action has no way to pass
+    # -tags, and the default (desktop) build tags only compile cleanly
+    # without extra system deps on macOS -- see build-go's ubuntu-latest
+    # comment for why that's not true on Linux. macOS is also Mill's
+    # primary target per SPEC.md, so this is the more representative scan
+    # anyway, not a workaround-of-convenience.
+    runs-on: macos-latest
+    needs: frontend
+    continue-on-error: true # advisory only -- golang/govulncheck-action is
+    # still self-described experimental (per ADR-0002's research); findings
+    # are worth seeing, not worth blocking a merge on yet.
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: frontend-dist
+          path: frontend/dist
+      - uses: golang/govulncheck-action@v1
+        with:
+          go-version-input: '1.25'
+          go-package: ./internal/... .
+          repo-checkout: false # already checked out above; the action's
+          # own default checkout would wipe the frontend-dist artifact
+          # just downloaded, which the root package needs (//go:embed).
