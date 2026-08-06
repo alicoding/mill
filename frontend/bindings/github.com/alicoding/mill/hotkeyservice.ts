@@ -6,6 +6,13 @@
  * Runbook action. Assignments are in-memory only for now — they don't
  * survive an app restart. Persistence is a deliberate follow-up, not
  * built into this first pass.
+ * 
+ * The fire path (OS delivers a keypress -> action runs -> clipboard is
+ * written) has no UI surface at all, unlike the Run button's inline
+ * success/error rendering — a hotkey that's registered but never fires
+ * (e.g. the combo is already claimed by another app, or macOS just never
+ * delivers it) is otherwise silent and undebuggable. logger makes every
+ * stage of that path visible instead of guessing.
  * @module
  */
 
