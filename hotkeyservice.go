@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -8,6 +9,7 @@ import (
 	"sync"
 
 	"github.com/alicoding/mill/internal/adapters/hotkey"
+	"github.com/alicoding/mill/internal/adapters/settings"
 	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
@@ -15,10 +17,25 @@ var modSymbol = map[string]string{
 	"CMD": "⌘", "CTRL": "⌃", "SHIFT": "⇧", "OPTION": "⌥", "ALT": "⌥",
 }
 
+// hotkeyBindingsKey is the single settings-store key holding every
+// assignment as one JSON blob (map[actionID]persistedBinding) rather than
+// one store key per action -- there are only ever a handful of Runbook
+// actions, and one key means one atomic read/write instead of needing to
+// separately track which per-action keys exist.
+const hotkeyBindingsKey = "hotkey-bindings"
+
+// persistedBinding is the raw (mods, key) pair Assign was originally
+// called with -- not the human-readable label ("⌘⇧M"), which can't be
+// parsed back into modifier/key names to re-register the OS hotkey on the
+// next launch.
+type persistedBinding struct {
+	Mods []string `json:"mods"`
+	Key  string   `json:"key"`
+}
+
 // HotkeyService registers global (system-wide) hotkeys that trigger a
-// Runbook action. Assignments are in-memory only for now — they don't
-// survive an app restart. Persistence is a deliberate follow-up, not
-// built into this first pass.
+// Runbook action. Assignments persist across restarts via the settings
+// store (see RestoreBindings) -- see docs/SPEC.md §2.2.
 //
 // The fire path (OS delivers a keypress -> action runs -> clipboard is
 // written) has no UI surface at all, unlike the Run button's inline
@@ -30,16 +47,20 @@ type HotkeyService struct {
 	mu       sync.Mutex
 	bindings map[string]*hotkey.Binding
 	labels   map[string]string
+	raw      map[string]persistedBinding
 	runbook  *RunbookService
 	logger   *slog.Logger
+	store    settings.Store
 }
 
-func NewHotkeyService(runbook *RunbookService, logger *slog.Logger) *HotkeyService {
+func NewHotkeyService(runbook *RunbookService, logger *slog.Logger, store settings.Store) *HotkeyService {
 	return &HotkeyService{
 		bindings: make(map[string]*hotkey.Binding),
 		labels:   make(map[string]string),
+		raw:      make(map[string]persistedBinding),
 		runbook:  runbook,
 		logger:   logger,
+		store:    store,
 	}
 }
 
@@ -57,6 +78,7 @@ func (h *HotkeyService) Assign(actionID string, mods []string, key string) (stri
 		_ = existing.Unbind()
 		delete(h.bindings, actionID)
 		delete(h.labels, actionID)
+		delete(h.raw, actionID)
 	}
 	h.mu.Unlock()
 
@@ -73,9 +95,11 @@ func (h *HotkeyService) Assign(actionID string, mods []string, key string) (stri
 	h.mu.Lock()
 	h.bindings[actionID] = b
 	h.labels[actionID] = label
+	h.raw[actionID] = persistedBinding{Mods: mods, Key: key}
 	h.mu.Unlock()
 
 	h.logger.Info("hotkey registered", "action", actionID, "binding", label)
+	h.persist()
 
 	go func() {
 		for range b.Keydown() {
@@ -103,12 +127,20 @@ func (h *HotkeyService) Assign(actionID string, mods []string, key string) (stri
 
 func (h *HotkeyService) Unassign(actionID string) {
 	h.mu.Lock()
-	defer h.mu.Unlock()
-	if b, ok := h.bindings[actionID]; ok {
+	b, ok := h.bindings[actionID]
+	if ok {
 		_ = b.Unbind()
 		delete(h.bindings, actionID)
 		delete(h.labels, actionID)
+		delete(h.raw, actionID)
+	}
+	h.mu.Unlock()
+
+	// persist() takes its own lock -- must not be called while h.mu is
+	// still held above, or it deadlocks (sync.Mutex isn't reentrant).
+	if ok {
 		h.logger.Info("hotkey unassigned", "action", actionID)
+		h.persist()
 	}
 }
 
@@ -120,6 +152,64 @@ func (h *HotkeyService) List() map[string]string {
 		out[k] = v
 	}
 	return out
+}
+
+// persist writes every current assignment to the settings store as one
+// JSON blob. Called after every successful Assign/Unassign; failures are
+// logged, not returned -- a persistence hiccup shouldn't make the hotkey
+// assignment the user just made in the UI appear to fail, it just won't
+// survive the next restart.
+func (h *HotkeyService) persist() {
+	h.mu.Lock()
+	raw := make(map[string]persistedBinding, len(h.raw))
+	for k, v := range h.raw {
+		raw[k] = v
+	}
+	h.mu.Unlock()
+
+	data, err := json.Marshal(raw)
+	if err != nil {
+		h.logger.Error("failed to marshal hotkey bindings for persistence", "error", err)
+		return
+	}
+	if err := h.store.Set(hotkeyBindingsKey, string(data)); err != nil {
+		h.logger.Error("failed to persist hotkey bindings", "error", err)
+	}
+}
+
+// RestoreBindings re-registers every previously persisted assignment. It
+// must run only after the app's native run loop is actually spinning
+// (macOS/Windows/Linux all require this for global hotkey registration --
+// see docs/SPEC.md §2.2's note on the golang-design/hotkey Fyne example),
+// which is well after ServiceStartup: main.go calls this from the
+// events.Common.ApplicationStarted hook, not from init/ServiceStartup.
+// Individual restore failures (e.g. Accessibility permission revoked
+// since the last run) are logged and skipped, not fatal to the others.
+//
+// wails:ignore -- Go-internal startup step only, called once from
+// main.go. Not something the frontend has any legitimate reason to
+// trigger, so it's excluded from the generated JS bindings entirely
+// rather than left reachable and just unused (same pattern Wails' own
+// KVStoreService uses for its Configure method).
+//
+//wails:ignore
+func (h *HotkeyService) RestoreBindings() {
+	raw, ok := h.store.Get(hotkeyBindingsKey).(string)
+	if !ok || raw == "" {
+		return
+	}
+
+	var persisted map[string]persistedBinding
+	if err := json.Unmarshal([]byte(raw), &persisted); err != nil {
+		h.logger.Error("failed to unmarshal persisted hotkey bindings", "error", err)
+		return
+	}
+
+	for actionID, pb := range persisted {
+		if _, err := h.Assign(actionID, pb.Mods, pb.Key); err != nil {
+			h.logger.Error("failed to restore hotkey binding", "action", actionID, "error", err)
+		}
+	}
 }
 
 func formatBinding(mods []string, key string) string {
