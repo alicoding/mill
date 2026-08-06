@@ -27,6 +27,26 @@ not yet worth deciding).
 
 ## 1. Positioning
 
+- **What "AI-friendly" actually means — the thesis, not a slogan: what you
+  see is what I see.** `LOCKED` Everything Mill composes already exists and
+  is already possible by hand. The gap isn't capability, it's that an AI
+  acting on a system it can't verify has to *guess* at the actual state
+  (what's really on the clipboard, what a command will really do, what a
+  setting is really set to) — and the distance between the guess and reality
+  is exactly where hallucination and silent failure live. Mill's job is to
+  give an AI the same verified, structured view of state a human has, not a
+  text blob to infer from. Every recurring pain point this spec addresses is
+  a specific instance of this: heredoc failures (shell syntax generated
+  blind, no structured view of the real quoting context), the Confluence
+  clipboard ambiguity (nothing told either party whether HTML was actually
+  present until it was made checkable), MCP's typed tool calls over freehand
+  bash (a structured result instead of text to parse and hope), the
+  guardrail preview itself (make sure the human's view and the AI's
+  about-to-happen action are the same view, before it happens), and the
+  original multi-tab session-identity problem (the human's view and the
+  AI's context silently diverging with no shared state to reconcile them).
+  This is the actual mechanism behind "compose, don't reinvent" below — not
+  a separate preference, the same one.
 - Mill is not novel. It composes existing primitives — a workflow/recipe
   authoring layer with guardrails, not a new category. `LOCKED`
 - Reference points: **1Password** (generic capability across every site/app,
