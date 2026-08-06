@@ -360,6 +360,19 @@ that environment, on something testable directly in this dev session:
   which situation applies (e.g. checking admin-group membership) is a
   refinement for later, not required to ship the basic distinction in the
   UI copy.
+- **Hotkey fire path is logged end-to-end, not a black box.** `LOCKED`
+  Added after a real debugging session where a hotkey showed as
+  successfully bound (label appeared, no error) but pressing it appeared
+  to do nothing, with no way to tell whether the OS never delivered the
+  keypress (another app already claimed the combo) or delivery succeeded
+  and something after it (the action, or the clipboard write) failed
+  silently. `HotkeyService` now logs each stage — registered, fired,
+  action succeeded/failed, clipboard write succeeded/failed — via
+  Wails3's own `application.DefaultLogger` (colorized to stderr in dev
+  mode, discarded in production builds), reused rather than standing up a
+  second logging setup. This is a stopgap for debuggability, not §7's
+  actual inspectable/persistent process-tracking mechanism — that's
+  ADR-0004's job once `internal/domain/execution` exists.
 
 ## 3. Capability composition — how nodes connect
 
