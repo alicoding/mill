@@ -101,7 +101,7 @@ function RunbookView() {
   }
 
   return (
-    <div className={`view-pane ${styles.runbook}`}>
+    <div className={styles.runbook}>
       <Heading as="h1">Runbook</Heading>
       <Text as="p" className={styles.subtitle}>
         Run an action directly, or assign it a global shortcut.

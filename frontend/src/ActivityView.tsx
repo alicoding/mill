@@ -33,7 +33,7 @@ function ActivityView() {
   }
 
   return (
-    <div className={`view-pane ${styles.runbook}`}>
+    <div className={styles.runbook}>
       <Heading as="h1">Activity</Heading>
       <Text as="p" className={styles.subtitle}>
         What fired hotkeys actually did, in real time — hotkey triggers run

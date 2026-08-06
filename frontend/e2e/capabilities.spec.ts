@@ -42,9 +42,15 @@ test('Clicking a not-built capability shows a placeholder with status and a way 
 
   await capabilityRow(page, 'Connectors').getByRole('button', { name: 'View status' }).click()
 
-  await expect(page.getByRole('heading', { name: 'Connectors', exact: true })).toBeVisible()
-  await expect(page.getByText("hasn't been built yet")).toBeVisible()
-  await expect(page.getByText('OPEN', { exact: true })).toBeVisible()
+  // Scoped to the main content region, not the whole page: the sidebar
+  // itself also shows an OPEN status Label per not-yet-built capability
+  // (docs/SPEC.md §2.2's "every capability gets a nav entry" change), so
+  // a page-wide getByText('OPEN') is ambiguous between the sidebar and
+  // this placeholder's own status badge.
+  const content = page.getByRole('main')
+  await expect(content.getByRole('heading', { name: 'Connectors', exact: true })).toBeVisible()
+  await expect(content.getByText("hasn't been built yet")).toBeVisible()
+  await expect(content.getByText('OPEN', { exact: true })).toBeVisible()
 
   await page.getByRole('button', { name: 'Back to Spec' }).click()
   await expect(capabilityIndex(page).getByRole('heading', { name: 'Capabilities' })).toBeVisible()
