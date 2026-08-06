@@ -455,6 +455,20 @@ this entry.
   while running (like Claude Code's background task view) and their
   logs/results need to persist and stay viewable after the process exits —
   not just streamed and discarded.
+- **Concrete failure mode hit at work, sharpening the requirement above**:
+  in the Hammerspoon-based setup, when M365 Copilot proposes a command whose
+  execution edits Mill's/Hammerspoon's own Lua config file, Hammerspoon's
+  file-watcher fires an async hot-reload of that config — which tears down
+  and restarts the very process that was about to report the command's
+  result back. The result isn't delivered late; it's silently lost, because
+  the reporting channel was tied to a process lifetime that didn't survive
+  the command's own side effect. This means "persist results independently
+  of the launching process" (above) isn't quite sufficient on its own — the
+  mechanism specifically has to survive the launching process being killed
+  *by the command it ran*, not just normal exit. Rules out any design where
+  a result is only held in an in-memory channel/callback scoped to one
+  process's lifetime. `LOCKED` (the failure mode and this sharpened
+  requirement) — the mechanism satisfying it is still `OPEN`.
 - Ties into #5: a "session" spans a browser tab, an agent run, and possibly a
   background process, and Mill needs one identity that threads all three
   together so the user always knows which is which.
