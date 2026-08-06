@@ -1,11 +1,13 @@
 import { useState, useEffect, useRef } from 'react'
 import {Events, WML} from "@wailsio/runtime";
 import {GreetService} from "../bindings/changeme";
+import SpecView from "./SpecView";
 
 // Show the actual Wails version this project was generated against.
 const wailsVersion = "v3.0.0-beta.4";
 
 function App() {
+  const [view, setView] = useState<'demo' | 'spec'>('spec');
   const [name, setName] = useState<string>('');
   const [time, setTime] = useState<string>('Listening for Time event...');
 
@@ -74,7 +76,14 @@ function App() {
 
   return (
     <>
-      <main className="container">
+      <nav className="view-switch">
+        <button className={view === 'spec' ? 'is-active' : ''} onClick={() => setView('spec')}>Spec</button>
+        <button className={view === 'demo' ? 'is-active' : ''} onClick={() => setView('demo')}>Demo</button>
+      </nav>
+
+      {view === 'spec' && <SpecView/>}
+
+      {view === 'demo' && <main className="container">
         <header className="brand">
           <a className="brand-mark" data-wml-openURL="https://v3.wails.io" aria-label="Wails website">
             <img src="/wails.png" className="brand-logo" alt="Wails logo"/>
@@ -96,7 +105,7 @@ function App() {
             </button>
           </div>
         </div>
-      </main>
+      </main>}
 
       <hr className="footer-divider"/>
       <footer className="footer">
