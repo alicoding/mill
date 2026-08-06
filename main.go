@@ -18,11 +18,26 @@ import (
 //go:embed all:frontend/dist
 var assets embed.FS
 
+// HotkeyActivity is emitted once a fired hotkey resolves (success or
+// failure). The Go-side slog lines (hotkeyservice.go) log the same
+// information for terminal/`task dev` visibility; this event is the
+// in-app equivalent, so a hotkey's outcome is visible without a
+// terminal — added after a real hotkey worked correctly (fired, ran,
+// wrote to the clipboard) but looked from the UI like nothing happened,
+// because nothing in the UI ever said otherwise.
+type HotkeyActivity struct {
+	ActionID string `json:"actionID"`
+	Binding  string `json:"binding"`
+	Success  bool   `json:"success"`
+	Detail   string `json:"detail"`
+}
+
 func init() {
 	// Register a custom event whose associated data type is string.
 	// This is not required, but the binding generator will pick up registered events
 	// and provide a strongly typed JS/TS API for them.
 	application.RegisterEvent[string]("time")
+	application.RegisterEvent[HotkeyActivity]("hotkey-activity")
 }
 
 // main function serves as the application's entry point. It initializes the application, creates a window,

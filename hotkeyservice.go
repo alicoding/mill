@@ -9,6 +9,7 @@ import (
 
 	"github.com/alicoding/mill/internal/adapters/clipboard"
 	"github.com/alicoding/mill/internal/adapters/hotkey"
+	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
 var modSymbol = map[string]string{
@@ -83,13 +84,16 @@ func (h *HotkeyService) Assign(actionID string, mods []string, key string) (stri
 			result, err := h.runbook.Run(actionID)
 			if err != nil {
 				h.logger.Error("hotkey action failed", "action", actionID, "binding", label, "error", err)
+				emitHotkeyActivity(actionID, label, false, err.Error())
 				continue
 			}
 			if err := clipboard.WriteText(result); err != nil {
 				h.logger.Error("hotkey result clipboard write failed", "action", actionID, "binding", label, "error", err)
+				emitHotkeyActivity(actionID, label, false, "clipboard write failed: "+err.Error())
 				continue
 			}
 			h.logger.Info("hotkey action completed", "action", actionID, "binding", label, "output_bytes", len(result))
+			emitHotkeyActivity(actionID, label, true, fmt.Sprintf("copied to clipboard (%d bytes)", len(result)))
 		}
 	}()
 
@@ -124,4 +128,19 @@ func formatBinding(mods []string, key string) string {
 	}
 	b.WriteString(strings.ToUpper(key))
 	return b.String()
+}
+
+// emitHotkeyActivity pushes a HotkeyActivity event to the frontend so a
+// fired hotkey's outcome is visible in the app itself, not just in the
+// slog lines above (terminal-only, and only during `task dev`).
+// application.Get() is safe to call here: this only ever runs from the
+// Keydown() goroutine, which can't fire before application.New has run
+// and registered the global app instance.
+func emitHotkeyActivity(actionID, binding string, success bool, detail string) {
+	application.Get().Event.Emit("hotkey-activity", HotkeyActivity{
+		ActionID: actionID,
+		Binding:  binding,
+		Success:  success,
+		Detail:   detail,
+	})
 }

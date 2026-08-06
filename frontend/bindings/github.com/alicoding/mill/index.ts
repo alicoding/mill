@@ -9,3 +9,7 @@ export {
     RunbookService,
     SpecService
 };
+
+export type {
+    HotkeyActivity
+} from "./models.js";

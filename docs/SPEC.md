@@ -186,6 +186,14 @@ and [`docs/adr/0002-cicd-pipeline-phased-rollout.md`](adr/0002-cicd-pipeline-pha
 - npm workspaces (`frontend/` + a future `browser-extension/`, §5) — not
   adopted yet, revisit when a real second JS package is scaffolded. `go.work`
   not applicable — single Go module is permanent per §1.1. `PARKED`
+- Frontend state management (Zustand or similar) — noted, not adopted.
+  `RunbookView.tsx` is up to 8 `useState` hooks (actions, hotkey bindings,
+  run results/errors, recording state, activity feed) and prop-drilling/
+  scaling pressure is visible, but it's still one view with genuinely
+  local state — reaching for a state library now would be the same
+  premature-architecture mistake CLAUDE.md already warns against for the
+  backend. Revisit once a second stateful view needs to share state with
+  Runbook, not before. `PARKED`
 - CI: GitHub Actions, all four ADR-0002 phases shipped in
   `.github/workflows/ci.yml` + `.github/workflows/release.yml`.
   `golangci-lint` v2, ESLint flat config, Vitest, `go test -race -cover`,
