@@ -347,6 +347,23 @@ this entry.
 - This is also the mechanism that would resolve the multi-tab identity
   problem (which agent session a given tab belongs to), since the extension
   runs inside the tab and knows which one it is.
+- **Data point, not yet confirmed**: user reports that copying an entire
+  Confluence page (as opposed to a smaller in-page selection) loses
+  structure on paste — comes out plain text only. Two different root causes
+  are possible: (a) Confluence puts real HTML on the clipboard for a
+  full-page copy but something downstream mishandles it, or (b) Confluence's
+  full-page copy degrades to plain-text-only at the source, in which case
+  there's nothing on the clipboard for any converter to work with. Testing
+  with §2.2's Runbook action (reuses the same clipboard-HTML-read path) to
+  find out which. If it's (b), that's a concrete case where clipboard-based
+  capture is fundamentally insufficient and DOM-read via the browser bridge
+  is the only reliable path — not just a nice-to-have for the M365 milestone,
+  a requirement for at least this source. Also noted in passing: image paste
+  from clipboard already works reliably in most chat apps (image clipboard
+  flavors are consistent across sources) — the inconsistency is specific to
+  rich-text/HTML flavors, worth keeping in mind when designing the capture
+  layer's fallback order (try HTML → try DOM-read → fall back to plain
+  text/image, not just clipboard-HTML-or-bust). `OPEN`, pending the test.
 
 ## 6. Execution environment & determinism
 
