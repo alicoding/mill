@@ -114,6 +114,16 @@ body {
     .footer-time svg { width: 13px; height: 13px; }
 }
 
+/* Dev-mode ribbon: only rendered when import.meta.env.DEV is true (App.tsx),
+   so this rule is inert/unused in any real build. */
+.dev-ribbon {
+    --wails-draggable: no-drag;
+    position: fixed;
+    top: var(--base-size-8);
+    right: var(--base-size-8);
+    z-index: 2;
+}
+
 /* View switcher (Runbook / Spec) is Primer's UnderlineNav — no bespoke CSS needed. */
 nav[aria-label="Mill"] {
     --wails-draggable: no-drag;
@@ -197,7 +207,6 @@ nav[aria-label="Mill"] {
     max-height: 240px;
     overflow-y: auto;
 }
-.runbook-activity-heading { margin-top: var(--s-4); }
 .runbook-activity-row {
     padding: var(--base-size-4) 0;
     border-bottom: 1px solid var(--borderColor-muted);
