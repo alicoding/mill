@@ -1,0 +1,104 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+jobs:
+  # Cheap fail-fast before spending time on a real build: the pushed tag
+  # must match build/config.yml's own version, so a build never gets
+  # released under the wrong version number. Precedent: wailsapp/wails's
+  # own release-v3.yml does the same check before its build matrix.
+  preflight:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Verify tag matches build/config.yml version
+        run: |
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
+          # Must require leading whitespace: build/config.yml's line 4 is
+          # `version: '3'`, the Taskfile schema version at column 0, not
+          # the app version -- that one's nested under `info:` a few lines
+          # down. Confirmed by testing this exact command against the real
+          # file, not assumed (the unindented pattern silently matched the
+          # wrong line on the first attempt).
+          CONFIG_VERSION=$(grep -m1 '^[[:space:]]\+version:' build/config.yml | sed -E 's/.*version: *"?([0-9][0-9A-Za-z.+-]*)"?.*/\1/')
+          echo "Tag version: $TAG_VERSION"
+          echo "build/config.yml version: $CONFIG_VERSION"
+          if [ "$TAG_VERSION" != "$CONFIG_VERSION" ]; then
+            echo "::error::Tag v$TAG_VERSION does not match build/config.yml's version ($CONFIG_VERSION)"
+            exit 1
+          fi
+
+  # macOS only, deliberately -- see docs/adr/0002 and SPEC.md §1.3.
+  # Windows and Linux desktop builds are PARKED, not silently shipped
+  # unverified: Linux desktop needs GTK4/webkitgtk-6.0 system packages this
+  # workflow has never installed or tested, and Windows needs an entirely
+  # different toolchain with zero local verification possible from this
+  # macOS-only development environment. Shipping CI steps nobody has ever
+  # actually run is exactly the mistake build-go's ubuntu-latest entry made
+  # in Phase 1 (see that commit) -- not repeating it here for a release
+  # artifact users would actually download. macOS is also Mill's stated
+  # primary target (SPEC.md), so this covers the platform that matters most
+  # today, correctly, rather than four platforms unverifiedly.
+  build-macos:
+    needs: preflight
+    runs-on: macos-latest
+    permissions:
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version: '1.25'
+          cache: true
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+      - uses: arduino/setup-task@v3.0.0
+      - name: Install wails3 CLI
+        run: go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0-beta.4
+      # task build already chains: go mod tidy -> generate icons -> install
+      # frontend deps -> generate bindings -> frontend build -> go build.
+      # No GoReleaser (see ADR-0002 / wailsapp/wails#747, closed wont-fix) --
+      # this mirrors what the Wails team does for its own releases.
+      - run: task build
+      - name: Rename binary with platform/arch/version suffix
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          mv bin/mill "bin/mill-${VERSION}-macos-$(uname -m)"
+      - uses: actions/attest-build-provenance@v4
+        with:
+          subject-path: bin/mill-*
+      - uses: actions/upload-artifact@v7
+        with:
+          name: mill-macos
+          path: bin/mill-*
+          retention-days: 7
+
+  release:
+    needs: build-macos
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: mill-macos
+          path: dist
+      - name: Generate checksums
+        working-directory: dist
+        run: sha256sum -- * > SHA256SUMS
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${GITHUB_REF_NAME}" \
+            --repo "${GITHUB_REPOSITORY}" \
+            --title "${GITHUB_REF_NAME}" \
+            --generate-notes \
+            dist/*
