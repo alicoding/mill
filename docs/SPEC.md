@@ -125,8 +125,10 @@ not yet worth deciding).
   candidates from earlier M365-context research, and got conflated with each
   other in that discussion — they're not the same kind of thing (DBOS is a
   durable-execution library you embed and typically pairs with Postgres;
-  pueue is a standalone CLI/daemon for queueing shell commands). Neither has
-  been independently evaluated. `PARKED`
+  pueue is a standalone CLI/daemon for queueing shell commands). Both have
+  now been independently evaluated — see §7 and
+  [`docs/adr/0004-execution-process-tracking.md`](adr/0004-execution-process-tracking.md).
+  `LOCKED` (evaluation) — ADR-0004 itself is `proposed`, not yet `accepted`.
 - Concrete failure mode already hit once, worth locking as a hard filter for
   §7's eventual candidate list: pueue was `brew install`ed on the work
   machine for the M365 prototype, which (a) is written in Rust — disqualified
@@ -555,8 +557,21 @@ Full rationale in [`docs/adr/0003-browser-bridge-architecture.md`](adr/0003-brow
 
 ## 7. Process & session tracking
 
-- `OPEN`. Long-running command/workflow executions need to be inspectable
-  while running (like Claude Code's background task view) and their
+- **Mechanism resolved: `github.com/dbos-inc/dbos-transact-golang` with its
+  pure-Go SQLite backend.** Full research, alternatives considered, and a
+  hands-on spike (not just docs) are in
+  [`docs/adr/0004-execution-process-tracking.md`](adr/0004-execution-process-tracking.md).
+  Satisfies the embeddable-in-binary hard filter below (no Postgres, no
+  separate daemon) and, empirically verified via a real
+  kill-the-process-mid-workflow spike, satisfies the sharpened requirement
+  two bullets down: a completed step's result survives the launching
+  process being killed before it's reported, without the step re-running.
+  `LOCKED` (library choice) — ADR-0004 is `proposed`, not yet `accepted`;
+  the actual `internal/domain/execution` design (what a "step" is for
+  Mill, how session identity maps to a workflow ID) is still `OPEN`, not
+  resolved by picking the library.
+- Long-running command/workflow executions need to be inspectable while
+  running (like Claude Code's background task view) and their
   logs/results need to persist and stay viewable after the process exits —
   not just streamed and discarded.
 - **Concrete failure mode hit at work, sharpening the requirement above**:
@@ -580,9 +595,8 @@ Full rationale in [`docs/adr/0003-browser-bridge-architecture.md`](adr/0003-brow
   job runner): must be embeddable directly in the Go binary — no
   separately-installed daemon/CLI, no dependency on a package manager
   (Homebrew etc.) at install time. See §1.2 for the pueue incident this came
-  from. Still `OPEN` which specific mechanism satisfies that (DBOS's fit
-  depends on whether it can run without a standalone Postgres server —
-  unevaluated).
+  from. Resolved above — DBOS's SQLite backend needs no standalone Postgres
+  server, confirmed directly rather than assumed.
 
 ## 8. Guardrails / policy
 
