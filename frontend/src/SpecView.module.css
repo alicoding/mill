@@ -9,13 +9,18 @@
     padding: var(--s-3) var(--s-4) var(--s-5);
     line-height: 1.6;
 }
-.spec h1, .spec h2, .spec h3 { color: var(--text); line-height: 1.3; }
-.spec h1 { font-size: 1.6rem; margin-top: 0; }
-.spec h2 { font-size: 1.25rem; margin-top: var(--s-4); border-top: 1px solid var(--glass-border); padding-top: var(--s-3); }
-.spec h3 { font-size: 1.05rem; color: var(--muted); }
-.spec p, .spec li { color: var(--muted); font-size: 14px; }
-.spec code { background: var(--glass); border-radius: 4px; padding: 1px 5px; color: var(--accent-2); font-size: 0.9em; }
-.spec a { color: var(--accent-2); }
-.spec hr { border: none; border-top: 1px solid var(--glass-border); margin: var(--s-3) 0; }
-.spec ul, .spec ol { padding-left: 1.3em; }
-.spec strong { color: var(--text); }
+.spec > article { margin-top: var(--s-3); }
+/* Scoped to "article" specifically, not all of .spec's descendants --
+   .spec now also contains CapabilityIndex (a React-rendered component,
+   not markdown), which must not inherit styles meant for marked's raw
+   HTML output. */
+.spec article h1, .spec article h2, .spec article h3 { color: var(--text); line-height: 1.3; }
+.spec article h1 { font-size: 1.6rem; margin-top: 0; }
+.spec article h2 { font-size: 1.25rem; margin-top: var(--s-4); border-top: 1px solid var(--glass-border); padding-top: var(--s-3); }
+.spec article h3 { font-size: 1.05rem; color: var(--muted); }
+.spec article p, .spec article li { color: var(--muted); font-size: 14px; }
+.spec article code { background: var(--glass); border-radius: 4px; padding: 1px 5px; color: var(--accent-2); font-size: 0.9em; }
+.spec article a { color: var(--accent-2); }
+.spec article hr { border: none; border-top: 1px solid var(--glass-border); margin: var(--s-3) 0; }
+.spec article ul, .spec article ol { padding-left: 1.3em; }
+.spec article strong { color: var(--text); }
