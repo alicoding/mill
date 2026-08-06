@@ -38,6 +38,12 @@ type Capability struct {
 	// a real source file), never an aspirational package that hasn't been
 	// built yet. Enforced by TestList_EditorPathsExist.
 	EditorPath string
+	// NavLabel is the terse form shown in the top nav bar (every
+	// capability gets a nav entry, built or not -- docs/SPEC.md §2.2).
+	// Falls back to Label when empty, which is fine for most placeholder
+	// entries; only set this when Label is too long/descriptive for a
+	// tab (e.g. "Activity / event log" -> "Activity").
+	NavLabel string
 }
 
 // List is a best-effort seed, not a claim of precision -- correcting an
@@ -47,11 +53,11 @@ type Capability struct {
 func List() []Capability {
 	return []Capability{
 		{
-			ID: "runbook-page", Label: "Runbook page", SpecSection: "2.2",
+			ID: "runbook-page", Label: "Runbook page", NavLabel: "Runbook", SpecSection: "2.2",
 			Status: StatusLocked, View: ViewRunbook,
 		},
 		{
-			ID: "activity-log", Label: "Activity / event log", SpecSection: "2.2",
+			ID: "activity-log", Label: "Activity / event log", NavLabel: "Activity", SpecSection: "2.2",
 			Status: StatusLocked, View: ViewActivity,
 		},
 		{

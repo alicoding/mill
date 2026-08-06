@@ -2,8 +2,7 @@ import { Browser } from '@wailsio/runtime'
 import { Heading, Label, Stack, Text, Button, type LabelProps } from '@primer/react'
 import { CapabilitiesService } from '../bindings/github.com/alicoding/mill'
 import { ViewKind } from '../bindings/github.com/alicoding/mill/internal/domain/capabilities/models'
-import type { Capability } from '../bindings/github.com/alicoding/mill/internal/domain/capabilities/models'
-import { useAppStore, type View } from './store'
+import { useAppStore, viewFor } from './store'
 import styles from './RunbookView.module.css'
 
 const STATUS_VARIANT: Record<string, LabelProps['variant']> = {
@@ -16,17 +15,6 @@ const STATUS_VARIANT: Record<string, LabelProps['variant']> = {
 // root as cwd, but a real installed build has no source tree to jump to
 // at all -- see CapabilitiesService.RepoPath's own doc comment.
 const isDevBuild = import.meta.env.DEV
-
-function viewFor(capability: Capability): View {
-  switch (capability.View) {
-    case ViewKind.ViewRunbook:
-      return { kind: 'runbook' }
-    case ViewKind.ViewActivity:
-      return { kind: 'activity' }
-    default:
-      return { kind: 'placeholder', capabilityId: capability.ID }
-  }
-}
 
 // The clickable status directory this whole capability sits on top of
 // (docs/SPEC.md §2.2): real React buttons driven by CapabilitiesService's

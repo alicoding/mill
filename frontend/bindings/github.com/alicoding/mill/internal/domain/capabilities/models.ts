@@ -15,6 +15,15 @@ export interface Capability {
      * built yet. Enforced by TestList_EditorPathsExist.
      */
     "EditorPath": string;
+
+    /**
+     * NavLabel is the terse form shown in the top nav bar (every
+     * capability gets a nav entry, built or not -- docs/SPEC.md §2.2).
+     * Falls back to Label when empty, which is fine for most placeholder
+     * entries; only set this when Label is too long/descriptive for a
+     * tab (e.g. "Activity / event log" -> "Activity").
+     */
+    "NavLabel": string;
 }
 
 /**
