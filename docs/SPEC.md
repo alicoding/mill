@@ -178,12 +178,15 @@ captured here before being lost, none yet resolved:
   bridge to your allowed folder," not itself an LLM client (consistent with
   §1.1's no-AI-API-from-Mill-itself rule — the model is always brought by the
   user/host, never bundled). Composability mechanism unclear — see below.
-- **Declarative/no-code action definition**: reference is Oscilar (fintech
-  no-code decisioning — configure an HTTP-request connector to a vendor like
-  TransUnion/Equifax with typed input/decision nodes wired into a workflow).
-  Applied to Mill: if a user has some CLI tool installed locally, expose it
-  as a typed "action" (declared inputs/outputs) instead of the LLM
-  freehand-generating a shell command to invoke it.
+- **Declarative/no-code action definition**: reference pattern is a no-code
+  decisioning platform style the user has worked with professionally —
+  generic HTTP-connector nodes configured against external data
+  vendors, with typed input/decision nodes wired into a workflow (see §3.2
+  for the fuller pattern description — kept vendor-name-free deliberately,
+  Mill's docs stay OSS-ready from day one, no citing specific commercial
+  products by name). Applied to Mill: if a user has some CLI tool installed
+  locally, expose it as a typed "action" (declared inputs/outputs) instead
+  of the LLM freehand-generating a shell command to invoke it.
 - **Diff preview**: frustration that a prior AI tool had no file-diff
   preview for a proposed change; floated IDE integration to get it. Likely
   not a separate feature — probably the same PreToolUse-style preview
@@ -258,6 +261,38 @@ tools to be orchestrated. Mill as MCP **server only** (exposing guardrailed
 tools, something else acts as host) fits §1.1 cleanly with zero tension.
 `OPEN` — this determines whether idea #1 is in scope at all.
 
+### 3.2 Composition pattern from professional experience — kept generic, no vendor names
+
+The user has worked professionally with a no-code decisioning platform
+(fintech domain) whose composition pattern is worth adopting the shape of.
+Deliberately described here without naming the product — Mill's docs stay
+citeable/OSS-ready from day one, that's a standing rule now, not just for
+this entry.
+
+- **Node *type* definition is a separate surface from workflow composition.**
+  There's a dedicated configuration area where node kinds — input, decision,
+  integration, and others — get defined/configured (schema, required
+  fields, auth for integrations). Composing an actual workflow is a
+  different, later step: you drag *instances* of already-configured node
+  types onto a canvas and wire them together. Same split n8n uses (node
+  package defines the type; workflow canvas composes instances) — two
+  independent references converging on the same shape is a good signal.
+- **Cardinality differs by node kind.** Input nodes are 1:1 — configured for
+  and used within a single workflow. Integration/vendor-connector nodes are
+  reusable 1:* — one configured connector (e.g. one authenticated HTTP
+  connector to a given vendor) can be wired into many different workflows.
+  Decision node cardinality is unconfirmed (user wasn't sure) — check before
+  assuming either way when this gets designed.
+- **Connector protocol/auth support should be incrementally extensible, not
+  fixed upfront.** The reference platform started with plain HTTP and grew
+  — driven by real, incoming vendor requirements rather than upfront
+  speculation — to also support XML/SOAP, OAuth and other auth schemes, and
+  eventually mTLS. Lesson for Mill's own connector design (§4): build the
+  generic HTTP connector first, but don't hardcode assumptions that would
+  block adding SOAP/XML translation or new auth schemes later without a
+  rearchitecture. Add real protocol/auth support when a real connector needs
+  it, not speculatively.
+
 ## 4. Connectors
 
 - `OPEN`. Named so far: generic HTTP connector, Jira/Confluence as a
@@ -266,6 +301,8 @@ tools, something else acts as host) fits §1.1 cleanly with zero tension.
   Mill vs. delegating to an existing secrets manager), auth flow per
   connector type (OAuth vs. token vs. API key), and whether connectors are
   built-in or a plugin surface.
+- See §3.2 for the node-type-vs-instance composition pattern and the
+  incremental-extensibility principle for connector protocol/auth support.
 
 ## 5. Browser bridge
 
@@ -310,21 +347,24 @@ tools, something else acts as host) fits §1.1 cleanly with zero tension.
   — a PreToolUse-equivalent preview of the action about to run, checked
   against policy, shown to the user before execution, with sync/async waiting
   around the check and the eventual result.
-- Not yet decided: where policy is authored/stored, what "policy" can express
-  (allowlist commands? path scoping? connector-level rules?), how a
-  pass/fail/pending state is communicated in the UI.
-- **Tension surfaced by §2.1's milestone, needs a decision**: the original
-  vision was an explicit preview-then-approve step before every action (a
-  popup/modal you review before it runs). The M365-bridge milestone instead
-  wants near-zero friction — hotkey press → run → auto-paste → optionally
-  auto-submit, no popup in between. Candidate resolution: for a
-  single-operator personal tool (the user is the only user of Mill, per
-  their own framing — not a shared/team product), the guardrail can be the
-  deliberate hotkey press itself (nothing runs without an intentional
-  trigger) backed by an audit log reviewable after the fact, rather than a
-  blocking pre-approval screen every time. A blocking preview would still
-  make sense if Mill is ever used where someone other than the operator
-  needs to approve actions. Not locked — needs the user's call. `OPEN`
+- **Resolved (§2.1's tension)**: default is a preview/approval popup —
+  fail-safe, not fail-open. It is *skipped* only when the action matches an
+  explicit, user-configured condition/policy rule saying it's safe to
+  auto-run. So friction is the default and speed is the opt-in, not the
+  other way around — you only get interrupted "when it needs your
+  attention." The hotkey from §2.1 triggers the check, not a bypass of it;
+  whether a given hotkey-triggered command shows a popup or runs straight
+  through depends on whether it matches a skip rule. `LOCKED` (as the
+  default-safe/explicit-skip shape)
+- **Skip-condition rules must be testable/validated, not just declared.**
+  Whatever authors a "safe to auto-run" rule needs a way to verify the rule
+  actually matches what the author thinks it matches (a dry-run / test
+  mode against sample actions) before it's trusted live — a policy rule
+  that's silently broader than intended is exactly how a guardrail fails
+  quietly. Mechanism `OPEN`, requirement `LOCKED`.
+- Still not yet decided: where policy/skip-rules are authored/stored, what
+  they can express (allowlist commands? path scoping? connector-level
+  rules?), how pass/fail/pending/skipped states are communicated in the UI.
 
 ## 9. Repo AI workflow (CLAUDE.md / SKILL.md / agent profiles)
 
