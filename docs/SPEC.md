@@ -269,14 +269,19 @@ Deliberately described here without naming the product — Mill's docs stay
 citeable/OSS-ready from day one, that's a standing rule now, not just for
 this entry.
 
-- **Node *type* definition is a separate surface from workflow composition.**
-  There's a dedicated configuration area where node kinds — input, decision,
-  integration, and others — get defined/configured (schema, required
-  fields, auth for integrations). Composing an actual workflow is a
-  different, later step: you drag *instances* of already-configured node
-  types onto a canvas and wire them together. Same split n8n uses (node
-  package defines the type; workflow canvas composes instances) — two
-  independent references converging on the same shape is a good signal.
+- **Three distinct surfaces, not two.** The reference platform separates
+  **Settings** (global/app-level config — credentials, preferences, things
+  that apply across the whole app) from **Configure** (where node *kinds* —
+  input, decision, integration, and others — get defined: schema, required
+  fields, auth for integrations) from the **workflow canvas** itself (where
+  already-configured node *instances* get dragged in and wired together).
+  The user specifically likes this separation and wants Mill to keep it —
+  don't collapse app-level settings and capability/node-type configuration
+  into one screen just because they're both "configuration." Same
+  type-vs-instance split n8n uses for its second half (node package defines
+  the type; workflow canvas composes instances) — two independent
+  references converging on the same shape is a good signal. `LOCKED`
+  (three-surface separation) — which settings live where, `OPEN`.
 - **Cardinality differs by node kind.** Input nodes are 1:1 — configured for
   and used within a single workflow. Integration/vendor-connector nodes are
   reusable 1:* — one configured connector (e.g. one authenticated HTTP
