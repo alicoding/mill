@@ -39,6 +39,14 @@ implementing one option — surface the choice.
   dependency for the core loop.
 - **CI/CD from day one**, not bolted on later. Every capability that lands
   needs its checks wired in the same change, not a follow-up.
+- **SPEC.md tracks every capability from day one, not bolted on later.**
+  Every capability/feature that lands gets a corresponding `docs/SPEC.md`
+  entry in the same change — a new bullet under the relevant section, or a
+  status update to an existing one (`LOCKED`/`OPEN`/`PARKED`, plus
+  `UX: PROTOTYPE`/`FINAL` where a UI exists) — not a follow-up. Skip this
+  only for pure mechanical changes (refactors, dependency bumps, bug fixes
+  with no behavior change) that don't shift what SPEC.md actually
+  describes. If it isn't in SPEC.md, treat it as undocumented, not done.
 - **SOLID, DRY, DDD discipline — with a concrete reuse boundary, not just a
   platitude.** Generic/commodity concerns (parsing, UI widgets, OS
   plumbing, wire protocols) are fine to buy via a well-vetted library —
