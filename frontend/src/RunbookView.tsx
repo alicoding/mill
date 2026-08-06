@@ -2,24 +2,7 @@ import { useEffect, useState } from 'react'
 import { Button, Heading, Label, Stack, Text } from '@primer/react'
 import { RunbookService, HotkeyService } from '../bindings/github.com/alicoding/mill'
 import type { Action } from '../bindings/github.com/alicoding/mill/internal/domain/runbook/models'
-
-// Physical-key-position based, so the recorder doesn't care about Shift state.
-// event.code is "KeyM" / "Digit1" / "Space" — this strips the prefix.
-function keyFromEventCode(code: string): string | null {
-  if (code.startsWith('Key')) return code.slice(3)
-  if (code.startsWith('Digit')) return code.slice(5)
-  if (code === 'Space') return 'Space'
-  return null
-}
-
-function modsFromEvent(e: KeyboardEvent): string[] {
-  const mods: string[] = []
-  if (e.metaKey) mods.push('cmd')
-  if (e.ctrlKey) mods.push('ctrl')
-  if (e.shiftKey) mods.push('shift')
-  if (e.altKey) mods.push('option')
-  return mods
-}
+import { keyFromEventCode, modsFromEvent } from './keybinding'
 
 function RunbookView() {
   const [actions, setActions] = useState<Action[]>([])
