@@ -1,15 +1,15 @@
 {
 	"fixed": {
-		"file_version": "0.1.0"
+		"file_version": "0.0.1"
 	},
 	"info": {
 		"0000": {
-			"ProductVersion": "0.1.0",
-			"CompanyName": "My Company",
-			"FileDescription": "Guardrailed agentic workflow/recipe automation",
-			"LegalCopyright": "© 2026, My Company",
+			"ProductVersion": "0.0.1",
+			"CompanyName": "Ali Al Dallal",
+			"FileDescription": "Guardrailed agentic-workflow automation",
+			"LegalCopyright": "© 2026 Ali Al Dallal",
 			"ProductName": "Mill",
-			"Comments": "This is a comment"
+			"Comments": "https://github.com/alicoding/mill"
 		}
 	}
 }
