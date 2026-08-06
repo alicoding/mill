@@ -1,9 +1,19 @@
 import { useEffect, useState } from 'react'
+import { Events } from '@wailsio/runtime'
 import { Button, Heading, Label, type LabelProps, SkeletonBox, Stack, Text } from '@primer/react'
-import { BeakerIcon, KeyIcon, MarkdownIcon } from '@primer/octicons-react'
+import { BeakerIcon, CheckCircleIcon, KeyIcon, MarkdownIcon, XCircleIcon } from '@primer/octicons-react'
 import { RunbookService, HotkeyService } from '../bindings/github.com/alicoding/mill'
+import type { HotkeyActivity } from '../bindings/github.com/alicoding/mill/models'
 import type { Action } from '../bindings/github.com/alicoding/mill/internal/domain/runbook/models'
 import { keyFromEventCode, modsFromEvent } from './keybinding'
+
+// A fired hotkey has no other UI surface — it runs headlessly and writes
+// straight to the clipboard (§2.2). Without this feed, a correctly firing
+// hotkey and a silently swallowed one look identical from the UI: nothing
+// visibly happens either way. Capped and in-memory only, same as the
+// bindings themselves — see SPEC.md §2.2's "Hotkey fire path is logged
+// end-to-end" entry.
+const MAX_ACTIVITY_ENTRIES = 5
 
 // Per-action leading icon. Falls back to KeyIcon for any future action not
 // listed here rather than rendering nothing.
@@ -35,10 +45,18 @@ function RunbookView() {
   const [bindings, setBindings] = useState<Record<string, string>>({})
   const [bindingErrors, setBindingErrors] = useState<Record<string, string>>({})
   const [recordingId, setRecordingId] = useState<string | null>(null)
+  const [activity, setActivity] = useState<(HotkeyActivity & { id: string; time: string })[]>([])
 
   useEffect(() => {
     RunbookService.List().then((list) => setActions(list ?? [])).catch(console.error)
     HotkeyService.List().then((list) => setBindings((list ?? {}) as Record<string, string>)).catch(console.error)
+  }, [])
+
+  useEffect(() => {
+    return Events.On('hotkey-activity', (evt) => {
+      const entry = { ...evt.data, id: crypto.randomUUID(), time: new Date().toLocaleTimeString() }
+      setActivity((prev) => [entry, ...prev].slice(0, MAX_ACTIVITY_ENTRIES))
+    })
   }, [])
 
   useEffect(() => {
@@ -165,8 +183,36 @@ function RunbookView() {
           })}
         </Stack>
       )}
+
+      {activity.length > 0 && (
+        <>
+          <Heading as="h2" variant="small" className="runbook-activity-heading">Recent activity</Heading>
+          <Text as="p" size="small" className="runbook-muted runbook-subtitle">
+            What fired hotkeys actually did — hotkey triggers run headlessly with no other feedback.
+          </Text>
+          <Stack direction="vertical" gap="condensed">
+            {activity.map((entry) => (
+              <Stack key={entry.id} direction="horizontal" align="center" gap="condensed" className="runbook-activity-row">
+                {entry.success ? (
+                  <CheckCircleIcon size={16} fill="var(--fgColor-success)" />
+                ) : (
+                  <XCircleIcon size={16} fill="var(--fgColor-danger)" />
+                )}
+                <Text size="small" className="runbook-muted">{entry.time}</Text>
+                <Label variant="secondary" size="small">{entry.binding}</Label>
+                <Text size="small">{actionName(actions, entry.actionID)}</Text>
+                <Text size="small" className="runbook-muted">— {entry.detail}</Text>
+              </Stack>
+            ))}
+          </Stack>
+        </>
+      )}
     </div>
   )
+}
+
+function actionName(actions: Action[] | null, actionID: string): string {
+  return actions?.find((a) => a.ID === actionID)?.Name ?? actionID
 }
 
 export default RunbookView

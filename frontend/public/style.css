@@ -197,3 +197,8 @@ nav[aria-label="Mill"] {
     max-height: 240px;
     overflow-y: auto;
 }
+.runbook-activity-heading { margin-top: var(--s-4); }
+.runbook-activity-row {
+    padding: var(--base-size-4) 0;
+    border-bottom: 1px solid var(--borderColor-muted);
+}
