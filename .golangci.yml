@@ -1,0 +1,21 @@
+version: "2"
+
+linters:
+  default: standard
+  enable:
+    - unused
+    - staticcheck
+  exclusions:
+    paths:
+      - frontend
+      - build
+      - third_party$
+      - builtin$
+      - examples$
+
+formatters:
+  exclusions:
+    paths:
+      - third_party$
+      - builtin$
+      - examples$

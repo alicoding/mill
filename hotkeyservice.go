@@ -79,7 +79,7 @@ func (h *HotkeyService) Assign(actionID string, mods []string, key string) (stri
 
 	h.mu.Lock()
 	if existing, ok := h.handles[actionID]; ok {
-		existing.Unregister()
+		_ = existing.Unregister()
 		delete(h.handles, actionID)
 		delete(h.bindings, actionID)
 	}
@@ -114,7 +114,7 @@ func (h *HotkeyService) Unassign(actionID string) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	if hk, ok := h.handles[actionID]; ok {
-		hk.Unregister()
+		_ = hk.Unregister()
 		delete(h.handles, actionID)
 		delete(h.bindings, actionID)
 	}
