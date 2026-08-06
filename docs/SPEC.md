@@ -159,12 +159,27 @@ captured here before being lost, none yet resolved:
 **Leading candidate to evaluate**: this whole cluster — typed tool schemas,
 host/client separation enabling bring-your-own-model, "wrap a local CLI as a
 tool" — looks like exactly what **MCP (Model Context Protocol)** already
-standardizes. Not confirmed yet (a research pass is checking: Go SDK
-maturity/purity, whether MCP actually supports arbitrary model backends
-including local Ollama, whether any PreToolUse-equivalent interception hook
-exists in the spec, and whether the [decisioning-vendor]-style workflow-canvas idea is
-in-scope for MCP at all or stays a separate layer on top). Do not build
-against MCP until that comes back. `OPEN`
+standardizes. A research pass is checking Go SDK maturity/purity, whether
+MCP genuinely supports arbitrary model backends including local Ollama,
+whether any PreToolUse-equivalent interception hook exists in the spec, and
+whether the [decisioning-vendor]-style workflow-canvas idea is in-scope for MCP at all or
+stays a separate layer on top. `OPEN`
+
+**Deployment note, not a design change**: MCP is currently blocked at the
+bank by IS&C, timeline for re-enablement unknown. The user's explicit
+instruction: this does not change the plan — MCP is "just a protocol," so
+Mill should still design its capability layer to speak/adopt it now
+(schema-compatible) rather than inventing a bespoke one, the same
+compose-don't-invent discipline as everywhere else in this doc (extends to
+the guardrail/hooks design too — adopt Anthropic's Hooks structure rather
+than a bespoke format). The block is operational timing, not a reason to
+deprioritize the design target. Worth checking once research lands: MCP has
+a local stdio transport (subprocess over stdin/stdout, no network egress)
+distinct from remote/network transports (SSE, streamable HTTP) — a bank
+IS&C block plausibly targets the network transports specifically, which
+would mean local stdio MCP is unaffected and usable today. Unverified,
+folded into the research pass. `LOCKED` (design direction) / `OPEN`
+(transport-scope detail, whether usable today)
 
 ## 4. Connectors
 
