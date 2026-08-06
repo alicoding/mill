@@ -7,6 +7,16 @@ drift apart. Edit this file, not a copy of it.
 Status key: `LOCKED` (decided), `OPEN` (actively undecided), `PARKED` (named,
 not yet worth deciding).
 
+Where a section describes something with an actual UI, that same status key
+covers whether the *decision* to build it is settled — not whether the
+pixels are the intended design. A second, orthogonal tag covers that:
+`UX: PROTOTYPE` (built to prove a capability/architecture works end-to-end;
+functional, not a considered design — expect it to be redesigned, not
+treated as the target) vs. `UX: FINAL` (the deliberate, intentional design
+for that surface). Absence of a `UX:` tag on a section with a built UI
+means it hasn't been classified yet — treat that as a gap to fill, not as
+an implicit `FINAL`.
+
 ---
 
 ## 0. Origin
@@ -273,6 +283,12 @@ first thing to build once the browser bridge and hotkey pieces are
 researched.
 
 ### 2.2 Actually-buildable-now milestone — the Runbook page
+
+`UX: PROTOTYPE`. The Runbook page as built (list + Run button + hotkey
+assignment, current Primer React pass) proves the capability end-to-end —
+it is not yet a considered design. Treat the current layout, empty states,
+and hotkey-affordance UI as placeholder until a real UI/UX pass happens;
+don't infer product intent from its current appearance.
 
 §2.1 depends on two unresearched pieces (browser bridge, hotkey) and an
 environment (M365 in-browser) the assistant helping build Mill has no live
