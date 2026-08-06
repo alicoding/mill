@@ -1,0 +1,27 @@
+# Mirrors .github/workflows/ci.yml's Phase 1 checks locally, so a broken
+# commit never lands in the first place. Requires frontend/dist to exist for
+# the Go jobs (main.go embeds it) -- run `npm run build` in frontend/ once
+# after cloning, same prerequisite CI itself has.
+pre-commit:
+  parallel: true
+  jobs:
+    - name: go-vet
+      glob: "*.go"
+      run: go vet ./...
+    - name: golangci-lint
+      glob: "*.go"
+      run: golangci-lint run ./...
+    - name: go-build-desktop
+      glob: "*.go"
+      run: go build -o /dev/null .
+    - name: go-build-server
+      glob: "*.go"
+      run: go build -tags server -o /dev/null .
+    - name: eslint
+      root: "frontend/"
+      glob: "frontend/**/*.{ts,tsx}"
+      run: npm run lint
+    - name: tsc
+      root: "frontend/"
+      glob: "frontend/**/*.{ts,tsx}"
+      run: npx tsc --noEmit
