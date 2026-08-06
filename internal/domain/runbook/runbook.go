@@ -11,6 +11,16 @@ import (
 	"github.com/alicoding/mill/internal/adapters/markdown"
 )
 
+// Package-level function vars, not direct calls, so tests can substitute
+// fakes for the OS-dependent clipboard adapter without mocking the
+// markdown adapter too (that one's pure and already covered by its own
+// tests) or restructuring this package into a struct with injected deps.
+var (
+	readClipboardHTML  = clipboard.ReadHTML
+	writeClipboardHTML = clipboard.WriteHTML
+	htmlToMarkdown     = markdown.ToMarkdown
+)
+
 type Action struct {
 	ID          string
 	Name        string
@@ -56,19 +66,19 @@ const sampleHTML = `<h2>Quarterly update</h2>
 </ul>`
 
 func runLoadSampleHTML() (string, error) {
-	if err := clipboard.WriteHTML(sampleHTML); err != nil {
+	if err := writeClipboardHTML(sampleHTML); err != nil {
 		return "", fmt.Errorf("writing sample HTML to clipboard: %w", err)
 	}
 	return "Sample HTML is now on your clipboard — here it is, exactly as written (what you see is what's really there):\n\n" + sampleHTML, nil
 }
 
 func runClipboardHTMLToMarkdown() (string, error) {
-	html, err := clipboard.ReadHTML()
+	html, err := readClipboardHTML()
 	if err != nil {
 		return "No HTML found on the clipboard — only plain text (or nothing) was copied, so there's no structure to preserve. Copy something with real formatting (a heading, bold text, a list) and try again.", nil
 	}
 
-	md, err := markdown.ToMarkdown(html)
+	md, err := htmlToMarkdown(html)
 	if err != nil {
 		return "", fmt.Errorf("converting clipboard HTML to markdown: %w", err)
 	}
