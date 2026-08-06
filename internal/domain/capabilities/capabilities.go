@@ -24,6 +24,7 @@ type ViewKind string
 const (
 	ViewRunbook     ViewKind = "runbook"
 	ViewActivity    ViewKind = "activity"
+	ViewComposition ViewKind = "composition"
 	ViewPlaceholder ViewKind = "placeholder"
 )
 
@@ -65,8 +66,8 @@ func List() []Capability {
 			Status: StatusOpen, View: ViewPlaceholder,
 		},
 		{
-			ID: "capability-composition", Label: "Capability composition (canvas)", SpecSection: "3",
-			Status: StatusOpen, View: ViewPlaceholder,
+			ID: "capability-composition", Label: "Capability composition", NavLabel: "Composition", SpecSection: "3",
+			Status: StatusOpen, View: ViewComposition,
 		},
 		{
 			ID: "connectors", Label: "Connectors", SpecSection: "4",

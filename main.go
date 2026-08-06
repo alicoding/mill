@@ -87,6 +87,7 @@ func main() {
 			application.NewService(&CapabilitiesService{}),
 			application.NewService(runbook),
 			application.NewService(hotkeys),
+			application.NewService(&CompositionService{}),
 		},
 		Assets: application.AssetOptions{
 			Handler: application.AssetFileServerFS(assets),

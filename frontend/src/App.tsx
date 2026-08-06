@@ -4,6 +4,7 @@ import {Label, NavList, PageLayout} from "@primer/react";
 import SpecView from "./SpecView";
 import RunbookView from "./RunbookView";
 import ActivityView from "./ActivityView";
+import CompositionView from "./CompositionView";
 import PlaceholderView from "./PlaceholderView";
 import { RunbookService, CapabilitiesService } from "../bindings/github.com/alicoding/mill";
 import { useAppStore, viewFor, viewsEqual, statusVariant } from "./store";
@@ -121,6 +122,8 @@ function App() {
           {view.kind === 'runbook' && <RunbookView/>}
 
           {view.kind === 'activity' && <ActivityView/>}
+
+          {view.kind === 'composition' && <CompositionView/>}
 
           {view.kind === 'spec' && <SpecView/>}
 

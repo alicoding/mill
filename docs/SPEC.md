@@ -626,6 +626,51 @@ that environment, on something testable directly in this dev session:
 - Not yet decided: node schema shape, how a "capability" is declared/
   registered, whether recipes are user-authored on a canvas or config-first
   with canvas as a later view.
+- **A concrete proposal for all three exists now, not yet accepted:**
+  [`docs/adr/0005-capability-composition-node-schema.md`](adr/0005-capability-composition-node-schema.md).
+  Drafted against a detailed feature breakdown of the same reference
+  no-code decisioning platform named in §3.2 (kept generic there and
+  here per the standing no-vendor-names rule) — its actual node taxonomy
+  (Ruleset, Decision, Value Assignment, Integration, Code, Child
+  Workflow, Parallel Steps, ML Model, Database Call) and its treatment
+  of Form/JSON as a coequal authoring path alongside its canvas, not a
+  fallback, directly informed the recommendation below. Also surfaced,
+  not yet addressed anywhere in this doc: that reference platform has a
+  draft/live versioning model with staged-traffic promotion that Mill
+  has no equivalent of yet — real gap, deliberately left for a future
+  decision once an actual recipe exists to version.
+  Recommendation (ADR-0005, `proposed`): two node families — MCP-tool
+  nodes (schema inherited from the wrapped tool, per §3.1's already-
+  locked MCP layer) plus a small, hand-written set of Mill-native
+  control-flow nodes (Decision, Value Assignment, Parallel, Child
+  Workflow) that stay Mill's own code per CLAUDE.md's core-domain rule;
+  composed into a data-driven recipe (JSON), authored via a form/JSON
+  side panel generalized from Runbook's current UI; React Flow deferred
+  (not rejected) until 2+ real multi-node recipes exist to design a
+  canvas against actual content instead of speculation. `OPEN` until
+  accepted.
+- **`UX: PROTOTYPE` — a Capability Composition page tests ADR-0005's
+  shape on real, working capabilities**, same "actually buildable now,
+  de-risk before the full architecture is decided" discipline §2.2 used
+  for the Runbook milestone. `internal/domain/composition` is a new,
+  additive package (not a replacement for `internal/domain/runbook`,
+  which stays exactly as-is, untouched, still the tested/tuned path) —
+  its node primitives (`capture-clipboard-html`, `process-html-to-
+  markdown`, `apply-clipboard-write-html`, `apply-clipboard-write-text`)
+  call the *same* adapter functions Runbook's actions already call, so
+  the two recipes built from them (`load-sample-html-recipe`,
+  `clipboard-html-to-markdown-recipe`) are the real capability,
+  genuinely decomposed and recomposed, not a mockup — hitting Run
+  actually executes the clipboard round-trip. The page renders node
+  types and recipes as plain lists/chip-chains (no canvas/graph
+  library), directly testing ADR-0005's config-first-not-canvas call
+  visually instead of just asserting it in prose. What this does *not*
+  prove: `RunRecipe`'s errors are plain/technical, not Runbook's tuned
+  soft-failure copy (deliberate simplification, not a regression — the
+  careful UX still lives in `runbook.go`); and it says nothing about
+  branching/parallel/typed-payload nodes, still real future work per
+  ADR-0005. §3 stays `OPEN`, ADR-0005 stays `proposed` — this is a
+  testable prototype to react to, not a lock.
 
 ### 3.1 Raw material — root cause of the heredoc pain, not yet resolved
 
@@ -759,6 +804,47 @@ this entry.
   block adding SOAP/XML translation or new auth schemes later without a
   rearchitecture. Add real protocol/auth support when a real connector needs
   it, not speculatively.
+- **Fuller detail reviewed since the above was written** — a concrete
+  UX/feature breakdown of the same reference platform, still kept
+  generic per the standing no-vendor-names rule. Four things not
+  captured above:
+  - **Left-nav surfaces beyond the three already locked**: the reference
+    platform's actual nav is Workflows (canvas) / Configure (node-type
+    definition — matches "Configure" above) / **AI Analytics** / **Review**.
+    The latter two are surfaces Mill has no equivalent of yet — an
+    analytics/observability view over past runs, and a case/queue-style
+    review surface (statuses, visibility). Not a new locked surface for
+    Mill — noted because it's relevant to §7 (process/session tracking,
+    still `OPEN` on what a "history" view looks like) and because Mill's
+    existing Activity page is the closest thing to the analytics half.
+  - **Per-record schema + single-record test harness.** The platform
+    treats a workflow's record schema (metadata, mappings, attributes,
+    JSON schema) as first-class, and lets you test one record via a
+    Form or raw JSON before trusting a full run. Directly relevant to
+    §3's node-schema question (ADR-0005 leans on this precedent for its
+    config-first-authoring recommendation) and to §8's requirement that
+    a skip-condition rule be testable/validated before going live — same
+    "verify against a sample before trusting it live" instinct, applied
+    one level down (a single record) instead of a whole policy rule.
+  - **Draft/live versioning with staged-traffic promotion — a real gap.**
+    Edits create a new version; versions are tested and validated, saved
+    as a draft, then promoted live with configurable traffic allocation
+    (a canary/staged rollout, not an all-at-once cutover). SPEC.md has
+    no equivalent concept anywhere — no notion of a recipe having a
+    draft vs. live version, no rollout mechanism. Deliberately left
+    `OPEN`: worth a real decision once an actual Mill recipe exists to
+    version, not invented speculatively now.
+  - **Live + "shadow" events, filterable/exportable history.** The
+    analytics surface shows live events plus "shadow" events (a
+    draft/candidate version evaluated against real traffic without
+    taking effect, purely for comparison) and lets you filter by input,
+    event type, date range, and export results. Relevant to §7's
+    still-open analytics/history design, and precedent for §8's dry-run
+    requirement — "shadow" is the same idea as a policy dry-run, just
+    named differently and applied to a whole workflow version instead of
+    one rule.
+  `OPEN` (all four — captured as design input for §3/§7/§8, not decided
+  here).
 
 ## 4. Connectors
 
