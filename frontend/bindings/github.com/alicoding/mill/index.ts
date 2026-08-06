@@ -9,7 +9,3 @@ export {
     RunbookService,
     SpecService
 };
-
-export type {
-    Action
-} from "./models.js";

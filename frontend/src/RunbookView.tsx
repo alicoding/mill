@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Button, Heading, Label, Stack, Text } from '@primer/react'
 import { RunbookService, HotkeyService } from '../bindings/github.com/alicoding/mill'
-import type { Action } from '../bindings/github.com/alicoding/mill/models'
+import type { Action } from '../bindings/github.com/alicoding/mill/internal/domain/runbook/models'
 
 // Physical-key-position based, so the recorder doesn't care about Shift state.
 // event.code is "KeyM" / "Digit1" / "Space" — this strips the prefix.
