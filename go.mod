@@ -1,4 +1,4 @@
-module changeme
+module github.com/alicoding/mill
 
 go 1.25.0
 
