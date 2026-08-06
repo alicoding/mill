@@ -38,8 +38,14 @@ test('Clipboard → Markdown responds gracefully with no HTML on the clipboard',
   // Deterministic on a CI runner: osascript isn't present (Linux) or the
   // clipboard read fails for lack of a GUI session (headless macOS), so
   // this is always the "no HTML on clipboard" soft-failure path -- the
-  // same one internal/domain/runbook's own unit test covers directly.
-  await expect(page.getByText('No HTML found on the clipboard')).toBeVisible()
+  // same one internal/domain/runbook's own unit test covers directly. Not
+  // deterministic on a real local desktop, though: this suite's own
+  // clipboard-writing tests (this file's "Load sample HTML" test, and
+  // composition.spec.ts's, since e2e/composition.spec.ts added a second
+  // one) share the one live system clipboard and can race with this
+  // test's read -- so, like those tests already do, this accepts either
+  // outcome rather than asserting the CI-only deterministic one.
+  await expect(page.getByText(/No HTML found on the clipboard|Quarterly update/)).toBeVisible()
 })
 
 test('Load sample HTML action produces a visible response, success or error', async ({ page }) => {
