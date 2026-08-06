@@ -116,6 +116,43 @@ jobs:
       # //go:embed.
       - run: go test -tags server ./internal/... -race -cover
 
+  e2e:
+    runs-on: ubuntu-latest
+    needs: frontend
+    env:
+      # Required for the same reason as build-go's ubuntu-latest entry:
+      # playwright.config.ts's webServer builds the real server-mode
+      # binary inline, which needs CGO disabled on Linux to avoid pulling
+      # in Wails3's GTK-gated desktop code.
+      CGO_ENABLED: '0'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: frontend-dist
+          path: frontend/dist
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+          cache: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+        working-directory: frontend
+      - run: npx playwright install --with-deps chromium
+        working-directory: frontend
+      - run: npx playwright test
+        working-directory: frontend
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: frontend/playwright-report
+          retention-days: 7
+
   govulncheck:
     # macos-latest, not ubuntu-latest: govulncheck-action has no way to pass
     # -tags, and the default (desktop) build tags only compile cleanly
