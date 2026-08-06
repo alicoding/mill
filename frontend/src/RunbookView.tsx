@@ -5,6 +5,7 @@ import { BeakerIcon, KeyIcon, MarkdownIcon } from '@primer/octicons-react'
 import { RunbookService, HotkeyService } from '../bindings/github.com/alicoding/mill'
 import { keyFromEventCode, modsFromEvent } from './keybinding'
 import { useAppStore } from './store'
+import styles from './RunbookView.module.css'
 
 // Per-action leading icon. Falls back to KeyIcon for any future action not
 // listed here rather than rendering nothing.
@@ -100,17 +101,17 @@ function RunbookView() {
   }
 
   return (
-    <div className="runbook">
+    <div className={`view-pane ${styles.runbook}`}>
       <Heading as="h1">Runbook</Heading>
-      <Text as="p" className="runbook-subtitle">
+      <Text as="p" className={styles.subtitle}>
         Run an action directly, or assign it a global shortcut.
       </Text>
 
       {actions === null && (
         <Stack direction="vertical" gap="condensed">
           {[0, 1].map((i) => (
-            <div key={i} className="runbook-card">
-              <SkeletonBox height="1rem" width="40%" className="runbook-skeleton-line" />
+            <div key={i} className={styles.card}>
+              <SkeletonBox height="1rem" width="40%" className={styles.skeletonLine} />
               <SkeletonBox height="0.8rem" width="80%" />
             </div>
           ))}
@@ -118,7 +119,7 @@ function RunbookView() {
       )}
 
       {actions !== null && actions.length === 0 && (
-        <div className="runbook-empty">
+        <div className={styles.empty}>
           <Text as="p">No actions available yet.</Text>
         </div>
       )}
@@ -128,23 +129,23 @@ function RunbookView() {
           {actions.map((action) => {
             const Icon = ACTION_ICONS[action.ID] ?? KeyIcon
             return (
-              <div key={action.ID} className="runbook-card">
+              <div key={action.ID} className={styles.card} data-testid="runbook-card">
                 <Stack direction="horizontal" justify="space-between" align="start" gap="normal">
                   <Stack direction="horizontal" gap="condensed" align="start">
-                    <span className="runbook-icon"><Icon size={16} /></span>
+                    <span className={styles.icon}><Icon size={16} /></span>
                     <div>
                       <Heading as="h2" variant="small">{action.Name}</Heading>
-                      <Text size="small" className="runbook-muted">{action.Description}</Text>
+                      <Text size="small" className={styles.muted}>{action.Description}</Text>
                     </div>
                   </Stack>
 
-                  <Stack direction="horizontal" align="center" gap="condensed" className="runbook-item-controls">
+                  <Stack direction="horizontal" align="center" gap="condensed" className={styles.itemControls}>
                     <Button onClick={() => run(action.ID)} disabled={runningId === action.ID} size="small">
                       {runningId === action.ID ? 'Running…' : 'Run'}
                     </Button>
 
                     {recordingId === action.ID ? (
-                      <Text size="small" className="runbook-recording">Press a combo… (Esc to cancel)</Text>
+                      <Text size="small" className={styles.recording}>Press a combo… (Esc to cancel)</Text>
                     ) : bindings[action.ID] ? (
                       <>
                         <Label variant="secondary">
@@ -166,7 +167,7 @@ function RunbookView() {
 
                 {bindingErrors[action.ID] && (
                   <Stack direction="vertical" gap="condensed">
-                    <Text as="p" size="small" className="runbook-error">{bindingErrors[action.ID]}</Text>
+                    <Text as="p" size="small" className={styles.error}>{bindingErrors[action.ID]}</Text>
                     {isAccessibilityError(bindingErrors[action.ID]) && (
                       <Button size="small" onClick={() => Browser.OpenURL(ACCESSIBILITY_SETTINGS_URL)}>
                         Open Accessibility Settings
@@ -175,10 +176,10 @@ function RunbookView() {
                   </Stack>
                 )}
                 {errors[action.ID] && (
-                  <Text as="p" size="small" className="runbook-error">{errors[action.ID]}</Text>
+                  <Text as="p" size="small" className={styles.error}>{errors[action.ID]}</Text>
                 )}
                 {results[action.ID] !== undefined && !errors[action.ID] && (
-                  <pre className="runbook-result">{results[action.ID]}</pre>
+                  <pre className={styles.result}>{results[action.ID]}</pre>
                 )}
               </div>
             )
