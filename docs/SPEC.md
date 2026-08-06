@@ -140,6 +140,48 @@ not yet worth deciding).
   unless the user explicitly runs something themselves and reports back.
   `LOCKED`
 
+### 1.3 Repo layout & CI/CD
+
+Full rationale in [`docs/adr/0001-go-module-path-and-repo-layout.md`](adr/0001-go-module-path-and-repo-layout.md)
+and [`docs/adr/0002-cicd-pipeline-phased-rollout.md`](adr/0002-cicd-pipeline-phased-rollout.md).
+
+- Go module renamed from the scaffold default `changeme` to
+  `github.com/alicoding/mill` (no git remote configured yet at the time of
+  this decision; path chosen to match the intended future GitHub owner
+  rather than deferring and repo-wide-renaming later). `LOCKED`
+- Repo layout: flat root `*.go` files stay at root (`main.go` + thin
+  Wails-binding `*service.go` files) — matches wailsapp/wails v3's own CLI
+  repo convention, not golang-standards/project-layout (not an official Go
+  standard per Russ Cox; aimed at multi-binary services Mill isn't).
+  `internal/domain/` (hand-written: Capture→Process→Apply orchestration,
+  guardrail eval, capability composition, session identity) and
+  `internal/adapters/` (thin wrappers behind small interfaces around
+  commodity libs: clipboard I/O, `html-to-markdown`, `golang.design/x/hotkey`,
+  future MCP SDK) to be introduced per ADR-0001, Phase 2. No `cmd/`, `pkg/`,
+  `api/`. `LOCKED` (shape) / `OPEN` (Phase 2 execution, not yet done)
+- No generic `Capability`/`Action`/`Node` interface — §3 is still `OPEN` and
+  only 2 concrete Runbook actions exist; the domain/adapter boundary above
+  is stable regardless of what §3 decides, the capability schema itself is
+  §3's call alone. `OPEN` (defer to §3)
+- npm workspaces (`frontend/` + a future `browser-extension/`, §5) — not
+  adopted yet, revisit when a real second JS package is scaffolded. `go.work`
+  not applicable — single Go module is permanent per §1.1. `PARKED`
+- CI: GitHub Actions, phased rollout (ADR-0002). Phase 1 — module rename +
+  lint/build only, all merge-blocking (`golangci-lint` v2, ESLint flat
+  config, `go build` on macOS + Linux server-mode, `tsc && vite build`) —
+  shipped in `.github/workflows/ci.yml`. No test job yet: zero tests exist,
+  a job with nothing to run is theater. Precedent: wailsapp/wails's own v3
+  CI (native-OS matrix, no GoReleaser — wailsapp/wails#747 closed wont-fix).
+  `LOCKED` (Phase 1) / `OPEN` (Phases 2-4, sequencing in ADR-0002)
+- `HotkeyService` cannot be exercised by headless/server-mode CI — no live
+  macOS Cocoa run loop in that mode. Verification stays an explicit manual
+  desktop-mode check (`.claude/skills/run-mill`), never a silent CI
+  skip/fake-pass. `LOCKED`
+- Release pipeline (native OS matrix, tag-triggered, no GoReleaser) is
+  ADR-0002 Phase 4, deferred until Phases 1-3 land. Server-mode Docker image
+  not part of v1 release scope — no confirmed hosted-deployment use case.
+  `PARKED`
+
 ## 2. Core primitive: Capture → Process → Apply
 
 - **Capture**: pull content from a source preserving structure (e.g. DOM copy
