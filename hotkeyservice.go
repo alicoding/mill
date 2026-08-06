@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"log/slog"
 	"strings"
 	"sync"
 
@@ -18,18 +19,27 @@ var modSymbol = map[string]string{
 // Runbook action. Assignments are in-memory only for now — they don't
 // survive an app restart. Persistence is a deliberate follow-up, not
 // built into this first pass.
+//
+// The fire path (OS delivers a keypress -> action runs -> clipboard is
+// written) has no UI surface at all, unlike the Run button's inline
+// success/error rendering — a hotkey that's registered but never fires
+// (e.g. the combo is already claimed by another app, or macOS just never
+// delivers it) is otherwise silent and undebuggable. logger makes every
+// stage of that path visible instead of guessing.
 type HotkeyService struct {
 	mu       sync.Mutex
 	bindings map[string]*hotkey.Binding
 	labels   map[string]string
 	runbook  *RunbookService
+	logger   *slog.Logger
 }
 
-func NewHotkeyService(runbook *RunbookService) *HotkeyService {
+func NewHotkeyService(runbook *RunbookService, logger *slog.Logger) *HotkeyService {
 	return &HotkeyService{
 		bindings: make(map[string]*hotkey.Binding),
 		labels:   make(map[string]string),
 		runbook:  runbook,
+		logger:   logger,
 	}
 }
 
@@ -65,13 +75,21 @@ func (h *HotkeyService) Assign(actionID string, mods []string, key string) (stri
 	h.labels[actionID] = label
 	h.mu.Unlock()
 
+	h.logger.Info("hotkey registered", "action", actionID, "binding", label)
+
 	go func() {
 		for range b.Keydown() {
+			h.logger.Info("hotkey fired", "action", actionID, "binding", label)
 			result, err := h.runbook.Run(actionID)
 			if err != nil {
+				h.logger.Error("hotkey action failed", "action", actionID, "binding", label, "error", err)
 				continue
 			}
-			_ = clipboard.WriteText(result)
+			if err := clipboard.WriteText(result); err != nil {
+				h.logger.Error("hotkey result clipboard write failed", "action", actionID, "binding", label, "error", err)
+				continue
+			}
+			h.logger.Info("hotkey action completed", "action", actionID, "binding", label, "output_bytes", len(result))
 		}
 	}()
 
@@ -85,6 +103,7 @@ func (h *HotkeyService) Unassign(actionID string) {
 		_ = b.Unbind()
 		delete(h.bindings, actionID)
 		delete(h.labels, actionID)
+		h.logger.Info("hotkey unassigned", "action", actionID)
 	}
 }
 
