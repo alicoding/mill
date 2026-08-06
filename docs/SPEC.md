@@ -83,6 +83,13 @@ not yet worth deciding).
   Rust-authored local dev tool installed as a pre-built binary (e.g. `mise`
   via `brew install mise`) isn't automatically disqualified by this rule;
   only compiling Rust from source is. `LOCKED`
+  Same reading applies to npm packages that ship prebuilt Rust binaries:
+  checked directly (ADR-0003) that Vite 8's default bundler (Rolldown,
+  used transitively by `frontend/`'s `vite` dependency) and its companion
+  `lightningcss` both distribute as platform-specific prebuilt native
+  binaries via npm's `optionalDependencies` mechanism — `npm install`
+  never invokes `cargo`/`rustc`. Same shape as the Homebrew-bottle case,
+  different package manager. `LOCKED`
 - No AI API calls from Mill itself, and no phone-home telemetry of any kind.
   Mill is the substrate that mediates/guards actions initiated by other
   systems (an agent CLI, a chat client) — it is not itself an LLM client, and
@@ -492,14 +499,33 @@ this entry.
 
 ## 5. Browser bridge
 
-- `OPEN`. Needed to get page title/DOM payload and per-tab session identity
-  out of a live browser tab into the native Mill app.
-- Reference pattern: Chrome extension (content script) + native messaging
-  (stdio protocol) talking to the Wails binary — same mechanism 1Password's
-  and Bitwarden's extensions use.
+Full rationale in [`docs/adr/0003-browser-bridge-architecture.md`](adr/0003-browser-bridge-architecture.md).
+
+- Needed to get page title/DOM payload and per-tab session identity out of
+  a live browser tab into the native Mill app.
+- **Not native messaging** — the traditional pattern (1Password, Bitwarden)
+  was reconsidered and rejected under a strict rule: no hand-rolled
+  protocol code, and no adequate Go native-messaging library exists
+  (checked directly: the two candidates are archived since 2015, or a
+  stale 2020 sample repo — neither real). `LOCKED` (rejected)
+- **WXT** (extension framework, MIT, actively maintained, Vite-based) +
+  a **Chrome offscreen document** (`IFRAME_SCRIPTING` reason, no forced
+  timeout unlike `AUDIO_PLAYBACK`) hosting a same-origin iframe onto
+  Mill's existing server-mode page. Every existing generated binding
+  (`RunbookService`, etc.) works unmodified inside that iframe — zero new
+  protocol, zero new Go code. The extension itself has no business logic:
+  content script captures DOM, `chrome.runtime.sendMessage` relays it,
+  done. `LOCKED` (architecture) — see ADR-0003 for the full options
+  considered.
 - This is also the mechanism that would resolve the multi-tab identity
   problem (which agent session a given tab belongs to), since the extension
   runs inside the tab and knows which one it is.
+- **Open, not resolved by ADR-0003**: the iframe needs Mill's HTTP
+  interface reachable whenever the browser needs it, independent of
+  whether the native desktop window is open — today server mode and
+  desktop mode are separate build tags that don't run concurrently.
+  Intersects with §7 (a "session" already needs to span tab + agent run +
+  process). `OPEN`
 - **Data point, not yet confirmed**: user reports that copying an entire
   Confluence page (as opposed to a smaller in-page selection) loses
   structure on paste — comes out plain text only. Two different root causes
