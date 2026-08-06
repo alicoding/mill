@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { marked } from 'marked'
-import { SpecService } from '../bindings/changeme'
+import { SpecService } from '../bindings/github.com/alicoding/mill'
 
 function SpecView() {
   const [html, setHtml] = useState<string>('Loading spec...')
