@@ -24,11 +24,12 @@ test('Spec tab renders real content from the Go-embedded spec', async ({ page })
   await expect(page.getByRole('heading', { name: 'Mill — Living Spec' })).toBeVisible()
 })
 
-// Scopes to the action's own card (.runbook-card) rather than DOM-position
+// Scopes to the action's own card via a data-testid (stable regardless of
+// CSS Modules hashing the visual class name) rather than DOM-position
 // traversal from the heading, so this doesn't break on unrelated layout
 // changes inside the card.
 function actionCard(page: import('@playwright/test').Page, actionName: string) {
-  return page.locator('.runbook-card', { has: page.getByRole('heading', { name: actionName }) })
+  return page.locator('[data-testid="runbook-card"]', { has: page.getByRole('heading', { name: actionName }) })
 }
 
 test('Clipboard → Markdown responds gracefully with no HTML on the clipboard', async ({ page }) => {

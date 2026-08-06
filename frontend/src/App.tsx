@@ -6,6 +6,7 @@ import RunbookView from "./RunbookView";
 import ActivityView from "./ActivityView";
 import { RunbookService } from "../bindings/github.com/alicoding/mill";
 import { useAppStore } from "./store";
+import styles from "./App.module.css";
 
 // Show the actual Wails version this project was generated against.
 const wailsVersion = "v3.0.0-beta.4";
@@ -64,7 +65,7 @@ function App() {
   return (
     <div className="app-shell">
       {isDevBuild && (
-        <Label variant="severe" size="small" className="dev-ribbon">
+        <Label variant="severe" size="small" className={styles.devRibbon}>
           DEV · loaded {loadedAt}
         </Label>
       )}
@@ -87,14 +88,14 @@ function App() {
 
       {view === 'spec' && <SpecView/>}
 
-      <hr className="footer-divider"/>
-      <footer className="footer">
-        <span className="footer-version"><span>{wailsVersion}</span></span>
-        <span className="footer-time">
+      <hr className={styles.divider}/>
+      <footer className={styles.footer}>
+        <span className={styles.version}><span>{wailsVersion}</span></span>
+        <span className={styles.time}>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
           <span>{time}</span>
         </span>
-        <a className="footer-docs" data-wml-openURL="https://v3.wails.io" aria-label="Wails documentation">Docs
+        <a className={styles.docs} data-wml-openURL="https://v3.wails.io" aria-label="Wails documentation">Docs
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg>
         </a>
       </footer>

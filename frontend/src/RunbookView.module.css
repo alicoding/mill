@@ -1,0 +1,63 @@
+/* Shared by RunbookView.tsx and ActivityView.tsx -- both render the same
+   card/list visual language, so this stays one module imported by both
+   rather than duplicating ~15 rules across two files. Layout/type/color
+   otherwise come from Primer components (Stack, Heading, Text, Button,
+   Label, SkeletonBox); the classes below are only for what those don't
+   cover (card chrome, icon gutter, empty/loading state, result/error
+   blocks), built entirely from Primer's design tokens (@primer/primitives
+   CSS custom properties) -- Primer React v38 dropped styled-components/sx/
+   Box in favor of exactly this: CSS Modules + CSS variables. Root scroll/
+   clip behavior comes from the global .view-pane class (src/index.css),
+   applied alongside this module's .runbook class. */
+.runbook {
+    --wails-draggable: no-drag;
+    max-width: 760px;
+    margin: 0 auto;
+    padding: var(--s-3) var(--s-4) var(--s-5);
+    color: var(--fgColor-default);
+}
+.subtitle { margin: 0 0 var(--s-3); }
+.muted { color: var(--fgColor-muted); }
+.card {
+    background: var(--bgColor-muted);
+    border: 1px solid var(--borderColor-default);
+    border-radius: var(--borderRadius-medium);
+    padding: var(--base-size-12) var(--base-size-16);
+}
+.icon {
+    display: inline-flex;
+    color: var(--fgColor-muted);
+    padding-top: 2px;
+}
+.empty {
+    text-align: center;
+    padding: var(--s-4) 0;
+    color: var(--fgColor-muted);
+}
+.skeletonLine { margin-bottom: var(--base-size-8); }
+.itemControls { flex-shrink: 0; }
+.recording { color: var(--fgColor-attention); white-space: nowrap; }
+.error { color: var(--fgColor-danger); margin: var(--base-size-8) 0 0; }
+.result {
+    user-select: text;
+    margin-top: var(--base-size-8);
+    padding: var(--base-size-8) var(--base-size-12);
+    border-radius: var(--borderRadius-medium);
+    background: var(--bgColor-inset);
+    border: 1px solid var(--borderColor-default);
+    color: var(--fgColor-default);
+    font-family: var(--fontStack-monospace);
+    font-size: 12.5px;
+    white-space: pre-wrap;
+    word-break: break-word;
+    max-height: 240px;
+    overflow-y: auto;
+}
+.activityEntry:last-child .activityRow { border-bottom: none; }
+.activityRow {
+    padding: var(--base-size-4) 0;
+    border-bottom: 1px solid var(--borderColor-muted);
+}
+.activityRowClickable { cursor: pointer; }
+.activityRowClickable:hover { background: var(--bgColor-muted); }
+.activitySpacer { display: inline-block; width: 12px; }
