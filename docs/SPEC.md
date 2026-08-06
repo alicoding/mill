@@ -214,6 +214,21 @@ that environment, on something testable directly in this dev session:
   version at build time rather than assuming it still holds. `OPEN`
   (exact identifiers, verify at implementation time) / `LOCKED` (the
   show-current-state-and-deep-link pattern itself is worth using).
+- **Progressive enhancement by permission, not a hard gate.** `LOCKED`
+  Zero-permission floor: browsing the Runbook and running an action by
+  clicking it always works, no OS permission required. Accessibility
+  permission (needed for global hotkeys and simulated auto-paste/auto-
+  submit) is additive convenience on top — if it's not granted, those two
+  features go away, but the app is never blocked, same principle as §1's
+  "never harder than the baseline." Mill's messaging must distinguish two
+  different ungranted-permission situations, not treat them as one: (a) the
+  user can grant it themselves (show the deep-link), vs (b) the machine is
+  managed/MDM'd and the user lacks the admin rights to change Privacy
+  settings at all, in which case the message should say what to ask IT for,
+  not imply a self-serve fix that isn't actually available to them. Detecting
+  which situation applies (e.g. checking admin-group membership) is a
+  refinement for later, not required to ship the basic distinction in the
+  UI copy.
 
 ## 3. Capability composition — how nodes connect
 
