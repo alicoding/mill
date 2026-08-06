@@ -339,20 +339,38 @@ that environment, on something testable directly in this dev session:
   next build step.
 - **Permissions UX pattern for when this needs Accessibility access**:
   macOS supports deep-linking straight into a specific System Settings pane
-  via the `x-apple.systempreferences:` URL scheme (`open
-  "x-apple.systempreferences:com.apple.Keyboard-Settings.extension?Shortcuts"`,
-  confirmed via search) — this is the exact mechanism Hammerspoon itself
-  uses for its own "grant Accessibility permission" prompt, and Mill will
-  need the same prompt once hotkeys/simulated-paste land. Caveat: this is
-  not an official documented Apple API — it's community-reverse-engineered,
-  and identifiers have broken before across macOS System Settings rewrites
-  (confirmed: the pre-Ventura Accessibility deep-link stopped working when
-  Ventura rebuilt System Settings). Use it, but with a plain-language
-  fallback for when the link silently stops landing correctly — don't trust
-  it blindly, and verify the exact identifier against the target macOS
-  version at build time rather than assuming it still holds. `OPEN`
-  (exact identifiers, verify at implementation time) / `LOCKED` (the
-  show-current-state-and-deep-link pattern itself is worth using).
+  via the `x-apple.systempreferences:` URL scheme — this is the exact
+  mechanism Hammerspoon/Raycast/1Password all use for their own "grant
+  Accessibility permission" prompts. `RunbookView.tsx`'s Accessibility
+  error now shows an "Open Accessibility Settings" button (`Browser.OpenURL`
+  from `@wailsio/runtime`, not `data-wml-openURL` — the button only exists
+  once a bindingError fires, well after WML's one-time mount-time DOM scan,
+  so the imperative call is used instead of the declarative tag to avoid a
+  wire-up timing gap) pointing at
+  `x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility`
+  — **verified directly on this machine (macOS 26.5.2/25F84), not assumed**:
+  ran it via `open`, confirmed by the user it landed on Privacy & Security →
+  Accessibility, not just System Settings' default screen. Caveat still
+  stands: this is not an official documented Apple API — it's
+  community-reverse-engineered, and identifiers have broken before across
+  macOS System Settings rewrites (the pre-Ventura Accessibility deep-link
+  stopped working when Ventura rebuilt System Settings), so re-verify
+  against the target macOS version if this stops landing correctly after a
+  future update. `LOCKED` (identifier verified + wired up for macOS 26;
+  the show-current-state-and-deep-link pattern itself).
+- **Dev builds re-trigger the Accessibility grant on every rebuild** —
+  root-caused a real "a hotkey registered and fired cleanly, then after
+  the next `task dev` restart the identical combo failed to register at
+  all" confusion. `build/darwin/Taskfile.yml`'s dev-build task runs
+  `codesign --force --deep --sign -` (ad-hoc signing) on every single
+  build, which changes `bin/mill.dev.app`'s code identity each time —
+  macOS's TCC ties an Accessibility grant to that identity, so every dev
+  rebuild looks like a brand-new, ungranted app to TCC. Not a bug in
+  Mill's own code; a known category of friction with ad-hoc-signed local
+  dev builds. No fix implemented (a stable local signing identity would
+  need its own investigation) — noted here so it isn't re-debugged from
+  scratch next time it's hit. `LOCKED` (the root cause) / `OPEN` (whether
+  it's worth a fix, e.g. a consistent local dev signing identity).
 - **Progressive enhancement by permission, not a hard gate.** `LOCKED`
   Zero-permission floor: browsing the Runbook and running an action by
   clicking it always works, no OS permission required. Accessibility
