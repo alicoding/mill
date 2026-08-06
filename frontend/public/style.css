@@ -59,22 +59,6 @@ body {
     user-select: text;
 }
 
-/* ----- Background layer ----------------------------------------------------
-   A fixed, full-viewport layer rather than `background-attachment: fixed`
-   (which iOS WKWebView ignores / renders janky). A dark gradient is layered
-   over the photo so foreground text stays legible. On desktop the gradient is
-   weighted to the left, where the content sits. */
-.bg {
-    position: fixed;
-    inset: 0;
-    z-index: -1;
-    background:
-        linear-gradient(90deg, rgba(6, 7, 15, 0.94) 0%, rgba(6, 7, 15, 0.78) 32%,
-            rgba(6, 7, 15, 0.42) 64%, rgba(6, 7, 15, 0.30) 100%),
-        linear-gradient(0deg, rgba(6, 7, 15, 0.70) 0%, rgba(6, 7, 15, 0.10) 45%),
-        url("/bg-desktop.jpg") center / cover no-repeat;
-}
-
 body {
     min-height: 100vh;
     min-height: 100dvh;
@@ -342,12 +326,6 @@ input[type="text"] {
 
 /* ----- Mobile -------------------------------------------------------------- */
 @media (max-width: 640px) {
-    .bg {
-        background:
-            linear-gradient(0deg, rgba(6, 7, 15, 0.92) 0%, rgba(6, 7, 15, 0.55) 40%,
-                rgba(6, 7, 15, 0.45) 100%),
-            url("/bg-mobile.jpg") center / cover no-repeat;
-    }
     .container { align-items: center; text-align: center; margin: 0 auto; }
     /* Stack the title onto two lines ("Wails +" / "Javascript") like the target. */
     .title-accent { display: block; }
@@ -367,31 +345,12 @@ input[type="text"] {
     .footer-time svg { width: 13px; height: 13px; }
 }
 
-/* View switcher (Runbook / Spec / Demo). */
-.view-switch {
+/* View switcher (Runbook / Spec / Demo) is Primer's UnderlineNav — no bespoke CSS needed. */
+nav[aria-label="Mill"] {
     --wails-draggable: no-drag;
-    display: flex;
-    gap: var(--s-1);
-    padding: var(--s-2) var(--s-3) 0;
+    padding: 0 var(--s-3);
     position: relative;
     z-index: 1;
-}
-.view-switch button {
-    background: var(--glass);
-    border: 1px solid var(--glass-border);
-    border-radius: var(--radius);
-    color: var(--muted);
-    font: inherit;
-    font-size: 13px;
-    padding: 6px 14px;
-    cursor: pointer;
-    transition: color 0.15s ease, background 0.15s ease, border-color 0.15s ease;
-}
-.view-switch button:hover { color: var(--text); background: var(--glass-strong); }
-.view-switch button.is-active {
-    color: var(--text);
-    background: var(--glass-strong);
-    border-color: rgba(255, 77, 77, 0.45);
 }
 
 /* Spec view: rendered markdown, selectable, scrollable. */
@@ -416,7 +375,11 @@ input[type="text"] {
 .spec ul, .spec ol { padding-left: 1.3em; }
 .spec strong { color: var(--text); }
 
-/* Runbook view: list of runnable actions. */
+/* Runbook view: list of runnable actions. Layout/type/color come from Primer
+   components (Stack, Heading, Text, Button, Label); the handful of classes
+   below are only for what those components don't cover (card chrome,
+   result/error blocks), and are themselves built from Primer's design
+   tokens (@primer/primitives CSS custom properties), not hand-picked colors. */
 .runbook {
     --wails-draggable: no-drag;
     max-width: 760px;
@@ -424,73 +387,30 @@ input[type="text"] {
     padding: var(--s-3) var(--s-4) var(--s-5);
     overflow-y: auto;
     max-height: calc(100vh - 60px);
+    color: var(--fgColor-default);
 }
-.runbook h1 { font-size: 1.6rem; margin: 0 0 var(--s-1); }
-.runbook-subtitle { color: var(--muted); font-size: 14px; margin: 0 0 var(--s-3); }
-.runbook-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--s-2); }
-.runbook-item {
-    background: var(--glass);
-    border: 1px solid var(--glass-border);
-    border-radius: var(--radius);
-    padding: var(--s-2) var(--s-3);
+.runbook-subtitle { margin: 0 0 var(--s-3); }
+.runbook-muted { color: var(--fgColor-muted); }
+.runbook-card {
+    background: var(--bgColor-muted);
+    border: 1px solid var(--borderColor-default);
+    border-radius: var(--borderRadius-medium);
+    padding: var(--base-size-12) var(--base-size-16);
 }
-.runbook-item-header { display: flex; align-items: center; justify-content: space-between; gap: var(--s-3); }
-.runbook-item h2 { font-size: 15px; margin: 0 0 4px; color: var(--text); }
-.runbook-item p { font-size: 13px; color: var(--muted); margin: 0; }
-.runbook-item button {
-    flex-shrink: 0;
-    background: var(--grad);
-    border: none;
-    border-radius: var(--radius);
-    color: white;
-    font: inherit;
-    font-size: 13px;
-    font-weight: 600;
-    padding: 7px 16px;
-    cursor: pointer;
-}
-.runbook-item button:disabled { opacity: 0.6; cursor: default; }
-.runbook-item button:not(:disabled):hover { box-shadow: 0 6px 18px rgba(255, 45, 114, 0.4); }
-
-.runbook-item-controls { display: flex; align-items: center; gap: var(--s-1); flex-shrink: 0; }
-.runbook-shortcut { display: flex; align-items: center; gap: 6px; }
-.runbook-shortcut kbd {
-    font-family: ui-monospace, "SF Mono", Menlo, monospace;
-    font-size: 12px;
-    color: var(--text);
-    background: var(--glass-strong);
-    border: 1px solid var(--glass-border);
-    border-radius: 6px;
-    padding: 4px 8px;
-}
-.runbook-shortcut-set, .runbook-shortcut-edit, .runbook-shortcut-clear {
-    background: transparent !important;
-    border: 1px solid var(--glass-border) !important;
-    color: var(--muted) !important;
-    font-size: 12px !important;
-    font-weight: 500 !important;
-    padding: 6px 10px !important;
-    box-shadow: none !important;
-}
-.runbook-shortcut-set:hover, .runbook-shortcut-edit:hover, .runbook-shortcut-clear:hover {
-    color: var(--text) !important;
-    border-color: rgba(255, 77, 77, 0.45) !important;
-}
-.runbook-recording {
-    font-size: 12px;
-    color: var(--accent-2);
-    white-space: nowrap;
-}
-.runbook-result, .runbook-error {
+.runbook-recording { color: var(--fgColor-attention); white-space: nowrap; }
+.runbook-error { color: var(--fgColor-danger); margin: var(--base-size-8) 0 0; }
+.runbook-result {
     user-select: text;
-    margin-top: var(--s-2);
-    padding: var(--s-1) var(--s-2);
-    border-radius: 8px;
+    margin-top: var(--base-size-8);
+    padding: var(--base-size-8) var(--base-size-12);
+    border-radius: var(--borderRadius-medium);
+    background: var(--bgColor-inset);
+    border: 1px solid var(--borderColor-default);
+    color: var(--fgColor-default);
+    font-family: var(--fontStack-monospace);
     font-size: 12.5px;
     white-space: pre-wrap;
     word-break: break-word;
     max-height: 240px;
     overflow-y: auto;
 }
-.runbook-result { background: rgba(255, 255, 255, 0.04); color: var(--text); border: 1px solid var(--glass-border); }
-.runbook-error { background: rgba(255, 77, 77, 0.08); color: #ff9a9a; border: 1px solid rgba(255, 77, 77, 0.25); }
