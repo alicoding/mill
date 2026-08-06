@@ -68,11 +68,13 @@ implementing one option — surface the choice.
   (no native/Rust dependency anywhere in its tree), actively maintained.
   Ships finished, pre-styled components — import and use them, don't
   reassemble primitives from scratch the way shadcn-style kits require.
-  The current bespoke "Neon-night" CSS custom properties in
-  `frontend/public/style.css` predate this decision and are a known
-  migration debt, not the standard going forward — new UI work should use
-  Primer components and its design tokens (`@primer/primitives`), not add
-  more bespoke CSS.
+  Where custom CSS is genuinely needed (layout Primer doesn't cover),
+  write it as a co-located `*.module.css` file consuming Primer's design
+  tokens (`@primer/primitives` CSS custom properties) — Primer React v38+
+  itself dropped `styled-components`/`sx`/`Box` and directs adopters to
+  CSS Modules + CSS variables instead, so this is the framework's own
+  current guidance, not an invented preference (see `docs/SPEC.md` §1.3).
+  Don't add a single global stylesheet or reach for Tailwind/CSS-in-JS.
 
 ## Build / dev commands
 
