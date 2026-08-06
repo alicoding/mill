@@ -26,10 +26,15 @@ function App() {
   const [time, setTime] = useState<string>('Listening for Time event...');
   const [actions, setActions] = useState<Action[] | null>(null);
   const [activity, setActivity] = useState<ActivityEntry[]>([]);
-  // Captured once per mount. A Go-file change forces a full app reload
-  // (Go isn't hot-reloadable, unlike frontend-only edits which apply via
-  // Vite HMR without remounting) -- so this timestamp doubles as "when
-  // did the last Go rebuild actually land," not just page-load trivia.
+  // Captured once per mount -- correct for a Go-triggered relaunch (Go
+  // isn't hot-reloadable, so a Go change forces a fresh mount) but not
+  // for a frontend-only HMR edit, which updates live without remounting.
+  // A vite:afterUpdate-based "true last build" version was tried and
+  // reverted: subscribing to it from App.tsx, the same file that keeps
+  // getting hot-edited, hit a real bug where React Fast Refresh didn't
+  // reliably clean up the old listener across repeated hot-swaps of this
+  // module, leaving stray listeners firing on unrelated updates. Not
+  // worth chasing further for a dev-convenience ribbon -- see SPEC.md.
   const [loadedAt] = useState(() => new Date().toLocaleTimeString());
 
   useEffect(() => {

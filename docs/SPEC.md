@@ -380,6 +380,21 @@ that environment, on something testable directly in this dev session:
   own inline result block on Runbook, just for the headless hotkey path.
   Empty `Result` (failure case) means no expand affordance at all, not an
   empty expanded block. `LOCKED`
+- **Small `DEV` ribbon (top-right, App.tsx) answers "am I looking at a dev
+  build, and is it current."** Gated on `import.meta.env.DEV` (true only
+  under a real `vite serve` process — verified directly that this is
+  false for `vite build` regardless of `--mode`, see the repo-layout
+  section above). Shows a timestamp captured once per mount — correct for
+  a Go-triggered relaunch (the common case that actually needs checking),
+  not for a frontend-only HMR edit that never remounts. A fancier version
+  tried tracking true "last build" via `import.meta.hot.on('vite:after
+  Update', ...)` and was reverted: subscribing to that event from
+  `App.tsx`, the very file that keeps getting hot-edited, hit React Fast
+  Refresh not reliably cleaning up the old listener across repeated
+  hot-swaps of the same module — stray listeners kept firing. Not worth
+  chasing further for a dev-convenience ribbon; mount-time-only is simpler
+  and can't have that bug class. `LOCKED` (mount-time approach) / noted so
+  the HMR-self-subscription approach isn't retried blind.
 - **Progressive enhancement by permission, not a hard gate.** `LOCKED`
   Zero-permission floor: browsing the Runbook and running an action by
   clicking it always works, no OS permission required. Accessibility
