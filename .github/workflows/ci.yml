@@ -40,6 +40,14 @@ jobs:
   lint-go:
     runs-on: ubuntu-latest
     needs: frontend
+    env:
+      # Same reason as build-go's ubuntu-latest entry: without this,
+      # golangci-lint's own package-loading step needs cgo + X11 dev
+      # headers for internal/adapters/hotkey's desktop-tagged file.
+      # Real failure the first time this ran in actual CI, not caught
+      # locally beforehand -- golangci-lint-action has no CGO_ENABLED
+      # input, hence the job-level env instead.
+      CGO_ENABLED: '0'
     steps:
       - uses: actions/checkout@v7
       - uses: actions/download-artifact@v8
@@ -53,6 +61,7 @@ jobs:
       - uses: golangci/golangci-lint-action@v9
         with:
           version: v2.12
+          args: --build-tags=server
 
   build-go:
     needs: frontend
@@ -171,10 +180,20 @@ jobs:
         with:
           name: frontend-dist
           path: frontend/dist
+      # Two separate steps, not one `go-package: ./internal/... .` -- the
+      # action passes go-package through a quoted shell variable, so a
+      # space-separated string becomes ONE malformed pattern
+      # ("no packages matched the provided patterns"), not two. Real
+      # failure caught on the first actual CI run, not assumed.
       - uses: golang/govulncheck-action@v1
         with:
           go-version-input: '1.25'
-          go-package: ./internal/... .
+          go-package: ./internal/...
           repo-checkout: false # already checked out above; the action's
           # own default checkout would wipe the frontend-dist artifact
           # just downloaded, which the root package needs (//go:embed).
+      - uses: golang/govulncheck-action@v1
+        with:
+          go-version-input: '1.25'
+          go-package: .
+          repo-checkout: false
