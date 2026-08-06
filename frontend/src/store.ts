@@ -13,6 +13,7 @@ export type ActivityEntry = HotkeyActivity & { id: string; time: string }
 export type View =
   | { kind: 'runbook' }
   | { kind: 'activity' }
+  | { kind: 'composition' }
   | { kind: 'spec' }
   | { kind: 'placeholder'; capabilityId: string }
 
@@ -25,6 +26,8 @@ export function viewFor(capability: Capability): View {
       return { kind: 'runbook' }
     case ViewKind.ViewActivity:
       return { kind: 'activity' }
+    case ViewKind.ViewComposition:
+      return { kind: 'composition' }
     default:
       return { kind: 'placeholder', capabilityId: capability.ID }
   }

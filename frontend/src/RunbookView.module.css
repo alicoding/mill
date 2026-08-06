@@ -61,3 +61,10 @@
 .activityRowClickable { cursor: pointer; }
 .activityRowClickable:hover { background: var(--bgColor-muted); }
 .activitySpacer { display: inline-block; width: 12px; }
+
+/* CompositionView: a section header between the node-primitives list and
+   the recipes list, and the horizontal node-chip chain inside a recipe
+   card (docs/SPEC.md §3's config-first-not-canvas prototype -- plain
+   flex-wrapped chips, no graph/canvas library). */
+.sectionHeading { margin: var(--s-4) 0 var(--base-size-8); }
+.recipeChain { flex-wrap: wrap; margin-top: var(--base-size-8); }
