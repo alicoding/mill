@@ -39,8 +39,19 @@ implementing one option — surface the choice.
   dependency for the core loop.
 - **CI/CD from day one**, not bolted on later. Every capability that lands
   needs its checks wired in the same change, not a follow-up.
-- **SOLID, DRY, DDD discipline** — proper domain/class separation as real
-  domain logic lands. The current scaffold (`main.go`, `greetservice.go`,
+- **SOLID, DRY, DDD discipline — with a concrete reuse boundary, not just a
+  platitude.** Generic/commodity concerns (parsing, UI widgets, OS
+  plumbing, wire protocols) are fine to buy via a well-vetted library —
+  that's the "compose, don't reinvent" rule everywhere else in this doc.
+  Mill's actual **core domain** — what a guardrail evaluates and why, the
+  Capture → Process → Apply orchestration itself, the action/capability
+  model and its composition rules, session-identity resolution across
+  tab/agent/process — must stay hand-written, Mill's own code, never
+  delegated to or reimplemented by a library, because no library has an
+  opinion on it; it's the specific reason Mill exists. Keep commodity
+  dependencies behind a clean interface at the domain boundary (ports/
+  adapters) so swapping the underlying library later never means rewriting
+  domain logic. The current scaffold (`main.go`, `greetservice.go`,
   `specservice.go`, `frontend/`) is intentionally trivial; do not
   over-engineer it prematurely, but do not bolt unrelated concerns onto it
   either once real capabilities start landing.
