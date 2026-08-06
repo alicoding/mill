@@ -92,6 +92,13 @@ func main() {
 		// Window sized to the golden ratio (1000 / 618 ≈ 1.618).
 		Width:  1000,
 		Height: 618,
+		// MinWidth/MinHeight are Wails3's own mechanism for "don't let the
+		// window shrink small enough to break the layout" (see
+		// docs/SPEC.md §2.2) -- not a custom guard. Floor chosen so the
+		// UnderlineNav tabs, a Runbook card's action row, and the footer
+		// all still fit without wrapping into each other.
+		MinWidth:  640,
+		MinHeight: 420,
 		Mac: application.MacWindow{
 			InvisibleTitleBarHeight: 50,
 			Backdrop:                application.MacBackdropTranslucent,

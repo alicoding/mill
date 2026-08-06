@@ -446,6 +446,31 @@ that environment, on something testable directly in this dev session:
   second logging setup. This is a stopgap for debuggability, not §7's
   actual inspectable/persistent process-tracking mechanism — that's
   ADR-0004's job once `internal/domain/execution` exists.
+- **Window/scroll layout researched against Wails3's own docs before
+  touching CSS** — confirmed Wails3's window management (`MinWidth`/
+  `MinHeight`/`MaxWidth`/`MaxHeight`/`Zoom`/etc. on `WebviewWindowOptions`)
+  only owns the native OS window frame; it has no opinion on in-page
+  scrolling, that's plain CSS same as any web page. `main.go`'s window now
+  sets `MinWidth: 640, MinHeight: 420` — Wails' own documented mechanism
+  for "don't let the window shrink small enough to break the layout,"
+  which Mill wasn't using. Separately, `.spec`/`.runbook` previously
+  scrolled via a hand-guessed `max-height: calc(100vh - 60px)` duplicated
+  in both rules — replaced with the standard flexbox scrolling-pane
+  pattern (`flex: 1 1 auto; min-height: 0; overflow-y: auto`). Getting
+  that pattern to actually clip required two more pieces, both found by
+  stress-testing with 200 paragraphs of dummy content (not assumed): (1)
+  the flex root needs a *bounded* height, not `min-height: 100vh` — `html`
+  now sets `height: 100%; overflow: hidden`, matching Wails' own documented
+  overscroll-bounce fix (https://wails.io/docs/guides/overscroll/); (2)
+  Primer's `ThemeProvider`/`BaseStyles` inject their own plain `<div>`s
+  (`display: block`, confirmed by walking the live DOM) between `#root`
+  and Mill's actual content, which broke the flex chain — rather than
+  chasing that vendor-owned markup with `display: contents` (fragile
+  against a future Primer DOM change), `App.tsx` now renders its own
+  `.app-shell` div as the real flex-column layout root, sized with
+  viewport units (`100dvh`) rather than `%` since percentage heights
+  require every ancestor to have a definite height, which the Primer
+  wrapper divs don't. `LOCKED`
 
 ## 3. Capability composition — how nodes connect
 
