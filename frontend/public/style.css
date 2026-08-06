@@ -145,10 +145,12 @@ nav[aria-label="Mill"] {
 .spec strong { color: var(--text); }
 
 /* Runbook view: list of runnable actions. Layout/type/color come from Primer
-   components (Stack, Heading, Text, Button, Label); the handful of classes
-   below are only for what those components don't cover (card chrome,
-   result/error blocks), and are themselves built from Primer's design
-   tokens (@primer/primitives CSS custom properties), not hand-picked colors. */
+   components (Stack, Heading, Text, Button, Label, SkeletonBox); the classes
+   below are only for what those components don't cover (card chrome, icon
+   gutter, empty/loading state, result/error blocks), and are themselves
+   built entirely from Primer's design tokens (@primer/primitives CSS custom
+   properties), not hand-picked colors — this Primer React version (38.x)
+   predates the sx-prop/Box API, so tokens are consumed this way instead. */
 .runbook {
     --wails-draggable: no-drag;
     max-width: 760px;
@@ -166,6 +168,18 @@ nav[aria-label="Mill"] {
     border-radius: var(--borderRadius-medium);
     padding: var(--base-size-12) var(--base-size-16);
 }
+.runbook-icon {
+    display: inline-flex;
+    color: var(--fgColor-muted);
+    padding-top: 2px;
+}
+.runbook-empty {
+    text-align: center;
+    padding: var(--s-4) 0;
+    color: var(--fgColor-muted);
+}
+.runbook-skeleton-line { margin-bottom: var(--base-size-8); }
+.runbook-item-controls { flex-shrink: 0; }
 .runbook-recording { color: var(--fgColor-attention); white-space: nowrap; }
 .runbook-error { color: var(--fgColor-danger); margin: var(--base-size-8) 0 0; }
 .runbook-result {
