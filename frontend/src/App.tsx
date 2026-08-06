@@ -6,7 +6,7 @@ import RunbookView from "./RunbookView";
 import ActivityView from "./ActivityView";
 import PlaceholderView from "./PlaceholderView";
 import { RunbookService, CapabilitiesService } from "../bindings/github.com/alicoding/mill";
-import { useAppStore } from "./store";
+import { useAppStore, viewFor, viewsEqual } from "./store";
 import styles from "./App.module.css";
 
 // Show the actual Wails version this project was generated against.
@@ -28,6 +28,7 @@ function App() {
   const setActions = useAppStore((s) => s.setActions);
   const pushActivity = useAppStore((s) => s.pushActivity);
   const setCapabilities = useAppStore((s) => s.setCapabilities);
+  const capabilities = useAppStore((s) => s.capabilities);
   // Captured once per mount -- correct for a Go-triggered relaunch (Go
   // isn't hot-reloadable, so a Go change forces a fresh mount) but not
   // for a frontend-only HMR edit, which updates live without remounting.
@@ -77,13 +78,25 @@ function App() {
         </Label>
       )}
 
+      {/* Every capability gets a nav entry, built or not (docs/SPEC.md
+          §2.2) -- driven by CapabilitiesService's own data so the nav
+          bar always reflects Mill's actual shape, not just what's
+          shipped. Spec stays a fixed, non-capability entry: it's the
+          directory/docs page itself, not a product feature with a
+          build status. */}
       <UnderlineNav aria-label="Mill">
-        <UnderlineNav.Item aria-current={view.kind === 'runbook' ? 'page' : undefined} onSelect={(e) => { e.preventDefault(); setView({ kind: 'runbook' }) }}>
-          Runbook
-        </UnderlineNav.Item>
-        <UnderlineNav.Item aria-current={view.kind === 'activity' ? 'page' : undefined} onSelect={(e) => { e.preventDefault(); setView({ kind: 'activity' }) }}>
-          Activity
-        </UnderlineNav.Item>
+        {capabilities.map((c) => {
+          const target = viewFor(c);
+          return (
+            <UnderlineNav.Item
+              key={c.ID}
+              aria-current={viewsEqual(view, target) ? 'page' : undefined}
+              onSelect={(e) => { e.preventDefault(); setView(target) }}
+            >
+              {c.NavLabel || c.Label}
+            </UnderlineNav.Item>
+          );
+        })}
         <UnderlineNav.Item aria-current={view.kind === 'spec' ? 'page' : undefined} onSelect={(e) => { e.preventDefault(); setView({ kind: 'spec' }) }}>
           Spec
         </UnderlineNav.Item>

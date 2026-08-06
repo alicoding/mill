@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import type { HotkeyActivity } from '../bindings/github.com/alicoding/mill/models'
 import type { Action } from '../bindings/github.com/alicoding/mill/internal/domain/runbook/models'
+import { ViewKind } from '../bindings/github.com/alicoding/mill/internal/domain/capabilities/models'
 import type { Capability } from '../bindings/github.com/alicoding/mill/internal/domain/capabilities/models'
 
 export type ActivityEntry = HotkeyActivity & { id: string; time: string }
@@ -13,6 +14,26 @@ export type View =
   | { kind: 'activity' }
   | { kind: 'spec' }
   | { kind: 'placeholder'; capabilityId: string }
+
+// Single mapping from a capability's Go-declared View to the frontend's
+// own View union -- shared by the top nav and CapabilityIndex so both
+// surfaces navigate identically instead of each re-deriving it.
+export function viewFor(capability: Capability): View {
+  switch (capability.View) {
+    case ViewKind.ViewRunbook:
+      return { kind: 'runbook' }
+    case ViewKind.ViewActivity:
+      return { kind: 'activity' }
+    default:
+      return { kind: 'placeholder', capabilityId: capability.ID }
+  }
+}
+
+export function viewsEqual(a: View, b: View): boolean {
+  if (a.kind !== b.kind) return false
+  if (a.kind === 'placeholder' && b.kind === 'placeholder') return a.capabilityId === b.capabilityId
+  return true
+}
 
 const MAX_ACTIVITY_ENTRIES = 50
 
