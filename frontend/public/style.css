@@ -207,7 +207,11 @@ nav[aria-label="Mill"] {
     max-height: 240px;
     overflow-y: auto;
 }
+.runbook-activity-entry:last-child .runbook-activity-row { border-bottom: none; }
 .runbook-activity-row {
     padding: var(--base-size-4) 0;
     border-bottom: 1px solid var(--borderColor-muted);
 }
+.runbook-activity-row-clickable { cursor: pointer; }
+.runbook-activity-row-clickable:hover { background: var(--bgColor-muted); }
+.runbook-activity-spacer { display: inline-block; width: 12px; }

@@ -371,6 +371,15 @@ that environment, on something testable directly in this dev session:
   need its own investigation) — noted here so it isn't re-debugged from
   scratch next time it's hit. `LOCKED` (the root cause) / `OPEN` (whether
   it's worth a fix, e.g. a consistent local dev signing identity).
+- **`HotkeyActivity` carries the actual result, not just a byte count** —
+  the Activity page's rows expand (click, chevron affordance) to show the
+  full text a hotkey fire copied to the clipboard, not just "copied to
+  clipboard (N bytes)". Added once the fire-path logging above actually
+  proved a hotkey works end-to-end and the natural next question became
+  "what did it actually produce" — the same instinct as the Run button's
+  own inline result block on Runbook, just for the headless hotkey path.
+  Empty `Result` (failure case) means no expand affordance at all, not an
+  empty expanded block. `LOCKED`
 - **Progressive enhancement by permission, not a hard gate.** `LOCKED`
   Zero-permission floor: browsing the Runbook and running an action by
   clicking it always works, no OS permission required. Accessibility

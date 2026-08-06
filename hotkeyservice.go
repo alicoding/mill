@@ -84,16 +84,16 @@ func (h *HotkeyService) Assign(actionID string, mods []string, key string) (stri
 			result, err := h.runbook.Run(actionID)
 			if err != nil {
 				h.logger.Error("hotkey action failed", "action", actionID, "binding", label, "error", err)
-				emitHotkeyActivity(actionID, label, false, err.Error())
+				emitHotkeyActivity(actionID, label, false, err.Error(), "")
 				continue
 			}
 			if err := clipboard.WriteText(result); err != nil {
 				h.logger.Error("hotkey result clipboard write failed", "action", actionID, "binding", label, "error", err)
-				emitHotkeyActivity(actionID, label, false, "clipboard write failed: "+err.Error())
+				emitHotkeyActivity(actionID, label, false, "clipboard write failed: "+err.Error(), "")
 				continue
 			}
 			h.logger.Info("hotkey action completed", "action", actionID, "binding", label, "output_bytes", len(result))
-			emitHotkeyActivity(actionID, label, true, fmt.Sprintf("copied to clipboard (%d bytes)", len(result)))
+			emitHotkeyActivity(actionID, label, true, fmt.Sprintf("copied to clipboard (%d bytes)", len(result)), result)
 		}
 	}()
 
@@ -136,11 +136,12 @@ func formatBinding(mods []string, key string) string {
 // application.Get() is safe to call here: this only ever runs from the
 // Keydown() goroutine, which can't fire before application.New has run
 // and registered the global app instance.
-func emitHotkeyActivity(actionID, binding string, success bool, detail string) {
+func emitHotkeyActivity(actionID, binding string, success bool, detail, result string) {
 	application.Get().Event.Emit("hotkey-activity", HotkeyActivity{
 		ActionID: actionID,
 		Binding:  binding,
 		Success:  success,
 		Detail:   detail,
+		Result:   result,
 	})
 }
