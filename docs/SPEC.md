@@ -332,9 +332,7 @@ that environment, on something testable directly in this dev session:
   anywhere. Each action owns writing its own result to the clipboard as
   part of its own Apply step (`internal/domain/runbook`), not a generic
   post-hoc copy by the hotkey fire path — see the real bug this caught
-  below. Assignments are in-memory only (reset on app restart) —
-  persistence is a deliberate follow-up, not built yet. Integration risk
-  checked before building, not assumed: macOS requires hotkey registration
+  below. Integration risk checked before building, not assumed: macOS requires hotkey registration
   to coexist with the app's own native run loop, confirmed working via the
   library's own Fyne example (registers from a background goroutine while
   `ShowAndRun` owns the main thread) — same shape used here alongside
@@ -463,6 +461,48 @@ that environment, on something testable directly in this dev session:
   second logging setup. This is a stopgap for debuggability, not §7's
   actual inspectable/persistent process-tracking mechanism — that's
   ADR-0004's job once `internal/domain/execution` exists.
+- **Hotkey assignments persist across restarts, via Wails3's own built-in
+  `KVStoreService`** (`pkg/services/kvstore`) — researched before building
+  (confirmed directly by reading its source, not assumed from a search
+  summary): a JSON-file-backed key-value store with optional autosave.
+  `internal/adapters/settings` wraps it behind Mill's own small `Store`
+  interface, per CLAUDE.md's ports/adapters rule for commodity
+  dependencies (persistence is a generic storage concern, same bucket as
+  `internal/adapters/clipboard`/`markdown`, not core domain) — callers
+  depend on Mill's interface, not the concrete Wails type. `main.go`
+  builds the store at `application.Path(application.PathConfigHome)` +
+  `mill/settings.json` — resolves to `~/Library/Application Support/mill/`
+  on macOS (verified against the `adrg/xdg` source Wails uses internally),
+  the same convention Alfred/Raycast/1Password use for their own
+  persisted settings. `HotkeyService.Assign`/`Unassign` write the raw
+  `(mods, key)` pairs (not the display label, which can't be parsed back
+  into modifier/key names) as one JSON blob on every change; a
+  `RestoreBindings` method re-registers everything on the next launch.
+  **Deliberately not wired through Wails' Service lifecycle
+  (`ServiceStartup`/`ServiceShutdown`)**: that would auto-expose the raw
+  KVStore's `Get`/`Set`/`Delete` as JS-callable bindings, letting the
+  frontend bypass `HotkeyService`'s own validation entirely — `main.go`
+  calls `settings.New` (which loads any existing file itself) and
+  `RestoreBindings` directly instead, keeping persistence a Go-only,
+  encapsulated concern. Timing matters here and was checked, not guessed:
+  global hotkey registration needs the native run loop already spinning
+  (see the Fyne-example note above), which is *not* true yet during
+  `ServiceStartup` — `RestoreBindings` is instead called from
+  `app.Event.OnApplicationEvent(events.Common.ApplicationStarted, ...)`,
+  the same hook pattern used in Wails3's own official examples
+  (`examples/events`, `examples/window`). **Verified end-to-end on this
+  machine, not just unit-tested**: assigned a real hotkey via the live
+  desktop app (confirmed `settings.json` on disk held the exact
+  `mods`/`key` pair), killed and relaunched the same built binary without
+  rebuilding (avoids the ad-hoc-codesign/TCC re-grant issue noted above),
+  and confirmed the binding re-registered automatically — both in the
+  slog output (`hotkey registered action=... binding=...`) and in the
+  live UI — with zero user interaction. `internal/adapters/settings` also
+  has its own real-disk round-trip test (`t.TempDir()`, two separate
+  store instances against the same file); `HotkeyService`'s JSON
+  marshal/restore logic is unit-tested against a fake `Store`, consistent
+  with the rest of `HotkeyService` being otherwise real-OS-hotkey-only and
+  not CI-testable (§1.3). `LOCKED`
 - **Window/scroll layout researched against Wails3's own docs before
   touching CSS** — confirmed Wails3's window management (`MinWidth`/
   `MinHeight`/`MaxWidth`/`MaxHeight`/`Zoom`/etc. on `WebviewWindowOptions`)
