@@ -186,14 +186,31 @@ and [`docs/adr/0002-cicd-pipeline-phased-rollout.md`](adr/0002-cicd-pipeline-pha
 - npm workspaces (`frontend/` + a future `browser-extension/`, §5) — not
   adopted yet, revisit when a real second JS package is scaffolded. `go.work`
   not applicable — single Go module is permanent per §1.1. `PARKED`
-- Frontend state management (Zustand or similar) — noted, not adopted.
-  `RunbookView.tsx` is up to 8 `useState` hooks (actions, hotkey bindings,
-  run results/errors, recording state, activity feed) and prop-drilling/
-  scaling pressure is visible, but it's still one view with genuinely
-  local state — reaching for a state library now would be the same
-  premature-architecture mistake CLAUDE.md already warns against for the
-  backend. Revisit once a second stateful view needs to share state with
-  Runbook, not before. `PARKED`
+- **Frontend state management: Zustand adopted.** The PARKED trigger below
+  fired — `ActivityView` (a second stateful view) needed the same
+  `actions`/`activity` state `App.tsx` fetched, threaded down as props.
+  `frontend/src/store.ts` holds `actions`/`activity` in one small store (no
+  multi-slice split — an 8-file frontend doesn't need it yet); `App.tsx`
+  keeps its two data-fetching effects but writes into the store instead of
+  local `useState`, and `RunbookView`/`ActivityView` read the store
+  directly instead of receiving props. Hotkey-recording UI state
+  (`bindings`, `bindingErrors`, `recordingId` in `RunbookView.tsx`)
+  deliberately stayed local `useState` — genuinely single-view state, not
+  a candidate for the shared store. `LOCKED`
+- **Frontend CSS: migrated to CSS Modules.** Primer React v38 (Mill is on
+  38.35.0) dropped its `styled-components`/`sx`/`Box` dependency entirely
+  and its own release notes say to "prefer to use CSS modules over
+  styled-components and css variables over javascript theming"
+  (github.com/primer/react discussion #7086) — not an outside opinion,
+  the framework's own current direction, which Mill's single hand-rolled
+  `public/style.css` predated. Genuinely global chrome (design tokens,
+  `html`/`body` reset, the `.app-shell` flex root, the shared `.view-pane`
+  scroll-clip class) moved to `frontend/src/index.css`, imported from
+  `main.tsx` so it goes through Vite's own pipeline instead of a raw
+  `<link>` tag that bypassed it. Per-view styling split into co-located
+  `*.module.css` files (`RunbookView.module.css` shared by `RunbookView`
+  and `ActivityView`, which already reused the same card/list visual
+  language). `frontend/public/style.css` deleted. `LOCKED`
 - CI: GitHub Actions, all four ADR-0002 phases shipped in
   `.github/workflows/ci.yml` + `.github/workflows/release.yml`.
   `golangci-lint` v2, ESLint flat config, Vitest, `go test -race -cover`,
