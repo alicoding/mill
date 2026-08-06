@@ -44,6 +44,11 @@ tasks:
     cmds:
       - task: common:setup:docker
 
+  setup:hooks:
+    summary: Installs Lefthook's git hooks (run once after cloning)
+    cmds:
+      - lefthook install
+
   build:server:
     summary: Builds the application in server mode (no GUI, HTTP server only)
     cmds:
