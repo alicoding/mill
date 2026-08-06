@@ -44,6 +44,16 @@ implementing one option — surface the choice.
   `specservice.go`, `frontend/`) is intentionally trivial; do not
   over-engineer it prematurely, but do not bolt unrelated concerns onto it
   either once real capabilities start landing.
+- **UI: use Primer React (`@primer/react` + `@primer/primitives`), don't
+  hand-roll bespoke components or CSS.** Verified MIT-licensed, pure JS/TS
+  (no native/Rust dependency anywhere in its tree), actively maintained.
+  Ships finished, pre-styled components — import and use them, don't
+  reassemble primitives from scratch the way shadcn-style kits require.
+  The current bespoke "Neon-night" CSS custom properties in
+  `frontend/public/style.css` predate this decision and are a known
+  migration debt, not the standard going forward — new UI work should use
+  Primer components and its design tokens (`@primer/primitives`), not add
+  more bespoke CSS.
 
 ## Build / dev commands
 

@@ -34,13 +34,17 @@ func main() {
 	// 'Assets' configures the asset server with the 'FS' variable pointing to the frontend files.
 	// 'Bind' is a list of Go struct instances. The frontend has access to the methods of these instances.
 	// 'Mac' options tailor the application when running an macOS.
+	runbook := &RunbookService{}
+	hotkeys := NewHotkeyService(runbook)
+
 	app := application.New(application.Options{
 		Name:        "mill",
 		Description: "A demo of using raw HTML & CSS",
 		Services: []application.Service{
 			application.NewService(&GreetService{}),
 			application.NewService(&SpecService{}),
-			application.NewService(&RunbookService{}),
+			application.NewService(runbook),
+			application.NewService(hotkeys),
 		},
 		Assets: application.AssetOptions{
 			Handler: application.AssetFileServerFS(assets),

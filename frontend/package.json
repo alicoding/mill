@@ -10,6 +10,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@primer/primitives": "^11.10.0",
+    "@primer/react": "^38.35.0",
     "@wailsio/runtime": "latest",
     "marked": "^18.0.9",
     "react": "^18.2.0",
