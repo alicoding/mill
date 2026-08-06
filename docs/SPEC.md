@@ -153,12 +153,13 @@ and [`docs/adr/0002-cicd-pipeline-phased-rollout.md`](adr/0002-cicd-pipeline-pha
   Wails-binding `*service.go` files) — matches wailsapp/wails v3's own CLI
   repo convention, not golang-standards/project-layout (not an official Go
   standard per Russ Cox; aimed at multi-binary services Mill isn't).
-  `internal/domain/` (hand-written: Capture→Process→Apply orchestration,
-  guardrail eval, capability composition, session identity) and
-  `internal/adapters/` (thin wrappers behind small interfaces around
-  commodity libs: clipboard I/O, `html-to-markdown`, `golang.design/x/hotkey`,
-  future MCP SDK) to be introduced per ADR-0001, Phase 2. No `cmd/`, `pkg/`,
-  `api/`. `LOCKED` (shape) / `OPEN` (Phase 2 execution, not yet done)
+  `internal/domain/runbook` (hand-written: the Capture→Process→Apply
+  orchestration for Runbook actions) and `internal/adapters/{clipboard,
+  markdown,hotkey}` (thin wrappers behind small interfaces around commodity
+  libs: clipboard I/O, `html-to-markdown`, `golang.design/x/hotkey`) shipped
+  per ADR-0001 Phase 2. Future domain packages (guardrail eval, capability
+  composition, session identity) land the same way as they're built — no
+  `cmd/`, `pkg/`, `api/`. `LOCKED`
 - No generic `Capability`/`Action`/`Node` interface — §3 is still `OPEN` and
   only 2 concrete Runbook actions exist; the domain/adapter boundary above
   is stable regardless of what §3 decides, the capability schema itself is
@@ -172,7 +173,15 @@ and [`docs/adr/0002-cicd-pipeline-phased-rollout.md`](adr/0002-cicd-pipeline-pha
   shipped in `.github/workflows/ci.yml`. No test job yet: zero tests exist,
   a job with nothing to run is theater. Precedent: wailsapp/wails's own v3
   CI (native-OS matrix, no GoReleaser — wailsapp/wails#747 closed wont-fix).
-  `LOCKED` (Phase 1) / `OPEN` (Phases 2-4, sequencing in ADR-0002)
+  Phase 2 (the `internal/` split above) rode on this CI with no new jobs
+  needed. `LOCKED` (Phases 1-2) / `OPEN` (Phases 3-4, sequencing in
+  ADR-0002)
+- Lefthook (Go, MIT, Evil Martians) runs the same checks locally as a
+  pre-commit hook (`lefthook.yml`), verified end-to-end (a deliberate lint
+  violation was caught and blocked, a clean commit passed) — requested
+  directly: keep the tree as clean as CI enforces, catch violations before
+  they're committed. `task setup:hooks` installs it once per clone.
+  `LOCKED`
 - `HotkeyService` cannot be exercised by headless/server-mode CI — no live
   macOS Cocoa run loop in that mode. Verification stays an explicit manual
   desktop-mode check (`.claude/skills/run-mill`), never a silent CI
