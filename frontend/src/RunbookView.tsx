@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Button, Heading, Label, Stack, Text } from '@primer/react'
 import { RunbookService, HotkeyService } from '../bindings/changeme'
 import type { Action } from '../bindings/changeme/models'
 
@@ -81,43 +82,53 @@ function RunbookView() {
 
   return (
     <div className="runbook">
-      <h1>Runbook</h1>
-      <p className="runbook-subtitle">Run an action directly, or assign it a global shortcut.</p>
-      <ul className="runbook-list">
+      <Heading as="h1">Runbook</Heading>
+      <Text as="p" className="runbook-subtitle">
+        Run an action directly, or assign it a global shortcut.
+      </Text>
+
+      <Stack direction="vertical" gap="condensed">
         {actions.map((action) => (
-          <li key={action.ID} className="runbook-item">
-            <div className="runbook-item-header">
+          <div key={action.ID} className="runbook-card">
+            <Stack direction="horizontal" justify="space-between" align="start" gap="normal">
               <div>
-                <h2>{action.Name}</h2>
-                <p>{action.Description}</p>
+                <Heading as="h2" variant="small">{action.Name}</Heading>
+                <Text size="small" className="runbook-muted">{action.Description}</Text>
               </div>
-              <div className="runbook-item-controls">
-                <button onClick={() => run(action.ID)} disabled={runningId === action.ID}>
+
+              <Stack direction="horizontal" align="center" gap="condensed" className="runbook-item-controls">
+                <Button onClick={() => run(action.ID)} disabled={runningId === action.ID} size="small">
                   {runningId === action.ID ? 'Running…' : 'Run'}
-                </button>
+                </Button>
+
                 {recordingId === action.ID ? (
-                  <span className="runbook-recording">Press a combo… (Esc to cancel)</span>
+                  <Text size="small" className="runbook-recording">Press a combo… (Esc to cancel)</Text>
                 ) : bindings[action.ID] ? (
-                  <span className="runbook-shortcut">
-                    <kbd>{bindings[action.ID]}</kbd>
-                    <button className="runbook-shortcut-edit" onClick={() => setRecordingId(action.ID)}>Change</button>
-                    <button className="runbook-shortcut-clear" onClick={() => clearBinding(action.ID)}>Clear</button>
-                  </span>
+                  <>
+                    <Label variant="secondary">{bindings[action.ID]}</Label>
+                    <Button size="small" variant="invisible" onClick={() => setRecordingId(action.ID)}>Change</Button>
+                    <Button size="small" variant="invisible" onClick={() => clearBinding(action.ID)}>Clear</Button>
+                  </>
                 ) : (
-                  <button className="runbook-shortcut-set" onClick={() => setRecordingId(action.ID)}>
+                  <Button size="small" variant="invisible" onClick={() => setRecordingId(action.ID)}>
                     Set shortcut
-                  </button>
+                  </Button>
                 )}
-              </div>
-            </div>
-            {bindingErrors[action.ID] && <pre className="runbook-error">{bindingErrors[action.ID]}</pre>}
-            {errors[action.ID] && <pre className="runbook-error">{errors[action.ID]}</pre>}
+              </Stack>
+            </Stack>
+
+            {bindingErrors[action.ID] && (
+              <Text as="p" size="small" className="runbook-error">{bindingErrors[action.ID]}</Text>
+            )}
+            {errors[action.ID] && (
+              <Text as="p" size="small" className="runbook-error">{errors[action.ID]}</Text>
+            )}
             {results[action.ID] !== undefined && !errors[action.ID] && (
               <pre className="runbook-result">{results[action.ID]}</pre>
             )}
-          </li>
+          </div>
         ))}
-      </ul>
+      </Stack>
     </div>
   )
 }

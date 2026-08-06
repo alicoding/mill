@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import {Events, WML} from "@wailsio/runtime";
+import {UnderlineNav} from "@primer/react";
 import {GreetService} from "../bindings/changeme";
 import SpecView from "./SpecView";
 import RunbookView from "./RunbookView";
@@ -77,11 +78,17 @@ function App() {
 
   return (
     <>
-      <nav className="view-switch">
-        <button className={view === 'runbook' ? 'is-active' : ''} onClick={() => setView('runbook')}>Runbook</button>
-        <button className={view === 'spec' ? 'is-active' : ''} onClick={() => setView('spec')}>Spec</button>
-        <button className={view === 'demo' ? 'is-active' : ''} onClick={() => setView('demo')}>Demo</button>
-      </nav>
+      <UnderlineNav aria-label="Mill">
+        <UnderlineNav.Item aria-current={view === 'runbook' ? 'page' : undefined} onSelect={(e) => { e.preventDefault(); setView('runbook') }}>
+          Runbook
+        </UnderlineNav.Item>
+        <UnderlineNav.Item aria-current={view === 'spec' ? 'page' : undefined} onSelect={(e) => { e.preventDefault(); setView('spec') }}>
+          Spec
+        </UnderlineNav.Item>
+        <UnderlineNav.Item aria-current={view === 'demo' ? 'page' : undefined} onSelect={(e) => { e.preventDefault(); setView('demo') }}>
+          Demo
+        </UnderlineNav.Item>
+      </UnderlineNav>
 
       {view === 'runbook' && <RunbookView/>}
 
