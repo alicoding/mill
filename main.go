@@ -4,6 +4,7 @@ import (
 	"embed"
 
 	"log"
+	"log/slog"
 	"time"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
@@ -34,12 +35,21 @@ func main() {
 	// 'Assets' configures the asset server with the 'FS' variable pointing to the frontend files.
 	// 'Bind' is a list of Go struct instances. The frontend has access to the methods of these instances.
 	// 'Mac' options tailor the application when running an macOS.
+	// Reuses Wails3's own default logger (colorized to stderr in dev mode
+	// via isatty detection, silently discarded in production builds — see
+	// application.DefaultLogger's per-build-tag implementations) instead of
+	// wiring up a second, parallel slog handler. Passed to both Mill's own
+	// services and application.Options.Logger so app-level events (a
+	// hotkey firing) and Wails3's own system messages share one stream.
+	logger := application.DefaultLogger(slog.LevelInfo)
+
 	runbook := &RunbookService{}
-	hotkeys := NewHotkeyService(runbook)
+	hotkeys := NewHotkeyService(runbook, logger)
 
 	app := application.New(application.Options{
 		Name:        "mill",
 		Description: "Guardrailed agentic-workflow automation",
+		Logger:      logger,
 		Services: []application.Service{
 			application.NewService(&SpecService{}),
 			application.NewService(runbook),
