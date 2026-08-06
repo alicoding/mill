@@ -41,9 +41,18 @@ not yet worth deciding).
 
 ### 1.1 Hard constraints & delivery model
 
-- No Rust anywhere in the toolchain or dependency tree. Reason: Rust isn't
-  available in the work Artifactory yet, so anything requiring it can't ship
-  there. This rules out e.g. Tauri as an alternative app shell. `LOCKED`
+- No `cargo`/Rust compilation anywhere in Mill's own build or dependency
+  pipeline. Reason: at the bank, [corporate-proxy] intercepts/breaks cargo's network
+  calls to crates.io, and Artifactory has no Rust feed to route around it —
+  so anything that requires `cargo build`/`cargo install` from source will
+  not build there, in CI or locally. This rules out e.g. Tauri as an
+  alternative app shell (its build step compiles Rust). `LOCKED`
+  Narrower than it first sounds: a **pre-built** Rust binary installed via
+  Homebrew (a compiled bottle, no local cargo invocation) is not the same
+  problem — brew already works there (it's how pueue got installed). So a
+  Rust-authored local dev tool installed as a pre-built binary (e.g. `mise`
+  via `brew install mise`) isn't automatically disqualified by this rule;
+  only compiling Rust from source is. `LOCKED`
 - No AI API calls from Mill itself, and no phone-home telemetry of any kind.
   Mill is the substrate that mediates/guards actions initiated by other
   systems (an agent CLI, a chat client) — it is not itself an LLM client, and
