@@ -310,15 +310,38 @@ that environment, on something testable directly in this dev session:
 - Each action gets a **Run** button; **assign a keyboard shortcut** per
   action (Raycast/Alfred-style: click "Set shortcut," press the combo, it's
   bound) is built. `HotkeyService` (`hotkeyservice.go`) wraps
-  `golang-design/hotkey`; on trigger it runs the action and writes the
-  result straight to the clipboard via `pbcopy`, completing the original
-  ask — select rich text, copy, hit the hotkey, paste normally anywhere.
-  Assignments are in-memory only (reset on app restart) — persistence is a
-  deliberate follow-up, not built yet. Integration risk checked before
-  building, not assumed: macOS requires hotkey registration to coexist with
-  the app's own native run loop, confirmed working via the library's own
-  Fyne example (registers from a background goroutine while `ShowAndRun`
-  owns the main thread) — same shape used here alongside Wails' `app.Run()`.
+  `golang-design/hotkey`; on trigger it runs the action, completing the
+  original ask — select rich text, copy, hit the hotkey, paste normally
+  anywhere. Each action owns writing its own result to the clipboard as
+  part of its own Apply step (`internal/domain/runbook`), not a generic
+  post-hoc copy by the hotkey fire path — see the real bug this caught
+  below. Assignments are in-memory only (reset on app restart) —
+  persistence is a deliberate follow-up, not built yet. Integration risk
+  checked before building, not assumed: macOS requires hotkey registration
+  to coexist with the app's own native run loop, confirmed working via the
+  library's own Fyne example (registers from a background goroutine while
+  `ShowAndRun` owns the main thread) — same shape used here alongside
+  Wails' `app.Run()`.
+- **Real bug caught live: a generic "copy every action's result to the
+  clipboard" fire-path step clobbered an action's own clipboard write.**
+  `load-sample-html` writes real HTML to the clipboard itself, then
+  returns a UI-facing status string (the prefix text + the HTML, for
+  display). `HotkeyService`'s fire path used to *also* unconditionally
+  `clipboard.WriteText(result)` after every action — for
+  `clipboard-html-to-markdown` that's correct (the markdown result should
+  land on the clipboard), but for `load-sample-html` it immediately
+  overwrote the real HTML with that plain-text status string. Repro that
+  looked at first like a debugging-infra problem (stale build, a
+  clipboard race with an unrelated `pbcopy` call) turned out to be this —
+  confirmed by reading the two files side by side, not by guessing twice.
+  Fixed by moving the clipboard write into each action itself
+  (`clipboard-html-to-markdown` now calls `writeClipboardText` on success,
+  matching `load-sample-html`'s existing self-contained pattern) and
+  removing the fire path's generic write entirely. The no-HTML
+  soft-failure path deliberately still writes nothing — there's no
+  successful output to Apply, and overwriting the user's actual clipboard
+  content with an explainer would be its own small version of the same
+  bug. `LOCKED`
 - Design principle for that increment, from a real annoyance (macOS's
   default screenshot-to-clipboard shortcut is the awkward one, save-to-file
   got the easy keystroke): the easiest-to-press binding should be assignable
