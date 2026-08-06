@@ -170,6 +170,12 @@ that environment, on something testable directly in this dev session:
   action (Raycast/Alfred-style: click into a shortcut field, press the
   combo, it's bound) is the deliberate next increment once running actions
   works, not built in the same pass.
+- Design principle for that increment, from a real annoyance (macOS's
+  default screenshot-to-clipboard shortcut is the awkward one, save-to-file
+  got the easy keystroke): the easiest-to-press binding should be assignable
+  to whatever the user does *most*, not whatever a default happened to claim
+  first. Don't just let a shortcut be set — make it easy to see which
+  actions are "easy reach" vs. "deliberately awkward" and rebalance them.
 - First seeded action: **clipboard → Markdown**, directly testing the
   original Loop/structure-preservation pain point without needing M365 at
   all — works with anything that puts real HTML on the clipboard.
