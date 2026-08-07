@@ -23,6 +23,17 @@ export function toCanvasNodes(nodes: CompNode[] | null, nodeTypes: NodeType[]): 
   })
 }
 
+// SourceHandle carries a Decision edge's condition string (or the
+// literal "otherwise") -- stored in edge.data/label, not RFEdge's own
+// sourceHandle prop, which has a different, React-Flow-specific meaning
+// (which physical Handle on the source node an edge attaches to). See
+// canvasStore.ts's updateEdgeCondition for the full reasoning.
 export function toRFEdges(edges: CompEdge[] | null): RFEdge[] {
-  return (edges ?? []).map((e) => ({ id: e.ID, source: e.Source, target: e.Target, sourceHandle: e.SourceHandle || undefined }))
+  return (edges ?? []).map((e) => ({
+    id: e.ID,
+    source: e.Source,
+    target: e.Target,
+    data: { condition: e.SourceHandle },
+    label: e.SourceHandle || undefined,
+  }))
 }

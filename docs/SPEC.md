@@ -1402,6 +1402,50 @@ error to the user instead of silently accepting an unexecutable graph).
 `LOCKED` (execution engine, NodeType, canvas connectivity) — the rule
 builder itself stays `OPEN`, tracked in §3.5's own Decision row.
 
+**Update — the rule builder is now built, closing the gap named
+directly above.** `react-querybuilder` (MIT, v8.x) adopted per the
+original plan; its own runtime dependency on `@reduxjs/toolkit`/
+`react-redux` (checked directly via `npm view`, not assumed) is a real,
+bounded cost worth naming here the same way `elkjs`'s bundle size was
+named earlier — accepted since the alternative is hand-rolling a visual
+rule tree, exactly the kind of infrastructure-shaped UI CLAUDE.md's
+adopt-over-hand-roll bias exists for. `frontend/src/ruleTranslate.ts` is
+the bridge: `translateToExpr` walks react-querybuilder's own query-tree
+shape (`RuleGroupType`) into a real `expr-lang` boolean expression string
+— every operator it emits (`==`, `!=`, `<`, `>`, `<=`, `>=`, `&&`, `||`,
+`!`, `in [...]`, `contains`, `startsWith`, `endsWith`) was checked
+directly against a real `expr.Compile`/`expr.Run` call before being
+relied on, not assumed from either library's docs; 12 Vitest cases lock
+the mapping, and each generated string was independently re-verified to
+compile against the real Go `expr` package. **Deliberately one-way**: there is
+no reverse parser from an already-saved expression string back into the
+visual tree (writing a real expr-lang parser in TypeScript is its own
+project) — `frontend/src/DecisionEdgeInspector.tsx` (opened via a new
+`onEdgeClick` handler, only for edges whose source is a Decision node)
+always starts the builder from an empty query and shows the current
+saved condition as read-only text alongside it, plus a raw-text input as
+the power-user fallback for editing an existing expression directly.
+Fields offered to the builder come from the *owning workflow's real,
+Configure-authored* `Attributes` (`ruleTranslate.ts`'s
+`fieldsFromAttributes`, excluding `FieldOptions` — `AttributeDef` carries
+no `Options` list to build a choice-set from, unlike `ConfigField`) — not
+a placeholder list, closing the dependency the original Decision-engine
+pass named ("no manual-test-run UI yet to supply real values"). One real
+correctness fix along the way: a Decision edge's condition is stored in
+React Flow's own `edge.data.condition` (mirrored to `edge.label` for
+on-canvas visibility), not `edge.sourceHandle` as the original wire-shape
+mapping did — `sourceHandle` has a distinct, React-Flow-specific meaning
+(which physical `<Handle id>` an edge attaches to), and `CanvasNodeView`
+only ever renders one unnamed handle per node, so writing an arbitrary
+expr-lang string there would have silently broken edge rendering; this
+was caught before it shipped, not after. Verified end-to-end against the
+real Go backend (server mode + Playwright): created a Connector and a
+List via the new Configure page (below), added a real `boolean` Attribute
+to a workflow via its Attributes tab, reopened that workflow's canvas,
+dropped a Decision node, opened the rule builder on its outgoing edge,
+and confirmed the field dropdown offered the real attribute by name —
+not a stub. `LOCKED`.
+
 ### 3.4 Trigger primitives — capability map
 
 §3.3's Trigger row was one line (`Kind: trigger`, `Source: "hotkey"`
@@ -1580,10 +1624,10 @@ true and isn't what was asked for.
 |---|---|---|---|
 | Trigger config (cron expression, watch path, hotkey combo) | Inline canvas Inspector | 1:1 — inherently specific to the one workflow it triggers | `LOCKED`, built this way (§3.4) — no change; a trigger's config is never meaningfully shared |
 | Capture/Process/Apply config (today's `html` field, etc.) | Inline canvas Inspector | 1:1 | `LOCKED`, built this way — genuinely simple fields, a dedicated screen would be overhead, not clarity |
-| **Integration / Connector** (HTTP Connector, DB Connector, ...) | **Configure**, under a new Integration category | **1:many** — one configured connector (auth, base URL) referenced by ID from any workflow's Integration node | Execution engine + backend CRUD `LOCKED` (§3.3's Integration row; `ConfigureService`, §4's own bullet) — a workflow can call a real HTTP connector today, and `Connectors()`/`CreateConnector`/`UpdateConnector`/`DeleteConnector`/`SetConnectorSecret` are real, Wails-bound methods. *Where it's authored* stays `OPEN`: no Configure-surface **page** exists yet, so a connector can only be created by calling those bound methods directly (e.g. via dev tools), not through any UI |
-| **Input / Attributes** | **Configure** | **1:1** — scoped to the one workflow that declares it, per §3.2's original cardinality note | Schema + backend CRUD `LOCKED` — `Workflow.Attributes []AttributeDef` (§3.3's Decision Update note) is real, and `ConfigureService.UpdateWorkflowAttributes` re-validates the owning workflow's graph against the new schema before accepting it (a Decision edge referencing a field a change removes/retypes is caught here, not left to break at the next run). *Where it's authored* stays `OPEN`: no Configure-surface page exists yet |
-| **Decision** | **Configure** (a rule/decision-table editor needs real room, not a narrow Inspector sidebar) | **1:1** recommended — §3.2 flagged this cardinality as genuinely unconfirmed ("check before assuming either way"); a workflow's decision logic is plausibly workflow-specific business logic, not shared, but this is a real open question, not decided here | Execution engine `LOCKED` (§3.3's Decision row, Update note) — a Decision node branches for real today. *Where it's authored* stays `OPEN`: no Configure-surface rule builder exists yet, so conditions are only settable by hand-editing persisted JSON in the interim |
-| **List** (a reusable lookup/reference dataset) | **Configure** | **1:many** recommended, same shape as Integration — a shared lookup table is the kind of thing multiple workflows would plausibly reference | Execution engine + backend CRUD `LOCKED` (§3.3's List row; `ConfigureService`) — a workflow can look up a real List today, and `Lists()`/`CreateList`/`UpdateList`/`DeleteList` are real, Wails-bound methods. *Where it's authored* stays `OPEN`: no Configure-surface page exists yet, same gap as Integration/Connector above |
+| **Integration / Connector** (HTTP Connector, DB Connector, ...) | **Configure**, under a new Integration category | **1:many** — one configured connector (auth, base URL) referenced by ID from any workflow's Integration node | `LOCKED` end-to-end — `ConfigureView.tsx`'s Integration tab (`ConfigureIntegration.tsx`) is a real page: create/edit/delete a Connector, set its secret (write-only — the field clears after Save, never pre-fills on edit, matching `SetConnectorSecret`'s own no-`GetSecret` design). Reachable via the sidebar's "Configure" entry (`internal/domain/capabilities`' `capability-configure`, replacing the old flat "Connectors" placeholder row) |
+| **Input / Attributes** | **Configure** | **1:1** — scoped to the one workflow that declares it, per §3.2's original cardinality note | `LOCKED` end-to-end — `ConfigureView.tsx`'s Attributes tab (`ConfigureAttributes.tsx`) picks a workflow and edits its declared schema (key/label/type rows, `FieldOptions` excluded — see §3.3's rule-builder Update note for why), calling `ConfigureService.UpdateWorkflowAttributes` |
+| **Decision** | **Configure** (a rule/decision-table editor needs real room, not a narrow Inspector sidebar) | **1:1** recommended — §3.2 flagged this cardinality as genuinely unconfirmed ("check before assuming either way"); a workflow's decision logic is plausibly workflow-specific business logic, not shared, but this is a real open question, not decided here | `LOCKED` end-to-end — see §3.3's Decision Update note for the full rule-builder writeup (`react-querybuilder` + `ruleTranslate.ts`, one-way translation only, no expression round-trip parser) |
+| **List** (a reusable lookup/reference dataset) | **Configure** | **1:many** recommended, same shape as Integration — a shared lookup table is the kind of thing multiple workflows would plausibly reference | `LOCKED` end-to-end — `ConfigureView.tsx`'s Lists tab (`ConfigureLists.tsx`) is a real page: create/edit/delete a List and its key/value entries, calling `ConfigureService`'s `Lists`/`CreateList`/`UpdateList`/`DeleteList` |
 
 **What Configure is *not*: a plugin system for user-defined node kinds.**
 Worth being explicit about, since "define a dedicated thing in Configure"
@@ -1675,20 +1719,19 @@ CLAUDE.md's Plan step, before any of it becomes code, same discipline
 - Jira/Confluence as a first-class example: still `OPEN`, unbuilt — the
   generic connector is real, but no named-vendor preset exists yet.
 - Whether connectors are built-in or a plugin surface: still `OPEN`.
-- **Backend CRUD `LOCKED` and built; UI still `OPEN`.** `ConfigureService`
+- **Backend CRUD + UI `LOCKED` and built, end-to-end.** `ConfigureService`
   (`configureservice.go`) is the Wails-bound service: `Connectors()`/
   `CreateConnector`/`UpdateConnector`/`DeleteConnector`, plus
   `SetConnectorSecret`/`DeleteConnectorSecret` (write-only — no
   `GetSecret` binding exists anywhere on it, by design). Its constructor
   wires `composition.SetConnectorLookup`/`SetListLookup` to its own
   `resolveConnector`/`resolveList` methods, so a real HTTP-connector or
-  List node now resolves against Configure-authored data end-to-end —
-  not just the hand-called domain-layer path noted below previously. No
-  Configure-surface *UI* exists yet (`ConfigureView.tsx`, tracked as a
-  follow-on) — today a Connector/List can only be created by calling
-  `ConfigureService`'s bound methods directly (e.g. via the Wails
-  dev-tools console), not through any page in the app. Same authoring
-  gap as Decision (§3.5).
+  List node resolves against Configure-authored data end-to-end. The
+  Configure-surface **page** (`ConfigureView.tsx`, reachable via the
+  sidebar's "Configure" entry) makes this reachable without calling bound
+  methods directly — a Connector/List/Attribute set is now created the
+  same way a Workflow is, through the app itself. Same status as
+  Decision's rule builder (§3.3/§3.5).
 - See §3.2 for the node-type-vs-instance composition pattern and the
   incremental-extensibility principle for connector protocol/auth support.
 

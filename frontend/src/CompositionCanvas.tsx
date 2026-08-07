@@ -23,6 +23,7 @@ import { rfNodeTypes, CANVAS_NODE_WIDTH, CANVAS_NODE_HEIGHT } from './CanvasNode
 import { toCanvasNodes, toRFEdges } from './canvasConversion'
 import { draftWorkflowSchema } from './draftWorkflowSchema'
 import { NodePalette } from './NodePalette'
+import { DecisionEdgeInspector } from './DecisionEdgeInspector'
 import { useHotkeyCapture, isAccessibilityError, ACCESSIBILITY_SETTINGS_URL } from './hotkeyCapture'
 import { generateSamplePayload } from './configSchema'
 import styles from './CompositionCanvas.module.css'
@@ -63,6 +64,7 @@ function CanvasInner({ nodeTypes, workflow, onBack, onSaved }: CompositionCanvas
   const onConnect = useCanvasStore((s) => s.onConnect)
   const addNode = useCanvasStore((s) => s.addNode)
   const updateNodeConfig = useCanvasStore((s) => s.updateNodeConfig)
+  const updateEdgeCondition = useCanvasStore((s) => s.updateEdgeCondition)
   const removeSelected = useCanvasStore((s) => s.removeSelected)
 
   const canUndo = useStore(useCanvasStore.temporal, (s) => s.pastStates.length > 0)
@@ -87,6 +89,7 @@ function CanvasInner({ nodeTypes, workflow, onBack, onSaved }: CompositionCanvas
   const { screenToFlowPosition } = useReactFlow()
 
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null)
+  const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null)
   const [draftLabel, setDraftLabel] = useState(workflow?.Label ?? '')
   const [draftDescription, setDraftDescription] = useState(workflow?.Description ?? '')
   const [saveError, setSaveError] = useState('')
@@ -132,6 +135,11 @@ function CanvasInner({ nodeTypes, workflow, onBack, onSaved }: CompositionCanvas
 
   const selectedNode = nodes.find((n) => n.id === selectedNodeId) ?? null
   const selectedNodeType = selectedNode ? nodeTypes.find((nt) => nt.ID === selectedNode.data.nodeTypeID) : undefined
+  const selectedEdge = edges.find((e) => e.id === selectedEdgeId) ?? null
+  // Only a Decision node's outgoing edges carry a real condition to
+  // configure (SPEC.md §3.5) -- an edge selected off any other node kind
+  // has nothing for this Inspector branch to show.
+  const selectedEdgeFromDecision = selectedEdge && nodes.find((n) => n.id === selectedEdge.source)?.data.kind === 'decision'
 
   // Every node kind except Decision is max-out-degree-1 -- the backend's
   // buildGraph (composition.go) enforces this same rule at save/run time
@@ -225,7 +233,7 @@ function CanvasInner({ nodeTypes, workflow, onBack, onSaved }: CompositionCanvas
       Edges: edges.map((e) => ({
         ID: e.id,
         Source: e.source,
-        SourceHandle: e.sourceHandle ?? '',
+        SourceHandle: (e.data as { condition?: string } | undefined)?.condition ?? '',
         Target: e.target,
       })),
     }
@@ -292,8 +300,18 @@ function CanvasInner({ nodeTypes, workflow, onBack, onSaved }: CompositionCanvas
             onConnect={onConnect}
             isValidConnection={isValidConnection}
             nodeTypes={rfNodeTypes}
-            onNodeClick={(_, node) => setSelectedNodeId(node.id)}
-            onPaneClick={() => setSelectedNodeId(null)}
+            onNodeClick={(_, node) => {
+              setSelectedNodeId(node.id)
+              setSelectedEdgeId(null)
+            }}
+            onEdgeClick={(_, edge) => {
+              setSelectedEdgeId(edge.id)
+              setSelectedNodeId(null)
+            }}
+            onPaneClick={() => {
+              setSelectedNodeId(null)
+              setSelectedEdgeId(null)
+            }}
             onNodeDragStart={() => useCanvasStore.temporal.getState().pause()}
             onNodeDragStop={() => useCanvasStore.temporal.getState().resume()}
             fitView
@@ -324,7 +342,19 @@ function CanvasInner({ nodeTypes, workflow, onBack, onSaved }: CompositionCanvas
         </div>
 
         <div className={styles.inspector} data-testid="composition-inspector">
-          {!selectedNode && <Text className={styles.inspectorEmpty} size="small">Select a node to configure it.</Text>}
+          {!selectedNode && !selectedEdgeFromDecision && (
+            <Text className={styles.inspectorEmpty} size="small">
+              {selectedEdge ? 'Only a Decision node’s outgoing edges are configurable.' : 'Select a node to configure it.'}
+            </Text>
+          )}
+          {selectedEdgeFromDecision && selectedEdge && (
+            <DecisionEdgeInspector
+              edgeId={selectedEdge.id}
+              condition={(selectedEdge.data as { condition?: string } | undefined)?.condition ?? ''}
+              attrs={workflow?.Attributes}
+              onApply={(condition) => updateEdgeCondition(selectedEdge.id, condition)}
+            />
+          )}
           {selectedNode && (
             <Stack direction="vertical" gap="condensed">
               <Text weight="semibold">{selectedNode.data.label}</Text>
