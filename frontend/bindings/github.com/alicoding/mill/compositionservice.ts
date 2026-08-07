@@ -21,6 +21,17 @@ import { Call as $Call, CancellablePromise as $CancellablePromise } from "@wails
 import * as composition$0 from "./internal/domain/composition/models.js";
 
 /**
+ * CapabilityMap exposes docs/SPEC.md §3.3's capability map as real data
+ * for the Spec tab -- see docs/SPEC.md §3.3 and CapabilityIndex.tsx's
+ * existing "real Go data, not parsed docs" precedent for page-level
+ * capabilities, applied here one level down for composition's own
+ * sub-capabilities.
+ */
+export function CapabilityMap(): $CancellablePromise<composition$0.MapEntry[] | null> {
+    return $Call.ByID(423211509);
+}
+
+/**
  * CreateWorkflow composes and configures a new workflow in one step, per
  * SPEC.md §3: ResolveStepDefaults validates every step's node type and
  * fills in any missing config with that field's default, so the stored
