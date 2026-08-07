@@ -231,7 +231,12 @@ function CompositionView() {
                   <Text as="p" size="small" className={styles.muted}>{wf.Description}</Text>
                 </div>
                 <Stack direction="horizontal" gap="condensed">
-                  <Button onClick={() => run(wf.ID)} disabled={runningId === wf.ID} size="small">
+                  <Button
+                    onClick={() => run(wf.ID)}
+                    disabled={runningId === wf.ID}
+                    size="small"
+                    aria-label={`Run ${wf.Label}`}
+                  >
                     {runningId === wf.ID ? 'Running…' : 'Run'}
                   </Button>
                   {!wf.BuiltIn && (
