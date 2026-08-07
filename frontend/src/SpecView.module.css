@@ -24,3 +24,8 @@
 .spec article hr { border: none; border-top: 1px solid var(--glass-border); margin: var(--s-3) 0; }
 .spec article ul, .spec article ol { padding-left: 1.3em; }
 .spec article strong { color: var(--text); }
+/* Mermaid diagrams (System Context / Logical view, docs/SPEC.md §1.4)
+   render as SVG inside this element (mermaid.run() replaces its text
+   content in place) -- a diagram wider than .spec's 760px max-width
+   scrolls within its own container instead of widening the pane. */
+.spec article pre.mermaid { overflow-x: auto; max-width: 100%; background: none; padding: 0; }
