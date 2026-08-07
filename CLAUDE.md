@@ -22,6 +22,18 @@ Every non-trivial change follows this order, no exceptions:
    record the decision in `docs/SPEC.md` under the relevant section.
 3. **Implement** — only after 1 and 2. Small, reviewable steps.
 
+**Commit every verified change, always — don't wait to be asked.** Once
+a change passes the full local check suite (lint/vet/test/build), commit
+it; never leave the working tree dirty or a completed, verified change
+sitting staged-but-uncommitted at the end of a turn. This overrides the
+general default of asking before committing — for this repo specifically,
+committing is the expected default, not an action that needs standing
+permission each time. Still applies regardless: write a real commit
+message (not a placeholder), double-check staged content doesn't include
+anything secret-shaped, and never force-push, amend a previous commit, or
+rewrite history without being explicitly asked — this rule covers regular
+commits, not destructive git operations.
+
 If `docs/SPEC.md` marks something `OPEN`, do not silently resolve it by
 implementing one option — surface the choice.
 
@@ -63,6 +75,19 @@ implementing one option — surface the choice.
   `specservice.go`, `frontend/`) is intentionally trivial; do not
   over-engineer it prematurely, but do not bolt unrelated concerns onto it
   either once real capabilities start landing.
+- **Default to adopting an existing library/platform over hand-rolling,
+  even when hand-rolling would be smaller or have fewer dependencies.**
+  The deciding question is "who owns and maintains this six months from
+  now," not "which is leaner to write today." Mill effectively has one
+  maintainer, and infrastructure-shaped code — durable execution,
+  retry/backoff, checkpointing, queues, and similar — is exactly the
+  kind of thing that looks small at first and quietly becomes an
+  unbounded maintenance burden once hand-rolled. Prefer a well-vetted
+  library that already has the target capability, accept its dependency
+  weight as a real but bounded, one-time cost, and keep it behind a
+  ports/adapters boundary so it stays swappable. Hand-roll only when no
+  adopted option actually satisfies the hard constraints (single binary,
+  no Rust, no phone-home) — never merely because it would be smaller.
 - **UI: use Primer React (`@primer/react` + `@primer/primitives`), don't
   hand-roll bespoke components or CSS.** Verified MIT-licensed, pure JS/TS
   (no native/Rust dependency anywhere in its tree), actively maintained.
