@@ -22,20 +22,23 @@ import (
 //go:embed all:frontend/dist
 var assets embed.FS
 
-// HotkeyActivity is emitted once a fired hotkey resolves (success or
-// failure). The Go-side slog lines (hotkeyservice.go) log the same
-// information for terminal/`task dev` visibility; this event is the
-// in-app equivalent, so a hotkey's outcome is visible without a
-// terminal — added after a real hotkey worked correctly (fired, ran,
-// wrote to the clipboard) but looked from the UI like nothing happened,
-// because nothing in the UI ever said otherwise.
+// HotkeyActivity is emitted once a triggered workflow resolves (success
+// or failure) -- not just hotkey fires despite the name (kept for the
+// event's own wire compatibility; renaming the event string itself would
+// be a cosmetic-only churn no caller needs). The Go-side slog lines
+// (triggerservice.go) log the same information for terminal/`task dev`
+// visibility; this event is the in-app equivalent, so a headless
+// trigger's outcome is visible without a terminal — added after a real
+// hotkey worked correctly (fired, ran, wrote to the clipboard) but
+// looked from the UI like nothing happened, because nothing in the UI
+// ever said otherwise.
 type HotkeyActivity struct {
-	ActionID string `json:"actionID"`
-	Binding  string `json:"binding"`
-	Success  bool   `json:"success"`
-	Detail   string `json:"detail"`
+	WorkflowID string `json:"workflowID"`
+	Binding    string `json:"binding"`
+	Success    bool   `json:"success"`
+	Detail     string `json:"detail"`
 	// Result is the actual output copied to the clipboard, so the UI can
-	// show what a hotkey fire actually produced, not just its byte count.
+	// show what a trigger fire actually produced, not just its byte count.
 	// Empty on failure -- there's nothing successful to show.
 	Result string `json:"result"`
 }
@@ -84,9 +87,9 @@ func main() {
 		log.Fatal(err)
 	}
 
-	runbook := &RunbookService{}
-	hotkeys := NewHotkeyService(runbook, logger, settingsStore)
 	compositionService := NewCompositionService(settingsStore)
+	triggerService := NewTriggerService(compositionService, logger, settingsStore)
+	compositionService.SetSyncer(triggerService)
 
 	app := application.New(application.Options{
 		Name:        "mill",
@@ -95,9 +98,8 @@ func main() {
 		Services: []application.Service{
 			application.NewService(&SpecService{}),
 			application.NewService(&CapabilitiesService{}),
-			application.NewService(runbook),
-			application.NewService(hotkeys),
 			application.NewService(compositionService),
+			application.NewService(triggerService),
 		},
 		Assets: application.AssetOptions{
 			Handler: application.AssetFileServerFS(assets),
@@ -108,13 +110,18 @@ func main() {
 	})
 
 	// Global hotkey registration needs the native run loop already
-	// spinning (see HotkeyService.RestoreBindings' doc comment) -- doing
-	// this from ServiceStartup, which runs before the run loop starts,
-	// would risk the exact silent-registration-failure class already
-	// documented in docs/SPEC.md §2.2. ApplicationStarted fires once the
-	// loop is actually live.
+	// spinning (see docs/SPEC.md §2.2's note on this) -- doing this from
+	// ServiceStartup, which runs before the run loop starts, would risk
+	// the exact silent-registration-failure class already documented
+	// there. ApplicationStarted fires once the loop is actually live.
+	// TriggerService.Sync also registers the non-hotkey trigger types
+	// (schedule/clipboard-watch/filesystem-watch) from here, even though
+	// those don't need the run loop -- one uniform startup path is
+	// simpler than special-casing which trigger types can register
+	// earlier for a few hundred milliseconds' difference that matters to
+	// nothing.
 	app.Event.OnApplicationEvent(events.Common.ApplicationStarted, func(*application.ApplicationEvent) {
-		hotkeys.RestoreBindings()
+		triggerService.Sync(compositionService.Workflows())
 	})
 
 	// Create a new window with the necessary options.

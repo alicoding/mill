@@ -4,6 +4,8 @@ go 1.25.0
 
 require (
 	github.com/JohannesKaufmann/html-to-markdown/v2 v2.5.2
+	github.com/fsnotify/fsnotify v1.10.1
+	github.com/netresearch/go-cron v0.15.1
 	github.com/wailsapp/wails/v3 v3.0.0-beta.4
 	golang.design/x/hotkey v0.6.1
 )

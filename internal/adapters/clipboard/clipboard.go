@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"os/exec"
 	"strings"
+	"time"
 )
 
 // ReadHTML asks macOS for the HTML flavor of the current clipboard
@@ -47,4 +48,47 @@ func WriteText(text string) error {
 	cmd := exec.Command("pbcopy")
 	cmd.Stdin = strings.NewReader(text)
 	return cmd.Run()
+}
+
+// ReadText reads the clipboard's plain-text flavor via pbpaste.
+func ReadText() (string, error) {
+	out, err := exec.Command("pbpaste").Output()
+	if err != nil {
+		return "", fmt.Errorf("pbpaste failed: %w", err)
+	}
+	return string(out), nil
+}
+
+// WatchChanges polls the clipboard's plain-text flavor on the given
+// interval and calls fn whenever it differs from the last-seen value.
+// Build, not adopt -- confirmed no clipboard-changed event exists via
+// osascript (docs/SPEC.md §3.4), so this is the same poll-loop shape
+// every clipboard manager uses under the hood. Plain text, not HTML: the
+// HTML flavor is frequently absent (e.g. copying a filename or plain
+// text produces none, and ReadHTML errors in that case), so watching it
+// would miss most real clipboard activity -- text is the one flavor
+// almost everything copyable sets.
+func WatchChanges(interval time.Duration, fn func()) (stop func()) {
+	done := make(chan struct{})
+	go func() {
+		last, _ := ReadText() // baseline; ignore error (nothing on clipboard yet)
+		ticker := time.NewTicker(interval)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ticker.C:
+				text, err := ReadText()
+				if err != nil {
+					continue
+				}
+				if text != last {
+					last = text
+					fn()
+				}
+			case <-done:
+				return
+			}
+		}
+	}()
+	return func() { close(done) }
 }

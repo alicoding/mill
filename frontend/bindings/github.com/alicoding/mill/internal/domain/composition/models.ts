@@ -28,14 +28,42 @@ export enum Approach {
  * ConfigField declares one configurable parameter a node type's nodes
  * can set. A node type with no ConfigFields takes no parameters --
  * legitimately true for some nodes (capture/process here operate on
- * whatever's piped in), not a placeholder to fill in later.
+ * whatever's piped in, every Trigger node type today), not a placeholder
+ * to fill in later.
  */
 export interface ConfigField {
     "Key": string;
     "Label": string;
     "Description": string;
     "Default": string;
+    "Type": ConfigFieldType;
+
+    /**
+     * Options is only meaningful when Type == FieldOptions -- the set of
+     * values ResolveNodeDefaults will accept for this field.
+     */
+    "Options": string[] | null;
 }
+
+/**
+ * ConfigFieldType is the field's UI/value shape -- modeled on n8n's own
+ * node-parameter taxonomy (docs.n8n.io, see docs/SPEC.md §3.4), narrowed
+ * to the subset Mill actually needs today. n8n's fuller set (collection,
+ * fixedCollection, resourceLocator, ...) maps to Mill's own not-yet-built
+ * Decision/Parallel nodes -- not stubbed here ahead of that need, same
+ * discipline as NodeKind's own comment above.
+ */
+export enum ConfigFieldType {
+    /**
+     * The Go zero value for the underlying type of the enum.
+     */
+    $zero = "",
+
+    FieldText = "text",
+    FieldNumber = "number",
+    FieldBoolean = "boolean",
+    FieldOptions = "options",
+};
 
 /**
  * Edge connects one Node's output to another's input by ID. SourceHandle
@@ -84,12 +112,11 @@ export interface Node {
 }
 
 /**
- * NodeKind mirrors SPEC.md §2's Capture -> Process -> Apply primitive --
- * today's node types are drawn from that already-locked shape rather
- * than the fuller Ruleset/Decision/... taxonomy ADR-0005 surveys, since
- * only Capture/Process/Apply nodes exist as real code yet. Control-flow
- * node kinds (Decision, Parallel, Child Workflow) stay real future work,
- * not stubbed here speculatively.
+ * NodeKind mirrors SPEC.md §2's Capture -> Process -> Apply primitive,
+ * plus Trigger (SPEC.md §3.4's capability map) -- the entry-point kind
+ * every workflow's root node now belongs to. Control-flow node kinds
+ * (Decision, Parallel, Child Workflow) stay real future work, not
+ * stubbed here speculatively.
  */
 export enum NodeKind {
     /**
@@ -97,6 +124,7 @@ export enum NodeKind {
      */
     $zero = "",
 
+    KindTrigger = "trigger",
     KindCapture = "capture",
     KindProcess = "process",
     KindApply = "apply",

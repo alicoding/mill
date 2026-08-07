@@ -4,8 +4,8 @@
 /**
  * CapabilitiesService is the Wails-bound projection of Mill's own
  * capability registry (internal/domain/capabilities) -- a thin binding
- * layer, same shape as RunbookService/HotkeyService, no logic of its own
- * beyond exposing the domain package's data to the frontend.
+ * layer, same shape as CompositionService/TriggerService, no logic of
+ * its own beyond exposing the domain package's data to the frontend.
  * @module
  */
 
