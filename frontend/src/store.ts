@@ -43,6 +43,7 @@ export interface ActivityEntry {
 export type View =
   | { kind: 'activity' }
   | { kind: 'composition' }
+  | { kind: 'configure' }
   | { kind: 'spec' }
   | { kind: 'placeholder'; capabilityId: string }
 
@@ -55,6 +56,8 @@ export function viewFor(capability: Capability): View {
       return { kind: 'activity' }
     case ViewKind.ViewComposition:
       return { kind: 'composition' }
+    case ViewKind.ViewConfigure:
+      return { kind: 'configure' }
     default:
       return { kind: 'placeholder', capabilityId: capability.ID }
   }

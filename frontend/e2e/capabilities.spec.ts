@@ -7,7 +7,7 @@ import { test, expect } from '@playwright/test'
 //
 // Scoped to [data-testid="capability-index"]/[data-testid="capability-row"]
 // rather than plain text, since capability labels ("Capability
-// composition", "Connectors") also appear inside SPEC.md's own rendered
+// composition", "Configure") also appear inside SPEC.md's own rendered
 // prose right below the index -- a bare getByText() match is ambiguous
 // between the two.
 
@@ -24,7 +24,7 @@ test('Spec tab lists capabilities with status badges', async ({ page }) => {
   await page.getByRole('link', { name: 'Spec' }).click()
   await expect(capabilityIndex(page).getByRole('heading', { name: 'Capabilities' })).toBeVisible()
   await expect(capabilityRow(page, 'Capability composition')).toBeVisible()
-  await expect(capabilityRow(page, 'Connectors')).toBeVisible()
+  await expect(capabilityRow(page, 'Configure')).toBeVisible()
 })
 
 test('Clicking a built capability navigates to its real page', async ({ page }) => {
@@ -36,11 +36,20 @@ test('Clicking a built capability navigates to its real page', async ({ page }) 
   await expect(page.getByRole('heading', { name: 'Capability composition', exact: true })).toBeVisible()
 })
 
+test('Clicking the Configure capability navigates to its real page', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Spec' }).click()
+
+  await capabilityRow(page, 'Configure').getByRole('button', { name: 'Go to page' }).click()
+
+  await expect(page.getByRole('tab', { name: 'Integration' })).toBeVisible()
+})
+
 test('Clicking a not-built capability shows a placeholder with status and a way back', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Spec' }).click()
 
-  await capabilityRow(page, 'Connectors').getByRole('button', { name: 'View status' }).click()
+  await capabilityRow(page, 'Guardrails / policy').getByRole('button', { name: 'View status' }).click()
 
   // Scoped to the main content region, not the whole page: the sidebar
   // itself also shows an OPEN status Label per not-yet-built capability
@@ -48,7 +57,7 @@ test('Clicking a not-built capability shows a placeholder with status and a way 
   // a page-wide getByText('OPEN') is ambiguous between the sidebar and
   // this placeholder's own status badge.
   const content = page.getByRole('main')
-  await expect(content.getByRole('heading', { name: 'Connectors', exact: true })).toBeVisible()
+  await expect(content.getByRole('heading', { name: 'Guardrails / policy', exact: true })).toBeVisible()
   await expect(content.getByText("hasn't been built yet")).toBeVisible()
   await expect(content.getByText('OPEN', { exact: true })).toBeVisible()
 

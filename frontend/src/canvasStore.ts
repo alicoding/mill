@@ -25,6 +25,7 @@ interface CanvasState {
   onConnect: (connection: Connection) => void
   addNode: (node: CanvasNode) => void
   updateNodeConfig: (id: string, key: string, value: string) => void
+  updateEdgeCondition: (id: string, condition: string) => void
   removeSelected: () => void
   load: (nodes: CanvasNode[], edges: RFEdge[]) => void
   clear: () => void
@@ -56,6 +57,19 @@ export function createCanvasStore() {
           set({
             nodes: get().nodes.map((n) =>
               n.id === id ? { ...n, data: { ...n.data, config: { ...n.data.config, [key]: value } } } : n,
+            ),
+          }),
+        // A Decision edge's condition lives in edge.data, not edge.sourceHandle
+        // -- CanvasNodeView's single, unnamed source Handle means
+        // sourceHandle has no real matching id to give React Flow, and
+        // setting it to an arbitrary expr-lang string would silently
+        // break edge rendering. label mirrors it so the condition (or
+        // "otherwise") is visible directly on the canvas, not just in
+        // the Inspector. See ruleTranslate.ts's own doc comment.
+        updateEdgeCondition: (id, condition) =>
+          set({
+            edges: get().edges.map((e) =>
+              e.id === id ? { ...e, data: { ...e.data, condition }, label: condition } : e,
             ),
           }),
         removeSelected: () =>
