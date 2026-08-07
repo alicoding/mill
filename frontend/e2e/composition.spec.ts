@@ -91,7 +91,9 @@ test('Composition page lists built-in workflows; node primitives live in a colla
   await page.getByTestId('new-workflow').click()
   await expect(activePanel(page).getByTestId('palette-item')).toHaveCount(0)
   await activePanel(page).getByTestId('toggle-palette').click()
-  await expect(activePanel(page).getByTestId('palette-item')).toHaveCount(4)
+  // 5 Trigger node types (SPEC.md §3.4) + the original 4 capture/process/
+  // apply node types.
+  await expect(activePanel(page).getByTestId('palette-item')).toHaveCount(9)
 })
 
 test('A new workflow starts with a starter node placed, not a blank canvas', async ({ page }) => {
@@ -99,13 +101,13 @@ test('A new workflow starts with a starter node placed, not a blank canvas', asy
   await page.getByRole('link', { name: 'Composition' }).click()
   await page.getByTestId('new-workflow').click()
 
-  // Mill has no Decision node kind yet (deliberately not stubbed ahead
-  // of need, per ADR-0005/composition.go), so the starter is a single
-  // real node -- not the reference platform's own Input->Decision pair,
-  // which doesn't correspond to anything Mill can execute today.
+  // Every workflow needs exactly one root, and it's now a real Trigger
+  // node (SPEC.md §3.4) -- trigger-manual specifically, since it's the
+  // one trigger type that needs no external config the user hasn't
+  // supplied yet (hotkey/schedule/watch all do).
   const nodes = activePanel(page).locator('.react-flow__node')
   await expect(nodes).toHaveCount(1)
-  await expect(nodes.first()).toContainText('Capture: clipboard HTML')
+  await expect(nodes.first()).toContainText('Trigger: manual')
 
   // It's already a valid, savable one-node workflow as-is -- zero edges
   // is correct for exactly one node (both linearOrder in Go and the
@@ -189,11 +191,19 @@ test('Dragging a node onto the canvas configures it as it is added, then saves, 
   await expect(workflowRow(page, 'E2E custom workflow')).toHaveCount(0)
 })
 
-test('Built-in workflows have no edit or delete control', async ({ page }) => {
+test('Seeded example workflows are ordinary, fully editable and deletable', async ({ page }) => {
+  // docs/SPEC.md §2.2's Update note: a seeded example is fully-owned,
+  // editable/deletable data from the moment it exists (the same pattern
+  // Zapier/n8n use for their own templates), not a protected specimen --
+  // BuiltIn only drives the informational "built-in" badge now. Doesn't
+  // actually delete "Load sample HTML" here: other specs in this shared-
+  // fixture file depend on it still existing.
   await page.goto('/')
   await page.getByRole('link', { name: 'Composition' }).click()
-  await expect(workflowRow(page, 'Load sample HTML').getByRole('button', { name: /Delete/ })).toHaveCount(0)
-  await expect(workflowRow(page, 'Load sample HTML').getByRole('button', { name: /Edit/ })).toHaveCount(0)
+  const row = workflowRow(page, 'Load sample HTML')
+  await expect(row.getByText('built-in')).toBeVisible()
+  await expect(row.getByRole('button', { name: /Edit/ })).toBeVisible()
+  await expect(row.getByRole('button', { name: /Delete/ })).toBeVisible()
 })
 
 test('Editing an existing workflow updates it in place, not as a duplicate', async ({ page }) => {

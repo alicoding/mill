@@ -1,4 +1,4 @@
-import { DownloadIcon, SyncIcon, UploadIcon, type Icon } from '@primer/octicons-react'
+import { DownloadIcon, SyncIcon, UploadIcon, ZapIcon, type Icon } from '@primer/octicons-react'
 
 // Shared by CompositionCanvas.tsx (canvas node chrome, palette) and
 // CompositionView.tsx (node-primitives list, saved-workflow chip chain)
@@ -13,30 +13,36 @@ import { DownloadIcon, SyncIcon, UploadIcon, type Icon } from '@primer/octicons-
 // treatment below is adopted from that reference's card style, but
 // applied honestly to what Mill's nodes actually do, not borrowed names
 // for capabilities Mill doesn't have.
-export const KIND_VARIANT: Record<string, 'accent' | 'success' | 'severe'> = {
+export const KIND_VARIANT: Record<string, 'accent' | 'success' | 'severe' | 'done'> = {
+  trigger: 'done',
   capture: 'accent',
   process: 'success',
   apply: 'severe',
 }
 
 export const KIND_LABEL: Record<string, string> = {
+  trigger: 'Trigger',
   capture: 'Capture',
   process: 'Process',
   apply: 'Apply',
 }
 
-// DownloadIcon/SyncIcon/UploadIcon: capture pulls data in, process
-// transforms it in place, apply pushes it back out -- the same in/
-// transform/out shape the reference's own Input icon (arrow into a box)
-// gestures at, expressed with icons that already exist in Mill's
-// adopted icon set (@primer/octicons-react, no new dependency).
+// ZapIcon for Trigger matches the bolt-icon convention n8n itself uses to
+// mark trigger nodes in its own palette (confirmed via docs.n8n.io, see
+// SPEC.md §3.4) -- not invented. DownloadIcon/SyncIcon/UploadIcon: capture
+// pulls data in, process transforms it in place, apply pushes it back out
+// -- the same in/transform/out shape the reference's own Input icon
+// (arrow into a box) gestures at, expressed with icons that already exist
+// in Mill's adopted icon set (@primer/octicons-react, no new dependency).
 export const KIND_ICON: Record<string, Icon> = {
+  trigger: ZapIcon,
   capture: DownloadIcon,
   process: SyncIcon,
   apply: UploadIcon,
 }
 
 export const KIND_ICON_BG: Record<string, string> = {
+  trigger: 'var(--bgColor-done-emphasis)',
   capture: 'var(--bgColor-accent-emphasis)',
   process: 'var(--bgColor-success-emphasis)',
   apply: 'var(--bgColor-severe-emphasis)',

@@ -6,10 +6,10 @@ import { test, expect } from '@playwright/test'
 // click-through to either a real page or PlaceholderView.
 //
 // Scoped to [data-testid="capability-index"]/[data-testid="capability-row"]
-// rather than plain text, since capability labels ("Runbook page",
-// "Connectors") also appear inside SPEC.md's own rendered prose right
-// below the index -- a bare getByText() match is ambiguous between the
-// two.
+// rather than plain text, since capability labels ("Capability
+// composition", "Connectors") also appear inside SPEC.md's own rendered
+// prose right below the index -- a bare getByText() match is ambiguous
+// between the two.
 
 function capabilityIndex(page: import('@playwright/test').Page) {
   return page.getByTestId('capability-index')
@@ -23,7 +23,7 @@ test('Spec tab lists capabilities with status badges', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Spec' }).click()
   await expect(capabilityIndex(page).getByRole('heading', { name: 'Capabilities' })).toBeVisible()
-  await expect(capabilityRow(page, 'Runbook page')).toBeVisible()
+  await expect(capabilityRow(page, 'Capability composition')).toBeVisible()
   await expect(capabilityRow(page, 'Connectors')).toBeVisible()
 })
 
@@ -31,9 +31,9 @@ test('Clicking a built capability navigates to its real page', async ({ page }) 
   await page.goto('/')
   await page.getByRole('link', { name: 'Spec' }).click()
 
-  await capabilityRow(page, 'Runbook page').getByRole('button', { name: 'Go to page' }).click()
+  await capabilityRow(page, 'Capability composition').getByRole('button', { name: 'Go to page' }).click()
 
-  await expect(page.getByRole('heading', { name: 'Runbook', exact: true })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Capability composition', exact: true })).toBeVisible()
 })
 
 test('Clicking a not-built capability shows a placeholder with status and a way back', async ({ page }) => {
@@ -72,9 +72,9 @@ test('Spec tab shows the composition capability map, real data not parsed markdo
   await expect(triggerRow.getByText('OPEN')).toBeVisible()
 
   // Collapsed by default -- detail text only appears after expanding.
-  await expect(triggerRow.getByText(/hotkey mechanism exists/i)).not.toBeVisible()
+  await expect(triggerRow.getByText(/KindTrigger \+ five NodeTypes/i)).not.toBeVisible()
   await triggerRow.click()
-  await expect(triggerRow.getByText(/hotkey mechanism exists/i)).toBeVisible()
+  await expect(triggerRow.getByText(/KindTrigger \+ five NodeTypes/i)).toBeVisible()
 })
 
 test('Spec tab renders the architecture diagrams as real SVG, not raw code fences', async ({ page }) => {

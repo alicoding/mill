@@ -3,11 +3,10 @@ import {Events, WML} from "@wailsio/runtime";
 import {IconButton, Label, NavList, PageLayout, SegmentedControl, Text, useTheme} from "@primer/react";
 import {DeviceDesktopIcon, MoonIcon, SidebarCollapseIcon, SidebarExpandIcon, SunIcon} from "@primer/octicons-react";
 import SpecView from "./SpecView";
-import RunbookView from "./RunbookView";
 import ActivityView from "./ActivityView";
 import CompositionView from "./CompositionView";
 import PlaceholderView from "./PlaceholderView";
-import { RunbookService, CapabilitiesService } from "../bindings/github.com/alicoding/mill";
+import { CompositionService, CapabilitiesService } from "../bindings/github.com/alicoding/mill";
 import { useAppStore, viewFor, viewsEqual, statusVariant } from "./store";
 import { COLOR_MODE_STORAGE_KEY, SIDEBAR_OPEN_STORAGE_KEY } from "./theme";
 import { CAPABILITY_ICON, SPEC_ICON } from "./navIcon";
@@ -31,8 +30,8 @@ function App() {
   const view = useAppStore((s) => s.view);
   const setView = useAppStore((s) => s.setView);
   const [time, setTime] = useState<string>('Listening for Time event...');
-  const actions = useAppStore((s) => s.actions);
-  const setActions = useAppStore((s) => s.setActions);
+  const workflows = useAppStore((s) => s.workflows);
+  const setWorkflows = useAppStore((s) => s.setWorkflows);
   const pushActivity = useAppStore((s) => s.pushActivity);
   const setCapabilities = useAppStore((s) => s.setCapabilities);
   const capabilities = useAppStore((s) => s.capabilities);
@@ -120,37 +119,39 @@ function App() {
   }, []);
 
   useEffect(() => {
-    RunbookService.List().then((list) => setActions(list ?? [])).catch(console.error);
-  }, [setActions]);
+    CompositionService.Workflows().then((list) => setWorkflows(list ?? [])).catch(console.error);
+  }, [setWorkflows]);
 
   useEffect(() => {
     CapabilitiesService.List().then((list) => setCapabilities(list ?? [])).catch(console.error);
   }, [setCapabilities]);
 
-  // Subscribed here, not inside ActivityView/RunbookView, so a hotkey
-  // fired while on a different tab is still captured -- the whole point
-  // of this feed is answering "did anything run at all" regardless of
-  // which page happened to be open, or how the run was triggered. Only
-  // the hotkey source pushes via this Go-emitted event -- it's the only
-  // one of the three (hotkey/runbook/composition) that fires headlessly;
-  // Runbook and Composition runs push directly from their own Run button
-  // handlers, since they already resolve synchronously in the browser.
+  // Subscribed here, not inside ActivityView/CompositionView, so a
+  // headless trigger fired while on a different tab is still captured --
+  // the whole point of this feed is answering "did anything run at all"
+  // regardless of which page happened to be open, or how the run was
+  // triggered. Only the trigger source pushes via this Go-emitted event
+  // (still literally named "hotkey-activity" on the wire, kept for event-
+  // name compatibility -- see main.go's HotkeyActivity doc comment) --
+  // it's the only one of the two sources that fires headlessly;
+  // Composition Run-button clicks push directly from their own handler,
+  // since they already resolve synchronously in the browser.
   useEffect(() => {
     return Events.On('hotkey-activity', (evt) => {
       pushActivity({
         id: crypto.randomUUID(),
         time: new Date().toLocaleTimeString(),
         timestamp: Date.now(),
-        source: 'hotkey',
-        actionID: evt.data.actionID,
-        label: actions?.find((a) => a.ID === evt.data.actionID)?.Name ?? evt.data.actionID,
+        source: 'trigger',
+        workflowID: evt.data.workflowID,
+        label: workflows?.find((w) => w.ID === evt.data.workflowID)?.Label ?? evt.data.workflowID,
         binding: evt.data.binding,
         success: evt.data.success,
         detail: evt.data.detail,
         result: evt.data.result,
       });
     });
-  }, [pushActivity, actions]);
+  }, [pushActivity, workflows]);
 
   return (
     <div className="app-shell">
@@ -236,8 +237,6 @@ function App() {
         </PageLayout.Sidebar>
 
         <PageLayout.Content className="view-pane" padding="none">
-          {view.kind === 'runbook' && <RunbookView/>}
-
           {view.kind === 'activity' && <ActivityView/>}
 
           {view.kind === 'composition' && <CompositionView/>}

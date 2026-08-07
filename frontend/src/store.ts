@@ -1,24 +1,25 @@
 import { create } from 'zustand'
 import type { LabelProps } from '@primer/react'
-import type { Action } from '../bindings/github.com/alicoding/mill/internal/domain/runbook/models'
+import type { Workflow } from '../bindings/github.com/alicoding/mill/internal/domain/composition/models'
 import { ViewKind } from '../bindings/github.com/alicoding/mill/internal/domain/capabilities/models'
 import type { Capability } from '../bindings/github.com/alicoding/mill/internal/domain/capabilities/models'
 
-// Which surface triggered a run -- 'hotkey' fires headlessly (no other
-// feedback exists for it, the entire reason this feed was built);
-// 'runbook'/'composition' are direct Run-button clicks, which already
-// have their own inline result/error UI, but still belong in one shared
-// feed so "did anything run" has a single place to look regardless of
-// how it was triggered.
-export type ActivitySource = 'hotkey' | 'runbook' | 'composition'
+// Which surface triggered a run -- 'trigger' covers every headless
+// source (hotkey, schedule, clipboard-watch, filesystem-watch; see
+// docs/SPEC.md §3.4), all of which fire through the one Go-emitted
+// HotkeyActivity event (main.go/triggerservice.go) since none of them
+// have any other feedback surface, the entire reason this feed exists;
+// 'composition' is a direct Run-button click, which already has its own
+// inline result/error UI, but still belongs in one shared feed so "did
+// anything run" has a single place to look regardless of how it fired.
+export type ActivitySource = 'trigger' | 'composition'
 
 // A frontend-owned shape, not derived from the Go-emitted HotkeyActivity
-// event (main.go) -- only the hotkey source actually goes through that
-// event (it's the only one of the three that fires headlessly); Runbook
-// and Composition runs already resolve synchronously in the browser, so
-// they push directly. label is resolved and stored at push time, not
-// looked up later against `actions`/workflows (which can drift, or have
-// the entry deleted -- workflows aren't even in `actions` at all).
+// event (main.go) -- only the trigger source actually goes through that
+// event; Composition Run-button clicks already resolve synchronously in
+// the browser, so they push directly. label is resolved and stored at
+// push time, not looked up later against `workflows` (which can drift,
+// or have the entry deleted).
 export interface ActivityEntry {
   id: string
   time: string
@@ -28,9 +29,9 @@ export interface ActivityEntry {
   // sorts on; `time` stays display-only.
   timestamp: number
   source: ActivitySource
-  actionID: string
+  workflowID: string
   label: string
-  binding?: string // only set for source: 'hotkey'
+  binding?: string // only set for the hotkey trigger type specifically
   success: boolean
   detail: string
   result: string
@@ -40,7 +41,6 @@ export interface ActivityEntry {
 // carries which capability it's standing in for, so PlaceholderView never
 // has to guess or fall back to a default.
 export type View =
-  | { kind: 'runbook' }
   | { kind: 'activity' }
   | { kind: 'composition' }
   | { kind: 'spec' }
@@ -51,8 +51,6 @@ export type View =
 // surfaces navigate identically instead of each re-deriving it.
 export function viewFor(capability: Capability): View {
   switch (capability.View) {
-    case ViewKind.ViewRunbook:
-      return { kind: 'runbook' }
     case ViewKind.ViewActivity:
       return { kind: 'activity' }
     case ViewKind.ViewComposition:
@@ -84,29 +82,35 @@ export function statusVariant(status: string): LabelProps['variant'] {
 const MAX_ACTIVITY_ENTRIES = 50
 
 interface AppState {
-  actions: Action[] | null
+  workflows: Workflow[] | null
   activity: ActivityEntry[]
   capabilities: Capability[]
   view: View
-  setActions: (actions: Action[]) => void
+  setWorkflows: (workflows: Workflow[]) => void
   pushActivity: (entry: ActivityEntry) => void
   setCapabilities: (capabilities: Capability[]) => void
   setView: (view: View) => void
 }
 
-// Shared across App/RunbookView/ActivityView/SpecView (SPEC.md §1.3):
-// App.tsx still owns the data-fetching effects (RunbookService.List(),
+// Shared across App/ActivityView/SpecView (SPEC.md §1.3): App.tsx still
+// owns the data-fetching effects (CompositionService.Workflows(),
 // CapabilitiesService.List(), the hotkey-activity event) since it's the
 // one place every view mounts under, but the data itself lives here
 // instead of being threaded down as props. `view` lives here too (not
 // local useState in App.tsx) so the capability index rendered inside
 // SpecView can navigate directly, without a callback prop threaded down.
+// workflows is shared state (not CompositionView-local) specifically so
+// App.tsx's hotkey-activity handler can resolve a fired workflow's label
+// without its own separate fetch.
 export const useAppStore = create<AppState>((set) => ({
-  actions: null,
+  workflows: null,
   activity: [],
   capabilities: [],
-  view: { kind: 'runbook' },
-  setActions: (actions) => set({ actions }),
+  // Composition (the Workflows list) is the new landing page -- the
+  // direct successor to what Runbook used to be (docs/SPEC.md §2.2's
+  // Update note), not Activity, which is a secondary "what ran" view.
+  view: { kind: 'composition' },
+  setWorkflows: (workflows) => set({ workflows }),
   pushActivity: (entry) =>
     set((state) => ({ activity: [entry, ...state.activity].slice(0, MAX_ACTIVITY_ENTRIES) })),
   setCapabilities: (capabilities) => set({ capabilities }),

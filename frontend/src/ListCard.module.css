@@ -1,6 +1,9 @@
-/* Shared by RunbookView.tsx and ActivityView.tsx -- both render the same
-   card/list visual language, so this stays one module imported by both
-   rather than duplicating ~15 rules across two files. Layout/type/color
+/* Shared by ActivityView.tsx, CompositionView.tsx, CompositionCanvas.tsx,
+   CapabilityIndex.tsx, CompositionCapabilityMap.tsx, and PlaceholderView.tsx
+   -- all render the same card/list visual language (originally proven on
+   the now-retired Runbook page, docs/SPEC.md §2.2), so this stays one
+   module imported by every one of them rather than duplicating ~15 rules
+   across files. Layout/type/color
    otherwise come from Primer components (Stack, Heading, Text, Button,
    Label, SkeletonBox); the classes below are only for what those don't
    cover (card chrome, icon gutter, empty/loading state, result/error
@@ -8,8 +11,8 @@
    CSS custom properties) -- Primer React v38 dropped styled-components/sx/
    Box in favor of exactly this: CSS Modules + CSS variables. Root scroll/
    clip behavior comes from the global .view-pane class (src/index.css),
-   applied alongside this module's .runbook class. */
-.runbook {
+   applied alongside this module's .page class. */
+.page {
     --wails-draggable: no-drag;
     max-width: 760px;
     margin: 0 auto;
