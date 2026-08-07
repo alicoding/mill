@@ -809,6 +809,61 @@ that environment, on something testable directly in this dev session:
   Mermaid diagrams re-rendering with correct colors in dark mode, and the
   Composition canvas's node icon-squares rendering correctly in dark
   mode. `LOCKED`
+- **Update — sidebar collapse redone as a real icon-rail, replacing the
+  full show/hide pass above, after the user pointed at a reference
+  no-code platform's own sidebar (logo-adjacent toggle, icon-only
+  collapsed rail) and asked directly whether the original approach was
+  really custom or something Primer provided.** Re-researched rather than
+  assumed: grepped `@primer/react`'s compiled output for "collapse" (zero
+  hits outside icon names) and read `PageLayout`'s, `SplitPageLayout`'s,
+  and `NavList`'s own `.d.ts` files directly — none of the three expose a
+  collapse-to-rail mode; `PageLayout.Sidebar`/`SplitPageLayout.Sidebar`
+  offer only the same plain `hidden` boolean the original pass already
+  found, and `NavList` has no icon-only rendering mode. The reference
+  platform's own visual precedent (and GitHub.com's own product sidebar,
+  which does the same thing) is built on internal components never
+  published to `@primer/react` — so an icon-rail here is necessarily
+  hand-built on Primer's real primitives (`NavList.LeadingVisual`,
+  `IconButton`) either way; confirmed, not assumed. Sidebar state changed
+  from a visibility toggle to a width toggle: the sidebar is never fully
+  hidden now, it narrows to a 52px icon rail, so the one toggle button
+  (in the sidebar's own header, next to a plain-text "Mill" wordmark —
+  Mill has no compact logo mark yet, only the default Wails placeholder
+  icon, so the collapsed rail shows just the toggle rather than
+  fabricating a mark that doesn't exist elsewhere in the app) stays
+  reachable in both states, closing the earlier design's real gap (a
+  second "expand" control stranded in the app-wide footer, disconnected
+  from the sidebar it operated on). Each capability now gets a real
+  Octicon (a frontend-owned `navIcon.ts` map keyed by `Capability.ID`,
+  same pattern as `nodeKind.ts`'s `KIND_ICON` map for Composition node
+  types — Go's `CapabilitiesService.List()` stays plain ID/Label/Status
+  data, since icon choice is presentation, not something Go has an
+  opinion on), rendered via `NavList.LeadingVisual`; collapsed rows drop
+  their text label and status `Label` entirely (no room, matches the
+  reference's own icon-only rail) and carry `aria-label`/`title` instead
+  for accessibility and a hover tooltip. **Real bug caught during this
+  pass, not assumed away**: `PageLayout.Sidebar`'s `className` prop does
+  not land on the actual sized element — checked directly against
+  `PageLayout.js`'s compiled source, which does
+  `clsx(SidebarWrapper, className)` — so the first attempt at the width
+  override (`className`-driven, `width:52px` when collapsed) silently
+  clipped the *wrapper* box while the real inner Sidebar element (with
+  Primer's own `width:var(--pane-width-size)` rule) stayed logically at
+  its full 256px width, laying its content out there and shifting the
+  icons off-canvas at a negative `x` (confirmed via
+  `getBoundingClientRect()`, not guessed from the screenshot alone) —
+  same "wrapper vs. real content node" shape as the earlier
+  `PageLayout.Content`/`ContentWrapper` split this doc already documents,
+  same fix shape too: `App.module.css` selects the real node structurally
+  (`.sidebar > :first-child`, confirmed via the live DOM to be exactly
+  `[Sidebar, VerticalDivider]` in that order) rather than depending on
+  Primer's hashed, versioned class name. Verified end-to-end on the real
+  server-mode app via Playwright, including the specific failure mode
+  above: collapsed rail with all icons visible and correctly positioned,
+  clicking a nav item while collapsed still navigates and keeps every
+  other icon rendered (the regression the wrapper-vs-node bug caused),
+  round-tripping collapse → expand → collapse, and both light and dark
+  theme. `LOCKED`
 
 ## 3. Capability composition — how nodes connect
 
