@@ -1,3 +1,61 @@
+/* ----- Sidebar -------------------------------------------------------------- */
+/* className on PageLayout.Sidebar does NOT land on the actual sized element
+   -- checked directly against PageLayout.js's compiled source, not assumed:
+   Sidebar() does `clsx(PageLayout_module_css.SidebarWrapper, className)`,
+   so our class lands on the outer SidebarWrapper (a plain flex-row box with
+   no width/overflow opinion of its own), while the real sized node
+   (.prc-PageLayout-Sidebar-iciWg, which owns `width:var(--pane-width-size);
+   overflow:auto`) is an unreachable, unnamed child Primer renders inside
+   it. First pass forgot this and set width/overflow on the wrapper itself
+   -- visually this clipped the *wrapper's* box to 52px while the real
+   Sidebar element inside it stayed logically 256px wide, so its content
+   got laid out at full width and then shifted/cropped out of view
+   entirely (confirmed via getBoundingClientRect: icons rendered at
+   negative x, off-canvas). Same "wrapper vs. real content node" shape as
+   the earlier PageLayout.Content/ContentWrapper split below -- same fix
+   shape too: select the real node structurally (`:first-child` of our own
+   wrapper class, confirmed via the live DOM to be exactly [Sidebar,
+   VerticalDivider] in that order) rather than its hashed, versioned class
+   name. */
+.sidebar > :first-child {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    transition: width 0.15s ease;
+}
+/* Icon-rail width when collapsed. Primer's own Sidebar-iciWg rule sets
+   width:var(--pane-width-size) (a single, unqualified declaration, same
+   0-1-0 specificity as this structural selector) -- overriding it relies
+   on this module's CSS loading after Primer's in the bundle, same
+   assumption already relied on for the overflow override above and
+   verified visually, not just asserted. */
+.sidebarCollapsed > :first-child {
+    width: 52px;
+}
+.sidebarHeader {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--borderColor-default);
+    padding-bottom: var(--base-size-8);
+    margin-bottom: var(--base-size-8);
+}
+.sidebarCollapsed .sidebarHeader {
+    justify-content: center;
+}
+.sidebarWordmark {
+    font-weight: 600;
+    font-size: 14px;
+    color: var(--fgColor-default);
+}
+.sidebarNav {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
 /* ----- Footer -------------------------------------------------------------- */
 /* Thin bar pinned to the bottom: version far-left, live clock centered. */
 .divider {

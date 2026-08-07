@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import {Events, WML} from "@wailsio/runtime";
-import {IconButton, Label, NavList, PageLayout, SegmentedControl, useTheme} from "@primer/react";
+import {IconButton, Label, NavList, PageLayout, SegmentedControl, Text, useTheme} from "@primer/react";
 import {DeviceDesktopIcon, MoonIcon, SidebarCollapseIcon, SidebarExpandIcon, SunIcon} from "@primer/octicons-react";
 import SpecView from "./SpecView";
 import RunbookView from "./RunbookView";
@@ -10,6 +10,7 @@ import PlaceholderView from "./PlaceholderView";
 import { RunbookService, CapabilitiesService } from "../bindings/github.com/alicoding/mill";
 import { useAppStore, viewFor, viewsEqual, statusVariant } from "./store";
 import { COLOR_MODE_STORAGE_KEY, SIDEBAR_OPEN_STORAGE_KEY } from "./theme";
+import { CAPABILITY_ICON, SPEC_ICON } from "./navIcon";
 import styles from "./App.module.css";
 
 const COLOR_MODES = ['light', 'dark', 'auto'] as const
@@ -46,13 +47,28 @@ function App() {
   // worth chasing further for a dev-convenience ribbon -- see SPEC.md.
   const [loadedAt] = useState(() => new Date().toLocaleTimeString());
 
-  // Primer's PageLayout.Sidebar has no built-in collapse-to-rail toggle
-  // (checked directly against its own props, not assumed) -- only a
-  // plain `hidden` boolean, which is what this drives. Persisted (not
-  // just session state) since a UI layout preference, not domain data,
-  // is exactly the kind of thing localStorage is for -- Mill's real
-  // settings store (internal/adapters/settings) is reserved for actual
-  // domain state like hotkey bindings and composed workflows.
+  // Icon-rail collapse (narrow persistent strip, not full hide/show) is a
+  // well-established pattern -- but Primer genuinely ships none of its
+  // mechanics. Checked exhaustively, not assumed: grepped @primer/react's
+  // compiled output for "collapse" (zero hits outside icon names), and
+  // read PageLayout's, SplitPageLayout's, and NavList's own .d.ts files --
+  // PageLayout.Sidebar/SplitPageLayout.Sidebar expose only a plain
+  // `hidden` boolean (full show/hide, no rail-width state), and NavList
+  // has no icon-only/collapsed rendering mode of its own. GitHub.com's own
+  // product sidebar (the actual visual precedent for this) is built on
+  // GitHub-internal components that were never published to @primer/react
+  // -- so this rail is hand-built on Primer's real primitives (NavList,
+  // NavList.LeadingVisual, IconButton) the same way GitHub's own is
+  // presumably hand-built on top of Primer internally, not something
+  // @primer/react ships pre-made. Sidebar state is now a width toggle, not
+  // a visibility toggle: the sidebar is never fully hidden, it only
+  // narrows to an icon rail, so the one toggle button (in the sidebar's
+  // own header, next to the wordmark) stays reachable in both states --
+  // no second "expand" control stranded elsewhere. Persisted (not just
+  // session state) since a UI layout preference, not domain data, is
+  // exactly what localStorage is for -- Mill's real settings store
+  // (internal/adapters/settings) is reserved for actual domain state like
+  // hotkey bindings and composed workflows.
   const [sidebarOpen, setSidebarOpen] = useState(() => localStorage.getItem(SIDEBAR_OPEN_STORAGE_KEY) !== 'false');
   useEffect(() => {
     localStorage.setItem(SIDEBAR_OPEN_STORAGE_KEY, String(sidebarOpen));
@@ -154,33 +170,69 @@ function App() {
           stays a fixed, non-capability entry: it's the directory/docs
           page itself, not a product feature with a build status. */}
       <PageLayout className={styles.appBody} containerWidth="full" padding="none" rowGap="none" columnGap="none">
-        <PageLayout.Sidebar hidden={!sidebarOpen} width="small" responsiveVariant="default" divider="line" padding="condensed">
-          <NavList>
-            {capabilities.map((c) => {
-              const target = viewFor(c);
-              return (
-                <NavList.Item
-                  key={c.ID}
-                  href="#"
-                  aria-current={viewsEqual(view, target) ? 'page' : undefined}
-                  onClick={(e) => { e.preventDefault(); setView(target) }}
-                >
-                  {c.NavLabel || c.Label}
-                  <NavList.TrailingVisual>
-                    <Label variant={statusVariant(c.Status)} size="small">{c.Status}</Label>
-                  </NavList.TrailingVisual>
-                </NavList.Item>
-              );
-            })}
-            <NavList.Divider/>
-            <NavList.Item
-              href="#"
-              aria-current={view.kind === 'spec' ? 'page' : undefined}
-              onClick={(e) => { e.preventDefault(); setView({ kind: 'spec' }) }}
-            >
-              Spec
-            </NavList.Item>
-          </NavList>
+        <PageLayout.Sidebar
+          className={sidebarOpen ? styles.sidebar : `${styles.sidebar} ${styles.sidebarCollapsed}`}
+          width="small"
+          responsiveVariant="default"
+          divider="line"
+          padding="condensed"
+        >
+          {/* Wordmark + toggle share one row, both always reachable --
+              matches the reference platform's own logo-adjacent collapse
+              control rather than Mill's earlier footer-stranded button.
+              No wordmark yet in the collapsed rail: Mill has no compact
+              logo mark today (only the default Wails placeholder icon,
+              see build/appicon.png), so collapsed shows just the toggle,
+              centered, rather than fabricating a mark that doesn't exist
+              anywhere else in the app. */}
+          <div className={styles.sidebarHeader}>
+            {sidebarOpen && <Text className={styles.sidebarWordmark}>Mill</Text>}
+            <IconButton
+              icon={sidebarOpen ? SidebarCollapseIcon : SidebarExpandIcon}
+              aria-label={sidebarOpen ? 'Collapse navigation' : 'Expand navigation'}
+              size="small"
+              variant="invisible"
+              onClick={() => setSidebarOpen((v) => !v)}
+            />
+          </div>
+          <div className={styles.sidebarNav}>
+            <NavList>
+              {capabilities.map((c) => {
+                const target = viewFor(c);
+                const label = c.NavLabel || c.Label;
+                const NavIcon = CAPABILITY_ICON[c.ID];
+                return (
+                  <NavList.Item
+                    key={c.ID}
+                    href="#"
+                    aria-current={viewsEqual(view, target) ? 'page' : undefined}
+                    aria-label={sidebarOpen ? undefined : label}
+                    title={sidebarOpen ? undefined : label}
+                    onClick={(e) => { e.preventDefault(); setView(target) }}
+                  >
+                    {NavIcon && <NavList.LeadingVisual><NavIcon/></NavList.LeadingVisual>}
+                    {sidebarOpen && label}
+                    {sidebarOpen && (
+                      <NavList.TrailingVisual>
+                        <Label variant={statusVariant(c.Status)} size="small">{c.Status}</Label>
+                      </NavList.TrailingVisual>
+                    )}
+                  </NavList.Item>
+                );
+              })}
+              <NavList.Divider/>
+              <NavList.Item
+                href="#"
+                aria-current={view.kind === 'spec' ? 'page' : undefined}
+                aria-label={sidebarOpen ? undefined : 'Spec'}
+                title={sidebarOpen ? undefined : 'Spec'}
+                onClick={(e) => { e.preventDefault(); setView({ kind: 'spec' }) }}
+              >
+                <NavList.LeadingVisual><SPEC_ICON/></NavList.LeadingVisual>
+                {sidebarOpen && 'Spec'}
+              </NavList.Item>
+            </NavList>
+          </div>
         </PageLayout.Sidebar>
 
         <PageLayout.Content className="view-pane" padding="none">
@@ -199,13 +251,6 @@ function App() {
       <hr className={styles.divider}/>
       <footer className={styles.footer}>
         <span className={styles.version}>
-          <IconButton
-            icon={sidebarOpen ? SidebarCollapseIcon : SidebarExpandIcon}
-            aria-label={sidebarOpen ? 'Collapse sidebar' : 'Expand sidebar'}
-            size="small"
-            variant="invisible"
-            onClick={() => setSidebarOpen((v) => !v)}
-          />
           <span>{wailsVersion}</span>
         </span>
         <span className={styles.time}>
