@@ -6,14 +6,11 @@ import {
   Controls,
   MiniMap,
   Panel,
-  Handle,
-  Position as RFPosition,
   useReactFlow,
 } from '@xyflow/react'
-import type { Connection, Edge as RFEdge, NodeTypes as RFNodeTypes, NodeProps } from '@xyflow/react'
+import type { Connection, Edge as RFEdge } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 import { useStore } from 'zustand'
-import { z } from 'zod'
 import { Browser } from '@wailsio/runtime'
 import { Button, Checkbox, FormControl, IconButton, Label, Select, Stack, Text, TextInput, Textarea } from '@primer/react'
 import { ColumnsIcon, KeyIcon, RedoIcon, SidebarCollapseIcon, SidebarExpandIcon, TrashIcon, UndoIcon } from '@primer/octicons-react'
@@ -22,143 +19,14 @@ import { CompositionService } from '../bindings/github.com/alicoding/mill'
 import type { NodeType, Node as CompNode, Edge as CompEdge, Workflow } from '../bindings/github.com/alicoding/mill/internal/domain/composition/models'
 import { ConfigFieldType } from '../bindings/github.com/alicoding/mill/internal/domain/composition/models'
 import { createCanvasStore, type CanvasNode } from './canvasStore'
-import { KIND_ICON, KIND_ICON_BG, KIND_LABEL } from './nodeKind'
+import { rfNodeTypes, CANVAS_NODE_WIDTH, CANVAS_NODE_HEIGHT } from './CanvasNodeView'
+import { toCanvasNodes, toRFEdges } from './canvasConversion'
+import { draftWorkflowSchema } from './draftWorkflowSchema'
+import { NodePalette } from './NodePalette'
 import { useHotkeyCapture, isAccessibilityError, ACCESSIBILITY_SETTINGS_URL } from './hotkeyCapture'
 import { generateSamplePayload } from './configSchema'
 import styles from './CompositionCanvas.module.css'
 import runbookStyles from './ListCard.module.css'
-
-// Converts a persisted Workflow's Nodes/Edges (Wails' PascalCase wire
-// shape) into React Flow's own node/edge shape, for loading an existing
-// workflow onto the canvas to edit -- the inverse of save()'s mapping
-// below. nodeTypes supplies each node's display label, since a stored
-// Node only carries NodeTypeID, not the type's own Label.
-function toCanvasNodes(nodes: CompNode[] | null, nodeTypes: NodeType[]): CanvasNode[] {
-  return (nodes ?? []).map((n) => {
-    const nt = nodeTypes.find((t) => t.ID === n.NodeTypeID)
-    const config: Record<string, string> = {}
-    for (const [k, v] of Object.entries(n.Config ?? {})) {
-      if (v !== undefined) config[k] = v
-    }
-    return {
-      id: n.ID,
-      type: n.Kind,
-      position: { x: n.Position?.X ?? 0, y: n.Position?.Y ?? 0 },
-      data: { nodeTypeID: n.NodeTypeID, kind: n.Kind, label: nt?.Label ?? n.NodeTypeID, config },
-    }
-  })
-}
-function toRFEdges(edges: CompEdge[] | null): RFEdge[] {
-  return (edges ?? []).map((e) => ({ id: e.ID, source: e.Source, target: e.Target, sourceHandle: e.SourceHandle || undefined }))
-}
-
-// Top/bottom handles, not left/right -- a top-to-bottom chain with each
-// edge entering/exiting a node's horizontal center (React Flow's default
-// for Top/Bottom handle positions) reads as one orderly column instead
-// of the diagonal, easy-to-overlap layout left/right handles produced.
-// Every node renders at the same fixed width/height (CANVAS_NODE_WIDTH/
-// HEIGHT below, shared with the elkjs layout call so auto-layout spaces
-// nodes for the size they actually render at) regardless of label
-// length -- a uniform grid of cards, not size-to-content boxes; long
-// labels truncate with an ellipsis instead of stretching the card.
-//
-// Card shape (icon square + kind label + title stacked beside it) is
-// adopted from the reference no-code platform's own node cards; the
-// icon/color/kind text is Mill's own (KIND_ICON/KIND_ICON_BG/KIND_LABEL,
-// nodeKind.ts) since Mill's node kinds are Capture/Process/Apply, not
-// that reference's fuller Input/Decision/Ruleset/... taxonomy.
-function CanvasNodeView({ data, selected }: NodeProps<CanvasNode>) {
-  const Icon = KIND_ICON[data.kind]
-  // Trigger nodes have no target handle -- nothing should connect into
-  // them, same as n8n's own trigger nodes having no input pin (they're
-  // the entry point, not a step something else feeds).
-  const isTrigger = data.kind === 'trigger'
-  return (
-    <div className={`${styles.canvasNode} ${selected ? styles.canvasNodeSelected : ''}`}>
-      {!isTrigger && <Handle type="target" position={RFPosition.Top} />}
-      <div className={styles.canvasNodeIcon} style={{ background: KIND_ICON_BG[data.kind] ?? 'var(--bgColor-neutral-emphasis)' }}>
-        {Icon && <Icon size={16} fill="var(--fgColor-onEmphasis)" />}
-      </div>
-      <div className={styles.canvasNodeText}>
-        <Text size="small" className={styles.canvasNodeKind}>{KIND_LABEL[data.kind] ?? data.kind}</Text>
-        <Text size="small" weight="semibold" className={styles.canvasNodeLabel} title={data.label}>
-          {data.label}
-        </Text>
-      </div>
-      <Handle type="source" position={RFPosition.Bottom} />
-    </div>
-  )
-}
-
-// Shared with CompositionCanvas.module.css's .canvasNode (must match --
-// there's no single source of truth CSS-in-JS could give here without
-// pulling in a new dependency, so the elk layout call below imports
-// these same numbers instead of hardcoding a second copy).
-const CANVAS_NODE_WIDTH = 220
-const CANVAS_NODE_HEIGHT = 64
-
-const rfNodeTypes: RFNodeTypes = {
-  trigger: CanvasNodeView,
-  capture: CanvasNodeView,
-  process: CanvasNodeView,
-  apply: CanvasNodeView,
-  decision: CanvasNodeView,
-}
-
-// Validates a draft workflow before Save, against the Wails-generated
-// PascalCase wire shape (composition/models.ts) -- not idiomatic
-// camelCase -- since this validates exactly what CreateWorkflow will
-// receive. The out-degree and single-root checks mirror composition.go's
-// own buildGraph/findRoot validation (a save-time error and a run-time
-// error never disagree), but deliberately don't replicate its full
-// reachability walk or Decision-edge expression/otherwise checks --
-// CreateWorkflow/UpdateWorkflow call ValidateGraph server-side as the
-// actual authority for those; this is a cheap client-side sanity check,
-// same as the canvas's isValidConnection (below) already is for
-// disallowed shapes at draw-time, so a user hits this validation only in
-// edge cases (e.g. deleting a node that leaves the graph disconnected).
-const configSchema = z.record(z.string(), z.string())
-const nodeSchema = z.object({
-  ID: z.string().min(1),
-  Kind: z.string(),
-  NodeTypeID: z.string().min(1),
-  Config: configSchema,
-  Position: z.object({ X: z.number(), Y: z.number() }),
-})
-const edgeSchema = z.object({
-  ID: z.string().min(1),
-  Source: z.string().min(1),
-  SourceHandle: z.string(),
-  Target: z.string().min(1),
-})
-const draftWorkflowSchema = z
-  .object({
-    Label: z.string().trim().min(1, 'A workflow needs a label'),
-    Description: z.string(),
-    Nodes: z.array(nodeSchema).min(1, 'A workflow needs at least one node'),
-    Edges: z.array(edgeSchema),
-  })
-  .superRefine((draft, ctx) => {
-    const ids = new Set(draft.Nodes.map((n) => n.ID))
-    const kindByID = new Map(draft.Nodes.map((n) => [n.ID, n.Kind]))
-    const outDegree = new Map<string, number>()
-    const hasIncoming = new Set<string>()
-    for (const e of draft.Edges) {
-      if (!ids.has(e.Source) || !ids.has(e.Target)) {
-        ctx.addIssue({ code: 'custom', message: 'A connection references a node that no longer exists.' })
-      }
-      outDegree.set(e.Source, (outDegree.get(e.Source) ?? 0) + 1)
-      hasIncoming.add(e.Target)
-    }
-    for (const [id, count] of outDegree) {
-      if (count > 1 && kindByID.get(id) !== 'decision') {
-        ctx.addIssue({ code: 'custom', message: 'Only a Decision node can have more than one outgoing connection.' })
-      }
-    }
-    if (draft.Nodes.filter((n) => !hasIncoming.has(n.ID)).length !== 1) {
-      ctx.addIssue({ code: 'custom', message: 'A workflow must have exactly one starting node.' })
-    }
-  })
 
 interface CompositionCanvasProps {
   nodeTypes: NodeType[]
@@ -285,11 +153,6 @@ function CanvasInner({ nodeTypes, workflow, onBack, onSaved }: CompositionCanvas
     },
     [edges, nodes],
   )
-
-  const onPaletteDragStart = (event: DragEvent<HTMLDivElement>, nt: NodeType) => {
-    event.dataTransfer.setData('application/mill-node-type', nt.ID)
-    event.dataTransfer.effectAllowed = 'move'
-  }
 
   const onCanvasDrop = useCallback(
     (event: DragEvent<HTMLDivElement>) => {
@@ -419,35 +282,7 @@ function CanvasInner({ nodeTypes, workflow, onBack, onSaved }: CompositionCanvas
       </div>
 
       <div className={styles.canvasWrap}>
-        {paletteOpen && (
-          <div className={styles.palette} data-testid="palette-panel">
-            <Text size="small" weight="semibold" className={styles.paletteHeading}>Add steps</Text>
-            <Stack direction="vertical" gap="condensed">
-              {nodeTypes.map((nt) => (
-                <div
-                  key={nt.ID}
-                  className={`${runbookStyles.card} ${styles.paletteItem}`}
-                  draggable
-                  onDragStart={(e) => onPaletteDragStart(e, nt)}
-                  data-testid="palette-item"
-                >
-                  <Stack direction="horizontal" gap="condensed" align="center">
-                    <div className={styles.paletteItemIcon} style={{ background: KIND_ICON_BG[nt.Kind] ?? 'var(--bgColor-neutral-emphasis)' }}>
-                      {(() => {
-                        const Icon = KIND_ICON[nt.Kind]
-                        return Icon ? <Icon size={14} fill="var(--fgColor-onEmphasis)" /> : null
-                      })()}
-                    </div>
-                    <div className={styles.paletteItemText}>
-                      <Text size="small" className={styles.canvasNodeKind}>{KIND_LABEL[nt.Kind] ?? nt.Kind}</Text>
-                      <Text size="small" weight="semibold" className={styles.canvasNodeLabel} title={nt.Label}>{nt.Label}</Text>
-                    </div>
-                  </Stack>
-                </div>
-              ))}
-            </Stack>
-          </div>
-        )}
+        {paletteOpen && <NodePalette nodeTypes={nodeTypes} />}
         <div className={styles.canvas} onDrop={onCanvasDrop} onDragOver={(e) => e.preventDefault()}>
           <ReactFlow
             nodes={nodes}

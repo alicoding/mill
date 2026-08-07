@@ -11,6 +11,15 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # Mirrors lefthook.yml's own file-loc-limit job -- same script, so the
+  # two can't drift. No checkout-heavy setup needed (just git ls-files +
+  # wc), so this doesn't depend on the frontend job below.
+  file-loc-limit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - run: ./scripts/check-loc.sh
+
   # Lints and builds frontend/dist once; Go jobs below need frontend/dist
   # present (main.go embeds it via //go:embed all:frontend/dist), so they
   # download it instead of rebuilding it redundantly per job/OS.
