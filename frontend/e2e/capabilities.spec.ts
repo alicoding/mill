@@ -76,3 +76,15 @@ test('Spec tab shows the composition capability map, real data not parsed markdo
   await triggerRow.click()
   await expect(triggerRow.getByText(/hotkey mechanism exists/i)).toBeVisible()
 })
+
+test('Spec tab renders the architecture diagrams as real SVG, not raw code fences', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Spec' }).click()
+
+  await expect(page.getByRole('heading', { name: 'Architecture at a glance' })).toBeVisible()
+  // mermaid.run() replaces each `pre.mermaid` block's text content with an
+  // <svg> in place -- if this is still raw ```mermaid text, the renderer
+  // override or mermaid.run() wiring (SpecView.tsx) has regressed.
+  const diagrams = page.locator('pre.mermaid svg')
+  await expect(diagrams).toHaveCount(2)
+})

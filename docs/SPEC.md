@@ -262,6 +262,108 @@ and [`docs/adr/0002-cicd-pipeline-phased-rollout.md`](adr/0002-cicd-pipeline-pha
   image also not part of v1 release scope — no confirmed hosted-deployment
   use case. `LOCKED` (macOS-only scope) / `PARKED` (the rest)
 
+### 1.4 Architecture at a glance
+
+Two standard architecture views, rendered as real diagrams in the Spec
+tab itself (`frontend/src/SpecView.tsx`, via the `mermaid` package —
+MIT, pure JS/TS dependency tree, no native/Rust anywhere, verified
+directly against its own `package.json` before adopting) rather than
+left as prose alone — a layered system with this many pieces built is
+harder to hold in your head as text than as a picture. Mermaid's own
+`C4Context`/`C4Component` diagram types would match this pair's naming
+even more closely, but Mermaid's own docs flag C4 diagrams as
+experimental (syntax/properties still changing); using the standard,
+stable `graph`/subgraph syntax instead gets the same two conceptual
+views without that risk. Dashed nodes are planned, not built — same
+distinction as everywhere else in this doc, never implied as done.
+
+**System Context** — Mill, its user, and the systems it touches:
+
+```mermaid
+graph TB
+    User(("User"))
+    Mill["Mill (desktop app)"]
+    macOS["macOS<br/>Accessibility &amp; Clipboard"]
+    Agent["AI agent / chat client<br/>(via MCP)"]
+    Conn["External APIs<br/>(Jira, Confluence, HTTP)"]
+    Browser["Browser tab<br/>(via extension)"]
+
+    User -->|presses hotkey, clicks Run| Mill
+    Mill -->|reads/writes clipboard, requests permission| macOS
+    Mill -.->|exposes guardrailed tools| Agent
+    Mill -.->|calls, auth'd| Conn
+    Browser -.->|DOM capture / relay| Mill
+
+    classDef planned stroke-dasharray: 5 5,fill:transparent
+    class Agent,Conn,Browser planned
+```
+
+**Logical / Component view** — Mill's own layered architecture:
+
+```mermaid
+graph TB
+    subgraph Frontend["Frontend — React + TypeScript (Vite)"]
+        Views["Views: Runbook, Activity,<br/>Composition, Spec, ..."]
+        Store["Zustand store"]
+    end
+    subgraph Bindings["Wails-bound services (root *service.go)"]
+        RunbookSvc["RunbookService"]
+        HotkeySvc["HotkeyService"]
+        CompSvc["CompositionService"]
+        CapSvc["CapabilitiesService"]
+        SpecSvc["SpecService"]
+    end
+    subgraph Domain["internal/domain/* — core domain, hand-written"]
+        RunbookDom["runbook"]
+        CompDom["composition"]
+        CapDom["capabilities"]
+    end
+    subgraph Adapters["internal/adapters/* — ports/adapters, commodity"]
+        Clipboard["clipboard"]
+        Markdown["markdown"]
+        Hotkey["hotkey"]
+        Settings["settings"]
+        ExecAdapter["execution (planned, DBOS)"]
+    end
+    subgraph External["External libraries / OS"]
+        OSA["osascript / macOS clipboard"]
+        GDH["golang-design/hotkey"]
+        H2M["html-to-markdown"]
+        WailsRT["Wails3 runtime / KVStoreService"]
+        DBOSExt["DBOS-Go + SQLite (planned)"]
+    end
+
+    Views --> Store
+    Views -->|generated Wails bindings| RunbookSvc
+    Views -->|generated Wails bindings| HotkeySvc
+    Views -->|generated Wails bindings| CompSvc
+    Views -->|generated Wails bindings| CapSvc
+    Views -->|generated Wails bindings| SpecSvc
+
+    RunbookSvc --> RunbookDom
+    HotkeySvc --> RunbookSvc
+    HotkeySvc --> Hotkey
+    HotkeySvc --> Settings
+    CompSvc --> CompDom
+    CompSvc --> Settings
+    CapSvc --> CapDom
+
+    RunbookDom --> Clipboard
+    RunbookDom --> Markdown
+    CompDom --> Clipboard
+    CompDom --> Markdown
+    CompDom -.-> ExecAdapter
+
+    Clipboard --> OSA
+    Markdown --> H2M
+    Hotkey --> GDH
+    Settings --> WailsRT
+    ExecAdapter -.-> DBOSExt
+
+    classDef planned stroke-dasharray: 5 5,fill:transparent
+    class ExecAdapter,DBOSExt planned
+```
+
 ## 2. Core primitive: Capture → Process → Apply
 
 - **Capture**: pull content from a source preserving structure (e.g. DOM copy
