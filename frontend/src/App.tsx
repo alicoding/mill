@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import {Events, WML} from "@wailsio/runtime";
-import {Label, NavList, PageLayout} from "@primer/react";
+import {IconButton, Label, NavList, PageLayout, SegmentedControl, useTheme} from "@primer/react";
+import {DeviceDesktopIcon, MoonIcon, SidebarCollapseIcon, SidebarExpandIcon, SunIcon} from "@primer/octicons-react";
 import SpecView from "./SpecView";
 import RunbookView from "./RunbookView";
 import ActivityView from "./ActivityView";
@@ -8,7 +9,10 @@ import CompositionView from "./CompositionView";
 import PlaceholderView from "./PlaceholderView";
 import { RunbookService, CapabilitiesService } from "../bindings/github.com/alicoding/mill";
 import { useAppStore, viewFor, viewsEqual, statusVariant } from "./store";
+import { COLOR_MODE_STORAGE_KEY, SIDEBAR_OPEN_STORAGE_KEY } from "./theme";
 import styles from "./App.module.css";
+
+const COLOR_MODES = ['light', 'dark', 'auto'] as const
 
 // Show the actual Wails version this project was generated against.
 const wailsVersion = "v3.0.0-beta.4";
@@ -41,6 +45,51 @@ function App() {
   // module, leaving stray listeners firing on unrelated updates. Not
   // worth chasing further for a dev-convenience ribbon -- see SPEC.md.
   const [loadedAt] = useState(() => new Date().toLocaleTimeString());
+
+  // Primer's PageLayout.Sidebar has no built-in collapse-to-rail toggle
+  // (checked directly against its own props, not assumed) -- only a
+  // plain `hidden` boolean, which is what this drives. Persisted (not
+  // just session state) since a UI layout preference, not domain data,
+  // is exactly the kind of thing localStorage is for -- Mill's real
+  // settings store (internal/adapters/settings) is reserved for actual
+  // domain state like hotkey bindings and composed workflows.
+  const [sidebarOpen, setSidebarOpen] = useState(() => localStorage.getItem(SIDEBAR_OPEN_STORAGE_KEY) !== 'false');
+  useEffect(() => {
+    localStorage.setItem(SIDEBAR_OPEN_STORAGE_KEY, String(sidebarOpen));
+  }, [sidebarOpen]);
+
+  // colorMode/setColorMode/resolvedColorMode come from Primer's own
+  // useTheme() -- light/dark/auto(=system) is a built-in ThemeProvider
+  // capability (colorMode="auto" already tracks prefers-color-scheme
+  // reactively, confirmed directly against its source), not something
+  // to hand-roll a media-query listener for.
+  const { colorMode, setColorMode, resolvedColorMode } = useTheme();
+  useEffect(() => {
+    localStorage.setItem(COLOR_MODE_STORAGE_KEY, colorMode ?? 'auto');
+    // Primer's own data-color-mode/data-light-theme/data-dark-theme
+    // attributes (which its generated CSS custom properties are scoped
+    // to -- e.g. [data-color-mode="dark"][data-dark-theme="dark"], not
+    // :root) land on a wrapper <div> ThemeProvider renders *inside*
+    // <body>, confirmed directly against the live DOM -- so html/body
+    // themselves (above/outside that div) can't see those tokens. This
+    // mirrors the same three attributes onto <html> so the couple of
+    // truly-global rules in index.css (page background, base text
+    // color) can use Primer's real tokens too, instead of a second,
+    // hardcoded color source that silently stops matching the theme the
+    // moment light mode is real. Primer's own dayScheme/nightScheme
+    // defaults ('light'/'dark', unchanged here) are what data-light-
+    // theme/data-dark-theme need to match.
+    const root = document.documentElement;
+    root.dataset.colorMode = colorMode ?? 'auto';
+    root.dataset.lightTheme = 'light';
+    root.dataset.darkTheme = 'dark';
+    // color-scheme is native browser chrome (scrollbars, form control
+    // rendering) -- Primer's tokens don't drive this, so it's set here
+    // from the *resolved* mode (light/dark, with 'auto' already settled
+    // by Primer's own system-preference detection), not the raw
+    // colorMode which can itself be 'auto'.
+    if (resolvedColorMode) root.style.colorScheme = resolvedColorMode;
+  }, [colorMode, resolvedColorMode]);
 
   useEffect(() => {
     Events.On('time', (timeValue) => {
@@ -105,7 +154,7 @@ function App() {
           stays a fixed, non-capability entry: it's the directory/docs
           page itself, not a product feature with a build status. */}
       <PageLayout className={styles.appBody} containerWidth="full" padding="none" rowGap="none" columnGap="none">
-        <PageLayout.Sidebar width="small" responsiveVariant="default" divider="line" padding="condensed">
+        <PageLayout.Sidebar hidden={!sidebarOpen} width="small" responsiveVariant="default" divider="line" padding="condensed">
           <NavList>
             {capabilities.map((c) => {
               const target = viewFor(c);
@@ -149,14 +198,30 @@ function App() {
 
       <hr className={styles.divider}/>
       <footer className={styles.footer}>
-        <span className={styles.version}><span>{wailsVersion}</span></span>
+        <span className={styles.version}>
+          <IconButton
+            icon={sidebarOpen ? SidebarCollapseIcon : SidebarExpandIcon}
+            aria-label={sidebarOpen ? 'Collapse sidebar' : 'Expand sidebar'}
+            size="small"
+            variant="invisible"
+            onClick={() => setSidebarOpen((v) => !v)}
+          />
+          <span>{wailsVersion}</span>
+        </span>
         <span className={styles.time}>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
           <span>{time}</span>
         </span>
-        <a className={styles.docs} data-wml-openURL="https://v3.wails.io" aria-label="Wails documentation">Docs
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg>
-        </a>
+        <span className={styles.rightControls}>
+          <SegmentedControl aria-label="Color theme" size="small" onChange={(i) => setColorMode(COLOR_MODES[i])}>
+            <SegmentedControl.IconButton icon={SunIcon} aria-label="Light theme" selected={colorMode === 'light'} />
+            <SegmentedControl.IconButton icon={MoonIcon} aria-label="Dark theme" selected={colorMode === 'dark'} />
+            <SegmentedControl.IconButton icon={DeviceDesktopIcon} aria-label="Match system theme" selected={!colorMode || colorMode === 'auto'} />
+          </SegmentedControl>
+          <a className={styles.docs} data-wml-openURL="https://v3.wails.io" aria-label="Wails documentation">Docs
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg>
+          </a>
+        </span>
       </footer>
     </div>
   )

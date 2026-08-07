@@ -69,7 +69,7 @@ function CanvasNodeView({ data, selected }: NodeProps<CanvasNode>) {
     <div className={`${styles.canvasNode} ${selected ? styles.canvasNodeSelected : ''}`}>
       <Handle type="target" position={RFPosition.Top} />
       <div className={styles.canvasNodeIcon} style={{ background: KIND_ICON_BG[data.kind] ?? 'var(--bgColor-neutral-emphasis)' }}>
-        {Icon && <Icon size={16} fill="#fff" />}
+        {Icon && <Icon size={16} fill="var(--fgColor-onEmphasis)" />}
       </div>
       <div className={styles.canvasNodeText}>
         <Text size="small" className={styles.canvasNodeKind}>{KIND_LABEL[data.kind] ?? data.kind}</Text>
@@ -389,7 +389,7 @@ function CanvasInner({ nodeTypes, workflow, onBack, onSaved }: CompositionCanvas
                     <div className={styles.paletteItemIcon} style={{ background: KIND_ICON_BG[nt.Kind] ?? 'var(--bgColor-neutral-emphasis)' }}>
                       {(() => {
                         const Icon = KIND_ICON[nt.Kind]
-                        return Icon ? <Icon size={14} fill="#fff" /> : null
+                        return Icon ? <Icon size={14} fill="var(--fgColor-onEmphasis)" /> : null
                       })()}
                     </div>
                     <div className={styles.paletteItemText}>

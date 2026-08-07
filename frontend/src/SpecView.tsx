@@ -2,19 +2,27 @@ import { useEffect, useState } from 'react'
 import { marked } from 'marked'
 import mermaid from 'mermaid'
 import svgPanZoom from 'svg-pan-zoom'
+import { useTheme } from '@primer/react'
 import { SpecService } from '../bindings/github.com/alicoding/mill'
 import CapabilityIndex from './CapabilityIndex'
 import CompositionCapabilityMap from './CompositionCapabilityMap'
 import styles from './SpecView.module.css'
 
-// theme: 'dark' matches Mill's own neon-dark chrome (index.css's
-// color-scheme: dark). Deliberately NOT flowchart.useMaxWidth: true --
-// that makes mermaid emit a responsive SVG (width="100%", no explicit
-// height) meant for static CSS-driven scaling; false gives real pixel
-// width/height attributes, which the viewBox fix below derives from.
-// svg-pan-zoom's own fit/center options already do what useMaxWidth was
-// for, so this isn't a loss.
-mermaid.initialize({ startOnLoad: false, theme: 'dark', flowchart: { useMaxWidth: false } })
+// Deliberately NOT flowchart.useMaxWidth: true -- that makes mermaid
+// emit a responsive SVG (width="100%", no explicit height) meant for
+// static CSS-driven scaling; false gives real pixel width/height
+// attributes, which the viewBox fix below derives from. svg-pan-zoom's
+// own fit/center options already do what useMaxWidth was for, so this
+// isn't a loss. theme itself is NOT set here -- mermaid has no CSS-
+// variable-driven live theming (it bakes each theme's actual color
+// values into the generated SVG at render time, confirmed directly
+// against its own output, not assumed), so it can't just inherit
+// Primer's tokens the way every other element in the app does.
+// SpecView's own color-mode effect below picks 'dark'/'default'
+// (mermaid's own light theme name) from Primer's *resolved* color mode
+// instead, and a companion effect re-parses+re-runs whenever that
+// changes, since a color-mode switch needs a real re-render here, not
+// just new CSS cascading into an already-drawn diagram.
 
 // The one place the mermaid-block class name is defined -- used by both
 // the renderer override below (what class it sets) and mermaid.run()'s
@@ -34,13 +42,47 @@ renderer.code = (token) =>
   token.lang === 'mermaid' ? `<pre class="${MERMAID_CLASS}">${token.text}</pre>` : defaultCode(token)
 
 function SpecView() {
+  const { resolvedColorMode } = useTheme()
+  // Raw fetched markdown, kept separate from the rendered `html` below
+  // -- switching color mode needs to re-parse (and mermaid.run() needs
+  // to re-render), not re-fetch from Go, so the source text has to
+  // survive independently of the one-time SpecService.Get() call.
+  const [markdown, setMarkdown] = useState<string | null>(null)
   const [html, setHtml] = useState<string>('Loading spec...')
+  const [fetchError, setFetchError] = useState<string | null>(null)
 
   useEffect(() => {
     SpecService.Get()
-      .then((markdown) => setHtml(marked.parse(markdown, { async: false, renderer })))
-      .catch((err) => setHtml(`<p class="spec-error">Failed to load spec: ${String(err)}</p>`))
+      .then(setMarkdown)
+      .catch((err) => setFetchError(String(err)))
   }, [])
+
+  // mermaid.initialize() is a global config call, not scoped to one
+  // render -- must run before the re-parse effect below fires for the
+  // same resolvedColorMode change, so mermaid.run() (triggered by that
+  // effect's html update, in a later render) picks up the right theme.
+  // Declared first so React's per-render effect ordering guarantees
+  // that sequencing.
+  useEffect(() => {
+    mermaid.initialize({
+      startOnLoad: false,
+      theme: resolvedColorMode === 'light' ? 'default' : 'dark',
+      flowchart: { useMaxWidth: false },
+    })
+  }, [resolvedColorMode])
+
+  useEffect(() => {
+    if (fetchError !== null) {
+      setHtml(`<p class="spec-error">Failed to load spec: ${fetchError}</p>`)
+      return
+    }
+    if (markdown === null) return
+    setHtml(marked.parse(markdown, { async: false, renderer }))
+    // resolvedColorMode is a real dependency here, not incidental: it's
+    // what forces a re-parse (and therefore a fresh mermaid.run()) when
+    // the color mode changes, even though the markdown source itself
+    // hasn't changed.
+  }, [markdown, fetchError, resolvedColorMode])
 
   // Runs after each html update. mermaid.run() finds the `.mermaid`
   // elements the renderer override above produced and replaces their

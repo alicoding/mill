@@ -8,16 +8,13 @@
    <link> tag in index.html, which bypassed all of that. */
 
 :root {
-    /* Neon-night design tokens (Runbook/Spec use Primer's own tokens instead —
-       these remain for the app chrome: base background, footer, docs link). */
-    --ink: #06070f;
-    --text: #f4f6fb;
-    --muted: #9aa6c0;
-    --accent-2: #ff2d72;       /* pink, used for spec code/links */
-    --glass: rgba(255, 255, 255, 0.05);
-    --glass-border: rgba(255, 255, 255, 0.12);
-
-    /* Golden-ratio spacing scale (φ ≈ 1.618), used for the vertical rhythm. */
+    /* Golden-ratio spacing scale (φ ≈ 1.618), used for the vertical rhythm.
+       Mill's own supplementary scale, not a color token -- Primer has no
+       equivalent to adopt here, unlike everything below this comment used
+       to be (see App.tsx's color-mode effect for why html/body can use
+       Primer's real --bgColor-default/--fgColor-default tokens directly
+       now instead of a second, hardcoded color source that silently
+       stopped matching the theme the moment light mode became real). */
     --s-2: 1rem;
     --s-3: 1.618rem;   /* φ   */
     --s-4: 2.618rem;   /* φ²  */
@@ -25,7 +22,12 @@
 
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial,
         sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
-    color-scheme: dark;
+    /* NOT set here -- App.tsx's color-mode effect sets this dynamically
+       from Primer's own resolvedColorMode (light/dark, with 'auto'
+       already settled by Primer's system-preference detection), since a
+       static value would force native browser chrome (scrollbars, form
+       control rendering) into the wrong scheme half the time once light
+       mode is a real, user-selectable option. */
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     -webkit-text-size-adjust: 100%;
@@ -34,7 +36,7 @@
 * { box-sizing: border-box; }
 
 html {
-    background: var(--ink);
+    background: var(--bgColor-default);
     /* Matches Wails' own documented pattern for killing overscroll bounce:
        https://wails.io/docs/guides/overscroll/ */
     height: 100%;
@@ -42,7 +44,7 @@ html {
 }
 html, body {
     margin: 0;
-    color: var(--text);
+    color: var(--fgColor-default);
 }
 body {
     height: 100%;
