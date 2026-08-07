@@ -56,7 +56,7 @@ func TestList_PlaceholderCapabilitiesHaveNoDirectView(t *testing.T) {
 		if c.View == ViewPlaceholder {
 			continue
 		}
-		if c.View != ViewActivity && c.View != ViewComposition {
+		if c.View != ViewActivity && c.View != ViewComposition && c.View != ViewConfigure {
 			t.Errorf("capability %q has unrecognized View %q", c.ID, c.View)
 		}
 	}

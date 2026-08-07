@@ -5,6 +5,7 @@ import {DeviceDesktopIcon, MoonIcon, SidebarCollapseIcon, SidebarExpandIcon, Sun
 import SpecView from "./SpecView";
 import ActivityView from "./ActivityView";
 import CompositionView from "./CompositionView";
+import ConfigureView from "./ConfigureView";
 import PlaceholderView from "./PlaceholderView";
 import { CompositionService, CapabilitiesService } from "../bindings/github.com/alicoding/mill";
 import { useAppStore, viewFor, viewsEqual, statusVariant } from "./store";
@@ -240,6 +241,8 @@ function App() {
           {view.kind === 'activity' && <ActivityView/>}
 
           {view.kind === 'composition' && <CompositionView/>}
+
+          {view.kind === 'configure' && <ConfigureView/>}
 
           {view.kind === 'spec' && <SpecView/>}
 

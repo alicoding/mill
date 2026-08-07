@@ -20,7 +20,7 @@ export const CAPABILITY_ICON: Record<string, Icon> = {
   'activity-log': PulseIcon,
   'copilot-bridge': CommentDiscussionIcon,
   'capability-composition': WorkflowIcon,
-  connectors: PlugIcon,
+  'capability-configure': PlugIcon,
   'process-tracking': HistoryIcon,
   guardrails: ShieldLockIcon,
 }
