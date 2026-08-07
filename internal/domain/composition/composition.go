@@ -29,6 +29,7 @@ import (
 	"slices"
 
 	"github.com/alicoding/mill/internal/adapters/clipboard"
+	"github.com/alicoding/mill/internal/adapters/expression"
 	"github.com/alicoding/mill/internal/adapters/markdown"
 	"github.com/alicoding/mill/internal/domain/capabilities"
 )
@@ -43,17 +44,18 @@ var (
 )
 
 // NodeKind mirrors SPEC.md §2's Capture -> Process -> Apply primitive,
-// plus Trigger (SPEC.md §3.4's capability map) -- the entry-point kind
-// every workflow's root node now belongs to. Control-flow node kinds
-// (Decision, Parallel, Child Workflow) stay real future work, not
-// stubbed here speculatively.
+// plus Trigger (SPEC.md §3.4) and Decision (SPEC.md §3.5) -- Decision is
+// the one kind allowed more than one outgoing edge (see walk/nextNode).
+// Parallel/Child Workflow stay real future work, not stubbed here
+// speculatively.
 type NodeKind string
 
 const (
-	KindTrigger NodeKind = "trigger"
-	KindCapture NodeKind = "capture"
-	KindProcess NodeKind = "process"
-	KindApply   NodeKind = "apply"
+	KindTrigger  NodeKind = "trigger"
+	KindCapture  NodeKind = "capture"
+	KindProcess  NodeKind = "process"
+	KindApply    NodeKind = "apply"
+	KindDecision NodeKind = "decision"
 )
 
 // ConfigFieldType is the field's UI/value shape -- modeled on n8n's own
@@ -118,8 +120,11 @@ type Node struct {
 }
 
 // Edge connects one Node's output to another's input by ID. SourceHandle
-// is reserved for a future Decision node's named branches (e.g. "yes"/
-// "no") -- empty for every edge today, since no node kind branches yet.
+// is a Decision node's named branch: a real expr-lang/expr expression
+// string (e.g. "Attributes.count > 5"), evaluated in order, first match
+// wins; exactly one outgoing edge per Decision node must carry the
+// literal otherwiseHandle value as the required fallback. Empty for
+// every non-Decision edge, since no other node kind branches.
 type Edge struct {
 	ID           string
 	Source       string
@@ -127,20 +132,56 @@ type Edge struct {
 	Target       string
 }
 
-// Workflow is a node/edge graph -- today always a single unbranched
-// chain in practice (see linearOrder), since Decision/Parallel/Child-
-// Workflow node kinds are real future work per ADR-0005, not invented
-// here ahead of a need for them.
+// otherwiseHandle marks a Decision node's required fallback edge --
+// taken when no other outgoing edge's condition matches.
+const otherwiseHandle = "otherwise"
+
+// AttributeDef declares one named, typed field in a workflow's
+// structured Attributes bag (see ExecContext) -- Configure-authored
+// (SPEC.md §3.5: "Input/Attributes... you would not tightly couple it in
+// the workflow"), but scoped to the one workflow that declares it (1:1),
+// unlike a reusable Connector or List. Reuses ConfigFieldType rather
+// than inventing a second type enum -- a workflow's attribute schema and
+// a node's config fields are the same kind of "name + typed value"
+// declaration.
+type AttributeDef struct {
+	Key   string
+	Label string
+	Type  ConfigFieldType
+}
+
+// Workflow is a node/edge graph. Branching exists now (Decision nodes,
+// see walk/nextNode) but is still constrained: every non-Decision node
+// keeps at most one outgoing edge, so "graph" in practice means "a chain
+// with Decision forks," not an arbitrary DAG.
 type Workflow struct {
 	ID          string
 	Label       string
 	Description string
 	Nodes       []Node
 	Edges       []Edge
+	// Attributes is this workflow's declared structured-field schema --
+	// what a Decision node's rule builder offers as available fields, and
+	// what a generated test payload (§3.4) can seed. Does not itself
+	// carry values; ExecContext.Attributes does, at run time.
+	Attributes []AttributeDef
 	// BuiltIn marks a seeded, non-deletable workflow (the two shipped
 	// with this prototype) vs. one a user composed and that persisted --
 	// the UI badges/protects built-ins accordingly.
 	BuiltIn bool
+}
+
+// ExecContext threads through a workflow's execution. Payload is the
+// existing single-string artifact every Capture/Process/Apply node
+// already reads/writes, unchanged in shape; Attributes is new -- a
+// separate, structured bag Decision rules evaluate against, populated by
+// nodes that choose to write to it (e.g. a future list-lookup or
+// integration-http node) rather than by restructuring Payload itself,
+// which would have touched every existing node's logic for a need only
+// Decision has today.
+type ExecContext struct {
+	Payload    string
+	Attributes map[string]any
 }
 
 // sampleHTML is the default value for apply-clipboard-write-html's
@@ -230,6 +271,11 @@ func NodeTypes() []NodeType {
 					Type:        FieldText,
 				},
 			},
+		},
+		{
+			ID: "decision-route", Kind: KindDecision,
+			Label:       "Decision: route",
+			Description: "Routes to one of several next steps based on a rule evaluated against this workflow's Attributes. A pure routing point -- its conditions live on its outgoing edges (SPEC.md §3.5), not here.",
 		},
 	}
 }
@@ -359,53 +405,42 @@ func ResolveNodeDefaults(nodes []Node) ([]Node, error) {
 	return resolved, nil
 }
 
-// linearOrder validates that nodes/edges form a single unbranched chain
-// and returns the nodes in execution order. No Decision/Parallel/Child-
-// Workflow node kinds exist yet (ADR-0005 A2 scopes those as separate
-// future work), so this deliberately does not build a real graph-
-// execution engine -- just enough to walk what today's linear-only node
-// types can produce.
-//
-// Four checks, each catching a distinct way a graph can fail to be a
-// single chain: exactly one root (no node has zero starting points, or
-// more than one competes to start); no node with more than one outgoing
-// edge (nothing branches yet); the edge count matching a tree with no
-// cycles; and, after walking the chain from the root, every node having
-// been visited. That last check matters on its own -- without it, a
-// cycle elsewhere in the graph can "absorb" the edge-count budget and
-// let a disconnected island of nodes pass validation silently, never
-// executing and never erroring.
-func linearOrder(nodes []Node, edges []Edge) ([]Node, error) {
-	if len(nodes) == 0 {
-		return nil, fmt.Errorf("a workflow needs at least one node")
-	}
-	if len(edges) != len(nodes)-1 {
-		return nil, fmt.Errorf("branching workflows aren't executable yet")
-	}
-
-	byID := make(map[string]Node, len(nodes))
+// buildGraph is shared setup for walk and ValidateDecisionEdges: index
+// nodes by ID, group outgoing edges by source (preserving order -- a
+// Decision node's non-otherwise edges are evaluated in that order, first
+// match wins), and validate every edge references a real node.
+func buildGraph(nodes []Node, edges []Edge) (byID map[string]Node, outgoingEdges map[string][]Edge, hasIncoming map[string]bool, err error) {
+	byID = make(map[string]Node, len(nodes))
 	for _, n := range nodes {
 		byID[n.ID] = n
 	}
 
-	outgoing := make(map[string]string, len(edges))
-	hasIncoming := make(map[string]bool, len(edges))
-	outDegree := make(map[string]int, len(nodes))
+	outgoingEdges = make(map[string][]Edge, len(nodes))
+	hasIncoming = make(map[string]bool, len(edges))
 	for _, e := range edges {
 		if _, ok := byID[e.Source]; !ok {
-			return nil, fmt.Errorf("edge references unknown source node: %s", e.Source)
+			return nil, nil, nil, fmt.Errorf("edge references unknown source node: %s", e.Source)
 		}
 		if _, ok := byID[e.Target]; !ok {
-			return nil, fmt.Errorf("edge references unknown target node: %s", e.Target)
+			return nil, nil, nil, fmt.Errorf("edge references unknown target node: %s", e.Target)
 		}
-		outDegree[e.Source]++
-		if outDegree[e.Source] > 1 {
-			return nil, fmt.Errorf("branching workflows aren't executable yet")
-		}
-		outgoing[e.Source] = e.Target
+		outgoingEdges[e.Source] = append(outgoingEdges[e.Source], e)
 		hasIncoming[e.Target] = true
 	}
 
+	for _, n := range nodes {
+		if n.Kind != KindDecision && len(outgoingEdges[n.ID]) > 1 {
+			return nil, nil, nil, fmt.Errorf("node %s: only a Decision node may have more than one outgoing edge", n.ID)
+		}
+	}
+
+	return byID, outgoingEdges, hasIncoming, nil
+}
+
+// findRoot returns the single node with no incoming edge -- the
+// workflow's entry point, same definition internal/domain/trigger's
+// ExtractTrigger already relies on.
+func findRoot(nodes []Node, hasIncoming map[string]bool) (string, error) {
 	var root string
 	rootCount := 0
 	for _, n := range nodes {
@@ -415,88 +450,238 @@ func linearOrder(nodes []Node, edges []Edge) ([]Node, error) {
 		}
 	}
 	if rootCount != 1 {
-		return nil, fmt.Errorf("a workflow must have exactly one starting node")
+		return "", fmt.Errorf("a workflow must have exactly one starting node")
+	}
+	return root, nil
+}
+
+// attributesEnv builds a realistic-zero-valued map[string]any from a
+// workflow's Attributes schema -- used as expr.Compile's type-checking
+// environment, so a Decision edge referencing a field with the wrong
+// operator (e.g. comparing a text field with ">") is caught at save
+// time, not just whenever that branch first actually runs.
+func attributesEnv(attrs []AttributeDef) map[string]any {
+	env := make(map[string]any, len(attrs))
+	for _, a := range attrs {
+		switch a.Type {
+		case FieldNumber:
+			env[a.Key] = 0.0
+		case FieldBoolean:
+			env[a.Key] = false
+		default:
+			env[a.Key] = ""
+		}
+	}
+	return env
+}
+
+// ValidateGraph is the save-time half of "a save-time error and a
+// run-time error never disagree" (composition.go's own established
+// principle, first applied to the zod/Go validation-layer split, now
+// extended to Decision): compiles every Decision node's non-otherwise
+// edge against the workflow's declared Attributes schema, requires
+// exactly one otherwiseHandle edge per Decision node, and checks every
+// node is reachable from the root.
+//
+// Reachability replaces the old linearOrder's "every node visited"
+// check, which no longer applies as-is: with branching, a single
+// execution legitimately visits only one arm of a Decision, so "every
+// node visited by walk()" would flag a working, correct branch as
+// disconnected. This walks every outgoing edge (not just the one a real
+// ExecContext would take) specifically to still catch a genuinely
+// unreachable node -- one some Attributes value could never reach via
+// any branch, not just the one this particular run happened to take.
+func ValidateGraph(nodes []Node, edges []Edge, attrs []AttributeDef) error {
+	_, outgoingEdges, hasIncoming, err := buildGraph(nodes, edges)
+	if err != nil {
+		return err
+	}
+	root, err := findRoot(nodes, hasIncoming)
+	if err != nil {
+		return err
 	}
 
-	order := make([]Node, 0, len(nodes))
+	reachable := map[string]bool{root: true}
+	queue := []string{root}
+	for len(queue) > 0 {
+		id := queue[0]
+		queue = queue[1:]
+		for _, e := range outgoingEdges[id] {
+			if !reachable[e.Target] {
+				reachable[e.Target] = true
+				queue = append(queue, e.Target)
+			}
+		}
+	}
+	for _, n := range nodes {
+		if !reachable[n.ID] {
+			return fmt.Errorf("node %s is unreachable from the workflow's starting node", n.ID)
+		}
+	}
+
+	env := attributesEnv(attrs)
+
+	for _, n := range nodes {
+		if n.Kind != KindDecision {
+			continue
+		}
+		outgoing := outgoingEdges[n.ID]
+		otherwiseCount := 0
+		for _, e := range outgoing {
+			if e.SourceHandle == otherwiseHandle {
+				otherwiseCount++
+				continue
+			}
+			if err := expression.Compile(e.SourceHandle, env); err != nil {
+				return fmt.Errorf("decision node %s, edge %s: %w", n.ID, e.ID, err)
+			}
+		}
+		if otherwiseCount != 1 {
+			return fmt.Errorf("decision node %s must have exactly one \"otherwise\" edge, has %d", n.ID, otherwiseCount)
+		}
+	}
+	return nil
+}
+
+// nextNode picks the one edge to follow from node, given its resolved
+// outgoing edges and the current ExecContext. Every non-Decision node
+// with an edge just follows it (buildGraph already guarantees at most
+// one); a Decision node evaluates its non-otherwise edges in order,
+// first true match wins, falling back to its otherwise edge. Returns ""
+// (no error) for a terminal node with no outgoing edge at all.
+func nextNode(node Node, outgoing []Edge, ctx ExecContext) (string, error) {
+	if len(outgoing) == 0 {
+		return "", nil
+	}
+	if node.Kind != KindDecision {
+		return outgoing[0].Target, nil
+	}
+
+	var otherwise string
+	for _, e := range outgoing {
+		if e.SourceHandle == otherwiseHandle {
+			otherwise = e.Target
+			continue
+		}
+		matched, err := expression.Eval(e.SourceHandle, ctx.Attributes)
+		if err != nil {
+			return "", fmt.Errorf("decision edge %s: %w", e.ID, err)
+		}
+		if matched {
+			return e.Target, nil
+		}
+	}
+	if otherwise == "" {
+		return "", fmt.Errorf("decision node %s has no otherwise edge", node.ID)
+	}
+	return otherwise, nil
+}
+
+// nodeExec threads ExecContext from node to node -- Payload is the
+// single-string artifact every Capture/Process/Apply node has always
+// read/written (unchanged in shape here, just wrapped); Attributes is
+// the new structured bag Decision rules evaluate against (see
+// ExecContext's own doc comment for why it's a separate field, not a
+// Payload restructuring).
+var nodeExec = map[string]func(node Node, ctx ExecContext) (ExecContext, error){
+	"capture-clipboard-html": func(_ Node, ctx ExecContext) (ExecContext, error) {
+		html, err := readClipboardHTML()
+		if err != nil {
+			return ctx, err
+		}
+		ctx.Payload = html
+		return ctx, nil
+	},
+	"process-html-to-markdown": func(_ Node, ctx ExecContext) (ExecContext, error) {
+		md, err := htmlToMarkdown(ctx.Payload)
+		if err != nil {
+			return ctx, err
+		}
+		ctx.Payload = md
+		return ctx, nil
+	},
+	"apply-clipboard-write-text": func(_ Node, ctx ExecContext) (ExecContext, error) {
+		if err := writeClipboardText(ctx.Payload); err != nil {
+			return ctx, err
+		}
+		return ctx, nil
+	},
+	"apply-clipboard-write-html": func(node Node, ctx ExecContext) (ExecContext, error) {
+		html := node.Config["html"]
+		if err := writeClipboardHTML(html); err != nil {
+			return ctx, err
+		}
+		ctx.Payload = html
+		return ctx, nil
+	},
+}
+
+// ExecuteWorkflow runs a fully-resolved node graph, following Decision
+// nodes' conditional edges (walk/nextNode) instead of a flat ordered
+// list. Errors here are plain/technical, not hand-tuned soft-failure
+// copy (e.g. "no HTML found on the clipboard" with a nil error) -- a
+// deliberate prototype simplification carried over from before Runbook's
+// retirement, not yet revisited.
+//
+// attrs seeds ctx.Attributes via attributesEnv's zero-valued defaults --
+// the same interim behavior ValidateGraph's own save-time type-checking
+// already relies on. There is no manual-test-run UI yet to supply real
+// values (SPEC.md §3.5's Attributes CRUD, still future work), so every
+// Decision edge referencing a declared Attribute evaluates against its
+// type's zero value until one exists; a workflow with no Attributes
+// (both built-ins today) behaves exactly as before this parameter
+// existed.
+func ExecuteWorkflow(nodes []Node, edges []Edge, attrs []AttributeDef) (string, error) {
+	if len(nodes) == 0 {
+		return "", fmt.Errorf("a workflow needs at least one node")
+	}
+
+	byID, outgoingEdges, hasIncoming, err := buildGraph(nodes, edges)
+	if err != nil {
+		return "", err
+	}
+	root, err := findRoot(nodes, hasIncoming)
+	if err != nil {
+		return "", err
+	}
+
+	ctx := ExecContext{Attributes: attributesEnv(attrs)}
 	visited := make(map[string]bool, len(nodes))
 	current := root
 	for {
 		if visited[current] {
-			return nil, fmt.Errorf("workflow graph contains a cycle")
+			return "", fmt.Errorf("workflow graph contains a cycle")
 		}
 		visited[current] = true
-		order = append(order, byID[current])
-		next, ok := outgoing[current]
-		if !ok {
+
+		node := byID[current]
+		// Trigger and Decision nodes carry no payload transformation --
+		// Trigger marks the entry point, Decision is a pure routing
+		// point whose only job is picking the next edge (nextNode,
+		// below); nodeExec has no entries for either by design (see
+		// NodeTypes' Trigger and decision-route comments).
+		if node.Kind != KindTrigger && node.Kind != KindDecision {
+			exec, ok := nodeExec[node.NodeTypeID]
+			if !ok {
+				return "", fmt.Errorf("unknown node type: %s", node.NodeTypeID)
+			}
+			ctx, err = exec(node, ctx)
+			if err != nil {
+				return "", fmt.Errorf("node %s: %w", node.NodeTypeID, err)
+			}
+		}
+
+		next, err := nextNode(node, outgoingEdges[node.ID], ctx)
+		if err != nil {
+			return "", err
+		}
+		if next == "" {
 			break
 		}
 		current = next
 	}
 
-	if len(visited) != len(nodes) {
-		return nil, fmt.Errorf("workflow graph is disconnected")
-	}
-
-	return order, nil
-}
-
-// nodeExec threads a single string payload from node to node, with each
-// node's own resolved Config available -- enough for today's real
-// workflows. A richer typed payload is real future work once a node
-// needs more than one value, not invented speculatively now.
-var nodeExec = map[string]func(node Node, payload string) (string, error){
-	"capture-clipboard-html": func(_ Node, _ string) (string, error) {
-		return readClipboardHTML()
-	},
-	"process-html-to-markdown": func(_ Node, html string) (string, error) {
-		return htmlToMarkdown(html)
-	},
-	"apply-clipboard-write-text": func(_ Node, text string) (string, error) {
-		if err := writeClipboardText(text); err != nil {
-			return "", err
-		}
-		return text, nil
-	},
-	"apply-clipboard-write-html": func(node Node, _ string) (string, error) {
-		html := node.Config["html"]
-		if err := writeClipboardHTML(html); err != nil {
-			return "", err
-		}
-		return html, nil
-	},
-}
-
-// ExecuteWorkflow runs a fully-resolved node graph in execution order.
-// Errors here are plain/technical, not hand-tuned soft-failure copy
-// (e.g. "no HTML found on the clipboard" with a nil error) -- a
-// deliberate prototype simplification carried over from before Runbook's
-// retirement, not yet revisited.
-func ExecuteWorkflow(nodes []Node, edges []Edge) (string, error) {
-	order, err := linearOrder(nodes, edges)
-	if err != nil {
-		return "", err
-	}
-
-	payload := ""
-	for _, node := range order {
-		// Trigger nodes mark the entry point; they carry no payload
-		// transformation (nodeExec has no entries for them by design --
-		// see NodeTypes' Trigger comment).
-		if node.Kind == KindTrigger {
-			continue
-		}
-		exec, ok := nodeExec[node.NodeTypeID]
-		if !ok {
-			return "", fmt.Errorf("unknown node type: %s", node.NodeTypeID)
-		}
-		out, err := exec(node, payload)
-		if err != nil {
-			return "", fmt.Errorf("node %s: %w", node.NodeTypeID, err)
-		}
-		payload = out
-	}
-	return payload, nil
+	return ctx.Payload, nil
 }
 
 // Approach records whether a capability's mechanism is bought (an
