@@ -1,12 +1,11 @@
 // Package composition is a prototype for SPEC.md §3 (capability
 // composition), testing ADR-0005's node/workflow shape against real,
 // working code rather than a mockup -- see docs/SPEC.md's `UX: PROTOTYPE`
-// entry under §3. It is additive: internal/domain/runbook is untouched,
-// still the tested/tuned path for load-sample-html and clipboard-html-
-// to-markdown. This package's node primitives call the *same* adapter
-// functions runbook.go calls, decomposed into reusable Capture/Process/
-// Apply nodes (§2's already-locked core primitive) and recomposed into
-// workflows -- the same real capability, not a fictional example.
+// entry under §3. internal/domain/runbook (the original, separate
+// Runbook page) has since been retired in favor of this package, per
+// SPEC.md §2.2's Update note -- its two actions now live on as ordinary,
+// fully-editable seeded workflows (BuiltInWorkflows below), the same
+// real capability restated here, not a fictional example.
 //
 // Composing a workflow is inseparable from configuring it: a node is
 // never just "a reference to a node type" -- it always carries fully
@@ -27,6 +26,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
+	"slices"
 
 	"github.com/alicoding/mill/internal/adapters/clipboard"
 	"github.com/alicoding/mill/internal/adapters/markdown"
@@ -42,29 +42,49 @@ var (
 	htmlToMarkdown     = markdown.ToMarkdown
 )
 
-// NodeKind mirrors SPEC.md §2's Capture -> Process -> Apply primitive --
-// today's node types are drawn from that already-locked shape rather
-// than the fuller Ruleset/Decision/... taxonomy ADR-0005 surveys, since
-// only Capture/Process/Apply nodes exist as real code yet. Control-flow
-// node kinds (Decision, Parallel, Child Workflow) stay real future work,
-// not stubbed here speculatively.
+// NodeKind mirrors SPEC.md §2's Capture -> Process -> Apply primitive,
+// plus Trigger (SPEC.md §3.4's capability map) -- the entry-point kind
+// every workflow's root node now belongs to. Control-flow node kinds
+// (Decision, Parallel, Child Workflow) stay real future work, not
+// stubbed here speculatively.
 type NodeKind string
 
 const (
+	KindTrigger NodeKind = "trigger"
 	KindCapture NodeKind = "capture"
 	KindProcess NodeKind = "process"
 	KindApply   NodeKind = "apply"
 )
 
+// ConfigFieldType is the field's UI/value shape -- modeled on n8n's own
+// node-parameter taxonomy (docs.n8n.io, see docs/SPEC.md §3.4), narrowed
+// to the subset Mill actually needs today. n8n's fuller set (collection,
+// fixedCollection, resourceLocator, ...) maps to Mill's own not-yet-built
+// Decision/Parallel nodes -- not stubbed here ahead of that need, same
+// discipline as NodeKind's own comment above.
+type ConfigFieldType string
+
+const (
+	FieldText    ConfigFieldType = "text"
+	FieldNumber  ConfigFieldType = "number"
+	FieldBoolean ConfigFieldType = "boolean"
+	FieldOptions ConfigFieldType = "options"
+)
+
 // ConfigField declares one configurable parameter a node type's nodes
 // can set. A node type with no ConfigFields takes no parameters --
 // legitimately true for some nodes (capture/process here operate on
-// whatever's piped in), not a placeholder to fill in later.
+// whatever's piped in, every Trigger node type today), not a placeholder
+// to fill in later.
 type ConfigField struct {
 	Key         string
 	Label       string
 	Description string
 	Default     string
+	Type        ConfigFieldType
+	// Options is only meaningful when Type == FieldOptions -- the set of
+	// values ResolveNodeDefaults will accept for this field.
+	Options []string
 }
 
 type NodeType struct {
@@ -124,9 +144,7 @@ type Workflow struct {
 }
 
 // sampleHTML is the default value for apply-clipboard-write-html's
-// "html" field -- matches runbook.go's own fixture (duplicated
-// deliberately, not imported: it's a demo fixture, not a fact either
-// package should depend on the other for).
+// "html" field -- a demo fixture, not a fact anything else depends on.
 const sampleHTML = `<h2>Quarterly update</h2>
 <p>Here's a quick summary, with <strong>the important bit</strong> called out.</p>
 <ul>
@@ -137,6 +155,54 @@ const sampleHTML = `<h2>Quarterly update</h2>
 
 func NodeTypes() []NodeType {
 	return []NodeType{
+		// Trigger node types -- SPEC.md §3.4: each concrete event source
+		// is its own NodeType under KindTrigger, matching how n8n/Zapier
+		// actually structure this (separate, distinctly-named node types,
+		// not one generic node with a Source dropdown). A workflow's root
+		// is expected to be one of these; linearOrder's existing "exactly
+		// one starting node" check already enforces that without needing
+		// Trigger-specific logic. ExecuteWorkflow skips Trigger nodes at
+		// run time -- they mark the entry point, they don't transform the
+		// payload.
+		{
+			ID: "trigger-manual", Kind: KindTrigger,
+			Label:       "Trigger: manual",
+			Description: "Fires on-demand when a user clicks Run/Test. No listener process.",
+		},
+		{
+			ID: "trigger-hotkey", Kind: KindTrigger,
+			Label:       "Trigger: hotkey",
+			Description: "Fires on a global keyboard shortcut, even when Mill isn't focused. Bound via TriggerService, not a config field here -- pressing the combo is better UX than typing it.",
+		},
+		{
+			ID: "trigger-schedule", Kind: KindTrigger,
+			Label:       "Trigger: schedule",
+			Description: "Fires on a cron schedule.",
+			ConfigFields: []ConfigField{
+				{
+					Key: "cron", Label: "Cron expression",
+					Description: "Standard 5-field cron expression (minute hour day month weekday).",
+					Default:     "", Type: FieldText,
+				},
+			},
+		},
+		{
+			ID: "trigger-clipboard-watch", Kind: KindTrigger,
+			Label:       "Trigger: clipboard change",
+			Description: "Fires whenever the clipboard's content changes.",
+		},
+		{
+			ID: "trigger-filesystem-watch", Kind: KindTrigger,
+			Label:       "Trigger: filesystem change",
+			Description: "Fires when a file or folder under the configured path is added, changed, or deleted.",
+			ConfigFields: []ConfigField{
+				{
+					Key: "path", Label: "Path to watch",
+					Description: "Absolute path to a file or directory.",
+					Default:     "", Type: FieldText,
+				},
+			},
+		},
 		{
 			ID: "capture-clipboard-html", Kind: KindCapture,
 			Label:       "Capture: clipboard HTML",
@@ -161,6 +227,7 @@ func NodeTypes() []NodeType {
 					Key: "html", Label: "HTML to write",
 					Description: "The HTML content this step puts on the clipboard.",
 					Default:     sampleHTML,
+					Type:        FieldText,
 				},
 			},
 		},
@@ -192,22 +259,26 @@ func newNodeID(nodeTypeID string) string {
 // render sensibly on first canvas load without needing auto-layout. Not
 // deletable (see CompositionService.DeleteWorkflow).
 func BuiltInWorkflows() []Workflow {
+	const loadSampleTriggerID = "load-sample-html-trigger"
 	loadSample, err := ResolveNodeDefaults([]Node{
-		{ID: "load-sample-html", NodeTypeID: "apply-clipboard-write-html", Position: Position{X: 0, Y: 0}},
+		{ID: loadSampleTriggerID, NodeTypeID: "trigger-manual", Position: Position{X: 0, Y: 0}},
+		{ID: "load-sample-html", NodeTypeID: "apply-clipboard-write-html", Position: Position{X: 0, Y: 100}},
 	})
 	if err != nil {
 		panic("built-in workflow references an unknown node type: " + err.Error())
 	}
 
 	const (
+		triggerID = "clipboard-to-markdown-trigger"
 		captureID = "clipboard-to-markdown-capture"
 		processID = "clipboard-to-markdown-process"
 		applyID   = "clipboard-to-markdown-apply"
 	)
 	clipboardToMarkdown, err := ResolveNodeDefaults([]Node{
-		{ID: captureID, NodeTypeID: "capture-clipboard-html", Position: Position{X: 0, Y: 0}},
-		{ID: processID, NodeTypeID: "process-html-to-markdown", Position: Position{X: 240, Y: 0}},
-		{ID: applyID, NodeTypeID: "apply-clipboard-write-text", Position: Position{X: 480, Y: 0}},
+		{ID: triggerID, NodeTypeID: "trigger-manual", Position: Position{X: 0, Y: 0}},
+		{ID: captureID, NodeTypeID: "capture-clipboard-html", Position: Position{X: 0, Y: 100}},
+		{ID: processID, NodeTypeID: "process-html-to-markdown", Position: Position{X: 0, Y: 200}},
+		{ID: applyID, NodeTypeID: "apply-clipboard-write-text", Position: Position{X: 0, Y: 300}},
 	})
 	if err != nil {
 		panic("built-in workflow references an unknown node type: " + err.Error())
@@ -219,7 +290,10 @@ func BuiltInWorkflows() []Workflow {
 			Label:       "Load sample HTML",
 			Description: "A single-step workflow: puts real HTML on the clipboard.",
 			Nodes:       loadSample,
-			BuiltIn:     true,
+			Edges: []Edge{
+				{ID: "load-sample-html-e1", Source: loadSampleTriggerID, Target: "load-sample-html"},
+			},
+			BuiltIn: true,
 		},
 		{
 			ID:          "clipboard-html-to-markdown-workflow",
@@ -227,6 +301,7 @@ func BuiltInWorkflows() []Workflow {
 			Description: "Capture the clipboard's HTML, convert it to Markdown, write it back.",
 			Nodes:       clipboardToMarkdown,
 			Edges: []Edge{
+				{ID: "clipboard-to-markdown-e0", Source: triggerID, Target: captureID},
 				{ID: "clipboard-to-markdown-e1", Source: captureID, Target: processID},
 				{ID: "clipboard-to-markdown-e2", Source: processID, Target: applyID},
 			},
@@ -258,6 +333,13 @@ func ResolveNodeDefaults(nodes []Node) ([]Node, error) {
 		for _, field := range nt.ConfigFields {
 			if _, ok := config[field.Key]; !ok {
 				config[field.Key] = field.Default
+			}
+			// Guards against a stale persisted value after a node type's
+			// Options list changes underneath it -- e.g. a workflow saved
+			// before an option was removed. Only FieldOptions has a closed
+			// value set; every other type accepts whatever string is there.
+			if field.Type == FieldOptions && !slices.Contains(field.Options, config[field.Key]) {
+				return nil, fmt.Errorf("node %s: %q is not a valid value for %s (want one of %v)", node.NodeTypeID, config[field.Key], field.Key, field.Options)
 			}
 		}
 
@@ -386,10 +468,10 @@ var nodeExec = map[string]func(node Node, payload string) (string, error){
 }
 
 // ExecuteWorkflow runs a fully-resolved node graph in execution order.
-// Errors here are plain/technical -- unlike internal/domain/runbook's
-// hand-tuned soft-failure copy (e.g. "no HTML found on the clipboard"
-// with a nil error), this is a deliberate prototype simplification, not
-// a regression: the careful UX still lives in runbook.go, untouched.
+// Errors here are plain/technical, not hand-tuned soft-failure copy
+// (e.g. "no HTML found on the clipboard" with a nil error) -- a
+// deliberate prototype simplification carried over from before Runbook's
+// retirement, not yet revisited.
 func ExecuteWorkflow(nodes []Node, edges []Edge) (string, error) {
 	order, err := linearOrder(nodes, edges)
 	if err != nil {
@@ -398,6 +480,12 @@ func ExecuteWorkflow(nodes []Node, edges []Edge) (string, error) {
 
 	payload := ""
 	for _, node := range order {
+		// Trigger nodes mark the entry point; they carry no payload
+		// transformation (nodeExec has no entries for them by design --
+		// see NodeTypes' Trigger comment).
+		if node.Kind == KindTrigger {
+			continue
+		}
 		exec, ok := nodeExec[node.NodeTypeID]
 		if !ok {
 			return "", fmt.Errorf("unknown node type: %s", node.NodeTypeID)
@@ -464,11 +552,16 @@ func CapabilityMap() []MapEntry {
 				"output is the workflow's input; these are one concept, not two.",
 			Approach: ApproachMixed,
 			ApproachDetail: "Each concrete event source adopts its own library behind an " +
-				"adapter (hotkey already does); the abstraction unifying them into one node " +
-				"kind is Mill's own.",
+				"adapter (hotkey, schedule via netresearch/go-cron, filesystem-watch via " +
+				"fsnotify/fsnotify); clipboard-watch is a small build (no library needed, " +
+				"confirmed no OS event exists to adopt). The abstraction unifying them into " +
+				"one node kind, and TriggerService's own registry/exclusivity rules, are " +
+				"Mill's own.",
 			Status: capabilities.StatusOpen,
-			StatusDetail: "Hotkey mechanism exists (HotkeyService) but isn't modeled as a " +
-				"graph node yet.",
+			StatusDetail: "KindTrigger + five NodeTypes (manual/hotkey/schedule/clipboard-" +
+				"watch/filesystem-watch) built and wired through TriggerService, incl. " +
+				"one-combo-per-workflow hotkey exclusivity (§3.4). DOM-event and MCP-call " +
+				"triggers remain unbuilt, gated on §5/§3.1's own open questions.",
 		},
 		{
 			ID: "decision", Name: "Decision / branching",

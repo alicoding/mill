@@ -22,7 +22,6 @@ const (
 type ViewKind string
 
 const (
-	ViewRunbook     ViewKind = "runbook"
 	ViewActivity    ViewKind = "activity"
 	ViewComposition ViewKind = "composition"
 	ViewPlaceholder ViewKind = "placeholder"
@@ -53,10 +52,6 @@ type Capability struct {
 // of inferred text.
 func List() []Capability {
 	return []Capability{
-		{
-			ID: "runbook-page", Label: "Runbook page", NavLabel: "Runbook", SpecSection: "2.2",
-			Status: StatusLocked, View: ViewRunbook,
-		},
 		{
 			ID: "activity-log", Label: "Activity / event log", NavLabel: "Activity", SpecSection: "2.2",
 			Status: StatusLocked, View: ViewActivity,

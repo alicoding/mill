@@ -51,7 +51,6 @@ export enum ViewKind {
      */
     $zero = "",
 
-    ViewRunbook = "runbook",
     ViewActivity = "activity",
     ViewComposition = "composition",
     ViewPlaceholder = "placeholder",

@@ -6,9 +6,9 @@
  * domain package -- it holds no domain logic of its own (that's
  * internal/domain/composition), only the state and persistence a
  * stateless package can't own: user-composed workflows, mirroring
- * HotkeyService's already-proven shape (hotkeyservice.go) rather than
- * inventing a new one. See docs/SPEC.md §3's `UX: PROTOTYPE` entry for
- * what this is testing.
+ * TriggerService's own shape (triggerservice.go) rather than inventing a
+ * new one. See docs/SPEC.md §3's `UX: PROTOTYPE` entry for what this is
+ * testing.
  * @module
  */
 
@@ -45,9 +45,8 @@ export function CreateWorkflow(label: string, description: string, nodes: compos
 }
 
 /**
- * DeleteWorkflow removes a user-composed workflow. Built-in workflows
- * aren't in c.user at all, so a caller can never delete one -- no
- * special-case check needed, the ID space is naturally disjoint.
+ * DeleteWorkflow removes a workflow -- seeded or user-composed, both
+ * live in c.user (see Workflows' doc comment), no built-in special case.
  */
 export function DeleteWorkflow(id: string): $CancellablePromise<void> {
     return $Call.ByID(3977756313, id);
@@ -65,18 +64,22 @@ export function RunWorkflow(id: string): $CancellablePromise<string> {
  * UpdateWorkflow replaces an existing user-composed workflow's nodes/
  * edges (and label/description) in place, keeping its ID stable -- so
  * re-opening a saved workflow on the canvas and saving edits updates it
- * rather than creating a duplicate. Built-in workflows aren't in
- * c.user, so they can never be updated -- same disjoint-ID-space
- * reasoning DeleteWorkflow already relies on.
+ * rather than creating a duplicate. Every workflow (seeded or
+ * user-composed) lives in c.user (see Workflows' doc comment), so this
+ * works uniformly on both -- no built-in special case.
  */
 export function UpdateWorkflow(id: string, label: string, description: string, nodes: composition$0.Node[] | null, edges: composition$0.Edge[] | null): $CancellablePromise<composition$0.Workflow> {
     return $Call.ByID(3999094687, id, label, description, nodes, edges);
 }
 
 /**
- * Workflows returns every built-in workflow followed by every
- * user-composed one, in creation order -- a stable, predictable order
- * for the UI rather than Go's randomized map iteration.
+ * Workflows returns every workflow -- seeded examples and user-composed
+ * ones alike, all ordinary entries in c.user (see restore's first-run
+ * seeding below). No BuiltInWorkflows() call here: once seeded, they're
+ * just data, the same industry pattern confirmed in docs/SPEC.md §2.2's
+ * Update note (a Zapier template "operates independently... you can edit
+ * it like any other Zap" the moment it exists) -- not a protected
+ * specimen re-appended on every read.
  */
 export function Workflows(): $CancellablePromise<composition$0.Workflow[] | null> {
     return $Call.ByID(491101343);
