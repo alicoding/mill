@@ -1945,11 +1945,9 @@ mode from §0 repeating itself one level up.
 
 ## 10. Open questions log
 
-- Node/canvas composition model (§3)
-- Configure surface, Integration/Connector authoring, and the resulting
-  sidebar/Settings restructuring (§3.5)
-- Credential/vault model for connectors (§4) — adopt candidate named
-  (§3.5), integration itself still open
+- Node/canvas composition model (§3) — Decision/Integration/List
+  execution + authoring now built (§3.3/§3.5); Parallel Steps, Child
+  Workflow, and draft/live versioning remain the open parts
 - Browser extension ↔ native app protocol details (§5)
 - Env/shell determinism rules (§6)
 - Session identity model spanning tab + agent run + process (§7)
