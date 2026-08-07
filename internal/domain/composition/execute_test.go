@@ -220,3 +220,88 @@ func TestExecuteWorkflow_IntegrationHTTP_UnknownConnector_Rejected(t *testing.T)
 		t.Fatal("ExecuteWorkflow with an unresolvable connector returned nil error, want an error")
 	}
 }
+
+// --- list-lookup: nodeExec resolves a list via the injected
+// lookupListFn seam, looks up ctx.Attributes[inputKey], and writes the
+// matched entry into ctx.Attributes[outputKey]. ---
+
+func withListLookup(t *testing.T, fn func(id string) (ResolvedList, error)) {
+	t.Helper()
+	orig := lookupListFn
+	lookupListFn = fn
+	t.Cleanup(func() { lookupListFn = orig })
+}
+
+func TestListLookupExec_MatchWritesOutputAttribute(t *testing.T) {
+	withListLookup(t, func(id string) (ResolvedList, error) {
+		if id != "list-1" {
+			t.Errorf("lookupListFn called with id %q, want %q", id, "list-1")
+		}
+		return ResolvedList{Entries: map[string]string{"US": "United States"}}, nil
+	})
+
+	node := Node{
+		NodeTypeID: "list-lookup",
+		Config:     map[string]string{"listId": "list-1", "inputKey": "code", "outputKey": "name"},
+	}
+	out, err := nodeExec["list-lookup"](node, ExecContext{Attributes: map[string]any{"code": "US"}})
+	if err != nil {
+		t.Fatalf("list-lookup exec returned error: %v", err)
+	}
+	if out.Attributes["name"] != "United States" {
+		t.Errorf(`Attributes["name"] = %v, want %q`, out.Attributes["name"], "United States")
+	}
+}
+
+func TestListLookupExec_NoMatch_Rejected(t *testing.T) {
+	withListLookup(t, func(string) (ResolvedList, error) {
+		return ResolvedList{Entries: map[string]string{"US": "United States"}}, nil
+	})
+
+	node := Node{
+		NodeTypeID: "list-lookup",
+		Config:     map[string]string{"listId": "list-1", "inputKey": "code", "outputKey": "name"},
+	}
+	if _, err := nodeExec["list-lookup"](node, ExecContext{Attributes: map[string]any{"code": "ZZ"}}); err == nil {
+		t.Fatal("list-lookup exec with no matching entry returned nil error, want an error")
+	}
+}
+
+func TestExecuteWorkflow_ListLookup_UnknownList_Rejected(t *testing.T) {
+	withListLookup(t, func(id string) (ResolvedList, error) {
+		return ResolvedList{}, errors.New("no such list")
+	})
+
+	nodes, err := ResolveNodeDefaults([]Node{{
+		NodeTypeID: "list-lookup",
+		Config:     map[string]string{"listId": "does-not-exist", "inputKey": "code", "outputKey": "name"},
+	}})
+	if err != nil {
+		t.Fatalf("ResolveNodeDefaults returned error: %v", err)
+	}
+	if _, err := ExecuteWorkflow(nodes, nil, nil); err == nil {
+		t.Fatal("ExecuteWorkflow with an unresolvable list returned nil error, want an error")
+	}
+}
+
+func TestExecuteWorkflow_ListLookup_EndToEnd(t *testing.T) {
+	// Exercises the real ExecuteWorkflow path (attributesEnv seeding +
+	// nodeExec dispatch), not just the exec function directly -- "code"
+	// is a FieldText Attribute, seeded to its zero value ("") by
+	// attributesEnv, matched here against a list entry keyed "".
+	withListLookup(t, func(string) (ResolvedList, error) {
+		return ResolvedList{Entries: map[string]string{"": "Worldwide"}}, nil
+	})
+
+	nodes, err := ResolveNodeDefaults([]Node{{
+		NodeTypeID: "list-lookup",
+		Config:     map[string]string{"listId": "list-1", "inputKey": "code", "outputKey": "name"},
+	}})
+	if err != nil {
+		t.Fatalf("ResolveNodeDefaults returned error: %v", err)
+	}
+	attrs := []AttributeDef{{Key: "code", Label: "Code", Type: FieldText}}
+	if _, err := ExecuteWorkflow(nodes, nil, attrs); err != nil {
+		t.Fatalf("ExecuteWorkflow returned error: %v", err)
+	}
+}
