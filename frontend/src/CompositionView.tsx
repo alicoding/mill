@@ -1,11 +1,10 @@
 import { useEffect, useState } from 'react'
 import { Button, Heading, IconButton, Label, Stack, Text, Token } from '@primer/react'
-import { TrashIcon } from '@primer/octicons-react'
+import { PencilIcon, PlusIcon, TrashIcon } from '@primer/octicons-react'
 import { CompositionService } from '../bindings/github.com/alicoding/mill'
 import type { Edge, Node, NodeType, Workflow } from '../bindings/github.com/alicoding/mill/internal/domain/composition/models'
 import { useAppStore } from './store'
 import CompositionCanvas from './CompositionCanvas'
-import { KIND_VARIANT } from './nodeKind'
 import styles from './RunbookView.module.css'
 
 // A workflow's Nodes/Edges are an unordered graph on the wire -- this
@@ -13,9 +12,9 @@ import styles from './RunbookView.module.css'
 // linearOrder (Go) guarantees every saved workflow already forms, purely
 // for display (the chip chain below). Not a general graph-execution
 // engine, same scope as the backend: a saved workflow that isn't a valid
-// chain can't exist (CreateWorkflow validates it via zod before Save,
-// ExecuteWorkflow validates it again before Run), so this trusts that
-// invariant rather than re-deriving it defensively.
+// chain can't exist (CreateWorkflow/UpdateWorkflow validate it via zod
+// before Save, ExecuteWorkflow validates it again before Run), so this
+// trusts that invariant rather than re-deriving it defensively.
 function orderNodes(nodes: Node[] | null, edges: Edge[] | null): Node[] {
   const nodeList = nodes ?? []
   const edgeList = edges ?? []
@@ -38,18 +37,23 @@ function orderNodes(nodes: Node[] | null, edges: Edge[] | null): Node[] {
   return order
 }
 
+// null id means composing a new workflow; a string id means editing the
+// saved workflow with that id (built-ins never reach this -- their rows
+// have no Edit control, since composition.go's Workflow.BuiltIn ones
+// aren't in CompositionService's editable c.user set at all).
+type EditorTarget = { id: string | null }
+
 // A prototype for SPEC.md §3 / ADR-0005 (A2: MCP-tool + control-flow
 // nodes; B2's canvas deferral overridden by explicit decision -- see
 // docs/adr/0005-capability-composition-node-schema.md's Update section).
-// node types and workflows render as plain lists (node primitives, saved
-// workflows), with composition itself now authored on CompositionCanvas
-// (React Flow), not a list-only form. Workflows here run the same real
-// clipboard/markdown capability internal/domain/runbook already ships,
-// decomposed into reusable nodes -- internal/domain/runbook itself is
-// untouched. Composing a workflow always configures it: a node dropped
-// onto the canvas gets its node type's default config immediately,
-// editable the moment it's selected -- never a bare, unconfigured
-// node-type reference.
+// Two screens, not one: a Workflows list (this component's default
+// render) and CompositionCanvas.tsx (React Flow), entered via "New
+// workflow" or by editing an existing saved workflow -- matching the
+// reference no-code platform's own Workflows-list/canvas split named in
+// SPEC.md §3.2, rather than keeping the canvas permanently embedded
+// alongside the list. Workflows here run the same real clipboard/
+// markdown capability internal/domain/runbook already ships, decomposed
+// into reusable nodes -- internal/domain/runbook itself is untouched.
 function CompositionView() {
   const pushActivity = useAppStore((s) => s.pushActivity)
   const [nodeTypes, setNodeTypes] = useState<NodeType[] | null>(null)
@@ -57,6 +61,7 @@ function CompositionView() {
   const [runningId, setRunningId] = useState<string | null>(null)
   const [results, setResults] = useState<Record<string, string>>({})
   const [errors, setErrors] = useState<Record<string, string>>({})
+  const [editorTarget, setEditorTarget] = useState<EditorTarget | null>(null)
 
   const refetchWorkflows = () => {
     CompositionService.Workflows().then((list) => setWorkflows(list ?? [])).catch(console.error)
@@ -95,103 +100,112 @@ function CompositionView() {
     CompositionService.DeleteWorkflow(id).then(refetchWorkflows).catch(console.error)
   }
 
+  if (editorTarget && nodeTypes !== null) {
+    const editingWorkflow = editorTarget.id ? (workflows?.find((w) => w.ID === editorTarget.id) ?? null) : null
+    return (
+      <CompositionCanvas
+        // Keyed on the target so switching between "new" and any two
+        // existing workflows always remounts fresh instead of trying to
+        // diff canvas state across an identity change (see
+        // CompositionCanvas.tsx's own load-on-mount comment).
+        key={editorTarget.id ?? 'new'}
+        nodeTypes={nodeTypes}
+        workflow={editingWorkflow}
+        onBack={() => setEditorTarget(null)}
+        onSaved={() => { refetchWorkflows(); setEditorTarget(null) }}
+      />
+    )
+  }
+
   return (
-    <div data-testid="composition-view">
-      <div className={styles.runbook}>
-        <Heading as="h1">Capability composition</Heading>
-        <Text as="p" className={styles.subtitle}>
-          Prototype for docs/SPEC.md §3 (ADR-0005): compose a workflow on a real
-          canvas from reusable node primitives, configuring each node as you add
-          it — composing without configuring isn&apos;t a real workflow. Built
-          ahead of ADR-0005 B2&apos;s original canvas-deferral trigger, by
-          explicit decision. Workflows persist across restarts;
-          internal/domain/runbook (the Runbook page) is untouched.
-        </Text>
+    <div className={styles.runbook} data-testid="composition-view">
+      <Heading as="h1">Capability composition</Heading>
+      <Text as="p" className={styles.subtitle}>
+        Prototype for docs/SPEC.md §3 (ADR-0005): compose a workflow on a real
+        canvas from reusable node primitives, configuring each node as you add
+        it — composing without configuring isn&apos;t a real workflow. Built
+        ahead of ADR-0005 B2&apos;s original canvas-deferral trigger, by
+        explicit decision. Workflows persist across restarts;
+        internal/domain/runbook (the Runbook page) is untouched.
+      </Text>
 
-        <Heading as="h2" variant="small" className={styles.sectionHeading}>
-          Node primitives
-        </Heading>
-        {nodeTypes === null && <Text as="p" className={styles.muted}>Loading…</Text>}
-        {nodeTypes !== null && (
-          <Stack direction="vertical" gap="condensed">
-            {nodeTypes.map((node) => (
-              <div key={node.ID} className={styles.card} data-testid="node-type-row">
-                <Stack direction="horizontal" justify="space-between" align="start" gap="normal">
-                  <div>
-                    <Text weight="semibold">{node.Label}</Text>
-                    <Text as="p" size="small" className={styles.muted}>{node.Description}</Text>
-                  </div>
-                  <Label variant={KIND_VARIANT[node.Kind] ?? 'secondary'} size="small">{node.Kind}</Label>
-                </Stack>
-              </div>
-            ))}
-          </Stack>
-        )}
-      </div>
-
-      {nodeTypes !== null && <CompositionCanvas nodeTypes={nodeTypes} onSaved={refetchWorkflows} />}
-
-      <div className={styles.runbook}>
-        <Heading as="h2" variant="small" className={styles.sectionHeading}>
-          Workflows
-        </Heading>
-        {workflows === null && <Text as="p" className={styles.muted}>Loading…</Text>}
-        {workflows !== null && (
-          <Stack direction="vertical" gap="condensed">
-            {workflows.map((wf) => (
-              <div key={wf.ID} className={styles.card} data-testid="workflow-row">
-                <Stack direction="horizontal" justify="space-between" align="start" gap="normal">
-                  <div>
-                    <Stack direction="horizontal" gap="condensed" align="center">
-                      <Text weight="semibold">{wf.Label}</Text>
-                      {wf.BuiltIn && <Label variant="secondary" size="small">built-in</Label>}
-                    </Stack>
-                    <Text as="p" size="small" className={styles.muted}>{wf.Description}</Text>
-                  </div>
-                  <Stack direction="horizontal" gap="condensed">
-                    <Button
-                      onClick={() => run(wf.ID)}
-                      disabled={runningId === wf.ID}
-                      size="small"
-                      aria-label={`Run ${wf.Label}`}
-                    >
-                      {runningId === wf.ID ? 'Running…' : 'Run'}
-                    </Button>
-                    {!wf.BuiltIn && (
-                      <IconButton icon={TrashIcon} aria-label={`Delete ${wf.Label}`} size="small" variant="invisible" onClick={() => removeWorkflow(wf.ID)} />
-                    )}
+      <Stack direction="horizontal" justify="space-between" align="center" className={styles.sectionHeading}>
+        <Heading as="h2" variant="small">Workflows</Heading>
+        <Button
+          leadingVisual={PlusIcon}
+          size="small"
+          onClick={() => setEditorTarget({ id: null })}
+          disabled={nodeTypes === null}
+          data-testid="new-workflow"
+        >
+          New workflow
+        </Button>
+      </Stack>
+      {workflows === null && <Text as="p" className={styles.muted}>Loading…</Text>}
+      {workflows !== null && (
+        <Stack direction="vertical" gap="condensed">
+          {workflows.map((wf) => (
+            <div key={wf.ID} className={styles.card} data-testid="workflow-row">
+              <Stack direction="horizontal" justify="space-between" align="start" gap="normal">
+                <div>
+                  <Stack direction="horizontal" gap="condensed" align="center">
+                    <Text weight="semibold">{wf.Label}</Text>
+                    {wf.BuiltIn && <Label variant="secondary" size="small">built-in</Label>}
                   </Stack>
+                  <Text as="p" size="small" className={styles.muted}>{wf.Description}</Text>
+                </div>
+                <Stack direction="horizontal" gap="condensed">
+                  <Button
+                    onClick={() => run(wf.ID)}
+                    disabled={runningId === wf.ID}
+                    size="small"
+                    aria-label={`Run ${wf.Label}`}
+                  >
+                    {runningId === wf.ID ? 'Running…' : 'Run'}
+                  </Button>
+                  {!wf.BuiltIn && (
+                    <>
+                      <IconButton
+                        icon={PencilIcon}
+                        aria-label={`Edit ${wf.Label}`}
+                        size="small"
+                        variant="invisible"
+                        onClick={() => setEditorTarget({ id: wf.ID })}
+                      />
+                      <IconButton icon={TrashIcon} aria-label={`Delete ${wf.Label}`} size="small" variant="invisible" onClick={() => removeWorkflow(wf.ID)} />
+                    </>
+                  )}
                 </Stack>
+              </Stack>
 
-                <Stack direction="vertical" gap="condensed" className={styles.stepChain}>
-                  {orderNodes(wf.Nodes, wf.Edges).map((node, i) => {
-                    const nt = nodeTypes?.find((n) => n.ID === node.NodeTypeID)
-                    const configEntries = Object.entries(node.Config ?? {})
-                    return (
-                      <Stack key={node.ID} direction="horizontal" align="start" gap="condensed">
-                        {i > 0 && <Text className={styles.muted}>→</Text>}
-                        <Token text={nt?.Label ?? node.NodeTypeID} size="large" />
-                        {configEntries.length > 0 && (
-                          <Text size="small" className={styles.muted}>
-                            {configEntries.map(([k, v]) => `${k}: ${(v ?? '').slice(0, 40)}${(v ?? '').length > 40 ? '…' : ''}`).join(', ')}
-                          </Text>
-                        )}
-                      </Stack>
-                    )
-                  })}
-                </Stack>
+              <Stack direction="vertical" gap="condensed" className={styles.stepChain}>
+                {orderNodes(wf.Nodes, wf.Edges).map((node, i) => {
+                  const nt = nodeTypes?.find((n) => n.ID === node.NodeTypeID)
+                  const configEntries = Object.entries(node.Config ?? {})
+                  return (
+                    <Stack key={node.ID} direction="horizontal" align="start" gap="condensed">
+                      {i > 0 && <Text className={styles.muted}>→</Text>}
+                      <Token text={nt?.Label ?? node.NodeTypeID} size="large" />
+                      {configEntries.length > 0 && (
+                        <Text size="small" className={styles.muted}>
+                          {configEntries.map(([k, v]) => `${k}: ${(v ?? '').slice(0, 40)}${(v ?? '').length > 40 ? '…' : ''}`).join(', ')}
+                        </Text>
+                      )}
+                    </Stack>
+                  )
+                })}
+              </Stack>
 
-                {errors[wf.ID] && (
-                  <Text as="p" size="small" className={styles.error}>{errors[wf.ID]}</Text>
-                )}
-                {results[wf.ID] !== undefined && !errors[wf.ID] && (
-                  <pre className={styles.result}>{results[wf.ID]}</pre>
-                )}
-              </div>
-            ))}
-          </Stack>
-        )}
-      </div>
+              {errors[wf.ID] && (
+                <Text as="p" size="small" className={styles.error}>{errors[wf.ID]}</Text>
+              )}
+              {results[wf.ID] !== undefined && !errors[wf.ID] && (
+                <pre className={styles.result}>{results[wf.ID]}</pre>
+              )}
+            </div>
+          ))}
+        </Stack>
+      )}
     </div>
   )
 }
