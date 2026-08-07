@@ -108,6 +108,26 @@ implementing one option — surface the choice.
   CSS Modules + CSS variables instead, so this is the framework's own
   current guidance, not an invented preference (see `docs/SPEC.md` §1.3).
   Don't add a single global stylesheet or reach for Tailwind/CSS-in-JS.
+- **Max 500 lines per hand-written source file (`.go`/`.ts`/`.tsx`).**
+  Enforced by `scripts/check-loc.sh`, run by both Lefthook (pre-commit)
+  and CI's `file-loc-limit` job, so it can't land un-caught either way. A
+  file crossing the limit means a real seam got missed — split along it
+  (e.g. one package, multiple files; one component, extracted
+  sub-components/hooks), don't truncate arbitrarily or suppress the
+  check. Generated Wails bindings (`frontend/bindings/`) and the vendored
+  gomobile scaffold (`build/ios/`, `build/android/`) are exempt — Mill
+  doesn't own their shape.
+- **Domain packages (`internal/domain/*`) stay pure: types + validation/
+  execution logic only, no persistence, no state.** Storage (a settings-
+  store-backed JSON blob, in-memory state, CRUD) lives one layer up, in
+  the root-package `*service.go` Wails-binding file that owns that
+  domain's lifecycle (`compositionservice.go` for `composition`,
+  `triggerservice.go` for `trigger`). Where one package's execution needs
+  data another layer owns (e.g. a Decision node's connector lookup), wire
+  it with an injected function var or a small interface (see
+  `composition.SetConnectorLookup`, `CompositionService`'s `Syncer`), not
+  a direct import of the owning service — keeps the domain package
+  testable standalone and free of Wails-binding concerns.
 
 ## Build / dev commands
 
