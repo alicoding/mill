@@ -418,6 +418,32 @@ that environment, on something testable directly in this dev session:
   own inline result block on Runbook, just for the headless hotkey path.
   Empty `Result` (failure case) means no expand affordance at all, not an
   empty expanded block. `LOCKED`
+- **Activity broadened from hotkey-only to every run, with Source/
+  Outcome filters** — originally only the headless hotkey fire path
+  pushed into this feed; clicking Run directly on Runbook or Composition
+  produced nothing, silently inconsistent with a page whose whole job is
+  "did anything run." `frontend/src/store.ts`'s `ActivityEntry` is now a
+  frontend-owned shape (not pinned to the Go-emitted `HotkeyActivity`
+  event) carrying a `source: 'hotkey' | 'runbook' | 'composition'` and a
+  `label` resolved and stored at push time, not looked up later against
+  `actions`/workflows (which can drift, or have the entry deleted).
+  Only the hotkey source still pushes via a Go→JS event, since it's the
+  only one of the three that fires headlessly; Runbook's and
+  Composition's own Run handlers push directly from their already-
+  resolved promise, no new Go plumbing needed. Two `Select` filters
+  (Source, Outcome) narrow the list client-side — the two real
+  dimensions the data has today, not date-range (the list is an
+  in-memory, session-only, 50-entry ring buffer, so everything in it is
+  "this session" — a date picker over that would be cosmetic, deliberate
+  scope cut, not a silent gap). **Deliberately still not persisted**:
+  distinct from workflow *definitions* persisting (§3's Composition
+  entry) — a run-history log is much closer to §7's still-open
+  execution/session-tracking question (durable process history) than an
+  authored shape is; this doesn't touch or presuppose that. This is the
+  concrete first step toward the "analytics" half §3.2 already flagged
+  Activity as the closest existing surface to, when the reference
+  platform's Live Events view (filter by input/event type/date range)
+  was reviewed. `LOCKED`
 - **Small `DEV` ribbon (top-right, App.tsx) answers "am I looking at a dev
   build, and is it current."** Gated on `import.meta.env.DEV` (true only
   under a real `vite serve` process — verified directly that this is
