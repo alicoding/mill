@@ -1488,14 +1488,112 @@ entry points the frontend's `hotkeyCapture.ts` hook calls. This also
 resolved the Runbook-retirement question §2.2 previously left open —
 see §2.2's own Update note.
 
+### 3.5 Configure surface — capability map
+
+§3.2 already recorded "three distinct surfaces, not two" (Settings /
+Configure / workflow canvas) after the reference-platform review, but
+never built any of it — Mill's canvas today conflates Configure and
+canvas entirely, since every `NodeType` is hardcoded Go and nothing is
+user-authored. This section resolves that into a real map, prompted
+directly by the user naming the actual gap: connectors belong under an
+Integration category inside Configure, and several other node kinds
+(Input, Attributes, Decision, List) need the same dedicated-surface
+treatment "instead of inside the workflow," even though their *reuse*
+cardinality differs from a connector's.
+
+**Two orthogonal axes, not one — this is the clarification that actually
+resolves the request, not just restates it.** "Lives in Configure" and
+"reusable across workflows" sound like the same question but aren't:
+Configure vs. inline-canvas is about *where a node kind's configuration
+gets authored* (a dedicated screen with room for a real editor, vs. a
+few fields in the canvas Inspector's narrow side panel); reuse
+cardinality is about *how many workflows one configured instance can
+serve*. A connector is Configure-authored **and** reusable (1:many). An
+Input/Attributes definition is Configure-authored **but still scoped to
+one workflow** (1:1) — exactly what "some of these can only be used in a
+single workflow at once" was naming. Conflating the two axes would have
+made every Configure-authored kind look reusable by default, which isn't
+true and isn't what was asked for.
+
+| Node kind | Authored where | Reuse cardinality | Status |
+|---|---|---|---|
+| Trigger config (cron expression, watch path, hotkey combo) | Inline canvas Inspector | 1:1 — inherently specific to the one workflow it triggers | `LOCKED`, built this way (§3.4) — no change; a trigger's config is never meaningfully shared |
+| Capture/Process/Apply config (today's `html` field, etc.) | Inline canvas Inspector | 1:1 | `LOCKED`, built this way — genuinely simple fields, a dedicated screen would be overhead, not clarity |
+| **Integration / Connector** (HTTP Connector, DB Connector, ...) | **Configure**, under a new Integration category | **1:many** — one configured connector (auth, base URL) referenced by ID from any workflow's Integration node | `OPEN` — this is §4's own still-open surface, now with a concrete home |
+| **Input / Attributes** | **Configure** | **1:1** — scoped to the one workflow that declares it, per §3.2's original cardinality note | `OPEN` — named in §3.2, no node kind or schema built yet |
+| **Decision** | **Configure** (a rule/decision-table editor needs real room, not a narrow Inspector sidebar) | **1:1** recommended — §3.2 flagged this cardinality as genuinely unconfirmed ("check before assuming either way"); a workflow's decision logic is plausibly workflow-specific business logic, not shared, but this is a real open question, not decided here | `OPEN` — ADR-0005 already names Decision as deferred future work; this adds *where it's authored* to that, not a new commitment to build it |
+| **List** (a reusable lookup/reference dataset) | **Configure** | **1:many** recommended, same shape as Integration — a shared lookup table is the kind of thing multiple workflows would plausibly reference | `OPEN` — named for the first time this turn; not yet in ADR-0005's taxonomy at all, a real gap to add there |
+
+**What Configure is *not*: a plugin system for user-defined node kinds.**
+Worth being explicit about, since "define a dedicated thing in Configure"
+could be misread as "let users invent brand-new node kinds from
+scratch." That's not what the reference platform actually does (its own
+Configure surface defines *instances* of its own fixed kind taxonomy —
+schema/auth for a specific Integration, not a mechanism for inventing a
+new kind of node) and it would contradict CLAUDE.md's core-domain rule
+directly: "the action/capability model and its composition rules" stays
+Mill's own hand-written code, never delegated to a library or a
+user-authoring mechanism. Configure is Mill offering a *better authoring
+surface* for node kinds Mill itself still defines (Integration, Input,
+Decision, List) — not a way to add kinds Mill doesn't know about.
+
+**Credential storage — §4's own still-open question, now has a real
+adopt candidate.** `github.com/zalando/go-keyring` (MIT), checked
+directly: no cgo on any platform, and its macOS backend shells out to
+`/usr/bin/security` — the exact same shape as Mill's existing
+`internal/adapters/clipboard` (`osascript`/`pbcopy`), not a new kind of
+dependency. This resolves §4's "1Password-style vault local to Mill vs.
+delegating to an existing secrets manager" framing directly: it's
+neither exactly — it delegates to the OS's *own* already-present
+keychain (Keychain on macOS, Credential Manager on Windows, Secret
+Service on Linux) rather than either hand-rolling a vault or depending on
+a separate app like 1Password being installed. `LOCKED` (library pick)
+— not yet integrated; blocked on the Integration/Connector node kind
+actually existing to need credentials in the first place.
+
+**Sidebar restructuring this implies** — captured here since it's a
+direct consequence, not decided independently of it:
+- **Composition moves to the top of the nav** — it's the landing page
+  now (§2.2's Update note already made it the default `view`), not
+  third in a list that still visually implies Runbook-era ordering.
+- **Activity moves down**, matching the request directly — it's a
+  monitoring surface, not a primary destination, the same "present but
+  not top-billed" position n8n's own Executions occupies relative to its
+  Workflows/Credentials.
+- **A new Configure entry replaces Connectors as a flat sidebar row** —
+  Connectors stops being its own top-level destination and becomes a
+  category inside Configure once Configure exists, confirmed against
+  n8n's own left nav (Credentials is a real top-level item there,
+  separate from Workflows, which is the precedent for Configure
+  deserving the same top-level billing here).
+- **Settings gets pulled out of the main `NavList` entirely**, into a
+  bottom-anchored footer slot — confirmed against real precedent, not
+  assumed: Notion anchors workspace settings at the bottom of its
+  sidebar behind the workspace name, Slack gates it behind the profile
+  menu; neither treats Settings as just another flat item alongside
+  content pages. Mill's sidebar already has a header slot (wordmark +
+  collapse toggle, §2.2) — Settings is the natural symmetric footer
+  slot, not a `NavList.Item`.
+- What actually populates the Settings *page* stays genuinely open until
+  Configure exists to produce real settings-shaped content (connector
+  credentials, eventually §8's guardrail policy) — today's only
+  settings-shaped state (theme, sidebar-collapse) is cosmetic
+  `localStorage` already living in the footer, not enough on its own to
+  justify the page yet.
+
+`OPEN` (the whole section) — captured as design direction, per
+CLAUDE.md's Plan step, before any of it becomes code, same discipline
+§3.4 used for Trigger primitives.
+
 ## 4. Connectors
 
 - `OPEN`. Named so far: generic HTTP connector, Jira/Confluence as a
   first-class example.
-- Not yet decided: credential storage model (1Password-style vault local to
-  Mill vs. delegating to an existing secrets manager), auth flow per
-  connector type (OAuth vs. token vs. API key), and whether connectors are
-  built-in or a plugin surface.
+- Not yet decided: auth flow per connector type (OAuth vs. token vs. API
+  key), and whether connectors are built-in or a plugin surface.
+  Credential *storage* specifically now has a real adopt candidate
+  (`zalando/go-keyring`, wrapping each OS's own native keychain) and a
+  concrete home (the Integration category inside Configure) — see §3.5.
 - See §3.2 for the node-type-vs-instance composition pattern and the
   incremental-extensibility principle for connector protocol/auth support.
 
@@ -1703,7 +1801,10 @@ mode from §0 repeating itself one level up.
 ## 10. Open questions log
 
 - Node/canvas composition model (§3)
-- Credential/vault model for connectors (§4)
+- Configure surface, Integration/Connector authoring, and the resulting
+  sidebar/Settings restructuring (§3.5)
+- Credential/vault model for connectors (§4) — adopt candidate named
+  (§3.5), integration itself still open
 - Browser extension ↔ native app protocol details (§5)
 - Env/shell determinism rules (§6)
 - Session identity model spanning tab + agent run + process (§7)
