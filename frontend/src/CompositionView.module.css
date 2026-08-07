@@ -1,0 +1,17 @@
+/* Only the canvas-editor tabs get this -- the Workflows list tab stays
+   normal block flow (same short-content-is-fine pattern as Runbook/
+   Activity). display:flex is scoped to :not([hidden]) deliberately:
+   Primer's TabPanel toggles the `hidden` attribute to hide an inactive
+   tab (confirmed directly against its source -- it doesn't unmount), and
+   an unconditional `display: flex` here would be an author-stylesheet
+   rule that outranks the UA [hidden]{display:none} rule regardless of
+   specificity (author always beats user-agent origin), silently making
+   inactive tabs visible again. */
+.editorPanel {
+    flex: 1 1 auto;
+    min-height: 0;
+}
+.editorPanel:not([hidden]) {
+    display: flex;
+    flex-direction: column;
+}
