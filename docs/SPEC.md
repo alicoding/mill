@@ -758,6 +758,57 @@ that environment, on something testable directly in this dev session:
   viewport units (`100dvh`) rather than `%` since percentage heights
   require every ancestor to have a definite height, which the Primer
   wrapper divs don't. `LOCKED`
+- **Sidebar collapse and a real light/dark/system theme switcher, plus a
+  full design-token audit.** Researched before building: Primer's
+  `PageLayout.Sidebar` has a `resizable` (drag-resize, persisted to
+  `localStorage`) prop but no built-in collapse-to-icon-rail — confirmed
+  directly against its own props/CSS, not assumed. Collapse is instead
+  built on the `hidden` prop it does expose (full show/hide, not a rail),
+  toggled from a footer `IconButton` whose own open/closed state persists
+  to `localStorage` (a frontend-only cosmetic preference, deliberately
+  not routed through Mill's Go-backed `internal/adapters/settings`, which
+  is reserved for real domain data like hotkey bindings and workflow
+  definitions). Theme switching uses Primer's own `ThemeProvider`
+  `colorMode` prop (`'light'|'dark'|'auto'`) and `useTheme()` hook
+  end-to-end — no custom theming layer — via a footer `SegmentedControl`
+  of three `IconButton`s (sun/moon/desktop), also persisted to
+  `localStorage` and re-applied as the initial `colorMode` on next
+  launch. Primer's generated color tokens (`--bgColor-default` etc.) are
+  scoped to `[data-color-mode]`/`[data-dark-theme]`/`[data-light-theme]`
+  attributes Primer's `ThemeProvider` sets on an internal wrapper `<div>`
+  *inside* `<body>` — not on `:root` — so `<html>`/`<body>`'s own
+  base-layer CSS (`index.css`) couldn't see them until a theme effect in
+  `App.tsx` mirrors the same three attributes onto
+  `document.documentElement`, extending Primer's token scope to cover
+  the two structurally-global elements that sit above Primer's own
+  wrapper div. **Design-token audit** (the explicit ask: "make sure
+  everything using the design token and nothing is not following the
+  pattern") found and fixed real drift: `index.css` had legacy
+  hand-rolled color custom properties (`--ink`/`--text`/`--muted`/
+  `--accent-2`/`--glass`/`--glass-border`) and a static
+  `color-scheme: dark` left over from before light mode was a real,
+  user-selectable option; `SpecView.module.css` referenced those same
+  legacy properties instead of their Primer equivalents
+  (`--fgColor-default`/`--fgColor-muted`/`--bgColor-muted`/
+  `--fgColor-accent`/`--borderColor-default`); two node-icon SVGs in
+  `CompositionCanvas.tsx` hardcoded `fill="#fff"` instead of
+  `var(--fgColor-onEmphasis)`. Also surfaced a substantive bug beyond
+  color values: Mermaid has no live CSS-variable theming (it bakes each
+  theme's actual colors into the SVG at render time, confirmed directly
+  against its own output) — `SpecView.tsx` was calling
+  `mermaid.initialize({theme: 'dark'})` once at module load, hardcoded,
+  which would have silently kept every diagram dark-themed even after
+  switching to light mode. Fixed by moving `initialize()` into a
+  `useEffect` keyed on Primer's `resolvedColorMode` (mapping to
+  Mermaid's own `'default'`/`'dark'` theme names) plus a companion effect
+  that re-parses the already-fetched markdown on the same dependency, so
+  a color-mode change forces a fresh `mermaid.run()` with the new theme
+  instead of leaving a stale SVG on screen. Verified end-to-end on the
+  real server-mode app via Playwright: sidebar collapse/expand, explicit
+  light/dark theme switching (not just default/auto), the Spec tab's
+  Mermaid diagrams re-rendering with correct colors in dark mode, and the
+  Composition canvas's node icon-squares rendering correctly in dark
+  mode. `LOCKED`
 
 ## 3. Capability composition — how nodes connect
 
