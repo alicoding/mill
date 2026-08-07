@@ -55,3 +55,24 @@ test('Clicking a not-built capability shows a placeholder with status and a way 
   await page.getByRole('button', { name: 'Back to Spec' }).click()
   await expect(capabilityIndex(page).getByRole('heading', { name: 'Capabilities' })).toBeVisible()
 })
+
+test('Spec tab shows the composition capability map, real data not parsed markdown', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Spec' }).click()
+
+  const map = page.getByTestId('composition-capability-map')
+  await expect(map.getByRole('heading', { name: 'Composition capability map' })).toBeVisible()
+
+  const rows = page.getByTestId('capability-map-row')
+  await expect(rows).toHaveCount(12)
+
+  const triggerRow = rows.filter({ hasText: 'Trigger' })
+  await expect(triggerRow).toBeVisible()
+  await expect(triggerRow.getByText('mixed')).toBeVisible()
+  await expect(triggerRow.getByText('OPEN')).toBeVisible()
+
+  // Collapsed by default -- detail text only appears after expanding.
+  await expect(triggerRow.getByText(/hotkey mechanism exists/i)).not.toBeVisible()
+  await triggerRow.click()
+  await expect(triggerRow.getByText(/hotkey mechanism exists/i)).toBeVisible()
+})
