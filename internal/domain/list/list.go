@@ -1,0 +1,35 @@
+// Package list holds the core-domain shape of a List (docs/SPEC.md
+// §3.5): a reusable (1:many), Configure-authored named lookup table --
+// the same reuse cardinality as a Connector, but with no external call
+// or credential involved, just a static key/value mapping a workflow's
+// list-lookup node reads from at run time. Per CLAUDE.md's core-domain
+// rule, the shape and its validation stay hand-written -- no library has
+// an opinion on Mill's own List model.
+package list
+
+import (
+	"fmt"
+	"strings"
+)
+
+// List is one reusable, named lookup table. Entries maps an input key
+// (whatever a workflow's list-lookup node is configured to look up) to
+// the value that gets written back into the workflow's Attributes.
+type List struct {
+	ID      string
+	Label   string
+	Entries map[string]string
+}
+
+// Validate checks a List is well-formed before it's persisted -- same
+// "never store an unconfigured/invalid value" discipline
+// internal/domain/composition's ResolveNodeDefaults and
+// internal/domain/connector's Validate already apply to their own types.
+// An empty Entries map is valid (a list starts empty and gets rows added
+// later); a missing Label is not.
+func Validate(l List) error {
+	if strings.TrimSpace(l.Label) == "" {
+		return fmt.Errorf("a list needs a label")
+	}
+	return nil
+}
