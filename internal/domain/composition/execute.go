@@ -1,12 +1,14 @@
 package composition
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 
 	"github.com/alicoding/mill/internal/adapters/clipboard"
 	"github.com/alicoding/mill/internal/adapters/httpconnector"
 	"github.com/alicoding/mill/internal/adapters/markdown"
+	"github.com/alicoding/mill/internal/adapters/mcpclient"
 )
 
 // Package-level function vars, not direct calls -- same testability
@@ -93,6 +95,26 @@ var nodeExec = map[string]func(node Node, ctx ExecContext) (ExecContext, error){
 			return ctx, fmt.Errorf("list-lookup: no entry for %q", inputVal)
 		}
 		ctx.Attributes[node.Config["outputKey"]] = matched
+		return ctx, nil
+	},
+	"mcp-tool-call": func(node Node, ctx ExecContext) (ExecContext, error) {
+		rs, err := lookupMCPServerFn(node.Config["mcpServerId"])
+		if err != nil {
+			return ctx, fmt.Errorf("mcp-tool-call: %w", err)
+		}
+
+		var arguments map[string]any
+		if raw := node.Config["argumentsJSON"]; raw != "" {
+			if err := json.Unmarshal([]byte(raw), &arguments); err != nil {
+				return ctx, fmt.Errorf("mcp-tool-call: invalid argumentsJSON: %w", err)
+			}
+		}
+
+		result, err := mcpclient.CallTool(rs.Command, rs.Args, node.Config["toolName"], arguments)
+		if err != nil {
+			return ctx, fmt.Errorf("mcp-tool-call: %w", err)
+		}
+		ctx.Payload = result
 		return ctx, nil
 	},
 }

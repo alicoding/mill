@@ -151,6 +151,28 @@ func NodeTypes() []NodeType {
 				},
 			},
 		},
+		{
+			ID: "mcp-tool-call", Kind: KindProcess,
+			Label:       "MCP: tool call",
+			Description: "Calls one tool on a Configure-authored MCP server and replaces the payload with its text result (docs/SPEC.md §3.6). mcpServerId and toolName are FieldText for the same reason integration-http's connectorId is -- runtime, Configure-authored data with no compile-time knowledge here. Use the Configure page's \"List tools\" button on the server to find the exact toolName and its expected arguments.",
+			ConfigFields: []ConfigField{
+				{
+					Key: "mcpServerId", Label: "MCP Server ID",
+					Description: "The ID of an MCP server configured on the Configure page.",
+					Default:     "", Type: FieldText,
+				},
+				{
+					Key: "toolName", Label: "Tool name",
+					Description: "The exact tool name, from that server's own tool list.",
+					Default:     "", Type: FieldText,
+				},
+				{
+					Key: "argumentsJSON", Label: "Arguments (JSON)",
+					Description: "Optional JSON object of arguments to pass to the tool, sent as-is.",
+					Default:     "", Type: FieldText,
+				},
+			},
+		},
 	}
 }
 

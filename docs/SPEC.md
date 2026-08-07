@@ -1320,6 +1320,7 @@ Plan step for this as a standing rule.
 | **Child Workflow** | One workflow invokes another as a step | Build (composition rule — no library has an opinion on Mill's own workflow-of-workflows semantics) | ADR-0005 names it, deferred |
 | **Integration / Connector node** | Call an external HTTP API, auth'd | Wire protocol: adopt (stdlib `net/http`, via `internal/adapters/httpconnector`). Connector config/credential model: build (`internal/domain/connector`) + adopt (`zalando/go-keyring` via `internal/adapters/credential`) | `LOCKED` (execution) — `internal/domain/connector`'s `Connector{ID, Label, Type, BaseURL, AuthType, Headers}` + a new `integration-http` `NodeType` (`KindProcess`) execute real HTTP calls, resolving `AuthType`/secret into the right header (`X-Api-Key` or `Authorization: Bearer`) via `composition.SetConnectorLookup`'s injected seam (mirrors `TriggerService`'s `Syncer` pattern — the domain package doesn't own connector storage). §4 stays `OPEN` on the Configure-surface UI to author a Connector; see §3.5's own row |
 | **List** (a reusable lookup/reference dataset) | Look up an Attributes value against a named, Configure-authored table, write the match back into Attributes | Build (core domain — no library has an opinion on Mill's own List model; the lookup itself is a plain map read) | `LOCKED` (execution) — `internal/domain/list.List{ID, Label, Entries}` + a new `list-lookup` `NodeType` (`KindProcess`) resolve a `listId` via `composition.SetListLookup` (same injected-seam pattern as Integration/Connector's `SetConnectorLookup`) and write the matched entry into `ExecContext.Attributes[outputKey]`. Not in ADR-0005's original taxonomy at all (a real gap flagged in §3.5) — added here as the first thing built against it. §3.5 stays `OPEN` on the Configure-surface UI to author a List |
+| **MCP tool call** (§3.6's extension point — call a tool on a Configure-authored MCP server) | Call one tool on a locally-configured MCP server over stdio, replace the payload with its text result | Wire protocol: adopt (`modelcontextprotocol/go-sdk`'s client role, via `internal/adapters/mcpclient`). Server config/CRUD: build, same shape as Connector | `LOCKED` (execution + authoring, end-to-end) — `internal/domain/mcpserver.MCPServer{ID, Label, Command, Args}` + a new `mcp-tool-call` `NodeType` (`KindProcess`) resolve an `mcpServerId` via `composition.SetMCPServerLookup` and call `toolName` with `argumentsJSON`. Verified against a real spawned subprocess (an official MCP reference server via `npx`), not just unit tests — see §3.6 for the full writeup. This is the "add a new capability without a core code change" answer §3.6 set out to find |
 | **Durable step execution / retry / resume** | Survive the process dying mid-workflow, checkpoint per step, retry transient failures | Adopt (DBOS-Go) | ADR-0004, integration in progress this session |
 | **Replay / re-run from history** | Re-invoke a past run, ideally resuming rather than restarting | Mechanism: adopt (DBOS `ForkWorkflow`/workflow-ID resume). UI/policy: build | Named this session — not built, deliberately deferred past the current DBOS-integration pass |
 | **Draft/live versioning** | Edit a workflow without breaking the currently-live version | Build (no library owns Mill's own versioning semantics) | Real gap flagged from the reference-platform review (§3.2), `OPEN` |
@@ -1800,19 +1801,45 @@ client**, not an agent deciding what to call. This is exactly why it
 doesn't touch the disputed Host question: no LLM is in the loop, so
 §1.1's "not an LLM client" rule is untouched.
 
-**Shape this points to, not yet built:** an **MCP Server** Configure
-entity (connection config — today, a local command + args over stdio;
-remote transports are real future work, same incremental-extensibility
-principle already applied to Connector's `AuthType`), 1:many reusable
-like Connector/List; and a new `mcp-tool-call` `NodeType` (`KindProcess`,
-the same family as `integration-http`/`list-lookup`) whose `ConfigFields`
-are `mcpServerId` + `toolName` — with the tool's own `InputSchema`
-determining what arguments it needs, discovered at Configure-authoring
-time via `ListTools`, not hand-declared per tool the way every other
-`NodeType` today is. That last part is the actual "platform" property:
-one new external MCP server, wired up once in Configure, adds as many
-usable workflow steps as it exposes tools, with zero Mill `NodeTypes()`
-entries added per tool.
+**Update — problem 2 (Mill as MCP client) is now built.**
+`internal/adapters/mcpclient` wraps `modelcontextprotocol/go-sdk`'s
+client role behind Mill's own `Tool`/`ListTools`/`CallTool` names, per
+CLAUDE.md's ports/adapters rule — no caller imports `mcp.*` directly.
+An **MCP Server** Configure entity (`internal/domain/mcpserver.
+MCPServer{ID, Label, Command, Args}` — simpler than Connector, no
+`AuthType`: stdio is local-process trust, not a network call) is 1:many
+reusable, CRUD'd through `ConfigureService`/`ConfigureMCPServers.tsx`
+(a fourth Configure tab), the same shape Connector/List already have.
+A new `mcp-tool-call` `NodeType` (`KindProcess`, same family as
+`integration-http`/`list-lookup`) resolves `mcpServerId` via a
+`composition.SetMCPServerLookup` seam (mirrors `SetConnectorLookup`
+exactly) and calls `toolName` with a raw `argumentsJSON` object — same
+no-templating simplicity `integration-http`'s `bodyTemplate` already
+has. **The actual discoverability answer**: each MCP Server card in
+Configure has a **"List tools"** button (`ConfigureService.
+ListMCPServerTools`) that connects, lists every tool with its real
+`InputSchema`, and renders it inline — a user finds the exact
+`toolName`/arguments to paste into a workflow node there, not by
+guessing (`mcpServerId`/`toolName` are `FieldText`, same accepted
+no-live-dropdown-yet gap `connectorId`/`listId` already have).
+
+Tested against a real MCP protocol round-trip, not a mock:
+`mcpclient`'s core `listTools`/`callTool` functions are exercised via
+`mcp.NewInMemoryTransports()` + an in-process `mcp.AddTool` fixture
+server (no subprocess, but a real client/server handshake) — the same
+"test against something real" bar `httpconnector`'s `httptest.Server`
+tests already set. **Verified end-to-end against a genuine external
+process**, not just in-memory: pointed a real MCP Server entity at
+`npx -y @modelcontextprotocol/server-everything` (an official MCP
+reference server) via server mode + Playwright — "List tools" returned
+six real tools with real JSON schemas from a real spawned subprocess;
+a workflow with an `mcp-tool-call` node calling its `echo` tool with
+`{"message": "hello from mill"}` returned the literal string
+`"Echo: hello from mill"` back through `ExecuteWorkflow`, the full
+production path (`ConfigureService` → `composition.SetMCPServerLookup`
+→ `nodeExec["mcp-tool-call"]` → `mcpclient.CallTool` → real
+`CommandTransport` → real subprocess → real MCP protocol) exercised
+for real, not assumed to work from the unit tests alone.
 
 **What this does not change:** §3.5's own "What Configure is *not*"
 bullet still holds — this isn't a mechanism for *end users* to invent
@@ -1822,10 +1849,12 @@ server is which *tools* are callable through it, the same way what
 varies per configured Connector is which *API* `integration-http` calls
 — the kind stays fixed, only the reusable instance's shape is dynamic.
 
-`OPEN` (both problems) — captured as a capability map per CLAUDE.md's
-Plan step, not decided here: whether to build the internal registry
-refactor, the MCP-client extension point, both, or neither yet is a
-real scope choice, not something to silently pick.
+`LOCKED` (problem 2, MCP-client extension point, built end-to-end).
+Problem 1 (the internal node-type self-registration pattern for Mill's
+own hand-written node types) stays `OPEN` — deliberately not bundled
+into this pass (kept separate per this section's own split above), a
+smaller, orthogonal Go code-organization change with no user-facing
+effect, worth its own pass later.
 
 ## 4. Connectors
 
@@ -2066,9 +2095,9 @@ mode from §0 repeating itself one level up.
 - Node/canvas composition model (§3) — Decision/Integration/List
   execution + authoring now built (§3.3/§3.5); Parallel Steps, Child
   Workflow, and draft/live versioning remain the open parts
-- Extension points: internal node-type registration pattern, and/or
-  MCP-client-backed dynamic tool nodes as a no-core-code-change path for
-  new Integration-shaped capabilities (§3.6)
+- Extension points: internal node-type self-registration pattern for
+  Mill's own hand-written node types, still unbuilt (§3.6) --
+  MCP-client-backed dynamic tool nodes (the other half) are now built
 - Browser extension ↔ native app protocol details (§5)
 - Env/shell determinism rules (§6)
 - Session identity model spanning tab + agent run + process (§7)
