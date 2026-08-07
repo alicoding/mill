@@ -1279,7 +1279,7 @@ Plan step for this as a standing rule.
 | Capability | What it needs to do | Adopt or build | Status / source |
 |---|---|---|---|
 | **Capture / Process / Apply** | Read structured state from a source, transform it, deliver it | Build (core domain) | `LOCKED`, §2 — built for clipboard/markdown |
-| **Trigger** | Entry-point node: listen for *any* event source (hotkey, clipboard change, a browser-bridge DOM event per §5, an incoming MCP `tools/call` per §3.1, a schedule) and emit its data as the workflow's starting input — not "the hotkey mechanism," a general category the hotkey is one instance of. A trigger's output *is* the workflow's input; these are one concept, not two. | Each concrete event source adopts its own library behind an adapter (hotkey already does — `internal/adapters/hotkey`); the abstraction unifying them into one node kind is Mill's own | Hotkey mechanism exists (`HotkeyService`) but isn't modeled as a graph node yet — needs `Kind: trigger`, `Source: "hotkey"` (extensible), not a separate bolted-on mechanism |
+| **Trigger** | Entry-point node: listen for *any* event source (hotkey, clipboard change, a browser-bridge DOM event per §5, an incoming MCP `tools/call` per §3.1, a schedule) and emit its data as the workflow's starting input — not "the hotkey mechanism," a general category the hotkey is one instance of. A trigger's output *is* the workflow's input; these are one concept, not two. | Each concrete event source adopts its own library behind an adapter (hotkey already does — `internal/adapters/hotkey`); the abstraction unifying them into one node kind is Mill's own | Hotkey mechanism exists (`HotkeyService`) but isn't modeled as a graph node yet — see §3.4 for the fuller map (this single row undersold the real variety) |
 | **Decision / branching** | Route execution down one of several named output edges based on a condition evaluated against the running payload | Node/graph semantics: build (core domain — composition rules). Expression evaluation underneath: adopt (`expr-lang/expr`, MIT, sandboxed/side-effect-free/loop-bounded by design — verified directly, not assumed) rather than hand-writing a condition parser | ADR-0005 names it, deferred, still `OPEN` |
 | **Parallel Steps** | Fan out to multiple steps concurrently, then join | Graph/fan-in semantics: build. Concurrency execution: DBOS's `Queue`/`WithWorkerConcurrency` (§7) is a plausible real backing mechanism once designed, not hand-rolled goroutine management | ADR-0005 names it, deferred |
 | **Child Workflow** | One workflow invokes another as a step | Build (composition rule — no library has an opinion on Mill's own workflow-of-workflows semantics) | ADR-0005 names it, deferred |
@@ -1319,6 +1319,129 @@ built, not just captured as design input:**
 `proposed` (not `accepted`), since the A2 control-flow-node question and
 the versioning/replay gaps this map names are still real, unbuilt future
 work; only the node/edge shape moved from proposed to shipped.
+
+### 3.4 Trigger primitives — capability map
+
+§3.3's Trigger row was one line (`Kind: trigger`, `Source: "hotkey"`
+(extensible)) — accurate as far as it went, but a real Trigger capability
+has enough independent variety (delivery mechanism, config shape, adopt
+target) that collapsing it into a single table row undersold it. Same
+discipline as §3.3, applied one level deeper: list every known trigger
+type before locking anything, researched against real precedent (n8n,
+Zapier, Raycast — chosen because they're the platforms already anchoring
+this design elsewhere in this doc) rather than invented from Mill's two
+existing entry points (hotkey, manual click). Nothing in this section is
+built yet — captured as design direction, per CLAUDE.md's Plan step,
+before any of it becomes code.
+
+**Grouping is by delivery mechanism, not business domain** — this is the
+axis that actually determines config shape and the adopt-vs-build call
+(a webhook and an MCP tool call are both "push," even though one is
+"an app event" and the other is "an agent action"; grouping by domain
+would have hidden that the two need nearly identical plumbing). Directly
+confirmed against n8n's own docs, not assumed: n8n's own app-specific
+triggers are themselves classified as "polling (checks the service on a
+regular interval) or webhook/real-time (service pushes events instantly)"
+— the same split used here.
+
+| Group | Shape | What differs in config |
+|---|---|---|
+| **A — Manual/UI-driven** | User directly fires it, synchronous, no listener process | Just "which workflow" |
+| **B — Scheduled/polling** | Mill wakes up on an interval and checks something | Interval/cron expression, poll target |
+| **C — Push/event-driven** | An external source notifies Mill immediately, no polling | Listener/endpoint config, varies per source |
+| **D — System/meta** | Fired by Mill's own execution engine, not an external source | Which upstream event (run failed, workflow updated) |
+
+| Trigger | Group | What it needs to do | Adopt or build | Status |
+|---|---|---|---|---|
+| **Manual (UI click)** | A | User clicks Run/Test on the workflow | Build (Mill's own UI) | Built today (Runbook/Composition Run buttons) — no listener process, purely on-demand |
+| **Hotkey (global shortcut)** | A | OS-level combo fires headlessly, even when Mill isn't focused | Adopt (`golang.design/x/hotkey`, already adopted, §2.2) | Built (`HotkeyService`), but not modeled as a graph node, and has no cross-workflow conflict detection yet — see below |
+| **Schedule / cron** | B | Fire on an interval or cron expression | Adopt — **not** `robfig/cron` (confirmed unmaintained since 2020, known panic/DST bugs, 50+ open PRs); `go-co-op/gocron` still wraps `robfig/cron/v3` underneath so it doesn't actually escape the problem. **`netresearch/go-cron`** (MIT) is a maintained, API-compatible fork that fixes exactly those bugs and tracks current Go | `LOCKED` (library pick) — not yet integrated |
+| **Clipboard change (watch)** | B | Detect clipboard content changing | Build — confirmed by reading `internal/adapters/clipboard` directly: it's `osascript`/`pbcopy`/`pbpaste` shell-outs with no "clipboard changed" event exposed anywhere in AppleScript; needs a small poll loop, same as every clipboard manager does this | Named, not built |
+| **Filesystem watch** | C | Fire when a file/folder is added/changed/deleted | Adopt (`fsnotify/fsnotify` — BSD-3-Clause, actively maintained, wraps OS syscalls — kqueue on macOS/BSD — via `golang.org/x/sys`, no cgo, no daemon) | `LOCKED` (library pick) — not yet named anywhere else in this doc before now; direct analog to n8n's Local File Trigger |
+| **DOM event (browser bridge)** | C | Fire when a watched selector/element changes in a tab | Build (the relay itself is Mill's own §5 mechanism, already `LOCKED`) | `OPEN` — blocked on §5's still-open "reachable independent of native window" question |
+| **Incoming MCP tool call** | C | An agent/chat client invokes one of Mill's exposed tools | Adopt (Go SDK's `Server.AddReceivingMiddleware`, already `LOCKED`, §3.1) | `OPEN` as a graph Trigger kind — validated as a real, established category (not a Mill invention) by n8n shipping its own dedicated MCP Server Trigger node |
+| **Webhook / incoming HTTP** | C | External service POSTs an event to a Mill-owned endpoint | Not a library gap — Mill already runs an HTTP server in server-mode (Wails3 + stdlib `net/http`); the open question is purely whether Mill should run a public listener at all | `OPEN` — a scope/threat-model decision, not an adoption decision |
+| **App/connector-specific** (e.g. email/IMAP) | B or C | Poll or push scoped to one external service | Depends on §4 Connectors | `PARKED` until §4 resolves — not a distinct Trigger *kind*, a connector-scoped instance of Group B/C |
+| **System/meta** (run failed, workflow updated) | D | Fired by Mill's own execution engine | Build, depends on §7 | `PARKED` until §7's execution engine lands — direct analog to n8n's Error Trigger / Workflow Trigger |
+
+**Architecture conclusion: each trigger type is its own `NodeType` under
+one new `NodeKind = "trigger"`, not one generic Trigger node with a
+`Source` dropdown.** Confirmed against real precedent, not assumed: n8n
+and Zapier both expose "Webhook Trigger," "Schedule Trigger," and
+"Manual Trigger" as separate, distinctly-named, separately-configured
+node types in their palettes — never one polymorphic node whose fields
+change based on a picked value. This maps directly onto Mill's *existing*
+`NodeType`/`NodeKind` split (`composition.go:51-76` — `NodeKind` is
+already the coarse category, `NodeType` is the concrete, separately-
+configured thing dragged onto the canvas, each with its own
+`ConfigFields`) — additive, not a new mechanism: `trigger-hotkey`
+(mods + key fields), `trigger-schedule` (a cron-string field),
+`trigger-clipboard-watch` (no fields), `trigger-filesystem-watch`
+(path + event-type fields), `trigger-mcp-call` (tool-name field), each
+a normal new `NodeType` entry. The canvas palette (`CompositionCanvas.tsx`)
+needs zero new UI concept to support this. `LOCKED` (the shape) — not
+yet implemented; no `KindTrigger` exists in code today.
+
+**`ConfigField` needs a real type, modeled on n8n's own node-parameter
+taxonomy rather than invented from scratch.** Confirmed directly against
+n8n's docs: its parameter types are `string`, `number`, `boolean`,
+`options` (single-select), `multiOptions`, plus more advanced ones
+(`collection`, `fixedCollection`, `resourceLocator`) that map to Mill's
+own not-yet-built Decision/Parallel nodes, not needed now. The subset
+Mill actually needs today — `text` / `number` / `boolean` / `options`
+(with an `Options []string`) — replaces `ConfigField`'s current
+flat-string-only shape (`composition.go:63-68`, `Key/Label/Description/
+Default string`, no type discriminator at all), which is what's
+currently blocking a source-picker on the Capture node, a provider-
+picker on the Process node, or a typed field on any trigger. `LOCKED`
+(the taxonomy subset) — not yet implemented in `ConfigField`.
+
+**Payload/example generation reuses zod, already adopted — no second
+schema system needed.** The "intelligently generate a sample payload
+from the input's typed schema" ask (matching the reference platform's
+own per-record test harness, §3.2) doesn't need full JSON Schema, which
+would be heavier than Mill's actual need and would require Go and TS to
+each maintain their own library for a document-validation problem this
+small. The frontend already has `zod` adopted (validates a draft
+workflow before Save) — `@anatine/zod-mock` (MIT, wraps `faker.js`,
+mature) generates realistic mock data straight from an existing zod
+schema, so a config/payload type gets expressed once, in zod, and "test
+with a generated payload" is just running that library against the same
+schema already being validated against. `LOCKED` (library pick) — not
+yet integrated; depends on the ConfigField-typing work above landing
+first, since there's nothing to generate from until fields are typed.
+
+**Hotkey exclusivity: one combo maps to at most one workflow, conflict
+surfaced at capture time — not "fire every workflow listening on that
+combo."** Modeled directly on Raycast's own real conflict UX, confirmed
+by research rather than assumed: when recording a shortcut that
+conflicts with an existing command, Raycast's recorder highlights red,
+names the owning command, and offers two choices — pick a different
+combo, or overwrite (steal it, and the other command loses its
+binding). macOS System Settings does the same red/yellow-warning
+treatment for its own built-in shortcuts, but has no visibility into
+third-party apps' bindings — confirming this has to be Mill's own job,
+not something the OS provides for free. "I want two things on one
+keypress" is answered by workflow composition (Child Workflow, §3.3,
+already named future work) once it exists, not by hotkey fan-out — keeps
+the trigger primitive itself 1:1 and unambiguous. **Real gap confirmed
+by reading the code, not assumed**: `HotkeyService.Assign`
+(`hotkeyservice.go:71`) never checks whether a `(mods, key)` combo is
+already claimed by a *different* `actionID` before calling
+`hotkey.Bind`, which registers unconditionally every time
+(`hotkey_desktop.go`) — nothing today prevents two different actions
+from silently claiming the same combo. Fix is a reverse index (combo →
+current owner) checked before `hotkey.Bind` is called. `LOCKED` (the
+conflict model) — not yet implemented.
+
+**Known follow-on, tracked but out of scope for this map**:
+`HotkeyService` is hardwired to `internal/domain/runbook.Run(actionID)`
+(`hotkeyservice.go:107`), and hotkey-assignment UI exists only in
+`RunbookView.tsx` — repointing both from a Runbook action ID to a
+workflow ID is real, separate work this map depends on but doesn't
+itself resolve, tied to the still-undecided question of whether/how the
+standalone Runbook page (§2.2, currently `LOCKED`) gets retired in favor
+of Composition. Not decided here; noted so it isn't lost.
 
 ## 4. Connectors
 
