@@ -3,6 +3,7 @@
 
 export {
     Approach,
+    ConfigFieldType,
     NodeKind
 } from "./models.js";
 

@@ -6,6 +6,7 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+	"time"
 )
 
 // These hit the real macOS clipboard via osascript/pbcopy/pbpaste -- per
@@ -54,5 +55,37 @@ func TestWriteText(t *testing.T) {
 	}
 	if strings.TrimSpace(string(out)) != text {
 		t.Errorf("pbpaste after WriteText(%q) = %q", text, string(out))
+	}
+}
+
+func TestWatchChanges_FiresOnRealChange(t *testing.T) {
+	skipUnlessRealDesktop(t)
+
+	if err := WriteText("watch-changes-baseline"); err != nil {
+		t.Fatalf("WriteText(baseline) error: %v", err)
+	}
+
+	fired := make(chan struct{}, 1)
+	stop := WatchChanges(20*time.Millisecond, func() {
+		select {
+		case fired <- struct{}{}:
+		default:
+		}
+	})
+	defer stop()
+
+	// Give the watch loop time to read the baseline before changing it --
+	// otherwise the very first poll could race the baseline read below
+	// and misfire on what should be the established starting value.
+	time.Sleep(50 * time.Millisecond)
+
+	if err := WriteText("watch-changes-new-value"); err != nil {
+		t.Fatalf("WriteText(new value) error: %v", err)
+	}
+
+	select {
+	case <-fired:
+	case <-time.After(2 * time.Second):
+		t.Fatal("WatchChanges never fired after the clipboard changed")
 	}
 }

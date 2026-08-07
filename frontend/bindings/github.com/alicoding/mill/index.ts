@@ -3,15 +3,13 @@
 
 import * as CapabilitiesService from "./capabilitiesservice.js";
 import * as CompositionService from "./compositionservice.js";
-import * as HotkeyService from "./hotkeyservice.js";
-import * as RunbookService from "./runbookservice.js";
 import * as SpecService from "./specservice.js";
+import * as TriggerService from "./triggerservice.js";
 export {
     CapabilitiesService,
     CompositionService,
-    HotkeyService,
-    RunbookService,
-    SpecService
+    SpecService,
+    TriggerService
 };
 
 export type {
