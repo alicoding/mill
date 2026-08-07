@@ -99,13 +99,68 @@
     user-select: none;
 }
 .paletteItem:active { cursor: grabbing; }
+/* Fixed size, not size-to-content -- every node is the same uniform
+   card regardless of label length (matches CANVAS_NODE_WIDTH/HEIGHT in
+   CompositionCanvas.tsx, which the elk auto-layout call also uses, so
+   layout spacing matches what actually renders). Icon square + kind +
+   title row, adopted from the reference platform's own node card shape
+   (icon/color/kind text itself are Mill's own -- see nodeKind.ts). */
 .canvasNode {
+    width: 220px;
+    height: 64px;
+    box-sizing: border-box;
     padding: var(--base-size-8) var(--base-size-12);
     border-radius: var(--borderRadius-medium);
     background: var(--xy-node-background-color);
     border: var(--xy-node-border);
-    min-width: 160px;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: var(--base-size-8);
+    overflow: hidden;
+}
+.canvasNodeIcon {
+    flex: 0 0 auto;
+    width: 32px;
+    height: 32px;
+    border-radius: var(--borderRadius-medium);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.canvasNodeText {
+    flex: 1 1 auto;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+}
+.canvasNodeKind {
+    color: var(--fgColor-muted);
+}
+.canvasNodeLabel {
+    display: block;
+    width: 100%;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 .canvasNodeSelected {
     box-shadow: var(--xy-node-boxshadow-selected);
+}
+.paletteItemIcon {
+    flex: 0 0 auto;
+    width: 26px;
+    height: 26px;
+    border-radius: var(--borderRadius-medium);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.paletteItemText {
+    flex: 1 1 auto;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
 }

@@ -14,13 +14,13 @@ import type { Connection, Edge as RFEdge, NodeTypes as RFNodeTypes, NodeProps } 
 import '@xyflow/react/dist/style.css'
 import { useStore } from 'zustand'
 import { z } from 'zod'
-import { Button, FormControl, IconButton, Label, Stack, Text, TextInput, Textarea } from '@primer/react'
+import { Button, FormControl, IconButton, Stack, Text, TextInput, Textarea } from '@primer/react'
 import { ColumnsIcon, RedoIcon, SidebarCollapseIcon, SidebarExpandIcon, TrashIcon, UndoIcon } from '@primer/octicons-react'
 import { ArrowLeftIcon } from '@primer/octicons-react'
 import { CompositionService } from '../bindings/github.com/alicoding/mill'
 import type { NodeType, Node as CompNode, Edge as CompEdge, Workflow } from '../bindings/github.com/alicoding/mill/internal/domain/composition/models'
 import { createCanvasStore, type CanvasNode } from './canvasStore'
-import { KIND_VARIANT } from './nodeKind'
+import { KIND_ICON, KIND_ICON_BG, KIND_LABEL } from './nodeKind'
 import styles from './CompositionCanvas.module.css'
 import runbookStyles from './RunbookView.module.css'
 
@@ -52,18 +52,42 @@ function toRFEdges(edges: CompEdge[] | null): RFEdge[] {
 // edge entering/exiting a node's horizontal center (React Flow's default
 // for Top/Bottom handle positions) reads as one orderly column instead
 // of the diagonal, easy-to-overlap layout left/right handles produced.
+// Every node renders at the same fixed width/height (CANVAS_NODE_WIDTH/
+// HEIGHT below, shared with the elkjs layout call so auto-layout spaces
+// nodes for the size they actually render at) regardless of label
+// length -- a uniform grid of cards, not size-to-content boxes; long
+// labels truncate with an ellipsis instead of stretching the card.
+//
+// Card shape (icon square + kind label + title stacked beside it) is
+// adopted from the reference no-code platform's own node cards; the
+// icon/color/kind text is Mill's own (KIND_ICON/KIND_ICON_BG/KIND_LABEL,
+// nodeKind.ts) since Mill's node kinds are Capture/Process/Apply, not
+// that reference's fuller Input/Decision/Ruleset/... taxonomy.
 function CanvasNodeView({ data, selected }: NodeProps<CanvasNode>) {
+  const Icon = KIND_ICON[data.kind]
   return (
     <div className={`${styles.canvasNode} ${selected ? styles.canvasNodeSelected : ''}`}>
       <Handle type="target" position={RFPosition.Top} />
-      <Stack direction="horizontal" gap="condensed" align="center">
-        <Label variant={KIND_VARIANT[data.kind] ?? 'secondary'} size="small">{data.kind}</Label>
-        <Text size="small" weight="semibold">{data.label}</Text>
-      </Stack>
+      <div className={styles.canvasNodeIcon} style={{ background: KIND_ICON_BG[data.kind] ?? 'var(--bgColor-neutral-emphasis)' }}>
+        {Icon && <Icon size={16} fill="#fff" />}
+      </div>
+      <div className={styles.canvasNodeText}>
+        <Text size="small" className={styles.canvasNodeKind}>{KIND_LABEL[data.kind] ?? data.kind}</Text>
+        <Text size="small" weight="semibold" className={styles.canvasNodeLabel} title={data.label}>
+          {data.label}
+        </Text>
+      </div>
       <Handle type="source" position={RFPosition.Bottom} />
     </div>
   )
 }
+
+// Shared with CompositionCanvas.module.css's .canvasNode (must match --
+// there's no single source of truth CSS-in-JS could give here without
+// pulling in a new dependency, so the elk layout call below imports
+// these same numbers instead of hardcoding a second copy).
+const CANVAS_NODE_WIDTH = 220
+const CANVAS_NODE_HEIGHT = 64
 
 const rfNodeTypes: RFNodeTypes = {
   capture: CanvasNodeView,
@@ -262,7 +286,7 @@ function CanvasInner({ nodeTypes, workflow, onBack, onSaved }: CompositionCanvas
           'elk.spacing.nodeNode': '48',
           'elk.layered.spacing.nodeNodeBetweenLayers': '64',
         },
-        children: currentNodes.map((n) => ({ id: n.id, width: 180, height: 56 })),
+        children: currentNodes.map((n) => ({ id: n.id, width: CANVAS_NODE_WIDTH, height: CANVAS_NODE_HEIGHT })),
         edges: currentEdges.map((e) => ({ id: e.id, sources: [e.source], targets: [e.target] })),
       }
       const layouted = await elk.layout(graph)
@@ -362,8 +386,16 @@ function CanvasInner({ nodeTypes, workflow, onBack, onSaved }: CompositionCanvas
                   data-testid="palette-item"
                 >
                   <Stack direction="horizontal" gap="condensed" align="center">
-                    <Label variant={KIND_VARIANT[nt.Kind] ?? 'secondary'} size="small">{nt.Kind}</Label>
-                    <Text size="small">{nt.Label}</Text>
+                    <div className={styles.paletteItemIcon} style={{ background: KIND_ICON_BG[nt.Kind] ?? 'var(--bgColor-neutral-emphasis)' }}>
+                      {(() => {
+                        const Icon = KIND_ICON[nt.Kind]
+                        return Icon ? <Icon size={14} fill="#fff" /> : null
+                      })()}
+                    </div>
+                    <div className={styles.paletteItemText}>
+                      <Text size="small" className={styles.canvasNodeKind}>{KIND_LABEL[nt.Kind] ?? nt.Kind}</Text>
+                      <Text size="small" weight="semibold" className={styles.canvasNodeLabel} title={nt.Label}>{nt.Label}</Text>
+                    </div>
                   </Stack>
                 </div>
               ))}
