@@ -907,6 +907,63 @@ this entry.
   `OPEN` (all four — captured as design input for §3/§7/§8, not decided
   here).
 
+### 3.3 Capability map — designing the node/edge schema against the full known need, not just today's two workflows
+
+Deciding the node/edge schema from today's two built-in, purely-linear
+workflows risks locking in exactly the point-solution shape §0 already
+names as a failure mode this project has been burned by once — a schema
+that fits the narrow immediate case and has to be migrated (persisted
+data and all) the moment a real branching/trigger use case surfaces.
+The counter-discipline, applied here for the first time and worth
+reusing whenever a schema/adopt-vs-build decision spans more than one
+real future use: **list every known capability first, whether it's
+something to adopt or something that must stay Mill's own, before
+locking the schema** — not to build all of it now, but so the *shape*
+of what's built now doesn't have to be undone later. See CLAUDE.md's
+Plan step for this as a standing rule.
+
+| Capability | What it needs to do | Adopt or build | Status / source |
+|---|---|---|---|
+| **Capture / Process / Apply** | Read structured state from a source, transform it, deliver it | Build (core domain) | `LOCKED`, §2 — built for clipboard/markdown |
+| **Trigger** | Entry-point node: listen for *any* event source (hotkey, clipboard change, a browser-bridge DOM event per §5, an incoming MCP `tools/call` per §3.1, a schedule) and emit its data as the workflow's starting input — not "the hotkey mechanism," a general category the hotkey is one instance of. A trigger's output *is* the workflow's input; these are one concept, not two. | Each concrete event source adopts its own library behind an adapter (hotkey already does — `internal/adapters/hotkey`); the abstraction unifying them into one node kind is Mill's own | Hotkey mechanism exists (`HotkeyService`) but isn't modeled as a graph node yet — needs `Kind: trigger`, `Source: "hotkey"` (extensible), not a separate bolted-on mechanism |
+| **Decision / branching** | Route execution down one of several named output edges based on a condition evaluated against the running payload | Node/graph semantics: build (core domain — composition rules). Expression evaluation underneath: adopt (`expr-lang/expr`, MIT, sandboxed/side-effect-free/loop-bounded by design — verified directly, not assumed) rather than hand-writing a condition parser | ADR-0005 names it, deferred, still `OPEN` |
+| **Parallel Steps** | Fan out to multiple steps concurrently, then join | Graph/fan-in semantics: build. Concurrency execution: DBOS's `Queue`/`WithWorkerConcurrency` (§7) is a plausible real backing mechanism once designed, not hand-rolled goroutine management | ADR-0005 names it, deferred |
+| **Child Workflow** | One workflow invokes another as a step | Build (composition rule — no library has an opinion on Mill's own workflow-of-workflows semantics) | ADR-0005 names it, deferred |
+| **Integration / Connector node** | Call an external HTTP API, auth'd | Wire protocol: adopt (stdlib `net/http`, or MCP per §3.1 if exposed as a tool). Connector config/credential model: build | §4, `OPEN` |
+| **Durable step execution / retry / resume** | Survive the process dying mid-workflow, checkpoint per step, retry transient failures | Adopt (DBOS-Go) | ADR-0004, integration in progress this session |
+| **Replay / re-run from history** | Re-invoke a past run, ideally resuming rather than restarting | Mechanism: adopt (DBOS `ForkWorkflow`/workflow-ID resume). UI/policy: build | Named this session — not built, deliberately deferred past the current DBOS-integration pass |
+| **Draft/live versioning** | Edit a workflow without breaking the currently-live version | Build (no library owns Mill's own versioning semantics) | Real gap flagged from the reference-platform review (§3.2), `OPEN` |
+| **Live + shadow events / execution history** | Filterable log of past runs; dry-run a candidate change against real traffic before trusting it | Data: adopt (DBOS `GetStatus`/`ListWorkflows`). UI: build | §3.2 shadow-events bullet; §7 already calls Activity "the closest thing to the analytics half" |
+| **Guardrail preview / policy gate** | Approve/deny before a step actually runs | Build (core domain — no library has an opinion on Mill's guardrail semantics) | §8, `LOCKED` in shape, `OPEN` in detail |
+| **Visual composition surface** | Author a DAG, not just a list | Adopt (React Flow / `@xyflow/react`) — but only once real multi-step content exists to design against, per ADR-0005's B2 | §3, deferred |
+
+**React Flow, checked directly against its actual source/docs (not
+assumed) specifically to shape the schema now without adopting the
+canvas yet**:
+- MIT-licensed. Its own runtime dependencies are `@xyflow/system`
+  (its own internal package), `classcat` (a tiny classname utility),
+  and **`zustand`** — already an adopted Mill dependency for frontend
+  state (§1.3) — one of React Flow's three dependencies is something
+  Mill already vetted for an unrelated reason, not new surface.
+- A React Flow node is `{id, type, data, position}` — `type` maps via
+  a `nodeTypes` registry to a component, `data` is arbitrary. This is
+  already close to `composition.Step{NodeTypeID, Config}` — adding
+  `Position` (ignorable until a canvas exists) is the only real gap.
+  Not a coincidence worth engineering around; a reason to shape Mill's
+  own schema this way now, so adopting the canvas later is additive,
+  not a migration.
+- A node can expose multiple named `Handle`s, and edges reference a
+  specific `sourceHandle` — this is exactly a Decision node's "yes"/
+  "no" (or N-way) branching, natively, not something to hack around.
+
+**Schema direction this map and the React Flow shape point to**
+(informs, does not itself resolve, ADR-0005 — ADR-0005 stays the
+authoritative record once this is actually decided):
+`Node{ID, Kind, NodeTypeID, Config, Position}` +
+`Edge{ID, Source, SourceHandle, Target}`, replacing today's flat
+`Workflow.Steps []Step`. `OPEN` — captured here as design input, same
+status as the map above, not locked by writing it down.
+
 ## 4. Connectors
 
 - `OPEN`. Named so far: generic HTTP connector, Jira/Confluence as a

@@ -19,7 +19,15 @@ Every non-trivial change follows this order, no exceptions:
 2. **Plan** — state the approach and its tradeoffs before editing files.
    For any design choice with more than one defensible answer (schema shape,
    module boundary, protocol), write it up before committing to it, and
-   record the decision in `docs/SPEC.md` under the relevant section.
+   record the decision in `docs/SPEC.md` under the relevant section. When
+   the decision is a data schema or an adopt-vs-build call for a capability
+   with more than one real future use — not just today's immediate use
+   case — build an explicit capability map first: every known future use,
+   whether it's something to adopt or something that must stay Mill's own,
+   and its current status. Deciding from today's narrowest use case alone
+   is exactly how a point solution gets built (`docs/SPEC.md` §0); the map
+   is what prevents that without requiring the full capability to be built
+   up front. See `docs/SPEC.md` §3.3 for the worked example.
 3. **Implement** — only after 1 and 2. Small, reviewable steps.
 
 **Commit every verified change, always — don't wait to be asked.** Once
