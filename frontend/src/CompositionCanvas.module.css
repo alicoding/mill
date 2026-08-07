@@ -160,10 +160,3 @@
     align-items: center;
     justify-content: center;
 }
-.paletteItemText {
-    flex: 1 1 auto;
-    min-width: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 1px;
-}
