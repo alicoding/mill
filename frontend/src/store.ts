@@ -44,6 +44,7 @@ export type View =
   | { kind: 'activity' }
   | { kind: 'composition' }
   | { kind: 'configure' }
+  | { kind: 'settings' }
   | { kind: 'spec' }
   | { kind: 'placeholder'; capabilityId: string }
 
