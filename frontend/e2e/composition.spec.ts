@@ -5,13 +5,24 @@ import { test, expect } from '@playwright/test'
 // clipboard-dependent success content isn't assertable on a headless CI
 // runner, so only the environment-independent path is checked here.
 // Exercises SPEC.md §3 / ADR-0005's React Flow canvas (CompositionCanvas.tsx,
-// built ahead of ADR-0005 B2's original deferral trigger -- see the ADR's
-// Update section): CompositionService.NodeTypes()/Workflows()/
-// CreateWorkflow()/DeleteWorkflow()/RunWorkflow() -> real drag-and-drop onto
-// a React Flow canvas, not a form.
+// built ahead of ADR-0005 B2's original deferral trigger) inside its own
+// tab per open workflow (CompositionView.tsx's Tabs, matching the
+// reference platform's own tabbed Workflows-list/canvas-editor split --
+// see SPEC.md §3's Update bullets), each with a collapsible "Add steps"
+// palette and a pre-populated starter node instead of a blank canvas.
 
 function workflowRow(page: import('@playwright/test').Page, label: string) {
   return page.locator('[data-testid="workflow-row"]', { has: page.getByText(label, { exact: true }) })
+}
+
+// The active tab's content -- Primer's TabPanel keeps every open tab
+// mounted and toggles a `hidden` attribute rather than unmounting
+// (that's what preserves each tab's in-progress canvas edits), so once
+// more than one tab is open, un-scoped queries can match elements in
+// tabs that merely aren't visible right now. Every test that opens more
+// than one tab scopes through this.
+function activePanel(page: import('@playwright/test').Page) {
+  return page.locator('[role="tabpanel"]:not([hidden])')
 }
 
 // Playwright's Locator.dragTo() simulates mouse events (mousedown/move/
@@ -21,11 +32,16 @@ function workflowRow(page: import('@playwright/test').Page, label: string) {
 // onDragStart/onDrop handlers (which read event.dataTransfer) never see
 // it. Dispatching the real DragEvents manually, as a real user's OS-
 // level drag gesture would, is the only way to exercise this path.
+// Scoped to the active (visible) tabpanel, same reasoning as
+// activePanel() above -- palette items exist in the DOM for every open
+// tab, not just the visible one.
 async function dragPaletteItemToCanvas(page: import('@playwright/test').Page, label: string) {
   await page.evaluate((paletteLabel) => {
-    const items = Array.from(document.querySelectorAll('[data-testid="palette-item"]'))
+    const panel = document.querySelector('[role="tabpanel"]:not([hidden])')
+    if (!panel) throw new Error('no active tabpanel')
+    const items = Array.from(panel.querySelectorAll('[data-testid="palette-item"]'))
     const palette = items.find((el) => el.textContent?.includes(paletteLabel))
-    const canvas = document.querySelector('[data-testid="composition-canvas"] .react-flow__pane')
+    const canvas = panel.querySelector('.react-flow__pane')
     if (!palette || !canvas) {
       throw new Error(`drag setup failed: palette found=${!!palette} canvas found=${!!canvas}`)
     }
@@ -39,7 +55,17 @@ async function dragPaletteItemToCanvas(page: import('@playwright/test').Page, la
   }, label)
 }
 
-test('Composition page lists built-in workflows; node primitives live inside the canvas, not the list', async ({ page }) => {
+// Removes the pre-populated starter node so a test can build an exact,
+// known node set instead of accounting for "the starter plus whatever I
+// added." Selecting a lone node and using the toolbar's own Delete
+// control, not a shortcut -- exercises the real interaction.
+async function deleteStarterNode(page: import('@playwright/test').Page) {
+  await activePanel(page).locator('.react-flow__node').click()
+  await activePanel(page).getByRole('button', { name: 'Delete selected' }).click()
+  await expect(activePanel(page).locator('.react-flow__node')).toHaveCount(0)
+}
+
+test('Composition page lists built-in workflows; node primitives live in a collapsible canvas panel, not the list', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Composition' }).click()
   await expect(page.getByRole('heading', { name: 'Capability composition' })).toBeVisible()
@@ -58,11 +84,39 @@ test('Composition page lists built-in workflows; node primitives live inside the
   // built-in's configured HTML value shows inline on its step chip.
   await expect(workflowRow(page, 'Load sample HTML').getByText(/html:/i)).toBeVisible()
 
-  // Node primitives (the drag palette) only appear once you enter the
-  // canvas -- not on the list page itself.
+  // Node primitives (the drag palette) only appear once you're on the
+  // canvas, and even then only once toggled open ("Add steps") -- not
+  // an always-visible list, and never on the Workflows page itself.
   await expect(page.getByTestId('palette-item')).toHaveCount(0)
   await page.getByTestId('new-workflow').click()
-  await expect(page.getByTestId('palette-item')).toHaveCount(4)
+  await expect(activePanel(page).getByTestId('palette-item')).toHaveCount(0)
+  await activePanel(page).getByTestId('toggle-palette').click()
+  await expect(activePanel(page).getByTestId('palette-item')).toHaveCount(4)
+})
+
+test('A new workflow starts with a starter node placed, not a blank canvas', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Composition' }).click()
+  await page.getByTestId('new-workflow').click()
+
+  // Mill has no Decision node kind yet (deliberately not stubbed ahead
+  // of need, per ADR-0005/composition.go), so the starter is a single
+  // real node -- not the reference platform's own Input->Decision pair,
+  // which doesn't correspond to anything Mill can execute today.
+  const nodes = activePanel(page).locator('.react-flow__node')
+  await expect(nodes).toHaveCount(1)
+  await expect(nodes.first()).toContainText('Capture: clipboard HTML')
+
+  // It's already a valid, savable one-node workflow as-is -- zero edges
+  // is correct for exactly one node (both linearOrder in Go and the
+  // canvas's own zod schema require len(Edges) === len(Nodes)-1).
+  await activePanel(page).getByLabel('Label').fill('E2E starter-only workflow')
+  await activePanel(page).getByTestId('save-workflow').click()
+
+  const row = workflowRow(page, 'E2E starter-only workflow')
+  await expect(row).toBeVisible()
+  await row.getByRole('button', { name: /Delete/ }).click()
+  await expect(row).toHaveCount(0)
 })
 
 test('Running the load-sample workflow produces a visible response, success or error', async ({ page }) => {
@@ -94,27 +148,28 @@ test('Dragging a node onto the canvas configures it as it is added, then saves, 
   await page.goto('/')
   await page.getByRole('link', { name: 'Composition' }).click()
   await page.getByTestId('new-workflow').click()
-  await expect(page.getByTestId('palette-item').first()).toBeVisible()
+  await deleteStarterNode(page)
+  await activePanel(page).getByTestId('toggle-palette').click()
 
   await dragPaletteItemToCanvas(page, 'Apply: write HTML to clipboard')
-  await expect(page.locator('.react-flow__node')).toHaveCount(1)
+  await expect(activePanel(page).locator('.react-flow__node')).toHaveCount(1)
 
   // Clicking the dropped node surfaces its config fields immediately in
   // the Inspector -- composing and configuring happen together, not as
   // separate passes (docs/SPEC.md §3), just moved from inline-in-a-list-
   // row (the old form) to inline-on-select (the canvas).
-  await page.locator('.react-flow__node').click()
-  const inspector = page.getByTestId('composition-inspector')
+  await activePanel(page).locator('.react-flow__node').click()
+  const inspector = activePanel(page).getByTestId('composition-inspector')
   await expect(inspector).toContainText('Apply: write HTML to clipboard')
 
   const customHTML = '<p>e2e configured value</p>'
-  const configField = page.getByTestId('canvas-config-field')
+  const configField = activePanel(page).getByTestId('canvas-config-field')
   await configField.fill(customHTML)
   await configField.blur()
 
-  await page.getByLabel('Label').fill('E2E custom workflow')
-  await page.getByLabel('Description').fill('Composed by an e2e test')
-  await page.getByTestId('save-workflow').click()
+  await activePanel(page).getByLabel('Label').fill('E2E custom workflow')
+  await activePanel(page).getByLabel('Description').fill('Composed by an e2e test')
+  await activePanel(page).getByTestId('save-workflow').click()
 
   const row = workflowRow(page, 'E2E custom workflow')
   await expect(row).toBeVisible()
@@ -134,27 +189,6 @@ test('Dragging a node onto the canvas configures it as it is added, then saves, 
   await expect(workflowRow(page, 'E2E custom workflow')).toHaveCount(0)
 })
 
-test('A single dropped node with no connections is a valid one-node workflow', async ({ page }) => {
-  await page.goto('/')
-  await page.getByRole('link', { name: 'Composition' }).click()
-  await page.getByTestId('new-workflow').click()
-  await expect(page.getByTestId('palette-item').first()).toBeVisible()
-
-  // Zero edges is correct for exactly one node (linearOrder/the zod
-  // schema both require len(Edges) === len(Nodes)-1) -- confirms a lone
-  // node isn't rejected as "disconnected."
-  await dragPaletteItemToCanvas(page, 'Capture: clipboard HTML')
-  await expect(page.locator('.react-flow__node')).toHaveCount(1)
-
-  await page.getByLabel('Label').fill('E2E single-node workflow')
-  await page.getByTestId('save-workflow').click()
-
-  const row = workflowRow(page, 'E2E single-node workflow')
-  await expect(row).toBeVisible()
-  await row.getByRole('button', { name: /Delete E2E single-node workflow/ }).click()
-  await expect(row).toHaveCount(0)
-})
-
 test('Built-in workflows have no edit or delete control', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Composition' }).click()
@@ -168,28 +202,30 @@ test('Editing an existing workflow updates it in place, not as a duplicate', asy
 
   // Compose and save a workflow to edit.
   await page.getByTestId('new-workflow').click()
+  await deleteStarterNode(page)
+  await activePanel(page).getByTestId('toggle-palette').click()
   await dragPaletteItemToCanvas(page, 'Apply: write HTML to clipboard')
-  await page.getByLabel('Label').fill('E2E editable workflow')
-  await page.getByTestId('save-workflow').click()
+  await activePanel(page).getByLabel('Label').fill('E2E editable workflow')
+  await activePanel(page).getByTestId('save-workflow').click()
 
   const row = workflowRow(page, 'E2E editable workflow')
   await expect(row).toBeVisible()
 
-  // Re-opening it loads the existing node (not a fresh empty canvas) and
-  // its already-configured default HTML value, and Save reads "Save
+  // Re-opening it loads the existing node (not the new-workflow starter)
+  // and its already-configured default HTML value, and Save reads "Save
   // changes" rather than "Save workflow" -- confirming this is an edit,
   // not a second composition.
   await row.getByRole('button', { name: /Edit E2E editable workflow/ }).click()
-  await expect(page.locator('.react-flow__node')).toHaveCount(1)
-  await expect(page.getByTestId('save-workflow')).toHaveText('Save changes')
-  await expect(page.getByLabel('Label')).toHaveValue('E2E editable workflow')
+  await expect(activePanel(page).locator('.react-flow__node')).toHaveCount(1)
+  await expect(activePanel(page).getByTestId('save-workflow')).toHaveText('Save changes')
+  await expect(activePanel(page).getByLabel('Label')).toHaveValue('E2E editable workflow')
 
-  await page.locator('.react-flow__node').click()
-  const configField = page.getByTestId('canvas-config-field')
+  await activePanel(page).locator('.react-flow__node').click()
+  const configField = activePanel(page).getByTestId('canvas-config-field')
   await configField.fill('<p>edited value</p>')
   await configField.blur()
-  await page.getByLabel('Label').fill('E2E editable workflow (edited)')
-  await page.getByTestId('save-workflow').click()
+  await activePanel(page).getByLabel('Label').fill('E2E editable workflow (edited)')
+  await activePanel(page).getByTestId('save-workflow').click()
 
   // Same workflow, updated -- not a duplicate: the old label is gone,
   // the new one shows the edited config, and there's exactly one row
@@ -201,4 +237,54 @@ test('Editing an existing workflow updates it in place, not as a duplicate', asy
 
   await updated.getByRole('button', { name: /Delete/ }).click()
   await expect(updated).toHaveCount(0)
+})
+
+test('Opening New workflow twice opens two tabs; closing one returns to the list without touching the other', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Composition' }).click()
+
+  await page.getByTestId('new-workflow').click()
+  await activePanel(page).getByLabel('Label').fill('Tab A')
+  // Switch away without closing -- the tab, and its draft label, must
+  // survive: Primer's TabPanel keeps inactive panels mounted (a hidden
+  // attribute, not an unmount), which is what this whole feature relies
+  // on for state preservation across tabs.
+  await page.getByRole('tab', { name: 'Workflows' }).click()
+
+  await page.getByTestId('new-workflow').click()
+  await activePanel(page).getByLabel('Label').fill('Tab B')
+
+  await expect(page.getByRole('tab')).toHaveCount(3) // Workflows + two New workflow tabs
+
+  // Closing the active tab (Tab B) falls back to the Workflows list.
+  await page.getByRole('button', { name: 'Close tab' }).last().click()
+  await expect(page.getByRole('tab')).toHaveCount(2)
+  await expect(page.getByRole('heading', { name: 'Capability composition' })).toBeVisible()
+
+  // Tab A is still open, with its draft label intact.
+  await page.getByRole('tab').nth(1).click()
+  await expect(activePanel(page).getByLabel('Label')).toHaveValue('Tab A')
+})
+
+test('Editing the same workflow twice reuses its tab instead of opening a duplicate', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Composition' }).click()
+
+  await page.getByTestId('new-workflow').click()
+  await activePanel(page).getByLabel('Label').fill('E2E reused-tab workflow')
+  await activePanel(page).getByTestId('save-workflow').click()
+
+  const row = workflowRow(page, 'E2E reused-tab workflow')
+  await row.getByRole('button', { name: /Edit/ }).click()
+  await expect(page.getByRole('tab')).toHaveCount(2) // Workflows + one editor tab
+
+  // Back to the list without closing the editor tab, then Edit the same
+  // workflow again -- must switch to the existing tab, not open a second.
+  await page.getByRole('tab', { name: 'Workflows' }).click()
+  await row.getByRole('button', { name: /Edit/ }).click()
+  await expect(page.getByRole('tab')).toHaveCount(2)
+
+  await page.getByRole('tab', { name: 'Workflows' }).click()
+  await row.getByRole('button', { name: /Delete/ }).click()
+  await expect(row).toHaveCount(0)
 })
