@@ -317,18 +317,17 @@ graph TB
 ```mermaid
 graph TB
     subgraph Frontend["Frontend — React + TypeScript (Vite)"]
-        Views["Views: Runbook, Activity,<br/>Composition, Spec, ..."]
+        Views["Views: Activity,<br/>Composition, Spec, ..."]
         Store["Zustand store"]
     end
     subgraph Bindings["Wails-bound services (root *service.go)"]
-        RunbookSvc["RunbookService"]
-        HotkeySvc["HotkeyService"]
+        TrigSvc["TriggerService"]
         CompSvc["CompositionService"]
         CapSvc["CapabilitiesService"]
         SpecSvc["SpecService"]
     end
     subgraph Domain["internal/domain/* — core domain, hand-written"]
-        RunbookDom["runbook"]
+        TrigDom["trigger"]
         CompDom["composition"]
         CapDom["capabilities"]
     end
@@ -336,34 +335,39 @@ graph TB
         Clipboard["clipboard"]
         Markdown["markdown"]
         Hotkey["hotkey"]
+        Schedule["schedule"]
+        Filewatch["filewatch"]
         Settings["settings"]
         ExecAdapter["execution (planned, DBOS)"]
     end
     subgraph External["External libraries / OS"]
         OSA["osascript / macOS clipboard"]
         GDH["golang-design/hotkey"]
+        NRC["netresearch/go-cron"]
+        FSN["fsnotify/fsnotify"]
         H2M["html-to-markdown"]
         WailsRT["Wails3 runtime / KVStoreService"]
         DBOSExt["DBOS-Go + SQLite (planned)"]
     end
 
     Views --> Store
-    Views -->|generated Wails bindings| RunbookSvc
-    Views -->|generated Wails bindings| HotkeySvc
+    Views -->|generated Wails bindings| TrigSvc
     Views -->|generated Wails bindings| CompSvc
     Views -->|generated Wails bindings| CapSvc
     Views -->|generated Wails bindings| SpecSvc
 
-    RunbookSvc --> RunbookDom
-    HotkeySvc --> RunbookSvc
-    HotkeySvc --> Hotkey
-    HotkeySvc --> Settings
+    TrigSvc --> TrigDom
+    TrigSvc --> Hotkey
+    TrigSvc --> Schedule
+    TrigSvc --> Filewatch
+    TrigSvc --> Clipboard
+    TrigSvc --> Settings
+    TrigSvc -->|RunWorkflow| CompSvc
     CompSvc --> CompDom
     CompSvc --> Settings
+    CompSvc -.->|Sync after Create/Update/Delete| TrigSvc
     CapSvc --> CapDom
 
-    RunbookDom --> Clipboard
-    RunbookDom --> Markdown
     CompDom --> Clipboard
     CompDom --> Markdown
     CompDom -.-> ExecAdapter
@@ -371,6 +375,8 @@ graph TB
     Clipboard --> OSA
     Markdown --> H2M
     Hotkey --> GDH
+    Schedule --> NRC
+    Filewatch --> FSN
     Settings --> WailsRT
     ExecAdapter -.-> DBOSExt
 
@@ -423,7 +429,7 @@ the execution itself. `OPEN` on the concrete implementation, `LOCKED` as the
 first thing to build once the browser bridge and hotkey pieces are
 researched.
 
-### 2.2 Actually-buildable-now milestone — the Runbook page
+### 2.2 Actually-buildable-now milestone — the Runbook page (retired, see Update below)
 
 `UX: PROTOTYPE`. The Runbook page as built (list + Run button + hotkey
 assignment, current Primer React pass) proves the capability end-to-end —
@@ -864,6 +870,21 @@ that environment, on something testable directly in this dev session:
   other icon rendered (the regression the wrapper-vs-node bug caused),
   round-tripping collapse → expand → collapse, and both light and dark
   theme. `LOCKED`
+- **Update — the Runbook page described in this section is retired.**
+  Superseded by Composition (§3): its two actions live on as ordinary,
+  fully-editable seeded workflows (`composition.BuiltInWorkflows()`),
+  matching the industry pattern confirmed via research (Zapier's own
+  docs: a used template "operates independently... you can edit it like
+  any other Zap"), not a protected specimen on a separate page. This
+  closed a real gap the two-page split had: `BuiltIn` used to gate
+  Edit/Delete entirely, so a seeded example couldn't be poked at or
+  deleted the way every other workflow could. The `RunbookService`/
+  `internal/domain/runbook` Go package, `RunbookView.tsx`, and the
+  `runbook-page` capability entry are all deleted, not just hidden.
+  Hotkey binding (the one Runbook capability with no Composition
+  equivalent before this) is now `TriggerService`'s job, keyed by
+  workflow ID instead of action ID, with real one-combo-per-workflow
+  exclusivity — see §3.4. `LOCKED`
 
 ## 3. Capability composition — how nodes connect
 
@@ -1279,7 +1300,7 @@ Plan step for this as a standing rule.
 | Capability | What it needs to do | Adopt or build | Status / source |
 |---|---|---|---|
 | **Capture / Process / Apply** | Read structured state from a source, transform it, deliver it | Build (core domain) | `LOCKED`, §2 — built for clipboard/markdown |
-| **Trigger** | Entry-point node: listen for *any* event source (hotkey, clipboard change, a browser-bridge DOM event per §5, an incoming MCP `tools/call` per §3.1, a schedule) and emit its data as the workflow's starting input — not "the hotkey mechanism," a general category the hotkey is one instance of. A trigger's output *is* the workflow's input; these are one concept, not two. | Each concrete event source adopts its own library behind an adapter (hotkey already does — `internal/adapters/hotkey`); the abstraction unifying them into one node kind is Mill's own | Hotkey mechanism exists (`HotkeyService`) but isn't modeled as a graph node yet — see §3.4 for the fuller map (this single row undersold the real variety) |
+| **Trigger** | Entry-point node: listen for *any* event source (hotkey, clipboard change, a browser-bridge DOM event per §5, an incoming MCP `tools/call` per §3.1, a schedule) and emit its data as the workflow's starting input — not "the hotkey mechanism," a general category the hotkey is one instance of. A trigger's output *is* the workflow's input; these are one concept, not two. | Each concrete event source adopts its own library behind an adapter (hotkey/schedule/filesystem-watch do; clipboard-watch is a small build); the abstraction unifying them into one node kind, and `TriggerService`'s registry/exclusivity, are Mill's own | `LOCKED`, built (manual/hotkey/schedule/clipboard-watch/filesystem-watch) — see §3.4 for the fuller map. DOM-event and MCP-call triggers remain unbuilt, gated on §5/§3.1 |
 | **Decision / branching** | Route execution down one of several named output edges based on a condition evaluated against the running payload | Node/graph semantics: build (core domain — composition rules). Expression evaluation underneath: adopt (`expr-lang/expr`, MIT, sandboxed/side-effect-free/loop-bounded by design — verified directly, not assumed) rather than hand-writing a condition parser | ADR-0005 names it, deferred, still `OPEN` |
 | **Parallel Steps** | Fan out to multiple steps concurrently, then join | Graph/fan-in semantics: build. Concurrency execution: DBOS's `Queue`/`WithWorkerConcurrency` (§7) is a plausible real backing mechanism once designed, not hand-rolled goroutine management | ADR-0005 names it, deferred |
 | **Child Workflow** | One workflow invokes another as a step | Build (composition rule — no library has an opinion on Mill's own workflow-of-workflows semantics) | ADR-0005 names it, deferred |
@@ -1330,9 +1351,15 @@ discipline as §3.3, applied one level deeper: list every known trigger
 type before locking anything, researched against real precedent (n8n,
 Zapier, Raycast — chosen because they're the platforms already anchoring
 this design elsewhere in this doc) rather than invented from Mill's two
-existing entry points (hotkey, manual click). Nothing in this section is
-built yet — captured as design direction, per CLAUDE.md's Plan step,
-before any of it becomes code.
+existing entry points (hotkey, manual click).
+
+**Update — built.** Everything below was originally captured as design
+direction only; `KindTrigger` + five `NodeType`s, `TriggerService`,
+`ConfigField` typing, hotkey exclusivity, and payload generation are now
+real code (this update lands in the same change as the implementation,
+not a later pass). Left the original research prose in place below since
+it's still the accurate reasoning behind each decision — only the
+build-status framing changes.
 
 **Grouping is by delivery mechanism, not business domain** — this is the
 axis that actually determines config shape and the adopt-vs-build call
@@ -1353,11 +1380,11 @@ regular interval) or webhook/real-time (service pushes events instantly)"
 
 | Trigger | Group | What it needs to do | Adopt or build | Status |
 |---|---|---|---|---|
-| **Manual (UI click)** | A | User clicks Run/Test on the workflow | Build (Mill's own UI) | Built today (Runbook/Composition Run buttons) — no listener process, purely on-demand |
-| **Hotkey (global shortcut)** | A | OS-level combo fires headlessly, even when Mill isn't focused | Adopt (`golang.design/x/hotkey`, already adopted, §2.2) | Built (`HotkeyService`), but not modeled as a graph node, and has no cross-workflow conflict detection yet — see below |
-| **Schedule / cron** | B | Fire on an interval or cron expression | Adopt — **not** `robfig/cron` (confirmed unmaintained since 2020, known panic/DST bugs, 50+ open PRs); `go-co-op/gocron` still wraps `robfig/cron/v3` underneath so it doesn't actually escape the problem. **`netresearch/go-cron`** (MIT) is a maintained, API-compatible fork that fixes exactly those bugs and tracks current Go | `LOCKED` (library pick) — not yet integrated |
-| **Clipboard change (watch)** | B | Detect clipboard content changing | Build — confirmed by reading `internal/adapters/clipboard` directly: it's `osascript`/`pbcopy`/`pbpaste` shell-outs with no "clipboard changed" event exposed anywhere in AppleScript; needs a small poll loop, same as every clipboard manager does this | Named, not built |
-| **Filesystem watch** | C | Fire when a file/folder is added/changed/deleted | Adopt (`fsnotify/fsnotify` — BSD-3-Clause, actively maintained, wraps OS syscalls — kqueue on macOS/BSD — via `golang.org/x/sys`, no cgo, no daemon) | `LOCKED` (library pick) — not yet named anywhere else in this doc before now; direct analog to n8n's Local File Trigger |
+| **Manual (UI click)** | A | User clicks Run/Test on the workflow | Build (Mill's own UI) | `LOCKED`, built — `trigger-manual` NodeType, every workflow's default starter node; no listener process, purely on-demand |
+| **Hotkey (global shortcut)** | A | OS-level combo fires headlessly, even when Mill isn't focused | Adopt (`golang.design/x/hotkey`, already adopted, §2.2) | `LOCKED`, built — `trigger-hotkey` NodeType, registered/exclusivity-checked through `TriggerService` (`triggerservice.go`), binding captured via `CompositionCanvas`'s Inspector (`hotkeyCapture.ts`, extracted from the now-retired RunbookView) |
+| **Schedule / cron** | B | Fire on an interval or cron expression | Adopt — **not** `robfig/cron` (confirmed unmaintained since 2020, known panic/DST bugs, 50+ open PRs); `go-co-op/gocron` still wraps `robfig/cron/v3` underneath so it doesn't actually escape the problem. **`netresearch/go-cron`** (MIT) is a maintained, API-compatible fork that fixes exactly those bugs and tracks current Go | `LOCKED`, built — `trigger-schedule` NodeType, `internal/adapters/schedule` |
+| **Clipboard change (watch)** | B | Detect clipboard content changing | Build — confirmed by reading `internal/adapters/clipboard` directly: it's `osascript`/`pbcopy`/`pbpaste` shell-outs with no "clipboard changed" event exposed anywhere in AppleScript; needs a small poll loop, same as every clipboard manager does this | `LOCKED`, built — `trigger-clipboard-watch` NodeType, `clipboard.WatchChanges` (polls the plain-text flavor, not HTML, since HTML is frequently absent) |
+| **Filesystem watch** | C | Fire when a file/folder is added/changed/deleted | Adopt (`fsnotify/fsnotify` — BSD-3-Clause, actively maintained, wraps OS syscalls — kqueue on macOS/BSD — via `golang.org/x/sys`, no cgo, no daemon) | `LOCKED`, built — `trigger-filesystem-watch` NodeType, `internal/adapters/filewatch`; direct analog to n8n's Local File Trigger |
 | **DOM event (browser bridge)** | C | Fire when a watched selector/element changes in a tab | Build (the relay itself is Mill's own §5 mechanism, already `LOCKED`) | `OPEN` — blocked on §5's still-open "reachable independent of native window" question |
 | **Incoming MCP tool call** | C | An agent/chat client invokes one of Mill's exposed tools | Adopt (Go SDK's `Server.AddReceivingMiddleware`, already `LOCKED`, §3.1) | `OPEN` as a graph Trigger kind — validated as a real, established category (not a Mill invention) by n8n shipping its own dedicated MCP Server Trigger node |
 | **Webhook / incoming HTTP** | C | External service POSTs an event to a Mill-owned endpoint | Not a library gap — Mill already runs an HTTP server in server-mode (Wails3 + stdlib `net/http`); the open question is purely whether Mill should run a public listener at all | `OPEN` — a scope/threat-model decision, not an adoption decision |
@@ -1378,9 +1405,12 @@ configured thing dragged onto the canvas, each with its own
 (mods + key fields), `trigger-schedule` (a cron-string field),
 `trigger-clipboard-watch` (no fields), `trigger-filesystem-watch`
 (path + event-type fields), `trigger-mcp-call` (tool-name field), each
-a normal new `NodeType` entry. The canvas palette (`CompositionCanvas.tsx`)
-needs zero new UI concept to support this. `LOCKED` (the shape) — not
-yet implemented; no `KindTrigger` exists in code today.
+a normal new `NodeType` entry (`trigger-mcp-call` remains unbuilt, gated
+on §3.1's own open MCP-host question). The canvas palette
+(`CompositionCanvas.tsx`) needed zero new UI concept to support this --
+confirmed, not just predicted: the existing palette/Inspector code
+rendered all five new Trigger `NodeType`s correctly with no changes
+beyond adding their entries to `NodeTypes()`. `LOCKED`, built.
 
 **`ConfigField` needs a real type, modeled on n8n's own node-parameter
 taxonomy rather than invented from scratch.** Confirmed directly against
@@ -1393,8 +1423,12 @@ Mill actually needs today — `text` / `number` / `boolean` / `options`
 flat-string-only shape (`composition.go:63-68`, `Key/Label/Description/
 Default string`, no type discriminator at all), which is what's
 currently blocking a source-picker on the Capture node, a provider-
-picker on the Process node, or a typed field on any trigger. `LOCKED`
-(the taxonomy subset) — not yet implemented in `ConfigField`.
+picker on the Process node, or a typed field on any trigger. `LOCKED`,
+built -- `CompositionCanvas.tsx`'s Inspector switches on `field.Type`
+(`text`→`TextInput`, `number`→`TextInput type="number"`,
+`boolean`→`Checkbox`, `options`→`Select`); a Capture source-picker and
+Process provider-picker aren't built yet themselves (no node type needs
+one today), only the typing mechanism they'll use.
 
 **Payload/example generation reuses zod, already adopted — no second
 schema system needed.** The "intelligently generate a sample payload
@@ -1403,13 +1437,18 @@ own per-record test harness, §3.2) doesn't need full JSON Schema, which
 would be heavier than Mill's actual need and would require Go and TS to
 each maintain their own library for a document-validation problem this
 small. The frontend already has `zod` adopted (validates a draft
-workflow before Save) — `@anatine/zod-mock` (MIT, wraps `faker.js`,
-mature) generates realistic mock data straight from an existing zod
-schema, so a config/payload type gets expressed once, in zod, and "test
-with a generated payload" is just running that library against the same
-schema already being validated against. `LOCKED` (library pick) — not
-yet integrated; depends on the ConfigField-typing work above landing
-first, since there's nothing to generate from until fields are typed.
+workflow before Save) — **`@anatine/zod-mock` turned out not to fit**:
+checked directly at integration time, not just at research time, its
+peer dependency is pinned to `zod: '^3.21.4'` only, and Mill's frontend
+already pins zod v4. **`zod-schema-faker`** (MIT, also wraps
+`@faker-js/faker`) is the one that actually supports what's installed
+(`zod: '^3.25.0 || ^4.0.0'`, confirmed via npm) — same idea, correct
+library. `frontend/src/configSchema.ts`'s `configFieldsToZodSchema`
+builds an ad-hoc zod object schema from a node type's typed
+`ConfigFields`, and a "Generate test payload" button (shown for a
+selected Trigger node with `ConfigFields`, e.g. `trigger-schedule`/
+`trigger-filesystem-watch`) runs `zod-schema-faker`'s `fake()` against
+it, filling the Inspector's fields in place. `LOCKED`, built.
 
 **Hotkey exclusivity: one combo maps to at most one workflow, conflict
 surfaced at capture time — not "fire every workflow listening on that
@@ -1425,23 +1464,29 @@ not something the OS provides for free. "I want two things on one
 keypress" is answered by workflow composition (Child Workflow, §3.3,
 already named future work) once it exists, not by hotkey fan-out — keeps
 the trigger primitive itself 1:1 and unambiguous. **Real gap confirmed
-by reading the code, not assumed**: `HotkeyService.Assign`
-(`hotkeyservice.go:71`) never checks whether a `(mods, key)` combo is
-already claimed by a *different* `actionID` before calling
-`hotkey.Bind`, which registers unconditionally every time
-(`hotkey_desktop.go`) — nothing today prevents two different actions
-from silently claiming the same combo. Fix is a reverse index (combo →
-current owner) checked before `hotkey.Bind` is called. `LOCKED` (the
-conflict model) — not yet implemented.
+by reading the code, then fixed, not just described**: the old
+`HotkeyService.Assign` never checked whether a `(mods, key)` combo was
+already claimed by a *different* action before calling `hotkey.Bind`,
+which registered unconditionally every time. `TriggerService.
+AssignHotkey` (`triggerservice.go`) fixes this: `internal/domain/
+trigger.CheckConflict` (a pure, independently-tested function) checks
+every other workflow's persisted binding before registering, and rejects
+with an error naming the conflicting workflow if one already holds that
+exact combo (comparison is mod-order-independent — `cmd+shift+M` and
+`shift+cmd+M` correctly collide as the same combo). `LOCKED`, built.
 
-**Known follow-on, tracked but out of scope for this map**:
-`HotkeyService` is hardwired to `internal/domain/runbook.Run(actionID)`
-(`hotkeyservice.go:107`), and hotkey-assignment UI exists only in
-`RunbookView.tsx` — repointing both from a Runbook action ID to a
-workflow ID is real, separate work this map depends on but doesn't
-itself resolve, tied to the still-undecided question of whether/how the
-standalone Runbook page (§2.2, currently `LOCKED`) gets retired in favor
-of Composition. Not decided here; noted so it isn't lost.
+**Resolved — `HotkeyService`'s hardwiring to Runbook is gone, not just
+repointed.** The old `HotkeyService` (actionID-keyed, hardwired to
+`internal/domain/runbook.Run`) is deleted entirely, replaced by
+`TriggerService` (`triggerservice.go`): workflow-ID-keyed persistence
+(`triggerHotkeyBindingsKey`, superseding the old `hotkeyBindingsKey`),
+`Sync(workflows)` reconciling every live listener (hotkey/schedule/
+clipboard-watch/filesystem-watch) against the current workflow set from
+scratch on every call (simpler than diffing, and cheap at Mill's scale),
+and `AssignHotkey`/`UnassignHotkey`/`ListHotkeys` as the Wails-bound
+entry points the frontend's `hotkeyCapture.ts` hook calls. This also
+resolved the Runbook-retirement question §2.2 previously left open —
+see §2.2's own Update note.
 
 ## 4. Connectors
 
