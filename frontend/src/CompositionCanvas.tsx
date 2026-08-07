@@ -5,6 +5,7 @@ import {
   Background,
   Controls,
   MiniMap,
+  Panel,
   Handle,
   Position as RFPosition,
   useReactFlow,
@@ -315,23 +316,24 @@ function CanvasInner({ nodeTypes, workflow, onBack, onSaved }: CompositionCanvas
 
   return (
     <div className={styles.canvasSection} data-testid="composition-canvas">
-      <Stack direction="horizontal" gap="condensed" align="center" className={styles.toolbar}>
-        <IconButton icon={ArrowLeftIcon} aria-label="Back to workflows" size="small" onClick={onBack} />
-        <IconButton
-          icon={paletteOpen ? SidebarCollapseIcon : SidebarExpandIcon}
-          aria-label={paletteOpen ? 'Hide add steps panel' : 'Add steps'}
-          size="small"
-          onClick={() => setPaletteOpen((v) => !v)}
-          data-testid="toggle-palette"
-        />
-        <IconButton icon={UndoIcon} aria-label="Undo" size="small" disabled={!canUndo} onClick={() => useCanvasStore.temporal.getState().undo()} />
-        <IconButton icon={RedoIcon} aria-label="Redo" size="small" disabled={!canRedo} onClick={() => useCanvasStore.temporal.getState().redo()} />
-        <IconButton icon={ColumnsIcon} aria-label="Auto-layout" size="small" disabled={layingOut || nodes.length === 0} onClick={runAutoLayout} />
-        <IconButton icon={TrashIcon} aria-label="Delete selected" size="small" onClick={removeSelected} />
-        <Text size="small" className={runbookStyles.muted}>
-          Add steps to drag a node type onto the canvas, connect them, click a node to configure it.
-        </Text>
-      </Stack>
+      <div className={styles.metaHeader}>
+        <Stack direction="vertical" gap="condensed">
+          <FormControl>
+            <FormControl.Label>Label</FormControl.Label>
+            <TextInput value={draftLabel} onChange={(e) => setDraftLabel(e.target.value)} placeholder="My workflow" block />
+          </FormControl>
+          <FormControl>
+            <FormControl.Label>Description</FormControl.Label>
+            <Textarea value={draftDescription} onChange={(e) => setDraftDescription(e.target.value)} rows={2} block />
+          </FormControl>
+          {saveError && <Text as="p" size="small" className={runbookStyles.error}>{saveError}</Text>}
+          <Stack direction="horizontal">
+            <Button variant="primary" onClick={save} disabled={saving} data-testid="save-workflow">
+              {saving ? 'Saving…' : workflow ? 'Save changes' : 'Save workflow'}
+            </Button>
+          </Stack>
+        </Stack>
+      </div>
 
       <div className={styles.canvasWrap}>
         {paletteOpen && (
@@ -373,6 +375,25 @@ function CanvasInner({ nodeTypes, workflow, onBack, onSaved }: CompositionCanvas
             <Background />
             <Controls />
             <MiniMap pannable zoomable />
+            <Panel position="top-left" className={styles.canvasToolbar}>
+              <Stack direction="horizontal" gap="condensed" align="center">
+                <IconButton icon={ArrowLeftIcon} aria-label="Back to workflows" size="small" onClick={onBack} />
+                <IconButton
+                  icon={paletteOpen ? SidebarCollapseIcon : SidebarExpandIcon}
+                  aria-label={paletteOpen ? 'Hide add steps panel' : 'Add steps'}
+                  size="small"
+                  onClick={() => setPaletteOpen((v) => !v)}
+                  data-testid="toggle-palette"
+                />
+                <IconButton icon={UndoIcon} aria-label="Undo" size="small" disabled={!canUndo} onClick={() => useCanvasStore.temporal.getState().undo()} />
+                <IconButton icon={RedoIcon} aria-label="Redo" size="small" disabled={!canRedo} onClick={() => useCanvasStore.temporal.getState().redo()} />
+                <IconButton icon={ColumnsIcon} aria-label="Auto-layout" size="small" disabled={layingOut || nodes.length === 0} onClick={runAutoLayout} />
+                <IconButton icon={TrashIcon} aria-label="Delete selected" size="small" onClick={removeSelected} />
+                <Text size="small" className={runbookStyles.muted}>
+                  Add steps to drag a node type onto the canvas, connect them, click a node to configure it.
+                </Text>
+              </Stack>
+            </Panel>
           </ReactFlow>
         </div>
 
@@ -400,25 +421,6 @@ function CanvasInner({ nodeTypes, workflow, onBack, onSaved }: CompositionCanvas
             </Stack>
           )}
         </div>
-      </div>
-
-      <div className={styles.saveRow}>
-        <Stack direction="vertical" gap="condensed">
-          <FormControl>
-            <FormControl.Label>Label</FormControl.Label>
-            <TextInput value={draftLabel} onChange={(e) => setDraftLabel(e.target.value)} placeholder="My workflow" block />
-          </FormControl>
-          <FormControl>
-            <FormControl.Label>Description</FormControl.Label>
-            <Textarea value={draftDescription} onChange={(e) => setDraftDescription(e.target.value)} rows={2} block />
-          </FormControl>
-          {saveError && <Text as="p" size="small" className={runbookStyles.error}>{saveError}</Text>}
-          <Stack direction="horizontal">
-            <Button variant="primary" onClick={save} disabled={saving} data-testid="save-workflow">
-              {saving ? 'Saving…' : workflow ? 'Save changes' : 'Save workflow'}
-            </Button>
-          </Stack>
-        </Stack>
       </div>
     </div>
   )

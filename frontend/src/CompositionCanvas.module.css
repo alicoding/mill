@@ -7,11 +7,16 @@
    node/edge/control chrome is themed via its documented CSS variables
    rather than fighting its default styles. */
 /* Fills the height its parent .editorPanel (CompositionView.module.css)
-   hands it -- the toolbar and the Label/Description/Save block stay
-   their natural content height, .canvasWrap is the one flexible region
-   that grows to use whatever's left, so the editor uses the pane's full
-   height instead of sitting as a small fixed box with empty space below
-   it (a real gap the user flagged directly, not a hypothetical). */
+   hands it -- .metaHeader stays its natural content height, .canvasWrap
+   is the one flexible region that grows to use whatever's left, so the
+   editor uses the pane's full height instead of sitting as a small
+   fixed box with empty space below it. Label/Description/Save render
+   first (.metaHeader), above the canvas, not below it -- matches the
+   reference platform's own workflow-name-at-the-top layout. The toolbar
+   itself lives *inside* the canvas as a React Flow `<Panel>` (below),
+   not as a separate row above it -- Controls/MiniMap already float over
+   the canvas the same way, so Back/Undo/Redo/etc. joining them reads as
+   one surface instead of a strip bolted on top of it. */
 .canvasSection {
     width: 100%;
     height: 100%;
@@ -22,9 +27,23 @@
     flex-direction: column;
     min-height: 0;
 }
-.toolbar {
-    margin-bottom: var(--base-size-8);
+.metaHeader {
     flex: 0 0 auto;
+    padding-top: var(--base-size-12);
+    margin-bottom: var(--base-size-12);
+}
+/* Overrides React Flow's own .react-flow__panel.top.left corner margin
+   (15px, meant for small controls like Controls/MiniMap) to dock full-
+   width against the canvas's top edge instead -- confirmed directly
+   against React Flow's shipped CSS before overriding it, not guessed. */
+.canvasToolbar {
+    top: 0;
+    left: 0;
+    right: 0;
+    margin: 0;
+    padding: var(--base-size-8) var(--base-size-12);
+    background: var(--bgColor-default);
+    border-bottom: 1px solid var(--borderColor-default);
 }
 .canvasWrap {
     width: 100%;
@@ -89,8 +108,4 @@
 }
 .canvasNodeSelected {
     box-shadow: var(--xy-node-boxshadow-selected);
-}
-.saveRow {
-    flex: 0 0 auto;
-    margin-top: var(--base-size-12);
 }
