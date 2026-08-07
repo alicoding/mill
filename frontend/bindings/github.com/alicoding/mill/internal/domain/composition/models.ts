@@ -25,7 +25,7 @@ export enum Approach {
 };
 
 /**
- * ConfigField declares one configurable parameter a node type's steps
+ * ConfigField declares one configurable parameter a node type's nodes
  * can set. A node type with no ConfigFields takes no parameters --
  * legitimately true for some nodes (capture/process here operate on
  * whatever's piped in), not a placeholder to fill in later.
@@ -35,6 +35,18 @@ export interface ConfigField {
     "Label": string;
     "Description": string;
     "Default": string;
+}
+
+/**
+ * Edge connects one Node's output to another's input by ID. SourceHandle
+ * is reserved for a future Decision node's named branches (e.g. "yes"/
+ * "no") -- empty for every edge today, since no node kind branches yet.
+ */
+export interface Edge {
+    "ID": string;
+    "Source": string;
+    "SourceHandle": string;
+    "Target": string;
 }
 
 /**
@@ -53,6 +65,22 @@ export interface MapEntry {
     "ApproachDetail": string;
     "Status": capabilities$0.Status;
     "StatusDetail": string;
+}
+
+/**
+ * Node is one configured instance of a node type inside a workflow's
+ * graph. Config is always fully resolved (every ConfigField's key
+ * present) by the time a Node is stored or executed -- see
+ * ResolveNodeDefaults. Kind is always derived server-side from
+ * NodeTypeID (never trusted from the client), so it can't drift out of
+ * sync with the node type it names.
+ */
+export interface Node {
+    "ID": string;
+    "Kind": NodeKind;
+    "NodeTypeID": string;
+    "Config": { [_ in string]?: string } | null;
+    "Position": Position;
 }
 
 /**
@@ -83,27 +111,27 @@ export interface NodeType {
 }
 
 /**
- * Step is one configured instance of a node type inside a workflow.
- * Config is always fully resolved (every ConfigField's key present) by
- * the time a Step is stored or executed -- see ResolveStepDefaults.
- * There is deliberately no notion of an unconfigured step: composing
- * and configuring happen together, not as separate passes.
+ * Position is a node's canvas coordinates. Ignored by execution entirely
+ * -- it exists purely for the React Flow canvas to restore a workflow's
+ * layout, matching React Flow's own node shape.
  */
-export interface Step {
-    "NodeTypeID": string;
-    "Config": { [_ in string]?: string } | null;
+export interface Position {
+    "X": number;
+    "Y": number;
 }
 
 /**
- * Workflow is a flat, ordered pipeline of configured steps -- enough for
- * today's real workflows. Branching/parallel composition is real future
- * work per ADR-0005, not invented here ahead of a need for it.
+ * Workflow is a node/edge graph -- today always a single unbranched
+ * chain in practice (see linearOrder), since Decision/Parallel/Child-
+ * Workflow node kinds are real future work per ADR-0005, not invented
+ * here ahead of a need for them.
  */
 export interface Workflow {
     "ID": string;
     "Label": string;
     "Description": string;
-    "Steps": Step[] | null;
+    "Nodes": Node[] | null;
+    "Edges": Edge[] | null;
 
     /**
      * BuiltIn marks a seeded, non-deletable workflow (the two shipped

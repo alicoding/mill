@@ -90,7 +90,7 @@ function RunbookView() {
       .then((output) => {
         setResults((prev) => ({ ...prev, [id]: output }))
         pushActivity({
-          id: crypto.randomUUID(), time: new Date().toLocaleTimeString(),
+          id: crypto.randomUUID(), time: new Date().toLocaleTimeString(), timestamp: Date.now(),
           source: 'runbook', actionID: id, label,
           success: true, detail: `completed (${output.length} bytes)`, result: output,
         })
@@ -98,7 +98,7 @@ function RunbookView() {
       .catch((err) => {
         setErrors((prev) => ({ ...prev, [id]: String(err) }))
         pushActivity({
-          id: crypto.randomUUID(), time: new Date().toLocaleTimeString(),
+          id: crypto.randomUUID(), time: new Date().toLocaleTimeString(), timestamp: Date.now(),
           source: 'runbook', actionID: id, label,
           success: false, detail: String(err), result: '',
         })

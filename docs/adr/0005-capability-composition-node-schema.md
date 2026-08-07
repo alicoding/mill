@@ -130,13 +130,60 @@ to design the canvas against real content instead of speculation.
   harder to use than expected once real multi-step workflows exist, not
   just assumed to be fine indefinitely.
 
+## Update — 2026-08-07
+
+B2's stated deferral trigger ("2+ real multi-step workflows exist to
+design against") had **not** fired — the app still only had the two
+built-in linear workflows named in this ADR's own Context section. The
+canvas was built anyway, by explicit user decision ("adopt both now,"
+choosing the "start the full React Flow canvas" option over two
+narrower alternatives when asked to disambiguate). Recording this as
+what actually happened, not rewriting the Decision/Consequences sections
+above as if the original trigger condition had been met — the reasoning
+in B1/B3's rejection (no canvas library evaluated, no real content to
+design against) was sound at the time it was written; it was overridden,
+not falsified.
+
+What changed as a result:
+- **B2's canvas deferral is lifted.** `CompositionCanvas.tsx` (React
+  Flow / `@xyflow/react`) is the authoring surface now; the old add-a-
+  step form is gone, not kept alongside it.
+- **A2 (two node families) is unaffected and still holds** — the canvas
+  only changes how nodes are authored, not what a node is. No Decision/
+  Parallel/Child-Workflow control-flow node exists yet; today's canvas
+  and backend both still only accept a single unbranched chain, enforced
+  three times (client-side `isValidConnection`, server-side
+  `linearOrder`, save-time zod validation) since a canvas — unlike the
+  old form — can physically let a user draw a graph shape the domain
+  doesn't support yet.
+- **The schema direction §3.3 had already written down**
+  (`Node{ID, Kind, NodeTypeID, Config, Position}` +
+  `Edge{ID, Source, SourceHandle, Target}`) **is what got built**,
+  unchanged from that bullet — this ADR's own A2 recommendation and
+  §3.3's later schema-direction bullet turned out to agree, so adopting
+  the canvas didn't force a schema rethink.
+- Companion libraries (`zundo`, `elkjs`, `zod`) were chosen from research
+  into real OSS projects (Langflow, Dify) built on React Flow, not
+  picked speculatively — see SPEC.md §3's Update bullet for the detail
+  and the `elkjs` license note (EPL-2.0/GPL-3.0-or-later, not MIT).
+
+This ADR's `Status` stays `proposed`, not `accepted` — the canvas is
+`UX: PROTOTYPE`, verified end-to-end against the real Go backend
+(server-mode + Playwright), but not yet a settled design; A2's
+control-flow-node question and the versioning/replay gaps this ADR's
+Consequences section already flagged are still open regardless of the
+canvas timing changing.
+
 ## Lifecycle
 - Owner: Ali + whoever implements `internal/domain/composition` next
-- Maintains: the two-node-family split; config-first-before-canvas
-  ordering; the DBOS-workflow-per-Mill-workflow expectation
-- Update triggers: `internal/domain/composition` actually getting
-  scaffolded; a second real multi-step workflow existing (the trigger to
-  revisit React Flow); §4 (connectors) or §7's session-identity design
-  landing in a way that touches this node shape
-- Last reviewed: 2026-08-06
+- Maintains: the two-node-family split; the Node/Edge graph schema (no
+  longer config-first-before-canvas ordering — see the Update section
+  above); the DBOS-workflow-per-Mill-workflow expectation
+- Update triggers: a Decision/Parallel/Child-Workflow node kind actually
+  getting built (changes the "single chain only" constraint enforced in
+  three places today); §4 (connectors) or §7's session-identity design
+  landing in a way that touches this node shape; re-opening a saved
+  workflow back into the canvas for editing (named as an explicit gap in
+  SPEC.md §3's Update bullet, not yet built)
+- Last reviewed: 2026-08-07
 - Review interval: 30 days while `proposed`; 365 days once `accepted`

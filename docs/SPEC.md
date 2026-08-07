@@ -848,6 +848,56 @@ that environment, on something testable directly in this dev session:
   says nothing about branching/parallel/typed-payload steps, still real
   future work per ADR-0005. §3 stays `OPEN`, ADR-0005 stays `proposed`
   — this is a testable prototype to react to, not a lock.
+- **Update — the config-first list above was replaced by a real React
+  Flow canvas, ahead of ADR-0005 B2's own stated deferral trigger ("2+
+  real multi-step workflows exist to design against").** That trigger
+  had not fired — still only the two built-in linear workflows — when
+  the canvas was built anyway, by explicit user decision, not a silent
+  resolution of an `OPEN` item. Recorded honestly here and in ADR-0005's
+  own Update section rather than rewritten as if the original condition
+  had been met. `CompositionCanvas.tsx` (React Flow / `@xyflow/react`)
+  replaces the old add-a-step form: drag a node type from the palette
+  onto the canvas, connect nodes by dragging between handles, click a
+  node to configure it in a right-side Inspector panel — composing and
+  configuring still happen in one motion, same principle as above, just
+  moved from inline-in-a-list-row to inline-on-select. The workflow data
+  shape changed to match — `Workflow.Steps []Step` became `Workflow.Nodes
+  []Node` + `Workflow.Edges []Edge`, exactly the shape this section's
+  own "Schema direction" bullet (§3.3) already wrote down before this
+  was built. Companion libraries, chosen from research into what real
+  OSS projects (Langflow, Dify) actually pair with React Flow: `zundo`
+  (undo/redo, wrapping a small zustand store scoped to canvas state,
+  `frontend/src/canvasStore.ts`), `elkjs` (auto-layout, dynamically
+  imported only when used — it's a large bundle, confirmed via the
+  production build that it lands in its own ~2.5MB chunk, not the main
+  one), and `zod` (validates a draft workflow against the same shape
+  `CreateWorkflow` will receive before Save, mirroring
+  `linearOrder`'s own graph-shape checks so a save-time error and a
+  run-time error never disagree). `elkjs` is dual-licensed
+  EPL-2.0/GPL-3.0-or-later, not MIT like the rest of Mill's dependency
+  tree — EPL-2.0 is the compatible choice a consumer picks from that
+  "OR" (same shape as §3.1's MCP SDK license-transition note, worth a
+  compliance glance given the bank context, not a blocker). No
+  Decision/Parallel/Child-Workflow node kinds exist yet, so the canvas
+  and the backend both still only support a single unbranched chain —
+  `isValidConnection` rejects a second outgoing edge from any node at
+  draw-time (client-side), `linearOrder` (composition.go) rejects an
+  invalid graph shape at run-time (server-side, can't trust the
+  client), and the zod schema rejects it at save-time — three layers
+  because a canvas genuinely lets a user draw something the domain
+  can't yet execute, unlike the old form which couldn't represent that
+  shape at all. Verified end-to-end via the real Go backend in server
+  mode (Playwright-driven, not just unit tests): dragged a node type
+  onto the canvas, selected it, confirmed the Inspector rendered its
+  real config fields with the node type's actual defaults. `internal/
+  domain/composition`'s persisted-workflow settings key was versioned
+  (`composition-workflows` → `composition-workflows-v2`) since the
+  shape changed and `restore()` already silently discards on unmarshal
+  failure — renaming orphans old prototype data harmlessly instead of
+  actively reading and dropping it. `UX: PROTOTYPE` still applies —
+  this proves the shape, not a finished design (no re-opening a saved
+  workflow back into the canvas to edit it yet; that list stays
+  read-only).
 
 ### 3.1 Raw material — root cause of the heredoc pain, not yet resolved
 
@@ -1051,7 +1101,7 @@ Plan step for this as a standing rule.
 | **Draft/live versioning** | Edit a workflow without breaking the currently-live version | Build (no library owns Mill's own versioning semantics) | Real gap flagged from the reference-platform review (§3.2), `OPEN` |
 | **Live + shadow events / execution history** | Filterable log of past runs; dry-run a candidate change against real traffic before trusting it | Data: adopt (DBOS `GetStatus`/`ListWorkflows`). UI: build | §3.2 shadow-events bullet; §7 already calls Activity "the closest thing to the analytics half" |
 | **Guardrail preview / policy gate** | Approve/deny before a step actually runs | Build (core domain — no library has an opinion on Mill's guardrail semantics) | §8, `LOCKED` in shape, `OPEN` in detail |
-| **Visual composition surface** | Author a DAG, not just a list | Adopt (React Flow / `@xyflow/react`) — but only once real multi-step content exists to design against, per ADR-0005's B2 | §3, deferred |
+| **Visual composition surface** | Author a DAG, not just a list | Adopt (React Flow / `@xyflow/react`) — built ahead of ADR-0005 B2's original deferral trigger, by explicit decision (see the ADR's Update section) | §3, `CompositionCanvas.tsx`, `UX: PROTOTYPE` |
 
 **React Flow, checked directly against its actual source/docs (not
 assumed) specifically to shape the schema now without adopting the
@@ -1072,13 +1122,15 @@ canvas yet**:
   specific `sourceHandle` — this is exactly a Decision node's "yes"/
   "no" (or N-way) branching, natively, not something to hack around.
 
-**Schema direction this map and the React Flow shape point to**
-(informs, does not itself resolve, ADR-0005 — ADR-0005 stays the
-authoritative record once this is actually decided):
+**Schema direction this map and the React Flow shape point to — now
+built, not just captured as design input:**
 `Node{ID, Kind, NodeTypeID, Config, Position}` +
-`Edge{ID, Source, SourceHandle, Target}`, replacing today's flat
-`Workflow.Steps []Step`. `OPEN` — captured here as design input, same
-status as the map above, not locked by writing it down.
+`Edge{ID, Source, SourceHandle, Target}`, replacing the former flat
+`Workflow.Steps []Step` (`internal/domain/composition/composition.go`).
+`LOCKED` as the schema actually in use — ADR-0005 itself stays
+`proposed` (not `accepted`), since the A2 control-flow-node question and
+the versioning/replay gaps this map names are still real, unbuilt future
+work; only the node/edge shape moved from proposed to shipped.
 
 ## 4. Connectors
 

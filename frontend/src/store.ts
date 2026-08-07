@@ -22,6 +22,11 @@ export type ActivitySource = 'hotkey' | 'runbook' | 'composition'
 export interface ActivityEntry {
   id: string
   time: string
+  // Date.now() at push time -- `time` is a toLocaleTimeString() display
+  // string ("9:05:12 AM"), which sorts wrong lexicographically (e.g.
+  // "10:..." < "9:..."). This is what ActivityView's DataTable actually
+  // sorts on; `time` stays display-only.
+  timestamp: number
   source: ActivitySource
   actionID: string
   label: string
