@@ -48,15 +48,19 @@ function toRFEdges(edges: CompEdge[] | null): RFEdge[] {
   return (edges ?? []).map((e) => ({ id: e.ID, source: e.Source, target: e.Target, sourceHandle: e.SourceHandle || undefined }))
 }
 
+// Top/bottom handles, not left/right -- a top-to-bottom chain with each
+// edge entering/exiting a node's horizontal center (React Flow's default
+// for Top/Bottom handle positions) reads as one orderly column instead
+// of the diagonal, easy-to-overlap layout left/right handles produced.
 function CanvasNodeView({ data, selected }: NodeProps<CanvasNode>) {
   return (
     <div className={`${styles.canvasNode} ${selected ? styles.canvasNodeSelected : ''}`}>
-      <Handle type="target" position={RFPosition.Left} />
+      <Handle type="target" position={RFPosition.Top} />
       <Stack direction="horizontal" gap="condensed" align="center">
         <Label variant={KIND_VARIANT[data.kind] ?? 'secondary'} size="small">{data.kind}</Label>
         <Text size="small" weight="semibold">{data.label}</Text>
       </Stack>
-      <Handle type="source" position={RFPosition.Right} />
+      <Handle type="source" position={RFPosition.Bottom} />
     </div>
   )
 }
@@ -248,7 +252,16 @@ function CanvasInner({ nodeTypes, workflow, onBack, onSaved }: CompositionCanvas
       const { nodes: currentNodes, edges: currentEdges } = useCanvasStore.getState()
       const graph = {
         id: 'root',
-        layoutOptions: { 'elk.algorithm': 'layered', 'elk.direction': 'RIGHT', 'elk.spacing.nodeNode': '48' },
+        // DOWN, not RIGHT -- matches the top/bottom handle positions
+        // above, so an auto-laid-out chain reads as one straight column
+        // with each edge centered under the node above it, not a
+        // diagonal left-to-right sprawl.
+        layoutOptions: {
+          'elk.algorithm': 'layered',
+          'elk.direction': 'DOWN',
+          'elk.spacing.nodeNode': '48',
+          'elk.layered.spacing.nodeNodeBetweenLayers': '64',
+        },
         children: currentNodes.map((n) => ({ id: n.id, width: 180, height: 56 })),
         edges: currentEdges.map((e) => ({ id: e.id, sources: [e.source], targets: [e.target] })),
       }
