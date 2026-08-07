@@ -276,6 +276,20 @@ experimental (syntax/properties still changing); using the standard,
 stable `graph`/subgraph syntax instead gets the same two conceptual
 views without that risk. Dashed nodes are planned, not built — same
 distinction as everywhere else in this doc, never implied as done.
+Real drag-to-pan/scroll-to-zoom with visible +/−/reset controls comes
+from `svg-pan-zoom` (BSD-2-Clause, zero runtime deps) — Mermaid itself
+has no pan/zoom capability at all, checked directly against its own
+config schema before adopting a second library. `LOCKED`
+
+The one non-obvious wiring detail worth recording here: `mermaid.run()`
+matches elements by the same literal `mermaid` class the marked-renderer
+override sets (`MERMAID_CLASS` constant in `SpecView.tsx`, not two
+independently hardcoded strings), and the SVG needs an explicit
+`viewBox` (synthesized from its own rendered width/height, since Mermaid
+never sets one) plus `width/height: 100%` CSS on the SVG itself —
+without the second part, `svg-pan-zoom` sizes its coordinate system off
+the SVG's intrinsic (pre-scaled) dimensions rather than the actual
+container, which pushes its control icons past the visible edge.
 
 **System Context** — Mill, its user, and the systems it touches:
 
