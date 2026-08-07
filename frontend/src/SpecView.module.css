@@ -25,7 +25,45 @@
 .spec article ul, .spec article ol { padding-left: 1.3em; }
 .spec article strong { color: var(--text); }
 /* Mermaid diagrams (System Context / Logical view, docs/SPEC.md §1.4)
-   render as SVG inside this element (mermaid.run() replaces its text
-   content in place) -- a diagram wider than .spec's 760px max-width
-   scrolls within its own container instead of widening the pane. */
-.spec article pre.mermaid { overflow-x: auto; max-width: 100%; background: none; padding: 0; }
+   render as SVG inside this element, then get wrapped by svg-pan-zoom
+   for real drag-to-pan/scroll-to-zoom (SpecView.tsx). svg-pan-zoom
+   manages panning itself via SVG transform, which fights native
+   scrolling -- overflow: hidden + a bounded height give it a fixed
+   viewport instead, rather than the page growing to the diagram's
+   full rendered size.
+   :global(pre.mermaid), not .mermaid: this is a CSS Modules file, so a
+   bare ".mermaid" selector gets hashed like every other class here --
+   but "mermaid" is a literal class SpecView.tsx's marked-renderer
+   override sets directly on the DOM (matching Mermaid's own default
+   querySelector), not a styles.mermaid reference, so the hashed
+   selector silently never matched. Same root cause as the earlier
+   ".spec" querySelector bug, mirrored on the CSS side instead of the
+   JS side -- caught by checking the actual compiled CSS output and
+   computed styles, not by re-reading the source and assuming it was
+   right. Same fix shape already used in App.module.css for the same
+   class of problem (a real, non-module class needing to stay
+   unhashed). */
+.spec article :global(pre.mermaid) {
+    height: 420px;
+    overflow: hidden;
+    max-width: 100%;
+    background: none;
+    padding: 0;
+    border: 1px solid var(--glass-border);
+    border-radius: 6px;
+    cursor: grab;
+}
+/* Without this, the SVG lays out at its own intrinsic width/height
+   attributes (e.g. 742x374), which is wider than this container --
+   svg-pan-zoom reads that intrinsic size (via clientWidth) to place its
+   +/-/reset controls, so they end up anchored past the visible right
+   edge and get clipped by overflow: hidden above. Forcing the SVG to
+   fill the container lets svg-pan-zoom compute control positions off
+   the actual visible bounds instead -- safe now that SpecView.tsx
+   synthesizes a viewBox, which is what makes width/height: 100% scale
+   the content proportionally instead of distorting it. */
+.spec article :global(pre.mermaid) svg {
+    width: 100%;
+    height: 100%;
+    display: block;
+}
