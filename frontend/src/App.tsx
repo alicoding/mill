@@ -1,19 +1,18 @@
 import { useState, useEffect } from 'react'
 import {Events, WML} from "@wailsio/runtime";
-import {IconButton, Label, NavList, PageLayout, SegmentedControl, Text, useTheme} from "@primer/react";
-import {DeviceDesktopIcon, MoonIcon, SidebarCollapseIcon, SidebarExpandIcon, SunIcon} from "@primer/octicons-react";
+import {IconButton, Label, NavList, PageLayout, Text, useTheme} from "@primer/react";
+import {GearIcon, SidebarCollapseIcon, SidebarExpandIcon} from "@primer/octicons-react";
 import SpecView from "./SpecView";
 import ActivityView from "./ActivityView";
 import CompositionView from "./CompositionView";
 import ConfigureView from "./ConfigureView";
+import SettingsView from "./SettingsView";
 import PlaceholderView from "./PlaceholderView";
 import { CompositionService, CapabilitiesService } from "../bindings/github.com/alicoding/mill";
 import { useAppStore, viewFor, viewsEqual, statusVariant } from "./store";
 import { COLOR_MODE_STORAGE_KEY, SIDEBAR_OPEN_STORAGE_KEY } from "./theme";
 import { CAPABILITY_ICON, SPEC_ICON } from "./navIcon";
 import styles from "./App.module.css";
-
-const COLOR_MODES = ['light', 'dark', 'auto'] as const
 
 // Show the actual Wails version this project was generated against.
 const wailsVersion = "v3.0.0-beta.4";
@@ -79,7 +78,7 @@ function App() {
   // capability (colorMode="auto" already tracks prefers-color-scheme
   // reactively, confirmed directly against its source), not something
   // to hand-roll a media-query listener for.
-  const { colorMode, setColorMode, resolvedColorMode } = useTheme();
+  const { colorMode, resolvedColorMode } = useTheme();
   useEffect(() => {
     localStorage.setItem(COLOR_MODE_STORAGE_KEY, colorMode ?? 'auto');
     // Primer's own data-color-mode/data-light-theme/data-dark-theme
@@ -235,6 +234,24 @@ function App() {
               </NavList.Item>
             </NavList>
           </div>
+
+          {/* Settings pulled out of the NavList entirely, into a bottom-
+              anchored footer slot -- Notion/Slack's own pattern for
+              app-level config vs. content destinations (docs/SPEC.md
+              §3.5). Not a capability (no build status/SPEC section of
+              its own), so it isn't driven by CapabilitiesService.List()
+              the way the rows above are -- a fixed control, same
+              reasoning as the Spec entry already being fixed rather than
+              data-driven. */}
+          <div className={styles.sidebarFooter}>
+            <IconButton
+              icon={GearIcon}
+              aria-label="Settings"
+              size="small"
+              variant="invisible"
+              onClick={() => setView({ kind: 'settings' })}
+            />
+          </div>
         </PageLayout.Sidebar>
 
         <PageLayout.Content className="view-pane" padding="none">
@@ -243,6 +260,8 @@ function App() {
           {view.kind === 'composition' && <CompositionView/>}
 
           {view.kind === 'configure' && <ConfigureView/>}
+
+          {view.kind === 'settings' && <SettingsView/>}
 
           {view.kind === 'spec' && <SpecView/>}
 
@@ -260,11 +279,6 @@ function App() {
           <span>{time}</span>
         </span>
         <span className={styles.rightControls}>
-          <SegmentedControl aria-label="Color theme" size="small" onChange={(i) => setColorMode(COLOR_MODES[i])}>
-            <SegmentedControl.IconButton icon={SunIcon} aria-label="Light theme" selected={colorMode === 'light'} />
-            <SegmentedControl.IconButton icon={MoonIcon} aria-label="Dark theme" selected={colorMode === 'dark'} />
-            <SegmentedControl.IconButton icon={DeviceDesktopIcon} aria-label="Match system theme" selected={!colorMode || colorMode === 'auto'} />
-          </SegmentedControl>
           <a className={styles.docs} data-wml-openURL="https://v3.wails.io" aria-label="Wails documentation">Docs
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg>
           </a>

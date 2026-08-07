@@ -1668,35 +1668,42 @@ still `OPEN`: a Configure-surface UI to write a secret (write-only, no
 `GetSecret` binding — see the Configure-surface bullet below) doesn't
 exist yet.
 
-**Sidebar restructuring this implies** — captured here since it's a
-direct consequence, not decided independently of it:
-- **Composition moves to the top of the nav** — it's the landing page
-  now (§2.2's Update note already made it the default `view`), not
-  third in a list that still visually implies Runbook-era ordering.
-- **Activity moves down**, matching the request directly — it's a
+**Sidebar restructuring — `LOCKED` and built, all four bullets below.**
+- **Composition and Configure lead the nav, in that order** —
+  `internal/domain/capabilities.List()`'s own array order is the
+  sidebar's order (`App.tsx` renders capabilities in-order, no separate
+  sort), reordered to put the two real, working destinations first;
+  Composition is already the app's default landing `view` (§2.2's Update
+  note), Configure is its natural neighbor now that it exists.
+- **Activity moved down**, right after Composition/Configure — a
   monitoring surface, not a primary destination, the same "present but
   not top-billed" position n8n's own Executions occupies relative to its
   Workflows/Credentials.
-- **A new Configure entry replaces Connectors as a flat sidebar row** —
-  Connectors stops being its own top-level destination and becomes a
-  category inside Configure once Configure exists, confirmed against
-  n8n's own left nav (Credentials is a real top-level item there,
-  separate from Workflows, which is the precedent for Configure
-  deserving the same top-level billing here).
-- **Settings gets pulled out of the main `NavList` entirely**, into a
-  bottom-anchored footer slot — confirmed against real precedent, not
+- **The old flat "Connectors" placeholder row is gone, replaced by
+  Configure** — same capability ID slot repurposed (`capability-configure`
+  now points at `ViewConfigure`, a real page, not `ViewPlaceholder`),
+  confirmed against n8n's own left nav (Credentials is a real top-level
+  item there, separate from Workflows — the precedent for Configure
+  deserving the same top-level billing).
+- **Settings is pulled out of the `NavList` entirely**, into a
+  bottom-anchored sidebar footer slot (`.sidebarFooter`, a plain
+  `IconButton` — confirmed against real precedent before building, not
   assumed: Notion anchors workspace settings at the bottom of its
   sidebar behind the workspace name, Slack gates it behind the profile
-  menu; neither treats Settings as just another flat item alongside
-  content pages. Mill's sidebar already has a header slot (wordmark +
-  collapse toggle, §2.2) — Settings is the natural symmetric footer
-  slot, not a `NavList.Item`.
-- What actually populates the Settings *page* stays genuinely open until
-  Configure exists to produce real settings-shaped content (connector
-  credentials, eventually §8's guardrail policy) — today's only
-  settings-shaped state (theme, sidebar-collapse) is cosmetic
-  `localStorage` already living in the footer, not enough on its own to
-  justify the page yet.
+  menu, neither treats Settings as a flat item alongside content pages).
+  Not a `capability` — no build status or SPEC section of its own, same
+  reasoning that already makes the Spec entry fixed rather than
+  data-driven. `SettingsView.tsx` now hosts the theme `SegmentedControl`,
+  moved out of the app's bottom bar (which previously shared it with the
+  version/clock/docs link) — the bottom bar keeps only those.
+  Persisting the choice and mirroring it onto `<html>` stays in
+  `App.tsx` (global app-shell behavior that must run regardless of
+  whether the Settings page is even mounted), read via Primer's own
+  shared `useTheme()` context rather than duplicated. Verified
+  end-to-end on the real server-mode app: Composition/Configure/Activity
+  render in the new order, the gear icon opens Settings, switching to
+  dark theme there applies across the whole app (sidebar, content,
+  footer) exactly as it did from the old footer location.
 
 `OPEN` (the whole section) — captured as design direction, per
 CLAUDE.md's Plan step, before any of it becomes code, same discipline
