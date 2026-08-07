@@ -129,6 +129,28 @@ func NodeTypes() []NodeType {
 				},
 			},
 		},
+		{
+			ID: "list-lookup", Kind: KindProcess,
+			Label:       "List: lookup",
+			Description: "Looks up an Attributes value in a Configure-authored List and writes the matched entry back into Attributes. listId is FieldText for the same reason integration-http's connectorId is above -- Lists are runtime, Configure-authored data.",
+			ConfigFields: []ConfigField{
+				{
+					Key: "listId", Label: "List ID",
+					Description: "The ID of a list configured on the Configure page.",
+					Default:     "", Type: FieldText,
+				},
+				{
+					Key: "inputKey", Label: "Input attribute",
+					Description: "Which Attributes field's value to look up.",
+					Default:     "", Type: FieldText,
+				},
+				{
+					Key: "outputKey", Label: "Output attribute",
+					Description: "Which Attributes field the matched value gets written to.",
+					Default:     "", Type: FieldText,
+				},
+			},
+		},
 	}
 }
 

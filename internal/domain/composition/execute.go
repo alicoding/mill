@@ -81,6 +81,20 @@ var nodeExec = map[string]func(node Node, ctx ExecContext) (ExecContext, error){
 		ctx.Payload = resp.Body
 		return ctx, nil
 	},
+	"list-lookup": func(node Node, ctx ExecContext) (ExecContext, error) {
+		rl, err := lookupListFn(node.Config["listId"])
+		if err != nil {
+			return ctx, fmt.Errorf("list-lookup: %w", err)
+		}
+
+		inputVal := fmt.Sprintf("%v", ctx.Attributes[node.Config["inputKey"]])
+		matched, ok := rl.Entries[inputVal]
+		if !ok {
+			return ctx, fmt.Errorf("list-lookup: no entry for %q", inputVal)
+		}
+		ctx.Attributes[node.Config["outputKey"]] = matched
+		return ctx, nil
+	},
 }
 
 // ExecuteWorkflow runs a fully-resolved node graph, following Decision
