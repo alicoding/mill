@@ -1301,7 +1301,7 @@ Plan step for this as a standing rule.
 |---|---|---|---|
 | **Capture / Process / Apply** | Read structured state from a source, transform it, deliver it | Build (core domain) | `LOCKED`, §2 — built for clipboard/markdown |
 | **Trigger** | Entry-point node: listen for *any* event source (hotkey, clipboard change, a browser-bridge DOM event per §5, an incoming MCP `tools/call` per §3.1, a schedule) and emit its data as the workflow's starting input — not "the hotkey mechanism," a general category the hotkey is one instance of. A trigger's output *is* the workflow's input; these are one concept, not two. | Each concrete event source adopts its own library behind an adapter (hotkey/schedule/filesystem-watch do; clipboard-watch is a small build); the abstraction unifying them into one node kind, and `TriggerService`'s registry/exclusivity, are Mill's own | `LOCKED`, built (manual/hotkey/schedule/clipboard-watch/filesystem-watch) — see §3.4 for the fuller map. DOM-event and MCP-call triggers remain unbuilt, gated on §5/§3.1 |
-| **Decision / branching** | Route execution down one of several named output edges based on a condition evaluated against the running payload | Node/graph semantics: build (core domain — composition rules). Expression evaluation underneath: adopt (`expr-lang/expr`, MIT, sandboxed/side-effect-free/loop-bounded by design — verified directly, not assumed) rather than hand-writing a condition parser | ADR-0005 names it, deferred, still `OPEN` |
+| **Decision / branching** | Route execution down one of several named output edges based on a condition evaluated against the running payload | Node/graph semantics: build (core domain — composition rules). Expression evaluation underneath: adopt (`expr-lang/expr`, MIT, sandboxed/side-effect-free/loop-bounded by design — verified directly, not assumed) rather than hand-writing a condition parser | `LOCKED` (execution engine) — `internal/domain/composition`'s `ExecContext`/`ValidateGraph`/`nextNode` (see the Update note right after this table) walk real Decision branches end-to-end; `KindDecision` + `decision-route` NodeType render and connect on the canvas. Authoring real conditions (a visual rule builder) is still `OPEN` — see §3.5's Decision row |
 | **Parallel Steps** | Fan out to multiple steps concurrently, then join | Graph/fan-in semantics: build. Concurrency execution: DBOS's `Queue`/`WithWorkerConcurrency` (§7) is a plausible real backing mechanism once designed, not hand-rolled goroutine management | ADR-0005 names it, deferred |
 | **Child Workflow** | One workflow invokes another as a step | Build (composition rule — no library has an opinion on Mill's own workflow-of-workflows semantics) | ADR-0005 names it, deferred |
 | **Integration / Connector node** | Call an external HTTP API, auth'd | Wire protocol: adopt (stdlib `net/http`, or MCP per §3.1 if exposed as a tool). Connector config/credential model: build | §4, `OPEN` |
@@ -1340,6 +1340,52 @@ built, not just captured as design input:**
 `proposed` (not `accepted`), since the A2 control-flow-node question and
 the versioning/replay gaps this map names are still real, unbuilt future
 work; only the node/edge shape moved from proposed to shipped.
+
+**Update — Decision's execution engine is now built** (§3.5's Configure-
+surface work; ADR "logical-percolating-wilkes" plan §1/§3), ahead of
+ADR-0005 A2's original "deferred" framing for this one row. `Edge`'s
+`SourceHandle` carries a real `expr-lang/expr` condition string (already
+the adopt-pick this table named above) instead of sitting reserved and
+unused; a Decision node's outgoing edges are evaluated in order, first
+match wins, with exactly one required `"otherwise"`-handle edge as the
+fallback — enforced at *save* time by `ValidateGraph` (compiles every
+condition against the workflow's declared `Attributes` schema, so a bad
+expression or a missing `otherwise` is caught before Save succeeds, not
+just at Run) and walked at *run* time by `nextNode`/`ExecuteWorkflow`.
+`ExecContext{Payload, Attributes}` replaces the old bare-`string` payload
+threaded through `nodeExec` — `Attributes` is the new structured bag
+Decision rules evaluate against; `Payload` is unchanged in shape, every
+existing Capture/Process/Apply node just reads/writes it through the new
+wrapper. `ExecuteWorkflow` seeds `Attributes` from the workflow's own
+declared schema at each field's zero value (`attributesEnv`) — there is
+no manual-test-run UI yet to supply real values (that's §3.5's still-
+unbuilt Attributes-CRUD/manual-run work), so this is an honest interim:
+a workflow with no `Attributes` (both built-ins today) behaves exactly
+as before this existed. `internal/adapters/expression` wraps
+`expr-lang/expr` behind Mill's own names (`Compile`/`Eval`), per
+CLAUDE.md's ports/adapters rule — confirms the pick this table already
+named rather than adding a new one. On the canvas: `KindDecision` +
+one `decision-route` NodeType (no `ConfigFields` — a pure routing point,
+its conditions live on its edges) render with a real icon/label/color
+(`nodeKind.ts`, `GitBranchIcon`); `isValidConnection` now exempts
+Decision nodes from the single-outgoing-edge limit every other kind
+still has (mirrored save-time by the canvas's own draft-workflow zod
+check and, authoritatively, by `ValidateGraph` server-side — "a
+save-time error and a run-time error never disagree" holds across three
+layers, same principle as the original linear-chain design). **What
+this pass does not build**: a visual rule builder — an edge carries a
+raw expression string today with no UI to author one (react-querybuilder
+adoption, §3.5's plan), so a Decision node is real and executable but
+only authorable by hand-editing the persisted JSON until that lands.
+Verified end-to-end against the real Go backend (server mode +
+Playwright, not just unit tests): dropped a Decision node onto the
+canvas, connected two outgoing edges from it (previously impossible —
+`isValidConnection` rejected a second outgoing edge from any node),
+attempted Save with both edges lacking a condition, and confirmed the
+backend correctly rejected it (`ValidateGraph` surfaced a real compile
+error to the user instead of silently accepting an unexecutable graph).
+`LOCKED` (execution engine, NodeType, canvas connectivity) — the rule
+builder itself stays `OPEN`, tracked in §3.5's own Decision row.
 
 ### 3.4 Trigger primitives — capability map
 
@@ -1521,7 +1567,7 @@ true and isn't what was asked for.
 | Capture/Process/Apply config (today's `html` field, etc.) | Inline canvas Inspector | 1:1 | `LOCKED`, built this way — genuinely simple fields, a dedicated screen would be overhead, not clarity |
 | **Integration / Connector** (HTTP Connector, DB Connector, ...) | **Configure**, under a new Integration category | **1:many** — one configured connector (auth, base URL) referenced by ID from any workflow's Integration node | `OPEN` — this is §4's own still-open surface, now with a concrete home |
 | **Input / Attributes** | **Configure** | **1:1** — scoped to the one workflow that declares it, per §3.2's original cardinality note | `OPEN` — named in §3.2, no node kind or schema built yet |
-| **Decision** | **Configure** (a rule/decision-table editor needs real room, not a narrow Inspector sidebar) | **1:1** recommended — §3.2 flagged this cardinality as genuinely unconfirmed ("check before assuming either way"); a workflow's decision logic is plausibly workflow-specific business logic, not shared, but this is a real open question, not decided here | `OPEN` — ADR-0005 already names Decision as deferred future work; this adds *where it's authored* to that, not a new commitment to build it |
+| **Decision** | **Configure** (a rule/decision-table editor needs real room, not a narrow Inspector sidebar) | **1:1** recommended — §3.2 flagged this cardinality as genuinely unconfirmed ("check before assuming either way"); a workflow's decision logic is plausibly workflow-specific business logic, not shared, but this is a real open question, not decided here | Execution engine `LOCKED` (§3.3's Decision row, Update note) — a Decision node branches for real today. *Where it's authored* stays `OPEN`: no Configure-surface rule builder exists yet, so conditions are only settable by hand-editing persisted JSON in the interim |
 | **List** (a reusable lookup/reference dataset) | **Configure** | **1:many** recommended, same shape as Integration — a shared lookup table is the kind of thing multiple workflows would plausibly reference | `OPEN` — named for the first time this turn; not yet in ADR-0005's taxonomy at all, a real gap to add there |
 
 **What Configure is *not*: a plugin system for user-defined node kinds.**

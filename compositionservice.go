@@ -133,6 +133,9 @@ func (c *CompositionService) CreateWorkflow(label, description string, nodes []c
 	if err != nil {
 		return composition.Workflow{}, err
 	}
+	if err := composition.ValidateGraph(resolved, edges, nil); err != nil {
+		return composition.Workflow{}, err
+	}
 
 	wf := composition.Workflow{
 		ID:          newWorkflowID(label),
@@ -184,12 +187,18 @@ func (c *CompositionService) UpdateWorkflow(id, label, description string, nodes
 		return composition.Workflow{}, fmt.Errorf("no workflow with id %q", id)
 	}
 
+	if err := composition.ValidateGraph(resolved, edges, c.user[idx].Attributes); err != nil {
+		c.mu.Unlock()
+		return composition.Workflow{}, err
+	}
+
 	wf := composition.Workflow{
 		ID:          id,
 		Label:       label,
 		Description: description,
 		Nodes:       resolved,
 		Edges:       edges,
+		Attributes:  c.user[idx].Attributes,
 		// Carried forward, not reset to false: BuiltIn is purely
 		// informational now (docs/SPEC.md §2.2's Update note) -- editing
 		// a seeded example doesn't stop it having started as one.
@@ -229,7 +238,7 @@ func (c *CompositionService) DeleteWorkflow(id string) error {
 func (c *CompositionService) RunWorkflow(id string) (string, error) {
 	for _, wf := range c.Workflows() {
 		if wf.ID == id {
-			return composition.ExecuteWorkflow(wf.Nodes, wf.Edges)
+			return composition.ExecuteWorkflow(wf.Nodes, wf.Edges, wf.Attributes)
 		}
 	}
 	return "", fmt.Errorf("unknown workflow: %s", id)

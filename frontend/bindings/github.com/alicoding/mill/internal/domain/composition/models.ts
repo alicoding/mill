@@ -25,6 +25,22 @@ export enum Approach {
 };
 
 /**
+ * AttributeDef declares one named, typed field in a workflow's
+ * structured Attributes bag (see ExecContext) -- Configure-authored
+ * (SPEC.md §3.5: "Input/Attributes... you would not tightly couple it in
+ * the workflow"), but scoped to the one workflow that declares it (1:1),
+ * unlike a reusable Connector or List. Reuses ConfigFieldType rather
+ * than inventing a second type enum -- a workflow's attribute schema and
+ * a node's config fields are the same kind of "name + typed value"
+ * declaration.
+ */
+export interface AttributeDef {
+    "Key": string;
+    "Label": string;
+    "Type": ConfigFieldType;
+}
+
+/**
  * ConfigField declares one configurable parameter a node type's nodes
  * can set. A node type with no ConfigFields takes no parameters --
  * legitimately true for some nodes (capture/process here operate on
@@ -67,8 +83,11 @@ export enum ConfigFieldType {
 
 /**
  * Edge connects one Node's output to another's input by ID. SourceHandle
- * is reserved for a future Decision node's named branches (e.g. "yes"/
- * "no") -- empty for every edge today, since no node kind branches yet.
+ * is a Decision node's named branch: a real expr-lang/expr expression
+ * string (e.g. "Attributes.count > 5"), evaluated in order, first match
+ * wins; exactly one outgoing edge per Decision node must carry the
+ * literal otherwiseHandle value as the required fallback. Empty for
+ * every non-Decision edge, since no other node kind branches.
  */
 export interface Edge {
     "ID": string;
@@ -113,10 +132,10 @@ export interface Node {
 
 /**
  * NodeKind mirrors SPEC.md §2's Capture -> Process -> Apply primitive,
- * plus Trigger (SPEC.md §3.4's capability map) -- the entry-point kind
- * every workflow's root node now belongs to. Control-flow node kinds
- * (Decision, Parallel, Child Workflow) stay real future work, not
- * stubbed here speculatively.
+ * plus Trigger (SPEC.md §3.4) and Decision (SPEC.md §3.5) -- Decision is
+ * the one kind allowed more than one outgoing edge (see walk/nextNode).
+ * Parallel/Child Workflow stay real future work, not stubbed here
+ * speculatively.
  */
 export enum NodeKind {
     /**
@@ -128,6 +147,7 @@ export enum NodeKind {
     KindCapture = "capture",
     KindProcess = "process",
     KindApply = "apply",
+    KindDecision = "decision",
 };
 
 export interface NodeType {
@@ -149,10 +169,10 @@ export interface Position {
 }
 
 /**
- * Workflow is a node/edge graph -- today always a single unbranched
- * chain in practice (see linearOrder), since Decision/Parallel/Child-
- * Workflow node kinds are real future work per ADR-0005, not invented
- * here ahead of a need for them.
+ * Workflow is a node/edge graph. Branching exists now (Decision nodes,
+ * see walk/nextNode) but is still constrained: every non-Decision node
+ * keeps at most one outgoing edge, so "graph" in practice means "a chain
+ * with Decision forks," not an arbitrary DAG.
  */
 export interface Workflow {
     "ID": string;
@@ -160,6 +180,14 @@ export interface Workflow {
     "Description": string;
     "Nodes": Node[] | null;
     "Edges": Edge[] | null;
+
+    /**
+     * Attributes is this workflow's declared structured-field schema --
+     * what a Decision node's rule builder offers as available fields, and
+     * what a generated test payload (§3.4) can seed. Does not itself
+     * carry values; ExecContext.Attributes does, at run time.
+     */
+    "Attributes": AttributeDef[] | null;
 
     /**
      * BuiltIn marks a seeded, non-deletable workflow (the two shipped
