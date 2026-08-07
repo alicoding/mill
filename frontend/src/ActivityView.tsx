@@ -3,31 +3,30 @@ import { Heading, IconButton, Label, type LabelProps, Select, Stack, Text } from
 import { DataTable, type Column } from '@primer/react/experimental'
 import { ChevronDownIcon, ChevronRightIcon, CheckCircleIcon, XCircleIcon, XIcon } from '@primer/octicons-react'
 import { useAppStore, type ActivityEntry, type ActivitySource } from './store'
-import styles from './RunbookView.module.css'
+import styles from './ListCard.module.css'
 
 const SOURCE_LABEL: Record<ActivitySource, string> = {
-  hotkey: 'Hotkey',
-  runbook: 'Runbook',
+  trigger: 'Trigger',
   composition: 'Composition',
 }
 
 const SOURCE_VARIANT: Record<ActivitySource, LabelProps['variant']> = {
-  hotkey: 'severe',
-  runbook: 'accent',
+  trigger: 'severe',
   composition: 'success',
 }
 
 type OutcomeFilter = 'all' | 'success' | 'failed'
 
-// A dedicated, always-visible page rather than a section tucked inside
-// Runbook: a hotkey fires headlessly with no other UI surface (§2.2), so
-// this is the only way to see whether anything fired at all — nested
-// inside another page, it was indistinguishable from "the feed doesn't
-// work" when nothing had fired yet. Subscribed once at App.tsx (not here)
-// so it keeps collecting even while this tab isn't the active view.
-// Not hotkey-only: every run pushes here regardless of how it was
-// triggered (hotkey fire, or a direct Run click on Runbook/Composition)
-// — one shared feed for "did anything run," not three separate ones.
+// A dedicated, always-visible page: a headless trigger (hotkey, schedule,
+// clipboard-watch, filesystem-watch -- docs/SPEC.md §3.4) fires with no
+// other UI surface, so this is the only way to see whether anything
+// fired at all — nested inside another page, it was indistinguishable
+// from "the feed doesn't work" when nothing had fired yet. Subscribed
+// once at App.tsx (not here) so it keeps collecting even while this tab
+// isn't the active view. Not trigger-only: every run pushes here
+// regardless of how it was triggered (a headless fire, or a direct Run
+// click on Composition) — one shared feed for "did anything run," not
+// two separate ones.
 //
 // Renders as Primer's DataTable (@primer/react/experimental) rather than
 // the hand-rolled expand-list this used to be — DataTable has no generic
@@ -127,12 +126,12 @@ function ActivityView() {
   ]
 
   return (
-    <div className={styles.runbook}>
+    <div className={styles.page}>
       <Heading as="h1">Activity</Heading>
       <Text as="p" className={styles.subtitle}>
-        What ran, whether triggered by a hotkey or a direct Run click on
-        Runbook or Composition — a hotkey fires headlessly and writes
-        straight to the clipboard with no other feedback, so this is the
+        What ran, whether triggered headlessly (hotkey, schedule,
+        clipboard/filesystem watch) or a direct Run click on Composition —
+        a headless trigger fires with no other feedback, so this is the
         only place to see it happened at all. Session-only: this list
         isn&apos;t persisted across restarts.
       </Text>
@@ -141,8 +140,7 @@ function ActivityView() {
         <Stack direction="horizontal" gap="condensed" className={styles.filterRow}>
           <Select value={sourceFilter} onChange={(e) => setSourceFilter(e.target.value as 'all' | ActivitySource)} aria-label="Filter by source">
             <Select.Option value="all">All sources</Select.Option>
-            <Select.Option value="hotkey">Hotkey</Select.Option>
-            <Select.Option value="runbook">Runbook</Select.Option>
+            <Select.Option value="trigger">Trigger</Select.Option>
             <Select.Option value="composition">Composition</Select.Option>
           </Select>
           <Select value={outcomeFilter} onChange={(e) => setOutcomeFilter(e.target.value as OutcomeFilter)} aria-label="Filter by outcome">
@@ -155,7 +153,7 @@ function ActivityView() {
 
       {activity.length === 0 && (
         <div className={styles.empty}>
-          <Text as="p">No activity yet — run something on Runbook or Composition, or press a bound hotkey, to see it appear here.</Text>
+          <Text as="p">No activity yet — run a workflow, or wait for a trigger to fire, to see it appear here.</Text>
         </div>
       )}
 

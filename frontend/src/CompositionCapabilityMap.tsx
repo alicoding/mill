@@ -4,7 +4,7 @@ import { ChevronDownIcon, ChevronRightIcon } from '@primer/octicons-react'
 import { CompositionService } from '../bindings/github.com/alicoding/mill'
 import { Approach, type MapEntry } from '../bindings/github.com/alicoding/mill/internal/domain/composition/models'
 import { statusVariant } from './store'
-import styles from './RunbookView.module.css'
+import styles from './ListCard.module.css'
 
 const APPROACH_LABEL: Record<Approach, string> = {
   [Approach.ApproachAdopt]: 'adopt',

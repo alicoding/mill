@@ -14,15 +14,19 @@ import type { Connection, Edge as RFEdge, NodeTypes as RFNodeTypes, NodeProps } 
 import '@xyflow/react/dist/style.css'
 import { useStore } from 'zustand'
 import { z } from 'zod'
-import { Button, FormControl, IconButton, Stack, Text, TextInput, Textarea } from '@primer/react'
-import { ColumnsIcon, RedoIcon, SidebarCollapseIcon, SidebarExpandIcon, TrashIcon, UndoIcon } from '@primer/octicons-react'
+import { Browser } from '@wailsio/runtime'
+import { Button, Checkbox, FormControl, IconButton, Label, Select, Stack, Text, TextInput, Textarea } from '@primer/react'
+import { ColumnsIcon, KeyIcon, RedoIcon, SidebarCollapseIcon, SidebarExpandIcon, TrashIcon, UndoIcon } from '@primer/octicons-react'
 import { ArrowLeftIcon } from '@primer/octicons-react'
 import { CompositionService } from '../bindings/github.com/alicoding/mill'
 import type { NodeType, Node as CompNode, Edge as CompEdge, Workflow } from '../bindings/github.com/alicoding/mill/internal/domain/composition/models'
+import { ConfigFieldType } from '../bindings/github.com/alicoding/mill/internal/domain/composition/models'
 import { createCanvasStore, type CanvasNode } from './canvasStore'
 import { KIND_ICON, KIND_ICON_BG, KIND_LABEL } from './nodeKind'
+import { useHotkeyCapture, isAccessibilityError, ACCESSIBILITY_SETTINGS_URL } from './hotkeyCapture'
+import { generateSamplePayload } from './configSchema'
 import styles from './CompositionCanvas.module.css'
-import runbookStyles from './RunbookView.module.css'
+import runbookStyles from './ListCard.module.css'
 
 // Converts a persisted Workflow's Nodes/Edges (Wails' PascalCase wire
 // shape) into React Flow's own node/edge shape, for loading an existing
@@ -65,9 +69,13 @@ function toRFEdges(edges: CompEdge[] | null): RFEdge[] {
 // that reference's fuller Input/Decision/Ruleset/... taxonomy.
 function CanvasNodeView({ data, selected }: NodeProps<CanvasNode>) {
   const Icon = KIND_ICON[data.kind]
+  // Trigger nodes have no target handle -- nothing should connect into
+  // them, same as n8n's own trigger nodes having no input pin (they're
+  // the entry point, not a step something else feeds).
+  const isTrigger = data.kind === 'trigger'
   return (
     <div className={`${styles.canvasNode} ${selected ? styles.canvasNodeSelected : ''}`}>
-      <Handle type="target" position={RFPosition.Top} />
+      {!isTrigger && <Handle type="target" position={RFPosition.Top} />}
       <div className={styles.canvasNodeIcon} style={{ background: KIND_ICON_BG[data.kind] ?? 'var(--bgColor-neutral-emphasis)' }}>
         {Icon && <Icon size={16} fill="var(--fgColor-onEmphasis)" />}
       </div>
@@ -90,6 +98,7 @@ const CANVAS_NODE_WIDTH = 220
 const CANVAS_NODE_HEIGHT = 64
 
 const rfNodeTypes: RFNodeTypes = {
+  trigger: CanvasNodeView,
   capture: CanvasNodeView,
   process: CanvasNodeView,
   apply: CanvasNodeView,
@@ -182,6 +191,22 @@ function CanvasInner({ nodeTypes, workflow, onBack, onSaved }: CompositionCanvas
   const canUndo = useStore(useCanvasStore.temporal, (s) => s.pastStates.length > 0)
   const canRedo = useStore(useCanvasStore.temporal, (s) => s.futureStates.length > 0)
 
+  // A workflow needs a real ID to bind a hotkey to -- null while
+  // composing a brand-new, not-yet-saved workflow (workflow prop is
+  // null/undefined then). The Inspector below shows "save first" in that
+  // case rather than silently disabling the control with no explanation.
+  const hotkeyCapture = useHotkeyCapture(workflow?.ID ?? null)
+
+  // Bumped after "Generate test payload" fills a node's fields, and
+  // folded into each config input's own `key` below -- the inputs are
+  // uncontrolled (defaultValue + onBlur commit, so typing doesn't fight
+  // the canvas store on every keystroke), which means a defaultValue
+  // change alone wouldn't repaint an already-mounted input. Changing
+  // `key` forces a remount instead, the same "fresh defaultValue" fix
+  // CompositionCanvas already relies on elsewhere (the whole canvas is
+  // itself keyed by workflow id/"new" for the same reason).
+  const [payloadNonce, setPayloadNonce] = useState(0)
+
   const { screenToFlowPosition } = useReactFlow()
 
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null)
@@ -199,15 +224,15 @@ function CanvasInner({ nodeTypes, workflow, onBack, onSaved }: CompositionCanvas
     if (workflow) {
       useCanvasStore.getState().load(toCanvasNodes(workflow.Nodes, nodeTypes), toRFEdges(workflow.Edges))
     } else {
-      // A brand-new workflow starts with a single capture node placed,
-      // not a blank canvas -- the reference platform's own "Start from
-      // Scratch" pre-populates an Input->Decision pair, but Mill has no
-      // Decision node kind yet (ADR-0005/composition.go are explicit
-      // that control-flow kinds aren't stubbed ahead of need), so this
-      // seeds the one real node type that makes sense as a starting
-      // point among Mill's actual four (capture/process/apply -- the
-      // other three are either terminal or need input already flowing).
-      const starterType = nodeTypes.find((nt) => nt.ID === 'capture-clipboard-html')
+      // A brand-new workflow starts with a single trigger node placed,
+      // not a blank canvas -- matches the reference platform's own
+      // "Start from Scratch" pre-populating a starting node. Now that a
+      // real Trigger NodeKind exists (SPEC.md §3.4), the natural starter
+      // is trigger-manual specifically: every workflow needs exactly one
+      // root, and a manual trigger is the one that needs no external
+      // config (hotkey/schedule/watch all need a value the user hasn't
+      // supplied yet).
+      const starterType = nodeTypes.find((nt) => nt.ID === 'trigger-manual')
       if (starterType) {
         useCanvasStore.getState().load(
           [
@@ -236,8 +261,17 @@ function CanvasInner({ nodeTypes, workflow, onBack, onSaved }: CompositionCanvas
   // today -- reject a second outgoing edge from the same source at
   // draw-time rather than letting the backend reject it later at Run.
   const isValidConnection = useCallback(
-    (connection: Connection | RFEdge) => !edges.some((e) => e.source === connection.source),
-    [edges],
+    (connection: Connection | RFEdge) => {
+      if (edges.some((e) => e.source === connection.source)) return false
+      // Nothing connects into a trigger node -- it's the entry point, not
+      // a step something else feeds (matches CanvasNodeView omitting the
+      // target handle for trigger nodes; this is the draw-time layer of
+      // the same rule, belt-and-suspenders with the missing handle).
+      const target = nodes.find((n) => n.id === connection.target)
+      if (target?.data.kind === 'trigger') return false
+      return true
+    },
+    [edges, nodes],
   )
 
   const onPaletteDragStart = (event: DragEvent<HTMLDivElement>, nt: NodeType) => {
@@ -447,20 +481,115 @@ function CanvasInner({ nodeTypes, workflow, onBack, onSaved }: CompositionCanvas
           {selectedNode && (
             <Stack direction="vertical" gap="condensed">
               <Text weight="semibold">{selectedNode.data.label}</Text>
-              {(selectedNodeType?.ConfigFields ?? []).length === 0 && (
+
+              {/* trigger-hotkey has no ConfigFields (docs/SPEC.md §3.4:
+                  the binding lives in TriggerService, not Node.Config --
+                  pressing a combo is better UX than typing one into a
+                  text field) -- special-cased on NodeTypeID the same way
+                  the palette already special-cases node types, not a
+                  generic ConfigField. */}
+              {selectedNode.data.nodeTypeID === 'trigger-hotkey' && (
+                <Stack direction="vertical" gap="condensed">
+                  {!workflow && (
+                    <Text size="small" className={runbookStyles.muted}>
+                      Save this workflow before assigning a hotkey.
+                    </Text>
+                  )}
+                  {workflow && (
+                    <>
+                      {hotkeyCapture.recording ? (
+                        <Text size="small" className={styles.inspectorRecording}>Press a combo… (Esc to cancel)</Text>
+                      ) : hotkeyCapture.binding ? (
+                        <Stack direction="horizontal" gap="condensed" align="center">
+                          <Label variant="secondary">
+                            <KeyIcon size={12} /> {hotkeyCapture.binding}
+                          </Label>
+                          <Button size="small" variant="invisible" onClick={hotkeyCapture.startRecording}>Change</Button>
+                          <Button size="small" variant="invisible" onClick={hotkeyCapture.clear}>Clear</Button>
+                        </Stack>
+                      ) : (
+                        <Button size="small" variant="invisible" onClick={hotkeyCapture.startRecording}>
+                          Set shortcut
+                        </Button>
+                      )}
+                      {hotkeyCapture.error && (
+                        <Stack direction="vertical" gap="condensed">
+                          <Text as="p" size="small" className={runbookStyles.error}>{hotkeyCapture.error}</Text>
+                          {isAccessibilityError(hotkeyCapture.error) && (
+                            <Button size="small" onClick={() => Browser.OpenURL(ACCESSIBILITY_SETTINGS_URL)}>
+                              Open Accessibility Settings
+                            </Button>
+                          )}
+                        </Stack>
+                      )}
+                    </>
+                  )}
+                </Stack>
+              )}
+
+              {(selectedNodeType?.ConfigFields ?? []).length === 0 && selectedNode.data.nodeTypeID !== 'trigger-hotkey' && (
                 <Text size="small" className={runbookStyles.muted}>This node type takes no configuration.</Text>
               )}
+
+              {/* Trigger nodes specifically, not any node with fields --
+                  this is "generate a sample input to test this trigger
+                  with," the same per-record test-harness idea named from
+                  the reference platform (docs/SPEC.md §3.2), not a
+                  generic fill-any-field convenience. */}
+              {selectedNode.data.kind === 'trigger' && (selectedNodeType?.ConfigFields ?? []).length > 0 && (
+                <Button
+                  size="small"
+                  variant="invisible"
+                  data-testid="generate-test-payload"
+                  onClick={() => {
+                    const sample = generateSamplePayload(selectedNodeType?.ConfigFields ?? [])
+                    for (const [key, value] of Object.entries(sample)) {
+                      updateNodeConfig(selectedNode.id, key, value)
+                    }
+                    setPayloadNonce((n) => n + 1)
+                  }}
+                >
+                  Generate test payload
+                </Button>
+              )}
+
               {(selectedNodeType?.ConfigFields ?? []).map((field) => (
-                <FormControl key={field.Key}>
+                <FormControl key={`${field.Key}-${payloadNonce}`}>
                   <FormControl.Label>{field.Label}</FormControl.Label>
                   {field.Description && <FormControl.Caption>{field.Description}</FormControl.Caption>}
-                  <Textarea
-                    defaultValue={selectedNode.data.config[field.Key] ?? ''}
-                    rows={4}
-                    block
-                    data-testid="canvas-config-field"
-                    onBlur={(e) => updateNodeConfig(selectedNode.id, field.Key, e.target.value)}
-                  />
+                  {field.Type === ConfigFieldType.FieldBoolean ? (
+                    <Checkbox
+                      defaultChecked={selectedNode.data.config[field.Key] === 'true'}
+                      data-testid="canvas-config-field"
+                      onChange={(e) => updateNodeConfig(selectedNode.id, field.Key, String(e.target.checked))}
+                    />
+                  ) : field.Type === ConfigFieldType.FieldOptions ? (
+                    <Select
+                      defaultValue={selectedNode.data.config[field.Key] ?? ''}
+                      data-testid="canvas-config-field"
+                      onChange={(e) => updateNodeConfig(selectedNode.id, field.Key, e.target.value)}
+                    >
+                      {(field.Options ?? []).map((opt) => (
+                        <Select.Option key={opt} value={opt}>{opt}</Select.Option>
+                      ))}
+                    </Select>
+                  ) : field.Type === ConfigFieldType.FieldNumber ? (
+                    <TextInput
+                      type="number"
+                      defaultValue={selectedNode.data.config[field.Key] ?? ''}
+                      block
+                      data-testid="canvas-config-field"
+                      onBlur={(e) => updateNodeConfig(selectedNode.id, field.Key, e.target.value)}
+                    />
+                  ) : (
+                    <Textarea
+                      defaultValue={selectedNode.data.config[field.Key] ?? ''}
+                      rows={4}
+                      block
+                      data-testid="canvas-config-field"
+                      onBlur={(e) => updateNodeConfig(selectedNode.id, field.Key, e.target.value)}
+                    />
+                  )}
                 </FormControl>
               ))}
             </Stack>
