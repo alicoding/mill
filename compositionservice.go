@@ -48,6 +48,15 @@ func (c *CompositionService) NodeTypes() []composition.NodeType {
 	return composition.NodeTypes()
 }
 
+// CapabilityMap exposes docs/SPEC.md §3.3's capability map as real data
+// for the Spec tab -- see docs/SPEC.md §3.3 and CapabilityIndex.tsx's
+// existing "real Go data, not parsed docs" precedent for page-level
+// capabilities, applied here one level down for composition's own
+// sub-capabilities.
+func (c *CompositionService) CapabilityMap() []composition.MapEntry {
+	return composition.CapabilityMap()
+}
+
 // Workflows returns every built-in workflow followed by every
 // user-composed one, in creation order -- a stable, predictable order
 // for the UI rather than Go's randomized map iteration.

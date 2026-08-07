@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { marked } from 'marked'
 import { SpecService } from '../bindings/github.com/alicoding/mill'
 import CapabilityIndex from './CapabilityIndex'
+import CompositionCapabilityMap from './CompositionCapabilityMap'
 import styles from './SpecView.module.css'
 
 function SpecView() {
@@ -16,6 +17,7 @@ function SpecView() {
   return (
     <div className={styles.spec}>
       <CapabilityIndex />
+      <CompositionCapabilityMap />
       <article dangerouslySetInnerHTML={{ __html: html }} />
     </div>
   )
