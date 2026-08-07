@@ -57,7 +57,7 @@ an implicit `FINAL`.
   AI's context silently diverging with no shared state to reconcile them).
   This is the actual mechanism behind "compose, don't reinvent" below — not
   a separate preference, the same one.
-- Mill is not novel. It composes existing primitives — a workflow/recipe
+- Mill is not novel. It composes existing primitives — a workflow
   authoring layer with guardrails, not a new category. `LOCKED`
 - Reference points: **1Password** (generic capability across every site/app,
   not site-specific), **n8n** (generic workflow/automation composition).
@@ -266,7 +266,7 @@ and [`docs/adr/0002-cicd-pipeline-phased-rollout.md`](adr/0002-cicd-pipeline-pha
 
 - **Capture**: pull content from a source preserving structure (e.g. DOM copy
   keeps HTML structure, not just flattened text).
-- **Process**: a workflow/recipe transforms the captured payload into
+- **Process**: a workflow transforms the captured payload into
   whatever the target needs (markdown, plain text, a structured object).
 - **Apply**: deliver the processed payload to a target location — e.g. paste
   at the cursor.
@@ -322,7 +322,7 @@ that environment, on something testable directly in this dev session:
 
 - A **Runbook page** — a list of available actions the user can browse and
   run directly with a click (no hotkey required), similar to how many apps
-  offer example/demo actions or default recipes out of the box. Answers
+  offer example/demo actions or default workflows out of the box. Answers
   "what should I see as a user" concretely instead of describing it.
 - Each action gets a **Run** button; **assign a keyboard shortcut** per
   action (Raycast/Alfred-style: click "Set shortcut," press the combo, it's
@@ -624,8 +624,20 @@ that environment, on something testable directly in this dev session:
   React Flow / `@xyflow/react` (canvas engine; Vue Flow is the same team's Vue
   port — moot for us since Mill's frontend is already React).
 - Not yet decided: node schema shape, how a "capability" is declared/
-  registered, whether recipes are user-authored on a canvas or config-first
-  with canvas as a later view.
+  registered, whether workflows are user-authored on a canvas or
+  config-first with canvas as a later view.
+- **Terminology, locked**: the composed artifact is a **workflow**, made
+  of ordered **steps** — not "recipe," which this doc used
+  inconsistently alongside "workflow" (the canvas/surface) for
+  overlapping concepts. Both the reference decisioning platform (§3.2)
+  and n8n (this section's other reference) call the composed thing a
+  "workflow"; the reference platform's own language for what's inside
+  one is "steps that is specific to the workflow" (relayed directly by
+  the user, not paraphrased). Mill adopts that vocabulary everywhere —
+  code, docs, UI — rather than maintaining two words for one concept.
+  A **node type** stays the reusable, Mill-defined primitive a step is
+  a configured instance of (unchanged naming — this only retires
+  "recipe"). `LOCKED`
 - **A concrete proposal for all three exists now, not yet accepted:**
   [`docs/adr/0005-capability-composition-node-schema.md`](adr/0005-capability-composition-node-schema.md).
   Drafted against a detailed feature breakdown of the same reference
@@ -638,39 +650,62 @@ that environment, on something testable directly in this dev session:
   not yet addressed anywhere in this doc: that reference platform has a
   draft/live versioning model with staged-traffic promotion that Mill
   has no equivalent of yet — real gap, deliberately left for a future
-  decision once an actual recipe exists to version.
+  decision once an actual Mill workflow exists to version.
   Recommendation (ADR-0005, `proposed`): two node families — MCP-tool
   nodes (schema inherited from the wrapped tool, per §3.1's already-
   locked MCP layer) plus a small, hand-written set of Mill-native
   control-flow nodes (Decision, Value Assignment, Parallel, Child
   Workflow) that stay Mill's own code per CLAUDE.md's core-domain rule;
-  composed into a data-driven recipe (JSON), authored via a form/JSON
+  composed into a data-driven workflow (JSON), authored via a form/JSON
   side panel generalized from Runbook's current UI; React Flow deferred
-  (not rejected) until 2+ real multi-node recipes exist to design a
+  (not rejected) until 2+ real multi-step workflows exist to design a
   canvas against actual content instead of speculation. `OPEN` until
   accepted.
+- **Composing a workflow is inseparable from configuring it — corrected
+  by the user after the first prototype pass only showed a read-only
+  preview.** A step is never a bare reference to a node type; it always
+  carries that node type's configuration, resolved in full (explicit
+  values or the node type's own declared defaults) the moment it's
+  added to a workflow. There is no such thing as an unconfigured step —
+  composing without configuring was named directly as "the most
+  violation" of how workflow composition should work. `LOCKED` (the
+  principle) — feeds directly into the prototype below.
 - **`UX: PROTOTYPE` — a Capability Composition page tests ADR-0005's
-  shape on real, working capabilities**, same "actually buildable now,
-  de-risk before the full architecture is decided" discipline §2.2 used
-  for the Runbook milestone. `internal/domain/composition` is a new,
-  additive package (not a replacement for `internal/domain/runbook`,
-  which stays exactly as-is, untouched, still the tested/tuned path) —
-  its node primitives (`capture-clipboard-html`, `process-html-to-
-  markdown`, `apply-clipboard-write-html`, `apply-clipboard-write-text`)
-  call the *same* adapter functions Runbook's actions already call, so
-  the two recipes built from them (`load-sample-html-recipe`,
-  `clipboard-html-to-markdown-recipe`) are the real capability,
-  genuinely decomposed and recomposed, not a mockup — hitting Run
-  actually executes the clipboard round-trip. The page renders node
-  types and recipes as plain lists/chip-chains (no canvas/graph
-  library), directly testing ADR-0005's config-first-not-canvas call
-  visually instead of just asserting it in prose. What this does *not*
-  prove: `RunRecipe`'s errors are plain/technical, not Runbook's tuned
+  shape, and the compose-with-configure principle above, on real,
+  working capabilities**, same "actually buildable now, de-risk before
+  the full architecture is decided" discipline §2.2 used for the
+  Runbook milestone. `internal/domain/composition` is a new, additive
+  package (not a replacement for `internal/domain/runbook`, which stays
+  exactly as-is, untouched, still the tested/tuned path) — its node
+  primitives (`capture-clipboard-html`, `process-html-to-markdown`,
+  `apply-clipboard-write-html`, `apply-clipboard-write-text`) call the
+  *same* adapter functions Runbook's actions already call. One node
+  type (`apply-clipboard-write-html`) now declares a real `ConfigField`
+  (the HTML it writes, defaulting to the existing sample) instead of a
+  hardcoded constant — the smallest real example of a configurable
+  primitive, not a contrived one. The page lets a user **compose a new
+  workflow**: pick node types, and each one's config fields appear
+  inline the moment it's added — composing and configuring happen in
+  one motion, never as separate passes. Built and user-composed
+  workflows render as plain lists with their step chain as chips
+  showing the actual configured values (not just the node type's
+  label) — configuration stays visible as part of composition. Newly
+  composed workflows **persist across restarts**, via
+  `internal/adapters/settings` (the same JSON-file store
+  `HotkeyService` already uses for hotkey bindings, reapplied verbatim,
+  not a new mechanism) — deliberately scoped to persisting a workflow's
+  authored *definition* only; persisting/resuming a *running* workflow's
+  execution state stays §7's still-open question, untouched and not
+  presupposed by this. What this prototype does *not* prove:
+  `ExecuteWorkflow`'s errors are plain/technical, not Runbook's tuned
   soft-failure copy (deliberate simplification, not a regression — the
-  careful UX still lives in `runbook.go`); and it says nothing about
-  branching/parallel/typed-payload nodes, still real future work per
-  ADR-0005. §3 stays `OPEN`, ADR-0005 stays `proposed` — this is a
-  testable prototype to react to, not a lock.
+  careful UX still lives in `runbook.go`); node *types* stay Mill-
+  defined, not user-authorable (a "define a new node kind" UI, the
+  reference platform's separate Configure-surface-for-kinds idea, is a
+  bigger, unproven feature, deliberately cut from this pass); and it
+  says nothing about branching/parallel/typed-payload steps, still real
+  future work per ADR-0005. §3 stays `OPEN`, ADR-0005 stays `proposed`
+  — this is a testable prototype to react to, not a lock.
 
 ### 3.1 Raw material — root cause of the heredoc pain, not yet resolved
 
@@ -830,9 +865,9 @@ this entry.
     Edits create a new version; versions are tested and validated, saved
     as a draft, then promoted live with configurable traffic allocation
     (a canary/staged rollout, not an all-at-once cutover). SPEC.md has
-    no equivalent concept anywhere — no notion of a recipe having a
+    no equivalent concept anywhere — no notion of a workflow having a
     draft vs. live version, no rollout mechanism. Deliberately left
-    `OPEN`: worth a real decision once an actual Mill recipe exists to
+    `OPEN`: worth a real decision once an actual Mill workflow exists to
     version, not invented speculatively now.
   - **Live + "shadow" events, filterable/exportable history.** The
     analytics surface shows live events plus "shadow" events (a
@@ -910,8 +945,8 @@ Full rationale in [`docs/adr/0003-browser-bridge-architecture.md`](adr/0003-brow
   pinned working directory (reference: Claude Code's `~/.claude/projects`
   scoping) and an explicit shell (zsh/sh/etc.) rather than an inherited,
   ambiguous one.
-- Not yet decided: how env vars are scoped per project/recipe, whether a
-  recipe declares its required shell/interpreter or Mill infers it.
+- Not yet decided: how env vars are scoped per project/workflow, whether
+  a workflow declares its required shell/interpreter or Mill infers it.
 
 ## 7. Process & session tracking
 

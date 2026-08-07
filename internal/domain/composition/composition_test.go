@@ -39,55 +39,123 @@ func TestNodeTypes(t *testing.T) {
 			t.Errorf("duplicate node type ID %q", nt.ID)
 		}
 		seen[nt.ID] = true
-	}
-}
-
-func TestRecipes_ReferenceRealNodeTypes(t *testing.T) {
-	known := make(map[string]bool)
-	for _, nt := range NodeTypes() {
-		known[nt.ID] = true
-	}
-	for _, r := range Recipes() {
-		if r.ID == "" || r.Label == "" {
-			t.Errorf("recipe %+v has an empty ID/Label", r)
-		}
-		if len(r.NodeIDs) == 0 {
-			t.Errorf("recipe %q has no nodes", r.ID)
-		}
-		for _, nodeID := range r.NodeIDs {
-			if !known[nodeID] {
-				t.Errorf("recipe %q references unknown node type %q", r.ID, nodeID)
+		for _, f := range nt.ConfigFields {
+			if f.Key == "" || f.Label == "" {
+				t.Errorf("node type %q has a config field with an empty Key/Label: %+v", nt.ID, f)
 			}
 		}
 	}
 }
 
-func TestRunRecipe_UnknownRecipe(t *testing.T) {
-	if _, err := RunRecipe("does-not-exist"); err == nil {
-		t.Fatal("RunRecipe(unknown id) returned nil error, want an error")
+func TestBuiltInWorkflows_AllStepsFullyResolved(t *testing.T) {
+	for _, wf := range BuiltInWorkflows() {
+		if !wf.BuiltIn {
+			t.Errorf("workflow %q from BuiltInWorkflows() has BuiltIn=false", wf.ID)
+		}
+		if len(wf.Steps) == 0 {
+			t.Errorf("workflow %q has no steps", wf.ID)
+		}
+		for _, step := range wf.Steps {
+			nt, ok := nodeType(step.NodeTypeID)
+			if !ok {
+				t.Errorf("workflow %q references unknown node type %q", wf.ID, step.NodeTypeID)
+				continue
+			}
+			for _, field := range nt.ConfigFields {
+				if _, ok := step.Config[field.Key]; !ok {
+					t.Errorf("workflow %q step %q missing resolved config key %q", wf.ID, step.NodeTypeID, field.Key)
+				}
+			}
+		}
 	}
 }
 
-func TestRunRecipe_LoadSampleHTML(t *testing.T) {
+func TestResolveStepDefaults_FillsMissingKeysWithDefaults(t *testing.T) {
+	resolved, err := ResolveStepDefaults([]Step{{NodeTypeID: "apply-clipboard-write-html"}})
+	if err != nil {
+		t.Fatalf("ResolveStepDefaults returned error: %v", err)
+	}
+	if resolved[0].Config["html"] != sampleHTML {
+		t.Errorf("resolved config[html] = %q, want the field's default", resolved[0].Config["html"])
+	}
+}
+
+func TestResolveStepDefaults_PreservesExplicitValue(t *testing.T) {
+	resolved, err := ResolveStepDefaults([]Step{
+		{NodeTypeID: "apply-clipboard-write-html", Config: map[string]string{"html": "<p>custom</p>"}},
+	})
+	if err != nil {
+		t.Fatalf("ResolveStepDefaults returned error: %v", err)
+	}
+	if resolved[0].Config["html"] != "<p>custom</p>" {
+		t.Errorf("resolved config[html] = %q, want the explicit value preserved, not overwritten by the default", resolved[0].Config["html"])
+	}
+}
+
+func TestResolveStepDefaults_UnknownNodeType(t *testing.T) {
+	if _, err := ResolveStepDefaults([]Step{{NodeTypeID: "does-not-exist"}}); err == nil {
+		t.Fatal("ResolveStepDefaults(unknown node type) returned nil error, want an error")
+	}
+}
+
+func TestExecuteWorkflow_UnknownNodeType(t *testing.T) {
+	if _, err := ExecuteWorkflow([]Step{{NodeTypeID: "does-not-exist"}}); err == nil {
+		t.Fatal("ExecuteWorkflow(unknown node type) returned nil error, want an error")
+	}
+}
+
+func TestExecuteWorkflow_LoadSampleHTML_UsesDefault(t *testing.T) {
 	var written string
 	withFakeClipboard(t, nil, func(html string) error {
 		written = html
 		return nil
 	}, nil)
 
-	result, err := RunRecipe("load-sample-html-recipe")
+	steps, err := ResolveStepDefaults([]Step{{NodeTypeID: "apply-clipboard-write-html"}})
 	if err != nil {
-		t.Fatalf("RunRecipe(load-sample-html-recipe) returned error: %v", err)
+		t.Fatalf("ResolveStepDefaults returned error: %v", err)
+	}
+	result, err := ExecuteWorkflow(steps)
+	if err != nil {
+		t.Fatalf("ExecuteWorkflow returned error: %v", err)
 	}
 	if written != sampleHTML {
 		t.Errorf("apply-clipboard-write-html was called with %q, want the sample HTML", written)
 	}
 	if !strings.Contains(result, "Quarterly update") {
-		t.Errorf("RunRecipe(load-sample-html-recipe) result = %q, want it to contain the sample HTML", result)
+		t.Errorf("ExecuteWorkflow result = %q, want it to contain the sample HTML", result)
 	}
 }
 
-func TestRunRecipe_ClipboardHTMLToMarkdown(t *testing.T) {
+func TestExecuteWorkflow_LoadSampleHTML_UsesConfiguredValue(t *testing.T) {
+	var written string
+	withFakeClipboard(t, nil, func(html string) error {
+		written = html
+		return nil
+	}, nil)
+
+	steps, err := ResolveStepDefaults([]Step{
+		{NodeTypeID: "apply-clipboard-write-html", Config: map[string]string{"html": "<p>custom configured value</p>"}},
+	})
+	if err != nil {
+		t.Fatalf("ResolveStepDefaults returned error: %v", err)
+	}
+	result, err := ExecuteWorkflow(steps)
+	if err != nil {
+		t.Fatalf("ExecuteWorkflow returned error: %v", err)
+	}
+	// The point of configuration: a step's own value flows through
+	// execution, not just the default -- proves compose-with-configure
+	// isn't cosmetic.
+	if written != "<p>custom configured value</p>" {
+		t.Errorf("apply-clipboard-write-html was called with %q, want the configured (non-default) value", written)
+	}
+	if !strings.Contains(result, "custom configured value") {
+		t.Errorf("ExecuteWorkflow result = %q, want the configured value", result)
+	}
+}
+
+func TestExecuteWorkflow_ClipboardHTMLToMarkdown(t *testing.T) {
 	var written string
 	withFakeClipboard(t, func() (string, error) {
 		return "<h2>Hi</h2><p>the <strong>bit</strong></p>", nil
@@ -96,29 +164,45 @@ func TestRunRecipe_ClipboardHTMLToMarkdown(t *testing.T) {
 		return nil
 	})
 
-	result, err := RunRecipe("clipboard-html-to-markdown-recipe")
+	steps, err := ResolveStepDefaults([]Step{
+		{NodeTypeID: "capture-clipboard-html"},
+		{NodeTypeID: "process-html-to-markdown"},
+		{NodeTypeID: "apply-clipboard-write-text"},
+	})
 	if err != nil {
-		t.Fatalf("RunRecipe(clipboard-html-to-markdown-recipe) returned error: %v", err)
+		t.Fatalf("ResolveStepDefaults returned error: %v", err)
+	}
+	result, err := ExecuteWorkflow(steps)
+	if err != nil {
+		t.Fatalf("ExecuteWorkflow returned error: %v", err)
 	}
 	if !strings.Contains(result, "## Hi") || !strings.Contains(result, "**bit**") {
-		t.Errorf("RunRecipe(clipboard-html-to-markdown-recipe) result = %q, want converted markdown", result)
+		t.Errorf("ExecuteWorkflow result = %q, want converted markdown", result)
 	}
 	if written != result {
 		t.Errorf("apply-clipboard-write-text was called with %q, want it to match the returned markdown %q", written, result)
 	}
 }
 
-func TestRunRecipe_ClipboardHTMLToMarkdown_NoHTMLOnClipboard(t *testing.T) {
+func TestExecuteWorkflow_ClipboardHTMLToMarkdown_NoHTMLOnClipboard(t *testing.T) {
 	withFakeClipboard(t, func() (string, error) {
 		return "", errors.New("no HTML on clipboard")
 	}, nil, nil)
 
+	steps, err := ResolveStepDefaults([]Step{
+		{NodeTypeID: "capture-clipboard-html"},
+		{NodeTypeID: "process-html-to-markdown"},
+		{NodeTypeID: "apply-clipboard-write-text"},
+	})
+	if err != nil {
+		t.Fatalf("ResolveStepDefaults returned error: %v", err)
+	}
 	// Unlike internal/domain/runbook's soft-failure path (nil error,
-	// friendly explanation), this prototype's node executor surfaces a
-	// plain error -- documented as a deliberate simplification in
-	// composition.go's RunRecipe doc comment, confirmed here so it isn't
-	// mistaken for a bug later.
-	if _, err := RunRecipe("clipboard-html-to-markdown-recipe"); err == nil {
-		t.Fatal("RunRecipe(clipboard-html-to-markdown-recipe) with no clipboard HTML returned nil error, want an error (plain-error prototype behavior, unlike runbook's soft-failure)")
+	// friendly explanation), this prototype's executor surfaces a plain
+	// error -- documented as a deliberate simplification in
+	// ExecuteWorkflow's doc comment, confirmed here so it isn't mistaken
+	// for a bug later.
+	if _, err := ExecuteWorkflow(steps); err == nil {
+		t.Fatal("ExecuteWorkflow with no clipboard HTML returned nil error, want an error (plain-error prototype behavior, unlike runbook's soft-failure)")
 	}
 }

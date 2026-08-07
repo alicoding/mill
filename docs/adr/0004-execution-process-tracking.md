@@ -114,7 +114,7 @@ read about) in a scratch Go module:
 (MIT license) as the durable-execution substrate for §6/§7**, behind a
 `internal/adapters/execution` port per CLAUDE.md's ports/adapters
 discipline — Mill's own domain logic (what counts as guardrail-worthy, a
-recipe's step sequence, session-identity resolution across tab/agent/
+workflow's step sequence, session-identity resolution across tab/agent/
 process) stays hand-written in `internal/domain/...` and only calls
 through the adapter interface, so this dependency stays swappable if
 DBOS's SQLite backend doesn't hold up under real use.
@@ -136,7 +136,7 @@ not assumed — to satisfy the exact failure mode §7 exists to prevent.
   question ADR-0003 left for §5/§7 can now be answered in terms of a
   concrete session/process model instead of in the abstract.
 - Not decided here: the actual shape of `internal/domain/execution` (what
-  a "step" is for Mill specifically — one shell command? A whole recipe?),
+  a "step" is for Mill specifically — one shell command? A whole workflow?),
   how session identity (tab + agent run + process, per §7) maps onto a
   DBOS workflow ID, and whether the re-run-safety requirement from spike
   finding #4 needs a generic solution or is handled per-command-type.

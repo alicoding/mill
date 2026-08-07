@@ -5,6 +5,7 @@ import (
 
 	"log"
 	"log/slog"
+	"os"
 	"path/filepath"
 	"time"
 
@@ -69,7 +70,15 @@ func main() {
 	// (~/Library/Application Support on macOS, verified directly against
 	// its adrg/xdg backing) -- the same convention Alfred/Raycast/1Password
 	// use for their own persisted settings, not something Mill invents.
-	settingsPath := filepath.Join(application.Path(application.PathConfigHome), "mill", "settings.json")
+	// MILL_SETTINGS_PATH overrides this -- needed because server-mode and
+	// desktop-mode builds resolve to the exact same real path otherwise,
+	// which would let the Playwright e2e suite (server mode) write real
+	// composed workflows into the actual desktop dev app's saved state.
+	// playwright.config.ts points this at a throwaway temp file.
+	settingsPath := os.Getenv("MILL_SETTINGS_PATH")
+	if settingsPath == "" {
+		settingsPath = filepath.Join(application.Path(application.PathConfigHome), "mill", "settings.json")
+	}
 	settingsStore, err := settings.New(settingsPath)
 	if err != nil {
 		log.Fatal(err)
@@ -77,6 +86,7 @@ func main() {
 
 	runbook := &RunbookService{}
 	hotkeys := NewHotkeyService(runbook, logger, settingsStore)
+	compositionService := NewCompositionService(settingsStore)
 
 	app := application.New(application.Options{
 		Name:        "mill",
@@ -87,7 +97,7 @@ func main() {
 			application.NewService(&CapabilitiesService{}),
 			application.NewService(runbook),
 			application.NewService(hotkeys),
-			application.NewService(&CompositionService{}),
+			application.NewService(compositionService),
 		},
 		Assets: application.AssetOptions{
 			Handler: application.AssetFileServerFS(assets),
