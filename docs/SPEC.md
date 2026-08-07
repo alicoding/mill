@@ -1121,6 +1121,28 @@ that environment, on something testable directly in this dev session:
   each tab's label/node count stayed exactly its own throughout — the
   concrete behavior this whole pass exists to deliver, not just that the
   tab bar renders.
+- **Update — the "Add steps" palette is grouped by Kind via a real
+  `TreeView`, replacing the flat, ungrouped `.map()` it started as.**
+  Prompted by a direct question about what Primer already offered for
+  categorizing node types as the primitive count grows past what a flat
+  list scans well (13 today across 5 Kinds); full reasoning and the
+  process fix this surfaced are in §9.1. Confirmed directly against
+  `@primer/react`'s compiled source before adopting, not assumed:
+  `TreeView.Item` spreads its remaining props onto the rendered `<li>`,
+  so the existing `draggable`/`onDragStart` drag-source mechanism
+  (`CompositionCanvas.tsx`'s `onCanvasDrop` reads the dragged node type
+  ID back off the DOM event) carries over unchanged — only the container
+  element changed. Each Kind renders as a `TreeView.Item` with
+  `defaultExpanded` (all expanded today, since 13 items is still fully
+  scannable open; the point is headroom, not hiding what exists yet),
+  its `NodeType`s as draggable leaf items underneath, no `SubTree`.
+  Zero new dependency — `TreeView` already shipped in the adopted Primer
+  version. Verified end-to-end (Playwright, real Go backend): the
+  existing e2e drag-and-drop test and the `palette-item` count assertion
+  (13, leaves only — group headers don't carry that test ID) both pass
+  unchanged, plus a direct screenshot check that grouping/collapse
+  renders correctly. `UX: PROTOTYPE` still applies to Composition
+  overall — this is a structural fix, not a design pass.
 
 ### 3.1 Raw material — root cause of the heredoc pain, not yet resolved
 
@@ -2058,10 +2080,38 @@ actually get built is `OPEN` — the list below is candidates, not commitments.
   system prompt, an explicit tool allowlist, and a natural-language
   trigger/role description for routing. Nothing in this repo's setup is
   Anthropic-idiosyncratic; adopting it isn't a lock-in risk.
+- **Path-scoped rules are for just-in-time checks, not CLAUDE.md — proven
+  against a real miss, not just asserted.** Caught live: `NodePalette.tsx`
+  (§3) was built as a flat, hand-rolled `.map()` over node types with no
+  grouping, despite CLAUDE.md's existing "use Primer, don't hand-roll"
+  rule — the individual pieces (a `Stack`, a styled `<div>`) genuinely
+  were Primer, so the miss wasn't a rule-compliance failure, it needed
+  semantic judgment about the *collection's shape* that a rule read once
+  at session start didn't surface at the moment it mattered. Researched
+  whether tooling could catch this class of miss instead of relying on
+  memory, rather than assuming either way: PreToolUse hooks can only
+  allow/block/inject context, not run semantic code analysis — they can
+  enforce "don't run `git reset --hard`" but not "a grouped-list
+  component already existed for this shape"; ESLint's
+  `no-restricted-imports` catches importing the wrong low-level
+  primitive, not choosing the wrong JSX structure — neither tool is
+  shaped for this class of check. Anthropic's own context-engineering
+  guidance names the actual fix directly: just-in-time retrieval (a
+  lightweight pointer surfaced at the point of need) beats upfront,
+  always-loaded instructions competing for attention deep into a long
+  session — which is exactly what the path-scoped-rule mechanism above
+  is for, and it went unused until this. `.claude/rules/frontend.md`
+  (scoped to `frontend/src/**`) now carries the actual "check the kit's
+  list/group/hierarchy family before hand-rolling a collection UI"
+  check; CLAUDE.md's own Primer bullet stays a short pointer rather than
+  duplicating it, per this section's own anti-duplication rule. `LOCKED`
 - Sources: Claude Code docs — memory (`/docs/en/memory`), skills
   (`/docs/en/skills`), subagents (`/docs/en/sub-agents`), all at
   `code.claude.com`; agentskills.io (Agent Skills open standard); OpenAI
-  Agents SDK, LangGraph, and CrewAI framework docs for the cross-check.
+  Agents SDK, LangGraph, and CrewAI framework docs for the cross-check;
+  Anthropic's ["Effective context engineering for AI
+  agents"](https://www.anthropic.com/engineering/effective-context-engineering-for-ai-agents)
+  for the just-in-time-retrieval reasoning above.
 
 ### 9.2 Candidate skills/agents — `OPEN` (names + one-line justification only; none scaffolded yet)
 

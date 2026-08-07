@@ -108,6 +108,11 @@ implementing one option — surface the choice.
   CSS Modules + CSS variables instead, so this is the framework's own
   current guidance, not an invented preference (see `docs/SPEC.md` §1.3).
   Don't add a single global stylesheet or reach for Tailwind/CSS-in-JS.
+  This rule applies to **structure**, not just individual widgets — see
+  `.claude/rules/frontend.md` (loaded automatically when editing
+  `frontend/src/**`) for the check to run before hand-assembling any new
+  collection UI; reasoning and the real miss that surfaced it are in
+  `docs/SPEC.md` §9.1.
 - **Max 500 lines per hand-written source file (`.go`/`.ts`/`.tsx`).**
   Enforced by `scripts/check-loc.sh`, run by both Lefthook (pre-commit)
   and CI's `file-loc-limit` job, so it can't land un-caught either way. A
