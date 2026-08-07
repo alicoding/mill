@@ -241,6 +241,20 @@ and [`docs/adr/0002-cicd-pipeline-phased-rollout.md`](adr/0002-cicd-pipeline-pha
   is meaningfully slower than everything else there; suited to CI, not
   every local commit). `task setup:hooks` installs it once per clone.
   `LOCKED`
+- **Max 500 lines per hand-written `.go`/`.ts`/`.tsx` source file** —
+  `scripts/check-loc.sh`, run by both Lefthook and CI's `file-loc-limit`
+  job (one script, not two copies that can drift, same "mirrors CI"
+  principle as Lefthook's own header comment). Generated Wails bindings
+  and the vendored gomobile scaffold (`build/ios/`, `build/android/`) are
+  exempt. Introduced once two files crossed it during the Configure-
+  surface work (`internal/domain/composition/composition.go` at 944
+  lines, `frontend/src/CompositionCanvas.tsx` at 623) — both split along
+  real package/component seams (composition.go into `types.go`/
+  `nodetypes.go`/`graph.go`/`integration.go`/`execute.go`/
+  `capabilitymap.go`; CompositionCanvas.tsx into `CanvasNodeView.tsx`/
+  `draftWorkflowSchema.ts`/`canvasConversion.ts`/`NodePalette.tsx`), zero
+  behavior change, verified via the full check suite plus a real
+  server-mode Playwright smoke pass before landing. `LOCKED`
 - `HotkeyService` cannot be exercised by headless/server-mode CI — no live
   macOS Cocoa run loop in that mode. Verification stays an explicit manual
   desktop-mode check (`.claude/skills/run-mill`), never a silent CI
@@ -1304,7 +1318,7 @@ Plan step for this as a standing rule.
 | **Decision / branching** | Route execution down one of several named output edges based on a condition evaluated against the running payload | Node/graph semantics: build (core domain — composition rules). Expression evaluation underneath: adopt (`expr-lang/expr`, MIT, sandboxed/side-effect-free/loop-bounded by design — verified directly, not assumed) rather than hand-writing a condition parser | `LOCKED` (execution engine) — `internal/domain/composition`'s `ExecContext`/`ValidateGraph`/`nextNode` (see the Update note right after this table) walk real Decision branches end-to-end; `KindDecision` + `decision-route` NodeType render and connect on the canvas. Authoring real conditions (a visual rule builder) is still `OPEN` — see §3.5's Decision row |
 | **Parallel Steps** | Fan out to multiple steps concurrently, then join | Graph/fan-in semantics: build. Concurrency execution: DBOS's `Queue`/`WithWorkerConcurrency` (§7) is a plausible real backing mechanism once designed, not hand-rolled goroutine management | ADR-0005 names it, deferred |
 | **Child Workflow** | One workflow invokes another as a step | Build (composition rule — no library has an opinion on Mill's own workflow-of-workflows semantics) | ADR-0005 names it, deferred |
-| **Integration / Connector node** | Call an external HTTP API, auth'd | Wire protocol: adopt (stdlib `net/http`, or MCP per §3.1 if exposed as a tool). Connector config/credential model: build | §4, `OPEN` |
+| **Integration / Connector node** | Call an external HTTP API, auth'd | Wire protocol: adopt (stdlib `net/http`, via `internal/adapters/httpconnector`). Connector config/credential model: build (`internal/domain/connector`) + adopt (`zalando/go-keyring` via `internal/adapters/credential`) | `LOCKED` (execution) — `internal/domain/connector`'s `Connector{ID, Label, Type, BaseURL, AuthType, Headers}` + a new `integration-http` `NodeType` (`KindProcess`) execute real HTTP calls, resolving `AuthType`/secret into the right header (`X-Api-Key` or `Authorization: Bearer`) via `composition.SetConnectorLookup`'s injected seam (mirrors `TriggerService`'s `Syncer` pattern — the domain package doesn't own connector storage). §4 stays `OPEN` on the Configure-surface UI to author a Connector; see §3.5's own row |
 | **Durable step execution / retry / resume** | Survive the process dying mid-workflow, checkpoint per step, retry transient failures | Adopt (DBOS-Go) | ADR-0004, integration in progress this session |
 | **Replay / re-run from history** | Re-invoke a past run, ideally resuming rather than restarting | Mechanism: adopt (DBOS `ForkWorkflow`/workflow-ID resume). UI/policy: build | Named this session — not built, deliberately deferred past the current DBOS-integration pass |
 | **Draft/live versioning** | Edit a workflow without breaking the currently-live version | Build (no library owns Mill's own versioning semantics) | Real gap flagged from the reference-platform review (§3.2), `OPEN` |
@@ -1565,7 +1579,7 @@ true and isn't what was asked for.
 |---|---|---|---|
 | Trigger config (cron expression, watch path, hotkey combo) | Inline canvas Inspector | 1:1 — inherently specific to the one workflow it triggers | `LOCKED`, built this way (§3.4) — no change; a trigger's config is never meaningfully shared |
 | Capture/Process/Apply config (today's `html` field, etc.) | Inline canvas Inspector | 1:1 | `LOCKED`, built this way — genuinely simple fields, a dedicated screen would be overhead, not clarity |
-| **Integration / Connector** (HTTP Connector, DB Connector, ...) | **Configure**, under a new Integration category | **1:many** — one configured connector (auth, base URL) referenced by ID from any workflow's Integration node | `OPEN` — this is §4's own still-open surface, now with a concrete home |
+| **Integration / Connector** (HTTP Connector, DB Connector, ...) | **Configure**, under a new Integration category | **1:many** — one configured connector (auth, base URL) referenced by ID from any workflow's Integration node | Execution engine `LOCKED` (§3.3's Integration row) — a workflow can call a real HTTP connector today. *Where it's authored* stays `OPEN`: no Configure-surface CRUD UI exists yet (`ConfigureService`, tracked as a follow-on), so a connector's ID/base URL/auth/secret are only settable by hand-calling the domain layer in the interim, same authoring gap Decision has |
 | **Input / Attributes** | **Configure** | **1:1** — scoped to the one workflow that declares it, per §3.2's original cardinality note | `OPEN` — named in §3.2, no node kind or schema built yet |
 | **Decision** | **Configure** (a rule/decision-table editor needs real room, not a narrow Inspector sidebar) | **1:1** recommended — §3.2 flagged this cardinality as genuinely unconfirmed ("check before assuming either way"); a workflow's decision logic is plausibly workflow-specific business logic, not shared, but this is a real open question, not decided here | Execution engine `LOCKED` (§3.3's Decision row, Update note) — a Decision node branches for real today. *Where it's authored* stays `OPEN`: no Configure-surface rule builder exists yet, so conditions are only settable by hand-editing persisted JSON in the interim |
 | **List** (a reusable lookup/reference dataset) | **Configure** | **1:many** recommended, same shape as Integration — a shared lookup table is the kind of thing multiple workflows would plausibly reference | `OPEN` — named for the first time this turn; not yet in ADR-0005's taxonomy at all, a real gap to add there |
@@ -1583,19 +1597,31 @@ user-authoring mechanism. Configure is Mill offering a *better authoring
 surface* for node kinds Mill itself still defines (Integration, Input,
 Decision, List) — not a way to add kinds Mill doesn't know about.
 
-**Credential storage — §4's own still-open question, now has a real
-adopt candidate.** `github.com/zalando/go-keyring` (MIT), checked
-directly: no cgo on any platform, and its macOS backend shells out to
-`/usr/bin/security` — the exact same shape as Mill's existing
-`internal/adapters/clipboard` (`osascript`/`pbcopy`), not a new kind of
-dependency. This resolves §4's "1Password-style vault local to Mill vs.
-delegating to an existing secrets manager" framing directly: it's
-neither exactly — it delegates to the OS's *own* already-present
-keychain (Keychain on macOS, Credential Manager on Windows, Secret
-Service on Linux) rather than either hand-rolling a vault or depending on
-a separate app like 1Password being installed. `LOCKED` (library pick)
-— not yet integrated; blocked on the Integration/Connector node kind
-actually existing to need credentials in the first place.
+**Credential storage — §4's own still-open question, now built.**
+`github.com/zalando/go-keyring` (MIT), checked directly: no cgo on any
+platform, and its macOS backend shells out to `/usr/bin/security` — the
+exact same shape as Mill's existing `internal/adapters/clipboard`
+(`osascript`/`pbcopy`), not a new kind of dependency. This resolves §4's
+"1Password-style vault local to Mill vs. delegating to an existing
+secrets manager" framing directly: it's neither exactly — it delegates
+to the OS's *own* already-present keychain (Keychain on macOS,
+Credential Manager on Windows, Secret Service on Linux) rather than
+either hand-rolling a vault or depending on a separate app like
+1Password being installed. `internal/adapters/credential` wraps it
+behind `Set`/`Get`/`Delete(connectorID, secret)`, namespaced under one
+keychain "service" name (`mill-connector`) so every connector's secret
+groups under one recognizable Keychain entry. Unit-tested via
+`keyring.MockInit()` (the library ships its own in-memory mock, unlike
+`internal/adapters/clipboard`'s real-desktop-only testability) — a real
+round-trip is CI-testable, not just a skip-in-CI placeholder. A real
+Connector value never carries its own secret in memory/at rest outside
+the keychain — `internal/domain/connector.Connector` has no secret
+field at all; `composition.go`'s `integration-http` node resolves the
+secret only at the moment of an actual call, via the injected
+`ResolvedConnector`. `LOCKED` (library pick + adapter, integrated) —
+still `OPEN`: a Configure-surface UI to write a secret (write-only, no
+`GetSecret` binding — see the Configure-surface bullet below) doesn't
+exist yet.
 
 **Sidebar restructuring this implies** — captured here since it's a
 direct consequence, not decided independently of it:
@@ -1633,13 +1659,26 @@ CLAUDE.md's Plan step, before any of it becomes code, same discipline
 
 ## 4. Connectors
 
-- `OPEN`. Named so far: generic HTTP connector, Jira/Confluence as a
-  first-class example.
-- Not yet decided: auth flow per connector type (OAuth vs. token vs. API
-  key), and whether connectors are built-in or a plugin surface.
-  Credential *storage* specifically now has a real adopt candidate
-  (`zalando/go-keyring`, wrapping each OS's own native keychain) and a
-  concrete home (the Integration category inside Configure) — see §3.5.
+- **Generic HTTP connector: `LOCKED` and built.** `internal/domain/
+  connector.Connector{ID, Label, Type, BaseURL, AuthType, Headers}` (the
+  domain shape) + `internal/adapters/httpconnector` (stdlib `net/http`
+  execution, 30s timeout, no knowledge of auth/credential storage — a
+  pure "do an HTTP call" utility) + `internal/adapters/credential`
+  (`zalando/go-keyring`-backed secret storage — see §3.5's Credential
+  storage bullet). `Type` supports one value today (`TypeHTTP`) — per
+  §3.2's incremental-extensibility principle, a DB/SOAP connector adds
+  its own `Type` when a real need surfaces, not speculatively now.
+  `AuthType` supports `none`/`apikey`/`bearer`; OAuth2 is real, named
+  future work (`golang.org/x/oauth2` already vetted for it, unused so
+  far), not stubbed ahead of need.
+- Jira/Confluence as a first-class example: still `OPEN`, unbuilt — the
+  generic connector is real, but no named-vendor preset exists yet.
+- Whether connectors are built-in or a plugin surface: still `OPEN`.
+- **Still `OPEN`: authoring.** No Configure-surface CRUD UI exists to
+  create/edit a Connector or write its secret (`ConfigureService`,
+  tracked as a follow-on capability) — today a Connector only exists if
+  something calls `internal/domain/connector`/`internal/adapters/
+  credential` directly. Same authoring gap as Decision (§3.5).
 - See §3.2 for the node-type-vs-instance composition pattern and the
   incremental-extensibility principle for connector protocol/auth support.
 

@@ -5,6 +5,9 @@
 pre-commit:
   parallel: true
   jobs:
+    - name: file-loc-limit
+      glob: "*.{go,ts,tsx}"
+      run: ./scripts/check-loc.sh
     - name: go-vet
       glob: "*.go"
       run: go vet . ./internal/...
