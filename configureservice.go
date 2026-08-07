@@ -10,6 +10,7 @@ import (
 	"github.com/alicoding/mill/internal/domain/composition"
 	"github.com/alicoding/mill/internal/domain/connector"
 	"github.com/alicoding/mill/internal/domain/list"
+	"github.com/alicoding/mill/internal/domain/mcpserver"
 )
 
 // connectorsKey/listsKey mirror workflowsKey's shape (compositionservice.go):
@@ -36,14 +37,17 @@ type ConfigureService struct {
 	store       settings.Store
 	connectors  []connector.Connector
 	lists       []list.List
+	mcpServers  []mcpserver.MCPServer
 	composition *CompositionService
 }
 
 func NewConfigureService(store settings.Store, comp *CompositionService) *ConfigureService {
 	c := &ConfigureService{store: store, composition: comp}
 	c.restore()
+	c.restoreMCPServers()
 	composition.SetConnectorLookup(c.resolveConnector)
 	composition.SetListLookup(c.resolveList)
+	composition.SetMCPServerLookup(c.resolveMCPServer)
 	return c
 }
 

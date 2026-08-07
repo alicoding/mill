@@ -22,6 +22,9 @@ import { Call as $Call, CancellablePromise as $CancellablePromise } from "@wails
 
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
+import * as mcpclient$0 from "./internal/adapters/mcpclient/models.js";
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: Unused imports
 import * as composition$0 from "./internal/domain/composition/models.js";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
@@ -29,6 +32,9 @@ import * as connector$0 from "./internal/domain/connector/models.js";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
 import * as list$0 from "./internal/domain/list/models.js";
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: Unused imports
+import * as mcpserver$0 from "./internal/domain/mcpserver/models.js";
 
 export function Connectors(): $CancellablePromise<connector$0.Connector[] | null> {
     return $Call.ByID(1335444401);
@@ -40,6 +46,10 @@ export function CreateConnector(label: string, connType: string, baseURL: string
 
 export function CreateList(label: string, entries: { [_ in string]?: string } | null): $CancellablePromise<list$0.List> {
     return $Call.ByID(3337850801, label, entries);
+}
+
+export function CreateMCPServer(label: string, command: string, args: string[] | null): $CancellablePromise<mcpserver$0.MCPServer> {
+    return $Call.ByID(4163083792, label, command, args);
 }
 
 /**
@@ -65,8 +75,29 @@ export function DeleteList(id: string): $CancellablePromise<void> {
     return $Call.ByID(1808247278, id);
 }
 
+export function DeleteMCPServer(id: string): $CancellablePromise<void> {
+    return $Call.ByID(3639713705, id);
+}
+
+/**
+ * ListMCPServerTools is a live, on-demand reference lookup (connects to
+ * the server, lists its tools, disconnects) -- not persisted or synced,
+ * same "occasional reference lookup, not a live feed" shape Connectors()/
+ * Lists() themselves already have (the frontend polls them on demand,
+ * nothing pushes). This is docs/SPEC.md §3.6's actual discoverability
+ * answer: a user finds the exact toolName to paste into an mcp-tool-call
+ * node here, not by guessing.
+ */
+export function ListMCPServerTools(id: string): $CancellablePromise<mcpclient$0.Tool[] | null> {
+    return $Call.ByID(626628911, id);
+}
+
 export function Lists(): $CancellablePromise<list$0.List[] | null> {
     return $Call.ByID(158818782);
+}
+
+export function MCPServers(): $CancellablePromise<mcpserver$0.MCPServer[] | null> {
+    return $Call.ByID(2441355025);
 }
 
 /**
@@ -85,6 +116,10 @@ export function UpdateConnector(id: string, label: string, connType: string, bas
 
 export function UpdateList(id: string, label: string, entries: { [_ in string]?: string } | null): $CancellablePromise<list$0.List> {
     return $Call.ByID(1766623988, id, label, entries);
+}
+
+export function UpdateMCPServer(id: string, label: string, command: string, args: string[] | null): $CancellablePromise<mcpserver$0.MCPServer> {
+    return $Call.ByID(3172051595, id, label, command, args);
 }
 
 export function UpdateWorkflowAttributes(workflowID: string, attrs: composition$0.AttributeDef[] | null): $CancellablePromise<composition$0.Workflow> {
