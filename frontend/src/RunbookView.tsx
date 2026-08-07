@@ -140,7 +140,12 @@ function RunbookView() {
                   </Stack>
 
                   <Stack direction="horizontal" align="center" gap="condensed" className={styles.itemControls}>
-                    <Button onClick={() => run(action.ID)} disabled={runningId === action.ID} size="small">
+                    <Button
+                      onClick={() => run(action.ID)}
+                      disabled={runningId === action.ID}
+                      size="small"
+                      aria-label={`Run ${action.Name}`}
+                    >
                       {runningId === action.ID ? 'Running…' : 'Run'}
                     </Button>
 
