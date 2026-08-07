@@ -39,23 +39,30 @@ async function dragPaletteItemToCanvas(page: import('@playwright/test').Page, la
   }, label)
 }
 
-test('Composition page lists node primitives and built-in workflows', async ({ page }) => {
+test('Composition page lists built-in workflows; node primitives live inside the canvas, not the list', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Composition' }).click()
   await expect(page.getByRole('heading', { name: 'Capability composition' })).toBeVisible()
 
-  await expect(page.getByTestId('node-type-row')).toHaveCount(4)
   await expect(workflowRow(page, 'Load sample HTML')).toBeVisible()
   await expect(workflowRow(page, 'Clipboard → Markdown')).toBeVisible()
   await expect(workflowRow(page, 'Load sample HTML').getByText('built-in')).toBeVisible()
 
   // The workflow's step chain still renders as chips (walked from
-  // Nodes/Edges in execution order, not a flat Steps array) -- the canvas
-  // is the authoring surface, the saved-workflow list stays read-only.
+  // Nodes/Edges in execution order, not a flat Steps array) -- the list
+  // stays read-only, the canvas (entered via New workflow or Edit) is
+  // the only authoring surface, matching the reference platform's own
+  // Workflows-list/canvas split (docs/SPEC.md §3.2).
   await expect(workflowRow(page, 'Clipboard → Markdown').getByText('Capture: clipboard HTML')).toBeVisible()
   // Configuration is visible as part of composition, not hidden: the
   // built-in's configured HTML value shows inline on its step chip.
   await expect(workflowRow(page, 'Load sample HTML').getByText(/html:/i)).toBeVisible()
+
+  // Node primitives (the drag palette) only appear once you enter the
+  // canvas -- not on the list page itself.
+  await expect(page.getByTestId('palette-item')).toHaveCount(0)
+  await page.getByTestId('new-workflow').click()
+  await expect(page.getByTestId('palette-item')).toHaveCount(4)
 })
 
 test('Running the load-sample workflow produces a visible response, success or error', async ({ page }) => {
@@ -86,6 +93,7 @@ test('Running the clipboard-to-markdown workflow produces a visible response, su
 test('Dragging a node onto the canvas configures it as it is added, then saves, runs and deletes for real', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Composition' }).click()
+  await page.getByTestId('new-workflow').click()
   await expect(page.getByTestId('palette-item').first()).toBeVisible()
 
   await dragPaletteItemToCanvas(page, 'Apply: write HTML to clipboard')
@@ -129,6 +137,7 @@ test('Dragging a node onto the canvas configures it as it is added, then saves, 
 test('A single dropped node with no connections is a valid one-node workflow', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Composition' }).click()
+  await page.getByTestId('new-workflow').click()
   await expect(page.getByTestId('palette-item').first()).toBeVisible()
 
   // Zero edges is correct for exactly one node (linearOrder/the zod
@@ -146,8 +155,50 @@ test('A single dropped node with no connections is a valid one-node workflow', a
   await expect(row).toHaveCount(0)
 })
 
-test('Built-in workflows have no delete control', async ({ page }) => {
+test('Built-in workflows have no edit or delete control', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Composition' }).click()
   await expect(workflowRow(page, 'Load sample HTML').getByRole('button', { name: /Delete/ })).toHaveCount(0)
+  await expect(workflowRow(page, 'Load sample HTML').getByRole('button', { name: /Edit/ })).toHaveCount(0)
+})
+
+test('Editing an existing workflow updates it in place, not as a duplicate', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Composition' }).click()
+
+  // Compose and save a workflow to edit.
+  await page.getByTestId('new-workflow').click()
+  await dragPaletteItemToCanvas(page, 'Apply: write HTML to clipboard')
+  await page.getByLabel('Label').fill('E2E editable workflow')
+  await page.getByTestId('save-workflow').click()
+
+  const row = workflowRow(page, 'E2E editable workflow')
+  await expect(row).toBeVisible()
+
+  // Re-opening it loads the existing node (not a fresh empty canvas) and
+  // its already-configured default HTML value, and Save reads "Save
+  // changes" rather than "Save workflow" -- confirming this is an edit,
+  // not a second composition.
+  await row.getByRole('button', { name: /Edit E2E editable workflow/ }).click()
+  await expect(page.locator('.react-flow__node')).toHaveCount(1)
+  await expect(page.getByTestId('save-workflow')).toHaveText('Save changes')
+  await expect(page.getByLabel('Label')).toHaveValue('E2E editable workflow')
+
+  await page.locator('.react-flow__node').click()
+  const configField = page.getByTestId('canvas-config-field')
+  await configField.fill('<p>edited value</p>')
+  await configField.blur()
+  await page.getByLabel('Label').fill('E2E editable workflow (edited)')
+  await page.getByTestId('save-workflow').click()
+
+  // Same workflow, updated -- not a duplicate: the old label is gone,
+  // the new one shows the edited config, and there's exactly one row
+  // for it.
+  await expect(workflowRow(page, 'E2E editable workflow')).toHaveCount(0)
+  const updated = workflowRow(page, 'E2E editable workflow (edited)')
+  await expect(updated).toHaveCount(1)
+  await expect(updated.getByText(/edited value/)).toBeVisible()
+
+  await updated.getByRole('button', { name: /Delete/ }).click()
+  await expect(updated).toHaveCount(0)
 })

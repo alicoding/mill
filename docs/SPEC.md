@@ -898,6 +898,38 @@ that environment, on something testable directly in this dev session:
   this proves the shape, not a finished design (no re-opening a saved
   workflow back into the canvas to edit it yet; that list stays
   read-only).
+- **Update — the gap named directly above (no re-opening a saved
+  workflow to edit) is closed: the canvas is now entered via "New
+  workflow" or by editing an existing one, not permanently embedded
+  alongside the list.** Matches the reference no-code platform's own
+  Workflows-list/canvas split named in §3.2, rather than showing the
+  canvas and the list on one screen at all times. `CompositionView.tsx`
+  holds a small local `editorTarget` state (`{id: string | null} |
+  null` — `null` id means composing new) exactly the way
+  `RunbookView.tsx` already keeps its own hotkey-recording UI state
+  local rather than in the shared store (§1.3) — this is single-view
+  navigation, not app-wide state, so it doesn't touch `store.ts` or
+  `App.tsx`'s sidebar. The node-type palette moved from the list page
+  into the canvas itself (it's only useful once you're somewhere to
+  drag onto). `CompositionService.UpdateWorkflow` (Go) was added
+  alongside the already-existing `CreateWorkflow`/`DeleteWorkflow`:
+  same validation (`ResolveNodeDefaults`, non-empty label/nodes), keyed
+  by the workflow's existing ID so editing and re-saving updates it in
+  place rather than creating a duplicate — built-in workflows aren't in
+  `CompositionService`'s editable set at all (same disjoint-ID-space
+  reasoning `DeleteWorkflow` already relied on), so they get no Edit
+  control, view- and Run-only, consistent with them having no Delete
+  control either. `CompositionCanvas.tsx` loads an existing workflow's
+  `Nodes`/`Edges` on mount (converting Wails' PascalCase wire shape into
+  React Flow's own node/edge shape) — the parent keys the component on
+  the target workflow's id (`key={editorTarget.id ?? 'new'}`) so
+  switching between "compose new" and "edit workflow A" vs "edit
+  workflow B" is always a fresh mount instead of a stale-state diffing
+  problem. Verified end-to-end via the real Go backend (server mode +
+  Playwright): composed and saved a workflow, re-opened it via Edit,
+  confirmed the existing node and its configured value loaded (not an
+  empty canvas), edited the config and label, saved, confirmed the
+  workflow list shows the updated workflow once — not a duplicate.
 
 ### 3.1 Raw material — root cause of the heredoc pain, not yet resolved
 

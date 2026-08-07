@@ -113,6 +113,53 @@ func (c *CompositionService) CreateWorkflow(label, description string, nodes []c
 	return wf, nil
 }
 
+// UpdateWorkflow replaces an existing user-composed workflow's nodes/
+// edges (and label/description) in place, keeping its ID stable -- so
+// re-opening a saved workflow on the canvas and saving edits updates it
+// rather than creating a duplicate. Built-in workflows aren't in
+// c.user, so they can never be updated -- same disjoint-ID-space
+// reasoning DeleteWorkflow already relies on.
+func (c *CompositionService) UpdateWorkflow(id, label, description string, nodes []composition.Node, edges []composition.Edge) (composition.Workflow, error) {
+	if strings.TrimSpace(label) == "" {
+		return composition.Workflow{}, fmt.Errorf("a workflow needs a label")
+	}
+	if len(nodes) == 0 {
+		return composition.Workflow{}, fmt.Errorf("a workflow needs at least one node")
+	}
+
+	resolved, err := composition.ResolveNodeDefaults(nodes)
+	if err != nil {
+		return composition.Workflow{}, err
+	}
+
+	c.mu.Lock()
+	idx := -1
+	for i, wf := range c.user {
+		if wf.ID == id {
+			idx = i
+			break
+		}
+	}
+	if idx == -1 {
+		c.mu.Unlock()
+		return composition.Workflow{}, fmt.Errorf("no user-composed workflow with id %q (built-in workflows can't be edited)", id)
+	}
+
+	wf := composition.Workflow{
+		ID:          id,
+		Label:       label,
+		Description: description,
+		Nodes:       resolved,
+		Edges:       edges,
+		BuiltIn:     false,
+	}
+	c.user[idx] = wf
+	c.mu.Unlock()
+
+	c.persist()
+	return wf, nil
+}
+
 // DeleteWorkflow removes a user-composed workflow. Built-in workflows
 // aren't in c.user at all, so a caller can never delete one -- no
 // special-case check needed, the ID space is naturally disjoint.
