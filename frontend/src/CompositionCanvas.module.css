@@ -6,17 +6,30 @@
    properties), same discipline as the rest of the app; React Flow's own
    node/edge/control chrome is themed via its documented CSS variables
    rather than fighting its default styles. */
+/* Fills the height its parent .editorPanel (CompositionView.module.css)
+   hands it -- the toolbar and the Label/Description/Save block stay
+   their natural content height, .canvasWrap is the one flexible region
+   that grows to use whatever's left, so the editor uses the pane's full
+   height instead of sitting as a small fixed box with empty space below
+   it (a real gap the user flagged directly, not a hypothetical). */
 .canvasSection {
     width: 100%;
+    height: 100%;
+    flex: 1 1 auto;
     padding: 0 var(--s-4) var(--s-4);
     box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
 }
 .toolbar {
     margin-bottom: var(--base-size-8);
+    flex: 0 0 auto;
 }
 .canvasWrap {
     width: 100%;
-    height: 420px;
+    flex: 1 1 auto;
+    min-height: 320px;
     border: 1px solid var(--borderColor-default);
     border-radius: var(--borderRadius-medium);
     overflow: hidden;
@@ -78,5 +91,6 @@
     box-shadow: var(--xy-node-boxshadow-selected);
 }
 .saveRow {
+    flex: 0 0 auto;
     margin-top: var(--base-size-12);
 }
