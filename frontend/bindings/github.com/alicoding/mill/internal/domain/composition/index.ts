@@ -8,8 +8,10 @@ export {
 
 export type {
     ConfigField,
+    Edge,
     MapEntry,
+    Node,
     NodeType,
-    Step,
+    Position,
     Workflow
 } from "./models.js";

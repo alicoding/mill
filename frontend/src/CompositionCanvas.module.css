@@ -1,0 +1,70 @@
+/* CompositionCanvas: the React Flow authoring surface (docs/SPEC.md §3,
+   overriding ADR-0005 B2's deferral). Deliberately NOT nested inside
+   RunbookView.module.css's .runbook (max-width: 760px, built for narrow
+   list/card content) -- a canvas needs the pane's full width. Layout/
+   type/color come from Primer tokens (@primer/primitives CSS custom
+   properties), same discipline as the rest of the app; React Flow's own
+   node/edge/control chrome is themed via its documented CSS variables
+   rather than fighting its default styles. */
+.canvasSection {
+    width: 100%;
+    padding: 0 var(--s-4) var(--s-4);
+    box-sizing: border-box;
+}
+.toolbar {
+    margin-bottom: var(--base-size-8);
+}
+.canvasWrap {
+    width: 100%;
+    height: 420px;
+    border: 1px solid var(--borderColor-default);
+    border-radius: var(--borderRadius-medium);
+    overflow: hidden;
+    display: flex;
+}
+.canvas {
+    flex: 1 1 auto;
+    min-width: 0;
+    background: var(--bgColor-inset);
+
+    --xy-node-background-color: var(--bgColor-muted);
+    --xy-node-border: 1px solid var(--borderColor-default);
+    --xy-node-color: var(--fgColor-default);
+    --xy-node-boxshadow-selected: 0 0 0 2px var(--borderColor-accent-emphasis);
+    --xy-edge-stroke: var(--fgColor-muted);
+    --xy-edge-stroke-selected: var(--borderColor-accent-emphasis);
+    --xy-controls-button-background-color: var(--bgColor-muted);
+    --xy-controls-button-border-color: var(--borderColor-default);
+    --xy-controls-button-color: var(--fgColor-default);
+    --xy-minimap-background-color: var(--bgColor-muted);
+}
+.inspector {
+    flex: 0 0 260px;
+    min-width: 0;
+    border-left: 1px solid var(--borderColor-default);
+    background: var(--bgColor-default);
+    padding: var(--base-size-12);
+    overflow-y: auto;
+}
+.inspectorEmpty {
+    color: var(--fgColor-muted);
+    padding: var(--base-size-12);
+}
+.paletteItem {
+    cursor: grab;
+    user-select: none;
+}
+.paletteItem:active { cursor: grabbing; }
+.canvasNode {
+    padding: var(--base-size-8) var(--base-size-12);
+    border-radius: var(--borderRadius-medium);
+    background: var(--xy-node-background-color);
+    border: var(--xy-node-border);
+    min-width: 160px;
+}
+.canvasNodeSelected {
+    box-shadow: var(--xy-node-boxshadow-selected);
+}
+.saveRow {
+    margin-top: var(--base-size-12);
+}

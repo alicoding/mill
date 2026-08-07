@@ -75,6 +75,7 @@ function App() {
       pushActivity({
         id: crypto.randomUUID(),
         time: new Date().toLocaleTimeString(),
+        timestamp: Date.now(),
         source: 'hotkey',
         actionID: evt.data.actionID,
         label: actions?.find((a) => a.ID === evt.data.actionID)?.Name ?? evt.data.actionID,

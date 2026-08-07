@@ -17,11 +17,18 @@ import (
 // user-composed workflow as one JSON blob -- same shape as
 // hotkeyBindingsKey (hotkeyservice.go): one atomic read/write, sharing
 // the same settings.json file rather than a second store/file. This is
-// persistence for a workflow's authored *definition* (which steps, what
-// order, what config) -- a separate, already-settled concern from
-// SPEC.md §7's still-open question of persisting/resuming a *running*
-// workflow's execution state, which this does not touch or presuppose.
-const workflowsKey = "composition-workflows"
+// persistence for a workflow's authored *definition* (which nodes/edges,
+// what config) -- a separate, already-settled concern from SPEC.md §7's
+// still-open question of persisting/resuming a *running* workflow's
+// execution state, which this does not touch or presuppose.
+//
+// Versioned ("-v2") because the persisted shape just changed (Steps ->
+// Nodes+Edges, see composition.go's canvas migration): restore() already
+// silently discards on unmarshal failure, so keeping the old key would
+// mean old-shape data gets actively read and dropped on next launch.
+// Renaming the key instead orphans it harmlessly. This is single-
+// maintainer prototype data -- a real migration isn't warranted.
+const workflowsKey = "composition-workflows-v2"
 
 var nonAlnum = regexp.MustCompile(`[^a-z0-9]+`)
 
@@ -70,18 +77,21 @@ func (c *CompositionService) Workflows() []composition.Workflow {
 }
 
 // CreateWorkflow composes and configures a new workflow in one step, per
-// SPEC.md §3: ResolveStepDefaults validates every step's node type and
-// fills in any missing config with that field's default, so the stored
-// workflow is never partially configured.
-func (c *CompositionService) CreateWorkflow(label, description string, steps []composition.Step) (composition.Workflow, error) {
+// SPEC.md §3: ResolveNodeDefaults validates every node's type and fills
+// in any missing config with that field's default, so the stored
+// workflow is never partially configured. The graph shape itself (does
+// it form one valid chain?) isn't re-checked here -- ExecuteWorkflow
+// validates that at run time, and the canvas is separately designed to
+// prevent drawing an invalid graph in the first place.
+func (c *CompositionService) CreateWorkflow(label, description string, nodes []composition.Node, edges []composition.Edge) (composition.Workflow, error) {
 	if strings.TrimSpace(label) == "" {
 		return composition.Workflow{}, fmt.Errorf("a workflow needs a label")
 	}
-	if len(steps) == 0 {
-		return composition.Workflow{}, fmt.Errorf("a workflow needs at least one step")
+	if len(nodes) == 0 {
+		return composition.Workflow{}, fmt.Errorf("a workflow needs at least one node")
 	}
 
-	resolved, err := composition.ResolveStepDefaults(steps)
+	resolved, err := composition.ResolveNodeDefaults(nodes)
 	if err != nil {
 		return composition.Workflow{}, err
 	}
@@ -90,7 +100,8 @@ func (c *CompositionService) CreateWorkflow(label, description string, steps []c
 		ID:          newWorkflowID(label),
 		Label:       label,
 		Description: description,
-		Steps:       resolved,
+		Nodes:       resolved,
+		Edges:       edges,
 		BuiltIn:     false,
 	}
 
@@ -128,7 +139,7 @@ func (c *CompositionService) DeleteWorkflow(id string) error {
 func (c *CompositionService) RunWorkflow(id string) (string, error) {
 	for _, wf := range c.Workflows() {
 		if wf.ID == id {
-			return composition.ExecuteWorkflow(wf.Steps)
+			return composition.ExecuteWorkflow(wf.Nodes, wf.Edges)
 		}
 	}
 	return "", fmt.Errorf("unknown workflow: %s", id)

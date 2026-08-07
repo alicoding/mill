@@ -5,17 +5,27 @@
 // still the tested/tuned path for load-sample-html and clipboard-html-
 // to-markdown. This package's node primitives call the *same* adapter
 // functions runbook.go calls, decomposed into reusable Capture/Process/
-// Apply steps (§2's already-locked core primitive) and recomposed into
+// Apply nodes (§2's already-locked core primitive) and recomposed into
 // workflows -- the same real capability, not a fictional example.
 //
-// Composing a workflow is inseparable from configuring it: a step is
+// Composing a workflow is inseparable from configuring it: a node is
 // never just "a reference to a node type" -- it always carries fully
-// resolved configuration values (see ResolveStepDefaults), even when
+// resolved configuration values (see ResolveNodeDefaults), even when
 // those values are just each field's default. There is no such thing as
-// an unconfigured step.
+// an unconfigured node.
+//
+// Workflow.Nodes + Workflow.Edges (rather than a flat ordered Step list)
+// is the schema direction docs/SPEC.md §3.3 wrote down before this was
+// built, matching React Flow's own {id, type, data, position} node shape
+// -- adopted here as ADR-0005 B2's canvas deferral was explicitly
+// overridden (see docs/adr/0005-capability-composition-node-schema.md's
+// Update section) ahead of its original "2+ real multi-step workflows"
+// trigger.
 package composition
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"fmt"
 
 	"github.com/alicoding/mill/internal/adapters/clipboard"
@@ -46,7 +56,7 @@ const (
 	KindApply   NodeKind = "apply"
 )
 
-// ConfigField declares one configurable parameter a node type's steps
+// ConfigField declares one configurable parameter a node type's nodes
 // can set. A node type with no ConfigFields takes no parameters --
 // legitimately true for some nodes (capture/process here operate on
 // whatever's piped in), not a placeholder to fill in later.
@@ -65,24 +75,48 @@ type NodeType struct {
 	ConfigFields []ConfigField
 }
 
-// Step is one configured instance of a node type inside a workflow.
-// Config is always fully resolved (every ConfigField's key present) by
-// the time a Step is stored or executed -- see ResolveStepDefaults.
-// There is deliberately no notion of an unconfigured step: composing
-// and configuring happen together, not as separate passes.
-type Step struct {
-	NodeTypeID string
-	Config     map[string]string
+// Position is a node's canvas coordinates. Ignored by execution entirely
+// -- it exists purely for the React Flow canvas to restore a workflow's
+// layout, matching React Flow's own node shape.
+type Position struct {
+	X float64
+	Y float64
 }
 
-// Workflow is a flat, ordered pipeline of configured steps -- enough for
-// today's real workflows. Branching/parallel composition is real future
-// work per ADR-0005, not invented here ahead of a need for it.
+// Node is one configured instance of a node type inside a workflow's
+// graph. Config is always fully resolved (every ConfigField's key
+// present) by the time a Node is stored or executed -- see
+// ResolveNodeDefaults. Kind is always derived server-side from
+// NodeTypeID (never trusted from the client), so it can't drift out of
+// sync with the node type it names.
+type Node struct {
+	ID         string
+	Kind       NodeKind
+	NodeTypeID string
+	Config     map[string]string
+	Position   Position
+}
+
+// Edge connects one Node's output to another's input by ID. SourceHandle
+// is reserved for a future Decision node's named branches (e.g. "yes"/
+// "no") -- empty for every edge today, since no node kind branches yet.
+type Edge struct {
+	ID           string
+	Source       string
+	SourceHandle string
+	Target       string
+}
+
+// Workflow is a node/edge graph -- today always a single unbranched
+// chain in practice (see linearOrder), since Decision/Parallel/Child-
+// Workflow node kinds are real future work per ADR-0005, not invented
+// here ahead of a need for them.
 type Workflow struct {
 	ID          string
 	Label       string
 	Description string
-	Steps       []Step
+	Nodes       []Node
+	Edges       []Edge
 	// BuiltIn marks a seeded, non-deletable workflow (the two shipped
 	// with this prototype) vs. one a user composed and that persisted --
 	// the UI badges/protects built-ins accordingly.
@@ -142,21 +176,38 @@ func nodeType(id string) (NodeType, bool) {
 	return NodeType{}, false
 }
 
+// newNodeID derives a collision-resistant node ID when the caller (the
+// canvas, composing a brand-new node) doesn't supply one -- same random-
+// suffix shape as compositionservice.go's newWorkflowID, scoped to this
+// package since node IDs are a domain concern, not a service one.
+func newNodeID(nodeTypeID string) string {
+	suffix := make([]byte, 3)
+	_, _ = rand.Read(suffix)
+	return nodeTypeID + "-" + hex.EncodeToString(suffix)
+}
+
 // BuiltInWorkflows are the two workflows this prototype ships seeded --
 // the same real clipboard/markdown capability internal/domain/runbook
-// already ships, decomposed into steps. Not deletable (see
-// CompositionService.DeleteWorkflow).
+// already ships, decomposed into nodes with explicit positions so they
+// render sensibly on first canvas load without needing auto-layout. Not
+// deletable (see CompositionService.DeleteWorkflow).
 func BuiltInWorkflows() []Workflow {
-	loadSample, err := ResolveStepDefaults([]Step{
-		{NodeTypeID: "apply-clipboard-write-html"},
+	loadSample, err := ResolveNodeDefaults([]Node{
+		{ID: "load-sample-html", NodeTypeID: "apply-clipboard-write-html", Position: Position{X: 0, Y: 0}},
 	})
 	if err != nil {
 		panic("built-in workflow references an unknown node type: " + err.Error())
 	}
-	clipboardToMarkdown, err := ResolveStepDefaults([]Step{
-		{NodeTypeID: "capture-clipboard-html"},
-		{NodeTypeID: "process-html-to-markdown"},
-		{NodeTypeID: "apply-clipboard-write-text"},
+
+	const (
+		captureID = "clipboard-to-markdown-capture"
+		processID = "clipboard-to-markdown-process"
+		applyID   = "clipboard-to-markdown-apply"
+	)
+	clipboardToMarkdown, err := ResolveNodeDefaults([]Node{
+		{ID: captureID, NodeTypeID: "capture-clipboard-html", Position: Position{X: 0, Y: 0}},
+		{ID: processID, NodeTypeID: "process-html-to-markdown", Position: Position{X: 240, Y: 0}},
+		{ID: applyID, NodeTypeID: "apply-clipboard-write-text", Position: Position{X: 480, Y: 0}},
 	})
 	if err != nil {
 		panic("built-in workflow references an unknown node type: " + err.Error())
@@ -167,34 +218,41 @@ func BuiltInWorkflows() []Workflow {
 			ID:          "load-sample-html-workflow",
 			Label:       "Load sample HTML",
 			Description: "A single-step workflow: puts real HTML on the clipboard.",
-			Steps:       loadSample,
+			Nodes:       loadSample,
 			BuiltIn:     true,
 		},
 		{
 			ID:          "clipboard-html-to-markdown-workflow",
 			Label:       "Clipboard → Markdown",
 			Description: "Capture the clipboard's HTML, convert it to Markdown, write it back.",
-			Steps:       clipboardToMarkdown,
-			BuiltIn:     true,
+			Nodes:       clipboardToMarkdown,
+			Edges: []Edge{
+				{ID: "clipboard-to-markdown-e1", Source: captureID, Target: processID},
+				{ID: "clipboard-to-markdown-e2", Source: processID, Target: applyID},
+			},
+			BuiltIn: true,
 		},
 	}
 }
 
-// ResolveStepDefaults validates every step's NodeTypeID against
-// NodeTypes() and fills in any missing config key with that field's
-// Default, so the returned steps are always fully resolved -- composing
-// a workflow always configures it, even implicitly via defaults. Called
-// once, when a workflow is created; never lazily at execution time.
-func ResolveStepDefaults(steps []Step) ([]Step, error) {
-	resolved := make([]Step, len(steps))
-	for i, step := range steps {
-		nt, ok := nodeType(step.NodeTypeID)
+// ResolveNodeDefaults validates every node's NodeTypeID against
+// NodeTypes(), fills in any missing config key with that field's
+// Default, assigns a fresh ID to any node the caller didn't already
+// give one, and derives Kind from the looked-up node type (overwriting
+// whatever the client sent, so it can never drift out of sync) -- so the
+// returned nodes are always fully resolved. Composing a workflow always
+// configures it, even implicitly via defaults. Called once, when a
+// workflow is created; never lazily at execution time.
+func ResolveNodeDefaults(nodes []Node) ([]Node, error) {
+	resolved := make([]Node, len(nodes))
+	for i, node := range nodes {
+		nt, ok := nodeType(node.NodeTypeID)
 		if !ok {
-			return nil, fmt.Errorf("unknown node type: %s", step.NodeTypeID)
+			return nil, fmt.Errorf("unknown node type: %s", node.NodeTypeID)
 		}
 
 		config := make(map[string]string, len(nt.ConfigFields))
-		for k, v := range step.Config {
+		for k, v := range node.Config {
 			config[k] = v
 		}
 		for _, field := range nt.ConfigFields {
@@ -202,30 +260,124 @@ func ResolveStepDefaults(steps []Step) ([]Step, error) {
 				config[field.Key] = field.Default
 			}
 		}
-		resolved[i] = Step{NodeTypeID: step.NodeTypeID, Config: config}
+
+		id := node.ID
+		if id == "" {
+			id = newNodeID(node.NodeTypeID)
+		}
+
+		resolved[i] = Node{
+			ID:         id,
+			Kind:       nt.Kind,
+			NodeTypeID: node.NodeTypeID,
+			Config:     config,
+			Position:   node.Position,
+		}
 	}
 	return resolved, nil
 }
 
-// nodeExec threads a single string payload from step to step, with each
-// step's own resolved Config available -- enough for today's real
+// linearOrder validates that nodes/edges form a single unbranched chain
+// and returns the nodes in execution order. No Decision/Parallel/Child-
+// Workflow node kinds exist yet (ADR-0005 A2 scopes those as separate
+// future work), so this deliberately does not build a real graph-
+// execution engine -- just enough to walk what today's linear-only node
+// types can produce.
+//
+// Four checks, each catching a distinct way a graph can fail to be a
+// single chain: exactly one root (no node has zero starting points, or
+// more than one competes to start); no node with more than one outgoing
+// edge (nothing branches yet); the edge count matching a tree with no
+// cycles; and, after walking the chain from the root, every node having
+// been visited. That last check matters on its own -- without it, a
+// cycle elsewhere in the graph can "absorb" the edge-count budget and
+// let a disconnected island of nodes pass validation silently, never
+// executing and never erroring.
+func linearOrder(nodes []Node, edges []Edge) ([]Node, error) {
+	if len(nodes) == 0 {
+		return nil, fmt.Errorf("a workflow needs at least one node")
+	}
+	if len(edges) != len(nodes)-1 {
+		return nil, fmt.Errorf("branching workflows aren't executable yet")
+	}
+
+	byID := make(map[string]Node, len(nodes))
+	for _, n := range nodes {
+		byID[n.ID] = n
+	}
+
+	outgoing := make(map[string]string, len(edges))
+	hasIncoming := make(map[string]bool, len(edges))
+	outDegree := make(map[string]int, len(nodes))
+	for _, e := range edges {
+		if _, ok := byID[e.Source]; !ok {
+			return nil, fmt.Errorf("edge references unknown source node: %s", e.Source)
+		}
+		if _, ok := byID[e.Target]; !ok {
+			return nil, fmt.Errorf("edge references unknown target node: %s", e.Target)
+		}
+		outDegree[e.Source]++
+		if outDegree[e.Source] > 1 {
+			return nil, fmt.Errorf("branching workflows aren't executable yet")
+		}
+		outgoing[e.Source] = e.Target
+		hasIncoming[e.Target] = true
+	}
+
+	var root string
+	rootCount := 0
+	for _, n := range nodes {
+		if !hasIncoming[n.ID] {
+			root = n.ID
+			rootCount++
+		}
+	}
+	if rootCount != 1 {
+		return nil, fmt.Errorf("a workflow must have exactly one starting node")
+	}
+
+	order := make([]Node, 0, len(nodes))
+	visited := make(map[string]bool, len(nodes))
+	current := root
+	for {
+		if visited[current] {
+			return nil, fmt.Errorf("workflow graph contains a cycle")
+		}
+		visited[current] = true
+		order = append(order, byID[current])
+		next, ok := outgoing[current]
+		if !ok {
+			break
+		}
+		current = next
+	}
+
+	if len(visited) != len(nodes) {
+		return nil, fmt.Errorf("workflow graph is disconnected")
+	}
+
+	return order, nil
+}
+
+// nodeExec threads a single string payload from node to node, with each
+// node's own resolved Config available -- enough for today's real
 // workflows. A richer typed payload is real future work once a node
 // needs more than one value, not invented speculatively now.
-var nodeExec = map[string]func(step Step, payload string) (string, error){
-	"capture-clipboard-html": func(_ Step, _ string) (string, error) {
+var nodeExec = map[string]func(node Node, payload string) (string, error){
+	"capture-clipboard-html": func(_ Node, _ string) (string, error) {
 		return readClipboardHTML()
 	},
-	"process-html-to-markdown": func(_ Step, html string) (string, error) {
+	"process-html-to-markdown": func(_ Node, html string) (string, error) {
 		return htmlToMarkdown(html)
 	},
-	"apply-clipboard-write-text": func(_ Step, text string) (string, error) {
+	"apply-clipboard-write-text": func(_ Node, text string) (string, error) {
 		if err := writeClipboardText(text); err != nil {
 			return "", err
 		}
 		return text, nil
 	},
-	"apply-clipboard-write-html": func(step Step, _ string) (string, error) {
-		html := step.Config["html"]
+	"apply-clipboard-write-html": func(node Node, _ string) (string, error) {
+		html := node.Config["html"]
 		if err := writeClipboardHTML(html); err != nil {
 			return "", err
 		}
@@ -233,21 +385,26 @@ var nodeExec = map[string]func(step Step, payload string) (string, error){
 	},
 }
 
-// ExecuteWorkflow runs a fully-resolved step list in order. Errors here
-// are plain/technical -- unlike internal/domain/runbook's hand-tuned
-// soft-failure copy (e.g. "no HTML found on the clipboard" with a nil
-// error), this is a deliberate prototype simplification, not a
-// regression: the careful UX still lives in runbook.go, untouched.
-func ExecuteWorkflow(steps []Step) (string, error) {
+// ExecuteWorkflow runs a fully-resolved node graph in execution order.
+// Errors here are plain/technical -- unlike internal/domain/runbook's
+// hand-tuned soft-failure copy (e.g. "no HTML found on the clipboard"
+// with a nil error), this is a deliberate prototype simplification, not
+// a regression: the careful UX still lives in runbook.go, untouched.
+func ExecuteWorkflow(nodes []Node, edges []Edge) (string, error) {
+	order, err := linearOrder(nodes, edges)
+	if err != nil {
+		return "", err
+	}
+
 	payload := ""
-	for _, step := range steps {
-		exec, ok := nodeExec[step.NodeTypeID]
+	for _, node := range order {
+		exec, ok := nodeExec[node.NodeTypeID]
 		if !ok {
-			return "", fmt.Errorf("unknown node type: %s", step.NodeTypeID)
+			return "", fmt.Errorf("unknown node type: %s", node.NodeTypeID)
 		}
-		out, err := exec(step, payload)
+		out, err := exec(node, payload)
 		if err != nil {
-			return "", fmt.Errorf("step %s: %w", step.NodeTypeID, err)
+			return "", fmt.Errorf("node %s: %w", node.NodeTypeID, err)
 		}
 		payload = out
 	}
@@ -321,7 +478,7 @@ func CapabilityMap() []MapEntry {
 			ApproachDetail: "Node/graph semantics: build (core domain). Expression evaluation " +
 				"underneath: adopt (expr-lang/expr, MIT, sandboxed/side-effect-free by design).",
 			Status:       capabilities.StatusOpen,
-			StatusDetail: "ADR-0005 names it, deferred.",
+			StatusDetail: "ADR-0005 names it, deferred. The Edge.SourceHandle field the canvas now persists is reserved for this.",
 		},
 		{
 			ID: "parallel-steps", Name: "Parallel Steps",
@@ -392,11 +549,14 @@ func CapabilityMap() []MapEntry {
 		},
 		{
 			ID: "visual-composition", Name: "Visual composition surface",
-			WhatItDoes:     "Author a DAG, not just a list.",
-			Approach:       ApproachAdopt,
-			ApproachDetail: "React Flow / @xyflow/react -- but only once real multi-step content exists to design against.",
-			Status:         capabilities.StatusOpen,
-			StatusDetail:   "§3, deferred (ADR-0005's B2).",
+			WhatItDoes: "Author a DAG, not just a list.",
+			Approach:   ApproachAdopt,
+			ApproachDetail: "React Flow / @xyflow/react, adopted -- built ahead of ADR-0005 " +
+				"B2's original \"2+ real multi-step workflows\" deferral trigger, by explicit " +
+				"decision (see the ADR's Update section).",
+			Status: capabilities.StatusOpen,
+			StatusDetail: "§3 -- canvas built and real (drag-and-drop, undo/redo, auto-layout), " +
+				"still UX: PROTOTYPE, not the final authoring surface.",
 		},
 	}
 }
