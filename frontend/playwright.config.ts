@@ -11,6 +11,12 @@ export default defineConfig({
     url: 'http://localhost:8080/health',
     reuseExistingServer: !process.env.CI,
     timeout: 60_000,
+    // Points CompositionService's persistence (main.go) at a throwaway
+    // file instead of the real ~/Library/Application Support/mill/
+    // settings.json -- otherwise this suite's composed/deleted test
+    // workflows would write into the same file the real desktop dev app
+    // reads its saved state from.
+    env: { MILL_SETTINGS_PATH: '/tmp/mill-e2e-settings.json' },
   },
   use: {
     baseURL: 'http://localhost:8080',

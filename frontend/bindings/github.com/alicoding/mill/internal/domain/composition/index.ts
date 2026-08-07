@@ -6,6 +6,8 @@ export {
 } from "./models.js";
 
 export type {
+    ConfigField,
     NodeType,
-    Recipe
+    Step,
+    Workflow
 } from "./models.js";
