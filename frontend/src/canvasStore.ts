@@ -33,38 +33,51 @@ interface CanvasState {
 // isValidConnection (CompositionCanvas.tsx) already rejects a second
 // outgoing edge before onConnect fires -- addEdge here is the trusted
 // last step, not a second enforcement point.
-export const useCanvasStore = create<CanvasState>()(
-  temporal(
-    (set, get) => ({
-      nodes: [],
-      edges: [],
-      onNodesChange: (changes) => set({ nodes: applyNodeChanges(changes, get().nodes) }),
-      onEdgesChange: (changes) => set({ edges: applyEdgeChanges(changes, get().edges) }),
-      onConnect: (connection) => set({ edges: rfAddEdge(connection, get().edges) }),
-      addNode: (node) => set({ nodes: [...get().nodes, node] }),
-      updateNodeConfig: (id, key, value) =>
-        set({
-          nodes: get().nodes.map((n) =>
-            n.id === id ? { ...n, data: { ...n.data, config: { ...n.data.config, [key]: value } } } : n,
-          ),
-        }),
-      removeSelected: () =>
-        set((s) => {
-          const removedIds = new Set(s.nodes.filter((n) => n.selected).map((n) => n.id))
-          return {
-            nodes: s.nodes.filter((n) => !n.selected),
-            edges: s.edges.filter((e) => !e.selected && !removedIds.has(e.source) && !removedIds.has(e.target)),
-          }
-        }),
-      load: (nodes, edges) => set({ nodes, edges }),
-      clear: () => set({ nodes: [], edges: [] }),
-    }),
-    {
-      // Only {nodes, edges} are undo-worthy graph state -- nothing else
-      // lives in this store, but partialize is explicit anyway so a
-      // future field addition doesn't silently join the undo stack.
-      partialize: (state) => ({ nodes: state.nodes, edges: state.edges }),
-      limit: 50,
-    },
-  ),
-)
+//
+// A factory, not a module-level singleton: tabbed multi-editing
+// (CompositionView.tsx) can have several workflows open on the canvas
+// at once, each needing its own independent nodes/edges/undo history.
+// CompositionCanvas.tsx calls this once per mounted instance
+// (`useState(() => createCanvasStore())`), so every other line that
+// already reads `useCanvasStore(...)`/`.getState()`/`.temporal` keeps
+// working unchanged -- a component-scoped store has the identical API
+// surface as the old module-level one.
+export function createCanvasStore() {
+  return create<CanvasState>()(
+    temporal(
+      (set, get) => ({
+        nodes: [],
+        edges: [],
+        onNodesChange: (changes) => set({ nodes: applyNodeChanges(changes, get().nodes) }),
+        onEdgesChange: (changes) => set({ edges: applyEdgeChanges(changes, get().edges) }),
+        onConnect: (connection) => set({ edges: rfAddEdge(connection, get().edges) }),
+        addNode: (node) => set({ nodes: [...get().nodes, node] }),
+        updateNodeConfig: (id, key, value) =>
+          set({
+            nodes: get().nodes.map((n) =>
+              n.id === id ? { ...n, data: { ...n.data, config: { ...n.data.config, [key]: value } } } : n,
+            ),
+          }),
+        removeSelected: () =>
+          set((s) => {
+            const removedIds = new Set(s.nodes.filter((n) => n.selected).map((n) => n.id))
+            return {
+              nodes: s.nodes.filter((n) => !n.selected),
+              edges: s.edges.filter((e) => !e.selected && !removedIds.has(e.source) && !removedIds.has(e.target)),
+            }
+          }),
+        load: (nodes, edges) => set({ nodes, edges }),
+        clear: () => set({ nodes: [], edges: [] }),
+      }),
+      {
+        // Only {nodes, edges} are undo-worthy graph state -- nothing else
+        // lives in this store, but partialize is explicit anyway so a
+        // future field addition doesn't silently join the undo stack.
+        partialize: (state) => ({ nodes: state.nodes, edges: state.edges }),
+        limit: 50,
+      },
+    ),
+  )
+}
+
+export type CanvasStore = ReturnType<typeof createCanvasStore>

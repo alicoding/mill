@@ -930,6 +930,56 @@ that environment, on something testable directly in this dev session:
   confirmed the existing node and its configured value loaded (not an
   empty canvas), edited the config and label, saved, confirmed the
   workflow list shows the updated workflow once — not a duplicate.
+- **Update — tabbed multi-editing, a collapsible node-primitives panel,
+  and a starter node for new workflows, closing the remaining three
+  gaps against the reference platform screenshots the user shared.**
+  `CompositionView.tsx`'s single `editorTarget` swap (previous bullet)
+  became a real tab bar: the Workflows list is a pinned, always-open
+  tab, and "New workflow"/Edit each open their own tab rather than
+  replacing the whole view — matching the reference's own tabbed
+  Workflows-list/canvas-editor layout instead of Mill's prior one-at-a-
+  time swap. Built on `@primer/react/experimental`'s `Tabs` plus its
+  `useTab`/`useTabList`/`useTabPanel` hooks — confirmed directly against
+  the package's compiled source that it ships the state machine and ARIA/
+  keyboard behavior but *not* ready-made `Tab`/`TabList`/`TabPanel`
+  components (its own doc comment calls those "provided for convenience,"
+  but that layer isn't in the npm package) — so `frontend/src/Tabs.tsx`
+  supplies thin markup wrappers on top, the intended usage of a headless
+  primitive, not a reinvented tab implementation. A close control renders
+  as a DOM *sibling* of each tab's own `<button role="tab">`, not nested
+  inside it — nesting interactive elements inside a `<button>` is invalid
+  HTML and would make a Close click ambiguously also select the tab.
+  Confirmed directly (not assumed) that Primer's `useTabPanel` toggles a
+  `hidden` DOM attribute rather than unmounting inactive panels — the
+  precondition this whole feature depends on: every open tab's
+  `CompositionCanvas` stays mounted with its own independent state,
+  so switching tabs preserves in-progress edits in the others.
+  `canvasStore.ts`'s `useCanvasStore` singleton became a
+  `createCanvasStore()` factory for exactly this reason — one store
+  instance per mounted canvas rather than one global store shared (and
+  clobbered) across every open tab; `CompositionCanvas.tsx` creates its
+  instance once via `useState(() => createCanvasStore())`, after which
+  every other line that already called `useCanvasStore(...)` keeps
+  working unchanged, since a component-scoped store has the same API
+  surface as the old module-level one. Editing the same saved workflow
+  twice reuses its existing tab instead of opening a duplicate editor
+  over the same data. The node-type palette moved into a collapsible
+  "Add steps" panel inside the canvas (closed by default), toggled via
+  a toolbar button, matching the reference's own docked panel instead of
+  Mill's prior always-visible row of cards. A brand-new workflow now
+  starts with one real node already placed (`capture-clipboard-html`)
+  instead of a blank canvas — adapted from, not copied from, the
+  reference's own Input→Decision starter pair: Mill has no `Decision`
+  node kind yet, and composition.go/ADR-0005 are explicit that Decision/
+  Parallel/Child-Workflow control-flow kinds are deliberately *not*
+  stubbed ahead of need, so fabricating a fake Decision node in the
+  skeleton would have contradicted that already-recorded call. Verified
+  end-to-end via the real Go backend (server mode + Playwright, including
+  a scripted multi-tab check): opened two new-workflow tabs, gave each a
+  distinct label and node, switched between them repeatedly, confirmed
+  each tab's label/node count stayed exactly its own throughout — the
+  concrete behavior this whole pass exists to deliver, not just that the
+  tab bar renders.
 
 ### 3.1 Raw material — root cause of the heredoc pain, not yet resolved
 

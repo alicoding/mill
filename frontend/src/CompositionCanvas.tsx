@@ -14,11 +14,11 @@ import '@xyflow/react/dist/style.css'
 import { useStore } from 'zustand'
 import { z } from 'zod'
 import { Button, FormControl, IconButton, Label, Stack, Text, TextInput, Textarea } from '@primer/react'
-import { ColumnsIcon, RedoIcon, TrashIcon, UndoIcon } from '@primer/octicons-react'
+import { ColumnsIcon, RedoIcon, SidebarCollapseIcon, SidebarExpandIcon, TrashIcon, UndoIcon } from '@primer/octicons-react'
 import { ArrowLeftIcon } from '@primer/octicons-react'
 import { CompositionService } from '../bindings/github.com/alicoding/mill'
 import type { NodeType, Node as CompNode, Edge as CompEdge, Workflow } from '../bindings/github.com/alicoding/mill/internal/domain/composition/models'
-import { useCanvasStore, type CanvasNode } from './canvasStore'
+import { createCanvasStore, type CanvasNode } from './canvasStore'
 import { KIND_VARIANT } from './nodeKind'
 import styles from './CompositionCanvas.module.css'
 import runbookStyles from './RunbookView.module.css'
@@ -133,6 +133,14 @@ interface CompositionCanvasProps {
 // Inspector the moment it's selected, never a bare unconfigured
 // reference.
 function CanvasInner({ nodeTypes, workflow, onBack, onSaved }: CompositionCanvasProps) {
+  // One store per mounted CanvasInner -- tabbed multi-editing
+  // (CompositionView.tsx) can have several of these mounted at once,
+  // each needing independent nodes/edges/undo history rather than
+  // sharing one global canvas.
+  const [useCanvasStore] = useState(() => createCanvasStore())
+
+  const [paletteOpen, setPaletteOpen] = useState(false)
+
   const nodes = useCanvasStore((s) => s.nodes)
   const edges = useCanvasStore((s) => s.edges)
   const onNodesChange = useCanvasStore((s) => s.onNodesChange)
@@ -162,7 +170,30 @@ function CanvasInner({ nodeTypes, workflow, onBack, onSaved }: CompositionCanvas
     if (workflow) {
       useCanvasStore.getState().load(toCanvasNodes(workflow.Nodes, nodeTypes), toRFEdges(workflow.Edges))
     } else {
-      useCanvasStore.getState().clear()
+      // A brand-new workflow starts with a single capture node placed,
+      // not a blank canvas -- the reference platform's own "Start from
+      // Scratch" pre-populates an Input->Decision pair, but Mill has no
+      // Decision node kind yet (ADR-0005/composition.go are explicit
+      // that control-flow kinds aren't stubbed ahead of need), so this
+      // seeds the one real node type that makes sense as a starting
+      // point among Mill's actual four (capture/process/apply -- the
+      // other three are either terminal or need input already flowing).
+      const starterType = nodeTypes.find((nt) => nt.ID === 'capture-clipboard-html')
+      if (starterType) {
+        useCanvasStore.getState().load(
+          [
+            {
+              id: crypto.randomUUID(),
+              type: starterType.Kind,
+              position: { x: 80, y: 80 },
+              data: { nodeTypeID: starterType.ID, kind: starterType.Kind, label: starterType.Label, config: {} },
+            },
+          ],
+          [],
+        )
+      } else {
+        useCanvasStore.getState().clear()
+      }
     }
     useCanvasStore.temporal.getState().clear()
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -230,7 +261,7 @@ function CanvasInner({ nodeTypes, workflow, onBack, onSaved }: CompositionCanvas
     } finally {
       setLayingOut(false)
     }
-  }, [])
+  }, [useCanvasStore])
 
   const save = async () => {
     setSaveError('')
@@ -286,16 +317,44 @@ function CanvasInner({ nodeTypes, workflow, onBack, onSaved }: CompositionCanvas
     <div className={styles.canvasSection} data-testid="composition-canvas">
       <Stack direction="horizontal" gap="condensed" align="center" className={styles.toolbar}>
         <IconButton icon={ArrowLeftIcon} aria-label="Back to workflows" size="small" onClick={onBack} />
+        <IconButton
+          icon={paletteOpen ? SidebarCollapseIcon : SidebarExpandIcon}
+          aria-label={paletteOpen ? 'Hide add steps panel' : 'Add steps'}
+          size="small"
+          onClick={() => setPaletteOpen((v) => !v)}
+          data-testid="toggle-palette"
+        />
         <IconButton icon={UndoIcon} aria-label="Undo" size="small" disabled={!canUndo} onClick={() => useCanvasStore.temporal.getState().undo()} />
         <IconButton icon={RedoIcon} aria-label="Redo" size="small" disabled={!canRedo} onClick={() => useCanvasStore.temporal.getState().redo()} />
         <IconButton icon={ColumnsIcon} aria-label="Auto-layout" size="small" disabled={layingOut || nodes.length === 0} onClick={runAutoLayout} />
         <IconButton icon={TrashIcon} aria-label="Delete selected" size="small" onClick={removeSelected} />
         <Text size="small" className={runbookStyles.muted}>
-          Drag a node type from the list below onto the canvas, connect them, click a node to configure it.
+          Add steps to drag a node type onto the canvas, connect them, click a node to configure it.
         </Text>
       </Stack>
 
       <div className={styles.canvasWrap}>
+        {paletteOpen && (
+          <div className={styles.palette} data-testid="palette-panel">
+            <Text size="small" weight="semibold" className={styles.paletteHeading}>Add steps</Text>
+            <Stack direction="vertical" gap="condensed">
+              {nodeTypes.map((nt) => (
+                <div
+                  key={nt.ID}
+                  className={`${runbookStyles.card} ${styles.paletteItem}`}
+                  draggable
+                  onDragStart={(e) => onPaletteDragStart(e, nt)}
+                  data-testid="palette-item"
+                >
+                  <Stack direction="horizontal" gap="condensed" align="center">
+                    <Label variant={KIND_VARIANT[nt.Kind] ?? 'secondary'} size="small">{nt.Kind}</Label>
+                    <Text size="small">{nt.Label}</Text>
+                  </Stack>
+                </div>
+              ))}
+            </Stack>
+          </div>
+        )}
         <div className={styles.canvas} onDrop={onCanvasDrop} onDragOver={(e) => e.preventDefault()}>
           <ReactFlow
             nodes={nodes}
@@ -342,23 +401,6 @@ function CanvasInner({ nodeTypes, workflow, onBack, onSaved }: CompositionCanvas
           )}
         </div>
       </div>
-
-      <Stack direction="horizontal" gap="condensed" wrap="wrap" style={{ marginTop: 'var(--base-size-12)' }}>
-        {nodeTypes.map((nt) => (
-          <div
-            key={nt.ID}
-            className={`${runbookStyles.card} ${styles.paletteItem}`}
-            draggable
-            onDragStart={(e) => onPaletteDragStart(e, nt)}
-            data-testid="palette-item"
-          >
-            <Stack direction="horizontal" gap="condensed" align="center">
-              <Label variant={KIND_VARIANT[nt.Kind] ?? 'secondary'} size="small">{nt.Kind}</Label>
-              <Text size="small">{nt.Label}</Text>
-            </Stack>
-          </div>
-        ))}
-      </Stack>
 
       <div className={styles.saveRow}>
         <Stack direction="vertical" gap="condensed">
