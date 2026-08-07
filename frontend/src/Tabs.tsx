@@ -61,7 +61,11 @@ export function TabItem({ value, children, onClose }: { value: string; children:
   )
 }
 
-export function TabPanel({ value, children }: { value: string; children: ReactNode }) {
+export function TabPanel({ value, className, children }: { value: string; className?: string; children: ReactNode }) {
   const { tabPanelProps } = useTabPanel<HTMLDivElement>({ value })
-  return <div {...tabPanelProps}>{children}</div>
+  return (
+    <div {...tabPanelProps} className={className}>
+      {children}
+    </div>
+  )
 }

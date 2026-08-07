@@ -8,6 +8,7 @@ import { useAppStore } from './store'
 import CompositionCanvas from './CompositionCanvas'
 import { TabItem, TabList, TabPanel } from './Tabs'
 import styles from './RunbookView.module.css'
+import editorStyles from './CompositionView.module.css'
 
 // A workflow's Nodes/Edges are an unordered graph on the wire -- this
 // walks them into the single execution-order chain composition.go's own
@@ -247,7 +248,7 @@ function CompositionView() {
       {nodeTypes !== null && tabs.map((t) => {
         const editingWorkflow = t.workflowId ? (workflows?.find((w) => w.ID === t.workflowId) ?? null) : null
         return (
-          <TabPanel key={t.key} value={t.key}>
+          <TabPanel key={t.key} value={t.key} className={editorStyles.editorPanel}>
             <CompositionCanvas
               nodeTypes={nodeTypes}
               workflow={editingWorkflow}

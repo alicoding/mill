@@ -99,3 +99,27 @@ body {
     height: 100%;
     overflow-y: auto;
 }
+
+/* For Composition's tab bar (CompositionView.tsx): Primer's <Tabs>
+   renders no wrapping element of its own, so the tab strip and the
+   active TabPanel land as direct siblings, not a single child -- they
+   need a flex-column parent so a fill-height TabPanel grows into only
+   what's left after the tab strip, not the tab strip's own height on
+   top. That parent is NOT .view-pane itself, though -- confirmed
+   directly by inspecting the live DOM, not assumed: Primer's
+   PageLayout.Content renders an extra internal wrapper div between the
+   element .view-pane's className actually lands on (a "ContentWrapper")
+   and the real content -- className support in Primer's own component
+   stops one level higher than where the app's content actually renders.
+   Targeted structurally (.view-pane's only child), same "don't chase
+   vendor-owned hashed class names" precedent as App.module.css's
+   `div:has(> main.view-pane)` rule for the Sidebar+Content wrapper one
+   level up. Harmless for every other page (Runbook/Activity/Spec each
+   render exactly one child here already, so a flex column with one item
+   behaves identically to block). */
+.view-pane > div {
+    height: 100%;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+}
