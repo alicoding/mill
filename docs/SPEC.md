@@ -1705,9 +1705,127 @@ exist yet.
   dark theme there applies across the whole app (sidebar, content,
   footer) exactly as it did from the old footer location.
 
-`OPEN` (the whole section) — captured as design direction, per
-CLAUDE.md's Plan step, before any of it becomes code, same discipline
-§3.4 used for Trigger primitives.
+`LOCKED` and built: Integration/Connector, List, Attributes, and
+Decision authoring (the `ConfigureView.tsx` page + `ConfigureService`),
+and the sidebar restructuring this implied. `OPEN`: whether any *other*
+node kind belongs in Configure — see the recheck immediately below,
+which found none do, today — and the extension-points question in §3.6.
+
+**Recheck against the two-axis test, applied to every current
+`NodeType`, not just the ones already promoted to Configure.** Prompted
+directly by the question "do we need Configure-level primitives for
+things like the markdown converter" — the honest way to answer that is
+to check every current node type against the same test that decided
+Connector/List/Attributes/Decision, not guess. Verdict: **none of the
+other eight need to move.**
+
+| NodeType(s) | Configure-authored for room? | 1:many reusable? | Verdict |
+|---|---|---|---|
+| `trigger-manual`, `trigger-clipboard-watch` | No — zero config fields | No — 1:1, starts the one workflow it's on | Correctly inline (nothing to author) |
+| `trigger-hotkey` | No — the binding itself lives in `TriggerService`, not `Node.Config` at all | No — 1:1 | Correctly inline |
+| `trigger-schedule`, `trigger-filesystem-watch` | No — one field (`cron`/`path`), fits a narrow Inspector fine | No — 1:1 | Correctly inline |
+| `capture-clipboard-html` | No — zero config, and there is exactly one clipboard backend (`internal/adapters/clipboard`, `osascript`) — no "which provider" decision exists to author | No — 1:1 | Correctly inline |
+| `process-html-to-markdown` | No — zero config, and there is exactly one conversion library (`html-to-markdown`) wired in — same "no real choice" reasoning as capture | No — 1:1 | Correctly inline |
+| `apply-clipboard-write-text` | No — zero config | No — 1:1 | Correctly inline |
+| `apply-clipboard-write-html` | No — one field (`html`), a literal value, not a reusable resource | No — 1:1, the HTML is specific to this one step | Correctly inline |
+| `decision-route` | N/A — it has no `ConfigFields` of its own; its conditions live on edges, authored via the rule builder | N/A | Correctly has nothing to promote |
+| `integration-http`, `list-lookup` | **Already Configure-authored**, correctly — they reference a Connector/List by ID rather than embedding config | **Already 1:many**, correctly | Already right, no change |
+
+The pattern worth naming: **a node only becomes a Configure candidate
+once it has a real "which instance of a reusable *thing*" decision** —
+which connector, which list, which MCP server (§3.6). A single-
+implementation adapter with no alternative to choose between (today's
+clipboard I/O, today's one markdown library) has nothing to configure
+regardless of how "primitive" it sounds — promoting it would be config
+surface for a decision that doesn't exist, the same premature-
+abstraction trap `AuthType`'s OAuth2 gap and `AttributeDef`'s missing
+`Options` list both deliberately avoided. The trigger to revisit any one
+of these rows is concrete, not speculative: the day a second markdown
+strategy or a second clipboard backend actually exists. `LOCKED`
+(the recheck and its verdict) — revisit per-row only when a real second
+implementation shows up.
+
+### 3.6 Extension points — adding a new primitive capability without a core code change
+
+Raised directly: as more primitive capabilities land, Mill risks staying
+a codebase every new Trigger/Process/Integration has to be hand-added
+to, rather than a platform something can extend without touching core
+Go files. Worth taking seriously now, before the node-type list grows
+much further — the same "decide the shape before the narrow case forces
+a migration" discipline §3.3's capability map already applied to the
+node/edge schema itself.
+
+**Two genuinely different problems hiding under one question — kept
+separate, not conflated (the same discipline that already avoided
+merging DBOS and pueue into one research question, §1.2):**
+
+1. **Mill's own hand-written node types are getting harder to add
+   cleanly.** Every new one today touches two shared files:
+   `nodetypes.go`'s `NodeTypes()` slice and `execute.go`'s `nodeExec`
+   map. Real friction, but bounded — three additions this session alone
+   (`decision-route`, `integration-http`, `list-lookup`) all needed both
+   edits. This is an **internal code-organization** question: build
+   (no library has an opinion on Mill's own node-type registration),
+   likely a self-registering pattern (each node type's `NodeType` value
+   + `nodeExec` function co-located in its own file, collected into the
+   package's registry via an `init()`-style append — the same shape
+   Go's own `database/sql` drivers and `image.RegisterFormat` use for
+   exactly this "add a new implementation without editing a central
+   switch" problem). Still a Mill code change per capability — this
+   makes each change **isolated**, not **eliminated**.
+2. **A whole class of future Integration-shaped capabilities could
+   require *no* Mill code change at all**, via the MCP layer already
+   adopted in §3.1 as "the capability-exposure layer" — but that section
+   only worked out Mill as an MCP **server** (exposing its own tools) and
+   left Mill as an MCP **host** (running an agent loop) in real,
+   unresolved tension with §1.1's "not an LLM client" rule. Neither of
+   those is what solves *this* problem. A third role does:
+
+**Mill as MCP client — the actual extension point, and it doesn't
+reopen §3.1's host/server tension at all.** Checked directly against
+`modelcontextprotocol/go-sdk`'s own client API (already the SDK §3.1
+picked, confirmed here to cover this role too, not assumed): `mcp.
+NewClient` + `&mcp.CommandTransport{Command: exec.Command(...)}` connects
+to any local, stdio-based MCP server (§3.1's own "wrapping a local CLI
+as a typed tool is the mainstream pattern" precedent — `github-mcp-
+server` etc.); `session.ListTools(ctx, ...)` returns every tool the
+server exposes with its JSON-Schema `InputSchema`; `session.CallTool
+(ctx, &mcp.CallToolParams{Name, Arguments})` invokes one deterministically
+and returns a structured result. Nothing here drives an LLM's tool-
+selection loop — a workflow author picks one specific tool at Configure
+time, the same way an Integration node references one specific
+Connector; **Mill is a protocol client making one deterministic call
+per step, structurally identical to `integration-http` being an HTTP
+client**, not an agent deciding what to call. This is exactly why it
+doesn't touch the disputed Host question: no LLM is in the loop, so
+§1.1's "not an LLM client" rule is untouched.
+
+**Shape this points to, not yet built:** an **MCP Server** Configure
+entity (connection config — today, a local command + args over stdio;
+remote transports are real future work, same incremental-extensibility
+principle already applied to Connector's `AuthType`), 1:many reusable
+like Connector/List; and a new `mcp-tool-call` `NodeType` (`KindProcess`,
+the same family as `integration-http`/`list-lookup`) whose `ConfigFields`
+are `mcpServerId` + `toolName` — with the tool's own `InputSchema`
+determining what arguments it needs, discovered at Configure-authoring
+time via `ListTools`, not hand-declared per tool the way every other
+`NodeType` today is. That last part is the actual "platform" property:
+one new external MCP server, wired up once in Configure, adds as many
+usable workflow steps as it exposes tools, with zero Mill `NodeTypes()`
+entries added per tool.
+
+**What this does not change:** §3.5's own "What Configure is *not*"
+bullet still holds — this isn't a mechanism for *end users* to invent
+brand-new Mill node *kinds*. `mcp-tool-call` is one more Mill-defined
+`NodeType` (same as `integration-http`); what varies per configured MCP
+server is which *tools* are callable through it, the same way what
+varies per configured Connector is which *API* `integration-http` calls
+— the kind stays fixed, only the reusable instance's shape is dynamic.
+
+`OPEN` (both problems) — captured as a capability map per CLAUDE.md's
+Plan step, not decided here: whether to build the internal registry
+refactor, the MCP-client extension point, both, or neither yet is a
+real scope choice, not something to silently pick.
 
 ## 4. Connectors
 
@@ -1948,6 +2066,9 @@ mode from §0 repeating itself one level up.
 - Node/canvas composition model (§3) — Decision/Integration/List
   execution + authoring now built (§3.3/§3.5); Parallel Steps, Child
   Workflow, and draft/live versioning remain the open parts
+- Extension points: internal node-type registration pattern, and/or
+  MCP-client-backed dynamic tool nodes as a no-core-code-change path for
+  new Integration-shaped capabilities (§3.6)
 - Browser extension ↔ native app protocol details (§5)
 - Env/shell determinism rules (§6)
 - Session identity model spanning tab + agent run + process (§7)
