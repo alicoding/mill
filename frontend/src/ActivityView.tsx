@@ -1,7 +1,8 @@
 import { useState } from 'react'
-import { Heading, Label, type LabelProps, Select, Stack, Text } from '@primer/react'
-import { ChevronDownIcon, ChevronRightIcon, CheckCircleIcon, XCircleIcon } from '@primer/octicons-react'
-import { useAppStore, type ActivitySource } from './store'
+import { Heading, IconButton, Label, type LabelProps, Select, Stack, Text } from '@primer/react'
+import { DataTable, type Column } from '@primer/react/experimental'
+import { ChevronDownIcon, ChevronRightIcon, CheckCircleIcon, XCircleIcon, XIcon } from '@primer/octicons-react'
+import { useAppStore, type ActivityEntry, type ActivitySource } from './store'
 import styles from './RunbookView.module.css'
 
 const SOURCE_LABEL: Record<ActivitySource, string> = {
@@ -27,17 +28,23 @@ type OutcomeFilter = 'all' | 'success' | 'failed'
 // Not hotkey-only: every run pushes here regardless of how it was
 // triggered (hotkey fire, or a direct Run click on Runbook/Composition)
 // — one shared feed for "did anything run," not three separate ones.
+//
+// Renders as Primer's DataTable (@primer/react/experimental) rather than
+// the hand-rolled expand-list this used to be — DataTable has no generic
+// row-click/expand affordance, so "click a row to see its full result"
+// moves from per-row inline expansion to a click on the Action cell that
+// toggles a detail panel below the table. The comparison feature this
+// used to have (multiple rows expanded at once, to compare two fires
+// side by side) is deliberately preserved, not dropped: selectedIds
+// stays a Set, and one panel renders per selected entry.
 function ActivityView() {
   const activity = useAppStore((s) => s.activity)
-  // Which rows are expanded to show their full result. A Set, not a
-  // single id, since comparing two past fires side by side is a
-  // reasonable thing to want in a log view.
-  const [expanded, setExpanded] = useState<Set<string>>(new Set())
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [sourceFilter, setSourceFilter] = useState<'all' | ActivitySource>('all')
   const [outcomeFilter, setOutcomeFilter] = useState<OutcomeFilter>('all')
 
   const toggle = (id: string) => {
-    setExpanded((prev) => {
+    setSelectedIds((prev) => {
       const next = new Set(prev)
       if (next.has(id)) next.delete(id)
       else next.add(id)
@@ -52,6 +59,72 @@ function ActivityView() {
     return true
   })
   const filtersActive = sourceFilter !== 'all' || outcomeFilter !== 'all'
+  const selectedEntries = filtered.filter((entry) => selectedIds.has(entry.id) && entry.result !== '')
+
+  const columns: Column<ActivityEntry>[] = [
+    {
+      id: 'time',
+      header: 'Time',
+      field: 'timestamp',
+      sortBy: 'basic',
+      width: '120px',
+      renderCell: (entry) => <Text size="small" className={styles.muted}>{entry.time}</Text>,
+    },
+    {
+      id: 'source',
+      header: 'Source',
+      field: 'source',
+      sortBy: 'alphanumeric',
+      renderCell: (entry) => (
+        <Stack direction="horizontal" gap="condensed" align="center">
+          <Label variant={SOURCE_VARIANT[entry.source]} size="small">{SOURCE_LABEL[entry.source]}</Label>
+          {entry.binding && <Label variant="secondary" size="small">{entry.binding}</Label>}
+        </Stack>
+      ),
+    },
+    {
+      id: 'action',
+      header: 'Action',
+      width: 'grow',
+      renderCell: (entry) => {
+        const canExpand = entry.result !== ''
+        const isSelected = selectedIds.has(entry.id)
+        return (
+          <Stack
+            direction="horizontal"
+            gap="condensed"
+            align="center"
+            className={canExpand ? styles.activityRowClickable : undefined}
+            onClick={canExpand ? () => toggle(entry.id) : undefined}
+            data-testid="activity-row"
+          >
+            {canExpand ? (
+              isSelected ? <ChevronDownIcon size={12} /> : <ChevronRightIcon size={12} />
+            ) : (
+              <span className={styles.activitySpacer} />
+            )}
+            <Text size="small">{entry.label}</Text>
+          </Stack>
+        )
+      },
+    },
+    {
+      id: 'outcome',
+      header: 'Outcome',
+      field: 'success',
+      sortBy: 'basic',
+      renderCell: (entry) => (
+        <Stack direction="horizontal" gap="condensed" align="center">
+          {entry.success ? (
+            <CheckCircleIcon size={16} fill="var(--fgColor-success)" />
+          ) : (
+            <XCircleIcon size={16} fill="var(--fgColor-danger)" />
+          )}
+          <Text size="small" className={styles.muted}>{entry.detail}</Text>
+        </Stack>
+      ),
+    },
+  ]
 
   return (
     <div className={styles.runbook}>
@@ -93,43 +166,19 @@ function ActivityView() {
       )}
 
       {filtered.length > 0 && (
-        <Stack direction="vertical" gap="condensed">
-          {filtered.map((entry) => {
-            const canExpand = entry.result !== ''
-            const isExpanded = expanded.has(entry.id)
-            return (
-              <div key={entry.id} className={styles.activityEntry} data-testid="activity-row">
-                <Stack
-                  direction="horizontal"
-                  align="center"
-                  gap="condensed"
-                  className={`${styles.activityRow}${canExpand ? ` ${styles.activityRowClickable}` : ''}`}
-                  onClick={canExpand ? () => toggle(entry.id) : undefined}
-                >
-                  {canExpand ? (
-                    isExpanded ? <ChevronDownIcon size={12} /> : <ChevronRightIcon size={12} />
-                  ) : (
-                    <span className={styles.activitySpacer} />
-                  )}
-                  {entry.success ? (
-                    <CheckCircleIcon size={16} fill="var(--fgColor-success)" />
-                  ) : (
-                    <XCircleIcon size={16} fill="var(--fgColor-danger)" />
-                  )}
-                  <Text size="small" className={styles.muted}>{entry.time}</Text>
-                  <Label variant={SOURCE_VARIANT[entry.source]} size="small">{SOURCE_LABEL[entry.source]}</Label>
-                  {entry.binding && <Label variant="secondary" size="small">{entry.binding}</Label>}
-                  <Text size="small">{entry.label}</Text>
-                  <Text size="small" className={styles.muted}>— {entry.detail}</Text>
-                </Stack>
-                {isExpanded && canExpand && (
-                  <pre className={styles.result}>{entry.result}</pre>
-                )}
-              </div>
-            )
-          })}
-        </Stack>
+        <DataTable data={filtered} columns={columns} cellPadding="condensed" getRowId={(entry) => entry.id} />
       )}
+
+      {selectedEntries.map((entry) => (
+        <div key={entry.id} data-testid="activity-detail">
+          <Stack direction="horizontal" justify="space-between" align="center">
+            <Text size="small" weight="semibold">{entry.label} — {entry.time}</Text>
+            <IconButton icon={XIcon} aria-label="Close" size="small" variant="invisible" onClick={() => toggle(entry.id)} />
+          </Stack>
+          <pre className={styles.result}>{entry.result}</pre>
+        </div>
+      ))}
+
       {filtersActive && filtered.length > 0 && (
         <Text as="p" size="small" className={styles.muted}>
           Showing {filtered.length} of {activity.length}.
