@@ -6,6 +6,18 @@ import { defineConfig } from '@playwright/test'
 // same prerequisite as everything else in this repo.
 export default defineConfig({
   testDir: './e2e',
+  // Real OS clipboard I/O (composition.spec.ts's/activity.spec.ts's
+  // workflow-run tests, internal/adapters/clipboard's own Go tests) is a
+  // single shared global resource, not something safe to parallelize
+  // against -- confirmed by direct reproduction, not assumed: with
+  // Playwright's default multi-worker parallelism, one test's
+  // WriteHTML() could be clobbered by a concurrently-running test's own
+  // clipboard write before the first ever read it back, surfacing as an
+  // intermittent "no HTML on clipboard" failure with no code bug behind
+  // it. Serializing is the honest fix given these are deliberately real
+  // integration tests, not mocks (ADR-0002) -- the alternative would be
+  // mocking the one thing most likely to actually break.
+  workers: 1,
   webServer: {
     command: 'cd .. && go build -tags server -o bin/mill-server . && ./bin/mill-server',
     url: 'http://localhost:8080/health',

@@ -1,6 +1,6 @@
 /* CompositionCanvas: the React Flow authoring surface (docs/SPEC.md §3,
    overriding ADR-0005 B2's deferral). Deliberately NOT nested inside
-   RunbookView.module.css's .runbook (max-width: 760px, built for narrow
+   ListCard.module.css's .runbook (max-width: 760px, built for narrow
    list/card content) -- a canvas needs the pane's full width. Layout/
    type/color come from Primer tokens (@primer/primitives CSS custom
    properties), same discipline as the rest of the app; React Flow's own
@@ -93,6 +93,9 @@
 .inspectorEmpty {
     color: var(--fgColor-muted);
     padding: var(--base-size-12);
+}
+.inspectorRecording {
+    color: var(--fgColor-accent);
 }
 .paletteItem {
     cursor: grab;

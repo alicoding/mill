@@ -7,7 +7,7 @@ import type { Edge, Node, NodeType, Workflow } from '../bindings/github.com/alic
 import { useAppStore } from './store'
 import CompositionCanvas from './CompositionCanvas'
 import { TabItem, TabList, TabPanel } from './Tabs'
-import styles from './RunbookView.module.css'
+import styles from './ListCard.module.css'
 import editorStyles from './CompositionView.module.css'
 
 // A workflow's Nodes/Edges are an unordered graph on the wire -- this
@@ -41,10 +41,7 @@ function orderNodes(nodes: Node[] | null, edges: Edge[] | null): Node[] {
 }
 
 // One open editor tab per workflow being composed/edited at once --
-// workflowId null means composing a new workflow. Built-ins never get a
-// tab (their rows have no Edit control -- composition.go's Workflow.
-// BuiltIn ones aren't in CompositionService's editable c.user set at
-// all, so there's nothing to open).
+// workflowId null means composing a new workflow.
 interface EditorTab {
   key: string
   workflowId: string | null
@@ -63,10 +60,11 @@ const WORKFLOWS_TAB = 'workflows'
 // nodes/edges/undo history (canvasStore.ts's createCanvasStore factory,
 // one instance per mounted canvas) -- Primer's Tabs/TabPanel keep every
 // open panel mounted (toggling a `hidden` attribute, not unmounting),
-// so switching tabs preserves in-progress edits in the others. Workflows
-// here run the same real clipboard/markdown capability
-// internal/domain/runbook already ships, decomposed into reusable nodes
-// -- internal/domain/runbook itself is untouched.
+// so switching tabs preserves in-progress edits in the others. This is
+// now the successor to the retired Runbook page (docs/SPEC.md §2.2's
+// Update note) -- its two actions live on as ordinary, fully-editable
+// seeded workflows (composition.go's BuiltInWorkflows), not a separate
+// page.
 function CompositionView() {
   const pushActivity = useAppStore((s) => s.pushActivity)
   const [nodeTypes, setNodeTypes] = useState<NodeType[] | null>(null)
@@ -95,7 +93,7 @@ function CompositionView() {
         setResults((prev) => ({ ...prev, [id]: output }))
         pushActivity({
           id: crypto.randomUUID(), time: new Date().toLocaleTimeString(), timestamp: Date.now(),
-          source: 'composition', actionID: id, label,
+          source: 'composition', workflowID: id, label,
           success: true, detail: `completed (${output.length} bytes)`, result: output,
         })
       })
@@ -103,7 +101,7 @@ function CompositionView() {
         setErrors((prev) => ({ ...prev, [id]: String(err) }))
         pushActivity({
           id: crypto.randomUUID(), time: new Date().toLocaleTimeString(), timestamp: Date.now(),
-          source: 'composition', actionID: id, label,
+          source: 'composition', workflowID: id, label,
           success: false, detail: String(err), result: '',
         })
       })
@@ -153,15 +151,16 @@ function CompositionView() {
       </TabList>
 
       <TabPanel value={WORKFLOWS_TAB}>
-        <div className={styles.runbook} data-testid="composition-view">
+        <div className={styles.page} data-testid="composition-view">
           <Heading as="h1">Capability composition</Heading>
           <Text as="p" className={styles.subtitle}>
             Prototype for docs/SPEC.md §3 (ADR-0005): compose a workflow on a real
             canvas from reusable node primitives, configuring each node as you add
             it — composing without configuring isn&apos;t a real workflow. Built
             ahead of ADR-0005 B2&apos;s original canvas-deferral trigger, by
-            explicit decision. Workflows persist across restarts;
-            internal/domain/runbook (the Runbook page) is untouched.
+            explicit decision. Workflows persist across restarts, and every
+            one -- seeded example or user-composed -- is fully editable and
+            deletable from the moment it exists.
           </Text>
 
           <Stack direction="horizontal" justify="space-between" align="center" className={styles.sectionHeading}>
@@ -198,19 +197,23 @@ function CompositionView() {
                       >
                         {runningId === wf.ID ? 'Running…' : 'Run'}
                       </Button>
-                      {!wf.BuiltIn && (
-                        <>
-                          <IconButton
-                            icon={PencilIcon}
-                            aria-label={`Edit ${wf.Label}`}
-                            size="small"
-                            variant="invisible"
-                            disabled={nodeTypes === null}
-                            onClick={() => openEditTab(wf.ID)}
-                          />
-                          <IconButton icon={TrashIcon} aria-label={`Delete ${wf.Label}`} size="small" variant="invisible" onClick={() => removeWorkflow(wf.ID)} />
-                        </>
-                      )}
+                      {/* No !wf.BuiltIn guard -- every workflow, seeded or
+                          user-composed, is ordinary and fully editable/
+                          deletable from the moment it exists (docs/SPEC.md
+                          §2.2's Update note: this is the same pattern
+                          Zapier/n8n use for their own seeded/template
+                          workflows, confirmed via research, not Mill's own
+                          invention). BuiltIn only drives the informational
+                          "built-in" badge above now. */}
+                      <IconButton
+                        icon={PencilIcon}
+                        aria-label={`Edit ${wf.Label}`}
+                        size="small"
+                        variant="invisible"
+                        disabled={nodeTypes === null}
+                        onClick={() => openEditTab(wf.ID)}
+                      />
+                      <IconButton icon={TrashIcon} aria-label={`Delete ${wf.Label}`} size="small" variant="invisible" onClick={() => removeWorkflow(wf.ID)} />
                     </Stack>
                   </Stack>
 

@@ -1,13 +1,13 @@
 import { Heading, Label, Text, Button } from '@primer/react'
 import { useAppStore, statusVariant } from './store'
-import styles from './RunbookView.module.css'
+import styles from './ListCard.module.css'
 
 interface PlaceholderViewProps {
   capabilityId: string
 }
 
 // Generic "not built yet" page for any capability whose docs/SPEC.md
-// entry exists but has no real UI yet -- reuses RunbookView.module.css's
+// entry exists but has no real UI yet -- reuses ListCard.module.css's
 // card/empty/muted classes rather than a bespoke stylesheet, matching
 // this session's CSS Modules decision (SPEC.md §1.3).
 function PlaceholderView({ capabilityId }: PlaceholderViewProps) {
@@ -15,7 +15,7 @@ function PlaceholderView({ capabilityId }: PlaceholderViewProps) {
   const setView = useAppStore((s) => s.setView)
 
   return (
-    <div className={styles.runbook}>
+    <div className={styles.page}>
       <Heading as="h1">{capability?.Label ?? 'Not built yet'}</Heading>
       <Text as="p" className={styles.subtitle}>
         This part of Mill hasn't been built yet.

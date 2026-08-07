@@ -3,7 +3,7 @@ import { Heading, Label, Stack, Text, Button } from '@primer/react'
 import { CapabilitiesService } from '../bindings/github.com/alicoding/mill'
 import { ViewKind } from '../bindings/github.com/alicoding/mill/internal/domain/capabilities/models'
 import { useAppStore, viewFor, statusVariant } from './store'
-import styles from './RunbookView.module.css'
+import styles from './ListCard.module.css'
 
 // Only meaningful in dev mode: task dev launches the binary with the repo
 // root as cwd, but a real installed build has no source tree to jump to
