@@ -61,6 +61,21 @@ export function RunWorkflow(id: string): $CancellablePromise<string> {
 }
 
 /**
+ * UpdateAttributes replaces a workflow's declared Attributes schema in
+ * place -- the delegate ConfigureService (configureservice.go) calls for
+ * its Attributes CRUD, per SPEC.md §3.5's "Configure-authored but
+ * workflow-scoped" cardinality (Attributes aren't their own top-level
+ * entity the way a Connector/List is, they're metadata on a Workflow).
+ * Re-validates the existing Nodes/Edges against the *new* schema before
+ * accepting it: a Decision edge referencing a field this change removes
+ * or retypes must be caught here, not left to silently break the next
+ * time that workflow runs.
+ */
+export function UpdateAttributes(workflowID: string, attrs: composition$0.AttributeDef[] | null): $CancellablePromise<composition$0.Workflow> {
+    return $Call.ByID(1060894395, workflowID, attrs);
+}
+
+/**
  * UpdateWorkflow replaces an existing user-composed workflow's nodes/
  * edges (and label/description) in place, keeping its ID stable -- so
  * re-opening a saved workflow on the canvas and saving edits updates it
