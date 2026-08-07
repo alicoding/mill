@@ -1,0 +1,56 @@
+/* Thin wrapper markup around @primer/react/experimental's useTab/
+   useTabList/useTabPanel hooks (Tabs.tsx) -- the package ships the
+   state machine and ARIA behavior, not ready-made Tab/TabList/TabPanel
+   components (confirmed directly against its compiled source), so this
+   is the intended "supply your own markup" usage of a headless
+   primitive, not a hand-rolled tab implementation. Styled from Primer
+   tokens, matching the rest of the app. */
+.tabList {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2px;
+    border-bottom: 1px solid var(--borderColor-default);
+    padding: 0 var(--s-4);
+}
+.tabItem {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+}
+.tab {
+    appearance: none;
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid transparent;
+    color: var(--fgColor-muted);
+    font-size: 14px;
+    padding: var(--base-size-8) var(--base-size-24) var(--base-size-8) var(--base-size-12);
+    cursor: pointer;
+}
+.tab:hover {
+    color: var(--fgColor-default);
+    background: var(--bgColor-muted);
+}
+.tab[aria-selected="true"] {
+    color: var(--fgColor-default);
+    border-bottom-color: var(--borderColor-accent-emphasis);
+    font-weight: 600;
+}
+.tabClose {
+    position: absolute;
+    right: 4px;
+    top: 50%;
+    transform: translateY(-50%);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    border-radius: var(--borderRadius-small);
+    color: var(--fgColor-muted);
+    cursor: pointer;
+}
+.tabClose:hover {
+    background: var(--bgColor-neutral-muted);
+    color: var(--fgColor-default);
+}
