@@ -51,16 +51,17 @@ type Capability struct {
 // entry here is a normal, cheap code review, not a doc-archaeology
 // exercise, which is the whole point of making this real Go data instead
 // of inferred text.
+// Order here is the sidebar's own order (App.tsx renders capabilities in
+// this exact array order, no separate sort) -- Composition and Configure
+// lead (the two real, working destinations -- Composition is already the
+// app's default landing view, per §2.2's Update note), Activity follows
+// right after (a monitoring surface, not a primary destination -- the
+// same "present but not top-billed" position n8n's own Executions
+// occupies relative to Workflows/Credentials), then the remaining
+// not-yet-built placeholders. See SPEC.md §3.5's "Sidebar restructuring"
+// bullet for the fuller reasoning.
 func List() []Capability {
 	return []Capability{
-		{
-			ID: "activity-log", Label: "Activity / event log", NavLabel: "Activity", SpecSection: "2.2",
-			Status: StatusLocked, View: ViewActivity,
-		},
-		{
-			ID: "copilot-bridge", Label: "M365 Copilot chat bridge", SpecSection: "2.1",
-			Status: StatusOpen, View: ViewPlaceholder,
-		},
 		{
 			ID: "capability-composition", Label: "Capability composition", NavLabel: "Composition", SpecSection: "3",
 			Status: StatusOpen, View: ViewComposition,
@@ -68,6 +69,14 @@ func List() []Capability {
 		{
 			ID: "capability-configure", Label: "Configure", SpecSection: "3.5",
 			Status: StatusOpen, View: ViewConfigure,
+		},
+		{
+			ID: "activity-log", Label: "Activity / event log", NavLabel: "Activity", SpecSection: "2.2",
+			Status: StatusLocked, View: ViewActivity,
+		},
+		{
+			ID: "copilot-bridge", Label: "M365 Copilot chat bridge", SpecSection: "2.1",
+			Status: StatusOpen, View: ViewPlaceholder,
 		},
 		{
 			ID: "process-tracking", Label: "Process & session tracking", SpecSection: "7",
