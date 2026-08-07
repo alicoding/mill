@@ -102,17 +102,21 @@ const rfNodeTypes: RFNodeTypes = {
   capture: CanvasNodeView,
   process: CanvasNodeView,
   apply: CanvasNodeView,
+  decision: CanvasNodeView,
 }
 
 // Validates a draft workflow before Save, against the Wails-generated
 // PascalCase wire shape (composition/models.ts) -- not idiomatic
 // camelCase -- since this validates exactly what CreateWorkflow will
-// receive. The out-degree and edge-count checks mirror composition.go's
-// own linearOrder validation, so a save-time error and a run-time error
-// never disagree; the canvas's isValidConnection (below) additionally
-// stops the disallowed shape from being drawn in the first place, so a
-// user hits this validation only in edge cases (e.g. deleting a node
-// that leaves the graph disconnected), not as the primary feedback loop.
+// receive. The out-degree and single-root checks mirror composition.go's
+// own buildGraph/findRoot validation (a save-time error and a run-time
+// error never disagree), but deliberately don't replicate its full
+// reachability walk or Decision-edge expression/otherwise checks --
+// CreateWorkflow/UpdateWorkflow call ValidateGraph server-side as the
+// actual authority for those; this is a cheap client-side sanity check,
+// same as the canvas's isValidConnection (below) already is for
+// disallowed shapes at draw-time, so a user hits this validation only in
+// edge cases (e.g. deleting a node that leaves the graph disconnected).
 const configSchema = z.record(z.string(), z.string())
 const nodeSchema = z.object({
   ID: z.string().min(1),
@@ -136,18 +140,23 @@ const draftWorkflowSchema = z
   })
   .superRefine((draft, ctx) => {
     const ids = new Set(draft.Nodes.map((n) => n.ID))
+    const kindByID = new Map(draft.Nodes.map((n) => [n.ID, n.Kind]))
     const outDegree = new Map<string, number>()
+    const hasIncoming = new Set<string>()
     for (const e of draft.Edges) {
       if (!ids.has(e.Source) || !ids.has(e.Target)) {
         ctx.addIssue({ code: 'custom', message: 'A connection references a node that no longer exists.' })
       }
       outDegree.set(e.Source, (outDegree.get(e.Source) ?? 0) + 1)
+      hasIncoming.add(e.Target)
     }
-    if ([...outDegree.values()].some((n) => n > 1)) {
-      ctx.addIssue({ code: 'custom', message: "A node can only have one outgoing connection today -- branching isn't supported yet." })
+    for (const [id, count] of outDegree) {
+      if (count > 1 && kindByID.get(id) !== 'decision') {
+        ctx.addIssue({ code: 'custom', message: 'Only a Decision node can have more than one outgoing connection.' })
+      }
     }
-    if (draft.Edges.length !== draft.Nodes.length - 1) {
-      ctx.addIssue({ code: 'custom', message: 'Every node must be connected into a single chain, with no cycles.' })
+    if (draft.Nodes.filter((n) => !hasIncoming.has(n.ID)).length !== 1) {
+      ctx.addIssue({ code: 'custom', message: 'A workflow must have exactly one starting node.' })
     }
   })
 
@@ -256,13 +265,16 @@ function CanvasInner({ nodeTypes, workflow, onBack, onSaved }: CompositionCanvas
   const selectedNode = nodes.find((n) => n.id === selectedNodeId) ?? null
   const selectedNodeType = selectedNode ? nodeTypes.find((nt) => nt.ID === selectedNode.data.nodeTypeID) : undefined
 
-  // No Decision node kind exists yet (ADR-0005 A2 scopes that as
-  // separate future work), so every node is implicitly max-out-degree-1
-  // today -- reject a second outgoing edge from the same source at
-  // draw-time rather than letting the backend reject it later at Run.
+  // Every node kind except Decision is max-out-degree-1 -- the backend's
+  // buildGraph (composition.go) enforces this same rule at save/run time
+  // ("a save-time error and a run-time error never disagree"), this is
+  // just the draw-time layer of it. A Decision node's whole purpose is
+  // multiple named outgoing branches (SPEC.md §3.5), so it's the one kind
+  // exempt from the single-outgoing-edge limit.
   const isValidConnection = useCallback(
     (connection: Connection | RFEdge) => {
-      if (edges.some((e) => e.source === connection.source)) return false
+      const source = nodes.find((n) => n.id === connection.source)
+      if (source?.data.kind !== 'decision' && edges.some((e) => e.source === connection.source)) return false
       // Nothing connects into a trigger node -- it's the entry point, not
       // a step something else feeds (matches CanvasNodeView omitting the
       // target handle for trigger nodes; this is the draw-time layer of
