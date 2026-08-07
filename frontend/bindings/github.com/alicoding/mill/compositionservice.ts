@@ -62,6 +62,18 @@ export function RunWorkflow(id: string): $CancellablePromise<string> {
 }
 
 /**
+ * UpdateWorkflow replaces an existing user-composed workflow's nodes/
+ * edges (and label/description) in place, keeping its ID stable -- so
+ * re-opening a saved workflow on the canvas and saving edits updates it
+ * rather than creating a duplicate. Built-in workflows aren't in
+ * c.user, so they can never be updated -- same disjoint-ID-space
+ * reasoning DeleteWorkflow already relies on.
+ */
+export function UpdateWorkflow(id: string, label: string, description: string, nodes: composition$0.Node[] | null, edges: composition$0.Edge[] | null): $CancellablePromise<composition$0.Workflow> {
+    return $Call.ByID(3999094687, id, label, description, nodes, edges);
+}
+
+/**
  * Workflows returns every built-in workflow followed by every
  * user-composed one, in creation order -- a stable, predictable order
  * for the UI rather than Go's randomized map iteration.

@@ -1,4 +1,4 @@
-import { useCallback, useState, type DragEvent } from 'react'
+import { useCallback, useEffect, useState, type DragEvent } from 'react'
 import {
   ReactFlow,
   ReactFlowProvider,
@@ -15,12 +15,37 @@ import { useStore } from 'zustand'
 import { z } from 'zod'
 import { Button, FormControl, IconButton, Label, Stack, Text, TextInput, Textarea } from '@primer/react'
 import { ColumnsIcon, RedoIcon, TrashIcon, UndoIcon } from '@primer/octicons-react'
+import { ArrowLeftIcon } from '@primer/octicons-react'
 import { CompositionService } from '../bindings/github.com/alicoding/mill'
-import type { NodeType, Node as CompNode, Edge as CompEdge } from '../bindings/github.com/alicoding/mill/internal/domain/composition/models'
+import type { NodeType, Node as CompNode, Edge as CompEdge, Workflow } from '../bindings/github.com/alicoding/mill/internal/domain/composition/models'
 import { useCanvasStore, type CanvasNode } from './canvasStore'
 import { KIND_VARIANT } from './nodeKind'
 import styles from './CompositionCanvas.module.css'
 import runbookStyles from './RunbookView.module.css'
+
+// Converts a persisted Workflow's Nodes/Edges (Wails' PascalCase wire
+// shape) into React Flow's own node/edge shape, for loading an existing
+// workflow onto the canvas to edit -- the inverse of save()'s mapping
+// below. nodeTypes supplies each node's display label, since a stored
+// Node only carries NodeTypeID, not the type's own Label.
+function toCanvasNodes(nodes: CompNode[] | null, nodeTypes: NodeType[]): CanvasNode[] {
+  return (nodes ?? []).map((n) => {
+    const nt = nodeTypes.find((t) => t.ID === n.NodeTypeID)
+    const config: Record<string, string> = {}
+    for (const [k, v] of Object.entries(n.Config ?? {})) {
+      if (v !== undefined) config[k] = v
+    }
+    return {
+      id: n.ID,
+      type: n.Kind,
+      position: { x: n.Position?.X ?? 0, y: n.Position?.Y ?? 0 },
+      data: { nodeTypeID: n.NodeTypeID, kind: n.Kind, label: nt?.Label ?? n.NodeTypeID, config },
+    }
+  })
+}
+function toRFEdges(edges: CompEdge[] | null): RFEdge[] {
+  return (edges ?? []).map((e) => ({ id: e.ID, source: e.Source, target: e.Target, sourceHandle: e.SourceHandle || undefined }))
+}
 
 function CanvasNodeView({ data, selected }: NodeProps<CanvasNode>) {
   return (
@@ -90,6 +115,13 @@ const draftWorkflowSchema = z
 
 interface CompositionCanvasProps {
   nodeTypes: NodeType[]
+  // The workflow being edited -- undefined/null means composing a new
+  // one. Mount-keyed by the caller (CompositionView.tsx passes a `key`
+  // derived from the workflow's id, or "new"), so this component only
+  // ever needs to load its initial data once, on mount -- switching
+  // targets is a fresh mount, not a prop update to react to.
+  workflow?: Workflow | null
+  onBack: () => void
   onSaved: () => void
 }
 
@@ -100,7 +132,7 @@ interface CompositionCanvasProps {
 // gets its node type's default config immediately, editable via the
 // Inspector the moment it's selected, never a bare unconfigured
 // reference.
-function CanvasInner({ nodeTypes, onSaved }: CompositionCanvasProps) {
+function CanvasInner({ nodeTypes, workflow, onBack, onSaved }: CompositionCanvasProps) {
   const nodes = useCanvasStore((s) => s.nodes)
   const edges = useCanvasStore((s) => s.edges)
   const onNodesChange = useCanvasStore((s) => s.onNodesChange)
@@ -116,11 +148,25 @@ function CanvasInner({ nodeTypes, onSaved }: CompositionCanvasProps) {
   const { screenToFlowPosition } = useReactFlow()
 
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null)
-  const [draftLabel, setDraftLabel] = useState('')
-  const [draftDescription, setDraftDescription] = useState('')
+  const [draftLabel, setDraftLabel] = useState(workflow?.Label ?? '')
+  const [draftDescription, setDraftDescription] = useState(workflow?.Description ?? '')
   const [saveError, setSaveError] = useState('')
   const [saving, setSaving] = useState(false)
   const [layingOut, setLayingOut] = useState(false)
+
+  // Runs once per mount -- the caller remounts this component (via a
+  // `key` keyed on the workflow's id) whenever the editing target
+  // changes, so "load the target's data" and "start fresh" both reduce
+  // to "do it once, here."
+  useEffect(() => {
+    if (workflow) {
+      useCanvasStore.getState().load(toCanvasNodes(workflow.Nodes, nodeTypes), toRFEdges(workflow.Edges))
+    } else {
+      useCanvasStore.getState().clear()
+    }
+    useCanvasStore.temporal.getState().clear()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const selectedNode = nodes.find((n) => n.id === selectedNodeId) ?? null
   const selectedNodeType = selectedNode ? nodeTypes.find((nt) => nt.ID === selectedNode.data.nodeTypeID) : undefined
@@ -212,17 +258,22 @@ function CanvasInner({ nodeTypes, onSaved }: CompositionCanvasProps) {
     }
     setSaving(true)
     try {
-      await CompositionService.CreateWorkflow(
-        parsed.data.Label,
-        parsed.data.Description,
-        parsed.data.Nodes as CompNode[],
-        parsed.data.Edges as CompEdge[],
-      )
-      setDraftLabel('')
-      setDraftDescription('')
-      useCanvasStore.getState().clear()
-      useCanvasStore.temporal.getState().clear()
-      setSelectedNodeId(null)
+      if (workflow) {
+        await CompositionService.UpdateWorkflow(
+          workflow.ID,
+          parsed.data.Label,
+          parsed.data.Description,
+          parsed.data.Nodes as CompNode[],
+          parsed.data.Edges as CompEdge[],
+        )
+      } else {
+        await CompositionService.CreateWorkflow(
+          parsed.data.Label,
+          parsed.data.Description,
+          parsed.data.Nodes as CompNode[],
+          parsed.data.Edges as CompEdge[],
+        )
+      }
       onSaved()
     } catch (err) {
       setSaveError(String(err))
@@ -234,6 +285,7 @@ function CanvasInner({ nodeTypes, onSaved }: CompositionCanvasProps) {
   return (
     <div className={styles.canvasSection} data-testid="composition-canvas">
       <Stack direction="horizontal" gap="condensed" align="center" className={styles.toolbar}>
+        <IconButton icon={ArrowLeftIcon} aria-label="Back to workflows" size="small" onClick={onBack} />
         <IconButton icon={UndoIcon} aria-label="Undo" size="small" disabled={!canUndo} onClick={() => useCanvasStore.temporal.getState().undo()} />
         <IconButton icon={RedoIcon} aria-label="Redo" size="small" disabled={!canRedo} onClick={() => useCanvasStore.temporal.getState().redo()} />
         <IconButton icon={ColumnsIcon} aria-label="Auto-layout" size="small" disabled={layingOut || nodes.length === 0} onClick={runAutoLayout} />
@@ -321,7 +373,7 @@ function CanvasInner({ nodeTypes, onSaved }: CompositionCanvasProps) {
           {saveError && <Text as="p" size="small" className={runbookStyles.error}>{saveError}</Text>}
           <Stack direction="horizontal">
             <Button variant="primary" onClick={save} disabled={saving} data-testid="save-workflow">
-              {saving ? 'Saving…' : 'Save workflow'}
+              {saving ? 'Saving…' : workflow ? 'Save changes' : 'Save workflow'}
             </Button>
           </Stack>
         </Stack>
