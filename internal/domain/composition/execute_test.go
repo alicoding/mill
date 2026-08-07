@@ -305,3 +305,55 @@ func TestExecuteWorkflow_ListLookup_EndToEnd(t *testing.T) {
 		t.Fatalf("ExecuteWorkflow returned error: %v", err)
 	}
 }
+
+// --- mcp-tool-call: nodeExec resolves an MCP server via the injected
+// lookupMCPServerFn seam, then calls mcpclient.CallTool. The successful-
+// call path is real-protocol tested at internal/adapters/mcpclient's own
+// level (in-memory transport, no subprocess) -- these tests cover
+// composition's own responsibility: resolving the server and parsing
+// argumentsJSON, both fully exercisable without ever reaching a real MCP
+// server, same as httpconnector's own tests not needing to re-prove
+// net/http works. ---
+
+func withMCPServerLookup(t *testing.T, fn func(id string) (ResolvedMCPServer, error)) {
+	t.Helper()
+	orig := lookupMCPServerFn
+	lookupMCPServerFn = fn
+	t.Cleanup(func() { lookupMCPServerFn = orig })
+}
+
+func TestExecuteWorkflow_MCPToolCall_UnknownServer_Rejected(t *testing.T) {
+	withMCPServerLookup(t, func(id string) (ResolvedMCPServer, error) {
+		return ResolvedMCPServer{}, errors.New("no such server")
+	})
+
+	nodes, err := ResolveNodeDefaults([]Node{{
+		NodeTypeID: "mcp-tool-call",
+		Config:     map[string]string{"mcpServerId": "does-not-exist", "toolName": "greet"},
+	}})
+	if err != nil {
+		t.Fatalf("ResolveNodeDefaults returned error: %v", err)
+	}
+	if _, err := ExecuteWorkflow(nodes, nil, nil); err == nil {
+		t.Fatal("ExecuteWorkflow with an unresolvable MCP server returned nil error, want an error")
+	}
+}
+
+func TestExecuteWorkflow_MCPToolCall_InvalidArgumentsJSON_Rejected(t *testing.T) {
+	withMCPServerLookup(t, func(string) (ResolvedMCPServer, error) {
+		return ResolvedMCPServer{Command: "does-not-matter"}, nil
+	})
+
+	nodes, err := ResolveNodeDefaults([]Node{{
+		NodeTypeID: "mcp-tool-call",
+		Config:     map[string]string{"mcpServerId": "server-1", "toolName": "greet", "argumentsJSON": "{not valid json"},
+	}})
+	if err != nil {
+		t.Fatalf("ResolveNodeDefaults returned error: %v", err)
+	}
+	// Rejected before mcpclient.CallTool is ever reached -- json.Unmarshal
+	// fails first, so no real MCP server needs to exist for this case.
+	if _, err := ExecuteWorkflow(nodes, nil, nil); err == nil {
+		t.Fatal("ExecuteWorkflow with invalid argumentsJSON returned nil error, want an error")
+	}
+}

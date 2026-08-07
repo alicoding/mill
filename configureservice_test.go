@@ -212,3 +212,82 @@ func TestUpdateWorkflowAttributes_UnknownWorkflow_Rejected(t *testing.T) {
 		t.Fatal("UpdateWorkflowAttributes for an unknown workflow returned nil error, want an error")
 	}
 }
+
+// --- MCP Servers --- ListMCPServerTools' successful-call path needs a
+// real MCP server subprocess to connect to (mcpclient.ListTools uses a
+// real CommandTransport) -- that round-trip is already real-protocol
+// tested at internal/adapters/mcpclient's own level via an in-memory
+// transport; these tests cover what's testable at this layer without
+// one: CRUD, resolution, and the unknown-id error path.
+
+func TestCreateMCPServer_ValidatesAndPersists(t *testing.T) {
+	cfg, _ := newTestConfigureService(t)
+	s, err := cfg.CreateMCPServer("My MCP Server", "my-mcp-server", []string{"--flag"})
+	if err != nil {
+		t.Fatalf("CreateMCPServer returned error: %v", err)
+	}
+	if s.ID == "" {
+		t.Error("CreateMCPServer left ID empty, want a generated ID")
+	}
+	got := cfg.MCPServers()
+	if len(got) != 1 || got[0].ID != s.ID {
+		t.Errorf("MCPServers() = %+v, want a single entry matching the created server", got)
+	}
+}
+
+func TestCreateMCPServer_InvalidRejected(t *testing.T) {
+	cfg, _ := newTestConfigureService(t)
+	if _, err := cfg.CreateMCPServer("", "my-mcp-server", nil); err == nil {
+		t.Fatal("CreateMCPServer with an empty label returned nil error, want an error")
+	}
+}
+
+func TestUpdateMCPServer_UnknownID_Rejected(t *testing.T) {
+	cfg, _ := newTestConfigureService(t)
+	if _, err := cfg.UpdateMCPServer("does-not-exist", "New label", "cmd", nil); err == nil {
+		t.Fatal("UpdateMCPServer with an unknown id returned nil error, want an error")
+	}
+}
+
+func TestDeleteMCPServer_RemovesIt(t *testing.T) {
+	cfg, _ := newTestConfigureService(t)
+	s, err := cfg.CreateMCPServer("My MCP Server", "my-mcp-server", nil)
+	if err != nil {
+		t.Fatalf("CreateMCPServer returned error: %v", err)
+	}
+	if err := cfg.DeleteMCPServer(s.ID); err != nil {
+		t.Fatalf("DeleteMCPServer returned error: %v", err)
+	}
+	if len(cfg.MCPServers()) != 0 {
+		t.Error("MCPServers() still returns entries after DeleteMCPServer")
+	}
+}
+
+func TestResolveMCPServer_ReturnsCommandAndArgs(t *testing.T) {
+	cfg, _ := newTestConfigureService(t)
+	s, err := cfg.CreateMCPServer("My MCP Server", "my-mcp-server", []string{"--flag", "value"})
+	if err != nil {
+		t.Fatalf("CreateMCPServer returned error: %v", err)
+	}
+	rs, err := cfg.resolveMCPServer(s.ID)
+	if err != nil {
+		t.Fatalf("resolveMCPServer returned error: %v", err)
+	}
+	if rs.Command != "my-mcp-server" || len(rs.Args) != 2 {
+		t.Errorf("resolveMCPServer = %+v, want the server's own Command/Args", rs)
+	}
+}
+
+func TestResolveMCPServer_UnknownID_Rejected(t *testing.T) {
+	cfg, _ := newTestConfigureService(t)
+	if _, err := cfg.resolveMCPServer("does-not-exist"); err == nil {
+		t.Fatal("resolveMCPServer with an unknown id returned nil error, want an error")
+	}
+}
+
+func TestListMCPServerTools_UnknownID_Rejected(t *testing.T) {
+	cfg, _ := newTestConfigureService(t)
+	if _, err := cfg.ListMCPServerTools("does-not-exist"); err == nil {
+		t.Fatal("ListMCPServerTools for an unknown server returned nil error, want an error")
+	}
+}
