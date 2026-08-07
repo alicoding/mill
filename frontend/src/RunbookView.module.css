@@ -69,3 +69,4 @@
 .sectionHeading { margin: var(--s-4) 0 var(--base-size-8); }
 .stepChain { flex-wrap: wrap; margin-top: var(--base-size-8); }
 .stepConfigField { margin-top: var(--base-size-8); }
+.filterRow { margin-bottom: var(--base-size-12); }

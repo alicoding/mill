@@ -26,6 +26,7 @@ function App() {
   const view = useAppStore((s) => s.view);
   const setView = useAppStore((s) => s.setView);
   const [time, setTime] = useState<string>('Listening for Time event...');
+  const actions = useAppStore((s) => s.actions);
   const setActions = useAppStore((s) => s.setActions);
   const pushActivity = useAppStore((s) => s.pushActivity);
   const setCapabilities = useAppStore((s) => s.setCapabilities);
@@ -63,13 +64,27 @@ function App() {
 
   // Subscribed here, not inside ActivityView/RunbookView, so a hotkey
   // fired while on a different tab is still captured -- the whole point
-  // of this feed is answering "did anything fire at all" regardless of
-  // which page happened to be open at the time.
+  // of this feed is answering "did anything run at all" regardless of
+  // which page happened to be open, or how the run was triggered. Only
+  // the hotkey source pushes via this Go-emitted event -- it's the only
+  // one of the three (hotkey/runbook/composition) that fires headlessly;
+  // Runbook and Composition runs push directly from their own Run button
+  // handlers, since they already resolve synchronously in the browser.
   useEffect(() => {
     return Events.On('hotkey-activity', (evt) => {
-      pushActivity({ ...evt.data, id: crypto.randomUUID(), time: new Date().toLocaleTimeString() });
+      pushActivity({
+        id: crypto.randomUUID(),
+        time: new Date().toLocaleTimeString(),
+        source: 'hotkey',
+        actionID: evt.data.actionID,
+        label: actions?.find((a) => a.ID === evt.data.actionID)?.Name ?? evt.data.actionID,
+        binding: evt.data.binding,
+        success: evt.data.success,
+        detail: evt.data.detail,
+        result: evt.data.result,
+      });
     });
-  }, [pushActivity]);
+  }, [pushActivity, actions]);
 
   return (
     <div className="app-shell">

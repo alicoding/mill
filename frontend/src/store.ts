@@ -1,11 +1,35 @@
 import { create } from 'zustand'
 import type { LabelProps } from '@primer/react'
-import type { HotkeyActivity } from '../bindings/github.com/alicoding/mill/models'
 import type { Action } from '../bindings/github.com/alicoding/mill/internal/domain/runbook/models'
 import { ViewKind } from '../bindings/github.com/alicoding/mill/internal/domain/capabilities/models'
 import type { Capability } from '../bindings/github.com/alicoding/mill/internal/domain/capabilities/models'
 
-export type ActivityEntry = HotkeyActivity & { id: string; time: string }
+// Which surface triggered a run -- 'hotkey' fires headlessly (no other
+// feedback exists for it, the entire reason this feed was built);
+// 'runbook'/'composition' are direct Run-button clicks, which already
+// have their own inline result/error UI, but still belong in one shared
+// feed so "did anything run" has a single place to look regardless of
+// how it was triggered.
+export type ActivitySource = 'hotkey' | 'runbook' | 'composition'
+
+// A frontend-owned shape, not derived from the Go-emitted HotkeyActivity
+// event (main.go) -- only the hotkey source actually goes through that
+// event (it's the only one of the three that fires headlessly); Runbook
+// and Composition runs already resolve synchronously in the browser, so
+// they push directly. label is resolved and stored at push time, not
+// looked up later against `actions`/workflows (which can drift, or have
+// the entry deleted -- workflows aren't even in `actions` at all).
+export interface ActivityEntry {
+  id: string
+  time: string
+  source: ActivitySource
+  actionID: string
+  label: string
+  binding?: string // only set for source: 'hotkey'
+  success: boolean
+  detail: string
+  result: string
+}
 
 // Discriminated union, not a plain string id: 'placeholder' always
 // carries which capability it's standing in for, so PlaceholderView never

@@ -44,6 +44,7 @@ function isAccessibilityError(message: string): boolean {
 
 function RunbookView() {
   const actions = useAppStore((s) => s.actions)
+  const pushActivity = useAppStore((s) => s.pushActivity)
   const [runningId, setRunningId] = useState<string | null>(null)
   const [results, setResults] = useState<Record<string, string>>({})
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -82,11 +83,26 @@ function RunbookView() {
   }, [recordingId])
 
   const run = (id: string) => {
+    const label = actions?.find((a) => a.ID === id)?.Name ?? id
     setRunningId(id)
     setErrors((prev) => ({ ...prev, [id]: '' }))
     RunbookService.Run(id)
-      .then((output) => setResults((prev) => ({ ...prev, [id]: output })))
-      .catch((err) => setErrors((prev) => ({ ...prev, [id]: String(err) })))
+      .then((output) => {
+        setResults((prev) => ({ ...prev, [id]: output }))
+        pushActivity({
+          id: crypto.randomUUID(), time: new Date().toLocaleTimeString(),
+          source: 'runbook', actionID: id, label,
+          success: true, detail: `completed (${output.length} bytes)`, result: output,
+        })
+      })
+      .catch((err) => {
+        setErrors((prev) => ({ ...prev, [id]: String(err) }))
+        pushActivity({
+          id: crypto.randomUUID(), time: new Date().toLocaleTimeString(),
+          source: 'runbook', actionID: id, label,
+          success: false, detail: String(err), result: '',
+        })
+      })
       .finally(() => setRunningId(null))
   }
 

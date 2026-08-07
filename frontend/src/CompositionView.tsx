@@ -3,6 +3,7 @@ import { Button, FormControl, Heading, IconButton, Label, Select, Stack, Text, T
 import { ArrowDownIcon, ArrowUpIcon, PlusIcon, TrashIcon } from '@primer/octicons-react'
 import { CompositionService } from '../bindings/github.com/alicoding/mill'
 import type { NodeType, Step, Workflow } from '../bindings/github.com/alicoding/mill/internal/domain/composition/models'
+import { useAppStore } from './store'
 import styles from './RunbookView.module.css'
 
 const KIND_VARIANT: Record<string, 'accent' | 'success' | 'severe'> = {
@@ -38,6 +39,7 @@ function defaultConfigFor(nodeType: NodeType): Record<string, string> {
 // step is added with its config fields already visible and editable,
 // never as a bare, unconfigured node-type reference.
 function CompositionView() {
+  const pushActivity = useAppStore((s) => s.pushActivity)
   const [nodeTypes, setNodeTypes] = useState<NodeType[] | null>(null)
   const [workflows, setWorkflows] = useState<Workflow[] | null>(null)
   const [runningId, setRunningId] = useState<string | null>(null)
@@ -63,11 +65,26 @@ function CompositionView() {
   const nodeById = (id: string) => nodeTypes?.find((n) => n.ID === id)
 
   const run = (id: string) => {
+    const label = workflows?.find((w) => w.ID === id)?.Label ?? id
     setRunningId(id)
     setErrors((prev) => ({ ...prev, [id]: '' }))
     CompositionService.RunWorkflow(id)
-      .then((output) => setResults((prev) => ({ ...prev, [id]: output })))
-      .catch((err) => setErrors((prev) => ({ ...prev, [id]: String(err) })))
+      .then((output) => {
+        setResults((prev) => ({ ...prev, [id]: output }))
+        pushActivity({
+          id: crypto.randomUUID(), time: new Date().toLocaleTimeString(),
+          source: 'composition', actionID: id, label,
+          success: true, detail: `completed (${output.length} bytes)`, result: output,
+        })
+      })
+      .catch((err) => {
+        setErrors((prev) => ({ ...prev, [id]: String(err) }))
+        pushActivity({
+          id: crypto.randomUUID(), time: new Date().toLocaleTimeString(),
+          source: 'composition', actionID: id, label,
+          success: false, detail: String(err), result: '',
+        })
+      })
       .finally(() => setRunningId(null))
   }
 
