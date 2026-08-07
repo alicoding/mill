@@ -1,11 +1,8 @@
 package main
 
 import (
-	"crypto/rand"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"regexp"
 	"strings"
 	"sync"
 
@@ -29,8 +26,6 @@ import (
 // Renaming the key instead orphans it harmlessly. This is single-
 // maintainer prototype data -- a real migration isn't warranted.
 const workflowsKey = "composition-workflows-v2"
-
-var nonAlnum = regexp.MustCompile(`[^a-z0-9]+`)
 
 // Syncer is the seam CompositionService uses to tell TriggerService
 // (triggerservice.go) "the workflow set changed, re-register whatever
@@ -212,6 +207,42 @@ func (c *CompositionService) UpdateWorkflow(id, label, description string, nodes
 	return wf, nil
 }
 
+// UpdateAttributes replaces a workflow's declared Attributes schema in
+// place -- the delegate ConfigureService (configureservice.go) calls for
+// its Attributes CRUD, per SPEC.md §3.5's "Configure-authored but
+// workflow-scoped" cardinality (Attributes aren't their own top-level
+// entity the way a Connector/List is, they're metadata on a Workflow).
+// Re-validates the existing Nodes/Edges against the *new* schema before
+// accepting it: a Decision edge referencing a field this change removes
+// or retypes must be caught here, not left to silently break the next
+// time that workflow runs.
+func (c *CompositionService) UpdateAttributes(workflowID string, attrs []composition.AttributeDef) (composition.Workflow, error) {
+	c.mu.Lock()
+	idx := -1
+	for i, wf := range c.user {
+		if wf.ID == workflowID {
+			idx = i
+			break
+		}
+	}
+	if idx == -1 {
+		c.mu.Unlock()
+		return composition.Workflow{}, fmt.Errorf("no workflow with id %q", workflowID)
+	}
+
+	if err := composition.ValidateGraph(c.user[idx].Nodes, c.user[idx].Edges, attrs); err != nil {
+		c.mu.Unlock()
+		return composition.Workflow{}, err
+	}
+
+	c.user[idx].Attributes = attrs
+	wf := c.user[idx]
+	c.mu.Unlock()
+
+	c.persist()
+	return wf, nil
+}
+
 // DeleteWorkflow removes a workflow -- seeded or user-composed, both
 // live in c.user (see Workflows' doc comment), no built-in special case.
 func (c *CompositionService) DeleteWorkflow(id string) error {
@@ -284,16 +315,8 @@ func (c *CompositionService) restore() {
 }
 
 // newWorkflowID derives a readable, collision-resistant ID from the
-// workflow's label (e.g. "My Workflow" -> "my-workflow-a1b2c3") --
-// stable/debuggable, unlike an opaque UUID, while the random suffix
-// keeps two same-named workflows from colliding.
+// workflow's label (e.g. "My Workflow" -> "my-workflow-a1b2c3") -- see
+// newSlugID (idgen.go) for the shared shape.
 func newWorkflowID(label string) string {
-	slug := nonAlnum.ReplaceAllString(strings.ToLower(strings.TrimSpace(label)), "-")
-	slug = strings.Trim(slug, "-")
-	if slug == "" {
-		slug = "workflow"
-	}
-	suffix := make([]byte, 3)
-	_, _ = rand.Read(suffix)
-	return slug + "-" + hex.EncodeToString(suffix)
+	return newSlugID(label, "workflow")
 }

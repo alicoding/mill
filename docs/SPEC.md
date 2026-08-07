@@ -1580,10 +1580,10 @@ true and isn't what was asked for.
 |---|---|---|---|
 | Trigger config (cron expression, watch path, hotkey combo) | Inline canvas Inspector | 1:1 — inherently specific to the one workflow it triggers | `LOCKED`, built this way (§3.4) — no change; a trigger's config is never meaningfully shared |
 | Capture/Process/Apply config (today's `html` field, etc.) | Inline canvas Inspector | 1:1 | `LOCKED`, built this way — genuinely simple fields, a dedicated screen would be overhead, not clarity |
-| **Integration / Connector** (HTTP Connector, DB Connector, ...) | **Configure**, under a new Integration category | **1:many** — one configured connector (auth, base URL) referenced by ID from any workflow's Integration node | Execution engine `LOCKED` (§3.3's Integration row) — a workflow can call a real HTTP connector today. *Where it's authored* stays `OPEN`: no Configure-surface CRUD UI exists yet (`ConfigureService`, tracked as a follow-on), so a connector's ID/base URL/auth/secret are only settable by hand-calling the domain layer in the interim, same authoring gap Decision has |
-| **Input / Attributes** | **Configure** | **1:1** — scoped to the one workflow that declares it, per §3.2's original cardinality note | `OPEN` — named in §3.2, no node kind or schema built yet |
+| **Integration / Connector** (HTTP Connector, DB Connector, ...) | **Configure**, under a new Integration category | **1:many** — one configured connector (auth, base URL) referenced by ID from any workflow's Integration node | Execution engine + backend CRUD `LOCKED` (§3.3's Integration row; `ConfigureService`, §4's own bullet) — a workflow can call a real HTTP connector today, and `Connectors()`/`CreateConnector`/`UpdateConnector`/`DeleteConnector`/`SetConnectorSecret` are real, Wails-bound methods. *Where it's authored* stays `OPEN`: no Configure-surface **page** exists yet, so a connector can only be created by calling those bound methods directly (e.g. via dev tools), not through any UI |
+| **Input / Attributes** | **Configure** | **1:1** — scoped to the one workflow that declares it, per §3.2's original cardinality note | Schema + backend CRUD `LOCKED` — `Workflow.Attributes []AttributeDef` (§3.3's Decision Update note) is real, and `ConfigureService.UpdateWorkflowAttributes` re-validates the owning workflow's graph against the new schema before accepting it (a Decision edge referencing a field a change removes/retypes is caught here, not left to break at the next run). *Where it's authored* stays `OPEN`: no Configure-surface page exists yet |
 | **Decision** | **Configure** (a rule/decision-table editor needs real room, not a narrow Inspector sidebar) | **1:1** recommended — §3.2 flagged this cardinality as genuinely unconfirmed ("check before assuming either way"); a workflow's decision logic is plausibly workflow-specific business logic, not shared, but this is a real open question, not decided here | Execution engine `LOCKED` (§3.3's Decision row, Update note) — a Decision node branches for real today. *Where it's authored* stays `OPEN`: no Configure-surface rule builder exists yet, so conditions are only settable by hand-editing persisted JSON in the interim |
-| **List** (a reusable lookup/reference dataset) | **Configure** | **1:many** recommended, same shape as Integration — a shared lookup table is the kind of thing multiple workflows would plausibly reference | Execution engine `LOCKED` (§3.3's List row) — a workflow can look up a real List today. *Where it's authored* stays `OPEN`: no Configure-surface CRUD UI exists yet, same authoring gap as Decision and Integration/Connector above |
+| **List** (a reusable lookup/reference dataset) | **Configure** | **1:many** recommended, same shape as Integration — a shared lookup table is the kind of thing multiple workflows would plausibly reference | Execution engine + backend CRUD `LOCKED` (§3.3's List row; `ConfigureService`) — a workflow can look up a real List today, and `Lists()`/`CreateList`/`UpdateList`/`DeleteList` are real, Wails-bound methods. *Where it's authored* stays `OPEN`: no Configure-surface page exists yet, same gap as Integration/Connector above |
 
 **What Configure is *not*: a plugin system for user-defined node kinds.**
 Worth being explicit about, since "define a dedicated thing in Configure"
@@ -1675,11 +1675,20 @@ CLAUDE.md's Plan step, before any of it becomes code, same discipline
 - Jira/Confluence as a first-class example: still `OPEN`, unbuilt — the
   generic connector is real, but no named-vendor preset exists yet.
 - Whether connectors are built-in or a plugin surface: still `OPEN`.
-- **Still `OPEN`: authoring.** No Configure-surface CRUD UI exists to
-  create/edit a Connector or write its secret (`ConfigureService`,
-  tracked as a follow-on capability) — today a Connector only exists if
-  something calls `internal/domain/connector`/`internal/adapters/
-  credential` directly. Same authoring gap as Decision (§3.5).
+- **Backend CRUD `LOCKED` and built; UI still `OPEN`.** `ConfigureService`
+  (`configureservice.go`) is the Wails-bound service: `Connectors()`/
+  `CreateConnector`/`UpdateConnector`/`DeleteConnector`, plus
+  `SetConnectorSecret`/`DeleteConnectorSecret` (write-only — no
+  `GetSecret` binding exists anywhere on it, by design). Its constructor
+  wires `composition.SetConnectorLookup`/`SetListLookup` to its own
+  `resolveConnector`/`resolveList` methods, so a real HTTP-connector or
+  List node now resolves against Configure-authored data end-to-end —
+  not just the hand-called domain-layer path noted below previously. No
+  Configure-surface *UI* exists yet (`ConfigureView.tsx`, tracked as a
+  follow-on) — today a Connector/List can only be created by calling
+  `ConfigureService`'s bound methods directly (e.g. via the Wails
+  dev-tools console), not through any page in the app. Same authoring
+  gap as Decision (§3.5).
 - See §3.2 for the node-type-vs-instance composition pattern and the
   incremental-extensibility principle for connector protocol/auth support.
 
