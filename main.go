@@ -90,6 +90,7 @@ func main() {
 	compositionService := NewCompositionService(settingsStore)
 	triggerService := NewTriggerService(compositionService, logger, settingsStore)
 	compositionService.SetSyncer(triggerService)
+	configureService := NewConfigureService(settingsStore, compositionService)
 
 	app := application.New(application.Options{
 		Name:        "mill",
@@ -100,6 +101,7 @@ func main() {
 			application.NewService(&CapabilitiesService{}),
 			application.NewService(compositionService),
 			application.NewService(triggerService),
+			application.NewService(configureService),
 		},
 		Assets: application.AssetOptions{
 			Handler: application.AssetFileServerFS(assets),
