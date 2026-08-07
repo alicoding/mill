@@ -33,12 +33,15 @@ export function CapabilityMap(): $CancellablePromise<composition$0.MapEntry[] | 
 
 /**
  * CreateWorkflow composes and configures a new workflow in one step, per
- * SPEC.md §3: ResolveStepDefaults validates every step's node type and
- * fills in any missing config with that field's default, so the stored
- * workflow is never partially configured.
+ * SPEC.md §3: ResolveNodeDefaults validates every node's type and fills
+ * in any missing config with that field's default, so the stored
+ * workflow is never partially configured. The graph shape itself (does
+ * it form one valid chain?) isn't re-checked here -- ExecuteWorkflow
+ * validates that at run time, and the canvas is separately designed to
+ * prevent drawing an invalid graph in the first place.
  */
-export function CreateWorkflow(label: string, description: string, steps: composition$0.Step[] | null): $CancellablePromise<composition$0.Workflow> {
-    return $Call.ByID(2784841854, label, description, steps);
+export function CreateWorkflow(label: string, description: string, nodes: composition$0.Node[] | null, edges: composition$0.Edge[] | null): $CancellablePromise<composition$0.Workflow> {
+    return $Call.ByID(2784841854, label, description, nodes, edges);
 }
 
 /**

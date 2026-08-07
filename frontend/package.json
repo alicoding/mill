@@ -17,12 +17,16 @@
     "@primer/primitives": "^11.10.0",
     "@primer/react": "^38.35.0",
     "@wailsio/runtime": "latest",
+    "@xyflow/react": "^12.11.2",
+    "elkjs": "^0.12.0",
     "marked": "^18.0.9",
     "mermaid": "^11.16.1",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-is": "^19.2.8",
     "svg-pan-zoom": "^3.6.2",
+    "zod": "^4.4.3",
+    "zundo": "^2.3.0",
     "zustand": "^5.0.14"
   },
   "devDependencies": {
