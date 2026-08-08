@@ -1568,6 +1568,199 @@ this entry.
     one rule.
   `OPEN` (all four — captured as design input for §3/§7/§8, not decided
   here).
+- **Update — the reference platform's Integration/Connector surface
+  reviewed in full depth, via a real screenshot walkthrough of its
+  create/view/edit/test flow (16 screenshots, one real saved
+  integration plus the create wizard), prompted directly by the user
+  questioning whether Mill's own Configure→Integration page is right to
+  hide everything behind narrow Primer Tabs the way Composition's
+  canvas Inspector does.** Still kept generic per the standing
+  no-vendor-names rule. This is a large capture — full detail below,
+  since the ask was explicitly "don't leave out any details." Nothing
+  here is decided or built; it's Research, feeding a capability-map
+  addition to §4 and new `OPEN` items in §10.
+  - **The read/edit-mode split, and the layout question this directly
+    answers.** A *saved* integration opens in a read-only summary with
+    four tabs — Details (a flat key/value dump of every backend config
+    field, including masked secrets), Available attributes, Input
+    parameters, Testing — plus explicit Delete/Duplicate/Edit buttons;
+    editing is a deliberate mode switch, not an always-open form. The
+    *create* flow, by contrast, is **one long single-column scroll**,
+    sectioned by plain headings (Name → Integration type → Connection →
+    Request → Authentication → Additional headers → Input parameters →
+    XML configuration → Output parameters → Caching) — no tabs at all
+    while actively authoring. Opened as its own pinned tab in the
+    platform's own app-wide tab-bar (the list of integrations stays
+    visible, dimmed, alongside it) — the same tabbed-multi-editing
+    mechanism Mill's own Composition view already built (`Tabs.tsx`,
+    §3.3's tabbed-multi-editing Update). **Direct answer to the user's
+    question**: tabs are for re-finding things in an *already-saved*
+    record you're scanning, not for the *act of authoring* one — this
+    reference platform tabs the summary view, never the create/edit
+    form itself. Mill's `ConnectorForm.tsx` currently tabs the
+    create/edit form (General/Auth/Headers/Schema/Test), which this
+    precedent argues against; a single guided scroll (or Composition's
+    own tab-per-open-item pattern, applied to Configure) fits the
+    evidence better. Not changed in this pass — a real UX decision,
+    surfaced for the user rather than silently resolved.
+  - **Connection mode — a new, connector-level, immutable-at-creation
+    property with three options, directly touching §3.4's already-`OPEN`
+    webhook-trigger row.** *Real-time* ("calls vendor, get a response
+    instantly" — Mill's only mode today, `integration-http`).
+    *Send & wait* ("calls vendor, get the result later via webhook or
+    polling" — a genuinely new pattern: fire a request, then either
+    receive an async callback or poll for a result, with no Mill
+    equivalent at all). *Receive only* ("run workflow when event is
+    received" — this **is** §3.4's own still-`OPEN` "Webhook / incoming
+    HTTP" trigger row, just reframed as a property of the Connector
+    rather than a standalone Trigger kind). The platform's own copy
+    ("once this integration is created, you cannot switch to a
+    different connection") treats this as a locked, one-time choice —
+    worth adopting as a design constraint regardless of how it's built,
+    since letting an already-wired workflow's execution shape change
+    underneath it is a real correctness hazard. Send & wait's execution
+    model plausibly maps onto DBOS's own already-adopted durable-workflow
+    primitives (a workflow that awaits an external signal/event before
+    resuming) rather than needing a bespoke correlation-ID mechanism
+    hand-built from scratch — worth confirming against DBOS-Go's actual
+    API before designing, not assumed.
+  - **Integration type (connector kind) — a real, closed list observed
+    directly: Generic REST API (Mill's only kind today), BigQuery,
+    Postgres, Redshift, Snowflake, Custom Python Function.** Direct,
+    concrete validation of §3.2's own already-locked "incrementally
+    extensible, not fixed upfront" principle and §4's "`Type` supports
+    one value today... a DB/SOAP connector adds its own `Type` when a
+    real need surfaces" line — this is real evidence of what those
+    future `Type`s actually look like, not speculation. "Custom Python
+    Function" is a new idea: a connector backed by user-authored code
+    rather than an external call at all, adjacent to but distinct from
+    ADR-0005's original deferred "Code" node.
+  - **Auth is three independent, additive layers, not one dropdown.**
+    Auth type (a base scheme — Mill's `none`/`apikey`/`bearer`, likely
+    also OAuth2 given "Auth token in header"/"Auth token in query"
+    flags seen in the Details dump) plus two optional add-ons that
+    layer on top of *any* Auth type: **JOSE Encryption** ("encrypts
+    what [the platform] sends to the vendor, and optionally decrypts
+    what it receives back (JWE)") and **Mutual TLS (mTLS)** ("proves
+    [the platform]'s identity to the vendor using a client
+    certificate") — confirmed as a real, live feature by the actual
+    error message a test run surfaced: "Invalid mTLS client
+    certificate — verify P12 contents, alias and password." Neither
+    JOSE/JWE nor mTLS appears anywhere in Mill's current `AuthType`
+    (`none`/`apikey`/`bearer`, OAuth2 named as future work) — both are
+    real, net-new gaps. **Researched, not assumed**: `crypto/tls`'s own
+    `Config.Certificates` is the native Go mechanism for a client cert
+    (no exotic library needed for the TLS handshake itself); the P12
+    *container format* (`.p12`/`.pfx`, alias + password, exactly what
+    the error message names) needs a decoder —
+    `software.sslmate.com/src/go-pkcs12` (successor to the now-frozen
+    `golang.org/x/crypto/pkcs12`, confirmed via its own docs) decodes a
+    P12 file straight into a cert+key usable by `crypto/tls.Config`.
+    For JOSE/JWE, `github.com/go-jose/go-jose/v4` is the canonical,
+    actively-maintained Go implementation (JWE/JWS/JWT, RFC 7516/7515/
+    7519). Both are real adopt candidates, zero NIH risk — `OPEN` on
+    whether/when to build, not on which library would do it.
+  - **XML is a first-class, fully-parallel protocol mode, not a
+    Content-Type footnote.** A real "Enable XML request and response"
+    toggle, plus (seen in a saved integration's Details dump) a
+    cluster of XML-specific fields: `xml preserve raw response`,
+    `xml strip namespaces`, `xml response mode` (`"auto"`),
+    `xml array force paths`, `unflatten response`, `content type value`.
+    Mill's HTTP connector is JSON-only today — this is exactly the gap
+    §3.2's own already-locked "started with plain HTTP and grew to also
+    support XML/SOAP" principle already anticipated, now with a real
+    reference shape to design against instead of a hypothetical.
+    **Researched**: Go's stdlib `encoding/xml` is struct-based (fine for
+    a fixed, compile-time shape, wrong fit for Mill's runtime-configured,
+    schema-less connectors); `github.com/clbanning/mxj` decodes/encodes
+    XML to/from `map[string]interface{}` (i.e. JSON-shaped data) with
+    dot-path extraction and wildcard support — much closer to what a
+    schema-driven, dynamically-configured XML connector actually needs;
+    `github.com/basgys/goxml2json` is a simpler, one-directional
+    XML→JSON option if bidirectionality turns out not to be needed.
+    `OPEN` on adoption, not on the library candidates.
+  - **Schema authoring gets a "Paste sample" path — infer the field
+    list from a real example, for input *and* output independently —
+    the single most directly-actionable finding against the user's own
+    original ask** ("if you started as csv or json you will be able to
+    review it using the editor"). Distinct from Mill's existing three
+    paths (paste raw OpenAPI, hand-author via the Manual editor, CSV
+    import, ADR-0011): none of those infer a schema from a realistic
+    example payload the way this does. **Researched**: `genson-js`
+    (npm, MIT) does exactly this client-side — pass it a parsed JSON
+    object, get a JSON Schema back — and would slot in as a fourth
+    `ManualSchemaEditor` accelerator (bulk-fills the same field table
+    CSV import already bulk-fills), not a new backend surface, matching
+    how CSV import itself works today. `OPEN` on adoption.
+  - **Schema fields carry more than Mill's `Field` today.** The full
+    output-schema editor's column set: Attribute\*(name) / Type /
+    Required / Alias / Default value / Description — Mill's
+    `openapispec.Field` has no `Default` or `Description` at all
+    (OpenAPI itself supports both; Mill's adapter just doesn't surface
+    them yet). The Type dropdown offers nine types — Boolean, Number,
+    Integer, String, Array, Object, Map, Date, Datetime — vs. Mill's
+    six (no `Map`/`Date`/`Datetime`); Object types are recursively
+    expandable (nested "Add field," matching real nested-object schema
+    authoring, not just Mill's flat field list); a String field can
+    declare an optional Enum values list (a tag-style "press enter to
+    create" input) — the same idea as `ConfigField`'s `FieldOptions`,
+    applied one level down to a connector schema field instead of a
+    NodeType config field. All real, scoped gaps against ADR-0011's
+    Manual editor — `OPEN`, no decision made on which to close first.
+  - **Output handling gets three capabilities Mill has none of**:
+    **Response extract path** — a document-level, JSONPath-like root
+    extraction applied *before* per-field extraction (real examples
+    shown: `*`, `*.result`, `data.items[0]`, `$.data.result`) —
+    complementary to, and more general than, Mill's existing per-field
+    `x-mill-path` (ADR-0011), which only extracts one field at a time
+    from an already-known response shape; this operates on the whole
+    envelope first. **Restructure response into nested fields** — a
+    flattening/restructuring toggle whose exact semantics weren't
+    fully legible from the screenshots — flagged as genuinely
+    uncertain, not guessed at, same discipline as the already-deferred
+    "primary key" concept (§4/ADR-0011's own Update note). **Save a
+    file from the response** — extracting/downloading a file from an
+    API response, paired with **Include a file along with input
+    fields** on the request side — file-bearing requests/responses are
+    entirely unaddressed by Mill's connector model today.
+  - **Response caching — a real capability with zero Mill equivalent.**
+    "Stores and reuses API responses for identical requests within the
+    cache window. Responses are matched [by request content], headers,
+    and record ID." A Cache duration (TTL) setting (default 30 days)
+    and a "Share cache across records" toggle ("allow different
+    records to share cached responses when their requests are
+    identical"). Genuinely valuable for a decisioning-style workload
+    (avoid re-paying for an expensive external bureau lookup on
+    identical input) but also a real design surface of its own — cache
+    key derivation, invalidation, where the cache actually lives
+    (in-process vs. DBOS-backed vs. `internal/adapters/settings`) — not
+    a quick bolt-on. `OPEN`, no library research done yet (this is a
+    design question first, an adopt-vs-build question second).
+  - **The Testing tab, already built in Mill via ADR-0013, compared
+    directly against a real equivalent — two small, real gaps found,
+    no fundamental redesign needed.** The reference platform's test
+    payload is one raw, colorized JSON blob (not Mill's per-field
+    table) and its results are a collapsed table (Time sent / status
+    icon) that expands per row, with a **"Copy error"** button Mill's
+    `ConnectorTestPanel.tsx` doesn't have. Everything else — generate
+    an example payload, run against the real API, see a session log of
+    attempts with status/error — Mill already has. `OPEN`: whether to
+    add a copy-to-clipboard affordance on a log entry (small, low-risk)
+    and/or a raw-JSON-blob input mode alongside the existing per-field
+    table (bigger, a real second input mode) — not decided here.
+  - **The Configure left-nav has more top-level entities than Mill's
+    four Configure tabs.** Observed: Inputs, Attributes, Integrations,
+    Decisions, ML Models, Jobs, Lists. Mill has Integration(Connector)/
+    Lists/Attributes/MCP Servers as Configure tabs today, plus Decision
+    authored inline per-edge on the canvas (not a separate Configure
+    tab). New, unrecorded entities: a separate **Inputs** tab distinct
+    from Attributes (its exact scope/semantics weren't legible from
+    the screenshots — flagged as uncertain, not invented), **ML
+    Models** (already named `OPEN`/deferred in ADR-0005's original
+    taxonomy discussion, §3.3), and **Jobs** (possibly Mill's own
+    Schedule-trigger concept, or a background-execution/queue view
+    closer to the Runs page — genuinely unclear which, not assumed).
+    `OPEN`, real future research if any of these get prioritized.
 
 ### 3.3 Capability map — designing the node/edge schema against the full known need, not just today's two workflows
 
@@ -2858,8 +3051,35 @@ this pass.
   failure rather than a flaky real-network dependency) correctly logs
   an error, and duplicating a connector round-trips every field except
   the secret. `LOCKED`.
-- See §3.2 for the node-type-vs-instance composition pattern and the
-  incremental-extensibility principle for connector protocol/auth support.
+
+### 4.1 Connector capability map — from the reference-platform review (§3.2)
+
+Same discipline as §3.3's own capability map, applied to the new surface
+area §3.2's Update just captured: list every observed capability before
+building any of it, so the next connector-maturity pass has a real map
+to work from instead of picking items ad hoc. None of these are
+scheduled — this is Research, not a build plan; `OPEN` throughout.
+
+| Capability | Mill today | Adopt or build | Status |
+|---|---|---|---|
+| Connection mode (real-time / send-and-wait / receive-only) | Real-time only (`integration-http`), immutable-by-nature since nothing else exists | Graph/execution semantics: build. Send-and-wait's async-resume shape: adopt, likely DBOS's own signal/await primitives (already adopted, §7) rather than a hand-built correlation ID | `OPEN` — receive-only is the same thing as §3.4's already-`OPEN` webhook trigger row, not a second decision |
+| Connector kind (DB/Python-function types) | `TypeHTTP` only | Wire protocol per kind: adopt (a DB driver per kind, e.g. `lib/pq`/`pgx` for Postgres). Kind dispatch/config: build, same shape `AuthType`'s switch already has | `OPEN`, real precedent now exists (§3.2) for what the next `Type` values should be |
+| mTLS (client cert auth) | Not built | Adopt — `crypto/tls.Config.Certificates` (stdlib) + `software.sslmate.com/src/go-pkcs12` (P12 decode) | `OPEN` |
+| JOSE/JWE (request/response encryption) | Not built | Adopt — `github.com/go-jose/go-jose/v4` | `OPEN` |
+| XML request/response | JSON only | Adopt — `github.com/clbanning/mxj` (map/JSON-shaped, dynamic — fits Mill's runtime-configured connectors better than stdlib `encoding/xml`'s struct-based model) | `OPEN` |
+| Schema-from-example ("Paste sample") | Paste-OpenAPI / Manual editor / CSV import (ADR-0011) — none infer from a realistic example | Adopt — `genson-js` (npm), a fourth client-side `ManualSchemaEditor` accelerator, same shape as CSV import | `OPEN` |
+| Field `Default` / `Description` | Not on `openapispec.Field` | Build (OpenAPI itself supports both; Mill's adapter just doesn't read them yet) | `OPEN` |
+| Field types `Map`/`Date`/`Datetime` | 6 types (string/number/integer/boolean/object/array) | Build (OpenAPI-vocabulary extension, same shape as existing types) | `OPEN` |
+| Enum values on a String field | Not built (a NodeType `ConfigField` has `FieldOptions`; a connector schema `Field` doesn't have the equivalent) | Build | `OPEN` |
+| Response extract path (document-level, pre-field) | Only per-field `x-mill-path` (ADR-0011) | Build (a JSONPath-lite root expression, evaluated before per-field extraction) | `OPEN` |
+| Restructure response / file-bearing requests+responses | Not built | Uncertain scope — needs more research before an adopt-vs-build call, not guessed at | `OPEN`, genuinely under-specified |
+| Response caching (TTL, record-scoped sharing) | Not built | Design question first (cache key, invalidation, storage location — DBOS-backed vs. in-process vs. `internal/adapters/settings`), library pick second | `OPEN` |
+| Test-log "Copy error" | `ConnectorTestPanel.tsx`'s log entries (ADR-0013) have no copy affordance | Build (small — a clipboard-write button, same primitive Runbook/HotkeyService already used for clipboard writes elsewhere) | `OPEN`, small |
+| Raw-JSON test-payload mode | Per-field table only (ADR-0013) | Build, additive to the existing per-field mode, not a replacement | `OPEN` |
+| Read-only summary view + explicit Edit mode for a saved connector | `ConfigureIntegration.tsx`'s form is always directly editable, no view/edit split | Build (a real UX pattern change, not a library) — directly answers the layout question §3.2's Update raised | `OPEN`, the layout decision itself is the user's call, not resolved here |
+
+See §3.2 for the node-type-vs-instance composition pattern and the
+incremental-extensibility principle for connector protocol/auth support.
 
 ## 5. Browser bridge
 
@@ -3311,3 +3531,18 @@ mode from §0 repeating itself one level up.
   built: `ConnectorTestPanel.tsx`'s Test tab (real HTTP call via
   `ConfigureService.TestConnectorOperation`, example-value generation,
   a session-local request/response log) and Duplicate. ADR-0013 closed.
+- Connector/Integration surface — reference-platform-informed capability
+  map (§3.2's Update, §4.1) — `OPEN`, nothing built or scheduled yet.
+  Real, researched gaps: connection mode (real-time/send-and-wait/
+  receive-only — the latter is §3.4's own webhook-trigger row, not a
+  separate question), DB/Python-function connector kinds, mTLS, JOSE/
+  JWE, XML request/response, schema-from-example authoring, richer
+  Field shape (Default/Description/Map/Date/Datetime/Enum), a
+  document-level response-extract-path, response caching, and a
+  read-only-summary/explicit-Edit-mode UX pattern for a saved
+  connector. The last one is a direct, still-open answer to whether
+  Configure should keep tabbing its create/edit forms the way
+  Composition's canvas Inspector does (the evidence points toward: tab
+  the saved-record summary, not the act of authoring) — surfaced for
+  the user, not resolved here. §4.1's table has the full adopt-vs-build
+  breakdown per item.
