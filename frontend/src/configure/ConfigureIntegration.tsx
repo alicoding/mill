@@ -127,8 +127,16 @@ export function ConfigureIntegration() {
                       <Stack direction="horizontal" gap="condensed" align="center">
                         <Text weight="semibold">{c.Label}</Text>
                         <Label variant="secondary" size="small">{AUTH_LABEL[c.AuthType] ?? c.AuthType}</Label>
+                        {/* No !c.BuiltIn guard on Delete below -- a seeded
+                            example is ordinary and fully editable/deletable
+                            from the moment it exists, same pattern
+                            CompositionView.tsx already uses for wf.BuiltIn
+                            (docs/SPEC.md §2.2's Update note). BuiltIn only
+                            drives this informational badge. */}
+                        {c.BuiltIn && <Label variant="secondary" size="small">built-in</Label>}
                       </Stack>
                       <Text as="p" size="small" className={styles.muted}>{c.BaseURL}</Text>
+                      {c.Description && <Text as="p" size="small" className={styles.muted}>{c.Description}</Text>}
                       <Text as="p" size="small" className={styles.muted}>ID: {c.ID}</Text>
                     </div>
                     <IconButton icon={TrashIcon} aria-label={`Delete ${c.Label}`} size="small" variant="invisible" onClick={() => remove(c.ID)} />

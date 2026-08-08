@@ -58,8 +58,16 @@ export function Connectors(): $CancellablePromise<connector$0.Connector[] | null
     return $Call.ByID(1335444401);
 }
 
-export function CreateConnector(label: string, connType: string, baseURL: string, authType: connector$0.AuthType, headers: { [_ in string]?: string } | null, openAPISpec: string, auth: connector$0.AuthConfig | null, jose: connector$0.JOSEConfig | null): $CancellablePromise<connector$0.Connector> {
-    return $Call.ByID(3578677376, label, connType, baseURL, authType, headers, openAPISpec, auth, jose);
+/**
+ * CreateConnector/UpdateConnector's positional-param list is getting
+ * long (9 now, after Description) -- a real ergonomics cost (this
+ * session already had to patch every call site twice via scripted
+ * regex when Auth/JOSE were added), worth an options-struct pass at
+ * some point, but that's a separate, bigger refactor than "add a
+ * Description field" -- not done speculatively here.
+ */
+export function CreateConnector(label: string, connType: string, baseURL: string, authType: connector$0.AuthType, headers: { [_ in string]?: string } | null, openAPISpec: string, auth: connector$0.AuthConfig | null, jose: connector$0.JOSEConfig | null, description: string): $CancellablePromise<connector$0.Connector> {
+    return $Call.ByID(3578677376, label, connType, baseURL, authType, headers, openAPISpec, auth, jose, description);
 }
 
 export function CreateList(label: string, entries: { [_ in string]?: string } | null): $CancellablePromise<list$0.List> {
@@ -188,8 +196,8 @@ export function TestConnectorOperation(req: $models.TestConnectorRequest): $Canc
     return $Call.ByID(247805665, req);
 }
 
-export function UpdateConnector(id: string, label: string, connType: string, baseURL: string, authType: connector$0.AuthType, headers: { [_ in string]?: string } | null, openAPISpec: string, auth: connector$0.AuthConfig | null, jose: connector$0.JOSEConfig | null): $CancellablePromise<connector$0.Connector> {
-    return $Call.ByID(2890915231, id, label, connType, baseURL, authType, headers, openAPISpec, auth, jose);
+export function UpdateConnector(id: string, label: string, connType: string, baseURL: string, authType: connector$0.AuthType, headers: { [_ in string]?: string } | null, openAPISpec: string, auth: connector$0.AuthConfig | null, jose: connector$0.JOSEConfig | null, description: string): $CancellablePromise<connector$0.Connector> {
+    return $Call.ByID(2890915231, id, label, connType, baseURL, authType, headers, openAPISpec, auth, jose, description);
 }
 
 export function UpdateList(id: string, label: string, entries: { [_ in string]?: string } | null): $CancellablePromise<list$0.List> {

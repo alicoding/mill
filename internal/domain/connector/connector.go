@@ -154,6 +154,12 @@ type Connector struct {
 	BaseURL  string
 	AuthType AuthType
 	Headers  map[string]string
+	// Description is free-text explaining what this connector is/does --
+	// optional. Particularly useful for a seeded example (BuiltIn below):
+	// explaining what it demonstrates, and any honest caveat (e.g. "not
+	// independently validated by the target server" or "bring your own
+	// credentials").
+	Description string
 	// OpenAPISpec is the raw OpenAPI 3.x document (JSON or YAML) this
 	// connector's operations are declared against -- optional (ADR-0007).
 	// Parsed via internal/adapters/openapispec. A Connector with no spec
@@ -167,6 +173,14 @@ type Connector struct {
 	// -- nil for every connector saved before this field existed, and
 	// for any connector not using it.
 	JOSE *JOSEConfig
+	// BuiltIn marks a seeded example connector (BuiltIn() below) --
+	// purely informational, same as composition.Workflow.BuiltIn: it
+	// drives a "built-in" badge in the UI only, never gates Edit/Delete.
+	// A seeded example is an ordinary, fully-editable/deletable
+	// connector from the moment it exists (docs/SPEC.md §2.2's Update
+	// note -- the same Zapier/n8n-precedented pattern, applied here to
+	// Connectors instead of Workflows).
+	BuiltIn bool
 }
 
 // Validate checks a Connector is well-formed before it's persisted --
