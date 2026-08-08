@@ -173,3 +173,66 @@ identically to today.
   (`items[].name` one-to-many); reparsing an arbitrarily complex
   hand-written OpenAPI doc losslessly back into the flat table (only
   round-trips what the table itself could produce).
+
+## Update — schema-authoring maturity (Phase 1 of the connector-
+capability-maturity goal, `docs/SPEC.md` §4.1)
+
+Extends this ADR's already-accepted design with mechanical, single-
+defensible-answer additions researched in the same reference-platform
+review that produced §4.1's capability map — no new architectural
+decision, hence no new ADR number (matches how Alias/Path themselves
+were folded into this ADR rather than getting one of their own).
+
+- **`Field` gains `Default`/`Description`/`EnumValues`** — OpenAPI's
+  own standard `default`/`description`/`enum` keywords, read directly
+  (unlike Alias/Path, no `x-mill-*` vendor extension needed, since
+  OpenAPI already has real keywords for these). `Default` is always
+  stringified (Mill's own config/binding values are uniformly strings
+  on the wire regardless of declared Type, the same convention
+  `Node.Config`/`runInput.Values` already use).
+- **Field type vocabulary grows from 6 to 9**: `map`, `date`,
+  `datetime` added. None are real OpenAPI `type` keywords — `map` is
+  the standard idiom `type: object` + `additionalProperties` with no
+  fixed `properties`; `date`/`datetime` are `type: string` +
+  `format: date`/`date-time`. `openapispec.schemaType()` translates on
+  read, `openapiSynth.ts`'s `fieldSchema()` translates on write —
+  `ManualField.type` itself stays the flat, friendlier vocabulary Mill's
+  UI already uses.
+- **A document-level `Operation.ResponseExtractPath`** (read from a new
+  `x-mill-response-extract-path` extension on the operation itself, not
+  a field) — resolved in `attributebinding.go`'s `applyOutputBindings`
+  *before* any per-field `Path`, narrowing the response to a
+  sub-document first (e.g. an envelope like `{"data": {...}}`).
+  Deliberately narrower than the reference platform's own syntax (no
+  bracket-array-index or `$.`-JSONPath-prefix support, both left
+  genuinely unresolved by even the fuller consolidated review, §10) —
+  reuses the exact dot-path + numeric-segment grammar `extractPath`
+  already has rather than a second parser for an unspecified grammar.
+  `*` and empty both mean "no extraction," the one reference-platform
+  example (`*`) this can represent exactly.
+- **"Paste sample"** — a fourth `ManualSchemaEditor` accelerator
+  alongside Paste-OpenAPI/Manual/CSV: paste a real example JSON value,
+  infer a field list from it (`genson-js`, Apache-2.0, adopted fresh).
+  Scoped to body fields only — a flat JSON sample has no way to signal
+  "this key is actually a path/query/header parameter," so guessing
+  HTTP placement from it would repeat exactly the kind of guess this
+  ADR's own CSV design already avoided.
+- **Enum values authored as a plain comma-separated text field, not
+  Primer's `TextInputWithTokens`** — checked directly against the
+  installed `@primer/react` package before use (this repo's own
+  "check the kit before hand-rolling" rule) and found marked
+  `@deprecated` in this version; a comma-separated string is a simpler,
+  dependency-free fit for a short allowed-value list anyway.
+- **Test tab QoL**: a per-log-entry Copy button (`navigator.clipboard`,
+  no library — confirmed no existing frontend clipboard-write primitive
+  to reuse, Mill's own clipboard code is all server-side) and a raw-JSON
+  payload input mode alongside the existing per-field table in
+  `ConnectorTestPanel.tsx` — additive; `TestConnectorRequest.Values` on
+  the wire is unchanged, the JSON mode just parses into the same
+  `map[string]string` client-side before the same RPC call.
+
+Verified end-to-end via Playwright (`connector-schema-maturity.spec.ts`)
+against the real Go backend: paste-sample inference, Default/
+Description/EnumValues, and the response extract expression all
+round-trip through Save → the read-only summary view → re-opening
+Edit. `LOCKED`.

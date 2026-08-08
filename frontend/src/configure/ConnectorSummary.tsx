@@ -191,8 +191,17 @@ function SchemaFieldList({ label, fields }: { label: string; fields: Field[] | n
           {f.Required && <Label size="small">required</Label>}
           {f.IsSecret && <Label variant="danger" size="small">secret</Label>}
           {f.Path && <Label variant="accent" size="small">path: {f.Path}</Label>}
+          {f.Default && <Label variant="accent" size="small">default: {f.Default}</Label>}
+          {f.EnumValues && f.EnumValues.length > 0 && <Label variant="accent" size="small">enum: {f.EnumValues.join(', ')}</Label>}
         </Stack>
       ))}
+      {list.some((f) => f.Description) && (
+        <Stack direction="vertical" gap="condensed">
+          {list.filter((f) => f.Description).map((f) => (
+            <Text key={f.Name} as="p" size="small" className={styles.muted}>{f.Name}: {f.Description}</Text>
+          ))}
+        </Stack>
+      )}
     </Stack>
   )
 }

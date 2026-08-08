@@ -56,21 +56,22 @@ func parseBindings(raw string) (map[string]string, error) {
 // path-template substitutions already applied), the JSON-encoded body
 // (empty if no body fields are bound), extra headers, and query values.
 // outputFields is the operation's declared output field list (Path
-// included), returned alongside the resolved request so the caller can
-// hand it to applyOutputBindings after the HTTP call completes without
-// parsing the spec a second time.
-func resolveInputBindings(specDoc string, config map[string]string, attrs map[string]any) (path, body string, headers map[string]string, query url.Values, outputFields []openapispec.Field, err error) {
+// included), and responseExtractPath its document-level extraction
+// (docs/SPEC.md §4.1) -- both returned alongside the resolved request
+// so the caller can hand them to applyOutputBindings after the HTTP
+// call completes without parsing the spec a second time.
+func resolveInputBindings(specDoc string, config map[string]string, attrs map[string]any) (path, body string, headers map[string]string, query url.Values, outputFields []openapispec.Field, responseExtractPath string, err error) {
 	doc, err := openapispec.Parse([]byte(specDoc))
 	if err != nil {
-		return "", "", nil, nil, nil, fmt.Errorf("parse connector spec: %w", err)
+		return "", "", nil, nil, nil, "", fmt.Errorf("parse connector spec: %w", err)
 	}
 	op, err := doc.Operation(config["path"], config["method"])
 	if err != nil {
-		return "", "", nil, nil, nil, err
+		return "", "", nil, nil, nil, "", err
 	}
 	bindings, err := parseBindings(config["inputBindings"])
 	if err != nil {
-		return "", "", nil, nil, nil, fmt.Errorf("inputBindings: %w", err)
+		return "", "", nil, nil, nil, "", fmt.Errorf("inputBindings: %w", err)
 	}
 
 	path = config["path"]
@@ -97,11 +98,11 @@ func resolveInputBindings(specDoc string, config map[string]string, attrs map[st
 	if len(bodyFields) > 0 {
 		b, err := json.Marshal(bodyFields)
 		if err != nil {
-			return "", "", nil, nil, nil, fmt.Errorf("encode bound body fields: %w", err)
+			return "", "", nil, nil, nil, "", fmt.Errorf("encode bound body fields: %w", err)
 		}
 		body = string(b)
 	}
-	return path, body, headers, query, op.OutputFields, nil
+	return path, body, headers, query, op.OutputFields, op.ResponseExtractPath, nil
 }
 
 // applyOutputBindings decodes an HTTP response body's JSON and writes
@@ -120,7 +121,17 @@ func resolveInputBindings(specDoc string, config map[string]string, attrs map[st
 // (nil outputFields, or a field this list doesn't mention, both fall
 // back to that same flat lookup -- unconditionally backward compatible
 // with every binding authored before Path existed).
-func applyOutputBindings(outputBindingsRaw, respBody string, outputFields []openapispec.Field, ctx *ExecContext) error {
+//
+// responseExtractPath (docs/SPEC.md §4.1) is applied first, narrowing
+// respObj to a sub-document before any per-field Path runs against it
+// -- e.g. an envelope like {"data":{...}} where every declared field
+// actually lives under "data". Empty or "*" (openapispec.Operation's
+// own documented "no extraction" values) leaves respObj untouched. A
+// path that doesn't resolve falls back to the original, full respObj
+// rather than failing the whole binding step -- same permissive
+// "a misconfigured extraction isn't a hard error" stance this function
+// already takes for a missing per-field Path.
+func applyOutputBindings(outputBindingsRaw, respBody, responseExtractPath string, outputFields []openapispec.Field, ctx *ExecContext) error {
 	bindings, err := parseBindings(outputBindingsRaw)
 	if err != nil {
 		return fmt.Errorf("outputBindings: %w", err)
@@ -135,6 +146,11 @@ func applyOutputBindings(outputBindingsRaw, respBody string, outputFields []open
 	var respObj any
 	if err := json.Unmarshal([]byte(respBody), &respObj); err != nil {
 		return nil
+	}
+	if responseExtractPath != "" && responseExtractPath != "*" {
+		if narrowed, ok := extractPath(respObj, responseExtractPath); ok {
+			respObj = narrowed
+		}
 	}
 	if ctx.Attributes == nil {
 		ctx.Attributes = map[string]any{}

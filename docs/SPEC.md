@@ -3239,16 +3239,16 @@ scheduled — this is Research, not a build plan; `OPEN` throughout.
 | mTLS (client cert auth) | Not built | Adopt — `crypto/tls.Config.Certificates` (stdlib) + `software.sslmate.com/src/go-pkcs12` (P12 decode). Field set now fully known: cert upload, keystore password, optional alias (defaults to first key entry), optional CA bundle (defaults to system trust store), a disable-validation toggle | `OPEN` — if built, the disable-validation toggle must be gated behind an explicit governed exception, never a plain checkbox, per the fuller review's own flagged warning matching Mill's §8 fail-safe posture |
 | JOSE/JWE (request/response encryption) | Not built | Adopt — `github.com/go-jose/go-jose/v4` | `OPEN` |
 | XML request/response, including a SOAP request-template layer (substitution/conditionals/iteration) | JSON only | Structural XML↔JSON: adopt — `github.com/clbanning/mxj` (map/JSON-shaped, dynamic — fits Mill's runtime-configured connectors better than stdlib `encoding/xml`'s struct-based model). Template engine: Go stdlib `text/template` is the first candidate to check (native conditionals/range) — the real expression grammar needed is still unresolved, don't assume `text/template` is sufficient without checking against it | `OPEN` |
-| Schema-from-example ("Paste sample") | Paste-OpenAPI / Manual editor / CSV import (ADR-0011) — none infer from a realistic example | Adopt — `genson-js` (npm), a fourth client-side `ManualSchemaEditor` accelerator, same shape as CSV import | `OPEN` |
-| Field `Default` / `Description` | Not on `openapispec.Field` | Build (OpenAPI itself supports both; Mill's adapter just doesn't read them yet) | `OPEN` |
-| Field types `Map`/`Date`/`Datetime` | 6 types (string/number/integer/boolean/object/array) | Build (OpenAPI-vocabulary extension, same shape as existing types) | `OPEN` |
-| Enum values on a String field | Not built (a NodeType `ConfigField` has `FieldOptions`; a connector schema `Field` doesn't have the equivalent) | Build | `OPEN` |
-| Response extract path (document-level, pre-field) | Only per-field `x-mill-path` (ADR-0011) | Build (a JSONPath-lite root expression, evaluated before per-field extraction) | `OPEN` |
+| Schema-from-example ("Paste sample") | `genson-js`, a fourth `ManualSchemaEditor` accelerator alongside Paste-OpenAPI/Manual/CSV, body fields only | Adopted — `genson-js` (npm) | `LOCKED`, built (Phase 1, ADR-0011's Update) |
+| Field `Default` / `Description` | On `openapispec.Field`, read from OpenAPI's own `default`/`description` keywords | Built | `LOCKED` (Phase 1, ADR-0011's Update) |
+| Field types `Map`/`Date`/`Datetime` | 9 types total now (string/number/integer/boolean/object/array/map/date/datetime) | Built | `LOCKED` (Phase 1, ADR-0011's Update) |
+| Enum values on a String field | `Field.EnumValues`, authored via a comma-separated text field (not Primer's `TextInputWithTokens`, found deprecated in the installed version when checked directly) | Built | `LOCKED` (Phase 1, ADR-0011's Update) |
+| Response extract path (document-level, pre-field) | `Operation.ResponseExtractPath` (`x-mill-response-extract-path`), resolved before per-field `x-mill-path`. Deliberately narrower grammar than the reference platform's own (no bracket/`$.` syntax, still genuinely unresolved) — reuses the existing dot-path extractor | Built | `LOCKED` (Phase 1, ADR-0011's Update) |
 | Restructure response / file-bearing requests+responses | Not built | Uncertain scope — needs more research before an adopt-vs-build call, not guessed at even after the fuller review, which flags its own transformation semantics as unresolved too | `OPEN`, genuinely under-specified |
 | Response caching (TTL, record-scoped sharing) | Not built | Design question first — match key now confirmed as request body + headers + record ID, "share across records" removes only the record-ID boundary. Storage location (DBOS-backed vs. in-process vs. `internal/adapters/settings`) still undecided, library pick after that | `OPEN` |
-| Test-log "Copy error" | `ConnectorTestPanel.tsx`'s log entries (ADR-0013) have no copy affordance | Build (small — a clipboard-write button, same primitive Runbook/HotkeyService already used for clipboard writes elsewhere) | `OPEN`, small |
-| Raw-JSON test-payload mode | Per-field table only (ADR-0013) | Build, additive to the existing per-field mode, not a replacement | `OPEN` |
-| Read-only summary view + explicit Edit mode for a saved connector | `ConfigureIntegration.tsx`'s form is always directly editable, no view/edit split | Build (a real UX pattern change, not a library) — directly answers the layout question §3.2's Update raised, and matches the "inspect-vs-edit" shared pattern the fuller review independently named | `OPEN`, the layout decision itself is the user's call, not resolved here |
+| Test-log "Copy error" | `ConnectorTestPanel.tsx` log entries, `navigator.clipboard.writeText` (no existing frontend clipboard-write primitive to reuse — confirmed, Mill's clipboard code is all server-side) | Built | `LOCKED` (Phase 1, ADR-0011's Update) |
+| Raw-JSON test-payload mode | Additive alongside the per-field table; `TestConnectorRequest.Values` on the wire unchanged | Built | `LOCKED` (Phase 1, ADR-0011's Update) |
+| Read-only summary view + explicit Edit mode for a saved connector | `ConnectorSummary.tsx` (Details/Available attributes/Input parameters/Testing tabs) + a restructured one-scroll `ConnectorForm.tsx`, both opened as their own pinned tab | Built | `LOCKED` (Phase 0, ADR-0014) |
 | Shared hierarchical schema-editor / typed-tree component (one editor for Connector input, Connector output, Workflow Attributes, future fixtures) | Four-plus separate, not-fully-consistent implementations (`ManualSchemaEditor.tsx` is Connector-only; `ConfigureAttributes.tsx` is its own thing) | Build — a real component-consolidation effort, not a library pick; named directly by the fuller review as one of ten reused product primitives (§3.2's Update) | `OPEN`, a frontend-architecture decision, not urgent |
 | Integration-level draft/publish/version/rollback lifecycle | Not built (distinct from the already-`OPEN` workflow-level draft/live versioning, §3.2) | Build, once real | `OPEN`, genuinely unresolved even after the fuller review — real future research |
 
@@ -3711,9 +3711,14 @@ mode from §0 repeating itself one level up.
   continuous scroll, no more Primer Tabs), both opened as their own
   pinned tab in `ConfigureIntegration.tsx` via the same mechanism
   Composition already uses. Phase 0 of the connector-capability-maturity
-  goal (§3.2/§4.1's Update) — Phases 1-3 (schema-authoring maturity,
-  the full auth-type catalogue + extensibility seam, JOSE/JWE) still
-  `OPEN`, not started. ADR-0014 closed.
+  goal (§3.2/§4.1's Update) — ADR-0014 closed.
+- Schema-authoring maturity (§4.1, ADR-0011's Update) — `LOCKED` and
+  built: paste-sample field inference (`genson-js`), `Field.Default`/
+  `Description`/`EnumValues`, the `map`/`date`/`datetime` type
+  additions, a document-level `Operation.ResponseExtractPath`, and the
+  Test tab's Copy-error button + raw-JSON payload mode. Phase 1 of the
+  connector-capability-maturity goal — Phases 2-3 (the full auth-type
+  catalogue + extensibility seam, JOSE/JWE) still `OPEN`, not started.
 - Connector/Integration surface — reference-platform-informed capability
   map (§3.2's Update, §4.1) — `OPEN`, nothing built or scheduled yet.
   Real, researched gaps: connection mode (real-time/send-and-wait/
