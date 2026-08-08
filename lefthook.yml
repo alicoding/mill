@@ -9,7 +9,15 @@ pre-commit:
       glob: "*.{go,ts,tsx}"
       run: ./scripts/check-loc.sh
     - name: rules-frontmatter
-      glob: ".claude/rules/**/*.md"
+      # Lefthook's `**` requires 1+ directories deep (non-standard --
+      # confirmed against its own docs, not gitignore-style zero-or-more),
+      # so `.claude/rules/**/*.md` never matches a file directly in
+      # rules/, only in a subdirectory of it. Every rule file today is
+      # flat (frontend.md, backend.md, ...), so this glob is what
+      # actually matches them; revisit if/when a nested rules/<topic>/
+      # directory is ever added (docs/SPEC.md §9.1 -- Claude Code
+      # supports it, Mill doesn't use it yet).
+      glob: ".claude/rules/*.md"
       run: ./scripts/check-rules-frontmatter.sh
     - name: go-vet
       glob: "*.go"
