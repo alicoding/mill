@@ -22,5 +22,6 @@ export type {
     HotkeyActivity,
     RunDetail,
     RunStep,
-    RunSummary
+    RunSummary,
+    UpdateCheckResult
 } from "./models.js";

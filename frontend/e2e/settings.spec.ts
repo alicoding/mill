@@ -46,3 +46,18 @@ test('Setting a global summon hotkey shows the recording state', async ({ page }
   await expect(page.getByText(/press a combo/i)).not.toBeVisible()
   await expect(page.getByTestId('set-summon-hotkey')).toBeVisible()
 })
+
+test('Check for updates produces a visible status, found or error', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Settings' }).click()
+
+  // A real call to the GitHub Releases provider (alicoding/mill has no
+  // releases yet) -- deterministic either way in this environment
+  // (no network in a sandboxed runner, or a real "no releases" 404),
+  // so only the button's own round-trip (re-enables once done) is
+  // asserted, not which specific outcome text appears.
+  const button = page.getByTestId('check-for-updates')
+  await button.click()
+  await expect(button).toBeEnabled({ timeout: 15_000 })
+  await expect(button).toHaveText('Check for updates')
+})
