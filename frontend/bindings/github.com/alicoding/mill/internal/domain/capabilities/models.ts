@@ -54,5 +54,6 @@ export enum ViewKind {
     ViewActivity = "activity",
     ViewComposition = "composition",
     ViewConfigure = "configure",
+    ViewRuns = "runs",
     ViewPlaceholder = "placeholder",
 };

@@ -6,6 +6,7 @@ import SpecView from "./SpecView";
 import ActivityView from "./ActivityView";
 import CompositionView from "./CompositionView";
 import ConfigureView from "./ConfigureView";
+import RunsView from "./RunsView";
 import SettingsView from "./SettingsView";
 import PlaceholderView from "./PlaceholderView";
 import { CompositionService, CapabilitiesService } from "../bindings/github.com/alicoding/mill";
@@ -260,6 +261,8 @@ function App() {
           {view.kind === 'composition' && <CompositionView/>}
 
           {view.kind === 'configure' && <ConfigureView/>}
+
+          {view.kind === 'runs' && <RunsView/>}
 
           {view.kind === 'settings' && <SettingsView/>}
 

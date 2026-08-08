@@ -27,8 +27,13 @@ export default defineConfig({
     // file instead of the real ~/Library/Application Support/mill/
     // settings.json -- otherwise this suite's composed/deleted test
     // workflows would write into the same file the real desktop dev app
-    // reads its saved state from.
-    env: { MILL_SETTINGS_PATH: '/tmp/mill-e2e-settings.json' },
+    // reads its saved state from. MILL_EXECUTION_DB_PATH is the same
+    // isolation for ExecutionService's DBOS-backed SQLite file
+    // (docs/adr/0004), added alongside for the identical reason.
+    env: {
+      MILL_SETTINGS_PATH: '/tmp/mill-e2e-settings.json',
+      MILL_EXECUTION_DB_PATH: '/tmp/mill-e2e-execution.db',
+    },
   },
   use: {
     baseURL: 'http://localhost:8080',
