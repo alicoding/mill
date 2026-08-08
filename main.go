@@ -92,6 +92,20 @@ func main() {
 	compositionService.SetSyncer(triggerService)
 	configureService := NewConfigureService(settingsStore, compositionService)
 
+	// Separate SQLite file from settings.json (own schema, own lifecycle
+	// -- durable-execution checkpoints, not app config) but the same
+	// config-dir convention and the same MILL_* env-override shape
+	// settingsPath already established above, for the identical reason:
+	// desktop-mode and server-mode e2e runs must not share real state.
+	executionDBPath := os.Getenv("MILL_EXECUTION_DB_PATH")
+	if executionDBPath == "" {
+		executionDBPath = filepath.Join(application.Path(application.PathConfigHome), "mill", "execution.db")
+	}
+	executionService, err := NewExecutionService(executionDBPath, compositionService)
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	app := application.New(application.Options{
 		Name:        "mill",
 		Description: "Guardrailed agentic-workflow automation",
@@ -102,6 +116,7 @@ func main() {
 			application.NewService(compositionService),
 			application.NewService(triggerService),
 			application.NewService(configureService),
+			application.NewService(executionService),
 		},
 		Assets: application.AssetOptions{
 			Handler: application.AssetFileServerFS(assets),
@@ -164,6 +179,13 @@ func main() {
 
 	// Run the application. This blocks until the application has been exited.
 	err = app.Run()
+
+	// Flush any in-flight step checkpoints before the process actually
+	// exits -- best-effort (the app is already tearing down), logged
+	// rather than fatal.
+	if shutdownErr := executionService.Shutdown(5 * time.Second); shutdownErr != nil {
+		logger.Error("execution runtime shutdown", "error", shutdownErr)
+	}
 
 	// If an error occurred while running the application, log it and exit.
 	if err != nil {

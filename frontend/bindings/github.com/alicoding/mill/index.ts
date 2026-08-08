@@ -4,16 +4,21 @@
 import * as CapabilitiesService from "./capabilitiesservice.js";
 import * as CompositionService from "./compositionservice.js";
 import * as ConfigureService from "./configureservice.js";
+import * as ExecutionService from "./executionservice.js";
 import * as SpecService from "./specservice.js";
 import * as TriggerService from "./triggerservice.js";
 export {
     CapabilitiesService,
     CompositionService,
     ConfigureService,
+    ExecutionService,
     SpecService,
     TriggerService
 };
 
 export type {
-    HotkeyActivity
+    HotkeyActivity,
+    RunDetail,
+    RunStep,
+    RunSummary
 } from "./models.js";

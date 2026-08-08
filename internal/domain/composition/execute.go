@@ -4,6 +4,24 @@ import (
 	"fmt"
 )
 
+// StepRunner wraps one node's exec call so a durable caller (see
+// internal/adapters/execution + executionservice.go) can checkpoint it
+// -- e.g. via DBOS's RunAsStep, keyed by stepID -- without composition
+// itself depending on DBOS (domain purity, CLAUDE.md's ports/adapters
+// rule; docs/adr/0004's "Mill workflow/step mapping" update). stepID is
+// the executing Node's own ID, so a durable caller can join DBOS's
+// per-workflow step history back onto this graph by ID with no separate
+// naming scheme to keep in sync.
+type StepRunner func(stepID string, fn func() (ExecContext, error)) (ExecContext, error)
+
+// directStepRunner is what ExecuteWorkflow uses -- calls fn immediately,
+// no checkpointing. This is the only runner every existing caller/test
+// has ever seen; ExecuteWorkflowWithStepRunner with a nil run behaves
+// identically.
+func directStepRunner(_ string, fn func() (ExecContext, error)) (ExecContext, error) {
+	return fn()
+}
+
 // ExecuteWorkflow runs a fully-resolved node graph, following Decision
 // nodes' conditional edges (walk/nextNode) instead of a flat ordered
 // list. Errors here are plain/technical, not hand-tuned soft-failure
@@ -20,6 +38,21 @@ import (
 // (both built-ins today) behaves exactly as before this parameter
 // existed.
 func ExecuteWorkflow(nodes []Node, edges []Edge, attrs []AttributeDef) (string, error) {
+	return executeWorkflow(nodes, edges, attrs, directStepRunner)
+}
+
+// ExecuteWorkflowWithStepRunner is ExecuteWorkflow with each node's exec
+// call routed through run instead of called directly -- the seam
+// executionservice.go uses to checkpoint every node as a durable DBOS
+// step. A nil run behaves exactly like ExecuteWorkflow.
+func ExecuteWorkflowWithStepRunner(nodes []Node, edges []Edge, attrs []AttributeDef, run StepRunner) (string, error) {
+	if run == nil {
+		run = directStepRunner
+	}
+	return executeWorkflow(nodes, edges, attrs, run)
+}
+
+func executeWorkflow(nodes []Node, edges []Edge, attrs []AttributeDef, run StepRunner) (string, error) {
 	if len(nodes) == 0 {
 		return "", fmt.Errorf("a workflow needs at least one node")
 	}
@@ -53,7 +86,7 @@ func ExecuteWorkflow(nodes []Node, edges []Edge, attrs []AttributeDef) (string, 
 			if !ok || entry.exec == nil {
 				return "", fmt.Errorf("unknown node type: %s", node.NodeTypeID)
 			}
-			ctx, err = entry.exec(node, ctx)
+			ctx, err = run(node.ID, func() (ExecContext, error) { return entry.exec(node, ctx) })
 			if err != nil {
 				return "", fmt.Errorf("node %s: %w", node.NodeTypeID, err)
 			}
