@@ -28,7 +28,7 @@ func findBuiltInWorkflowID(t *testing.T, comp *CompositionService, label string)
 // zero-valued runInput, which surfaced as every run's WorkflowLabel
 // rendering blank in the UI. Verified end-to-end against a real DBOS
 // SQLite runtime, not a mock, per .claude/rules/testing.md.
-func TestRunWorkflowDurable_SummaryHasRealWorkflowLabelAndStepOutput(t *testing.T) {
+func TestRunWorkflow_SummaryHasRealWorkflowLabelAndStepOutput(t *testing.T) {
 	store := newFakeStore()
 	comp := NewCompositionService(store)
 	workflowID := findBuiltInWorkflowID(t, comp, "Load sample HTML")
@@ -40,15 +40,21 @@ func TestRunWorkflowDurable_SummaryHasRealWorkflowLabelAndStepOutput(t *testing.
 	}
 	t.Cleanup(func() { _ = exec.Shutdown(2 * time.Second) })
 
-	summary, err := exec.RunWorkflowDurable(workflowID)
+	summary, err := exec.RunWorkflow(workflowID, RunKindTest)
 	if err != nil {
-		t.Fatalf("RunWorkflowDurable: %v", err)
+		t.Fatalf("RunWorkflow: %v", err)
 	}
 	if summary.WorkflowLabel != "Load sample HTML" {
 		t.Errorf("summary.WorkflowLabel = %q, want %q", summary.WorkflowLabel, "Load sample HTML")
 	}
 	if summary.Status != "SUCCESS" {
 		t.Errorf("summary.Status = %q, want SUCCESS (osascript write should succeed on this dev machine)", summary.Status)
+	}
+	if summary.Kind != RunKindTest {
+		t.Errorf("summary.Kind = %q, want %q", summary.Kind, RunKindTest)
+	}
+	if summary.Output == "" {
+		t.Error("summary.Output is empty, want the workflow's final payload (decodeAny should have decoded WorkflowStatus.Output)")
 	}
 
 	detail, err := exec.GetRun(summary.RunID)
@@ -89,9 +95,9 @@ func TestRedriveRun_ReturnsNewRunWithSameStepOutput(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = exec.Shutdown(2 * time.Second) })
 
-	original, err := exec.RunWorkflowDurable(workflowID)
+	original, err := exec.RunWorkflow(workflowID, RunKindTest)
 	if err != nil {
-		t.Fatalf("RunWorkflowDurable: %v", err)
+		t.Fatalf("RunWorkflow: %v", err)
 	}
 	originalDetail, err := exec.GetRun(original.RunID)
 	if err != nil {

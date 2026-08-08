@@ -56,10 +56,6 @@ export function NodeTypes(): $CancellablePromise<composition$0.NodeType[] | null
     return $Call.ByID(966013356);
 }
 
-export function RunWorkflow(id: string): $CancellablePromise<string> {
-    return $Call.ByID(3042871077, id);
-}
-
 /**
  * UpdateAttributes replaces a workflow's declared Attributes schema in
  * place -- the delegate ConfigureService (configureservice.go) calls for

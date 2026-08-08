@@ -51,14 +51,19 @@ export function RedriveRun(runID: string, fromNodeID: string): $CancellablePromi
 }
 
 /**
- * RunWorkflowDurable runs a composed workflow through the durable
- * execution path -- every node's result is checkpointed and the run
- * stays visible/redrivable afterward (ListRuns/GetRun/RedriveRun),
- * unlike CompositionService.RunWorkflow's plain in-memory execution
- * (left untouched -- this is an additive entry point, not a
- * replacement, so the existing Composition/Runbook "Run" button and its
- * e2e coverage are unaffected).
+ * RunWorkflow is the one execution entrypoint for the running app
+ * (docs/adr/0008) -- every run, whether started from Composition's
+ * canvas, the Runs page's own quick-run picker, or (once TriggerService
+ * is wired to this path, ADR-0008's named follow-on) a real headless
+ * trigger, goes through here. Every node's result is checkpointed and
+ * the run stays visible/redrivable afterward (ListRuns/GetRun/
+ * RedriveRun) regardless of kind -- a "test" run gets exactly the same
+ * durability guarantees as a "triggered" one, only the Kind label
+ * differs. composition.ExecuteWorkflow (no DBOS, no checkpointing)
+ * still exists as the tested primitive internal/domain/composition's
+ * own unit tests call directly -- no Wails-bound service calls it
+ * anymore.
  */
-export function RunWorkflowDurable(workflowID: string): $CancellablePromise<$models.RunSummary> {
-    return $Call.ByID(4082714576, workflowID);
+export function RunWorkflow(workflowID: string, kind: $models.RunKind): $CancellablePromise<$models.RunSummary> {
+    return $Call.ByID(2449867341, workflowID, kind);
 }
