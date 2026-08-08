@@ -2391,6 +2391,39 @@ and the sidebar restructuring this implied. `OPEN`: whether any *other*
 node kind belongs in Configure — see the recheck immediately below,
 which found none do, today — and the extension-points question in §3.6.
 
+**Update — Connector layout redone as inspect-vs-edit + one-scroll
+authoring + its own pinned tab, [ADR-0014](adr/0014-configure-layout-inspect-vs-edit.md),
+answering the layout question §3.2's reference-platform review raised
+directly.** A saved connector now opens read-only
+(`ConnectorSummary.tsx`, four tabs — Details/Available attributes/
+Input parameters/Testing — plus explicit Delete/Duplicate/Edit
+actions) instead of an always-editable inline card; create/edit
+(`ConnectorForm.tsx`) is one continuous guided scroll (General → Auth
+→ Headers → Schema → Test as `Heading` section breaks, Primer `Tabs`
+removed) instead of five Primer Tabs squeezed into a narrow card.
+Both open as their own pinned tab in `ConfigureIntegration.tsx`,
+reusing `CompositionView.tsx`'s own `EditorTab`/`tabs`/`activeTab`
+mechanism (`shared/Tabs.tsx`) verbatim — extended to a second Configure
+surface for the first time rather than reinvented. `ConnectorForm` now
+owns its draft/headers/error state internally (seeded once from an
+`editingConnector`/`duplicateFrom` prop pair, matching
+`CompositionCanvas.tsx`'s own "own state, keyed remount" shape) instead
+of being controlled from the parent list page — required for
+correctness once more than one connector tab can be open
+simultaneously, not just a style preference. The inner pinned list tab
+was initially also labeled "Integration," colliding with
+`ConfigureView.tsx`'s own outer section tab of the same name (two
+same-named tabs in nested tab bars, caught by a real e2e failure, not
+assumed) — renamed to "Connectors" to disambiguate. "Available
+attributes" vs. "Input parameters" is a stated interpretation, not a
+verified fact from the research (which flagged their exact
+relationship as unresolved, §10): mapped onto Mill's own existing
+Output/Input field split. Verified end-to-end via Playwright (the
+entire connector e2e surface — `configure-integration.spec.ts`,
+`connector-schema-editor.spec.ts`, `connector-test-panel.spec.ts`,
+`integration-bindings.spec.ts`, `entity-ref-picker.spec.ts` — updated
+for the new navigation, full suite run twice). `LOCKED`.
+
 **Recheck against the two-axis test, applied to every current
 `NodeType`, not just the ones already promoted to Configure.** Prompted
 directly by the question "do we need Configure-level primitives for
@@ -3672,6 +3705,15 @@ mode from §0 repeating itself one level up.
   built: `ConnectorTestPanel.tsx`'s Test tab (real HTTP call via
   `ConfigureService.TestConnectorOperation`, example-value generation,
   a session-local request/response log) and Duplicate. ADR-0013 closed.
+- Configure layout: inspect-vs-edit + one-scroll authoring + own pinned
+  tab (§3.5's Update, ADR-0014) — `LOCKED` and built: `ConnectorSummary.tsx`
+  (read-only, tabbed) + a restructured `ConnectorForm.tsx` (one
+  continuous scroll, no more Primer Tabs), both opened as their own
+  pinned tab in `ConfigureIntegration.tsx` via the same mechanism
+  Composition already uses. Phase 0 of the connector-capability-maturity
+  goal (§3.2/§4.1's Update) — Phases 1-3 (schema-authoring maturity,
+  the full auth-type catalogue + extensibility seam, JOSE/JWE) still
+  `OPEN`, not started. ADR-0014 closed.
 - Connector/Integration surface — reference-platform-informed capability
   map (§3.2's Update, §4.1) — `OPEN`, nothing built or scheduled yet.
   Real, researched gaps: connection mode (real-time/send-and-wait/

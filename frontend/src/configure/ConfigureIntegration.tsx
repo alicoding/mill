@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react'
 import { Button, Heading, IconButton, Label, Stack, Text } from '@primer/react'
-import { PlusIcon, PencilIcon, CopyIcon, TrashIcon } from '@primer/octicons-react'
+import { PlusIcon, TrashIcon } from '@primer/octicons-react'
+import { Tabs } from '@primer/react/experimental'
+import { TabItem, TabList, TabPanel } from '../shared/Tabs'
 import { ConfigureService } from '../../bindings/github.com/alicoding/mill'
 import type { Connector } from '../../bindings/github.com/alicoding/mill/internal/domain/connector/models'
 import { AuthType } from '../../bindings/github.com/alicoding/mill/internal/domain/connector/models'
-import type { Field, Operation, OperationRef } from '../../bindings/github.com/alicoding/mill/internal/adapters/openapispec/models'
-import { ConnectorForm, type ConnectorDraft, type HeaderRow } from './ConnectorForm'
-import { headersToRows, rowsToHeaders } from './connectorHeaders'
+import { ConnectorForm } from './ConnectorForm'
+import { ConnectorSummary } from './ConnectorSummary'
 import styles from '../shared/ListCard.module.css'
 
 const AUTH_LABEL: Record<string, string> = {
@@ -15,25 +16,32 @@ const AUTH_LABEL: Record<string, string> = {
   [AuthType.AuthBearer]: 'Bearer token',
 }
 
-const EMPTY_DRAFT: ConnectorDraft = { label: '', baseURL: '', authType: AuthType.AuthNone, secret: '', openAPISpec: '' }
+const LIST_TAB = 'list'
+
+// One open tab per connector currently being viewed or edited --
+// mirrors CompositionView.tsx's own EditorTab/tabs/activeTab shape
+// exactly (docs/adr/0014): the connector list is the pinned tab,
+// viewing or editing a connector opens (or reuses) its own tab. `mode`
+// is 'view' (ConnectorSummary, read-only) or 'edit' (ConnectorForm,
+// covers new/edit/duplicate -- see ConnectorForm's own editingConnector/
+// duplicateFrom props for how those three cases differ).
+interface ConnectorTab {
+  key: string
+  connectorId: string | null // null only for a brand-new connector
+  mode: 'view' | 'edit'
+  duplicateFromId: string | null
+}
 
 // Configure's Integration section (docs/SPEC.md §3.5): CRUD over
 // ConfigureService's Connectors. Type is fixed to "http" -- the only
 // connector Type built today (§3.2's incremental-extensibility
-// principle). The create/edit form itself is ConnectorForm.tsx
-// (docs/adr/0011: sectioned into General/Auth/Headers/Schema tabs,
-// Schema offering a Paste-OpenAPI/Manual-editor toggle) -- extracted
-// out once the Schema tab's Manual/CSV editor made this file too large
-// for one component.
+// principle). docs/adr/0014: the list here stays a pinned tab; viewing
+// (ConnectorSummary.tsx) and editing (ConnectorForm.tsx) both open as
+// their own pinned tabs rather than an inline card on this page.
 export function ConfigureIntegration() {
   const [connectors, setConnectors] = useState<Connector[] | null>(null)
-  const [editingID, setEditingID] = useState<string | null>(null)
-  const [draft, setDraft] = useState<ConnectorDraft>(EMPTY_DRAFT)
-  const [headerRows, setHeaderRows] = useState<HeaderRow[]>([])
-  const [formOpen, setFormOpen] = useState(false)
-  const [error, setError] = useState('')
-  const [operationsByConnector, setOperationsByConnector] = useState<Record<string, OperationRef[] | string>>({})
-  const [fieldsByOperation, setFieldsByOperation] = useState<Record<string, Operation | string>>({})
+  const [tabs, setTabs] = useState<ConnectorTab[]>([])
+  const [activeTab, setActiveTab] = useState(LIST_TAB)
 
   const refetch = () => {
     ConfigureService.Connectors().then((list) => setConnectors(list ?? [])).catch(console.error)
@@ -41,197 +49,121 @@ export function ConfigureIntegration() {
 
   useEffect(refetch, [])
 
-  const startCreate = () => {
-    setEditingID(null)
-    setDraft(EMPTY_DRAFT)
-    setHeaderRows([])
-    setFormOpen(true)
-    setError('')
+  const closeTab = (key: string) => {
+    setTabs((prev) => prev.filter((t) => t.key !== key))
+    setActiveTab((current) => (current === key ? LIST_TAB : current))
   }
 
-  const startEdit = (c: Connector) => {
-    setEditingID(c.ID)
-    setDraft({ label: c.Label, baseURL: c.BaseURL, authType: c.AuthType, secret: '', openAPISpec: c.OpenAPISpec })
-    setHeaderRows(headersToRows(c.Headers))
-    setFormOpen(true)
-    setError('')
+  const openNewTab = () => {
+    const key = crypto.randomUUID()
+    setTabs((prev) => [...prev, { key, connectorId: null, mode: 'edit', duplicateFromId: null }])
+    setActiveTab(key)
   }
 
-  // docs/adr/0013 §7: opens the *create* form (editingID stays null, so
-  // Save calls CreateConnector, not UpdateConnector) pre-filled from an
-  // existing connector's config. Secret is deliberately never copied --
-  // it was never readable back through Mill in the first place (§3.5's
-  // write-only design), so "duplicate" naturally can't carry it forward;
-  // the new connector's Auth tab shows the normal empty-secret state,
-  // not the "leave blank to keep existing" caption (which only makes
-  // sense mid-edit of the *same* connector).
-  const startDuplicate = (c: Connector) => {
-    setEditingID(null)
-    setDraft({ label: `${c.Label} copy`, baseURL: c.BaseURL, authType: c.AuthType, secret: '', openAPISpec: c.OpenAPISpec })
-    setHeaderRows(headersToRows(c.Headers))
-    setFormOpen(true)
-    setError('')
-  }
-
-  // Takes the draft directly (not read from state) -- ConnectorForm's
-  // Manual-schema-editor mode synthesizes openAPISpec at Save time and
-  // must not rely on a setState-then-read-state round trip, which
-  // isn't synchronous. See ConnectorForm.tsx's handleSave for the real
-  // bug this shape avoids.
-  const save = async (finalDraft: ConnectorDraft) => {
-    setError('')
-    try {
-      const headers = rowsToHeaders(headerRows)
-      const saved = editingID
-        ? await ConfigureService.UpdateConnector(editingID, finalDraft.label, 'http', finalDraft.baseURL, finalDraft.authType, headers, finalDraft.openAPISpec)
-        : await ConfigureService.CreateConnector(finalDraft.label, 'http', finalDraft.baseURL, finalDraft.authType, headers, finalDraft.openAPISpec)
-      if (finalDraft.secret) {
-        await ConfigureService.SetConnectorSecret(saved.ID, finalDraft.secret)
-      }
-      setFormOpen(false)
-      refetch()
-    } catch (err) {
-      setError(String(err))
+  // Viewing or editing the same connector twice reuses its existing
+  // tab instead of opening a duplicate over the same data (matches
+  // CompositionView.tsx's openEditTab precedent).
+  const openTab = (connectorId: string, mode: 'view' | 'edit') => {
+    const existing = tabs.find((t) => t.connectorId === connectorId && t.mode === mode)
+    if (existing) {
+      setActiveTab(existing.key)
+      return
     }
+    const key = crypto.randomUUID()
+    setTabs((prev) => [...prev, { key, connectorId, mode, duplicateFromId: null }])
+    setActiveTab(key)
+  }
+
+  const openDuplicateTab = (c: Connector) => {
+    const key = crypto.randomUUID()
+    setTabs((prev) => [...prev, { key, connectorId: null, mode: 'edit', duplicateFromId: c.ID }])
+    setActiveTab(key)
   }
 
   const remove = (id: string) => {
-    ConfigureService.DeleteConnector(id).then(refetch).catch(console.error)
-  }
-
-  const listOperations = (id: string) => {
-    ConfigureService.ListConnectorOperations(id)
-      .then((ops) => setOperationsByConnector((prev) => ({ ...prev, [id]: ops ?? [] })))
-      .catch((err) => setOperationsByConnector((prev) => ({ ...prev, [id]: String(err) })))
-  }
-
-  const showFields = (connectorID: string, op: OperationRef) => {
-    const opKey = `${connectorID} ${op.Method} ${op.Path}`
-    ConfigureService.ConnectorOperationFields(connectorID, op.Path, op.Method)
-      .then((fields) => setFieldsByOperation((prev) => ({ ...prev, [opKey]: fields })))
-      .catch((err) => setFieldsByOperation((prev) => ({ ...prev, [opKey]: String(err) })))
+    ConfigureService.DeleteConnector(id).then(() => {
+      refetch()
+      setTabs((prev) => prev.filter((t) => t.connectorId !== id))
+      setActiveTab((current) => (tabs.find((t) => t.key === current)?.connectorId === id ? LIST_TAB : current))
+    }).catch(console.error)
   }
 
   return (
-    <div className={styles.page} data-testid="configure-integration">
-      <Stack direction="horizontal" justify="space-between" align="center" className={styles.sectionHeading}>
-        <Heading as="h2" variant="small">Integration</Heading>
-        <Button leadingVisual={PlusIcon} size="small" onClick={startCreate} data-testid="new-connector">
-          New connector
-        </Button>
-      </Stack>
+    <Tabs value={activeTab} onValueChange={({ value }) => setActiveTab(value)}>
+      <TabList aria-label="Connectors">
+        <TabItem value={LIST_TAB}>Connectors</TabItem>
+        {tabs.map((t) => (
+          <TabItem key={t.key} value={t.key} onClose={() => closeTab(t.key)}>
+            {t.connectorId ? (connectors?.find((c) => c.ID === t.connectorId)?.Label ?? 'Connector') : 'New connector'}
+          </TabItem>
+        ))}
+      </TabList>
 
-      {formOpen && (
-        <ConnectorForm
-          draft={draft}
-          onDraftChange={setDraft}
-          headerRows={headerRows}
-          onHeaderRowsChange={setHeaderRows}
-          isEditing={editingID !== null}
-          connectorID={editingID}
-          onSave={save}
-          onCancel={() => setFormOpen(false)}
-          error={error}
-        />
-      )}
+      <TabPanel value={LIST_TAB}>
+        <div className={styles.page} data-testid="configure-integration">
+          <Stack direction="horizontal" justify="space-between" align="center" className={styles.sectionHeading}>
+            <Heading as="h2" variant="small">Connectors</Heading>
+            <Button leadingVisual={PlusIcon} size="small" onClick={openNewTab} data-testid="new-connector">
+              New connector
+            </Button>
+          </Stack>
 
-      {connectors === null && <Text as="p" className={styles.muted}>Loading…</Text>}
-      {connectors !== null && connectors.length === 0 && !formOpen && (
-        <Text as="p" className={styles.muted}>No connectors yet.</Text>
-      )}
-      {connectors !== null && (
-        <Stack direction="vertical" gap="condensed">
-          {connectors.map((c) => (
-            <div key={c.ID} className={styles.card} data-testid="connector-row">
-              <Stack direction="horizontal" justify="space-between" align="start" gap="normal">
-                <div>
-                  <Stack direction="horizontal" gap="condensed" align="center">
-                    <Text weight="semibold">{c.Label}</Text>
-                    <Label variant="secondary" size="small">{AUTH_LABEL[c.AuthType] ?? c.AuthType}</Label>
+          {connectors === null && <Text as="p" className={styles.muted}>Loading…</Text>}
+          {connectors !== null && connectors.length === 0 && (
+            <Text as="p" className={styles.muted}>No connectors yet.</Text>
+          )}
+          {connectors !== null && (
+            <Stack direction="vertical" gap="condensed">
+              {connectors.map((c) => (
+                <div key={c.ID} className={styles.card} data-testid="connector-row">
+                  <Stack direction="horizontal" justify="space-between" align="start" gap="normal">
+                    <div
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => openTab(c.ID, 'view')}
+                      onKeyDown={(e) => { if (e.key === 'Enter') openTab(c.ID, 'view') }}
+                      style={{ cursor: 'pointer' }}
+                    >
+                      <Stack direction="horizontal" gap="condensed" align="center">
+                        <Text weight="semibold">{c.Label}</Text>
+                        <Label variant="secondary" size="small">{AUTH_LABEL[c.AuthType] ?? c.AuthType}</Label>
+                      </Stack>
+                      <Text as="p" size="small" className={styles.muted}>{c.BaseURL}</Text>
+                      <Text as="p" size="small" className={styles.muted}>ID: {c.ID}</Text>
+                    </div>
+                    <IconButton icon={TrashIcon} aria-label={`Delete ${c.Label}`} size="small" variant="invisible" onClick={() => remove(c.ID)} />
                   </Stack>
-                  <Text as="p" size="small" className={styles.muted}>{c.BaseURL}</Text>
-                  <Text as="p" size="small" className={styles.muted}>ID: {c.ID}</Text>
-                  {c.Headers && Object.keys(c.Headers).length > 0 && (
-                    <Text as="p" size="small" className={styles.muted}>
-                      Headers: {Object.entries(c.Headers).map(([k, v]) => `${k}: ${v}`).join(', ')}
-                    </Text>
-                  )}
                 </div>
-                <Stack direction="horizontal" gap="condensed">
-                  {c.OpenAPISpec && (
-                    <Button size="small" variant="invisible" onClick={() => listOperations(c.ID)} data-testid="list-operations">
-                      List operations
-                    </Button>
-                  )}
-                  <IconButton icon={PencilIcon} aria-label={`Edit ${c.Label}`} size="small" variant="invisible" onClick={() => startEdit(c)} />
-                  <IconButton icon={CopyIcon} aria-label={`Duplicate ${c.Label}`} size="small" variant="invisible" onClick={() => startDuplicate(c)} />
-                  <IconButton icon={TrashIcon} aria-label={`Delete ${c.Label}`} size="small" variant="invisible" onClick={() => remove(c.ID)} />
-                </Stack>
-              </Stack>
+              ))}
+            </Stack>
+          )}
+        </div>
+      </TabPanel>
 
-              {operationsByConnector[c.ID] !== undefined && (
-                <div data-testid="connector-operations">
-                  {typeof operationsByConnector[c.ID] === 'string' ? (
-                    <Text as="p" size="small" className={styles.error}>{operationsByConnector[c.ID] as string}</Text>
-                  ) : (operationsByConnector[c.ID] as OperationRef[]).length === 0 ? (
-                    <Text as="p" size="small" className={styles.muted}>This spec declares no operations.</Text>
-                  ) : (
-                    <Stack direction="vertical" gap="condensed">
-                      {(operationsByConnector[c.ID] as OperationRef[]).map((op) => {
-                        const opKey = `${c.ID} ${op.Method} ${op.Path}`
-                        const fields = fieldsByOperation[opKey]
-                        return (
-                          <div key={opKey}>
-                            <Stack direction="horizontal" gap="condensed" align="center">
-                              <Label variant="secondary" size="small">{op.Method}</Label>
-                              <Text size="small">{op.Path}</Text>
-                              {op.Summary && <Text size="small" className={styles.muted}>-- {op.Summary}</Text>}
-                              <Button size="small" variant="invisible" onClick={() => showFields(c.ID, op)} data-testid="show-operation-fields">
-                                {fields === undefined ? 'Show schema' : 'Refresh schema'}
-                              </Button>
-                            </Stack>
-                            {fields !== undefined && (
-                              typeof fields === 'string' ? (
-                                <Text as="p" size="small" className={styles.error}>{fields}</Text>
-                              ) : (
-                                <div data-testid="operation-schema" style={{ marginLeft: 'var(--base-size-16)' }}>
-                                  <SchemaFieldList label="Parameters (path / query / header)" fields={(fields.InputFields ?? []).filter((f) => f.In !== 'body')} />
-                                  <SchemaFieldList label="Request body" fields={(fields.InputFields ?? []).filter((f) => f.In === 'body')} />
-                                  <SchemaFieldList label="Output" fields={fields.OutputFields} />
-                                </div>
-                              )
-                            )}
-                          </div>
-                        )
-                      })}
-                    </Stack>
-                  )}
-                </div>
-              )}
-            </div>
-          ))}
-        </Stack>
-      )}
-    </div>
-  )
-}
-
-function SchemaFieldList({ label, fields }: { label: string; fields: Field[] | null | undefined }) {
-  const list = fields ?? []
-  if (list.length === 0) return null
-  return (
-    <Stack direction="vertical" gap="condensed">
-      <Text size="small" weight="semibold">{label}</Text>
-      {list.map((f) => (
-        <Stack key={f.Name} direction="horizontal" gap="condensed" align="center">
-          <Text size="small">{f.Alias ? `${f.Alias} (${f.Name})` : f.Name}</Text>
-          <Label variant="secondary" size="small">{f.In}</Label>
-          <Label variant="secondary" size="small">{f.Type}</Label>
-          {f.Required && <Label size="small">required</Label>}
-          {f.IsSecret && <Label variant="danger" size="small">secret</Label>}
-          {f.Path && <Label variant="accent" size="small">path: {f.Path}</Label>}
-        </Stack>
-      ))}
-    </Stack>
+      {connectors !== null && tabs.map((t) => {
+        const connector = t.connectorId ? (connectors.find((c) => c.ID === t.connectorId) ?? null) : null
+        const duplicateFrom = t.duplicateFromId ? (connectors.find((c) => c.ID === t.duplicateFromId) ?? null) : null
+        return (
+          <TabPanel key={t.key} value={t.key}>
+            {t.mode === 'view' && connector && (
+              <ConnectorSummary
+                connector={connector}
+                onEdit={() => openTab(t.connectorId!, 'edit')}
+                onDuplicate={() => openDuplicateTab(connector)}
+                onDelete={() => remove(connector.ID)}
+              />
+            )}
+            {t.mode === 'edit' && (
+              <ConnectorForm
+                editingConnector={connector}
+                duplicateFrom={duplicateFrom}
+                onSaved={() => { refetch(); closeTab(t.key) }}
+                onCancel={() => closeTab(t.key)}
+              />
+            )}
+          </TabPanel>
+        )
+      })}
+    </Tabs>
   )
 }

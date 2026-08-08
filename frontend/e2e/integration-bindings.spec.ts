@@ -74,7 +74,6 @@ test('Matching an Integration node to a declared operation shows a binding edito
   await page.getByTestId('new-connector').click()
   await page.getByLabel('Label').fill('E2E bindings connector')
   await page.getByLabel('Base URL').fill('https://api.example.com')
-  await page.getByRole('tab', { name: 'Schema' }).click()
   await page.getByTestId('connector-openapi-spec').fill(bindingSpec)
   await page.getByRole('button', { name: 'Save connector' }).click()
   await expect(connectorRow(page, 'E2E bindings connector')).toBeVisible()
