@@ -37,22 +37,37 @@ func directStepRunner(_ string, fn func() (ExecContext, error)) (ExecContext, er
 // type's zero value until one exists; a workflow with no Attributes
 // (both built-ins today) behaves exactly as before this parameter
 // existed.
-func ExecuteWorkflow(nodes []Node, edges []Edge, attrs []AttributeDef) (string, error) {
-	return executeWorkflow(nodes, edges, attrs, directStepRunner)
+// attrValues is an optional (0 or 1 element) trailing override for the
+// run's starting Attribute values -- docs/adr/0008's test-input form.
+// Variadic rather than a plain parameter specifically so every existing
+// caller (20+ in execute_test.go alone) keeps compiling unchanged;
+// there is exactly one thing being added here, not a family of options,
+// so a small options-pattern type would be more machinery than the
+// problem warrants (.claude/rules/architecture.md's anti-proliferation
+// bias).
+func ExecuteWorkflow(nodes []Node, edges []Edge, attrs []AttributeDef, attrValues ...map[string]string) (string, error) {
+	return executeWorkflow(nodes, edges, attrs, directStepRunner, firstValues(attrValues))
 }
 
 // ExecuteWorkflowWithStepRunner is ExecuteWorkflow with each node's exec
 // call routed through run instead of called directly -- the seam
 // executionservice.go uses to checkpoint every node as a durable DBOS
 // step. A nil run behaves exactly like ExecuteWorkflow.
-func ExecuteWorkflowWithStepRunner(nodes []Node, edges []Edge, attrs []AttributeDef, run StepRunner) (string, error) {
+func ExecuteWorkflowWithStepRunner(nodes []Node, edges []Edge, attrs []AttributeDef, run StepRunner, attrValues ...map[string]string) (string, error) {
 	if run == nil {
 		run = directStepRunner
 	}
-	return executeWorkflow(nodes, edges, attrs, run)
+	return executeWorkflow(nodes, edges, attrs, run, firstValues(attrValues))
 }
 
-func executeWorkflow(nodes []Node, edges []Edge, attrs []AttributeDef, run StepRunner) (string, error) {
+func firstValues(vs []map[string]string) map[string]string {
+	if len(vs) == 0 {
+		return nil
+	}
+	return vs[0]
+}
+
+func executeWorkflow(nodes []Node, edges []Edge, attrs []AttributeDef, run StepRunner, attrValues map[string]string) (string, error) {
 	if len(nodes) == 0 {
 		return "", fmt.Errorf("a workflow needs at least one node")
 	}
@@ -66,7 +81,7 @@ func executeWorkflow(nodes []Node, edges []Edge, attrs []AttributeDef, run StepR
 		return "", err
 	}
 
-	ctx := ExecContext{Attributes: attributesEnv(attrs)}
+	ctx := ExecContext{Attributes: attributesEnv(attrs, attrValues)}
 	visited := make(map[string]bool, len(nodes))
 	current := root
 	for {

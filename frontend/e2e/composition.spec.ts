@@ -389,3 +389,50 @@ test('Selecting the starter Trigger node and changing its type swaps it in place
   // immediately after the swap, not require a re-select.
   await expect(activePanel(page).getByText('Save this workflow before assigning a hotkey.')).toBeVisible()
 })
+
+// docs/adr/0008's test-input form: a workflow with declared Attributes
+// prompts an auto-filled, editable form before Run instead of running
+// blind with every Attribute at its zero value. No separate cleanup for
+// the Attribute itself -- it's part of the workflow's own definition,
+// so deleting the workflow at the end (same discipline as this file's
+// other create-then-delete tests, .claude/rules/testing.md) removes it
+// too.
+test('Running a workflow with declared Attributes shows an auto-filled test-input dialog first', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Composition' }).click()
+  await page.getByTestId('new-workflow').click()
+  await activePanel(page).getByLabel('Label').fill('E2E attributes workflow')
+  await activePanel(page).getByTestId('save-workflow').click()
+
+  const row = workflowRow(page, 'E2E attributes workflow')
+  await expect(row).toBeVisible()
+
+  // A workflow with no declared Attributes yet runs immediately, no
+  // dialog -- confirms the "no UI for a decision that doesn't exist"
+  // path still holds before adding one changes that.
+  await row.getByRole('button', { name: 'Run' }).click()
+  await expect(page.getByRole('dialog')).toHaveCount(0)
+
+  await page.getByRole('link', { name: 'Configure' }).click()
+  await page.getByRole('tab', { name: 'Attributes' }).click()
+  await page.getByTestId('attributes-workflow-select').selectOption({ label: 'E2E attributes workflow' })
+  await page.getByRole('button', { name: 'Add attribute' }).click()
+  await page.getByPlaceholder('key').fill('urgent')
+  await page.getByPlaceholder('label').fill('Urgent')
+  await page.getByTestId('save-attributes').click()
+  await expect(page.getByText('Saved.')).toBeVisible()
+
+  await page.getByRole('link', { name: 'Composition' }).click()
+  await workflowRow(page, 'E2E attributes workflow').getByRole('button', { name: 'Run' }).click()
+
+  const dialog = page.getByRole('dialog')
+  await expect(dialog).toBeVisible()
+  await expect(dialog).toContainText('Urgent')
+  await expect(dialog.getByTestId('test-run-field')).toBeVisible()
+
+  await dialog.getByRole('button', { name: 'Run' }).click()
+  await expect(dialog).toHaveCount(0)
+
+  await workflowRow(page, 'E2E attributes workflow').getByRole('button', { name: /Delete/ }).click()
+  await expect(workflowRow(page, 'E2E attributes workflow')).toHaveCount(0)
+})

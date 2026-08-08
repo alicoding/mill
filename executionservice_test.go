@@ -40,7 +40,7 @@ func TestRunWorkflow_SummaryHasRealWorkflowLabelAndStepOutput(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = exec.Shutdown(2 * time.Second) })
 
-	summary, err := exec.RunWorkflow(workflowID, RunKindTest)
+	summary, err := exec.RunWorkflow(workflowID, RunKindTest, nil)
 	if err != nil {
 		t.Fatalf("RunWorkflow: %v", err)
 	}
@@ -95,7 +95,7 @@ func TestRedriveRun_ReturnsNewRunWithSameStepOutput(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = exec.Shutdown(2 * time.Second) })
 
-	original, err := exec.RunWorkflow(workflowID, RunKindTest)
+	original, err := exec.RunWorkflow(workflowID, RunKindTest, nil)
 	if err != nil {
 		t.Fatalf("RunWorkflow: %v", err)
 	}

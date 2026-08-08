@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react'
-import { Button, Heading, IconButton, Label, Stack, Text, Token } from '@primer/react'
+import { Button, Checkbox, Dialog, FormControl, Heading, IconButton, Label, Stack, Text, TextInput, Token } from '@primer/react'
 import { Tabs } from '@primer/react/experimental'
 import { PencilIcon, PlusIcon, TrashIcon } from '@primer/octicons-react'
 import { CompositionService, ExecutionService } from '../bindings/github.com/alicoding/mill'
 import { RunKind } from '../bindings/github.com/alicoding/mill/models'
-import type { Edge, Node, NodeType, Workflow } from '../bindings/github.com/alicoding/mill/internal/domain/composition/models'
+import { ConfigFieldType } from '../bindings/github.com/alicoding/mill/internal/domain/composition/models'
+import type { AttributeDef, Edge, Node, NodeType, Workflow } from '../bindings/github.com/alicoding/mill/internal/domain/composition/models'
+import { generateSamplePayload } from './configSchema'
 import { useAppStore } from './store'
 import CompositionCanvas from './CompositionCanvas'
 import { TabItem, TabList, TabPanel } from './Tabs'
@@ -73,6 +75,12 @@ function CompositionView() {
   const [runningId, setRunningId] = useState<string | null>(null)
   const [results, setResults] = useState<Record<string, string>>({})
   const [errors, setErrors] = useState<Record<string, string>>({})
+  // Test-input form (docs/adr/0008, SPEC.md §3.2's "per-record test
+  // harness"): set only while the dialog for a workflow with declared
+  // Attributes is open -- a workflow with none never touches this,
+  // matching the rest of this codebase's "no UI for a decision that
+  // doesn't exist yet" discipline (§3.5's Configure recheck).
+  const [testRunTarget, setTestRunTarget] = useState<{ id: string; values: Record<string, string> } | null>(null)
   const [tabs, setTabs] = useState<EditorTab[]>([])
   const [activeTab, setActiveTab] = useState(WORKFLOWS_TAB)
 
@@ -91,11 +99,11 @@ function CompositionView() {
   // triggered event, but it's still a full durable/checkpointed run --
   // it shows up on the Runs page the same as any other, unlike the old
   // plain in-memory CompositionService.RunWorkflow this replaces.
-  const run = (id: string) => {
+  const runWithValues = (id: string, values: Record<string, string> | null) => {
     const label = workflows?.find((w) => w.ID === id)?.Label ?? id
     setRunningId(id)
     setErrors((prev) => ({ ...prev, [id]: '' }))
-    ExecutionService.RunWorkflow(id, RunKind.RunKindTest)
+    ExecutionService.RunWorkflow(id, RunKind.RunKindTest, values)
       .then((summary) => {
         if (summary.error) {
           setErrors((prev) => ({ ...prev, [id]: summary.error }))
@@ -122,6 +130,24 @@ function CompositionView() {
         })
       })
       .finally(() => setRunningId(null))
+  }
+
+  // A workflow with no declared Attributes runs immediately, exactly as
+  // before this existed -- the test-input dialog only appears when
+  // there's actually something to fill in, same "no UI for a decision
+  // that doesn't exist yet" discipline as §3.5's Configure recheck.
+  // Values are auto-generated (zod-schema-faker, same mechanism already
+  // adopted for a NodeType's "Generate test payload" button, §3.4) so
+  // the common case is still a one-click Run, not a form to fill out
+  // every time.
+  const run = (id: string) => {
+    const wf = workflows?.find((w) => w.ID === id)
+    const attrs = wf?.Attributes ?? []
+    if (attrs.length === 0) {
+      runWithValues(id, null)
+      return
+    }
+    setTestRunTarget({ id, values: generateSamplePayload(attrs) })
   }
 
   const removeWorkflow = (id: string) => {
@@ -277,7 +303,77 @@ function CompositionView() {
           </TabPanel>
         )
       })}
+
+      {testRunTarget && (
+        <TestRunDialog
+          workflowLabel={workflows?.find((w) => w.ID === testRunTarget.id)?.Label ?? testRunTarget.id}
+          attributes={workflows?.find((w) => w.ID === testRunTarget.id)?.Attributes ?? []}
+          values={testRunTarget.values}
+          onChange={(key, value) => setTestRunTarget((prev) => (prev ? { ...prev, values: { ...prev.values, [key]: value } } : prev))}
+          onCancel={() => setTestRunTarget(null)}
+          onRun={() => {
+            runWithValues(testRunTarget.id, testRunTarget.values)
+            setTestRunTarget(null)
+          }}
+        />
+      )}
     </Tabs>
+  )
+}
+
+// The test-input form itself (docs/adr/0008, SPEC.md §3.2's per-record
+// test harness): one field per declared Attribute, pre-filled via
+// generateSamplePayload (run() above), each still a normal editable
+// input -- submit as-is for the common case, or override a specific
+// value first. AttributeDef never declares FieldOptions (§3.3's
+// rule-builder Update note: "AttributeDef carries no Options list"), so
+// unlike NodeInspector's ConfigField switch, there's no Select branch
+// here -- every non-boolean/non-number field is plain text.
+function TestRunDialog({
+  workflowLabel, attributes, values, onChange, onCancel, onRun,
+}: {
+  workflowLabel: string
+  attributes: AttributeDef[]
+  values: Record<string, string>
+  onChange: (key: string, value: string) => void
+  onCancel: () => void
+  onRun: () => void
+}) {
+  return (
+    <Dialog title={`Test run — ${workflowLabel}`} onClose={onCancel} footerButtons={[
+      { content: 'Cancel', onClick: onCancel },
+      { content: 'Run', buttonType: 'primary', onClick: onRun },
+    ]}>
+      <Stack direction="vertical" gap="normal">
+        {attributes.map((attr) => (
+          <FormControl key={attr.Key}>
+            <FormControl.Label>{attr.Label}</FormControl.Label>
+            {attr.Type === ConfigFieldType.FieldBoolean ? (
+              <Checkbox
+                checked={values[attr.Key] === 'true'}
+                data-testid="test-run-field"
+                onChange={(e) => onChange(attr.Key, String(e.target.checked))}
+              />
+            ) : attr.Type === ConfigFieldType.FieldNumber ? (
+              <TextInput
+                type="number"
+                value={values[attr.Key] ?? ''}
+                block
+                data-testid="test-run-field"
+                onChange={(e) => onChange(attr.Key, e.target.value)}
+              />
+            ) : (
+              <TextInput
+                value={values[attr.Key] ?? ''}
+                block
+                data-testid="test-run-field"
+                onChange={(e) => onChange(attr.Key, e.target.value)}
+              />
+            )}
+          </FormControl>
+        ))}
+      </Stack>
+    </Dialog>
   )
 }
 

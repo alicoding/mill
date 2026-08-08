@@ -161,6 +161,33 @@ func TestExecuteWorkflow_Decision_FallsBackToOtherwise(t *testing.T) {
 	}
 }
 
+// Real proof that ExecuteWorkflow's variadic attrValues override
+// actually changes execution, not just that a value gets stored
+// somewhere (docs/adr/0008's test-input form): "urgent == true" would
+// normally fall to the otherwise branch (urgent's zero value is false),
+// but a supplied "urgent":"true" override must route to the matching
+// branch instead.
+func TestExecuteWorkflow_AttrValues_OverridesZeroValueDefault(t *testing.T) {
+	var wroteHTML, wroteText bool
+	withFakeClipboard(t, nil,
+		func(string) error { wroteHTML = true; return nil },
+		func(string) error { wroteText = true; return nil },
+	)
+
+	nodes, edges := decisionGraph("urgent == true")
+	resolved, err := ResolveNodeDefaults(nodes)
+	if err != nil {
+		t.Fatalf("ResolveNodeDefaults returned error: %v", err)
+	}
+	attrs := []AttributeDef{{Key: "urgent", Label: "Urgent", Type: FieldBoolean}}
+	if _, err := ExecuteWorkflow(resolved, edges, attrs, map[string]string{"urgent": "true"}); err != nil {
+		t.Fatalf("ExecuteWorkflow returned error: %v", err)
+	}
+	if !wroteHTML || wroteText {
+		t.Errorf("wroteHTML=%v wroteText=%v, want the overridden value to route to the matching branch", wroteHTML, wroteText)
+	}
+}
+
 func TestValidateGraph_Decision_Valid_Accepted(t *testing.T) {
 	nodes, edges := decisionGraph("urgent == false")
 	resolved, err := ResolveNodeDefaults(nodes)

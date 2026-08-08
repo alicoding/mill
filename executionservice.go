@@ -71,6 +71,13 @@ type runInput struct {
 	Edges      []composition.Edge
 	Attributes []composition.AttributeDef
 	Kind       RunKind
+	// Values overrides the run's starting Attribute values (docs/adr/0008's
+	// test-input form) -- keyed by AttributeDef.Key, same map[string]string
+	// shape every other config value in this codebase already uses. Nil
+	// (a "Run" click on a workflow with no declared Attributes, or any
+	// caller that hasn't adopted the test-input form yet) behaves exactly
+	// as before this field existed.
+	Values map[string]string
 }
 
 // RunStep is one node's recorded execution within a run, for the
@@ -155,7 +162,7 @@ func (e *ExecutionService) runWorkflow(ctx execution.Context, in runInput) (stri
 			return fn()
 		}, execution.WithStepName(stepID))
 	}
-	return composition.ExecuteWorkflowWithStepRunner(in.Nodes, in.Edges, in.Attributes, stepRunner)
+	return composition.ExecuteWorkflowWithStepRunner(in.Nodes, in.Edges, in.Attributes, stepRunner, in.Values)
 }
 
 // RunWorkflow is the one execution entrypoint for the running app
@@ -170,7 +177,11 @@ func (e *ExecutionService) runWorkflow(ctx execution.Context, in runInput) (stri
 // still exists as the tested primitive internal/domain/composition's
 // own unit tests call directly -- no Wails-bound service calls it
 // anymore.
-func (e *ExecutionService) RunWorkflow(workflowID string, kind RunKind) (RunSummary, error) {
+// values overrides this run's starting Attribute values, keyed by
+// AttributeDef.Key (docs/adr/0008's test-input form) -- nil for a
+// workflow with no declared Attributes, or any caller (TriggerService's
+// headless fire path) that has no user-supplied values to offer.
+func (e *ExecutionService) RunWorkflow(workflowID string, kind RunKind, values map[string]string) (RunSummary, error) {
 	wf, ok := e.findWorkflow(workflowID)
 	if !ok {
 		return RunSummary{}, fmt.Errorf("unknown workflow: %s", workflowID)
@@ -183,6 +194,7 @@ func (e *ExecutionService) RunWorkflow(workflowID string, kind RunKind) (RunSumm
 		Edges:      wf.Edges,
 		Attributes: wf.Attributes,
 		Kind:       kind,
+		Values:     values,
 	}, execution.WithWorkflowID(runID))
 	if err != nil {
 		return RunSummary{}, fmt.Errorf("start run: %w", err)

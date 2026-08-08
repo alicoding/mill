@@ -1513,6 +1513,12 @@ this entry.
     a skip-condition rule be testable/validated before going live — same
     "verify against a sample before trusting it live" instinct, applied
     one level down (a single record) instead of a whole policy rule.
+    **Update — the Form half is built**, via
+    [ADR-0008](adr/0008-single-execution-path.md)'s test-input dialog
+    (§3.4's own zod-schema-faker Update note has the full writeup) — an
+    auto-filled, editable form per declared Attribute before a test Run.
+    The raw-JSON half (paste a whole record instead of per-field inputs)
+    stays unbuilt, real future work if a real need for it shows up.
   - **Draft/live versioning with staged-traffic promotion — a real gap.**
     Edits create a new version; versions are tested and validated, saved
     as a draft, then promoted live with configurable traffic allocation
@@ -1792,6 +1798,34 @@ builds an ad-hoc zod object schema from a node type's typed
 selected Trigger node with `ConfigFields`, e.g. `trigger-schedule`/
 `trigger-filesystem-watch`) runs `zod-schema-faker`'s `fake()` against
 it, filling the Inspector's fields in place. `LOCKED`, built.
+
+**Update — the same mechanism now covers a *workflow's* declared
+Attributes too, closing §3.2's own per-record test-harness item
+end-to-end, via [ADR-0008](adr/0008-single-execution-path.md).**
+`configFieldsToZodSchema`/`generateSamplePayload` were generalized from
+`ConfigField[]` to a minimal structural `TypedField` shape
+(`{Key, Type, Options?}`) both `ConfigField` and `AttributeDef` satisfy
+— no second schema-generation function. Composition's Run button now
+checks the target workflow's declared `Attributes`: none (every
+built-in today) runs immediately exactly as before; one or more opens a
+`TestRunDialog` (Primer `Dialog`) pre-filled via `generateSamplePayload`
+— submit as-is for the common case (Oscilar's own pattern, described
+directly by the user: "auto generate the attribute payload with type
+input for you... unless you're trying to manually input a different
+value"), or edit a field first. Submitted values flow through a new
+variadic `attrValues` parameter on `composition.ExecuteWorkflow`/
+`ExecuteWorkflowWithStepRunner` (kept variadic specifically so the 20+
+existing test call sites didn't need touching) into `attributesEnv`,
+which now prefers a supplied, type-parseable override over the zero
+value it always fell back to — `executionservice.go`'s `runInput`
+carries it as `Values map[string]string`, same wire shape every other
+config value already uses. A real regression test
+(`TestExecuteWorkflow_AttrValues_OverridesZeroValueDefault`) proves an
+override actually changes Decision routing, not just that a value gets
+stored somewhere. Verified end-to-end via Playwright
+(`composition.spec.ts`): a workflow with no Attributes still runs with
+no dialog; adding one via Configure's Attributes tab makes the next Run
+open the dialog with the real field pre-filled. `LOCKED`, built.
 
 **Hotkey exclusivity: one combo maps to at most one workflow, conflict
 surfaced at capture time — not "fire every workflow listening on that
