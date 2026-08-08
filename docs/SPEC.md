@@ -2270,6 +2270,105 @@ else in this doc (CLAUDE.md) — do not let a Settings UI get built
 before this research lands and a real capability map (§3.3's own
 worked example) exists for it.
 
+**Update — research landed (dispatched to a research agent, findings
+below), nothing implemented or locked yet.**
+
+**Thread 1 verdict — what belongs in Settings, checked against real
+apps' own docs (Raycast, Alfred, 1Password Quick Access, Rectangle,
+Homerow, plus PowerToys Run/ulauncher as cross-platform checks), not
+brainstormed.** Converged across 2+ independent apps, worth building:
+**launch at login** (every app surveyed except 1Password has it);
+**a global summon/toggle hotkey distinct from any per-workflow
+trigger** (universal — Raycast ⌥Space, Alfred ⌥Space, 1Password Quick
+Access ⇧⌘Space, PowerToys Alt+Space, ulauncher Ctrl+Space — the
+strongest single finding in the survey); **menu-bar/tray presence
+toggle**; **update-check/version surfaced in Settings**. Less
+universal, worth deferring: appearance settings beyond light/dark
+(Raycast has them, Alfred/ulauncher don't). App-specific, skip: any
+AI/Account/Extensions-marketplace tab (Raycast) — out of scope given
+§1.1's no-AI-in-Mill lock and Thread 2's no-accounts verdict below;
+Alfred's location/newsletter settings; Windows-input-stack-specific
+PowerToys options. A default working-directory/scope setting is real
+but blocked on §6 (execution environment, still `OPEN`) — not
+buildable yet, noted for later. **Zero-new-dependency bonus finding**:
+Wails3 already ships `v3/pkg/services/dock` (menu-bar/dock presence,
+badge) and `v3/pkg/services/notifications` — both cover convergence
+items above with no new library.
+- **Launch at login**: confirmed Wails3 v3 has **no official
+  mechanism** — a PR proposing one (`wailsapp/wails#3910`) exists but
+  was closed unmerged (checked directly via `gh pr view`); a
+  `pkg.go.dev` page for a `v3/plugins/start_at_login` package is a
+  **false positive** — no such directory exists in the current repo
+  (`gh api repos/wailsapp/wails/contents/v3/pkg` confirms), it's an
+  artifact of the abandoned PR's branch. v3's own systray docs example
+  even calls an invented `setStartAtLogin()` placeholder, not a real
+  API. Wails **v2** did ship a real one (`v2/pkg/mac/login_darwin.go`):
+  shells out to `osascript`/System Events — the same shell-out pattern
+  Mill's own `internal/adapters/clipboard` already uses — macOS-only,
+  only works running as a real `.app` bundle. Linux equivalent is the
+  standard XDG autostart `.desktop`-file-in-`~/.config/autostart/`
+  convention. Net: a real, confirmed gap, but small and precedented —
+  a normal `internal/adapters/*` candidate to hand-roll, not a research
+  dead end. (Linux desktop autostart is moot until §1.3's `PARKED`
+  Linux-desktop-build status changes.)
+- **Global summon hotkey**: same underlying mechanism as §3.4's
+  per-workflow hotkeys (`golang.design/x/hotkey`, already adopted) —
+  registration doesn't differ, only the callback body does. Confirmed
+  directly against Wails3's own current Window API
+  (`*application.WebviewWindow`'s `Show()`/`Focus()`/`Restore()`) and
+  its official Single-Instance guide, which shows the *exact* pattern
+  needed (`OnSecondInstanceLaunch: func(...) { mainWindow.Restore();
+  mainWindow.Focus() }`) for a structurally identical problem. Zero new
+  dependency. Must share `TriggerService`'s existing claimed-combo
+  conflict space (§3.4) so a summon hotkey can't silently collide with
+  a per-workflow binding.
+- **Auto-update**: initial search surfaced a community Sparkle proof-
+  of-concept as if it were the answer — **overturned by checking the
+  actual current Wails3 repo directly**. Wails3 ships its own
+  first-party, pure-Go, actively-maintained self-update package,
+  `v3/pkg/updater` (reachable as `app.Updater`), confirmed current via
+  real recent commits (`gh api .../commits?path=v3/pkg/updater` shows
+  activity as recent as 2026-07-31). Downloads the right OS/arch asset,
+  verifies a SHA-256 digest (+ optional Ed25519 signature), shows
+  release notes, swaps the binary and relaunches, "without shipping a
+  separate helper executable" (its own doc comment). Ships a GitHub
+  Releases provider by default, plus an `appcast` provider that speaks
+  Sparkle-style AppCast XML directly (including Ed25519 verification)
+  — so even the original Sparkle instinct is satisfiable through this
+  same first-party package, no separate Sparkle integration needed.
+  Zero new dependency either way. Worth remembering as an instance of
+  this project's own "verify directly, don't trust the first search
+  result" discipline changing the actual recommendation.
+
+**Thread 2 verdict — do not add a multi-tenant/scoping seam to
+`internal/adapters/settings` now. Single-user-forever is the honest
+current assumption**, argued from four independent angles rather than
+asserted: (1) hexagonal/ports-and-adapters literature's real answer to
+tenant scoping is baking a tenant ID into every port method from day
+one — a heavy commitment, not a cheap prefix-the-keys trick, so there
+is no citable "free" seam to add; (2) the one substantial research
+essay on exactly this class of problem (Ink & Switch's "Local-first
+software," 2019) treats local-first-then-multi-user as fundamentally a
+CRDT/merge-semantics problem, evidence the lightweight version isn't
+actually available either way; (3) real precedent apps that added team
+features later did it additively at the product/sync layer without a
+pre-scoped storage seam — Raycast for Teams (2022) shipped as new,
+separate surfaces layered on the existing single-user product; Obsidian
+Sync for Teams points independent local vaults at one shared remote
+vault rather than re-scoping local storage; 1Password 8's transition
+away from standalone local vaults is a *counter*-example — a hard
+breaking migration, not a graft; (4) Martin Fowler's own YAGNI framing
+draws exactly this line: don't build capability for a presumptive
+feature, but do keep the code easy to modify — which Mill already
+satisfies via `internal/adapters/settings`'s existing `Store` interface
+boundary (built for swappability, not multi-tenancy, but it's already
+the seam a future scoping change would go through). Recorded as
+researched-and-declined, not silently never addressed.
+
+Both threads' findings are documented here; nothing is implemented or
+locked — still `OPEN` until a capability map/plan is written up and
+confirmed, per this section's own opening paragraph.
+
 ## 4. Connectors
 
 - **Generic HTTP connector: `LOCKED` and built.** `internal/domain/
@@ -2645,10 +2744,10 @@ mode from §0 repeating itself one level up.
 - Env/shell determinism rules (§6)
 - Session identity model spanning tab + agent run + process (§7)
 - Policy authoring format and storage (§8)
-- Global app settings (§3.7) — what belongs in it (launcher/hotkey-to-
-  summon-the-app, launch-at-login, etc.) and whether the settings
-  storage boundary should leave room for a future multi-tenant variant
-  — research not yet started
+- Global app settings (§3.7) — research landed (what belongs in it, the
+  launch-at-login/global-hotkey/auto-update mechanisms, and a
+  don't-add-a-multi-tenant-seam verdict); not yet turned into a
+  capability map/plan or implemented
 - Connector input/output schema mechanism (§3.3/§3.5/§4) — what to
   adopt so a workflow's Attributes can bind into an integration's
   request/response fields, researched but not yet locked/implemented
