@@ -21,6 +21,10 @@
 // @ts-ignore: Unused imports
 import { Call as $Call, CancellablePromise as $CancellablePromise } from "@wailsio/runtime";
 
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: Unused imports
+import * as trigger$0 from "./internal/domain/trigger/models.js";
+
 /**
  * AssignHotkey binds workflowID to (mods, key). Rejects the assignment
  * if a different workflow already holds that exact combo (SPEC.md
@@ -32,6 +36,17 @@ import { Call as $Call, CancellablePromise as $CancellablePromise } from "@wails
  */
 export function AssignHotkey(workflowID: string, mods: string[] | null, key: string): $CancellablePromise<string> {
     return $Call.ByID(2687193022, workflowID, mods, key);
+}
+
+/**
+ * ClaimedCombos returns every currently-assigned per-workflow hotkey
+ * binding, in trigger.HotkeyBinding shape -- the seam settingsservice.go
+ * uses to check a new summon-hotkey assignment against every existing
+ * per-workflow binding (the reverse direction of the reserved-combo
+ * check AssignHotkey already does above).
+ */
+export function ClaimedCombos(): $CancellablePromise<trigger$0.HotkeyBinding[] | null> {
+    return $Call.ByID(4209416705);
 }
 
 /**

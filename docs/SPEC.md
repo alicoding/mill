@@ -2369,6 +2369,56 @@ Both threads' findings are documented here; nothing is implemented or
 locked — still `OPEN` until a capability map/plan is written up and
 confirmed, per this section's own opening paragraph.
 
+**Update — the two mechanisms the research above identified as real,
+confirmed, zero-net-new-dependency gaps are now built.** `LOCKED`
+(these two settings specifically) — the rest of §3.7's own convergence
+table (menu-bar/tray toggle, update-check, appearance-beyond-light-dark,
+a default working directory) stays `OPEN`, not silently resolved by
+this pass.
+- **Launch at login**: `internal/adapters/launchatlogin`, ported from
+  Wails v2's own osascript/System-Events approach exactly as the
+  research found it — split by `!server`/`server` build tag, same
+  shape and reasoning as `internal/adapters/hotkey` (server mode has no
+  login-item concept regardless of OS). `appBundlePath` walks a running
+  executable's path back to its `.app` bundle and returns a real,
+  named `ErrNotAppBundle` for a bare dev binary rather than silently
+  no-op'ing — surfaced in `SettingsView.tsx` as a plain, non-alarming
+  note rather than a raw Go error string. `GetLaunchAtLogin` queries
+  the real OS state (System Events' login-items list) rather than a
+  cached preference, exactly as the research recommended, so it can't
+  drift from a user manually removing Mill via System Settings
+  directly.
+- **Global summon hotkey**: reuses the exact mechanism the research
+  confirmed needs no new dependency — `golang.design/x/hotkey` (already
+  adopted, §2.2) for registration, `*application.WebviewWindow`'s
+  `Show()`/`Restore()`/`Focus()` for the callback (the same pattern
+  Wails3's own Single-Instance guide uses for a structurally identical
+  problem). `SettingsService` (new root-package service,
+  `settingsservice.go`) owns it, persisted via the same
+  `internal/adapters/settings` store `TriggerService` already uses.
+  **Bidirectional conflict detection with per-workflow hotkeys**, the
+  integration note the research flagged: `TriggerService` gained
+  `ClaimedCombos()` (exposes its own bindings) and `SetReservedCombo`
+  (an injected-function seam, same shape as
+  `SetConnectorLookup`/`SetListLookup`) so a workflow hotkey can't
+  silently collide with the summon hotkey, and vice versa
+  (`SettingsService.AssignSummonHotkey` checks `TriggerService.
+  ClaimedCombos()` directly) — both directions covered by real,
+  permanent Go tests (`settingsservice_test.go`) using the same
+  "seed state directly, assert rejection before any real OS call"
+  pattern `TestAssignHotkey_RejectsConflict` already established, since
+  neither direction can exercise the real OS hotkey API headless.
+  Verified end-to-end via Playwright (`frontend/e2e/settings.spec.ts`)
+  against the real Go backend, including the real, deterministic
+  server-mode error paths (`launchatlogin`'s `server`-build stub,
+  `hotkey`'s own existing server-mode stub) rather than mocking around
+  them.
+- Auto-update and menu-bar/dock/notification wiring (Wails3's own
+  first-party `app.Updater`/`dock`/`notifications` services, per the
+  research) are a separate, still-pending pass — not bundled into this
+  one since they don't share launch-at-login/summon-hotkey's user-facing
+  Settings-page surface.
+
 ## 4. Connectors
 
 - **Generic HTTP connector: `LOCKED` and built.** `internal/domain/
