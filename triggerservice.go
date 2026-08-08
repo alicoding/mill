@@ -7,9 +7,7 @@ import (
 	"log/slog"
 	"strings"
 	"sync"
-	"time"
 
-	"github.com/alicoding/mill/internal/adapters/clipboard"
 	"github.com/alicoding/mill/internal/adapters/filewatch"
 	"github.com/alicoding/mill/internal/adapters/hotkey"
 	"github.com/alicoding/mill/internal/adapters/schedule"
@@ -188,58 +186,18 @@ func (s *TriggerService) fire(workflowID, binding string) {
 
 // start registers the one live listener nodeTypeID needs, if any --
 // trigger-manual needs none (it only ever fires via an explicit Run/Test
-// click, never headlessly). Caller (Sync) holds s.mu already.
+// click, never headlessly). Caller (Sync) holds s.mu already. The real
+// per-type logic lives in each trigger type's own file (triggermanual.go,
+// triggerhotkey.go, ...), registered into triggerRegistry from its own
+// init() (docs/adr/0006-extension-point-registration.md) -- this is a
+// lookup, not a switch, so a new trigger type never means editing this
+// function.
 func (s *TriggerService) start(workflowID, nodeTypeID string, config map[string]string) (*activeListener, error) {
-	switch nodeTypeID {
-	case "trigger-manual":
-		return nil, nil
-
-	case "trigger-hotkey":
-		hk, ok := s.hkRaw[workflowID]
-		if !ok {
-			return nil, nil // no combo assigned yet
-		}
-		label := formatBinding(hk.Mods, hk.Key)
-		b, err := hotkey.Bind(hk.Mods, hk.Key)
-		if err != nil {
-			return nil, err
-		}
-		go func(id string) {
-			for range b.Keydown() {
-				s.fire(id, label)
-			}
-		}(workflowID)
-		return &activeListener{hotkey: b}, nil
-
-	case "trigger-schedule":
-		cronExpr := config["cron"]
-		if cronExpr == "" {
-			return nil, nil
-		}
-		b, err := schedule.Add(cronExpr, func() { s.fire(workflowID, "") })
-		if err != nil {
-			return nil, err
-		}
-		return &activeListener{schedule: b}, nil
-
-	case "trigger-clipboard-watch":
-		stop := clipboard.WatchChanges(2*time.Second, func() { s.fire(workflowID, "") })
-		return &activeListener{clipStop: stop}, nil
-
-	case "trigger-filesystem-watch":
-		path := config["path"]
-		if path == "" {
-			return nil, nil
-		}
-		b, err := filewatch.Watch(path, func() { s.fire(workflowID, "") })
-		if err != nil {
-			return nil, err
-		}
-		return &activeListener{fileWatch: b}, nil
-
-	default:
+	starter, ok := triggerRegistry[nodeTypeID]
+	if !ok {
 		return nil, fmt.Errorf("unknown trigger node type: %s", nodeTypeID)
 	}
+	return starter(s, workflowID, config)
 }
 
 // AssignHotkey binds workflowID to (mods, key). Rejects the assignment
