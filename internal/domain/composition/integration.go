@@ -3,6 +3,7 @@ package composition
 import (
 	"fmt"
 	"net/http"
+	"net/url"
 	"strings"
 
 	"github.com/alicoding/mill/internal/adapters/httpconnector"
@@ -28,6 +29,40 @@ type ResolvedConnector struct {
 	// that case (ADR-0007 Phase 3's own "strict superset, not a breaking
 	// change" framing).
 	OpenAPISpec string
+	// Auth is the non-secret config for AuthOAuth2/AuthHMAC/AuthOAuth1
+	// (ADR-0015) -- nil for the three original AuthTypes.
+	Auth *connector.AuthConfig
+}
+
+// AuthStrategy mutates an in-progress request (headers/query, both
+// passed by reference) according to one AuthType's scheme -- ADR-0015's
+// extension point, replacing the old fixed "return one header" shape.
+// method/path/body are given (not mutated) since HMAC/OAuth 1.0a sign
+// over them; a strategy with nothing to sign (AuthAPIKey/AuthBearer)
+// simply ignores those params.
+type AuthStrategy func(rc ResolvedConnector, method, path string, headers map[string]string, query url.Values, body string) error
+
+var authStrategies = map[connector.AuthType]AuthStrategy{}
+
+// RegisterAuthStrategy is ADR-0015's self-registration seam, the same
+// shape ADR-0006 already established and verified for NodeTypes/
+// Triggers -- each AuthType's strategy lives in its own small file,
+// registered via init(), so adding a new AuthType (mTLS included) is a
+// pure addition, never a change to an existing strategy's file.
+func RegisterAuthStrategy(t connector.AuthType, fn AuthStrategy) {
+	authStrategies[t] = fn
+}
+
+// ApplyAuth dispatches to rc.AuthType's registered strategy. AuthNone
+// (or any AuthType with no registered strategy, which shouldn't happen
+// for a Validate-passed Connector) is a no-op, matching the original
+// AuthHeader switch's own default case.
+func ApplyAuth(rc ResolvedConnector, method, path string, headers map[string]string, query url.Values, body string) error {
+	fn, ok := authStrategies[rc.AuthType]
+	if !ok {
+		return nil
+	}
+	return fn(rc, method, path, headers, query, body)
 }
 
 // lookupConnectorFn defaults to erroring so an integration-http node run
@@ -42,28 +77,6 @@ var lookupConnectorFn = func(connectorID string) (ResolvedConnector, error) {
 // main.go once ConfigureService exists.
 func SetConnectorLookup(fn func(connectorID string) (ResolvedConnector, error)) {
 	lookupConnectorFn = fn
-}
-
-// AuthHeader turns a ResolvedConnector's AuthType + Secret into the one
-// header its scheme implies -- AuthAPIKey and AuthBearer are the two
-// docs/SPEC.md §3.5 auth types with a real request-time effect, AuthNone
-// adds nothing. The header names chosen (X-Api-Key, Authorization:
-// Bearer) are the common default for each scheme; a vendor needing a
-// different header name is real future work (§3.2's incremental-
-// extensibility principle), not solved speculatively here. Exported (not
-// just used by the integration-http nodeExec below) so
-// ConfigureService.TestConnectorOperation (docs/adr/0013) can build the
-// identical auth header for a draft-connector test call without a
-// second, driftable copy of this switch.
-func AuthHeader(rc ResolvedConnector) (key, value string) {
-	switch rc.AuthType {
-	case connector.AuthAPIKey:
-		return "X-Api-Key", rc.Secret
-	case connector.AuthBearer:
-		return "Authorization", "Bearer " + rc.Secret
-	default:
-		return "", ""
-	}
 }
 
 func init() {
@@ -104,9 +117,7 @@ func init() {
 		for k, v := range rc.Headers {
 			headers[k] = v
 		}
-		if k, v := AuthHeader(rc); k != "" {
-			headers[k] = v
-		}
+		query := url.Values{}
 
 		// ADR-0007 Phase 3 (extended by ADR-0011's output Path support):
 		// a connector with a spec and a node with authored input or
@@ -126,8 +137,8 @@ func init() {
 				return ctx, fmt.Errorf("integration-http: %w", err)
 			}
 			urlPath = resolvedPath
-			if len(resolvedQuery) > 0 {
-				urlPath += "?" + resolvedQuery.Encode()
+			for k, v := range resolvedQuery {
+				query[k] = v
 			}
 			body = resolvedBody
 			for k, v := range resolvedHeaders {
@@ -137,9 +148,24 @@ func init() {
 			responseExtractPath = respExtractPath
 		}
 
+		// ADR-0015: auth applied last, after bindings, so a scheme that
+		// signs the request (HMAC/OAuth 1.0a) signs the final
+		// path/body -- and so AuthQueryParam's own query addition can't
+		// be silently dropped by a bindings-resolved query already
+		// having been encoded into urlPath (query stays unencoded until
+		// the URL is assembled below, for exactly this reason).
+		if err := ApplyAuth(rc, node.Config["method"], urlPath, headers, query, body); err != nil {
+			return ctx, fmt.Errorf("integration-http: %w", err)
+		}
+
+		fullURL := strings.TrimRight(rc.BaseURL, "/") + urlPath
+		if len(query) > 0 {
+			fullURL += "?" + query.Encode()
+		}
+
 		resp, err := httpconnector.Execute(httpconnector.Request{
 			Method:  node.Config["method"],
-			URL:     strings.TrimRight(rc.BaseURL, "/") + urlPath,
+			URL:     fullURL,
 			Headers: headers,
 			Body:    body,
 		})

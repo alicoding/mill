@@ -58,8 +58,8 @@ export function Connectors(): $CancellablePromise<connector$0.Connector[] | null
     return $Call.ByID(1335444401);
 }
 
-export function CreateConnector(label: string, connType: string, baseURL: string, authType: connector$0.AuthType, headers: { [_ in string]?: string } | null, openAPISpec: string): $CancellablePromise<connector$0.Connector> {
-    return $Call.ByID(3578677376, label, connType, baseURL, authType, headers, openAPISpec);
+export function CreateConnector(label: string, connType: string, baseURL: string, authType: connector$0.AuthType, headers: { [_ in string]?: string } | null, openAPISpec: string, auth: connector$0.AuthConfig | null): $CancellablePromise<connector$0.Connector> {
+    return $Call.ByID(3578677376, label, connType, baseURL, authType, headers, openAPISpec, auth);
 }
 
 export function CreateList(label: string, entries: { [_ in string]?: string } | null): $CancellablePromise<list$0.List> {
@@ -133,6 +133,21 @@ export function MCPServers(): $CancellablePromise<mcpserver$0.MCPServer[] | null
 }
 
 /**
+ * SetConnectorOAuth1Secret writes id's OAuth 1.0a dual secret (consumer
+ * secret + token secret) to the OS keychain. AuthOAuth1's own
+ * documented storage shape (ADR-0015 §3, connector.OAuth1Config's doc
+ * comment): both values are JSON-encoded into the connector's single
+ * existing keychain string via composition.EncodeOAuth1Secret rather
+ * than Mill inventing a multi-secret-per-connector storage model. A
+ * separate method (not a third SetConnectorSecret param) so the plain
+ * single-secret AuthTypes (APIKey/Bearer/HMAC) keep their existing,
+ * simpler call shape unchanged -- addon, not a rewrite.
+ */
+export function SetConnectorOAuth1Secret(id: string, consumerSecret: string, tokenSecret: string): $CancellablePromise<void> {
+    return $Call.ByID(790751536, id, consumerSecret, tokenSecret);
+}
+
+/**
  * SetConnectorSecret writes id's secret to the OS keychain. Write-only
  * by design (docs/SPEC.md §3.5): there is deliberately no GetSecret
  * binding anywhere on this service -- the frontend can set a secret but
@@ -155,8 +170,8 @@ export function TestConnectorOperation(req: $models.TestConnectorRequest): $Canc
     return $Call.ByID(247805665, req);
 }
 
-export function UpdateConnector(id: string, label: string, connType: string, baseURL: string, authType: connector$0.AuthType, headers: { [_ in string]?: string } | null, openAPISpec: string): $CancellablePromise<connector$0.Connector> {
-    return $Call.ByID(2890915231, id, label, connType, baseURL, authType, headers, openAPISpec);
+export function UpdateConnector(id: string, label: string, connType: string, baseURL: string, authType: connector$0.AuthType, headers: { [_ in string]?: string } | null, openAPISpec: string, auth: connector$0.AuthConfig | null): $CancellablePromise<connector$0.Connector> {
+    return $Call.ByID(2890915231, id, label, connType, baseURL, authType, headers, openAPISpec, auth);
 }
 
 export function UpdateList(id: string, label: string, entries: { [_ in string]?: string } | null): $CancellablePromise<list$0.List> {

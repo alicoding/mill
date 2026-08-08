@@ -2,7 +2,7 @@ import { useRef, useState } from 'react'
 import { Button, FormControl, IconButton, Label, Select, SegmentedControl, Stack, Text, TextInput, Textarea } from '@primer/react'
 import { CopyIcon, PlayIcon, SyncIcon } from '@primer/octicons-react'
 import { ConfigureService } from '../../bindings/github.com/alicoding/mill'
-import type { AuthType } from '../../bindings/github.com/alicoding/mill/internal/domain/connector/models'
+import type { AuthConfig, AuthType } from '../../bindings/github.com/alicoding/mill/internal/domain/connector/models'
 import type { TestConnectorResult } from '../../bindings/github.com/alicoding/mill/models'
 import type { ManualOperation } from './openapiSynth'
 import { generateOperationSample } from './testPayload'
@@ -30,12 +30,17 @@ interface LogEntry extends TestConnectorResult {
 // discipline handleSave already uses for the identical stale-state risk
 // (see ConnectorForm.tsx's own comment on that bug).
 export function ConnectorTestPanel({
-  operations, effectiveSpec, baseURL, authType, headers, secret, connectorID,
+  operations, effectiveSpec, baseURL, authType, auth, headers, secret, connectorID,
 }: {
   operations: ManualOperation[]
   effectiveSpec: string
   baseURL: string
   authType: AuthType
+  // ADR-0015's non-secret Auth config (OAuth2/HMAC/OAuth1) -- passed
+  // through to TestConnectorOperation unchanged, same "test the draft
+  // exactly as it would run" principle ADR-0013 already established for
+  // BaseURL/Headers/Secret.
+  auth: AuthConfig | null
   headers: Record<string, string> | null
   secret: string
   connectorID: string | null
@@ -105,6 +110,7 @@ export function ConnectorTestPanel({
         ConnectorID: connectorID ?? '',
         BaseURL: baseURL,
         AuthType: authType,
+        Auth: auth,
         Headers: headers,
         Secret: secret,
         OpenAPISpec: effectiveSpec,

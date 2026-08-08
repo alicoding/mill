@@ -28,7 +28,10 @@ type TestConnectorRequest struct {
 	ConnectorID string
 	BaseURL     string
 	AuthType    connector.AuthType
-	Headers     map[string]string
+	// Auth is the non-secret config for AuthOAuth2/AuthHMAC/AuthOAuth1
+	// (ADR-0015) -- nil for the three original AuthTypes.
+	Auth    *connector.AuthConfig
+	Headers map[string]string
 	// Secret is used as typed, for this call only -- TestConnectorOperation
 	// never calls credential.Set, so a tested-then-abandoned draft leaves
 	// no keychain trace.
@@ -93,8 +96,11 @@ func (c *ConfigureService) TestConnectorOperation(req TestConnectorRequest) (Tes
 	for k, v := range bodyHeaders {
 		headers[k] = v
 	}
-	if k, v := composition.AuthHeader(composition.ResolvedConnector{AuthType: req.AuthType, Secret: secret}); k != "" {
-		headers[k] = v
+	if err := composition.ApplyAuth(
+		composition.ResolvedConnector{BaseURL: req.BaseURL, AuthType: req.AuthType, Secret: secret, Auth: req.Auth},
+		req.Method, resolvedPath, headers, query, body,
+	); err != nil {
+		return TestConnectorResult{}, fmt.Errorf("configureservice: %w", err)
 	}
 
 	url := resolvedPath

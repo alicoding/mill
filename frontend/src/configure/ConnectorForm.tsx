@@ -1,20 +1,15 @@
 import { useState } from 'react'
-import { Button, FormControl, Heading, IconButton, Select, Stack, Text, TextInput, Textarea, SegmentedControl } from '@primer/react'
+import { Button, FormControl, Heading, IconButton, Label, Select, Stack, Text, TextInput, Textarea, SegmentedControl } from '@primer/react'
 import { PlusIcon, TrashIcon } from '@primer/octicons-react'
 import { ConfigureService } from '../../bindings/github.com/alicoding/mill'
-import type { Connector } from '../../bindings/github.com/alicoding/mill/internal/domain/connector/models'
+import type { AuthConfig, Connector } from '../../bindings/github.com/alicoding/mill/internal/domain/connector/models'
 import { AuthType } from '../../bindings/github.com/alicoding/mill/internal/domain/connector/models'
 import { ManualSchemaEditor } from './ManualSchemaEditor'
 import { ConnectorTestPanel } from './ConnectorTestPanel'
 import { headersToRows, rowsToHeaders } from './connectorHeaders'
 import { parseOpenAPIToOperations, synthesizeOpenAPISpec, type ManualOperation } from './openapiSynth'
+import { AUTH_LABEL, AUTH_UNIMPLEMENTED } from './authTypeLabels'
 import styles from '../shared/ListCard.module.css'
-
-const AUTH_LABEL: Record<string, string> = {
-  [AuthType.AuthNone]: 'None',
-  [AuthType.AuthAPIKey]: 'API key',
-  [AuthType.AuthBearer]: 'Bearer token',
-}
 
 export interface HeaderRow {
   key: string
@@ -25,14 +20,64 @@ export interface ConnectorDraft {
   label: string
   baseURL: string
   authType: AuthType
+  // Single-secret AuthTypes (APIKey/Bearer/HMAC's signing key/OAuth2's
+  // ClientSecret) all reuse this one field -- OAuth1 is the exception
+  // (RFC 5849 needs two secrets), see oauth1ConsumerSecret/
+  // oauth1TokenSecret below.
   secret: string
   openAPISpec: string
+  // ADR-0015's non-secret per-AuthType config -- one flat set of
+  // optional fields rather than a discriminated union, since only one
+  // group is ever populated/read at a time (driven by authType), and a
+  // flat shape keeps draftFrom/handleSave from needing a switch just to
+  // move values in and out of a nested shape.
+  oauth2TokenURL: string
+  oauth2ClientID: string
+  oauth2Scope: string
+  hmacHeaderName: string
+  oauth1ConsumerKey: string
+  oauth1Token: string
+  oauth1ConsumerSecret: string
+  oauth1TokenSecret: string
 }
 
-const EMPTY_DRAFT: ConnectorDraft = { label: '', baseURL: '', authType: AuthType.AuthNone, secret: '', openAPISpec: '' }
+const EMPTY_DRAFT: ConnectorDraft = {
+  label: '', baseURL: '', authType: AuthType.AuthNone, secret: '', openAPISpec: '',
+  oauth2TokenURL: '', oauth2ClientID: '', oauth2Scope: '',
+  hmacHeaderName: '',
+  oauth1ConsumerKey: '', oauth1Token: '', oauth1ConsumerSecret: '', oauth1TokenSecret: '',
+}
 
 function draftFrom(c: Connector): ConnectorDraft {
-  return { label: c.Label, baseURL: c.BaseURL, authType: c.AuthType, secret: '', openAPISpec: c.OpenAPISpec }
+  return {
+    label: c.Label, baseURL: c.BaseURL, authType: c.AuthType, secret: '', openAPISpec: c.OpenAPISpec,
+    oauth2TokenURL: c.Auth?.OAuth2?.TokenURL ?? '',
+    oauth2ClientID: c.Auth?.OAuth2?.ClientID ?? '',
+    oauth2Scope: c.Auth?.OAuth2?.Scope ?? '',
+    hmacHeaderName: c.Auth?.HMAC?.HeaderName ?? '',
+    oauth1ConsumerKey: c.Auth?.OAuth1?.ConsumerKey ?? '',
+    oauth1Token: c.Auth?.OAuth1?.Token ?? '',
+    oauth1ConsumerSecret: '',
+    oauth1TokenSecret: '',
+  }
+}
+
+// authConfigFrom builds the Auth param CreateConnector/UpdateConnector/
+// TestConnectorOperation all now take (ADR-0015) -- null for every
+// AuthType with no non-secret config (None/APIKey/Bearer/QueryParam,
+// and the two stubs), matching Connector.Auth's own "nil unless a
+// real config-bearing AuthType" shape.
+function authConfigFrom(draft: ConnectorDraft): AuthConfig | null {
+  switch (draft.authType) {
+    case AuthType.AuthOAuth2:
+      return { OAuth2: { GrantType: 'client_credentials', TokenURL: draft.oauth2TokenURL, ClientID: draft.oauth2ClientID, Scope: draft.oauth2Scope, ContentType: '' }, HMAC: null, OAuth1: null }
+    case AuthType.AuthHMAC:
+      return { OAuth2: null, HMAC: { HeaderName: draft.hmacHeaderName }, OAuth1: null }
+    case AuthType.AuthOAuth1:
+      return { OAuth2: null, HMAC: null, OAuth1: { ConsumerKey: draft.oauth1ConsumerKey, Token: draft.oauth1Token } }
+    default:
+      return null
+  }
 }
 
 // docs/adr/0014: the connector create/edit form -- one continuous
@@ -117,10 +162,15 @@ export function ConnectorForm({
     setError('')
     try {
       const headers = rowsToHeaders(headerRows)
+      const auth = authConfigFrom(finalDraft)
       const saved = editingConnector
-        ? await ConfigureService.UpdateConnector(editingConnector.ID, finalDraft.label, 'http', finalDraft.baseURL, finalDraft.authType, headers, finalDraft.openAPISpec)
-        : await ConfigureService.CreateConnector(finalDraft.label, 'http', finalDraft.baseURL, finalDraft.authType, headers, finalDraft.openAPISpec)
-      if (finalDraft.secret) {
+        ? await ConfigureService.UpdateConnector(editingConnector.ID, finalDraft.label, 'http', finalDraft.baseURL, finalDraft.authType, headers, finalDraft.openAPISpec, auth)
+        : await ConfigureService.CreateConnector(finalDraft.label, 'http', finalDraft.baseURL, finalDraft.authType, headers, finalDraft.openAPISpec, auth)
+      if (finalDraft.authType === AuthType.AuthOAuth1) {
+        if (finalDraft.oauth1ConsumerSecret || finalDraft.oauth1TokenSecret) {
+          await ConfigureService.SetConnectorOAuth1Secret(saved.ID, finalDraft.oauth1ConsumerSecret, finalDraft.oauth1TokenSecret)
+        }
+      } else if (finalDraft.secret) {
         await ConfigureService.SetConnectorSecret(saved.ID, finalDraft.secret)
       }
       onSaved()
@@ -157,9 +207,77 @@ export function ConnectorForm({
                 ))}
               </Select>
             </FormControl>
-            {draft.authType !== AuthType.AuthNone && (
+
+            {AUTH_UNIMPLEMENTED.has(draft.authType) && (
+              <Stack direction="horizontal" gap="condensed" align="center">
+                <Label variant="attention" size="small">Not yet implemented</Label>
+                <Text as="p" size="small" className={styles.muted}>
+                  This auth type is registered (docs/adr/0015) but its strategy isn&apos;t built yet -- a
+                  workflow run through this connector will fail with a clear error rather than a guessed
+                  signature. Selectable now so the connector can be configured ahead of that work landing.
+                </Text>
+              </Stack>
+            )}
+
+            {draft.authType === AuthType.AuthOAuth2 && (
+              <>
+                <FormControl>
+                  <FormControl.Label>Token URL</FormControl.Label>
+                  <TextInput value={draft.oauth2TokenURL} onChange={(e) => setDraft({ ...draft, oauth2TokenURL: e.target.value })} placeholder="https://auth.example.com/oauth/token" block />
+                </FormControl>
+                <FormControl>
+                  <FormControl.Label>Client ID</FormControl.Label>
+                  <TextInput value={draft.oauth2ClientID} onChange={(e) => setDraft({ ...draft, oauth2ClientID: e.target.value })} block />
+                </FormControl>
+                <FormControl>
+                  <FormControl.Label>Scope</FormControl.Label>
+                  <FormControl.Caption>Optional -- leave blank to request no specific scope.</FormControl.Caption>
+                  <TextInput value={draft.oauth2Scope} onChange={(e) => setDraft({ ...draft, oauth2Scope: e.target.value })} block />
+                </FormControl>
+              </>
+            )}
+
+            {draft.authType === AuthType.AuthHMAC && (
               <FormControl>
-                <FormControl.Label>Secret</FormControl.Label>
+                <FormControl.Label>Signature header name</FormControl.Label>
+                <FormControl.Caption>Defaults to X-Signature when left blank.</FormControl.Caption>
+                <TextInput value={draft.hmacHeaderName} onChange={(e) => setDraft({ ...draft, hmacHeaderName: e.target.value })} placeholder="X-Signature" block />
+              </FormControl>
+            )}
+
+            {draft.authType === AuthType.AuthOAuth1 && (
+              <>
+                <FormControl>
+                  <FormControl.Label>Consumer key</FormControl.Label>
+                  <TextInput value={draft.oauth1ConsumerKey} onChange={(e) => setDraft({ ...draft, oauth1ConsumerKey: e.target.value })} block />
+                </FormControl>
+                <FormControl>
+                  <FormControl.Label>Token</FormControl.Label>
+                  <FormControl.Caption>Optional -- omit for 2-legged OAuth 1.0a (RFC 5849).</FormControl.Caption>
+                  <TextInput value={draft.oauth1Token} onChange={(e) => setDraft({ ...draft, oauth1Token: e.target.value })} block />
+                </FormControl>
+              </>
+            )}
+
+            {draft.authType === AuthType.AuthOAuth1 ? (
+              <>
+                <FormControl>
+                  <FormControl.Label>Consumer secret</FormControl.Label>
+                  <FormControl.Caption>
+                    Write-only -- stored in the OS keychain, never readable back through Mill.
+                    {isEditing && ' Leave blank to keep the existing secret.'}
+                  </FormControl.Caption>
+                  <TextInput type="password" value={draft.oauth1ConsumerSecret} onChange={(e) => setDraft({ ...draft, oauth1ConsumerSecret: e.target.value })} block />
+                </FormControl>
+                <FormControl>
+                  <FormControl.Label>Token secret</FormControl.Label>
+                  <FormControl.Caption>Optional -- omit for 2-legged OAuth 1.0a, same as Token above.</FormControl.Caption>
+                  <TextInput type="password" value={draft.oauth1TokenSecret} onChange={(e) => setDraft({ ...draft, oauth1TokenSecret: e.target.value })} block />
+                </FormControl>
+              </>
+            ) : draft.authType !== AuthType.AuthNone && (
+              <FormControl>
+                <FormControl.Label>{draft.authType === AuthType.AuthOAuth2 ? 'Client secret' : 'Secret'}</FormControl.Label>
                 <FormControl.Caption>
                   Write-only -- stored in the OS keychain, never readable back through Mill.
                   {isEditing && ' Leave blank to keep the existing secret.'}
@@ -224,8 +342,9 @@ export function ConnectorForm({
             effectiveSpec={effectiveSpec}
             baseURL={draft.baseURL}
             authType={draft.authType}
+            auth={authConfigFrom(draft)}
             headers={rowsToHeaders(headerRows)}
-            secret={draft.secret}
+            secret={draft.authType === AuthType.AuthOAuth1 ? draft.oauth1ConsumerSecret : draft.secret}
             connectorID={isEditing ? editingConnector.ID : null}
           />
         </section>
