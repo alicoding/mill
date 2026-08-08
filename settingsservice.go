@@ -7,12 +7,14 @@ import (
 	"fmt"
 	"os"
 	"sync"
+	"time"
 
 	"github.com/alicoding/mill/internal/adapters/hotkey"
 	"github.com/alicoding/mill/internal/adapters/launchatlogin"
 	"github.com/alicoding/mill/internal/adapters/settings"
 	"github.com/alicoding/mill/internal/domain/trigger"
 	"github.com/wailsapp/wails/v3/pkg/application"
+	"github.com/wailsapp/wails/v3/pkg/events"
 	"github.com/wailsapp/wails/v3/pkg/updater"
 )
 
@@ -21,6 +23,17 @@ import (
 // triggerHotkeyBindingsKey (triggerservice.go), sharing the same
 // settings.json file rather than a second store/file.
 const summonHotkeyKey = "settings-summon-hotkey"
+
+// windowGeometryKey persists window position/size/maximized state --
+// docs/SPEC.md §3.7's Update. Same one-atomic-JSON-blob-per-key shape
+// as summonHotkeyKey.
+const windowGeometryKey = "settings-window-geometry"
+
+// windowGeometryDebounce batches rapid move/resize events (dragging a
+// window fires dozens of them) into one write -- the same reasoning
+// Electron's own de facto window-state-keeper convention uses
+// (confirmed directly, docs/SPEC.md §3.7's research).
+const windowGeometryDebounce = 500 * time.Millisecond
 
 // SettingsService is the Wails-facing layer over docs/SPEC.md §3.7's
 // "global app settings" -- settings that apply to Mill itself,
@@ -60,6 +73,100 @@ func (s *SettingsService) SetWindow(w *application.WebviewWindow) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.window = w
+}
+
+// windowGeometry is the persisted shape -- Fullscreen deliberately not
+// tracked (see WatchWindowGeometry's own doc comment for why).
+type windowGeometry struct {
+	X, Y, Width, Height int
+	Maximized           bool
+}
+
+// valid rejects a persisted position that would place the window
+// somewhere very unlikely to be a real, currently-attached display.
+// Wails3 (like Wails v2 before it -- wailsapp/wails#2739, confirmed
+// directly) has no monitor-identity API: a window last positioned on a
+// monitor that's since been disconnected can't be correctly relocated,
+// only guarded against landing somewhere catastrophically inaccessible
+// (e.g. a saved position from a since-removed external display sitting
+// far off the primary screen's bounds). Not a full multi-monitor
+// solution -- a known, accepted limitation, not silently pretended
+// away (docs/SPEC.md §3.7's research).
+func (g windowGeometry) valid() bool {
+	return g.X > -50 && g.Y > -50 && g.X < 10000 && g.Y < 10000 && g.Width > 0 && g.Height > 0
+}
+
+// LoadWindowGeometry returns the persisted window geometry, if any and
+// if it passes the basic off-screen guard above. Called from main.go
+// before the window is created, so the saved position/size can be
+// applied via WebviewWindowOptions' own X/Y/Width/Height/StartState
+// fields -- there's no "move it after creation" path that avoids an
+// initial flash at the default position/size.
+func (s *SettingsService) LoadWindowGeometry() (x, y, width, height int, maximized bool, ok bool) {
+	raw, isStr := s.store.Get(windowGeometryKey).(string)
+	if !isStr || raw == "" {
+		return 0, 0, 0, 0, false, false
+	}
+	var g windowGeometry
+	if err := json.Unmarshal([]byte(raw), &g); err != nil || !g.valid() {
+		return 0, 0, 0, 0, false, false
+	}
+	return g.X, g.Y, g.Width, g.Height, g.Maximized, true
+}
+
+func (s *SettingsService) persistWindowGeometry(g windowGeometry) {
+	data, err := json.Marshal(g)
+	if err != nil {
+		return
+	}
+	_ = s.store.Set(windowGeometryKey, string(data))
+}
+
+// WatchWindowGeometry wires OnWindowEvent listeners (events.Common.
+// WindowDidMove/WindowDidResize/WindowMaximise/WindowUnMaximise/
+// WindowRestore -- confirmed real against the actual Wails3 SDK source,
+// not assumed) that debounce-persist the window's position/size/
+// maximized state on every real change. Called once from main.go,
+// right after SetWindow. Fullscreen is deliberately not tracked:
+// reapplying a persisted X/Y/Width/Height to a window that was last in
+// fullscreen would be meaningless (macOS fullscreen occupies its own
+// Space, with real, unresolved multi-monitor questions of its own,
+// docs/SPEC.md §3.7) -- a real, named future gap rather than a guess.
+//
+//wails:ignore
+func (s *SettingsService) WatchWindowGeometry() {
+	s.mu.Lock()
+	w := s.window
+	s.mu.Unlock()
+	if w == nil {
+		return
+	}
+
+	var timerMu sync.Mutex
+	var timer *time.Timer
+	persist := func() {
+		x, y := w.Position()
+		width, height := w.Size()
+		s.persistWindowGeometry(windowGeometry{X: x, Y: y, Width: width, Height: height, Maximized: w.IsMaximised()})
+	}
+	debounced := func(*application.WindowEvent) {
+		timerMu.Lock()
+		defer timerMu.Unlock()
+		if timer != nil {
+			timer.Stop()
+		}
+		timer = time.AfterFunc(windowGeometryDebounce, persist)
+	}
+
+	for _, evt := range []events.WindowEventType{
+		events.Common.WindowDidMove,
+		events.Common.WindowDidResize,
+		events.Common.WindowMaximise,
+		events.Common.WindowUnMaximise,
+		events.Common.WindowRestore,
+	} {
+		w.OnWindowEvent(evt, debounced)
+	}
 }
 
 func (s *SettingsService) loadPersistedSummonHotkey() {

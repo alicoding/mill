@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Button, Heading, IconButton, Label, Stack, Text } from '@primer/react'
 import { PlusIcon, TrashIcon } from '@primer/octicons-react'
 import { Tabs } from '@primer/react/experimental'
@@ -8,6 +8,7 @@ import type { Connector } from '../../bindings/github.com/alicoding/mill/interna
 import { AuthType } from '../../bindings/github.com/alicoding/mill/internal/domain/connector/models'
 import { ConnectorForm } from './ConnectorForm'
 import { ConnectorSummary } from './ConnectorSummary'
+import { loadPersistedTabs, savePersistedTabs } from '../shared/persistedTabs'
 import styles from '../shared/ListCard.module.css'
 
 const AUTH_LABEL: Record<string, string> = {
@@ -17,6 +18,7 @@ const AUTH_LABEL: Record<string, string> = {
 }
 
 const LIST_TAB = 'list'
+const TABS_STORAGE_KEY = 'mill-configure-connector-tabs'
 
 // One open tab per connector currently being viewed or edited --
 // mirrors CompositionView.tsx's own EditorTab/tabs/activeTab shape
@@ -42,12 +44,52 @@ export function ConfigureIntegration() {
   const [connectors, setConnectors] = useState<Connector[] | null>(null)
   const [tabs, setTabs] = useState<ConnectorTab[]>([])
   const [activeTab, setActiveTab] = useState(LIST_TAB)
+  // Guards the one-shot restore effect below from re-firing on every
+  // later refetch, same reasoning as CompositionView.tsx's own
+  // restoredTabs ref.
+  const restoredTabs = useRef(false)
 
   const refetch = () => {
     ConfigureService.Connectors().then((list) => setConnectors(list ?? [])).catch(console.error)
   }
 
   useEffect(refetch, [])
+
+  // Restores which connector tabs were open (docs/SPEC.md §3.7's
+  // Update), once the real connector list is in -- only 'view' tabs
+  // (a read-only summary), never 'edit': re-opening straight into an
+  // edit form with any unsaved in-progress typing already gone would
+  // look like it's "still open," misleadingly. Filters out any
+  // persisted ID for a connector deleted since last session.
+  useEffect(() => {
+    if (connectors === null || restoredTabs.current) return
+    restoredTabs.current = true
+    const persisted = loadPersistedTabs(TABS_STORAGE_KEY)
+    const validIds = persisted.ids.filter((id) => connectors.some((c) => c.ID === id))
+    if (validIds.length === 0) return
+    const restored = validIds.map((connectorId) => ({
+      key: crypto.randomUUID(), connectorId, mode: 'view' as const, duplicateFromId: null,
+    }))
+    setTabs(restored)
+    const active = restored.find((t) => t.connectorId === persisted.activeId)
+    setActiveTab(active ? active.key : LIST_TAB)
+  }, [connectors])
+
+  // Persists the open, saved-connector 'view' tab set on every change.
+  // Gated on restoredTabs.current -- see CompositionView.tsx's own
+  // identical guard for why: this effect also fires on the very first
+  // mount, before the restore effect above resolves its async fetch,
+  // and an unguarded write would overwrite the previous session's
+  // persisted tabs with the empty initial state first.
+  useEffect(() => {
+    if (!restoredTabs.current) return
+    const savedTabs = tabs.filter((t): t is ConnectorTab & { connectorId: string } => t.mode === 'view' && t.connectorId !== null)
+    const activeSaved = savedTabs.find((t) => t.key === activeTab)
+    savePersistedTabs(TABS_STORAGE_KEY, {
+      ids: savedTabs.map((t) => t.connectorId),
+      activeId: activeSaved ? activeSaved.connectorId : null,
+    })
+  }, [tabs, activeTab])
 
   const closeTab = (key: string) => {
     setTabs((prev) => prev.filter((t) => t.key !== key))
