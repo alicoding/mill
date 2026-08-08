@@ -19,8 +19,23 @@ includes:
   android: ./build/android/Taskfile.yml
 
 tasks:
+  clean:
+    summary: Removes every build artifact from BIN_DIR
+    desc: |
+      bin/ accumulates one artifact per build shape (bin/mill, the raw
+      intermediate binary; bin/mill.app / bin/mill.dev.app, the packaged
+      bundles; bin/mill-server, server mode) and nothing ever clears
+      them out on its own -- across enough dev/build/package runs it
+      stops being obvious which one is actually current. dev/build/
+      build:server all depend on this so a fresh `task dev` or
+      `task build` is always a clean rebuild, never a stale binary
+      sitting next to a new one. Safe to run standalone too.
+    cmds:
+      - rm -rf {{.BIN_DIR}}
+
   build:
     summary: Builds the application
+    deps: [clean]
     cmds:
       - task: "{{.GOOS}}:build"
 
@@ -36,6 +51,7 @@ tasks:
 
   dev:
     summary: Runs the application in development mode
+    deps: [clean]
     cmds:
       - wails3 dev -config ./build/config.yml -port {{.VITE_PORT}}
 
@@ -51,6 +67,7 @@ tasks:
 
   build:server:
     summary: Builds the application in server mode (no GUI, HTTP server only)
+    deps: [clean]
     cmds:
       - task: common:build:server
 

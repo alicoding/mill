@@ -1,5 +1,6 @@
 .task
 bin
+.DS_Store
 frontend/dist
 frontend/node_modules
 frontend/test-results

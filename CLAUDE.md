@@ -100,7 +100,13 @@ file. See `docs/SPEC.md` §9.1 for that split's own rationale.
   pre-commit hooks (lint/vet/build, mirrors CI). Requires `brew install
   lefthook golangci-lint` first.
 - `task dev` — run the app in dev mode with hot reload (frontend + backend).
+  Wipes `bin/` first (`task clean`, a dependency of `dev`/`build`/
+  `build:server`) so there's never more than one ambiguous binary
+  sitting around from a previous run.
 - `task build` — production build to `bin/`.
+- `task clean` — removes every build artifact from `bin/`. Runs
+  automatically before `dev`/`build`/`build:server`; safe to run
+  standalone too.
 - `wails3 dev` / `wails3 build` — underlying Wails3 CLI these Taskfile targets
   wrap; see `Taskfile.yml` and `build/Taskfile.yml` for platform-specific
   variants.
