@@ -66,9 +66,10 @@ test('Paste sample infers output fields, Default/Description/Enum and the respon
   await row.getByText('Schema Maturity Connector', { exact: true }).click()
   await expect(page.getByTestId('connector-summary')).toBeVisible()
 
+  // A single declared operation auto-selects, no dropdown to drive
+  // (docs/SPEC.md §3.5's "no UI for a decision that doesn't exist").
   const attrPanel = page.getByRole('tabpanel', { name: 'Available attributes' })
   await page.getByRole('tab', { name: 'Available attributes' }).click()
-  await attrPanel.getByLabel('Operation').selectOption({ label: 'GET /widgets' })
 
   await expect(attrPanel.getByText('name', { exact: true })).toBeVisible()
   await expect(attrPanel.getByText('default: Ada')).toBeVisible()
