@@ -1319,6 +1319,45 @@ that environment, on something testable directly in this dev session:
   node re-selection, not reset on every remount. Verified via the full
   check suite (tsc/eslint/vitest/LOC) plus the entire e2e suite (19
   tests across composition/activity/capabilities) passing unchanged.
+- **Update — canvas-first layout pass: the meta-header and Inspector no
+  longer permanently reserve space they usually aren't using.**
+  Prompted directly from a screenshot: the full Label/Description form
+  sat expanded above the canvas at all times, and the Inspector
+  reserved 260px even showing only "Select a node to configure it." —
+  between the two, over a third of a typical window was fixed chrome
+  before any canvas appeared. Researched rather than guessed at a fix:
+  n8n's own workflow name is inline-editable directly in a compact top
+  bar, not a full form field stacked above the canvas; React Flow
+  itself ships conditional-visibility primitives (`Panel`,
+  `NodeToolbar`'s `isVisible`) specifically for selection-driven side
+  panels; "canvas-first" (chrome recedes, the canvas dominates,
+  secondary surfaces appear on demand) is the named, converged pattern
+  across the workflow-builder space generally. Mill's own palette
+  already did this correctly (`paletteOpen` toggle) — the gap was that
+  the other two chrome regions never got the same treatment.
+  Label stays a normal always-visible input (compact, `aria-label`
+  instead of a `FormControl.Label` caption above it, fixed ~320px width
+  so it reads as a title next to the toggle/Save button, not a
+  full-width field) — hiding the one field every workflow needs behind
+  a toggle would just move the friction, not remove it. Description
+  (optional, used less) moved behind a disclosure toggle, collapsed by
+  default unless one's already set. The Inspector now collapses to 0
+  width (CSS `width` transition, not `flex-basis`, for a smooth
+  collapse) whenever nothing is selected, expanding to 260px only once
+  a node or edge is — `.canvas`'s existing `flex: 1 1 auto` absorbs the
+  freed space automatically, no extra layout logic needed. Real bug
+  caught before landing, not after: the description-toggle's
+  `aria-label` ("Hide description"/"Add description") substring-matched
+  Playwright's `getByLabel('Description')` (case-insensitive, non-exact
+  by default), breaking one e2e test with a strict-mode "2 elements"
+  error — renamed to "Hide/Add details" to avoid the collision, a
+  concrete instance of `.claude/rules/testing.md`'s own discipline
+  catching a real interaction bug via the test suite, not just via
+  manual inspection. Verified end-to-end (server mode + Playwright, all
+  23 tests, plus a direct screenshot comparison of collapsed/
+  details-open/node-selected states): the canvas now starts immediately
+  below a single compact title row instead of a quarter of the window
+  down. `UX: PROTOTYPE` still applies to Composition overall.
 
 ### 3.1 Raw material — root cause of the heredoc pain, not yet resolved
 
