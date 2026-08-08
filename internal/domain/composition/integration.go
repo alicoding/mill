@@ -44,14 +44,18 @@ func SetConnectorLookup(fn func(connectorID string) (ResolvedConnector, error)) 
 	lookupConnectorFn = fn
 }
 
-// authHeader turns a ResolvedConnector's AuthType + Secret into the one
+// AuthHeader turns a ResolvedConnector's AuthType + Secret into the one
 // header its scheme implies -- AuthAPIKey and AuthBearer are the two
 // docs/SPEC.md §3.5 auth types with a real request-time effect, AuthNone
 // adds nothing. The header names chosen (X-Api-Key, Authorization:
 // Bearer) are the common default for each scheme; a vendor needing a
 // different header name is real future work (§3.2's incremental-
-// extensibility principle), not solved speculatively here.
-func authHeader(rc ResolvedConnector) (key, value string) {
+// extensibility principle), not solved speculatively here. Exported (not
+// just used by the integration-http nodeExec below) so
+// ConfigureService.TestConnectorOperation (docs/adr/0013) can build the
+// identical auth header for a draft-connector test call without a
+// second, driftable copy of this switch.
+func AuthHeader(rc ResolvedConnector) (key, value string) {
 	switch rc.AuthType {
 	case connector.AuthAPIKey:
 		return "X-Api-Key", rc.Secret
@@ -100,7 +104,7 @@ func init() {
 		for k, v := range rc.Headers {
 			headers[k] = v
 		}
-		if k, v := authHeader(rc); k != "" {
+		if k, v := AuthHeader(rc); k != "" {
 			headers[k] = v
 		}
 

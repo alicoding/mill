@@ -262,3 +262,65 @@ func TestOperation_AliasAndPathExtensions_Extracted(t *testing.T) {
 		t.Errorf("field %q = %+v, want empty Alias/Path (no extension set, backward compatible)", "plain", plain)
 	}
 }
+
+func TestBuildRequest_PathQueryHeader_PlacedCorrectly(t *testing.T) {
+	doc, err := Parse([]byte(sampleSpec))
+	if err != nil {
+		t.Fatalf("Parse: %v", err)
+	}
+	op, err := doc.Operation("/orders/{orderId}", "GET")
+	if err != nil {
+		t.Fatalf("Operation: %v", err)
+	}
+
+	path, query, headers, body, err := BuildRequest("/orders/{orderId}", op, map[string]string{
+		"orderId":   "abc123",
+		"verbose":   "true",
+		"X-Api-Key": "should-be-a-header-not-a-query-param",
+	})
+	if err != nil {
+		t.Fatalf("BuildRequest: %v", err)
+	}
+	if path != "/orders/abc123" {
+		t.Errorf("path = %q, want /orders/abc123 (placeholder substituted)", path)
+	}
+	if query.Get("verbose") != "true" {
+		t.Errorf("query[verbose] = %q, want true", query.Get("verbose"))
+	}
+	if query.Get("orderId") != "" || query.Get("X-Api-Key") != "" {
+		t.Errorf("query = %+v, path/header fields must not leak into the query string", query)
+	}
+	if headers["X-Api-Key"] != "should-be-a-header-not-a-query-param" {
+		t.Errorf("headers[X-Api-Key] = %q, want the header value", headers["X-Api-Key"])
+	}
+	if body != "" {
+		t.Errorf("body = %q, want empty (GET has no body fields)", body)
+	}
+}
+
+func TestBuildRequest_BodyFields_CoercedAndOmittedWhenMissing(t *testing.T) {
+	doc, err := Parse([]byte(sampleSpec))
+	if err != nil {
+		t.Fatalf("Parse: %v", err)
+	}
+	op, err := doc.Operation("/orders/{orderId}", "POST")
+	if err != nil {
+		t.Fatalf("Operation: %v", err)
+	}
+
+	// "note" deliberately omitted -- BuildRequest doesn't enforce
+	// Required, only includes what's present in values.
+	path, _, _, body, err := BuildRequest("/orders/{orderId}", op, map[string]string{
+		"orderId":  "abc123",
+		"quantity": "3",
+	})
+	if err != nil {
+		t.Fatalf("BuildRequest: %v", err)
+	}
+	if path != "/orders/abc123" {
+		t.Errorf("path = %q, want /orders/abc123", path)
+	}
+	if body != `{"quantity":3}` {
+		t.Errorf("body = %q, want quantity coerced to a JSON number and note omitted", body)
+	}
+}
