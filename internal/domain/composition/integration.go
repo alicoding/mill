@@ -2,7 +2,10 @@ package composition
 
 import (
 	"fmt"
+	"net/http"
+	"strings"
 
+	"github.com/alicoding/mill/internal/adapters/httpconnector"
 	"github.com/alicoding/mill/internal/domain/connector"
 )
 
@@ -50,4 +53,60 @@ func authHeader(rc ResolvedConnector) (key, value string) {
 	default:
 		return "", ""
 	}
+}
+
+func init() {
+	RegisterNodeType(NodeType{
+		ID: "integration-http", Kind: KindProcess,
+		Label:       "Integration: HTTP call",
+		Description: "Calls a Configure-authored connector's API and replaces the payload with the response body. connectorId isn't a closed FieldOptions set (unlike method below) because connectors are runtime, Configure-authored data composition.go has no compile-time knowledge of -- paste the ID from the Configure page's connector list until a live dropdown lands there (docs/SPEC.md §3.5).",
+		ConfigFields: []ConfigField{
+			{
+				Key: "connectorId", Label: "Connector ID",
+				Description: "The ID of a connector configured on the Configure page.",
+				Default:     "", Type: FieldText,
+			},
+			{
+				Key: "path", Label: "Path",
+				Description: "Appended to the connector's base URL, e.g. \"/v1/records\".",
+				Default:     "", Type: FieldText,
+			},
+			{
+				Key: "method", Label: "Method",
+				Description: "HTTP method for this call.",
+				Default:     http.MethodGet, Type: FieldOptions,
+				Options: []string{http.MethodGet, http.MethodPost, http.MethodPut, http.MethodDelete, http.MethodPatch},
+			},
+			{
+				Key: "bodyTemplate", Label: "Body",
+				Description: "Optional request body (e.g. JSON), sent as-is.",
+				Default:     "", Type: FieldText,
+			},
+		},
+	}, func(node Node, ctx ExecContext) (ExecContext, error) {
+		rc, err := lookupConnectorFn(node.Config["connectorId"])
+		if err != nil {
+			return ctx, fmt.Errorf("integration-http: %w", err)
+		}
+
+		headers := make(map[string]string, len(rc.Headers)+1)
+		for k, v := range rc.Headers {
+			headers[k] = v
+		}
+		if k, v := authHeader(rc); k != "" {
+			headers[k] = v
+		}
+
+		resp, err := httpconnector.Execute(httpconnector.Request{
+			Method:  node.Config["method"],
+			URL:     strings.TrimRight(rc.BaseURL, "/") + node.Config["path"],
+			Headers: headers,
+			Body:    node.Config["bodyTemplate"],
+		})
+		if err != nil {
+			return ctx, fmt.Errorf("integration-http: %w", err)
+		}
+		ctx.Payload = resp.Body
+		return ctx, nil
+	})
 }

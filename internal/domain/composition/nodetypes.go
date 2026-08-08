@@ -4,185 +4,104 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
-	"net/http"
 	"slices"
+	"sort"
 )
 
-// sampleHTML is the default value for apply-clipboard-write-html's
-// "html" field -- a demo fixture, not a fact anything else depends on.
-const sampleHTML = `<h2>Quarterly update</h2>
-<p>Here's a quick summary, with <strong>the important bit</strong> called out.</p>
-<ul>
-  <li>Runbook actions now support global keyboard shortcuts</li>
-  <li>Clipboard capture preserves <em>real</em> structure, not flattened text</li>
-  <li>The UI now runs on Primer, not hand-rolled CSS</li>
-</ul>`
+// kindOrder is NodeTypes()'s display-order tiebreaker -- Trigger nodes
+// first (a workflow's root, matching linearOrder's "exactly one
+// starting node" expectation), then Capture/Process/Apply/Decision, the
+// same sequence the old literal slice used. Reading from a map
+// (nodeTypeRegistry, registry.go) has no ordering guarantee of its own,
+// so NodeTypes() sorts explicitly rather than depending on Go's
+// init()-file-order behavior, which is real but not worth relying on
+// silently (docs/adr/0006-extension-point-registration.md).
+var kindOrder = map[NodeKind]int{
+	KindTrigger:  0,
+	KindCapture:  1,
+	KindProcess:  2,
+	KindApply:    3,
+	KindDecision: 4,
+}
 
 func NodeTypes() []NodeType {
-	return []NodeType{
-		// Trigger node types -- SPEC.md §3.4: each concrete event source
-		// is its own NodeType under KindTrigger, matching how n8n/Zapier
-		// actually structure this (separate, distinctly-named node types,
-		// not one generic node with a Source dropdown). A workflow's root
-		// is expected to be one of these; linearOrder's existing "exactly
-		// one starting node" check already enforces that without needing
-		// Trigger-specific logic. ExecuteWorkflow skips Trigger nodes at
-		// run time -- they mark the entry point, they don't transform the
-		// payload.
-		{
-			ID: "trigger-manual", Kind: KindTrigger,
-			Label:       "Trigger: manual",
-			Description: "Fires on-demand when a user clicks Run/Test. No listener process.",
-		},
-		{
-			ID: "trigger-hotkey", Kind: KindTrigger,
-			Label:       "Trigger: hotkey",
-			Description: "Fires on a global keyboard shortcut, even when Mill isn't focused. Bound via TriggerService, not a config field here -- pressing the combo is better UX than typing it.",
-		},
-		{
-			ID: "trigger-schedule", Kind: KindTrigger,
-			Label:       "Trigger: schedule",
-			Description: "Fires on a cron schedule.",
-			ConfigFields: []ConfigField{
-				{
-					Key: "cron", Label: "Cron expression",
-					Description: "Standard 5-field cron expression (minute hour day month weekday).",
-					Default:     "", Type: FieldText,
-				},
-			},
-		},
-		{
-			ID: "trigger-clipboard-watch", Kind: KindTrigger,
-			Label:       "Trigger: clipboard change",
-			Description: "Fires whenever the clipboard's content changes.",
-		},
-		{
-			ID: "trigger-filesystem-watch", Kind: KindTrigger,
-			Label:       "Trigger: filesystem change",
-			Description: "Fires when a file or folder under the configured path is added, changed, or deleted.",
-			ConfigFields: []ConfigField{
-				{
-					Key: "path", Label: "Path to watch",
-					Description: "Absolute path to a file or directory.",
-					Default:     "", Type: FieldText,
-				},
-			},
-		},
-		{
-			ID: "capture-clipboard-html", Kind: KindCapture,
-			Label:       "Capture: clipboard HTML",
-			Description: "Reads whatever HTML is currently on the clipboard.",
-		},
-		{
-			ID: "process-html-to-markdown", Kind: KindProcess,
-			Label:       "Process: HTML → Markdown",
-			Description: "Converts HTML into Markdown, preserving structure (headings, bold, lists).",
-		},
-		{
-			ID: "apply-clipboard-write-text", Kind: KindApply,
-			Label:       "Apply: write plain text to clipboard",
-			Description: "Writes the workflow's current payload to the clipboard as plain text.",
-		},
-		{
-			ID: "apply-clipboard-write-html", Kind: KindApply,
-			Label:       "Apply: write HTML to clipboard",
-			Description: "Writes configured HTML to the clipboard.",
-			ConfigFields: []ConfigField{
-				{
-					Key: "html", Label: "HTML to write",
-					Description: "The HTML content this step puts on the clipboard.",
-					Default:     sampleHTML,
-					Type:        FieldText,
-				},
-			},
-		},
-		{
-			ID: "decision-route", Kind: KindDecision,
-			Label:       "Decision: route",
-			Description: "Routes to one of several next steps based on a rule evaluated against this workflow's Attributes. A pure routing point -- its conditions live on its outgoing edges (SPEC.md §3.5), not here.",
-		},
-		{
-			ID: "integration-http", Kind: KindProcess,
-			Label:       "Integration: HTTP call",
-			Description: "Calls a Configure-authored connector's API and replaces the payload with the response body. connectorId isn't a closed FieldOptions set (unlike method below) because connectors are runtime, Configure-authored data composition.go has no compile-time knowledge of -- paste the ID from the Configure page's connector list until a live dropdown lands there (docs/SPEC.md §3.5).",
-			ConfigFields: []ConfigField{
-				{
-					Key: "connectorId", Label: "Connector ID",
-					Description: "The ID of a connector configured on the Configure page.",
-					Default:     "", Type: FieldText,
-				},
-				{
-					Key: "path", Label: "Path",
-					Description: "Appended to the connector's base URL, e.g. \"/v1/records\".",
-					Default:     "", Type: FieldText,
-				},
-				{
-					Key: "method", Label: "Method",
-					Description: "HTTP method for this call.",
-					Default:     http.MethodGet, Type: FieldOptions,
-					Options: []string{http.MethodGet, http.MethodPost, http.MethodPut, http.MethodDelete, http.MethodPatch},
-				},
-				{
-					Key: "bodyTemplate", Label: "Body",
-					Description: "Optional request body (e.g. JSON), sent as-is.",
-					Default:     "", Type: FieldText,
-				},
-			},
-		},
-		{
-			ID: "list-lookup", Kind: KindProcess,
-			Label:       "List: lookup",
-			Description: "Looks up an Attributes value in a Configure-authored List and writes the matched entry back into Attributes. listId is FieldText for the same reason integration-http's connectorId is above -- Lists are runtime, Configure-authored data.",
-			ConfigFields: []ConfigField{
-				{
-					Key: "listId", Label: "List ID",
-					Description: "The ID of a list configured on the Configure page.",
-					Default:     "", Type: FieldText,
-				},
-				{
-					Key: "inputKey", Label: "Input attribute",
-					Description: "Which Attributes field's value to look up.",
-					Default:     "", Type: FieldText,
-				},
-				{
-					Key: "outputKey", Label: "Output attribute",
-					Description: "Which Attributes field the matched value gets written to.",
-					Default:     "", Type: FieldText,
-				},
-			},
-		},
-		{
-			ID: "mcp-tool-call", Kind: KindProcess,
-			Label:       "MCP: tool call",
-			Description: "Calls one tool on a Configure-authored MCP server and replaces the payload with its text result (docs/SPEC.md §3.6). mcpServerId and toolName are FieldText for the same reason integration-http's connectorId is -- runtime, Configure-authored data with no compile-time knowledge here. Use the Configure page's \"List tools\" button on the server to find the exact toolName and its expected arguments.",
-			ConfigFields: []ConfigField{
-				{
-					Key: "mcpServerId", Label: "MCP Server ID",
-					Description: "The ID of an MCP server configured on the Configure page.",
-					Default:     "", Type: FieldText,
-				},
-				{
-					Key: "toolName", Label: "Tool name",
-					Description: "The exact tool name, from that server's own tool list.",
-					Default:     "", Type: FieldText,
-				},
-				{
-					Key: "argumentsJSON", Label: "Arguments (JSON)",
-					Description: "Optional JSON object of arguments to pass to the tool, sent as-is.",
-					Default:     "", Type: FieldText,
-				},
-			},
-		},
+	out := make([]NodeType, 0, len(nodeTypeRegistry))
+	for _, entry := range nodeTypeRegistry {
+		out = append(out, entry.nodeType)
 	}
+	sort.Slice(out, func(i, j int) bool {
+		if out[i].Kind != out[j].Kind {
+			return kindOrder[out[i].Kind] < kindOrder[out[j].Kind]
+		}
+		return out[i].ID < out[j].ID
+	})
+	return out
 }
 
 func nodeType(id string) (NodeType, bool) {
-	for _, nt := range NodeTypes() {
-		if nt.ID == id {
-			return nt, true
-		}
-	}
-	return NodeType{}, false
+	entry, ok := nodeTypeRegistry[id]
+	return entry.nodeType, ok
+}
+
+// Trigger node types register here, temporarily -- SPEC.md §3.4: each
+// concrete event source is its own NodeType under KindTrigger, matching
+// how n8n/Zapier actually structure this (separate, distinctly-named
+// node types, not one generic node with a Source dropdown). A
+// workflow's root is expected to be one of these; linearOrder's
+// existing "exactly one starting node" check already enforces that
+// without needing Trigger-specific logic. ExecuteWorkflow skips Trigger
+// nodes at run time -- they mark the entry point, they don't transform
+// the payload, so exec is nil for all five, same as decision-route.
+//
+// This init() is a deliberate half-step, not the final home: a
+// Trigger's *dispatch* behavior (TriggerService.start(), package main)
+// can't live in this package (domain-purity rule -- composition doesn't
+// know about Wails-binding state), so each trigger type's *full*
+// definition ultimately belongs in package main, registering both
+// halves (composition.RegisterNodeType + main's own RegisterTrigger)
+// from one file. Moving there is ADR-0006's next step; until then, the
+// schema half is registered from here so NodeTypes() has a single, real
+// source of truth throughout the migration, not two.
+func init() {
+	RegisterNodeType(NodeType{
+		ID: "trigger-manual", Kind: KindTrigger,
+		Label:       "Trigger: manual",
+		Description: "Fires on-demand when a user clicks Run/Test. No listener process.",
+	}, nil)
+	RegisterNodeType(NodeType{
+		ID: "trigger-hotkey", Kind: KindTrigger,
+		Label:       "Trigger: hotkey",
+		Description: "Fires on a global keyboard shortcut, even when Mill isn't focused. Bound via TriggerService, not a config field here -- pressing the combo is better UX than typing it.",
+	}, nil)
+	RegisterNodeType(NodeType{
+		ID: "trigger-schedule", Kind: KindTrigger,
+		Label:       "Trigger: schedule",
+		Description: "Fires on a cron schedule.",
+		ConfigFields: []ConfigField{
+			{
+				Key: "cron", Label: "Cron expression",
+				Description: "Standard 5-field cron expression (minute hour day month weekday).",
+				Default:     "", Type: FieldText,
+			},
+		},
+	}, nil)
+	RegisterNodeType(NodeType{
+		ID: "trigger-clipboard-watch", Kind: KindTrigger,
+		Label:       "Trigger: clipboard change",
+		Description: "Fires whenever the clipboard's content changes.",
+	}, nil)
+	RegisterNodeType(NodeType{
+		ID: "trigger-filesystem-watch", Kind: KindTrigger,
+		Label:       "Trigger: filesystem change",
+		Description: "Fires when a file or folder under the configured path is added, changed, or deleted.",
+		ConfigFields: []ConfigField{
+			{
+				Key: "path", Label: "Path to watch",
+				Description: "Absolute path to a file or directory.",
+				Default:     "", Type: FieldText,
+			},
+		},
+	}, nil)
 }
 
 // newNodeID derives a collision-resistant node ID when the caller (the

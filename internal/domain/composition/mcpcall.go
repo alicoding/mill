@@ -1,6 +1,11 @@
 package composition
 
-import "fmt"
+import (
+	"encoding/json"
+	"fmt"
+
+	"github.com/alicoding/mill/internal/adapters/mcpclient"
+)
 
 // ResolvedMCPServer is an MCP Server's connection config, assembled by
 // whatever owns MCPServer storage at request time. Same shape and
@@ -25,4 +30,48 @@ var lookupMCPServerFn = func(mcpServerID string) (ResolvedMCPServer, error) {
 // main.go once ConfigureService exists.
 func SetMCPServerLookup(fn func(mcpServerID string) (ResolvedMCPServer, error)) {
 	lookupMCPServerFn = fn
+}
+
+func init() {
+	RegisterNodeType(NodeType{
+		ID: "mcp-tool-call", Kind: KindProcess,
+		Label:       "MCP: tool call",
+		Description: "Calls one tool on a Configure-authored MCP server and replaces the payload with its text result (docs/SPEC.md §3.6). mcpServerId and toolName are FieldText for the same reason integration-http's connectorId is -- runtime, Configure-authored data with no compile-time knowledge here. Use the Configure page's \"List tools\" button on the server to find the exact toolName and its expected arguments.",
+		ConfigFields: []ConfigField{
+			{
+				Key: "mcpServerId", Label: "MCP Server ID",
+				Description: "The ID of an MCP server configured on the Configure page.",
+				Default:     "", Type: FieldText,
+			},
+			{
+				Key: "toolName", Label: "Tool name",
+				Description: "The exact tool name, from that server's own tool list.",
+				Default:     "", Type: FieldText,
+			},
+			{
+				Key: "argumentsJSON", Label: "Arguments (JSON)",
+				Description: "Optional JSON object of arguments to pass to the tool, sent as-is.",
+				Default:     "", Type: FieldText,
+			},
+		},
+	}, func(node Node, ctx ExecContext) (ExecContext, error) {
+		rs, err := lookupMCPServerFn(node.Config["mcpServerId"])
+		if err != nil {
+			return ctx, fmt.Errorf("mcp-tool-call: %w", err)
+		}
+
+		var arguments map[string]any
+		if raw := node.Config["argumentsJSON"]; raw != "" {
+			if err := json.Unmarshal([]byte(raw), &arguments); err != nil {
+				return ctx, fmt.Errorf("mcp-tool-call: invalid argumentsJSON: %w", err)
+			}
+		}
+
+		result, err := mcpclient.CallTool(rs.Command, rs.Args, node.Config["toolName"], arguments)
+		if err != nil {
+			return ctx, fmt.Errorf("mcp-tool-call: %w", err)
+		}
+		ctx.Payload = result
+		return ctx, nil
+	})
 }

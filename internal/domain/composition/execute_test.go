@@ -244,7 +244,7 @@ func TestListLookupExec_MatchWritesOutputAttribute(t *testing.T) {
 		NodeTypeID: "list-lookup",
 		Config:     map[string]string{"listId": "list-1", "inputKey": "code", "outputKey": "name"},
 	}
-	out, err := nodeExec["list-lookup"](node, ExecContext{Attributes: map[string]any{"code": "US"}})
+	out, err := nodeTypeRegistry["list-lookup"].exec(node, ExecContext{Attributes: map[string]any{"code": "US"}})
 	if err != nil {
 		t.Fatalf("list-lookup exec returned error: %v", err)
 	}
@@ -262,7 +262,7 @@ func TestListLookupExec_NoMatch_Rejected(t *testing.T) {
 		NodeTypeID: "list-lookup",
 		Config:     map[string]string{"listId": "list-1", "inputKey": "code", "outputKey": "name"},
 	}
-	if _, err := nodeExec["list-lookup"](node, ExecContext{Attributes: map[string]any{"code": "ZZ"}}); err == nil {
+	if _, err := nodeTypeRegistry["list-lookup"].exec(node, ExecContext{Attributes: map[string]any{"code": "ZZ"}}); err == nil {
 		t.Fatal("list-lookup exec with no matching entry returned nil error, want an error")
 	}
 }

@@ -25,3 +25,41 @@ var lookupListFn = func(listID string) (ResolvedList, error) {
 func SetListLookup(fn func(listID string) (ResolvedList, error)) {
 	lookupListFn = fn
 }
+
+func init() {
+	RegisterNodeType(NodeType{
+		ID: "list-lookup", Kind: KindProcess,
+		Label:       "List: lookup",
+		Description: "Looks up an Attributes value in a Configure-authored List and writes the matched entry back into Attributes. listId is FieldText for the same reason integration-http's connectorId is above -- Lists are runtime, Configure-authored data.",
+		ConfigFields: []ConfigField{
+			{
+				Key: "listId", Label: "List ID",
+				Description: "The ID of a list configured on the Configure page.",
+				Default:     "", Type: FieldText,
+			},
+			{
+				Key: "inputKey", Label: "Input attribute",
+				Description: "Which Attributes field's value to look up.",
+				Default:     "", Type: FieldText,
+			},
+			{
+				Key: "outputKey", Label: "Output attribute",
+				Description: "Which Attributes field the matched value gets written to.",
+				Default:     "", Type: FieldText,
+			},
+		},
+	}, func(node Node, ctx ExecContext) (ExecContext, error) {
+		rl, err := lookupListFn(node.Config["listId"])
+		if err != nil {
+			return ctx, fmt.Errorf("list-lookup: %w", err)
+		}
+
+		inputVal := fmt.Sprintf("%v", ctx.Attributes[node.Config["inputKey"]])
+		matched, ok := rl.Entries[inputVal]
+		if !ok {
+			return ctx, fmt.Errorf("list-lookup: no entry for %q", inputVal)
+		}
+		ctx.Attributes[node.Config["outputKey"]] = matched
+		return ctx, nil
+	})
+}
