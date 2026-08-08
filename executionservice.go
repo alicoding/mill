@@ -11,22 +11,30 @@ import (
 	"github.com/google/uuid"
 )
 
-// decodeAny re-decodes a DBOS-stored `any` value into T -- DBOS's
-// default JSON serializer round-trips a workflow/step's Input/Output
-// through storage as generic map[string]any, not the original Go
-// struct type, so a direct type assertion back to T fails even though
-// the data is really there. A marshal-then-unmarshal roundtrip is the
-// standard fix for exactly this shape of problem.
+// decodeAny re-decodes a DBOS-stored `any` value into T. Verified
+// directly against a real run (not assumed from the Serializer
+// interface's doc comments alone): WorkflowStatus.Input/Output and
+// StepInfo.Output all come back as the raw JSON *string* DBOS's default
+// serializer stored, not an already-decoded Go value -- a direct type
+// assertion to T fails even though the data is really there, and so
+// would blindly re-marshaling a string (json.Marshal on a Go string
+// wraps it in quotes, corrupting the payload before Unmarshal ever
+// sees it). The nil/non-string branch is defensive for any future
+// caller that hands this a value DBOS already decoded.
 func decodeAny[T any](v any) (T, bool) {
 	var zero, out T
 	if v == nil {
 		return zero, false
 	}
-	raw, err := json.Marshal(v)
-	if err != nil {
-		return zero, false
+	raw, ok := v.(string)
+	if !ok {
+		rawBytes, err := json.Marshal(v)
+		if err != nil {
+			return zero, false
+		}
+		raw = string(rawBytes)
 	}
-	if err := json.Unmarshal(raw, &out); err != nil {
+	if err := json.Unmarshal([]byte(raw), &out); err != nil {
 		return zero, false
 	}
 	return out, true

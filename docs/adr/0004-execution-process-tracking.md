@@ -1,7 +1,7 @@
 # ADR-0004: Execution & process/session tracking (SPEC.md §6/§7)
 
 ## Status
-proposed
+accepted
 
 ## Context
 SPEC.md §6 (execution environment & determinism) and §7 (process/session
@@ -255,14 +255,63 @@ applies here too — this ADR moves to `accepted` once
 `internal/adapters/execution` + `executionservice.go` + the redrive UI
 are built and verified end-to-end, not before.
 
+## Update — implemented
+
+Everything the mapping above describes is now real code, verified
+end-to-end (not just unit-tested) against a real DBOS SQLite runtime,
+matching the same discipline applied throughout this doc: `internal/
+adapters/execution` (aliases.go + New/Shutdown lifecycle),
+`composition.ExecuteWorkflowWithStepRunner`, `executionservice.go`
+(`RunWorkflowDurable`/`ListRuns`/`GetRun`/`RedriveRun`), and a real
+**Runs** page (`RunsView.tsx`, reachable via the sidebar — the
+`process-tracking` capability entry flipped from `StatusOpen`/
+`ViewPlaceholder` to `StatusLocked`/`ViewRuns`, `internal/domain/
+capabilities`).
+
+**Real bug caught and fixed during this pass, worth recording so it
+isn't rediscovered**: `WorkflowStatus.Input`/`Output` and
+`StepInfo.Output` all come back from `ListWorkflows`/`GetWorkflowSteps`
+as the raw JSON **string** DBOS's default serializer stored, not an
+already-decoded Go value — confirmed by writing a small throwaway probe
+test and printing `%#v`, not by trusting the `Serializer` interface's
+doc comments alone (they describe encoding, not what a caller gets back
+from a *listing* call). A first version of `decodeAny` assumed a
+`map[string]any` (the shape a direct `any`-typed `json.Unmarshal` would
+produce) and silently produced a zero-valued struct on every call —
+every run's `WorkflowLabel` rendered blank in the UI, caught by the
+Playwright e2e suite (`runs.spec.ts`), not a manual click-through. Fixed
+by having `decodeAny` check for a `string` first and `json.Unmarshal`
+it directly; re-marshaling a string (the original code's path) would
+have wrapped it in quotes and corrupted it. Two permanent regression
+tests lock this in (`executionservice_test.go`):
+`TestRunWorkflowDurable_SummaryHasRealWorkflowLabelAndStepOutput` and
+`TestRedriveRun_ReturnsNewRunWithSameStepOutput`, both running a real
+built-in workflow through the full `ExecutionService` surface against a
+temp-dir SQLite file, no mocks.
+
+The Runs page is deliberately **additive**, not a replacement for
+Composition's existing synchronous "Run" button or Activity's
+session-only feed (both untouched, both keep their own existing e2e
+coverage) — a separate, explicit "Run durably" action starts a
+DBOS-checkpointed run, visible afterward in the Runs list with a
+per-node step breakdown (status/output/error) and a **Redrive from
+here** button on any failed step, calling `dbos.ForkWorkflow` from that
+step's ID. Verified end-to-end via Playwright against the real Go
+backend (`frontend/e2e/runs.spec.ts`): running a workflow durably shows
+it in the list with a real DBOS status, viewing a run renders its real
+step breakdown, and the empty state renders correctly with nothing run
+yet.
+
 ## Lifecycle
 - Owner: Ali (raised the hard filters this had to satisfy) + whoever
-  implements `internal/domain/execution` next
+  extends `internal/adapters/execution`/`executionservice.go` next
 - Maintains: the DBOS-Go/SQLite pick; the phone-home guard rule; the
-  re-run-safety design constraint on future step implementations
-- Update triggers: `internal/domain/execution` actually getting
-  scaffolded; DBOS's SQLite backend hitting a real production issue;
-  the always-on-HTTP-interface question (ADR-0003) getting resolved using
-  this ADR's session model
-- Last reviewed: 2026-08-06
-- Review interval: 30 days while `proposed`; 365 days once `accepted`
+  re-run-safety design constraint on step implementations; the
+  workflow/step mapping and redrive mechanism, now implemented
+- Update triggers: DBOS's SQLite backend hitting a real production
+  issue; the always-on-HTTP-interface question (ADR-0003) getting
+  resolved using this ADR's session model; editing-a-run's-input-before-
+  redrive becoming a real, named need (the Update section's explicitly
+  deferred gap)
+- Last reviewed: 2026-08-08
+- Review interval: 365 days (accepted)
