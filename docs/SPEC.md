@@ -2200,6 +2200,76 @@ firing a hotkey still needs a live Cocoa run loop and a real keypress,
 same limitation `run-mill` already documents, left to the user.
 ADR-0006's `Status` is now `accepted`.
 
+### 3.7 Global app settings — research pending
+
+`OPEN`, research not yet started — captured here so the ask doesn't get
+lost, not a design decision. Raised directly: distinct from both
+Configure (§3.5, node-*kind* authoring) and a Trigger's own per-workflow
+config (§3.4, e.g. one workflow's hotkey binding) is a third, so-far-
+undocumented category — settings that apply to Mill itself, globally,
+independent of any specific workflow. Today's only real instance is the
+theme `SegmentedControl` in `SettingsView.tsx` (§3.5's sidebar-
+restructuring bullet) plus the sidebar-collapse preference — both
+frontend-only, `localStorage`-persisted, cosmetic. Nothing has surveyed
+what a *complete* Settings surface should hold.
+
+**Two research questions, kept explicitly separate — don't conflate
+them the way DBOS and pueue almost got conflated once (§1.2):**
+
+1. **What global settings does a tool shaped like Mill actually need,**
+   researched against real precedent rather than brainstormed from
+   scratch — specifically the Spotlight/Alfred/Raycast category of app
+   (a background-resident utility, summoned on demand, not a document
+   editor with per-file preferences). Concretely worth checking each
+   of these real apps' own Preferences/Settings surface for what they
+   expose and why, before deciding what Mill needs:
+   - **Launch at login** — does Mill start automatically, and is that
+     itself something Wails3/the OS makes easy or something Mill would
+     have to hand-roll (a launch-agent plist on macOS, etc.)?
+   - **A global "summon the app" hotkey/launcher**, distinct from
+     everything §3.4 already builds. §3.4's `trigger-hotkey` fires *one
+     specific workflow* headlessly; this would be a single, app-level
+     combo that opens/focuses Mill itself (Raycast's ⌥Space, Alfred's
+     ⌘Space-alternative, 1Password's quick-access shortcut) — a
+     genuinely different capability, not a workflow trigger, and not
+     built anywhere today.
+   - Update-check behavior, notification preferences, a default
+     working directory/scope (relevant once §6's execution-environment
+     question is resolved), menu-bar-vs-dock presence, and whatever
+     else that same category of app converges on — needs an actual
+     survey (real apps' real Settings screens), not a guessed list.
+   - Explicitly not this bullet's job to decide the UI for any of the
+     above — the research is "what belongs in Settings at all,"
+     locking a design comes after.
+2. **A `single-user`-today, `hexagonal-architecture`-future-proofing
+   question about the settings/storage *boundary* itself** — not a
+   proposal to build multi-user/SaaS now, which would be exactly the
+   "solve a decision that doesn't exist yet" §0/CLAUDE.md already warns
+   against. `internal/adapters/settings` today is one flat JSON file
+   (via Wails3's `KVStoreService`) with no notion of "whose" setting a
+   key belongs to — every consumer (`HotkeyService`/`TriggerService`'s
+   bindings, `CompositionService`'s workflows, `ConfigureService`'s
+   connectors/lists) reads/writes the same single store. The question
+   worth researching before *any* future settings work locks a shape:
+   is there a cheap, low-regret seam (e.g. a `Scope`/owner concept in
+   the `Store` port, or key-namespacing convention) that would let a
+   hypothetical future multi-tenant variant graft on without a full
+   storage rewrite — versus confirming that no such seam is worth
+   paying for now and single-user-forever is the honest current
+   assumption. Needs real research into how hexagonal/ports-and-
+   adapters literature and comparable single-user-first local apps that
+   later grew a hosted/team tier (if any real, citable precedent
+   exists) actually handled this, not invented from first principles.
+   Whatever the answer, it must not violate §1.1's own locked
+   constraints (no hosted-service dependency for the core loop, single
+   binary) — this is about *not foreclosing* a future option cheaply,
+   never about building toward one.
+
+Follows the same Research → Plan → Implement discipline as everything
+else in this doc (CLAUDE.md) — do not let a Settings UI get built
+before this research lands and a real capability map (§3.3's own
+worked example) exists for it.
+
 ## 4. Connectors
 
 - **Generic HTTP connector: `LOCKED` and built.** `internal/domain/
@@ -2575,5 +2645,12 @@ mode from §0 repeating itself one level up.
 - Env/shell determinism rules (§6)
 - Session identity model spanning tab + agent run + process (§7)
 - Policy authoring format and storage (§8)
+- Global app settings (§3.7) — what belongs in it (launcher/hotkey-to-
+  summon-the-app, launch-at-login, etc.) and whether the settings
+  storage boundary should leave room for a future multi-tenant variant
+  — research not yet started
+- Connector input/output schema mechanism (§3.3/§3.5/§4) — what to
+  adopt so a workflow's Attributes can bind into an integration's
+  request/response fields, researched but not yet locked/implemented
 - Bash-execution-through-our-process-but-nothing-is-ours reading (§1.1) —
   confirm with the user
