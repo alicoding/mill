@@ -1558,7 +1558,7 @@ Plan step for this as a standing rule.
 | **Integration / Connector node** | Call an external HTTP API, auth'd | Wire protocol: adopt (stdlib `net/http`, via `internal/adapters/httpconnector`). Connector config/credential model: build (`internal/domain/connector`) + adopt (`zalando/go-keyring` via `internal/adapters/credential`) | `LOCKED` (execution) — `internal/domain/connector`'s `Connector{ID, Label, Type, BaseURL, AuthType, Headers}` + a new `integration-http` `NodeType` (`KindProcess`) execute real HTTP calls, resolving `AuthType`/secret into the right header (`X-Api-Key` or `Authorization: Bearer`) via `composition.SetConnectorLookup`'s injected seam (mirrors `TriggerService`'s `Syncer` pattern — the domain package doesn't own connector storage). §4 stays `OPEN` on the Configure-surface UI to author a Connector; see §3.5's own row |
 | **List** (a reusable lookup/reference dataset) | Look up an Attributes value against a named, Configure-authored table, write the match back into Attributes | Build (core domain — no library has an opinion on Mill's own List model; the lookup itself is a plain map read) | `LOCKED` (execution) — `internal/domain/list.List{ID, Label, Entries}` + a new `list-lookup` `NodeType` (`KindProcess`) resolve a `listId` via `composition.SetListLookup` (same injected-seam pattern as Integration/Connector's `SetConnectorLookup`) and write the matched entry into `ExecContext.Attributes[outputKey]`. Not in ADR-0005's original taxonomy at all (a real gap flagged in §3.5) — added here as the first thing built against it. §3.5 stays `OPEN` on the Configure-surface UI to author a List |
 | **MCP tool call** (§3.6's extension point — call a tool on a Configure-authored MCP server) | Call one tool on a locally-configured MCP server over stdio, replace the payload with its text result | Wire protocol: adopt (`modelcontextprotocol/go-sdk`'s client role, via `internal/adapters/mcpclient`). Server config/CRUD: build, same shape as Connector | `LOCKED` (execution + authoring, end-to-end) — `internal/domain/mcpserver.MCPServer{ID, Label, Command, Args}` + a new `mcp-tool-call` `NodeType` (`KindProcess`) resolve an `mcpServerId` via `composition.SetMCPServerLookup` and call `toolName` with `argumentsJSON`. Verified against a real spawned subprocess (an official MCP reference server via `npx`), not just unit tests — see §3.6 for the full writeup. This is the "add a new capability without a core code change" answer §3.6 set out to find |
-| **Durable step execution / retry / resume** | Survive the process dying mid-workflow, checkpoint per step, retry transient failures | Adopt (DBOS-Go) | ADR-0004, integration in progress this session |
+| **Durable step execution / retry / resume** | Survive the process dying mid-workflow, checkpoint per step, retry transient failures | Adopt (DBOS-Go) | ADR-0004 (`proposed`) — library picked, **not yet integrated**: confirmed directly (checked `go.mod`, no `internal/adapters/execution` package exists) that "integration in progress this session" was stale text left over from an earlier session that didn't land; corrected here rather than left to mislead future planning |
 | **Replay / re-run from history** | Re-invoke a past run, ideally resuming rather than restarting | Mechanism: adopt (DBOS `ForkWorkflow`/workflow-ID resume). UI/policy: build | Named this session — not built, deliberately deferred past the current DBOS-integration pass |
 | **Draft/live versioning** | Edit a workflow without breaking the currently-live version | Build (no library owns Mill's own versioning semantics) | Real gap flagged from the reference-platform review (§3.2), `OPEN` |
 | **Live + shadow events / execution history** | Filterable log of past runs; dry-run a candidate change against real traffic before trusting it | Data: adopt (DBOS `GetStatus`/`ListWorkflows`). UI: build | §3.2 shadow-events bullet; §7 already calls Activity "the closest thing to the analytics half" |
@@ -2085,6 +2085,32 @@ brand-new Mill node *kinds*. `mcp-tool-call` is one more Mill-defined
 server is which *tools* are callable through it, the same way what
 varies per configured Connector is which *API* `integration-http` calls
 — the kind stays fixed, only the reusable instance's shape is dynamic.
+
+**Update — checked whether Mill needs to lower the boilerplate of
+*authoring* an MCP server too (the "WXT wraps raw Chrome APIs" question
+— a platform's own low-boilerplate SDK over a lower-level protocol),
+not just calling one.** Mill is already a correct MCP *client* (above);
+this asks about the *other* side — someone writing a new MCP server to
+extend Mill. Researched rather than assumed: the answer is Mill doesn't
+need to build or ship anything here. The MCP ecosystem already has
+exactly the WXT-shaped layer per language an extension author would
+plausibly use — `mark3labs/mcp-go` for Go (`server.NewMCPServer()` +
+`AddTool` + `ServeStdio()`, genuinely minimal boilerplate, the same
+"protocol correctness from the low-level SDK, convenience from the
+wrapper" split WXT has over the raw Chrome extension APIs), FastMCP for
+Python (the original, from the Prefect team) and FastMCP/TypeScript
+(a compatible, independently-maintained port). None of these are Mill
+dependencies — an MCP server is a wholly separate process in whatever
+language its author picks, invoked over stdio; Mill's own hard
+constraints (no Rust, single binary) don't even apply to it. Building a
+Mill-owned SDK layer on top of an already-solved problem would be
+exactly the inner-platform trap §0 exists to name. The concrete
+action, still `OPEN`: point to these in whatever "how to extend Mill"
+documentation eventually gets written (a natural fit for §9.2's
+already-named `connector-scaffolder` agent candidate, once that section
+moves), not a new dependency or new Mill code. `LOCKED` (the research
+and the "don't build" call) — the documentation itself is real, small,
+future work.
 
 `LOCKED` (problem 2, MCP-client extension point, built end-to-end).
 Problem 1 (the internal node-type self-registration pattern for Mill's
