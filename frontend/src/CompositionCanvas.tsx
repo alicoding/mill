@@ -386,6 +386,7 @@ function CanvasInner({ nodeTypes, workflow, onBack, onSaved }: CompositionCanvas
             <NodeInspector
               key={selectedNode.id}
               node={selectedNode}
+              attrs={workflow?.Attributes ?? []}
               nodeType={selectedNodeType}
               sameKindNodeTypes={sameKindNodeTypes}
               hasWorkflow={!!workflow}

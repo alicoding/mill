@@ -39,6 +39,17 @@ import * as list$0 from "./internal/domain/list/models.js";
 // @ts-ignore: Unused imports
 import * as mcpserver$0 from "./internal/domain/mcpserver/models.js";
 
+/**
+ * ConnectorOperationFields resolves one connector operation's declared
+ * input/output fields (ADR-0007 Phase 3) -- the data the canvas
+ * Inspector's binding editor renders once a user picks an operation
+ * from ListConnectorOperations above. Mirrors that method's own
+ * lookup/parse shape.
+ */
+export function ConnectorOperationFields(id: string, path: string, method: string): $CancellablePromise<openapispec$0.Operation> {
+    return $Call.ByID(3253637512, id, path, method);
+}
+
 export function Connectors(): $CancellablePromise<connector$0.Connector[] | null> {
     return $Call.ByID(1335444401);
 }

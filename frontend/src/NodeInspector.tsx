@@ -2,17 +2,23 @@ import { useState } from 'react'
 import { Browser } from '@wailsio/runtime'
 import { Button, Checkbox, FormControl, Label, Select, Stack, Text, TextInput, Textarea } from '@primer/react'
 import { KeyIcon } from '@primer/octicons-react'
-import type { NodeType } from '../bindings/github.com/alicoding/mill/internal/domain/composition/models'
+import type { AttributeDef, NodeType } from '../bindings/github.com/alicoding/mill/internal/domain/composition/models'
 import { ConfigFieldType } from '../bindings/github.com/alicoding/mill/internal/domain/composition/models'
 import type { CanvasNode } from './canvasStore'
 import { useHotkeyCapture, isAccessibilityError, ACCESSIBILITY_SETTINGS_URL } from './hotkeyCapture'
 import { generateSamplePayload } from './configSchema'
 import { EntityRefField } from './EntityRefField'
+import { IntegrationBindingsEditor } from './IntegrationBindingsEditor'
 import styles from './CompositionCanvas.module.css'
 import runbookStyles from './ListCard.module.css'
 
 interface NodeInspectorProps {
   node: CanvasNode
+  // The owning workflow's declared Attributes -- what integration-http's
+  // binding editor offers as bindable fields (same source
+  // DecisionEdgeInspector's rule builder already reads via
+  // ruleTranslate.ts's fieldsFromAttributes).
+  attrs: AttributeDef[]
   nodeType: NodeType | undefined
   // Every NodeType sharing this node's Kind -- the "Node type" swap
   // control's options. Passed down rather than the full nodeTypes list
@@ -40,7 +46,7 @@ interface NodeInspectorProps {
 // render of this component by node id, so switching the selected node
 // gets a clean remount rather than carrying stale nonce/local state
 // across selections.
-export function NodeInspector({ node, nodeType, sameKindNodeTypes, hasWorkflow, hotkeyCapture, onChangeType, onConfigChange }: NodeInspectorProps) {
+export function NodeInspector({ node, attrs, nodeType, sameKindNodeTypes, hasWorkflow, hotkeyCapture, onChangeType, onConfigChange }: NodeInspectorProps) {
   const [payloadNonce, setPayloadNonce] = useState(0)
 
   return (
@@ -192,6 +198,19 @@ export function NodeInspector({ node, nodeType, sameKindNodeTypes, hasWorkflow, 
           )}
         </FormControl>
       ))}
+
+      {node.data.nodeTypeID === 'integration-http' && (
+        <IntegrationBindingsEditor
+          connectorId={node.data.config.connectorId ?? ''}
+          path={node.data.config.path ?? ''}
+          method={node.data.config.method ?? ''}
+          attrs={attrs}
+          inputBindingsRaw={node.data.config.inputBindings ?? ''}
+          outputBindingsRaw={node.data.config.outputBindings ?? ''}
+          onChangeInputBindings={(raw) => onConfigChange('inputBindings', raw)}
+          onChangeOutputBindings={(raw) => onConfigChange('outputBindings', raw)}
+        />
+      )}
     </Stack>
   )
 }
