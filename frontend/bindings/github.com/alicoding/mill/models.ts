@@ -118,6 +118,12 @@ export interface TestConnectorRequest {
     "ConnectorID": string;
     "BaseURL": string;
     "AuthType": connector$0.AuthType;
+
+    /**
+     * Auth is the non-secret config for AuthOAuth2/AuthHMAC/AuthOAuth1
+     * (ADR-0015) -- nil for the three original AuthTypes.
+     */
+    "Auth": connector$0.AuthConfig | null;
     "Headers": { [_ in string]?: string } | null;
 
     /**

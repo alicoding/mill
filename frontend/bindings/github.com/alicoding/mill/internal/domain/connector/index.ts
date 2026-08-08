@@ -6,5 +6,9 @@ export {
 } from "./models.js";
 
 export type {
-    Connector
+    AuthConfig,
+    Connector,
+    HMACConfig,
+    OAuth1Config,
+    OAuth2Config
 } from "./models.js";

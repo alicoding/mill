@@ -38,14 +38,21 @@ func TestValidate_EmptyBaseURL_Rejected(t *testing.T) {
 
 func TestValidate_UnsupportedAuthType_Rejected(t *testing.T) {
 	c := valid()
-	c.AuthType = "oauth2"
+	// "oauth2" was this test's own example of an unsupported value
+	// before ADR-0015's auth-type catalogue expansion legitimized it --
+	// "saml" (never part of the researched catalogue, docs/SPEC.md
+	// §4.1) is a genuinely unsupported value instead.
+	c.AuthType = "saml"
 	if err := Validate(c); err == nil {
 		t.Error("Validate with an unsupported auth type returned nil error, want an error")
 	}
 }
 
 func TestValidate_EveryAuthType_Accepted(t *testing.T) {
-	for _, at := range []AuthType{AuthNone, AuthAPIKey, AuthBearer} {
+	for _, at := range []AuthType{
+		AuthNone, AuthAPIKey, AuthBearer,
+		AuthHMAC, AuthOAuth1, AuthOAuth1Vendor, AuthOAuth2, AuthQueryParam, AuthMTLS,
+	} {
 		c := valid()
 		c.AuthType = at
 		if err := Validate(c); err != nil {
