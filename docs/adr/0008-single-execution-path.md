@@ -1,7 +1,17 @@
 # ADR-0008: Single execution path — every workflow run goes through DBOS
 
 ## Status
-proposed
+accepted
+
+Perf question resolved (was the one open item blocking acceptance): a
+throwaway benchmark (real DBOS context, real SQLite-backed
+`RunAsStep`, 50 runs × 4 steps — the built-in Clipboard→Markdown
+workflow's node count) measured **~281µs/step, ~1.1ms/run** of
+checkpoint overhead versus a bare in-memory call. Three orders of
+magnitude below perceptible interactive latency (~100ms) — not a
+concern for Mill's node counts. Not committed as a permanent benchmark
+(the number is what matters, not a maintained artifact); this
+paragraph is the record of the measurement.
 
 ## Context
 
@@ -184,11 +194,10 @@ Attribute-binding for input), not an execution-mode branch.
   `RunKind` (`test`/`triggered`) as a `runInput` field, not a DBOS
   `SetWorkflowAttributes` call; the test-input form as a generalization
   of `configSchema.ts`'s existing zod-schema-faker mechanism.
-- **Real cost, not yet measured**: every run now does a SQLite write per
-  checkpointed step instead of a pure in-memory call. Bounded and local,
-  but needs an actual timing check against Mill's real node counts
-  before this is called done — not assumed fine because it's "just
-  SQLite."
+- **Real cost, measured**: every run now does a SQLite write per
+  checkpointed step instead of a pure in-memory call — ~281µs/step
+  measured directly (see Status above), bounded, local, and not a
+  perceptible cost at Mill's node counts.
 - **Test/e2e impact**: `composition.spec.ts`'s existing Run-button
   coverage needs re-verification against the new call path (expected to
   look identical from the UI, since `RunWorkflowDurable` already blocks
