@@ -2054,6 +2054,47 @@ into this pass (kept separate per this section's own split above), a
 smaller, orthogonal Go code-organization change with no user-facing
 effect, worth its own pass later.
 
+**Update — problem 1 sized properly, against the full codebase, not just
+the one already-known case.** Prompted directly: line up research and a
+plan on hexagonal architecture and the platform gap, so new capabilities
+extend Mill instead of touching core. Re-audited every place adding a
+new *instance* of an existing extensible concept requires editing a
+shared file — not assumed from the one known example. Full capability
+map and the researched plan are in
+[`docs/adr/0006-extension-point-registration.md`](adr/0006-extension-point-registration.md)
+(status `proposed`); summary:
+
+| Extension point | Central-file cost today | Previously documented? |
+|---|---|---|
+| Composition `NodeType` | `nodetypes.go` + `execute.go` (2 files) | Yes — this section, `OPEN` |
+| Trigger type | Same 2, **plus `triggerservice.go`'s `start()` switch** | **No — new finding** |
+| Connector `AuthType` | `connector.go` + `composition/integration.go` (2 files) | **No — new finding, minor** |
+| Configure entity *kind* | `ConfigureService` struct + constructor (~3-4 lines) | **No — new finding, small** |
+| Capabilities index entry | `capabilities.go`'s `List()` (1 line) | Cheap already |
+| MCP-tool-shaped capability | Zero Go changes | Yes — `LOCKED`, built |
+
+Researched the mechanism too, not just catalogued the problem:
+hexagonal architecture (Cockburn) is confirmed to already be Mill's
+shape (`internal/domain/*`/`internal/adapters/*`, CLAUDE.md/ADR-0001)
+— naming it doesn't change anything, it just gives the existing pattern
+a name. The actual fix for *this* problem is narrower than the
+architecture style itself: Go's `database/sql` driver
+(`sql.Register`+`init()`+blank import) is the real, converged idiom for
+"add an implementation without editing a shared map/switch," confirmed
+directly, not assumed — same shape this section already guessed at
+("the same shape Go's own `database/sql` drivers... use").
+ADR-0006's recommendation is deliberately scoped, not "registry
+everything": self-registration for NodeType + Trigger type only — the
+two with real, repeated editing pain (three additions needing both
+NodeType files in one session; Trigger type is the identical shape with
+5 existing cases). Connector `AuthType` and Configure-entity-kind stay
+plain switches/struct fields, explicitly accepted as a small, bounded,
+infrequently-paid cost rather than abstracted preemptively — the same
+"no UI for a decision that doesn't exist yet" discipline §3.5's
+Configure recheck already applied, now applied to registries. `OPEN`
+(plan recorded, not yet implemented — ADR-0006 stays `proposed` until
+the refactor lands).
+
 ## 4. Connectors
 
 - **Generic HTTP connector: `LOCKED` and built.** `internal/domain/
@@ -2362,8 +2403,8 @@ mode from §0 repeating itself one level up.
 - Node/canvas composition model (§3) — Decision/Integration/List
   execution + authoring now built (§3.3/§3.5); Parallel Steps, Child
   Workflow, and draft/live versioning remain the open parts
-- Extension points: internal node-type self-registration pattern for
-  Mill's own hand-written node types, still unbuilt (§3.6) --
+- Extension points: self-registration for NodeType + Trigger type
+  (ADR-0006, `proposed`) planned but not yet implemented (§3.6) --
   MCP-client-backed dynamic tool nodes (the other half) are now built
 - Browser extension ↔ native app protocol details (§5)
 - Env/shell determinism rules (§6)
