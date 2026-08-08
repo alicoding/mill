@@ -29,8 +29,19 @@
 }
 .metaHeader {
     flex: 0 0 auto;
-    padding-top: var(--base-size-12);
-    margin-bottom: var(--base-size-12);
+    padding-top: var(--base-size-8);
+    margin-bottom: var(--base-size-8);
+}
+/* A compact title, not a full-width form field -- the canvas is the
+   authoring surface (docs/SPEC.md §3's canvas-first layout pass), the
+   header is metadata. Fixed width instead of `block` so it reads as a
+   title sitting next to the description toggle and Save button, not a
+   giant input spanning the pane. */
+.metaTitleInput {
+    width: 320px;
+}
+.metaDescription {
+    margin-top: var(--base-size-8);
 }
 /* Overrides React Flow's own .react-flow__panel.top.left corner margin
    (15px, meant for small controls like Controls/MiniMap) to dock full-
@@ -82,13 +93,27 @@
     --xy-controls-button-color: var(--fgColor-default);
     --xy-minimap-background-color: var(--bgColor-muted);
 }
+/* Reserves space only while it has something to show -- canvas-first
+   layout (docs/SPEC.md §3's layout pass): the config surface appears on
+   selection instead of permanently claiming 260px for a "Select a node
+   to configure it." placeholder. width (not flex-basis) so the collapse
+   transitions smoothly; .canvas's flex: 1 1 auto fills whatever space
+   this frees automatically, no extra layout logic needed. */
 .inspector {
-    flex: 0 0 260px;
+    flex: 0 0 auto;
+    width: 260px;
     min-width: 0;
     border-left: 1px solid var(--borderColor-default);
     background: var(--bgColor-default);
     padding: var(--base-size-12);
     overflow-y: auto;
+    transition: width 0.15s ease, padding 0.15s ease, border-color 0.15s ease;
+}
+.inspectorCollapsed {
+    width: 0;
+    padding: 0;
+    border-left-color: transparent;
+    overflow: hidden;
 }
 .inspectorEmpty {
     color: var(--fgColor-muted);

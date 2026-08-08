@@ -12,7 +12,7 @@ import type { Connection, Edge as RFEdge } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 import { useStore } from 'zustand'
 import { Button, FormControl, IconButton, Stack, Text, TextInput, Textarea } from '@primer/react'
-import { ColumnsIcon, RedoIcon, SidebarCollapseIcon, SidebarExpandIcon, TrashIcon, UndoIcon } from '@primer/octicons-react'
+import { ChevronDownIcon, ChevronUpIcon, ColumnsIcon, RedoIcon, SidebarCollapseIcon, SidebarExpandIcon, TrashIcon, UndoIcon } from '@primer/octicons-react'
 import { ArrowLeftIcon } from '@primer/octicons-react'
 import { CompositionService } from '../bindings/github.com/alicoding/mill'
 import type { NodeType, Node as CompNode, Edge as CompEdge, Workflow } from '../bindings/github.com/alicoding/mill/internal/domain/composition/models'
@@ -83,6 +83,14 @@ function CanvasInner({ nodeTypes, workflow, onBack, onSaved }: CompositionCanvas
   const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null)
   const [draftLabel, setDraftLabel] = useState(workflow?.Label ?? '')
   const [draftDescription, setDraftDescription] = useState(workflow?.Description ?? '')
+  // Collapsed by default unless a description already exists -- the
+  // canvas is the authoring surface, the header is metadata (SPEC.md
+  // §3's canvas-first layout pass); Label stays a normal always-visible
+  // input either way (it's the one field every workflow needs, and
+  // hiding it behind a toggle would just move the friction, not remove
+  // it), only Description -- optional, used less -- is worth a
+  // disclosure.
+  const [descOpen, setDescOpen] = useState(!!workflow?.Description)
   const [saveError, setSaveError] = useState('')
   const [saving, setSaving] = useState(false)
   const [layingOut, setLayingOut] = useState(false)
@@ -276,22 +284,33 @@ function CanvasInner({ nodeTypes, workflow, onBack, onSaved }: CompositionCanvas
   return (
     <div className={styles.canvasSection} data-testid="composition-canvas">
       <div className={styles.metaHeader}>
-        <Stack direction="vertical" gap="condensed">
-          <FormControl>
-            <FormControl.Label>Label</FormControl.Label>
-            <TextInput value={draftLabel} onChange={(e) => setDraftLabel(e.target.value)} placeholder="My workflow" block />
-          </FormControl>
-          <FormControl>
+        <Stack direction="horizontal" gap="condensed" align="center">
+          <TextInput
+            value={draftLabel}
+            onChange={(e) => setDraftLabel(e.target.value)}
+            aria-label="Label"
+            placeholder="My workflow"
+            size="small"
+            className={styles.metaTitleInput}
+          />
+          <IconButton
+            icon={descOpen ? ChevronUpIcon : ChevronDownIcon}
+            aria-label={descOpen ? 'Hide details' : 'Add details'}
+            size="small"
+            onClick={() => setDescOpen((v) => !v)}
+            data-testid="toggle-description"
+          />
+          <Button variant="primary" size="small" onClick={save} disabled={saving} data-testid="save-workflow">
+            {saving ? 'Saving…' : workflow ? 'Save changes' : 'Save workflow'}
+          </Button>
+        </Stack>
+        {saveError && <Text as="p" size="small" className={runbookStyles.error}>{saveError}</Text>}
+        {descOpen && (
+          <FormControl className={styles.metaDescription}>
             <FormControl.Label>Description</FormControl.Label>
             <Textarea value={draftDescription} onChange={(e) => setDraftDescription(e.target.value)} rows={2} block />
           </FormControl>
-          {saveError && <Text as="p" size="small" className={runbookStyles.error}>{saveError}</Text>}
-          <Stack direction="horizontal">
-            <Button variant="primary" onClick={save} disabled={saving} data-testid="save-workflow">
-              {saving ? 'Saving…' : workflow ? 'Save changes' : 'Save workflow'}
-            </Button>
-          </Stack>
-        </Stack>
+        )}
       </div>
 
       <div className={styles.canvasWrap}>
@@ -346,7 +365,10 @@ function CanvasInner({ nodeTypes, workflow, onBack, onSaved }: CompositionCanvas
           </ReactFlow>
         </div>
 
-        <div className={styles.inspector} data-testid="composition-inspector">
+        <div
+          className={`${styles.inspector} ${!selectedNode && !selectedEdge ? styles.inspectorCollapsed : ''}`}
+          data-testid="composition-inspector"
+        >
           {!selectedNode && !selectedEdgeFromDecision && (
             <Text className={styles.inspectorEmpty} size="small">
               {selectedEdge ? 'Only a Decision node’s outgoing edges are configurable.' : 'Select a node to configure it.'}

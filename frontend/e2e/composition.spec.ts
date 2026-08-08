@@ -177,6 +177,9 @@ test('Dragging a node onto the canvas configures it as it is added, then saves, 
   await configField.blur()
 
   await activePanel(page).getByLabel('Label').fill('E2E custom workflow')
+  // Description is collapsed by default now (canvas-first layout,
+  // docs/SPEC.md §3) -- has to be expanded before it's fillable.
+  await activePanel(page).getByTestId('toggle-description').click()
   await activePanel(page).getByLabel('Description').fill('Composed by an e2e test')
   await activePanel(page).getByTestId('save-workflow').click()
 
