@@ -3385,6 +3385,19 @@ this pass.
   repeatable via each example's own Test tab) rather than an automated
   test that could flake or break silently if a third party changes.
   `LOCKED`.
+- **Update — the operation picker on Testing/Available-attributes/Input-
+  parameters auto-selects instead of showing a dropdown when a connector
+  declares exactly one operation.** Every seeded example connector above
+  (and most hand-authored ones) declares exactly one operation, making
+  this concretely visible: a "Select an operation…" `Select` with only
+  one real choice, caught live by the user via screenshots of the
+  running app — the same "no UI for a decision that doesn't exist"
+  discipline already applied elsewhere (single-option `AuthType`/
+  NodeType-swap Selects), now applied here too.
+  `ConnectorTestPanel.tsx`/`ConnectorSummary.tsx` auto-select the sole
+  operation and render it as static text (`Label`) in that case, falling
+  back to the `Select` only when a connector genuinely declares more
+  than one operation. `LOCKED`.
 
 ### 4.1 Connector capability map — from the reference-platform review (§3.2)
 
