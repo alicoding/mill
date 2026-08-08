@@ -188,6 +188,25 @@ export function NodeInspector({ node, attrs, nodeType, sameKindNodeTypes, hasWor
               data-testid="canvas-config-field"
               onBlur={(e) => onConfigChange(field.Key, e.target.value)}
             />
+          ) : field.Suggestions && field.Suggestions.length > 0 ? (
+            // FieldText with Suggestions (e.g. integration-http's Method,
+            // ADR-0016) -- a single-line input with an HTML5 datalist of
+            // hints, not a closed Select: any value is still accepted,
+            // matching Bruno's own "named methods, or an explicit CUSTOM
+            // escape hatch" shape rather than a fixed enum a new or
+            // uncommon method (RFC 10008's QUERY) can't express.
+            <>
+              <TextInput
+                defaultValue={node.data.config[field.Key] ?? ''}
+                list={`${field.Key}-suggestions`}
+                block
+                data-testid="canvas-config-field"
+                onBlur={(e) => onConfigChange(field.Key, e.target.value)}
+              />
+              <datalist id={`${field.Key}-suggestions`}>
+                {field.Suggestions.map((s) => <option key={s} value={s} />)}
+              </datalist>
+            </>
           ) : (
             <Textarea
               defaultValue={node.data.config[field.Key] ?? ''}

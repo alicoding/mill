@@ -62,6 +62,39 @@ func TestExecute_SendsBody(t *testing.T) {
 	}
 }
 
+// ADR-0016 Phase C: RFC 10008's QUERY method (published June 2026)
+// carries a request body like POST but isn't one of net/http's
+// pre-defined method constants -- proves directly, not assumed, that
+// Execute (and the retryablehttp.NewRequest/http.NewRequest chain
+// underneath it) sends a body on an arbitrary non-standard method
+// string exactly like it does for POST, since neither actually
+// special-cases the method when attaching a body.
+func TestExecute_QueryMethod_SendsBody(t *testing.T) {
+	var gotMethod, gotBody string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotMethod = r.Method
+		b, _ := io.ReadAll(r.Body)
+		gotBody = string(b)
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"results":[]}`))
+	}))
+	defer srv.Close()
+
+	resp, err := Execute(Request{Method: "QUERY", URL: srv.URL, Body: `{"filter":{"status":"active"}}`})
+	if err != nil {
+		t.Fatalf("Execute returned error: %v", err)
+	}
+	if gotMethod != "QUERY" {
+		t.Errorf("server received method %q, want QUERY", gotMethod)
+	}
+	if gotBody != `{"filter":{"status":"active"}}` {
+		t.Errorf("server received body %q, want the QUERY body", gotBody)
+	}
+	if resp.StatusCode != http.StatusOK || resp.Body != `{"results":[]}` {
+		t.Errorf("resp = %+v, want a normal 200 response", resp)
+	}
+}
+
 // go-retryablehttp's DefaultRetryPolicy doesn't retry a plain 400 (only
 // 429 and 5xx-except-501 are retryable, verified directly against its
 // source -- see httpconnector.go's own newClient comment), so this

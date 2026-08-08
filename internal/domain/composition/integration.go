@@ -88,11 +88,21 @@ func SetHTTPRequestLookup(fn func(requestID string) (ResolvedHTTPRequest, error)
 	lookupHTTPRequestFn = fn
 }
 
+// httpMethodSuggestions are offered as autocomplete hints on the open
+// Method field below, not a closed set -- ADR-0016. Includes RFC
+// 10008's QUERY (published June 2026: safe + idempotent like GET, but
+// carries a request body like POST) alongside the traditional verbs;
+// any string is still accepted and sent as-is.
+var httpMethodSuggestions = []string{
+	http.MethodGet, http.MethodPost, http.MethodPut, http.MethodPatch, http.MethodDelete,
+	http.MethodHead, http.MethodOptions, "QUERY",
+}
+
 func init() {
 	RegisterNodeType(NodeType{
 		ID: "integration-http", Kind: KindProcess,
 		Label:       "Integration: HTTP call",
-		Description: "Calls a Configure-authored request's API and replaces the payload with the response body. requestId isn't a closed FieldOptions set (unlike method below) because requests are runtime, Configure-authored data composition.go has no compile-time knowledge of -- the frontend Inspector renders a live picker for it (RefKind, docs/adr/0009), not a closed option list composition.go could declare here.",
+		Description: "Calls a Configure-authored request's API and replaces the payload with the response body. requestId and method are both open FieldText, not a closed FieldOptions set -- requests are runtime, Configure-authored data composition.go has no compile-time knowledge of (the frontend Inspector renders a live picker for requestId, RefKind, docs/adr/0009), and method must accept any HTTP method (including a new or custom one, e.g. RFC 10008's QUERY) without a code change here (ADR-0016).",
 		ConfigFields: []ConfigField{
 			{
 				Key: "requestId", Label: "Request ID",
@@ -106,9 +116,8 @@ func init() {
 			},
 			{
 				Key: "method", Label: "Method",
-				Description: "HTTP method for this call.",
-				Default:     http.MethodGet, Type: FieldOptions,
-				Options: []string{http.MethodGet, http.MethodPost, http.MethodPut, http.MethodDelete, http.MethodPatch},
+				Description: "HTTP method for this call -- any method is accepted, not just the suggested common ones.",
+				Default:     http.MethodGet, Type: FieldText, Suggestions: httpMethodSuggestions,
 			},
 			{
 				Key: "bodyTemplate", Label: "Body",

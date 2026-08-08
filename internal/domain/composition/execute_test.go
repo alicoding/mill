@@ -204,6 +204,38 @@ func TestExecuteWorkflow_IntegrationHTTP_APIKeyAuth(t *testing.T) {
 	}
 }
 
+// ADR-0016 Phase B/C: method is an open FieldText field, not a closed
+// FieldOptions enum -- proves ResolveNodeDefaults accepts a method
+// value outside the old 5-item list (RFC 10008's QUERY) and that it
+// actually reaches the server unmodified, through the real
+// ExecuteWorkflow path, not just httpconnector's own lower-level test.
+func TestExecuteWorkflow_IntegrationHTTP_QueryMethod_Accepted(t *testing.T) {
+	var gotMethod string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotMethod = r.Method
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer srv.Close()
+
+	withHTTPRequestLookup(t, func(string) (ResolvedHTTPRequest, error) {
+		return ResolvedHTTPRequest{BaseURL: srv.URL, AuthType: httprequest.AuthNone}, nil
+	})
+
+	nodes, err := ResolveNodeDefaults([]Node{{
+		NodeTypeID: "integration-http",
+		Config:     map[string]string{"requestId": "conn-1", "path": "/x", "method": "QUERY", "bodyTemplate": `{"filter":"active"}`},
+	}})
+	if err != nil {
+		t.Fatalf("ResolveNodeDefaults rejected method %q, want it accepted (open FieldText, ADR-0016): %v", "QUERY", err)
+	}
+	if _, err := ExecuteWorkflow(nodes, nil, nil); err != nil {
+		t.Fatalf("ExecuteWorkflow returned error: %v", err)
+	}
+	if gotMethod != "QUERY" {
+		t.Errorf("server received method %q, want QUERY", gotMethod)
+	}
+}
+
 func TestExecuteWorkflow_IntegrationHTTP_UnknownHTTPRequest_Rejected(t *testing.T) {
 	withHTTPRequestLookup(t, func(id string) (ResolvedHTTPRequest, error) {
 		return ResolvedHTTPRequest{}, errors.New("no such request")
