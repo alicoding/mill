@@ -3221,6 +3221,69 @@ this pass.
   failure rather than a flaky real-network dependency) correctly logs
   an error, and duplicating a connector round-trips every field except
   the secret. `LOCKED`.
+- **Update — seeded example connectors, one per real implemented
+  `AuthType`, extending the standing "ship a working example, not just
+  a description" practice §2.2 already established for Workflows
+  (`composition.BuiltInWorkflows()`) to Connectors.** Prompted directly
+  by the user, after independently confirming Mill's real OAuth 1.0a
+  signing against a live third party (`postman-echo.com/oauth1`
+  returned `{"status":"pass","message":"OAuth-1.0a signature
+  verification was successful"}` against Mill's actual implementation,
+  not a mock) and asking whether that kind of proof could ship as a
+  clonable/deletable example every time a feature lands. `internal/
+  domain/connector.BuiltIn()` returns seven Connectors, one per real
+  `AuthType` (`none`/`apikey`/`bearer`/`hmac`/`oauth1`/`oauth2`/
+  `queryparam`) — `oauth1vendor`/`mtls` deliberately excluded, both are
+  stub strategies (ADR-0015) that always fail, and an example
+  guaranteed to fail isn't a working example. Each targets a real,
+  stable, independently-verified-live public service (`httpbin.org`,
+  `postman-echo.com`) — verified directly via `curl` before being
+  hardcoded, not assumed: `httpbin.org/bearer` genuinely validates
+  (401 without a token, 200 + `authenticated:true` with one);
+  `postman-echo.com/oauth1` genuinely validates a real RFC 5849
+  signature; `httpbin.org/headers` and `/get` reliably echo back
+  whatever they received (used for API-key/HMAC/query-param, which no
+  public service actually *validates* — each one's `Description` says
+  so honestly, not silently presented as third-party-verified).
+  **OAuth 2.0's example is deliberately incomplete**: a real, current
+  token URL (Spotify's `accounts.spotify.com/api/token`) with no
+  Client ID/Secret — OAuth 2.0 fundamentally can't be demonstrated
+  without a registered app, and Mill's own repo will never carry a
+  real client secret (a leaked-credential risk, not a convenience); the
+  `Description` tells the user to bring their own free developer app.
+  Two new `Connector` fields support this: `Description string`
+  (free-text, useful generally, not just for built-ins) and `BuiltIn
+  bool` (purely informational, exact same "carried forward on edit,
+  drives a badge, never gates Edit/Delete" behavior `Workflow.BuiltIn`
+  already has). `ConfigureService.restore()` seeds `c.connectors =
+  connector.BuiltIn()` (plus each example's demo secret into the OS
+  keychain — Postman's own published OAuth1 test credential, arbitrary
+  placeholder strings for the ones no service actually validates) only
+  on a genuinely fresh install, mirroring `CompositionService.restore()`'s
+  exact lazy-seed-until-first-real-mutation shape: not eagerly
+  persisted, so re-seeding identically before any real edit is
+  harmless, and the moment any real mutation happens (including
+  deleting a seed) it's real data from then on. Verified: `internal/
+  domain/connector/builtin_test.go` (every example passes `Validate`,
+  parses as JSON, is marked `BuiltIn`, never uses a stub `AuthType`,
+  and the OAuth2 example never carries a pre-filled `ClientID`);
+  service-layer tests proving fresh-install seeding, that deleting a
+  built-in doesn't return on restart, and that `Description`/`BuiltIn`
+  round-trip through Create/Update; end-to-end via Playwright
+  (`connector-builtin-examples.spec.ts`) against the real Go backend —
+  all seven appear with a "built-in" badge and honest Description text,
+  the OAuth1 example's summary shows the independently-confirmed-live
+  caveat text, the OAuth2 example's summary tells the user to bring
+  their own credentials, and a seeded example is fully editable and
+  (via Duplicate, not deleting the shared fixture itself) clonable and
+  deletable. The actual live-network round trip for each example is
+  intentionally **not** re-verified by the committed e2e suite — this
+  repo's own established discipline is `httptest.Server`-only in CI, no
+  live third-party dependency in a test that runs on every commit; live
+  verification is a manual, one-off check (the OAuth1 proof above,
+  repeatable via each example's own Test tab) rather than an automated
+  test that could flake or break silently if a third party changes.
+  `LOCKED`.
 
 ### 4.1 Connector capability map — from the reference-platform review (§3.2)
 
@@ -3739,6 +3802,15 @@ mode from §0 repeating itself one level up.
   500 lines). Phase 3 of the connector-capability-maturity goal — this
   closes all four planned phases (Configure layout, schema-authoring
   maturity, auth-type catalogue, JOSE/JWE).
+- Seeded example connectors (§4's Update) — `LOCKED` and built: seven
+  built-in Connectors, one per real implemented `AuthType`, extending
+  Workflows' existing seeded-example practice to Connectors. Each
+  targets an independently-verified-live public service (Postman
+  Echo's real OAuth1 signature validation, httpbin.org's real Bearer
+  check, or an honest self-consistency-echo where no third party
+  validates the scheme); the OAuth2 example ships with a real token URL
+  and no credentials, since Mill's repo will never carry a real client
+  secret. `Connector` gained `Description`/`BuiltIn` fields.
 - Connector/Integration surface — reference-platform-informed capability
   map (§3.2's Update, §4.1) — `OPEN`, nothing built or scheduled yet.
   Real, researched gaps: connection mode (real-time/send-and-wait/

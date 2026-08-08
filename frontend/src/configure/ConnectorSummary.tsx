@@ -60,7 +60,10 @@ export function ConnectorSummary({ connector, onEdit, onDuplicate, onDelete }: {
   return (
     <div className={styles.card} data-testid="connector-summary">
       <Stack direction="horizontal" justify="space-between" align="center" className={styles.sectionHeading}>
-        <Heading as="h2" variant="small">{connector.Label}</Heading>
+        <Stack direction="horizontal" gap="condensed" align="center">
+          <Heading as="h2" variant="small">{connector.Label}</Heading>
+          {connector.BuiltIn && <Label variant="secondary" size="small">built-in</Label>}
+        </Stack>
         <Stack direction="horizontal" gap="condensed">
           <Button size="small" leadingVisual={PencilIcon} onClick={onEdit} data-testid="summary-edit">Edit</Button>
           <IconButton icon={CopyIcon} aria-label="Duplicate" size="small" variant="invisible" onClick={onDuplicate} />
@@ -78,6 +81,7 @@ export function ConnectorSummary({ connector, onEdit, onDuplicate, onDelete }: {
 
         <TabPanel value="details">
           <Stack direction="vertical" gap="condensed">
+            {connector.Description && <DetailRow label="Description" value={connector.Description} />}
             <DetailRow label="Base URL" value={connector.BaseURL} />
             <DetailRow
               label="Auth type"

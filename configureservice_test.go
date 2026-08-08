@@ -18,11 +18,21 @@ func TestMain(m *testing.M) {
 	m.Run()
 }
 
+// newTestConfigureService starts from a genuinely empty connector list,
+// not the seeded built-in examples (docs/SPEC.md §4's Update) --
+// NewConfigureService's restore() seeds connector.BuiltIn() on any
+// fresh store, same as CompositionService.restore() already does for
+// BuiltInWorkflows, so every existing count-based assertion in this
+// package (len(cfg.Connectors()) != 1, etc.) would otherwise see 7
+// unexpected entries. The seeding behavior itself gets its own
+// dedicated tests in configureservice_builtin_test.go, which construct
+// ConfigureService directly rather than through this helper.
 func newTestConfigureService(t *testing.T) (*ConfigureService, *CompositionService) {
 	t.Helper()
 	store := newFakeStore()
 	comp := NewCompositionService(store)
 	cfg := NewConfigureService(store, comp)
+	cfg.connectors = nil
 	return cfg, comp
 }
 

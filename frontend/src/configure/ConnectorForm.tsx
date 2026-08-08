@@ -18,6 +18,7 @@ export interface HeaderRow {
 
 export interface ConnectorDraft {
   label: string
+  description: string
   baseURL: string
   authType: AuthType
   // Single-secret AuthTypes (APIKey/Bearer/HMAC's signing key/OAuth2's
@@ -52,7 +53,7 @@ export interface ConnectorDraft {
 }
 
 const EMPTY_DRAFT: ConnectorDraft = {
-  label: '', baseURL: '', authType: AuthType.AuthNone, secret: '', openAPISpec: '',
+  label: '', description: '', baseURL: '', authType: AuthType.AuthNone, secret: '', openAPISpec: '',
   oauth2TokenURL: '', oauth2ClientID: '', oauth2Scope: '',
   hmacHeaderName: '',
   oauth1ConsumerKey: '', oauth1Token: '', oauth1ConsumerSecret: '', oauth1TokenSecret: '',
@@ -61,7 +62,7 @@ const EMPTY_DRAFT: ConnectorDraft = {
 
 function draftFrom(c: Connector): ConnectorDraft {
   return {
-    label: c.Label, baseURL: c.BaseURL, authType: c.AuthType, secret: '', openAPISpec: c.OpenAPISpec,
+    label: c.Label, description: c.Description, baseURL: c.BaseURL, authType: c.AuthType, secret: '', openAPISpec: c.OpenAPISpec,
     oauth2TokenURL: c.Auth?.OAuth2?.TokenURL ?? '',
     oauth2ClientID: c.Auth?.OAuth2?.ClientID ?? '',
     oauth2Scope: c.Auth?.OAuth2?.Scope ?? '',
@@ -197,8 +198,8 @@ export function ConnectorForm({
       const auth = authConfigFrom(finalDraft)
       const jose = joseConfigFrom(finalDraft)
       const saved = editingConnector
-        ? await ConfigureService.UpdateConnector(editingConnector.ID, finalDraft.label, 'http', finalDraft.baseURL, finalDraft.authType, headers, finalDraft.openAPISpec, auth, jose)
-        : await ConfigureService.CreateConnector(finalDraft.label, 'http', finalDraft.baseURL, finalDraft.authType, headers, finalDraft.openAPISpec, auth, jose)
+        ? await ConfigureService.UpdateConnector(editingConnector.ID, finalDraft.label, 'http', finalDraft.baseURL, finalDraft.authType, headers, finalDraft.openAPISpec, auth, jose, finalDraft.description)
+        : await ConfigureService.CreateConnector(finalDraft.label, 'http', finalDraft.baseURL, finalDraft.authType, headers, finalDraft.openAPISpec, auth, jose, finalDraft.description)
       if (finalDraft.authType === AuthType.AuthOAuth1) {
         if (finalDraft.oauth1ConsumerSecret || finalDraft.oauth1TokenSecret) {
           await ConfigureService.SetConnectorOAuth1Secret(saved.ID, finalDraft.oauth1ConsumerSecret, finalDraft.oauth1TokenSecret)
@@ -228,6 +229,11 @@ export function ConnectorForm({
             <FormControl>
               <FormControl.Label>Base URL</FormControl.Label>
               <TextInput value={draft.baseURL} onChange={(e) => setDraft({ ...draft, baseURL: e.target.value })} placeholder="https://api.example.com" block />
+            </FormControl>
+            <FormControl>
+              <FormControl.Label>Description</FormControl.Label>
+              <FormControl.Caption>Optional -- what this connector is for, or any caveat worth noting.</FormControl.Caption>
+              <Textarea value={draft.description} onChange={(e) => setDraft({ ...draft, description: e.target.value })} rows={2} block data-testid="connector-description" />
             </FormControl>
           </Stack>
         </section>
