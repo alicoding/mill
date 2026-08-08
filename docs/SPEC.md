@@ -3459,6 +3459,38 @@ this pass.
   Method to a free-text field with common methods + `QUERY` as
   suggestions) and Phase C (`QUERY` method support end-to-end) are
   `OPEN`, tracked in the ADR.
+- **Update — Method opened (Phase B's method half + all of Phase C);
+  the Params tab / Body-type picker stays `OPEN`.** `ConfigField`
+  gained `Suggestions []string` — meaningful only for `FieldText`,
+  non-restrictive (any value still accepted, unlike `Options`/
+  `FieldOptions`'s closed set). `integration-http`'s `method` field is
+  now `FieldText` with `GET/POST/PUT/PATCH/DELETE/HEAD/OPTIONS/QUERY`
+  offered as datalist hints, not a closed `Select` — `NodeInspector.tsx`
+  renders a single-line `TextInput` + sibling `<datalist>` for any
+  `FieldText` field carrying `Suggestions`, instead of the generic
+  4-row `Textarea` every other `FieldText` field still gets.
+  **`QUERY` support proven, not assumed**: Go's `net/http`/
+  `retryablehttp.NewRequest` don't special-case method when attaching a
+  body, so no `httpconnector`/execution code changed — only real tests
+  proving it (`TestExecute_QueryMethod_SendsBody`, a real
+  `httptest.Server`; `TestExecuteWorkflow_IntegrationHTTP_
+  QueryMethod_Accepted`, through the real `ExecuteWorkflow` path) and a
+  real e2e proof (`request-method-field.spec.ts`: drag the node,
+  confirm the datalist genuinely offers `QUERY`, set it, save, reopen
+  via Edit, confirm it survived the real persist/restore round trip).
+  **The Manual Schema Editor's own, separate Method field** (used when
+  declaring an OpenAPI-backed operation) grew to all 8 methods
+  `kin-openapi`'s `PathItem` struct actually has fields for
+  (`Get/Put/Post/Delete/Options/Head/Patch/Trace`, verified directly
+  against its source) but **deliberately excludes `QUERY`** — OpenAPI
+  3.x has no spec-defined field for it yet (`PathItem` is a fixed Go
+  struct, no generic method bucket), so an operation declared there has
+  to stay representable as a real OpenAPI document; `integration-http`'s
+  own literal Method field is unconstrained by that and is where
+  `QUERY` actually gets used. `path`/`bodyTemplate` are untouched by
+  this update. `LOCKED` (Method-opening + `QUERY` support) — the Params
+  tab and Body-type picker remain real, separately-sized `OPEN` work,
+  not silently folded into this pass.
 
 ### 4.1 Connector capability map — from the reference-platform review (§3.2)
 
@@ -4036,7 +4068,13 @@ mode from §0 repeating itself one level up.
   persisted-data migration (`configure-connectors` → `configure-requests`)
   for already-existing real data, not a silent drop. "Connector" is now
   free as this section's own umbrella term for future connector kinds.
-  Phase B (a Postman/Bruno-style Params tab + Body-type picker,
-  replacing the literal `bodyTemplate` string as the default authoring
-  UI) and Phase C (RFC 10008's `QUERY` method supported end-to-end) are
-  `OPEN`, tracked in the ADR — Method itself is not yet an open field.
+  Method-opening (Phase B's method half) + Phase C are also `LOCKED`,
+  built: `integration-http`'s Method is now an open `FieldText` +
+  `Suggestions` (datalist hints including RFC 10008's `QUERY`), proven
+  through the real execution path and a real e2e round trip, not just
+  unit-tested. **Still `OPEN`, real future work**: the Params tab
+  (query/path key-value rows, replacing the raw `path` string) and the
+  Body-type picker (raw+format/form-data/x-www-form-urlencoded/binary/
+  GraphQL, replacing the literal `bodyTemplate` string) as the default
+  authoring UI — Phase B's own bigger, genuinely separate design
+  surface, tracked in the ADR, not silently folded into what shipped.

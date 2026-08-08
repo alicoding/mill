@@ -81,6 +81,16 @@ type ConfigField struct {
 	// box. composition itself never reads RefKind -- nodeExec functions
 	// still just read the plain string ID out of Node.Config.
 	RefKind string
+	// Suggestions is only meaningful when Type == FieldText -- unlike
+	// Options (FieldOptions' closed enum), any value is still accepted;
+	// these are offered as autocomplete hints only (an HTML5 datalist on
+	// the frontend). ADR-0016: the open-vs-closed distinction this field
+	// exists for was decided directly against real precedent -- Bruno's
+	// own .bru format offers named HTTP methods but keeps an explicit
+	// `method: CUSTOM` escape hatch rather than a closed enum, since a
+	// closed list can't express a new or uncommon method (e.g. RFC
+	// 10008's QUERY, published June 2026) without a code change.
+	Suggestions []string
 }
 
 type NodeType struct {
