@@ -85,11 +85,16 @@ test('Creating a connector with an OpenAPI spec and listing its operations', asy
   await openConnectorView(page, 'Sample Connector')
   await page.getByRole('tab', { name: 'Available attributes' }).click()
   // Primer's TabPanel keeps every panel mounted (toggles `hidden`, never
-  // unmounts), and the Testing tab has its own "Operation" select too --
-  // an unscoped getByLabel would match all three. Scope to the visible
+  // unmounts), and the Testing tab has its own "Operation" display too --
+  // an unscoped getByText would match all three. Scope to the visible
   // tabpanel, same discipline composition e2e specs already use.
+  //
+  // A single declared operation auto-selects and shows as static text,
+  // not a dropdown (docs/SPEC.md §3.5's "no UI for a decision that
+  // doesn't exist" discipline -- a one-option Select is friction, not a
+  // control).
   const attrPanel = page.getByRole('tabpanel', { name: 'Available attributes' })
-  await expect(attrPanel.getByLabel('Operation').locator('option', { hasText: 'GET /widgets' })).toHaveCount(1)
+  await expect(attrPanel.getByText('GET /widgets', { exact: true })).toBeVisible()
 
   await deleteConnector(page, 'Sample Connector')
 })
@@ -157,18 +162,18 @@ test('Showing an operation\'s schema reveals its declared fields, with the secre
 
   // Input parameters: the path param. Scoped to the visible tabpanel --
   // Primer's TabPanel keeps every panel mounted (toggles `hidden`, never
-  // unmounts), so an unscoped getByLabel would match this tab's,
-  // Available attributes', and Testing's own "Operation" selects.
+  // unmounts), so an unscoped getByText would match this tab's,
+  // Available attributes', and Testing's own "Operation" displays.
+  // A single declared operation auto-selects (no dropdown to drive).
   const inputPanel = page.getByRole('tabpanel', { name: 'Input parameters' })
   await page.getByRole('tab', { name: 'Input parameters' }).click()
-  await inputPanel.getByLabel('Operation').selectOption({ label: 'GET /widgets/{id}' })
+  await expect(inputPanel.getByText('GET /widgets/{id}', { exact: true })).toBeVisible()
   await expect(inputPanel.getByText('id', { exact: true })).toBeVisible()
 
   // Available attributes: the response fields, including the
   // secret-flagged one.
   const attrPanel = page.getByRole('tabpanel', { name: 'Available attributes' })
   await page.getByRole('tab', { name: 'Available attributes' }).click()
-  await attrPanel.getByLabel('Operation').selectOption({ label: 'GET /widgets/{id}' })
   await expect(attrPanel.getByText('name', { exact: true })).toBeVisible()
   await expect(attrPanel.getByText('token', { exact: true })).toBeVisible()
   await expect(attrPanel.getByText('secret')).toBeVisible()
