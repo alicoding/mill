@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/alicoding/mill/internal/adapters/httpconnector"
+	"github.com/alicoding/mill/internal/adapters/openapispec"
 	"github.com/alicoding/mill/internal/domain/connector"
 )
 
@@ -103,14 +104,19 @@ func init() {
 			headers[k] = v
 		}
 
-		// ADR-0007 Phase 3: a connector with a spec and a node with
-		// authored inputBindings uses the binding-resolution path
-		// (bindingsRequest, attributebinding.go); everything else keeps
-		// the original literal path/method/bodyTemplate behavior
-		// unchanged -- a strict superset, not a breaking change.
+		// ADR-0007 Phase 3 (extended by ADR-0011's output Path support):
+		// a connector with a spec and a node with authored input or
+		// output bindings uses the binding-resolution path
+		// (attributebinding.go); everything else keeps the original
+		// literal path/method/bodyTemplate behavior unchanged -- a
+		// strict superset, not a breaking change. Triggered by either
+		// binding being set (not just inputBindings) so an
+		// output-only-bound node still gets outputFields resolved for
+		// its Path lookups below.
 		urlPath, body := node.Config["path"], node.Config["bodyTemplate"]
-		if rc.OpenAPISpec != "" && node.Config["inputBindings"] != "" {
-			resolvedPath, resolvedBody, resolvedHeaders, resolvedQuery, err := resolveInputBindings(rc.OpenAPISpec, node.Config, ctx.Attributes)
+		var outputFields []openapispec.Field
+		if rc.OpenAPISpec != "" && (node.Config["inputBindings"] != "" || node.Config["outputBindings"] != "") {
+			resolvedPath, resolvedBody, resolvedHeaders, resolvedQuery, fields, err := resolveInputBindings(rc.OpenAPISpec, node.Config, ctx.Attributes)
 			if err != nil {
 				return ctx, fmt.Errorf("integration-http: %w", err)
 			}
@@ -122,6 +128,7 @@ func init() {
 			for k, v := range resolvedHeaders {
 				headers[k] = v
 			}
+			outputFields = fields
 		}
 
 		resp, err := httpconnector.Execute(httpconnector.Request{
@@ -151,7 +158,7 @@ func init() {
 		}
 		ctx.Payload = resp.Body
 		if rc.OpenAPISpec != "" && node.Config["outputBindings"] != "" {
-			if err := applyOutputBindings(node.Config["outputBindings"], resp.Body, &ctx); err != nil {
+			if err := applyOutputBindings(node.Config["outputBindings"], resp.Body, outputFields, &ctx); err != nil {
 				return ctx, fmt.Errorf("integration-http: %w", err)
 			}
 		}

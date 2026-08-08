@@ -97,6 +97,39 @@ type Field struct {
 	// annotation. Applies uniformly to input and output fields -- a
 	// response can legitimately echo a sensitive field too.
 	IsSecret bool
+	// Alias is a friendlier reference name for this field (docs/adr/0011),
+	// read from the standard OpenAPI x-mill-alias vendor extension --
+	// empty when unset. Display-only: nothing in this package or
+	// composition's binding resolution treats Alias as a lookup key,
+	// only Name is ever used for that.
+	Alias string
+	// Path is a dot-separated path into (possibly nested) response JSON
+	// for extracting this field's value (docs/adr/0011), read from the
+	// x-mill-path extension -- empty means "read Name as a flat
+	// top-level key," the behavior every field had before this existed.
+	// Only meaningful for output fields.
+	Path string
+}
+
+// fieldExtensions reads the x-mill-alias/x-mill-path vendor extensions
+// off a schema -- OpenAPI's own standard x-* extension mechanism
+// (confirmed directly against kin-openapi's real Schema.Extensions
+// field, not assumed), not a Mill-specific hack. nil-safe: a Field
+// built from a schema with no Extensions map (the overwhelming common
+// case -- most specs, including every one this repo's own tests use,
+// never set these) just gets zero values, identical to before this
+// existed.
+func fieldExtensions(ref *openapi3.SchemaRef) (alias, path string) {
+	if ref == nil || ref.Value == nil || ref.Value.Extensions == nil {
+		return "", ""
+	}
+	if v, ok := ref.Value.Extensions["x-mill-alias"].(string); ok {
+		alias = v
+	}
+	if v, ok := ref.Value.Extensions["x-mill-path"].(string); ok {
+		path = v
+	}
+	return alias, path
 }
 
 // Operation is one path+method's declared input/output schema.
@@ -129,12 +162,15 @@ func (d *Document) Operation(path, method string) (*Operation, error) {
 			continue
 		}
 		p := pref.Value
+		alias, path := fieldExtensions(p.Schema)
 		input = append(input, Field{
 			Name:     p.Name,
 			In:       p.In,
 			Type:     schemaType(p.Schema),
 			Required: p.Required,
 			IsSecret: isSecretField(p.Name, p.Schema),
+			Alias:    alias,
+			Path:     path,
 		})
 	}
 	if op.RequestBody != nil && op.RequestBody.Value != nil {
@@ -174,12 +210,15 @@ func bodyFields(content openapi3.Content) []Field {
 	}
 	var out []Field
 	for name, propRef := range schema.Properties {
+		alias, path := fieldExtensions(propRef)
 		out = append(out, Field{
 			Name:     name,
 			In:       "body",
 			Type:     schemaType(propRef),
 			Required: required[name],
 			IsSecret: isSecretField(name, propRef),
+			Alias:    alias,
+			Path:     path,
 		})
 	}
 	return out
