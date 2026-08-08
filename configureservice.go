@@ -6,12 +6,32 @@ import (
 	"sync"
 
 	"github.com/alicoding/mill/internal/adapters/credential"
+	"github.com/alicoding/mill/internal/adapters/openapispec"
 	"github.com/alicoding/mill/internal/adapters/settings"
 	"github.com/alicoding/mill/internal/domain/composition"
 	"github.com/alicoding/mill/internal/domain/connector"
 	"github.com/alicoding/mill/internal/domain/list"
 	"github.com/alicoding/mill/internal/domain/mcpserver"
 )
+
+// validateOpenAPISpec rejects a Connector save whose OpenAPISpec field
+// doesn't parse -- an empty spec is valid (ADR-0007: OpenAPISpec is
+// optional, a Connector with none behaves exactly as before this field
+// existed). Parsing/validating a Connector's raw spec text is a
+// commodity-adapter concern (internal/adapters/openapispec), not core
+// domain, so it lives here at the service layer rather than inside
+// connector.Validate -- internal/domain/connector stays pure per
+// CLAUDE.md's domain-purity rule, same reasoning ConfigureService
+// already applies to credential.Delete/Set below.
+func validateOpenAPISpec(spec string) error {
+	if spec == "" {
+		return nil
+	}
+	if _, err := openapispec.Parse([]byte(spec)); err != nil {
+		return fmt.Errorf("OpenAPI spec: %w", err)
+	}
+	return nil
+}
 
 // connectorsKey/listsKey mirror workflowsKey's shape (compositionservice.go):
 // one atomic JSON blob per entity kind, sharing the same settings.json
@@ -112,12 +132,15 @@ func (c *ConfigureService) Connectors() []connector.Connector {
 	return out
 }
 
-func (c *ConfigureService) CreateConnector(label, connType, baseURL string, authType connector.AuthType, headers map[string]string) (connector.Connector, error) {
+func (c *ConfigureService) CreateConnector(label, connType, baseURL string, authType connector.AuthType, headers map[string]string, openAPISpec string) (connector.Connector, error) {
 	conn := connector.Connector{
 		ID: newSlugID(label, "connector"), Label: label, Type: connType,
-		BaseURL: baseURL, AuthType: authType, Headers: headers,
+		BaseURL: baseURL, AuthType: authType, Headers: headers, OpenAPISpec: openAPISpec,
 	}
 	if err := connector.Validate(conn); err != nil {
+		return connector.Connector{}, err
+	}
+	if err := validateOpenAPISpec(openAPISpec); err != nil {
 		return connector.Connector{}, err
 	}
 
@@ -129,9 +152,12 @@ func (c *ConfigureService) CreateConnector(label, connType, baseURL string, auth
 	return conn, nil
 }
 
-func (c *ConfigureService) UpdateConnector(id, label, connType, baseURL string, authType connector.AuthType, headers map[string]string) (connector.Connector, error) {
-	conn := connector.Connector{ID: id, Label: label, Type: connType, BaseURL: baseURL, AuthType: authType, Headers: headers}
+func (c *ConfigureService) UpdateConnector(id, label, connType, baseURL string, authType connector.AuthType, headers map[string]string, openAPISpec string) (connector.Connector, error) {
+	conn := connector.Connector{ID: id, Label: label, Type: connType, BaseURL: baseURL, AuthType: authType, Headers: headers, OpenAPISpec: openAPISpec}
 	if err := connector.Validate(conn); err != nil {
+		return connector.Connector{}, err
+	}
+	if err := validateOpenAPISpec(openAPISpec); err != nil {
 		return connector.Connector{}, err
 	}
 
@@ -178,6 +204,38 @@ func (c *ConfigureService) DeleteConnector(id string) error {
 	c.persistConnectors()
 	_ = credential.Delete(id)
 	return nil
+}
+
+// ListConnectorOperations parses id's stored OpenAPISpec and returns
+// every operation it declares -- the discoverability answer for a
+// Connector's schema, same shape as ListMCPServerTools
+// (configuremcpserver.go, §3.6): a user finds the exact path+method to
+// reference from a workflow node here, not by guessing. Returns an
+// error for a Connector with no OpenAPISpec set, rather than an empty
+// list, so the frontend can distinguish "nothing declared yet" from
+// "real spec, zero operations."
+func (c *ConfigureService) ListConnectorOperations(id string) ([]openapispec.OperationRef, error) {
+	c.mu.Lock()
+	var spec string
+	found := false
+	for _, cn := range c.connectors {
+		if cn.ID == id {
+			spec, found = cn.OpenAPISpec, true
+			break
+		}
+	}
+	c.mu.Unlock()
+	if !found {
+		return nil, fmt.Errorf("no connector with id %q", id)
+	}
+	if spec == "" {
+		return nil, fmt.Errorf("connector %q has no OpenAPI spec configured", id)
+	}
+	doc, err := openapispec.Parse([]byte(spec))
+	if err != nil {
+		return nil, err
+	}
+	return doc.Operations(), nil
 }
 
 // SetConnectorSecret writes id's secret to the OS keychain. Write-only
