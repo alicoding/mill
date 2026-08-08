@@ -1,12 +1,12 @@
 import { useState } from 'react'
-import { Button, FormControl, IconButton, SegmentedControl, Select, Stack, Text, TextInput, Textarea } from '@primer/react'
+import { Button, FormControl, Heading, IconButton, Select, Stack, Text, TextInput, Textarea, SegmentedControl } from '@primer/react'
 import { PlusIcon, TrashIcon } from '@primer/octicons-react'
-import { Tabs } from '@primer/react/experimental'
-import { TabItem, TabList, TabPanel } from '../shared/Tabs'
+import { ConfigureService } from '../../bindings/github.com/alicoding/mill'
+import type { Connector } from '../../bindings/github.com/alicoding/mill/internal/domain/connector/models'
 import { AuthType } from '../../bindings/github.com/alicoding/mill/internal/domain/connector/models'
 import { ManualSchemaEditor } from './ManualSchemaEditor'
 import { ConnectorTestPanel } from './ConnectorTestPanel'
-import { rowsToHeaders } from './connectorHeaders'
+import { headersToRows, rowsToHeaders } from './connectorHeaders'
 import { parseOpenAPIToOperations, synthesizeOpenAPISpec, type ManualOperation } from './openapiSynth'
 import styles from '../shared/ListCard.module.css'
 
@@ -29,35 +29,51 @@ export interface ConnectorDraft {
   openAPISpec: string
 }
 
-// docs/adr/0011: the connector create/edit form, sectioned into tabs
-// (General/Auth/Headers/Schema) matching real precedent (Postman's
-// Params/Headers/Authorization/Body tabs; n8n's HTTP Request node's own
-// section split) rather than one long scrolling form. Extracted out of
-// ConfigureIntegration.tsx once the Schema tab's Manual/CSV editor made
-// that file too large for one component -- same "split along a real
-// seam" discipline as every other extraction in this codebase.
+const EMPTY_DRAFT: ConnectorDraft = { label: '', baseURL: '', authType: AuthType.AuthNone, secret: '', openAPISpec: '' }
+
+function draftFrom(c: Connector): ConnectorDraft {
+  return { label: c.Label, baseURL: c.BaseURL, authType: c.AuthType, secret: '', openAPISpec: c.OpenAPISpec }
+}
+
+// docs/adr/0014: the connector create/edit form -- one continuous
+// guided scroll (General -> Auth -> Headers -> Schema -> Test, as
+// Heading section breaks), replacing the previous Primer-Tabs layout.
+// Matches the reference platform's own precedent: tab the saved-record
+// summary (ConnectorSummary.tsx), never the act of authoring. Owns its
+// own draft/headerRows/error state internally (seeded once from props,
+// same "own state, keyed remount" shape CompositionCanvas.tsx already
+// uses for Composition's own tabbed multi-editing) rather than being
+// controlled from the parent list page -- required for correctness
+// once more than one connector tab can be open at once, not just a
+// style preference.
 export function ConnectorForm({
-  draft, onDraftChange, headerRows, onHeaderRowsChange, isEditing, connectorID, onSave, onCancel, error,
+  editingConnector, duplicateFrom, onSaved, onCancel,
 }: {
-  draft: ConnectorDraft
-  onDraftChange: (draft: ConnectorDraft) => void
-  headerRows: HeaderRow[]
-  onHeaderRowsChange: (rows: HeaderRow[]) => void
-  isEditing: boolean
-  // Only meaningful when isEditing -- ConnectorTestPanel's secret
-  // fallback (docs/adr/0013 §4) needs the connector's real ID to read
-  // its stored keychain secret when the Secret field is left blank.
-  connectorID: string | null
-  onSave: (draft: ConnectorDraft) => void
+  // Non-null => Save calls UpdateConnector against this connector's ID.
+  // Null (whether brand-new or a Duplicate) => Save calls CreateConnector.
+  editingConnector: Connector | null
+  // Set only for the Duplicate case -- seeds the initial draft/headers
+  // from an existing connector without editing it (docs/adr/0013 §7).
+  duplicateFrom: Connector | null
+  onSaved: () => void
   onCancel: () => void
-  error: string
 }) {
+  const seed = editingConnector ?? duplicateFrom
+  const [draft, setDraft] = useState<ConnectorDraft>(() => {
+    if (editingConnector) return draftFrom(editingConnector)
+    if (duplicateFrom) return { ...draftFrom(duplicateFrom), label: `${duplicateFrom.Label} copy` }
+    return EMPTY_DRAFT
+  })
+  const [headerRows, setHeaderRows] = useState<HeaderRow[]>(() => headersToRows(seed?.Headers))
+  const [error, setError] = useState('')
+  const isEditing = editingConnector !== null
+
   const [schemaMode, setSchemaMode] = useState<'openapi' | 'manual'>('openapi')
   const [manualOperations, setManualOperations] = useState<ManualOperation[]>([])
   const [schemaError, setSchemaError] = useState('')
 
   const updateHeaderRow = (i: number, field: 'key' | 'value', value: string) => {
-    onHeaderRowsChange(headerRows.map((r, idx) => (idx === i ? { ...r, [field]: value } : r)))
+    setHeaderRows(headerRows.map((r, idx) => (idx === i ? { ...r, [field]: value } : r)))
   }
 
   const switchToManual = () => {
@@ -74,34 +90,21 @@ export function ConnectorForm({
 
   const switchToOpenAPI = () => {
     if (manualOperations.length > 0) {
-      onDraftChange({ ...draft, openAPISpec: synthesizeOpenAPISpec(manualOperations) })
+      setDraft({ ...draft, openAPISpec: synthesizeOpenAPISpec(manualOperations) })
     }
     setSchemaMode('openapi')
   }
 
-  const handleSave = () => {
-    // Manual mode is the source of truth at Save time if it has any
-    // operations -- keeps the two representations from silently
-    // diverging (editing the table after switching away from OpenAPI
-    // mode without switching back would otherwise be lost). Passed
-    // directly to onSave rather than via onDraftChange first: setState
-    // doesn't apply synchronously, so an onDraftChange-then-onSave
-    // sequence would have onSave's caller read the *previous* render's
-    // still-stale draft.openAPISpec -- a real bug this shipped with
-    // initially, caught by the e2e test actually exercising Save
-    // through to a real persisted connector, not just unit-testing
-    // synthesizeOpenAPISpec in isolation.
-    const finalDraft = schemaMode === 'manual' && manualOperations.length > 0
-      ? { ...draft, openAPISpec: synthesizeOpenAPISpec(manualOperations) }
-      : draft
-    onSave(finalDraft)
-  }
-
-  // Same "manual mode is the source of truth if it has operations"
-  // resolution handleSave already uses -- ConnectorTestPanel must never
-  // test against a stale draft.openAPISpec while the user is actively
-  // editing in Manual mode (the exact bug handleSave's own comment
-  // documents, one level down).
+  // Manual mode is the source of truth at Save time if it has any
+  // operations -- keeps the two representations from silently
+  // diverging (editing the table after switching away from OpenAPI
+  // mode without switching back would otherwise be lost). Computed
+  // into a local value and used directly, never round-tripped through
+  // setState first -- setState isn't synchronous, and a save handler
+  // that reads state right after setting it reads the *previous*
+  // render's stale value. Real bug this shipped with once
+  // (.claude/rules/testing.md's own documented pattern for this class
+  // of bug), not reintroduced here.
   const effectiveSpec = schemaMode === 'manual' && manualOperations.length > 0
     ? synthesizeOpenAPISpec(manualOperations)
     : draft.openAPISpec
@@ -109,35 +112,46 @@ export function ConnectorForm({
     ? manualOperations
     : parseOpenAPIToOperations(draft.openAPISpec).operations
 
+  const handleSave = async () => {
+    const finalDraft = { ...draft, openAPISpec: effectiveSpec }
+    setError('')
+    try {
+      const headers = rowsToHeaders(headerRows)
+      const saved = editingConnector
+        ? await ConfigureService.UpdateConnector(editingConnector.ID, finalDraft.label, 'http', finalDraft.baseURL, finalDraft.authType, headers, finalDraft.openAPISpec)
+        : await ConfigureService.CreateConnector(finalDraft.label, 'http', finalDraft.baseURL, finalDraft.authType, headers, finalDraft.openAPISpec)
+      if (finalDraft.secret) {
+        await ConfigureService.SetConnectorSecret(saved.ID, finalDraft.secret)
+      }
+      onSaved()
+    } catch (err) {
+      setError(String(err))
+    }
+  }
+
   return (
     <div className={styles.card}>
-      <Tabs defaultValue="general">
-        <TabList aria-label="Connector configuration">
-          <TabItem value="general">General</TabItem>
-          <TabItem value="auth">Auth</TabItem>
-          <TabItem value="headers">Headers</TabItem>
-          <TabItem value="schema">Schema</TabItem>
-          <TabItem value="test">Test</TabItem>
-        </TabList>
-
-        <TabPanel value="general">
+      <Stack direction="vertical" gap="normal">
+        <section>
+          <Heading as="h3" variant="small" className={styles.sectionHeading}>General</Heading>
           <Stack direction="vertical" gap="condensed">
             <FormControl>
               <FormControl.Label>Label</FormControl.Label>
-              <TextInput value={draft.label} onChange={(e) => onDraftChange({ ...draft, label: e.target.value })} block />
+              <TextInput value={draft.label} onChange={(e) => setDraft({ ...draft, label: e.target.value })} block />
             </FormControl>
             <FormControl>
               <FormControl.Label>Base URL</FormControl.Label>
-              <TextInput value={draft.baseURL} onChange={(e) => onDraftChange({ ...draft, baseURL: e.target.value })} placeholder="https://api.example.com" block />
+              <TextInput value={draft.baseURL} onChange={(e) => setDraft({ ...draft, baseURL: e.target.value })} placeholder="https://api.example.com" block />
             </FormControl>
           </Stack>
-        </TabPanel>
+        </section>
 
-        <TabPanel value="auth">
+        <section>
+          <Heading as="h3" variant="small" className={styles.sectionHeading}>Auth</Heading>
           <Stack direction="vertical" gap="condensed">
             <FormControl>
               <FormControl.Label>Auth type</FormControl.Label>
-              <Select value={draft.authType} onChange={(e) => onDraftChange({ ...draft, authType: e.target.value as AuthType })}>
+              <Select value={draft.authType} onChange={(e) => setDraft({ ...draft, authType: e.target.value as AuthType })}>
                 {Object.values(AuthType).filter((v) => v !== '').map((v) => (
                   <Select.Option key={v} value={v}>{AUTH_LABEL[v] ?? v}</Select.Option>
                 ))}
@@ -150,13 +164,14 @@ export function ConnectorForm({
                   Write-only -- stored in the OS keychain, never readable back through Mill.
                   {isEditing && ' Leave blank to keep the existing secret.'}
                 </FormControl.Caption>
-                <TextInput type="password" value={draft.secret} onChange={(e) => onDraftChange({ ...draft, secret: e.target.value })} block />
+                <TextInput type="password" value={draft.secret} onChange={(e) => setDraft({ ...draft, secret: e.target.value })} block />
               </FormControl>
             )}
           </Stack>
-        </TabPanel>
+        </section>
 
-        <TabPanel value="headers">
+        <section>
+          <Heading as="h3" variant="small" className={styles.sectionHeading}>Headers</Heading>
           <Stack direction="vertical" gap="condensed">
             <Text as="p" size="small" className={styles.muted}>
               Static headers (e.g. a required API version) sent with every call, in addition to
@@ -166,16 +181,17 @@ export function ConnectorForm({
               <Stack key={i} direction="horizontal" gap="condensed" align="center">
                 <TextInput placeholder="header name" value={row.key} onChange={(e) => updateHeaderRow(i, 'key', e.target.value)} data-testid="connector-header-key" />
                 <TextInput placeholder="value" value={row.value} onChange={(e) => updateHeaderRow(i, 'value', e.target.value)} data-testid="connector-header-value" />
-                <IconButton icon={TrashIcon} aria-label="Remove header" size="small" variant="invisible" onClick={() => onHeaderRowsChange(headerRows.filter((_, idx) => idx !== i))} />
+                <IconButton icon={TrashIcon} aria-label="Remove header" size="small" variant="invisible" onClick={() => setHeaderRows(headerRows.filter((_, idx) => idx !== i))} />
               </Stack>
             ))}
-            <Button size="small" variant="invisible" leadingVisual={PlusIcon} onClick={() => onHeaderRowsChange([...headerRows, { key: '', value: '' }])} data-testid="add-connector-header">
+            <Button size="small" variant="invisible" leadingVisual={PlusIcon} onClick={() => setHeaderRows([...headerRows, { key: '', value: '' }])} data-testid="add-connector-header">
               Add header
             </Button>
           </Stack>
-        </TabPanel>
+        </section>
 
-        <TabPanel value="schema">
+        <section>
+          <Heading as="h3" variant="small" className={styles.sectionHeading}>Schema</Heading>
           <Stack direction="vertical" gap="normal">
             <Text as="p" size="small" className={styles.muted}>
               Declares the typed input/output fields a workflow node can bind Attributes to
@@ -190,7 +206,7 @@ export function ConnectorForm({
             {schemaMode === 'openapi' ? (
               <Textarea
                 value={draft.openAPISpec}
-                onChange={(e) => onDraftChange({ ...draft, openAPISpec: e.target.value })}
+                onChange={(e) => setDraft({ ...draft, openAPISpec: e.target.value })}
                 rows={6}
                 block
                 data-testid="connector-openapi-spec"
@@ -199,9 +215,10 @@ export function ConnectorForm({
               <ManualSchemaEditor operations={manualOperations} onChange={setManualOperations} />
             )}
           </Stack>
-        </TabPanel>
+        </section>
 
-        <TabPanel value="test">
+        <section>
+          <Heading as="h3" variant="small" className={styles.sectionHeading}>Test</Heading>
           <ConnectorTestPanel
             operations={effectiveOperations}
             effectiveSpec={effectiveSpec}
@@ -209,10 +226,10 @@ export function ConnectorForm({
             authType={draft.authType}
             headers={rowsToHeaders(headerRows)}
             secret={draft.secret}
-            connectorID={isEditing ? connectorID : null}
+            connectorID={isEditing ? editingConnector.ID : null}
           />
-        </TabPanel>
-      </Tabs>
+        </section>
+      </Stack>
 
       {error && <Text as="p" size="small" className={styles.error}>{error}</Text>}
       <Stack direction="horizontal" gap="condensed" style={{ marginTop: 'var(--base-size-12)' }}>

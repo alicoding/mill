@@ -12,7 +12,12 @@ function connectorRow(page: import('@playwright/test').Page, label: string) {
   return page.getByTestId('connector-row').filter({ has: page.getByText(label, { exact: true }) })
 }
 
+// docs/adr/0014: the list is its own pinned tab now -- switch back to
+// it first, since a still-open view/edit tab leaves the list panel
+// `hidden` (Primer's TabPanel never unmounts, just toggles `hidden`),
+// and a hidden element isn't clickable.
 async function deleteConnector(page: import('@playwright/test').Page, label: string) {
+  await page.getByRole('tab', { name: 'Connectors' }).click()
   await connectorRow(page, label).getByRole('button', { name: `Delete ${label}` }).click()
   await expect(connectorRow(page, label)).toHaveCount(0)
 }
@@ -25,7 +30,6 @@ test('Authoring a schema via the Manual editor round-trips alias/path through th
   await page.getByLabel('Label').fill('Manual Schema Connector')
   await page.getByLabel('Base URL').fill('https://api.example.com')
 
-  await page.getByRole('tab', { name: 'Schema' }).click()
   await page.getByRole('button', { name: 'Manual editor' }).click()
 
   const editor = page.getByTestId('manual-schema-editor')
@@ -47,15 +51,20 @@ test('Authoring a schema via the Manual editor round-trips alias/path through th
   const row = connectorRow(page, 'Manual Schema Connector')
   await expect(row).toBeVisible()
 
-  await row.getByTestId('list-operations').click()
-  const operations = row.getByTestId('connector-operations')
-  await expect(operations.getByText('/widgets')).toBeVisible()
-  await operations.getByTestId('show-operation-fields').click()
+  // docs/adr/0014: the declared schema is discoverable from the
+  // read-only summary view, not an inline row expansion.
+  await row.getByText('Manual Schema Connector', { exact: true }).click()
+  await expect(page.getByTestId('connector-summary')).toBeVisible()
+  // Scoped to the visible tabpanel -- Primer's TabPanel keeps every
+  // panel mounted (toggles `hidden`, never unmounts), so an unscoped
+  // getByLabel would also match Input parameters' and Testing's own
+  // "Operation" selects.
+  const attrPanel = page.getByRole('tabpanel', { name: 'Available attributes' })
+  await page.getByRole('tab', { name: 'Available attributes' }).click()
+  await attrPanel.getByLabel('Operation').selectOption({ label: 'GET /widgets' })
 
-  const schema = row.getByTestId('operation-schema')
-  await expect(schema).toBeVisible()
-  await expect(schema.getByText('widgetName (n)')).toBeVisible()
-  await expect(schema.getByText('path: data.name')).toBeVisible()
+  await expect(attrPanel.getByText('widgetName (n)')).toBeVisible()
+  await expect(attrPanel.getByText('path: data.name')).toBeVisible()
 
   await deleteConnector(page, 'Manual Schema Connector')
 })

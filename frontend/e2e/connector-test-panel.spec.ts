@@ -18,7 +18,12 @@ function connectorRow(page: import('@playwright/test').Page, label: string) {
   return page.getByTestId('connector-row').filter({ has: page.getByText(label, { exact: true }) })
 }
 
+// docs/adr/0014: the list is its own pinned tab now -- switch back to
+// it first, since a still-open view/edit tab leaves the list panel
+// `hidden` (Primer's TabPanel never unmounts, just toggles `hidden`),
+// and a hidden element isn't clickable.
 async function deleteConnector(page: import('@playwright/test').Page, label: string) {
+  await page.getByRole('tab', { name: 'Connectors' }).click()
   await connectorRow(page, label).getByRole('button', { name: `Delete ${label}` }).click()
   await expect(connectorRow(page, label)).toHaveCount(0)
 }
@@ -33,7 +38,6 @@ test('Running a test against an unreachable address logs a deterministic error',
   // refused, not a DNS lookup or a real remote host.
   await page.getByLabel('Base URL').fill('http://127.0.0.1:1')
 
-  await page.getByRole('tab', { name: 'Schema' }).click()
   await page.getByRole('button', { name: 'Manual editor' }).click()
   const editor = page.getByTestId('manual-schema-editor')
   await editor.getByTestId('add-operation').click()
@@ -44,7 +48,6 @@ test('Running a test against an unreachable address logs a deterministic error',
   const paramRow = operation.getByTestId('manual-field-row').last()
   await paramRow.getByLabel('Field name').fill('q')
 
-  await page.getByRole('tab', { name: 'Test' }).click()
   const testPanel = page.getByTestId('connector-test-panel')
   await expect(testPanel).toBeVisible()
   await testPanel.getByTestId('test-operation-select').selectOption('GET /widgets')
@@ -70,16 +73,19 @@ test('Duplicating a connector pre-fills a new form without carrying over the sec
   await page.getByTestId('new-connector').click()
   await page.getByLabel('Label').fill('Original Connector')
   await page.getByLabel('Base URL').fill('https://api.example.com')
-  await page.getByRole('tab', { name: 'Auth' }).click()
   await page.getByLabel('Auth type').selectOption('bearer')
   await page.getByLabel('Secret').fill('shh-original-secret')
   await page.getByRole('button', { name: 'Save connector' }).click()
   await expect(connectorRow(page, 'Original Connector')).toBeVisible()
 
-  await connectorRow(page, 'Original Connector').getByRole('button', { name: 'Duplicate Original Connector' }).click()
+  // docs/adr/0014: Duplicate lives on the read-only summary view now,
+  // not directly on the list row.
+  await connectorRow(page, 'Original Connector').getByText('Original Connector', { exact: true }).click()
+  await expect(page.getByTestId('connector-summary')).toBeVisible()
+  await page.getByRole('button', { name: 'Duplicate' }).click()
+
   await expect(page.getByLabel('Label')).toHaveValue('Original Connector copy')
   await expect(page.getByLabel('Base URL')).toHaveValue('https://api.example.com')
-  await page.getByRole('tab', { name: 'Auth' }).click()
   await expect(page.getByLabel('Auth type')).toHaveValue('bearer')
   // Secret must come across empty -- it was never readable back through
   // Mill in the first place (write-only design, docs/SPEC.md §3.5).
