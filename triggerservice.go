@@ -82,12 +82,13 @@ func (l *activeListener) stop() {
 // AssignHotkey rejects a combo already claimed by a different workflow
 // instead of silently letting two workflows share one.
 type TriggerService struct {
-	mu     sync.Mutex
-	active map[string]*activeListener // workflowID -> live listener
-	hkRaw  map[string]persistedHotkey // workflowID -> persisted (mods, key)
-	comp   *CompositionService
-	logger *slog.Logger
-	store  settings.Store
+	mu       sync.Mutex
+	active   map[string]*activeListener // workflowID -> live listener
+	hkRaw    map[string]persistedHotkey // workflowID -> persisted (mods, key)
+	comp     *CompositionService
+	logger   *slog.Logger
+	store    settings.Store
+	reserved func() (mods []string, key string, ok bool) // see SetReservedCombo
 }
 
 func NewTriggerService(comp *CompositionService, logger *slog.Logger, store settings.Store) *TriggerService {
@@ -217,6 +218,7 @@ func (s *TriggerService) AssignHotkey(workflowID string, mods []string, key stri
 	for id, hk := range s.hkRaw {
 		existing = append(existing, trigger.HotkeyBinding{WorkflowID: id, Mods: hk.Mods, Key: hk.Key})
 	}
+	reserved := s.reserved
 	s.mu.Unlock()
 
 	if conflictID, found := trigger.CheckConflict(existing, mods, key, workflowID); found {
@@ -225,6 +227,18 @@ func (s *TriggerService) AssignHotkey(workflowID string, mods []string, key stri
 			label = wf.Label
 		}
 		return "", fmt.Errorf("this combo is already bound to %q -- pick another, or unassign it there first", label)
+	}
+	// Also check against the app-level summon hotkey (settingsservice.go),
+	// which lives outside this service's own per-workflow hkRaw map --
+	// wired in from main.go via SetReservedCombo once SettingsService
+	// exists, same "injected function var" seam as SetConnectorLookup.
+	if reserved != nil {
+		if rMods, rKey, ok := reserved(); ok {
+			candidate := []trigger.HotkeyBinding{{WorkflowID: "summon", Mods: rMods, Key: rKey}}
+			if _, found := trigger.CheckConflict(candidate, mods, key, ""); found {
+				return "", fmt.Errorf("this combo is already bound to Mill's own \"summon the app\" shortcut (Settings) -- pick another, or change that first")
+			}
+		}
 	}
 
 	// Validate the combo actually registers (permission granted, not
@@ -276,6 +290,35 @@ func (s *TriggerService) ListHotkeys() map[string]string {
 		out[id] = formatBinding(hk.Mods, hk.Key)
 	}
 	return out
+}
+
+// ClaimedCombos returns every currently-assigned per-workflow hotkey
+// binding, in trigger.HotkeyBinding shape -- the seam settingsservice.go
+// uses to check a new summon-hotkey assignment against every existing
+// per-workflow binding (the reverse direction of the reserved-combo
+// check AssignHotkey already does above).
+func (s *TriggerService) ClaimedCombos() []trigger.HotkeyBinding {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	out := make([]trigger.HotkeyBinding, 0, len(s.hkRaw))
+	for id, hk := range s.hkRaw {
+		out = append(out, trigger.HotkeyBinding{WorkflowID: id, Mods: hk.Mods, Key: hk.Key})
+	}
+	return out
+}
+
+// SetReservedCombo wires the function AssignHotkey checks in addition to
+// per-workflow bindings, so a workflow hotkey can't silently collide
+// with Mill's own app-level summon hotkey (settingsservice.go). Called
+// once from main.go once SettingsService exists -- same "injected
+// function var, wired after both services are constructed" shape as
+// CompositionService.SetSyncer.
+//
+//wails:ignore
+func (s *TriggerService) SetReservedCombo(fn func() (mods []string, key string, ok bool)) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.reserved = fn
 }
 
 func (s *TriggerService) findWorkflow(id string) (composition.Workflow, bool) {

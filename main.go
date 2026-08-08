@@ -106,6 +106,14 @@ func main() {
 		log.Fatal(err)
 	}
 
+	settingsService := NewSettingsService(settingsStore, triggerService)
+	// Bidirectional hotkey-conflict check (docs/SPEC.md §3.7): a
+	// per-workflow hotkey can't silently collide with the app-level
+	// summon hotkey, and vice versa -- SettingsService.AssignSummonHotkey
+	// already checks triggerService.ClaimedCombos() directly; this wires
+	// the other direction.
+	triggerService.SetReservedCombo(settingsService.ReservedCombo)
+
 	app := application.New(application.Options{
 		Name:        "mill",
 		Description: "Guardrailed agentic-workflow automation",
@@ -117,6 +125,7 @@ func main() {
 			application.NewService(triggerService),
 			application.NewService(configureService),
 			application.NewService(executionService),
+			application.NewService(settingsService),
 		},
 		Assets: application.AssetOptions{
 			Handler: application.AssetFileServerFS(assets),
@@ -139,6 +148,7 @@ func main() {
 	// nothing.
 	app.Event.OnApplicationEvent(events.Common.ApplicationStarted, func(*application.ApplicationEvent) {
 		triggerService.Sync(compositionService.Workflows())
+		settingsService.RestoreSummonHotkey()
 	})
 
 	// Create a new window with the necessary options.
@@ -146,7 +156,7 @@ func main() {
 	// 'Mac' options tailor the window when running on macOS.
 	// 'BackgroundColour' is the background colour of the window.
 	// 'URL' is the URL that will be loaded into the webview.
-	app.Window.NewWithOptions(application.WebviewWindowOptions{
+	mainWindow := app.Window.NewWithOptions(application.WebviewWindowOptions{
 		Title: "Mill",
 		// Window sized to the golden ratio (1000 / 618 ≈ 1.618).
 		Width:  1000,
@@ -166,6 +176,7 @@ func main() {
 		BackgroundColour: application.NewRGB(6, 7, 15),
 		URL:              "/",
 	})
+	settingsService.SetWindow(mainWindow)
 
 	// Create a goroutine that emits an event containing the current time every second.
 	// The frontend can listen to this event and update the UI accordingly.
