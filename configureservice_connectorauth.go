@@ -20,6 +20,16 @@ import (
 // concern rather than piled into one file. Lists/Attributes/restore
 // stay in configureservice.go.
 
+// joseKeychainID namespaces JOSE's own private-key secret under a
+// second, distinct keychain entry per connector -- a connector can
+// combine JOSE with any AuthType (connector.JOSEConfig's own doc
+// comment: independent, additive layers), so JOSE's private key can't
+// share the same credential.Set(id, ...) slot AuthType's own secret
+// already uses without one silently overwriting the other.
+func joseKeychainID(id string) string {
+	return id + ":jose"
+}
+
 // resolveConnector implements composition.go's lookupConnectorFn seam:
 // find the Connector, fetch its secret from the OS keychain (skipped
 // entirely for AuthNone -- there's nothing to fetch), return both as a
@@ -51,13 +61,24 @@ func (c *ConfigureService) resolveConnector(id string) (composition.ResolvedConn
 		secret = s
 	}
 
+	var josePrivateKey string
+	if conn.JOSE != nil && conn.JOSE.DecryptResponse {
+		s, err := credential.Get(joseKeychainID(id))
+		if err != nil {
+			return composition.ResolvedConnector{}, fmt.Errorf("connector %q: JOSE private key: %w", id, err)
+		}
+		josePrivateKey = s
+	}
+
 	return composition.ResolvedConnector{
-		BaseURL:     conn.BaseURL,
-		AuthType:    conn.AuthType,
-		Headers:     conn.Headers,
-		Secret:      secret,
-		OpenAPISpec: conn.OpenAPISpec,
-		Auth:        conn.Auth,
+		BaseURL:           conn.BaseURL,
+		AuthType:          conn.AuthType,
+		Headers:           conn.Headers,
+		Secret:            secret,
+		OpenAPISpec:       conn.OpenAPISpec,
+		Auth:              conn.Auth,
+		JOSE:              conn.JOSE,
+		JOSEPrivateKeyPEM: josePrivateKey,
 	}, nil
 }
 
@@ -71,10 +92,10 @@ func (c *ConfigureService) Connectors() []connector.Connector {
 	return out
 }
 
-func (c *ConfigureService) CreateConnector(label, connType, baseURL string, authType connector.AuthType, headers map[string]string, openAPISpec string, auth *connector.AuthConfig) (connector.Connector, error) {
+func (c *ConfigureService) CreateConnector(label, connType, baseURL string, authType connector.AuthType, headers map[string]string, openAPISpec string, auth *connector.AuthConfig, jose *connector.JOSEConfig) (connector.Connector, error) {
 	conn := connector.Connector{
 		ID: newSlugID(label, "connector"), Label: label, Type: connType,
-		BaseURL: baseURL, AuthType: authType, Headers: headers, OpenAPISpec: openAPISpec, Auth: auth,
+		BaseURL: baseURL, AuthType: authType, Headers: headers, OpenAPISpec: openAPISpec, Auth: auth, JOSE: jose,
 	}
 	if err := connector.Validate(conn); err != nil {
 		return connector.Connector{}, err
@@ -91,8 +112,8 @@ func (c *ConfigureService) CreateConnector(label, connType, baseURL string, auth
 	return conn, nil
 }
 
-func (c *ConfigureService) UpdateConnector(id, label, connType, baseURL string, authType connector.AuthType, headers map[string]string, openAPISpec string, auth *connector.AuthConfig) (connector.Connector, error) {
-	conn := connector.Connector{ID: id, Label: label, Type: connType, BaseURL: baseURL, AuthType: authType, Headers: headers, OpenAPISpec: openAPISpec, Auth: auth}
+func (c *ConfigureService) UpdateConnector(id, label, connType, baseURL string, authType connector.AuthType, headers map[string]string, openAPISpec string, auth *connector.AuthConfig, jose *connector.JOSEConfig) (connector.Connector, error) {
+	conn := connector.Connector{ID: id, Label: label, Type: connType, BaseURL: baseURL, AuthType: authType, Headers: headers, OpenAPISpec: openAPISpec, Auth: auth, JOSE: jose}
 	if err := connector.Validate(conn); err != nil {
 		return connector.Connector{}, err
 	}
@@ -142,6 +163,7 @@ func (c *ConfigureService) DeleteConnector(id string) error {
 
 	c.persistConnectors()
 	_ = credential.Delete(id)
+	_ = credential.Delete(joseKeychainID(id))
 	return nil
 }
 
@@ -259,6 +281,32 @@ func (c *ConfigureService) SetConnectorOAuth1Secret(id, consumerSecret, tokenSec
 		return fmt.Errorf("no connector with id %q", id)
 	}
 	return credential.Set(id, composition.EncodeOAuth1Secret(consumerSecret, tokenSecret))
+}
+
+// SetConnectorJOSEPrivateKey writes id's JOSE private key (Phase 3) to
+// its own, separate keychain entry -- write-only, same reasoning as
+// SetConnectorSecret, but namespaced (joseKeychainID) so it can coexist
+// with whatever AuthType secret the same connector also stores.
+func (c *ConfigureService) SetConnectorJOSEPrivateKey(id, privateKeyPEM string) error {
+	c.mu.Lock()
+	exists := false
+	for _, cn := range c.connectors {
+		if cn.ID == id {
+			exists = true
+			break
+		}
+	}
+	c.mu.Unlock()
+	if !exists {
+		return fmt.Errorf("no connector with id %q", id)
+	}
+	return credential.Set(joseKeychainID(id), privateKeyPEM)
+}
+
+// DeleteConnectorJOSEPrivateKey clears id's JOSE private key without
+// touching its AuthType secret or deleting the connector itself.
+func (c *ConfigureService) DeleteConnectorJOSEPrivateKey(id string) error {
+	return credential.Delete(joseKeychainID(id))
 }
 
 func (c *ConfigureService) persistConnectors() {

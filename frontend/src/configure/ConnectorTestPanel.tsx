@@ -2,7 +2,7 @@ import { useRef, useState } from 'react'
 import { Button, FormControl, IconButton, Label, Select, SegmentedControl, Stack, Text, TextInput, Textarea } from '@primer/react'
 import { CopyIcon, PlayIcon, SyncIcon } from '@primer/octicons-react'
 import { ConfigureService } from '../../bindings/github.com/alicoding/mill'
-import type { AuthConfig, AuthType } from '../../bindings/github.com/alicoding/mill/internal/domain/connector/models'
+import type { AuthConfig, AuthType, JOSEConfig } from '../../bindings/github.com/alicoding/mill/internal/domain/connector/models'
 import type { TestConnectorResult } from '../../bindings/github.com/alicoding/mill/models'
 import type { ManualOperation } from './openapiSynth'
 import { generateOperationSample } from './testPayload'
@@ -30,7 +30,7 @@ interface LogEntry extends TestConnectorResult {
 // discipline handleSave already uses for the identical stale-state risk
 // (see ConnectorForm.tsx's own comment on that bug).
 export function ConnectorTestPanel({
-  operations, effectiveSpec, baseURL, authType, auth, headers, secret, connectorID,
+  operations, effectiveSpec, baseURL, authType, auth, jose, josePrivateKeyPEM, headers, secret, connectorID,
 }: {
   operations: ManualOperation[]
   effectiveSpec: string
@@ -41,6 +41,10 @@ export function ConnectorTestPanel({
   // exactly as it would run" principle ADR-0013 already established for
   // BaseURL/Headers/Secret.
   auth: AuthConfig | null
+  // Phase 3 (JOSE) -- same "test the draft exactly as it would run"
+  // principle, extended to the encryption layer.
+  jose: JOSEConfig | null
+  josePrivateKeyPEM: string
   headers: Record<string, string> | null
   secret: string
   connectorID: string | null
@@ -111,6 +115,8 @@ export function ConnectorTestPanel({
         BaseURL: baseURL,
         AuthType: authType,
         Auth: auth,
+        JOSE: jose,
+        JOSEPrivateKeyPEM: josePrivateKeyPEM,
         Headers: headers,
         Secret: secret,
         OpenAPISpec: effectiveSpec,

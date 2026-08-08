@@ -58,8 +58,8 @@ export function Connectors(): $CancellablePromise<connector$0.Connector[] | null
     return $Call.ByID(1335444401);
 }
 
-export function CreateConnector(label: string, connType: string, baseURL: string, authType: connector$0.AuthType, headers: { [_ in string]?: string } | null, openAPISpec: string, auth: connector$0.AuthConfig | null): $CancellablePromise<connector$0.Connector> {
-    return $Call.ByID(3578677376, label, connType, baseURL, authType, headers, openAPISpec, auth);
+export function CreateConnector(label: string, connType: string, baseURL: string, authType: connector$0.AuthType, headers: { [_ in string]?: string } | null, openAPISpec: string, auth: connector$0.AuthConfig | null, jose: connector$0.JOSEConfig | null): $CancellablePromise<connector$0.Connector> {
+    return $Call.ByID(3578677376, label, connType, baseURL, authType, headers, openAPISpec, auth, jose);
 }
 
 export function CreateList(label: string, entries: { [_ in string]?: string } | null): $CancellablePromise<list$0.List> {
@@ -79,6 +79,14 @@ export function CreateMCPServer(label: string, command: string, args: string[] |
  */
 export function DeleteConnector(id: string): $CancellablePromise<void> {
     return $Call.ByID(3135435181, id);
+}
+
+/**
+ * DeleteConnectorJOSEPrivateKey clears id's JOSE private key without
+ * touching its AuthType secret or deleting the connector itself.
+ */
+export function DeleteConnectorJOSEPrivateKey(id: string): $CancellablePromise<void> {
+    return $Call.ByID(1873579772, id);
 }
 
 /**
@@ -133,6 +141,16 @@ export function MCPServers(): $CancellablePromise<mcpserver$0.MCPServer[] | null
 }
 
 /**
+ * SetConnectorJOSEPrivateKey writes id's JOSE private key (Phase 3) to
+ * its own, separate keychain entry -- write-only, same reasoning as
+ * SetConnectorSecret, but namespaced (joseKeychainID) so it can coexist
+ * with whatever AuthType secret the same connector also stores.
+ */
+export function SetConnectorJOSEPrivateKey(id: string, privateKeyPEM: string): $CancellablePromise<void> {
+    return $Call.ByID(3115130239, id, privateKeyPEM);
+}
+
+/**
  * SetConnectorOAuth1Secret writes id's OAuth 1.0a dual secret (consumer
  * secret + token secret) to the OS keychain. AuthOAuth1's own
  * documented storage shape (ADR-0015 §3, connector.OAuth1Config's doc
@@ -170,8 +188,8 @@ export function TestConnectorOperation(req: $models.TestConnectorRequest): $Canc
     return $Call.ByID(247805665, req);
 }
 
-export function UpdateConnector(id: string, label: string, connType: string, baseURL: string, authType: connector$0.AuthType, headers: { [_ in string]?: string } | null, openAPISpec: string, auth: connector$0.AuthConfig | null): $CancellablePromise<connector$0.Connector> {
-    return $Call.ByID(2890915231, id, label, connType, baseURL, authType, headers, openAPISpec, auth);
+export function UpdateConnector(id: string, label: string, connType: string, baseURL: string, authType: connector$0.AuthType, headers: { [_ in string]?: string } | null, openAPISpec: string, auth: connector$0.AuthConfig | null, jose: connector$0.JOSEConfig | null): $CancellablePromise<connector$0.Connector> {
+    return $Call.ByID(2890915231, id, label, connType, baseURL, authType, headers, openAPISpec, auth, jose);
 }
 
 export function UpdateList(id: string, label: string, entries: { [_ in string]?: string } | null): $CancellablePromise<list$0.List> {

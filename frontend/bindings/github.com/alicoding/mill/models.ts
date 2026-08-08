@@ -124,6 +124,12 @@ export interface TestConnectorRequest {
      * (ADR-0015) -- nil for the three original AuthTypes.
      */
     "Auth": connector$0.AuthConfig | null;
+
+    /**
+     * JOSE is Phase 3's optional request/response encryption layer --
+     * nil for a connector not using it.
+     */
+    "JOSE": connector$0.JOSEConfig | null;
     "Headers": { [_ in string]?: string } | null;
 
     /**
@@ -132,6 +138,15 @@ export interface TestConnectorRequest {
      * no keychain trace.
      */
     "Secret": string;
+
+    /**
+     * JOSEPrivateKeyPEM is the same "used as typed, for this call only"
+     * shape as Secret above, but for JOSE.DecryptResponse's own,
+     * separately-keychained private key (falls back to
+     * joseKeychainID(ConnectorID) when blank, same pattern Secret uses
+     * for the AuthType secret).
+     */
+    "JOSEPrivateKeyPEM": string;
     "OpenAPISpec": string;
     "Path": string;
     "Method": string;

@@ -48,6 +48,30 @@ func TestValidate_UnsupportedAuthType_Rejected(t *testing.T) {
 	}
 }
 
+func TestValidate_JOSEEnabledWithoutPublicKey_Rejected(t *testing.T) {
+	c := valid()
+	c.JOSE = &JOSEConfig{Enabled: true}
+	if err := Validate(c); err == nil {
+		t.Error("Validate with JOSE enabled and no recipient public key returned nil error, want an error")
+	}
+}
+
+func TestValidate_JOSEEnabledWithPublicKey_Accepted(t *testing.T) {
+	c := valid()
+	c.JOSE = &JOSEConfig{Enabled: true, RecipientPublicKeyPEM: "-----BEGIN PUBLIC KEY-----\n...\n-----END PUBLIC KEY-----"}
+	if err := Validate(c); err != nil {
+		t.Errorf("Validate with JOSE enabled and a recipient public key returned error: %v", err)
+	}
+}
+
+func TestValidate_JOSEDisabled_NoPublicKeyRequired(t *testing.T) {
+	c := valid()
+	c.JOSE = &JOSEConfig{Enabled: false}
+	if err := Validate(c); err != nil {
+		t.Errorf("Validate with JOSE disabled (no public key) returned error: %v, want nil", err)
+	}
+}
+
 func TestValidate_EveryAuthType_Accepted(t *testing.T) {
 	for _, at := range []AuthType{
 		AuthNone, AuthAPIKey, AuthBearer,
