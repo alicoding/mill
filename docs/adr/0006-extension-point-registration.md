@@ -1,7 +1,7 @@
 # ADR-0006: Self-registration for Mill's own extension points (SPEC.md §3.6)
 
 ## Status
-proposed
+accepted
 
 ## Context
 SPEC.md §3.6 already named the problem directly: "as more primitive
@@ -321,16 +321,69 @@ the Decision above) — nothing about this implementation plan revisits
 that scope, it's still the small-and-accepted cost this ADR's Decision
 section already settled.
 
+## Update — implemented, one real design correction along the way
+
+Landed as two commits, matching the plan. Composition NodeTypes
+(capture/process/apply×2/decision + the three already-isolated
+Process-family types) self-register cleanly as planned — no surprises
+there.
+
+**Triggers needed a real correction the plan didn't anticipate, found
+by actually running `internal/domain/composition`'s own tests in
+isolation, not caught by reasoning alone.** The plan called for one
+file per trigger type in `package main`, each `init()` registering
+*both* halves (`composition.RegisterNodeType` for schema,
+`RegisterTrigger` for dispatch). Running `go test
+./internal/domain/composition/...` alone after that first attempt
+**panicked**: `BuiltInWorkflows()` (in the `composition` package
+itself) references `"trigger-manual"` via `ResolveNodeDefaults`, which
+requires the registry to already have it — but `trigger-manual`'s
+schema was only registered from `package main`'s `init()`, which never
+runs when `composition` is compiled/tested on its own. A domain
+package's own fixtures can't depend on the outer application
+registering something first; the dependency has to run the other way.
+
+**Fix**: split back into two locations, but not the original ones.
+Trigger *schemas* register from `internal/domain/composition/
+triggers.go` (one file, all five, exec: nil — the same "no independent
+exec logic to isolate" reasoning the original file-plan draft had used
+before being revised toward per-type files) — this package stays
+self-sufficient. Trigger *dispatch* still registers from `package
+main`'s five per-type files (`triggermanual.go` etc.), each now
+importing only what its own dispatch closure needs, with a comment
+pointing at `triggers.go` for where the schema half actually lives.
+This means a trigger type's full definition is two files, not one —
+less cohesive than hoped, but correct: the alternative (schema in
+`package main`) would make a core domain package's own built-in
+workflows depend on the application layer for data it needs to
+function, backwards from the dependency direction CLAUDE.md's
+domain-purity rule already requires.
+
+Verified, not just built: full Go suite (`go vet`, `golangci-lint run
+./...` — 0 issues, `go test ./...`, including `composition` in
+isolation, the actual case that caught the bug), both build targets,
+the complete 23-test Playwright e2e suite, and a real desktop-mode
+launch of the built binary confirming clean startup with no panic
+during `init()`/`RestoreBindings` — the piece no headless CI can cover
+regardless of this refactor (`run-mill` skill's own documented limit;
+verifying a hotkey actually fires needs a live Cocoa run loop and a
+real physical keypress, left to the user).
+
+`Status` moves to `accepted` — the design is implemented and verified,
+not just planned.
+
 ## Lifecycle
-- Owner: Ali + whoever implements the registry next
-- Maintains: the extension-point capability map above; the A1 scope
-  boundary (NodeType + Trigger only, not the smaller Configure/AuthType
-  cases)
+- Owner: Ali + whoever adds the next NodeType or Trigger type
+- Maintains: `internal/domain/composition/registry.go` (NodeType/exec
+  registry) and `triggerregistry.go` (repo root, Trigger dispatch
+  registry); the two-registry split and *why* trigger schema and
+  dispatch live in different packages (this file's own "implemented"
+  section above — don't re-collapse them into one file without
+  re-reading why that failed)
 - Update triggers: a new Configure entity kind or Connector `AuthType`
-  actually becoming frequent enough to revisit A2's rejection; the
-  registry implementation landing (this ADR moves toward `accepted`);
-  a Decision/Parallel/Child-Workflow node kind landing (ADR-0005) before
-  the registry does, which should use the new mechanism from the start
-  rather than adding a fourth case to the old map/switch shape
+  actually becoming frequent enough to revisit A2's rejection; a
+  Decision/Parallel/Child-Workflow node kind landing (ADR-0005) — it
+  should use `RegisterNodeType` from its own file from the start, not
+  a new case bolted onto an old map/switch shape
 - Last reviewed: 2026-08-07
-- Review interval: 30 days while `proposed`; 365 days once `accepted`
+- Review interval: 365 days (accepted)
