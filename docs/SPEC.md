@@ -2662,6 +2662,72 @@ Full rationale in [`docs/adr/0003-browser-bridge-architecture.md`](adr/0003-brow
   they can express (allowlist commands? path scoping? connector-level
   rules?), how pass/fail/pending/skipped states are communicated in the UI.
 
+**Update — research landed on the "where are rules authored/stored"
+question, prompted directly by the observation that a guardrail rule is
+probably the same shape as the Integration/Connector split (§3.5): a
+technical contract at Configure time vs. a specific instance's wiring
+at workflow time.** Findings, not yet implemented:
+- **Rules don't have one fixed scope — they need three layers,
+  matching Mill's own already-built cardinalities, not a new concept.**
+  Applying §3.5's own two-axis Configure test directly to guardrail
+  rules (rather than assuming an answer) finds real examples at every
+  cardinality Mill already has: a node-*kind*-wide rule ("no
+  `list-lookup` node ever needs approval," 1:many across every
+  workflow and every Connector — even broader than Connector's own
+  reuse), a Connector-scoped rule ("any call through Connector X with
+  method GET," 1:many across every workflow using that Connector — the
+  same cardinality Connector itself already has), and a
+  workflow/node-instance-scoped rule ("this exact step in this exact
+  workflow," 1:1 — the same cardinality Trigger config/Attributes
+  already have). Node-kind and Connector-level rules belong in
+  Configure (a future Guardrail-rules tab, same shape as Integration/
+  Lists/Attributes/Decision, satisfying the already-locked dry-run-
+  testable requirement above); workflow-level rules stay inline in the
+  canvas Inspector, matching Trigger config's existing precedent.
+- **Precedence: deny/require-approval always wins over allow/skip,
+  regardless of which layer set it — modeled on Claude Code's own
+  categorical deny-first resolution (checked directly against its
+  current docs: rules evaluate deny → ask → allow in that fixed order,
+  and specificity never changes it — a broad `Bash(aws *)` deny blocks
+  even a narrower matching allow), not on Kong API Gateway's
+  specificity-wins model (also real, also checked directly — Kong's
+  most-specific-scope-always-wins is the opposite philosophy, correct
+  for Kong's own tuning-not-safety use case, wrong for Mill's).
+  Reasoning: §8's already-locked fail-safe default is a categorical
+  safety commitment, not a specificity preference — a narrow,
+  later-authored workflow-level skip-rule must never be able to
+  silently punch a hole in a broader, more cautious node-kind- or
+  Connector-level rule.
+- **Do not adopt OPA/Rego** (or any second policy-evaluation engine).
+  Verified as a real, technically legitimate embeddable Go library
+  (`github.com/open-policy-agent/opa/rego`, Apache-2.0, CNCF-graduated,
+  pure Go, genuinely importable as a library per OPA's own docs, not
+  just the `opa run` daemon mode) — cleared on constraints, rejected on
+  fit: Mill already adopted `expr-lang/expr` for structurally the same
+  job (Decision-edge boolean conditions, §3.3), and OPA solves
+  expression evaluation, not the part of this problem that's actually
+  unsolved (where a rule attaches and how layers resolve, which no
+  policy-language runtime has an opinion on regardless). If a
+  skip-condition ever needs a boolean expression, reuse
+  `internal/adapters/expression`, don't add a second evaluation engine.
+  §3.3's own "Guardrail preview / policy gate ... core domain, no
+  library has an opinion" verdict stands, now backed by an actual
+  evaluation instead of an assumption.
+- n8n's Human-in-the-Loop gating, checked as a real precedent, turned
+  out to *not* unify these concerns the way Mill needs — it has two
+  independent, non-overlapping mechanisms (workflow/node-instance-scoped
+  approval gating, and a separate node-*kind*-level credential-access
+  restriction) rather than one layered model, itself a data point for
+  why Mill needs the explicit multi-layer design above rather than
+  copying one platform's narrower shape.
+- Still genuinely open: how Claude Code's third `ask` state (distinct
+  from allow/deny) maps onto Mill's own pass/fail/pending/skipped UI
+  states — this research answered scoping, not that.
+
+`OPEN` still — this is a locked scoping *design*, not an implementation;
+still needs an ADR (same "architect pass" treatment ADR-0005/0006 got)
+before `internal/domain/guardrail` gets built.
+
 ## 9. Repo AI workflow (CLAUDE.md / SKILL.md / agent profiles)
 
 Methodology below is `LOCKED` (researched against current Anthropic docs and
