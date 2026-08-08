@@ -35,11 +35,32 @@ export interface RunDetail {
     "workflowID": string;
     "workflowLabel": string;
     "status": string;
+    "kind": RunKind;
+    "output": string;
     "startedAt": string;
     "completedAt": string;
     "error": string;
     "steps": RunStep[] | null;
 }
+
+/**
+ * RunKind classifies why a run started (docs/adr/0008) -- "test" for a
+ * manual/UI-driven run (Composition's canvas Run button, the Runs page's
+ * own quick-run picker), "triggered" for a real external event
+ * (TriggerService's headless listeners; not wired to this path yet, see
+ * ADR-0008's own named follow-on). Not a DBOS SetWorkflowAttributes call
+ * -- travels in runInput alongside every other per-run value, the
+ * existing pattern this struct already uses.
+ */
+export enum RunKind {
+    /**
+     * The Go zero value for the underlying type of the enum.
+     */
+    $zero = "",
+
+    RunKindTest = "test",
+    RunKindTriggered = "triggered",
+};
 
 /**
  * RunStep is one node's recorded execution within a run, for the
@@ -66,6 +87,8 @@ export interface RunSummary {
     "workflowID": string;
     "workflowLabel": string;
     "status": string;
+    "kind": RunKind;
+    "output": string;
     "startedAt": string;
     "completedAt": string;
     "error": string;

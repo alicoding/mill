@@ -75,7 +75,10 @@ func (l *activeListener) stop() {
 // validation with no runtime listener state (its own doc comment says
 // so), and a live OS hotkey/cron/watcher registration doesn't belong
 // bolted onto either that or a low-level adapter. Every fired listener
-// calls CompositionService.RunWorkflow, unchanged.
+// calls ExecutionService.RunWorkflow (docs/adr/0008) tagged
+// RunKindTriggered -- the same single execution path every other Run
+// entrypoint in the app uses now, so a headless fire gets the same
+// checkpointing/Runs-page visibility a manual click does.
 //
 // Hotkey exclusivity (SPEC.md §3.4, modeled on Raycast's own conflict
 // UX) lives here too, via internal/domain/trigger.CheckConflict --
@@ -86,9 +89,22 @@ type TriggerService struct {
 	active   map[string]*activeListener // workflowID -> live listener
 	hkRaw    map[string]persistedHotkey // workflowID -> persisted (mods, key)
 	comp     *CompositionService
+	exec     *ExecutionService // see SetExecutionService
 	logger   *slog.Logger
 	store    settings.Store
 	reserved func() (mods []string, key string, ok bool) // see SetReservedCombo
+}
+
+// SetExecutionService wires the durable-execution runtime a headless fire
+// runs through (docs/adr/0008) -- a late-bound setter, not a constructor
+// parameter, because ExecutionService's own constructor depends on
+// CompositionService (which TriggerService already needs at construction
+// time for Sync's workflow lookups), so ExecutionService is necessarily
+// built after TriggerService in main.go; same shape as SetReservedCombo.
+//
+//wails:ignore
+func (s *TriggerService) SetExecutionService(e *ExecutionService) {
+	s.exec = e
 }
 
 func NewTriggerService(comp *CompositionService, logger *slog.Logger, store settings.Store) *TriggerService {
@@ -175,14 +191,21 @@ func (s *TriggerService) Sync(workflows []composition.Workflow) {
 // "⌘⇧M"; empty for schedule/clipboard-watch/filesystem-watch triggers,
 // which have no single-glyph label the way a keyboard combo does).
 func (s *TriggerService) fire(workflowID, binding string) {
-	result, err := s.comp.RunWorkflow(workflowID)
+	summary, err := s.exec.RunWorkflow(workflowID, RunKindTriggered)
 	if err != nil {
+		// A call-level failure (unknown workflow, run couldn't start) --
+		// distinct from a failed *run*, handled below via summary.Error.
 		s.logger.Error("triggered workflow failed", "workflow", workflowID, "error", err)
 		emitHotkeyActivity(workflowID, binding, false, err.Error(), "")
 		return
 	}
-	s.logger.Info("triggered workflow completed", "workflow", workflowID, "output_bytes", len(result))
-	emitHotkeyActivity(workflowID, binding, true, fmt.Sprintf("completed (%d bytes)", len(result)), result)
+	if summary.Error != "" {
+		s.logger.Error("triggered workflow failed", "workflow", workflowID, "error", summary.Error)
+		emitHotkeyActivity(workflowID, binding, false, summary.Error, "")
+		return
+	}
+	s.logger.Info("triggered workflow completed", "workflow", workflowID, "output_bytes", len(summary.Output))
+	emitHotkeyActivity(workflowID, binding, true, fmt.Sprintf("completed (%d bytes)", len(summary.Output)), summary.Output)
 }
 
 // start registers the one live listener nodeTypeID needs, if any --

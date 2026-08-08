@@ -8,7 +8,10 @@
  * validation with no runtime listener state (its own doc comment says
  * so), and a live OS hotkey/cron/watcher registration doesn't belong
  * bolted onto either that or a low-level adapter. Every fired listener
- * calls CompositionService.RunWorkflow, unchanged.
+ * calls ExecutionService.RunWorkflow (docs/adr/0008) tagged
+ * RunKindTriggered -- the same single execution path every other Run
+ * entrypoint in the app uses now, so a headless fire gets the same
+ * checkpointing/Runs-page visibility a manual click does.
  * 
  * Hotkey exclusivity (SPEC.md §3.4, modeled on Raycast's own conflict
  * UX) lives here too, via internal/domain/trigger.CheckConflict --

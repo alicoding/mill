@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react'
 import { Button, Heading, IconButton, Label, Stack, Text, Token } from '@primer/react'
 import { Tabs } from '@primer/react/experimental'
 import { PencilIcon, PlusIcon, TrashIcon } from '@primer/octicons-react'
-import { CompositionService } from '../bindings/github.com/alicoding/mill'
+import { CompositionService, ExecutionService } from '../bindings/github.com/alicoding/mill'
+import { RunKind } from '../bindings/github.com/alicoding/mill/models'
 import type { Edge, Node, NodeType, Workflow } from '../bindings/github.com/alicoding/mill/internal/domain/composition/models'
 import { useAppStore } from './store'
 import CompositionCanvas from './CompositionCanvas'
@@ -84,17 +85,32 @@ function CompositionView() {
     refetchWorkflows()
   }, [])
 
+  // Runs through ExecutionService.RunWorkflow, tagged RunKindTest --
+  // docs/adr/0008's single execution path: a canvas click is a manual
+  // test run (Oscilar's own "test run" naming, SPEC.md §3.2), not a real
+  // triggered event, but it's still a full durable/checkpointed run --
+  // it shows up on the Runs page the same as any other, unlike the old
+  // plain in-memory CompositionService.RunWorkflow this replaces.
   const run = (id: string) => {
     const label = workflows?.find((w) => w.ID === id)?.Label ?? id
     setRunningId(id)
     setErrors((prev) => ({ ...prev, [id]: '' }))
-    CompositionService.RunWorkflow(id)
-      .then((output) => {
-        setResults((prev) => ({ ...prev, [id]: output }))
+    ExecutionService.RunWorkflow(id, RunKind.RunKindTest)
+      .then((summary) => {
+        if (summary.error) {
+          setErrors((prev) => ({ ...prev, [id]: summary.error }))
+          pushActivity({
+            id: crypto.randomUUID(), time: new Date().toLocaleTimeString(), timestamp: Date.now(),
+            source: 'composition', workflowID: id, label,
+            success: false, detail: summary.error, result: '',
+          })
+          return
+        }
+        setResults((prev) => ({ ...prev, [id]: summary.output }))
         pushActivity({
           id: crypto.randomUUID(), time: new Date().toLocaleTimeString(), timestamp: Date.now(),
           source: 'composition', workflowID: id, label,
-          success: true, detail: `completed (${output.length} bytes)`, result: output,
+          success: true, detail: `completed (${summary.output.length} bytes)`, result: summary.output,
         })
       })
       .catch((err) => {

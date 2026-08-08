@@ -115,6 +115,15 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	// Single execution path (docs/adr/0008): a headless trigger fire now
+	// runs through the same durable ExecutionService.RunWorkflow every
+	// other entrypoint uses, tagged RunKindTriggered -- constructed after
+	// TriggerService (which needs comp at construction time for Sync's
+	// own workflow lookups) since ExecutionService itself depends on
+	// compositionService, so this can't be a constructor parameter
+	// without a cycle; same late-bound-setter shape as SetReservedCombo
+	// below.
+	triggerService.SetExecutionService(executionService)
 
 	settingsService := NewSettingsService(settingsStore, triggerService)
 	// Bidirectional hotkey-conflict check (docs/SPEC.md §3.7): a

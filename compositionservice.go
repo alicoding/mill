@@ -266,15 +266,6 @@ func (c *CompositionService) DeleteWorkflow(id string) error {
 	return nil
 }
 
-func (c *CompositionService) RunWorkflow(id string) (string, error) {
-	for _, wf := range c.Workflows() {
-		if wf.ID == id {
-			return composition.ExecuteWorkflow(wf.Nodes, wf.Edges, wf.Attributes)
-		}
-	}
-	return "", fmt.Errorf("unknown workflow: %s", id)
-}
-
 func (c *CompositionService) persist() {
 	c.mu.Lock()
 	user := make([]composition.Workflow, len(c.user))

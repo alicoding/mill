@@ -45,6 +45,20 @@ func decodeAny[T any](v any) (T, bool) {
 // this isn't left to derive from the bound method's runtime name.
 const millRunWorkflowName = "mill.run-workflow"
 
+// RunKind classifies why a run started (docs/adr/0008) -- "test" for a
+// manual/UI-driven run (Composition's canvas Run button, the Runs page's
+// own quick-run picker), "triggered" for a real external event
+// (TriggerService's headless listeners; not wired to this path yet, see
+// ADR-0008's own named follow-on). Not a DBOS SetWorkflowAttributes call
+// -- travels in runInput alongside every other per-run value, the
+// existing pattern this struct already uses.
+type RunKind string
+
+const (
+	RunKindTest      RunKind = "test"
+	RunKindTriggered RunKind = "triggered"
+)
+
 // runInput is one durable run's DBOS workflow input -- WorkflowID is the
 // composition.Workflow definition this run executes; the graph itself
 // (Nodes/Edges/Attributes) travels alongside it so a run's own
@@ -56,6 +70,7 @@ type runInput struct {
 	Nodes      []composition.Node
 	Edges      []composition.Edge
 	Attributes []composition.AttributeDef
+	Kind       RunKind
 }
 
 // RunStep is one node's recorded execution within a run, for the
@@ -79,6 +94,8 @@ type RunSummary struct {
 	WorkflowID    string    `json:"workflowID"`
 	WorkflowLabel string    `json:"workflowLabel"`
 	Status        string    `json:"status"`
+	Kind          RunKind   `json:"kind"`
+	Output        string    `json:"output"`
 	StartedAt     time.Time `json:"startedAt"`
 	CompletedAt   time.Time `json:"completedAt"`
 	Error         string    `json:"error"`
@@ -141,14 +158,19 @@ func (e *ExecutionService) runWorkflow(ctx execution.Context, in runInput) (stri
 	return composition.ExecuteWorkflowWithStepRunner(in.Nodes, in.Edges, in.Attributes, stepRunner)
 }
 
-// RunWorkflowDurable runs a composed workflow through the durable
-// execution path -- every node's result is checkpointed and the run
-// stays visible/redrivable afterward (ListRuns/GetRun/RedriveRun),
-// unlike CompositionService.RunWorkflow's plain in-memory execution
-// (left untouched -- this is an additive entry point, not a
-// replacement, so the existing Composition/Runbook "Run" button and its
-// e2e coverage are unaffected).
-func (e *ExecutionService) RunWorkflowDurable(workflowID string) (RunSummary, error) {
+// RunWorkflow is the one execution entrypoint for the running app
+// (docs/adr/0008) -- every run, whether started from Composition's
+// canvas, the Runs page's own quick-run picker, or (once TriggerService
+// is wired to this path, ADR-0008's named follow-on) a real headless
+// trigger, goes through here. Every node's result is checkpointed and
+// the run stays visible/redrivable afterward (ListRuns/GetRun/
+// RedriveRun) regardless of kind -- a "test" run gets exactly the same
+// durability guarantees as a "triggered" one, only the Kind label
+// differs. composition.ExecuteWorkflow (no DBOS, no checkpointing)
+// still exists as the tested primitive internal/domain/composition's
+// own unit tests call directly -- no Wails-bound service calls it
+// anymore.
+func (e *ExecutionService) RunWorkflow(workflowID string, kind RunKind) (RunSummary, error) {
 	wf, ok := e.findWorkflow(workflowID)
 	if !ok {
 		return RunSummary{}, fmt.Errorf("unknown workflow: %s", workflowID)
@@ -160,17 +182,18 @@ func (e *ExecutionService) RunWorkflowDurable(workflowID string) (RunSummary, er
 		Nodes:      wf.Nodes,
 		Edges:      wf.Edges,
 		Attributes: wf.Attributes,
+		Kind:       kind,
 	}, execution.WithWorkflowID(runID))
 	if err != nil {
 		return RunSummary{}, fmt.Errorf("start run: %w", err)
 	}
 
-	// Blocking, like CompositionService.RunWorkflow's existing
-	// synchronous UX -- Mill's node executions (clipboard/HTTP/MCP
-	// calls) are sub-second to a few seconds, and every run's full step
-	// history is durably queryable afterward regardless (ListRuns/
-	// GetRun), so a live-streaming progress view isn't required for the
-	// "see what happened" half of execution visibility this exists for.
+	// Blocking -- matches the plain-Run UX this replaces (docs/adr/0008):
+	// Mill's node executions (clipboard/HTTP/MCP calls) are sub-second to
+	// a few seconds, and every run's full step history is durably
+	// queryable afterward regardless (ListRuns/GetRun), so a
+	// live-streaming progress view isn't required for the "see what
+	// happened" half of execution visibility this exists for.
 	if _, err := handle.GetResult(); err != nil {
 		// Not returned as a Go error -- a failed *run* is a normal,
 		// inspectable/redrivable outcome (that's the whole point of
@@ -334,11 +357,23 @@ func (e *ExecutionService) summaryFromStatus(st execution.WorkflowStatus) RunSum
 	if st.Error != nil {
 		errMsg = st.Error.Error()
 	}
+	output, _ := decodeAny[string](st.Output)
+	kind := in.Kind
+	if kind == "" {
+		// Runs started before RunKind existed (or a future caller that
+		// forgets to set it) default to "test" rather than an empty
+		// string -- the safer of the two labels, since it excludes the
+		// run from anything that ever starts treating "triggered" as a
+		// production-traffic signal.
+		kind = RunKindTest
+	}
 	return RunSummary{
 		RunID:         st.ID,
 		WorkflowID:    in.WorkflowID,
 		WorkflowLabel: label,
 		Status:        string(st.Status),
+		Kind:          kind,
+		Output:        output,
 		StartedAt:     st.StartedAt,
 		CompletedAt:   st.CompletedAt,
 		Error:         errMsg,

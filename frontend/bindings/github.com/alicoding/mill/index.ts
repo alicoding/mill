@@ -18,6 +18,10 @@ export {
     TriggerService
 };
 
+export {
+    RunKind
+} from "./models.js";
+
 export type {
     HotkeyActivity,
     RunDetail,
