@@ -64,7 +64,15 @@ export function ConnectorTestPanel({
   const [jsonText, setJsonText] = useState('')
   const [jsonError, setJsonError] = useState('')
 
-  const selected = operations.find((op) => `${op.method} ${op.path}` === selectedKey) ?? null
+  // A dropdown with only one real choice is friction, not a control
+  // (docs/SPEC.md §3.5's "no UI for a decision that doesn't exist"
+  // discipline) -- auto-selected directly, no state or effect needed
+  // for this case at all. Prompted directly after the seeded example
+  // connectors (each declaring exactly one operation) made this
+  // concretely visible in the live app.
+  const selected = operations.length === 1
+    ? operations[0]
+    : (operations.find((op) => `${op.method} ${op.path}` === selectedKey) ?? null)
 
   const selectOperation = (key: string) => {
     setSelectedKey(key)
@@ -149,16 +157,23 @@ export function ConnectorTestPanel({
 
   return (
     <Stack direction="vertical" gap="normal" data-testid="connector-test-panel">
-      <FormControl>
-        <FormControl.Label>Operation</FormControl.Label>
-        <Select value={selectedKey} onChange={(e) => selectOperation(e.target.value)} data-testid="test-operation-select">
-          <Select.Option value="">Select an operation…</Select.Option>
-          {operations.map((op) => {
-            const key = `${op.method} ${op.path}`
-            return <Select.Option key={key} value={key}>{key}</Select.Option>
-          })}
-        </Select>
-      </FormControl>
+      {operations.length > 1 ? (
+        <FormControl>
+          <FormControl.Label>Operation</FormControl.Label>
+          <Select value={selectedKey} onChange={(e) => selectOperation(e.target.value)} data-testid="test-operation-select">
+            <Select.Option value="">Select an operation…</Select.Option>
+            {operations.map((op) => {
+              const key = `${op.method} ${op.path}`
+              return <Select.Option key={key} value={key}>{key}</Select.Option>
+            })}
+          </Select>
+        </FormControl>
+      ) : (
+        <Stack direction="horizontal" gap="condensed" align="center">
+          <Text size="small" weight="semibold">Operation</Text>
+          <Label variant="secondary" size="small" data-testid="test-operation-single">{`${operations[0].method} ${operations[0].path}`}</Label>
+        </Stack>
+      )}
 
       {selected && (
         <>

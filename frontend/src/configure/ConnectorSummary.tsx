@@ -41,7 +41,14 @@ export function ConnectorSummary({ connector, onEdit, onDuplicate, onDelete }: {
     setFields(null)
     if (!connector.OpenAPISpec) return
     ConfigureService.ListConnectorOperations(connector.ID)
-      .then((ops) => setOperations(ops ?? []))
+      .then((ops) => {
+        const list = ops ?? []
+        setOperations(list)
+        // Auto-select when there's exactly one operation -- same "no UI
+        // for a decision that doesn't exist" reasoning as
+        // ConnectorTestPanel.tsx's own identical fix.
+        if (list.length === 1) setSelectedOp(`${list[0].Method} ${list[0].Path}`)
+      })
       .catch((err) => setOperations(String(err)))
   }, [connector.ID, connector.OpenAPISpec])
 
@@ -179,13 +186,20 @@ function OperationFieldsTab({ operations, opsList, selectedOp, onSelectOp, field
 
   return (
     <Stack direction="vertical" gap="normal">
-      <Select aria-label="Operation" value={selectedOp} onChange={(e) => onSelectOp(e.target.value)}>
-        <Select.Option value="">Select an operation…</Select.Option>
-        {opsList.map((op) => {
-          const key = `${op.Method} ${op.Path}`
-          return <Select.Option key={key} value={key}>{key}</Select.Option>
-        })}
-      </Select>
+      {opsList.length > 1 ? (
+        <Select aria-label="Operation" value={selectedOp} onChange={(e) => onSelectOp(e.target.value)}>
+          <Select.Option value="">Select an operation…</Select.Option>
+          {opsList.map((op) => {
+            const key = `${op.Method} ${op.Path}`
+            return <Select.Option key={key} value={key}>{key}</Select.Option>
+          })}
+        </Select>
+      ) : (
+        <Stack direction="horizontal" gap="condensed" align="center">
+          <Text size="small" weight="semibold">Operation</Text>
+          <Label variant="secondary" size="small">{`${opsList[0].Method} ${opsList[0].Path}`}</Label>
+        </Stack>
+      )}
       {typeof fields === 'string' && <Text as="p" size="small" className={styles.error}>{fields}</Text>}
       {fields !== null && typeof fields !== 'string' && renderFields(fields)}
     </Stack>

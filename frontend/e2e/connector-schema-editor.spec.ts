@@ -57,11 +57,12 @@ test('Authoring a schema via the Manual editor round-trips alias/path through th
   await expect(page.getByTestId('connector-summary')).toBeVisible()
   // Scoped to the visible tabpanel -- Primer's TabPanel keeps every
   // panel mounted (toggles `hidden`, never unmounts), so an unscoped
-  // getByLabel would also match Input parameters' and Testing's own
-  // "Operation" selects.
+  // getByText would also match Input parameters' and Testing's own
+  // "Operation" displays. A single declared operation auto-selects, no
+  // dropdown to drive (docs/SPEC.md §3.5's "no UI for a decision that
+  // doesn't exist").
   const attrPanel = page.getByRole('tabpanel', { name: 'Available attributes' })
   await page.getByRole('tab', { name: 'Available attributes' }).click()
-  await attrPanel.getByLabel('Operation').selectOption({ label: 'GET /widgets' })
 
   await expect(attrPanel.getByText('widgetName (n)')).toBeVisible()
   await expect(attrPanel.getByText('path: data.name')).toBeVisible()

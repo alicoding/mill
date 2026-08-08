@@ -48,9 +48,11 @@ test('Running a test against an unreachable address logs a deterministic error',
   const paramRow = operation.getByTestId('manual-field-row').last()
   await paramRow.getByLabel('Field name').fill('q')
 
+  // A single declared operation auto-selects, no dropdown to drive
+  // (docs/SPEC.md §3.5's "no UI for a decision that doesn't exist").
   const testPanel = page.getByTestId('connector-test-panel')
   await expect(testPanel).toBeVisible()
-  await testPanel.getByTestId('test-operation-select').selectOption('GET /widgets')
+  await expect(testPanel.getByTestId('test-operation-single')).toHaveText('GET /widgets')
 
   await testPanel.getByTestId('generate-sample-payload').click()
   const fieldValue = testPanel.getByTestId('test-field-value')
