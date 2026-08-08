@@ -1,29 +1,18 @@
 import { useEffect, useState } from 'react'
 import { Button, Heading, IconButton, Label, Stack, Text } from '@primer/react'
-import { PlusIcon, PencilIcon, TrashIcon } from '@primer/octicons-react'
+import { PlusIcon, PencilIcon, CopyIcon, TrashIcon } from '@primer/octicons-react'
 import { ConfigureService } from '../../bindings/github.com/alicoding/mill'
 import type { Connector } from '../../bindings/github.com/alicoding/mill/internal/domain/connector/models'
 import { AuthType } from '../../bindings/github.com/alicoding/mill/internal/domain/connector/models'
 import type { Field, Operation, OperationRef } from '../../bindings/github.com/alicoding/mill/internal/adapters/openapispec/models'
 import { ConnectorForm, type ConnectorDraft, type HeaderRow } from './ConnectorForm'
+import { headersToRows, rowsToHeaders } from './connectorHeaders'
 import styles from '../shared/ListCard.module.css'
 
 const AUTH_LABEL: Record<string, string> = {
   [AuthType.AuthNone]: 'None',
   [AuthType.AuthAPIKey]: 'API key',
   [AuthType.AuthBearer]: 'Bearer token',
-}
-
-function headersToRows(headers: { [key: string]: string | undefined } | null | undefined): HeaderRow[] {
-  return Object.entries(headers ?? {}).map(([key, value]) => ({ key, value: value ?? '' }))
-}
-
-function rowsToHeaders(rows: HeaderRow[]): Record<string, string> | null {
-  const out: Record<string, string> = {}
-  for (const r of rows) {
-    if (r.key.trim() !== '') out[r.key] = r.value
-  }
-  return Object.keys(out).length > 0 ? out : null
 }
 
 const EMPTY_DRAFT: ConnectorDraft = { label: '', baseURL: '', authType: AuthType.AuthNone, secret: '', openAPISpec: '' }
@@ -63,6 +52,22 @@ export function ConfigureIntegration() {
   const startEdit = (c: Connector) => {
     setEditingID(c.ID)
     setDraft({ label: c.Label, baseURL: c.BaseURL, authType: c.AuthType, secret: '', openAPISpec: c.OpenAPISpec })
+    setHeaderRows(headersToRows(c.Headers))
+    setFormOpen(true)
+    setError('')
+  }
+
+  // docs/adr/0013 §7: opens the *create* form (editingID stays null, so
+  // Save calls CreateConnector, not UpdateConnector) pre-filled from an
+  // existing connector's config. Secret is deliberately never copied --
+  // it was never readable back through Mill in the first place (§3.5's
+  // write-only design), so "duplicate" naturally can't carry it forward;
+  // the new connector's Auth tab shows the normal empty-secret state,
+  // not the "leave blank to keep existing" caption (which only makes
+  // sense mid-edit of the *same* connector).
+  const startDuplicate = (c: Connector) => {
+    setEditingID(null)
+    setDraft({ label: `${c.Label} copy`, baseURL: c.BaseURL, authType: c.AuthType, secret: '', openAPISpec: c.OpenAPISpec })
     setHeaderRows(headersToRows(c.Headers))
     setFormOpen(true)
     setError('')
@@ -123,6 +128,7 @@ export function ConfigureIntegration() {
           headerRows={headerRows}
           onHeaderRowsChange={setHeaderRows}
           isEditing={editingID !== null}
+          connectorID={editingID}
           onSave={save}
           onCancel={() => setFormOpen(false)}
           error={error}
@@ -158,6 +164,7 @@ export function ConfigureIntegration() {
                     </Button>
                   )}
                   <IconButton icon={PencilIcon} aria-label={`Edit ${c.Label}`} size="small" variant="invisible" onClick={() => startEdit(c)} />
+                  <IconButton icon={CopyIcon} aria-label={`Duplicate ${c.Label}`} size="small" variant="invisible" onClick={() => startDuplicate(c)} />
                   <IconButton icon={TrashIcon} aria-label={`Delete ${c.Label}`} size="small" variant="invisible" onClick={() => remove(c.ID)} />
                 </Stack>
               </Stack>
@@ -188,7 +195,8 @@ export function ConfigureIntegration() {
                                 <Text as="p" size="small" className={styles.error}>{fields}</Text>
                               ) : (
                                 <div data-testid="operation-schema" style={{ marginLeft: 'var(--base-size-16)' }}>
-                                  <SchemaFieldList label="Input" fields={fields.InputFields} />
+                                  <SchemaFieldList label="Parameters (path / query / header)" fields={(fields.InputFields ?? []).filter((f) => f.In !== 'body')} />
+                                  <SchemaFieldList label="Request body" fields={(fields.InputFields ?? []).filter((f) => f.In === 'body')} />
                                   <SchemaFieldList label="Output" fields={fields.OutputFields} />
                                 </div>
                               )

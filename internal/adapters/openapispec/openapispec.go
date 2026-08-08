@@ -13,9 +13,12 @@ package openapispec
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/getkin/kin-openapi/openapi3"
@@ -252,4 +255,72 @@ func isSecretField(name string, ref *openapi3.SchemaRef) bool {
 
 func sortFields(fields []Field) {
 	sort.Slice(fields, func(i, j int) bool { return fields[i].Name < fields[j].Name })
+}
+
+// BuildRequest assembles a path/query/headers/body from an Operation's
+// declared InputFields and a flat map of raw string values keyed by
+// field Name -- the "test this operation with example values" case
+// (docs/adr/0013), distinct from composition/attributebinding.go's
+// resolveInputBindings (which resolves a workflow node's authored
+// Attribute-bindings config against a running ExecContext, not a flat
+// value map). A field with no entry in values is simply omitted --
+// callers decide what "required but missing" means for their own case,
+// this function doesn't enforce Required itself.
+func BuildRequest(pathTemplate string, op *Operation, values map[string]string) (resolvedPath string, query url.Values, headers map[string]string, body string, err error) {
+	resolvedPath = pathTemplate
+	query = url.Values{}
+	headers = map[string]string{}
+	bodyObj := map[string]any{}
+
+	for _, f := range op.InputFields {
+		raw, ok := values[f.Name]
+		if !ok {
+			continue
+		}
+		switch f.In {
+		case "path":
+			resolvedPath = strings.ReplaceAll(resolvedPath, "{"+f.Name+"}", raw)
+		case "query":
+			query.Set(f.Name, raw)
+		case "header":
+			headers[f.Name] = raw
+		default: // "body" (and any other placement kin-openapi never emits today)
+			bodyObj[f.Name] = coerceValue(f.Type, raw)
+		}
+	}
+
+	if len(bodyObj) > 0 {
+		data, mErr := json.Marshal(bodyObj)
+		if mErr != nil {
+			return "", nil, nil, "", fmt.Errorf("openapispec: build request body: %w", mErr)
+		}
+		body = string(data)
+	}
+	return resolvedPath, query, headers, body, nil
+}
+
+// coerceValue turns a field's raw string value into the JSON type its
+// declared OpenAPI Type implies, so a generated/typed "42" lands in the
+// request body as the number 42, not the string "42" -- a real
+// difference for an API that validates its own request schema strictly.
+// Falls back to the raw string on a parse failure (a hand-edited test
+// value that doesn't actually match its declared type) rather than
+// failing the whole request -- the real API is the actual validator
+// here, not this function.
+func coerceValue(fieldType, raw string) any {
+	switch fieldType {
+	case "number":
+		if v, err := strconv.ParseFloat(raw, 64); err == nil {
+			return v
+		}
+	case "integer":
+		if v, err := strconv.ParseInt(raw, 10, 64); err == nil {
+			return v
+		}
+	case "boolean":
+		if v, err := strconv.ParseBool(raw); err == nil {
+			return v
+		}
+	}
+	return raw
 }
