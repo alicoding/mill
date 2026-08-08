@@ -2918,13 +2918,23 @@ mode from §0 repeating itself one level up.
 - Browser extension ↔ native app protocol details (§5)
 - Env/shell determinism rules (§6)
 - Session identity model spanning tab + agent run + process (§7)
-- Policy authoring format and storage (§8)
-- Global app settings (§3.7) — research landed (what belongs in it, the
-  launch-at-login/global-hotkey/auto-update mechanisms, and a
-  don't-add-a-multi-tenant-seam verdict); not yet turned into a
-  capability map/plan or implemented
-- Connector input/output schema mechanism (§3.3/§3.5/§4) — what to
-  adopt so a workflow's Attributes can bind into an integration's
-  request/response fields, researched but not yet locked/implemented
+- Policy authoring format and storage (§8) — scoping/precedence design
+  researched and recorded (three layers: node-kind/Connector/workflow,
+  deny-always-wins precedence, OPA/Rego evaluated and rejected in favor
+  of reusing `expr-lang/expr`) but still needs an ADR + implementation;
+  the pass/fail/pending/skipped UI-states question is untouched by this
+- Global app settings (§3.7) — launch-at-login and a global summon
+  hotkey are `LOCKED` and built (`internal/adapters/launchatlogin`,
+  `settingsservice.go`); `app.Updater` wired for manual update checks
+  (inert until a real tagged-release process exists). Still `OPEN`:
+  menu-bar/dock toggle, trigger-fire notifications (no settled design
+  yet), the multi-tenant-seam question (researched, recorded as
+  deliberately declined)
+- Connector input/output schema mechanism (§3.3/§3.5/§4/ADR-0007) —
+  `LOCKED` and built for Phase 1+2 (`internal/adapters/openapispec`,
+  `Connector.OpenAPISpec`, Configure UI + "List operations"); Phase 3
+  (the `integration-http` Attribute-binding UI + `ValidateGraph`'s
+  secret guardrail) still `OPEN`, deliberately deferred as a real UX
+  design surface
 - Bash-execution-through-our-process-but-nothing-is-ours reading (§1.1) —
   confirm with the user
