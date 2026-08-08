@@ -2214,6 +2214,42 @@ ADR-0006's `Status` is now `accepted`.
   `AuthType` supports `none`/`apikey`/`bearer`; OAuth2 is real, named
   future work (`golang.org/x/oauth2` already vetted for it, unused so
   far), not stubbed ahead of need.
+- **Update — connector maturity pass 1: retries + fail-safe status
+  handling, prompted by the user calling out that the HTTP connector
+  "needs a hell a lot of love" before further connector work lands.**
+  `internal/adapters/httpconnector` now runs every call through
+  `hashicorp/go-retryablehttp` (MPL-2.0, pure Go — checked directly
+  against its own `go.mod`) instead of a bare `http.Client`, with
+  `RetryMax=3`/`RetryWaitMin=1s`/`RetryWaitMax=10s` — close to the
+  library's own shipped defaults (4/1s/30s), deliberately not tuned
+  further without a real workload to tune against (§0's "don't build for
+  a decision that doesn't exist yet," applied to config knobs). Its
+  `DefaultRetryPolicy` was read directly from source
+  (`client.go`'s `baseRetryPolicy`), not assumed: retries 429 and 5xx
+  except 501, plus most transport errors; every other 4xx passes through
+  unretried. This changes `Execute`'s error contract in a way worth
+  recording precisely: a status the client does retry that never
+  recovers within `RetryMax` attempts now surfaces as a Go error (no
+  `Response` at all — `go-retryablehttp`'s own `Do()` drops the response
+  once retries are exhausted, verified directly), same as a transport
+  failure; a non-retried status (most 4xx) still returns a populated
+  `Response` with a nil error, unchanged. Separately,
+  `composition.go`'s `integration-http` node now rejects any response
+  with `StatusCode >= 400` as a node failure instead of silently
+  flowing an error body through as if it were successful workflow
+  output — matches n8n's own HTTP Request node default (checked
+  directly), and Mill's own fail-safe guardrail philosophy (§8). A real
+  regression test (`TestExecuteWorkflow_IntegrationHTTP_NonOKStatus_Rejected`,
+  a genuine `httptest.Server` returning 400) locks this in.
+  `Response` gained a `Headers` map (previously silently dropped) —
+  groundwork for the execution-visibility work named in §3.2/§7's
+  shadow-events bullets, not yet surfaced in any UI. Deliberately not
+  in this pass: OAuth2, a circuit breaker, and persisted per-run
+  response visibility — the latter is sequenced together with the DBOS
+  integration (§7) rather than bolted onto today's transient in-memory
+  `ExecContext`, since DBOS's own step-output persistence is the natural
+  home for it. `LOCKED` (this pass) — connector maturity as a whole
+  stays a living list, not closed by this one change.
 - Jira/Confluence as a first-class example: still `OPEN`, unbuilt — the
   generic connector is real, but no named-vendor preset exists yet.
 - Whether connectors are built-in or a plugin surface: still `OPEN`.

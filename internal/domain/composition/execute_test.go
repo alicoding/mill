@@ -221,6 +221,40 @@ func TestExecuteWorkflow_IntegrationHTTP_UnknownConnector_Rejected(t *testing.T)
 	}
 }
 
+// Real bug this covers: a 4xx/5xx response used to flow through as a
+// *successful* node execution (only a transport-level error was
+// treated as a failure) -- an error body silently became the workflow's
+// payload as if it were good data. Verified via a real httptest.Server
+// returning a real 4xx, not a hand-built Response{} fixture. Deliberately
+// 400, not 500: go-retryablehttp's DefaultRetryPolicy retries 5xx (with
+// backoff), which would make this test slow and conflate "does the
+// status check work" with "does the retry policy work" -- that
+// library's own retry behavior is already verified directly against its
+// source (httpconnector.go's own comment), not something to re-test
+// here.
+func TestExecuteWorkflow_IntegrationHTTP_NonOKStatus_Rejected(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusBadRequest)
+		_, _ = w.Write([]byte(`{"error":"boom"}`))
+	}))
+	defer srv.Close()
+
+	withConnectorLookup(t, func(string) (ResolvedConnector, error) {
+		return ResolvedConnector{BaseURL: srv.URL, AuthType: connector.AuthNone}, nil
+	})
+
+	nodes, err := ResolveNodeDefaults([]Node{{
+		NodeTypeID: "integration-http",
+		Config:     map[string]string{"connectorId": "conn-1", "path": "/x", "method": http.MethodGet},
+	}})
+	if err != nil {
+		t.Fatalf("ResolveNodeDefaults returned error: %v", err)
+	}
+	if _, err := ExecuteWorkflow(nodes, nil, nil); err == nil {
+		t.Fatal("ExecuteWorkflow with a 500 response returned nil error, want an error")
+	}
+}
+
 // --- list-lookup: nodeExec resolves a list via the injected
 // lookupListFn seam, looks up ctx.Attributes[inputKey], and writes the
 // matched entry into ctx.Attributes[outputKey]. ---
