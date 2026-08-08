@@ -124,6 +124,9 @@ func main() {
 	// without a cycle; same late-bound-setter shape as SetReservedCombo
 	// below.
 	triggerService.SetExecutionService(executionService)
+	// docs/adr/0010: a child-workflow node's real DBOS parent/child
+	// invocation, wired the same late-bound way for the same reason.
+	executionService.wireChildWorkflowRunner()
 
 	settingsService := NewSettingsService(settingsStore, triggerService)
 	// Bidirectional hotkey-conflict check (docs/SPEC.md §3.7): a
