@@ -2592,7 +2592,33 @@ this pass.
   against the real Go backend: creating a connector with a real spec
   and listing its operations, an invalid spec rejected with a visible
   error, and a spec-less connector correctly showing no "List
-  operations" action. `LOCKED` (Phase 1+2) — Phase 3 stays `OPEN`.
+  operations" action. `LOCKED` (Phase 1+2).
+- **Update — Phase 3 (Attribute-binding + secret guardrail) is built.**
+  `integration-http`'s `path`/`method` config, unchanged, now doubles as
+  the operation selector: once they match a real declared operation on
+  the connector's spec, the canvas Inspector renders
+  `IntegrationBindingsEditor.tsx` — one row per declared input field
+  (bind to a literal or to `attr:<name>`, stored as JSON in
+  `Node.Config["inputBindings"]`) and one per output field (write into a
+  named Attribute or discard, `Node.Config["outputBindings"]`) — a new
+  `ConfigureService.ConnectorOperationFields(id, path, method)` binding
+  supplies the field list. A connector with no spec, or a path/method
+  that doesn't match a declared operation, shows nothing extra — the
+  original literal `bodyTemplate` behavior is untouched, a strict
+  superset per the ADR's own framing. Execution
+  (`internal/domain/composition/attributebinding.go`) resolves each
+  input field per its declared `In` placement (path-template
+  substitution, query, header, or JSON body field) and writes each
+  output binding into `ctx.Attributes` after a successful call. The
+  secret guardrail lands in `ValidateGraph` exactly where the ADR named
+  it: a save is rejected if `outputBindings` maps a
+  `openapispec.Field.IsSecret` field into an Attribute — real tests
+  prove both the accept and reject paths, not just that the check
+  compiles. Verified end-to-end via Playwright
+  (`frontend/e2e/integration-bindings.spec.ts`): matching a real
+  operation surfaces the binding editor with the secret field visibly
+  guarded (labeled, no Select offered) rather than silently omitted.
+  `LOCKED` (Phase 3) — ADR-0007 as a whole is now fully built.
 - Jira/Confluence as a first-class example: still `OPEN`, unbuilt — the
   generic connector is real, but no named-vendor preset exists yet.
 - Whether connectors are built-in or a plugin surface: still `OPEN`.
@@ -3027,10 +3053,10 @@ mode from §0 repeating itself one level up.
   yet), the multi-tenant-seam question (researched, recorded as
   deliberately declined)
 - Connector input/output schema mechanism (§3.3/§3.5/§4/ADR-0007) —
-  `LOCKED` and built for Phase 1+2 (`internal/adapters/openapispec`,
-  `Connector.OpenAPISpec`, Configure UI + "List operations"); Phase 3
-  (the `integration-http` Attribute-binding UI + `ValidateGraph`'s
-  secret guardrail) still `OPEN`, deliberately deferred as a real UX
-  design surface
+  `LOCKED` and fully built (Phase 1+2+3): `internal/adapters/openapispec`,
+  `Connector.OpenAPISpec`, Configure UI + "List operations", the
+  `integration-http` Attribute-binding editor
+  (`IntegrationBindingsEditor.tsx`), and `ValidateGraph`'s secret
+  guardrail. ADR-0007 closed.
 - Bash-execution-through-our-process-but-nothing-is-ours reading (§1.1) —
   confirm with the user

@@ -21,6 +21,12 @@ type ResolvedConnector struct {
 	AuthType connector.AuthType
 	Headers  map[string]string
 	Secret   string
+	// OpenAPISpec is the connector's raw spec document, if any (ADR-0007
+	// Phase 1). Empty for a Connector with none -- integration-http falls
+	// back to its original literal path/method/bodyTemplate behavior in
+	// that case (ADR-0007 Phase 3's own "strict superset, not a breaking
+	// change" framing).
+	OpenAPISpec string
 }
 
 // lookupConnectorFn defaults to erroring so an integration-http node run
@@ -97,11 +103,32 @@ func init() {
 			headers[k] = v
 		}
 
+		// ADR-0007 Phase 3: a connector with a spec and a node with
+		// authored inputBindings uses the binding-resolution path
+		// (bindingsRequest, attributebinding.go); everything else keeps
+		// the original literal path/method/bodyTemplate behavior
+		// unchanged -- a strict superset, not a breaking change.
+		urlPath, body := node.Config["path"], node.Config["bodyTemplate"]
+		if rc.OpenAPISpec != "" && node.Config["inputBindings"] != "" {
+			resolvedPath, resolvedBody, resolvedHeaders, resolvedQuery, err := resolveInputBindings(rc.OpenAPISpec, node.Config, ctx.Attributes)
+			if err != nil {
+				return ctx, fmt.Errorf("integration-http: %w", err)
+			}
+			urlPath = resolvedPath
+			if len(resolvedQuery) > 0 {
+				urlPath += "?" + resolvedQuery.Encode()
+			}
+			body = resolvedBody
+			for k, v := range resolvedHeaders {
+				headers[k] = v
+			}
+		}
+
 		resp, err := httpconnector.Execute(httpconnector.Request{
 			Method:  node.Config["method"],
-			URL:     strings.TrimRight(rc.BaseURL, "/") + node.Config["path"],
+			URL:     strings.TrimRight(rc.BaseURL, "/") + urlPath,
 			Headers: headers,
-			Body:    node.Config["bodyTemplate"],
+			Body:    body,
 		})
 		if err != nil {
 			return ctx, fmt.Errorf("integration-http: %w", err)
@@ -123,6 +150,11 @@ func init() {
 			return ctx, fmt.Errorf("integration-http: request failed with status %d: %s", resp.StatusCode, resp.Body)
 		}
 		ctx.Payload = resp.Body
+		if rc.OpenAPISpec != "" && node.Config["outputBindings"] != "" {
+			if err := applyOutputBindings(node.Config["outputBindings"], resp.Body, &ctx); err != nil {
+				return ctx, fmt.Errorf("integration-http: %w", err)
+			}
+		}
 		return ctx, nil
 	})
 }

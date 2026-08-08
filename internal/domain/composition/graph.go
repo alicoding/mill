@@ -5,6 +5,7 @@ import (
 	"strconv"
 
 	"github.com/alicoding/mill/internal/adapters/expression"
+	"github.com/alicoding/mill/internal/adapters/openapispec"
 )
 
 // otherwiseHandle marks a Decision node's required fallback edge --
@@ -169,6 +170,57 @@ func ValidateGraph(nodes []Node, edges []Edge, attrs []AttributeDef) error {
 		}
 		if otherwiseCount != 1 {
 			return fmt.Errorf("decision node %s must have exactly one \"otherwise\" edge, has %d", n.ID, otherwiseCount)
+		}
+	}
+
+	if err := validateOutputBindingSecrets(nodes); err != nil {
+		return err
+	}
+	return nil
+}
+
+// validateOutputBindingSecrets is ADR-0007 Phase 3's secret guardrail:
+// an integration-http node may not write a secret-classified response
+// field (openapispec.Field.IsSecret -- format:"password", or a name
+// that looks secret-shaped) into a workflow Attribute, since Attributes
+// are plain, DBOS-checkpointed values (persisted to SQLite in plaintext,
+// §7) with no secret-handling of their own. Lenient about anything it
+// can't resolve (unknown connector, unparseable spec, no matching
+// operation) -- those are separate, pre-existing failure modes with
+// their own error paths; this check only ever adds a rejection on top
+// of a graph that would otherwise be accepted, never papers over an
+// unrelated problem.
+func validateOutputBindingSecrets(nodes []Node) error {
+	for _, n := range nodes {
+		if n.NodeTypeID != "integration-http" || n.Config["outputBindings"] == "" {
+			continue
+		}
+		rc, err := lookupConnectorFn(n.Config["connectorId"])
+		if err != nil || rc.OpenAPISpec == "" {
+			continue
+		}
+		doc, err := openapispec.Parse([]byte(rc.OpenAPISpec))
+		if err != nil {
+			continue
+		}
+		op, err := doc.Operation(n.Config["path"], n.Config["method"])
+		if err != nil {
+			continue
+		}
+		bindings, err := parseBindings(n.Config["outputBindings"])
+		if err != nil {
+			continue
+		}
+		secretFields := make(map[string]bool, len(op.OutputFields))
+		for _, f := range op.OutputFields {
+			if f.IsSecret {
+				secretFields[f.Name] = true
+			}
+		}
+		for fieldName, attrName := range bindings {
+			if secretFields[fieldName] {
+				return fmt.Errorf("node %s: field %q is a secret field and cannot be written to Attribute %q", n.ID, fieldName, attrName)
+			}
 		}
 	}
 	return nil

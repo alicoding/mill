@@ -1,7 +1,7 @@
 # ADR-0007: Connector input/output schema (OpenAPI) + secret guardrail
 
 ## Status
-accepted (design) — implementation phased, see Consequences
+accepted — all three phases built, see Consequences's Update
 
 ## Context
 
@@ -203,28 +203,42 @@ a speculative general "any field could be secret" classifier.
     MCP Server Configure entity's existing "List tools" button, §3.6 —
     the same discoverability answer, not a new pattern). No node-level
     binding UI yet — `integration-http` is unchanged in this phase.
-  - Phase 3 (future session): the `integration-http` Inspector's
-    field-binding UI (a real UX design surface on par with Decision's
-    rule builder — deliberately not rushed alongside Phase 1/2's
-    backend foundation) **and** `ValidateGraph`'s secret guardrail
-    together, since the guardrail needs Phase 3's binding config shape
-    to exist first.
-- **Not solved here, named explicitly**: editing a field's binding via
-  anything richer than raw Attribute-name text entry (no live
-  autocomplete/dropdown yet, same accepted gap `connectorId`/`listId`
-  already have per §3.5); a Postman-collection import path (real
-  library exists, `rbretecher/go-postman-collection`, but flagged stale
-  by the research — deferred, not adopted).
-- **Risk carried forward**: `kin-openapi`'s `openapi3filter` router fit
-  with Mill's own request-construction glue is unverified until Phase 1
-  actually builds it — the research flagged this as a spike-needed item,
-  not assumed safe.
+  - Phase 3 (done): the `integration-http` Inspector's field-binding UI
+    (`IntegrationBindingsEditor.tsx`) **and** `ValidateGraph`'s secret
+    guardrail (`validateOutputBindingSecrets`, graph.go), built
+    together as planned once the binding config shape existed.
+    `path`/`method` double as the operation selector (matching a
+    declared operation surfaces the editor; no new picker UI needed)
+    rather than a separate "pick an operation" control — a smaller
+    change than originally sketched, and consistent with `path`/
+    `method` already being the literal-mode config those two fields
+    have always been. Each input field offers a real Select of the
+    workflow's declared Attributes (not raw text entry as originally
+    scoped here) plus a literal-value fallback — the same live-picker
+    upgrade ADR-0009 gave `connectorId`/`listId`/`mcpServerId`, applied
+    to this binding editor too rather than left at the weaker gap this
+    section originally accepted. Real regression tests cover input
+    resolution (path/query/header/body placement), output-Attribute
+    writes proven via a downstream Decision routing on the bound value,
+    and both the accept and reject paths of the secret guardrail.
+    Verified end-to-end via Playwright
+    (`integration-bindings.spec.ts`): a secret output field renders
+    labeled and unbindable, not silently omitted.
+- **Not solved here, named explicitly**: a Postman-collection import
+  path (real library exists, `rbretecher/go-postman-collection`, but
+  flagged stale by the research — deferred, not adopted).
+- **Risk carried forward, resolved**: `kin-openapi`'s request-
+  construction fit was the named spike-needed risk — Phase 3's real
+  tests (a live `httptest.Server` receiving path/query/header/body
+  values resolved from bindings) confirm it holds.
 
 ## Lifecycle
-- Owner: Ali + whoever implements Phase 3
+- Owner: Ali
 - Maintains: the OpenAPI/kin-openapi pick, the secret-guardrail rule,
-  the phased-implementation boundary
-- Update triggers: Phase 3 UI work starting; a real workflow hitting the
-  Postman-import gap; kin-openapi going unmaintained
+  the input/output binding config shape (`inputBindings`/
+  `outputBindings` JSON in `Node.Config`)
+- Update triggers: a real workflow hitting the Postman-import gap;
+  kin-openapi going unmaintained; a second connector `Type` needing a
+  different binding-placement model than path/query/header/body
 - Last reviewed: 2026-08-08
 - Review interval: 90 days
