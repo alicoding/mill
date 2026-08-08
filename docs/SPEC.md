@@ -2785,6 +2785,79 @@ this pass.
   Playwright (`configure-integration.spec.ts`): a header round-trips
   through save and re-opening Edit; a spec's declared fields (including
   a secret-classified one, flagged) render on demand. `LOCKED`.
+- **Update — the Manual editor's Input fields table split into
+  Parameters (path/query/header) and Request body, prompted directly:
+  "the schema section still mixing concern of protocol vs payload."**
+  A single flat table with a per-row placement dropdown made a
+  protocol-level field (how this operation is *called* — a path
+  segment, a query key, a header) look like the same kind of thing as a
+  payload-level field (the JSON body's actual shape), forcing a user to
+  mentally sort the two apart themselves. `ManualSchemaEditor.tsx`'s
+  `OperationEditor` now renders two distinct sections — "Parameters
+  (path / query / header)" (an "Add parameter" row, `in` limited to
+  those three placements) and "Request body" (an "Add body field" row,
+  `in` fixed at `body`, no picker needed) — filtered from the same
+  underlying `inputFields` array, no schema/wire-shape change. Output
+  fields intentionally kept as one table, unsplit: `openapispec.
+  Operation()` only ever populates them from a JSON response body
+  (`bodyFields()`), so every output field is payload, never protocol —
+  there's no real distinction to surface there. The read-only schema
+  summary (`ConfigureIntegration.tsx`'s `SchemaFieldList`, shown via
+  "Show schema"/"List operations") got the identical split for
+  consistency between authoring and viewing. `LOCKED`.
+- **Connector draft testing, [ADR-0013](adr/0013-connector-draft-testing.md)
+  — test a connection and payload against a real API call before Save,
+  see each attempt's result, and duplicate an existing connector.**
+  Raised directly: "when you in the edit mode, we need to think about
+  how do we test a connection and the payload using example... you can
+  test the current draft [without saving]... and also clone what you
+  have already done." A new `ConnectorForm.tsx` "Test" tab
+  (`ConnectorTestPanel.tsx`) picks a declared operation, generates
+  example values for its input fields (`configure/testPayload.ts`, a
+  small `zod`+`zod-schema-faker` adapter over `ManualField` — the
+  client-side operation shape `ConnectorForm` already normalizes both
+  schema-authoring modes into, so an unsaved draft's operations need no
+  backend round-trip to list), and runs a real HTTP call via a new
+  `ConfigureService.TestConnectorOperation` RPC. Runs server-side (not
+  a browser `fetch`) specifically to avoid CORS against an arbitrary
+  third-party API and to resolve a keychain secret — reuses
+  `httpconnector.Execute`, the identical commodity client + retry
+  policy a real workflow's `integration-http` node already goes
+  through. A new `openapispec.BuildRequest(pathTemplate, op, values)`
+  assembles path/query/header/body from an Operation's declared fields
+  and a flat `map[string]string` of values — deliberately a new,
+  separate function from `attributebinding.go`'s `resolveInputBindings`
+  (that one resolves a *workflow node's* authored Attribute-bindings
+  config against a running `ExecContext`, a different input shape
+  entirely from a flat "here are some example values" test call).
+  Secret handling (ADR-0013 §4): a request carries `Secret` (used once,
+  for this call only) and falls back to the connector's real stored
+  keychain secret via `ConnectorID` only when `Secret` is blank and
+  editing an existing connector — **testing never calls
+  `credential.Set`**, so a tested-then-abandoned draft leaves no
+  keychain trace (a real Go test, `TestTestConnectorOperation_
+  NeverPersistsTheSecret`, locks this in). The request/response log is
+  session-local UI state (capped at 20 entries, same ring-buffer
+  reasoning as Activity's own session-only feed, §2.2) — deliberately
+  not persisted, since a test-call log has no value once the editing
+  session ends. **Duplicate** (`ConfigureIntegration.tsx`, a new
+  "Duplicate" row action) is frontend-only, no new backend method: opens
+  the *create* form pre-filled from an existing connector's Label
+  (suffixed " copy")/BaseURL/AuthType/Headers/OpenAPISpec — Secret is
+  never copied, since it was never readable back through Mill in the
+  first place (§3.5's write-only design). `composition.go`'s unexported
+  `authHeader` was exported to `AuthHeader` so the test RPC reuses the
+  identical AuthType→header-name mapping rather than a second,
+  driftable copy. Verified: real Go tests against an `httptest.Server`
+  (path/query/header placement, body-field type coercion, the keychain
+  fallback and its override, the never-persists guarantee, invalid-spec
+  and unknown-operation rejection) and end-to-end via Playwright
+  (`connector-test-panel.spec.ts`) against the real Go backend —
+  running a test against a reserved, essentially-never-bound local port
+  (`127.0.0.1:1`, chosen specifically to be a deterministic connection
+  failure rather than a flaky real-network dependency) correctly logs
+  an error, and duplicating a connector round-trips every field except
+  the secret. `LOCKED`.
 - See §3.2 for the node-type-vs-instance composition pattern and the
   incremental-extensibility principle for connector protocol/auth support.
 
@@ -3234,3 +3307,7 @@ mode from §0 repeating itself one level up.
   access, closer to this section's own still-open session-identity
   model than to connector schemas). Revisit once a real use names what
   should actually consume it, not speculatively.
+- Connector draft testing + duplicate (§4/ADR-0013) — `LOCKED` and
+  built: `ConnectorTestPanel.tsx`'s Test tab (real HTTP call via
+  `ConfigureService.TestConnectorOperation`, example-value generation,
+  a session-local request/response log) and Duplicate. ADR-0013 closed.

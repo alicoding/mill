@@ -5,6 +5,8 @@ import { Tabs } from '@primer/react/experimental'
 import { TabItem, TabList, TabPanel } from '../shared/Tabs'
 import { AuthType } from '../../bindings/github.com/alicoding/mill/internal/domain/connector/models'
 import { ManualSchemaEditor } from './ManualSchemaEditor'
+import { ConnectorTestPanel } from './ConnectorTestPanel'
+import { rowsToHeaders } from './connectorHeaders'
 import { parseOpenAPIToOperations, synthesizeOpenAPISpec, type ManualOperation } from './openapiSynth'
 import styles from '../shared/ListCard.module.css'
 
@@ -35,13 +37,17 @@ export interface ConnectorDraft {
 // that file too large for one component -- same "split along a real
 // seam" discipline as every other extraction in this codebase.
 export function ConnectorForm({
-  draft, onDraftChange, headerRows, onHeaderRowsChange, isEditing, onSave, onCancel, error,
+  draft, onDraftChange, headerRows, onHeaderRowsChange, isEditing, connectorID, onSave, onCancel, error,
 }: {
   draft: ConnectorDraft
   onDraftChange: (draft: ConnectorDraft) => void
   headerRows: HeaderRow[]
   onHeaderRowsChange: (rows: HeaderRow[]) => void
   isEditing: boolean
+  // Only meaningful when isEditing -- ConnectorTestPanel's secret
+  // fallback (docs/adr/0013 §4) needs the connector's real ID to read
+  // its stored keychain secret when the Secret field is left blank.
+  connectorID: string | null
   onSave: (draft: ConnectorDraft) => void
   onCancel: () => void
   error: string
@@ -91,6 +97,18 @@ export function ConnectorForm({
     onSave(finalDraft)
   }
 
+  // Same "manual mode is the source of truth if it has operations"
+  // resolution handleSave already uses -- ConnectorTestPanel must never
+  // test against a stale draft.openAPISpec while the user is actively
+  // editing in Manual mode (the exact bug handleSave's own comment
+  // documents, one level down).
+  const effectiveSpec = schemaMode === 'manual' && manualOperations.length > 0
+    ? synthesizeOpenAPISpec(manualOperations)
+    : draft.openAPISpec
+  const effectiveOperations = schemaMode === 'manual'
+    ? manualOperations
+    : parseOpenAPIToOperations(draft.openAPISpec).operations
+
   return (
     <div className={styles.card}>
       <Tabs defaultValue="general">
@@ -99,6 +117,7 @@ export function ConnectorForm({
           <TabItem value="auth">Auth</TabItem>
           <TabItem value="headers">Headers</TabItem>
           <TabItem value="schema">Schema</TabItem>
+          <TabItem value="test">Test</TabItem>
         </TabList>
 
         <TabPanel value="general">
@@ -180,6 +199,18 @@ export function ConnectorForm({
               <ManualSchemaEditor operations={manualOperations} onChange={setManualOperations} />
             )}
           </Stack>
+        </TabPanel>
+
+        <TabPanel value="test">
+          <ConnectorTestPanel
+            operations={effectiveOperations}
+            effectiveSpec={effectiveSpec}
+            baseURL={draft.baseURL}
+            authType={draft.authType}
+            headers={rowsToHeaders(headerRows)}
+            secret={draft.secret}
+            connectorID={isEditing ? connectorID : null}
+          />
         </TabPanel>
       </Tabs>
 

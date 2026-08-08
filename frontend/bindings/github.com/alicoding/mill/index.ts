@@ -27,5 +27,7 @@ export type {
     RunDetail,
     RunStep,
     RunSummary,
+    TestConnectorRequest,
+    TestConnectorResult,
     UpdateCheckResult
 } from "./models.js";

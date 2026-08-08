@@ -39,6 +39,10 @@ import * as list$0 from "./internal/domain/list/models.js";
 // @ts-ignore: Unused imports
 import * as mcpserver$0 from "./internal/domain/mcpserver/models.js";
 
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: Unused imports
+import * as $models from "./models.js";
+
 /**
  * ConnectorOperationFields resolves one connector operation's declared
  * input/output fields (ADR-0007 Phase 3) -- the data the canvas
@@ -136,6 +140,19 @@ export function MCPServers(): $CancellablePromise<mcpserver$0.MCPServer[] | null
  */
 export function SetConnectorSecret(id: string, secret: string): $CancellablePromise<void> {
     return $Call.ByID(936216382, id, secret);
+}
+
+/**
+ * TestConnectorOperation executes one real HTTP call against a
+ * connector draft's current configuration -- docs/adr/0013's
+ * test-before-save flow. Runs server-side (not a browser fetch) so it
+ * can resolve a keychain secret and reuses httpconnector.Execute, the
+ * same commodity HTTP client + retry policy a real workflow's
+ * integration-http node already goes through, deliberately not
+ * special-cased faster/slower.
+ */
+export function TestConnectorOperation(req: $models.TestConnectorRequest): $CancellablePromise<$models.TestConnectorResult> {
+    return $Call.ByID(247805665, req);
 }
 
 export function UpdateConnector(id: string, label: string, connType: string, baseURL: string, authType: connector$0.AuthType, headers: { [_ in string]?: string } | null, openAPISpec: string): $CancellablePromise<connector$0.Connector> {
