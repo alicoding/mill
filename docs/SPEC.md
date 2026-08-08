@@ -2109,8 +2109,31 @@ and a 6-step migration sequence ending in full verification (`go
 test`, `golangci-lint`, the complete Playwright suite, plus a manual
 desktop-mode smoke pass for `TriggerService` specifically, since its
 live listener paths were never headless-CI-testable regardless of this
-refactor). Still `OPEN` — this is the fully-specified plan, not the
-implementation; ADR-0006 stays `proposed` until it actually lands.
+refactor).
+
+**Update — implemented, `LOCKED`.** Landed as two commits. Composition
+NodeTypes (all of them, including the three already-isolated
+Process-family types) self-register cleanly, as planned. Triggers
+needed a real correction the plan didn't anticipate — found by actually
+running `internal/domain/composition`'s own tests in isolation, not by
+reasoning alone: `BuiltInWorkflows()` (in that package) references
+`"trigger-manual"`, which requires the registry to already have it, but
+the plan's original design registered trigger schemas from `package
+main`, which never runs when `composition` is tested standalone —
+domain package's own fixtures can't depend on the application layer
+registering something first. Fixed by keeping trigger *schemas* in
+`internal/domain/composition/triggers.go` (one file, all five) while
+trigger *dispatch* stays in `package main`'s five per-type files — two
+files per trigger type, not one, less cohesive than hoped but the
+correct dependency direction. Full detail in ADR-0006's own "Update —
+implemented" section, including why the original one-file design was
+wrong, not just what replaced it. Verified: full Go suite including
+`composition` in isolation (the actual case that caught the bug), both
+build targets, the complete 23-test Playwright suite, and a real
+desktop-mode launch confirming clean startup with no panic — actually
+firing a hotkey still needs a live Cocoa run loop and a real keypress,
+same limitation `run-mill` already documents, left to the user.
+ADR-0006's `Status` is now `accepted`.
 
 ## 4. Connectors
 
@@ -2420,9 +2443,6 @@ mode from §0 repeating itself one level up.
 - Node/canvas composition model (§3) — Decision/Integration/List
   execution + authoring now built (§3.3/§3.5); Parallel Steps, Child
   Workflow, and draft/live versioning remain the open parts
-- Extension points: self-registration for NodeType + Trigger type
-  (ADR-0006, `proposed`) planned but not yet implemented (§3.6) --
-  MCP-client-backed dynamic tool nodes (the other half) are now built
 - Browser extension ↔ native app protocol details (§5)
 - Env/shell determinism rules (§6)
 - Session identity model spanning tab + agent run + process (§7)

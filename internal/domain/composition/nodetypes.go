@@ -43,67 +43,6 @@ func nodeType(id string) (NodeType, bool) {
 	return entry.nodeType, ok
 }
 
-// Trigger node types register here, temporarily -- SPEC.md §3.4: each
-// concrete event source is its own NodeType under KindTrigger, matching
-// how n8n/Zapier actually structure this (separate, distinctly-named
-// node types, not one generic node with a Source dropdown). A
-// workflow's root is expected to be one of these; linearOrder's
-// existing "exactly one starting node" check already enforces that
-// without needing Trigger-specific logic. ExecuteWorkflow skips Trigger
-// nodes at run time -- they mark the entry point, they don't transform
-// the payload, so exec is nil for all five, same as decision-route.
-//
-// This init() is a deliberate half-step, not the final home: a
-// Trigger's *dispatch* behavior (TriggerService.start(), package main)
-// can't live in this package (domain-purity rule -- composition doesn't
-// know about Wails-binding state), so each trigger type's *full*
-// definition ultimately belongs in package main, registering both
-// halves (composition.RegisterNodeType + main's own RegisterTrigger)
-// from one file. Moving there is ADR-0006's next step; until then, the
-// schema half is registered from here so NodeTypes() has a single, real
-// source of truth throughout the migration, not two.
-func init() {
-	RegisterNodeType(NodeType{
-		ID: "trigger-manual", Kind: KindTrigger,
-		Label:       "Trigger: manual",
-		Description: "Fires on-demand when a user clicks Run/Test. No listener process.",
-	}, nil)
-	RegisterNodeType(NodeType{
-		ID: "trigger-hotkey", Kind: KindTrigger,
-		Label:       "Trigger: hotkey",
-		Description: "Fires on a global keyboard shortcut, even when Mill isn't focused. Bound via TriggerService, not a config field here -- pressing the combo is better UX than typing it.",
-	}, nil)
-	RegisterNodeType(NodeType{
-		ID: "trigger-schedule", Kind: KindTrigger,
-		Label:       "Trigger: schedule",
-		Description: "Fires on a cron schedule.",
-		ConfigFields: []ConfigField{
-			{
-				Key: "cron", Label: "Cron expression",
-				Description: "Standard 5-field cron expression (minute hour day month weekday).",
-				Default:     "", Type: FieldText,
-			},
-		},
-	}, nil)
-	RegisterNodeType(NodeType{
-		ID: "trigger-clipboard-watch", Kind: KindTrigger,
-		Label:       "Trigger: clipboard change",
-		Description: "Fires whenever the clipboard's content changes.",
-	}, nil)
-	RegisterNodeType(NodeType{
-		ID: "trigger-filesystem-watch", Kind: KindTrigger,
-		Label:       "Trigger: filesystem change",
-		Description: "Fires when a file or folder under the configured path is added, changed, or deleted.",
-		ConfigFields: []ConfigField{
-			{
-				Key: "path", Label: "Path to watch",
-				Description: "Absolute path to a file or directory.",
-				Default:     "", Type: FieldText,
-			},
-		},
-	}, nil)
-}
-
 // newNodeID derives a collision-resistant node ID when the caller (the
 // canvas, composing a brand-new node) doesn't supply one -- same random-
 // suffix shape as compositionservice.go's newWorkflowID, scoped to this
