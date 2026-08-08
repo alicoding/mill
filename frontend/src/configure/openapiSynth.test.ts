@@ -44,6 +44,48 @@ describe('synthesizeOpenAPISpec', () => {
     const spec = JSON.parse(synthesizeOpenAPISpec(ops))
     expect(Object.keys(spec.paths)).toHaveLength(0)
   })
+
+  it('translates map/date/datetime into their real OpenAPI shape (no such type keyword exists)', () => {
+    const ops: ManualOperation[] = [{
+      path: '/widgets', method: 'POST', summary: '',
+      inputFields: [
+        { name: 'meta', in: 'body', type: 'map', required: false, secret: false },
+        { name: 'createdOn', in: 'body', type: 'date', required: false, secret: false },
+        { name: 'updatedAt', in: 'body', type: 'datetime', required: false, secret: false },
+      ],
+      outputFields: [],
+    }]
+    const spec = JSON.parse(synthesizeOpenAPISpec(ops))
+    const props = spec.paths['/widgets'].post.requestBody.content['application/json'].schema.properties
+    expect(props.meta).toMatchObject({ type: 'object', additionalProperties: true })
+    expect(props.createdOn).toMatchObject({ type: 'string', format: 'date' })
+    expect(props.updatedAt).toMatchObject({ type: 'string', format: 'date-time' })
+  })
+
+  it('writes default/description/enum as OpenAPI\'s own standard keywords', () => {
+    const ops: ManualOperation[] = [{
+      path: '/widgets', method: 'POST', summary: '',
+      inputFields: [{
+        name: 'status', in: 'body', type: 'string', required: false, secret: false,
+        default: 'pending', description: 'current status', enumValues: ['pending', 'active'],
+      }],
+      outputFields: [],
+    }]
+    const spec = JSON.parse(synthesizeOpenAPISpec(ops))
+    const prop = spec.paths['/widgets'].post.requestBody.content['application/json'].schema.properties.status
+    expect(prop.default).toBe('pending')
+    expect(prop.description).toBe('current status')
+    expect(prop.enum).toEqual(['pending', 'active'])
+  })
+
+  it('writes responseExtractPath as an x-mill-response-extract-path extension on the operation', () => {
+    const ops: ManualOperation[] = [{
+      path: '/widgets', method: 'GET', summary: '', inputFields: [], outputFields: [],
+      responseExtractPath: 'envelope.payload',
+    }]
+    const spec = JSON.parse(synthesizeOpenAPISpec(ops))
+    expect(spec.paths['/widgets'].get['x-mill-response-extract-path']).toBe('envelope.payload')
+  })
 })
 
 describe('parseCSVToOperations', () => {
@@ -101,5 +143,35 @@ describe('parseOpenAPIToOperations (reverse of synthesizeOpenAPISpec)', () => {
     const { operations, errors } = parseOpenAPIToOperations('not json')
     expect(operations).toEqual([])
     expect(errors.length).toBeGreaterThan(0)
+  })
+
+  it('round-trips map/date/datetime types, default/description/enum, and responseExtractPath', () => {
+    const original: ManualOperation[] = [{
+      path: '/widgets', method: 'POST', summary: '',
+      inputFields: [
+        { name: 'meta', in: 'body', type: 'map', required: false, secret: false },
+        { name: 'createdOn', in: 'body', type: 'date', required: false, secret: false },
+        { name: 'updatedAt', in: 'body', type: 'datetime', required: false, secret: false },
+        {
+          name: 'status', in: 'body', type: 'string', required: false, secret: false,
+          default: 'pending', description: 'current status', enumValues: ['pending', 'active'],
+        },
+      ],
+      outputFields: [],
+      responseExtractPath: 'envelope.payload',
+    }]
+    const spec = synthesizeOpenAPISpec(original)
+    const { operations, errors } = parseOpenAPIToOperations(spec)
+
+    expect(errors).toEqual([])
+    expect(operations).toHaveLength(1)
+    const op = operations[0]
+    expect(op.responseExtractPath).toBe('envelope.payload')
+    expect(op.inputFields.find((f) => f.name === 'meta')).toMatchObject({ type: 'map' })
+    expect(op.inputFields.find((f) => f.name === 'createdOn')).toMatchObject({ type: 'date' })
+    expect(op.inputFields.find((f) => f.name === 'updatedAt')).toMatchObject({ type: 'datetime' })
+    expect(op.inputFields.find((f) => f.name === 'status')).toMatchObject({
+      default: 'pending', description: 'current status', enumValues: ['pending', 'active'],
+    })
   })
 })

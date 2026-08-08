@@ -88,7 +88,7 @@ func (d *Document) Operations() []OperationRef {
 type Field struct {
 	Name     string
 	In       string // "path" | "query" | "header" | "cookie" | "body"
-	Type     string // "string" | "number" | "integer" | "boolean" | "object" | "array"
+	Type     string // "string" | "number" | "integer" | "boolean" | "object" | "array" | "map" | "date" | "datetime"
 	Required bool
 	// IsSecret flags a field composition.ValidateGraph's save-time
 	// guardrail (ADR-0007) refuses to let a workflow bind into an
@@ -112,6 +112,22 @@ type Field struct {
 	// top-level key," the behavior every field had before this existed.
 	// Only meaningful for output fields.
 	Path string
+	// Default is the field's declared OpenAPI `default` value,
+	// stringified (Default is `any` in the underlying schema -- Mill's
+	// own config/binding values are uniformly strings on the wire, same
+	// convention Node.Config/runInput.Values already use). Empty when
+	// unset -- OpenAPI's own `default` keyword, no vendor extension
+	// needed (unlike Alias/Path, which have no OpenAPI-standard
+	// equivalent).
+	Default string
+	// Description is the field's declared OpenAPI `description`.
+	Description string
+	// EnumValues is the field's declared OpenAPI `enum` list,
+	// stringified -- empty when unset. Same idea as ConfigField's
+	// FieldOptions (docs/SPEC.md §3.4), one level down: a connector
+	// schema field's own allowed-value constraint, not a NodeType
+	// config field's.
+	EnumValues []string
 }
 
 // fieldExtensions reads the x-mill-alias/x-mill-path vendor extensions
@@ -139,6 +155,22 @@ func fieldExtensions(ref *openapi3.SchemaRef) (alias, path string) {
 type Operation struct {
 	InputFields  []Field
 	OutputFields []Field
+	// ResponseExtractPath is a document-level root extraction applied
+	// to the whole response *before* any per-field Path extraction
+	// (docs/SPEC.md §4.1) -- e.g. an envelope like {"data":{...}} where
+	// every declared field actually lives under "data". Read from the
+	// x-mill-response-extract-path vendor extension on the operation
+	// itself (OpenAPI's own x-* mechanism, same as Field's Alias/Path).
+	// Deliberately narrower than the reference platform's own syntax
+	// (no bracket-array-index or "$."-JSONPath-prefix support) --
+	// reuses the exact same dot-path + numeric-segment grammar
+	// extractPath (attributebinding.go) already has, rather than a
+	// second parser for a grammar that was never fully specified
+	// (docs/SPEC.md §10). Empty or "*" means no extraction (the
+	// original, unwrapped response) -- "*" is the one reference-platform
+	// example this can represent exactly, since "identity" needs no
+	// real path grammar at all.
+	ResponseExtractPath string
 }
 
 // Operation resolves one path+method into its declared fields. Input
@@ -166,14 +198,18 @@ func (d *Document) Operation(path, method string) (*Operation, error) {
 		}
 		p := pref.Value
 		alias, path := fieldExtensions(p.Schema)
+		def, desc, enumValues := fieldSchemaExtras(p.Schema)
 		input = append(input, Field{
-			Name:     p.Name,
-			In:       p.In,
-			Type:     schemaType(p.Schema),
-			Required: p.Required,
-			IsSecret: isSecretField(p.Name, p.Schema),
-			Alias:    alias,
-			Path:     path,
+			Name:        p.Name,
+			In:          p.In,
+			Type:        schemaType(p.Schema),
+			Required:    p.Required,
+			IsSecret:    isSecretField(p.Name, p.Schema),
+			Alias:       alias,
+			Path:        path,
+			Default:     def,
+			Description: desc,
+			EnumValues:  enumValues,
 		})
 	}
 	if op.RequestBody != nil && op.RequestBody.Value != nil {
@@ -194,7 +230,12 @@ func (d *Document) Operation(path, method string) (*Operation, error) {
 	}
 	sortFields(output)
 
-	return &Operation{InputFields: input, OutputFields: output}, nil
+	responseExtractPath := ""
+	if v, ok := op.Extensions["x-mill-response-extract-path"].(string); ok {
+		responseExtractPath = v
+	}
+
+	return &Operation{InputFields: input, OutputFields: output, ResponseExtractPath: responseExtractPath}, nil
 }
 
 // bodyFields extracts top-level property fields from a Content map's
@@ -214,27 +255,80 @@ func bodyFields(content openapi3.Content) []Field {
 	var out []Field
 	for name, propRef := range schema.Properties {
 		alias, path := fieldExtensions(propRef)
+		def, desc, enumValues := fieldSchemaExtras(propRef)
 		out = append(out, Field{
-			Name:     name,
-			In:       "body",
-			Type:     schemaType(propRef),
-			Required: required[name],
-			IsSecret: isSecretField(name, propRef),
-			Alias:    alias,
-			Path:     path,
+			Name:        name,
+			In:          "body",
+			Type:        schemaType(propRef),
+			Required:    required[name],
+			IsSecret:    isSecretField(name, propRef),
+			Alias:       alias,
+			Path:        path,
+			Default:     def,
+			Description: desc,
+			EnumValues:  enumValues,
 		})
 	}
 	return out
 }
 
+// schemaType maps a schema's declared OpenAPI type/format into Mill's
+// own 9-value type vocabulary. "map" and "date"/"datetime" are the
+// three additions beyond the original 6 (string/number/integer/
+// boolean/object/array), per docs/SPEC.md §4.1's capability map:
+// OpenAPI has no dedicated "map" keyword -- the real, standard idiom
+// (confirmed directly against the spec, not assumed) is `type: object`
+// with `additionalProperties` set and no fixed `properties` -- and
+// date/date-time are the two standard `format` values on a `type:
+// string` schema (RFC 3339), not a new `type` of their own.
 func schemaType(ref *openapi3.SchemaRef) string {
 	if ref == nil || ref.Value == nil || ref.Value.Type == nil {
 		return "string"
 	}
-	if s := ref.Value.Type.Slice(); len(s) > 0 {
+	s := ref.Value.Type.Slice()
+	if len(s) == 0 {
+		return "string"
+	}
+	switch s[0] {
+	case "string":
+		switch ref.Value.Format {
+		case "date":
+			return "date"
+		case "date-time":
+			return "datetime"
+		default:
+			return "string"
+		}
+	case "object":
+		ap := ref.Value.AdditionalProperties
+		if len(ref.Value.Properties) == 0 && (ap.Schema != nil || (ap.Has != nil && *ap.Has)) {
+			return "map"
+		}
+		return "object"
+	default:
 		return s[0]
 	}
-	return "string"
+}
+
+// fieldSchemaExtras reads default/description/enum straight off the
+// schema -- unlike Alias/Path (docs/adr/0011), these are OpenAPI's own
+// standard keywords, no x-mill-* vendor extension needed. Default is
+// stringified (Default is `any` on the underlying schema; Mill's own
+// config/binding values are uniformly strings on the wire) -- nil-safe,
+// same "a schema with none of these just gets zero values" shape
+// fieldExtensions already established.
+func fieldSchemaExtras(ref *openapi3.SchemaRef) (defaultVal, description string, enumValues []string) {
+	if ref == nil || ref.Value == nil {
+		return "", "", nil
+	}
+	if ref.Value.Default != nil {
+		defaultVal = fmt.Sprintf("%v", ref.Value.Default)
+	}
+	description = ref.Value.Description
+	for _, v := range ref.Value.Enum {
+		enumValues = append(enumValues, fmt.Sprintf("%v", v))
+	}
+	return defaultVal, description, enumValues
 }
 
 func isSecretField(name string, ref *openapi3.SchemaRef) bool {

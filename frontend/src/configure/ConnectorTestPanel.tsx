@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
-import { Button, FormControl, Label, Select, Stack, Text, TextInput } from '@primer/react'
-import { PlayIcon, SyncIcon } from '@primer/octicons-react'
+import { Button, FormControl, IconButton, Label, Select, SegmentedControl, Stack, Text, TextInput, Textarea } from '@primer/react'
+import { CopyIcon, PlayIcon, SyncIcon } from '@primer/octicons-react'
 import { ConfigureService } from '../../bindings/github.com/alicoding/mill'
 import type { AuthType } from '../../bindings/github.com/alicoding/mill/internal/domain/connector/models'
 import type { TestConnectorResult } from '../../bindings/github.com/alicoding/mill/models'
@@ -45,17 +45,56 @@ export function ConnectorTestPanel({
   const [log, setLog] = useState<LogEntry[]>([])
   const [running, setRunning] = useState(false)
   const nextID = useRef(0)
+  // docs/SPEC.md §4.1: a raw-JSON payload input mode, additive
+  // alongside the existing per-field table -- `values` (a flat
+  // map[string]string) stays the single source of truth either way;
+  // `jsonText`/`jsonError` are this mode's own local editing state,
+  // only ever written back into `values` on a successful parse, so an
+  // in-progress invalid edit never corrupts what Run test would send.
+  const [payloadMode, setPayloadMode] = useState<'fields' | 'json'>('fields')
+  const [jsonText, setJsonText] = useState('')
+  const [jsonError, setJsonError] = useState('')
 
   const selected = operations.find((op) => `${op.method} ${op.path}` === selectedKey) ?? null
 
   const selectOperation = (key: string) => {
     setSelectedKey(key)
     setValues({})
+    setJsonText('')
+    setJsonError('')
+  }
+
+  const applyValues = (next: Record<string, string>) => {
+    setValues(next)
+    setJsonText(JSON.stringify(next, null, 2))
+    setJsonError('')
   }
 
   const generateSample = () => {
     if (!selected) return
-    setValues(generateOperationSample(selected.inputFields))
+    applyValues(generateOperationSample(selected.inputFields))
+  }
+
+  const switchPayloadMode = (mode: 'fields' | 'json') => {
+    if (mode === 'json') setJsonText(JSON.stringify(values, null, 2))
+    setPayloadMode(mode)
+  }
+
+  const editJsonText = (text: string) => {
+    setJsonText(text)
+    try {
+      const parsed: unknown = JSON.parse(text || '{}')
+      if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+        setJsonError('Must be a JSON object, e.g. {"id": "123"}.')
+        return
+      }
+      const next: Record<string, string> = {}
+      for (const [k, v] of Object.entries(parsed)) next[k] = String(v)
+      setValues(next)
+      setJsonError('')
+    } catch {
+      setJsonError('Not valid JSON.')
+    }
   }
 
   const runTest = async () => {
@@ -115,22 +154,42 @@ export function ConnectorTestPanel({
             <Stack direction="vertical" gap="condensed">
               <Stack direction="horizontal" justify="space-between" align="center">
                 <Text size="small" weight="semibold">Example values</Text>
-                <Button size="small" variant="invisible" leadingVisual={SyncIcon} onClick={generateSample} data-testid="generate-sample-payload">
-                  Generate example values
-                </Button>
-              </Stack>
-              {selected.inputFields.map((f) => (
-                <Stack key={f.name} direction="horizontal" gap="condensed" align="center">
-                  <Label variant="secondary" size="small">{f.in}</Label>
-                  <TextInput
-                    aria-label={f.name}
-                    placeholder={f.name}
-                    value={values[f.name] ?? ''}
-                    onChange={(e) => setValues((v) => ({ ...v, [f.name]: e.target.value }))}
-                    data-testid="test-field-value"
-                  />
+                <Stack direction="horizontal" gap="condensed" align="center">
+                  <SegmentedControl aria-label="Payload input mode" size="small" onChange={(i) => switchPayloadMode(i === 0 ? 'fields' : 'json')}>
+                    <SegmentedControl.Button selected={payloadMode === 'fields'}>Per-field</SegmentedControl.Button>
+                    <SegmentedControl.Button selected={payloadMode === 'json'}>Raw JSON</SegmentedControl.Button>
+                  </SegmentedControl>
+                  <Button size="small" variant="invisible" leadingVisual={SyncIcon} onClick={generateSample} data-testid="generate-sample-payload">
+                    Generate example values
+                  </Button>
                 </Stack>
-              ))}
+              </Stack>
+              {payloadMode === 'fields' ? (
+                selected.inputFields.map((f) => (
+                  <Stack key={f.name} direction="horizontal" gap="condensed" align="center">
+                    <Label variant="secondary" size="small">{f.in}</Label>
+                    <TextInput
+                      aria-label={f.name}
+                      placeholder={f.name}
+                      value={values[f.name] ?? ''}
+                      onChange={(e) => setValues((v) => ({ ...v, [f.name]: e.target.value }))}
+                      data-testid="test-field-value"
+                    />
+                  </Stack>
+                ))
+              ) : (
+                <>
+                  <Textarea
+                    aria-label="Payload JSON"
+                    value={jsonText}
+                    onChange={(e) => editJsonText(e.target.value)}
+                    rows={6}
+                    block
+                    data-testid="test-payload-json"
+                  />
+                  {jsonError && <Text as="p" size="small" className={styles.error}>{jsonError}</Text>}
+                </>
+              )}
             </Stack>
           )}
 
@@ -154,6 +213,14 @@ export function ConnectorTestPanel({
                   <Label variant={entry.StatusCode >= 400 ? 'danger' : 'success'} size="small">{entry.StatusCode}</Label>
                 )}
                 <Text size="small" className={styles.muted}>{entry.DurationMs}ms</Text>
+                <IconButton
+                  icon={CopyIcon}
+                  aria-label="Copy"
+                  size="small"
+                  variant="invisible"
+                  onClick={() => { void navigator.clipboard.writeText(entry.Error || entry.Body) }}
+                  data-testid="copy-log-entry"
+                />
               </Stack>
               {entry.Error ? (
                 <Text as="p" size="small" className={styles.error}>{entry.Error}</Text>
