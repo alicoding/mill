@@ -13,7 +13,14 @@ import Papa from 'papaparse'
 export interface ManualField {
   name: string
   in: 'path' | 'query' | 'header' | 'body'
-  type: 'string' | 'number' | 'integer' | 'boolean' | 'object' | 'array'
+  // "map"/"date"/"datetime" (docs/SPEC.md §4.1) aren't real OpenAPI
+  // `type` values -- OpenAPI has no dedicated map type (the standard
+  // idiom is `type: object` + `additionalProperties`, no fixed
+  // `properties`) and date/datetime are `type: string` + a `format`,
+  // not a type of their own. fieldSchema() below translates these three
+  // into their real OpenAPI shape at synthesis time; ManualField keeps
+  // the friendlier flat vocabulary Mill's own Field.Type already uses.
+  type: 'string' | 'number' | 'integer' | 'boolean' | 'object' | 'array' | 'map' | 'date' | 'datetime'
   required: boolean
   secret: boolean
   // alias: a friendlier reference name shown instead of `name` in the
@@ -23,6 +30,17 @@ export interface ManualField {
   // top-level read at `name` (today's exact existing behavior).
   alias?: string
   extractPath?: string
+  // default/description/enumValues (docs/SPEC.md §4.1): OpenAPI's own
+  // standard `default`/`description`/`enum` keywords, no x-mill-*
+  // vendor extension needed (unlike alias/extractPath, which have no
+  // OpenAPI-standard equivalent). default is always synthesized as a
+  // JSON string -- Mill's own config/binding values are uniformly
+  // strings on the wire regardless of declared Type (the same
+  // convention Node.Config/runInput.Values already use), not
+  // type-coerced into a JSON number/boolean.
+  default?: string
+  description?: string
+  enumValues?: string[]
 }
 
 export interface ManualOperation {
@@ -31,16 +49,34 @@ export interface ManualOperation {
   summary: string
   inputFields: ManualField[]
   outputFields: ManualField[]
+  // responseExtractPath (docs/SPEC.md §4.1): a document-level root
+  // extraction applied to the whole response before any field's own
+  // extractPath -- operation-scoped, not per-field, hence living here
+  // rather than on ManualField. Synthesized as the
+  // x-mill-response-extract-path vendor extension on the operation
+  // object itself.
+  responseExtractPath?: string
 }
 
-// x-mill-alias/x-mill-path are OpenAPI's own standard vendor-extension
-// mechanism (the x-* prefix, confirmed real and supported directly
-// against kin-openapi's Schema/Parameter types, both of which expose a
-// real Extensions map populated from exactly this) -- not a hack.
+// x-mill-alias/x-mill-path/x-mill-response-extract-path are OpenAPI's
+// own standard vendor-extension mechanism (the x-* prefix, confirmed
+// real and supported directly against kin-openapi's Schema/Parameter/
+// Operation types, all of which expose a real Extensions map populated
+// from exactly this) -- not a hack.
 function fieldSchema(f: ManualField) {
+  const typeShape: Record<string, unknown> = f.type === 'map'
+    ? { type: 'object', additionalProperties: true }
+    : f.type === 'date'
+      ? { type: 'string', format: 'date' }
+      : f.type === 'datetime'
+        ? { type: 'string', format: 'date-time' }
+        : { type: f.type }
   return {
-    type: f.type,
+    ...typeShape,
     ...(f.secret ? { format: 'password' } : {}),
+    ...(f.default !== undefined && f.default !== '' ? { default: f.default } : {}),
+    ...(f.description ? { description: f.description } : {}),
+    ...(f.enumValues && f.enumValues.length > 0 ? { enum: f.enumValues } : {}),
     ...(f.alias ? { 'x-mill-alias': f.alias } : {}),
     ...(f.extractPath ? { 'x-mill-path': f.extractPath } : {}),
   }
@@ -82,6 +118,7 @@ export function synthesizeOpenAPISpec(operations: ManualOperation[]): string {
 
     pathItem[op.method.toLowerCase()] = {
       ...(op.summary ? { summary: op.summary } : {}),
+      ...(op.responseExtractPath ? { 'x-mill-response-extract-path': op.responseExtractPath } : {}),
       ...(parameters.length > 0 ? { parameters } : {}),
       ...(requestBody ? { requestBody } : {}),
       responses: {
@@ -98,14 +135,20 @@ export function synthesizeOpenAPISpec(operations: ManualOperation[]): string {
 }
 
 // CSV columns: path,method,direction,name,in,type,required,secret,
-// alias,extractPath -- one row per field (the "table and row" shape),
-// direction is "input"|"output" so one CSV can bulk-define fields
-// across multiple operations and both directions at once, not one CSV
-// per operation. extractPath is named distinctly from the operation's
-// own `path` column to avoid a header collision. PapaParse handles RFC
-// 4180 quoting/escaping correctly (verified pick, not a hand-rolled
-// split(',') -- real edge cases like a comma inside a quoted field
-// would silently corrupt that).
+// alias,extractPath,default,description -- one row per field (the
+// "table and row" shape), direction is "input"|"output" so one CSV can
+// bulk-define fields across multiple operations and both directions at
+// once, not one CSV per operation. extractPath is named distinctly
+// from the operation's own `path` column to avoid a header collision.
+// PapaParse handles RFC 4180 quoting/escaping correctly (verified pick,
+// not a hand-rolled split(',') -- real edge cases like a comma inside a
+// quoted field would silently corrupt that). enumValues and the
+// operation-level responseExtractPath are deliberately NOT CSV columns
+// -- an enum list has no natural single-cell representation without
+// inventing a delimiter convention, and responseExtractPath is
+// operation-scoped, not a per-field-row concept CSV's shape fits;
+// both stay Manual-editor-only, not silently dropped, just out of
+// this accelerator's stated scope.
 export function parseCSVToOperations(csvText: string): { operations: ManualOperation[]; errors: string[] } {
   const result = Papa.parse<Record<string, string>>(csvText, { header: true, skipEmptyLines: true })
   const errors = result.errors.map((e) => `Row ${e.row ?? '?'}: ${e.message}`)
@@ -131,6 +174,8 @@ export function parseCSVToOperations(csvText: string): { operations: ManualOpera
       secret: row.secret?.trim().toLowerCase() === 'true',
       alias: row.alias?.trim() || undefined,
       extractPath: row.extractPath?.trim() || undefined,
+      default: row.default?.trim() || undefined,
+      description: row.description?.trim() || undefined,
     }
     if (row.direction?.trim().toLowerCase() === 'output') op.outputFields.push(field)
     else op.inputFields.push(field)
@@ -145,19 +190,42 @@ interface JSONSchemaLike {
   format?: string
   properties?: Record<string, JSONSchemaLike>
   required?: string[]
+  default?: unknown
+  description?: string
+  enum?: unknown[]
+  additionalProperties?: boolean | JSONSchemaLike
   'x-mill-alias'?: string
   'x-mill-path'?: string
+}
+
+// Reverse of fieldSchema()'s type translation: "object with
+// additionalProperties and no fixed properties" -> "map",
+// "string + format:date/date-time" -> "date"/"datetime", everything
+// else passes through as-is.
+function manualFieldType(schema: JSONSchemaLike): ManualField['type'] {
+  if (schema.type === 'string') {
+    if (schema.format === 'date') return 'date'
+    if (schema.format === 'date-time') return 'datetime'
+    return 'string'
+  }
+  if (schema.type === 'object' && !schema.properties && schema.additionalProperties) {
+    return 'map'
+  }
+  return (schema.type as ManualField['type']) ?? 'string'
 }
 
 function fieldFromSchema(name: string, schema: JSONSchemaLike, placement: ManualField['in'], required: boolean): ManualField {
   return {
     name,
     in: placement,
-    type: (schema.type as ManualField['type']) ?? 'string',
+    type: manualFieldType(schema),
     required,
     secret: schema.format === 'password',
     alias: schema['x-mill-alias'],
     extractPath: schema['x-mill-path'],
+    default: schema.default !== undefined ? String(schema.default) : undefined,
+    description: schema.description || undefined,
+    enumValues: schema.enum && schema.enum.length > 0 ? schema.enum.map(String) : undefined,
   }
 }
 
@@ -183,6 +251,7 @@ export function parseOpenAPIToOperations(specText: string): { operations: Manual
     for (const method of HTTP_METHOD_KEYS) {
       const op = pathItem[method] as {
         summary?: string
+        'x-mill-response-extract-path'?: string
         parameters?: { name: string; in: string; required?: boolean; schema?: JSONSchemaLike }[]
         requestBody?: { content?: { 'application/json'?: { schema?: JSONSchemaLike } } }
         responses?: Record<string, { content?: { 'application/json'?: { schema?: JSONSchemaLike } } }>
@@ -208,7 +277,10 @@ export function parseOpenAPIToOperations(specText: string): { operations: Manual
         }
       }
 
-      operations.push({ path, method: method.toUpperCase(), summary: op.summary ?? '', inputFields, outputFields })
+      operations.push({
+        path, method: method.toUpperCase(), summary: op.summary ?? '', inputFields, outputFields,
+        responseExtractPath: op['x-mill-response-extract-path'] || undefined,
+      })
     }
   }
   return { operations, errors: [] }

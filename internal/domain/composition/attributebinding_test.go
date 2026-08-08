@@ -226,6 +226,83 @@ func TestExecuteWorkflow_IntegrationHTTP_OutputBindings_NestedPathExtraction(t *
 	}
 }
 
+// docs/SPEC.md §4.1: a document-level response extract path
+// (x-mill-response-extract-path, on the operation itself) is applied
+// *before* per-field lookup -- here "n" has no field-level Path at all
+// (a flat top-level lookup), so this only resolves correctly if the
+// operation-level "envelope.payload" extraction actually narrowed the
+// response first. A regression back to "operation-level extraction
+// never runs" would show the otherwise branch firing instead of the
+// matching one, same proof shape as the field-level nested-path test
+// above.
+const responseExtractPathSpec = `{
+  "openapi": "3.0.3",
+  "info": {"title": "t", "version": "1"},
+  "paths": {
+    "/widgets": {
+      "post": {
+        "x-mill-response-extract-path": "envelope.payload",
+        "responses": {
+          "200": {
+            "description": "ok",
+            "content": {"application/json": {"schema": {"type": "object", "properties": {
+              "n": {"type": "string"}
+            }}}}
+          }
+        }
+      }
+    }
+  }
+}`
+
+func TestExecuteWorkflow_IntegrationHTTP_ResponseExtractPath_NarrowsBeforeFieldLookup(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"envelope":{"payload":{"n":"unwrapped-widget"}},"n":"WRONG-if-extraction-skipped"}`))
+	}))
+	defer srv.Close()
+
+	withConnectorLookup(t, func(id string) (ResolvedConnector, error) {
+		return ResolvedConnector{BaseURL: srv.URL, OpenAPISpec: responseExtractPathSpec}, nil
+	})
+
+	outputBindings, err := json.Marshal(map[string]string{"n": "widgetName"})
+	if err != nil {
+		t.Fatalf("marshal outputBindings: %v", err)
+	}
+
+	var wroteHTML, wroteText bool
+	withFakeClipboard(t, nil,
+		func(string) error { wroteHTML = true; return nil },
+		func(string) error { wroteText = true; return nil },
+	)
+
+	nodes, err := ResolveNodeDefaults([]Node{
+		{ID: "call", NodeTypeID: "integration-http", Config: map[string]string{
+			"connectorId": "conn-1", "path": "/widgets", "method": http.MethodPost,
+			"outputBindings": string(outputBindings),
+		}},
+		{ID: "d", NodeTypeID: "decision-route"},
+		{ID: "yes", NodeTypeID: "apply-clipboard-write-html"},
+		{ID: "no", NodeTypeID: "apply-clipboard-write-text"},
+	})
+	if err != nil {
+		t.Fatalf("ResolveNodeDefaults returned error: %v", err)
+	}
+	edges := []Edge{
+		{ID: "call-d", Source: "call", Target: "d"},
+		{ID: "d-yes", Source: "d", Target: "yes", SourceHandle: `widgetName == "unwrapped-widget"`},
+		{ID: "d-no", Source: "d", Target: "no", SourceHandle: otherwiseHandle},
+	}
+	attrs := []AttributeDef{{Key: "widgetName", Label: "Widget name", Type: FieldText}}
+	if _, err := ExecuteWorkflow(nodes, edges, attrs); err != nil {
+		t.Fatalf("ExecuteWorkflow returned error: %v", err)
+	}
+	if !wroteHTML || wroteText {
+		t.Errorf("wroteHTML=%v wroteText=%v, want the Decision to route on the response-extract-path-narrowed widgetName Attribute (envelope.payload.n, not the top-level \"n\" key)", wroteHTML, wroteText)
+	}
+}
+
 func TestValidateGraph_IntegrationHTTP_SecretOutputBinding_Rejected(t *testing.T) {
 	withConnectorLookup(t, func(id string) (ResolvedConnector, error) {
 		return ResolvedConnector{OpenAPISpec: bindingTestSpec}, nil

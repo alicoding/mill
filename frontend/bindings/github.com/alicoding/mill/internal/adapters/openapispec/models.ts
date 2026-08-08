@@ -13,7 +13,7 @@ export interface Field {
     "In": string;
 
     /**
-     * "string" | "number" | "integer" | "boolean" | "object" | "array"
+     * "string" | "number" | "integer" | "boolean" | "object" | "array" | "map" | "date" | "datetime"
      */
     "Type": string;
     "Required": boolean;
@@ -48,6 +48,31 @@ export interface Field {
      * Only meaningful for output fields.
      */
     "Path": string;
+
+    /**
+     * Default is the field's declared OpenAPI `default` value,
+     * stringified (Default is `any` in the underlying schema -- Mill's
+     * own config/binding values are uniformly strings on the wire, same
+     * convention Node.Config/runInput.Values already use). Empty when
+     * unset -- OpenAPI's own `default` keyword, no vendor extension
+     * needed (unlike Alias/Path, which have no OpenAPI-standard
+     * equivalent).
+     */
+    "Default": string;
+
+    /**
+     * Description is the field's declared OpenAPI `description`.
+     */
+    "Description": string;
+
+    /**
+     * EnumValues is the field's declared OpenAPI `enum` list,
+     * stringified -- empty when unset. Same idea as ConfigField's
+     * FieldOptions (docs/SPEC.md §3.4), one level down: a connector
+     * schema field's own allowed-value constraint, not a NodeType
+     * config field's.
+     */
+    "EnumValues": string[] | null;
 }
 
 /**
@@ -56,6 +81,25 @@ export interface Field {
 export interface Operation {
     "InputFields": Field[] | null;
     "OutputFields": Field[] | null;
+
+    /**
+     * ResponseExtractPath is a document-level root extraction applied
+     * to the whole response *before* any per-field Path extraction
+     * (docs/SPEC.md §4.1) -- e.g. an envelope like {"data":{...}} where
+     * every declared field actually lives under "data". Read from the
+     * x-mill-response-extract-path vendor extension on the operation
+     * itself (OpenAPI's own x-* mechanism, same as Field's Alias/Path).
+     * Deliberately narrower than the reference platform's own syntax
+     * (no bracket-array-index or "$."-JSONPath-prefix support) --
+     * reuses the exact same dot-path + numeric-segment grammar
+     * extractPath (attributebinding.go) already has, rather than a
+     * second parser for a grammar that was never fully specified
+     * (docs/SPEC.md §10). Empty or "*" means no extraction (the
+     * original, unwrapped response) -- "*" is the one reference-platform
+     * example this can represent exactly, since "identity" needs no
+     * real path grammar at all.
+     */
+    "ResponseExtractPath": string;
 }
 
 /**

@@ -119,8 +119,9 @@ func init() {
 		// its Path lookups below.
 		urlPath, body := node.Config["path"], node.Config["bodyTemplate"]
 		var outputFields []openapispec.Field
+		var responseExtractPath string
 		if rc.OpenAPISpec != "" && (node.Config["inputBindings"] != "" || node.Config["outputBindings"] != "") {
-			resolvedPath, resolvedBody, resolvedHeaders, resolvedQuery, fields, err := resolveInputBindings(rc.OpenAPISpec, node.Config, ctx.Attributes)
+			resolvedPath, resolvedBody, resolvedHeaders, resolvedQuery, fields, respExtractPath, err := resolveInputBindings(rc.OpenAPISpec, node.Config, ctx.Attributes)
 			if err != nil {
 				return ctx, fmt.Errorf("integration-http: %w", err)
 			}
@@ -133,6 +134,7 @@ func init() {
 				headers[k] = v
 			}
 			outputFields = fields
+			responseExtractPath = respExtractPath
 		}
 
 		resp, err := httpconnector.Execute(httpconnector.Request{
@@ -162,7 +164,7 @@ func init() {
 		}
 		ctx.Payload = resp.Body
 		if rc.OpenAPISpec != "" && node.Config["outputBindings"] != "" {
-			if err := applyOutputBindings(node.Config["outputBindings"], resp.Body, outputFields, &ctx); err != nil {
+			if err := applyOutputBindings(node.Config["outputBindings"], resp.Body, responseExtractPath, outputFields, &ctx); err != nil {
 				return ctx, fmt.Errorf("integration-http: %w", err)
 			}
 		}

@@ -324,3 +324,99 @@ func TestBuildRequest_BodyFields_CoercedAndOmittedWhenMissing(t *testing.T) {
 		t.Errorf("body = %q, want quantity coerced to a JSON number and note omitted", body)
 	}
 }
+
+// docs/SPEC.md §4.1: Default/Description (OpenAPI's own standard
+// keywords) and the map/date/datetime type additions.
+const richFieldSpec = `{
+  "openapi": "3.0.3",
+  "info": {"title": "Rich Fields", "version": "1.0.0"},
+  "paths": {
+    "/widgets": {
+      "post": {
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "status": {"type": "string", "description": "current status", "default": "pending", "enum": ["pending", "active", "closed"]},
+                  "retries": {"type": "integer", "default": 3},
+                  "metadata": {"type": "object", "additionalProperties": {"type": "string"}},
+                  "createdOn": {"type": "string", "format": "date"},
+                  "updatedAt": {"type": "string", "format": "date-time"},
+                  "tags": {"type": "object", "properties": {"primary": {"type": "string"}}}
+                }
+              }
+            }
+          }
+        },
+        "responses": {"200": {"description": "OK"}}
+      }
+    }
+  }
+}`
+
+func TestOperation_DefaultDescriptionEnum_Extracted(t *testing.T) {
+	doc, err := Parse([]byte(richFieldSpec))
+	if err != nil {
+		t.Fatalf("Parse: %v", err)
+	}
+	op, err := doc.Operation("/widgets", "POST")
+	if err != nil {
+		t.Fatalf("Operation: %v", err)
+	}
+	byName := make(map[string]Field, len(op.InputFields))
+	for _, f := range op.InputFields {
+		byName[f.Name] = f
+	}
+
+	status, ok := byName["status"]
+	if !ok || status.Description != "current status" || status.Default != "pending" {
+		t.Errorf("status = %+v, want Description=%q Default=%q", status, "current status", "pending")
+	}
+	wantEnum := []string{"pending", "active", "closed"}
+	if len(status.EnumValues) != len(wantEnum) {
+		t.Fatalf("status.EnumValues = %v, want %v", status.EnumValues, wantEnum)
+	}
+	for i, v := range wantEnum {
+		if status.EnumValues[i] != v {
+			t.Errorf("status.EnumValues[%d] = %q, want %q", i, status.EnumValues[i], v)
+		}
+	}
+
+	retries, ok := byName["retries"]
+	if !ok || retries.Default != "3" {
+		t.Errorf("retries = %+v, want Default=3", retries)
+	}
+}
+
+func TestOperation_MapDateDatetimeTypes_Extracted(t *testing.T) {
+	doc, err := Parse([]byte(richFieldSpec))
+	if err != nil {
+		t.Fatalf("Parse: %v", err)
+	}
+	op, err := doc.Operation("/widgets", "POST")
+	if err != nil {
+		t.Fatalf("Operation: %v", err)
+	}
+	byName := make(map[string]Field, len(op.InputFields))
+	for _, f := range op.InputFields {
+		byName[f.Name] = f
+	}
+
+	if got := byName["metadata"].Type; got != "map" {
+		t.Errorf(`metadata.Type = %q, want "map" (object with additionalProperties, no fixed properties)`, got)
+	}
+	if got := byName["createdOn"].Type; got != "date" {
+		t.Errorf(`createdOn.Type = %q, want "date"`, got)
+	}
+	if got := byName["updatedAt"].Type; got != "datetime" {
+		t.Errorf(`updatedAt.Type = %q, want "datetime"`, got)
+	}
+	// A fixed-shape object (real `properties`, no additionalProperties)
+	// must still resolve to "object", not "map" -- the distinguishing
+	// signal is "no fixed properties," not "type: object" alone.
+	if got := byName["tags"].Type; got != "object" {
+		t.Errorf(`tags.Type = %q, want "object" (has fixed properties, not a map)`, got)
+	}
+}
