@@ -1,5 +1,5 @@
 import { Handle, Position as RFPosition } from '@xyflow/react'
-import type { NodeTypes as RFNodeTypes, NodeProps } from '@xyflow/react'
+import type { NodeProps } from '@xyflow/react'
 import { Text } from '@primer/react'
 import type { CanvasNode } from './canvasStore'
 import { KIND_ICON, KIND_ICON_BG, KIND_LABEL } from './nodeKind'
@@ -42,21 +42,4 @@ export function CanvasNodeView({ data, selected }: NodeProps<CanvasNode>) {
       <Handle type="source" position={RFPosition.Bottom} />
     </div>
   )
-}
-
-// Re-exported from canvasConstants.ts (not declared here) so consumers
-// that don't need this component's own React/CSS import chain --
-// canvasLayout.ts's collision math, its Vitest unit tests -- can import
-// the numbers without dragging that chain along; see canvasConstants.ts
-// for the full reasoning. Shared with CompositionCanvas.module.css's
-// .canvasNode (must match -- there's no single source of truth
-// CSS-in-JS could give here without pulling in a new dependency).
-export { CANVAS_NODE_WIDTH, CANVAS_NODE_HEIGHT } from './canvasConstants'
-
-export const rfNodeTypes: RFNodeTypes = {
-  trigger: CanvasNodeView,
-  capture: CanvasNodeView,
-  process: CanvasNodeView,
-  apply: CanvasNodeView,
-  decision: CanvasNodeView,
 }
