@@ -55,7 +55,7 @@
     display: flex;
 }
 .palette {
-    flex: 0 0 220px;
+    flex: 0 0 260px;
     min-width: 0;
     border-right: 1px solid var(--borderColor-default);
     background: var(--bgColor-default);
@@ -97,11 +97,24 @@
 .inspectorRecording {
     color: var(--fgColor-accent);
 }
+/* A leaf item needs to read as a draggable card, not a plain nav-link
+   row -- TreeView's own default styling (built for navigation/selection
+   trees) doesn't signal "grab me" on its own. */
 .paletteItem {
     cursor: grab;
     user-select: none;
+    background: var(--bgColor-muted);
+    border-radius: var(--borderRadius-medium);
+    margin-block: 2px;
 }
+.paletteItem:hover { background: var(--bgColor-neutral-muted); }
 .paletteItem:active { cursor: grabbing; }
+.paletteItemDisabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+    background: transparent;
+}
+.paletteItemDisabled:hover { background: transparent; }
 /* Fixed size, not size-to-content -- every node is the same uniform
    card regardless of label length (matches CANVAS_NODE_WIDTH/HEIGHT in
    CompositionCanvas.tsx, which the elk auto-layout call also uses, so

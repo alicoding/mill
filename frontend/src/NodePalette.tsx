@@ -6,6 +6,10 @@ import styles from './CompositionCanvas.module.css'
 
 interface NodePaletteProps {
   nodeTypes: NodeType[]
+  // Whether the canvas already has a Trigger node placed -- every
+  // Trigger-kind entry gets disabled while true (see the component doc
+  // comment below for why this has to be caught here, not just at Save).
+  hasTrigger: boolean
 }
 
 function onPaletteDragStart(event: DragEvent<HTMLLIElement>, nt: NodeType) {
@@ -22,6 +26,17 @@ function kindIcon(kind: string) {
   )
 }
 
+// The node-type Label strings themselves are "<Kind>: <specifics>" (e.g.
+// "Trigger: clipboard change") -- necessary when they stood alone in the
+// old flat list, redundant now that the TreeView group header already
+// says "Trigger". Stripping the repeated prefix here is a display-only
+// transform; nt.Label itself (used verbatim by canvas node cards and the
+// saved-workflow step chips) is untouched.
+function shortLabel(nt: NodeType): string {
+  const prefix = `${KIND_LABEL[nt.Kind] ?? nt.Kind}: `
+  return nt.Label.startsWith(prefix) ? nt.Label.slice(prefix.length) : nt.Label
+}
+
 // The "Add steps" drag-source panel -- toggled open/closed from
 // CompositionCanvas.tsx's toolbar. Self-contained: drag-start just writes
 // the dragged node type's ID onto the DOM drag event, which
@@ -36,7 +51,14 @@ function kindIcon(kind: string) {
 // carry over from the old per-item <div> unchanged -- only the container
 // element changed, not the drag mechanism CompositionCanvas's drop
 // handler and the e2e suite both depend on.
-export function NodePalette({ nodeTypes }: NodePaletteProps) {
+//
+// Trigger entries disable once the canvas already has one: every Trigger
+// node is a graph root (isValidConnection refuses an edge into one), so
+// a second one always breaks findRoot's "exactly one starting node" rule
+// server-side -- catching it here, at the source, is the same
+// default-safe-guardrail shape SPEC.md §8 already uses elsewhere, and
+// beats a raw Save-time error a user has to decode after the fact.
+export function NodePalette({ nodeTypes, hasTrigger }: NodePaletteProps) {
   const kinds = [...new Set(nodeTypes.map((nt) => nt.Kind))]
   const byKind = new Map(kinds.map((kind) => [kind, nodeTypes.filter((nt) => nt.Kind === kind)]))
 
@@ -49,18 +71,24 @@ export function NodePalette({ nodeTypes }: NodePaletteProps) {
             <TreeView.LeadingVisual>{kindIcon(kind)}</TreeView.LeadingVisual>
             {KIND_LABEL[kind] ?? kind}
             <TreeView.SubTree>
-              {byKind.get(kind)!.map((nt) => (
-                <TreeView.Item
-                  key={nt.ID}
-                  id={`palette-item-${nt.ID}`}
-                  className={styles.paletteItem}
-                  draggable
-                  onDragStart={(e) => onPaletteDragStart(e, nt)}
-                  data-testid="palette-item"
-                >
-                  {nt.Label}
-                </TreeView.Item>
-              ))}
+              {byKind.get(kind)!.map((nt) => {
+                const disabled = kind === 'trigger' && hasTrigger
+                return (
+                  <TreeView.Item
+                    key={nt.ID}
+                    id={`palette-item-${nt.ID}`}
+                    className={`${styles.paletteItem} ${disabled ? styles.paletteItemDisabled : ''}`}
+                    draggable={!disabled}
+                    onDragStart={disabled ? undefined : (e) => onPaletteDragStart(e, nt)}
+                    aria-disabled={disabled}
+                    title={disabled ? 'A workflow can only have one trigger -- delete the existing one first.' : nt.Label}
+                    data-testid="palette-item"
+                    data-node-type-id={nt.ID}
+                  >
+                    {shortLabel(nt)}
+                  </TreeView.Item>
+                )
+              })}
             </TreeView.SubTree>
           </TreeView.Item>
         ))}

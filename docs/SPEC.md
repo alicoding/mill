@@ -1143,6 +1143,57 @@ that environment, on something testable directly in this dev session:
   unchanged, plus a direct screenshot check that grouping/collapse
   renders correctly. `UX: PROTOTYPE` still applies to Composition
   overall — this is a structural fix, not a design pass.
+- **Update — two real bugs in the drop interaction, caught from a
+  screenshot of a user dropping a second `Trigger: manual` near the
+  starter node: it landed stacked almost exactly on top of the existing
+  one, and React Flow's selection-outline rendering visibly broke on the
+  near-identical bounding boxes.** Root-caused before fixing, not
+  patched blind: `composition.go`'s `findRoot` already rejects a
+  two-root graph at Save time ("a workflow must have exactly one
+  starting node"), but nothing caught it earlier — `onCanvasDrop`
+  (`CompositionCanvas.tsx`) placed every dropped node at the raw cursor
+  position with zero overlap awareness, and the palette let a Trigger
+  entry be dragged regardless of what was already on the canvas. Two
+  independent fixes, matching the existing draw-time/save-time-agree
+  discipline (§3.3's Decision work) rather than only catching it at
+  Save: (1) `NodePalette.tsx` disables every Trigger-kind entry once the
+  canvas already has one (every Trigger is structurally a graph root —
+  `isValidConnection` already refuses an edge into one — so a second
+  always breaks `findRoot`), with `onCanvasDrop` also rejecting the drop
+  client-side as a second, belt-and-suspenders layer in case a drag
+  started before the guard applied; (2) a new `canvasLayout.ts`'s
+  `findFreeDropPosition` nudges *any* dropped node along an outward
+  spiral if it would overlap an existing node's fixed-size card, adapted
+  from `@xyflow/react`'s own documented node-collision example
+  (reactflow.dev/examples/layout/node-collisions — same dependency
+  already in the tree, not a new one) but simplified for the one-node
+  drop case instead of a full pairwise resolve. Verified against the
+  exact repro (server mode + a scripted drop at the starter node's
+  coordinates): the duplicate-trigger drop is silently absorbed (node
+  count stays 1), an ordinary node dropped at the same coordinates lands
+  cleanly offset instead of stacked, confirmed via screenshot both
+  before and after.
+- **Update — the palette's truncated, page-list-like leaf rows (a
+  second issue flagged on the same screenshot) fixed at the root cause,
+  not just visually.** Every `NodeType.Label` is authored as
+  `"<Kind>: <specifics>"` (e.g. `"Trigger: clipboard change"`) — correct
+  when it stood alone in the old flat list, redundant once grouped under
+  a TreeView "Trigger" header, and the repeated prefix was exactly what
+  was pushing longer labels (`"Apply: write plain text to clipboard"`)
+  past the available width into an ellipsis. `NodePalette.tsx`'s new
+  `shortLabel()` strips the now-redundant `"<Kind>: "` prefix for
+  display only — `nt.Label` itself, used verbatim by canvas node cards
+  and saved-workflow step chips, is untouched. Paired with a `title`
+  tooltip carrying the full label, a widened palette panel (220px →
+  260px), and a chip/card visual treatment on leaf rows (background +
+  radius + hover state) so they read as draggable objects rather than
+  plain nav-link text — TreeView's own default styling is built for
+  navigation/selection trees, not a drag-source palette, and didn't
+  signal "grab me" on its own. The e2e suite's drag helper
+  (`composition.spec.ts`) was switched from matching visible label text
+  to a stable `data-node-type-id` attribute, since the visible text is
+  now intentionally shorter and expected to keep changing independently
+  of which node type it labels.
 
 ### 3.1 Raw material — root cause of the heredoc pain, not yet resolved
 
