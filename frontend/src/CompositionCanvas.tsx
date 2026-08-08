@@ -11,13 +11,11 @@ import {
 import type { Connection, Edge as RFEdge } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 import { useStore } from 'zustand'
-import { Browser } from '@wailsio/runtime'
-import { Button, Checkbox, FormControl, IconButton, Label, Select, Stack, Text, TextInput, Textarea } from '@primer/react'
-import { ColumnsIcon, KeyIcon, RedoIcon, SidebarCollapseIcon, SidebarExpandIcon, TrashIcon, UndoIcon } from '@primer/octicons-react'
+import { Button, FormControl, IconButton, Stack, Text, TextInput, Textarea } from '@primer/react'
+import { ColumnsIcon, RedoIcon, SidebarCollapseIcon, SidebarExpandIcon, TrashIcon, UndoIcon } from '@primer/octicons-react'
 import { ArrowLeftIcon } from '@primer/octicons-react'
 import { CompositionService } from '../bindings/github.com/alicoding/mill'
 import type { NodeType, Node as CompNode, Edge as CompEdge, Workflow } from '../bindings/github.com/alicoding/mill/internal/domain/composition/models'
-import { ConfigFieldType } from '../bindings/github.com/alicoding/mill/internal/domain/composition/models'
 import { createCanvasStore, type CanvasNode } from './canvasStore'
 import { rfNodeTypes, CANVAS_NODE_WIDTH, CANVAS_NODE_HEIGHT } from './CanvasNodeView'
 import { findFreeDropPosition } from './canvasLayout'
@@ -25,8 +23,8 @@ import { toCanvasNodes, toRFEdges } from './canvasConversion'
 import { draftWorkflowSchema } from './draftWorkflowSchema'
 import { NodePalette } from './NodePalette'
 import { DecisionEdgeInspector } from './DecisionEdgeInspector'
-import { useHotkeyCapture, isAccessibilityError, ACCESSIBILITY_SETTINGS_URL } from './hotkeyCapture'
-import { generateSamplePayload } from './configSchema'
+import { NodeInspector } from './NodeInspector'
+import { useHotkeyCapture } from './hotkeyCapture'
 import styles from './CompositionCanvas.module.css'
 import runbookStyles from './ListCard.module.css'
 
@@ -64,6 +62,7 @@ function CanvasInner({ nodeTypes, workflow, onBack, onSaved }: CompositionCanvas
   const onEdgesChange = useCanvasStore((s) => s.onEdgesChange)
   const onConnect = useCanvasStore((s) => s.onConnect)
   const addNode = useCanvasStore((s) => s.addNode)
+  const changeNodeType = useCanvasStore((s) => s.changeNodeType)
   const updateNodeConfig = useCanvasStore((s) => s.updateNodeConfig)
   const updateEdgeCondition = useCanvasStore((s) => s.updateEdgeCondition)
   const removeSelected = useCanvasStore((s) => s.removeSelected)
@@ -76,16 +75,6 @@ function CanvasInner({ nodeTypes, workflow, onBack, onSaved }: CompositionCanvas
   // null/undefined then). The Inspector below shows "save first" in that
   // case rather than silently disabling the control with no explanation.
   const hotkeyCapture = useHotkeyCapture(workflow?.ID ?? null)
-
-  // Bumped after "Generate test payload" fills a node's fields, and
-  // folded into each config input's own `key` below -- the inputs are
-  // uncontrolled (defaultValue + onBlur commit, so typing doesn't fight
-  // the canvas store on every keystroke), which means a defaultValue
-  // change alone wouldn't repaint an already-mounted input. Changing
-  // `key` forces a remount instead, the same "fresh defaultValue" fix
-  // CompositionCanvas already relies on elsewhere (the whole canvas is
-  // itself keyed by workflow id/"new" for the same reason).
-  const [payloadNonce, setPayloadNonce] = useState(0)
 
   const { screenToFlowPosition } = useReactFlow()
 
@@ -136,6 +125,11 @@ function CanvasInner({ nodeTypes, workflow, onBack, onSaved }: CompositionCanvas
 
   const selectedNode = nodes.find((n) => n.id === selectedNodeId) ?? null
   const selectedNodeType = selectedNode ? nodeTypes.find((nt) => nt.ID === selectedNode.data.nodeTypeID) : undefined
+  // Every NodeType sharing the selected node's Kind -- what the
+  // "Node type" Inspector control below offers as a swap target. Kind
+  // never changes on swap, so isValidConnection's per-kind edge rules
+  // and any edges already drawn to/from this node stay valid untouched.
+  const sameKindNodeTypes = selectedNode ? nodeTypes.filter((nt) => nt.Kind === selectedNode.data.kind) : []
   const selectedEdge = edges.find((e) => e.id === selectedEdgeId) ?? null
   // Only a Decision node's outgoing edges carry a real condition to
   // configure (SPEC.md §3.5) -- an edge selected off any other node kind
@@ -366,120 +360,20 @@ function CanvasInner({ nodeTypes, workflow, onBack, onSaved }: CompositionCanvas
             />
           )}
           {selectedNode && (
-            <Stack direction="vertical" gap="condensed">
-              <Text weight="semibold">{selectedNode.data.label}</Text>
-
-              {/* trigger-hotkey has no ConfigFields (docs/SPEC.md §3.4:
-                  the binding lives in TriggerService, not Node.Config --
-                  pressing a combo is better UX than typing one into a
-                  text field) -- special-cased on NodeTypeID the same way
-                  the palette already special-cases node types, not a
-                  generic ConfigField. */}
-              {selectedNode.data.nodeTypeID === 'trigger-hotkey' && (
-                <Stack direction="vertical" gap="condensed">
-                  {!workflow && (
-                    <Text size="small" className={runbookStyles.muted}>
-                      Save this workflow before assigning a hotkey.
-                    </Text>
-                  )}
-                  {workflow && (
-                    <>
-                      {hotkeyCapture.recording ? (
-                        <Text size="small" className={styles.inspectorRecording}>Press a combo… (Esc to cancel)</Text>
-                      ) : hotkeyCapture.binding ? (
-                        <Stack direction="horizontal" gap="condensed" align="center">
-                          <Label variant="secondary">
-                            <KeyIcon size={12} /> {hotkeyCapture.binding}
-                          </Label>
-                          <Button size="small" variant="invisible" onClick={hotkeyCapture.startRecording}>Change</Button>
-                          <Button size="small" variant="invisible" onClick={hotkeyCapture.clear}>Clear</Button>
-                        </Stack>
-                      ) : (
-                        <Button size="small" variant="invisible" onClick={hotkeyCapture.startRecording}>
-                          Set shortcut
-                        </Button>
-                      )}
-                      {hotkeyCapture.error && (
-                        <Stack direction="vertical" gap="condensed">
-                          <Text as="p" size="small" className={runbookStyles.error}>{hotkeyCapture.error}</Text>
-                          {isAccessibilityError(hotkeyCapture.error) && (
-                            <Button size="small" onClick={() => Browser.OpenURL(ACCESSIBILITY_SETTINGS_URL)}>
-                              Open Accessibility Settings
-                            </Button>
-                          )}
-                        </Stack>
-                      )}
-                    </>
-                  )}
-                </Stack>
-              )}
-
-              {(selectedNodeType?.ConfigFields ?? []).length === 0 && selectedNode.data.nodeTypeID !== 'trigger-hotkey' && (
-                <Text size="small" className={runbookStyles.muted}>This node type takes no configuration.</Text>
-              )}
-
-              {/* Trigger nodes specifically, not any node with fields --
-                  this is "generate a sample input to test this trigger
-                  with," the same per-record test-harness idea named from
-                  the reference platform (docs/SPEC.md §3.2), not a
-                  generic fill-any-field convenience. */}
-              {selectedNode.data.kind === 'trigger' && (selectedNodeType?.ConfigFields ?? []).length > 0 && (
-                <Button
-                  size="small"
-                  variant="invisible"
-                  data-testid="generate-test-payload"
-                  onClick={() => {
-                    const sample = generateSamplePayload(selectedNodeType?.ConfigFields ?? [])
-                    for (const [key, value] of Object.entries(sample)) {
-                      updateNodeConfig(selectedNode.id, key, value)
-                    }
-                    setPayloadNonce((n) => n + 1)
-                  }}
-                >
-                  Generate test payload
-                </Button>
-              )}
-
-              {(selectedNodeType?.ConfigFields ?? []).map((field) => (
-                <FormControl key={`${field.Key}-${payloadNonce}`}>
-                  <FormControl.Label>{field.Label}</FormControl.Label>
-                  {field.Description && <FormControl.Caption>{field.Description}</FormControl.Caption>}
-                  {field.Type === ConfigFieldType.FieldBoolean ? (
-                    <Checkbox
-                      defaultChecked={selectedNode.data.config[field.Key] === 'true'}
-                      data-testid="canvas-config-field"
-                      onChange={(e) => updateNodeConfig(selectedNode.id, field.Key, String(e.target.checked))}
-                    />
-                  ) : field.Type === ConfigFieldType.FieldOptions ? (
-                    <Select
-                      defaultValue={selectedNode.data.config[field.Key] ?? ''}
-                      data-testid="canvas-config-field"
-                      onChange={(e) => updateNodeConfig(selectedNode.id, field.Key, e.target.value)}
-                    >
-                      {(field.Options ?? []).map((opt) => (
-                        <Select.Option key={opt} value={opt}>{opt}</Select.Option>
-                      ))}
-                    </Select>
-                  ) : field.Type === ConfigFieldType.FieldNumber ? (
-                    <TextInput
-                      type="number"
-                      defaultValue={selectedNode.data.config[field.Key] ?? ''}
-                      block
-                      data-testid="canvas-config-field"
-                      onBlur={(e) => updateNodeConfig(selectedNode.id, field.Key, e.target.value)}
-                    />
-                  ) : (
-                    <Textarea
-                      defaultValue={selectedNode.data.config[field.Key] ?? ''}
-                      rows={4}
-                      block
-                      data-testid="canvas-config-field"
-                      onBlur={(e) => updateNodeConfig(selectedNode.id, field.Key, e.target.value)}
-                    />
-                  )}
-                </FormControl>
-              ))}
-            </Stack>
+            <NodeInspector
+              key={selectedNode.id}
+              node={selectedNode}
+              nodeType={selectedNodeType}
+              sameKindNodeTypes={sameKindNodeTypes}
+              hasWorkflow={!!workflow}
+              hotkeyCapture={hotkeyCapture}
+              onChangeType={(newType) => {
+                const config: Record<string, string> = {}
+                for (const field of newType.ConfigFields ?? []) config[field.Key] = field.Default
+                changeNodeType(selectedNode.id, newType.ID, newType.Label, config)
+              }}
+              onConfigChange={(key, value) => updateNodeConfig(selectedNode.id, key, value)}
+            />
           )}
         </div>
       </div>
