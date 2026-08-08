@@ -70,3 +70,12 @@ export interface RunSummary {
     "completedAt": string;
     "error": string;
 }
+
+/**
+ * UpdateCheckResult is CheckForUpdates' Wails-bound result shape.
+ */
+export interface UpdateCheckResult {
+    "updateAvailable": boolean;
+    "version": string;
+    "notes": string;
+}

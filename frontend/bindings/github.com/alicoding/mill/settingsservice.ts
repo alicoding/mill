@@ -19,6 +19,10 @@
 // @ts-ignore: Unused imports
 import { Call as $Call, CancellablePromise as $CancellablePromise } from "@wailsio/runtime";
 
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: Unused imports
+import * as $models from "./models.js";
+
 /**
  * AssignSummonHotkey binds mods+key as the app-level summon hotkey,
  * replacing any previous one. Rejects a combo already claimed by a
@@ -28,6 +32,17 @@ import { Call as $Call, CancellablePromise as $CancellablePromise } from "@wails
  */
 export function AssignSummonHotkey(mods: string[] | null, key: string): $CancellablePromise<string> {
     return $Call.ByID(4059952428, mods, key);
+}
+
+/**
+ * CheckForUpdates asks the configured provider (GitHub Releases,
+ * alicoding/mill) whether a newer version exists. Inert until Mill has
+ * a real tagged-release process -- see docs/SPEC.md §3.7's own note on
+ * this; wired now so the mechanism exists, not claiming a working
+ * update pipeline exists yet.
+ */
+export function CheckForUpdates(): $CancellablePromise<$models.UpdateCheckResult> {
+    return $Call.ByID(2303156987);
 }
 
 /**

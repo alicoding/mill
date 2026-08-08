@@ -40,6 +40,9 @@ function SettingsView() {
   const [summonRecording, setSummonRecording] = useState(false)
   const [summonError, setSummonError] = useState('')
 
+  const [updateStatus, setUpdateStatus] = useState('')
+  const [updateChecking, setUpdateChecking] = useState(false)
+
   useEffect(() => {
     SettingsService.GetLaunchAtLogin()
       .then(setLaunchAtLoginState)
@@ -84,6 +87,17 @@ function SettingsView() {
   const clearSummonHotkey = () => {
     setSummonError('')
     SettingsService.UnassignSummonHotkey().then(() => setSummonBinding(null)).catch(console.error)
+  }
+
+  const checkForUpdates = () => {
+    setUpdateChecking(true)
+    setUpdateStatus('')
+    SettingsService.CheckForUpdates()
+      .then((result) => {
+        setUpdateStatus(result.updateAvailable ? `Update available: v${result.version}` : "You're on the latest version.")
+      })
+      .catch((err) => setUpdateStatus(String(err)))
+      .finally(() => setUpdateChecking(false))
   }
 
   return (
@@ -152,6 +166,14 @@ function SettingsView() {
           )}
         </Stack>
       )}
+
+      <Heading as="h2" variant="small" className={styles.sectionHeading}>Updates</Heading>
+      <Stack direction="horizontal" gap="condensed" align="center">
+        <Button size="small" onClick={checkForUpdates} disabled={updateChecking} data-testid="check-for-updates">
+          {updateChecking ? 'Checking…' : 'Check for updates'}
+        </Button>
+        {updateStatus && <Text size="small" className={styles.muted}>{updateStatus}</Text>}
+      </Stack>
     </div>
   )
 }
