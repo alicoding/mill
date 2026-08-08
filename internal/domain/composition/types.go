@@ -72,6 +72,15 @@ type ConfigField struct {
 	// Options is only meaningful when Type == FieldOptions -- the set of
 	// values ResolveNodeDefaults will accept for this field.
 	Options []string
+	// RefKind marks a FieldText field whose value is the ID of a
+	// Configure-authored entity ("connector" | "list" | "mcpserver"),
+	// empty for an ordinary text field (docs/adr/0009). Orthogonal to
+	// Type: the wire value is still a plain string ID (Type stays
+	// FieldText), RefKind only tells the frontend Inspector which
+	// Configure list to offer as a live picker instead of a bare text
+	// box. composition itself never reads RefKind -- nodeExec functions
+	// still just read the plain string ID out of Node.Config.
+	RefKind string
 }
 
 type NodeType struct {
