@@ -106,6 +106,22 @@ func init() {
 		if err != nil {
 			return ctx, fmt.Errorf("integration-http: %w", err)
 		}
+		// httpconnector deliberately treats every HTTP-level response
+		// (4xx/5xx included) as a non-error return, same as net/http's own
+		// client.Do -- the judgment call of what a status code means for
+		// *this* workflow belongs here, at the domain layer, not in the
+		// commodity adapter. Fail-safe by default (SPEC.md §8's guardrail
+		// philosophy, already the reasoning httpconnector's own timeout
+		// uses): a non-2xx response fails the node instead of silently
+		// flowing an error body through as if it were a successful
+		// result -- matches n8n's own HTTP Request node default (checked
+		// directly, not assumed), which throws on 4xx/5xx unless the
+		// author explicitly opts into "Continue on Fail". Mill has no
+		// per-node continue-on-fail option yet; add one if a real
+		// workflow needs to treat an error response as data, not before.
+		if resp.StatusCode >= 400 {
+			return ctx, fmt.Errorf("integration-http: request failed with status %d: %s", resp.StatusCode, resp.Body)
+		}
 		ctx.Payload = resp.Body
 		return ctx, nil
 	})
