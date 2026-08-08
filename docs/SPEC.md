@@ -255,6 +255,29 @@ and [`docs/adr/0002-cicd-pipeline-phased-rollout.md`](adr/0002-cicd-pipeline-pha
   `draftWorkflowSchema.ts`/`canvasConversion.ts`/`NodePalette.tsx`), zero
   behavior change, verified via the full check suite plus a real
   server-mode Playwright smoke pass before landing. `LOCKED`
+  **Checked directly, not assumed, whether this hand-rolled script
+  duplicates commodity tooling** (prompted by a direct question —
+  CLAUDE.md's own "default to adopting, hand-roll only when no adopted
+  option satisfies the constraint" rule applies to this too, not just to
+  whole libraries): ESLint ships a real built-in `max-lines` rule
+  (confirmed against its own docs) that could cover the `.ts`/`.tsx` half
+  today with zero new dependency — Mill doesn't currently enable it.
+  Go's side is different: confirmed directly against the actually-
+  installed `golangci-lint v2.12.2`'s own linter list (`golangci-lint
+  linters`) that no file-length linter ships in it — `funlen` limits a
+  *function's* length, `lll` limits *line width*, neither is "lines per
+  file." A third-party `filen` linter exists upstream
+  (github.com/DanilXO/filen, golangci-lint PR #5081) but isn't merged
+  into a released version yet. Splitting into "ESLint's `max-lines` for
+  TS + something else for Go" was considered and rejected: it would
+  reintroduce exactly the "two copies that can drift" problem this
+  bullet's own one-script design already exists to avoid (a limit number,
+  an exemption list, defined twice, in two config languages, checked by
+  two different tools) — the actual constraint this script satisfies
+  isn't "no line-count tool exists anywhere," it's "one identical rule
+  enforced the same way across both languages Mill writes," which no
+  single commodity tool covers. `LOCKED` (script stays; documented
+  reasoning, not an unchecked assumption).
 - `HotkeyService` cannot be exercised by headless/server-mode CI — no live
   macOS Cocoa run loop in that mode. Verification stays an explicit manual
   desktop-mode check (`.claude/skills/run-mill`), never a silent CI
@@ -1194,6 +1217,59 @@ that environment, on something testable directly in this dev session:
   to a stable `data-node-type-id` attribute, since the visible text is
   now intentionally shorter and expected to keep changing independently
   of which node type it labels.
+- **Update — a selected node can swap its NodeType in place, same Kind
+  only, closing the dead end the Trigger guardrail above raised.** A
+  real user hit it directly: a workflow already had a manual trigger,
+  the palette correctly disabled every other Trigger entry (single-root
+  rule), but there was no path forward from there other than delete-
+  and-redrag — the guardrail explained *that* it was blocked, not *what
+  to do about it*. Researched the actual pattern rather than guessing:
+  Zapier's own trigger editor lets you click the existing trigger step
+  and change its event from a dropdown in place; n8n, by contrast, has
+  no built-in "replace node" at all (a standing, unresolved community
+  feature request, confirmed directly) — n8n was closer to what Mill
+  was accidentally doing than to what it should do. `canvasStore.ts`'s
+  new `changeNodeType(id, nodeTypeID, label, config)` swaps a node's
+  type in place — same id/position/edges, only `nodeTypeID`/`label`/
+  `config` change — safe specifically because it's restricted to
+  NodeTypes sharing the selected node's *Kind*, so `isValidConnection`'s
+  per-kind edge rules and any edges already drawn to/from the node stay
+  valid untouched, no edge rewiring needed. Surfaced as a "Node type"
+  `Select` in the Inspector, shown only when the selected node's Kind
+  actually has more than one NodeType to choose from (most Kinds today
+  have exactly one — Capture, Decision — where a single-option dropdown
+  would be noise, not a control, same reasoning as §3.5's Configure
+  recheck). The palette's disabled-Trigger tooltip text was updated to
+  point here directly ("Select the existing trigger node on the canvas
+  to change its type instead") rather than the old, dead-end "delete it
+  first." Verified end-to-end (server mode + Playwright): selected the
+  starter `Trigger: manual` node, swapped it to `Trigger: hotkey` via
+  the new control, confirmed the canvas card updated in place (node
+  count stayed 1, not 2) and the `trigger-hotkey`-specific Inspector
+  UI ("Save this workflow before assigning a hotkey") correctly kicked
+  in immediately after the swap.
+- **Update — `CompositionCanvas.tsx` crossed the 500-line limit once the
+  above landed (538 lines); split along the same seam
+  `DecisionEdgeInspector.tsx` already established for edges.** The
+  entire node-selected half of the Inspector (the new type-swap control,
+  the trigger-hotkey binding UI, the ConfigFields form) moved into a new
+  `NodeInspector.tsx`, mirroring `DecisionEdgeInspector.tsx`'s existing
+  split for the edge-selected half — the same seam, applied to the half
+  of the Inspector that hadn't needed it yet. `payloadNonce` (forces a
+  fresh `defaultValue` on config inputs after a type swap or "Generate
+  test payload") moved to local state inside `NodeInspector` since
+  nothing outside it ever read it; `CompositionCanvas.tsx` now keys its
+  render of the component by node id, so switching the selected node
+  gets a clean remount instead of carrying stale local state across
+  selections — a strict correctness improvement that fell out of doing
+  the extraction properly, not a separate fix. `useHotkeyCapture` stayed
+  owned by the parent and is passed down as a prop rather than being
+  re-derived inside `NodeInspector`: it's keyed by *workflow* id, not
+  node id (`TriggerService.ListHotkeys()` is a workflow-id-keyed map),
+  and manages a live keydown-recording subscription that must survive a
+  node re-selection, not reset on every remount. Verified via the full
+  check suite (tsc/eslint/vitest/LOC) plus the entire e2e suite (19
+  tests across composition/activity/capabilities) passing unchanged.
 
 ### 3.1 Raw material — root cause of the heredoc pain, not yet resolved
 
@@ -2156,6 +2232,47 @@ actually get built is `OPEN` — the list below is candidates, not commitments.
   list/group/hierarchy family before hand-rolling a collection UI"
   check; CLAUDE.md's own Primer bullet stays a short pointer rather than
   duplicating it, per this section's own anti-duplication rule. `LOCKED`
+- **Update — corrected the rule-file frontmatter, and used the
+  correction as the trigger to actually separate coding convention from
+  product spec across all three docs, not just CLAUDE.md.**
+  `.claude/rules/frontend.md` had shipped with a `globs:` frontmatter
+  key, sourced from a GitHub issue claiming the documented `paths:` key
+  was broken. Re-checked against Claude Code's own current official docs
+  (`code.claude.com/docs/en/memory.md`, fetched directly, not recalled)
+  while researching this properly at the user's request: `paths:` is
+  the real, current, documented field — every example in the official
+  doc uses it, `globs:` appears nowhere. The GitHub issue was either
+  about a since-fixed bug or a different context; either way, trusting
+  a third-party bug report over the primary source was the actual
+  mistake, not the field name itself. Fixed directly.
+  Same official-docs pass also confirmed the mechanism this section
+  needed: a rule file with no `paths` frontmatter at all "loads at
+  launch with the same priority as CLAUDE.md" — i.e. an unscoped rule is
+  how a repo-wide (not one-language) coding convention stays always-
+  loaded without living inside CLAUDE.md itself. Used that to finish a
+  three-way split prompted directly by the user ("I don't want coding
+  convention and product spec mixed up"): CLAUDE.md kept to standing
+  process (Research→Plan→Implement, commit discipline) and genuinely
+  product-level hard constraints (no Rust, no AI API, single binary,
+  git-clone install, CI/CD day one, SPEC.md-tracks-everything) — six
+  bullets, down from eleven; the other five (SOLID/DRY/DDD reuse
+  boundary, adopt-over-hand-roll, the 500-line limit, Go domain-package
+  purity, the Primer/UI rule) moved out into `.claude/rules/`, split by
+  actual scope rather than piled together: `frontend.md` (path-scoped,
+  the Primer/UI rule plus the collection-shape check above),
+  `backend.md` (path-scoped to `**/*.go`, domain-package purity),
+  `architecture.md` (unscoped — SOLID/DRY/DDD, adopt-over-hand-roll, the
+  500-line limit, since these are cross-language, not frontend- or
+  backend-specific). CLAUDE.md dropped from 156 to 103 lines. The
+  boundary going forward, stated explicitly so it holds without
+  re-deciding it every session: `docs/SPEC.md` is product decisions
+  (what Mill is, and why — this document); CLAUDE.md is standing process
+  plus hard constraints; `.claude/rules/*.md` is reusable coding
+  convention (how to write code, checked against real precedent before
+  being adopted). This section's own existing "Update —" entries (this
+  one included) stay as decision history, not rewritten — the split is a
+  forward-looking discipline for new content, not a retroactive purge of
+  what's already committed. `LOCKED`
 - Sources: Claude Code docs — memory (`/docs/en/memory`), skills
   (`/docs/en/skills`), subagents (`/docs/en/sub-agents`), all at
   `code.claude.com`; agentskills.io (Agent Skills open standard); OpenAI

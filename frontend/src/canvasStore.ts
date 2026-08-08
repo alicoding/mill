@@ -24,6 +24,7 @@ interface CanvasState {
   onEdgesChange: (changes: EdgeChange[]) => void
   onConnect: (connection: Connection) => void
   addNode: (node: CanvasNode) => void
+  changeNodeType: (id: string, nodeTypeID: string, label: string, config: Record<string, string>) => void
   updateNodeConfig: (id: string, key: string, value: string) => void
   updateEdgeCondition: (id: string, condition: string) => void
   removeSelected: () => void
@@ -53,6 +54,19 @@ export function createCanvasStore() {
         onEdgesChange: (changes) => set({ edges: applyEdgeChanges(changes, get().edges) }),
         onConnect: (connection) => set({ edges: rfAddEdge(connection, get().edges) }),
         addNode: (node) => set({ nodes: [...get().nodes, node] }),
+        // Swaps an already-placed node to a different NodeType of the
+        // *same* Kind, in place -- id/position/edges untouched, only
+        // nodeTypeID/label/config change. This is what lets "I meant
+        // hotkey, not manual" be a Select in the Inspector instead of
+        // delete-the-node-and-drag-a-new-one, the friction a real user
+        // hit (docs/SPEC.md §3). Kind never changes here (the Inspector
+        // only offers same-Kind options), so isValidConnection's
+        // per-kind edge rules and any existing edges stay valid
+        // untouched.
+        changeNodeType: (id, nodeTypeID, label, config) =>
+          set({
+            nodes: get().nodes.map((n) => (n.id === id ? { ...n, data: { ...n.data, nodeTypeID, label, config } } : n)),
+          }),
         updateNodeConfig: (id, key, value) =>
           set({
             nodes: get().nodes.map((n) =>

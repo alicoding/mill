@@ -81,7 +81,11 @@ export function NodePalette({ nodeTypes, hasTrigger }: NodePaletteProps) {
                     draggable={!disabled}
                     onDragStart={disabled ? undefined : (e) => onPaletteDragStart(e, nt)}
                     aria-disabled={disabled}
-                    title={disabled ? 'A workflow can only have one trigger -- delete the existing one first.' : nt.Label}
+                    title={
+                      disabled
+                        ? 'A workflow can only have one trigger. Select the existing trigger node on the canvas to change its type instead.'
+                        : nt.Label
+                    }
                     data-testid="palette-item"
                     data-node-type-id={nt.ID}
                   >
