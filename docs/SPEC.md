@@ -2413,11 +2413,34 @@ this pass.
   server-mode error paths (`launchatlogin`'s `server`-build stub,
   `hotkey`'s own existing server-mode stub) rather than mocking around
   them.
-- Auto-update and menu-bar/dock/notification wiring (Wails3's own
-  first-party `app.Updater`/`dock`/`notifications` services, per the
-  research) are a separate, still-pending pass — not bundled into this
-  one since they don't share launch-at-login/summon-hotkey's user-facing
-  Settings-page surface.
+- **Update — auto-update wired too.** `app.Updater` (Wails3's own
+  first-party `v3/pkg/updater`, confirmed zero-new-dependency by the
+  research) is `Init`'d in `main.go` with a GitHub Releases provider
+  pointed at `alicoding/mill`, and `SettingsService.CheckForUpdates()`
+  exposes a manual check, surfaced as a real "Check for updates" button
+  in `SettingsView.tsx`. **Honest limitation, not glossed over**: no
+  real tagged-release process exists yet (`millVersion` in `main.go` is
+  a placeholder `"0.1.0"`, and `alicoding/mill` has zero GitHub
+  releases published as of this writing) — the mechanism is real and
+  correctly wired (verified end-to-end via Playwright, a real call
+  against the live GitHub API), but it's inert until Mill actually
+  starts tagging and publishing releases. That's real future work
+  (ADR-0002's release pipeline, §1.3), not something this pass claims
+  to have finished. No `PublicKey` is configured either (no signing key
+  exists yet) — a release carrying only a content digest still
+  installs, one carrying a signature would be rejected; revisit once a
+  real release/signing process exists.
+- Menu-bar/dock presence toggle and trigger-fire notifications (Wails3's
+  own first-party `dock`/`notifications` services, also zero-new-
+  dependency per the research) are deliberately **not** built in this
+  pass — unlike launch-at-login/summon-hotkey/auto-update, neither has
+  a settled concrete design yet (what should a dock toggle actually
+  control given Mill has no menu-bar-only mode today; what event should
+  a notification fire on, and how would that interact with Activity's
+  existing in-app feed) — building either now would be exactly the
+  "config surface for a decision that doesn't exist yet" trap
+  `.claude/rules/architecture.md` warns against, not a genuine gap like
+  the three items above were. Left as real, named future work.
 
 ## 4. Connectors
 

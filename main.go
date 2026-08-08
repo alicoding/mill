@@ -12,7 +12,17 @@ import (
 	"github.com/alicoding/mill/internal/adapters/settings"
 	"github.com/wailsapp/wails/v3/pkg/application"
 	"github.com/wailsapp/wails/v3/pkg/events"
+	"github.com/wailsapp/wails/v3/pkg/updater"
+	updaterGithub "github.com/wailsapp/wails/v3/pkg/updater/providers/github"
 )
+
+// millVersion is the version CurrentVersion the updater compares
+// releases against. No real tagged-release process exists yet
+// (docs/SPEC.md §3.7's own note) -- this is a placeholder that keeps
+// the mechanism wired and correct so a real release process has
+// nothing left to build here, not a claim that auto-update is a
+// finished, working pipeline today.
+const millVersion = "0.1.0"
 
 // Wails uses Go's `embed` package to embed the frontend files into the binary.
 // Any files in the frontend/dist folder will be embedded into the binary and
@@ -134,6 +144,25 @@ func main() {
 			ApplicationShouldTerminateAfterLastWindowClosed: true,
 		},
 	})
+
+	// Wails3's own first-party self-updater (v3/pkg/updater, confirmed
+	// via docs/SPEC.md §3.7's research: no separate Sparkle integration
+	// needed, this ships in the framework already). app.Updater is
+	// constructed by application.New() itself; Init just needs a
+	// provider. A GitHub-Releases-provider construction failure here
+	// would only happen from a malformed static Config, not a network
+	// call (New doesn't hit the network) -- logged, not fatal, since a
+	// broken updater must never block the app from starting.
+	if ghProvider, err := updaterGithub.New(updaterGithub.Config{Repository: "alicoding/mill"}); err != nil {
+		logger.Error("updater provider init", "error", err)
+	} else if err := app.Updater.Init(updater.Config{
+		CurrentVersion: millVersion,
+		Providers:      []updater.Provider{ghProvider},
+	}); err != nil {
+		logger.Error("updater init", "error", err)
+	} else {
+		settingsService.SetUpdater(app.Updater)
+	}
 
 	// Global hotkey registration needs the native run loop already
 	// spinning (see docs/SPEC.md §2.2's note on this) -- doing this from
