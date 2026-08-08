@@ -103,10 +103,11 @@ func (c *ConfigureService) resolveConnector(id string) (composition.ResolvedConn
 	}
 
 	return composition.ResolvedConnector{
-		BaseURL:  conn.BaseURL,
-		AuthType: conn.AuthType,
-		Headers:  conn.Headers,
-		Secret:   secret,
+		BaseURL:     conn.BaseURL,
+		AuthType:    conn.AuthType,
+		Headers:     conn.Headers,
+		Secret:      secret,
+		OpenAPISpec: conn.OpenAPISpec,
 	}, nil
 }
 
@@ -236,6 +237,39 @@ func (c *ConfigureService) ListConnectorOperations(id string) ([]openapispec.Ope
 		return nil, err
 	}
 	return doc.Operations(), nil
+}
+
+// ConnectorOperationFields resolves one connector operation's declared
+// input/output fields (ADR-0007 Phase 3) -- the data the canvas
+// Inspector's binding editor renders once a user picks an operation
+// from ListConnectorOperations above. Mirrors that method's own
+// lookup/parse shape.
+func (c *ConfigureService) ConnectorOperationFields(id, path, method string) (openapispec.Operation, error) {
+	c.mu.Lock()
+	var spec string
+	found := false
+	for _, cn := range c.connectors {
+		if cn.ID == id {
+			spec, found = cn.OpenAPISpec, true
+			break
+		}
+	}
+	c.mu.Unlock()
+	if !found {
+		return openapispec.Operation{}, fmt.Errorf("no connector with id %q", id)
+	}
+	if spec == "" {
+		return openapispec.Operation{}, fmt.Errorf("connector %q has no OpenAPI spec configured", id)
+	}
+	doc, err := openapispec.Parse([]byte(spec))
+	if err != nil {
+		return openapispec.Operation{}, err
+	}
+	op, err := doc.Operation(path, method)
+	if err != nil {
+		return openapispec.Operation{}, err
+	}
+	return *op, nil
 }
 
 // SetConnectorSecret writes id's secret to the OS keychain. Write-only

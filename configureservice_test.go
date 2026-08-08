@@ -145,6 +145,34 @@ func TestListConnectorOperations_UnknownConnector_Rejected(t *testing.T) {
 	}
 }
 
+func TestConnectorOperationFields_ReturnsDeclaredOperationFields(t *testing.T) {
+	cfg, _ := newTestConfigureService(t)
+	conn, err := cfg.CreateConnector("My API", connector.TypeHTTP, "https://example.com", connector.AuthNone, nil, testOpenAPISpec)
+	if err != nil {
+		t.Fatalf("CreateConnector returned error: %v", err)
+	}
+	op, err := cfg.ConnectorOperationFields(conn.ID, "/widgets", "GET")
+	if err != nil {
+		t.Fatalf("ConnectorOperationFields returned error: %v", err)
+	}
+	// testOpenAPISpec's GET /widgets declares no parameters and an empty
+	// 200 response -- both nil is the correct, real answer, not a stub.
+	if len(op.InputFields) != 0 || len(op.OutputFields) != 0 {
+		t.Errorf("ConnectorOperationFields = %+v, want no declared fields for this operation", op)
+	}
+}
+
+func TestConnectorOperationFields_UnknownOperation_Rejected(t *testing.T) {
+	cfg, _ := newTestConfigureService(t)
+	conn, err := cfg.CreateConnector("My API", connector.TypeHTTP, "https://example.com", connector.AuthNone, nil, testOpenAPISpec)
+	if err != nil {
+		t.Fatalf("CreateConnector returned error: %v", err)
+	}
+	if _, err := cfg.ConnectorOperationFields(conn.ID, "/does-not-exist", "GET"); err == nil {
+		t.Fatal("ConnectorOperationFields for an undeclared path returned nil error, want an error")
+	}
+}
+
 func TestSetConnectorSecret_UnknownConnector_Rejected(t *testing.T) {
 	cfg, _ := newTestConfigureService(t)
 	if err := cfg.SetConnectorSecret("does-not-exist", "secret"); err == nil {
