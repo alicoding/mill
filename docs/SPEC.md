@@ -3108,3 +3108,15 @@ mode from §0 repeating itself one level up.
   guardrail. ADR-0007 closed.
 - Bash-execution-through-our-process-but-nothing-is-ours reading (§1.1) —
   confirm with the user
+- Single execution path (§7/ADR-0008) — `LOCKED` and built: every
+  workflow run (canvas Run, Runs-page quick-run, a headless trigger
+  fire) goes through one durable `ExecutionService.RunWorkflow`
+  entrypoint now, tagged `RunKind` (`test`/`triggered`); the plain
+  in-memory `CompositionService.RunWorkflow` path is deleted.
+- Live picker + inline quick-create for Connector/List/MCP Server/
+  Workflow references (§3.5/§3.6/ADR-0009, extended by ADR-0010) —
+  `LOCKED` and built: `connectorId`/`listId`/`mcpServerId`/`workflowId`
+  all render as a live `Select` (`EntityRefField.tsx`) instead of a
+  paste-an-ID text box; the first three get an inline quick-create
+  dialog, `workflowId` deliberately doesn't (creating a workflow is
+  Composition's own "New workflow" flow).
