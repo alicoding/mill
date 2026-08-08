@@ -92,10 +92,17 @@ func (c *ConfigureService) Connectors() []connector.Connector {
 	return out
 }
 
-func (c *ConfigureService) CreateConnector(label, connType, baseURL string, authType connector.AuthType, headers map[string]string, openAPISpec string, auth *connector.AuthConfig, jose *connector.JOSEConfig) (connector.Connector, error) {
+// CreateConnector/UpdateConnector's positional-param list is getting
+// long (9 now, after Description) -- a real ergonomics cost (this
+// session already had to patch every call site twice via scripted
+// regex when Auth/JOSE were added), worth an options-struct pass at
+// some point, but that's a separate, bigger refactor than "add a
+// Description field" -- not done speculatively here.
+func (c *ConfigureService) CreateConnector(label, connType, baseURL string, authType connector.AuthType, headers map[string]string, openAPISpec string, auth *connector.AuthConfig, jose *connector.JOSEConfig, description string) (connector.Connector, error) {
 	conn := connector.Connector{
 		ID: newSlugID(label, "connector"), Label: label, Type: connType,
 		BaseURL: baseURL, AuthType: authType, Headers: headers, OpenAPISpec: openAPISpec, Auth: auth, JOSE: jose,
+		Description: description,
 	}
 	if err := connector.Validate(conn); err != nil {
 		return connector.Connector{}, err
@@ -112,8 +119,11 @@ func (c *ConfigureService) CreateConnector(label, connType, baseURL string, auth
 	return conn, nil
 }
 
-func (c *ConfigureService) UpdateConnector(id, label, connType, baseURL string, authType connector.AuthType, headers map[string]string, openAPISpec string, auth *connector.AuthConfig, jose *connector.JOSEConfig) (connector.Connector, error) {
-	conn := connector.Connector{ID: id, Label: label, Type: connType, BaseURL: baseURL, AuthType: authType, Headers: headers, OpenAPISpec: openAPISpec, Auth: auth, JOSE: jose}
+func (c *ConfigureService) UpdateConnector(id, label, connType, baseURL string, authType connector.AuthType, headers map[string]string, openAPISpec string, auth *connector.AuthConfig, jose *connector.JOSEConfig, description string) (connector.Connector, error) {
+	conn := connector.Connector{
+		ID: id, Label: label, Type: connType, BaseURL: baseURL, AuthType: authType, Headers: headers,
+		OpenAPISpec: openAPISpec, Auth: auth, JOSE: jose, Description: description,
+	}
 	if err := connector.Validate(conn); err != nil {
 		return connector.Connector{}, err
 	}
@@ -133,6 +143,11 @@ func (c *ConfigureService) UpdateConnector(id, label, connType, baseURL string, 
 		c.mu.Unlock()
 		return connector.Connector{}, fmt.Errorf("no connector with id %q", id)
 	}
+	// Carried forward, not reset to false: BuiltIn is purely
+	// informational (connector.Connector's own doc comment) -- editing a
+	// seeded example doesn't stop it having started as one. Same pattern
+	// CompositionService.UpdateWorkflow already established.
+	conn.BuiltIn = c.connectors[idx].BuiltIn
 	c.connectors[idx] = conn
 	c.mu.Unlock()
 

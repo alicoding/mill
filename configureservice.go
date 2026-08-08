@@ -173,12 +173,26 @@ func (c *ConfigureService) persistLists() {
 	_ = c.store.Set(listsKey, string(data))
 }
 
+// restore loads persisted Connectors/Lists, or -- on a genuinely fresh
+// install, nothing ever persisted for connectors -- seeds c.connectors
+// with connector.BuiltIn()'s seven example connectors (docs/SPEC.md
+// §4's Update) plus their demo secrets (seedBuiltInSecrets,
+// configureservice_builtin.go). Same lazy-seed-until-first-real-
+// mutation shape CompositionService.restore() already established for
+// Workflows: seeded here, not eagerly persisted, so identically
+// re-seeding on a second launch before any real edit is harmless
+// (nothing was ever changed to lose); the moment any real mutation
+// happens (including deleting a seed), persistConnectors() makes it
+// real and this branch never fires again.
 func (c *ConfigureService) restore() {
 	if raw, ok := c.store.Get(connectorsKey).(string); ok && raw != "" {
 		var connectors []connector.Connector
 		if err := json.Unmarshal([]byte(raw), &connectors); err == nil {
 			c.connectors = connectors
 		}
+	} else {
+		c.connectors = connector.BuiltIn()
+		c.seedBuiltInSecrets()
 	}
 	if raw, ok := c.store.Get(listsKey).(string); ok && raw != "" {
 		var lists []list.List
