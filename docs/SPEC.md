@@ -2492,6 +2492,42 @@ this pass.
   `ExecContext`, since DBOS's own step-output persistence is the natural
   home for it. `LOCKED` (this pass) — connector maturity as a whole
   stays a living list, not closed by this one change.
+- **Update — connector maturity pass 2: input/output schema, ADR-0007
+  Phase 1+2.** Full research (adopt OpenAPI 3.x, parsed at runtime with
+  `getkin/kin-openapi` — the converged parser in the Go OpenAPI
+  ecosystem, `oapi-codegen` itself depends on it just to parse specs)
+  and design are in
+  [`docs/adr/0007-connector-schema-and-secret-guardrail.md`](adr/0007-connector-schema-and-secret-guardrail.md).
+  `Connector` gained an optional `OpenAPISpec string` field — a
+  Connector with none behaves exactly as before this existed, additive
+  not breaking. `internal/adapters/openapispec` wraps `kin-openapi`
+  behind Mill's own names (mirrors `mcpclient`'s shape): `Parse`,
+  `Operations()` (every path+method the spec declares), `Operation(path,
+  method)` (its input fields from `Parameters`+`RequestBody`, output
+  fields from its first 2xx JSON response — each field carrying an
+  `IsSecret` flag, true for OpenAPI's own `format: "password"`
+  convention or a secret-shaped name, a real bug the adapter's own
+  tests caught: a naive substring match missed `"X-Api-Key"` because of
+  the hyphen, fixed by normalizing dashes/underscores before matching).
+  `ConfigureService.CreateConnector`/`UpdateConnector` validate a
+  non-empty spec parses before persisting; `ListConnectorOperations`
+  mirrors MCP Server's existing "List tools" discoverability pattern
+  (§3.6) — `ConfigureIntegration.tsx` gained a spec textarea and, once
+  set, a "List operations" button showing every declared operation
+  inline. **What this phase does not build, named explicitly in the
+  ADR**: any binding from a workflow's Attributes into a declared
+  operation's fields — `integration-http` is completely unchanged in
+  this phase, still the literal `path`/`method`/`bodyTemplate` config
+  it always had. That binding UI (a real UX design surface on par with
+  Decision's rule builder) and the secret-guardrail check in
+  `ValidateGraph` (which needs that binding config to exist first — a
+  design revision made honestly mid-implementation, recorded in the ADR
+  rather than silently) are Phase 3, deliberately deferred. Verified
+  end-to-end via Playwright (`frontend/e2e/configure-integration.spec.ts`)
+  against the real Go backend: creating a connector with a real spec
+  and listing its operations, an invalid spec rejected with a visible
+  error, and a spec-less connector correctly showing no "List
+  operations" action. `LOCKED` (Phase 1+2) — Phase 3 stays `OPEN`.
 - Jira/Confluence as a first-class example: still `OPEN`, unbuilt — the
   generic connector is real, but no named-vendor preset exists yet.
 - Whether connectors are built-in or a plugin surface: still `OPEN`.

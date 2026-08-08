@@ -43,6 +43,11 @@ type Connector struct {
 	BaseURL  string
 	AuthType AuthType
 	Headers  map[string]string
+	// OpenAPISpec is the raw OpenAPI 3.x document (JSON or YAML) this
+	// connector's operations are declared against -- optional (ADR-0007).
+	// Parsed via internal/adapters/openapispec. A Connector with no spec
+	// behaves exactly as before this field existed.
+	OpenAPISpec string
 }
 
 // Validate checks a Connector is well-formed before it's persisted --

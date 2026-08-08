@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
-import { Button, FormControl, Heading, IconButton, Label, Select, Stack, Text, TextInput } from '@primer/react'
+import { Button, FormControl, Heading, IconButton, Label, Select, Stack, Text, Textarea, TextInput } from '@primer/react'
 import { PencilIcon, PlusIcon, TrashIcon } from '@primer/octicons-react'
 import { ConfigureService } from '../bindings/github.com/alicoding/mill'
 import type { Connector } from '../bindings/github.com/alicoding/mill/internal/domain/connector/models'
 import { AuthType } from '../bindings/github.com/alicoding/mill/internal/domain/connector/models'
+import type { OperationRef } from '../bindings/github.com/alicoding/mill/internal/adapters/openapispec/models'
 import styles from './ListCard.module.css'
 
 const AUTH_LABEL: Record<string, string> = {
@@ -17,9 +18,10 @@ interface DraftConnector {
   baseURL: string
   authType: AuthType
   secret: string
+  openAPISpec: string
 }
 
-const EMPTY_DRAFT: DraftConnector = { label: '', baseURL: '', authType: AuthType.AuthNone, secret: '' }
+const EMPTY_DRAFT: DraftConnector = { label: '', baseURL: '', authType: AuthType.AuthNone, secret: '', openAPISpec: '' }
 
 // Configure's Integration section (docs/SPEC.md §3.5): CRUD over
 // ConfigureService's Connectors. Type is fixed to "http" -- the only
@@ -34,6 +36,7 @@ export function ConfigureIntegration() {
   const [draft, setDraft] = useState<DraftConnector>(EMPTY_DRAFT)
   const [formOpen, setFormOpen] = useState(false)
   const [error, setError] = useState('')
+  const [operationsByConnector, setOperationsByConnector] = useState<Record<string, OperationRef[] | string>>({})
 
   const refetch = () => {
     ConfigureService.Connectors().then((list) => setConnectors(list ?? [])).catch(console.error)
@@ -50,7 +53,7 @@ export function ConfigureIntegration() {
 
   const startEdit = (c: Connector) => {
     setEditingID(c.ID)
-    setDraft({ label: c.Label, baseURL: c.BaseURL, authType: c.AuthType, secret: '' })
+    setDraft({ label: c.Label, baseURL: c.BaseURL, authType: c.AuthType, secret: '', openAPISpec: c.OpenAPISpec })
     setFormOpen(true)
     setError('')
   }
@@ -59,8 +62,8 @@ export function ConfigureIntegration() {
     setError('')
     try {
       const saved = editingID
-        ? await ConfigureService.UpdateConnector(editingID, draft.label, 'http', draft.baseURL, draft.authType, null)
-        : await ConfigureService.CreateConnector(draft.label, 'http', draft.baseURL, draft.authType, null)
+        ? await ConfigureService.UpdateConnector(editingID, draft.label, 'http', draft.baseURL, draft.authType, null, draft.openAPISpec)
+        : await ConfigureService.CreateConnector(draft.label, 'http', draft.baseURL, draft.authType, null, draft.openAPISpec)
       if (draft.secret) {
         await ConfigureService.SetConnectorSecret(saved.ID, draft.secret)
       }
@@ -73,6 +76,12 @@ export function ConfigureIntegration() {
 
   const remove = (id: string) => {
     ConfigureService.DeleteConnector(id).then(refetch).catch(console.error)
+  }
+
+  const listOperations = (id: string) => {
+    ConfigureService.ListConnectorOperations(id)
+      .then((ops) => setOperationsByConnector((prev) => ({ ...prev, [id]: ops ?? [] })))
+      .catch((err) => setOperationsByConnector((prev) => ({ ...prev, [id]: String(err) })))
   }
 
   return (
@@ -113,6 +122,21 @@ export function ConfigureIntegration() {
                 <TextInput type="password" value={draft.secret} onChange={(e) => setDraft({ ...draft, secret: e.target.value })} block />
               </FormControl>
             )}
+            <FormControl>
+              <FormControl.Label>OpenAPI spec (optional)</FormControl.Label>
+              <FormControl.Caption>
+                Paste the OpenAPI 3.x document (JSON or YAML) for this API -- declares the typed
+                input/output fields a workflow node can bind Attributes to (ADR-0007). Leave blank to
+                keep using a literal request body, same as before this existed.
+              </FormControl.Caption>
+              <Textarea
+                value={draft.openAPISpec}
+                onChange={(e) => setDraft({ ...draft, openAPISpec: e.target.value })}
+                rows={6}
+                block
+                data-testid="connector-openapi-spec"
+              />
+            </FormControl>
             {error && <Text as="p" size="small" className={styles.error}>{error}</Text>}
             <Stack direction="horizontal" gap="condensed">
               <Button variant="primary" size="small" onClick={save}>Save connector</Button>
@@ -140,10 +164,35 @@ export function ConfigureIntegration() {
                   <Text as="p" size="small" className={styles.muted}>ID: {c.ID}</Text>
                 </div>
                 <Stack direction="horizontal" gap="condensed">
+                  {c.OpenAPISpec && (
+                    <Button size="small" variant="invisible" onClick={() => listOperations(c.ID)} data-testid="list-operations">
+                      List operations
+                    </Button>
+                  )}
                   <IconButton icon={PencilIcon} aria-label={`Edit ${c.Label}`} size="small" variant="invisible" onClick={() => startEdit(c)} />
                   <IconButton icon={TrashIcon} aria-label={`Delete ${c.Label}`} size="small" variant="invisible" onClick={() => remove(c.ID)} />
                 </Stack>
               </Stack>
+
+              {operationsByConnector[c.ID] !== undefined && (
+                <div data-testid="connector-operations">
+                  {typeof operationsByConnector[c.ID] === 'string' ? (
+                    <Text as="p" size="small" className={styles.error}>{operationsByConnector[c.ID] as string}</Text>
+                  ) : (operationsByConnector[c.ID] as OperationRef[]).length === 0 ? (
+                    <Text as="p" size="small" className={styles.muted}>This spec declares no operations.</Text>
+                  ) : (
+                    <Stack direction="vertical" gap="condensed">
+                      {(operationsByConnector[c.ID] as OperationRef[]).map((op) => (
+                        <Stack key={`${op.Method} ${op.Path}`} direction="horizontal" gap="condensed" align="center">
+                          <Label variant="secondary" size="small">{op.Method}</Label>
+                          <Text size="small">{op.Path}</Text>
+                          {op.Summary && <Text size="small" className={styles.muted}>-- {op.Summary}</Text>}
+                        </Stack>
+                      ))}
+                    </Stack>
+                  )}
+                </div>
+              )}
             </div>
           ))}
         </Stack>
