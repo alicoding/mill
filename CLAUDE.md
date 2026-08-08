@@ -45,6 +45,21 @@ commits, not destructive git operations.
 If `docs/SPEC.md` marks something `OPEN`, do not silently resolve it by
 implementing one option — surface the choice.
 
+**Goal-driven sessions finish their bounded scope, then hand off — never
+defer scope that was already in-goal.** When working an explicit goal
+(via `/goal` or an equivalent bounded scope handed to a session), finish
+everything inside that scope before ending the session. Re-priming a
+fresh session with this project's full context (`docs/SPEC.md`, the
+relevant ADRs, `.claude/rules/`) has a real, repeated cost — pushing
+already-scoped, bounded work to "a future session" multiplies that cost
+for no reason and is not a legitimate way to end a session early. A
+session-ending handoff exists to record what shipped and to name
+anything genuinely outside the goal's scope, blocked on the user, or
+newly discovered mid-session — never to paper over in-goal work that
+simply didn't get finished. If a goal turns out to be too large for one
+session, say so and ask before starting, not after ending partially
+done.
+
 ## Hard constraints (non-negotiable — see `docs/SPEC.md` §1.1 for the why)
 
 Product-level, always in effect regardless of what file is being
