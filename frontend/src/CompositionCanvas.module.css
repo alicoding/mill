@@ -109,19 +109,26 @@
 }
 .paletteItem:hover { background: var(--bgColor-neutral-muted); }
 .paletteItem:active { cursor: grabbing; }
-/* pointer-events: none is load-bearing, not decorative -- aria-disabled
-   alone doesn't stop the browser from hovering/focusing the element, so
-   TreeView's own internal container still applied its normal :hover
-   background (confirmed live: rgba(129,139,152,.1) on hover) regardless
-   of our disabled styling, since that hover rule targets a hashed inner
-   div our own CSS can't reach. Blocking pointer events at the <li>
-   itself is what actually prevents it, not fighting the library's CSS
-   specificity. */
+/* aria-disabled alone doesn't stop the browser from hovering the
+   element, so TreeView's own internal container kept applying its
+   normal :hover background (confirmed live: rgba(129,139,152,.1))
+   regardless of our disabled styling -- that rule lives on a hashed
+   inner div (`--control-transparent-bgColor-hover`, read directly from
+   Primer's own compiled CSS) our own selectors can't reach. Overriding
+   the design *token* the rule reads from -- not pointer-events: none,
+   tried first and reverted -- fixes the visual bug without also
+   breaking hover/focus for this row: pointer-events: none stops the
+   browser from hit-testing the element at all, which silently drops the
+   `cursor: not-allowed` below and would drop a future hover tooltip too.
+   CSS custom properties cascade to descendants regardless of hashed
+   class names, so this doesn't mean chasing Primer's internal markup
+   (the thing CLAUDE.md's UI rule already avoids doing elsewhere). */
 .paletteItemDisabled {
     cursor: not-allowed;
     opacity: 0.5;
     background: transparent;
-    pointer-events: none;
+    --control-transparent-bgColor-hover: transparent;
+    --control-transparent-bgColor-selected: transparent;
 }
 /* Fixed size, not size-to-content -- every node is the same uniform
    card regardless of label length (matches CANVAS_NODE_WIDTH/HEIGHT in
