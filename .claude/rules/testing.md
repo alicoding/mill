@@ -61,3 +61,27 @@ explicit so it isn't independently rediscovered per spec file. Verify a
 new spec's cleanup actually works by running the full suite twice in a
 row before trusting it, not just once — the bug only surfaces on the
 second run.
+
+**A UI feature isn't verified by narrow assertions alone — check it
+against the actual task it's meant to satisfy.** Concretely hit: the
+Configure → Integration connector form shipped with Headers/Base
+URL/Auth fields and an "OpenAPI spec" textarea, each individually
+covered by a passing Playwright assertion ("does this element exist,"
+"does this value round-trip") — but no test, and no manual pass, ever
+asked "can a user actually finish defining a connector's schema
+without writing raw OpenAPI by hand," which was the real, larger gap
+the user found by using the live app. Server-mode Playwright
+(`run-mill`) and the real desktop app run identical Go/React code —
+this was never a platform-parity bug — the miss was scope: assertions
+proved the pieces existed, not that the feature did its job. Before
+calling a UI change done, restate the underlying task in one sentence
+("can someone define an operation's input/output fields without
+touching JSON") and check that specific sentence, not just the
+elements the diff touched. A second, distinct trap this same feature
+also hit: an `onDraftChange(newValue)` immediately followed by a
+`onSave()` read the *previous* render's stale state (React `setState`
+isn't synchronous) — passed a quick manual click-through, failed the
+first real e2e run all the way to a persisted save. When a save/submit
+handler depends on a value computed just before it fires, compute it
+into a local variable and pass it directly, don't round-trip it
+through state first.

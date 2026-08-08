@@ -2667,6 +2667,58 @@ this pass.
   operation surfaces the binding editor with the secret field visibly
   guarded (labeled, no Select offered) rather than silently omitted.
   `LOCKED` (Phase 3) — ADR-0007 as a whole is now fully built.
+- **Update — sectioned Configure form + Manual/CSV schema authoring,
+  [ADR-0011](adr/0011-connector-schema-authoring-modes.md).** Raised
+  directly by the user testing the live app: the connector form was one
+  flat scrolling list with no separation of concerns, and pasting a
+  full OpenAPI document by hand was the *only* way to declare a
+  schema. `ConfigureIntegration.tsx`'s create/edit form is now
+  `ConnectorForm.tsx`, sectioned into General/Auth/Headers/Schema tabs
+  (real precedent, not invented: Postman's Params/Headers/
+  Authorization/Body tabs, n8n's HTTP Request node's own section
+  split, both confirmed via research). The Schema tab offers a Paste-
+  OpenAPI / Manual-editor toggle — not a third schema format, both
+  modes converge on the same `Connector.OpenAPISpec` string
+  (`frontend/src/openapiSynth.ts`'s `synthesizeOpenAPISpec`), zero
+  backend changes to the execution path. The Manual editor
+  (`ManualSchemaEditor.tsx`) is a repeatable operations list, each with
+  input/output field tables; **CSV import** (via PapaParse — MIT, 2.1M
+  weekly downloads, RFC 4180-correct, checked directly rather than
+  hand-rolling comma-splitting) is an accelerator that bulk-fills the
+  same table, not a fourth mode. Content authored as CSV *or* pasted as
+  OpenAPI is reviewable in the same table either way
+  (`parseOpenAPIToOperations` is a best-effort reverse of the synthesis
+  function, round-tripping exactly what the table itself could
+  produce — an arbitrarily complex hand-written spec with `oneOf`/deep
+  nesting is named explicitly as out of scope, not silently mishandled).
+  `openapispec.Field` gained `Alias` (a friendlier reference name shown
+  in the binding editors, display-only — bindings stay keyed by `Name`)
+  and `Path` (a dot-path into nested response JSON for output
+  extraction, e.g. `data.name`), both read from the standard OpenAPI
+  `x-*` vendor-extension mechanism (`x-mill-alias`/`x-mill-path`,
+  confirmed real against `kin-openapi`'s own `Extensions` field, not a
+  hack). `attributebinding.go`'s `applyOutputBindings` gained
+  `extractPath` (nested-object + numeric-array-index traversal, not a
+  wildcard-over-array extraction — an Attribute holds one scalar value)
+  — a field with no `Path` set keeps today's exact flat-lookup
+  behavior, unconditionally backward compatible. **Deferred, named
+  explicitly, not built**: a "primary key" concept for a schema field —
+  the user's own answer flagged real uncertainty about what it should
+  mean, and no concrete consumer exists yet (see §10). Verified: real
+  Go tests (alias/path extraction against a parsed document, nested-
+  path extraction proven via a Decision node routing on a
+  nested-only-reachable value), Vitest coverage of the synthesis/CSV/
+  reverse-parse functions, and end-to-end via Playwright
+  (`connector-schema-editor.spec.ts`) — authoring a field via the
+  Manual editor, saving, and confirming the real backend
+  (`ConnectorOperationFields`) round-trips the alias/path correctly. A
+  real bug caught by that e2e test, not by unit tests alone: the save
+  handler originally called `onDraftChange(...)` then `onSave()`
+  immediately after, reading the *previous* render's stale
+  `draft.openAPISpec` (`setState` isn't synchronous) — fixed by
+  computing the final draft into a local value and passing it directly
+  to `onSave`, now `.claude/rules/testing.md`'s own documented pattern
+  for this class of bug. `LOCKED`.
 - Jira/Confluence as a first-class example: still `OPEN`, unbuilt — the
   generic connector is real, but no named-vendor preset exists yet.
 - Whether connectors are built-in or a plugin surface: still `OPEN`.
@@ -3140,3 +3192,15 @@ mode from §0 repeating itself one level up.
   paste-an-ID text box; the first three get an inline quick-create
   dialog, `workflowId` deliberately doesn't (creating a workflow is
   Composition's own "New workflow" flow).
+- Sectioned Connector configuration + Manual/CSV schema authoring (§4/
+  ADR-0011) — `LOCKED` and built: `ConnectorForm.tsx`'s General/Auth/
+  Headers/Schema tabs, `ManualSchemaEditor.tsx`, CSV import (PapaParse),
+  `Field.Alias`/`Path` via OpenAPI `x-*` extensions, nested-path output
+  extraction. **Still `OPEN`, deliberately deferred**: a "primary key"
+  concept for a schema field — raised by the user, but their own answer
+  surfaced genuine uncertainty about what it should mean and no
+  concrete consumer was identified (possibly conflating connector-
+  schema authoring with a separate, real question: cross-workflow data
+  access, closer to this section's own still-open session-identity
+  model than to connector schemas). Revisit once a real use names what
+  should actually consume it, not speculatively.

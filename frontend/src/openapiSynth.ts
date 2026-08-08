@@ -137,3 +137,79 @@ export function parseCSVToOperations(csvText: string): { operations: ManualOpera
   }
   return { operations: [...byOperation.values()], errors }
 }
+
+const HTTP_METHOD_KEYS = ['get', 'post', 'put', 'patch', 'delete', 'head', 'options', 'trace', 'connect']
+
+interface JSONSchemaLike {
+  type?: string
+  format?: string
+  properties?: Record<string, JSONSchemaLike>
+  required?: string[]
+  'x-mill-alias'?: string
+  'x-mill-path'?: string
+}
+
+function fieldFromSchema(name: string, schema: JSONSchemaLike, placement: ManualField['in'], required: boolean): ManualField {
+  return {
+    name,
+    in: placement,
+    type: (schema.type as ManualField['type']) ?? 'string',
+    required,
+    secret: schema.format === 'password',
+    alias: schema['x-mill-alias'],
+    extractPath: schema['x-mill-path'],
+  }
+}
+
+// Best-effort reverse of synthesizeOpenAPISpec -- lets a pasted (or
+// previously saved) OpenAPI document be reviewed/edited in the same
+// Manual editor table (docs/adr/0011: "if you started as csv or json
+// you will be able to review it using the editor"). Deliberately
+// bounded, named in the ADR: round-trips cleanly only what the table
+// itself could have produced (flat parameters + a flat JSON object
+// body/response) -- oneOf/allOf, deeply nested arrays-of-objects, or
+// non-JSON media types are silently skipped rather than guessed at.
+// JSON only (no YAML) -- this runs in the browser with no YAML parser
+// adopted for it; paste JSON, or keep editing via the raw-text mode.
+export function parseOpenAPIToOperations(specText: string): { operations: ManualOperation[]; errors: string[] } {
+  let doc: { paths?: Record<string, Record<string, unknown>> }
+  try {
+    doc = JSON.parse(specText)
+  } catch {
+    return { operations: [], errors: ['Not valid JSON -- switch back to "Paste OpenAPI" to edit as YAML or fix the JSON first.'] }
+  }
+  const operations: ManualOperation[] = []
+  for (const [path, pathItem] of Object.entries(doc.paths ?? {})) {
+    for (const method of HTTP_METHOD_KEYS) {
+      const op = pathItem[method] as {
+        summary?: string
+        parameters?: { name: string; in: string; required?: boolean; schema?: JSONSchemaLike }[]
+        requestBody?: { content?: { 'application/json'?: { schema?: JSONSchemaLike } } }
+        responses?: Record<string, { content?: { 'application/json'?: { schema?: JSONSchemaLike } } }>
+      } | undefined
+      if (!op) continue
+
+      const inputFields: ManualField[] = (op.parameters ?? []).map((p) =>
+        fieldFromSchema(p.name, p.schema ?? {}, p.in as ManualField['in'], p.required ?? false))
+
+      const bodySchema = op.requestBody?.content?.['application/json']?.schema
+      if (bodySchema?.properties) {
+        const required = new Set(bodySchema.required ?? [])
+        for (const [name, propSchema] of Object.entries(bodySchema.properties)) {
+          inputFields.push(fieldFromSchema(name, propSchema, 'body', required.has(name)))
+        }
+      }
+
+      const outputFields: ManualField[] = []
+      const respSchema = op.responses?.['200']?.content?.['application/json']?.schema
+      if (respSchema?.properties) {
+        for (const [name, propSchema] of Object.entries(respSchema.properties)) {
+          outputFields.push(fieldFromSchema(name, propSchema, 'body', false))
+        }
+      }
+
+      operations.push({ path, method: method.toUpperCase(), summary: op.summary ?? '', inputFields, outputFields })
+    }
+  }
+  return { operations, errors: [] }
+}
