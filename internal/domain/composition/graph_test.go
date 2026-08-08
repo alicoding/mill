@@ -180,7 +180,7 @@ func TestExecuteWorkflow_AttrValues_OverridesZeroValueDefault(t *testing.T) {
 		t.Fatalf("ResolveNodeDefaults returned error: %v", err)
 	}
 	attrs := []AttributeDef{{Key: "urgent", Label: "Urgent", Type: FieldBoolean}}
-	if _, err := ExecuteWorkflow(resolved, edges, attrs, map[string]string{"urgent": "true"}); err != nil {
+	if _, err := ExecuteWorkflow(resolved, edges, attrs, ExecuteOptions{AttrValues: map[string]string{"urgent": "true"}}); err != nil {
 		t.Fatalf("ExecuteWorkflow returned error: %v", err)
 	}
 	if !wroteHTML || wroteText {

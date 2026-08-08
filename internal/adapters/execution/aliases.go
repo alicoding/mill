@@ -124,4 +124,15 @@ var (
 
 	// WithFilterSortDesc orders ListWorkflows most-recent-first.
 	WithFilterSortDesc = dbos.WithFilterSortDesc
+
+	// WithFilterParentWorkflowID scopes ListWorkflows to the children of
+	// specific parent workflow ID(s) -- docs/adr/0010's child-workflow
+	// tracking, verified directly against real DBOS parent/child
+	// behavior (executionchildworkflow_test.go), not assumed from docs.
+	WithFilterParentWorkflowID = dbos.WithFilterParentWorkflowID
+
+	// WithFilterHasParent scopes ListWorkflows to workflows that do (or
+	// don't) have a parent -- the other half of docs/adr/0010's
+	// child-workflow tracking.
+	WithFilterHasParent = dbos.WithFilterHasParent
 )

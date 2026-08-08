@@ -1560,7 +1560,7 @@ Plan step for this as a standing rule.
 | **Trigger** | Entry-point node: listen for *any* event source (hotkey, clipboard change, a browser-bridge DOM event per §5, an incoming MCP `tools/call` per §3.1, a schedule) and emit its data as the workflow's starting input — not "the hotkey mechanism," a general category the hotkey is one instance of. A trigger's output *is* the workflow's input; these are one concept, not two. | Each concrete event source adopts its own library behind an adapter (hotkey/schedule/filesystem-watch do; clipboard-watch is a small build); the abstraction unifying them into one node kind, and `TriggerService`'s registry/exclusivity, are Mill's own | `LOCKED`, built (manual/hotkey/schedule/clipboard-watch/filesystem-watch) — see §3.4 for the fuller map. DOM-event and MCP-call triggers remain unbuilt, gated on §5/§3.1 |
 | **Decision / branching** | Route execution down one of several named output edges based on a condition evaluated against the running payload | Node/graph semantics: build (core domain — composition rules). Expression evaluation underneath: adopt (`expr-lang/expr`, MIT, sandboxed/side-effect-free/loop-bounded by design — verified directly, not assumed) rather than hand-writing a condition parser | `LOCKED` (execution engine) — `internal/domain/composition`'s `ExecContext`/`ValidateGraph`/`nextNode` (see the Update note right after this table) walk real Decision branches end-to-end; `KindDecision` + `decision-route` NodeType render and connect on the canvas. Authoring real conditions (a visual rule builder) is still `OPEN` — see §3.5's Decision row |
 | **Parallel Steps** | Fan out to multiple steps concurrently, then join | Graph/fan-in semantics: build. Concurrency execution: DBOS's `Queue`/`WithWorkerConcurrency` (§7) is a plausible real backing mechanism once designed, not hand-rolled goroutine management | ADR-0005 names it, deferred |
-| **Child Workflow** | One workflow invokes another as a step | Build (composition rule — no library has an opinion on Mill's own workflow-of-workflows semantics) | ADR-0005 names it, deferred |
+| **Child Workflow** | One workflow invokes another as a step | Graph/node semantics: build. Execution: **adopt** — DBOS (already adopted, §7) has real, native parent/child primitives (`RunWorkflow` called from inside a running workflow auto-tracks `ParentWorkflowID`; a workflow ID is DBOS's own idempotency key), corrected from ADR-0005's original "no library has an opinion" verdict | `LOCKED` — [ADR-0010](adr/0010-child-workflow.md), built |
 | **Integration / Connector node** | Call an external HTTP API, auth'd | Wire protocol: adopt (stdlib `net/http`, via `internal/adapters/httpconnector`). Connector config/credential model: build (`internal/domain/connector`) + adopt (`zalando/go-keyring` via `internal/adapters/credential`) | `LOCKED` (execution) — `internal/domain/connector`'s `Connector{ID, Label, Type, BaseURL, AuthType, Headers}` + a new `integration-http` `NodeType` (`KindProcess`) execute real HTTP calls, resolving `AuthType`/secret into the right header (`X-Api-Key` or `Authorization: Bearer`) via `composition.SetConnectorLookup`'s injected seam (mirrors `TriggerService`'s `Syncer` pattern — the domain package doesn't own connector storage). §4 stays `OPEN` on the Configure-surface UI to author a Connector; see §3.5's own row |
 | **List** (a reusable lookup/reference dataset) | Look up an Attributes value against a named, Configure-authored table, write the match back into Attributes | Build (core domain — no library has an opinion on Mill's own List model; the lookup itself is a plain map read) | `LOCKED` (execution) — `internal/domain/list.List{ID, Label, Entries}` + a new `list-lookup` `NodeType` (`KindProcess`) resolve a `listId` via `composition.SetListLookup` (same injected-seam pattern as Integration/Connector's `SetConnectorLookup`) and write the matched entry into `ExecContext.Attributes[outputKey]`. Not in ADR-0005's original taxonomy at all (a real gap flagged in §3.5) — added here as the first thing built against it. §3.5 stays `OPEN` on the Configure-surface UI to author a List |
 | **MCP tool call** (§3.6's extension point — call a tool on a Configure-authored MCP server) | Call one tool on a locally-configured MCP server over stdio, replace the payload with its text result | Wire protocol: adopt (`modelcontextprotocol/go-sdk`'s client role, via `internal/adapters/mcpclient`). Server config/CRUD: build, same shape as Connector | `LOCKED` (execution + authoring, end-to-end) — `internal/domain/mcpserver.MCPServer{ID, Label, Command, Args}` + a new `mcp-tool-call` `NodeType` (`KindProcess`) resolve an `mcpServerId` via `composition.SetMCPServerLookup` and call `toolName` with `argumentsJSON`. Verified against a real spawned subprocess (an official MCP reference server via `npx`), not just unit tests — see §3.6 for the full writeup. This is the "add a new capability without a core code change" answer §3.6 set out to find |
@@ -1690,6 +1690,53 @@ dropped a Decision node, opened the rule builder on its outgoing edge,
 and confirmed the field dropdown offered the real attribute by name —
 not a stub. `LOCKED`.
 
+**Update — Child Workflow is built, via
+[ADR-0010](adr/0010-child-workflow.md).** Corrects this table's own row
+above: DBOS (already adopted, §7) turned out to have real, native
+parent/child execution — calling `dbos.RunWorkflow` from inside an
+already-running workflow auto-creates a tracked child
+(`ParentWorkflowID`), and a DBOS workflow ID is itself an idempotency
+key (re-invoking with the same ID returns the recorded result instead
+of re-running). Only buildable unconditionally after
+[ADR-0008](adr/0008-single-execution-path.md) made every run durable —
+before that, a Child Workflow node would have needed either a
+durable-only restriction or a weaker in-process fallback. A new
+`trigger-callable` `NodeType` (§3.4 below) is the only valid entry point
+a workflow can be invoked as a child through — decoupled from any real
+external event, modeled on n8n's own "Execute Workflow Trigger"; the
+child-workflow picker (a fourth `RefKind`, "workflow", on
+[ADR-0009](adr/0009-configure-entity-picker.md)'s mechanism — no
+quick-create for this one, creating a workflow is Composition's own
+"New workflow" flow) only lists workflows rooted there. Input binding
+reuses ADR-0007 Phase 3's `parseBindings`/`resolveBindingValue`
+mechanism unchanged (already generic, not integration-http-specific) —
+the child's own declared Attributes are what
+`ChildWorkflowBindingsEditor.tsx` offers rows for, using a
+`LiteralOrAttributeField.tsx` component now shared with
+`IntegrationBindingsEditor.tsx` rather than duplicated. `ExecContext`
+gained one new opaque field, `RunContext any` — composition never
+inspects it, only carries it, so `ExecutionService` (which owns DBOS)
+can thread its own `execution.Context` through to the injected
+`SetChildWorkflowRunner` function without composition importing DBOS
+(domain purity). The single ad-hoc `attrValues` variadic
+`ExecuteWorkflow`/`ExecuteWorkflowWithStepRunner` gained for ADR-0008's
+test-input form was folded into an `ExecuteOptions` struct once
+`RunContext` became a second, differently-typed optional value — Go
+allows only one variadic parameter. Verified end-to-end against a real
+DBOS instance, not assumed from the SDK's docs: a real parent/child run
+(`TestRunChildWorkflow_TracksRealParentChildRelationship`) confirms
+`ListWorkflows(WithFilterParentWorkflowID(...))` finds exactly the
+child DBOS actually tracked, and a second regression test proves
+re-invoking with the same idempotency key doesn't start a duplicate
+child run. Frontend picker filtering (only `trigger-callable`-rooted
+workflows appear) verified via Playwright
+(`child-workflow.spec.ts`). **Not built this pass, named explicitly**:
+a "show this run's children" UI on the Runs page (`ParentWorkflowID` is
+already there via DBOS, just not surfaced yet); cascading cancel/
+delete-with-children exposed anywhere in Mill's own UI; cyclic
+child-workflow detection (A→B→A) — a real workflow hitting this is the
+trigger to revisit, not speculative upfront. `LOCKED`.
+
 ### 3.4 Trigger primitives — capability map
 
 §3.3's Trigger row was one line (`Kind: trigger`, `Source: "hotkey"`
@@ -1739,6 +1786,7 @@ regular interval) or webhook/real-time (service pushes events instantly)"
 | **Webhook / incoming HTTP** | C | External service POSTs an event to a Mill-owned endpoint | Not a library gap — Mill already runs an HTTP server in server-mode (Wails3 + stdlib `net/http`); the open question is purely whether Mill should run a public listener at all | `OPEN` — a scope/threat-model decision, not an adoption decision |
 | **App/connector-specific** (e.g. email/IMAP) | B or C | Poll or push scoped to one external service | Depends on §4 Connectors | `PARKED` until §4 resolves — not a distinct Trigger *kind*, a connector-scoped instance of Group B/C |
 | **System/meta** (run failed, workflow updated) | D | Fired by Mill's own execution engine | Build, depends on §7 | `PARKED` until §7's execution engine lands — direct analog to n8n's Error Trigger / Workflow Trigger |
+| **Callable by another workflow** | D | Fired only when a Child Workflow node (docs/adr/0010) invokes this workflow — never a real external event | Build (composition rule; execution rides on DBOS's native parent/child call, already adopted §7) | `LOCKED`, built — `trigger-callable` NodeType, no listener process (same shape as `trigger-manual`); direct analog to n8n's Execute Workflow Trigger |
 
 **Architecture conclusion: each trigger type is its own `NodeType` under
 one new `NodeKind = "trigger"`, not one generic Trigger node with a
@@ -3035,8 +3083,8 @@ mode from §0 repeating itself one level up.
 ## 10. Open questions log
 
 - Node/canvas composition model (§3) — Decision/Integration/List
-  execution + authoring now built (§3.3/§3.5); Parallel Steps, Child
-  Workflow, and draft/live versioning remain the open parts
+  execution + authoring, and now Child Workflow (§3.3/ADR-0010), are
+  built; Parallel Steps and draft/live versioning remain the open parts
 - Browser extension ↔ native app protocol details (§5)
 - Env/shell determinism rules (§6)
 - Session identity model spanning tab + agent run + process (§7)

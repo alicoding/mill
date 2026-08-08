@@ -162,7 +162,8 @@ func (e *ExecutionService) runWorkflow(ctx execution.Context, in runInput) (stri
 			return fn()
 		}, execution.WithStepName(stepID))
 	}
-	return composition.ExecuteWorkflowWithStepRunner(in.Nodes, in.Edges, in.Attributes, stepRunner, in.Values)
+	return composition.ExecuteWorkflowWithStepRunner(in.Nodes, in.Edges, in.Attributes, stepRunner,
+		composition.ExecuteOptions{AttrValues: in.Values, RunContext: ctx})
 }
 
 // RunWorkflow is the one execution entrypoint for the running app

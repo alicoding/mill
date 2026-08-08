@@ -9,6 +9,7 @@ import { useHotkeyCapture, isAccessibilityError, ACCESSIBILITY_SETTINGS_URL } fr
 import { generateSamplePayload } from './configSchema'
 import { EntityRefField } from './EntityRefField'
 import { IntegrationBindingsEditor } from './IntegrationBindingsEditor'
+import { ChildWorkflowBindingsEditor } from './ChildWorkflowBindingsEditor'
 import styles from './CompositionCanvas.module.css'
 import runbookStyles from './ListCard.module.css'
 
@@ -209,6 +210,15 @@ export function NodeInspector({ node, attrs, nodeType, sameKindNodeTypes, hasWor
           outputBindingsRaw={node.data.config.outputBindings ?? ''}
           onChangeInputBindings={(raw) => onConfigChange('inputBindings', raw)}
           onChangeOutputBindings={(raw) => onConfigChange('outputBindings', raw)}
+        />
+      )}
+
+      {node.data.nodeTypeID === 'child-workflow' && (
+        <ChildWorkflowBindingsEditor
+          workflowId={node.data.config.workflowId ?? ''}
+          attrs={attrs}
+          inputBindingsRaw={node.data.config.inputBindings ?? ''}
+          onChangeInputBindings={(raw) => onConfigChange('inputBindings', raw)}
         />
       )}
     </Stack>
