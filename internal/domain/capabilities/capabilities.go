@@ -25,6 +25,7 @@ const (
 	ViewActivity    ViewKind = "activity"
 	ViewComposition ViewKind = "composition"
 	ViewConfigure   ViewKind = "configure"
+	ViewRuns        ViewKind = "runs"
 	ViewPlaceholder ViewKind = "placeholder"
 )
 
@@ -75,13 +76,12 @@ func List() []Capability {
 			Status: StatusLocked, View: ViewActivity,
 		},
 		{
-			ID: "copilot-bridge", Label: "M365 Copilot chat bridge", SpecSection: "2.1",
-			Status: StatusOpen, View: ViewPlaceholder,
+			ID: "process-tracking", Label: "Runs (durable execution)", NavLabel: "Runs", SpecSection: "7",
+			Status: StatusLocked, View: ViewRuns,
 		},
 		{
-			ID: "process-tracking", Label: "Process & session tracking", SpecSection: "7",
+			ID: "copilot-bridge", Label: "M365 Copilot chat bridge", SpecSection: "2.1",
 			Status: StatusOpen, View: ViewPlaceholder,
-			EditorPath: "docs/adr/0004-execution-process-tracking.md",
 		},
 		{
 			ID: "guardrails", Label: "Guardrails / policy", SpecSection: "8",

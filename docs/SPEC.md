@@ -411,6 +411,7 @@ graph TB
         CompSvc["CompositionService"]
         CapSvc["CapabilitiesService"]
         SpecSvc["SpecService"]
+        ExecSvc["ExecutionService"]
     end
     subgraph Domain["internal/domain/* — core domain, hand-written"]
         TrigDom["trigger"]
@@ -424,7 +425,7 @@ graph TB
         Schedule["schedule"]
         Filewatch["filewatch"]
         Settings["settings"]
-        ExecAdapter["execution (planned, DBOS)"]
+        ExecAdapter["execution"]
     end
     subgraph External["External libraries / OS"]
         OSA["osascript / macOS clipboard"]
@@ -433,7 +434,7 @@ graph TB
         FSN["fsnotify/fsnotify"]
         H2M["html-to-markdown"]
         WailsRT["Wails3 runtime / KVStoreService"]
-        DBOSExt["DBOS-Go + SQLite (planned)"]
+        DBOSExt["DBOS-Go + SQLite"]
     end
 
     Views --> Store
@@ -441,6 +442,7 @@ graph TB
     Views -->|generated Wails bindings| CompSvc
     Views -->|generated Wails bindings| CapSvc
     Views -->|generated Wails bindings| SpecSvc
+    Views -->|generated Wails bindings| ExecSvc
 
     TrigSvc --> TrigDom
     TrigSvc --> Hotkey
@@ -453,10 +455,11 @@ graph TB
     CompSvc --> Settings
     CompSvc -.->|Sync after Create/Update/Delete| TrigSvc
     CapSvc --> CapDom
+    ExecSvc -->|ExecuteWorkflowWithStepRunner| CompDom
+    ExecSvc --> ExecAdapter
 
     CompDom --> Clipboard
     CompDom --> Markdown
-    CompDom -.-> ExecAdapter
 
     Clipboard --> OSA
     Markdown --> H2M
@@ -464,10 +467,7 @@ graph TB
     Schedule --> NRC
     Filewatch --> FSN
     Settings --> WailsRT
-    ExecAdapter -.-> DBOSExt
-
-    classDef planned stroke-dasharray: 5 5,fill:transparent
-    class ExecAdapter,DBOSExt planned
+    ExecAdapter --> DBOSExt
 ```
 
 ## 2. Core primitive: Capture → Process → Apply
@@ -1558,10 +1558,10 @@ Plan step for this as a standing rule.
 | **Integration / Connector node** | Call an external HTTP API, auth'd | Wire protocol: adopt (stdlib `net/http`, via `internal/adapters/httpconnector`). Connector config/credential model: build (`internal/domain/connector`) + adopt (`zalando/go-keyring` via `internal/adapters/credential`) | `LOCKED` (execution) — `internal/domain/connector`'s `Connector{ID, Label, Type, BaseURL, AuthType, Headers}` + a new `integration-http` `NodeType` (`KindProcess`) execute real HTTP calls, resolving `AuthType`/secret into the right header (`X-Api-Key` or `Authorization: Bearer`) via `composition.SetConnectorLookup`'s injected seam (mirrors `TriggerService`'s `Syncer` pattern — the domain package doesn't own connector storage). §4 stays `OPEN` on the Configure-surface UI to author a Connector; see §3.5's own row |
 | **List** (a reusable lookup/reference dataset) | Look up an Attributes value against a named, Configure-authored table, write the match back into Attributes | Build (core domain — no library has an opinion on Mill's own List model; the lookup itself is a plain map read) | `LOCKED` (execution) — `internal/domain/list.List{ID, Label, Entries}` + a new `list-lookup` `NodeType` (`KindProcess`) resolve a `listId` via `composition.SetListLookup` (same injected-seam pattern as Integration/Connector's `SetConnectorLookup`) and write the matched entry into `ExecContext.Attributes[outputKey]`. Not in ADR-0005's original taxonomy at all (a real gap flagged in §3.5) — added here as the first thing built against it. §3.5 stays `OPEN` on the Configure-surface UI to author a List |
 | **MCP tool call** (§3.6's extension point — call a tool on a Configure-authored MCP server) | Call one tool on a locally-configured MCP server over stdio, replace the payload with its text result | Wire protocol: adopt (`modelcontextprotocol/go-sdk`'s client role, via `internal/adapters/mcpclient`). Server config/CRUD: build, same shape as Connector | `LOCKED` (execution + authoring, end-to-end) — `internal/domain/mcpserver.MCPServer{ID, Label, Command, Args}` + a new `mcp-tool-call` `NodeType` (`KindProcess`) resolve an `mcpServerId` via `composition.SetMCPServerLookup` and call `toolName` with `argumentsJSON`. Verified against a real spawned subprocess (an official MCP reference server via `npx`), not just unit tests — see §3.6 for the full writeup. This is the "add a new capability without a core code change" answer §3.6 set out to find |
-| **Durable step execution / retry / resume** | Survive the process dying mid-workflow, checkpoint per step, retry transient failures | Adopt (DBOS-Go) | ADR-0004 (`proposed`) — library picked, **not yet integrated**: confirmed directly (checked `go.mod`, no `internal/adapters/execution` package exists) that "integration in progress this session" was stale text left over from an earlier session that didn't land; corrected here rather than left to mislead future planning |
-| **Replay / re-run from history** | Re-invoke a past run, ideally resuming rather than restarting | Mechanism: adopt (DBOS `ForkWorkflow`/workflow-ID resume). UI/policy: build | Named this session — not built, deliberately deferred past the current DBOS-integration pass |
+| **Durable step execution / retry / resume** | Survive the process dying mid-workflow, checkpoint per step, retry transient failures | Adopt (DBOS-Go) | `LOCKED` — ADR-0004 `accepted`, `internal/adapters/execution` + `executionservice.go` built and e2e-verified; a real regression test (`TestResumeAfterFailure_DoesNotReExecuteCheckpointedStep`) proves a checkpointed step doesn't re-execute on resume against a real DBOS SQLite runtime |
+| **Replay / re-run from history** | Re-invoke a past run, ideally resuming rather than restarting | Mechanism: adopt (DBOS `ForkWorkflow`/workflow-ID resume). UI/policy: build | `LOCKED` — the Runs page's "Redrive from here" (`ExecutionService.RedriveRun`, `dbos.ForkWorkflow`) is exactly this, built and e2e-verified |
 | **Draft/live versioning** | Edit a workflow without breaking the currently-live version | Build (no library owns Mill's own versioning semantics) | Real gap flagged from the reference-platform review (§3.2), `OPEN` |
-| **Live + shadow events / execution history** | Filterable log of past runs; dry-run a candidate change against real traffic before trusting it | Data: adopt (DBOS `GetStatus`/`ListWorkflows`). UI: build | §3.2 shadow-events bullet; §7 already calls Activity "the closest thing to the analytics half" |
+| **Live + shadow events / execution history** | Filterable log of past runs; dry-run a candidate change against real traffic before trusting it | Data: adopt (DBOS `GetStatus`/`ListWorkflows`). UI: build | `LOCKED` (execution-history half) — §7's Runs page (`RunsView.tsx`, `ListWorkflows`/`GetWorkflowSteps`) built and e2e-verified. Shadow-events (dry-run a draft version against real traffic) stays unbuilt — no draft/live versioning concept exists yet (§3.2's own draft/live versioning gap, still real) |
 | **Guardrail preview / policy gate** | Approve/deny before a step actually runs | Build (core domain — no library has an opinion on Mill's guardrail semantics) | §8, `LOCKED` in shape, `OPEN` in detail |
 | **Visual composition surface** | Author a DAG, not just a list | Adopt (React Flow / `@xyflow/react`) — built ahead of ADR-0005 B2's original deferral trigger, by explicit decision (see the ADR's Update section) | §3, `CompositionCanvas.tsx`, `UX: PROTOTYPE` |
 
@@ -2336,14 +2336,41 @@ Full rationale in [`docs/adr/0003-browser-bridge-architecture.md`](adr/0003-brow
   kill-the-process-mid-workflow spike, satisfies the sharpened requirement
   two bullets down: a completed step's result survives the launching
   process being killed before it's reported, without the step re-running.
-  `LOCKED` (library choice) — ADR-0004 is `proposed`, not yet `accepted`;
-  the actual `internal/domain/execution` design (what a "step" is for
-  Mill, how session identity maps to a workflow ID) is still `OPEN`, not
-  resolved by picking the library.
-- Long-running command/workflow executions need to be inspectable while
-  running (like Claude Code's background task view) and their
-  logs/results need to persist and stay viewable after the process exits —
-  not just streamed and discarded.
+  `LOCKED` (library choice).
+- **Update — the workflow/step mapping is designed and built, ADR-0004
+  now `accepted`.** One Mill workflow *run* = one DBOS workflow instance,
+  one graph *node* execution = one DBOS step, keyed by the node's own ID.
+  `internal/adapters/execution` (DBOS wrapper, mirrors `mcpclient`'s
+  shape), `composition.ExecuteWorkflowWithStepRunner` (an additive
+  sibling to `ExecuteWorkflow`, zero behavior change to the existing
+  synchronous path), and `executionservice.go`
+  (`RunWorkflowDurable`/`ListRuns`/`GetRun`/`RedriveRun`) are real,
+  tested code — full reasoning, the real bug this pass caught (DBOS's
+  `ListWorkflows`/`GetWorkflowSteps` return `Input`/`Output` as a raw
+  JSON string, not an already-decoded value — the JSON case, not
+  gob, confirmed by writing a real probe test rather than assumed from
+  the `Serializer` interface's doc comments) and a full regression-test
+  writeup are in ADR-0004's own Update section. `LOCKED`.
+- **Update — long-running-execution inspectability is built: the Runs
+  page.** `RunsView.tsx` (reachable via the sidebar,
+  `process-tracking` capability flipped `StatusOpen`→`StatusLocked`,
+  `ViewPlaceholder`→`ViewRuns`) lists every durable run with a real DBOS
+  status, and viewing one shows its per-node step breakdown
+  (status/output/error) plus a **Redrive from here** button on any
+  failed step (`dbos.ForkWorkflow` from that step's ID) — the
+  [decisioning-vendor]/n8n-researched "fix forward from the failed step" pattern
+  named in §3.2, not a from-scratch Mill mechanism. Deliberately
+  additive: Composition's synchronous "Run" button and Activity's
+  session-only feed are untouched, a separate "Run durably" action opts
+  a run into this path. Verified end-to-end via Playwright against the
+  real Go backend (`frontend/e2e/runs.spec.ts`). `LOCKED` (what's
+  built) — **not** built: live streaming while a run is in progress
+  (this shows a completed/failed run's history, not a progress bar —
+  no identified need for the former yet), editing a run's original
+  input before redrive (`ForkWorkflowInput` has no such field), and
+  §3.2's "shadow events" half (dry-running a draft workflow version
+  against real traffic) — all real, named future work, not silently
+  dropped.
 - **Concrete failure mode hit at work, sharpening the requirement above**:
   in the Hammerspoon-based setup, when M365 Copilot proposes a command whose
   execution edits Mill's/Hammerspoon's own Lua config file, Hammerspoon's
