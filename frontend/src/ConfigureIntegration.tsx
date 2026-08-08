@@ -4,13 +4,30 @@ import { PencilIcon, PlusIcon, TrashIcon } from '@primer/octicons-react'
 import { ConfigureService } from '../bindings/github.com/alicoding/mill'
 import type { Connector } from '../bindings/github.com/alicoding/mill/internal/domain/connector/models'
 import { AuthType } from '../bindings/github.com/alicoding/mill/internal/domain/connector/models'
-import type { OperationRef } from '../bindings/github.com/alicoding/mill/internal/adapters/openapispec/models'
+import type { Field, Operation, OperationRef } from '../bindings/github.com/alicoding/mill/internal/adapters/openapispec/models'
 import styles from './ListCard.module.css'
 
 const AUTH_LABEL: Record<string, string> = {
   [AuthType.AuthNone]: 'None',
   [AuthType.AuthAPIKey]: 'API key',
   [AuthType.AuthBearer]: 'Bearer token',
+}
+
+interface HeaderRow {
+  key: string
+  value: string
+}
+
+function headersToRows(headers: { [key: string]: string | undefined } | null | undefined): HeaderRow[] {
+  return Object.entries(headers ?? {}).map(([key, value]) => ({ key, value: value ?? '' }))
+}
+
+function rowsToHeaders(rows: HeaderRow[]): Record<string, string> | null {
+  const out: Record<string, string> = {}
+  for (const r of rows) {
+    if (r.key.trim() !== '') out[r.key] = r.value
+  }
+  return Object.keys(out).length > 0 ? out : null
 }
 
 interface DraftConnector {
@@ -30,13 +47,22 @@ const EMPTY_DRAFT: DraftConnector = { label: '', baseURL: '', authType: AuthType
 // server-side Validate. The secret field is write-only: it's cleared
 // after every Save (SetConnectorSecret has no matching GetSecret to read
 // it back from), and editing an existing connector never pre-fills it.
+//
+// Static request headers (e.g. a vendor-required "X-Client-Version") are
+// a real Connector.Headers field on the Go side, merged into every call
+// (integration.go's authHeader/headers merge) -- this form previously
+// always saved null for it since nothing here ever exposed an editor,
+// a real gap caught directly by testing the live app, not assumed fixed
+// just because the domain field existed.
 export function ConfigureIntegration() {
   const [connectors, setConnectors] = useState<Connector[] | null>(null)
   const [editingID, setEditingID] = useState<string | null>(null)
   const [draft, setDraft] = useState<DraftConnector>(EMPTY_DRAFT)
+  const [headerRows, setHeaderRows] = useState<HeaderRow[]>([])
   const [formOpen, setFormOpen] = useState(false)
   const [error, setError] = useState('')
   const [operationsByConnector, setOperationsByConnector] = useState<Record<string, OperationRef[] | string>>({})
+  const [fieldsByOperation, setFieldsByOperation] = useState<Record<string, Operation | string>>({})
 
   const refetch = () => {
     ConfigureService.Connectors().then((list) => setConnectors(list ?? [])).catch(console.error)
@@ -47,6 +73,7 @@ export function ConfigureIntegration() {
   const startCreate = () => {
     setEditingID(null)
     setDraft(EMPTY_DRAFT)
+    setHeaderRows([])
     setFormOpen(true)
     setError('')
   }
@@ -54,16 +81,22 @@ export function ConfigureIntegration() {
   const startEdit = (c: Connector) => {
     setEditingID(c.ID)
     setDraft({ label: c.Label, baseURL: c.BaseURL, authType: c.AuthType, secret: '', openAPISpec: c.OpenAPISpec })
+    setHeaderRows(headersToRows(c.Headers))
     setFormOpen(true)
     setError('')
+  }
+
+  const updateHeaderRow = (i: number, field: 'key' | 'value', value: string) => {
+    setHeaderRows((prev) => prev.map((r, idx) => (idx === i ? { ...r, [field]: value } : r)))
   }
 
   const save = async () => {
     setError('')
     try {
+      const headers = rowsToHeaders(headerRows)
       const saved = editingID
-        ? await ConfigureService.UpdateConnector(editingID, draft.label, 'http', draft.baseURL, draft.authType, null, draft.openAPISpec)
-        : await ConfigureService.CreateConnector(draft.label, 'http', draft.baseURL, draft.authType, null, draft.openAPISpec)
+        ? await ConfigureService.UpdateConnector(editingID, draft.label, 'http', draft.baseURL, draft.authType, headers, draft.openAPISpec)
+        : await ConfigureService.CreateConnector(draft.label, 'http', draft.baseURL, draft.authType, headers, draft.openAPISpec)
       if (draft.secret) {
         await ConfigureService.SetConnectorSecret(saved.ID, draft.secret)
       }
@@ -82,6 +115,16 @@ export function ConfigureIntegration() {
     ConfigureService.ListConnectorOperations(id)
       .then((ops) => setOperationsByConnector((prev) => ({ ...prev, [id]: ops ?? [] })))
       .catch((err) => setOperationsByConnector((prev) => ({ ...prev, [id]: String(err) })))
+  }
+
+  // Schema preview (input/output fields), fetched lazily per operation
+  // rather than eagerly for every declared operation -- most specs
+  // declare more operations than a user is about to inspect right now.
+  const showFields = (connectorID: string, op: OperationRef) => {
+    const opKey = `${connectorID} ${op.Method} ${op.Path}`
+    ConfigureService.ConnectorOperationFields(connectorID, op.Path, op.Method)
+      .then((fields) => setFieldsByOperation((prev) => ({ ...prev, [opKey]: fields })))
+      .catch((err) => setFieldsByOperation((prev) => ({ ...prev, [opKey]: String(err) })))
   }
 
   return (
@@ -122,12 +165,46 @@ export function ConfigureIntegration() {
                 <TextInput type="password" value={draft.secret} onChange={(e) => setDraft({ ...draft, secret: e.target.value })} block />
               </FormControl>
             )}
+
+            <FormControl>
+              <FormControl.Label>Headers</FormControl.Label>
+              <FormControl.Caption>
+                Static headers (e.g. a required API version) sent with every call, in addition to
+                whatever the Auth type above adds.
+              </FormControl.Caption>
+              <Stack direction="vertical" gap="condensed">
+                {headerRows.map((row, i) => (
+                  <Stack key={i} direction="horizontal" gap="condensed" align="center">
+                    <TextInput placeholder="header name" value={row.key} onChange={(e) => updateHeaderRow(i, 'key', e.target.value)} data-testid="connector-header-key" />
+                    <TextInput placeholder="value" value={row.value} onChange={(e) => updateHeaderRow(i, 'value', e.target.value)} data-testid="connector-header-value" />
+                    <IconButton
+                      icon={TrashIcon}
+                      aria-label="Remove header"
+                      size="small"
+                      variant="invisible"
+                      onClick={() => setHeaderRows((prev) => prev.filter((_, idx) => idx !== i))}
+                    />
+                  </Stack>
+                ))}
+                <Button
+                  size="small"
+                  variant="invisible"
+                  leadingVisual={PlusIcon}
+                  onClick={() => setHeaderRows((prev) => [...prev, { key: '', value: '' }])}
+                  data-testid="add-connector-header"
+                >
+                  Add header
+                </Button>
+              </Stack>
+            </FormControl>
+
             <FormControl>
               <FormControl.Label>OpenAPI spec (optional)</FormControl.Label>
               <FormControl.Caption>
                 Paste the OpenAPI 3.x document (JSON or YAML) for this API -- declares the typed
                 input/output fields a workflow node can bind Attributes to (ADR-0007). Leave blank to
-                keep using a literal request body, same as before this existed.
+                keep using a literal request body, same as before this existed. Once saved, use
+                &quot;List operations&quot; below to preview the fields this declares.
               </FormControl.Caption>
               <Textarea
                 value={draft.openAPISpec}
@@ -162,6 +239,11 @@ export function ConfigureIntegration() {
                   </Stack>
                   <Text as="p" size="small" className={styles.muted}>{c.BaseURL}</Text>
                   <Text as="p" size="small" className={styles.muted}>ID: {c.ID}</Text>
+                  {c.Headers && Object.keys(c.Headers).length > 0 && (
+                    <Text as="p" size="small" className={styles.muted}>
+                      Headers: {Object.entries(c.Headers).map(([k, v]) => `${k}: ${v}`).join(', ')}
+                    </Text>
+                  )}
                 </div>
                 <Stack direction="horizontal" gap="condensed">
                   {c.OpenAPISpec && (
@@ -182,13 +264,32 @@ export function ConfigureIntegration() {
                     <Text as="p" size="small" className={styles.muted}>This spec declares no operations.</Text>
                   ) : (
                     <Stack direction="vertical" gap="condensed">
-                      {(operationsByConnector[c.ID] as OperationRef[]).map((op) => (
-                        <Stack key={`${op.Method} ${op.Path}`} direction="horizontal" gap="condensed" align="center">
-                          <Label variant="secondary" size="small">{op.Method}</Label>
-                          <Text size="small">{op.Path}</Text>
-                          {op.Summary && <Text size="small" className={styles.muted}>-- {op.Summary}</Text>}
-                        </Stack>
-                      ))}
+                      {(operationsByConnector[c.ID] as OperationRef[]).map((op) => {
+                        const opKey = `${c.ID} ${op.Method} ${op.Path}`
+                        const fields = fieldsByOperation[opKey]
+                        return (
+                          <div key={opKey}>
+                            <Stack direction="horizontal" gap="condensed" align="center">
+                              <Label variant="secondary" size="small">{op.Method}</Label>
+                              <Text size="small">{op.Path}</Text>
+                              {op.Summary && <Text size="small" className={styles.muted}>-- {op.Summary}</Text>}
+                              <Button size="small" variant="invisible" onClick={() => showFields(c.ID, op)} data-testid="show-operation-fields">
+                                {fields === undefined ? 'Show schema' : 'Refresh schema'}
+                              </Button>
+                            </Stack>
+                            {fields !== undefined && (
+                              typeof fields === 'string' ? (
+                                <Text as="p" size="small" className={styles.error}>{fields}</Text>
+                              ) : (
+                                <div data-testid="operation-schema" style={{ marginLeft: 'var(--base-size-16)' }}>
+                                  <SchemaFieldList label="Input" fields={fields.InputFields} />
+                                  <SchemaFieldList label="Output" fields={fields.OutputFields} />
+                                </div>
+                              )
+                            )}
+                          </div>
+                        )
+                      })}
                     </Stack>
                   )}
                 </div>
@@ -198,5 +299,24 @@ export function ConfigureIntegration() {
         </Stack>
       )}
     </div>
+  )
+}
+
+function SchemaFieldList({ label, fields }: { label: string; fields: Field[] | null | undefined }) {
+  const list = fields ?? []
+  if (list.length === 0) return null
+  return (
+    <Stack direction="vertical" gap="condensed">
+      <Text size="small" weight="semibold">{label}</Text>
+      {list.map((f) => (
+        <Stack key={f.Name} direction="horizontal" gap="condensed" align="center">
+          <Text size="small">{f.Name}</Text>
+          <Label variant="secondary" size="small">{f.In}</Label>
+          <Label variant="secondary" size="small">{f.Type}</Label>
+          {f.Required && <Label size="small">required</Label>}
+          {f.IsSecret && <Label variant="danger" size="small">secret</Label>}
+        </Stack>
+      ))}
+    </Stack>
   )
 }
