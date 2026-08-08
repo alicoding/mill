@@ -2,6 +2,7 @@ package composition
 
 import (
 	"fmt"
+	"strconv"
 
 	"github.com/alicoding/mill/internal/adapters/expression"
 )
@@ -65,15 +66,40 @@ func findRoot(nodes []Node, hasIncoming map[string]bool) (string, error) {
 // environment, so a Decision edge referencing a field with the wrong
 // operator (e.g. comparing a text field with ">") is caught at save
 // time, not just whenever that branch first actually runs.
-func attributesEnv(attrs []AttributeDef) map[string]any {
+// attributesEnv seeds the Attributes bag a run starts with. values is a
+// caller-supplied override (docs/adr/0008's test-input form; nil for
+// every other caller, e.g. ValidateGraph's save-time compile-check,
+// which has no real values to offer and only needs the schema's shape)
+// -- a value present and parseable for its declared Type wins, anything
+// missing or unparseable falls back to the same zero value this always
+// used, so a nil/empty values map behaves identically to before this
+// parameter existed.
+func attributesEnv(attrs []AttributeDef, values map[string]string) map[string]any {
 	env := make(map[string]any, len(attrs))
 	for _, a := range attrs {
+		raw, has := values[a.Key]
 		switch a.Type {
 		case FieldNumber:
+			if has {
+				if n, err := strconv.ParseFloat(raw, 64); err == nil {
+					env[a.Key] = n
+					continue
+				}
+			}
 			env[a.Key] = 0.0
 		case FieldBoolean:
+			if has {
+				if b, err := strconv.ParseBool(raw); err == nil {
+					env[a.Key] = b
+					continue
+				}
+			}
 			env[a.Key] = false
 		default:
+			if has {
+				env[a.Key] = raw
+				continue
+			}
 			env[a.Key] = ""
 		}
 	}
@@ -124,7 +150,7 @@ func ValidateGraph(nodes []Node, edges []Edge, attrs []AttributeDef) error {
 		}
 	}
 
-	env := attributesEnv(attrs)
+	env := attributesEnv(attrs, nil)
 
 	for _, n := range nodes {
 		if n.Kind != KindDecision {

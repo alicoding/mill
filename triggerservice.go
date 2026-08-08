@@ -191,7 +191,10 @@ func (s *TriggerService) Sync(workflows []composition.Workflow) {
 // "⌘⇧M"; empty for schedule/clipboard-watch/filesystem-watch triggers,
 // which have no single-glyph label the way a keyboard combo does).
 func (s *TriggerService) fire(workflowID, binding string) {
-	summary, err := s.exec.RunWorkflow(workflowID, RunKindTriggered)
+	// nil values: a headless trigger fire has no user-supplied Attribute
+	// input to offer -- it runs with the workflow's own declared
+	// defaults, same as before docs/adr/0008's test-input form existed.
+	summary, err := s.exec.RunWorkflow(workflowID, RunKindTriggered, nil)
 	if err != nil {
 		// A call-level failure (unknown workflow, run couldn't start) --
 		// distinct from a failed *run*, handled below via summary.Error.
