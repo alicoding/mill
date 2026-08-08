@@ -69,6 +69,28 @@ needs to be hoverable for a `title` tooltip explaining why it's
 disabled — `pointer-events: none` silently kills that too, since it
 stops hit-testing (and therefore `:hover`) entirely.
 
+**`frontend/src/` is organized into bounded-context folders — `app/`,
+`views/`, `composition/`, `configure/`, `shared/` — enforced by
+`dependency-cruiser` (`npm run boundaries`, wired into Lefthook + CI),
+not just a documented convention.** A new file belongs in its
+bounded-context folder from the moment it's created, not flat in
+`src/` to be reorganized later. Allowed import direction is
+`shared ← configure ← composition ← views ← app` (an arrow means "may
+import from," never the reverse) — `shared/` is a leaf (no upward
+imports at all), `configure/` may only depend on `shared/`,
+`composition/` may depend on `configure/` + `shared/` (a workflow node
+legitimately references a configured Connector/List/MCP Server), and
+so on up to `app/`, which wires everything together. Before adding a
+new file, ask which bounded context it belongs to by what it *is*, not
+who currently calls it (see ADR-0012's `EntityRefField.tsx` example);
+before putting something in `shared/`, confirm it's actually consumed
+by 2+ of the other folders — a file used by exactly one caller belongs
+in that caller's own folder, not preemptively promoted. Full mapping,
+the tool's own config, and the real violation-in-the-making it caught
+mid-implementation (a file wrongly placed in `app/` that 9 other files
+across three other folders were importing) are in
+[`docs/adr/0012-frontend-bounded-context-folders.md`](../../docs/adr/0012-frontend-bounded-context-folders.md).
+
 Historical narrative — the real miss that surfaced both rules above,
 and the research behind the component-selection reference — is in
 `docs/SPEC.md` §9.1 and §3. This file is the reusable convention to

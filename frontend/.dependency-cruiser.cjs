@@ -1,0 +1,52 @@
+/** @type {import('dependency-cruiser').IConfiguration} */
+// docs/adr/0012: enforces the bounded-context folder structure under
+// src/ -- app/views/composition/configure/shared -- as real dependency
+// rules, not just a documented convention. Chosen over
+// eslint-plugin-boundaries (tried first, real integration issue with
+// its element-pattern matching in this project's setup that its own
+// maintained test suite didn't reproduce, not worth more time chasing):
+// dependency-cruiser is a standalone CLI with a simpler regex from/to
+// model, run the same way scripts/check-loc.sh already is (Lefthook +
+// CI), not a second ESLint-plugin-resolution surface to debug.
+module.exports = {
+  forbidden: [
+    {
+      name: 'shared-is-a-leaf',
+      severity: 'error',
+      comment: 'shared/ must not depend on any other bounded-context folder',
+      from: { path: '^src/shared' },
+      to: { path: '^src/(app|views|composition|configure)' },
+    },
+    {
+      name: 'configure-must-not-depend-on-composition',
+      severity: 'error',
+      comment: 'configure/ is a lower layer than composition/ -- composition may reference configure (a workflow node references a configured entity), never the reverse',
+      from: { path: '^src/configure' },
+      to: { path: '^src/composition' },
+    },
+    {
+      name: 'domain-folders-must-not-depend-on-views-or-app',
+      severity: 'error',
+      comment: 'composition/ and configure/ are domain UI, not aware of top-level pages or the app shell',
+      from: { path: '^src/(composition|configure)' },
+      to: { path: '^src/(views|app)' },
+    },
+    {
+      name: 'views-must-not-depend-on-app',
+      severity: 'error',
+      comment: 'views/ are pages the app shell renders, not the other way around',
+      from: { path: '^src/views' },
+      to: { path: '^src/app' },
+    },
+  ],
+  options: {
+    doNotFollow: { path: 'node_modules' },
+    exclude: { path: '\\.(test)\\.tsx?$' },
+    tsPreCompilationDeps: true,
+    tsConfig: { fileName: 'tsconfig.json' },
+    enhancedResolveOptions: {
+      exportsFields: ['exports'],
+      conditionNames: ['import', 'require', 'node', 'default'],
+    },
+  },
+}

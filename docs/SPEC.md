@@ -301,6 +301,36 @@ and [`docs/adr/0002-cicd-pipeline-phased-rollout.md`](adr/0002-cicd-pipeline-pha
   typo temporarily, confirmed the script fails with a clear message
   naming the bad key, then restored the correct file and confirmed a
   clean pass. `LOCKED`
+- **`frontend/src/` reorganized into enforced bounded-context folders,
+  prompted by a direct ask: the Go side already has real bounded
+  contexts (`internal/domain/*`/`internal/adapters/*`) and the
+  43-file-flat frontend never got the equivalent.** Full research,
+  decision, and folder map are in
+  [`docs/adr/0012-frontend-bounded-context-folders.md`](adr/0012-frontend-bounded-context-folders.md).
+  `eslint-plugin-boundaries` was tried first (ESLint-native, zero new
+  pipeline) and abandoned after real, extensive debugging — its pattern
+  matching never fired against this project's own files even when
+  reproducing its own upstream test fixtures exactly, confirmed by
+  instrumenting the plugin's compiled source directly, not assumed
+  broken. **`dependency-cruiser`** (MIT, standalone CLI, TS-aware
+  module-graph resolver) replaced it: worked correctly on the first
+  real run, and correctly caught a deliberately-reintroduced violation
+  on verification. Five folders — `app/` (shell only), `views/`
+  (top-level pages), `composition/` (§3's canvas domain), `configure/`
+  (§3.5's Configure domain), `shared/` (genuinely cross-cutting, 2+
+  consumers) — with import direction enforced one-way
+  (`shared ← configure ← composition ← views ← app`) via
+  `frontend/.dependency-cruiser.cjs`, run as `npm run boundaries`,
+  wired into both Lefthook and CI's `frontend` job alongside `npm run
+  lint`. The tool caught a real design mistake mid-implementation, not
+  just a hypothetical one: `store.ts`/`Tabs.tsx` were first placed in
+  `app/` on the assumption that "global state" and "the app shell" were
+  the same context — the first clean-tree `depcruise` run then flagged
+  9 files across three other folders importing them, the actual
+  definition of `shared/`; moved accordingly. Documented as a standing
+  rule in `.claude/rules/frontend.md` (new files land in their
+  bounded-context folder from creation, not flat-then-reorganized).
+  `LOCKED`
 - **Testing discipline formalized as a rule, prompted by a direct ask to
   stop "paying the tax" of re-discovering the same bugs manually.**
   Four real bugs in one session (a canvas node-drop collision, a
