@@ -1,8 +1,8 @@
 import { test, expect } from '@playwright/test'
 
-// Exercises the durable-execution path end-to-end (docs/adr/0004):
-// ExecutionService.RunWorkflowDurable -> a real DBOS-checkpointed run ->
-// RunsView's list/detail/redrive UI, over real Go bindings (Wails3
+// Exercises the single execution path end-to-end (docs/adr/0004,
+// docs/adr/0008): ExecutionService.RunWorkflow -> a real DBOS-checkpointed
+// run -> RunsView's list/detail/redrive UI, over real Go bindings (Wails3
 // server mode), not mocks. "Load sample HTML" is used throughout
 // (matching composition.spec.ts's own choice for the identical reason):
 // it only writes to the clipboard, never reads from it, so it's the one
@@ -11,13 +11,13 @@ import { test, expect } from '@playwright/test'
 // runner with no GUI pasteboard session (SPEC.md §1.3), same as every
 // other clipboard-touching e2e test in this repo.
 
-test('Running a workflow durably shows it in the run list with a real status', async ({ page }) => {
+test('Running a workflow shows it in the run list with a real status', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Runs' }).click()
   await expect(page.getByRole('heading', { name: 'Runs' })).toBeVisible()
 
   await page.getByRole('combobox', { name: /choose a workflow/i }).selectOption({ label: 'Load sample HTML' })
-  await page.getByRole('button', { name: 'Run durably' }).click()
+  await page.getByRole('button', { name: 'Run' }).click()
 
   // The run's own row appears with a real DBOS status label -- SUCCESS
   // is the expected outcome for this workflow, ERROR only if osascript
@@ -32,7 +32,7 @@ test('Viewing a run shows its per-step breakdown', async ({ page }) => {
   await page.getByRole('link', { name: 'Runs' }).click()
 
   await page.getByRole('combobox', { name: /choose a workflow/i }).selectOption({ label: 'Load sample HTML' })
-  await page.getByRole('button', { name: 'Run durably' }).click()
+  await page.getByRole('button', { name: 'Run' }).click()
 
   const row = page.locator('tr', { has: page.getByText('Load sample HTML', { exact: true }) }).first()
   await expect(row.getByText(/^(SUCCESS|ERROR)$/)).toBeVisible({ timeout: 15_000 })
@@ -47,7 +47,7 @@ test('Viewing a run shows its per-step breakdown', async ({ page }) => {
   await expect(detail.getByText('Apply: write HTML to clipboard')).toBeVisible()
 })
 
-test('Runs page shows an empty state before anything has run durably', async ({ page }) => {
+test('Runs page shows an empty state before anything has run', async ({ page }) => {
   // A fresh execution.db per e2e run (MILL_EXECUTION_DB_PATH,
   // playwright.config.ts) only guarantees isolation from the real
   // desktop app, not from other tests in this same file/run -- so this

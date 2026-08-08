@@ -450,7 +450,7 @@ graph TB
     TrigSvc --> Filewatch
     TrigSvc --> Clipboard
     TrigSvc --> Settings
-    TrigSvc -->|RunWorkflow| CompSvc
+    TrigSvc -->|RunWorkflow, RunKindTriggered| ExecSvc
     CompSvc --> CompDom
     CompSvc --> Settings
     CompSvc -.->|Sync after Create/Update/Delete| TrigSvc
@@ -1558,7 +1558,7 @@ Plan step for this as a standing rule.
 | **Integration / Connector node** | Call an external HTTP API, auth'd | Wire protocol: adopt (stdlib `net/http`, via `internal/adapters/httpconnector`). Connector config/credential model: build (`internal/domain/connector`) + adopt (`zalando/go-keyring` via `internal/adapters/credential`) | `LOCKED` (execution) — `internal/domain/connector`'s `Connector{ID, Label, Type, BaseURL, AuthType, Headers}` + a new `integration-http` `NodeType` (`KindProcess`) execute real HTTP calls, resolving `AuthType`/secret into the right header (`X-Api-Key` or `Authorization: Bearer`) via `composition.SetConnectorLookup`'s injected seam (mirrors `TriggerService`'s `Syncer` pattern — the domain package doesn't own connector storage). §4 stays `OPEN` on the Configure-surface UI to author a Connector; see §3.5's own row |
 | **List** (a reusable lookup/reference dataset) | Look up an Attributes value against a named, Configure-authored table, write the match back into Attributes | Build (core domain — no library has an opinion on Mill's own List model; the lookup itself is a plain map read) | `LOCKED` (execution) — `internal/domain/list.List{ID, Label, Entries}` + a new `list-lookup` `NodeType` (`KindProcess`) resolve a `listId` via `composition.SetListLookup` (same injected-seam pattern as Integration/Connector's `SetConnectorLookup`) and write the matched entry into `ExecContext.Attributes[outputKey]`. Not in ADR-0005's original taxonomy at all (a real gap flagged in §3.5) — added here as the first thing built against it. §3.5 stays `OPEN` on the Configure-surface UI to author a List |
 | **MCP tool call** (§3.6's extension point — call a tool on a Configure-authored MCP server) | Call one tool on a locally-configured MCP server over stdio, replace the payload with its text result | Wire protocol: adopt (`modelcontextprotocol/go-sdk`'s client role, via `internal/adapters/mcpclient`). Server config/CRUD: build, same shape as Connector | `LOCKED` (execution + authoring, end-to-end) — `internal/domain/mcpserver.MCPServer{ID, Label, Command, Args}` + a new `mcp-tool-call` `NodeType` (`KindProcess`) resolve an `mcpServerId` via `composition.SetMCPServerLookup` and call `toolName` with `argumentsJSON`. Verified against a real spawned subprocess (an official MCP reference server via `npx`), not just unit tests — see §3.6 for the full writeup. This is the "add a new capability without a core code change" answer §3.6 set out to find |
-| **Durable step execution / retry / resume** | Survive the process dying mid-workflow, checkpoint per step, retry transient failures | Adopt (DBOS-Go) | `LOCKED` — ADR-0004 `accepted`, `internal/adapters/execution` + `executionservice.go` built and e2e-verified; a real regression test (`TestResumeAfterFailure_DoesNotReExecuteCheckpointedStep`) proves a checkpointed step doesn't re-execute on resume against a real DBOS SQLite runtime |
+| **Durable step execution / retry / resume** | Survive the process dying mid-workflow, checkpoint per step, retry transient failures | Adopt (DBOS-Go) | `LOCKED` — ADR-0004 `accepted`, `internal/adapters/execution` + `executionservice.go` built and e2e-verified; a real regression test (`TestResumeAfterFailure_DoesNotReExecuteCheckpointedStep`) proves a checkpointed step doesn't re-execute on resume against a real DBOS SQLite runtime. Since [ADR-0008](adr/0008-single-execution-path.md), this is the *only* execution path — every run is durable, not an opt-in alternative to a plain in-memory Run |
 | **Replay / re-run from history** | Re-invoke a past run, ideally resuming rather than restarting | Mechanism: adopt (DBOS `ForkWorkflow`/workflow-ID resume). UI/policy: build | `LOCKED` — the Runs page's "Redrive from here" (`ExecutionService.RedriveRun`, `dbos.ForkWorkflow`) is exactly this, built and e2e-verified |
 | **Draft/live versioning** | Edit a workflow without breaking the currently-live version | Build (no library owns Mill's own versioning semantics) | Real gap flagged from the reference-platform review (§3.2), `OPEN` |
 | **Live + shadow events / execution history** | Filterable log of past runs; dry-run a candidate change against real traffic before trusting it | Data: adopt (DBOS `GetStatus`/`ListWorkflows`). UI: build | `LOCKED` (execution-history half) — §7's Runs page (`RunsView.tsx`, `ListWorkflows`/`GetWorkflowSteps`) built and e2e-verified. Shadow-events (dry-run a draft version against real traffic) stays unbuilt — no draft/live versioning concept exists yet (§3.2's own draft/live versioning gap, still real) |
@@ -2637,18 +2637,49 @@ Full rationale in [`docs/adr/0003-browser-bridge-architecture.md`](adr/0003-brow
   (status/output/error) plus a **Redrive from here** button on any
   failed step (`dbos.ForkWorkflow` from that step's ID) — the
   [decisioning-vendor]/n8n-researched "fix forward from the failed step" pattern
-  named in §3.2, not a from-scratch Mill mechanism. Deliberately
-  additive: Composition's synchronous "Run" button and Activity's
-  session-only feed are untouched, a separate "Run durably" action opts
-  a run into this path. Verified end-to-end via Playwright against the
-  real Go backend (`frontend/e2e/runs.spec.ts`). `LOCKED` (what's
-  built) — **not** built: live streaming while a run is in progress
-  (this shows a completed/failed run's history, not a progress bar —
-  no identified need for the former yet), editing a run's original
-  input before redrive (`ForkWorkflowInput` has no such field), and
-  §3.2's "shadow events" half (dry-running a draft workflow version
-  against real traffic) — all real, named future work, not silently
-  dropped.
+  named in §3.2, not a from-scratch Mill mechanism. Verified end-to-end
+  via Playwright against the real Go backend (`frontend/e2e/runs.spec.ts`).
+  `LOCKED` (what's built) — **not** built: live streaming while a run
+  is in progress (this shows a completed/failed run's history, not a
+  progress bar — no identified need for the former yet), editing a
+  run's original input before redrive (`ForkWorkflowInput` has no such
+  field), and §3.2's "shadow events" half (dry-running a draft workflow
+  version against real traffic) — all real, named future work, not
+  silently dropped.
+- **Update — single execution path, [ADR-0008](adr/0008-single-execution-path.md),
+  `accepted` and built.** The bullet above originally described
+  Composition's plain "Run" button and this page's own durable path as
+  two deliberately separate mechanisms — that split was surfaced as a
+  real problem, not preserved: any future DBOS-native capability (Child
+  Workflow, later Parallel Steps) would either need to special-case
+  "requires the durable path" or grow its own weaker shadow
+  implementation for the plain path, repeating the same fork per
+  capability. Audited first, not assumed: the two "paths" were never
+  two execution engines — `composition.ExecuteWorkflow` was always
+  `composition.executeWorkflow` (the one real graph-walking engine)
+  called with a no-op `StepRunner`; the fork was entirely at the
+  service-call layer. `CompositionService.RunWorkflow` (the plain path)
+  is deleted; `ExecutionService.RunWorkflow` (renamed from
+  `RunWorkflowDurable`) is now the single Run entrypoint for the whole
+  app — Composition's canvas Run button, this page's own quick-run
+  picker, and `TriggerService`'s headless listeners (hotkey/schedule/
+  clipboard-watch/filesystem-watch — wired to this same path in this
+  same change, via a late-bound `TriggerService.SetExecutionService`
+  setter, the same shape `SetReservedCombo` already used) all go
+  through it. A new `RunKind` (`test`/`triggered`) travels alongside
+  every run — Composition/Runs-page clicks tag `test` ([decisioning-vendor]'s own
+  "test run" naming, §3.2), a real headless trigger firing tags
+  `triggered` — surfaced as a filter/column on this page.
+  `composition.ExecuteWorkflow` stays in the codebase as the tested,
+  DBOS-free primitive `internal/domain/composition`'s own unit tests
+  call directly; no Wails-bound service calls it anymore. Per-step
+  checkpoint overhead measured directly before accepting the ADR
+  (~281µs/step, ~1.1ms for a 4-step run against real DBOS/SQLite) —
+  three orders of magnitude below perceptible interactive latency, not
+  assumed fine. Verified end-to-end: full Go suite, the complete
+  33-spec Playwright e2e run (`composition.spec.ts`/`runs.spec.ts`
+  updated for the renamed button/binding), golangci-lint, LOC check,
+  frontend tsc/eslint/vitest, all green. `LOCKED`.
 - **Concrete failure mode hit at work, sharpening the requirement above**:
   in the Hammerspoon-based setup, when M365 Copilot proposes a command whose
   execution edits Mill's/Hammerspoon's own Lua config file, Hammerspoon's
