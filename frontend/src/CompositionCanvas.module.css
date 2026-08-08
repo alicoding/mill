@@ -109,12 +109,20 @@
 }
 .paletteItem:hover { background: var(--bgColor-neutral-muted); }
 .paletteItem:active { cursor: grabbing; }
+/* pointer-events: none is load-bearing, not decorative -- aria-disabled
+   alone doesn't stop the browser from hovering/focusing the element, so
+   TreeView's own internal container still applied its normal :hover
+   background (confirmed live: rgba(129,139,152,.1) on hover) regardless
+   of our disabled styling, since that hover rule targets a hashed inner
+   div our own CSS can't reach. Blocking pointer events at the <li>
+   itself is what actually prevents it, not fighting the library's CSS
+   specificity. */
 .paletteItemDisabled {
     cursor: not-allowed;
     opacity: 0.5;
     background: transparent;
+    pointer-events: none;
 }
-.paletteItemDisabled:hover { background: transparent; }
 /* Fixed size, not size-to-content -- every node is the same uniform
    card regardless of label length (matches CANVAS_NODE_WIDTH/HEIGHT in
    CompositionCanvas.tsx, which the elk auto-layout call also uses, so
