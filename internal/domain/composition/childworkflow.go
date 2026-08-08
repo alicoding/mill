@@ -5,7 +5,7 @@ import "fmt"
 // runChildWorkflowFn defaults to erroring so a child-workflow node run
 // before ExecutionService wires SetChildWorkflowRunner (docs/adr/0010)
 // fails loudly instead of silently no-op'ing -- same shape as
-// lookupConnectorFn/lookupListFn/lookupMCPServerFn's own defaults.
+// lookupHTTPRequestFn/lookupListFn/lookupMCPServerFn's own defaults.
 //
 // runCtx is ExecContext.RunContext, threaded through opaque -- this
 // package never inspects it, only passes it along; the wired function

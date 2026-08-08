@@ -3,7 +3,7 @@ package composition
 import (
 	"net/url"
 
-	"github.com/alicoding/mill/internal/domain/connector"
+	"github.com/alicoding/mill/internal/domain/httprequest"
 )
 
 // AuthQueryParam places the resolved secret in the URL's query string
@@ -14,7 +14,7 @@ import (
 // vendor needing a different query-param name is real future work, not
 // solved speculatively here).
 func init() {
-	RegisterAuthStrategy(connector.AuthQueryParam, func(rc ResolvedConnector, method, path string, headers map[string]string, query url.Values, body string) error {
+	RegisterAuthStrategy(httprequest.AuthQueryParam, func(rc ResolvedHTTPRequest, method, path string, headers map[string]string, query url.Values, body string) error {
 		query.Set("apikey", rc.Secret)
 		return nil
 	})

@@ -2,11 +2,11 @@ import { useState } from 'react'
 import { Button, Checkbox, FormControl, Heading, IconButton, Label, Select, Stack, Text, TextInput, Textarea, SegmentedControl } from '@primer/react'
 import { PlusIcon, TrashIcon } from '@primer/octicons-react'
 import { ConfigureService } from '../../bindings/github.com/alicoding/mill'
-import type { AuthConfig, Connector, JOSEConfig } from '../../bindings/github.com/alicoding/mill/internal/domain/connector/models'
-import { AuthType } from '../../bindings/github.com/alicoding/mill/internal/domain/connector/models'
+import type { AuthConfig, HTTPRequest, JOSEConfig } from '../../bindings/github.com/alicoding/mill/internal/domain/httprequest/models'
+import { AuthType } from '../../bindings/github.com/alicoding/mill/internal/domain/httprequest/models'
 import { ManualSchemaEditor } from './ManualSchemaEditor'
-import { ConnectorTestPanel } from './ConnectorTestPanel'
-import { headersToRows, rowsToHeaders } from './connectorHeaders'
+import { RequestTestPanel } from './RequestTestPanel'
+import { headersToRows, rowsToHeaders } from './requestHeaders'
 import { parseOpenAPIToOperations, synthesizeOpenAPISpec, type ManualOperation } from './openapiSynth'
 import { AUTH_LABEL, AUTH_UNIMPLEMENTED } from './authTypeLabels'
 import styles from '../shared/ListCard.module.css'
@@ -16,7 +16,7 @@ export interface HeaderRow {
   value: string
 }
 
-export interface ConnectorDraft {
+export interface RequestDraft {
   label: string
   description: string
   baseURL: string
@@ -40,11 +40,11 @@ export interface ConnectorDraft {
   oauth1Token: string
   oauth1ConsumerSecret: string
   oauth1TokenSecret: string
-  // Phase 3 (JOSE) -- independent of authType (connector.JOSEConfig's
-  // own doc comment: a connector can combine JOSE with any auth
-  // scheme), so these are never conditionally reset by an authType
-  // change the way the oauth2*/hmac*/oauth1* fields above implicitly
-  // are (only the *displayed* section changes per authType, not these).
+  // Phase 3 (JOSE) -- independent of authType (httprequest.JOSEConfig's
+  // own doc comment: a request can combine JOSE with any auth scheme),
+  // so these are never conditionally reset by an authType change the
+  // way the oauth2*/hmac*/oauth1* fields above implicitly are (only the
+  // *displayed* section changes per authType, not these).
   joseEnabled: boolean
   joseRecipientPublicKeyPEM: string
   joseDecryptResponse: boolean
@@ -52,7 +52,7 @@ export interface ConnectorDraft {
   josePrivateKeyPEM: string
 }
 
-const EMPTY_DRAFT: ConnectorDraft = {
+const EMPTY_DRAFT: RequestDraft = {
   label: '', description: '', baseURL: '', authType: AuthType.AuthNone, secret: '', openAPISpec: '',
   oauth2TokenURL: '', oauth2ClientID: '', oauth2Scope: '',
   hmacHeaderName: '',
@@ -60,30 +60,30 @@ const EMPTY_DRAFT: ConnectorDraft = {
   joseEnabled: false, joseRecipientPublicKeyPEM: '', joseDecryptResponse: false, josePrivateKeyPEM: '',
 }
 
-function draftFrom(c: Connector): ConnectorDraft {
+function draftFrom(r: HTTPRequest): RequestDraft {
   return {
-    label: c.Label, description: c.Description, baseURL: c.BaseURL, authType: c.AuthType, secret: '', openAPISpec: c.OpenAPISpec,
-    oauth2TokenURL: c.Auth?.OAuth2?.TokenURL ?? '',
-    oauth2ClientID: c.Auth?.OAuth2?.ClientID ?? '',
-    oauth2Scope: c.Auth?.OAuth2?.Scope ?? '',
-    hmacHeaderName: c.Auth?.HMAC?.HeaderName ?? '',
-    oauth1ConsumerKey: c.Auth?.OAuth1?.ConsumerKey ?? '',
-    oauth1Token: c.Auth?.OAuth1?.Token ?? '',
+    label: r.Label, description: r.Description, baseURL: r.BaseURL, authType: r.AuthType, secret: '', openAPISpec: r.OpenAPISpec,
+    oauth2TokenURL: r.Auth?.OAuth2?.TokenURL ?? '',
+    oauth2ClientID: r.Auth?.OAuth2?.ClientID ?? '',
+    oauth2Scope: r.Auth?.OAuth2?.Scope ?? '',
+    hmacHeaderName: r.Auth?.HMAC?.HeaderName ?? '',
+    oauth1ConsumerKey: r.Auth?.OAuth1?.ConsumerKey ?? '',
+    oauth1Token: r.Auth?.OAuth1?.Token ?? '',
     oauth1ConsumerSecret: '',
     oauth1TokenSecret: '',
-    joseEnabled: c.JOSE?.Enabled ?? false,
-    joseRecipientPublicKeyPEM: c.JOSE?.RecipientPublicKeyPEM ?? '',
-    joseDecryptResponse: c.JOSE?.DecryptResponse ?? false,
+    joseEnabled: r.JOSE?.Enabled ?? false,
+    joseRecipientPublicKeyPEM: r.JOSE?.RecipientPublicKeyPEM ?? '',
+    joseDecryptResponse: r.JOSE?.DecryptResponse ?? false,
     josePrivateKeyPEM: '',
   }
 }
 
-// authConfigFrom builds the Auth param CreateConnector/UpdateConnector/
-// TestConnectorOperation all now take (ADR-0015) -- null for every
+// authConfigFrom builds the Auth param CreateHTTPRequest/UpdateHTTPRequest/
+// TestHTTPRequestOperation all now take (ADR-0015) -- null for every
 // AuthType with no non-secret config (None/APIKey/Bearer/QueryParam,
-// and the two stubs), matching Connector.Auth's own "nil unless a
+// and the two stubs), matching HTTPRequest.Auth's own "nil unless a
 // real config-bearing AuthType" shape.
-function authConfigFrom(draft: ConnectorDraft): AuthConfig | null {
+function authConfigFrom(draft: RequestDraft): AuthConfig | null {
   switch (draft.authType) {
     case AuthType.AuthOAuth2:
       return { OAuth2: { GrantType: 'client_credentials', TokenURL: draft.oauth2TokenURL, ClientID: draft.oauth2ClientID, Scope: draft.oauth2Scope, ContentType: '' }, HMAC: null, OAuth1: null }
@@ -97,14 +97,14 @@ function authConfigFrom(draft: ConnectorDraft): AuthConfig | null {
 }
 
 // joseConfigFrom builds the JOSE param (Phase 3) -- null when disabled,
-// matching Connector.JOSE's own "nil unless a connector actually uses
+// matching HTTPRequest.JOSE's own "nil unless a request actually uses
 // it" shape. Algorithm/ContentEncryption are left empty so the domain
 // layer's own stated defaults (RSA-OAEP-256/A256GCM,
 // internal/domain/composition/jose.go) apply -- no picker for a
 // single-supported-combo decision that doesn't exist yet, same "no UI
 // for a decision that doesn't exist" discipline docs/SPEC.md §3.5
 // already applies to single-option Selects.
-function joseConfigFrom(draft: ConnectorDraft): JOSEConfig | null {
+function joseConfigFrom(draft: RequestDraft): JOSEConfig | null {
   if (!draft.joseEnabled) return null
   return {
     Enabled: true, Algorithm: '', ContentEncryption: '',
@@ -113,38 +113,38 @@ function joseConfigFrom(draft: ConnectorDraft): JOSEConfig | null {
   }
 }
 
-// docs/adr/0014: the connector create/edit form -- one continuous
-// guided scroll (General -> Auth -> Headers -> Schema -> Test, as
-// Heading section breaks), replacing the previous Primer-Tabs layout.
-// Matches the reference platform's own precedent: tab the saved-record
-// summary (ConnectorSummary.tsx), never the act of authoring. Owns its
-// own draft/headerRows/error state internally (seeded once from props,
+// docs/adr/0014: the request create/edit form -- one continuous guided
+// scroll (General -> Auth -> Headers -> Schema -> Test, as Heading
+// section breaks), replacing the previous Primer-Tabs layout. Matches
+// the reference platform's own precedent: tab the saved-record summary
+// (RequestSummary.tsx), never the act of authoring. Owns its own
+// draft/headerRows/error state internally (seeded once from props,
 // same "own state, keyed remount" shape CompositionCanvas.tsx already
 // uses for Composition's own tabbed multi-editing) rather than being
 // controlled from the parent list page -- required for correctness
-// once more than one connector tab can be open at once, not just a
-// style preference.
-export function ConnectorForm({
-  editingConnector, duplicateFrom, onSaved, onCancel,
+// once more than one request tab can be open at once, not just a
+// style preference. Renamed from ConnectorForm by ADR-0016.
+export function RequestForm({
+  editingRequest, duplicateFrom, onSaved, onCancel,
 }: {
-  // Non-null => Save calls UpdateConnector against this connector's ID.
-  // Null (whether brand-new or a Duplicate) => Save calls CreateConnector.
-  editingConnector: Connector | null
+  // Non-null => Save calls UpdateHTTPRequest against this request's ID.
+  // Null (whether brand-new or a Duplicate) => Save calls CreateHTTPRequest.
+  editingRequest: HTTPRequest | null
   // Set only for the Duplicate case -- seeds the initial draft/headers
-  // from an existing connector without editing it (docs/adr/0013 §7).
-  duplicateFrom: Connector | null
+  // from an existing request without editing it (docs/adr/0013 §7).
+  duplicateFrom: HTTPRequest | null
   onSaved: () => void
   onCancel: () => void
 }) {
-  const seed = editingConnector ?? duplicateFrom
-  const [draft, setDraft] = useState<ConnectorDraft>(() => {
-    if (editingConnector) return draftFrom(editingConnector)
+  const seed = editingRequest ?? duplicateFrom
+  const [draft, setDraft] = useState<RequestDraft>(() => {
+    if (editingRequest) return draftFrom(editingRequest)
     if (duplicateFrom) return { ...draftFrom(duplicateFrom), label: `${duplicateFrom.Label} copy` }
     return EMPTY_DRAFT
   })
   const [headerRows, setHeaderRows] = useState<HeaderRow[]>(() => headersToRows(seed?.Headers))
   const [error, setError] = useState('')
-  const isEditing = editingConnector !== null
+  const isEditing = editingRequest !== null
 
   const [schemaMode, setSchemaMode] = useState<'openapi' | 'manual'>('openapi')
   const [manualOperations, setManualOperations] = useState<ManualOperation[]>([])
@@ -197,18 +197,18 @@ export function ConnectorForm({
       const headers = rowsToHeaders(headerRows)
       const auth = authConfigFrom(finalDraft)
       const jose = joseConfigFrom(finalDraft)
-      const saved = editingConnector
-        ? await ConfigureService.UpdateConnector(editingConnector.ID, finalDraft.label, 'http', finalDraft.baseURL, finalDraft.authType, headers, finalDraft.openAPISpec, auth, jose, finalDraft.description)
-        : await ConfigureService.CreateConnector(finalDraft.label, 'http', finalDraft.baseURL, finalDraft.authType, headers, finalDraft.openAPISpec, auth, jose, finalDraft.description)
+      const saved = editingRequest
+        ? await ConfigureService.UpdateHTTPRequest(editingRequest.ID, finalDraft.label, finalDraft.baseURL, finalDraft.authType, headers, finalDraft.openAPISpec, auth, jose, finalDraft.description)
+        : await ConfigureService.CreateHTTPRequest(finalDraft.label, finalDraft.baseURL, finalDraft.authType, headers, finalDraft.openAPISpec, auth, jose, finalDraft.description)
       if (finalDraft.authType === AuthType.AuthOAuth1) {
         if (finalDraft.oauth1ConsumerSecret || finalDraft.oauth1TokenSecret) {
-          await ConfigureService.SetConnectorOAuth1Secret(saved.ID, finalDraft.oauth1ConsumerSecret, finalDraft.oauth1TokenSecret)
+          await ConfigureService.SetHTTPRequestOAuth1Secret(saved.ID, finalDraft.oauth1ConsumerSecret, finalDraft.oauth1TokenSecret)
         }
       } else if (finalDraft.secret) {
-        await ConfigureService.SetConnectorSecret(saved.ID, finalDraft.secret)
+        await ConfigureService.SetHTTPRequestSecret(saved.ID, finalDraft.secret)
       }
       if (finalDraft.joseEnabled && finalDraft.joseDecryptResponse && finalDraft.josePrivateKeyPEM) {
-        await ConfigureService.SetConnectorJOSEPrivateKey(saved.ID, finalDraft.josePrivateKeyPEM)
+        await ConfigureService.SetHTTPRequestJOSEPrivateKey(saved.ID, finalDraft.josePrivateKeyPEM)
       }
       onSaved()
     } catch (err) {
@@ -232,8 +232,8 @@ export function ConnectorForm({
             </FormControl>
             <FormControl>
               <FormControl.Label>Description</FormControl.Label>
-              <FormControl.Caption>Optional -- what this connector is for, or any caveat worth noting.</FormControl.Caption>
-              <Textarea value={draft.description} onChange={(e) => setDraft({ ...draft, description: e.target.value })} rows={2} block data-testid="connector-description" />
+              <FormControl.Caption>Optional -- what this request is for, or any caveat worth noting.</FormControl.Caption>
+              <Textarea value={draft.description} onChange={(e) => setDraft({ ...draft, description: e.target.value })} rows={2} block data-testid="request-description" />
             </FormControl>
           </Stack>
         </section>
@@ -255,8 +255,8 @@ export function ConnectorForm({
                 <Label variant="attention" size="small">Not yet implemented</Label>
                 <Text as="p" size="small" className={styles.muted}>
                   This auth type is registered (docs/adr/0015) but its strategy isn&apos;t built yet -- a
-                  workflow run through this connector will fail with a clear error rather than a guessed
-                  signature. Selectable now so the connector can be configured ahead of that work landing.
+                  workflow run through this request will fail with a clear error rather than a guessed
+                  signature. Selectable now so the request can be configured ahead of that work landing.
                 </Text>
               </Stack>
             )}
@@ -335,7 +335,7 @@ export function ConnectorForm({
           <Stack direction="vertical" gap="condensed">
             <Text as="p" size="small" className={styles.muted}>
               Optional, independent of Auth type above (Phase 3, ADR-0015) -- encrypts what Mill sends to
-              this connector, and optionally decrypts what it receives back (JWE, RFC 7516).
+              this request, and optionally decrypts what it receives back (JWE, RFC 7516).
             </Text>
             <Stack direction="horizontal" gap="condensed" align="center">
               <Checkbox
@@ -365,7 +365,7 @@ export function ConnectorForm({
                     aria-label="Decrypt response"
                     data-testid="jose-decrypt-response-checkbox"
                   />
-                  <Text size="small">Decrypt response (this connector&apos;s replies are also JWE-encrypted)</Text>
+                  <Text size="small">Decrypt response (this request&apos;s replies are also JWE-encrypted)</Text>
                 </Stack>
                 {draft.joseDecryptResponse && (
                   <FormControl>
@@ -398,12 +398,12 @@ export function ConnectorForm({
             </Text>
             {headerRows.map((row, i) => (
               <Stack key={i} direction="horizontal" gap="condensed" align="center">
-                <TextInput placeholder="header name" value={row.key} onChange={(e) => updateHeaderRow(i, 'key', e.target.value)} data-testid="connector-header-key" />
-                <TextInput placeholder="value" value={row.value} onChange={(e) => updateHeaderRow(i, 'value', e.target.value)} data-testid="connector-header-value" />
+                <TextInput placeholder="header name" value={row.key} onChange={(e) => updateHeaderRow(i, 'key', e.target.value)} data-testid="request-header-key" />
+                <TextInput placeholder="value" value={row.value} onChange={(e) => updateHeaderRow(i, 'value', e.target.value)} data-testid="request-header-value" />
                 <IconButton icon={TrashIcon} aria-label="Remove header" size="small" variant="invisible" onClick={() => setHeaderRows(headerRows.filter((_, idx) => idx !== i))} />
               </Stack>
             ))}
-            <Button size="small" variant="invisible" leadingVisual={PlusIcon} onClick={() => setHeaderRows([...headerRows, { key: '', value: '' }])} data-testid="add-connector-header">
+            <Button size="small" variant="invisible" leadingVisual={PlusIcon} onClick={() => setHeaderRows([...headerRows, { key: '', value: '' }])} data-testid="add-request-header">
               Add header
             </Button>
           </Stack>
@@ -428,7 +428,7 @@ export function ConnectorForm({
                 onChange={(e) => setDraft({ ...draft, openAPISpec: e.target.value })}
                 rows={6}
                 block
-                data-testid="connector-openapi-spec"
+                data-testid="request-openapi-spec"
               />
             ) : (
               <ManualSchemaEditor operations={manualOperations} onChange={setManualOperations} />
@@ -438,7 +438,7 @@ export function ConnectorForm({
 
         <section>
           <Heading as="h3" variant="small" className={styles.sectionHeading}>Test</Heading>
-          <ConnectorTestPanel
+          <RequestTestPanel
             operations={effectiveOperations}
             effectiveSpec={effectiveSpec}
             baseURL={draft.baseURL}
@@ -448,14 +448,14 @@ export function ConnectorForm({
             josePrivateKeyPEM={draft.josePrivateKeyPEM}
             headers={rowsToHeaders(headerRows)}
             secret={draft.authType === AuthType.AuthOAuth1 ? draft.oauth1ConsumerSecret : draft.secret}
-            connectorID={isEditing ? editingConnector.ID : null}
+            requestID={isEditing ? editingRequest.ID : null}
           />
         </section>
       </Stack>
 
       {error && <Text as="p" size="small" className={styles.error}>{error}</Text>}
       <Stack direction="horizontal" gap="condensed" style={{ marginTop: 'var(--base-size-12)' }}>
-        <Button variant="primary" size="small" onClick={handleSave}>Save connector</Button>
+        <Button variant="primary" size="small" onClick={handleSave}>Save request</Button>
         <Button size="small" variant="invisible" onClick={onCancel}>Cancel</Button>
       </Stack>
     </div>

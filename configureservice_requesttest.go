@@ -9,52 +9,52 @@ import (
 	"github.com/alicoding/mill/internal/adapters/httpconnector"
 	"github.com/alicoding/mill/internal/adapters/openapispec"
 	"github.com/alicoding/mill/internal/domain/composition"
-	"github.com/alicoding/mill/internal/domain/connector"
+	"github.com/alicoding/mill/internal/domain/httprequest"
 )
 
-// TestConnectorRequest carries a connector draft (possibly unsaved --
+// TestHTTPRequestInput carries a request draft (possibly unsaved --
 // docs/adr/0013) plus the one operation to call and example field
 // values. Config comes as plain values (BaseURL/AuthType/Headers/
-// OpenAPISpec), not a Connector ID, so testing the connector currently
+// OpenAPISpec), not an HTTPRequest ID, so testing the request currently
 // on screen works identically whether it's brand-new or mid-edit of an
-// existing one -- the RPC never reads c.connectors for config, only
-// (via ConnectorID, below) as a secret fallback.
-type TestConnectorRequest struct {
-	// ConnectorID is optional. Set it when editing an existing connector
+// existing one -- the RPC never reads c.requests for config, only (via
+// RequestID, below) as a secret fallback.
+type TestHTTPRequestInput struct {
+	// RequestID is optional. Set it when editing an existing request
 	// and Secret is left blank ("keep the existing secret," matching
-	// ConnectorForm's own Auth-tab caption) -- the RPC then falls back to
-	// this connector's stored keychain secret, the same read
-	// resolveConnector already does for a real workflow run.
-	ConnectorID string
-	BaseURL     string
-	AuthType    connector.AuthType
+	// RequestForm's own Auth-tab caption) -- the RPC then falls back to
+	// this request's stored keychain secret, the same read
+	// resolveHTTPRequest already does for a real workflow run.
+	RequestID string
+	BaseURL   string
+	AuthType  httprequest.AuthType
 	// Auth is the non-secret config for AuthOAuth2/AuthHMAC/AuthOAuth1
 	// (ADR-0015) -- nil for the three original AuthTypes.
-	Auth *connector.AuthConfig
+	Auth *httprequest.AuthConfig
 	// JOSE is Phase 3's optional request/response encryption layer --
-	// nil for a connector not using it.
-	JOSE    *connector.JOSEConfig
+	// nil for a request not using it.
+	JOSE    *httprequest.JOSEConfig
 	Headers map[string]string
-	// Secret is used as typed, for this call only -- TestConnectorOperation
+	// Secret is used as typed, for this call only -- TestHTTPRequestOperation
 	// never calls credential.Set, so a tested-then-abandoned draft leaves
 	// no keychain trace.
 	Secret string
 	// JOSEPrivateKeyPEM is the same "used as typed, for this call only"
 	// shape as Secret above, but for JOSE.DecryptResponse's own,
 	// separately-keychained private key (falls back to
-	// joseKeychainID(ConnectorID) when blank, same pattern Secret uses
+	// joseKeychainID(RequestID) when blank, same pattern Secret uses
 	// for the AuthType secret).
 	JOSEPrivateKeyPEM string
 	OpenAPISpec       string
-	Path        string
-	Method      string
+	Path              string
+	Method            string
 	// Values is a flat map of example (generated or hand-edited) field
 	// values keyed by the operation's declared Field.Name, resolved into
 	// path/query/header/body placement by openapispec.BuildRequest.
 	Values map[string]string
 }
 
-// TestConnectorResult is one test call's outcome. Error carries a
+// TestHTTPRequestResult is one test call's outcome. Error carries a
 // transport-level failure (DNS, timeout, connection refused) as a
 // string rather than surfacing it as a Go error -- both this and a
 // real HTTP response (including 4xx/5xx, which httpconnector.Execute
@@ -62,7 +62,7 @@ type TestConnectorRequest struct {
 // "a test attempt with a result," and the frontend's request/response
 // log (ADR-0013 §6) wants to display either uniformly rather than
 // branching on error-vs-response.
-type TestConnectorResult struct {
+type TestHTTPRequestResult struct {
 	StatusCode int
 	Body       string
 	Headers    map[string]string
@@ -70,38 +70,38 @@ type TestConnectorResult struct {
 	DurationMs int64
 }
 
-// TestConnectorOperation executes one real HTTP call against a
-// connector draft's current configuration -- docs/adr/0013's
+// TestHTTPRequestOperation executes one real HTTP call against a
+// request draft's current configuration -- docs/adr/0013's
 // test-before-save flow. Runs server-side (not a browser fetch) so it
 // can resolve a keychain secret and reuses httpconnector.Execute, the
 // same commodity HTTP client + retry policy a real workflow's
 // integration-http node already goes through, deliberately not
 // special-cased faster/slower.
-func (c *ConfigureService) TestConnectorOperation(req TestConnectorRequest) (TestConnectorResult, error) {
+func (c *ConfigureService) TestHTTPRequestOperation(req TestHTTPRequestInput) (TestHTTPRequestResult, error) {
 	secret := req.Secret
-	if secret == "" && req.ConnectorID != "" {
-		if stored, err := credential.Get(req.ConnectorID); err == nil {
+	if secret == "" && req.RequestID != "" {
+		if stored, err := credential.Get(req.RequestID); err == nil {
 			secret = stored
 		}
 	}
 	josePrivateKey := req.JOSEPrivateKeyPEM
-	if josePrivateKey == "" && req.ConnectorID != "" {
-		if stored, err := credential.Get(joseKeychainID(req.ConnectorID)); err == nil {
+	if josePrivateKey == "" && req.RequestID != "" {
+		if stored, err := credential.Get(joseKeychainID(req.RequestID)); err == nil {
 			josePrivateKey = stored
 		}
 	}
 
 	doc, err := openapispec.Parse([]byte(req.OpenAPISpec))
 	if err != nil {
-		return TestConnectorResult{}, fmt.Errorf("configureservice: %w", err)
+		return TestHTTPRequestResult{}, fmt.Errorf("configureservice: %w", err)
 	}
 	op, err := doc.Operation(req.Path, req.Method)
 	if err != nil {
-		return TestConnectorResult{}, fmt.Errorf("configureservice: %w", err)
+		return TestHTTPRequestResult{}, fmt.Errorf("configureservice: %w", err)
 	}
 	resolvedPath, query, bodyHeaders, body, err := openapispec.BuildRequest(req.Path, op, req.Values)
 	if err != nil {
-		return TestConnectorResult{}, fmt.Errorf("configureservice: %w", err)
+		return TestHTTPRequestResult{}, fmt.Errorf("configureservice: %w", err)
 	}
 
 	headers := make(map[string]string, len(req.Headers)+len(bodyHeaders)+1)
@@ -118,13 +118,13 @@ func (c *ConfigureService) TestConnectorOperation(req TestConnectorRequest) (Tes
 	// nowhere (docs/adr/0013's own "test exactly as it would run" goal).
 	body, err = composition.ApplyJOSEEncryption(req.JOSE, body)
 	if err != nil {
-		return TestConnectorResult{}, fmt.Errorf("configureservice: %w", err)
+		return TestHTTPRequestResult{}, fmt.Errorf("configureservice: %w", err)
 	}
 	if err := composition.ApplyAuth(
-		composition.ResolvedConnector{BaseURL: req.BaseURL, AuthType: req.AuthType, Secret: secret, Auth: req.Auth},
+		composition.ResolvedHTTPRequest{BaseURL: req.BaseURL, AuthType: req.AuthType, Secret: secret, Auth: req.Auth},
 		req.Method, resolvedPath, headers, query, body,
 	); err != nil {
-		return TestConnectorResult{}, fmt.Errorf("configureservice: %w", err)
+		return TestHTTPRequestResult{}, fmt.Errorf("configureservice: %w", err)
 	}
 
 	url := resolvedPath
@@ -141,7 +141,7 @@ func (c *ConfigureService) TestConnectorOperation(req TestConnectorRequest) (Tes
 	})
 	elapsed := time.Since(start).Milliseconds()
 	if err != nil {
-		return TestConnectorResult{Error: err.Error(), DurationMs: elapsed}, nil
+		return TestHTTPRequestResult{Error: err.Error(), DurationMs: elapsed}, nil
 	}
 	respBody := resp.Body
 	// Mirrors integration.go: only a successful response is plausibly a
@@ -151,11 +151,11 @@ func (c *ConfigureService) TestConnectorOperation(req TestConnectorRequest) (Tes
 	if resp.StatusCode < 400 {
 		decrypted, err := composition.DecryptJOSEResponse(req.JOSE, josePrivateKey, resp.Body)
 		if err != nil {
-			return TestConnectorResult{Error: err.Error(), DurationMs: elapsed}, nil
+			return TestHTTPRequestResult{Error: err.Error(), DurationMs: elapsed}, nil
 		}
 		respBody = decrypted
 	}
-	return TestConnectorResult{
+	return TestHTTPRequestResult{
 		StatusCode: resp.StatusCode, Body: respBody, Headers: resp.Headers, DurationMs: elapsed,
 	}, nil
 }

@@ -4,7 +4,7 @@ import "fmt"
 
 // ResolvedList is a List's entries, assembled by whatever owns List
 // storage at request time. Same shape and same reasoning as
-// ResolvedConnector (integration.go): composition.go doesn't own List
+// ResolvedHTTPRequest (integration.go): composition.go doesn't own List
 // persistence (ConfigureService does), so this is injected once via
 // SetListLookup rather than composition depending on ConfigureService
 // directly.
@@ -30,7 +30,7 @@ func init() {
 	RegisterNodeType(NodeType{
 		ID: "list-lookup", Kind: KindProcess,
 		Label:       "List: lookup",
-		Description: "Looks up an Attributes value in a Configure-authored List and writes the matched entry back into Attributes. listId is FieldText for the same reason integration-http's connectorId is above -- Lists are runtime, Configure-authored data (the Inspector renders a live picker for it, RefKind, docs/adr/0009).",
+		Description: "Looks up an Attributes value in a Configure-authored List and writes the matched entry back into Attributes. listId is FieldText for the same reason integration-http's requestId is above -- Lists are runtime, Configure-authored data (the Inspector renders a live picker for it, RefKind, docs/adr/0009).",
 		ConfigFields: []ConfigField{
 			{
 				Key: "listId", Label: "List ID",

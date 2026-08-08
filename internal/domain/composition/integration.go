@@ -8,34 +8,34 @@ import (
 
 	"github.com/alicoding/mill/internal/adapters/httpconnector"
 	"github.com/alicoding/mill/internal/adapters/openapispec"
-	"github.com/alicoding/mill/internal/domain/connector"
+	"github.com/alicoding/mill/internal/domain/httprequest"
 )
 
-// ResolvedConnector is a Connector's config plus its decrypted secret,
-// assembled by whatever owns Connector storage at request time.
-// composition.go doesn't own connector persistence or the OS keychain
+// ResolvedHTTPRequest is an HTTPRequest's config plus its decrypted secret,
+// assembled by whatever owns HTTPRequest storage at request time.
+// composition.go doesn't own request persistence or the OS keychain
 // (ConfigureService/internal/adapters/credential do) -- same seam
 // TriggerService uses via a Syncer interface for workflow data -- so
-// this is injected once via SetConnectorLookup instead of composition
+// this is injected once via SetHTTPRequestLookup instead of composition
 // depending on ConfigureService directly.
-type ResolvedConnector struct {
+type ResolvedHTTPRequest struct {
 	BaseURL  string
-	AuthType connector.AuthType
+	AuthType httprequest.AuthType
 	Headers  map[string]string
 	Secret   string
-	// OpenAPISpec is the connector's raw spec document, if any (ADR-0007
-	// Phase 1). Empty for a Connector with none -- integration-http falls
+	// OpenAPISpec is the request's raw spec document, if any (ADR-0007
+	// Phase 1). Empty for an HTTPRequest with none -- integration-http falls
 	// back to its original literal path/method/bodyTemplate behavior in
 	// that case (ADR-0007 Phase 3's own "strict superset, not a breaking
 	// change" framing).
 	OpenAPISpec string
 	// Auth is the non-secret config for AuthOAuth2/AuthHMAC/AuthOAuth1
 	// (ADR-0015) -- nil for the three original AuthTypes.
-	Auth *connector.AuthConfig
+	Auth *httprequest.AuthConfig
 	// JOSE is Phase 3's optional request/response encryption layer --
-	// nil for a connector not using it. Independent of Auth (see
-	// connector.JOSEConfig's own doc comment).
-	JOSE *connector.JOSEConfig
+	// nil for a request not using it. Independent of Auth (see
+	// httprequest.JOSEConfig's own doc comment).
+	JOSE *httprequest.JOSEConfig
 	// JOSEPrivateKeyPEM is Mill's own private key, resolved from the OS
 	// keychain only when JOSE.DecryptResponse is true -- empty
 	// otherwise, same "skip the fetch when there's nothing to fetch"
@@ -49,24 +49,24 @@ type ResolvedConnector struct {
 // method/path/body are given (not mutated) since HMAC/OAuth 1.0a sign
 // over them; a strategy with nothing to sign (AuthAPIKey/AuthBearer)
 // simply ignores those params.
-type AuthStrategy func(rc ResolvedConnector, method, path string, headers map[string]string, query url.Values, body string) error
+type AuthStrategy func(rc ResolvedHTTPRequest, method, path string, headers map[string]string, query url.Values, body string) error
 
-var authStrategies = map[connector.AuthType]AuthStrategy{}
+var authStrategies = map[httprequest.AuthType]AuthStrategy{}
 
 // RegisterAuthStrategy is ADR-0015's self-registration seam, the same
 // shape ADR-0006 already established and verified for NodeTypes/
 // Triggers -- each AuthType's strategy lives in its own small file,
 // registered via init(), so adding a new AuthType (mTLS included) is a
 // pure addition, never a change to an existing strategy's file.
-func RegisterAuthStrategy(t connector.AuthType, fn AuthStrategy) {
+func RegisterAuthStrategy(t httprequest.AuthType, fn AuthStrategy) {
 	authStrategies[t] = fn
 }
 
 // ApplyAuth dispatches to rc.AuthType's registered strategy. AuthNone
 // (or any AuthType with no registered strategy, which shouldn't happen
-// for a Validate-passed Connector) is a no-op, matching the original
+// for a Validate-passed HTTPRequest) is a no-op, matching the original
 // AuthHeader switch's own default case.
-func ApplyAuth(rc ResolvedConnector, method, path string, headers map[string]string, query url.Values, body string) error {
+func ApplyAuth(rc ResolvedHTTPRequest, method, path string, headers map[string]string, query url.Values, body string) error {
 	fn, ok := authStrategies[rc.AuthType]
 	if !ok {
 		return nil
@@ -74,34 +74,34 @@ func ApplyAuth(rc ResolvedConnector, method, path string, headers map[string]str
 	return fn(rc, method, path, headers, query, body)
 }
 
-// lookupConnectorFn defaults to erroring so an integration-http node run
-// before ConfigureService exists (or before SetConnectorLookup wires it)
+// lookupHTTPRequestFn defaults to erroring so an integration-http node run
+// before ConfigureService exists (or before SetHTTPRequestLookup wires it)
 // fails loudly instead of silently no-op'ing.
-var lookupConnectorFn = func(connectorID string) (ResolvedConnector, error) {
-	return ResolvedConnector{}, fmt.Errorf("no connector lookup registered (yet) for id %q", connectorID)
+var lookupHTTPRequestFn = func(requestID string) (ResolvedHTTPRequest, error) {
+	return ResolvedHTTPRequest{}, fmt.Errorf("no request lookup registered (yet) for id %q", requestID)
 }
 
-// SetConnectorLookup wires the function integration-http nodes use to
-// resolve a connectorId into its base URL/auth/secret. Called once from
+// SetHTTPRequestLookup wires the function integration-http nodes use to
+// resolve a requestId into its base URL/auth/secret. Called once from
 // main.go once ConfigureService exists.
-func SetConnectorLookup(fn func(connectorID string) (ResolvedConnector, error)) {
-	lookupConnectorFn = fn
+func SetHTTPRequestLookup(fn func(requestID string) (ResolvedHTTPRequest, error)) {
+	lookupHTTPRequestFn = fn
 }
 
 func init() {
 	RegisterNodeType(NodeType{
 		ID: "integration-http", Kind: KindProcess,
 		Label:       "Integration: HTTP call",
-		Description: "Calls a Configure-authored connector's API and replaces the payload with the response body. connectorId isn't a closed FieldOptions set (unlike method below) because connectors are runtime, Configure-authored data composition.go has no compile-time knowledge of -- the frontend Inspector renders a live picker for it (RefKind, docs/adr/0009), not a closed option list composition.go could declare here.",
+		Description: "Calls a Configure-authored request's API and replaces the payload with the response body. requestId isn't a closed FieldOptions set (unlike method below) because requests are runtime, Configure-authored data composition.go has no compile-time knowledge of -- the frontend Inspector renders a live picker for it (RefKind, docs/adr/0009), not a closed option list composition.go could declare here.",
 		ConfigFields: []ConfigField{
 			{
-				Key: "connectorId", Label: "Connector ID",
-				Description: "The ID of a connector configured on the Configure page.",
-				Default:     "", Type: FieldText, RefKind: "connector",
+				Key: "requestId", Label: "Request ID",
+				Description: "The ID of a request configured on the Configure page.",
+				Default:     "", Type: FieldText, RefKind: "request",
 			},
 			{
 				Key: "path", Label: "Path",
-				Description: "Appended to the connector's base URL, e.g. \"/v1/records\".",
+				Description: "Appended to the request's base URL, e.g. \"/v1/records\".",
 				Default:     "", Type: FieldText,
 			},
 			{
@@ -117,7 +117,7 @@ func init() {
 			},
 		},
 	}, func(node Node, ctx ExecContext) (ExecContext, error) {
-		rc, err := lookupConnectorFn(node.Config["connectorId"])
+		rc, err := lookupHTTPRequestFn(node.Config["requestId"])
 		if err != nil {
 			return ctx, fmt.Errorf("integration-http: %w", err)
 		}
@@ -129,7 +129,7 @@ func init() {
 		query := url.Values{}
 
 		// ADR-0007 Phase 3 (extended by ADR-0011's output Path support):
-		// a connector with a spec and a node with authored input or
+		// a request with a spec and a node with authored input or
 		// output bindings uses the binding-resolution path
 		// (attributebinding.go); everything else keeps the original
 		// literal path/method/bodyTemplate behavior unchanged -- a
@@ -160,7 +160,7 @@ func init() {
 		// Phase 3 (JOSE): body is encrypted before Auth is applied, so a
 		// signing AuthType (HMAC/OAuth 1.0a) signs the ciphertext that's
 		// actually transmitted, not the plaintext underneath it -- a
-		// no-op for a connector with no JOSE config (ADR-0015 Phase 3).
+		// no-op for a request with no JOSE config (ADR-0015 Phase 3).
 		body, err = ApplyJOSEEncryption(rc.JOSE, body)
 		if err != nil {
 			return ctx, fmt.Errorf("integration-http: %w", err)

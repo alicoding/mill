@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/alicoding/mill/internal/domain/connector"
+	"github.com/alicoding/mill/internal/domain/httprequest"
 )
 
 // ADR-0015: the full auth-type catalogue, each proven against a real
@@ -27,13 +27,13 @@ func TestExecuteWorkflow_IntegrationHTTP_QueryParamAuth(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	withConnectorLookup(t, func(string) (ResolvedConnector, error) {
-		return ResolvedConnector{BaseURL: srv.URL, AuthType: connector.AuthQueryParam, Secret: "qp-secret"}, nil
+	withHTTPRequestLookup(t, func(string) (ResolvedHTTPRequest, error) {
+		return ResolvedHTTPRequest{BaseURL: srv.URL, AuthType: httprequest.AuthQueryParam, Secret: "qp-secret"}, nil
 	})
 
 	nodes, err := ResolveNodeDefaults([]Node{{
 		NodeTypeID: "integration-http",
-		Config:     map[string]string{"connectorId": "conn-1", "path": "/x", "method": http.MethodGet},
+		Config:     map[string]string{"requestId": "conn-1", "path": "/x", "method": http.MethodGet},
 	}})
 	if err != nil {
 		t.Fatalf("ResolveNodeDefaults returned error: %v", err)
@@ -55,13 +55,13 @@ func TestExecuteWorkflow_IntegrationHTTP_HMACAuth(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	withConnectorLookup(t, func(string) (ResolvedConnector, error) {
-		return ResolvedConnector{BaseURL: srv.URL, AuthType: connector.AuthHMAC, Secret: "hmac-secret"}, nil
+	withHTTPRequestLookup(t, func(string) (ResolvedHTTPRequest, error) {
+		return ResolvedHTTPRequest{BaseURL: srv.URL, AuthType: httprequest.AuthHMAC, Secret: "hmac-secret"}, nil
 	})
 
 	nodes, err := ResolveNodeDefaults([]Node{{
 		NodeTypeID: "integration-http",
-		Config:     map[string]string{"connectorId": "conn-1", "path": "/x", "method": http.MethodGet},
+		Config:     map[string]string{"requestId": "conn-1", "path": "/x", "method": http.MethodGet},
 	}})
 	if err != nil {
 		t.Fatalf("ResolveNodeDefaults returned error: %v", err)
@@ -89,17 +89,17 @@ func TestExecuteWorkflow_IntegrationHTTP_OAuth1Auth(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	withConnectorLookup(t, func(string) (ResolvedConnector, error) {
-		return ResolvedConnector{
-			BaseURL: srv.URL, AuthType: connector.AuthOAuth1,
+	withHTTPRequestLookup(t, func(string) (ResolvedHTTPRequest, error) {
+		return ResolvedHTTPRequest{
+			BaseURL: srv.URL, AuthType: httprequest.AuthOAuth1,
 			Secret: EncodeOAuth1Secret("consumer-secret", "token-secret"),
-			Auth:   &connector.AuthConfig{OAuth1: &connector.OAuth1Config{ConsumerKey: "ck-1", Token: "tok-1"}},
+			Auth:   &httprequest.AuthConfig{OAuth1: &httprequest.OAuth1Config{ConsumerKey: "ck-1", Token: "tok-1"}},
 		}, nil
 	})
 
 	nodes, err := ResolveNodeDefaults([]Node{{
 		NodeTypeID: "integration-http",
-		Config:     map[string]string{"connectorId": "conn-1", "path": "/x", "method": http.MethodGet},
+		Config:     map[string]string{"requestId": "conn-1", "path": "/x", "method": http.MethodGet},
 	}})
 	if err != nil {
 		t.Fatalf("ResolveNodeDefaults returned error: %v", err)
@@ -131,10 +131,10 @@ func TestExecuteWorkflow_IntegrationHTTP_OAuth2Auth(t *testing.T) {
 	srv := httptest.NewServer(mux)
 	defer srv.Close()
 
-	withConnectorLookup(t, func(string) (ResolvedConnector, error) {
-		return ResolvedConnector{
-			BaseURL: srv.URL, AuthType: connector.AuthOAuth2, Secret: "client-secret",
-			Auth: &connector.AuthConfig{OAuth2: &connector.OAuth2Config{
+	withHTTPRequestLookup(t, func(string) (ResolvedHTTPRequest, error) {
+		return ResolvedHTTPRequest{
+			BaseURL: srv.URL, AuthType: httprequest.AuthOAuth2, Secret: "client-secret",
+			Auth: &httprequest.AuthConfig{OAuth2: &httprequest.OAuth2Config{
 				GrantType: "client_credentials", TokenURL: srv.URL + "/token", ClientID: "client-1",
 			}},
 		}, nil
@@ -142,7 +142,7 @@ func TestExecuteWorkflow_IntegrationHTTP_OAuth2Auth(t *testing.T) {
 
 	nodes, err := ResolveNodeDefaults([]Node{{
 		NodeTypeID: "integration-http",
-		Config:     map[string]string{"connectorId": "conn-1", "path": "/resource", "method": http.MethodGet},
+		Config:     map[string]string{"requestId": "conn-1", "path": "/resource", "method": http.MethodGet},
 	}})
 	if err != nil {
 		t.Fatalf("ResolveNodeDefaults returned error: %v", err)
@@ -156,12 +156,12 @@ func TestExecuteWorkflow_IntegrationHTTP_OAuth2Auth(t *testing.T) {
 }
 
 func TestExecuteWorkflow_IntegrationHTTP_OAuth1Vendor_NotImplemented(t *testing.T) {
-	withConnectorLookup(t, func(string) (ResolvedConnector, error) {
-		return ResolvedConnector{BaseURL: "http://example.invalid", AuthType: connector.AuthOAuth1Vendor}, nil
+	withHTTPRequestLookup(t, func(string) (ResolvedHTTPRequest, error) {
+		return ResolvedHTTPRequest{BaseURL: "http://example.invalid", AuthType: httprequest.AuthOAuth1Vendor}, nil
 	})
 	nodes, err := ResolveNodeDefaults([]Node{{
 		NodeTypeID: "integration-http",
-		Config:     map[string]string{"connectorId": "conn-1", "path": "/x", "method": http.MethodGet},
+		Config:     map[string]string{"requestId": "conn-1", "path": "/x", "method": http.MethodGet},
 	}})
 	if err != nil {
 		t.Fatalf("ResolveNodeDefaults returned error: %v", err)
@@ -173,12 +173,12 @@ func TestExecuteWorkflow_IntegrationHTTP_OAuth1Vendor_NotImplemented(t *testing.
 }
 
 func TestExecuteWorkflow_IntegrationHTTP_MTLS_NotImplemented(t *testing.T) {
-	withConnectorLookup(t, func(string) (ResolvedConnector, error) {
-		return ResolvedConnector{BaseURL: "http://example.invalid", AuthType: connector.AuthMTLS}, nil
+	withHTTPRequestLookup(t, func(string) (ResolvedHTTPRequest, error) {
+		return ResolvedHTTPRequest{BaseURL: "http://example.invalid", AuthType: httprequest.AuthMTLS}, nil
 	})
 	nodes, err := ResolveNodeDefaults([]Node{{
 		NodeTypeID: "integration-http",
-		Config:     map[string]string{"connectorId": "conn-1", "path": "/x", "method": http.MethodGet},
+		Config:     map[string]string{"requestId": "conn-1", "path": "/x", "method": http.MethodGet},
 	}})
 	if err != nil {
 		t.Fatalf("ResolveNodeDefaults returned error: %v", err)

@@ -13,7 +13,7 @@ var nonAlnum = regexp.MustCompile(`[^a-z0-9]+`)
 // "My Workflow" -> "my-workflow-a1b2c3") -- stable/debuggable, unlike an
 // opaque UUID, while the random suffix keeps two same-named entities
 // from colliding. Shared by CompositionService (workflows) and
-// ConfigureService (connectors, lists) -- same generation shape, not
+// ConfigureService (requests, lists) -- same generation shape, not
 // duplicated per caller.
 func newSlugID(label, fallback string) string {
 	slug := nonAlnum.ReplaceAllString(strings.ToLower(strings.TrimSpace(label)), "-")

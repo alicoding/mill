@@ -1,13 +1,14 @@
 import { Tabs } from '@primer/react/experimental'
 import { TabItem, TabList, TabPanel } from '../shared/Tabs'
-import { ConfigureIntegration } from './ConfigureIntegration'
+import { ConfigureRequests } from './ConfigureRequests'
 import { ConfigureLists } from './ConfigureLists'
 import { ConfigureAttributes } from './ConfigureAttributes'
 import { ConfigureMCPServers } from './ConfigureMCPServers'
 
 // The Configure surface (docs/SPEC.md §3.5): four sections for
-// Configure-authored data -- Integration (Connectors, 1:many reusable),
-// Lists (1:many reusable), Attributes (1:1, workflow-scoped), and MCP
+// Configure-authored data -- Integration (HTTPRequests, 1:many
+// reusable, renamed from Connector by ADR-0016), Lists (1:many
+// reusable), Attributes (1:1, workflow-scoped), and MCP
 // Servers (1:many reusable, §3.6 -- the actual "add a whole class of new
 // capabilities without a core code change" extension point: each server
 // wired up here exposes as many usable mcp-tool-call steps as it has
@@ -25,7 +26,7 @@ function ConfigureView() {
         <TabItem value="attributes">Attributes</TabItem>
         <TabItem value="mcpservers">MCP Servers</TabItem>
       </TabList>
-      <TabPanel value="integration"><ConfigureIntegration /></TabPanel>
+      <TabPanel value="integration"><ConfigureRequests /></TabPanel>
       <TabPanel value="lists"><ConfigureLists /></TabPanel>
       <TabPanel value="attributes"><ConfigureAttributes /></TabPanel>
       <TabPanel value="mcpservers"><ConfigureMCPServers /></TabPanel>

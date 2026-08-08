@@ -32,18 +32,18 @@ test('An open Composition workflow tab persists across a reload', async ({ page 
   await expect(page.getByRole('tab', { name: 'Load sample HTML' })).toBeVisible()
 })
 
-test('An open Configure connector view tab persists across a reload', async ({ page }) => {
+test('An open Configure request view tab persists across a reload', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Configure' }).click()
 
   const label = 'Example: No auth (httpbin.org)'
-  const row = page.getByTestId('connector-row').filter({ has: page.getByText(label, { exact: true }) })
+  const row = page.getByTestId('request-row').filter({ has: page.getByText(label, { exact: true }) })
   await row.getByText(label, { exact: true }).click()
-  await expect(page.getByTestId('connector-summary')).toBeVisible()
+  await expect(page.getByTestId('request-summary')).toBeVisible()
 
   await page.reload()
   await page.getByRole('link', { name: 'Configure' }).click()
-  await expect(page.getByTestId('connector-summary')).toBeVisible()
+  await expect(page.getByTestId('request-summary')).toBeVisible()
   await expect(page.getByRole('heading', { name: label })).toBeVisible()
 })
 

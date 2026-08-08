@@ -2,8 +2,8 @@ import { useRef, useState } from 'react'
 import { Button, FormControl, IconButton, Label, Select, SegmentedControl, Stack, Text, TextInput, Textarea } from '@primer/react'
 import { CopyIcon, PlayIcon, SyncIcon } from '@primer/octicons-react'
 import { ConfigureService } from '../../bindings/github.com/alicoding/mill'
-import type { AuthConfig, AuthType, JOSEConfig } from '../../bindings/github.com/alicoding/mill/internal/domain/connector/models'
-import type { TestConnectorResult } from '../../bindings/github.com/alicoding/mill/models'
+import type { AuthConfig, AuthType, JOSEConfig } from '../../bindings/github.com/alicoding/mill/internal/domain/httprequest/models'
+import type { TestHTTPRequestResult } from '../../bindings/github.com/alicoding/mill/models'
 import type { ManualOperation } from './openapiSynth'
 import { generateOperationSample } from './testPayload'
 import styles from '../shared/ListCard.module.css'
@@ -15,29 +15,29 @@ import styles from '../shared/ListCard.module.css'
 // not data retention.
 const LOG_CAP = 20
 
-interface LogEntry extends TestConnectorResult {
+interface LogEntry extends TestHTTPRequestResult {
   id: number
   method: string
   path: string
   at: string
 }
 
-// docs/adr/0013: tests the connector draft currently on screen -- no
+// docs/adr/0013: tests the request draft currently on screen -- no
 // save required. `effectiveSpec`/`operations` are computed by
-// ConnectorForm from whichever schema-authoring mode is actually
+// RequestForm from whichever schema-authoring mode is actually
 // current (Manual editor vs. pasted OpenAPI text), the same
 // "compute once, pass down, never re-derive from possibly-stale state"
 // discipline handleSave already uses for the identical stale-state risk
-// (see ConnectorForm.tsx's own comment on that bug).
-export function ConnectorTestPanel({
-  operations, effectiveSpec, baseURL, authType, auth, jose, josePrivateKeyPEM, headers, secret, connectorID,
+// (see RequestForm.tsx's own comment on that bug).
+export function RequestTestPanel({
+  operations, effectiveSpec, baseURL, authType, auth, jose, josePrivateKeyPEM, headers, secret, requestID,
 }: {
   operations: ManualOperation[]
   effectiveSpec: string
   baseURL: string
   authType: AuthType
   // ADR-0015's non-secret Auth config (OAuth2/HMAC/OAuth1) -- passed
-  // through to TestConnectorOperation unchanged, same "test the draft
+  // through to TestHTTPRequestOperation unchanged, same "test the draft
   // exactly as it would run" principle ADR-0013 already established for
   // BaseURL/Headers/Secret.
   auth: AuthConfig | null
@@ -47,7 +47,7 @@ export function ConnectorTestPanel({
   josePrivateKeyPEM: string
   headers: Record<string, string> | null
   secret: string
-  connectorID: string | null
+  requestID: string | null
 }) {
   const [selectedKey, setSelectedKey] = useState('')
   const [values, setValues] = useState<Record<string, string>>({})
@@ -68,7 +68,7 @@ export function ConnectorTestPanel({
   // (docs/SPEC.md §3.5's "no UI for a decision that doesn't exist"
   // discipline) -- auto-selected directly, no state or effect needed
   // for this case at all. Prompted directly after the seeded example
-  // connectors (each declaring exactly one operation) made this
+  // requests (each declaring exactly one operation) made this
   // concretely visible in the live app.
   const selected = operations.length === 1
     ? operations[0]
@@ -118,8 +118,8 @@ export function ConnectorTestPanel({
     if (!selected || effectiveSpec.trim() === '') return
     setRunning(true)
     try {
-      const result = await ConfigureService.TestConnectorOperation({
-        ConnectorID: connectorID ?? '',
+      const result = await ConfigureService.TestHTTPRequestOperation({
+        RequestID: requestID ?? '',
         BaseURL: baseURL,
         AuthType: authType,
         Auth: auth,
@@ -156,7 +156,7 @@ export function ConnectorTestPanel({
   }
 
   return (
-    <Stack direction="vertical" gap="normal" data-testid="connector-test-panel">
+    <Stack direction="vertical" gap="normal" data-testid="request-test-panel">
       {operations.length > 1 ? (
         <FormControl>
           <FormControl.Label>Operation</FormControl.Label>
@@ -220,17 +220,17 @@ export function ConnectorTestPanel({
             </Stack>
           )}
 
-          <Button variant="primary" size="small" leadingVisual={PlayIcon} onClick={runTest} disabled={running} data-testid="run-connector-test">
+          <Button variant="primary" size="small" leadingVisual={PlayIcon} onClick={runTest} disabled={running} data-testid="run-request-test">
             {running ? 'Running…' : 'Run test'}
           </Button>
         </>
       )}
 
       {log.length > 0 && (
-        <Stack direction="vertical" gap="condensed" data-testid="connector-test-log">
+        <Stack direction="vertical" gap="condensed" data-testid="request-test-log">
           <Text size="small" weight="semibold">Request log (this session only)</Text>
           {log.map((entry) => (
-            <div key={entry.id} className={styles.card} data-testid="connector-test-log-entry">
+            <div key={entry.id} className={styles.card} data-testid="request-test-log-entry">
               <Stack direction="horizontal" gap="condensed" align="center">
                 <Text size="small" className={styles.muted}>{entry.at}</Text>
                 <Label variant="secondary" size="small">{entry.method} {entry.path}</Label>

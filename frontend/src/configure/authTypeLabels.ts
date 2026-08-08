@@ -1,8 +1,8 @@
-import { AuthType } from '../../bindings/github.com/alicoding/mill/internal/domain/connector/models'
+import { AuthType } from '../../bindings/github.com/alicoding/mill/internal/domain/httprequest/models'
 
 // The full auth-type catalogue's display labels (ADR-0015, docs/SPEC.md
-// §4.1) -- shared by ConnectorForm.tsx (the Select options) and
-// ConnectorSummary.tsx (the read-only Details tab), so the two never
+// §4.1) -- shared by RequestForm.tsx (the Select options) and
+// RequestSummary.tsx (the read-only Details tab), so the two never
 // drift into two different label sets for the same AuthType.
 export const AUTH_LABEL: Record<string, string> = {
   [AuthType.AuthNone]: 'None',

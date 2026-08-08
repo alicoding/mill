@@ -1,6 +1,6 @@
-package connector
+package httprequest
 
-// BuiltIn ships one seeded, working example Connector per real
+// BuiltIn ships one seeded, working example HTTPRequest per real
 // implemented AuthType (docs/SPEC.md §4's Update) -- the same standing
 // practice CompositionService.restore() already established for
 // Workflows (composition.BuiltInWorkflows): every capability that
@@ -18,13 +18,13 @@ package connector
 // fundamentally can't be demonstrated without a registered app, and
 // Mill's own repo will never carry a real client secret (that's a
 // leaked-credential risk, not a convenience). Its Description says so
-// explicitly rather than silently shipping a connector that fails with
+// explicitly rather than silently shipping a request that fails with
 // no explanation.
 //
-// Connector IDs are exported constants (not local string literals) so
+// HTTPRequest IDs are exported constants (not local string literals) so
 // the one place that also needs to know them -- the demo-secret
 // seeding in configureservice_builtin.go (package main, since
-// Connector itself never carries a secret field) -- can't drift from
+// HTTPRequest itself never carries a secret field) -- can't drift from
 // these via a typo.
 const (
 	ExampleNoneID       = "example-none-httpbin"
@@ -41,17 +41,17 @@ func openAPISpecFor(title, path string) string {
 		`"paths":{"` + path + `":{"get":{"summary":"` + title + `","responses":{"200":{"description":"OK"}}}}}}`
 }
 
-// BuiltIn returns the seeded example connectors -- pure config, no
-// secrets (Connector never carries one, by design). Whoever owns
+// BuiltIn returns the seeded example requests -- pure config, no
+// secrets (HTTPRequest never carries one, by design). Whoever owns
 // storage (ConfigureService) is responsible for also seeding each
 // example's demo secret into the OS keychain on first install.
-func BuiltIn() []Connector {
-	return []Connector{
+func BuiltIn() []HTTPRequest {
+	return []HTTPRequest{
 		{
 			ID: ExampleNoneID, Label: "Example: No auth (httpbin.org)",
 			Description: "Demonstrates AuthType none against a real, stable public test service " +
 				"(httpbin.org) -- no credentials involved, always works.",
-			Type: TypeHTTP, BaseURL: "https://httpbin.org", AuthType: AuthNone,
+			BaseURL: "https://httpbin.org", AuthType: AuthNone,
 			OpenAPISpec: openAPISpecFor("httpbin GET", "/get"),
 			BuiltIn:     true,
 		},
@@ -61,7 +61,7 @@ func BuiltIn() []Connector {
 				"whatever it received, so you can see the header arrived correctly -- it does not " +
 				"validate the key's value (httpbin has no concept of a 'correct' key), so this is a " +
 				"self-consistency check, not third-party-verified auth.",
-			Type: TypeHTTP, BaseURL: "https://httpbin.org", AuthType: AuthAPIKey,
+			BaseURL: "https://httpbin.org", AuthType: AuthAPIKey,
 			OpenAPISpec: openAPISpecFor("httpbin headers echo", "/headers"),
 			BuiltIn:     true,
 		},
@@ -71,7 +71,7 @@ func BuiltIn() []Connector {
 				"genuinely validates the request server-side: 401 with no token, 200 + " +
 				"{\"authenticated\":true} with one -- real, independently-verified round trip, " +
 				"confirmed live before this was seeded.",
-			Type: TypeHTTP, BaseURL: "https://httpbin.org", AuthType: AuthBearer,
+			BaseURL: "https://httpbin.org", AuthType: AuthBearer,
 			OpenAPISpec: openAPISpecFor("httpbin bearer check", "/bearer"),
 			BuiltIn:     true,
 		},
@@ -82,7 +82,7 @@ func BuiltIn() []Connector {
 				"universal HMAC convention exists to validate against). httpbin.org/headers echoes " +
 				"the signed headers back so you can see them, but doesn't verify the signature -- " +
 				"self-consistency check only, same caveat as the API-key example above.",
-			Type: TypeHTTP, BaseURL: "https://httpbin.org", AuthType: AuthHMAC,
+			BaseURL: "https://httpbin.org", AuthType: AuthHMAC,
 			OpenAPISpec: openAPISpecFor("httpbin headers echo (HMAC)", "/headers"),
 			BuiltIn:     true,
 		},
@@ -93,7 +93,7 @@ func BuiltIn() []Connector {
 				"(postman-echo.com/oauth1) -- independently confirmed live: the server itself " +
 				"returned {\"status\":\"pass\",\"message\":\"OAuth-1.0a signature verification was " +
 				"successful\"} before this was seeded, not just self-consistent with Mill's own tests.",
-			Type: TypeHTTP, BaseURL: "https://postman-echo.com", AuthType: AuthOAuth1,
+			BaseURL: "https://postman-echo.com", AuthType: AuthOAuth1,
 			Auth:        &AuthConfig{OAuth1: &OAuth1Config{ConsumerKey: "RKCGzna7bv9YD57c"}},
 			OpenAPISpec: openAPISpecFor("Postman Echo OAuth1", "/oauth1"),
 			BuiltIn:     true,
@@ -105,7 +105,7 @@ func BuiltIn() []Connector {
 				"OAuth 2.0 fundamentally can't be demonstrated without a registered app, and Mill's " +
 				"own repo will never carry a real client secret. Register a free Spotify developer " +
 				"app and fill in the Client ID/Secret yourself to make this one actually run.",
-			Type: TypeHTTP, BaseURL: "https://api.spotify.com/v1", AuthType: AuthOAuth2,
+			BaseURL: "https://api.spotify.com/v1", AuthType: AuthOAuth2,
 			Auth: &AuthConfig{OAuth2: &OAuth2Config{
 				GrantType: "client_credentials", TokenURL: "https://accounts.spotify.com/api/token",
 			}},
@@ -117,7 +117,7 @@ func BuiltIn() []Connector {
 			Description: "Sends ?apikey=<secret> in the URL's query string against httpbin.org/get, " +
 				"which echoes back the query it received -- same self-consistency-only caveat as the " +
 				"header-based API-key example (httpbin doesn't validate the value).",
-			Type: TypeHTTP, BaseURL: "https://httpbin.org", AuthType: AuthQueryParam,
+			BaseURL: "https://httpbin.org", AuthType: AuthQueryParam,
 			OpenAPISpec: openAPISpecFor("httpbin query echo", "/get"),
 			BuiltIn:     true,
 		},

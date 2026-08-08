@@ -2,14 +2,14 @@
 // active) across restarts -- docs/SPEC.md §3.7's Update, the concrete
 // "open tabs" half of the navigational-state gap. Shared by
 // CompositionView.tsx and ConfigureIntegration.tsx, whose EditorTab/
-// ConnectorTab shapes are already near-identical by design (the latter
+// RequestTab shapes are already near-identical by design (the latter
 // explicitly "mirrors CompositionView.tsx's own EditorTab/tabs/
 // activeTab shape exactly," docs/adr/0014) -- one small helper here
 // instead of two copies.
 //
 // Deliberately persists only entity IDs, never a tab's own ephemeral
 // `key` (regenerated fresh via crypto.randomUUID() on every restore)
-// and never a "new"/"duplicate" draft tab (workflowId/connectorId
+// and never a "new"/"duplicate" draft tab (workflowId/requestId
 // null) -- an unsaved draft's in-progress edits were never persisted
 // either, so restoring an empty draft tab pointing at nothing would be
 // worse than just not restoring it. Same localStorage/cosmetic tier as

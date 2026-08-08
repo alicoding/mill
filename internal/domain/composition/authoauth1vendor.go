@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"net/url"
 
-	"github.com/alicoding/mill/internal/domain/connector"
+	"github.com/alicoding/mill/internal/domain/httprequest"
 )
 
 // AuthOAuth1Vendor is a real, registered AuthType whose strategy is a
@@ -20,7 +20,7 @@ import (
 // new AuthType is a pure addition, zero changes to any other strategy
 // file, whether or not that type's own behavior is fully built yet.
 func init() {
-	RegisterAuthStrategy(connector.AuthOAuth1Vendor, func(rc ResolvedConnector, method, path string, headers map[string]string, query url.Values, body string) error {
+	RegisterAuthStrategy(httprequest.AuthOAuth1Vendor, func(rc ResolvedHTTPRequest, method, path string, headers map[string]string, query url.Values, body string) error {
 		return fmt.Errorf("the vendor-specific OAuth 1.0a variant is not yet implemented -- its exact signing convention was never confirmed (docs/adr/0015); use AuthOAuth1 (standard RFC 5849) if that fits, or file the real requirement")
 	})
 }

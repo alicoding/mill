@@ -29,7 +29,7 @@ export enum Approach {
  * structured Attributes bag (see ExecContext) -- Configure-authored
  * (SPEC.md §3.5: "Input/Attributes... you would not tightly couple it in
  * the workflow"), but scoped to the one workflow that declares it (1:1),
- * unlike a reusable Connector or List. Reuses ConfigFieldType rather
+ * unlike a reusable HTTPRequest or List. Reuses ConfigFieldType rather
  * than inventing a second type enum -- a workflow's attribute schema and
  * a node's config fields are the same kind of "name + typed value"
  * declaration.
@@ -62,7 +62,7 @@ export interface ConfigField {
 
     /**
      * RefKind marks a FieldText field whose value is the ID of a
-     * Configure-authored entity ("connector" | "list" | "mcpserver"),
+     * Configure-authored entity ("request" | "list" | "mcpserver"),
      * empty for an ordinary text field (docs/adr/0009). Orthogonal to
      * Type: the wire value is still a plain string ID (Type stays
      * FieldText), RefKind only tells the frontend Inspector which

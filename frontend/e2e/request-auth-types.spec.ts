@@ -8,22 +8,22 @@ import { test, expect } from '@playwright/test'
 // silently presented as working. Cleans up what it creates, per
 // .claude/rules/testing.md.
 
-function connectorRow(page: import('@playwright/test').Page, label: string) {
-  return page.getByTestId('connector-row').filter({ has: page.getByText(label, { exact: true }) })
+function requestRow(page: import('@playwright/test').Page, label: string) {
+  return page.getByTestId('request-row').filter({ has: page.getByText(label, { exact: true }) })
 }
 
-async function deleteConnector(page: import('@playwright/test').Page, label: string) {
-  await page.getByRole('tab', { name: 'Connectors' }).click()
-  await connectorRow(page, label).getByRole('button', { name: `Delete ${label}` }).click()
-  await expect(connectorRow(page, label)).toHaveCount(0)
+async function deleteRequest(page: import('@playwright/test').Page, label: string) {
+  await page.getByRole('tab', { name: 'Requests' }).click()
+  await requestRow(page, label).getByRole('button', { name: `Delete ${label}` }).click()
+  await expect(requestRow(page, label)).toHaveCount(0)
 }
 
-test('An OAuth 2.0 connector persists its non-secret config and reloads it into Edit', async ({ page }) => {
+test('An OAuth 2.0 request persists its non-secret config and reloads it into Edit', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Configure' }).click()
 
-  await page.getByTestId('new-connector').click()
-  await page.getByLabel('Label').fill('OAuth2 Connector')
+  await page.getByTestId('new-request').click()
+  await page.getByLabel('Label').fill('OAuth2 Request')
   await page.getByLabel('Base URL').fill('https://api.example.com')
   await page.getByLabel('Auth type').selectOption('oauth2')
 
@@ -31,14 +31,14 @@ test('An OAuth 2.0 connector persists its non-secret config and reloads it into 
   await page.getByLabel('Client ID').fill('client-abc')
   await page.getByLabel('Scope').fill('read write')
   await page.getByLabel('Client secret').fill('super-secret')
-  await page.getByRole('button', { name: 'Save connector' }).click()
+  await page.getByRole('button', { name: 'Save request' }).click()
 
-  const row = connectorRow(page, 'OAuth2 Connector')
+  const row = requestRow(page, 'OAuth2 Request')
   await expect(row).toBeVisible();
 
   // Details tab shows the resolved auth-type label, not the raw enum value.
-  await connectorRow(page, 'OAuth2 Connector').getByText('OAuth2 Connector', { exact: true }).click();
-  await expect(page.getByTestId('connector-summary')).toBeVisible()
+  await requestRow(page, 'OAuth2 Request').getByText('OAuth2 Request', { exact: true }).click();
+  await expect(page.getByTestId('request-summary')).toBeVisible()
   await expect(page.getByText('OAuth 2.0 (client credentials)')).toBeVisible()
 
   // Reopening Edit reloads the non-secret OAuth2 config -- the secret
@@ -50,36 +50,36 @@ test('An OAuth 2.0 connector persists its non-secret config and reloads it into 
   await expect(page.getByLabel('Client secret')).toHaveValue('')
 
   await page.getByRole('button', { name: 'Cancel' }).click()
-  await deleteConnector(page, 'OAuth2 Connector')
+  await deleteRequest(page, 'OAuth2 Request')
 })
 
-test('An HMAC connector persists a custom signature header name', async ({ page }) => {
+test('An HMAC request persists a custom signature header name', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Configure' }).click()
 
-  await page.getByTestId('new-connector').click()
-  await page.getByLabel('Label').fill('HMAC Connector')
+  await page.getByTestId('new-request').click()
+  await page.getByLabel('Label').fill('HMAC Request')
   await page.getByLabel('Base URL').fill('https://api.example.com')
   await page.getByLabel('Auth type').selectOption('hmac')
   await page.getByLabel('Signature header name').fill('X-Vendor-Signature')
   await page.getByLabel('Secret').fill('signing-key')
-  await page.getByRole('button', { name: 'Save connector' }).click()
+  await page.getByRole('button', { name: 'Save request' }).click()
 
-  await expect(connectorRow(page, 'HMAC Connector')).toBeVisible()
-  await connectorRow(page, 'HMAC Connector').getByText('HMAC Connector', { exact: true }).click()
+  await expect(requestRow(page, 'HMAC Request')).toBeVisible()
+  await requestRow(page, 'HMAC Request').getByText('HMAC Request', { exact: true }).click()
   await page.getByTestId('summary-edit').click()
   await expect(page.getByLabel('Signature header name')).toHaveValue('X-Vendor-Signature')
 
   await page.getByRole('button', { name: 'Cancel' }).click()
-  await deleteConnector(page, 'HMAC Connector')
+  await deleteRequest(page, 'HMAC Request')
 })
 
 test('mTLS is selectable but clearly marked not yet implemented', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Configure' }).click()
 
-  await page.getByTestId('new-connector').click()
-  await page.getByLabel('Label').fill('mTLS Connector')
+  await page.getByTestId('new-request').click()
+  await page.getByLabel('Label').fill('mTLS Request')
   await page.getByLabel('Base URL').fill('https://api.example.com')
   await page.getByLabel('Auth type').selectOption('mtls')
 
