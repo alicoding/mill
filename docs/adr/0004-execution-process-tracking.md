@@ -148,6 +148,113 @@ not assumed — to satisfy the exact failure mode §7 exists to prevent.
   worth revisiting if DBOS's SQLite path turns out to have rough edges
   once Mill leans on it for real.
 
+## Update — Mill workflow/step mapping designed, now implementing
+
+Verified directly against the real `dbos-transact-golang` v1.0.0 API
+(downloaded module source, not docs alone) before committing to this
+shape — v1 renamed `DBOSContext`→`Context` since the spike above ran, so
+type names below match the actual current release.
+
+**Mapping: one Mill workflow *run* = one DBOS workflow instance; one Mill
+graph *node* execution = one DBOS step.** This is the natural unit match
+— DBOS steps are exactly the checkpoint granularity Mill's per-node
+graph walk already has. Concretely:
+- `composition.ExecuteWorkflow` (the existing, pure, in-memory node-graph
+  walker — `buildGraph`/`findRoot`/`nextNode`, all unexported, stay
+  exactly as-is) gains a new **additive** entry point,
+  `ExecuteWorkflowWithStepRunner(nodes, edges, attrs, run StepRunner)`,
+  where `StepRunner = func(stepID string, fn func() (ExecContext,
+  error)) (ExecContext, error)`. The existing public `ExecuteWorkflow`
+  becomes a one-line wrapper calling it with a direct-passthrough
+  runner — every existing call site and test (14+ in `execute_test.go`
+  alone) is untouched, zero behavior change for the non-durable path.
+  Deliberately a **function parameter, not a package-level var** (unlike
+  `SetConnectorLookup`/`SetListLookup`/`SetMCPServerLookup`, which are
+  legitimately global singleton lookups) — a global step-runner would
+  race across concurrent workflow runs (e.g. a schedule tick and a
+  hotkey firing at once), which those lookup tables don't have to worry
+  about since they're stateless resolution functions, not per-run
+  execution wiring.
+- `executionservice.go` (new, root package — this is orchestration
+  policy over two domain-adjacent concerns, composition graphs and DBOS
+  workflow IDs, so it lives at the same binding layer as
+  `compositionservice.go`/`triggerservice.go`, per CLAUDE.md's
+  storage-lives-one-layer-up rule) registers **one** DBOS workflow
+  function, `runWorkflow(ctx dbos.Context, in runInput) (string,
+  error)`, via `dbos.RegisterWorkflow` before `Launch()` (DBOS resolves
+  a workflow by registered function identity for recovery, so this must
+  be a single fixed function, never a per-call closure — closures
+  aren't stable across a process restart anyway). Its body calls
+  `composition.ExecuteWorkflowWithStepRunner(in.Nodes, in.Edges,
+  in.Attrs, stepRunnerFor(ctx))`, where `stepRunnerFor` wraps each call
+  in `dbos.RunAsStep(ctx, fn, dbos.WithStepName(stepID))` — `stepID` is
+  the Mill graph node's own `ID`, so a later `dbos.GetWorkflowSteps`
+  call can be joined straight back against `workflow.Nodes` by ID for
+  the UI, no separate step-naming scheme to keep in sync.
+- **`internal/adapters/execution`** stays composition-agnostic (mirrors
+  `internal/adapters/mcpclient`'s shape: only this package imports
+  `github.com/dbos-inc/dbos-transact-golang/dbos` directly, everything
+  else in Mill imports `execution`'s own names) via a small `aliases.go`
+  re-exporting the handful of DBOS types/generic functions Mill actually
+  needs (`Context`, `WorkflowHandle`, `WorkflowStatus`, `StepInfo`,
+  `ForkWorkflowInput`, `RegisterWorkflow`, `RunWorkflow`, `RunAsStep`,
+  `ForkWorkflow`, `GetWorkflowSteps`, `ListWorkflows`) — same pattern
+  DBOS's own `dbos/aliases.go` uses internally, not invented here. An
+  `Adapter` type owns `New`/`Launch`/`Shutdown` and the SQLite DB path
+  (`internal/adapters/settings`'s own config-dir convention,
+  `execution.db` alongside `settings.json`).
+
+**Redrive = `dbos.ForkWorkflow(originalRunID, startStep)`, not a
+from-scratch Mill mechanism.** Verified directly (`ForkWorkflowInput`'s
+real fields): a fork copies the original run's checkpointed step outputs
+for every step before `StartStep` into the new forked workflow ID, then
+re-invokes the registered workflow function from the top — steps before
+`StartStep` hit their copied checkpoint and don't re-execute (the same
+`RunAsStep` cache-hit behavior the original spike proved), steps from
+`StartStep` onward run fresh. This directly satisfies the Oscilar/n8n
+"fix forward from the failed step, not from step 1" pattern (§3.2) for
+the case that matters most in practice: the failure was in the
+*environment* the step called into (e.g. a connector's API key was
+wrong), not in the payload itself — since `integration-http` etc.
+resolve their Connector/List config live at execution time, not baked
+into the checkpoint, a redrive naturally picks up a fix made on the
+Configure page in between. **What this does not cover**: DBOS's
+`ForkWorkflowInput` has no field to override the *original workflow
+input* itself — there's no way to "edit the payload and rerun" via Fork
+alone. Deliberately out of scope for the first pass (no user-facing need
+identified yet beyond the fix-the-environment case above); a real future
+feature if a workflow's own recorded input, not just downstream config,
+turns out to be what needs editing before a redrive.
+
+**Idempotency / re-run safety (spike finding #4), decided rather than
+left to keep drifting**: a step that crashes mid-execution (as opposed
+to returning cleanly, even with an error) re-runs from the top on
+resume/fork — DBOS's documented at-least-once-per-step contract, not a
+gap Mill is introducing. For Mill's existing node types this is
+already safe by construction (`capture-clipboard-html`,
+`process-html-to-markdown`, `apply-clipboard-write-*` are all pure
+reads/deterministic transforms/idempotent writes) with one real
+exception: `integration-http` with a non-idempotent method (`POST`
+creating a resource) could in principle fire twice if the whole Mill
+process dies between the HTTP call succeeding and the step's checkpoint
+write completing. Deliberately **not** solved with an invented
+idempotency-key layer in this pass — that's speculative infrastructure
+for a failure window that's already narrow (a full process crash at that
+exact instant, not an HTTP-level retry, which `go-retryablehttp`
+already handles safely at the request layer) and no real workflow has
+hit it yet (CLAUDE.md: don't build for a decision that doesn't exist
+yet). Recorded here as a known, accepted tradeoff — revisit if a real
+`POST`-heavy connector workflow makes this a live concern, most likely
+by adding an explicit "idempotent" flag to `integration-http`'s config
+that opts a step *out* of DBOS's retry-on-crash-recovery path via
+`dbos.WithStepMaxRetries(0)` plus documentation, not by Mill inventing
+its own idempotency-key protocol.
+
+ADR-0006's "Status: proposed → accepted once implemented" precedent
+applies here too — this ADR moves to `accepted` once
+`internal/adapters/execution` + `executionservice.go` + the redrive UI
+are built and verified end-to-end, not before.
+
 ## Lifecycle
 - Owner: Ali (raised the hard filters this had to satisfy) + whoever
   implements `internal/domain/execution` next
