@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/url"
+	"strconv"
 	"strings"
 
 	"github.com/alicoding/mill/internal/adapters/openapispec"
@@ -54,18 +55,22 @@ func parseBindings(raw string) (map[string]string, error) {
 // field's declared In placement"). Returns the path (with {param}
 // path-template substitutions already applied), the JSON-encoded body
 // (empty if no body fields are bound), extra headers, and query values.
-func resolveInputBindings(specDoc string, config map[string]string, attrs map[string]any) (path, body string, headers map[string]string, query url.Values, err error) {
+// outputFields is the operation's declared output field list (Path
+// included), returned alongside the resolved request so the caller can
+// hand it to applyOutputBindings after the HTTP call completes without
+// parsing the spec a second time.
+func resolveInputBindings(specDoc string, config map[string]string, attrs map[string]any) (path, body string, headers map[string]string, query url.Values, outputFields []openapispec.Field, err error) {
 	doc, err := openapispec.Parse([]byte(specDoc))
 	if err != nil {
-		return "", "", nil, nil, fmt.Errorf("parse connector spec: %w", err)
+		return "", "", nil, nil, nil, fmt.Errorf("parse connector spec: %w", err)
 	}
 	op, err := doc.Operation(config["path"], config["method"])
 	if err != nil {
-		return "", "", nil, nil, err
+		return "", "", nil, nil, nil, err
 	}
 	bindings, err := parseBindings(config["inputBindings"])
 	if err != nil {
-		return "", "", nil, nil, fmt.Errorf("inputBindings: %w", err)
+		return "", "", nil, nil, nil, fmt.Errorf("inputBindings: %w", err)
 	}
 
 	path = config["path"]
@@ -92,27 +97,42 @@ func resolveInputBindings(specDoc string, config map[string]string, attrs map[st
 	if len(bodyFields) > 0 {
 		b, err := json.Marshal(bodyFields)
 		if err != nil {
-			return "", "", nil, nil, fmt.Errorf("encode bound body fields: %w", err)
+			return "", "", nil, nil, nil, fmt.Errorf("encode bound body fields: %w", err)
 		}
 		body = string(b)
 	}
-	return path, body, headers, query, nil
+	return path, body, headers, query, op.OutputFields, nil
 }
 
-// applyOutputBindings decodes an HTTP response body's top-level JSON
-// fields and writes each one outputBindings maps into ctx.Attributes --
-// the ADR-0007 Phase 3 counterpart to resolveInputBindings. A response
-// that isn't a JSON object, or that's missing a bound field, is not an
-// error: an integration's response shape can legitimately vary (an
-// error body, an empty 204), and a workflow's own Decision/downstream
-// nodes are the place to react to a missing Attribute, not this node
-// failing the whole run over it.
-func applyOutputBindings(outputBindingsRaw, respBody string, ctx *ExecContext) error {
+// applyOutputBindings decodes an HTTP response body's JSON and writes
+// each field outputBindings maps into ctx.Attributes -- the ADR-0007
+// Phase 3 counterpart to resolveInputBindings. A response that isn't a
+// JSON object, or that's missing a bound field, is not an error: an
+// integration's response shape can legitimately vary (an error body,
+// an empty 204), and a workflow's own Decision/downstream nodes are
+// the place to react to a missing Attribute, not this node failing the
+// whole run over it.
+//
+// outputFields is the operation's declared output fields (docs/adr/0011)
+// -- a field with a declared Path reads from that dot-path into the
+// (possibly nested) response instead of a flat top-level key match by
+// Name, which remains the behavior for every field with no Path set
+// (nil outputFields, or a field this list doesn't mention, both fall
+// back to that same flat lookup -- unconditionally backward compatible
+// with every binding authored before Path existed).
+func applyOutputBindings(outputBindingsRaw, respBody string, outputFields []openapispec.Field, ctx *ExecContext) error {
 	bindings, err := parseBindings(outputBindingsRaw)
 	if err != nil {
 		return fmt.Errorf("outputBindings: %w", err)
 	}
-	var respObj map[string]any
+	pathByField := make(map[string]string, len(outputFields))
+	for _, f := range outputFields {
+		if f.Path != "" {
+			pathByField[f.Name] = f.Path
+		}
+	}
+
+	var respObj any
 	if err := json.Unmarshal([]byte(respBody), &respObj); err != nil {
 		return nil
 	}
@@ -120,9 +140,44 @@ func applyOutputBindings(outputBindingsRaw, respBody string, ctx *ExecContext) e
 		ctx.Attributes = map[string]any{}
 	}
 	for fieldName, attrName := range bindings {
-		if v, ok := respObj[fieldName]; ok {
+		path := pathByField[fieldName]
+		if path == "" {
+			path = fieldName
+		}
+		if v, ok := extractPath(respObj, path); ok {
 			ctx.Attributes[attrName] = v
 		}
 	}
 	return nil
+}
+
+// extractPath walks a dot-separated path through decoded JSON (nested
+// map[string]any / []any, as encoding/json produces) -- e.g. "data.name"
+// or "items.0.name" (a numeric segment indexes into an array). Scope
+// deliberately bounded (docs/adr/0011): supports nested-object
+// traversal and numeric array indices, not a wildcard-over-array
+// extraction ("items[].name" meaning one value per element) -- an
+// Attribute holds one scalar value, not a list, so that's a genuinely
+// different shape this doesn't attempt.
+func extractPath(obj any, path string) (any, bool) {
+	cur := obj
+	for _, seg := range strings.Split(path, ".") {
+		switch v := cur.(type) {
+		case map[string]any:
+			next, ok := v[seg]
+			if !ok {
+				return nil, false
+			}
+			cur = next
+		case []any:
+			idx, err := strconv.Atoi(seg)
+			if err != nil || idx < 0 || idx >= len(v) {
+				return nil, false
+			}
+			cur = v[idx]
+		default:
+			return nil, false
+		}
+	}
+	return cur, true
 }

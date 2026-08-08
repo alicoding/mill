@@ -208,3 +208,57 @@ func TestOperation_UnknownMethod_Errors(t *testing.T) {
 		t.Fatal("Operation on a method the spec doesn't declare: want error, got nil")
 	}
 }
+
+// docs/adr/0011: x-mill-alias/x-mill-path are OpenAPI's own standard
+// x-* vendor extension mechanism -- exercised against a real parsed
+// document, not asserted from kin-openapi's type shape alone.
+const aliasPathSpec = `{
+  "openapi": "3.0.3",
+  "info": {"title": "Alias Sample", "version": "1.0.0"},
+  "paths": {
+    "/widgets/{id}": {
+      "get": {
+        "parameters": [
+          {"name": "id", "in": "path", "required": true, "schema": {"type": "string", "x-mill-alias": "widgetId"}}
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {"application/json": {"schema": {"type": "object", "properties": {
+              "n": {"type": "string", "x-mill-alias": "widgetName", "x-mill-path": "data.name"},
+              "plain": {"type": "string"}
+            }}}}
+          }
+        }
+      }
+    }
+  }
+}`
+
+func TestOperation_AliasAndPathExtensions_Extracted(t *testing.T) {
+	doc, err := Parse([]byte(aliasPathSpec))
+	if err != nil {
+		t.Fatalf("Parse: %v", err)
+	}
+	op, err := doc.Operation("/widgets/{id}", "GET")
+	if err != nil {
+		t.Fatalf("Operation: %v", err)
+	}
+
+	if len(op.InputFields) != 1 || op.InputFields[0].Alias != "widgetId" {
+		t.Errorf("InputFields = %+v, want one field with Alias=widgetId", op.InputFields)
+	}
+
+	byName := make(map[string]Field, len(op.OutputFields))
+	for _, f := range op.OutputFields {
+		byName[f.Name] = f
+	}
+	n, ok := byName["n"]
+	if !ok || n.Alias != "widgetName" || n.Path != "data.name" {
+		t.Errorf("field %q = %+v, want Alias=widgetName Path=data.name", "n", n)
+	}
+	plain, ok := byName["plain"]
+	if !ok || plain.Alias != "" || plain.Path != "" {
+		t.Errorf("field %q = %+v, want empty Alias/Path (no extension set, backward compatible)", "plain", plain)
+	}
+}
