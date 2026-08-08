@@ -39,3 +39,25 @@ discarded — leaving zero permanent coverage for any of them. All four
 were converted into committed test cases after the fact (SPEC.md §3);
 this rule exists so that conversion happens as part of the fix, not as
 a separate cleanup pass discovered later.
+
+**A Playwright e2e test that creates a named, persisted entity
+(a workflow, a Connector, a List, an MCP Server, anything that survives
+past the test via `MILL_SETTINGS_PATH`) must delete it before the test
+ends.** `playwright.config.ts` points every e2e run at one shared,
+reused settings file (`/tmp/mill-e2e-settings.json`, not reset between
+spec files or between repeated full-suite runs) specifically so
+composed test data persists across a run the way real user data would —
+but that means anything created and not cleaned up accumulates
+duplicate rows across every future run of the suite, forever, until
+someone notices. Concretely hit: a new spec created connectors by label
+and asserted on `getByTestId('connector-row').filter({ hasText: ... })`
+with no cleanup — passed once in isolation, then failed with a
+"resolved to 4 elements" strict-mode violation the next time the full
+suite ran, because three earlier runs' leftover connectors were still
+sitting in the shared settings file. Every other e2e spec in this repo
+already deletes what it creates (see `composition.spec.ts`'s
+create-then-delete workflow tests); this is that same discipline made
+explicit so it isn't independently rediscovered per spec file. Verify a
+new spec's cleanup actually works by running the full suite twice in a
+row before trusting it, not just once — the bug only surfaces on the
+second run.
