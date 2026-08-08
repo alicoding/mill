@@ -257,7 +257,7 @@ func (s *TriggerService) AssignHotkey(workflowID string, mods []string, key stri
 	// Also check against the app-level summon hotkey (settingsservice.go),
 	// which lives outside this service's own per-workflow hkRaw map --
 	// wired in from main.go via SetReservedCombo once SettingsService
-	// exists, same "injected function var" seam as SetConnectorLookup.
+	// exists, same "injected function var" seam as SetHTTPRequestLookup.
 	if reserved != nil {
 		if rMods, rKey, ok := reserved(); ok {
 			candidate := []trigger.HotkeyBinding{{WorkflowID: "summon", Mods: rMods, Key: rKey}}

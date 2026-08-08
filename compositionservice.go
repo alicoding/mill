@@ -211,7 +211,7 @@ func (c *CompositionService) UpdateWorkflow(id, label, description string, nodes
 // place -- the delegate ConfigureService (configureservice.go) calls for
 // its Attributes CRUD, per SPEC.md §3.5's "Configure-authored but
 // workflow-scoped" cardinality (Attributes aren't their own top-level
-// entity the way a Connector/List is, they're metadata on a Workflow).
+// entity the way an HTTPRequest/List is, they're metadata on a Workflow).
 // Re-validates the existing Nodes/Edges against the *new* schema before
 // accepting it: a Decision edge referencing a field this change removes
 // or retypes must be caught here, not left to silently break the next

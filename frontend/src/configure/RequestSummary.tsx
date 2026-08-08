@@ -5,15 +5,15 @@ import { PencilIcon, CopyIcon, TrashIcon } from '@primer/octicons-react'
 import { Tabs } from '@primer/react/experimental'
 import { TabItem, TabList, TabPanel } from '../shared/Tabs'
 import { ConfigureService } from '../../bindings/github.com/alicoding/mill'
-import type { Connector } from '../../bindings/github.com/alicoding/mill/internal/domain/connector/models'
+import type { HTTPRequest } from '../../bindings/github.com/alicoding/mill/internal/domain/httprequest/models'
 import type { Field, Operation, OperationRef } from '../../bindings/github.com/alicoding/mill/internal/adapters/openapispec/models'
-import { ConnectorTestPanel } from './ConnectorTestPanel'
-import { headersToRows, rowsToHeaders } from './connectorHeaders'
+import { RequestTestPanel } from './RequestTestPanel'
+import { headersToRows, rowsToHeaders } from './requestHeaders'
 import { parseOpenAPIToOperations } from './openapiSynth'
 import { AUTH_LABEL, AUTH_UNIMPLEMENTED } from './authTypeLabels'
 import styles from '../shared/ListCard.module.css'
 
-// docs/adr/0014: the read-only view of a saved connector -- four tabs
+// docs/adr/0014: the read-only view of a saved request -- four tabs
 // (Details/Available attributes/Input parameters/Testing), matching
 // the reference platform's own inspect-vs-edit split (SPEC.md §3.2's
 // Update: "tab the saved-record summary, never the act of authoring").
@@ -25,8 +25,8 @@ import styles from '../shared/ListCard.module.css'
 // what becomes "available" to reference downstream; InputFields are
 // what you send) -- the most defensible reading given what's already
 // built, not a guess at the reference platform's own internal model.
-export function ConnectorSummary({ connector, onEdit, onDuplicate, onDelete }: {
-  connector: Connector
+export function RequestSummary({ request, onEdit, onDuplicate, onDelete }: {
+  request: HTTPRequest
   onEdit: () => void
   onDuplicate: () => void
   onDelete: () => void
@@ -39,37 +39,37 @@ export function ConnectorSummary({ connector, onEdit, onDuplicate, onDelete }: {
     setOperations(null)
     setSelectedOp('')
     setFields(null)
-    if (!connector.OpenAPISpec) return
-    ConfigureService.ListConnectorOperations(connector.ID)
+    if (!request.OpenAPISpec) return
+    ConfigureService.ListHTTPRequestOperations(request.ID)
       .then((ops) => {
         const list = ops ?? []
         setOperations(list)
         // Auto-select when there's exactly one operation -- same "no UI
         // for a decision that doesn't exist" reasoning as
-        // ConnectorTestPanel.tsx's own identical fix.
+        // RequestTestPanel.tsx's own identical fix.
         if (list.length === 1) setSelectedOp(`${list[0].Method} ${list[0].Path}`)
       })
       .catch((err) => setOperations(String(err)))
-  }, [connector.ID, connector.OpenAPISpec])
+  }, [request.ID, request.OpenAPISpec])
 
   useEffect(() => {
     setFields(null)
     if (!selectedOp) return
     const [method, path] = selectedOp.split(' ', 2)
-    ConfigureService.ConnectorOperationFields(connector.ID, path, method)
+    ConfigureService.HTTPRequestOperationFields(request.ID, path, method)
       .then(setFields)
       .catch((err) => setFields(String(err)))
-  }, [connector.ID, selectedOp])
+  }, [request.ID, selectedOp])
 
   const opsList = Array.isArray(operations) ? operations : []
-  const testOperations = connector.OpenAPISpec ? parseOpenAPIToOperations(connector.OpenAPISpec).operations : []
+  const testOperations = request.OpenAPISpec ? parseOpenAPIToOperations(request.OpenAPISpec).operations : []
 
   return (
-    <div className={styles.card} data-testid="connector-summary">
+    <div className={styles.card} data-testid="request-summary">
       <Stack direction="horizontal" justify="space-between" align="center" className={styles.sectionHeading}>
         <Stack direction="horizontal" gap="condensed" align="center">
-          <Heading as="h2" variant="small">{connector.Label}</Heading>
-          {connector.BuiltIn && <Label variant="secondary" size="small">built-in</Label>}
+          <Heading as="h2" variant="small">{request.Label}</Heading>
+          {request.BuiltIn && <Label variant="secondary" size="small">built-in</Label>}
         </Stack>
         <Stack direction="horizontal" gap="condensed">
           <Button size="small" leadingVisual={PencilIcon} onClick={onEdit} data-testid="summary-edit">Edit</Button>
@@ -79,7 +79,7 @@ export function ConnectorSummary({ connector, onEdit, onDuplicate, onDelete }: {
       </Stack>
 
       <Tabs defaultValue="details">
-        <TabList aria-label="Connector summary">
+        <TabList aria-label="Request summary">
           <TabItem value="details">Details</TabItem>
           <TabItem value="attributes">Available attributes</TabItem>
           <TabItem value="input">Input parameters</TabItem>
@@ -88,26 +88,26 @@ export function ConnectorSummary({ connector, onEdit, onDuplicate, onDelete }: {
 
         <TabPanel value="details">
           <Stack direction="vertical" gap="condensed">
-            {connector.Description && <DetailRow label="Description" value={connector.Description} />}
-            <DetailRow label="Base URL" value={connector.BaseURL} />
+            {request.Description && <DetailRow label="Description" value={request.Description} />}
+            <DetailRow label="Base URL" value={request.BaseURL} />
             <DetailRow
               label="Auth type"
-              value={AUTH_LABEL[connector.AuthType] ?? connector.AuthType}
-              suffix={AUTH_UNIMPLEMENTED.has(connector.AuthType)
+              value={AUTH_LABEL[request.AuthType] ?? request.AuthType}
+              suffix={AUTH_UNIMPLEMENTED.has(request.AuthType)
                 ? <Label variant="attention" size="small">not yet implemented</Label>
                 : undefined}
             />
             <DetailRow
               label="Headers"
-              value={connector.Headers && Object.keys(connector.Headers).length > 0
-                ? Object.entries(connector.Headers).map(([k, v]) => `${k}: ${v}`).join(', ')
+              value={request.Headers && Object.keys(request.Headers).length > 0
+                ? Object.entries(request.Headers).map(([k, v]) => `${k}: ${v}`).join(', ')
                 : '(none)'}
             />
-            <DetailRow label="Schema" value={connector.OpenAPISpec ? 'Declared' : 'Not declared'} />
+            <DetailRow label="Schema" value={request.OpenAPISpec ? 'Declared' : 'Not declared'} />
             <DetailRow
               label="JOSE encryption"
-              value={connector.JOSE?.Enabled
-                ? `Enabled${connector.JOSE.DecryptResponse ? ' (decrypts responses)' : ''}`
+              value={request.JOSE?.Enabled
+                ? `Enabled${request.JOSE.DecryptResponse ? ' (decrypts responses)' : ''}`
                 : 'Disabled'}
             />
           </Stack>
@@ -115,7 +115,7 @@ export function ConnectorSummary({ connector, onEdit, onDuplicate, onDelete }: {
 
         <TabPanel value="attributes">
           <OperationFieldsTab
-            connectorID={connector.ID}
+            requestID={request.ID}
             operations={operations}
             opsList={opsList}
             selectedOp={selectedOp}
@@ -127,7 +127,7 @@ export function ConnectorSummary({ connector, onEdit, onDuplicate, onDelete }: {
 
         <TabPanel value="input">
           <OperationFieldsTab
-            connectorID={connector.ID}
+            requestID={request.ID}
             operations={operations}
             opsList={opsList}
             selectedOp={selectedOp}
@@ -143,17 +143,17 @@ export function ConnectorSummary({ connector, onEdit, onDuplicate, onDelete }: {
         </TabPanel>
 
         <TabPanel value="test">
-          <ConnectorTestPanel
+          <RequestTestPanel
             operations={testOperations}
-            effectiveSpec={connector.OpenAPISpec}
-            baseURL={connector.BaseURL}
-            authType={connector.AuthType}
-            auth={connector.Auth}
-            jose={connector.JOSE}
+            effectiveSpec={request.OpenAPISpec}
+            baseURL={request.BaseURL}
+            authType={request.AuthType}
+            auth={request.Auth}
+            jose={request.JOSE}
             josePrivateKeyPEM=""
-            headers={rowsToHeaders(headersToRows(connector.Headers))}
+            headers={rowsToHeaders(headersToRows(request.Headers))}
             secret=""
-            connectorID={connector.ID}
+            requestID={request.ID}
           />
         </TabPanel>
       </Tabs>
@@ -172,7 +172,7 @@ function DetailRow({ label, value, suffix }: { label: string; value: string; suf
 }
 
 function OperationFieldsTab({ operations, opsList, selectedOp, onSelectOp, fields, renderFields }: {
-  connectorID: string
+  requestID: string
   operations: OperationRef[] | string | null
   opsList: OperationRef[]
   selectedOp: string
@@ -180,7 +180,7 @@ function OperationFieldsTab({ operations, opsList, selectedOp, onSelectOp, field
   fields: Operation | string | null
   renderFields: (f: Operation) => React.ReactNode
 }) {
-  if (operations === null) return <Text as="p" size="small" className={styles.muted}>No schema declared for this connector.</Text>
+  if (operations === null) return <Text as="p" size="small" className={styles.muted}>No schema declared for this request.</Text>
   if (typeof operations === 'string') return <Text as="p" size="small" className={styles.error}>{operations}</Text>
   if (opsList.length === 0) return <Text as="p" size="small" className={styles.muted}>This spec declares no operations.</Text>
 

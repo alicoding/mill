@@ -3,14 +3,14 @@ package main
 import (
 	"github.com/alicoding/mill/internal/adapters/credential"
 	"github.com/alicoding/mill/internal/domain/composition"
-	"github.com/alicoding/mill/internal/domain/connector"
+	"github.com/alicoding/mill/internal/domain/httprequest"
 )
 
-// builtInSecrets holds the demo secret VALUES for connector.BuiltIn()'s
+// builtInSecrets holds the demo secret VALUES for httprequest.BuiltIn()'s
 // seeded examples -- kept here, in package main, not in
-// internal/domain/connector, since Connector itself never carries a
+// internal/domain/httprequest, since HTTPRequest itself never carries a
 // secret field (domain purity -- ADR-0007's own "the secret itself
-// never lives on a Connector value at all" rule) -- only the layer
+// never lives on an HTTPRequest value at all" rule) -- only the layer
 // that already owns credential.Set calls should own these values too.
 //
 // Every value here is either a publicly-published test credential
@@ -20,12 +20,12 @@ import (
 // echoes back whatever it received, docs/SPEC.md §4's own honest
 // caveat on those examples' Description). AuthOAuth2's example
 // deliberately has no entry here -- Mill's own repo will never carry a
-// real client secret, see connector.BuiltIn()'s own doc comment.
+// real client secret, see httprequest.BuiltIn()'s own doc comment.
 var builtInSecrets = map[string]string{
-	connector.ExampleAPIKeyID:     "demo-api-key-do-not-use-in-production",
-	connector.ExampleBearerID:     "demo-bearer-token-do-not-use-in-production",
-	connector.ExampleHMACID:       "demo-hmac-signing-key-do-not-use-in-production",
-	connector.ExampleQueryParamID: "demo-query-api-key-do-not-use-in-production",
+	httprequest.ExampleAPIKeyID:     "demo-api-key-do-not-use-in-production",
+	httprequest.ExampleBearerID:     "demo-bearer-token-do-not-use-in-production",
+	httprequest.ExampleHMACID:       "demo-hmac-signing-key-do-not-use-in-production",
+	httprequest.ExampleQueryParamID: "demo-query-api-key-do-not-use-in-production",
 }
 
 // builtInOAuth1ConsumerSecret is Postman's own published, intentionally
@@ -52,5 +52,5 @@ func (c *ConfigureService) seedBuiltInSecrets() {
 	for id, secret := range builtInSecrets {
 		_ = credential.Set(id, secret)
 	}
-	_ = credential.Set(connector.ExampleOAuth1ID, composition.EncodeOAuth1Secret(builtInOAuth1ConsumerSecret, ""))
+	_ = credential.Set(httprequest.ExampleOAuth1ID, composition.EncodeOAuth1Secret(builtInOAuth1ConsumerSecret, ""))
 }

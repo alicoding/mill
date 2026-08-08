@@ -13,7 +13,7 @@ import (
 
 	josepkg "github.com/go-jose/go-jose/v4"
 
-	"github.com/alicoding/mill/internal/domain/connector"
+	"github.com/alicoding/mill/internal/domain/httprequest"
 )
 
 // ADR-0015 Phase 3: real RSA-OAEP-256 + A256GCM round trips against
@@ -46,7 +46,7 @@ func TestApplyJOSEEncryption_NilOrDisabled_NoOp(t *testing.T) {
 	if err != nil || body != "plaintext" {
 		t.Errorf("ApplyJOSEEncryption(nil, ...) = (%q, %v), want (\"plaintext\", nil)", body, err)
 	}
-	body, err = ApplyJOSEEncryption(&connector.JOSEConfig{Enabled: false}, "plaintext")
+	body, err = ApplyJOSEEncryption(&httprequest.JOSEConfig{Enabled: false}, "plaintext")
 	if err != nil || body != "plaintext" {
 		t.Errorf("ApplyJOSEEncryption(disabled, ...) = (%q, %v), want (\"plaintext\", nil)", body, err)
 	}
@@ -57,7 +57,7 @@ func TestDecryptJOSEResponse_NilOrDisabled_NoOp(t *testing.T) {
 	if err != nil || body != "ciphertext" {
 		t.Errorf("DecryptJOSEResponse(nil, ...) = (%q, %v), want (\"ciphertext\", nil)", body, err)
 	}
-	body, err = DecryptJOSEResponse(&connector.JOSEConfig{DecryptResponse: false}, "", "ciphertext")
+	body, err = DecryptJOSEResponse(&httprequest.JOSEConfig{DecryptResponse: false}, "", "ciphertext")
 	if err != nil || body != "ciphertext" {
 		t.Errorf("DecryptJOSEResponse(DecryptResponse=false, ...) = (%q, %v), want (\"ciphertext\", nil)", body, err)
 	}
@@ -72,7 +72,7 @@ func TestApplyJOSEEncryption_ProducesRealJWE_DecryptableIndependently(t *testing
 	privPEM, pubPEM, priv := generateRSAKeyPairPEM(t)
 	_ = privPEM
 
-	conf := &connector.JOSEConfig{Enabled: true, RecipientPublicKeyPEM: pubPEM}
+	conf := &httprequest.JOSEConfig{Enabled: true, RecipientPublicKeyPEM: pubPEM}
 	jwe, err := ApplyJOSEEncryption(conf, `{"account":"12345"}`)
 	if err != nil {
 		t.Fatalf("applyJOSEEncryption returned error: %v", err)
@@ -121,7 +121,7 @@ func TestDecryptJOSEResponse_DecryptsRealJWE_EncryptedIndependently(t *testing.T
 		t.Fatalf("CompactSerialize returned error: %v", err)
 	}
 
-	conf := &connector.JOSEConfig{DecryptResponse: true}
+	conf := &httprequest.JOSEConfig{DecryptResponse: true}
 	plaintext, err := DecryptJOSEResponse(conf, privPEM, jwe)
 	if err != nil {
 		t.Fatalf("decryptJOSEResponse returned error: %v", err)
@@ -141,7 +141,7 @@ func TestDecryptJOSEResponse_WrongPrivateKey_Rejected(t *testing.T) {
 	obj, _ := encrypter.Encrypt([]byte("secret"))
 	jwe, _ := obj.CompactSerialize()
 
-	if _, err := DecryptJOSEResponse(&connector.JOSEConfig{DecryptResponse: true}, wrongPrivPEM, jwe); err == nil {
+	if _, err := DecryptJOSEResponse(&httprequest.JOSEConfig{DecryptResponse: true}, wrongPrivPEM, jwe); err == nil {
 		t.Fatal("decryptJOSEResponse with the wrong private key returned nil error, want an error")
 	}
 }
@@ -190,18 +190,18 @@ func TestExecuteWorkflow_IntegrationHTTP_JOSE_EncryptsRequestAndDecryptsResponse
 	}))
 	defer srv.Close()
 
-	withConnectorLookup(t, func(string) (ResolvedConnector, error) {
-		return ResolvedConnector{
+	withHTTPRequestLookup(t, func(string) (ResolvedHTTPRequest, error) {
+		return ResolvedHTTPRequest{
 			BaseURL:           srv.URL,
-			AuthType:          connector.AuthNone,
-			JOSE:              &connector.JOSEConfig{Enabled: true, DecryptResponse: true, RecipientPublicKeyPEM: vendorPubPEM},
+			AuthType:          httprequest.AuthNone,
+			JOSE:              &httprequest.JOSEConfig{Enabled: true, DecryptResponse: true, RecipientPublicKeyPEM: vendorPubPEM},
 			JOSEPrivateKeyPEM: millPrivPEM,
 		}, nil
 	})
 
 	nodes, err := ResolveNodeDefaults([]Node{{
 		NodeTypeID: "integration-http",
-		Config:     map[string]string{"connectorId": "conn-1", "path": "/x", "method": http.MethodPost, "bodyTemplate": `{"account":"acct-1"}`},
+		Config:     map[string]string{"requestId": "conn-1", "path": "/x", "method": http.MethodPost, "bodyTemplate": `{"account":"acct-1"}`},
 	}})
 	if err != nil {
 		t.Fatalf("ResolveNodeDefaults returned error: %v", err)

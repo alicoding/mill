@@ -3,6 +3,8 @@
 ## Status
 accepted
 
+> **Naming note (ADR-0016):** this ADR predates the Connector -> HTTPRequest rename and is left as written -- "Connector"/"connector" below refers to today's `HTTPRequest` entity.
+
 ## Context
 
 Phase 2 of the connector-capability-maturity goal (`docs/SPEC.md` §3.2/

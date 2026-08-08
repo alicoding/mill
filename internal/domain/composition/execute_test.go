@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/alicoding/mill/internal/domain/connector"
+	"github.com/alicoding/mill/internal/domain/httprequest"
 )
 
 // chain builds a linear node/edge graph from an ordered list of node
@@ -127,18 +127,18 @@ func TestExecuteWorkflow_ClipboardHTMLToMarkdown_NoHTMLOnClipboard(t *testing.T)
 	}
 }
 
-// --- integration-http: nodeExec resolves a connector via the injected
-// lookupConnectorFn seam and executes a real HTTP call through
+// --- integration-http: nodeExec resolves a request via the injected
+// lookupHTTPRequestFn seam and executes a real HTTP call through
 // httpconnector against an httptest.Server. ---
 
-func withConnectorLookup(t *testing.T, fn func(id string) (ResolvedConnector, error)) {
+func withHTTPRequestLookup(t *testing.T, fn func(id string) (ResolvedHTTPRequest, error)) {
 	t.Helper()
-	orig := lookupConnectorFn
-	lookupConnectorFn = fn
-	t.Cleanup(func() { lookupConnectorFn = orig })
+	orig := lookupHTTPRequestFn
+	lookupHTTPRequestFn = fn
+	t.Cleanup(func() { lookupHTTPRequestFn = orig })
 }
 
-func TestExecuteWorkflow_IntegrationHTTP_UsesConnectorAndPath(t *testing.T) {
+func TestExecuteWorkflow_IntegrationHTTP_UsesHTTPRequestAndPath(t *testing.T) {
 	var gotPath, gotAuth string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotPath = r.URL.Path
@@ -148,16 +148,16 @@ func TestExecuteWorkflow_IntegrationHTTP_UsesConnectorAndPath(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	withConnectorLookup(t, func(id string) (ResolvedConnector, error) {
+	withHTTPRequestLookup(t, func(id string) (ResolvedHTTPRequest, error) {
 		if id != "conn-1" {
-			t.Errorf("lookupConnectorFn called with id %q, want %q", id, "conn-1")
+			t.Errorf("lookupHTTPRequestFn called with id %q, want %q", id, "conn-1")
 		}
-		return ResolvedConnector{BaseURL: srv.URL, AuthType: connector.AuthBearer, Secret: "tok"}, nil
+		return ResolvedHTTPRequest{BaseURL: srv.URL, AuthType: httprequest.AuthBearer, Secret: "tok"}, nil
 	})
 
 	nodes, err := ResolveNodeDefaults([]Node{{
 		NodeTypeID: "integration-http",
-		Config:     map[string]string{"connectorId": "conn-1", "path": "/v1/things", "method": http.MethodGet},
+		Config:     map[string]string{"requestId": "conn-1", "path": "/v1/things", "method": http.MethodGet},
 	}})
 	if err != nil {
 		t.Fatalf("ResolveNodeDefaults returned error: %v", err)
@@ -185,13 +185,13 @@ func TestExecuteWorkflow_IntegrationHTTP_APIKeyAuth(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	withConnectorLookup(t, func(string) (ResolvedConnector, error) {
-		return ResolvedConnector{BaseURL: srv.URL, AuthType: connector.AuthAPIKey, Secret: "k3y"}, nil
+	withHTTPRequestLookup(t, func(string) (ResolvedHTTPRequest, error) {
+		return ResolvedHTTPRequest{BaseURL: srv.URL, AuthType: httprequest.AuthAPIKey, Secret: "k3y"}, nil
 	})
 
 	nodes, err := ResolveNodeDefaults([]Node{{
 		NodeTypeID: "integration-http",
-		Config:     map[string]string{"connectorId": "conn-1", "path": "/x", "method": http.MethodGet},
+		Config:     map[string]string{"requestId": "conn-1", "path": "/x", "method": http.MethodGet},
 	}})
 	if err != nil {
 		t.Fatalf("ResolveNodeDefaults returned error: %v", err)
@@ -204,20 +204,20 @@ func TestExecuteWorkflow_IntegrationHTTP_APIKeyAuth(t *testing.T) {
 	}
 }
 
-func TestExecuteWorkflow_IntegrationHTTP_UnknownConnector_Rejected(t *testing.T) {
-	withConnectorLookup(t, func(id string) (ResolvedConnector, error) {
-		return ResolvedConnector{}, errors.New("no such connector")
+func TestExecuteWorkflow_IntegrationHTTP_UnknownHTTPRequest_Rejected(t *testing.T) {
+	withHTTPRequestLookup(t, func(id string) (ResolvedHTTPRequest, error) {
+		return ResolvedHTTPRequest{}, errors.New("no such request")
 	})
 
 	nodes, err := ResolveNodeDefaults([]Node{{
 		NodeTypeID: "integration-http",
-		Config:     map[string]string{"connectorId": "does-not-exist", "path": "/x", "method": http.MethodGet},
+		Config:     map[string]string{"requestId": "does-not-exist", "path": "/x", "method": http.MethodGet},
 	}})
 	if err != nil {
 		t.Fatalf("ResolveNodeDefaults returned error: %v", err)
 	}
 	if _, err := ExecuteWorkflow(nodes, nil, nil); err == nil {
-		t.Fatal("ExecuteWorkflow with an unresolvable connector returned nil error, want an error")
+		t.Fatal("ExecuteWorkflow with an unresolvable request returned nil error, want an error")
 	}
 }
 
@@ -239,13 +239,13 @@ func TestExecuteWorkflow_IntegrationHTTP_NonOKStatus_Rejected(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	withConnectorLookup(t, func(string) (ResolvedConnector, error) {
-		return ResolvedConnector{BaseURL: srv.URL, AuthType: connector.AuthNone}, nil
+	withHTTPRequestLookup(t, func(string) (ResolvedHTTPRequest, error) {
+		return ResolvedHTTPRequest{BaseURL: srv.URL, AuthType: httprequest.AuthNone}, nil
 	})
 
 	nodes, err := ResolveNodeDefaults([]Node{{
 		NodeTypeID: "integration-http",
-		Config:     map[string]string{"connectorId": "conn-1", "path": "/x", "method": http.MethodGet},
+		Config:     map[string]string{"requestId": "conn-1", "path": "/x", "method": http.MethodGet},
 	}})
 	if err != nil {
 		t.Fatalf("ResolveNodeDefaults returned error: %v", err)

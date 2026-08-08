@@ -3,7 +3,7 @@
 
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
-import * as connector$0 from "./internal/domain/connector/models.js";
+import * as httprequest$0 from "./internal/domain/httprequest/models.js";
 
 /**
  * HotkeyActivity is emitted once a triggered workflow resolves (success
@@ -99,41 +99,41 @@ export interface RunSummary {
 }
 
 /**
- * TestConnectorRequest carries a connector draft (possibly unsaved --
+ * TestHTTPRequestInput carries a request draft (possibly unsaved --
  * docs/adr/0013) plus the one operation to call and example field
  * values. Config comes as plain values (BaseURL/AuthType/Headers/
- * OpenAPISpec), not a Connector ID, so testing the connector currently
+ * OpenAPISpec), not an HTTPRequest ID, so testing the request currently
  * on screen works identically whether it's brand-new or mid-edit of an
- * existing one -- the RPC never reads c.connectors for config, only
- * (via ConnectorID, below) as a secret fallback.
+ * existing one -- the RPC never reads c.requests for config, only (via
+ * RequestID, below) as a secret fallback.
  */
-export interface TestConnectorRequest {
+export interface TestHTTPRequestInput {
     /**
-     * ConnectorID is optional. Set it when editing an existing connector
+     * RequestID is optional. Set it when editing an existing request
      * and Secret is left blank ("keep the existing secret," matching
-     * ConnectorForm's own Auth-tab caption) -- the RPC then falls back to
-     * this connector's stored keychain secret, the same read
-     * resolveConnector already does for a real workflow run.
+     * RequestForm's own Auth-tab caption) -- the RPC then falls back to
+     * this request's stored keychain secret, the same read
+     * resolveHTTPRequest already does for a real workflow run.
      */
-    "ConnectorID": string;
+    "RequestID": string;
     "BaseURL": string;
-    "AuthType": connector$0.AuthType;
+    "AuthType": httprequest$0.AuthType;
 
     /**
      * Auth is the non-secret config for AuthOAuth2/AuthHMAC/AuthOAuth1
      * (ADR-0015) -- nil for the three original AuthTypes.
      */
-    "Auth": connector$0.AuthConfig | null;
+    "Auth": httprequest$0.AuthConfig | null;
 
     /**
      * JOSE is Phase 3's optional request/response encryption layer --
-     * nil for a connector not using it.
+     * nil for a request not using it.
      */
-    "JOSE": connector$0.JOSEConfig | null;
+    "JOSE": httprequest$0.JOSEConfig | null;
     "Headers": { [_ in string]?: string } | null;
 
     /**
-     * Secret is used as typed, for this call only -- TestConnectorOperation
+     * Secret is used as typed, for this call only -- TestHTTPRequestOperation
      * never calls credential.Set, so a tested-then-abandoned draft leaves
      * no keychain trace.
      */
@@ -143,7 +143,7 @@ export interface TestConnectorRequest {
      * JOSEPrivateKeyPEM is the same "used as typed, for this call only"
      * shape as Secret above, but for JOSE.DecryptResponse's own,
      * separately-keychained private key (falls back to
-     * joseKeychainID(ConnectorID) when blank, same pattern Secret uses
+     * joseKeychainID(RequestID) when blank, same pattern Secret uses
      * for the AuthType secret).
      */
     "JOSEPrivateKeyPEM": string;
@@ -160,7 +160,7 @@ export interface TestConnectorRequest {
 }
 
 /**
- * TestConnectorResult is one test call's outcome. Error carries a
+ * TestHTTPRequestResult is one test call's outcome. Error carries a
  * transport-level failure (DNS, timeout, connection refused) as a
  * string rather than surfacing it as a Go error -- both this and a
  * real HTTP response (including 4xx/5xx, which httpconnector.Execute
@@ -169,7 +169,7 @@ export interface TestConnectorRequest {
  * log (ADR-0013 §6) wants to display either uniformly rather than
  * branching on error-vs-response.
  */
-export interface TestConnectorResult {
+export interface TestHTTPRequestResult {
     "StatusCode": number;
     "Body": string;
     "Headers": { [_ in string]?: string } | null;

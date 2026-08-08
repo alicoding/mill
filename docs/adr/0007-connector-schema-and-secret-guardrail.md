@@ -3,6 +3,8 @@
 ## Status
 accepted — all three phases built, see Consequences's Update
 
+> **Naming note (ADR-0016):** this ADR predates the Connector -> HTTPRequest rename and is left as written -- "Connector"/"connector" below refers to today's `HTTPRequest` entity.
+
 ## Context
 
 SPEC.md §3.5/§3.3/§4 already built a real Connector (auth/base URL/

@@ -14,12 +14,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/alicoding/mill/internal/domain/connector"
+	"github.com/alicoding/mill/internal/domain/httprequest"
 )
 
 // oauth1Secret is the JSON shape ConsumerSecret/TokenSecret get encoded
-// into for storage in the connector's one keychain secret slot
-// (ADR-0015 §3 -- Mill doesn't have a multi-secret-per-connector
+// into for storage in the request's one keychain secret slot
+// (ADR-0015 §3 -- Mill doesn't have a multi-secret-per-request
 // storage model, so a scheme needing two secret-shaped values encodes
 // them into the one string credential.Set/Get already round-trips).
 type oauth1Secret struct {
@@ -42,7 +42,7 @@ func decodeOAuth1Secret(raw string) (consumerSecret, tokenSecret string) {
 }
 
 // EncodeOAuth1Secret is the inverse of decodeOAuth1Secret -- exported
-// so ConfigureService can build the one stored string from a Connector
+// so ConfigureService can build the one stored string from an HTTPRequest
 // form's two separate secret fields before calling credential.Set.
 func EncodeOAuth1Secret(consumerSecret, tokenSecret string) string {
 	b, _ := json.Marshal(oauth1Secret{ConsumerSecret: consumerSecret, TokenSecret: tokenSecret})
@@ -82,8 +82,8 @@ func oauth1Nonce() string {
 // resulting credentials as an "Authorization: OAuth ..." header per
 // §3.5.1 (the header transport, the most common of RFC 5849's three).
 func init() {
-	RegisterAuthStrategy(connector.AuthOAuth1, func(rc ResolvedConnector, method, path string, headers map[string]string, query url.Values, body string) error {
-		var cfg connector.OAuth1Config
+	RegisterAuthStrategy(httprequest.AuthOAuth1, func(rc ResolvedHTTPRequest, method, path string, headers map[string]string, query url.Values, body string) error {
+		var cfg httprequest.OAuth1Config
 		if rc.Auth != nil && rc.Auth.OAuth1 != nil {
 			cfg = *rc.Auth.OAuth1
 		}

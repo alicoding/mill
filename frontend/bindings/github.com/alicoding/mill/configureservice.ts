@@ -3,16 +3,16 @@
 
 /**
  * ConfigureService is the Wails-facing layer over Configure-authored data
- * (docs/SPEC.md §3.5): Connectors, Lists, and (delegated to
+ * (docs/SPEC.md §3.5): HTTPRequests, Lists, and (delegated to
  * CompositionService) a workflow's Attributes schema. Mirrors
  * CompositionService's own shape -- state + persistence a stateless
  * domain package can't own, no domain logic of its own.
  * 
- * It also owns wiring composition.go's connector-lookup and list-lookup
- * seams (SetConnectorLookup/SetListLookup) to its own resolve* methods --
- * composition.go doesn't (and shouldn't) import this package directly,
- * same reasoning as CompositionService's Syncer interface for
- * TriggerService.
+ * It also owns wiring composition.go's request-lookup and list-lookup
+ * seams (SetHTTPRequestLookup/SetListLookup) to its own resolve*
+ * methods -- composition.go doesn't (and shouldn't) import this
+ * package directly, same reasoning as CompositionService's Syncer
+ * interface for TriggerService.
  * @module
  */
 
@@ -31,7 +31,7 @@ import * as openapispec$0 from "./internal/adapters/openapispec/models.js";
 import * as composition$0 from "./internal/domain/composition/models.js";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
-import * as connector$0 from "./internal/domain/connector/models.js";
+import * as httprequest$0 from "./internal/domain/httprequest/models.js";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
 import * as list$0 from "./internal/domain/list/models.js";
@@ -44,30 +44,15 @@ import * as mcpserver$0 from "./internal/domain/mcpserver/models.js";
 import * as $models from "./models.js";
 
 /**
- * ConnectorOperationFields resolves one connector operation's declared
- * input/output fields (ADR-0007 Phase 3) -- the data the canvas
- * Inspector's binding editor renders once a user picks an operation
- * from ListConnectorOperations above. Mirrors that method's own
- * lookup/parse shape.
+ * CreateHTTPRequest/UpdateHTTPRequest's positional-param list is
+ * getting long (8 now, after Description) -- a real ergonomics cost
+ * (this session already had to patch every call site twice via
+ * scripted regex when Auth/JOSE were added), worth an options-struct
+ * pass at some point, but that's a separate, bigger refactor than "add
+ * a Description field" -- not done speculatively here.
  */
-export function ConnectorOperationFields(id: string, path: string, method: string): $CancellablePromise<openapispec$0.Operation> {
-    return $Call.ByID(3253637512, id, path, method);
-}
-
-export function Connectors(): $CancellablePromise<connector$0.Connector[] | null> {
-    return $Call.ByID(1335444401);
-}
-
-/**
- * CreateConnector/UpdateConnector's positional-param list is getting
- * long (9 now, after Description) -- a real ergonomics cost (this
- * session already had to patch every call site twice via scripted
- * regex when Auth/JOSE were added), worth an options-struct pass at
- * some point, but that's a separate, bigger refactor than "add a
- * Description field" -- not done speculatively here.
- */
-export function CreateConnector(label: string, connType: string, baseURL: string, authType: connector$0.AuthType, headers: { [_ in string]?: string } | null, openAPISpec: string, auth: connector$0.AuthConfig | null, jose: connector$0.JOSEConfig | null, description: string): $CancellablePromise<connector$0.Connector> {
-    return $Call.ByID(3578677376, label, connType, baseURL, authType, headers, openAPISpec, auth, jose, description);
+export function CreateHTTPRequest(label: string, baseURL: string, authType: httprequest$0.AuthType, headers: { [_ in string]?: string } | null, openAPISpec: string, auth: httprequest$0.AuthConfig | null, jose: httprequest$0.JOSEConfig | null, description: string): $CancellablePromise<httprequest$0.HTTPRequest> {
+    return $Call.ByID(191914978, label, baseURL, authType, headers, openAPISpec, auth, jose, description);
 }
 
 export function CreateList(label: string, entries: { [_ in string]?: string } | null): $CancellablePromise<list$0.List> {
@@ -79,30 +64,30 @@ export function CreateMCPServer(label: string, command: string, args: string[] |
 }
 
 /**
- * DeleteConnector also removes any keychain secret for id -- best-effort
- * (credential.Delete on an id with no stored secret, e.g. an AuthNone
- * connector, is a harmless no-op-shaped error, not surfaced), so a
- * deleted connector never leaves an orphaned secret behind in the OS
- * keychain.
+ * DeleteHTTPRequest also removes any keychain secret for id --
+ * best-effort (credential.Delete on an id with no stored secret, e.g.
+ * an AuthNone request, is a harmless no-op-shaped error, not
+ * surfaced), so a deleted request never leaves an orphaned secret
+ * behind in the OS keychain.
  */
-export function DeleteConnector(id: string): $CancellablePromise<void> {
-    return $Call.ByID(3135435181, id);
+export function DeleteHTTPRequest(id: string): $CancellablePromise<void> {
+    return $Call.ByID(1150613591, id);
 }
 
 /**
- * DeleteConnectorJOSEPrivateKey clears id's JOSE private key without
- * touching its AuthType secret or deleting the connector itself.
+ * DeleteHTTPRequestJOSEPrivateKey clears id's JOSE private key without
+ * touching its AuthType secret or deleting the request itself.
  */
-export function DeleteConnectorJOSEPrivateKey(id: string): $CancellablePromise<void> {
-    return $Call.ByID(1873579772, id);
+export function DeleteHTTPRequestJOSEPrivateKey(id: string): $CancellablePromise<void> {
+    return $Call.ByID(3632912846, id);
 }
 
 /**
- * DeleteConnectorSecret clears id's secret without deleting the
- * connector itself -- e.g. switching a connector back to AuthNone.
+ * DeleteHTTPRequestSecret clears id's secret without deleting the
+ * request itself -- e.g. switching a request back to AuthNone.
  */
-export function DeleteConnectorSecret(id: string): $CancellablePromise<void> {
-    return $Call.ByID(532818553, id);
+export function DeleteHTTPRequestSecret(id: string): $CancellablePromise<void> {
+    return $Call.ByID(1576873135, id);
 }
 
 export function DeleteList(id: string): $CancellablePromise<void> {
@@ -114,23 +99,38 @@ export function DeleteMCPServer(id: string): $CancellablePromise<void> {
 }
 
 /**
- * ListConnectorOperations parses id's stored OpenAPISpec and returns
- * every operation it declares -- the discoverability answer for a
- * Connector's schema, same shape as ListMCPServerTools
+ * HTTPRequestOperationFields resolves one request operation's declared
+ * input/output fields (ADR-0007 Phase 3) -- the data the canvas
+ * Inspector's binding editor renders once a user picks an operation
+ * from ListHTTPRequestOperations above. Mirrors that method's own
+ * lookup/parse shape.
+ */
+export function HTTPRequestOperationFields(id: string, path: string, method: string): $CancellablePromise<openapispec$0.Operation> {
+    return $Call.ByID(395926710, id, path, method);
+}
+
+export function HTTPRequests(): $CancellablePromise<httprequest$0.HTTPRequest[] | null> {
+    return $Call.ByID(698407195);
+}
+
+/**
+ * ListHTTPRequestOperations parses id's stored OpenAPISpec and returns
+ * every operation it declares -- the discoverability answer for an
+ * HTTPRequest's schema, same shape as ListMCPServerTools
  * (configuremcpserver.go, §3.6): a user finds the exact path+method to
  * reference from a workflow node here, not by guessing. Returns an
- * error for a Connector with no OpenAPISpec set, rather than an empty
+ * error for a request with no OpenAPISpec set, rather than an empty
  * list, so the frontend can distinguish "nothing declared yet" from
  * "real spec, zero operations."
  */
-export function ListConnectorOperations(id: string): $CancellablePromise<openapispec$0.OperationRef[] | null> {
-    return $Call.ByID(4039635074, id);
+export function ListHTTPRequestOperations(id: string): $CancellablePromise<openapispec$0.OperationRef[] | null> {
+    return $Call.ByID(3154847776, id);
 }
 
 /**
  * ListMCPServerTools is a live, on-demand reference lookup (connects to
  * the server, lists its tools, disconnects) -- not persisted or synced,
- * same "occasional reference lookup, not a live feed" shape Connectors()/
+ * same "occasional reference lookup, not a live feed" shape HTTPRequests()/
  * Lists() themselves already have (the frontend polls them on demand,
  * nothing pushes). This is docs/SPEC.md §3.6's actual discoverability
  * answer: a user finds the exact toolName to paste into an mcp-tool-call
@@ -149,55 +149,56 @@ export function MCPServers(): $CancellablePromise<mcpserver$0.MCPServer[] | null
 }
 
 /**
- * SetConnectorJOSEPrivateKey writes id's JOSE private key (Phase 3) to
- * its own, separate keychain entry -- write-only, same reasoning as
- * SetConnectorSecret, but namespaced (joseKeychainID) so it can coexist
- * with whatever AuthType secret the same connector also stores.
+ * SetHTTPRequestJOSEPrivateKey writes id's JOSE private key (Phase 3)
+ * to its own, separate keychain entry -- write-only, same reasoning as
+ * SetHTTPRequestSecret, but namespaced (joseKeychainID) so it can
+ * coexist with whatever AuthType secret the same request also stores.
  */
-export function SetConnectorJOSEPrivateKey(id: string, privateKeyPEM: string): $CancellablePromise<void> {
-    return $Call.ByID(3115130239, id, privateKeyPEM);
+export function SetHTTPRequestJOSEPrivateKey(id: string, privateKeyPEM: string): $CancellablePromise<void> {
+    return $Call.ByID(3319632661, id, privateKeyPEM);
 }
 
 /**
- * SetConnectorOAuth1Secret writes id's OAuth 1.0a dual secret (consumer
- * secret + token secret) to the OS keychain. AuthOAuth1's own
- * documented storage shape (ADR-0015 §3, connector.OAuth1Config's doc
- * comment): both values are JSON-encoded into the connector's single
+ * SetHTTPRequestOAuth1Secret writes id's OAuth 1.0a dual secret
+ * (consumer secret + token secret) to the OS keychain. AuthOAuth1's
+ * own documented storage shape (ADR-0015 §3, httprequest.OAuth1Config's
+ * doc comment): both values are JSON-encoded into the request's single
  * existing keychain string via composition.EncodeOAuth1Secret rather
- * than Mill inventing a multi-secret-per-connector storage model. A
- * separate method (not a third SetConnectorSecret param) so the plain
- * single-secret AuthTypes (APIKey/Bearer/HMAC) keep their existing,
- * simpler call shape unchanged -- addon, not a rewrite.
+ * than Mill inventing a multi-secret-per-request storage model. A
+ * separate method (not a third SetHTTPRequestSecret param) so the
+ * plain single-secret AuthTypes (APIKey/Bearer/HMAC) keep their
+ * existing, simpler call shape unchanged -- addon, not a rewrite.
  */
-export function SetConnectorOAuth1Secret(id: string, consumerSecret: string, tokenSecret: string): $CancellablePromise<void> {
-    return $Call.ByID(790751536, id, consumerSecret, tokenSecret);
+export function SetHTTPRequestOAuth1Secret(id: string, consumerSecret: string, tokenSecret: string): $CancellablePromise<void> {
+    return $Call.ByID(776509190, id, consumerSecret, tokenSecret);
 }
 
 /**
- * SetConnectorSecret writes id's secret to the OS keychain. Write-only
- * by design (docs/SPEC.md §3.5): there is deliberately no GetSecret
- * binding anywhere on this service -- the frontend can set a secret but
- * can never read one back, matching 1Password's own pattern.
+ * SetHTTPRequestSecret writes id's secret to the OS keychain.
+ * Write-only by design (docs/SPEC.md §3.5): there is deliberately no
+ * GetSecret binding anywhere on this service -- the frontend can set a
+ * secret but can never read one back, matching 1Password's own
+ * pattern.
  */
-export function SetConnectorSecret(id: string, secret: string): $CancellablePromise<void> {
-    return $Call.ByID(936216382, id, secret);
+export function SetHTTPRequestSecret(id: string, secret: string): $CancellablePromise<void> {
+    return $Call.ByID(50429016, id, secret);
 }
 
 /**
- * TestConnectorOperation executes one real HTTP call against a
- * connector draft's current configuration -- docs/adr/0013's
+ * TestHTTPRequestOperation executes one real HTTP call against a
+ * request draft's current configuration -- docs/adr/0013's
  * test-before-save flow. Runs server-side (not a browser fetch) so it
  * can resolve a keychain secret and reuses httpconnector.Execute, the
  * same commodity HTTP client + retry policy a real workflow's
  * integration-http node already goes through, deliberately not
  * special-cased faster/slower.
  */
-export function TestConnectorOperation(req: $models.TestConnectorRequest): $CancellablePromise<$models.TestConnectorResult> {
-    return $Call.ByID(247805665, req);
+export function TestHTTPRequestOperation(req: $models.TestHTTPRequestInput): $CancellablePromise<$models.TestHTTPRequestResult> {
+    return $Call.ByID(1262957631, req);
 }
 
-export function UpdateConnector(id: string, label: string, connType: string, baseURL: string, authType: connector$0.AuthType, headers: { [_ in string]?: string } | null, openAPISpec: string, auth: connector$0.AuthConfig | null, jose: connector$0.JOSEConfig | null, description: string): $CancellablePromise<connector$0.Connector> {
-    return $Call.ByID(2890915231, id, label, connType, baseURL, authType, headers, openAPISpec, auth, jose, description);
+export function UpdateHTTPRequest(id: string, label: string, baseURL: string, authType: httprequest$0.AuthType, headers: { [_ in string]?: string } | null, openAPISpec: string, auth: httprequest$0.AuthConfig | null, jose: httprequest$0.JOSEConfig | null, description: string): $CancellablePromise<httprequest$0.HTTPRequest> {
+    return $Call.ByID(3983720213, id, label, baseURL, authType, headers, openAPISpec, auth, jose, description);
 }
 
 export function UpdateList(id: string, label: string, entries: { [_ in string]?: string } | null): $CancellablePromise<list$0.List> {

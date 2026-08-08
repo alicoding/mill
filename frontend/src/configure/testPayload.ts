@@ -17,9 +17,9 @@ import type { ManualField } from './openapiSynth'
 setFaker(faker)
 
 // Generates an example value per declared input field, for
-// ConnectorTestPanel's "generate a test payload" action (docs/adr/0013
+// RequestTestPanel's "generate a test payload" action (docs/adr/0013
 // §5). Takes openapiSynth.ts's ManualField -- the client-side
-// representation ConnectorForm already normalizes both schema-authoring
+// representation RequestForm already normalizes both schema-authoring
 // modes into (Manual editor state directly, or a parsed pasted-OpenAPI
 // spec via parseOpenAPIToOperations), not the raw bindings Field type,
 // so this needs no separate backend round-trip to test an unsaved
@@ -46,7 +46,7 @@ function zodForField(f: ManualField): z.ZodTypeAny {
   }
 }
 
-// Every generated value is stringified -- TestConnectorRequest.Values
+// Every generated value is stringified -- TestHTTPRequestInput.Values
 // is map[string]string on the Go side (openapispec.BuildRequest coerces
 // back to the field's real JSON type when building the request body),
 // matching how Node.Config/AttributeDef values are already stored as

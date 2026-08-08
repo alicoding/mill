@@ -9,7 +9,7 @@ import (
 	"github.com/alicoding/mill/internal/domain/mcpserver"
 )
 
-// mcpServersKey mirrors connectorsKey/listsKey's shape (configureservice.go):
+// mcpServersKey mirrors requestsKey/listsKey's shape (configureservice.go):
 // one atomic JSON blob, same settings.json file. In its own file (not
 // appended to configureservice.go) to keep that file under CLAUDE.md's
 // 500-line convention -- confirmed it was already close before this was
@@ -18,7 +18,7 @@ const mcpServersKey = "configure-mcpservers"
 
 // resolveMCPServer implements composition.go's lookupMCPServerFn seam.
 // Unexported, so Wails never binds it as a callable frontend method --
-// Go-internal wiring only, same as resolveConnector/resolveList.
+// Go-internal wiring only, same as resolveHTTPRequest/resolveList.
 func (c *ConfigureService) resolveMCPServer(id string) (composition.ResolvedMCPServer, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -101,7 +101,7 @@ func (c *ConfigureService) DeleteMCPServer(id string) error {
 
 // ListMCPServerTools is a live, on-demand reference lookup (connects to
 // the server, lists its tools, disconnects) -- not persisted or synced,
-// same "occasional reference lookup, not a live feed" shape Connectors()/
+// same "occasional reference lookup, not a live feed" shape HTTPRequests()/
 // Lists() themselves already have (the frontend polls them on demand,
 // nothing pushes). This is docs/SPEC.md §3.6's actual discoverability
 // answer: a user finds the exact toolName to paste into an mcp-tool-call

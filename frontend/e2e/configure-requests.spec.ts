@@ -1,15 +1,15 @@
 import { test, expect } from '@playwright/test'
 
-// Exercises ADR-0007's Connector OpenAPI schema (Phase 2): a Connector
+// Exercises ADR-0007's Request OpenAPI schema (Phase 2): a Request
 // can declare an OpenAPI spec at Configure time, and its declared
 // operations/fields are discoverable from the read-only summary view
 // (docs/adr/0014) -- the same discoverability pattern MCP Server's
 // "List tools" already has (§3.6), over real Go bindings (Wails3
 // server mode), not mocks.
 //
-// Each test deletes the connector it creates at the end -- the shared
+// Each test deletes the request it creates at the end -- the shared
 // e2e settings file (MILL_SETTINGS_PATH, playwright.config.ts) persists
-// across every spec file and every repeated run, so a connector left
+// across every spec file and every repeated run, so a request left
 // behind (unlike this repo's other e2e-created entities, which already
 // all clean up after themselves -- see composition.spec.ts) would
 // accumulate duplicate rows and break a plain label-text filter the
@@ -47,42 +47,42 @@ const schemaSpec = JSON.stringify({
   },
 })
 
-function connectorRow(page: import('@playwright/test').Page, label: string) {
-  return page.getByTestId('connector-row').filter({ has: page.getByText(label, { exact: true }) })
+function requestRow(page: import('@playwright/test').Page, label: string) {
+  return page.getByTestId('request-row').filter({ has: page.getByText(label, { exact: true }) })
 }
 
 // docs/adr/0014: the list is its own pinned tab now -- switch back to
 // it first, since a still-open view/edit tab leaves the list panel
 // `hidden` (Primer's TabPanel never unmounts, just toggles `hidden`),
 // and a hidden element isn't clickable.
-async function deleteConnector(page: import('@playwright/test').Page, label: string) {
-  await page.getByRole('tab', { name: 'Connectors' }).click()
-  await connectorRow(page, label).getByRole('button', { name: `Delete ${label}` }).click()
-  await expect(connectorRow(page, label)).toHaveCount(0)
+async function deleteRequest(page: import('@playwright/test').Page, label: string) {
+  await page.getByRole('tab', { name: 'Requests' }).click()
+  await requestRow(page, label).getByRole('button', { name: `Delete ${label}` }).click()
+  await expect(requestRow(page, label)).toHaveCount(0)
 }
 
-// docs/adr/0014: clicking a connector row opens its read-only summary
-// as its own pinned tab (ConnectorSummary.tsx), replacing the old
+// docs/adr/0014: clicking a request row opens its read-only summary
+// as its own pinned tab (RequestSummary.tsx), replacing the old
 // inline expand-in-place "List operations" row.
-async function openConnectorView(page: import('@playwright/test').Page, label: string) {
-  await connectorRow(page, label).getByText(label, { exact: true }).click()
-  await expect(page.getByTestId('connector-summary')).toBeVisible()
+async function openRequestView(page: import('@playwright/test').Page, label: string) {
+  await requestRow(page, label).getByText(label, { exact: true }).click()
+  await expect(page.getByTestId('request-summary')).toBeVisible()
 }
 
-test('Creating a connector with an OpenAPI spec and listing its operations', async ({ page }) => {
+test('Creating a request with an OpenAPI spec and listing its operations', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Configure' }).click()
 
-  await page.getByTestId('new-connector').click()
-  await page.getByLabel('Label').fill('Sample Connector')
+  await page.getByTestId('new-request').click()
+  await page.getByLabel('Label').fill('Sample Request')
   await page.getByLabel('Base URL').fill('https://api.example.com')
-  await page.getByTestId('connector-openapi-spec').fill(sampleSpec)
-  await page.getByRole('button', { name: 'Save connector' }).click()
+  await page.getByTestId('request-openapi-spec').fill(sampleSpec)
+  await page.getByRole('button', { name: 'Save request' }).click()
 
-  const row = connectorRow(page, 'Sample Connector')
+  const row = requestRow(page, 'Sample Request')
   await expect(row).toBeVisible()
 
-  await openConnectorView(page, 'Sample Connector')
+  await openRequestView(page, 'Sample Request')
   await page.getByRole('tab', { name: 'Available attributes' }).click()
   // Primer's TabPanel keeps every panel mounted (toggles `hidden`, never
   // unmounts), and the Testing tab has its own "Operation" display too --
@@ -96,18 +96,18 @@ test('Creating a connector with an OpenAPI spec and listing its operations', asy
   const attrPanel = page.getByRole('tabpanel', { name: 'Available attributes' })
   await expect(attrPanel.getByText('GET /widgets', { exact: true })).toBeVisible()
 
-  await deleteConnector(page, 'Sample Connector')
+  await deleteRequest(page, 'Sample Request')
 })
 
 test('An invalid OpenAPI spec is rejected with a visible error', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Configure' }).click()
 
-  await page.getByTestId('new-connector').click()
-  await page.getByLabel('Label').fill('Broken Connector')
+  await page.getByTestId('new-request').click()
+  await page.getByLabel('Label').fill('Broken Request')
   await page.getByLabel('Base URL').fill('https://api.example.com')
-  await page.getByTestId('connector-openapi-spec').fill('not an openapi spec')
-  await page.getByRole('button', { name: 'Save connector' }).click()
+  await page.getByTestId('request-openapi-spec').fill('not an openapi spec')
+  await page.getByRole('button', { name: 'Save request' }).click()
 
   // "OpenAPI spec: ..." (the error's own wrapped-message prefix,
   // configureservice.go's validateOpenAPISpec) -- distinct from the
@@ -121,44 +121,44 @@ test('An invalid OpenAPI spec is rejected with a visible error', async ({ page }
   await page.getByRole('button', { name: 'Cancel' }).click()
 })
 
-test('A connector persists custom headers and shows them in its Details tab', async ({ page }) => {
+test('A request persists custom headers and shows them in its Details tab', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Configure' }).click()
 
-  await page.getByTestId('new-connector').click()
-  await page.getByLabel('Label').fill('Header Connector')
+  await page.getByTestId('new-request').click()
+  await page.getByLabel('Label').fill('Header Request')
   await page.getByLabel('Base URL').fill('https://api.example.com')
-  await page.getByTestId('add-connector-header').click()
-  await page.getByTestId('connector-header-key').fill('X-Client-Version')
-  await page.getByTestId('connector-header-value').fill('42')
-  await page.getByRole('button', { name: 'Save connector' }).click()
+  await page.getByTestId('add-request-header').click()
+  await page.getByTestId('request-header-key').fill('X-Client-Version')
+  await page.getByTestId('request-header-value').fill('42')
+  await page.getByRole('button', { name: 'Save request' }).click()
 
-  const row = connectorRow(page, 'Header Connector')
+  const row = requestRow(page, 'Header Request')
   await expect(row).toBeVisible()
 
-  await openConnectorView(page, 'Header Connector')
+  await openRequestView(page, 'Header Request')
   await expect(page.getByText(/X-Client-Version: 42/)).toBeVisible()
 
   // Round-trips through Edit too, not just the initial Save.
   await page.getByTestId('summary-edit').click()
-  await expect(page.getByTestId('connector-header-key')).toHaveValue('X-Client-Version')
-  await expect(page.getByTestId('connector-header-value')).toHaveValue('42')
+  await expect(page.getByTestId('request-header-key')).toHaveValue('X-Client-Version')
+  await expect(page.getByTestId('request-header-value')).toHaveValue('42')
   await page.getByRole('button', { name: 'Cancel' }).click()
 
-  await deleteConnector(page, 'Header Connector')
+  await deleteRequest(page, 'Header Request')
 })
 
 test('Showing an operation\'s schema reveals its declared fields, with the secret one flagged', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Configure' }).click()
 
-  await page.getByTestId('new-connector').click()
-  await page.getByLabel('Label').fill('Schema Connector')
+  await page.getByTestId('new-request').click()
+  await page.getByLabel('Label').fill('Schema Request')
   await page.getByLabel('Base URL').fill('https://api.example.com')
-  await page.getByTestId('connector-openapi-spec').fill(schemaSpec)
-  await page.getByRole('button', { name: 'Save connector' }).click()
+  await page.getByTestId('request-openapi-spec').fill(schemaSpec)
+  await page.getByRole('button', { name: 'Save request' }).click()
 
-  await openConnectorView(page, 'Schema Connector')
+  await openRequestView(page, 'Schema Request')
 
   // Input parameters: the path param. Scoped to the visible tabpanel --
   // Primer's TabPanel keeps every panel mounted (toggles `hidden`, never
@@ -178,25 +178,25 @@ test('Showing an operation\'s schema reveals its declared fields, with the secre
   await expect(attrPanel.getByText('token', { exact: true })).toBeVisible()
   await expect(attrPanel.getByText('secret')).toBeVisible()
 
-  await deleteConnector(page, 'Schema Connector')
+  await deleteRequest(page, 'Schema Request')
 })
 
-test('A connector with no OpenAPI spec shows no declared schema', async ({ page }) => {
+test('A request with no OpenAPI spec shows no declared schema', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Configure' }).click()
 
-  await page.getByTestId('new-connector').click()
-  await page.getByLabel('Label').fill('Plain Connector')
+  await page.getByTestId('new-request').click()
+  await page.getByLabel('Label').fill('Plain Request')
   await page.getByLabel('Base URL').fill('https://api.example.com')
-  await page.getByRole('button', { name: 'Save connector' }).click()
+  await page.getByRole('button', { name: 'Save request' }).click()
 
-  const row = connectorRow(page, 'Plain Connector')
+  const row = requestRow(page, 'Plain Request')
   await expect(row).toBeVisible()
 
-  await openConnectorView(page, 'Plain Connector')
+  await openRequestView(page, 'Plain Request')
   const panel = page.getByRole('tabpanel', { name: 'Input parameters' })
   await page.getByRole('tab', { name: 'Input parameters' }).click()
-  await expect(panel.getByText('No schema declared for this connector.')).toBeVisible()
+  await expect(panel.getByText('No schema declared for this request.')).toBeVisible()
 
-  await deleteConnector(page, 'Plain Connector')
+  await deleteRequest(page, 'Plain Request')
 })
