@@ -152,6 +152,80 @@ func TestExecuteWorkflow_IntegrationHTTP_OutputBindings_WritesAttributeAndRoutes
 	}
 }
 
+// docs/adr/0011: an output field declaring x-mill-path reads from a
+// nested location in the response instead of a flat top-level key --
+// same real-proof-via-Decision-routing pattern as the test above, this
+// time against a response where the bound field genuinely doesn't
+// exist at the top level at all (only reachable via the nested path),
+// so a regression back to flat-only lookup would show up as the
+// otherwise branch firing instead of the matching one.
+const nestedPathSpec = `{
+  "openapi": "3.0.3",
+  "info": {"title": "t", "version": "1"},
+  "paths": {
+    "/widgets": {
+      "post": {
+        "responses": {
+          "200": {
+            "description": "ok",
+            "content": {"application/json": {"schema": {"type": "object", "properties": {
+              "n": {"type": "string", "x-mill-path": "data.name"}
+            }}}}
+          }
+        }
+      }
+    }
+  }
+}`
+
+func TestExecuteWorkflow_IntegrationHTTP_OutputBindings_NestedPathExtraction(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"data":{"name":"nested-widget"},"n":"WRONG-if-flat-lookup-used"}`))
+	}))
+	defer srv.Close()
+
+	withConnectorLookup(t, func(id string) (ResolvedConnector, error) {
+		return ResolvedConnector{BaseURL: srv.URL, OpenAPISpec: nestedPathSpec}, nil
+	})
+
+	outputBindings, err := json.Marshal(map[string]string{"n": "widgetName"})
+	if err != nil {
+		t.Fatalf("marshal outputBindings: %v", err)
+	}
+
+	var wroteHTML, wroteText bool
+	withFakeClipboard(t, nil,
+		func(string) error { wroteHTML = true; return nil },
+		func(string) error { wroteText = true; return nil },
+	)
+
+	nodes, err := ResolveNodeDefaults([]Node{
+		{ID: "call", NodeTypeID: "integration-http", Config: map[string]string{
+			"connectorId": "conn-1", "path": "/widgets", "method": http.MethodPost,
+			"outputBindings": string(outputBindings),
+		}},
+		{ID: "d", NodeTypeID: "decision-route"},
+		{ID: "yes", NodeTypeID: "apply-clipboard-write-html"},
+		{ID: "no", NodeTypeID: "apply-clipboard-write-text"},
+	})
+	if err != nil {
+		t.Fatalf("ResolveNodeDefaults returned error: %v", err)
+	}
+	edges := []Edge{
+		{ID: "call-d", Source: "call", Target: "d"},
+		{ID: "d-yes", Source: "d", Target: "yes", SourceHandle: `widgetName == "nested-widget"`},
+		{ID: "d-no", Source: "d", Target: "no", SourceHandle: otherwiseHandle},
+	}
+	attrs := []AttributeDef{{Key: "widgetName", Label: "Widget name", Type: FieldText}}
+	if _, err := ExecuteWorkflow(nodes, edges, attrs); err != nil {
+		t.Fatalf("ExecuteWorkflow returned error: %v", err)
+	}
+	if !wroteHTML || wroteText {
+		t.Errorf("wroteHTML=%v wroteText=%v, want the Decision to route on the nested-path-extracted widgetName Attribute (data.name, not the flat top-level \"n\" key)", wroteHTML, wroteText)
+	}
+}
+
 func TestValidateGraph_IntegrationHTTP_SecretOutputBinding_Rejected(t *testing.T) {
 	withConnectorLookup(t, func(id string) (ResolvedConnector, error) {
 		return ResolvedConnector{OpenAPISpec: bindingTestSpec}, nil
