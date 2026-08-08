@@ -38,6 +38,14 @@ pre-commit:
       root: "frontend/"
       glob: "frontend/**/*.{ts,tsx}"
       run: npm run lint
+    - name: boundaries
+      # docs/adr/0012: dependency-cruiser enforces the bounded-context
+      # folder rules (src/app|views|composition|configure|shared) --
+      # mirrors CI's own frontend job, same "one check, two runners"
+      # discipline as file-loc-limit/rules-frontmatter.
+      root: "frontend/"
+      glob: "frontend/**/*.{ts,tsx}"
+      run: npm run boundaries
     - name: vitest
       root: "frontend/"
       glob: "frontend/**/*.{ts,tsx}"
