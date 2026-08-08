@@ -1761,6 +1761,143 @@ this entry.
     Schedule-trigger concept, or a background-execution/queue view
     closer to the Runs page — genuinely unclear which, not assumed).
     `OPEN`, real future research if any of these get prioritized.
+- **Update — several items above resolved/corrected, and real new
+  surface area found, via a consolidated review the user pulled
+  together from their own knowledge base of the same reference
+  platform** (explicitly scoped to record only directly-observed
+  behavior, not speculation — the same discipline this doc already
+  holds itself to). Kept generic per the standing rule; still `OPEN`
+  throughout, nothing decided or built.
+  - **Auth type is a 7-option catalogue, not the None/API-key/Bearer
+    set Mill has.** Observed: None, Header, HMAC, a vendor-specific
+    OAuth 1.0a variant, OAuth 1.0 HMAC, OAuth 2.0, Query parameter.
+    OAuth 2.0 itself has real sub-configuration: grant type
+    (`client_credentials` observed), token URL, client ID, client
+    secret, OAuth scope, token-request content type. Mill's `AuthType`
+    (`none`/`apikey`/`bearer`) plus already-named-future OAuth2 covers
+    3 of 7; HMAC and the two OAuth-1.0-family variants are net-new.
+  - **mTLS's full field set, now complete**: client certificate upload
+    (`.p12`), keystore password, an optional certificate alias
+    (defaults to the first key entry in the P12 if blank — a real,
+    specific fallback rule, not "pick one arbitrarily"), an optional
+    trusted CA bundle in PEM (defaults to the system trust store if
+    blank), and a **"disable certificate validation"** toggle. That
+    last one is flagged directly, independently, as high-risk by the
+    consolidator's own review — matches Mill's own fail-safe guardrail
+    posture (§8) closely enough to adopt verbatim as a constraint if
+    mTLS is ever built: **never permit disabling certificate
+    validation except through an explicit, governed non-production
+    exception**, not a plain checkbox available everywhere.
+  - **SOAP/XML has a real templating layer, not just structural
+    toggles.** A "SOAP version" field (`Standard XML` observed) and an
+    "XML request template" that supports field substitution,
+    conditionals, and iteration over arrays (a repeated-address-object
+    example was observed). This is a genuine template-engine question
+    for Mill's own eventual XML support — Go's stdlib `text/template`
+    (conditionals + range/iteration natively) is the obvious first
+    candidate to check against whatever the real expression grammar
+    turns out to need, not assumed sufficient. The exact grammar
+    itself is **not** established even by this fuller review — stays
+    a real unknown, not guessed at.
+  - **Response caching's match key is now fully resolved** (the
+    earlier capture cut off mid-sentence): responses are matched by
+    **request body, headers, and record ID** — record ID is part of
+    the default cache key; "Share cache across records" removes only
+    that record-ID boundary, identical requests still required
+    otherwise. Confirms the design surface named in §4.1's table is
+    real and specific, not vague.
+  - **The QA/Testing surface, independently confirmed, closely matches
+    what Mill already built (ADR-0013).** One JSON record generated
+    from/conforming to the input schema, Run/Test-again, Refresh,
+    timestamped results, a success indicator, and the parsed response
+    — validates Mill's `ConnectorTestPanel.tsx` shape rather than
+    surfacing a new gap. One explicit caution worth carrying into
+    Mill's own docs/UI copy: "a green transport result does not by
+    itself prove the vendor returned a successful business outcome" —
+    Mill's own test log already separates transport status (HTTP
+    status code) from a body's contents, which already satisfies this,
+    but worth stating explicitly if the Test tab ever grows a
+    pass/fail judgment beyond raw status.
+  - **The Integration/node relationship is confirmed to already match
+    how Mill is built, not a gap.** "An Integration is not itself a
+    workflow node definition — it is a reusable typed capability
+    configuration. A workflow node references the published
+    Integration, maps workflow data into its typed input parameters,
+    and exposes the typed output parameters to downstream steps." This
+    is exactly Connector (Configure-authored, reusable, §3.5) vs.
+    `integration-http` (a workflow-scoped node referencing a
+    `connectorId`, §3.3) — independent confirmation Mill's existing
+    split is the right one, not something to redesign.
+  - **Ten reused UX/component patterns, named explicitly as shared
+    product primitives rather than per-surface implementations** — the
+    single most actionable finding for Mill's own frontend architecture,
+    since it's a statement about *component reuse discipline*, the same
+    concern `.claude/rules/frontend.md` already exists to enforce one
+    level down (check the kit before hand-rolling a collection UI):
+    a shared **resource-inventory table** (search, name-as-link, status
+    badge, sort-by-updated, one primary create action, row-click opens
+    without leaving the list — Mill's Connector/List/MCP-Server rows
+    already look like this by convention, never formalized as one
+    component); a shared **pinned work-tab shell** (Mill already built
+    this for Composition, `Tabs.tsx` — the finding is that it should
+    extend to Configure too, not stay Composition-only); a shared
+    **inspect-vs-edit split** (tab the read-only summary of a saved
+    resource, use one full-width guided form for create/edit — never
+    reuse inspect tabs as fragmented authoring steps, directly answers
+    this section's own opening layout question); a shared **hierarchical
+    schema-editor** (one component authoring Connector input schema,
+    Connector output schema, Workflow Attributes, and any future
+    fixture/test schema — differences expressed as configuration/
+    validation rules passed into one editor, not four separate editors
+    — Mill's `ManualSchemaEditor.tsx` today is Connector-schema-specific
+    only, not yet generalized this far); a shared **read-only typed-tree
+    summary** (the same compact, searchable, type-badged tree for
+    viewing a schema in Configure, a canvas node's config, a run's
+    input/output, and a test fixture); a shared **secret-field pattern**
+    (masked value + reveal control for a plain secret; upload-status +
+    remove, never re-displaying contents, for certificate material —
+    Mill's write-only secret design, §3.5, already gets the "never
+    re-display" half right, formalizing certificate-shaped secrets the
+    same way is new); a shared **progressive-disclosure form** (which
+    fields appear is driven by prior choices — connection mode, auth
+    type, JOSE/mTLS toggles, XML enablement — as one conditional-form
+    framework driven by schema/capability metadata, not a hand-coded
+    flow per connector kind); a shared **test-and-evidence viewer**
+    (one execution-result viewer reused by fixture testing, a real
+    workflow run, and future Action/Playbook-shaped testing, explicitly
+    distinguishing transport success / capability success / policy
+    verdict / business result as four separate signals, not one
+    conflated "green checkmark"); a shared **duplicate-and-edit action
+    set** (consistent placement/confirmation/validation/dirty-state
+    handling at both the resource level and the schema-row level —
+    Mill's ADR-0013 Duplicate and `ManualSchemaEditor`'s row actions
+    already do this independently, never checked against each other
+    for consistency); and a shared **capability-reference-by-identifier
+    pattern** (a workflow node configures a *binding* to a registry
+    resource — Connector, List, MCP Server — referenced by immutable
+    ID, never a copy of the resource's own definition pasted into the
+    graph — confirms Mill's existing `connectorId`/`listId`/
+    `mcpServerId` `RefKind` picker design, ADR-0009, is already this
+    pattern, not something to change). None of these are being built
+    now — named here as a real, cited precedent for *if/when* Mill
+    generalizes any one of its current per-surface implementations,
+    same "adopt the shape, not the product" discipline as the rest of
+    this section.
+  - **A concrete, curated set of genuinely-still-unresolved questions**
+    (the consolidator's own review flags these as unproven even after
+    a deeper pass, not just unproven from the original screenshots) —
+    folded into §10 rather than reproduced in full here: Integration-
+    level draft/publish/version/rollback lifecycle (distinct from the
+    workflow-level draft/live versioning already `OPEN`, §3.2 above);
+    exact Send-&-wait/Receive-only webhook and polling field-level
+    config, correlation contract, and inbound auth/signature
+    verification; the full typed-field system beyond what's already
+    listed (nullable semantics, files, unions); exact URL-path
+    substitution syntax/escaping; non-2xx response handling; and the
+    caching system's canonicalization/invalidation rules. Each is a
+    real "don't guess, research or ask before designing" flag for
+    whichever of these Mill eventually prioritizes, not a checklist to
+    resolve now.
 
 ### 3.3 Capability map — designing the node/edge schema against the full known need, not just today's two workflows
 
@@ -3055,28 +3192,32 @@ this pass.
 ### 4.1 Connector capability map — from the reference-platform review (§3.2)
 
 Same discipline as §3.3's own capability map, applied to the new surface
-area §3.2's Update just captured: list every observed capability before
+area §3.2's Update (and its own follow-up Update, from a fuller
+consolidated review) captured: list every observed capability before
 building any of it, so the next connector-maturity pass has a real map
 to work from instead of picking items ad hoc. None of these are
 scheduled — this is Research, not a build plan; `OPEN` throughout.
 
 | Capability | Mill today | Adopt or build | Status |
 |---|---|---|---|
-| Connection mode (real-time / send-and-wait / receive-only) | Real-time only (`integration-http`), immutable-by-nature since nothing else exists | Graph/execution semantics: build. Send-and-wait's async-resume shape: adopt, likely DBOS's own signal/await primitives (already adopted, §7) rather than a hand-built correlation ID | `OPEN` — receive-only is the same thing as §3.4's already-`OPEN` webhook trigger row, not a second decision |
+| Connection mode (real-time / send-and-wait / receive-only) | Real-time only (`integration-http`), immutable-by-nature since nothing else exists | Graph/execution semantics: build. Send-and-wait's async-resume shape: adopt, likely DBOS's own signal/await primitives (already adopted, §7) rather than a hand-built correlation ID | `OPEN` — receive-only is the same thing as §3.4's already-`OPEN` webhook trigger row, not a second decision. Exact webhook/polling field config and the correlation contract are still genuinely unresolved even after the fuller review — real research needed before design, not guessed at |
 | Connector kind (DB/Python-function types) | `TypeHTTP` only | Wire protocol per kind: adopt (a DB driver per kind, e.g. `lib/pq`/`pgx` for Postgres). Kind dispatch/config: build, same shape `AuthType`'s switch already has | `OPEN`, real precedent now exists (§3.2) for what the next `Type` values should be |
-| mTLS (client cert auth) | Not built | Adopt — `crypto/tls.Config.Certificates` (stdlib) + `software.sslmate.com/src/go-pkcs12` (P12 decode) | `OPEN` |
+| Auth type catalogue (HMAC, two OAuth-1.0-family variants, OAuth 2.0 with grant-type/token-URL/client-credentials/scope config, query-param placement) | `none`/`apikey`/`bearer` (OAuth2 already named future work, unbuilt) | Build (HMAC signing, OAuth 1.0a signing) + adopt (`golang.org/x/oauth2` already vetted for OAuth2, unused so far, per §4's existing note) | `OPEN`, the fuller review resolved the full option list — 4 of 7 remain unbuilt |
+| mTLS (client cert auth) | Not built | Adopt — `crypto/tls.Config.Certificates` (stdlib) + `software.sslmate.com/src/go-pkcs12` (P12 decode). Field set now fully known: cert upload, keystore password, optional alias (defaults to first key entry), optional CA bundle (defaults to system trust store), a disable-validation toggle | `OPEN` — if built, the disable-validation toggle must be gated behind an explicit governed exception, never a plain checkbox, per the fuller review's own flagged warning matching Mill's §8 fail-safe posture |
 | JOSE/JWE (request/response encryption) | Not built | Adopt — `github.com/go-jose/go-jose/v4` | `OPEN` |
-| XML request/response | JSON only | Adopt — `github.com/clbanning/mxj` (map/JSON-shaped, dynamic — fits Mill's runtime-configured connectors better than stdlib `encoding/xml`'s struct-based model) | `OPEN` |
+| XML request/response, including a SOAP request-template layer (substitution/conditionals/iteration) | JSON only | Structural XML↔JSON: adopt — `github.com/clbanning/mxj` (map/JSON-shaped, dynamic — fits Mill's runtime-configured connectors better than stdlib `encoding/xml`'s struct-based model). Template engine: Go stdlib `text/template` is the first candidate to check (native conditionals/range) — the real expression grammar needed is still unresolved, don't assume `text/template` is sufficient without checking against it | `OPEN` |
 | Schema-from-example ("Paste sample") | Paste-OpenAPI / Manual editor / CSV import (ADR-0011) — none infer from a realistic example | Adopt — `genson-js` (npm), a fourth client-side `ManualSchemaEditor` accelerator, same shape as CSV import | `OPEN` |
 | Field `Default` / `Description` | Not on `openapispec.Field` | Build (OpenAPI itself supports both; Mill's adapter just doesn't read them yet) | `OPEN` |
 | Field types `Map`/`Date`/`Datetime` | 6 types (string/number/integer/boolean/object/array) | Build (OpenAPI-vocabulary extension, same shape as existing types) | `OPEN` |
 | Enum values on a String field | Not built (a NodeType `ConfigField` has `FieldOptions`; a connector schema `Field` doesn't have the equivalent) | Build | `OPEN` |
 | Response extract path (document-level, pre-field) | Only per-field `x-mill-path` (ADR-0011) | Build (a JSONPath-lite root expression, evaluated before per-field extraction) | `OPEN` |
-| Restructure response / file-bearing requests+responses | Not built | Uncertain scope — needs more research before an adopt-vs-build call, not guessed at | `OPEN`, genuinely under-specified |
-| Response caching (TTL, record-scoped sharing) | Not built | Design question first (cache key, invalidation, storage location — DBOS-backed vs. in-process vs. `internal/adapters/settings`), library pick second | `OPEN` |
+| Restructure response / file-bearing requests+responses | Not built | Uncertain scope — needs more research before an adopt-vs-build call, not guessed at even after the fuller review, which flags its own transformation semantics as unresolved too | `OPEN`, genuinely under-specified |
+| Response caching (TTL, record-scoped sharing) | Not built | Design question first — match key now confirmed as request body + headers + record ID, "share across records" removes only the record-ID boundary. Storage location (DBOS-backed vs. in-process vs. `internal/adapters/settings`) still undecided, library pick after that | `OPEN` |
 | Test-log "Copy error" | `ConnectorTestPanel.tsx`'s log entries (ADR-0013) have no copy affordance | Build (small — a clipboard-write button, same primitive Runbook/HotkeyService already used for clipboard writes elsewhere) | `OPEN`, small |
 | Raw-JSON test-payload mode | Per-field table only (ADR-0013) | Build, additive to the existing per-field mode, not a replacement | `OPEN` |
-| Read-only summary view + explicit Edit mode for a saved connector | `ConfigureIntegration.tsx`'s form is always directly editable, no view/edit split | Build (a real UX pattern change, not a library) — directly answers the layout question §3.2's Update raised | `OPEN`, the layout decision itself is the user's call, not resolved here |
+| Read-only summary view + explicit Edit mode for a saved connector | `ConfigureIntegration.tsx`'s form is always directly editable, no view/edit split | Build (a real UX pattern change, not a library) — directly answers the layout question §3.2's Update raised, and matches the "inspect-vs-edit" shared pattern the fuller review independently named | `OPEN`, the layout decision itself is the user's call, not resolved here |
+| Shared hierarchical schema-editor / typed-tree component (one editor for Connector input, Connector output, Workflow Attributes, future fixtures) | Four-plus separate, not-fully-consistent implementations (`ManualSchemaEditor.tsx` is Connector-only; `ConfigureAttributes.tsx` is its own thing) | Build — a real component-consolidation effort, not a library pick; named directly by the fuller review as one of ten reused product primitives (§3.2's Update) | `OPEN`, a frontend-architecture decision, not urgent |
+| Integration-level draft/publish/version/rollback lifecycle | Not built (distinct from the already-`OPEN` workflow-level draft/live versioning, §3.2) | Build, once real | `OPEN`, genuinely unresolved even after the fuller review — real future research |
 
 See §3.2 for the node-type-vs-instance composition pattern and the
 incremental-extensibility principle for connector protocol/auth support.
@@ -3545,4 +3686,18 @@ mode from §0 repeating itself one level up.
   Composition's canvas Inspector does (the evidence points toward: tab
   the saved-record summary, not the act of authoring) — surfaced for
   the user, not resolved here. §4.1's table has the full adopt-vs-build
-  breakdown per item.
+  breakdown per item. **Update — a fuller consolidated review resolved
+  several items and added real new ones** (§3.2's own follow-up
+  Update): the full 7-option auth-type catalogue, mTLS's complete field
+  set (plus a governance flag on its disable-validation toggle), a
+  SOAP request-template layer, and the caching match-key (request body
+  + headers + record ID) are now known specifics, not vague gaps; ten
+  reused UX/component patterns were named as a real precedent for
+  Mill's own frontend component-reuse discipline (one shared schema-
+  editor, one typed-tree viewer, one work-tab shell, etc.) — no
+  component consolidation done yet, captured for when any one surface
+  gets generalized. Genuinely still unresolved even after this pass,
+  not guessed at: Send-&-wait/Receive-only's exact webhook/polling
+  config and correlation contract, the XML template's real expression
+  grammar, "restructure response"'s exact transformation, and
+  Integration-level draft/publish/version/rollback lifecycle.
