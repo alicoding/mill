@@ -93,6 +93,12 @@ export function ConnectorSummary({ connector, onEdit, onDuplicate, onDelete }: {
                 : '(none)'}
             />
             <DetailRow label="Schema" value={connector.OpenAPISpec ? 'Declared' : 'Not declared'} />
+            <DetailRow
+              label="JOSE encryption"
+              value={connector.JOSE?.Enabled
+                ? `Enabled${connector.JOSE.DecryptResponse ? ' (decrypts responses)' : ''}`
+                : 'Disabled'}
+            />
           </Stack>
         </TabPanel>
 
@@ -132,6 +138,8 @@ export function ConnectorSummary({ connector, onEdit, onDuplicate, onDelete }: {
             baseURL={connector.BaseURL}
             authType={connector.AuthType}
             auth={connector.Auth}
+            jose={connector.JOSE}
+            josePrivateKeyPEM=""
             headers={rowsToHeaders(headersToRows(connector.Headers))}
             secret=""
             connectorID={connector.ID}

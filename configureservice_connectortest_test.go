@@ -81,7 +81,7 @@ func TestTestConnectorOperation_FallsBackToKeychainSecret_WhenSecretBlank(t *tes
 	defer srv.Close()
 
 	cfg, _ := newTestConfigureService(t)
-	conn, err := cfg.CreateConnector("My API", connector.TypeHTTP, srv.URL, connector.AuthBearer, nil, testOpenAPISpec, nil)
+	conn, err := cfg.CreateConnector("My API", connector.TypeHTTP, srv.URL, connector.AuthBearer, nil, testOpenAPISpec, nil, nil)
 	if err != nil {
 		t.Fatalf("CreateConnector returned error: %v", err)
 	}
@@ -114,7 +114,7 @@ func TestTestConnectorOperation_ExplicitSecretOverridesKeychain(t *testing.T) {
 	defer srv.Close()
 
 	cfg, _ := newTestConfigureService(t)
-	conn, err := cfg.CreateConnector("My API", connector.TypeHTTP, srv.URL, connector.AuthBearer, nil, testOpenAPISpec, nil)
+	conn, err := cfg.CreateConnector("My API", connector.TypeHTTP, srv.URL, connector.AuthBearer, nil, testOpenAPISpec, nil, nil)
 	if err != nil {
 		t.Fatalf("CreateConnector returned error: %v", err)
 	}
@@ -145,7 +145,7 @@ func TestTestConnectorOperation_NeverPersistsTheSecret(t *testing.T) {
 	defer srv.Close()
 
 	cfg, _ := newTestConfigureService(t)
-	conn, err := cfg.CreateConnector("My API", connector.TypeHTTP, srv.URL, connector.AuthBearer, nil, testOpenAPISpec, nil)
+	conn, err := cfg.CreateConnector("My API", connector.TypeHTTP, srv.URL, connector.AuthBearer, nil, testOpenAPISpec, nil, nil)
 	if err != nil {
 		t.Fatalf("CreateConnector returned error: %v", err)
 	}

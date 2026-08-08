@@ -30,13 +30,22 @@ type TestConnectorRequest struct {
 	AuthType    connector.AuthType
 	// Auth is the non-secret config for AuthOAuth2/AuthHMAC/AuthOAuth1
 	// (ADR-0015) -- nil for the three original AuthTypes.
-	Auth    *connector.AuthConfig
+	Auth *connector.AuthConfig
+	// JOSE is Phase 3's optional request/response encryption layer --
+	// nil for a connector not using it.
+	JOSE    *connector.JOSEConfig
 	Headers map[string]string
 	// Secret is used as typed, for this call only -- TestConnectorOperation
 	// never calls credential.Set, so a tested-then-abandoned draft leaves
 	// no keychain trace.
-	Secret      string
-	OpenAPISpec string
+	Secret string
+	// JOSEPrivateKeyPEM is the same "used as typed, for this call only"
+	// shape as Secret above, but for JOSE.DecryptResponse's own,
+	// separately-keychained private key (falls back to
+	// joseKeychainID(ConnectorID) when blank, same pattern Secret uses
+	// for the AuthType secret).
+	JOSEPrivateKeyPEM string
+	OpenAPISpec       string
 	Path        string
 	Method      string
 	// Values is a flat map of example (generated or hand-edited) field
@@ -75,6 +84,12 @@ func (c *ConfigureService) TestConnectorOperation(req TestConnectorRequest) (Tes
 			secret = stored
 		}
 	}
+	josePrivateKey := req.JOSEPrivateKeyPEM
+	if josePrivateKey == "" && req.ConnectorID != "" {
+		if stored, err := credential.Get(joseKeychainID(req.ConnectorID)); err == nil {
+			josePrivateKey = stored
+		}
+	}
 
 	doc, err := openapispec.Parse([]byte(req.OpenAPISpec))
 	if err != nil {
@@ -95,6 +110,15 @@ func (c *ConfigureService) TestConnectorOperation(req TestConnectorRequest) (Tes
 	}
 	for k, v := range bodyHeaders {
 		headers[k] = v
+	}
+	// Same order as the real integration-http exec path
+	// (internal/domain/composition/integration.go): JOSE-encrypt the
+	// body before Auth is applied, so a signing AuthType signs exactly
+	// what's transmitted -- a test run and a real run must diverge
+	// nowhere (docs/adr/0013's own "test exactly as it would run" goal).
+	body, err = composition.ApplyJOSEEncryption(req.JOSE, body)
+	if err != nil {
+		return TestConnectorResult{}, fmt.Errorf("configureservice: %w", err)
 	}
 	if err := composition.ApplyAuth(
 		composition.ResolvedConnector{BaseURL: req.BaseURL, AuthType: req.AuthType, Secret: secret, Auth: req.Auth},
@@ -119,7 +143,19 @@ func (c *ConfigureService) TestConnectorOperation(req TestConnectorRequest) (Tes
 	if err != nil {
 		return TestConnectorResult{Error: err.Error(), DurationMs: elapsed}, nil
 	}
+	respBody := resp.Body
+	// Mirrors integration.go: only a successful response is plausibly a
+	// real JWE from the vendor -- an error page body run through
+	// DecryptJOSEResponse would just fail loudly with a confusing
+	// secondary error, obscuring the real (transport-level) one.
+	if resp.StatusCode < 400 {
+		decrypted, err := composition.DecryptJOSEResponse(req.JOSE, josePrivateKey, resp.Body)
+		if err != nil {
+			return TestConnectorResult{Error: err.Error(), DurationMs: elapsed}, nil
+		}
+		respBody = decrypted
+	}
 	return TestConnectorResult{
-		StatusCode: resp.StatusCode, Body: resp.Body, Headers: resp.Headers, DurationMs: elapsed,
+		StatusCode: resp.StatusCode, Body: respBody, Headers: resp.Headers, DurationMs: elapsed,
 	}, nil
 }

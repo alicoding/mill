@@ -32,6 +32,15 @@ type ResolvedConnector struct {
 	// Auth is the non-secret config for AuthOAuth2/AuthHMAC/AuthOAuth1
 	// (ADR-0015) -- nil for the three original AuthTypes.
 	Auth *connector.AuthConfig
+	// JOSE is Phase 3's optional request/response encryption layer --
+	// nil for a connector not using it. Independent of Auth (see
+	// connector.JOSEConfig's own doc comment).
+	JOSE *connector.JOSEConfig
+	// JOSEPrivateKeyPEM is Mill's own private key, resolved from the OS
+	// keychain only when JOSE.DecryptResponse is true -- empty
+	// otherwise, same "skip the fetch when there's nothing to fetch"
+	// shape AuthNone already has for the Auth secret.
+	JOSEPrivateKeyPEM string
 }
 
 // AuthStrategy mutates an in-progress request (headers/query, both
@@ -148,6 +157,15 @@ func init() {
 			responseExtractPath = respExtractPath
 		}
 
+		// Phase 3 (JOSE): body is encrypted before Auth is applied, so a
+		// signing AuthType (HMAC/OAuth 1.0a) signs the ciphertext that's
+		// actually transmitted, not the plaintext underneath it -- a
+		// no-op for a connector with no JOSE config (ADR-0015 Phase 3).
+		body, err = ApplyJOSEEncryption(rc.JOSE, body)
+		if err != nil {
+			return ctx, fmt.Errorf("integration-http: %w", err)
+		}
+
 		// ADR-0015: auth applied last, after bindings, so a scheme that
 		// signs the request (HMAC/OAuth 1.0a) signs the final
 		// path/body -- and so AuthQueryParam's own query addition can't
@@ -188,9 +206,16 @@ func init() {
 		if resp.StatusCode >= 400 {
 			return ctx, fmt.Errorf("integration-http: request failed with status %d: %s", resp.StatusCode, resp.Body)
 		}
-		ctx.Payload = resp.Body
+		// Phase 3 (JOSE): a no-op unless JOSE.DecryptResponse is set --
+		// everything downstream (Payload, output bindings) sees the
+		// decrypted plaintext, never the raw JWE compact string.
+		respBody, err := DecryptJOSEResponse(rc.JOSE, rc.JOSEPrivateKeyPEM, resp.Body)
+		if err != nil {
+			return ctx, fmt.Errorf("integration-http: %w", err)
+		}
+		ctx.Payload = respBody
 		if rc.OpenAPISpec != "" && node.Config["outputBindings"] != "" {
-			if err := applyOutputBindings(node.Config["outputBindings"], resp.Body, responseExtractPath, outputFields, &ctx); err != nil {
+			if err := applyOutputBindings(node.Config["outputBindings"], respBody, responseExtractPath, outputFields, &ctx); err != nil {
 				return ctx, fmt.Errorf("integration-http: %w", err)
 			}
 		}
