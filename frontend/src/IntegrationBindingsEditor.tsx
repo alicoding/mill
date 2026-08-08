@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
-import { FormControl, Label, Select, Stack, Text, TextInput } from '@primer/react'
+import { FormControl, Label, Select, Stack, Text } from '@primer/react'
 import { ConfigureService } from '../bindings/github.com/alicoding/mill'
 import type { Field, Operation } from '../bindings/github.com/alicoding/mill/internal/adapters/openapispec/models'
 import type { AttributeDef } from '../bindings/github.com/alicoding/mill/internal/domain/composition/models'
+import { LiteralOrAttributeField } from './LiteralOrAttributeField'
 
 // ADR-0007 Phase 3: once a selected connector has an OpenAPI spec and
 // path+method match one of its declared operations, this renders a
@@ -12,12 +13,7 @@ import type { AttributeDef } from '../bindings/github.com/alicoding/mill/interna
 // path/method don't match a declared one yet) -- same "no UI for a
 // decision that doesn't exist" discipline as the rest of this codebase,
 // not an error state.
-const LITERAL = '__literal__'
 const DISCARD = '__discard__'
-
-function attrRef(key: string) {
-  return `attr:${key}`
-}
 
 function parseJSON(raw: string): Record<string, string> {
   if (!raw) return {}
@@ -75,36 +71,16 @@ export function IntegrationBindingsEditor({
       {inputFields.length > 0 && (
         <>
           <Text size="small" weight="semibold">Input bindings</Text>
-          {inputFields.map((field) => {
-            const current = inputBindings[field.Name] ?? ''
-            const isAttr = current.startsWith('attr:')
-            return (
-              <FormControl key={field.Name}>
-                <FormControl.Label>
-                  {field.Name} <Label size="small" variant="secondary">{field.In}</Label>
-                </FormControl.Label>
-                <Stack direction="horizontal" gap="condensed">
-                  <Select
-                    aria-label={`${field.Name} source`}
-                    value={isAttr ? current : LITERAL}
-                    onChange={(e) => setInputBinding(field, e.target.value === LITERAL ? '' : e.target.value)}
-                  >
-                    <Select.Option value={LITERAL}>Literal value</Select.Option>
-                    {attrs.map((a) => (
-                      <Select.Option key={a.Key} value={attrRef(a.Key)}>Attribute: {a.Label}</Select.Option>
-                    ))}
-                  </Select>
-                  {!isAttr && (
-                    <TextInput
-                      aria-label={`${field.Name} literal value`}
-                      value={current}
-                      onChange={(e) => setInputBinding(field, e.target.value)}
-                    />
-                  )}
-                </Stack>
-              </FormControl>
-            )
-          })}
+          {inputFields.map((field) => (
+            <LiteralOrAttributeField
+              key={field.Name}
+              name={field.Name}
+              badge={field.In}
+              value={inputBindings[field.Name] ?? ''}
+              attrs={attrs}
+              onChange={(value) => setInputBinding(field, value)}
+            />
+          ))}
         </>
       )}
       {outputFields.length > 0 && (

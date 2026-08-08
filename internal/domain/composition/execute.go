@@ -22,6 +22,29 @@ func directStepRunner(_ string, fn func() (ExecContext, error)) (ExecContext, er
 	return fn()
 }
 
+// ExecuteOptions bundles ExecuteWorkflow's optional inputs. Started as a
+// single ad-hoc variadic map (docs/adr/0008's test-input form); folded
+// into a struct once docs/adr/0010's RunContext became a second,
+// differently-typed optional value -- Go allows only one variadic
+// parameter, so two independent options no longer fit that shape. Still
+// passed variadically (0 or 1 ExecuteOptions) so a caller supplying
+// neither keeps compiling unchanged.
+type ExecuteOptions struct {
+	// AttrValues overrides the run's starting Attribute values --
+	// docs/adr/0008's test-input form.
+	AttrValues map[string]string
+	// RunContext is threaded straight into the root ExecContext's own
+	// RunContext field -- see that field's doc comment (types.go).
+	RunContext any
+}
+
+func firstOptions(opts []ExecuteOptions) ExecuteOptions {
+	if len(opts) == 0 {
+		return ExecuteOptions{}
+	}
+	return opts[0]
+}
+
 // ExecuteWorkflow runs a fully-resolved node graph, following Decision
 // nodes' conditional edges (walk/nextNode) instead of a flat ordered
 // list. Errors here are plain/technical, not hand-tuned soft-failure
@@ -29,45 +52,24 @@ func directStepRunner(_ string, fn func() (ExecContext, error)) (ExecContext, er
 // deliberate prototype simplification carried over from before Runbook's
 // retirement, not yet revisited.
 //
-// attrs seeds ctx.Attributes via attributesEnv's zero-valued defaults --
-// the same interim behavior ValidateGraph's own save-time type-checking
-// already relies on. There is no manual-test-run UI yet to supply real
-// values (SPEC.md §3.5's Attributes CRUD, still future work), so every
-// Decision edge referencing a declared Attribute evaluates against its
-// type's zero value until one exists; a workflow with no Attributes
-// (both built-ins today) behaves exactly as before this parameter
-// existed.
-// attrValues is an optional (0 or 1 element) trailing override for the
-// run's starting Attribute values -- docs/adr/0008's test-input form.
-// Variadic rather than a plain parameter specifically so every existing
-// caller (20+ in execute_test.go alone) keeps compiling unchanged;
-// there is exactly one thing being added here, not a family of options,
-// so a small options-pattern type would be more machinery than the
-// problem warrants (.claude/rules/architecture.md's anti-proliferation
-// bias).
-func ExecuteWorkflow(nodes []Node, edges []Edge, attrs []AttributeDef, attrValues ...map[string]string) (string, error) {
-	return executeWorkflow(nodes, edges, attrs, directStepRunner, firstValues(attrValues))
+// attrs seeds ctx.Attributes via attributesEnv's zero-valued defaults,
+// overridden by opts.AttrValues where supplied (docs/adr/0008).
+func ExecuteWorkflow(nodes []Node, edges []Edge, attrs []AttributeDef, opts ...ExecuteOptions) (string, error) {
+	return executeWorkflow(nodes, edges, attrs, directStepRunner, firstOptions(opts))
 }
 
 // ExecuteWorkflowWithStepRunner is ExecuteWorkflow with each node's exec
 // call routed through run instead of called directly -- the seam
 // executionservice.go uses to checkpoint every node as a durable DBOS
 // step. A nil run behaves exactly like ExecuteWorkflow.
-func ExecuteWorkflowWithStepRunner(nodes []Node, edges []Edge, attrs []AttributeDef, run StepRunner, attrValues ...map[string]string) (string, error) {
+func ExecuteWorkflowWithStepRunner(nodes []Node, edges []Edge, attrs []AttributeDef, run StepRunner, opts ...ExecuteOptions) (string, error) {
 	if run == nil {
 		run = directStepRunner
 	}
-	return executeWorkflow(nodes, edges, attrs, run, firstValues(attrValues))
+	return executeWorkflow(nodes, edges, attrs, run, firstOptions(opts))
 }
 
-func firstValues(vs []map[string]string) map[string]string {
-	if len(vs) == 0 {
-		return nil
-	}
-	return vs[0]
-}
-
-func executeWorkflow(nodes []Node, edges []Edge, attrs []AttributeDef, run StepRunner, attrValues map[string]string) (string, error) {
+func executeWorkflow(nodes []Node, edges []Edge, attrs []AttributeDef, run StepRunner, opts ExecuteOptions) (string, error) {
 	if len(nodes) == 0 {
 		return "", fmt.Errorf("a workflow needs at least one node")
 	}
@@ -81,7 +83,7 @@ func executeWorkflow(nodes []Node, edges []Edge, attrs []AttributeDef, run StepR
 		return "", err
 	}
 
-	ctx := ExecContext{Attributes: attributesEnv(attrs, attrValues)}
+	ctx := ExecContext{Attributes: attributesEnv(attrs, opts.AttrValues), RunContext: opts.RunContext}
 	visited := make(map[string]bool, len(nodes))
 	current := root
 	for {

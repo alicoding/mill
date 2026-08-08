@@ -96,11 +96,13 @@ test('Composition page lists built-in workflows; node primitives live in a colla
   await page.getByTestId('new-workflow').click()
   await expect(activePanel(page).getByTestId('palette-item')).toHaveCount(0)
   await activePanel(page).getByTestId('toggle-palette').click()
-  // 5 Trigger node types (SPEC.md §3.4) + the original 4 capture/process/
-  // apply node types + decision-route, integration-http, list-lookup
-  // (SPEC.md §3.5's Decision/Integration/List execution engines) +
-  // mcp-tool-call (SPEC.md §3.6's MCP-client extension point).
-  await expect(activePanel(page).getByTestId('palette-item')).toHaveCount(13)
+  // 5 Trigger node types (SPEC.md §3.4) + trigger-callable
+  // (docs/adr/0010) + the original 4 capture/process/apply node types +
+  // decision-route, integration-http, list-lookup (SPEC.md §3.5's
+  // Decision/Integration/List execution engines) + mcp-tool-call
+  // (SPEC.md §3.6's MCP-client extension point) + child-workflow
+  // (docs/adr/0010).
+  await expect(activePanel(page).getByTestId('palette-item')).toHaveCount(15)
 })
 
 test('A new workflow starts with a starter node placed, not a blank canvas', async ({ page }) => {

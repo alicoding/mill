@@ -172,4 +172,13 @@ type Workflow struct {
 type ExecContext struct {
 	Payload    string
 	Attributes map[string]any
+	// RunContext is an opaque, caller-supplied per-run context threaded
+	// through every node's exec call (docs/adr/0010) -- composition
+	// itself never inspects it, only carries it, so a durable caller
+	// (executionservice.go) can thread its own DBOS execution.Context
+	// through to a child-workflow node without composition importing
+	// DBOS (domain purity, .claude/rules/backend.md). nil for any
+	// caller that has no such context (every existing unit test,
+	// ExecuteWorkflow's own test-only primitive use).
+	RunContext any
 }

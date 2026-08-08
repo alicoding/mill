@@ -1,7 +1,19 @@
 import { useEffect, useState } from 'react'
 import { Dialog, FormControl, Select, TextInput } from '@primer/react'
-import { ConfigureService } from '../bindings/github.com/alicoding/mill'
+import { CompositionService, ConfigureService } from '../bindings/github.com/alicoding/mill'
 import { AuthType } from '../bindings/github.com/alicoding/mill/internal/domain/connector/models'
+import type { Workflow } from '../bindings/github.com/alicoding/mill/internal/domain/composition/models'
+
+// A workflow is only a valid child-workflow target if it's rooted in
+// trigger-callable (docs/adr/0010) -- mirrors trigger.ExtractTrigger's
+// Go logic (the node with no incoming edge, among Kind: trigger nodes)
+// so a real-event-rooted workflow (filesystem-watch, etc.) never shows
+// up as pickable here, matching what the backend would reject anyway.
+function isCallableWorkflow(wf: Workflow): boolean {
+  const hasIncoming = new Set((wf.Edges ?? []).map((e) => e.Target))
+  const root = (wf.Nodes ?? []).find((n) => !hasIncoming.has(n.ID))
+  return root?.NodeTypeID === 'trigger-callable'
+}
 
 // docs/adr/0009: a live picker for a FieldText field whose value is the
 // ID of a Configure-authored entity (connectorId/listId/mcpServerId),
@@ -24,6 +36,8 @@ async function fetchEntities(refKind: string): Promise<Entity[]> {
       return (await ConfigureService.Lists()) ?? []
     case 'mcpserver':
       return (await ConfigureService.MCPServers()) ?? []
+    case 'workflow':
+      return ((await CompositionService.Workflows()) ?? []).filter(isCallableWorkflow)
     default:
       return []
   }
@@ -33,7 +47,13 @@ const KIND_NOUN: Record<string, string> = {
   connector: 'connector',
   list: 'list',
   mcpserver: 'MCP server',
+  workflow: 'callable workflow',
 }
+
+// docs/adr/0010 §2: no quick-create for a workflow reference -- creating
+// one is Composition's own existing "New workflow" flow, not a
+// lightweight sub-form; the picker only lists what already exists.
+const QUICK_CREATABLE_KINDS = new Set(['connector', 'list', 'mcpserver'])
 
 export function EntityRefField({ refKind, value, onChange }: { refKind: string; value: string; onChange: (id: string) => void }) {
   const [entities, setEntities] = useState<Entity[] | null>(null)
@@ -72,7 +92,9 @@ export function EntityRefField({ refKind, value, onChange }: { refKind: string; 
         {(entities ?? []).map((entity) => (
           <Select.Option key={entity.ID} value={entity.ID}>{entity.Label}</Select.Option>
         ))}
-        <Select.Option value={CREATE_NEW}>+ Create new {KIND_NOUN[refKind]}…</Select.Option>
+        {QUICK_CREATABLE_KINDS.has(refKind) && (
+          <Select.Option value={CREATE_NEW}>+ Create new {KIND_NOUN[refKind]}…</Select.Option>
+        )}
       </Select>
       {error && <span>{error}</span>}
       {creating && (

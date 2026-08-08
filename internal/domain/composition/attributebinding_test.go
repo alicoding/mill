@@ -81,7 +81,7 @@ func TestExecuteWorkflow_IntegrationHTTP_InputBindings_ResolvesPathQueryHeaderBo
 		{Key: "traceId", Label: "Trace ID", Type: FieldText},
 		{Key: "note", Label: "Note", Type: FieldText},
 	}
-	if _, err := ExecuteWorkflow(nodes, nil, attrs, map[string]string{"traceId": "abc123", "note": "hello"}); err != nil {
+	if _, err := ExecuteWorkflow(nodes, nil, attrs, ExecuteOptions{AttrValues: map[string]string{"traceId": "abc123", "note": "hello"}}); err != nil {
 		t.Fatalf("ExecuteWorkflow returned error: %v", err)
 	}
 
