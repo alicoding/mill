@@ -26,3 +26,47 @@ export interface HotkeyActivity {
      */
     "result": string;
 }
+
+/**
+ * RunDetail is a RunSummary plus its full per-node step breakdown.
+ */
+export interface RunDetail {
+    "runID": string;
+    "workflowID": string;
+    "workflowLabel": string;
+    "status": string;
+    "startedAt": string;
+    "completedAt": string;
+    "error": string;
+    "steps": RunStep[] | null;
+}
+
+/**
+ * RunStep is one node's recorded execution within a run, for the
+ * execution-visibility UI (docs/SPEC.md §3.2's "shows through the path
+ * ... where it stopped", researched from [decisioning-vendor]/n8n). Status is
+ * "succeeded"/"failed"/"pending" -- pending means DBOS has no recorded
+ * step yet (the run never reached that node).
+ */
+export interface RunStep {
+    "nodeID": string;
+    "nodeTypeID": string;
+    "nodeTypeLabel": string;
+    "status": string;
+    "output": string;
+    "error": string;
+}
+
+/**
+ * RunSummary is one run's headline state -- the row shape for a
+ * run-history list.
+ */
+export interface RunSummary {
+    "runID": string;
+    "workflowID": string;
+    "workflowLabel": string;
+    "status": string;
+    "startedAt": string;
+    "completedAt": string;
+    "error": string;
+}
