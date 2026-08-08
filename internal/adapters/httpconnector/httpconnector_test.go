@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 )
 
 func TestExecute_GET_ReturnsBodyAndStatus(t *testing.T) {
@@ -61,19 +62,56 @@ func TestExecute_SendsBody(t *testing.T) {
 	}
 }
 
-func TestExecute_NonOKStatus_NoError(t *testing.T) {
+// go-retryablehttp's DefaultRetryPolicy doesn't retry a plain 400 (only
+// 429 and 5xx-except-501 are retryable, verified directly against its
+// source -- see httpconnector.go's own newClient comment), so this
+// covers the "pass a non-retried HTTP-level response through as data"
+// contract composition/integration.go's status check depends on.
+func TestExecute_NonRetriedStatus_NoError(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusInternalServerError)
+		w.WriteHeader(http.StatusBadRequest)
 		_, _ = w.Write([]byte("boom"))
 	}))
 	defer srv.Close()
 
 	resp, err := Execute(Request{Method: http.MethodGet, URL: srv.URL})
 	if err != nil {
-		t.Fatalf("Execute returned error for a 500 response, want a nil error with the status/body surfaced: %v", err)
+		t.Fatalf("Execute returned error for a non-retried 400 response, want a nil error with the status/body surfaced: %v", err)
 	}
-	if resp.StatusCode != http.StatusInternalServerError || resp.Body != "boom" {
-		t.Errorf("resp = %+v, want StatusCode=500 Body=%q", resp, "boom")
+	if resp.StatusCode != http.StatusBadRequest || resp.Body != "boom" {
+		t.Errorf("resp = %+v, want StatusCode=400 Body=%q", resp, "boom")
+	}
+}
+
+// A persistently-failing retryable status (500) that never recovers
+// within RetryMax attempts surfaces as a Go error, not a Response --
+// verified directly against go-retryablehttp's own Do(), which drops
+// the response once retries are exhausted (see the Response doc
+// comment). Shrinks the package's retry tunables for the duration of
+// this test so it doesn't cost ~7s of real backoff per run.
+func TestExecute_RetriedStatusExhausted_Errors(t *testing.T) {
+	origMax, origMin, origMax2 := retryMax, retryWaitMin, retryWaitMax
+	retryMax, retryWaitMin, retryWaitMax = 1, time.Millisecond, time.Millisecond
+	client = newClient()
+	t.Cleanup(func() {
+		retryMax, retryWaitMin, retryWaitMax = origMax, origMin, origMax2
+		client = newClient()
+	})
+
+	var calls int
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls++
+		w.WriteHeader(http.StatusInternalServerError)
+		_, _ = w.Write([]byte("boom"))
+	}))
+	defer srv.Close()
+
+	_, err := Execute(Request{Method: http.MethodGet, URL: srv.URL})
+	if err == nil {
+		t.Fatal("Execute returned nil error for a 500 that exhausted retries, want an error")
+	}
+	if calls < 2 {
+		t.Errorf("server saw %d call(s), want at least 2 (an initial attempt plus retries)", calls)
 	}
 }
 
