@@ -7,6 +7,7 @@ import { ConfigFieldType } from '../bindings/github.com/alicoding/mill/internal/
 import type { CanvasNode } from './canvasStore'
 import { useHotkeyCapture, isAccessibilityError, ACCESSIBILITY_SETTINGS_URL } from './hotkeyCapture'
 import { generateSamplePayload } from './configSchema'
+import { EntityRefField } from './EntityRefField'
 import styles from './CompositionCanvas.module.css'
 import runbookStyles from './ListCard.module.css'
 
@@ -150,7 +151,13 @@ export function NodeInspector({ node, nodeType, sameKindNodeTypes, hasWorkflow, 
         <FormControl key={`${field.Key}-${payloadNonce}`}>
           <FormControl.Label>{field.Label}</FormControl.Label>
           {field.Description && <FormControl.Caption>{field.Description}</FormControl.Caption>}
-          {field.Type === ConfigFieldType.FieldBoolean ? (
+          {field.RefKind ? (
+            <EntityRefField
+              refKind={field.RefKind}
+              value={node.data.config[field.Key] ?? ''}
+              onChange={(id) => onConfigChange(field.Key, id)}
+            />
+          ) : field.Type === ConfigFieldType.FieldBoolean ? (
             <Checkbox
               defaultChecked={node.data.config[field.Key] === 'true'}
               data-testid="canvas-config-field"

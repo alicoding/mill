@@ -59,12 +59,12 @@ func init() {
 	RegisterNodeType(NodeType{
 		ID: "integration-http", Kind: KindProcess,
 		Label:       "Integration: HTTP call",
-		Description: "Calls a Configure-authored connector's API and replaces the payload with the response body. connectorId isn't a closed FieldOptions set (unlike method below) because connectors are runtime, Configure-authored data composition.go has no compile-time knowledge of -- paste the ID from the Configure page's connector list until a live dropdown lands there (docs/SPEC.md §3.5).",
+		Description: "Calls a Configure-authored connector's API and replaces the payload with the response body. connectorId isn't a closed FieldOptions set (unlike method below) because connectors are runtime, Configure-authored data composition.go has no compile-time knowledge of -- the frontend Inspector renders a live picker for it (RefKind, docs/adr/0009), not a closed option list composition.go could declare here.",
 		ConfigFields: []ConfigField{
 			{
 				Key: "connectorId", Label: "Connector ID",
 				Description: "The ID of a connector configured on the Configure page.",
-				Default:     "", Type: FieldText,
+				Default:     "", Type: FieldText, RefKind: "connector",
 			},
 			{
 				Key: "path", Label: "Path",
