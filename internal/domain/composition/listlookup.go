@@ -30,12 +30,12 @@ func init() {
 	RegisterNodeType(NodeType{
 		ID: "list-lookup", Kind: KindProcess,
 		Label:       "List: lookup",
-		Description: "Looks up an Attributes value in a Configure-authored List and writes the matched entry back into Attributes. listId is FieldText for the same reason integration-http's connectorId is above -- Lists are runtime, Configure-authored data.",
+		Description: "Looks up an Attributes value in a Configure-authored List and writes the matched entry back into Attributes. listId is FieldText for the same reason integration-http's connectorId is above -- Lists are runtime, Configure-authored data (the Inspector renders a live picker for it, RefKind, docs/adr/0009).",
 		ConfigFields: []ConfigField{
 			{
 				Key: "listId", Label: "List ID",
 				Description: "The ID of a list configured on the Configure page.",
-				Default:     "", Type: FieldText,
+				Default:     "", Type: FieldText, RefKind: "list",
 			},
 			{
 				Key: "inputKey", Label: "Input attribute",

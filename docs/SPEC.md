@@ -2017,6 +2017,36 @@ strategy or a second clipboard backend actually exists. `LOCKED`
 (the recheck and its verdict) — revisit per-row only when a real second
 implementation shows up.
 
+**Update — the "paste the ID by hand" gap on `connectorId`/`listId`/
+`mcpServerId` is closed, via
+[ADR-0009](adr/0009-configure-entity-picker.md).** Each is still
+`FieldText` on the wire (the value is a plain string ID, execution
+unchanged) but now carries a `RefKind` (`"connector"`/`"list"`/
+`"mcpserver"`) the canvas Inspector reads to render a live `Select` of
+real Configure-authored entities instead of a bare text box, plus an
+inline "+ Create new…" option. Deliberately **not** a literal
+navigate-to-Configure-and-back flow, despite that being the user's own
+original description — reading `App.tsx` first found a real blocker:
+it conditionally renders one view at a time
+(`{view.kind === 'composition' && <CompositionView/>}`), so switching
+away unmounts `CompositionView` and its local, unlifted canvas-tab
+state, which would silently discard an unsaved workflow's in-progress
+edits on the round trip. Instead, "+ Create new…" opens an inline
+quick-create `Dialog` over the canvas — the same converged pattern n8n
+("+ Create new credential") and Zapier's own inline connection picker
+use for this exact case, confirmed as precedent rather than invented.
+The dialog is deliberately a minimal subset of each `ConfigureXxx.tsx`
+page's own create form (Connector: Label + Base URL; List: Label; MCP
+Server: Label + Command) — Configure itself stays the canonical surface
+for the fuller edit (secret, OpenAPI spec, entries, args) afterward.
+One generic `EntityRefField.tsx` component, keyed by `RefKind`, not
+three near-duplicates. Verified end-to-end via Playwright
+(`entity-ref-picker.spec.ts`, real Go backend): dropping an
+`integration-http` node, opening its Connector ID picker, quick-creating
+a connector inline, and confirming it's auto-selected — plus real
+cleanup of the connector it creates (not just the workflow), matching
+this repo's own e2e persisted-entity discipline. `LOCKED`, built.
+
 ### 3.6 Extension points — adding a new primitive capability without a core code change
 
 Raised directly: as more primitive capabilities land, Mill risks staying
@@ -2091,8 +2121,9 @@ Configure has a **"List tools"** button (`ConfigureService.
 ListMCPServerTools`) that connects, lists every tool with its real
 `InputSchema`, and renders it inline — a user finds the exact
 `toolName`/arguments to paste into a workflow node there, not by
-guessing (`mcpServerId`/`toolName` are `FieldText`, same accepted
-no-live-dropdown-yet gap `connectorId`/`listId` already have).
+guessing. `toolName` stays plain text (no closed set to pick from
+without calling the server); `mcpServerId` itself is now a live picker,
+see [ADR-0009](adr/0009-configure-entity-picker.md) below.
 
 Tested against a real MCP protocol round-trip, not a mock:
 `mcpclient`'s core `listTools`/`callTool` functions are exercised via
