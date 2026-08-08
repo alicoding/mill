@@ -23,7 +23,16 @@ import styles from '../shared/ListCard.module.css'
 // ever populates them from a JSON response body (bodyFields() in
 // openapispec.go), so every output field is payload, never protocol.
 
-const HTTP_METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE']
+// The full set kin-openapi's PathItem struct actually recognizes
+// (openapi3/path_item.go: Get/Put/Post/Delete/Options/Head/Patch/
+// Trace, verified directly against its source, not assumed) --
+// deliberately does NOT include RFC 10008's QUERY (published June
+// 2026): OpenAPI 3.x has no spec-defined field for it yet, so an
+// operation declared here has to stay representable as a real OpenAPI
+// document. integration-http's own literal Method field (ADR-0016,
+// composition/integration.go) is unconstrained by this and does
+// support QUERY -- this list is specific to the schema-authoring path.
+const HTTP_METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS', 'TRACE']
 const FIELD_TYPES: ManualField['type'][] = ['string', 'number', 'integer', 'boolean', 'object', 'array', 'map', 'date', 'datetime']
 const FIELD_INS: ManualField['in'][] = ['path', 'query', 'header', 'body']
 const PARAM_INS: ManualField['in'][] = ['path', 'query', 'header']

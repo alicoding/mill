@@ -165,3 +165,76 @@ NTLM, Hawk). None of these are touched by this ADR.
   records stay as written, new content follows new terminology). A
   short pointer note is added to each so a reader lands on the current
   name.
+
+## Update — Method opened (Phase B's method half + Phase C), Params/Body-type builder still open
+
+Phase A landed as its own commit (rename + migration, verified
+byte-identical). This update covers the Method-opening half of Phase B
+plus all of Phase C — **not** the Params tab / Body-type picker, which
+is real, separately-sized future work, named below rather than rushed.
+
+- **`ConfigField` gained `Suggestions []string`**
+  (`internal/domain/composition/types.go`), orthogonal to
+  `Options`/`FieldOptions`: meaningful only for `FieldText`, and
+  non-restrictive — any value is still accepted, these are
+  autocomplete hints only. `integration-http`'s `method` field is now
+  `Type: FieldText, Suggestions: httpMethodSuggestions` (`GET/POST/
+  PUT/PATCH/DELETE/HEAD/OPTIONS/QUERY`) instead of a closed
+  `FieldOptions` 5-item list — `ResolveNodeDefaults`
+  (`nodetypes.go`) only enforces a closed set for `FieldOptions`, so a
+  `FieldText` value was already unconstrained server-side; the only
+  change needed was the field's own `Type`.
+- **Frontend**: `NodeInspector.tsx` gained a new render branch —
+  `FieldText` with `Suggestions` renders a single-line `TextInput`
+  with `list="<key>-suggestions"` plus a sibling `<datalist>`, instead
+  of falling through to the generic 4-row `Textarea` every other
+  `FieldText` field (correctly still) uses. Verified directly (not
+  assumed) that Primer's `TextInput` spreads unrecognized props onto
+  the real `<input>` (`TextInputProps = Merge<React.
+  ComponentPropsWithoutRef<'input'>, ...>`), so `list` reaches the DOM.
+- **`QUERY` support end-to-end, proven not assumed (Phase C)**: Go's
+  `net/http`/`retryablehttp.NewRequest` don't special-case method when
+  attaching a body — no code change was needed in
+  `internal/adapters/httpconnector`, only a real test proving it
+  (`TestExecute_QueryMethod_SendsBody`, a real `httptest.Server`
+  confirming both the method string and body arrive unmodified) plus a
+  composition-layer regression test through the real
+  `ExecuteWorkflow` path
+  (`TestExecuteWorkflow_IntegrationHTTP_QueryMethod_Accepted`).
+- **Manual Schema Editor's own, separate Method field** (`frontend/
+  src/configure/ManualSchemaEditor.tsx`'s `HTTP_METHODS`, used when
+  declaring an OpenAPI-backed operation, not the raw workflow-node
+  field above) — extended to all 8 methods `kin-openapi`'s `PathItem`
+  struct actually has fields for (`Get/Put/Post/Delete/Options/Head/
+  Patch/Trace`, verified directly against `openapi3/path_item.go`),
+  adding the 3 that were missing (`HEAD`/`OPTIONS`/`TRACE`).
+  **Deliberately does not include `QUERY`** — checked directly, not
+  assumed: `kin-openapi`'s `PathItem` is a fixed Go struct with exactly
+  those 8 method fields, no generic bucket and no `QUERY` field, since
+  OpenAPI 3.x has no spec-defined field for RFC 10008's method yet. An
+  operation declared through the schema-authoring path has to stay
+  representable as a real OpenAPI document; `integration-http`'s own
+  literal Method field above is unconstrained by this and is where
+  `QUERY` actually gets used.
+- **Verified end-to-end**, not just unit-tested: a new
+  `frontend/e2e/request-method-field.spec.ts` drags an
+  `integration-http` node onto a real canvas (server mode + Playwright,
+  real Go bindings), confirms the Method field renders as a plain
+  `<input>` (not a `<select>`) with `QUERY` genuinely offered in its
+  datalist, sets it, saves the workflow, reopens it via Edit, and
+  confirms `QUERY` survived the real persist/restore round trip — not
+  just left in the input's own local DOM state.
+  `frontend/e2e/integration-bindings.spec.ts`'s own existing Method
+  interaction (`.selectOption('POST')`, written for the old closed
+  `Select`) was updated to `.fill('POST')` — caught as a real breakage
+  by running the existing suite, not assumed compatible. Full Go
+  build/vet/test/lint (both build tags) and the complete 58-test
+  Playwright suite (57 + this new spec) run twice, no leakage.
+
+**Still `OPEN`, real future work, not silently dropped**: the Params
+tab (query/path key-value rows, replacing the raw `path` string field)
+and the Body-type picker (raw+format/form-data/x-www-form-urlencoded/
+binary/GraphQL, replacing the one literal `bodyTemplate` string) —
+Phase B's own bigger, genuinely separate design surface. `bodyTemplate`
+and `path` stay exactly as they were (plain `FieldText`, no
+`Suggestions`) in this update; only `method` changed shape.
