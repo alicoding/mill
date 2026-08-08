@@ -20,6 +20,17 @@ jobs:
       - uses: actions/checkout@v7
       - run: ./scripts/check-loc.sh
 
+  # Mirrors lefthook.yml's own rules-frontmatter job -- same script.
+  # Catches a real bug class: a .claude/rules/*.md with an invalid
+  # frontmatter key (e.g. a `globs:` typo instead of `paths:`) silently
+  # never scopes the way it looks like it should, with no error anywhere
+  # else to surface it.
+  rules-frontmatter:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - run: ./scripts/check-rules-frontmatter.sh
+
   # Lints and builds frontend/dist once; Go jobs below need frontend/dist
   # present (main.go embeds it via //go:embed all:frontend/dist), so they
   # download it instead of rebuilding it redundantly per job/OS.

@@ -10,10 +10,11 @@ import styles from './CompositionCanvas.module.css'
 // for Top/Bottom handle positions) reads as one orderly column instead
 // of the diagonal, easy-to-overlap layout left/right handles produced.
 // Every node renders at the same fixed width/height (CANVAS_NODE_WIDTH/
-// HEIGHT below, shared with the elkjs layout call so auto-layout spaces
-// nodes for the size they actually render at) regardless of label
-// length -- a uniform grid of cards, not size-to-content boxes; long
-// labels truncate with an ellipsis instead of stretching the card.
+// HEIGHT, canvasConstants.ts -- shared with the elkjs layout call and
+// canvasLayout.ts's collision math so everything agrees on the size a
+// node actually renders at) regardless of label length -- a uniform
+// grid of cards, not size-to-content boxes; long labels truncate with
+// an ellipsis instead of stretching the card.
 //
 // Card shape (icon square + kind label + title stacked beside it) is
 // adopted from the reference no-code platform's own node cards; the
@@ -43,13 +44,14 @@ export function CanvasNodeView({ data, selected }: NodeProps<CanvasNode>) {
   )
 }
 
-// Shared with CompositionCanvas.module.css's .canvasNode (must match --
-// there's no single source of truth CSS-in-JS could give here without
-// pulling in a new dependency, so the elk layout call in
-// CompositionCanvas.tsx imports these same numbers instead of hardcoding
-// a second copy).
-export const CANVAS_NODE_WIDTH = 220
-export const CANVAS_NODE_HEIGHT = 64
+// Re-exported from canvasConstants.ts (not declared here) so consumers
+// that don't need this component's own React/CSS import chain --
+// canvasLayout.ts's collision math, its Vitest unit tests -- can import
+// the numbers without dragging that chain along; see canvasConstants.ts
+// for the full reasoning. Shared with CompositionCanvas.module.css's
+// .canvasNode (must match -- there's no single source of truth
+// CSS-in-JS could give here without pulling in a new dependency).
+export { CANVAS_NODE_WIDTH, CANVAS_NODE_HEIGHT } from './canvasConstants'
 
 export const rfNodeTypes: RFNodeTypes = {
   trigger: CanvasNodeView,

@@ -1,5 +1,5 @@
 import type { CanvasNode } from './canvasStore'
-import { CANVAS_NODE_WIDTH, CANVAS_NODE_HEIGHT } from './CanvasNodeView'
+import { CANVAS_NODE_WIDTH, CANVAS_NODE_HEIGHT } from './canvasConstants'
 
 const MARGIN = 16
 const STEP = 32

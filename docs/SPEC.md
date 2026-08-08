@@ -278,6 +278,55 @@ and [`docs/adr/0002-cicd-pipeline-phased-rollout.md`](adr/0002-cicd-pipeline-pha
   enforced the same way across both languages Mill writes," which no
   single commodity tool covers. `LOCKED` (script stays; documented
   reasoning, not an unchecked assumption).
+- **`.claude/rules/*.md` frontmatter is validated the same way — a
+  second small script, same "one script, mirrored by Lefthook and CI"
+  shape.** Prompted directly, after a real instance: a `globs:` vs
+  `paths:` typo in `.claude/rules/frontend.md` (§9.1) shipped and sat
+  silently broken — the rule's path-scoping just never worked, with
+  nothing anywhere flagging it. Researched before hand-rolling a fix,
+  not assumed: `cclint` (github.com/carlrannaberg/cclint, MIT, active)
+  is a real, existing linter for Claude Code project files, checked
+  directly against its own docs — but it validates agent/command
+  frontmatter, `settings.json`, and `CLAUDE.md`, not `.claude/rules/*.md`
+  specifically, and Mill has no agents or commands yet for it to apply
+  to regardless (adopting it now would be tooling for a problem that
+  doesn't exist yet, the exact thing this repo's own anti-proliferation
+  instinct exists to catch). `scripts/check-rules-frontmatter.sh` is a
+  small, zero-new-dependency bash script (no YAML parser needed — the
+  real schema is one optional key, `paths`, a list of strings) that
+  flags any other top-level frontmatter key, run by both Lefthook
+  (`rules-frontmatter` job) and a new CI job of the same name. Verified
+  it actually catches the bug it was written for, not just that it
+  passes on already-correct files: reintroduced the original `globs:`
+  typo temporarily, confirmed the script fails with a clear message
+  naming the bad key, then restored the correct file and confirmed a
+  clean pass. `LOCKED`
+- **Testing discipline formalized as a rule, prompted by a direct ask to
+  stop "paying the tax" of re-discovering the same bugs manually.**
+  Four real bugs in one session (a canvas node-drop collision, a
+  duplicate-trigger-drop rejection, a disabled palette item's hover
+  background, the node-type-swap feature) were each verified live —
+  hovering an element, dragging a node, reading a computed style via a
+  throwaway Playwright script — then the script was discarded once it
+  confirmed the fix, leaving zero permanent coverage for any of the
+  four. `.claude/rules/testing.md` (unscoped — applies regardless of
+  language) encodes the actual discipline: a bug confirmed via manual
+  reproduction isn't done until that reproduction becomes a committed
+  test, since the reproduction already exists at the moment of
+  confirmation and re-deriving it later costs real time. Applied
+  retroactively to all four bugs this pass: `canvasLayout.test.ts`
+  (Vitest, `findFreeDropPosition` — previously zero test coverage on a
+  pure function that had a real, demonstrated bug) and four new
+  `composition.spec.ts` Playwright cases covering the other three plus
+  the collision fix end-to-end. Surfaced a small real coupling issue
+  while adding the unit test: `canvasLayout.ts` imported
+  `CANVAS_NODE_WIDTH`/`CANVAS_NODE_HEIGHT` from `CanvasNodeView.tsx` (a
+  React component file with a CSS import chain Vitest's transform
+  pipeline couldn't handle), breaking the new test outright — split
+  into a zero-dependency `canvasConstants.ts` both files import from
+  instead, the same "split along the seam a limit just surfaced"
+  discipline the 500-line rule above already established, just found
+  via test-writing instead of a line count. `LOCKED`
 - `HotkeyService` cannot be exercised by headless/server-mode CI — no live
   macOS Cocoa run loop in that mode. Verification stays an explicit manual
   desktop-mode check (`.claude/skills/run-mill`), never a silent CI

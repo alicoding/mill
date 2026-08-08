@@ -8,6 +8,9 @@ pre-commit:
     - name: file-loc-limit
       glob: "*.{go,ts,tsx}"
       run: ./scripts/check-loc.sh
+    - name: rules-frontmatter
+      glob: ".claude/rules/**/*.md"
+      run: ./scripts/check-rules-frontmatter.sh
     - name: go-vet
       glob: "*.go"
       run: go vet . ./internal/...
