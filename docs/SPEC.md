@@ -2095,6 +2095,23 @@ Configure recheck already applied, now applied to registries. `OPEN`
 (plan recorded, not yet implemented — ADR-0006 stays `proposed` until
 the refactor lands).
 
+**Update — the plan is now fully specified, not just the shape of it.**
+ADR-0006's own "Update — full implementation plan" section resolves
+every question its original Consequences left open: the exact registry
+interface (a plain `Register` function, not an interface type), why
+Trigger registration genuinely needs two small registries in two
+packages rather than one shared one (`TriggerService.start()`'s cases
+close over `s.hkRaw`/`s.fire` — real `*TriggerService` state, confirmed
+by reading `triggerservice.go` in full, not assumed from the pattern
+alone) while still keeping one file own a trigger type's *whole*
+definition (both registry calls, one `init()`), the concrete file list,
+and a 6-step migration sequence ending in full verification (`go
+test`, `golangci-lint`, the complete Playwright suite, plus a manual
+desktop-mode smoke pass for `TriggerService` specifically, since its
+live listener paths were never headless-CI-testable regardless of this
+refactor). Still `OPEN` — this is the fully-specified plan, not the
+implementation; ADR-0006 stays `proposed` until it actually lands.
+
 ## 4. Connectors
 
 - **Generic HTTP connector: `LOCKED` and built.** `internal/domain/

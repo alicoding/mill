@@ -159,6 +159,168 @@ documented here as an accepted, bounded cost, not silently ignored.
   its own confirmed pass rather than folding into this research/plan
   turn.
 
+## Update — full implementation plan
+
+Prompted directly ("let's plan fully"): resolved every "not decided
+here" item above against the actual current code (read in full, not
+assumed), not just described at the pattern level.
+
+**The registry interface, concretely.** `internal/domain/composition`
+gets a new `registry.go`:
+
+```go
+type ExecFunc func(node Node, ctx ExecContext) (ExecContext, error)
+
+type nodeTypeEntry struct {
+    nodeType NodeType
+    exec     ExecFunc // nil for Trigger/Decision -- see ExecuteWorkflow's existing Kind check
+}
+
+var nodeTypeRegistry = map[string]nodeTypeEntry{}
+
+// RegisterNodeType panics on a duplicate ID -- a collision is a
+// programming error caught at process startup (package init time), the
+// same fail-fast behavior sql.Register itself uses, not a runtime data
+// problem to recover from softly.
+func RegisterNodeType(nt NodeType, exec ExecFunc) {
+    if _, exists := nodeTypeRegistry[nt.ID]; exists {
+        panic("composition: node type " + nt.ID + " registered twice")
+    }
+    nodeTypeRegistry[nt.ID] = nodeTypeEntry{nodeType: nt, exec: exec}
+}
+```
+
+A plain `Register(NodeType, ExecFunc)` function, not a `Registerer`
+interface implemented per node-type struct — there's no need for a
+struct/method indirection when a function value already captures
+everything an exec step needs (matches `sql.Register`'s own shape, a
+function call, not an interface implementation, for the same reason).
+
+**Ordering, resolved.** `NodeTypes()`'s current output order is a
+deliberate literal sequence (Triggers, then Capture/Process/Apply/
+Decision, then the three Configure-backed Process nodes); Go map
+iteration is non-deterministic, so reading straight from
+`nodeTypeRegistry` would silently randomize it. Checked whether
+anything actually depends on that order first, not assumed either way:
+`nodetypes_test.go` and the frontend's e2e count assertion
+(`composition.spec.ts`) are both order-independent (confirmed by
+reading them). Still worth a *deterministic* order rather than
+"whatever `range` gives today, happens to work, breaks silently on a
+future Go version" — `NodeTypes()` sorts its output by
+`(kindOrder[Kind], ID)` at call time, `kindOrder` a small fixed map
+mirroring the current literal sequence. Chosen over relying on Go's
+real-but-subtle `init()` file-order guarantee (lexical filename order,
+gc-specific, not something worth depending on silently) — an explicit
+sort is simpler to verify than an implicit ordering guarantee.
+
+**Trigger registration — two registries, deliberately, not one,
+because of a real constraint found by reading `triggerservice.go` in
+full.** `TriggerService.start()`'s cases aren't pure functions like
+`nodeExec`'s: `trigger-hotkey`'s case reads `s.hkRaw` and closes over
+`s.fire`, i.e. every case needs `*TriggerService` itself, not just a
+`Node`/`ExecContext` pair. A trigger starter's signature has to be
+`func(s *TriggerService, workflowID string, config map[string]string)
+(*activeListener, error)` — genuinely different from `ExecFunc`, and it
+lives in `package main` (`triggerservice.go`'s own package), not
+`internal/domain/composition`, since `TriggerService` is Wails-binding
+state, not domain logic (CLAUDE.md's domain-package-purity rule already
+forbids `composition` from knowing about `TriggerService`). So: a
+second, small registry in `package main`:
+
+```go
+type triggerStarter func(s *TriggerService, workflowID string, config map[string]string) (*activeListener, error)
+var triggerRegistry = map[string]triggerStarter{}
+func RegisterTrigger(nodeTypeID string, start triggerStarter) { ... } // same panic-on-duplicate shape
+```
+
+`TriggerService.start()` becomes a two-line registry lookup. **The two
+registries stay colocated per trigger type despite living in different
+packages**: each trigger type's file lives in `package main` (where
+`TriggerService` already is) and its one `init()` calls *both*
+`composition.RegisterNodeType(...)` (the schema half) *and*
+`RegisterTrigger(...)` (the dispatch half) — one file, one trigger
+type, both halves of its definition, even though today those two halves
+are split across `nodetypes.go` and `triggerservice.go` with no single
+file owning a trigger type's full definition. Confirmed this ordering
+is safe, not assumed: Go initializes an imported package's `init()`s
+before the importing package's own (`main` imports `composition`, so
+`composition`'s package-level state is ready before any `main`-package
+`init()` runs `RegisterNodeType`), and nothing in `composition` calls
+`NodeTypes()` at its own init/var-init time — it's only ever called
+from request-handling code, well after every package's `init()` has
+run. `internal/domain/composition` still never imports `main` in
+either direction; the dependency arrow is unchanged, only which file
+calls `RegisterNodeType` moves.
+
+**File plan** (names indicative, may shift slightly during
+implementation — not the part worth re-confirming):
+
+*`internal/domain/composition/` (registers via `RegisterNodeType`
+directly, no cross-package split needed):*
+- `registry.go` — the registry itself (new)
+- `capture.go` — `capture-clipboard-html`'s `NodeType` + exec (new;
+  `readClipboardHTML` moves here from `execute.go`)
+- `processmarkdown.go` — `process-html-to-markdown` (new;
+  `htmlToMarkdown` moves here)
+- `applytext.go` / `applyhtml.go` — the two Apply node types (new;
+  `writeClipboardText`/`writeClipboardHTML` move here)
+- `decision.go` — `decision-route`'s `NodeType` only, `exec: nil` (new)
+- `integration.go`, `listlookup.go`, `mcpcall.go` — **existing files,
+  gain an `init()` each** registering the `NodeType`+exec they already
+  support; no new files needed, these three are already the
+  best-prepared case (support logic already isolated, just the
+  registration call is still centralized)
+- `nodetypes.go` — shrinks to `sampleHTML`, `NodeTypes()` (now reads +
+  sorts the registry), `nodeType()` (registry lookup), `newNodeID`,
+  `BuiltInWorkflows()` (unchanged — only references node type ID
+  strings)
+- `execute.go` — shrinks to `ExecuteWorkflow` only, with
+  `nodeExec[node.NodeTypeID]` replaced by
+  `nodeTypeRegistry[node.NodeTypeID].exec`
+
+*`package main` (registers both halves per trigger type):*
+- `triggerregistry.go` — the second registry (new)
+- `triggermanual.go`, `triggerhotkey.go`, `triggerschedule.go`,
+  `triggerclipboardwatch.go`, `triggerfilesystemwatch.go` — one file
+  per trigger type, each calling `composition.RegisterNodeType` +
+  `RegisterTrigger` from its own `init()` (new; the 5 `NodeType`
+  literals move here from `nodetypes.go`, the 5 `switch` cases move
+  here from `triggerservice.go`)
+- `triggerservice.go` — `start()` shrinks to a registry lookup; loses
+  the 5 cases and the `NodeType` literals it never actually held
+  (those move out of `nodetypes.go`, not out of this file, since they
+  were never here)
+
+**Migration sequence** (small, verifiable steps, not one giant diff —
+CLAUDE.md's own "small, reviewable steps" rule): (1) add the empty
+`composition` registry, verify build + full test suite unchanged
+(pure addition, zero behavior change possible); (2) migrate
+`integration-http`/`list-lookup`/`mcp-tool-call` first — already the
+most isolated, proves the pattern end-to-end on real node types before
+touching the rest; (3) migrate the remaining `composition`-package node
+types (capture/process/apply×2/decision); (4) once `nodetypes.go`'s
+literal slice and `execute.go`'s literal map are both empty, flip
+`NodeTypes()`/`ExecuteWorkflow` to read the registry — this is the one
+step where the old and new mechanisms must not coexist even briefly,
+since a node type present in the old slice but not yet registered (or
+vice versa) would silently vanish or duplicate; (5) migrate the 5
+Trigger types into `package main`, add the `main`-package registry,
+flip `TriggerService.start()`; (6) full verification — `go test
+./...`, `golangci-lint run ./...`, the complete Playwright e2e suite,
+plus a manual desktop-mode smoke pass for `TriggerService` specifically
+(per SPEC.md §1.3, `HotkeyService`/`TriggerService`'s live listener
+paths aren't exercisable by headless CI at all, registry refactor or
+not). Grouped into roughly 2-3 commits (registry + composition-package
+migration; trigger migration; any follow-up), not 14 file-by-file
+commits — the seam is real but the whole thing is one coherent,
+verifiable change, not fourteen independent ones.
+
+**Explicitly not touched by this plan**: Connector `AuthType`,
+Configure-entity-kind registration (both already scoped out of A1 in
+the Decision above) — nothing about this implementation plan revisits
+that scope, it's still the small-and-accepted cost this ADR's Decision
+section already settled.
+
 ## Lifecycle
 - Owner: Ali + whoever implements the registry next
 - Maintains: the extension-point capability map above; the A1 scope
