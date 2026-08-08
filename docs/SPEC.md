@@ -2683,6 +2683,26 @@ this pass.
   methods directly — a Connector/List/Attribute set is now created the
   same way a Workflow is, through the app itself. Same status as
   Decision's rule builder (§3.3/§3.5).
+- **Update — two real gaps in the Configure UI, caught by the user
+  testing the live dev app directly, not by this doc's own audit.**
+  `Connector.Headers` (static per-call headers, always merged into a
+  request alongside whatever `AuthType` adds — `integration.go`'s
+  `headers` merge already supported this) had no editor anywhere in
+  `ConfigureIntegration.tsx`'s form — every save silently passed `nil`.
+  A key/value row editor now exists (same shape as Lists' own
+  entries editor), round-tripping through both create and edit. Second
+  gap: "List operations" only ever showed `Method`/`Path`/`Summary` —
+  there was no way to see what fields a spec actually declares without
+  opening a workflow's canvas and dropping an `integration-http` node
+  (ADR-0007 Phase 3's `IntegrationBindingsEditor`). A "Show schema"
+  action per operation now calls the same `ConfigureService.
+  ConnectorOperationFields` Phase 3 already built, rendering each
+  Input/Output field with its `In`/`Type`/`Required`/secret badges
+  directly on the Configure page — no new backend surface, just wiring
+  an existing method to a second caller. Verified end-to-end via
+  Playwright (`configure-integration.spec.ts`): a header round-trips
+  through save and re-opening Edit; a spec's declared fields (including
+  a secret-classified one, flagged) render on demand. `LOCKED`.
 - See §3.2 for the node-type-vs-instance composition pattern and the
   incremental-extensibility principle for connector protocol/auth support.
 
