@@ -197,18 +197,35 @@ func main() {
 	// 'Mac' options tailor the window when running on macOS.
 	// 'BackgroundColour' is the background colour of the window.
 	// 'URL' is the URL that will be loaded into the webview.
-	mainWindow := app.Window.NewWithOptions(application.WebviewWindowOptions{
-		Title: "Mill",
-		// Window sized to the golden ratio (1000 / 618 ≈ 1.618).
-		Width:  1000,
-		Height: 618,
+	//
+	// Window sized to the golden ratio (1000 / 618 ≈ 1.618) by default --
+	// overridden by the persisted geometry from a previous session, if
+	// any (docs/SPEC.md §3.7's Update), applied here rather than moved
+	// after creation since there's no "move it after creation" path that
+	// avoids an initial flash at the default position/size.
+	windowWidth, windowHeight := 1000, 618
+	windowX, windowY := 0, 0
+	windowStartState := application.WindowStateNormal
+	hasPosition := false
+	if x, y, w, h, maximized, ok := settingsService.LoadWindowGeometry(); ok {
+		windowX, windowY, hasPosition = x, y, true
+		windowWidth, windowHeight = w, h
+		if maximized {
+			windowStartState = application.WindowStateMaximised
+		}
+	}
+	windowOptions := application.WebviewWindowOptions{
+		Title:  "Mill",
+		Width:  windowWidth,
+		Height: windowHeight,
 		// MinWidth/MinHeight are Wails3's own mechanism for "don't let the
 		// window shrink small enough to break the layout" (see
 		// docs/SPEC.md §2.2) -- not a custom guard. Floor chosen so the
 		// UnderlineNav tabs, a Runbook card's action row, and the footer
 		// all still fit without wrapping into each other.
-		MinWidth:  640,
-		MinHeight: 420,
+		MinWidth:   640,
+		MinHeight:  420,
+		StartState: windowStartState,
 		Mac: application.MacWindow{
 			InvisibleTitleBarHeight: 50,
 			Backdrop:                application.MacBackdropTranslucent,
@@ -216,8 +233,19 @@ func main() {
 		},
 		BackgroundColour: application.NewRGB(6, 7, 15),
 		URL:              "/",
-	})
+	}
+	if hasPosition {
+		windowOptions.X = windowX
+		windowOptions.Y = windowY
+		// InitialPosition defaults to WindowCentered (its zero value) --
+		// X/Y are silently ignored unless this is explicitly set to
+		// WindowXY, confirmed directly against the SDK source before
+		// relying on it, not assumed.
+		windowOptions.InitialPosition = application.WindowXY
+	}
+	mainWindow := app.Window.NewWithOptions(windowOptions)
 	settingsService.SetWindow(mainWindow)
+	settingsService.WatchWindowGeometry()
 
 	// Create a goroutine that emits an event containing the current time every second.
 	// The frontend can listen to this event and update the UI accordingly.

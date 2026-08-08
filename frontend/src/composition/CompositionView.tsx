@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Button, Checkbox, Dialog, FormControl, Heading, IconButton, Label, Stack, Text, TextInput, Token } from '@primer/react'
 import { Tabs } from '@primer/react/experimental'
 import { PencilIcon, PlusIcon, TrashIcon } from '@primer/octicons-react'
@@ -8,6 +8,7 @@ import { ConfigFieldType } from '../../bindings/github.com/alicoding/mill/intern
 import type { AttributeDef, Edge, Node, NodeType, Workflow } from '../../bindings/github.com/alicoding/mill/internal/domain/composition/models'
 import { generateSamplePayload } from '../shared/configSchema'
 import { useAppStore } from '../shared/store'
+import { loadPersistedTabs, savePersistedTabs } from '../shared/persistedTabs'
 import CompositionCanvas from './CompositionCanvas'
 import { TabItem, TabList, TabPanel } from '../shared/Tabs'
 import styles from '../shared/ListCard.module.css'
@@ -51,6 +52,7 @@ interface EditorTab {
 }
 
 const WORKFLOWS_TAB = 'workflows'
+const TABS_STORAGE_KEY = 'mill-composition-tabs'
 
 // A prototype for SPEC.md §3 / ADR-0005 (A2: MCP-tool + control-flow
 // nodes; B2's canvas deferral overridden by explicit decision -- see
@@ -83,6 +85,11 @@ function CompositionView() {
   const [testRunTarget, setTestRunTarget] = useState<{ id: string; values: Record<string, string> } | null>(null)
   const [tabs, setTabs] = useState<EditorTab[]>([])
   const [activeTab, setActiveTab] = useState(WORKFLOWS_TAB)
+  // Guards the one-shot restore effect below from re-firing on every
+  // later refetch (e.g. after Save) -- it must only apply the persisted
+  // tab set once, the first time `workflows` becomes available, never
+  // clobber tabs the user has since opened or closed.
+  const restoredTabs = useRef(false)
 
   const refetchWorkflows = () => {
     CompositionService.Workflows().then((list) => setWorkflows(list ?? [])).catch(console.error)
@@ -92,6 +99,46 @@ function CompositionView() {
     CompositionService.NodeTypes().then((list) => setNodeTypes(list ?? [])).catch(console.error)
     refetchWorkflows()
   }, [])
+
+  // Restores which workflow tabs were open (docs/SPEC.md §3.7's
+  // Update) once the real workflow list is in, filtering out any
+  // persisted ID for a workflow deleted since last session -- a
+  // persisted tab pointing at nothing would be worse than not
+  // restoring it.
+  useEffect(() => {
+    if (workflows === null || restoredTabs.current) return
+    restoredTabs.current = true
+    const persisted = loadPersistedTabs(TABS_STORAGE_KEY)
+    const validIds = persisted.ids.filter((id) => workflows.some((w) => w.ID === id))
+    if (validIds.length === 0) return
+    const restored = validIds.map((workflowId) => ({ key: crypto.randomUUID(), workflowId }))
+    setTabs(restored)
+    // activeTab must match a real tab's freshly-generated `key`, not
+    // the stale persisted workflowId itself.
+    const active = restored.find((t) => t.workflowId === persisted.activeId)
+    setActiveTab(active ? active.key : WORKFLOWS_TAB)
+  }, [workflows])
+
+  // Persists the open, saved-workflow tab set (never a "new workflow"
+  // draft, workflowId === null) on every change. Gated on
+  // restoredTabs.current: this effect also fires on the very first
+  // mount (React runs every effect at least once regardless of its
+  // dependency array), before the restore effect above has had a
+  // chance to run (it's waiting on the async Workflows() fetch) -- an
+  // unguarded write here would overwrite the previous session's
+  // persisted tabs with the empty initial state, destroying the exact
+  // data the restore effect is about to read. A real bug caught via a
+  // real reload-and-check e2e test, not assumed away
+  // (.claude/rules/testing.md).
+  useEffect(() => {
+    if (!restoredTabs.current) return
+    const savedTabs = tabs.filter((t): t is EditorTab & { workflowId: string } => t.workflowId !== null)
+    const activeSaved = savedTabs.find((t) => t.key === activeTab)
+    savePersistedTabs(TABS_STORAGE_KEY, {
+      ids: savedTabs.map((t) => t.workflowId),
+      activeId: activeSaved ? activeSaved.workflowId : null,
+    })
+  }, [tabs, activeTab])
 
   // Runs through ExecutionService.RunWorkflow, tagged RunKindTest --
   // docs/adr/0008's single execution path: a canvas click is a manual

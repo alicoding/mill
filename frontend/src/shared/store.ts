@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { persist } from 'zustand/middleware'
 import type { LabelProps } from '@primer/react'
 import type { Workflow } from '../../bindings/github.com/alicoding/mill/internal/domain/composition/models'
 import { ViewKind } from '../../bindings/github.com/alicoding/mill/internal/domain/capabilities/models'
@@ -109,17 +110,41 @@ interface AppState {
 // workflows is shared state (not CompositionView-local) specifically so
 // App.tsx's hotkey-activity handler can resolve a fired workflow's label
 // without its own separate fetch.
-export const useAppStore = create<AppState>((set) => ({
-  workflows: null,
-  activity: [],
-  capabilities: [],
-  // Composition (the Workflows list) is the new landing page -- the
-  // direct successor to what Runbook used to be (docs/SPEC.md §2.2's
-  // Update note), not Activity, which is a secondary "what ran" view.
-  view: { kind: 'composition' },
-  setWorkflows: (workflows) => set({ workflows }),
-  pushActivity: (entry) =>
-    set((state) => ({ activity: [entry, ...state.activity].slice(0, MAX_ACTIVITY_ENTRIES) })),
-  setCapabilities: (capabilities) => set({ capabilities }),
-  setView: (view) => set({ view }),
-}))
+// zustand's own official persist middleware (zustand/middleware,
+// already a transitive part of the already-adopted zustand dependency
+// -- no new package), not a hand-rolled localStorage read/write pair:
+// this is the same "adopt, don't reinvent a solved problem" bias
+// CLAUDE.md already applies everywhere else, one level down inside a
+// library Mill already depends on. `partialize` persists only `view` --
+// workflows/activity/capabilities are live, server-derived or
+// session-only data (refetched every mount, or explicitly a 50-entry
+// ring buffer), not navigational state, and persisting them would be
+// both wrong (stale data shown before the real fetch lands) and
+// pointless (docs/SPEC.md §3.7's Update: "active view" is the concrete
+// gap this closes, at the same localStorage/cosmetic tier
+// theme/sidebar-collapse already established -- pure UI navigation
+// state with no domain meaning outside the running app).
+export const useAppStore = create<AppState>()(
+  persist(
+    (set) => ({
+      workflows: null,
+      activity: [],
+      capabilities: [],
+      // Composition (the Workflows list) is the new landing page -- the
+      // direct successor to what Runbook used to be (docs/SPEC.md
+      // §2.2's Update note), not Activity, which is a secondary "what
+      // ran" view. Only the *initial* default before anything was ever
+      // persisted -- see the `persist` config below.
+      view: { kind: 'composition' },
+      setWorkflows: (workflows) => set({ workflows }),
+      pushActivity: (entry) =>
+        set((state) => ({ activity: [entry, ...state.activity].slice(0, MAX_ACTIVITY_ENTRIES) })),
+      setCapabilities: (capabilities) => set({ capabilities }),
+      setView: (view) => set({ view }),
+    }),
+    {
+      name: 'mill-app-view',
+      partialize: (state) => ({ view: state.view }),
+    },
+  ),
+)
