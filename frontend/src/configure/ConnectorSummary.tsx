@@ -1,22 +1,17 @@
 import { useEffect, useState } from 'react'
+import type { ReactNode } from 'react'
 import { Button, Heading, IconButton, Label, Select, Stack, Text } from '@primer/react'
 import { PencilIcon, CopyIcon, TrashIcon } from '@primer/octicons-react'
 import { Tabs } from '@primer/react/experimental'
 import { TabItem, TabList, TabPanel } from '../shared/Tabs'
 import { ConfigureService } from '../../bindings/github.com/alicoding/mill'
 import type { Connector } from '../../bindings/github.com/alicoding/mill/internal/domain/connector/models'
-import { AuthType } from '../../bindings/github.com/alicoding/mill/internal/domain/connector/models'
 import type { Field, Operation, OperationRef } from '../../bindings/github.com/alicoding/mill/internal/adapters/openapispec/models'
 import { ConnectorTestPanel } from './ConnectorTestPanel'
 import { headersToRows, rowsToHeaders } from './connectorHeaders'
 import { parseOpenAPIToOperations } from './openapiSynth'
+import { AUTH_LABEL, AUTH_UNIMPLEMENTED } from './authTypeLabels'
 import styles from '../shared/ListCard.module.css'
-
-const AUTH_LABEL: Record<string, string> = {
-  [AuthType.AuthNone]: 'None',
-  [AuthType.AuthAPIKey]: 'API key',
-  [AuthType.AuthBearer]: 'Bearer token',
-}
 
 // docs/adr/0014: the read-only view of a saved connector -- four tabs
 // (Details/Available attributes/Input parameters/Testing), matching
@@ -84,7 +79,13 @@ export function ConnectorSummary({ connector, onEdit, onDuplicate, onDelete }: {
         <TabPanel value="details">
           <Stack direction="vertical" gap="condensed">
             <DetailRow label="Base URL" value={connector.BaseURL} />
-            <DetailRow label="Auth type" value={AUTH_LABEL[connector.AuthType] ?? connector.AuthType} />
+            <DetailRow
+              label="Auth type"
+              value={AUTH_LABEL[connector.AuthType] ?? connector.AuthType}
+              suffix={AUTH_UNIMPLEMENTED.has(connector.AuthType)
+                ? <Label variant="attention" size="small">not yet implemented</Label>
+                : undefined}
+            />
             <DetailRow
               label="Headers"
               value={connector.Headers && Object.keys(connector.Headers).length > 0
@@ -130,6 +131,7 @@ export function ConnectorSummary({ connector, onEdit, onDuplicate, onDelete }: {
             effectiveSpec={connector.OpenAPISpec}
             baseURL={connector.BaseURL}
             authType={connector.AuthType}
+            auth={connector.Auth}
             headers={rowsToHeaders(headersToRows(connector.Headers))}
             secret=""
             connectorID={connector.ID}
@@ -140,11 +142,12 @@ export function ConnectorSummary({ connector, onEdit, onDuplicate, onDelete }: {
   )
 }
 
-function DetailRow({ label, value }: { label: string; value: string }) {
+function DetailRow({ label, value, suffix }: { label: string; value: string; suffix?: ReactNode }) {
   return (
-    <Stack direction="horizontal" gap="condensed">
+    <Stack direction="horizontal" gap="condensed" align="center">
       <Text size="small" weight="semibold" style={{ minWidth: '100px' }}>{label}</Text>
       <Text size="small" className={styles.muted}>{value}</Text>
+      {suffix}
     </Stack>
   )
 }

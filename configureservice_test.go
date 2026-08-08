@@ -29,7 +29,7 @@ func newTestConfigureService(t *testing.T) (*ConfigureService, *CompositionServi
 
 func TestCreateConnector_ValidatesAndPersists(t *testing.T) {
 	cfg, _ := newTestConfigureService(t)
-	conn, err := cfg.CreateConnector("My API", connector.TypeHTTP, "https://example.com", connector.AuthNone, nil, "")
+	conn, err := cfg.CreateConnector("My API", connector.TypeHTTP, "https://example.com", connector.AuthNone, nil, "", nil)
 	if err != nil {
 		t.Fatalf("CreateConnector returned error: %v", err)
 	}
@@ -44,21 +44,21 @@ func TestCreateConnector_ValidatesAndPersists(t *testing.T) {
 
 func TestCreateConnector_InvalidRejected(t *testing.T) {
 	cfg, _ := newTestConfigureService(t)
-	if _, err := cfg.CreateConnector("", connector.TypeHTTP, "https://example.com", connector.AuthNone, nil, ""); err == nil {
+	if _, err := cfg.CreateConnector("", connector.TypeHTTP, "https://example.com", connector.AuthNone, nil, "", nil); err == nil {
 		t.Fatal("CreateConnector with an empty label returned nil error, want an error")
 	}
 }
 
 func TestUpdateConnector_UnknownID_Rejected(t *testing.T) {
 	cfg, _ := newTestConfigureService(t)
-	if _, err := cfg.UpdateConnector("does-not-exist", "New label", connector.TypeHTTP, "https://example.com", connector.AuthNone, nil, ""); err == nil {
+	if _, err := cfg.UpdateConnector("does-not-exist", "New label", connector.TypeHTTP, "https://example.com", connector.AuthNone, nil, "", nil); err == nil {
 		t.Fatal("UpdateConnector with an unknown id returned nil error, want an error")
 	}
 }
 
 func TestDeleteConnector_RemovesItAndItsSecret(t *testing.T) {
 	cfg, _ := newTestConfigureService(t)
-	conn, err := cfg.CreateConnector("My API", connector.TypeHTTP, "https://example.com", connector.AuthBearer, nil, "")
+	conn, err := cfg.CreateConnector("My API", connector.TypeHTTP, "https://example.com", connector.AuthBearer, nil, "", nil)
 	if err != nil {
 		t.Fatalf("CreateConnector returned error: %v", err)
 	}
@@ -96,14 +96,14 @@ const testOpenAPISpec = `{
 
 func TestCreateConnector_RejectsInvalidOpenAPISpec(t *testing.T) {
 	cfg, _ := newTestConfigureService(t)
-	if _, err := cfg.CreateConnector("My API", connector.TypeHTTP, "https://example.com", connector.AuthNone, nil, "not an openapi spec"); err == nil {
+	if _, err := cfg.CreateConnector("My API", connector.TypeHTTP, "https://example.com", connector.AuthNone, nil, "not an openapi spec", nil); err == nil {
 		t.Fatal("CreateConnector with an invalid OpenAPISpec returned nil error, want an error")
 	}
 }
 
 func TestCreateConnector_AcceptsValidOpenAPISpec(t *testing.T) {
 	cfg, _ := newTestConfigureService(t)
-	conn, err := cfg.CreateConnector("My API", connector.TypeHTTP, "https://example.com", connector.AuthNone, nil, testOpenAPISpec)
+	conn, err := cfg.CreateConnector("My API", connector.TypeHTTP, "https://example.com", connector.AuthNone, nil, testOpenAPISpec, nil)
 	if err != nil {
 		t.Fatalf("CreateConnector with a valid OpenAPISpec returned error: %v", err)
 	}
@@ -114,7 +114,7 @@ func TestCreateConnector_AcceptsValidOpenAPISpec(t *testing.T) {
 
 func TestListConnectorOperations_ReturnsDeclaredOperations(t *testing.T) {
 	cfg, _ := newTestConfigureService(t)
-	conn, err := cfg.CreateConnector("My API", connector.TypeHTTP, "https://example.com", connector.AuthNone, nil, testOpenAPISpec)
+	conn, err := cfg.CreateConnector("My API", connector.TypeHTTP, "https://example.com", connector.AuthNone, nil, testOpenAPISpec, nil)
 	if err != nil {
 		t.Fatalf("CreateConnector returned error: %v", err)
 	}
@@ -129,7 +129,7 @@ func TestListConnectorOperations_ReturnsDeclaredOperations(t *testing.T) {
 
 func TestListConnectorOperations_NoSpecConfigured_Rejected(t *testing.T) {
 	cfg, _ := newTestConfigureService(t)
-	conn, err := cfg.CreateConnector("My API", connector.TypeHTTP, "https://example.com", connector.AuthNone, nil, "")
+	conn, err := cfg.CreateConnector("My API", connector.TypeHTTP, "https://example.com", connector.AuthNone, nil, "", nil)
 	if err != nil {
 		t.Fatalf("CreateConnector returned error: %v", err)
 	}
@@ -147,7 +147,7 @@ func TestListConnectorOperations_UnknownConnector_Rejected(t *testing.T) {
 
 func TestConnectorOperationFields_ReturnsDeclaredOperationFields(t *testing.T) {
 	cfg, _ := newTestConfigureService(t)
-	conn, err := cfg.CreateConnector("My API", connector.TypeHTTP, "https://example.com", connector.AuthNone, nil, testOpenAPISpec)
+	conn, err := cfg.CreateConnector("My API", connector.TypeHTTP, "https://example.com", connector.AuthNone, nil, testOpenAPISpec, nil)
 	if err != nil {
 		t.Fatalf("CreateConnector returned error: %v", err)
 	}
@@ -164,7 +164,7 @@ func TestConnectorOperationFields_ReturnsDeclaredOperationFields(t *testing.T) {
 
 func TestConnectorOperationFields_UnknownOperation_Rejected(t *testing.T) {
 	cfg, _ := newTestConfigureService(t)
-	conn, err := cfg.CreateConnector("My API", connector.TypeHTTP, "https://example.com", connector.AuthNone, nil, testOpenAPISpec)
+	conn, err := cfg.CreateConnector("My API", connector.TypeHTTP, "https://example.com", connector.AuthNone, nil, testOpenAPISpec, nil)
 	if err != nil {
 		t.Fatalf("CreateConnector returned error: %v", err)
 	}
@@ -182,7 +182,7 @@ func TestSetConnectorSecret_UnknownConnector_Rejected(t *testing.T) {
 
 func TestResolveConnector_AuthNone_NoSecretNeeded(t *testing.T) {
 	cfg, _ := newTestConfigureService(t)
-	conn, err := cfg.CreateConnector("Public API", connector.TypeHTTP, "https://example.com", connector.AuthNone, map[string]string{"Accept": "application/json"}, "")
+	conn, err := cfg.CreateConnector("Public API", connector.TypeHTTP, "https://example.com", connector.AuthNone, map[string]string{"Accept": "application/json"}, "", nil)
 	if err != nil {
 		t.Fatalf("CreateConnector returned error: %v", err)
 	}
@@ -198,7 +198,7 @@ func TestResolveConnector_AuthNone_NoSecretNeeded(t *testing.T) {
 
 func TestResolveConnector_AuthBearer_MissingSecret_Rejected(t *testing.T) {
 	cfg, _ := newTestConfigureService(t)
-	conn, err := cfg.CreateConnector("Secured API", connector.TypeHTTP, "https://example.com", connector.AuthBearer, nil, "")
+	conn, err := cfg.CreateConnector("Secured API", connector.TypeHTTP, "https://example.com", connector.AuthBearer, nil, "", nil)
 	if err != nil {
 		t.Fatalf("CreateConnector returned error: %v", err)
 	}
@@ -209,7 +209,7 @@ func TestResolveConnector_AuthBearer_MissingSecret_Rejected(t *testing.T) {
 
 func TestResolveConnector_AuthBearer_ResolvesSecret(t *testing.T) {
 	cfg, _ := newTestConfigureService(t)
-	conn, err := cfg.CreateConnector("Secured API", connector.TypeHTTP, "https://example.com", connector.AuthBearer, nil, "")
+	conn, err := cfg.CreateConnector("Secured API", connector.TypeHTTP, "https://example.com", connector.AuthBearer, nil, "", nil)
 	if err != nil {
 		t.Fatalf("CreateConnector returned error: %v", err)
 	}
@@ -223,6 +223,105 @@ func TestResolveConnector_AuthBearer_ResolvesSecret(t *testing.T) {
 	}
 	if rc.Secret != "s3cr3t" {
 		t.Errorf("resolveConnector Secret = %q, want %q", rc.Secret, "s3cr3t")
+	}
+}
+
+// TestCreateConnector_AuthConfig_PersistsAndSurvivesRestore proves
+// ADR-0015's additive Connector.Auth field actually round-trips through
+// the real persist()/restore() JSON path (configureservice_connectorauth.go),
+// not just that CreateConnector accepts the extra param -- a second
+// ConfigureService built over the same fakeStore (which shares its
+// underlying map, triggerservice_test.go) exercises a real restore,
+// the same class of proof TestPersistHotkeys_WritesBindingsAsJSON
+// already establishes for TriggerService.
+func TestCreateConnector_AuthConfig_PersistsAndSurvivesRestore(t *testing.T) {
+	store := newFakeStore()
+	comp := NewCompositionService(store)
+	cfg := NewConfigureService(store, comp)
+
+	auth := &connector.AuthConfig{OAuth2: &connector.OAuth2Config{
+		GrantType: "client_credentials", TokenURL: "https://auth.example.com/token", ClientID: "client-1", Scope: "read",
+	}}
+	conn, err := cfg.CreateConnector("OAuth2 API", connector.TypeHTTP, "https://example.com", connector.AuthOAuth2, nil, "", auth)
+	if err != nil {
+		t.Fatalf("CreateConnector returned error: %v", err)
+	}
+	if conn.Auth == nil || conn.Auth.OAuth2 == nil || conn.Auth.OAuth2.ClientID != "client-1" {
+		t.Fatalf("CreateConnector returned Auth = %+v, want the OAuth2Config passed in", conn.Auth)
+	}
+	if err := cfg.SetConnectorSecret(conn.ID, "client-secret"); err != nil {
+		t.Fatalf("SetConnectorSecret returned error: %v", err)
+	}
+
+	restarted := NewConfigureService(store, comp)
+	got := restarted.Connectors()
+	if len(got) != 1 || got[0].Auth == nil || got[0].Auth.OAuth2 == nil {
+		t.Fatalf("Connectors() after restore = %+v, want Auth to survive persist/restore", got)
+	}
+	if got[0].Auth.OAuth2.TokenURL != "https://auth.example.com/token" || got[0].Auth.OAuth2.Scope != "read" {
+		t.Errorf("restored Auth.OAuth2 = %+v, want the original TokenURL/Scope", got[0].Auth.OAuth2)
+	}
+
+	rc, err := restarted.resolveConnector(conn.ID)
+	if err != nil {
+		t.Fatalf("resolveConnector after restore returned error: %v", err)
+	}
+	if rc.Auth == nil || rc.Auth.OAuth2 == nil || rc.Auth.OAuth2.ClientID != "client-1" {
+		t.Errorf("resolveConnector Auth = %+v, want it threaded through to ResolvedConnector", rc.Auth)
+	}
+}
+
+// TestUpdateConnector_AuthConfig_Replaces proves UpdateConnector's new
+// Auth param actually replaces the stored config, not just accepted
+// and discarded.
+func TestUpdateConnector_AuthConfig_Replaces(t *testing.T) {
+	cfg, _ := newTestConfigureService(t)
+	conn, err := cfg.CreateConnector("HMAC API", connector.TypeHTTP, "https://example.com", connector.AuthHMAC, nil, "", &connector.AuthConfig{HMAC: &connector.HMACConfig{HeaderName: "X-Sig"}})
+	if err != nil {
+		t.Fatalf("CreateConnector returned error: %v", err)
+	}
+
+	updated, err := cfg.UpdateConnector(conn.ID, "HMAC API", connector.TypeHTTP, "https://example.com", connector.AuthHMAC, nil, "", &connector.AuthConfig{HMAC: &connector.HMACConfig{HeaderName: "X-Custom-Sig"}})
+	if err != nil {
+		t.Fatalf("UpdateConnector returned error: %v", err)
+	}
+	if updated.Auth == nil || updated.Auth.HMAC == nil || updated.Auth.HMAC.HeaderName != "X-Custom-Sig" {
+		t.Errorf("UpdateConnector Auth = %+v, want the replaced HMACConfig", updated.Auth)
+	}
+}
+
+// TestSetConnectorOAuth1Secret_EncodesDualSecret proves the OAuth1
+// dual-secret convenience method (ADR-0015 §3) stores a value
+// resolveConnector can hand back to composition.ApplyAuth's OAuth1
+// strategy -- decoding is composition's own concern
+// (decodeOAuth1Secret, unexported), so this only checks the round trip
+// through resolveConnector's Secret field, not the decoded shape.
+func TestSetConnectorOAuth1Secret_EncodesDualSecret(t *testing.T) {
+	cfg, _ := newTestConfigureService(t)
+	conn, err := cfg.CreateConnector("OAuth1 API", connector.TypeHTTP, "https://example.com", connector.AuthOAuth1, nil, "", &connector.AuthConfig{OAuth1: &connector.OAuth1Config{ConsumerKey: "ck-1", Token: "tok-1"}})
+	if err != nil {
+		t.Fatalf("CreateConnector returned error: %v", err)
+	}
+	if err := cfg.SetConnectorOAuth1Secret(conn.ID, "consumer-secret", "token-secret"); err != nil {
+		t.Fatalf("SetConnectorOAuth1Secret returned error: %v", err)
+	}
+
+	rc, err := cfg.resolveConnector(conn.ID)
+	if err != nil {
+		t.Fatalf("resolveConnector returned error: %v", err)
+	}
+	if rc.Secret == "" {
+		t.Fatal("resolveConnector Secret is empty, want the encoded OAuth1 dual secret")
+	}
+	if got := composition.EncodeOAuth1Secret("consumer-secret", "token-secret"); rc.Secret != got {
+		t.Errorf("resolveConnector Secret = %q, want %q (composition.EncodeOAuth1Secret's own encoding)", rc.Secret, got)
+	}
+}
+
+func TestSetConnectorOAuth1Secret_UnknownConnector_Rejected(t *testing.T) {
+	cfg, _ := newTestConfigureService(t)
+	if err := cfg.SetConnectorOAuth1Secret("does-not-exist", "cs", "ts"); err == nil {
+		t.Fatal("SetConnectorOAuth1Secret for an unknown connector returned nil error, want an error")
 	}
 }
 
