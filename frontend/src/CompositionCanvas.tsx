@@ -20,6 +20,7 @@ import type { NodeType, Node as CompNode, Edge as CompEdge, Workflow } from '../
 import { ConfigFieldType } from '../bindings/github.com/alicoding/mill/internal/domain/composition/models'
 import { createCanvasStore, type CanvasNode } from './canvasStore'
 import { rfNodeTypes, CANVAS_NODE_WIDTH, CANVAS_NODE_HEIGHT } from './CanvasNodeView'
+import { findFreeDropPosition } from './canvasLayout'
 import { toCanvasNodes, toRFEdges } from './canvasConversion'
 import { draftWorkflowSchema } from './draftWorkflowSchema'
 import { NodePalette } from './NodePalette'
@@ -168,7 +169,16 @@ function CanvasInner({ nodeTypes, workflow, onBack, onSaved }: CompositionCanvas
       const nodeTypeID = event.dataTransfer.getData('application/mill-node-type')
       const nt = nodeTypes.find((n) => n.ID === nodeTypeID)
       if (!nt) return
-      const position = screenToFlowPosition({ x: event.clientX, y: event.clientY })
+      // A workflow's Trigger nodes are always graph roots (isValidConnection
+      // above already refuses an edge into one), so a second one always
+      // breaks findRoot's "exactly one starting node" rule server-side --
+      // the palette already disables Trigger entries once one exists, this
+      // is belt-and-suspenders against a drop event that got through some
+      // other way (e.g. a stale drag started before the first trigger was
+      // placed).
+      if (nt.Kind === 'trigger' && nodes.some((n) => n.data.kind === 'trigger')) return
+      const desired = screenToFlowPosition({ x: event.clientX, y: event.clientY })
+      const position = findFreeDropPosition(desired, nodes)
       const config: Record<string, string> = {}
       for (const field of nt.ConfigFields ?? []) config[field.Key] = field.Default
       const node: CanvasNode = {
@@ -179,7 +189,7 @@ function CanvasInner({ nodeTypes, workflow, onBack, onSaved }: CompositionCanvas
       }
       addNode(node)
     },
-    [nodeTypes, screenToFlowPosition, addNode],
+    [nodeTypes, nodes, screenToFlowPosition, addNode],
   )
 
   // elkjs is a large (~1-2MB) synchronous bundle -- dynamically imported
@@ -290,7 +300,7 @@ function CanvasInner({ nodeTypes, workflow, onBack, onSaved }: CompositionCanvas
       </div>
 
       <div className={styles.canvasWrap}>
-        {paletteOpen && <NodePalette nodeTypes={nodeTypes} />}
+        {paletteOpen && <NodePalette nodeTypes={nodeTypes} hasTrigger={nodes.some((n) => n.data.kind === 'trigger')} />}
         <div className={styles.canvas} onDrop={onCanvasDrop} onDragOver={(e) => e.preventDefault()}>
           <ReactFlow
             nodes={nodes}

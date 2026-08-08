@@ -35,12 +35,17 @@ function activePanel(page: import('@playwright/test').Page) {
 // Scoped to the active (visible) tabpanel, same reasoning as
 // activePanel() above -- palette items exist in the DOM for every open
 // tab, not just the visible one.
-async function dragPaletteItemToCanvas(page: import('@playwright/test').Page, label: string) {
-  await page.evaluate((paletteLabel) => {
+//
+// Selects by NodePalette.tsx's data-node-type-id (a NodeType.ID, e.g.
+// "apply-clipboard-write-html"), not visible text -- the palette
+// intentionally shows a shortened label now that TreeView groups by Kind
+// (docs/SPEC.md §3), so matching on display text would be coupled to
+// wording that's expected to keep changing.
+async function dragPaletteItemToCanvas(page: import('@playwright/test').Page, nodeTypeID: string) {
+  await page.evaluate((id) => {
     const panel = document.querySelector('[role="tabpanel"]:not([hidden])')
     if (!panel) throw new Error('no active tabpanel')
-    const items = Array.from(panel.querySelectorAll('[data-testid="palette-item"]'))
-    const palette = items.find((el) => el.textContent?.includes(paletteLabel))
+    const palette = panel.querySelector(`[data-node-type-id="${id}"]`)
     const canvas = panel.querySelector('.react-flow__pane')
     if (!palette || !canvas) {
       throw new Error(`drag setup failed: palette found=${!!palette} canvas found=${!!canvas}`)
@@ -52,7 +57,7 @@ async function dragPaletteItemToCanvas(page: import('@playwright/test').Page, la
     palette.dispatchEvent(new DragEvent('dragstart', { bubbles: true, cancelable: true, dataTransfer }))
     canvas.dispatchEvent(new DragEvent('dragover', { bubbles: true, cancelable: true, dataTransfer, clientX, clientY }))
     canvas.dispatchEvent(new DragEvent('drop', { bubbles: true, cancelable: true, dataTransfer, clientX, clientY }))
-  }, label)
+  }, nodeTypeID)
 }
 
 // Removes the pre-populated starter node so a test can build an exact,
@@ -155,7 +160,7 @@ test('Dragging a node onto the canvas configures it as it is added, then saves, 
   await deleteStarterNode(page)
   await activePanel(page).getByTestId('toggle-palette').click()
 
-  await dragPaletteItemToCanvas(page, 'Apply: write HTML to clipboard')
+  await dragPaletteItemToCanvas(page, 'apply-clipboard-write-html')
   await expect(activePanel(page).locator('.react-flow__node')).toHaveCount(1)
 
   // Clicking the dropped node surfaces its config fields immediately in
@@ -216,7 +221,7 @@ test('Editing an existing workflow updates it in place, not as a duplicate', asy
   await page.getByTestId('new-workflow').click()
   await deleteStarterNode(page)
   await activePanel(page).getByTestId('toggle-palette').click()
-  await dragPaletteItemToCanvas(page, 'Apply: write HTML to clipboard')
+  await dragPaletteItemToCanvas(page, 'apply-clipboard-write-html')
   await activePanel(page).getByLabel('Label').fill('E2E editable workflow')
   await activePanel(page).getByTestId('save-workflow').click()
 
