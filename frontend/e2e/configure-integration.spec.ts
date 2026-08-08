@@ -62,6 +62,7 @@ test('Creating a connector with an OpenAPI spec and listing its operations', asy
   await page.getByTestId('new-connector').click()
   await page.getByLabel('Label').fill('Sample Connector')
   await page.getByLabel('Base URL').fill('https://api.example.com')
+  await page.getByRole('tab', { name: 'Schema' }).click()
   await page.getByTestId('connector-openapi-spec').fill(sampleSpec)
   await page.getByRole('button', { name: 'Save connector' }).click()
 
@@ -87,6 +88,7 @@ test('An invalid OpenAPI spec is rejected with a visible error', async ({ page }
   await page.getByTestId('new-connector').click()
   await page.getByLabel('Label').fill('Broken Connector')
   await page.getByLabel('Base URL').fill('https://api.example.com')
+  await page.getByRole('tab', { name: 'Schema' }).click()
   await page.getByTestId('connector-openapi-spec').fill('not an openapi spec')
   await page.getByRole('button', { name: 'Save connector' }).click()
 
@@ -109,6 +111,7 @@ test('A connector persists custom headers and shows them on the row', async ({ p
   await page.getByTestId('new-connector').click()
   await page.getByLabel('Label').fill('Header Connector')
   await page.getByLabel('Base URL').fill('https://api.example.com')
+  await page.getByRole('tab', { name: 'Headers' }).click()
   await page.getByTestId('add-connector-header').click()
   await page.getByTestId('connector-header-key').fill('X-Client-Version')
   await page.getByTestId('connector-header-value').fill('42')
@@ -120,6 +123,7 @@ test('A connector persists custom headers and shows them on the row', async ({ p
 
   // Round-trips through Edit too, not just the initial Save.
   await row.getByRole('button', { name: 'Edit Header Connector' }).click()
+  await page.getByRole('tab', { name: 'Headers' }).click()
   await expect(page.getByTestId('connector-header-key')).toHaveValue('X-Client-Version')
   await expect(page.getByTestId('connector-header-value')).toHaveValue('42')
   await page.getByRole('button', { name: 'Cancel' }).click()
@@ -134,6 +138,7 @@ test('Showing an operation\'s schema reveals its declared fields, with the secre
   await page.getByTestId('new-connector').click()
   await page.getByLabel('Label').fill('Schema Connector')
   await page.getByLabel('Base URL').fill('https://api.example.com')
+  await page.getByRole('tab', { name: 'Schema' }).click()
   await page.getByTestId('connector-openapi-spec').fill(schemaSpec)
   await page.getByRole('button', { name: 'Save connector' }).click()
 

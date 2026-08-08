@@ -30,6 +30,24 @@ export interface Field {
      * response can legitimately echo a sensitive field too.
      */
     "IsSecret": boolean;
+
+    /**
+     * Alias is a friendlier reference name for this field (docs/adr/0011),
+     * read from the standard OpenAPI x-mill-alias vendor extension --
+     * empty when unset. Display-only: nothing in this package or
+     * composition's binding resolution treats Alias as a lookup key,
+     * only Name is ever used for that.
+     */
+    "Alias": string;
+
+    /**
+     * Path is a dot-separated path into (possibly nested) response JSON
+     * for extracting this field's value (docs/adr/0011), read from the
+     * x-mill-path extension -- empty means "read Name as a flat
+     * top-level key," the behavior every field had before this existed.
+     * Only meaningful for output fields.
+     */
+    "Path": string;
 }
 
 /**

@@ -1,21 +1,17 @@
 import { useEffect, useState } from 'react'
-import { Button, FormControl, Heading, IconButton, Label, Select, Stack, Text, Textarea, TextInput } from '@primer/react'
-import { PencilIcon, PlusIcon, TrashIcon } from '@primer/octicons-react'
+import { Button, Heading, IconButton, Label, Stack, Text } from '@primer/react'
+import { PlusIcon, PencilIcon, TrashIcon } from '@primer/octicons-react'
 import { ConfigureService } from '../bindings/github.com/alicoding/mill'
 import type { Connector } from '../bindings/github.com/alicoding/mill/internal/domain/connector/models'
 import { AuthType } from '../bindings/github.com/alicoding/mill/internal/domain/connector/models'
 import type { Field, Operation, OperationRef } from '../bindings/github.com/alicoding/mill/internal/adapters/openapispec/models'
+import { ConnectorForm, type ConnectorDraft, type HeaderRow } from './ConnectorForm'
 import styles from './ListCard.module.css'
 
 const AUTH_LABEL: Record<string, string> = {
   [AuthType.AuthNone]: 'None',
   [AuthType.AuthAPIKey]: 'API key',
   [AuthType.AuthBearer]: 'Bearer token',
-}
-
-interface HeaderRow {
-  key: string
-  value: string
 }
 
 function headersToRows(headers: { [key: string]: string | undefined } | null | undefined): HeaderRow[] {
@@ -30,34 +26,20 @@ function rowsToHeaders(rows: HeaderRow[]): Record<string, string> | null {
   return Object.keys(out).length > 0 ? out : null
 }
 
-interface DraftConnector {
-  label: string
-  baseURL: string
-  authType: AuthType
-  secret: string
-  openAPISpec: string
-}
-
-const EMPTY_DRAFT: DraftConnector = { label: '', baseURL: '', authType: AuthType.AuthNone, secret: '', openAPISpec: '' }
+const EMPTY_DRAFT: ConnectorDraft = { label: '', baseURL: '', authType: AuthType.AuthNone, secret: '', openAPISpec: '' }
 
 // Configure's Integration section (docs/SPEC.md §3.5): CRUD over
 // ConfigureService's Connectors. Type is fixed to "http" -- the only
 // connector Type built today (§3.2's incremental-extensibility
-// principle) -- so the form doesn't offer a choice that would just fail
-// server-side Validate. The secret field is write-only: it's cleared
-// after every Save (SetConnectorSecret has no matching GetSecret to read
-// it back from), and editing an existing connector never pre-fills it.
-//
-// Static request headers (e.g. a vendor-required "X-Client-Version") are
-// a real Connector.Headers field on the Go side, merged into every call
-// (integration.go's authHeader/headers merge) -- this form previously
-// always saved null for it since nothing here ever exposed an editor,
-// a real gap caught directly by testing the live app, not assumed fixed
-// just because the domain field existed.
+// principle). The create/edit form itself is ConnectorForm.tsx
+// (docs/adr/0011: sectioned into General/Auth/Headers/Schema tabs,
+// Schema offering a Paste-OpenAPI/Manual-editor toggle) -- extracted
+// out once the Schema tab's Manual/CSV editor made this file too large
+// for one component.
 export function ConfigureIntegration() {
   const [connectors, setConnectors] = useState<Connector[] | null>(null)
   const [editingID, setEditingID] = useState<string | null>(null)
-  const [draft, setDraft] = useState<DraftConnector>(EMPTY_DRAFT)
+  const [draft, setDraft] = useState<ConnectorDraft>(EMPTY_DRAFT)
   const [headerRows, setHeaderRows] = useState<HeaderRow[]>([])
   const [formOpen, setFormOpen] = useState(false)
   const [error, setError] = useState('')
@@ -86,19 +68,20 @@ export function ConfigureIntegration() {
     setError('')
   }
 
-  const updateHeaderRow = (i: number, field: 'key' | 'value', value: string) => {
-    setHeaderRows((prev) => prev.map((r, idx) => (idx === i ? { ...r, [field]: value } : r)))
-  }
-
-  const save = async () => {
+  // Takes the draft directly (not read from state) -- ConnectorForm's
+  // Manual-schema-editor mode synthesizes openAPISpec at Save time and
+  // must not rely on a setState-then-read-state round trip, which
+  // isn't synchronous. See ConnectorForm.tsx's handleSave for the real
+  // bug this shape avoids.
+  const save = async (finalDraft: ConnectorDraft) => {
     setError('')
     try {
       const headers = rowsToHeaders(headerRows)
       const saved = editingID
-        ? await ConfigureService.UpdateConnector(editingID, draft.label, 'http', draft.baseURL, draft.authType, headers, draft.openAPISpec)
-        : await ConfigureService.CreateConnector(draft.label, 'http', draft.baseURL, draft.authType, headers, draft.openAPISpec)
-      if (draft.secret) {
-        await ConfigureService.SetConnectorSecret(saved.ID, draft.secret)
+        ? await ConfigureService.UpdateConnector(editingID, finalDraft.label, 'http', finalDraft.baseURL, finalDraft.authType, headers, finalDraft.openAPISpec)
+        : await ConfigureService.CreateConnector(finalDraft.label, 'http', finalDraft.baseURL, finalDraft.authType, headers, finalDraft.openAPISpec)
+      if (finalDraft.secret) {
+        await ConfigureService.SetConnectorSecret(saved.ID, finalDraft.secret)
       }
       setFormOpen(false)
       refetch()
@@ -117,9 +100,6 @@ export function ConfigureIntegration() {
       .catch((err) => setOperationsByConnector((prev) => ({ ...prev, [id]: String(err) })))
   }
 
-  // Schema preview (input/output fields), fetched lazily per operation
-  // rather than eagerly for every declared operation -- most specs
-  // declare more operations than a user is about to inspect right now.
   const showFields = (connectorID: string, op: OperationRef) => {
     const opKey = `${connectorID} ${op.Method} ${op.Path}`
     ConfigureService.ConnectorOperationFields(connectorID, op.Path, op.Method)
@@ -137,90 +117,16 @@ export function ConfigureIntegration() {
       </Stack>
 
       {formOpen && (
-        <div className={styles.card}>
-          <Stack direction="vertical" gap="condensed">
-            <FormControl>
-              <FormControl.Label>Label</FormControl.Label>
-              <TextInput value={draft.label} onChange={(e) => setDraft({ ...draft, label: e.target.value })} block />
-            </FormControl>
-            <FormControl>
-              <FormControl.Label>Base URL</FormControl.Label>
-              <TextInput value={draft.baseURL} onChange={(e) => setDraft({ ...draft, baseURL: e.target.value })} placeholder="https://api.example.com" block />
-            </FormControl>
-            <FormControl>
-              <FormControl.Label>Auth type</FormControl.Label>
-              <Select value={draft.authType} onChange={(e) => setDraft({ ...draft, authType: e.target.value as AuthType })}>
-                {Object.values(AuthType).filter((v) => v !== '').map((v) => (
-                  <Select.Option key={v} value={v}>{AUTH_LABEL[v] ?? v}</Select.Option>
-                ))}
-              </Select>
-            </FormControl>
-            {draft.authType !== AuthType.AuthNone && (
-              <FormControl>
-                <FormControl.Label>Secret</FormControl.Label>
-                <FormControl.Caption>
-                  Write-only -- stored in the OS keychain, never readable back through Mill.
-                  {editingID && ' Leave blank to keep the existing secret.'}
-                </FormControl.Caption>
-                <TextInput type="password" value={draft.secret} onChange={(e) => setDraft({ ...draft, secret: e.target.value })} block />
-              </FormControl>
-            )}
-
-            <FormControl>
-              <FormControl.Label>Headers</FormControl.Label>
-              <FormControl.Caption>
-                Static headers (e.g. a required API version) sent with every call, in addition to
-                whatever the Auth type above adds.
-              </FormControl.Caption>
-              <Stack direction="vertical" gap="condensed">
-                {headerRows.map((row, i) => (
-                  <Stack key={i} direction="horizontal" gap="condensed" align="center">
-                    <TextInput placeholder="header name" value={row.key} onChange={(e) => updateHeaderRow(i, 'key', e.target.value)} data-testid="connector-header-key" />
-                    <TextInput placeholder="value" value={row.value} onChange={(e) => updateHeaderRow(i, 'value', e.target.value)} data-testid="connector-header-value" />
-                    <IconButton
-                      icon={TrashIcon}
-                      aria-label="Remove header"
-                      size="small"
-                      variant="invisible"
-                      onClick={() => setHeaderRows((prev) => prev.filter((_, idx) => idx !== i))}
-                    />
-                  </Stack>
-                ))}
-                <Button
-                  size="small"
-                  variant="invisible"
-                  leadingVisual={PlusIcon}
-                  onClick={() => setHeaderRows((prev) => [...prev, { key: '', value: '' }])}
-                  data-testid="add-connector-header"
-                >
-                  Add header
-                </Button>
-              </Stack>
-            </FormControl>
-
-            <FormControl>
-              <FormControl.Label>OpenAPI spec (optional)</FormControl.Label>
-              <FormControl.Caption>
-                Paste the OpenAPI 3.x document (JSON or YAML) for this API -- declares the typed
-                input/output fields a workflow node can bind Attributes to (ADR-0007). Leave blank to
-                keep using a literal request body, same as before this existed. Once saved, use
-                &quot;List operations&quot; below to preview the fields this declares.
-              </FormControl.Caption>
-              <Textarea
-                value={draft.openAPISpec}
-                onChange={(e) => setDraft({ ...draft, openAPISpec: e.target.value })}
-                rows={6}
-                block
-                data-testid="connector-openapi-spec"
-              />
-            </FormControl>
-            {error && <Text as="p" size="small" className={styles.error}>{error}</Text>}
-            <Stack direction="horizontal" gap="condensed">
-              <Button variant="primary" size="small" onClick={save}>Save connector</Button>
-              <Button size="small" variant="invisible" onClick={() => setFormOpen(false)}>Cancel</Button>
-            </Stack>
-          </Stack>
-        </div>
+        <ConnectorForm
+          draft={draft}
+          onDraftChange={setDraft}
+          headerRows={headerRows}
+          onHeaderRowsChange={setHeaderRows}
+          isEditing={editingID !== null}
+          onSave={save}
+          onCancel={() => setFormOpen(false)}
+          error={error}
+        />
       )}
 
       {connectors === null && <Text as="p" className={styles.muted}>Loading…</Text>}
@@ -310,11 +216,12 @@ function SchemaFieldList({ label, fields }: { label: string; fields: Field[] | n
       <Text size="small" weight="semibold">{label}</Text>
       {list.map((f) => (
         <Stack key={f.Name} direction="horizontal" gap="condensed" align="center">
-          <Text size="small">{f.Name}</Text>
+          <Text size="small">{f.Alias ? `${f.Alias} (${f.Name})` : f.Name}</Text>
           <Label variant="secondary" size="small">{f.In}</Label>
           <Label variant="secondary" size="small">{f.Type}</Label>
           {f.Required && <Label size="small">required</Label>}
           {f.IsSecret && <Label variant="danger" size="small">secret</Label>}
+          {f.Path && <Label variant="accent" size="small">path: {f.Path}</Label>}
         </Stack>
       ))}
     </Stack>

@@ -74,7 +74,7 @@ export function IntegrationBindingsEditor({
           {inputFields.map((field) => (
             <LiteralOrAttributeField
               key={field.Name}
-              name={field.Name}
+              name={field.Alias ? `${field.Alias} (${field.Name})` : field.Name}
               badge={field.In}
               value={inputBindings[field.Name] ?? ''}
               attrs={attrs}
@@ -89,7 +89,8 @@ export function IntegrationBindingsEditor({
           {outputFields.map((field) => (
             <FormControl key={field.Name}>
               <FormControl.Label>
-                {field.Name}
+                {field.Alias ? `${field.Alias} (${field.Name})` : field.Name}
+                {field.Path && <Label size="small" variant="accent">path: {field.Path}</Label>}
                 {field.IsSecret && <Label size="small" variant="danger">secret</Label>}
               </FormControl.Label>
               {field.IsSecret ? (
