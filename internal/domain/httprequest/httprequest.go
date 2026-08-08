@@ -1,19 +1,27 @@
-// Package connector holds the core-domain shape of an Integration/
-// Connector (docs/SPEC.md §3.5): a reusable (1:many), Configure-authored
-// definition of how to reach an external HTTP API. Per CLAUDE.md's
-// core-domain rule, the shape and its validation stay hand-written --
-// no library has an opinion on Mill's own connector model. The actual
-// HTTP call is internal/adapters/httpconnector's job; the secret itself
-// never lives on a Connector value at all, only in
-// internal/adapters/credential (the OS keychain), keyed by Connector.ID.
-package connector
+// Package httprequest holds the core-domain shape of an HTTPRequest
+// (docs/SPEC.md §3.5, ADR-0016): a reusable (1:many), Configure-authored
+// definition of an HTTP call -- base URL, auth, headers, and (from
+// Phase B on) method/params/body. Named HTTPRequest rather than
+// Connector (its pre-ADR-0016 name) so "Connector" stays free as the
+// umbrella term for future non-HTTP connector kinds (DB,
+// Python-function, etc., docs/SPEC.md §4.1) instead of one increasingly
+// overloaded noun covering both. Per CLAUDE.md's core-domain rule, the
+// shape and its validation stay hand-written -- no library has an
+// opinion on Mill's own request model. The actual HTTP call is
+// internal/adapters/httpconnector's job (a thin, non-user-facing
+// net/http wrapper, deliberately not renamed by ADR-0016 -- it has no
+// notion of "HTTPRequest" the domain entity, just method/url/headers/
+// body); the secret itself never lives on an HTTPRequest value at all,
+// only in internal/adapters/credential (the OS keychain), keyed by
+// HTTPRequest.ID.
+package httprequest
 
 import (
 	"fmt"
 	"strings"
 )
 
-// AuthType is how a request authenticates against the connector's
+// AuthType is how a request authenticates against the HTTPRequest's
 // BaseURL. Grew from the original 3 to the full 7-option catalogue a
 // reference-platform review found real (docs/SPEC.md §4.1, ADR-0015) --
 // each type's actual request-mutation logic is a registered
@@ -75,26 +83,26 @@ type OAuth2Config struct {
 }
 
 // HMACConfig is AuthHMAC's non-secret configuration. The signing key
-// itself is the connector's keychain secret.
+// itself is the request's keychain secret.
 type HMACConfig struct {
 	// HeaderName defaults to "X-Signature" when empty.
 	HeaderName string
 }
 
 // OAuth1Config is AuthOAuth1's non-secret configuration (RFC 5849).
-// ConsumerSecret/TokenSecret are JSON-encoded into the connector's one
+// ConsumerSecret/TokenSecret are JSON-encoded into the request's one
 // keychain secret slot rather than Mill inventing a multi-secret-per-
-// connector storage model (ADR-0015 §3) -- Token itself is optional
-// per RFC 5849 (2-legged OAuth omits it).
+// request storage model (ADR-0015 §3) -- Token itself is optional per
+// RFC 5849 (2-legged OAuth omits it).
 type OAuth1Config struct {
 	ConsumerKey string
 	Token       string
 }
 
-// AuthConfig bundles the non-secret config for whichever AuthType a
-// Connector actually uses -- one additive, optional field on Connector
-// (nil for every connector using none of these three), same "additive
-// pointer field" shape OpenAPISpec's own history already proved safe
+// AuthConfig bundles the non-secret config for whichever AuthType an
+// HTTPRequest actually uses -- one additive, optional field (nil for
+// every request using none of these three), same "additive pointer
+// field" shape OpenAPISpec's own history already proved safe
 // (ADR-0007).
 type AuthConfig struct {
 	OAuth2 *OAuth2Config
@@ -102,16 +110,11 @@ type AuthConfig struct {
 	OAuth1 *OAuth1Config
 }
 
-// TypeHTTP is the one connector Type built today (§3.2: "build the
-// generic HTTP connector first"). A DB/SOAP connector would add its own
-// Type value here when a real need surfaces, not before.
-const TypeHTTP = "http"
-
 // JOSEConfig is Phase 3's request/response encryption layer (ADR-0015's
 // own follow-up, docs/SPEC.md §3.2's Update: "JOSE Encryption ...
 // encrypts what [Mill] sends to the vendor, and optionally decrypts
 // what it receives back (JWE)"). Deliberately independent of AuthType
-// -- a connector can combine JOSE with any auth scheme, since the two
+// -- a request can combine JOSE with any auth scheme, since the two
 // solve different problems (who's calling vs. what the call's own body
 // looks like on the wire). RecipientPublicKeyPEM is not a secret (a
 // public key), so it lives here in plain config, same as Headers;
@@ -142,67 +145,66 @@ type JOSEConfig struct {
 	DecryptResponse bool
 }
 
-// Connector is one reusable, named way to reach an external API.
-// Headers are static, always-sent headers (e.g. "Accept": "application/
-// json") -- distinct from the AuthType-driven Authorization header,
-// which internal/adapters/httpconnector adds itself from the resolved
-// secret, never stored here.
-type Connector struct {
+// HTTPRequest is one reusable, named way to reach an external API
+// (ADR-0016 -- named Connector before this ADR). Headers are static,
+// always-sent headers (e.g. "Accept": "application/json") -- distinct
+// from the AuthType-driven Authorization header, which
+// internal/adapters/httpconnector adds itself from the resolved
+// secret, never stored here. Method/Params/Body land in Phase B
+// (ADR-0016) -- this pass is a pure rename, no shape change beyond
+// dropping the now-redundant Type field below.
+type HTTPRequest struct {
 	ID       string
 	Label    string
-	Type     string
 	BaseURL  string
 	AuthType AuthType
 	Headers  map[string]string
-	// Description is free-text explaining what this connector is/does --
+	// Description is free-text explaining what this request is/does --
 	// optional. Particularly useful for a seeded example (BuiltIn below):
 	// explaining what it demonstrates, and any honest caveat (e.g. "not
 	// independently validated by the target server" or "bring your own
 	// credentials").
 	Description string
 	// OpenAPISpec is the raw OpenAPI 3.x document (JSON or YAML) this
-	// connector's operations are declared against -- optional (ADR-0007).
-	// Parsed via internal/adapters/openapispec. A Connector with no spec
-	// behaves exactly as before this field existed.
+	// request's operations are declared against -- optional (ADR-0007).
+	// Parsed via internal/adapters/openapispec. An HTTPRequest with no
+	// spec behaves exactly as before this field existed.
 	OpenAPISpec string
 	// Auth is the non-secret config for AuthOAuth2/AuthHMAC/AuthOAuth1
 	// (ADR-0015) -- nil for AuthNone/AuthAPIKey/AuthBearer and every
-	// connector saved before this field existed.
+	// request saved before this field existed.
 	Auth *AuthConfig
 	// JOSE is the optional request/response encryption layer (Phase 3)
-	// -- nil for every connector saved before this field existed, and
-	// for any connector not using it.
+	// -- nil for every request saved before this field existed, and for
+	// any request not using it.
 	JOSE *JOSEConfig
-	// BuiltIn marks a seeded example connector (BuiltIn() below) --
+	// BuiltIn marks a seeded example request (BuiltIn() below) --
 	// purely informational, same as composition.Workflow.BuiltIn: it
 	// drives a "built-in" badge in the UI only, never gates Edit/Delete.
-	// A seeded example is an ordinary, fully-editable/deletable
-	// connector from the moment it exists (docs/SPEC.md §2.2's Update
-	// note -- the same Zapier/n8n-precedented pattern, applied here to
-	// Connectors instead of Workflows).
+	// A seeded example is an ordinary, fully-editable/deletable request
+	// from the moment it exists (docs/SPEC.md §2.2's Update note -- the
+	// same Zapier/n8n-precedented pattern, applied here to HTTPRequests
+	// instead of Workflows).
 	BuiltIn bool
 }
 
-// Validate checks a Connector is well-formed before it's persisted --
+// Validate checks an HTTPRequest is well-formed before it's persisted --
 // the same "never store an unconfigured/invalid value" discipline
 // internal/domain/composition's ResolveNodeDefaults already applies to
-// Nodes, applied here to Connectors.
-func Validate(c Connector) error {
-	if strings.TrimSpace(c.Label) == "" {
-		return fmt.Errorf("a connector needs a label")
+// Nodes, applied here to HTTPRequests.
+func Validate(r HTTPRequest) error {
+	if strings.TrimSpace(r.Label) == "" {
+		return fmt.Errorf("a request needs a label")
 	}
-	if c.Type != TypeHTTP {
-		return fmt.Errorf("unsupported connector type: %q (only %q is supported today)", c.Type, TypeHTTP)
+	if strings.TrimSpace(r.BaseURL) == "" {
+		return fmt.Errorf("a request needs a base URL")
 	}
-	if strings.TrimSpace(c.BaseURL) == "" {
-		return fmt.Errorf("a connector needs a base URL")
-	}
-	switch c.AuthType {
+	switch r.AuthType {
 	case AuthNone, AuthAPIKey, AuthBearer, AuthHMAC, AuthOAuth1, AuthOAuth1Vendor, AuthOAuth2, AuthQueryParam, AuthMTLS:
 	default:
-		return fmt.Errorf("unsupported auth type: %q", c.AuthType)
+		return fmt.Errorf("unsupported auth type: %q", r.AuthType)
 	}
-	if c.JOSE != nil && c.JOSE.Enabled && strings.TrimSpace(c.JOSE.RecipientPublicKeyPEM) == "" {
+	if r.JOSE != nil && r.JOSE.Enabled && strings.TrimSpace(r.JOSE.RecipientPublicKeyPEM) == "" {
 		return fmt.Errorf("JOSE encryption is enabled but no recipient public key is set")
 	}
 	return nil

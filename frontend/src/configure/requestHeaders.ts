@@ -1,6 +1,6 @@
-import type { HeaderRow } from './ConnectorForm'
+import type { HeaderRow } from './RequestForm'
 
-// Split out from ConnectorForm.tsx: two pure functions with no
+// Split out from RequestForm.tsx: two pure functions with no
 // component of their own break React Fast Refresh when exported
 // alongside a component from the same file (eslint's own
 // react-refresh/only-export-components rule caught this directly),

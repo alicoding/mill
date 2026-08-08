@@ -43,7 +43,7 @@ export function ListRuns(): $CancellablePromise<$models.RunSummary[] | null> {
  * RedriveRun forks runID from the given node's step, reusing every
  * earlier step's checkpointed output instead of re-executing it --
  * Mill's "fix forward" mechanism (docs/adr/0004's Update), most useful
- * after correcting a Connector/List/MCP Server's Configure-page setup
+ * after correcting an HTTPRequest/List/MCP Server's Configure-page setup
  * in between, since those resolve live at execution time.
  */
 export function RedriveRun(runID: string, fromNodeID: string): $CancellablePromise<$models.RunSummary> {

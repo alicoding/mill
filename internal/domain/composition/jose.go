@@ -8,7 +8,7 @@ import (
 
 	josepkg "github.com/go-jose/go-jose/v4"
 
-	"github.com/alicoding/mill/internal/domain/connector"
+	"github.com/alicoding/mill/internal/domain/httprequest"
 )
 
 // defaultJOSEAlgorithm/defaultJOSEContentEncryption are Mill's own
@@ -24,14 +24,14 @@ const (
 	defaultJOSEContentEncryption = "A256GCM"
 )
 
-func joseAlgorithm(conf *connector.JOSEConfig) josepkg.KeyAlgorithm {
+func joseAlgorithm(conf *httprequest.JOSEConfig) josepkg.KeyAlgorithm {
 	if conf.Algorithm != "" {
 		return josepkg.KeyAlgorithm(conf.Algorithm)
 	}
 	return josepkg.KeyAlgorithm(defaultJOSEAlgorithm)
 }
 
-func joseContentEncryption(conf *connector.JOSEConfig) josepkg.ContentEncryption {
+func joseContentEncryption(conf *httprequest.JOSEConfig) josepkg.ContentEncryption {
 	if conf.ContentEncryption != "" {
 		return josepkg.ContentEncryption(conf.ContentEncryption)
 	}
@@ -81,7 +81,7 @@ func parseRSAPrivateKeyPEM(pemStr string) (*rsa.PrivateKey, error) {
 
 // ApplyJOSEEncryption encrypts body into a JWE compact-serialized
 // string when conf enables it -- a no-op (body unchanged) for nil or
-// disabled config, so a connector with no JOSE config behaves exactly
+// disabled config, so a request with no JOSE config behaves exactly
 // as before this existed (same "strict superset" framing ADR-0007
 // Phase 3 already established for Attribute-binding). Called before
 // ApplyAuth in integration.go's nodeExec, so a signing AuthType
@@ -91,7 +91,7 @@ func parseRSAPrivateKeyPEM(pemStr string) (*rsa.PrivateKey, error) {
 // main, ADR-0013's test-the-draft-exactly-as-it-would-run RPC) can
 // reuse the identical encryption path a real workflow run goes
 // through, not a second, driftable copy.
-func ApplyJOSEEncryption(conf *connector.JOSEConfig, body string) (string, error) {
+func ApplyJOSEEncryption(conf *httprequest.JOSEConfig, body string) (string, error) {
 	if conf == nil || !conf.Enabled {
 		return body, nil
 	}
@@ -122,7 +122,7 @@ func ApplyJOSEEncryption(conf *connector.JOSEConfig, body string) (string, error
 // independent toggle since not every vendor encrypts its responses
 // back). Exported for the same TestConnectorOperation-parity reason as
 // ApplyJOSEEncryption above.
-func DecryptJOSEResponse(conf *connector.JOSEConfig, privateKeyPEM string, body string) (string, error) {
+func DecryptJOSEResponse(conf *httprequest.JOSEConfig, privateKeyPEM string, body string) (string, error) {
 	if conf == nil || !conf.DecryptResponse {
 		return body, nil
 	}

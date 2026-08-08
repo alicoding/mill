@@ -185,7 +185,7 @@ func ValidateGraph(nodes []Node, edges []Edge, attrs []AttributeDef) error {
 // that looks secret-shaped) into a workflow Attribute, since Attributes
 // are plain, DBOS-checkpointed values (persisted to SQLite in plaintext,
 // §7) with no secret-handling of their own. Lenient about anything it
-// can't resolve (unknown connector, unparseable spec, no matching
+// can't resolve (unknown request, unparseable spec, no matching
 // operation) -- those are separate, pre-existing failure modes with
 // their own error paths; this check only ever adds a rejection on top
 // of a graph that would otherwise be accepted, never papers over an
@@ -195,7 +195,7 @@ func validateOutputBindingSecrets(nodes []Node) error {
 		if n.NodeTypeID != "integration-http" || n.Config["outputBindings"] == "" {
 			continue
 		}
-		rc, err := lookupConnectorFn(n.Config["connectorId"])
+		rc, err := lookupHTTPRequestFn(n.Config["requestId"])
 		if err != nil || rc.OpenAPISpec == "" {
 			continue
 		}

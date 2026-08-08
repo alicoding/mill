@@ -5,7 +5,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/alicoding/mill/internal/domain/connector"
+	"github.com/alicoding/mill/internal/domain/httprequest"
 )
 
 const testOpenAPISpecWithParams = `{
@@ -30,7 +30,7 @@ const testOpenAPISpecWithParams = `{
   }
 }`
 
-func TestTestConnectorOperation_UsesDraftValues_NotAConnectorID(t *testing.T) {
+func TestTestHTTPRequestOperation_UsesDraftValues_NotARequestID(t *testing.T) {
 	var gotPath, gotQuery, gotBody string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotPath = r.URL.Path
@@ -44,16 +44,16 @@ func TestTestConnectorOperation_UsesDraftValues_NotAConnectorID(t *testing.T) {
 	defer srv.Close()
 
 	cfg, _ := newTestConfigureService(t)
-	result, err := cfg.TestConnectorOperation(TestConnectorRequest{
+	result, err := cfg.TestHTTPRequestOperation(TestHTTPRequestInput{
 		BaseURL:     srv.URL,
-		AuthType:    connector.AuthNone,
+		AuthType:    httprequest.AuthNone,
 		OpenAPISpec: testOpenAPISpecWithParams,
 		Path:        "/widgets/{id}",
 		Method:      http.MethodPost,
 		Values:      map[string]string{"id": "abc", "verbose": "true", "name": "widget-1"},
 	})
 	if err != nil {
-		t.Fatalf("TestConnectorOperation returned error: %v", err)
+		t.Fatalf("TestHTTPRequestOperation returned error: %v", err)
 	}
 	if gotPath != "/widgets/abc" {
 		t.Errorf("server received path %q, want /widgets/abc", gotPath)
@@ -72,7 +72,7 @@ func TestTestConnectorOperation_UsesDraftValues_NotAConnectorID(t *testing.T) {
 	}
 }
 
-func TestTestConnectorOperation_FallsBackToKeychainSecret_WhenSecretBlank(t *testing.T) {
+func TestTestHTTPRequestOperation_FallsBackToKeychainSecret_WhenSecretBlank(t *testing.T) {
 	var gotAuth string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotAuth = r.Header.Get("Authorization")
@@ -81,31 +81,31 @@ func TestTestConnectorOperation_FallsBackToKeychainSecret_WhenSecretBlank(t *tes
 	defer srv.Close()
 
 	cfg, _ := newTestConfigureService(t)
-	conn, err := cfg.CreateConnector("My API", connector.TypeHTTP, srv.URL, connector.AuthBearer, nil, testOpenAPISpec, nil, nil, "")
+	req, err := cfg.CreateHTTPRequest("My API", srv.URL, httprequest.AuthBearer, nil, testOpenAPISpec, nil, nil, "")
 	if err != nil {
-		t.Fatalf("CreateConnector returned error: %v", err)
+		t.Fatalf("CreateHTTPRequest returned error: %v", err)
 	}
-	if err := cfg.SetConnectorSecret(conn.ID, "stored-secret"); err != nil {
-		t.Fatalf("SetConnectorSecret returned error: %v", err)
+	if err := cfg.SetHTTPRequestSecret(req.ID, "stored-secret"); err != nil {
+		t.Fatalf("SetHTTPRequestSecret returned error: %v", err)
 	}
 
-	if _, err := cfg.TestConnectorOperation(TestConnectorRequest{
-		ConnectorID: conn.ID,
+	if _, err := cfg.TestHTTPRequestOperation(TestHTTPRequestInput{
+		RequestID: req.ID,
 		BaseURL:     srv.URL,
-		AuthType:    connector.AuthBearer,
+		AuthType:    httprequest.AuthBearer,
 		Secret:      "", // blank -- must fall back to the stored keychain secret
 		OpenAPISpec: testOpenAPISpec,
 		Path:        "/widgets",
 		Method:      http.MethodGet,
 	}); err != nil {
-		t.Fatalf("TestConnectorOperation returned error: %v", err)
+		t.Fatalf("TestHTTPRequestOperation returned error: %v", err)
 	}
 	if gotAuth != "Bearer stored-secret" {
 		t.Errorf("server received Authorization %q, want Bearer stored-secret", gotAuth)
 	}
 }
 
-func TestTestConnectorOperation_ExplicitSecretOverridesKeychain(t *testing.T) {
+func TestTestHTTPRequestOperation_ExplicitSecretOverridesKeychain(t *testing.T) {
 	var gotAuth string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotAuth = r.Header.Get("Authorization")
@@ -114,71 +114,71 @@ func TestTestConnectorOperation_ExplicitSecretOverridesKeychain(t *testing.T) {
 	defer srv.Close()
 
 	cfg, _ := newTestConfigureService(t)
-	conn, err := cfg.CreateConnector("My API", connector.TypeHTTP, srv.URL, connector.AuthBearer, nil, testOpenAPISpec, nil, nil, "")
+	req, err := cfg.CreateHTTPRequest("My API", srv.URL, httprequest.AuthBearer, nil, testOpenAPISpec, nil, nil, "")
 	if err != nil {
-		t.Fatalf("CreateConnector returned error: %v", err)
+		t.Fatalf("CreateHTTPRequest returned error: %v", err)
 	}
-	if err := cfg.SetConnectorSecret(conn.ID, "stored-secret"); err != nil {
-		t.Fatalf("SetConnectorSecret returned error: %v", err)
+	if err := cfg.SetHTTPRequestSecret(req.ID, "stored-secret"); err != nil {
+		t.Fatalf("SetHTTPRequestSecret returned error: %v", err)
 	}
 
-	if _, err := cfg.TestConnectorOperation(TestConnectorRequest{
-		ConnectorID: conn.ID,
+	if _, err := cfg.TestHTTPRequestOperation(TestHTTPRequestInput{
+		RequestID: req.ID,
 		BaseURL:     srv.URL,
-		AuthType:    connector.AuthBearer,
+		AuthType:    httprequest.AuthBearer,
 		Secret:      "typed-secret",
 		OpenAPISpec: testOpenAPISpec,
 		Path:        "/widgets",
 		Method:      http.MethodGet,
 	}); err != nil {
-		t.Fatalf("TestConnectorOperation returned error: %v", err)
+		t.Fatalf("TestHTTPRequestOperation returned error: %v", err)
 	}
 	if gotAuth != "Bearer typed-secret" {
 		t.Errorf("server received Authorization %q, want Bearer typed-secret (explicit Secret must win over keychain)", gotAuth)
 	}
 }
 
-func TestTestConnectorOperation_NeverPersistsTheSecret(t *testing.T) {
+func TestTestHTTPRequestOperation_NeverPersistsTheSecret(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}))
 	defer srv.Close()
 
 	cfg, _ := newTestConfigureService(t)
-	conn, err := cfg.CreateConnector("My API", connector.TypeHTTP, srv.URL, connector.AuthBearer, nil, testOpenAPISpec, nil, nil, "")
+	req, err := cfg.CreateHTTPRequest("My API", srv.URL, httprequest.AuthBearer, nil, testOpenAPISpec, nil, nil, "")
 	if err != nil {
-		t.Fatalf("CreateConnector returned error: %v", err)
+		t.Fatalf("CreateHTTPRequest returned error: %v", err)
 	}
-	if _, err := cfg.TestConnectorOperation(TestConnectorRequest{
-		ConnectorID: conn.ID,
+	if _, err := cfg.TestHTTPRequestOperation(TestHTTPRequestInput{
+		RequestID: req.ID,
 		BaseURL:     srv.URL,
-		AuthType:    connector.AuthBearer,
+		AuthType:    httprequest.AuthBearer,
 		Secret:      "never-should-be-stored",
 		OpenAPISpec: testOpenAPISpec,
 		Path:        "/widgets",
 		Method:      http.MethodGet,
 	}); err != nil {
-		t.Fatalf("TestConnectorOperation returned error: %v", err)
+		t.Fatalf("TestHTTPRequestOperation returned error: %v", err)
 	}
-	if _, err := cfg.resolveConnector(conn.ID); err == nil {
-		t.Error("resolveConnector succeeded after only a test call (no SetConnectorSecret) -- TestConnectorOperation must not persist the secret")
+	if _, err := cfg.resolveHTTPRequest(req.ID); err == nil {
+		t.Error("resolveHTTPRequest succeeded after only a test call (no SetHTTPRequestSecret) -- TestHTTPRequestOperation must not persist the secret")
 	}
 }
 
-func TestTestConnectorOperation_InvalidSpec_Rejected(t *testing.T) {
+func TestTestHTTPRequestOperation_InvalidSpec_Rejected(t *testing.T) {
 	cfg, _ := newTestConfigureService(t)
-	if _, err := cfg.TestConnectorOperation(TestConnectorRequest{
+	if _, err := cfg.TestHTTPRequestOperation(TestHTTPRequestInput{
 		BaseURL: "https://example.com", OpenAPISpec: "not a spec", Path: "/x", Method: http.MethodGet,
 	}); err == nil {
-		t.Fatal("TestConnectorOperation with an invalid OpenAPISpec returned nil error, want an error")
+		t.Fatal("TestHTTPRequestOperation with an invalid OpenAPISpec returned nil error, want an error")
 	}
 }
 
-func TestTestConnectorOperation_UnknownOperation_Rejected(t *testing.T) {
+func TestTestHTTPRequestOperation_UnknownOperation_Rejected(t *testing.T) {
 	cfg, _ := newTestConfigureService(t)
-	if _, err := cfg.TestConnectorOperation(TestConnectorRequest{
+	if _, err := cfg.TestHTTPRequestOperation(TestHTTPRequestInput{
 		BaseURL: "https://example.com", OpenAPISpec: testOpenAPISpec, Path: "/nope", Method: http.MethodGet,
 	}); err == nil {
-		t.Fatal("TestConnectorOperation on an operation the spec doesn't declare returned nil error, want an error")
+		t.Fatal("TestHTTPRequestOperation on an operation the spec doesn't declare returned nil error, want an error")
 	}
 }

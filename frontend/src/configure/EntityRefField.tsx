@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Dialog, FormControl, Select, TextInput } from '@primer/react'
 import { CompositionService, ConfigureService } from '../../bindings/github.com/alicoding/mill'
-import { AuthType } from '../../bindings/github.com/alicoding/mill/internal/domain/connector/models'
+import { AuthType } from '../../bindings/github.com/alicoding/mill/internal/domain/httprequest/models'
 import type { Workflow } from '../../bindings/github.com/alicoding/mill/internal/domain/composition/models'
 
 // A workflow is only a valid child-workflow target if it's rooted in
@@ -16,11 +16,12 @@ function isCallableWorkflow(wf: Workflow): boolean {
 }
 
 // docs/adr/0009: a live picker for a FieldText field whose value is the
-// ID of a Configure-authored entity (connectorId/listId/mcpServerId),
+// ID of a Configure-authored entity (requestId/listId/mcpServerId),
 // replacing the previous "paste the ID by hand" gap. One generic
 // component parameterized by RefKind rather than three near-duplicates
 // -- the same "one mechanism, parameterized" shape RunKind/TypedField
-// already established this session.
+// already established this session. RefKind "request" renamed from
+// "connector" by ADR-0016.
 const CREATE_NEW = '__create_new__'
 
 interface Entity {
@@ -30,8 +31,8 @@ interface Entity {
 
 async function fetchEntities(refKind: string): Promise<Entity[]> {
   switch (refKind) {
-    case 'connector':
-      return (await ConfigureService.Connectors()) ?? []
+    case 'request':
+      return (await ConfigureService.HTTPRequests()) ?? []
     case 'list':
       return (await ConfigureService.Lists()) ?? []
     case 'mcpserver':
@@ -44,7 +45,7 @@ async function fetchEntities(refKind: string): Promise<Entity[]> {
 }
 
 const KIND_NOUN: Record<string, string> = {
-  connector: 'connector',
+  request: 'request',
   list: 'list',
   mcpserver: 'MCP server',
   workflow: 'callable workflow',
@@ -53,7 +54,7 @@ const KIND_NOUN: Record<string, string> = {
 // docs/adr/0010 §2: no quick-create for a workflow reference -- creating
 // one is Composition's own existing "New workflow" flow, not a
 // lightweight sub-form; the picker only lists what already exists.
-const QUICK_CREATABLE_KINDS = new Set(['connector', 'list', 'mcpserver'])
+const QUICK_CREATABLE_KINDS = new Set(['request', 'list', 'mcpserver'])
 
 export function EntityRefField({ refKind, value, onChange }: { refKind: string; value: string; onChange: (id: string) => void }) {
   const [entities, setEntities] = useState<Entity[] | null>(null)
@@ -118,7 +119,7 @@ export function EntityRefField({ refKind, value, onChange }: { refKind: string; 
 // (secret, OpenAPI spec, entries, args) for refining it afterward.
 function QuickCreateDialog({ refKind, onCancel, onCreated }: { refKind: string; onCancel: () => void; onCreated: (id: string) => void }) {
   const [label, setLabel] = useState('')
-  const [secondary, setSecondary] = useState('') // Base URL (connector) or Command (mcpserver); unused for list
+  const [secondary, setSecondary] = useState('') // Base URL (request) or Command (mcpserver); unused for list
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
@@ -128,9 +129,9 @@ function QuickCreateDialog({ refKind, onCancel, onCreated }: { refKind: string; 
     try {
       let id: string
       switch (refKind) {
-        case 'connector': {
-          const c = await ConfigureService.CreateConnector(label, 'http', secondary, AuthType.AuthNone, null, '', null, null, '')
-          id = c.ID
+        case 'request': {
+          const r = await ConfigureService.CreateHTTPRequest(label, secondary, AuthType.AuthNone, null, '', null, null, '')
+          id = r.ID
           break
         }
         case 'list': {
@@ -154,7 +155,7 @@ function QuickCreateDialog({ refKind, onCancel, onCreated }: { refKind: string; 
     }
   }
 
-  const secondaryLabel = refKind === 'connector' ? 'Base URL' : refKind === 'mcpserver' ? 'Command' : null
+  const secondaryLabel = refKind === 'request' ? 'Base URL' : refKind === 'mcpserver' ? 'Command' : null
 
   return (
     <Dialog

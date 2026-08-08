@@ -2,7 +2,7 @@ import Papa from 'papaparse'
 
 // ADR-0011: the manual/CSV schema-authoring modes are alternate UIs
 // over the SAME underlying representation ADR-0007 already locked
-// (OpenAPI 3.x, stored verbatim in Connector.OpenAPISpec) -- not a
+// (OpenAPI 3.x, stored verbatim in HTTPRequest.OpenAPISpec) -- not a
 // second schema format. Both modes build a ManualOperation[] in memory
 // and synthesizeOpenAPISpec turns that into the exact JSON string the
 // existing "paste OpenAPI spec" textarea already accepts, so the
@@ -131,7 +131,7 @@ export function synthesizeOpenAPISpec(operations: ManualOperation[]): string {
       },
     }
   }
-  return JSON.stringify({ openapi: '3.0.3', info: { title: 'Mill connector', version: '1.0.0' }, paths }, null, 2)
+  return JSON.stringify({ openapi: '3.0.3', info: { title: 'Mill request', version: '1.0.0' }, paths }, null, 2)
 }
 
 // CSV columns: path,method,direction,name,in,type,required,secret,

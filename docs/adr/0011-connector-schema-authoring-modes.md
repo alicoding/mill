@@ -3,6 +3,8 @@
 ## Status
 accepted
 
+> **Naming note (ADR-0016):** this ADR predates the Connector -> HTTPRequest rename and is left as written -- "Connector"/"connector" below refers to today's `HTTPRequest` entity.
+
 ## Context
 
 Raised directly by the user, testing the live Configure → Integration

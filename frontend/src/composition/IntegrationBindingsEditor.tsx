@@ -5,7 +5,7 @@ import type { Field, Operation } from '../../bindings/github.com/alicoding/mill/
 import type { AttributeDef } from '../../bindings/github.com/alicoding/mill/internal/domain/composition/models'
 import { LiteralOrAttributeField } from '../shared/LiteralOrAttributeField'
 
-// ADR-0007 Phase 3: once a selected connector has an OpenAPI spec and
+// ADR-0007 Phase 3: once a selected request has an OpenAPI spec and
 // path+method match one of its declared operations, this renders a
 // binding row per declared input/output field instead of leaving
 // integration-http's literal bodyTemplate as the only option. Silently
@@ -25,9 +25,9 @@ function parseJSON(raw: string): Record<string, string> {
 }
 
 export function IntegrationBindingsEditor({
-  connectorId, path, method, attrs, inputBindingsRaw, outputBindingsRaw, onChangeInputBindings, onChangeOutputBindings,
+  requestId, path, method, attrs, inputBindingsRaw, outputBindingsRaw, onChangeInputBindings, onChangeOutputBindings,
 }: {
-  connectorId: string
+  requestId: string
   path: string
   method: string
   attrs: AttributeDef[]
@@ -39,14 +39,14 @@ export function IntegrationBindingsEditor({
   const [operation, setOperation] = useState<Operation | null | 'none'>(null)
 
   useEffect(() => {
-    if (!connectorId || !path || !method) {
+    if (!requestId || !path || !method) {
       setOperation('none')
       return
     }
-    ConfigureService.ConnectorOperationFields(connectorId, path, method)
+    ConfigureService.HTTPRequestOperationFields(requestId, path, method)
       .then(setOperation)
       .catch(() => setOperation('none'))
-  }, [connectorId, path, method])
+  }, [requestId, path, method])
 
   if (operation === null || operation === 'none') return null
   const inputFields = operation.InputFields ?? []

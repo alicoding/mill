@@ -9,14 +9,14 @@ import { test, expect } from '@playwright/test'
 // docs/SPEC.md §3.5). Cleans up what it creates, per
 // .claude/rules/testing.md.
 
-function connectorRow(page: import('@playwright/test').Page, label: string) {
-  return page.getByTestId('connector-row').filter({ has: page.getByText(label, { exact: true }) })
+function requestRow(page: import('@playwright/test').Page, label: string) {
+  return page.getByTestId('request-row').filter({ has: page.getByText(label, { exact: true }) })
 }
 
-async function deleteConnector(page: import('@playwright/test').Page, label: string) {
-  await page.getByRole('tab', { name: 'Connectors' }).click()
-  await connectorRow(page, label).getByRole('button', { name: `Delete ${label}` }).click()
-  await expect(connectorRow(page, label)).toHaveCount(0)
+async function deleteRequest(page: import('@playwright/test').Page, label: string) {
+  await page.getByRole('tab', { name: 'Requests' }).click()
+  await requestRow(page, label).getByRole('button', { name: `Delete ${label}` }).click()
+  await expect(requestRow(page, label)).toHaveCount(0)
 }
 
 const fakePublicKeyPEM = '-----BEGIN PUBLIC KEY-----\nfake-test-key-not-real-crypto\n-----END PUBLIC KEY-----'
@@ -26,8 +26,8 @@ test('JOSE encryption toggle, recipient public key, and decrypt-response persist
   await page.goto('/')
   await page.getByRole('link', { name: 'Configure' }).click()
 
-  await page.getByTestId('new-connector').click()
-  await page.getByLabel('Label').fill('JOSE Connector')
+  await page.getByTestId('new-request').click()
+  await page.getByLabel('Label').fill('JOSE Request')
   await page.getByLabel('Base URL').fill('https://api.example.com')
 
   // The JOSE section's config fields are hidden until Enable is checked.
@@ -43,13 +43,13 @@ test('JOSE encryption toggle, recipient public key, and decrypt-response persist
   await expect(page.getByTestId('jose-private-key')).toBeVisible()
   await page.getByTestId('jose-private-key').fill(fakePrivateKeyPEM)
 
-  await page.getByRole('button', { name: 'Save connector' }).click()
+  await page.getByRole('button', { name: 'Save request' }).click()
 
-  const row = connectorRow(page, 'JOSE Connector')
+  const row = requestRow(page, 'JOSE Request')
   await expect(row).toBeVisible()
 
-  await connectorRow(page, 'JOSE Connector').getByText('JOSE Connector', { exact: true }).click()
-  await expect(page.getByTestId('connector-summary')).toBeVisible()
+  await requestRow(page, 'JOSE Request').getByText('JOSE Request', { exact: true }).click()
+  await expect(page.getByTestId('request-summary')).toBeVisible()
   await expect(page.getByText('Enabled (decrypts responses)')).toBeVisible()
 
   // Reopening Edit reloads the non-secret config -- the private key
@@ -59,15 +59,15 @@ test('JOSE encryption toggle, recipient public key, and decrypt-response persist
   await expect(page.getByTestId('jose-private-key')).toHaveValue('')
 
   await page.getByRole('button', { name: 'Cancel' }).click()
-  await deleteConnector(page, 'JOSE Connector')
+  await deleteRequest(page, 'JOSE Request')
 })
 
 test('JOSE encryption is disabled by default, and toggling it off after enabling hides its fields again', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Configure' }).click()
 
-  await page.getByTestId('new-connector').click()
-  await page.getByLabel('Label').fill('Plain Connector')
+  await page.getByTestId('new-request').click()
+  await page.getByLabel('Label').fill('Plain Request')
   await page.getByLabel('Base URL').fill('https://api.example.com')
 
   await expect(page.getByTestId('jose-recipient-public-key')).toHaveCount(0)
@@ -76,11 +76,11 @@ test('JOSE encryption is disabled by default, and toggling it off after enabling
   await page.getByTestId('jose-enabled-checkbox').click()
   await expect(page.getByTestId('jose-recipient-public-key')).toHaveCount(0)
 
-  await page.getByRole('button', { name: 'Save connector' }).click()
-  await expect(connectorRow(page, 'Plain Connector')).toBeVisible()
+  await page.getByRole('button', { name: 'Save request' }).click()
+  await expect(requestRow(page, 'Plain Request')).toBeVisible()
 
-  await connectorRow(page, 'Plain Connector').getByText('Plain Connector', { exact: true }).click()
-  await expect(page.getByTestId('connector-summary').getByText('Disabled')).toBeVisible()
+  await requestRow(page, 'Plain Request').getByText('Plain Request', { exact: true }).click()
+  await expect(page.getByTestId('request-summary').getByText('Disabled')).toBeVisible()
 
-  await deleteConnector(page, 'Plain Connector')
+  await deleteRequest(page, 'Plain Request')
 })

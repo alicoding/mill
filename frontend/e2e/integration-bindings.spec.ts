@@ -1,13 +1,13 @@
 import { test, expect } from '@playwright/test'
 
-// Exercises ADR-0007 Phase 3: once integration-http's connectorId/path/
-// method match a declared operation on the connector's OpenAPI spec, the
+// Exercises ADR-0007 Phase 3: once integration-http's requestId/path/
+// method match a declared operation on the request's OpenAPI spec, the
 // canvas Inspector renders a real binding editor (IntegrationBindingsEditor.tsx)
 // instead of leaving bodyTemplate as the only option -- over real Go
 // bindings (Wails3 server mode), not mocks.
 //
-// Deletes both the workflow and the connector it creates -- same
-// shared-settings-file accumulation risk configure-integration.spec.ts's
+// Deletes both the workflow and the request it creates -- same
+// shared-settings-file accumulation risk configure-requests.spec.ts's
 // own header comment documents.
 
 const bindingSpec = JSON.stringify({
@@ -41,8 +41,8 @@ function activePanel(page: import('@playwright/test').Page) {
   return page.locator('[role="tabpanel"]:not([hidden])')
 }
 
-function connectorRow(page: import('@playwright/test').Page, label: string) {
-  return page.getByTestId('connector-row').filter({ has: page.getByText(label, { exact: true }) })
+function requestRow(page: import('@playwright/test').Page, label: string) {
+  return page.getByTestId('request-row').filter({ has: page.getByText(label, { exact: true }) })
 }
 
 async function dragPaletteItemToCanvas(page: import('@playwright/test').Page, nodeTypeID: string) {
@@ -71,12 +71,12 @@ async function deleteStarterNode(page: import('@playwright/test').Page) {
 test('Matching an Integration node to a declared operation shows a binding editor with a secret field guarded', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Configure' }).click()
-  await page.getByTestId('new-connector').click()
-  await page.getByLabel('Label').fill('E2E bindings connector')
+  await page.getByTestId('new-request').click()
+  await page.getByLabel('Label').fill('E2E bindings request')
   await page.getByLabel('Base URL').fill('https://api.example.com')
-  await page.getByTestId('connector-openapi-spec').fill(bindingSpec)
-  await page.getByRole('button', { name: 'Save connector' }).click()
-  await expect(connectorRow(page, 'E2E bindings connector')).toBeVisible()
+  await page.getByTestId('request-openapi-spec').fill(bindingSpec)
+  await page.getByRole('button', { name: 'Save request' }).click()
+  await expect(requestRow(page, 'E2E bindings request')).toBeVisible()
 
   await page.getByRole('link', { name: 'Composition' }).click()
   await page.getByTestId('new-workflow').click()
@@ -86,7 +86,7 @@ test('Matching an Integration node to a declared operation shows a binding edito
   await activePanel(page).locator('.react-flow__node').click()
 
   const inspector = activePanel(page).getByTestId('composition-inspector')
-  await inspector.getByTestId('entity-ref-field').selectOption({ label: 'E2E bindings connector' })
+  await inspector.getByTestId('entity-ref-field').selectOption({ label: 'E2E bindings request' })
 
   const configFields = inspector.getByTestId('canvas-config-field')
   await configFields.nth(0).fill('/widgets/{id}') // path
@@ -114,6 +114,6 @@ test('Matching an Integration node to a declared operation shows a binding edito
   await expect(workflowRow(page, 'E2E bindings workflow')).toHaveCount(0)
 
   await page.getByRole('link', { name: 'Configure' }).click()
-  await connectorRow(page, 'E2E bindings connector').first().getByRole('button', { name: 'Delete E2E bindings connector' }).click()
-  await expect(connectorRow(page, 'E2E bindings connector')).toHaveCount(0)
+  await requestRow(page, 'E2E bindings request').first().getByRole('button', { name: 'Delete E2E bindings request' }).click()
+  await expect(requestRow(page, 'E2E bindings request')).toHaveCount(0)
 })

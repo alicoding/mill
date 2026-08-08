@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test'
 
 // Exercises docs/SPEC.md §4's Update: seven seeded, working example
-// connectors (one per real implemented AuthType) ship on first launch,
+// requests (one per real implemented AuthType) ship on first launch,
 // same standing practice CompositionService.restore() already
 // established for Workflows -- fully visible, editable, deletable, not
 // a protected specimen. The actual live-network round trip for each
@@ -16,9 +16,9 @@ import { test, expect } from '@playwright/test'
 // Deletes what it creates/uses is moot here -- these are pre-seeded,
 // not created by this spec -- but the one test that deletes a built-in
 // restores nothing afterward deliberately: the point of "delatable" is
-// that it stays gone, same as any other connector a user deletes.
+// that it stays gone, same as any other request a user deletes.
 
-test('Seeded example connectors are present, built-in-badged, and each declares an honest Description', async ({ page }) => {
+test('Seeded example requests are present, built-in-badged, and each declares an honest Description', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Configure' }).click()
 
@@ -33,7 +33,7 @@ test('Seeded example connectors are present, built-in-badged, and each declares 
   ]
 
   for (const label of exampleLabels) {
-    const row = page.getByTestId('connector-row').filter({ has: page.getByText(label, { exact: true }) })
+    const row = page.getByTestId('request-row').filter({ has: page.getByText(label, { exact: true }) })
     await expect(row).toBeVisible()
     await expect(row.getByText('built-in', { exact: true })).toBeVisible()
     // Every seeded example has a non-empty Description shown in the list.
@@ -46,10 +46,10 @@ test('A seeded example opens its real summary view with a built-in badge and hon
   await page.getByRole('link', { name: 'Configure' }).click()
 
   const label = 'Example: OAuth 1.0a (postman-echo.com)'
-  const row = page.getByTestId('connector-row').filter({ has: page.getByText(label, { exact: true }) })
+  const row = page.getByTestId('request-row').filter({ has: page.getByText(label, { exact: true }) })
   await row.getByText(label, { exact: true }).click()
 
-  const summary = page.getByTestId('connector-summary')
+  const summary = page.getByTestId('request-summary')
   await expect(summary).toBeVisible()
   await expect(summary.getByText('built-in', { exact: true })).toBeVisible()
   await expect(summary.getByText(/independently confirmed live/)).toBeVisible()
@@ -61,10 +61,10 @@ test('The OAuth2 example is honest about needing the user\'s own credentials', a
   await page.getByRole('link', { name: 'Configure' }).click()
 
   const label = 'Example: OAuth 2.0 client credentials (Spotify Web API)'
-  const row = page.getByTestId('connector-row').filter({ has: page.getByText(label, { exact: true }) })
+  const row = page.getByTestId('request-row').filter({ has: page.getByText(label, { exact: true }) })
   await row.getByText(label, { exact: true }).click()
 
-  const summary = page.getByTestId('connector-summary')
+  const summary = page.getByTestId('request-summary')
   await expect(summary.getByText(/bring your own credentials|Register a free Spotify developer app/)).toBeVisible()
 })
 
@@ -73,7 +73,7 @@ test('The OAuth2 example is honest about needing the user\'s own credentials', a
 // (playwright.config.ts's MILL_SETTINGS_PATH persists across every
 // spec file and every repeated run, .claude/rules/testing.md), which
 // would break the presence-check test above on the suite's next run.
-// Instead: Duplicate (an ordinary connector action every connector
+// Instead: Duplicate (an ordinary request action every request
 // already has, ADR-0013 §7) proves "clone" concretely, and the
 // duplicate -- not the original -- is what gets deleted, proving
 // "delete" without destroying the shared fixture.
@@ -83,13 +83,13 @@ test('A seeded example can be cloned and the clone deleted, without disturbing t
 
   const label = 'Example: Query-param API key (httpbin.org)'
   const cloneLabel = `${label} copy`
-  const row = page.getByTestId('connector-row').filter({ has: page.getByText(label, { exact: true }) })
+  const row = page.getByTestId('request-row').filter({ has: page.getByText(label, { exact: true }) })
   await expect(row).toBeVisible()
 
   // Editable: opens the real edit form, pre-filled, same as any
-  // user-created connector -- no BuiltIn-gated read-only mode.
+  // user-created request -- no BuiltIn-gated read-only mode.
   await row.getByText(label, { exact: true }).click()
-  const summary = page.getByTestId('connector-summary')
+  const summary = page.getByTestId('request-summary')
   await expect(summary).toBeVisible()
   await page.getByTestId('summary-edit').click()
   await expect(page.getByLabel('Label')).toHaveValue(label)
@@ -97,15 +97,15 @@ test('A seeded example can be cloned and the clone deleted, without disturbing t
   await page.getByRole('button', { name: 'Cancel' }).click()
 
   // Clone: Duplicate (docs/adr/0014: lives on the summary view, not the
-  // list row) pre-fills a new, unsaved connector -- save it, confirm it
+  // list row) pre-fills a new, unsaved request -- save it, confirm it
   // landed as its own real row, not built-in.
   await row.getByText(label, { exact: true }).click()
-  await expect(page.getByTestId('connector-summary')).toBeVisible()
+  await expect(page.getByTestId('request-summary')).toBeVisible()
   await page.getByRole('button', { name: 'Duplicate' }).click()
   await expect(page.getByLabel('Label')).toHaveValue(cloneLabel)
-  await page.getByRole('button', { name: 'Save connector' }).click()
+  await page.getByRole('button', { name: 'Save request' }).click()
 
-  const cloneRow = page.getByTestId('connector-row').filter({ has: page.getByText(cloneLabel, { exact: true }) })
+  const cloneRow = page.getByTestId('request-row').filter({ has: page.getByText(cloneLabel, { exact: true }) })
   await expect(cloneRow).toBeVisible()
   await expect(cloneRow.getByText('built-in', { exact: true })).toHaveCount(0)
 

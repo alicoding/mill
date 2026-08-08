@@ -7,8 +7,8 @@ export {
 
 export type {
     AuthConfig,
-    Connector,
     HMACConfig,
+    HTTPRequest,
     JOSEConfig,
     OAuth1Config,
     OAuth2Config

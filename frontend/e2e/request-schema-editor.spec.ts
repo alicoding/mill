@@ -1,33 +1,33 @@
 import { test, expect } from '@playwright/test'
 
-// Exercises ADR-0011's sectioned Connector form + Manual schema editor
+// Exercises ADR-0011's sectioned Request form + Manual schema editor
 // end-to-end: authoring an operation's output field (with an alias and
 // a nested extractPath) via the visual table, saving it, and confirming
 // the real Go backend (synthesizeOpenAPISpec -> ConfigureService.
-// CreateConnector -> openapispec.Parse -> ConnectorOperationFields)
+// CreateHTTPRequest -> openapispec.Parse -> HTTPRequestOperationFields)
 // round-trips the alias/path correctly -- over real Go bindings (Wails3
 // server mode), not mocks.
 
-function connectorRow(page: import('@playwright/test').Page, label: string) {
-  return page.getByTestId('connector-row').filter({ has: page.getByText(label, { exact: true }) })
+function requestRow(page: import('@playwright/test').Page, label: string) {
+  return page.getByTestId('request-row').filter({ has: page.getByText(label, { exact: true }) })
 }
 
 // docs/adr/0014: the list is its own pinned tab now -- switch back to
 // it first, since a still-open view/edit tab leaves the list panel
 // `hidden` (Primer's TabPanel never unmounts, just toggles `hidden`),
 // and a hidden element isn't clickable.
-async function deleteConnector(page: import('@playwright/test').Page, label: string) {
-  await page.getByRole('tab', { name: 'Connectors' }).click()
-  await connectorRow(page, label).getByRole('button', { name: `Delete ${label}` }).click()
-  await expect(connectorRow(page, label)).toHaveCount(0)
+async function deleteRequest(page: import('@playwright/test').Page, label: string) {
+  await page.getByRole('tab', { name: 'Requests' }).click()
+  await requestRow(page, label).getByRole('button', { name: `Delete ${label}` }).click()
+  await expect(requestRow(page, label)).toHaveCount(0)
 }
 
 test('Authoring a schema via the Manual editor round-trips alias/path through the real backend', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Configure' }).click()
 
-  await page.getByTestId('new-connector').click()
-  await page.getByLabel('Label').fill('Manual Schema Connector')
+  await page.getByTestId('new-request').click()
+  await page.getByLabel('Label').fill('Manual Schema Request')
   await page.getByLabel('Base URL').fill('https://api.example.com')
 
   await page.getByRole('button', { name: 'Manual editor' }).click()
@@ -46,15 +46,15 @@ test('Authoring a schema via the Manual editor round-trips alias/path through th
   await outputRow.getByLabel('Alias').fill('widgetName')
   await outputRow.getByLabel('Extract path').fill('data.name')
 
-  await page.getByRole('button', { name: 'Save connector' }).click()
+  await page.getByRole('button', { name: 'Save request' }).click()
 
-  const row = connectorRow(page, 'Manual Schema Connector')
+  const row = requestRow(page, 'Manual Schema Request')
   await expect(row).toBeVisible()
 
   // docs/adr/0014: the declared schema is discoverable from the
   // read-only summary view, not an inline row expansion.
-  await row.getByText('Manual Schema Connector', { exact: true }).click()
-  await expect(page.getByTestId('connector-summary')).toBeVisible()
+  await row.getByText('Manual Schema Request', { exact: true }).click()
+  await expect(page.getByTestId('request-summary')).toBeVisible()
   // Scoped to the visible tabpanel -- Primer's TabPanel keeps every
   // panel mounted (toggles `hidden`, never unmounts), so an unscoped
   // getByText would also match Input parameters' and Testing's own
@@ -67,5 +67,5 @@ test('Authoring a schema via the Manual editor round-trips alias/path through th
   await expect(attrPanel.getByText('widgetName (n)')).toBeVisible()
   await expect(attrPanel.getByText('path: data.name')).toBeVisible()
 
-  await deleteConnector(page, 'Manual Schema Connector')
+  await deleteRequest(page, 'Manual Schema Request')
 })

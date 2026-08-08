@@ -202,7 +202,7 @@ export function NodeInspector({ node, attrs, nodeType, sameKindNodeTypes, hasWor
 
       {node.data.nodeTypeID === 'integration-http' && (
         <IntegrationBindingsEditor
-          connectorId={node.data.config.connectorId ?? ''}
+          requestId={node.data.config.requestId ?? ''}
           path={node.data.config.path ?? ''}
           method={node.data.config.method ?? ''}
           attrs={attrs}

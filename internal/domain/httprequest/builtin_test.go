@@ -1,27 +1,27 @@
-package connector
+package httprequest
 
 import (
 	"encoding/json"
 	"testing"
 )
 
-// docs/SPEC.md §4's Update: every seeded example connector must itself
-// be a well-formed Connector (the same "never store an unconfigured/
+// docs/SPEC.md §4's Update: every seeded example request must itself
+// be a well-formed HTTPRequest (the same "never store an unconfigured/
 // invalid value" discipline Validate already enforces for user-created
 // ones) -- a broken built-in would silently ship as a bad first
 // impression, not caught by any compiler check.
-func TestBuiltIn_EveryConnectorIsValid(t *testing.T) {
+func TestBuiltIn_EveryRequestIsValid(t *testing.T) {
 	for _, c := range BuiltIn() {
 		if err := Validate(c); err != nil {
-			t.Errorf("BuiltIn() connector %q failed Validate: %v", c.ID, err)
+			t.Errorf("BuiltIn() request %q failed Validate: %v", c.ID, err)
 		}
 	}
 }
 
-func TestBuiltIn_EveryConnectorIsMarkedBuiltIn(t *testing.T) {
+func TestBuiltIn_EveryRequestIsMarkedBuiltIn(t *testing.T) {
 	for _, c := range BuiltIn() {
 		if !c.BuiltIn {
-			t.Errorf("BuiltIn() connector %q has BuiltIn=false, want true", c.ID)
+			t.Errorf("BuiltIn() request %q has BuiltIn=false, want true", c.ID)
 		}
 	}
 }
@@ -45,7 +45,7 @@ func TestBuiltIn_EveryOpenAPISpecIsValidJSON(t *testing.T) {
 	for _, c := range BuiltIn() {
 		var v any
 		if err := json.Unmarshal([]byte(c.OpenAPISpec), &v); err != nil {
-			t.Errorf("BuiltIn() connector %q has invalid JSON OpenAPISpec: %v", c.ID, err)
+			t.Errorf("BuiltIn() request %q has invalid JSON OpenAPISpec: %v", c.ID, err)
 		}
 	}
 }
@@ -57,7 +57,7 @@ func TestBuiltIn_EveryOpenAPISpecIsValidJSON(t *testing.T) {
 func TestBuiltIn_NoStubAuthTypeIsDemonstrated(t *testing.T) {
 	for _, c := range BuiltIn() {
 		if c.AuthType == AuthOAuth1Vendor || c.AuthType == AuthMTLS {
-			t.Errorf("BuiltIn() connector %q uses stub AuthType %q, which always fails -- not a working example", c.ID, c.AuthType)
+			t.Errorf("BuiltIn() request %q uses stub AuthType %q, which always fails -- not a working example", c.ID, c.AuthType)
 		}
 	}
 }
@@ -70,7 +70,7 @@ func TestBuiltIn_NoStubAuthTypeIsDemonstrated(t *testing.T) {
 func TestBuiltIn_OAuth2Example_HasNoClientIDPreFilled(t *testing.T) {
 	for _, c := range BuiltIn() {
 		if c.AuthType == AuthOAuth2 && c.Auth != nil && c.Auth.OAuth2 != nil && c.Auth.OAuth2.ClientID != "" {
-			t.Errorf("BuiltIn() OAuth2 connector %q has a pre-filled ClientID, want empty (bring-your-own-credentials by design)", c.ID)
+			t.Errorf("BuiltIn() OAuth2 request %q has a pre-filled ClientID, want empty (bring-your-own-credentials by design)", c.ID)
 		}
 	}
 }

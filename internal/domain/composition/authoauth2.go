@@ -5,7 +5,7 @@ import (
 	"net/url"
 
 	"github.com/alicoding/mill/internal/adapters/oauth2client"
-	"github.com/alicoding/mill/internal/domain/connector"
+	"github.com/alicoding/mill/internal/domain/httprequest"
 )
 
 // AuthOAuth2 implements the client_credentials grant (ADR-0015) via
@@ -21,8 +21,8 @@ import (
 // anything, an honest gap rather than a silently-ignored setting
 // pretending to work.
 func init() {
-	RegisterAuthStrategy(connector.AuthOAuth2, func(rc ResolvedConnector, method, path string, headers map[string]string, query url.Values, body string) error {
-		var cfg connector.OAuth2Config
+	RegisterAuthStrategy(httprequest.AuthOAuth2, func(rc ResolvedHTTPRequest, method, path string, headers map[string]string, query url.Values, body string) error {
+		var cfg httprequest.OAuth2Config
 		if rc.Auth != nil && rc.Auth.OAuth2 != nil {
 			cfg = *rc.Auth.OAuth2
 		}

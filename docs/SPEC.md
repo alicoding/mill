@@ -3398,6 +3398,67 @@ this pass.
   operation and render it as static text (`Label`) in that case, falling
   back to the `Select` only when a connector genuinely declares more
   than one operation. `LOCKED`.
+- **Update — the entity is renamed `Connector` → `HTTPRequest`, and
+  Method is now an open field, [ADR-0016](adr/0016-http-request-entity-and-open-method.md),
+  Phase A.** Prompted directly: the operation picker fix above still
+  left Method undiscoverable by default (buried behind "Manual editor,"
+  a mode switch away from the default "Paste OpenAPI"), and the user
+  asked to look at Postman/Bruno's own request model before proposing
+  another patch. Researched Postman, Bruno (`.bru`, MIT, git-friendly —
+  the closest existing architectural precedent to Mill of anything
+  surveyed), and **RFC 10008** (the HTTP `QUERY` method — safe +
+  idempotent like `GET` but carries a request body like `POST`,
+  published as an RFC in June 2026 after an ~11-year draft) before
+  changing anything. Both tools converge on the same two findings:
+  Method is never a closed enum (Bruno's own `http` block with `method:
+  CUSTOM` is an explicit open escape hatch), and Params/Body/Auth are
+  peers on one request object, not gated behind a schema-authoring
+  mode. Decided directly with the user, with the real blast radius
+  sized first (33 Go files, 13 Go test files, 13 TS files, 10 e2e
+  specs, 11 ADRs referencing "connector") rather than started blind:
+  **"Connector" is retired for the HTTP case and reserved as this
+  section's own umbrella term for future connector kinds** (DB,
+  Python-function, etc., §4.1) — today's entity becomes `HTTPRequest`,
+  matching Postman/Bruno's own top-level noun. A flat rename, not a new
+  two-tier split: one `HTTPRequest` still carries BaseURL+Auth+Headers+
+  JOSE together, reuse stays via Duplicate (ADR-0013), not a new
+  shared-base-config layer.
+  Phase A (this update): `internal/domain/connector` →
+  `internal/domain/httprequest` (`Connector` → `HTTPRequest`;
+  `Type`/`TypeHTTP` dropped entirely — redundant now that the entity
+  name itself says HTTP, same "no field for a decision that doesn't
+  exist" reasoning already applied to single-option `Select`s
+  elsewhere); every `ConfigureService` RPC renamed
+  (`CreateConnector` → `CreateHTTPRequest`, etc.); `composition.go`'s
+  `SetConnectorLookup`/`ResolvedConnector` →
+  `SetHTTPRequestLookup`/`ResolvedHTTPRequest`; `connectorId` config
+  key → `requestId`; `RefKind: "connector"` → `RefKind: "request"`.
+  Frontend: `ConnectorForm.tsx`/`ConnectorSummary.tsx`/
+  `ConnectorTestPanel.tsx`/`ConfigureIntegration.tsx`/
+  `connectorHeaders.ts` → `RequestForm.tsx`/`RequestSummary.tsx`/
+  `RequestTestPanel.tsx`/`ConfigureRequests.tsx`/`requestHeaders.ts`.
+  **Real data migration, not a silent drop**: unlike
+  `composition-workflows` → `-v2`'s own precedent (intentionally
+  orphaned throwaway prototype data), `configure-connectors` holds real
+  current data on a real machine (including the seven seeded
+  examples) — `ConfigureService.restore()` migrates it forward into the
+  new `configure-requests` key on first load if the new key is empty,
+  verified end-to-end
+  (`TestRestore_MigratesLegacyConnectorsKey`, a real pre-rename JSON
+  blob seeded into a fake store, migrated, and confirmed to persist
+  under the new key on a second restore). The OS keychain namespace
+  (`mill-connector`) is deliberately **left unchanged** — an internal,
+  never-user-visible token; changing it would need its own migration
+  for zero user-facing benefit. Method itself is not yet opened in this
+  phase (that's Phase B, still `OPEN`) — this phase is the rename plus
+  the migration, verified byte-identical in behavior: full Go
+  build/vet/test/lint (both desktop and `CGO_ENABLED=0` server-mode
+  build tags) green, Wails bindings regenerated, complete 57-test
+  Playwright suite run twice with no persisted-data leakage. `LOCKED`
+  (Phase A) — Phase B (the actual Params/Body-type builder, opening
+  Method to a free-text field with common methods + `QUERY` as
+  suggestions) and Phase C (`QUERY` method support end-to-end) are
+  `OPEN`, tracked in the ADR.
 
 ### 4.1 Connector capability map — from the reference-platform review (§3.2)
 
@@ -3407,6 +3468,13 @@ consolidated review) captured: list every observed capability before
 building any of it, so the next connector-maturity pass has a real map
 to work from instead of picking items ad hoc. None of these are
 scheduled — this is Research, not a build plan; `OPEN` throughout.
+
+**Terminology note (ADR-0016):** this table and its surrounding prose
+predate the `Connector` → `HTTPRequest` rename and are left as written
+— "connector"/"Connector" below refers to today's `HTTPRequest` entity,
+not the (still-`OPEN`) future umbrella concept the name was freed up
+for. Same "historical narrative stays as written, new content follows
+new terminology" practice §9.1 already established.
 
 | Capability | Mill today | Adopt or build | Status |
 |---|---|---|---|
@@ -3960,3 +4028,15 @@ mode from §0 repeating itself one level up.
   config and correlation contract, the XML template's real expression
   grammar, "restructure response"'s exact transformation, and
   Integration-level draft/publish/version/rollback lifecycle.
+- **Connector → HTTPRequest rename + open Method field, [ADR-0016](adr/0016-http-request-entity-and-open-method.md)**
+  — Phase A (`LOCKED`, built): the entity renamed end-to-end
+  (`internal/domain/httprequest.HTTPRequest`, every `ConfigureService`
+  RPC, the frontend's `RequestForm.tsx`/`RequestSummary.tsx`/
+  `RequestTestPanel.tsx`/`ConfigureRequests.tsx`), with a real
+  persisted-data migration (`configure-connectors` → `configure-requests`)
+  for already-existing real data, not a silent drop. "Connector" is now
+  free as this section's own umbrella term for future connector kinds.
+  Phase B (a Postman/Bruno-style Params tab + Body-type picker,
+  replacing the literal `bodyTemplate` string as the default authoring
+  UI) and Phase C (RFC 10008's `QUERY` method supported end-to-end) are
+  `OPEN`, tracked in the ADR — Method itself is not yet an open field.

@@ -24,7 +24,7 @@
 // This file holds the package's core types. The rest of the package is
 // split by concern across sibling files: nodetypes.go (node-type
 // registry, built-in workflows, config resolution), graph.go (graph
-// algorithms), integration.go (connector-lookup seam), execute.go
+// algorithms), integration.go (request-lookup seam), execute.go
 // (execution engine), and capabilitymap.go (the §3.3 capability map).
 package composition
 
@@ -73,7 +73,7 @@ type ConfigField struct {
 	// values ResolveNodeDefaults will accept for this field.
 	Options []string
 	// RefKind marks a FieldText field whose value is the ID of a
-	// Configure-authored entity ("connector" | "list" | "mcpserver"),
+	// Configure-authored entity ("request" | "list" | "mcpserver"),
 	// empty for an ordinary text field (docs/adr/0009). Orthogonal to
 	// Type: the wire value is still a plain string ID (Type stays
 	// FieldText), RefKind only tells the frontend Inspector which
@@ -130,7 +130,7 @@ type Edge struct {
 // structured Attributes bag (see ExecContext) -- Configure-authored
 // (SPEC.md §3.5: "Input/Attributes... you would not tightly couple it in
 // the workflow"), but scoped to the one workflow that declares it (1:1),
-// unlike a reusable Connector or List. Reuses ConfigFieldType rather
+// unlike a reusable HTTPRequest or List. Reuses ConfigFieldType rather
 // than inventing a second type enum -- a workflow's attribute schema and
 // a node's config fields are the same kind of "name + typed value"
 // declaration.

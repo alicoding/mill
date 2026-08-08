@@ -53,8 +53,8 @@ func TestExecuteWorkflow_IntegrationHTTP_InputBindings_ResolvesPathQueryHeaderBo
 	}))
 	defer srv.Close()
 
-	withConnectorLookup(t, func(id string) (ResolvedConnector, error) {
-		return ResolvedConnector{BaseURL: srv.URL, OpenAPISpec: bindingTestSpec}, nil
+	withHTTPRequestLookup(t, func(id string) (ResolvedHTTPRequest, error) {
+		return ResolvedHTTPRequest{BaseURL: srv.URL, OpenAPISpec: bindingTestSpec}, nil
 	})
 
 	inputBindings, err := json.Marshal(map[string]string{
@@ -70,7 +70,7 @@ func TestExecuteWorkflow_IntegrationHTTP_InputBindings_ResolvesPathQueryHeaderBo
 	nodes, err := ResolveNodeDefaults([]Node{{
 		NodeTypeID: "integration-http",
 		Config: map[string]string{
-			"connectorId": "conn-1", "path": "/widgets/{id}", "method": http.MethodPost,
+			"requestId": "conn-1", "path": "/widgets/{id}", "method": http.MethodPost,
 			"inputBindings": string(inputBindings),
 		},
 	}})
@@ -111,8 +111,8 @@ func TestExecuteWorkflow_IntegrationHTTP_OutputBindings_WritesAttributeAndRoutes
 	}))
 	defer srv.Close()
 
-	withConnectorLookup(t, func(id string) (ResolvedConnector, error) {
-		return ResolvedConnector{BaseURL: srv.URL, OpenAPISpec: bindingTestSpec}, nil
+	withHTTPRequestLookup(t, func(id string) (ResolvedHTTPRequest, error) {
+		return ResolvedHTTPRequest{BaseURL: srv.URL, OpenAPISpec: bindingTestSpec}, nil
 	})
 
 	outputBindings, err := json.Marshal(map[string]string{"name": "widgetName"})
@@ -128,7 +128,7 @@ func TestExecuteWorkflow_IntegrationHTTP_OutputBindings_WritesAttributeAndRoutes
 
 	nodes, err := ResolveNodeDefaults([]Node{
 		{ID: "call", NodeTypeID: "integration-http", Config: map[string]string{
-			"connectorId": "conn-1", "path": "/widgets/{id}", "method": http.MethodPost,
+			"requestId": "conn-1", "path": "/widgets/{id}", "method": http.MethodPost,
 			"inputBindings": "{}", "outputBindings": string(outputBindings),
 		}},
 		{ID: "d", NodeTypeID: "decision-route"},
@@ -185,8 +185,8 @@ func TestExecuteWorkflow_IntegrationHTTP_OutputBindings_NestedPathExtraction(t *
 	}))
 	defer srv.Close()
 
-	withConnectorLookup(t, func(id string) (ResolvedConnector, error) {
-		return ResolvedConnector{BaseURL: srv.URL, OpenAPISpec: nestedPathSpec}, nil
+	withHTTPRequestLookup(t, func(id string) (ResolvedHTTPRequest, error) {
+		return ResolvedHTTPRequest{BaseURL: srv.URL, OpenAPISpec: nestedPathSpec}, nil
 	})
 
 	outputBindings, err := json.Marshal(map[string]string{"n": "widgetName"})
@@ -202,7 +202,7 @@ func TestExecuteWorkflow_IntegrationHTTP_OutputBindings_NestedPathExtraction(t *
 
 	nodes, err := ResolveNodeDefaults([]Node{
 		{ID: "call", NodeTypeID: "integration-http", Config: map[string]string{
-			"connectorId": "conn-1", "path": "/widgets", "method": http.MethodPost,
+			"requestId": "conn-1", "path": "/widgets", "method": http.MethodPost,
 			"outputBindings": string(outputBindings),
 		}},
 		{ID: "d", NodeTypeID: "decision-route"},
@@ -262,8 +262,8 @@ func TestExecuteWorkflow_IntegrationHTTP_ResponseExtractPath_NarrowsBeforeFieldL
 	}))
 	defer srv.Close()
 
-	withConnectorLookup(t, func(id string) (ResolvedConnector, error) {
-		return ResolvedConnector{BaseURL: srv.URL, OpenAPISpec: responseExtractPathSpec}, nil
+	withHTTPRequestLookup(t, func(id string) (ResolvedHTTPRequest, error) {
+		return ResolvedHTTPRequest{BaseURL: srv.URL, OpenAPISpec: responseExtractPathSpec}, nil
 	})
 
 	outputBindings, err := json.Marshal(map[string]string{"n": "widgetName"})
@@ -279,7 +279,7 @@ func TestExecuteWorkflow_IntegrationHTTP_ResponseExtractPath_NarrowsBeforeFieldL
 
 	nodes, err := ResolveNodeDefaults([]Node{
 		{ID: "call", NodeTypeID: "integration-http", Config: map[string]string{
-			"connectorId": "conn-1", "path": "/widgets", "method": http.MethodPost,
+			"requestId": "conn-1", "path": "/widgets", "method": http.MethodPost,
 			"outputBindings": string(outputBindings),
 		}},
 		{ID: "d", NodeTypeID: "decision-route"},
@@ -304,14 +304,14 @@ func TestExecuteWorkflow_IntegrationHTTP_ResponseExtractPath_NarrowsBeforeFieldL
 }
 
 func TestValidateGraph_IntegrationHTTP_SecretOutputBinding_Rejected(t *testing.T) {
-	withConnectorLookup(t, func(id string) (ResolvedConnector, error) {
-		return ResolvedConnector{OpenAPISpec: bindingTestSpec}, nil
+	withHTTPRequestLookup(t, func(id string) (ResolvedHTTPRequest, error) {
+		return ResolvedHTTPRequest{OpenAPISpec: bindingTestSpec}, nil
 	})
 	outputBindings, _ := json.Marshal(map[string]string{"token": "leakedToken"})
 	nodes, err := ResolveNodeDefaults([]Node{{
 		ID: "call", NodeTypeID: "integration-http",
 		Config: map[string]string{
-			"connectorId": "conn-1", "path": "/widgets/{id}", "method": http.MethodPost,
+			"requestId": "conn-1", "path": "/widgets/{id}", "method": http.MethodPost,
 			"outputBindings": string(outputBindings),
 		},
 	}})
@@ -324,14 +324,14 @@ func TestValidateGraph_IntegrationHTTP_SecretOutputBinding_Rejected(t *testing.T
 }
 
 func TestValidateGraph_IntegrationHTTP_NonSecretOutputBinding_Accepted(t *testing.T) {
-	withConnectorLookup(t, func(id string) (ResolvedConnector, error) {
-		return ResolvedConnector{OpenAPISpec: bindingTestSpec}, nil
+	withHTTPRequestLookup(t, func(id string) (ResolvedHTTPRequest, error) {
+		return ResolvedHTTPRequest{OpenAPISpec: bindingTestSpec}, nil
 	})
 	outputBindings, _ := json.Marshal(map[string]string{"name": "widgetName"})
 	nodes, err := ResolveNodeDefaults([]Node{{
 		ID: "call", NodeTypeID: "integration-http",
 		Config: map[string]string{
-			"connectorId": "conn-1", "path": "/widgets/{id}", "method": http.MethodPost,
+			"requestId": "conn-1", "path": "/widgets/{id}", "method": http.MethodPost,
 			"outputBindings": string(outputBindings),
 		},
 	}})

@@ -48,7 +48,7 @@ func parseBindings(raw string) (map[string]string, error) {
 }
 
 // resolveInputBindings resolves an integration-http node's inputBindings
-// against the connector's parsed OpenAPI spec, placing each declared
+// against the request's parsed OpenAPI spec, placing each declared
 // field's resolved value according to its Operation-declared In
 // (path/query/header/body) -- the actual mechanism ADR-0007 Phase 3
 // names ("resolve inputBindings against ctx.Attributes... per each
@@ -63,7 +63,7 @@ func parseBindings(raw string) (map[string]string, error) {
 func resolveInputBindings(specDoc string, config map[string]string, attrs map[string]any) (path, body string, headers map[string]string, query url.Values, outputFields []openapispec.Field, responseExtractPath string, err error) {
 	doc, err := openapispec.Parse([]byte(specDoc))
 	if err != nil {
-		return "", "", nil, nil, nil, "", fmt.Errorf("parse connector spec: %w", err)
+		return "", "", nil, nil, nil, "", fmt.Errorf("parse request spec: %w", err)
 	}
 	op, err := doc.Operation(config["path"], config["method"])
 	if err != nil {

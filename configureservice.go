@@ -8,18 +8,18 @@ import (
 	"github.com/alicoding/mill/internal/adapters/openapispec"
 	"github.com/alicoding/mill/internal/adapters/settings"
 	"github.com/alicoding/mill/internal/domain/composition"
-	"github.com/alicoding/mill/internal/domain/connector"
+	"github.com/alicoding/mill/internal/domain/httprequest"
 	"github.com/alicoding/mill/internal/domain/list"
 	"github.com/alicoding/mill/internal/domain/mcpserver"
 )
 
-// validateOpenAPISpec rejects a Connector save whose OpenAPISpec field
-// doesn't parse -- an empty spec is valid (ADR-0007: OpenAPISpec is
-// optional, a Connector with none behaves exactly as before this field
-// existed). Parsing/validating a Connector's raw spec text is a
+// validateOpenAPISpec rejects an HTTPRequest save whose OpenAPISpec
+// field doesn't parse -- an empty spec is valid (ADR-0007: OpenAPISpec
+// is optional, a request with none behaves exactly as before this
+// field existed). Parsing/validating a request's raw spec text is a
 // commodity-adapter concern (internal/adapters/openapispec), not core
 // domain, so it lives here at the service layer rather than inside
-// connector.Validate -- internal/domain/connector stays pure per
+// httprequest.Validate -- internal/domain/httprequest stays pure per
 // CLAUDE.md's domain-purity rule, same reasoning ConfigureService
 // already applies to credential.Delete/Set below.
 func validateOpenAPISpec(spec string) error {
@@ -32,29 +32,35 @@ func validateOpenAPISpec(spec string) error {
 	return nil
 }
 
-// connectorsKey/listsKey mirror workflowsKey's shape (compositionservice.go):
+// requestsKey/listsKey mirror workflowsKey's shape (compositionservice.go):
 // one atomic JSON blob per entity kind, sharing the same settings.json
-// file rather than a new store/file per entity.
+// file rather than a new store/file per entity. requestsKey renamed
+// from connectorsKey by ADR-0016 -- restore() below migrates
+// already-persisted data forward from the old key, since (unlike
+// composition-workflows -> -v2's own prototype-data precedent) this
+// key holds real current data on a real machine, not throwaway data
+// safe to silently drop.
 const (
-	connectorsKey = "configure-connectors"
-	listsKey      = "configure-lists"
+	requestsKey         = "configure-requests"
+	legacyConnectorsKey = "configure-connectors"
+	listsKey            = "configure-lists"
 )
 
 // ConfigureService is the Wails-facing layer over Configure-authored data
-// (docs/SPEC.md §3.5): Connectors, Lists, and (delegated to
+// (docs/SPEC.md §3.5): HTTPRequests, Lists, and (delegated to
 // CompositionService) a workflow's Attributes schema. Mirrors
 // CompositionService's own shape -- state + persistence a stateless
 // domain package can't own, no domain logic of its own.
 //
-// It also owns wiring composition.go's connector-lookup and list-lookup
-// seams (SetConnectorLookup/SetListLookup) to its own resolve* methods --
-// composition.go doesn't (and shouldn't) import this package directly,
-// same reasoning as CompositionService's Syncer interface for
-// TriggerService.
+// It also owns wiring composition.go's request-lookup and list-lookup
+// seams (SetHTTPRequestLookup/SetListLookup) to its own resolve*
+// methods -- composition.go doesn't (and shouldn't) import this
+// package directly, same reasoning as CompositionService's Syncer
+// interface for TriggerService.
 type ConfigureService struct {
 	mu          sync.Mutex
 	store       settings.Store
-	connectors  []connector.Connector
+	requests    []httprequest.HTTPRequest
 	lists       []list.List
 	mcpServers  []mcpserver.MCPServer
 	composition *CompositionService
@@ -64,7 +70,7 @@ func NewConfigureService(store settings.Store, comp *CompositionService) *Config
 	c := &ConfigureService{store: store, composition: comp}
 	c.restore()
 	c.restoreMCPServers()
-	composition.SetConnectorLookup(c.resolveConnector)
+	composition.SetHTTPRequestLookup(c.resolveHTTPRequest)
 	composition.SetListLookup(c.resolveList)
 	composition.SetMCPServerLookup(c.resolveMCPServer)
 	return c
@@ -173,25 +179,32 @@ func (c *ConfigureService) persistLists() {
 	_ = c.store.Set(listsKey, string(data))
 }
 
-// restore loads persisted Connectors/Lists, or -- on a genuinely fresh
-// install, nothing ever persisted for connectors -- seeds c.connectors
-// with connector.BuiltIn()'s seven example connectors (docs/SPEC.md
-// §4's Update) plus their demo secrets (seedBuiltInSecrets,
-// configureservice_builtin.go). Same lazy-seed-until-first-real-
+// restore loads persisted HTTPRequests/Lists. HTTPRequests has three
+// cases, checked in order (ADR-0016's migration plan): (1) requestsKey
+// already has data -- the common case after this migration has run
+// once; (2) requestsKey is empty but the pre-rename legacyConnectorsKey
+// has data -- a real machine's existing Connectors, migrated forward
+// and persisted under the new key so this branch never fires again;
+// (3) neither key has anything -- a genuinely fresh install, seeded
+// with httprequest.BuiltIn()'s seven examples (docs/SPEC.md §4's
+// Update) plus their demo secrets (seedBuiltInSecrets,
+// configureservice_builtin.go), same lazy-seed-until-first-real-
 // mutation shape CompositionService.restore() already established for
-// Workflows: seeded here, not eagerly persisted, so identically
-// re-seeding on a second launch before any real edit is harmless
-// (nothing was ever changed to lose); the moment any real mutation
-// happens (including deleting a seed), persistConnectors() makes it
-// real and this branch never fires again.
+// Workflows.
 func (c *ConfigureService) restore() {
-	if raw, ok := c.store.Get(connectorsKey).(string); ok && raw != "" {
-		var connectors []connector.Connector
-		if err := json.Unmarshal([]byte(raw), &connectors); err == nil {
-			c.connectors = connectors
+	if raw, ok := c.store.Get(requestsKey).(string); ok && raw != "" {
+		var requests []httprequest.HTTPRequest
+		if err := json.Unmarshal([]byte(raw), &requests); err == nil {
+			c.requests = requests
+		}
+	} else if raw, ok := c.store.Get(legacyConnectorsKey).(string); ok && raw != "" {
+		var requests []httprequest.HTTPRequest
+		if err := json.Unmarshal([]byte(raw), &requests); err == nil {
+			c.requests = requests
+			c.persistHTTPRequests()
 		}
 	} else {
-		c.connectors = connector.BuiltIn()
+		c.requests = httprequest.BuiltIn()
 		c.seedBuiltInSecrets()
 	}
 	if raw, ok := c.store.Get(listsKey).(string); ok && raw != "" {

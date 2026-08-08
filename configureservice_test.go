@@ -8,7 +8,7 @@ import (
 )
 
 // TestMain swaps in an in-memory keyring for the whole package's test
-// run -- ConfigureService's connector-secret methods go through the real
+// run -- ConfigureService's request-secret methods go through the real
 // internal/adapters/credential adapter, which isn't CI-testable against
 // the real OS keychain (same class of gap docs/SPEC.md §1.3 notes for
 // clipboard); credential's own package ships this mock specifically so
@@ -18,12 +18,12 @@ func TestMain(m *testing.M) {
 	m.Run()
 }
 
-// newTestConfigureService starts from a genuinely empty connector list,
+// newTestConfigureService starts from a genuinely empty request list,
 // not the seeded built-in examples (docs/SPEC.md §4's Update) --
-// NewConfigureService's restore() seeds connector.BuiltIn() on any
+// NewConfigureService's restore() seeds httprequest.BuiltIn() on any
 // fresh store, same as CompositionService.restore() already does for
 // BuiltInWorkflows, so every existing count-based assertion in this
-// package (len(cfg.Connectors()) != 1, etc.) would otherwise see 7
+// package (len(cfg.HTTPRequests()) != 1, etc.) would otherwise see 7
 // unexpected entries. The seeding behavior itself gets its own
 // dedicated tests in configureservice_builtin_test.go, which construct
 // ConfigureService directly rather than through this helper.
@@ -32,14 +32,41 @@ func newTestConfigureService(t *testing.T) (*ConfigureService, *CompositionServi
 	store := newFakeStore()
 	comp := NewCompositionService(store)
 	cfg := NewConfigureService(store, comp)
-	cfg.connectors = nil
+	cfg.requests = nil
 	return cfg, comp
 }
 
-// Connector CRUD/auth/JOSE tests live in
-// configureservice_connectorauth_test.go (split out once this file
-// crossed the 500-line limit, mirroring the configureservice_connectorauth.go
+// HTTPRequest CRUD/auth/JOSE tests live in
+// configureservice_requestauth_test.go (split out once this file
+// crossed the 500-line limit, mirroring the configureservice_requestauth.go
 // source split). Lists/Attributes/MCP Server tests stay here.
+
+// TestRestore_MigratesLegacyConnectorsKey proves ADR-0016's migration
+// plan against a real scenario, not just the code reading correctly:
+// a real machine's pre-rename settings.json holds data under the old
+// connectorsKey (unlike composition-workflows -> -v2's own precedent,
+// this key holds real current data that must not be silently dropped
+// on upgrade). restore() must migrate it into c.requests, and persist
+// it forward under the new requestsKey so a second restore (the next
+// launch) reads it from there directly rather than re-migrating.
+func TestRestore_MigratesLegacyConnectorsKey(t *testing.T) {
+	store := newFakeStore()
+	legacy := `[{"ID":"old-1","Label":"Old API","BaseURL":"https://old.example.com","AuthType":"none","Type":"http"}]`
+	_ = store.Set(legacyConnectorsKey, legacy)
+
+	comp := NewCompositionService(store)
+	cfg := NewConfigureService(store, comp)
+
+	got := cfg.HTTPRequests()
+	if len(got) != 1 || got[0].ID != "old-1" || got[0].Label != "Old API" {
+		t.Fatalf("HTTPRequests() after legacy migration = %+v, want the migrated old-1 entry", got)
+	}
+
+	restarted := NewConfigureService(store, comp)
+	if len(restarted.HTTPRequests()) != 1 || restarted.HTTPRequests()[0].ID != "old-1" {
+		t.Fatalf("HTTPRequests() after restart = %+v, want the migrated entry to persist under the new key", restarted.HTTPRequests())
+	}
+}
 
 func TestCreateList_ValidatesAndPersists(t *testing.T) {
 	cfg, _ := newTestConfigureService(t)
