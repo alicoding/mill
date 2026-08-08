@@ -3237,7 +3237,7 @@ scheduled — this is Research, not a build plan; `OPEN` throughout.
 | Connector kind (DB/Python-function types) | `TypeHTTP` only | Wire protocol per kind: adopt (a DB driver per kind, e.g. `lib/pq`/`pgx` for Postgres). Kind dispatch/config: build, same shape `AuthType`'s switch already has | `OPEN`, real precedent now exists (§3.2) for what the next `Type` values should be |
 | Auth type catalogue (HMAC, OAuth 1.0a/RFC 5849, OAuth 2.0 client_credentials, query-param placement, extensibility seam) | 9-value `AuthType` (`none`/`apikey`/`bearer`/`hmac`/`oauth1`/`oauth1vendor`/`oauth2`/`queryparam`/`mtls`), dispatched via a registered `AuthStrategy` per type (`internal/domain/composition/auth*.go`), not a switch | Built — HMAC-SHA256 (Mill's own stated default, no universal convention exists), RFC 5849 HMAC-SHA1 OAuth1, `golang.org/x/oauth2/clientcredentials` (via a new `internal/adapters/oauth2client` adapter) for OAuth2, query-param placement | `LOCKED` (Phase 2, ADR-0015) — 5 of 7 fully implemented; the vendor-specific OAuth 1.0a variant's exact quirk was never confirmed even after the fuller review, so `oauth1vendor` is a real, registered `AuthType` whose strategy returns a clear "not yet implemented" error rather than a guess |
 | mTLS (client cert auth) | A real, registered `AuthType`/stub strategy (`authmtls.go`) proving the registry accepts it as a pure addition — no cert-handling logic | Deliberately out of scope for implementation (decided directly with the user, Phase 2's plan) — when built: adopt `crypto/tls.Config.Certificates` (stdlib) + `software.sslmate.com/src/go-pkcs12` (P12 decode). Field set now fully known: cert upload, keystore password, optional alias (defaults to first key entry), optional CA bundle (defaults to system trust store), a disable-validation toggle | `LOCKED` (the extensibility proof) / `OPEN` (the real implementation) — if built, the disable-validation toggle must be gated behind an explicit governed exception, never a plain checkbox, per the fuller review's own flagged warning matching Mill's §8 fail-safe posture |
-| JOSE/JWE (request/response encryption) | Not built | Adopt — `github.com/go-jose/go-jose/v4` | `OPEN` |
+| JOSE/JWE (request/response encryption) | `Connector.JOSE *JOSEConfig` (Enabled/Algorithm/ContentEncryption/RecipientPublicKeyPEM/DecryptResponse), independent of AuthType, wired into `integration-http`'s request/response pipeline | Adopted — `github.com/go-jose/go-jose/v4` (`internal/domain/composition/jose.go`: `ApplyJOSEEncryption`/`DecryptJOSEResponse`) | `LOCKED` (Phase 3, ADR-0015) — RSA-OAEP-256 + A256GCM is Mill's stated default (both confirmed real, supported go-jose/v4 algorithm identifiers); Mill's own private key (needed only for `DecryptResponse`) lives in a second, JOSE-specific OS-keychain entry distinct from the connector's AuthType secret |
 | XML request/response, including a SOAP request-template layer (substitution/conditionals/iteration) | JSON only | Structural XML↔JSON: adopt — `github.com/clbanning/mxj` (map/JSON-shaped, dynamic — fits Mill's runtime-configured connectors better than stdlib `encoding/xml`'s struct-based model). Template engine: Go stdlib `text/template` is the first candidate to check (native conditionals/range) — the real expression grammar needed is still unresolved, don't assume `text/template` is sufficient without checking against it | `OPEN` |
 | Schema-from-example ("Paste sample") | `genson-js`, a fourth `ManualSchemaEditor` accelerator alongside Paste-OpenAPI/Manual/CSV, body fields only | Adopted — `genson-js` (npm) | `LOCKED`, built (Phase 1, ADR-0011's Update) |
 | Field `Default` / `Description` | On `openapispec.Field`, read from OpenAPI's own `default`/`description` keywords | Built | `LOCKED` (Phase 1, ADR-0011's Update) |
@@ -3726,8 +3726,19 @@ mode from §0 repeating itself one level up.
   are real; `oauth1vendor`/`mtls` are real, registered stubs proving
   the seam accepts a new `AuthType` as a pure addition. `configureservice.go`
   split into `configureservice_connectorauth.go` as part of the same
-  change. Phase 2 of the connector-capability-maturity goal — Phase 3
-  (JOSE/JWE) still `OPEN`, not started.
+  change. Phase 2 of the connector-capability-maturity goal.
+- JOSE/JWE request/response encryption (§4.1, ADR-0015's Phase 3
+  Update) — `LOCKED` and built: `go-jose/go-jose/v4`
+  (RSA-OAEP-256/A256GCM, Mill's own stated default), independent of
+  AuthType, wired into `integration-http`'s pipeline before/after
+  `ApplyAuth` and the HTTP call respectively. Mill's own private key
+  (only needed for optional response decryption) lives in a second,
+  JOSE-specific OS-keychain entry, distinct from whatever AuthType
+  secret the same connector uses. `configureservice_test.go` split into
+  `configureservice_connectorauth_test.go` in the same change (crossed
+  500 lines). Phase 3 of the connector-capability-maturity goal — this
+  closes all four planned phases (Configure layout, schema-authoring
+  maturity, auth-type catalogue, JOSE/JWE).
 - Connector/Integration surface — reference-platform-informed capability
   map (§3.2's Update, §4.1) — `OPEN`, nothing built or scheduled yet.
   Real, researched gaps: connection mode (real-time/send-and-wait/

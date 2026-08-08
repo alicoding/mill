@@ -107,6 +107,41 @@ type AuthConfig struct {
 // Type value here when a real need surfaces, not before.
 const TypeHTTP = "http"
 
+// JOSEConfig is Phase 3's request/response encryption layer (ADR-0015's
+// own follow-up, docs/SPEC.md §3.2's Update: "JOSE Encryption ...
+// encrypts what [Mill] sends to the vendor, and optionally decrypts
+// what it receives back (JWE)"). Deliberately independent of AuthType
+// -- a connector can combine JOSE with any auth scheme, since the two
+// solve different problems (who's calling vs. what the call's own body
+// looks like on the wire). RecipientPublicKeyPEM is not a secret (a
+// public key), so it lives here in plain config, same as Headers;
+// Mill's own private key (needed only when DecryptResponse is true)
+// stays in the OS keychain, a second, JOSE-specific keychain entry
+// alongside whatever AuthType's own secret already uses (ADR-0015 §3's
+// same reasoning: a scheme needing a secret-shaped value distinct from
+// AuthType's own secret gets its own storage, not smuggled into the
+// same slot).
+type JOSEConfig struct {
+	Enabled bool
+	// Algorithm is the JWE key-encryption algorithm (e.g.
+	// "RSA-OAEP-256"). Empty defaults to Mill's own stated default at
+	// execution time (internal/domain/composition/jose.go), not
+	// enforced here -- same "default applied at use, not required at
+	// save" shape HMACConfig.HeaderName already has.
+	Algorithm string
+	// ContentEncryption is the JWE content-encryption algorithm (e.g.
+	// "A256GCM"). Same empty-defaults-at-use-time shape as Algorithm.
+	ContentEncryption string
+	// RecipientPublicKeyPEM is the vendor's RSA public key (PEM,
+	// PKIX or PKCS1), used to encrypt the outgoing request body.
+	RecipientPublicKeyPEM string
+	// DecryptResponse, if true, decrypts the response body as a JWE
+	// using Mill's own private key (keychain) before it's processed as
+	// the workflow payload -- optional, matching the reference
+	// platform's own "optionally decrypts" framing.
+	DecryptResponse bool
+}
+
 // Connector is one reusable, named way to reach an external API.
 // Headers are static, always-sent headers (e.g. "Accept": "application/
 // json") -- distinct from the AuthType-driven Authorization header,
@@ -128,6 +163,10 @@ type Connector struct {
 	// (ADR-0015) -- nil for AuthNone/AuthAPIKey/AuthBearer and every
 	// connector saved before this field existed.
 	Auth *AuthConfig
+	// JOSE is the optional request/response encryption layer (Phase 3)
+	// -- nil for every connector saved before this field existed, and
+	// for any connector not using it.
+	JOSE *JOSEConfig
 }
 
 // Validate checks a Connector is well-formed before it's persisted --
@@ -148,6 +187,9 @@ func Validate(c Connector) error {
 	case AuthNone, AuthAPIKey, AuthBearer, AuthHMAC, AuthOAuth1, AuthOAuth1Vendor, AuthOAuth2, AuthQueryParam, AuthMTLS:
 	default:
 		return fmt.Errorf("unsupported auth type: %q", c.AuthType)
+	}
+	if c.JOSE != nil && c.JOSE.Enabled && strings.TrimSpace(c.JOSE.RecipientPublicKeyPEM) == "" {
+		return fmt.Errorf("JOSE encryption is enabled but no recipient public key is set")
 	}
 	return nil
 }

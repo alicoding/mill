@@ -1,8 +1,8 @@
 import { useState } from 'react'
-import { Button, FormControl, Heading, IconButton, Label, Select, Stack, Text, TextInput, Textarea, SegmentedControl } from '@primer/react'
+import { Button, Checkbox, FormControl, Heading, IconButton, Label, Select, Stack, Text, TextInput, Textarea, SegmentedControl } from '@primer/react'
 import { PlusIcon, TrashIcon } from '@primer/octicons-react'
 import { ConfigureService } from '../../bindings/github.com/alicoding/mill'
-import type { AuthConfig, Connector } from '../../bindings/github.com/alicoding/mill/internal/domain/connector/models'
+import type { AuthConfig, Connector, JOSEConfig } from '../../bindings/github.com/alicoding/mill/internal/domain/connector/models'
 import { AuthType } from '../../bindings/github.com/alicoding/mill/internal/domain/connector/models'
 import { ManualSchemaEditor } from './ManualSchemaEditor'
 import { ConnectorTestPanel } from './ConnectorTestPanel'
@@ -39,6 +39,16 @@ export interface ConnectorDraft {
   oauth1Token: string
   oauth1ConsumerSecret: string
   oauth1TokenSecret: string
+  // Phase 3 (JOSE) -- independent of authType (connector.JOSEConfig's
+  // own doc comment: a connector can combine JOSE with any auth
+  // scheme), so these are never conditionally reset by an authType
+  // change the way the oauth2*/hmac*/oauth1* fields above implicitly
+  // are (only the *displayed* section changes per authType, not these).
+  joseEnabled: boolean
+  joseRecipientPublicKeyPEM: string
+  joseDecryptResponse: boolean
+  // Write-only, same shape as secret/oauth1*Secret above.
+  josePrivateKeyPEM: string
 }
 
 const EMPTY_DRAFT: ConnectorDraft = {
@@ -46,6 +56,7 @@ const EMPTY_DRAFT: ConnectorDraft = {
   oauth2TokenURL: '', oauth2ClientID: '', oauth2Scope: '',
   hmacHeaderName: '',
   oauth1ConsumerKey: '', oauth1Token: '', oauth1ConsumerSecret: '', oauth1TokenSecret: '',
+  joseEnabled: false, joseRecipientPublicKeyPEM: '', joseDecryptResponse: false, josePrivateKeyPEM: '',
 }
 
 function draftFrom(c: Connector): ConnectorDraft {
@@ -59,6 +70,10 @@ function draftFrom(c: Connector): ConnectorDraft {
     oauth1Token: c.Auth?.OAuth1?.Token ?? '',
     oauth1ConsumerSecret: '',
     oauth1TokenSecret: '',
+    joseEnabled: c.JOSE?.Enabled ?? false,
+    joseRecipientPublicKeyPEM: c.JOSE?.RecipientPublicKeyPEM ?? '',
+    joseDecryptResponse: c.JOSE?.DecryptResponse ?? false,
+    josePrivateKeyPEM: '',
   }
 }
 
@@ -77,6 +92,23 @@ function authConfigFrom(draft: ConnectorDraft): AuthConfig | null {
       return { OAuth2: null, HMAC: null, OAuth1: { ConsumerKey: draft.oauth1ConsumerKey, Token: draft.oauth1Token } }
     default:
       return null
+  }
+}
+
+// joseConfigFrom builds the JOSE param (Phase 3) -- null when disabled,
+// matching Connector.JOSE's own "nil unless a connector actually uses
+// it" shape. Algorithm/ContentEncryption are left empty so the domain
+// layer's own stated defaults (RSA-OAEP-256/A256GCM,
+// internal/domain/composition/jose.go) apply -- no picker for a
+// single-supported-combo decision that doesn't exist yet, same "no UI
+// for a decision that doesn't exist" discipline docs/SPEC.md §3.5
+// already applies to single-option Selects.
+function joseConfigFrom(draft: ConnectorDraft): JOSEConfig | null {
+  if (!draft.joseEnabled) return null
+  return {
+    Enabled: true, Algorithm: '', ContentEncryption: '',
+    RecipientPublicKeyPEM: draft.joseRecipientPublicKeyPEM,
+    DecryptResponse: draft.joseDecryptResponse,
   }
 }
 
@@ -163,15 +195,19 @@ export function ConnectorForm({
     try {
       const headers = rowsToHeaders(headerRows)
       const auth = authConfigFrom(finalDraft)
+      const jose = joseConfigFrom(finalDraft)
       const saved = editingConnector
-        ? await ConfigureService.UpdateConnector(editingConnector.ID, finalDraft.label, 'http', finalDraft.baseURL, finalDraft.authType, headers, finalDraft.openAPISpec, auth)
-        : await ConfigureService.CreateConnector(finalDraft.label, 'http', finalDraft.baseURL, finalDraft.authType, headers, finalDraft.openAPISpec, auth)
+        ? await ConfigureService.UpdateConnector(editingConnector.ID, finalDraft.label, 'http', finalDraft.baseURL, finalDraft.authType, headers, finalDraft.openAPISpec, auth, jose)
+        : await ConfigureService.CreateConnector(finalDraft.label, 'http', finalDraft.baseURL, finalDraft.authType, headers, finalDraft.openAPISpec, auth, jose)
       if (finalDraft.authType === AuthType.AuthOAuth1) {
         if (finalDraft.oauth1ConsumerSecret || finalDraft.oauth1TokenSecret) {
           await ConfigureService.SetConnectorOAuth1Secret(saved.ID, finalDraft.oauth1ConsumerSecret, finalDraft.oauth1TokenSecret)
         }
       } else if (finalDraft.secret) {
         await ConfigureService.SetConnectorSecret(saved.ID, finalDraft.secret)
+      }
+      if (finalDraft.joseEnabled && finalDraft.joseDecryptResponse && finalDraft.josePrivateKeyPEM) {
+        await ConfigureService.SetConnectorJOSEPrivateKey(saved.ID, finalDraft.josePrivateKeyPEM)
       }
       onSaved()
     } catch (err) {
@@ -289,6 +325,65 @@ export function ConnectorForm({
         </section>
 
         <section>
+          <Heading as="h3" variant="small" className={styles.sectionHeading}>JOSE encryption</Heading>
+          <Stack direction="vertical" gap="condensed">
+            <Text as="p" size="small" className={styles.muted}>
+              Optional, independent of Auth type above (Phase 3, ADR-0015) -- encrypts what Mill sends to
+              this connector, and optionally decrypts what it receives back (JWE, RFC 7516).
+            </Text>
+            <Stack direction="horizontal" gap="condensed" align="center">
+              <Checkbox
+                checked={draft.joseEnabled}
+                onChange={(e) => setDraft({ ...draft, joseEnabled: e.target.checked })}
+                data-testid="jose-enabled-checkbox"
+              />
+              <Text size="small">Enable JOSE encryption</Text>
+            </Stack>
+            {draft.joseEnabled && (
+              <>
+                <FormControl>
+                  <FormControl.Label>Recipient public key (PEM)</FormControl.Label>
+                  <FormControl.Caption>The vendor&apos;s RSA public key -- used to encrypt the outgoing request body. Not a secret.</FormControl.Caption>
+                  <Textarea
+                    value={draft.joseRecipientPublicKeyPEM}
+                    onChange={(e) => setDraft({ ...draft, joseRecipientPublicKeyPEM: e.target.value })}
+                    rows={4}
+                    block
+                    data-testid="jose-recipient-public-key"
+                  />
+                </FormControl>
+                <Stack direction="horizontal" gap="condensed" align="center">
+                  <Checkbox
+                    checked={draft.joseDecryptResponse}
+                    onChange={(e) => setDraft({ ...draft, joseDecryptResponse: e.target.checked })}
+                    aria-label="Decrypt response"
+                    data-testid="jose-decrypt-response-checkbox"
+                  />
+                  <Text size="small">Decrypt response (this connector&apos;s replies are also JWE-encrypted)</Text>
+                </Stack>
+                {draft.joseDecryptResponse && (
+                  <FormControl>
+                    <FormControl.Label>Mill&apos;s private key (PEM)</FormControl.Label>
+                    <FormControl.Caption>
+                      Write-only -- stored in the OS keychain, separately from the Auth secret above, never
+                      readable back through Mill.
+                      {isEditing && ' Leave blank to keep the existing key.'}
+                    </FormControl.Caption>
+                    <Textarea
+                      value={draft.josePrivateKeyPEM}
+                      onChange={(e) => setDraft({ ...draft, josePrivateKeyPEM: e.target.value })}
+                      rows={4}
+                      block
+                      data-testid="jose-private-key"
+                    />
+                  </FormControl>
+                )}
+              </>
+            )}
+          </Stack>
+        </section>
+
+        <section>
           <Heading as="h3" variant="small" className={styles.sectionHeading}>Headers</Heading>
           <Stack direction="vertical" gap="condensed">
             <Text as="p" size="small" className={styles.muted}>
@@ -343,6 +438,8 @@ export function ConnectorForm({
             baseURL={draft.baseURL}
             authType={draft.authType}
             auth={authConfigFrom(draft)}
+            jose={joseConfigFrom(draft)}
+            josePrivateKeyPEM={draft.josePrivateKeyPEM}
             headers={rowsToHeaders(headerRows)}
             secret={draft.authType === AuthType.AuthOAuth1 ? draft.oauth1ConsumerSecret : draft.secret}
             connectorID={isEditing ? editingConnector.ID : null}

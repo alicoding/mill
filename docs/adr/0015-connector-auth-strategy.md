@@ -220,3 +220,123 @@ independently to assert an exact match, not just "no error").
   `ApplyAuth` exactly as a real workflow run would), just not
   separately re-verified per-AuthType in the Test tab specifically
   beyond what the e2e suite above already exercises.
+
+## Update — Phase 3 (JOSE/JWE) implemented
+
+**Research checkpoint, done before writing any encryption code**:
+confirmed directly against `go-jose/go-jose/v4`'s own README algorithm
+tables (fetched via `gh api`, not assumed from memory) that
+`RSA-OAEP-256` (key encryption) and `A256GCM` (content encryption) are
+both real, currently-supported algorithm identifiers — the stated
+default this ADR's original plan named, now confirmed rather than
+assumed. Apache-2.0, actively maintained (checked via `gh repo view`),
+zero native/Rust dependency in its tree. `NewEncrypter`/`Encrypt`/
+`CompactSerialize` and `ParseEncrypted`/`Decrypt` are the library's own
+real API surface (confirmed by reading `crypter.go`/`jwe.go` directly,
+not guessed) — notably `ParseEncrypted` in v4 requires an explicit
+allowlist of key/content algorithms (an anti-algorithm-confusion
+hardening the library added), which `internal/domain/composition/jose.go`
+passes explicitly rather than accepting anything the wire claims.
+
+**Decision — additive, independent of AuthType, exactly as planned**:
+`connector.JOSEConfig{Enabled, Algorithm, ContentEncryption,
+RecipientPublicKeyPEM, DecryptResponse}` is a new, optional field on
+`Connector` (nil for every connector saved before this existed) —
+`RecipientPublicKeyPEM` is not a secret (a public key) so it lives in
+plain config; `Algorithm`/`ContentEncryption` default to
+RSA-OAEP-256/A256GCM at execution time when empty (same "default
+applied at use, not required at save" shape `HMACConfig.HeaderName`
+already established in Phase 2) — no algorithm picker was built for a
+single-supported-combo decision that doesn't exist yet, matching
+`docs/SPEC.md` §3.5's "no UI for a decision that doesn't exist"
+discipline. Mill's own private key (needed only when `DecryptResponse`
+is true) goes in a **second, JOSE-specific keychain entry**
+(`joseKeychainID(id) = id + ":jose"`) — distinct from whatever AuthType
+secret the same connector already stores, since a connector can combine
+JOSE with any auth scheme and the two secrets must never collide or
+silently overwrite each other. `ConfigureService` gained
+`SetConnectorJOSEPrivateKey`/`DeleteConnectorJOSEPrivateKey`
+(write-only, mirroring `SetConnectorSecret`'s own shape) and
+`CreateConnector`/`UpdateConnector` gained a `jose *connector.JOSEConfig`
+param (9th positional arg now) — `DeleteConnector` was extended to also
+best-effort-delete the JOSE keychain entry, so a deleted connector never
+leaves an orphaned private key behind.
+
+**Execution** (`internal/domain/composition/jose.go`,
+`ApplyJOSEEncryption`/`DecryptJOSEResponse`, both exported like
+`ApplyAuth` so `configureservice_connectortest.go`'s
+`TestConnectorOperation` — package `main` — can reuse the identical
+path a real workflow run goes through, per ADR-0013's "test exactly as
+it would run" principle): request encryption happens in
+`integration-http`'s `nodeExec` **before** `ApplyAuth` is called, so a
+signing AuthType (HMAC/OAuth 1.0a) signs the ciphertext actually
+transmitted, not the plaintext underneath it — a deliberate ordering
+decision, not incidental. Response decryption happens **after** a
+successful (< 400) HTTP response, before the payload is set on
+`ExecContext` or output bindings are applied — everything downstream
+sees decrypted plaintext, never a raw JWE string. Both are no-ops for a
+connector with no JOSE config (nil-safe), so this is a strict superset,
+zero behavior change for every connector that doesn't use it.
+`parseRSAPublicKeyPEM`/`parseRSAPrivateKeyPEM` accept either PKIX/PKCS1
+(public) or PKCS8/PKCS1 (private) PEM encodings, since a user could
+plausibly paste either format from a vendor's own docs and there's no
+way to know which in advance.
+
+**Verified with real cryptography, not mocked**: `jose_test.go`
+generates real 2048-bit RSA keypairs and round-trips through
+`go-jose/v4`'s own raw API independently in both directions (encrypt
+via this package, decrypt via go-jose directly; encrypt via go-jose
+directly, decrypt via this package) — proving the produced strings are
+genuine, standards-conformant JWE, not just "something this package's
+own functions happen to accept." A full `ExecuteWorkflow` integration
+test runs a real `integration-http` node against an `httptest.Server`
+that itself decrypts the incoming request with a "vendor" private key
+and re-encrypts its response with a *separate* "Mill" keypair — two
+independent RSA keypairs, matching the real bidirectional shape
+(`docs/SPEC.md` §3.2's Update: request encrypted to the vendor's key,
+response encrypted back to Mill's own key), not one shared key
+standing in for both directions. A wrong-private-key test confirms
+decryption genuinely fails closed.
+
+**Frontend**: `ConnectorForm.tsx` gained a "JOSE encryption" section
+(Enable checkbox → Recipient public key PEM textarea + Decrypt-response
+checkbox → Mill's private key PEM textarea, each level of nesting
+gated behind the one above it — progressive disclosure, same pattern
+Phase 2's Auth section already uses). `ConnectorSummary.tsx`'s Details
+tab shows a "JOSE encryption" row (Disabled / Enabled / Enabled
+(decrypts responses)). `ConnectorTestPanel.tsx` threads `jose`/
+`josePrivateKeyPEM` through to `TestConnectorOperation` unchanged, same
+parity principle as Phase 2's `auth` passthrough.
+
+**`configureservice_test.go` split**, prompted by crossing 500 lines
+once the new JOSE persistence/round-trip tests landed: a new
+`configureservice_connectorauth_test.go` now holds every Connector
+CRUD/Auth/JOSE test (mirrors the `configureservice_connectorauth.go`
+source split from Phase 2); Lists/Attributes/MCP Server tests and the
+shared `TestMain`/`newTestConfigureService` helpers stay in
+`configureservice_test.go`.
+
+Verified end-to-end via Playwright against the real Go backend
+(`frontend/e2e/connector-jose.spec.ts`, 2 new tests): the Enable
+toggle's progressive disclosure (fields appear/disappear correctly,
+including toggling back off), the full round trip through Save →
+Details tab → re-opened Edit (recipient public key reloads, private
+key stays blank — write-only), and the Details tab's status text.
+Full check suite (Go: build/vet/test -race/golangci-lint/check-loc;
+frontend: tsc/eslint/boundaries/vitest/build) green, complete
+Playwright e2e suite (48 tests) run twice in a row with no
+persisted-data leakage.
+
+**Not built, named explicitly**: no algorithm/content-encryption
+picker (a single supported combo exists, per the "no UI for a decision
+that doesn't exist" note above); no UI to configure a *non-default*
+`Algorithm`/`ContentEncryption` (would require exposing `JOSEConfig`
+fields the form currently leaves empty — real future work if a second
+combo is ever actually needed); JOSE and mTLS both being layerable
+simultaneously is untested since mTLS itself isn't implemented yet
+(Phase 2's own stated scope cut, unchanged).
+
+This closes the connector-capability-maturity goal's four planned
+phases (Phase 0: Configure layout, Phase 1: schema-authoring maturity,
+Phase 2: auth-type catalogue, Phase 3: JOSE/JWE) — ADR-0015's `Status`
+stays `accepted` (covers Phase 2+3 together, both fully implemented).
