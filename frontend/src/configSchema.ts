@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import { fake, setFaker } from 'zod-schema-faker/v4'
 import { faker } from '@faker-js/faker'
-import { ConfigFieldType, type ConfigField } from '../bindings/github.com/alicoding/mill/internal/domain/composition/models'
+import { ConfigFieldType } from '../bindings/github.com/alicoding/mill/internal/domain/composition/models'
 
 // zod-schema-faker needs its faker instance wired once before fake() can
 // be called -- module-level, not per-call, same "do it once" shape as
@@ -13,15 +13,28 @@ import { ConfigFieldType, type ConfigField } from '../bindings/github.com/alicod
 // actually supports what's installed.
 setFaker(faker)
 
+// The minimal shape both ConfigField (a node type's config) and
+// AttributeDef (a workflow's declared Attributes schema, docs/adr/0008's
+// test-input form) satisfy -- AttributeDef carries no Options list (§3.3's
+// rule-builder Update note: "AttributeDef carries no Options list"), so
+// it's optional here, same as the FieldOptions-with-no-Options fallback
+// below already handles.
+export interface TypedField {
+  Key: string
+  Type: ConfigFieldType
+  Options?: string[] | null
+}
+
 // Builds an ad-hoc zod object schema from a node type's typed
-// ConfigFields, so "generate a test payload" reuses the same schema
-// language already adopted for draft-workflow validation
-// (CompositionCanvas.tsx's draftWorkflowSchema) rather than introducing
-// a second one. Every field always resolves to a real zod type -- an
-// options field with no Options falls back to a plain string rather
-// than z.enum([]), which zod itself rejects as invalid at schema-build
-// time.
-export function configFieldsToZodSchema(fields: ConfigField[]) {
+// ConfigFields (or a workflow's typed Attributes -- both are "name +
+// typed value" declarations, see TypedField above), so "generate a test
+// payload" reuses the same schema language already adopted for
+// draft-workflow validation (CompositionCanvas.tsx's draftWorkflowSchema)
+// rather than introducing a second one. Every field always resolves to a
+// real zod type -- an options field with no Options falls back to a
+// plain string rather than z.enum([]), which zod itself rejects as
+// invalid at schema-build time.
+export function configFieldsToZodSchema(fields: TypedField[]) {
   const shape: Record<string, z.ZodTypeAny> = {}
   for (const field of fields) {
     switch (field.Type) {
@@ -42,10 +55,12 @@ export function configFieldsToZodSchema(fields: ConfigField[]) {
 }
 
 // Generates one example value per field, stringified the same way
-// Node.Config already stores every value (composition.go's ConfigField
-// is Go's map[string]string regardless of Type -- Type only changes how
-// the Inspector renders/validates it, not the wire representation).
-export function generateSamplePayload(fields: ConfigField[]): Record<string, string> {
+// Node.Config (a node's config) and a run's Attribute-value override
+// (executionservice.go's runInput.Values) both already store every
+// value -- map[string]string regardless of declared Type, which only
+// changes how the Inspector/test-input form renders or validates it,
+// not the wire representation.
+export function generateSamplePayload(fields: TypedField[]): Record<string, string> {
   const schema = configFieldsToZodSchema(fields)
   const sample = fake(schema) as Record<string, unknown>
   const out: Record<string, string> = {}

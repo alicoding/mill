@@ -63,7 +63,11 @@ export function RedriveRun(runID: string, fromNodeID: string): $CancellablePromi
  * still exists as the tested primitive internal/domain/composition's
  * own unit tests call directly -- no Wails-bound service calls it
  * anymore.
+ * values overrides this run's starting Attribute values, keyed by
+ * AttributeDef.Key (docs/adr/0008's test-input form) -- nil for a
+ * workflow with no declared Attributes, or any caller (TriggerService's
+ * headless fire path) that has no user-supplied values to offer.
  */
-export function RunWorkflow(workflowID: string, kind: $models.RunKind): $CancellablePromise<$models.RunSummary> {
-    return $Call.ByID(2449867341, workflowID, kind);
+export function RunWorkflow(workflowID: string, kind: $models.RunKind, values: { [_ in string]?: string } | null): $CancellablePromise<$models.RunSummary> {
+    return $Call.ByID(2449867341, workflowID, kind, values);
 }

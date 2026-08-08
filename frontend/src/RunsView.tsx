@@ -82,7 +82,7 @@ function RunsView() {
     if (!runningWorkflowID) return
     setBusy(true)
     setError('')
-    ExecutionService.RunWorkflow(runningWorkflowID, RunKind.RunKindTest)
+    ExecutionService.RunWorkflow(runningWorkflowID, RunKind.RunKindTest, null)
       .then((summary) => {
         refreshRuns()
         setSelectedRunID(summary.runID)
