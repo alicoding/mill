@@ -101,7 +101,13 @@ func (g windowGeometry) valid() bool {
 // before the window is created, so the saved position/size can be
 // applied via WebviewWindowOptions' own X/Y/Width/Height/StartState
 // fields -- there's no "move it after creation" path that avoids an
-// initial flash at the default position/size.
+// initial flash at the default position/size. Go-internal wiring only,
+// same as SetWindow/WatchWindowGeometry -- never meant to be called
+// from the frontend (there's nothing for a window-geometry read to do
+// there), just missed the //wails:ignore marker those two already have
+// when this was first written.
+//
+//wails:ignore
 func (s *SettingsService) LoadWindowGeometry() (x, y, width, height int, maximized bool, ok bool) {
 	raw, isStr := s.store.Get(windowGeometryKey).(string)
 	if !isStr || raw == "" {
