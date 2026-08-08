@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Heading, IconButton, Label, type LabelProps, Select, Stack, Text } from '@primer/react'
 import { DataTable, type Column } from '@primer/react/experimental'
 import { ChevronDownIcon, ChevronRightIcon, CheckCircleIcon, XCircleIcon, XIcon } from '@primer/octicons-react'
@@ -16,6 +16,12 @@ const SOURCE_VARIANT: Record<ActivitySource, LabelProps['variant']> = {
 }
 
 type OutcomeFilter = 'all' | 'success' | 'failed'
+
+// docs/SPEC.md §3.7's Update -- same localStorage/cosmetic tier as
+// App.tsx's sidebarOpen (a filter selection is a UI preference, not
+// domain data; Mill's real settings store is reserved for the latter).
+const SOURCE_FILTER_STORAGE_KEY = 'mill-activity-source-filter'
+const OUTCOME_FILTER_STORAGE_KEY = 'mill-activity-outcome-filter'
 
 // A dedicated, always-visible page: a headless trigger (hotkey, schedule,
 // clipboard-watch, filesystem-watch -- docs/SPEC.md §3.4) fires with no
@@ -39,8 +45,18 @@ type OutcomeFilter = 'all' | 'success' | 'failed'
 function ActivityView() {
   const activity = useAppStore((s) => s.activity)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
-  const [sourceFilter, setSourceFilter] = useState<'all' | ActivitySource>('all')
-  const [outcomeFilter, setOutcomeFilter] = useState<OutcomeFilter>('all')
+  const [sourceFilter, setSourceFilter] = useState<'all' | ActivitySource>(
+    () => (localStorage.getItem(SOURCE_FILTER_STORAGE_KEY) as 'all' | ActivitySource | null) ?? 'all',
+  )
+  const [outcomeFilter, setOutcomeFilter] = useState<OutcomeFilter>(
+    () => (localStorage.getItem(OUTCOME_FILTER_STORAGE_KEY) as OutcomeFilter | null) ?? 'all',
+  )
+  useEffect(() => {
+    localStorage.setItem(SOURCE_FILTER_STORAGE_KEY, sourceFilter)
+  }, [sourceFilter])
+  useEffect(() => {
+    localStorage.setItem(OUTCOME_FILTER_STORAGE_KEY, outcomeFilter)
+  }, [outcomeFilter])
 
   const toggle = (id: string) => {
     setSelectedIds((prev) => {

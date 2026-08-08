@@ -2947,6 +2947,107 @@ this pass.
   "config surface for a decision that doesn't exist yet" trap
   `.claude/rules/architecture.md` warns against, not a genuine gap like
   the three items above were. Left as real, named future work.
+- **Update — navigational/app state persistence, researched then
+  built.** Prompted directly by the user asking what Mill is missing
+  and what Wails itself recommends here. **Researched, not assumed**:
+  Wails3 has no first-party opinion at all on either half of this.
+  Window geometry — confirmed directly against the SDK source
+  (`v3/pkg/application/webview_window_options.go`/`webview_window.go`):
+  `WebviewWindowOptions` only sets *initial* position/size at creation;
+  `Position()`/`Size()`/`IsMaximised()`/`IsFullscreen()` are live
+  getters with zero persistence; `v3/examples/window` demonstrates
+  `OnWindowEvent(events.Common.WindowDidMove/WindowDidResize, ...)` but
+  stops at printing to stdout — saving and reapplying is entirely on
+  the app. General app state — `KVStoreService` (already adopted here
+  as `internal/adapters/settings`) is undifferentiated key-value
+  storage with no dedicated doc page anywhere; Wails3 draws no line
+  between "domain data" and "UI/navigational state." No reference app
+  in the Wails ecosystem does "restore where you left off" well either.
+  Real, citable cross-framework precedent instead: VS Code's
+  `ExtensionContext.workspaceState`/`globalState` `Memento` split, and
+  Electron's `electron-window-state` package's own convention (listen
+  to resize/move, debounce, persist bounds + maximized/fullscreen,
+  reapply next launch). The actual dividing line for Mill turned out to
+  be simpler than a policy choice: **which layer can even touch the
+  state**, not an arbitrary tier assignment — window geometry is native
+  OS window chrome with no frontend API at all (only the Go/Wails
+  backend has `Position()`/`Size()`), so it's necessarily Go-side;
+  active view, open tabs, and list filters are pure React state with no
+  backend meaning, so they're `localStorage`, the exact tier
+  theme/sidebar-collapse already established.
+  - **Window position/size/maximized** (`settingsservice.go`,
+    `SettingsService.LoadWindowGeometry`/`WatchWindowGeometry`,
+    natural home given `SettingsService` already owns `SetWindow` and
+    every other "global app setting"): persisted via the same
+    `internal/adapters/settings` store as the summon hotkey/launch-at-
+    login. `main.go` reads saved geometry before window creation and
+    applies it via `WebviewWindowOptions`' `X`/`Y`/`Width`/`Height`/
+    `StartState` — **a real bug caught before it shipped, not assumed
+    away**: `InitialPosition` defaults to `WindowCentered` (its zero
+    value), so `X`/`Y` are silently ignored unless `InitialPosition:
+    WindowXY` is set explicitly, confirmed directly against the SDK
+    source rather than assumed from the field names alone. Real move/
+    resize/maximise/unmaximise/restore events
+    (`events.Common.WindowDidMove` etc., confirmed real by grepping the
+    vendored SDK source directly, not recalled from memory) are
+    debounced (500ms, same reasoning `electron-window-state` uses) into
+    one write. Fullscreen is deliberately not tracked — reapplying a
+    persisted X/Y/Width/Height to a window last in fullscreen would be
+    meaningless (macOS fullscreen occupies its own Space, with real,
+    unresolved multi-monitor questions of its own), a named future gap
+    rather than a guess. An off-screen guard rejects a persisted
+    position far enough outside any plausible display bounds to almost
+    certainly be a stale save from a since-disconnected monitor —
+    Wails3, like Wails v2 before it (`wailsapp/wails#2739`, confirmed
+    directly), has no monitor-identity API, so this is a known,
+    accepted limitation, not a full multi-monitor solution pretending
+    otherwise. Verified: the headless-testable half (persist/restore
+    round trip, the off-screen guard, zero-size rejection) via real Go
+    tests against a fake store, same pattern `HotkeyService`'s own
+    real-OS-boundary tests already use, since `WatchWindowGeometry`
+    itself needs a real window and can't run headless (§1.3's own
+    documented class of gap).
+  - **Active view, open Composition/Configure tabs, Activity/Runs
+    filters** (`localStorage`): `useAppStore` (`shared/store.ts`) now
+    wraps its `view` field in zustand's own official `persist`
+    middleware (`zustand/middleware` — already a transitive part of
+    the already-adopted `zustand` dependency, no new package),
+    `partialize`d to just `view` (workflows/activity/capabilities stay
+    unpersisted — live, refetched, or session-only data, not
+    navigational state). `CompositionView.tsx`'s `EditorTab[]`/
+    `ConfigureIntegration.tsx`'s `ConnectorTab[]` restore only tabs for
+    entities that still exist (a new-draft or duplicate-draft tab, or
+    one pointing at a since-deleted workflow/connector, is dropped, not
+    restored into a broken state) via a new shared
+    `shared/persistedTabs.ts` helper — Configure additionally restores
+    only `'view'` tabs, never `'edit'` (reopening straight into an
+    edit form with any unsaved in-progress typing already gone would
+    look misleadingly "still open"). `ActivityView.tsx`'s
+    `sourceFilter`/`outcomeFilter` and `RunsView.tsx`'s `kindFilter`
+    persist the same way `sidebarOpen` already does. **A real bug
+    caught by an actual reload-and-check e2e test, not assumed away
+    (`.claude/rules/testing.md`)**: the tab-persisting `useEffect` in
+    both `CompositionView.tsx`/`ConfigureIntegration.tsx` also fires on
+    the very first mount (React runs every effect at least once
+    regardless of its dependency array) — before the restore effect's
+    async entity fetch resolves — so an unguarded write there
+    immediately overwrote the previous session's persisted tabs with
+    the fresh, empty initial state, destroying the exact data the
+    restore effect was about to read. Fixed by gating the persist
+    effect on the same one-shot "restore has been attempted" ref the
+    restore effect already sets. Verified end-to-end via Playwright
+    (`frontend/e2e/state-persistence.spec.ts`) against the real Go
+    backend: active view, an open workflow tab, and an open connector
+    view tab all correctly survive a reload; Runs' filter survives a
+    reload too. Activity's own filter persistence is verified directly
+    against `localStorage` rather than through a reload — Activity's
+    run history is itself deliberately session-only, never persisted
+    (§2.2's Update), so a reload wipes the entries the filter
+    `<Select>` needs to even render, independent of whether the filter
+    *value* persisted correctly; this is the honest scope of what
+    reload-based verification can actually prove here. Full Go+
+    frontend check suites green, complete 57-test Playwright e2e suite
+    run twice with no persisted-data leakage. `LOCKED`.
 
 ## 4. Connectors
 
@@ -3728,10 +3829,16 @@ mode from §0 repeating itself one level up.
 - Global app settings (§3.7) — launch-at-login and a global summon
   hotkey are `LOCKED` and built (`internal/adapters/launchatlogin`,
   `settingsservice.go`); `app.Updater` wired for manual update checks
-  (inert until a real tagged-release process exists). Still `OPEN`:
-  menu-bar/dock toggle, trigger-fire notifications (no settled design
-  yet), the multi-tenant-seam question (researched, recorded as
-  deliberately declined)
+  (inert until a real tagged-release process exists); window position/
+  size/maximized state, active view, open Composition/Configure tabs,
+  and Activity/Runs filters are `LOCKED` and built (window geometry
+  Go-side via `settingsservice.go`, the rest `localStorage` via
+  zustand's `persist` middleware + a new `shared/persistedTabs.ts`
+  helper — Wails3 itself has no opinion on either, researched directly
+  against the SDK source). Still `OPEN`: menu-bar/dock toggle,
+  trigger-fire notifications (no settled design yet), the multi-tenant-
+  seam question (researched, recorded as deliberately declined),
+  fullscreen window-state tracking (deliberately not built, named gap)
 - Connector input/output schema mechanism (§3.3/§3.5/§4/ADR-0007) —
   `LOCKED` and fully built (Phase 1+2+3): `internal/adapters/openapispec`,
   `Connector.OpenAPISpec`, Configure UI + "List operations", the

@@ -79,3 +79,77 @@ func TestSettingsService_PersistAndLoadSummonHotkey(t *testing.T) {
 		t.Error("GetSummonHotkey() on a service constructed against a store with a persisted summon hotkey: want a non-empty binding, got empty")
 	}
 }
+
+// Window geometry (docs/SPEC.md §3.7's Update) -- WatchWindowGeometry
+// itself needs a real *application.WebviewWindow (no headless run loop
+// in CI, same class of gap §1.3 already notes for HotkeyService's real
+// OS binding); these tests cover the headless-testable pure-logic half:
+// LoadWindowGeometry/persistWindowGeometry's persist/restore round trip
+// and the off-screen guard.
+
+func TestLoadWindowGeometry_NothingPersisted_ReturnsNotOK(t *testing.T) {
+	store := newFakeStore()
+	comp := NewCompositionService(store)
+	trig := NewTriggerService(comp, slog.Default(), store)
+	set := NewSettingsService(store, trig)
+
+	if _, _, _, _, _, ok := set.LoadWindowGeometry(); ok {
+		t.Error("LoadWindowGeometry() on a fresh service returned ok=true, want false")
+	}
+}
+
+func TestPersistAndLoadWindowGeometry_RoundTrips(t *testing.T) {
+	store := newFakeStore()
+	comp := NewCompositionService(store)
+	trig := NewTriggerService(comp, slog.Default(), store)
+	set := NewSettingsService(store, trig)
+
+	set.persistWindowGeometry(windowGeometry{X: 100, Y: 200, Width: 1200, Height: 800, Maximized: true})
+
+	x, y, width, height, maximized, ok := set.LoadWindowGeometry()
+	if !ok {
+		t.Fatal("LoadWindowGeometry() after persisting valid geometry returned ok=false")
+	}
+	if x != 100 || y != 200 || width != 1200 || height != 800 || !maximized {
+		t.Errorf("LoadWindowGeometry() = (%d, %d, %d, %d, %v), want (100, 200, 1200, 800, true)", x, y, width, height, maximized)
+	}
+
+	// Also confirmed via a second service instance over the same store --
+	// a real persist/restore round trip, not just an in-memory read of
+	// what was just written (same discipline
+	// TestSettingsService_PersistAndLoadSummonHotkey already uses).
+	reloaded := NewSettingsService(store, trig)
+	if _, _, _, _, _, ok := reloaded.LoadWindowGeometry(); !ok {
+		t.Error("LoadWindowGeometry() on a service reloaded from the same store returned ok=false, want true")
+	}
+}
+
+func TestLoadWindowGeometry_OffScreenPosition_Rejected(t *testing.T) {
+	store := newFakeStore()
+	comp := NewCompositionService(store)
+	trig := NewTriggerService(comp, slog.Default(), store)
+	set := NewSettingsService(store, trig)
+
+	// A position far enough off any real display to be almost certainly
+	// a stale save from a monitor that's since been disconnected --
+	// wailsapp/wails#2739's own documented limitation (no monitor-
+	// identity API), guarded against rather than blindly reapplied.
+	set.persistWindowGeometry(windowGeometry{X: 50000, Y: 50000, Width: 1000, Height: 618})
+
+	if _, _, _, _, _, ok := set.LoadWindowGeometry(); ok {
+		t.Error("LoadWindowGeometry() with an off-screen persisted position returned ok=true, want false (rejected by the off-screen guard)")
+	}
+}
+
+func TestLoadWindowGeometry_ZeroSize_Rejected(t *testing.T) {
+	store := newFakeStore()
+	comp := NewCompositionService(store)
+	trig := NewTriggerService(comp, slog.Default(), store)
+	set := NewSettingsService(store, trig)
+
+	set.persistWindowGeometry(windowGeometry{X: 0, Y: 0, Width: 0, Height: 0})
+
+	if _, _, _, _, _, ok := set.LoadWindowGeometry(); ok {
+		t.Error("LoadWindowGeometry() with zero width/height returned ok=true, want false")
+	}
+}

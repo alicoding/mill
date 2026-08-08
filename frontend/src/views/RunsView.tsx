@@ -34,6 +34,10 @@ const STEP_ICON: Record<RunStep['status'], React.ReactNode> = {
   pending: <ClockIcon size={16} fill="var(--fgColor-muted)" />,
 }
 
+// docs/SPEC.md §3.7's Update -- same localStorage/cosmetic tier as
+// ActivityView.tsx's own filter persistence.
+const KIND_FILTER_STORAGE_KEY = 'mill-runs-kind-filter'
+
 // The durable-execution counterpart to ActivityView (docs/adr/0004):
 // every run through ExecutionService.RunWorkflow is checkpointed
 // step-by-step and stays inspectable/redrivable here after the fact,
@@ -51,7 +55,12 @@ function RunsView() {
   const [runningWorkflowID, setRunningWorkflowID] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
-  const [kindFilter, setKindFilter] = useState<'all' | RunKind>('all')
+  const [kindFilter, setKindFilter] = useState<'all' | RunKind>(
+    () => (localStorage.getItem(KIND_FILTER_STORAGE_KEY) as 'all' | RunKind | null) ?? 'all',
+  )
+  useEffect(() => {
+    localStorage.setItem(KIND_FILTER_STORAGE_KEY, kindFilter)
+  }, [kindFilter])
 
   const refreshRuns = () => {
     ExecutionService.ListRuns()
