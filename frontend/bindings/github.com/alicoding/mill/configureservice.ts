@@ -25,6 +25,9 @@ import { Call as $Call, CancellablePromise as $CancellablePromise } from "@wails
 import * as mcpclient$0 from "./internal/adapters/mcpclient/models.js";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
+import * as openapispec$0 from "./internal/adapters/openapispec/models.js";
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: Unused imports
 import * as composition$0 from "./internal/domain/composition/models.js";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
@@ -40,8 +43,8 @@ export function Connectors(): $CancellablePromise<connector$0.Connector[] | null
     return $Call.ByID(1335444401);
 }
 
-export function CreateConnector(label: string, connType: string, baseURL: string, authType: connector$0.AuthType, headers: { [_ in string]?: string } | null): $CancellablePromise<connector$0.Connector> {
-    return $Call.ByID(3578677376, label, connType, baseURL, authType, headers);
+export function CreateConnector(label: string, connType: string, baseURL: string, authType: connector$0.AuthType, headers: { [_ in string]?: string } | null, openAPISpec: string): $CancellablePromise<connector$0.Connector> {
+    return $Call.ByID(3578677376, label, connType, baseURL, authType, headers, openAPISpec);
 }
 
 export function CreateList(label: string, entries: { [_ in string]?: string } | null): $CancellablePromise<list$0.List> {
@@ -80,6 +83,20 @@ export function DeleteMCPServer(id: string): $CancellablePromise<void> {
 }
 
 /**
+ * ListConnectorOperations parses id's stored OpenAPISpec and returns
+ * every operation it declares -- the discoverability answer for a
+ * Connector's schema, same shape as ListMCPServerTools
+ * (configuremcpserver.go, §3.6): a user finds the exact path+method to
+ * reference from a workflow node here, not by guessing. Returns an
+ * error for a Connector with no OpenAPISpec set, rather than an empty
+ * list, so the frontend can distinguish "nothing declared yet" from
+ * "real spec, zero operations."
+ */
+export function ListConnectorOperations(id: string): $CancellablePromise<openapispec$0.OperationRef[] | null> {
+    return $Call.ByID(4039635074, id);
+}
+
+/**
  * ListMCPServerTools is a live, on-demand reference lookup (connects to
  * the server, lists its tools, disconnects) -- not persisted or synced,
  * same "occasional reference lookup, not a live feed" shape Connectors()/
@@ -110,8 +127,8 @@ export function SetConnectorSecret(id: string, secret: string): $CancellableProm
     return $Call.ByID(936216382, id, secret);
 }
 
-export function UpdateConnector(id: string, label: string, connType: string, baseURL: string, authType: connector$0.AuthType, headers: { [_ in string]?: string } | null): $CancellablePromise<connector$0.Connector> {
-    return $Call.ByID(2890915231, id, label, connType, baseURL, authType, headers);
+export function UpdateConnector(id: string, label: string, connType: string, baseURL: string, authType: connector$0.AuthType, headers: { [_ in string]?: string } | null, openAPISpec: string): $CancellablePromise<connector$0.Connector> {
+    return $Call.ByID(2890915231, id, label, connType, baseURL, authType, headers, openAPISpec);
 }
 
 export function UpdateList(id: string, label: string, entries: { [_ in string]?: string } | null): $CancellablePromise<list$0.List> {
