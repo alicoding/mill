@@ -78,6 +78,7 @@ func TestMillMCPService_Tools_ImportGatedExportOpen(t *testing.T) {
 	}
 
 	// Import is rejected while the gate is off (the default).
+	countBeforeGateOffAttempt := len(comp.Workflows())
 	res, err = session.CallTool(ctx, &mcp.CallToolParams{
 		Name: "import_workflow", Arguments: map[string]any{"json": exported},
 	})
@@ -90,8 +91,10 @@ func TestMillMCPService_Tools_ImportGatedExportOpen(t *testing.T) {
 	if msg := res.Content[0].(*mcp.TextContent).Text; !strings.Contains(msg, "Settings") {
 		t.Errorf("gate rejection should point the agent at Mill's Settings, got: %s", msg)
 	}
-	if got := len(comp.Workflows()); got != 3 { // 2 built-ins + the one created above
-		t.Fatalf("workflow count changed to %d despite the gate -- nothing may be written while off", got)
+	// Nothing may have been written while the gate was off.
+	countBefore := len(comp.Workflows())
+	if countBefore != countBeforeGateOffAttempt {
+		t.Fatalf("workflow count changed to %d despite the gate -- nothing may be written while off", countBefore)
 	}
 
 	// Flip the gate the way SettingsService's toggle does, then import.
@@ -120,7 +123,7 @@ func TestMillMCPService_Tools_ImportGatedExportOpen(t *testing.T) {
 	if imported.Label != "MCP tools workflow" {
 		t.Errorf("imported label = %q, want the exported label", imported.Label)
 	}
-	if got := len(comp.Workflows()); got != 4 {
-		t.Errorf("workflow count = %d after import, want 4", got)
+	if got := len(comp.Workflows()); got != countBefore+1 {
+		t.Errorf("workflow count = %d after import, want %d", got, countBefore+1)
 	}
 }
