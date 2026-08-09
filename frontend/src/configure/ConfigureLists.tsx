@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Button, FormControl, Heading, IconButton, Stack, Text, TextInput } from '@primer/react'
-import { PlusIcon, TrashIcon } from '@primer/octicons-react'
+import { DownloadIcon, PlusIcon, TrashIcon, UploadIcon } from '@primer/octicons-react'
 import { ConfigureService } from '../../bindings/github.com/alicoding/mill'
 import type { List } from '../../bindings/github.com/alicoding/mill/internal/domain/list/models'
+import { downloadJSON } from '../shared/downloadJSON'
 import styles from '../shared/ListCard.module.css'
 
 interface EntryRow {
@@ -33,9 +34,32 @@ export function ConfigureLists() {
   const [rows, setRows] = useState<EntryRow[]>([])
   const [formOpen, setFormOpen] = useState(false)
   const [error, setError] = useState('')
+  const [importError, setImportError] = useState<string | null>(null)
+  const importInputRef = useRef<HTMLInputElement>(null)
 
   const refetch = () => {
     ConfigureService.Lists().then((list) => setLists(list ?? [])).catch(console.error)
+  }
+
+  const exportList = (id: string, label: string) => {
+    ConfigureService.ExportList(id)
+      .then((json) => downloadJSON(`${label.trim() || 'list'}.json`, json))
+      .catch((err) => setImportError(String(err)))
+  }
+
+  const openImportPicker = () => {
+    setImportError(null)
+    importInputRef.current?.click()
+  }
+
+  const handleImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    file.text()
+      .then((text) => ConfigureService.ImportList(text))
+      .then(() => { setImportError(null); refetch() })
+      .catch((err) => setImportError(String(err)))
   }
 
   useEffect(refetch, [])
@@ -84,10 +108,26 @@ export function ConfigureLists() {
     <div className={styles.page} data-testid="configure-lists">
       <Stack direction="horizontal" justify="space-between" align="center" className={styles.sectionHeading}>
         <Heading as="h2" variant="small">Lists</Heading>
-        <Button leadingVisual={PlusIcon} size="small" onClick={startCreate} data-testid="new-list">
-          New list
-        </Button>
+        <Stack direction="horizontal" gap="condensed">
+          <input
+            ref={importInputRef}
+            type="file"
+            accept="application/json,.json"
+            data-testid="import-list-input"
+            style={{ display: 'none' }}
+            onChange={handleImportFile}
+          />
+          <Button leadingVisual={UploadIcon} size="small" onClick={openImportPicker} data-testid="import-list">
+            Import
+          </Button>
+          <Button leadingVisual={PlusIcon} size="small" onClick={startCreate} data-testid="new-list">
+            New list
+          </Button>
+        </Stack>
       </Stack>
+      {importError && (
+        <Text as="p" size="small" className={styles.error} data-testid="import-list-error">{importError}</Text>
+      )}
 
       {formOpen && (
         <div className={styles.card}>
@@ -139,6 +179,13 @@ export function ConfigureLists() {
                 </div>
                 <Stack direction="horizontal" gap="condensed">
                   <Button size="small" variant="invisible" onClick={() => startEdit(l)}>Edit</Button>
+                  <IconButton
+                    icon={DownloadIcon}
+                    aria-label={`Export ${l.Label}`}
+                    size="small"
+                    variant="invisible"
+                    onClick={() => exportList(l.ID, l.Label)}
+                  />
                   <IconButton icon={TrashIcon} aria-label={`Delete ${l.Label}`} size="small" variant="invisible" onClick={() => remove(l.ID)} />
                 </Stack>
               </Stack>
