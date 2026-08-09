@@ -6,6 +6,7 @@ import * as SettingsService from '../../bindings/github.com/alicoding/mill/setti
 import { keyFromEventCode, modsFromEvent } from '../shared/keybinding'
 import { isAccessibilityError, ACCESSIBILITY_SETTINGS_URL } from '../composition/hotkeyCapture'
 import styles from '../shared/ListCard.module.css'
+import PageContainer from '../shared/PageContainer'
 
 const COLOR_MODES = ['light', 'dark', 'auto'] as const
 
@@ -101,7 +102,7 @@ function SettingsView() {
   }
 
   return (
-    <div className={styles.formPage} data-testid="settings-view">
+    <PageContainer variant="narrow" data-testid="settings-view">
       <Heading as="h1">Settings</Heading>
       <Text as="p" className={styles.subtitle}>
         App-level preferences -- not workflow or Configure-authored data (that lives in Composition/Configure), a
@@ -174,7 +175,7 @@ function SettingsView() {
         </Button>
         {updateStatus && <Text size="small" className={styles.muted}>{updateStatus}</Text>}
       </Stack>
-    </div>
+    </PageContainer>
   )
 }
 

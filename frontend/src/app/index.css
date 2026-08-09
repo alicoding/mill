@@ -72,17 +72,27 @@ body {
    the whole page grew to fit the content and the footer scrolled 7000px
    away instead of the flex:1;min-height:0 pane below clipping internally.
    Plain global class, not a CSS module, since App.tsx is the one place
-   that needs it and it's structural chrome rather than view content. */
+   that needs it and it's structural chrome rather than view content.
+
+   No horizontal/top padding here, deliberately -- a real, reported bug
+   (a visible gap between the window's left edge and the sidebar) traced
+   to exactly this: golden-ratio padding applied around the *whole* shell
+   (PageLayout.Sidebar included) rather than the content region alone, no
+   real app insets its own sidebar from the window edge this way. Every
+   region already supplies its own inset independently: PageLayout.Sidebar
+   has its own `padding="condensed"` prop, PageLayout.Content's children
+   get theirs from shared/PageContainer.tsx, .footer (App.module.css) sets
+   its own padding directly -- this outer layer was pure double-padding on
+   top of those, stacking with each page's own PageContainer padding to
+   produce the reported "way too much dead space" symptom. Safe-area
+   insets (notch / home indicator) are the one thing no inner region
+   owns, so those alone stay here. */
 .app-shell {
     height: 100vh;
     height: 100dvh;
     display: flex;
     flex-direction: column;             /* content area + footer pinned to the bottom */
-    /* Respect mobile safe areas (notch / home indicator). No bottom padding:
-       the footer sits flush at the bottom edge. */
-    /* Wider outer margins on the golden scale (φ² top/right, φ³ left). */
-    padding: max(var(--s-4), env(safe-area-inset-top)) max(var(--s-4), env(safe-area-inset-right))
-             0 max(var(--s-5), env(safe-area-inset-left));
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) 0 env(safe-area-inset-left);
 }
 
 /* Scrollable content pane -- since the PageLayout sidebar migration

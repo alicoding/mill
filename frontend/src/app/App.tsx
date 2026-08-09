@@ -253,7 +253,7 @@ function App() {
               see build/appicon.png), so collapsed shows just the toggle,
               centered, rather than fabricating a mark that doesn't exist
               anywhere else in the app. */}
-          <div className={styles.sidebarHeader}>
+          <div className={styles.sidebarHeader} data-testid="sidebar-header">
             {sidebarOpen && <Text className={styles.sidebarWordmark}>Mill</Text>}
             <IconButton
               icon={sidebarOpen ? SidebarCollapseIcon : SidebarExpandIcon}

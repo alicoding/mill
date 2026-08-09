@@ -5,6 +5,7 @@ import { CompositionService, ConfigureService } from '../../bindings/github.com/
 import type { AttributeDef, Workflow } from '../../bindings/github.com/alicoding/mill/internal/domain/composition/models'
 import { ConfigFieldType } from '../../bindings/github.com/alicoding/mill/internal/domain/composition/models'
 import styles from '../shared/ListCard.module.css'
+import PageContainer from '../shared/PageContainer'
 
 const TYPE_LABEL: Record<string, string> = {
   [ConfigFieldType.FieldText]: 'Text',
@@ -59,7 +60,7 @@ export function ConfigureAttributes() {
   }
 
   return (
-    <div className={styles.formPage} data-testid="configure-attributes">
+    <PageContainer variant="narrow" data-testid="configure-attributes">
       <Heading as="h2" variant="small" className={styles.sectionHeading}>Attributes</Heading>
       <Text as="p" size="small" className={styles.muted}>
         Attributes are scoped to a single workflow (1:1) -- pick one to edit its declared schema. Decision edges in
@@ -118,6 +119,6 @@ export function ConfigureAttributes() {
           </Stack>
         </div>
       )}
-    </div>
+    </PageContainer>
   )
 }
