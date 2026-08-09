@@ -14,7 +14,7 @@ function requestRow(page: import('@playwright/test').Page, label: string) {
 }
 
 async function deleteRequest(page: import('@playwright/test').Page, label: string) {
-  await page.getByRole('tab', { name: 'Integrations', exact: true }).click()
+  await page.getByRole('link', { name: 'Configure' }).click()
   await requestRow(page, label).getByRole('button', { name: `Delete ${label}` }).click()
   await expect(requestRow(page, label)).toHaveCount(0)
 }

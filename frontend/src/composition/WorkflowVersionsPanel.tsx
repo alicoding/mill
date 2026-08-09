@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Button, Heading, Label, Stack, Text } from '@primer/react'
-import { DataTable, Table } from '@primer/react/experimental'
+import { DataTable } from '@primer/react/experimental'
+import { ResizableTableContainer, TruncatedCell } from '../shared/ResizableTable'
 import { CompositionService } from '../../bindings/github.com/alicoding/mill'
 import type { Workflow } from '../../bindings/github.com/alicoding/mill/internal/domain/composition/models'
 import styles from '../shared/ListCard.module.css'
@@ -67,7 +68,7 @@ export function WorkflowVersionsPanel({ workflow, onChanged }: {
         <Text as="p" className={styles.muted}>No versions yet — publish the draft to create v1.</Text>
       )}
       {versions.length > 0 && (
-        <Table.Container>
+        <ResizableTableContainer>
           <DataTable
             aria-labelledby="versions-heading"
             data={versions.map((v) => ({ ...v, id: v.Version }))}
@@ -85,7 +86,7 @@ export function WorkflowVersionsPanel({ workflow, onChanged }: {
                 header: 'Saved', id: 'saved', width: 'auto',
                 renderCell: (v) => new Date(v.SavedAt as unknown as string).toLocaleString(),
               },
-              { header: 'Label', field: 'Label' },
+              { header: 'Label', id: 'label', renderCell: (v) => <TruncatedCell text={v.Label} /> },
               {
                 header: '', id: 'actions', width: 'auto', align: 'end',
                 renderCell: (v) => (
@@ -103,7 +104,7 @@ export function WorkflowVersionsPanel({ workflow, onChanged }: {
               },
             ]}
           />
-        </Table.Container>
+        </ResizableTableContainer>
       )}
     </PageContainer>
   )

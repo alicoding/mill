@@ -33,7 +33,11 @@ test('An open Composition workflow tab persists across a reload', async ({ page 
 
   await page.reload()
   await page.getByRole('link', { name: 'Workflows' }).click()
+  // Restored into the app-wide strip (docs/SPEC.md §3.8) -- present
+  // but not auto-activated; clicking it lands back in the editor.
   await expect(page.getByRole('tab', { name: 'Load sample HTML' })).toBeVisible()
+  await page.getByRole('tab', { name: 'Load sample HTML' }).click()
+  await expect(page.getByTestId('save-workflow')).toBeVisible()
 })
 
 test('An open Configure request view tab persists across a reload', async ({ page }) => {
@@ -47,6 +51,9 @@ test('An open Configure request view tab persists across a reload', async ({ pag
 
   await page.reload()
   await page.getByRole('link', { name: 'Configure' }).click()
+  // Restored into the app-wide strip, not auto-activated -- click it.
+  await expect(page.getByRole('tab', { name: label })).toBeVisible()
+  await page.getByRole('tab', { name: label }).click()
   await expect(page.getByTestId('request-summary')).toBeVisible()
   await expect(page.getByRole('heading', { name: label })).toBeVisible()
 })

@@ -8,10 +8,11 @@ import CompositionView from "../composition/CompositionView";
 import ConfigureView from "../configure/ConfigureView";
 import SettingsView from "../views/SettingsView";
 import PlaceholderView from "../views/PlaceholderView";
-import { CompositionService, CapabilitiesService, SettingsService } from "../../bindings/github.com/alicoding/mill";
+import { CapabilitiesService, SettingsService } from "../../bindings/github.com/alicoding/mill";
 import type { BuildInfo } from "../../bindings/github.com/alicoding/mill/models";
-import { useAppStore, viewFor, viewsEqual, statusDotColor } from "../shared/store";
+import { refreshNodeTypes, refreshRequests, refreshWorkflows, useAppStore, viewFor, viewsEqual, statusDotColor } from "../shared/store";
 import type { View } from "../shared/store";
+import { WorkTabShell } from "./WorkTabShell";
 import { COLOR_MODE_STORAGE_KEY, SIDEBAR_OPEN_STORAGE_KEY } from "./theme";
 import { CAPABILITY_ICON, SPEC_ICON } from "./navIcon";
 import styles from "./App.module.css";
@@ -27,6 +28,22 @@ const wailsVersion = "v3.0.0-beta.4";
 // backwards. This is Mill's answer to "am I looking at a dev build,
 // and is it current" (see docs/SPEC.md's dev-build/hot-reload notes).
 const isDevBuild = import.meta.env.DEV;
+
+// The strip's first tab names the current sidebar section -- the "go
+// back to the page under the tabs" affordance.
+function pageLabelFor(view: View, capabilities: { ID: string; Label: string; NavLabel: string }[]): string {
+  switch (view.kind) {
+    case 'composition': return 'Workflows'
+    case 'configure': return 'Configure'
+    case 'activity': return 'Activity'
+    case 'settings': return 'Settings'
+    case 'spec': return 'Spec'
+    case 'placeholder': {
+      const cap = capabilities.find((c) => c.ID === view.capabilityId)
+      return cap ? (cap.NavLabel || cap.Label) : 'Overview'
+    }
+  }
+}
 
 // True only inside the Wails native webview (the runtime injects
 // window._wails there; a plain browser tab on the server-mode HTTP
@@ -60,7 +77,6 @@ function App() {
   // output, dev or not).
   const [buildInfo, setBuildInfo] = useState<BuildInfo | null>(null);
   const workflows = useAppStore((s) => s.workflows);
-  const setWorkflows = useAppStore((s) => s.setWorkflows);
   const pushActivity = useAppStore((s) => s.pushActivity);
   const setCapabilities = useAppStore((s) => s.setCapabilities);
   const capabilities = useAppStore((s) => s.capabilities);
@@ -183,8 +199,14 @@ function App() {
   }, []);
 
   useEffect(() => {
-    CompositionService.Workflows().then((list) => setWorkflows(list ?? [])).catch(console.error);
-  }, [setWorkflows]);
+    // The shared server-data trio the store owns (workflows for the
+    // sidebar/hotkey handler, nodeTypes/requests for the app-wide
+    // work-tab shell's editors) -- fetched once here, refetched by
+    // whichever surface mutates them.
+    void refreshWorkflows();
+    void refreshNodeTypes();
+    void refreshRequests();
+  }, []);
 
   useEffect(() => {
     CapabilitiesService.List().then((list) => setCapabilities(list ?? [])).catch(console.error);
@@ -338,17 +360,22 @@ function App() {
         </PageLayout.Sidebar>
 
         <PageLayout.Content className="view-pane" padding="none">
-          {view.kind === 'activity' && <ActivityView/>}
+          {/* The app-wide work-tab strip (docs/SPEC.md §3.8): the
+              current section page is the first tab, every open work
+              item a tab beside it, surviving sidebar navigation. */}
+          <WorkTabShell pageLabel={pageLabelFor(view, capabilities)}>
+            {view.kind === 'activity' && <ActivityView/>}
 
-          {view.kind === 'composition' && <CompositionView/>}
+            {view.kind === 'composition' && <CompositionView/>}
 
-          {view.kind === 'configure' && <ConfigureView/>}
+            {view.kind === 'configure' && <ConfigureView/>}
 
-          {view.kind === 'settings' && <SettingsView/>}
+            {view.kind === 'settings' && <SettingsView/>}
 
-          {view.kind === 'spec' && <SpecView/>}
+            {view.kind === 'spec' && <SpecView/>}
 
-          {view.kind === 'placeholder' && <PlaceholderView capabilityId={view.capabilityId}/>}
+            {view.kind === 'placeholder' && <PlaceholderView capabilityId={view.capabilityId}/>}
+          </WorkTabShell>
         </PageLayout.Content>
       </PageLayout>
 

@@ -17,7 +17,7 @@ function requestRow(page: import('@playwright/test').Page, label: string) {
 // `hidden` (Primer's TabPanel never unmounts, just toggles `hidden`),
 // and a hidden element isn't clickable.
 async function deleteRequest(page: import('@playwright/test').Page, label: string) {
-  await page.getByRole('tab', { name: 'Integrations', exact: true }).click()
+  await page.getByRole('link', { name: 'Configure' }).click()
   await requestRow(page, label).getByRole('button', { name: `Delete ${label}` }).click()
   await expect(requestRow(page, label)).toHaveCount(0)
 }

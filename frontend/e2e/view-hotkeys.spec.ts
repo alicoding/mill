@@ -15,7 +15,7 @@ test('Cmd+1 through Cmd+4 jump to their view from anywhere else in the app', asy
   // Start on Composition (the default landing view) and confirm each
   // hotkey lands somewhere else first, so a false positive (already
   // being on the target view) can't hide a broken hotkey.
-  await expect(page.getByRole('tablist', { name: 'Workflows' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Workflows', level: 1 })).toBeVisible()
 
   await page.keyboard.press('Meta+2')
   await expect(page.getByRole('tablist', { name: 'Configure' })).toBeVisible()
@@ -27,7 +27,7 @@ test('Cmd+1 through Cmd+4 jump to their view from anywhere else in the app', asy
   await expect(page.getByTestId('capability-index')).toBeVisible()
 
   await page.keyboard.press('Meta+1')
-  await expect(page.getByRole('tablist', { name: 'Workflows' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Workflows', level: 1 })).toBeVisible()
 })
 
 test('A view hotkey works while a text field has focus, matching browser tab-switching precedent', async ({ page }) => {
@@ -41,9 +41,9 @@ test('A view hotkey works while a text field has focus, matching browser tab-swi
 
 test('Plain digit keys without Cmd do not navigate', async ({ page }) => {
   await page.goto('/')
-  await expect(page.getByRole('tablist', { name: 'Workflows' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Workflows', level: 1 })).toBeVisible()
 
   await page.keyboard.press('3')
-  await expect(page.getByRole('tablist', { name: 'Workflows' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Workflows', level: 1 })).toBeVisible()
   await expect(page.getByRole('heading', { name: 'Activity', level: 1 })).toHaveCount(0)
 })

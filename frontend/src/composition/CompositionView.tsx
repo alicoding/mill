@@ -1,184 +1,48 @@
 import { useEffect, useRef, useState } from 'react'
 import { Button, Heading, Stack, Text } from '@primer/react'
-import { Tabs } from '@primer/react/experimental'
 import { PlusIcon, UploadIcon } from '@primer/octicons-react'
 import { CompositionService, ExecutionService } from '../../bindings/github.com/alicoding/mill'
 import { RunKind } from '../../bindings/github.com/alicoding/mill/models'
-import type { NodeType, Workflow } from '../../bindings/github.com/alicoding/mill/internal/domain/composition/models'
 import { generateSamplePayload } from '../shared/configSchema'
-import { useAppStore } from '../shared/store'
-import { loadPersistedTabs, savePersistedTabs } from '../shared/persistedTabs'
-import CompositionCanvas from './CompositionCanvas'
-import WorkflowRunsPanel from './WorkflowRunsPanel'
-import { WorkflowVersionsPanel } from './WorkflowVersionsPanel'
+import { refreshNodeTypes, refreshWorkflows, useAppStore } from '../shared/store'
 import TestRunDialog from './TestRunDialog'
-import { TabItem, TabList, TabPanel } from '../shared/Tabs'
 import styles from '../shared/ListCard.module.css'
-import editorStyles from './CompositionView.module.css'
 import PageContainer from '../shared/PageContainer'
 import { ViewModeToggle } from '../shared/ViewModeToggle'
 import { useViewMode } from '../shared/viewMode'
 import { WorkflowsTable } from './WorkflowsTable'
 import { WorkflowsCards } from './WorkflowsCards'
 
-// One open editor tab per workflow being composed/edited at once --
-// workflowId null means composing a new workflow.
-interface EditorTab {
-  key: string
-  workflowId: string | null
-}
-
-// A saved workflow's own editor tab gets a second, inner Canvas/Runs
-// switch (docs/SPEC.md §7's Update, real precedent: n8n/Retool/Airflow
-// all pair an Editor view with an Executions/Runs view on the same
-// workflow's own page). A brand-new, not-yet-saved workflow
-// (workflow === null) has no run history to show yet -- it renders
-// Canvas alone, no inner tab bar, matching "nothing to author" reasoning
-// already used elsewhere in this codebase for a control with no real
-// choice behind it. Owns its own innerTab state locally: each open
-// outer workflow tab's Canvas/Runs selection is independent of every
-// other open tab's.
-function WorkflowEditorTab({
-  nodeTypes, workflow, onBack, onSaved, onWorkflowsChanged,
-}: {
-  nodeTypes: NodeType[]
-  workflow: Workflow | null
-  onBack: () => void
-  onSaved: () => void
-  // Refetches the workflow list without closing this tab -- what the
-  // Versions tab's publish/disable/restore actions need (docs/adr/0021):
-  // they mutate lifecycle state, not the draft being edited.
-  onWorkflowsChanged: () => void
-}) {
-  const [innerTab, setInnerTab] = useState('canvas')
-
-  if (!workflow) {
-    return <CompositionCanvas nodeTypes={nodeTypes} workflow={workflow} onBack={onBack} onSaved={onSaved} />
-  }
-
-  return (
-    <Tabs value={innerTab} onValueChange={({ value }) => setInnerTab(value)}>
-      <TabList aria-label={`${workflow.Label} sections`}>
-        <TabItem value="canvas">Canvas</TabItem>
-        <TabItem value="runs">Runs</TabItem>
-        <TabItem value="versions">Versions</TabItem>
-      </TabList>
-      <TabPanel value="canvas" className={editorStyles.editorPanel}>
-        <CompositionCanvas nodeTypes={nodeTypes} workflow={workflow} onBack={onBack} onSaved={onSaved} />
-      </TabPanel>
-      <TabPanel value="runs">
-        <WorkflowRunsPanel workflowId={workflow.ID} />
-      </TabPanel>
-      <TabPanel value="versions">
-        <WorkflowVersionsPanel workflow={workflow} onChanged={onWorkflowsChanged} />
-      </TabPanel>
-    </Tabs>
-  )
-}
-
-const WORKFLOWS_TAB = 'workflows'
-const TABS_STORAGE_KEY = 'mill-composition-tabs'
-
-// A prototype for SPEC.md §3 / ADR-0005 (A2: MCP-tool + control-flow
-// nodes; B2's canvas deferral overridden by explicit decision -- see
-// docs/adr/0005-capability-composition-node-schema.md's Update section).
-// The Workflows list is the default, pinned tab; "New workflow" or
-// editing an existing one opens its own tab, matching the reference
-// no-code platform's own tabbed Workflows-list/canvas-editor split
-// (SPEC.md §3.2/its Update note) rather than a single view that swaps
-// wholesale. Each open tab's CompositionCanvas keeps its own
-// nodes/edges/undo history (canvasStore.ts's createCanvasStore factory,
-// one instance per mounted canvas) -- Primer's Tabs/TabPanel keep every
-// open panel mounted (toggling a `hidden` attribute, not unmounting),
-// so switching tabs preserves in-progress edits in the others. This is
-// now the successor to the retired Runbook page (docs/SPEC.md §2.2's
-// Update note) -- its two actions live on as ordinary, fully-editable
-// seeded workflows (composition.go's BuiltInWorkflows), not a separate
-// page.
+// The Workflows list page (SPEC.md §3 / ADR-0005). Editor tabs no
+// longer live here: opening/editing a workflow goes through the store's
+// app-wide work-tab strip (docs/SPEC.md §3.8, app/WorkTabShell.tsx), so
+// an open canvas survives navigating to any other section. This page is
+// purely the inventory -- list, Run (a test run of the draft,
+// docs/adr/0008/0021), Import/Export, and open-in-tab actions.
 function CompositionView() {
   const pushActivity = useAppStore((s) => s.pushActivity)
-  const [nodeTypes, setNodeTypes] = useState<NodeType[] | null>(null)
-  const [workflows, setWorkflows] = useState<Workflow[] | null>(null)
+  const workflows = useAppStore((s) => s.workflows)
+  const nodeTypes = useAppStore((s) => s.nodeTypes)
+  const openWorkTab = useAppStore((s) => s.openWorkTab)
   const [runningId, setRunningId] = useState<string | null>(null)
   const [results, setResults] = useState<Record<string, string>>({})
   const [errors, setErrors] = useState<Record<string, string>>({})
   // Test-input form (docs/adr/0008, SPEC.md §3.2's "per-record test
   // harness"): set only while the dialog for a workflow with declared
-  // Attributes is open -- a workflow with none never touches this,
-  // matching the rest of this codebase's "no UI for a decision that
-  // doesn't exist yet" discipline (§3.5's Configure recheck).
+  // Attributes is open.
   const [testRunTarget, setTestRunTarget] = useState<{ id: string; values: Record<string, string> } | null>(null)
-  const [tabs, setTabs] = useState<EditorTab[]>([])
-  const [activeTab, setActiveTab] = useState(WORKFLOWS_TAB)
-  const openWorkflowRequest = useAppStore((s) => s.openWorkflowRequest)
-  const clearOpenWorkflowRequest = useAppStore((s) => s.clearOpenWorkflowRequest)
-  // Import's error has nowhere to key by workflow ID -- the import
-  // hasn't produced one yet when it fails -- so it's a single, general
-  // slot rather than the errors-by-ID map every other error state here
-  // uses.
   const [importError, setImportError] = useState<string | null>(null)
   const importFileInputRef = useRef<HTMLInputElement>(null)
-  // Guards the one-shot restore effect below from re-firing on every
-  // later refetch (e.g. after Save) -- it must only apply the persisted
-  // tab set once, the first time `workflows` becomes available, never
-  // clobber tabs the user has since opened or closed.
-  const restoredTabs = useRef(false)
-
-  const refetchWorkflows = () => {
-    CompositionService.Workflows().then((list) => setWorkflows(list ?? [])).catch(console.error)
-  }
+  const [viewMode, setViewMode] = useViewMode('mill-workflows-view-mode')
 
   useEffect(() => {
-    CompositionService.NodeTypes().then((list) => setNodeTypes(list ?? [])).catch(console.error)
-    refetchWorkflows()
+    void refreshWorkflows()
+    void refreshNodeTypes()
   }, [])
 
-  // Restores which workflow tabs were open (docs/SPEC.md §3.7's
-  // Update) once the real workflow list is in, filtering out any
-  // persisted ID for a workflow deleted since last session -- a
-  // persisted tab pointing at nothing would be worse than not
-  // restoring it.
-  useEffect(() => {
-    if (workflows === null || restoredTabs.current) return
-    restoredTabs.current = true
-    const persisted = loadPersistedTabs(TABS_STORAGE_KEY)
-    const validIds = persisted.ids.filter((id) => workflows.some((w) => w.ID === id))
-    if (validIds.length === 0) return
-    const restored = validIds.map((workflowId) => ({ key: crypto.randomUUID(), workflowId }))
-    setTabs(restored)
-    // activeTab must match a real tab's freshly-generated `key`, not
-    // the stale persisted workflowId itself.
-    const active = restored.find((t) => t.workflowId === persisted.activeId)
-    setActiveTab(active ? active.key : WORKFLOWS_TAB)
-  }, [workflows])
-
-  // Persists the open, saved-workflow tab set (never a "new workflow"
-  // draft, workflowId === null) on every change. Gated on
-  // restoredTabs.current: this effect also fires on the very first
-  // mount (React runs every effect at least once regardless of its
-  // dependency array), before the restore effect above has had a
-  // chance to run (it's waiting on the async Workflows() fetch) -- an
-  // unguarded write here would overwrite the previous session's
-  // persisted tabs with the empty initial state, destroying the exact
-  // data the restore effect is about to read. A real bug caught via a
-  // real reload-and-check e2e test, not assumed away
-  // (.claude/rules/testing.md).
-  useEffect(() => {
-    if (!restoredTabs.current) return
-    const savedTabs = tabs.filter((t): t is EditorTab & { workflowId: string } => t.workflowId !== null)
-    const activeSaved = savedTabs.find((t) => t.key === activeTab)
-    savePersistedTabs(TABS_STORAGE_KEY, {
-      ids: savedTabs.map((t) => t.workflowId),
-      activeId: activeSaved ? activeSaved.workflowId : null,
-    })
-  }, [tabs, activeTab])
-
   // Runs through ExecutionService.RunWorkflow, tagged RunKindTest --
-  // docs/adr/0008's single execution path: a canvas click is a manual
-  // test run (Oscilar's own "test run" naming, SPEC.md §3.2), not a real
-  // triggered event, but it's still a full durable/checkpointed run --
-  // it shows up on the Runs page the same as any other, unlike the old
-  // plain in-memory CompositionService.RunWorkflow this replaces.
+  // docs/adr/0008's single execution path; per ADR-0021 a test run
+  // executes the draft head, publish state untouched.
   const runWithValues = (id: string, values: Record<string, string> | null) => {
     const label = workflows?.find((w) => w.ID === id)?.Label ?? id
     setRunningId(id)
@@ -212,14 +76,8 @@ function CompositionView() {
       .finally(() => setRunningId(null))
   }
 
-  // A workflow with no declared Attributes runs immediately, exactly as
-  // before this existed -- the test-input dialog only appears when
-  // there's actually something to fill in, same "no UI for a decision
-  // that doesn't exist yet" discipline as §3.5's Configure recheck.
-  // Values are auto-generated (zod-schema-faker, same mechanism already
-  // adopted for a NodeType's "Generate test payload" button, §3.4) so
-  // the common case is still a one-click Run, not a form to fill out
-  // every time.
+  // A workflow with no declared Attributes runs immediately; the
+  // test-input dialog only appears when there's something to fill in.
   const run = (id: string) => {
     const wf = workflows?.find((w) => w.ID === id)
     const attrs = wf?.Attributes ?? []
@@ -231,15 +89,13 @@ function CompositionView() {
   }
 
   const removeWorkflow = (id: string) => {
-    CompositionService.DeleteWorkflow(id).then(refetchWorkflows).catch(console.error)
+    CompositionService.DeleteWorkflow(id).then(() => refreshWorkflows()).catch(console.error)
   }
 
   // Downloads id's current definition as a portable .json file --
   // ExportWorkflow's own doc comment covers why the output is
-  // deterministic (share it, commit it to git, diff it cleanly). A
-  // Blob + synthetic anchor click is the standard browser download
-  // mechanism; it works the same way inside Mill's own Wails webview
-  // as it does in a normal browser tab, no native file-save API needed.
+  // deterministic. A Blob + synthetic anchor click is the standard
+  // browser download mechanism, identical inside the Wails webview.
   const exportWorkflow = (id: string, label: string) => {
     CompositionService.ExportWorkflow(id)
       .then((json) => {
@@ -259,10 +115,8 @@ function CompositionView() {
     importFileInputRef.current?.click()
   }
 
-  // ImportWorkflow always mints a new workflow (see its own doc comment
-  // for why -- ADR-0013's Duplicate precedent), so success here is
-  // exactly "add one more row to the list," not a merge/overwrite
-  // decision the UI has to resolve.
+  // ImportWorkflow always mints a new workflow (ADR-0013's Duplicate
+  // precedent), so success is exactly "one more row," never a merge.
   const handleImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     e.target.value = '' // allow re-selecting the same file next time
@@ -271,153 +125,83 @@ function CompositionView() {
       .then((text) => CompositionService.ImportWorkflow(text))
       .then(() => {
         setImportError(null)
-        refetchWorkflows()
+        void refreshWorkflows()
       })
       .catch((err) => setImportError(String(err)))
   }
 
-  // Every click makes its own new tab (matching the reference's own
-  // "Create workflow" behavior) -- composing two brand-new workflows
-  // side by side is a real, intentional use of tabs, not a bug.
-  const [viewMode, setViewMode] = useViewMode('mill-workflows-view-mode')
-
-  const openNewWorkflowTab = () => {
-    const key = crypto.randomUUID()
-    setTabs((prev) => [...prev, { key, workflowId: null }])
-    setActiveTab(key)
-  }
-
-  // Editing the same workflow twice reuses its existing tab instead of
-  // opening a duplicate editor over the same data.
-  const openEditTab = (workflowId: string) => {
-    const existing = tabs.find((t) => t.workflowId === workflowId)
-    if (existing) {
-      setActiveTab(existing.key)
-      return
-    }
-    const key = crypto.randomUUID()
-    setTabs((prev) => [...prev, { key, workflowId }])
-    setActiveTab(key)
-  }
-
-  const closeTab = (key: string) => {
-    setTabs((prev) => prev.filter((t) => t.key !== key))
-    setActiveTab((current) => (current === key ? WORKFLOWS_TAB : current))
-  }
-
-  // Consumes the store's cross-view "open this workflow" request
-  // (docs/SPEC.md §3.8's hover-preview jump) once data is ready --
-  // requesters (an Activity row, a child-workflow step's preview) live
-  // in other view trees and can't call openEditTab directly.
-  useEffect(() => {
-    if (!openWorkflowRequest || workflows === null || nodeTypes === null) return
-    if (workflows.some((w) => w.ID === openWorkflowRequest)) {
-      openEditTab(openWorkflowRequest)
-    }
-    clearOpenWorkflowRequest()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [openWorkflowRequest, workflows, nodeTypes])
-
   return (
-    <Tabs value={activeTab} onValueChange={({ value }) => setActiveTab(value)}>
-      <TabList aria-label="Workflows">
-        <TabItem value={WORKFLOWS_TAB}>Workflows</TabItem>
-        {tabs.map((t) => (
-          <TabItem key={t.key} value={t.key} onClose={() => closeTab(t.key)}>
-            {t.workflowId ? (workflows?.find((w) => w.ID === t.workflowId)?.Label ?? 'Workflow') : 'New workflow'}
-          </TabItem>
-        ))}
-      </TabList>
+    <PageContainer data-testid="composition-view">
+      <Heading as="h1">Workflows</Heading>
+      <Text as="p" className={styles.subtitle}>
+        Compose a workflow by connecting trigger, capture, process, and
+        apply steps on a canvas — configuring each step happens as you
+        add it, right there on the canvas. Every workflow, including the
+        seeded examples below, is fully editable and deletable from the
+        moment it exists.
+      </Text>
 
-      <TabPanel value={WORKFLOWS_TAB}>
-        <PageContainer data-testid="composition-view">
-          <Heading as="h1">Workflows</Heading>
-          <Text as="p" className={styles.subtitle}>
-            Compose a workflow by connecting trigger, capture, process, and
-            apply steps on a canvas — configuring each step happens as you
-            add it, right there on the canvas. Every workflow, including the
-            seeded examples below, is fully editable and deletable from the
-            moment it exists.
-          </Text>
-
-          <Stack direction="horizontal" justify="space-between" align="center" className={styles.sectionHeading}>
-            <Heading as="h2" variant="small" id="workflows-heading">Saved workflows</Heading>
-            <Stack direction="horizontal" gap="condensed">
-              <ViewModeToggle mode={viewMode} onChange={setViewMode} />
-              <input
-                ref={importFileInputRef}
-                type="file"
-                accept="application/json,.json"
-                data-testid="import-workflow-input"
-                style={{ display: 'none' }}
-                onChange={handleImportFile}
-              />
-              <Button
-                leadingVisual={UploadIcon}
-                size="small"
-                onClick={openImportPicker}
-                data-testid="import-workflow"
-              >
-                Import
-              </Button>
-              <Button
-                leadingVisual={PlusIcon}
-                size="small"
-                onClick={openNewWorkflowTab}
-                disabled={nodeTypes === null}
-                data-testid="new-workflow"
-              >
-                New workflow
-              </Button>
-            </Stack>
-          </Stack>
-          {importError && (
-            <Text as="p" size="small" className={styles.error} data-testid="import-workflow-error">
-              {importError}
-            </Text>
-          )}
-          {workflows === null && <Text as="p" className={styles.muted}>Loading…</Text>}
-          {workflows !== null && viewMode === 'table' && workflows.length > 0 && (
-            <WorkflowsTable
-              workflows={workflows}
-              runningId={runningId}
-              editDisabled={nodeTypes === null}
-              onRun={run}
-              onEdit={openEditTab}
-              onExport={exportWorkflow}
-              onDelete={removeWorkflow}
-            />
-          )}
-          {workflows !== null && viewMode === 'cards' && (
-            <WorkflowsCards
-              workflows={workflows}
-              nodeTypes={nodeTypes}
-              runningId={runningId}
-              errors={errors}
-              results={results}
-              onRun={run}
-              onEdit={openEditTab}
-              onExport={exportWorkflow}
-              onDelete={removeWorkflow}
-            />
-          )}
-        </PageContainer>
-      </TabPanel>
-
-      {nodeTypes !== null && tabs.map((t) => {
-        const editingWorkflow = t.workflowId ? (workflows?.find((w) => w.ID === t.workflowId) ?? null) : null
-        return (
-          <TabPanel key={t.key} value={t.key} className={editorStyles.editorPanel}>
-            <WorkflowEditorTab
-              nodeTypes={nodeTypes}
-              workflow={editingWorkflow}
-              onBack={() => closeTab(t.key)}
-              onSaved={() => { refetchWorkflows(); closeTab(t.key) }}
-              onWorkflowsChanged={refetchWorkflows}
-            />
-          </TabPanel>
-        )
-      })}
+      <Stack direction="horizontal" justify="space-between" align="center" className={styles.sectionHeading}>
+        <Heading as="h2" variant="small" id="workflows-heading">Saved workflows</Heading>
+        <Stack direction="horizontal" gap="condensed">
+          <ViewModeToggle mode={viewMode} onChange={setViewMode} />
+          <input
+            ref={importFileInputRef}
+            type="file"
+            accept="application/json,.json"
+            data-testid="import-workflow-input"
+            style={{ display: 'none' }}
+            onChange={handleImportFile}
+          />
+          <Button
+            leadingVisual={UploadIcon}
+            size="small"
+            onClick={openImportPicker}
+            data-testid="import-workflow"
+          >
+            Import
+          </Button>
+          <Button
+            leadingVisual={PlusIcon}
+            size="small"
+            onClick={() => openWorkTab({ kind: 'workflow-new' })}
+            disabled={nodeTypes === null}
+            data-testid="new-workflow"
+          >
+            New workflow
+          </Button>
+        </Stack>
+      </Stack>
+      {importError && (
+        <Text as="p" size="small" className={styles.error} data-testid="import-workflow-error">
+          {importError}
+        </Text>
+      )}
+      {workflows === null && <Text as="p" className={styles.muted}>Loading…</Text>}
+      {workflows !== null && viewMode === 'table' && workflows.length > 0 && (
+        <WorkflowsTable
+          workflows={workflows}
+          runningId={runningId}
+          editDisabled={nodeTypes === null}
+          onRun={run}
+          onEdit={(id) => openWorkTab({ kind: 'workflow-edit', workflowId: id })}
+          onExport={exportWorkflow}
+          onDelete={removeWorkflow}
+        />
+      )}
+      {workflows !== null && viewMode === 'cards' && (
+        <WorkflowsCards
+          workflows={workflows}
+          nodeTypes={nodeTypes}
+          runningId={runningId}
+          errors={errors}
+          results={results}
+          onRun={run}
+          onEdit={(id) => openWorkTab({ kind: 'workflow-edit', workflowId: id })}
+          onExport={exportWorkflow}
+          onDelete={removeWorkflow}
+        />
+      )}
 
       {testRunTarget && (
         <TestRunDialog
@@ -432,7 +216,7 @@ function CompositionView() {
           }}
         />
       )}
-    </Tabs>
+    </PageContainer>
   )
 }
 
