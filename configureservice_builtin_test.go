@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/alicoding/mill/internal/adapters/credential"
+	"github.com/alicoding/mill/internal/adapters/openapispec"
 	"github.com/alicoding/mill/internal/domain/httprequest"
 )
 
@@ -160,5 +161,66 @@ func TestCreateHTTPRequest_DescriptionPersists(t *testing.T) {
 	}
 	if req.Description != "a helpful note" {
 		t.Errorf("CreateHTTPRequest Description = %q, want %q", req.Description, "a helpful note")
+	}
+}
+
+// The two typed seeded examples (docs/SPEC.md §4's Update) declare a
+// real input parameter / typed response fields, parsed here through
+// the same adapter the app itself uses -- so the "typed request and
+// response in the Test feature" demo can't silently regress into a
+// bare untyped 200.
+func TestBuiltIn_TypedExamples_DeclareRealFields(t *testing.T) {
+	find := func(id string) httprequest.HTTPRequest {
+		for _, r := range httprequest.BuiltIn() {
+			if r.ID == id {
+				return r
+			}
+		}
+		t.Fatalf("no built-in request with id %q", id)
+		return httprequest.HTTPRequest{}
+	}
+
+	echo := find(httprequest.ExampleNoneID)
+	spec, err := openapispec.Parse([]byte(echo.OpenAPISpec))
+	if err != nil {
+		t.Fatalf("typed echo spec does not parse: %v", err)
+	}
+	op, err := spec.Operation("/get", "GET")
+	if err != nil {
+		t.Fatalf("typed echo spec has no GET /get operation: %v", err)
+	}
+	if len(op.InputFields) != 1 || op.InputFields[0].Name != "q" || op.InputFields[0].In != "query" {
+		t.Errorf("typed echo inputs = %+v, want one query parameter q", op.InputFields)
+	}
+	wantPath := map[string]string{"url": "", "origin": "", "echoedQ": "args.q"}
+	if len(op.OutputFields) != len(wantPath) {
+		t.Fatalf("typed echo outputs = %+v, want url/origin/echoedQ", op.OutputFields)
+	}
+	for _, f := range op.OutputFields {
+		p, ok := wantPath[f.Name]
+		if !ok {
+			t.Errorf("unexpected typed echo output field %q", f.Name)
+			continue
+		}
+		if f.Path != p {
+			t.Errorf("output field %q Path = %q, want %q", f.Name, f.Path, p)
+		}
+	}
+
+	bearer := find(httprequest.ExampleBearerID)
+	spec, err = openapispec.Parse([]byte(bearer.OpenAPISpec))
+	if err != nil {
+		t.Fatalf("typed bearer spec does not parse: %v", err)
+	}
+	op, err = spec.Operation("/bearer", "GET")
+	if err != nil {
+		t.Fatalf("typed bearer spec has no GET /bearer operation: %v", err)
+	}
+	types := map[string]string{}
+	for _, f := range op.OutputFields {
+		types[f.Name] = f.Type
+	}
+	if types["authenticated"] != "boolean" || types["token"] != "string" {
+		t.Errorf("typed bearer outputs = %+v, want authenticated:boolean + token:string", op.OutputFields)
 	}
 }
