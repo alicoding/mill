@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Button, Heading, IconButton, Label, Stack, Text } from '@primer/react'
-import { PlusIcon, TrashIcon } from '@primer/octicons-react'
+import { DownloadIcon, PlusIcon, TrashIcon, UploadIcon } from '@primer/octicons-react'
 import { Tabs } from '@primer/react/experimental'
 import { TabItem, TabList, TabPanel } from '../shared/Tabs'
 import { ConfigureService } from '../../bindings/github.com/alicoding/mill'
@@ -9,6 +9,7 @@ import { AuthType } from '../../bindings/github.com/alicoding/mill/internal/doma
 import { RequestForm } from './RequestForm'
 import { RequestSummary } from './RequestSummary'
 import { loadPersistedTabs, savePersistedTabs } from '../shared/persistedTabs'
+import { downloadJSON } from '../shared/downloadJSON'
 import styles from '../shared/ListCard.module.css'
 
 const AUTH_LABEL: Record<string, string> = {
@@ -47,9 +48,36 @@ export function ConfigureRequests() {
   // later refetch, same reasoning as CompositionView.tsx's own
   // restoredTabs ref.
   const restoredTabs = useRef(false)
+  const [importError, setImportError] = useState<string | null>(null)
+  const importInputRef = useRef<HTMLInputElement>(null)
 
   const refetch = () => {
     ConfigureService.HTTPRequests().then((list) => setRequests(list ?? [])).catch(console.error)
+  }
+
+  // Never carries a secret -- ExportHTTPRequest's own contract
+  // (configureservice_export.go), same "the write-only secret design
+  // means export has nothing secret to leak" reasoning ADR-0013's
+  // Duplicate already relies on for cloning a request.
+  const exportRequest = (id: string, label: string) => {
+    ConfigureService.ExportHTTPRequest(id)
+      .then((json) => downloadJSON(`${label.trim() || 'request'}.json`, json))
+      .catch((err) => setImportError(String(err)))
+  }
+
+  const openImportPicker = () => {
+    setImportError(null)
+    importInputRef.current?.click()
+  }
+
+  const handleImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    file.text()
+      .then((text) => ConfigureService.ImportHTTPRequest(text))
+      .then(() => { setImportError(null); refetch() })
+      .catch((err) => setImportError(String(err)))
   }
 
   useEffect(refetch, [])
@@ -144,10 +172,26 @@ export function ConfigureRequests() {
         <div className={styles.page} data-testid="configure-requests">
           <Stack direction="horizontal" justify="space-between" align="center" className={styles.sectionHeading}>
             <Heading as="h2" variant="small">Requests</Heading>
-            <Button leadingVisual={PlusIcon} size="small" onClick={openNewTab} data-testid="new-request">
-              New request
-            </Button>
+            <Stack direction="horizontal" gap="condensed">
+              <input
+                ref={importInputRef}
+                type="file"
+                accept="application/json,.json"
+                data-testid="import-request-input"
+                style={{ display: 'none' }}
+                onChange={handleImportFile}
+              />
+              <Button leadingVisual={UploadIcon} size="small" onClick={openImportPicker} data-testid="import-request">
+                Import
+              </Button>
+              <Button leadingVisual={PlusIcon} size="small" onClick={openNewTab} data-testid="new-request">
+                New request
+              </Button>
+            </Stack>
           </Stack>
+          {importError && (
+            <Text as="p" size="small" className={styles.error} data-testid="import-request-error">{importError}</Text>
+          )}
 
           {requests === null && <Text as="p" className={styles.muted}>Loading…</Text>}
           {requests !== null && requests.length === 0 && (
@@ -180,7 +224,16 @@ export function ConfigureRequests() {
                       {r.Description && <Text as="p" size="small" className={styles.muted}>{r.Description}</Text>}
                       <Text as="p" size="small" className={styles.muted}>ID: {r.ID}</Text>
                     </div>
-                    <IconButton icon={TrashIcon} aria-label={`Delete ${r.Label}`} size="small" variant="invisible" onClick={() => remove(r.ID)} />
+                    <Stack direction="horizontal" gap="condensed">
+                      <IconButton
+                        icon={DownloadIcon}
+                        aria-label={`Export ${r.Label}`}
+                        size="small"
+                        variant="invisible"
+                        onClick={() => exportRequest(r.ID, r.Label)}
+                      />
+                      <IconButton icon={TrashIcon} aria-label={`Delete ${r.Label}`} size="small" variant="invisible" onClick={() => remove(r.ID)} />
+                    </Stack>
                   </Stack>
                 </div>
               ))}
