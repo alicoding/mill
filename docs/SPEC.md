@@ -737,303 +737,118 @@ and are still current** (not Runbook-specific, so they outlived it):
   says nothing about branching/parallel/typed-payload steps, still real
   future work per ADR-0005. §3 stays `OPEN`, ADR-0005 stays `proposed`
   — this is a testable prototype to react to, not a lock.
-- **Update — the config-first list above was replaced by a real React
-  Flow canvas, ahead of ADR-0005 B2's own stated deferral trigger ("2+
-  real multi-step workflows exist to design against").** That trigger
-  had not fired — still only the two built-in linear workflows — when
-  the canvas was built anyway, by explicit user decision, not a silent
-  resolution of an `OPEN` item. Recorded honestly here and in ADR-0005's
-  own Update section rather than rewritten as if the original condition
-  had been met. `CompositionCanvas.tsx` (React Flow / `@xyflow/react`)
-  replaces the old add-a-step form: drag a node type from the palette
-  onto the canvas, connect nodes by dragging between handles, click a
-  node to configure it in a right-side Inspector panel — composing and
-  configuring still happen in one motion, same principle as above, just
-  moved from inline-in-a-list-row to inline-on-select. The workflow data
-  shape changed to match — `Workflow.Steps []Step` became `Workflow.Nodes
-  []Node` + `Workflow.Edges []Edge`, exactly the shape this section's
-  own "Schema direction" bullet (§3.3) already wrote down before this
-  was built. Companion libraries, chosen from research into what real
-  OSS projects (Langflow, Dify) actually pair with React Flow: `zundo`
-  (undo/redo, wrapping a small zustand store scoped to canvas state,
-  `frontend/src/canvasStore.ts`), `elkjs` (auto-layout, dynamically
-  imported only when used — it's a large bundle, confirmed via the
-  production build that it lands in its own ~2.5MB chunk, not the main
-  one), and `zod` (validates a draft workflow against the same shape
-  `CreateWorkflow` will receive before Save, mirroring
-  `linearOrder`'s own graph-shape checks so a save-time error and a
-  run-time error never disagree). `elkjs` is dual-licensed
-  EPL-2.0/GPL-3.0-or-later, not MIT like the rest of Mill's dependency
-  tree — EPL-2.0 is the compatible choice a consumer picks from that
-  "OR" (same shape as §3.1's MCP SDK license-transition note, worth a
-  compliance glance given the bank context, not a blocker). No
-  Decision/Parallel/Child-Workflow node kinds exist yet, so the canvas
-  and the backend both still only support a single unbranched chain —
-  `isValidConnection` rejects a second outgoing edge from any node at
-  draw-time (client-side), `linearOrder` (composition.go) rejects an
-  invalid graph shape at run-time (server-side, can't trust the
-  client), and the zod schema rejects it at save-time — three layers
-  because a canvas genuinely lets a user draw something the domain
-  can't yet execute, unlike the old form which couldn't represent that
-  shape at all. Verified end-to-end via the real Go backend in server
-  mode (Playwright-driven, not just unit tests): dragged a node type
-  onto the canvas, selected it, confirmed the Inspector rendered its
-  real config fields with the node type's actual defaults. `internal/
-  domain/composition`'s persisted-workflow settings key was versioned
-  (`composition-workflows` → `composition-workflows-v2`) since the
-  shape changed and `restore()` already silently discards on unmarshal
-  failure — renaming orphans old prototype data harmlessly instead of
-  actively reading and dropping it. `UX: PROTOTYPE` still applies —
-  this proves the shape, not a finished design (no re-opening a saved
-  workflow back into the canvas to edit it yet; that list stays
-  read-only).
-- **Update — the gap named directly above (no re-opening a saved
-  workflow to edit) is closed: the canvas is now entered via "New
-  workflow" or by editing an existing one, not permanently embedded
-  alongside the list.** Matches the reference no-code platform's own
-  Workflows-list/canvas split named in §3.2, rather than showing the
-  canvas and the list on one screen at all times. `CompositionView.tsx`
-  holds a small local `editorTarget` state (`{id: string | null} |
-  null` — `null` id means composing new) exactly the way
-  `RunbookView.tsx` already keeps its own hotkey-recording UI state
-  local rather than in the shared store (§1.3) — this is single-view
-  navigation, not app-wide state, so it doesn't touch `store.ts` or
-  `App.tsx`'s sidebar. The node-type palette moved from the list page
-  into the canvas itself (it's only useful once you're somewhere to
-  drag onto). `CompositionService.UpdateWorkflow` (Go) was added
-  alongside the already-existing `CreateWorkflow`/`DeleteWorkflow`:
-  same validation (`ResolveNodeDefaults`, non-empty label/nodes), keyed
-  by the workflow's existing ID so editing and re-saving updates it in
-  place rather than creating a duplicate — built-in workflows aren't in
-  `CompositionService`'s editable set at all (same disjoint-ID-space
-  reasoning `DeleteWorkflow` already relied on), so they get no Edit
-  control, view- and Run-only, consistent with them having no Delete
-  control either. `CompositionCanvas.tsx` loads an existing workflow's
-  `Nodes`/`Edges` on mount (converting Wails' PascalCase wire shape into
-  React Flow's own node/edge shape) — the parent keys the component on
-  the target workflow's id (`key={editorTarget.id ?? 'new'}`) so
-  switching between "compose new" and "edit workflow A" vs "edit
-  workflow B" is always a fresh mount instead of a stale-state diffing
-  problem. Verified end-to-end via the real Go backend (server mode +
-  Playwright): composed and saved a workflow, re-opened it via Edit,
-  confirmed the existing node and its configured value loaded (not an
-  empty canvas), edited the config and label, saved, confirmed the
-  workflow list shows the updated workflow once — not a duplicate.
-- **Update — tabbed multi-editing, a collapsible node-primitives panel,
-  and a starter node for new workflows, closing the remaining three
-  gaps against the reference platform screenshots the user shared.**
-  `CompositionView.tsx`'s single `editorTarget` swap (previous bullet)
-  became a real tab bar: the Workflows list is a pinned, always-open
-  tab, and "New workflow"/Edit each open their own tab rather than
-  replacing the whole view — matching the reference's own tabbed
-  Workflows-list/canvas-editor layout instead of Mill's prior one-at-a-
-  time swap. Built on `@primer/react/experimental`'s `Tabs` plus its
-  `useTab`/`useTabList`/`useTabPanel` hooks — confirmed directly against
-  the package's compiled source that it ships the state machine and ARIA/
-  keyboard behavior but *not* ready-made `Tab`/`TabList`/`TabPanel`
-  components (its own doc comment calls those "provided for convenience,"
-  but that layer isn't in the npm package) — so `frontend/src/Tabs.tsx`
-  supplies thin markup wrappers on top, the intended usage of a headless
-  primitive, not a reinvented tab implementation. A close control renders
-  as a DOM *sibling* of each tab's own `<button role="tab">`, not nested
-  inside it — nesting interactive elements inside a `<button>` is invalid
-  HTML and would make a Close click ambiguously also select the tab.
-  Confirmed directly (not assumed) that Primer's `useTabPanel` toggles a
-  `hidden` DOM attribute rather than unmounting inactive panels — the
-  precondition this whole feature depends on: every open tab's
-  `CompositionCanvas` stays mounted with its own independent state,
-  so switching tabs preserves in-progress edits in the others.
-  `canvasStore.ts`'s `useCanvasStore` singleton became a
-  `createCanvasStore()` factory for exactly this reason — one store
-  instance per mounted canvas rather than one global store shared (and
-  clobbered) across every open tab; `CompositionCanvas.tsx` creates its
-  instance once via `useState(() => createCanvasStore())`, after which
-  every other line that already called `useCanvasStore(...)` keeps
-  working unchanged, since a component-scoped store has the same API
-  surface as the old module-level one. Editing the same saved workflow
-  twice reuses its existing tab instead of opening a duplicate editor
-  over the same data. The node-type palette moved into a collapsible
-  "Add steps" panel inside the canvas (closed by default), toggled via
-  a toolbar button, matching the reference's own docked panel instead of
-  Mill's prior always-visible row of cards. A brand-new workflow now
-  starts with one real node already placed (`capture-clipboard-html`)
-  instead of a blank canvas — adapted from, not copied from, the
-  reference's own Input→Decision starter pair: Mill has no `Decision`
-  node kind yet, and composition.go/ADR-0005 are explicit that Decision/
-  Parallel/Child-Workflow control-flow kinds are deliberately *not*
-  stubbed ahead of need, so fabricating a fake Decision node in the
-  skeleton would have contradicted that already-recorded call. Verified
-  end-to-end via the real Go backend (server mode + Playwright, including
-  a scripted multi-tab check): opened two new-workflow tabs, gave each a
-  distinct label and node, switched between them repeatedly, confirmed
-  each tab's label/node count stayed exactly its own throughout — the
-  concrete behavior this whole pass exists to deliver, not just that the
-  tab bar renders.
-- **Update — the "Add steps" palette is grouped by Kind via a real
-  `TreeView`, replacing the flat, ungrouped `.map()` it started as.**
-  Prompted by a direct question about what Primer already offered for
-  categorizing node types as the primitive count grows past what a flat
-  list scans well (13 today across 5 Kinds); full reasoning and the
-  process fix this surfaced are in §9.1. Confirmed directly against
-  `@primer/react`'s compiled source before adopting, not assumed:
-  `TreeView.Item` spreads its remaining props onto the rendered `<li>`,
-  so the existing `draggable`/`onDragStart` drag-source mechanism
+- **`CompositionCanvas.tsx` (React Flow / `@xyflow/react`) is the composition
+  surface, adopted ahead of ADR-0005 B2's own stated deferral trigger ("2+
+  real multi-step workflows exist to design against") by explicit decision
+  — see ADR-0005's own Update section, not a silent resolution of §3's
+  `OPEN` status.** Drag a node type from the palette onto the canvas,
+  connect nodes by dragging between handles, click a node or edge to
+  configure it in a right-side Inspector — composing and configuring
+  happen in one motion. `Workflow.Nodes []Node` + `Workflow.Edges []Edge`
+  (§3.3's schema) replaced the old `Workflow.Steps []Step`; the
+  persisted-workflow settings key was versioned (`composition-workflows`
+  → `composition-workflows-v2`) to orphan pre-canvas data harmlessly
+  rather than migrate it. Companion libraries, picked from what real OSS
+  React Flow projects (Langflow, Dify) pair with it: `zundo` (undo/redo,
+  wrapping the canvas's own scoped zustand store, `canvasStore.ts`),
+  `elkjs` (auto-layout, dynamically imported only when used — ~2.5MB in
+  its own bundle chunk, dual-licensed EPL-2.0/GPL-3.0-or-later rather
+  than MIT like the rest of Mill's tree, same shape as §3.1's MCP SDK
+  license-transition note and worth the same compliance glance given
+  the bank context), and `zod` (validates a draft workflow against the
+  same shape `CreateWorkflow` receives, before Save). Graph validity is
+  enforced at three points that must agree: `isValidConnection` at draw
+  time (client), `ValidateGraph` (composition.go) at save/run time
+  (server, since the client can't be trusted), and the zod schema at
+  save time — a canvas can represent shapes the domain can't execute,
+  unlike the old linear-list form. `UX: PROTOTYPE`.
+- **A workflow opens into the canvas via "New workflow" or by editing an
+  existing one, each in its own tab — `CompositionView.tsx`'s tab bar,
+  built on `@primer/react/experimental`'s headless `Tabs` state/ARIA
+  primitives via `shared/Tabs.tsx`'s thin markup wrappers (the package
+  ships the hooks, not ready-made `Tab`/`TabList`/`TabPanel`
+  components).** The Workflows list is a pinned, always-open tab;
+  re-editing an already-open workflow reuses its tab instead of
+  duplicating it. Every open tab's canvas stays independently mounted
+  with its own state (Primer's `useTabPanel` hides inactive panels
+  rather than unmounting them) — `canvasStore.ts` exposes a
+  `createCanvasStore()` factory rather than a module-level singleton,
+  so each mounted canvas tab gets its own store instance.
+  `CompositionService.UpdateWorkflow` (Go) saves in place, same
+  validation as create (`ResolveNodeDefaults`, non-empty label/nodes),
+  keyed by the workflow's existing ID; built-in workflows aren't in the
+  editable set (same disjoint-ID-space reasoning as Delete), so they're
+  view- and Run-only with no Edit/Delete controls. The node-type
+  palette lives in a collapsible "Add steps" panel (closed by default,
+  toolbar-toggled) rather than an always-visible row. A brand-new
+  workflow starts with one real node already placed
+  (`capture-clipboard-html`) rather than a blank canvas or a fabricated
+  stub — Mill deliberately has no Decision/Parallel/Child-Workflow stub
+  node kinds (ADR-0005). `NodeInspector.tsx` holds the node-selected
+  half of the Inspector (type swap, trigger-hotkey binding, the
+  ConfigFields form, and `payloadNonce` — which forces fresh
+  config-field defaults after a type swap or "Generate test payload"),
+  split out of `CompositionCanvas.tsx` along the same seam
+  `DecisionEdgeInspector.tsx` already established for the edge-selected
+  half once the file crossed the 500-line limit (§1.3, at 538 lines);
+  `CompositionCanvas.tsx` keys `NodeInspector`'s render by node id so
+  switching the selected node remounts it cleanly, and
+  `useHotkeyCapture` stays owned by the parent and is passed down as a
+  prop rather than re-derived inside `NodeInspector`, since it's keyed
+  by *workflow* id (not node id) and its live keydown-recording
+  subscription must survive a node re-selection.
+- **The "Add steps" palette groups `NodeType`s by Kind in a `TreeView`**
+  (`NodePalette.tsx`, 13 types across 5 Kinds at the time — see §9.1
+  for the process fix this prompted, checking the kit's collection/
+  hierarchy components before hand-rolling one) rather than a flat list
+  — the existing `draggable`/`onDragStart` drag-source mechanism
   (`CompositionCanvas.tsx`'s `onCanvasDrop` reads the dragged node type
-  ID back off the DOM event) carries over unchanged — only the container
-  element changed. Each Kind renders as a `TreeView.Item` with
-  `defaultExpanded` (all expanded today, since 13 items is still fully
-  scannable open; the point is headroom, not hiding what exists yet),
-  its `NodeType`s as draggable leaf items underneath, no `SubTree`.
-  Zero new dependency — `TreeView` already shipped in the adopted Primer
-  version. Verified end-to-end (Playwright, real Go backend): the
-  existing e2e drag-and-drop test and the `palette-item` count assertion
-  (13, leaves only — group headers don't carry that test ID) both pass
-  unchanged, plus a direct screenshot check that grouping/collapse
-  renders correctly. `UX: PROTOTYPE` still applies to Composition
-  overall — this is a structural fix, not a design pass.
-- **Update — two real bugs in the drop interaction, caught from a
-  screenshot of a user dropping a second `Trigger: manual` near the
-  starter node: it landed stacked almost exactly on top of the existing
-  one, and React Flow's selection-outline rendering visibly broke on the
-  near-identical bounding boxes.** Root-caused before fixing, not
-  patched blind: `composition.go`'s `findRoot` already rejects a
-  two-root graph at Save time ("a workflow must have exactly one
-  starting node"), but nothing caught it earlier — `onCanvasDrop`
-  (`CompositionCanvas.tsx`) placed every dropped node at the raw cursor
-  position with zero overlap awareness, and the palette let a Trigger
-  entry be dragged regardless of what was already on the canvas. Two
-  independent fixes, matching the existing draw-time/save-time-agree
-  discipline (§3.3's Decision work) rather than only catching it at
-  Save: (1) `NodePalette.tsx` disables every Trigger-kind entry once the
-  canvas already has one (every Trigger is structurally a graph root —
-  `isValidConnection` already refuses an edge into one — so a second
-  always breaks `findRoot`), with `onCanvasDrop` also rejecting the drop
-  client-side as a second, belt-and-suspenders layer in case a drag
-  started before the guard applied; (2) a new `canvasLayout.ts`'s
-  `findFreeDropPosition` nudges *any* dropped node along an outward
-  spiral if it would overlap an existing node's fixed-size card, adapted
-  from `@xyflow/react`'s own documented node-collision example
-  (reactflow.dev/examples/layout/node-collisions — same dependency
-  already in the tree, not a new one) but simplified for the one-node
-  drop case instead of a full pairwise resolve. Verified against the
-  exact repro (server mode + a scripted drop at the starter node's
-  coordinates): the duplicate-trigger drop is silently absorbed (node
-  count stays 1), an ordinary node dropped at the same coordinates lands
-  cleanly offset instead of stacked, confirmed via screenshot both
-  before and after.
-- **Update — the palette's truncated, page-list-like leaf rows (a
-  second issue flagged on the same screenshot) fixed at the root cause,
-  not just visually.** Every `NodeType.Label` is authored as
-  `"<Kind>: <specifics>"` (e.g. `"Trigger: clipboard change"`) — correct
-  when it stood alone in the old flat list, redundant once grouped under
-  a TreeView "Trigger" header, and the repeated prefix was exactly what
-  was pushing longer labels (`"Apply: write plain text to clipboard"`)
-  past the available width into an ellipsis. `NodePalette.tsx`'s new
-  `shortLabel()` strips the now-redundant `"<Kind>: "` prefix for
-  display only — `nt.Label` itself, used verbatim by canvas node cards
-  and saved-workflow step chips, is untouched. Paired with a `title`
-  tooltip carrying the full label, a widened palette panel (220px →
-  260px), and a chip/card visual treatment on leaf rows (background +
-  radius + hover state) so they read as draggable objects rather than
-  plain nav-link text — TreeView's own default styling is built for
-  navigation/selection trees, not a drag-source palette, and didn't
-  signal "grab me" on its own. The e2e suite's drag helper
-  (`composition.spec.ts`) was switched from matching visible label text
-  to a stable `data-node-type-id` attribute, since the visible text is
-  now intentionally shorter and expected to keep changing independently
-  of which node type it labels.
-- **Update — a selected node can swap its NodeType in place, same Kind
-  only, closing the dead end the Trigger guardrail above raised.** A
-  real user hit it directly: a workflow already had a manual trigger,
-  the palette correctly disabled every other Trigger entry (single-root
-  rule), but there was no path forward from there other than delete-
-  and-redrag — the guardrail explained *that* it was blocked, not *what
-  to do about it*. Researched the actual pattern rather than guessing:
-  Zapier's own trigger editor lets you click the existing trigger step
-  and change its event from a dropdown in place; n8n, by contrast, has
-  no built-in "replace node" at all (a standing, unresolved community
-  feature request, confirmed directly) — n8n was closer to what Mill
-  was accidentally doing than to what it should do. `canvasStore.ts`'s
-  new `changeNodeType(id, nodeTypeID, label, config)` swaps a node's
-  type in place — same id/position/edges, only `nodeTypeID`/`label`/
-  `config` change — safe specifically because it's restricted to
-  NodeTypes sharing the selected node's *Kind*, so `isValidConnection`'s
-  per-kind edge rules and any edges already drawn to/from the node stay
-  valid untouched, no edge rewiring needed. Surfaced as a "Node type"
-  `Select` in the Inspector, shown only when the selected node's Kind
-  actually has more than one NodeType to choose from (most Kinds today
-  have exactly one — Capture, Decision — where a single-option dropdown
-  would be noise, not a control, same reasoning as §3.5's Configure
-  recheck). The palette's disabled-Trigger tooltip text was updated to
-  point here directly ("Select the existing trigger node on the canvas
-  to change its type instead") rather than the old, dead-end "delete it
-  first." Verified end-to-end (server mode + Playwright): selected the
-  starter `Trigger: manual` node, swapped it to `Trigger: hotkey` via
-  the new control, confirmed the canvas card updated in place (node
-  count stayed 1, not 2) and the `trigger-hotkey`-specific Inspector
-  UI ("Save this workflow before assigning a hotkey") correctly kicked
-  in immediately after the swap.
-- **Update — `CompositionCanvas.tsx` crossed the 500-line limit once the
-  above landed (538 lines); split along the same seam
-  `DecisionEdgeInspector.tsx` already established for edges.** The
-  entire node-selected half of the Inspector (the new type-swap control,
-  the trigger-hotkey binding UI, the ConfigFields form) moved into a new
-  `NodeInspector.tsx`, mirroring `DecisionEdgeInspector.tsx`'s existing
-  split for the edge-selected half — the same seam, applied to the half
-  of the Inspector that hadn't needed it yet. `payloadNonce` (forces a
-  fresh `defaultValue` on config inputs after a type swap or "Generate
-  test payload") moved to local state inside `NodeInspector` since
-  nothing outside it ever read it; `CompositionCanvas.tsx` now keys its
-  render of the component by node id, so switching the selected node
-  gets a clean remount instead of carrying stale local state across
-  selections — a strict correctness improvement that fell out of doing
-  the extraction properly, not a separate fix. `useHotkeyCapture` stayed
-  owned by the parent and is passed down as a prop rather than being
-  re-derived inside `NodeInspector`: it's keyed by *workflow* id, not
-  node id (`TriggerService.ListHotkeys()` is a workflow-id-keyed map),
-  and manages a live keydown-recording subscription that must survive a
-  node re-selection, not reset on every remount. Verified via the full
-  check suite (tsc/eslint/vitest/LOC) plus the entire e2e suite (19
-  tests across composition/activity/capabilities) passing unchanged.
-- **Update — canvas-first layout pass: the meta-header and Inspector no
-  longer permanently reserve space they usually aren't using.**
-  Prompted directly from a screenshot: the full Label/Description form
-  sat expanded above the canvas at all times, and the Inspector
-  reserved 260px even showing only "Select a node to configure it." —
-  between the two, over a third of a typical window was fixed chrome
-  before any canvas appeared. Researched rather than guessed at a fix:
-  n8n's own workflow name is inline-editable directly in a compact top
-  bar, not a full form field stacked above the canvas; React Flow
-  itself ships conditional-visibility primitives (`Panel`,
-  `NodeToolbar`'s `isVisible`) specifically for selection-driven side
-  panels; "canvas-first" (chrome recedes, the canvas dominates,
-  secondary surfaces appear on demand) is the named, converged pattern
-  across the workflow-builder space generally. Mill's own palette
-  already did this correctly (`paletteOpen` toggle) — the gap was that
-  the other two chrome regions never got the same treatment.
-  Label stays a normal always-visible input (compact, `aria-label`
-  instead of a `FormControl.Label` caption above it, fixed ~320px width
-  so it reads as a title next to the toggle/Save button, not a
-  full-width field) — hiding the one field every workflow needs behind
-  a toggle would just move the friction, not remove it. Description
-  (optional, used less) moved behind a disclosure toggle, collapsed by
-  default unless one's already set. The Inspector now collapses to 0
-  width (CSS `width` transition, not `flex-basis`, for a smooth
-  collapse) whenever nothing is selected, expanding to 260px only once
-  a node or edge is — `.canvas`'s existing `flex: 1 1 auto` absorbs the
-  freed space automatically, no extra layout logic needed. Real bug
-  caught before landing, not after: the description-toggle's
-  `aria-label` ("Hide description"/"Add description") substring-matched
-  Playwright's `getByLabel('Description')` (case-insensitive, non-exact
-  by default), breaking one e2e test with a strict-mode "2 elements"
-  error — renamed to "Hide/Add details" to avoid the collision, a
-  concrete instance of `.claude/rules/testing.md`'s own discipline
-  catching a real interaction bug via the test suite, not just via
-  manual inspection. Verified end-to-end (server mode + Playwright, all
-  23 tests, plus a direct screenshot comparison of collapsed/
-  details-open/node-selected states): the canvas now starts immediately
-  below a single compact title row instead of a quarter of the window
-  down. `UX: PROTOTYPE` still applies to Composition overall.
+  ID off the DOM event) carries over unchanged, since `TreeView.Item`
+  spreads its remaining props onto the rendered `<li>`. Each leaf
+  renders via `shortLabel()`, which strips the now-redundant
+  `"<Kind>: "` prefix from `NodeType.Label` for display only (canvas
+  node cards and saved-workflow step chips still use the full label),
+  pairs it with a `title` tooltip carrying the full label, and styles
+  it as a chip/card rather than plain nav-link text; the palette panel
+  widened from 220px to 260px to fit. The e2e drag helper
+  (`composition.spec.ts`) matches a stable `data-node-type-id`
+  attribute rather than visible label text, since the display text is
+  expected to keep changing independently of which node type it labels.
+- **Dropping a node enforces the single-root rule and avoids overlap.**
+  Every Trigger `NodeType` is structurally a graph root, so
+  `NodePalette.tsx` disables every other Trigger entry once the canvas
+  already has one (`onCanvasDrop` also rejects the drop client-side as
+  a second layer, matching the draw-time/save-time-agree discipline
+  §3.3's Decision work also follows) — `composition.go`'s `findRoot`
+  already rejected a two-root graph at Save time, but nothing caught it
+  earlier. `canvasLayout.ts`'s `findFreeDropPosition` nudges any
+  dropped node along an outward spiral if it would overlap an existing
+  node's fixed-size card, adapted from `@xyflow/react`'s own documented
+  node-collision example (reactflow.dev/examples/layout/node-collisions).
+- **A selected node can swap its `NodeType` in place, restricted to
+  NodeTypes sharing its Kind** (`canvasStore.ts`'s
+  `changeNodeType(id, nodeTypeID, label, config)` — same id/position/
+  edges, no edge rewiring needed since `isValidConnection`'s per-kind
+  rules and any already-drawn edges stay valid) — modeled on Zapier's
+  own in-place trigger-event swap rather than n8n, which has no
+  "replace node" feature (a standing, unresolved community request).
+  Surfaced as a "Node type" `Select` in the Inspector, shown only when
+  the selected node's Kind has more than one NodeType to choose from
+  (most Kinds today have exactly one — Capture, Decision — where a
+  single-option dropdown would be noise, not a control, same reasoning
+  as §3.5's Configure recheck); the palette's disabled-Trigger tooltip
+  points here directly rather than at delete-and-redrag.
+- **Canvas-first layout: chrome collapses when unused rather than
+  permanently reserving space**, matching the pattern's convergence
+  across the workflow-builder space (n8n's inline-editable workflow
+  name; React Flow's own `Panel`/`NodeToolbar` conditional-visibility
+  primitives — the palette already did this via its own `paletteOpen`
+  toggle). The workflow Label is a compact, always-visible input rather
+  than a full-width form field; Description sits behind a disclosure
+  toggle ("Add details"/"Hide details"), collapsed unless already set.
+  The Inspector collapses to 0 width when nothing is selected and
+  expands to 260px once a node or edge is. `UX: PROTOTYPE` still
+  applies to Composition overall.
 
 ### 3.1 Raw material — root cause of the heredoc pain, not yet resolved
 
@@ -1133,11 +948,10 @@ tools, something else acts as host) fits §1.1 cleanly with zero tension.
 
 ### 3.2 Composition pattern from professional experience — kept generic, no vendor names
 
-The user has worked professionally with a no-code decisioning platform
-(fintech domain) whose composition pattern is worth adopting the shape of.
-Deliberately described here without naming the product — Mill's docs stay
-citeable/OSS-ready from day one, that's a standing rule now, not just for
-this entry.
+Composition's shape borrows from a no-code decisioning platform (fintech
+domain) the user has worked with professionally. Described here without
+naming the product — Mill's docs stay citeable/OSS-ready, a standing rule
+for this entry.
 
 - **Three distinct surfaces, not two.** The reference platform separates
   **Settings** (global/app-level config — credentials, preferences, things
@@ -1145,405 +959,297 @@ this entry.
   input, decision, integration, and others — get defined: schema, required
   fields, auth for integrations) from the **workflow canvas** itself (where
   already-configured node *instances* get dragged in and wired together).
-  The user specifically likes this separation and wants Mill to keep it —
-  don't collapse app-level settings and capability/node-type configuration
-  into one screen just because they're both "configuration." Same
-  type-vs-instance split n8n uses for its second half (node package defines
-  the type; workflow canvas composes instances) — two independent
-  references converging on the same shape is a good signal. `LOCKED`
-  (three-surface separation) — which settings live where, `OPEN`.
+  Deliberately not collapsed into one screen just because both are
+  nominally "configuration." Same type-vs-instance split n8n uses for its
+  second half (node package defines the type; workflow canvas composes
+  instances) — two independent references converging on the same shape.
+  `LOCKED` (three-surface separation) — which settings live where, `OPEN`.
 - **Cardinality differs by node kind.** Input nodes are 1:1 — configured for
   and used within a single workflow. Integration/vendor-connector nodes are
   reusable 1:* — one configured connector (e.g. one authenticated HTTP
   connector to a given vendor) can be wired into many different workflows.
-  Decision node cardinality is unconfirmed (user wasn't sure) — check before
-  assuming either way when this gets designed.
+  Decision node cardinality is unconfirmed — check before assuming either
+  way when this gets designed.
 - **Connector protocol/auth support should be incrementally extensible, not
   fixed upfront.** The reference platform started with plain HTTP and grew
-  — driven by real, incoming vendor requirements rather than upfront
-  speculation — to also support XML/SOAP, OAuth and other auth schemes, and
-  eventually mTLS. Lesson for Mill's own connector design (§4): build the
-  generic HTTP connector first, but don't hardcode assumptions that would
-  block adding SOAP/XML translation or new auth schemes later without a
-  rearchitecture. Add real protocol/auth support when a real connector needs
-  it, not speculatively.
-- **Fuller detail reviewed since the above was written** — a concrete
-  UX/feature breakdown of the same reference platform, still kept
-  generic per the standing no-vendor-names rule. Four things not
-  captured above:
-  - **Left-nav surfaces beyond the three already locked**: the reference
-    platform's actual nav is Workflows (canvas) / Configure (node-type
-    definition — matches "Configure" above) / **AI Analytics** / **Review**.
-    The latter two are surfaces Mill has no equivalent of yet — an
+  — driven by real, incoming vendor requirements — to also support
+  XML/SOAP, OAuth and other auth schemes, and eventually mTLS. Lesson for
+  Mill's own connector design (§4): build the generic HTTP connector
+  first, but don't hardcode assumptions that would block adding SOAP/XML
+  translation or new auth schemes later without a rearchitecture. Add real
+  protocol/auth support when a real connector needs it, not speculatively.
+- **A fuller UX/feature breakdown of the same platform** surfaced four more
+  things, still kept generic:
+  - **Left-nav surfaces beyond the three already locked**: Workflows
+    (canvas) / Configure (node-type definition) / **AI Analytics** /
+    **Review**. The latter two have no Mill equivalent — an
     analytics/observability view over past runs, and a case/queue-style
-    review surface (statuses, visibility). Not a new locked surface for
-    Mill — noted because it's relevant to §7 (process/session tracking,
-    still `OPEN` on what a "history" view looks like) and because Mill's
-    existing Activity page is the closest thing to the analytics half.
+    review surface (statuses, visibility). Relevant to §7 (still `OPEN` on
+    what a "history" view looks like) — Mill's Activity page is the
+    closest thing to the analytics half.
   - **Per-record schema + single-record test harness.** The platform
     treats a workflow's record schema (metadata, mappings, attributes,
-    JSON schema) as first-class, and lets you test one record via a
-    Form or raw JSON before trusting a full run. Directly relevant to
-    §3's node-schema question (ADR-0005 leans on this precedent for its
-    config-first-authoring recommendation) and to §8's requirement that
-    a skip-condition rule be testable/validated before going live — same
-    "verify against a sample before trusting it live" instinct, applied
-    one level down (a single record) instead of a whole policy rule.
-    **Update — the Form half is built**, via
+    JSON schema) as first-class, and lets you test one record via a Form
+    or raw JSON before trusting a full run. Directly relevant to §3's
+    node-schema question (ADR-0005 leans on this precedent) and to §8's
+    requirement that a skip-condition rule be testable before going live.
+    The Form half is built, via
     [ADR-0008](adr/0008-single-execution-path.md)'s test-input dialog
-    (§3.4's own zod-schema-faker Update note has the full writeup) — an
-    auto-filled, editable form per declared Attribute before a test Run.
-    The raw-JSON half (paste a whole record instead of per-field inputs)
-    stays unbuilt, real future work if a real need for it shows up.
+    (§3.4 has the full writeup) — an auto-filled, editable form per
+    declared Attribute before a test Run. The raw-JSON half (paste a whole
+    record instead of per-field inputs) stays unbuilt.
   - **Draft/live versioning with staged-traffic promotion — a real gap.**
-    Edits create a new version; versions are tested and validated, saved
-    as a draft, then promoted live with configurable traffic allocation
-    (a canary/staged rollout, not an all-at-once cutover). SPEC.md has
-    no equivalent concept anywhere — no notion of a workflow having a
-    draft vs. live version, no rollout mechanism. Deliberately left
-    `OPEN`: worth a real decision once an actual Mill workflow exists to
-    version, not invented speculatively now.
+    Edits create a new version; versions are tested/validated, saved as a
+    draft, then promoted live with configurable traffic allocation (a
+    canary/staged rollout, not an all-at-once cutover). Mill has no
+    equivalent concept anywhere — no draft vs. live version, no rollout
+    mechanism. `OPEN`: worth a real decision once an actual Mill workflow
+    exists to version.
   - **Live + "shadow" events, filterable/exportable history.** The
     analytics surface shows live events plus "shadow" events (a
-    draft/candidate version evaluated against real traffic without
-    taking effect, purely for comparison) and lets you filter by input,
-    event type, date range, and export results. Relevant to §7's
-    still-open analytics/history design, and precedent for §8's dry-run
-    requirement — "shadow" is the same idea as a policy dry-run, just
-    named differently and applied to a whole workflow version instead of
-    one rule.
-  `OPEN` (all four — captured as design input for §3/§7/§8, not decided
-  here).
-- **Update — the reference platform's Integration/Connector surface
-  reviewed in full depth, via a real screenshot walkthrough of its
-  create/view/edit/test flow (16 screenshots, one real saved
-  integration plus the create wizard), prompted directly by the user
-  questioning whether Mill's own Configure→Integration page is right to
-  hide everything behind narrow Primer Tabs the way Composition's
-  canvas Inspector does.** Still kept generic per the standing
-  no-vendor-names rule. This is a large capture — full detail below,
-  since the ask was explicitly "don't leave out any details." Nothing
-  here is decided or built; it's Research, feeding a capability-map
-  addition to §4 and new `OPEN` items in §10.
-  - **The read/edit-mode split, and the layout question this directly
-    answers.** A *saved* integration opens in a read-only summary with
-    four tabs — Details (a flat key/value dump of every backend config
-    field, including masked secrets), Available attributes, Input
-    parameters, Testing — plus explicit Delete/Duplicate/Edit buttons;
-    editing is a deliberate mode switch, not an always-open form. The
-    *create* flow, by contrast, is **one long single-column scroll**,
-    sectioned by plain headings (Name → Integration type → Connection →
-    Request → Authentication → Additional headers → Input parameters →
-    XML configuration → Output parameters → Caching) — no tabs at all
-    while actively authoring. Opened as its own pinned tab in the
-    platform's own app-wide tab-bar (the list of integrations stays
-    visible, dimmed, alongside it) — the same tabbed-multi-editing
-    mechanism Mill's own Composition view already built (`Tabs.tsx`,
-    §3.3's tabbed-multi-editing Update). **Direct answer to the user's
-    question**: tabs are for re-finding things in an *already-saved*
-    record you're scanning, not for the *act of authoring* one — this
-    reference platform tabs the summary view, never the create/edit
-    form itself. Mill's `ConnectorForm.tsx` currently tabs the
-    create/edit form (General/Auth/Headers/Schema/Test), which this
-    precedent argues against; a single guided scroll (or Composition's
-    own tab-per-open-item pattern, applied to Configure) fits the
-    evidence better. Not changed in this pass — a real UX decision,
-    surfaced for the user rather than silently resolved.
-  - **Connection mode — a new, connector-level, immutable-at-creation
-    property with three options, directly touching §3.4's already-`OPEN`
-    webhook-trigger row.** *Real-time* ("calls vendor, get a response
-    instantly" — Mill's only mode today, `integration-http`).
-    *Send & wait* ("calls vendor, get the result later via webhook or
-    polling" — a genuinely new pattern: fire a request, then either
-    receive an async callback or poll for a result, with no Mill
-    equivalent at all). *Receive only* ("run workflow when event is
-    received" — this **is** §3.4's own still-`OPEN` "Webhook / incoming
-    HTTP" trigger row, just reframed as a property of the Connector
-    rather than a standalone Trigger kind). The platform's own copy
-    ("once this integration is created, you cannot switch to a
-    different connection") treats this as a locked, one-time choice —
-    worth adopting as a design constraint regardless of how it's built,
-    since letting an already-wired workflow's execution shape change
-    underneath it is a real correctness hazard. Send & wait's execution
-    model plausibly maps onto DBOS's own already-adopted durable-workflow
-    primitives (a workflow that awaits an external signal/event before
-    resuming) rather than needing a bespoke correlation-ID mechanism
-    hand-built from scratch — worth confirming against DBOS-Go's actual
-    API before designing, not assumed.
-  - **Integration type (connector kind) — a real, closed list observed
-    directly: Generic REST API (Mill's only kind today), BigQuery,
-    Postgres, Redshift, Snowflake, Custom Python Function.** Direct,
-    concrete validation of §3.2's own already-locked "incrementally
-    extensible, not fixed upfront" principle and §4's "`Type` supports
-    one value today... a DB/SOAP connector adds its own `Type` when a
-    real need surfaces" line — this is real evidence of what those
-    future `Type`s actually look like, not speculation. "Custom Python
-    Function" is a new idea: a connector backed by user-authored code
-    rather than an external call at all, adjacent to but distinct from
-    ADR-0005's original deferred "Code" node.
-  - **Auth is three independent, additive layers, not one dropdown.**
-    Auth type (a base scheme — Mill's `none`/`apikey`/`bearer`, likely
-    also OAuth2 given "Auth token in header"/"Auth token in query"
-    flags seen in the Details dump) plus two optional add-ons that
-    layer on top of *any* Auth type: **JOSE Encryption** ("encrypts
-    what [the platform] sends to the vendor, and optionally decrypts
-    what it receives back (JWE)") and **Mutual TLS (mTLS)** ("proves
-    [the platform]'s identity to the vendor using a client
-    certificate") — confirmed as a real, live feature by the actual
-    error message a test run surfaced: "Invalid mTLS client
-    certificate — verify P12 contents, alias and password." Neither
-    JOSE/JWE nor mTLS appears anywhere in Mill's current `AuthType`
-    (`none`/`apikey`/`bearer`, OAuth2 named as future work) — both are
-    real, net-new gaps. **Researched, not assumed**: `crypto/tls`'s own
-    `Config.Certificates` is the native Go mechanism for a client cert
-    (no exotic library needed for the TLS handshake itself); the P12
-    *container format* (`.p12`/`.pfx`, alias + password, exactly what
-    the error message names) needs a decoder —
-    `software.sslmate.com/src/go-pkcs12` (successor to the now-frozen
-    `golang.org/x/crypto/pkcs12`, confirmed via its own docs) decodes a
-    P12 file straight into a cert+key usable by `crypto/tls.Config`.
-    For JOSE/JWE, `github.com/go-jose/go-jose/v4` is the canonical,
-    actively-maintained Go implementation (JWE/JWS/JWT, RFC 7516/7515/
-    7519). Both are real adopt candidates, zero NIH risk — `OPEN` on
-    whether/when to build, not on which library would do it.
+    draft/candidate version evaluated against real traffic without taking
+    effect, for comparison) filterable by input/event type/date range,
+    exportable. Relevant to §7's open analytics/history design, and
+    precedent for §8's dry-run requirement — "shadow" is the same idea as
+    a policy dry-run, applied to a whole workflow version instead of one
+    rule.
+  `OPEN` (all four — design input for §3/§7/§8, not decided here).
+- **The reference platform's Integration/Connector surface, reviewed in
+  depth via its create/view/edit/test flow.** Feeds §4.1's capability map
+  and §10's open-questions log; nothing here is decided or built.
+  - **Read/edit-mode split — the precedent [ADR-0014](adr/0014-configure-layout-inspect-vs-edit.md)
+    later adopted for Mill's own Connector layout.** A saved integration
+    opens read-only, in four tabs (Details — a flat key/value dump
+    including masked secrets — Available attributes, Input parameters,
+    Testing) plus explicit Delete/Duplicate/Edit; editing is a deliberate
+    mode switch. The create/edit flow itself is one long single-column
+    scroll, sectioned by plain headings (Name → Integration type →
+    Connection → Request → Authentication → Additional headers → Input
+    parameters → XML configuration → Output parameters → Caching) — no
+    tabs while authoring. Opens as its own pinned tab in the platform's
+    app-wide tab bar, the same tabbed-multi-editing shape Mill's
+    `Tabs.tsx` already has. Takeaway: tabs belong on an already-saved
+    record you're scanning, not on the act of authoring one.
+  - **Connection mode — a connector-level, immutable-at-creation property
+    with three options; ties into §3.4's open webhook-trigger row.**
+    *Real-time* (call vendor, get a response instantly — Mill's only mode
+    today, `integration-http`). *Send & wait* (call vendor, get the
+    result later via webhook or polling — no Mill equivalent). *Receive
+    only* (run workflow when an event is received — this **is** §3.4's
+    own open "Webhook / incoming HTTP" trigger row, reframed as a
+    connector property rather than a standalone Trigger kind). The
+    reference platform locks this choice at creation — worth adopting as
+    a design constraint regardless of implementation, since letting an
+    already-wired workflow's execution shape change underneath it is a
+    real correctness hazard. Send & wait plausibly maps onto DBOS's own
+    durable-workflow signal/await primitives (already adopted, §7) rather
+    than a hand-built correlation-ID mechanism — needs confirming against
+    DBOS-Go's actual API before designing.
+  - **Integration type (connector kind) — a real, closed list: Generic
+    REST API (Mill's only kind today), BigQuery, Postgres, Redshift,
+    Snowflake, Custom Python Function.** Concrete evidence for what
+    future `HTTPRequest.Type` values would look like, matching this
+    section's own "incrementally extensible, not fixed upfront"
+    principle. "Custom Python Function" is a new idea — a connector
+    backed by user-authored code rather than an external call — adjacent
+    to but distinct from ADR-0005's deferred "Code" node.
+  - **Auth is three independent, additive layers, not one dropdown.** A
+    base Auth type (Mill's `none`/`apikey`/`bearer`, plus OAuth2 implied
+    by observed "Auth token in header"/"Auth token in query" flags) plus
+    two optional add-ons layered on top of any Auth type: **JOSE
+    Encryption** (encrypts the outbound request, optionally decrypts the
+    response via JWE) and **Mutual TLS** (client-certificate identity) —
+    confirmed live by a real error message from a test run: "Invalid mTLS
+    client certificate — verify P12 contents, alias and password." Neither
+    existed anywhere in Mill's `AuthType` at the time (`none`/`apikey`/
+    `bearer`). Adopt candidates: `crypto/tls.Config.Certificates` (stdlib)
+    + `software.sslmate.com/src/go-pkcs12` (P12 decode, successor to the
+    frozen `golang.org/x/crypto/pkcs12`) for mTLS; `github.com/go-jose/
+    go-jose/v4` (JWE/JWS/JWT, RFC 7516/7515/7519) for JOSE.
   - **XML is a first-class, fully-parallel protocol mode, not a
     Content-Type footnote.** A real "Enable XML request and response"
-    toggle, plus (seen in a saved integration's Details dump) a
-    cluster of XML-specific fields: `xml preserve raw response`,
-    `xml strip namespaces`, `xml response mode` (`"auto"`),
-    `xml array force paths`, `unflatten response`, `content type value`.
-    Mill's HTTP connector is JSON-only today — this is exactly the gap
-    §3.2's own already-locked "started with plain HTTP and grew to also
-    support XML/SOAP" principle already anticipated, now with a real
-    reference shape to design against instead of a hypothetical.
-    **Researched**: Go's stdlib `encoding/xml` is struct-based (fine for
-    a fixed, compile-time shape, wrong fit for Mill's runtime-configured,
-    schema-less connectors); `github.com/clbanning/mxj` decodes/encodes
-    XML to/from `map[string]interface{}` (i.e. JSON-shaped data) with
-    dot-path extraction and wildcard support — much closer to what a
-    schema-driven, dynamically-configured XML connector actually needs;
-    `github.com/basgys/goxml2json` is a simpler, one-directional
-    XML→JSON option if bidirectionality turns out not to be needed.
-    `OPEN` on adoption, not on the library candidates.
-  - **Schema authoring gets a "Paste sample" path — infer the field
-    list from a real example, for input *and* output independently —
-    the single most directly-actionable finding against the user's own
-    original ask** ("if you started as csv or json you will be able to
-    review it using the editor"). Distinct from Mill's existing three
-    paths (paste raw OpenAPI, hand-author via the Manual editor, CSV
-    import, ADR-0011): none of those infer a schema from a realistic
-    example payload the way this does. **Researched**: `genson-js`
-    (npm, MIT) does exactly this client-side — pass it a parsed JSON
-    object, get a JSON Schema back — and would slot in as a fourth
-    `ManualSchemaEditor` accelerator (bulk-fills the same field table
-    CSV import already bulk-fills), not a new backend surface, matching
-    how CSV import itself works today. `OPEN` on adoption.
-  - **Schema fields carry more than Mill's `Field` today.** The full
-    output-schema editor's column set: Attribute\*(name) / Type /
+    toggle, plus (from a saved integration's field dump)
+    `xml preserve raw response`, `xml strip namespaces`,
+    `xml response mode` (`"auto"`), `xml array force paths`,
+    `unflatten response`, `content type value`. Mill's HTTP connector is
+    JSON-only — exactly the gap this section's "started with plain HTTP
+    and grew to also support XML/SOAP" principle anticipated. Adopt
+    candidates: `github.com/clbanning/mxj` (XML↔`map[string]interface{}`,
+    dynamic — fits Mill's runtime-configured, schema-less connectors
+    better than stdlib `encoding/xml`'s struct-based model), or
+    `github.com/basgys/goxml2json` for one-directional XML→JSON only.
+  - **Schema authoring gets a "Paste sample" path** — infer the field list
+    from a real example payload, for input and output independently.
+    Distinct from Mill's then-existing three paths (paste raw OpenAPI,
+    hand-author via Manual editor, CSV import): none inferred a schema
+    from an example. Adopt candidate: `genson-js` (npm, MIT) — client-side
+    JSON→JSON-Schema inference. Now built as a fourth `ManualSchemaEditor`
+    accelerator, §4.1's table (ADR-0011's Update).
+  - **Schema fields carried more than Mill's `Field` did at the time.**
+    The output-schema editor's column set: Attribute*(name) / Type /
     Required / Alias / Default value / Description — Mill's
-    `openapispec.Field` has no `Default` or `Description` at all
-    (OpenAPI itself supports both; Mill's adapter just doesn't surface
-    them yet). The Type dropdown offers nine types — Boolean, Number,
-    Integer, String, Array, Object, Map, Date, Datetime — vs. Mill's
-    six (no `Map`/`Date`/`Datetime`); Object types are recursively
-    expandable (nested "Add field," matching real nested-object schema
-    authoring, not just Mill's flat field list); a String field can
-    declare an optional Enum values list (a tag-style "press enter to
-    create" input) — the same idea as `ConfigField`'s `FieldOptions`,
-    applied one level down to a connector schema field instead of a
-    NodeType config field. All real, scoped gaps against ADR-0011's
-    Manual editor — `OPEN`, no decision made on which to close first.
-  - **Output handling gets three capabilities Mill has none of**:
+    `openapispec.Field` had no `Default`/`Description` (OpenAPI supports
+    both; Mill's adapter just didn't surface them). Nine Types offered
+    (Boolean, Number, Integer, String, Array, Object, Map, Date, Datetime)
+    vs. Mill's original six; Object types recursively expandable (nested
+    "Add field"); a String field could declare an Enum values list — the
+    same idea as `ConfigField.FieldOptions`, one level down. Now built,
+    §4.1's table (ADR-0011's Update).
+  - **Output handling had three capabilities Mill had none of**:
     **Response extract path** — a document-level, JSONPath-like root
-    extraction applied *before* per-field extraction (real examples
-    shown: `*`, `*.result`, `data.items[0]`, `$.data.result`) —
-    complementary to, and more general than, Mill's existing per-field
-    `x-mill-path` (ADR-0011), which only extracts one field at a time
-    from an already-known response shape; this operates on the whole
-    envelope first. **Restructure response into nested fields** — a
-    flattening/restructuring toggle whose exact semantics weren't
-    fully legible from the screenshots — flagged as genuinely
-    uncertain, not guessed at, same discipline as the already-deferred
-    "primary key" concept (§4/ADR-0011's own Update note). **Save a
-    file from the response** — extracting/downloading a file from an
-    API response, paired with **Include a file along with input
-    fields** on the request side — file-bearing requests/responses are
-    entirely unaddressed by Mill's connector model today.
+    extraction applied *before* per-field extraction (examples:
+    `*`, `*.result`, `data.items[0]`, `$.data.result`) — complementary
+    to, and more general than, Mill's per-field `x-mill-path` (ADR-0011),
+    which only extracts one field at a time from an already-known
+    response shape. Now built (narrower grammar, no bracket/`$.` syntax),
+    §4.1's table. **Restructure response into nested fields** — a
+    flattening/restructuring toggle whose exact semantics weren't legible
+    from the review — flagged as genuinely uncertain, same as the
+    deferred "primary key" concept (§4/ADR-0011). **Save a file from the
+    response**, paired with **include a file with input fields** on the
+    request side — file-bearing requests/responses are entirely
+    unaddressed by Mill's connector model. Both `OPEN`, §4.1's table.
   - **Response caching — a real capability with zero Mill equivalent.**
-    "Stores and reuses API responses for identical requests within the
-    cache window. Responses are matched [by request content], headers,
-    and record ID." A Cache duration (TTL) setting (default 30 days)
-    and a "Share cache across records" toggle ("allow different
-    records to share cached responses when their requests are
-    identical"). Genuinely valuable for a decisioning-style workload
-    (avoid re-paying for an expensive external bureau lookup on
-    identical input) but also a real design surface of its own — cache
-    key derivation, invalidation, where the cache actually lives
-    (in-process vs. DBOS-backed vs. `internal/adapters/settings`) — not
-    a quick bolt-on. `OPEN`, no library research done yet (this is a
-    design question first, an adopt-vs-build question second).
+    Stores and reuses API responses for identical requests within a cache
+    window, matched by request content, headers, and record ID; a Cache
+    duration (TTL, default 30 days) and a "Share cache across records"
+    toggle. Valuable for a decisioning-style workload (avoid re-paying for
+    an expensive external bureau lookup on identical input) but a real
+    design surface of its own — cache key derivation, invalidation, where
+    the cache actually lives (in-process vs. DBOS-backed vs.
+    `internal/adapters/settings`). `OPEN`, §4.1's table — design question
+    first, library pick after.
   - **The Testing tab, already built in Mill via ADR-0013, compared
-    directly against a real equivalent — two small, real gaps found,
-    no fundamental redesign needed.** The reference platform's test
-    payload is one raw, colorized JSON blob (not Mill's per-field
-    table) and its results are a collapsed table (Time sent / status
-    icon) that expands per row, with a **"Copy error"** button Mill's
-    `ConnectorTestPanel.tsx` doesn't have. Everything else — generate
-    an example payload, run against the real API, see a session log of
-    attempts with status/error — Mill already has. `OPEN`: whether to
-    add a copy-to-clipboard affordance on a log entry (small, low-risk)
-    and/or a raw-JSON-blob input mode alongside the existing per-field
-    table (bigger, a real second input mode) — not decided here.
-  - **The Configure left-nav has more top-level entities than Mill's
-    four Configure tabs.** Observed: Inputs, Attributes, Integrations,
-    Decisions, ML Models, Jobs, Lists. Mill has Integration(Connector)/
-    Lists/Attributes/MCP Servers as Configure tabs today, plus Decision
-    authored inline per-edge on the canvas (not a separate Configure
-    tab). New, unrecorded entities: a separate **Inputs** tab distinct
-    from Attributes (its exact scope/semantics weren't legible from
-    the screenshots — flagged as uncertain, not invented), **ML
-    Models** (already named `OPEN`/deferred in ADR-0005's original
-    taxonomy discussion, §3.3), and **Jobs** (possibly Mill's own
-    Schedule-trigger concept, or a background-execution/queue view
-    closer to the Runs page — genuinely unclear which, not assumed).
-    `OPEN`, real future research if any of these get prioritized.
-- **Update — several items above resolved/corrected, and real new
-  surface area found, via a consolidated review the user pulled
-  together from their own knowledge base of the same reference
-  platform** (explicitly scoped to record only directly-observed
-  behavior, not speculation — the same discipline this doc already
-  holds itself to). Kept generic per the standing rule; still `OPEN`
-  throughout, nothing decided or built.
-  - **Auth type is a 7-option catalogue, not the None/API-key/Bearer
-    set Mill has.** Observed: None, Header, HMAC, a vendor-specific
-    OAuth 1.0a variant, OAuth 1.0 HMAC, OAuth 2.0, Query parameter.
-    OAuth 2.0 itself has real sub-configuration: grant type
-    (`client_credentials` observed), token URL, client ID, client
-    secret, OAuth scope, token-request content type. Mill's `AuthType`
-    (`none`/`apikey`/`bearer`) plus already-named-future OAuth2 covers
-    3 of 7; HMAC and the two OAuth-1.0-family variants are net-new.
+    directly against a real equivalent** — two small gaps found, no
+    fundamental redesign needed: the reference platform's test payload is
+    one raw, colorized JSON blob (not Mill's per-field table), and its
+    results are a collapsed table (Time sent / status icon) expandable
+    per row, with a **"Copy error"** button. Both now built, §4.1's
+    table.
+  - **The Configure left-nav has more top-level entities than Mill's four
+    Configure tabs.** Observed: Inputs, Attributes, Integrations,
+    Decisions, ML Models, Jobs, Lists. New, unrecorded entities: a
+    separate **Inputs** tab distinct from Attributes (scope/semantics
+    unclear from the review), **ML Models** (already `OPEN`/deferred in
+    ADR-0005's taxonomy discussion, §3.3), and **Jobs** (possibly Mill's
+    Schedule-trigger concept, or a background-execution/queue view closer
+    to the Runs page — genuinely unclear which). `OPEN`, real future
+    research if any of these get prioritized.
+- **A consolidated review, scoped to record only directly-observed
+  behavior, resolved/corrected several items above and found real new
+  surface area.** Kept generic; still `OPEN` throughout, nothing decided
+  or built.
+  - **Auth type is a 7-option catalogue, not the None/API-key/Bearer set
+    Mill had.** Observed: None, Header, HMAC, a vendor-specific OAuth
+    1.0a variant, OAuth 1.0 HMAC, OAuth 2.0, Query parameter. OAuth 2.0
+    has real sub-configuration: grant type (`client_credentials`
+    observed), token URL, client ID, client secret, OAuth scope,
+    token-request content type. Now `LOCKED` and built — 5 of 7
+    implemented, per §4.1's table ([ADR-0015](adr/0015-connector-auth-strategy.md)
+    Phase 2).
   - **mTLS's full field set, now complete**: client certificate upload
-    (`.p12`), keystore password, an optional certificate alias
-    (defaults to the first key entry in the P12 if blank — a real,
-    specific fallback rule, not "pick one arbitrarily"), an optional
-    trusted CA bundle in PEM (defaults to the system trust store if
-    blank), and a **"disable certificate validation"** toggle. That
-    last one is flagged directly, independently, as high-risk by the
-    consolidator's own review — matches Mill's own fail-safe guardrail
-    posture (§8) closely enough to adopt verbatim as a constraint if
-    mTLS is ever built: **never permit disabling certificate
-    validation except through an explicit, governed non-production
-    exception**, not a plain checkbox available everywhere.
+    (`.p12`), keystore password, an optional certificate alias (defaults
+    to the first key entry in the P12 if blank), an optional trusted CA
+    bundle in PEM (defaults to the system trust store if blank), and a
+    **"disable certificate validation"** toggle — flagged independently
+    by the review as high-risk. Matches Mill's own fail-safe guardrail
+    posture (§8) closely enough to adopt verbatim as a constraint if mTLS
+    is ever built: never permit disabling certificate validation except
+    through an explicit, governed non-production exception, not a plain
+    checkbox. Implementation stays `OPEN`, §4.1's table (the extensibility
+    seam itself is built, ADR-0015).
   - **SOAP/XML has a real templating layer, not just structural
     toggles.** A "SOAP version" field (`Standard XML` observed) and an
-    "XML request template" that supports field substitution,
-    conditionals, and iteration over arrays (a repeated-address-object
-    example was observed). This is a genuine template-engine question
-    for Mill's own eventual XML support — Go's stdlib `text/template`
-    (conditionals + range/iteration natively) is the obvious first
-    candidate to check against whatever the real expression grammar
-    turns out to need, not assumed sufficient. The exact grammar
-    itself is **not** established even by this fuller review — stays
-    a real unknown, not guessed at.
-  - **Response caching's match key is now fully resolved** (the
-    earlier capture cut off mid-sentence): responses are matched by
-    **request body, headers, and record ID** — record ID is part of
-    the default cache key; "Share cache across records" removes only
-    that record-ID boundary, identical requests still required
-    otherwise. Confirms the design surface named in §4.1's table is
-    real and specific, not vague.
+    "XML request template" supporting field substitution, conditionals,
+    and iteration over arrays (a repeated-address-object example was
+    observed). Go stdlib `text/template` (native conditionals/range) is
+    the obvious first candidate to check against whatever the real
+    expression grammar turns out to need — that grammar itself is **not**
+    established even by this fuller review. `OPEN`.
+  - **Response caching's match key is now fully resolved**: request body,
+    headers, and record ID — record ID is part of the default cache key;
+    "Share cache across records" removes only that record-ID boundary,
+    identical requests still required otherwise. Confirms §4.1's design
+    surface is real and specific, not vague — still `OPEN` overall.
   - **The QA/Testing surface, independently confirmed, closely matches
-    what Mill already built (ADR-0013).** One JSON record generated
+    what Mill already built (ADR-0013)**: one JSON record generated
     from/conforming to the input schema, Run/Test-again, Refresh,
-    timestamped results, a success indicator, and the parsed response
-    — validates Mill's `ConnectorTestPanel.tsx` shape rather than
-    surfacing a new gap. One explicit caution worth carrying into
-    Mill's own docs/UI copy: "a green transport result does not by
-    itself prove the vendor returned a successful business outcome" —
-    Mill's own test log already separates transport status (HTTP
-    status code) from a body's contents, which already satisfies this,
-    but worth stating explicitly if the Test tab ever grows a
-    pass/fail judgment beyond raw status.
-  - **The Integration/node relationship is confirmed to already match
-    how Mill is built, not a gap.** "An Integration is not itself a
-    workflow node definition — it is a reusable typed capability
-    configuration. A workflow node references the published
-    Integration, maps workflow data into its typed input parameters,
-    and exposes the typed output parameters to downstream steps." This
-    is exactly Connector (Configure-authored, reusable, §3.5) vs.
-    `integration-http` (a workflow-scoped node referencing a
-    `connectorId`, §3.3) — independent confirmation Mill's existing
-    split is the right one, not something to redesign.
-  - **Ten reused UX/component patterns, named explicitly as shared
-    product primitives rather than per-surface implementations** — the
-    single most actionable finding for Mill's own frontend architecture,
-    since it's a statement about *component reuse discipline*, the same
-    concern `.claude/rules/frontend.md` already exists to enforce one
-    level down (check the kit before hand-rolling a collection UI):
-    a shared **resource-inventory table** (search, name-as-link, status
-    badge, sort-by-updated, one primary create action, row-click opens
-    without leaving the list — Mill's Connector/List/MCP-Server rows
-    already look like this by convention, never formalized as one
-    component); a shared **pinned work-tab shell** (Mill already built
-    this for Composition, `Tabs.tsx` — the finding is that it should
-    extend to Configure too, not stay Composition-only); a shared
-    **inspect-vs-edit split** (tab the read-only summary of a saved
-    resource, use one full-width guided form for create/edit — never
-    reuse inspect tabs as fragmented authoring steps, directly answers
-    this section's own opening layout question); a shared **hierarchical
-    schema-editor** (one component authoring Connector input schema,
-    Connector output schema, Workflow Attributes, and any future
-    fixture/test schema — differences expressed as configuration/
-    validation rules passed into one editor, not four separate editors
-    — Mill's `ManualSchemaEditor.tsx` today is Connector-schema-specific
-    only, not yet generalized this far); a shared **read-only typed-tree
-    summary** (the same compact, searchable, type-badged tree for
-    viewing a schema in Configure, a canvas node's config, a run's
-    input/output, and a test fixture); a shared **secret-field pattern**
-    (masked value + reveal control for a plain secret; upload-status +
-    remove, never re-displaying contents, for certificate material —
-    Mill's write-only secret design, §3.5, already gets the "never
-    re-display" half right, formalizing certificate-shaped secrets the
-    same way is new); a shared **progressive-disclosure form** (which
-    fields appear is driven by prior choices — connection mode, auth
-    type, JOSE/mTLS toggles, XML enablement — as one conditional-form
-    framework driven by schema/capability metadata, not a hand-coded
-    flow per connector kind); a shared **test-and-evidence viewer**
-    (one execution-result viewer reused by fixture testing, a real
-    workflow run, and future Action/Playbook-shaped testing, explicitly
-    distinguishing transport success / capability success / policy
-    verdict / business result as four separate signals, not one
+    timestamped results, a success indicator, the parsed response —
+    validates `ConnectorTestPanel.tsx`'s shape rather than surfacing a
+    new gap. One caution worth carrying into Mill's own docs/UI copy: "a
+    green transport result does not by itself prove the vendor returned a
+    successful business outcome" — Mill's test log already separates
+    transport status from a body's contents, satisfying this, but worth
+    stating explicitly if the Test tab ever grows a pass/fail judgment
+    beyond raw status.
+  - **The Integration/node relationship is confirmed to already match how
+    Mill is built, not a gap.** "An Integration is not itself a workflow
+    node definition — it is a reusable typed capability configuration. A
+    workflow node references the published Integration, maps workflow
+    data into its typed input parameters, and exposes the typed output
+    parameters to downstream steps." Exactly Connector (Configure-
+    authored, reusable, §3.5) vs. `integration-http` (a workflow-scoped
+    node referencing a `connectorId`, §3.3) — independent confirmation
+    Mill's existing split is the right one.
+  - **Ten reused UX/component patterns**, named as shared product
+    primitives rather than per-surface implementations — the single most
+    actionable finding for Mill's own frontend architecture, since it's a
+    statement about *component reuse discipline*, the same concern
+    `.claude/rules/frontend.md` already enforces one level down: a shared
+    **resource-inventory table** (search, name-as-link, status badge,
+    sort-by-updated, one primary create action, row-click opens without
+    leaving the list — Mill's Connector/List/MCP-Server rows already look
+    like this by convention, never formalized as one component); a shared
+    **pinned work-tab shell** (Mill already built this for Composition,
+    `Tabs.tsx` — the finding is that it should extend to Configure too);
+    a shared **inspect-vs-edit split** (tab the read-only summary of a
+    saved resource, use one full-width guided form for create/edit —
+    never reuse inspect tabs as fragmented authoring steps); a shared
+    **hierarchical schema-editor** (one component authoring Connector
+    input schema, Connector output schema, Workflow Attributes, and any
+    future fixture/test schema, differences expressed as configuration
+    passed into one editor — Mill's `ManualSchemaEditor.tsx` is
+    Connector-schema-specific only, not yet generalized this far); a
+    shared **read-only typed-tree summary** (the same compact, searchable,
+    type-badged tree for viewing a schema in Configure, a canvas node's
+    config, a run's input/output, and a test fixture); a shared
+    **secret-field pattern** (masked value + reveal control for a plain
+    secret; upload-status + remove, never re-displaying contents, for
+    certificate material — Mill's write-only secret design, §3.5, already
+    gets the "never re-display" half right; formalizing certificate-shaped
+    secrets the same way is new); a shared **progressive-disclosure form**
+    (which fields appear is driven by prior choices — connection mode,
+    auth type, JOSE/mTLS toggles, XML enablement — as one conditional-form
+    framework, not a hand-coded flow per connector kind); a shared
+    **test-and-evidence viewer** (one execution-result viewer reused by
+    fixture testing, a real workflow run, and future Action/Playbook-
+    shaped testing, distinguishing transport success / capability success
+    / policy verdict / business result as four separate signals, not one
     conflated "green checkmark"); a shared **duplicate-and-edit action
     set** (consistent placement/confirmation/validation/dirty-state
-    handling at both the resource level and the schema-row level —
-    Mill's ADR-0013 Duplicate and `ManualSchemaEditor`'s row actions
-    already do this independently, never checked against each other
-    for consistency); and a shared **capability-reference-by-identifier
+    handling at both the resource level and the schema-row level — Mill's
+    ADR-0013 Duplicate and `ManualSchemaEditor`'s row actions already do
+    this independently, never checked against each other for
+    consistency); and a shared **capability-reference-by-identifier
     pattern** (a workflow node configures a *binding* to a registry
-    resource — Connector, List, MCP Server — referenced by immutable
-    ID, never a copy of the resource's own definition pasted into the
-    graph — confirms Mill's existing `connectorId`/`listId`/
-    `mcpServerId` `RefKind` picker design, ADR-0009, is already this
-    pattern, not something to change). None of these are being built
-    now — named here as a real, cited precedent for *if/when* Mill
-    generalizes any one of its current per-surface implementations,
-    same "adopt the shape, not the product" discipline as the rest of
-    this section.
-  - **A concrete, curated set of genuinely-still-unresolved questions**
-    (the consolidator's own review flags these as unproven even after
-    a deeper pass, not just unproven from the original screenshots) —
-    folded into §10 rather than reproduced in full here: Integration-
-    level draft/publish/version/rollback lifecycle (distinct from the
-    workflow-level draft/live versioning already `OPEN`, §3.2 above);
+    resource — Connector, List, MCP Server — referenced by immutable ID,
+    never a copy of the resource's own definition — confirms Mill's
+    existing `connectorId`/`listId`/`mcpServerId` `RefKind` picker design,
+    ADR-0009, is already this pattern). None of these are being built now
+    — a real, cited precedent for *if/when* Mill generalizes any one of
+    its current per-surface implementations.
+  - **A curated set of genuinely-still-unresolved questions**, even after
+    this deeper pass — folded into §10 rather than reproduced here:
+    Integration-level draft/publish/version/rollback lifecycle (distinct
+    from the already-`OPEN` workflow-level draft/live versioning above);
     exact Send-&-wait/Receive-only webhook and polling field-level
     config, correlation contract, and inbound auth/signature
     verification; the full typed-field system beyond what's already
     listed (nullable semantics, files, unions); exact URL-path
     substitution syntax/escaping; non-2xx response handling; and the
-    caching system's canonicalization/invalidation rules. Each is a
-    real "don't guess, research or ask before designing" flag for
-    whichever of these Mill eventually prioritizes, not a checklist to
-    resolve now.
+    caching system's canonicalization/invalidation rules. Each is a "don't
+    guess, research or ask before designing" flag for whichever of these
+    Mill eventually prioritizes.
 
 ### 3.3 Capability map — designing the node/edge schema against the full known need, not just today's two workflows
 
@@ -1565,7 +1271,7 @@ Plan step for this as a standing rule.
 | **Capture / Process / Apply** | Read structured state from a source, transform it, deliver it | Build (core domain) | `LOCKED`, §2 — built for clipboard/markdown |
 | **Text injection** (a fixed hint/instruction pasted alongside a workflow's real output — e.g. telling an M365 Copilot chat what other tools are available) | Prepend or append configured static text to the payload | Build (core domain, `process-inject-text`, ADR-0006's self-registration pattern) — no templating engine; conditional injection composes for free with an upstream Decision node instead of adding branching logic to the node itself | `LOCKED`, built — `internal/domain/composition/processinjecttext.go`, e2e-verified (`composition-canvas-interactions.spec.ts`) end-to-end including via the generic ConfigField Inspector, no bespoke UI |
 | **Trigger** | Entry-point node: listen for *any* event source (hotkey, clipboard change, a browser-bridge DOM event per §5, an incoming MCP `tools/call` per §3.1, a schedule) and emit its data as the workflow's starting input — not "the hotkey mechanism," a general category the hotkey is one instance of. A trigger's output *is* the workflow's input; these are one concept, not two. | Each concrete event source adopts its own library behind an adapter (hotkey/schedule/filesystem-watch do; clipboard-watch is a small build); the abstraction unifying them into one node kind, and `TriggerService`'s registry/exclusivity, are Mill's own | `LOCKED`, built (manual/hotkey/schedule/clipboard-watch/filesystem-watch) — see §3.4 for the fuller map. DOM-event and MCP-call triggers remain unbuilt, gated on §5/§3.1 |
-| **Decision / branching** | Route execution down one of several named output edges based on a condition evaluated against the running payload | Node/graph semantics: build (core domain — composition rules). Expression evaluation underneath: adopt (`expr-lang/expr`, MIT, sandboxed/side-effect-free/loop-bounded by design — verified directly, not assumed) rather than hand-writing a condition parser | `LOCKED` (execution engine) — `internal/domain/composition`'s `ExecContext`/`ValidateGraph`/`nextNode` (see the Update note right after this table) walk real Decision branches end-to-end; `KindDecision` + `decision-route` NodeType render and connect on the canvas. Authoring real conditions (a visual rule builder) is still `OPEN` — see §3.5's Decision row |
+| **Decision / branching** | Route execution down one of several named output edges based on a condition evaluated against the running payload | Node/graph semantics: build (core domain — composition rules). Expression evaluation underneath: adopt (`expr-lang/expr`, MIT, sandboxed/side-effect-free/loop-bounded by design — verified directly, not assumed) rather than hand-writing a condition parser | `LOCKED` (execution engine + authoring) — `internal/domain/composition`'s `ExecContext`/`ValidateGraph`/`nextNode` walk real Decision branches end-to-end; `KindDecision` + `decision-route` NodeType render and connect on the canvas. Conditions are authored visually via a `react-querybuilder` rule builder (`DecisionEdgeInspector.tsx`), translated to `expr-lang/expr` — see §3.5's Decision row |
 | **Parallel Steps** | Fan out to multiple steps concurrently, then join | Graph/fan-in semantics: build. Concurrency execution: DBOS's `Queue`/`WithWorkerConcurrency` (§7) is a plausible real backing mechanism once designed, not hand-rolled goroutine management | ADR-0005 names it, deferred |
 | **Child Workflow** | One workflow invokes another as a step | Graph/node semantics: build. Execution: **adopt** — DBOS (already adopted, §7) has real, native parent/child primitives (`RunWorkflow` called from inside a running workflow auto-tracks `ParentWorkflowID`; a workflow ID is DBOS's own idempotency key), corrected from ADR-0005's original "no library has an opinion" verdict | `LOCKED` — [ADR-0010](adr/0010-child-workflow.md), built |
 | **Integration / Connector node** | Call an external HTTP API, auth'd | Wire protocol: adopt (stdlib `net/http`, via `internal/adapters/httpconnector`). Connector config/credential model: build (`internal/domain/connector`) + adopt (`zalando/go-keyring` via `internal/adapters/credential`) | `LOCKED` (execution) — `internal/domain/connector`'s `Connector{ID, Label, Type, BaseURL, AuthType, Headers}` + a new `integration-http` `NodeType` (`KindProcess`) execute real HTTP calls, resolving `AuthType`/secret into the right header (`X-Api-Key` or `Authorization: Bearer`) via `composition.SetConnectorLookup`'s injected seam (mirrors `TriggerService`'s `Syncer` pattern — the domain package doesn't own connector storage). §4 stays `OPEN` on the Configure-surface UI to author a Connector; see §3.5's own row |
@@ -1607,142 +1313,57 @@ built, not just captured as design input:**
 the versioning/replay gaps this map names are still real, unbuilt future
 work; only the node/edge shape moved from proposed to shipped.
 
-**Update — Decision's execution engine is now built** (§3.5's Configure-
-surface work; ADR "logical-percolating-wilkes" plan §1/§3), ahead of
-ADR-0005 A2's original "deferred" framing for this one row. `Edge`'s
-`SourceHandle` carries a real `expr-lang/expr` condition string (already
-the adopt-pick this table named above) instead of sitting reserved and
-unused; a Decision node's outgoing edges are evaluated in order, first
-match wins, with exactly one required `"otherwise"`-handle edge as the
-fallback — enforced at *save* time by `ValidateGraph` (compiles every
-condition against the workflow's declared `Attributes` schema, so a bad
-expression or a missing `otherwise` is caught before Save succeeds, not
-just at Run) and walked at *run* time by `nextNode`/`ExecuteWorkflow`.
-`ExecContext{Payload, Attributes}` replaces the old bare-`string` payload
-threaded through `nodeExec` — `Attributes` is the new structured bag
-Decision rules evaluate against; `Payload` is unchanged in shape, every
-existing Capture/Process/Apply node just reads/writes it through the new
-wrapper. `ExecuteWorkflow` seeds `Attributes` from the workflow's own
-declared schema at each field's zero value (`attributesEnv`) — there is
-no manual-test-run UI yet to supply real values (that's §3.5's still-
-unbuilt Attributes-CRUD/manual-run work), so this is an honest interim:
-a workflow with no `Attributes` (both built-ins today) behaves exactly
-as before this existed. `internal/adapters/expression` wraps
-`expr-lang/expr` behind Mill's own names (`Compile`/`Eval`), per
-CLAUDE.md's ports/adapters rule — confirms the pick this table already
-named rather than adding a new one. On the canvas: `KindDecision` +
-one `decision-route` NodeType (no `ConfigFields` — a pure routing point,
-its conditions live on its edges) render with a real icon/label/color
-(`nodeKind.ts`, `GitBranchIcon`); `isValidConnection` now exempts
+**Decision node execution and authoring are built, no dedicated ADR.**
+A Decision node's outgoing edges are evaluated in order, first match
+wins, with exactly one required `"otherwise"` edge as fallback.
+`ValidateGraph` compiles every edge's `expr-lang/expr` condition
+against the workflow's declared `Attributes` schema at *save* time (a
+bad expression or a missing `otherwise` is rejected before Save
+succeeds); `nextNode`/`ExecuteWorkflow` walk the same conditions at
+*run* time. `ExecContext{Payload, Attributes}` is what a condition
+evaluates against — `Attributes` seeds from the workflow's declared
+schema at each field's zero value, overridable by a real Run value
+(§3.4). `internal/adapters/expression` wraps `expr-lang/expr`
+(`Compile`/`Eval`) behind Mill's own names. On the canvas,
+`KindDecision` + a single `decision-route` NodeType (no
+`ConfigFields` — its conditions live entirely on its edges) render
+with a real icon (`GitBranchIcon`); `isValidConnection` exempts
 Decision nodes from the single-outgoing-edge limit every other kind
-still has (mirrored save-time by the canvas's own draft-workflow zod
-check and, authoritatively, by `ValidateGraph` server-side — "a
-save-time error and a run-time error never disagree" holds across three
-layers, same principle as the original linear-chain design). **What
-this pass does not build**: a visual rule builder — an edge carries a
-raw expression string today with no UI to author one (react-querybuilder
-adoption, §3.5's plan), so a Decision node is real and executable but
-only authorable by hand-editing the persisted JSON until that lands.
-Verified end-to-end against the real Go backend (server mode +
-Playwright, not just unit tests): dropped a Decision node onto the
-canvas, connected two outgoing edges from it (previously impossible —
-`isValidConnection` rejected a second outgoing edge from any node),
-attempted Save with both edges lacking a condition, and confirmed the
-backend correctly rejected it (`ValidateGraph` surfaced a real compile
-error to the user instead of silently accepting an unexecutable graph).
-`LOCKED` (execution engine, NodeType, canvas connectivity) — the rule
-builder itself stays `OPEN`, tracked in §3.5's own Decision row.
+still has, checked again client-side by the draft-workflow zod schema
+and authoritatively by `ValidateGraph` server-side.
 
-**Update — the rule builder is now built, closing the gap named
-directly above.** `react-querybuilder` (MIT, v8.x) adopted per the
-original plan; its own runtime dependency on `@reduxjs/toolkit`/
-`react-redux` (checked directly via `npm view`, not assumed) is a real,
-bounded cost worth naming here the same way `elkjs`'s bundle size was
-named earlier — accepted since the alternative is hand-rolling a visual
-rule tree, exactly the kind of infrastructure-shaped UI CLAUDE.md's
-adopt-over-hand-roll bias exists for. `frontend/src/ruleTranslate.ts` is
-the bridge: `translateToExpr` walks react-querybuilder's own query-tree
-shape (`RuleGroupType`) into a real `expr-lang` boolean expression string
-— every operator it emits (`==`, `!=`, `<`, `>`, `<=`, `>=`, `&&`, `||`,
-`!`, `in [...]`, `contains`, `startsWith`, `endsWith`) was checked
-directly against a real `expr.Compile`/`expr.Run` call before being
-relied on, not assumed from either library's docs; 12 Vitest cases lock
-the mapping, and each generated string was independently re-verified to
-compile against the real Go `expr` package. **Deliberately one-way**: there is
-no reverse parser from an already-saved expression string back into the
-visual tree (writing a real expr-lang parser in TypeScript is its own
-project) — `frontend/src/DecisionEdgeInspector.tsx` (opened via a new
-`onEdgeClick` handler, only for edges whose source is a Decision node)
-always starts the builder from an empty query and shows the current
-saved condition as read-only text alongside it, plus a raw-text input as
-the power-user fallback for editing an existing expression directly.
-Fields offered to the builder come from the *owning workflow's real,
-Configure-authored* `Attributes` (`ruleTranslate.ts`'s
-`fieldsFromAttributes`, excluding `FieldOptions` — `AttributeDef` carries
-no `Options` list to build a choice-set from, unlike `ConfigField`) — not
-a placeholder list, closing the dependency the original Decision-engine
-pass named ("no manual-test-run UI yet to supply real values"). One real
-correctness fix along the way: a Decision edge's condition is stored in
-React Flow's own `edge.data.condition` (mirrored to `edge.label` for
-on-canvas visibility), not `edge.sourceHandle` as the original wire-shape
-mapping did — `sourceHandle` has a distinct, React-Flow-specific meaning
-(which physical `<Handle id>` an edge attaches to), and `CanvasNodeView`
-only ever renders one unnamed handle per node, so writing an arbitrary
-expr-lang string there would have silently broken edge rendering; this
-was caught before it shipped, not after. Verified end-to-end against the
-real Go backend (server mode + Playwright): created a Connector and a
-List via the new Configure page (below), added a real `boolean` Attribute
-to a workflow via its Attributes tab, reopened that workflow's canvas,
-dropped a Decision node, opened the rule builder on its outgoing edge,
-and confirmed the field dropdown offered the real attribute by name —
-not a stub. `LOCKED`.
+A condition is authored visually, not by hand-editing JSON:
+`DecisionEdgeInspector.tsx` (opened via `onEdgeClick`, for any edge
+whose source is a Decision node) hosts a **`react-querybuilder`**
+(MIT, v8.x — its own `@reduxjs/toolkit`/`react-redux` runtime
+dependency is an accepted, bounded cost) rule tree, translated to a
+real `expr-lang` boolean expression by `frontend/src/ruleTranslate.ts`'s
+`translateToExpr` (`==`, `!=`, `<`, `>`, `<=`, `>=`, `&&`, `||`, `!`,
+`in [...]`, `contains`, `startsWith`, `endsWith` — locked by Vitest
+cases and independently checked against the real Go `expr` package).
+Fields offered to the builder come from the owning workflow's real,
+Configure-authored `Attributes`. The condition is stored in React
+Flow's own `edge.data.condition` (mirrored to `edge.label` for
+on-canvas visibility) — not `edge.sourceHandle`, which carries a
+distinct, React-Flow-specific meaning (which physical `<Handle id>`
+an edge attaches to). **Deliberately one-way**: there is no parser
+from an already-saved expression string back into the visual tree —
+the builder always starts empty, shows the current saved condition as
+read-only text alongside it, and a raw-text input is the power-user
+fallback for editing an expression directly. Full design rationale in
+[ADR-0018](adr/0018-decision-execution-and-rule-builder.md). `LOCKED`.
 
-**Update — Child Workflow is built, via
-[ADR-0010](adr/0010-child-workflow.md).** Corrects this table's own row
-above: DBOS (already adopted, §7) turned out to have real, native
-parent/child execution — calling `dbos.RunWorkflow` from inside an
-already-running workflow auto-creates a tracked child
-(`ParentWorkflowID`), and a DBOS workflow ID is itself an idempotency
-key (re-invoking with the same ID returns the recorded result instead
-of re-running). Only buildable unconditionally after
-[ADR-0008](adr/0008-single-execution-path.md) made every run durable —
-before that, a Child Workflow node would have needed either a
-durable-only restriction or a weaker in-process fallback. A new
-`trigger-callable` `NodeType` (§3.4 below) is the only valid entry point
-a workflow can be invoked as a child through — decoupled from any real
-external event, modeled on n8n's own "Execute Workflow Trigger"; the
-child-workflow picker (a fourth `RefKind`, "workflow", on
-[ADR-0009](adr/0009-configure-entity-picker.md)'s mechanism — no
-quick-create for this one, creating a workflow is Composition's own
-"New workflow" flow) only lists workflows rooted there. Input binding
-reuses ADR-0007 Phase 3's `parseBindings`/`resolveBindingValue`
-mechanism unchanged (already generic, not integration-http-specific) —
-the child's own declared Attributes are what
-`ChildWorkflowBindingsEditor.tsx` offers rows for, using a
-`LiteralOrAttributeField.tsx` component now shared with
-`IntegrationBindingsEditor.tsx` rather than duplicated. `ExecContext`
-gained one new opaque field, `RunContext any` — composition never
-inspects it, only carries it, so `ExecutionService` (which owns DBOS)
-can thread its own `execution.Context` through to the injected
-`SetChildWorkflowRunner` function without composition importing DBOS
-(domain purity). The single ad-hoc `attrValues` variadic
-`ExecuteWorkflow`/`ExecuteWorkflowWithStepRunner` gained for ADR-0008's
-test-input form was folded into an `ExecuteOptions` struct once
-`RunContext` became a second, differently-typed optional value — Go
-allows only one variadic parameter. Verified end-to-end against a real
-DBOS instance, not assumed from the SDK's docs: a real parent/child run
-(`TestRunChildWorkflow_TracksRealParentChildRelationship`) confirms
-`ListWorkflows(WithFilterParentWorkflowID(...))` finds exactly the
-child DBOS actually tracked, and a second regression test proves
-re-invoking with the same idempotency key doesn't start a duplicate
-child run. Frontend picker filtering (only `trigger-callable`-rooted
-workflows appear) verified via Playwright
-(`child-workflow.spec.ts`). **Not built this pass, named explicitly**:
-a "show this run's children" UI on the Runs page (`ParentWorkflowID` is
-already there via DBOS, just not surfaced yet); cascading cancel/
-delete-with-children exposed anywhere in Mill's own UI; cyclic
-child-workflow detection (A→B→A) — a real workflow hitting this is the
-trigger to revisit, not speculative upfront. `LOCKED`.
+**Child Workflow is built** — see
+[ADR-0010](adr/0010-child-workflow.md) for the full design (DBOS's
+native parent/child execution via `dbos.RunWorkflow`, the
+`trigger-callable` entry-point NodeType, the `workflow` `RefKind` on
+the entity picker (ADR-0009), and `ExecContext.RunContext`'s opaque
+per-run seam). **Not built, named explicitly**: a "show this run's
+children" UI on the Runs page (`ParentWorkflowID` is already tracked
+via DBOS, just not surfaced), cascading cancel/delete-with-children
+exposed anywhere in Mill's own UI, and cyclic child-workflow detection
+(A→B→A) — a real workflow hitting this is the trigger to revisit, not
+speculative upfront. `LOCKED`.
 
 ### 3.4 Trigger primitives — capability map
 
@@ -1756,13 +1377,10 @@ Zapier, Raycast — chosen because they're the platforms already anchoring
 this design elsewhere in this doc) rather than invented from Mill's two
 existing entry points (hotkey, manual click).
 
-**Update — built.** Everything below was originally captured as design
-direction only; `KindTrigger` + five `NodeType`s, `TriggerService`,
-`ConfigField` typing, hotkey exclusivity, and payload generation are now
-real code (this update lands in the same change as the implementation,
-not a later pass). Left the original research prose in place below since
-it's still the accurate reasoning behind each decision — only the
-build-status framing changes.
+**Built** — `KindTrigger`, five `NodeType`s, `TriggerService`, typed
+`ConfigField`s, hotkey exclusivity, and payload generation are all
+real code; the design reasoning below is accurate as originally
+written, not a later correction.
 
 **Grouping is by delivery mechanism, not business domain** — this is the
 axis that actually determines config shape and the adopt-vs-build call
@@ -1854,33 +1472,19 @@ selected Trigger node with `ConfigFields`, e.g. `trigger-schedule`/
 `trigger-filesystem-watch`) runs `zod-schema-faker`'s `fake()` against
 it, filling the Inspector's fields in place. `LOCKED`, built.
 
-**Update — the same mechanism now covers a *workflow's* declared
-Attributes too, closing §3.2's own per-record test-harness item
-end-to-end, via [ADR-0008](adr/0008-single-execution-path.md).**
-`configFieldsToZodSchema`/`generateSamplePayload` were generalized from
-`ConfigField[]` to a minimal structural `TypedField` shape
-(`{Key, Type, Options?}`) both `ConfigField` and `AttributeDef` satisfy
-— no second schema-generation function. Composition's Run button now
-checks the target workflow's declared `Attributes`: none (every
-built-in today) runs immediately exactly as before; one or more opens a
-`TestRunDialog` (Primer `Dialog`) pre-filled via `generateSamplePayload`
-— submit as-is for the common case ([decisioning-vendor]'s own pattern, described
-directly by the user: "auto generate the attribute payload with type
-input for you... unless you're trying to manually input a different
-value"), or edit a field first. Submitted values flow through a new
-variadic `attrValues` parameter on `composition.ExecuteWorkflow`/
-`ExecuteWorkflowWithStepRunner` (kept variadic specifically so the 20+
-existing test call sites didn't need touching) into `attributesEnv`,
-which now prefers a supplied, type-parseable override over the zero
-value it always fell back to — `executionservice.go`'s `runInput`
-carries it as `Values map[string]string`, same wire shape every other
-config value already uses. A real regression test
-(`TestExecuteWorkflow_AttrValues_OverridesZeroValueDefault`) proves an
-override actually changes Decision routing, not just that a value gets
-stored somewhere. Verified end-to-end via Playwright
-(`composition.spec.ts`): a workflow with no Attributes still runs with
-no dialog; adding one via Configure's Attributes tab makes the next Run
-open the dialog with the real field pre-filled. `LOCKED`, built.
+**A workflow's declared Attributes reuse the same sample-payload
+mechanism.** `configFieldsToZodSchema`/`generateSamplePayload` are
+generalized to a minimal `TypedField{Key, Type, Options?}` shape both
+`ConfigField` and `AttributeDef` satisfy — no second schema-generation
+function. Composition's Run button opens a `TestRunDialog` pre-filled
+via `generateSamplePayload` whenever the target workflow declares one
+or more Attributes (skipped entirely for a workflow with none — every
+built-in today); submitted values flow through `ExecuteOptions.AttrValues`
+(`executionservice.go`'s `runInput.Values`) into `attributesEnv`,
+overriding the zero-value default a Decision condition would
+otherwise evaluate against. See
+[ADR-0008](adr/0008-single-execution-path.md) for how this attaches
+to the single execution path. `LOCKED`.
 
 **Hotkey exclusivity: one combo maps to at most one workflow, conflict
 surfaced at capture time — not "fire every workflow listening on that
@@ -2038,38 +1642,17 @@ and the sidebar restructuring this implied. `OPEN`: whether any *other*
 node kind belongs in Configure — see the recheck immediately below,
 which found none do, today — and the extension-points question in §3.6.
 
-**Update — Connector layout redone as inspect-vs-edit + one-scroll
-authoring + its own pinned tab, [ADR-0014](adr/0014-configure-layout-inspect-vs-edit.md),
-answering the layout question §3.2's reference-platform review raised
-directly.** A saved connector now opens read-only
-(`ConnectorSummary.tsx`, four tabs — Details/Available attributes/
-Input parameters/Testing — plus explicit Delete/Duplicate/Edit
-actions) instead of an always-editable inline card; create/edit
-(`ConnectorForm.tsx`) is one continuous guided scroll (General → Auth
-→ Headers → Schema → Test as `Heading` section breaks, Primer `Tabs`
-removed) instead of five Primer Tabs squeezed into a narrow card.
-Both open as their own pinned tab in `ConfigureIntegration.tsx`,
-reusing `CompositionView.tsx`'s own `EditorTab`/`tabs`/`activeTab`
-mechanism (`shared/Tabs.tsx`) verbatim — extended to a second Configure
-surface for the first time rather than reinvented. `ConnectorForm` now
-owns its draft/headers/error state internally (seeded once from an
-`editingConnector`/`duplicateFrom` prop pair, matching
-`CompositionCanvas.tsx`'s own "own state, keyed remount" shape) instead
-of being controlled from the parent list page — required for
-correctness once more than one connector tab can be open
-simultaneously, not just a style preference. The inner pinned list tab
-was initially also labeled "Integration," colliding with
-`ConfigureView.tsx`'s own outer section tab of the same name (two
-same-named tabs in nested tab bars, caught by a real e2e failure, not
-assumed) — renamed to "Connectors" to disambiguate. "Available
-attributes" vs. "Input parameters" is a stated interpretation, not a
-verified fact from the research (which flagged their exact
-relationship as unresolved, §10): mapped onto Mill's own existing
-Output/Input field split. Verified end-to-end via Playwright (the
-entire connector e2e surface — `configure-integration.spec.ts`,
-`connector-schema-editor.spec.ts`, `connector-test-panel.spec.ts`,
-`integration-bindings.spec.ts`, `entity-ref-picker.spec.ts` — updated
-for the new navigation, full suite run twice). `LOCKED`.
+**Connector layout is inspect-vs-edit, one-scroll authoring, its own
+pinned tab** — see
+[ADR-0014](adr/0014-configure-layout-inspect-vs-edit.md) for the full
+design. A saved connector opens read-only (`ConnectorSummary.tsx`:
+Details/Available attributes/Input parameters/Testing tabs, plus
+Delete/Duplicate/Edit); create/edit (`ConnectorForm.tsx`) is one
+continuous guided scroll (General → Auth → Headers → Schema → Test),
+no Primer Tabs. Both open as their own pinned tab in
+`ConfigureIntegration.tsx`, via the same `EditorTab`/`tabs`/
+`activeTab` mechanism Composition already uses (`shared/Tabs.tsx`).
+`LOCKED`.
 
 **Recheck against the two-axis test, applied to every current
 `NodeType`, not just the ones already promoted to Configure.** Prompted
@@ -2105,752 +1688,272 @@ strategy or a second clipboard backend actually exists. `LOCKED`
 (the recheck and its verdict) — revisit per-row only when a real second
 implementation shows up.
 
-**Update — the "paste the ID by hand" gap on `connectorId`/`listId`/
-`mcpServerId` is closed, via
-[ADR-0009](adr/0009-configure-entity-picker.md).** Each is still
-`FieldText` on the wire (the value is a plain string ID, execution
-unchanged) but now carries a `RefKind` (`"connector"`/`"list"`/
-`"mcpserver"`) the canvas Inspector reads to render a live `Select` of
-real Configure-authored entities instead of a bare text box, plus an
-inline "+ Create new…" option. Deliberately **not** a literal
-navigate-to-Configure-and-back flow, despite that being the user's own
-original description — reading `App.tsx` first found a real blocker:
-it conditionally renders one view at a time
-(`{view.kind === 'composition' && <CompositionView/>}`), so switching
-away unmounts `CompositionView` and its local, unlifted canvas-tab
-state, which would silently discard an unsaved workflow's in-progress
-edits on the round trip. Instead, "+ Create new…" opens an inline
-quick-create `Dialog` over the canvas — the same converged pattern n8n
-("+ Create new credential") and Zapier's own inline connection picker
-use for this exact case, confirmed as precedent rather than invented.
-The dialog is deliberately a minimal subset of each `ConfigureXxx.tsx`
-page's own create form (Connector: Label + Base URL; List: Label; MCP
-Server: Label + Command) — Configure itself stays the canonical surface
-for the fuller edit (secret, OpenAPI spec, entries, args) afterward.
-One generic `EntityRefField.tsx` component, keyed by `RefKind`, not
-three near-duplicates. Verified end-to-end via Playwright
-(`entity-ref-picker.spec.ts`, real Go backend): dropping an
-`integration-http` node, opening its Connector ID picker, quick-creating
-a connector inline, and confirming it's auto-selected — plus real
-cleanup of the connector it creates (not just the workflow), matching
-this repo's own e2e persisted-entity discipline. `LOCKED`, built.
+**Connector/List/MCP-Server references are a live picker with inline
+quick-create, not a paste-an-ID text box** — see
+[ADR-0009](adr/0009-configure-entity-picker.md) for the full design.
+`connectorId`/`listId`/`mcpServerId` stay `FieldText` on the wire but
+carry a `RefKind` (`"connector"`/`"list"`/`"mcpserver"`) the canvas
+Inspector reads to render a live `Select` of real Configure-authored
+entities, plus an inline "+ Create new…" `Dialog` (a minimal subset
+of each `ConfigureXxx.tsx` page's own create form — Configure itself
+stays canonical for the fuller edit afterward). One generic
+`EntityRefField.tsx` component, keyed by `RefKind`. `LOCKED`, built.
 
 ### 3.6 Extension points — adding a new primitive capability without a core code change
 
-Raised directly: as more primitive capabilities land, Mill risks staying
-a codebase every new Trigger/Process/Integration has to be hand-added
-to, rather than a platform something can extend without touching core
-Go files. Worth taking seriously now, before the node-type list grows
-much further — the same "decide the shape before the narrow case forces
-a migration" discipline §3.3's capability map already applied to the
-node/edge schema itself.
+Two genuinely different problems live under this heading, kept separate
+per the same discipline that already avoided conflating DBOS and pueue
+into one research question (§1.2): **(1)** Mill's own hand-written node
+types getting harder to add cleanly — a Mill code change still happens
+per capability, self-registration only makes it *isolated* rather than
+*eliminated* — and **(2)** whether a whole class of future Integration-
+shaped capabilities could require *no* Mill code change at all, via the
+MCP layer §3.1 already adopted as "the capability-exposure layer" (which
+only worked out Mill as MCP *server*, leaving Mill as MCP *host* in real
+tension with §1.1's "not an LLM client" rule — a third role, *client*,
+turns out to solve this without touching that dispute).
 
-**Two genuinely different problems hiding under one question — kept
-separate, not conflated (the same discipline that already avoided
-merging DBOS and pueue into one research question, §1.2):**
+- **Mill as MCP client — `LOCKED`, built.** The extension point for
+  problem 2, and it doesn't reopen §3.1's disputed host/server tension:
+  a workflow author picks one specific tool at Configure time, the same
+  way an Integration node references one specific Connector — Mill is a
+  protocol client making one deterministic call per step, structurally
+  identical to `integration-http` being an HTTP client, never an agent
+  deciding what to call, so §1.1's "not an LLM client" rule is
+  untouched. `internal/adapters/mcpclient` wraps
+  `modelcontextprotocol/go-sdk`'s client role (`mcp.NewClient` +
+  `&mcp.CommandTransport`) behind Mill's own `Tool`/`ListTools`/
+  `CallTool` names. An **MCP Server** Configure entity
+  (`internal/domain/mcpserver.MCPServer{ID, Label, Command, Args}` — no
+  `AuthType`, stdio is local-process trust) is 1:many reusable, CRUD'd
+  through `ConfigureService`/`ConfigureMCPServers.tsx` (a fourth
+  Configure tab). A new `mcp-tool-call` `NodeType` (`KindProcess`)
+  resolves `mcpServerId` via a `composition.SetMCPServerLookup` seam
+  (mirrors `SetConnectorLookup`) and calls `toolName` with a raw
+  `argumentsJSON` object — same no-templating simplicity
+  `integration-http`'s `bodyTemplate` has. Discoverability: each MCP
+  Server card in Configure has a **"List tools"** button
+  (`ConfigureService.ListMCPServerTools`) that connects, lists every
+  tool with its real `InputSchema`, and renders it inline; `toolName`
+  stays plain text (no closed set to pick from without calling the
+  server), `mcpServerId` itself is a live picker
+  ([ADR-0009](adr/0009-configure-entity-picker.md)). Core
+  `listTools`/`callTool` functions are unit-tested via
+  `mcp.NewInMemoryTransports()` fixtures, and verified against a real
+  spawned subprocess too: pointed an MCP Server entity at `npx -y
+  @modelcontextprotocol/server-everything` (an official MCP reference
+  server), listed its six real tools, and ran a workflow's
+  `mcp-tool-call` node against its `echo` tool
+  (`{"message": "hello from mill"}` → `"Echo: hello from mill"`)
+  through the full production path (`ConfigureService` →
+  `composition.SetMCPServerLookup` → `nodeExec["mcp-tool-call"]` →
+  `mcpclient.CallTool` → `CommandTransport` → subprocess → real MCP
+  protocol). This isn't a mechanism for *end users* to invent new Mill
+  node *kinds* (§3.5's "What Configure is *not*" bullet still holds) —
+  `mcp-tool-call` is one more Mill-defined `NodeType`; what varies per
+  configured server is which *tools* are callable through it, the same
+  way what varies per Connector is which *API* `integration-http`
+  calls.
+- **Whether Mill needs its own MCP-server-authoring SDK — researched,
+  declined.** Checked the other side of the relationship: someone
+  writing a new MCP server to extend Mill. The ecosystem already has a
+  WXT-shaped low-boilerplate layer per language (`mark3labs/mcp-go` for
+  Go, FastMCP for Python and TypeScript) — building a Mill-owned SDK on
+  top of an already-solved problem would be the inner-platform trap §0
+  exists to name. `LOCKED` (don't build) — pointing to these from a
+  future "how to extend Mill" doc (a natural fit for §9.2's
+  `connector-scaffolder` candidate) stays real, small, `OPEN` future
+  work.
+- **Node type / Trigger type self-registration — `LOCKED`,
+  [ADR-0006](adr/0006-extension-point-registration.md) `accepted`,
+  built.** Problem 1's fix: Go's `database/sql` driver idiom
+  (`Register`+`init()`+blank import — the same shape `image.
+  RegisterFormat` uses) replaces the old central `nodetypes.go`'s
+  `NodeTypes()` slice / `execute.go`'s `nodeExec` map edit every new
+  `NodeType` needed (three additions in one session — `decision-route`,
+  `integration-http`, `list-lookup` — all needed both files) and the
+  equivalent switch in `triggerservice.go`'s `start()`. Composition
+  `NodeType`s self-register cleanly. Trigger registration needed a real
+  correction ADR-0006 documents in full: trigger *schemas* live in
+  `internal/domain/composition/triggers.go` (one file, all five) since
+  `composition`'s own `BuiltInWorkflows()` fixture needs
+  `"trigger-manual"` registered when tested standalone, while trigger
+  *dispatch* stays in `package main`'s five per-type files
+  (`TriggerService.start()`'s cases close over real `*TriggerService`
+  state) — two files per trigger type, not one, the correct dependency
+  direction even though less cohesive than originally planned.
+  ADR-0006 deliberately scoped self-registration to NodeType + Trigger
+  type only, not every extension point — the full audit below is why
+  the rest didn't get the same treatment.
 
-1. **Mill's own hand-written node types are getting harder to add
-   cleanly.** Every new one today touches two shared files:
-   `nodetypes.go`'s `NodeTypes()` slice and `execute.go`'s `nodeExec`
-   map. Real friction, but bounded — three additions this session alone
-   (`decision-route`, `integration-http`, `list-lookup`) all needed both
-   edits. This is an **internal code-organization** question: build
-   (no library has an opinion on Mill's own node-type registration),
-   likely a self-registering pattern (each node type's `NodeType` value
-   + `nodeExec` function co-located in its own file, collected into the
-   package's registry via an `init()`-style append — the same shape
-   Go's own `database/sql` drivers and `image.RegisterFormat` use for
-   exactly this "add a new implementation without editing a central
-   switch" problem). Still a Mill code change per capability — this
-   makes each change **isolated**, not **eliminated**.
-2. **A whole class of future Integration-shaped capabilities could
-   require *no* Mill code change at all**, via the MCP layer already
-   adopted in §3.1 as "the capability-exposure layer" — but that section
-   only worked out Mill as an MCP **server** (exposing its own tools) and
-   left Mill as an MCP **host** (running an agent loop) in real,
-   unresolved tension with §1.1's "not an LLM client" rule. Neither of
-   those is what solves *this* problem. A third role does:
+  | Extension point | Central-file cost (before self-registration) | Status |
+  |---|---|---|
+  | Composition `NodeType` | `nodetypes.go` + `execute.go` | `LOCKED`, self-registers (ADR-0006) |
+  | Trigger type | Same 2, plus `triggerservice.go`'s `start()` switch | `LOCKED`, self-registers (ADR-0006) — schema/dispatch split across two files, see above |
+  | Connector `AuthType` | `connector.go` + `composition/integration.go` (2 files) | Stays a plain switch — accepted as a small, bounded, infrequently-paid cost, same "no UI for a decision that doesn't exist yet" discipline as §3.5's Configure recheck |
+  | Configure entity *kind* | `ConfigureService` struct + constructor (~3-4 lines) | Stays a plain struct field, same reasoning |
+  | Capabilities index entry | `capabilities.go`'s `List()` (1 line) | Already cheap, no change needed |
+  | MCP-tool-shaped capability | Zero Go changes | Already zero-cost — Mill as MCP client, above |
 
-**Mill as MCP client — the actual extension point, and it doesn't
-reopen §3.1's host/server tension at all.** Checked directly against
-`modelcontextprotocol/go-sdk`'s own client API (already the SDK §3.1
-picked, confirmed here to cover this role too, not assumed): `mcp.
-NewClient` + `&mcp.CommandTransport{Command: exec.Command(...)}` connects
-to any local, stdio-based MCP server (§3.1's own "wrapping a local CLI
-as a typed tool is the mainstream pattern" precedent — `github-mcp-
-server` etc.); `session.ListTools(ctx, ...)` returns every tool the
-server exposes with its JSON-Schema `InputSchema`; `session.CallTool
-(ctx, &mcp.CallToolParams{Name, Arguments})` invokes one deterministically
-and returns a structured result. Nothing here drives an LLM's tool-
-selection loop — a workflow author picks one specific tool at Configure
-time, the same way an Integration node references one specific
-Connector; **Mill is a protocol client making one deterministic call
-per step, structurally identical to `integration-http` being an HTTP
-client**, not an agent deciding what to call. This is exactly why it
-doesn't touch the disputed Host question: no LLM is in the loop, so
-§1.1's "not an LLM client" rule is untouched.
+- **Registry duplicate-key behavior is inconsistent across the three
+  registries this pattern produced, undocumented until found —
+  `OPEN`.** `RegisterNodeType`/`RegisterTrigger` panic on a duplicate ID
+  (deliberate fail-fast, per their own doc comments); `RegisterAuthStrategy`
+  (ADR-0015) is a bare map assignment with no duplicate check — it
+  silently overwrites. Neither was a decision, just what each
+  registry's underlying data structure happened to do; none of the
+  three support *intentional* substitution either way. Documented
+  directly on all three functions (`registry.go`, `triggerregistry.go`,
+  `integration.go`) so it isn't rediscovered by surprise. Worth a real
+  decision (pick one semantics, or add explicit substitution support)
+  the day a real use case needs it, not before — no dedicated ADR
+  needed unless that day comes.
+- **Mill as MCP server — `LOCKED`, built.** Closes the third MCP role
+  named in §3.1 (server/client/host) but left unbuilt until now — no
+  agent loop runs inside Mill, an external agent's own host connects
+  and reads, structurally identical to `httpconnector` being an HTTP
+  client for outbound calls. `MillMCPService` (`millmcpservice.go`, via
+  `internal/adapters/mcpserving`, wrapping `modelcontextprotocol/
+  go-sdk`'s server role + its `StreamableHTTPHandler` transport)
+  exposes Mill's workflows and Configure-authored entities
+  (HTTPRequests, Lists, MCP Servers) as read-only MCP **Resources**.
+  Each entity type gets an index URI (`mill://workflows`,
+  `mill://requests`, `mill://lists`, `mill://mcpservers`) and a
+  `ResourceTemplate` (`mill://workflows/{id}`, etc.) reusing the
+  existing `Export*` methods (`ExportWorkflow`/`ExportHTTPRequest`/
+  `ExportList`/`ExportMCPServer`) as the read-model — secrets stay
+  excluded by the same construction those methods already guarantee
+  (§4's write-only design,
+  [ADR-0007](adr/0007-connector-schema-and-secret-guardrail.md)),
+  independently re-verified through this path too (a real client sets
+  a secret on a real HTTPRequest, reads it back via
+  `mill://requests/{id}`, confirms it's absent from the wire response).
+  Binds `127.0.0.1:8090` by default (`MILL_MCP_ADDR` overrides),
+  loopback-only — a new, unauthenticated local listener, conservative
+  until a real access-control need is named. Runs in both desktop and
+  server-mode builds (no build tag); a bind failure is logged, not
+  fatal. The write side (create/import a workflow or Configure entity
+  via MCP Tools) is deliberately not built here — programmatic,
+  non-human-initiated writes are a materially different risk than
+  read-only exposure, tracked separately from §8's still-`OPEN`
+  guardrail policy and now scoped in its own ADR,
+  [ADR-0017](adr/0017-mcp-write-tools-guardrail-scope.md) (`proposed`).
 
-**Update — problem 2 (Mill as MCP client) is now built.**
-`internal/adapters/mcpclient` wraps `modelcontextprotocol/go-sdk`'s
-client role behind Mill's own `Tool`/`ListTools`/`CallTool` names, per
-CLAUDE.md's ports/adapters rule — no caller imports `mcp.*` directly.
-An **MCP Server** Configure entity (`internal/domain/mcpserver.
-MCPServer{ID, Label, Command, Args}` — simpler than Connector, no
-`AuthType`: stdio is local-process trust, not a network call) is 1:many
-reusable, CRUD'd through `ConfigureService`/`ConfigureMCPServers.tsx`
-(a fourth Configure tab), the same shape Connector/List already have.
-A new `mcp-tool-call` `NodeType` (`KindProcess`, same family as
-`integration-http`/`list-lookup`) resolves `mcpServerId` via a
-`composition.SetMCPServerLookup` seam (mirrors `SetConnectorLookup`
-exactly) and calls `toolName` with a raw `argumentsJSON` object — same
-no-templating simplicity `integration-http`'s `bodyTemplate` already
-has. **The actual discoverability answer**: each MCP Server card in
-Configure has a **"List tools"** button (`ConfigureService.
-ListMCPServerTools`) that connects, lists every tool with its real
-`InputSchema`, and renders it inline — a user finds the exact
-`toolName`/arguments to paste into a workflow node there, not by
-guessing. `toolName` stays plain text (no closed set to pick from
-without calling the server); `mcpServerId` itself is now a live picker,
-see [ADR-0009](adr/0009-configure-entity-picker.md) below.
+### 3.7 Global app settings
 
-Tested against a real MCP protocol round-trip, not a mock:
-`mcpclient`'s core `listTools`/`callTool` functions are exercised via
-`mcp.NewInMemoryTransports()` + an in-process `mcp.AddTool` fixture
-server (no subprocess, but a real client/server handshake) — the same
-"test against something real" bar `httpconnector`'s `httptest.Server`
-tests already set. **Verified end-to-end against a genuine external
-process**, not just in-memory: pointed a real MCP Server entity at
-`npx -y @modelcontextprotocol/server-everything` (an official MCP
-reference server) via server mode + Playwright — "List tools" returned
-six real tools with real JSON schemas from a real spawned subprocess;
-a workflow with an `mcp-tool-call` node calling its `echo` tool with
-`{"message": "hello from mill"}` returned the literal string
-`"Echo: hello from mill"` back through `ExecuteWorkflow`, the full
-production path (`ConfigureService` → `composition.SetMCPServerLookup`
-→ `nodeExec["mcp-tool-call"]` → `mcpclient.CallTool` → real
-`CommandTransport` → real subprocess → real MCP protocol) exercised
-for real, not assumed to work from the unit tests alone.
+`SettingsService` (`settingsservice.go`) owns Mill's global settings
+surface — distinct from both Configure (§3.5, node-*kind* authoring)
+and a Trigger's own per-workflow config (§3.4, e.g. one workflow's
+hotkey binding): settings that apply to Mill itself, independent of
+any specific workflow. Alongside the pre-existing theme
+`SegmentedControl` and sidebar-collapse preference (both cosmetic,
+`localStorage`-persisted, unchanged by this section), it now owns six
+built mechanisms plus one researched-and-declined storage question.
+Full research (a Raycast/Alfred/1Password Quick Access/Rectangle/
+Homerow/PowerToys/ulauncher survey, and the per-mechanism Wails3 API
+findings) and the build rationale are in
+[`docs/adr/0020-global-app-settings.md`](adr/0020-global-app-settings.md).
 
-**What this does not change:** §3.5's own "What Configure is *not*"
-bullet still holds — this isn't a mechanism for *end users* to invent
-brand-new Mill node *kinds*. `mcp-tool-call` is one more Mill-defined
-`NodeType` (same as `integration-http`); what varies per configured MCP
-server is which *tools* are callable through it, the same way what
-varies per configured Connector is which *API* `integration-http` calls
-— the kind stays fixed, only the reusable instance's shape is dynamic.
+**Built, `LOCKED`:**
 
-**Update — checked whether Mill needs to lower the boilerplate of
-*authoring* an MCP server too (the "WXT wraps raw Chrome APIs" question
-— a platform's own low-boilerplate SDK over a lower-level protocol),
-not just calling one.** Mill is already a correct MCP *client* (above);
-this asks about the *other* side — someone writing a new MCP server to
-extend Mill. Researched rather than assumed: the answer is Mill doesn't
-need to build or ship anything here. The MCP ecosystem already has
-exactly the WXT-shaped layer per language an extension author would
-plausibly use — `mark3labs/mcp-go` for Go (`server.NewMCPServer()` +
-`AddTool` + `ServeStdio()`, genuinely minimal boilerplate, the same
-"protocol correctness from the low-level SDK, convenience from the
-wrapper" split WXT has over the raw Chrome extension APIs), FastMCP for
-Python (the original, from the Prefect team) and FastMCP/TypeScript
-(a compatible, independently-maintained port). None of these are Mill
-dependencies — an MCP server is a wholly separate process in whatever
-language its author picks, invoked over stdio; Mill's own hard
-constraints (no Rust, single binary) don't even apply to it. Building a
-Mill-owned SDK layer on top of an already-solved problem would be
-exactly the inner-platform trap §0 exists to name. The concrete
-action, still `OPEN`: point to these in whatever "how to extend Mill"
-documentation eventually gets written (a natural fit for §9.2's
-already-named `connector-scaffolder` agent candidate, once that section
-moves), not a new dependency or new Mill code. `LOCKED` (the research
-and the "don't build" call) — the documentation itself is real, small,
-future work.
-
-`LOCKED` (problem 2, MCP-client extension point, built end-to-end).
-Problem 1 (the internal node-type self-registration pattern for Mill's
-own hand-written node types) stays `OPEN` — deliberately not bundled
-into this pass (kept separate per this section's own split above), a
-smaller, orthogonal Go code-organization change with no user-facing
-effect, worth its own pass later.
-
-**Update — problem 1 sized properly, against the full codebase, not just
-the one already-known case.** Prompted directly: line up research and a
-plan on hexagonal architecture and the platform gap, so new capabilities
-extend Mill instead of touching core. Re-audited every place adding a
-new *instance* of an existing extensible concept requires editing a
-shared file — not assumed from the one known example. Full capability
-map and the researched plan are in
-[`docs/adr/0006-extension-point-registration.md`](adr/0006-extension-point-registration.md)
-(status `proposed`); summary:
-
-| Extension point | Central-file cost today | Previously documented? |
-|---|---|---|
-| Composition `NodeType` | `nodetypes.go` + `execute.go` (2 files) | Yes — this section, `OPEN` |
-| Trigger type | Same 2, **plus `triggerservice.go`'s `start()` switch** | **No — new finding** |
-| Connector `AuthType` | `connector.go` + `composition/integration.go` (2 files) | **No — new finding, minor** |
-| Configure entity *kind* | `ConfigureService` struct + constructor (~3-4 lines) | **No — new finding, small** |
-| Capabilities index entry | `capabilities.go`'s `List()` (1 line) | Cheap already |
-| MCP-tool-shaped capability | Zero Go changes | Yes — `LOCKED`, built |
-
-Researched the mechanism too, not just catalogued the problem:
-hexagonal architecture (Cockburn) is confirmed to already be Mill's
-shape (`internal/domain/*`/`internal/adapters/*`, CLAUDE.md/ADR-0001)
-— naming it doesn't change anything, it just gives the existing pattern
-a name. The actual fix for *this* problem is narrower than the
-architecture style itself: Go's `database/sql` driver
-(`sql.Register`+`init()`+blank import) is the real, converged idiom for
-"add an implementation without editing a shared map/switch," confirmed
-directly, not assumed — same shape this section already guessed at
-("the same shape Go's own `database/sql` drivers... use").
-ADR-0006's recommendation is deliberately scoped, not "registry
-everything": self-registration for NodeType + Trigger type only — the
-two with real, repeated editing pain (three additions needing both
-NodeType files in one session; Trigger type is the identical shape with
-5 existing cases). Connector `AuthType` and Configure-entity-kind stay
-plain switches/struct fields, explicitly accepted as a small, bounded,
-infrequently-paid cost rather than abstracted preemptively — the same
-"no UI for a decision that doesn't exist yet" discipline §3.5's
-Configure recheck already applied, now applied to registries. `OPEN`
-(plan recorded, not yet implemented — ADR-0006 stays `proposed` until
-the refactor lands).
-
-**Update — the plan is now fully specified, not just the shape of it.**
-ADR-0006's own "Update — full implementation plan" section resolves
-every question its original Consequences left open: the exact registry
-interface (a plain `Register` function, not an interface type), why
-Trigger registration genuinely needs two small registries in two
-packages rather than one shared one (`TriggerService.start()`'s cases
-close over `s.hkRaw`/`s.fire` — real `*TriggerService` state, confirmed
-by reading `triggerservice.go` in full, not assumed from the pattern
-alone) while still keeping one file own a trigger type's *whole*
-definition (both registry calls, one `init()`), the concrete file list,
-and a 6-step migration sequence ending in full verification (`go
-test`, `golangci-lint`, the complete Playwright suite, plus a manual
-desktop-mode smoke pass for `TriggerService` specifically, since its
-live listener paths were never headless-CI-testable regardless of this
-refactor).
-
-**Update — implemented, `LOCKED`.** Landed as two commits. Composition
-NodeTypes (all of them, including the three already-isolated
-Process-family types) self-register cleanly, as planned. Triggers
-needed a real correction the plan didn't anticipate — found by actually
-running `internal/domain/composition`'s own tests in isolation, not by
-reasoning alone: `BuiltInWorkflows()` (in that package) references
-`"trigger-manual"`, which requires the registry to already have it, but
-the plan's original design registered trigger schemas from `package
-main`, which never runs when `composition` is tested standalone —
-domain package's own fixtures can't depend on the application layer
-registering something first. Fixed by keeping trigger *schemas* in
-`internal/domain/composition/triggers.go` (one file, all five) while
-trigger *dispatch* stays in `package main`'s five per-type files — two
-files per trigger type, not one, less cohesive than hoped but the
-correct dependency direction. Full detail in ADR-0006's own "Update —
-implemented" section, including why the original one-file design was
-wrong, not just what replaced it. Verified: full Go suite including
-`composition` in isolation (the actual case that caught the bug), both
-build targets, the complete 23-test Playwright suite, and a real
-desktop-mode launch confirming clean startup with no panic — actually
-firing a hotkey still needs a live Cocoa run loop and a real keypress,
-same limitation `run-mill` already documents, left to the user.
-ADR-0006's `Status` is now `accepted`.
-
-**Update — a small, separately-flagged finding, caught while researching
-an unrelated question (whether Mill's hexagonal architecture could
-support a future enterprise/regulated build variant, §10): the three
-self-registration registries this ADR's pattern produced
-(`RegisterNodeType`, `RegisterTrigger`, `RegisterAuthStrategy`, ADR-0015)
-have two different duplicate-key behaviors, undocumented until now.**
-`RegisterNodeType`/`RegisterTrigger` panic on a duplicate ID (a real,
-deliberate fail-fast choice, per their own doc comments — a collision is
-a programming error caught at process startup). `RegisterAuthStrategy`
-is a bare map assignment with no duplicate check at all — it silently
-overwrites. Neither behavior was a decision recorded anywhere before
-this update; the panic-vs-overwrite split is simply what each registry's
-underlying data structure happened to do. Not a bug fix — nothing
-depends on either behavior today, every registration site is this
-repo's own `init()`-time code, registering exactly once — and none of
-the three support *intentional* substitution regardless (an extension
-point that wants to replace an already-registered entry, not just add a
-new one, can't today, in any of the three). Documented directly on all
-three functions (`registry.go`, `triggerregistry.go`, `integration.go`)
-so this doesn't get rediscovered by surprise. `OPEN` — worth a real
-decision (pick one semantics, or add explicit substitution support) the
-day a real use case needs it, not before.
-
-**Update — Mill as MCP server is now built, closing the third role this
-section named as theoretically possible (§3.1) but never
-implemented.** §3.1 locked three roles a moment MCP participant can
-play — server (expose tools), client (call tools, built in this same
-section above), host (run an agent's tool-calling loop, still disputed
-against §1.1's no-AI-API rule) — and only client existed until now.
-`MillMCPService` (`millmcpservice.go`) exposes Mill's own workflows and
-Configure-authored entities (HTTPRequests, Lists, MCP Servers) as MCP
-**Resources**, read-only, over a real HTTP endpoint
-(`internal/adapters/mcpserving`, wrapping
-`modelcontextprotocol/go-sdk`'s server role + its `StreamableHTTPHandler`
-transport — the same SDK Mill already depends on for the client role
-above, a new role, not a new dependency). This is squarely the
-already-locked-fine server role, not the disputed host role: no LLM or
-agent loop runs inside Mill here, an external agent's own host connects
-to this endpoint and reads from it, structurally identical to
-`httpconnector` being an HTTP client for outbound calls — Mill is a
-protocol implementation, not a decision-maker, in both directions.
-
-Each entity type gets two URIs: a plain index resource
-(`mill://workflows`, `mill://requests`, `mill://lists`,
-`mill://mcpservers`) listing every current ID/Label/Description as a
-small JSON array, and a `ResourceTemplate`
-(`mill://workflows/{id}`, etc.) whose read returns that one entity's
-full definition — reusing task #10/#11's own `Export*` methods
-directly as the read-model (`ExportWorkflow`, `ExportHTTPRequest`,
-`ExportList`, `ExportMCPServer`), not a second one built for this.
-Secrets stay excluded by the same construction those methods already
-guarantee (§4's write-only design, ADR-0007) — verified independently
-through this new code path too, not assumed inherited: a real test
-connects a genuine MCP client over real HTTP, sets a real secret on a
-real HTTPRequest, reads it back through `mill://requests/{id}`, and
-asserts the secret is absent from the wire response.
-
-Binds `127.0.0.1:8090` by default (`MILL_MCP_ADDR` overrides), loopback
--only deliberately — this is a new, unauthenticated local listener, and
-staying loopback-bound is the conservative default until a real access
--control need is named, same reasoning already applied to the LAN
--exposure question elsewhere in this doc. Runs in both desktop and
-server-mode builds (no build tag) — server-mode Mill has real
-workflows/Configure data worth exposing the same way, and starting a
-second local listener alongside the existing `:8080` server doesn't
-conflict with it, confirmed by a real server-mode Playwright run with
-both listeners active. A bind failure is logged, not fatal — this is
-additive local tooling the rest of the app doesn't depend on.
-
-Verified end-to-end against a genuine MCP client (the SDK's own client
-role, not a mock or a direct Go call into the handler functions):
-`resources/list` returns the real registered set, `resources/read`
-against a just-created real workflow returns its real node data, and
-reading an unknown ID returns a real resource-not-found error.
-
-**What this does not build, named explicitly**: the write side (create/
-import a workflow or Configure entity via MCP Tools) is deliberately
-not implemented here. §8's guardrail policy is still `OPEN`, and
-programmatic, non-human-initiated writes are a materially different
-risk than read-only exposure — tracked separately, not silently
-folded into this pass. `LOCKED` (the read-only server, as built).
-
-### 3.7 Global app settings — research pending
-
-`OPEN`, research not yet started — captured here so the ask doesn't get
-lost, not a design decision. Raised directly: distinct from both
-Configure (§3.5, node-*kind* authoring) and a Trigger's own per-workflow
-config (§3.4, e.g. one workflow's hotkey binding) is a third, so-far-
-undocumented category — settings that apply to Mill itself, globally,
-independent of any specific workflow. Today's only real instance is the
-theme `SegmentedControl` in `SettingsView.tsx` (§3.5's sidebar-
-restructuring bullet) plus the sidebar-collapse preference — both
-frontend-only, `localStorage`-persisted, cosmetic. Nothing has surveyed
-what a *complete* Settings surface should hold.
-
-**Two research questions, kept explicitly separate — don't conflate
-them the way DBOS and pueue almost got conflated once (§1.2):**
-
-1. **What global settings does a tool shaped like Mill actually need,**
-   researched against real precedent rather than brainstormed from
-   scratch — specifically the Spotlight/Alfred/Raycast category of app
-   (a background-resident utility, summoned on demand, not a document
-   editor with per-file preferences). Concretely worth checking each
-   of these real apps' own Preferences/Settings surface for what they
-   expose and why, before deciding what Mill needs:
-   - **Launch at login** — does Mill start automatically, and is that
-     itself something Wails3/the OS makes easy or something Mill would
-     have to hand-roll (a launch-agent plist on macOS, etc.)?
-   - **A global "summon the app" hotkey/launcher**, distinct from
-     everything §3.4 already builds. §3.4's `trigger-hotkey` fires *one
-     specific workflow* headlessly; this would be a single, app-level
-     combo that opens/focuses Mill itself (Raycast's ⌥Space, Alfred's
-     ⌘Space-alternative, 1Password's quick-access shortcut) — a
-     genuinely different capability, not a workflow trigger, and not
-     built anywhere today.
-   - Update-check behavior, notification preferences, a default
-     working directory/scope (relevant once §6's execution-environment
-     question is resolved), menu-bar-vs-dock presence, and whatever
-     else that same category of app converges on — needs an actual
-     survey (real apps' real Settings screens), not a guessed list.
-   - Explicitly not this bullet's job to decide the UI for any of the
-     above — the research is "what belongs in Settings at all,"
-     locking a design comes after.
-2. **A `single-user`-today, `hexagonal-architecture`-future-proofing
-   question about the settings/storage *boundary* itself** — not a
-   proposal to build multi-user/SaaS now, which would be exactly the
-   "solve a decision that doesn't exist yet" §0/CLAUDE.md already warns
-   against. `internal/adapters/settings` today is one flat JSON file
-   (via Wails3's `KVStoreService`) with no notion of "whose" setting a
-   key belongs to — every consumer (`HotkeyService`/`TriggerService`'s
-   bindings, `CompositionService`'s workflows, `ConfigureService`'s
-   connectors/lists) reads/writes the same single store. The question
-   worth researching before *any* future settings work locks a shape:
-   is there a cheap, low-regret seam (e.g. a `Scope`/owner concept in
-   the `Store` port, or key-namespacing convention) that would let a
-   hypothetical future multi-tenant variant graft on without a full
-   storage rewrite — versus confirming that no such seam is worth
-   paying for now and single-user-forever is the honest current
-   assumption. Needs real research into how hexagonal/ports-and-
-   adapters literature and comparable single-user-first local apps that
-   later grew a hosted/team tier (if any real, citable precedent
-   exists) actually handled this, not invented from first principles.
-   Whatever the answer, it must not violate §1.1's own locked
-   constraints (no hosted-service dependency for the core loop, single
-   binary) — this is about *not foreclosing* a future option cheaply,
-   never about building toward one.
-
-Follows the same Research → Plan → Implement discipline as everything
-else in this doc (CLAUDE.md) — do not let a Settings UI get built
-before this research lands and a real capability map (§3.3's own
-worked example) exists for it.
-
-**Update — research landed (dispatched to a research agent, findings
-below), nothing implemented or locked yet.**
-
-**Thread 1 verdict — what belongs in Settings, checked against real
-apps' own docs (Raycast, Alfred, 1Password Quick Access, Rectangle,
-Homerow, plus PowerToys Run/ulauncher as cross-platform checks), not
-brainstormed.** Converged across 2+ independent apps, worth building:
-**launch at login** (every app surveyed except 1Password has it);
-**a global summon/toggle hotkey distinct from any per-workflow
-trigger** (universal — Raycast ⌥Space, Alfred ⌥Space, 1Password Quick
-Access ⇧⌘Space, PowerToys Alt+Space, ulauncher Ctrl+Space — the
-strongest single finding in the survey); **menu-bar/tray presence
-toggle**; **update-check/version surfaced in Settings**. Less
-universal, worth deferring: appearance settings beyond light/dark
-(Raycast has them, Alfred/ulauncher don't). App-specific, skip: any
-AI/Account/Extensions-marketplace tab (Raycast) — out of scope given
-§1.1's no-AI-in-Mill lock and Thread 2's no-accounts verdict below;
-Alfred's location/newsletter settings; Windows-input-stack-specific
-PowerToys options. A default working-directory/scope setting is real
-but blocked on §6 (execution environment, still `OPEN`) — not
-buildable yet, noted for later. **Zero-new-dependency bonus finding**:
-Wails3 already ships `v3/pkg/services/dock` (menu-bar/dock presence,
-badge) and `v3/pkg/services/notifications` — both cover convergence
-items above with no new library.
-- **Launch at login**: confirmed Wails3 v3 has **no official
-  mechanism** — a PR proposing one (`wailsapp/wails#3910`) exists but
-  was closed unmerged (checked directly via `gh pr view`); a
-  `pkg.go.dev` page for a `v3/plugins/start_at_login` package is a
-  **false positive** — no such directory exists in the current repo
-  (`gh api repos/wailsapp/wails/contents/v3/pkg` confirms), it's an
-  artifact of the abandoned PR's branch. v3's own systray docs example
-  even calls an invented `setStartAtLogin()` placeholder, not a real
-  API. Wails **v2** did ship a real one (`v2/pkg/mac/login_darwin.go`):
-  shells out to `osascript`/System Events — the same shell-out pattern
-  Mill's own `internal/adapters/clipboard` already uses — macOS-only,
-  only works running as a real `.app` bundle. Linux equivalent is the
-  standard XDG autostart `.desktop`-file-in-`~/.config/autostart/`
-  convention. Net: a real, confirmed gap, but small and precedented —
-  a normal `internal/adapters/*` candidate to hand-roll, not a research
-  dead end. (Linux desktop autostart is moot until §1.3's `PARKED`
-  Linux-desktop-build status changes.)
-- **Global summon hotkey**: same underlying mechanism as §3.4's
-  per-workflow hotkeys (`golang.design/x/hotkey`, already adopted) —
-  registration doesn't differ, only the callback body does. Confirmed
-  directly against Wails3's own current Window API
-  (`*application.WebviewWindow`'s `Show()`/`Focus()`/`Restore()`) and
-  its official Single-Instance guide, which shows the *exact* pattern
-  needed (`OnSecondInstanceLaunch: func(...) { mainWindow.Restore();
-  mainWindow.Focus() }`) for a structurally identical problem. Zero new
-  dependency. Must share `TriggerService`'s existing claimed-combo
-  conflict space (§3.4) so a summon hotkey can't silently collide with
-  a per-workflow binding.
-- **Auto-update**: initial search surfaced a community Sparkle proof-
-  of-concept as if it were the answer — **overturned by checking the
-  actual current Wails3 repo directly**. Wails3 ships its own
-  first-party, pure-Go, actively-maintained self-update package,
-  `v3/pkg/updater` (reachable as `app.Updater`), confirmed current via
-  real recent commits (`gh api .../commits?path=v3/pkg/updater` shows
-  activity as recent as 2026-07-31). Downloads the right OS/arch asset,
-  verifies a SHA-256 digest (+ optional Ed25519 signature), shows
-  release notes, swaps the binary and relaunches, "without shipping a
-  separate helper executable" (its own doc comment). Ships a GitHub
-  Releases provider by default, plus an `appcast` provider that speaks
-  Sparkle-style AppCast XML directly (including Ed25519 verification)
-  — so even the original Sparkle instinct is satisfiable through this
-  same first-party package, no separate Sparkle integration needed.
-  Zero new dependency either way. Worth remembering as an instance of
-  this project's own "verify directly, don't trust the first search
-  result" discipline changing the actual recommendation.
-
-**Thread 2 verdict — do not add a multi-tenant/scoping seam to
-`internal/adapters/settings` now. Single-user-forever is the honest
-current assumption**, argued from four independent angles rather than
-asserted: (1) hexagonal/ports-and-adapters literature's real answer to
-tenant scoping is baking a tenant ID into every port method from day
-one — a heavy commitment, not a cheap prefix-the-keys trick, so there
-is no citable "free" seam to add; (2) the one substantial research
-essay on exactly this class of problem (Ink & Switch's "Local-first
-software," 2019) treats local-first-then-multi-user as fundamentally a
-CRDT/merge-semantics problem, evidence the lightweight version isn't
-actually available either way; (3) real precedent apps that added team
-features later did it additively at the product/sync layer without a
-pre-scoped storage seam — Raycast for Teams (2022) shipped as new,
-separate surfaces layered on the existing single-user product; Obsidian
-Sync for Teams points independent local vaults at one shared remote
-vault rather than re-scoping local storage; 1Password 8's transition
-away from standalone local vaults is a *counter*-example — a hard
-breaking migration, not a graft; (4) Martin Fowler's own YAGNI framing
-draws exactly this line: don't build capability for a presumptive
-feature, but do keep the code easy to modify — which Mill already
-satisfies via `internal/adapters/settings`'s existing `Store` interface
-boundary (built for swappability, not multi-tenancy, but it's already
-the seam a future scoping change would go through). Recorded as
-researched-and-declined, not silently never addressed.
-
-Both threads' findings are documented here; nothing is implemented or
-locked — still `OPEN` until a capability map/plan is written up and
-confirmed, per this section's own opening paragraph.
-
-**Update — the two mechanisms the research above identified as real,
-confirmed, zero-net-new-dependency gaps are now built.** `LOCKED`
-(these two settings specifically) — the rest of §3.7's own convergence
-table (menu-bar/tray toggle, update-check, appearance-beyond-light-dark,
-a default working directory) stays `OPEN`, not silently resolved by
-this pass.
-- **Launch at login**: `internal/adapters/launchatlogin`, ported from
-  Wails v2's own osascript/System-Events approach exactly as the
-  research found it — split by `!server`/`server` build tag, same
-  shape and reasoning as `internal/adapters/hotkey` (server mode has no
-  login-item concept regardless of OS). `appBundlePath` walks a running
-  executable's path back to its `.app` bundle and returns a real,
-  named `ErrNotAppBundle` for a bare dev binary rather than silently
-  no-op'ing — surfaced in `SettingsView.tsx` as a plain, non-alarming
-  note rather than a raw Go error string. `GetLaunchAtLogin` queries
-  the real OS state (System Events' login-items list) rather than a
-  cached preference, exactly as the research recommended, so it can't
-  drift from a user manually removing Mill via System Settings
-  directly.
-- **Global summon hotkey**: reuses the exact mechanism the research
-  confirmed needs no new dependency — `golang.design/x/hotkey` (already
-  adopted, §2.2) for registration, `*application.WebviewWindow`'s
-  `Show()`/`Restore()`/`Focus()` for the callback (the same pattern
-  Wails3's own Single-Instance guide uses for a structurally identical
-  problem). `SettingsService` (new root-package service,
-  `settingsservice.go`) owns it, persisted via the same
-  `internal/adapters/settings` store `TriggerService` already uses.
-  **Bidirectional conflict detection with per-workflow hotkeys**, the
-  integration note the research flagged: `TriggerService` gained
-  `ClaimedCombos()` (exposes its own bindings) and `SetReservedCombo`
-  (an injected-function seam, same shape as
+- **Launch at login** — `internal/adapters/launchatlogin`, split
+  `!server`/`server` like `internal/adapters/hotkey` (no login-item
+  concept in server mode). Ports Wails v2's own `osascript`/System
+  Events approach — Wails v3 itself has no first-party mechanism.
+  `GetLaunchAtLogin` queries live OS state rather than a cached
+  preference, so it can't drift from a manual removal via System
+  Settings. A bare dev binary (not a real `.app` bundle) returns a
+  named `ErrNotAppBundle`, surfaced in `SettingsView.tsx` as a plain
+  note rather than a raw error.
+- **Global summon hotkey** — `golang.design/x/hotkey` (already adopted,
+  §2.2) for registration, `*application.WebviewWindow`'s
+  `Show()`/`Restore()`/`Focus()` for the callback. Persisted via the
+  same `internal/adapters/settings` store `TriggerService` uses.
+  Bidirectional conflict detection with per-workflow hotkeys:
+  `TriggerService.ClaimedCombos()`/`SetReservedCombo` (an
+  injected-function seam, same shape as
   `SetConnectorLookup`/`SetListLookup`) so a workflow hotkey can't
-  silently collide with the summon hotkey, and vice versa
-  (`SettingsService.AssignSummonHotkey` checks `TriggerService.
-  ClaimedCombos()` directly) — both directions covered by real,
-  permanent Go tests (`settingsservice_test.go`) using the same
-  "seed state directly, assert rejection before any real OS call"
-  pattern `TestAssignHotkey_RejectsConflict` already established, since
-  neither direction can exercise the real OS hotkey API headless.
-  Verified end-to-end via Playwright (`frontend/e2e/settings.spec.ts`)
-  against the real Go backend, including the real, deterministic
-  server-mode error paths (`launchatlogin`'s `server`-build stub,
-  `hotkey`'s own existing server-mode stub) rather than mocking around
-  them.
-- **Update — auto-update wired too.** `app.Updater` (Wails3's own
-  first-party `v3/pkg/updater`, confirmed zero-new-dependency by the
-  research) is `Init`'d in `main.go` with a GitHub Releases provider
-  pointed at `alicoding/mill`, and `SettingsService.CheckForUpdates()`
-  exposes a manual check, surfaced as a real "Check for updates" button
-  in `SettingsView.tsx`. **Honest limitation, not glossed over**: no
-  real tagged-release process exists yet (`millVersion` in `main.go` is
-  a placeholder `"0.1.0"`, and `alicoding/mill` has zero GitHub
-  releases published as of this writing) — the mechanism is real and
-  correctly wired (verified end-to-end via Playwright, a real call
-  against the live GitHub API), but it's inert until Mill actually
-  starts tagging and publishing releases. That's real future work
-  (ADR-0002's release pipeline, §1.3), not something this pass claims
-  to have finished. No `PublicKey` is configured either (no signing key
-  exists yet) — a release carrying only a content digest still
-  installs, one carrying a signature would be rejected; revisit once a
-  real release/signing process exists.
-- Menu-bar/dock presence toggle and trigger-fire notifications (Wails3's
-  own first-party `dock`/`notifications` services, also zero-new-
-  dependency per the research) are deliberately **not** built in this
-  pass — unlike launch-at-login/summon-hotkey/auto-update, neither has
-  a settled concrete design yet (what should a dock toggle actually
-  control given Mill has no menu-bar-only mode today; what event should
-  a notification fire on, and how would that interact with Activity's
-  existing in-app feed) — building either now would be exactly the
-  "config surface for a decision that doesn't exist yet" trap
-  `.claude/rules/architecture.md` warns against, not a genuine gap like
-  the three items above were. Left as real, named future work.
-- **Update — a tray icon (task #8) is now built, distinct from the
-  dock-badge/notifications services this bullet names above (Wails3's
-  `dock`/`notifications` packages) and from the still-`OPEN`
-  menu-bar/dock-presence *toggle*.** Answers the same "is Mill running"
-  question this section's own earlier Thread 1 research already
-  converged on (a persistent menu-bar icon is the pattern
-  Raycast/Alfred/1Password all use for this, not a separate status
-  API) — a real, unused-until-now Wails3 `SystemTray` API
-  (`app.SystemTray.New()`, confirmed by reading
-  `pkg/application/systemtray.go`/`system_tray_manager.go` directly,
-  zero new dependency, same tier of finding as the earlier updater/
-  window-geometry discoveries). Deliberately **coexists with the dock
-  icon** rather than replacing it — the safer, reversible default
-  named directly in the session goal that built this, not a
-  menu-bar-only redesign; `ApplicationShouldTerminateAfterLastWindowClosed`
-  stays `true`, unchanged. Clicking the tray icon calls a new
-  `SettingsService.ShowWindow()` — extracted from the summon hotkey's
-  own existing show/restore/focus sequence (`bindSummon`) rather than
-  duplicated, so the tray icon and the summon hotkey share one
-  behavior with two triggers. A right-click menu offers "Show Mill"/
-  "Quit". Uses the existing `build/appicon.png` (1024×1024, full
-  color) as the tray image via `SetIcon`, not `SetTemplateIcon` --
-  macOS's monochrome-template-icon convention would need a dedicated
-  small alpha-only asset Mill doesn't have yet, named here as a real,
-  minor polish gap rather than silently switched to a mismatched
-  asset. Verified: compiles clean on both desktop and
-  `CGO_ENABLED=0` server-mode build tags (`SystemTray`/`Menu`/`Quit`
-  all resolve identically regardless of tag, matching how window
-  creation itself is already unconditional in `main.go`), a real
-  server-mode Playwright smoke run confirms no startup crash, and a
-  new Go test (`TestShowWindow_NilWindow_DoesNotPanic`) covers the
-  nil-window guard now that `ShowWindow` has two callers instead of
-  one. Not independently verified visually on the real macOS menu bar
-  in this pass (no screen access from this session) -- task #14's own
-  Wails3 MCP spike, or a manual check, is the way to actually see it
-  render.
-- **Update — per-view hotkeys (task #9) are now built, in-window-only
-  by explicit decision, distinct from the real OS-level
-  `golang.design/x/hotkey` registration §3.4's per-workflow and summon
-  hotkeys use.** New capability, not previously named anywhere in this
-  doc. Cmd+1 through Cmd+5 jump straight to a top-level view
-  (Composition/Configure/Activity/Runs/Spec, matching the sidebar's own
-  order) via a plain `keydown` listener in `App.tsx` calling the
-  existing `useAppStore` `setView` — no new navigation mechanism, reuses
-  exactly what the sidebar's own nav links already call. Deliberately
-  **not** registered as a real global hotkey: doing so would mean
-  checking each combo against `TriggerService`'s own claimed-combo
-  conflict space (the same bidirectional check the summon hotkey
-  already goes through, §3.7), a bigger design surface this pass
-  intentionally didn't take on — the safer, reversible default named
-  directly in the session goal that built this. Active regardless of
-  which element has focus (matches browsers'/Slack's own Cmd+1-9
-  tab-switching precedent — Cmd+digit isn't a combo real typing
-  produces, so there's no need to scope it away from text inputs).
-  Verified end-to-end via Playwright against the real server-mode
-  backend: all five hotkeys navigate correctly from a cold start, a
-  hotkey fires correctly while a text field has focus (the one edge
-  case worth checking rather than assuming), and a bare digit key
-  without Cmd does nothing. Full frontend check suite (tsc, eslint,
-  boundaries, vitest) clean.
-- **Update — task #14 spiked Wails3's own built-in `-tags mcp` server
-  as a desktop-only verification tool; full verdict recorded in
-  `.claude/skills/run-mill/SKILL.md` rather than duplicated here.**
-  Real test against a genuine MCP client, a real bound summon hotkey,
-  and a real running desktop binary: confirms it closes part of
-  `run-mill`'s own documented desktop-only gap (window/tray state is
-  now agent-drivable via `window_control`/`dom_query`/
-  `call_bound_method`) but **not** hotkey-delivery verification
-  specifically — `keyboard_press` dispatches a DOM-scoped
-  `KeyboardEvent` only, confirmed empirically (a real bound hotkey's
-  window never un-minimised after the identical combo was sent via
-  `keyboard_press`, even though the press itself reached and was
-  handled by the real DOM). Not adopted into the standing workflow in
-  this pass — a one-off spike, not wired into CI/Lefthook or habit.
-- **Update — navigational/app state persistence, researched then
-  built.** Prompted directly by the user asking what Mill is missing
-  and what Wails itself recommends here. **Researched, not assumed**:
-  Wails3 has no first-party opinion at all on either half of this.
-  Window geometry — confirmed directly against the SDK source
-  (`v3/pkg/application/webview_window_options.go`/`webview_window.go`):
-  `WebviewWindowOptions` only sets *initial* position/size at creation;
-  `Position()`/`Size()`/`IsMaximised()`/`IsFullscreen()` are live
-  getters with zero persistence; `v3/examples/window` demonstrates
-  `OnWindowEvent(events.Common.WindowDidMove/WindowDidResize, ...)` but
-  stops at printing to stdout — saving and reapplying is entirely on
-  the app. General app state — `KVStoreService` (already adopted here
-  as `internal/adapters/settings`) is undifferentiated key-value
-  storage with no dedicated doc page anywhere; Wails3 draws no line
-  between "domain data" and "UI/navigational state." No reference app
-  in the Wails ecosystem does "restore where you left off" well either.
-  Real, citable cross-framework precedent instead: VS Code's
-  `ExtensionContext.workspaceState`/`globalState` `Memento` split, and
-  Electron's `electron-window-state` package's own convention (listen
-  to resize/move, debounce, persist bounds + maximized/fullscreen,
-  reapply next launch). The actual dividing line for Mill turned out to
-  be simpler than a policy choice: **which layer can even touch the
-  state**, not an arbitrary tier assignment — window geometry is native
-  OS window chrome with no frontend API at all (only the Go/Wails
-  backend has `Position()`/`Size()`), so it's necessarily Go-side;
-  active view, open tabs, and list filters are pure React state with no
-  backend meaning, so they're `localStorage`, the exact tier
-  theme/sidebar-collapse already established.
-  - **Window position/size/maximized** (`settingsservice.go`,
-    `SettingsService.LoadWindowGeometry`/`WatchWindowGeometry`,
-    natural home given `SettingsService` already owns `SetWindow` and
-    every other "global app setting"): persisted via the same
-    `internal/adapters/settings` store as the summon hotkey/launch-at-
-    login. `main.go` reads saved geometry before window creation and
-    applies it via `WebviewWindowOptions`' `X`/`Y`/`Width`/`Height`/
-    `StartState` — **a real bug caught before it shipped, not assumed
-    away**: `InitialPosition` defaults to `WindowCentered` (its zero
-    value), so `X`/`Y` are silently ignored unless `InitialPosition:
-    WindowXY` is set explicitly, confirmed directly against the SDK
-    source rather than assumed from the field names alone. Real move/
-    resize/maximise/unmaximise/restore events
-    (`events.Common.WindowDidMove` etc., confirmed real by grepping the
-    vendored SDK source directly, not recalled from memory) are
-    debounced (500ms, same reasoning `electron-window-state` uses) into
-    one write. Fullscreen is deliberately not tracked — reapplying a
-    persisted X/Y/Width/Height to a window last in fullscreen would be
-    meaningless (macOS fullscreen occupies its own Space, with real,
-    unresolved multi-monitor questions of its own), a named future gap
-    rather than a guess. An off-screen guard rejects a persisted
-    position far enough outside any plausible display bounds to almost
-    certainly be a stale save from a since-disconnected monitor —
-    Wails3, like Wails v2 before it (`wailsapp/wails#2739`, confirmed
-    directly), has no monitor-identity API, so this is a known,
-    accepted limitation, not a full multi-monitor solution pretending
-    otherwise. Verified: the headless-testable half (persist/restore
-    round trip, the off-screen guard, zero-size rejection) via real Go
-    tests against a fake store, same pattern `HotkeyService`'s own
-    real-OS-boundary tests already use, since `WatchWindowGeometry`
-    itself needs a real window and can't run headless (§1.3's own
-    documented class of gap).
-  - **Active view, open Composition/Configure tabs, Activity/Runs
-    filters** (`localStorage`): `useAppStore` (`shared/store.ts`) now
-    wraps its `view` field in zustand's own official `persist`
-    middleware (`zustand/middleware` — already a transitive part of
-    the already-adopted `zustand` dependency, no new package),
-    `partialize`d to just `view` (workflows/activity/capabilities stay
-    unpersisted — live, refetched, or session-only data, not
-    navigational state). `CompositionView.tsx`'s `EditorTab[]`/
-    `ConfigureIntegration.tsx`'s `ConnectorTab[]` restore only tabs for
-    entities that still exist (a new-draft or duplicate-draft tab, or
-    one pointing at a since-deleted workflow/connector, is dropped, not
-    restored into a broken state) via a new shared
-    `shared/persistedTabs.ts` helper — Configure additionally restores
-    only `'view'` tabs, never `'edit'` (reopening straight into an
-    edit form with any unsaved in-progress typing already gone would
-    look misleadingly "still open"). `ActivityView.tsx`'s
-    `sourceFilter`/`outcomeFilter` and `RunsView.tsx`'s `kindFilter`
-    persist the same way `sidebarOpen` already does. **A real bug
-    caught by an actual reload-and-check e2e test, not assumed away
-    (`.claude/rules/testing.md`)**: the tab-persisting `useEffect` in
-    both `CompositionView.tsx`/`ConfigureIntegration.tsx` also fires on
-    the very first mount (React runs every effect at least once
-    regardless of its dependency array) — before the restore effect's
-    async entity fetch resolves — so an unguarded write there
-    immediately overwrote the previous session's persisted tabs with
-    the fresh, empty initial state, destroying the exact data the
-    restore effect was about to read. Fixed by gating the persist
-    effect on the same one-shot "restore has been attempted" ref the
-    restore effect already sets. Verified end-to-end via Playwright
-    (`frontend/e2e/state-persistence.spec.ts`) against the real Go
-    backend: active view, an open workflow tab, and an open connector
-    view tab all correctly survive a reload; Runs' filter survives a
-    reload too. Activity's own filter persistence is verified directly
-    against `localStorage` rather than through a reload — Activity's
-    run history is itself deliberately session-only, never persisted
-    (§2.2's Update), so a reload wipes the entries the filter
-    `<Select>` needs to even render, independent of whether the filter
-    *value* persisted correctly; this is the honest scope of what
-    reload-based verification can actually prove here. Full Go+
-    frontend check suites green, complete 57-test Playwright e2e suite
-    run twice with no persisted-data leakage. `LOCKED`.
+  collide with the summon hotkey or vice versa.
+- **Auto-update** — `app.Updater` (Wails3's own first-party,
+  zero-new-dependency `v3/pkg/updater`) is `Init`'d in `main.go` with a
+  GitHub Releases provider pointed at `alicoding/mill`;
+  `SettingsService.CheckForUpdates()` exposes a manual check via
+  `SettingsView.tsx`'s "Check for updates" button. **Inert today**: no
+  tagged release exists yet (`millVersion` in `main.go` is a
+  placeholder `"0.1.0"`, zero GitHub releases published) and no
+  `PublicKey` is configured — a release carrying only a content digest
+  still installs, one carrying a signature would be rejected once a
+  key exists. Tied to ADR-0002's release pipeline (§1.3), real future
+  work.
+- **Tray icon** — a persistent menu-bar icon via Wails3's own
+  `SystemTray` API (`app.SystemTray.New()`, zero new dependency),
+  coexisting with the dock icon rather than replacing it
+  (`ApplicationShouldTerminateAfterLastWindowClosed` stays `true`).
+  Click calls `SettingsService.ShowWindow()` (shared with the summon
+  hotkey's own show/restore/focus sequence); right-click offers "Show
+  Mill"/"Quit". Uses `build/appicon.png` via `SetIcon`, not
+  `SetTemplateIcon` — macOS's monochrome-template-icon convention needs
+  a dedicated alpha-only asset Mill doesn't have yet, a named minor
+  polish gap. Not independently verified on a real rendered macOS menu
+  bar (no screen access in the session that built it).
+- **Per-view hotkeys** — Cmd+1 through Cmd+5 jump to a top-level view
+  (Composition/Configure/Activity/Runs/Spec, matching the sidebar
+  order), via a plain `keydown` listener in `App.tsx` calling
+  `useAppStore`'s existing `setView`. Deliberately **not** a real
+  OS-level hotkey — in-window-only, so it doesn't need
+  `TriggerService`'s claimed-combo conflict check the summon hotkey
+  goes through. Active regardless of focus (Cmd+digit isn't a combo
+  real typing produces, matching browsers'/Slack's own Cmd+1-9
+  precedent).
+- **Window/tab/filter state persistence** — window position/size/
+  maximized state is Go-side (`settingsservice.go`'s
+  `LoadWindowGeometry`/`WatchWindowGeometry`, persisted via
+  `internal/adapters/settings`, since only the backend has
+  `Position()`/`Size()`); active view, open Composition/Configure tabs,
+  and Activity/Runs filters are `localStorage` via zustand's own
+  `persist` middleware plus a shared `shared/persistedTabs.ts` helper.
+  `WebviewWindowOptions` needs `InitialPosition: WindowXY` set
+  explicitly or persisted `X`/`Y` are silently ignored (its zero value
+  is `WindowCentered`). Move/resize/maximize events are debounced
+  (500ms). An off-screen guard rejects a persisted position outside
+  plausible display bounds (a stale save from a since-disconnected
+  monitor) — Wails3, like Wails v2, has no monitor-identity API
+  (`wailsapp/wails#2739`), a known, accepted limitation, not a full
+  multi-monitor fix. **Fullscreen state is deliberately not tracked** —
+  reapplying persisted X/Y/Width/Height to a window last in fullscreen
+  would be meaningless, and macOS fullscreen's own multi-monitor
+  semantics are unresolved; a named future gap. Restored tabs skip
+  anything pointing at a since-deleted entity; Configure only restores
+  `'view'` tabs, never `'edit'` (an in-progress, unsaved edit form
+  shouldn't look "still open").
+
+**Researched, not built:**
+
+- **Settings/storage multi-tenancy seam** — `internal/adapters/settings`
+  stays one flat, unscoped JSON store; no `Scope`/tenant concept added.
+  Single-user-forever is the honest current assumption — researched and
+  declined (four independent angles: hexagonal-architecture literature,
+  local-first-software research, real precedent from apps that added
+  team tiers later, YAGNI), not silently unaddressed. Full reasoning in
+  ADR-0020. The existing `Store` interface boundary is the seam a
+  future scoping change would go through, if one is ever needed.
+- **Wails3's own MCP verification server** (`-tags mcp`) was spiked as
+  a desktop-only agent-driven testing tool against this work — confirms
+  window/tray state is agent-drivable (`window_control`/`dom_query`/
+  `call_bound_method`) but not hotkey-delivery specifically
+  (`keyboard_press` only dispatches a DOM-scoped `KeyboardEvent`,
+  confirmed empirically against a real bound hotkey). Full verdict in
+  `.claude/skills/run-mill/SKILL.md`, not duplicated here — a one-off
+  spike, not adopted into the standing workflow.
+
+**Still `OPEN`, real named gaps:** a menu-bar/dock presence toggle and
+trigger-fire notifications (Wails3 ships first-party `dock`/
+`notifications` services for both, zero new dependency, but neither has
+a settled concrete design yet — what a dock toggle would control given
+Mill has no menu-bar-only mode, and what event a notification should
+fire on); appearance settings beyond light/dark; a default working
+directory/scope (blocked on §6); fullscreen window-state tracking
+(named above).
 
 ## 4. Connectors
 
@@ -3099,71 +2202,35 @@ Full rationale in [`docs/adr/0003-browser-bridge-architecture.md`](adr/0003-brow
   two bullets down: a completed step's result survives the launching
   process being killed before it's reported, without the step re-running.
   `LOCKED` (library choice).
-- **Update — the workflow/step mapping is designed and built, ADR-0004
-  now `accepted`.** One Mill workflow *run* = one DBOS workflow instance,
-  one graph *node* execution = one DBOS step, keyed by the node's own ID.
-  `internal/adapters/execution` (DBOS wrapper, mirrors `mcpclient`'s
-  shape), `composition.ExecuteWorkflowWithStepRunner` (an additive
-  sibling to `ExecuteWorkflow`, zero behavior change to the existing
-  synchronous path), and `executionservice.go`
-  (`RunWorkflowDurable`/`ListRuns`/`GetRun`/`RedriveRun`) are real,
-  tested code — full reasoning, the real bug this pass caught (DBOS's
-  `ListWorkflows`/`GetWorkflowSteps` return `Input`/`Output` as a raw
-  JSON string, not an already-decoded value — the JSON case, not
-  gob, confirmed by writing a real probe test rather than assumed from
-  the `Serializer` interface's doc comments) and a full regression-test
-  writeup are in ADR-0004's own Update section. `LOCKED`.
-- **Update — long-running-execution inspectability is built: the Runs
-  page.** `RunsView.tsx` (reachable via the sidebar,
-  `process-tracking` capability flipped `StatusOpen`→`StatusLocked`,
-  `ViewPlaceholder`→`ViewRuns`) lists every durable run with a real DBOS
-  status, and viewing one shows its per-node step breakdown
-  (status/output/error) plus a **Redrive from here** button on any
+- **Execution: one Mill workflow *run* = one DBOS workflow instance, one
+  graph *node* execution = one DBOS step, keyed by the node's own ID —
+  `LOCKED`, [ADR-0004](adr/0004-execution-process-tracking.md)
+  `accepted`.** `internal/adapters/execution` wraps DBOS;
+  `executionservice.go`'s `RunWorkflow` (renamed from
+  `RunWorkflowDurable`) is the single durable entrypoint, backed by
+  `ListRuns`/`GetRun`/`RedriveRun`. Per [ADR-0008](adr/0008-single-execution-path.md)
+  (`accepted`), it's also the *only* execution path in the app — the
+  canvas Run button, the Runs page's quick-run picker, and
+  `TriggerService`'s headless listeners (hotkey/schedule/clipboard-watch/
+  filesystem-watch) all go through it; `CompositionService.RunWorkflow`
+  (a separate, plain in-memory path) is deleted. `composition.ExecuteWorkflow`/
+  `executeWorkflow` remains the underlying DBOS-free graph-walking
+  engine (called with a `StepRunner`), still used directly by
+  `internal/domain/composition`'s own unit tests, no longer by any
+  Wails-bound service. Every run carries a `RunKind` (`test`/`triggered`).
+  Per-step checkpoint overhead is ~281µs (~1.1ms for a 4-step run against
+  real DBOS/SQLite) — negligible against interactive latency.
+- **Runs page — `LOCKED`, built.** `RunsView.tsx` (sidebar-reachable,
+  `process-tracking` capability `StatusLocked`) lists every durable run
+  with its real DBOS status; opening one shows its per-node step
+  breakdown (status/output/error) plus **Redrive from here** on any
   failed step (`dbos.ForkWorkflow` from that step's ID) — the
-  [decisioning-vendor]/n8n-researched "fix forward from the failed step" pattern
-  named in §3.2, not a from-scratch Mill mechanism. Verified end-to-end
-  via Playwright against the real Go backend (`frontend/e2e/runs.spec.ts`).
-  `LOCKED` (what's built) — **not** built: live streaming while a run
-  is in progress (this shows a completed/failed run's history, not a
-  progress bar — no identified need for the former yet), editing a
-  run's original input before redrive (`ForkWorkflowInput` has no such
-  field), and §3.2's "shadow events" half (dry-running a draft workflow
-  version against real traffic) — all real, named future work, not
-  silently dropped.
-- **Update — single execution path, [ADR-0008](adr/0008-single-execution-path.md),
-  `accepted` and built.** The bullet above originally described
-  Composition's plain "Run" button and this page's own durable path as
-  two deliberately separate mechanisms — that split was surfaced as a
-  real problem, not preserved: any future DBOS-native capability (Child
-  Workflow, later Parallel Steps) would either need to special-case
-  "requires the durable path" or grow its own weaker shadow
-  implementation for the plain path, repeating the same fork per
-  capability. Audited first, not assumed: the two "paths" were never
-  two execution engines — `composition.ExecuteWorkflow` was always
-  `composition.executeWorkflow` (the one real graph-walking engine)
-  called with a no-op `StepRunner`; the fork was entirely at the
-  service-call layer. `CompositionService.RunWorkflow` (the plain path)
-  is deleted; `ExecutionService.RunWorkflow` (renamed from
-  `RunWorkflowDurable`) is now the single Run entrypoint for the whole
-  app — Composition's canvas Run button, this page's own quick-run
-  picker, and `TriggerService`'s headless listeners (hotkey/schedule/
-  clipboard-watch/filesystem-watch — wired to this same path in this
-  same change, via a late-bound `TriggerService.SetExecutionService`
-  setter, the same shape `SetReservedCombo` already used) all go
-  through it. A new `RunKind` (`test`/`triggered`) travels alongside
-  every run — Composition/Runs-page clicks tag `test` ([decisioning-vendor]'s own
-  "test run" naming, §3.2), a real headless trigger firing tags
-  `triggered` — surfaced as a filter/column on this page.
-  `composition.ExecuteWorkflow` stays in the codebase as the tested,
-  DBOS-free primitive `internal/domain/composition`'s own unit tests
-  call directly; no Wails-bound service calls it anymore. Per-step
-  checkpoint overhead measured directly before accepting the ADR
-  (~281µs/step, ~1.1ms for a 4-step run against real DBOS/SQLite) —
-  three orders of magnitude below perceptible interactive latency, not
-  assumed fine. Verified end-to-end: full Go suite, the complete
-  33-spec Playwright e2e run (`composition.spec.ts`/`runs.spec.ts`
-  updated for the renamed button/binding), golangci-lint, LOC check,
-  frontend tsc/eslint/vitest, all green. `LOCKED`.
+  "fix forward from the failed step" pattern named in §3.2. Not built:
+  live streaming of an in-progress run (this shows a completed/failed
+  run's history, not a progress bar), editing a run's original input
+  before redrive (`ForkWorkflowInput` has no such field), and §3.2's
+  "shadow events" half (dry-running a draft workflow version against
+  real traffic).
 - **Concrete failure mode hit at work, sharpening the requirement above**:
   in the Hammerspoon-based setup, when M365 Copilot proposes a command whose
   execution edits Mill's/Hammerspoon's own Lua config file, Hammerspoon's
@@ -3209,93 +2276,41 @@ Full rationale in [`docs/adr/0003-browser-bridge-architecture.md`](adr/0003-brow
   mode against sample actions) before it's trusted live — a policy rule
   that's silently broader than intended is exactly how a guardrail fails
   quietly. Mechanism `OPEN`, requirement `LOCKED`.
-- Still not yet decided: where policy/skip-rules are authored/stored, what
-  they can express (allowlist commands? path scoping? connector-level
-  rules?), how pass/fail/pending/skipped states are communicated in the UI.
+- Where rules are authored/stored and how they scope is now designed
+  (see the Rule scoping & precedence bullet below, ADR-0019) — not yet
+  implemented. Still genuinely open: exactly what a rule can express
+  beyond scope (allowlist commands? path scoping?), and how
+  pass/fail/pending/skipped states are communicated in the UI.
 
-**Update — research landed on the "where are rules authored/stored"
-question, prompted directly by the observation that a guardrail rule is
-probably the same shape as the Integration/Connector split (§3.5): a
-technical contract at Configure time vs. a specific instance's wiring
-at workflow time.** Findings, not yet implemented:
-- **Rules don't have one fixed scope — they need three layers,
-  matching Mill's own already-built cardinalities, not a new concept.**
-  Applying §3.5's own two-axis Configure test directly to guardrail
-  rules (rather than assuming an answer) finds real examples at every
-  cardinality Mill already has: a node-*kind*-wide rule ("no
-  `list-lookup` node ever needs approval," 1:many across every
-  workflow and every Connector — even broader than Connector's own
-  reuse), a Connector-scoped rule ("any call through Connector X with
-  method GET," 1:many across every workflow using that Connector — the
-  same cardinality Connector itself already has), and a
-  workflow/node-instance-scoped rule ("this exact step in this exact
-  workflow," 1:1 — the same cardinality Trigger config/Attributes
-  already have). Node-kind and Connector-level rules belong in
-  Configure (a future Guardrail-rules tab, same shape as Integration/
-  Lists/Attributes/Decision, satisfying the already-locked dry-run-
-  testable requirement above); workflow-level rules stay inline in the
-  canvas Inspector, matching Trigger config's existing precedent.
-- **Precedence: deny/require-approval always wins over allow/skip,
-  regardless of which layer set it — modeled on Claude Code's own
-  categorical deny-first resolution (checked directly against its
-  current docs: rules evaluate deny → ask → allow in that fixed order,
-  and specificity never changes it — a broad `Bash(aws *)` deny blocks
-  even a narrower matching allow), not on Kong API Gateway's
-  specificity-wins model (also real, also checked directly — Kong's
-  most-specific-scope-always-wins is the opposite philosophy, correct
-  for Kong's own tuning-not-safety use case, wrong for Mill's).
-  Reasoning: §8's already-locked fail-safe default is a categorical
-  safety commitment, not a specificity preference — a narrow,
-  later-authored workflow-level skip-rule must never be able to
-  silently punch a hole in a broader, more cautious node-kind- or
-  Connector-level rule.
-- **Do not adopt OPA/Rego** (or any second policy-evaluation engine).
-  Verified as a real, technically legitimate embeddable Go library
-  (`github.com/open-policy-agent/opa/rego`, Apache-2.0, CNCF-graduated,
-  pure Go, genuinely importable as a library per OPA's own docs, not
-  just the `opa run` daemon mode) — cleared on constraints, rejected on
-  fit: Mill already adopted `expr-lang/expr` for structurally the same
-  job (Decision-edge boolean conditions, §3.3), and OPA solves
-  expression evaluation, not the part of this problem that's actually
-  unsolved (where a rule attaches and how layers resolve, which no
-  policy-language runtime has an opinion on regardless). If a
-  skip-condition ever needs a boolean expression, reuse
-  `internal/adapters/expression`, don't add a second evaluation engine.
-  §3.3's own "Guardrail preview / policy gate ... core domain, no
-  library has an opinion" verdict stands, now backed by an actual
-  evaluation instead of an assumption.
-- n8n's Human-in-the-Loop gating, checked as a real precedent, turned
-  out to *not* unify these concerns the way Mill needs — it has two
-  independent, non-overlapping mechanisms (workflow/node-instance-scoped
-  approval gating, and a separate node-*kind*-level credential-access
-  restriction) rather than one layered model, itself a data point for
-  why Mill needs the explicit multi-layer design above rather than
-  copying one platform's narrower shape.
-- Still genuinely open: how Claude Code's third `ask` state (distinct
-  from allow/deny) maps onto Mill's own pass/fail/pending/skipped UI
-  states — this research answered scoping, not that.
-
-`OPEN` still — this is a locked scoping *design*, not an implementation;
-still needs an ADR (same "architect pass" treatment ADR-0005/0006 got)
-before `internal/domain/guardrail` gets built.
-
-**Update — one narrow corner of this got its own ADR:
-[`docs/adr/0017-mcp-write-tools-guardrail-scope.md`](adr/0017-mcp-write-tools-guardrail-scope.md)
-(`proposed`, task #13), prompted directly by §3.6's read-only MCP
-Resources work (§11) raising the obvious next question — should an
-external MCP client be able to *write* Mill's own workflow/Configure
-definitions, not just read them.** Finds that §8's existing three-layer
-scoping (node-kind/Connector/workflow) governs *running* an
-already-authored workflow, not *authoring* one via a new external
-channel — a fourth, orthogonal "authoring-capability scope" gate is
-needed, not covered by the design above. Recommends (not yet
-implemented, two real sub-questions still unresolved — does a real MCP
-host tolerate a long-blocking tool call awaiting human approval, and
-what UI renders that approval meaningfully) a default-off toggle plus
-synchronous human approval per write, once those two questions are
-answered. No MCP write Tools exist in the codebase — `millmcpservice.go`
-registers only Resources, enforced by what's simply absent from the
-code.
+- **Rule scoping & precedence — `LOCKED` (design), `OPEN`
+  (implementation): [ADR-0019](adr/0019-guardrail-rule-scoping-and-precedence.md)
+  (`proposed`).** Three scopes, matching cardinalities Mill's Configure/
+  canvas split already established (§3.5): node-kind (1:many, even
+  broader than Connector reuse — e.g. "no `list-lookup` node ever needs
+  approval"), Connector-scoped (1:many, e.g. "any call through Connector
+  X with method GET"), and workflow/node-instance-scoped (1:1, e.g.
+  "this exact step in this exact workflow"). Node-kind/Connector rules
+  belong in a future Configure tab; workflow-level rules stay inline in
+  the canvas Inspector. Deny/require-approval always wins over
+  allow/skip regardless of which layer set it (Claude Code's
+  deny-first precedence, not Kong's specificity-wins). OPA/Rego was
+  evaluated and rejected — reuse `expr-lang/expr` (already adopted for
+  Decision-edge conditions, §3.3) for any skip-condition expression
+  instead of a second policy-evaluation engine. Full reasoning in the
+  ADR. Still genuinely open: how Claude Code's third `ask` state maps
+  onto Mill's own pass/fail/pending/skipped UI states, and
+  `internal/domain/guardrail` itself remains unbuilt.
+- **MCP write-tools guardrail scope —
+  [ADR-0017](adr/0017-mcp-write-tools-guardrail-scope.md)
+  (`proposed`).** §8's three-layer scoping above governs *running* an
+  already-authored workflow, not *authoring* one via an external MCP
+  channel — writing Mill's own workflow/Configure definitions via MCP
+  needs a fourth, orthogonal "authoring-capability scope" gate, not
+  covered by ADR-0019. Recommends a default-off toggle plus synchronous
+  human approval per write, pending two open sub-questions (whether a
+  real MCP host tolerates a long-blocking tool call awaiting approval,
+  and what UI renders that approval). No MCP write Tools exist in the
+  codebase — `millmcpservice.go` registers only Resources.
 
 ## 9. Repo AI workflow (CLAUDE.md / SKILL.md / agent profiles)
 
@@ -3367,47 +2382,24 @@ actually get built is `OPEN` — the list below is candidates, not commitments.
   list/group/hierarchy family before hand-rolling a collection UI"
   check; CLAUDE.md's own Primer bullet stays a short pointer rather than
   duplicating it, per this section's own anti-duplication rule. `LOCKED`
-- **Update — corrected the rule-file frontmatter, and used the
-  correction as the trigger to actually separate coding convention from
-  product spec across all three docs, not just CLAUDE.md.**
-  `.claude/rules/frontend.md` had shipped with a `globs:` frontmatter
-  key, sourced from a GitHub issue claiming the documented `paths:` key
-  was broken. Re-checked against Claude Code's own current official docs
-  (`code.claude.com/docs/en/memory.md`, fetched directly, not recalled)
-  while researching this properly at the user's request: `paths:` is
-  the real, current, documented field — every example in the official
-  doc uses it, `globs:` appears nowhere. The GitHub issue was either
-  about a since-fixed bug or a different context; either way, trusting
-  a third-party bug report over the primary source was the actual
-  mistake, not the field name itself. Fixed directly.
-  Same official-docs pass also confirmed the mechanism this section
-  needed: a rule file with no `paths` frontmatter at all "loads at
-  launch with the same priority as CLAUDE.md" — i.e. an unscoped rule is
-  how a repo-wide (not one-language) coding convention stays always-
-  loaded without living inside CLAUDE.md itself. Used that to finish a
-  three-way split prompted directly by the user ("I don't want coding
-  convention and product spec mixed up"): CLAUDE.md kept to standing
-  process (Research→Plan→Implement, commit discipline) and genuinely
+- **Doc-scope split — `LOCKED`.** `docs/SPEC.md` is product decisions
+  (what Mill is, and why); CLAUDE.md is standing process
+  (Research→Plan→Implement, commit discipline) plus genuinely
   product-level hard constraints (no Rust, no AI API, single binary,
-  git-clone install, CI/CD day one, SPEC.md-tracks-everything) — six
-  bullets, down from eleven; the other five (SOLID/DRY/DDD reuse
-  boundary, adopt-over-hand-roll, the 500-line limit, Go domain-package
-  purity, the Primer/UI rule) moved out into `.claude/rules/`, split by
-  actual scope rather than piled together: `frontend.md` (path-scoped,
-  the Primer/UI rule plus the collection-shape check above),
-  `backend.md` (path-scoped to `**/*.go`, domain-package purity),
-  `architecture.md` (unscoped — SOLID/DRY/DDD, adopt-over-hand-roll, the
-  500-line limit, since these are cross-language, not frontend- or
-  backend-specific). CLAUDE.md dropped from 156 to 103 lines. The
-  boundary going forward, stated explicitly so it holds without
-  re-deciding it every session: `docs/SPEC.md` is product decisions
-  (what Mill is, and why — this document); CLAUDE.md is standing process
-  plus hard constraints; `.claude/rules/*.md` is reusable coding
-  convention (how to write code, checked against real precedent before
-  being adopted). This section's own existing "Update —" entries (this
-  one included) stay as decision history, not rewritten — the split is a
-  forward-looking discipline for new content, not a retroactive purge of
-  what's already committed. `LOCKED`
+  git-clone install, CI/CD day one, SPEC.md-tracks-everything);
+  `.claude/rules/*.md` is reusable coding convention (how to write
+  code), split by scope: `frontend.md` (path-scoped, the Primer/UI
+  rule plus the collection-shape check above), `backend.md`
+  (path-scoped to `**/*.go`, domain-package purity), `architecture.md`
+  (unscoped — SOLID/DRY/DDD, adopt-over-hand-roll, the 500-line limit,
+  since these are cross-language). The three docs must not duplicate
+  content, since duplication is exactly how they drift. A rule file
+  with no `paths` frontmatter loads at launch with the same priority
+  as CLAUDE.md, confirmed directly against Claude Code's current docs
+  (`code.claude.com/docs/en/memory.md`) — `paths:` is the correct,
+  current frontmatter key; `.claude/rules/frontend.md`'s earlier
+  `globs:` (sourced from a third-party report, not the primary docs)
+  was fixed to match.
 - Sources: Claude Code docs — memory (`/docs/en/memory`), skills
   (`/docs/en/skills`), subagents (`/docs/en/sub-agents`), all at
   `code.claude.com`; agentskills.io (Agent Skills open standard); OpenAI
@@ -3460,20 +2452,15 @@ mode from §0 repeating itself one level up.
 - Env/shell determinism rules (§6)
 - Session identity model spanning tab + agent run + process (§7)
 - Policy authoring format and storage (§8) — scoping/precedence design
-  researched and recorded (three layers: node-kind/Connector/workflow,
-  deny-always-wins precedence, OPA/Rego evaluated and rejected in favor
-  of reusing `expr-lang/expr`) but still needs an ADR + implementation;
-  the pass/fail/pending/skipped UI-states question is untouched by this
-- Global app settings (§3.7) — launch-at-login and a global summon
-  hotkey are `LOCKED` and built (`internal/adapters/launchatlogin`,
-  `settingsservice.go`); `app.Updater` wired for manual update checks
-  (inert until a real tagged-release process exists); window position/
-  size/maximized state, active view, open Composition/Configure tabs,
-  and Activity/Runs filters are `LOCKED` and built (window geometry
-  Go-side via `settingsservice.go`, the rest `localStorage` via
-  zustand's `persist` middleware + a new `shared/persistedTabs.ts`
-  helper — Wails3 itself has no opinion on either, researched directly
-  against the SDK source). Still `OPEN`: menu-bar/dock toggle,
+  now has its own ADR, [ADR-0019](adr/0019-guardrail-rule-scoping-and-precedence.md)
+  (`proposed`: three layers node-kind/Connector/workflow, deny-always-
+  wins precedence, OPA/Rego evaluated and rejected in favor of reusing
+  `expr-lang/expr`) but still needs implementation; the
+  pass/fail/pending/skipped UI-states question is untouched by this
+- Global app settings (§3.7/[ADR-0020](adr/0020-global-app-settings.md))
+  — launch-at-login, a global summon hotkey, auto-update wiring, a tray
+  icon, per-view hotkeys, and window/tab/filter state persistence are
+  all `LOCKED` and built. Still `OPEN`: menu-bar/dock toggle,
   trigger-fire notifications (no settled design yet), the multi-tenant-
   seam question (researched, recorded as deliberately declined),
   fullscreen window-state tracking (deliberately not built, named gap)
@@ -3570,9 +2557,9 @@ mode from §0 repeating itself one level up.
   Composition's canvas Inspector does (the evidence points toward: tab
   the saved-record summary, not the act of authoring) — surfaced for
   the user, not resolved here. §4.1's table has the full adopt-vs-build
-  breakdown per item. **Update — a fuller consolidated review resolved
-  several items and added real new ones** (§3.2's own follow-up
-  Update): the full 7-option auth-type catalogue, mTLS's complete field
+  breakdown per item. A fuller consolidated review (§3.2's own
+  follow-up) resolved several items and added real new ones: the full
+  7-option auth-type catalogue, mTLS's complete field
   set (plus a governance flag on its disable-validation toggle), a
   SOAP request-template layer, and the caching match-key (request body
   + headers + record ID) are now known specifics, not vague gaps; ten
