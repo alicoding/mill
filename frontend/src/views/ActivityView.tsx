@@ -4,6 +4,7 @@ import { DataTable, type Column } from '@primer/react/experimental'
 import { ChevronDownIcon, ChevronRightIcon, CheckCircleIcon, WorkflowIcon, XCircleIcon, XIcon } from '@primer/octicons-react'
 import { useAppStore, type ActivityEntry, type ActivitySource } from '../shared/store'
 import { WorkflowHoverPreview } from '../composition/WorkflowHoverPreview'
+import { ActivityRunsExplorer } from './ActivityRunsExplorer'
 import styles from '../shared/ListCard.module.css'
 import PageContainer from '../shared/PageContainer'
 
@@ -64,6 +65,13 @@ function ActivityView() {
   // AI-Analytics surface: filterable events, searchable by the run's
   // own data), deliberately session-local like the list itself.
   const [search, setSearch] = useState('')
+  // Source-first selection (the fuller reference pattern, asked for
+  // directly): picking a specific workflow swaps the session feed for
+  // that workflow's durable run history with attribute-driven columns
+  // (ActivityRunsExplorer). 'all' keeps the live cross-workflow feed.
+  const workflows = useAppStore((s) => s.workflows)
+  const [sourceWorkflow, setSourceWorkflow] = useState('all')
+  const selectedWorkflow = sourceWorkflow === 'all' ? null : (workflows ?? []).find((w) => w.ID === sourceWorkflow) ?? null
 
   const toggle = (id: string) => {
     setSelectedIds((prev) => {
@@ -173,7 +181,18 @@ function ActivityView() {
         isn&apos;t persisted across restarts.
       </Text>
 
-      {activity.length > 0 && (
+      <Stack direction="horizontal" gap="condensed" className={styles.filterRow}>
+        <Select value={sourceWorkflow} onChange={(e) => setSourceWorkflow(e.target.value)} aria-label="Input source" data-testid="activity-source-workflow">
+          <Select.Option value="all">All workflows (live feed)</Select.Option>
+          {(workflows ?? []).map((w) => (
+            <Select.Option key={w.ID} value={w.ID}>{w.Label}</Select.Option>
+          ))}
+        </Select>
+      </Stack>
+
+      {selectedWorkflow && <ActivityRunsExplorer workflow={selectedWorkflow} />}
+
+      {!selectedWorkflow && activity.length > 0 && (
         <Stack direction="horizontal" gap="condensed" className={styles.filterRow}>
           <Select value={sourceFilter} onChange={(e) => setSourceFilter(e.target.value as 'all' | ActivitySource)} aria-label="Filter by source">
             <Select.Option value="all">All sources</Select.Option>
@@ -195,23 +214,23 @@ function ActivityView() {
         </Stack>
       )}
 
-      {activity.length === 0 && (
+      {!selectedWorkflow && activity.length === 0 && (
         <div className={styles.empty}>
-          <Text as="p">No activity yet — run a workflow, or wait for a trigger to fire, to see it appear here.</Text>
+          <Text as="p">No activity yet — run a workflow, or wait for a trigger to fire, to see it appear here. Pick a specific workflow above to browse its durable run history instead.</Text>
         </div>
       )}
 
-      {activity.length > 0 && filtered.length === 0 && (
+      {!selectedWorkflow && activity.length > 0 && filtered.length === 0 && (
         <div className={styles.empty}>
           <Text as="p">No activity matches this filter.</Text>
         </div>
       )}
 
-      {filtered.length > 0 && (
+      {!selectedWorkflow && filtered.length > 0 && (
         <DataTable data={filtered} columns={columns} cellPadding="condensed" getRowId={(entry) => entry.id} />
       )}
 
-      {selectedEntries.map((entry) => (
+      {!selectedWorkflow && selectedEntries.map((entry) => (
         <div key={entry.id} data-testid="activity-detail">
           <Stack direction="horizontal" justify="space-between" align="center">
             <Text size="small" weight="semibold">{entry.label} — {entry.time}</Text>

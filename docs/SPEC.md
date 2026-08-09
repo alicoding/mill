@@ -2722,12 +2722,22 @@ recorded as a real design input (`OPEN`), never silently dropped.
   (38px top padding) only inside the Wails webview (`window._wails`
   present) — a browser tab on the server-mode interface reserves
   nothing.
-- **[decisioning-vendor]-style analytics pattern (select the input source first,
-  then see its activity with attribute-driven columns and
-  attribute-based search) — `OPEN`, recorded design input for the §3.2
-  AI-Analytics surface.** Activity's new search + existing filters are
-  the first slice only; the full source-first pattern belongs to the
-  same future design pass as §7's shadow-events half. Also from the
+- **Source-first analytics on Activity — now `LOCKED`, built** (the
+  reference pattern asked for directly: select the input source, see
+  its activity, columns from the source's own attributes, search over
+  attribute values). Picking a specific workflow on Activity swaps the
+  session-only live feed for that workflow's **durable** run history
+  (`ExecutionService.ListRunsForWorkflow`, DBOS-backed —
+  `ActivityRunsExplorer.tsx`, Primer DataTable): one column per
+  declared Attribute, its cell showing what each run was invoked with
+  (`RunSummary` now exposes `Values` and the executed `Version`,
+  ADR-0021's per-run stamp rendered as `vN`/`draft`), plus Kind/Status
+  and a search across attribute values and output. "All workflows"
+  keeps the live cross-workflow feed unchanged. Proven on the seeded
+  pair end-to-end: running the parent produces a child run whose typed
+  `message` value appears as a real column cell, search hit, and `v1`
+  stamp under the child's own history. Still future: date-range
+  filters and export (§3.2 names both), and shadow events (§7). Also from the
   same review: **hover-preview for workflow references — now `LOCKED`,
   built** (n8n/[decisioning-vendor]'s own pattern). `WorkflowHoverPreview.tsx`
   composes only already-adopted pieces: Primer's `AnchoredOverlay` for
