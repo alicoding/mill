@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/alicoding/mill/internal/adapters/credential"
 	"github.com/alicoding/mill/internal/adapters/openapispec"
 	"github.com/alicoding/mill/internal/adapters/settings"
 	"github.com/alicoding/mill/internal/domain/composition"
@@ -21,7 +22,7 @@ import (
 // domain, so it lives here at the service layer rather than inside
 // httprequest.Validate -- internal/domain/httprequest stays pure per
 // CLAUDE.md's domain-purity rule, same reasoning ConfigureService
-// already applies to credential.Delete/Set below.
+// already applies to c.credentials.Delete/Set below.
 func validateOpenAPISpec(spec string) error {
 	if spec == "" {
 		return nil
@@ -60,14 +61,15 @@ const (
 type ConfigureService struct {
 	mu          sync.Mutex
 	store       settings.Store
+	credentials credential.Store
 	requests    []httprequest.HTTPRequest
 	lists       []list.List
 	mcpServers  []mcpserver.MCPServer
 	composition *CompositionService
 }
 
-func NewConfigureService(store settings.Store, comp *CompositionService) *ConfigureService {
-	c := &ConfigureService{store: store, composition: comp}
+func NewConfigureService(store settings.Store, comp *CompositionService, credentials credential.Store) *ConfigureService {
+	c := &ConfigureService{store: store, composition: comp, credentials: credentials}
 	c.restore()
 	c.restoreMCPServers()
 	composition.SetHTTPRequestLookup(c.resolveHTTPRequest)

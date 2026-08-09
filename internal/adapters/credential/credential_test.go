@@ -18,10 +18,11 @@ func TestMain(m *testing.M) {
 }
 
 func TestSetGet_RoundTrips(t *testing.T) {
-	if err := Set("conn-1", "s3cr3t"); err != nil {
+	s := New()
+	if err := s.Set("conn-1", "s3cr3t"); err != nil {
 		t.Fatalf("Set returned error: %v", err)
 	}
-	got, err := Get("conn-1")
+	got, err := s.Get("conn-1")
 	if err != nil {
 		t.Fatalf("Get returned error: %v", err)
 	}
@@ -31,13 +32,14 @@ func TestSetGet_RoundTrips(t *testing.T) {
 }
 
 func TestSet_OverwritesExisting(t *testing.T) {
-	if err := Set("conn-2", "first"); err != nil {
+	s := New()
+	if err := s.Set("conn-2", "first"); err != nil {
 		t.Fatalf("Set returned error: %v", err)
 	}
-	if err := Set("conn-2", "second"); err != nil {
+	if err := s.Set("conn-2", "second"); err != nil {
 		t.Fatalf("Set returned error: %v", err)
 	}
-	got, err := Get("conn-2")
+	got, err := s.Get("conn-2")
 	if err != nil {
 		t.Fatalf("Get returned error: %v", err)
 	}
@@ -47,20 +49,22 @@ func TestSet_OverwritesExisting(t *testing.T) {
 }
 
 func TestGet_NotFound(t *testing.T) {
-	_, err := Get("does-not-exist")
+	s := New()
+	_, err := s.Get("does-not-exist")
 	if !errors.Is(err, keyring.ErrNotFound) {
 		t.Errorf("Get(unknown connector) error = %v, want keyring.ErrNotFound", err)
 	}
 }
 
 func TestDelete_RemovesSecret(t *testing.T) {
-	if err := Set("conn-3", "temp"); err != nil {
+	s := New()
+	if err := s.Set("conn-3", "temp"); err != nil {
 		t.Fatalf("Set returned error: %v", err)
 	}
-	if err := Delete("conn-3"); err != nil {
+	if err := s.Delete("conn-3"); err != nil {
 		t.Fatalf("Delete returned error: %v", err)
 	}
-	if _, err := Get("conn-3"); !errors.Is(err, keyring.ErrNotFound) {
+	if _, err := s.Get("conn-3"); !errors.Is(err, keyring.ErrNotFound) {
 		t.Errorf("Get after Delete error = %v, want keyring.ErrNotFound", err)
 	}
 }

@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/alicoding/mill/internal/adapters/credential"
 	"github.com/alicoding/mill/internal/adapters/settings"
 	"github.com/wailsapp/wails/v3/pkg/application"
 	"github.com/wailsapp/wails/v3/pkg/events"
@@ -100,7 +101,7 @@ func main() {
 	compositionService := NewCompositionService(settingsStore)
 	triggerService := NewTriggerService(compositionService, logger, settingsStore)
 	compositionService.SetSyncer(triggerService)
-	configureService := NewConfigureService(settingsStore, compositionService)
+	configureService := NewConfigureService(settingsStore, compositionService, credential.New())
 
 	// Separate SQLite file from settings.json (own schema, own lifecycle
 	// -- durable-execution checkpoints, not app config) but the same

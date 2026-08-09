@@ -3,6 +3,7 @@ package main
 import (
 	"testing"
 
+	"github.com/alicoding/mill/internal/adapters/credential"
 	"github.com/alicoding/mill/internal/domain/composition"
 	"github.com/alicoding/mill/internal/domain/httprequest"
 )
@@ -224,7 +225,7 @@ func TestResolveHTTPRequest_AuthBearer_ResolvesSecret(t *testing.T) {
 func TestCreateHTTPRequest_AuthConfig_PersistsAndSurvivesRestore(t *testing.T) {
 	store := newFakeStore()
 	comp := NewCompositionService(store)
-	cfg := NewConfigureService(store, comp)
+	cfg := NewConfigureService(store, comp, credential.New())
 	// Starts from an empty request list, not the seeded built-in
 	// examples -- see newTestConfigureService's own doc comment
 	// (configureservice_test.go) for why.
@@ -244,7 +245,7 @@ func TestCreateHTTPRequest_AuthConfig_PersistsAndSurvivesRestore(t *testing.T) {
 		t.Fatalf("SetHTTPRequestSecret returned error: %v", err)
 	}
 
-	restarted := NewConfigureService(store, comp)
+	restarted := NewConfigureService(store, comp, credential.New())
 	got := restarted.HTTPRequests()
 	if len(got) != 1 || got[0].Auth == nil || got[0].Auth.OAuth2 == nil {
 		t.Fatalf("HTTPRequests() after restore = %+v, want Auth to survive persist/restore", got)
@@ -324,7 +325,7 @@ func TestSetHTTPRequestOAuth1Secret_UnknownHTTPRequest_Rejected(t *testing.T) {
 func TestCreateHTTPRequest_JOSEConfig_PersistsAndSurvivesRestore(t *testing.T) {
 	store := newFakeStore()
 	comp := NewCompositionService(store)
-	cfg := NewConfigureService(store, comp)
+	cfg := NewConfigureService(store, comp, credential.New())
 	// Starts from an empty request list, not the seeded built-in
 	// examples -- see newTestConfigureService's own doc comment
 	// (configureservice_test.go) for why.
@@ -339,7 +340,7 @@ func TestCreateHTTPRequest_JOSEConfig_PersistsAndSurvivesRestore(t *testing.T) {
 		t.Fatalf("CreateHTTPRequest returned JOSE = %+v, want the JOSEConfig passed in", req.JOSE)
 	}
 
-	restarted := NewConfigureService(store, comp)
+	restarted := NewConfigureService(store, comp, credential.New())
 	got := restarted.HTTPRequests()
 	if len(got) != 1 || got[0].JOSE == nil || !got[0].JOSE.Enabled {
 		t.Fatalf("HTTPRequests() after restore = %+v, want JOSE to survive persist/restore", got)
