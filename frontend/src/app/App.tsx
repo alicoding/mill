@@ -11,6 +11,7 @@ import SettingsView from "../views/SettingsView";
 import PlaceholderView from "../views/PlaceholderView";
 import { CompositionService, CapabilitiesService } from "../../bindings/github.com/alicoding/mill";
 import { useAppStore, viewFor, viewsEqual, statusVariant } from "../shared/store";
+import type { View } from "../shared/store";
 import { COLOR_MODE_STORAGE_KEY, SIDEBAR_OPEN_STORAGE_KEY } from "./theme";
 import { CAPABILITY_ICON, SPEC_ICON } from "./navIcon";
 import styles from "./App.module.css";
@@ -46,6 +47,39 @@ function App() {
   // module, leaving stray listeners firing on unrelated updates. Not
   // worth chasing further for a dev-convenience ribbon -- see SPEC.md.
   const [loadedAt] = useState(() => new Date().toLocaleTimeString());
+
+  // Per-view hotkeys (task #9, docs/SPEC.md §3.7) -- Cmd+1 through
+  // Cmd+5 jump straight to a top-level view, matching the sidebar's own
+  // order (Composition/Configure lead, Activity/Runs follow, Spec is
+  // always last). Deliberately in-window-only, not a global OS-level
+  // hotkey: this reuses plain browser keydown handling, the reversible/
+  // safer default named directly in the session goal that built this,
+  // distinct from TriggerService's real OS-level golang.design/x/hotkey
+  // registration (§3.4) that per-workflow and summon hotkeys use --
+  // registering these globally too would mean checking them against
+  // TriggerService's own claimed-combo conflict space, a bigger design
+  // surface this pass deliberately doesn't take on. Matches
+  // browsers'/Slack's own Cmd+1-9 tab-switching precedent: active
+  // regardless of which element has focus, not scoped away from text
+  // inputs, since Cmd+digit isn't a combo real typing produces.
+  useEffect(() => {
+    const VIEW_HOTKEYS: Record<string, View> = {
+      '1': { kind: 'composition' },
+      '2': { kind: 'configure' },
+      '3': { kind: 'activity' },
+      '4': { kind: 'runs' },
+      '5': { kind: 'spec' },
+    };
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (!e.metaKey || e.ctrlKey || e.altKey || e.shiftKey) return;
+      const target = VIEW_HOTKEYS[e.key];
+      if (!target) return;
+      e.preventDefault();
+      setView(target);
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [setView]);
 
   // Icon-rail collapse (narrow persistent strip, not full hide/show) is a
   // well-established pattern -- but Primer genuinely ships none of its
