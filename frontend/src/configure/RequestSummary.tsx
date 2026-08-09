@@ -92,7 +92,7 @@ export function RequestSummary({ request, onEdit, onDuplicate, onDelete }: {
           <Stack direction="vertical" gap="condensed">
             {request.Description && <DetailRow label="Description" value={request.Description} />}
             <DetailRow label="Method" value={request.Method || 'GET'} />
-            <DetailRow label="Base URL" value={request.BaseURL} />
+            <DetailRow label="URL" value={request.BaseURL} />
             {request.Body !== '' && <DetailRow label="Body" value={request.Body} />}
             <DetailRow
               label="Auth type"

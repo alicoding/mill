@@ -89,7 +89,9 @@ func init() {
 		}
 		consumerSecret, tokenSecret := decodeOAuth1Secret(rc.Secret)
 
-		baseURL := strings.TrimRight(rc.BaseURL, "/") + path
+		// Must assemble identically to the actual request URL (one-URL
+		// model) -- RFC 5849 signs the exact URL transmitted.
+		baseURL := JoinRequestURL(rc.BaseURL, path)
 		if idx := strings.Index(baseURL, "?"); idx >= 0 {
 			baseURL = baseURL[:idx]
 		}

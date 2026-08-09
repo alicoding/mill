@@ -23,7 +23,7 @@ test('Paste sample infers output fields, Default/Description/Enum and the respon
   await page.getByTestId('new-integration').click()
   await page.getByTestId('new-integration-rest').click()
   await page.getByLabel('Label').fill('Schema Maturity Request')
-  await page.getByLabel('Base URL').fill('https://api.example.com')
+  await page.getByLabel('URL', { exact: true }).fill('https://api.example.com')
 
   // The manual editor is always visible now, pre-seeded with the
   // request's one implicit operation (the 1:1 model) -- no mode switch,
@@ -31,7 +31,6 @@ test('Paste sample infers output fields, Default/Description/Enum and the respon
   // here (it defaults to GET already).
   const editor = page.getByTestId('manual-schema-editor')
   const operation = editor.getByTestId('manual-operation')
-  await operation.getByLabel('Path').fill('/widgets')
   await operation.getByLabel('Response extract expression').fill('envelope.payload')
 
   // JSON-sample inference goes through the unified schema intake

@@ -37,14 +37,14 @@ test('Running a test against an unreachable address logs a deterministic error',
   await page.getByLabel('Label').fill('Test Panel Request')
   // Port 1 is reserved and essentially never bound -- a connection
   // refused, not a DNS lookup or a real remote host.
-  await page.getByLabel('Base URL').fill('http://127.0.0.1:1')
+  await page.getByLabel('URL', { exact: true }).fill('http://127.0.0.1:1/widgets')
 
   // The manual editor is always visible, pre-seeded with the request's
   // one implicit operation (1:1 model) -- Method is the request's own
   // field (defaults GET), not part of schema authoring.
   const editor = page.getByTestId('manual-schema-editor')
   const operation = editor.getByTestId('manual-operation')
-  await operation.getByLabel('Path').fill('/widgets')
+  // One-URL model: no path input -- the endpoint lives in the URL above.
   await operation.getByRole('button', { name: 'Add parameter' }).click()
   const paramRow = operation.getByTestId('manual-field-row').last()
   await paramRow.getByLabel('Field name').fill('q')
@@ -53,7 +53,7 @@ test('Running a test against an unreachable address logs a deterministic error',
   // (docs/SPEC.md §3.5's "no UI for a decision that doesn't exist").
   const testPanel = page.getByTestId('request-test-panel')
   await expect(testPanel).toBeVisible()
-  await expect(testPanel.getByTestId('test-operation-single')).toHaveText('GET /widgets')
+  await expect(testPanel.getByTestId('test-operation-single')).toHaveText('GET /')
 
   await testPanel.getByTestId('generate-sample-payload').click()
   const fieldValue = testPanel.getByTestId('test-field-value')
@@ -76,7 +76,7 @@ test('Duplicating a request pre-fills a new form without carrying over the secre
   await page.getByTestId('new-integration').click()
   await page.getByTestId('new-integration-rest').click()
   await page.getByLabel('Label').fill('Original Request')
-  await page.getByLabel('Base URL').fill('https://api.example.com')
+  await page.getByLabel('URL', { exact: true }).fill('https://api.example.com')
   await page.getByLabel('Auth type').selectOption('bearer')
   await page.getByLabel('Secret').fill('shh-original-secret')
   await page.getByRole('button', { name: 'Save request' }).click()
@@ -89,7 +89,7 @@ test('Duplicating a request pre-fills a new form without carrying over the secre
   await page.getByRole('button', { name: 'Duplicate' }).click()
 
   await expect(page.getByLabel('Label')).toHaveValue('Original Request copy')
-  await expect(page.getByLabel('Base URL')).toHaveValue('https://api.example.com')
+  await expect(page.getByLabel('URL', { exact: true })).toHaveValue('https://api.example.com')
   await expect(page.getByLabel('Auth type')).toHaveValue('bearer')
   // Secret must come across empty -- it was never readable back through
   // Mill in the first place (write-only design, docs/SPEC.md §3.5).
