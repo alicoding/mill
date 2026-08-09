@@ -109,6 +109,14 @@ type RunSummary struct {
 	StartedAt     time.Time `json:"startedAt"`
 	CompletedAt   time.Time `json:"completedAt"`
 	Error         string    `json:"error"`
+	// Version is which definition snapshot executed (docs/adr/0021) --
+	// 0 means the draft head (a test run).
+	Version int `json:"version"`
+	// Values are the attribute values this run was invoked with
+	// (runInput.Values -- a test form's input, or a parent's resolved
+	// child bindings). The data behind Activity's per-attribute columns
+	// and attribute search (docs/SPEC.md §3.2's analytics pattern).
+	Values map[string]string `json:"values"`
 }
 
 // RunDetail is a RunSummary plus its full per-node step breakdown.
@@ -429,5 +437,7 @@ func (e *ExecutionService) summaryFromStatus(st execution.WorkflowStatus) RunSum
 		StartedAt:     st.StartedAt,
 		CompletedAt:   st.CompletedAt,
 		Error:         errMsg,
+		Version:       in.Version,
+		Values:        in.Values,
 	}
 }
