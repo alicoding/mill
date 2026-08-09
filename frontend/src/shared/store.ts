@@ -87,6 +87,20 @@ export function statusVariant(status: string): LabelProps['variant'] {
   return STATUS_VARIANT[status] ?? 'secondary'
 }
 
+// Same three-way status mapping as statusVariant, expressed as a
+// fgColor token instead of a Label variant -- for the sidebar's dot
+// indicator (RunsView.tsx's STEP_ICON already colors an Octicon this
+// same way via a direct `fill` prop, the established pattern here).
+const STATUS_DOT_COLOR: Record<string, string> = {
+  LOCKED: 'var(--fgColor-success)',
+  OPEN: 'var(--fgColor-attention)',
+  PARKED: 'var(--fgColor-muted)',
+}
+
+export function statusDotColor(status: string): string {
+  return STATUS_DOT_COLOR[status] ?? 'var(--fgColor-muted)'
+}
+
 const MAX_ACTIVITY_ENTRIES = 50
 
 interface AppState {
