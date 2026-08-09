@@ -154,9 +154,18 @@ type JOSEConfig struct {
 // (ADR-0016) -- this pass is a pure rename, no shape change beyond
 // dropping the now-redundant Type field below.
 type HTTPRequest struct {
-	ID       string
-	Label    string
-	BaseURL  string
+	ID      string
+	Label   string
+	BaseURL string
+	// Method is the HTTP method this request uses -- ADR-0016 Phase B's
+	// entity half: Method and URL are peers on the request object
+	// (Postman/Bruno's own shape), not something buried inside schema
+	// authoring. Open text, never a closed enum (RFC 10008's QUERY, a
+	// vendor verb) -- any string is sent as-is. Empty means GET, which
+	// also covers every request saved before this field existed. An
+	// integration-http node may still override it per-step (its own
+	// method config field wins when non-empty).
+	Method   string
 	AuthType AuthType
 	Headers  map[string]string
 	// Description is free-text explaining what this request is/does --

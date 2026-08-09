@@ -45,14 +45,14 @@ import * as $models from "./models.js";
 
 /**
  * CreateHTTPRequest/UpdateHTTPRequest's positional-param list is
- * getting long (8 now, after Description) -- a real ergonomics cost
- * (this session already had to patch every call site twice via
- * scripted regex when Auth/JOSE were added), worth an options-struct
- * pass at some point, but that's a separate, bigger refactor than "add
- * a Description field" -- not done speculatively here.
+ * getting long (9 now, after ADR-0016 Phase B's method) -- a real
+ * ergonomics cost (this session already had to patch every call site
+ * twice via scripted regex when Auth/JOSE were added), worth an
+ * options-struct pass at some point, but that's a separate, bigger
+ * refactor than "add a field" -- not done speculatively here.
  */
-export function CreateHTTPRequest(label: string, baseURL: string, authType: httprequest$0.AuthType, headers: { [_ in string]?: string } | null, openAPISpec: string, auth: httprequest$0.AuthConfig | null, jose: httprequest$0.JOSEConfig | null, description: string): $CancellablePromise<httprequest$0.HTTPRequest> {
-    return $Call.ByID(191914978, label, baseURL, authType, headers, openAPISpec, auth, jose, description);
+export function CreateHTTPRequest(label: string, baseURL: string, method: string, authType: httprequest$0.AuthType, headers: { [_ in string]?: string } | null, openAPISpec: string, auth: httprequest$0.AuthConfig | null, jose: httprequest$0.JOSEConfig | null, description: string): $CancellablePromise<httprequest$0.HTTPRequest> {
+    return $Call.ByID(191914978, label, baseURL, method, authType, headers, openAPISpec, auth, jose, description);
 }
 
 export function CreateList(label: string, entries: { [_ in string]?: string } | null): $CancellablePromise<list$0.List> {
@@ -228,8 +228,8 @@ export function TestHTTPRequestOperation(req: $models.TestHTTPRequestInput): $Ca
     return $Call.ByID(1262957631, req);
 }
 
-export function UpdateHTTPRequest(id: string, label: string, baseURL: string, authType: httprequest$0.AuthType, headers: { [_ in string]?: string } | null, openAPISpec: string, auth: httprequest$0.AuthConfig | null, jose: httprequest$0.JOSEConfig | null, description: string): $CancellablePromise<httprequest$0.HTTPRequest> {
-    return $Call.ByID(3983720213, id, label, baseURL, authType, headers, openAPISpec, auth, jose, description);
+export function UpdateHTTPRequest(id: string, label: string, baseURL: string, method: string, authType: httprequest$0.AuthType, headers: { [_ in string]?: string } | null, openAPISpec: string, auth: httprequest$0.AuthConfig | null, jose: httprequest$0.JOSEConfig | null, description: string): $CancellablePromise<httprequest$0.HTTPRequest> {
+    return $Call.ByID(3983720213, id, label, baseURL, method, authType, headers, openAPISpec, auth, jose, description);
 }
 
 export function UpdateList(id: string, label: string, entries: { [_ in string]?: string } | null): $CancellablePromise<list$0.List> {

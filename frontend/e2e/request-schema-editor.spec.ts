@@ -31,14 +31,12 @@ test('Authoring a schema via the Manual editor round-trips alias/path through th
   await page.getByLabel('Label').fill('Manual Schema Request')
   await page.getByLabel('Base URL').fill('https://api.example.com')
 
-  await page.getByRole('button', { name: 'Manual editor' }).click()
-
+  // The manual editor is always visible, pre-seeded with the request's
+  // one implicit operation (1:1 model) -- no mode switch or "Add
+  // operation", and Method is the request's own field (defaults GET).
   const editor = page.getByTestId('manual-schema-editor')
   await expect(editor).toBeVisible()
-  await editor.getByTestId('add-operation').click()
-
   const operation = editor.getByTestId('manual-operation')
-  await operation.getByLabel('Method').selectOption('GET')
   await operation.getByLabel('Path').fill('/widgets')
 
   await operation.getByRole('button', { name: 'Add output field' }).click()

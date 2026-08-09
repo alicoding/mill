@@ -138,7 +138,7 @@ func TestUpdateHTTPRequest_PreservesBuiltInFlag_AndUpdatesDescription(t *testing
 	}
 
 	updated, err := cfg.UpdateHTTPRequest(
-		original.ID, original.Label, original.BaseURL, original.AuthType,
+		original.ID, original.Label, original.BaseURL, original.Method, original.AuthType,
 		original.Headers, original.OpenAPISpec, original.Auth, original.JOSE, "my own notes",
 	)
 	if err != nil {
@@ -154,7 +154,7 @@ func TestUpdateHTTPRequest_PreservesBuiltInFlag_AndUpdatesDescription(t *testing
 
 func TestCreateHTTPRequest_DescriptionPersists(t *testing.T) {
 	cfg, _ := newTestConfigureService(t)
-	req, err := cfg.CreateHTTPRequest("My API", "https://example.com", httprequest.AuthNone, nil, "", nil, nil, "a helpful note")
+	req, err := cfg.CreateHTTPRequest("My API", "https://example.com", "", httprequest.AuthNone, nil, "", nil, nil, "a helpful note")
 	if err != nil {
 		t.Fatalf("CreateHTTPRequest returned error: %v", err)
 	}

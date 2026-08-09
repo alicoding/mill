@@ -1,117 +1,37 @@
 import { useState } from 'react'
-import { Button, Checkbox, FormControl, Heading, IconButton, Label, Select, Stack, Text, TextInput, Textarea, SegmentedControl } from '@primer/react'
+import { Button, FormControl, Heading, IconButton, Stack, Text, TextInput, Textarea } from '@primer/react'
 import { PlusIcon, TrashIcon } from '@primer/octicons-react'
 import { ConfigureService } from '../../bindings/github.com/alicoding/mill'
-import type { AuthConfig, HTTPRequest, JOSEConfig } from '../../bindings/github.com/alicoding/mill/internal/domain/httprequest/models'
+import type { HTTPRequest } from '../../bindings/github.com/alicoding/mill/internal/domain/httprequest/models'
 import { AuthType } from '../../bindings/github.com/alicoding/mill/internal/domain/httprequest/models'
 import { ManualSchemaEditor } from './ManualSchemaEditor'
+import { SchemaIntake, type IntakeResult } from './SchemaIntake'
+import { RequestAuthSections } from './RequestAuthSections'
 import { RequestTestPanel } from './RequestTestPanel'
 import { headersToRows, rowsToHeaders } from './requestHeaders'
 import { parseOpenAPIToOperations, synthesizeOpenAPISpec, type ManualOperation } from './openapiSynth'
-import { AUTH_LABEL, AUTH_UNIMPLEMENTED } from './authTypeLabels'
+import { EMPTY_DRAFT, authConfigFrom, draftFrom, joseConfigFrom, type HeaderRow, type RequestDraft } from './requestDraft'
 import styles from '../shared/ListCard.module.css'
 import PageContainer from '../shared/PageContainer'
 
-export interface HeaderRow {
-  key: string
-  value: string
-}
+// Kept as re-exports for existing importers (requestHeaders.ts's own
+// HeaderRow import moved to requestDraft.ts directly).
+export type { HeaderRow, RequestDraft }
 
-export interface RequestDraft {
-  label: string
-  description: string
-  baseURL: string
-  authType: AuthType
-  // Single-secret AuthTypes (APIKey/Bearer/HMAC's signing key/OAuth2's
-  // ClientSecret) all reuse this one field -- OAuth1 is the exception
-  // (RFC 5849 needs two secrets), see oauth1ConsumerSecret/
-  // oauth1TokenSecret below.
-  secret: string
-  openAPISpec: string
-  // ADR-0015's non-secret per-AuthType config -- one flat set of
-  // optional fields rather than a discriminated union, since only one
-  // group is ever populated/read at a time (driven by authType), and a
-  // flat shape keeps draftFrom/handleSave from needing a switch just to
-  // move values in and out of a nested shape.
-  oauth2TokenURL: string
-  oauth2ClientID: string
-  oauth2Scope: string
-  hmacHeaderName: string
-  oauth1ConsumerKey: string
-  oauth1Token: string
-  oauth1ConsumerSecret: string
-  oauth1TokenSecret: string
-  // Phase 3 (JOSE) -- independent of authType (httprequest.JOSEConfig's
-  // own doc comment: a request can combine JOSE with any auth scheme),
-  // so these are never conditionally reset by an authType change the
-  // way the oauth2*/hmac*/oauth1* fields above implicitly are (only the
-  // *displayed* section changes per authType, not these).
-  joseEnabled: boolean
-  joseRecipientPublicKeyPEM: string
-  joseDecryptResponse: boolean
-  // Write-only, same shape as secret/oauth1*Secret above.
-  josePrivateKeyPEM: string
-}
+// Same open set integration-http's own method field suggests (ADR-0016,
+// internal/domain/composition/integration.go) -- autocomplete hints on
+// a plain input, never a closed Select; any method string is accepted.
+const METHOD_SUGGESTIONS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS', 'QUERY']
+// The subset OpenAPI 3.x can actually express as a PathItem field --
+// used only when synthesizing the schema document, never to restrict
+// what the request itself sends (ADR-0016: kin-openapi's PathItem has
+// no QUERY/custom-verb field, so a non-representable method's schema
+// operation synthesizes as POST while execution still sends the real
+// method).
+const OPENAPI_METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS', 'TRACE']
 
-const EMPTY_DRAFT: RequestDraft = {
-  label: '', description: '', baseURL: '', authType: AuthType.AuthNone, secret: '', openAPISpec: '',
-  oauth2TokenURL: '', oauth2ClientID: '', oauth2Scope: '',
-  hmacHeaderName: '',
-  oauth1ConsumerKey: '', oauth1Token: '', oauth1ConsumerSecret: '', oauth1TokenSecret: '',
-  joseEnabled: false, joseRecipientPublicKeyPEM: '', joseDecryptResponse: false, josePrivateKeyPEM: '',
-}
-
-function draftFrom(r: HTTPRequest): RequestDraft {
-  return {
-    label: r.Label, description: r.Description, baseURL: r.BaseURL, authType: r.AuthType, secret: '', openAPISpec: r.OpenAPISpec,
-    oauth2TokenURL: r.Auth?.OAuth2?.TokenURL ?? '',
-    oauth2ClientID: r.Auth?.OAuth2?.ClientID ?? '',
-    oauth2Scope: r.Auth?.OAuth2?.Scope ?? '',
-    hmacHeaderName: r.Auth?.HMAC?.HeaderName ?? '',
-    oauth1ConsumerKey: r.Auth?.OAuth1?.ConsumerKey ?? '',
-    oauth1Token: r.Auth?.OAuth1?.Token ?? '',
-    oauth1ConsumerSecret: '',
-    oauth1TokenSecret: '',
-    joseEnabled: r.JOSE?.Enabled ?? false,
-    joseRecipientPublicKeyPEM: r.JOSE?.RecipientPublicKeyPEM ?? '',
-    joseDecryptResponse: r.JOSE?.DecryptResponse ?? false,
-    josePrivateKeyPEM: '',
-  }
-}
-
-// authConfigFrom builds the Auth param CreateHTTPRequest/UpdateHTTPRequest/
-// TestHTTPRequestOperation all now take (ADR-0015) -- null for every
-// AuthType with no non-secret config (None/APIKey/Bearer/QueryParam,
-// and the two stubs), matching HTTPRequest.Auth's own "nil unless a
-// real config-bearing AuthType" shape.
-function authConfigFrom(draft: RequestDraft): AuthConfig | null {
-  switch (draft.authType) {
-    case AuthType.AuthOAuth2:
-      return { OAuth2: { GrantType: 'client_credentials', TokenURL: draft.oauth2TokenURL, ClientID: draft.oauth2ClientID, Scope: draft.oauth2Scope, ContentType: '' }, HMAC: null, OAuth1: null }
-    case AuthType.AuthHMAC:
-      return { OAuth2: null, HMAC: { HeaderName: draft.hmacHeaderName }, OAuth1: null }
-    case AuthType.AuthOAuth1:
-      return { OAuth2: null, HMAC: null, OAuth1: { ConsumerKey: draft.oauth1ConsumerKey, Token: draft.oauth1Token } }
-    default:
-      return null
-  }
-}
-
-// joseConfigFrom builds the JOSE param (Phase 3) -- null when disabled,
-// matching HTTPRequest.JOSE's own "nil unless a request actually uses
-// it" shape. Algorithm/ContentEncryption are left empty so the domain
-// layer's own stated defaults (RSA-OAEP-256/A256GCM,
-// internal/domain/composition/jose.go) apply -- no picker for a
-// single-supported-combo decision that doesn't exist yet, same "no UI
-// for a decision that doesn't exist" discipline docs/SPEC.md §3.5
-// already applies to single-option Selects.
-function joseConfigFrom(draft: RequestDraft): JOSEConfig | null {
-  if (!draft.joseEnabled) return null
-  return {
-    Enabled: true, Algorithm: '', ContentEncryption: '',
-    RecipientPublicKeyPEM: draft.joseRecipientPublicKeyPEM,
-    DecryptResponse: draft.joseDecryptResponse,
-  }
+function emptyOperation(): ManualOperation {
+  return { path: '', method: 'GET', summary: '', inputFields: [], outputFields: [] }
 }
 
 // docs/adr/0014: the request create/edit form -- one continuous guided
@@ -147,49 +67,91 @@ export function RequestForm({
   const [error, setError] = useState('')
   const isEditing = editingRequest !== null
 
-  const [schemaMode, setSchemaMode] = useState<'openapi' | 'manual'>('openapi')
-  const [manualOperations, setManualOperations] = useState<ManualOperation[]>([])
-  const [schemaError, setSchemaError] = useState('')
+  // The manual editor is the one always-visible schema representation
+  // (the previous Paste-OpenAPI/Manual mode switch is gone) -- seeded
+  // from the existing spec's parse, or one blank implicit operation
+  // for a new request. schemaDirty tracks whether the user actually
+  // changed the schema (an editor edit or an intake load): while
+  // false, Save keeps the stored spec byte-verbatim, so opening and
+  // re-saving a request whose pasted vendor spec contains shapes the
+  // bounded parse skips (ADR-0011) never silently rewrites it.
+  const [manualOperations, setManualOperations] = useState<ManualOperation[]>(() => {
+    const spec = seed?.OpenAPISpec ?? ''
+    if (spec.trim() === '') return [emptyOperation()]
+    const { operations } = parseOpenAPIToOperations(spec)
+    return operations.length > 0 ? operations : [emptyOperation()]
+  })
+  const [schemaDirty, setSchemaDirty] = useState(false)
+  const [rawSpecOpen, setRawSpecOpen] = useState(false)
 
   const updateHeaderRow = (i: number, field: 'key' | 'value', value: string) => {
     setHeaderRows(headerRows.map((r, idx) => (idx === i ? { ...r, [field]: value } : r)))
   }
 
-  const switchToManual = () => {
-    setSchemaError('')
-    if (draft.openAPISpec.trim() === '') {
-      setManualOperations([])
+  const editOperations = (ops: ManualOperation[]) => {
+    setManualOperations(ops)
+    setSchemaDirty(true)
+  }
+
+  // An intake load (SchemaIntake.tsx): an OpenAPI document or CSV
+  // replaces the whole operation set; a JSON sample appends its
+  // inferred fields to the first operation's chosen side.
+  const applyIntake = (result: IntakeResult) => {
+    if (result.kind === 'sample') {
+      setManualOperations((ops) => {
+        const base = ops.length > 0 ? ops : [emptyOperation()]
+        return base.map((op, i) => {
+          if (i !== 0) return op
+          return result.target === 'body'
+            ? { ...op, inputFields: [...op.inputFields, ...result.fields] }
+            : { ...op, outputFields: [...op.outputFields, ...result.fields] }
+        })
+      })
     } else {
-      const { operations, errors } = parseOpenAPIToOperations(draft.openAPISpec)
-      setManualOperations(operations)
-      if (errors.length > 0) setSchemaError(errors.join(' '))
+      setManualOperations(result.operations)
     }
-    setSchemaMode('manual')
+    setSchemaDirty(true)
   }
 
-  const switchToOpenAPI = () => {
-    if (manualOperations.length > 0) {
-      setDraft({ ...draft, openAPISpec: synthesizeOpenAPISpec(manualOperations) })
-    }
-    setSchemaMode('openapi')
-  }
-
-  // Manual mode is the source of truth at Save time if it has any
-  // operations -- keeps the two representations from silently
-  // diverging (editing the table after switching away from OpenAPI
-  // mode without switching back would otherwise be lost). Computed
-  // into a local value and used directly, never round-tripped through
-  // setState first -- setState isn't synchronous, and a save handler
-  // that reads state right after setting it reads the *previous*
-  // render's stale value. Real bug this shipped with once
-  // (.claude/rules/testing.md's own documented pattern for this class
-  // of bug), not reintroduced here.
-  const effectiveSpec = schemaMode === 'manual' && manualOperations.length > 0
-    ? synthesizeOpenAPISpec(manualOperations)
+  // The schema document synthesized from the editor: a lone operation
+  // takes the request's own Method (clamped to what OpenAPI can
+  // express -- see OPENAPI_METHODS) and defaults its path to "/";
+  // multi-operation sets keep their own per-operation method/path.
+  const requestMethodUpper = (draft.method.trim() || 'GET').toUpperCase()
+  const schemaOpMethod = OPENAPI_METHODS.includes(requestMethodUpper) ? requestMethodUpper : 'POST'
+  const toSchemaOps = (ops: ManualOperation[]): ManualOperation[] => ops.map((op) => ({
+    ...op,
+    path: op.path.trim() === '' ? '/' : op.path,
+    method: ops.length === 1 ? schemaOpMethod : op.method,
+  }))
+  const opsHaveContent = manualOperations.some(
+    (op) => op.inputFields.length > 0 || op.outputFields.length > 0 || op.path.trim() !== '' || op.responseExtractPath,
+  )
+  // A method change on a request whose single declared operation came
+  // from its stored spec also regenerates the spec -- otherwise the
+  // schema operation would keep the old method while the request sends
+  // the new one, and the two would silently disagree.
+  const seedMethodUpper = (seed?.Method || 'GET').toUpperCase()
+  const effectiveDirty = schemaDirty
+    || (manualOperations.length === 1 && draft.openAPISpec.trim() !== '' && requestMethodUpper !== seedMethodUpper)
+  // Computed into a local value and used directly at Save, never
+  // round-tripped through setState first -- setState isn't synchronous
+  // (.claude/rules/testing.md's own documented bug pattern).
+  const effectiveSpec = effectiveDirty
+    ? (opsHaveContent ? synthesizeOpenAPISpec(toSchemaOps(manualOperations)) : '')
     : draft.openAPISpec
-  const effectiveOperations = schemaMode === 'manual'
-    ? manualOperations
+  const effectiveOperations = effectiveDirty
+    ? (opsHaveContent ? toSchemaOps(manualOperations) : [])
     : parseOpenAPIToOperations(draft.openAPISpec).operations
+
+  // Direct raw-spec editing (the disclosure textarea below) makes the
+  // raw text authoritative again and re-seeds the editor from it.
+  const editRawSpec = (specText: string) => {
+    setDraft({ ...draft, openAPISpec: specText })
+    setSchemaDirty(false)
+    const { operations } = parseOpenAPIToOperations(specText)
+    setManualOperations(operations.length > 0 ? operations : [emptyOperation()])
+  }
 
   const handleSave = async () => {
     const finalDraft = { ...draft, openAPISpec: effectiveSpec }
@@ -199,8 +161,8 @@ export function RequestForm({
       const auth = authConfigFrom(finalDraft)
       const jose = joseConfigFrom(finalDraft)
       const saved = editingRequest
-        ? await ConfigureService.UpdateHTTPRequest(editingRequest.ID, finalDraft.label, finalDraft.baseURL, finalDraft.authType, headers, finalDraft.openAPISpec, auth, jose, finalDraft.description)
-        : await ConfigureService.CreateHTTPRequest(finalDraft.label, finalDraft.baseURL, finalDraft.authType, headers, finalDraft.openAPISpec, auth, jose, finalDraft.description)
+        ? await ConfigureService.UpdateHTTPRequest(editingRequest.ID, finalDraft.label, finalDraft.baseURL, finalDraft.method, finalDraft.authType, headers, finalDraft.openAPISpec, auth, jose, finalDraft.description)
+        : await ConfigureService.CreateHTTPRequest(finalDraft.label, finalDraft.baseURL, finalDraft.method, finalDraft.authType, headers, finalDraft.openAPISpec, auth, jose, finalDraft.description)
       if (finalDraft.authType === AuthType.AuthOAuth1) {
         if (finalDraft.oauth1ConsumerSecret || finalDraft.oauth1TokenSecret) {
           await ConfigureService.SetHTTPRequestOAuth1Secret(saved.ID, finalDraft.oauth1ConsumerSecret, finalDraft.oauth1TokenSecret)
@@ -228,10 +190,29 @@ export function RequestForm({
               <FormControl.Label>Label</FormControl.Label>
               <TextInput value={draft.label} onChange={(e) => setDraft({ ...draft, label: e.target.value })} block />
             </FormControl>
-            <FormControl>
-              <FormControl.Label>Base URL</FormControl.Label>
-              <TextInput value={draft.baseURL} onChange={(e) => setDraft({ ...draft, baseURL: e.target.value })} placeholder="https://api.example.com" block />
-            </FormControl>
+            {/* Method + URL side by side, the first thing after the
+                label -- Postman/Bruno's own request row (ADR-0016
+                Phase B). The transport lives here; the Schema section
+                below describes only the payload. */}
+            <Stack direction="horizontal" gap="condensed" align="end">
+              <FormControl>
+                <FormControl.Label>Method</FormControl.Label>
+                <TextInput
+                  value={draft.method}
+                  onChange={(e) => setDraft({ ...draft, method: e.target.value })}
+                  list="request-method-suggestions"
+                  style={{ width: '110px' }}
+                  data-testid="request-method"
+                />
+              </FormControl>
+              <datalist id="request-method-suggestions">
+                {METHOD_SUGGESTIONS.map((m) => <option key={m} value={m} />)}
+              </datalist>
+              <FormControl style={{ flexGrow: 1 }}>
+                <FormControl.Label>Base URL</FormControl.Label>
+                <TextInput value={draft.baseURL} onChange={(e) => setDraft({ ...draft, baseURL: e.target.value })} placeholder="https://api.example.com" block />
+              </FormControl>
+            </Stack>
             <FormControl>
               <FormControl.Label>Description</FormControl.Label>
               <FormControl.Caption>Optional -- what this request is for, or any caveat worth noting.</FormControl.Caption>
@@ -240,156 +221,7 @@ export function RequestForm({
           </Stack>
         </section>
 
-        <section>
-          <Heading as="h3" variant="small" className={styles.sectionHeading}>Auth</Heading>
-          <Stack direction="vertical" gap="condensed">
-            <FormControl>
-              <FormControl.Label>Auth type</FormControl.Label>
-              <Select value={draft.authType} onChange={(e) => setDraft({ ...draft, authType: e.target.value as AuthType })}>
-                {Object.values(AuthType).filter((v) => v !== '').map((v) => (
-                  <Select.Option key={v} value={v}>{AUTH_LABEL[v] ?? v}</Select.Option>
-                ))}
-              </Select>
-            </FormControl>
-
-            {AUTH_UNIMPLEMENTED.has(draft.authType) && (
-              <Stack direction="horizontal" gap="condensed" align="center">
-                <Label variant="attention" size="small">Not yet implemented</Label>
-                <Text as="p" size="small" className={styles.muted}>
-                  This auth type is registered (docs/adr/0015) but its strategy isn&apos;t built yet -- a
-                  workflow run through this request will fail with a clear error rather than a guessed
-                  signature. Selectable now so the request can be configured ahead of that work landing.
-                </Text>
-              </Stack>
-            )}
-
-            {draft.authType === AuthType.AuthOAuth2 && (
-              <>
-                <FormControl>
-                  <FormControl.Label>Token URL</FormControl.Label>
-                  <TextInput value={draft.oauth2TokenURL} onChange={(e) => setDraft({ ...draft, oauth2TokenURL: e.target.value })} placeholder="https://auth.example.com/oauth/token" block />
-                </FormControl>
-                <FormControl>
-                  <FormControl.Label>Client ID</FormControl.Label>
-                  <TextInput value={draft.oauth2ClientID} onChange={(e) => setDraft({ ...draft, oauth2ClientID: e.target.value })} block />
-                </FormControl>
-                <FormControl>
-                  <FormControl.Label>Scope</FormControl.Label>
-                  <FormControl.Caption>Optional -- leave blank to request no specific scope.</FormControl.Caption>
-                  <TextInput value={draft.oauth2Scope} onChange={(e) => setDraft({ ...draft, oauth2Scope: e.target.value })} block />
-                </FormControl>
-              </>
-            )}
-
-            {draft.authType === AuthType.AuthHMAC && (
-              <FormControl>
-                <FormControl.Label>Signature header name</FormControl.Label>
-                <FormControl.Caption>Defaults to X-Signature when left blank.</FormControl.Caption>
-                <TextInput value={draft.hmacHeaderName} onChange={(e) => setDraft({ ...draft, hmacHeaderName: e.target.value })} placeholder="X-Signature" block />
-              </FormControl>
-            )}
-
-            {draft.authType === AuthType.AuthOAuth1 && (
-              <>
-                <FormControl>
-                  <FormControl.Label>Consumer key</FormControl.Label>
-                  <TextInput value={draft.oauth1ConsumerKey} onChange={(e) => setDraft({ ...draft, oauth1ConsumerKey: e.target.value })} block />
-                </FormControl>
-                <FormControl>
-                  <FormControl.Label>Token</FormControl.Label>
-                  <FormControl.Caption>Optional -- omit for 2-legged OAuth 1.0a (RFC 5849).</FormControl.Caption>
-                  <TextInput value={draft.oauth1Token} onChange={(e) => setDraft({ ...draft, oauth1Token: e.target.value })} block />
-                </FormControl>
-              </>
-            )}
-
-            {draft.authType === AuthType.AuthOAuth1 ? (
-              <>
-                <FormControl>
-                  <FormControl.Label>Consumer secret</FormControl.Label>
-                  <FormControl.Caption>
-                    Write-only -- stored in the OS keychain, never readable back through Mill.
-                    {isEditing && ' Leave blank to keep the existing secret.'}
-                  </FormControl.Caption>
-                  <TextInput type="password" value={draft.oauth1ConsumerSecret} onChange={(e) => setDraft({ ...draft, oauth1ConsumerSecret: e.target.value })} block />
-                </FormControl>
-                <FormControl>
-                  <FormControl.Label>Token secret</FormControl.Label>
-                  <FormControl.Caption>Optional -- omit for 2-legged OAuth 1.0a, same as Token above.</FormControl.Caption>
-                  <TextInput type="password" value={draft.oauth1TokenSecret} onChange={(e) => setDraft({ ...draft, oauth1TokenSecret: e.target.value })} block />
-                </FormControl>
-              </>
-            ) : draft.authType !== AuthType.AuthNone && (
-              <FormControl>
-                <FormControl.Label>{draft.authType === AuthType.AuthOAuth2 ? 'Client secret' : 'Secret'}</FormControl.Label>
-                <FormControl.Caption>
-                  Write-only -- stored in the OS keychain, never readable back through Mill.
-                  {isEditing && ' Leave blank to keep the existing secret.'}
-                </FormControl.Caption>
-                <TextInput type="password" value={draft.secret} onChange={(e) => setDraft({ ...draft, secret: e.target.value })} block />
-              </FormControl>
-            )}
-          </Stack>
-        </section>
-
-        <section>
-          <Heading as="h3" variant="small" className={styles.sectionHeading}>JOSE encryption</Heading>
-          <Stack direction="vertical" gap="condensed">
-            <Text as="p" size="small" className={styles.muted}>
-              Optional, independent of Auth type above (Phase 3, ADR-0015) -- encrypts what Mill sends to
-              this request, and optionally decrypts what it receives back (JWE, RFC 7516).
-            </Text>
-            <Stack direction="horizontal" gap="condensed" align="center">
-              <Checkbox
-                checked={draft.joseEnabled}
-                onChange={(e) => setDraft({ ...draft, joseEnabled: e.target.checked })}
-                data-testid="jose-enabled-checkbox"
-              />
-              <Text size="small">Enable JOSE encryption</Text>
-            </Stack>
-            {draft.joseEnabled && (
-              <>
-                <FormControl>
-                  <FormControl.Label>Recipient public key (PEM)</FormControl.Label>
-                  <FormControl.Caption>The vendor&apos;s RSA public key -- used to encrypt the outgoing request body. Not a secret.</FormControl.Caption>
-                  <Textarea
-                    value={draft.joseRecipientPublicKeyPEM}
-                    onChange={(e) => setDraft({ ...draft, joseRecipientPublicKeyPEM: e.target.value })}
-                    rows={4}
-                    block
-                    data-testid="jose-recipient-public-key"
-                  />
-                </FormControl>
-                <Stack direction="horizontal" gap="condensed" align="center">
-                  <Checkbox
-                    checked={draft.joseDecryptResponse}
-                    onChange={(e) => setDraft({ ...draft, joseDecryptResponse: e.target.checked })}
-                    aria-label="Decrypt response"
-                    data-testid="jose-decrypt-response-checkbox"
-                  />
-                  <Text size="small">Decrypt response (this request&apos;s replies are also JWE-encrypted)</Text>
-                </Stack>
-                {draft.joseDecryptResponse && (
-                  <FormControl>
-                    <FormControl.Label>Mill&apos;s private key (PEM)</FormControl.Label>
-                    <FormControl.Caption>
-                      Write-only -- stored in the OS keychain, separately from the Auth secret above, never
-                      readable back through Mill.
-                      {isEditing && ' Leave blank to keep the existing key.'}
-                    </FormControl.Caption>
-                    <Textarea
-                      value={draft.josePrivateKeyPEM}
-                      onChange={(e) => setDraft({ ...draft, josePrivateKeyPEM: e.target.value })}
-                      rows={4}
-                      block
-                      data-testid="jose-private-key"
-                    />
-                  </FormControl>
-                )}
-              </>
-            )}
-          </Stack>
-        </section>
+        <RequestAuthSections draft={draft} setDraft={setDraft} isEditing={isEditing} />
 
         <section>
           <Heading as="h3" variant="small" className={styles.sectionHeading}>Headers</Heading>
@@ -415,25 +247,35 @@ export function RequestForm({
           <Heading as="h3" variant="small" className={styles.sectionHeading}>Schema</Heading>
           <Stack direction="vertical" gap="normal">
             <Text as="p" size="small" className={styles.muted}>
-              Declares the typed input/output fields a workflow node can bind Attributes to
-              (ADR-0007). Leave empty to keep using a literal request body.
+              The payload&apos;s structure only -- typed input/output fields a workflow node can bind
+              Attributes to (ADR-0007). Method and URL live above; they are never part of the schema.
+              Leave empty to keep using a literal request body.
             </Text>
-            <SegmentedControl aria-label="Schema authoring mode" onChange={(i) => (i === 0 ? switchToOpenAPI() : switchToManual())}>
-              <SegmentedControl.Button selected={schemaMode === 'openapi'}>Paste OpenAPI</SegmentedControl.Button>
-              <SegmentedControl.Button selected={schemaMode === 'manual'}>Manual editor</SegmentedControl.Button>
-            </SegmentedControl>
-            {schemaError && <Text as="p" size="small" className={styles.error}>{schemaError}</Text>}
-
-            {schemaMode === 'openapi' ? (
+            <SchemaIntake onLoad={applyIntake} />
+            {manualOperations.length > 1 && (
+              <Text as="p" size="small" className={styles.muted} data-testid="multi-operation-note">
+                This request&apos;s stored schema declares {manualOperations.length} operations. A Mill
+                request is one call (1:1 with its operation) -- remove the extras below, or Duplicate
+                the request once per operation.
+              </Text>
+            )}
+            <ManualSchemaEditor operations={manualOperations} onChange={editOperations} requestMethod={draft.method} />
+            <Button
+              size="small"
+              variant="invisible"
+              onClick={() => setRawSpecOpen(!rawSpecOpen)}
+              data-testid="toggle-raw-openapi"
+            >
+              {rawSpecOpen ? 'Hide raw OpenAPI' : 'View raw OpenAPI'}
+            </Button>
+            {rawSpecOpen && (
               <Textarea
-                value={draft.openAPISpec}
-                onChange={(e) => setDraft({ ...draft, openAPISpec: e.target.value })}
+                value={effectiveDirty ? effectiveSpec : draft.openAPISpec}
+                onChange={(e) => editRawSpec(e.target.value)}
                 rows={6}
                 block
                 data-testid="request-openapi-spec"
               />
-            ) : (
-              <ManualSchemaEditor operations={manualOperations} onChange={setManualOperations} />
             )}
           </Stack>
         </section>

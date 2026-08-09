@@ -28,6 +28,7 @@
     "randexp": "^0.5.3",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
+    "react-dropzone": "^20.1.0",
     "react-is": "^19.2.8",
     "react-querybuilder": "^8.22.3",
     "svg-pan-zoom": "^3.6.2",

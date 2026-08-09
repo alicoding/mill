@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/alicoding/mill/internal/adapters/openapispec"
 	"github.com/alicoding/mill/internal/domain/composition"
@@ -72,6 +73,7 @@ func (c *ConfigureService) resolveHTTPRequest(id string) (composition.ResolvedHT
 
 	return composition.ResolvedHTTPRequest{
 		BaseURL:           req.BaseURL,
+		Method:            req.Method,
 		AuthType:          req.AuthType,
 		Headers:           req.Headers,
 		Secret:            secret,
@@ -93,15 +95,15 @@ func (c *ConfigureService) HTTPRequests() []httprequest.HTTPRequest {
 }
 
 // CreateHTTPRequest/UpdateHTTPRequest's positional-param list is
-// getting long (8 now, after Description) -- a real ergonomics cost
-// (this session already had to patch every call site twice via
-// scripted regex when Auth/JOSE were added), worth an options-struct
-// pass at some point, but that's a separate, bigger refactor than "add
-// a Description field" -- not done speculatively here.
-func (c *ConfigureService) CreateHTTPRequest(label, baseURL string, authType httprequest.AuthType, headers map[string]string, openAPISpec string, auth *httprequest.AuthConfig, jose *httprequest.JOSEConfig, description string) (httprequest.HTTPRequest, error) {
+// getting long (9 now, after ADR-0016 Phase B's method) -- a real
+// ergonomics cost (this session already had to patch every call site
+// twice via scripted regex when Auth/JOSE were added), worth an
+// options-struct pass at some point, but that's a separate, bigger
+// refactor than "add a field" -- not done speculatively here.
+func (c *ConfigureService) CreateHTTPRequest(label, baseURL, method string, authType httprequest.AuthType, headers map[string]string, openAPISpec string, auth *httprequest.AuthConfig, jose *httprequest.JOSEConfig, description string) (httprequest.HTTPRequest, error) {
 	req := httprequest.HTTPRequest{
 		ID: newSlugID(label, "request"), Label: label,
-		BaseURL: baseURL, AuthType: authType, Headers: headers, OpenAPISpec: openAPISpec, Auth: auth, JOSE: jose,
+		BaseURL: baseURL, Method: strings.TrimSpace(method), AuthType: authType, Headers: headers, OpenAPISpec: openAPISpec, Auth: auth, JOSE: jose,
 		Description: description,
 	}
 	if err := httprequest.Validate(req); err != nil {
@@ -119,9 +121,9 @@ func (c *ConfigureService) CreateHTTPRequest(label, baseURL string, authType htt
 	return req, nil
 }
 
-func (c *ConfigureService) UpdateHTTPRequest(id, label, baseURL string, authType httprequest.AuthType, headers map[string]string, openAPISpec string, auth *httprequest.AuthConfig, jose *httprequest.JOSEConfig, description string) (httprequest.HTTPRequest, error) {
+func (c *ConfigureService) UpdateHTTPRequest(id, label, baseURL, method string, authType httprequest.AuthType, headers map[string]string, openAPISpec string, auth *httprequest.AuthConfig, jose *httprequest.JOSEConfig, description string) (httprequest.HTTPRequest, error) {
 	req := httprequest.HTTPRequest{
-		ID: id, Label: label, BaseURL: baseURL, AuthType: authType, Headers: headers,
+		ID: id, Label: label, BaseURL: baseURL, Method: strings.TrimSpace(method), AuthType: authType, Headers: headers,
 		OpenAPISpec: openAPISpec, Auth: auth, JOSE: jose, Description: description,
 	}
 	if err := httprequest.Validate(req); err != nil {

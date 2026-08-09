@@ -19,7 +19,11 @@ import (
 // this is injected once via SetHTTPRequestLookup instead of composition
 // depending on ConfigureService directly.
 type ResolvedHTTPRequest struct {
-	BaseURL  string
+	BaseURL string
+	// Method is the request's own HTTP method (ADR-0016 Phase B) --
+	// used when the integration-http node's own method config is blank;
+	// empty here too means GET.
+	Method   string
 	AuthType httprequest.AuthType
 	Headers  map[string]string
 	Secret   string
@@ -127,8 +131,8 @@ func init() {
 			},
 			{
 				Key: "method", Label: "Method",
-				Description: "HTTP method for this call -- any method is accepted, not just the suggested common ones.",
-				Default:     http.MethodGet, Type: FieldText, Suggestions: httpMethodSuggestions,
+				Description: "Optional override -- leave blank to use the request's own method (ADR-0016 Phase B). Any method is accepted, not just the suggested common ones.",
+				Default:     "", Type: FieldText, Suggestions: httpMethodSuggestions,
 			},
 			{
 				Key: "bodyTemplate", Label: "Body",
@@ -140,6 +144,18 @@ func init() {
 		rc, err := lookupHTTPRequestFn(node.Config["requestId"])
 		if err != nil {
 			return ctx, fmt.Errorf("integration-http: %w", err)
+		}
+
+		// Method precedence (ADR-0016 Phase B): the node's own explicit
+		// override wins, then the request's own Method, then GET --
+		// covers nodes saved before the entity-level Method existed
+		// (their persisted "GET" default keeps behaving identically).
+		method := node.Config["method"]
+		if method == "" {
+			method = rc.Method
+		}
+		if method == "" {
+			method = http.MethodGet
 		}
 
 		headers := make(map[string]string, len(rc.Headers)+1)
@@ -192,7 +208,7 @@ func init() {
 		// be silently dropped by a bindings-resolved query already
 		// having been encoded into urlPath (query stays unencoded until
 		// the URL is assembled below, for exactly this reason).
-		if err := ApplyAuth(rc, node.Config["method"], urlPath, headers, query, body); err != nil {
+		if err := ApplyAuth(rc, method, urlPath, headers, query, body); err != nil {
 			return ctx, fmt.Errorf("integration-http: %w", err)
 		}
 
@@ -202,7 +218,7 @@ func init() {
 		}
 
 		resp, err := httpconnector.Execute(httpconnector.Request{
-			Method:  node.Config["method"],
+			Method:  method,
 			URL:     fullURL,
 			Headers: headers,
 			Body:    body,

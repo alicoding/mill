@@ -116,7 +116,7 @@ func TestMillMCPService_RequestResource_NeverLeaksSecretOverTheWire(t *testing.T
 	comp := NewCompositionService(store)
 	cfg := NewConfigureService(store, comp, testCredentialStore{})
 
-	req, err := cfg.CreateHTTPRequest("MCP e2e request", "https://example.com", httprequest.AuthAPIKey, nil, "", nil, nil, "")
+	req, err := cfg.CreateHTTPRequest("MCP e2e request", "https://example.com", "", httprequest.AuthAPIKey, nil, "", nil, nil, "")
 	if err != nil {
 		t.Fatalf("CreateHTTPRequest: %v", err)
 	}

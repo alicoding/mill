@@ -81,7 +81,7 @@ func TestTestHTTPRequestOperation_FallsBackToKeychainSecret_WhenSecretBlank(t *t
 	defer srv.Close()
 
 	cfg, _ := newTestConfigureService(t)
-	req, err := cfg.CreateHTTPRequest("My API", srv.URL, httprequest.AuthBearer, nil, testOpenAPISpec, nil, nil, "")
+	req, err := cfg.CreateHTTPRequest("My API", srv.URL, "", httprequest.AuthBearer, nil, testOpenAPISpec, nil, nil, "")
 	if err != nil {
 		t.Fatalf("CreateHTTPRequest returned error: %v", err)
 	}
@@ -114,7 +114,7 @@ func TestTestHTTPRequestOperation_ExplicitSecretOverridesKeychain(t *testing.T) 
 	defer srv.Close()
 
 	cfg, _ := newTestConfigureService(t)
-	req, err := cfg.CreateHTTPRequest("My API", srv.URL, httprequest.AuthBearer, nil, testOpenAPISpec, nil, nil, "")
+	req, err := cfg.CreateHTTPRequest("My API", srv.URL, "", httprequest.AuthBearer, nil, testOpenAPISpec, nil, nil, "")
 	if err != nil {
 		t.Fatalf("CreateHTTPRequest returned error: %v", err)
 	}
@@ -145,7 +145,7 @@ func TestTestHTTPRequestOperation_NeverPersistsTheSecret(t *testing.T) {
 	defer srv.Close()
 
 	cfg, _ := newTestConfigureService(t)
-	req, err := cfg.CreateHTTPRequest("My API", srv.URL, httprequest.AuthBearer, nil, testOpenAPISpec, nil, nil, "")
+	req, err := cfg.CreateHTTPRequest("My API", srv.URL, "", httprequest.AuthBearer, nil, testOpenAPISpec, nil, nil, "")
 	if err != nil {
 		t.Fatalf("CreateHTTPRequest returned error: %v", err)
 	}
