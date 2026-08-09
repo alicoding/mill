@@ -209,6 +209,7 @@ func (c *ConfigureService) restore() {
 		c.requests = httprequest.BuiltIn()
 		c.seedBuiltInSecrets()
 	}
+	c.topUpBuiltInRequests()
 	if raw, ok := c.store.Get(listsKey).(string); ok && raw != "" {
 		var lists []list.List
 		if err := json.Unmarshal([]byte(raw), &lists); err == nil {

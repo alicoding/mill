@@ -169,6 +169,15 @@ type Workflow struct {
 	// with this prototype) vs. one a user composed and that persisted --
 	// the UI badges/protects built-ins accordingly.
 	BuiltIn bool
+	// Lifecycle & versioning (docs/adr/0021, versioning.go). The head
+	// fields above are the DRAFT; Versions are immutable snapshots;
+	// PublishedVersion (0 = never published) is what triggers and
+	// child-workflow calls execute. Disabled -- not Active -- so every
+	// workflow persisted before this field existed unmarshals as
+	// active, migration-free (JSON zero value).
+	Disabled         bool
+	PublishedVersion int
+	Versions         []WorkflowVersion
 }
 
 // ExecContext threads through a workflow's execution. Payload is the

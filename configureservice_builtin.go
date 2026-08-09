@@ -1,6 +1,10 @@
 package main
 
 import (
+	"encoding/json"
+	"sort"
+
+	"github.com/alicoding/mill/internal/adapters/settings"
 	"github.com/alicoding/mill/internal/domain/composition"
 	"github.com/alicoding/mill/internal/domain/httprequest"
 )
@@ -52,4 +56,88 @@ func (c *ConfigureService) seedBuiltInSecrets() {
 		_ = c.credentials.Set(id, secret)
 	}
 	_ = c.credentials.Set(httprequest.ExampleOAuth1ID, composition.EncodeOAuth1Secret(builtInOAuth1ConsumerSecret, ""))
+}
+
+// --- seed tombstones (shared by CompositionService/ConfigureService) ---
+
+// seedTombstonesKey records built-in example IDs the user deliberately
+// deleted, so top-up seeding (topUpBuiltIns on each service) never
+// resurrects them -- seeds are top-up rather than fresh-install-only by
+// direct user decision ("every feature we build needs proof with a
+// seeded example" -- a new example must reach an existing instance),
+// and the tombstone is what keeps §2.2's fully-deletable principle
+// true at the same time.
+const seedTombstonesKey = "seed-tombstones"
+
+func loadTombstones(store settings.Store) map[string]bool {
+	out := map[string]bool{}
+	raw, ok := store.Get(seedTombstonesKey).(string)
+	if !ok || raw == "" {
+		return out
+	}
+	var ids []string
+	if err := json.Unmarshal([]byte(raw), &ids); err != nil {
+		return out
+	}
+	for _, id := range ids {
+		out[id] = true
+	}
+	return out
+}
+
+// recordTombstone persists id into the tombstone list -- call only for
+// IDs that belong to a built-in seed set (a user-authored ID can never
+// be resurrected by top-up, so tombstoning it would be dead weight).
+func recordTombstone(store settings.Store, id string) {
+	tombstones := loadTombstones(store)
+	if tombstones[id] {
+		return
+	}
+	tombstones[id] = true
+	ids := make([]string, 0, len(tombstones))
+	for t := range tombstones {
+		ids = append(ids, t)
+	}
+	sort.Strings(ids)
+	data, err := json.Marshal(ids)
+	if err != nil {
+		return
+	}
+	_ = store.Set(seedTombstonesKey, string(data))
+}
+
+// topUpBuiltInRequests mirrors CompositionService.topUpBuiltIns for the
+// seeded example HTTPRequests: any built-in whose ID is neither present
+// nor tombstoned is appended (and its demo secret seeded), so a newly
+// shipped example reaches existing instances too.
+func (c *ConfigureService) topUpBuiltInRequests() {
+	tombstones := loadTombstones(c.store)
+	c.mu.Lock()
+	have := make(map[string]bool, len(c.requests))
+	for _, r := range c.requests {
+		have[r.ID] = true
+	}
+	var added []httprequest.HTTPRequest
+	for _, r := range httprequest.BuiltIn() {
+		if !have[r.ID] && !tombstones[r.ID] {
+			c.requests = append(c.requests, r)
+			added = append(added, r)
+		}
+	}
+	c.mu.Unlock()
+	if len(added) == 0 {
+		return
+	}
+	c.persistHTTPRequests()
+	// Seed demo secrets only for the newly added examples -- never
+	// re-Set an already-present example's secret, which the user may
+	// have replaced with their own.
+	for _, r := range added {
+		if secret, ok := builtInSecrets[r.ID]; ok {
+			_ = c.credentials.Set(r.ID, secret)
+		}
+		if r.ID == httprequest.ExampleOAuth1ID {
+			_ = c.credentials.Set(r.ID, composition.EncodeOAuth1Secret(builtInOAuth1ConsumerSecret, ""))
+		}
+	}
 }

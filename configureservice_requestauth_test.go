@@ -246,12 +246,14 @@ func TestCreateHTTPRequest_AuthConfig_PersistsAndSurvivesRestore(t *testing.T) {
 	}
 
 	restarted := NewConfigureService(store, comp, credential.New())
-	got := restarted.HTTPRequests()
-	if len(got) != 1 || got[0].Auth == nil || got[0].Auth.OAuth2 == nil {
-		t.Fatalf("HTTPRequests() after restore = %+v, want Auth to survive persist/restore", got)
+	// Find by ID -- top-up seeding appends built-in examples alongside
+	// user data, so list-shape assertions no longer hold.
+	restored, found := findRequestByID(restarted.HTTPRequests(), req.ID)
+	if !found || restored.Auth == nil || restored.Auth.OAuth2 == nil {
+		t.Fatalf("request %s after restore = %+v (found=%v), want Auth to survive persist/restore", req.ID, restored, found)
 	}
-	if got[0].Auth.OAuth2.TokenURL != "https://auth.example.com/token" || got[0].Auth.OAuth2.Scope != "read" {
-		t.Errorf("restored Auth.OAuth2 = %+v, want the original TokenURL/Scope", got[0].Auth.OAuth2)
+	if restored.Auth.OAuth2.TokenURL != "https://auth.example.com/token" || restored.Auth.OAuth2.Scope != "read" {
+		t.Errorf("restored Auth.OAuth2 = %+v, want the original TokenURL/Scope", restored.Auth.OAuth2)
 	}
 
 	rc, err := restarted.resolveHTTPRequest(req.ID)
@@ -341,12 +343,12 @@ func TestCreateHTTPRequest_JOSEConfig_PersistsAndSurvivesRestore(t *testing.T) {
 	}
 
 	restarted := NewConfigureService(store, comp, credential.New())
-	got := restarted.HTTPRequests()
-	if len(got) != 1 || got[0].JOSE == nil || !got[0].JOSE.Enabled {
-		t.Fatalf("HTTPRequests() after restore = %+v, want JOSE to survive persist/restore", got)
+	restored, found := findRequestByID(restarted.HTTPRequests(), req.ID)
+	if !found || restored.JOSE == nil || !restored.JOSE.Enabled {
+		t.Fatalf("request %s after restore = %+v (found=%v), want JOSE to survive persist/restore", req.ID, restored, found)
 	}
-	if got[0].JOSE.RecipientPublicKeyPEM != jose.RecipientPublicKeyPEM {
-		t.Errorf("restored JOSE.RecipientPublicKeyPEM = %q, want %q", got[0].JOSE.RecipientPublicKeyPEM, jose.RecipientPublicKeyPEM)
+	if restored.JOSE.RecipientPublicKeyPEM != jose.RecipientPublicKeyPEM {
+		t.Errorf("restored JOSE.RecipientPublicKeyPEM = %q, want %q", restored.JOSE.RecipientPublicKeyPEM, jose.RecipientPublicKeyPEM)
 	}
 
 	rc, err := restarted.resolveHTTPRequest(req.ID)

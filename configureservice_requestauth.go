@@ -177,9 +177,15 @@ func (c *ConfigureService) DeleteHTTPRequest(id string) error {
 		c.mu.Unlock()
 		return fmt.Errorf("no request with id %q", id)
 	}
+	wasBuiltIn := c.requests[idx].BuiltIn
 	c.requests = append(c.requests[:idx], c.requests[idx+1:]...)
 	c.mu.Unlock()
 
+	// A deleted built-in gets a tombstone so top-up seeding never
+	// resurrects it (configureservice_builtin.go).
+	if wasBuiltIn {
+		recordTombstone(c.store, id)
+	}
 	c.persistHTTPRequests()
 	_ = c.credentials.Delete(id)
 	_ = c.credentials.Delete(joseKeychainID(id))

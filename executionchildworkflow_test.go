@@ -26,6 +26,12 @@ func TestRunChildWorkflow_TracksRealParentChildRelationship(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CreateWorkflow (child) returned error: %v", err)
 	}
+	// ADR-0021: a child call executes the published version -- publish
+	// the child explicitly (CreateWorkflow leaves a new workflow as an
+	// unpublished draft; migratePublish only covers pre-ADR data).
+	if _, err := comp.PublishWorkflow(childWF.ID); err != nil {
+		t.Fatalf("PublishWorkflow (child): %v", err)
+	}
 
 	parentWF, err := comp.CreateWorkflow("E2E parent", "", []composition.Node{
 		{ID: "trig", NodeTypeID: "trigger-manual"},
@@ -81,6 +87,12 @@ func TestRunChildWorkflow_IdempotencyKey_PreventsDuplicateChildRuns(t *testing.T
 	})
 	if err != nil {
 		t.Fatalf("CreateWorkflow (child) returned error: %v", err)
+	}
+	// ADR-0021: a child call executes the published version -- publish
+	// the child explicitly (CreateWorkflow leaves a new workflow as an
+	// unpublished draft; migratePublish only covers pre-ADR data).
+	if _, err := comp.PublishWorkflow(childWF.ID); err != nil {
+		t.Fatalf("PublishWorkflow (child): %v", err)
 	}
 
 	parentWF, err := comp.CreateWorkflow("E2E idempotent parent", "", []composition.Node{
@@ -147,7 +159,7 @@ func TestSeededParentChildExample_TypedInputAndOutput_RunsEndToEnd(t *testing.T)
 	if summary.Status != "SUCCESS" {
 		t.Fatalf("seeded parent run status = %q, want SUCCESS (error: %s)", summary.Status, summary.Error)
 	}
-	want := "hello from the parent workflow\n\n(processed by the child workflow)"
+	want := "hello from the parent workflow\n\n(processed by the child workflow, v1)"
 	if summary.Output != want {
 		t.Errorf("seeded parent output = %q, want %q (typed input bound into the child, child's marker appended)", summary.Output, want)
 	}

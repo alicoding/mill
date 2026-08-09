@@ -78,6 +78,9 @@ type runInput struct {
 	// caller that hasn't adopted the test-input form yet) behaves exactly
 	// as before this field existed.
 	Values map[string]string
+	// Version records which definition snapshot this run executed
+	// (docs/adr/0021) -- 0 means the draft head (a test run).
+	Version int
 }
 
 // RunStep is one node's recorded execution within a run, for the
@@ -190,14 +193,23 @@ func (e *ExecutionService) RunWorkflow(workflowID string, kind RunKind, values m
 		return RunSummary{}, fmt.Errorf("unknown workflow: %s", workflowID)
 	}
 
+	// ADR-0021: a test run executes the draft head (the pre-publish
+	// check); a triggered run executes the published snapshot and is
+	// rejected on a disabled or never-published workflow.
+	nodes, edges, attrs, version, err := composition.ResolveRunnable(wf, kind == RunKindTest, 0)
+	if err != nil {
+		return RunSummary{}, err
+	}
+
 	runID := uuid.NewString()
 	handle, err := execution.RunWorkflow(e.ctx, e.runWorkflow, runInput{
 		WorkflowID: wf.ID,
-		Nodes:      wf.Nodes,
-		Edges:      wf.Edges,
-		Attributes: wf.Attributes,
+		Nodes:      nodes,
+		Edges:      edges,
+		Attributes: attrs,
 		Kind:       kind,
 		Values:     values,
+		Version:    version,
 	}, execution.WithWorkflowID(runID))
 	if err != nil {
 		return RunSummary{}, fmt.Errorf("start run: %w", err)

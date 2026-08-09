@@ -171,7 +171,24 @@ func (s *TriggerService) Sync(workflows []composition.Workflow) {
 	}
 
 	for _, wf := range workflows {
-		nodeTypeID, config, ok := trigger.ExtractTrigger(wf)
+		// ADR-0021: a disabled or never-published workflow's triggers
+		// don't even arm -- going live is the explicit act (Publish),
+		// and disabling pauses production while a test run stays
+		// allowed. The published SNAPSHOT is what a fire executes
+		// (ExecutionService's own resolution); the trigger config used
+		// to arm the listener also comes from the published snapshot,
+		// not the draft head, so editing a schedule in the draft never
+		// silently rewires a live listener before Publish.
+		if wf.Disabled || wf.PublishedVersion == 0 {
+			continue
+		}
+		published, ok := composition.VersionByNumber(wf, wf.PublishedVersion)
+		if !ok {
+			continue
+		}
+		armed := wf
+		armed.Nodes, armed.Edges = published.Nodes, published.Edges
+		nodeTypeID, config, ok := trigger.ExtractTrigger(armed)
 		if !ok {
 			continue
 		}

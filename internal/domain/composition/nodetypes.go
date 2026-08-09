@@ -95,12 +95,27 @@ func BuiltInWorkflows() []Workflow {
 		childCaptureID = "example-child-capture"
 		childInjectID  = "example-child-inject"
 	)
-	childNodes, err := ResolveNodeDefaults([]Node{
+	// The child ships with TWO definitions (ADR-0021, and the standing
+	// seeded-examples principle: a seed must exercise the feature it
+	// demonstrates): v1 -- published, what the pinned parent and any
+	// live caller executes -- and a newer, deliberately different DRAFT
+	// head, proving edits never leak into production until published.
+	childV1Nodes, err := ResolveNodeDefaults([]Node{
 		{ID: childTriggerID, NodeTypeID: "trigger-callable", Position: Position{X: 0, Y: 0}},
 		{ID: childCaptureID, NodeTypeID: "capture-attribute", Position: Position{X: 0, Y: 100},
 			Config: map[string]string{"attribute": "message"}},
 		{ID: childInjectID, NodeTypeID: "process-inject-text", Position: Position{X: 0, Y: 200},
-			Config: map[string]string{"text": "(processed by the child workflow)", "placement": "append"}},
+			Config: map[string]string{"text": "(processed by the child workflow, v1)", "placement": "append"}},
+	})
+	if err != nil {
+		panic("built-in workflow references an unknown node type: " + err.Error())
+	}
+	childDraftNodes, err := ResolveNodeDefaults([]Node{
+		{ID: childTriggerID, NodeTypeID: "trigger-callable", Position: Position{X: 0, Y: 0}},
+		{ID: childCaptureID, NodeTypeID: "capture-attribute", Position: Position{X: 0, Y: 100},
+			Config: map[string]string{"attribute": "message"}},
+		{ID: childInjectID, NodeTypeID: "process-inject-text", Position: Position{X: 0, Y: 200},
+			Config: map[string]string{"text": "(child DRAFT -- publish to make this live)", "placement": "append"}},
 	})
 	if err != nil {
 		panic("built-in workflow references an unknown node type: " + err.Error())
@@ -114,10 +129,31 @@ func BuiltInWorkflows() []Workflow {
 		{ID: parentTriggerID, NodeTypeID: "trigger-manual", Position: Position{X: 0, Y: 0}},
 		{ID: parentChildID, NodeTypeID: "child-workflow", Position: Position{X: 0, Y: 100},
 			Config: map[string]string{
-				"workflowId":      ExampleChildWorkflowID,
+				"workflowId": ExampleChildWorkflowID,
+				// Pinned to v1 (ADR-0021): the child's draft says
+				// something different on purpose -- running this parent
+				// proves the pin (and that drafts never leak).
+				"version":         "1",
 				"inputBindings":   `{"message":"hello from the parent workflow"}`,
 				"outputAttribute": "childResult",
 			}},
+	})
+	if err != nil {
+		panic("built-in workflow references an unknown node type: " + err.Error())
+	}
+
+	// A disabled scheduled workflow (ADR-0021's inactive state): its
+	// every-minute schedule never arms while Disabled -- flip the
+	// toggle to watch it start firing into Activity.
+	const (
+		disabledTriggerID = "example-disabled-trigger"
+		disabledInjectID  = "example-disabled-inject"
+	)
+	disabledNodes, err := ResolveNodeDefaults([]Node{
+		{ID: disabledTriggerID, NodeTypeID: "trigger-schedule", Position: Position{X: 0, Y: 0},
+			Config: map[string]string{"cron": "* * * * *"}},
+		{ID: disabledInjectID, NodeTypeID: "process-inject-text", Position: Position{X: 0, Y: 100},
+			Config: map[string]string{"text": "the disabled example fired -- you enabled it", "placement": "append"}},
 	})
 	if err != nil {
 		panic("built-in workflow references an unknown node type: " + err.Error())
@@ -149,25 +185,48 @@ func BuiltInWorkflows() []Workflow {
 		{
 			ID:          ExampleChildWorkflowID,
 			Label:       "Example: Echo message (callable child)",
-			Description: "Only runnable by another workflow (its trigger is \"callable by another workflow\"). Takes a typed input -- its declared 'message' Attribute -- reads it into the payload, and appends a marker so you can see the child actually processed it.",
-			Nodes:       childNodes,
+			Description: "Only runnable by another workflow (its trigger is \"callable by another workflow\"). Takes a typed input -- its declared 'message' Attribute -- reads it into the payload, and appends a marker. Ships with v1 PUBLISHED and a deliberately different DRAFT (ADR-0021): callers see v1; the draft's changed text only goes live when you publish it.",
+			Nodes:       childDraftNodes,
 			Attributes:  []AttributeDef{{Key: "message", Label: "Message", Type: FieldText}},
 			Edges: []Edge{
 				{ID: "example-child-e0", Source: childTriggerID, Target: childCaptureID},
 				{ID: "example-child-e1", Source: childCaptureID, Target: childInjectID},
 			},
-			BuiltIn: true,
+			BuiltIn:          true,
+			PublishedVersion: 1,
+			Versions: []WorkflowVersion{{
+				Version:     1,
+				Label:       "Example: Echo message (callable child)",
+				Description: "v1 -- the published snapshot pinned by the parent example.",
+				Nodes:       childV1Nodes,
+				Attributes:  []AttributeDef{{Key: "message", Label: "Message", Type: FieldText}},
+				Edges: []Edge{
+					{ID: "example-child-e0", Source: childTriggerID, Target: childCaptureID},
+					{ID: "example-child-e1", Source: childCaptureID, Target: childInjectID},
+				},
+			}},
 		},
 		{
 			ID:          "example-parent-workflow",
 			Label:       "Example: Parent → child call",
-			Description: "Invokes the callable child with a typed input bound to its 'message' Attribute, takes the child's result as this workflow's payload, and also stores it into this workflow's 'childResult' Attribute (typed output) for later steps to reference.",
+			Description: "Invokes the callable child with a typed input bound to its 'message' Attribute, PINNED to the child's v1 (ADR-0021) -- the child's newer draft says something different on purpose, and running this proves the pin holds. The child's result becomes this workflow's payload and is also stored into its 'childResult' Attribute (typed output).",
 			Nodes:       parentNodes,
 			Attributes:  []AttributeDef{{Key: "childResult", Label: "Child result", Type: FieldText}},
 			Edges: []Edge{
 				{ID: "example-parent-e0", Source: parentTriggerID, Target: parentChildID},
 			},
 			BuiltIn: true,
+		},
+		{
+			ID:          "example-disabled-schedule-workflow",
+			Label:       "Example: Disabled schedule",
+			Description: "An every-minute schedule that never fires -- it ships DISABLED (ADR-0021's inactive state), so its trigger doesn't even arm. Enable it (the workflow's own toggle) and watch it start appearing in Activity each minute; disable it again to pause production without deleting anything. Test runs work even while disabled.",
+			Nodes:       disabledNodes,
+			Edges: []Edge{
+				{ID: "example-disabled-e0", Source: disabledTriggerID, Target: disabledInjectID},
+			},
+			BuiltIn:  true,
+			Disabled: true,
 		},
 	}
 }
