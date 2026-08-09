@@ -2117,6 +2117,18 @@ directory/scope (blocked on §6); fullscreen window-state tracking
 - The operation picker (Testing/Available-attributes/Input-parameters)
   auto-selects instead of showing a dropdown when a request declares
   exactly one operation — `LOCKED`, no dedicated ADR.
+- **Configure's Integration tab presents one "New integration" entry
+  point with a typed menu, not a bare "New request" button — `LOCKED`,
+  by direct user decision, no dedicated ADR.** The integration *kind*
+  is the first authoring decision (§4.1's connector-kind row: Generic
+  REST API today, DB/other kinds later), so the create action is an
+  `ActionMenu` whose items are the available kinds — future kinds land
+  as menu items, not new pages. Deliberately a single-item menu today:
+  unlike §3.5's single-option-`Select`-is-noise cases, the menu itself
+  is the extension point the reference platform's own "Integration
+  type" list (§3.2) anticipates. The pinned list tab/heading say
+  "Integrations" (the umbrella noun); the underlying entity stays
+  `HTTPRequest` (ADR-0016's rename is code-level, unaffected).
 - **`Connector` → `HTTPRequest` rename + open Method field — `LOCKED`,
   [ADR-0016](adr/0016-http-request-entity-and-open-method.md), Phases A–C
   fully built.** Researched against Postman/Bruno/RFC 10008 before

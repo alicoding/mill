@@ -56,7 +56,7 @@ function requestRow(page: import('@playwright/test').Page, label: string) {
 // `hidden` (Primer's TabPanel never unmounts, just toggles `hidden`),
 // and a hidden element isn't clickable.
 async function deleteRequest(page: import('@playwright/test').Page, label: string) {
-  await page.getByRole('tab', { name: 'Requests' }).click()
+  await page.getByRole('tab', { name: 'Integrations', exact: true }).click()
   await requestRow(page, label).getByRole('button', { name: `Delete ${label}` }).click()
   await expect(requestRow(page, label)).toHaveCount(0)
 }
@@ -73,7 +73,8 @@ test('Creating a request with an OpenAPI spec and listing its operations', async
   await page.goto('/')
   await page.getByRole('link', { name: 'Configure' }).click()
 
-  await page.getByTestId('new-request').click()
+  await page.getByTestId('new-integration').click()
+  await page.getByTestId('new-integration-rest').click()
   await page.getByLabel('Label').fill('Sample Request')
   await page.getByLabel('Base URL').fill('https://api.example.com')
   await page.getByTestId('request-openapi-spec').fill(sampleSpec)
@@ -103,7 +104,8 @@ test('An invalid OpenAPI spec is rejected with a visible error', async ({ page }
   await page.goto('/')
   await page.getByRole('link', { name: 'Configure' }).click()
 
-  await page.getByTestId('new-request').click()
+  await page.getByTestId('new-integration').click()
+  await page.getByTestId('new-integration-rest').click()
   await page.getByLabel('Label').fill('Broken Request')
   await page.getByLabel('Base URL').fill('https://api.example.com')
   await page.getByTestId('request-openapi-spec').fill('not an openapi spec')
@@ -125,7 +127,8 @@ test('A request persists custom headers and shows them in its Details tab', asyn
   await page.goto('/')
   await page.getByRole('link', { name: 'Configure' }).click()
 
-  await page.getByTestId('new-request').click()
+  await page.getByTestId('new-integration').click()
+  await page.getByTestId('new-integration-rest').click()
   await page.getByLabel('Label').fill('Header Request')
   await page.getByLabel('Base URL').fill('https://api.example.com')
   await page.getByTestId('add-request-header').click()
@@ -152,7 +155,8 @@ test('Showing an operation\'s schema reveals its declared fields, with the secre
   await page.goto('/')
   await page.getByRole('link', { name: 'Configure' }).click()
 
-  await page.getByTestId('new-request').click()
+  await page.getByTestId('new-integration').click()
+  await page.getByTestId('new-integration-rest').click()
   await page.getByLabel('Label').fill('Schema Request')
   await page.getByLabel('Base URL').fill('https://api.example.com')
   await page.getByTestId('request-openapi-spec').fill(schemaSpec)
@@ -185,7 +189,8 @@ test('A request with no OpenAPI spec shows no declared schema', async ({ page })
   await page.goto('/')
   await page.getByRole('link', { name: 'Configure' }).click()
 
-  await page.getByTestId('new-request').click()
+  await page.getByTestId('new-integration').click()
+  await page.getByTestId('new-integration-rest').click()
   await page.getByLabel('Label').fill('Plain Request')
   await page.getByLabel('Base URL').fill('https://api.example.com')
   await page.getByRole('button', { name: 'Save request' }).click()
