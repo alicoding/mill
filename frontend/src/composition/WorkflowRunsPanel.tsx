@@ -5,6 +5,7 @@ import { CheckCircleIcon, XCircleIcon, ClockIcon, XIcon } from '@primer/octicons
 import * as ExecutionService from '../../bindings/github.com/alicoding/mill/executionservice'
 import { RunKind, type RunDetail, type RunStep, type RunSummary } from '../../bindings/github.com/alicoding/mill/models'
 import styles from '../shared/ListCard.module.css'
+import PageContainer from '../shared/PageContainer'
 
 const STATUS_VARIANT: Record<string, LabelProps['variant']> = {
   SUCCESS: 'success',
@@ -131,7 +132,7 @@ function WorkflowRunsPanel({ workflowId }: WorkflowRunsPanelProps) {
   ]
 
   return (
-    <div className={styles.page} data-testid="workflow-runs-panel">
+    <PageContainer data-testid="workflow-runs-panel">
       <Stack direction="horizontal" gap="condensed" align="center" className={styles.filterRow}>
         <Select value={kindFilter} onChange={(e) => setKindFilter(e.target.value as 'all' | RunKind)} aria-label="Filter by kind">
           <Select.Option value="all">All kinds</Select.Option>
@@ -187,7 +188,7 @@ function WorkflowRunsPanel({ workflowId }: WorkflowRunsPanelProps) {
           </Stack>
         </div>
       )}
-    </div>
+    </PageContainer>
   )
 }
 

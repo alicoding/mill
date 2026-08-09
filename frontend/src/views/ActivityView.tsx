@@ -4,6 +4,7 @@ import { DataTable, type Column } from '@primer/react/experimental'
 import { ChevronDownIcon, ChevronRightIcon, CheckCircleIcon, XCircleIcon, XIcon } from '@primer/octicons-react'
 import { useAppStore, type ActivityEntry, type ActivitySource } from '../shared/store'
 import styles from '../shared/ListCard.module.css'
+import PageContainer from '../shared/PageContainer'
 
 const SOURCE_LABEL: Record<ActivitySource, string> = {
   trigger: 'Trigger',
@@ -142,7 +143,7 @@ function ActivityView() {
   ]
 
   return (
-    <div className={styles.page}>
+    <PageContainer>
       <Heading as="h1">Activity</Heading>
       <Text as="p" className={styles.subtitle}>
         What ran, whether triggered headlessly (hotkey, schedule,
@@ -198,7 +199,7 @@ function ActivityView() {
           Showing {filtered.length} of {activity.length}.
         </Text>
       )}
-    </div>
+    </PageContainer>
   )
 }
 

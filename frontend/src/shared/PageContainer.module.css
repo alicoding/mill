@@ -1,0 +1,43 @@
+/* Single shared content-region wrapper, replacing the old .page/.formPage
+   classes that used to be hand-copied into ~12 view files out of
+   ListCard.module.css (docs/SPEC.md's own "Window/scroll layout
+   foundation" Update). One component now owns width/inset for every
+   list/form page in the app instead of a duplicated CSS class per file.
+
+   "wide" (list/card/table pages: Workflows, Activity, every Configure
+   tab's list, the capability index) is deliberately fluid, no max-width --
+   the old 1400px cap was inherited from a class whose own history was a
+   760px *prose* reading-width cap (ListCard.module.css's own comment
+   admitted this), misapplied wholesale to card/list UI that was never
+   prose-shaped. Real dashboard/app products (not blogs/docs) go
+   edge-to-edge for this content, reserving width caps for genuinely
+   textual content -- SpecView.module.css's own .spec class already does
+   that correctly, untouched by this change. */
+.wide {
+    --wails-draggable: no-drag;
+    padding: var(--s-3) var(--s-4) var(--s-5);
+    color: var(--fgColor-default);
+}
+/* "narrow" (single-column forms: RequestForm, RequestSummary,
+   SettingsView, ConfigureAttributes, the inline create-forms in
+   ConfigureLists/ConfigureMCPServers) keeps a real cap -- unlike "wide"
+   this is a legitimate use of the pattern, not the same misapplication:
+   a lone text field or checkbox row at full window width reads as
+   mostly-empty, and 960px is wide enough that ManualSchemaEditor's
+   multi-input Parameters/Output table rows don't wrap. */
+.narrow {
+    --wails-draggable: no-drag;
+    max-width: 960px;
+    margin: 0 auto;
+    padding: var(--s-3) var(--s-4) var(--s-5);
+    color: var(--fgColor-default);
+}
+/* "full" (canvas-shaped surfaces that need the pane's entire box, no
+   inset at all): CompositionCanvas.tsx doesn't currently render through
+   this component (its own .canvasSection already deliberately opts out
+   of any width cap, per that module's own comment) -- kept here as the
+   third variant so a future full-bleed surface has a real place to ask
+   for zero padding instead of reintroducing a one-off wrapper. */
+.full {
+    height: 100%;
+}

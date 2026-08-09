@@ -647,6 +647,47 @@ and are still current** (not Runbook-specific, so they outlived it):
   entry stays only for the still-true foundational CSS facts (the
   `.app-shell` root, the scrolling-pane pattern, `MinWidth`/`MinHeight`).
   `LOCKED`.
+  **Update — a real, reported layout bug fixed, `.app-shell`'s own
+  padding was the root cause, not `PageLayout` itself.** Prompted
+  directly by screenshots: a visible gap between the window's left edge
+  and the sidebar, and excessive dead padding around every page's
+  content (including a cramped Composition canvas). Root cause was
+  `.app-shell`'s own outer padding (golden-ratio tokens) wrapping the
+  *entire* `PageLayout` — sidebar included — stacked on top of each
+  page's own separate padding, applied twice. Compounding it: two
+  ad-hoc CSS classes (`.page` 1400px, `.formPage` 960px, in
+  `ListCard.module.css`) were hand-copied into 13 usages across 11 view
+  files with no single owner, and `.page`'s own max-width was traced to
+  a leftover
+  760px *prose*-reading-width cap inherited wholesale when the class
+  got reused for card/list/canvas UI it was never designed for.
+  Researched before fixing (two passes, cross-checked against a direct
+  fetch of Primer's own docs after the two disagreed on one claim):
+  confirmed no adopted library exists for "fixed sidebar+content+footer
+  shell with no page scroll" (the adjacent libraries —
+  `react-resizable-panels`, `allotment`, `golden-layout` — all solve
+  draggable/resizable panes, a different, heavier problem); confirmed
+  Mill already uses Primer's `PageLayout` for this shell (adopted
+  `a7fa116`) and Primer ships no separate app-shell primitive, so
+  replacing it wasn't warranted — the three structural `:has()` hacks
+  already in `App.module.css` are a sunk, working cost, not what was
+  causing the reported bug; confirmed real design systems (Chakra, MUI)
+  expose content-width capping as one shared `Container`-style
+  component with a size variant, never a hand-copied class per page;
+  and confirmed max-width capping is a prose-readability pattern real
+  dashboard products don't apply to list/table/canvas UI. Fixed
+  narrowly, without touching `PageLayout`: `.app-shell`'s own padding
+  is now safe-area-insets only (sidebar/content/footer each already
+  supply their own inset independently — Primer's `padding="condensed"`
+  on the sidebar, `shared/PageContainer.tsx` on content, `.footer`'s own
+  padding); `shared/PageContainer.tsx` (a `wide`/`narrow`/`full` variant
+  prop) replaces `.page`/`.formPage` at all 13 call sites; `wide`
+  (Workflows/Activity/every Configure list/the Runs panel — genuinely
+  card/list-shaped) dropped its max-width entirely rather than move the
+  same misapplied number; `narrow` (RequestForm/RequestSummary/
+  SettingsView/ConfigureAttributes/the inline Lists/MCP-Servers create
+  forms — genuinely single-column form UI, a legitimate width cap, not
+  the same misapplication) kept 960px. `LOCKED`.
 
 ## 3. Capability composition — how nodes connect
 

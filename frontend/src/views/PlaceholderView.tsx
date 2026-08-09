@@ -1,6 +1,7 @@
 import { Heading, Label, Text, Button } from '@primer/react'
 import { useAppStore, statusVariant } from '../shared/store'
 import styles from '../shared/ListCard.module.css'
+import PageContainer from '../shared/PageContainer'
 
 interface PlaceholderViewProps {
   capabilityId: string
@@ -15,7 +16,7 @@ function PlaceholderView({ capabilityId }: PlaceholderViewProps) {
   const setView = useAppStore((s) => s.setView)
 
   return (
-    <div className={styles.page}>
+    <PageContainer>
       <Heading as="h1">{capability?.Label ?? 'Not built yet'}</Heading>
       <Text as="p" className={styles.subtitle}>
         This part of Mill hasn't been built yet.
@@ -34,7 +35,7 @@ function PlaceholderView({ capabilityId }: PlaceholderViewProps) {
           Back to Spec
         </Button>
       </div>
-    </div>
+    </PageContainer>
   )
 }
 

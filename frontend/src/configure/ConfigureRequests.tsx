@@ -11,6 +11,7 @@ import { RequestSummary } from './RequestSummary'
 import { loadPersistedTabs, savePersistedTabs } from '../shared/persistedTabs'
 import { downloadJSON } from '../shared/downloadJSON'
 import styles from '../shared/ListCard.module.css'
+import PageContainer from '../shared/PageContainer'
 
 const AUTH_LABEL: Record<string, string> = {
   [AuthType.AuthNone]: 'None',
@@ -169,7 +170,7 @@ export function ConfigureRequests() {
       </TabList>
 
       <TabPanel value={LIST_TAB}>
-        <div className={styles.page} data-testid="configure-requests">
+        <PageContainer data-testid="configure-requests">
           <Stack direction="horizontal" justify="space-between" align="center" className={styles.sectionHeading}>
             <Heading as="h2" variant="small">Requests</Heading>
             <Stack direction="horizontal" gap="condensed">
@@ -239,7 +240,7 @@ export function ConfigureRequests() {
               ))}
             </Stack>
           )}
-        </div>
+        </PageContainer>
       </TabPanel>
 
       {requests !== null && tabs.map((t) => {

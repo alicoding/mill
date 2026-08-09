@@ -10,6 +10,7 @@ import { headersToRows, rowsToHeaders } from './requestHeaders'
 import { parseOpenAPIToOperations, synthesizeOpenAPISpec, type ManualOperation } from './openapiSynth'
 import { AUTH_LABEL, AUTH_UNIMPLEMENTED } from './authTypeLabels'
 import styles from '../shared/ListCard.module.css'
+import PageContainer from '../shared/PageContainer'
 
 export interface HeaderRow {
   key: string
@@ -217,7 +218,7 @@ export function RequestForm({
   }
 
   return (
-    <div className={styles.formPage}>
+    <PageContainer variant="narrow">
     <div className={styles.card}>
       <Stack direction="vertical" gap="normal">
         <section>
@@ -460,6 +461,6 @@ export function RequestForm({
         <Button size="small" variant="invisible" onClick={onCancel}>Cancel</Button>
       </Stack>
     </div>
-    </div>
+    </PageContainer>
   )
 }
