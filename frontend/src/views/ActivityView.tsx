@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Heading, IconButton, Label, type LabelProps, Select, Stack, Text } from '@primer/react'
+import { Heading, IconButton, Label, type LabelProps, Select, Stack, Text, TextInput } from '@primer/react'
 import { DataTable, type Column } from '@primer/react/experimental'
 import { ChevronDownIcon, ChevronRightIcon, CheckCircleIcon, XCircleIcon, XIcon } from '@primer/octicons-react'
 import { useAppStore, type ActivityEntry, type ActivitySource } from '../shared/store'
@@ -8,7 +8,7 @@ import PageContainer from '../shared/PageContainer'
 
 const SOURCE_LABEL: Record<ActivitySource, string> = {
   trigger: 'Trigger',
-  composition: 'Composition',
+  composition: 'Manual run',
 }
 
 const SOURCE_VARIANT: Record<ActivitySource, LabelProps['variant']> = {
@@ -32,7 +32,7 @@ const OUTCOME_FILTER_STORAGE_KEY = 'mill-activity-outcome-filter'
 // once at App.tsx (not here) so it keeps collecting even while this tab
 // isn't the active view. Not trigger-only: every run pushes here
 // regardless of how it was triggered (a headless fire, or a direct Run
-// click on Composition) — one shared feed for "did anything run," not
+// click on a workflow) — one shared feed for "did anything run," not
 // two separate ones.
 //
 // Renders as Primer's DataTable (@primer/react/experimental) rather than
@@ -58,6 +58,11 @@ function ActivityView() {
   useEffect(() => {
     localStorage.setItem(OUTCOME_FILTER_STORAGE_KEY, outcomeFilter)
   }, [outcomeFilter])
+  // Free-text search over what ran and what it produced -- the first
+  // slice of the reference analytics pattern (docs/SPEC.md §3.2's
+  // AI-Analytics surface: filterable events, searchable by the run's
+  // own data), deliberately session-local like the list itself.
+  const [search, setSearch] = useState('')
 
   const toggle = (id: string) => {
     setSelectedIds((prev) => {
@@ -68,13 +73,15 @@ function ActivityView() {
     })
   }
 
+  const query = search.trim().toLowerCase()
   const filtered = activity.filter((entry) => {
     if (sourceFilter !== 'all' && entry.source !== sourceFilter) return false
     if (outcomeFilter === 'success' && !entry.success) return false
     if (outcomeFilter === 'failed' && entry.success) return false
+    if (query !== '' && !entry.label.toLowerCase().includes(query) && !entry.result.toLowerCase().includes(query)) return false
     return true
   })
-  const filtersActive = sourceFilter !== 'all' || outcomeFilter !== 'all'
+  const filtersActive = sourceFilter !== 'all' || outcomeFilter !== 'all' || query !== ''
   const selectedEntries = filtered.filter((entry) => selectedIds.has(entry.id) && entry.result !== '')
 
   const columns: Column<ActivityEntry>[] = [
@@ -147,7 +154,7 @@ function ActivityView() {
       <Heading as="h1">Activity</Heading>
       <Text as="p" className={styles.subtitle}>
         What ran, whether triggered headlessly (hotkey, schedule,
-        clipboard/filesystem watch) or a direct Run click on Composition —
+        clipboard/filesystem watch) or a direct Run click on a workflow —
         a headless trigger fires with no other feedback, so this is the
         only place to see it happened at all. Session-only: this list
         isn&apos;t persisted across restarts.
@@ -158,13 +165,20 @@ function ActivityView() {
           <Select value={sourceFilter} onChange={(e) => setSourceFilter(e.target.value as 'all' | ActivitySource)} aria-label="Filter by source">
             <Select.Option value="all">All sources</Select.Option>
             <Select.Option value="trigger">Trigger</Select.Option>
-            <Select.Option value="composition">Composition</Select.Option>
+            <Select.Option value="composition">Manual run</Select.Option>
           </Select>
           <Select value={outcomeFilter} onChange={(e) => setOutcomeFilter(e.target.value as OutcomeFilter)} aria-label="Filter by outcome">
             <Select.Option value="all">All outcomes</Select.Option>
             <Select.Option value="success">Success</Select.Option>
             <Select.Option value="failed">Failed</Select.Option>
           </Select>
+          <TextInput
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search what ran or its result…"
+            aria-label="Search activity"
+            data-testid="activity-search"
+          />
         </Stack>
       )}
 

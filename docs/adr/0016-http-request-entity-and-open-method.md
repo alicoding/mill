@@ -280,3 +280,17 @@ the literal `bodyTemplate` string) and query/path key-value Params
 rows replacing `integration-http`'s raw `path` string — the schema's
 typed Parameters table covers declaring them, but the node-level
 authoring UI is unchanged.
+
+## Update 3 — Method presentation amended to a Select, by direct user decision
+
+"METHOD should not be free form text -- this should be the same for
+all fields that is typed." The open-*wire* decision stands unchanged
+(any string is stored and sent as-is; a persisted custom verb renders
+as an extra option instead of breaking), but the authoring UI is now a
+real `Select` -- on the request form's Method and on any canvas
+`ConfigField` carrying `Suggestions` (`NodeInspector.tsx`), replacing
+Update 2's input+datalist presentation. The canvas Select includes a
+blank "(default)" option so "unset -- inherit the request's own
+method" stays expressible. In practice the earlier datalist rendered
+as bare free text in the WKWebView anyway, which is exactly what
+prompted the complaint.

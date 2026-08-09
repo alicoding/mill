@@ -1,10 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
 import { Button, FormControl, Heading, IconButton, Stack, Text, TextInput } from '@primer/react'
 import { DownloadIcon, PlusIcon, TrashIcon, UploadIcon } from '@primer/octicons-react'
+import { DataTable, Table } from '@primer/react/experimental'
 import { ConfigureService } from '../../bindings/github.com/alicoding/mill'
 import type { MCPServer } from '../../bindings/github.com/alicoding/mill/internal/domain/mcpserver/models'
 import type { Tool } from '../../bindings/github.com/alicoding/mill/internal/adapters/mcpclient/models'
 import { downloadJSON } from '../shared/downloadJSON'
+import { ViewModeToggle } from '../shared/ViewModeToggle'
+import { useViewMode } from '../shared/viewMode'
 import styles from '../shared/ListCard.module.css'
 import PageContainer from '../shared/PageContainer'
 
@@ -29,6 +32,7 @@ export function ConfigureMCPServers() {
   const [toolsByServer, setToolsByServer] = useState<Record<string, Tool[] | string>>({})
   const [importError, setImportError] = useState<string | null>(null)
   const importInputRef = useRef<HTMLInputElement>(null)
+  const [viewMode, setViewMode] = useViewMode('mill-mcpservers-view-mode')
 
   const refetch = () => {
     ConfigureService.MCPServers().then((list) => setServers(list ?? [])).catch(console.error)
@@ -108,8 +112,9 @@ export function ConfigureMCPServers() {
   return (
     <PageContainer data-testid="configure-mcpservers">
       <Stack direction="horizontal" justify="space-between" align="center" className={styles.sectionHeading}>
-        <Heading as="h2" variant="small">MCP Servers</Heading>
+        <Heading as="h2" variant="small" id="mcpservers-heading">MCP Servers</Heading>
         <Stack direction="horizontal" gap="condensed">
+          <ViewModeToggle mode={viewMode} onChange={setViewMode} />
           <input
             ref={importInputRef}
             type="file"
@@ -173,7 +178,31 @@ export function ConfigureMCPServers() {
       {servers !== null && servers.length === 0 && !formOpen && (
         <Text as="p" className={styles.muted}>No MCP servers yet.</Text>
       )}
-      {servers !== null && (
+      {servers !== null && viewMode === 'table' && servers.length > 0 && (
+        <Table.Container>
+          <DataTable
+            aria-labelledby="mcpservers-heading"
+            data={servers.map((s) => ({ ...s, id: s.ID }))}
+            columns={[
+              { header: 'Label', field: 'Label', rowHeader: true, sortBy: 'alphanumeric' },
+              { header: 'Command', id: 'command', renderCell: (s) => `${s.Command} ${(s.Args ?? []).join(' ')}`.trim() },
+              { header: 'ID', field: 'ID' },
+              {
+                header: '', id: 'actions', width: 'auto', align: 'end',
+                renderCell: (s) => (
+                  <Stack direction="horizontal" gap="condensed">
+                    <Button size="small" variant="invisible" onClick={() => listTools(s.ID)}>List tools</Button>
+                    <Button size="small" variant="invisible" onClick={() => startEdit(s)}>Edit</Button>
+                    <IconButton icon={DownloadIcon} aria-label={`Export ${s.Label}`} size="small" variant="invisible" onClick={() => exportServer(s.ID, s.Label)} />
+                    <IconButton icon={TrashIcon} aria-label={`Delete ${s.Label}`} size="small" variant="invisible" onClick={() => remove(s.ID)} />
+                  </Stack>
+                ),
+              },
+            ]}
+          />
+        </Table.Container>
+      )}
+      {servers !== null && viewMode === 'cards' && (
         <Stack direction="vertical" gap="condensed">
           {servers.map((s) => (
             <div key={s.ID} className={styles.card} data-testid="mcpserver-row">

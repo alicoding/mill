@@ -31,17 +31,21 @@ func SetChildWorkflowRunner(fn func(runCtx any, workflowID string, attrValues ma
 func init() {
 	RegisterNodeType(NodeType{
 		ID: "child-workflow", Kind: KindProcess,
-		Label:       "Child workflow",
-		Description: "Invokes another workflow (one rooted in trigger-callable, docs/adr/0010) as a real DBOS child run and replaces the payload with its result. Only meaningful on the durable execution path (docs/adr/0008 made that the only path) -- DBOS tracks the parent/child relationship natively once this call happens from inside an already-running workflow.",
+		Label:       "Run another workflow",
+		Description: "Runs another of your workflows as a step and uses its result as this workflow's payload. The other workflow must start with the \"callable by another workflow\" trigger (docs/adr/0010) -- that's what marks it as safe to be invoked from here rather than by a hotkey or schedule of its own.",
 		ConfigFields: []ConfigField{
 			{
 				Key: "workflowId", Label: "Workflow",
-				Description: "A workflow rooted in trigger-callable.",
+				Description: "Which workflow to run. Only workflows whose trigger is \"callable by another workflow\" appear here -- if the list is empty, create a workflow and drag that trigger onto its canvas first.",
 				Default:     "", Type: FieldText, RefKind: "workflow",
 			},
 			{
-				Key: "idempotencyKey", Label: "Idempotency key (optional)",
-				Description: "A literal or attr:<name> reference. If set, re-invoking with the same resolved key returns the child's already-recorded result instead of running it again (DBOS's own workflow-ID idempotency). Leave empty for a fresh run every time.",
+				// Plain-language label -- "idempotency key" is DBOS's own
+				// term (docs/adr/0010), too technical to lead with in UI
+				// copy (reported directly from live use); the mechanism is
+				// unchanged, only how it's explained.
+				Key: "idempotencyKey", Label: "Skip duplicate runs (optional)",
+				Description: "Leave empty to run fresh every time (the normal case). To make repeated runs with the same input reuse the first run's recorded result instead of running again, put a value here that identifies the input -- a literal, or attr:<name> to use one of this workflow's attributes.",
 				Default:     "", Type: FieldText,
 			},
 		},

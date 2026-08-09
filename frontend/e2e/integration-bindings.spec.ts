@@ -102,7 +102,7 @@ test('Matching an Integration node to a declared operation shows a binding edito
   await configFields.nth(0).blur()
   // Method is an open TextInput with a datalist of suggestions, not a
   // closed Select (ADR-0016) -- fill/blur, not selectOption.
-  await configFields.nth(1).fill('POST') // method
+  await configFields.nth(1).selectOption('POST') // method -- a Select now (user decision)
   await configFields.nth(1).blur()
 
   const editor = inspector.getByTestId('integration-bindings-editor')

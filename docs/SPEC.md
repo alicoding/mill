@@ -2189,6 +2189,22 @@ directory/scope (blocked on §6); fullscreen window-state tracking
   OpenAPI" disclosure; a schema the user never touched saves
   byte-verbatim, so ADR-0011's deliberately-bounded parse can never
   silently rewrite a stored vendor spec on an unrelated edit.
+- **Amendments from continued live review, all by direct user
+  decision — `LOCKED`:** (1) **Method renders as a real `Select`, not
+  free text** ("METHOD should not be free form text; same for all
+  fields that is typed") — applies to the request form's Method and to
+  any `ConfigField` with `Suggestions` in the canvas Inspector; the
+  wire stays an open string (a persisted custom verb renders as an
+  extra option rather than breaking), only the authoring UI is typed —
+  amends ADR-0016's input+datalist presentation, not its open-wire
+  decision. (2) **The schema editor's sections are framed as Input —
+  request schema (parameters + body) and Output — response schema**,
+  the user's own framing of what a schema declares. (3) **Each schema
+  field is one compact line** (name + type inline, badges for whatever
+  else is set) **with everything else edited in a popup `Dialog`** —
+  the previous two-line rows of eight inline inputs rendered visibly
+  broken. (4) **Every list/table row has a direct Edit action** — no
+  forced detour through the read-only summary first.
 - **`Connector` → `HTTPRequest` rename + open Method field — `LOCKED`,
   [ADR-0016](adr/0016-http-request-entity-and-open-method.md), Phases A–C
   fully built.** Researched against Postman/Bruno/RFC 10008 before
@@ -2596,6 +2612,68 @@ None of the above should be built before the section of the spec it depends
 on (§3, §4, §8, etc.) moves off `OPEN` — building the helper before the
 domain concept it encodes is settled is the inner-platform-effect failure
 mode from §0 repeating itself one level up.
+
+### 3.8 Cross-cutting UI mechanisms from the live-review pass
+
+All prompted directly during live use; each either built (`LOCKED`) or
+recorded as a real design input (`OPEN`), never silently dropped.
+
+- **Cards/table view switch on every data-inventory page — `LOCKED`,
+  built.** `shared/ViewModeToggle.tsx` + `shared/viewMode.ts`
+  (per-page localStorage persistence); the table half is Primer's own
+  `DataTable` (adopted per `.claude/rules/frontend.md`'s component
+  reference, not hand-rolled) on Workflows
+  (`composition/WorkflowsTable.tsx` / `WorkflowsCards.tsx`, split out
+  of `CompositionView.tsx` at the 500-line limit), Integrations,
+  Lists, and MCP Servers; Activity already renders as a `DataTable`
+  natively and additionally gained a free-text search over what ran
+  and its result. The per-workflow Runs tab keeps its structured list
+  (a run's step breakdown isn't row-shaped) — deliberate, not a gap.
+- **User-facing "Composition" naming retired** — Activity's source
+  chip says "Manual run" and its copy says "a direct Run click on a
+  workflow"; the sidebar already said Workflows. Code-level
+  `composition`/`CompositionService` names are unaffected (ADR-0016's
+  own code-vs-UI naming split, applied again).
+- **Child-workflow authoring copy rewritten in plain language** — the
+  node is "Run another workflow"; the DBOS idempotency key is
+  presented as "Skip duplicate runs (optional)" with a
+  what-it-actually-does caption ("idempotency" was flagged as too
+  technical to lead with — mechanism unchanged, ADR-0010); the
+  callable-workflow picker's empty state now names the exact next step
+  (create a workflow whose trigger is "callable by another workflow")
+  instead of a dead-end empty dropdown.
+- **Native macOS titlebar strip reserved explicitly — `LOCKED`,
+  built.** The desktop window uses `MacTitleBarHiddenInset` (main.go),
+  so the traffic lights float over the content's top-left;
+  `env(safe-area-inset-*)` is always 0 on desktop and covers none of
+  it (a real regression the padding cleanup shipped, caught from a
+  screenshot). `App.tsx` adds `.app-shell--native-titlebar`
+  (38px top padding) only inside the Wails webview (`window._wails`
+  present) — a browser tab on the server-mode interface reserves
+  nothing.
+- **[decisioning-vendor]-style analytics pattern (select the input source first,
+  then see its activity with attribute-driven columns and
+  attribute-based search) — `OPEN`, recorded design input for the §3.2
+  AI-Analytics surface.** Activity's new search + existing filters are
+  the first slice only; the full source-first pattern belongs to the
+  same future design pass as §7's shadow-events half. Also from the
+  same review: **hover-preview modals for workflow references**
+  (n8n/[decisioning-vendor] both preview a linked workflow's layout on hover, with
+  jump-to-it-in-a-new-tab) — a real cross-cutting affordance
+  (canvas nodes, Activity rows, child-workflow pickers), `OPEN`,
+  needs its own design pass, not bolted on ad hoc.
+- **Dev-staleness root cause found and fixed — `LOCKED`.** Two
+  compounding causes made "my app looks stale" recur: (1) every
+  wails-built desktop binary passed `-buildvcs=false` (dev *and*
+  production, `build/*/Taskfile.yml`), so §3.7's build-identity footer
+  — built precisely to make staleness visible — was permanently blank
+  in the desktop app (it only ever worked for raw `go build` server
+  binaries); the flag is removed from all first-party build branches
+  (the vendored ios/android scaffolds keep theirs). (2) `wails3 dev`
+  restarts can orphan a previous app instance whose window stays open
+  — two Mill windows, one stale, both sharing the real settings.json
+  (§3.7's own dual-process hazard); with the footer now showing the
+  commit hash in every build shape, a stale window identifies itself.
 
 ## 10. Open questions log
 

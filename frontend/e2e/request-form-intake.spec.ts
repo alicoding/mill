@@ -24,7 +24,7 @@ test('Method is set beside Base URL and round-trips through save/edit', async ({
   await page.getByTestId('new-integration').click()
   await page.getByTestId('new-integration-rest').click()
   await page.getByLabel('Label').fill('Method Row Request')
-  await page.getByTestId('request-method').fill('POST')
+  await page.getByTestId('request-method').selectOption('POST')
   await page.getByLabel('Base URL').fill('https://api.example.com')
   await page.getByRole('button', { name: 'Save request' }).click()
 
