@@ -3951,6 +3951,14 @@ mode from §0 repeating itself one level up.
 
 ## 10. Open questions log
 
+- Enterprise/regulated deployment readiness (§11, new) — researched
+  (OSS public/enterprise split precedent across six real projects, and
+  what Mill's actual hexagonal architecture supports today vs. doesn't),
+  nothing decided or built. Two of three named example gaps (credential
+  storage, execution/audit backend) turned out already fixable as
+  independently-justified adapter work, done this session; the
+  build-tag-vs-runtime-injection question itself stays `OPEN` pending a
+  real requirement.
 - Node/canvas composition model (§3) — Decision/Integration/List
   execution + authoring, and now Child Workflow (§3.3/ADR-0010), are
   built; Parallel Steps and draft/live versioning remain the open parts
@@ -4101,3 +4109,165 @@ mode from §0 repeating itself one level up.
   GraphQL, replacing the literal `bodyTemplate` string) as the default
   authoring UI — Phase B's own bigger, genuinely separate design
   surface, tracked in the ADR, not silently folded into what shipped.
+
+## 11. Enterprise / regulated deployment readiness
+
+`OPEN` throughout — this section is Research only. Nothing here is
+decided, locked, or built; no code changed as a result of it beyond
+what's already independently justified and recorded elsewhere (the
+credential-store interface, §3.5's Configure section, and the execution
+DSN parameterization, §7). Prompted directly: the user wants to run Mill
+at a bank eventually, wants to keep a public OSS edition too, and asked
+what the industry pattern is for that split and whether Mill's current
+hexagonal architecture (Go domain/adapters + Wails3 single-binary shell
++ React frontend) could support it. Two research passes, kept separate
+per this doc's own standing discipline (§1.2's DBOS/pueue precedent —
+don't conflate two different questions just because they're related):
+one surveying real OSS precedent for a public/enterprise split, one
+reading Mill's actual code to check what the architecture supports
+today versus what it doesn't.
+
+### 11.1 OSS public/enterprise split precedent
+
+Six real projects checked against primary sources (actual license
+files, actual build tags/CI config, actual repo structure via `gh api`
+— not blog-post summaries):
+
+| Project | Split point | Enterprise code in public repo? | Gate mechanism |
+|---|---|---|---|
+| HashiCorp Vault | Build-time (`-tags enterprise`) | **No** — only inert `!enterprise` stubs (e.g. `enterprise_token_lookup_ce.go`) | Compiled from a separate, non-public source tree |
+| GitLab CE/EE | Runtime | **Yes** — `ee/` directory, same repo | `License.feature_available?` checks |
+| Grafana OSS/Enterprise | Build-time, CI-merged | **No** — separate private `grafana-enterprise` repo | A real Dagger function, `InitializeEnterprise(grafana, enterprise)`, merges two directory inputs + a license key |
+| Sentry self-hosted/SaaS | Neither — single license (FSL), not a feature-gate model | Mostly yes; a few named AI/hardware features carved out | N/A — this precedent stopped being current in Nov 2023; the historical `getsentry`-private-overlay pattern this section was originally asked to check no longer exists |
+| n8n | Runtime | **Yes** — `.ee.`-marked files/directories, same repo | A license-key check at startup (`LICENSE_EE.md`) |
+| Coder | Build-time-inclusive by default (enterprise code always compiles into the standard binary), runtime-gated | **Yes** — `enterprise/` directory, same repo | An offline-verified, ed25519-signed JWT license token (`golang-jwt/jwt/v4`) — no phone-home to validate |
+
+Real convergence, not asserted: **the moment a project keeps everything
+in one buildable repo (GitLab, n8n, Coder), the code is physically
+present and the gate is a runtime license/feature check. The moment
+code must stay genuinely confidential (Vault's real enterprise
+internals, Grafana's enterprise features), it lives in a separate,
+privately-built repo, merged only at CI time by the vendor's own
+infrastructure — never by an end user's `git clone`.**
+
+One fact none of the six precedents had to deal with, because none use
+this exact repo shape: **Go's compiler enforces that packages under
+`internal/` cannot be imported by code outside the same module**
+(confirmed empirically, not just cited — a throwaway module with a
+`replace` directive pointing at this repo failed with `use of internal
+package github.com/alicoding/mill/internal/domain/httprequest not
+allowed`). This means Grafana's exact mechanism — a wholly separate
+private repo importing the public repo's swappable pieces, merged at
+build time — **is not directly reachable for Mill as structured today**.
+A bank-side private repo cannot `import
+"github.com/alicoding/mill/internal/adapters/credential"` at all.
+
+**Recommendation (research-stage, not adopted): Coder's shape, minus
+its license-key half.** One repo, enterprise/regulated-specific adapters
+compiled in by default (or behind a Go build tag) rather than gated by
+a commercial license key — because Mill's actual stated problem is
+"different backing infrastructure for a regulated deployment," not
+"unlock a paid tier." A license-key/entitlement layer (Coder's JWT half,
+GitLab's `feature_available?`, n8n's Enterprise License check) is
+mechanically reachable offline (an ed25519-signed local file needs no
+phone-home, satisfying §1.1) but explicitly **not** recommended for now
+— it would be config surface for a decision that doesn't exist yet, the
+same trap this doc already names repeatedly elsewhere (single-option
+`Select`s, the Configure-surface recheck, §3.5).
+
+### 11.2 What Mill's current architecture actually supports
+
+Read directly against the real code (file/line citations below), not
+reasoned about in the abstract. The honest finding: **the three
+capabilities named as examples (credential storage, audit/execution
+backend, connector auth) turned out to need three different answers,
+not one.**
+
+- **`internal/adapters/settings.Store` already works as a real port.**
+  Every consumer (`ConfigureService`, `CompositionService`,
+  `TriggerService`) depends on the `Store` interface (`Get`/`Set`), not
+  the concrete `*kvstore.KVStoreService` type. A bank-mandated backing
+  store swaps in cleanly, zero domain-code changes. Confirmed working,
+  not a gap.
+- **`internal/adapters/execution` (DBOS) doesn't need an adapter swap at
+  all.** DBOS itself already accepts Postgres/CockroachDB DSNs
+  (confirmed by reading `dbos.Config`'s own doc comment) — Mill was
+  just hardcoding `"sqlite:" + dbPath` in one line
+  (`internal/adapters/execution/execution.go`). Fixed independently this
+  session (task #4, §7 already reflects the mechanism): a regulated
+  deployment's audit database is now a config decision
+  (`MILL_EXECUTION_DATABASE_URL`), not an architecture change.
+- **`internal/adapters/credential` was the one genuine adapter-shape
+  gap** — 12 direct package-function call sites (`credential.Set/Get/
+  Delete`), no interface, no injection, unlike `settings.Store`. Fixed
+  independently this session (task #3): `credential.Store` now mirrors
+  `settings.Store`'s exact shape. Justified on its own merits
+  (testability) regardless of whether an enterprise edition ever ships.
+- **Connector auth (`RegisterAuthStrategy`, ADR-0015) already supports
+  pure addition** — a new `AuthType` strategy registers without
+  touching existing code. The friction is smaller and elsewhere: a
+  closed `Validate` switch in `internal/domain/httprequest/
+  httprequest.go` and a hand-maintained frontend label map, both
+  fixable in place, neither a structural blocker.
+- **Build tags don't generalize to a third variant cleanly.** Mill's
+  only tag today is `server`/`!server`; `!server` is a negation, so a
+  third tag (e.g. `enterprise`) makes every existing `//go:build
+  !server` file ambiguous (compiles into an enterprise desktop build
+  too, silently, unless every such file is re-audited to add `&&
+  !enterprise`). Compounding this: CI's `golangci-lint`/`go test` only
+  ever run with `-tags server` — desktop-tagged code (`hotkey_desktop.go`
+  etc.) is already unverified in CI today, a pre-existing gap a third
+  variant would inherit and multiply, not fix.
+- **`internal/domain/composition`'s registries (`RegisterNodeType`,
+  `RegisterTrigger`) support addition, not substitution** — both panic
+  on a duplicate ID (§3.6/ADR-0006's own documented fail-fast choice,
+  now cross-referenced from the registries' own doc comments per task
+  #6 this session). An enterprise variant wanting to *replace*
+  `integration-http` with an audited version can't register over it.
+  `RegisterAuthStrategy` diverges further (silently overwrites instead
+  of panicking) — also now documented, not a decision, just a
+  previously-invisible inconsistency made visible.
+- **`internal/domain/composition` imports concrete adapters directly**
+  (clipboard, openapispec, httpconnector, expression, mcpclient,
+  oauth2client, markdown) rather than through an injected seam for
+  everything — `integration.go`'s `httpconnector.Execute` call is the
+  concrete example. A domain-layer file, not a service-layer one, so an
+  enterprise-only HTTP client requirement (mandatory audit log per call,
+  a forced proxy) would touch domain code today. Not urgent — no stated
+  requirement needs this yet — but a real, named gap, not glossed over.
+
+**Recommendation (research-stage, not adopted): favor runtime
+configuration over compile-time build variants wherever the existing
+seam already supports it** (settings, execution DSN, auth strategies —
+three of four already do, two fixed this session), and treat build
+tags as reserved for genuine platform mutual-exclusivity (the existing
+`hotkey`/`launchatlogin` desktop-vs-server split), not a product-edition
+axis layered on top of it. This is a *stronger* fit for §1.1's locked
+single-binary constraint than a compiled variant would be, not a
+compromise against it.
+
+### 11.3 What this forecloses, and what doesn't need deciding yet
+
+Choosing "runtime injection over build variants" (if it's ever chosen —
+nothing here commits to it) would foreclose compile-time exclusion of
+code from the public binary — if a bank's real requirement ever turns
+out to be "the proprietary logic must not be in the shipped public
+artifact," runtime injection can't satisfy that; only build tags or a
+genuinely separate module could, and §11.1 already establishes that a
+separate-module approach needs `internal/` → `pkg/` plus extracting the
+seven root `*service.go` files out of `package main`, a repo-wide
+restructuring that directly contradicts ADR-0001's locked flat-root
+layout. Not evaluated further here since no concrete requirement has
+named it yet — the trigger to revisit is a real requirement phrased as
+that sentence, not speculation.
+
+Nothing in §11.1 or §11.2 requires a decision now. The two adapter
+fixes this session (credential interface, execution DSN) were justified
+independently of this question and would have been worth doing either
+way. Everything else — which of §11.1's mechanisms to adopt, if any;
+whether registries should support substitution; whether
+`composition`'s direct adapter imports need an injected seam — stays
+`OPEN` until a real regulated-deployment requirement exists to design
+against, per this doc's own standing rule (§0, CLAUDE.md's Plan step):
+list the capability map before locking a schema, don't design from a
+hypothetical.
