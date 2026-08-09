@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Button, FormControl, Heading, IconButton, Stack, Text, TextInput, Textarea } from '@primer/react'
+import { Button, FormControl, Heading, IconButton, Select, Stack, Text, TextInput, Textarea } from '@primer/react'
 import { PlusIcon, TrashIcon } from '@primer/octicons-react'
 import { ConfigureService } from '../../bindings/github.com/alicoding/mill'
 import type { HTTPRequest } from '../../bindings/github.com/alicoding/mill/internal/domain/httprequest/models'
@@ -20,7 +20,7 @@ export type { HeaderRow, RequestDraft }
 
 // Same open set integration-http's own method field suggests (ADR-0016,
 // internal/domain/composition/integration.go) -- autocomplete hints on
-// a plain input, never a closed Select; any method string is accepted.
+// rendered as a Select by direct user decision (wire stays open).
 const METHOD_SUGGESTIONS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS', 'QUERY']
 // The subset OpenAPI 3.x can actually express as a PathItem field --
 // used only when synthesizing the schema document, never to restrict
@@ -192,22 +192,25 @@ export function RequestForm({
             </FormControl>
             {/* Method + URL side by side, the first thing after the
                 label -- Postman/Bruno's own request row (ADR-0016
-                Phase B). The transport lives here; the Schema section
-                below describes only the payload. */}
+                Phase B). A real Select, not free text, by direct user
+                decision ("METHOD should not be free form text") -- the
+                wire format stays open (any persisted value renders as
+                an extra option rather than breaking), only the UI
+                presents a typed choice. */}
             <Stack direction="horizontal" gap="condensed" align="end">
               <FormControl>
                 <FormControl.Label>Method</FormControl.Label>
-                <TextInput
-                  value={draft.method}
+                <Select
+                  value={draft.method || 'GET'}
                   onChange={(e) => setDraft({ ...draft, method: e.target.value })}
-                  list="request-method-suggestions"
-                  style={{ width: '110px' }}
                   data-testid="request-method"
-                />
+                >
+                  {(METHOD_SUGGESTIONS.includes(draft.method || 'GET')
+                    ? METHOD_SUGGESTIONS
+                    : [...METHOD_SUGGESTIONS, draft.method]
+                  ).map((m) => <Select.Option key={m} value={m}>{m}</Select.Option>)}
+                </Select>
               </FormControl>
-              <datalist id="request-method-suggestions">
-                {METHOD_SUGGESTIONS.map((m) => <option key={m} value={m} />)}
-              </datalist>
               <FormControl style={{ flexGrow: 1 }}>
                 <FormControl.Label>Base URL</FormControl.Label>
                 <TextInput value={draft.baseURL} onChange={(e) => setDraft({ ...draft, baseURL: e.target.value })} placeholder="https://api.example.com" block />

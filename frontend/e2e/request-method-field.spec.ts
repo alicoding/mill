@@ -1,10 +1,12 @@
 import { test, expect } from '@playwright/test'
 
-// Exercises ADR-0016 Phase B/C: integration-http's Method field is an
-// open TextInput with a datalist of suggestions, not a closed Select --
-// any value (including RFC 10008's QUERY, not one of the old 5-item
-// list) is accepted and persists, over real Go bindings (Wails3 server
-// mode), not mocks.
+// Exercises ADR-0016 Phase B/C as amended by direct user decision
+// ("METHOD should not be free form text"): integration-http's Method
+// renders as a real Select whose options are the suggested methods
+// (including RFC 10008's QUERY) plus a blank "(default)" that inherits
+// the request's own method -- the wire stays an open string, only the
+// authoring UI is typed. Over real Go bindings (Wails3 server mode),
+// not mocks.
 
 function workflowRow(page: import('@playwright/test').Page, label: string) {
   return page.locator('[data-testid="workflow-row"]', { has: page.getByText(label, { exact: true }) })
@@ -59,18 +61,12 @@ test('The Method field accepts QUERY, an offered suggestion outside the old clos
   const inspector = activePanel(page).getByTestId('composition-inspector')
   const methodField = inspector.getByTestId('canvas-config-field').nth(1)
 
-  // Not a closed Select -- a plain text input.
-  await expect(methodField).toHaveJSProperty('tagName', 'INPUT')
+  // A real Select now (user decision) -- QUERY is a first-class option,
+  // not something typed blind.
+  await expect(methodField).toHaveJSProperty('tagName', 'SELECT')
+  await expect(methodField.locator('option[value="QUERY"]')).toHaveCount(1)
 
-  // QUERY is offered as a suggestion via the field's datalist, not
-  // required to type blind.
-  const listId = await methodField.getAttribute('list')
-  expect(listId).toBeTruthy()
-  const datalist = inspector.locator(`datalist#${listId}`)
-  await expect(datalist.locator('option[value="QUERY"]')).toHaveCount(1)
-
-  await methodField.fill('QUERY')
-  await methodField.blur()
+  await methodField.selectOption('QUERY')
 
   // Save and reopen via Edit -- the real "did it persist in Node.Config,
   // not just left in the input's own local DOM state" proof, same

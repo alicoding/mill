@@ -54,10 +54,14 @@ test('Paste sample infers output fields, Default/Description/Enum and the respon
   await expect(ageRow.getByLabel('Field name')).toHaveValue('age')
   await expect(ageRow.getByLabel('Field type')).toHaveValue('integer')
 
-  // Set Default/Description/Enum on the inferred "name" field.
-  await nameRow.getByLabel('Default value').fill('Ada')
-  await nameRow.getByLabel('Description').fill('widget owner name')
-  await nameRow.getByLabel('Enum values').fill('Ada, Bob')
+  // Set Default/Description/Enum on the inferred "name" field -- via
+  // its popup editor (the pencil) now, not inline row inputs.
+  await nameRow.getByTestId('field-edit-open').click()
+  const dialog = page.getByRole('dialog')
+  await dialog.getByLabel('Default value').fill('Ada')
+  await dialog.getByLabel('Description').fill('widget owner name')
+  await dialog.getByLabel('Allowed values').fill('Ada, Bob')
+  await dialog.getByTestId('field-edit-done').click()
 
   await page.getByRole('button', { name: 'Save request' }).click()
 

@@ -59,8 +59,8 @@ test('Running two workflows from Composition both appear in Activity', async ({ 
   await page.getByRole('link', { name: 'Activity' }).click()
   const rows = dataRows(page)
   await expect(rows).toHaveCount(2)
-  await expect(rows.filter({ hasText: 'Composition' }).filter({ hasText: 'Clipboard → Markdown' })).toBeVisible()
-  await expect(rows.filter({ hasText: 'Composition' }).filter({ hasText: 'Load sample HTML' })).toBeVisible()
+  await expect(rows.filter({ hasText: 'Manual run' }).filter({ hasText: 'Clipboard → Markdown' })).toBeVisible()
+  await expect(rows.filter({ hasText: 'Manual run' }).filter({ hasText: 'Load sample HTML' })).toBeVisible()
 })
 
 test('Source and outcome filters narrow the activity list', async ({ page }) => {

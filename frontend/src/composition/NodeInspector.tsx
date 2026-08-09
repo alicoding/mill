@@ -190,23 +190,35 @@ export function NodeInspector({ node, attrs, nodeType, sameKindNodeTypes, hasWor
             />
           ) : field.Suggestions && field.Suggestions.length > 0 ? (
             // FieldText with Suggestions (e.g. integration-http's Method,
-            // ADR-0016) -- a single-line input with an HTML5 datalist of
-            // hints, not a closed Select: any value is still accepted,
-            // matching Bruno's own "named methods, or an explicit CUSTOM
-            // escape hatch" shape rather than a fixed enum a new or
-            // uncommon method (RFC 10008's QUERY) can't express.
-            <>
-              <TextInput
-                defaultValue={node.data.config[field.Key] ?? ''}
-                list={`${field.Key}-suggestions`}
-                block
-                data-testid="canvas-config-field"
-                onBlur={(e) => onConfigChange(field.Key, e.target.value)}
-              />
-              <datalist id={`${field.Key}-suggestions`}>
-                {field.Suggestions.map((s) => <option key={s} value={s} />)}
-              </datalist>
-            </>
+            // ADR-0016) -- rendered as a real Select, by direct user
+            // decision ("METHOD should not be free form text; same for
+            // all fields that is typed"), replacing the earlier
+            // input+datalist. The wire stays an open FieldText: a
+            // persisted value outside the suggested set (a custom verb)
+            // renders as an extra option instead of breaking, so
+            // nothing already saved is rejected -- only the authoring
+            // UI presents a typed choice.
+            <Select
+              defaultValue={node.data.config[field.Key] ?? ''}
+              block
+              data-testid="canvas-config-field"
+              onChange={(e) => onConfigChange(field.Key, e.target.value)}
+            >
+              {(() => {
+                const current = node.data.config[field.Key] ?? ''
+                const options = field.Suggestions.includes(current) || current === ''
+                  ? field.Suggestions
+                  : [...field.Suggestions, current]
+                // The blank option keeps "unset" expressible -- what
+                // blank means is field-specific (for integration-http's
+                // method: inherit the request's own) and stated in the
+                // field's Description caption, not hardcoded here.
+                return [
+                  <Select.Option key="" value="">(default)</Select.Option>,
+                  ...options.map((s) => <Select.Option key={s} value={s}>{s}</Select.Option>),
+                ]
+              })()}
+            </Select>
           ) : (
             <Textarea
               defaultValue={node.data.config[field.Key] ?? ''}

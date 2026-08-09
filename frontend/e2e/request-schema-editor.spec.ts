@@ -42,8 +42,13 @@ test('Authoring a schema via the Manual editor round-trips alias/path through th
   await operation.getByRole('button', { name: 'Add output field' }).click()
   const outputRow = operation.getByTestId('manual-field-row').last()
   await outputRow.getByLabel('Field name').fill('n')
-  await outputRow.getByLabel('Alias').fill('widgetName')
-  await outputRow.getByLabel('Extract path').fill('data.name')
+  // Alias/extract-path live in the field's popup editor now (the
+  // pencil), not inline -- the row shows them as badges once set.
+  await outputRow.getByTestId('field-edit-open').click()
+  const dialog = page.getByRole('dialog')
+  await dialog.getByLabel('Alias').fill('widgetName')
+  await dialog.getByLabel('Extract path').fill('data.name')
+  await dialog.getByTestId('field-edit-done').click()
 
   await page.getByRole('button', { name: 'Save request' }).click()
 

@@ -95,6 +95,16 @@ body {
     padding: env(safe-area-inset-top) env(safe-area-inset-right) 0 env(safe-area-inset-left);
 }
 
+/* Native desktop only (App.tsx adds this class inside the Wails
+   webview): the window uses MacTitleBarHiddenInset (main.go), so the
+   macOS traffic lights float over the top-left of the content area --
+   reserve that strip explicitly, since env(safe-area-inset-top) is 0
+   on desktop and covers nothing. 38px matches the standard hidden-inset
+   titlebar height the traffic lights are vertically centered in. */
+.app-shell--native-titlebar {
+    padding-top: 38px;
+}
+
 /* Scrollable content pane -- since the PageLayout sidebar migration
    (docs/SPEC.md §2.2), applied only to PageLayout.Content (App.module.css)
    rather than separately on every view's own root: one scroll region, not

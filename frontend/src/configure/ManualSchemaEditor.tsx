@@ -1,39 +1,20 @@
-import { Button, Checkbox, Heading, IconButton, Label, Select, Stack, Text, TextInput } from '@primer/react'
-import { PlusIcon, TrashIcon } from '@primer/octicons-react'
+import { useState } from 'react'
+import { Button, Checkbox, Dialog, FormControl, Heading, IconButton, Label, Select, Stack, Text, TextInput } from '@primer/react'
+import { PencilIcon, PlusIcon, TrashIcon } from '@primer/octicons-react'
 import { type ManualField, type ManualOperation } from './openapiSynth'
 import styles from '../shared/ListCard.module.css'
 
-// docs/adr/0011: the manual schema editor -- a repeatable list of
-// operations, each with a Parameters table, a Request body table, and
-// an Output-fields table. CSV import and JSON-sample inference moved
-// out of this component into SchemaIntake.tsx (one intake block for
-// every accelerator, docs/SPEC.md §4's Update) -- loaded results still
-// land in this same editor state for review, exactly as before; only
-// where the paste/drop UI lives changed.
+// docs/adr/0011: the manual schema editor. CSV import and JSON-sample
+// inference live in SchemaIntake.tsx (one intake block for every
+// accelerator); loaded results land in this editor for review.
 //
-// Parameters vs. Request body is a real, separately-asked-for split
-// (not a cosmetic grouping of the old single "Input fields" table):
-// Parameters (path/query/header) are protocol-level -- how this
-// operation is *called* over HTTP -- while the request body is the
-// payload's actual shape. Conflating them into one flat table with a
-// per-row placement dropdown made a param field and a body field look
-// like the same kind of thing when they answer different questions.
-// Output fields don't need the same split -- openapispec.Operation only
-// ever populates them from a JSON response body (bodyFields() in
-// openapispec.go), so every output field is payload, never protocol.
+// Each field renders as ONE compact line -- name, type, and badges for
+// whatever else is set -- with everything beyond name/type edited in a
+// popup Dialog (the pencil), by direct user decision: the previous
+// two-line rows of eight inline inputs wrapped into visibly broken
+// layout and buried what mattered.
 
-// The full set kin-openapi's PathItem struct actually recognizes
-// (openapi3/path_item.go: Get/Put/Post/Delete/Options/Head/Patch/
-// Trace, verified directly against its source, not assumed) --
-// deliberately does NOT include RFC 10008's QUERY (published June
-// 2026): OpenAPI 3.x has no spec-defined field for it yet, so an
-// operation declared here has to stay representable as a real OpenAPI
-// document. integration-http's own literal Method field (ADR-0016,
-// composition/integration.go) is unconstrained by this and does
-// support QUERY -- this list is specific to the schema-authoring path.
-const HTTP_METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS', 'TRACE']
 const FIELD_TYPES: ManualField['type'][] = ['string', 'number', 'integer', 'boolean', 'object', 'array', 'map', 'date', 'datetime']
-const FIELD_INS: ManualField['in'][] = ['path', 'query', 'header', 'body']
 const PARAM_INS: ManualField['in'][] = ['path', 'query', 'header']
 
 function emptyParamField(): ManualField {
@@ -42,20 +23,16 @@ function emptyParamField(): ManualField {
 function emptyBodyField(): ManualField {
   return { name: '', in: 'body', type: 'string', required: false, secret: false }
 }
-function emptyOutputField(): ManualField {
-  return { name: '', in: 'body', type: 'string', required: false, secret: false }
-}
 
 // requestMethod is the request's own top-level Method (ADR-0016 Phase
 // B) -- with exactly one operation (the 1:1 model, decided directly
 // with the user: a request IS one call; Duplicate the request for
 // another), that operation's method IS the request's method, shown as
-// read-only text instead of a second, competing Method control ("the
-// schema should not mix those together"). There is deliberately no
-// "Add operation" button anymore: a stored multi-operation spec (a
-// previously pasted multi-endpoint OpenAPI document) still renders
-// fully -- nothing is silently dropped -- with per-operation method and
-// remove controls, so it can be pared down to 1:1, never grown.
+// read-only text instead of a second, competing Method control. There
+// is deliberately no "Add operation" button: a stored multi-operation
+// spec still renders fully (nothing silently dropped) with
+// per-operation method and remove controls, so it can be pared down to
+// 1:1, never grown.
 export function ManualSchemaEditor({ operations, onChange, requestMethod }: {
   operations: ManualOperation[]
   onChange: (ops: ManualOperation[]) => void
@@ -81,24 +58,35 @@ export function ManualSchemaEditor({ operations, onChange, requestMethod }: {
   )
 }
 
+const HTTP_METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS', 'TRACE']
+
 function OperationEditor({ operation, singleOpMethod, onChange, onRemove }: {
   operation: ManualOperation
-  // Set when this is the request's only operation -- its method is the
-  // request's own Method, shown read-only.
   singleOpMethod?: string
   onChange: (patch: Partial<ManualOperation>) => void
-  // Absent for the only operation (the 1:1 model) -- a request always
-  // has exactly one; only legacy multi-operation sets can be pared down.
   onRemove?: () => void
 }) {
+  // Which field's advanced settings are open in the popup editor.
+  const [editing, setEditing] = useState<{ list: 'input' | 'output'; index: number } | null>(null)
+
   const updateInputField = (i: number, patch: Partial<ManualField>) =>
     onChange({ inputFields: operation.inputFields.map((x, idx) => (idx === i ? { ...x, ...patch } : x)) })
   const removeInputField = (i: number) =>
     onChange({ inputFields: operation.inputFields.filter((_, idx) => idx !== i) })
+  const updateOutputField = (i: number, patch: Partial<ManualField>) =>
+    onChange({ outputFields: operation.outputFields.map((x, idx) => (idx === i ? { ...x, ...patch } : x)) })
+  const removeOutputField = (i: number) =>
+    onChange({ outputFields: operation.outputFields.filter((_, idx) => idx !== i) })
 
   const indexed = operation.inputFields.map((f, i) => ({ f, i }))
   const paramFields = indexed.filter(({ f }) => f.in !== 'body')
   const bodyFields = indexed.filter(({ f }) => f.in === 'body')
+
+  const editingField = editing === null
+    ? null
+    : editing.list === 'input'
+      ? operation.inputFields[editing.index]
+      : operation.outputFields[editing.index]
 
   return (
     <div className={styles.card} data-testid="manual-operation">
@@ -126,18 +114,16 @@ function OperationEditor({ operation, singleOpMethod, onChange, onRemove }: {
         block
       />
 
-      <Heading as="h4" variant="small" className={styles.sectionHeading}>Parameters (path / query / header)</Heading>
+      <Heading as="h4" variant="small" className={styles.sectionHeading}>Input — request schema</Heading>
       <Text as="p" size="small" className={styles.muted}>
-        How this operation is called over HTTP -- path segments, query string, and header values. Not part of the payload.
+        The attributes this request accepts. Parameters first (path / query / header -- how the call is
+        addressed over HTTP), then the request body (the payload itself).
       </Text>
+      <Text size="small" weight="semibold">Parameters (path / query / header)</Text>
       {paramFields.map(({ f, i }) => (
-        <FieldRow
-          key={i}
-          field={f}
-          showIn
-          inOptions={PARAM_INS}
-          showRequired
+        <FieldLine key={i} field={f} showIn
           onChange={(patch) => updateInputField(i, patch)}
+          onEdit={() => setEditing({ list: 'input', index: i })}
           onRemove={() => removeInputField(i)}
         />
       ))}
@@ -145,16 +131,11 @@ function OperationEditor({ operation, singleOpMethod, onChange, onRemove }: {
         Add parameter
       </Button>
 
-      <Heading as="h4" variant="small" className={styles.sectionHeading}>Request body</Heading>
-      <Text as="p" size="small" className={styles.muted}>
-        The JSON payload sent with this call.
-      </Text>
+      <Text size="small" weight="semibold">Request body</Text>
       {bodyFields.map(({ f, i }) => (
-        <FieldRow
-          key={i}
-          field={f}
-          showRequired
+        <FieldLine key={i} field={f}
           onChange={(patch) => updateInputField(i, patch)}
+          onEdit={() => setEditing({ list: 'input', index: i })}
           onRemove={() => removeInputField(i)}
         />
       ))}
@@ -162,84 +143,138 @@ function OperationEditor({ operation, singleOpMethod, onChange, onRemove }: {
         Add body field
       </Button>
 
-      <Heading as="h4" variant="small" className={styles.sectionHeading}>Output fields</Heading>
+      <Heading as="h4" variant="small" className={styles.sectionHeading}>Output — response schema</Heading>
+      <Text as="p" size="small" className={styles.muted}>
+        The attributes this request&apos;s response provides -- what a workflow node can read out of the
+        response and bind into its own Attributes.
+      </Text>
       {operation.outputFields.map((f, i) => (
-        <FieldRow
-          key={i}
-          field={f}
-          showPath
-          onChange={(patch) => onChange({ outputFields: operation.outputFields.map((x, idx) => (idx === i ? { ...x, ...patch } : x)) })}
-          onRemove={() => onChange({ outputFields: operation.outputFields.filter((_, idx) => idx !== i) })}
+        <FieldLine key={i} field={f} isOutput
+          onChange={(patch) => updateOutputField(i, patch)}
+          onEdit={() => setEditing({ list: 'output', index: i })}
+          onRemove={() => removeOutputField(i)}
         />
       ))}
-      <Button size="small" variant="invisible" leadingVisual={PlusIcon} onClick={() => onChange({ outputFields: [...operation.outputFields, emptyOutputField()] })}>
+      <Button size="small" variant="invisible" leadingVisual={PlusIcon} onClick={() => onChange({ outputFields: [...operation.outputFields, emptyBodyField()] })}>
         Add output field
       </Button>
+
+      {editing !== null && editingField && (
+        <FieldEditDialog
+          field={editingField}
+          isOutput={editing.list === 'output'}
+          onChange={(patch) => (editing.list === 'input' ? updateInputField(editing.index, patch) : updateOutputField(editing.index, patch))}
+          onClose={() => setEditing(null)}
+        />
+      )}
     </div>
   )
 }
 
-// enumValues round-trips through a plain comma-separated TextInput,
-// not Primer's TextInputWithTokens -- checked directly against the
-// installed package before use (per .claude/rules/frontend.md's "check
-// the kit before hand-rolling" rule) and found marked @deprecated in
-// this Primer version; introducing new usage of a component the
-// framework itself is retiring isn't the right call for a small,
-// self-contained field like this one. A comma-separated string is a
-// simpler, dependency-free fit for "a short list of allowed values."
-function parseEnumInput(raw: string): string[] | undefined {
-  const values = raw.split(',').map((v) => v.trim()).filter((v) => v !== '')
-  return values.length > 0 ? values : undefined
-}
-
-function FieldRow({ field, showIn, inOptions = FIELD_INS, showRequired, showPath, onChange, onRemove }: {
+// One compact line per field: name + type inline (the two things
+// always needed), badges for whatever else is set, and the pencil for
+// the rest -- the popup editor below.
+function FieldLine({ field, showIn, isOutput, onChange, onEdit, onRemove }: {
   field: ManualField
   showIn?: boolean
-  inOptions?: ManualField['in'][]
-  showRequired?: boolean
-  showPath?: boolean
+  isOutput?: boolean
   onChange: (patch: Partial<ManualField>) => void
+  onEdit: () => void
   onRemove: () => void
 }) {
   return (
-    <Stack direction="vertical" gap="condensed" data-testid="manual-field-row">
-      <Stack direction="horizontal" gap="condensed" align="center">
-        <TextInput aria-label="Field name" placeholder="name" value={field.name} onChange={(e) => onChange({ name: e.target.value })} />
-        {showIn && (
-          <Select aria-label="Field placement" value={field.in} onChange={(e) => onChange({ in: e.target.value as ManualField['in'] })}>
-            {inOptions.map((v) => <Select.Option key={v} value={v}>{v}</Select.Option>)}
-          </Select>
-        )}
-        <Select aria-label="Field type" value={field.type} onChange={(e) => onChange({ type: e.target.value as ManualField['type'] })}>
-          {FIELD_TYPES.map((v) => <Select.Option key={v} value={v}>{v}</Select.Option>)}
+    <Stack direction="horizontal" gap="condensed" align="center" data-testid="manual-field-row">
+      <TextInput aria-label="Field name" placeholder="name" value={field.name} onChange={(e) => onChange({ name: e.target.value })} />
+      {showIn && (
+        <Select aria-label="Field placement" value={field.in} onChange={(e) => onChange({ in: e.target.value as ManualField['in'] })}>
+          {PARAM_INS.map((v) => <Select.Option key={v} value={v}>{v}</Select.Option>)}
         </Select>
-        {showRequired && (
-          <label>
-            <Checkbox checked={field.required} onChange={(e) => onChange({ required: e.target.checked })} /> required
-          </label>
-        )}
-        <label>
-          <Checkbox checked={field.secret} onChange={(e) => onChange({ secret: e.target.checked })} /> secret
-        </label>
-        <TextInput aria-label="Alias" placeholder="alias (optional)" value={field.alias ?? ''} onChange={(e) => onChange({ alias: e.target.value || undefined })} />
-        {showPath && (
-          <TextInput aria-label="Extract path" placeholder="data.name (optional)" value={field.extractPath ?? ''} onChange={(e) => onChange({ extractPath: e.target.value || undefined })} />
-        )}
-        <IconButton icon={TrashIcon} aria-label="Remove field" size="small" variant="invisible" onClick={onRemove} />
-      </Stack>
-      <Stack direction="horizontal" gap="condensed" align="center">
-        <TextInput aria-label="Default value" placeholder="default (optional)" value={field.default ?? ''} onChange={(e) => onChange({ default: e.target.value || undefined })} />
-        <TextInput aria-label="Description" placeholder="description (optional)" value={field.description ?? ''} onChange={(e) => onChange({ description: e.target.value || undefined })} />
-        {field.type === 'string' && (
-          <TextInput
-            aria-label="Enum values"
-            placeholder="allowed values, comma-separated (optional)"
-            value={field.enumValues?.join(', ') ?? ''}
-            onChange={(e) => onChange({ enumValues: parseEnumInput(e.target.value) })}
-            block
-          />
-        )}
-      </Stack>
+      )}
+      <Select aria-label="Field type" value={field.type} onChange={(e) => onChange({ type: e.target.value as ManualField['type'] })}>
+        {FIELD_TYPES.map((v) => <Select.Option key={v} value={v}>{v}</Select.Option>)}
+      </Select>
+      {field.required && <Label size="small" variant="accent">required</Label>}
+      {field.secret && <Label size="small" variant="attention">secret</Label>}
+      {field.alias && <Label size="small" variant="secondary">alias: {field.alias}</Label>}
+      {isOutput && field.extractPath && <Label size="small" variant="secondary">path: {field.extractPath}</Label>}
+      {/* Not "Edit field <name>" -- getByLabel matches substrings, and
+          that phrasing collides with the adjacent "Field name" input's
+          own aria-label in tests and screen-reader listings alike. */}
+      <IconButton icon={PencilIcon} aria-label={`Edit ${field.name || 'unnamed'} settings`} size="small" variant="invisible" onClick={onEdit} data-testid="field-edit-open" />
+      <IconButton icon={TrashIcon} aria-label="Remove field" size="small" variant="invisible" onClick={onRemove} />
     </Stack>
+  )
+}
+
+// The popup editor for a field's full settings -- required/secret,
+// alias, extract path (outputs), default, description, enum values.
+// Edits apply directly to the shared operations state (the same
+// onChange the inline name/type inputs use), so Close is just close --
+// no separate save/cancel state to desync.
+function FieldEditDialog({ field, isOutput, onChange, onClose }: {
+  field: ManualField
+  isOutput: boolean
+  onChange: (patch: Partial<ManualField>) => void
+  onClose: () => void
+}) {
+  return (
+    <Dialog title={`Field: ${field.name || '(unnamed)'}`} onClose={onClose} width="large" data-testid="field-edit-dialog">
+      <Stack direction="vertical" gap="condensed">
+        {!isOutput && (
+          <FormControl>
+            <Checkbox checked={field.required} onChange={(e) => onChange({ required: e.target.checked })} />
+            <FormControl.Label>Required</FormControl.Label>
+          </FormControl>
+        )}
+        <FormControl>
+          <Checkbox checked={field.secret} onChange={(e) => onChange({ secret: e.target.checked })} />
+          <FormControl.Label>Secret</FormControl.Label>
+          <FormControl.Caption>
+            A secret output can never be mapped into a workflow Attribute (ValidateGraph rejects it at
+            save time -- ADR-0007&apos;s guardrail).
+          </FormControl.Caption>
+        </FormControl>
+        <FormControl>
+          <FormControl.Label>Alias</FormControl.Label>
+          <FormControl.Caption>Optional friendlier name shown in binding editors instead of the wire name.</FormControl.Caption>
+          <TextInput value={field.alias ?? ''} onChange={(e) => onChange({ alias: e.target.value || undefined })} block />
+        </FormControl>
+        {isOutput && (
+          <FormControl>
+            <FormControl.Label>Extract path</FormControl.Label>
+            <FormControl.Caption>Optional dot-path into nested response JSON, e.g. data.name.</FormControl.Caption>
+            <TextInput value={field.extractPath ?? ''} onChange={(e) => onChange({ extractPath: e.target.value || undefined })} block />
+          </FormControl>
+        )}
+        <FormControl>
+          <FormControl.Label>Default value</FormControl.Label>
+          <TextInput value={field.default ?? ''} onChange={(e) => onChange({ default: e.target.value || undefined })} block />
+        </FormControl>
+        <FormControl>
+          <FormControl.Label>Description</FormControl.Label>
+          <TextInput value={field.description ?? ''} onChange={(e) => onChange({ description: e.target.value || undefined })} block />
+        </FormControl>
+        {field.type === 'string' && (
+          <FormControl>
+            <FormControl.Label>Allowed values</FormControl.Label>
+            <FormControl.Caption>
+              Optional, comma-separated (an enum). Plain text input, not Primer&apos;s TextInputWithTokens --
+              that component is deprecated in the installed version (checked directly, ADR-0011).
+            </FormControl.Caption>
+            <TextInput
+              value={field.enumValues?.join(', ') ?? ''}
+              onChange={(e) => {
+                const values = e.target.value.split(',').map((v) => v.trim()).filter((v) => v !== '')
+                onChange({ enumValues: values.length > 0 ? values : undefined })
+              }}
+              block
+            />
+          </FormControl>
+        )}
+        <Stack direction="horizontal" gap="condensed">
+          <Button variant="primary" size="small" onClick={onClose} data-testid="field-edit-done">Done</Button>
+        </Stack>
+      </Stack>
+    </Dialog>
   )
 }
