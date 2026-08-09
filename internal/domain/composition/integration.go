@@ -58,6 +58,17 @@ var authStrategies = map[httprequest.AuthType]AuthStrategy{}
 // Triggers -- each AuthType's strategy lives in its own small file,
 // registered via init(), so adding a new AuthType (mTLS included) is a
 // pure addition, never a change to an existing strategy's file.
+//
+// Documented divergence from its two siblings (RegisterNodeType,
+// RegisterTrigger): this map assignment silently overwrites on a
+// duplicate AuthType instead of panicking -- neither behavior was a
+// deliberate choice recorded anywhere before this comment, it's simply
+// what a bare map write does. Not a bug fix, since nothing depends on
+// either behavior today (every AuthType strategy registers exactly
+// once, from this repo's own init() files) -- but a future extension
+// point that wants a registry to support intentional substitution
+// should decide that on purpose, not inherit whichever of these two
+// shapes it happened to copy from.
 func RegisterAuthStrategy(t httprequest.AuthType, fn AuthStrategy) {
 	authStrategies[t] = fn
 }

@@ -38,11 +38,13 @@ tasks:
     deps: [clean]
     cmds:
       - task: "{{.GOOS}}:build"
+      - 'echo "Built raw binary: {{.BIN_DIR}}/{{.APP_NAME}}{{exeExt}} -- this is NOT a launchable app bundle. Run `task package` to produce one, or `task run` to build and launch in one step."'
 
   package:
     summary: Packages a production build of the application
     cmds:
       - task: "{{.GOOS}}:package"
+      - '{{if eq .GOOS "darwin"}}echo "Packaged app: {{.BIN_DIR}}/{{.APP_NAME}}.app -- launch with: open {{.BIN_DIR}}/{{.APP_NAME}}.app"{{else if eq .GOOS "windows"}}echo "Packaged app: {{.BIN_DIR}}/{{.APP_NAME}}.exe"{{else}}echo "Packaged app: see {{.BIN_DIR}}/ for output"{{end}}'
 
   run:
     summary: Runs the application
@@ -70,6 +72,7 @@ tasks:
     deps: [clean]
     cmds:
       - task: common:build:server
+      - 'echo "Built server binary: {{.BIN_DIR}}/{{.APP_NAME}}-server{{exeExt}} -- run with: ./{{.BIN_DIR}}/{{.APP_NAME}}-server{{exeExt}}"'
 
   run:server:
     summary: Runs the application in server mode

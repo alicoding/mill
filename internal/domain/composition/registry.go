@@ -22,6 +22,19 @@ var nodeTypeRegistry = map[string]nodeTypeEntry{}
 // programming error caught at process startup, the same fail-fast
 // behavior sql.Register itself uses, not a runtime data problem to
 // recover from softly.
+//
+// Known, documented divergence (not yet reconciled -- flagged here so
+// it isn't rediscovered by surprise): triggerRegistry (main.RegisterTrigger,
+// triggerregistry.go) shares this exact fail-fast shape, but
+// RegisterAuthStrategy (integration.go) silently overwrites on a
+// duplicate AuthType instead of panicking. None of the three registries
+// support intentional substitution either -- each treats "already
+// registered" as purely an error case, never a valid override. Neither
+// gap blocks anything today (every registration site is this repo's own
+// init()-time code, never third-party), but a future extension point
+// that wants to replace an existing entry (not just add a new one) will
+// need a real decision here, not an accident of which registry it lands
+// in.
 func RegisterNodeType(nt NodeType, exec ExecFunc) {
 	if _, exists := nodeTypeRegistry[nt.ID]; exists {
 		panic("composition: node type " + nt.ID + " registered twice")

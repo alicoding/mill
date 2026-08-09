@@ -161,6 +161,11 @@ tasks:
       - wails3 tool msix-install-tools
 
   run:
+    summary: Builds and runs the application
+    deps:
+      - task: build:native
+        vars:
+          DEV: "true"
     cmds:
       - '{{.BIN_DIR}}/{{.APP_NAME}}.exe'
 
