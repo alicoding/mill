@@ -1,0 +1,40 @@
+# Enforces ADR-0001's locked repo-layout decision (flat root *.go files:
+# main.go + thin Wails-binding *service.go files, plus ADR-0006's
+# per-type trigger dispatch files) -- catches drift where a file that
+# should live under internal/domain/* or internal/adapters/* instead
+# lands at the repo root.
+#
+# ls-lint has no dedicated "allowlist" feature (checked directly against
+# its own docs before adopting, not assumed) -- this uses its `regex:`
+# rule (anchored ^{pattern}$ against the filename stem) to the same
+# practical effect: any .go file ls-lint reaches whose stem doesn't
+# match one of Mill's actual established root naming families is
+# flagged. Pattern derived from the real current root file list
+# (`git ls-files --directory`), not an idealized narrower guess --
+# covers main, idgen, configuremcpserver, the trigger* dispatch family
+# (open-ended, so a future triggerwebhook.go etc. needs no config
+# change), the *service(_suffix)* family (including configureservice's
+# own _builtin/_requestauth/_requesttest split), and
+# executionchildworkflow, each with an optional _test suffix.
+#
+# Scoping note, confirmed empirically (not assumed from the docs, which
+# don't show a "root only" example): ls-lint's top-level `ls:` keys are
+# NOT implicitly root-scoped -- an extension rule with no directory-glob
+# wrapper applies recursively to every matching file in the whole tree.
+# There is no dedicated "root only, non-recursive" syntax either. The
+# correct way to scope this rule to root is the inverse: `ignore:
+# internal` below excludes the one other place .go files legitimately
+# live (internal/domain/*, internal/adapters/*, which follow ordinary Go
+# package-naming convention, not this repo-specific root rule) --
+# proven by testing an intentionally-impossible regex both with and
+# without this ignore entry before writing the real pattern.
+ls:
+  .go: regex:(main|idgen|configuremcpserver|trigger[a-z]*|[a-z]*service(_[a-z]+)*|executionchildworkflow)(_test)?
+
+ignore:
+  - build
+  - frontend
+  - bin
+  - docs
+  - .git
+  - internal
