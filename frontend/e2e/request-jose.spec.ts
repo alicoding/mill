@@ -14,7 +14,7 @@ function requestRow(page: import('@playwright/test').Page, label: string) {
 }
 
 async function deleteRequest(page: import('@playwright/test').Page, label: string) {
-  await page.getByRole('tab', { name: 'Requests' }).click()
+  await page.getByRole('tab', { name: 'Integrations', exact: true }).click()
   await requestRow(page, label).getByRole('button', { name: `Delete ${label}` }).click()
   await expect(requestRow(page, label)).toHaveCount(0)
 }
@@ -26,7 +26,8 @@ test('JOSE encryption toggle, recipient public key, and decrypt-response persist
   await page.goto('/')
   await page.getByRole('link', { name: 'Configure' }).click()
 
-  await page.getByTestId('new-request').click()
+  await page.getByTestId('new-integration').click()
+  await page.getByTestId('new-integration-rest').click()
   await page.getByLabel('Label').fill('JOSE Request')
   await page.getByLabel('Base URL').fill('https://api.example.com')
 
@@ -66,7 +67,8 @@ test('JOSE encryption is disabled by default, and toggling it off after enabling
   await page.goto('/')
   await page.getByRole('link', { name: 'Configure' }).click()
 
-  await page.getByTestId('new-request').click()
+  await page.getByTestId('new-integration').click()
+  await page.getByTestId('new-integration-rest').click()
   await page.getByLabel('Label').fill('Plain Request')
   await page.getByLabel('Base URL').fill('https://api.example.com')
 

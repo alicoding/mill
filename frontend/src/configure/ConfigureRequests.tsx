@@ -1,23 +1,17 @@
 import { useEffect, useRef, useState } from 'react'
-import { Button, Heading, IconButton, Label, Stack, Text } from '@primer/react'
-import { DownloadIcon, PlusIcon, TrashIcon, UploadIcon } from '@primer/octicons-react'
+import { ActionList, ActionMenu, Button, Heading, IconButton, Label, Stack, Text } from '@primer/react'
+import { DownloadIcon, TrashIcon, UploadIcon } from '@primer/octicons-react'
 import { Tabs } from '@primer/react/experimental'
 import { TabItem, TabList, TabPanel } from '../shared/Tabs'
 import { ConfigureService } from '../../bindings/github.com/alicoding/mill'
 import type { HTTPRequest } from '../../bindings/github.com/alicoding/mill/internal/domain/httprequest/models'
-import { AuthType } from '../../bindings/github.com/alicoding/mill/internal/domain/httprequest/models'
 import { RequestForm } from './RequestForm'
 import { RequestSummary } from './RequestSummary'
+import { AUTH_LABEL } from './authTypeLabels'
 import { loadPersistedTabs, savePersistedTabs } from '../shared/persistedTabs'
 import { downloadJSON } from '../shared/downloadJSON'
 import styles from '../shared/ListCard.module.css'
 import PageContainer from '../shared/PageContainer'
-
-const AUTH_LABEL: Record<string, string> = {
-  [AuthType.AuthNone]: 'None',
-  [AuthType.AuthAPIKey]: 'API key',
-  [AuthType.AuthBearer]: 'Bearer token',
-}
 
 const LIST_TAB = 'list'
 const TABS_STORAGE_KEY = 'mill-configure-request-tabs'
@@ -160,11 +154,11 @@ export function ConfigureRequests() {
 
   return (
     <Tabs value={activeTab} onValueChange={({ value }) => setActiveTab(value)}>
-      <TabList aria-label="Requests">
-        <TabItem value={LIST_TAB}>Requests</TabItem>
+      <TabList aria-label="Integrations">
+        <TabItem value={LIST_TAB}>Integrations</TabItem>
         {tabs.map((t) => (
           <TabItem key={t.key} value={t.key} onClose={() => closeTab(t.key)}>
-            {t.requestId ? (requests?.find((r) => r.ID === t.requestId)?.Label ?? 'Request') : 'New request'}
+            {t.requestId ? (requests?.find((r) => r.ID === t.requestId)?.Label ?? 'Integration') : 'New integration'}
           </TabItem>
         ))}
       </TabList>
@@ -172,7 +166,7 @@ export function ConfigureRequests() {
       <TabPanel value={LIST_TAB}>
         <PageContainer data-testid="configure-requests">
           <Stack direction="horizontal" justify="space-between" align="center" className={styles.sectionHeading}>
-            <Heading as="h2" variant="small">Requests</Heading>
+            <Heading as="h2" variant="small">Integrations</Heading>
             <Stack direction="horizontal" gap="condensed">
               <input
                 ref={importInputRef}
@@ -185,9 +179,30 @@ export function ConfigureRequests() {
               <Button leadingVisual={UploadIcon} size="small" onClick={openImportPicker} data-testid="import-request">
                 Import
               </Button>
-              <Button leadingVisual={PlusIcon} size="small" onClick={openNewTab} data-testid="new-request">
-                New request
-              </Button>
+              {/* One "New integration" entry point with a typed menu,
+                  not a bare "New request" button -- the integration
+                  *kind* is the first authoring decision (docs/SPEC.md
+                  §4.1's connector-kind row: REST today; DB/other kinds
+                  are future menu items here, not future pages). A
+                  single-item menu is deliberate, by direct user
+                  decision -- the menu IS the extension point, unlike
+                  §3.5's single-option-Select-is-noise cases where no
+                  second option was ever expected. */}
+              <ActionMenu>
+                <ActionMenu.Button size="small" variant="primary" data-testid="new-integration">
+                  New integration
+                </ActionMenu.Button>
+                <ActionMenu.Overlay width="medium">
+                  <ActionList>
+                    <ActionList.Item onSelect={openNewTab} data-testid="new-integration-rest">
+                      REST API request
+                      <ActionList.Description variant="block">
+                        Call an external HTTP API — typed request/response schema, auth, headers.
+                      </ActionList.Description>
+                    </ActionList.Item>
+                  </ActionList>
+                </ActionMenu.Overlay>
+              </ActionMenu>
             </Stack>
           </Stack>
           {importError && (
@@ -196,7 +211,7 @@ export function ConfigureRequests() {
 
           {requests === null && <Text as="p" className={styles.muted}>Loading…</Text>}
           {requests !== null && requests.length === 0 && (
-            <Text as="p" className={styles.muted}>No requests yet.</Text>
+            <Text as="p" className={styles.muted}>No integrations yet.</Text>
           )}
           {requests !== null && (
             <Stack direction="vertical" gap="condensed">

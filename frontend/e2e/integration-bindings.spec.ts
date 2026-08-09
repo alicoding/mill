@@ -78,7 +78,8 @@ async function deleteStarterNode(page: import('@playwright/test').Page) {
 test('Matching an Integration node to a declared operation shows a binding editor with a secret field guarded', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Configure' }).click()
-  await page.getByTestId('new-request').click()
+  await page.getByTestId('new-integration').click()
+  await page.getByTestId('new-integration-rest').click()
   await page.getByLabel('Label').fill('E2E bindings request')
   await page.getByLabel('Base URL').fill('https://api.example.com')
   await page.getByTestId('request-openapi-spec').fill(bindingSpec)

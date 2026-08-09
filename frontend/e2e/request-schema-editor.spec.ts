@@ -17,7 +17,7 @@ function requestRow(page: import('@playwright/test').Page, label: string) {
 // `hidden` (Primer's TabPanel never unmounts, just toggles `hidden`),
 // and a hidden element isn't clickable.
 async function deleteRequest(page: import('@playwright/test').Page, label: string) {
-  await page.getByRole('tab', { name: 'Requests' }).click()
+  await page.getByRole('tab', { name: 'Integrations', exact: true }).click()
   await requestRow(page, label).getByRole('button', { name: `Delete ${label}` }).click()
   await expect(requestRow(page, label)).toHaveCount(0)
 }
@@ -26,7 +26,8 @@ test('Authoring a schema via the Manual editor round-trips alias/path through th
   await page.goto('/')
   await page.getByRole('link', { name: 'Configure' }).click()
 
-  await page.getByTestId('new-request').click()
+  await page.getByTestId('new-integration').click()
+  await page.getByTestId('new-integration-rest').click()
   await page.getByLabel('Label').fill('Manual Schema Request')
   await page.getByLabel('Base URL').fill('https://api.example.com')
 

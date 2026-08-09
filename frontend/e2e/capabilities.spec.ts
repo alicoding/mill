@@ -42,7 +42,7 @@ test('Clicking the Configure capability navigates to its real page', async ({ pa
 
   await capabilityRow(page, 'Configure').getByRole('button', { name: 'Go to page' }).click()
 
-  await expect(page.getByRole('tab', { name: 'Integration' })).toBeVisible()
+  await expect(page.getByRole('tab', { name: 'Integration', exact: true })).toBeVisible()
 })
 
 test('Clicking a not-built capability shows a placeholder with status and a way back', async ({ page }) => {

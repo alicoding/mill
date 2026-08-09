@@ -23,7 +23,7 @@ function requestRow(page: import('@playwright/test').Page, label: string) {
 // `hidden` (Primer's TabPanel never unmounts, just toggles `hidden`),
 // and a hidden element isn't clickable.
 async function deleteRequest(page: import('@playwright/test').Page, label: string) {
-  await page.getByRole('tab', { name: 'Requests' }).click()
+  await page.getByRole('tab', { name: 'Integrations', exact: true }).click()
   await requestRow(page, label).getByRole('button', { name: `Delete ${label}` }).click()
   await expect(requestRow(page, label)).toHaveCount(0)
 }
@@ -32,7 +32,8 @@ test('Running a test against an unreachable address logs a deterministic error',
   await page.goto('/')
   await page.getByRole('link', { name: 'Configure' }).click()
 
-  await page.getByTestId('new-request').click()
+  await page.getByTestId('new-integration').click()
+  await page.getByTestId('new-integration-rest').click()
   await page.getByLabel('Label').fill('Test Panel Request')
   // Port 1 is reserved and essentially never bound -- a connection
   // refused, not a DNS lookup or a real remote host.
@@ -72,7 +73,8 @@ test('Duplicating a request pre-fills a new form without carrying over the secre
   await page.goto('/')
   await page.getByRole('link', { name: 'Configure' }).click()
 
-  await page.getByTestId('new-request').click()
+  await page.getByTestId('new-integration').click()
+  await page.getByTestId('new-integration-rest').click()
   await page.getByLabel('Label').fill('Original Request')
   await page.getByLabel('Base URL').fill('https://api.example.com')
   await page.getByLabel('Auth type').selectOption('bearer')
