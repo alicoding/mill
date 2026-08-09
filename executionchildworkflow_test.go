@@ -120,3 +120,43 @@ func TestRunChildWorkflow_IdempotencyKey_PreventsDuplicateChildRuns(t *testing.T
 		t.Fatalf("found %d runs with workflow ID %q across two parent invocations, want exactly 1 (idempotency)", len(all), "fixed-key-123")
 	}
 }
+
+// The seeded parent/child example pair (composition.BuiltInWorkflows)
+// runs end to end against a real DBOS runtime: the parent binds a
+// typed input into the child's "message" Attribute, the child's
+// capture-attribute reads it into the payload and inject-text marks
+// it, and the parent receives that result as its payload -- proving
+// the typed input AND typed output halves on the exact workflows a
+// fresh install seeds, not a synthetic fixture.
+func TestSeededParentChildExample_TypedInputAndOutput_RunsEndToEnd(t *testing.T) {
+	store := newFakeStore()
+	comp := NewCompositionService(store)
+
+	dbPath := filepath.Join(t.TempDir(), "exec.db")
+	exec, err := NewExecutionService("sqlite:"+dbPath, comp)
+	if err != nil {
+		t.Fatalf("NewExecutionService: %v", err)
+	}
+	t.Cleanup(func() { _ = exec.Shutdown(2 * time.Second) })
+	exec.wireChildWorkflowRunner()
+
+	summary, err := exec.RunWorkflow("example-parent-workflow", RunKindTest, nil)
+	if err != nil {
+		t.Fatalf("RunWorkflow (seeded parent): %v", err)
+	}
+	if summary.Status != "SUCCESS" {
+		t.Fatalf("seeded parent run status = %q, want SUCCESS (error: %s)", summary.Status, summary.Error)
+	}
+	want := "hello from the parent workflow\n\n(processed by the child workflow)"
+	if summary.Output != want {
+		t.Errorf("seeded parent output = %q, want %q (typed input bound into the child, child's marker appended)", summary.Output, want)
+	}
+
+	children, err := execution.ListWorkflows(exec.ctx, execution.WithFilterParentWorkflowID(summary.RunID))
+	if err != nil {
+		t.Fatalf("ListWorkflows(WithFilterParentWorkflowID): %v", err)
+	}
+	if len(children) != 1 {
+		t.Fatalf("found %d children of the seeded parent's run, want exactly 1", len(children))
+	}
+}

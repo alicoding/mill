@@ -84,6 +84,45 @@ func BuiltInWorkflows() []Workflow {
 		panic("built-in workflow references an unknown node type: " + err.Error())
 	}
 
+	// A seeded parent/child pair demonstrating docs/adr/0010 end to end
+	// (prompted directly): the child is callable-only with a typed input
+	// (its declared "message" Attribute, read into the payload by
+	// capture-attribute); the parent invokes it with a bound input and
+	// stores the child's typed output into its own "childResult"
+	// Attribute via child-workflow's outputAttribute.
+	const (
+		childTriggerID = "example-child-trigger"
+		childCaptureID = "example-child-capture"
+		childInjectID  = "example-child-inject"
+	)
+	childNodes, err := ResolveNodeDefaults([]Node{
+		{ID: childTriggerID, NodeTypeID: "trigger-callable", Position: Position{X: 0, Y: 0}},
+		{ID: childCaptureID, NodeTypeID: "capture-attribute", Position: Position{X: 0, Y: 100},
+			Config: map[string]string{"attribute": "message"}},
+		{ID: childInjectID, NodeTypeID: "process-inject-text", Position: Position{X: 0, Y: 200},
+			Config: map[string]string{"text": "(processed by the child workflow)", "placement": "append"}},
+	})
+	if err != nil {
+		panic("built-in workflow references an unknown node type: " + err.Error())
+	}
+
+	const (
+		parentTriggerID = "example-parent-trigger"
+		parentChildID   = "example-parent-child-step"
+	)
+	parentNodes, err := ResolveNodeDefaults([]Node{
+		{ID: parentTriggerID, NodeTypeID: "trigger-manual", Position: Position{X: 0, Y: 0}},
+		{ID: parentChildID, NodeTypeID: "child-workflow", Position: Position{X: 0, Y: 100},
+			Config: map[string]string{
+				"workflowId":      ExampleChildWorkflowID,
+				"inputBindings":   `{"message":"hello from the parent workflow"}`,
+				"outputAttribute": "childResult",
+			}},
+	})
+	if err != nil {
+		panic("built-in workflow references an unknown node type: " + err.Error())
+	}
+
 	return []Workflow{
 		{
 			ID:          "load-sample-html-workflow",
@@ -107,8 +146,36 @@ func BuiltInWorkflows() []Workflow {
 			},
 			BuiltIn: true,
 		},
+		{
+			ID:          ExampleChildWorkflowID,
+			Label:       "Example: Echo message (callable child)",
+			Description: "Only runnable by another workflow (its trigger is \"callable by another workflow\"). Takes a typed input -- its declared 'message' Attribute -- reads it into the payload, and appends a marker so you can see the child actually processed it.",
+			Nodes:       childNodes,
+			Attributes:  []AttributeDef{{Key: "message", Label: "Message", Type: FieldText}},
+			Edges: []Edge{
+				{ID: "example-child-e0", Source: childTriggerID, Target: childCaptureID},
+				{ID: "example-child-e1", Source: childCaptureID, Target: childInjectID},
+			},
+			BuiltIn: true,
+		},
+		{
+			ID:          "example-parent-workflow",
+			Label:       "Example: Parent → child call",
+			Description: "Invokes the callable child with a typed input bound to its 'message' Attribute, takes the child's result as this workflow's payload, and also stores it into this workflow's 'childResult' Attribute (typed output) for later steps to reference.",
+			Nodes:       parentNodes,
+			Attributes:  []AttributeDef{{Key: "childResult", Label: "Child result", Type: FieldText}},
+			Edges: []Edge{
+				{ID: "example-parent-e0", Source: parentTriggerID, Target: parentChildID},
+			},
+			BuiltIn: true,
+		},
 	}
 }
+
+// ExampleChildWorkflowID is exported so the parent seed above and any
+// test/UI affordance can reference the child without a string literal
+// that could drift.
+const ExampleChildWorkflowID = "example-child-echo-workflow"
 
 // ResolveNodeDefaults validates every node's NodeTypeID against
 // NodeTypes(), fills in any missing config key with that field's

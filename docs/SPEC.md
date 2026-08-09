@@ -1406,6 +1406,33 @@ exposed anywhere in Mill's own UI, and cyclic child-workflow detection
 (A→B→A) — a real workflow hitting this is the trigger to revisit, not
 speculative upfront. `LOCKED`.
 
+**Typed input AND typed output across the parent/child boundary are
+demonstrated by a seeded pair, with the two small engine gaps that
+blocked it closed — `LOCKED`, built, prompted directly.**
+`capture-attribute` (a new self-registered `KindCapture` NodeType, its
+whole addition one new file per ADR-0006's pattern — deliberately also
+serving as the freshest worked example of that extension point) reads
+one of the workflow's declared Attributes into the payload, which is
+how a callable child actually *uses* its typed input
+(`process-inject-text` is deliberately literal-only). `child-workflow`
+gained an optional `outputAttribute` config: the child's result still
+becomes the parent's payload, and is *also* written into the named
+parent Attribute, so downstream steps (a Decision condition, another
+binding) can reference it as typed data. `BuiltInWorkflows()` seeds
+"Example: Echo message (callable child)" (declares a `message`
+Attribute, reads it, appends a visible marker) and "Example: Parent →
+child call" (binds `{"message": "hello from the parent workflow"}`
+in, stores the result into its own `childResult` Attribute). Proven
+end-to-end twice, not assumed: a Go test runs the exact seeded pair
+against a real DBOS runtime and asserts the exact typed round-trip
+output plus the tracked parent/child relationship
+(`TestSeededParentChildExample_TypedInputAndOutput_RunsEndToEnd`), and
+the same run was driven live through the real UI on a fresh-seeded
+instance. Same fresh-install-only seeding caveat as §4's typed request
+examples. Hover-preview of the child from the parent, and jump-to-
+child-from-parent, are part of the recorded hover-preview design input
+(§3.8) — not silently dropped, not bolted on ad hoc here.
+
 ### 3.4 Trigger primitives — capability map
 
 §3.3's Trigger row was one line (`Kind: trigger`, `Source: "hotkey"`
@@ -2688,6 +2715,16 @@ recorded as a real design input (`OPEN`), never silently dropped.
 - Node/canvas composition model (§3) — Decision/Integration/List
   execution + authoring, and now Child Workflow (§3.3/ADR-0010), are
   built; Parallel Steps and draft/live versioning remain the open parts
+- **Workflow lifecycle + versioning — explicitly requested, scoped as
+  its own research-first goal, not started.** The user asked for the
+  full set: publish (≡ live — confirmed one concept, not two), an
+  **inactive** (enabled/disabled) state, version history/rollback,
+  version *pinning* on a child-workflow reference, and shadow
+  evaluation — "we should research what we need completely." Per §0's
+  own discipline this needs a capability map + ADR against DBOS's real
+  primitives (`ForkWorkflow`, application versioning, `ListWorkflows`)
+  and n8n/reference-platform precedent before any schema is locked —
+  deliberately not half-shipped inside the session that recorded it.
 - Browser extension ↔ native app protocol details (§5)
 - Env/shell determinism rules (§6)
 - Session identity model spanning tab + agent run + process (§7)
