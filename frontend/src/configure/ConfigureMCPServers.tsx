@@ -130,6 +130,7 @@ export function ConfigureMCPServers() {
       )}
 
       {formOpen && (
+        <div className={styles.formPage}>
         <div className={styles.card}>
           <Stack direction="vertical" gap="condensed">
             <FormControl>
@@ -163,6 +164,7 @@ export function ConfigureMCPServers() {
               <Button size="small" variant="invisible" onClick={() => setFormOpen(false)}>Cancel</Button>
             </Stack>
           </Stack>
+        </div>
         </div>
       )}
 

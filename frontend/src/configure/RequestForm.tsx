@@ -217,6 +217,7 @@ export function RequestForm({
   }
 
   return (
+    <div className={styles.formPage}>
     <div className={styles.card}>
       <Stack direction="vertical" gap="normal">
         <section>
@@ -458,6 +459,7 @@ export function RequestForm({
         <Button variant="primary" size="small" onClick={handleSave}>Save request</Button>
         <Button size="small" variant="invisible" onClick={onCancel}>Cancel</Button>
       </Stack>
+    </div>
     </div>
   )
 }
