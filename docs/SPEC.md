@@ -3862,6 +3862,24 @@ at workflow time.** Findings, not yet implemented:
 still needs an ADR (same "architect pass" treatment ADR-0005/0006 got)
 before `internal/domain/guardrail` gets built.
 
+**Update — one narrow corner of this got its own ADR:
+[`docs/adr/0017-mcp-write-tools-guardrail-scope.md`](adr/0017-mcp-write-tools-guardrail-scope.md)
+(`proposed`, task #13), prompted directly by §3.6's read-only MCP
+Resources work (§11) raising the obvious next question — should an
+external MCP client be able to *write* Mill's own workflow/Configure
+definitions, not just read them.** Finds that §8's existing three-layer
+scoping (node-kind/Connector/workflow) governs *running* an
+already-authored workflow, not *authoring* one via a new external
+channel — a fourth, orthogonal "authoring-capability scope" gate is
+needed, not covered by the design above. Recommends (not yet
+implemented, two real sub-questions still unresolved — does a real MCP
+host tolerate a long-blocking tool call awaiting human approval, and
+what UI renders that approval meaningfully) a default-off toggle plus
+synchronous human approval per write, once those two questions are
+answered. No MCP write Tools exist in the codebase — `millmcpservice.go`
+registers only Resources, enforced by what's simply absent from the
+code.
+
 ## 9. Repo AI workflow (CLAUDE.md / SKILL.md / agent profiles)
 
 Methodology below is `LOCKED` (researched against current Anthropic docs and
