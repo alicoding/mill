@@ -36,6 +36,10 @@ const (
 	ExampleQueryParamID = "example-queryparam-httpbin"
 )
 
+// One-URL model (composition.JoinRequestURL): every seed's BaseURL is
+// the COMPLETE endpoint URL and its single operation's path is "/",
+// which appends nothing at execution -- one URL, one place, matching
+// the request form's own single URL field.
 func openAPISpecFor(title, path string) string {
 	return `{"openapi":"3.0.3","info":{"title":"` + title + `","version":"1.0.0"},` +
 		`"paths":{"` + path + `":{"get":{"summary":"` + title + `","responses":{"200":{"description":"OK"}}}}}}`
@@ -54,7 +58,7 @@ func openAPISpecFor(title, path string) string {
 // input: one query parameter (q); outputs: url/origin flat, plus the
 // echoed q extracted from the nested args object via x-mill-path
 // (ADR-0011's nested-response extraction, demonstrated on real data).
-const typedEchoSpec = `{"openapi":"3.0.3","info":{"title":"httpbin typed echo","version":"1.0.0"},"paths":{"/get":{"get":{` +
+const typedEchoSpec = `{"openapi":"3.0.3","info":{"title":"httpbin typed echo","version":"1.0.0"},"paths":{"/":{"get":{` +
 	`"summary":"Echo query with typed response",` +
 	`"parameters":[{"name":"q","in":"query","required":false,"schema":{"type":"string","description":"Any value -- httpbin echoes it back in args.q"}}],` +
 	`"responses":{"200":{"description":"OK","content":{"application/json":{"schema":{"type":"object","properties":{` +
@@ -68,7 +72,7 @@ const typedEchoSpec = `{"openapi":"3.0.3","info":{"title":"httpbin typed echo","
 // {"authenticated": bool, "token": string} -- typed here so the
 // declared response fields line up 1:1 with the real JSON a test run
 // receives.
-const typedBearerSpec = `{"openapi":"3.0.3","info":{"title":"httpbin bearer check","version":"1.0.0"},"paths":{"/bearer":{"get":{` +
+const typedBearerSpec = `{"openapi":"3.0.3","info":{"title":"httpbin bearer check","version":"1.0.0"},"paths":{"/":{"get":{` +
 	`"summary":"Bearer-validated call with typed response",` +
 	`"responses":{"200":{"description":"OK","content":{"application/json":{"schema":{"type":"object","properties":{` +
 	`"authenticated":{"type":"boolean","description":"True when the Bearer token was accepted"},` +
@@ -85,7 +89,7 @@ func BuiltIn() []HTTPRequest {
 			ID: ExampleNoneID, Label: "Example: No auth (httpbin.org)",
 			Description: "Demonstrates AuthType none against a real, stable public test service " +
 				"(httpbin.org) -- no credentials involved, always works.",
-			BaseURL: "https://httpbin.org", AuthType: AuthNone, Method: "GET",
+			BaseURL: "https://httpbin.org/get", AuthType: AuthNone, Method: "GET",
 			OpenAPISpec: typedEchoSpec,
 			BuiltIn:     true,
 		},
@@ -95,8 +99,8 @@ func BuiltIn() []HTTPRequest {
 				"whatever it received, so you can see the header arrived correctly -- it does not " +
 				"validate the key's value (httpbin has no concept of a 'correct' key), so this is a " +
 				"self-consistency check, not third-party-verified auth.",
-			BaseURL: "https://httpbin.org", AuthType: AuthAPIKey, Method: "GET",
-			OpenAPISpec: openAPISpecFor("httpbin headers echo", "/headers"),
+			BaseURL: "https://httpbin.org/headers", AuthType: AuthAPIKey, Method: "GET",
+			OpenAPISpec: openAPISpecFor("httpbin headers echo", "/"),
 			BuiltIn:     true,
 		},
 		{
@@ -105,7 +109,7 @@ func BuiltIn() []HTTPRequest {
 				"genuinely validates the request server-side: 401 with no token, 200 + " +
 				"{\"authenticated\":true} with one -- real, independently-verified round trip, " +
 				"confirmed live before this was seeded.",
-			BaseURL: "https://httpbin.org", AuthType: AuthBearer, Method: "GET",
+			BaseURL: "https://httpbin.org/bearer", AuthType: AuthBearer, Method: "GET",
 			OpenAPISpec: typedBearerSpec,
 			BuiltIn:     true,
 		},
@@ -116,8 +120,8 @@ func BuiltIn() []HTTPRequest {
 				"universal HMAC convention exists to validate against). httpbin.org/headers echoes " +
 				"the signed headers back so you can see them, but doesn't verify the signature -- " +
 				"self-consistency check only, same caveat as the API-key example above.",
-			BaseURL: "https://httpbin.org", AuthType: AuthHMAC, Method: "GET",
-			OpenAPISpec: openAPISpecFor("httpbin headers echo (HMAC)", "/headers"),
+			BaseURL: "https://httpbin.org/headers", AuthType: AuthHMAC, Method: "GET",
+			OpenAPISpec: openAPISpecFor("httpbin headers echo (HMAC)", "/"),
 			BuiltIn:     true,
 		},
 		{
@@ -127,9 +131,9 @@ func BuiltIn() []HTTPRequest {
 				"(postman-echo.com/oauth1) -- independently confirmed live: the server itself " +
 				"returned {\"status\":\"pass\",\"message\":\"OAuth-1.0a signature verification was " +
 				"successful\"} before this was seeded, not just self-consistent with Mill's own tests.",
-			BaseURL: "https://postman-echo.com", AuthType: AuthOAuth1, Method: "GET",
+			BaseURL: "https://postman-echo.com/oauth1", AuthType: AuthOAuth1, Method: "GET",
 			Auth:        &AuthConfig{OAuth1: &OAuth1Config{ConsumerKey: "RKCGzna7bv9YD57c"}},
-			OpenAPISpec: openAPISpecFor("Postman Echo OAuth1", "/oauth1"),
+			OpenAPISpec: openAPISpecFor("Postman Echo OAuth1", "/"),
 			BuiltIn:     true,
 		},
 		{
@@ -139,11 +143,11 @@ func BuiltIn() []HTTPRequest {
 				"OAuth 2.0 fundamentally can't be demonstrated without a registered app, and Mill's " +
 				"own repo will never carry a real client secret. Register a free Spotify developer " +
 				"app and fill in the Client ID/Secret yourself to make this one actually run.",
-			BaseURL: "https://api.spotify.com/v1", AuthType: AuthOAuth2, Method: "GET",
+			BaseURL: "https://api.spotify.com/v1/browse/new-releases", AuthType: AuthOAuth2, Method: "GET",
 			Auth: &AuthConfig{OAuth2: &OAuth2Config{
 				GrantType: "client_credentials", TokenURL: "https://accounts.spotify.com/api/token",
 			}},
-			OpenAPISpec: openAPISpecFor("Spotify Web API (bring your own app)", "/browse/new-releases"),
+			OpenAPISpec: openAPISpecFor("Spotify Web API (bring your own app)", "/"),
 			BuiltIn:     true,
 		},
 		{
@@ -151,8 +155,8 @@ func BuiltIn() []HTTPRequest {
 			Description: "Sends ?apikey=<secret> in the URL's query string against httpbin.org/get, " +
 				"which echoes back the query it received -- same self-consistency-only caveat as the " +
 				"header-based API-key example (httpbin doesn't validate the value).",
-			BaseURL: "https://httpbin.org", AuthType: AuthQueryParam, Method: "GET",
-			OpenAPISpec: openAPISpecFor("httpbin query echo", "/get"),
+			BaseURL: "https://httpbin.org/get", AuthType: AuthQueryParam, Method: "GET",
+			OpenAPISpec: openAPISpecFor("httpbin query echo", "/"),
 			BuiltIn:     true,
 		},
 	}

@@ -29,7 +29,7 @@ test('Authoring a schema via the Manual editor round-trips alias/path through th
   await page.getByTestId('new-integration').click()
   await page.getByTestId('new-integration-rest').click()
   await page.getByLabel('Label').fill('Manual Schema Request')
-  await page.getByLabel('Base URL').fill('https://api.example.com')
+  await page.getByLabel('URL', { exact: true }).fill('https://api.example.com')
 
   // The manual editor is always visible, pre-seeded with the request's
   // one implicit operation (1:1 model) -- no mode switch or "Add
@@ -37,7 +37,6 @@ test('Authoring a schema via the Manual editor round-trips alias/path through th
   const editor = page.getByTestId('manual-schema-editor')
   await expect(editor).toBeVisible()
   const operation = editor.getByTestId('manual-operation')
-  await operation.getByLabel('Path').fill('/widgets')
 
   await operation.getByRole('button', { name: 'Add output field' }).click()
   const outputRow = operation.getByTestId('manual-field-row').last()

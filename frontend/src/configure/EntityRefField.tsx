@@ -165,7 +165,7 @@ function QuickCreateDialog({ refKind, onCancel, onCreated }: { refKind: string; 
     }
   }
 
-  const secondaryLabel = refKind === 'request' ? 'Base URL' : refKind === 'mcpserver' ? 'Command' : null
+  const secondaryLabel = refKind === 'request' ? 'URL' : refKind === 'mcpserver' ? 'Command' : null
 
   return (
     <Dialog

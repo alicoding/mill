@@ -126,15 +126,28 @@ func (c *ConfigureService) TestHTTPRequestOperation(req TestHTTPRequestInput) (T
 		return TestHTTPRequestResult{}, fmt.Errorf("configureservice: %w", err)
 	}
 
-	url := resolvedPath
+	// One-URL model (composition.JoinRequestURL's own doc): the
+	// integration's URL may be complete (path templates included) with
+	// the operation path as the "/" placeholder, or legacy base+path --
+	// both assemble identically here and in the real exec path, and
+	// path-parameter values substitute over the assembled URL so a
+	// {param} in either half resolves.
+	fullURL := composition.JoinRequestURL(req.BaseURL, resolvedPath)
+	for _, f := range op.InputFields {
+		if f.In == "path" {
+			if v, ok := req.Values[f.Name]; ok {
+				fullURL = strings.ReplaceAll(fullURL, "{"+f.Name+"}", v)
+			}
+		}
+	}
 	if len(query) > 0 {
-		url += "?" + query.Encode()
+		fullURL += "?" + query.Encode()
 	}
 
 	start := time.Now()
 	resp, err := httpconnector.Execute(httpconnector.Request{
 		Method:  req.Method,
-		URL:     strings.TrimRight(req.BaseURL, "/") + url,
+		URL:     fullURL,
 		Headers: headers,
 		Body:    body,
 	})

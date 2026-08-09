@@ -60,10 +60,10 @@ func parseBindings(raw string) (map[string]string, error) {
 // (docs/SPEC.md §4.1) -- both returned alongside the resolved request
 // so the caller can hand them to applyOutputBindings after the HTTP
 // call completes without parsing the spec a second time.
-func resolveInputBindings(specDoc string, config map[string]string, attrs map[string]any, opPath, opMethod string) (path, body string, headers map[string]string, query url.Values, outputFields []openapispec.Field, responseExtractPath string, err error) {
+func resolveInputBindings(specDoc string, config map[string]string, attrs map[string]any, opPath, opMethod string) (path, body string, headers map[string]string, query url.Values, pathParams map[string]string, outputFields []openapispec.Field, responseExtractPath string, err error) {
 	doc, err := openapispec.Parse([]byte(specDoc))
 	if err != nil {
-		return "", "", nil, nil, nil, "", fmt.Errorf("parse request spec: %w", err)
+		return "", "", nil, nil, nil, nil, "", fmt.Errorf("parse request spec: %w", err)
 	}
 	// opPath/opMethod are resolved by the caller (integration.go): a
 	// legacy node's own persisted path/method config when present, else
@@ -71,16 +71,17 @@ func resolveInputBindings(specDoc string, config map[string]string, attrs map[st
 	// operation's path) -- the node no longer authors these.
 	op, err := doc.Operation(opPath, opMethod)
 	if err != nil {
-		return "", "", nil, nil, nil, "", err
+		return "", "", nil, nil, nil, nil, "", err
 	}
 	bindings, err := parseBindings(config["inputBindings"])
 	if err != nil {
-		return "", "", nil, nil, nil, "", fmt.Errorf("inputBindings: %w", err)
+		return "", "", nil, nil, nil, nil, "", fmt.Errorf("inputBindings: %w", err)
 	}
 
 	path = opPath
 	headers = map[string]string{}
 	query = url.Values{}
+	pathParams = map[string]string{}
 	bodyFields := map[string]any{}
 	for _, f := range op.InputFields {
 		raw, ok := bindings[f.Name]
@@ -90,6 +91,10 @@ func resolveInputBindings(specDoc string, config map[string]string, attrs map[st
 		val := resolveBindingValue(raw, attrs)
 		switch f.In {
 		case "path":
+			// Substituted here for a legacy in-path template, and also
+			// returned raw so the caller can substitute over the full
+			// URL (one-URL model: templates may live in the URL field).
+			pathParams[f.Name] = val
 			path = strings.ReplaceAll(path, "{"+f.Name+"}", val)
 		case "query":
 			query.Set(f.Name, val)
@@ -102,11 +107,11 @@ func resolveInputBindings(specDoc string, config map[string]string, attrs map[st
 	if len(bodyFields) > 0 {
 		b, err := json.Marshal(bodyFields)
 		if err != nil {
-			return "", "", nil, nil, nil, "", fmt.Errorf("encode bound body fields: %w", err)
+			return "", "", nil, nil, nil, nil, "", fmt.Errorf("encode bound body fields: %w", err)
 		}
 		body = string(b)
 	}
-	return path, body, headers, query, op.OutputFields, op.ResponseExtractPath, nil
+	return path, body, headers, query, pathParams, op.OutputFields, op.ResponseExtractPath, nil
 }
 
 // applyOutputBindings decodes an HTTP response body's JSON and writes

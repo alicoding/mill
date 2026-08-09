@@ -80,7 +80,7 @@ test('Selecting an Integration node offers a live request picker with inline qui
   const dialog = page.getByRole('dialog')
   await expect(dialog).toBeVisible()
   await dialog.getByLabel('Label').fill('E2E picker request')
-  await dialog.getByLabel('Base URL').fill('https://api.example.com')
+  await dialog.getByLabel('URL', { exact: true }).fill('https://api.example.com')
   await dialog.getByRole('button', { name: 'Create' }).click()
   await expect(dialog).toHaveCount(0)
 

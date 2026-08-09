@@ -29,7 +29,7 @@ test('JOSE encryption toggle, recipient public key, and decrypt-response persist
   await page.getByTestId('new-integration').click()
   await page.getByTestId('new-integration-rest').click()
   await page.getByLabel('Label').fill('JOSE Request')
-  await page.getByLabel('Base URL').fill('https://api.example.com')
+  await page.getByLabel('URL', { exact: true }).fill('https://api.example.com')
 
   // The JOSE section's config fields are hidden until Enable is checked.
   await expect(page.getByTestId('jose-recipient-public-key')).toHaveCount(0)
@@ -70,7 +70,7 @@ test('JOSE encryption is disabled by default, and toggling it off after enabling
   await page.getByTestId('new-integration').click()
   await page.getByTestId('new-integration-rest').click()
   await page.getByLabel('Label').fill('Plain Request')
-  await page.getByLabel('Base URL').fill('https://api.example.com')
+  await page.getByLabel('URL', { exact: true }).fill('https://api.example.com')
 
   await expect(page.getByTestId('jose-recipient-public-key')).toHaveCount(0)
   await page.getByTestId('jose-enabled-checkbox').click()

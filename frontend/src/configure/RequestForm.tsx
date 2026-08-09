@@ -212,8 +212,12 @@ export function RequestForm({
                 </Select>
               </FormControl>
               <FormControl style={{ flexGrow: 1 }}>
-                <FormControl.Label>Base URL</FormControl.Label>
-                <TextInput value={draft.baseURL} onChange={(e) => setDraft({ ...draft, baseURL: e.target.value })} placeholder="https://api.example.com" block />
+                <FormControl.Label>URL</FormControl.Label>
+                <FormControl.Caption>
+                  The complete URL this integration calls -- path included, one place ({'{'}param{'}'}
+                  templates welcome, bound via the Schema&apos;s path parameters).
+                </FormControl.Caption>
+                <TextInput value={draft.baseURL} onChange={(e) => setDraft({ ...draft, baseURL: e.target.value })} placeholder="https://api.example.com/v1/widgets/{id}" block />
               </FormControl>
             </Stack>
             <FormControl>
