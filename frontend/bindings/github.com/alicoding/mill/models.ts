@@ -72,6 +72,20 @@ export interface RunDetail {
     "startedAt": string;
     "completedAt": string;
     "error": string;
+
+    /**
+     * Version is which definition snapshot executed (docs/adr/0021) --
+     * 0 means the draft head (a test run).
+     */
+    "version": number;
+
+    /**
+     * Values are the attribute values this run was invoked with
+     * (runInput.Values -- a test form's input, or a parent's resolved
+     * child bindings). The data behind Activity's per-attribute columns
+     * and attribute search (docs/SPEC.md §3.2's analytics pattern).
+     */
+    "values": { [_ in string]?: string } | null;
     "steps": RunStep[] | null;
 }
 
@@ -124,6 +138,20 @@ export interface RunSummary {
     "startedAt": string;
     "completedAt": string;
     "error": string;
+
+    /**
+     * Version is which definition snapshot executed (docs/adr/0021) --
+     * 0 means the draft head (a test run).
+     */
+    "version": number;
+
+    /**
+     * Values are the attribute values this run was invoked with
+     * (runInput.Values -- a test form's input, or a parent's resolved
+     * child bindings). The data behind Activity's per-attribute columns
+     * and attribute search (docs/SPEC.md §3.2's analytics pattern).
+     */
+    "values": { [_ in string]?: string } | null;
 }
 
 /**
