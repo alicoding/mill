@@ -48,6 +48,16 @@ func init() {
 				Description: "Leave empty to run fresh every time (the normal case). To make repeated runs with the same input reuse the first run's recorded result instead of running again, put a value here that identifies the input -- a literal, or attr:<name> to use one of this workflow's attributes.",
 				Default:     "", Type: FieldText,
 			},
+			{
+				// The typed-output half of the parent/child contract: the
+				// child's result always becomes this workflow's payload;
+				// naming an attribute here ALSO stores it there, so a
+				// downstream Decision/binding can use it as typed data,
+				// not just as the flowing payload.
+				Key: "outputAttribute", Label: "Store result in attribute (optional)",
+				Description: "Also write the child workflow's result into this workflow's named Attribute, so later steps (a Decision condition, another binding) can reference it as attr:<name>.",
+				Default:     "", Type: FieldText,
+			},
 		},
 	}, func(node Node, ctx ExecContext) (ExecContext, error) {
 		bindings, err := parseBindings(node.Config["inputBindings"])
@@ -65,6 +75,12 @@ func init() {
 			return ctx, fmt.Errorf("child-workflow: %w", err)
 		}
 		ctx.Payload = payload
+		if outAttr := node.Config["outputAttribute"]; outAttr != "" {
+			if ctx.Attributes == nil {
+				ctx.Attributes = map[string]any{}
+			}
+			ctx.Attributes[outAttr] = payload
+		}
 		return ctx, nil
 	})
 }
