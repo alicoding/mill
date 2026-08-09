@@ -438,3 +438,7 @@ test('Running a workflow with declared Attributes shows an auto-filled test-inpu
   await workflowRow(page, 'E2E attributes workflow').getByRole('button', { name: /Delete/ }).click()
   await expect(workflowRow(page, 'E2E attributes workflow')).toHaveCount(0)
 })
+
+// Workflow export/import coverage lives in its own file,
+// composition-export-import.spec.ts, split out once this file crossed
+// the 500-line limit adding it (CLAUDE.md).

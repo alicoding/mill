@@ -65,7 +65,7 @@ export function CreateMCPServer(label: string, command: string, args: string[] |
 
 /**
  * DeleteHTTPRequest also removes any keychain secret for id --
- * best-effort (credential.Delete on an id with no stored secret, e.g.
+ * best-effort (c.credentials.Delete on an id with no stored secret, e.g.
  * an AuthNone request, is a harmless no-op-shaped error, not
  * surfaced), so a deleted request never leaves an orphaned secret
  * behind in the OS keychain.
