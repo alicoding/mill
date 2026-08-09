@@ -26,6 +26,21 @@
     padding: var(--s-3) var(--s-4) var(--s-5);
     color: var(--fgColor-default);
 }
+/* A single-column form/detail view (RequestForm, RequestSummary,
+   SettingsView, ConfigureAttributes, and the inline create-forms in
+   ConfigureLists/ConfigureMCPServers) shouldn't stretch to .page's
+   full 1400px -- a Label/Base URL text field or a lone checkbox row
+   at that width reads as a mostly-empty page with a few controls
+   stranded in it. 960px keeps every multi-input row in
+   ManualSchemaEditor's Parameters/Output tables from wrapping while
+   capping single-line fields to a readable width. */
+.formPage {
+    --wails-draggable: no-drag;
+    max-width: 960px;
+    margin: 0 auto;
+    padding: var(--s-3) var(--s-4) var(--s-5);
+    color: var(--fgColor-default);
+}
 .subtitle { margin: 0 0 var(--s-3); }
 .muted { color: var(--fgColor-muted); }
 .card {

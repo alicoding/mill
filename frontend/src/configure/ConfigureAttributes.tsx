@@ -59,7 +59,7 @@ export function ConfigureAttributes() {
   }
 
   return (
-    <div className={styles.page} data-testid="configure-attributes">
+    <div className={styles.formPage} data-testid="configure-attributes">
       <Heading as="h2" variant="small" className={styles.sectionHeading}>Attributes</Heading>
       <Text as="p" size="small" className={styles.muted}>
         Attributes are scoped to a single workflow (1:1) -- pick one to edit its declared schema. Decision edges in

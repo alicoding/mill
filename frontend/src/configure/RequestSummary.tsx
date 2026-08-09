@@ -65,6 +65,7 @@ export function RequestSummary({ request, onEdit, onDuplicate, onDelete }: {
   const testOperations = request.OpenAPISpec ? parseOpenAPIToOperations(request.OpenAPISpec).operations : []
 
   return (
+    <div className={styles.formPage}>
     <div className={styles.card} data-testid="request-summary">
       <Stack direction="horizontal" justify="space-between" align="center" className={styles.sectionHeading}>
         <Stack direction="horizontal" gap="condensed" align="center">
@@ -157,6 +158,7 @@ export function RequestSummary({ request, onEdit, onDuplicate, onDelete }: {
           />
         </TabPanel>
       </Tabs>
+    </div>
     </div>
   )
 }
