@@ -80,7 +80,7 @@ async function deleteStarterNode(page: import('@playwright/test').Page) {
 
 test('Composition page lists built-in workflows; node primitives live in a collapsible canvas panel, not the list', async ({ page }) => {
   await page.goto('/')
-  await page.getByRole('link', { name: 'Composition' }).click()
+  await page.getByRole('link', { name: 'Workflows' }).click()
   await expect(page.getByRole('heading', { name: 'Capability composition' })).toBeVisible()
 
   await expect(workflowRow(page, 'Load sample HTML')).toBeVisible()
@@ -115,7 +115,7 @@ test('Composition page lists built-in workflows; node primitives live in a colla
 
 test('A new workflow starts with a starter node placed, not a blank canvas', async ({ page }) => {
   await page.goto('/')
-  await page.getByRole('link', { name: 'Composition' }).click()
+  await page.getByRole('link', { name: 'Workflows' }).click()
   await page.getByTestId('new-workflow').click()
 
   // Every workflow needs exactly one root, and it's now a real Trigger
@@ -140,7 +140,7 @@ test('A new workflow starts with a starter node placed, not a blank canvas', asy
 
 test('Running the load-sample workflow produces a visible response, success or error', async ({ page }) => {
   await page.goto('/')
-  await page.getByRole('link', { name: 'Composition' }).click()
+  await page.getByRole('link', { name: 'Workflows' }).click()
   await workflowRow(page, 'Load sample HTML').getByRole('button', { name: 'Run' }).click()
   // Same environment caveat as runbook.spec.ts's load-sample-html test:
   // asserts the full click -> Go binding -> render pipeline produces SOME
@@ -150,7 +150,7 @@ test('Running the load-sample workflow produces a visible response, success or e
 
 test('Running the clipboard-to-markdown workflow produces a visible response, success or error', async ({ page }) => {
   await page.goto('/')
-  await page.getByRole('link', { name: 'Composition' }).click()
+  await page.getByRole('link', { name: 'Workflows' }).click()
   await workflowRow(page, 'Clipboard → Markdown').getByRole('button', { name: 'Run' }).click()
   // On headless CI this is deterministic (no HTML on the clipboard, same
   // as runbook.spec.ts's equivalent test) -- unlike Runbook's tuned
@@ -165,7 +165,7 @@ test('Running the clipboard-to-markdown workflow produces a visible response, su
 
 test('Dragging a node onto the canvas configures it as it is added, then saves, runs and deletes for real', async ({ page }) => {
   await page.goto('/')
-  await page.getByRole('link', { name: 'Composition' }).click()
+  await page.getByRole('link', { name: 'Workflows' }).click()
   await page.getByTestId('new-workflow').click()
   await deleteStarterNode(page)
   await activePanel(page).getByTestId('toggle-palette').click()
@@ -219,7 +219,7 @@ test('Seeded example workflows are ordinary, fully editable and deletable', asyn
   // actually delete "Load sample HTML" here: other specs in this shared-
   // fixture file depend on it still existing.
   await page.goto('/')
-  await page.getByRole('link', { name: 'Composition' }).click()
+  await page.getByRole('link', { name: 'Workflows' }).click()
   const row = workflowRow(page, 'Load sample HTML')
   await expect(row.getByText('built-in')).toBeVisible()
   await expect(row.getByRole('button', { name: /Edit/ })).toBeVisible()
@@ -228,7 +228,7 @@ test('Seeded example workflows are ordinary, fully editable and deletable', asyn
 
 test('Editing an existing workflow updates it in place, not as a duplicate', async ({ page }) => {
   await page.goto('/')
-  await page.getByRole('link', { name: 'Composition' }).click()
+  await page.getByRole('link', { name: 'Workflows' }).click()
 
   // Compose and save a workflow to edit.
   await page.getByTestId('new-workflow').click()
@@ -271,7 +271,7 @@ test('Editing an existing workflow updates it in place, not as a duplicate', asy
 
 test('Opening New workflow twice opens two tabs; closing one returns to the list without touching the other', async ({ page }) => {
   await page.goto('/')
-  await page.getByRole('link', { name: 'Composition' }).click()
+  await page.getByRole('link', { name: 'Workflows' }).click()
 
   await page.getByTestId('new-workflow').click()
   await activePanel(page).getByLabel('Label').fill('Tab A')
@@ -298,7 +298,7 @@ test('Opening New workflow twice opens two tabs; closing one returns to the list
 
 test('Editing the same workflow twice reuses its tab instead of opening a duplicate', async ({ page }) => {
   await page.goto('/')
-  await page.getByRole('link', { name: 'Composition' }).click()
+  await page.getByRole('link', { name: 'Workflows' }).click()
 
   await page.getByTestId('new-workflow').click()
   await activePanel(page).getByLabel('Label').fill('E2E reused-tab workflow')

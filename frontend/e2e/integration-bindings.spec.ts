@@ -78,7 +78,7 @@ test('Matching an Integration node to a declared operation shows a binding edito
   await page.getByRole('button', { name: 'Save request' }).click()
   await expect(requestRow(page, 'E2E bindings request')).toBeVisible()
 
-  await page.getByRole('link', { name: 'Composition' }).click()
+  await page.getByRole('link', { name: 'Workflows' }).click()
   await page.getByTestId('new-workflow').click()
   await deleteStarterNode(page)
   await activePanel(page).getByTestId('toggle-palette').click()
