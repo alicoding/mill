@@ -3065,6 +3065,30 @@ this pass.
   in this pass (no screen access from this session) -- task #14's own
   Wails3 MCP spike, or a manual check, is the way to actually see it
   render.
+- **Update — per-view hotkeys (task #9) are now built, in-window-only
+  by explicit decision, distinct from the real OS-level
+  `golang.design/x/hotkey` registration §3.4's per-workflow and summon
+  hotkeys use.** New capability, not previously named anywhere in this
+  doc. Cmd+1 through Cmd+5 jump straight to a top-level view
+  (Composition/Configure/Activity/Runs/Spec, matching the sidebar's own
+  order) via a plain `keydown` listener in `App.tsx` calling the
+  existing `useAppStore` `setView` — no new navigation mechanism, reuses
+  exactly what the sidebar's own nav links already call. Deliberately
+  **not** registered as a real global hotkey: doing so would mean
+  checking each combo against `TriggerService`'s own claimed-combo
+  conflict space (the same bidirectional check the summon hotkey
+  already goes through, §3.7), a bigger design surface this pass
+  intentionally didn't take on — the safer, reversible default named
+  directly in the session goal that built this. Active regardless of
+  which element has focus (matches browsers'/Slack's own Cmd+1-9
+  tab-switching precedent — Cmd+digit isn't a combo real typing
+  produces, so there's no need to scope it away from text inputs).
+  Verified end-to-end via Playwright against the real server-mode
+  backend: all five hotkeys navigate correctly from a cold start, a
+  hotkey fires correctly while a text field has focus (the one edge
+  case worth checking rather than assuming), and a bare digit key
+  without Cmd does nothing. Full frontend check suite (tsc, eslint,
+  boundaries, vitest) clean.
 - **Update — navigational/app state persistence, researched then
   built.** Prompted directly by the user asking what Mill is missing
   and what Wails itself recommends here. **Researched, not assumed**:
