@@ -27,7 +27,15 @@ pre-commit:
       run: golangci-lint run . ./internal/...
     - name: go-test
       glob: "*.go"
-      run: go test ./internal/... -race -cover
+      # Root package (`.`) included alongside ./internal/... -- previously
+      # excluded here and in CI, leaving configureservice_test.go,
+      # settingsservice_test.go, triggerservice_test.go,
+      # executionservice_test.go, and executionchildworkflow_test.go
+      # (1000+ lines) running nowhere. No new frontend/dist dependency:
+      # go-vet and go-build-desktop below already build the root package
+      # locally, so that requirement (this file's own header comment)
+      # already applied before this line did.
+      run: go test . ./internal/... -race -cover
     - name: go-build-desktop
       glob: "*.go"
       run: go build -o /dev/null .
