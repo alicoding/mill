@@ -330,19 +330,17 @@ function CompositionView() {
 
       <TabPanel value={WORKFLOWS_TAB}>
         <div className={styles.page} data-testid="composition-view">
-          <Heading as="h1">Capability composition</Heading>
+          <Heading as="h1">Workflows</Heading>
           <Text as="p" className={styles.subtitle}>
-            Prototype for docs/SPEC.md §3 (ADR-0005): compose a workflow on a real
-            canvas from reusable node primitives, configuring each node as you add
-            it — composing without configuring isn&apos;t a real workflow. Built
-            ahead of ADR-0005 B2&apos;s original canvas-deferral trigger, by
-            explicit decision. Workflows persist across restarts, and every
-            one -- seeded example or user-composed -- is fully editable and
-            deletable from the moment it exists.
+            Compose a workflow by connecting trigger, capture, process, and
+            apply steps on a canvas — configuring each step happens as you
+            add it, right there on the canvas. Every workflow, including the
+            seeded examples below, is fully editable and deletable from the
+            moment it exists.
           </Text>
 
           <Stack direction="horizontal" justify="space-between" align="center" className={styles.sectionHeading}>
-            <Heading as="h2" variant="small">Workflows</Heading>
+            <Heading as="h2" variant="small">Saved workflows</Heading>
             <Stack direction="horizontal" gap="condensed">
               <input
                 ref={importFileInputRef}
