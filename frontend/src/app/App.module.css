@@ -22,6 +22,12 @@
     flex-direction: column;
     overflow: hidden;
     transition: width 0.15s ease;
+    /* Recessed-panel treatment (GitHub's own left-nav convention for
+       this exact token, per its own doc comment: "Inset background for
+       recessed content areas like wells or sunken panels") -- previously
+       unset, so the sidebar and content pane were the same flat white
+       with only a 1px divider line separating them. */
+    background: var(--bgColor-inset);
 }
 /* Icon-rail width when collapsed. Primer's own Sidebar-iciWg rule sets
    width:var(--pane-width-size) (a single, unqualified declaration, same
@@ -63,6 +69,18 @@
     border-top: 1px solid var(--borderColor-default);
     padding-top: var(--base-size-8);
     margin-top: var(--base-size-8);
+}
+/* Replaces the old bordered "OPEN"/"LOCKED" text pill -- same status
+   info (colored via statusDotColor in shared/store.ts, same three-way
+   mapping statusVariant already used), but a fixed-width dot instead of
+   a variable-width label removes the ragged right edge that came from
+   labels of different lengths, and reads as a quiet at-a-glance status
+   indicator (GitHub's own repo-list convention) rather than a debug
+   badge on every row. Full status text stays reachable via native
+   title-attribute hover and aria-label, not silently dropped. */
+.statusDot {
+    display: inline-flex;
+    align-items: center;
 }
 
 /* ----- Footer -------------------------------------------------------------- */

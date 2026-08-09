@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import {Events, WML} from "@wailsio/runtime";
 import {IconButton, Label, NavList, PageLayout, Text, useTheme} from "@primer/react";
-import {GearIcon, SidebarCollapseIcon, SidebarExpandIcon} from "@primer/octicons-react";
+import {DotFillIcon, GearIcon, SidebarCollapseIcon, SidebarExpandIcon} from "@primer/octicons-react";
 import SpecView from "../views/SpecView";
 import ActivityView from "../views/ActivityView";
 import CompositionView from "../composition/CompositionView";
@@ -10,7 +10,7 @@ import RunsView from "../views/RunsView";
 import SettingsView from "../views/SettingsView";
 import PlaceholderView from "../views/PlaceholderView";
 import { CompositionService, CapabilitiesService } from "../../bindings/github.com/alicoding/mill";
-import { useAppStore, viewFor, viewsEqual, statusVariant } from "../shared/store";
+import { useAppStore, viewFor, viewsEqual, statusDotColor } from "../shared/store";
 import type { View } from "../shared/store";
 import { COLOR_MODE_STORAGE_KEY, SIDEBAR_OPEN_STORAGE_KEY } from "./theme";
 import { CAPABILITY_ICON, SPEC_ICON } from "./navIcon";
@@ -250,7 +250,13 @@ function App() {
                     {sidebarOpen && label}
                     {sidebarOpen && (
                       <NavList.TrailingVisual>
-                        <Label variant={statusVariant(c.Status)} size="small">{c.Status}</Label>
+                        <span title={c.Status} className={styles.statusDot}>
+                          <DotFillIcon
+                            size={12}
+                            fill={statusDotColor(c.Status)}
+                            aria-label={c.Status}
+                          />
+                        </span>
                       </NavList.TrailingVisual>
                     )}
                   </NavList.Item>
