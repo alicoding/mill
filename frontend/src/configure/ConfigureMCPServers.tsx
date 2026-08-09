@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { Button, FormControl, Heading, IconButton, Stack, Text, TextInput } from '@primer/react'
 import { DownloadIcon, PlusIcon, TrashIcon, UploadIcon } from '@primer/octicons-react'
-import { DataTable, Table } from '@primer/react/experimental'
+import { DataTable } from '@primer/react/experimental'
+import { ResizableTableContainer } from '../shared/ResizableTable'
 import { ConfigureService } from '../../bindings/github.com/alicoding/mill'
 import type { MCPServer } from '../../bindings/github.com/alicoding/mill/internal/domain/mcpserver/models'
 import type { Tool } from '../../bindings/github.com/alicoding/mill/internal/adapters/mcpclient/models'
@@ -179,7 +180,7 @@ export function ConfigureMCPServers() {
         <Text as="p" className={styles.muted}>No MCP servers yet.</Text>
       )}
       {servers !== null && viewMode === 'table' && servers.length > 0 && (
-        <Table.Container>
+        <ResizableTableContainer>
           <DataTable
             aria-labelledby="mcpservers-heading"
             data={servers.map((s) => ({ ...s, id: s.ID }))}
@@ -200,7 +201,7 @@ export function ConfigureMCPServers() {
               },
             ]}
           />
-        </Table.Container>
+        </ResizableTableContainer>
       )}
       {servers !== null && viewMode === 'cards' && (
         <Stack direction="vertical" gap="condensed">

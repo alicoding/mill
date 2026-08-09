@@ -1,7 +1,9 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import type { LabelProps } from '@primer/react'
-import type { Workflow } from '../../bindings/github.com/alicoding/mill/internal/domain/composition/models'
+import { CompositionService, ConfigureService } from '../../bindings/github.com/alicoding/mill'
+import type { NodeType, Workflow } from '../../bindings/github.com/alicoding/mill/internal/domain/composition/models'
+import type { HTTPRequest } from '../../bindings/github.com/alicoding/mill/internal/domain/httprequest/models'
 import { ViewKind } from '../../bindings/github.com/alicoding/mill/internal/domain/capabilities/models'
 import type { Capability } from '../../bindings/github.com/alicoding/mill/internal/domain/capabilities/models'
 
@@ -100,24 +102,97 @@ export function statusDotColor(status: string): string {
 
 const MAX_ACTIVITY_ENTRIES = 50
 
+// One app-wide work-tab strip (docs/SPEC.md §3.8, direct user decision:
+// per-page tab strips "isolated the tabs between pages, which is
+// incorrect model"). A WorkTab is an open work item -- a workflow
+// editor or an integration view/edit -- rendered by app/WorkTabShell.tsx
+// above whichever section page the sidebar has active; opening,
+// closing, and switching tabs is store state so any surface (a list
+// row, a hover-preview's Open, an Activity row) can open one without a
+// callback chain.
+export type WorkTabSpec =
+  | { kind: 'workflow-edit'; workflowId: string }
+  | { kind: 'workflow-new' }
+  | { kind: 'request-view'; requestId: string }
+  | { kind: 'request-edit'; requestId: string }
+  | { kind: 'request-new'; duplicateFromId?: string }
+
+export type WorkTab = WorkTabSpec & { key: string }
+
+// Which persisted tabs restore across a reload: saved-entity tabs only
+// -- never a '-new' or 'request-edit' tab, whose unsaved in-progress
+// state is already gone (the same only-'view'-tabs discipline the old
+// per-page persistence had; workflow-edit is the canvas over a SAVED
+// workflow, so it restores like before).
+function isRestorable(tab: WorkTab): boolean {
+  return tab.kind === 'workflow-edit' || tab.kind === 'request-view'
+}
+
+// One-time migration from the two per-page persistedTabs keys the
+// global strip replaces -- real persisted state on real machines, so
+// carried forward, not dropped (same discipline as ADR-0016's
+// configure-connectors migration). The old keys are left in place,
+// unread once the new key exists.
+function migrateLegacyWorkTabs(): WorkTab[] {
+  try {
+    const out: WorkTab[] = []
+    const comp = JSON.parse(localStorage.getItem('mill-composition-tabs') ?? 'null') as { ids?: string[] } | null
+    for (const id of comp?.ids ?? []) {
+      out.push({ key: crypto.randomUUID(), kind: 'workflow-edit', workflowId: id })
+    }
+    const req = JSON.parse(localStorage.getItem('mill-configure-request-tabs') ?? 'null') as { ids?: string[] } | null
+    for (const id of req?.ids ?? []) {
+      out.push({ key: crypto.randomUUID(), kind: 'request-view', requestId: id })
+    }
+    return out
+  } catch {
+    return []
+  }
+}
+
+// Reuse-if-open matching (the same one-tab-per-entity rule both old
+// per-page systems had): a saved entity opens at most one tab per
+// kind; '-new' tabs are always fresh.
+function sameWorkTarget(a: WorkTab, b: WorkTabSpec): boolean {
+  if (a.kind !== b.kind) return false
+  if (a.kind === 'workflow-edit' && b.kind === 'workflow-edit') return a.workflowId === b.workflowId
+  if ((a.kind === 'request-view' && b.kind === 'request-view') || (a.kind === 'request-edit' && b.kind === 'request-edit')) {
+    return a.requestId === b.requestId
+  }
+  return false
+}
+
 interface AppState {
   workflows: Workflow[] | null
+  // nodeTypes/requests join workflows as store-shared server data (one
+  // fetch, many consumers) now that the global work-tab shell renders
+  // editors outside the pages that used to own these fetches.
+  nodeTypes: NodeType[] | null
+  requests: HTTPRequest[] | null
   activity: ActivityEntry[]
   capabilities: Capability[]
   view: View
   setWorkflows: (workflows: Workflow[]) => void
+  setNodeTypes: (nodeTypes: NodeType[]) => void
+  setRequests: (requests: HTTPRequest[]) => void
   pushActivity: (entry: ActivityEntry) => void
   setCapabilities: (capabilities: Capability[]) => void
   setView: (view: View) => void
-  // A cross-view "open this workflow's editor" request (docs/SPEC.md
-  // §3.8's hover-preview): set by any surface showing a workflow
-  // reference (an Activity row, a child-workflow step), consumed by
-  // CompositionView (which owns the editor tabs and clears it after
-  // opening). A store field rather than a callback prop because the
-  // requester and the tab owner live in different view trees.
-  openWorkflowRequest: string | null
+  // The app-wide work-tab strip (docs/SPEC.md §3.8). null active key =
+  // the sidebar's current section page shows.
+  workTabs: WorkTab[]
+  activeWorkTabKey: string | null
+  openWorkTab: (tab: WorkTabSpec) => void
+  closeWorkTab: (key: string) => void
+  activateWorkTab: (key: string | null) => void
+  // Drops tabs whose entity no longer exists -- called by WorkTabShell
+  // once real data is in, so a restored tab for a since-deleted
+  // workflow/request doesn't linger as a ghost.
+  pruneWorkTabs: (keep: (tab: WorkTab) => boolean) => void
+  // requestOpenWorkflow opens (or reuses) a workflow's editor tab from
+  // anywhere -- the hover-preview's Open, an Activity row -- via the
+  // global strip.
   requestOpenWorkflow: (id: string) => void
-  clearOpenWorkflowRequest: () => void
 }
 
 // Shared across App/ActivityView/SpecView (SPEC.md §1.3): App.tsx still
@@ -144,10 +219,33 @@ interface AppState {
 // gap this closes, at the same localStorage/cosmetic tier
 // theme/sidebar-collapse already established -- pure UI navigation
 // state with no domain meaning outside the running app).
+// The one refetch path for each shared list -- callable from any
+// surface (a page's mount, a work tab's onSaved) without prop
+// threading; writes land in the store for every consumer at once.
+export function refreshWorkflows(): Promise<void> {
+  return CompositionService.Workflows()
+    .then((list) => useAppStore.getState().setWorkflows(list ?? []))
+    .catch(console.error)
+}
+
+export function refreshRequests(): Promise<void> {
+  return ConfigureService.HTTPRequests()
+    .then((list) => useAppStore.getState().setRequests(list ?? []))
+    .catch(console.error)
+}
+
+export function refreshNodeTypes(): Promise<void> {
+  return CompositionService.NodeTypes()
+    .then((list) => useAppStore.getState().setNodeTypes(list ?? []))
+    .catch(console.error)
+}
+
 export const useAppStore = create<AppState>()(
   persist(
     (set) => ({
       workflows: null,
+      nodeTypes: null,
+      requests: null,
       activity: [],
       capabilities: [],
       // Composition (the Workflows list) is the new landing page -- the
@@ -157,17 +255,65 @@ export const useAppStore = create<AppState>()(
       // persisted -- see the `persist` config below.
       view: { kind: 'composition' },
       setWorkflows: (workflows) => set({ workflows }),
+      setNodeTypes: (nodeTypes) => set({ nodeTypes }),
+      setRequests: (requests) => set({ requests }),
       pushActivity: (entry) =>
         set((state) => ({ activity: [entry, ...state.activity].slice(0, MAX_ACTIVITY_ENTRIES) })),
       setCapabilities: (capabilities) => set({ capabilities }),
-      setView: (view) => set({ view }),
-      openWorkflowRequest: null,
-      requestOpenWorkflow: (id) => set({ openWorkflowRequest: id, view: { kind: 'composition' } as View }),
-      clearOpenWorkflowRequest: () => set({ openWorkflowRequest: null }),
+      // Navigating sections deliberately deactivates the active work
+      // tab (it stays open in the strip): clicking a sidebar item or
+      // pressing a view hotkey means "show me that page."
+      setView: (view) => set({ view, activeWorkTabKey: null }),
+      workTabs: [],
+      activeWorkTabKey: null,
+      openWorkTab: (tab) =>
+        set((state) => {
+          const existing = state.workTabs.find((t) => sameWorkTarget(t, tab))
+          if (existing) return { activeWorkTabKey: existing.key }
+          const created: WorkTab = { ...tab, key: crypto.randomUUID() }
+          return { workTabs: [...state.workTabs, created], activeWorkTabKey: created.key }
+        }),
+      closeWorkTab: (key) =>
+        set((state) => ({
+          workTabs: state.workTabs.filter((t) => t.key !== key),
+          activeWorkTabKey: state.activeWorkTabKey === key ? null : state.activeWorkTabKey,
+        })),
+      activateWorkTab: (key) => set({ activeWorkTabKey: key }),
+      pruneWorkTabs: (keep) =>
+        set((state) => {
+          const workTabs = state.workTabs.filter(keep)
+          if (workTabs.length === state.workTabs.length) return {}
+          const stillActive = workTabs.some((t) => t.key === state.activeWorkTabKey)
+          return { workTabs, activeWorkTabKey: stillActive ? state.activeWorkTabKey : null }
+        }),
+      requestOpenWorkflow: (id) =>
+        set((state) => {
+          const existing = state.workTabs.find((t) => t.kind === 'workflow-edit' && t.workflowId === id)
+          if (existing) return { activeWorkTabKey: existing.key }
+          const created: WorkTab = { key: crypto.randomUUID(), kind: 'workflow-edit', workflowId: id }
+          return { workTabs: [...state.workTabs, created], activeWorkTabKey: created.key }
+        }),
     }),
     {
       name: 'mill-app-view',
-      partialize: (state) => ({ view: state.view }),
+      partialize: (state) => ({
+        view: state.view,
+        // Restorable work tabs only (saved-entity tabs; see
+        // isRestorable) -- the active key isn't persisted: landing on
+        // the section page with the strip populated is the less
+        // surprising restore than landing inside an editor.
+        workTabs: state.workTabs.filter(isRestorable),
+      }),
+      merge: (persisted, current) => {
+        const p = (persisted ?? {}) as Partial<AppState>
+        const restored = (p.workTabs ?? []).filter(isRestorable)
+        return {
+          ...current,
+          ...p,
+          workTabs: restored.length > 0 ? restored : migrateLegacyWorkTabs(),
+          activeWorkTabKey: null,
+        }
+      },
     },
   ),
 )

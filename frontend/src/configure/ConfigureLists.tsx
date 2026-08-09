@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { Button, FormControl, Heading, IconButton, Stack, Text, TextInput } from '@primer/react'
 import { DownloadIcon, PlusIcon, TrashIcon, UploadIcon } from '@primer/octicons-react'
-import { DataTable, Table } from '@primer/react/experimental'
+import { DataTable } from '@primer/react/experimental'
+import { ResizableTableContainer } from '../shared/ResizableTable'
 import { ConfigureService } from '../../bindings/github.com/alicoding/mill'
 import type { List } from '../../bindings/github.com/alicoding/mill/internal/domain/list/models'
 import { downloadJSON } from '../shared/downloadJSON'
@@ -175,7 +176,7 @@ export function ConfigureLists() {
         <Text as="p" className={styles.muted}>No lists yet.</Text>
       )}
       {lists !== null && viewMode === 'table' && lists.length > 0 && (
-        <Table.Container>
+        <ResizableTableContainer>
           <DataTable
             aria-labelledby="lists-heading"
             data={lists.map((l) => ({ ...l, id: l.ID }))}
@@ -195,7 +196,7 @@ export function ConfigureLists() {
               },
             ]}
           />
-        </Table.Container>
+        </ResizableTableContainer>
       )}
       {lists !== null && viewMode === 'cards' && (
         <Stack direction="vertical" gap="condensed">

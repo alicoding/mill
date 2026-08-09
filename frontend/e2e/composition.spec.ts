@@ -317,7 +317,7 @@ test('Editing the same workflow twice reuses its tab instead of opening a duplic
   // editor tab now nests its own Canvas/Runs tablist inside it
   // (docs/SPEC.md §7's Update), so an unscoped page-wide tab count would
   // also catch those two inner tabs.
-  const outerTabs = page.getByRole('tablist', { name: 'Workflows' }).getByRole('tab')
+  const outerTabs = page.getByRole('tablist', { name: 'Open work' }).getByRole('tab')
 
   const row = workflowRow(page, 'E2E reused-tab workflow')
   await row.getByRole('button', { name: /Edit/ }).click()
