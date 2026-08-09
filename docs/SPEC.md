@@ -1959,6 +1959,20 @@ findings) and the build rationale are in
   processes writing the same files risks corruption, and both
   independently running the same schedule/clipboard-watch/filesystem-
   watch triggers risks a scheduled workflow double-firing.
+- **Build-identity footer** — `SettingsService.GetBuildInfo()`
+  (`settingsservice_buildinfo.go`) reads Go's own `runtime/debug.ReadBuildInfo()`
+  (`vcs.revision`/`vcs.modified`, embedded automatically by `go build`
+  in a git checkout, `-buildvcs=true` by default) and the footer shows
+  the short commit hash plus a `*` if the tree was dirty at build time
+  — unconditional on any build tag, unlike Wails3's own identical
+  `BuildInfo`/`BuildSettings` (`application_debug.go`), which is gated
+  `!production` and never exposed to the frontend regardless. Real gap
+  this closes, caught directly: a desktop app process stayed running
+  across an entire session's worth of commits with nothing anywhere
+  flagging it stale — the existing `isDevBuild` ribbon only fires for a
+  live `vite serve` dev server, never for any `go build` output
+  (desktop or server mode, dev or not), so it couldn't have caught this
+  either.
 
 **Still `OPEN`, real named gaps:** a menu-bar/dock presence toggle and
 trigger-fire notifications (Wails3 ships first-party `dock`/

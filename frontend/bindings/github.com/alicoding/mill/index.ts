@@ -23,6 +23,7 @@ export {
 } from "./models.js";
 
 export type {
+    BuildInfo,
     HotkeyActivity,
     RunDetail,
     RunStep,
