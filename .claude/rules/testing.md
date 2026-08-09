@@ -85,3 +85,16 @@ first real e2e run all the way to a persisted save. When a save/submit
 handler depends on a value computed just before it fires, compute it
 into a local variable and pass it directly, don't round-trip it
 through state first.
+
+**Every capability ships with a seeded example that exercises it — the
+seed IS the proof.** Direct user decision ("I don't have any real
+data... every feature we build needs proof with a seeded example that
+uses everything"): a capability without a built-in example exercising
+it end-to-end is invisible and unverifiable in the live app. When a
+capability lands, add or extend a seeded example (workflow,
+HTTPRequest, ...) that uses it, prove it live, and cover the seed with
+a real test (the Go suite runs the exact seeded artifacts — see
+`TestSeededParentChildExample_TypedInputAndOutput_RunsEndToEnd`).
+Seeding is top-up with delete-tombstones (`topUpBuiltIns`,
+`configureservice_builtin.go`), so new examples reach existing
+instances — never fresh-install-only.

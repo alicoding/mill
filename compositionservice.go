@@ -56,6 +56,7 @@ type CompositionService struct {
 func NewCompositionService(store settings.Store) *CompositionService {
 	c := &CompositionService{store: store}
 	c.restore()
+	c.migratePublish()
 	return c
 }
 
@@ -198,6 +199,13 @@ func (c *CompositionService) UpdateWorkflow(id, label, description string, nodes
 		// informational now (docs/SPEC.md §2.2's Update note) -- editing
 		// a seeded example doesn't stop it having started as one.
 		BuiltIn: c.user[idx].BuiltIn,
+		// Lifecycle state survives a draft save (docs/adr/0021): Save
+		// edits the draft head only -- it must never drop the version
+		// history, move the live pointer, or re-enable a disabled
+		// workflow.
+		Disabled:         c.user[idx].Disabled,
+		PublishedVersion: c.user[idx].PublishedVersion,
+		Versions:         c.user[idx].Versions,
 	}
 	c.user[idx] = wf
 	c.mu.Unlock()
@@ -258,9 +266,15 @@ func (c *CompositionService) DeleteWorkflow(id string) error {
 		c.mu.Unlock()
 		return fmt.Errorf("no workflow with id %q", id)
 	}
+	wasBuiltIn := c.user[idx].BuiltIn
 	c.user = append(c.user[:idx], c.user[idx+1:]...)
 	c.mu.Unlock()
 
+	// A deleted built-in gets a tombstone so top-up seeding (restore)
+	// never resurrects it -- deletion stays permanent (§2.2).
+	if wasBuiltIn {
+		recordTombstone(c.store, id)
+	}
 	c.persist()
 	c.notifySyncer()
 	return nil
@@ -303,6 +317,35 @@ func (c *CompositionService) restore() {
 	c.mu.Lock()
 	c.user = user
 	c.mu.Unlock()
+	c.topUpBuiltIns()
+}
+
+// topUpBuiltIns appends any built-in example workflow whose ID is
+// neither present nor tombstoned -- seeding is top-up, not
+// fresh-install-only, by direct user decision ("I don't have any real
+// data... every feature we build needs proof with a seeded example"):
+// a newly shipped seeded example must reach an existing instance, or
+// the proof never reaches the person it was built for. Deleting a
+// built-in still sticks (Delete* records a tombstone), preserving
+// §2.2's fully-editable/deletable principle.
+func (c *CompositionService) topUpBuiltIns() {
+	tombstones := loadTombstones(c.store)
+	c.mu.Lock()
+	have := make(map[string]bool, len(c.user))
+	for _, wf := range c.user {
+		have[wf.ID] = true
+	}
+	added := false
+	for _, wf := range composition.BuiltInWorkflows() {
+		if !have[wf.ID] && !tombstones[wf.ID] {
+			c.user = append(c.user, wf)
+			added = true
+		}
+	}
+	c.mu.Unlock()
+	if added {
+		c.persist()
+	}
 }
 
 // newWorkflowID derives a readable, collision-resistant ID from the

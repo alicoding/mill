@@ -220,4 +220,29 @@ export interface Workflow {
      * the UI badges/protects built-ins accordingly.
      */
     "BuiltIn": boolean;
+
+    /**
+     * Lifecycle & versioning (docs/adr/0021, versioning.go). The head
+     * fields above are the DRAFT; Versions are immutable snapshots;
+     * PublishedVersion (0 = never published) is what triggers and
+     * child-workflow calls execute. Disabled -- not Active -- so every
+     * workflow persisted before this field existed unmarshals as
+     * active, migration-free (JSON zero value).
+     */
+    "Disabled": boolean;
+    "PublishedVersion": number;
+    "Versions": WorkflowVersion[] | null;
+}
+
+/**
+ * WorkflowVersion is one immutable snapshot of a workflow's definition.
+ */
+export interface WorkflowVersion {
+    "Version": number;
+    "SavedAt": string;
+    "Label": string;
+    "Description": string;
+    "Nodes": Node[] | null;
+    "Edges": Edge[] | null;
+    "Attributes": AttributeDef[] | null;
 }

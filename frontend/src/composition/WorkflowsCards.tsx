@@ -58,6 +58,12 @@ export function WorkflowsCards({ workflows, nodeTypes, runningId, errors, result
               <Stack direction="horizontal" gap="condensed" align="center">
                 <Text weight="semibold">{wf.Label}</Text>
                 {wf.BuiltIn && <Label variant="secondary" size="small">built-in</Label>}
+                {/* Lifecycle badges (docs/adr/0021): live version, or a
+                    never-published draft; disabled pauses triggers. */}
+                {wf.PublishedVersion > 0
+                  ? <Label variant="success" size="small">v{wf.PublishedVersion} live</Label>
+                  : <Label variant="attention" size="small">draft</Label>}
+                {wf.Disabled && <Label variant="severe" size="small">disabled</Label>}
               </Stack>
               <Text as="p" size="small" className={styles.muted}>{wf.Description}</Text>
             </div>

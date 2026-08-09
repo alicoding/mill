@@ -85,6 +85,40 @@ export function NodeTypes(): $CancellablePromise<composition$0.NodeType[] | null
 }
 
 /**
+ * PublishExistingVersion moves the live pointer to an already-captured
+ * snapshot -- rollback (or roll-forward) without mutating anything.
+ */
+export function PublishExistingVersion(id: string, version: number): $CancellablePromise<composition$0.Workflow> {
+    return $Call.ByID(912301865, id, version);
+}
+
+/**
+ * PublishWorkflow snapshots the draft head as the next version and
+ * makes it live (publish == live, one concept -- ADR-0021).
+ */
+export function PublishWorkflow(id: string): $CancellablePromise<composition$0.Workflow> {
+    return $Call.ByID(3546885559, id);
+}
+
+/**
+ * RestoreVersionToDraft copies a snapshot's definition back into the
+ * editable head -- the "load an old version into the editor" half of
+ * rollback; publishing it afterward is a separate, explicit act.
+ */
+export function RestoreVersionToDraft(id: string, version: number): $CancellablePromise<composition$0.Workflow> {
+    return $Call.ByID(1909932155, id, version);
+}
+
+/**
+ * SetWorkflowDisabled flips the inactive state (ADR-0021: disabling
+ * pauses production -- triggers and child calls -- while test runs
+ * stay allowed, n8n's own semantics).
+ */
+export function SetWorkflowDisabled(id: string, disabled: boolean): $CancellablePromise<composition$0.Workflow> {
+    return $Call.ByID(793375872, id, disabled);
+}
+
+/**
  * UpdateAttributes replaces a workflow's declared Attributes schema in
  * place -- the delegate ConfigureService (configureservice.go) calls for
  * its Attributes CRUD, per SPEC.md §3.5's "Configure-authored but

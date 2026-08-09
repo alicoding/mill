@@ -1,9 +1,11 @@
 package main
 
 import (
+	"encoding/json"
 	"testing"
 
 	"github.com/alicoding/mill/internal/adapters/credential"
+	"github.com/alicoding/mill/internal/domain/composition"
 	"github.com/alicoding/mill/internal/adapters/openapispec"
 	"github.com/alicoding/mill/internal/domain/httprequest"
 )
@@ -222,5 +224,64 @@ func TestBuiltIn_TypedExamples_DeclareRealFields(t *testing.T) {
 	}
 	if types["authenticated"] != "boolean" || types["token"] != "string" {
 		t.Errorf("typed bearer outputs = %+v, want authenticated:boolean + token:string", op.OutputFields)
+	}
+}
+
+// Top-up seeding (direct user decision: "every feature we build needs
+// proof with a seeded example" -- so a newly shipped example must reach
+// an EXISTING instance, not just fresh installs): a persisted store
+// missing a built-in gets it appended on restore; a deliberately
+// deleted built-in is tombstoned and stays gone across restarts.
+func TestTopUpSeeding_AddsNewBuiltIns_ButNeverResurrectsDeletedOnes(t *testing.T) {
+	store := newFakeStore()
+
+	// First boot: everything seeds.
+	comp := NewCompositionService(store)
+	cfg := NewConfigureService(store, comp, testCredentialStore{})
+	if err := cfg.DeleteHTTPRequest(httprequest.ExampleBearerID); err != nil {
+		t.Fatalf("DeleteHTTPRequest: %v", err)
+	}
+	if err := comp.DeleteWorkflow("example-parent-workflow"); err != nil {
+		t.Fatalf("DeleteWorkflow: %v", err)
+	}
+
+	// Second boot over the same persisted store: nothing deleted comes
+	// back, everything else is still there.
+	comp2 := NewCompositionService(store)
+	cfg2 := NewConfigureService(store, comp2, testCredentialStore{})
+	for _, r := range cfg2.HTTPRequests() {
+		if r.ID == httprequest.ExampleBearerID {
+			t.Error("deleted built-in request was resurrected by top-up seeding -- tombstone must stick")
+		}
+	}
+	for _, wf := range comp2.Workflows() {
+		if wf.ID == "example-parent-workflow" {
+			t.Error("deleted built-in workflow was resurrected by top-up seeding -- tombstone must stick")
+		}
+	}
+
+	// Simulate an older instance that persisted before a new example
+	// shipped: strip one built-in from the persisted blob directly,
+	// then restore -- top-up must add it back (it was never deleted by
+	// the user, it just didn't exist when this instance last saved).
+	var wfs []composition.Workflow
+	for _, wf := range comp2.Workflows() {
+		if wf.ID != composition.ExampleChildWorkflowID {
+			wfs = append(wfs, wf)
+		}
+	}
+	data, _ := json.Marshal(wfs)
+	if err := store.Set("composition-workflows-v2", string(data)); err != nil {
+		t.Fatalf("store.Set: %v", err)
+	}
+	comp3 := NewCompositionService(store)
+	found := false
+	for _, wf := range comp3.Workflows() {
+		if wf.ID == composition.ExampleChildWorkflowID {
+			found = true
+		}
+	}
+	if !found {
+		t.Error("a built-in absent from an older persisted store was not topped up on restore")
 	}
 }

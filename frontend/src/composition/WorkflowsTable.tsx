@@ -1,4 +1,4 @@
-import { Button, IconButton, Stack } from '@primer/react'
+import { Button, IconButton, Label, Stack } from '@primer/react'
 import { DownloadIcon, PencilIcon, TrashIcon } from '@primer/octicons-react'
 import { DataTable, Table } from '@primer/react/experimental'
 import type { Workflow } from '../../bindings/github.com/alicoding/mill/internal/domain/composition/models'
@@ -24,6 +24,17 @@ export function WorkflowsTable({ workflows, runningId, editDisabled, onRun, onEd
         data={workflows.map((wf) => ({ ...wf, id: wf.ID }))}
         columns={[
           { header: 'Label', field: 'Label', rowHeader: true, sortBy: 'alphanumeric' },
+          {
+            header: 'Status', id: 'status', width: 'auto',
+            renderCell: (wf) => (
+              <Stack direction="horizontal" gap="condensed">
+                {wf.PublishedVersion > 0
+                  ? <Label variant="success" size="small">v{wf.PublishedVersion} live</Label>
+                  : <Label variant="attention" size="small">draft</Label>}
+                {wf.Disabled && <Label variant="severe" size="small">disabled</Label>}
+              </Stack>
+            ),
+          },
           { header: 'Description', field: 'Description' },
           { header: 'Steps', id: 'steps', width: 'auto', align: 'end', renderCell: (wf) => (wf.Nodes ?? []).length },
           {
