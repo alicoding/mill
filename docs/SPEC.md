@@ -2768,6 +2768,27 @@ recorded as a real design input (`OPEN`), never silently dropped.
   Proven on the seeded parent→child pair end-to-end (the seed IS the
   proof): hover shows the child's real 3-node layout, Open lands in
   its editor.
+- **One app-wide work-tab strip — `LOCKED` as direction (direct user
+  decision: "the tab system is broken — it isolated the tabs between
+  pages, which is incorrect model"), NOT yet built.** The reference
+  platform's own shape, already recorded in §3.2 ("opens as its own
+  pinned tab in the platform's app-wide tab bar"): open work items (a
+  workflow editor, an integration view/edit) live in ONE strip rendered
+  at app level, surviving sidebar navigation — not two per-page strips
+  that vanish when you switch sections. Settled design, so the build
+  session starts warm: tab state (kind + entity id + key) moves to the
+  shared store with one persistence key (replacing the two per-page
+  `persistedTabs` keys, migrated not dropped); `App.tsx` renders the
+  strip via the existing `shared/Tabs.tsx` primitives above the content
+  pane; every open tab's panel stays mounted-hidden (canvas edits must
+  survive a section switch — the exact property the per-page Tabs
+  already guarantee, promoted one level); the sidebar keeps switching
+  section pages, which render when no work tab is active;
+  `CompositionView`/`ConfigureRequests` slim to list pages whose
+  open/edit actions call the store. Deliberately handed to its own
+  session rather than appended to this one — an all-surfaces tab
+  refactor shipped at the tail of an exhausted session is how it ships
+  broken (CLAUDE.md's own too-large-for-one-session rule, applied).
 - **Dev-staleness root cause found and fixed — `LOCKED`.** Two
   compounding causes made "my app looks stale" recur: (1) every
   wails-built desktop binary passed `-buildvcs=false` (dev *and*
