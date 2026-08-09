@@ -31,6 +31,22 @@ jobs:
       - uses: actions/checkout@v7
       - run: ./scripts/check-rules-frontmatter.sh
 
+  # Enforces ADR-0001's flat-root-*.go-files layout via ls-lint (adopted,
+  # not hand-rolled -- unlike file-loc-limit, a real commodity tool
+  # covers this: see .ls-lint.yml's own header comment for the config
+  # shape verified empirically before relying on it). go install matches
+  # how this repo already sets up gopls/wails3 -- no npm/Homebrew step.
+  root-file-naming:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version: '1.25'
+          cache: true
+      - run: go install github.com/loeffel-io/ls-lint/v2/cmd/ls_lint@v2.3.1
+      - run: ls_lint
+
   # Lints and builds frontend/dist once; Go jobs below need frontend/dist
   # present (main.go embeds it via //go:embed all:frontend/dist), so they
   # download it instead of rebuilding it redundantly per job/OS.
