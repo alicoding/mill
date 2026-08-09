@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Label, Stack, Text, TextInput } from '@primer/react'
-import { DataTable, Table, type Column } from '@primer/react/experimental'
+import { DataTable, type Column } from '@primer/react/experimental'
+import { ResizableTableContainer, TruncatedCell } from '../shared/ResizableTable'
 import { ExecutionService } from '../../bindings/github.com/alicoding/mill'
 import type { RunSummary } from '../../bindings/github.com/alicoding/mill/models'
 import type { Workflow } from '../../bindings/github.com/alicoding/mill/internal/domain/composition/models'
@@ -67,11 +68,7 @@ export function ActivityRunsExplorer({ workflow }: { workflow: Workflow }) {
     })),
     {
       id: 'output', header: 'Output', width: 'grow',
-      renderCell: (run) => (
-        <Text size="small" className={styles.muted}>
-          {(run.output ?? '').slice(0, 120)}{(run.output ?? '').length > 120 ? '…' : ''}
-        </Text>
-      ),
+      renderCell: (run) => <TruncatedCell text={run.output ?? ''} />,
     },
   ]
 
@@ -96,13 +93,13 @@ export function ActivityRunsExplorer({ workflow }: { workflow: Workflow }) {
         </Text>
       )}
       {filtered.length > 0 && (
-        <Table.Container>
+        <ResizableTableContainer>
           <DataTable
             aria-label={`${workflow.Label} runs`}
             data={filtered.map((r) => ({ ...r, id: r.runID }))}
             columns={columns}
           />
-        </Table.Container>
+        </ResizableTableContainer>
       )}
     </Stack>
   )

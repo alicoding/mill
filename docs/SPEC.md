@@ -2768,27 +2768,50 @@ recorded as a real design input (`OPEN`), never silently dropped.
   Proven on the seeded parent→child pair end-to-end (the seed IS the
   proof): hover shows the child's real 3-node layout, Open lands in
   its editor.
-- **One app-wide work-tab strip — `LOCKED` as direction (direct user
+- **One app-wide work-tab strip — `LOCKED`, built** (direct user
   decision: "the tab system is broken — it isolated the tabs between
-  pages, which is incorrect model"), NOT yet built.** The reference
-  platform's own shape, already recorded in §3.2 ("opens as its own
-  pinned tab in the platform's app-wide tab bar"): open work items (a
-  workflow editor, an integration view/edit) live in ONE strip rendered
-  at app level, surviving sidebar navigation — not two per-page strips
-  that vanish when you switch sections. Settled design, so the build
-  session starts warm: tab state (kind + entity id + key) moves to the
-  shared store with one persistence key (replacing the two per-page
-  `persistedTabs` keys, migrated not dropped); `App.tsx` renders the
-  strip via the existing `shared/Tabs.tsx` primitives above the content
-  pane; every open tab's panel stays mounted-hidden (canvas edits must
-  survive a section switch — the exact property the per-page Tabs
-  already guarantee, promoted one level); the sidebar keeps switching
-  section pages, which render when no work tab is active;
-  `CompositionView`/`ConfigureRequests` slim to list pages whose
-  open/edit actions call the store. Deliberately handed to its own
-  session rather than appended to this one — an all-surfaces tab
-  refactor shipped at the tail of an exhausted session is how it ships
-  broken (CLAUDE.md's own too-large-for-one-session rule, applied).
+  pages, which is incorrect model"; the reference platform's own shape,
+  already recorded in §3.2 — "opens as its own pinned tab in the
+  platform's app-wide tab bar"). Open work items (a workflow editor, an
+  integration view/edit/create) live in ONE strip rendered at app level
+  (`app/WorkTabShell.tsx`, via the existing `shared/Tabs.tsx`
+  primitives), surviving sidebar navigation — not two per-page strips
+  that vanish when you switch sections. Tab state (`WorkTabSpec` kind +
+  entity id + key) lives in the shared store under one persistence key,
+  with a one-time migration reading the two old per-page
+  `persistedTabs` localStorage keys (migrated, not dropped;
+  `shared/persistedTabs.ts` deleted). The strip's first tab is the
+  current section page itself; every open work tab's panel stays
+  mounted-hidden (canvas edits survive a section switch — the property
+  the per-page Tabs already guaranteed, promoted one level). Sidebar
+  links and view hotkeys deliberately *deactivate* the active work tab
+  (it stays open in the strip) — navigating sections means "show me
+  that page." Only inspect-shaped tabs restore across reload
+  (`workflow-edit`/`request-view`, never an in-progress edit form,
+  matching §3.7's existing Configure-restore rule), restored inactive —
+  landing on the page, not inside a tab, after a reload. Tabs whose
+  entity was deleted prune automatically once the store's lists load.
+  `CompositionView`/`ConfigureRequests` slimmed to list-only pages
+  whose open/edit actions call the store (`openWorkTab`); "open the
+  child workflow from the parent" became a direct store action
+  (`requestOpenWorkflow`), which also fixed the reported
+  Open-didn't-activate bug. E2e-covered end-to-end
+  (`composition.spec.ts` tab reuse, `state-persistence.spec.ts`
+  restore-then-activate, `view-hotkeys.spec.ts`).
+- **Long-column table pattern — `LOCKED`, built
+  (`shared/ResizableTable.tsx`), asked for directly.** Every DataTable
+  surface (Workflows, Versions, Integrations, Lists, MCP Servers,
+  Activity's runs explorer) wraps in one shared
+  `ResizableTableContainer`: each header except the last gets a drag
+  handle that rewrites the table's own `--grid-template-columns`
+  custom property with concrete pixel tracks (Primer's DataTable is
+  CSS grid, not `<table>` layout — verified against its compiled CSS,
+  so native `resize:` can't drive column widths). Long values render
+  via `TruncatedCell` (ellipsis + the full value on hover through the
+  native `title` tooltip). Known, documented bound: a sort re-render
+  resets manual widths — a viewing aid, not persisted state.
+  E2e-covered (`resizable-table.spec.ts`: handle count, a real drag
+  changing the first grid track, the truncation CSS + title).
 - **Dev-staleness root cause found and fixed — `LOCKED`.** Two
   compounding causes made "my app looks stale" recur: (1) every
   wails-built desktop binary passed `-buildvcs=false` (dev *and*

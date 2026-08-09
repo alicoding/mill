@@ -48,7 +48,7 @@ function runsTab(page: import('@playwright/test').Page, workflowLabel: string) {
 // that same wrapper (Tabs.tsx renders Close as a DOM sibling of the tab
 // button, not a descendant of it).
 async function closeEditorTab(page: import('@playwright/test').Page, workflowLabel: string) {
-  const tablist = page.getByRole('tablist', { name: 'Workflows' })
+  const tablist = page.getByRole('tablist', { name: 'Open work' })
   await tablist.locator('div', { has: page.getByRole('tab', { name: workflowLabel, exact: true }) })
     .getByLabel('Close tab')
     .click()

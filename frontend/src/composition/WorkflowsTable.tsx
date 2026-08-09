@@ -1,6 +1,7 @@
 import { Button, IconButton, Label, Stack } from '@primer/react'
 import { DownloadIcon, PencilIcon, TrashIcon } from '@primer/octicons-react'
-import { DataTable, Table } from '@primer/react/experimental'
+import { DataTable } from '@primer/react/experimental'
+import { ResizableTableContainer, TruncatedCell } from '../shared/ResizableTable'
 import type { Workflow } from '../../bindings/github.com/alicoding/mill/internal/domain/composition/models'
 
 // The Workflows list's table view (docs/SPEC.md §3.5's Update: every
@@ -18,7 +19,7 @@ export function WorkflowsTable({ workflows, runningId, editDisabled, onRun, onEd
   onDelete: (id: string) => void
 }) {
   return (
-    <Table.Container>
+    <ResizableTableContainer>
       <DataTable
         aria-labelledby="workflows-heading"
         data={workflows.map((wf) => ({ ...wf, id: wf.ID }))}
@@ -35,7 +36,7 @@ export function WorkflowsTable({ workflows, runningId, editDisabled, onRun, onEd
               </Stack>
             ),
           },
-          { header: 'Description', field: 'Description' },
+          { header: 'Description', id: 'description', renderCell: (wf) => <TruncatedCell text={wf.Description} /> },
           { header: 'Steps', id: 'steps', width: 'auto', align: 'end', renderCell: (wf) => (wf.Nodes ?? []).length },
           {
             header: '', id: 'actions', width: 'auto', align: 'end',
@@ -52,6 +53,6 @@ export function WorkflowsTable({ workflows, runningId, editDisabled, onRun, onEd
           },
         ]}
       />
-    </Table.Container>
+    </ResizableTableContainer>
   )
 }
