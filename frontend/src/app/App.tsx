@@ -8,7 +8,7 @@ import CompositionView from "../composition/CompositionView";
 import ConfigureView from "../configure/ConfigureView";
 import SettingsView from "../views/SettingsView";
 import PlaceholderView from "../views/PlaceholderView";
-import { CompositionService, CapabilitiesService } from "../../bindings/github.com/alicoding/mill";
+import { CompositionService, CapabilitiesService, SettingsService } from "../../bindings/github.com/alicoding/mill";
 import { useAppStore, viewFor, viewsEqual, statusDotColor } from "../shared/store";
 import type { View } from "../shared/store";
 import { COLOR_MODE_STORAGE_KEY, SIDEBAR_OPEN_STORAGE_KEY } from "./theme";
@@ -31,6 +31,15 @@ function App() {
   const view = useAppStore((s) => s.view);
   const setView = useAppStore((s) => s.setView);
   const [time, setTime] = useState<string>('Listening for Time event...');
+  // Whether this instance is running against an isolated settings/
+  // execution-db path (MILL_SETTINGS_PATH set -- every e2e run already
+  // does this, and it's the same signal a LAN/Tailscale-reachable
+  // server-mode instance should set) rather than the real desktop app's
+  // one default data file. Surfaced as a visible badge below so it's
+  // never ambiguous which instance -- real data or isolated test data --
+  // you're looking at (settingsservice.go's IsIsolatedData doc comment
+  // has the full reasoning).
+  const [isIsolatedData, setIsIsolatedData] = useState(false);
   const workflows = useAppStore((s) => s.workflows);
   const setWorkflows = useAppStore((s) => s.setWorkflows);
   const pushActivity = useAppStore((s) => s.pushActivity);
@@ -162,6 +171,10 @@ function App() {
     CapabilitiesService.List().then((list) => setCapabilities(list ?? [])).catch(console.error);
   }, [setCapabilities]);
 
+  useEffect(() => {
+    SettingsService.IsIsolatedData().then(setIsIsolatedData).catch(console.error);
+  }, []);
+
   // Subscribed here, not inside ActivityView/CompositionView, so a
   // headless trigger fired while on a different tab is still captured --
   // the whole point of this feed is answering "did anything run at all"
@@ -194,6 +207,11 @@ function App() {
       {isDevBuild && (
         <Label variant="severe" size="small" className={styles.devRibbon}>
           DEV · loaded {loadedAt}
+        </Label>
+      )}
+      {isIsolatedData && (
+        <Label variant="accent" size="small" className={styles.isolatedDataRibbon}>
+          TEST DATA
         </Label>
       )}
 
