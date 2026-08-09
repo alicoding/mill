@@ -2706,6 +2706,29 @@ firing a hotkey still needs a live Cocoa run loop and a real keypress,
 same limitation `run-mill` already documents, left to the user.
 ADR-0006's `Status` is now `accepted`.
 
+**Update — a small, separately-flagged finding, caught while researching
+an unrelated question (whether Mill's hexagonal architecture could
+support a future enterprise/regulated build variant, §10): the three
+self-registration registries this ADR's pattern produced
+(`RegisterNodeType`, `RegisterTrigger`, `RegisterAuthStrategy`, ADR-0015)
+have two different duplicate-key behaviors, undocumented until now.**
+`RegisterNodeType`/`RegisterTrigger` panic on a duplicate ID (a real,
+deliberate fail-fast choice, per their own doc comments — a collision is
+a programming error caught at process startup). `RegisterAuthStrategy`
+is a bare map assignment with no duplicate check at all — it silently
+overwrites. Neither behavior was a decision recorded anywhere before
+this update; the panic-vs-overwrite split is simply what each registry's
+underlying data structure happened to do. Not a bug fix — nothing
+depends on either behavior today, every registration site is this
+repo's own `init()`-time code, registering exactly once — and none of
+the three support *intentional* substitution regardless (an extension
+point that wants to replace an already-registered entry, not just add a
+new one, can't today, in any of the three). Documented directly on all
+three functions (`registry.go`, `triggerregistry.go`, `integration.go`)
+so this doesn't get rediscovered by surprise. `OPEN` — worth a real
+decision (pick one semantics, or add explicit substitution support) the
+day a real use case needs it, not before.
+
 ### 3.7 Global app settings — research pending
 
 `OPEN`, research not yet started — captured here so the ask doesn't get

@@ -127,11 +127,13 @@ type ExecutionService struct {
 }
 
 // NewExecutionService builds and launches the durable-execution runtime
-// backed by a local SQLite file at dbPath. Registration happens inside
-// execution.New, before Launch, per that function's own doc comment.
-func NewExecutionService(dbPath string, comp *CompositionService) (*ExecutionService, error) {
+// backed by databaseURL (a DBOS-native DSN -- see execution.New's own
+// doc comment for the sqlite-by-default, Postgres-by-config reasoning).
+// Registration happens inside execution.New, before Launch, per that
+// function's own doc comment.
+func NewExecutionService(databaseURL string, comp *CompositionService) (*ExecutionService, error) {
 	e := &ExecutionService{comp: comp}
-	ctx, err := execution.New("mill", dbPath, func(ctx execution.Context) {
+	ctx, err := execution.New("mill", databaseURL, func(ctx execution.Context) {
 		execution.RegisterWorkflow(ctx, e.runWorkflow, execution.WithWorkflowName(millRunWorkflowName))
 	})
 	if err != nil {
