@@ -131,9 +131,22 @@ jobs:
       - run: go vet ${{ matrix.tags && format('-tags {0}', matrix.tags) || '' }} . ./internal/...
 
   test-go:
+    needs: frontend
     runs-on: ubuntu-latest
+    # CGO_ENABLED=0: same reason as build-go's ubuntu-latest+server-tag
+    # entry -- Wails3's internal/operatingsystem and internal/assetserver/
+    # webview packages are cgo-gated onto GTK4/webkitgtk-6.0 this runner
+    # doesn't have, pulled in regardless of the server tag unless cgo
+    # itself is disabled. Now load-bearing here too, not just for
+    # build-go: the root package (added below) transitively imports them.
+    env:
+      CGO_ENABLED: '0'
     steps:
       - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
+        with:
+          name: frontend-dist
+          path: frontend/dist
       - uses: actions/setup-go@v7
         with:
           go-version: '1.25'
@@ -142,10 +155,16 @@ jobs:
       # cgo + X11 dev headers this runner doesn't have; the server-tagged
       # stub has zero cgo deps and is what's actually exercised here either
       # way (hotkey has no automated tests -- see docs/adr/0002, it can't
-      # be verified headlessly regardless of build tag). Doesn't need
-      # frontend/dist: internal/ packages never reference main.go's
-      # //go:embed.
-      - run: go test -tags server ./internal/... -race -cover
+      # be verified headlessly regardless of build tag). The root package
+      # (`.`) is included alongside ./internal/... as of this line --
+      # previously excluded, leaving configureservice_test.go,
+      # settingsservice_test.go, triggerservice_test.go,
+      # executionservice_test.go, and executionchildworkflow_test.go
+      # (1000+ lines) running in neither CI nor Lefthook. Needs
+      # frontend/dist now: main.go's //go:embed all:frontend/dist makes
+      # the root package fail to compile without it, even for tests that
+      # never touch the embedded assets themselves.
+      - run: go test -tags server . ./internal/... -race -cover
 
   e2e:
     runs-on: ubuntu-latest
