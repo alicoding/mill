@@ -1,15 +1,15 @@
 import { useEffect, useRef, useState } from 'react'
-import { Button, Checkbox, Dialog, FormControl, Heading, IconButton, Label, Stack, Text, TextInput, Token } from '@primer/react'
+import { Button, Heading, IconButton, Label, Stack, Text, Token } from '@primer/react'
 import { Tabs } from '@primer/react/experimental'
-import { PencilIcon, PlusIcon, TrashIcon } from '@primer/octicons-react'
+import { DownloadIcon, PencilIcon, PlusIcon, TrashIcon, UploadIcon } from '@primer/octicons-react'
 import { CompositionService, ExecutionService } from '../../bindings/github.com/alicoding/mill'
 import { RunKind } from '../../bindings/github.com/alicoding/mill/models'
-import { ConfigFieldType } from '../../bindings/github.com/alicoding/mill/internal/domain/composition/models'
-import type { AttributeDef, Edge, Node, NodeType, Workflow } from '../../bindings/github.com/alicoding/mill/internal/domain/composition/models'
+import type { Edge, Node, NodeType, Workflow } from '../../bindings/github.com/alicoding/mill/internal/domain/composition/models'
 import { generateSamplePayload } from '../shared/configSchema'
 import { useAppStore } from '../shared/store'
 import { loadPersistedTabs, savePersistedTabs } from '../shared/persistedTabs'
 import CompositionCanvas from './CompositionCanvas'
+import TestRunDialog from './TestRunDialog'
 import { TabItem, TabList, TabPanel } from '../shared/Tabs'
 import styles from '../shared/ListCard.module.css'
 import editorStyles from './CompositionView.module.css'
@@ -85,6 +85,12 @@ function CompositionView() {
   const [testRunTarget, setTestRunTarget] = useState<{ id: string; values: Record<string, string> } | null>(null)
   const [tabs, setTabs] = useState<EditorTab[]>([])
   const [activeTab, setActiveTab] = useState(WORKFLOWS_TAB)
+  // Import's error has nowhere to key by workflow ID -- the import
+  // hasn't produced one yet when it fails -- so it's a single, general
+  // slot rather than the errors-by-ID map every other error state here
+  // uses.
+  const [importError, setImportError] = useState<string | null>(null)
+  const importFileInputRef = useRef<HTMLInputElement>(null)
   // Guards the one-shot restore effect below from re-firing on every
   // later refetch (e.g. after Save) -- it must only apply the persisted
   // tab set once, the first time `workflows` becomes available, never
@@ -201,6 +207,48 @@ function CompositionView() {
     CompositionService.DeleteWorkflow(id).then(refetchWorkflows).catch(console.error)
   }
 
+  // Downloads id's current definition as a portable .json file --
+  // ExportWorkflow's own doc comment covers why the output is
+  // deterministic (share it, commit it to git, diff it cleanly). A
+  // Blob + synthetic anchor click is the standard browser download
+  // mechanism; it works the same way inside Mill's own Wails webview
+  // as it does in a normal browser tab, no native file-save API needed.
+  const exportWorkflow = (id: string, label: string) => {
+    CompositionService.ExportWorkflow(id)
+      .then((json) => {
+        const blob = new Blob([json], { type: 'application/json' })
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = `${label.trim() || 'workflow'}.json`
+        a.click()
+        URL.revokeObjectURL(url)
+      })
+      .catch((err) => setImportError(String(err)))
+  }
+
+  const openImportPicker = () => {
+    setImportError(null)
+    importFileInputRef.current?.click()
+  }
+
+  // ImportWorkflow always mints a new workflow (see its own doc comment
+  // for why -- ADR-0013's Duplicate precedent), so success here is
+  // exactly "add one more row to the list," not a merge/overwrite
+  // decision the UI has to resolve.
+  const handleImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    e.target.value = '' // allow re-selecting the same file next time
+    if (!file) return
+    file.text()
+      .then((text) => CompositionService.ImportWorkflow(text))
+      .then(() => {
+        setImportError(null)
+        refetchWorkflows()
+      })
+      .catch((err) => setImportError(String(err)))
+  }
+
   // Every click makes its own new tab (matching the reference's own
   // "Create workflow" behavior) -- composing two brand-new workflows
   // side by side is a real, intentional use of tabs, not a bug.
@@ -254,16 +302,39 @@ function CompositionView() {
 
           <Stack direction="horizontal" justify="space-between" align="center" className={styles.sectionHeading}>
             <Heading as="h2" variant="small">Workflows</Heading>
-            <Button
-              leadingVisual={PlusIcon}
-              size="small"
-              onClick={openNewWorkflowTab}
-              disabled={nodeTypes === null}
-              data-testid="new-workflow"
-            >
-              New workflow
-            </Button>
+            <Stack direction="horizontal" gap="condensed">
+              <input
+                ref={importFileInputRef}
+                type="file"
+                accept="application/json,.json"
+                data-testid="import-workflow-input"
+                style={{ display: 'none' }}
+                onChange={handleImportFile}
+              />
+              <Button
+                leadingVisual={UploadIcon}
+                size="small"
+                onClick={openImportPicker}
+                data-testid="import-workflow"
+              >
+                Import
+              </Button>
+              <Button
+                leadingVisual={PlusIcon}
+                size="small"
+                onClick={openNewWorkflowTab}
+                disabled={nodeTypes === null}
+                data-testid="new-workflow"
+              >
+                New workflow
+              </Button>
+            </Stack>
           </Stack>
+          {importError && (
+            <Text as="p" size="small" className={styles.error} data-testid="import-workflow-error">
+              {importError}
+            </Text>
+          )}
           {workflows === null && <Text as="p" className={styles.muted}>Loading…</Text>}
           {workflows !== null && (
             <Stack direction="vertical" gap="condensed">
@@ -301,6 +372,13 @@ function CompositionView() {
                         variant="invisible"
                         disabled={nodeTypes === null}
                         onClick={() => openEditTab(wf.ID)}
+                      />
+                      <IconButton
+                        icon={DownloadIcon}
+                        aria-label={`Export ${wf.Label}`}
+                        size="small"
+                        variant="invisible"
+                        onClick={() => exportWorkflow(wf.ID, wf.Label)}
                       />
                       <IconButton icon={TrashIcon} aria-label={`Delete ${wf.Label}`} size="small" variant="invisible" onClick={() => removeWorkflow(wf.ID)} />
                     </Stack>
@@ -365,62 +443,6 @@ function CompositionView() {
         />
       )}
     </Tabs>
-  )
-}
-
-// The test-input form itself (docs/adr/0008, SPEC.md §3.2's per-record
-// test harness): one field per declared Attribute, pre-filled via
-// generateSamplePayload (run() above), each still a normal editable
-// input -- submit as-is for the common case, or override a specific
-// value first. AttributeDef never declares FieldOptions (§3.3's
-// rule-builder Update note: "AttributeDef carries no Options list"), so
-// unlike NodeInspector's ConfigField switch, there's no Select branch
-// here -- every non-boolean/non-number field is plain text.
-function TestRunDialog({
-  workflowLabel, attributes, values, onChange, onCancel, onRun,
-}: {
-  workflowLabel: string
-  attributes: AttributeDef[]
-  values: Record<string, string>
-  onChange: (key: string, value: string) => void
-  onCancel: () => void
-  onRun: () => void
-}) {
-  return (
-    <Dialog title={`Test run — ${workflowLabel}`} onClose={onCancel} footerButtons={[
-      { content: 'Cancel', onClick: onCancel },
-      { content: 'Run', buttonType: 'primary', onClick: onRun },
-    ]}>
-      <Stack direction="vertical" gap="normal">
-        {attributes.map((attr) => (
-          <FormControl key={attr.Key}>
-            <FormControl.Label>{attr.Label}</FormControl.Label>
-            {attr.Type === ConfigFieldType.FieldBoolean ? (
-              <Checkbox
-                checked={values[attr.Key] === 'true'}
-                data-testid="test-run-field"
-                onChange={(e) => onChange(attr.Key, String(e.target.checked))}
-              />
-            ) : attr.Type === ConfigFieldType.FieldNumber ? (
-              <TextInput
-                type="number"
-                value={values[attr.Key] ?? ''}
-                block
-                data-testid="test-run-field"
-                onChange={(e) => onChange(attr.Key, e.target.value)}
-              />
-            ) : (
-              <TextInput
-                value={values[attr.Key] ?? ''}
-                block
-                data-testid="test-run-field"
-                onChange={(e) => onChange(attr.Key, e.target.value)}
-              />
-            )}
-          </FormControl>
-        ))}
-      </Stack>
-    </Dialog>
   )
 }
 

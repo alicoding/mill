@@ -134,8 +134,8 @@ export interface TestHTTPRequestInput {
 
     /**
      * Secret is used as typed, for this call only -- TestHTTPRequestOperation
-     * never calls credential.Set, so a tested-then-abandoned draft leaves
-     * no keychain trace.
+     * never calls c.credentials.Set, so a tested-then-abandoned draft
+     * leaves no keychain trace.
      */
     "Secret": string;
 
