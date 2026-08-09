@@ -6,6 +6,34 @@
 import * as httprequest$0 from "./internal/domain/httprequest/models.js";
 
 /**
+ * BuildInfo is what's actually running, not what the source tree looks
+ * like -- the two silently diverged this session (a desktop app process
+ * stayed up across an entire session's worth of commits, showing hours-
+ * stale UI, with nothing anywhere flagging it). Wails3's own SDK reads
+ * the identical runtime/debug.ReadBuildInfo() data (application_debug.go)
+ * but only wires it up under `!production` and never exposes it to the
+ * frontend -- this is Mill's own copy, unconditional on any build tag,
+ * specifically so it's visible in every build, not just dev.
+ */
+export interface BuildInfo {
+    /**
+     * Revision is the short (12-char) git commit hash the running binary
+     * was built from, or "" if `go build` couldn't determine one (e.g.
+     * building outside a git checkout, or with -buildvcs=false).
+     */
+    "Revision": string;
+
+    /**
+     * Modified is true when the working tree had uncommitted changes at
+     * build time -- the single most useful bit here: it's the difference
+     * between "this binary is an old commit" (rebuild it) and "this
+     * binary has changes that were never committed at all" (a different,
+     * more concerning kind of stale).
+     */
+    "Modified": boolean;
+}
+
+/**
  * HotkeyActivity is emitted once a triggered workflow resolves (success
  * or failure) -- not just hotkey fires despite the name (kept for the
  * event's own wire compatibility; renaming the event string itself would

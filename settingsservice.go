@@ -80,6 +80,15 @@ func (s *SettingsService) IsIsolatedData() bool {
 	return s.isolatedData
 }
 
+// GetBuildInfo reports which commit this running instance was actually
+// built from (settingsservice_buildinfo.go) -- surfaced in the footer
+// so a stale, still-running process (e.g. a desktop app left open
+// across a whole session's worth of commits) is visible at a glance
+// instead of only discoverable by comparing two instances side by side.
+func (s *SettingsService) GetBuildInfo() BuildInfo {
+	return readBuildInfo()
+}
+
 // SetWindow wires the window a summon-hotkey fire shows/focuses. Called
 // once from main.go right after the window is created -- the window
 // doesn't exist yet when SettingsService itself is constructed (it's
