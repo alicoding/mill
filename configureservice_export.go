@@ -36,6 +36,7 @@ type exportedHTTPRequest struct {
 	Label       string                  `json:"label"`
 	Description string                  `json:"description"`
 	BaseURL     string                  `json:"baseURL"`
+	Method      string                  `json:"method"`
 	AuthType    httprequest.AuthType    `json:"authType"`
 	Headers     map[string]string       `json:"headers"`
 	OpenAPISpec string                  `json:"openAPISpec"`
@@ -63,6 +64,7 @@ func (c *ConfigureService) ExportHTTPRequest(id string) (string, error) {
 		Label:       req.Label,
 		Description: req.Description,
 		BaseURL:     req.BaseURL,
+		Method:      req.Method,
 		AuthType:    req.AuthType,
 		Headers:     req.Headers,
 		OpenAPISpec: req.OpenAPISpec,
@@ -86,7 +88,7 @@ func (c *ConfigureService) ImportHTTPRequest(jsonData string) (httprequest.HTTPR
 	if err := json.Unmarshal([]byte(jsonData), &in); err != nil {
 		return httprequest.HTTPRequest{}, fmt.Errorf("import request: invalid JSON: %w", err)
 	}
-	return c.CreateHTTPRequest(in.Label, in.BaseURL, in.AuthType, in.Headers, in.OpenAPISpec, in.Auth, in.JOSE, in.Description)
+	return c.CreateHTTPRequest(in.Label, in.BaseURL, in.Method, in.AuthType, in.Headers, in.OpenAPISpec, in.Auth, in.JOSE, in.Description)
 }
 
 // --- List ---

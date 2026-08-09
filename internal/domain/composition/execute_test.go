@@ -423,3 +423,49 @@ func TestExecuteWorkflow_MCPToolCall_InvalidArgumentsJSON_Rejected(t *testing.T)
 		t.Fatal("ExecuteWorkflow with invalid argumentsJSON returned nil error, want an error")
 	}
 }
+
+// ADR-0016 Phase B (entity half): when the node's own method config is
+// blank, the request's own Method is used; when both are blank, GET.
+// The node's explicit method still wins -- covers nodes saved before
+// HTTPRequest.Method existed (their persisted "GET" default keeps
+// behaving identically).
+func TestExecuteWorkflow_IntegrationHTTP_MethodFallsBackToRequests(t *testing.T) {
+	cases := []struct {
+		name          string
+		nodeMethod    string
+		requestMethod string
+		want          string
+	}{
+		{"node blank, request POST", "", "POST", "POST"},
+		{"node explicit override wins", "DELETE", "POST", "DELETE"},
+		{"both blank defaults to GET", "", "", "GET"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			var gotMethod string
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				gotMethod = r.Method
+				w.WriteHeader(http.StatusOK)
+			}))
+			defer srv.Close()
+
+			withHTTPRequestLookup(t, func(string) (ResolvedHTTPRequest, error) {
+				return ResolvedHTTPRequest{BaseURL: srv.URL, Method: tc.requestMethod, AuthType: httprequest.AuthNone}, nil
+			})
+
+			nodes, err := ResolveNodeDefaults([]Node{{
+				NodeTypeID: "integration-http",
+				Config:     map[string]string{"requestId": "conn-1", "path": "/x", "method": tc.nodeMethod},
+			}})
+			if err != nil {
+				t.Fatalf("ResolveNodeDefaults returned error: %v", err)
+			}
+			if _, err := ExecuteWorkflow(nodes, nil, nil); err != nil {
+				t.Fatalf("ExecuteWorkflow returned error: %v", err)
+			}
+			if gotMethod != tc.want {
+				t.Errorf("server received method %q, want %q", gotMethod, tc.want)
+			}
+		})
+	}
+}
