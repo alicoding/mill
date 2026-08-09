@@ -15,5 +15,6 @@ export type {
     Node,
     NodeType,
     Position,
-    Workflow
+    Workflow,
+    WorkflowVersion
 } from "./models.js";

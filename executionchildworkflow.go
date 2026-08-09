@@ -22,7 +22,7 @@ import (
 // silently no-op'ing; docs/adr/0008 already made the durable path the
 // only path, so this should never actually happen from the app itself,
 // only matters for a stray direct composition.ExecuteWorkflow call.
-func (e *ExecutionService) runChildWorkflow(runCtx any, workflowID string, attrValues map[string]string, idempotencyKey string) (string, error) {
+func (e *ExecutionService) runChildWorkflow(runCtx any, workflowID string, attrValues map[string]string, idempotencyKey string, pinnedVersion int) (string, error) {
 	dbosCtx, ok := runCtx.(execution.Context)
 	if !ok {
 		return "", fmt.Errorf("child-workflow: no durable run context available (not running on the durable execution path)")
@@ -44,17 +44,26 @@ func (e *ExecutionService) runChildWorkflow(runCtx any, workflowID string, attrV
 		return "", fmt.Errorf("child-workflow: workflow %q is not rooted in trigger-callable, cannot be invoked as a child", wf.Label)
 	}
 
+	// ADR-0021: a child invocation executes the published snapshot (or
+	// an explicitly pinned one) and is rejected on a disabled or
+	// never-published child -- production semantics, same as a trigger.
+	nodes, edges, attrs, version, err := composition.ResolveRunnable(wf, false, pinnedVersion)
+	if err != nil {
+		return "", fmt.Errorf("child-workflow: %w", err)
+	}
+
 	runID := idempotencyKey
 	if runID == "" {
 		runID = uuid.NewString()
 	}
 	handle, err := execution.RunWorkflow(dbosCtx, e.runWorkflow, runInput{
 		WorkflowID: wf.ID,
-		Nodes:      wf.Nodes,
-		Edges:      wf.Edges,
-		Attributes: wf.Attributes,
+		Nodes:      nodes,
+		Edges:      edges,
+		Attributes: attrs,
 		Kind:       RunKindTriggered,
 		Values:     attrValues,
+		Version:    version,
 	}, execution.WithWorkflowID(runID))
 	if err != nil {
 		return "", fmt.Errorf("start child workflow %q: %w", wf.Label, err)

@@ -10,6 +10,7 @@ import { useAppStore } from '../shared/store'
 import { loadPersistedTabs, savePersistedTabs } from '../shared/persistedTabs'
 import CompositionCanvas from './CompositionCanvas'
 import WorkflowRunsPanel from './WorkflowRunsPanel'
+import { WorkflowVersionsPanel } from './WorkflowVersionsPanel'
 import TestRunDialog from './TestRunDialog'
 import { TabItem, TabList, TabPanel } from '../shared/Tabs'
 import styles from '../shared/ListCard.module.css'
@@ -38,12 +39,16 @@ interface EditorTab {
 // outer workflow tab's Canvas/Runs selection is independent of every
 // other open tab's.
 function WorkflowEditorTab({
-  nodeTypes, workflow, onBack, onSaved,
+  nodeTypes, workflow, onBack, onSaved, onWorkflowsChanged,
 }: {
   nodeTypes: NodeType[]
   workflow: Workflow | null
   onBack: () => void
   onSaved: () => void
+  // Refetches the workflow list without closing this tab -- what the
+  // Versions tab's publish/disable/restore actions need (docs/adr/0021):
+  // they mutate lifecycle state, not the draft being edited.
+  onWorkflowsChanged: () => void
 }) {
   const [innerTab, setInnerTab] = useState('canvas')
 
@@ -56,12 +61,16 @@ function WorkflowEditorTab({
       <TabList aria-label={`${workflow.Label} sections`}>
         <TabItem value="canvas">Canvas</TabItem>
         <TabItem value="runs">Runs</TabItem>
+        <TabItem value="versions">Versions</TabItem>
       </TabList>
       <TabPanel value="canvas" className={editorStyles.editorPanel}>
         <CompositionCanvas nodeTypes={nodeTypes} workflow={workflow} onBack={onBack} onSaved={onSaved} />
       </TabPanel>
       <TabPanel value="runs">
         <WorkflowRunsPanel workflowId={workflow.ID} />
+      </TabPanel>
+      <TabPanel value="versions">
+        <WorkflowVersionsPanel workflow={workflow} onChanged={onWorkflowsChanged} />
       </TabPanel>
     </Tabs>
   )
@@ -389,6 +398,7 @@ function CompositionView() {
               workflow={editingWorkflow}
               onBack={() => closeTab(t.key)}
               onSaved={() => { refetchWorkflows(); closeTab(t.key) }}
+              onWorkflowsChanged={refetchWorkflows}
             />
           </TabPanel>
         )

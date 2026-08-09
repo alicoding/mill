@@ -1,6 +1,10 @@
 package composition
 
-import "fmt"
+import (
+	"fmt"
+	"strconv"
+	"strings"
+)
 
 // runChildWorkflowFn defaults to erroring so a child-workflow node run
 // before ExecutionService wires SetChildWorkflowRunner (docs/adr/0010)
@@ -17,14 +21,14 @@ import "fmt"
 // (WithWorkflowID): re-invoking with the same key returns the child's
 // already-recorded result instead of re-running it. Empty means "a
 // fresh run every time," the same default every other run gets.
-var runChildWorkflowFn = func(runCtx any, workflowID string, attrValues map[string]string, idempotencyKey string) (string, error) {
+var runChildWorkflowFn = func(runCtx any, workflowID string, attrValues map[string]string, idempotencyKey string, pinnedVersion int) (string, error) {
 	return "", fmt.Errorf("no child-workflow runner registered (yet) for workflow %q", workflowID)
 }
 
 // SetChildWorkflowRunner wires the function child-workflow nodes use to
 // start another workflow as a real DBOS child run. Called once from
 // main.go once ExecutionService exists.
-func SetChildWorkflowRunner(fn func(runCtx any, workflowID string, attrValues map[string]string, idempotencyKey string) (string, error)) {
+func SetChildWorkflowRunner(fn func(runCtx any, workflowID string, attrValues map[string]string, idempotencyKey string, pinnedVersion int) (string, error)) {
 	runChildWorkflowFn = fn
 }
 
@@ -49,6 +53,14 @@ func init() {
 				Default:     "", Type: FieldText,
 			},
 			{
+				// ADR-0021's version pinning: empty follows the child's
+				// published (live) version -- a moving pointer; a number
+				// pins this step to that exact snapshot forever.
+				Key: "version", Label: "Pin to version (optional)",
+				Description: "Leave empty to always call the child's published version. Enter a version number to pin this step to that exact snapshot, unaffected by later publishes.",
+				Default:     "", Type: FieldText,
+			},
+			{
 				// The typed-output half of the parent/child contract: the
 				// child's result always becomes this workflow's payload;
 				// naming an attribute here ALSO stores it there, so a
@@ -69,8 +81,16 @@ func init() {
 			resolved[k] = resolveBindingValue(raw, ctx.Attributes)
 		}
 		idempotencyKey := resolveBindingValue(node.Config["idempotencyKey"], ctx.Attributes)
+		pinnedVersion := 0
+		if raw := strings.TrimSpace(node.Config["version"]); raw != "" {
+			n, err := strconv.Atoi(raw)
+			if err != nil || n < 1 {
+				return ctx, fmt.Errorf("child-workflow: version %q is not a positive version number", raw)
+			}
+			pinnedVersion = n
+		}
 
-		payload, err := runChildWorkflowFn(ctx.RunContext, node.Config["workflowId"], resolved, idempotencyKey)
+		payload, err := runChildWorkflowFn(ctx.RunContext, node.Config["workflowId"], resolved, idempotencyKey, pinnedVersion)
 		if err != nil {
 			return ctx, fmt.Errorf("child-workflow: %w", err)
 		}

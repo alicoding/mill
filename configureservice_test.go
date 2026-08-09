@@ -5,6 +5,7 @@ import (
 
 	"github.com/alicoding/mill/internal/adapters/credential"
 	"github.com/alicoding/mill/internal/domain/composition"
+	"github.com/alicoding/mill/internal/domain/httprequest"
 	"github.com/zalando/go-keyring"
 )
 
@@ -58,14 +59,17 @@ func TestRestore_MigratesLegacyConnectorsKey(t *testing.T) {
 	comp := NewCompositionService(store)
 	cfg := NewConfigureService(store, comp, credential.New())
 
-	got := cfg.HTTPRequests()
-	if len(got) != 1 || got[0].ID != "old-1" || got[0].Label != "Old API" {
-		t.Fatalf("HTTPRequests() after legacy migration = %+v, want the migrated old-1 entry", got)
+	// Find by ID -- top-up seeding appends built-in examples alongside
+	// migrated data, so an exact-list assertion no longer holds; the
+	// migration's own claim is that old-1 survived under the new key.
+	migrated, found := findRequestByID(cfg.HTTPRequests(), "old-1")
+	if !found || migrated.Label != "Old API" {
+		t.Fatalf("HTTPRequests() after legacy migration missing old-1 (found=%v, got=%+v)", found, migrated)
 	}
 
 	restarted := NewConfigureService(store, comp, credential.New())
-	if len(restarted.HTTPRequests()) != 1 || restarted.HTTPRequests()[0].ID != "old-1" {
-		t.Fatalf("HTTPRequests() after restart = %+v, want the migrated entry to persist under the new key", restarted.HTTPRequests())
+	if _, stillThere := findRequestByID(restarted.HTTPRequests(), "old-1"); !stillThere {
+		t.Fatalf("HTTPRequests() after restart missing old-1 -- the migrated entry must persist under the new key")
 	}
 }
 
@@ -225,4 +229,16 @@ func TestListMCPServerTools_UnknownID_Rejected(t *testing.T) {
 	if _, err := cfg.ListMCPServerTools("does-not-exist"); err == nil {
 		t.Fatal("ListMCPServerTools for an unknown server returned nil error, want an error")
 	}
+}
+
+// findRequestByID is the find-by-ID helper the top-up-seeding era needs:
+// built-in examples are appended alongside user/migrated data, so tests
+// assert on the row they created, never on list shape.
+func findRequestByID(requests []httprequest.HTTPRequest, id string) (httprequest.HTTPRequest, bool) {
+	for _, r := range requests {
+		if r.ID == id {
+			return r, true
+		}
+	}
+	return httprequest.HTTPRequest{}, false
 }

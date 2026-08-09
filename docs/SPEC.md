@@ -1320,7 +1320,7 @@ Plan step for this as a standing rule.
 | **MCP tool call** (§3.6's extension point — call a tool on a Configure-authored MCP server) | Call one tool on a locally-configured MCP server over stdio, replace the payload with its text result | Wire protocol: adopt (`modelcontextprotocol/go-sdk`'s client role, via `internal/adapters/mcpclient`). Server config/CRUD: build, same shape as Connector | `LOCKED` (execution + authoring, end-to-end) — `internal/domain/mcpserver.MCPServer{ID, Label, Command, Args}` + a new `mcp-tool-call` `NodeType` (`KindProcess`) resolve an `mcpServerId` via `composition.SetMCPServerLookup` and call `toolName` with `argumentsJSON`. Verified against a real spawned subprocess (an official MCP reference server via `npx`), not just unit tests — see §3.6 for the full writeup. This is the "add a new capability without a core code change" answer §3.6 set out to find |
 | **Durable step execution / retry / resume** | Survive the process dying mid-workflow, checkpoint per step, retry transient failures | Adopt (DBOS-Go) | `LOCKED` — ADR-0004 `accepted`, `internal/adapters/execution` + `executionservice.go` built and e2e-verified; a real regression test (`TestResumeAfterFailure_DoesNotReExecuteCheckpointedStep`) proves a checkpointed step doesn't re-execute on resume against a real DBOS SQLite runtime. Since [ADR-0008](adr/0008-single-execution-path.md), this is the *only* execution path — every run is durable, not an opt-in alternative to a plain in-memory Run |
 | **Replay / re-run from history** | Re-invoke a past run, ideally resuming rather than restarting | Mechanism: adopt (DBOS `ForkWorkflow`/workflow-ID resume). UI/policy: build | `LOCKED` — a workflow's own Runs tab's "Redrive from here" (`ExecutionService.RedriveRun`, `dbos.ForkWorkflow`) is exactly this, built and e2e-verified |
-| **Draft/live versioning** | Edit a workflow without breaking the currently-live version | Build (no library owns Mill's own versioning semantics) | Real gap flagged from the reference-platform review (§3.2), `OPEN` |
+| **Draft/live versioning** | Edit a workflow without breaking the currently-live version | Build (no library owns Mill's own versioning semantics -- verified against installed DBOS v1.0.0: its `ApplicationVersion` versions the app binary, not definition data) | `LOCKED`, built -- [ADR-0021](adr/0021-workflow-lifecycle-and-versioning.md): head = draft, `Versions` = immutable snapshots, `PublishedVersion` = live (publish ≡ live), `Disabled` pauses triggers/child calls while test runs stay allowed (n8n's semantics); child-workflow version pinning; every run records its executed version. Shadow evaluation explicitly deferred (side-effectful nodes need §8's purity model first) |
 | **Live + shadow events / execution history** | Filterable log of past runs; dry-run a candidate change against real traffic before trusting it | Data: adopt (DBOS `GetStatus`/`ListWorkflows`). UI: build | `LOCKED` (execution-history half) — §7's per-workflow Runs tab (`WorkflowRunsPanel.tsx`, `ListRunsForWorkflow`/`GetWorkflowSteps`) built and e2e-verified. Shadow-events (dry-run a draft version against real traffic) stays unbuilt — no draft/live versioning concept exists yet (§3.2's own draft/live versioning gap, still real) |
 | **Guardrail preview / policy gate** | Approve/deny before a step actually runs | Build (core domain — no library has an opinion on Mill's guardrail semantics) | §8, `LOCKED` in shape, `OPEN` in detail |
 | **Visual composition surface** | Author a DAG, not just a list | Adopt (React Flow / `@xyflow/react`) — built ahead of ADR-0005 B2's original deferral trigger, by explicit decision (see the ADR's Update section) | §3, `CompositionCanvas.tsx`, `UX: PROTOTYPE` |
@@ -1428,10 +1428,36 @@ against a real DBOS runtime and asserts the exact typed round-trip
 output plus the tracked parent/child relationship
 (`TestSeededParentChildExample_TypedInputAndOutput_RunsEndToEnd`), and
 the same run was driven live through the real UI on a fresh-seeded
-instance. Same fresh-install-only seeding caveat as §4's typed request
-examples. Hover-preview of the child from the parent, and jump-to-
+instance. Reaches existing instances via top-up seeding (§2.2's Update below). Hover-preview of the child from the parent, and jump-to-
 child-from-parent, are part of the recorded hover-preview design input
 (§3.8) — not silently dropped, not bolted on ad hoc here.
+
+**Lifecycle & versioning are built — [ADR-0021](adr/0021-workflow-lifecycle-and-versioning.md),
+`accepted`, and the seeded pair now demonstrates them end to end (the
+standing seeded-examples principle, below).** The canvas edits the
+draft; **Publish** snapshots it and makes it live (publish ≡ live —
+confirmed one concept with the user); triggers and child calls execute
+only the published snapshot (`ResolveRunnable`, and
+`TriggerService.Sync` arms listeners from the published snapshot, so a
+draft's edited schedule never rewires a live listener); **Disabled**
+pauses production while test runs keep working (n8n's exact
+semantics); a child-workflow step can **pin** a specific child version.
+The editor gains a **Versions** inner tab (publish / make-live /
+load-into-draft / enable-disable, Primer DataTable); list rows badge
+`vN live`/`draft`/`disabled`. Seeded proof: the callable child ships
+with v1 published and a deliberately different draft; the parent pins
+v1 — running it (Go test against real DBOS + a real-UI e2e) outputs
+v1's marker, never the draft's. A third seed, "Example: Disabled
+schedule," ships disabled with an every-minute schedule that
+never arms until enabled. **Seeding is top-up now, by direct user
+decision ("every feature we build needs proof with a seeded
+example")**: restore appends any built-in whose ID is neither present
+nor tombstoned (deleting a built-in records a tombstone, so §2.2's
+fully-deletable principle survives), for Workflows and HTTPRequests
+both — a newly shipped example reaches existing instances, not just
+fresh installs. Explicitly deferred in ADR-0021, named not dropped:
+shadow evaluation (needs a per-node purity/suppression model — §8),
+staged-traffic promotion, and a visual version-diff UI.
 
 ### 3.4 Trigger primitives — capability map
 
@@ -2163,10 +2189,10 @@ directory/scope (blocked on §6); fullscreen window-state tracking
   match httpbin's real validated response 1:1. Confirmed end-to-end
   against the live service, not assumed: Generate-sample-payload filled
   `q`, a real GET returned 200, and the response echoed the exact value
-  back. Because seeding is fresh-install-only, an existing instance's
-  already-persisted examples keep their old untyped schema — Export/
-  Import or delete-everything-and-reseed are the paths to the new ones,
-  deliberately not an overwrite of possibly-user-edited rows. `LOCKED`.
+  back. Seeding is now **top-up** (below), so new examples reach existing
+  instances too; an already-present example is never overwritten (it
+  may carry user edits), and a deliberately deleted one stays deleted
+  via a tombstone. `LOCKED`.
 - The operation picker (Testing/Available-attributes/Input-parameters)
   auto-selects instead of showing a dropdown when a request declares
   exactly one operation — `LOCKED`, no dedicated ADR.
@@ -2733,16 +2759,14 @@ recorded as a real design input (`OPEN`), never silently dropped.
 - Node/canvas composition model (§3) — Decision/Integration/List
   execution + authoring, and now Child Workflow (§3.3/ADR-0010), are
   built; Parallel Steps and draft/live versioning remain the open parts
-- **Workflow lifecycle + versioning — explicitly requested, scoped as
-  its own research-first goal, not started.** The user asked for the
-  full set: publish (≡ live — confirmed one concept, not two), an
-  **inactive** (enabled/disabled) state, version history/rollback,
-  version *pinning* on a child-workflow reference, and shadow
-  evaluation — "we should research what we need completely." Per §0's
-  own discipline this needs a capability map + ADR against DBOS's real
-  primitives (`ForkWorkflow`, application versioning, `ListWorkflows`)
-  and n8n/reference-platform precedent before any schema is locked —
-  deliberately not half-shipped inside the session that recorded it.
+- **Workflow lifecycle + versioning — `LOCKED`, built:
+  [ADR-0021](adr/0021-workflow-lifecycle-and-versioning.md)** (see
+  §3.3's Update for the full shape). Researched first as the user
+  asked: DBOS's `ApplicationVersion` versions the app binary, not
+  definition data (verified against the installed v1.0.0 source), so
+  the definition lifecycle is Mill's own. Still open from that pass,
+  deliberately: shadow evaluation (blocked on a per-node purity model,
+  §8), staged-traffic promotion, version diffing.
 - Browser extension ↔ native app protocol details (§5)
 - Env/shell determinism rules (§6)
 - Session identity model spanning tab + agent run + process (§7)
