@@ -5,7 +5,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/alicoding/mill/internal/adapters/credential"
 	"github.com/alicoding/mill/internal/adapters/httpconnector"
 	"github.com/alicoding/mill/internal/adapters/openapispec"
 	"github.com/alicoding/mill/internal/domain/composition"
@@ -36,8 +35,8 @@ type TestHTTPRequestInput struct {
 	JOSE    *httprequest.JOSEConfig
 	Headers map[string]string
 	// Secret is used as typed, for this call only -- TestHTTPRequestOperation
-	// never calls credential.Set, so a tested-then-abandoned draft leaves
-	// no keychain trace.
+	// never calls c.credentials.Set, so a tested-then-abandoned draft
+	// leaves no keychain trace.
 	Secret string
 	// JOSEPrivateKeyPEM is the same "used as typed, for this call only"
 	// shape as Secret above, but for JOSE.DecryptResponse's own,
@@ -80,13 +79,13 @@ type TestHTTPRequestResult struct {
 func (c *ConfigureService) TestHTTPRequestOperation(req TestHTTPRequestInput) (TestHTTPRequestResult, error) {
 	secret := req.Secret
 	if secret == "" && req.RequestID != "" {
-		if stored, err := credential.Get(req.RequestID); err == nil {
+		if stored, err := c.credentials.Get(req.RequestID); err == nil {
 			secret = stored
 		}
 	}
 	josePrivateKey := req.JOSEPrivateKeyPEM
 	if josePrivateKey == "" && req.RequestID != "" {
-		if stored, err := credential.Get(joseKeychainID(req.RequestID)); err == nil {
+		if stored, err := c.credentials.Get(joseKeychainID(req.RequestID)); err == nil {
 			josePrivateKey = stored
 		}
 	}

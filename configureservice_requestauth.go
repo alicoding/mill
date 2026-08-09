@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/alicoding/mill/internal/adapters/credential"
 	"github.com/alicoding/mill/internal/adapters/openapispec"
 	"github.com/alicoding/mill/internal/domain/composition"
 	"github.com/alicoding/mill/internal/domain/httprequest"
@@ -25,7 +24,7 @@ import (
 // second, distinct keychain entry per request -- a request can combine
 // JOSE with any AuthType (httprequest.JOSEConfig's own doc comment:
 // independent, additive layers), so JOSE's private key can't share the
-// same credential.Set(id, ...) slot AuthType's own secret already uses
+// same c.credentials.Set(id, ...) slot AuthType's own secret already uses
 // without one silently overwriting the other.
 func joseKeychainID(id string) string {
 	return id + ":jose"
@@ -55,7 +54,7 @@ func (c *ConfigureService) resolveHTTPRequest(id string) (composition.ResolvedHT
 
 	var secret string
 	if req.AuthType != httprequest.AuthNone {
-		s, err := credential.Get(id)
+		s, err := c.credentials.Get(id)
 		if err != nil {
 			return composition.ResolvedHTTPRequest{}, fmt.Errorf("request %q: %w", id, err)
 		}
@@ -64,7 +63,7 @@ func (c *ConfigureService) resolveHTTPRequest(id string) (composition.ResolvedHT
 
 	var josePrivateKey string
 	if req.JOSE != nil && req.JOSE.DecryptResponse {
-		s, err := credential.Get(joseKeychainID(id))
+		s, err := c.credentials.Get(joseKeychainID(id))
 		if err != nil {
 			return composition.ResolvedHTTPRequest{}, fmt.Errorf("request %q: JOSE private key: %w", id, err)
 		}
@@ -158,7 +157,7 @@ func (c *ConfigureService) UpdateHTTPRequest(id, label, baseURL string, authType
 }
 
 // DeleteHTTPRequest also removes any keychain secret for id --
-// best-effort (credential.Delete on an id with no stored secret, e.g.
+// best-effort (c.credentials.Delete on an id with no stored secret, e.g.
 // an AuthNone request, is a harmless no-op-shaped error, not
 // surfaced), so a deleted request never leaves an orphaned secret
 // behind in the OS keychain.
@@ -179,8 +178,8 @@ func (c *ConfigureService) DeleteHTTPRequest(id string) error {
 	c.mu.Unlock()
 
 	c.persistHTTPRequests()
-	_ = credential.Delete(id)
-	_ = credential.Delete(joseKeychainID(id))
+	_ = c.credentials.Delete(id)
+	_ = c.credentials.Delete(joseKeychainID(id))
 	return nil
 }
 
@@ -267,13 +266,13 @@ func (c *ConfigureService) SetHTTPRequestSecret(id, secret string) error {
 	if !exists {
 		return fmt.Errorf("no request with id %q", id)
 	}
-	return credential.Set(id, secret)
+	return c.credentials.Set(id, secret)
 }
 
 // DeleteHTTPRequestSecret clears id's secret without deleting the
 // request itself -- e.g. switching a request back to AuthNone.
 func (c *ConfigureService) DeleteHTTPRequestSecret(id string) error {
-	return credential.Delete(id)
+	return c.credentials.Delete(id)
 }
 
 // SetHTTPRequestOAuth1Secret writes id's OAuth 1.0a dual secret
@@ -298,7 +297,7 @@ func (c *ConfigureService) SetHTTPRequestOAuth1Secret(id, consumerSecret, tokenS
 	if !exists {
 		return fmt.Errorf("no request with id %q", id)
 	}
-	return credential.Set(id, composition.EncodeOAuth1Secret(consumerSecret, tokenSecret))
+	return c.credentials.Set(id, composition.EncodeOAuth1Secret(consumerSecret, tokenSecret))
 }
 
 // SetHTTPRequestJOSEPrivateKey writes id's JOSE private key (Phase 3)
@@ -318,13 +317,13 @@ func (c *ConfigureService) SetHTTPRequestJOSEPrivateKey(id, privateKeyPEM string
 	if !exists {
 		return fmt.Errorf("no request with id %q", id)
 	}
-	return credential.Set(joseKeychainID(id), privateKeyPEM)
+	return c.credentials.Set(joseKeychainID(id), privateKeyPEM)
 }
 
 // DeleteHTTPRequestJOSEPrivateKey clears id's JOSE private key without
 // touching its AuthType secret or deleting the request itself.
 func (c *ConfigureService) DeleteHTTPRequestJOSEPrivateKey(id string) error {
-	return credential.Delete(joseKeychainID(id))
+	return c.credentials.Delete(joseKeychainID(id))
 }
 
 func (c *ConfigureService) persistHTTPRequests() {

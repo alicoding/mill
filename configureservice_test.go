@@ -3,6 +3,7 @@ package main
 import (
 	"testing"
 
+	"github.com/alicoding/mill/internal/adapters/credential"
 	"github.com/alicoding/mill/internal/domain/composition"
 	"github.com/zalando/go-keyring"
 )
@@ -31,7 +32,7 @@ func newTestConfigureService(t *testing.T) (*ConfigureService, *CompositionServi
 	t.Helper()
 	store := newFakeStore()
 	comp := NewCompositionService(store)
-	cfg := NewConfigureService(store, comp)
+	cfg := NewConfigureService(store, comp, credential.New())
 	cfg.requests = nil
 	return cfg, comp
 }
@@ -55,14 +56,14 @@ func TestRestore_MigratesLegacyConnectorsKey(t *testing.T) {
 	_ = store.Set(legacyConnectorsKey, legacy)
 
 	comp := NewCompositionService(store)
-	cfg := NewConfigureService(store, comp)
+	cfg := NewConfigureService(store, comp, credential.New())
 
 	got := cfg.HTTPRequests()
 	if len(got) != 1 || got[0].ID != "old-1" || got[0].Label != "Old API" {
 		t.Fatalf("HTTPRequests() after legacy migration = %+v, want the migrated old-1 entry", got)
 	}
 
-	restarted := NewConfigureService(store, comp)
+	restarted := NewConfigureService(store, comp, credential.New())
 	if len(restarted.HTTPRequests()) != 1 || restarted.HTTPRequests()[0].ID != "old-1" {
 		t.Fatalf("HTTPRequests() after restart = %+v, want the migrated entry to persist under the new key", restarted.HTTPRequests())
 	}

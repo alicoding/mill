@@ -1,7 +1,6 @@
 package main
 
 import (
-	"github.com/alicoding/mill/internal/adapters/credential"
 	"github.com/alicoding/mill/internal/domain/composition"
 	"github.com/alicoding/mill/internal/domain/httprequest"
 )
@@ -11,7 +10,7 @@ import (
 // internal/domain/httprequest, since HTTPRequest itself never carries a
 // secret field (domain purity -- ADR-0007's own "the secret itself
 // never lives on an HTTPRequest value at all" rule) -- only the layer
-// that already owns credential.Set calls should own these values too.
+// that already owns c.credentials.Set calls should own these values too.
 //
 // Every value here is either a publicly-published test credential
 // (Postman's own OAuth1 example, safe and intended to be shared) or an
@@ -44,13 +43,13 @@ const builtInOAuth1ConsumerSecret = `D+EdQ-gs$-%@2Nu7`
 // genuinely fresh install (see restore()'s own comment for the lazy-
 // seed-until-first-real-mutation reasoning, mirrored from
 // CompositionService's identical pattern for Workflows). Best-effort,
-// same as every other credential.Set call site in this codebase: a
+// same as every other c.credentials.Set call site in this codebase: a
 // keychain write can fail (headless/sandboxed CI, a locked keychain),
 // and a failed *demo* secret write should degrade to "this one example
 // needs the user to fill in their own secret," not crash startup.
 func (c *ConfigureService) seedBuiltInSecrets() {
 	for id, secret := range builtInSecrets {
-		_ = credential.Set(id, secret)
+		_ = c.credentials.Set(id, secret)
 	}
-	_ = credential.Set(httprequest.ExampleOAuth1ID, composition.EncodeOAuth1Secret(builtInOAuth1ConsumerSecret, ""))
+	_ = c.credentials.Set(httprequest.ExampleOAuth1ID, composition.EncodeOAuth1Secret(builtInOAuth1ConsumerSecret, ""))
 }

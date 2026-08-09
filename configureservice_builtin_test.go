@@ -3,6 +3,7 @@ package main
 import (
 	"testing"
 
+	"github.com/alicoding/mill/internal/adapters/credential"
 	"github.com/alicoding/mill/internal/domain/httprequest"
 )
 
@@ -16,7 +17,7 @@ import (
 func TestConfigureService_FreshInstall_SeedsBuiltInRequests(t *testing.T) {
 	store := newFakeStore()
 	comp := NewCompositionService(store)
-	cfg := NewConfigureService(store, comp)
+	cfg := NewConfigureService(store, comp, credential.New())
 
 	got := cfg.HTTPRequests()
 	want := httprequest.BuiltIn()
@@ -41,7 +42,7 @@ func TestConfigureService_FreshInstall_SeedsBuiltInRequests(t *testing.T) {
 func TestConfigureService_FreshInstall_SeedsOAuth1DemoSecret(t *testing.T) {
 	store := newFakeStore()
 	comp := NewCompositionService(store)
-	cfg := NewConfigureService(store, comp)
+	cfg := NewConfigureService(store, comp, credential.New())
 
 	rc, err := cfg.resolveHTTPRequest(httprequest.ExampleOAuth1ID)
 	if err != nil {
@@ -59,7 +60,7 @@ func TestConfigureService_FreshInstall_SeedsOAuth1DemoSecret(t *testing.T) {
 func TestConfigureService_FreshInstall_SeedsPlaceholderDemoSecrets(t *testing.T) {
 	store := newFakeStore()
 	comp := NewCompositionService(store)
-	cfg := NewConfigureService(store, comp)
+	cfg := NewConfigureService(store, comp, credential.New())
 
 	for id, want := range builtInSecrets {
 		rc, err := cfg.resolveHTTPRequest(id)
@@ -83,7 +84,7 @@ func TestConfigureService_FreshInstall_SeedsPlaceholderDemoSecrets(t *testing.T)
 func TestConfigureService_FreshInstall_OAuth2Example_HasNoSecretSeeded(t *testing.T) {
 	store := newFakeStore()
 	comp := NewCompositionService(store)
-	cfg := NewConfigureService(store, comp)
+	cfg := NewConfigureService(store, comp, credential.New())
 
 	if _, err := cfg.resolveHTTPRequest(httprequest.ExampleOAuth2ID); err == nil {
 		t.Error("resolveHTTPRequest for the credential-less OAuth2 example returned nil error, want an error (no secret was ever seeded for it, matching a real not-yet-configured request)")
@@ -97,13 +98,13 @@ func TestConfigureService_FreshInstall_OAuth2Example_HasNoSecretSeeded(t *testin
 func TestConfigureService_DeletingABuiltIn_DoesNotReturnOnRestart(t *testing.T) {
 	store := newFakeStore()
 	comp := NewCompositionService(store)
-	cfg := NewConfigureService(store, comp)
+	cfg := NewConfigureService(store, comp, credential.New())
 
 	if err := cfg.DeleteHTTPRequest(httprequest.ExampleNoneID); err != nil {
 		t.Fatalf("DeleteHTTPRequest(%q) returned error: %v", httprequest.ExampleNoneID, err)
 	}
 
-	restarted := NewConfigureService(store, comp)
+	restarted := NewConfigureService(store, comp, credential.New())
 	for _, r := range restarted.HTTPRequests() {
 		if r.ID == httprequest.ExampleNoneID {
 			t.Fatalf("deleted built-in %q reappeared after restart, want it to stay deleted", httprequest.ExampleNoneID)
@@ -123,7 +124,7 @@ func TestConfigureService_DeletingABuiltIn_DoesNotReturnOnRestart(t *testing.T) 
 func TestUpdateHTTPRequest_PreservesBuiltInFlag_AndUpdatesDescription(t *testing.T) {
 	store := newFakeStore()
 	comp := NewCompositionService(store)
-	cfg := NewConfigureService(store, comp)
+	cfg := NewConfigureService(store, comp, credential.New())
 
 	var original httprequest.HTTPRequest
 	for _, r := range cfg.HTTPRequests() {
