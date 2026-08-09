@@ -13,7 +13,7 @@ function requestRow(page: import('@playwright/test').Page, label: string) {
 }
 
 async function deleteRequest(page: import('@playwright/test').Page, label: string) {
-  await page.getByRole('tab', { name: 'Requests' }).click()
+  await page.getByRole('tab', { name: 'Integrations', exact: true }).click()
   await requestRow(page, label).getByRole('button', { name: `Delete ${label}` }).click()
   await expect(requestRow(page, label)).toHaveCount(0)
 }
@@ -22,7 +22,8 @@ test('An OAuth 2.0 request persists its non-secret config and reloads it into Ed
   await page.goto('/')
   await page.getByRole('link', { name: 'Configure' }).click()
 
-  await page.getByTestId('new-request').click()
+  await page.getByTestId('new-integration').click()
+  await page.getByTestId('new-integration-rest').click()
   await page.getByLabel('Label').fill('OAuth2 Request')
   await page.getByLabel('Base URL').fill('https://api.example.com')
   await page.getByLabel('Auth type').selectOption('oauth2')
@@ -39,7 +40,10 @@ test('An OAuth 2.0 request persists its non-secret config and reloads it into Ed
   // Details tab shows the resolved auth-type label, not the raw enum value.
   await requestRow(page, 'OAuth2 Request').getByText('OAuth2 Request', { exact: true }).click();
   await expect(page.getByTestId('request-summary')).toBeVisible()
-  await expect(page.getByText('OAuth 2.0 (client credentials)')).toBeVisible()
+  // Scoped to the summary panel -- the list rows' auth chips now show
+  // the same full AUTH_LABEL text (shared authTypeLabels.ts map), so an
+  // unscoped getByText matches the seeded OAuth2 example's row too.
+  await expect(page.getByTestId('request-summary').getByText('OAuth 2.0 (client credentials)')).toBeVisible()
 
   // Reopening Edit reloads the non-secret OAuth2 config -- the secret
   // itself stays blank (write-only, docs/SPEC.md §3.5), never pre-filled.
@@ -57,7 +61,8 @@ test('An HMAC request persists a custom signature header name', async ({ page })
   await page.goto('/')
   await page.getByRole('link', { name: 'Configure' }).click()
 
-  await page.getByTestId('new-request').click()
+  await page.getByTestId('new-integration').click()
+  await page.getByTestId('new-integration-rest').click()
   await page.getByLabel('Label').fill('HMAC Request')
   await page.getByLabel('Base URL').fill('https://api.example.com')
   await page.getByLabel('Auth type').selectOption('hmac')
@@ -78,7 +83,8 @@ test('mTLS is selectable but clearly marked not yet implemented', async ({ page 
   await page.goto('/')
   await page.getByRole('link', { name: 'Configure' }).click()
 
-  await page.getByTestId('new-request').click()
+  await page.getByTestId('new-integration').click()
+  await page.getByTestId('new-integration-rest').click()
   await page.getByLabel('Label').fill('mTLS Request')
   await page.getByLabel('Base URL').fill('https://api.example.com')
   await page.getByLabel('Auth type').selectOption('mtls')
