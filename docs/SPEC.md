@@ -3089,6 +3089,20 @@ this pass.
   case worth checking rather than assuming), and a bare digit key
   without Cmd does nothing. Full frontend check suite (tsc, eslint,
   boundaries, vitest) clean.
+- **Update — task #14 spiked Wails3's own built-in `-tags mcp` server
+  as a desktop-only verification tool; full verdict recorded in
+  `.claude/skills/run-mill/SKILL.md` rather than duplicated here.**
+  Real test against a genuine MCP client, a real bound summon hotkey,
+  and a real running desktop binary: confirms it closes part of
+  `run-mill`'s own documented desktop-only gap (window/tray state is
+  now agent-drivable via `window_control`/`dom_query`/
+  `call_bound_method`) but **not** hotkey-delivery verification
+  specifically — `keyboard_press` dispatches a DOM-scoped
+  `KeyboardEvent` only, confirmed empirically (a real bound hotkey's
+  window never un-minimised after the identical combo was sent via
+  `keyboard_press`, even though the press itself reached and was
+  handled by the real DOM). Not adopted into the standing workflow in
+  this pass — a one-off spike, not wired into CI/Lefthook or habit.
 - **Update — navigational/app state persistence, researched then
   built.** Prompted directly by the user asking what Mill is missing
   and what Wails itself recommends here. **Researched, not assumed**:
