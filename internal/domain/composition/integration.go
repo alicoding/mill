@@ -23,7 +23,12 @@ type ResolvedHTTPRequest struct {
 	// Method is the request's own HTTP method (ADR-0016 Phase B) --
 	// used when the integration-http node's own method config is blank;
 	// empty here too means GET.
-	Method   string
+	Method string
+	// Body is the request's own raw body, sent as-is when neither the
+	// schema's bound body fields nor a legacy node-level bodyTemplate
+	// produce one -- transport/payload config lives on the request, not
+	// the workflow node (direct user decision).
+	Body     string
 	AuthType httprequest.AuthType
 	Headers  map[string]string
 	Secret   string
@@ -103,41 +108,35 @@ func SetHTTPRequestLookup(fn func(requestID string) (ResolvedHTTPRequest, error)
 	lookupHTTPRequestFn = fn
 }
 
-// httpMethodSuggestions are offered as autocomplete hints on the open
-// Method field below, not a closed set -- ADR-0016. Includes RFC
-// 10008's QUERY (published June 2026: safe + idempotent like GET, but
-// carries a request body like POST) alongside the traditional verbs;
-// any string is still accepted and sent as-is.
-var httpMethodSuggestions = []string{
-	http.MethodGet, http.MethodPost, http.MethodPut, http.MethodPatch, http.MethodDelete,
-	http.MethodHead, http.MethodOptions, "QUERY",
+// singleOperation returns the one operation a request's spec declares,
+// when it declares exactly one -- the 1:1 request:operation model
+// (ADR-0016's Update 2) makes this the normal case, and it's what lets
+// the workflow node stop asking for path/method at all: the endpoint
+// is the integration's own declaration. A legacy multi-operation spec
+// returns ok=false, falling back to the node's own persisted
+// path/method config.
+func singleOperation(specDoc string) (path, method string, ok bool) {
+	doc, err := openapispec.Parse([]byte(specDoc))
+	if err != nil {
+		return "", "", false
+	}
+	ops := doc.Operations()
+	if len(ops) != 1 {
+		return "", "", false
+	}
+	return ops[0].Path, ops[0].Method, true
 }
 
 func init() {
 	RegisterNodeType(NodeType{
 		ID: "integration-http", Kind: KindProcess,
 		Label:       "Integration: HTTP call",
-		Description: "Calls a Configure-authored request's API and replaces the payload with the response body. requestId and method are both open FieldText, not a closed FieldOptions set -- requests are runtime, Configure-authored data composition.go has no compile-time knowledge of (the frontend Inspector renders a live picker for requestId, RefKind, docs/adr/0009), and method must accept any HTTP method (including a new or custom one, e.g. RFC 10008's QUERY) without a code change here (ADR-0016).",
+		Description: "Calls a Configure-authored integration's API and replaces the payload with the response body. The node only picks WHICH integration and binds data -- method, endpoint path, and body all live on the integration itself (Configure > Integration), by direct user decision: transport config at the workflow level was config in the wrong place. Legacy nodes saved with their own path/method/bodyTemplate config keep working (those keys still win when present); they're just no longer authorable here.",
 		ConfigFields: []ConfigField{
 			{
-				Key: "requestId", Label: "Request ID",
-				Description: "The ID of a request configured on the Configure page.",
+				Key: "requestId", Label: "Integration",
+				Description: "Which Configure-authored integration this step calls.",
 				Default:     "", Type: FieldText, RefKind: "request",
-			},
-			{
-				Key: "path", Label: "Path",
-				Description: "Appended to the request's base URL, e.g. \"/v1/records\".",
-				Default:     "", Type: FieldText,
-			},
-			{
-				Key: "method", Label: "Method",
-				Description: "Optional override -- leave blank to use the request's own method (ADR-0016 Phase B). Any method is accepted, not just the suggested common ones.",
-				Default:     "", Type: FieldText, Suggestions: httpMethodSuggestions,
-			},
-			{
-				Key: "bodyTemplate", Label: "Body",
-				Description: "Optional request body (e.g. JSON), sent as-is.",
-				Default:     "", Type: FieldText,
 			},
 		},
 	}, func(node Node, ctx ExecContext) (ExecContext, error) {
@@ -146,13 +145,29 @@ func init() {
 			return ctx, fmt.Errorf("integration-http: %w", err)
 		}
 
-		// Method precedence (ADR-0016 Phase B): the node's own explicit
-		// override wins, then the request's own Method, then GET --
-		// covers nodes saved before the entity-level Method existed
-		// (their persisted "GET" default keeps behaving identically).
+		// Method/path/body all come from the integration itself now --
+		// the node stopped asking for them (its ConfigFields above).
+		// Precedence keeps every legacy node working: a persisted node
+		// config value wins, then the request's own declaration (its
+		// Method/Body fields, and its single declared operation's path),
+		// then GET/empty.
 		method := node.Config["method"]
 		if method == "" {
 			method = rc.Method
+		}
+		urlPath, body := node.Config["path"], node.Config["bodyTemplate"]
+		if body == "" {
+			body = rc.Body
+		}
+		if rc.OpenAPISpec != "" {
+			if opPath, opMethod, ok := singleOperation(rc.OpenAPISpec); ok {
+				if urlPath == "" {
+					urlPath = opPath
+				}
+				if method == "" {
+					method = opMethod
+				}
+			}
 		}
 		if method == "" {
 			method = http.MethodGet
@@ -167,17 +182,15 @@ func init() {
 		// ADR-0007 Phase 3 (extended by ADR-0011's output Path support):
 		// a request with a spec and a node with authored input or
 		// output bindings uses the binding-resolution path
-		// (attributebinding.go); everything else keeps the original
-		// literal path/method/bodyTemplate behavior unchanged -- a
-		// strict superset, not a breaking change. Triggered by either
-		// binding being set (not just inputBindings) so an
-		// output-only-bound node still gets outputFields resolved for
-		// its Path lookups below.
-		urlPath, body := node.Config["path"], node.Config["bodyTemplate"]
+		// (attributebinding.go), against the path/method already
+		// resolved above (node override, else the request's own
+		// declaration). Triggered by either binding being set (not just
+		// inputBindings) so an output-only-bound node still gets
+		// outputFields resolved for its Path lookups below.
 		var outputFields []openapispec.Field
 		var responseExtractPath string
 		if rc.OpenAPISpec != "" && (node.Config["inputBindings"] != "" || node.Config["outputBindings"] != "") {
-			resolvedPath, resolvedBody, resolvedHeaders, resolvedQuery, fields, respExtractPath, err := resolveInputBindings(rc.OpenAPISpec, node.Config, ctx.Attributes)
+			resolvedPath, resolvedBody, resolvedHeaders, resolvedQuery, fields, respExtractPath, err := resolveInputBindings(rc.OpenAPISpec, node.Config, ctx.Attributes, urlPath, method)
 			if err != nil {
 				return ctx, fmt.Errorf("integration-http: %w", err)
 			}
@@ -185,7 +198,9 @@ func init() {
 			for k, v := range resolvedQuery {
 				query[k] = v
 			}
-			body = resolvedBody
+			if resolvedBody != "" {
+				body = resolvedBody
+			}
 			for k, v := range resolvedHeaders {
 				headers[k] = v
 			}

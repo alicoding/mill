@@ -168,6 +168,14 @@ type HTTPRequest struct {
 	Method   string
 	AuthType AuthType
 	Headers  map[string]string
+	// Body is an optional raw request body sent as-is when the schema's
+	// bound body fields don't produce one -- request-level, not
+	// workflow-node-level, by direct user decision ("form fields that
+	// should not be done at the workflow level"): transport and payload
+	// shape belong to the Integration; a workflow node only binds data.
+	// ADR-0016 Phase B's body half in its minimal raw form; the typed
+	// body-type picker (form-data/GraphQL/...) remains named future work.
+	Body string
 	// Description is free-text explaining what this request is/does --
 	// optional. Particularly useful for a seeded example (BuiltIn below):
 	// explaining what it demonstrates, and any honest caveat (e.g. "not
