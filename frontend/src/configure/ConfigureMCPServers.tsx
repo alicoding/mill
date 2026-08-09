@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Button, FormControl, Heading, IconButton, Stack, Text, TextInput } from '@primer/react'
-import { PlusIcon, TrashIcon } from '@primer/octicons-react'
+import { DownloadIcon, PlusIcon, TrashIcon, UploadIcon } from '@primer/octicons-react'
 import { ConfigureService } from '../../bindings/github.com/alicoding/mill'
 import type { MCPServer } from '../../bindings/github.com/alicoding/mill/internal/domain/mcpserver/models'
 import type { Tool } from '../../bindings/github.com/alicoding/mill/internal/adapters/mcpclient/models'
+import { downloadJSON } from '../shared/downloadJSON'
 import styles from '../shared/ListCard.module.css'
 
 function argsToRows(args: string[] | null | undefined): string[] {
@@ -25,9 +26,32 @@ export function ConfigureMCPServers() {
   const [formOpen, setFormOpen] = useState(false)
   const [error, setError] = useState('')
   const [toolsByServer, setToolsByServer] = useState<Record<string, Tool[] | string>>({})
+  const [importError, setImportError] = useState<string | null>(null)
+  const importInputRef = useRef<HTMLInputElement>(null)
 
   const refetch = () => {
     ConfigureService.MCPServers().then((list) => setServers(list ?? [])).catch(console.error)
+  }
+
+  const exportServer = (id: string, label: string) => {
+    ConfigureService.ExportMCPServer(id)
+      .then((json) => downloadJSON(`${label.trim() || 'mcp-server'}.json`, json))
+      .catch((err) => setImportError(String(err)))
+  }
+
+  const openImportPicker = () => {
+    setImportError(null)
+    importInputRef.current?.click()
+  }
+
+  const handleImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    file.text()
+      .then((text) => ConfigureService.ImportMCPServer(text))
+      .then(() => { setImportError(null); refetch() })
+      .catch((err) => setImportError(String(err)))
   }
 
   useEffect(refetch, [])
@@ -84,10 +108,26 @@ export function ConfigureMCPServers() {
     <div className={styles.page} data-testid="configure-mcpservers">
       <Stack direction="horizontal" justify="space-between" align="center" className={styles.sectionHeading}>
         <Heading as="h2" variant="small">MCP Servers</Heading>
-        <Button leadingVisual={PlusIcon} size="small" onClick={startCreate} data-testid="new-mcpserver">
-          New MCP server
-        </Button>
+        <Stack direction="horizontal" gap="condensed">
+          <input
+            ref={importInputRef}
+            type="file"
+            accept="application/json,.json"
+            data-testid="import-mcpserver-input"
+            style={{ display: 'none' }}
+            onChange={handleImportFile}
+          />
+          <Button leadingVisual={UploadIcon} size="small" onClick={openImportPicker} data-testid="import-mcpserver">
+            Import
+          </Button>
+          <Button leadingVisual={PlusIcon} size="small" onClick={startCreate} data-testid="new-mcpserver">
+            New MCP server
+          </Button>
+        </Stack>
       </Stack>
+      {importError && (
+        <Text as="p" size="small" className={styles.error} data-testid="import-mcpserver-error">{importError}</Text>
+      )}
 
       {formOpen && (
         <div className={styles.card}>
@@ -147,6 +187,13 @@ export function ConfigureMCPServers() {
                     List tools
                   </Button>
                   <Button size="small" variant="invisible" onClick={() => startEdit(s)}>Edit</Button>
+                  <IconButton
+                    icon={DownloadIcon}
+                    aria-label={`Export ${s.Label}`}
+                    size="small"
+                    variant="invisible"
+                    onClick={() => exportServer(s.ID, s.Label)}
+                  />
                   <IconButton icon={TrashIcon} aria-label={`Delete ${s.Label}`} size="small" variant="invisible" onClick={() => remove(s.ID)} />
                 </Stack>
               </Stack>

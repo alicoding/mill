@@ -98,6 +98,18 @@ export function DeleteMCPServer(id: string): $CancellablePromise<void> {
     return $Call.ByID(3639713705, id);
 }
 
+export function ExportHTTPRequest(id: string): $CancellablePromise<string> {
+    return $Call.ByID(1448907188, id);
+}
+
+export function ExportList(id: string): $CancellablePromise<string> {
+    return $Call.ByID(2585029715, id);
+}
+
+export function ExportMCPServer(id: string): $CancellablePromise<string> {
+    return $Call.ByID(3976888174, id);
+}
+
 /**
  * HTTPRequestOperationFields resolves one request operation's declared
  * input/output fields (ADR-0007 Phase 3) -- the data the canvas
@@ -111,6 +123,25 @@ export function HTTPRequestOperationFields(id: string, path: string, method: str
 
 export function HTTPRequests(): $CancellablePromise<httprequest$0.HTTPRequest[] | null> {
     return $Call.ByID(698407195);
+}
+
+/**
+ * ImportHTTPRequest always creates a new HTTPRequest with no secret set
+ * -- exportedHTTPRequest never carries one, so the imported request
+ * starts exactly like a freshly hand-authored one that hasn't had
+ * SetHTTPRequestSecret called yet, same as CreateHTTPRequest's own
+ * existing behavior for a request with AuthType != AuthNone.
+ */
+export function ImportHTTPRequest(jsonData: string): $CancellablePromise<httprequest$0.HTTPRequest> {
+    return $Call.ByID(4110878277, jsonData);
+}
+
+export function ImportList(jsonData: string): $CancellablePromise<list$0.List> {
+    return $Call.ByID(1713462084, jsonData);
+}
+
+export function ImportMCPServer(jsonData: string): $CancellablePromise<mcpserver$0.MCPServer> {
+    return $Call.ByID(294135579, jsonData);
 }
 
 /**
