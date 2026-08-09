@@ -41,7 +41,7 @@ async function deleteStarterNode(page: import('@playwright/test').Page) {
 
 test('The Method field accepts QUERY, an offered suggestion outside the old closed list, and persists it', async ({ page }) => {
   await page.goto('/')
-  await page.getByRole('link', { name: 'Composition' }).click()
+  await page.getByRole('link', { name: 'Workflows' }).click()
   await page.getByTestId('new-workflow').click()
   await deleteStarterNode(page)
   await activePanel(page).getByTestId('toggle-palette').click()

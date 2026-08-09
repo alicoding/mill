@@ -278,7 +278,7 @@ function CompositionView() {
 
   return (
     <Tabs value={activeTab} onValueChange={({ value }) => setActiveTab(value)}>
-      <TabList aria-label="Composition">
+      <TabList aria-label="Workflows">
         <TabItem value={WORKFLOWS_TAB}>Workflows</TabItem>
         {tabs.map((t) => (
           <TabItem key={t.key} value={t.key} onClose={() => closeTab(t.key)}>

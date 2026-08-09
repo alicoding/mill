@@ -89,7 +89,7 @@ async function connectNodes(page: import('@playwright/test').Page, sourceLabel: 
 // logic itself.
 test('process-inject-text composes with an upstream node via the generic Inspector, in the correct position', async ({ page }) => {
   await page.goto('/')
-  await page.getByRole('link', { name: 'Composition' }).click()
+  await page.getByRole('link', { name: 'Workflows' }).click()
   await page.getByTestId('new-workflow').click()
   await deleteStarterNode(page)
   await activePanel(page).getByTestId('toggle-palette').click()
@@ -145,7 +145,7 @@ test('process-inject-text composes with an upstream node via the generic Inspect
 
 test('Dropping a second Trigger node is silently rejected, not added as a duplicate', async ({ page }) => {
   await page.goto('/')
-  await page.getByRole('link', { name: 'Composition' }).click()
+  await page.getByRole('link', { name: 'Workflows' }).click()
   await page.getByTestId('new-workflow').click()
   await activePanel(page).getByTestId('toggle-palette').click()
 
@@ -160,7 +160,7 @@ test('Dropping a second Trigger node is silently rejected, not added as a duplic
 
 test('A node dropped onto an occupied spot lands clear of it, not stacked', async ({ page }) => {
   await page.goto('/')
-  await page.getByRole('link', { name: 'Composition' }).click()
+  await page.getByRole('link', { name: 'Workflows' }).click()
   await page.getByTestId('new-workflow').click()
   await activePanel(page).getByTestId('toggle-palette').click()
 
@@ -182,7 +182,7 @@ test('A node dropped onto an occupied spot lands clear of it, not stacked', asyn
 
 test('A disabled Trigger palette entry never picks up the enabled hover background', async ({ page }) => {
   await page.goto('/')
-  await page.getByRole('link', { name: 'Composition' }).click()
+  await page.getByRole('link', { name: 'Workflows' }).click()
   await page.getByTestId('new-workflow').click()
   await activePanel(page).getByTestId('toggle-palette').click()
 
@@ -201,7 +201,7 @@ test('A disabled Trigger palette entry never picks up the enabled hover backgrou
 
 test('Selecting the starter Trigger node and changing its type swaps it in place', async ({ page }) => {
   await page.goto('/')
-  await page.getByRole('link', { name: 'Composition' }).click()
+  await page.getByRole('link', { name: 'Workflows' }).click()
   await page.getByTestId('new-workflow').click()
 
   const nodes = activePanel(page).locator('.react-flow__node')
@@ -226,7 +226,7 @@ test('Selecting the starter Trigger node and changing its type swaps it in place
 // too.
 test('Running a workflow with declared Attributes shows an auto-filled test-input dialog first', async ({ page }) => {
   await page.goto('/')
-  await page.getByRole('link', { name: 'Composition' }).click()
+  await page.getByRole('link', { name: 'Workflows' }).click()
   await page.getByTestId('new-workflow').click()
   await activePanel(page).getByLabel('Label').fill('E2E attributes workflow')
   await activePanel(page).getByTestId('save-workflow').click()
@@ -249,7 +249,7 @@ test('Running a workflow with declared Attributes shows an auto-filled test-inpu
   await page.getByTestId('save-attributes').click()
   await expect(page.getByText('Saved.')).toBeVisible()
 
-  await page.getByRole('link', { name: 'Composition' }).click()
+  await page.getByRole('link', { name: 'Workflows' }).click()
   await workflowRow(page, 'E2E attributes workflow').getByRole('button', { name: 'Run' }).click()
 
   const dialog = page.getByRole('dialog')

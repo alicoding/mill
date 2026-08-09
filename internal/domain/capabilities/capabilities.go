@@ -64,7 +64,7 @@ type Capability struct {
 func List() []Capability {
 	return []Capability{
 		{
-			ID: "capability-composition", Label: "Capability composition", NavLabel: "Composition", SpecSection: "3",
+			ID: "capability-composition", Label: "Capability composition", NavLabel: "Workflows", SpecSection: "3",
 			Status: StatusOpen, View: ViewComposition,
 		},
 		{
