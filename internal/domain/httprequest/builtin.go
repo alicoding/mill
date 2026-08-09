@@ -41,6 +41,40 @@ func openAPISpecFor(title, path string) string {
 		`"paths":{"` + path + `":{"get":{"summary":"` + title + `","responses":{"200":{"description":"OK"}}}}}}`
 }
 
+// Two seeds carry a real *typed* schema (input parameters + typed
+// response fields), not just a bare 200, so the Test tab demonstrates
+// the full typed round trip against a live public service out of the
+// box (docs/SPEC.md §4's Update -- prompted directly: "I want to see a
+// real example ... getting an actual typed request and response in
+// action in the Test feature"). Both response shapes were verified
+// against the real endpoints' actual JSON before being hardcoded, not
+// assumed.
+
+// typedEchoSpec: httpbin.org/get echoes the query it received --
+// input: one query parameter (q); outputs: url/origin flat, plus the
+// echoed q extracted from the nested args object via x-mill-path
+// (ADR-0011's nested-response extraction, demonstrated on real data).
+const typedEchoSpec = `{"openapi":"3.0.3","info":{"title":"httpbin typed echo","version":"1.0.0"},"paths":{"/get":{"get":{` +
+	`"summary":"Echo query with typed response",` +
+	`"parameters":[{"name":"q","in":"query","required":false,"schema":{"type":"string","description":"Any value -- httpbin echoes it back in args.q"}}],` +
+	`"responses":{"200":{"description":"OK","content":{"application/json":{"schema":{"type":"object","properties":{` +
+	`"url":{"type":"string","description":"The full URL httpbin received"},` +
+	`"origin":{"type":"string","description":"Caller's public IP as httpbin saw it"},` +
+	`"echoedQ":{"type":"string","x-mill-path":"args.q","description":"The q parameter echoed back, read from the nested args object"}` +
+	`}}}}}}}}}}`
+
+// typedBearerSpec: httpbin.org/bearer genuinely validates the
+// Authorization header server-side and returns
+// {"authenticated": bool, "token": string} -- typed here so the
+// declared response fields line up 1:1 with the real JSON a test run
+// receives.
+const typedBearerSpec = `{"openapi":"3.0.3","info":{"title":"httpbin bearer check","version":"1.0.0"},"paths":{"/bearer":{"get":{` +
+	`"summary":"Bearer-validated call with typed response",` +
+	`"responses":{"200":{"description":"OK","content":{"application/json":{"schema":{"type":"object","properties":{` +
+	`"authenticated":{"type":"boolean","description":"True when the Bearer token was accepted"},` +
+	`"token":{"type":"string","description":"The token httpbin received"}` +
+	`}}}}}}}}}}`
+
 // BuiltIn returns the seeded example requests -- pure config, no
 // secrets (HTTPRequest never carries one, by design). Whoever owns
 // storage (ConfigureService) is responsible for also seeding each
@@ -52,7 +86,7 @@ func BuiltIn() []HTTPRequest {
 			Description: "Demonstrates AuthType none against a real, stable public test service " +
 				"(httpbin.org) -- no credentials involved, always works.",
 			BaseURL: "https://httpbin.org", AuthType: AuthNone, Method: "GET",
-			OpenAPISpec: openAPISpecFor("httpbin GET", "/get"),
+			OpenAPISpec: typedEchoSpec,
 			BuiltIn:     true,
 		},
 		{
@@ -72,7 +106,7 @@ func BuiltIn() []HTTPRequest {
 				"{\"authenticated\":true} with one -- real, independently-verified round trip, " +
 				"confirmed live before this was seeded.",
 			BaseURL: "https://httpbin.org", AuthType: AuthBearer, Method: "GET",
-			OpenAPISpec: openAPISpecFor("httpbin bearer check", "/bearer"),
+			OpenAPISpec: typedBearerSpec,
 			BuiltIn:     true,
 		},
 		{

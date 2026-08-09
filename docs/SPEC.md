@@ -2114,6 +2114,20 @@ directory/scope (blocked on §6); fullscreen window-state tracking
   Seeded lazily on first fresh install only (same pattern
   `CompositionService.restore()` already uses for built-in workflows) —
   editable, deletable, and cloneable via Duplicate like any other entity.
+  **Two seeds carry a real typed schema, verified live** — prompted
+  directly ("I want to see ... an actual typed request and response in
+  action in the Test feature"): the No-auth example declares a typed
+  query parameter (`q`) plus typed response fields (`url`, `origin`,
+  and `echoedQ` extracted from the nested `args.q` via `x-mill-path` —
+  ADR-0011's nested extraction demonstrated on real data), and the
+  Bearer example types `authenticated: boolean`/`token: string` to
+  match httpbin's real validated response 1:1. Confirmed end-to-end
+  against the live service, not assumed: Generate-sample-payload filled
+  `q`, a real GET returned 200, and the response echoed the exact value
+  back. Because seeding is fresh-install-only, an existing instance's
+  already-persisted examples keep their old untyped schema — Export/
+  Import or delete-everything-and-reseed are the paths to the new ones,
+  deliberately not an overwrite of possibly-user-edited rows. `LOCKED`.
 - The operation picker (Testing/Available-attributes/Input-parameters)
   auto-selects instead of showing a dropdown when a request declares
   exactly one operation — `LOCKED`, no dedicated ADR.
