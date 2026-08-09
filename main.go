@@ -167,7 +167,7 @@ func main() {
 	if millMCPAddr == "" {
 		millMCPAddr = "127.0.0.1:8090"
 	}
-	millMCPService := NewMillMCPService(compositionService, configureService)
+	millMCPService := NewMillMCPService(compositionService, configureService, settingsStore)
 	if err := millMCPService.Start(millMCPAddr); err != nil {
 		logger.Error("mill MCP server", "error", err)
 	} else {

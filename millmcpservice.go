@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/alicoding/mill/internal/adapters/mcpserving"
+	"github.com/alicoding/mill/internal/adapters/settings"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
@@ -34,6 +35,7 @@ import (
 type MillMCPService struct {
 	comp   *CompositionService
 	cfg    *ConfigureService
+	store  settings.Store
 	server *mcp.Server
 	http   *http.Server
 }
@@ -42,10 +44,14 @@ type MillMCPService struct {
 // resource/template up front -- registration is static (the resource
 // URIs themselves never change), only the data a read returns is
 // dynamic (each handler queries comp/cfg fresh on every call, never a
-// snapshot taken at construction time).
-func NewMillMCPService(comp *CompositionService, cfg *ConfigureService) *MillMCPService {
-	m := &MillMCPService{comp: comp, cfg: cfg}
+// snapshot taken at construction time). store carries the default-off
+// write-tools gate (millmcpservice_tools.go, ADR-0017's Update) --
+// read fresh on every import call, so flipping the Settings toggle
+// applies immediately, no restart.
+func NewMillMCPService(comp *CompositionService, cfg *ConfigureService, store settings.Store) *MillMCPService {
+	m := &MillMCPService{comp: comp, cfg: cfg, store: store}
 	m.server = mcpserving.New("mill", millVersion)
+	m.registerTools()
 
 	m.server.AddResource(&mcp.Resource{
 		URI: "mill://workflows", Name: "workflows", MIMEType: "application/json",

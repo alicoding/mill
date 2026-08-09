@@ -61,3 +61,31 @@ test('Check for updates produces a visible status, found or error', async ({ pag
   await expect(button).toBeEnabled({ timeout: 15_000 })
   await expect(button).toHaveText('Check for updates')
 })
+
+test('MCP write gate toggles from Settings and persists across a reload', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Settings' }).click()
+
+  const checkbox = page.getByTestId('mcp-write-enabled-checkbox')
+  await expect(checkbox).toBeEnabled()
+  // Default off (docs/adr/0017) -- the shared e2e settings file could
+  // carry a previous run's value, so normalize to off first, then
+  // round-trip on -> reload -> still on -> restore off (leaving the
+  // shared file the way a fresh install would look, per
+  // .claude/rules/testing.md's cleanup discipline).
+  if (await checkbox.isChecked()) {
+    await checkbox.click()
+    await expect(checkbox).not.toBeChecked()
+  }
+
+  await checkbox.click()
+  await expect(checkbox).toBeChecked()
+
+  await page.reload()
+  await page.getByRole('button', { name: 'Settings' }).click()
+  const afterReload = page.getByTestId('mcp-write-enabled-checkbox')
+  await expect(afterReload).toBeChecked()
+
+  await afterReload.click()
+  await expect(afterReload).not.toBeChecked()
+})
