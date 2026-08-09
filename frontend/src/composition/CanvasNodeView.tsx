@@ -3,6 +3,7 @@ import type { NodeProps } from '@xyflow/react'
 import { Text } from '@primer/react'
 import type { CanvasNode } from './canvasStore'
 import { KIND_ICON, KIND_ICON_BG, KIND_LABEL } from './nodeKind'
+import { WorkflowHoverPreview } from './WorkflowHoverPreview'
 import styles from './CompositionCanvas.module.css'
 
 // Top/bottom handles, not left/right -- a top-to-bottom chain with each
@@ -27,7 +28,15 @@ export function CanvasNodeView({ data, selected }: NodeProps<CanvasNode>) {
   // them, same as n8n's own trigger nodes having no input pin (they're
   // the entry point, not a step something else feeds).
   const isTrigger = data.kind === 'trigger'
-  return (
+  // A child-workflow node with a selected child IS the hover-preview
+  // anchor (docs/SPEC.md §3.8, corrected per direct feedback: the
+  // preview belongs on the node itself, not only on an Inspector
+  // hint) -- hovering the card shows the child's layout, Open jumps
+  // into its editor. Drag/select keep working: the anchor wrapper only
+  // listens for hover, and every pointer event still bubbles to React
+  // Flow's own node wrapper.
+  const childWorkflowId = data.nodeTypeID === 'child-workflow' ? (data.config?.workflowId ?? '') : ''
+  const card = (
     <div className={`${styles.canvasNode} ${selected ? styles.canvasNodeSelected : ''}`}>
       {!isTrigger && <Handle type="target" position={RFPosition.Top} />}
       <div className={styles.canvasNodeIcon} style={{ background: KIND_ICON_BG[data.kind] ?? 'var(--bgColor-neutral-emphasis)' }}>
@@ -42,4 +51,8 @@ export function CanvasNodeView({ data, selected }: NodeProps<CanvasNode>) {
       <Handle type="source" position={RFPosition.Bottom} />
     </div>
   )
+  if (childWorkflowId !== '') {
+    return <WorkflowHoverPreview workflowId={childWorkflowId}>{card}</WorkflowHoverPreview>
+  }
+  return card
 }
