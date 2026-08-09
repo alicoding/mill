@@ -2729,6 +2729,65 @@ so this doesn't get rediscovered by surprise. `OPEN` — worth a real
 decision (pick one semantics, or add explicit substitution support) the
 day a real use case needs it, not before.
 
+**Update — Mill as MCP server is now built, closing the third role this
+section named as theoretically possible (§3.1) but never
+implemented.** §3.1 locked three roles a moment MCP participant can
+play — server (expose tools), client (call tools, built in this same
+section above), host (run an agent's tool-calling loop, still disputed
+against §1.1's no-AI-API rule) — and only client existed until now.
+`MillMCPService` (`millmcpservice.go`) exposes Mill's own workflows and
+Configure-authored entities (HTTPRequests, Lists, MCP Servers) as MCP
+**Resources**, read-only, over a real HTTP endpoint
+(`internal/adapters/mcpserving`, wrapping
+`modelcontextprotocol/go-sdk`'s server role + its `StreamableHTTPHandler`
+transport — the same SDK Mill already depends on for the client role
+above, a new role, not a new dependency). This is squarely the
+already-locked-fine server role, not the disputed host role: no LLM or
+agent loop runs inside Mill here, an external agent's own host connects
+to this endpoint and reads from it, structurally identical to
+`httpconnector` being an HTTP client for outbound calls — Mill is a
+protocol implementation, not a decision-maker, in both directions.
+
+Each entity type gets two URIs: a plain index resource
+(`mill://workflows`, `mill://requests`, `mill://lists`,
+`mill://mcpservers`) listing every current ID/Label/Description as a
+small JSON array, and a `ResourceTemplate`
+(`mill://workflows/{id}`, etc.) whose read returns that one entity's
+full definition — reusing task #10/#11's own `Export*` methods
+directly as the read-model (`ExportWorkflow`, `ExportHTTPRequest`,
+`ExportList`, `ExportMCPServer`), not a second one built for this.
+Secrets stay excluded by the same construction those methods already
+guarantee (§4's write-only design, ADR-0007) — verified independently
+through this new code path too, not assumed inherited: a real test
+connects a genuine MCP client over real HTTP, sets a real secret on a
+real HTTPRequest, reads it back through `mill://requests/{id}`, and
+asserts the secret is absent from the wire response.
+
+Binds `127.0.0.1:8090` by default (`MILL_MCP_ADDR` overrides), loopback
+-only deliberately — this is a new, unauthenticated local listener, and
+staying loopback-bound is the conservative default until a real access
+-control need is named, same reasoning already applied to the LAN
+-exposure question elsewhere in this doc. Runs in both desktop and
+server-mode builds (no build tag) — server-mode Mill has real
+workflows/Configure data worth exposing the same way, and starting a
+second local listener alongside the existing `:8080` server doesn't
+conflict with it, confirmed by a real server-mode Playwright run with
+both listeners active. A bind failure is logged, not fatal — this is
+additive local tooling the rest of the app doesn't depend on.
+
+Verified end-to-end against a genuine MCP client (the SDK's own client
+role, not a mock or a direct Go call into the handler functions):
+`resources/list` returns the real registered set, `resources/read`
+against a just-created real workflow returns its real node data, and
+reading an unknown ID returns a real resource-not-found error.
+
+**What this does not build, named explicitly**: the write side (create/
+import a workflow or Configure entity via MCP Tools) is deliberately
+not implemented here. §8's guardrail policy is still `OPEN`, and
+programmatic, non-human-initiated writes are a materially different
+risk than read-only exposure — tracked separately, not silently
+folded into this pass. `LOCKED` (the read-only server, as built).
+
 ### 3.7 Global app settings — research pending
 
 `OPEN`, research not yet started — captured here so the ask doesn't get

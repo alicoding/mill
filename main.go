@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"embed"
 
 	"log"
@@ -149,6 +150,26 @@ func main() {
 	// the other direction.
 	triggerService.SetReservedCombo(settingsService.ReservedCombo)
 
+	// docs/SPEC.md §11 (task #12): Mill as MCP server, exposing its own
+	// workflows/Configure data as read-only Resources. MILL_MCP_ADDR
+	// overrides the bind address, same MILL_* override convention as
+	// settingsPath/executionDatabaseURL above -- default is loopback-only
+	// (127.0.0.1), never 0.0.0.0, since this is a new, unauthenticated
+	// local listener and staying loopback-bound is the conservative
+	// default until a real access-control need is named. A bind failure
+	// is logged, not fatal -- this is additive local tooling, not
+	// something the rest of the app depends on to function.
+	millMCPAddr := os.Getenv("MILL_MCP_ADDR")
+	if millMCPAddr == "" {
+		millMCPAddr = "127.0.0.1:8090"
+	}
+	millMCPService := NewMillMCPService(compositionService, configureService)
+	if err := millMCPService.Start(millMCPAddr); err != nil {
+		logger.Error("mill MCP server", "error", err)
+	} else {
+		logger.Info("mill MCP server listening", "addr", millMCPAddr)
+	}
+
 	app := application.New(application.Options{
 		Name:        "mill",
 		Description: "Guardrailed agentic-workflow automation",
@@ -279,6 +300,11 @@ func main() {
 	if shutdownErr := executionService.Shutdown(5 * time.Second); shutdownErr != nil {
 		logger.Error("execution runtime shutdown", "error", shutdownErr)
 	}
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	if shutdownErr := millMCPService.Shutdown(shutdownCtx); shutdownErr != nil {
+		logger.Error("mill MCP server shutdown", "error", shutdownErr)
+	}
+	cancel()
 
 	// If an error occurred while running the application, log it and exit.
 	if err != nil {
