@@ -12,6 +12,21 @@ import (
 // TestAssignHotkey_RejectsConflict (triggerservice_test.go) already
 // established -- these can't call the real hotkey API headless either.
 
+// TestShowWindow_NilWindow_DoesNotPanic covers the extraction this
+// session pulled out of bindSummon's own inline goroutine (task #8) --
+// ShowWindow is now called from two places (the summon hotkey and the
+// tray icon's click handler), so its nil-window guard is worth its own
+// test rather than only being implicitly covered by whichever caller
+// happened to exercise it before.
+func TestShowWindow_NilWindow_DoesNotPanic(t *testing.T) {
+	store := newFakeStore()
+	comp := NewCompositionService(store)
+	trig := NewTriggerService(comp, slog.Default(), store)
+	set := NewSettingsService(store, trig)
+
+	set.ShowWindow() // SetWindow was never called -- must not panic.
+}
+
 func TestAssignHotkey_RejectsSummonHotkeyConflict(t *testing.T) {
 	store := newFakeStore()
 	comp := NewCompositionService(store)
