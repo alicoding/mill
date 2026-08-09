@@ -22,16 +22,34 @@ func TestShowWindow_NilWindow_DoesNotPanic(t *testing.T) {
 	store := newFakeStore()
 	comp := NewCompositionService(store)
 	trig := NewTriggerService(comp, slog.Default(), store)
-	set := NewSettingsService(store, trig)
+	set := NewSettingsService(store, trig, false)
 
 	set.ShowWindow() // SetWindow was never called -- must not panic.
+}
+
+// TestIsIsolatedData_ReflectsConstructorArg covers the frontend's
+// "isolated test data" indicator's own backing signal (App.tsx) --
+// main.go computes this from whether MILL_SETTINGS_PATH was set, this
+// just proves the plumbing from constructor arg to the bound getter,
+// which is the part unit-testable without exercising main() itself.
+func TestIsIsolatedData_ReflectsConstructorArg(t *testing.T) {
+	store := newFakeStore()
+	comp := NewCompositionService(store)
+	trig := NewTriggerService(comp, slog.Default(), store)
+
+	if got := NewSettingsService(store, trig, false).IsIsolatedData(); got != false {
+		t.Errorf("IsIsolatedData() = %v, want false", got)
+	}
+	if got := NewSettingsService(store, trig, true).IsIsolatedData(); got != true {
+		t.Errorf("IsIsolatedData() = %v, want true", got)
+	}
 }
 
 func TestAssignHotkey_RejectsSummonHotkeyConflict(t *testing.T) {
 	store := newFakeStore()
 	comp := NewCompositionService(store)
 	trig := NewTriggerService(comp, slog.Default(), store)
-	set := NewSettingsService(store, trig)
+	set := NewSettingsService(store, trig, false)
 
 	// Seeded directly, not via AssignSummonHotkey (real OS call) --
 	// ReservedCombo only reads s.summonHK, so this exercises the
@@ -53,7 +71,7 @@ func TestAssignSummonHotkey_RejectsWorkflowConflict(t *testing.T) {
 	store := newFakeStore()
 	comp := NewCompositionService(store)
 	trig := NewTriggerService(comp, slog.Default(), store)
-	set := NewSettingsService(store, trig)
+	set := NewSettingsService(store, trig, false)
 
 	// Seeded directly, not via AssignHotkey (real OS call) --
 	// AssignSummonHotkey checks trig.ClaimedCombos() before ever
@@ -73,7 +91,7 @@ func TestSettingsService_GetSummonHotkey_EmptyWhenUnassigned(t *testing.T) {
 	store := newFakeStore()
 	comp := NewCompositionService(store)
 	trig := NewTriggerService(comp, slog.Default(), store)
-	set := NewSettingsService(store, trig)
+	set := NewSettingsService(store, trig, false)
 
 	if got := set.GetSummonHotkey(); got != "" {
 		t.Errorf("GetSummonHotkey() on a fresh service = %q, want empty", got)
@@ -84,12 +102,12 @@ func TestSettingsService_PersistAndLoadSummonHotkey(t *testing.T) {
 	store := newFakeStore()
 	comp := NewCompositionService(store)
 	trig := NewTriggerService(comp, slog.Default(), store)
-	set := NewSettingsService(store, trig)
+	set := NewSettingsService(store, trig, false)
 
 	set.summonHK = persistedHotkey{Mods: []string{"option", "shift"}, Key: "Space"}
 	set.persistSummonHotkey()
 
-	reloaded := NewSettingsService(store, trig)
+	reloaded := NewSettingsService(store, trig, false)
 	if got := reloaded.GetSummonHotkey(); got == "" {
 		t.Error("GetSummonHotkey() on a service constructed against a store with a persisted summon hotkey: want a non-empty binding, got empty")
 	}
@@ -106,7 +124,7 @@ func TestLoadWindowGeometry_NothingPersisted_ReturnsNotOK(t *testing.T) {
 	store := newFakeStore()
 	comp := NewCompositionService(store)
 	trig := NewTriggerService(comp, slog.Default(), store)
-	set := NewSettingsService(store, trig)
+	set := NewSettingsService(store, trig, false)
 
 	if _, _, _, _, _, ok := set.LoadWindowGeometry(); ok {
 		t.Error("LoadWindowGeometry() on a fresh service returned ok=true, want false")
@@ -117,7 +135,7 @@ func TestPersistAndLoadWindowGeometry_RoundTrips(t *testing.T) {
 	store := newFakeStore()
 	comp := NewCompositionService(store)
 	trig := NewTriggerService(comp, slog.Default(), store)
-	set := NewSettingsService(store, trig)
+	set := NewSettingsService(store, trig, false)
 
 	set.persistWindowGeometry(windowGeometry{X: 100, Y: 200, Width: 1200, Height: 800, Maximized: true})
 
@@ -133,7 +151,7 @@ func TestPersistAndLoadWindowGeometry_RoundTrips(t *testing.T) {
 	// a real persist/restore round trip, not just an in-memory read of
 	// what was just written (same discipline
 	// TestSettingsService_PersistAndLoadSummonHotkey already uses).
-	reloaded := NewSettingsService(store, trig)
+	reloaded := NewSettingsService(store, trig, false)
 	if _, _, _, _, _, ok := reloaded.LoadWindowGeometry(); !ok {
 		t.Error("LoadWindowGeometry() on a service reloaded from the same store returned ok=false, want true")
 	}
@@ -143,7 +161,7 @@ func TestLoadWindowGeometry_OffScreenPosition_Rejected(t *testing.T) {
 	store := newFakeStore()
 	comp := NewCompositionService(store)
 	trig := NewTriggerService(comp, slog.Default(), store)
-	set := NewSettingsService(store, trig)
+	set := NewSettingsService(store, trig, false)
 
 	// A position far enough off any real display to be almost certainly
 	// a stale save from a monitor that's since been disconnected --
@@ -160,7 +178,7 @@ func TestLoadWindowGeometry_ZeroSize_Rejected(t *testing.T) {
 	store := newFakeStore()
 	comp := NewCompositionService(store)
 	trig := NewTriggerService(comp, slog.Default(), store)
-	set := NewSettingsService(store, trig)
+	set := NewSettingsService(store, trig, false)
 
 	set.persistWindowGeometry(windowGeometry{X: 0, Y: 0, Width: 0, Height: 0})
 

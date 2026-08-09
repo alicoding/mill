@@ -156,6 +156,18 @@
     z-index: 2;
 }
 
+/* Left side, not right, deliberately -- .devRibbon already owns the
+   top-right corner, and both can legitimately be true at once (a dev
+   build pointed at an isolated e2e-style settings path), so they must
+   not compete for the same spot. */
+.isolatedDataRibbon {
+    --wails-draggable: no-drag;
+    position: fixed;
+    top: var(--base-size-8);
+    left: var(--base-size-8);
+    z-index: 2;
+}
+
 /* PageLayout wrapper: needs a *resolved* height from .app-shell's flex
    layout for PageLayoutWrapper/SidebarWrapper's own height:100% (Primer's
    own CSS) to have anything to resolve against -- a flex item stretched

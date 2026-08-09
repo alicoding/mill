@@ -64,6 +64,15 @@ export function GetSummonHotkey(): $CancellablePromise<string> {
 }
 
 /**
+ * IsIsolatedData reports whether this instance is running against a
+ * non-default settings path (MILL_SETTINGS_PATH was set) -- see
+ * NewSettingsService's own doc comment for the full reasoning.
+ */
+export function IsIsolatedData(): $CancellablePromise<boolean> {
+    return $Call.ByID(2388397155);
+}
+
+/**
  * RestoreSummonHotkey re-registers a persisted summon hotkey on launch
  * -- called from main.go's ApplicationStarted handler, same timing
  * reasoning as TriggerService.Sync (global hotkey registration needs

@@ -46,19 +46,38 @@ const windowGeometryDebounce = 500 * time.Millisecond
 // adopted for per-workflow triggers -- same registration mechanism,
 // different callback).
 type SettingsService struct {
-	mu       sync.Mutex
-	store    settings.Store
-	window   *application.WebviewWindow
-	trig     *TriggerService
-	summon   *hotkey.Binding
-	summonHK persistedHotkey // zero value (nil Mods) means unassigned
-	updater  *updater.Updater
+	mu           sync.Mutex
+	store        settings.Store
+	window       *application.WebviewWindow
+	trig         *TriggerService
+	summon       *hotkey.Binding
+	summonHK     persistedHotkey // zero value (nil Mods) means unassigned
+	updater      *updater.Updater
+	isolatedData bool
 }
 
-func NewSettingsService(store settings.Store, trig *TriggerService) *SettingsService {
-	s := &SettingsService{store: store, trig: trig}
+// isolatedData is true whenever MILL_SETTINGS_PATH was set explicitly
+// (main.go), meaning this instance is reading/writing a settings.json
+// other than the one real default -- true for every e2e run already
+// (playwright.config.ts), and deliberately the same signal a
+// LAN/Tailscale-reachable server-mode instance should set when it's
+// meant to be tested against without touching real desktop-app data.
+// Surfaced to the frontend (IsIsolatedData) so a visible "isolated test
+// data" indicator never leaves it ambiguous which instance you're
+// looking at -- the alternative (sharing the real settings/execution-db
+// files between a always-running server-mode instance and the desktop
+// app) risks concurrent writes and a scheduled trigger double-firing.
+func NewSettingsService(store settings.Store, trig *TriggerService, isolatedData bool) *SettingsService {
+	s := &SettingsService{store: store, trig: trig, isolatedData: isolatedData}
 	s.loadPersistedSummonHotkey()
 	return s
+}
+
+// IsIsolatedData reports whether this instance is running against a
+// non-default settings path (MILL_SETTINGS_PATH was set) -- see
+// NewSettingsService's own doc comment for the full reasoning.
+func (s *SettingsService) IsIsolatedData() bool {
+	return s.isolatedData
 }
 
 // SetWindow wires the window a summon-hotkey fire shows/focuses. Called
