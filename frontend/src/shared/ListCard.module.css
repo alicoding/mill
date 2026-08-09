@@ -12,9 +12,16 @@
    Box in favor of exactly this: CSS Modules + CSS variables. Root scroll/
    clip behavior comes from the global .view-pane class (src/index.css),
    applied alongside this module's .page class. */
+/* 760px was a fixed reading-width cap inherited from this class's own
+   original single-purpose use -- but .page is now shared by nearly
+   every list/form page in the app (Workflows, Activity, every Configure
+   tab, Settings), most of which are card/row content, not long-form
+   prose, and left a large, clearly-wasted gutter on any normal desktop
+   window. 1400px keeps a real cap (still not full-bleed on an ultra-wide
+   display) while using far more of a typical window. */
 .page {
     --wails-draggable: no-drag;
-    max-width: 760px;
+    max-width: 1400px;
     margin: 0 auto;
     padding: var(--s-3) var(--s-4) var(--s-5);
     color: var(--fgColor-default);

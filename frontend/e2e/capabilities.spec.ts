@@ -33,7 +33,7 @@ test('Clicking a built capability navigates to its real page', async ({ page }) 
 
   await capabilityRow(page, 'Capability composition').getByRole('button', { name: 'Go to page' }).click()
 
-  await expect(page.getByRole('heading', { name: 'Capability composition', exact: true })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Workflows', exact: true })).toBeVisible()
 })
 
 test('Clicking the Configure capability navigates to its real page', async ({ page }) => {

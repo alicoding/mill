@@ -47,10 +47,10 @@ export function CheckForUpdates(): $CancellablePromise<$models.UpdateCheckResult
 
 /**
  * GetBuildInfo reports which commit this running instance was actually
- * built from (buildinfo.go) -- surfaced in the footer so a stale,
- * still-running process (e.g. a desktop app left open across a whole
- * session's worth of commits) is visible at a glance instead of only
- * discoverable by comparing two instances side by side.
+ * built from (settingsservice_buildinfo.go) -- surfaced in the footer
+ * so a stale, still-running process (e.g. a desktop app left open
+ * across a whole session's worth of commits) is visible at a glance
+ * instead of only discoverable by comparing two instances side by side.
  */
 export function GetBuildInfo(): $CancellablePromise<$models.BuildInfo> {
     return $Call.ByID(465577412);
