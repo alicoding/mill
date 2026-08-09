@@ -34,7 +34,7 @@ func TestRunWorkflow_SummaryHasRealWorkflowLabelAndStepOutput(t *testing.T) {
 	workflowID := findBuiltInWorkflowID(t, comp, "Load sample HTML")
 
 	dbPath := filepath.Join(t.TempDir(), "exec.db")
-	exec, err := NewExecutionService(dbPath, comp)
+	exec, err := NewExecutionService("sqlite:"+dbPath, comp)
 	if err != nil {
 		t.Fatalf("NewExecutionService: %v", err)
 	}
@@ -89,7 +89,7 @@ func TestRedriveRun_ReturnsNewRunWithSameStepOutput(t *testing.T) {
 	workflowID := findBuiltInWorkflowID(t, comp, "Load sample HTML")
 
 	dbPath := filepath.Join(t.TempDir(), "exec.db")
-	exec, err := NewExecutionService(dbPath, comp)
+	exec, err := NewExecutionService("sqlite:"+dbPath, comp)
 	if err != nil {
 		t.Fatalf("NewExecutionService: %v", err)
 	}

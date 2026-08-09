@@ -107,11 +107,23 @@ func main() {
 	// config-dir convention and the same MILL_* env-override shape
 	// settingsPath already established above, for the identical reason:
 	// desktop-mode and server-mode e2e runs must not share real state.
-	executionDBPath := os.Getenv("MILL_EXECUTION_DB_PATH")
-	if executionDBPath == "" {
-		executionDBPath = filepath.Join(application.Path(application.PathConfigHome), "mill", "execution.db")
+	//
+	// MILL_EXECUTION_DATABASE_URL is a second, independent override: a
+	// full DBOS-native DSN (e.g. a Postgres/CockroachDB URL a regulated
+	// deployment points at its own audit database -- DBOS accepts this
+	// natively, confirmed against dbos.Config's own doc comment, no
+	// adapter change needed). Takes precedence over the path-based
+	// override below when set; MILL_EXECUTION_DB_PATH and the default
+	// sqlite path are otherwise unchanged.
+	executionDatabaseURL := os.Getenv("MILL_EXECUTION_DATABASE_URL")
+	if executionDatabaseURL == "" {
+		executionDBPath := os.Getenv("MILL_EXECUTION_DB_PATH")
+		if executionDBPath == "" {
+			executionDBPath = filepath.Join(application.Path(application.PathConfigHome), "mill", "execution.db")
+		}
+		executionDatabaseURL = "sqlite:" + executionDBPath
 	}
-	executionService, err := NewExecutionService(executionDBPath, compositionService)
+	executionService, err := NewExecutionService(executionDatabaseURL, compositionService)
 	if err != nil {
 		log.Fatal(err)
 	}

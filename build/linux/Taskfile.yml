@@ -179,6 +179,11 @@ tasks:
       OUTPUTFILE: '{{.ROOT_DIR}}/build/linux/{{.APP_NAME}}.desktop'
 
   run:
+    summary: Builds and runs the application
+    deps:
+      - task: build:native
+        vars:
+          DEV: "true"
     cmds:
       - '{{.BIN_DIR}}/{{.APP_NAME}}'
 

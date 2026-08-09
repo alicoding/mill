@@ -18,7 +18,9 @@ var triggerRegistry = map[string]triggerStarter{}
 // ExecFunc signature has no room for that, and internal/domain/
 // composition can't import package main regardless -- domain-purity
 // rule, CLAUDE.md). Panics on a duplicate ID, same fail-fast shape as
-// RegisterNodeType.
+// RegisterNodeType -- see that function's own doc comment
+// (internal/domain/composition/registry.go) for the documented
+// divergence from RegisterAuthStrategy's silent-overwrite semantics.
 func RegisterTrigger(nodeTypeID string, start triggerStarter) {
 	if _, exists := triggerRegistry[nodeTypeID]; exists {
 		panic("main: trigger type " + nodeTypeID + " registered twice")
