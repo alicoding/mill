@@ -54,7 +54,7 @@ async function deleteStarterNode(page: import('@playwright/test').Page) {
 
 test('Selecting an Integration node offers a live request picker with inline quick-create', async ({ page }) => {
   await page.goto('/')
-  await page.getByRole('link', { name: 'Composition' }).click()
+  await page.getByRole('link', { name: 'Workflows' }).click()
   await page.getByTestId('new-workflow').click()
   await deleteStarterNode(page)
   await activePanel(page).getByTestId('toggle-palette').click()

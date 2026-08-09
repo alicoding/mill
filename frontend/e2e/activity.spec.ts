@@ -35,7 +35,7 @@ function dataRows(page: import('@playwright/test').Page) {
 // before the next starts, closing the same-millisecond timestamp race
 // two back-to-back async runs could otherwise hit.
 async function runBothWorkflows(page: import('@playwright/test').Page) {
-  await page.getByRole('link', { name: 'Composition' }).click()
+  await page.getByRole('link', { name: 'Workflows' }).click()
 
   // Waits for the full disabled -> enabled cycle, not just "enabled"
   // (which could pass immediately if checked before React ever disables

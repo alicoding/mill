@@ -13,7 +13,7 @@ function workflowRow(page: import('@playwright/test').Page, label: string) {
 
 test('Exporting a workflow downloads a portable JSON file with its real definition', async ({ page }) => {
   await page.goto('/')
-  await page.getByRole('link', { name: 'Composition' }).click()
+  await page.getByRole('link', { name: 'Workflows' }).click()
 
   const row = workflowRow(page, 'Load sample HTML')
   await expect(row).toBeVisible()
@@ -39,7 +39,7 @@ test('Exporting a workflow downloads a portable JSON file with its real definiti
 
 test('Importing a workflow file adds a new, independent workflow without touching the original', async ({ page }) => {
   await page.goto('/')
-  await page.getByRole('link', { name: 'Composition' }).click()
+  await page.getByRole('link', { name: 'Workflows' }).click()
 
   const before = await workflowRow(page, 'Load sample HTML').count()
 
@@ -70,7 +70,7 @@ test('Importing a workflow file adds a new, independent workflow without touchin
 
 test('Importing invalid JSON shows an error instead of silently failing', async ({ page }) => {
   await page.goto('/')
-  await page.getByRole('link', { name: 'Composition' }).click()
+  await page.getByRole('link', { name: 'Workflows' }).click()
 
   await page.getByTestId('import-workflow').click()
   await page.getByTestId('import-workflow-input').setInputFiles({

@@ -54,7 +54,7 @@ async function createSingleNodeWorkflow(page: import('@playwright/test').Page, n
 
 test('Child Workflow picker only lists workflows rooted in trigger-callable', async ({ page }) => {
   await page.goto('/')
-  await page.getByRole('link', { name: 'Composition' }).click()
+  await page.getByRole('link', { name: 'Workflows' }).click()
 
   // A default new workflow (trigger-manual root) is NOT a valid child
   // target -- left as-is, no node changes needed.

@@ -21,14 +21,14 @@ test('The active view persists across a reload', async ({ page }) => {
 
 test('An open Composition workflow tab persists across a reload', async ({ page }) => {
   await page.goto('/')
-  await page.getByRole('link', { name: 'Composition' }).click()
+  await page.getByRole('link', { name: 'Workflows' }).click()
 
   const row = page.getByTestId('workflow-row').filter({ hasText: 'Load sample HTML' })
   await row.getByRole('button', { name: /Edit/ }).click()
   await expect(page.getByRole('tab', { name: 'Load sample HTML' })).toBeVisible()
 
   await page.reload()
-  await page.getByRole('link', { name: 'Composition' }).click()
+  await page.getByRole('link', { name: 'Workflows' }).click()
   await expect(page.getByRole('tab', { name: 'Load sample HTML' })).toBeVisible()
 })
 
@@ -54,7 +54,7 @@ test('Activity source/outcome filter selections write through to localStorage', 
   // (ActivityView.tsx: `{activity.length > 0 && (...)}`, a deliberate
   // "no controls over an empty list" choice) -- run a built-in
   // workflow first so Activity has something to filter.
-  await page.getByRole('link', { name: 'Composition' }).click()
+  await page.getByRole('link', { name: 'Workflows' }).click()
   await page.getByRole('button', { name: 'Run Load sample HTML' }).click()
 
   await page.getByRole('link', { name: 'Activity' }).click()
