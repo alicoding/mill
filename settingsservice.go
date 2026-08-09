@@ -226,18 +226,30 @@ func (s *SettingsService) bindSummon(mods []string, key string) error {
 	s.mu.Unlock()
 	go func() {
 		for range b.Keydown() {
-			s.mu.Lock()
-			w := s.window
-			s.mu.Unlock()
-			if w == nil {
-				continue
-			}
-			w.Show()
-			w.Restore()
-			w.Focus()
+			s.ShowWindow()
 		}
 	}()
 	return nil
+}
+
+// ShowWindow brings the main window to the front -- shared by the
+// summon-hotkey fire path above and the tray icon's click handler
+// (task #8, docs/SPEC.md §3.7), same show/restore/focus sequence
+// either way rather than two copies of it. A no-op if the window
+// hasn't been wired yet (SetWindow not yet called), matching the
+// hotkey path's own existing nil guard.
+//
+//wails:ignore
+func (s *SettingsService) ShowWindow() {
+	s.mu.Lock()
+	w := s.window
+	s.mu.Unlock()
+	if w == nil {
+		return
+	}
+	w.Show()
+	w.Restore()
+	w.Focus()
 }
 
 // AssignSummonHotkey binds mods+key as the app-level summon hotkey,

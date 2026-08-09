@@ -34,6 +34,9 @@ const millVersion = "0.1.0"
 //go:embed all:frontend/dist
 var assets embed.FS
 
+//go:embed build/appicon.png
+var trayIconPNG []byte
+
 // HotkeyActivity is emitted once a triggered workflow resolves (success
 // or failure) -- not just hotkey fires despite the name (kept for the
 // event's own wire compatibility; renaming the event string itself would
@@ -280,6 +283,28 @@ func main() {
 	mainWindow := app.Window.NewWithOptions(windowOptions)
 	settingsService.SetWindow(mainWindow)
 	settingsService.WatchWindowGeometry()
+
+	// docs/SPEC.md §3.7 (task #8): a tray icon as a running-indicator --
+	// closes a real gap run-mill's own SKILL.md already names ("no
+	// automated path to verify a real desktop-only state"), and answers
+	// "is Mill running" the same way Raycast/Alfred/1Password do (§3.7's
+	// own research: a persistent menu-bar icon IS the running-indicator
+	// pattern, not a separate status API). Coexists with the dock icon
+	// deliberately -- the safer, reversible default named in this
+	// session's own goal condition, not a "menu-bar-only app" redesign;
+	// ApplicationShouldTerminateAfterLastWindowClosed stays true,
+	// unchanged. Clicking it reuses ShowWindow (SettingsService), the
+	// exact same show/restore/focus sequence the summon hotkey already
+	// uses -- one behavior, two triggers, not a second copy of it.
+	trayIcon := app.SystemTray.New()
+	trayIcon.SetIcon(trayIconPNG)
+	trayIcon.SetTooltip("Mill")
+	trayIcon.OnClick(func() { settingsService.ShowWindow() })
+	trayMenu := app.NewMenu()
+	trayMenu.Add("Show Mill").OnClick(func(*application.Context) { settingsService.ShowWindow() })
+	trayMenu.AddSeparator()
+	trayMenu.Add("Quit").OnClick(func(*application.Context) { app.Quit() })
+	trayIcon.SetMenu(trayMenu)
 
 	// Create a goroutine that emits an event containing the current time every second.
 	// The frontend can listen to this event and update the UI accordingly.
