@@ -108,6 +108,22 @@ func SetHTTPRequestLookup(fn func(requestID string) (ResolvedHTTPRequest, error)
 	lookupHTTPRequestFn = fn
 }
 
+// JoinRequestURL assembles the request URL from the integration's own
+// URL field and an operation path. One URL is the mental model (decided
+// directly with the user: base-URL-here + endpoint-path-there was
+// disorienting): a new-style integration's URL is COMPLETE (path,
+// {param} templates and all) and its single operation's path is the
+// synthesized "/" placeholder, which appends nothing; a legacy
+// integration (base-only URL + a real per-operation path) still joins
+// exactly as before. A genuine root-path call is byte-equivalent
+// either way.
+func JoinRequestURL(base, path string) string {
+	if path == "" || path == "/" {
+		return base
+	}
+	return strings.TrimRight(base, "/") + path
+}
+
 // singleOperation returns the one operation a request's spec declares,
 // when it declares exactly one -- the 1:1 request:operation model
 // (ADR-0016's Update 2) makes this the normal case, and it's what lets
@@ -189,12 +205,14 @@ func init() {
 		// outputFields resolved for its Path lookups below.
 		var outputFields []openapispec.Field
 		var responseExtractPath string
+		pathParams := map[string]string{}
 		if rc.OpenAPISpec != "" && (node.Config["inputBindings"] != "" || node.Config["outputBindings"] != "") {
-			resolvedPath, resolvedBody, resolvedHeaders, resolvedQuery, fields, respExtractPath, err := resolveInputBindings(rc.OpenAPISpec, node.Config, ctx.Attributes, urlPath, method)
+			resolvedPath, resolvedBody, resolvedHeaders, resolvedQuery, resolvedPathParams, fields, respExtractPath, err := resolveInputBindings(rc.OpenAPISpec, node.Config, ctx.Attributes, urlPath, method)
 			if err != nil {
 				return ctx, fmt.Errorf("integration-http: %w", err)
 			}
 			urlPath = resolvedPath
+			pathParams = resolvedPathParams
 			for k, v := range resolvedQuery {
 				query[k] = v
 			}
@@ -227,7 +245,14 @@ func init() {
 			return ctx, fmt.Errorf("integration-http: %w", err)
 		}
 
-		fullURL := strings.TrimRight(rc.BaseURL, "/") + urlPath
+		fullURL := JoinRequestURL(rc.BaseURL, urlPath)
+		// Path-parameter templates may live in the URL itself now (the
+		// one-URL model) -- substitute them over the assembled URL, not
+		// just the operation path (resolveInputBindings already handled
+		// the legacy in-path case; doing both is idempotent).
+		for name, val := range pathParams {
+			fullURL = strings.ReplaceAll(fullURL, "{"+name+"}", val)
+		}
 		if len(query) > 0 {
 			fullURL += "?" + query.Encode()
 		}

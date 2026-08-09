@@ -101,7 +101,16 @@ function OperationEditor({ operation, singleOpMethod, onChange, onRemove }: {
               {HTTP_METHODS.map((m) => <Select.Option key={m} value={m}>{m}</Select.Option>)}
             </Select>
           )}
-          <TextInput aria-label="Path" placeholder={singleOpMethod !== undefined ? '/ (optional endpoint path)' : '/widgets/{id}'} value={operation.path} onChange={(e) => onChange({ path: e.target.value })} />
+          {/* One-URL model: the endpoint lives entirely in the URL
+              field above, so the normal single-operation case shows no
+              path input at all ("base URL here + endpoint path there
+              was disorienting" -- direct user feedback). A legacy
+              single-op spec that carries a real path keeps an editable
+              input until it's cleared; multi-op specs keep theirs
+              (genuinely distinct endpoints). */}
+          {(singleOpMethod === undefined || (operation.path !== '' && operation.path !== '/')) && (
+            <TextInput aria-label="Path" placeholder="/widgets/{id}" value={operation.path} onChange={(e) => onChange({ path: e.target.value })} />
+          )}
         </Stack>
         {onRemove && <IconButton icon={TrashIcon} aria-label="Remove operation" size="small" variant="invisible" onClick={onRemove} />}
       </Stack>

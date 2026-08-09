@@ -2258,6 +2258,20 @@ directory/scope (blocked on §6); fullscreen window-state tracking
   the previous two-line rows of eight inline inputs rendered visibly
   broken. (4) **Every list/table row has a direct Edit action** — no
   forced detour through the read-only summary first.
+- **One URL, one place — `LOCKED`, by direct user decision ("baseURL
+  and endpoint shouldn't be separated ... it makes the mental model so
+  disoriented").** The integration's URL field is the *complete*
+  endpoint URL (path and `{param}` templates included); the schema's
+  single operation carries the synthesized `/` placeholder and the
+  editor shows **no path input** for the normal single-operation case
+  (a legacy single-op spec with a real path keeps an editable input
+  until cleared; multi-op specs keep theirs — genuinely distinct
+  endpoints). `composition.JoinRequestURL` is the one assembly rule —
+  execution, the Test panel, and OAuth 1.0a's signature base (RFC 5849
+  signs the exact transmitted URL) all share it, and path-parameter
+  bindings substitute over the assembled URL so a template in either
+  half resolves. Legacy base+path data executes byte-identically —
+  no migration. All seven seeds converted to the one-URL shape.
 - **The `integration-http` node no longer authors transport or body —
   `LOCKED`, by direct user decision ("form fields that should not be
   done at the workflow level").** The node's only config is *which*

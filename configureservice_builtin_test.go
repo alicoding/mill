@@ -187,9 +187,9 @@ func TestBuiltIn_TypedExamples_DeclareRealFields(t *testing.T) {
 	if err != nil {
 		t.Fatalf("typed echo spec does not parse: %v", err)
 	}
-	op, err := spec.Operation("/get", "GET")
+	op, err := spec.Operation("/", "GET")
 	if err != nil {
-		t.Fatalf("typed echo spec has no GET /get operation: %v", err)
+		t.Fatalf("typed echo spec has no GET / operation: %v", err)
 	}
 	if len(op.InputFields) != 1 || op.InputFields[0].Name != "q" || op.InputFields[0].In != "query" {
 		t.Errorf("typed echo inputs = %+v, want one query parameter q", op.InputFields)
@@ -214,9 +214,9 @@ func TestBuiltIn_TypedExamples_DeclareRealFields(t *testing.T) {
 	if err != nil {
 		t.Fatalf("typed bearer spec does not parse: %v", err)
 	}
-	op, err = spec.Operation("/bearer", "GET")
+	op, err = spec.Operation("/", "GET")
 	if err != nil {
-		t.Fatalf("typed bearer spec has no GET /bearer operation: %v", err)
+		t.Fatalf("typed bearer spec has no GET / operation: %v", err)
 	}
 	types := map[string]string{}
 	for _, f := range op.OutputFields {

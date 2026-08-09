@@ -25,7 +25,7 @@ test('Method is set beside Base URL and round-trips through save/edit', async ({
   await page.getByTestId('new-integration-rest').click()
   await page.getByLabel('Label').fill('Method Row Request')
   await page.getByTestId('request-method').selectOption('POST')
-  await page.getByLabel('Base URL').fill('https://api.example.com')
+  await page.getByLabel('URL', { exact: true }).fill('https://api.example.com')
   await page.getByRole('button', { name: 'Save request' }).click()
 
   const row = requestRow(page, 'Method Row Request')
@@ -49,7 +49,7 @@ test('Schema intake infers request-body fields from a pasted JSON sample', async
   await page.getByTestId('new-integration').click()
   await page.getByTestId('new-integration-rest').click()
   await page.getByLabel('Label').fill('Sample Intake Request')
-  await page.getByLabel('Base URL').fill('https://api.example.com')
+  await page.getByLabel('URL', { exact: true }).fill('https://api.example.com')
 
   await page.getByTestId('schema-intake-text').fill(JSON.stringify({ widget: 'w-1', count: 3 }))
   await page.getByTestId('schema-intake-load').click()
@@ -74,7 +74,7 @@ test('Schema intake loads CSV field rows into the editor', async ({ page }) => {
   await page.getByTestId('new-integration').click()
   await page.getByTestId('new-integration-rest').click()
   await page.getByLabel('Label').fill('CSV Intake Request')
-  await page.getByLabel('Base URL').fill('https://api.example.com')
+  await page.getByLabel('URL', { exact: true }).fill('https://api.example.com')
 
   const csv = [
     'path,method,direction,name,in,type,required,secret,alias,extractPath',
