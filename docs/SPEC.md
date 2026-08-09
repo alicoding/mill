@@ -2129,6 +2129,40 @@ directory/scope (blocked on §6); fullscreen window-state tracking
   type" list (§3.2) anticipates. The pinned list tab/heading say
   "Integrations" (the umbrella noun); the underlying entity stays
   `HTTPRequest` (ADR-0016's rename is code-level, unaffected).
+- **Method + URL are peers on the request form, the schema is
+  payload-only, and one request = one operation — `LOCKED`, ADR-0016
+  Phase B's entity half, decided directly with the user.**
+  `HTTPRequest.Method` (open text with datalist suggestions including
+  `QUERY`; empty means GET, covering every request saved before the
+  field existed) now lives on the entity, the export/import wire shape,
+  the seeded examples, and the read-only Details summary.
+  `integration-http`'s own `method` config becomes an optional
+  per-step override — blank inherits the request's method (existing
+  persisted nodes carrying the old explicit `"GET"` default behave
+  identically; regression-tested through the real execution path). The
+  Schema section never shows a Method control for a single-operation
+  request: its operation's method *is* the request's (clamped to
+  OpenAPI's eight expressible methods at synthesis time only —
+  execution always sends the real method). "Add operation" is gone
+  from authoring entirely: a request is 1:1 with its operation
+  ("people clone to create another" — Duplicate covers the multi-call
+  case); a previously-stored multi-operation spec still renders fully
+  (nothing silently dropped) and can be pared down, never grown.
+- **One schema-intake block replaces the Paste-OpenAPI/Manual mode
+  switch, the embedded CSV block, and the per-section Paste-sample
+  toggles — `LOCKED`.** All three previous accelerators confused the
+  live authoring flow (reported directly from real use). `SchemaIntake.tsx`
+  accepts pasted text or a dropped `.json`/`.csv` file (drop-zone via
+  `react-dropzone`, MIT, pure-JS deps — adopted rather than
+  hand-rolling HTML5 drag events), detects the content by shape — an
+  `openapi`/`swagger` key means a spec; any other JSON is a sample
+  payload inferred via the existing genson-js path, with a
+  request-body/response target select; anything else is tried as
+  CSV — and lands the result in the always-visible manual editor for
+  review. The raw OpenAPI document stays reachable behind a "View raw
+  OpenAPI" disclosure; a schema the user never touched saves
+  byte-verbatim, so ADR-0011's deliberately-bounded parse can never
+  silently rewrite a stored vendor spec on an unrelated edit.
 - **`Connector` → `HTTPRequest` rename + open Method field — `LOCKED`,
   [ADR-0016](adr/0016-http-request-entity-and-open-method.md), Phases A–C
   fully built.** Researched against Postman/Bruno/RFC 10008 before

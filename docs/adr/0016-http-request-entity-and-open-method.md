@@ -238,3 +238,45 @@ binary/GraphQL, replacing the one literal `bodyTemplate` string) —
 Phase B's own bigger, genuinely separate design surface. `bodyTemplate`
 and `path` stay exactly as they were (plain `FieldText`, no
 `Suggestions`) in this update; only `method` changed shape.
+
+## Update 2 — Phase B's entity half shipped; 1:1 request:operation locked
+
+Prompted directly in the live app ("I don't see anywhere that I can
+set METHOD" — the exact discoverability complaint this ADR's Context
+opened with, still true for the *entity* even after the node-level
+method opened): `HTTPRequest.Method` is now a real entity field —
+open text, empty-means-GET — set beside Base URL at the top of the
+request form (the Postman/Bruno request row this ADR's own Decision
+already named as the target shape). Wire shape (export/import), seeded
+examples, and the read-only summary all carry it;
+`integration-http`'s own `method` config field became an optional
+per-step override (blank inherits the request's method; nodes saved
+before this change carry the old explicit "GET" default and behave
+identically — regression-tested via
+`TestExecuteWorkflow_IntegrationHTTP_MethodFallsBackToRequests`).
+
+Two further decisions, made directly with the user in the same pass:
+
+- **A request is 1:1 with its operation.** "Do we ever want a single
+  request to have multiple operations? … people clone to create
+  another." The manual schema editor no longer has an "Add operation"
+  button; a single-operation request's schema shows no Method control
+  at all (the operation's method IS the request's Method, clamped to
+  OpenAPI's 8 expressible methods only at document-synthesis time —
+  execution always sends the real method, QUERY included). A stored
+  multi-operation spec still renders fully and can be pared down —
+  never grown — so no existing data is silently dropped.
+- **One schema-intake block** (`SchemaIntake.tsx`, react-dropzone)
+  replaces the Paste-OpenAPI/Manual mode switch, the CSV block, and
+  the per-section Paste-sample toggles — content-detected paste/drop
+  (OpenAPI / JSON sample / CSV) landing in the always-visible manual
+  editor; the raw document stays behind a "View raw OpenAPI"
+  disclosure and saves byte-verbatim unless the schema was actually
+  edited.
+
+**Still open after this update**: the Body-type picker
+(raw+format/form-data/x-www-form-urlencoded/binary/GraphQL, replacing
+the literal `bodyTemplate` string) and query/path key-value Params
+rows replacing `integration-http`'s raw `path` string — the schema's
+typed Parameters table covers declaring them, but the node-level
+authoring UI is unchanged.

@@ -10,7 +10,7 @@ import (
 
 func TestExportImportHTTPRequest_RoundTrips_NeverCarriesASecret(t *testing.T) {
 	cfg, _ := newTestConfigureService(t)
-	created, err := cfg.CreateHTTPRequest("My request", "https://example.com", httprequest.AuthAPIKey, nil, "", nil, nil, "a description")
+	created, err := cfg.CreateHTTPRequest("My request", "https://example.com", "QUERY", httprequest.AuthAPIKey, nil, "", nil, nil, "a description")
 	if err != nil {
 		t.Fatalf("CreateHTTPRequest: %v", err)
 	}
@@ -43,6 +43,11 @@ func TestExportImportHTTPRequest_RoundTrips_NeverCarriesASecret(t *testing.T) {
 	}
 	if imported.Label != created.Label || imported.BaseURL != created.BaseURL || imported.AuthType != created.AuthType {
 		t.Errorf("imported = %+v, want matching Label/BaseURL/AuthType from %+v", imported, created)
+	}
+	// ADR-0016 Phase B: Method is part of the wire shape -- an open
+	// method (QUERY) survives the round trip, not just the common verbs.
+	if imported.Method != "QUERY" {
+		t.Errorf("imported.Method = %q, want QUERY", imported.Method)
 	}
 	// The imported request never had SetHTTPRequestSecret called on it --
 	// it should have no usable secret of its own.

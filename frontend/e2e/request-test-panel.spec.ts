@@ -39,11 +39,11 @@ test('Running a test against an unreachable address logs a deterministic error',
   // refused, not a DNS lookup or a real remote host.
   await page.getByLabel('Base URL').fill('http://127.0.0.1:1')
 
-  await page.getByRole('button', { name: 'Manual editor' }).click()
+  // The manual editor is always visible, pre-seeded with the request's
+  // one implicit operation (1:1 model) -- Method is the request's own
+  // field (defaults GET), not part of schema authoring.
   const editor = page.getByTestId('manual-schema-editor')
-  await editor.getByTestId('add-operation').click()
   const operation = editor.getByTestId('manual-operation')
-  await operation.getByLabel('Method').selectOption('GET')
   await operation.getByLabel('Path').fill('/widgets')
   await operation.getByRole('button', { name: 'Add parameter' }).click()
   const paramRow = operation.getByTestId('manual-field-row').last()

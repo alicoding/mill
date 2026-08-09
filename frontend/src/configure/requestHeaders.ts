@@ -1,4 +1,4 @@
-import type { HeaderRow } from './RequestForm'
+import type { HeaderRow } from './requestDraft'
 
 // Split out from RequestForm.tsx: two pure functions with no
 // component of their own break React Fast Refresh when exported

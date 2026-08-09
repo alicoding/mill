@@ -1,16 +1,15 @@
-import { useState } from 'react'
-import { Button, Checkbox, FormControl, Heading, IconButton, Select, Stack, Text, Textarea, TextInput } from '@primer/react'
+import { Button, Checkbox, Heading, IconButton, Label, Select, Stack, Text, TextInput } from '@primer/react'
 import { PlusIcon, TrashIcon } from '@primer/octicons-react'
-import { parseCSVToOperations, type ManualField, type ManualOperation } from './openapiSynth'
-import { inferFieldsFromSample } from './pasteSample'
+import { type ManualField, type ManualOperation } from './openapiSynth'
 import styles from '../shared/ListCard.module.css'
 
 // docs/adr/0011: the manual schema editor -- a repeatable list of
 // operations, each with a Parameters table, a Request body table, and
-// an Output-fields table. CSV import is an accelerator that bulk-fills
-// this same state (via parseCSVToOperations), not a separate mode --
-// imported rows land here for review/editing, same as a hand-typed row
-// would.
+// an Output-fields table. CSV import and JSON-sample inference moved
+// out of this component into SchemaIntake.tsx (one intake block for
+// every accelerator, docs/SPEC.md §4's Update) -- loaded results still
+// land in this same editor state for review, exactly as before; only
+// where the paste/drop UI lives changed.
 //
 // Parameters vs. Request body is a real, separately-asked-for split
 // (not a cosmetic grouping of the old single "Input fields" table):
@@ -46,56 +45,51 @@ function emptyBodyField(): ManualField {
 function emptyOutputField(): ManualField {
   return { name: '', in: 'body', type: 'string', required: false, secret: false }
 }
-function emptyOperation(): ManualOperation {
-  return { path: '', method: 'GET', summary: '', inputFields: [], outputFields: [] }
-}
 
-export function ManualSchemaEditor({ operations, onChange }: { operations: ManualOperation[]; onChange: (ops: ManualOperation[]) => void }) {
-  const [csvText, setCsvText] = useState('')
-  const [csvErrors, setCsvErrors] = useState<string[]>([])
-
+// requestMethod is the request's own top-level Method (ADR-0016 Phase
+// B) -- with exactly one operation (the 1:1 model, decided directly
+// with the user: a request IS one call; Duplicate the request for
+// another), that operation's method IS the request's method, shown as
+// read-only text instead of a second, competing Method control ("the
+// schema should not mix those together"). There is deliberately no
+// "Add operation" button anymore: a stored multi-operation spec (a
+// previously pasted multi-endpoint OpenAPI document) still renders
+// fully -- nothing is silently dropped -- with per-operation method and
+// remove controls, so it can be pared down to 1:1, never grown.
+export function ManualSchemaEditor({ operations, onChange, requestMethod }: {
+  operations: ManualOperation[]
+  onChange: (ops: ManualOperation[]) => void
+  requestMethod?: string
+}) {
   const updateOp = (i: number, patch: Partial<ManualOperation>) => {
     onChange(operations.map((op, idx) => (idx === i ? { ...op, ...patch } : op)))
   }
   const removeOp = (i: number) => onChange(operations.filter((_, idx) => idx !== i))
-  const addOp = () => onChange([...operations, emptyOperation()])
-
-  const importCSV = () => {
-    const { operations: imported, errors } = parseCSVToOperations(csvText)
-    setCsvErrors(errors)
-    if (imported.length > 0) onChange(imported)
-  }
 
   return (
     <Stack direction="vertical" gap="normal" data-testid="manual-schema-editor">
-      <FormControl>
-        <FormControl.Label>Import from CSV</FormControl.Label>
-        <FormControl.Caption>
-          Columns: path,method,direction,name,in,type,required,secret,alias,extractPath (direction is
-          &quot;input&quot; or &quot;output&quot;). Replaces the operations below with what the CSV
-          declares -- review and adjust here after importing.
-        </FormControl.Caption>
-        <Textarea value={csvText} onChange={(e) => setCsvText(e.target.value)} rows={3} block data-testid="csv-import-text" />
-        <Button size="small" variant="invisible" onClick={importCSV} data-testid="import-csv">Import CSV</Button>
-        {csvErrors.map((e) => (
-          <Text as="p" key={e} size="small" className={styles.error}>{e}</Text>
-        ))}
-      </FormControl>
-
       {operations.map((op, i) => (
-        <OperationEditor key={i} operation={op} onChange={(patch) => updateOp(i, patch)} onRemove={() => removeOp(i)} />
+        <OperationEditor
+          key={i}
+          operation={op}
+          singleOpMethod={operations.length === 1 ? (requestMethod || 'GET') : undefined}
+          onChange={(patch) => updateOp(i, patch)}
+          onRemove={operations.length > 1 ? () => removeOp(i) : undefined}
+        />
       ))}
-      <Button size="small" variant="invisible" leadingVisual={PlusIcon} onClick={addOp} data-testid="add-operation">
-        Add operation
-      </Button>
     </Stack>
   )
 }
 
-function OperationEditor({ operation, onChange, onRemove }: {
+function OperationEditor({ operation, singleOpMethod, onChange, onRemove }: {
   operation: ManualOperation
+  // Set when this is the request's only operation -- its method is the
+  // request's own Method, shown read-only.
+  singleOpMethod?: string
   onChange: (patch: Partial<ManualOperation>) => void
-  onRemove: () => void
+  // Absent for the only operation (the 1:1 model) -- a request always
+  // has exactly one; only legacy multi-operation sets can be pared down.
+  onRemove?: () => void
 }) {
   const updateInputField = (i: number, patch: Partial<ManualField>) =>
     onChange({ inputFields: operation.inputFields.map((x, idx) => (idx === i ? { ...x, ...patch } : x)) })
@@ -109,13 +103,19 @@ function OperationEditor({ operation, onChange, onRemove }: {
   return (
     <div className={styles.card} data-testid="manual-operation">
       <Stack direction="horizontal" justify="space-between" align="center">
-        <Stack direction="horizontal" gap="condensed">
-          <Select aria-label="Method" value={operation.method} onChange={(e) => onChange({ method: e.target.value })}>
-            {HTTP_METHODS.map((m) => <Select.Option key={m} value={m}>{m}</Select.Option>)}
-          </Select>
-          <TextInput aria-label="Path" placeholder="/widgets/{id}" value={operation.path} onChange={(e) => onChange({ path: e.target.value })} />
+        <Stack direction="horizontal" gap="condensed" align="center">
+          {singleOpMethod !== undefined ? (
+            <Label variant="secondary" title="The request's own Method (set at the top of this form) -- the schema only describes the payload, never the transport.">
+              {singleOpMethod}
+            </Label>
+          ) : (
+            <Select aria-label="Method" value={operation.method} onChange={(e) => onChange({ method: e.target.value })}>
+              {HTTP_METHODS.map((m) => <Select.Option key={m} value={m}>{m}</Select.Option>)}
+            </Select>
+          )}
+          <TextInput aria-label="Path" placeholder={singleOpMethod !== undefined ? '/ (optional endpoint path)' : '/widgets/{id}'} value={operation.path} onChange={(e) => onChange({ path: e.target.value })} />
         </Stack>
-        <IconButton icon={TrashIcon} aria-label="Remove operation" size="small" variant="invisible" onClick={onRemove} />
+        {onRemove && <IconButton icon={TrashIcon} aria-label="Remove operation" size="small" variant="invisible" onClick={onRemove} />}
       </Stack>
 
       <TextInput
@@ -158,12 +158,9 @@ function OperationEditor({ operation, onChange, onRemove }: {
           onRemove={() => removeInputField(i)}
         />
       ))}
-      <Stack direction="horizontal" gap="condensed">
-        <Button size="small" variant="invisible" leadingVisual={PlusIcon} onClick={() => onChange({ inputFields: [...operation.inputFields, emptyBodyField()] })}>
-          Add body field
-        </Button>
-        <PasteSampleControl onFields={(fields) => onChange({ inputFields: [...operation.inputFields, ...fields] })} />
-      </Stack>
+      <Button size="small" variant="invisible" leadingVisual={PlusIcon} onClick={() => onChange({ inputFields: [...operation.inputFields, emptyBodyField()] })}>
+        Add body field
+      </Button>
 
       <Heading as="h4" variant="small" className={styles.sectionHeading}>Output fields</Heading>
       {operation.outputFields.map((f, i) => (
@@ -175,12 +172,9 @@ function OperationEditor({ operation, onChange, onRemove }: {
           onRemove={() => onChange({ outputFields: operation.outputFields.filter((_, idx) => idx !== i) })}
         />
       ))}
-      <Stack direction="horizontal" gap="condensed">
-        <Button size="small" variant="invisible" leadingVisual={PlusIcon} onClick={() => onChange({ outputFields: [...operation.outputFields, emptyOutputField()] })}>
-          Add output field
-        </Button>
-        <PasteSampleControl onFields={(fields) => onChange({ outputFields: [...operation.outputFields, ...fields] })} />
-      </Stack>
+      <Button size="small" variant="invisible" leadingVisual={PlusIcon} onClick={() => onChange({ outputFields: [...operation.outputFields, emptyOutputField()] })}>
+        Add output field
+      </Button>
     </div>
   )
 }
@@ -196,57 +190,6 @@ function OperationEditor({ operation, onChange, onRemove }: {
 function parseEnumInput(raw: string): string[] | undefined {
   const values = raw.split(',').map((v) => v.trim()).filter((v) => v !== '')
   return values.length > 0 ? values : undefined
-}
-
-// docs/SPEC.md §4.1: "Paste sample" -- a fourth ManualSchemaEditor
-// accelerator (Paste-OpenAPI/Manual/CSV already exist, ADR-0011) that
-// infers body fields from a real example JSON value instead of typing
-// each field by hand. Appends to whatever fields already exist rather
-// than replacing them (unlike CSV import, which replaces the whole
-// operations list) -- this is scoped to one section of one operation,
-// where destructively wiping existing rows would be more surprising
-// than helpful.
-function PasteSampleControl({ onFields }: { onFields: (fields: ManualField[]) => void }) {
-  const [open, setOpen] = useState(false)
-  const [text, setText] = useState('')
-  const [error, setError] = useState('')
-
-  const infer = () => {
-    const { fields, error: err } = inferFieldsFromSample(text)
-    if (err) {
-      setError(err)
-      return
-    }
-    onFields(fields)
-    setText('')
-    setError('')
-    setOpen(false)
-  }
-
-  if (!open) {
-    return (
-      <Button size="small" variant="invisible" onClick={() => setOpen(true)} data-testid="paste-sample-toggle">
-        Paste sample
-      </Button>
-    )
-  }
-  return (
-    <Stack direction="vertical" gap="condensed">
-      <Textarea
-        aria-label="Sample JSON value"
-        placeholder={'{"name": "Ada", "age": 36}'}
-        value={text}
-        onChange={(e) => setText(e.target.value)}
-        rows={3}
-        data-testid="paste-sample-text"
-      />
-      {error && <Text as="p" size="small" className={styles.error}>{error}</Text>}
-      <Stack direction="horizontal" gap="condensed">
-        <Button size="small" onClick={infer} data-testid="paste-sample-infer">Infer fields</Button>
-        <Button size="small" variant="invisible" onClick={() => { setOpen(false); setText(''); setError('') }}>Cancel</Button>
-      </Stack>
-    </Stack>
-  )
 }
 
 function FieldRow({ field, showIn, inOptions = FIELD_INS, showRequired, showPath, onChange, onRemove }: {

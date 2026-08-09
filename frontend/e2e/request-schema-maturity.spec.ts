@@ -25,23 +25,22 @@ test('Paste sample infers output fields, Default/Description/Enum and the respon
   await page.getByLabel('Label').fill('Schema Maturity Request')
   await page.getByLabel('Base URL').fill('https://api.example.com')
 
-  await page.getByRole('button', { name: 'Manual editor' }).click()
+  // The manual editor is always visible now, pre-seeded with the
+  // request's one implicit operation (the 1:1 model) -- no mode switch,
+  // no "Add operation", and Method lives on the request itself, not
+  // here (it defaults to GET already).
   const editor = page.getByTestId('manual-schema-editor')
-  await editor.getByTestId('add-operation').click()
   const operation = editor.getByTestId('manual-operation')
-  await operation.getByLabel('Method').selectOption('GET')
   await operation.getByLabel('Path').fill('/widgets')
   await operation.getByLabel('Response extract expression').fill('envelope.payload')
 
-  // Paste sample -> infer output fields. Two PasteSampleControls exist
-  // in this operation (Request body's and Output fields' own,
-  // ManualSchemaEditor.tsx) -- Output fields' renders last in DOM
-  // order, and clicking its toggle is the only one open, so the
-  // resulting text/infer controls are unambiguous without needing
-  // `.last()` beyond the toggle itself.
-  await operation.getByTestId('paste-sample-toggle').last().click()
-  await operation.getByTestId('paste-sample-text').fill(JSON.stringify({ name: 'Ada', age: 36 }))
-  await operation.getByTestId('paste-sample-infer').click()
+  // JSON-sample inference goes through the unified schema intake
+  // (SchemaIntake.tsx) -- paste the sample, mark it as a response
+  // sample, Load, and the inferred fields land in the editor below.
+  await page.getByLabel('Treat JSON sample as').selectOption('response')
+  await page.getByTestId('schema-intake-text').fill(JSON.stringify({ name: 'Ada', age: 36 }))
+  await page.getByTestId('schema-intake-load').click()
+  await expect(page.getByTestId('schema-intake-notice')).toBeVisible()
 
   // genson-js's createSchema preserves object key insertion order, so
   // the two inferred rows land in the same order as the pasted sample
@@ -78,9 +77,9 @@ test('Paste sample infers output fields, Default/Description/Enum and the respon
   await expect(attrPanel.getByText('name: widget owner name')).toBeVisible()
   await expect(attrPanel.getByText('age', { exact: true })).toBeVisible()
 
-  // The response extract expression round-trips through Edit.
+  // The response extract expression round-trips through Edit -- the
+  // manual editor is the default schema view now, no mode switch.
   await page.getByTestId('summary-edit').click()
-  await page.getByRole('button', { name: 'Manual editor' }).click()
   await expect(page.getByLabel('Response extract expression')).toHaveValue('envelope.payload')
   await page.getByRole('button', { name: 'Cancel' }).click()
 
