@@ -545,462 +545,108 @@ the execution itself. `OPEN` on the concrete implementation, `LOCKED` as the
 first thing to build once the browser bridge and hotkey pieces are
 researched.
 
-### 2.2 Actually-buildable-now milestone — the Runbook page (retired, see Update below)
+### 2.2 Retired milestone — the Runbook page
 
-`UX: PROTOTYPE`. The Runbook page as built (list + Run button + hotkey
-assignment, current Primer React pass) proves the capability end-to-end —
-it is not yet a considered design. Treat the current layout, empty states,
-and hotkey-affordance UI as placeholder until a real UI/UX pass happens;
-don't infer product intent from its current appearance.
+`UX: PROTOTYPE`, now fully retired. Built to de-risk the two pieces of
+§2.1 that didn't need live M365 access: a list of runnable actions
+(click to run, no hotkey required) and per-action keyboard-shortcut
+assignment (`HotkeyService`/`golang-design/hotkey`, `internal/domain/
+runbook`, seeded with a **clipboard → Markdown** action via
+`JohannesKaufmann/html-to-markdown`). It proved the concept end-to-end,
+including a real bug worth remembering: a generic "copy every action's
+result to clipboard" step in the old fire path clobbered actions (like
+`load-sample-html`) that already wrote their own result to the
+clipboard — fixed by moving the clipboard write into each action's own
+Apply step and deleting the generic post-hoc copy, establishing the
+"each action owns its own Apply" pattern Composition still follows.
+**Superseded by Composition (§3):** the two seeded actions live on as
+ordinary, fully-editable workflows (`composition.BuiltInWorkflows()`),
+matching the industry pattern of an editable-not-protected template
+(confirmed via Zapier's own docs). Hotkey binding, the one Runbook
+capability Composition didn't initially have an equivalent for, is now
+`TriggerService`'s job, keyed by workflow ID with real
+one-combo-per-workflow exclusivity — see §3.4. `RunbookService`,
+`internal/domain/runbook`, `RunbookView.tsx`, and the `runbook-page`
+capability entry are all deleted, not hidden. `LOCKED`.
 
-§2.1 depends on two unresearched pieces (browser bridge, hotkey) and an
-environment (M365 in-browser) the assistant helping build Mill has no live
-access to (§1.2). This milestone de-risks the two pieces that don't require
-that environment, on something testable directly in this dev session:
+**Cross-cutting app-shell decisions that landed during this milestone
+and are still current** (not Runbook-specific, so they outlived it):
 
-- A **Runbook page** — a list of available actions the user can browse and
-  run directly with a click (no hotkey required), similar to how many apps
-  offer example/demo actions or default workflows out of the box. Answers
-  "what should I see as a user" concretely instead of describing it.
-- Each action gets a **Run** button; **assign a keyboard shortcut** per
-  action (Raycast/Alfred-style: click "Set shortcut," press the combo, it's
-  bound) is built. `HotkeyService` (`hotkeyservice.go`) wraps
-  `golang-design/hotkey`; on trigger it runs the action, completing the
-  original ask — select rich text, copy, hit the hotkey, paste normally
-  anywhere. Each action owns writing its own result to the clipboard as
-  part of its own Apply step (`internal/domain/runbook`), not a generic
-  post-hoc copy by the hotkey fire path — see the real bug this caught
-  below. Integration risk checked before building, not assumed: macOS requires hotkey registration
-  to coexist with the app's own native run loop, confirmed working via the
-  library's own Fyne example (registers from a background goroutine while
-  `ShowAndRun` owns the main thread) — same shape used here alongside
-  Wails' `app.Run()`.
-- **Real bug caught live: a generic "copy every action's result to the
-  clipboard" fire-path step clobbered an action's own clipboard write.**
-  `load-sample-html` writes real HTML to the clipboard itself, then
-  returns a UI-facing status string (the prefix text + the HTML, for
-  display). `HotkeyService`'s fire path used to *also* unconditionally
-  `clipboard.WriteText(result)` after every action — for
-  `clipboard-html-to-markdown` that's correct (the markdown result should
-  land on the clipboard), but for `load-sample-html` it immediately
-  overwrote the real HTML with that plain-text status string. Repro that
-  looked at first like a debugging-infra problem (stale build, a
-  clipboard race with an unrelated `pbcopy` call) turned out to be this —
-  confirmed by reading the two files side by side, not by guessing twice.
-  Fixed by moving the clipboard write into each action itself
-  (`clipboard-html-to-markdown` now calls `writeClipboardText` on success,
-  matching `load-sample-html`'s existing self-contained pattern) and
-  removing the fire path's generic write entirely. The no-HTML
-  soft-failure path deliberately still writes nothing — there's no
-  successful output to Apply, and overwriting the user's actual clipboard
-  content with an explainer would be its own small version of the same
-  bug. `LOCKED`
-- Design principle for that increment, from a real annoyance (macOS's
-  default screenshot-to-clipboard shortcut is the awkward one, save-to-file
-  got the easy keystroke): the easiest-to-press binding should be assignable
-  to whatever the user does *most*, not whatever a default happened to claim
-  first. Don't just let a shortcut be set — make it easy to see which
-  actions are "easy reach" vs. "deliberately awkward" and rebalance them.
-- First seeded action: **clipboard → Markdown**, directly testing the
-  original Loop/structure-preservation pain point without needing M365 at
-  all — works with anything that puts real HTML on the clipboard.
-- Libraries verified directly (repo, license, `go.mod`, recent activity —
-  not taken on assumption): [`golang-design/hotkey`](https://github.com/golang-design/hotkey)
-  (MIT, cross-platform; macOS backend is cgo via Objective-C
-  (`hotkey_darwin.m`) since there's no pure-Go way to hook OS-level global
-  hotkeys — a C compiler dependency via Xcode CLI tools, already present,
-  not Rust/cargo, so §1.1 is unaffected) and
-  [`JohannesKaufmann/html-to-markdown`](https://github.com/JohannesKaufmann/html-to-markdown)
-  v2 (MIT, pure Go, 3.7k★, actively maintained). `LOCKED` as the immediate
-  next build step.
-- **Permissions UX pattern for when this needs Accessibility access**:
-  macOS supports deep-linking straight into a specific System Settings pane
-  via the `x-apple.systempreferences:` URL scheme — this is the exact
-  mechanism Hammerspoon/Raycast/1Password all use for their own "grant
-  Accessibility permission" prompts. `RunbookView.tsx`'s Accessibility
-  error now shows an "Open Accessibility Settings" button (`Browser.OpenURL`
-  from `@wailsio/runtime`, not `data-wml-openURL` — the button only exists
-  once a bindingError fires, well after WML's one-time mount-time DOM scan,
-  so the imperative call is used instead of the declarative tag to avoid a
-  wire-up timing gap) pointing at
-  `x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility`
-  — **verified directly on this machine (macOS 26.5.2/25F84), not assumed**:
-  ran it via `open`, confirmed by the user it landed on Privacy & Security →
-  Accessibility, not just System Settings' default screen. Caveat still
-  stands: this is not an official documented Apple API — it's
-  community-reverse-engineered, and identifiers have broken before across
-  macOS System Settings rewrites (the pre-Ventura Accessibility deep-link
-  stopped working when Ventura rebuilt System Settings), so re-verify
-  against the target macOS version if this stops landing correctly after a
-  future update. `LOCKED` (identifier verified + wired up for macOS 26;
-  the show-current-state-and-deep-link pattern itself).
-- **Dev builds re-trigger the Accessibility grant on every rebuild** —
-  root-caused a real "a hotkey registered and fired cleanly, then after
-  the next `task dev` restart the identical combo failed to register at
-  all" confusion. `build/darwin/Taskfile.yml`'s dev-build task runs
-  `codesign --force --deep --sign -` (ad-hoc signing) on every single
-  build, which changes `bin/mill.dev.app`'s code identity each time —
-  macOS's TCC ties an Accessibility grant to that identity, so every dev
-  rebuild looks like a brand-new, ungranted app to TCC. Not a bug in
-  Mill's own code; a known category of friction with ad-hoc-signed local
-  dev builds. No fix implemented (a stable local signing identity would
-  need its own investigation) — noted here so it isn't re-debugged from
-  scratch next time it's hit. `LOCKED` (the root cause) / `OPEN` (whether
-  it's worth a fix, e.g. a consistent local dev signing identity).
-- **`HotkeyActivity` carries the actual result, not just a byte count** —
-  the Activity page's rows expand (click, chevron affordance) to show the
-  full text a hotkey fire copied to the clipboard, not just "copied to
-  clipboard (N bytes)". Added once the fire-path logging above actually
-  proved a hotkey works end-to-end and the natural next question became
-  "what did it actually produce" — the same instinct as the Run button's
-  own inline result block on Runbook, just for the headless hotkey path.
-  Empty `Result` (failure case) means no expand affordance at all, not an
-  empty expanded block. `LOCKED`
-- **Activity broadened from hotkey-only to every run, with Source/
-  Outcome filters** — originally only the headless hotkey fire path
-  pushed into this feed; clicking Run directly on Runbook or Composition
-  produced nothing, silently inconsistent with a page whose whole job is
-  "did anything run." `frontend/src/store.ts`'s `ActivityEntry` is now a
-  frontend-owned shape (not pinned to the Go-emitted `HotkeyActivity`
-  event) carrying a `source: 'hotkey' | 'runbook' | 'composition'` and a
-  `label` resolved and stored at push time, not looked up later against
-  `actions`/workflows (which can drift, or have the entry deleted).
-  Only the hotkey source still pushes via a Go→JS event, since it's the
-  only one of the three that fires headlessly; Runbook's and
-  Composition's own Run handlers push directly from their already-
-  resolved promise, no new Go plumbing needed. Two `Select` filters
-  (Source, Outcome) narrow the list client-side — the two real
-  dimensions the data has today, not date-range (the list is an
-  in-memory, session-only, 50-entry ring buffer, so everything in it is
-  "this session" — a date picker over that would be cosmetic, deliberate
-  scope cut, not a silent gap). **Deliberately still not persisted**:
-  distinct from workflow *definitions* persisting (§3's Composition
-  entry) — a run-history log is much closer to §7's still-open
-  execution/session-tracking question (durable process history) than an
-  authored shape is; this doesn't touch or presuppose that. This is the
-  concrete first step toward the "analytics" half §3.2 already flagged
-  Activity as the closest existing surface to, when the reference
-  platform's Live Events view (filter by input/event type/date range)
-  was reviewed. `LOCKED`
-- **Small `DEV` ribbon (top-right, App.tsx) answers "am I looking at a dev
-  build, and is it current."** Gated on `import.meta.env.DEV` (true only
-  under a real `vite serve` process — verified directly that this is
-  false for `vite build` regardless of `--mode`, see the repo-layout
-  section above). Shows a timestamp captured once per mount — correct for
-  a Go-triggered relaunch (the common case that actually needs checking),
-  not for a frontend-only HMR edit that never remounts. A fancier version
-  tried tracking true "last build" via `import.meta.hot.on('vite:after
-  Update', ...)` and was reverted: subscribing to that event from
-  `App.tsx`, the very file that keeps getting hot-edited, hit React Fast
-  Refresh not reliably cleaning up the old listener across repeated
-  hot-swaps of the same module — stray listeners kept firing. Not worth
-  chasing further for a dev-convenience ribbon; mount-time-only is simpler
-  and can't have that bug class. `LOCKED` (mount-time approach) / noted so
-  the HMR-self-subscription approach isn't retried blind.
-- **Progressive enhancement by permission, not a hard gate.** `LOCKED`
-  Zero-permission floor: browsing the Runbook and running an action by
-  clicking it always works, no OS permission required. Accessibility
-  permission (needed for global hotkeys and simulated auto-paste/auto-
-  submit) is additive convenience on top — if it's not granted, those two
-  features go away, but the app is never blocked, same principle as §1's
-  "never harder than the baseline." Mill's messaging must distinguish two
-  different ungranted-permission situations, not treat them as one: (a) the
-  user can grant it themselves (show the deep-link), vs (b) the machine is
-  managed/MDM'd and the user lacks the admin rights to change Privacy
-  settings at all, in which case the message should say what to ask IT for,
-  not imply a self-serve fix that isn't actually available to them. Detecting
-  which situation applies (e.g. checking admin-group membership) is a
-  refinement for later, not required to ship the basic distinction in the
-  UI copy.
-- **Hotkey fire path is logged end-to-end, not a black box.** `LOCKED`
-  Added after a real debugging session where a hotkey showed as
-  successfully bound (label appeared, no error) but pressing it appeared
-  to do nothing, with no way to tell whether the OS never delivered the
-  keypress (another app already claimed the combo) or delivery succeeded
-  and something after it (the action, or the clipboard write) failed
-  silently. `HotkeyService` now logs each stage — registered, fired,
-  action succeeded/failed, clipboard write succeeded/failed — via
-  Wails3's own `application.DefaultLogger` (colorized to stderr in dev
-  mode, discarded in production builds), reused rather than standing up a
-  second logging setup. This is a stopgap for debuggability, not §7's
-  actual inspectable/persistent process-tracking mechanism — that's
-  ADR-0004's job once `internal/domain/execution` exists.
-- **Hotkey assignments persist across restarts, via Wails3's own built-in
-  `KVStoreService`** (`pkg/services/kvstore`) — researched before building
-  (confirmed directly by reading its source, not assumed from a search
-  summary): a JSON-file-backed key-value store with optional autosave.
-  `internal/adapters/settings` wraps it behind Mill's own small `Store`
-  interface, per CLAUDE.md's ports/adapters rule for commodity
-  dependencies (persistence is a generic storage concern, same bucket as
-  `internal/adapters/clipboard`/`markdown`, not core domain) — callers
-  depend on Mill's interface, not the concrete Wails type. `main.go`
-  builds the store at `application.Path(application.PathConfigHome)` +
-  `mill/settings.json` — resolves to `~/Library/Application Support/mill/`
-  on macOS (verified against the `adrg/xdg` source Wails uses internally),
-  the same convention Alfred/Raycast/1Password use for their own
-  persisted settings. `HotkeyService.Assign`/`Unassign` write the raw
-  `(mods, key)` pairs (not the display label, which can't be parsed back
-  into modifier/key names) as one JSON blob on every change; a
-  `RestoreBindings` method re-registers everything on the next launch.
-  **Deliberately not wired through Wails' Service lifecycle
-  (`ServiceStartup`/`ServiceShutdown`)**: that would auto-expose the raw
-  KVStore's `Get`/`Set`/`Delete` as JS-callable bindings, letting the
-  frontend bypass `HotkeyService`'s own validation entirely — `main.go`
-  calls `settings.New` (which loads any existing file itself) and
-  `RestoreBindings` directly instead, keeping persistence a Go-only,
-  encapsulated concern. Timing matters here and was checked, not guessed:
-  global hotkey registration needs the native run loop already spinning
-  (see the Fyne-example note above), which is *not* true yet during
-  `ServiceStartup` — `RestoreBindings` is instead called from
-  `app.Event.OnApplicationEvent(events.Common.ApplicationStarted, ...)`,
-  the same hook pattern used in Wails3's own official examples
-  (`examples/events`, `examples/window`). **Verified end-to-end on this
-  machine, not just unit-tested**: assigned a real hotkey via the live
-  desktop app (confirmed `settings.json` on disk held the exact
-  `mods`/`key` pair), killed and relaunched the same built binary without
-  rebuilding (avoids the ad-hoc-codesign/TCC re-grant issue noted above),
-  and confirmed the binding re-registered automatically — both in the
-  slog output (`hotkey registered action=... binding=...`) and in the
-  live UI — with zero user interaction. `internal/adapters/settings` also
-  has its own real-disk round-trip test (`t.TempDir()`, two separate
-  store instances against the same file); `HotkeyService`'s JSON
-  marshal/restore logic is unit-tested against a fake `Store`, consistent
-  with the rest of `HotkeyService` being otherwise real-OS-hotkey-only and
-  not CI-testable (§1.3). `LOCKED`
-- **Capability status index, backed by real Go data, not parsed docs.**
-  First design considered parsing this very doc's `LOCKED`/`OPEN`/`PARKED`
-  tags out of its markdown (via `remark`/AST-walking) to drive an in-app
-  status index — correctly rejected: "SPEC.md was just a quick last night
-  thing," inferring structure from prose formatting that was never meant
-  as a schema is exactly the kind of fragile-clever thing that breaks
-  silently. The actual fix: Mill is a native app with a real backend, so
-  capability status is real application data, stored and projected the
-  same way `RunbookService.List()` already exposes Runbook actions —
-  typed Go structs over the existing Wails binding mechanism, zero new
-  frontend dependencies. `internal/domain/capabilities` (`List()`,
-  mirroring `internal/domain/runbook`'s shape) is the one authoritative
-  place capability status lives now; this doc's own tags stay
-  human-readable commentary, not something anything parses — a known,
-  accepted seam (the two could drift) rather than a forced
-  consistency-checker in this pass; `spec-sync-checker` (§9.2) is the
-  natural place to close that gap later. `CapabilitiesService` (thin
-  Wails binding, no logic of its own) exposes `List()` and a dev-only
-  `RepoPath()` (`os.Getwd()`, reliable specifically because `task dev`
-  launches with the repo root as cwd — confirmed this session). The Spec
-  tab's `CapabilityIndex` renders real rows from that data: a built
-  capability's row jumps straight to its page (`Runbook page` → Runbook
-  tab, `Activity / event log` → Activity tab — same §2.2 milestone, two
-  distinct entry points); a not-built one opens a generic `PlaceholderView`
-  (same Primer primitives as RunbookView's empty states — no dedicated
-  empty-state component in this Primer version) showing its status and a
-  way back; a capability with an `EditorPath` (no UI at all yet, e.g.
-  process tracking → `docs/adr/0004-execution-process-tracking.md`) gets
-  an additional dev-mode-only action opening `vscode://file/<repoPath>/
-  <editorPath>` via `Browser.OpenURL` — the same mechanism already used
-  for the Accessibility-settings deep link. `EditorPath` correctness is a
-  real test (`TestList_EditorPathsExist`), not just a shape check — it
-  must resolve to a file that exists today, never an aspirational one.
-  §5 (browser bridge) deliberately excluded from the registry: a separate
-  extension deliverable, not a Mill window page. Verified end-to-end on
-  the real desktop app (accessibility-driven UI automation, not assumed):
-  clicked "Go to page" for Runbook page → landed on the real Runbook tab;
-  clicked "View status" on a placeholder → correct label/status/back-link
-  rendered; clicked "Open in editor" on the process-tracking entry → VS
-  Code opened the exact ADR file. `LOCKED`
-- **Every capability gets a nav entry, built or not — first as a top
-  `UnderlineNav`, then migrated to a `PageLayout`/`NavList` sidebar.**
-  The first pass made the top `UnderlineNav` data-driven from
-  `CapabilitiesService.List()`; with all 7 capabilities plus Spec that
-  immediately overflowed into Primer's own "More" dropdown, which
-  re-hid most of the app behind a click — directly working against the
-  "see the cohesive picture" goal this index exists for. Migrated to a
-  persistent sidebar instead, since a top bar doesn't scale as more
-  capabilities land and a sidebar does.
-  **`PageLayout.Sidebar`, not `PageLayout.Pane`** — checked directly
-  against the compiled CSS before choosing, not assumed: `.Pane` is
-  content-adjacent and page-scroll-oriented, responsively **stacking**
-  above/below content below 768px (`overflow:auto` is even gated to
-  `@media (min-width:768px)` in its own CSS) — Mill's `MinWidth: 640`
-  sits inside that stacking range, wrong fit for a persistent side
-  rail. `.Sidebar` stays inline at any width (`responsiveVariant:
-  'default'`) and has `height:100%`/`overflow:auto` unconditionally.
-  **Getting `PageLayout.Content` to actually clip (not just grow to fit
-  content, page-style) took real debugging**, via the same
-  200-paragraph dummy-content stress test used for the earlier
-  `.app-shell` fix, confirmed at each step against live computed
-  styles rather than assumed: PageLayout's own internal Sidebar+Content
-  row wrapper (an unnamed, hash-classed div with no `data-component`
-  hook) defaults to `min-height:auto`; fixing that wasn't enough either
-  since it sits in a `flex-wrap:wrap` container where a wrapped line's
-  cross-size isn't hard-clipped by `min-height` alone; and Content
-  itself sits in a `flex-direction:row` context where `flex-grow` sizes
-  width, not height. `App.module.css` targets the internal wrapper
-  structurally (`div:has(> main.view-pane)`, not Primer's hashed class
-  name — the same "don't chase vendor-owned markup" reasoning as the
-  earlier `ThemeProvider`/`BaseStyles` fix) with explicit `height:100%;
-  overflow:hidden`, and `.view-pane` itself gained an explicit
-  `height:100%`. **Net finding: `PageLayout` is built for page-scroll
-  websites, not a fixed-viewport app shell** — worth remembering before
-  reaching for another `PageLayout` region expecting it to "just clip."
-  `Capability.NavLabel` (falls back to `Label` when empty) keeps the
-  two built entries terse in the sidebar ("Activity" vs. the fuller
-  "Activity / event log" in the Spec-tab index) without a second
-  hand-maintained label; `store.ts`'s `viewFor`/`viewsEqual`/
-  `statusVariant` helpers are shared by the sidebar and
-  `CapabilityIndex` (previously duplicated) so both surfaces navigate
-  and badge identically from one mapping. The Spec-tab `CapabilityIndex`
-  stays — the sidebar is for quick jumping, the Spec tab is still the
-  fuller picture (status + "Go to page"/"View status"/"Open in editor"
-  together). Verified end-to-end on the real desktop app via
-  accessibility-driven UI automation: all 8 entries visible with no
-  overflow, clicking each lands on the right page/placeholder with the
-  active-state indicator following correctly. `LOCKED`
-- **Window/scroll layout researched against Wails3's own docs before
-  touching CSS** — confirmed Wails3's window management (`MinWidth`/
-  `MinHeight`/`MaxWidth`/`MaxHeight`/`Zoom`/etc. on `WebviewWindowOptions`)
-  only owns the native OS window frame; it has no opinion on in-page
-  scrolling, that's plain CSS same as any web page. `main.go`'s window now
-  sets `MinWidth: 640, MinHeight: 420` — Wails' own documented mechanism
-  for "don't let the window shrink small enough to break the layout,"
-  which Mill wasn't using. Separately, `.spec`/`.runbook` previously
-  scrolled via a hand-guessed `max-height: calc(100vh - 60px)` duplicated
-  in both rules — replaced with the standard flexbox scrolling-pane
-  pattern (`flex: 1 1 auto; min-height: 0; overflow-y: auto`). Getting
-  that pattern to actually clip required two more pieces, both found by
-  stress-testing with 200 paragraphs of dummy content (not assumed): (1)
-  the flex root needs a *bounded* height, not `min-height: 100vh` — `html`
-  now sets `height: 100%; overflow: hidden`, matching Wails' own documented
-  overscroll-bounce fix (https://wails.io/docs/guides/overscroll/); (2)
-  Primer's `ThemeProvider`/`BaseStyles` inject their own plain `<div>`s
-  (`display: block`, confirmed by walking the live DOM) between `#root`
-  and Mill's actual content, which broke the flex chain — rather than
-  chasing that vendor-owned markup with `display: contents` (fragile
-  against a future Primer DOM change), `App.tsx` now renders its own
-  `.app-shell` div as the real flex-column layout root, sized with
-  viewport units (`100dvh`) rather than `%` since percentage heights
-  require every ancestor to have a definite height, which the Primer
-  wrapper divs don't. `LOCKED`
-- **Sidebar collapse and a real light/dark/system theme switcher, plus a
-  full design-token audit.** Researched before building: Primer's
-  `PageLayout.Sidebar` has a `resizable` (drag-resize, persisted to
-  `localStorage`) prop but no built-in collapse-to-icon-rail — confirmed
-  directly against its own props/CSS, not assumed. Collapse is instead
-  built on the `hidden` prop it does expose (full show/hide, not a rail),
-  toggled from a footer `IconButton` whose own open/closed state persists
-  to `localStorage` (a frontend-only cosmetic preference, deliberately
-  not routed through Mill's Go-backed `internal/adapters/settings`, which
-  is reserved for real domain data like hotkey bindings and workflow
-  definitions). Theme switching uses Primer's own `ThemeProvider`
-  `colorMode` prop (`'light'|'dark'|'auto'`) and `useTheme()` hook
-  end-to-end — no custom theming layer — via a footer `SegmentedControl`
-  of three `IconButton`s (sun/moon/desktop), also persisted to
-  `localStorage` and re-applied as the initial `colorMode` on next
-  launch. Primer's generated color tokens (`--bgColor-default` etc.) are
-  scoped to `[data-color-mode]`/`[data-dark-theme]`/`[data-light-theme]`
-  attributes Primer's `ThemeProvider` sets on an internal wrapper `<div>`
-  *inside* `<body>` — not on `:root` — so `<html>`/`<body>`'s own
-  base-layer CSS (`index.css`) couldn't see them until a theme effect in
-  `App.tsx` mirrors the same three attributes onto
-  `document.documentElement`, extending Primer's token scope to cover
-  the two structurally-global elements that sit above Primer's own
-  wrapper div. **Design-token audit** (the explicit ask: "make sure
-  everything using the design token and nothing is not following the
-  pattern") found and fixed real drift: `index.css` had legacy
-  hand-rolled color custom properties (`--ink`/`--text`/`--muted`/
-  `--accent-2`/`--glass`/`--glass-border`) and a static
-  `color-scheme: dark` left over from before light mode was a real,
-  user-selectable option; `SpecView.module.css` referenced those same
-  legacy properties instead of their Primer equivalents
-  (`--fgColor-default`/`--fgColor-muted`/`--bgColor-muted`/
-  `--fgColor-accent`/`--borderColor-default`); two node-icon SVGs in
-  `CompositionCanvas.tsx` hardcoded `fill="#fff"` instead of
-  `var(--fgColor-onEmphasis)`. Also surfaced a substantive bug beyond
-  color values: Mermaid has no live CSS-variable theming (it bakes each
-  theme's actual colors into the SVG at render time, confirmed directly
-  against its own output) — `SpecView.tsx` was calling
-  `mermaid.initialize({theme: 'dark'})` once at module load, hardcoded,
-  which would have silently kept every diagram dark-themed even after
-  switching to light mode. Fixed by moving `initialize()` into a
-  `useEffect` keyed on Primer's `resolvedColorMode` (mapping to
-  Mermaid's own `'default'`/`'dark'` theme names) plus a companion effect
-  that re-parses the already-fetched markdown on the same dependency, so
-  a color-mode change forces a fresh `mermaid.run()` with the new theme
-  instead of leaving a stale SVG on screen. Verified end-to-end on the
-  real server-mode app via Playwright: sidebar collapse/expand, explicit
-  light/dark theme switching (not just default/auto), the Spec tab's
-  Mermaid diagrams re-rendering with correct colors in dark mode, and the
-  Composition canvas's node icon-squares rendering correctly in dark
-  mode. `LOCKED`
-- **Update — sidebar collapse redone as a real icon-rail, replacing the
-  full show/hide pass above, after the user pointed at a reference
-  no-code platform's own sidebar (logo-adjacent toggle, icon-only
-  collapsed rail) and asked directly whether the original approach was
-  really custom or something Primer provided.** Re-researched rather than
-  assumed: grepped `@primer/react`'s compiled output for "collapse" (zero
-  hits outside icon names) and read `PageLayout`'s, `SplitPageLayout`'s,
-  and `NavList`'s own `.d.ts` files directly — none of the three expose a
-  collapse-to-rail mode; `PageLayout.Sidebar`/`SplitPageLayout.Sidebar`
-  offer only the same plain `hidden` boolean the original pass already
-  found, and `NavList` has no icon-only rendering mode. The reference
-  platform's own visual precedent (and GitHub.com's own product sidebar,
-  which does the same thing) is built on internal components never
-  published to `@primer/react` — so an icon-rail here is necessarily
-  hand-built on Primer's real primitives (`NavList.LeadingVisual`,
-  `IconButton`) either way; confirmed, not assumed. Sidebar state changed
-  from a visibility toggle to a width toggle: the sidebar is never fully
-  hidden now, it narrows to a 52px icon rail, so the one toggle button
-  (in the sidebar's own header, next to a plain-text "Mill" wordmark —
-  Mill has no compact logo mark yet, only the default Wails placeholder
-  icon, so the collapsed rail shows just the toggle rather than
-  fabricating a mark that doesn't exist elsewhere in the app) stays
-  reachable in both states, closing the earlier design's real gap (a
-  second "expand" control stranded in the app-wide footer, disconnected
-  from the sidebar it operated on). Each capability now gets a real
-  Octicon (a frontend-owned `navIcon.ts` map keyed by `Capability.ID`,
-  same pattern as `nodeKind.ts`'s `KIND_ICON` map for Composition node
-  types — Go's `CapabilitiesService.List()` stays plain ID/Label/Status
-  data, since icon choice is presentation, not something Go has an
-  opinion on), rendered via `NavList.LeadingVisual`; collapsed rows drop
-  their text label and status `Label` entirely (no room, matches the
-  reference's own icon-only rail) and carry `aria-label`/`title` instead
-  for accessibility and a hover tooltip. **Real bug caught during this
-  pass, not assumed away**: `PageLayout.Sidebar`'s `className` prop does
-  not land on the actual sized element — checked directly against
-  `PageLayout.js`'s compiled source, which does
-  `clsx(SidebarWrapper, className)` — so the first attempt at the width
-  override (`className`-driven, `width:52px` when collapsed) silently
-  clipped the *wrapper* box while the real inner Sidebar element (with
-  Primer's own `width:var(--pane-width-size)` rule) stayed logically at
-  its full 256px width, laying its content out there and shifting the
-  icons off-canvas at a negative `x` (confirmed via
-  `getBoundingClientRect()`, not guessed from the screenshot alone) —
-  same "wrapper vs. real content node" shape as the earlier
-  `PageLayout.Content`/`ContentWrapper` split this doc already documents,
-  same fix shape too: `App.module.css` selects the real node structurally
-  (`.sidebar > :first-child`, confirmed via the live DOM to be exactly
-  `[Sidebar, VerticalDivider]` in that order) rather than depending on
-  Primer's hashed, versioned class name. Verified end-to-end on the real
-  server-mode app via Playwright, including the specific failure mode
-  above: collapsed rail with all icons visible and correctly positioned,
-  clicking a nav item while collapsed still navigates and keeps every
-  other icon rendered (the regression the wrapper-vs-node bug caused),
-  round-tripping collapse → expand → collapse, and both light and dark
-  theme. `LOCKED`
-- **Update — the Runbook page described in this section is retired.**
-  Superseded by Composition (§3): its two actions live on as ordinary,
-  fully-editable seeded workflows (`composition.BuiltInWorkflows()`),
-  matching the industry pattern confirmed via research (Zapier's own
-  docs: a used template "operates independently... you can edit it like
-  any other Zap"), not a protected specimen on a separate page. This
-  closed a real gap the two-page split had: `BuiltIn` used to gate
-  Edit/Delete entirely, so a seeded example couldn't be poked at or
-  deleted the way every other workflow could. The `RunbookService`/
-  `internal/domain/runbook` Go package, `RunbookView.tsx`, and the
-  `runbook-page` capability entry are all deleted, not just hidden.
-  Hotkey binding (the one Runbook capability with no Composition
-  equivalent before this) is now `TriggerService`'s job, keyed by
-  workflow ID instead of action ID, with real one-combo-per-workflow
-  exclusivity — see §3.4. `LOCKED`
+- **Accessibility permission UX**: macOS's `x-apple.systempreferences:`
+  deep-link scheme (the same mechanism Hammerspoon/Raycast/1Password
+  use) opens straight to Privacy & Security → Accessibility — verified
+  directly on-machine (macOS 26.5.2/25F84), not assumed. It's
+  community-reverse-engineered,
+  not an official Apple API, and has broken across past macOS System
+  Settings rewrites, so re-verify if it stops landing correctly after a
+  future OS update. Messaging distinguishes a self-serve grant from a
+  managed/MDM machine where the user lacks the rights to change it (say
+  what to ask IT for, don't imply a self-serve fix that isn't
+  available). **Progressive enhancement, not a hard gate**: the
+  zero-permission floor (browse/run by click) always works; Accessibility
+  is additive convenience (hotkeys, simulated auto-paste/submit) on top
+  — ungranted permission degrades features, never blocks the app. `LOCKED`.
+- **Dev-build ad-hoc codesigning re-triggers the Accessibility grant on
+  every rebuild** — `codesign --force --deep --sign -` changes the app's
+  code identity each build, and TCC ties the grant to that identity, so
+  every dev rebuild looks ungranted to macOS. Root cause `LOCKED`; a
+  fix (e.g. a stable local signing identity) is `OPEN`, not attempted.
+- **Hotkey fire path is logged end-to-end** (registered/fired/action
+  succeeded-or-failed/clipboard-write succeeded-or-failed, via Wails3's
+  own `application.DefaultLogger`) — a debuggability stopgap, not §7's
+  real process-tracking mechanism (that's ADR-0004). Bindings persist
+  across restarts via `internal/adapters/settings` (wraps Wails3's
+  `KVStoreService`, JSON-file-backed at
+  `~/Library/Application Support/mill/settings.json` on macOS),
+  deliberately not exposed through Wails' Service lifecycle so the
+  frontend can't bypass the owning service's own validation; restored
+  on `events.Common.ApplicationStarted` since the native run loop isn't
+  up yet during `ServiceStartup`. Verified end-to-end on a real rebuilt
+  binary, not just unit-tested. `LOCKED` (now owned by `TriggerService`,
+  §3.4, rather than the deleted `HotkeyService`).
+- **Activity page**: rows expand to show a hotkey fire's full clipboard
+  result, not just a byte count; broadened from hotkey-only to every
+  run (Runbook/Composition Run clicks push directly, hotkey fires push
+  via a Go→JS event) with client-side Source/Outcome filters over a
+  session-only, in-memory 50-entry ring buffer — deliberately not
+  persisted or date-ranged (distinct from workflow *definitions*
+  persisting, closer to §7's still-open execution-history question).
+  `LOCKED`.
+- **Small `DEV` ribbon** (`App.tsx`, gated on `import.meta.env.DEV`,
+  mount-time timestamp only — an HMR-self-subscription version was
+  tried and reverted after React Fast Refresh left stray listeners).
+  `LOCKED`.
+- **Capability status index**: real Go data (`internal/domain/
+  capabilities.List()`), not parsed markdown — deliberately not parsing
+  this doc's own `LOCKED`/`OPEN`/`PARKED` tags out of prose (rejected as
+  fragile; `spec-sync-checker`, §9.2, is the eventual place to close
+  that drift risk). `CapabilitiesService.List()` drives the Spec tab's
+  `CapabilityIndex` and, later, the sidebar (§3.5's restructuring
+  superseded the index's original top-`UnderlineNav` presentation with
+  a persistent sidebar once capability count overflowed Primer's "More"
+  dropdown). A built capability's row links to its page; an unbuilt
+  one opens a placeholder; one with an `EditorPath` (e.g. `docs/adr/
+  0004-execution-process-tracking.md`) gets a dev-mode "Open in editor"
+  action, verified to resolve to a file that exists today
+  (`TestList_EditorPathsExist`), never an aspirational one. §5 (browser
+  bridge) is deliberately excluded — a separate extension deliverable,
+  not a Mill window page. `LOCKED`.
+- **Window/scroll layout foundation**: `main.go`'s window sets
+  `MinWidth: 640, MinHeight: 420` (Wails' own documented mechanism);
+  in-page scrolling is the standard flexbox scrolling-pane pattern
+  (`flex: 1 1 auto; min-height: 0; overflow-y: auto`), which needed a
+  *bounded*-height flex root (`html { height: 100%; overflow: hidden }`,
+  matching Wails' own overscroll-bounce guidance) and `App.tsx`
+  rendering its own `.app-shell` flex-column root sized in `dvh` units,
+  since Primer's `ThemeProvider`/`BaseStyles` inject plain `<div>`s
+  between `#root` and Mill's content that would otherwise break the
+  flex chain. The original `PageLayout.Sidebar` + collapse-to-icon-rail
+  + light/dark/system theme switcher (via Primer's own `colorMode`/
+  `useTheme()`, no custom theming layer) built here were themselves
+  later superseded/extended by §3.5's own sidebar restructuring — this
+  entry stays only for the still-true foundational CSS facts (the
+  `.app-shell` root, the scrolling-pane pattern, `MinWidth`/`MinHeight`).
+  `LOCKED`.
 
 ## 3. Capability composition — how nodes connect
 
@@ -3207,446 +2853,142 @@ this pass.
 
 ## 4. Connectors
 
-- **Generic HTTP connector: `LOCKED` and built.** `internal/domain/
-  connector.Connector{ID, Label, Type, BaseURL, AuthType, Headers}` (the
-  domain shape) + `internal/adapters/httpconnector` (stdlib `net/http`
-  execution, 30s timeout, no knowledge of auth/credential storage — a
-  pure "do an HTTP call" utility) + `internal/adapters/credential`
-  (`zalando/go-keyring`-backed secret storage — see §3.5's Credential
-  storage bullet). `Type` supports one value today (`TypeHTTP`) — per
-  §3.2's incremental-extensibility principle, a DB/SOAP connector adds
-  its own `Type` when a real need surfaces, not speculatively now.
-  `AuthType` supports `none`/`apikey`/`bearer`; OAuth2 is real, named
-  future work (`golang.org/x/oauth2` already vetted for it, unused so
-  far), not stubbed ahead of need.
-- **Update — connector maturity pass 1: retries + fail-safe status
-  handling, prompted by the user calling out that the HTTP connector
-  "needs a hell a lot of love" before further connector work lands.**
-  `internal/adapters/httpconnector` now runs every call through
-  `hashicorp/go-retryablehttp` (MPL-2.0, pure Go — checked directly
-  against its own `go.mod`) instead of a bare `http.Client`, with
-  `RetryMax=3`/`RetryWaitMin=1s`/`RetryWaitMax=10s` — close to the
-  library's own shipped defaults (4/1s/30s), deliberately not tuned
-  further without a real workload to tune against (§0's "don't build for
-  a decision that doesn't exist yet," applied to config knobs). Its
-  `DefaultRetryPolicy` was read directly from source
-  (`client.go`'s `baseRetryPolicy`), not assumed: retries 429 and 5xx
-  except 501, plus most transport errors; every other 4xx passes through
-  unretried. This changes `Execute`'s error contract in a way worth
-  recording precisely: a status the client does retry that never
-  recovers within `RetryMax` attempts now surfaces as a Go error (no
-  `Response` at all — `go-retryablehttp`'s own `Do()` drops the response
-  once retries are exhausted, verified directly), same as a transport
-  failure; a non-retried status (most 4xx) still returns a populated
-  `Response` with a nil error, unchanged. Separately,
-  `composition.go`'s `integration-http` node now rejects any response
-  with `StatusCode >= 400` as a node failure instead of silently
-  flowing an error body through as if it were successful workflow
-  output — matches n8n's own HTTP Request node default (checked
-  directly), and Mill's own fail-safe guardrail philosophy (§8). A real
-  regression test (`TestExecuteWorkflow_IntegrationHTTP_NonOKStatus_Rejected`,
-  a genuine `httptest.Server` returning 400) locks this in.
-  `Response` gained a `Headers` map (previously silently dropped) —
-  groundwork for the execution-visibility work named in §3.2/§7's
-  shadow-events bullets, not yet surfaced in any UI. Deliberately not
-  in this pass: OAuth2, a circuit breaker, and persisted per-run
-  response visibility — the latter is sequenced together with the DBOS
-  integration (§7) rather than bolted onto today's transient in-memory
-  `ExecContext`, since DBOS's own step-output persistence is the natural
-  home for it. `LOCKED` (this pass) — connector maturity as a whole
-  stays a living list, not closed by this one change.
-- **Update — connector maturity pass 2: input/output schema, ADR-0007
-  Phase 1+2.** Full research (adopt OpenAPI 3.x, parsed at runtime with
-  `getkin/kin-openapi` — the converged parser in the Go OpenAPI
-  ecosystem, `oapi-codegen` itself depends on it just to parse specs)
-  and design are in
-  [`docs/adr/0007-connector-schema-and-secret-guardrail.md`](adr/0007-connector-schema-and-secret-guardrail.md).
-  `Connector` gained an optional `OpenAPISpec string` field — a
-  Connector with none behaves exactly as before this existed, additive
-  not breaking. `internal/adapters/openapispec` wraps `kin-openapi`
-  behind Mill's own names (mirrors `mcpclient`'s shape): `Parse`,
-  `Operations()` (every path+method the spec declares), `Operation(path,
-  method)` (its input fields from `Parameters`+`RequestBody`, output
-  fields from its first 2xx JSON response — each field carrying an
-  `IsSecret` flag, true for OpenAPI's own `format: "password"`
-  convention or a secret-shaped name, a real bug the adapter's own
-  tests caught: a naive substring match missed `"X-Api-Key"` because of
-  the hyphen, fixed by normalizing dashes/underscores before matching).
-  `ConfigureService.CreateConnector`/`UpdateConnector` validate a
-  non-empty spec parses before persisting; `ListConnectorOperations`
-  mirrors MCP Server's existing "List tools" discoverability pattern
-  (§3.6) — `ConfigureIntegration.tsx` gained a spec textarea and, once
-  set, a "List operations" button showing every declared operation
-  inline. **What this phase does not build, named explicitly in the
-  ADR**: any binding from a workflow's Attributes into a declared
-  operation's fields — `integration-http` is completely unchanged in
-  this phase, still the literal `path`/`method`/`bodyTemplate` config
-  it always had. That binding UI (a real UX design surface on par with
-  Decision's rule builder) and the secret-guardrail check in
-  `ValidateGraph` (which needs that binding config to exist first — a
-  design revision made honestly mid-implementation, recorded in the ADR
-  rather than silently) are Phase 3, deliberately deferred. Verified
-  end-to-end via Playwright (`frontend/e2e/configure-integration.spec.ts`)
-  against the real Go backend: creating a connector with a real spec
-  and listing its operations, an invalid spec rejected with a visible
-  error, and a spec-less connector correctly showing no "List
-  operations" action. `LOCKED` (Phase 1+2).
-- **Update — Phase 3 (Attribute-binding + secret guardrail) is built.**
-  `integration-http`'s `path`/`method` config, unchanged, now doubles as
-  the operation selector: once they match a real declared operation on
-  the connector's spec, the canvas Inspector renders
-  `IntegrationBindingsEditor.tsx` — one row per declared input field
-  (bind to a literal or to `attr:<name>`, stored as JSON in
-  `Node.Config["inputBindings"]`) and one per output field (write into a
-  named Attribute or discard, `Node.Config["outputBindings"]`) — a new
-  `ConfigureService.ConnectorOperationFields(id, path, method)` binding
-  supplies the field list. A connector with no spec, or a path/method
-  that doesn't match a declared operation, shows nothing extra — the
-  original literal `bodyTemplate` behavior is untouched, a strict
-  superset per the ADR's own framing. Execution
-  (`internal/domain/composition/attributebinding.go`) resolves each
-  input field per its declared `In` placement (path-template
-  substitution, query, header, or JSON body field) and writes each
-  output binding into `ctx.Attributes` after a successful call. The
-  secret guardrail lands in `ValidateGraph` exactly where the ADR named
-  it: a save is rejected if `outputBindings` maps a
-  `openapispec.Field.IsSecret` field into an Attribute — real tests
-  prove both the accept and reject paths, not just that the check
-  compiles. Verified end-to-end via Playwright
-  (`frontend/e2e/integration-bindings.spec.ts`): matching a real
-  operation surfaces the binding editor with the secret field visibly
-  guarded (labeled, no Select offered) rather than silently omitted.
-  `LOCKED` (Phase 3) — ADR-0007 as a whole is now fully built.
-- **Update — sectioned Configure form + Manual/CSV schema authoring,
-  [ADR-0011](adr/0011-connector-schema-authoring-modes.md).** Raised
-  directly by the user testing the live app: the connector form was one
-  flat scrolling list with no separation of concerns, and pasting a
-  full OpenAPI document by hand was the *only* way to declare a
-  schema. `ConfigureIntegration.tsx`'s create/edit form is now
-  `ConnectorForm.tsx`, sectioned into General/Auth/Headers/Schema tabs
-  (real precedent, not invented: Postman's Params/Headers/
-  Authorization/Body tabs, n8n's HTTP Request node's own section
-  split, both confirmed via research). The Schema tab offers a Paste-
-  OpenAPI / Manual-editor toggle — not a third schema format, both
-  modes converge on the same `Connector.OpenAPISpec` string
-  (`frontend/src/openapiSynth.ts`'s `synthesizeOpenAPISpec`), zero
-  backend changes to the execution path. The Manual editor
-  (`ManualSchemaEditor.tsx`) is a repeatable operations list, each with
-  input/output field tables; **CSV import** (via PapaParse — MIT, 2.1M
-  weekly downloads, RFC 4180-correct, checked directly rather than
-  hand-rolling comma-splitting) is an accelerator that bulk-fills the
-  same table, not a fourth mode. Content authored as CSV *or* pasted as
-  OpenAPI is reviewable in the same table either way
-  (`parseOpenAPIToOperations` is a best-effort reverse of the synthesis
-  function, round-tripping exactly what the table itself could
-  produce — an arbitrarily complex hand-written spec with `oneOf`/deep
-  nesting is named explicitly as out of scope, not silently mishandled).
-  `openapispec.Field` gained `Alias` (a friendlier reference name shown
-  in the binding editors, display-only — bindings stay keyed by `Name`)
-  and `Path` (a dot-path into nested response JSON for output
-  extraction, e.g. `data.name`), both read from the standard OpenAPI
-  `x-*` vendor-extension mechanism (`x-mill-alias`/`x-mill-path`,
-  confirmed real against `kin-openapi`'s own `Extensions` field, not a
-  hack). `attributebinding.go`'s `applyOutputBindings` gained
-  `extractPath` (nested-object + numeric-array-index traversal, not a
-  wildcard-over-array extraction — an Attribute holds one scalar value)
-  — a field with no `Path` set keeps today's exact flat-lookup
-  behavior, unconditionally backward compatible. **Deferred, named
-  explicitly, not built**: a "primary key" concept for a schema field —
-  the user's own answer flagged real uncertainty about what it should
-  mean, and no concrete consumer exists yet (see §10). Verified: real
-  Go tests (alias/path extraction against a parsed document, nested-
-  path extraction proven via a Decision node routing on a
-  nested-only-reachable value), Vitest coverage of the synthesis/CSV/
-  reverse-parse functions, and end-to-end via Playwright
-  (`connector-schema-editor.spec.ts`) — authoring a field via the
-  Manual editor, saving, and confirming the real backend
-  (`ConnectorOperationFields`) round-trips the alias/path correctly. A
-  real bug caught by that e2e test, not by unit tests alone: the save
-  handler originally called `onDraftChange(...)` then `onSave()`
-  immediately after, reading the *previous* render's stale
-  `draft.openAPISpec` (`setState` isn't synchronous) — fixed by
-  computing the final draft into a local value and passing it directly
-  to `onSave`, now `.claude/rules/testing.md`'s own documented pattern
-  for this class of bug. `LOCKED`.
+- **`HTTPRequest` — the generic HTTP connector — `LOCKED` and built.**
+  `internal/domain/httprequest.HTTPRequest{ID, Label, BaseURL, AuthType,
+  Headers, OpenAPISpec, Description, BuiltIn, JOSE}` (renamed from
+  `Connector` by [ADR-0016](adr/0016-http-request-entity-and-open-method.md)
+  Phase A — `Type`/`TypeHTTP` dropped entirely, redundant once the entity
+  name itself says HTTP) + `internal/adapters/httpconnector` (stdlib
+  `net/http` via `hashicorp/go-retryablehttp`, 30s timeout, no auth/
+  credential knowledge of its own) + `internal/adapters/credential`
+  (`zalando/go-keyring`-backed, write-only — no `GetSecret` binding exists
+  anywhere). `AuthType` is a 9-value, registered-`AuthStrategy` catalogue
+  (`none`/`apikey`/`bearer`/`hmac`/`oauth1`/`oauth1vendor`/`oauth2`/
+  `queryparam`/`mtls`) — see §4.1's table for which are fully implemented
+  vs. real registered stubs.
+- **Retries + fail-safe status handling — `LOCKED`, no dedicated ADR.**
+  Every call runs through `go-retryablehttp`
+  (`RetryMax=3`/`RetryWaitMin=1s`/`RetryWaitMax=10s`, retries 429/5xx
+  except 501 plus transport errors); a retried status that never recovers
+  surfaces as a Go error with no `Response`, same as a transport failure.
+  `integration-http` rejects any `StatusCode >= 400` as a node failure
+  instead of flowing an error body through as workflow output — matches
+  n8n's own HTTP Request node default and Mill's fail-safe guardrail
+  philosophy (§8). `Response` carries a `Headers` map (not yet surfaced in
+  any UI — groundwork for future execution-visibility work, §3.2/§7). A
+  circuit breaker and persisted per-run response visibility (the latter
+  sequenced with the DBOS integration, §7) remain unbuilt, named future
+  work, not silently dropped.
+- **Input/output schema — `LOCKED`, [ADR-0007](adr/0007-connector-schema-and-secret-guardrail.md), fully built (Phases 1–3).**
+  `HTTPRequest.OpenAPISpec` (optional; absent behaves exactly as before it
+  existed) is parsed via `internal/adapters/openapispec` (wraps
+  `getkin/kin-openapi`): `Parse`/`Operations()`/`Operation(path, method)`
+  return input fields (from `Parameters`+`RequestBody`) and output fields
+  (from the first 2xx JSON response), each with an `IsSecret` flag.
+  "List operations" (`ConfigureService.ListRequestOperations`) surfaces
+  every declared operation in Configure. Once a workflow node's
+  `path`/`method` match a declared operation, the canvas Inspector renders
+  `IntegrationBindingsEditor.tsx` — input fields bind to a literal or an
+  `attr:<name>`, output fields write into a named Attribute or are
+  discarded (`internal/domain/composition/attributebinding.go` resolves
+  each per its declared `In` placement). `ValidateGraph` rejects a save
+  that maps an `IsSecret` output field into an Attribute — Mill's own
+  secret guardrail, enforced at save time, not just documented policy.
+- **Sectioned Configure form + Manual/CSV schema authoring — `LOCKED`,
+  [ADR-0011](adr/0011-connector-schema-authoring-modes.md).**
+  `RequestForm.tsx`'s create/edit form is sectioned into
+  General/Auth/Headers/Schema (Postman/n8n precedent). The Schema tab
+  offers Paste-OpenAPI or a Manual editor (`ManualSchemaEditor.tsx`,
+  operations with input/output field tables — inputs further split into
+  "Parameters" (path/query/header) vs. "Request body," so protocol- and
+  payload-level fields aren't presented as one kind of thing); both modes
+  converge on the same `OpenAPISpec` string
+  (`frontend/src/openapiSynth.ts`). CSV import (PapaParse) bulk-fills the
+  same table as an accelerator, not a fourth mode. `openapispec.Field`
+  carries `Alias`/`Path` (nested-response-JSON extraction, via
+  `x-mill-alias`/`x-mill-path`), `Default`/`Description`, an `EnumValues`
+  list, and 9 types (adds `map`/`date`/`datetime`);
+  `Operation.ResponseExtractPath` (`x-mill-response-extract-path`) does a
+  document-level extraction before per-field paths apply. The Configure
+  page also has a per-operation "Show schema" action and a Headers
+  key/value row editor (both were real, user-caught gaps — `Headers` used
+  to silently save as `nil`). A "primary key" concept for a schema field
+  is named but deliberately deferred — no concrete consumer identified
+  yet (see §10).
+- **Connector draft testing + Duplicate — `LOCKED`,
+  [ADR-0013](adr/0013-connector-draft-testing.md).** `RequestForm.tsx`'s
+  Test tab (`RequestTestPanel.tsx`) picks a declared operation, generates
+  example input values (`zod`+`zod-schema-faker`), and runs a real HTTP
+  call server-side via `ConfigureService.TestConnectorOperation` (avoids
+  CORS, resolves the keychain secret) — a request-scoped `Secret` is used
+  once and falls back to the stored keychain secret only when blank and
+  editing an existing request; testing never calls `credential.Set`, so a
+  tested-then-abandoned draft leaves no keychain trace. The
+  request/response log is session-local (capped at 20 entries, not
+  persisted). Duplicate pre-fills a new create form from an existing
+  request's fields; the secret is never copied (it was never readable
+  back through Mill in the first place).
+- **Seeded example `HTTPRequest`s — `LOCKED`, no dedicated ADR.**
+  `httprequest.BuiltIn()` returns seven examples, one per real
+  implemented `AuthType` (`none`/`apikey`/`bearer`/`hmac`/`oauth1`/
+  `oauth2`/`queryparam` — `oauth1vendor`/`mtls` excluded, both are stub
+  strategies that always fail). Each targets a real, independently
+  `curl`-verified-live public service (`httpbin.org`, `postman-echo.com`)
+  — Mill's real OAuth 1.0a signing was independently confirmed against
+  `postman-echo.com/oauth1`. The OAuth2 example is deliberately
+  incomplete (a real token URL, no Client ID/Secret — Mill's repo will
+  never carry a real client secret; the user brings their own app).
+  Seeded lazily on first fresh install only (same pattern
+  `CompositionService.restore()` already uses for built-in workflows) —
+  editable, deletable, and cloneable via Duplicate like any other entity.
+- The operation picker (Testing/Available-attributes/Input-parameters)
+  auto-selects instead of showing a dropdown when a request declares
+  exactly one operation — `LOCKED`, no dedicated ADR.
+- **`Connector` → `HTTPRequest` rename + open Method field — `LOCKED`,
+  [ADR-0016](adr/0016-http-request-entity-and-open-method.md), Phases A–C
+  fully built.** Researched against Postman/Bruno/RFC 10008 before
+  changing anything: Method is never a closed enum, and Params/Body/Auth
+  are peers on one request object. "Connector" is retired for the HTTP
+  case and reserved as this section's own umbrella term for future
+  connector kinds (§4.1); today's entity is `HTTPRequest`, matching
+  Postman/Bruno's own top-level noun. Phase A: package/RPC/frontend-file
+  rename throughout (`internal/domain/httprequest`; every
+  `ConfigureService` RPC; `SetConnectorLookup`/`ResolvedConnector` →
+  `SetHTTPRequestLookup`/`ResolvedHTTPRequest`; `connectorId` config key →
+  `requestId`; `RefKind: "connector"` → `"request"`;
+  `RequestForm.tsx`/`RequestSummary.tsx`/`RequestTestPanel.tsx`/
+  `ConfigureRequests.tsx`/`requestHeaders.ts`), with a real forward
+  migration of persisted data (`configure-connectors` →
+  `configure-requests`, not a silent drop — real data existed on a real
+  machine). The OS keychain namespace (`mill-connector`) is deliberately
+  left unchanged (internal, never user-visible). Phases B (method half)
+  + C: `ConfigField` gained `Suggestions []string` (non-restrictive
+  hints); `integration-http`'s `method` is now `FieldText` offering
+  `GET/POST/PUT/PATCH/DELETE/HEAD/OPTIONS/QUERY` as datalist hints, not a
+  closed `Select`. RFC 10008 `QUERY` (safe + idempotent like `GET`, but
+  carries a body like `POST`) is proven end-to-end through real tests and
+  a real e2e round trip, not assumed — no execution-code change was
+  needed, since `net/http`/`retryablehttp` don't special-case method when
+  attaching a body. The separate Manual Schema Editor's own Method field
+  (used when declaring an OpenAPI-backed operation) stays a closed,
+  8-method enum with no `QUERY` — OpenAPI 3.x's `PathItem` has no field
+  for it — distinct from `integration-http`'s own unconstrained field.
+  **Still `OPEN`, tracked in the ADR**: a Params tab (query/path
+  key-value rows, replacing the raw `path` string) and a Body-type
+  picker (raw+format/form-data/x-www-form-urlencoded/binary/GraphQL,
+  replacing the literal `bodyTemplate` string) as the default authoring
+  UI — Phase B's own bigger, separate design surface.
 - Jira/Confluence as a first-class example: still `OPEN`, unbuilt — the
-  generic connector is real, but no named-vendor preset exists yet.
+  generic request type is real, but no named-vendor preset exists yet.
 - Whether connectors are built-in or a plugin surface: still `OPEN`.
-- **Backend CRUD + UI `LOCKED` and built, end-to-end.** `ConfigureService`
-  (`configureservice.go`) is the Wails-bound service: `Connectors()`/
-  `CreateConnector`/`UpdateConnector`/`DeleteConnector`, plus
-  `SetConnectorSecret`/`DeleteConnectorSecret` (write-only — no
-  `GetSecret` binding exists anywhere on it, by design). Its constructor
-  wires `composition.SetConnectorLookup`/`SetListLookup` to its own
-  `resolveConnector`/`resolveList` methods, so a real HTTP-connector or
-  List node resolves against Configure-authored data end-to-end. The
-  Configure-surface **page** (`ConfigureView.tsx`, reachable via the
-  sidebar's "Configure" entry) makes this reachable without calling bound
-  methods directly — a Connector/List/Attribute set is now created the
-  same way a Workflow is, through the app itself. Same status as
-  Decision's rule builder (§3.3/§3.5).
-- **Update — two real gaps in the Configure UI, caught by the user
-  testing the live dev app directly, not by this doc's own audit.**
-  `Connector.Headers` (static per-call headers, always merged into a
-  request alongside whatever `AuthType` adds — `integration.go`'s
-  `headers` merge already supported this) had no editor anywhere in
-  `ConfigureIntegration.tsx`'s form — every save silently passed `nil`.
-  A key/value row editor now exists (same shape as Lists' own
-  entries editor), round-tripping through both create and edit. Second
-  gap: "List operations" only ever showed `Method`/`Path`/`Summary` —
-  there was no way to see what fields a spec actually declares without
-  opening a workflow's canvas and dropping an `integration-http` node
-  (ADR-0007 Phase 3's `IntegrationBindingsEditor`). A "Show schema"
-  action per operation now calls the same `ConfigureService.
-  ConnectorOperationFields` Phase 3 already built, rendering each
-  Input/Output field with its `In`/`Type`/`Required`/secret badges
-  directly on the Configure page — no new backend surface, just wiring
-  an existing method to a second caller. Verified end-to-end via
-  Playwright (`configure-integration.spec.ts`): a header round-trips
-  through save and re-opening Edit; a spec's declared fields (including
-  a secret-classified one, flagged) render on demand. `LOCKED`.
-- **Update — the Manual editor's Input fields table split into
-  Parameters (path/query/header) and Request body, prompted directly:
-  "the schema section still mixing concern of protocol vs payload."**
-  A single flat table with a per-row placement dropdown made a
-  protocol-level field (how this operation is *called* — a path
-  segment, a query key, a header) look like the same kind of thing as a
-  payload-level field (the JSON body's actual shape), forcing a user to
-  mentally sort the two apart themselves. `ManualSchemaEditor.tsx`'s
-  `OperationEditor` now renders two distinct sections — "Parameters
-  (path / query / header)" (an "Add parameter" row, `in` limited to
-  those three placements) and "Request body" (an "Add body field" row,
-  `in` fixed at `body`, no picker needed) — filtered from the same
-  underlying `inputFields` array, no schema/wire-shape change. Output
-  fields intentionally kept as one table, unsplit: `openapispec.
-  Operation()` only ever populates them from a JSON response body
-  (`bodyFields()`), so every output field is payload, never protocol —
-  there's no real distinction to surface there. The read-only schema
-  summary (`ConfigureIntegration.tsx`'s `SchemaFieldList`, shown via
-  "Show schema"/"List operations") got the identical split for
-  consistency between authoring and viewing. `LOCKED`.
-- **Connector draft testing, [ADR-0013](adr/0013-connector-draft-testing.md)
-  — test a connection and payload against a real API call before Save,
-  see each attempt's result, and duplicate an existing connector.**
-  Raised directly: "when you in the edit mode, we need to think about
-  how do we test a connection and the payload using example... you can
-  test the current draft [without saving]... and also clone what you
-  have already done." A new `ConnectorForm.tsx` "Test" tab
-  (`ConnectorTestPanel.tsx`) picks a declared operation, generates
-  example values for its input fields (`configure/testPayload.ts`, a
-  small `zod`+`zod-schema-faker` adapter over `ManualField` — the
-  client-side operation shape `ConnectorForm` already normalizes both
-  schema-authoring modes into, so an unsaved draft's operations need no
-  backend round-trip to list), and runs a real HTTP call via a new
-  `ConfigureService.TestConnectorOperation` RPC. Runs server-side (not
-  a browser `fetch`) specifically to avoid CORS against an arbitrary
-  third-party API and to resolve a keychain secret — reuses
-  `httpconnector.Execute`, the identical commodity client + retry
-  policy a real workflow's `integration-http` node already goes
-  through. A new `openapispec.BuildRequest(pathTemplate, op, values)`
-  assembles path/query/header/body from an Operation's declared fields
-  and a flat `map[string]string` of values — deliberately a new,
-  separate function from `attributebinding.go`'s `resolveInputBindings`
-  (that one resolves a *workflow node's* authored Attribute-bindings
-  config against a running `ExecContext`, a different input shape
-  entirely from a flat "here are some example values" test call).
-  Secret handling (ADR-0013 §4): a request carries `Secret` (used once,
-  for this call only) and falls back to the connector's real stored
-  keychain secret via `ConnectorID` only when `Secret` is blank and
-  editing an existing connector — **testing never calls
-  `credential.Set`**, so a tested-then-abandoned draft leaves no
-  keychain trace (a real Go test, `TestTestConnectorOperation_
-  NeverPersistsTheSecret`, locks this in). The request/response log is
-  session-local UI state (capped at 20 entries, same ring-buffer
-  reasoning as Activity's own session-only feed, §2.2) — deliberately
-  not persisted, since a test-call log has no value once the editing
-  session ends. **Duplicate** (`ConfigureIntegration.tsx`, a new
-  "Duplicate" row action) is frontend-only, no new backend method: opens
-  the *create* form pre-filled from an existing connector's Label
-  (suffixed " copy")/BaseURL/AuthType/Headers/OpenAPISpec — Secret is
-  never copied, since it was never readable back through Mill in the
-  first place (§3.5's write-only design). `composition.go`'s unexported
-  `authHeader` was exported to `AuthHeader` so the test RPC reuses the
-  identical AuthType→header-name mapping rather than a second,
-  driftable copy. Verified: real Go tests against an `httptest.Server`
-  (path/query/header placement, body-field type coercion, the keychain
-  fallback and its override, the never-persists guarantee, invalid-spec
-  and unknown-operation rejection) and end-to-end via Playwright
-  (`connector-test-panel.spec.ts`) against the real Go backend —
-  running a test against a reserved, essentially-never-bound local port
-  (`127.0.0.1:1`, chosen specifically to be a deterministic connection
-  failure rather than a flaky real-network dependency) correctly logs
-  an error, and duplicating a connector round-trips every field except
-  the secret. `LOCKED`.
-- **Update — seeded example connectors, one per real implemented
-  `AuthType`, extending the standing "ship a working example, not just
-  a description" practice §2.2 already established for Workflows
-  (`composition.BuiltInWorkflows()`) to Connectors.** Prompted directly
-  by the user, after independently confirming Mill's real OAuth 1.0a
-  signing against a live third party (`postman-echo.com/oauth1`
-  returned `{"status":"pass","message":"OAuth-1.0a signature
-  verification was successful"}` against Mill's actual implementation,
-  not a mock) and asking whether that kind of proof could ship as a
-  clonable/deletable example every time a feature lands. `internal/
-  domain/connector.BuiltIn()` returns seven Connectors, one per real
-  `AuthType` (`none`/`apikey`/`bearer`/`hmac`/`oauth1`/`oauth2`/
-  `queryparam`) — `oauth1vendor`/`mtls` deliberately excluded, both are
-  stub strategies (ADR-0015) that always fail, and an example
-  guaranteed to fail isn't a working example. Each targets a real,
-  stable, independently-verified-live public service (`httpbin.org`,
-  `postman-echo.com`) — verified directly via `curl` before being
-  hardcoded, not assumed: `httpbin.org/bearer` genuinely validates
-  (401 without a token, 200 + `authenticated:true` with one);
-  `postman-echo.com/oauth1` genuinely validates a real RFC 5849
-  signature; `httpbin.org/headers` and `/get` reliably echo back
-  whatever they received (used for API-key/HMAC/query-param, which no
-  public service actually *validates* — each one's `Description` says
-  so honestly, not silently presented as third-party-verified).
-  **OAuth 2.0's example is deliberately incomplete**: a real, current
-  token URL (Spotify's `accounts.spotify.com/api/token`) with no
-  Client ID/Secret — OAuth 2.0 fundamentally can't be demonstrated
-  without a registered app, and Mill's own repo will never carry a
-  real client secret (a leaked-credential risk, not a convenience); the
-  `Description` tells the user to bring their own free developer app.
-  Two new `Connector` fields support this: `Description string`
-  (free-text, useful generally, not just for built-ins) and `BuiltIn
-  bool` (purely informational, exact same "carried forward on edit,
-  drives a badge, never gates Edit/Delete" behavior `Workflow.BuiltIn`
-  already has). `ConfigureService.restore()` seeds `c.connectors =
-  connector.BuiltIn()` (plus each example's demo secret into the OS
-  keychain — Postman's own published OAuth1 test credential, arbitrary
-  placeholder strings for the ones no service actually validates) only
-  on a genuinely fresh install, mirroring `CompositionService.restore()`'s
-  exact lazy-seed-until-first-real-mutation shape: not eagerly
-  persisted, so re-seeding identically before any real edit is
-  harmless, and the moment any real mutation happens (including
-  deleting a seed) it's real data from then on. Verified: `internal/
-  domain/connector/builtin_test.go` (every example passes `Validate`,
-  parses as JSON, is marked `BuiltIn`, never uses a stub `AuthType`,
-  and the OAuth2 example never carries a pre-filled `ClientID`);
-  service-layer tests proving fresh-install seeding, that deleting a
-  built-in doesn't return on restart, and that `Description`/`BuiltIn`
-  round-trip through Create/Update; end-to-end via Playwright
-  (`connector-builtin-examples.spec.ts`) against the real Go backend —
-  all seven appear with a "built-in" badge and honest Description text,
-  the OAuth1 example's summary shows the independently-confirmed-live
-  caveat text, the OAuth2 example's summary tells the user to bring
-  their own credentials, and a seeded example is fully editable and
-  (via Duplicate, not deleting the shared fixture itself) clonable and
-  deletable. The actual live-network round trip for each example is
-  intentionally **not** re-verified by the committed e2e suite — this
-  repo's own established discipline is `httptest.Server`-only in CI, no
-  live third-party dependency in a test that runs on every commit; live
-  verification is a manual, one-off check (the OAuth1 proof above,
-  repeatable via each example's own Test tab) rather than an automated
-  test that could flake or break silently if a third party changes.
-  `LOCKED`.
-- **Update — the operation picker on Testing/Available-attributes/Input-
-  parameters auto-selects instead of showing a dropdown when a connector
-  declares exactly one operation.** Every seeded example connector above
-  (and most hand-authored ones) declares exactly one operation, making
-  this concretely visible: a "Select an operation…" `Select` with only
-  one real choice, caught live by the user via screenshots of the
-  running app — the same "no UI for a decision that doesn't exist"
-  discipline already applied elsewhere (single-option `AuthType`/
-  NodeType-swap Selects), now applied here too.
-  `ConnectorTestPanel.tsx`/`ConnectorSummary.tsx` auto-select the sole
-  operation and render it as static text (`Label`) in that case, falling
-  back to the `Select` only when a connector genuinely declares more
-  than one operation. `LOCKED`.
-- **Update — the entity is renamed `Connector` → `HTTPRequest`, and
-  Method is now an open field, [ADR-0016](adr/0016-http-request-entity-and-open-method.md),
-  Phase A.** Prompted directly: the operation picker fix above still
-  left Method undiscoverable by default (buried behind "Manual editor,"
-  a mode switch away from the default "Paste OpenAPI"), and the user
-  asked to look at Postman/Bruno's own request model before proposing
-  another patch. Researched Postman, Bruno (`.bru`, MIT, git-friendly —
-  the closest existing architectural precedent to Mill of anything
-  surveyed), and **RFC 10008** (the HTTP `QUERY` method — safe +
-  idempotent like `GET` but carries a request body like `POST`,
-  published as an RFC in June 2026 after an ~11-year draft) before
-  changing anything. Both tools converge on the same two findings:
-  Method is never a closed enum (Bruno's own `http` block with `method:
-  CUSTOM` is an explicit open escape hatch), and Params/Body/Auth are
-  peers on one request object, not gated behind a schema-authoring
-  mode. Decided directly with the user, with the real blast radius
-  sized first (33 Go files, 13 Go test files, 13 TS files, 10 e2e
-  specs, 11 ADRs referencing "connector") rather than started blind:
-  **"Connector" is retired for the HTTP case and reserved as this
-  section's own umbrella term for future connector kinds** (DB,
-  Python-function, etc., §4.1) — today's entity becomes `HTTPRequest`,
-  matching Postman/Bruno's own top-level noun. A flat rename, not a new
-  two-tier split: one `HTTPRequest` still carries BaseURL+Auth+Headers+
-  JOSE together, reuse stays via Duplicate (ADR-0013), not a new
-  shared-base-config layer.
-  Phase A (this update): `internal/domain/connector` →
-  `internal/domain/httprequest` (`Connector` → `HTTPRequest`;
-  `Type`/`TypeHTTP` dropped entirely — redundant now that the entity
-  name itself says HTTP, same "no field for a decision that doesn't
-  exist" reasoning already applied to single-option `Select`s
-  elsewhere); every `ConfigureService` RPC renamed
-  (`CreateConnector` → `CreateHTTPRequest`, etc.); `composition.go`'s
-  `SetConnectorLookup`/`ResolvedConnector` →
-  `SetHTTPRequestLookup`/`ResolvedHTTPRequest`; `connectorId` config
-  key → `requestId`; `RefKind: "connector"` → `RefKind: "request"`.
-  Frontend: `ConnectorForm.tsx`/`ConnectorSummary.tsx`/
-  `ConnectorTestPanel.tsx`/`ConfigureIntegration.tsx`/
-  `connectorHeaders.ts` → `RequestForm.tsx`/`RequestSummary.tsx`/
-  `RequestTestPanel.tsx`/`ConfigureRequests.tsx`/`requestHeaders.ts`.
-  **Real data migration, not a silent drop**: unlike
-  `composition-workflows` → `-v2`'s own precedent (intentionally
-  orphaned throwaway prototype data), `configure-connectors` holds real
-  current data on a real machine (including the seven seeded
-  examples) — `ConfigureService.restore()` migrates it forward into the
-  new `configure-requests` key on first load if the new key is empty,
-  verified end-to-end
-  (`TestRestore_MigratesLegacyConnectorsKey`, a real pre-rename JSON
-  blob seeded into a fake store, migrated, and confirmed to persist
-  under the new key on a second restore). The OS keychain namespace
-  (`mill-connector`) is deliberately **left unchanged** — an internal,
-  never-user-visible token; changing it would need its own migration
-  for zero user-facing benefit. Method itself is not yet opened in this
-  phase (that's Phase B, still `OPEN`) — this phase is the rename plus
-  the migration, verified byte-identical in behavior: full Go
-  build/vet/test/lint (both desktop and `CGO_ENABLED=0` server-mode
-  build tags) green, Wails bindings regenerated, complete 57-test
-  Playwright suite run twice with no persisted-data leakage. `LOCKED`
-  (Phase A) — Phase B (the actual Params/Body-type builder, opening
-  Method to a free-text field with common methods + `QUERY` as
-  suggestions) and Phase C (`QUERY` method support end-to-end) are
-  `OPEN`, tracked in the ADR.
-- **Update — Method opened (Phase B's method half + all of Phase C);
-  the Params tab / Body-type picker stays `OPEN`.** `ConfigField`
-  gained `Suggestions []string` — meaningful only for `FieldText`,
-  non-restrictive (any value still accepted, unlike `Options`/
-  `FieldOptions`'s closed set). `integration-http`'s `method` field is
-  now `FieldText` with `GET/POST/PUT/PATCH/DELETE/HEAD/OPTIONS/QUERY`
-  offered as datalist hints, not a closed `Select` — `NodeInspector.tsx`
-  renders a single-line `TextInput` + sibling `<datalist>` for any
-  `FieldText` field carrying `Suggestions`, instead of the generic
-  4-row `Textarea` every other `FieldText` field still gets.
-  **`QUERY` support proven, not assumed**: Go's `net/http`/
-  `retryablehttp.NewRequest` don't special-case method when attaching a
-  body, so no `httpconnector`/execution code changed — only real tests
-  proving it (`TestExecute_QueryMethod_SendsBody`, a real
-  `httptest.Server`; `TestExecuteWorkflow_IntegrationHTTP_
-  QueryMethod_Accepted`, through the real `ExecuteWorkflow` path) and a
-  real e2e proof (`request-method-field.spec.ts`: drag the node,
-  confirm the datalist genuinely offers `QUERY`, set it, save, reopen
-  via Edit, confirm it survived the real persist/restore round trip).
-  **The Manual Schema Editor's own, separate Method field** (used when
-  declaring an OpenAPI-backed operation) grew to all 8 methods
-  `kin-openapi`'s `PathItem` struct actually has fields for
-  (`Get/Put/Post/Delete/Options/Head/Patch/Trace`, verified directly
-  against its source) but **deliberately excludes `QUERY`** — OpenAPI
-  3.x has no spec-defined field for it yet (`PathItem` is a fixed Go
-  struct, no generic method bucket), so an operation declared there has
-  to stay representable as a real OpenAPI document; `integration-http`'s
-  own literal Method field is unconstrained by that and is where
-  `QUERY` actually gets used. `path`/`bodyTemplate` are untouched by
-  this update. `LOCKED` (Method-opening + `QUERY` support) — the Params
-  tab and Body-type picker remain real, separately-sized `OPEN` work,
-  not silently folded into this pass.
+- **Backend CRUD + Configure UI — `LOCKED` and built, end-to-end.**
+  `ConfigureService` (`configureservice.go`) is the Wails-bound service —
+  list/create/update/delete plus write-only secret set/delete RPCs — with
+  `composition.SetHTTPRequestLookup`/`SetListLookup` wired to its own
+  resolver methods, so a real `integration-http` or List node resolves
+  against Configure-authored data end-to-end. `ConfigureView.tsx`
+  (sidebar-reachable) makes this reachable without calling bound methods
+  directly.
 
 ### 4.1 Connector capability map — from the reference-platform review (§3.2)
 
