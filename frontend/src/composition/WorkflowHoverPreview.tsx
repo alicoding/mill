@@ -2,7 +2,7 @@ import { useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { Button, Stack, Text } from '@primer/react'
 import { AnchoredOverlay } from '@primer/react'
-import { ReactFlow, Background } from '@xyflow/react'
+import { ReactFlow, ReactFlowProvider, Background } from '@xyflow/react'
 import { CompositionService } from '../../bindings/github.com/alicoding/mill'
 import type { NodeType, Workflow } from '../../bindings/github.com/alicoding/mill/internal/domain/composition/models'
 import { useAppStore } from '../shared/store'
@@ -58,7 +58,14 @@ export function WorkflowHoverPreview({ workflowId, children }: {
       onOpen={() => setOpen(true)}
       onClose={() => setOpen(false)}
       overlayProps={{ role: 'dialog', 'aria-label': 'Workflow preview' }}
-      renderAnchor={(anchorProps) => (
+      renderAnchor={(allAnchorProps) => {
+        // onClick deliberately dropped: on a canvas node, a click means
+        // select-the-node (React Flow's own semantics), and elsewhere a
+        // click may mean expand -- hover (plus the overlay's own Esc/
+        // outside-click close) is this affordance's entire contract.
+        const { onClick, ...anchorProps } = allAnchorProps
+        void onClick
+        return (
         <span
           {...anchorProps}
           onMouseEnter={scheduleOpen}
@@ -67,7 +74,8 @@ export function WorkflowHoverPreview({ workflowId, children }: {
         >
           {children}
         </span>
-      )}
+        )
+      }}
     >
       <div onMouseLeave={() => setOpen(false)} style={{ padding: 'var(--base-size-8)' }} data-testid="workflow-preview">
         {workflow === null && <Text size="small">Loading…</Text>}
@@ -85,6 +93,13 @@ export function WorkflowHoverPreview({ workflowId, children }: {
               </Button>
             </Stack>
             <div style={{ width: 320, height: 200, border: '1px solid var(--borderColor-default)', borderRadius: 'var(--borderRadius-medium)' }}>
+              {/* Its own provider, non-negotiable: a bare <ReactFlow>
+                  mounted while a real canvas is on screen joins that
+                  canvas's store and empties it (real bug, caught live
+                  -- hovering the preview blanked the parent canvas).
+                  React Flow's own docs require a provider per flow
+                  when multiple flows render on one page. */}
+              <ReactFlowProvider>
               <ReactFlow
                 nodes={(workflow.Nodes ?? []).map((n) => ({
                   id: n.ID,
@@ -102,6 +117,7 @@ export function WorkflowHoverPreview({ workflowId, children }: {
               >
                 <Background />
               </ReactFlow>
+              </ReactFlowProvider>
             </div>
           </Stack>
         )}
