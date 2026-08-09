@@ -2232,6 +2232,24 @@ directory/scope (blocked on §6); fullscreen window-state tracking
   the previous two-line rows of eight inline inputs rendered visibly
   broken. (4) **Every list/table row has a direct Edit action** — no
   forced detour through the read-only summary first.
+- **The `integration-http` node no longer authors transport or body —
+  `LOCKED`, by direct user decision ("form fields that should not be
+  done at the workflow level").** The node's only config is *which*
+  integration to call (the ADR-0009 picker) plus data bindings; method
+  comes from the request's own Method, the endpoint path from its
+  single declared operation (the 1:1 model makes that the normal
+  case), and the body from a new request-level `Body` field (raw,
+  sent-as-is fallback under schema-bound body fields — ADR-0016 Phase
+  B's body half in minimal form; the typed body-type picker stays
+  named future work). Legacy nodes persisted with their own
+  `path`/`method`/`bodyTemplate` config keep working — those keys
+  still win when present, they're just no longer authorable
+  (regression-tested through the real execution path:
+  `TestExecuteWorkflow_IntegrationHTTP_TransportComesFromTheRequest`
+  plus the existing method-precedence cases). The bindings editor
+  resolves the integration's operation itself now (first in stable
+  order for a legacy multi-operation spec), with no node-level
+  path/method to match against.
 - **`Connector` → `HTTPRequest` rename + open Method field — `LOCKED`,
   [ADR-0016](adr/0016-http-request-entity-and-open-method.md), Phases A–C
   fully built.** Researched against Postman/Bruno/RFC 10008 before

@@ -1,24 +1,14 @@
 import { test, expect } from '@playwright/test'
 
-// Exercises ADR-0016 Phase B/C as amended by direct user decision
-// ("METHOD should not be free form text"): integration-http's Method
-// renders as a real Select whose options are the suggested methods
-// (including RFC 10008's QUERY) plus a blank "(default)" that inherits
-// the request's own method -- the wire stays an open string, only the
-// authoring UI is typed. Over real Go bindings (Wails3 server mode),
-// not mocks.
+// The integration-http node asks ONLY for which integration to call --
+// no path/method/body fields at the workflow level (direct user
+// decision: transport config belongs on the Integration in Configure;
+// the node just picks it and binds data). Method/endpoint/body
+// authoring is covered at the request level by
+// request-form-intake.spec.ts; legacy nodes persisted with their own
+// path/method config still execute (Go-side regression tests cover
+// that precedence).
 
-function workflowRow(page: import('@playwright/test').Page, label: string) {
-  return page.locator('[data-testid="workflow-row"]', { has: page.getByText(label, { exact: true }) })
-}
-
-// .last(), not a bare match: a saved workflow's editor tab now nests a
-// second Canvas/Runs tab bar inside the outer per-workflow tab
-// (docs/SPEC.md §7's Update), so up to two [role="tabpanel"]:not([hidden])
-// elements can be visible at once (the outer workflow tab, the inner
-// Canvas/Runs one) -- document order always puts the outer one first,
-// so .last() reliably resolves to the innermost, most specific panel
-// regardless of whether a workflow has an inner tab bar or not.
 function activePanel(page: import('@playwright/test').Page) {
   return page.locator('[role="tabpanel"]:not([hidden])').last()
 }
@@ -48,7 +38,7 @@ async function deleteStarterNode(page: import('@playwright/test').Page) {
   await expect(activePanel(page).locator('.react-flow__node')).toHaveCount(0)
 }
 
-test('The Method field accepts QUERY, an offered suggestion outside the old closed list, and persists it', async ({ page }) => {
+test('An Integration node offers only the integration picker -- no transport/body fields', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Workflows' }).click()
   await page.getByTestId('new-workflow').click()
@@ -59,30 +49,14 @@ test('The Method field accepts QUERY, an offered suggestion outside the old clos
   await activePanel(page).locator('.react-flow__node').click()
 
   const inspector = activePanel(page).getByTestId('composition-inspector')
-  const methodField = inspector.getByTestId('canvas-config-field').nth(1)
+  // The integration picker is there (a live entity Select, ADR-0009)...
+  await expect(inspector.getByTestId('entity-ref-field')).toBeVisible()
+  // ...and nothing else asks for transport or body: requestId is the
+  // node's only ConfigField, and it renders as the picker above, so no
+  // generic config inputs remain at all.
+  await expect(inspector.getByTestId('canvas-config-field')).toHaveCount(0)
+  await expect(inspector.getByText('Method', { exact: true })).toHaveCount(0)
+  await expect(inspector.getByText('Path', { exact: true })).toHaveCount(0)
 
-  // A real Select now (user decision) -- QUERY is a first-class option,
-  // not something typed blind.
-  await expect(methodField).toHaveJSProperty('tagName', 'SELECT')
-  await expect(methodField.locator('option[value="QUERY"]')).toHaveCount(1)
-
-  await methodField.selectOption('QUERY')
-
-  // Save and reopen via Edit -- the real "did it persist in Node.Config,
-  // not just left in the input's own local DOM state" proof, same
-  // pattern composition.spec.ts's own save-then-reopen tests already
-  // use, rather than a same-tab reselect (which the canvas toolbar's
-  // top-left docking makes fiddly to click around).
-  await activePanel(page).getByLabel('Label').fill('E2E QUERY method workflow')
-  await activePanel(page).getByTestId('save-workflow').click()
-
-  const row = workflowRow(page, 'E2E QUERY method workflow')
-  await expect(row).toBeVisible()
-  await row.getByRole('button', { name: /Edit/ }).click()
-  await activePanel(page).locator('.react-flow__node').click()
-  await expect(activePanel(page).getByTestId('canvas-config-field').nth(1)).toHaveValue('QUERY')
-
-  await page.getByRole('tab', { name: 'Workflows' }).click()
-  await row.getByRole('button', { name: /Delete/ }).click()
-  await expect(row).toHaveCount(0)
+  // Nothing was saved -- close the unsaved tab; no cleanup needed.
 })

@@ -140,7 +140,7 @@ function QuickCreateDialog({ refKind, onCancel, onCreated }: { refKind: string; 
       let id: string
       switch (refKind) {
         case 'request': {
-          const r = await ConfigureService.CreateHTTPRequest(label, secondary, 'GET', AuthType.AuthNone, null, '', null, null, '')
+          const r = await ConfigureService.CreateHTTPRequest(label, secondary, 'GET', '', AuthType.AuthNone, null, '', null, null, '')
           id = r.ID
           break
         }

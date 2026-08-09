@@ -10,7 +10,7 @@ import (
 
 func TestExportImportHTTPRequest_RoundTrips_NeverCarriesASecret(t *testing.T) {
 	cfg, _ := newTestConfigureService(t)
-	created, err := cfg.CreateHTTPRequest("My request", "https://example.com", "QUERY", httprequest.AuthAPIKey, nil, "", nil, nil, "a description")
+	created, err := cfg.CreateHTTPRequest("My request", "https://example.com", "QUERY", "", httprequest.AuthAPIKey, nil, "", nil, nil, "a description")
 	if err != nil {
 		t.Fatalf("CreateHTTPRequest: %v", err)
 	}

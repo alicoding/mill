@@ -161,8 +161,8 @@ export function RequestForm({
       const auth = authConfigFrom(finalDraft)
       const jose = joseConfigFrom(finalDraft)
       const saved = editingRequest
-        ? await ConfigureService.UpdateHTTPRequest(editingRequest.ID, finalDraft.label, finalDraft.baseURL, finalDraft.method, finalDraft.authType, headers, finalDraft.openAPISpec, auth, jose, finalDraft.description)
-        : await ConfigureService.CreateHTTPRequest(finalDraft.label, finalDraft.baseURL, finalDraft.method, finalDraft.authType, headers, finalDraft.openAPISpec, auth, jose, finalDraft.description)
+        ? await ConfigureService.UpdateHTTPRequest(editingRequest.ID, finalDraft.label, finalDraft.baseURL, finalDraft.method, finalDraft.body, finalDraft.authType, headers, finalDraft.openAPISpec, auth, jose, finalDraft.description)
+        : await ConfigureService.CreateHTTPRequest(finalDraft.label, finalDraft.baseURL, finalDraft.method, finalDraft.body, finalDraft.authType, headers, finalDraft.openAPISpec, auth, jose, finalDraft.description)
       if (finalDraft.authType === AuthType.AuthOAuth1) {
         if (finalDraft.oauth1ConsumerSecret || finalDraft.oauth1TokenSecret) {
           await ConfigureService.SetHTTPRequestOAuth1Secret(saved.ID, finalDraft.oauth1ConsumerSecret, finalDraft.oauth1TokenSecret)
@@ -216,6 +216,15 @@ export function RequestForm({
                 <TextInput value={draft.baseURL} onChange={(e) => setDraft({ ...draft, baseURL: e.target.value })} placeholder="https://api.example.com" block />
               </FormControl>
             </Stack>
+            <FormControl>
+              <FormControl.Label>Body</FormControl.Label>
+              <FormControl.Caption>
+                Optional -- a raw request body sent as-is (e.g. fixed JSON). If the Schema below declares
+                body fields and a workflow binds them, the bound body wins; this is the fallback. Lives
+                here, not on the workflow node: transport and payload shape are the integration&apos;s own.
+              </FormControl.Caption>
+              <Textarea value={draft.body} onChange={(e) => setDraft({ ...draft, body: e.target.value })} rows={2} block data-testid="request-body" />
+            </FormControl>
             <FormControl>
               <FormControl.Label>Description</FormControl.Label>
               <FormControl.Caption>Optional -- what this request is for, or any caveat worth noting.</FormControl.Caption>

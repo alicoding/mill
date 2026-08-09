@@ -93,6 +93,7 @@ export function RequestSummary({ request, onEdit, onDuplicate, onDelete }: {
             {request.Description && <DetailRow label="Description" value={request.Description} />}
             <DetailRow label="Method" value={request.Method || 'GET'} />
             <DetailRow label="Base URL" value={request.BaseURL} />
+            {request.Body !== '' && <DetailRow label="Body" value={request.Body} />}
             <DetailRow
               label="Auth type"
               value={AUTH_LABEL[request.AuthType] ?? request.AuthType}
