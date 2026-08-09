@@ -37,8 +37,15 @@ function workflowRow(page: import('@playwright/test').Page, label: string) {
   return page.locator('[data-testid="workflow-row"]', { has: page.getByText(label, { exact: true }) })
 }
 
+// .last(), not a bare match: a saved workflow's editor tab now nests a
+// second Canvas/Runs tab bar inside the outer per-workflow tab
+// (docs/SPEC.md §7's Update), so up to two [role="tabpanel"]:not([hidden])
+// elements can be visible at once (the outer workflow tab, the inner
+// Canvas/Runs one) -- document order always puts the outer one first,
+// so .last() reliably resolves to the innermost, most specific panel
+// regardless of whether a workflow has an inner tab bar or not.
 function activePanel(page: import('@playwright/test').Page) {
-  return page.locator('[role="tabpanel"]:not([hidden])')
+  return page.locator('[role="tabpanel"]:not([hidden])').last()
 }
 
 function requestRow(page: import('@playwright/test').Page, label: string) {

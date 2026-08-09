@@ -9,6 +9,7 @@ import { generateSamplePayload } from '../shared/configSchema'
 import { useAppStore } from '../shared/store'
 import { loadPersistedTabs, savePersistedTabs } from '../shared/persistedTabs'
 import CompositionCanvas from './CompositionCanvas'
+import WorkflowRunsPanel from './WorkflowRunsPanel'
 import TestRunDialog from './TestRunDialog'
 import { TabItem, TabList, TabPanel } from '../shared/Tabs'
 import styles from '../shared/ListCard.module.css'
@@ -49,6 +50,46 @@ function orderNodes(nodes: Node[] | null, edges: Edge[] | null): Node[] {
 interface EditorTab {
   key: string
   workflowId: string | null
+}
+
+// A saved workflow's own editor tab gets a second, inner Canvas/Runs
+// switch (docs/SPEC.md §7's Update, real precedent: n8n/Retool/Airflow
+// all pair an Editor view with an Executions/Runs view on the same
+// workflow's own page). A brand-new, not-yet-saved workflow
+// (workflow === null) has no run history to show yet -- it renders
+// Canvas alone, no inner tab bar, matching "nothing to author" reasoning
+// already used elsewhere in this codebase for a control with no real
+// choice behind it. Owns its own innerTab state locally: each open
+// outer workflow tab's Canvas/Runs selection is independent of every
+// other open tab's.
+function WorkflowEditorTab({
+  nodeTypes, workflow, onBack, onSaved,
+}: {
+  nodeTypes: NodeType[]
+  workflow: Workflow | null
+  onBack: () => void
+  onSaved: () => void
+}) {
+  const [innerTab, setInnerTab] = useState('canvas')
+
+  if (!workflow) {
+    return <CompositionCanvas nodeTypes={nodeTypes} workflow={workflow} onBack={onBack} onSaved={onSaved} />
+  }
+
+  return (
+    <Tabs value={innerTab} onValueChange={({ value }) => setInnerTab(value)}>
+      <TabList aria-label={`${workflow.Label} sections`}>
+        <TabItem value="canvas">Canvas</TabItem>
+        <TabItem value="runs">Runs</TabItem>
+      </TabList>
+      <TabPanel value="canvas" className={editorStyles.editorPanel}>
+        <CompositionCanvas nodeTypes={nodeTypes} workflow={workflow} onBack={onBack} onSaved={onSaved} />
+      </TabPanel>
+      <TabPanel value="runs">
+        <WorkflowRunsPanel workflowId={workflow.ID} />
+      </TabPanel>
+    </Tabs>
+  )
 }
 
 const WORKFLOWS_TAB = 'workflows'
@@ -419,7 +460,7 @@ function CompositionView() {
         const editingWorkflow = t.workflowId ? (workflows?.find((w) => w.ID === t.workflowId) ?? null) : null
         return (
           <TabPanel key={t.key} value={t.key} className={editorStyles.editorPanel}>
-            <CompositionCanvas
+            <WorkflowEditorTab
               nodeTypes={nodeTypes}
               workflow={editingWorkflow}
               onBack={() => closeTab(t.key)}

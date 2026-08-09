@@ -1,14 +1,18 @@
 import { test, expect } from '@playwright/test'
 
 // Exercises docs/SPEC.md §3.7's Update: navigational/UI state (active
-// view, open Composition/Configure tabs, Activity/Runs filters)
+// view, open Composition/Configure tabs, Activity's own filters)
 // persists across a reload -- the localStorage-tier half of the gap
 // (window position/size is Go-side, desktop-only, not
 // Playwright-testable server-mode; verified manually instead, same
 // class of gap §1.3 already notes for HotkeyService). A page reload is
 // the closest Playwright equivalent to an app restart for
 // localStorage-backed state, since Wails' own webview uses the same
-// Storage API a browser does.
+// Storage API a browser does. A workflow's own Runs tab (§7's Update --
+// durable-run history/redrive moved off a standalone page into the
+// workflow it belongs to) deliberately doesn't persist its Kind filter
+// -- it's local component state now, simpler than replicating a
+// page-level localStorage key per workflow for a minor nicety.
 
 test('The active view persists across a reload', async ({ page }) => {
   await page.goto('/')
@@ -79,17 +83,4 @@ test('Activity source/outcome filter selections write through to localStorage', 
   // into whatever e2e spec runs against Activity next.
   await page.getByLabel('Filter by source').selectOption('all')
   await page.getByLabel('Filter by outcome').selectOption('all')
-})
-
-test('Runs kind filter persists across a reload', async ({ page }) => {
-  await page.goto('/')
-  await page.getByRole('link', { name: 'Runs' }).click()
-
-  await page.getByLabel('Filter by kind').selectOption('triggered')
-
-  await page.reload()
-  await expect(page.getByLabel('Filter by kind')).toHaveValue('triggered')
-
-  // Reset back to 'all', same reasoning as the Activity filter test.
-  await page.getByLabel('Filter by kind').selectOption('all')
 })

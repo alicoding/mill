@@ -33,10 +33,29 @@ export function GetRun(runID: string): $CancellablePromise<$models.RunDetail> {
 
 /**
  * ListRuns returns recent runs across every workflow, most recent
- * first -- the data behind an Executions-style run-history list.
+ * first -- the data behind Activity's cross-workflow "did anything run"
+ * feed and any other surface needing every run regardless of which
+ * workflow it belongs to.
  */
 export function ListRuns(): $CancellablePromise<$models.RunSummary[] | null> {
     return $Call.ByID(1409623953);
+}
+
+/**
+ * ListRunsForWorkflow returns recent runs for one workflow only, most
+ * recent first -- the data behind a workflow's own Runs tab
+ * (docs/SPEC.md §7's Update: durable-run visibility moved from a
+ * standalone page into the workflow it belongs to, per real precedent
+ * -- n8n/Retool/Airflow all scope this to the individual workflow's own
+ * page, never a global page reached via a workflow picker). DBOS has no
+ * native filter on runInput.WorkflowID (an arbitrary field inside the
+ * generically-serialized Input, not something ListWorkflows' own
+ * filters -- WithFilterWorkflowIDs et al. -- can query against), so this
+ * filters post-decode the same way summaryFromStatus already decodes
+ * runInput for every other field.
+ */
+export function ListRunsForWorkflow(workflowID: string): $CancellablePromise<$models.RunSummary[] | null> {
+    return $Call.ByID(2651632737, workflowID);
 }
 
 /**
