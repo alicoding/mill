@@ -28,8 +28,29 @@
 # package-naming convention, not this repo-specific root rule) --
 # proven by testing an intentionally-impossible regex both with and
 # without this ignore entry before writing the real pattern.
+# Second layer, same mechanism (added when a stray screenshot landed at
+# root during a session): a `.*` catch-all so a random non-.go file
+# (a .png, a .txt, a one-off .sh) can't silently join the root either.
+# Probed empirically against ls-lint v2.3.1 before writing, same
+# discipline as the scoping note above:
+#   - `.*` matches every extension-bearing file the more specific `.go`
+#     key doesn't claim first, including dotfiles (a dotfile's stem is
+#     the part before its *last* dot -- `.golangci.yml` has stem
+#     `.golangci`; single-segment dotfiles like `.gitignore` have an
+#     empty stem, which no regex alternative should match, so they go
+#     in `ignore:` -- confirmed `ignore:` accepts individual files, not
+#     just directories).
+#   - Extensionless files (LICENSE, a bare `ROGUEFILE`) are invisible
+#     to ls-lint entirely -- a known, accepted limitation; nearly all
+#     real root clutter carries an extension.
+#   - Because top-level rules apply recursively (scoping note above),
+#     every legitimate top-level directory must be in `ignore:`. A new
+#     top-level directory therefore fails this check until deliberately
+#     added here -- that's the point, not a bug: root additions are
+#     ADR-0001 layout decisions, never accidents.
 ls:
   .go: regex:(main|idgen|configuremcpserver|trigger[a-z]*|[a-z]*service(_[a-z]+)*|executionchildworkflow)(_test)?
+  .*: regex:(README|CLAUDE|Taskfile|lefthook|go|\.golangci|\.ls-lint)
 
 ignore:
   - build
@@ -38,3 +59,10 @@ ignore:
   - docs
   - .git
   - internal
+  - scripts
+  - .claude
+  - .github
+  - .task
+  - .playwright-mcp
+  - .gitignore
+  - .DS_Store
