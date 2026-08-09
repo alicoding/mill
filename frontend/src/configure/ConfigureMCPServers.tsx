@@ -6,6 +6,7 @@ import type { MCPServer } from '../../bindings/github.com/alicoding/mill/interna
 import type { Tool } from '../../bindings/github.com/alicoding/mill/internal/adapters/mcpclient/models'
 import { downloadJSON } from '../shared/downloadJSON'
 import styles from '../shared/ListCard.module.css'
+import PageContainer from '../shared/PageContainer'
 
 function argsToRows(args: string[] | null | undefined): string[] {
   return args && args.length > 0 ? args : ['']
@@ -105,7 +106,7 @@ export function ConfigureMCPServers() {
   }
 
   return (
-    <div className={styles.page} data-testid="configure-mcpservers">
+    <PageContainer data-testid="configure-mcpservers">
       <Stack direction="horizontal" justify="space-between" align="center" className={styles.sectionHeading}>
         <Heading as="h2" variant="small">MCP Servers</Heading>
         <Stack direction="horizontal" gap="condensed">
@@ -130,7 +131,7 @@ export function ConfigureMCPServers() {
       )}
 
       {formOpen && (
-        <div className={styles.formPage}>
+        <PageContainer variant="narrow">
         <div className={styles.card}>
           <Stack direction="vertical" gap="condensed">
             <FormControl>
@@ -165,7 +166,7 @@ export function ConfigureMCPServers() {
             </Stack>
           </Stack>
         </div>
-        </div>
+        </PageContainer>
       )}
 
       {servers === null && <Text as="p" className={styles.muted}>Loading…</Text>}
@@ -223,6 +224,6 @@ export function ConfigureMCPServers() {
           ))}
         </Stack>
       )}
-    </div>
+    </PageContainer>
   )
 }

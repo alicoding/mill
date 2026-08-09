@@ -11,36 +11,9 @@
    CSS custom properties) -- Primer React v38 dropped styled-components/sx/
    Box in favor of exactly this: CSS Modules + CSS variables. Root scroll/
    clip behavior comes from the global .view-pane class (src/index.css),
-   applied alongside this module's .page class. */
-/* 760px was a fixed reading-width cap inherited from this class's own
-   original single-purpose use -- but .page is now shared by nearly
-   every list/form page in the app (Workflows, Activity, every Configure
-   tab, Settings), most of which are card/row content, not long-form
-   prose, and left a large, clearly-wasted gutter on any normal desktop
-   window. 1400px keeps a real cap (still not full-bleed on an ultra-wide
-   display) while using far more of a typical window. */
-.page {
-    --wails-draggable: no-drag;
-    max-width: 1400px;
-    margin: 0 auto;
-    padding: var(--s-3) var(--s-4) var(--s-5);
-    color: var(--fgColor-default);
-}
-/* A single-column form/detail view (RequestForm, RequestSummary,
-   SettingsView, ConfigureAttributes, and the inline create-forms in
-   ConfigureLists/ConfigureMCPServers) shouldn't stretch to .page's
-   full 1400px -- a Label/Base URL text field or a lone checkbox row
-   at that width reads as a mostly-empty page with a few controls
-   stranded in it. 960px keeps every multi-input row in
-   ManualSchemaEditor's Parameters/Output tables from wrapping while
-   capping single-line fields to a readable width. */
-.formPage {
-    --wails-draggable: no-drag;
-    max-width: 960px;
-    margin: 0 auto;
-    padding: var(--s-3) var(--s-4) var(--s-5);
-    color: var(--fgColor-default);
-}
+   applied alongside PageContainer's own wrapper (shared/PageContainer.tsx,
+   which replaced this module's old .page/.formPage classes -- see
+   docs/SPEC.md's "Window/scroll layout foundation" Update). */
 .subtitle { margin: 0 0 var(--s-3); }
 .muted { color: var(--fgColor-muted); }
 .card {

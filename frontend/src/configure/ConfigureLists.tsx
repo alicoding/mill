@@ -5,6 +5,7 @@ import { ConfigureService } from '../../bindings/github.com/alicoding/mill'
 import type { List } from '../../bindings/github.com/alicoding/mill/internal/domain/list/models'
 import { downloadJSON } from '../shared/downloadJSON'
 import styles from '../shared/ListCard.module.css'
+import PageContainer from '../shared/PageContainer'
 
 interface EntryRow {
   key: string
@@ -105,7 +106,7 @@ export function ConfigureLists() {
   }
 
   return (
-    <div className={styles.page} data-testid="configure-lists">
+    <PageContainer data-testid="configure-lists">
       <Stack direction="horizontal" justify="space-between" align="center" className={styles.sectionHeading}>
         <Heading as="h2" variant="small">Lists</Heading>
         <Stack direction="horizontal" gap="condensed">
@@ -130,7 +131,7 @@ export function ConfigureLists() {
       )}
 
       {formOpen && (
-        <div className={styles.formPage}>
+        <PageContainer variant="narrow">
         <div className={styles.card}>
           <Stack direction="vertical" gap="condensed">
             <FormControl>
@@ -161,7 +162,7 @@ export function ConfigureLists() {
             </Stack>
           </Stack>
         </div>
-        </div>
+        </PageContainer>
       )}
 
       {lists === null && <Text as="p" className={styles.muted}>Loading…</Text>}
@@ -195,6 +196,6 @@ export function ConfigureLists() {
           ))}
         </Stack>
       )}
-    </div>
+    </PageContainer>
   )
 }

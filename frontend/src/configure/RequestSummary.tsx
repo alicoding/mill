@@ -12,6 +12,7 @@ import { headersToRows, rowsToHeaders } from './requestHeaders'
 import { parseOpenAPIToOperations } from './openapiSynth'
 import { AUTH_LABEL, AUTH_UNIMPLEMENTED } from './authTypeLabels'
 import styles from '../shared/ListCard.module.css'
+import PageContainer from '../shared/PageContainer'
 
 // docs/adr/0014: the read-only view of a saved request -- four tabs
 // (Details/Available attributes/Input parameters/Testing), matching
@@ -65,7 +66,7 @@ export function RequestSummary({ request, onEdit, onDuplicate, onDelete }: {
   const testOperations = request.OpenAPISpec ? parseOpenAPIToOperations(request.OpenAPISpec).operations : []
 
   return (
-    <div className={styles.formPage}>
+    <PageContainer variant="narrow">
     <div className={styles.card} data-testid="request-summary">
       <Stack direction="horizontal" justify="space-between" align="center" className={styles.sectionHeading}>
         <Stack direction="horizontal" gap="condensed" align="center">
@@ -159,7 +160,7 @@ export function RequestSummary({ request, onEdit, onDuplicate, onDelete }: {
         </TabPanel>
       </Tabs>
     </div>
-    </div>
+    </PageContainer>
   )
 }
 

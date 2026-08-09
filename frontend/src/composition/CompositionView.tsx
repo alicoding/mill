@@ -14,6 +14,7 @@ import TestRunDialog from './TestRunDialog'
 import { TabItem, TabList, TabPanel } from '../shared/Tabs'
 import styles from '../shared/ListCard.module.css'
 import editorStyles from './CompositionView.module.css'
+import PageContainer from '../shared/PageContainer'
 
 // A workflow's Nodes/Edges are an unordered graph on the wire -- this
 // walks them into the single execution-order chain composition.go's own
@@ -329,7 +330,7 @@ function CompositionView() {
       </TabList>
 
       <TabPanel value={WORKFLOWS_TAB}>
-        <div className={styles.page} data-testid="composition-view">
+        <PageContainer data-testid="composition-view">
           <Heading as="h1">Workflows</Heading>
           <Text as="p" className={styles.subtitle}>
             Compose a workflow by connecting trigger, capture, process, and
@@ -451,7 +452,7 @@ function CompositionView() {
               ))}
             </Stack>
           )}
-        </div>
+        </PageContainer>
       </TabPanel>
 
       {nodeTypes !== null && tabs.map((t) => {
