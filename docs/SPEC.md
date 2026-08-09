@@ -3029,6 +3029,42 @@ this pass.
   "config surface for a decision that doesn't exist yet" trap
   `.claude/rules/architecture.md` warns against, not a genuine gap like
   the three items above were. Left as real, named future work.
+- **Update — a tray icon (task #8) is now built, distinct from the
+  dock-badge/notifications services this bullet names above (Wails3's
+  `dock`/`notifications` packages) and from the still-`OPEN`
+  menu-bar/dock-presence *toggle*.** Answers the same "is Mill running"
+  question this section's own earlier Thread 1 research already
+  converged on (a persistent menu-bar icon is the pattern
+  Raycast/Alfred/1Password all use for this, not a separate status
+  API) — a real, unused-until-now Wails3 `SystemTray` API
+  (`app.SystemTray.New()`, confirmed by reading
+  `pkg/application/systemtray.go`/`system_tray_manager.go` directly,
+  zero new dependency, same tier of finding as the earlier updater/
+  window-geometry discoveries). Deliberately **coexists with the dock
+  icon** rather than replacing it — the safer, reversible default
+  named directly in the session goal that built this, not a
+  menu-bar-only redesign; `ApplicationShouldTerminateAfterLastWindowClosed`
+  stays `true`, unchanged. Clicking the tray icon calls a new
+  `SettingsService.ShowWindow()` — extracted from the summon hotkey's
+  own existing show/restore/focus sequence (`bindSummon`) rather than
+  duplicated, so the tray icon and the summon hotkey share one
+  behavior with two triggers. A right-click menu offers "Show Mill"/
+  "Quit". Uses the existing `build/appicon.png` (1024×1024, full
+  color) as the tray image via `SetIcon`, not `SetTemplateIcon` --
+  macOS's monochrome-template-icon convention would need a dedicated
+  small alpha-only asset Mill doesn't have yet, named here as a real,
+  minor polish gap rather than silently switched to a mismatched
+  asset. Verified: compiles clean on both desktop and
+  `CGO_ENABLED=0` server-mode build tags (`SystemTray`/`Menu`/`Quit`
+  all resolve identically regardless of tag, matching how window
+  creation itself is already unconditional in `main.go`), a real
+  server-mode Playwright smoke run confirms no startup crash, and a
+  new Go test (`TestShowWindow_NilWindow_DoesNotPanic`) covers the
+  nil-window guard now that `ShowWindow` has two callers instead of
+  one. Not independently verified visually on the real macOS menu bar
+  in this pass (no screen access from this session) -- task #14's own
+  Wails3 MCP spike, or a manual check, is the way to actually see it
+  render.
 - **Update — navigational/app state persistence, researched then
   built.** Prompted directly by the user asking what Mill is missing
   and what Wails itself recommends here. **Researched, not assumed**:
