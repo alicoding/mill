@@ -101,7 +101,7 @@ function SettingsView() {
   }
 
   return (
-    <div className={styles.page} data-testid="settings-view">
+    <div className={styles.formPage} data-testid="settings-view">
       <Heading as="h1">Settings</Heading>
       <Text as="p" className={styles.subtitle}>
         App-level preferences -- not workflow or Configure-authored data (that lives in Composition/Configure), a
