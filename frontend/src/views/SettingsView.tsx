@@ -44,12 +44,17 @@ function SettingsView() {
   const [updateStatus, setUpdateStatus] = useState('')
   const [updateChecking, setUpdateChecking] = useState(false)
 
+  const [mcpWriteEnabled, setMCPWriteEnabledState] = useState<boolean | null>(null)
+
   useEffect(() => {
     SettingsService.GetLaunchAtLogin()
       .then(setLaunchAtLoginState)
       .catch((err) => setLaunchAtLoginError(String(err)))
     SettingsService.GetSummonHotkey()
       .then((label) => setSummonBinding(label || null))
+      .catch(console.error)
+    SettingsService.GetMCPWriteEnabled()
+      .then(setMCPWriteEnabledState)
       .catch(console.error)
   }, [])
 
@@ -167,6 +172,25 @@ function SettingsView() {
           )}
         </Stack>
       )}
+
+      <Heading as="h2" variant="small" className={styles.sectionHeading}>MCP access</Heading>
+      <FormControl>
+        <Checkbox
+          checked={mcpWriteEnabled ?? false}
+          disabled={mcpWriteEnabled === null}
+          onChange={(e) => {
+            const enabled = e.target.checked
+            SettingsService.SetMCPWriteEnabled(enabled).then(() => setMCPWriteEnabledState(enabled)).catch(console.error)
+          }}
+          data-testid="mcp-write-enabled-checkbox"
+        />
+        <FormControl.Label>Allow MCP clients to import data</FormControl.Label>
+        <FormControl.Caption>
+          Off by default (docs/adr/0017): when on, an external MCP client connected to Mill&apos;s local MCP
+          server can create workflows, integrations, lists, and MCP-server entries via the import tools --
+          reading/exporting is always allowed and never includes secrets. Applies immediately, no restart.
+        </FormControl.Caption>
+      </FormControl>
 
       <Heading as="h2" variant="small" className={styles.sectionHeading}>Updates</Heading>
       <Stack direction="horizontal" gap="condensed" align="center">
