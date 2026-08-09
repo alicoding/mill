@@ -74,6 +74,7 @@ func (c *ConfigureService) resolveHTTPRequest(id string) (composition.ResolvedHT
 	return composition.ResolvedHTTPRequest{
 		BaseURL:           req.BaseURL,
 		Method:            req.Method,
+		Body:              req.Body,
 		AuthType:          req.AuthType,
 		Headers:           req.Headers,
 		Secret:            secret,
@@ -100,10 +101,10 @@ func (c *ConfigureService) HTTPRequests() []httprequest.HTTPRequest {
 // twice via scripted regex when Auth/JOSE were added), worth an
 // options-struct pass at some point, but that's a separate, bigger
 // refactor than "add a field" -- not done speculatively here.
-func (c *ConfigureService) CreateHTTPRequest(label, baseURL, method string, authType httprequest.AuthType, headers map[string]string, openAPISpec string, auth *httprequest.AuthConfig, jose *httprequest.JOSEConfig, description string) (httprequest.HTTPRequest, error) {
+func (c *ConfigureService) CreateHTTPRequest(label, baseURL, method, body string, authType httprequest.AuthType, headers map[string]string, openAPISpec string, auth *httprequest.AuthConfig, jose *httprequest.JOSEConfig, description string) (httprequest.HTTPRequest, error) {
 	req := httprequest.HTTPRequest{
 		ID: newSlugID(label, "request"), Label: label,
-		BaseURL: baseURL, Method: strings.TrimSpace(method), AuthType: authType, Headers: headers, OpenAPISpec: openAPISpec, Auth: auth, JOSE: jose,
+		BaseURL: baseURL, Method: strings.TrimSpace(method), Body: body, AuthType: authType, Headers: headers, OpenAPISpec: openAPISpec, Auth: auth, JOSE: jose,
 		Description: description,
 	}
 	if err := httprequest.Validate(req); err != nil {
@@ -121,9 +122,9 @@ func (c *ConfigureService) CreateHTTPRequest(label, baseURL, method string, auth
 	return req, nil
 }
 
-func (c *ConfigureService) UpdateHTTPRequest(id, label, baseURL, method string, authType httprequest.AuthType, headers map[string]string, openAPISpec string, auth *httprequest.AuthConfig, jose *httprequest.JOSEConfig, description string) (httprequest.HTTPRequest, error) {
+func (c *ConfigureService) UpdateHTTPRequest(id, label, baseURL, method, body string, authType httprequest.AuthType, headers map[string]string, openAPISpec string, auth *httprequest.AuthConfig, jose *httprequest.JOSEConfig, description string) (httprequest.HTTPRequest, error) {
 	req := httprequest.HTTPRequest{
-		ID: id, Label: label, BaseURL: baseURL, Method: strings.TrimSpace(method), AuthType: authType, Headers: headers,
+		ID: id, Label: label, BaseURL: baseURL, Method: strings.TrimSpace(method), Body: body, AuthType: authType, Headers: headers,
 		OpenAPISpec: openAPISpec, Auth: auth, JOSE: jose, Description: description,
 	}
 	if err := httprequest.Validate(req); err != nil {

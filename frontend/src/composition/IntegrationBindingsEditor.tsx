@@ -5,14 +5,16 @@ import type { Field, Operation } from '../../bindings/github.com/alicoding/mill/
 import type { AttributeDef } from '../../bindings/github.com/alicoding/mill/internal/domain/composition/models'
 import { LiteralOrAttributeField } from '../shared/LiteralOrAttributeField'
 
-// ADR-0007 Phase 3: once a selected request has an OpenAPI spec and
-// path+method match one of its declared operations, this renders a
-// binding row per declared input/output field instead of leaving
-// integration-http's literal bodyTemplate as the only option. Silently
-// renders nothing when there's no matching operation (no spec, or
-// path/method don't match a declared one yet) -- same "no UI for a
-// decision that doesn't exist" discipline as the rest of this codebase,
-// not an error state.
+// ADR-0007 Phase 3, reshaped by the transport-lives-on-the-integration
+// decision: the node no longer authors path/method, so this editor
+// resolves the selected integration's own declared operation itself --
+// list its operations, take the single one (the 1:1 request:operation
+// model; a legacy multi-operation spec uses its first, in
+// ListHTTPRequestOperations' stable order), and render a binding row
+// per declared input/output field. Silently renders nothing when
+// there's no spec or no operation -- same "no UI for a decision that
+// doesn't exist" discipline as the rest of this codebase, not an error
+// state.
 const DISCARD = '__discard__'
 
 function parseJSON(raw: string): Record<string, string> {
@@ -25,11 +27,9 @@ function parseJSON(raw: string): Record<string, string> {
 }
 
 export function IntegrationBindingsEditor({
-  requestId, path, method, attrs, inputBindingsRaw, outputBindingsRaw, onChangeInputBindings, onChangeOutputBindings,
+  requestId, attrs, inputBindingsRaw, outputBindingsRaw, onChangeInputBindings, onChangeOutputBindings,
 }: {
   requestId: string
-  path: string
-  method: string
   attrs: AttributeDef[]
   inputBindingsRaw: string
   outputBindingsRaw: string
@@ -39,14 +39,21 @@ export function IntegrationBindingsEditor({
   const [operation, setOperation] = useState<Operation | null | 'none'>(null)
 
   useEffect(() => {
-    if (!requestId || !path || !method) {
+    if (!requestId) {
       setOperation('none')
       return
     }
-    ConfigureService.HTTPRequestOperationFields(requestId, path, method)
-      .then(setOperation)
-      .catch(() => setOperation('none'))
-  }, [requestId, path, method])
+    let cancelled = false
+    ConfigureService.ListHTTPRequestOperations(requestId)
+      .then((ops) => {
+        const list = ops ?? []
+        if (list.length === 0) throw new Error('no operations')
+        return ConfigureService.HTTPRequestOperationFields(requestId, list[0].Path, list[0].Method)
+      })
+      .then((op) => { if (!cancelled) setOperation(op) })
+      .catch(() => { if (!cancelled) setOperation('none') })
+    return () => { cancelled = true }
+  }, [requestId])
 
   if (operation === null || operation === 'none') return null
   const inputFields = operation.InputFields ?? []

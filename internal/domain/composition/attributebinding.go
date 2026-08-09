@@ -60,12 +60,16 @@ func parseBindings(raw string) (map[string]string, error) {
 // (docs/SPEC.md §4.1) -- both returned alongside the resolved request
 // so the caller can hand them to applyOutputBindings after the HTTP
 // call completes without parsing the spec a second time.
-func resolveInputBindings(specDoc string, config map[string]string, attrs map[string]any) (path, body string, headers map[string]string, query url.Values, outputFields []openapispec.Field, responseExtractPath string, err error) {
+func resolveInputBindings(specDoc string, config map[string]string, attrs map[string]any, opPath, opMethod string) (path, body string, headers map[string]string, query url.Values, outputFields []openapispec.Field, responseExtractPath string, err error) {
 	doc, err := openapispec.Parse([]byte(specDoc))
 	if err != nil {
 		return "", "", nil, nil, nil, "", fmt.Errorf("parse request spec: %w", err)
 	}
-	op, err := doc.Operation(config["path"], config["method"])
+	// opPath/opMethod are resolved by the caller (integration.go): a
+	// legacy node's own persisted path/method config when present, else
+	// the request's own declaration (its Method + its single declared
+	// operation's path) -- the node no longer authors these.
+	op, err := doc.Operation(opPath, opMethod)
 	if err != nil {
 		return "", "", nil, nil, nil, "", err
 	}
@@ -74,7 +78,7 @@ func resolveInputBindings(specDoc string, config map[string]string, attrs map[st
 		return "", "", nil, nil, nil, "", fmt.Errorf("inputBindings: %w", err)
 	}
 
-	path = config["path"]
+	path = opPath
 	headers = map[string]string{}
 	query = url.Values{}
 	bodyFields := map[string]any{}

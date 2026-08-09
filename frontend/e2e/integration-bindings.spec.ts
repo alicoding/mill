@@ -97,14 +97,9 @@ test('Matching an Integration node to a declared operation shows a binding edito
   const inspector = activePanel(page).getByTestId('composition-inspector')
   await inspector.getByTestId('entity-ref-field').selectOption({ label: 'E2E bindings request' })
 
-  const configFields = inspector.getByTestId('canvas-config-field')
-  await configFields.nth(0).fill('/widgets/{id}') // path
-  await configFields.nth(0).blur()
-  // Method is an open TextInput with a datalist of suggestions, not a
-  // closed Select (ADR-0016) -- fill/blur, not selectOption.
-  await configFields.nth(1).selectOption('POST') // method -- a Select now (user decision)
-  await configFields.nth(1).blur()
-
+  // No path/method to fill -- transport lives on the integration
+  // itself now (its single declared operation), and the bindings
+  // editor resolves it automatically once the integration is picked.
   const editor = inspector.getByTestId('integration-bindings-editor')
   await expect(editor).toBeVisible()
   await expect(editor).toContainText('id')

@@ -71,7 +71,7 @@ test('Selecting an Integration node offers a live request picker with inline qui
 
   await activePanel(page).locator('.react-flow__node').click()
   const inspector = activePanel(page).getByTestId('composition-inspector')
-  await expect(inspector).toContainText('Request ID')
+  await expect(inspector).toContainText('Integration')
 
   const picker = inspector.getByTestId('entity-ref-field')
   await expect(picker).toBeVisible()

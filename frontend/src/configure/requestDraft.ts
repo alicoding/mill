@@ -20,6 +20,9 @@ export interface RequestDraft {
   // ADR-0016 Phase B: Method and URL are peers on the request object
   // (Postman/Bruno's shape) -- open text, any method accepted.
   method: string
+  // Raw request body sent as-is when the schema's bound body fields
+  // don't produce one -- request-level, never workflow-node-level.
+  body: string
   authType: AuthType
   // Single-secret AuthTypes (APIKey/Bearer/HMAC's signing key/OAuth2's
   // ClientSecret) all reuse this one field -- OAuth1 is the exception
@@ -53,7 +56,7 @@ export interface RequestDraft {
 }
 
 export const EMPTY_DRAFT: RequestDraft = {
-  label: '', description: '', baseURL: '', method: 'GET', authType: AuthType.AuthNone, secret: '', openAPISpec: '',
+  label: '', description: '', baseURL: '', method: 'GET', body: '', authType: AuthType.AuthNone, secret: '', openAPISpec: '',
   oauth2TokenURL: '', oauth2ClientID: '', oauth2Scope: '',
   hmacHeaderName: '',
   oauth1ConsumerKey: '', oauth1Token: '', oauth1ConsumerSecret: '', oauth1TokenSecret: '',
@@ -62,7 +65,7 @@ export const EMPTY_DRAFT: RequestDraft = {
 
 export function draftFrom(r: HTTPRequest): RequestDraft {
   return {
-    label: r.Label, description: r.Description, baseURL: r.BaseURL, method: r.Method || 'GET', authType: r.AuthType, secret: '', openAPISpec: r.OpenAPISpec,
+    label: r.Label, description: r.Description, baseURL: r.BaseURL, method: r.Method || 'GET', body: r.Body ?? '', authType: r.AuthType, secret: '', openAPISpec: r.OpenAPISpec,
     oauth2TokenURL: r.Auth?.OAuth2?.TokenURL ?? '',
     oauth2ClientID: r.Auth?.OAuth2?.ClientID ?? '',
     oauth2Scope: r.Auth?.OAuth2?.Scope ?? '',
