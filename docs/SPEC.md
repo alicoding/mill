@@ -1873,12 +1873,24 @@ turns out to solve this without touching that dispute).
   loopback-only — a new, unauthenticated local listener, conservative
   until a real access-control need is named. Runs in both desktop and
   server-mode builds (no build tag); a bind failure is logged, not
-  fatal. The write side (create/import a workflow or Configure entity
-  via MCP Tools) is deliberately not built here — programmatic,
-  non-human-initiated writes are a materially different risk than
-  read-only exposure, tracked separately from §8's still-`OPEN`
-  guardrail policy and now scoped in its own ADR,
-  [ADR-0017](adr/0017-mcp-write-tools-guardrail-scope.md) (`proposed`).
+  fatal.
+  **The write side is now built, behind ADR-0017 Option B's coarse
+  gate — prompted by an explicit user request for MCP-side management
+  of Mill's data.** Eight MCP Tools (`millmcpservice_tools.go`) over
+  the same export/import model the UI's own buttons use:
+  `export_workflow`/`export_request`/`export_list`/`export_mcpserver`
+  (read-only, ungated — the Resources' data reshaped as callable
+  tools) and `import_*` equivalents (always mint a new ID, never
+  overwrite, never touch a secret), the latter all gated by a
+  **default-off Settings toggle** ("Allow MCP clients to import data",
+  read fresh per call so it applies immediately). Proven against a
+  real MCP client over real HTTP: import is rejected with a
+  clear go-enable-it-in-Settings error while off, writes nothing, and
+  succeeds minting a new ID once a human flips the toggle.
+  [ADR-0017](adr/0017-mcp-write-tools-guardrail-scope.md) `accepted`
+  for this scope; its per-write synchronous-approval half (and the two
+  host-behavior sub-questions) stays open, deliberately — the toggle
+  is per-instance opt-in, not a resolution of §8.
 
 ### 3.7 Global app settings
 

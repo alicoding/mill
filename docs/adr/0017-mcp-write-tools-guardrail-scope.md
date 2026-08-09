@@ -1,6 +1,6 @@
 # ADR-0017: Guardrail scope for MCP-driven writes (design only — not implemented)
 
-Status: proposed
+Status: accepted (coarse default-off gate + export/import tools; per-write approval still proposed -- see Update)
 
 ## Context
 
@@ -120,3 +120,40 @@ guessed at here:**
 
 `proposed` — no implementation exists or is planned until the two open
 sub-questions above are answered. `docs/SPEC.md` §8 remains `OPEN`.
+
+## Update — export/import tools shipped behind Option B's coarse gate; per-write approval still open
+
+The user explicitly asked for MCP-side management of Mill's data
+("manage the app data ... including import or export JSON for Workflow
+or Configure ... that also include List") -- the human decision this
+ADR was waiting on for whether the capability should exist at all.
+What shipped (`millmcpservice_tools.go`):
+
+- **Eight tools over the existing export/import model** — `export_workflow`/
+  `export_request`/`export_list`/`export_mcpserver` (read-only,
+  ungated -- the same data the Resources already expose, reshaped as
+  callable tools since real hosts reach for tools far more readily
+  than resources) and `import_workflow`/`import_request`/`import_list`/
+  `import_mcpserver` (each a thin wrapper over the exact `Import*`
+  method the UI's own Import button calls -- always mints a new ID,
+  never overwrites, never touches a secret).
+- **Option B's authoring-capability gate, coarse half**: a default-off
+  Settings toggle ("Allow MCP clients to import data",
+  `SettingsService.Get/SetMCPWriteEnabled`, stored as
+  `mcp-write-tools-enabled`), read fresh on every import call so
+  flipping it applies immediately. While off, an import tool returns a
+  tool-error pointing the agent at Mill's Settings page -- proven
+  against a real MCP client over real HTTP
+  (`TestMillMCPService_Tools_ImportGatedExportOpen`), including that
+  nothing is written while the gate is off.
+
+**Deliberately not shipped, still open — not silently resolved**: the
+per-write synchronous human approval (Option B's second half) and its
+two sub-questions (host timeout tolerance for a blocking tool call;
+what the approval dialog renders). The toggle is per-instance opt-in a
+human sets in Mill's own UI -- a real gate, but coarser than
+per-write approval; revisit once §8's guardrail machinery exists to
+hang a real approval flow on.
+
+Status: `accepted` (the gate + tool set above); the per-write-approval
+half stays `proposed` future work.

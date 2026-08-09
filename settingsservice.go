@@ -428,3 +428,23 @@ func (s *SettingsService) CheckForUpdates() (UpdateCheckResult, error) {
 	}
 	return UpdateCheckResult{UpdateAvailable: true, Version: rel.Version, Notes: rel.Notes}, nil
 }
+
+// GetMCPWriteEnabled/SetMCPWriteEnabled own the default-off gate for
+// Mill's MCP import tools (millmcpservice_tools.go, ADR-0017's
+// Update): whether an external MCP client may create workflows/
+// Configure entities on this instance. Default off -- absence of the
+// key means disabled, same fail-safe posture as §8's guardrail
+// default. The MCP service reads the same key fresh per call, so a
+// toggle applies immediately.
+func (s *SettingsService) GetMCPWriteEnabled() bool {
+	v, ok := s.store.Get(mcpWriteEnabledKey).(string)
+	return ok && v == "true"
+}
+
+func (s *SettingsService) SetMCPWriteEnabled(enabled bool) {
+	val := "false"
+	if enabled {
+		val = "true"
+	}
+	_ = s.store.Set(mcpWriteEnabledKey, val)
+}
