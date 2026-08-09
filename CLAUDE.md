@@ -98,7 +98,8 @@ file. See `docs/SPEC.md` §9.1 for that split's own rationale.
 
 - `task setup:hooks` — run once after cloning: installs Lefthook's
   pre-commit hooks (lint/vet/build, mirrors CI). Requires `brew install
-  lefthook golangci-lint` first.
+  lefthook golangci-lint` and `go install
+  github.com/loeffel-io/ls-lint/v2/cmd/ls_lint@v2.3.1` first.
 - `task dev` — run the app in dev mode with hot reload (frontend + backend).
   Wipes `bin/` first (`task clean`, a dependency of `dev`/`build`/
   `build:server`) so there's never more than one ambiguous binary

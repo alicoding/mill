@@ -19,6 +19,14 @@ pre-commit:
       # supports it, Mill doesn't use it yet).
       glob: ".claude/rules/*.md"
       run: ./scripts/check-rules-frontmatter.sh
+    - name: root-file-naming
+      glob: "*.go"
+      # Mirrors CI's own root-file-naming job -- ls-lint (adopted, see
+      # .ls-lint.yml's own header for the config shape verified
+      # empirically). Requires `go install
+      # github.com/loeffel-io/ls-lint/v2/cmd/ls_lint@v2.3.1` once locally
+      # (same one-time-setup shape as golangci-lint itself).
+      run: ls_lint
     - name: go-vet
       glob: "*.go"
       run: go vet . ./internal/...
