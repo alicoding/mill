@@ -9,6 +9,7 @@ import ConfigureView from "../configure/ConfigureView";
 import SettingsView from "../views/SettingsView";
 import PlaceholderView from "../views/PlaceholderView";
 import { CompositionService, CapabilitiesService, SettingsService } from "../../bindings/github.com/alicoding/mill";
+import type { BuildInfo } from "../../bindings/github.com/alicoding/mill/models";
 import { useAppStore, viewFor, viewsEqual, statusDotColor } from "../shared/store";
 import type { View } from "../shared/store";
 import { COLOR_MODE_STORAGE_KEY, SIDEBAR_OPEN_STORAGE_KEY } from "./theme";
@@ -40,6 +41,14 @@ function App() {
   // you're looking at (settingsservice.go's IsIsolatedData doc comment
   // has the full reasoning).
   const [isIsolatedData, setIsIsolatedData] = useState(false);
+  // Which commit this specific running instance was actually built
+  // from -- distinct from wailsVersion (which Wails SDK the project was
+  // generated against, a constant). Real gap this closes: a desktop app
+  // process silently stayed running across an entire session's worth of
+  // commits with nothing anywhere flagging it stale (isDevBuild's own
+  // ribbon only fires for a live `vite serve`, never for any `go build`
+  // output, dev or not).
+  const [buildInfo, setBuildInfo] = useState<BuildInfo | null>(null);
   const workflows = useAppStore((s) => s.workflows);
   const setWorkflows = useAppStore((s) => s.setWorkflows);
   const pushActivity = useAppStore((s) => s.pushActivity);
@@ -173,6 +182,10 @@ function App() {
 
   useEffect(() => {
     SettingsService.IsIsolatedData().then(setIsIsolatedData).catch(console.error);
+  }, []);
+
+  useEffect(() => {
+    SettingsService.GetBuildInfo().then(setBuildInfo).catch(console.error);
   }, []);
 
   // Subscribed here, not inside ActivityView/CompositionView, so a
@@ -333,6 +346,11 @@ function App() {
       <footer className={styles.footer}>
         <span className={styles.version}>
           <span>{wailsVersion}</span>
+          {buildInfo?.Revision && (
+            <span title={buildInfo.Modified ? 'Built with uncommitted changes' : 'Commit this build was built from'}>
+              · {buildInfo.Revision.slice(0, 7)}{buildInfo.Modified && '*'}
+            </span>
+          )}
         </span>
         <span className={styles.time}>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
