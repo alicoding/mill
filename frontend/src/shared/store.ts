@@ -109,6 +109,15 @@ interface AppState {
   pushActivity: (entry: ActivityEntry) => void
   setCapabilities: (capabilities: Capability[]) => void
   setView: (view: View) => void
+  // A cross-view "open this workflow's editor" request (docs/SPEC.md
+  // §3.8's hover-preview): set by any surface showing a workflow
+  // reference (an Activity row, a child-workflow step), consumed by
+  // CompositionView (which owns the editor tabs and clears it after
+  // opening). A store field rather than a callback prop because the
+  // requester and the tab owner live in different view trees.
+  openWorkflowRequest: string | null
+  requestOpenWorkflow: (id: string) => void
+  clearOpenWorkflowRequest: () => void
 }
 
 // Shared across App/ActivityView/SpecView (SPEC.md §1.3): App.tsx still
@@ -152,6 +161,9 @@ export const useAppStore = create<AppState>()(
         set((state) => ({ activity: [entry, ...state.activity].slice(0, MAX_ACTIVITY_ENTRIES) })),
       setCapabilities: (capabilities) => set({ capabilities }),
       setView: (view) => set({ view }),
+      openWorkflowRequest: null,
+      requestOpenWorkflow: (id) => set({ openWorkflowRequest: id, view: { kind: 'composition' } as View }),
+      clearOpenWorkflowRequest: () => set({ openWorkflowRequest: null }),
     }),
     {
       name: 'mill-app-view',
