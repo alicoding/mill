@@ -2,11 +2,14 @@ import { test, expect } from '@playwright/test'
 
 // Real Go bindings over HTTP (Wails3 server mode), not mocks -- same
 // setup as the rest of this suite. Exercises task #9's in-window Cmd+1
-// through Cmd+5 view hotkeys (App.tsx), each checked against a real,
+// through Cmd+4 view hotkeys (App.tsx), each checked against a real,
 // already-existing marker unique to that view rather than a new testid
-// added just for this test.
+// added just for this test. Cmd+4 now lands on Spec, not Runs -- a
+// durable run's history/redrive moved onto that workflow's own Runs tab
+// (docs/SPEC.md §7's Update), so there's no fifth top-level destination
+// to bind a hotkey to anymore.
 
-test('Cmd+1 through Cmd+5 jump to their view from anywhere else in the app', async ({ page }) => {
+test('Cmd+1 through Cmd+4 jump to their view from anywhere else in the app', async ({ page }) => {
   await page.goto('/')
 
   // Start on Composition (the default landing view) and confirm each
@@ -21,9 +24,6 @@ test('Cmd+1 through Cmd+5 jump to their view from anywhere else in the app', asy
   await expect(page.getByRole('heading', { name: 'Activity', level: 1 })).toBeVisible()
 
   await page.keyboard.press('Meta+4')
-  await expect(page.getByRole('heading', { name: 'Runs', level: 1 })).toBeVisible()
-
-  await page.keyboard.press('Meta+5')
   await expect(page.getByTestId('capability-index')).toBeVisible()
 
   await page.keyboard.press('Meta+1')

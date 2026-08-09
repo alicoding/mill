@@ -221,8 +221,29 @@ func (e *ExecutionService) RunWorkflow(workflowID string, kind RunKind, values m
 }
 
 // ListRuns returns recent runs across every workflow, most recent
-// first -- the data behind an Executions-style run-history list.
+// first -- the data behind Activity's cross-workflow "did anything run"
+// feed and any other surface needing every run regardless of which
+// workflow it belongs to.
 func (e *ExecutionService) ListRuns() ([]RunSummary, error) {
+	return e.listRuns(nil)
+}
+
+// ListRunsForWorkflow returns recent runs for one workflow only, most
+// recent first -- the data behind a workflow's own Runs tab
+// (docs/SPEC.md §7's Update: durable-run visibility moved from a
+// standalone page into the workflow it belongs to, per real precedent
+// -- n8n/Retool/Airflow all scope this to the individual workflow's own
+// page, never a global page reached via a workflow picker). DBOS has no
+// native filter on runInput.WorkflowID (an arbitrary field inside the
+// generically-serialized Input, not something ListWorkflows' own
+// filters -- WithFilterWorkflowIDs et al. -- can query against), so this
+// filters post-decode the same way summaryFromStatus already decodes
+// runInput for every other field.
+func (e *ExecutionService) ListRunsForWorkflow(workflowID string) ([]RunSummary, error) {
+	return e.listRuns(&workflowID)
+}
+
+func (e *ExecutionService) listRuns(filterWorkflowID *string) ([]RunSummary, error) {
 	statuses, err := execution.ListWorkflows(e.ctx,
 		execution.WithFilterName(millRunWorkflowName),
 		execution.WithFilterSortDesc(),
@@ -234,7 +255,11 @@ func (e *ExecutionService) ListRuns() ([]RunSummary, error) {
 
 	summaries := make([]RunSummary, 0, len(statuses))
 	for _, st := range statuses {
-		summaries = append(summaries, e.summaryFromStatus(st))
+		summary := e.summaryFromStatus(st)
+		if filterWorkflowID != nil && summary.WorkflowID != *filterWorkflowID {
+			continue
+		}
+		summaries = append(summaries, summary)
 	}
 	return summaries, nil
 }

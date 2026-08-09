@@ -45,7 +45,6 @@ export type View =
   | { kind: 'activity' }
   | { kind: 'composition' }
   | { kind: 'configure' }
-  | { kind: 'runs' }
   | { kind: 'settings' }
   | { kind: 'spec' }
   | { kind: 'placeholder'; capabilityId: string }
@@ -61,8 +60,6 @@ export function viewFor(capability: Capability): View {
       return { kind: 'composition' }
     case ViewKind.ViewConfigure:
       return { kind: 'configure' }
-    case ViewKind.ViewRuns:
-      return { kind: 'runs' }
     default:
       return { kind: 'placeholder', capabilityId: capability.ID }
   }

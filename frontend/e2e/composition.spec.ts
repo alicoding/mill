@@ -29,8 +29,15 @@ function workflowRow(page: import('@playwright/test').Page, label: string) {
 // more than one tab is open, un-scoped queries can match elements in
 // tabs that merely aren't visible right now. Every test that opens more
 // than one tab scopes through this.
+// .last(), not a bare match: a saved workflow's editor tab now nests a
+// second Canvas/Runs tab bar inside the outer per-workflow tab
+// (docs/SPEC.md §7's Update), so up to two [role="tabpanel"]:not([hidden])
+// elements can be visible at once (the outer workflow tab, the inner
+// Canvas/Runs one) -- document order always puts the outer one first,
+// so .last() reliably resolves to the innermost, most specific panel
+// regardless of whether a workflow has an inner tab bar or not.
 function activePanel(page: import('@playwright/test').Page) {
-  return page.locator('[role="tabpanel"]:not([hidden])')
+  return page.locator('[role="tabpanel"]:not([hidden])').last()
 }
 
 // Playwright's Locator.dragTo() simulates mouse events (mousedown/move/
@@ -304,15 +311,21 @@ test('Editing the same workflow twice reuses its tab instead of opening a duplic
   await activePanel(page).getByLabel('Label').fill('E2E reused-tab workflow')
   await activePanel(page).getByTestId('save-workflow').click()
 
+  // Scoped to the outer Workflows tablist: an already-saved workflow's
+  // editor tab now nests its own Canvas/Runs tablist inside it
+  // (docs/SPEC.md §7's Update), so an unscoped page-wide tab count would
+  // also catch those two inner tabs.
+  const outerTabs = page.getByRole('tablist', { name: 'Workflows' }).getByRole('tab')
+
   const row = workflowRow(page, 'E2E reused-tab workflow')
   await row.getByRole('button', { name: /Edit/ }).click()
-  await expect(page.getByRole('tab')).toHaveCount(2) // Workflows + one editor tab
+  await expect(outerTabs).toHaveCount(2) // Workflows + one editor tab
 
   // Back to the list without closing the editor tab, then Edit the same
   // workflow again -- must switch to the existing tab, not open a second.
   await page.getByRole('tab', { name: 'Workflows' }).click()
   await row.getByRole('button', { name: /Edit/ }).click()
-  await expect(page.getByRole('tab')).toHaveCount(2)
+  await expect(outerTabs).toHaveCount(2)
 
   await page.getByRole('tab', { name: 'Workflows' }).click()
   await row.getByRole('button', { name: /Delete/ }).click()

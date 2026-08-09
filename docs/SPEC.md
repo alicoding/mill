@@ -1133,8 +1133,8 @@ for this entry.
     unclear from the review), **ML Models** (already `OPEN`/deferred in
     ADR-0005's taxonomy discussion, §3.3), and **Jobs** (possibly Mill's
     Schedule-trigger concept, or a background-execution/queue view closer
-    to the Runs page — genuinely unclear which). `OPEN`, real future
-    research if any of these get prioritized.
+    to §7's own execution-tracking machinery — genuinely unclear which).
+    `OPEN`, real future research if any of these get prioritized.
 - **A consolidated review, scoped to record only directly-observed
   behavior, resolved/corrected several items above and found real new
   surface area.** Kept generic; still `OPEN` throughout, nothing decided
@@ -1278,9 +1278,9 @@ Plan step for this as a standing rule.
 | **List** (a reusable lookup/reference dataset) | Look up an Attributes value against a named, Configure-authored table, write the match back into Attributes | Build (core domain — no library has an opinion on Mill's own List model; the lookup itself is a plain map read) | `LOCKED` (execution) — `internal/domain/list.List{ID, Label, Entries}` + a new `list-lookup` `NodeType` (`KindProcess`) resolve a `listId` via `composition.SetListLookup` (same injected-seam pattern as Integration/Connector's `SetConnectorLookup`) and write the matched entry into `ExecContext.Attributes[outputKey]`. Not in ADR-0005's original taxonomy at all (a real gap flagged in §3.5) — added here as the first thing built against it. §3.5 stays `OPEN` on the Configure-surface UI to author a List |
 | **MCP tool call** (§3.6's extension point — call a tool on a Configure-authored MCP server) | Call one tool on a locally-configured MCP server over stdio, replace the payload with its text result | Wire protocol: adopt (`modelcontextprotocol/go-sdk`'s client role, via `internal/adapters/mcpclient`). Server config/CRUD: build, same shape as Connector | `LOCKED` (execution + authoring, end-to-end) — `internal/domain/mcpserver.MCPServer{ID, Label, Command, Args}` + a new `mcp-tool-call` `NodeType` (`KindProcess`) resolve an `mcpServerId` via `composition.SetMCPServerLookup` and call `toolName` with `argumentsJSON`. Verified against a real spawned subprocess (an official MCP reference server via `npx`), not just unit tests — see §3.6 for the full writeup. This is the "add a new capability without a core code change" answer §3.6 set out to find |
 | **Durable step execution / retry / resume** | Survive the process dying mid-workflow, checkpoint per step, retry transient failures | Adopt (DBOS-Go) | `LOCKED` — ADR-0004 `accepted`, `internal/adapters/execution` + `executionservice.go` built and e2e-verified; a real regression test (`TestResumeAfterFailure_DoesNotReExecuteCheckpointedStep`) proves a checkpointed step doesn't re-execute on resume against a real DBOS SQLite runtime. Since [ADR-0008](adr/0008-single-execution-path.md), this is the *only* execution path — every run is durable, not an opt-in alternative to a plain in-memory Run |
-| **Replay / re-run from history** | Re-invoke a past run, ideally resuming rather than restarting | Mechanism: adopt (DBOS `ForkWorkflow`/workflow-ID resume). UI/policy: build | `LOCKED` — the Runs page's "Redrive from here" (`ExecutionService.RedriveRun`, `dbos.ForkWorkflow`) is exactly this, built and e2e-verified |
+| **Replay / re-run from history** | Re-invoke a past run, ideally resuming rather than restarting | Mechanism: adopt (DBOS `ForkWorkflow`/workflow-ID resume). UI/policy: build | `LOCKED` — a workflow's own Runs tab's "Redrive from here" (`ExecutionService.RedriveRun`, `dbos.ForkWorkflow`) is exactly this, built and e2e-verified |
 | **Draft/live versioning** | Edit a workflow without breaking the currently-live version | Build (no library owns Mill's own versioning semantics) | Real gap flagged from the reference-platform review (§3.2), `OPEN` |
-| **Live + shadow events / execution history** | Filterable log of past runs; dry-run a candidate change against real traffic before trusting it | Data: adopt (DBOS `GetStatus`/`ListWorkflows`). UI: build | `LOCKED` (execution-history half) — §7's Runs page (`RunsView.tsx`, `ListWorkflows`/`GetWorkflowSteps`) built and e2e-verified. Shadow-events (dry-run a draft version against real traffic) stays unbuilt — no draft/live versioning concept exists yet (§3.2's own draft/live versioning gap, still real) |
+| **Live + shadow events / execution history** | Filterable log of past runs; dry-run a candidate change against real traffic before trusting it | Data: adopt (DBOS `GetStatus`/`ListWorkflows`). UI: build | `LOCKED` (execution-history half) — §7's per-workflow Runs tab (`WorkflowRunsPanel.tsx`, `ListRunsForWorkflow`/`GetWorkflowSteps`) built and e2e-verified. Shadow-events (dry-run a draft version against real traffic) stays unbuilt — no draft/live versioning concept exists yet (§3.2's own draft/live versioning gap, still real) |
 | **Guardrail preview / policy gate** | Approve/deny before a step actually runs | Build (core domain — no library has an opinion on Mill's guardrail semantics) | §8, `LOCKED` in shape, `OPEN` in detail |
 | **Visual composition surface** | Author a DAG, not just a list | Adopt (React Flow / `@xyflow/react`) — built ahead of ADR-0005 B2's original deferral trigger, by explicit decision (see the ADR's Update section) | §3, `CompositionCanvas.tsx`, `UX: PROTOTYPE` |
 
@@ -1359,8 +1359,8 @@ native parent/child execution via `dbos.RunWorkflow`, the
 `trigger-callable` entry-point NodeType, the `workflow` `RefKind` on
 the entity picker (ADR-0009), and `ExecContext.RunContext`'s opaque
 per-run seam). **Not built, named explicitly**: a "show this run's
-children" UI on the Runs page (`ParentWorkflowID` is already tracked
-via DBOS, just not surfaced), cascading cancel/delete-with-children
+children" UI on a workflow's own Runs tab (`ParentWorkflowID` is
+already tracked via DBOS, just not surfaced), cascading cancel/delete-with-children
 exposed anywhere in Mill's own UI, and cyclic child-workflow detection
 (A→B→A) — a real workflow hitting this is the trigger to revisit, not
 speculative upfront. `LOCKED`.
@@ -1896,9 +1896,10 @@ findings) and the build rationale are in
   a dedicated alpha-only asset Mill doesn't have yet, a named minor
   polish gap. Not independently verified on a real rendered macOS menu
   bar (no screen access in the session that built it).
-- **Per-view hotkeys** — Cmd+1 through Cmd+5 jump to a top-level view
-  (Composition/Configure/Activity/Runs/Spec, matching the sidebar
-  order), via a plain `keydown` listener in `App.tsx` calling
+- **Per-view hotkeys** — Cmd+1 through Cmd+4 jump to a top-level view
+  (Composition/Configure/Activity/Spec, matching the sidebar order,
+  down from an original five once Runs stopped being a top-level view —
+  §7's Update), via a plain `keydown` listener in `App.tsx` calling
   `useAppStore`'s existing `setView`. Deliberately **not** a real
   OS-level hotkey — in-window-only, so it doesn't need
   `TriggerService`'s claimed-combo conflict check the summon hotkey
@@ -1910,7 +1911,7 @@ findings) and the build rationale are in
   `LoadWindowGeometry`/`WatchWindowGeometry`, persisted via
   `internal/adapters/settings`, since only the backend has
   `Position()`/`Size()`); active view, open Composition/Configure tabs,
-  and Activity/Runs filters are `localStorage` via zustand's own
+  and Activity's own filters are `localStorage` via zustand's own
   `persist` middleware plus a shared `shared/persistedTabs.ts` helper.
   `WebviewWindowOptions` needs `InitialPosition: WindowXY` set
   explicitly or persisted `X`/`Y` are silently ignored (its zero value
@@ -2209,28 +2210,49 @@ Full rationale in [`docs/adr/0003-browser-bridge-architecture.md`](adr/0003-brow
   `executionservice.go`'s `RunWorkflow` (renamed from
   `RunWorkflowDurable`) is the single durable entrypoint, backed by
   `ListRuns`/`GetRun`/`RedriveRun`. Per [ADR-0008](adr/0008-single-execution-path.md)
-  (`accepted`), it's also the *only* execution path in the app — the
-  canvas Run button, the Runs page's quick-run picker, and
-  `TriggerService`'s headless listeners (hotkey/schedule/clipboard-watch/
-  filesystem-watch) all go through it; `CompositionService.RunWorkflow`
-  (a separate, plain in-memory path) is deleted. `composition.ExecuteWorkflow`/
+  (`accepted`), it's also the *only* execution path in the app — a
+  workflow's own list-row Run button and `TriggerService`'s headless
+  listeners (hotkey/schedule/clipboard-watch/filesystem-watch) all go
+  through it; `CompositionService.RunWorkflow` (a separate, plain
+  in-memory path) is deleted. `composition.ExecuteWorkflow`/
   `executeWorkflow` remains the underlying DBOS-free graph-walking
   engine (called with a `StepRunner`), still used directly by
   `internal/domain/composition`'s own unit tests, no longer by any
   Wails-bound service. Every run carries a `RunKind` (`test`/`triggered`).
   Per-step checkpoint overhead is ~281µs (~1.1ms for a 4-step run against
   real DBOS/SQLite) — negligible against interactive latency.
-- **Runs page — `LOCKED`, built.** `RunsView.tsx` (sidebar-reachable,
-  `process-tracking` capability `StatusLocked`) lists every durable run
-  with its real DBOS status; opening one shows its per-node step
-  breakdown (status/output/error) plus **Redrive from here** on any
-  failed step (`dbos.ForkWorkflow` from that step's ID) — the
-  "fix forward from the failed step" pattern named in §3.2. Not built:
-  live streaming of an in-progress run (this shows a completed/failed
-  run's history, not a progress bar), editing a run's original input
-  before redrive (`ForkWorkflowInput` has no such field), and §3.2's
-  "shadow events" half (dry-running a draft workflow version against
-  real traffic).
+- **Durable-run visibility lives on the workflow it belongs to, not a
+  standalone page — `LOCKED`, built.** Originally a top-level "Runs"
+  sidebar destination (a `process-tracking` capability, a workflow-
+  picker dropdown, a global run list across every workflow); replaced
+  after real precedent research (n8n, Retool, Airflow all scope this to
+  the individual workflow's own page — a tab or embedded panel next to
+  its editor, never a global page reached via a picker) and a direct
+  ask to stop making the user "go find" a run somewhere else. Opening a
+  saved workflow (Composition's own Edit) now shows a Canvas/Runs inner
+  tab switch (`CompositionView.tsx`'s `WorkflowEditorTab`); the Runs tab
+  (`WorkflowRunsPanel.tsx`) lists that workflow's own runs
+  (`ExecutionService.ListRunsForWorkflow`, filtered post-decode against
+  DBOS's `runInput.WorkflowID` — DBOS itself has no native filter on an
+  arbitrary field inside the generically-serialized Input) with real
+  DBOS status; opening one shows its per-node step breakdown
+  (status/output/error) plus **Redrive from here** on any failed step
+  (`dbos.ForkWorkflow` from that step's ID) — the "fix forward from the
+  failed step" pattern named in §3.2. A brand-new, not-yet-saved
+  workflow has no Runs tab at all (nothing to show history for yet).
+  The `process-tracking` capability entry and its `Runs` sidebar/Cmd+4
+  hotkey are removed, not merely hidden — it was never a separate
+  top-level surface once its only UI is a tab inside Workflows.
+  `ExecutionService.ListRuns()` (unfiltered, every workflow) still
+  exists as the data behind Activity's own cross-workflow feed and any
+  future need for it, just not exposed as its own page. Not built: live
+  streaming of an in-progress run (this shows a completed/failed run's
+  history, not a progress bar), editing a run's original input before
+  redrive (`ForkWorkflowInput` has no such field), §3.2's "shadow
+  events" half (dry-running a draft workflow version against real
+  traffic), and the Runs tab's own Kind filter persisting across a
+  reload (deliberately simplified to local component state — a global
+  localStorage key made sense for one page, not per-workflow).
 - **Concrete failure mode hit at work, sharpening the requirement above**:
   in the Hammerspoon-based setup, when M365 Copilot proposes a command whose
   execution edits Mill's/Hammerspoon's own Lua config file, Hammerspoon's
@@ -2473,7 +2495,7 @@ mode from §0 repeating itself one level up.
 - Bash-execution-through-our-process-but-nothing-is-ours reading (§1.1) —
   confirm with the user
 - Single execution path (§7/ADR-0008) — `LOCKED` and built: every
-  workflow run (canvas Run, Runs-page quick-run, a headless trigger
+  workflow run (a workflow's own list-row Run button, a headless trigger
   fire) goes through one durable `ExecutionService.RunWorkflow`
   entrypoint now, tagged `RunKind` (`test`/`triggered`); the plain
   in-memory `CompositionService.RunWorkflow` path is deleted.
