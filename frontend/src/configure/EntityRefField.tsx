@@ -98,6 +98,16 @@ export function EntityRefField({ refKind, value, onChange }: { refKind: string; 
         )}
       </Select>
       {error && <span>{error}</span>}
+      {/* An empty callable-workflow list is a dead end without saying
+          how to fix it (reported from live use: "Select a callable
+          workflow…" with zero options and no hint) -- name the exact
+          next step instead of leaving a silent empty dropdown. */}
+      {refKind === 'workflow' && entities !== null && entities.length === 0 && (
+        <span data-testid="no-callable-workflows-hint">
+          No callable workflows yet — create a workflow whose trigger is &quot;callable by another
+          workflow&quot; (drag that trigger from the palette onto a new workflow&apos;s canvas), then pick it here.
+        </span>
+      )}
       {creating && (
         <QuickCreateDialog
           refKind={refKind}

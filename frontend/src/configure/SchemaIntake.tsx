@@ -122,8 +122,8 @@ export function SchemaIntake({ onLoad }: { onLoad: (result: IntakeResult) => voi
           <Button size="small" onClick={() => load(text)} data-testid="schema-intake-load">Load</Button>
           <Button size="small" variant="invisible" onClick={open}>Choose file…</Button>
           <Select size="small" aria-label="Treat JSON sample as" value={sampleTarget} onChange={(e) => setSampleTarget(e.target.value as 'body' | 'response')}>
-            <Select.Option value="body">Sample is: request body</Select.Option>
-            <Select.Option value="response">Sample is: response</Select.Option>
+            <Select.Option value="body">Sample is: input (request payload)</Select.Option>
+            <Select.Option value="response">Sample is: output (response)</Select.Option>
           </Select>
         </Stack>
       </div>

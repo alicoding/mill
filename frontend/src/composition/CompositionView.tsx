@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
-import { Button, Heading, IconButton, Label, Stack, Text, Token } from '@primer/react'
+import { Button, Heading, Stack, Text } from '@primer/react'
 import { Tabs } from '@primer/react/experimental'
-import { DownloadIcon, PencilIcon, PlusIcon, TrashIcon, UploadIcon } from '@primer/octicons-react'
+import { PlusIcon, UploadIcon } from '@primer/octicons-react'
 import { CompositionService, ExecutionService } from '../../bindings/github.com/alicoding/mill'
 import { RunKind } from '../../bindings/github.com/alicoding/mill/models'
-import type { Edge, Node, NodeType, Workflow } from '../../bindings/github.com/alicoding/mill/internal/domain/composition/models'
+import type { NodeType, Workflow } from '../../bindings/github.com/alicoding/mill/internal/domain/composition/models'
 import { generateSamplePayload } from '../shared/configSchema'
 import { useAppStore } from '../shared/store'
 import { loadPersistedTabs, savePersistedTabs } from '../shared/persistedTabs'
@@ -15,36 +15,10 @@ import { TabItem, TabList, TabPanel } from '../shared/Tabs'
 import styles from '../shared/ListCard.module.css'
 import editorStyles from './CompositionView.module.css'
 import PageContainer from '../shared/PageContainer'
-
-// A workflow's Nodes/Edges are an unordered graph on the wire -- this
-// walks them into the single execution-order chain composition.go's own
-// linearOrder (Go) guarantees every saved workflow already forms, purely
-// for display (the chip chain below). Not a general graph-execution
-// engine, same scope as the backend: a saved workflow that isn't a valid
-// chain can't exist (CreateWorkflow/UpdateWorkflow validate it via zod
-// before Save, ExecuteWorkflow validates it again before Run), so this
-// trusts that invariant rather than re-deriving it defensively.
-function orderNodes(nodes: Node[] | null, edges: Edge[] | null): Node[] {
-  const nodeList = nodes ?? []
-  const edgeList = edges ?? []
-  if (nodeList.length === 0) return []
-  const byId = new Map(nodeList.map((n) => [n.ID, n]))
-  const outgoing = new Map(edgeList.map((e) => [e.Source, e.Target]))
-  const hasIncoming = new Set(edgeList.map((e) => e.Target))
-  const root = nodeList.find((n) => !hasIncoming.has(n.ID))
-  if (!root) return nodeList
-  const order: Node[] = []
-  let current: string | undefined = root.ID
-  const visited = new Set<string>()
-  while (current && !visited.has(current)) {
-    visited.add(current)
-    const node = byId.get(current)
-    if (!node) break
-    order.push(node)
-    current = outgoing.get(current)
-  }
-  return order
-}
+import { ViewModeToggle } from '../shared/ViewModeToggle'
+import { useViewMode } from '../shared/viewMode'
+import { WorkflowsTable } from './WorkflowsTable'
+import { WorkflowsCards } from './WorkflowsCards'
 
 // One open editor tab per workflow being composed/edited at once --
 // workflowId null means composing a new workflow.
@@ -294,6 +268,8 @@ function CompositionView() {
   // Every click makes its own new tab (matching the reference's own
   // "Create workflow" behavior) -- composing two brand-new workflows
   // side by side is a real, intentional use of tabs, not a bug.
+  const [viewMode, setViewMode] = useViewMode('mill-workflows-view-mode')
+
   const openNewWorkflowTab = () => {
     const key = crypto.randomUUID()
     setTabs((prev) => [...prev, { key, workflowId: null }])
@@ -341,8 +317,9 @@ function CompositionView() {
           </Text>
 
           <Stack direction="horizontal" justify="space-between" align="center" className={styles.sectionHeading}>
-            <Heading as="h2" variant="small">Saved workflows</Heading>
+            <Heading as="h2" variant="small" id="workflows-heading">Saved workflows</Heading>
             <Stack direction="horizontal" gap="condensed">
+              <ViewModeToggle mode={viewMode} onChange={setViewMode} />
               <input
                 ref={importFileInputRef}
                 type="file"
@@ -376,81 +353,29 @@ function CompositionView() {
             </Text>
           )}
           {workflows === null && <Text as="p" className={styles.muted}>Loading…</Text>}
-          {workflows !== null && (
-            <Stack direction="vertical" gap="condensed">
-              {workflows.map((wf) => (
-                <div key={wf.ID} className={styles.card} data-testid="workflow-row">
-                  <Stack direction="horizontal" justify="space-between" align="start" gap="normal">
-                    <div>
-                      <Stack direction="horizontal" gap="condensed" align="center">
-                        <Text weight="semibold">{wf.Label}</Text>
-                        {wf.BuiltIn && <Label variant="secondary" size="small">built-in</Label>}
-                      </Stack>
-                      <Text as="p" size="small" className={styles.muted}>{wf.Description}</Text>
-                    </div>
-                    <Stack direction="horizontal" gap="condensed">
-                      <Button
-                        onClick={() => run(wf.ID)}
-                        disabled={runningId === wf.ID}
-                        size="small"
-                        aria-label={`Run ${wf.Label}`}
-                      >
-                        {runningId === wf.ID ? 'Running…' : 'Run'}
-                      </Button>
-                      {/* No !wf.BuiltIn guard -- every workflow, seeded or
-                          user-composed, is ordinary and fully editable/
-                          deletable from the moment it exists (docs/SPEC.md
-                          §2.2's Update note: this is the same pattern
-                          Zapier/n8n use for their own seeded/template
-                          workflows, confirmed via research, not Mill's own
-                          invention). BuiltIn only drives the informational
-                          "built-in" badge above now. */}
-                      <IconButton
-                        icon={PencilIcon}
-                        aria-label={`Edit ${wf.Label}`}
-                        size="small"
-                        variant="invisible"
-                        disabled={nodeTypes === null}
-                        onClick={() => openEditTab(wf.ID)}
-                      />
-                      <IconButton
-                        icon={DownloadIcon}
-                        aria-label={`Export ${wf.Label}`}
-                        size="small"
-                        variant="invisible"
-                        onClick={() => exportWorkflow(wf.ID, wf.Label)}
-                      />
-                      <IconButton icon={TrashIcon} aria-label={`Delete ${wf.Label}`} size="small" variant="invisible" onClick={() => removeWorkflow(wf.ID)} />
-                    </Stack>
-                  </Stack>
-
-                  <Stack direction="vertical" gap="condensed" className={styles.stepChain}>
-                    {orderNodes(wf.Nodes, wf.Edges).map((node, i) => {
-                      const nt = nodeTypes?.find((n) => n.ID === node.NodeTypeID)
-                      const configEntries = Object.entries(node.Config ?? {})
-                      return (
-                        <Stack key={node.ID} direction="horizontal" align="start" gap="condensed">
-                          {i > 0 && <Text className={styles.muted}>→</Text>}
-                          <Token text={nt?.Label ?? node.NodeTypeID} size="large" />
-                          {configEntries.length > 0 && (
-                            <Text size="small" className={styles.muted}>
-                              {configEntries.map(([k, v]) => `${k}: ${(v ?? '').slice(0, 40)}${(v ?? '').length > 40 ? '…' : ''}`).join(', ')}
-                            </Text>
-                          )}
-                        </Stack>
-                      )
-                    })}
-                  </Stack>
-
-                  {errors[wf.ID] && (
-                    <Text as="p" size="small" className={styles.error}>{errors[wf.ID]}</Text>
-                  )}
-                  {results[wf.ID] !== undefined && !errors[wf.ID] && (
-                    <pre className={styles.result}>{results[wf.ID]}</pre>
-                  )}
-                </div>
-              ))}
-            </Stack>
+          {workflows !== null && viewMode === 'table' && workflows.length > 0 && (
+            <WorkflowsTable
+              workflows={workflows}
+              runningId={runningId}
+              editDisabled={nodeTypes === null}
+              onRun={run}
+              onEdit={openEditTab}
+              onExport={exportWorkflow}
+              onDelete={removeWorkflow}
+            />
+          )}
+          {workflows !== null && viewMode === 'cards' && (
+            <WorkflowsCards
+              workflows={workflows}
+              nodeTypes={nodeTypes}
+              runningId={runningId}
+              errors={errors}
+              results={results}
+              onRun={run}
+              onEdit={openEditTab}
+              onExport={exportWorkflow}
+              onDelete={removeWorkflow}
+            />
           )}
         </PageContainer>
       </TabPanel>

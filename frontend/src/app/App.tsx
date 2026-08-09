@@ -28,6 +28,16 @@ const wailsVersion = "v3.0.0-beta.4";
 // and is it current" (see docs/SPEC.md's dev-build/hot-reload notes).
 const isDevBuild = import.meta.env.DEV;
 
+// True only inside the Wails native webview (the runtime injects
+// window._wails there; a plain browser tab on the server-mode HTTP
+// interface has no such global). The desktop window uses
+// MacTitleBarHiddenInset (main.go) -- content extends under the hidden
+// titlebar and the traffic lights float over the top-left -- so the
+// app shell must reserve that strip itself; env(safe-area-inset-*) is
+// always 0 on desktop and cannot cover it (real regression caught
+// live after the padding cleanup relied on it).
+const IS_NATIVE_WEBVIEW = typeof window !== "undefined" && "_wails" in window;
+
 function App() {
   const view = useAppStore((s) => s.view);
   const setView = useAppStore((s) => s.setView);
@@ -216,7 +226,7 @@ function App() {
   }, [pushActivity, workflows]);
 
   return (
-    <div className="app-shell">
+    <div className={`app-shell${IS_NATIVE_WEBVIEW ? ' app-shell--native-titlebar' : ''}`}>
       {isDevBuild && (
         <Label variant="severe" size="small" className={styles.devRibbon}>
           DEV · loaded {loadedAt}

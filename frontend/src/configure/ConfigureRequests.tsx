@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
 import { ActionList, ActionMenu, Button, Heading, IconButton, Label, Stack, Text } from '@primer/react'
-import { DownloadIcon, TrashIcon, UploadIcon } from '@primer/octicons-react'
-import { Tabs } from '@primer/react/experimental'
+import { DownloadIcon, PencilIcon, TrashIcon, UploadIcon } from '@primer/octicons-react'
+import { DataTable, Table, Tabs } from '@primer/react/experimental'
 import { TabItem, TabList, TabPanel } from '../shared/Tabs'
+import { ViewModeToggle } from '../shared/ViewModeToggle'
+import { useViewMode } from '../shared/viewMode'
 import { ConfigureService } from '../../bindings/github.com/alicoding/mill'
 import type { HTTPRequest } from '../../bindings/github.com/alicoding/mill/internal/domain/httprequest/models'
 import { RequestForm } from './RequestForm'
@@ -45,6 +47,7 @@ export function ConfigureRequests() {
   const restoredTabs = useRef(false)
   const [importError, setImportError] = useState<string | null>(null)
   const importInputRef = useRef<HTMLInputElement>(null)
+  const [viewMode, setViewMode] = useViewMode('mill-requests-view-mode')
 
   const refetch = () => {
     ConfigureService.HTTPRequests().then((list) => setRequests(list ?? [])).catch(console.error)
@@ -166,8 +169,9 @@ export function ConfigureRequests() {
       <TabPanel value={LIST_TAB}>
         <PageContainer data-testid="configure-requests">
           <Stack direction="horizontal" justify="space-between" align="center" className={styles.sectionHeading}>
-            <Heading as="h2" variant="small">Integrations</Heading>
+            <Heading as="h2" variant="small" id="integrations-heading">Integrations</Heading>
             <Stack direction="horizontal" gap="condensed">
+              <ViewModeToggle mode={viewMode} onChange={setViewMode} />
               <input
                 ref={importInputRef}
                 type="file"
@@ -213,7 +217,40 @@ export function ConfigureRequests() {
           {requests !== null && requests.length === 0 && (
             <Text as="p" className={styles.muted}>No integrations yet.</Text>
           )}
-          {requests !== null && (
+          {requests !== null && viewMode === 'table' && requests.length > 0 && (
+            <Table.Container>
+              <DataTable
+                aria-labelledby="integrations-heading"
+                data={requests.map((r) => ({ ...r, id: r.ID }))}
+                columns={[
+                  {
+                    header: 'Label', field: 'Label', rowHeader: true, sortBy: 'alphanumeric',
+                    renderCell: (r) => (
+                      <span role="button" tabIndex={0} style={{ cursor: 'pointer', fontWeight: 600 }}
+                        onClick={() => openTab(r.ID, 'view')}
+                        onKeyDown={(e) => { if (e.key === 'Enter') openTab(r.ID, 'view') }}>
+                        {r.Label}
+                      </span>
+                    ),
+                  },
+                  { header: 'Method', id: 'method', width: 'auto', renderCell: (r) => r.Method || 'GET' },
+                  { header: 'Auth', id: 'auth', width: 'auto', renderCell: (r) => AUTH_LABEL[r.AuthType] ?? r.AuthType },
+                  { header: 'Base URL', field: 'BaseURL', sortBy: 'alphanumeric' },
+                  {
+                    header: '', id: 'actions', width: 'auto', align: 'end',
+                    renderCell: (r) => (
+                      <Stack direction="horizontal" gap="condensed">
+                        <IconButton icon={PencilIcon} aria-label={`Edit ${r.Label}`} size="small" variant="invisible" onClick={() => openTab(r.ID, 'edit')} />
+                        <IconButton icon={DownloadIcon} aria-label={`Export ${r.Label}`} size="small" variant="invisible" onClick={() => exportRequest(r.ID, r.Label)} />
+                        <IconButton icon={TrashIcon} aria-label={`Delete ${r.Label}`} size="small" variant="invisible" onClick={() => remove(r.ID)} />
+                      </Stack>
+                    ),
+                  },
+                ]}
+              />
+            </Table.Container>
+          )}
+          {requests !== null && viewMode === 'cards' && (
             <Stack direction="vertical" gap="condensed">
               {requests.map((r) => (
                 <div key={r.ID} className={styles.card} data-testid="request-row">
@@ -241,6 +278,17 @@ export function ConfigureRequests() {
                       <Text as="p" size="small" className={styles.muted}>ID: {r.ID}</Text>
                     </div>
                     <Stack direction="horizontal" gap="condensed">
+                      {/* Direct Edit -- one click into edit mode, no
+                          detour through the read-only summary first
+                          (asked for directly from live use). The
+                          summary stays reachable via the row body. */}
+                      <IconButton
+                        icon={PencilIcon}
+                        aria-label={`Edit ${r.Label}`}
+                        size="small"
+                        variant="invisible"
+                        onClick={() => openTab(r.ID, 'edit')}
+                      />
                       <IconButton
                         icon={DownloadIcon}
                         aria-label={`Export ${r.Label}`}
