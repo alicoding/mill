@@ -17,18 +17,45 @@ import "github.com/zalando/go-keyring"
 // under one recognizable entry, not scattered under ad hoc names.
 const service = "mill-connector"
 
-// Set stores (or overwrites) connectorID's secret.
-func Set(connectorID, secret string) error {
+// Store is Mill's own secret-storage interface -- the same
+// callers-depend-on-the-interface-not-the-concrete-type shape
+// internal/adapters/settings.Store already established. Unlike that
+// package, go-keyring exposes its Set/Get/Delete as bare package
+// functions rather than methods on a struct, so there's no existing
+// concrete type to satisfy this structurally; keyringStore below is a
+// small adapter type that exists solely to give those functions a
+// method set.
+type Store interface {
+	// Set stores (or overwrites) connectorID's secret.
+	Set(connectorID, secret string) error
+	// Get retrieves connectorID's secret. Returns keyring.ErrNotFound
+	// (unwrapped, so callers can compare with errors.Is) if none is
+	// stored.
+	Get(connectorID string) (string, error)
+	// Delete removes connectorID's secret, if any.
+	Delete(connectorID string) error
+}
+
+// keyringStore is Store's real, zalando/go-keyring-backed implementation.
+type keyringStore struct{}
+
+// New returns the real, OS-keychain-backed Store. Zero-argument and
+// stateless (keyringStore carries no fields) since go-keyring itself is
+// package-function-based with no client/handle to hold -- New exists so
+// callers depend on the Store interface, not this package's functions
+// directly, matching settings.New's own shape.
+func New() Store {
+	return keyringStore{}
+}
+
+func (keyringStore) Set(connectorID, secret string) error {
 	return keyring.Set(service, connectorID, secret)
 }
 
-// Get retrieves connectorID's secret. Returns keyring.ErrNotFound
-// (unwrapped, so callers can compare with errors.Is) if none is stored.
-func Get(connectorID string) (string, error) {
+func (keyringStore) Get(connectorID string) (string, error) {
 	return keyring.Get(service, connectorID)
 }
 
-// Delete removes connectorID's secret, if any.
-func Delete(connectorID string) error {
+func (keyringStore) Delete(connectorID string) error {
 	return keyring.Delete(service, connectorID)
 }
