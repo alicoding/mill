@@ -1946,6 +1946,19 @@ findings) and the build rationale are in
   confirmed empirically against a real bound hotkey). Full verdict in
   `.claude/skills/run-mill/SKILL.md`, not duplicated here — a one-off
   spike, not adopted into the standing workflow.
+- **Isolated-data indicator** — `SettingsService.IsIsolatedData()`
+  reports whether this instance is reading/writing a non-default
+  settings/execution-db path (`MILL_SETTINGS_PATH` set — every e2e run
+  already does this). `App.tsx` shows a "TEST DATA" badge when true, so
+  it's never ambiguous whether you're looking at real desktop-app data
+  or an isolated instance — prompted directly by a real need: a
+  server-mode instance kept running in the background (a LaunchAgent,
+  reachable over Tailscale from another device — see `run-mill`'s own
+  skill doc for the full setup) must not share the real
+  settings.json/execution.db with the desktop app, since two live
+  processes writing the same files risks corruption, and both
+  independently running the same schedule/clipboard-watch/filesystem-
+  watch triggers risks a scheduled workflow double-firing.
 
 **Still `OPEN`, real named gaps:** a menu-bar/dock presence toggle and
 trigger-fire notifications (Wails3 ships first-party `dock`/

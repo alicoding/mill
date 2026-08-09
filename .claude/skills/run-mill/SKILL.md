@@ -44,6 +44,55 @@ the fastest way to confirm a change actually works, not just that it builds.
    the backgrounded Bash task) — nothing about this leaves state behind
    except whatever the action itself did (e.g. real clipboard writes).
 
+## Testing from another device (phone, tablet) without remote desktop
+
+Server mode's real HTTP server (above) can be made reachable from a phone
+on the same network as the Mac, without Chrome Remote Desktop/VNC/screen
+sharing — you're hitting the real app in a real browser tab, not remote-
+controlling the whole Mac's screen.
+
+1. **Bind wider than localhost.** Wails3's own SDK already reads a
+   `WAILS_SERVER_HOST` env var (confirmed directly against
+   `application_server.go`, not assumed — "useful for Docker/containers"
+   per its own comment), overriding the `localhost`-only default. No Mill
+   code needed for this part.
+2. **Scope reachability to your own devices only, not the whole WiFi** —
+   install [Tailscale](https://tailscale.com) (or ZeroTier) on the Mac and
+   the other device, sign into the same account. Bind to the Mac's own
+   Tailscale IP (`100.x.x.x`, shown in the Tailscale app) specifically,
+   not `0.0.0.0` — this means the port never opens on the regular WiFi
+   interface at all, not "open to the LAN and hope nobody else notices":
+   ```
+   WAILS_SERVER_HOST=<mac's-tailscale-ip> ./bin/mill-server &
+   ```
+   Then open `http://<mac's-tailscale-ip>:8080` in the other device's
+   browser. (Tailscale itself depends on a coordination server for device
+   discovery/NAT traversal — actual app traffic is direct WireGuard P2P,
+   not relayed through them; Headscale is the self-hosted alternative if
+   that dependency matters.)
+3. **Keep it running without a live terminal session** — a macOS
+   `launchd` LaunchAgent (`~/Library/LaunchAgents/com.alicoding.mill-server.plist`,
+   `RunAtLoad`+`KeepAlive` true) starts `bin/mill-server` on login and
+   restarts it if it crashes. `launchctl load`/`unload` that plist to
+   start/stop it; `~/Library/Logs/mill-server.log` has its output.
+4. **Never point a standing background instance at your real desktop-app
+   data.** Set `MILL_SETTINGS_PATH`/`MILL_EXECUTION_DB_PATH` (both already
+   supported, main.go) to a separate directory in the LaunchAgent's own
+   `EnvironmentVariables` — two live processes (this one + the desktop
+   app) writing the same settings.json/execution.db risks corruption, and
+   both independently running the same schedule/clipboard-watch/
+   filesystem-watch triggers risks a scheduled workflow double-firing.
+   `App.tsx` shows a "TEST DATA" badge whenever `MILL_SETTINGS_PATH` is
+   set (`SettingsService.IsIsolatedData()`, docs/SPEC.md §3.7), so it's
+   never ambiguous which instance — real data or isolated — you're
+   looking at.
+
+This does not change what "What this does NOT cover" says below — real
+OS-level global hotkeys still can't be tested this way, or any other
+remote-into-the-webpage way, regardless of network topology (see the
+`-tags mcp` finding right below: a keypress sent into the page only ever
+becomes a DOM `KeyboardEvent`, never a genuine OS-level one).
+
 ## What this does NOT cover
 
 `HotkeyService.Assign` registers a real OS-level global hotkey via

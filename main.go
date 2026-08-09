@@ -93,9 +93,10 @@ func main() {
 	// which would let the Playwright e2e suite (server mode) write real
 	// composed workflows into the actual desktop dev app's saved state.
 	// playwright.config.ts points this at a throwaway temp file.
+	defaultSettingsPath := filepath.Join(application.Path(application.PathConfigHome), "mill", "settings.json")
 	settingsPath := os.Getenv("MILL_SETTINGS_PATH")
 	if settingsPath == "" {
-		settingsPath = filepath.Join(application.Path(application.PathConfigHome), "mill", "settings.json")
+		settingsPath = defaultSettingsPath
 	}
 	settingsStore, err := settings.New(settingsPath)
 	if err != nil {
@@ -145,7 +146,7 @@ func main() {
 	// invocation, wired the same late-bound way for the same reason.
 	executionService.wireChildWorkflowRunner()
 
-	settingsService := NewSettingsService(settingsStore, triggerService)
+	settingsService := NewSettingsService(settingsStore, triggerService, settingsPath != defaultSettingsPath)
 	// Bidirectional hotkey-conflict check (docs/SPEC.md §3.7): a
 	// per-workflow hotkey can't silently collide with the app-level
 	// summon hotkey, and vice versa -- SettingsService.AssignSummonHotkey
