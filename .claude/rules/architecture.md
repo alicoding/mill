@@ -52,3 +52,20 @@ reasoning for why this stays one hand-rolled script rather than
 splitting into ESLint's built-in `max-lines` (TS-only) plus a separate
 Go mechanism (no shipped file-length linter exists in golangci-lint as
 of the version this repo uses).
+
+**The repo root is an allowlist, not a scratch space.** Enforced by
+ls-lint (`.ls-lint.yml`, run unconditionally by both Lefthook's
+`root-file-naming` job and CI's) — its `.*` catch-all flags any file at
+the repo root whose name isn't one of the established root families, so
+a stray screenshot, one-off script, or notes file can't quietly land or
+get committed there. Temporary/working files (probe scripts, downloaded
+artifacts, screenshots taken during verification) belong in the
+session scratchpad directory, never the repo root — even "just for a
+moment," since a moment is exactly how `cmd/` (an empty rogue
+directory) and a stray verification `.png` actually appeared. Adding a
+genuinely new root file or top-level directory is an ADR-0001 layout
+decision: extend `.ls-lint.yml`'s regex/`ignore:` deliberately in the
+same change, with a comment saying why. Known accepted limitation
+(probed against ls-lint v2.3.1, documented in `.ls-lint.yml`'s header):
+extensionless files are invisible to ls-lint, so `LICENSE` needs no
+rule and a bare extensionless rogue won't be caught.

@@ -20,10 +20,12 @@ pre-commit:
       glob: ".claude/rules/*.md"
       run: ./scripts/check-rules-frontmatter.sh
     - name: root-file-naming
-      glob: "*.go"
-      # Mirrors CI's own root-file-naming job -- ls-lint (adopted, see
-      # .ls-lint.yml's own header for the config shape verified
-      # empirically). Requires `go install
+      # No glob, deliberately: .ls-lint.yml now covers every file type
+      # at the repo root (its `.*` catch-all), not just .go, so this
+      # must run on every commit -- a stray .png/.txt staged at root
+      # would never match a "*.go" glob. ls_lint is near-instant, so
+      # unconditional is cheap. Mirrors CI's own root-file-naming job
+      # (also unconditional). Requires `go install
       # github.com/loeffel-io/ls-lint/v2/cmd/ls_lint@v2.3.1` once locally
       # (same one-time-setup shape as golangci-lint itself).
       run: ls_lint
