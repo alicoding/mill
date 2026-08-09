@@ -10,6 +10,7 @@ import { generateSamplePayload } from '../shared/configSchema'
 import { EntityRefField } from '../configure/EntityRefField'
 import { IntegrationBindingsEditor } from './IntegrationBindingsEditor'
 import { ChildWorkflowBindingsEditor } from './ChildWorkflowBindingsEditor'
+import { WorkflowHoverPreview } from './WorkflowHoverPreview'
 import styles from './CompositionCanvas.module.css'
 import runbookStyles from '../shared/ListCard.module.css'
 
@@ -159,11 +160,24 @@ export function NodeInspector({ node, attrs, nodeType, sameKindNodeTypes, hasWor
           <FormControl.Label>{field.Label}</FormControl.Label>
           {field.Description && <FormControl.Caption>{field.Description}</FormControl.Caption>}
           {field.RefKind ? (
-            <EntityRefField
-              refKind={field.RefKind}
-              value={node.data.config[field.Key] ?? ''}
-              onChange={(id) => onConfigChange(field.Key, id)}
-            />
+            <>
+              <EntityRefField
+                refKind={field.RefKind}
+                value={node.data.config[field.Key] ?? ''}
+                onChange={(id) => onConfigChange(field.Key, id)}
+              />
+              {/* Hover-preview + jump for a selected workflow reference
+                  (docs/SPEC.md §3.8's n8n/[decisioning-vendor] pattern) -- see the
+                  child's real layout and open it in its own editor tab
+                  without hunting through the Workflows list. */}
+              {field.RefKind === 'workflow' && (node.data.config[field.Key] ?? '') !== '' && (
+                <WorkflowHoverPreview workflowId={node.data.config[field.Key]}>
+                  <Text size="small" className={runbookStyles.muted} style={{ cursor: 'default', textDecoration: 'underline dotted' }}>
+                    Hover to preview the child — click Open to edit it
+                  </Text>
+                </WorkflowHoverPreview>
+              )}
+            </>
           ) : field.Type === ConfigFieldType.FieldBoolean ? (
             <Checkbox
               defaultChecked={node.data.config[field.Key] === 'true'}

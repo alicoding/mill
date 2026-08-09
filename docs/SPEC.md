@@ -2728,11 +2728,22 @@ recorded as a real design input (`OPEN`), never silently dropped.
   AI-Analytics surface.** Activity's new search + existing filters are
   the first slice only; the full source-first pattern belongs to the
   same future design pass as §7's shadow-events half. Also from the
-  same review: **hover-preview modals for workflow references**
-  (n8n/[decisioning-vendor] both preview a linked workflow's layout on hover, with
-  jump-to-it-in-a-new-tab) — a real cross-cutting affordance
-  (canvas nodes, Activity rows, child-workflow pickers), `OPEN`,
-  needs its own design pass, not bolted on ad hoc.
+  same review: **hover-preview for workflow references — now `LOCKED`,
+  built** (n8n/[decisioning-vendor]'s own pattern). `WorkflowHoverPreview.tsx`
+  composes only already-adopted pieces: Primer's `AnchoredOverlay` for
+  the popup, React Flow itself (the same engine the real canvas uses)
+  rendering the referenced workflow's *actual layout* read-only, and a
+  new store-level `openWorkflowRequest` seam for the jump (requester
+  and editor-tab owner live in different view trees, so a store field
+  beats a six-level callback prop). Anchored on the child-workflow
+  step's Inspector hint and on a dedicated peek icon per Activity row
+  — deliberately *not* the row label itself: a first cut wrapped the
+  label and silently broke its expand-the-result click, caught by the
+  existing activity e2e, exactly what that committed test existed for.
+  "Open" jumps straight into the referenced workflow's editor tab.
+  Proven on the seeded parent→child pair end-to-end (the seed IS the
+  proof): hover shows the child's real 3-node layout, Open lands in
+  its editor.
 - **Dev-staleness root cause found and fixed — `LOCKED`.** Two
   compounding causes made "my app looks stale" recur: (1) every
   wails-built desktop binary passed `-buildvcs=false` (dev *and*

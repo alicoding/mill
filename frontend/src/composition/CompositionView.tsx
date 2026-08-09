@@ -110,6 +110,8 @@ function CompositionView() {
   const [testRunTarget, setTestRunTarget] = useState<{ id: string; values: Record<string, string> } | null>(null)
   const [tabs, setTabs] = useState<EditorTab[]>([])
   const [activeTab, setActiveTab] = useState(WORKFLOWS_TAB)
+  const openWorkflowRequest = useAppStore((s) => s.openWorkflowRequest)
+  const clearOpenWorkflowRequest = useAppStore((s) => s.clearOpenWorkflowRequest)
   // Import's error has nowhere to key by workflow ID -- the import
   // hasn't produced one yet when it fails -- so it's a single, general
   // slot rather than the errors-by-ID map every other error state here
@@ -302,6 +304,19 @@ function CompositionView() {
     setTabs((prev) => prev.filter((t) => t.key !== key))
     setActiveTab((current) => (current === key ? WORKFLOWS_TAB : current))
   }
+
+  // Consumes the store's cross-view "open this workflow" request
+  // (docs/SPEC.md §3.8's hover-preview jump) once data is ready --
+  // requesters (an Activity row, a child-workflow step's preview) live
+  // in other view trees and can't call openEditTab directly.
+  useEffect(() => {
+    if (!openWorkflowRequest || workflows === null || nodeTypes === null) return
+    if (workflows.some((w) => w.ID === openWorkflowRequest)) {
+      openEditTab(openWorkflowRequest)
+    }
+    clearOpenWorkflowRequest()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openWorkflowRequest, workflows, nodeTypes])
 
   return (
     <Tabs value={activeTab} onValueChange={({ value }) => setActiveTab(value)}>

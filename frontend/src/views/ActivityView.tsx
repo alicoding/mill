@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
 import { Heading, IconButton, Label, type LabelProps, Select, Stack, Text, TextInput } from '@primer/react'
 import { DataTable, type Column } from '@primer/react/experimental'
-import { ChevronDownIcon, ChevronRightIcon, CheckCircleIcon, XCircleIcon, XIcon } from '@primer/octicons-react'
+import { ChevronDownIcon, ChevronRightIcon, CheckCircleIcon, WorkflowIcon, XCircleIcon, XIcon } from '@primer/octicons-react'
 import { useAppStore, type ActivityEntry, type ActivitySource } from '../shared/store'
+import { WorkflowHoverPreview } from '../composition/WorkflowHoverPreview'
 import styles from '../shared/ListCard.module.css'
 import PageContainer from '../shared/PageContainer'
 
@@ -127,6 +128,18 @@ function ActivityView() {
               <span className={styles.activitySpacer} />
             )}
             <Text size="small">{entry.label}</Text>
+            {/* A separate peek icon, not the label itself, anchors the
+                hover-preview (docs/SPEC.md §3.8's n8n/[decisioning-vendor] pattern)
+                -- the label keeps its existing expand-the-result click
+                untouched (a first cut wrapped the label and silently
+                broke that click; caught by the existing activity e2e). */}
+            {entry.workflowID && (
+              <span onClick={(e) => e.stopPropagation()}>
+                <WorkflowHoverPreview workflowId={entry.workflowID}>
+                  <WorkflowIcon size={12} aria-label={`Preview ${entry.label}`} />
+                </WorkflowHoverPreview>
+              </span>
+            )}
           </Stack>
         )
       },
