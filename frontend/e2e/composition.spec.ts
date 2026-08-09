@@ -10,6 +10,14 @@ import { test, expect } from '@playwright/test'
 // reference platform's own tabbed Workflows-list/canvas-editor split --
 // see SPEC.md §3's Update bullets), each with a collapsible "Add steps"
 // palette and a pre-populated starter node instead of a blank canvas.
+//
+// Covers the workflow list/lifecycle surface (browse, run, compose,
+// edit, tabs). Canvas-mechanics edge cases (drop collisions, node-type
+// swap, the test-input dialog, and process-inject-text's multi-node
+// composition) live in composition-canvas-interactions.spec.ts, split
+// out once this file crossed the 500-line limit (CLAUDE.md); workflow
+// export/import coverage is composition-export-import.spec.ts, split
+// out the same way earlier.
 
 function workflowRow(page: import('@playwright/test').Page, label: string) {
   return page.locator('[data-testid="workflow-row"]', { has: page.getByText(label, { exact: true }) })
@@ -101,8 +109,8 @@ test('Composition page lists built-in workflows; node primitives live in a colla
   // decision-route, integration-http, list-lookup (SPEC.md §3.5's
   // Decision/Integration/List execution engines) + mcp-tool-call
   // (SPEC.md §3.6's MCP-client extension point) + child-workflow
-  // (docs/adr/0010).
-  await expect(activePanel(page).getByTestId('palette-item')).toHaveCount(15)
+  // (docs/adr/0010) + process-inject-text (SPEC.md §3.3).
+  await expect(activePanel(page).getByTestId('palette-item')).toHaveCount(16)
 })
 
 test('A new workflow starts with a starter node placed, not a blank canvas', async ({ page }) => {
@@ -310,135 +318,3 @@ test('Editing the same workflow twice reuses its tab instead of opening a duplic
   await row.getByRole('button', { name: /Delete/ }).click()
   await expect(row).toHaveCount(0)
 })
-
-// The four tests below permanently cover bugs from a real bug report
-// (docs/SPEC.md §3) that were originally verified live via throwaway
-// scripts and then discarded -- .claude/rules/testing.md's whole point
-// is that a manual reproduction becomes a committed test before the fix
-// counts as done, so the same class of regression can't silently
-// reappear.
-
-test('Dropping a second Trigger node is silently rejected, not added as a duplicate', async ({ page }) => {
-  await page.goto('/')
-  await page.getByRole('link', { name: 'Composition' }).click()
-  await page.getByTestId('new-workflow').click()
-  await activePanel(page).getByTestId('toggle-palette').click()
-
-  // The starter node is already a Trigger -- dropping trigger-hotkey
-  // (a different Trigger NodeType, not a re-drop of the same one) must
-  // not increase the node count. onCanvasDrop's own client-side check
-  // is what this exercises; the palette's disabled styling is a
-  // separate, already-covered layer (the visibility test below).
-  await dragPaletteItemToCanvas(page, 'trigger-hotkey')
-  await expect(activePanel(page).locator('.react-flow__node')).toHaveCount(1)
-})
-
-test('A node dropped onto an occupied spot lands clear of it, not stacked', async ({ page }) => {
-  await page.goto('/')
-  await page.getByRole('link', { name: 'Composition' }).click()
-  await page.getByTestId('new-workflow').click()
-  await activePanel(page).getByTestId('toggle-palette').click()
-
-  // Drops at the exact center of the canvas, which is also where the
-  // starter node sits (both onCanvasDrop's screenToFlowPosition and the
-  // starter's own placement resolve to roughly the same point on a
-  // freshly fitView'd canvas) -- the real repro shape from the bug
-  // report, not a contrived one.
-  await dragPaletteItemToCanvas(page, 'process-html-to-markdown')
-  const nodes = activePanel(page).locator('.react-flow__node')
-  await expect(nodes).toHaveCount(2)
-
-  const [boxA, boxB] = await Promise.all([nodes.nth(0).boundingBox(), nodes.nth(1).boundingBox()])
-  if (!boxA || !boxB) throw new Error('expected both node bounding boxes to be measurable')
-  const overlaps =
-    boxA.x < boxB.x + boxB.width && boxA.x + boxA.width > boxB.x && boxA.y < boxB.y + boxB.height && boxA.y + boxA.height > boxB.y
-  expect(overlaps).toBe(false)
-})
-
-test('A disabled Trigger palette entry never picks up the enabled hover background', async ({ page }) => {
-  await page.goto('/')
-  await page.getByRole('link', { name: 'Composition' }).click()
-  await page.getByTestId('new-workflow').click()
-  await activePanel(page).getByTestId('toggle-palette').click()
-
-  // The starter node already makes every Trigger entry disabled.
-  // Confirmed as the real bug shape: aria-disabled alone doesn't stop
-  // the browser from hovering the element, so TreeView's own internal
-  // container kept applying its normal :hover background regardless --
-  // fixed via a --control-transparent-bgColor-hover token override,
-  // not pointer-events: none (docs/SPEC.md §9.1 has the full reasoning
-  // for why that first fix was wrong).
-  const disabledItem = activePanel(page).locator('[data-node-type-id="trigger-hotkey"]')
-  await disabledItem.hover()
-  const container = disabledItem.locator('[class*="TreeViewItemContainer"]')
-  await expect(container).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)')
-})
-
-test('Selecting the starter Trigger node and changing its type swaps it in place', async ({ page }) => {
-  await page.goto('/')
-  await page.getByRole('link', { name: 'Composition' }).click()
-  await page.getByTestId('new-workflow').click()
-
-  const nodes = activePanel(page).locator('.react-flow__node')
-  await nodes.first().click()
-  await activePanel(page).getByTestId('change-node-type').selectOption('trigger-hotkey')
-
-  // Same node, not a second one -- the whole point of swapping in place
-  // instead of the old delete-and-redrag dead end.
-  await expect(nodes).toHaveCount(1)
-  await expect(nodes.first()).toContainText('Trigger: hotkey')
-  // The trigger-hotkey-specific Inspector branch should already be live
-  // immediately after the swap, not require a re-select.
-  await expect(activePanel(page).getByText('Save this workflow before assigning a hotkey.')).toBeVisible()
-})
-
-// docs/adr/0008's test-input form: a workflow with declared Attributes
-// prompts an auto-filled, editable form before Run instead of running
-// blind with every Attribute at its zero value. No separate cleanup for
-// the Attribute itself -- it's part of the workflow's own definition,
-// so deleting the workflow at the end (same discipline as this file's
-// other create-then-delete tests, .claude/rules/testing.md) removes it
-// too.
-test('Running a workflow with declared Attributes shows an auto-filled test-input dialog first', async ({ page }) => {
-  await page.goto('/')
-  await page.getByRole('link', { name: 'Composition' }).click()
-  await page.getByTestId('new-workflow').click()
-  await activePanel(page).getByLabel('Label').fill('E2E attributes workflow')
-  await activePanel(page).getByTestId('save-workflow').click()
-
-  const row = workflowRow(page, 'E2E attributes workflow')
-  await expect(row).toBeVisible()
-
-  // A workflow with no declared Attributes yet runs immediately, no
-  // dialog -- confirms the "no UI for a decision that doesn't exist"
-  // path still holds before adding one changes that.
-  await row.getByRole('button', { name: 'Run' }).click()
-  await expect(page.getByRole('dialog')).toHaveCount(0)
-
-  await page.getByRole('link', { name: 'Configure' }).click()
-  await page.getByRole('tab', { name: 'Attributes' }).click()
-  await page.getByTestId('attributes-workflow-select').selectOption({ label: 'E2E attributes workflow' })
-  await page.getByRole('button', { name: 'Add attribute' }).click()
-  await page.getByPlaceholder('key').fill('urgent')
-  await page.getByPlaceholder('label').fill('Urgent')
-  await page.getByTestId('save-attributes').click()
-  await expect(page.getByText('Saved.')).toBeVisible()
-
-  await page.getByRole('link', { name: 'Composition' }).click()
-  await workflowRow(page, 'E2E attributes workflow').getByRole('button', { name: 'Run' }).click()
-
-  const dialog = page.getByRole('dialog')
-  await expect(dialog).toBeVisible()
-  await expect(dialog).toContainText('Urgent')
-  await expect(dialog.getByTestId('test-run-field')).toBeVisible()
-
-  await dialog.getByRole('button', { name: 'Run' }).click()
-  await expect(dialog).toHaveCount(0)
-
-  await workflowRow(page, 'E2E attributes workflow').getByRole('button', { name: /Delete/ }).click()
-  await expect(workflowRow(page, 'E2E attributes workflow')).toHaveCount(0)
-})
-
-// Workflow export/import coverage lives in its own file,
-// composition-export-import.spec.ts, split out once this file crossed
-// the 500-line limit adding it (CLAUDE.md).
