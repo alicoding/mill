@@ -25,7 +25,6 @@ const (
 	ViewActivity    ViewKind = "activity"
 	ViewComposition ViewKind = "composition"
 	ViewConfigure   ViewKind = "configure"
-	ViewRuns        ViewKind = "runs"
 	ViewPlaceholder ViewKind = "placeholder"
 )
 
@@ -74,10 +73,6 @@ func List() []Capability {
 		{
 			ID: "activity-log", Label: "Activity / event log", NavLabel: "Activity", SpecSection: "2.2",
 			Status: StatusLocked, View: ViewActivity,
-		},
-		{
-			ID: "process-tracking", Label: "Runs (durable execution)", NavLabel: "Runs", SpecSection: "7",
-			Status: StatusLocked, View: ViewRuns,
 		},
 		{
 			ID: "copilot-bridge", Label: "M365 Copilot chat bridge", SpecSection: "2.1",

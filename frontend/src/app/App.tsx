@@ -6,7 +6,6 @@ import SpecView from "../views/SpecView";
 import ActivityView from "../views/ActivityView";
 import CompositionView from "../composition/CompositionView";
 import ConfigureView from "../configure/ConfigureView";
-import RunsView from "../views/RunsView";
 import SettingsView from "../views/SettingsView";
 import PlaceholderView from "../views/PlaceholderView";
 import { CompositionService, CapabilitiesService } from "../../bindings/github.com/alicoding/mill";
@@ -49,26 +48,28 @@ function App() {
   const [loadedAt] = useState(() => new Date().toLocaleTimeString());
 
   // Per-view hotkeys (task #9, docs/SPEC.md §3.7) -- Cmd+1 through
-  // Cmd+5 jump straight to a top-level view, matching the sidebar's own
-  // order (Composition/Configure lead, Activity/Runs follow, Spec is
-  // always last). Deliberately in-window-only, not a global OS-level
-  // hotkey: this reuses plain browser keydown handling, the reversible/
-  // safer default named directly in the session goal that built this,
-  // distinct from TriggerService's real OS-level golang.design/x/hotkey
-  // registration (§3.4) that per-workflow and summon hotkeys use --
-  // registering these globally too would mean checking them against
-  // TriggerService's own claimed-combo conflict space, a bigger design
-  // surface this pass deliberately doesn't take on. Matches
-  // browsers'/Slack's own Cmd+1-9 tab-switching precedent: active
-  // regardless of which element has focus, not scoped away from text
-  // inputs, since Cmd+digit isn't a combo real typing produces.
+  // Cmd+4 jump straight to a top-level view, matching the sidebar's own
+  // order (Composition/Configure lead, Activity follows, Spec is
+  // always last). A durable run's own history/redrive now lives on that
+  // workflow's own Runs tab (docs/SPEC.md §7's Update), not a standalone
+  // view, so there's no fifth top-level destination to bind anymore.
+  // Deliberately in-window-only, not a global OS-level hotkey: this
+  // reuses plain browser keydown handling, the reversible/safer default
+  // named directly in the session goal that built this, distinct from
+  // TriggerService's real OS-level golang.design/x/hotkey registration
+  // (§3.4) that per-workflow and summon hotkeys use -- registering
+  // these globally too would mean checking them against TriggerService's
+  // own claimed-combo conflict space, a bigger design surface this pass
+  // deliberately doesn't take on. Matches browsers'/Slack's own Cmd+1-9
+  // tab-switching precedent: active regardless of which element has
+  // focus, not scoped away from text inputs, since Cmd+digit isn't a
+  // combo real typing produces.
   useEffect(() => {
     const VIEW_HOTKEYS: Record<string, View> = {
       '1': { kind: 'composition' },
       '2': { kind: 'configure' },
       '3': { kind: 'activity' },
-      '4': { kind: 'runs' },
-      '5': { kind: 'spec' },
+      '4': { kind: 'spec' },
     };
     const onKeyDown = (e: KeyboardEvent) => {
       if (!e.metaKey || e.ctrlKey || e.altKey || e.shiftKey) return;
@@ -301,8 +302,6 @@ function App() {
           {view.kind === 'composition' && <CompositionView/>}
 
           {view.kind === 'configure' && <ConfigureView/>}
-
-          {view.kind === 'runs' && <RunsView/>}
 
           {view.kind === 'settings' && <SettingsView/>}
 
