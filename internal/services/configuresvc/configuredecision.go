@@ -1,0 +1,184 @@
+package configuresvc
+
+import (
+	"encoding/json"
+	"fmt"
+
+	"github.com/alicoding/mill/internal/domain/composition"
+	"github.com/alicoding/mill/internal/domain/decision"
+	"github.com/alicoding/mill/internal/services/seeding"
+)
+
+// decisionsKey mirrors requestsKey/listsKey/mcpServersKey's shape
+// (configureservice.go/configuremcpserver.go): one atomic JSON blob,
+// same settings.json file. In its own file (not appended to
+// configureservice.go) to keep that file under CLAUDE.md's 500-line
+// convention, same reasoning configuremcpserver.go's own header
+// comment already gives.
+const decisionsKey = "configure-decisions"
+
+// resolveDecision implements composition.go's lookupDecisionFn seam
+// (decisionoutcome.go). Unexported, so Wails never binds it as a
+// callable frontend method -- Go-internal wiring only, same as
+// resolveHTTPRequest/resolveList/resolveMCPServer.
+func (c *ConfigureService) resolveDecision(id string) (composition.ResolvedDecision, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	for _, d := range c.decisions {
+		if d.ID == id {
+			return composition.ResolvedDecision{
+				Label: d.Label, Category: string(d.Category), Outputs: d.Outputs, WebhookRequestID: d.WebhookRequestID,
+			}, nil
+		}
+	}
+	return composition.ResolvedDecision{}, fmt.Errorf("no decision with id %q", id)
+}
+
+// --- Decisions ---
+
+func (c *ConfigureService) Decisions() []decision.Decision {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	out := make([]decision.Decision, len(c.decisions))
+	copy(out, c.decisions)
+	return out
+}
+
+func (c *ConfigureService) CreateDecision(label string, category decision.Category, outputs []decision.OutputField, webhookRequestID string) (decision.Decision, error) {
+	d := decision.Decision{
+		ID: seeding.NewSlugID(label, "decision"), Label: label, Category: category,
+		Outputs: outputs, WebhookRequestID: webhookRequestID,
+	}
+	if err := decision.Validate(d); err != nil {
+		return decision.Decision{}, err
+	}
+
+	c.mu.Lock()
+	c.decisions = append(c.decisions, d)
+	c.mu.Unlock()
+
+	c.persistDecisions()
+	return d, nil
+}
+
+// UpdateDecision rejects a category change server-side (docs/adr/0027:
+// category is immutable after creation -- Duplicate is the migration
+// path, same as the reference no-code platform this was designed
+// against). category is still a real parameter (not silently dropped
+// from the call shape) so the RPC mirrors CreateDecision's own shape;
+// the frontend disables the control and always resubmits the existing
+// value, but this check is the actual authority, not the disabled
+// control alone -- a save-time error and a run-time error never
+// disagree, same discipline ValidateGraph's own doc comment names.
+func (c *ConfigureService) UpdateDecision(id, label string, category decision.Category, outputs []decision.OutputField, webhookRequestID string) (decision.Decision, error) {
+	c.mu.Lock()
+	idx := -1
+	for i, existing := range c.decisions {
+		if existing.ID == id {
+			idx = i
+			break
+		}
+	}
+	if idx == -1 {
+		c.mu.Unlock()
+		return decision.Decision{}, fmt.Errorf("no decision with id %q", id)
+	}
+	existing := c.decisions[idx]
+	c.mu.Unlock()
+
+	if existing.Category != category {
+		return decision.Decision{}, fmt.Errorf(
+			"a decision's category cannot be changed after creation (it is %q) -- duplicate this decision to create one with a different category",
+			existing.Category)
+	}
+
+	d := decision.Decision{ID: id, Label: label, Category: category, Outputs: outputs, WebhookRequestID: webhookRequestID, BuiltIn: existing.BuiltIn}
+	if err := decision.Validate(d); err != nil {
+		return decision.Decision{}, err
+	}
+
+	c.mu.Lock()
+	idx = -1
+	for i, e := range c.decisions {
+		if e.ID == id {
+			idx = i
+			break
+		}
+	}
+	if idx == -1 {
+		c.mu.Unlock()
+		return decision.Decision{}, fmt.Errorf("no decision with id %q", id)
+	}
+	c.decisions[idx] = d
+	c.mu.Unlock()
+
+	c.persistDecisions()
+	return d, nil
+}
+
+func (c *ConfigureService) DeleteDecision(id string) error {
+	c.mu.Lock()
+	idx := -1
+	for i, d := range c.decisions {
+		if d.ID == id {
+			idx = i
+			break
+		}
+	}
+	if idx == -1 {
+		c.mu.Unlock()
+		return fmt.Errorf("no decision with id %q", id)
+	}
+	wasBuiltIn := c.decisions[idx].BuiltIn
+	c.decisions = append(c.decisions[:idx], c.decisions[idx+1:]...)
+	c.mu.Unlock()
+
+	// A deleted built-in gets a tombstone so top-up seeding never
+	// resurrects it (topUpBuiltInDecisions, configureservice_builtin.go)
+	// -- same discipline DeleteHTTPRequest already applies.
+	if wasBuiltIn {
+		seeding.RecordTombstone(c.store, id)
+	}
+	c.persistDecisions()
+	return nil
+}
+
+// No DuplicateDecision RPC: checked against the precedent first
+// (ADR-0013's own HTTPRequest Duplicate has no backend RPC either --
+// RequestSummary.tsx's onDuplicate just pre-fills RequestForm.tsx's
+// create form from the source's fields, and Save calls the ordinary
+// CreateHTTPRequest). Decision does the same client-side, and it's
+// what actually makes "duplicate to change category" work: the
+// pre-filled form is still an unsaved CREATE draft, so its category
+// control is the normal (enabled) create-time picker, not the
+// disabled edit-time one -- UpdateDecision's immutability check is
+// never even in the picture until the first Save.
+
+// --- persistence ---
+
+func (c *ConfigureService) persistDecisions() {
+	c.mu.Lock()
+	decisions := make([]decision.Decision, len(c.decisions))
+	copy(decisions, c.decisions)
+	c.mu.Unlock()
+
+	data, err := json.Marshal(decisions)
+	if err != nil {
+		return
+	}
+	_ = c.store.Set(decisionsKey, string(data))
+}
+
+func (c *ConfigureService) restoreDecisions() {
+	raw, ok := c.store.Get(decisionsKey).(string)
+	if !ok || raw == "" {
+		return
+	}
+	var decisions []decision.Decision
+	if err := json.Unmarshal([]byte(raw), &decisions); err != nil {
+		return
+	}
+	c.mu.Lock()
+	c.decisions = decisions
+	c.mu.Unlock()
+}

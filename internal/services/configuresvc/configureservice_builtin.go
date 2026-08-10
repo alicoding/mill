@@ -2,6 +2,7 @@ package configuresvc
 
 import (
 	"github.com/alicoding/mill/internal/domain/composition"
+	"github.com/alicoding/mill/internal/domain/decision"
 	"github.com/alicoding/mill/internal/domain/httprequest"
 	"github.com/alicoding/mill/internal/services/seeding"
 )
@@ -88,5 +89,31 @@ func (c *ConfigureService) topUpBuiltInRequests() {
 		if r.ID == httprequest.ExampleOAuth1ID {
 			_ = c.credentials.Set(r.ID, composition.EncodeOAuth1Secret(builtInOAuth1ConsumerSecret, ""))
 		}
+	}
+}
+
+// topUpBuiltInDecisions mirrors topUpBuiltInRequests for the seeded
+// example Decisions (docs/adr/0027): any built-in whose ID is neither
+// present nor tombstoned is appended, so a newly shipped example
+// reaches existing instances too. Decisions carry no secret, so this
+// is simpler than the HTTPRequest version -- no credential seeding
+// step at all.
+func (c *ConfigureService) topUpBuiltInDecisions() {
+	tombstones := seeding.LoadTombstones(c.store)
+	c.mu.Lock()
+	have := make(map[string]bool, len(c.decisions))
+	for _, d := range c.decisions {
+		have[d.ID] = true
+	}
+	added := false
+	for _, d := range decision.BuiltIn() {
+		if !have[d.ID] && !tombstones[d.ID] {
+			c.decisions = append(c.decisions, d)
+			added = true
+		}
+	}
+	c.mu.Unlock()
+	if added {
+		c.persistDecisions()
 	}
 }

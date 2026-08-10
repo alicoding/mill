@@ -47,8 +47,15 @@ export const draftWorkflowSchema = z
       hasIncoming.add(e.Target)
     }
     for (const [id, count] of outDegree) {
+      // A terminal node (docs/adr/0027 -- code kind "terminal", the
+      // user-facing "Decision" node) may have NO outgoing connection at
+      // all -- checked before the >1 rule below, since that rule alone
+      // would accept exactly one outgoing edge from a terminal node.
+      if (count > 0 && kindByID.get(id) === 'terminal') {
+        ctx.addIssue({ code: 'custom', message: 'A Decision node (a terminal outcome) cannot have an outgoing connection.' })
+      }
       if (count > 1 && kindByID.get(id) !== 'decision') {
-        ctx.addIssue({ code: 'custom', message: 'Only a Decision node can have more than one outgoing connection.' })
+        ctx.addIssue({ code: 'custom', message: 'Only a Branch node can have more than one outgoing connection.' })
       }
     }
     if (draft.Nodes.filter((n) => !hasIncoming.has(n.ID)).length !== 1) {

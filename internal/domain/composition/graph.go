@@ -36,6 +36,9 @@ func buildGraph(nodes []Node, edges []Edge) (byID map[string]Node, outgoingEdges
 	}
 
 	for _, n := range nodes {
+		if n.Kind == KindTerminal && len(outgoingEdges[n.ID]) > 0 {
+			return nil, nil, nil, fmt.Errorf("node %s: a terminal node (docs/adr/0027) may not have an outgoing edge", n.ID)
+		}
 		if n.Kind != KindDecision && len(outgoingEdges[n.ID]) > 1 {
 			return nil, nil, nil, fmt.Errorf("node %s: only a Decision node may have more than one outgoing edge", n.ID)
 		}
