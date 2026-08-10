@@ -104,22 +104,26 @@ func TestExecuteWorkflow_ClipboardHTMLToMarkdown(t *testing.T) {
 }
 
 func TestExecuteWorkflow_ClipboardHTMLToMarkdown_NoHTMLOnClipboard(t *testing.T) {
+	// No HTML flavor, but plain text present: SPEC §5's capture
+	// fallback (HTML -> plain text) means the workflow succeeds on the
+	// text rather than erroring (updated from the old HTML-or-nothing
+	// behavior, 2026-08-10 goal 0001).
 	withFakeClipboard(t, func() (string, error) {
 		return "", errors.New("no HTML on clipboard")
 	}, nil, nil)
+	readClipboardText = func() (string, error) { return "plain fallback", nil }
 
 	nodes, edges := chain("capture-clipboard-html", "process-html-to-markdown", "apply-clipboard-write-text")
 	resolved, err := ResolveNodeDefaults(nodes)
 	if err != nil {
 		t.Fatalf("ResolveNodeDefaults returned error: %v", err)
 	}
-	// Unlike internal/domain/runbook's soft-failure path (nil error,
-	// friendly explanation), this prototype's executor surfaces a plain
-	// error -- documented as a deliberate simplification in
-	// ExecuteWorkflow's doc comment, confirmed here so it isn't mistaken
-	// for a bug later.
-	if _, err := ExecuteWorkflow(resolved, edges, nil); err == nil {
-		t.Fatal("ExecuteWorkflow with no clipboard HTML returned nil error, want an error (plain-error prototype behavior, unlike runbook's soft-failure)")
+	out, err := ExecuteWorkflow(resolved, edges, nil)
+	if err != nil {
+		t.Fatalf("ExecuteWorkflow fell through both clipboard flavors: %v", err)
+	}
+	if out != "plain fallback" {
+		t.Fatalf("out = %q, want the plain-text fallback flowing through markdown+apply", out)
 	}
 }
 
