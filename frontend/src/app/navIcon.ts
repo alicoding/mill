@@ -1,10 +1,8 @@
 import {
   BookIcon,
-  CommentDiscussionIcon,
-  HistoryIcon,
   PlugIcon,
   PulseIcon,
-  ShieldLockIcon,
+  ShieldCheckIcon,
   WorkflowIcon,
   type Icon,
 } from '@primer/octicons-react'
@@ -18,11 +16,9 @@ import {
 // its successor and already has its own icon below.
 export const CAPABILITY_ICON: Record<string, Icon> = {
   'activity-log': PulseIcon,
-  'copilot-bridge': CommentDiscussionIcon,
   'capability-composition': WorkflowIcon,
   'capability-configure': PlugIcon,
-  'process-tracking': HistoryIcon,
-  guardrails: ShieldLockIcon,
+  'capability-review': ShieldCheckIcon,
 }
 
 // Spec isn't a capability (no build status), so it isn't in the map above --

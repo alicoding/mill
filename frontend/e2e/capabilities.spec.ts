@@ -45,27 +45,6 @@ test('Clicking the Configure capability navigates to its real page', async ({ pa
   await expect(page.getByRole('tab', { name: 'Integration', exact: true })).toBeVisible()
 })
 
-test('Clicking a not-built capability shows a placeholder with status and a way back', async ({ page }) => {
-  await page.goto('/')
-  await page.getByRole('link', { name: 'Spec' }).click()
-
-  await capabilityRow(page, 'Guardrails / policy').getByRole('button', { name: 'View status' }).click()
-
-  // Scoped to the main content region, not the whole page: the Spec
-  // tab's own capability-map rows (below) also render 'OPEN' text, so a
-  // page-wide getByText('OPEN') would be ambiguous. The sidebar's own
-  // per-row status is a colored dot (aria-label/title only, no visible
-  // text) since the App.tsx sidebar redesign, so it no longer competes
-  // with this query either way.
-  const content = page.getByRole('main')
-  await expect(content.getByRole('heading', { name: 'Guardrails / policy', exact: true })).toBeVisible()
-  await expect(content.getByText("hasn't been built yet")).toBeVisible()
-  await expect(content.getByText('OPEN', { exact: true })).toBeVisible()
-
-  await page.getByRole('button', { name: 'Back to Spec' }).click()
-  await expect(capabilityIndex(page).getByRole('heading', { name: 'Capabilities' })).toBeVisible()
-})
-
 test('Spec tab shows the composition capability map, real data not parsed markdown', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Spec' }).click()
