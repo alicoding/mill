@@ -19,15 +19,15 @@ crossing the no-Camunda line (no assignment/SLA/notes).
    before building it twice.)
 4. [ ] Kind filter + empty/loading polish per the overhaul's spacing
    standards.
-5. [ ] Row drill-down (owner-raised 2026-08-10: "clicking does
-   nothing"): every Review row — pending or resolved — opens its run
-   in the app-wide work-tab shell at the workflow's Runs tab with that
-   run preselected (the reference platform's own "same shell for case
-   inspection, run inspection, approval handling" pattern, SPEC
-   §3.2.1; ONE run-detail viewer per §7's lock). Pending rows keep
-   inline Approve/Deny as the primary action. Includes fixing the
-   zero-time timestamp on resolved rows ("1-12-31" — an unset
-   startedAt formatted instead of falling back to resolution time).
+5. [x] Row drill-down (delivered 2026-08-10): every Review row opens
+   its run in the work-tab shell at the workflow's Runs tab, run
+   detail preselected (consumed-once `pendingRunFocus` store seam);
+   Approve/Deny stopPropagation-protected; e2e ×3. The "1-12-31"
+   timestamp root cause was deeper than display: DBOS only writes
+   StartedAt on queue-dequeue, which Mill never uses — EVERY run had a
+   zero start; `summaryFromStatus` now falls back to CreatedAt
+   (regression-tested), fixing Review, Runs, Activity, and MCP
+   `get_run`/`list_runs` responses all at once.
 6. [ ] The fuller case-management growth path (durable Case entity,
    Statuses/Queues/Checklists/Automations, the MCP-written AI summary)
    is recorded as design input in SPEC §3.2.1 — future research, not

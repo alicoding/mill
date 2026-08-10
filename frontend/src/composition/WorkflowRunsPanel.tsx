@@ -4,6 +4,7 @@ import { DataTable, type Column } from '@primer/react/experimental'
 import { CheckCircleIcon, XCircleIcon, ClockIcon, XIcon, ShieldIcon, ShieldXIcon } from '@primer/octicons-react'
 import { ExecutionService } from '../shared/bindings'
 import { RunKind, type RunDetail, type RunStep, type RunSummary } from '../shared/bindings'
+import { formatRunStartedAt } from '../shared/runTime'
 import styles from '../shared/ListCard.module.css'
 import PageContainer from '../shared/PageContainer'
 
@@ -38,6 +39,13 @@ const STEP_ICON: Record<RunStep['status'], React.ReactNode> = {
 
 interface WorkflowRunsPanelProps {
   workflowId: string
+  // Preselect this run's detail on mount/change -- the Review page's row
+  // drill-down (docs/goals/0002-review-queue-maturation.md item 5).
+  // Applied once per value via the effect below; onInitialRunConsumed
+  // clears the store's pendingRunFocus so it isn't reapplied on a later
+  // unrelated tab switch.
+  initialRunId?: string
+  onInitialRunConsumed?: () => void
 }
 
 // One workflow's own durable-run history + per-step detail + redrive --
@@ -52,7 +60,7 @@ interface WorkflowRunsPanelProps {
 // Activity (views/ActivityView.tsx) stays the lightweight, cross-
 // workflow, session-only "did anything run at all" feed -- unrelated
 // and unchanged by this.
-function WorkflowRunsPanel({ workflowId }: WorkflowRunsPanelProps) {
+function WorkflowRunsPanel({ workflowId, initialRunId, onInitialRunConsumed }: WorkflowRunsPanelProps) {
   const [runs, setRuns] = useState<RunSummary[] | null>(null)
   const [selectedRunID, setSelectedRunID] = useState<string | null>(null)
   const [detail, setDetail] = useState<RunDetail | null>(null)
@@ -70,6 +78,13 @@ function WorkflowRunsPanel({ workflowId }: WorkflowRunsPanelProps) {
     refreshRuns()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [workflowId])
+
+  useEffect(() => {
+    if (!initialRunId) return
+    setSelectedRunID(initialRunId)
+    onInitialRunConsumed?.()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialRunId])
 
   useEffect(() => {
     if (!selectedRunID) {
@@ -152,7 +167,7 @@ function WorkflowRunsPanel({ workflowId }: WorkflowRunsPanelProps) {
       header: 'Started',
       field: 'startedAt',
       sortBy: 'datetime',
-      renderCell: (run) => <Text size="small" className={styles.muted}>{new Date(run.startedAt).toLocaleString()}</Text>,
+      renderCell: (run) => <Text size="small" className={styles.muted}>{formatRunStartedAt(run.startedAt)}</Text>,
     },
     {
       id: 'action',

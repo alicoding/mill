@@ -194,8 +194,18 @@ interface AppState {
   pruneWorkTabs: (keep: (tab: WorkTab) => boolean) => void
   // requestOpenWorkflow opens (or reuses) a workflow's editor tab from
   // anywhere -- the hover-preview's Open, an Activity row -- via the
-  // global strip.
-  requestOpenWorkflow: (id: string) => void
+  // global strip. An optional runId (the Review page's row drill-down,
+  // docs/goals/0002-review-queue-maturation.md item 5) additionally asks
+  // that run to be preselected on the Runs inner tab once the editor
+  // opens -- see pendingRunFocus below for how that's consumed.
+  requestOpenWorkflow: (id: string, runId?: string) => void
+  // The run a just-opened workflow editor should preselect on its Runs
+  // inner tab, set by requestOpenWorkflow's optional runId and read by
+  // WorkflowEditorTab/WorkflowRunsPanel. Consumed once (cleared via
+  // consumePendingRunFocus) so switching tabs afterward, or reopening
+  // the same workflow later, doesn't keep re-focusing a stale run.
+  pendingRunFocus: { workflowId: string; runId: string } | null
+  consumePendingRunFocus: () => void
 }
 
 // Shared across App/ActivityView/SpecView (SPEC.md §1.3): App.tsx still
@@ -289,13 +299,16 @@ export const useAppStore = create<AppState>()(
           const stillActive = workTabs.some((t) => t.key === state.activeWorkTabKey)
           return { workTabs, activeWorkTabKey: stillActive ? state.activeWorkTabKey : null }
         }),
-      requestOpenWorkflow: (id) =>
+      pendingRunFocus: null,
+      requestOpenWorkflow: (id, runId) =>
         set((state) => {
+          const pendingRunFocus = runId ? { workflowId: id, runId } : null
           const existing = state.workTabs.find((t) => t.kind === 'workflow-edit' && t.workflowId === id)
-          if (existing) return { activeWorkTabKey: existing.key }
+          if (existing) return { activeWorkTabKey: existing.key, pendingRunFocus }
           const created: WorkTab = { key: crypto.randomUUID(), kind: 'workflow-edit', workflowId: id }
-          return { workTabs: [...state.workTabs, created], activeWorkTabKey: created.key }
+          return { workTabs: [...state.workTabs, created], activeWorkTabKey: created.key, pendingRunFocus }
         }),
+      consumePendingRunFocus: () => set({ pendingRunFocus: null }),
     }),
     {
       name: 'mill-app-view',

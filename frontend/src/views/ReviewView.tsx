@@ -4,6 +4,7 @@ import { ShieldIcon } from '@primer/octicons-react'
 import { ExecutionService } from '../shared/bindings'
 import type { RunSummary } from '../shared/bindings'
 import { useAppStore } from '../shared/store'
+import { formatRunStartedAt } from '../shared/runTime'
 import styles from '../shared/ListCard.module.css'
 import PageContainer from '../shared/PageContainer'
 
@@ -19,6 +20,7 @@ import PageContainer from '../shared/PageContainer'
 // Camunda/Pega line, not crossed).
 function ReviewView() {
   const workflows = useAppStore((s) => s.workflows)
+  const requestOpenWorkflow = useAppStore((s) => s.requestOpenWorkflow)
   const [pending, setPending] = useState<RunSummary[] | null>(null)
   const [resolved, setResolved] = useState<RunSummary[]>([])
   const [inputs, setInputs] = useState<Record<string, Record<string, string>>>({})
@@ -50,6 +52,13 @@ function ReviewView() {
       .then(() => setTimeout(refresh, 700))
       .catch((err) => setError(String(err)))
   }
+
+  // Row drill-down (docs/goals/0002-review-queue-maturation.md item 5):
+  // every Review row -- pending or resolved -- opens its run in the
+  // app-wide work-tab shell at the workflow's Runs inner tab, with that
+  // run's own detail already open. ONE run-detail viewer (docs/SPEC.md
+  // §7's lock) -- Review itself never renders run detail.
+  const openRun = (run: RunSummary) => requestOpenWorkflow(run.workflowID, run.runID)
 
   const attrsFor = (run: RunSummary) => {
     const all = workflows?.find((w) => w.ID === run.workflowID)?.Attributes ?? []
@@ -89,13 +98,18 @@ function ReviewView() {
 
       <Stack direction="vertical" gap="normal">
         {(pending ?? []).filter((r) => !workflowFilter || r.workflowID === workflowFilter).map((run) => (
-          <div key={run.runID} className={styles.card} data-testid="review-item">
+          <div
+            key={run.runID}
+            className={`${styles.card} ${styles.activityRowClickable}`}
+            data-testid="review-item"
+            onClick={() => openRun(run)}
+          >
             <Stack direction="vertical" gap="condensed">
               <Stack direction="horizontal" gap="condensed" align="center">
                 <ShieldIcon size={16} />
                 <Text weight="semibold">{run.workflowLabel}</Text>
                 <Label variant="attention" size="small">awaiting approval</Label>
-                <Text size="small" className={styles.muted}>{new Date(run.startedAt).toLocaleString()}</Text>
+                <Text size="small" className={styles.muted}>{formatRunStartedAt(run.startedAt)}</Text>
               </Stack>
               <Text size="small">
                 Step <Text weight="semibold">{run.pending?.nodeTypeLabel || run.pending?.nodeTypeID}</Text>
@@ -103,8 +117,12 @@ function ReviewView() {
               </Text>
               {run.pending?.payload && <pre className={styles.result}>{run.pending.payload}</pre>}
 
+              {/* stopPropagation on this whole interactive block: the
+                  card itself now opens the run (row drill-down, goal
+                  0002 item 5) -- typing input or clicking Approve/Deny
+                  must not also trigger that navigation. */}
               {attrsFor(run).length > 0 && (
-                <Stack direction="vertical" gap="condensed">
+                <Stack direction="vertical" gap="condensed" onClick={(e) => e.stopPropagation()}>
                   <Text size="small" weight="semibold">Your input (optional — flows into the resumed run)</Text>
                   {attrsFor(run).map((a) => (
                     <FormControl key={a.Key}>
@@ -123,7 +141,7 @@ function ReviewView() {
                 </Stack>
               )}
 
-              <Stack direction="horizontal" gap="condensed">
+              <Stack direction="horizontal" gap="condensed" onClick={(e) => e.stopPropagation()}>
                 <Button size="small" variant="primary" data-testid="review-approve" onClick={() => resolve(run, true)}>
                   Approve and resume
                 </Button>
@@ -140,7 +158,12 @@ function ReviewView() {
           <Heading as="h2" variant="small" className={styles.sectionHeading}>Recently resolved</Heading>
           <Stack direction="vertical" gap="condensed">
             {resolved.filter((r) => !workflowFilter || r.workflowID === workflowFilter).slice(0, 10).map((run) => (
-              <div key={run.runID} className={styles.card} data-testid="review-resolved-item">
+              <div
+                key={run.runID}
+                className={`${styles.card} ${styles.activityRowClickable}`}
+                data-testid="review-resolved-item"
+                onClick={() => openRun(run)}
+              >
                 <Stack direction="horizontal" gap="condensed" align="center" justify="space-between">
                   <Stack direction="horizontal" gap="condensed" align="center">
                     <Text weight="semibold">{run.workflowLabel}</Text>
@@ -153,7 +176,7 @@ function ReviewView() {
                     </Label>
                     <Label size="small" variant={run.status === 'SUCCESS' ? 'success' : 'secondary'}>{run.status}</Label>
                   </Stack>
-                  <Text size="small" className={styles.muted}>{new Date(run.startedAt).toLocaleString()}</Text>
+                  <Text size="small" className={styles.muted}>{formatRunStartedAt(run.startedAt)}</Text>
                 </Stack>
               </div>
             ))}
