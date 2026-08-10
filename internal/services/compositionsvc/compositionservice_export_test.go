@@ -24,10 +24,24 @@ func newTestCompositionService(t *testing.T) *CompositionService {
 	return comp
 }
 
+// triggerAndCaptureNodes is a minimal, real, Trigger-rooted two-node
+// graph (docs/adr/0028: a non-Trigger root is now a save-time Error) --
+// used by every export/import fixture below in place of the old
+// single-Capture-node fixture, which is now exactly the owner's own
+// unsaveable repro (docs/adr/0028's Context section).
+func triggerAndCaptureNodes() ([]composition.Node, []composition.Edge) {
+	nodes := []composition.Node{
+		{ID: "t", NodeTypeID: "trigger-manual"},
+		{ID: "c", NodeTypeID: "capture-clipboard-html"},
+	}
+	edges := []composition.Edge{{ID: "e1", Source: "t", Target: "c"}}
+	return nodes, edges
+}
+
 func TestExportWorkflow_RoundTripsThroughImport(t *testing.T) {
 	comp := newTestCompositionService(t)
-	created, err := comp.CreateWorkflow("My workflow", "a description",
-		[]composition.Node{{NodeTypeID: "capture-clipboard-html"}}, nil)
+	nodes, edges := triggerAndCaptureNodes()
+	created, err := comp.CreateWorkflow("My workflow", "a description", nodes, edges)
 	if err != nil {
 		t.Fatalf("CreateWorkflow: %v", err)
 	}
@@ -58,8 +72,8 @@ func TestExportWorkflow_RoundTripsThroughImport(t *testing.T) {
 
 func TestImportWorkflow_GeneratesANewID_NeverReusesTheOriginal(t *testing.T) {
 	comp := newTestCompositionService(t)
-	created, err := comp.CreateWorkflow("My workflow", "",
-		[]composition.Node{{NodeTypeID: "capture-clipboard-html"}}, nil)
+	nodes, edges := triggerAndCaptureNodes()
+	created, err := comp.CreateWorkflow("My workflow", "", nodes, edges)
 	if err != nil {
 		t.Fatalf("CreateWorkflow: %v", err)
 	}
@@ -84,8 +98,8 @@ func TestImportWorkflow_GeneratesANewID_NeverReusesTheOriginal(t *testing.T) {
 
 func TestImportWorkflow_TwiceFromTheSameFile_CreatesTwoIndependentWorkflows(t *testing.T) {
 	comp := newTestCompositionService(t)
-	created, err := comp.CreateWorkflow("My workflow", "",
-		[]composition.Node{{NodeTypeID: "capture-clipboard-html"}}, nil)
+	nodes, edges := triggerAndCaptureNodes()
+	created, err := comp.CreateWorkflow("My workflow", "", nodes, edges)
 	if err != nil {
 		t.Fatalf("CreateWorkflow: %v", err)
 	}
@@ -113,8 +127,8 @@ func TestImportWorkflow_TwiceFromTheSameFile_CreatesTwoIndependentWorkflows(t *t
 
 func TestExportWorkflow_IsDeterministic_RepeatedExportsAreByteIdentical(t *testing.T) {
 	comp := newTestCompositionService(t)
-	created, err := comp.CreateWorkflow("My workflow", "a description",
-		[]composition.Node{{NodeTypeID: "capture-clipboard-html"}}, nil)
+	nodes, edges := triggerAndCaptureNodes()
+	created, err := comp.CreateWorkflow("My workflow", "a description", nodes, edges)
 	if err != nil {
 		t.Fatalf("CreateWorkflow: %v", err)
 	}
@@ -135,8 +149,8 @@ func TestExportWorkflow_IsDeterministic_RepeatedExportsAreByteIdentical(t *testi
 
 func TestExportWorkflow_OmitsIDAndBuiltInFromTheWireShape(t *testing.T) {
 	comp := newTestCompositionService(t)
-	created, err := comp.CreateWorkflow("My workflow", "",
-		[]composition.Node{{NodeTypeID: "capture-clipboard-html"}}, nil)
+	nodes, edges := triggerAndCaptureNodes()
+	created, err := comp.CreateWorkflow("My workflow", "", nodes, edges)
 	if err != nil {
 		t.Fatalf("CreateWorkflow: %v", err)
 	}
@@ -198,7 +212,8 @@ func TestImportWorkflow_AppliesAttributes(t *testing.T) {
 	comp := newTestCompositionService(t)
 	exported := `{
 		"label": "with attributes",
-		"nodes": [{"nodeTypeID": "capture-clipboard-html"}],
+		"nodes": [{"id": "t", "nodeTypeID": "trigger-manual"}, {"id": "c", "nodeTypeID": "capture-clipboard-html"}],
+		"edges": [{"id": "e1", "source": "t", "target": "c"}],
 		"attributes": [{"key": "count", "label": "Count", "type": "number"}]
 	}`
 

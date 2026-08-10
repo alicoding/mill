@@ -135,6 +135,22 @@ export interface Edge {
 }
 
 /**
+ * Issue is one problem ValidateGraph found. NodeID/EdgeID identify the
+ * offending node/edge when the issue is scoped to one -- both empty for
+ * a whole-graph issue (e.g. "no starting node," which names no single
+ * node/edge as the fix point). The editor's issues panel selects the
+ * referenced node/edge when a row is clicked; the per-node canvas
+ * badges group by NodeID the same way the guardrail badge already does
+ * (docs/adr/0022's Update).
+ */
+export interface Issue {
+    "Severity": Severity;
+    "NodeID": string;
+    "EdgeID": string;
+    "Message": string;
+}
+
+/**
  * MapEntry is one row of Mill's composition capability map -- real Go
  * data mirroring docs/SPEC.md §3.3's table, the same "authoritative
  * machine-read projection, SPEC.md's own tags stay human-readable
@@ -230,6 +246,24 @@ export interface Position {
     "X": number;
     "Y": number;
 }
+
+/**
+ * Severity classifies a validation Issue (docs/adr/0028): Error blocks
+ * save (ValidateGraphStrict rolls up only these); Warning never blocks
+ * anything -- it's purely informational for the editor's authoring-
+ * validation panel and MCP's validate_workflow. One severity contract
+ * everywhere: canvas save, UpdateWorkflow, and MCP update_workflow/
+ * validate_workflow all agree, per the ADR's own decision.
+ */
+export enum Severity {
+    /**
+     * The Go zero value for the underlying type of the enum.
+     */
+    $zero = "",
+
+    SeverityError = "error",
+    SeverityWarning = "warning",
+};
 
 /**
  * Workflow is a node/edge graph. Branching exists now (Decision nodes,

@@ -386,3 +386,64 @@
     letter-spacing: 0.06em;
     color: var(--fgColor-muted);
 }
+
+/* Authoring-validation surface (docs/adr/0028): the toolbar badge
+   naming error/warning counts, and its anchored issues panel. */
+.validationBadge {
+    cursor: pointer;
+    border: none;
+}
+.validationPanel {
+    padding: var(--base-size-8);
+    max-width: 360px;
+    max-height: 320px;
+    overflow-y: auto;
+}
+.validationRow {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--base-size-8);
+    width: 100%;
+    text-align: left;
+    padding: var(--base-size-4) var(--base-size-8);
+    border: none;
+    border-radius: var(--borderRadius-medium);
+    background: transparent;
+    cursor: pointer;
+    color: var(--fgColor-default);
+}
+.validationRow:hover {
+    background: var(--bgColor-accent-muted);
+}
+.validationRow[data-severity='error'] {
+    color: var(--fgColor-danger);
+}
+.validationRow[data-severity='warning'] {
+    color: var(--fgColor-attention);
+}
+
+/* Per-node authoring-validation badge (docs/adr/0028) -- same
+   nothing-hidden top-corner-badge pattern as .canvasNodeGuardrail
+   (CanvasNodeView.tsx's shield), positioned top-LEFT instead of
+   top-right so the two can coexist on one card without overlapping.
+   Deliberately a distinct icon (AlertFillIcon, not ShieldIcon) and
+   color scale (attention/danger, matching the toolbar badge above)
+   so a validation problem never reads as a guardrail verdict. */
+.canvasNodeValidation {
+    position: absolute;
+    top: calc(-1 * var(--base-size-6, 6px));
+    left: calc(-1 * var(--base-size-6, 6px));
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: var(--base-size-20, 20px);
+    height: var(--base-size-20, 20px);
+    border-radius: 50%;
+    background: var(--bgColor-attention-emphasis);
+    color: var(--fgColor-onEmphasis);
+    fill: var(--fgColor-onEmphasis);
+    border: 1px solid var(--borderColor-default);
+}
+.canvasNodeValidation[data-severity='error'] {
+    background: var(--bgColor-danger-emphasis);
+}

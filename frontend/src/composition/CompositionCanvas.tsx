@@ -16,13 +16,16 @@ import { Button, FormControl, IconButton, Stack, Text, TextInput, Textarea } fro
 import { ChevronDownIcon, ChevronUpIcon, ColumnsIcon, RedoIcon, SidebarCollapseIcon, SidebarExpandIcon, TrashIcon, UndoIcon } from '@primer/octicons-react'
 import { ArrowLeftIcon } from '@primer/octicons-react'
 import { CompositionService } from '../shared/bindings'
-import type { NodeType, Node as CompNode, Edge as CompEdge, Workflow } from '../../bindings/github.com/alicoding/mill/internal/domain/composition/models'
+import type { NodeType, Node as CompNode, Edge as CompEdge, Workflow, Issue } from '../../bindings/github.com/alicoding/mill/internal/domain/composition/models'
 import { createCanvasStore, type CanvasNode } from './canvasStore'
 import { rfNodeTypes } from './rfNodeTypes'
 import { CANVAS_NODE_WIDTH, CANVAS_NODE_HEIGHT } from './canvasConstants'
 import { findFreeDropPosition } from './canvasLayout'
 import { toCanvasNodes, toRFEdges } from './canvasConversion'
 import { draftWorkflowSchema } from './draftWorkflowSchema'
+import { toDraftEdges, toDraftNodes } from './draftPayload'
+import { useDraftValidation, groupIssuesByNode } from './useDraftValidation'
+import { ValidationSurface } from './ValidationPanel'
 import { NodePalette } from './NodePalette'
 import { DecisionEdgeInspector } from './DecisionEdgeInspector'
 import { NodeInspector } from './NodeInspector'
@@ -71,6 +74,7 @@ function CanvasInner({ nodeTypes, workflow, onBack, onSaved }: CompositionCanvas
   const updateEdgeCondition = useCanvasStore((s) => s.updateEdgeCondition)
   const removeSelected = useCanvasStore((s) => s.removeSelected)
   const setGuardrailVerdicts = useCanvasStore((s) => s.setGuardrailVerdicts)
+  const setValidationIssues = useCanvasStore((s) => s.setValidationIssues)
 
   const canUndo = useStore(useCanvasStore.temporal, (s) => s.pastStates.length > 0)
   const canRedo = useStore(useCanvasStore.temporal, (s) => s.futureStates.length > 0)
@@ -118,10 +122,29 @@ function CanvasInner({ nodeTypes, workflow, onBack, onSaved }: CompositionCanvas
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [workflow?.ID, nodeFingerprint])
 
+  // Authoring-validation surface (docs/adr/0028): debounced live
+  // ValidateDraft, mirrored onto every node's own badge the same way
+  // guardrail verdicts are above -- see useDraftValidation.ts.
+  const validationIssues = useDraftValidation(nodes, edges, workflow?.Attributes)
+  useEffect(() => {
+    setValidationIssues(groupIssuesByNode(validationIssues))
+  }, [validationIssues, setValidationIssues])
+
   const { screenToFlowPosition } = useReactFlow()
 
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null)
   const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null)
+  // A validation-panel row selects its offending node/edge, same target
+  // onNodeClick/onEdgeClick below already write to.
+  const selectIssue = (issue: Issue) => {
+    if (issue.NodeID) {
+      setSelectedNodeId(issue.NodeID)
+      setSelectedEdgeId(null)
+    } else if (issue.EdgeID) {
+      setSelectedEdgeId(issue.EdgeID)
+      setSelectedNodeId(null)
+    }
+  }
   const [draftLabel, setDraftLabel] = useState(workflow?.Label ?? '')
   const [draftDescription, setDraftDescription] = useState(workflow?.Description ?? '')
   // Collapsed by default unless a description already exists -- the
@@ -284,19 +307,8 @@ function CanvasInner({ nodeTypes, workflow, onBack, onSaved }: CompositionCanvas
     const draft = {
       Label: draftLabel,
       Description: draftDescription,
-      Nodes: nodes.map((n) => ({
-        ID: n.id,
-        Kind: n.data.kind,
-        NodeTypeID: n.data.nodeTypeID,
-        Config: n.data.config,
-        Position: { X: n.position.x, Y: n.position.y },
-      })),
-      Edges: edges.map((e) => ({
-        ID: e.id,
-        Source: e.source,
-        SourceHandle: (e.data as { condition?: string } | undefined)?.condition ?? '',
-        Target: e.target,
-      })),
+      Nodes: toDraftNodes(nodes),
+      Edges: toDraftEdges(edges),
     }
     const parsed = draftWorkflowSchema.safeParse(draft)
     if (!parsed.success) {
@@ -416,6 +428,7 @@ function CanvasInner({ nodeTypes, workflow, onBack, onSaved }: CompositionCanvas
                 <IconButton icon={RedoIcon} aria-label="Redo" size="small" disabled={!canRedo} onClick={() => useCanvasStore.temporal.getState().redo()} />
                 <IconButton icon={ColumnsIcon} aria-label="Auto-layout" size="small" disabled={layingOut || nodes.length === 0} onClick={runAutoLayout} />
                 <IconButton icon={TrashIcon} aria-label="Delete selected" size="small" onClick={removeSelected} />
+                <ValidationSurface issues={validationIssues} onSelectIssue={selectIssue} />
                 <Text size="small" className={runbookStyles.muted}>
                   Add steps to drag a node type onto the canvas, connect them, click a node to configure it.
                 </Text>

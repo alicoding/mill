@@ -22,6 +22,13 @@ export interface CanvasNodeData extends Record<string, unknown> {
   // will pause or refuse is marked on the canvas BEFORE anyone runs it.
   guardrailEffect?: string
   guardrailRule?: string
+  // This node's own authoring-validation issues (docs/adr/0028),
+  // injected by CompositionCanvas from useDraftValidation's debounced
+  // ValidateDraft call -- the same nothing-hidden pattern as
+  // guardrailEffect above, applied to save-blocking/informational
+  // problems instead of execution policy. 'error' wins over 'warning'
+  // when a node carries both (CanvasNodeView badges the worse one).
+  validationIssues?: { severity: string; message: string }[]
 }
 
 export type CanvasNode = RFNode<CanvasNodeData>
@@ -39,6 +46,7 @@ interface CanvasState {
   removeSelected: () => void
   load: (nodes: CanvasNode[], edges: RFEdge[]) => void
   setGuardrailVerdicts: (verdicts: Record<string, { effect: string; ruleLabel: string }>) => void
+  setValidationIssues: (issuesByNodeId: Record<string, { severity: string; message: string }[]>) => void
   clear: () => void
 }
 
@@ -112,6 +120,15 @@ export function createCanvasStore() {
               const effect = v?.effect === 'ask' || v?.effect === 'deny' ? v.effect : undefined
               if ((n.data.guardrailEffect ?? undefined) === effect && (!effect || n.data.guardrailRule === v?.ruleLabel)) return n
               return { ...n, data: { ...n.data, guardrailEffect: effect, guardrailRule: v?.ruleLabel } }
+            }),
+          }),
+        setValidationIssues: (issuesByNodeId) =>
+          set({
+            nodes: get().nodes.map((n) => {
+              const next = issuesByNodeId[n.id]
+              const prev = n.data.validationIssues
+              if (JSON.stringify(prev ?? []) === JSON.stringify(next ?? [])) return n
+              return { ...n, data: { ...n.data, validationIssues: next } }
             }),
           }),
         clear: () => set({ nodes: [], edges: [] }),

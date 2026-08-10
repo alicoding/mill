@@ -52,7 +52,7 @@ func TestBuiltInWorkflows_AllNodesFullyResolvedAndExecutable(t *testing.T) {
 		// Every built-in workflow must itself form a valid graph --
 		// exercising ValidateGraph against real seeded data, not just
 		// hand-built test fixtures.
-		if err := ValidateGraph(wf.Nodes, wf.Edges, wf.Attributes); err != nil {
+		if err := ValidateGraphStrict(wf.Nodes, wf.Edges, wf.Attributes); err != nil {
 			t.Errorf("workflow %q nodes/edges don't form a valid graph: %v", wf.ID, err)
 		}
 	}

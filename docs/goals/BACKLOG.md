@@ -29,7 +29,7 @@ live-review material, interleaved during owner reviews, not a lane.
 2. [x] [0010 — Seed-proof completeness + enforcement](archive/0010-seed-proof-completeness.md) — delivered 2026-08-10: every seed proven or explicitly manual-only; enforcement red-builds proofless seeds; 3 new seeds (List lookup, MCP echo, disabled fs-watch); advisory liveness CI
 
 **Group B — Execution arc**
-3. [ ] [0008 — Authoring validation + ending model](0008-authoring-validation-and-ending-model.md) (ending-model ADR gates 0004's terminal; then the validation panel)
+3. [x] [0008 — Authoring validation + ending model](archive/0008-authoring-validation-and-ending-model.md) — delivered 2026-08-10 (ADR-0028 + full build: issue list, badges, panel, MCP validate-all; 115/115)
 4. [ ] [0004 — Code execution capability](0004-code-execution-capability.md) (ADR-0026 + amendments = complete brief; ~two agent builds)
 
 **Group C — Attention layer**

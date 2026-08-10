@@ -80,6 +80,28 @@ func jsonResult(v any) (*mcp.CallToolResult, error) {
 	return textResult(string(data)), nil
 }
 
+// validationResult is validate_workflow's own wire shape (docs/adr/0028)
+// -- lowercase field names, deliberately distinct from the PascalCase
+// domain-struct convention every other Wails-bound RPC uses, since this
+// is an ad hoc MCP tool response, not a generated binding.
+type validationResult struct {
+	Valid  bool                `json:"valid"`
+	Issues []composition.Issue `json:"issues"`
+}
+
+// hasErrorIssue reports whether issues contains at least one
+// Error-severity entry -- the same rollup ValidateGraphStrict does
+// internally, exposed here since validate_workflow needs the boolean
+// answer alongside the full list, not the joined-error-string form.
+func hasErrorIssue(issues []composition.Issue) bool {
+	for _, i := range issues {
+		if i.Severity == composition.SeverityError {
+			return true
+		}
+	}
+	return false
+}
+
 // registerAuthoringTools wires the introspect/validate/mutate/run tier.
 // Called from registerTools alongside the export/import set.
 func (m *MillMCPService) registerAuthoringTools() {
@@ -135,7 +157,7 @@ func (m *MillMCPService) registerAuthoringTools() {
 	// --- Validation: pure, saves nothing, ungated. ---
 	mcp.AddTool(m.server, &mcp.Tool{
 		Name:        "validate_workflow",
-		Description: "Validate a workflow definition (exported-workflow JSON) without saving: node types resolved, graph rules checked (single root, Decision edge conditions compile, secret-output guardrail). Returns 'valid' or the exact error -- iterate here before update_workflow.",
+		Description: "Validate a workflow definition (exported-workflow JSON) without saving. Returns the FULL issue list (docs/adr/0028), not just the first problem: every graph rule Mill checks (trigger root, reachability, Decision edge conditions, secret-output guardrail, dangling Capture/Process leaves, unset entity references), each labeled 'error' or 'warning'. 'valid' is true iff no error-severity issue is present -- warnings never block update_workflow, they're informational only. Iterate here before update_workflow.",
 	}, func(_ context.Context, _ *mcp.CallToolRequest, in validateWorkflowArgs) (*mcp.CallToolResult, any, error) {
 		var def struct {
 			Label      string                     `json:"label"`
@@ -144,16 +166,17 @@ func (m *MillMCPService) registerAuthoringTools() {
 			Attributes []composition.AttributeDef `json:"attributes"`
 		}
 		if err := json.Unmarshal([]byte(in.JSON), &def); err != nil {
-			return textResult("invalid: not parseable as exported-workflow JSON: " + err.Error()), nil, nil
+			res, jerr := jsonResult(validationResult{Issues: []composition.Issue{{Severity: composition.SeverityError, Message: "not parseable as exported-workflow JSON: " + err.Error()}}})
+			return res, nil, jerr
 		}
 		resolved, err := composition.ResolveNodeDefaults(def.Nodes)
 		if err != nil {
-			return textResult("invalid: " + err.Error()), nil, nil
+			res, jerr := jsonResult(validationResult{Issues: []composition.Issue{{Severity: composition.SeverityError, Message: err.Error()}}})
+			return res, nil, jerr
 		}
-		if err := composition.ValidateGraph(resolved, def.Edges, def.Attributes); err != nil {
-			return textResult("invalid: " + err.Error()), nil, nil
-		}
-		return textResult("valid"), nil, nil
+		issues := composition.ValidateGraph(resolved, def.Edges, def.Attributes)
+		res, jerr := jsonResult(validationResult{Valid: !hasErrorIssue(issues), Issues: issues})
+		return res, nil, jerr
 	})
 
 	// --- Mutation: write gate + per-write approval with a diff summary.

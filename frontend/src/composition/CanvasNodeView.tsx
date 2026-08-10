@@ -1,7 +1,7 @@
 import { Handle, Position as RFPosition } from '@xyflow/react'
 import type { NodeProps } from '@xyflow/react'
 import { Text } from '@primer/react'
-import { ShieldIcon } from '@primer/octicons-react'
+import { AlertFillIcon, ShieldIcon } from '@primer/octicons-react'
 import type { CanvasNode } from './canvasStore'
 import { KIND_ICON, KIND_ICON_BG, KIND_LABEL } from './nodeKind'
 import { WorkflowHoverPreview } from './WorkflowHoverPreview'
@@ -61,6 +61,16 @@ export function CanvasNodeView({ id, data, selected }: NodeProps<CanvasNode>) {
   // listens for hover, and every pointer event still bubbles to React
   // Flow's own node wrapper.
   const childWorkflowId = data.nodeTypeID === 'child-workflow' ? (data.config?.workflowId ?? '') : ''
+  // Authoring-validation badge (docs/adr/0028): worst severity wins
+  // when a node carries both an error and a warning issue -- one badge,
+  // not a stack of them, same restraint the guardrail badge already
+  // applies (a step is either ask or deny, never both at once).
+  const validationIssues = data.validationIssues ?? []
+  const validationSeverity = validationIssues.some((i) => i.severity === 'error')
+    ? 'error'
+    : validationIssues.length > 0
+      ? 'warning'
+      : undefined
   const card = (
     <div
       className={`${styles.canvasNode} ${selected ? styles.canvasNodeSelected : ''}`}
@@ -91,6 +101,16 @@ export function CanvasNodeView({ id, data, selected }: NodeProps<CanvasNode>) {
             : `Asks for approval before running${data.guardrailRule ? ` — ${data.guardrailRule}` : ''}`}
         >
           <ShieldIcon size={12} />
+        </span>
+      )}
+      {validationSeverity && (
+        <span
+          className={styles.canvasNodeValidation}
+          data-testid="node-validation-badge"
+          data-severity={validationSeverity}
+          title={validationIssues.map((i) => i.message).join('\n')}
+        >
+          <AlertFillIcon size={12} />
         </span>
       )}
       {runStatus && (

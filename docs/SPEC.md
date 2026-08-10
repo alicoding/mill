@@ -3195,6 +3195,22 @@ recorded as a real design input (`OPEN`), never silently dropped.
   (`draftDrift.ts`, client-side snapshot compare). Callable-child rows
   drop the primary Run (the incoherence that prompted this) for a
   secondary "Test."
+- **Authoring validation surface — `LOCKED`, built (goal 0008,
+  [ADR-0028](adr/0028-authoring-validation-and-ending-model.md)).**
+  `ValidateGraph` returns the full issue list with severities (errors
+  block save — the owner's demonstrated single-Capture repro is now
+  unsaveable with every problem listed; warnings never block:
+  Process/Capture leaves and unset entity refs warn, so drafts stay
+  saveable through incompleteness). Editor surface: a debounced live
+  toolbar badge (nE/nW) + issues panel where each row selects its
+  offending node/edge, plus per-node worst-severity badges (top-left,
+  distinct from the guardrail shield). MCP `validate_workflow` returns
+  structured `{valid, issues[]}` — ADR-0025's authoring loop iterates
+  all problems per round trip. Several seeds legitimately carry the
+  process-leaf warning (their output is demonstrated via run history)
+  — correct, visible, not contorted away. The reference platform's
+  own validation model (§3.2.2's review) matched this design
+  independently, observed after the ADR was decided.
 - **Dev-staleness root cause found and fixed — `LOCKED`.** Two
   compounding causes made "my app looks stale" recur: (1) every
   wails-built desktop binary passed `-buildvcs=false` (dev *and*
