@@ -13,3 +13,26 @@
     justify-content: center;
 }
 .muted { color: var(--fgColor-muted); }
+
+/* Single-line label discipline (goal 0007's dense-row pattern): the
+   label ellipsizes against whatever width ActionList's content slot
+   grants it; badges hold the line and never wrap underneath. min-width
+   0 on both the row and the label is what actually lets flexbox shrink
+   text below its intrinsic width so text-overflow can engage. */
+.labelRow {
+    min-width: 0;
+    max-width: 100%;
+    flex-wrap: nowrap;
+}
+.label {
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.badges {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    gap: var(--base-size-4, 4px);
+}
