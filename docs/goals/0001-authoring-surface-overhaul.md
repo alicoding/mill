@@ -45,3 +45,13 @@ Owner reviews the running app and says the authoring surface matches
 the prototype's feel — explicitly a live judgment, not a checklist
 (their stated review mode: "the only time I can see if it matches is
 when I see it in action").
+
+## Live-review additions (2026-08-10)
+- Hotkey recorder vs native menu accelerators (owner hit ⌘⇧W while
+  recording — the window closed, and since Mill exits on last-window-
+  close, the app quit; ⌘Q mid-recording would too): macOS checks menu
+  key-equivalents before the webview sees keydown, so the recorder
+  never observes those combos. Fix: suspend the app menu's
+  accelerators while recording (swap in an accelerator-free menu,
+  restore on capture/cancel) + warn on permanently-OS-reserved
+  combos. Task-tracked; fix after the 0008 build lands.
