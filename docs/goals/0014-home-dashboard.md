@@ -31,11 +31,24 @@ Plus the launch half: pinned/recent workflow cards reusing goal
 0006/0007's exact badges/rows (never a second lifecycle vocabulary),
 quick create, the pending-attention count (0005).
 
-## Hard constraints from the review + Mill's own doctrine
-- Adopt, don't invent: charting/metrics/time-series via an existing
-  library or capability (research pass first — the dataviz skill's
-  guidance applies to any chart Mill renders; candidates researched
-  when scheduled, not guessed now).
+## Charting library — DECIDED (research 2026-08-10): Recharts (MIT)
+Ranked against Chart.js/visx/uPlot/Observable Plot/plain-D3 on primary
+sources. Recharts wins on two load-bearing points, not bundle size:
+(1) `ComposedChart` IS the paired bar+line dual-axis shape this goal
+needs, batteries-included (tooltip/legend/ResponsiveContainer) — visx
+is a primitives toolkit that would make Mill hand-build that
+(architecture.md's ownership-burden trap); (2) **SVG rendering inherits
+Primer's CSS-variable cascade on a theme toggle for FREE** — canvas
+libs (Chart.js/uPlot) require manual palette re-resolution + redraw on
+every light/dark switch, real avoidable glue for the one property the
+goal calls out. Mitigate its ~147KB gzip by **lazy-importing the chart
+component only when Home mounts** (the elkjs precedent, SPEC §3.3).
+KPI cards need NO library — Primer Text/Heading render the value-
+accounting numbers directly. Primer has no first-party charting (only
+color/contrast guidelines — drive Recharts marks from Primer tokens
+per those). No Rust in any candidate's tree (constraint clean).
+
+## Other hard constraints from the review + Mill's own doctrine
 - Metric definitions document numerator/denominator/retry/test-kind
   treatment/interval explicitly; RunKind test-vs-triggered treatment
   is Mill's own first metric-semantics decision.
