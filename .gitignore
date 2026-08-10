@@ -16,3 +16,6 @@ build/android/gen/
 # Playwright MCP tool debug artifacts (console logs, page snapshots)
 .playwright-mcp/
 /mill
+
+# agent worktrees (parallel builds) — never tracked
+.claude/worktrees/
