@@ -45,6 +45,7 @@ export interface ActivityEntry {
 // has to guess or fall back to a default.
 export type View =
   | { kind: 'activity' }
+  | { kind: 'review' }
   | { kind: 'composition' }
   | { kind: 'configure' }
   | { kind: 'settings' }
@@ -58,6 +59,8 @@ export function viewFor(capability: Capability): View {
   switch (capability.View) {
     case ViewKind.ViewActivity:
       return { kind: 'activity' }
+    case ViewKind.ViewReview:
+      return { kind: 'review' }
     case ViewKind.ViewComposition:
       return { kind: 'composition' }
     case ViewKind.ViewConfigure:

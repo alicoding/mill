@@ -87,7 +87,7 @@ func TestGuardrail_ExternalStepParks_DenyFailsClosed(t *testing.T) {
 		t.Fatalf("pending = %+v, want node n1 / test-external-echo", pending)
 	}
 
-	if err := exec.ResolveApproval(summary.RunID, "n1", false); err != nil {
+	if err := exec.ResolveApproval(summary.RunID, "n1", false, nil); err != nil {
 		t.Fatalf("ResolveApproval: %v", err)
 	}
 
@@ -132,7 +132,7 @@ func TestGuardrail_ExternalStepParks_ApproveExecutes(t *testing.T) {
 		return struct{}{}, err == nil && s.Pending != nil
 	})
 
-	if err := exec.ResolveApproval(summary.RunID, "n1", true); err != nil {
+	if err := exec.ResolveApproval(summary.RunID, "n1", true, nil); err != nil {
 		t.Fatalf("ResolveApproval: %v", err)
 	}
 
@@ -257,14 +257,14 @@ func TestGuardrail_ExplicitWaitNode_ParksEvenWithAllowRule(t *testing.T) {
 	// A blanket allow for the node type -- must be ignored by the
 	// explicit checkpoint.
 	if _, err := guard.CreateRule(guardrail.Rule{
-		Label: "blanket allow", Effect: guardrail.EffectAllow, NodeTypeID: "guardrail-wait-approval",
+		Label: "blanket allow", Effect: guardrail.EffectAllow, NodeTypeID: "human-review",
 	}); err != nil {
 		t.Fatalf("CreateRule: %v", err)
 	}
 
 	wf, err := comp.CreateWorkflow("Explicit checkpoint workflow", "", []composition.Node{
 		{ID: "t1", NodeTypeID: "trigger-manual"},
-		{ID: "w1", NodeTypeID: "guardrail-wait-approval",
+		{ID: "w1", NodeTypeID: "human-review",
 			Config: map[string]string{"message": "double-check before this ships"}},
 		{ID: "n2", NodeTypeID: "process-inject-text",
 			Config: map[string]string{"text": "[after-checkpoint]", "placement": "append"}},
@@ -295,7 +295,7 @@ func TestGuardrail_ExplicitWaitNode_ParksEvenWithAllowRule(t *testing.T) {
 		t.Fatalf("pending = %+v, want the checkpoint's own message surfaced", pending)
 	}
 
-	if err := exec.ResolveApproval(summary.RunID, "w1", true); err != nil {
+	if err := exec.ResolveApproval(summary.RunID, "w1", true, nil); err != nil {
 		t.Fatalf("ResolveApproval: %v", err)
 	}
 	final := waitFor(t, "run to succeed", 10*time.Second, func() (RunSummary, bool) {
@@ -307,5 +307,80 @@ func TestGuardrail_ExplicitWaitNode_ParksEvenWithAllowRule(t *testing.T) {
 	})
 	if !strings.Contains(final.Output, "[after-checkpoint]") {
 		t.Fatalf("final.Output = %q, want the post-checkpoint step's output", final.Output)
+	}
+}
+
+// The seeded review example end to end (docs/adr/0023, the seed IS the
+// proof): parks at the human-review checkpoint; the reviewer's typed
+// input flows into the resumed run's Attributes, is read into the
+// payload, and passes the ruleset. Denying input (an empty note) would
+// fail the "note provided" rule -- also checked.
+func TestSeededHumanReviewExample_TypedInputFlowsThrough(t *testing.T) {
+	store := newFakeStore()
+	comp := NewCompositionService(store)
+	guard := NewGuardrailService(store, comp)
+	dbPath := filepath.Join(t.TempDir(), "exec.db")
+	exec, err := NewExecutionService("sqlite:"+dbPath, comp, guard)
+	if err != nil {
+		t.Fatalf("NewExecutionService: %v", err)
+	}
+	t.Cleanup(func() { _ = exec.Shutdown(2 * time.Second) })
+
+	wfID := findBuiltInWorkflowID(t, comp, "Example: Human review with input")
+
+	// Approve WITH input: the note becomes the payload and passes the
+	// ruleset.
+	summary, err := exec.RunWorkflow(wfID, RunKindTest, nil)
+	if err != nil {
+		t.Fatalf("RunWorkflow: %v", err)
+	}
+	pending := waitFor(t, "pending review", 10*time.Second, func() (*PendingApproval, bool) {
+		s, err := exec.summaryFor(summary.RunID)
+		if err != nil || s.Pending == nil {
+			return nil, false
+		}
+		return s.Pending, true
+	})
+	if pending.RuleLabel != "Provide a note for this run, then approve" {
+		t.Fatalf("pending.RuleLabel = %q, want the checkpoint's configured message", pending.RuleLabel)
+	}
+	if err := exec.ResolveApproval(summary.RunID, pending.NodeID, true, map[string]string{"note": "reviewer says hi"}); err != nil {
+		t.Fatalf("ResolveApproval: %v", err)
+	}
+	final := waitFor(t, "run to succeed", 10*time.Second, func() (RunSummary, bool) {
+		s, err := exec.summaryFor(summary.RunID)
+		if err != nil || s.Status != "SUCCESS" {
+			return RunSummary{}, false
+		}
+		return s, true
+	})
+	if final.Output != "reviewer says hi" {
+		t.Fatalf("final.Output = %q, want the reviewer's note as the payload", final.Output)
+	}
+
+	// Approve WITHOUT input: the empty note fails the ruleset, naming it.
+	summary2, err := exec.RunWorkflow(wfID, RunKindTest, nil)
+	if err != nil {
+		t.Fatalf("RunWorkflow(2): %v", err)
+	}
+	pending2 := waitFor(t, "pending review 2", 10*time.Second, func() (*PendingApproval, bool) {
+		s, err := exec.summaryFor(summary2.RunID)
+		if err != nil || s.Pending == nil {
+			return nil, false
+		}
+		return s.Pending, true
+	})
+	if err := exec.ResolveApproval(summary2.RunID, pending2.NodeID, true, nil); err != nil {
+		t.Fatalf("ResolveApproval(2): %v", err)
+	}
+	failed := waitFor(t, "run to fail on the ruleset", 10*time.Second, func() (RunSummary, bool) {
+		s, err := exec.summaryFor(summary2.RunID)
+		if err != nil || s.Status != "ERROR" {
+			return RunSummary{}, false
+		}
+		return s, true
+	})
+	if !strings.Contains(failed.Error, "note provided") {
+		t.Fatalf("failed.Error = %q, want the failing rule named", failed.Error)
 	}
 }

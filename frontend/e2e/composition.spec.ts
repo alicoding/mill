@@ -119,9 +119,10 @@ test('Composition page lists built-in workflows; node primitives live in a colla
   // (docs/adr/0010) + process-inject-text (SPEC.md §3.3) +
   // capture-attribute (the typed-input reader the seeded parent/child
   // example uses, added via ADR-0006's self-registration) +
-  // guardrail-wait-approval (the explicit checkpoint node,
-  // docs/adr/0022's Update).
-  await expect(activePanel(page).getByTestId('palette-item')).toHaveCount(18)
+  // human-review (the explicit human-in-the-loop checkpoint node,
+  // docs/adr/0022's Update + docs/adr/0023) + ruleset (docs/adr/0023's
+  // payload-validation node).
+  await expect(activePanel(page).getByTestId('palette-item')).toHaveCount(19)
 })
 
 test('A new workflow starts with a starter node placed, not a blank canvas', async ({ page }) => {
