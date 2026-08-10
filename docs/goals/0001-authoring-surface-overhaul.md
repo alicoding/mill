@@ -22,9 +22,20 @@ Remaining, in order:
 2. Live run state on the canvas (DONE/ACTIVE/PENDING per card +
    inline approve/reject) — reuse the runs/pending data that already
    exists; design pass against the prototype screenshot before code.
-3. Node maturity plan: a per-node-type audit (config completeness,
-   description quality, seeded-example coverage, Inspector UX) →
-   recorded as a table in this file, then worked top-down.
+3. Node maturity plan — audited 2026-08-10 (all 18 types), worked
+   top-down from here:
+
+   | Node type | Maturity | Named gap |
+   |---|---|---|
+   | ruleset | v1 | conditions are raw text — reuse the Decision-edge visual rule builder (react-querybuilder + ruleTranslate, already adopted); biggest inconsistency in the app: two condition surfaces, one visual one raw |
+   | mcp-tool-call | v1 | argumentsJSON is a raw JSON textarea — needs a bindings-style editor like integration-http's (fetch the tool's InputSchema via ListMCPServerTools, render typed fields) |
+   | human-review | v1 | requests ALL declared attributes; should let the step name which ones (config: attribute subset) + message preview |
+   | trigger-schedule | v1 | raw cron string, no human-readable preview ("every minute at :00") — adopt a cron-describe lib or render next-3-fire-times from the already-adopted scheduler |
+   | list-lookup | v1 | miss behavior is implicit — needs an explicit on-miss option (fail run vs continue empty) |
+   | capture-clipboard-html | v1 | no fallback order (SPEC §5: try HTML → plain text) — currently HTML-or-nothing |
+   | trigger-filesystem-watch | v1 | no glob/pattern filter, single path only |
+   | integration-http, child-workflow, decision-route | mature | — |
+   | triggers manual/hotkey/callable/clipboard-watch, capture-attribute, process-html-to-markdown, process-inject-text, apply-write-html/text | adequate | zero-config or single-field; nothing missing for their scope |
 4. Spacing audit of the editor chrome (toolbar, Inspector paddings,
    palette panel) against Primer spacing tokens.
 
