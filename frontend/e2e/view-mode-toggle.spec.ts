@@ -176,3 +176,15 @@ test('A genuinely empty inventory renders Blankslate, not a bare table/list', as
   await page.getByRole('menuitem', { name: 'Delete' }).click()
   await expect(restored).toHaveCount(0)
 })
+
+test('Inventory rows stay single-line: long labels truncate, never wrap into tall rows', async ({ page }) => {
+  // Owner-caught regression shape: long workflow labels folded into 3-4
+  // stacked lines with badges tumbling underneath. The seeded examples
+  // include deliberately long labels ("Example: Approval-gated HTTP
+  // call"), so uniform row height against them IS the proof.
+  await page.goto('/')
+  const rows = page.locator('[data-testid="inventory-row"][data-entity="workflow"]')
+  await expect(rows.first()).toBeVisible()
+  const heights = await rows.evaluateAll((els) => els.map((el) => el.getBoundingClientRect().height))
+  for (const h of heights) expect(h).toBeLessThan(60)
+})
