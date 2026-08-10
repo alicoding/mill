@@ -76,6 +76,16 @@ export interface ConfigField {
     "RefKind": string;
 
     /**
+     * Multiline marks a FieldText whose values are naturally multi-line
+     * documents (an HTML payload, a JSON arguments object) -- the
+     * Inspector renders a textarea for these and a single-line input for
+     * everything else (a key name, a cron string, a path). Added after a
+     * direct UI critique: every text field rendering as a 4-row textarea
+     * was a systemic spacing problem, not a per-field choice.
+     */
+    "Multiline": boolean;
+
+    /**
      * Suggestions is only meaningful when Type == FieldText -- unlike
      * Options (FieldOptions' closed enum), any value is still accepted;
      * these are offered as autocomplete hints only (an HTML5 datalist on

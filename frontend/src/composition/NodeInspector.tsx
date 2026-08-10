@@ -240,10 +240,22 @@ export function NodeInspector({ node, workflowId, attrs, nodeType, sameKindNodeT
                 ]
               })()}
             </Select>
-          ) : (
+          ) : field.Multiline ? (
             <Textarea
               defaultValue={node.data.config[field.Key] ?? ''}
               rows={4}
+              block
+              data-testid="canvas-config-field"
+              onBlur={(e) => onConfigChange(field.Key, e.target.value)}
+            />
+          ) : (
+            // Single-line by default (a key name, a cron string, a
+            // path); only fields DECLARED multi-line (ConfigField.
+            // Multiline -- an HTML payload, a JSON object) get a
+            // textarea. Every text field rendering 4 rows tall was a
+            // systemic spacing bug, reported directly with screenshots.
+            <TextInput
+              defaultValue={node.data.config[field.Key] ?? ''}
               block
               data-testid="canvas-config-field"
               onBlur={(e) => onConfigChange(field.Key, e.target.value)}

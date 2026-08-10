@@ -28,6 +28,7 @@ func init() {
 		ConfigFields: []ConfigField{
 			{
 				Key: "html", Label: "HTML to write",
+				Multiline:   true,
 				Description: "The HTML content this step puts on the clipboard.",
 				Default:     sampleHTML,
 				Type:        FieldText,

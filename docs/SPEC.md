@@ -150,6 +150,19 @@ an implicit `FINAL`.
   daemon/CLI) — it cannot require Homebrew or any other external package
   manager at install time. This doesn't pick a replacement yet (that's
   §7's job), it just eliminates a whole class of candidate. `LOCKED`
+- **Delivery planning is a committed goal backlog, separate from this
+  doc — `LOCKED`, by direct decision ("we should not put everything in
+  SPEC.md ... SPEC is just a requirement; the goal is to deliver
+  something based on a plan").** `docs/goals/BACKLOG.md` is the one
+  hand-reorderable priority queue (UX/frontend-first standing
+  tiebreak), one file per goal (Goal/Plan/Acceptance, referencing this
+  doc's sections rather than restating them), archived on delivery.
+  Adopted as a pattern after real research rejected the tools
+  (spec-kit: competes with this doc + new Python toolchain;
+  task-master: 61-dep JSON database; OpenSpec: second spec-of-record,
+  and its own maintainers hand-write exactly this ordering file;
+  BMAD: team-persona ceremony) — the missing capability was only ever
+  a committed, ordered markdown file.
 - Access boundary: the actual work laptop this is being built for is behind
   Zscaler at the bank and is not something the assistant helping design Mill
   has any live access to — no inspecting the real clipboard, no observing
