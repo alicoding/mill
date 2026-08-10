@@ -31,7 +31,7 @@ Remaining, in order:
    | mcp-tool-call | v1 | argumentsJSON is a raw JSON textarea — needs a bindings-style editor like integration-http's (fetch the tool's InputSchema via ListMCPServerTools, render typed fields) |
    | human-review | v1 | requests ALL declared attributes; should let the step name which ones (config: attribute subset) + message preview |
    | trigger-schedule | ~~v1~~ **mature** (delivered 2026-08-10) | Inspector shows a live cronstrue human-readable preview (MIT, zero deps); invalid expressions flagged inline |
-   | list-lookup | v1 | miss behavior is implicit — needs an explicit on-miss option (fail run vs continue empty) |
+   | list-lookup | ~~v1~~ **mature** (delivered 2026-08-10) | explicit "If no match" option: fail / continue / default (with a default value); legacy nodes default to fail, unchanged |
    | capture-clipboard-html | v1 | no fallback order (SPEC §5: try HTML → plain text) — currently HTML-or-nothing |
    | trigger-filesystem-watch | v1 | no glob/pattern filter, single path only |
    | integration-http, child-workflow, decision-route | mature | — |
