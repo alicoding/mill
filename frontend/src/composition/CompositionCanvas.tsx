@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type DragEvent } from 'react'
+import { useCallback, useEffect, useMemo, useState, type DragEvent } from 'react'
 import {
   ReactFlow,
   ReactFlowProvider,
@@ -27,6 +27,8 @@ import { NodePalette } from './NodePalette'
 import { DecisionEdgeInspector } from './DecisionEdgeInspector'
 import { NodeInspector } from './NodeInspector'
 import { useHotkeyCapture } from './hotkeyCapture'
+import { RunStateContext, useLiveRun } from './liveRunState'
+import { CurrentStepBar, RunButton } from './LiveRunControls'
 import styles from './CompositionCanvas.module.css'
 import runbookStyles from '../shared/ListCard.module.css'
 
@@ -78,6 +80,28 @@ function CanvasInner({ nodeTypes, workflow, onBack, onSaved }: CompositionCanvas
   // null/undefined then). The Inspector below shows "save first" in that
   // case rather than silently disabling the control with no explanation.
   const hotkeyCapture = useHotkeyCapture(workflow?.ID ?? null)
+
+  // Live run state (docs/SPEC.md §3.8's authoring-style direction, item
+  // #2) -- the run currently displayed on this canvas, either started
+  // from the Run button below or already in flight when this editor
+  // opened. Never touches useCanvasStore (zundo-wrapped undo history,
+  // §3.3) -- see liveRunState.ts's own header comment.
+  const { detail: liveRunDetail, statusByNodeId: liveStepStatusByNodeId, barState, startRun, resolve: resolveApprovalStep, dismiss: dismissRunState } = useLiveRun(workflow?.ID)
+
+  // GetRun's steps only ever cover Capture/Process/Apply/Decision-
+  // adjacent nodes -- a Trigger node never checkpoints its own step, so
+  // it gets no signal from liveStepStatusByNodeId at all. It fired by
+  // definition the moment any run is displayed, so it's marked done here
+  // rather than left blank.
+  const statusByNodeId = useMemo(() => {
+    if (!liveRunDetail) return liveStepStatusByNodeId
+    const merged = { ...liveStepStatusByNodeId }
+    for (const n of nodes) {
+      if (n.data.kind === 'trigger') merged[n.id] = 'done'
+    }
+    return merged
+  }, [liveStepStatusByNodeId, liveRunDetail, nodes])
+  const runStateContextValue = useMemo(() => ({ statusByNodeId }), [statusByNodeId])
 
   // Nothing-hidden guardrail badges (docs/adr/0022's Update): fetch the
   // saved workflow's per-step verdicts so a step that will ask or deny
@@ -317,9 +341,13 @@ function CanvasInner({ nodeTypes, workflow, onBack, onSaved }: CompositionCanvas
             onClick={() => setDescOpen((v) => !v)}
             data-testid="toggle-description"
           />
-          <Button variant="primary" size="small" onClick={save} disabled={saving} data-testid="save-workflow">
+          <Button size="small" onClick={save} disabled={saving} data-testid="save-workflow">
             {saving ? 'Saving…' : workflow ? 'Save changes' : 'Save workflow'}
           </Button>
+          {/* Run is the canvas's one primary action once a workflow is
+              saved (docs/SPEC.md §3.8) -- Save above is deliberately
+              demoted off variant="primary" so the two don't compete. */}
+          <RunButton workflow={workflow} onStartRun={startRun} />
         </Stack>
         {saveError && <Text as="p" size="small" className={runbookStyles.error}>{saveError}</Text>}
         {descOpen && (
@@ -330,6 +358,7 @@ function CanvasInner({ nodeTypes, workflow, onBack, onSaved }: CompositionCanvas
         )}
       </div>
 
+      <RunStateContext.Provider value={runStateContextValue}>
       <div className={styles.canvasWrap}>
         {paletteOpen && <NodePalette nodeTypes={nodeTypes} hasTrigger={nodes.some((n) => n.data.kind === 'trigger')} />}
         <div className={styles.canvas} onDrop={onCanvasDrop} onDragOver={(e) => e.preventDefault()}>
@@ -385,6 +414,7 @@ function CanvasInner({ nodeTypes, workflow, onBack, onSaved }: CompositionCanvas
                 </Text>
               </Stack>
             </Panel>
+            <CurrentStepBar barState={barState} onResolve={resolveApprovalStep} onDismiss={dismissRunState} />
           </ReactFlow>
         </div>
 
@@ -425,6 +455,7 @@ function CanvasInner({ nodeTypes, workflow, onBack, onSaved }: CompositionCanvas
           )}
         </div>
       </div>
+      </RunStateContext.Provider>
     </div>
   )
 }

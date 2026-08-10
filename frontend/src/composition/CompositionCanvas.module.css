@@ -180,6 +180,7 @@
    title row, adopted from the reference platform's own node card shape
    (icon/color/kind text itself are Mill's own -- see nodeKind.ts). */
 .canvasNode {
+    position: relative;
     width: 220px;
     height: 64px;
     box-sizing: border-box;
@@ -187,6 +188,7 @@
     border-radius: var(--borderRadius-medium);
     background: var(--xy-node-background-color);
     border: var(--xy-node-border);
+    border-left: 3px solid transparent;
     display: flex;
     flex-direction: row;
     align-items: center;
@@ -273,4 +275,86 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+}
+
+/* Live run state (docs/SPEC.md §3.8's authoring-style direction, item
+   #2) -- a restrained colored left edge + small status tag, not a full
+   card recolor, so the guardrail badge/output signature above stay
+   legible while a run is in progress or has just finished. Keyed off
+   the `data-run-status`/`data-status` attributes CanvasNodeView.tsx
+   sets directly from RunStateContext, not a JS class-lookup table, so
+   the color mapping can't drift out of sync with the label mapping. */
+.canvasNode[data-run-status='done'] {
+    border-left-color: var(--borderColor-success-emphasis);
+}
+.canvasNode[data-run-status='active'] {
+    border-left-color: var(--borderColor-accent-emphasis);
+}
+.canvasNode[data-run-status='pending'] {
+    border-left-color: var(--borderColor-muted);
+}
+.canvasNode[data-run-status='failed'],
+.canvasNode[data-run-status='denied'] {
+    border-left-color: var(--borderColor-danger-emphasis);
+}
+.canvasNode[data-run-status='awaiting-approval'] {
+    border-left-color: var(--borderColor-attention-emphasis);
+}
+
+.runStatusTag {
+    position: absolute;
+    bottom: calc(-1 * var(--base-size-8, 8px));
+    right: var(--base-size-8, 8px);
+    display: inline-block;
+    font-size: 9px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 1px var(--base-size-6, 6px);
+    border-radius: var(--borderRadius-medium);
+    background: var(--bgColor-default);
+    border: 1px solid var(--borderColor-default);
+    color: var(--fgColor-muted);
+}
+.runStatusTag[data-status='done'] {
+    color: var(--fgColor-success);
+    border-color: var(--borderColor-success-emphasis);
+}
+.runStatusTag[data-status='active'] {
+    color: var(--fgColor-accent);
+    border-color: var(--borderColor-accent-emphasis);
+    animation: canvasRunPulse 1.5s ease-in-out infinite;
+}
+.runStatusTag[data-status='failed'],
+.runStatusTag[data-status='denied'] {
+    color: var(--fgColor-danger);
+    border-color: var(--borderColor-danger-emphasis);
+}
+.runStatusTag[data-status='awaiting-approval'] {
+    color: var(--fgColor-attention);
+    border-color: var(--borderColor-attention-emphasis);
+}
+@keyframes canvasRunPulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+/* CurrentStepBar (LiveRunState.tsx) -- a bottom-center React Flow Panel
+   showing the run currently displayed on this canvas: in flight, parked
+   awaiting approval with inline Approve/Deny, or the finished outcome
+   with a dismiss control. */
+.currentStepBar {
+    background: var(--bgColor-default);
+    border: 1px solid var(--borderColor-default);
+    border-radius: var(--borderRadius-medium);
+    padding: var(--base-size-8) var(--base-size-12);
+    max-width: 520px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+}
+.currentStepBarLabel {
+    text-transform: uppercase;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    color: var(--fgColor-muted);
 }
