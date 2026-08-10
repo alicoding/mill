@@ -26,4 +26,5 @@ in archive/ for the full verdict trail if ever needed).
 3. [x] [0003 — MCP authoring live dogfood](archive/0003-mcp-authoring-dogfood.md) — delivered 2026-08-10, live with the owner (full loop incl. refused-while-off, per-write approval, auto-snapshot)
 4. [ ] [0004 — Code execution capability](0004-code-execution-capability.md) (backend; ADR-0026 accepted 2026-08-10 — implementation unblocked)
 5. [ ] [0005 — Pending-attention model](0005-pending-attention-model.md) (design/research: missed MCP approvals, notification center vs Activity vs Review — raised live during the 0003 dogfood; reorder freely)
-6. [ ] [0006 — Trigger-aware Workflows list](0006-trigger-aware-workflows-list.md) (UX: the input node defines each row's label + affordance; research in flight, manual-Run semantics needs an owner decision)
+6. [x] [0006 — Trigger-aware Workflows list](0006-trigger-aware-workflows-list.md) — delivered 2026-08-10 (trigger labels, tri-state armed + Publish CTA, inline hotkey capture, callable demotion; owner live-acceptance pending as part of ongoing review)
+7. [ ] [0007 — Resource-inventory redesign](0007-resource-inventory-redesign.md) (UX: page-identity confusion + card-view dislike, raised live; research in flight; ties into SPEC §3.2's shared resource-inventory primitive)
