@@ -41,9 +41,22 @@ pattern?"). Two distinct problems, one design surface:
    inventories (per-entity leading icon + badges + one truncated
    description + trailing actions); DataTable stays the SECONDARY
    toggle view (sorting/resizable preserved; §3.2's primitive is
-   literally a table). **Held:** the cards mode's fate — owner is
-   supplying the reference platform's own inventory treatment as an
-   image before deciding retire-vs-redesign.
+   literally a table). **Cards verdict, resolved by owner-supplied
+   screenshots of the reference platform's real inventories
+   (2026-08-10): RETIRED.** The reference has nothing card-shaped:
+   its Inputs inventory is a pure compact table (leading type icon +
+   name, cross-entity *reference chips* — icon + name + version
+   pill — updated-by, timestamp, search, one primary create,
+   pagination), and its Workflows view toggle is flat-list vs
+   **grouped-by-workflow versions** (the "card"-looking container is
+   a version-management group holding per-version rows: vN Live
+   100% / Draft) — a different data shape, not a card restyle. Two
+   patterns adopted into the row anatomy from this: reference chips
+   for cross-entity links (trigger labels, Decision/Integration
+   references), and the Live/Draft status-pill vocabulary. The
+   grouped-versions view itself is recorded as future design input
+   (valuable once real version history accumulates; today Versions
+   lives in the editor tab), not built now.
 3. [ ] Implement once the cards verdict lands, with e2e; goal 0006's
    trigger labels carry into the new row anatomy; adopt Blankslate
    for empty states in the same pass.
