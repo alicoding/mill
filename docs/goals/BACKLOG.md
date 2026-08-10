@@ -37,7 +37,8 @@ live-review material, interleaved during owner reviews, not a lane.
 6. [ ] [0002 — Review queue maturation](0002-review-queue-maturation.md) (remainder: pending badge built on 0005's eventing; kind filter/polish)
 
 **Unscheduled (reorder into a group when prioritized)**
-7. [ ] [0011 — Lists maturation](0011-lists-maturation.md) (typed datasets + List Search per SPEC §3.2.2's reference review; evidence-gap research first)
+7. [ ] [0012 — Authoring hot-exit](0012-authoring-hot-exit.md) (owner requirement: no data loss on quit/close — VS Code hot-exit model for unsaved canvas/form state; pairs with the recorder-accelerator fix)
+8. [ ] [0011 — Lists maturation](0011-lists-maturation.md) (typed datasets + List Search per SPEC §3.2.2's reference review; evidence-gap research first)
 
 **Standing**
 - [ ] [0001 — Authoring-surface overhaul](0001-authoring-surface-overhaul.md) (spacing audit + §3.8 prototype elements — live-review material)
