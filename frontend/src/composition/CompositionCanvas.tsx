@@ -356,6 +356,12 @@ function CanvasInner({ nodeTypes, workflow, onBack, onSaved }: CompositionCanvas
             onNodeDragStart={() => useCanvasStore.temporal.getState().pause()}
             onNodeDragStop={() => useCanvasStore.temporal.getState().resume()}
             fitView
+            // Cap fit-zoom at 100%: fitView's default happily zooms a
+            // single starter node to fill the whole canvas, which read
+            // as "zoomed in by default" (reported directly with a
+            // screenshot) -- fit should frame the graph, never magnify
+            // it past natural size.
+            fitViewOptions={{ maxZoom: 1, padding: 0.25 }}
           >
             <Background />
             <Controls />

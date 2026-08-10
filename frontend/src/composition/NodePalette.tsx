@@ -34,7 +34,12 @@ function kindIcon(kind: string) {
 // saved-workflow step chips) is untouched.
 function shortLabel(nt: NodeType): string {
   const prefix = `${KIND_LABEL[nt.Kind] ?? nt.Kind}: `
-  return nt.Label.startsWith(prefix) ? nt.Label.slice(prefix.length) : nt.Label
+  const short = nt.Label.startsWith(prefix) ? nt.Label.slice(prefix.length) : nt.Label
+  // One casing convention for the whole palette (Sentence case) -- the
+  // raw labels mix "callable by another workflow" with "Run another
+  // workflow" with "HTML → Markdown", which read as three different
+  // conventions in one list (reported directly). Display-only.
+  return short.charAt(0).toUpperCase() + short.slice(1)
 }
 
 // The "Add steps" drag-source panel -- toggled open/closed from
@@ -69,7 +74,7 @@ export function NodePalette({ nodeTypes, hasTrigger }: NodePaletteProps) {
         {kinds.map((kind) => (
           <TreeView.Item key={kind} id={`palette-kind-${kind}`} defaultExpanded>
             <TreeView.LeadingVisual>{kindIcon(kind)}</TreeView.LeadingVisual>
-            {KIND_LABEL[kind] ?? kind}
+            <span className={styles.paletteGroupLabel}>{KIND_LABEL[kind] ?? kind}</span>
             <TreeView.SubTree>
               {byKind.get(kind)!.map((nt) => {
                 const disabled = kind === 'trigger' && hasTrigger
