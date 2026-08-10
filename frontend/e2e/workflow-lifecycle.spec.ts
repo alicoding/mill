@@ -1,11 +1,12 @@
 import { test, expect } from '@playwright/test'
+import { clickRowAction } from './inventoryRow'
 
 // docs/adr/0021 end to end over real Go bindings: a new workflow is a
 // draft until published; Publish/Make-live/Disable all happen on the
 // editor's Versions tab; the list badges reflect lifecycle state.
 
 function workflowRow(page: import('@playwright/test').Page, label: string) {
-  return page.locator('[data-testid="workflow-row"]', { has: page.getByText(label, { exact: true }) })
+  return page.locator('[data-testid="inventory-row"][data-entity="workflow"]', { has: page.getByText(label, { exact: true }) })
 }
 
 test('A workflow is a draft until published; publish, disable, and re-enable all round-trip', async ({ page }) => {
@@ -20,8 +21,9 @@ test('A workflow is a draft until published; publish, disable, and re-enable all
   await expect(row).toBeVisible()
   await expect(row.getByText('draft', { exact: true })).toBeVisible()
 
-  // Open the editor -> Versions tab -> publish the draft.
-  await row.getByRole('button', { name: /Edit/ }).click()
+  // Open the editor (row click, InventoryList's onOpen) -> Versions tab
+  // -> publish the draft.
+  await row.click()
   await page.getByRole('tab', { name: 'Versions' }).click()
   const panel = page.getByTestId('workflow-versions-panel')
   await expect(panel.getByTestId('published-badge')).toHaveText('never published')
@@ -36,14 +38,14 @@ test('A workflow is a draft until published; publish, disable, and re-enable all
   await expect(row.getByText('v1 live', { exact: true })).toBeVisible()
   await expect(row.getByText('disabled', { exact: true })).toBeVisible()
 
-  await row.getByRole('button', { name: /Edit/ }).click()
+  await row.click()
   await page.getByRole('tab', { name: 'Versions' }).click()
   await panel.getByTestId('toggle-disabled').click()
   await expect(panel.getByTestId('disabled-badge')).toHaveCount(0)
 
   // Cleanup (shared e2e settings file, .claude/rules/testing.md).
   await page.getByRole('tab', { name: 'Workflows' }).click()
-  await row.getByRole('button', { name: /Delete/ }).click()
+  await clickRowAction(page, row, 'Delete')
   await expect(row).toHaveCount(0)
 })
 
@@ -61,7 +63,11 @@ test('The seeded parent pinned to the child v1 runs v1 even though the child dra
   await dialog.waitFor()
   await dialog.getByRole('button', { name: /^Run$/ }).click()
 
-  // v1's marker, never the draft's -- the pin holds (ADR-0021).
-  await expect(parent.locator('pre')).toContainText('(processed by the child workflow, v1)', { timeout: 20000 })
-  await expect(parent.locator('pre')).not.toContainText('DRAFT')
+  // v1's marker, never the draft's -- the pin holds (ADR-0021). The
+  // result renders below the InventoryList now, not inline in the row
+  // (docs/goals/0007's dense-row anatomy has no room for a result
+  // preview).
+  const result = page.getByTestId('workflow-run-result').filter({ has: page.getByText('Example: Parent → child call', { exact: true }) }).locator('pre')
+  await expect(result).toContainText('(processed by the child workflow, v1)', { timeout: 20000 })
+  await expect(result).not.toContainText('DRAFT')
 })

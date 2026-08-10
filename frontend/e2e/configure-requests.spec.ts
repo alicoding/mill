@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test'
+import { clickRowAction } from './inventoryRow'
 
 // Exercises ADR-0007's Request OpenAPI schema (Phase 2): a Request
 // can declare an OpenAPI spec at Configure time, and its declared
@@ -48,7 +49,7 @@ const schemaSpec = JSON.stringify({
 })
 
 function requestRow(page: import('@playwright/test').Page, label: string) {
-  return page.getByTestId('request-row').filter({ has: page.getByText(label, { exact: true }) })
+  return page.locator('[data-testid="inventory-row"][data-entity="request"]').filter({ has: page.getByText(label, { exact: true }) })
 }
 
 // docs/adr/0014: the list is its own pinned tab now -- switch back to
@@ -57,7 +58,7 @@ function requestRow(page: import('@playwright/test').Page, label: string) {
 // and a hidden element isn't clickable.
 async function deleteRequest(page: import('@playwright/test').Page, label: string) {
   await page.getByRole('link', { name: 'Configure' }).click()
-  await requestRow(page, label).getByRole('button', { name: `Delete ${label}` }).click()
+  await clickRowAction(page, requestRow(page, label), 'Delete')
   await expect(requestRow(page, label)).toHaveCount(0)
 }
 

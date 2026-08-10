@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test'
+import { clickRowAction } from './inventoryRow'
 
 // Exercises the single execution path end-to-end (docs/adr/0004,
 // docs/adr/0008) through its current UI home: a workflow's own Runs tab
@@ -15,7 +16,7 @@ import { test, expect } from '@playwright/test'
 // clipboard-touching e2e test in this repo.
 
 function workflowRow(page: import('@playwright/test').Page, label: string) {
-  return page.locator('[data-testid="workflow-row"]', { has: page.getByText(label, { exact: true }) })
+  return page.locator('[data-testid="inventory-row"][data-entity="workflow"]', { has: page.getByText(label, { exact: true }) })
 }
 
 // .last(), same reasoning as composition.spec.ts's own activePanel(): a
@@ -67,7 +68,7 @@ test('Running a workflow from its list row, then opening its Runs tab, shows a r
   // own inline result <pre> (success-only; ERROR only shows text).
   await expect(runButton).toBeEnabled({ timeout: 15_000 })
 
-  await row.getByRole('button', { name: /Edit/ }).click()
+  await row.click()
   await runsTab(page, 'Load sample HTML').click()
 
   const runsPanel = page.getByTestId('workflow-runs-panel')
@@ -87,7 +88,7 @@ test('Viewing a run on its workflow Runs tab shows the per-step breakdown', asyn
   await runButton.click()
   await expect(runButton).toBeEnabled({ timeout: 15_000 })
 
-  await row.getByRole('button', { name: /Edit/ }).click()
+  await row.click()
   await runsTab(page, 'Load sample HTML').click()
 
   const runsPanel = page.getByTestId('workflow-runs-panel')
@@ -119,7 +120,7 @@ test('A workflow with no runs yet shows an empty state on its Runs tab, scoped t
 
   const row = workflowRow(page, 'E2E runs-empty-state workflow')
   await expect(row).toBeVisible()
-  await row.getByRole('button', { name: /Edit/ }).click()
+  await row.click()
   await runsTab(page, 'E2E runs-empty-state workflow').click()
 
   const runsPanel = page.getByTestId('workflow-runs-panel')
@@ -129,7 +130,7 @@ test('A workflow with no runs yet shows an empty state on its Runs tab, scoped t
   // the editor tab itself -- also closes the tab, no separate
   // closeEditorTab call needed.
   await page.getByRole('tab', { name: 'Workflows' }).click()
-  await row.getByRole('button', { name: /Delete/ }).click()
+  await clickRowAction(page, row, 'Delete')
   await expect(row).toHaveCount(0)
 })
 

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Button, FormControl, Heading, IconButton, Stack, Text, TextInput } from '@primer/react'
-import { DownloadIcon, PlusIcon, TrashIcon, UploadIcon } from '@primer/octicons-react'
+import { DownloadIcon, PlusIcon, ServerIcon, TrashIcon, UploadIcon } from '@primer/octicons-react'
 import { DataTable } from '@primer/react/experimental'
 import { ResizableTableContainer, TruncatedCell } from '../shared/ResizableTable'
 import { ConfigureService } from '../shared/bindings'
@@ -9,6 +9,8 @@ import type { Tool } from '../../bindings/github.com/alicoding/mill/internal/ada
 import { downloadJSON } from '../shared/downloadJSON'
 import { ViewModeToggle } from '../shared/ViewModeToggle'
 import { useViewMode } from '../shared/viewMode'
+import { InventoryList, type InventoryItem } from '../shared/InventoryList'
+import { ENTITY_ICON } from '../shared/entityIcons'
 import styles from '../shared/ListCard.module.css'
 import PageContainer from '../shared/PageContainer'
 
@@ -18,10 +20,17 @@ function argsToRows(args: string[] | null | undefined): string[] {
 
 // Configure's MCP Servers section (docs/SPEC.md §3.6): CRUD over
 // ConfigureService's MCPServers, each a reusable stdio connection an
-// mcp-tool-call node resolves by ID. The "List tools" button is this
-// feature's actual discoverability value -- a user finds the exact
-// toolName (and its expected arguments, from the raw InputSchema) to
-// paste into a workflow node here, not by guessing.
+// mcp-tool-call node resolves by ID. "List tools" is this feature's
+// actual discoverability value -- a user finds the exact toolName (and
+// its expected arguments, from the raw InputSchema) to paste into a
+// workflow node here, not by guessing.
+//
+// Rows are the DEFAULT view (docs/goals/0007): InventoryList's shared
+// row replaces the old hand-rolled card branch. Row click edits;
+// List tools/Export/Delete move into the trailing ⋯ menu -- "List
+// tools" keeps its exact prior behavior (fetch, render inline below
+// the list, one panel per server that's been queried), just triggered
+// from the menu instead of a dedicated button.
 export function ConfigureMCPServers() {
   const [servers, setServers] = useState<MCPServer[] | null>(null)
   const [editingID, setEditingID] = useState<string | null>(null)
@@ -110,6 +119,20 @@ export function ConfigureMCPServers() {
     setArgRows((prev) => prev.map((a, idx) => (idx === i ? value : a)))
   }
 
+  const serverItems: InventoryItem[] = (servers ?? []).map((s) => ({
+    id: s.ID,
+    entity: 'mcpserver',
+    icon: ENTITY_ICON.mcpserver,
+    label: s.Label,
+    description: `${s.Command} ${(s.Args ?? []).join(' ')}`.trim(),
+    onOpen: () => startEdit(s),
+    menuActions: [
+      { label: 'List tools', onClick: () => listTools(s.ID) },
+      { label: 'Export', onClick: () => exportServer(s.ID, s.Label) },
+      { label: 'Delete', onClick: () => remove(s.ID), danger: true },
+    ],
+  }))
+
   return (
     <PageContainer data-testid="configure-mcpservers">
       <Stack direction="horizontal" justify="space-between" align="center" className={styles.sectionHeading}>
@@ -176,9 +199,6 @@ export function ConfigureMCPServers() {
       )}
 
       {servers === null && <Text as="p" className={styles.muted}>Loading…</Text>}
-      {servers !== null && servers.length === 0 && !formOpen && (
-        <Text as="p" className={styles.muted}>No MCP servers yet.</Text>
-      )}
       {servers !== null && viewMode === 'table' && servers.length > 0 && (
         <ResizableTableContainer storageKey="mill-cols-mcpservers">
           <DataTable
@@ -203,57 +223,47 @@ export function ConfigureMCPServers() {
           />
         </ResizableTableContainer>
       )}
-      {servers !== null && viewMode === 'cards' && (
-        <Stack direction="vertical" gap="condensed">
-          {servers.map((s) => (
-            <div key={s.ID} className={styles.card} data-testid="mcpserver-row">
-              <Stack direction="horizontal" justify="space-between" align="start" gap="normal">
-                <div>
-                  <Text weight="semibold">{s.Label}</Text>
-                  <Text as="p" size="small" className={styles.muted}>
-                    {s.Command} {(s.Args ?? []).join(' ')}
-                  </Text>
-                  <Text as="p" size="small" className={styles.muted}>ID: {s.ID}</Text>
-                </div>
-                <Stack direction="horizontal" gap="condensed">
-                  <Button size="small" variant="invisible" onClick={() => listTools(s.ID)} data-testid="list-tools">
-                    List tools
-                  </Button>
-                  <Button size="small" variant="invisible" onClick={() => startEdit(s)}>Edit</Button>
-                  <IconButton
-                    icon={DownloadIcon}
-                    aria-label={`Export ${s.Label}`}
-                    size="small"
-                    variant="invisible"
-                    onClick={() => exportServer(s.ID, s.Label)}
-                  />
-                  <IconButton icon={TrashIcon} aria-label={`Delete ${s.Label}`} size="small" variant="invisible" onClick={() => remove(s.ID)} />
-                </Stack>
-              </Stack>
-
-              {toolsByServer[s.ID] !== undefined && (
-                <div data-testid="mcpserver-tools">
-                  {typeof toolsByServer[s.ID] === 'string' ? (
-                    <Text as="p" size="small" className={styles.error}>{toolsByServer[s.ID] as string}</Text>
-                  ) : (toolsByServer[s.ID] as Tool[]).length === 0 ? (
-                    <Text as="p" size="small" className={styles.muted}>This server exposes no tools.</Text>
-                  ) : (
-                    <Stack direction="vertical" gap="condensed">
-                      {(toolsByServer[s.ID] as Tool[]).map((tool) => (
-                        <div key={tool.Name}>
-                          <Text weight="semibold" size="small">{tool.Name}</Text>
-                          <Text as="p" size="small" className={styles.muted}>{tool.Description}</Text>
-                          <pre className={styles.result}>{JSON.stringify(tool.InputSchema, null, 2)}</pre>
-                        </div>
-                      ))}
-                    </Stack>
-                  )}
-                </div>
-              )}
-            </div>
-          ))}
-        </Stack>
+      {servers !== null && viewMode === 'rows' && !(formOpen && servers.length === 0) && (
+        <InventoryList
+          items={serverItems}
+          searchPlaceholder="Search MCP servers…"
+          emptyState={{
+            icon: ServerIcon,
+            heading: 'No MCP servers yet',
+            description: 'A reusable stdio connection an mcp-tool-call workflow node can resolve by ID.',
+            action: <Button leadingVisual={PlusIcon} onClick={startCreate}>New MCP server</Button>,
+          }}
+        />
       )}
+
+      {/* "List tools" (row menu action) renders its result here, below
+          the list -- one panel per server that's been queried, same
+          shape the old card view showed inline per-row, just no longer
+          nested inside the row itself now that Delete/Edit/List tools
+          all moved into one trailing ⋯ menu. */}
+      {Object.entries(toolsByServer).map(([id, result]) => {
+        const server = servers?.find((s) => s.ID === id)
+        return (
+          <div key={id} className={styles.card} data-testid="mcpserver-tools">
+            <Text weight="semibold" size="small">{server?.Label ?? id} — tools</Text>
+            {typeof result === 'string' ? (
+              <Text as="p" size="small" className={styles.error}>{result}</Text>
+            ) : result.length === 0 ? (
+              <Text as="p" size="small" className={styles.muted}>This server exposes no tools.</Text>
+            ) : (
+              <Stack direction="vertical" gap="condensed">
+                {(result as Tool[]).map((tool) => (
+                  <div key={tool.Name}>
+                    <Text weight="semibold" size="small">{tool.Name}</Text>
+                    <Text as="p" size="small" className={styles.muted}>{tool.Description}</Text>
+                    <pre className={styles.result}>{JSON.stringify(tool.InputSchema, null, 2)}</pre>
+                  </div>
+                ))}
+              </Stack>
+            )}
+          </div>
+        )
+      })}
     </PageContainer>
   )
 }

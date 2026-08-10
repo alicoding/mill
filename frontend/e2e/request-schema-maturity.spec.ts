@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test'
+import { clickRowAction } from './inventoryRow'
 
 // Exercises docs/SPEC.md §4.1's schema-authoring maturity pass (Phase 1
 // of the request-capability-maturity goal): paste-sample field
@@ -7,12 +8,12 @@ import { test, expect } from '@playwright/test'
 // expression -- over real Go bindings (Wails3 server mode), not mocks.
 
 function requestRow(page: import('@playwright/test').Page, label: string) {
-  return page.getByTestId('request-row').filter({ has: page.getByText(label, { exact: true }) })
+  return page.locator('[data-testid="inventory-row"][data-entity="request"]').filter({ has: page.getByText(label, { exact: true }) })
 }
 
 async function deleteRequest(page: import('@playwright/test').Page, label: string) {
   await page.getByRole('link', { name: 'Configure' }).click()
-  await requestRow(page, label).getByRole('button', { name: `Delete ${label}` }).click()
+  await clickRowAction(page, requestRow(page, label), 'Delete')
   await expect(requestRow(page, label)).toHaveCount(0)
 }
 

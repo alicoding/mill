@@ -30,7 +30,8 @@ interface TriggerRowLabelProps {
 // "runs" a workflow is its root Trigger node, not a generic per-row Run
 // button, so the label and its live/not-live state come from that
 // node's real type and config instead of a second, independent guess at
-// the same thing. Shared by WorkflowsTable.tsx and WorkflowsCards.tsx.
+// the same thing. Shared by WorkflowsTable.tsx and CompositionView.tsx's
+// InventoryList rows (docs/goals/0007, the former WorkflowsCards.tsx).
 export function TriggerRowLabel({ workflow, armed, publishing, onPublish, onHotkeyChanged }: TriggerRowLabelProps) {
   const rootNode = findRootNode(workflow.Nodes, workflow.Edges)
   const nodeTypeID = rootNode?.NodeTypeID ?? null

@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test'
+import { clickRowAction } from './inventoryRow'
 
 // Exercises ADR-0010's frontend wiring: the child-workflow picker only
 // lists workflows rooted in trigger-callable, and selecting one shows a
@@ -11,7 +12,7 @@ import { test, expect } from '@playwright/test'
 // frontend surface: the picker filter and the binding editor.
 
 function workflowRow(page: import('@playwright/test').Page, label: string) {
-  return page.locator('[data-testid="workflow-row"]', { has: page.getByText(label, { exact: true }) })
+  return page.locator('[data-testid="inventory-row"][data-entity="workflow"]', { has: page.getByText(label, { exact: true }) })
 }
 
 // .last(), not a bare match: a saved workflow's editor tab now nests a
@@ -95,10 +96,10 @@ test('Child Workflow picker only lists workflows rooted in trigger-callable', as
   await activePanel(page).getByTestId('save-workflow').click()
   await expect(workflowRow(page, 'E2E parent')).toBeVisible()
 
-  await workflowRow(page, 'E2E parent').getByRole('button', { name: /Delete/ }).click()
+  await clickRowAction(page, workflowRow(page, 'E2E parent'), 'Delete')
   await expect(workflowRow(page, 'E2E parent')).toHaveCount(0)
-  await workflowRow(page, 'E2E callable child').getByRole('button', { name: /Delete/ }).click()
+  await clickRowAction(page, workflowRow(page, 'E2E callable child'), 'Delete')
   await expect(workflowRow(page, 'E2E callable child')).toHaveCount(0)
-  await workflowRow(page, 'E2E non-callable').getByRole('button', { name: /Delete/ }).click()
+  await clickRowAction(page, workflowRow(page, 'E2E non-callable'), 'Delete')
   await expect(workflowRow(page, 'E2E non-callable')).toHaveCount(0)
 })

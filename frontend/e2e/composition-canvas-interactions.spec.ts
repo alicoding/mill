@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test'
+import { clickRowAction } from './inventoryRow'
 
 // Canvas-mechanics edge cases for the same React Flow canvas
 // composition.spec.ts's header comment describes (SPEC.md §3/ADR-0005) --
@@ -7,7 +8,7 @@ import { test, expect } from '@playwright/test'
 // once composition.spec.ts crossed the 500-line limit (CLAUDE.md).
 
 function workflowRow(page: import('@playwright/test').Page, label: string) {
-  return page.locator('[data-testid="workflow-row"]', { has: page.getByText(label, { exact: true }) })
+  return page.locator('[data-testid="inventory-row"][data-entity="workflow"]', { has: page.getByText(label, { exact: true }) })
 }
 
 // See composition.spec.ts's own copy of this helper for the full
@@ -136,10 +137,13 @@ test('process-inject-text composes with an upstream node via the generic Inspect
   await expect(row).toBeVisible()
   await row.getByRole('button', { name: 'Run' }).click()
 
-  const result = row.locator('pre')
+  // A run's result renders below the InventoryList now, not inline in
+  // the row itself (docs/goals/0007's dense-row anatomy has no room for
+  // a result preview).
+  const result = page.getByTestId('workflow-run-result').filter({ has: page.getByText('E2E inject-text workflow', { exact: true }) }).locator('pre')
   await expect(result).toHaveText('e2e base payload\n\ne2e injected hint')
 
-  await row.getByRole('button', { name: /Delete E2E inject-text workflow/ }).click()
+  await clickRowAction(page, row, 'Delete')
   await expect(workflowRow(page, 'E2E inject-text workflow')).toHaveCount(0)
 })
 
@@ -284,6 +288,6 @@ test('Running a workflow with declared Attributes shows an auto-filled test-inpu
   await dialog.getByRole('button', { name: 'Run' }).click()
   await expect(dialog).toHaveCount(0)
 
-  await workflowRow(page, 'E2E attributes workflow').getByRole('button', { name: /Delete/ }).click()
+  await clickRowAction(page, workflowRow(page, 'E2E attributes workflow'), 'Delete')
   await expect(workflowRow(page, 'E2E attributes workflow')).toHaveCount(0)
 })

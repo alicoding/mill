@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Button, FormControl, Heading, IconButton, Stack, Text, TextInput } from '@primer/react'
-import { DownloadIcon, PlusIcon, TrashIcon, UploadIcon } from '@primer/octicons-react'
+import { DownloadIcon, ListUnorderedIcon, PlusIcon, TrashIcon, UploadIcon } from '@primer/octicons-react'
 import { DataTable } from '@primer/react/experimental'
 import { ResizableTableContainer } from '../shared/ResizableTable'
 import { ConfigureService } from '../shared/bindings'
@@ -8,6 +8,8 @@ import type { List } from '../../bindings/github.com/alicoding/mill/internal/dom
 import { downloadJSON } from '../shared/downloadJSON'
 import { ViewModeToggle } from '../shared/ViewModeToggle'
 import { useViewMode } from '../shared/viewMode'
+import { InventoryList, type InventoryItem } from '../shared/InventoryList'
+import { ENTITY_ICON } from '../shared/entityIcons'
 import styles from '../shared/ListCard.module.css'
 import PageContainer from '../shared/PageContainer'
 
@@ -32,6 +34,11 @@ function rowsToEntries(rows: EntryRow[]): Record<string, string> {
 // ConfigureService's Lists, each a named key/value lookup table a
 // workflow's list-lookup node can resolve against (composition.go's
 // SetListLookup seam).
+//
+// Rows are the DEFAULT view (docs/goals/0007): InventoryList's shared
+// row replaces the old hand-rolled card branch. Row click edits
+// (today's only real per-row interaction, same as before this goal);
+// Export/Delete move into the trailing ⋯ menu.
 export function ConfigureLists() {
   const [lists, setLists] = useState<List[] | null>(null)
   const [editingID, setEditingID] = useState<string | null>(null)
@@ -110,6 +117,19 @@ export function ConfigureLists() {
     setRows((prev) => prev.map((r, idx) => (idx === i ? { ...r, [field]: value } : r)))
   }
 
+  const listItems: InventoryItem[] = (lists ?? []).map((l) => ({
+    id: l.ID,
+    entity: 'list',
+    icon: ENTITY_ICON.list,
+    label: l.Label,
+    description: `${Object.keys(l.Entries ?? {}).length} entries`,
+    onOpen: () => startEdit(l),
+    menuActions: [
+      { label: 'Export', onClick: () => exportList(l.ID, l.Label) },
+      { label: 'Delete', onClick: () => remove(l.ID), danger: true },
+    ],
+  }))
+
   return (
     <PageContainer data-testid="configure-lists">
       <Stack direction="horizontal" justify="space-between" align="center" className={styles.sectionHeading}>
@@ -172,9 +192,6 @@ export function ConfigureLists() {
       )}
 
       {lists === null && <Text as="p" className={styles.muted}>Loading…</Text>}
-      {lists !== null && lists.length === 0 && !formOpen && (
-        <Text as="p" className={styles.muted}>No lists yet.</Text>
-      )}
       {lists !== null && viewMode === 'table' && lists.length > 0 && (
         <ResizableTableContainer storageKey="mill-cols-lists">
           <DataTable
@@ -198,32 +215,17 @@ export function ConfigureLists() {
           />
         </ResizableTableContainer>
       )}
-      {lists !== null && viewMode === 'cards' && (
-        <Stack direction="vertical" gap="condensed">
-          {lists.map((l) => (
-            <div key={l.ID} className={styles.card} data-testid="list-row">
-              <Stack direction="horizontal" justify="space-between" align="start" gap="normal">
-                <div>
-                  <Text weight="semibold">{l.Label}</Text>
-                  <Text as="p" size="small" className={styles.muted}>
-                    {Object.keys(l.Entries ?? {}).length} entries · ID: {l.ID}
-                  </Text>
-                </div>
-                <Stack direction="horizontal" gap="condensed">
-                  <Button size="small" variant="invisible" onClick={() => startEdit(l)}>Edit</Button>
-                  <IconButton
-                    icon={DownloadIcon}
-                    aria-label={`Export ${l.Label}`}
-                    size="small"
-                    variant="invisible"
-                    onClick={() => exportList(l.ID, l.Label)}
-                  />
-                  <IconButton icon={TrashIcon} aria-label={`Delete ${l.Label}`} size="small" variant="invisible" onClick={() => remove(l.ID)} />
-                </Stack>
-              </Stack>
-            </div>
-          ))}
-        </Stack>
+      {lists !== null && viewMode === 'rows' && !(formOpen && lists.length === 0) && (
+        <InventoryList
+          items={listItems}
+          searchPlaceholder="Search lists…"
+          emptyState={{
+            icon: ListUnorderedIcon,
+            heading: 'No lists yet',
+            description: "A reusable key/value lookup table a workflow's List node can resolve against.",
+            action: <Button leadingVisual={PlusIcon} onClick={startCreate}>New list</Button>,
+          }}
+        />
       )}
     </PageContainer>
   )

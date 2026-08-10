@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test'
+import { clickRowAction } from './inventoryRow'
 
 // Real Go bindings over HTTP (Wails3 server mode), not mocks -- same
 // setup as composition.spec.ts, split into its own file once that file
@@ -8,7 +9,7 @@ import { test, expect } from '@playwright/test'
 // new-workflow behavior (ADR-0013's Duplicate precedent).
 
 function workflowRow(page: import('@playwright/test').Page, label: string) {
-  return page.locator('[data-testid="workflow-row"]', { has: page.getByText(label, { exact: true }) })
+  return page.locator('[data-testid="inventory-row"][data-entity="workflow"]', { has: page.getByText(label, { exact: true }) })
 }
 
 test('Exporting a workflow downloads a portable JSON file with its real definition', async ({ page }) => {
@@ -18,7 +19,7 @@ test('Exporting a workflow downloads a portable JSON file with its real definiti
   const row = workflowRow(page, 'Load sample HTML')
   await expect(row).toBeVisible()
   const downloadPromise = page.waitForEvent('download')
-  await row.getByRole('button', { name: /Export Load sample HTML/ }).click()
+  await clickRowAction(page, row, 'Export')
   const download = await downloadPromise
 
   expect(download.suggestedFilename()).toBe('Load sample HTML.json')
@@ -64,7 +65,7 @@ test('Importing a workflow file adds a new, independent workflow without touchin
   // proves import always creates independently, never updates in place.
   await expect(workflowRow(page, 'Load sample HTML')).toHaveCount(before)
 
-  await importedRow.getByRole('button', { name: /Delete E2E imported workflow/ }).click()
+  await clickRowAction(page, importedRow, 'Delete')
   await expect(workflowRow(page, 'E2E imported workflow')).toHaveCount(0)
 })
 

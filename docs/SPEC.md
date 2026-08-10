@@ -2922,17 +2922,42 @@ mode from §0 repeating itself one level up.
 All prompted directly during live use; each either built (`LOCKED`) or
 recorded as a real design input (`OPEN`), never silently dropped.
 
-- **Cards/table view switch on every data-inventory page — `LOCKED`,
-  built.** `shared/ViewModeToggle.tsx` + `shared/viewMode.ts`
-  (per-page localStorage persistence); the table half is Primer's own
-  `DataTable` (adopted per `.claude/rules/frontend.md`'s component
-  reference, not hand-rolled) on Workflows
-  (`composition/WorkflowsTable.tsx` / `WorkflowsCards.tsx`, split out
-  of `CompositionView.tsx` at the 500-line limit), Integrations,
-  Lists, and MCP Servers; Activity already renders as a `DataTable`
-  natively and additionally gained a free-text search over what ran
-  and its result. The per-workflow Runs tab keeps its structured list
-  (a run's step breakdown isn't row-shaped) — deliberate, not a gap.
+- **Resource inventories: one shared dense-row component, cards
+  RETIRED — `LOCKED`, built (goal 0007), superseding the earlier
+  cards/table switch this bullet used to describe.** Prompted by a
+  direct owner critique (Workflows and Integrations "look and feel the
+  same" to the point of editing confusion; the fat cards disliked
+  outright), resolved by real research (n8n/GitHub/Linear all render
+  homogeneous inventories as dense rows — never cards; NN/g's
+  cards-are-for-browsing line; owner-supplied screenshots of the
+  reference platform's own pure-table inventories settled the cards
+  verdict) and the owner's acceptance bar, now a standing design
+  value: **recognition, not confirmation** — every surface
+  identifiable from ambient cues before reading any text.
+  `shared/InventoryList.tsx` (Primer `ActionList` — its first use in
+  Mill as a list container rather than inside dropdowns) backs all
+  five inventories (Workflows, Integrations, Lists, MCP Servers,
+  Decisions): per-entity leading icon + color (`shared/entityIcons.ts`,
+  the executable identity cue, asserted by e2e via `data-entity`),
+  name, status badges, one truncated description line, goal 0006's
+  trigger label as the row's reference chip, a primary action, and a
+  trailing kebab `ActionMenu` replacing the per-page icon clusters;
+  client-side search above every list (§3.2's primitive, one
+  implementation); Primer `Blankslate` empty states. Rows are the
+  DEFAULT (`viewMode.ts` — a stored legacy `'cards'` migrates to
+  rows); `DataTable` stays the secondary toggle (sorting + resizable
+  columns preserved); `WorkflowsCards.tsx` and every cards branch
+  deleted. Two Primer internals caught and documented in-code, not
+  patched blind: `TrailingVisual`'s wrapper sets `pointer-events:
+  none` unconditionally (assumed decorative — our Run/kebab buttons
+  were invisible to clicks, confirmed via `elementFromPoint`), and
+  `role="list"` on the container is load-bearing (it switches
+  `ActionList.Item` to `<div>` rendering so nested buttons stay valid
+  HTML). Activity keeps its native `DataTable`; the per-workflow Runs
+  tab keeps its structured list (a step breakdown isn't row-shaped) —
+  deliberate, not gaps. The reference platform's grouped-by-workflow
+  *versions* view (owner screenshots) is recorded future design
+  input, distinct from cards.
 - **User-facing "Composition" naming retired** — Activity's source
   chip says "Manual run" and its copy says "a direct Run click on a
   workflow"; the sidebar already said Workflows. Code-level

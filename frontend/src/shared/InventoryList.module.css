@@ -1,0 +1,15 @@
+/* InventoryList.tsx's own chrome -- everything else (Stack, Text,
+   ActionList, Blankslate) comes straight from Primer, per
+   .claude/rules/frontend.md. Just the per-entity leading-visual icon
+   badge, which Primer's ActionList.LeadingVisual has no opinion on the
+   shape of. */
+.icon {
+    flex: 0 0 auto;
+    width: 28px;
+    height: 28px;
+    border-radius: var(--borderRadius-medium);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.muted { color: var(--fgColor-muted); }

@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test'
+import { clickRowAction } from './inventoryRow'
 
 // Exercises docs/SPEC.md §4's Update: seven seeded, working example
 // requests (one per real implemented AuthType) ship on first launch,
@@ -33,11 +34,11 @@ test('Seeded example requests are present, built-in-badged, and each declares an
   ]
 
   for (const label of exampleLabels) {
-    const row = page.getByTestId('request-row').filter({ has: page.getByText(label, { exact: true }) })
+    const row = page.locator('[data-testid="inventory-row"][data-entity="request"]').filter({ has: page.getByText(label, { exact: true }) })
     await expect(row).toBeVisible()
     await expect(row.getByText('built-in', { exact: true })).toBeVisible()
     // Every seeded example has a non-empty Description shown in the list.
-    await expect(row.locator('p').filter({ hasText: /./ })).not.toHaveCount(0)
+    await expect(row.getByTestId('inventory-row-description')).toBeVisible()
   }
 })
 
@@ -46,7 +47,7 @@ test('A seeded example opens its real summary view with a built-in badge and hon
   await page.getByRole('link', { name: 'Configure' }).click()
 
   const label = 'Example: OAuth 1.0a (postman-echo.com)'
-  const row = page.getByTestId('request-row').filter({ has: page.getByText(label, { exact: true }) })
+  const row = page.locator('[data-testid="inventory-row"][data-entity="request"]').filter({ has: page.getByText(label, { exact: true }) })
   await row.getByText(label, { exact: true }).click()
 
   const summary = page.getByTestId('request-summary')
@@ -61,7 +62,7 @@ test('The OAuth2 example is honest about needing the user\'s own credentials', a
   await page.getByRole('link', { name: 'Configure' }).click()
 
   const label = 'Example: OAuth 2.0 client credentials (Spotify Web API)'
-  const row = page.getByTestId('request-row').filter({ has: page.getByText(label, { exact: true }) })
+  const row = page.locator('[data-testid="inventory-row"][data-entity="request"]').filter({ has: page.getByText(label, { exact: true }) })
   await row.getByText(label, { exact: true }).click()
 
   const summary = page.getByTestId('request-summary')
@@ -83,7 +84,7 @@ test('A seeded example can be cloned and the clone deleted, without disturbing t
 
   const label = 'Example: Query-param API key (httpbin.org)'
   const cloneLabel = `${label} copy`
-  const row = page.getByTestId('request-row').filter({ has: page.getByText(label, { exact: true }) })
+  const row = page.locator('[data-testid="inventory-row"][data-entity="request"]').filter({ has: page.getByText(label, { exact: true }) })
   await expect(row).toBeVisible()
 
   // Editable: opens the real edit form, pre-filled, same as any
@@ -105,12 +106,12 @@ test('A seeded example can be cloned and the clone deleted, without disturbing t
   await expect(page.getByLabel('Label')).toHaveValue(cloneLabel)
   await page.getByRole('button', { name: 'Save request' }).click()
 
-  const cloneRow = page.getByTestId('request-row').filter({ has: page.getByText(cloneLabel, { exact: true }) })
+  const cloneRow = page.locator('[data-testid="inventory-row"][data-entity="request"]').filter({ has: page.getByText(cloneLabel, { exact: true }) })
   await expect(cloneRow).toBeVisible()
   await expect(cloneRow.getByText('built-in', { exact: true })).toHaveCount(0)
 
   // Delete the clone -- the original stays untouched.
-  await cloneRow.getByRole('button', { name: `Delete ${cloneLabel}` }).click()
+  await clickRowAction(page, cloneRow, 'Delete')
   await expect(cloneRow).toHaveCount(0)
   await expect(row).toBeVisible()
 })

@@ -59,8 +59,8 @@ test('Table columns are drag-resizable and long cells truncate with a hover titl
   await expect(urlCell).toBeVisible()
   await expect(urlCell).toHaveCSS('text-overflow', 'ellipsis')
 
-  // Restore card view so other specs sharing localStorage see the default.
-  await page.getByRole('button', { name: 'Card view' }).click()
+  // Restore row view so other specs sharing localStorage see the default.
+  await page.getByRole('button', { name: 'Row view' }).click()
 })
 
 test('Tables fit their container by default — no horizontal overflow from long columns', async ({ page }) => {
@@ -77,5 +77,5 @@ test('Tables fit their container by default — no horizontal overflow from long
     return scroller.scrollWidth - scroller.clientWidth
   })
   expect(overflow).toBeLessThanOrEqual(1)
-  await page.getByRole('button', { name: 'Card view' }).click()
+  await page.getByRole('button', { name: 'Row view' }).click()
 })

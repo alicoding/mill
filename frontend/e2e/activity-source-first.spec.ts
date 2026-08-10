@@ -9,7 +9,7 @@ import { test, expect } from '@playwright/test'
 // column cell (and search hit) under the child's own history.
 
 function workflowRow(page: import('@playwright/test').Page, label: string) {
-  return page.locator('[data-testid="workflow-row"]', { has: page.getByText(label, { exact: true }) })
+  return page.locator('[data-testid="inventory-row"][data-entity="workflow"]', { has: page.getByText(label, { exact: true }) })
 }
 
 test('Selecting a source workflow shows its durable runs with attribute columns and attribute search', async ({ page }) => {
@@ -22,7 +22,11 @@ test('Selecting a source workflow shows its durable runs with attribute columns 
   const dialog = page.getByRole('dialog')
   await dialog.waitFor()
   await dialog.getByRole('button', { name: /^Run$/ }).click()
-  await expect(parent.locator('pre')).toContainText('processed by the child workflow', { timeout: 20000 })
+  // A run's result renders below the InventoryList now, not inline in
+  // the row itself (docs/goals/0007's dense-row anatomy has no room for
+  // a result preview).
+  const result = page.getByTestId('workflow-run-result').filter({ has: page.getByText('Example: Parent → child call', { exact: true }) }).locator('pre')
+  await expect(result).toContainText('processed by the child workflow', { timeout: 20000 })
 
   await page.getByRole('link', { name: 'Activity' }).click()
   await page.getByTestId('activity-source-workflow').selectOption({ label: 'Example: Echo message (callable child)' })
