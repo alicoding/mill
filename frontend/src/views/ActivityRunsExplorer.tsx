@@ -5,6 +5,7 @@ import { ResizableTableContainer, TruncatedCell } from '../shared/ResizableTable
 import { ExecutionService } from '../shared/bindings'
 import type { RunSummary } from '../shared/bindings'
 import type { Workflow } from '../../bindings/github.com/alicoding/mill/internal/domain/composition/models'
+import { formatRunStartedAt } from '../shared/runTime'
 import styles from '../shared/ListCard.module.css'
 
 // The source-first half of the reference analytics pattern
@@ -41,7 +42,7 @@ export function ActivityRunsExplorer({ workflow }: { workflow: Workflow }) {
   const columns: Column<RunSummary & { id: string }>[] = [
     {
       id: 'started', header: 'Started', width: 'auto',
-      renderCell: (run) => <Text size="small" className={styles.muted}>{new Date(run.startedAt as unknown as string).toLocaleString()}</Text>,
+      renderCell: (run) => <Text size="small" className={styles.muted}>{formatRunStartedAt(run.startedAt as unknown as string)}</Text>,
     },
     {
       id: 'kind', header: 'Kind', width: 'auto',

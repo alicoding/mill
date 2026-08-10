@@ -1,10 +1,11 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Tabs } from '@primer/react/experimental'
 import type { NodeType, Workflow } from '../../bindings/github.com/alicoding/mill/internal/domain/composition/models'
 import CompositionCanvas from './CompositionCanvas'
 import WorkflowRunsPanel from './WorkflowRunsPanel'
 import { WorkflowVersionsPanel } from './WorkflowVersionsPanel'
 import { TabItem, TabList, TabPanel } from '../shared/Tabs'
+import { useAppStore } from '../shared/store'
 import editorStyles from './CompositionView.module.css'
 
 // A saved workflow's editor: an inner Canvas/Runs/Versions switch
@@ -29,6 +30,20 @@ export function WorkflowEditorTab({
 }) {
   const [innerTab, setInnerTab] = useState('canvas')
 
+  // Review row drill-down (docs/goals/0002-review-queue-maturation.md
+  // item 5): a pendingRunFocus targeting THIS workflow means someone
+  // clicked a Review row asking for this run -- land on the Runs inner
+  // tab with it preselected. Read here (not just passed straight
+  // through) because switching the inner tab is this component's own
+  // job; WorkflowRunsPanel only owns which run is selected within Runs.
+  const pendingRunFocus = useAppStore((s) => s.pendingRunFocus)
+  const consumePendingRunFocus = useAppStore((s) => s.consumePendingRunFocus)
+  const focusRunId = workflow && pendingRunFocus?.workflowId === workflow.ID ? pendingRunFocus.runId : undefined
+
+  useEffect(() => {
+    if (focusRunId) setInnerTab('runs')
+  }, [focusRunId])
+
   if (!workflow) {
     return <CompositionCanvas nodeTypes={nodeTypes} workflow={workflow} onBack={onBack} onSaved={onSaved} />
   }
@@ -44,7 +59,7 @@ export function WorkflowEditorTab({
         <CompositionCanvas nodeTypes={nodeTypes} workflow={workflow} onBack={onBack} onSaved={onSaved} />
       </TabPanel>
       <TabPanel value="runs">
-        <WorkflowRunsPanel workflowId={workflow.ID} />
+        <WorkflowRunsPanel workflowId={workflow.ID} initialRunId={focusRunId} onInitialRunConsumed={consumePendingRunFocus} />
       </TabPanel>
       <TabPanel value="versions">
         <WorkflowVersionsPanel workflow={workflow} onChanged={onWorkflowsChanged} />

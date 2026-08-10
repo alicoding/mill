@@ -80,6 +80,53 @@ func TestRunWorkflow_SummaryHasRealWorkflowLabelAndStepOutput(t *testing.T) {
 	}
 }
 
+// Regression test for the "1-12-31, 6:42:28 PM" bug reported live on
+// Review's resolved rows (docs/goals/0002-review-queue-maturation.md
+// item 5): RunSummary.StartedAt was rendering Go's zero time for every
+// run, because DBOS's own WorkflowStatus.StartedAt is only populated
+// for a workflow dequeued off a DBOS Queue (confirmed directly against
+// dbos-transact-golang's sysdb source, not assumed) -- Mill never
+// enqueues a run onto a Queue, so it was unconditionally zero.
+// summaryFromStatus now falls back to st.CreatedAt, which every run
+// gets at creation regardless of queueing.
+func TestRunWorkflow_SummaryHasNonZeroStartedAt(t *testing.T) {
+	store := servicetest.NewFakeStore()
+	comp := compositionsvc.NewCompositionService(store)
+	workflowID := findBuiltInWorkflowID(t, comp, "Load sample HTML")
+
+	dbPath := filepath.Join(t.TempDir(), "exec.db")
+	exec, err := NewExecutionService("sqlite:"+dbPath, comp, guardrailsvc.NewGuardrailService(store, comp))
+	if err != nil {
+		t.Fatalf("NewExecutionService: %v", err)
+	}
+	t.Cleanup(func() { _ = exec.Shutdown(2 * time.Second) })
+
+	before := time.Now().Add(-time.Minute)
+	summary, err := exec.RunWorkflow(workflowID, RunKindTest, nil)
+	if err != nil {
+		t.Fatalf("RunWorkflow: %v", err)
+	}
+	if summary.StartedAt.IsZero() {
+		t.Fatal("summary.StartedAt is zero, want a real timestamp")
+	}
+	if summary.StartedAt.Before(before) {
+		t.Errorf("summary.StartedAt = %v, want a timestamp no earlier than %v (this run's own start)", summary.StartedAt, before)
+	}
+
+	// ListRuns/ListRunsForWorkflow/GetRun all funnel through the same
+	// summaryFromStatus -- confirm the fallback isn't RunWorkflow-only.
+	fromList, err := exec.ListRunsForWorkflow(workflowID)
+	if err != nil {
+		t.Fatalf("ListRunsForWorkflow: %v", err)
+	}
+	if len(fromList) == 0 {
+		t.Fatal("ListRunsForWorkflow returned no runs")
+	}
+	if fromList[0].StartedAt.IsZero() {
+		t.Error("ListRunsForWorkflow's summary.StartedAt is zero, want a real timestamp")
+	}
+}
+
 // A run redriven from its only step must not re-execute that step's
 // exec function a second time if it already succeeded -- ForkWorkflow's
 // checkpoint-reuse guarantee (docs/adr/0004), exercised here through
