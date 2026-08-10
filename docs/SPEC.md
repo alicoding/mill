@@ -3065,7 +3065,13 @@ recorded as a real design input (`OPEN`), never silently dropped.
   (`IntegrationBindingsEditor.tsx`), and `ValidateGraph`'s secret
   guardrail. ADR-0007 closed.
 - Bash-execution-through-our-process-but-nothing-is-ours reading (§1.1) —
-  confirm with the user
+  confirm with the user. **A full proposed design now exists:
+  [ADR-0026](adr/0026-code-execution-capability.md) (code-execution
+  capability — ExecEnv Configure entities, the auto-guarded
+  code-execution node, cancellation via a local CancelFunc registry +
+  process-group kill, global-vs-workflow guardrail via rule scopes) —
+  deliberately `proposed`, since accepting it resolves this bullet, §6,
+  and ADR-0023's placement question; research evidence is in the ADR**
 - Single execution path (§7/ADR-0008) — `LOCKED` and built: every
   workflow run (a workflow's own list-row Run button, a headless trigger
   fire) goes through one durable `ExecutionService.RunWorkflow`
