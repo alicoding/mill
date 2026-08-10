@@ -5,7 +5,9 @@ import (
 	"log/slog"
 	"strings"
 	"testing"
+	"time"
 
+	"github.com/alicoding/mill/internal/domain/composition"
 	"github.com/alicoding/mill/internal/services/compositionsvc"
 	"github.com/alicoding/mill/internal/services/servicetest"
 )
@@ -113,5 +115,54 @@ func TestAssignHotkey_RequiresAtLeastOneModifier(t *testing.T) {
 
 	if _, err := s.AssignHotkey("some-workflow", nil, "M"); err == nil {
 		t.Fatal("AssignHotkey() with no modifiers: want error, got nil")
+	}
+}
+
+// ArmedWorkflows backs docs/goals/0006-trigger-aware-workflows-list.md's
+// tri-state armed label -- it has to reflect Sync's real gate
+// (!Disabled && PublishedVersion > 0), not a re-derivation of it, so
+// this exercises Sync itself (not s.active directly) the same way a
+// real Create/Update/Publish/Disable call would trigger it. Uses
+// trigger-clipboard-watch as the fixture trigger type since its
+// starter (triggerclipboardwatch.go) needs no Config to arm --
+// isolates the published/disabled gate from a second, unrelated
+// "is this trigger configured" variable trigger-schedule/
+// trigger-filesystem-watch would introduce.
+func TestArmedWorkflows_ReflectsSyncsPublishedAndDisabledGate(t *testing.T) {
+	store := servicetest.NewFakeStore()
+	comp := compositionsvc.NewCompositionService(store)
+	s := NewTriggerService(comp, slog.Default(), store)
+	t.Cleanup(func() { s.Sync(nil) }) // stop every listener this test starts
+
+	clipboardTrigger := []composition.Node{
+		{ID: "n1", Kind: composition.KindTrigger, NodeTypeID: "trigger-clipboard-watch"},
+	}
+
+	armedWF := composition.PublishHead(composition.Workflow{
+		ID: "wf-armed", Label: "Armed clipboard watch", Nodes: clipboardTrigger,
+	}, time.Now())
+
+	unpublishedWF := composition.Workflow{
+		ID: "wf-unpublished", Label: "Never published clipboard watch", Nodes: clipboardTrigger,
+	}
+
+	disabledWF := composition.PublishHead(composition.Workflow{
+		ID: "wf-disabled", Label: "Disabled clipboard watch", Nodes: clipboardTrigger, Disabled: true,
+	}, time.Now())
+
+	s.Sync([]composition.Workflow{armedWF, unpublishedWF, disabledWF})
+
+	armed := s.ArmedWorkflows()
+	if !armed["wf-armed"] {
+		t.Errorf("ArmedWorkflows() = %v, want \"wf-armed\" present (published, enabled)", armed)
+	}
+	if armed["wf-unpublished"] {
+		t.Errorf("ArmedWorkflows() = %v, want \"wf-unpublished\" absent (never published)", armed)
+	}
+	if armed["wf-disabled"] {
+		t.Errorf("ArmedWorkflows() = %v, want \"wf-disabled\" absent (disabled)", armed)
+	}
+	if len(armed) != 1 {
+		t.Errorf("ArmedWorkflows() = %v, want exactly 1 entry", armed)
 	}
 }

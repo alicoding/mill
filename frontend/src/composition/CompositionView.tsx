@@ -1,7 +1,7 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Button, Heading, Stack, Text } from '@primer/react'
 import { PlusIcon, UploadIcon } from '@primer/octicons-react'
-import { CompositionService, ExecutionService } from '../shared/bindings'
+import { CompositionService, ExecutionService, TriggerService } from '../shared/bindings'
 import { RunKind } from '../shared/bindings'
 import { generateSamplePayload } from '../shared/configSchema'
 import { refreshNodeTypes, refreshWorkflows, useAppStore } from '../shared/store'
@@ -34,11 +34,44 @@ function CompositionView() {
   const [importError, setImportError] = useState<string | null>(null)
   const importFileInputRef = useRef<HTMLInputElement>(null)
   const [viewMode, setViewMode] = useViewMode('mill-workflows-view-mode')
+  // Trigger-aware row state (docs/goals/0006-trigger-aware-workflows-list.md):
+  // which workflows currently have a live TriggerService listener --
+  // the source of truth for a row's armed/not-live badge, fetched once
+  // here (not recomputed per row) and refetched whenever it could have
+  // changed (Publish, an inline hotkey assign/unassign on a row).
+  const [armedWorkflows, setArmedWorkflows] = useState<Record<string, boolean | undefined>>({})
+  const [publishingId, setPublishingId] = useState<string | null>(null)
+  const [publishError, setPublishError] = useState<string | null>(null)
+
+  const refreshArmed = useCallback(() => {
+    TriggerService.ArmedWorkflows()
+      .then((m) => setArmedWorkflows(m ?? {}))
+      .catch(console.error)
+  }, [])
 
   useEffect(() => {
     void refreshWorkflows()
     void refreshNodeTypes()
-  }, [])
+    refreshArmed()
+  }, [refreshArmed])
+
+  // The row-level Publish CTA (docs/goals/0006, decision 2): publishing
+  // is what's actually blocking a configured-but-not-live trigger from
+  // arming (TriggerService.Sync's own gate), so this is the same
+  // CompositionService.PublishWorkflow call WorkflowVersionsPanel.tsx's
+  // "Publish current draft" button makes, just reachable straight from
+  // the list without opening the workflow's editor first.
+  const publishWorkflow = (id: string) => {
+    setPublishingId(id)
+    setPublishError(null)
+    CompositionService.PublishWorkflow(id)
+      .then(() => {
+        refreshArmed()
+        return refreshWorkflows()
+      })
+      .catch((err) => setPublishError(String(err)))
+      .finally(() => setPublishingId(null))
+  }
 
   // Runs through ExecutionService.RunWorkflow, tagged RunKindTest --
   // docs/adr/0008's single execution path; per ADR-0021 a test run
@@ -177,16 +210,25 @@ function CompositionView() {
           {importError}
         </Text>
       )}
+      {publishError && (
+        <Text as="p" size="small" className={styles.error} data-testid="publish-workflow-error">
+          {publishError}
+        </Text>
+      )}
       {workflows === null && <Text as="p" className={styles.muted}>Loading…</Text>}
       {workflows !== null && viewMode === 'table' && workflows.length > 0 && (
         <WorkflowsTable
           workflows={workflows}
           runningId={runningId}
           editDisabled={nodeTypes === null}
+          armedWorkflows={armedWorkflows}
+          publishingId={publishingId}
           onRun={run}
           onEdit={(id) => openWorkTab({ kind: 'workflow-edit', workflowId: id })}
           onExport={exportWorkflow}
           onDelete={removeWorkflow}
+          onPublish={publishWorkflow}
+          onHotkeyChanged={refreshArmed}
         />
       )}
       {workflows !== null && viewMode === 'cards' && (
@@ -196,9 +238,13 @@ function CompositionView() {
           runningId={runningId}
           errors={errors}
           results={results}
+          armedWorkflows={armedWorkflows}
+          publishingId={publishingId}
           onRun={run}
           onEdit={(id) => openWorkTab({ kind: 'workflow-edit', workflowId: id })}
           onExport={exportWorkflow}
+          onPublish={publishWorkflow}
+          onHotkeyChanged={refreshArmed}
           onDelete={removeWorkflow}
         />
       )}

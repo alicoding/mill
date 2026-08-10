@@ -3103,6 +3103,25 @@ recorded as a real design input (`OPEN`), never silently dropped.
   a pure inject-text run reaching DONE, and a human-review park →
   inline deny → fails closed. Elements #1 and #3–#6 remain recorded
   design input, not built.
+- **Trigger-aware Workflows list — `LOCKED`, built** (goal 0006, all
+  three calls decided by the owner against a primary-sourced research
+  pass — n8n's Active-toggle semantics, Airflow's `run_type` tagging,
+  Raycast's inline hotkey rows): each list row derives a compact label
+  + affordance from its trigger (root) node — assigned hotkey combo or
+  inline "Add hotkey…" click-to-record (Raycast's pattern, reusing the
+  existing conflict UX), humanized cron, watch path, "Run by another
+  workflow." **Armed is a tri-state** (armed / configured-but-not-live
+  / unconfigured): `TriggerService.ArmedWorkflows()` exposes the real
+  listener map (never a recomputed gate — hotkeys confirmed to pass
+  through the same `!Disabled && PublishedVersion > 0` gate as
+  schedule/watch), and a configured-but-not-live row carries a Publish
+  CTA, since publishing is literally what arms it. Manual list-Run
+  deliberately STAYS a test run of the draft (every researched
+  platform converges there; ADR-0008/0021 unchanged) — the button now
+  says so, including a draft-differs-from-published warning
+  (`draftDrift.ts`, client-side snapshot compare). Callable-child rows
+  drop the primary Run (the incoherence that prompted this) for a
+  secondary "Test."
 - **Dev-staleness root cause found and fixed — `LOCKED`.** Two
   compounding causes made "my app looks stale" recur: (1) every
   wails-built desktop binary passed `-buildvcs=false` (dev *and*
