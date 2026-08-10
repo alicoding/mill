@@ -1309,6 +1309,55 @@ for this entry.
     guess, research or ask before designing" flag for whichever of these
     Mill eventually prioritizes.
 
+### 3.2.1 Review/case-management reference review — design input, mostly future
+
+**A third owner-supplied reference-platform review (2026-08-10, nine
+screenshots, kept vendor-generic), covering its Review/case subsystem.
+`OPEN` throughout except where marked — recorded so the next Review
+pass designs against evidence, not memory.** Key observed semantics:
+a Manual Review Decision *creates a durable Case* (name/due-date/tags/
+priority/status/queue — each settable statically or via a typed
+expression evaluated from workflow context); Review Settings holds
+reusable configured resources (**Statuses, Checklists, Automations**)
+plus **Queues** referenced by stable identity everywhere (authoring,
+case workspace, automations) — never free-text strings; Review
+**Automations** are a bounded event-condition-action model (trigger:
+on-queue/status/decision-change → action), explicitly *not* the full
+workflow canvas; the case workspace includes an **AI summary card**
+(regenerable, grounded in case/workflow data); and the Decision node
+carries two deliberately separate contracts — case metadata vs. typed
+output mapping — never collapsed into one property bag. Seven reused
+primitives named (configured-resource picker; literal-vs-expression
+binding control; schema-driven progressive disclosure; one typed
+mapping foundation; import/export/auto-match; pinned work tabs; compact
+canvas + detailed inspector) — extending §3.2's existing ten.
+
+**Mill boundaries this review sharpens, decided or constrained now:**
+- **The Review drill-down verdict (goal 0002, built from this):** a
+  Review row opens its run in the app-wide work-tab shell — the
+  reference's own "same shell for case inspection, run inspection,
+  approval handling" — reusing the workflow's Runs tab as the ONE
+  run-detail viewer (§7's lock), never a second viewer on Review.
+- **AI summary vs. §1.1's hard lock (no AI API calls from Mill,
+  ever):** in Mill this card can only be a *derived field written by an
+  external agent* through the MCP surface (ADR-0025's authoring loop —
+  the agent reads run/case evidence via MCP, writes a summary back),
+  or via a user-configured connector — never Mill calling an LLM.
+  Consistent with the review's own boundary ("a derived convenience
+  view over immutable evidence"), just with the generator outside Mill
+  by constitution. `LOCKED` (the constraint's application) — the
+  feature itself is unbuilt/`OPEN`.
+- **Review Automations = adopt a bounded ECA shape, never expose the
+  canvas for case ops** — the same "composed over primitives, not
+  Camunda" line ADR-0023 already drew. `OPEN` (unbuilt), direction
+  recorded.
+- **Case-as-durable-entity** (vs. today's parked-run-only Review v1,
+  ADR-0023/0027): the growth path for manual-review Decisions —
+  case identity correlating run + Decision + input snapshot + evidence.
+  `OPEN`, gated on a real need; the review's own evidence gaps
+  (resume-vs-terminal mechanics, status lifecycle, QC) are the
+  research questions to answer first.
+
 ### 3.3 Capability map — designing the node/edge schema against the full known need, not just today's two workflows
 
 Deciding the node/edge schema from today's two built-in, purely-linear
