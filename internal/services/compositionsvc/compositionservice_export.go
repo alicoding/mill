@@ -3,6 +3,7 @@ package compositionsvc
 import (
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/alicoding/mill/internal/domain/composition"
 )
@@ -106,4 +107,37 @@ func (c *CompositionService) ImportWorkflow(jsonData string) (composition.Workfl
 		return wf, nil
 	}
 	return c.UpdateAttributes(wf.ID, in.Attributes)
+}
+
+// SnapshotDraft captures id's current draft head as a new immutable
+// version WITHOUT publishing it -- the auto-snapshot-before-write
+// safety net for MCP-driven authoring (docs/adr/0025): anything an
+// external LLM changes is one "load into draft" away from undone,
+// which is a stronger guarantee than forbidding updates ever was.
+func (c *CompositionService) SnapshotDraft(id string) (composition.Workflow, error) {
+	return c.mutateWorkflow(id, func(wf composition.Workflow) (composition.Workflow, error) {
+		wf.Versions = append(wf.Versions, composition.SnapshotHead(wf, time.Now()))
+		return wf, nil
+	})
+}
+
+// UpdateWorkflowFromExport replaces id's draft head with an
+// exported-workflow JSON definition -- the same wire shape
+// ExportWorkflow produces and ImportWorkflow consumes, reused as the
+// update protocol so there is exactly one document format
+// (docs/adr/0025). Validation is UpdateWorkflow's own (ValidateGraph,
+// ResolveNodeDefaults); attributes update alongside when present.
+func (c *CompositionService) UpdateWorkflowFromExport(id, jsonData string) (composition.Workflow, error) {
+	var in exportedWorkflow
+	if err := json.Unmarshal([]byte(jsonData), &in); err != nil {
+		return composition.Workflow{}, fmt.Errorf("update workflow: invalid JSON: %w", err)
+	}
+	wf, err := c.UpdateWorkflow(id, in.Label, in.Description, in.Nodes, in.Edges)
+	if err != nil {
+		return composition.Workflow{}, err
+	}
+	if in.Attributes == nil {
+		return wf, nil
+	}
+	return c.UpdateAttributes(id, in.Attributes)
 }

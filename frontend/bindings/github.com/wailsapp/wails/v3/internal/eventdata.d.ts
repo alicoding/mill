@@ -17,6 +17,7 @@ declare module "@wailsio/runtime" {
         interface CustomEvents {
             "hotkey-activity": triggersvc$0.HotkeyActivity;
             "mcp-write-approval": mcpsvc$0.MCPWriteRequest;
+            "mill-data-changed": mcpsvc$0.DataChanged;
             "time": string;
         }
     }
