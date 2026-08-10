@@ -1,8 +1,15 @@
 # Mill — Living Spec
 
-This document is the single source of truth for what Mill is. It is rendered
-inside the Mill app itself (Spec view) so the doc and the app can't silently
-drift apart. Edit this file, not a copy of it.
+This document is the single source of truth for what Mill is. Edit this
+file, not a copy of it. (It was rendered inside the app itself — a Spec
+view — until 2026-08-10, retired by owner decision: the in-app rendering
+never actually *enforced* doc/app coherence — the same-change
+SPEC-update rule and the seeded-example discipline do that (every
+shipped capability seeds a runnable in-app proof, .claude/rules/
+testing.md) — while costing the app's largest bundle chunk (mermaid +
+svg-pan-zoom + marked) and a sidebar slot that wasn't a work
+destination. The repo is the reading surface; GitHub renders the
+diagrams below natively.)
 
 Status key: `LOCKED` (decided), `OPEN` (actively undecided), `PARKED` (named,
 not yet worth deciding).
@@ -397,32 +404,20 @@ and [`docs/adr/0002-cicd-pipeline-phased-rollout.md`](adr/0002-cicd-pipeline-pha
 
 ### 1.4 Architecture at a glance
 
-Two standard architecture views, rendered as real diagrams in the Spec
-tab itself (`frontend/src/SpecView.tsx`, via the `mermaid` package —
-MIT, pure JS/TS dependency tree, no native/Rust anywhere, verified
-directly against its own `package.json` before adopting) rather than
-left as prose alone — a layered system with this many pieces built is
-harder to hold in your head as text than as a picture. Mermaid's own
+Two standard architecture views, kept as mermaid sources in this doc
+(GitHub renders them natively; the in-app Spec tab that once rendered
+them — `SpecView.tsx` + `mermaid`/`svg-pan-zoom` — was retired
+2026-08-10 with the Spec view itself, see the header note) — a layered
+system with this many pieces built is harder to hold in your head as
+text than as a picture. Mermaid's own
 `C4Context`/`C4Component` diagram types would match this pair's naming
 even more closely, but Mermaid's own docs flag C4 diagrams as
-experimental (syntax/properties still changing); using the standard,
-stable `graph`/subgraph syntax instead gets the same two conceptual
-views without that risk. Dashed nodes are planned, not built — same
-distinction as everywhere else in this doc, never implied as done.
-Real drag-to-pan/scroll-to-zoom with visible +/−/reset controls comes
-from `svg-pan-zoom` (BSD-2-Clause, zero runtime deps) — Mermaid itself
-has no pan/zoom capability at all, checked directly against its own
-config schema before adopting a second library. `LOCKED`
-
-The one non-obvious wiring detail worth recording here: `mermaid.run()`
-matches elements by the same literal `mermaid` class the marked-renderer
-override sets (`MERMAID_CLASS` constant in `SpecView.tsx`, not two
-independently hardcoded strings), and the SVG needs an explicit
-`viewBox` (synthesized from its own rendered width/height, since Mermaid
-never sets one) plus `width/height: 100%` CSS on the SVG itself —
-without the second part, `svg-pan-zoom` sizes its coordinate system off
-the SVG's intrinsic (pre-scaled) dimensions rather than the actual
-container, which pushes its control icons past the visible edge.
+experimental (syntax/properties still changing); the standard, stable
+`graph`/subgraph syntax gets the same two conceptual views without
+that risk. Dashed nodes are planned, not built — same distinction as
+everywhere else in this doc, never implied as done. `LOCKED` (the
+diagrams-in-this-doc practice; the in-app rendering stack and its
+wiring notes went with the Spec view's retirement).
 
 **System Context** — Mill, its user, and the systems it touches:
 

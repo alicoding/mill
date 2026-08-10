@@ -30,6 +30,5 @@ export type {
   BuildInfo,
   UpdateCheckResult,
 } from '../../bindings/github.com/alicoding/mill/internal/services/settingssvc'
-export { SpecService } from '../../bindings/github.com/alicoding/mill/internal/services/specsvc'
 export { TriggerService } from '../../bindings/github.com/alicoding/mill/internal/services/triggersvc'
 export type { HotkeyActivity } from '../../bindings/github.com/alicoding/mill/internal/services/triggersvc'

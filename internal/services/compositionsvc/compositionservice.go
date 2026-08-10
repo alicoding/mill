@@ -86,11 +86,11 @@ func (c *CompositionService) NodeTypes() []composition.NodeType {
 	return composition.NodeTypes()
 }
 
-// CapabilityMap exposes docs/SPEC.md §3.3's capability map as real data
-// for the Spec tab -- see docs/SPEC.md §3.3 and CapabilityIndex.tsx's
-// existing "real Go data, not parsed docs" precedent for page-level
-// capabilities, applied here one level down for composition's own
-// sub-capabilities.
+// CapabilityMap exposes docs/SPEC.md §3.3's capability map as real Go
+// data, not parsed docs -- composition's own sub-capabilities (Trigger,
+// Decision, Parallel Steps, ...), one level down from the page-level
+// CapabilitiesService.List(). The in-app Spec view that used to render
+// this was retired; docs/SPEC.md §3.3 remains the source of truth.
 func (c *CompositionService) CapabilityMap() []composition.MapEntry {
 	return composition.CapabilityMap()
 }

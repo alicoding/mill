@@ -1,5 +1,4 @@
 import {
-  BookIcon,
   PlugIcon,
   PulseIcon,
   ShieldCheckIcon,
@@ -20,7 +19,3 @@ export const CAPABILITY_ICON: Record<string, Icon> = {
   'capability-configure': PlugIcon,
   'capability-review': ShieldCheckIcon,
 }
-
-// Spec isn't a capability (no build status), so it isn't in the map above --
-// it gets its own fixed icon here instead.
-export const SPEC_ICON: Icon = BookIcon
