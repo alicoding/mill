@@ -67,7 +67,7 @@ export function ActivityRunsExplorer({ workflow }: { workflow: Workflow }) {
       renderCell: (run) => <Text size="small">{run.values?.[a.Key] ?? ''}</Text>,
     })),
     {
-      id: 'output', header: 'Output', width: 'grow',
+      id: 'output', header: 'Output', width: 'growCollapse', minWidth: '160px',
       renderCell: (run) => <TruncatedCell text={run.output ?? ''} />,
     },
   ]
@@ -93,7 +93,7 @@ export function ActivityRunsExplorer({ workflow }: { workflow: Workflow }) {
         </Text>
       )}
       {filtered.length > 0 && (
-        <ResizableTableContainer>
+        <ResizableTableContainer storageKey="mill-cols-activity-runs">
           <DataTable
             aria-label={`${workflow.Label} runs`}
             data={filtered.map((r) => ({ ...r, id: r.runID }))}

@@ -19,7 +19,7 @@ test('Table columns are drag-resizable and long cells truncate with a hover titl
 
   // Every header except the last gets a resize handle.
   const handles = table.locator('[data-testid="column-resize-handle"]')
-  const headerCount = await table.locator('th').count()
+  const headerCount = await table.locator('thead th').count()
   await expect(handles).toHaveCount(headerCount - 1)
 
   // Dragging the first handle rewrites the grid's first track width.
@@ -37,6 +37,22 @@ test('Table columns are drag-resizable and long cells truncate with a hover titl
   const after = await firstTrack()
   expect(after).toBeGreaterThan(before + 100)
 
+  // The resized width persists across a reload (per-table localStorage,
+  // reapplied by ResizableTableContainer).
+  await page.reload()
+  await page.getByRole('link', { name: 'Configure' }).click()
+  await expect(table).toBeVisible()
+  const persisted = await firstTrack()
+  expect(persisted).toBeGreaterThan(before + 100)
+
+  // Double-clicking a handle resets to default widths and clears the
+  // saved state (the divider-double-click reset convention).
+  await handles.first().dblclick()
+  const resetWidth = await firstTrack()
+  expect(resetWidth).toBeLessThan(persisted - 50)
+  const savedAfterReset = await page.evaluate(() => localStorage.getItem('mill-cols-requests'))
+  expect(savedAfterReset).toBeNull()
+
   // The URL column renders TruncatedCell: ellipsis styling plus the
   // full value available on hover via title.
   const urlCell = table.locator(`span[title="https://postman-echo.com/oauth1"]`)
@@ -44,5 +60,22 @@ test('Table columns are drag-resizable and long cells truncate with a hover titl
   await expect(urlCell).toHaveCSS('text-overflow', 'ellipsis')
 
   // Restore card view so other specs sharing localStorage see the default.
+  await page.getByRole('button', { name: 'Card view' }).click()
+})
+
+test('Tables fit their container by default — no horizontal overflow from long columns', async ({ page }) => {
+  await page.goto('/')
+  // The Workflows table's Description column carries long seeded text;
+  // width: 'growCollapse' + TruncatedCell must keep the grid inside
+  // the container instead of forcing a horizontal scroll (the
+  // reported default-layout bug).
+  await page.getByRole('button', { name: 'Table view' }).click()
+  const table = page.getByRole('table', { name: 'Saved workflows' })
+  await expect(table).toBeVisible()
+  const overflow = await table.evaluate((t) => {
+    const scroller = t.parentElement as HTMLElement
+    return scroller.scrollWidth - scroller.clientWidth
+  })
+  expect(overflow).toBeLessThanOrEqual(1)
   await page.getByRole('button', { name: 'Card view' }).click()
 })

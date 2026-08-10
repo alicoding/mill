@@ -68,7 +68,7 @@ export function WorkflowVersionsPanel({ workflow, onChanged }: {
         <Text as="p" className={styles.muted}>No versions yet — publish the draft to create v1.</Text>
       )}
       {versions.length > 0 && (
-        <ResizableTableContainer>
+        <ResizableTableContainer storageKey="mill-cols-versions">
           <DataTable
             aria-labelledby="versions-heading"
             data={versions.map((v) => ({ ...v, id: v.Version }))}
@@ -86,7 +86,7 @@ export function WorkflowVersionsPanel({ workflow, onChanged }: {
                 header: 'Saved', id: 'saved', width: 'auto',
                 renderCell: (v) => new Date(v.SavedAt as unknown as string).toLocaleString(),
               },
-              { header: 'Label', id: 'label', renderCell: (v) => <TruncatedCell text={v.Label} /> },
+              { header: 'Label', id: 'label', width: 'growCollapse', minWidth: '160px', renderCell: (v) => <TruncatedCell text={v.Label} /> },
               {
                 header: '', id: 'actions', width: 'auto', align: 'end',
                 renderCell: (v) => (
