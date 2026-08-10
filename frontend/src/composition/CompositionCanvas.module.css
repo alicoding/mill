@@ -210,7 +210,13 @@
     flex-direction: row;
     align-items: center;
     gap: var(--base-size-8);
-    overflow: hidden;
+    /* NO overflow: hidden here — the React Flow Handles render inside
+       this div and deliberately extend past the card edge (as do the
+       guardrail badge's -6px and the run-status tag's -8px offsets), so
+       a card-level clip shaves all three to slivers (a real, reported
+       visual bug: the target handle showed as a cut-off bump on the
+       card's top edge). Text can't overflow anyway: canvasNodeLabel/
+       canvasNodeOutput each carry their own ellipsis clipping. */
 }
 .canvasNodeIcon {
     flex: 0 0 auto;
