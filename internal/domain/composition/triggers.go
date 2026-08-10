@@ -69,7 +69,7 @@ func init() {
 	}, nil)
 	RegisterNodeType(NodeType{
 		ID: "trigger-callable", Kind: KindTrigger,
-		Label: "Trigger: callable by another workflow",
+		Label:       "Trigger: callable by another workflow",
 		Description: "Fires only when invoked as a child by another workflow's Child Workflow node (docs/adr/0010) -- never by a real external event, no listener process. Modeled on n8n's own \"Execute Workflow Trigger\": a workflow rooted in this trigger declares itself a valid child target, decoupled from whatever its trigger would otherwise be. The child-workflow picker only lists workflows rooted here -- one rooted in a real-event trigger (filesystem-watch, clipboard-watch, ...) can't be invoked this way, since a parent has no way to synthesize that event.",
 	}, nil)
 }

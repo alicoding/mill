@@ -13,6 +13,12 @@ export interface CanvasNodeData extends Record<string, unknown> {
   kind: string
   label: string
   config: Record<string, string>
+  // The step's current guardrail verdict ('ask' | 'deny' | 'allow'),
+  // injected by CompositionCanvas from GuardrailService.WorkflowVerdicts
+  // -- the nothing-hidden rule (docs/adr/0022's Update): a step that
+  // will pause or refuse is marked on the canvas BEFORE anyone runs it.
+  guardrailEffect?: string
+  guardrailRule?: string
 }
 
 export type CanvasNode = RFNode<CanvasNodeData>
@@ -29,6 +35,7 @@ interface CanvasState {
   updateEdgeCondition: (id: string, condition: string) => void
   removeSelected: () => void
   load: (nodes: CanvasNode[], edges: RFEdge[]) => void
+  setGuardrailVerdicts: (verdicts: Record<string, { effect: string; ruleLabel: string }>) => void
   clear: () => void
 }
 
@@ -95,6 +102,15 @@ export function createCanvasStore() {
             }
           }),
         load: (nodes, edges) => set({ nodes, edges }),
+        setGuardrailVerdicts: (verdicts) =>
+          set({
+            nodes: get().nodes.map((n) => {
+              const v = verdicts[n.id]
+              const effect = v?.effect === 'ask' || v?.effect === 'deny' ? v.effect : undefined
+              if ((n.data.guardrailEffect ?? undefined) === effect && (!effect || n.data.guardrailRule === v?.ruleLabel)) return n
+              return { ...n, data: { ...n.data, guardrailEffect: effect, guardrailRule: v?.ruleLabel } }
+            }),
+          }),
         clear: () => set({ nodes: [], edges: [] }),
       }),
       {

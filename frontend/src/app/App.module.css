@@ -229,3 +229,12 @@
     height: 100%;
     overflow: hidden;
 }
+
+/* Per-write MCP approval banner (MCPWriteApprovals.tsx) -- pinned above
+   the content so a parked external write is impossible to miss while
+   its 2-minute window runs. */
+.mcpApprovalBanner {
+    padding: var(--base-size-8) var(--base-size-16);
+    background: var(--bgColor-attention-muted);
+    border-bottom: 1px solid var(--borderColor-attention-muted, var(--borderColor-default));
+}

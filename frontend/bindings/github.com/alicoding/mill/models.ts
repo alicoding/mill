@@ -60,6 +60,47 @@ export interface HotkeyActivity {
 }
 
 /**
+ * MCPWriteRequest is one pending write, as surfaced to the frontend
+ * (the Wails "mcp-write-approval" event and PendingMCPWrites).
+ */
+export interface MCPWriteRequest {
+    "id": string;
+    "description": string;
+}
+
+/**
+ * PendingApproval is what a parked run advertises via SetEvent -- the
+ * §1 thesis applied to the guardrail itself: the human sees exactly
+ * which step wants to run, with which config, before it happens.
+ */
+export interface PendingApproval {
+    "nodeID": string;
+    "nodeTypeID": string;
+    "nodeTypeLabel": string;
+    "config": { [_ in string]?: string } | null;
+    "payload": string;
+    "ruleLabel": string;
+    "resolved": boolean;
+    "decision": string;
+}
+
+/**
+ * RuleTestResult is one dry-run's outcome for the Configure tester.
+ */
+export interface RuleTestResult {
+    "effect": string;
+    "ruleID": string;
+    "ruleLabel": string;
+
+    /**
+     * EffectClass is the tested node type's declared side-effect class,
+     * so the tester can explain a default verdict ("external steps ask
+     * by default").
+     */
+    "effectClass": string;
+}
+
+/**
  * RunDetail is a RunSummary plus its full per-node step breakdown.
  */
 export interface RunDetail {
@@ -78,6 +119,12 @@ export interface RunDetail {
      * 0 means the draft head (a test run).
      */
     "version": number;
+
+    /**
+     * Pending is the run's live awaiting-approval state, if any
+     * (docs/adr/0022) -- non-nil only while a guardrail ask is parked.
+     */
+    "pending"?: PendingApproval | null;
 
     /**
      * Values are the attribute values this run was invoked with
@@ -122,6 +169,16 @@ export interface RunStep {
     "status": string;
     "output": string;
     "error": string;
+
+    /**
+     * GuardrailEffect/GuardrailRule surface the step's recorded
+     * guardrail verdict (docs/adr/0022) -- what actually decided at run
+     * time, decoded from the checkpointed guardrail step, never a
+     * re-evaluation against possibly-changed rules. Empty when the
+     * effect-class default allowed without any rule involved.
+     */
+    "guardrailEffect"?: string;
+    "guardrailRule"?: string;
 }
 
 /**
@@ -144,6 +201,12 @@ export interface RunSummary {
      * 0 means the draft head (a test run).
      */
     "version": number;
+
+    /**
+     * Pending is the run's live awaiting-approval state, if any
+     * (docs/adr/0022) -- non-nil only while a guardrail ask is parked.
+     */
+    "pending"?: PendingApproval | null;
 
     /**
      * Values are the attribute values this run was invoked with

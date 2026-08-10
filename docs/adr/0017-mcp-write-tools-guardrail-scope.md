@@ -1,6 +1,6 @@
-# ADR-0017: Guardrail scope for MCP-driven writes (design only — not implemented)
+# ADR-0017: Guardrail scope for MCP-driven writes
 
-Status: accepted (coarse default-off gate + export/import tools; per-write approval still proposed -- see Update)
+Status: accepted — fully implemented (coarse default-off gate + export/import tools, and per-write synchronous approval via ADR-0022's MCP section: a bounded 120s in-process park surfaced in Mill's window, approval-required by default whenever writes are enabled)
 
 ## Context
 

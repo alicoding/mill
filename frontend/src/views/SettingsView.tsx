@@ -45,6 +45,7 @@ function SettingsView() {
   const [updateChecking, setUpdateChecking] = useState(false)
 
   const [mcpWriteEnabled, setMCPWriteEnabledState] = useState<boolean | null>(null)
+  const [mcpApprovalRequired, setMCPApprovalRequiredState] = useState<boolean | null>(null)
 
   useEffect(() => {
     SettingsService.GetLaunchAtLogin()
@@ -55,6 +56,9 @@ function SettingsView() {
       .catch(console.error)
     SettingsService.GetMCPWriteEnabled()
       .then(setMCPWriteEnabledState)
+      .catch(console.error)
+    SettingsService.GetMCPWriteApprovalRequired()
+      .then(setMCPApprovalRequiredState)
       .catch(console.error)
   }, [])
 
@@ -191,6 +195,25 @@ function SettingsView() {
           reading/exporting is always allowed and never includes secrets. Applies immediately, no restart.
         </FormControl.Caption>
       </FormControl>
+      {mcpWriteEnabled && (
+        <FormControl>
+          <Checkbox
+            checked={mcpApprovalRequired ?? true}
+            disabled={mcpApprovalRequired === null}
+            onChange={(e) => {
+              const required = e.target.checked
+              SettingsService.SetMCPWriteApprovalRequired(required).then(() => setMCPApprovalRequiredState(required)).catch(console.error)
+            }}
+            data-testid="mcp-write-approval-checkbox"
+          />
+          <FormControl.Label>Ask me before each MCP import</FormControl.Label>
+          <FormControl.Caption>
+            On by default (docs/adr/0022): each import parks until you approve it in Mill&apos;s window
+            (or times out after 2 minutes, which denies it). Turning this off lets an enabled MCP client
+            import without a per-write click -- enabling writes shouldn&apos;t silently mean unattended writes.
+          </FormControl.Caption>
+        </FormControl>
+      )}
 
       <Heading as="h2" variant="small" className={styles.sectionHeading}>Updates</Heading>
       <Stack direction="horizontal" gap="condensed" align="center">

@@ -75,6 +75,14 @@ func findRoot(nodes []Node, hasIncoming map[string]bool) (string, error) {
 // missing or unparseable falls back to the same zero value this always
 // used, so a nil/empty values map behaves identically to before this
 // parameter existed.
+// AttributesEnv builds the zero-value-seeded, override-applied
+// Attributes environment a run starts from -- exported for the
+// guardrail dry-run tester (guardrailservice.go), which must evaluate
+// against the same environment shape the live gate sees.
+func AttributesEnv(attrs []AttributeDef, values map[string]string) map[string]any {
+	return attributesEnv(attrs, values)
+}
+
 func attributesEnv(attrs []AttributeDef, values map[string]string) map[string]any {
 	env := make(map[string]any, len(attrs))
 	for _, a := range attrs {

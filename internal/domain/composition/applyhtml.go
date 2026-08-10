@@ -1,6 +1,9 @@
 package composition
 
-import "github.com/alicoding/mill/internal/adapters/clipboard"
+import (
+	"github.com/alicoding/mill/internal/adapters/clipboard"
+	"github.com/alicoding/mill/internal/domain/guardrail"
+)
 
 // Package-level function var, not a direct call -- same testability
 // pattern as internal/domain/runbook.
@@ -19,6 +22,7 @@ const sampleHTML = `<h2>Quarterly update</h2>
 func init() {
 	RegisterNodeType(NodeType{
 		ID: "apply-clipboard-write-html", Kind: KindApply,
+		Effect:      guardrail.ClassLocal,
 		Label:       "Apply: write HTML to clipboard",
 		Description: "Writes configured HTML to the clipboard.",
 		ConfigFields: []ConfigField{

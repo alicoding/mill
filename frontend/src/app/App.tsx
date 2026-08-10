@@ -13,6 +13,7 @@ import type { BuildInfo } from "../../bindings/github.com/alicoding/mill/models"
 import { refreshNodeTypes, refreshRequests, refreshWorkflows, useAppStore, viewFor, viewsEqual, statusDotColor } from "../shared/store";
 import type { View } from "../shared/store";
 import { WorkTabShell } from "./WorkTabShell";
+import { MCPWriteApprovals } from "./MCPWriteApprovals";
 import { COLOR_MODE_STORAGE_KEY, SIDEBAR_OPEN_STORAGE_KEY } from "./theme";
 import { CAPABILITY_ICON, SPEC_ICON } from "./navIcon";
 import styles from "./App.module.css";
@@ -363,6 +364,7 @@ function App() {
           {/* The app-wide work-tab strip (docs/SPEC.md §3.8): the
               current section page is the first tab, every open work
               item a tab beside it, surviving sidebar navigation. */}
+          <MCPWriteApprovals />
           <WorkTabShell pageLabel={pageLabelFor(view, capabilities)}>
             {view.kind === 'activity' && <ActivityView/>}
 

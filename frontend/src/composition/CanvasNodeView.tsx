@@ -1,6 +1,7 @@
 import { Handle, Position as RFPosition } from '@xyflow/react'
 import type { NodeProps } from '@xyflow/react'
 import { Text } from '@primer/react'
+import { ShieldIcon } from '@primer/octicons-react'
 import type { CanvasNode } from './canvasStore'
 import { KIND_ICON, KIND_ICON_BG, KIND_LABEL } from './nodeKind'
 import { WorkflowHoverPreview } from './WorkflowHoverPreview'
@@ -48,6 +49,18 @@ export function CanvasNodeView({ data, selected }: NodeProps<CanvasNode>) {
           {data.label}
         </Text>
       </div>
+      {(data.guardrailEffect === 'ask' || data.guardrailEffect === 'deny') && (
+        <span
+          className={styles.canvasNodeGuardrail}
+          data-testid="canvas-guardrail-badge"
+          data-effect={data.guardrailEffect}
+          title={data.guardrailEffect === 'deny'
+            ? `Denied by guardrail rule${data.guardrailRule ? ` "${data.guardrailRule}"` : ''} — this step will not run`
+            : `Asks for approval before running${data.guardrailRule ? ` — ${data.guardrailRule}` : ''}`}
+        >
+          <ShieldIcon size={12} />
+        </span>
+      )}
       <Handle type="source" position={RFPosition.Bottom} />
     </div>
   )

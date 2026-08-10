@@ -4,6 +4,9 @@
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
 import * as capabilities$0 from "../capabilities/models.js";
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: Unused imports
+import * as guardrail$0 from "../guardrail/models.js";
 
 /**
  * Approach records whether a capability's mechanism is bought (an
@@ -181,6 +184,15 @@ export interface NodeType {
     "Label": string;
     "Description": string;
     "ConfigFields": ConfigField[] | null;
+
+    /**
+     * Effect is the node type's side-effect classification
+     * (docs/adr/0022's purity model): what the guardrail gate uses to
+     * pick a default verdict when no rule matches, and what ADR-0021's
+     * deferred shadow evaluation was blocked on. The zero value means
+     * ClassNone -- only node types with real I/O declare one.
+     */
+    "Effect": guardrail$0.EffectClass;
 }
 
 /**

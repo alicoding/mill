@@ -213,3 +213,26 @@
     align-items: center;
     justify-content: center;
 }
+
+/* Nothing-hidden guardrail badge (docs/adr/0022's Update): marks a step
+   that will ask for approval (attention) or is denied (danger) BEFORE
+   anyone runs it. Positioned on the card's top-right corner. */
+.canvasNodeGuardrail {
+    position: absolute;
+    top: calc(-1 * var(--base-size-6, 6px));
+    right: calc(-1 * var(--base-size-6, 6px));
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: var(--base-size-20, 20px);
+    height: var(--base-size-20, 20px);
+    border-radius: 50%;
+    background: var(--bgColor-attention-emphasis);
+    color: var(--fgColor-onEmphasis);
+    fill: var(--fgColor-onEmphasis);
+    border: 1px solid var(--borderColor-default);
+}
+
+.canvasNodeGuardrail[data-effect='deny'] {
+    background: var(--bgColor-danger-emphasis);
+}

@@ -70,6 +70,15 @@ export function RedriveRun(runID: string, fromNodeID: string): $CancellablePromi
 }
 
 /**
+ * ResolveApproval delivers the human's decision to a parked run -- the
+ * Approve/Deny buttons' RPC. Send works from outside a workflow
+ * (verified against the installed DBOS source).
+ */
+export function ResolveApproval(runID: string, nodeID: string, approve: boolean): $CancellablePromise<void> {
+    return $Call.ByID(3717967946, runID, nodeID, approve);
+}
+
+/**
  * RunWorkflow is the one execution entrypoint for the running app
  * (docs/adr/0008) -- every run, whether started from Composition's
  * canvas, the Runs page's own quick-run picker, or (once TriggerService

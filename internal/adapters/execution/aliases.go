@@ -12,7 +12,11 @@
 // to be able to instantiate them with its own P/R types.
 package execution
 
-import "github.com/dbos-inc/dbos-transact-golang/dbos"
+import (
+	"time"
+
+	"github.com/dbos-inc/dbos-transact-golang/dbos"
+)
 
 type (
 	// Context is a launched DBOS runtime handle -- the first argument to
@@ -86,6 +90,36 @@ func RunAsStep[R any](ctx Context, fn Step[R], opts ...StepOption) (R, error) {
 // Mill's redrive mechanism.
 func ForkWorkflow[R any](ctx Context, input ForkWorkflowInput) (WorkflowHandle[R], error) {
 	return dbos.ForkWorkflow[R](ctx, input)
+}
+
+// Send delivers a message to a running workflow's topic from outside it
+// (or durably from inside another workflow) -- the guardrail approval
+// path's wake-up call (docs/adr/0022): ResolveApproval Sends the
+// human's decision to the parked run.
+func Send[P any](ctx Context, destinationID string, message P, topic string) error {
+	return dbos.Send(ctx, destinationID, message, topic)
+}
+
+// Recv blocks inside a workflow until a message arrives on topic or the
+// timeout lapses -- a durable, exactly-once, checkpointed operation
+// (verified against the installed DBOS source, not assumed): a parked
+// approval survives the process dying and replays without re-asking.
+func Recv[R any](ctx Context, topic string, timeout time.Duration) (R, error) {
+	return dbos.Recv[R](ctx, topic, timeout)
+}
+
+// SetEvent publishes a key/value from inside a running workflow for
+// outside observers -- how a parked run advertises which step awaits
+// approval (docs/adr/0022).
+func SetEvent[P any](ctx Context, key string, message P) error {
+	return dbos.SetEvent(ctx, key, message)
+}
+
+// GetEvent reads a workflow's published event value from outside it,
+// waiting up to timeout (0 polls the current value) -- how run
+// summaries surface a pending approval without joining the run.
+func GetEvent[R any](ctx Context, targetWorkflowID, key string, timeout time.Duration) (R, error) {
+	return dbos.GetEvent[R](ctx, targetWorkflowID, key, timeout)
 }
 
 var (

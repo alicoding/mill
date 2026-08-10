@@ -1,7 +1,7 @@
 # ADR-0019: Guardrail rule scoping and precedence model
 
 ## Status
-proposed
+accepted
 
 ## Context
 
@@ -41,6 +41,17 @@ Decision, satisfying §8's already-locked dry-run-testable requirement);
 workflow-level rules stay inline in the canvas Inspector, matching
 Trigger config's existing precedent.
 
+**Amended at implementation (docs/adr/0022's Update, decided directly
+with the user): ALL rule authoring — including workflow/step-scoped
+rules — lives in Configure → Guardrails only.** The original
+inline-Inspector idea was built first and corrected in discussion:
+putting rule *creation* on the step editor made policy look like step
+configuration, which it isn't (a rule lives in the policy store, not in
+the workflow definition). The Inspector keeps read-only *visibility* — 
+the step's live verdict, evaluated by the same code path as the
+execution gate — and the canvas badges any step that will ask or deny,
+so nothing is hidden; authoring just isn't scattered.
+
 ### Precedence: deny/require-approval always wins over allow/skip
 
 Regardless of which layer set it. Modeled on Claude Code's own
@@ -79,13 +90,17 @@ shape.
 
 ## Consequences
 
-Node-kind- and Connector-level rules need a Configure surface
-(unbuilt). Workflow-level rules need canvas Inspector UI (unbuilt).
-`internal/domain/guardrail` itself is unbuilt.
+All built (docs/adr/0022): `internal/domain/guardrail` (evaluation,
+deny-first precedence, condition fail-safety), the Configure →
+Guardrails tab (rule CRUD + the dry-run tester), the canvas's
+read-only verdict/badge visibility, and the durable execution gate
+acting on the verdicts.
 
-**Still open, not resolved by this ADR**: how Claude Code's third `ask`
-state (distinct from allow/deny) maps onto Mill's own
-pass/fail/pending/skipped UI states.
+**Resolved by ADR-0022**: `ask` maps to a durable parked run — the
+step shows `awaiting-approval` (pending), a deny/timeout fails it
+closed (fail), an approval lets it run (pass), and an explicit allow
+rule records a `skipped`-the-ask verdict on the step, auditable in the
+run's own history.
 
 A separate, narrower corner of this space — whether an external MCP
 client should be able to *write* Mill's own workflow/Configure
