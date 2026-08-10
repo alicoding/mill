@@ -32,7 +32,7 @@ Remaining, in order:
    | human-review | ~~v1~~ **mature** (delivered 2026-08-10) | "Ask for these attributes" config names a subset (comma-separated keys; empty = all); Review renders only those |
    | trigger-schedule | ~~v1~~ **mature** (delivered 2026-08-10) | Inspector shows a live cronstrue human-readable preview (MIT, zero deps); invalid expressions flagged inline |
    | list-lookup | ~~v1~~ **mature** (delivered 2026-08-10) | explicit "If no match" option: fail / continue / default (with a default value); legacy nodes default to fail, unchanged |
-   | capture-clipboard-html | v1 | no fallback order (SPEC §5: try HTML → plain text) — currently HTML-or-nothing |
+   | capture-clipboard-html | ~~v1~~ **mature** (delivered 2026-08-10) | falls back to plain text when no HTML flavor (SPEC §5 order); DOM-read tier still needs the browser bridge |
    | trigger-filesystem-watch | ~~v1~~ **mature** (delivered 2026-08-10) | optional filename glob (*.md); the changed path is now delivered as the trigger payload |
    | integration-http, child-workflow, decision-route | mature | — |
    | triggers manual/hotkey/callable/clipboard-watch, capture-attribute, process-html-to-markdown, process-inject-text, apply-write-html/text | adequate | zero-config or single-field; nothing missing for their scope |
