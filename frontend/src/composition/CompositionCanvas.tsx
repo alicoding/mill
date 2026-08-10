@@ -21,9 +21,10 @@ import { createCanvasStore, type CanvasNode } from './canvasStore'
 import { rfNodeTypes } from './rfNodeTypes'
 import { CANVAS_NODE_WIDTH, CANVAS_NODE_HEIGHT } from './canvasConstants'
 import { findFreeDropPosition } from './canvasLayout'
-import { toCanvasNodes, toRFEdges } from './canvasConversion'
 import { draftWorkflowSchema } from './draftWorkflowSchema'
 import { toDraftEdges, toDraftNodes } from './draftPayload'
+import { clearScratch } from './canvasScratch'
+import { computeInitialCanvas, useCanvasHotExit } from './useCanvasHotExit'
 import { useDraftValidation, groupIssuesByNode } from './useDraftValidation'
 import { ValidationSurface } from './ValidationPanel'
 import { NodePalette } from './NodePalette'
@@ -43,6 +44,13 @@ interface CompositionCanvasProps {
   // ever needs to load its initial data once, on mount -- switching
   // targets is a fresh mount, not a prop update to react to.
   workflow?: Workflow | null
+  // The owning WorkTab's own identity (shared/store.ts) -- this canvas's
+  // hot-exit scratch key (docs/goals/0012-authoring-hot-exit.md,
+  // canvasScratch.ts). Stable across a reload for any tab that survives
+  // one (workflow-edit/workflow-new are both restorable now), and freshly
+  // generated for a brand-new tab -- either way, one canvas = one key,
+  // never shared between two mounted editors.
+  tabKey: string
   onBack: () => void
   onSaved: () => void
 }
@@ -54,12 +62,21 @@ interface CompositionCanvasProps {
 // gets its node type's default config immediately, editable via the
 // Inspector the moment it's selected, never a bare unconfigured
 // reference.
-function CanvasInner({ nodeTypes, workflow, onBack, onSaved }: CompositionCanvasProps) {
+function CanvasInner({ nodeTypes, workflow, tabKey, onBack, onSaved }: CompositionCanvasProps) {
+  // Computed once, synchronously, at first render -- see
+  // computeInitialCanvas's own doc comment for why this isn't a
+  // useEffect. `initial.baseline` (docs/goals/0012) is what every later
+  // dirty check compares the live draft against: the saved workflow's
+  // real content (or the empty-starter content for a new workflow),
+  // never the restored scratch itself -- so a restored-but-unedited-
+  // since-restore canvas still reads as dirty until an actual Save.
+  const [initial] = useState(() => computeInitialCanvas(workflow, nodeTypes, tabKey))
+
   // One store per mounted CanvasInner -- tabbed multi-editing
   // (CompositionView.tsx) can have several of these mounted at once,
   // each needing independent nodes/edges/undo history rather than
   // sharing one global canvas.
-  const [useCanvasStore] = useState(() => createCanvasStore())
+  const [useCanvasStore] = useState(() => createCanvasStore(initial.nodes, initial.edges))
 
   const [paletteOpen, setPaletteOpen] = useState(false)
 
@@ -145,8 +162,8 @@ function CanvasInner({ nodeTypes, workflow, onBack, onSaved }: CompositionCanvas
       setSelectedNodeId(null)
     }
   }
-  const [draftLabel, setDraftLabel] = useState(workflow?.Label ?? '')
-  const [draftDescription, setDraftDescription] = useState(workflow?.Description ?? '')
+  const [draftLabel, setDraftLabel] = useState(initial.label)
+  const [draftDescription, setDraftDescription] = useState(initial.description)
   // Collapsed by default unless a description already exists -- the
   // canvas is the authoring surface, the header is metadata (SPEC.md
   // §3's canvas-first layout pass); Label stays a normal always-visible
@@ -159,42 +176,13 @@ function CanvasInner({ nodeTypes, workflow, onBack, onSaved }: CompositionCanvas
   const [saving, setSaving] = useState(false)
   const [layingOut, setLayingOut] = useState(false)
 
-  // Runs once per mount -- the caller remounts this component (via a
-  // `key` keyed on the workflow's id) whenever the editing target
-  // changes, so "load the target's data" and "start fresh" both reduce
-  // to "do it once, here."
-  useEffect(() => {
-    if (workflow) {
-      useCanvasStore.getState().load(toCanvasNodes(workflow.Nodes, nodeTypes), toRFEdges(workflow.Edges))
-    } else {
-      // A brand-new workflow starts with a single trigger node placed,
-      // not a blank canvas -- matches the reference platform's own
-      // "Start from Scratch" pre-populating a starting node. Now that a
-      // real Trigger NodeKind exists (SPEC.md §3.4), the natural starter
-      // is trigger-manual specifically: every workflow needs exactly one
-      // root, and a manual trigger is the one that needs no external
-      // config (hotkey/schedule/watch all need a value the user hasn't
-      // supplied yet).
-      const starterType = nodeTypes.find((nt) => nt.ID === 'trigger-manual')
-      if (starterType) {
-        useCanvasStore.getState().load(
-          [
-            {
-              id: crypto.randomUUID(),
-              type: starterType.Kind,
-              position: { x: 80, y: 80 },
-              data: { nodeTypeID: starterType.ID, kind: starterType.Kind, label: starterType.Label, output: starterType.Output ?? '', config: {} },
-            },
-          ],
-          [],
-        )
-      } else {
-        useCanvasStore.getState().clear()
-      }
-    }
-    useCanvasStore.temporal.getState().clear()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  // Hot exit (docs/goals/0012-authoring-hot-exit.md): the canvas store/
+  // draftLabel/draftDescription are already seeded correctly from
+  // `initial` above (computeInitialCanvas), so this hook only has to
+  // surface the mount-time restore decision and keep a debounced
+  // scratch write + live dirty flag in sync afterward -- see
+  // useCanvasHotExit.ts's own doc comment for the full reasoning.
+  useCanvasHotExit(tabKey, initial, nodes, edges, draftLabel, draftDescription)
 
   const selectedNode = nodes.find((n) => n.id === selectedNodeId) ?? null
   const selectedNodeType = selectedNode ? nodeTypes.find((nt) => nt.ID === selectedNode.data.nodeTypeID) : undefined
@@ -333,6 +321,14 @@ function CanvasInner({ nodeTypes, workflow, onBack, onSaved }: CompositionCanvas
           parsed.data.Edges as CompEdge[],
         )
       }
+      // A successful Save is one of the two events that discard the
+      // hot-exit scratch (docs/goals/0012) -- the draft it was shadowing
+      // no longer exists as "unsaved." onSaved() (below) closes this
+      // tab (app/WorkTabShell.tsx), which also prunes workTabDirty/
+      // workTabRestored for tabKey -- this call only needs to handle
+      // the localStorage side, which shared/store.ts can't reach (it's
+      // a dependency-cruiser leaf and can't import composition/).
+      clearScratch(tabKey)
       onSaved()
     } catch (err) {
       setSaveError(String(err))

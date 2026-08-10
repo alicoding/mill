@@ -62,12 +62,25 @@ interface CanvasState {
 // already reads `useCanvasStore(...)`/`.getState()`/`.temporal` keeps
 // working unchanged -- a component-scoped store has the identical API
 // surface as the old module-level one.
-export function createCanvasStore() {
+//
+// initialNodes/initialEdges (docs/goals/0012-authoring-hot-exit.md):
+// seeded directly into the store's own creation rather than via a
+// follow-up `load()` call, so the very first render already reflects
+// either the saved workflow, the new-workflow starter node, or a
+// restored hot-exit scratch -- CompositionCanvas.tsx's caller computes
+// which one applies (readScratch/draftsEqual, canvasScratch.ts) before
+// this factory ever runs, so there's no async catch-up render where
+// `nodes`/`edges` would transiently read stale/empty. Since this is
+// part of the store's initial state object, not a `set()` call, zundo's
+// temporal middleware never records it onto the undo stack -- no
+// `.temporal.getState().clear()` needed afterward, unlike the old
+// `load()`-based mount effect this replaced.
+export function createCanvasStore(initialNodes: CanvasNode[] = [], initialEdges: RFEdge[] = []) {
   return create<CanvasState>()(
     temporal(
       (set, get) => ({
-        nodes: [],
-        edges: [],
+        nodes: initialNodes,
+        edges: initialEdges,
         onNodesChange: (changes) => set({ nodes: applyNodeChanges(changes, get().nodes) }),
         onEdgesChange: (changes) => set({ edges: applyEdgeChanges(changes, get().edges) }),
         onConnect: (connection) => set({ edges: rfAddEdge(connection, get().edges) }),
