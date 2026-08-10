@@ -60,6 +60,7 @@ func init() {
 	application.RegisterEvent[string]("time")
 	application.RegisterEvent[triggersvc.HotkeyActivity]("hotkey-activity")
 	application.RegisterEvent[mcpsvc.MCPWriteRequest]("mcp-write-approval")
+	application.RegisterEvent[mcpsvc.DataChanged](mcpsvc.DataChangedEventName)
 }
 
 // main function serves as the application's entry point. It initializes the application, creates a window,
@@ -166,6 +167,7 @@ func main() {
 	}
 	millMCPService := mcpsvc.NewMillMCPService(millVersion, compositionService, configureService, settingsStore)
 	settingsService.SetMCPService(millMCPService)
+	millMCPService.SetExecutionService(executionService)
 	if err := millMCPService.Start(millMCPAddr); err != nil {
 		logger.Error("mill MCP server", "error", err)
 	} else {

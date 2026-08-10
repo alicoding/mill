@@ -234,6 +234,20 @@ function App() {
   // it's the only one of the two sources that fires headlessly;
   // Composition Run-button clicks push directly from their own handler,
   // since they already resolve synchronously in the browser.
+  // Live sync for MCP-driven authoring (docs/adr/0025): when an
+  // external LLM changes data through Mill's MCP server, the open
+  // window refreshes it immediately -- §1's what-you-see-is-what-I-see
+  // thesis running in both directions. One coarse refresh per entity
+  // kind; the stores are cheap to re-fetch at Mill's scale.
+  useEffect(() => {
+    return Events.On('mill-data-changed', (evt) => {
+      const entity = (evt.data as { entity?: string })?.entity
+      if (entity === 'workflow' || entity === 'run') void refreshWorkflows()
+      if (entity === 'request') void refreshRequests()
+      if (entity === 'list' || entity === 'mcpserver') { void refreshRequests(); void refreshWorkflows() }
+    })
+  }, [])
+
   useEffect(() => {
     return Events.On('hotkey-activity', (evt) => {
       pushActivity({

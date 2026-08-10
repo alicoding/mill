@@ -1942,6 +1942,29 @@ turns out to solve this without touching that dispute).
   real MCP client over real HTTP: import is rejected with a
   clear go-enable-it-in-Settings error while off, writes nothing, and
   succeeds minting a new ID once a human flips the toggle.
+  **The full LLM-authoring protocol is now built on top —
+  [ADR-0025](adr/0025-mcp-llm-authoring-protocol.md) (`accepted`),
+  prompted by the direct goal "make you able to make changes to the
+  app real time as an LLM using MCP."** Four tiers over the one
+  export/import document format: introspection (`list_node_types` —
+  the authoring vocabulary — `list_runs`/`get_run` with per-step
+  guardrail verdicts, ungated read-only), validation
+  (`validate_workflow`, pure, saves nothing, returns the exact graph
+  error to iterate against), mutation (`update_workflow`/
+  `publish_workflow`/`delete_workflow` behind the write toggle +
+  per-write approval with a diff summary — and every update
+  **auto-snapshots the previous draft as a version first**, so any
+  LLM change is one load-into-draft from undone), and execution
+  (`run_workflow`, test kind — the guardrail engine is the run's own
+  approval layer; external steps park in the Review queue regardless
+  of who started the run). Every mutation emits a `mill-data-changed`
+  event the open window's stores refresh on — the §1 thesis running
+  in both directions, live. `resolve_approval` is permanently
+  excluded by design (an LLM approving its own guarded actions
+  collapses the guardrail); secrets stay categorically human-only.
+  Proven by `TestMCPAuthoring_FullLoop` (real MCP client, real HTTP,
+  real DBOS: the author→validate→update→run→inspect loop end to end,
+  including that the updated definition is what executes).
   [ADR-0017](adr/0017-mcp-write-tools-guardrail-scope.md) `accepted`
   for this scope. **Its per-write synchronous-approval half is now
   built too (ADR-0022's MCP section)**: with writes enabled, each

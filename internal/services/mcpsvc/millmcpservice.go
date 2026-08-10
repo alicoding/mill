@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/alicoding/mill/internal/services/executionsvc"
 	"net/http"
 	"strings"
 	"sync"
@@ -45,6 +46,9 @@ type MillMCPService struct {
 	// docs/adr/0017's second half).
 	pendingMu     sync.Mutex
 	pendingWrites map[string]pendingMCPWrite
+	// exec backs the authoring tier's list_runs/get_run/run_workflow
+	// (millmcpservice_authoring.go); late-bound from main.go.
+	exec *executionsvc.ExecutionService
 }
 
 // NewMillMCPService builds the MCP server and registers every
