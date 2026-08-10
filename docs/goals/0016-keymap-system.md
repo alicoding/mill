@@ -26,6 +26,27 @@ mechanism behind the recorder incident).
    enabler that just merged. In-window commands stay browser keydown
    per §3.7's deliberate choice.
 
+## Default keybinding set — DECIDED by industry research (2026-08-10)
+Primary-sourced (Apple HIG, VS Code, Safari/Chrome, Linear/Slack/
+Notion), collision-checked against Mill's shipped ⌘1–4/⌘, and the
+RESERVED_COMBOS blocklist:
+
+| Command | Default | Source / note |
+|---|---|---|
+| `tab.close` | ⌘W | universal; reroute from menu-close (the recorder-fix machinery) |
+| `tab.next`/`tab.prev` | ⌃Tab / ⌃⇧Tab | the one combo Safari AND VS Code share (⌘⇧]/[ = rebindable alias) |
+| `workflow.new` | ⌘N | editor "new typed document" convention — NOT ⌘T (browser blank-tab) |
+| `workflow.save` | ⌘S | maps to save-DRAFT only; Publish stays deliberate, no shortcut |
+| `workflow.run` | ⌘R | **owner ratifies — the one non-unanimous binding** (Xcode "Run" vs browser "Reload"; no live Mill collision) |
+| `palette.open` (0015) | ⌘K | Linear/Slack standalone — NOT VS Code's ⌘⇧P; ⌘K there is a chord prefix. Alias ⌘P later (Notion pattern) if wanted |
+| view nav / settings | ⌘1–4 / ⌘, | already shipped, confirmed convention-correct |
+
+**Last-tab-close**: Mill is the VS Code shape (window stays, not
+browser close-window) — and near-moot since §3.8's pinned list tab is
+always open, so "no tabs" is an edge case, not the everyday close.
+**Explicit non-collision**: do NOT add ⌘1–9 jump-to-Nth-work-tab
+(Safari/Chrome pattern) — ⌘1–4 already means sidebar views.
+
 ## Acceptance
 ⌘W closes a work tab (window only when none open); ⌘S saves from the
 canvas; the owner rebinds a command in Settings using the same
