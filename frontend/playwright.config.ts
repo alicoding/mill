@@ -18,6 +18,13 @@ export default defineConfig({
   // integration tests, not mocks (ADR-0002) -- the alternative would be
   // mocking the one thing most likely to actually break.
   workers: 1,
+  // One retry: the resizable-table drag test measures column width
+  // after a synthetic pointer drag, which under full-suite load
+  // occasionally has pointermove events coalesced (the column moves
+  // only partway) -- a genuine timing flake, not a resize bug (it
+  // passes isolated and on retry). A real regression still fails both
+  // attempts, so this masks flakes without hiding breakage.
+  retries: 1,
   globalSetup: './e2e/global-setup.ts',
   webServer: {
     command: 'cd .. && go build -tags server -o bin/mill-server . && ./bin/mill-server',
