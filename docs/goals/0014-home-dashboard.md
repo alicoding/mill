@@ -48,6 +48,35 @@ accounting numbers directly. Primer has no first-party charting (only
 color/contrast guidelines — drive Recharts marks from Primer tokens
 per those). No Rust in any candidate's tree (constraint clean).
 
+## Metric semantics — DECIDED by industry research (2026-08-10)
+Confirmed Mill's drafted approach matches/exceeds industry (Zapier +
+Power Automate both expose an editable per-run time estimate; nobody
+credible fakes precision). Adopt, each vendor-generic in SPEC:
+- **Time saved** = Σ over completed runs of a per-WORKFLOW
+  user-editable minutes-saved estimate (Zapier's per-Zap granularity,
+  default 2min/task there — Mill seeds by node composition); formula
+  always visible/editable. Credit ONLY `RunKind: triggered` +
+  Success runs — a `test` run is authoring, not automation replacing
+  manual work (crediting it = Zapier crediting an editor preview).
+  Failed run credits nothing.
+- **Error rate** = failed-terminal runs / (Success + Error terminal
+  runs). Retry-then-success = Success, NOT a failure (Temporal/n8n/
+  Airflow all agree — the unit is the run, not the attempt; DBOS's
+  own step-retry already absorbs this). Parked/waiting runs EXCLUDED
+  from the denominator until resolved (Zapier convention). Cancelled
+  runs excluded from both (Airflow's deliberate-stop ≠ failure).
+  Default scope `triggered` only (n8n's manual-exclusion), with a
+  test-included toggle.
+- **Aggregation**: machine-local timezone unconditionally (single-
+  viewer desktop — no UTC/display split needed); DAILY buckets
+  default (RescueTime/Toggl/GitHub personal-tool convention, not
+  hourly); NEVER a bare percentage without its volume, and gray/
+  suppress a rate below a minimum run count (Datadog's own 1-of-1 =
+  100% failure mode + small-N stats).
+- Every metric's definition (numerator/denominator/retry/RunKind
+  treatment) rendered inline/on-hover — the reference review's own
+  explicit demand.
+
 ## Other hard constraints from the review + Mill's own doctrine
 - Metric definitions document numerator/denominator/retry/test-kind
   treatment/interval explicitly; RunKind test-vs-triggered treatment

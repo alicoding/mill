@@ -42,9 +42,10 @@ List is never an ungoverned database.
   sahilm/fuzzy + lithammer (fuzzy-*finder* shape, wrong for
   approximate-equality lookup), agext/levenshtein (6y stale — the same
   bar SPEC §3.4 rejected robfig/cron on), closestmatch (no go.mod,
-  weak on short strings). OWNER DECISION teed up: default algorithm
-  (Levenshtein = most explainable to a rule author; Jaro-Winkler =
-  better on short name/code strings).
+  weak on short strings). **DECIDED (industry research): default = Damerau-Levenshtein**;
+  Jaro-Winkler a per-column override (Census name-matching origin);
+  token/set methods rejected (degrade on short reference strings) —
+  see the fuzzy-library finding below for full reasoning.
 - **Typed-column intake: GAP, not reuse — and the reason 0011 depends
   on 0013.** PapaParse + genson-js (the libraries) are reusable now;
   the schema-intake *components* (SchemaIntake/ManualSchemaEditor/
@@ -59,10 +60,18 @@ List is never an ungoverned database.
   user-declared columns (the BuiltIn/Versions precedent), not injected
   as user TypedFields. Surfaces a real gap — CreatedBy/UpdatedBy need
   an actor identity Mill has none of (§3.7 single-user-forever) — name
-  the actor source explicitly. OWNER DECISION teed up: are Expired
-  rows searchable — recommended (a) excluded-by-default + opt-in, or
-  (c) exact-sees-expired/fuzzy-excludes, both fitting Mill's
-  default-safe posture over (b) included-by-default.
+  the actor source explicitly. **Expired-rows-searchable DECIDED by
+  industry research: excluded by default, per-step opt-in, UNIFORM
+  across exact and fuzzy** — the exact/fuzzy split (option c) has ZERO
+  industry precedent (soft-delete convention, OFAC sanctions
+  screening, Informatica MDM all split on "current vs explicit
+  historical", never match-type). OFAC even confirms exclusion: it
+  screens the CURRENT list only; delisted entries move to an audit
+  archive, never stay in live matching — which maps exactly onto item
+  5's per-execution snapshot (evidence ≠ active-match set). Plausible
+  extension (not a third option): a test RunKind could surface Expired
+  for visibility while triggered stays Active-only (ADR-0021's
+  disabled-pauses-production shape).
 
 ## Sequencing (confirmed by research)
 0013 first (its List-columns capability-map row at minimum) → then
