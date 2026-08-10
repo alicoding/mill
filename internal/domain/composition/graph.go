@@ -83,6 +83,27 @@ func AttributesEnv(attrs []AttributeDef, values map[string]string) map[string]an
 	return attributesEnv(attrs, values)
 }
 
+// coerceAttrValue converts a reviewer-supplied string into the same Go
+// type the attribute currently holds (docs/adr/0023's human-review
+// input) -- mirroring attributesEnv's own per-type parsing so the
+// test-input path and the review-input path can't drift.
+func coerceAttrValue(current any, raw string) any {
+	switch current.(type) {
+	case float64:
+		if n, err := strconv.ParseFloat(raw, 64); err == nil {
+			return n
+		}
+		return current
+	case bool:
+		if b, err := strconv.ParseBool(raw); err == nil {
+			return b
+		}
+		return current
+	default:
+		return raw
+	}
+}
+
 func attributesEnv(attrs []AttributeDef, values map[string]string) map[string]any {
 	env := make(map[string]any, len(attrs))
 	for _, a := range attrs {

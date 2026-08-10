@@ -141,7 +141,7 @@ func (g *GuardrailService) TestRules(workflowID, nodeID string) (RuleTestResult,
 	// The explicit checkpoint always parks -- report it as such rather
 	// than evaluating rules its park deliberately ignores (same
 	// special-case as WorkflowVerdicts below).
-	if target.NodeTypeID == "guardrail-wait-approval" {
+	if target.NodeTypeID == "human-review" {
 		return RuleTestResult{Effect: "ask", RuleLabel: "explicit checkpoint", EffectClass: "none"}, nil
 	}
 	class := composition.NodeTypeEffect(target.NodeTypeID)
@@ -196,7 +196,7 @@ func (g *GuardrailService) WorkflowVerdicts(workflowID string) (map[string]RuleT
 		if n.Kind == composition.KindTrigger || n.Kind == composition.KindDecision {
 			continue
 		}
-		if n.NodeTypeID == "guardrail-wait-approval" {
+		if n.NodeTypeID == "human-review" {
 			out[n.ID] = RuleTestResult{Effect: "ask", RuleLabel: "explicit checkpoint", EffectClass: "none"}
 			continue
 		}

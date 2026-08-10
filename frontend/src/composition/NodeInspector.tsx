@@ -12,6 +12,7 @@ import { IntegrationBindingsEditor } from './IntegrationBindingsEditor'
 import { ChildWorkflowBindingsEditor } from './ChildWorkflowBindingsEditor'
 import { WorkflowHoverPreview } from './WorkflowHoverPreview'
 import { NodeGuardrailSection } from './NodeGuardrailSection'
+import { RulesetEditor } from './RulesetEditor'
 import styles from './CompositionCanvas.module.css'
 import runbookStyles from '../shared/ListCard.module.css'
 
@@ -253,6 +254,13 @@ export function NodeInspector({ node, workflowId, attrs, nodeType, sameKindNodeT
 
       {workflowId && node.data.kind !== 'trigger' && node.data.kind !== 'decision' && (
         <NodeGuardrailSection workflowId={workflowId} nodeId={node.id} />
+      )}
+
+      {node.data.nodeTypeID === 'ruleset' && (
+        <RulesetEditor
+          rulesRaw={node.data.config.rulesJSON ?? ''}
+          onChange={(raw) => onConfigChange('rulesJSON', raw)}
+        />
       )}
 
       {node.data.nodeTypeID === 'integration-http' && (

@@ -52,6 +52,7 @@ export enum ViewKind {
     $zero = "",
 
     ViewActivity = "activity",
+    ViewReview = "review",
     ViewComposition = "composition",
     ViewConfigure = "configure",
     ViewPlaceholder = "placeholder",
