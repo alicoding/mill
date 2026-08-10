@@ -63,6 +63,19 @@ type (
 
 	// ListWorkflowsOption configures one ListWorkflows call.
 	ListWorkflowsOption = dbos.ListWorkflowsOption
+
+	// Client is DBOS's narrower, non-launched handle -- every Context
+	// is also a Client (Context embeds Client, confirmed directly
+	// against the installed dbos.Context/dbos.Client interface
+	// definitions), so a launched Context can be passed anywhere a
+	// Client is accepted. CancelWorkflow only needs this narrower
+	// interface.
+	Client = dbos.Client
+
+	// CancelWorkflowOption configures one CancelWorkflow call -- Mill
+	// passes none today (a plain cancel-by-ID), kept for signature
+	// compatibility with dbos.CancelWorkflow.
+	CancelWorkflowOption = dbos.CancelWorkflowOption
 )
 
 // RegisterWorkflow registers ctx's durable workflow function -- must be
@@ -120,6 +133,18 @@ func SetEvent[P any](ctx Context, key string, message P) error {
 // summaries surface a pending approval without joining the run.
 func GetEvent[R any](ctx Context, targetWorkflowID, key string, timeout time.Duration) (R, error) {
 	return dbos.GetEvent[R](ctx, targetWorkflowID, key, timeout)
+}
+
+// CancelWorkflow sets a run's DBOS status to CANCELLED -- the durable
+// half of docs/adr/0026's cancellation design. Confirmed directly
+// against the installed DBOS source (dbos.CancelWorkflow's own doc
+// comment, and ADR-0026's own research finding #2): this is a database
+// status write only -- "Executing steps will not be interrupted." Real
+// mid-flight process termination is entirely
+// internal/adapters/procexec's job (executionservice_cancel.go calls
+// both: the live Handle's own Cancel(), and this).
+func CancelWorkflow(ctx Client, workflowID string, opts ...CancelWorkflowOption) error {
+	return dbos.CancelWorkflow(ctx, workflowID, opts...)
 }
 
 var (

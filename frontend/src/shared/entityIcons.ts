@@ -1,4 +1,4 @@
-import { CheckCircleIcon, ListUnorderedIcon, PlugIcon, ServerIcon, WorkflowIcon, type Icon } from '@primer/octicons-react'
+import { CheckCircleIcon, ListUnorderedIcon, PlugIcon, ServerIcon, TerminalIcon, WorkflowIcon, type Icon } from '@primer/octicons-react'
 
 // Per-entity leading-visual identity for InventoryList.tsx rows
 // (docs/goals/0007-resource-inventory-redesign.md): the ambient
@@ -28,4 +28,5 @@ export const ENTITY_ICON: Record<string, EntityIcon> = {
   list: { Icon: ListUnorderedIcon, bg: 'var(--bgColor-success-emphasis)' },
   mcpserver: { Icon: ServerIcon, bg: 'var(--bgColor-severe-emphasis)' },
   decision: { Icon: CheckCircleIcon, bg: 'var(--bgColor-sponsors-emphasis)' },
+  execenv: { Icon: TerminalIcon, bg: 'var(--bgColor-attention-emphasis)' },
 }

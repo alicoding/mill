@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { Button, IconButton, Label, type LabelProps, Select, Stack, Text } from '@primer/react'
 import { DataTable, type Column } from '@primer/react/experimental'
-import { CheckCircleIcon, XCircleIcon, ClockIcon, XIcon, ShieldIcon, ShieldXIcon } from '@primer/octicons-react'
+import { CheckCircleIcon, XCircleIcon, ClockIcon, XIcon, ShieldIcon, ShieldXIcon, StopIcon } from '@primer/octicons-react'
 import { ExecutionService } from '../shared/bindings'
-import { RunKind, type RunDetail, type RunStep, type RunSummary } from '../shared/bindings'
+import { RunKind, type RunDetail, type RunSummary } from '../shared/bindings'
 import { formatRunStartedAt } from '../shared/runTime'
 import styles from '../shared/ListCard.module.css'
 import PageContainer from '../shared/PageContainer'
@@ -29,12 +29,15 @@ const KIND_VARIANT: Record<RunKind, LabelProps['variant']> = {
   [RunKind.RunKindTriggered]: 'severe',
 }
 
-const STEP_ICON: Record<RunStep['status'], React.ReactNode> = {
+const STEP_ICON: Record<string, React.ReactNode> = {
   succeeded: <CheckCircleIcon size={16} fill="var(--fgColor-success)" />,
   failed: <XCircleIcon size={16} fill="var(--fgColor-danger)" />,
   pending: <ClockIcon size={16} fill="var(--fgColor-muted)" />,
   'awaiting-approval': <ShieldIcon size={16} fill="var(--fgColor-attention)" />,
   denied: <ShieldXIcon size={16} fill="var(--fgColor-danger)" />,
+  // docs/adr/0026: a cancelled code-execution step is recorded
+  // distinctly from an ordinary failure ("cancelled != failed").
+  cancelled: <StopIcon size={16} fill="var(--fgColor-muted)" />,
 }
 
 interface WorkflowRunsPanelProps {
@@ -133,6 +136,20 @@ function WorkflowRunsPanel({ workflowId, initialRunId, onInitialRunConsumed }: W
       .then(() => setBusy(false))
       .catch((err) => { setError(String(err)); setBusy(false) })
     // The in-flight poll below picks up the resumed/failed state.
+  }
+
+  // Stops an in-flight run (docs/adr/0026): kills any real running
+  // process (procexec's group SIGTERM-then-SIGKILL) AND marks the
+  // DBOS workflow CANCELLED -- one RPC, both effects. The in-flight
+  // poll above picks up the resumed/terminal state, same as
+  // resolveApproval.
+  const cancelRun = () => {
+    if (!selectedRunID) return
+    setBusy(true)
+    setError('')
+    ExecutionService.CancelRun(selectedRunID)
+      .then(() => setBusy(false))
+      .catch((err) => { setError(String(err)); setBusy(false) })
   }
 
   const redrive = (fromNodeID: string) => {
@@ -249,7 +266,17 @@ function WorkflowRunsPanel({ workflowId, initialRunId, onInitialRunConsumed }: W
                 Run · {formatRunStartedAt(detail.startedAt)}
               </Text>
             </Stack>
-            <IconButton icon={XIcon} aria-label="Close" size="small" variant="invisible" onClick={() => setSelectedRunID(null)} />
+            <Stack direction="horizontal" gap="condensed" align="center">
+              {(detail.status === 'PENDING' || detail.status === 'RUNNING' || detail.status === 'ENQUEUED') && (
+                <Button
+                  size="small" variant="danger" leadingVisual={StopIcon} disabled={busy}
+                  data-testid="cancel-run" onClick={cancelRun}
+                >
+                  Stop
+                </Button>
+              )}
+              <IconButton icon={XIcon} aria-label="Close" size="small" variant="invisible" onClick={() => setSelectedRunID(null)} />
+            </Stack>
           </Stack>
           {detail.error && <Text as="p" className={styles.error}>{detail.error}</Text>}
 

@@ -5,20 +5,23 @@ import { ConfigureLists } from './ConfigureLists'
 import { ConfigureAttributes } from './ConfigureAttributes'
 import { ConfigureMCPServers } from './ConfigureMCPServers'
 import { ConfigureDecisions } from './ConfigureDecisions'
+import { ConfigureExecEnv } from './ConfigureExecEnv'
 
-// The Configure surface (docs/SPEC.md §3.5): five sections for
+// The Configure surface (docs/SPEC.md §3.5): six sections for
 // Configure-authored data -- Integration (HTTPRequests, 1:many
 // reusable, renamed from Connector by ADR-0016), Lists (1:many
 // reusable), Attributes (1:1, workflow-scoped), MCP
 // Servers (1:many reusable, §3.6 -- the actual "add a whole class of new
 // capabilities without a core code change" extension point: each server
 // wired up here exposes as many usable mcp-tool-call steps as it has
-// tools), and Decisions (1:many reusable, docs/adr/0027 -- a workflow's
-// TERMINAL outcome). Same tabbed-panel pattern as CompositionView.tsx's
-// Workflows/editor tabs (Primer's headless Tabs + this app's own
-// TabItem/TabList/TabPanel wrappers, Tabs.tsx) -- every panel stays
-// mounted (a `hidden` attribute toggles, not unmount), so switching
-// tabs never loses in-progress form state in the others.
+// tools), Decisions (1:many reusable, docs/adr/0027 -- a workflow's
+// TERMINAL outcome), and Execution Environments (1:many reusable,
+// docs/adr/0026 -- a code-execution node's pinned shell/dir/env). Same
+// tabbed-panel pattern as CompositionView.tsx's Workflows/editor tabs
+// (Primer's headless Tabs + this app's own TabItem/TabList/TabPanel
+// wrappers, Tabs.tsx) -- every panel stays mounted (a `hidden`
+// attribute toggles, not unmount), so switching tabs never loses
+// in-progress form state in the others.
 function ConfigureView() {
   return (
     <Tabs defaultValue="integration">
@@ -28,12 +31,14 @@ function ConfigureView() {
         <TabItem value="attributes">Attributes</TabItem>
         <TabItem value="mcpservers">MCP Servers</TabItem>
         <TabItem value="decisions">Decisions</TabItem>
+        <TabItem value="execenvs">Execution Environments</TabItem>
       </TabList>
       <TabPanel value="integration"><ConfigureRequests /></TabPanel>
       <TabPanel value="lists"><ConfigureLists /></TabPanel>
       <TabPanel value="attributes"><ConfigureAttributes /></TabPanel>
       <TabPanel value="mcpservers"><ConfigureMCPServers /></TabPanel>
       <TabPanel value="decisions"><ConfigureDecisions /></TabPanel>
+      <TabPanel value="execenvs"><ConfigureExecEnv /></TabPanel>
     </Tabs>
   )
 }

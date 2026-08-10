@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/alicoding/mill/internal/adapters/execution"
@@ -153,6 +154,11 @@ type ExecutionService struct {
 	ctx   execution.Context
 	comp  *compositionsvc.CompositionService
 	guard *guardrailsvc.GuardrailService
+	// cancelState (executionservice_cancel.go) holds the live-process
+	// registry docs/adr/0026's cancellation design needs -- embedded
+	// rather than a named field since callers never reach through it
+	// directly, only via CancelRun/registerProcess.
+	cancelState
 }
 
 // NewExecutionService builds and launches the durable-execution runtime
@@ -161,7 +167,7 @@ type ExecutionService struct {
 // Registration happens inside execution.New, before Launch, per that
 // function's own doc comment.
 func NewExecutionService(databaseURL string, comp *compositionsvc.CompositionService, guard *guardrailsvc.GuardrailService) (*ExecutionService, error) {
-	e := &ExecutionService{comp: comp, guard: guard}
+	e := &ExecutionService{comp: comp, guard: guard, cancelState: newCancelState()}
 	ctx, err := execution.New("mill", databaseURL, func(ctx execution.Context) {
 		execution.RegisterWorkflow(ctx, e.runWorkflow, execution.WithWorkflowName(millRunWorkflowName))
 	})
@@ -173,6 +179,10 @@ func NewExecutionService(databaseURL string, comp *compositionsvc.CompositionSer
 	// -- the one place holding both the rules and the durable context.
 	composition.SetGuardrailGate(e.guardrailGate)
 	composition.SetApprovalWaiter(e.approvalWaiter)
+	// docs/adr/0026: a running code-execution step publishes its live
+	// procexec.Handle here so CancelRun can reach it from outside the
+	// run (executionservice_cancel.go).
+	composition.SetProcessRegistrar(e.registerProcess)
 	return e, nil
 }
 
@@ -365,6 +375,15 @@ func (e *ExecutionService) GetRun(runID string) (RunDetail, error) {
 			if s.Error != nil {
 				rs.Status = "failed"
 				rs.Error = s.Error.Error()
+				// A code-execution step killed via CancelRun records a
+				// distinct status (docs/adr/0026: "cancelled != failed !=
+				// interrupted") -- matched by message, not error identity,
+				// since a checkpointed step's error crosses a DBOS
+				// JSON round trip (decodeAny's own doc comment) that
+				// only preserves Error(), never Go type/errors.Is.
+				if strings.Contains(rs.Error, composition.CancelledByUserMessage) {
+					rs.Status = "cancelled"
+				}
 			} else {
 				rs.Status = "succeeded"
 				if out, ok := decodeAny[composition.ExecContext](s.Output); ok {

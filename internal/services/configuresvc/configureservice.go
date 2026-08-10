@@ -10,6 +10,7 @@ import (
 	"github.com/alicoding/mill/internal/adapters/settings"
 	"github.com/alicoding/mill/internal/domain/composition"
 	"github.com/alicoding/mill/internal/domain/decision"
+	"github.com/alicoding/mill/internal/domain/execenv"
 	"github.com/alicoding/mill/internal/domain/httprequest"
 	"github.com/alicoding/mill/internal/domain/list"
 	"github.com/alicoding/mill/internal/domain/mcpserver"
@@ -69,6 +70,7 @@ type ConfigureService struct {
 	lists       []list.List
 	mcpServers  []mcpserver.MCPServer
 	decisions   []decision.Decision
+	execEnvs    []execenv.ExecEnv
 	composition *compositionsvc.CompositionService
 }
 
@@ -77,13 +79,16 @@ func NewConfigureService(store settings.Store, comp *compositionsvc.CompositionS
 	c.restore()
 	c.restoreMCPServers()
 	c.restoreDecisions()
+	c.restoreExecEnvs()
 	c.topUpBuiltInDecisions()
 	c.topUpBuiltInLists()
 	c.topUpBuiltInMCPServers()
+	c.topUpBuiltInExecEnvs()
 	composition.SetHTTPRequestLookup(c.resolveHTTPRequest)
 	composition.SetListLookup(c.resolveList)
 	composition.SetMCPServerLookup(c.resolveMCPServer)
 	composition.SetDecisionLookup(c.resolveDecision)
+	composition.SetExecEnvLookup(c.resolveExecEnv)
 	return c
 }
 

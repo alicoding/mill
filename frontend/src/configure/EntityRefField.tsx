@@ -4,6 +4,7 @@ import { CompositionService, ConfigureService } from '../shared/bindings'
 import { AuthType } from '../../bindings/github.com/alicoding/mill/internal/domain/httprequest/models'
 import type { Workflow } from '../../bindings/github.com/alicoding/mill/internal/domain/composition/models'
 import { Category } from '../../bindings/github.com/alicoding/mill/internal/domain/decision/models'
+import { Shell, ProfileMode } from '../../bindings/github.com/alicoding/mill/internal/domain/execenv/models'
 
 // A workflow is only a valid child-workflow target if it's rooted in
 // trigger-callable (docs/adr/0010) -- mirrors trigger.ExtractTrigger's
@@ -42,6 +43,8 @@ async function fetchEntities(refKind: string): Promise<Entity[]> {
       return ((await CompositionService.Workflows()) ?? []).filter(isCallableWorkflow)
     case 'decision':
       return ((await ConfigureService.Decisions()) ?? []).map((d) => ({ ID: d.ID, Label: `${d.Label} (${d.Category})` }))
+    case 'execenv':
+      return (await ConfigureService.ExecEnvs()) ?? []
     default:
       return []
   }
@@ -53,12 +56,13 @@ const KIND_NOUN: Record<string, string> = {
   mcpserver: 'MCP server',
   workflow: 'callable workflow',
   decision: 'decision',
+  execenv: 'execution environment',
 }
 
 // docs/adr/0010 §2: no quick-create for a workflow reference -- creating
 // one is Composition's own existing "New workflow" flow, not a
 // lightweight sub-form; the picker only lists what already exists.
-const QUICK_CREATABLE_KINDS = new Set(['request', 'list', 'mcpserver', 'decision'])
+const QUICK_CREATABLE_KINDS = new Set(['request', 'list', 'mcpserver', 'decision', 'execenv'])
 
 export function EntityRefField({ refKind, value, onChange }: { refKind: string; value: string; onChange: (id: string) => void }) {
   const [entities, setEntities] = useState<Entity[] | null>(null)
@@ -176,6 +180,16 @@ function QuickCreateDialog({ refKind, onCancel, onCreated }: { refKind: string; 
         case 'decision': {
           const d = await ConfigureService.CreateDecision(label, category, null, '')
           id = d.ID
+          break
+        }
+        case 'execenv': {
+          // Sensible, deterministic defaults (mirrors the seeded "Safe
+          // sandbox" env's own shape) -- Configure > Execution
+          // Environments is the canonical place to refine shell/dir/env
+          // afterward, same "quick-create produces a usable starting
+          // point" split every other kind here already has.
+          const e = await ConfigureService.CreateExecEnv(label, Shell.ShellZsh, ProfileMode.ProfileClean, '<mill-temp>', null)
+          id = e.ID
           break
         }
         default:
