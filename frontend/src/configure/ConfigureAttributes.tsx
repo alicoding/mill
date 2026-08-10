@@ -3,24 +3,24 @@ import { Button, FormControl, Heading, IconButton, Select, Stack, Text, TextInpu
 import { PlusIcon, TrashIcon } from '@primer/octicons-react'
 import { CompositionService, ConfigureService } from '../shared/bindings'
 import type { AttributeDef, Workflow } from '../../bindings/github.com/alicoding/mill/internal/domain/composition/models'
-import { ConfigFieldType } from '../../bindings/github.com/alicoding/mill/internal/domain/composition/models'
+import { Type as ConfigFieldType } from '../../bindings/github.com/alicoding/mill/internal/domain/typedfield/models'
 import styles from '../shared/ListCard.module.css'
 import PageContainer from '../shared/PageContainer'
 
 const TYPE_LABEL: Record<string, string> = {
-  [ConfigFieldType.FieldText]: 'Text',
-  [ConfigFieldType.FieldNumber]: 'Number',
-  [ConfigFieldType.FieldBoolean]: 'Boolean',
+  [ConfigFieldType.TypeText]: 'Text',
+  [ConfigFieldType.TypeNumber]: 'Number',
+  [ConfigFieldType.TypeBoolean]: 'Boolean',
 }
 
 // Configure's Attributes section (docs/SPEC.md §3.5): editing a single
 // workflow's declared Attributes schema (ConfigureService.
 // UpdateWorkflowAttributes, which re-validates the workflow's Decision
 // edges against the new schema server-side). FieldOptions is
-// deliberately excluded from the type picker -- composition.AttributeDef
-// has no Options list (unlike ConfigField), so there'd be nothing to
-// build a choice-set from; see ruleTranslate.ts's fieldsFromAttributes
-// for the same exclusion on the read side.
+// deliberately excluded from the type picker -- AttributeDef's Options
+// field (docs/adr/0029 Phase 1) has no authoring UI here yet, so there's
+// no way to build a choice-set from it; see ruleTranslate.ts's
+// fieldsFromAttributes for the same exclusion on the read side.
 export function ConfigureAttributes() {
   const [workflows, setWorkflows] = useState<Workflow[] | null>(null)
   const [selectedID, setSelectedID] = useState('')
@@ -105,7 +105,25 @@ export function ConfigureAttributes() {
               size="small"
               variant="invisible"
               leadingVisual={PlusIcon}
-              onClick={() => setAttrs((prev) => [...prev, { Key: '', Label: '', Type: ConfigFieldType.FieldText }])}
+              onClick={() =>
+                setAttrs((prev) => [
+                  ...prev,
+                  {
+                    Key: '',
+                    Label: '',
+                    Type: ConfigFieldType.TypeText,
+                    Required: false,
+                    Default: '',
+                    Description: '',
+                    Options: null,
+                    Suggestions: null,
+                    Secret: false,
+                    RefKind: '',
+                    Multiline: false,
+                    SystemManaged: false,
+                  },
+                ])
+              }
             >
               Add attribute
             </Button>

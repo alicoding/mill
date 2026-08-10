@@ -91,7 +91,7 @@ func NodeAlwaysParks(node Node) bool {
 // (graph.go) -- a Decision output field with no bound value (or one
 // bound to an Attribute that hasn't been set yet) still appears in the
 // outcome JSON, typed correctly, rather than being silently omitted.
-func zeroForOutputType(t string) any {
+func zeroForOutputType(t ConfigFieldType) any {
 	switch t {
 	case "number":
 		return 0.0

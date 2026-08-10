@@ -1,16 +1,16 @@
 import { Checkbox, Dialog, FormControl, Stack, TextInput } from '@primer/react'
-import { ConfigFieldType } from '../../bindings/github.com/alicoding/mill/internal/domain/composition/models'
+import { Type as ConfigFieldType } from '../../bindings/github.com/alicoding/mill/internal/domain/typedfield/models'
 import type { AttributeDef } from '../../bindings/github.com/alicoding/mill/internal/domain/composition/models'
 
 // The test-input form itself (docs/adr/0008, SPEC.md §3.2's per-record
 // test harness): one field per declared Attribute, pre-filled via
 // generateSamplePayload (CompositionView.tsx's run()), each still a
 // normal editable input -- submit as-is for the common case, or
-// override a specific value first. AttributeDef never declares
-// FieldOptions (§3.3's rule-builder Update note: "AttributeDef carries
-// no Options list"), so unlike NodeInspector's ConfigField switch,
-// there's no Select branch here -- every non-boolean/non-number field
-// is plain text. Extracted from CompositionView.tsx (self-contained,
+// override a specific value first. No workflow declares a FieldOptions
+// Attribute today (ConfigureAttributes.tsx's own type picker doesn't
+// offer it, docs/adr/0029 Phase 1), so unlike NodeInspector's ConfigField
+// switch, there's no Select branch here -- every non-boolean/non-number
+// field is plain text. Extracted from CompositionView.tsx (self-contained,
 // no shared state with the parent beyond its own props) once that file
 // crossed the 500-line limit adding workflow export/import.
 export default function TestRunDialog({
@@ -32,13 +32,13 @@ export default function TestRunDialog({
         {attributes.map((attr) => (
           <FormControl key={attr.Key}>
             <FormControl.Label>{attr.Label}</FormControl.Label>
-            {attr.Type === ConfigFieldType.FieldBoolean ? (
+            {attr.Type === ConfigFieldType.TypeBoolean ? (
               <Checkbox
                 checked={values[attr.Key] === 'true'}
                 data-testid="test-run-field"
                 onChange={(e) => onChange(attr.Key, String(e.target.checked))}
               />
-            ) : attr.Type === ConfigFieldType.FieldNumber ? (
+            ) : attr.Type === ConfigFieldType.TypeNumber ? (
               <TextInput
                 type="number"
                 value={values[attr.Key] ?? ''}

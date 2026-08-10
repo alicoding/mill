@@ -3,7 +3,7 @@ import { Browser } from '@wailsio/runtime'
 import { Button, Checkbox, FormControl, Label, Select, Stack, Text, TextInput, Textarea } from '@primer/react'
 import { KeyIcon } from '@primer/octicons-react'
 import type { AttributeDef, NodeType } from '../../bindings/github.com/alicoding/mill/internal/domain/composition/models'
-import { ConfigFieldType } from '../../bindings/github.com/alicoding/mill/internal/domain/composition/models'
+import { Type as ConfigFieldType } from '../../bindings/github.com/alicoding/mill/internal/domain/typedfield/models'
 import type { CanvasNode } from './canvasStore'
 import { useHotkeyCapture, isAccessibilityError, ACCESSIBILITY_SETTINGS_URL } from './hotkeyCapture'
 import { generateSamplePayload } from '../shared/configSchema'
@@ -195,13 +195,13 @@ export function NodeInspector({ node, workflowId, attrs, nodeType, sameKindNodeT
                 </WorkflowHoverPreview>
               )}
             </>
-          ) : field.Type === ConfigFieldType.FieldBoolean ? (
+          ) : field.Type === ConfigFieldType.TypeBoolean ? (
             <Checkbox
               defaultChecked={node.data.config[field.Key] === 'true'}
               data-testid="canvas-config-field"
               onChange={(e) => onConfigChange(field.Key, String(e.target.checked))}
             />
-          ) : field.Type === ConfigFieldType.FieldOptions ? (
+          ) : field.Type === ConfigFieldType.TypeOptions ? (
             <Select
               defaultValue={node.data.config[field.Key] ?? ''}
               data-testid="canvas-config-field"
@@ -211,7 +211,7 @@ export function NodeInspector({ node, workflowId, attrs, nodeType, sameKindNodeT
                 <Select.Option key={opt} value={opt}>{opt}</Select.Option>
               ))}
             </Select>
-          ) : field.Type === ConfigFieldType.FieldNumber ? (
+          ) : field.Type === ConfigFieldType.TypeNumber ? (
             <TextInput
               type="number"
               defaultValue={node.data.config[field.Key] ?? ''}
