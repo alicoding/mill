@@ -30,7 +30,7 @@ live-review material, interleaved during owner reviews, not a lane.
 
 **Group B — Execution arc**
 3. [x] [0008 — Authoring validation + ending model](archive/0008-authoring-validation-and-ending-model.md) — delivered 2026-08-10 (ADR-0028 + full build: issue list, badges, panel, MCP validate-all; 115/115)
-4. [ ] [0004 — Code execution capability](0004-code-execution-capability.md) (ADR-0026 + amendments = complete brief; ~two agent builds)
+4. [x] [0004 — Code execution capability](0004-code-execution-capability.md) (ADR-0026 + amendments = complete brief; ~two agent builds)
 
 **Group C — Attention layer**
 5. [ ] [0005 — Pending-attention model](0005-pending-attention-model.md) (research/design first — owns the park/resolve eventing)
