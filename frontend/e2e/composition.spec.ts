@@ -171,8 +171,9 @@ test('Composition page lists built-in workflows; node primitives live in a colla
   // human-review (the explicit human-in-the-loop checkpoint node,
   // docs/adr/0022's Update + docs/adr/0023) + ruleset (docs/adr/0023's
   // payload-validation node) + decision-outcome (the terminal Decision
-  // node, docs/adr/0027).
-  await expect(activePanel(page).getByTestId('palette-item')).toHaveCount(20)
+  // node, docs/adr/0027) + code-execution (docs/adr/0026's code
+  // execution capability, goal 0004b).
+  await expect(activePanel(page).getByTestId('palette-item')).toHaveCount(21)
 })
 
 test('A new workflow starts with a starter node placed, not a blank canvas', async ({ page }) => {

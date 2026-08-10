@@ -21,6 +21,22 @@ import { Call as $Call, CancellablePromise as $CancellablePromise } from "@wails
 import * as $models from "./models.js";
 
 /**
+ * CancelRun stops an in-flight run (docs/adr/0026): kills every
+ * currently-registered live process belonging to runID (in practice at
+ * most one -- composition's graph walk executes nodes serially, no
+ * concurrent node execution exists yet) via procexec's own real
+ * process-group SIGTERM-then-SIGKILL escalation, and marks the DBOS
+ * workflow CANCELLED so ListRuns/GetRun reflect it even for a run with
+ * no code-execution step currently live (e.g. cancelling a parked
+ * approval instead of, or in addition to, a running process). Safe to
+ * call on a run with no registered process at all -- the kill loop is
+ * simply a no-op, and the DBOS-level cancel still applies.
+ */
+export function CancelRun(runID: string): $CancellablePromise<void> {
+    return $Call.ByID(3711740411, runID);
+}
+
+/**
  * GetRun returns one run's full per-node step breakdown, joined against
  * its workflow definition's current Nodes (by ID) for display labels --
  * falls back to a bare step list (no labels) if the definition was

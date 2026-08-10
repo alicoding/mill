@@ -3,6 +3,7 @@ package configuresvc
 import (
 	"github.com/alicoding/mill/internal/domain/composition"
 	"github.com/alicoding/mill/internal/domain/decision"
+	"github.com/alicoding/mill/internal/domain/execenv"
 	"github.com/alicoding/mill/internal/domain/httprequest"
 	"github.com/alicoding/mill/internal/domain/list"
 	"github.com/alicoding/mill/internal/domain/mcpserver"
@@ -167,5 +168,29 @@ func (c *ConfigureService) topUpBuiltInMCPServers() {
 	c.mu.Unlock()
 	if added {
 		c.persistMCPServers()
+	}
+}
+
+// topUpBuiltInExecEnvs mirrors topUpBuiltInMCPServers for the seeded
+// example ExecEnv (docs/adr/0026, goal 0004b): any built-in whose ID is
+// neither present nor tombstoned is appended, so a newly shipped
+// example reaches existing instances too.
+func (c *ConfigureService) topUpBuiltInExecEnvs() {
+	tombstones := seeding.LoadTombstones(c.store)
+	c.mu.Lock()
+	have := make(map[string]bool, len(c.execEnvs))
+	for _, e := range c.execEnvs {
+		have[e.ID] = true
+	}
+	added := false
+	for _, e := range execenv.BuiltIn() {
+		if !have[e.ID] && !tombstones[e.ID] {
+			c.execEnvs = append(c.execEnvs, e)
+			added = true
+		}
+	}
+	c.mu.Unlock()
+	if added {
+		c.persistExecEnvs()
 	}
 }
