@@ -95,6 +95,11 @@ ambient gate covers it automatically via an `external` effect class,
 and **the workflow-level vs. global guardrail-configuration question
 is owned by that design**, not decided here. Next concrete step when
 prioritized: capability map first (CLAUDE.md's Plan rule).
+*Update 2026-08-10: that design now exists and is accepted —
+[ADR-0026](0026-code-execution-capability.md) answers the
+global-vs-workflow question as "both, via rule scopes" (a guardrail
+rule scoped to the node type or an ExecEnv = global; the existing
+workflow/step-scoped rule = workflow-level; deny still wins).*
 
 **The coherent pipeline model (relayed directly from the user's own
 design session), recorded verbatim in intent as the target shape**:

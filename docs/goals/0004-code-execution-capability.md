@@ -18,14 +18,14 @@ Dir/Env/shell is the mechanism, the guardrail engine is the safety
 layer (confirms §1.1's OPEN lean with evidence).
 
 1. [x] Capability map + design: [ADR-0026](../adr/0026-code-execution-capability.md)
-   (`proposed`, 2026-08-10) — ExecEnv Configure entity, the
+   (`accepted`, 2026-08-10) — ExecEnv Configure entity, the
    `code-execution` node (effect external → auto-guarded),
    global-vs-workflow guardrail via rule scopes (env scope added),
    the CancelFunc registry + process-group kill design.
-2. [x] Drafted; **awaiting the owner's yes** — acceptance resolves
-   §1.1's OPEN command-execution reading, §6, and ADR-0023's
-   global-vs-workflow question (all listed in the ADR's own
-   "What acceptance decides"). Do NOT implement before that yes.
+2. [x] **Owner accepted 2026-08-10** — the acceptance resolved §1.1's
+   OPEN command-execution reading, §6, and ADR-0023's
+   global-vs-workflow question (SPEC updated in the same change).
+   Implementation is unblocked.
 3. Implement: adapter (os/exec + process-group kill + timeout +
    incremental output), node type (ClassExternal — automatically
    guarded), Configure surface, seeds + tests.
