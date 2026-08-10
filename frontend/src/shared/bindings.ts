@@ -17,6 +17,7 @@ export {
   RunKind,
 } from '../../bindings/github.com/alicoding/mill/internal/services/executionsvc'
 export type {
+  GuardrailPendingChanged,
   PendingApproval,
   RunDetail,
   RunStep,
@@ -24,7 +25,7 @@ export type {
 } from '../../bindings/github.com/alicoding/mill/internal/services/executionsvc'
 export { GuardrailService } from '../../bindings/github.com/alicoding/mill/internal/services/guardrailsvc'
 export type { RuleTestResult } from '../../bindings/github.com/alicoding/mill/internal/services/guardrailsvc'
-export type { MCPWriteRequest } from '../../bindings/github.com/alicoding/mill/internal/services/mcpsvc'
+export type { MCPWriteActivity, MCPWriteRequest } from '../../bindings/github.com/alicoding/mill/internal/services/mcpsvc'
 export { SettingsService } from '../../bindings/github.com/alicoding/mill/internal/services/settingssvc'
 export type {
   BuildInfo,

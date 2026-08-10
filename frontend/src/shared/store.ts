@@ -15,7 +15,10 @@ import type { Capability } from '../../bindings/github.com/alicoding/mill/intern
 // 'composition' is a direct Run-button click, which already has its own
 // inline result/error UI, but still belongs in one shared feed so "did
 // anything run" has a single place to look regardless of how it fired.
-export type ActivitySource = 'trigger' | 'composition'
+// 'mcp-write' is a missed (timed-out) or denied MCP write import
+// (docs/goals/0005-pending-attention-model.md item 3) -- no workflow of
+// its own, pushed via the Go-emitted mcp-write-activity event.
+export type ActivitySource = 'trigger' | 'composition' | 'mcp-write'
 
 // A frontend-owned shape, not derived from the Go-emitted HotkeyActivity
 // event (main.go) -- only the trigger source actually goes through that

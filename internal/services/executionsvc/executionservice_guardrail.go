@@ -10,6 +10,7 @@ import (
 	"github.com/alicoding/mill/internal/domain/composition"
 	"github.com/alicoding/mill/internal/domain/guardrail"
 	"github.com/alicoding/mill/internal/services/guardrailsvc"
+	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
 // The guardrail execution gate (docs/adr/0022): evaluation runs as a
@@ -57,6 +58,39 @@ type PendingApproval struct {
 	// the reviewer should fill for a human-review checkpoint (goal 0001);
 	// empty means all. The Review queue renders only these.
 	InputAttributes []string `json:"inputAttributes,omitempty"`
+}
+
+// GuardrailPendingChanged is a minimal park/resolve signal, Emitted
+// alongside every SetEvent call below (goal 0005's research: three of
+// four attention-transitions already push a Wails app.Event.Emit --
+// mcp-write-approval, mill-data-changed, hotkey-activity -- this was
+// the fourth, and the missing half of goal 0002's own deferred sidebar
+// badge item). The payload is a POINTER, not a value to trust: DBOS's
+// own SetEvent/pending-approval state stays the source of truth, every
+// receiver refetches on receipt (the GitHub/macOS "a notification
+// isn't the source of truth" precedent, recorded in
+// docs/goals/0005-pending-attention-model.md).
+type GuardrailPendingChanged struct {
+	RunID    string `json:"runID"`
+	NodeID   string `json:"nodeID"`
+	Resolved bool   `json:"resolved"`
+}
+
+// emitGuardrailPendingChanged pushes GuardrailPendingChanged to the
+// frontend. application.Get() is nil in a headless Go test process (no
+// real Wails app was ever application.New()'d, same guard
+// triggerservice.go's emitHotkeyActivity already uses) -- a no-op
+// there, since there's no window to notify anyway.
+func emitGuardrailPendingChanged(runID, nodeID string, resolved bool) {
+	app := application.Get()
+	if app == nil {
+		return
+	}
+	app.Event.Emit("guardrail-pending-changed", GuardrailPendingChanged{
+		RunID:    runID,
+		NodeID:   nodeID,
+		Resolved: resolved,
+	})
 }
 
 type approvalDecision struct {
@@ -133,9 +167,12 @@ func (e *ExecutionService) parkForApproval(ctx execution.Context, node compositi
 		RuleLabel:       ruleLabel,
 		InputAttributes: parseCSVKeys(node.Config["inputAttributes"]),
 	}
+	runID, _ := ctx.GetWorkflowID()
+
 	if err := execution.SetEvent(ctx, guardrailPendingEventKey, pending); err != nil {
 		return nil, fmt.Errorf("guardrail: publish pending approval: %w", err)
 	}
+	emitGuardrailPendingChanged(runID, node.ID, false)
 
 	decision, err := execution.Recv[approvalDecision](ctx, guardrailApprovalTopic, guardrailApprovalTimeout)
 	if err != nil {
@@ -147,15 +184,18 @@ func (e *ExecutionService) parkForApproval(ctx execution.Context, node compositi
 		// Recv's timeout yields the zero value -- nobody answered.
 		pending.Decision = "timed out"
 		_ = execution.SetEvent(ctx, guardrailPendingEventKey, pending)
+		emitGuardrailPendingChanged(runID, node.ID, true)
 		return nil, fmt.Errorf("guardrail: approval timed out after %s", guardrailApprovalTimeout)
 	}
 	if !decision.Approve {
 		pending.Decision = "denied"
 		_ = execution.SetEvent(ctx, guardrailPendingEventKey, pending)
+		emitGuardrailPendingChanged(runID, node.ID, true)
 		return nil, fmt.Errorf("guardrail: denied by user")
 	}
 	pending.Decision = "approved"
 	_ = execution.SetEvent(ctx, guardrailPendingEventKey, pending)
+	emitGuardrailPendingChanged(runID, node.ID, true)
 	return decision.Values, nil
 }
 
