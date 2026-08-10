@@ -13,6 +13,7 @@ func init() {
 	RegisterNodeType(NodeType{
 		ID: "capture-clipboard-html", Kind: KindCapture,
 		Effect:      guardrail.ClassRead,
+		Output:      "HTML from the clipboard",
 		Label:       "Capture: clipboard HTML",
 		Description: "Reads whatever HTML is currently on the clipboard.",
 	}, func(_ Node, ctx ExecContext) (ExecContext, error) {

@@ -8,4 +8,4 @@
 // unit tests under Vitest (a `.css` import Vitest's transform pipeline
 // couldn't handle), which is what surfaced this split.
 export const CANVAS_NODE_WIDTH = 220
-export const CANVAS_NODE_HEIGHT = 64
+export const CANVAS_NODE_HEIGHT = 78

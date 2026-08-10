@@ -13,6 +13,9 @@ export interface CanvasNodeData extends Record<string, unknown> {
   kind: string
   label: string
   config: Record<string, string>
+  // What payload leaves this step (NodeType.Output) -- the on-card
+  // output signature (docs/SPEC.md §3.8's authoring-style direction).
+  output?: string
   // The step's current guardrail verdict ('ask' | 'deny' | 'allow'),
   // injected by CompositionCanvas from GuardrailService.WorkflowVerdicts
   // -- the nothing-hidden rule (docs/adr/0022's Update): a step that
@@ -30,7 +33,7 @@ interface CanvasState {
   onEdgesChange: (changes: EdgeChange[]) => void
   onConnect: (connection: Connection) => void
   addNode: (node: CanvasNode) => void
-  changeNodeType: (id: string, nodeTypeID: string, label: string, config: Record<string, string>) => void
+  changeNodeType: (id: string, nodeTypeID: string, label: string, config: Record<string, string>, output?: string) => void
   updateNodeConfig: (id: string, key: string, value: string) => void
   updateEdgeCondition: (id: string, condition: string) => void
   removeSelected: () => void
@@ -70,9 +73,9 @@ export function createCanvasStore() {
         // only offers same-Kind options), so isValidConnection's
         // per-kind edge rules and any existing edges stay valid
         // untouched.
-        changeNodeType: (id, nodeTypeID, label, config) =>
+        changeNodeType: (id, nodeTypeID, label, config, output) =>
           set({
-            nodes: get().nodes.map((n) => (n.id === id ? { ...n, data: { ...n.data, nodeTypeID, label, config } } : n)),
+            nodes: get().nodes.map((n) => (n.id === id ? { ...n, data: { ...n.data, nodeTypeID, label, config, output: output ?? '' } } : n)),
           }),
         updateNodeConfig: (id, key, value) =>
           set({

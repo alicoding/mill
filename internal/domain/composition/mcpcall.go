@@ -38,6 +38,7 @@ func init() {
 	RegisterNodeType(NodeType{
 		ID: "mcp-tool-call", Kind: KindProcess,
 		Effect:      guardrail.ClassExternal,
+		Output:      "the tool's text result",
 		Label:       "MCP: tool call",
 		Description: "Calls one tool on a Configure-authored MCP server and replaces the payload with its text result (docs/SPEC.md §3.6). mcpServerId is FieldText for the same reason integration-http's requestId is -- runtime, Configure-authored data (the Inspector renders a live picker for it, RefKind, docs/adr/0009); toolName stays plain text -- use the Configure page's \"List tools\" button on the server to find the exact toolName and its expected arguments.",
 		ConfigFields: []ConfigField{

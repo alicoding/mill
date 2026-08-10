@@ -48,6 +48,11 @@ export function CanvasNodeView({ data, selected }: NodeProps<CanvasNode>) {
         <Text size="small" weight="semibold" className={styles.canvasNodeLabel} title={data.label}>
           {data.label}
         </Text>
+        {data.output ? (
+          <Text size="small" className={styles.canvasNodeOutput} title={`Output: ${data.output}`}>
+            → {data.output}
+          </Text>
+        ) : null}
       </div>
       {(data.guardrailEffect === 'ask' || data.guardrailEffect === 'deny') && (
         <span

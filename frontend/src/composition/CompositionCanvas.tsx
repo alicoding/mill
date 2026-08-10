@@ -136,7 +136,7 @@ function CanvasInner({ nodeTypes, workflow, onBack, onSaved }: CompositionCanvas
               id: crypto.randomUUID(),
               type: starterType.Kind,
               position: { x: 80, y: 80 },
-              data: { nodeTypeID: starterType.ID, kind: starterType.Kind, label: starterType.Label, config: {} },
+              data: { nodeTypeID: starterType.ID, kind: starterType.Kind, label: starterType.Label, output: starterType.Output ?? '', config: {} },
             },
           ],
           [],
@@ -205,7 +205,7 @@ function CanvasInner({ nodeTypes, workflow, onBack, onSaved }: CompositionCanvas
         id: crypto.randomUUID(),
         type: nt.Kind,
         position,
-        data: { nodeTypeID: nt.ID, kind: nt.Kind, label: nt.Label, config },
+        data: { nodeTypeID: nt.ID, kind: nt.Kind, label: nt.Label, output: nt.Output ?? '', config },
       }
       addNode(node)
     },
@@ -418,7 +418,7 @@ function CanvasInner({ nodeTypes, workflow, onBack, onSaved }: CompositionCanvas
               onChangeType={(newType) => {
                 const config: Record<string, string> = {}
                 for (const field of newType.ConfigFields ?? []) config[field.Key] = field.Default
-                changeNodeType(selectedNode.id, newType.ID, newType.Label, config)
+                changeNodeType(selectedNode.id, newType.ID, newType.Label, config, newType.Output ?? '')
               }}
               onConfigChange={(key, value) => updateNodeConfig(selectedNode.id, key, value)}
             />

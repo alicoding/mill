@@ -23,6 +23,7 @@ func init() {
 	RegisterNodeType(NodeType{
 		ID: "apply-clipboard-write-html", Kind: KindApply,
 		Effect:      guardrail.ClassLocal,
+		Output:      "the HTML it wrote",
 		Label:       "Apply: write HTML to clipboard",
 		Description: "Writes configured HTML to the clipboard.",
 		ConfigFields: []ConfigField{
