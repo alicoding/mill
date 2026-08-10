@@ -29,7 +29,7 @@ Remaining, in order:
    |---|---|---|
    | ruleset | ~~v1~~ **mature** (delivered 2026-08-10) | now uses the SAME react-querybuilder + ruleTranslate visual builder as Decision edges, with the raw-expr fallback — the two-condition-surfaces inconsistency is closed |
    | mcp-tool-call | v1 | argumentsJSON is a raw JSON textarea — needs a bindings-style editor like integration-http's (fetch the tool's InputSchema via ListMCPServerTools, render typed fields) |
-   | human-review | v1 | requests ALL declared attributes; should let the step name which ones (config: attribute subset) + message preview |
+   | human-review | ~~v1~~ **mature** (delivered 2026-08-10) | "Ask for these attributes" config names a subset (comma-separated keys; empty = all); Review renders only those |
    | trigger-schedule | ~~v1~~ **mature** (delivered 2026-08-10) | Inspector shows a live cronstrue human-readable preview (MIT, zero deps); invalid expressions flagged inline |
    | list-lookup | ~~v1~~ **mature** (delivered 2026-08-10) | explicit "If no match" option: fail / continue / default (with a default value); legacy nodes default to fail, unchanged |
    | capture-clipboard-html | v1 | no fallback order (SPEC §5: try HTML → plain text) — currently HTML-or-nothing |
