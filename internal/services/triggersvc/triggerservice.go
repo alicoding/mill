@@ -439,7 +439,19 @@ type HotkeyActivity struct {
 // "no successful output to show" reasoning the zero-value Result on
 // failure already relies on.
 func emitHotkeyActivity(workflowID, binding string, success bool, detail, result string) {
-	application.Get().Event.Emit("hotkey-activity", HotkeyActivity{
+	// application.Get() is nil in a headless Go test process (no real
+	// Wails app was ever application.New()'d) -- a real triggered fire
+	// only happens inside the running app in production, but
+	// docs/goals/0010's own filesystem-watch seed test now drives a
+	// real TriggerService.fire() from a bare unit test to prove the
+	// real seed's graph actually executes, which reaches this line for
+	// the first time outside a live app. Guard rather than crash; there
+	// is nothing to emit an event to when no window/app exists anyway.
+	app := application.Get()
+	if app == nil {
+		return
+	}
+	app.Event.Emit("hotkey-activity", HotkeyActivity{
 		WorkflowID: workflowID,
 		Binding:    binding,
 		Success:    success,

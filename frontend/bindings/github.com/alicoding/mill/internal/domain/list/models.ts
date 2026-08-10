@@ -10,4 +10,14 @@ export interface List {
     "ID": string;
     "Label": string;
     "Entries": { [_ in string]?: string } | null;
+
+    /**
+     * BuiltIn marks a seeded example list (BuiltIn() below) -- purely
+     * informational, same as httprequest.HTTPRequest.BuiltIn/
+     * decision.Decision.BuiltIn: drives a "built-in" badge only, never
+     * gates Edit/Delete. A seeded example is an ordinary, fully-
+     * editable/deletable list from the moment it exists (docs/SPEC.md
+     * §2.2's Update note).
+     */
+    "BuiltIn": boolean;
 }

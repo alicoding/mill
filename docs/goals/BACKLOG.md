@@ -26,7 +26,7 @@ live-review material, interleaved during owner reviews, not a lane.
 
 **Group A — Foundation**
 1. [x] [0009 — E2e parallel isolation](archive/0009-e2e-parallel-isolation.md) — delivered 2026-08-10: 107/107 ×3 at 42-49s (was ~10min serial); double-run discipline retired structurally
-2. [ ] [0010 — Seed-proof completeness + enforcement](0010-seed-proof-completeness.md) (trust: land before 0004 so its seeds are held to the registry)
+2. [x] [0010 — Seed-proof completeness + enforcement](archive/0010-seed-proof-completeness.md) — delivered 2026-08-10: every seed proven or explicitly manual-only; enforcement red-builds proofless seeds; 3 new seeds (List lookup, MCP echo, disabled fs-watch); advisory liveness CI
 
 **Group B — Execution arc**
 3. [ ] [0008 — Authoring validation + ending model](0008-authoring-validation-and-ending-model.md) (ending-model ADR gates 0004's terminal; then the validation panel)
