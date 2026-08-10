@@ -33,6 +33,41 @@ List is never an ungoverned database.
    lists (or keep both shapes — decide with a capability check, not
    assumed).
 
+## Research findings (2026-08-10) — decisions teed up
+- **Fuzzy library: `github.com/hbollon/go-edlib`** (MIT, maintained,
+  zero external deps; `FuzzySearchSetThreshold` maps verbatim onto
+  item 4's shape). Behind a new `internal/adapters/fuzzymatch` wrapper
+  (the `internal/adapters/expression` precedent). Exact match stays
+  plain equality — never routed through the similarity lib. Rejected:
+  sahilm/fuzzy + lithammer (fuzzy-*finder* shape, wrong for
+  approximate-equality lookup), agext/levenshtein (6y stale — the same
+  bar SPEC §3.4 rejected robfig/cron on), closestmatch (no go.mod,
+  weak on short strings). OWNER DECISION teed up: default algorithm
+  (Levenshtein = most explainable to a rule author; Jaro-Winkler =
+  better on short name/code strings).
+- **Typed-column intake: GAP, not reuse — and the reason 0011 depends
+  on 0013.** PapaParse + genson-js (the libraries) are reusable now;
+  the schema-intake *components* (SchemaIntake/ManualSchemaEditor/
+  openapiSynth) are HTTP-request-shaped (`in: path|query|header|body`,
+  operations, OpenAPI wire target) — reusing them means modeling every
+  List as a fake OpenAPI spec, i.e. a fifth vocabulary. Item 1/3
+  (typed columns, schema intake) MUST build against 0013's canonical
+  TypedField + its generalized editor, or create migration debt.
+  Items 2 (audit columns) + the fuzzy half of item 4 are NOT blocked
+  on 0013.
+- **Audit columns**: platform-owned struct fields separate from
+  user-declared columns (the BuiltIn/Versions precedent), not injected
+  as user TypedFields. Surfaces a real gap — CreatedBy/UpdatedBy need
+  an actor identity Mill has none of (§3.7 single-user-forever) — name
+  the actor source explicitly. OWNER DECISION teed up: are Expired
+  rows searchable — recommended (a) excluded-by-default + opt-in, or
+  (c) exact-sees-expired/fuzzy-excludes, both fitting Mill's
+  default-safe posture over (b) included-by-default.
+
+## Sequencing (confirmed by research)
+0013 first (its List-columns capability-map row at minimum) → then
+0011 items 1/3/6. Items 2 + fuzzy-4 can go independently.
+
 ## Acceptance
 Owner-aligned seed roster entry (a real lookup dataset + search
 workflow) proven per the layered-coverage model; the
