@@ -245,3 +245,84 @@ func TestValidateGraph_Decision_TypeMismatch_Rejected(t *testing.T) {
 		t.Fatal("ValidateGraph comparing a text attribute with '>' returned nil error, want an error")
 	}
 }
+
+// --- Terminal node (KindTerminal, docs/adr/0027): the standing
+// three-layer agreement -- ValidateGraph (save-time) and ExecuteWorkflow/
+// buildGraph (run-time) both reject an outgoing edge from a terminal
+// node; the frontend's isValidConnection/draftWorkflowSchema are the
+// draw-time layer, covered separately (not Go-testable). ---
+
+func terminalGraph(withOutgoingEdge bool) ([]Node, []Edge) {
+	nodes := []Node{
+		{ID: "t1", NodeTypeID: "trigger-manual"},
+		{ID: "d1", NodeTypeID: "decision-outcome", Config: map[string]string{"decisionId": "dec-1"}},
+	}
+	edges := []Edge{{ID: "e1", Source: "t1", Target: "d1"}}
+	if withOutgoingEdge {
+		nodes = append(nodes, Node{ID: "a2", NodeTypeID: "apply-clipboard-write-text"})
+		edges = append(edges, Edge{ID: "e2", Source: "d1", Target: "a2"})
+	}
+	return nodes, edges
+}
+
+func TestValidateGraph_TerminalNode_OutgoingEdge_Rejected(t *testing.T) {
+	nodes, edges := terminalGraph(true)
+	resolved, err := ResolveNodeDefaults(nodes)
+	if err != nil {
+		t.Fatalf("ResolveNodeDefaults returned error: %v", err)
+	}
+	if err := ValidateGraph(resolved, edges, nil); err == nil {
+		t.Fatal("ValidateGraph with an outgoing edge from a terminal node returned nil error, want an error")
+	}
+}
+
+func TestExecuteWorkflow_TerminalNode_OutgoingEdge_Rejected(t *testing.T) {
+	nodes, edges := terminalGraph(true)
+	resolved, err := ResolveNodeDefaults(nodes)
+	if err != nil {
+		t.Fatalf("ResolveNodeDefaults returned error: %v", err)
+	}
+	if _, err := ExecuteWorkflow(resolved, edges, nil); err == nil {
+		t.Fatal("ExecuteWorkflow with an outgoing edge from a terminal node returned nil error, want an error")
+	}
+}
+
+func TestValidateGraph_TerminalNode_NoOutgoingEdge_Accepted(t *testing.T) {
+	withDecisionLookup(t, func(string) (ResolvedDecision, error) {
+		return approveDecision(), nil
+	})
+	nodes, edges := terminalGraph(false)
+	resolved, err := ResolveNodeDefaults(nodes)
+	if err != nil {
+		t.Fatalf("ResolveNodeDefaults returned error: %v", err)
+	}
+	if err := ValidateGraph(resolved, edges, nil); err != nil {
+		t.Fatalf("ValidateGraph with a well-formed terminal node returned error: %v", err)
+	}
+}
+
+// A workflow may have more than one terminal node (one per branch
+// outcome, docs/adr/0027) -- findRoot's own "exactly one starting
+// node" rule is about the workflow's single root, not its terminals.
+func TestValidateGraph_MultipleTerminalNodes_Accepted(t *testing.T) {
+	nodes, err := ResolveNodeDefaults([]Node{
+		{ID: "t1", NodeTypeID: "trigger-manual"},
+		{ID: "r1", NodeTypeID: "decision-route"},
+		{ID: "d1", NodeTypeID: "decision-outcome", Config: map[string]string{"decisionId": "dec-1"}},
+		{ID: "d2", NodeTypeID: "decision-outcome", Config: map[string]string{"decisionId": "dec-2"}},
+	})
+	if err != nil {
+		t.Fatalf("ResolveNodeDefaults returned error: %v", err)
+	}
+	edges := []Edge{
+		{ID: "e1", Source: "t1", Target: "r1"},
+		{ID: "e2", Source: "r1", SourceHandle: "otherwise", Target: "d1"},
+	}
+	// A Decision node needs at least one non-otherwise edge too, or
+	// buildGraph's own out-degree check never gets exercised -- add a
+	// second, always-false branch to d2 so both terminals are reachable.
+	edges = append([]Edge{{ID: "e3", Source: "r1", SourceHandle: "false", Target: "d2"}}, edges...)
+	if err := ValidateGraph(nodes, edges, nil); err != nil {
+		t.Fatalf("ValidateGraph with two terminal nodes returned error: %v", err)
+	}
+}

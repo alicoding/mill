@@ -2,7 +2,19 @@
 
 ## Status
 
-accepted — 2026-08-10, designed against a detailed owner-supplied review
+accepted — 2026-08-10; **implemented the same day** (96/96 e2e twice,
+seeded proofs against real DBOS). Implementation surfaced one real
+latent bug the design's dynamic-effect section predicted only half of:
+the guardrail gate AND GuardrailService's dry-run tester both read the
+static per-NodeType effect class, and executionsvc's park pre-scan
+hardcoded `NodeTypeID == "human-review"` — without generalizing to
+`EffectForNode`/`NodeAlwaysParks`, a manual-review Decision run hung
+indefinitely (caught by the test suite hanging, then fixed with an
+explicit regression test). Named follow-up, mechanical: MCP
+write-tools for Decisions (`import_decision`/`export_decision`) — the
+`mill://decisions` read Resource shipped.
+
+Originally: designed against a detailed owner-supplied review
 of the reference no-code decisioning platform's own Decisions surface
 (kept vendor-generic per the standing rule, docs/SPEC.md §3.2), with the
 three genuinely-owner-scoped calls decided directly in session: the

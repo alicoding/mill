@@ -1,6 +1,7 @@
 package composition
 
 import (
+	"github.com/alicoding/mill/internal/domain/decision"
 	"github.com/alicoding/mill/internal/domain/httprequest"
 
 	"crypto/rand"
@@ -24,6 +25,7 @@ var kindOrder = map[NodeKind]int{
 	KindProcess:  2,
 	KindApply:    3,
 	KindDecision: 4,
+	KindTerminal: 5,
 }
 
 func NodeTypes() []NodeType {
@@ -203,6 +205,48 @@ func BuiltInWorkflows() []Workflow {
 		panic("built-in workflow references an unknown node type: " + err.Error())
 	}
 
+	// Decision as a reusable, typed TERMINAL outcome (docs/adr/0027,
+	// and the standing seeded-examples principle): a branch (decision-
+	// route, relabeled "Branch" in the UI) routes on the captured
+	// "amount" Attribute to one of two Configure-authored Decisions --
+	// proving routing-vs-terminal in one picture, and a typed value
+	// (amount) flowing through outputBindings into the terminal outcome
+	// JSON, not just a hardcoded literal.
+	const (
+		branchTriggerID = "example-branch-trigger"
+		branchCaptureID = "example-branch-capture"
+		branchRouteID   = "example-branch-route"
+		branchApproveID = "example-branch-approve"
+		branchDenyID    = "example-branch-deny"
+	)
+	branchNodes, err := ResolveNodeDefaults([]Node{
+		{ID: branchTriggerID, NodeTypeID: "trigger-manual", Position: Position{X: 0, Y: 0}},
+		{ID: branchCaptureID, NodeTypeID: "capture-attribute", Position: Position{X: 0, Y: 100},
+			Config: map[string]string{"attribute": "amount"}},
+		{ID: branchRouteID, NodeTypeID: "decision-route", Position: Position{X: 0, Y: 200}},
+		{ID: branchApproveID, NodeTypeID: "decision-outcome", Position: Position{X: -120, Y: 300},
+			Config: map[string]string{"decisionId": decision.ExampleApproveID, "outputBindings": `{"score":"attr:amount"}`}},
+		{ID: branchDenyID, NodeTypeID: "decision-outcome", Position: Position{X: 120, Y: 300},
+			Config: map[string]string{"decisionId": decision.ExampleDenyID, "outputBindings": `{"score":"attr:amount"}`}},
+	})
+	if err != nil {
+		panic("built-in workflow references an unknown node type: " + err.Error())
+	}
+
+	// A second Decision seed proving the manual-review park path
+	// specifically (ADR-0027's own "nothing new invented" mechanism --
+	// the same Review-queue park human-review already uses).
+	const decisionReviewTriggerID = "example-decision-review-trigger"
+	const decisionReviewOutcomeID = "example-decision-review-outcome"
+	decisionReviewNodes, err := ResolveNodeDefaults([]Node{
+		{ID: decisionReviewTriggerID, NodeTypeID: "trigger-manual", Position: Position{X: 0, Y: 0}},
+		{ID: decisionReviewOutcomeID, NodeTypeID: "decision-outcome", Position: Position{X: 0, Y: 100},
+			Config: map[string]string{"decisionId": decision.ExampleManualReviewID}},
+	})
+	if err != nil {
+		panic("built-in workflow references an unknown node type: " + err.Error())
+	}
+
 	return []Workflow{
 		{
 			ID:          "load-sample-html-workflow",
@@ -294,6 +338,30 @@ func BuiltInWorkflows() []Workflow {
 			},
 			BuiltIn:  true,
 			Disabled: true,
+		},
+		{
+			ID:          "example-branch-to-decision-workflow",
+			Label:       "Example: Branch to a decision",
+			Description: "Captures a typed 'amount' Attribute, branches on it (amount > 100), and ends at one of two Configure-authored Decisions -- Approve or Deny -- each a real TERMINAL outcome (docs/adr/0027), not just the end of the node chain. The branch's condition is a Branch node (renamed from routing-only \"Decision\" -- see Configure > Decisions for the terminal outcomes themselves); the captured amount flows typed into the reached Decision's own 'score' output via outputBindings, proving the outcome JSON carries real data, not a hardcoded literal.",
+			Nodes:       branchNodes,
+			Attributes:  []AttributeDef{{Key: "amount", Label: "Amount", Type: FieldNumber}},
+			Edges: []Edge{
+				{ID: "example-branch-e0", Source: branchTriggerID, Target: branchCaptureID},
+				{ID: "example-branch-e1", Source: branchCaptureID, Target: branchRouteID},
+				{ID: "example-branch-e2", Source: branchRouteID, SourceHandle: "amount > 100", Target: branchApproveID},
+				{ID: "example-branch-e3", Source: branchRouteID, SourceHandle: otherwiseHandle, Target: branchDenyID},
+			},
+			BuiltIn: true,
+		},
+		{
+			ID:          "example-decision-with-review-workflow",
+			Label:       "Example: Decision with review",
+			Description: "Runs straight into the seeded \"Manual review (example)\" Decision (docs/adr/0027) -- a manual-review-category terminal outcome parks the run in the Review queue (sidebar > Review) before it terminalizes, the exact same durable park human-review already uses. Approve there to reach the typed outcome; deny to fail the run closed.",
+			Nodes:       decisionReviewNodes,
+			Edges: []Edge{
+				{ID: "example-decision-review-e0", Source: decisionReviewTriggerID, Target: decisionReviewOutcomeID},
+			},
+			BuiltIn: true,
 		},
 	}
 }

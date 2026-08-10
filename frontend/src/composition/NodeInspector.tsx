@@ -10,6 +10,7 @@ import { generateSamplePayload } from '../shared/configSchema'
 import { EntityRefField } from '../configure/EntityRefField'
 import { IntegrationBindingsEditor } from './IntegrationBindingsEditor'
 import { ChildWorkflowBindingsEditor } from './ChildWorkflowBindingsEditor'
+import { DecisionOutcomeBindingsEditor } from './DecisionOutcomeBindingsEditor'
 import { MCPToolArgsEditor } from './MCPToolArgsEditor'
 import { WorkflowHoverPreview } from './WorkflowHoverPreview'
 import { NodeGuardrailSection } from './NodeGuardrailSection'
@@ -317,6 +318,15 @@ export function NodeInspector({ node, workflowId, attrs, nodeType, sameKindNodeT
           attrs={attrs}
           onChangeToolName={(v) => onConfigChange('toolName', v)}
           onChangeArguments={(raw) => onConfigChange('argumentsJSON', raw)}
+        />
+      )}
+
+      {node.data.nodeTypeID === 'decision-outcome' && (
+        <DecisionOutcomeBindingsEditor
+          decisionId={node.data.config.decisionId ?? ''}
+          attrs={attrs}
+          outputBindingsRaw={node.data.config.outputBindings ?? ''}
+          onChangeOutputBindings={(raw) => onConfigChange('outputBindings', raw)}
         />
       )}
     </Stack>

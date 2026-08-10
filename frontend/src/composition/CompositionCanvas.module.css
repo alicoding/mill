@@ -73,6 +73,23 @@
     padding: var(--base-size-12);
     overflow-y: auto;
 }
+/* Suppresses TreeView's own indent-guide vertical rail inside the
+   palette specifically (docs/SPEC.md §3.8's UI-mechanisms pass) --
+   inspected directly against the installed @primer/react's compiled
+   CSS (TreeView-*.css), not guessed from docs: the rail is
+   `.prc-TreeView-TreeViewItemLevelLine-*`, and its color is a CSS
+   custom property (`--tree-line-color`) Primer's own stylesheet sets
+   to `transparent` by default and flips to a real border color on
+   `:hover`/`:focus-within` of the WHOLE tree root -- meaning any
+   hover anywhere in the palette lights up every group's indent rail
+   at once, real noise in a drag-source list where the hierarchy is
+   already conveyed by the group headers. `[class*=...]` (not a
+   hardcoded hashed class) survives a Primer version bump changing the
+   hash suffix, since the semantic prefix is what's meant to stay
+   stable. */
+.palette :global([class*="TreeViewItemLevelLine"]) {
+    display: none;
+}
 .paletteHeading {
     display: block;
     margin-bottom: var(--base-size-8);

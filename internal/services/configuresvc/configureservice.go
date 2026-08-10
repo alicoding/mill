@@ -9,6 +9,7 @@ import (
 	"github.com/alicoding/mill/internal/adapters/openapispec"
 	"github.com/alicoding/mill/internal/adapters/settings"
 	"github.com/alicoding/mill/internal/domain/composition"
+	"github.com/alicoding/mill/internal/domain/decision"
 	"github.com/alicoding/mill/internal/domain/httprequest"
 	"github.com/alicoding/mill/internal/domain/list"
 	"github.com/alicoding/mill/internal/domain/mcpserver"
@@ -67,6 +68,7 @@ type ConfigureService struct {
 	requests    []httprequest.HTTPRequest
 	lists       []list.List
 	mcpServers  []mcpserver.MCPServer
+	decisions   []decision.Decision
 	composition *compositionsvc.CompositionService
 }
 
@@ -74,9 +76,12 @@ func NewConfigureService(store settings.Store, comp *compositionsvc.CompositionS
 	c := &ConfigureService{store: store, composition: comp, credentials: credentials}
 	c.restore()
 	c.restoreMCPServers()
+	c.restoreDecisions()
+	c.topUpBuiltInDecisions()
 	composition.SetHTTPRequestLookup(c.resolveHTTPRequest)
 	composition.SetListLookup(c.resolveList)
 	composition.SetMCPServerLookup(c.resolveMCPServer)
+	composition.SetDecisionLookup(c.resolveDecision)
 	return c
 }
 

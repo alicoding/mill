@@ -71,7 +71,12 @@ type approvalDecision struct {
 // guardrailGate is installed as composition.SetGuardrailGate at
 // ExecutionService construction -- see docs/adr/0022 for the full flow.
 func (e *ExecutionService) guardrailGate(runCtx any, workflowID string, node composition.Node, ec composition.ExecContext) error {
-	class := composition.NodeTypeEffect(node.NodeTypeID)
+	// EffectForNode, not the static NodeTypeEffect: decision-outcome's
+	// actual effect class depends on whether the Decision it references
+	// carries a webhook (docs/adr/0027) -- every other NodeType's answer
+	// is unchanged, since EffectForNode falls through to NodeTypeEffect
+	// for everything else.
+	class := composition.EffectForNode(node)
 
 	ctx, ok := runCtx.(execution.Context)
 	if !ok || ctx == nil {
@@ -211,9 +216,10 @@ func (e *ExecutionService) mayRequireApproval(workflowID string, nodes []composi
 		if n.Kind == composition.KindTrigger || n.Kind == composition.KindDecision {
 			continue
 		}
-		// The human-review checkpoint always parks -- it's a drawn
-		// checkpoint, not policy, so no allow rule vouches it away.
-		if n.NodeTypeID == "human-review" {
+		// A node that always parks regardless of policy (the human-review
+		// checkpoint, ADR-0023; a manual-review-category decision-outcome
+		// node, ADR-0027) -- no allow rule vouches either away.
+		if composition.NodeAlwaysParks(n) {
 			return true
 		}
 		step := guardrail.Step{
@@ -222,7 +228,7 @@ func (e *ExecutionService) mayRequireApproval(workflowID string, nodes []composi
 			WorkflowID: workflowID,
 			NodeID:     n.ID,
 		}
-		if guardrail.MayAsk(rules, step, composition.NodeTypeEffect(n.NodeTypeID)) {
+		if guardrail.MayAsk(rules, step, composition.EffectForNode(n)) {
 			return true
 		}
 	}

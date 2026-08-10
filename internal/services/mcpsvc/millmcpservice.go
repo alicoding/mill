@@ -100,6 +100,15 @@ func NewMillMCPService(version string, comp *compositionsvc.CompositionService, 
 		Description: "One configured MCP Server's full definition (same shape as its Export button's output).",
 	}, m.readMCPServer)
 
+	m.server.AddResource(&mcp.Resource{
+		URI: "mill://decisions", Name: "decisions", MIMEType: "application/json",
+		Description: "Every Decision's ID, Label, and category -- read mill://decisions/{id} for its full typed output schema (docs/adr/0027).",
+	}, m.readDecisionsIndex)
+	m.server.AddResourceTemplate(&mcp.ResourceTemplate{
+		URITemplate: "mill://decisions/{id}", Name: "decision", MIMEType: "application/json",
+		Description: "One Decision's full definition (same shape as its Export button's output). Never includes its webhook binding -- an HTTPRequest reference is local-instance-only.",
+	}, m.readDecision)
+
 	return m
 }
 
@@ -219,6 +228,25 @@ func (m *MillMCPService) readMCPServersIndex(_ context.Context, req *mcp.ReadRes
 func (m *MillMCPService) readMCPServer(_ context.Context, req *mcp.ReadResourceRequest) (*mcp.ReadResourceResult, error) {
 	id := idFromTemplateURI(req.Params.URI, "mill://mcpservers/")
 	data, err := m.cfg.ExportMCPServer(id)
+	if err != nil {
+		return nil, mcp.ResourceNotFoundError(req.Params.URI)
+	}
+	return &mcp.ReadResourceResult{
+		Contents: []*mcp.ResourceContents{{URI: req.Params.URI, MIMEType: "application/json", Text: data}},
+	}, nil
+}
+
+func (m *MillMCPService) readDecisionsIndex(_ context.Context, req *mcp.ReadResourceRequest) (*mcp.ReadResourceResult, error) {
+	out := make([]resourceIndexEntry, 0)
+	for _, d := range m.cfg.Decisions() {
+		out = append(out, resourceIndexEntry{ID: d.ID, Label: d.Label, Description: string(d.Category)})
+	}
+	return jsonContents(req.Params.URI, out)
+}
+
+func (m *MillMCPService) readDecision(_ context.Context, req *mcp.ReadResourceRequest) (*mcp.ReadResourceResult, error) {
+	id := idFromTemplateURI(req.Params.URI, "mill://decisions/")
+	data, err := m.cfg.ExportDecision(id)
 	if err != nil {
 		return nil, mcp.ResourceNotFoundError(req.Params.URI)
 	}

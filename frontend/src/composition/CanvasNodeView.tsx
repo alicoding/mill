@@ -47,6 +47,12 @@ export function CanvasNodeView({ id, data, selected }: NodeProps<CanvasNode>) {
   // them, same as n8n's own trigger nodes having no input pin (they're
   // the entry point, not a step something else feeds).
   const isTrigger = data.kind === 'trigger'
+  // Terminal nodes (docs/adr/0027) have no SOURCE handle -- a Decision
+  // ends the workflow, nothing connects out of it. The mirror-image rule
+  // of isTrigger above; both are belt-and-suspenders with
+  // isValidConnection (CompositionCanvas.tsx) and ValidateGraph
+  // (composition/graph.go) rejecting the same edge shape server-side.
+  const isTerminal = data.kind === 'terminal'
   // A child-workflow node with a selected child IS the hover-preview
   // anchor (docs/SPEC.md §3.8, corrected per direct feedback: the
   // preview belongs on the node itself, not only on an Inspector
@@ -96,7 +102,7 @@ export function CanvasNodeView({ id, data, selected }: NodeProps<CanvasNode>) {
           {RUN_STATUS_LABEL[runStatus]}
         </span>
       )}
-      <Handle type="source" position={RFPosition.Bottom} />
+      {!isTerminal && <Handle type="source" position={RFPosition.Bottom} />}
     </div>
   )
   if (childWorkflowId !== '') {

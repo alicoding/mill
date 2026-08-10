@@ -4,11 +4,9 @@ import (
 	"github.com/alicoding/mill/internal/domain/guardrail"
 
 	"fmt"
-	"net/http"
 	"net/url"
 	"strings"
 
-	"github.com/alicoding/mill/internal/adapters/httpconnector"
 	"github.com/alicoding/mill/internal/adapters/openapispec"
 	"github.com/alicoding/mill/internal/domain/httprequest"
 )
@@ -170,28 +168,12 @@ func init() {
 		// Precedence keeps every legacy node working: a persisted node
 		// config value wins, then the request's own declaration (its
 		// Method/Body fields, and its single declared operation's path),
-		// then GET/empty.
-		method := node.Config["method"]
-		if method == "" {
-			method = rc.Method
-		}
-		urlPath, body := node.Config["path"], node.Config["bodyTemplate"]
+		// then GET/empty (defaultMethodAndPath, httpsend.go).
+		body := node.Config["bodyTemplate"]
 		if body == "" {
 			body = rc.Body
 		}
-		if rc.OpenAPISpec != "" {
-			if opPath, opMethod, ok := singleOperation(rc.OpenAPISpec); ok {
-				if urlPath == "" {
-					urlPath = opPath
-				}
-				if method == "" {
-					method = opMethod
-				}
-			}
-		}
-		if method == "" {
-			method = http.MethodGet
-		}
+		method, urlPath := defaultMethodAndPath(rc, node.Config["method"], node.Config["path"])
 
 		headers := make(map[string]string, len(rc.Headers)+1)
 		for k, v := range rc.Headers {
@@ -230,66 +212,13 @@ func init() {
 			responseExtractPath = respExtractPath
 		}
 
-		// Phase 3 (JOSE): body is encrypted before Auth is applied, so a
-		// signing AuthType (HMAC/OAuth 1.0a) signs the ciphertext that's
-		// actually transmitted, not the plaintext underneath it -- a
-		// no-op for a request with no JOSE config (ADR-0015 Phase 3).
-		body, err = ApplyJOSEEncryption(rc.JOSE, body)
-		if err != nil {
-			return ctx, fmt.Errorf("integration-http: %w", err)
-		}
-
-		// ADR-0015: auth applied last, after bindings, so a scheme that
-		// signs the request (HMAC/OAuth 1.0a) signs the final
-		// path/body -- and so AuthQueryParam's own query addition can't
-		// be silently dropped by a bindings-resolved query already
-		// having been encoded into urlPath (query stays unencoded until
-		// the URL is assembled below, for exactly this reason).
-		if err := ApplyAuth(rc, method, urlPath, headers, query, body); err != nil {
-			return ctx, fmt.Errorf("integration-http: %w", err)
-		}
-
-		fullURL := JoinRequestURL(rc.BaseURL, urlPath)
-		// Path-parameter templates may live in the URL itself now (the
-		// one-URL model) -- substitute them over the assembled URL, not
-		// just the operation path (resolveInputBindings already handled
-		// the legacy in-path case; doing both is idempotent).
-		for name, val := range pathParams {
-			fullURL = strings.ReplaceAll(fullURL, "{"+name+"}", val)
-		}
-		if len(query) > 0 {
-			fullURL += "?" + query.Encode()
-		}
-
-		resp, err := httpconnector.Execute(httpconnector.Request{
-			Method:  method,
-			URL:     fullURL,
-			Headers: headers,
-			Body:    body,
-		})
-		if err != nil {
-			return ctx, fmt.Errorf("integration-http: %w", err)
-		}
-		// httpconnector deliberately treats every HTTP-level response
-		// (4xx/5xx included) as a non-error return, same as net/http's own
-		// client.Do -- the judgment call of what a status code means for
-		// *this* workflow belongs here, at the domain layer, not in the
-		// commodity adapter. Fail-safe by default (SPEC.md §8's guardrail
-		// philosophy, already the reasoning httpconnector's own timeout
-		// uses): a non-2xx response fails the node instead of silently
-		// flowing an error body through as if it were a successful
-		// result -- matches n8n's own HTTP Request node default (checked
-		// directly, not assumed), which throws on 4xx/5xx unless the
-		// author explicitly opts into "Continue on Fail". Mill has no
-		// per-node continue-on-fail option yet; add one if a real
-		// workflow needs to treat an error response as data, not before.
-		if resp.StatusCode >= 400 {
-			return ctx, fmt.Errorf("integration-http: request failed with status %d: %s", resp.StatusCode, resp.Body)
-		}
-		// Phase 3 (JOSE): a no-op unless JOSE.DecryptResponse is set --
-		// everything downstream (Payload, output bindings) sees the
-		// decrypted plaintext, never the raw JWE compact string.
-		respBody, err := DecryptJOSEResponse(rc.JOSE, rc.JOSEPrivateKeyPEM, resp.Body)
+		// The shared transport tail (httpsend.go, docs/adr/0027): JOSE-
+		// encrypt, apply auth (ADR-0015, signs the final path/body),
+		// assemble the URL (path params + query), call httpconnector,
+		// fail-safe on non-2xx (SPEC.md §8), JOSE-decrypt the response.
+		// Same sequence this file always ran inline; decision-outcome's
+		// webhook call now goes through the identical function.
+		respBody, err := sendHTTPRequest(rc, method, urlPath, body, headers, query, pathParams)
 		if err != nil {
 			return ctx, fmt.Errorf("integration-http: %w", err)
 		}

@@ -31,10 +31,15 @@ package composition
 import "github.com/alicoding/mill/internal/domain/guardrail"
 
 // NodeKind mirrors SPEC.md §2's Capture -> Process -> Apply primitive,
-// plus Trigger (SPEC.md §3.4) and Decision (SPEC.md §3.5) -- Decision is
-// the one kind allowed more than one outgoing edge (see walk/nextNode).
-// Parallel/Child Workflow stay real future work, not stubbed here
-// speculatively.
+// plus Trigger (SPEC.md §3.4), Decision (routing -- ADR-0027 relabels
+// its UI vocabulary "Branch", the code identifier KindDecision stays,
+// same code-vs-UI split ADR-0016 already established) and Terminal
+// (ADR-0027 -- a reusable, typed TERMINAL outcome; "Decision" as a
+// user-facing noun now means THIS kind, not the routing one). Terminal
+// is the one kind with no outgoing edge at all (ValidateGraph/
+// isValidConnection reject one); Decision stays the one kind allowed
+// more than one outgoing edge (see walk/nextNode). Parallel/Child
+// Workflow stay real future work, not stubbed here speculatively.
 type NodeKind string
 
 const (
@@ -43,6 +48,7 @@ const (
 	KindProcess  NodeKind = "process"
 	KindApply    NodeKind = "apply"
 	KindDecision NodeKind = "decision"
+	KindTerminal NodeKind = "terminal"
 )
 
 // ConfigFieldType is the field's UI/value shape -- modeled on n8n's own
