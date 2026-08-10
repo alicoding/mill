@@ -27,4 +27,5 @@ in archive/ for the full verdict trail if ever needed).
 4. [ ] [0004 — Code execution capability](0004-code-execution-capability.md) (backend; ADR-0026 accepted 2026-08-10 — implementation unblocked)
 5. [ ] [0005 — Pending-attention model](0005-pending-attention-model.md) (design/research: missed MCP approvals, notification center vs Activity vs Review — raised live during the 0003 dogfood; reorder freely)
 6. [x] [0006 — Trigger-aware Workflows list](0006-trigger-aware-workflows-list.md) — delivered 2026-08-10 (trigger labels, tri-state armed + Publish CTA, inline hotkey capture, callable demotion; owner live-acceptance pending as part of ongoing review)
-7. [ ] [0007 — Resource-inventory redesign](0007-resource-inventory-redesign.md) (UX: page-identity confusion + card-view dislike, raised live; research in flight; ties into SPEC §3.2's shared resource-inventory primitive)
+7. [ ] [0007 — Resource-inventory redesign](0007-resource-inventory-redesign.md) (UX: page-identity confusion + card-view dislike, raised live; decisions ratified, build in flight)
+8. [ ] [0008 — Authoring validation + ending model](0008-authoring-validation-and-ending-model.md) (owner-priority: next after 0007 — errors-block-save semantics decided; trigger-root error decided; Apply-vs-terminal unification is the ADR to write first)
