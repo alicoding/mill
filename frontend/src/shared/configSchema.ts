@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import { fake, setFaker } from 'zod-schema-faker/v4'
 import { faker } from '@faker-js/faker'
-import { ConfigFieldType } from '../../bindings/github.com/alicoding/mill/internal/domain/composition/models'
+import { Type as ConfigFieldType } from '../../bindings/github.com/alicoding/mill/internal/domain/typedfield/models'
 
 // zod-schema-faker needs its faker instance wired once before fake() can
 // be called -- module-level, not per-call, same "do it once" shape as
@@ -15,9 +15,11 @@ setFaker(faker)
 
 // The minimal shape both ConfigField (a node type's config) and
 // AttributeDef (a workflow's declared Attributes schema, docs/adr/0008's
-// test-input form) satisfy -- AttributeDef carries no Options list (§3.3's
-// rule-builder Update note: "AttributeDef carries no Options list"), so
-// it's optional here, same as the FieldOptions-with-no-Options fallback
+// test-input form) satisfy -- both are now the same underlying
+// typedfield.Field (docs/adr/0029 Phase 1), which always declares
+// Options, but this local shape keeps it optional so a hand-built
+// TypedField literal (e.g. a test fixture) doesn't need to carry every
+// Field property, same as the FieldOptions-with-no-Options fallback
 // below already handles.
 export interface TypedField {
   Key: string
@@ -38,13 +40,13 @@ export function configFieldsToZodSchema(fields: TypedField[]) {
   const shape: Record<string, z.ZodTypeAny> = {}
   for (const field of fields) {
     switch (field.Type) {
-      case ConfigFieldType.FieldNumber:
+      case ConfigFieldType.TypeNumber:
         shape[field.Key] = z.number()
         break
-      case ConfigFieldType.FieldBoolean:
+      case ConfigFieldType.TypeBoolean:
         shape[field.Key] = z.boolean()
         break
-      case ConfigFieldType.FieldOptions:
+      case ConfigFieldType.TypeOptions:
         shape[field.Key] = field.Options && field.Options.length > 0 ? z.enum(field.Options as [string, ...string[]]) : z.string()
         break
       default:

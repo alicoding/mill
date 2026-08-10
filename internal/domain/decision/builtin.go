@@ -17,7 +17,7 @@ const (
 // wire values ("text"/"number") without importing composition (see
 // OutputField's own doc comment for why).
 var approveDenyOutputs = []OutputField{
-	{Key: "decision", Label: "Decision", Type: "text", EnumValues: []string{"APPROVED", "DECLINED"}},
+	{Key: "decision", Label: "Decision", Type: "text", Options: []string{"APPROVED", "DECLINED"}},
 	{Key: "score", Label: "Score", Type: "number"},
 }
 

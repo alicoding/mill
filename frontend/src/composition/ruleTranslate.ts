@@ -1,5 +1,12 @@
 import type { RuleGroupTypeAny, RuleType, Field } from 'react-querybuilder'
-import { AttributeDef, ConfigFieldType } from '../../bindings/github.com/alicoding/mill/internal/domain/composition/models'
+import { AttributeDef } from '../../bindings/github.com/alicoding/mill/internal/domain/composition/models'
+// ConfigFieldType (composition/models.ts's old name) resolved to a pure
+// Go type alias of typedfield.Type (docs/adr/0029 Phase 1) -- wails3's
+// binding generator doesn't preserve alias names, it emits the
+// canonical type once under its owning package, so this now imports
+// typedfield's own Type enum directly, aliased back to the familiar
+// local name.
+import { Type as ConfigFieldType } from '../../bindings/github.com/alicoding/mill/internal/domain/typedfield/models'
 
 // Bridges react-querybuilder's own query-tree shape to a real expr-lang
 // expression string -- the format composition.go's expression adapter
@@ -93,16 +100,16 @@ export function translateToExpr(query: RuleGroupTypeAny): string {
 // fieldsFromAttributes maps a workflow's declared Attributes schema
 // (Configure-authored, docs/SPEC.md §3.5) into react-querybuilder's own
 // Field[] shape -- what the rule builder offers to pick from. FieldOptions
-// is deliberately excluded: composition.AttributeDef carries no Options
-// list (unlike composition.ConfigField), so an Options-typed Attribute
-// has no defined choices to build a select input from -- a real, scoped
-// gap, not an oversight (see ConfigureAttributes.tsx's own type picker,
-// which doesn't offer "Options" for the same reason).
+// is deliberately excluded: ConfigureAttributes.tsx's own type picker
+// doesn't offer FieldOptions for an Attribute (docs/adr/0029 Phase 1 --
+// AttributeDef's Options field exists structurally now, but no
+// authoring UI populates it yet), so an Options-typed Attribute never
+// actually occurs and there's nothing to build a select input from.
 export function fieldsFromAttributes(attrs: AttributeDef[] | null | undefined): Field[] {
   return (attrs ?? []).map((a) => ({
     name: a.Key,
     label: a.Label || a.Key,
-    inputType: a.Type === ConfigFieldType.FieldNumber ? 'number' : a.Type === ConfigFieldType.FieldBoolean ? 'checkbox' : 'text',
-    datatype: a.Type === ConfigFieldType.FieldNumber ? 'number' : a.Type === ConfigFieldType.FieldBoolean ? 'boolean' : 'string',
+    inputType: a.Type === ConfigFieldType.TypeNumber ? 'number' : a.Type === ConfigFieldType.TypeBoolean ? 'checkbox' : 'text',
+    datatype: a.Type === ConfigFieldType.TypeNumber ? 'number' : a.Type === ConfigFieldType.TypeBoolean ? 'boolean' : 'string',
   }))
 }
