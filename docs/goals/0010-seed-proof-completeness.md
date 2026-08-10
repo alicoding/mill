@@ -54,6 +54,16 @@ become a question CI answers.
    list-lookup-shaped gap without contriving seeds for things a
    different layer proves better.
 
+## Seed-roster alignment (owner, 2026-08-10)
+Once goal 0004 (coding loop) lands, the owner wants a deliberate
+alignment pass on WHICH examples ship — the roster as a curated set,
+not an accretion. First confirmed roster entry beyond the existing
+seeds: the copy-anywhere → hotkey → Markdown-in-clipboard flow — which
+is the existing "Clipboard → Markdown" seed with a hotkey trigger; the
+owner walks that live via type-swap + publish + inline hotkey capture
+(it deliberately stays manual-triggered as shipped, since combos can't
+ship pre-bound). Do the roster pass WITH the owner, not unilaterally.
+
 ## Acceptance
 The enforcement tests exist and pass; every current seed is either
 automatically proven or explicitly, reasonedly manual-only; the
