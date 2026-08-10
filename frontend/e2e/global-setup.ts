@@ -1,23 +1,26 @@
-import { chromium, expect } from '@playwright/test'
+import { execFileSync } from 'node:child_process'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 
-// Isolation guard (the durable fix for the wrong-server incident class,
-// .claude/rules/testing.md): before ANY test runs, prove the server the
-// suite is about to exercise is running against isolated MILL_* data --
-// the same IsIsolatedData signal the human-facing TEST DATA badge
-// renders. A server on real desktop data aborts the whole suite loudly
-// instead of silently reading/writing the user's actual store, which
-// happened for real once (a bare mill-server without env held the port
-// and the suite ran against ~/Library/Application Support/mill).
-export default async function globalSetup() {
-  const browser = await chromium.launch()
-  try {
-    const page = await browser.newPage()
-    await page.goto('http://localhost:8080/')
-    await expect(
-      page.getByTestId('isolated-data-badge'),
-      'Server is NOT running on isolated MILL_* data — refusing to run the suite against what may be the real desktop store',
-    ).toBeVisible({ timeout: 15_000 })
-  } finally {
-    await browser.close()
-  }
+// goal 0009 (docs/goals/0009-e2e-parallel-isolation.md): builds
+// bin/mill-server exactly ONCE, before any worker starts -- each worker
+// then just execs the already-built binary against its own port/
+// settings file (./fixtures/server.ts's `spawnMillServer`). This
+// replaces the old per-run `webServer.command` (`go build ... &&
+// ./bin/mill-server`), which rebuilt on every run and only ever ran one
+// server for the whole suite to share.
+//
+// The isolation guard this file used to own (proving the server the
+// suite is about to exercise runs on isolated MILL_* data before any
+// test trusts it -- the incident that guard exists for is documented
+// in ./fixtures/server.ts's own header comment) moved with it: it's
+// now checked once per spawned server, inside `spawnMillServer` itself,
+// since "the server" is no longer a single global thing to check once.
+const REPO_ROOT = path.resolve(fileURLToPath(new URL('.', import.meta.url)), '../..')
+
+export default function globalSetup(): void {
+  execFileSync('go', ['build', '-tags', 'server', '-o', 'bin/mill-server', '.'], {
+    cwd: REPO_ROOT,
+    stdio: 'inherit',
+  })
 }

@@ -1,4 +1,5 @@
-import { test, expect } from '@playwright/test'
+import { test, expect } from './fixtures/server'
+import { withClipboardLock } from './fixtures/clipboardLock'
 
 // Exercises docs/SPEC.md §3.7's Update: navigational/UI state (active
 // view, open Composition/Configure tabs, Activity's own filters)
@@ -58,7 +59,9 @@ test('An open Configure request view tab persists across a reload', async ({ pag
   await expect(page.getByRole('heading', { name: label })).toBeVisible()
 })
 
+// Real OS clipboard I/O (goal 0009) -- "Load sample HTML" writes to it.
 test('Activity source/outcome filter selections write through to localStorage', async ({ page }) => {
+  await withClipboardLock(async () => {
   await page.goto('/')
 
   // The filter Selects only render once there's at least one entry
@@ -90,6 +93,7 @@ test('Activity source/outcome filter selections write through to localStorage', 
   // into whatever e2e spec runs against Activity next.
   await page.getByLabel('Filter by source').selectOption('all')
   await page.getByLabel('Filter by outcome').selectOption('all')
+  })
 })
 
 // Build-identity badge (docs/SPEC.md §3.8): the e2e server binary and

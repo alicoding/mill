@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test'
+import { test, expect } from './fixtures/server'
 
 // The guardrail execution gate end-to-end in the live app (docs/SPEC.md
 // §8, ADR-0019/0022), driven through the seeded "Example:

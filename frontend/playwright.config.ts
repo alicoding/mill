@@ -4,54 +4,53 @@ import { defineConfig } from '@playwright/test'
 // instead of a plain frontend dev server -- real Go service bindings over
 // HTTP, not a mock. Requires frontend/dist to already exist (go:embed) --
 // same prerequisite as everything else in this repo.
+//
+// goal 0009 (docs/goals/0009-e2e-parallel-isolation.md): each worker now
+// spawns its OWN mill-server process against its own throwaway
+// MILL_SETTINGS_PATH/MILL_EXECUTION_DB_PATH (./e2e/fixtures/server.ts),
+// replacing the single shared `webServer` this config used to declare --
+// that's what let `workers` go above 1. The binary itself is still built
+// exactly once, in globalSetup, before any worker starts.
 export default defineConfig({
   testDir: './e2e',
-  // Real OS clipboard I/O (composition.spec.ts's/activity.spec.ts's
-  // workflow-run tests, internal/adapters/clipboard's own Go tests) is a
-  // single shared global resource, not something safe to parallelize
-  // against -- confirmed by direct reproduction, not assumed: with
-  // Playwright's default multi-worker parallelism, one test's
-  // WriteHTML() could be clobbered by a concurrently-running test's own
-  // clipboard write before the first ever read it back, surfacing as an
-  // intermittent "no HTML on clipboard" failure with no code bug behind
-  // it. Serializing is the honest fix given these are deliberately real
-  // integration tests, not mocks (ADR-0002) -- the alternative would be
-  // mocking the one thing most likely to actually break.
-  workers: 1,
+  // Real cores, not files: 4 locally (tune against the machine), fewer
+  // in CI where the runner typically has less parallel headroom. Each
+  // worker owns a fully isolated server + settings file (fixtures/
+  // server.ts), so raising this only costs machine resources, never
+  // correctness -- the one genuine shared-resource hazard left, the
+  // real OS clipboard, is handled per-test via
+  // ./e2e/fixtures/clipboardLock.ts, not by capping worker count.
+  workers: process.env.CI ? 2 : 4,
+  // fullyParallel stays false (Playwright's own default): tests within
+  // one spec FILE still run serially against that worker's one server,
+  // since several files deliberately share state/fixtures across their
+  // own tests (e.g. composition.spec.ts's "Load sample HTML" row).
+  // Different files still run concurrently across workers -- that's the
+  // actual lever this goal pulls.
+  fullyParallel: false,
   // One retry: the resizable-table drag test measures column width
-  // after a synthetic pointer drag, which under full-suite load
-  // occasionally has pointermove events coalesced (the column moves
-  // only partway) -- a genuine timing flake, not a resize bug (it
-  // passes isolated and on retry). A real regression still fails both
-  // attempts, so this masks flakes without hiding breakage.
+  // after a synthetic pointer drag, which under load occasionally has
+  // pointermove events coalesced (the column moves only partway) -- a
+  // genuine timing flake, not a resize bug (it passes isolated and on
+  // retry). A real regression still fails both attempts, so this masks
+  // flakes without hiding breakage.
   retries: 1,
+  // Default (30s) is too tight now that a dozen or so tests across
+  // several files contend for the one real-clipboard lock
+  // (./e2e/fixtures/clipboardLock.ts) -- under parallel workers, a test
+  // can now spend real time queued behind several others before it even
+  // starts its own steps, which a serial (workers: 1) suite never had
+  // to account for since nothing else was ever running concurrently.
+  // Caught directly as a real spurious timeout, not pre-emptively
+  // padded on a guess.
+  timeout: 60_000,
   globalSetup: './e2e/global-setup.ts',
-  webServer: {
-    command: 'cd .. && go build -tags server -o bin/mill-server . && ./bin/mill-server',
-    url: 'http://localhost:8080/health',
-    // NEVER reuse a server something else started: three separate
-    // incidents of the suite silently running against the wrong
-    // process's data (once against the REAL desktop store -- a bare
-    // mill-server without the MILL_* env was listening and the health
-    // check can't tell servers apart, since Wails' asset server answers
-    // any path). With reuse off, a rogue process holding the port is a
-    // loud bind failure instead of a silent wrong-data run; the
-    // isolation guard in global-setup.ts is the second layer.
-    reuseExistingServer: false,
-    timeout: 60_000,
-    // Points CompositionService's persistence (main.go) at a throwaway
-    // file instead of the real ~/Library/Application Support/mill/
-    // settings.json -- otherwise this suite's composed/deleted test
-    // workflows would write into the same file the real desktop dev app
-    // reads its saved state from. MILL_EXECUTION_DB_PATH is the same
-    // isolation for ExecutionService's DBOS-backed SQLite file
-    // (docs/adr/0004), added alongside for the identical reason.
-    env: {
-      MILL_SETTINGS_PATH: '/tmp/mill-e2e-settings.json',
-      MILL_EXECUTION_DB_PATH: '/tmp/mill-e2e-execution.db',
-    },
-  },
   use: {
-    baseURL: 'http://localhost:8080',
+    // No static baseURL here -- ./e2e/fixtures/server.ts overrides the
+    // `baseURL` fixture per worker, pointed at that worker's own
+    // freshly-spawned server. Every spec imports `test`/`expect` from
+    // that module (not '@playwright/test' directly) specifically so
+    // this applies; specs themselves only ever call page.goto('/'),
+    // relative, so they inherit whichever worker they land on.
   },
 })

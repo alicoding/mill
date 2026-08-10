@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test'
+import { test, expect } from './fixtures/server'
 
 // The shared long-column table pattern (shared/ResizableTable.tsx):
 // drag-resizable columns on every DataTable surface, plus truncated

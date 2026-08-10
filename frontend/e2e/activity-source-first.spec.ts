@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test'
+import { test, expect } from './fixtures/server'
 
 // docs/SPEC.md §3.2's source-first analytics pattern on Activity
 // (asked for directly): pick the input source (a workflow) and see its
