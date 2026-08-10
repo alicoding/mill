@@ -21,13 +21,25 @@ in archive/ for the full verdict trail if ever needed).
 
 ## Queue
 
-1. [ ] [0001 — Authoring-surface overhaul](0001-authoring-surface-overhaul.md) (UX)
-2. [ ] [0002 — Review queue maturation](0002-review-queue-maturation.md) (UX)
-3. [x] [0003 — MCP authoring live dogfood](archive/0003-mcp-authoring-dogfood.md) — delivered 2026-08-10, live with the owner (full loop incl. refused-while-off, per-write approval, auto-snapshot)
-4. [ ] [0004 — Code execution capability](0004-code-execution-capability.md) (backend; ADR-0026 accepted 2026-08-10 — implementation unblocked)
-5. [ ] [0005 — Pending-attention model](0005-pending-attention-model.md) (design/research: missed MCP approvals, notification center vs Activity vs Review — raised live during the 0003 dogfood; reorder freely)
-6. [x] [0006 — Trigger-aware Workflows list](0006-trigger-aware-workflows-list.md) — delivered 2026-08-10 (trigger labels, tri-state armed + Publish CTA, inline hotkey capture, callable demotion; owner live-acceptance pending as part of ongoing review)
-7. [ ] [0007 — Resource-inventory redesign](0007-resource-inventory-redesign.md) (UX: page-identity confusion + card-view dislike, raised live; decisions ratified, build in flight)
-8. [ ] [0008 — Authoring validation + ending model](0008-authoring-validation-and-ending-model.md) (owner-priority: next after 0007 — errors-block-save semantics decided; trigger-root error decided; Apply-vs-terminal unification is the ADR to write first)
-9. [ ] [0009 — E2e parallel isolation](0009-e2e-parallel-isolation.md) (infra: workers:1 + shared state is the root of slow suites, double-runs, and contamination — biggest verification-cost lever)
-10. [ ] [0010 — Seed-proof completeness + enforcement](0010-seed-proof-completeness.md) (trust: 2 seed gaps, 7 unproven-live HTTPRequests, no List/MCP seeds, 5 unexercised node types — plus the enforcement tests that make CI answer "is it proven?")
+Ratified 2026-08-10 (owner): three groups, A→B→C. 0001 stays standing
+live-review material, interleaved during owner reviews, not a lane.
+
+**Group A — Foundation**
+1. [ ] [0009 — E2e parallel isolation](0009-e2e-parallel-isolation.md) (infra: every later build's verification ~3x cheaper — do first)
+2. [ ] [0010 — Seed-proof completeness + enforcement](0010-seed-proof-completeness.md) (trust: land before 0004 so its seeds are held to the registry)
+
+**Group B — Execution arc**
+3. [ ] [0008 — Authoring validation + ending model](0008-authoring-validation-and-ending-model.md) (ending-model ADR gates 0004's terminal; then the validation panel)
+4. [ ] [0004 — Code execution capability](0004-code-execution-capability.md) (ADR-0026 + amendments = complete brief; ~two agent builds)
+
+**Group C — Attention layer**
+5. [ ] [0005 — Pending-attention model](0005-pending-attention-model.md) (research/design first — owns the park/resolve eventing)
+6. [ ] [0002 — Review queue maturation](0002-review-queue-maturation.md) (remainder: pending badge built on 0005's eventing; kind filter/polish)
+
+**Standing**
+- [ ] [0001 — Authoring-surface overhaul](0001-authoring-surface-overhaul.md) (spacing audit + §3.8 prototype elements — live-review material)
+
+**Delivered**
+- [x] [0003 — MCP authoring live dogfood](archive/0003-mcp-authoring-dogfood.md) — 2026-08-10
+- [x] [0006 — Trigger-aware Workflows list](0006-trigger-aware-workflows-list.md) — 2026-08-10
+- [x] [0007 — Resource-inventory redesign](0007-resource-inventory-redesign.md) — 2026-08-10 (owner recognition test passed live: "like an addition")
