@@ -30,6 +30,14 @@ test('Cmd+1 through Cmd+4 jump to their view from anywhere else in the app', asy
   await expect(page.getByRole('heading', { name: 'Workflows', level: 1 })).toBeVisible()
 })
 
+test('Cmd+, opens Settings — macOS\'s universal preferences shortcut', async ({ page }) => {
+  await page.goto('/')
+  await expect(page.getByRole('heading', { name: 'Workflows', level: 1 })).toBeVisible()
+
+  await page.keyboard.press('Meta+,')
+  await expect(page.getByRole('heading', { name: 'Settings', level: 1 })).toBeVisible()
+})
+
 test('A view hotkey works while a text field has focus, matching browser tab-switching precedent', async ({ page }) => {
   await page.goto('/')
   await page.getByTestId('new-workflow').click()
