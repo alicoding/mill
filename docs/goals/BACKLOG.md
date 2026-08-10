@@ -40,6 +40,7 @@ live-review material, interleaved during owner reviews, not a lane.
 7. [ ] [0012 — Authoring hot-exit](0012-authoring-hot-exit.md) (owner requirement: no data loss on quit/close — VS Code hot-exit model for unsaved canvas/form state; pairs with the recorder-accelerator fix)
 8. [ ] [0013 — Canonical type system](0013-canonical-type-system.md) (platform kernel: converge the four field vocabularies; ADR first; sequence after 0004 or when 0011 forces typed payloads)
 9. [ ] [0011 — Lists maturation](0011-lists-maturation.md) (typed datasets + List Search per SPEC §3.2.2's reference review; evidence-gap research first)
+10. [ ] [0014 — Home dashboard](0014-home-dashboard.md) (operational launch surface per §3.2.3; depends on run-evidence groundwork + 0005 eventing; adopt-don't-invent charting)
 
 **Standing**
 - [ ] [0001 — Authoring-surface overhaul](0001-authoring-surface-overhaul.md) (spacing audit + §3.8 prototype elements — live-review material)

@@ -1382,6 +1382,30 @@ resource-inventory prescription. Capability map + build plan: goal
 0011; evidence gaps (lifecycle/versioning, fuzzy semantics,
 first-match schema behavior) recorded there, not guessed at.
 
+### 3.2.3 Home/landing-dashboard reference review — design input, `OPEN`
+
+**Fifth owner-supplied reference review (2026-08-10, five screenshots,
+vendor-generic): the platform's landing surface.** Observed: an
+operational launch dashboard — quick create, "suggested workflows"
+cards (identity + version + lifecycle + traffic badges, read from the
+canonical control plane, never a second copy of that state), an
+extensible KPI-card row (value+label, with a create-new-KPI slot), ONE
+shared time-range selector governing all widgets, and paired
+volume+rate charts (counts directly above error-percentage — a rate
+without its volume is operationally incomplete). Boundaries worth
+adopting verbatim: Home summarizes and drills through to real
+workspaces, never authors; KPI definitions are governed reusable
+resources, never dashboard-local formulas; metric definitions must
+document numerator/denominator/retry/test-traffic/interval; **adopt an
+existing observability/BI capability — never invent charting, metric
+storage, or time-series aggregation** (the review's own instruction,
+identical to §0's doctrine); historical dashboard values must stay
+explainable from retained definitions + execution evidence — the third
+independent signal for §9.5's run-evidence-completeness debt. Mill has
+no Home today (lands on Workflows); Activity is the nearest analytics
+surface. Recorded as goal 0014, unscheduled; evidence gaps (suggestion
+basis, KPI authoring, metric semantics, freshness) stay open there.
+
 ### 3.3 Capability map — designing the node/edge schema against the full known need, not just today's two workflows
 
 Deciding the node/edge schema from today's two built-in, purely-linear
