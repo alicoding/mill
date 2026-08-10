@@ -96,3 +96,23 @@ test('Review queue: denying from the queue stops the run', async ({ page }) => {
   await item.getByTestId('review-deny').click()
   await expect(page.getByTestId('review-item').filter({ hasText: GUARDED })).toHaveCount(0, { timeout: 10_000 })
 })
+
+test('Review queue shows the resolved outcome after a deny, filterable by workflow', async ({ page }) => {
+  await page.goto('/')
+  const row = page.getByTestId('workflow-row').filter({ has: page.getByText(GUARDED, { exact: true }) })
+  await row.getByRole('button', { name: 'Run' }).click()
+
+  await page.getByRole('link', { name: 'Review' }).click()
+  const item = page.getByTestId('review-item').filter({ hasText: GUARDED }).first()
+  await expect(item).toBeVisible({ timeout: 10_000 })
+  await item.getByTestId('review-deny').click()
+
+  // The denial moves to Recently resolved with its outcome labeled.
+  const resolvedItem = page.getByTestId('review-resolved-item').filter({ hasText: GUARDED }).first()
+  await expect(resolvedItem).toBeVisible({ timeout: 10_000 })
+  await expect(resolvedItem.getByTestId('review-resolution')).toHaveText('denied')
+
+  // The workflow filter narrows both sections.
+  await page.getByLabel('Filter by workflow').selectOption({ label: 'Example: Human review with input' })
+  await expect(page.getByTestId('review-resolved-item').filter({ hasText: GUARDED })).toHaveCount(0)
+})

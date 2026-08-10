@@ -6,11 +6,17 @@ The Review queue works as the case-management-style inbox from
 crossing the no-Camunda line (no assignment/SLA/notes).
 
 ## Plan
-1. Filters: workflow + kind over pending items.
-2. Recently-resolved visibility (approved/denied/timed-out outcomes,
-   from the already-recorded resolution events).
-3. A pending-count signal on the sidebar Review entry.
-4. Empty/loading polish per the overhaul's spacing standards.
+1. [x] Workflow filter over pending + resolved (delivered 2026-08-10).
+2. [x] Recently-resolved visibility — RunSummary.Resolution read from
+   the same park event after resolution; Review shows the last 10
+   with approved/denied/timed-out labels (delivered 2026-08-10,
+   e2e-covered: deny → resolved section → filter).
+3. [ ] Pending-count signal on the sidebar Review entry — needs an
+   app-level poll or a Go→JS event on park/resolve; the event is the
+   right shape (emit alongside SetEvent in parkForApproval), decide
+   there rather than polling.
+4. [ ] Kind filter + empty/loading polish per the overhaul's spacing
+   standards.
 
 ## Acceptance
 Run the seeded review example plus a guardrail ask; both flows are

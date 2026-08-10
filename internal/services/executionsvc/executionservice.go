@@ -125,6 +125,10 @@ type RunSummary struct {
 	// Pending is the run's live awaiting-approval state, if any
 	// (docs/adr/0022) -- non-nil only while a guardrail ask is parked.
 	Pending *PendingApproval `json:"pending,omitempty"`
+	// Resolution is a completed run's approval outcome ("approved"/
+	// "denied"/"timed out"), empty when the run never parked -- the
+	// Review queue's recently-resolved section (goal 0002).
+	Resolution string `json:"resolution,omitempty"`
 	// Values are the attribute values this run was invoked with
 	// (runInput.Values -- a test form's input, or a parent's resolved
 	// child bindings). The data behind Activity's per-attribute columns
@@ -483,6 +487,8 @@ func (e *ExecutionService) summaryFromStatus(st execution.WorkflowStatus) RunSum
 	// event poll for terminal runs (the common case in any list).
 	if summary.Status == "PENDING" || summary.Status == "RUNNING" || summary.Status == "ENQUEUED" {
 		summary.Pending = e.pendingApprovalFor(st.ID)
+	} else {
+		summary.Resolution = e.approvalResolutionFor(st.ID)
 	}
 	return summary
 }
