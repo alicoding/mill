@@ -46,12 +46,22 @@ Sketch (to be finalized against the research pass):
    - **Hotkey assignment is inline from the row** (Raycast's full
      pattern: "Add hotkey…" placeholder, click-to-record in place,
      reusing the existing conflict UX).
-3. [ ] Implement with e2e: trigger label per row (per the research's
-   row-anatomy table — manual/hotkey/schedule/watch/callable), the
-   callable row demotes Run to a secondary "Test" action, tri-state
-   armed labels + Publish CTA, inline hotkey capture, honest Run
-   labeling. Sequenced after the goal-0002 drill-down build (tree
-   overlap).
+3. [x] Implemented (2026-08-10), 104/104 e2e twice:
+   `TriggerRowLabel.tsx` (shared by Table + Cards via
+   `triggerRowInfo.ts`'s root derivation), `ArmedWorkflows()` reading
+   TriggerService's real listener map (never a recomputed gate),
+   Publish CTA on configured-but-not-live rows, inline hotkey capture
+   from the row (reusing `useHotkeyCapture` + existing conflict UX),
+   callable rows demote Run to a secondary "Test", and honest
+   Run tooltips including draft-drift detection (`draftDrift.ts` —
+   feasible client-side since `WorkflowVersion` carries full
+   snapshots). Confirmed en route: hotkey listeners go through the
+   SAME publish gate as schedule/watch (no special case), so the
+   tri-state applies uniformly — an assigned combo on an unpublished
+   workflow truthfully shows not-live. The new Trigger column
+   initially broke `resizable-table.spec.ts`'s no-overflow assertion —
+   the committed-test discipline catching a real regression — fixed
+   with the §3.8 long-column conventions (`growCollapse`).
 
 ## Acceptance
 Owner reviews the list live: every row's affordance matches its

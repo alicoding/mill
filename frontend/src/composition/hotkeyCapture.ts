@@ -23,7 +23,15 @@ export function isAccessibilityError(message: string): boolean {
 // CompositionCanvas Inspector only ever configures the one workflow
 // currently open), so this hook's shape is simpler than the view it came
 // from, not a like-for-like port.
-export function useHotkeyCapture(workflowId: string | null) {
+//
+// onChanged is optional and fires after a successful assign/unassign --
+// added for the Workflows-list row's inline capture (TriggerRowLabel.tsx,
+// docs/goals/0006-trigger-aware-workflows-list.md): a hotkey binding
+// existing is necessary but not sufficient for "armed" (TriggerService's
+// Sync gate also needs the workflow published+enabled), so the row needs
+// to refetch TriggerService.ArmedWorkflows() once binding state actually
+// changes. NodeInspector.tsx's existing single-arg call is unaffected.
+export function useHotkeyCapture(workflowId: string | null, onChanged?: () => void) {
   const [binding, setBinding] = useState<string | null>(null)
   const [error, setError] = useState('')
   const [recording, setRecording] = useState(false)
@@ -55,17 +63,17 @@ export function useHotkeyCapture(workflowId: string | null) {
       setRecording(false)
       setError('')
       TriggerService.AssignHotkey(workflowId, mods, key)
-        .then((label) => setBinding(label))
+        .then((label) => { setBinding(label); onChanged?.() })
         .catch((err) => setError(String(err)))
     }
 
     window.addEventListener('keydown', onKeydown, true)
     return () => window.removeEventListener('keydown', onKeydown, true)
-  }, [recording, workflowId])
+  }, [recording, workflowId, onChanged])
 
   const clear = () => {
     if (!workflowId) return
-    TriggerService.UnassignHotkey(workflowId).then(() => setBinding(null))
+    TriggerService.UnassignHotkey(workflowId).then(() => { setBinding(null); onChanged?.() })
   }
 
   return {
