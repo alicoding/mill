@@ -36,6 +36,9 @@ live-review material, interleaved during owner reviews, not a lane.
 5. [ ] [0005 — Pending-attention model](0005-pending-attention-model.md) (research/design first — owns the park/resolve eventing)
 6. [ ] [0002 — Review queue maturation](0002-review-queue-maturation.md) (remainder: pending badge built on 0005's eventing; kind filter/polish)
 
+**Unscheduled (reorder into a group when prioritized)**
+7. [ ] [0011 — Lists maturation](0011-lists-maturation.md) (typed datasets + List Search per SPEC §3.2.2's reference review; evidence-gap research first)
+
 **Standing**
 - [ ] [0001 — Authoring-surface overhaul](0001-authoring-surface-overhaul.md) (spacing audit + §3.8 prototype elements — live-review material)
 
