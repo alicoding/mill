@@ -61,6 +61,8 @@ func textResult(text string) *mcp.CallToolResult {
 // read-only and ungated; import tools all pass through
 // requireWriteEnabled.
 func (m *MillMCPService) registerTools() {
+	m.registerAuthoringTools()
+
 	mcp.AddTool(m.server, &mcp.Tool{
 		Name:        "export_workflow",
 		Description: "Export one workflow's full definition as JSON (same shape as the UI's Export button). Read-only.",
@@ -121,6 +123,7 @@ func (m *MillMCPService) registerTools() {
 		if err != nil {
 			return nil, importToolResult{}, err
 		}
+		emitDataChanged("workflow", wf.ID)
 		return nil, importToolResult{ID: wf.ID, Label: wf.Label}, nil
 	})
 
@@ -140,6 +143,7 @@ func (m *MillMCPService) registerTools() {
 		if err != nil {
 			return nil, importToolResult{}, err
 		}
+		emitDataChanged("request", r.ID)
 		return nil, importToolResult{ID: r.ID, Label: r.Label}, nil
 	})
 
@@ -158,6 +162,7 @@ func (m *MillMCPService) registerTools() {
 		if err != nil {
 			return nil, importToolResult{}, err
 		}
+		emitDataChanged("list", l.ID)
 		return nil, importToolResult{ID: l.ID, Label: l.Label}, nil
 	})
 
@@ -176,6 +181,7 @@ func (m *MillMCPService) registerTools() {
 		if err != nil {
 			return nil, importToolResult{}, err
 		}
+		emitDataChanged("mcpserver", s.ID)
 		return nil, importToolResult{ID: s.ID, Label: s.Label}, nil
 	})
 }

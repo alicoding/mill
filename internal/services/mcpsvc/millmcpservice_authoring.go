@@ -1,0 +1,273 @@
+package mcpsvc
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+
+	"github.com/alicoding/mill/internal/domain/composition"
+	"github.com/alicoding/mill/internal/services/executionsvc"
+	"github.com/modelcontextprotocol/go-sdk/mcp"
+	"github.com/wailsapp/wails/v3/pkg/application"
+)
+
+// The LLM-authoring tool tier (docs/adr/0025): an external MCP client
+// (an LLM host like Claude Code) introspects, validates, mutates, and
+// runs Mill workflows over the same export/import JSON the UI's own
+// buttons use -- one document format, one protocol. Mill stays an MCP
+// SERVER throughout (§1.1: never itself an LLM client). Tier gating:
+// introspection/validation are read-only/pure and ungated; mutation
+// rides the existing write gate + per-write approval with a diff
+// summary; execution rides the write gate, with the guardrail engine
+// (docs/adr/0022) as its own approval layer -- external-effect steps
+// park in the human's Review queue regardless of who started the run.
+// resolve_approval is PERMANENTLY EXCLUDED by design, not omission: an
+// LLM approving its own guarded runs would collapse the guardrail.
+
+// DataChanged is the live-sync event (docs/adr/0025): emitted after
+// any MCP-driven mutation so an open Mill window refreshes what the
+// LLM just changed -- §1's what-you-see-is-what-I-see thesis running
+// in both directions.
+type DataChanged struct {
+	Entity string `json:"entity"`
+	ID     string `json:"id"`
+}
+
+// DataChangedEventName is registered by main.go (RegisterEvent) and
+// listened for in App.tsx.
+const DataChangedEventName = "mill-data-changed"
+
+func emitDataChanged(entity, id string) {
+	if app := application.Get(); app != nil {
+		app.Event.Emit(DataChangedEventName, DataChanged{Entity: entity, ID: id})
+	}
+}
+
+// SetExecutionService late-binds the execution service for the
+// list_runs/get_run/run_workflow tools -- same late-bound-setter shape
+// as SettingsService.SetMCPService, for the same construction-order
+// reason. mcpsvc is not a Wails-bound service, so no //wails:ignore is
+// needed.
+func (m *MillMCPService) SetExecutionService(e *executionsvc.ExecutionService) { m.exec = e }
+
+type idArgs struct {
+	ID string `json:"id" jsonschema:"the entity's ID"`
+}
+
+type updateWorkflowArgs struct {
+	ID   string `json:"id" jsonschema:"the workflow's ID (list mill://workflows to discover)"`
+	JSON string `json:"json" jsonschema:"the full workflow definition as exported-workflow JSON (same shape export_workflow returns) -- replaces the draft head; the previous draft is auto-snapshotted as a version first"`
+}
+
+type validateWorkflowArgs struct {
+	JSON string `json:"json" jsonschema:"a workflow definition as exported-workflow JSON to validate without saving anything"`
+}
+
+type runWorkflowArgs struct {
+	ID     string            `json:"id" jsonschema:"the workflow's ID"`
+	Values map[string]string `json:"values,omitempty" jsonschema:"optional starting Attribute values, keyed by attribute key"`
+}
+
+type runIDArgs struct {
+	RunID string `json:"runId" jsonschema:"a run's ID as returned by run_workflow or list_runs"`
+}
+
+func jsonResult(v any) (*mcp.CallToolResult, error) {
+	data, err := json.MarshalIndent(v, "", "  ")
+	if err != nil {
+		return nil, err
+	}
+	return textResult(string(data)), nil
+}
+
+// registerAuthoringTools wires the introspect/validate/mutate/run tier.
+// Called from registerTools alongside the export/import set.
+func (m *MillMCPService) registerAuthoringTools() {
+	// --- Introspection: read-only, ungated. ---
+	mcp.AddTool(m.server, &mcp.Tool{
+		Name:        "list_node_types",
+		Description: "The full node-type catalog an authored workflow composes from: ID, kind, label, description, effect class (none/read/local/external -- external steps require human approval by default), and each config field's key/type/options/reference kind. Read this before authoring; node type IDs and config keys must match it exactly.",
+	}, func(_ context.Context, _ *mcp.CallToolRequest, _ struct{}) (*mcp.CallToolResult, any, error) {
+		res, err := jsonResult(composition.NodeTypes())
+		return res, nil, err
+	})
+
+	mcp.AddTool(m.server, &mcp.Tool{
+		Name:        "list_runs",
+		Description: "Recent run history (durable, all workflows or one workflow when id is given): status, kind, output, pending-approval state. The inspect half of the author-run-inspect loop.",
+	}, func(_ context.Context, _ *mcp.CallToolRequest, in struct {
+		WorkflowID string `json:"workflowId,omitempty" jsonschema:"optional: only this workflow's runs"`
+	}) (*mcp.CallToolResult, any, error) {
+		if m.exec == nil {
+			return nil, nil, fmt.Errorf("execution service not wired")
+		}
+		var (
+			runs []executionsvc.RunSummary
+			err  error
+		)
+		if in.WorkflowID == "" {
+			runs, err = m.exec.ListRuns()
+		} else {
+			runs, err = m.exec.ListRunsForWorkflow(in.WorkflowID)
+		}
+		if err != nil {
+			return nil, nil, err
+		}
+		res, err := jsonResult(runs)
+		return res, nil, err
+	})
+
+	mcp.AddTool(m.server, &mcp.Tool{
+		Name:        "get_run",
+		Description: "One run's full per-step breakdown: each step's status, output, error, and recorded guardrail verdict. Use after run_workflow to see exactly what happened.",
+	}, func(_ context.Context, _ *mcp.CallToolRequest, in runIDArgs) (*mcp.CallToolResult, any, error) {
+		if m.exec == nil {
+			return nil, nil, fmt.Errorf("execution service not wired")
+		}
+		detail, err := m.exec.GetRun(in.RunID)
+		if err != nil {
+			return nil, nil, err
+		}
+		res, err := jsonResult(detail)
+		return res, nil, err
+	})
+
+	// --- Validation: pure, saves nothing, ungated. ---
+	mcp.AddTool(m.server, &mcp.Tool{
+		Name:        "validate_workflow",
+		Description: "Validate a workflow definition (exported-workflow JSON) without saving: node types resolved, graph rules checked (single root, Decision edge conditions compile, secret-output guardrail). Returns 'valid' or the exact error -- iterate here before update_workflow.",
+	}, func(_ context.Context, _ *mcp.CallToolRequest, in validateWorkflowArgs) (*mcp.CallToolResult, any, error) {
+		var def struct {
+			Label      string                     `json:"label"`
+			Nodes      []composition.Node         `json:"nodes"`
+			Edges      []composition.Edge         `json:"edges"`
+			Attributes []composition.AttributeDef `json:"attributes"`
+		}
+		if err := json.Unmarshal([]byte(in.JSON), &def); err != nil {
+			return textResult("invalid: not parseable as exported-workflow JSON: " + err.Error()), nil, nil
+		}
+		resolved, err := composition.ResolveNodeDefaults(def.Nodes)
+		if err != nil {
+			return textResult("invalid: " + err.Error()), nil, nil
+		}
+		if err := composition.ValidateGraph(resolved, def.Edges, def.Attributes); err != nil {
+			return textResult("invalid: " + err.Error()), nil, nil
+		}
+		return textResult("valid"), nil, nil
+	})
+
+	// --- Mutation: write gate + per-write approval with a diff summary.
+	//     The previous draft is ALWAYS snapshotted first (revertible via
+	//     the Versions tab / RestoreVersionToDraft). ---
+	mcp.AddTool(m.server, &mcp.Tool{
+		Name:        "update_workflow",
+		Description: "Replace a workflow's DRAFT definition with exported-workflow JSON. The current draft is auto-snapshotted as a version first, so the change is always revertible from the workflow's Versions tab. Never touches the published version (publish_workflow is the separate go-live act). Requires the MCP-writes toggle; each write asks the human in Mill's window unless they relaxed per-write approval.",
+	}, func(_ context.Context, _ *mcp.CallToolRequest, in updateWorkflowArgs) (*mcp.CallToolResult, any, error) {
+		if err := m.requireWriteEnabled(); err != nil {
+			return nil, nil, err
+		}
+		if err := m.awaitWriteApproval(m.updateDiffSummary(in.ID, in.JSON)); err != nil {
+			return nil, nil, err
+		}
+		if _, err := m.comp.SnapshotDraft(in.ID); err != nil {
+			return nil, nil, err
+		}
+		wf, err := m.comp.UpdateWorkflowFromExport(in.ID, in.JSON)
+		if err != nil {
+			return nil, nil, err
+		}
+		emitDataChanged("workflow", wf.ID)
+		return textResult(fmt.Sprintf("updated draft of %q (previous draft snapshotted as v%d)", wf.Label, len(wf.Versions))), nil, nil
+	})
+
+	mcp.AddTool(m.server, &mcp.Tool{
+		Name:        "publish_workflow",
+		Description: "Publish a workflow's current draft as the new live version (docs/adr/0021: triggers and child calls execute only the published snapshot). Requires the MCP-writes toggle + per-write approval.",
+	}, func(_ context.Context, _ *mcp.CallToolRequest, in idArgs) (*mcp.CallToolResult, any, error) {
+		if err := m.requireWriteEnabled(); err != nil {
+			return nil, nil, err
+		}
+		if err := m.awaitWriteApproval("An MCP client wants to PUBLISH workflow " + m.workflowLabel(in.ID) + " (its draft becomes the live version)"); err != nil {
+			return nil, nil, err
+		}
+		wf, err := m.comp.PublishWorkflow(in.ID)
+		if err != nil {
+			return nil, nil, err
+		}
+		emitDataChanged("workflow", wf.ID)
+		return textResult(fmt.Sprintf("published %q as v%d (live)", wf.Label, wf.PublishedVersion)), nil, nil
+	})
+
+	mcp.AddTool(m.server, &mcp.Tool{
+		Name:        "delete_workflow",
+		Description: "Delete a workflow entirely (definition, versions, hotkey binding). Requires the MCP-writes toggle + per-write approval.",
+	}, func(_ context.Context, _ *mcp.CallToolRequest, in idArgs) (*mcp.CallToolResult, any, error) {
+		if err := m.requireWriteEnabled(); err != nil {
+			return nil, nil, err
+		}
+		if err := m.awaitWriteApproval("An MCP client wants to DELETE workflow " + m.workflowLabel(in.ID)); err != nil {
+			return nil, nil, err
+		}
+		if err := m.comp.DeleteWorkflow(in.ID); err != nil {
+			return nil, nil, err
+		}
+		emitDataChanged("workflow", in.ID)
+		return textResult("deleted"), nil, nil
+	})
+
+	// --- Execution: behind the write gate (MCP may act on this
+	//     instance at all); the guardrail engine is the approval layer
+	//     for the run itself -- external-effect steps park in the
+	//     human's Review queue no matter who started the run. ---
+	mcp.AddTool(m.server, &mcp.Tool{
+		Name:        "run_workflow",
+		Description: "Run a workflow (test kind -- executes the draft head, same as the UI's Run button). External-effect steps (HTTP, MCP tool calls) pause in the human's Review queue for approval; the run may return still-pending. Use get_run to inspect the result. Requires the MCP-writes toggle.",
+	}, func(_ context.Context, _ *mcp.CallToolRequest, in runWorkflowArgs) (*mcp.CallToolResult, any, error) {
+		if err := m.requireWriteEnabled(); err != nil {
+			return nil, nil, err
+		}
+		if m.exec == nil {
+			return nil, nil, fmt.Errorf("execution service not wired")
+		}
+		summary, err := m.exec.RunWorkflow(in.ID, executionsvc.RunKindTest, in.Values)
+		if err != nil {
+			return nil, nil, err
+		}
+		emitDataChanged("run", summary.RunID)
+		res, err := jsonResult(summary)
+		return res, nil, err
+	})
+}
+
+// updateDiffSummary renders the approval banner's what-changes preview
+// for an update_workflow ask -- the PreToolUse-style preview applied to
+// authoring (docs/adr/0025): the human sees the shape of the change,
+// not just that "something" wants to write.
+func (m *MillMCPService) updateDiffSummary(id, jsonData string) string {
+	var next struct {
+		Label string             `json:"label"`
+		Nodes []composition.Node `json:"nodes"`
+		Edges []composition.Edge `json:"edges"`
+	}
+	_ = json.Unmarshal([]byte(jsonData), &next)
+	for _, wf := range m.comp.Workflows() {
+		if wf.ID == id {
+			s := fmt.Sprintf("An MCP client wants to UPDATE workflow %q: nodes %d→%d, edges %d→%d",
+				wf.Label, len(wf.Nodes), len(next.Nodes), len(wf.Edges), len(next.Edges))
+			if next.Label != "" && next.Label != wf.Label {
+				s += fmt.Sprintf(", rename to %q", next.Label)
+			}
+			return s + " (previous draft is snapshotted first)"
+		}
+	}
+	return "An MCP client wants to UPDATE workflow " + id
+}
+
+func (m *MillMCPService) workflowLabel(id string) string {
+	for _, wf := range m.comp.Workflows() {
+		if wf.ID == id {
+			return fmt.Sprintf("%q", wf.Label)
+		}
+	}
+	return id
+}
