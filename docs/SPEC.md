@@ -3184,6 +3184,60 @@ recorded as a real design input (`OPEN`), never silently dropped.
   (§3.7's own dual-process hazard); with the footer now showing the
   commit hash in every build shape, a stale window identifies itself.
 
+## 9.5 Platform kernel & extension contract
+
+**Prompted directly by the owner (2026-08-10): "how do we stabilize
+our platform core capabilities so that it enables us to bring in
+capability going forward."** Assessment recorded, not aspiration —
+each kernel piece below is called stable only because it has already
+absorbed multiple capability additions without structural change.
+
+**The kernel (stable, proven by reuse):** the graph engine
+(Node/Edge/ValidateGraph/ExecContext — one data migration ever); the
+extension registries + injected lookup seams (ADR-0006 — every new
+node type is one self-registered file); durable execution (ADR-0004/
+0008/0021 + the ADR-0026 boundary: DBOS supervises nothing alive);
+the guardrail engine (effect classes + the EffectForNode dynamic
+hook); **the Configure-entity recipe** (domain package + CRUD +
+top-up seeds/tombstones + ADR-0009 picker + export/import + MCP
+resource — stamped five times); the shared UI system (InventoryList,
+work-tab shell, pickers, enforced bounded-context folders); the
+proof infrastructure (layered coverage + seed-proof enforcement +
+the parallel e2e suite); and the MCP programmability plane
+(ADR-0025).
+
+**The extension contract — what a new functional capability brings,
+and what it inherits.** Brings: a self-registered `NodeType` (schema
++ exec + effect class + Output description); a Configure entity via
+the stamped recipe IF it references reusable configuration; a seeded
+example + a registered proof at the right layer (enforced by
+`seedproof_test.go` — a proofless capability is a red build); a
+same-change SPEC entry. Inherits for free: guardrail gating,
+durability/redrive/versioning, entity pickers + inventory UI +
+work-tabs, MCP exposure, authoring validation, and the test
+infrastructure. This inheritance list IS the working definition of
+"the core is stable."
+
+**Stabilization debt, ranked by what it blocks (the honest list):**
+1. **Canonical type system** — four field vocabularies exist
+   (`openapispec.Field`, `AttributeDef`, `decision.OutputField`,
+   `ConfigField`) plus string payloads; every reference review
+   demands convergence; §3.8's named versioned payload schemas is
+   the destination; goal 0011's typed List output will force it.
+   Goal 0013 — the next big platform investment.
+2. **Unified eventing** (park/resolve/data-changed are three ad-hoc
+   mechanisms) — goal 0005 owns the design; reframed as kernel work,
+   not a feature.
+3. **Run-evidence completeness** — record the resource
+   version/snapshot each execution saw (List rows, connector
+   config); intersects ADR-0026's intentional re-execution
+   principle.
+4. Smaller, real: registry substitution semantics (§3.6's documented
+   inconsistency — one decision); CI never compiles desktop build
+   tags (§11.2, standing); a stable local signing identity (§2.2 —
+   the Accessibility re-grant tax on every reinstall); Configure-
+   entity draft/live lifecycle (workflows have it; entities don't).
+
 ## 10. Open questions log
 
 - Decision as a reusable typed terminal outcome (§3.3/§3.5) —
