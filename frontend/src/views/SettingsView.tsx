@@ -3,7 +3,7 @@ import { Browser } from '@wailsio/runtime'
 import { Button, Checkbox, FormControl, Heading, Label, SegmentedControl, Stack, Text, useTheme } from '@primer/react'
 import { SunIcon, MoonIcon, DeviceDesktopIcon, KeyIcon } from '@primer/octicons-react'
 import { SettingsService } from '../shared/bindings'
-import { keyFromEventCode, modsFromEvent } from '../shared/keybinding'
+import { describeCombo, keyFromEventCode, modsFromEvent, reservedByMacOS } from '../shared/keybinding'
 import { isAccessibilityError, ACCESSIBILITY_SETTINGS_URL } from '../composition/hotkeyCapture'
 import styles from '../shared/ListCard.module.css'
 import PageContainer from '../shared/PageContainer'
@@ -62,8 +62,23 @@ function SettingsView() {
       .catch(console.error)
   }, [])
 
+  // Same menu-accelerator-suspension bracket as
+  // composition/hotkeyCapture.ts's useHotkeyCapture -- see its own
+  // comment for the full reasoning (a real, owner-hit bug: an
+  // app-menu-reserved combo pressed while a recorder was armed closed
+  // the window, since NSMenu's performKeyEquivalent: intercepts the
+  // keypress before this listener ever sees it). This is the third,
+  // independent recording surface (the other two share the hook);
+  // duplicated here rather than generalizing SettingsView onto
+  // useHotkeyCapture itself, since the summon hotkey isn't
+  // workflow-scoped (useHotkeyCapture is keyed by workflowId) and
+  // round-trips through SettingsService.AssignSummonHotkey, not
+  // TriggerService.AssignHotkey -- a real, different RPC, not just a
+  // different id.
   useEffect(() => {
     if (!summonRecording) return
+
+    SettingsService.SuspendMenuAccelerators().catch(console.error)
 
     const onKeydown = (e: KeyboardEvent) => {
       e.preventDefault()
@@ -76,15 +91,28 @@ function SettingsView() {
       const mods = modsFromEvent(e)
       if (mods.length === 0) return // require at least one modifier
 
+      const reserved = reservedByMacOS(mods, key)
+      if (reserved) {
+        setSummonRecording(false)
+        setSummonError(`${describeCombo(mods, key)} is reserved by macOS (${reserved}) — pick another combo`)
+        return
+      }
+
       setSummonRecording(false)
       setSummonError('')
       SettingsService.AssignSummonHotkey(mods, key)
         .then(setSummonBinding)
         .catch((err) => setSummonError(String(err)))
     }
+    const onBlur = () => setSummonRecording(false)
 
     window.addEventListener('keydown', onKeydown, true)
-    return () => window.removeEventListener('keydown', onKeydown, true)
+    window.addEventListener('blur', onBlur)
+    return () => {
+      window.removeEventListener('keydown', onKeydown, true)
+      window.removeEventListener('blur', onBlur)
+      SettingsService.RestoreMenuAccelerators().catch(console.error)
+    }
   }, [summonRecording])
 
   const toggleLaunchAtLogin = (enabled: boolean) => {
