@@ -44,10 +44,15 @@ become a question CI answers.
    registry — either named automated tests or an explicit
    manual-only entry with its documented reason. A new seed without
    a proof becomes a red build, not a wondering owner.
-9. [ ] Same enforcement for node types: every registered NodeType
-   must be exercised by at least one seeded workflow or carry a
-   registered exemption (with reason). Catches the next
-   list-lookup-shaped gap at registration time.
+9. [ ] Same enforcement for node types — **refined per the owner's
+   layered-coverage decision (testing.md's 2026-08-10 refinement:
+   don't force the seed pattern onto everything)**: every registered
+   NodeType must carry a proof at the RIGHT layer — a seeded
+   workflow where a runnable example is natural, OR a registered
+   entry naming its proof at another layer (unit/integration/
+   interaction-e2e) or its manual-only reason. Catches the next
+   list-lookup-shaped gap without contriving seeds for things a
+   different layer proves better.
 
 ## Acceptance
 The enforcement tests exist and pass; every current seed is either
