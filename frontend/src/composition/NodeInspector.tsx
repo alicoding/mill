@@ -13,6 +13,7 @@ import { ChildWorkflowBindingsEditor } from './ChildWorkflowBindingsEditor'
 import { WorkflowHoverPreview } from './WorkflowHoverPreview'
 import { NodeGuardrailSection } from './NodeGuardrailSection'
 import { RulesetEditor } from './RulesetEditor'
+import { SchedulePreview } from './SchedulePreview'
 import styles from './CompositionCanvas.module.css'
 import runbookStyles from '../shared/ListCard.module.css'
 
@@ -266,6 +267,10 @@ export function NodeInspector({ node, workflowId, attrs, nodeType, sameKindNodeT
 
       {workflowId && node.data.kind !== 'trigger' && node.data.kind !== 'decision' && (
         <NodeGuardrailSection workflowId={workflowId} nodeId={node.id} />
+      )}
+
+      {node.data.nodeTypeID === 'trigger-schedule' && (
+        <SchedulePreview cron={node.data.config.cron ?? ''} />
       )}
 
       {node.data.nodeTypeID === 'ruleset' && (
