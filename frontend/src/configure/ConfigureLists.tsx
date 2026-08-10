@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Button, FormControl, Heading, IconButton, Stack, Text, TextInput } from '@primer/react'
+import { Button, FormControl, Heading, IconButton, Label, Stack, Text, TextInput } from '@primer/react'
 import { DownloadIcon, ListUnorderedIcon, PlusIcon, TrashIcon, UploadIcon } from '@primer/octicons-react'
 import { DataTable } from '@primer/react/experimental'
 import { ResizableTableContainer } from '../shared/ResizableTable'
@@ -122,6 +122,10 @@ export function ConfigureLists() {
     entity: 'list',
     icon: ENTITY_ICON.list,
     label: l.Label,
+    // No !l.BuiltIn guard on Delete -- a seeded example is ordinary and
+    // fully editable/deletable (docs/SPEC.md §2.2's Update note), same
+    // as ConfigureRequests.tsx's identical badge.
+    labelBadges: l.BuiltIn ? <Label variant="secondary" size="small">built-in</Label> : undefined,
     description: `${Object.keys(l.Entries ?? {}).length} entries`,
     onOpen: () => startEdit(l),
     menuActions: [

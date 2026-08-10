@@ -8,6 +8,8 @@ import (
 	"github.com/alicoding/mill/internal/adapters/openapispec"
 	"github.com/alicoding/mill/internal/domain/composition"
 	"github.com/alicoding/mill/internal/domain/httprequest"
+	"github.com/alicoding/mill/internal/domain/list"
+	"github.com/alicoding/mill/internal/domain/mcpserver"
 	"github.com/alicoding/mill/internal/services/compositionsvc"
 	"github.com/alicoding/mill/internal/services/servicetest"
 )
@@ -285,5 +287,86 @@ func TestTopUpSeeding_AddsNewBuiltIns_ButNeverResurrectsDeletedOnes(t *testing.T
 	}
 	if !found {
 		t.Error("a built-in absent from an older persisted store was not topped up on restore")
+	}
+}
+
+// docs/goals/0010 items 4-5: Lists and MCP Servers had zero seeded
+// examples before this -- same fresh-install/tombstone-on-delete
+// discipline as httprequest.BuiltIn() above, proven for both new
+// entity types.
+
+func TestConfigureService_FreshInstall_SeedsBuiltInLists(t *testing.T) {
+	store := servicetest.NewFakeStore()
+	comp := compositionsvc.NewCompositionService(store)
+	cfg := NewConfigureService(store, comp, credential.New())
+
+	got := cfg.Lists()
+	want := list.BuiltIn()
+	if len(got) != len(want) {
+		t.Fatalf("Lists() on a fresh install = %d entries, want %d (list.BuiltIn())", len(got), len(want))
+	}
+	seen := map[string]bool{}
+	for _, l := range got {
+		seen[l.ID] = true
+	}
+	for _, l := range want {
+		if !seen[l.ID] {
+			t.Errorf("fresh-install Lists() missing built-in %q", l.ID)
+		}
+	}
+}
+
+func TestConfigureService_DeletingABuiltInList_DoesNotReturnOnRestart(t *testing.T) {
+	store := servicetest.NewFakeStore()
+	comp := compositionsvc.NewCompositionService(store)
+	cfg := NewConfigureService(store, comp, credential.New())
+
+	if err := cfg.DeleteList(list.ExampleCountryCodesID); err != nil {
+		t.Fatalf("DeleteList(%q) returned error: %v", list.ExampleCountryCodesID, err)
+	}
+
+	restarted := NewConfigureService(store, comp, credential.New())
+	for _, l := range restarted.Lists() {
+		if l.ID == list.ExampleCountryCodesID {
+			t.Fatalf("deleted built-in list %q reappeared after restart, want it to stay deleted", list.ExampleCountryCodesID)
+		}
+	}
+}
+
+func TestConfigureService_FreshInstall_SeedsBuiltInMCPServers(t *testing.T) {
+	store := servicetest.NewFakeStore()
+	comp := compositionsvc.NewCompositionService(store)
+	cfg := NewConfigureService(store, comp, credential.New())
+
+	got := cfg.MCPServers()
+	want := mcpserver.BuiltIn()
+	if len(got) != len(want) {
+		t.Fatalf("MCPServers() on a fresh install = %d entries, want %d (mcpserver.BuiltIn())", len(got), len(want))
+	}
+	seen := map[string]bool{}
+	for _, s := range got {
+		seen[s.ID] = true
+	}
+	for _, s := range want {
+		if !seen[s.ID] {
+			t.Errorf("fresh-install MCPServers() missing built-in %q", s.ID)
+		}
+	}
+}
+
+func TestConfigureService_DeletingABuiltInMCPServer_DoesNotReturnOnRestart(t *testing.T) {
+	store := servicetest.NewFakeStore()
+	comp := compositionsvc.NewCompositionService(store)
+	cfg := NewConfigureService(store, comp, credential.New())
+
+	if err := cfg.DeleteMCPServer(mcpserver.ExampleReferenceServerID); err != nil {
+		t.Fatalf("DeleteMCPServer(%q) returned error: %v", mcpserver.ExampleReferenceServerID, err)
+	}
+
+	restarted := NewConfigureService(store, comp, credential.New())
+	for _, s := range restarted.MCPServers() {
+		if s.ID == mcpserver.ExampleReferenceServerID {
+			t.Fatalf("deleted built-in MCP server %q reappeared after restart, want it to stay deleted", mcpserver.ExampleReferenceServerID)
+		}
 	}
 }

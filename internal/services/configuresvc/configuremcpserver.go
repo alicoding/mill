@@ -93,9 +93,17 @@ func (c *ConfigureService) DeleteMCPServer(id string) error {
 		c.mu.Unlock()
 		return fmt.Errorf("no MCP server with id %q", id)
 	}
+	wasBuiltIn := c.mcpServers[idx].BuiltIn
 	c.mcpServers = append(c.mcpServers[:idx], c.mcpServers[idx+1:]...)
 	c.mu.Unlock()
 
+	// A deleted built-in gets a tombstone so top-up seeding never
+	// resurrects it (topUpBuiltInMCPServers, configureservice_builtin.go)
+	// -- same discipline DeleteHTTPRequest/DeleteDecision/DeleteList
+	// already apply.
+	if wasBuiltIn {
+		seeding.RecordTombstone(c.store, id)
+	}
 	c.persistMCPServers()
 	return nil
 }

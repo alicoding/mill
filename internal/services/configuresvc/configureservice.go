@@ -78,6 +78,8 @@ func NewConfigureService(store settings.Store, comp *compositionsvc.CompositionS
 	c.restoreMCPServers()
 	c.restoreDecisions()
 	c.topUpBuiltInDecisions()
+	c.topUpBuiltInLists()
+	c.topUpBuiltInMCPServers()
 	composition.SetHTTPRequestLookup(c.resolveHTTPRequest)
 	composition.SetListLookup(c.resolveList)
 	composition.SetMCPServerLookup(c.resolveMCPServer)
@@ -159,9 +161,16 @@ func (c *ConfigureService) DeleteList(id string) error {
 		c.mu.Unlock()
 		return fmt.Errorf("no list with id %q", id)
 	}
+	wasBuiltIn := c.lists[idx].BuiltIn
 	c.lists = append(c.lists[:idx], c.lists[idx+1:]...)
 	c.mu.Unlock()
 
+	// A deleted built-in gets a tombstone so top-up seeding never
+	// resurrects it (topUpBuiltInLists, configureservice_builtin.go) --
+	// same discipline DeleteHTTPRequest/DeleteDecision already apply.
+	if wasBuiltIn {
+		seeding.RecordTombstone(c.store, id)
+	}
 	c.persistLists()
 	return nil
 }

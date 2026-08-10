@@ -4,6 +4,8 @@ import (
 	"github.com/alicoding/mill/internal/domain/composition"
 	"github.com/alicoding/mill/internal/domain/decision"
 	"github.com/alicoding/mill/internal/domain/httprequest"
+	"github.com/alicoding/mill/internal/domain/list"
+	"github.com/alicoding/mill/internal/domain/mcpserver"
 	"github.com/alicoding/mill/internal/services/seeding"
 )
 
@@ -115,5 +117,55 @@ func (c *ConfigureService) topUpBuiltInDecisions() {
 	c.mu.Unlock()
 	if added {
 		c.persistDecisions()
+	}
+}
+
+// topUpBuiltInLists mirrors topUpBuiltInDecisions for the seeded example
+// Lists (docs/goals/0010 item 4): any built-in whose ID is neither
+// present nor tombstoned is appended, so a newly shipped example
+// reaches existing instances too. A List carries no secret, same
+// "simpler than the HTTPRequest version" reasoning topUpBuiltInDecisions
+// already gives.
+func (c *ConfigureService) topUpBuiltInLists() {
+	tombstones := seeding.LoadTombstones(c.store)
+	c.mu.Lock()
+	have := make(map[string]bool, len(c.lists))
+	for _, l := range c.lists {
+		have[l.ID] = true
+	}
+	added := false
+	for _, l := range list.BuiltIn() {
+		if !have[l.ID] && !tombstones[l.ID] {
+			c.lists = append(c.lists, l)
+			added = true
+		}
+	}
+	c.mu.Unlock()
+	if added {
+		c.persistLists()
+	}
+}
+
+// topUpBuiltInMCPServers mirrors topUpBuiltInLists for the seeded
+// example MCP Servers (docs/goals/0010 item 5): any built-in whose ID
+// is neither present nor tombstoned is appended, so a newly shipped
+// example reaches existing instances too.
+func (c *ConfigureService) topUpBuiltInMCPServers() {
+	tombstones := seeding.LoadTombstones(c.store)
+	c.mu.Lock()
+	have := make(map[string]bool, len(c.mcpServers))
+	for _, s := range c.mcpServers {
+		have[s.ID] = true
+	}
+	added := false
+	for _, s := range mcpserver.BuiltIn() {
+		if !have[s.ID] && !tombstones[s.ID] {
+			c.mcpServers = append(c.mcpServers, s)
+			added = true
+		}
+	}
+	c.mu.Unlock()
+	if added {
+		c.persistMCPServers()
 	}
 }
