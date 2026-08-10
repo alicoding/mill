@@ -11,12 +11,13 @@ crossing the no-Camunda line (no assignment/SLA/notes).
    the same park event after resolution; Review shows the last 10
    with approved/denied/timed-out labels (delivered 2026-08-10,
    e2e-covered: deny → resolved section → filter).
-3. [ ] Pending-count signal on the sidebar Review entry — needs an
-   app-level poll or a Go→JS event on park/resolve; the event is the
-   right shape (emit alongside SetEvent in parkForApproval), decide
-   there rather than polling. (Goal 0005 flags this same event as
-   plausibly shared with the pending-attention model — check there
-   before building it twice.)
+3. [ ] Pending-count sidebar badge — RESOLVED by 0005's research to
+   be the SAME build as 0005's unified event, not a separate one:
+   add `Emit("guardrail-pending-changed", {RunID,NodeID,Resolved})` at
+   the four existing SetEvent sites in executionservice_guardrail.go;
+   sidebar consumes it the way App.tsx consumes mill-data-changed,
+   count summed with the existing mcp-write-approval channel. No
+   polling. Build with/after 0005 item's event, never twice.
 4. [ ] Kind filter + empty/loading polish per the overhaul's spacing
    standards.
 5. [x] Row drill-down (delivered 2026-08-10): every Review row opens
