@@ -187,6 +187,23 @@ test('A node dropped onto an occupied spot lands clear of it, not stacked', asyn
   expect(overlaps).toBe(false)
 })
 
+test('A canvas node card never clips its own handles/badges (no card-level overflow:hidden)', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Workflows' }).click()
+  await page.getByTestId('new-workflow').click()
+
+  // Real, owner-reported visual bug: .canvasNode carried overflow:hidden
+  // (from the uniform-card restyle), which shaved the React Flow Handles
+  // rendered inside it to half-moon slivers at the card edges -- and
+  // silently also clipped the guardrail badge's -6px and the run-status
+  // tag's -8px offsets. The checkable property is the computed overflow
+  // itself: the card must not clip (its text lines each carry their own
+  // ellipsis, so nothing needs a card-level clip).
+  const card = activePanel(page).locator('[class*="canvasNode"][data-run-status], [class*="canvasNode"]').first()
+  await expect(card).toBeVisible()
+  await expect(card).toHaveCSS('overflow', 'visible')
+})
+
 test('A disabled Trigger palette entry never picks up the enabled hover background', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Workflows' }).click()
