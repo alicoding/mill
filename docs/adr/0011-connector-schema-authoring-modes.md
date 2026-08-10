@@ -21,8 +21,8 @@ schema-authoring path is pasting a complete, valid OpenAPI 3.x
 document by hand — powerful (the only format expressing HTTP
 placement, ADR-0007's own reasoning for adopting it) but a real
 authoring-cost cliff for someone who just wants to define a couple of
-fields. The user named [decisioning-vendor]'s own CSV/JSON/manual-editor modes as
-the reference shape to match.
+fields. The user named the reference platform's own CSV/JSON/manual-editor
+modes as the shape to match.
 
 A follow-up round of questions resolved three more specifics, directly
 from the user, not inferred:

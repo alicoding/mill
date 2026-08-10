@@ -58,9 +58,9 @@ again.
   execution quota; a "save manual executions" setting controls whether
   they're retained), not a second engine or a different capability set.
   ([docs.n8n.io](https://docs.n8n.io/workflows/executions/manual-partial-and-production-executions/))
-- **[decisioning-vendor]** (the reference no-code decisioning platform named
-  generically elsewhere in this doc per its own standing no-vendor-names
-  rule, named directly by the user in this discussion): offers a "test
+- **The reference no-code decisioning platform** (kept generic per the
+  standing no-vendor-names rule; the user works with it directly and
+  relayed its behavior first-hand): offers a "test
   run" within a workflow — draft or already-live — that takes a payload
   and runs it through the real engine, but is explicitly excluded from
   counting as a real triggered event. This is the same "one engine,
@@ -69,7 +69,7 @@ again.
   §3.2's own already-`OPEN` "per-record test harness" line ("lets you
   test one record via a Form or raw JSON before trusting a full run")
   as a real, converged pattern rather than a one-off idea.
-- [decisioning-vendor]'s test-run payload is **auto-generated from the workflow's own
+- The reference platform's test-run payload is **auto-generated from the workflow's own
   declared schema**, not manually typed by default — you get a filled
   form you can submit as-is, or edit specific fields before submitting.
   Checked against Mill's own code: this is *already built*, just scoped
@@ -180,7 +180,7 @@ Attribute-binding for input), not an execution-mode branch.
   capability added from here on repeats the same fork-or-shadow-
   implement choice Child Workflow just hit.
 - **Keep the plain path for canvas authoring speed, add DBOS only for
-  "real" runs.** Rejected on the evidence gathered: n8n and [decisioning-vendor] both
+  "real" runs.** Rejected on the evidence gathered: n8n and the reference platform both
   converge on one engine with runs classified after the fact, not two
   engines split by intent — and Mill's own plain path was never actually
   faster in a way that's been measured, just assumed. See Consequences
