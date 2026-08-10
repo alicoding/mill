@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Button, IconButton, Label, type LabelProps, Select, Stack, Text } from '@primer/react'
 import { DataTable, type Column } from '@primer/react/experimental'
 import { CheckCircleIcon, XCircleIcon, ClockIcon, XIcon, ShieldIcon, ShieldXIcon } from '@primer/octicons-react'
@@ -63,6 +63,11 @@ interface WorkflowRunsPanelProps {
 function WorkflowRunsPanel({ workflowId, initialRunId, onInitialRunConsumed }: WorkflowRunsPanelProps) {
   const [runs, setRuns] = useState<RunSummary[] | null>(null)
   const [selectedRunID, setSelectedRunID] = useState<string | null>(null)
+  // Scrolls the detail card into view when a row is picked -- the card
+  // renders below the table, and with enough runs it can sit fully
+  // off-screen, which compounded the "clicking View did nothing"
+  // report the selected-state fix (the action column) addresses.
+  const detailRef = useRef<HTMLDivElement | null>(null)
   const [detail, setDetail] = useState<RunDetail | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -85,6 +90,13 @@ function WorkflowRunsPanel({ workflowId, initialRunId, onInitialRunConsumed }: W
     onInitialRunConsumed?.()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialRunId])
+
+  useEffect(() => {
+    if (!selectedRunID) return
+    // After the detail fetch lands and the card mounts/re-renders.
+    const t = setTimeout(() => detailRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 150)
+    return () => clearTimeout(t)
+  }, [selectedRunID])
 
   useEffect(() => {
     if (!selectedRunID) {
@@ -149,10 +161,21 @@ function WorkflowRunsPanel({ workflowId, initialRunId, onInitialRunConsumed }: W
       header: 'Status',
       field: 'status',
       sortBy: 'alphanumeric',
-      renderCell: (run) => run.pending ? (
-        <Label variant="attention" size="small" data-testid="run-awaiting-approval">awaiting approval</Label>
-      ) : (
-        <Label variant={STATUS_VARIANT[run.status] ?? 'secondary'} size="small">{run.status}</Label>
+      // The data-run-id/data-selected span is the row's identity anchor
+      // for BOTH halves of whole-row clicking (owner's model: "always
+      // able to click the row to view, without a separate button"):
+      // the container's delegated onClick climbs from the clicked cell
+      // to the row and reads this span's id (survives DataTable
+      // sorting, unlike index math), and the CSS row highlight targets
+      // tr:has([data-selected='true']) (ListCard.module.css).
+      renderCell: (run) => (
+        <span data-run-id={run.runID} data-selected={selectedRunID === run.runID}>
+          {run.pending ? (
+            <Label variant="attention" size="small" data-testid="run-awaiting-approval">awaiting approval</Label>
+          ) : (
+            <Label variant={STATUS_VARIANT[run.status] ?? 'secondary'} size="small">{run.status}</Label>
+          )}
+        </span>
       ),
     },
     {
@@ -168,14 +191,6 @@ function WorkflowRunsPanel({ workflowId, initialRunId, onInitialRunConsumed }: W
       field: 'startedAt',
       sortBy: 'datetime',
       renderCell: (run) => <Text size="small" className={styles.muted}>{formatRunStartedAt(run.startedAt)}</Text>,
-    },
-    {
-      id: 'action',
-      header: '',
-      width: '96px',
-      renderCell: (run) => (
-        <Button size="small" onClick={() => setSelectedRunID(run.runID)}>View</Button>
-      ),
     },
   ]
 
@@ -202,15 +217,38 @@ function WorkflowRunsPanel({ workflowId, initialRunId, onInitialRunConsumed }: W
       )}
 
       {runs !== null && runs.length > 0 && (
-        <DataTable data={rows} columns={columns} cellPadding="condensed" getRowId={(run) => run.id} />
+        // Whole-row click opens the run (owner's model — no separate
+        // View button; matches Review's rows, the inventory rows, and
+        // the reference platform's name-as-link pattern). Primer's
+        // DataTable has no native onRowClick (checked its .d.ts), so
+        // this is a delegated handler: climb from the clicked cell to
+        // its row, read the identity anchor the status cell renders.
+        <div
+          className={styles.clickableRunsTable}
+          data-testid="runs-table"
+          onClick={(e) => {
+            const row = (e.target as HTMLElement).closest('tr')
+            const anchor = row?.querySelector('[data-run-id]')
+            const id = anchor?.getAttribute('data-run-id')
+            if (id) setSelectedRunID(id)
+          }}
+        >
+          <DataTable data={rows} columns={columns} cellPadding="condensed" getRowId={(run) => run.id} />
+        </div>
       )}
 
       {detail && (
-        <div className={styles.card} data-testid="run-detail" style={{ marginTop: 'var(--base-size-16)' }}>
+        <div ref={detailRef} className={styles.card} data-testid="run-detail" style={{ marginTop: 'var(--base-size-16)' }}>
           <Stack direction="horizontal" justify="space-between" align="center">
-            <Text weight="semibold">
+            <Stack direction="horizontal" gap="condensed" align="center">
               <Label variant={STATUS_VARIANT[detail.status] ?? 'secondary'} size="small">{detail.status}</Label>
-            </Text>
+              {/* The run's own identity, so two identical-outcome runs
+                  are still tellable apart in the detail header -- the
+                  other half of the selected-row fix above. */}
+              <Text size="small" weight="semibold" data-testid="run-detail-identity">
+                Run · {formatRunStartedAt(detail.startedAt)}
+              </Text>
+            </Stack>
             <IconButton icon={XIcon} aria-label="Close" size="small" variant="invisible" onClick={() => setSelectedRunID(null)} />
           </Stack>
           {detail.error && <Text as="p" className={styles.error}>{detail.error}</Text>}

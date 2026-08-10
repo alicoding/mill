@@ -93,7 +93,7 @@ test('Viewing a run on its workflow Runs tab shows the per-step breakdown', asyn
 
   const runsPanel = page.getByTestId('workflow-runs-panel')
   await expect(runsPanel.locator('table').getByText(/^(SUCCESS|ERROR)$/).first()).toBeVisible({ timeout: 15_000 })
-  await runsPanel.getByRole('button', { name: 'View' }).first().click()
+  await runsPanel.getByTestId('runs-table').locator('tbody tr').first().click()
 
   const detail = page.getByTestId('run-detail')
   await expect(detail).toBeVisible()

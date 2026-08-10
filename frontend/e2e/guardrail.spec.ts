@@ -21,8 +21,14 @@ test('Running the guarded seed parks awaiting approval; deny fails it closed', a
   await page.getByRole('tab', { name: 'Runs' }).click()
   await expect(page.getByTestId('run-awaiting-approval').first()).toBeVisible({ timeout: 10_000 })
 
-  // Open the parked run: the banner names exactly what wants to run.
-  await page.getByRole('button', { name: 'View' }).first().click()
+  // Open the parked run by clicking its ROW (owner's model: the row IS
+  // the View affordance, no separate button). Selection feedback
+  // (owner-reported: identical-outcome runs made a click look like a
+  // no-op): the clicked row highlights via its data-selected anchor,
+  // and the detail header carries the run's own timestamp identity.
+  await page.getByTestId('runs-table').locator('tbody tr').first().click()
+  await expect(page.getByTestId('runs-table').locator('[data-selected="true"]')).toHaveCount(1)
+  await expect(page.getByTestId('run-detail-identity')).toContainText('Run ·')
   const banner = page.getByTestId('approval-banner')
   await expect(banner).toBeVisible()
   await expect(banner).toContainText('Integration: HTTP call')
@@ -81,7 +87,7 @@ test('Review queue: a parked human-review run accepts typed input and resumes wi
   await page.getByRole('link', { name: 'Workflows' }).click()
   await row.click()
   await page.getByRole('tab', { name: 'Runs' }).click()
-  await page.getByRole('button', { name: 'View' }).first().click()
+  await page.getByTestId('runs-table').locator('tbody tr').first().click()
   await expect(page.getByTestId('run-detail')).toContainText('e2e reviewer note', { timeout: 10_000 })
 })
 
