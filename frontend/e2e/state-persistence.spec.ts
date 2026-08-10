@@ -91,3 +91,12 @@ test('Activity source/outcome filter selections write through to localStorage', 
   await page.getByLabel('Filter by source').selectOption('all')
   await page.getByLabel('Filter by outcome').selectOption('all')
 })
+
+// Build-identity badge (docs/SPEC.md §3.8): the e2e server binary and
+// the bundle it serves are built from the same commit, so the STALE
+// badge must be absent -- its presence here would mean the comparison
+// mechanism itself is broken (a false stale alarm).
+test('No stale-build badge when bundle and binary come from the same commit', async ({ page }) => {
+  await page.goto('/')
+  await expect(page.getByTestId('stale-build-badge')).toHaveCount(0)
+})

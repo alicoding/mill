@@ -79,6 +79,8 @@ function App() {
   // ribbon only fires for a live `vite serve`, never for any `go build`
   // output, dev or not).
   const [buildInfo, setBuildInfo] = useState<BuildInfo | null>(null);
+  const binaryHead = buildInfo?.Revision ? buildInfo.Revision.slice(0, 7) : "";
+  const buildStale = Boolean(binaryHead && __MILL_REPO_HEAD__ && binaryHead !== __MILL_REPO_HEAD__);
   const workflows = useAppStore((s) => s.workflows);
   const pushActivity = useAppStore((s) => s.pushActivity);
   const setCapabilities = useAppStore((s) => s.setCapabilities);
@@ -92,7 +94,6 @@ function App() {
   // reliably clean up the old listener across repeated hot-swaps of this
   // module, leaving stray listeners firing on unrelated updates. Not
   // worth chasing further for a dev-convenience ribbon -- see SPEC.md.
-  const [loadedAt] = useState(() => new Date().toLocaleTimeString());
 
   // Per-view hotkeys (task #9, docs/SPEC.md §3.7) -- Cmd+1 through
   // Cmd+4 jump straight to a top-level view, matching the sidebar's own
@@ -252,9 +253,20 @@ function App() {
 
   return (
     <div className={`app-shell${IS_NATIVE_WEBVIEW ? ' app-shell--native-titlebar' : ''}`}>
-      {isDevBuild && (
-        <Label variant="severe" size="small" className={styles.devRibbon}>
-          DEV · loaded {loadedAt}
+      {/* Build-identity badge (asked for directly: the old load-time
+          clock answered nothing about WHICH build is running). The
+          bundle knows the repo HEAD it was compiled from; the binary
+          reports its own build commit -- a mismatch means an orphaned
+          stale binary is answering the RPCs behind a fresh bundle
+          (docs/SPEC.md §3.8's staleness class), shown loud regardless
+          of dev/prod. Matching dev builds show the hash quietly. */}
+      {buildStale ? (
+        <Label variant="danger" size="small" className={styles.devRibbon} data-testid="stale-build-badge">
+          STALE BUILD · app {binaryHead} ≠ repo {__MILL_REPO_HEAD__} — restart task dev
+        </Label>
+      ) : isDevBuild && (
+        <Label variant="severe" size="small" className={styles.devRibbon} data-testid="dev-build-badge">
+          DEV{binaryHead ? ` · ${binaryHead}` : ''}
         </Label>
       )}
       {isIsolatedData && (
