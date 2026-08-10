@@ -197,3 +197,23 @@ zsh + clean + Mill-created temp dir + minimal PATH.
 3. ADR-0023's global-vs-workflow guardrail question → both, via rule
    scopes (env-scope added).
 4. Windows execution: explicit non-goal for this capability.
+
+## Implementation postscript (goal 0004, delivered 2026-08-10)
+
+Built: `internal/adapters/procexec` (the supervisor — Setpgid group
+spawn, one SIGTERM→grace→SIGKILL kill path, four outcomes, real-process
+tests), `internal/domain/execenv` (ExecEnv entity, seeded Safe sandbox,
+clean/login profile flags verified against man pages), `codeexec.go`
+(the ClassExternal node), `ExecutionService`'s live-Handle registry +
+`CancelRun` RPC + Runs-tab Stop button (kills the group AND
+CancelWorkflow; distinct `cancelled` status), Configure → Environments
+tab + `execenv` picker, `mill://execenvs` MCP resource, and the seeded
+"Example: Run copied code" with approve/deny/cancel Go tests.
+
+Deferred (named here, not silently dropped): durable pre-spawn pgid
+recording + startup orphan-reaping (amendment #3); crash-mid-step
+interrupt-parking — a crash currently re-executes on DBOS replay
+(amendment #4, the highest-value remaining item); idle-timeout UI +
+last-output-at liveness surfacing (#1/#2); per-workflow concurrency
+guard (#6); the "split into steps" authoring affordance; and the
+`import_execenv` MCP write tool.
