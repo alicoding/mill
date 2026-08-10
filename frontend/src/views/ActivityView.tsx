@@ -11,11 +11,13 @@ import PageContainer from '../shared/PageContainer'
 const SOURCE_LABEL: Record<ActivitySource, string> = {
   trigger: 'Trigger',
   composition: 'Manual run',
+  'mcp-write': 'MCP write',
 }
 
 const SOURCE_VARIANT: Record<ActivitySource, LabelProps['variant']> = {
   trigger: 'severe',
   composition: 'success',
+  'mcp-write': 'attention',
 }
 
 type OutcomeFilter = 'all' | 'success' | 'failed'
@@ -198,6 +200,7 @@ function ActivityView() {
             <Select.Option value="all">All sources</Select.Option>
             <Select.Option value="trigger">Trigger</Select.Option>
             <Select.Option value="composition">Manual run</Select.Option>
+            <Select.Option value="mcp-write">MCP write</Select.Option>
           </Select>
           <Select value={outcomeFilter} onChange={(e) => setOutcomeFilter(e.target.value as OutcomeFilter)} aria-label="Filter by outcome">
             <Select.Option value="all">All outcomes</Select.Option>

@@ -7,6 +7,9 @@ import type { Events } from "@wailsio/runtime";
 
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
+import type * as executionsvc$0 from "../../../../alicoding/mill/internal/services/executionsvc/models.js";
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: Unused imports
 import type * as mcpsvc$0 from "../../../../alicoding/mill/internal/services/mcpsvc/models.js";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
@@ -15,7 +18,9 @@ import type * as triggersvc$0 from "../../../../alicoding/mill/internal/services
 declare module "@wailsio/runtime" {
     namespace Events {
         interface CustomEvents {
+            "guardrail-pending-changed": executionsvc$0.GuardrailPendingChanged;
             "hotkey-activity": triggersvc$0.HotkeyActivity;
+            "mcp-write-activity": mcpsvc$0.MCPWriteActivity;
             "mcp-write-approval": mcpsvc$0.MCPWriteRequest;
             "mill-data-changed": mcpsvc$0.DataChanged;
             "time": string;

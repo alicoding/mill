@@ -52,7 +52,9 @@ func init() {
 	application.RegisterEvent[string]("time")
 	application.RegisterEvent[triggersvc.HotkeyActivity]("hotkey-activity")
 	application.RegisterEvent[mcpsvc.MCPWriteRequest]("mcp-write-approval")
+	application.RegisterEvent[mcpsvc.MCPWriteActivity]("mcp-write-activity")
 	application.RegisterEvent[mcpsvc.DataChanged](mcpsvc.DataChangedEventName)
+	application.RegisterEvent[executionsvc.GuardrailPendingChanged]("guardrail-pending-changed")
 }
 
 // main function serves as the application's entry point. It initializes the application, creates a window,

@@ -185,6 +185,35 @@ test('Review row drill-down: clicking a pending row opens its run too', async ({
   await expect(detail).toContainText('denied by user', { timeout: 10_000 })
 })
 
+// Sidebar Review pending-count badge (docs/goals/0002 item 3, unified
+// with 0005's guardrail-pending-changed event): the ONE Go-emitted
+// event, refetched on receipt (never trusted as the source of truth --
+// docs/goals/0005-pending-attention-model.md's own precedent). Runs
+// after every other test in this file, each of which denies/resolves
+// its own run to zero pending -- the badge should read zero (hidden)
+// before this test's own Run click.
+test('Sidebar Review badge shows a pending count while the guarded seed is parked, and drops after deny', async ({ page }) => {
+  await page.goto('/')
+  await expect(page.getByTestId('review-pending-count')).toHaveCount(0)
+
+  const row = page.locator('[data-testid="inventory-row"][data-entity="workflow"]').filter({ has: page.getByText(GUARDED, { exact: true }) })
+  await row.getByRole('button', { name: 'Run' }).click()
+
+  const badge = page.getByTestId('review-pending-count')
+  await expect(badge).toBeVisible({ timeout: 10_000 })
+  await expect(badge).toHaveText('1')
+
+  await page.getByRole('link', { name: 'Review' }).click()
+  const item = page.getByTestId('review-item').filter({ hasText: GUARDED }).first()
+  await expect(item).toBeVisible({ timeout: 10_000 })
+  await item.getByTestId('review-deny').click()
+  await expect(page.getByTestId('review-item').filter({ hasText: GUARDED })).toHaveCount(0, { timeout: 10_000 })
+
+  // Event-driven refetch, not a poll: the badge disappears (count back
+  // to 0) once guardrail-pending-changed fires the resolved event.
+  await expect(page.getByTestId('review-pending-count')).toHaveCount(0, { timeout: 10_000 })
+})
+
 test('Review row drill-down: pending-row Approve/Deny still resolve in place, without navigating', async ({ page }) => {
   await page.goto('/')
   const row = page.locator('[data-testid="inventory-row"][data-entity="workflow"]').filter({ has: page.getByText(GUARDED, { exact: true }) })

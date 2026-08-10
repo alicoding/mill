@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import {Events, WML} from "@wailsio/runtime";
-import {IconButton, Label, NavList, PageLayout, Text, useTheme} from "@primer/react";
+import {CounterLabel, IconButton, Label, NavList, PageLayout, Text, useTheme} from "@primer/react";
 import {DotFillIcon, GearIcon, SidebarCollapseIcon, SidebarExpandIcon} from "@primer/octicons-react";
 import ActivityView from "../views/ActivityView";
 import ReviewView from "../views/ReviewView";
@@ -8,7 +8,7 @@ import CompositionView from "../composition/CompositionView";
 import ConfigureView from "../configure/ConfigureView";
 import SettingsView from "../views/SettingsView";
 import PlaceholderView from "../views/PlaceholderView";
-import { CapabilitiesService, SettingsService } from '../shared/bindings'
+import { CapabilitiesService, ExecutionService, SettingsService } from '../shared/bindings'
 import type { BuildInfo } from '../shared/bindings'
 import { refreshNodeTypes, refreshRequests, refreshWorkflows, useAppStore, viewFor, viewsEqual, statusDotColor } from "../shared/store";
 import type { View } from "../shared/store";
@@ -268,6 +268,49 @@ function App() {
     });
   }, [pushActivity, workflows]);
 
+  // A missed (timed-out) or denied MCP write is no longer traceless
+  // (docs/goals/0005-pending-attention-model.md item 3): pushed into
+  // the same Activity feed under the 'mcp-write' source, same push
+  // shape as the hotkey-activity handler above -- no workflowID/binding
+  // of its own, just what was denied/missed and why.
+  useEffect(() => {
+    return Events.On('mcp-write-activity', (evt) => {
+      pushActivity({
+        id: crypto.randomUUID(),
+        time: new Date().toLocaleTimeString(),
+        timestamp: Date.now(),
+        source: 'mcp-write',
+        workflowID: '',
+        label: evt.data.description,
+        success: false,
+        detail: evt.data.outcome,
+        result: '',
+      });
+    });
+  }, [pushActivity]);
+
+  // Review sidebar pending-count badge (docs/goals/0002 item 3, folded
+  // into 0005's unified event research): guardrail parks/resolves and
+  // MCP write requests are the two pending-attention sources; count =
+  // guardrail-pending + mcp-write-pending, refetched on their own event
+  // rather than polled. The count itself is derived from ListRuns
+  // (the same RPC ReviewView already filters on r.pending) and
+  // PendingMCPWrites (MCPWriteApprovals' own RPC) -- no new backend
+  // surface needed for a number that already exists two ways.
+  const [reviewPendingCount, setReviewPendingCount] = useState(0);
+  useEffect(() => {
+    const refresh = () => {
+      Promise.all([
+        ExecutionService.ListRuns().then((runs) => (runs ?? []).filter((r) => r.pending).length).catch(() => 0),
+        SettingsService.PendingMCPWrites().then((p) => (p ?? []).length).catch(() => 0),
+      ]).then(([guardrailPending, mcpPending]) => setReviewPendingCount(guardrailPending + mcpPending));
+    };
+    refresh();
+    const offGuardrail = Events.On('guardrail-pending-changed', refresh);
+    const offMCP = Events.On('mcp-write-approval', refresh);
+    return () => { offGuardrail(); offMCP(); };
+  }, []);
+
   return (
     <div className={`app-shell${IS_NATIVE_WEBVIEW ? ' app-shell--native-titlebar' : ''}`}>
       {/* Build-identity badge (asked for directly: the old load-time
@@ -359,6 +402,14 @@ function App() {
                     {sidebarOpen && label}
                     {sidebarOpen && (
                       <NavList.TrailingVisual>
+                        {c.ID === 'capability-review' && reviewPendingCount > 0 && (
+                          <CounterLabel
+                            data-testid="review-pending-count"
+                            aria-label={`${reviewPendingCount} pending in Review`}
+                          >
+                            {reviewPendingCount}
+                          </CounterLabel>
+                        )}
                         <span title={c.Status} className={styles.statusDot}>
                           <DotFillIcon
                             size={12}

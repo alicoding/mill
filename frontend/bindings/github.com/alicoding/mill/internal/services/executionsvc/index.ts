@@ -11,6 +11,7 @@ export {
 } from "./models.js";
 
 export type {
+    GuardrailPendingChanged,
     PendingApproval,
     RunDetail,
     RunStep,
