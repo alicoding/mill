@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Button, FormControl, Heading, IconButton, Stack, Text, TextInput } from '@primer/react'
 import { DownloadIcon, PlusIcon, TrashIcon, UploadIcon } from '@primer/octicons-react'
 import { DataTable } from '@primer/react/experimental'
-import { ResizableTableContainer } from '../shared/ResizableTable'
+import { ResizableTableContainer, TruncatedCell } from '../shared/ResizableTable'
 import { ConfigureService } from '../../bindings/github.com/alicoding/mill'
 import type { MCPServer } from '../../bindings/github.com/alicoding/mill/internal/domain/mcpserver/models'
 import type { Tool } from '../../bindings/github.com/alicoding/mill/internal/adapters/mcpclient/models'
@@ -180,13 +180,13 @@ export function ConfigureMCPServers() {
         <Text as="p" className={styles.muted}>No MCP servers yet.</Text>
       )}
       {servers !== null && viewMode === 'table' && servers.length > 0 && (
-        <ResizableTableContainer>
+        <ResizableTableContainer storageKey="mill-cols-mcpservers">
           <DataTable
             aria-labelledby="mcpservers-heading"
             data={servers.map((s) => ({ ...s, id: s.ID }))}
             columns={[
               { header: 'Label', field: 'Label', rowHeader: true, sortBy: 'alphanumeric' },
-              { header: 'Command', id: 'command', renderCell: (s) => `${s.Command} ${(s.Args ?? []).join(' ')}`.trim() },
+              { header: 'Command', id: 'command', width: 'growCollapse', minWidth: '160px', renderCell: (s) => <TruncatedCell text={`${s.Command} ${(s.Args ?? []).join(' ')}`.trim()} /> },
               { header: 'ID', field: 'ID' },
               {
                 header: '', id: 'actions', width: 'auto', align: 'end',

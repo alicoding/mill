@@ -2808,10 +2808,27 @@ recorded as a real design input (`OPEN`), never silently dropped.
   CSS grid, not `<table>` layout — verified against its compiled CSS,
   so native `resize:` can't drive column widths). Long values render
   via `TruncatedCell` (ellipsis + the full value on hover through the
-  native `title` tooltip). Known, documented bound: a sort re-render
-  resets manual widths — a viewing aid, not persisted state.
-  E2e-covered (`resizable-table.spec.ts`: handle count, a real drag
-  changing the first grid track, the truncation CSS + title).
+  native `title` tooltip). **Defaults fit the container** (reported
+  directly: the default layout had a long horizontal scroll): long
+  free-text columns declare Primer's own `width: 'growCollapse'` — the
+  documented option that may shrink below content width, vs. the
+  `'grow'` default whose min width is the widest cell — so resizing is
+  an opt-in refinement, not a repair. **Resized widths persist** per
+  table (a `storageKey` per surface, the AG Grid/TanStack
+  column-sizing-in-localStorage convention, checked as real precedent),
+  reapplied after every render — which also fixed the previously
+  documented "sort resets widths" bound, whose actual root cause turned
+  out to be DataTable setting `--grid-template-columns` as its own
+  inline style on each render, not React reconciliation. **Double-click
+  any handle resets** the table to its default widths and clears the
+  saved state (the divider-double-click convention from AG Grid/Excel/
+  Finder); the default is stashed off the table element before the
+  first override, so reset needs no re-render. E2e-covered
+  (`resizable-table.spec.ts`: handle count scoped to `thead th` — row
+  headers render as `<th scope="row">` and would misalign track
+  indexes — a real drag changing the first grid track, persistence
+  across reload, double-click reset clearing storage, the truncation
+  CSS + title, and a no-horizontal-overflow default-layout check).
 - **Dev-staleness root cause found and fixed — `LOCKED`.** Two
   compounding causes made "my app looks stale" recur: (1) every
   wails-built desktop binary passed `-buildvcs=false` (dev *and*
