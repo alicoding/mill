@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react'
 import {Events, WML} from "@wailsio/runtime";
 import {IconButton, Label, NavList, PageLayout, Text, useTheme} from "@primer/react";
 import {DotFillIcon, GearIcon, SidebarCollapseIcon, SidebarExpandIcon} from "@primer/octicons-react";
-import SpecView from "../views/SpecView";
 import ActivityView from "../views/ActivityView";
 import ReviewView from "../views/ReviewView";
 import CompositionView from "../composition/CompositionView";
@@ -16,7 +15,7 @@ import type { View } from "../shared/store";
 import { WorkTabShell } from "./WorkTabShell";
 import { MCPWriteApprovals } from "./MCPWriteApprovals";
 import { COLOR_MODE_STORAGE_KEY, SIDEBAR_OPEN_STORAGE_KEY } from "./theme";
-import { CAPABILITY_ICON, SPEC_ICON } from "./navIcon";
+import { CAPABILITY_ICON } from "./navIcon";
 import styles from "./App.module.css";
 
 // Show the actual Wails version this project was generated against.
@@ -40,7 +39,6 @@ function pageLabelFor(view: View, capabilities: { ID: string; Label: string; Nav
     case 'activity': return 'Activity'
     case 'review': return 'Review'
     case 'settings': return 'Settings'
-    case 'spec': return 'Spec'
     case 'placeholder': {
       const cap = capabilities.find((c) => c.ID === view.capabilityId)
       return cap ? (cap.NavLabel || cap.Label) : 'Overview'
@@ -97,8 +95,8 @@ function App() {
 
   // Per-view hotkeys (task #9, docs/SPEC.md §3.7) -- Cmd+1 through
   // Cmd+4 jump straight to a top-level view, matching the sidebar's own
-  // order (Composition/Configure lead, Activity follows, Spec is
-  // always last). A durable run's own history/redrive now lives on that
+  // order (Composition/Configure lead, Activity follows, Review is
+  // last). A durable run's own history/redrive now lives on that
   // workflow's own Runs tab (docs/SPEC.md §7's Update), not a standalone
   // view, so there's no fifth top-level destination to bind anymore.
   // Deliberately in-window-only, not a global OS-level hotkey: this
@@ -117,7 +115,7 @@ function App() {
       '1': { kind: 'composition' },
       '2': { kind: 'configure' },
       '3': { kind: 'activity' },
-      '4': { kind: 'spec' },
+      '4': { kind: 'review' },
       // Cmd+, -- macOS's universal open-preferences shortcut (asked for
       // directly). Same in-window keydown mechanism as Cmd+1-4, not an
       // OS-level hotkey, and the same reason it's safe unscoped: Cmd+,
@@ -315,9 +313,7 @@ function App() {
           PageLayout.Sidebar, not .Pane: verified directly against the
           compiled CSS that .Pane stacks above/below content below 768px
           (page-scroll-oriented, wrong fit here), while .Sidebar stays a
-          persistent side rail at any width -- see docs/SPEC.md. Spec
-          stays a fixed, non-capability entry: it's the directory/docs
-          page itself, not a product feature with a build status. */}
+          persistent side rail at any width -- see docs/SPEC.md. */}
       <PageLayout className={styles.appBody} containerWidth="full" padding="none" rowGap="none" columnGap="none">
         <PageLayout.Sidebar
           className={sidebarOpen ? styles.sidebar : `${styles.sidebar} ${styles.sidebarCollapsed}`}
@@ -375,17 +371,6 @@ function App() {
                   </NavList.Item>
                 );
               })}
-              <NavList.Divider/>
-              <NavList.Item
-                href="#"
-                aria-current={view.kind === 'spec' ? 'page' : undefined}
-                aria-label={sidebarOpen ? undefined : 'Spec'}
-                title={sidebarOpen ? undefined : 'Spec'}
-                onClick={(e) => { e.preventDefault(); setView({ kind: 'spec' }) }}
-              >
-                <NavList.LeadingVisual><SPEC_ICON/></NavList.LeadingVisual>
-                {sidebarOpen && 'Spec'}
-              </NavList.Item>
             </NavList>
           </div>
 
@@ -394,9 +379,7 @@ function App() {
               app-level config vs. content destinations (docs/SPEC.md
               §3.5). Not a capability (no build status/SPEC section of
               its own), so it isn't driven by CapabilitiesService.List()
-              the way the rows above are -- a fixed control, same
-              reasoning as the Spec entry already being fixed rather than
-              data-driven. */}
+              the way the rows above are -- a fixed control. */}
           <div className={styles.sidebarFooter}>
             <IconButton
               icon={GearIcon}
@@ -422,8 +405,6 @@ function App() {
             {view.kind === 'configure' && <ConfigureView/>}
 
             {view.kind === 'settings' && <SettingsView/>}
-
-            {view.kind === 'spec' && <SpecView/>}
 
             {view.kind === 'placeholder' && <PlaceholderView capabilityId={view.capabilityId}/>}
           </WorkTabShell>

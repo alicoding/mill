@@ -19,7 +19,6 @@ import (
 	"github.com/alicoding/mill/internal/services/guardrailsvc"
 	"github.com/alicoding/mill/internal/services/mcpsvc"
 	"github.com/alicoding/mill/internal/services/settingssvc"
-	"github.com/alicoding/mill/internal/services/specsvc"
 	"github.com/alicoding/mill/internal/services/triggersvc"
 	"github.com/wailsapp/wails/v3/pkg/application"
 	"github.com/wailsapp/wails/v3/pkg/events"
@@ -45,13 +44,6 @@ var assets embed.FS
 
 //go:embed build/appicon.png
 var trayIconPNG []byte
-
-// specMarkdown is embedded here rather than inside specsvc because
-// //go:embed cannot reference a parent directory -- the service package
-// (internal/services/specsvc) receives it via its constructor.
-//
-//go:embed docs/SPEC.md
-var specMarkdown string
 
 func init() {
 	// Register a custom event whose associated data type is string.
@@ -179,7 +171,6 @@ func main() {
 		Description: "Guardrailed agentic-workflow automation",
 		Logger:      logger,
 		Services: []application.Service{
-			application.NewService(specsvc.New(specMarkdown)),
 			application.NewService(&capabilitysvc.CapabilitiesService{}),
 			application.NewService(compositionService),
 			application.NewService(triggerService),

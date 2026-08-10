@@ -49,12 +49,11 @@ export type View =
   | { kind: 'composition' }
   | { kind: 'configure' }
   | { kind: 'settings' }
-  | { kind: 'spec' }
   | { kind: 'placeholder'; capabilityId: string }
 
 // Single mapping from a capability's Go-declared View to the frontend's
-// own View union -- shared by the top nav and CapabilityIndex so both
-// surfaces navigate identically instead of each re-deriving it.
+// own View union -- shared by the sidebar nav so it navigates
+// consistently instead of re-deriving this per call site.
 export function viewFor(capability: Capability): View {
   switch (capability.View) {
     case ViewKind.ViewActivity:
@@ -76,9 +75,8 @@ export function viewsEqual(a: View, b: View): boolean {
   return true
 }
 
-// Shared by CapabilityIndex, PlaceholderView, and the sidebar nav --
-// previously duplicated identically in the first two, DRYed up here
-// rather than left as two (soon three) copies.
+// Shared by PlaceholderView and the sidebar nav's status dot -- DRYed
+// up here rather than left as separate copies.
 const STATUS_VARIANT: Record<string, LabelProps['variant']> = {
   LOCKED: 'success',
   OPEN: 'attention',
@@ -208,13 +206,13 @@ interface AppState {
   consumePendingRunFocus: () => void
 }
 
-// Shared across App/ActivityView/SpecView (SPEC.md §1.3): App.tsx still
-// owns the data-fetching effects (CompositionService.Workflows(),
+// Shared across App/ActivityView (SPEC.md §1.3): App.tsx still owns the
+// data-fetching effects (CompositionService.Workflows(),
 // CapabilitiesService.List(), the hotkey-activity event) since it's the
 // one place every view mounts under, but the data itself lives here
 // instead of being threaded down as props. `view` lives here too (not
-// local useState in App.tsx) so the capability index rendered inside
-// SpecView can navigate directly, without a callback prop threaded down.
+// local useState in App.tsx) so any surface can navigate directly,
+// without a callback prop threaded down.
 // workflows is shared state (not CompositionView-local) specifically so
 // App.tsx's hotkey-activity handler can resolve a fired workflow's label
 // without its own separate fetch.

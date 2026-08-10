@@ -31,8 +31,8 @@ function PlaceholderView({ capabilityId }: PlaceholderViewProps) {
         <Text as="p" size="small" className={styles.muted}>
           See docs/SPEC.md §{capability?.SpecSection ?? '?'} for the current thinking on this.
         </Text>
-        <Button size="small" onClick={() => setView({ kind: 'spec' })}>
-          Back to Spec
+        <Button size="small" onClick={() => setView({ kind: 'composition' })}>
+          Back to Workflows
         </Button>
       </div>
     </PageContainer>
