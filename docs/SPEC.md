@@ -1847,10 +1847,25 @@ turns out to solve this without touching that dispute).
   `integration-http`'s `bodyTemplate` has. Discoverability: each MCP
   Server card in Configure has a **"List tools"** button
   (`ConfigureService.ListMCPServerTools`) that connects, lists every
-  tool with its real `InputSchema`, and renders it inline; `toolName`
-  stays plain text (no closed set to pick from without calling the
-  server), `mcpServerId` itself is a live picker
-  ([ADR-0009](adr/0009-configure-entity-picker.md)). Core
+  tool with its real `InputSchema`, and renders it inline; `mcpServerId`
+  itself is a live picker
+  ([ADR-0009](adr/0009-configure-entity-picker.md)). The canvas
+  Inspector now goes further (goal 0001's node-maturity pass, closing
+  its last audited gap): `MCPToolArgsEditor.tsx` calls the same
+  `ListMCPServerTools` live, turns `toolName` into a real Select of the
+  server's actual tools, and renders the picked tool's `InputSchema` as
+  typed argument fields (string fields take a literal or an
+  `attr:<name>` binding via the shared `LiteralOrAttributeField`;
+  number/boolean/enum fields write real JSON numbers/booleans/strings;
+  nested object fields take per-key JSON) — falling back to the
+  previous plain-text toolName + raw-JSON textarea whenever the server
+  can't be reached, so nothing regresses offline. Top-level
+  `"attr:<name>"` string arguments resolve to the named Attribute's
+  *typed* value at run time (`resolveMCPArguments`, deliberately not
+  `resolveBindingValue`, which stringifies — MCP arguments are
+  structured JSON). E2e-proven against a real spawned fixture MCP
+  server (`@modelcontextprotocol/sdk` devDependency, a local `node`
+  subprocess — deterministic, no network). Core
   `listTools`/`callTool` functions are unit-tested via
   `mcp.NewInMemoryTransports()` fixtures, and verified against a real
   spawned subprocess too: pointed an MCP Server entity at `npx -y
