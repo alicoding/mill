@@ -2591,23 +2591,43 @@ Full rationale in [`docs/adr/0003-browser-bridge-architecture.md`](adr/0003-brow
 
 ## 6. Execution environment & determinism
 
-- **Design `LOCKED` by [ADR-0026](adr/0026-code-execution-capability.md)
-  (`accepted` 2026-08-10, explicit owner decision); implementation is
-  goal 0004, unbuilt.** Must not blindly execute anywhere — resolved as
-  **Execution Environments as Configure entities**:
-  `ExecEnv{ID, Label, Shell, Dir, Env}`, 1:many reusable (§3.5's
-  two-axis test), picked per code-execution step via the ADR-0009
-  entity picker. `Shell` is explicit argv (e.g. `/bin/zsh -c`), `Dir`
-  pinned, `Env` explicit-only (empty = clean env + PATH, never
-  inherited ambient) — a workflow references a declared environment,
-  Mill never infers one.
+- **`LOCKED`, BUILT (goal 0004, [ADR-0026](adr/0026-code-execution-capability.md)).**
+  Must not blindly execute anywhere — resolved as **Execution
+  Environments as Configure entities**: `internal/domain/execenv.ExecEnv{ID,
+  Label, Shell, ProfileMode, Dir, Env}`, 1:many reusable (§3.5's
+  two-axis test), authored in Configure → Environments, picked per
+  code-execution step via the ADR-0009 entity picker (`RefKind:
+  "execenv"`). `Shell` is a typed choice (zsh/bash/sh); **ProfileMode**
+  (`clean` default / `login`) materializes determinism — clean passes
+  the shell's own no-rc flags (verified against `man zshall`/`man
+  bash`: zsh `--no-rcs`, bash `--noprofile --norc`), so a workflow's
+  environment is what's written down, never inherited ambient (the
+  "materialize, don't inherit" amendment). `Dir` pinned (a
+  `<mill-temp>` sentinel mints a fresh temp dir per run); `Env`
+  explicit KEY=VAL only. Seeded "Example: Safe sandbox". `procexec`
+  (§7-adjacent, `internal/adapters/procexec`) is the process
+  supervisor DBOS deliberately isn't — Setpgid group spawn, one shared
+  SIGTERM→grace→SIGKILL kill path, four outcomes, proven against real
+  SIGTERM-trapping processes.
 - The `code-execution` NodeType (effect `external`, ask-by-default via
-  the ambient guardrail gate), cancellation (process-group
-  SIGTERM→SIGKILL via a local CancelFunc registry, since DBOS cannot
-  interrupt an executing step — confirmed from its source), and the
-  guardrail-placement answer (global = node-type/ExecEnv-scoped rules,
-  workflow-level = the existing step-scoped rules) are all specified in
-  the ADR. Windows execution is an explicit non-goal.
+  the ambient guardrail gate — the §2.1 gesture, backed by the Review
+  queue) is BUILT (`internal/domain/composition/codeexec.go`): config
+  is `envId` (the picker), `source` (payload vs literal), `script`,
+  `timeoutSeconds`; combined stdout+stderr becomes the payload;
+  non-zero exit fails the step. **Cancellation is real, not just
+  designed**: `ExecutionService` holds a live-Handle registry keyed
+  `runID:nodeID`; a `CancelRun` RPC kills the real process group AND
+  calls `dbos.CancelWorkflow`, recording a distinct `cancelled` status
+  (≠ `failed`); a Stop button on the Runs tab drives it (proven: a
+  real `sleep 5` killed <3s). Seeded "Example: Run copied code"
+  (literal `echo` → clipboard) parks for approval, with approve/deny/
+  cancel Go tests against real DBOS. **Deferred, documented in-code
+  not hidden** (ADR-0026 amendment items): durable pre-spawn pgid
+  recording + startup orphan-reaping, crash-mid-step interrupt-parking
+  (a crash today re-executes on replay), idle-timeout UI + last-output
+  liveness surfacing, per-workflow concurrency guard, "split into
+  steps" authoring, and `import_execenv` MCP write. Windows execution
+  is an explicit non-goal.
 
 ## 7. Process & session tracking
 
@@ -2806,13 +2826,16 @@ Full rationale in [`docs/adr/0003-browser-bridge-architecture.md`](adr/0003-brow
   already-adopted `expr-lang` and authored per-rule in the Inspector;
   any failing or unevaluable rule fails the run, named. Distinct from
   Decision (routing) and guardrail rules (execution policy) on
-  purpose. (3) **Code execution** stays design-only: the ADR records
-  the full target pipeline (typed event input → ruleset → code
-  execution with global+workflow-level config → human review →
-  DOM-or-clipboard terminal node), including kill/retry cancellation
-  semantics — §6 owns it. Seeded proof: "Example: Human review with
-  input" (park → typed input → capture-attribute → ruleset), covered
-  by a real Go test against DBOS and deterministic e2e.
+  purpose. (3) **Code execution** — was design-only when this ADR was
+  written; **now BUILT (goal 0004, §6): the `code-execution` node +
+  ExecEnv Configure entity + real cancellation.** The target pipeline
+  this ADR recorded (typed event input → ruleset → code execution →
+  human review → DOM-or-clipboard terminal) is now composable from
+  real nodes; the seeded "Example: Run copied code" is its minimal
+  proof. Its own seeded proof at the time — "Example: Human review
+  with input" (park → typed input → capture-attribute → ruleset) —
+  remains, covered by a real Go test against DBOS and deterministic
+  e2e.
 - **MCP write-tools guardrail scope —
   [ADR-0017](adr/0017-mcp-write-tools-guardrail-scope.md)
   (`proposed`).** §8's three-layer scoping above governs *running* an
@@ -3309,9 +3332,12 @@ infrastructure. This inheritance list IS the working definition of
   deliberately: shadow evaluation (blocked on a per-node purity model,
   §8), staged-traffic promotion, version diffing.
 - Browser extension ↔ native app protocol details (§5)
-- Env/shell determinism rules (§6) — design `LOCKED` by ADR-0026
-  (`accepted`): ExecEnv Configure entities with pinned dir/shell/env;
-  implementation is goal 0004
+- Env/shell determinism rules (§6) — **`LOCKED` and BUILT** (goal
+  0004, ADR-0026): ExecEnv Configure entities (typed shell + clean/
+  login profile mode + pinned dir + explicit env), the code-execution
+  node, `procexec` supervisor, real cancellation. Deferred items
+  (orphan reaping, crash-interrupt parking, idle-timeout UI,
+  concurrency guard, split-into-steps) documented in §6 + in-code
 - Session identity model spanning tab + agent run + process (§7)
 - Policy authoring format and storage (§8) — `LOCKED`, built:
   [ADR-0022](adr/0022-guardrail-execution-gate.md) implements
@@ -3342,7 +3368,10 @@ infrastructure. This inheritance list IS the working definition of
   local CancelFunc registry + process-group kill, global-vs-workflow
   guardrail via rule scopes — env-scope added). This closed §1.1's
   command-execution bullet, §6, and ADR-0023's placement question in
-  one acceptance; implementation is goal 0004
+  one acceptance; **implementation is now BUILT (goal 0004, delivered
+  2026-08-10): §6 has the full built shape, `procexec` +
+  `internal/domain/execenv` + `codeexec.go` + real cancellation, with
+  the ADR-0026-amendment deferrals named in §6**
 - Single execution path (§7/ADR-0008) — `LOCKED` and built: every
   workflow run (a workflow's own list-row Run button, a headless trigger
   fire) goes through one durable `ExecutionService.RunWorkflow`
