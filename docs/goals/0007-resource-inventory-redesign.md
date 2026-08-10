@@ -70,6 +70,17 @@ pattern?"). Two distinct problems, one design surface:
    cleared and the three masked spec defects fixed, not explained
    away). Owner's live recognition test = the acceptance gate.
 
+## Follow-up (owner-raised 2026-08-10, not built)
+Pagination: no Mill list paginates today. Inventories render all rows
+(fine at current scale; search covers finding; add rows-per-page to
+the shared InventoryList when a real dataset warrants — the reference
+platform's own inventories paginate, recorded in §3.2). The one
+place truncation already silently happens: run-history lists cap at
+50 server-side (`ListRuns`'s `WithFilterLimit(50)`) with no
+indicator — fix alongside goal 0011's row tables (which genuinely
+need pagination) or whenever run volume makes it real; at minimum an
+"showing latest 50" indicator is honest and cheap.
+
 ## Acceptance
 Owner's own bar, stated directly (2026-08-10): "you want to feel like
 you are used to the page style — when you go to it you don't need to
