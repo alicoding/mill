@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test'
+import { test, expect } from './fixtures/server'
 import { clickRowAction } from './inventoryRow'
 
 // Exercises docs/SPEC.md §4.1's schema-authoring maturity pass (Phase 1

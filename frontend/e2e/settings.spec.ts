@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test'
+import { test, expect } from './fixtures/server'
 
 // Exercises docs/SPEC.md §3.7's two new global settings (launch at
 // login, global summon hotkey) over real Go bindings (Wails3 server

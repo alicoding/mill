@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test'
+import { test, expect } from './fixtures/server'
 
 // Regression coverage for a real reported layout bug (docs/SPEC.md's
 // "Window/scroll layout foundation" Update): .app-shell's own outer

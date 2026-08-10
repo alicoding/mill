@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test'
+import { test, expect } from './fixtures/server'
 import { clickRowAction } from './inventoryRow'
 
 // Exercises docs/goals/0006-trigger-aware-workflows-list.md: each

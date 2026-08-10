@@ -1,4 +1,5 @@
-import { test, expect } from '@playwright/test'
+import { test, expect } from './fixtures/server'
+import { withClipboardLock } from './fixtures/clipboardLock'
 import { clickRowAction } from './inventoryRow'
 
 // Canvas-mechanics edge cases for the same React Flow canvas
@@ -85,6 +86,23 @@ async function connectNodes(page: import('@playwright/test').Page, sourceLabel: 
   await page.mouse.up()
 }
 
+// Selects a canvas node by clicking its own top-left corner instead of
+// its center -- the same MiniMap-overlap hazard connectNodes() already
+// documents for a handle, confirmed here too, for real: a plain
+// `.click()` (which targets the element's center) and even
+// `.click({ force: true })` (which only skips Playwright's own
+// actionability check, not the browser's real hit-testing at that
+// pixel) both land on the MiniMap's SVG instead of the node whenever a
+// two-node layout happens to place this node in the canvas's bottom-
+// right corner, silently selecting nothing. A raw `page.mouse.click`
+// at the node's own top-left, a few pixels in, reliably lands on the
+// node's own card chrome instead.
+async function clickCanvasNode(page: import('@playwright/test').Page, panel: import('@playwright/test').Locator, label: string) {
+  const box = await panel.locator('.react-flow__node').filter({ hasText: label }).boundingBox()
+  if (!box) throw new Error(`clickCanvasNode: node "${label}" has no bounding box`)
+  await page.mouse.click(box.x + 10, box.y + 10)
+}
+
 // process-inject-text (SPEC.md §3.3) needs no bespoke Inspector UI of its
 // own -- its "text" (FieldText) and "placement" (FieldOptions) fields
 // render through the exact same generic ConfigField switch every other
@@ -95,7 +113,9 @@ async function connectNodes(page: import('@playwright/test').Page, sourceLabel: 
 // TestExecuteWorkflow_InjectText_PrependIsAppliedBeforeExistingPayload;
 // this is the UI path that composes it, not a re-proof of the ordering
 // logic itself.
+// Real OS clipboard I/O (goal 0009) -- writes apply-clipboard-write-html.
 test('process-inject-text composes with an upstream node via the generic Inspector, in the correct position', async ({ page }) => {
+  await withClipboardLock(async () => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Workflows' }).click()
   await page.getByTestId('new-workflow').click()
@@ -112,7 +132,7 @@ test('process-inject-text composes with an upstream node via the generic Inspect
   // Configure the upstream node's payload -- plain text (not real HTML)
   // so the base-payload marker is trivially substring-matchable in the
   // final result.
-  await activePanel(page).locator('.react-flow__node').filter({ hasText: 'Apply: write HTML to clipboard' }).click()
+  await clickCanvasNode(page, activePanel(page), 'Apply: write HTML to clipboard')
   const htmlField = activePanel(page).locator('textarea[data-testid="canvas-config-field"]')
   await htmlField.fill('e2e base payload')
   await htmlField.blur()
@@ -120,7 +140,7 @@ test('process-inject-text composes with an upstream node via the generic Inspect
   // Configure the inject node -- exercises both the plain-text field
   // (Textarea) and the FieldOptions field (a real Select, not a bespoke
   // control) in the same generic Inspector.
-  await activePanel(page).locator('.react-flow__node').filter({ hasText: 'Process: Inject text' }).click()
+  await clickCanvasNode(page, activePanel(page), 'Process: Inject text')
   const inspector = activePanel(page).getByTestId('composition-inspector')
   await expect(inspector).toContainText('Process: Inject text')
   const textField = activePanel(page).locator('textarea[data-testid="canvas-config-field"]')
@@ -145,6 +165,7 @@ test('process-inject-text composes with an upstream node via the generic Inspect
 
   await clickRowAction(page, row, 'Delete')
   await expect(workflowRow(page, 'E2E inject-text workflow')).toHaveCount(0)
+  })
 })
 
 // The four tests below permanently cover bugs from a real bug report
@@ -252,7 +273,12 @@ test('Selecting the starter Trigger node and changing its type swaps it in place
 // so deleting the workflow at the end (same discipline as this file's
 // other create-then-delete tests, .claude/rules/testing.md) removes it
 // too.
+// Real OS clipboard I/O (goal 0009) -- a brand-new workflow's default
+// starter node is capture-clipboard-html (docs/SPEC.md §3), so every
+// Run in this test (before and after Attributes exist) touches the
+// real pasteboard.
 test('Running a workflow with declared Attributes shows an auto-filled test-input dialog first', async ({ page }) => {
+  await withClipboardLock(async () => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Workflows' }).click()
   await page.getByTestId('new-workflow').click()
@@ -290,4 +316,5 @@ test('Running a workflow with declared Attributes shows an auto-filled test-inpu
 
   await clickRowAction(page, workflowRow(page, 'E2E attributes workflow'), 'Delete')
   await expect(workflowRow(page, 'E2E attributes workflow')).toHaveCount(0)
+  })
 })

@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test'
+import { test, expect } from './fixtures/server'
 import { clickRowAction } from './inventoryRow'
 
 // Exercises ADR-0009's live picker + inline quick-create: integration-

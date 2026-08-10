@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test'
+import { test, expect } from './fixtures/server'
 
 // Exercises the shared rows/table view switch (ViewModeToggle + Primer
 // DataTable, docs/goals/0007-resource-inventory-redesign.md) on two

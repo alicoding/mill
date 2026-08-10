@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test'
+import { test, expect } from './fixtures/server'
 import { clickRowAction } from './inventoryRow'
 
 // Real Go bindings over HTTP (Wails3 server mode), not mocks -- same

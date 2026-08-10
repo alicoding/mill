@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test'
+import { test, expect } from './fixtures/server'
 import { clickRowAction } from './inventoryRow'
 
 // Exercises ADR-0015 Phase 3 (JOSE/JWE) through the real UI/backend --

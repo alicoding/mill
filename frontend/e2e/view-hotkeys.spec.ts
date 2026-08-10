@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test'
+import { test, expect } from './fixtures/server'
 
 // Real Go bindings over HTTP (Wails3 server mode), not mocks -- same
 // setup as the rest of this suite. Exercises task #9's in-window Cmd+1

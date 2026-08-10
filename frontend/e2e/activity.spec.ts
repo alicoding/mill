@@ -1,4 +1,5 @@
-import { test, expect } from '@playwright/test'
+import { test, expect } from './fixtures/server'
+import { withClipboardLock } from './fixtures/clipboardLock'
 
 // Real Go bindings over HTTP (Wails3 server mode), not mocks -- same
 // setup/limitations as composition.spec.ts (see its header comment).
@@ -34,7 +35,11 @@ function dataRows(page: import('@playwright/test').Page) {
 // is awaited to actually finish (button text reverts from "Running…")
 // before the next starts, closing the same-millisecond timestamp race
 // two back-to-back async runs could otherwise hit.
+// Real OS clipboard I/O (goal 0009: frontend/e2e/fixtures/clipboardLock.ts) --
+// both workflows write to/read the one shared real pasteboard, so every
+// caller of this helper runs under the cross-process clipboard lock.
 async function runBothWorkflows(page: import('@playwright/test').Page) {
+  await withClipboardLock(async () => {
   await page.getByRole('link', { name: 'Workflows' }).click()
 
   // Waits for the full disabled -> enabled cycle, not just "enabled"
@@ -49,6 +54,7 @@ async function runBothWorkflows(page: import('@playwright/test').Page) {
   await markdownButton.click()
   await expect(markdownButton).toBeDisabled()
   await expect(markdownButton).toBeEnabled()
+  })
 }
 
 test('Running two workflows from Composition both appear in Activity', async ({ page }) => {
