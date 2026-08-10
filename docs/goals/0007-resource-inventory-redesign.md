@@ -27,13 +27,26 @@ pattern?"). Two distinct problems, one design surface:
    guidance (Primer's own docs, NN/g); installed Primer's actual
    building blocks; full Mill-internal audit of the seven-ish
    surfaces sharing this shape.
-2. [ ] Propose to the owner: default view (row vs card), per-surface
-   row anatomy with identity differentiation (entity icon/accent/badge
-   vocabulary), redesign-vs-retire for cards mode, and the shared
-   inventory component shape (SPEC §3.2's primitive) with migration
-   cost.
-3. [ ] Implement against the ratified proposal, with e2e; goal 0006's
-   trigger labels carry over into whatever row anatomy wins.
+2. [~] Proposal round one (2026-08-10) — research found: no comparable
+   product (n8n/GitHub/Linear, all primary-sourced) uses cards for
+   homogeneous inventories; Mill's cards-by-default is viewMode.ts's
+   own default value; installed Primer's ActionList natively provides
+   leading icons/inline truncated descriptions/trailing actions/
+   clickable rows (Mill only ever used it inside dropdowns); Mill
+   already owns the icon vocabulary (navIcon.ts, nodeKind.ts) but
+   never applied it to rows; GitLab #4005 is the direct one-row-
+   component-across-contexts precedent; Blankslate exists, unused —
+   empty states are bare muted paragraphs. **Owner ratified:** dense
+   ActionList-based shared rows as the DEFAULT for all five
+   inventories (per-entity leading icon + badges + one truncated
+   description + trailing actions); DataTable stays the SECONDARY
+   toggle view (sorting/resizable preserved; §3.2's primitive is
+   literally a table). **Held:** the cards mode's fate — owner is
+   supplying the reference platform's own inventory treatment as an
+   image before deciding retire-vs-redesign.
+3. [ ] Implement once the cards verdict lands, with e2e; goal 0006's
+   trigger labels carry into the new row anatomy; adopt Blankslate
+   for empty states in the same pass.
 
 ## Acceptance
 Owner's own bar, stated directly (2026-08-10): "you want to feel like
