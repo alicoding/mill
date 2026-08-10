@@ -23,5 +23,5 @@ in archive/ for the full verdict trail if ever needed).
 
 1. [ ] [0001 — Authoring-surface overhaul](0001-authoring-surface-overhaul.md) (UX)
 2. [ ] [0002 — Review queue maturation](0002-review-queue-maturation.md) (UX)
-3. [ ] [0003 — MCP authoring live dogfood](0003-mcp-authoring-dogfood.md) (UX-adjacent: proves the protocol in the running app)
-4. [ ] [0004 — Code execution capability](0004-code-execution-capability.md) (backend; research complete, design next)
+3. [x] [0003 — MCP authoring live dogfood](archive/0003-mcp-authoring-dogfood.md) — delivered 2026-08-10, live with the owner (full loop incl. refused-while-off, per-write approval, auto-snapshot)
+4. [ ] [0004 — Code execution capability](0004-code-execution-capability.md) (backend; ADR-0026 accepted 2026-08-10 — implementation unblocked)
