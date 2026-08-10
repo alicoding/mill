@@ -98,3 +98,31 @@ a real test (the Go suite runs the exact seeded artifacts — see
 Seeding is top-up with delete-tombstones (`topUpBuiltIns`,
 `configureservice_builtin.go`), so new examples reach existing
 instances — never fresh-install-only.
+
+**Refined by direct owner decision (2026-08-10): seeds are one layer,
+not the universal proof — don't force the seed pattern onto
+everything.** Follow the industry-standard layering, each proving what
+it's structurally best at; the requirement is "a proof at the RIGHT
+layer per capability," never "a seed per thing":
+
+- **Seeds + their tests** — user-facing workflow capabilities: proof
+  the feature exists and works end-to-end through the real stack, and
+  the live-app demonstration in one artifact. The spine, applied where
+  a runnable example is natural — never contrived to satisfy a rule.
+- **Unit tests** — pure logic across its input range (ruleTranslate,
+  findFreeDropPosition, resolveMCPArguments): the layer that catches
+  edge-input bugs no single example ever will.
+- **Integration/adapter tests** — adapters against real backing
+  (DBOS/SQLite, keychain mock, in-memory MCP transports).
+- **Interaction e2e** — presentation/interaction states data can't
+  express (hover, drag, truncation, pointer-events regressions).
+- **Smoke/liveness** — app-level boot + advisory external liveness
+  (the seeded integrations' endpoints), non-blocking.
+- **Manual-only registry** — OS-bound checks (hotkey delivery, real
+  clipboard, tray) listed explicitly with reasons, never silently
+  absent (see goal 0010's enforcement).
+
+From the UX point of view the seed layer stays privileged — it's the
+one a human can SEE working — but correctness under change belongs to
+the other layers, and every bug-repro still becomes a committed test
+at whichever layer fits (the rule at the top of this file).
