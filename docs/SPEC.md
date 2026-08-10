@@ -1353,6 +1353,35 @@ canvas + detailed inspector) — extending §3.2's existing ten.
   (resume-vs-terminal mechanics, status lifecycle, QC) are the
   research questions to answer first.
 
+### 3.2.2 Lists reference review — design input, `OPEN` throughout
+
+**Fourth owner-supplied reference review (2026-08-10, ten
+screenshots, vendor-generic): Lists as typed, governed tabular
+datasets — a substantially bigger animal than Mill's key/value
+`List{ID, Label, Entries}`.** Observed: typed column schema + rows;
+**system-managed audit columns** (created/updated by/at, Active/
+Expired row lifecycle) that are reserved, platform-owned, never
+user-removable; CSV/JSON/JSON-Schema import with downloadable
+examples; schema-generated row-edit forms; and **List Search** as the
+workflow step — multiple match parameters (workflow value → typed
+list attribute → match type), exact/fuzzy (adopt a matching library,
+never invent — the review's own instruction), a **typed Object
+output** (`results[]/matched/first_match/match_count` + a
+first-match-only toggle that must not dynamically change the
+published type), required default-next (non-terminal), and per-node +
+workflow-count validation — **the exact model ADR-0028 decided hours
+earlier, independently confirmed**. Boundaries worth adopting
+verbatim: a List is never an ungoverned database/secrets/policy
+replacement; the runtime must **record the List identity + resolved
+snapshot per execution** so replay never silently evaluates different
+rows — intersecting ADR-0026's intentional re-execution principle
+(Mill's redrive already reuses checkpointed lookup results; what's
+missing is recording which dataset version a lookup originally saw).
+Mill's goal-0007 shared inventory already covers the review's
+resource-inventory prescription. Capability map + build plan: goal
+0011; evidence gaps (lifecycle/versioning, fuzzy semantics,
+first-match schema behavior) recorded there, not guessed at.
+
 ### 3.3 Capability map — designing the node/edge schema against the full known need, not just today's two workflows
 
 Deciding the node/edge schema from today's two built-in, purely-linear
