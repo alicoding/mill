@@ -34,6 +34,32 @@ type MCPWriteRequest struct {
 	Description string `json:"description"`
 }
 
+// MCPWriteActivity is pushed for a missed (timed-out) or denied MCP
+// write so it's no longer traceless (docs/goals/0005-pending-attention-
+// model.md item 3 -- solvable independent of MCP Tasks, one line at
+// this timeout branch). Reuses the same activity-push shape App.tsx's
+// hotkey-activity handler already established, under a distinct
+// "mcp-write" ActivitySource so it's filterable, not conflated with a
+// workflow trigger.
+type MCPWriteActivity struct {
+	Description string `json:"description"`
+	// Outcome is "denied" or "timed out" -- an approved write never
+	// reaches here, there's nothing traceless about it.
+	Outcome string `json:"outcome"`
+}
+
+// emitMCPWriteActivity pushes MCPWriteActivity to the frontend.
+// application.Get() is nil in a headless Go test process -- a no-op
+// there, same guard executionservice_guardrail.go's
+// emitGuardrailPendingChanged uses.
+func emitMCPWriteActivity(description, outcome string) {
+	app := application.Get()
+	if app == nil {
+		return
+	}
+	app.Event.Emit("mcp-write-activity", MCPWriteActivity{Description: description, Outcome: outcome})
+}
+
 func (m *MillMCPService) approvalRequired() bool {
 	v, ok := m.store.Get(MCPWriteApprovalKey).(string)
 	if !ok || v == "" {
@@ -74,10 +100,12 @@ func (m *MillMCPService) awaitWriteApproval(description string) error {
 	select {
 	case approved := <-ch:
 		if !approved {
+			emitMCPWriteActivity(description, "denied")
 			return fmt.Errorf("MCP write denied by the user in Mill's window")
 		}
 		return nil
 	case <-time.After(mcpWriteApprovalTimeout):
+		emitMCPWriteActivity(description, "timed out")
 		return fmt.Errorf("MCP write not approved within %s -- approve it in Mill's window and retry "+
 			"(or relax the per-write approval toggle in Settings)", mcpWriteApprovalTimeout)
 	}

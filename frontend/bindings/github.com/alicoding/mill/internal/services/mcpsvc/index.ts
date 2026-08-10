@@ -3,5 +3,6 @@
 
 export type {
     DataChanged,
+    MCPWriteActivity,
     MCPWriteRequest
 } from "./models.js";
