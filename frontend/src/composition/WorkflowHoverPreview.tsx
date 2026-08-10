@@ -3,7 +3,7 @@ import type { ReactNode } from 'react'
 import { Button, Stack, Text } from '@primer/react'
 import { AnchoredOverlay } from '@primer/react'
 import { ReactFlow, ReactFlowProvider, Background } from '@xyflow/react'
-import { CompositionService } from '../../bindings/github.com/alicoding/mill'
+import { CompositionService } from '../shared/bindings'
 import type { NodeType, Workflow } from '../../bindings/github.com/alicoding/mill/internal/domain/composition/models'
 import { useAppStore } from '../shared/store'
 

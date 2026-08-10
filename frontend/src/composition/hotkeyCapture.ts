@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { TriggerService } from '../../bindings/github.com/alicoding/mill'
+import { TriggerService } from '../shared/bindings'
 import { keyFromEventCode, modsFromEvent } from '../shared/keybinding'
 
 // SPEC.md §2.2's "Permissions UX pattern" -- deep-link straight into the

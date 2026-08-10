@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import type { LabelProps } from '@primer/react'
-import { CompositionService, ConfigureService } from '../../bindings/github.com/alicoding/mill'
+import { CompositionService, ConfigureService } from './bindings'
 import type { NodeType, Workflow } from '../../bindings/github.com/alicoding/mill/internal/domain/composition/models'
 import type { HTTPRequest } from '../../bindings/github.com/alicoding/mill/internal/domain/httprequest/models'
 import { ViewKind } from '../../bindings/github.com/alicoding/mill/internal/domain/capabilities/models'

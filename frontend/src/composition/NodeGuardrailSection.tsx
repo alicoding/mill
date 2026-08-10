@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Label, Stack, Text } from '@primer/react'
 import { ShieldIcon } from '@primer/octicons-react'
-import { GuardrailService } from '../../bindings/github.com/alicoding/mill'
-import type { RuleTestResult } from '../../bindings/github.com/alicoding/mill/models'
+import { GuardrailService } from '../shared/bindings'
+import type { RuleTestResult } from '../shared/bindings'
 import styles from '../shared/ListCard.module.css'
 
 // Read-only guardrail visibility for the selected step (docs/adr/0022's

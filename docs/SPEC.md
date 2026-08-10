@@ -436,7 +436,7 @@ graph TB
         Views["Views: Activity,<br/>Composition, Spec, ..."]
         Store["Zustand store"]
     end
-    subgraph Bindings["Wails-bound services (root *service.go)"]
+    subgraph Bindings["Wails-bound services (internal/services/*)"]
         TrigSvc["TriggerService"]
         CompSvc["CompositionService"]
         CapSvc["CapabilitiesService"]
@@ -2944,6 +2944,31 @@ recorded as a real design input (`OPEN`), never silently dropped.
   loud red "STALE BUILD · app X ≠ repo Y — restart task dev" badge
   regardless of dev/prod; matching dev builds show a quiet
   `DEV · <hash>`. E2e-asserts the same-commit case never false-alarms.
+- **Authoring-surface style direction — `OPEN`, recorded as real design
+  input from a working style prototype the user built on the reference
+  machine ("Mill Authoring", fixture data) and prefers over Mill's
+  current canvas.** Six elements, to be adopted deliberately rather
+  than piecemeal: (1) typed payload signatures rendered ON the node
+  cards (`TypedPayload<ShellBlock>` → `ApprovedPayload<ShellBlock>` →
+  `ActionResult<CodingResult>`) — the data contract between steps
+  visible at authoring time, not hidden in an Inspector; (2) live run
+  state on the authoring canvas itself (DONE/ACTIVE/PENDING per card,
+  status coloring) with a CURRENT STEP bar and Approve/Reject inline
+  on the canvas — collapsing Mill's canvas-vs-Runs-tab split for the
+  in-flight case; (3) **policy annotated on the EDGE, not the node**
+  ("Policy: ask" as an invisible-boundary crossing between steps) —
+  a cleaner model than the current node shield badge, and consistent
+  with the guardrail being a hook *between* steps; (4) named,
+  versioned payload schemas (`mill.shell-block.v1`) — a schema
+  registry concept, stronger than per-workflow Attributes and a
+  natural growth path for them; (5) node taxonomy as category card
+  headers (EVENT INPUT / HUMAN TASK / CODE EXECUTION / TERMINAL),
+  matching ADR-0023's pipeline vocabulary; (6) sparse Inspectors
+  (source, shortcut, schema — three fields). Ties directly into the
+  code-execution capability design (ADR-0023) since the prototype's
+  seeded example IS that pipeline ("Run copied coding action").
+  Nothing built yet — this entry exists so the restyle is designed
+  against the recorded reference, not from memory.
 - **Dev-staleness root cause found and fixed — `LOCKED`.** Two
   compounding causes made "my app looks stale" recur: (1) every
   wails-built desktop binary passed `-buildvcs=false` (dev *and*

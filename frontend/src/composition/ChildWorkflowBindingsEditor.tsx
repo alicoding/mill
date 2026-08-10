@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Stack, Text } from '@primer/react'
-import { CompositionService } from '../../bindings/github.com/alicoding/mill'
+import { CompositionService } from '../shared/bindings'
 import type { AttributeDef, Workflow } from '../../bindings/github.com/alicoding/mill/internal/domain/composition/models'
 import { LiteralOrAttributeField } from '../shared/LiteralOrAttributeField'
 

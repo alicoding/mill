@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Button, FormControl, Heading, IconButton, Select, Stack, Text, TextInput } from '@primer/react'
 import { PlusIcon, TrashIcon } from '@primer/octicons-react'
-import { CompositionService, ConfigureService } from '../../bindings/github.com/alicoding/mill'
+import { CompositionService, ConfigureService } from '../shared/bindings'
 import type { AttributeDef, Workflow } from '../../bindings/github.com/alicoding/mill/internal/domain/composition/models'
 import { ConfigFieldType } from '../../bindings/github.com/alicoding/mill/internal/domain/composition/models'
 import styles from '../shared/ListCard.module.css'

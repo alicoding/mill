@@ -1,6 +1,6 @@
 import { Browser } from '@wailsio/runtime'
 import { Heading, Label, Stack, Text, Button } from '@primer/react'
-import { CapabilitiesService } from '../../bindings/github.com/alicoding/mill'
+import { CapabilitiesService } from '../shared/bindings'
 import { ViewKind } from '../../bindings/github.com/alicoding/mill/internal/domain/capabilities/models'
 import { useAppStore, viewFor, statusVariant } from '../shared/store'
 import styles from '../shared/ListCard.module.css'

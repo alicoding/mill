@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import type { ReactNode } from 'react'
 import { Tabs } from '@primer/react/experimental'
-import { ConfigureService } from '../../bindings/github.com/alicoding/mill'
+import { ConfigureService } from '../shared/bindings'
 import { TabItem, TabList, TabPanel } from '../shared/Tabs'
 import { refreshRequests, refreshWorkflows, useAppStore, type WorkTab } from '../shared/store'
 import { WorkflowEditorTab } from '../composition/WorkflowEditorTab'

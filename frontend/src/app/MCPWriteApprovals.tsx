@@ -2,8 +2,8 @@ import { useEffect, useState } from 'react'
 import { Button, Stack, Text } from '@primer/react'
 import { ShieldIcon } from '@primer/octicons-react'
 import { Events } from '@wailsio/runtime'
-import { SettingsService } from '../../bindings/github.com/alicoding/mill'
-import type { MCPWriteRequest } from '../../bindings/github.com/alicoding/mill/models'
+import { SettingsService } from '../shared/bindings'
+import type { MCPWriteRequest } from '../shared/bindings'
 import styles from './App.module.css'
 
 // The per-write MCP approval surface (docs/adr/0017's second half,

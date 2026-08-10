@@ -12,6 +12,15 @@ import (
 
 	"github.com/alicoding/mill/internal/adapters/credential"
 	"github.com/alicoding/mill/internal/adapters/settings"
+	"github.com/alicoding/mill/internal/services/capabilitysvc"
+	"github.com/alicoding/mill/internal/services/compositionsvc"
+	"github.com/alicoding/mill/internal/services/configuresvc"
+	"github.com/alicoding/mill/internal/services/executionsvc"
+	"github.com/alicoding/mill/internal/services/guardrailsvc"
+	"github.com/alicoding/mill/internal/services/mcpsvc"
+	"github.com/alicoding/mill/internal/services/settingssvc"
+	"github.com/alicoding/mill/internal/services/specsvc"
+	"github.com/alicoding/mill/internal/services/triggersvc"
 	"github.com/wailsapp/wails/v3/pkg/application"
 	"github.com/wailsapp/wails/v3/pkg/events"
 	"github.com/wailsapp/wails/v3/pkg/updater"
@@ -37,34 +46,20 @@ var assets embed.FS
 //go:embed build/appicon.png
 var trayIconPNG []byte
 
-// HotkeyActivity is emitted once a triggered workflow resolves (success
-// or failure) -- not just hotkey fires despite the name (kept for the
-// event's own wire compatibility; renaming the event string itself would
-// be a cosmetic-only churn no caller needs). The Go-side slog lines
-// (triggerservice.go) log the same information for terminal/`task dev`
-// visibility; this event is the in-app equivalent, so a headless
-// trigger's outcome is visible without a terminal — added after a real
-// hotkey worked correctly (fired, ran, wrote to the clipboard) but
-// looked from the UI like nothing happened, because nothing in the UI
-// ever said otherwise.
-type HotkeyActivity struct {
-	WorkflowID string `json:"workflowID"`
-	Binding    string `json:"binding"`
-	Success    bool   `json:"success"`
-	Detail     string `json:"detail"`
-	// Result is the actual output copied to the clipboard, so the UI can
-	// show what a trigger fire actually produced, not just its byte count.
-	// Empty on failure -- there's nothing successful to show.
-	Result string `json:"result"`
-}
+// specMarkdown is embedded here rather than inside specsvc because
+// //go:embed cannot reference a parent directory -- the service package
+// (internal/services/specsvc) receives it via its constructor.
+//
+//go:embed docs/SPEC.md
+var specMarkdown string
 
 func init() {
 	// Register a custom event whose associated data type is string.
 	// This is not required, but the binding generator will pick up registered events
 	// and provide a strongly typed JS/TS API for them.
 	application.RegisterEvent[string]("time")
-	application.RegisterEvent[HotkeyActivity]("hotkey-activity")
-	application.RegisterEvent[MCPWriteRequest]("mcp-write-approval")
+	application.RegisterEvent[triggersvc.HotkeyActivity]("hotkey-activity")
+	application.RegisterEvent[mcpsvc.MCPWriteRequest]("mcp-write-approval")
 }
 
 // main function serves as the application's entry point. It initializes the application, creates a window,
@@ -104,10 +99,10 @@ func main() {
 		log.Fatal(err)
 	}
 
-	compositionService := NewCompositionService(settingsStore)
-	triggerService := NewTriggerService(compositionService, logger, settingsStore)
+	compositionService := compositionsvc.NewCompositionService(settingsStore)
+	triggerService := triggersvc.NewTriggerService(compositionService, logger, settingsStore)
 	compositionService.SetSyncer(triggerService)
-	configureService := NewConfigureService(settingsStore, compositionService, credential.New())
+	configureService := configuresvc.NewConfigureService(settingsStore, compositionService, credential.New())
 
 	// Separate SQLite file from settings.json (own schema, own lifecycle
 	// -- durable-execution checkpoints, not app config) but the same
@@ -130,8 +125,8 @@ func main() {
 		}
 		executionDatabaseURL = "sqlite:" + executionDBPath
 	}
-	guardrailService := NewGuardrailService(settingsStore, compositionService)
-	executionService, err := NewExecutionService(executionDatabaseURL, compositionService, guardrailService)
+	guardrailService := guardrailsvc.NewGuardrailService(settingsStore, compositionService)
+	executionService, err := executionsvc.NewExecutionService(executionDatabaseURL, compositionService, guardrailService)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -146,9 +141,9 @@ func main() {
 	triggerService.SetExecutionService(executionService)
 	// docs/adr/0010: a child-workflow node's real DBOS parent/child
 	// invocation, wired the same late-bound way for the same reason.
-	executionService.wireChildWorkflowRunner()
+	executionService.WireChildWorkflowRunner()
 
-	settingsService := NewSettingsService(settingsStore, triggerService, settingsPath != defaultSettingsPath)
+	settingsService := settingssvc.NewSettingsService(settingsStore, triggerService, settingsPath != defaultSettingsPath)
 	// Bidirectional hotkey-conflict check (docs/SPEC.md §3.7): a
 	// per-workflow hotkey can't silently collide with the app-level
 	// summon hotkey, and vice versa -- SettingsService.AssignSummonHotkey
@@ -169,7 +164,7 @@ func main() {
 	if millMCPAddr == "" {
 		millMCPAddr = "127.0.0.1:8090"
 	}
-	millMCPService := NewMillMCPService(compositionService, configureService, settingsStore)
+	millMCPService := mcpsvc.NewMillMCPService(millVersion, compositionService, configureService, settingsStore)
 	settingsService.SetMCPService(millMCPService)
 	if err := millMCPService.Start(millMCPAddr); err != nil {
 		logger.Error("mill MCP server", "error", err)
@@ -182,8 +177,8 @@ func main() {
 		Description: "Guardrailed agentic-workflow automation",
 		Logger:      logger,
 		Services: []application.Service{
-			application.NewService(&SpecService{}),
-			application.NewService(&CapabilitiesService{}),
+			application.NewService(specsvc.New(specMarkdown)),
+			application.NewService(&capabilitysvc.CapabilitiesService{}),
 			application.NewService(compositionService),
 			application.NewService(triggerService),
 			application.NewService(configureService),
