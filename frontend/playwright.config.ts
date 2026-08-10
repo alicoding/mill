@@ -18,10 +18,19 @@ export default defineConfig({
   // integration tests, not mocks (ADR-0002) -- the alternative would be
   // mocking the one thing most likely to actually break.
   workers: 1,
+  globalSetup: './e2e/global-setup.ts',
   webServer: {
     command: 'cd .. && go build -tags server -o bin/mill-server . && ./bin/mill-server',
     url: 'http://localhost:8080/health',
-    reuseExistingServer: !process.env.CI,
+    // NEVER reuse a server something else started: three separate
+    // incidents of the suite silently running against the wrong
+    // process's data (once against the REAL desktop store -- a bare
+    // mill-server without the MILL_* env was listening and the health
+    // check can't tell servers apart, since Wails' asset server answers
+    // any path). With reuse off, a rogue process holding the port is a
+    // loud bind failure instead of a silent wrong-data run; the
+    // isolation guard in global-setup.ts is the second layer.
+    reuseExistingServer: false,
     timeout: 60_000,
     // Points CompositionService's persistence (main.go) at a throwaway
     // file instead of the real ~/Library/Application Support/mill/

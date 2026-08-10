@@ -3,7 +3,7 @@ import { Button, FormControl, Heading, IconButton, Stack, Text, TextInput } from
 import { DownloadIcon, PlusIcon, TrashIcon, UploadIcon } from '@primer/octicons-react'
 import { DataTable } from '@primer/react/experimental'
 import { ResizableTableContainer } from '../shared/ResizableTable'
-import { ConfigureService } from '../../bindings/github.com/alicoding/mill'
+import { ConfigureService } from '../shared/bindings'
 import type { List } from '../../bindings/github.com/alicoding/mill/internal/domain/list/models'
 import { downloadJSON } from '../shared/downloadJSON'
 import { ViewModeToggle } from '../shared/ViewModeToggle'

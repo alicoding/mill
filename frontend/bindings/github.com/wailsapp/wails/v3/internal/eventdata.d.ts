@@ -7,13 +7,16 @@ import type { Events } from "@wailsio/runtime";
 
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
-import type * as main$0 from "../../../../alicoding/mill/models.js";
+import type * as mcpsvc$0 from "../../../../alicoding/mill/internal/services/mcpsvc/models.js";
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: Unused imports
+import type * as triggersvc$0 from "../../../../alicoding/mill/internal/services/triggersvc/models.js";
 
 declare module "@wailsio/runtime" {
     namespace Events {
         interface CustomEvents {
-            "hotkey-activity": main$0.HotkeyActivity;
-            "mcp-write-approval": main$0.MCPWriteRequest;
+            "hotkey-activity": triggersvc$0.HotkeyActivity;
+            "mcp-write-approval": mcpsvc$0.MCPWriteRequest;
             "time": string;
         }
     }

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Heading, Label, type LabelProps, Stack, Text } from '@primer/react'
 import { ChevronDownIcon, ChevronRightIcon } from '@primer/octicons-react'
-import { CompositionService } from '../../bindings/github.com/alicoding/mill'
+import { CompositionService } from '../shared/bindings'
 import { Approach, type MapEntry } from '../../bindings/github.com/alicoding/mill/internal/domain/composition/models'
 import { statusVariant } from '../shared/store'
 import styles from '../shared/ListCard.module.css'

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Button, FormControl, Heading, IconButton, Select, Stack, Text, TextInput, Textarea } from '@primer/react'
 import { PlusIcon, TrashIcon } from '@primer/octicons-react'
-import { ConfigureService } from '../../bindings/github.com/alicoding/mill'
+import { ConfigureService } from '../shared/bindings'
 import type { HTTPRequest } from '../../bindings/github.com/alicoding/mill/internal/domain/httprequest/models'
 import { AuthType } from '../../bindings/github.com/alicoding/mill/internal/domain/httprequest/models'
 import { ManualSchemaEditor } from './ManualSchemaEditor'
