@@ -1,4 +1,5 @@
-import { test, expect } from '@playwright/test'
+import { test, expect } from './fixtures/server'
+import { withClipboardLock } from './fixtures/clipboardLock'
 import { clickRowAction } from './inventoryRow'
 
 // Exercises the single execution path end-to-end (docs/adr/0004,
@@ -55,7 +56,9 @@ async function closeEditorTab(page: import('@playwright/test').Page, workflowLab
     .click()
 }
 
+// Real OS clipboard I/O (goal 0009) -- "Load sample HTML" writes to it.
 test('Running a workflow from its list row, then opening its Runs tab, shows a real status', async ({ page }) => {
+  await withClipboardLock(async () => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Workflows' }).click()
 
@@ -77,9 +80,12 @@ test('Running a workflow from its list row, then opening its Runs tab, shows a r
   await expect(statusLabel).toBeVisible({ timeout: 15_000 })
 
   await closeEditorTab(page, 'Load sample HTML')
+  })
 })
 
+// Real OS clipboard I/O (goal 0009) -- "Load sample HTML" writes to it.
 test('Viewing a run on its workflow Runs tab shows the per-step breakdown', async ({ page }) => {
+  await withClipboardLock(async () => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Workflows' }).click()
 
@@ -104,6 +110,7 @@ test('Viewing a run on its workflow Runs tab shows the per-step breakdown', asyn
   await expect(detail.getByText('Apply: write HTML to clipboard')).toBeVisible()
 
   await closeEditorTab(page, 'Load sample HTML')
+  })
 })
 
 test('A workflow with no runs yet shows an empty state on its Runs tab, scoped to that workflow only', async ({ page }) => {

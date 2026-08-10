@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test'
+import { test, expect } from './fixtures/server'
 
 // docs/SPEC.md §3.8's hover-preview pattern (n8n/Oscilar), over real Go
 // bindings: hovering a workflow reference shows that workflow's actual

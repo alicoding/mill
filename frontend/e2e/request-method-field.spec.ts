@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test'
+import { test, expect } from './fixtures/server'
 
 // The integration-http node asks ONLY for which integration to call --
 // no path/method/body fields at the workflow level (direct user

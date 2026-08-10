@@ -1,4 +1,5 @@
-import { test, expect } from '@playwright/test'
+import { test, expect } from './fixtures/server'
+import { withClipboardLock } from './fixtures/clipboardLock'
 import { clickRowAction } from './inventoryRow'
 
 // Real Go bindings over HTTP (Wails3 server mode), not mocks -- same
@@ -156,7 +157,11 @@ function runResult(page: import('@playwright/test').Page, label: string) {
   return page.getByTestId('workflow-run-result').filter({ has: page.getByText(label, { exact: true }) })
 }
 
+// Real OS clipboard I/O (goal 0009: frontend/e2e/fixtures/clipboardLock.ts) --
+// the whole test body runs under the cross-process lock since it both
+// writes to and reads the one shared real pasteboard.
 test('Running the load-sample workflow produces a visible response, success or error', async ({ page }) => {
+  await withClipboardLock(async () => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Workflows' }).click()
   await workflowRow(page, 'Load sample HTML').getByRole('button', { name: 'Run' }).click()
@@ -164,9 +169,12 @@ test('Running the load-sample workflow produces a visible response, success or e
   // SOME response, without hard-coding osascript's platform-specific
   // text (the result content is clipboard-dependent).
   await expect(runResult(page, 'Load sample HTML').locator('pre')).toBeVisible()
+  })
 })
 
+// Real OS clipboard I/O (goal 0009) -- same lock as above.
 test('Running the clipboard-to-markdown workflow produces a visible response, success or error', async ({ page }) => {
+  await withClipboardLock(async () => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Workflows' }).click()
   await workflowRow(page, 'Clipboard → Markdown').getByRole('button', { name: 'Run' }).click()
@@ -176,9 +184,12 @@ test('Running the clipboard-to-markdown workflow produces a visible response, su
   // outcome (updated 2026-08-10 when the §5 plain-text fallback landed;
   // "no HTML on clipboard" is no longer a guaranteed outcome).
   await expect(runResult(page, 'Clipboard → Markdown').locator('pre')).toBeVisible()
+  })
 })
 
+// Real OS clipboard I/O (goal 0009) -- writes apply-clipboard-write-html.
 test('Dragging a node onto the canvas configures it as it is added, then saves, runs and deletes for real', async ({ page }) => {
+  await withClipboardLock(async () => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Workflows' }).click()
   await page.getByTestId('new-workflow').click()
@@ -222,6 +233,7 @@ test('Dragging a node onto the canvas configures it as it is added, then saves, 
 
   await clickRowAction(page, row, 'Delete')
   await expect(workflowRow(page, 'E2E custom workflow')).toHaveCount(0)
+  })
 })
 
 test('Seeded example workflows are ordinary, fully editable and deletable', async ({ page }) => {
@@ -247,7 +259,9 @@ test('Seeded example workflows are ordinary, fully editable and deletable', asyn
   await page.keyboard.press('Escape')
 })
 
+// Real OS clipboard I/O (goal 0009) -- writes apply-clipboard-write-html.
 test('Editing an existing workflow updates it in place, not as a duplicate', async ({ page }) => {
+  await withClipboardLock(async () => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Workflows' }).click()
 
@@ -293,6 +307,7 @@ test('Editing an existing workflow updates it in place, not as a duplicate', asy
 
   await clickRowAction(page, updated, 'Delete')
   await expect(updated).toHaveCount(0)
+  })
 })
 
 test('Opening New workflow twice opens two tabs; closing one returns to the list without touching the other', async ({ page }) => {

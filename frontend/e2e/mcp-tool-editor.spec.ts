@@ -1,5 +1,5 @@
 import { fileURLToPath } from 'node:url'
-import { test, expect } from '@playwright/test'
+import { test, expect } from './fixtures/server'
 import { clickRowAction } from './inventoryRow'
 
 // Exercises the mcp-tool-call node's schema-driven arguments editor
