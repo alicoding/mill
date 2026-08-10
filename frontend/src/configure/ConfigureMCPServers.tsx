@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Button, FormControl, Heading, IconButton, Stack, Text, TextInput } from '@primer/react'
+import { Button, FormControl, Heading, IconButton, Label, Stack, Text, TextInput } from '@primer/react'
 import { DownloadIcon, PlusIcon, ServerIcon, TrashIcon, UploadIcon } from '@primer/octicons-react'
 import { DataTable } from '@primer/react/experimental'
 import { ResizableTableContainer, TruncatedCell } from '../shared/ResizableTable'
@@ -124,6 +124,10 @@ export function ConfigureMCPServers() {
     entity: 'mcpserver',
     icon: ENTITY_ICON.mcpserver,
     label: s.Label,
+    // No !s.BuiltIn guard on Delete -- same "ordinary, fully editable/
+    // deletable from the moment it exists" reasoning as
+    // ConfigureRequests.tsx/ConfigureLists.tsx's identical badge.
+    labelBadges: s.BuiltIn ? <Label variant="secondary" size="small">built-in</Label> : undefined,
     description: `${s.Command} ${(s.Args ?? []).join(' ')}`.trim(),
     onOpen: () => startEdit(s),
     menuActions: [

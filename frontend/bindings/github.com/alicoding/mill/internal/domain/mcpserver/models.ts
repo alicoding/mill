@@ -11,4 +11,12 @@ export interface MCPServer {
     "Label": string;
     "Command": string;
     "Args": string[] | null;
+
+    /**
+     * BuiltIn marks a seeded example MCP Server (BuiltIn() below) --
+     * purely informational, same as httprequest.HTTPRequest.BuiltIn/
+     * decision.Decision.BuiltIn/list.List.BuiltIn: drives a "built-in"
+     * badge only, never gates Edit/Delete.
+     */
+    "BuiltIn": boolean;
 }

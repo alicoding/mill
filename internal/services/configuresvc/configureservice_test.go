@@ -22,14 +22,16 @@ func TestMain(m *testing.M) {
 	m.Run()
 }
 
-// newTestConfigureService starts from a genuinely empty request list,
-// not the seeded built-in examples (docs/SPEC.md §4's Update) --
-// NewConfigureService's restore() seeds httprequest.BuiltIn() on any
-// fresh store, same as CompositionService.restore() already does for
-// BuiltInWorkflows, so every existing count-based assertion in this
-// package (len(cfg.HTTPRequests()) != 1, etc.) would otherwise see 7
-// unexpected entries. The seeding behavior itself gets its own
-// dedicated tests in configureservice_builtin_test.go, which construct
+// newTestConfigureService starts from genuinely empty request/list/MCP-
+// server lists, not the seeded built-in examples (docs/SPEC.md §4's
+// Update, docs/goals/0010 items 4-5) -- NewConfigureService's
+// constructor top-up-seeds httprequest.BuiltIn()/list.BuiltIn()/
+// mcpserver.BuiltIn() on any fresh store, same as
+// CompositionService.restore() already does for BuiltInWorkflows, so
+// every existing count-based assertion in this package
+// (len(cfg.HTTPRequests()) != 1, etc.) would otherwise see unexpected
+// seeded entries. The seeding behavior itself gets its own dedicated
+// tests in configureservice_builtin_test.go, which construct
 // ConfigureService directly rather than through this helper.
 func newTestConfigureService(t *testing.T) (*ConfigureService, *compositionsvc.CompositionService) {
 	t.Helper()
@@ -37,6 +39,8 @@ func newTestConfigureService(t *testing.T) (*ConfigureService, *compositionsvc.C
 	comp := compositionsvc.NewCompositionService(store)
 	cfg := NewConfigureService(store, comp, credential.New())
 	cfg.requests = nil
+	cfg.lists = nil
+	cfg.mcpServers = nil
 	return cfg, comp
 }
 

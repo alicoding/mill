@@ -35,6 +35,26 @@ func SetMCPServerLookup(fn func(mcpServerID string) (ResolvedMCPServer, error)) 
 	lookupMCPServerFn = fn
 }
 
+// callToolFn is the function an mcp-tool-call node actually invokes to
+// run a tool -- defaults to mcpclient.CallTool, a real stdio subprocess
+// (production's only path). Overridable in tests (SetMCPCallTool) so
+// this node's own responsibility -- resolving the server, parsing/
+// resolving arguments, applying the result to the payload -- can be
+// proven end to end against a real, in-process MCP protocol transport
+// (mcp.NewInMemoryTransports, mirroring internal/adapters/mcpclient's
+// own test pattern, docs/goals/0010 item 5) without spawning a
+// subprocess or touching npx/the network, the same "test against
+// something real, minus the process boundary" bar SetHTTPRequestLookup's
+// httptest.Server precedent already sets one layer up.
+var callToolFn = mcpclient.CallTool
+
+// SetMCPCallTool overrides how mcp-tool-call nodes actually perform a
+// tool call -- test-only; production always uses the default
+// (mcpclient.CallTool).
+func SetMCPCallTool(fn func(command string, args []string, toolName string, arguments map[string]any) (string, error)) {
+	callToolFn = fn
+}
+
 func init() {
 	RegisterNodeType(NodeType{
 		ID: "mcp-tool-call", Kind: KindProcess,
@@ -74,7 +94,7 @@ func init() {
 		}
 		arguments = resolveMCPArguments(arguments, ctx.Attributes)
 
-		result, err := mcpclient.CallTool(rs.Command, rs.Args, node.Config["toolName"], arguments)
+		result, err := callToolFn(rs.Command, rs.Args, node.Config["toolName"], arguments)
 		if err != nil {
 			return ctx, fmt.Errorf("mcp-tool-call: %w", err)
 		}

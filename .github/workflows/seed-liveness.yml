@@ -1,0 +1,45 @@
+name: Seed liveness (advisory)
+
+# docs/goals/0010 item 3: httprequest.BuiltIn()'s seven seeded
+# HTTPRequests each claim (in their own Description) to be verified
+# live against a real third party (httpbin.org, postman-echo.com) --
+# previously only checked by hand at development time. This job runs
+# that real round trip on a schedule so the claim stops being
+# historical, without making a real third party's uptime a merge gate
+# for unrelated changes (ci.yml's own govulncheck job sets the same
+# "advisory, not blocking" precedent for a check that depends on
+# something outside this repo's control).
+on:
+  schedule:
+    # Weekly, Monday 06:00 UTC -- frequent enough to catch a seed
+    # rotting (an endpoint changing shape/going away), infrequent
+    # enough not to hammer httpbin.org/postman-echo.com for a check
+    # that never changes result between real incidents.
+    - cron: '0 6 * * 1'
+  workflow_dispatch: {}
+
+concurrency:
+  group: seed-liveness-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  seed-liveness:
+    runs-on: ubuntu-latest
+    # Advisory only -- a real third party's uptime/response shape is
+    # outside this repo's control, so a failure here is worth seeing
+    # (it names exactly which seed and endpoint), never worth blocking
+    # a merge that has nothing to do with it.
+    continue-on-error: true
+    env:
+      # Same reasoning as ci.yml's test-go job: this package
+      # transitively imports Wails3 packages that are cgo-gated onto
+      # GTK4/webkitgtk-6.0 on Linux regardless of build tags, unless
+      # cgo itself is disabled.
+      CGO_ENABLED: '0'
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version: '1.25'
+          cache: true
+      - run: go test -tags liveness ./internal/services/configuresvc/... -run TestSeededHTTPRequests_LiveEndpointsRespond -v
