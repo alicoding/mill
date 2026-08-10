@@ -70,6 +70,11 @@ func init() {
 				Description: "Absolute path to a file or directory.",
 				Default:     "", Type: FieldText,
 			},
+			{
+				Key: "pattern", Label: "Filename pattern (optional)",
+				Description: "A glob like *.md or report-*.csv -- only files whose name matches fire the trigger. Leave empty to fire on any change.",
+				Default:     "", Type: FieldText,
+			},
 		},
 	}, nil)
 	RegisterNodeType(NodeType{
