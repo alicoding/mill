@@ -1,10 +1,12 @@
 import { useEffect } from 'react'
 import type { ReactNode } from 'react'
 import { Tabs } from '@primer/react/experimental'
+import { Banner } from '@primer/react'
 import { ConfigureService } from '../shared/bindings'
 import { TabItem, TabList, TabPanel } from '../shared/Tabs'
 import { refreshRequests, refreshWorkflows, useAppStore, type WorkTab } from '../shared/store'
 import { WorkflowEditorTab } from '../composition/WorkflowEditorTab'
+import { clearScratch } from '../composition/canvasScratch'
 import { RequestForm } from '../configure/RequestForm'
 import { RequestSummary } from '../configure/RequestSummary'
 import editorStyles from '../composition/CompositionView.module.css'
@@ -46,6 +48,23 @@ export function WorkTabShell({ pageLabel, children }: { pageLabel: string; child
   const workflows = useAppStore((s) => s.workflows)
   const nodeTypes = useAppStore((s) => s.nodeTypes)
   const requests = useAppStore((s) => s.requests)
+  // Hot-exit signals (docs/goals/0012-authoring-hot-exit.md), written by
+  // composition/CompositionCanvas.tsx, read here for the tab-strip dirty
+  // dot and the restored-scratch banner.
+  const workTabDirty = useAppStore((s) => s.workTabDirty)
+  const workTabRestored = useAppStore((s) => s.workTabRestored)
+  const dismissWorkTabRestored = useAppStore((s) => s.dismissWorkTabRestored)
+
+  // Deliberate tab close/back (the ✕, or the canvas's own Back arrow)
+  // is the other event that discards a canvas tab's hot-exit scratch --
+  // wraps closeWorkTab so every path off a work tab funnels through one
+  // place. A no-op for tab kinds that never write scratch (Configure
+  // forms are out of this goal's scope) since clearing a key that was
+  // never written is harmless.
+  const closeAndClearScratch = (key: string) => {
+    clearScratch(key)
+    closeWorkTab(key)
+  }
 
   // Drop restored tabs whose entity was deleted since last session --
   // once, when both lists are actually in (never against a still-null
@@ -73,7 +92,8 @@ export function WorkTabShell({ pageLabel, children }: { pageLabel: string; child
           <WorkflowEditorTab
             nodeTypes={nodeTypes}
             workflow={workflow}
-            onBack={() => closeWorkTab(tab.key)}
+            tabKey={tab.key}
+            onBack={() => closeAndClearScratch(tab.key)}
             onSaved={() => { void refreshWorkflows(); closeWorkTab(tab.key) }}
             onWorkflowsChanged={() => void refreshWorkflows()}
           />
@@ -122,8 +142,15 @@ export function WorkTabShell({ pageLabel, children }: { pageLabel: string; child
         <TabList aria-label="Open work">
           <TabItem value={PAGE_TAB}>{pageLabel}</TabItem>
           {workTabs.map((t) => (
-            <TabItem key={t.key} value={t.key} onClose={() => closeWorkTab(t.key)}>
+            <TabItem key={t.key} value={t.key} onClose={() => closeAndClearScratch(t.key)}>
               {tabLabel(t, workflowLabel, requestLabel)}
+              {/* Hot-exit dirty dot (docs/goals/0012) -- this tab's
+                  canvas currently differs from what's saved. */}
+              {workTabDirty[t.key] && (
+                <span className={editorStyles.dirtyDot} aria-label="Unsaved changes" data-testid="dirty-indicator">
+                  {' '}•
+                </span>
+              )}
             </TabItem>
           ))}
         </TabList>
@@ -131,6 +158,21 @@ export function WorkTabShell({ pageLabel, children }: { pageLabel: string; child
       <TabPanel value={PAGE_TAB}>{children}</TabPanel>
       {workTabs.map((t) => (
         <TabPanel key={t.key} value={t.key} className={isCanvasTab(t) ? editorStyles.editorPanel : undefined}>
+          {/* Hot-exit "restored" banner (docs/goals/0012) -- shown only
+              for a tab whose canvas was seeded from a pre-reload/quit
+              scratch that differed from what's saved. Dismissing it is
+              purely informational: the scratch itself keeps shadowing
+              the draft until Save or a deliberate close, and the tab
+              stays marked dirty. */}
+          {isCanvasTab(t) && workTabRestored[t.key] && (
+            <Banner
+              variant="info"
+              title="Unsaved changes restored"
+              description="This workflow had unsaved edits from before Mill last closed or reloaded — they're back, not yet saved."
+              onDismiss={() => dismissWorkTabRestored(t.key)}
+              data-testid="restored-unsaved"
+            />
+          )}
           {renderTab(t)}
         </TabPanel>
       ))}

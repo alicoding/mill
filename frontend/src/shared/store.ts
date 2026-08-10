@@ -120,13 +120,18 @@ export type WorkTabSpec =
 
 export type WorkTab = WorkTabSpec & { key: string }
 
-// Which persisted tabs restore across a reload: saved-entity tabs only
-// -- never a '-new' or 'request-edit' tab, whose unsaved in-progress
-// state is already gone (the same only-'view'-tabs discipline the old
-// per-page persistence had; workflow-edit is the canvas over a SAVED
-// workflow, so it restores like before).
+// Which persisted tabs restore across a reload: saved-entity tabs, plus
+// 'workflow-new' -- never a 'request-edit'/'request-new' tab, whose
+// unsaved in-progress form state is already gone (Configure forms stay
+// out of hot exit's scope, docs/goals/0012-authoring-hot-exit.md; the
+// only-'view'-tabs discipline still holds there). 'workflow-new' is the
+// one exception: unlike a half-filled Configure form, its canvas state
+// IS recoverable, via the same localStorage hot-exit scratch a
+// 'workflow-edit' tab already restores from (canvasScratch.ts) -- so a
+// brand-new, not-yet-saved workflow's tab now persists across reload
+// too, not just already-saved ones.
 function isRestorable(tab: WorkTab): boolean {
-  return tab.kind === 'workflow-edit' || tab.kind === 'request-view'
+  return tab.kind === 'workflow-edit' || tab.kind === 'request-view' || tab.kind === 'workflow-new'
 }
 
 // One-time migration from the two per-page persistedTabs keys the
@@ -204,6 +209,26 @@ interface AppState {
   // the same workflow later, doesn't keep re-focusing a stale run.
   pendingRunFocus: { workflowId: string; runId: string } | null
   consumePendingRunFocus: () => void
+  // Hot-exit UI signals (docs/goals/0012-authoring-hot-exit.md), keyed
+  // by WorkTab.key -- pure state, no localStorage/scratch knowledge
+  // here (that stays in composition/canvasScratch.ts; shared/ is a
+  // dependency-cruiser leaf, §1.3, and can't import from composition/).
+  // A canvas tab (composition/CompositionCanvas.tsx) writes into these;
+  // app/WorkTabShell.tsx reads them to render the tab-strip dirty dot
+  // and the "unsaved changes restored" banner.
+  workTabDirty: Record<string, boolean>
+  setWorkTabDirty: (key: string, dirty: boolean) => void
+  // Set true only when a tab's canvas was seeded from restored hot-exit
+  // scratch that differed from the saved/starter baseline at mount --
+  // never from ordinary in-session editing, so the banner only ever
+  // means "this came back from before a reload/quit/crash," not "you
+  // have unsaved changes" (workTabDirty already covers that). Dismissing
+  // it is purely informational (dismissWorkTabRestored) -- it never
+  // touches the underlying scratch, which keeps shadowing the draft
+  // until Save or a deliberate close.
+  workTabRestored: Record<string, boolean>
+  setWorkTabRestored: (key: string, restored: boolean) => void
+  dismissWorkTabRestored: (key: string) => void
 }
 
 // Shared across App/ActivityView (SPEC.md §1.3): App.tsx still owns the
@@ -285,10 +310,18 @@ export const useAppStore = create<AppState>()(
           return { workTabs: [...state.workTabs, created], activeWorkTabKey: created.key }
         }),
       closeWorkTab: (key) =>
-        set((state) => ({
-          workTabs: state.workTabs.filter((t) => t.key !== key),
-          activeWorkTabKey: state.activeWorkTabKey === key ? null : state.activeWorkTabKey,
-        })),
+        set((state) => {
+          const workTabDirty = { ...state.workTabDirty }
+          delete workTabDirty[key]
+          const workTabRestored = { ...state.workTabRestored }
+          delete workTabRestored[key]
+          return {
+            workTabs: state.workTabs.filter((t) => t.key !== key),
+            activeWorkTabKey: state.activeWorkTabKey === key ? null : state.activeWorkTabKey,
+            workTabDirty,
+            workTabRestored,
+          }
+        }),
       activateWorkTab: (key) => set({ activeWorkTabKey: key }),
       pruneWorkTabs: (keep) =>
         set((state) => {
@@ -307,6 +340,21 @@ export const useAppStore = create<AppState>()(
           return { workTabs: [...state.workTabs, created], activeWorkTabKey: created.key, pendingRunFocus }
         }),
       consumePendingRunFocus: () => set({ pendingRunFocus: null }),
+      workTabDirty: {},
+      setWorkTabDirty: (key, dirty) =>
+        set((state) => {
+          if ((state.workTabDirty[key] ?? false) === dirty) return {}
+          return { workTabDirty: { ...state.workTabDirty, [key]: dirty } }
+        }),
+      workTabRestored: {},
+      setWorkTabRestored: (key, restored) =>
+        set((state) => ({ workTabRestored: { ...state.workTabRestored, [key]: restored } })),
+      dismissWorkTabRestored: (key) =>
+        set((state) => {
+          const workTabRestored = { ...state.workTabRestored }
+          delete workTabRestored[key]
+          return { workTabRestored }
+        }),
     }),
     {
       name: 'mill-app-view',
