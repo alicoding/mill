@@ -66,3 +66,18 @@
 .sectionHeading { margin: var(--s-4) 0 var(--base-size-8); }
 .stepConfigField { margin-top: var(--base-size-8); }
 .filterRow { margin-bottom: var(--base-size-12); }
+
+/* Whole-row-clickable runs table (WorkflowRunsPanel.tsx) -- the row IS
+   the View affordance (owner's model), so it needs hover feedback and
+   a selected state. DataTable renders a real <table>; the selected row
+   is found via the status cell's data-selected identity anchor since
+   Primer offers no row-level API for either. */
+.clickableRunsTable tbody tr {
+    cursor: pointer;
+}
+.clickableRunsTable tbody tr:hover {
+    background: var(--bgColor-muted);
+}
+.clickableRunsTable tbody tr:has([data-selected='true']) {
+    background: var(--bgColor-accent-muted);
+}
