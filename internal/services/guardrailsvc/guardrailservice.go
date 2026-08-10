@@ -139,13 +139,18 @@ func (g *GuardrailService) TestRules(workflowID, nodeID string) (RuleTestResult,
 	if target == nil {
 		return RuleTestResult{}, fmt.Errorf("unknown workflow step: %s / %s", workflowID, nodeID)
 	}
-	// The explicit checkpoint always parks -- report it as such rather
-	// than evaluating rules its park deliberately ignores (same
-	// special-case as WorkflowVerdicts below).
-	if target.NodeTypeID == "human-review" {
+	// A node that always parks (the explicit human-review checkpoint,
+	// ADR-0023; a manual-review-category decision-outcome node,
+	// ADR-0027) -- report it as such rather than evaluating rules its
+	// park deliberately ignores (same special-case as WorkflowVerdicts
+	// below).
+	if composition.NodeAlwaysParks(*target) {
 		return RuleTestResult{Effect: "ask", RuleLabel: "explicit checkpoint", EffectClass: "none"}, nil
 	}
-	class := composition.NodeTypeEffect(target.NodeTypeID)
+	// EffectForNode, not the static NodeTypeEffect: a decision-outcome
+	// node's actual effect class is dynamic (docs/adr/0027) -- every
+	// other NodeType's answer is unchanged.
+	class := composition.EffectForNode(*target)
 	verdict := guardrail.Evaluate(g.Rules(), GuardrailStep(workflowID, *target, composition.ExecContext{
 		Attributes: composition.AttributesEnv(wf.Attributes, nil),
 	}), class)
@@ -175,9 +180,10 @@ func GuardrailStep(workflowID string, node composition.Node, ec composition.Exec
 // executable step of one workflow at once -- the canvas's
 // nothing-hidden badge data (docs/adr/0022's Update: a step that will
 // ask or deny is marked visibly on the canvas BEFORE anyone runs it,
-// not discovered at run time). The explicit Wait-for-approval node
-// always reports ask -- it parks by construction, no rule vouches it
-// away.
+// not discovered at run time). A node that always parks (the explicit
+// Wait-for-approval/human-review node, ADR-0023; a manual-review
+// decision-outcome, ADR-0027) always reports ask -- it parks by
+// construction, no rule vouches it away.
 func (g *GuardrailService) WorkflowVerdicts(workflowID string) (map[string]RuleTestResult, error) {
 	var wf composition.Workflow
 	found := false
@@ -197,11 +203,11 @@ func (g *GuardrailService) WorkflowVerdicts(workflowID string) (map[string]RuleT
 		if n.Kind == composition.KindTrigger || n.Kind == composition.KindDecision {
 			continue
 		}
-		if n.NodeTypeID == "human-review" {
+		if composition.NodeAlwaysParks(n) {
 			out[n.ID] = RuleTestResult{Effect: "ask", RuleLabel: "explicit checkpoint", EffectClass: "none"}
 			continue
 		}
-		class := composition.NodeTypeEffect(n.NodeTypeID)
+		class := composition.EffectForNode(n)
 		v := guardrail.Evaluate(rules, GuardrailStep(workflowID, n, composition.ExecContext{Attributes: attrs}), class)
 		out[n.ID] = RuleTestResult{
 			Effect: string(v.Effect), RuleID: v.RuleID, RuleLabel: v.RuleLabel, EffectClass: string(class),

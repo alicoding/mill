@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/alicoding/mill/internal/domain/decision"
 	"github.com/alicoding/mill/internal/domain/httprequest"
 	"github.com/alicoding/mill/internal/domain/list"
 	"github.com/alicoding/mill/internal/domain/mcpserver"
@@ -168,4 +169,50 @@ func (c *ConfigureService) ImportMCPServer(jsonData string) (mcpserver.MCPServer
 		return mcpserver.MCPServer{}, fmt.Errorf("import MCP server: invalid JSON: %w", err)
 	}
 	return c.CreateMCPServer(in.Label, in.Command, in.Args)
+}
+
+// --- Decision ---
+
+// exportedDecision omits WebhookRequestID deliberately -- an imported
+// Decision on a different Mill instance has no guarantee the
+// referenced HTTPRequest ID even exists there (same reasoning
+// ExportHTTPRequest/exportedHTTPRequest never carries a secret: this
+// file's job is portable, safe-to-share config, not a byte-for-byte
+// clone of local-only references). The webhook binding is re-authored
+// in Configure after import, same as a secret is re-Set after import.
+type exportedDecision struct {
+	Label    string                `json:"label"`
+	Category decision.Category     `json:"category"`
+	Outputs  []decision.OutputField `json:"outputs"`
+}
+
+func (c *ConfigureService) ExportDecision(id string) (string, error) {
+	c.mu.Lock()
+	var d decision.Decision
+	found := false
+	for _, entry := range c.decisions {
+		if entry.ID == id {
+			d = entry
+			found = true
+			break
+		}
+	}
+	c.mu.Unlock()
+	if !found {
+		return "", fmt.Errorf("no decision with id %q", id)
+	}
+
+	data, err := json.MarshalIndent(exportedDecision{Label: d.Label, Category: d.Category, Outputs: d.Outputs}, "", "  ")
+	if err != nil {
+		return "", fmt.Errorf("export decision: %w", err)
+	}
+	return string(data), nil
+}
+
+func (c *ConfigureService) ImportDecision(jsonData string) (decision.Decision, error) {
+	var in exportedDecision
+	if err := json.Unmarshal([]byte(jsonData), &in); err != nil {
+		return decision.Decision{}, fmt.Errorf("import decision: invalid JSON: %w", err)
+	}
+	return c.CreateDecision(in.Label, in.Category, in.Outputs, "")
 }

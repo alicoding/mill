@@ -114,15 +114,16 @@ test('Composition page lists built-in workflows; node primitives live in a colla
   // 5 Trigger node types (SPEC.md §3.4) + trigger-callable
   // (docs/adr/0010) + the original 4 capture/process/apply node types +
   // decision-route, integration-http, list-lookup (SPEC.md §3.5's
-  // Decision/Integration/List execution engines) + mcp-tool-call
+  // Branch/Integration/List execution engines) + mcp-tool-call
   // (SPEC.md §3.6's MCP-client extension point) + child-workflow
   // (docs/adr/0010) + process-inject-text (SPEC.md §3.3) +
   // capture-attribute (the typed-input reader the seeded parent/child
   // example uses, added via ADR-0006's self-registration) +
   // human-review (the explicit human-in-the-loop checkpoint node,
   // docs/adr/0022's Update + docs/adr/0023) + ruleset (docs/adr/0023's
-  // payload-validation node).
-  await expect(activePanel(page).getByTestId('palette-item')).toHaveCount(19)
+  // payload-validation node) + decision-outcome (the terminal Decision
+  // node, docs/adr/0027).
+  await expect(activePanel(page).getByTestId('palette-item')).toHaveCount(20)
 })
 
 test('A new workflow starts with a starter node placed, not a blank canvas', async ({ page }) => {

@@ -195,6 +195,13 @@ function CanvasInner({ nodeTypes, workflow, onBack, onSaved }: CompositionCanvas
   const isValidConnection = useCallback(
     (connection: Connection | RFEdge) => {
       const source = nodes.find((n) => n.id === connection.source)
+      // A terminal node (docs/adr/0027) may have NO outgoing edge at
+      // all -- checked before the out-degree-1 rule below, since "at
+      // most 1" would otherwise let exactly one edge out of a Decision
+      // through. Matches CanvasNodeView omitting its source handle
+      // entirely; this is the draw-time layer of the same rule,
+      // belt-and-suspenders with the missing handle.
+      if (source?.data.kind === 'terminal') return false
       if (source?.data.kind !== 'decision' && edges.some((e) => e.source === connection.source)) return false
       // Nothing connects into a trigger node -- it's the entry point, not
       // a step something else feeds (matches CanvasNodeView omitting the
