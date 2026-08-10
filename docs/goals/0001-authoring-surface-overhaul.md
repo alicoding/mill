@@ -30,7 +30,7 @@ Remaining, in order:
    | ruleset | ~~v1~~ **mature** (delivered 2026-08-10) | now uses the SAME react-querybuilder + ruleTranslate visual builder as Decision edges, with the raw-expr fallback — the two-condition-surfaces inconsistency is closed |
    | mcp-tool-call | v1 | argumentsJSON is a raw JSON textarea — needs a bindings-style editor like integration-http's (fetch the tool's InputSchema via ListMCPServerTools, render typed fields) |
    | human-review | v1 | requests ALL declared attributes; should let the step name which ones (config: attribute subset) + message preview |
-   | trigger-schedule | v1 | raw cron string, no human-readable preview ("every minute at :00") — adopt a cron-describe lib or render next-3-fire-times from the already-adopted scheduler |
+   | trigger-schedule | ~~v1~~ **mature** (delivered 2026-08-10) | Inspector shows a live cronstrue human-readable preview (MIT, zero deps); invalid expressions flagged inline |
    | list-lookup | v1 | miss behavior is implicit — needs an explicit on-miss option (fail run vs continue empty) |
    | capture-clipboard-html | v1 | no fallback order (SPEC §5: try HTML → plain text) — currently HTML-or-nothing |
    | trigger-filesystem-watch | v1 | no glob/pattern filter, single path only |
