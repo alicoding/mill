@@ -36,7 +36,12 @@ pattern?"). Two distinct problems, one design surface:
    trigger labels carry over into whatever row anatomy wins.
 
 ## Acceptance
-Owner opens Workflows and Integrations back-to-back and never
-mistakes one for the other; the list surfaces read as one designed
-system with per-entity identity; the card-view dislike is resolved
-(redesigned or retired, their call).
+Owner's own bar, stated directly (2026-08-10): "you want to feel like
+you are used to the page style — when you go to it you don't need to
+confirm that you are on that page." **Recognition, not confirmation**:
+each surface identifiable from ambient cues (shape/density/accent/
+iconography) before reading any text. Concretely: owner opens
+Workflows and Integrations back-to-back and never mistakes one for
+the other; the list surfaces read as one designed system with
+per-entity identity; the card-view dislike is resolved (redesigned or
+retired, their call).
