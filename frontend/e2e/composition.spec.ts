@@ -154,25 +154,22 @@ test('Running the load-sample workflow produces a visible response, success or e
   await page.goto('/')
   await page.getByRole('link', { name: 'Workflows' }).click()
   await workflowRow(page, 'Load sample HTML').getByRole('button', { name: 'Run' }).click()
-  // Same environment caveat as runbook.spec.ts's load-sample-html test:
-  // asserts the full click -> Go binding -> render pipeline produces SOME
-  // response, without hard-coding osascript's platform-specific text.
-  await expect(workflowRow(page, 'Load sample HTML').getByText(/Quarterly update|no HTML on clipboard|osascript/i)).toBeVisible()
+  // Asserts the full click -> Go binding -> render pipeline produces
+  // SOME response, without hard-coding osascript's platform-specific
+  // text (the result content is clipboard-dependent).
+  await expect(workflowRow(page, 'Load sample HTML').locator('pre')).toBeVisible()
 })
 
 test('Running the clipboard-to-markdown workflow produces a visible response, success or error', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Workflows' }).click()
   await workflowRow(page, 'Clipboard → Markdown').getByRole('button', { name: 'Run' }).click()
-  // On headless CI this is deterministic (no HTML on the clipboard, same
-  // as runbook.spec.ts's equivalent test) -- unlike Runbook's tuned
-  // soft-failure copy, this prototype's ExecuteWorkflow surfaces a plain
-  // technical error (composition.go's deliberate simplification). On a
-  // real local desktop the composition tests share one live system
-  // clipboard and can race, so -- exactly like runbook.spec.ts's own
-  // load-sample-html test -- this accepts either real conversion or the
-  // no-HTML error rather than asserting one deterministic outcome.
-  await expect(workflowRow(page, 'Clipboard → Markdown').getByText(/no HTML on clipboard|Quarterly update|osascript/i)).toBeVisible()
+  // The result is clipboard-dependent (real HTML converts; no HTML
+  // falls back to plain text per SPEC §5; an empty clipboard errors) --
+  // so this asserts the pipeline rendered SOME result, not a specific
+  // outcome (updated 2026-08-10 when the §5 plain-text fallback landed;
+  // "no HTML on clipboard" is no longer a guaranteed outcome).
+  await expect(workflowRow(page, 'Clipboard → Markdown').locator('pre')).toBeVisible()
 })
 
 test('Dragging a node onto the canvas configures it as it is added, then saves, runs and deletes for real', async ({ page }) => {
