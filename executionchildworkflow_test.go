@@ -46,7 +46,7 @@ func TestRunChildWorkflow_TracksRealParentChildRelationship(t *testing.T) {
 	}
 
 	dbPath := filepath.Join(t.TempDir(), "exec.db")
-	exec, err := NewExecutionService("sqlite:"+dbPath, comp)
+	exec, err := NewExecutionService("sqlite:"+dbPath, comp, NewGuardrailService(store, comp))
 	if err != nil {
 		t.Fatalf("NewExecutionService: %v", err)
 	}
@@ -108,7 +108,7 @@ func TestRunChildWorkflow_IdempotencyKey_PreventsDuplicateChildRuns(t *testing.T
 	}
 
 	dbPath := filepath.Join(t.TempDir(), "exec.db")
-	exec, err := NewExecutionService("sqlite:"+dbPath, comp)
+	exec, err := NewExecutionService("sqlite:"+dbPath, comp, NewGuardrailService(store, comp))
 	if err != nil {
 		t.Fatalf("NewExecutionService: %v", err)
 	}
@@ -145,7 +145,7 @@ func TestSeededParentChildExample_TypedInputAndOutput_RunsEndToEnd(t *testing.T)
 	comp := NewCompositionService(store)
 
 	dbPath := filepath.Join(t.TempDir(), "exec.db")
-	exec, err := NewExecutionService("sqlite:"+dbPath, comp)
+	exec, err := NewExecutionService("sqlite:"+dbPath, comp, NewGuardrailService(store, comp))
 	if err != nil {
 		t.Fatalf("NewExecutionService: %v", err)
 	}

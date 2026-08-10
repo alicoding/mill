@@ -11,6 +11,7 @@ import {
 import type { Connection, Edge as RFEdge } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 import { useStore } from 'zustand'
+import { GuardrailService } from '../../bindings/github.com/alicoding/mill'
 import { Button, FormControl, IconButton, Stack, Text, TextInput, Textarea } from '@primer/react'
 import { ChevronDownIcon, ChevronUpIcon, ColumnsIcon, RedoIcon, SidebarCollapseIcon, SidebarExpandIcon, TrashIcon, UndoIcon } from '@primer/octicons-react'
 import { ArrowLeftIcon } from '@primer/octicons-react'
@@ -67,6 +68,7 @@ function CanvasInner({ nodeTypes, workflow, onBack, onSaved }: CompositionCanvas
   const updateNodeConfig = useCanvasStore((s) => s.updateNodeConfig)
   const updateEdgeCondition = useCanvasStore((s) => s.updateEdgeCondition)
   const removeSelected = useCanvasStore((s) => s.removeSelected)
+  const setGuardrailVerdicts = useCanvasStore((s) => s.setGuardrailVerdicts)
 
   const canUndo = useStore(useCanvasStore.temporal, (s) => s.pastStates.length > 0)
   const canRedo = useStore(useCanvasStore.temporal, (s) => s.futureStates.length > 0)
@@ -76,6 +78,21 @@ function CanvasInner({ nodeTypes, workflow, onBack, onSaved }: CompositionCanvas
   // null/undefined then). The Inspector below shows "save first" in that
   // case rather than silently disabling the control with no explanation.
   const hotkeyCapture = useHotkeyCapture(workflow?.ID ?? null)
+
+  // Nothing-hidden guardrail badges (docs/adr/0022's Update): fetch the
+  // saved workflow's per-step verdicts so a step that will ask or deny
+  // is marked on the canvas before anyone runs it. Keyed on node
+  // membership/type/config so adding an external step or repointing a
+  // requestId refreshes the badge; a brand-new unsaved workflow has no
+  // ID to evaluate against yet (badges appear after the first save).
+  const nodeFingerprint = nodes.map((n) => `${n.id}:${n.data.nodeTypeID}:${n.data.config.requestId ?? ''}`).join('|')
+  useEffect(() => {
+    if (!workflow?.ID) return
+    GuardrailService.WorkflowVerdicts(workflow.ID)
+      .then((v) => setGuardrailVerdicts((v ?? {}) as Record<string, { effect: string; ruleLabel: string }>))
+      .catch(() => {})
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [workflow?.ID, nodeFingerprint])
 
   const { screenToFlowPosition } = useReactFlow()
 
@@ -386,6 +403,7 @@ function CanvasInner({ nodeTypes, workflow, onBack, onSaved }: CompositionCanvas
             <NodeInspector
               key={selectedNode.id}
               node={selectedNode}
+              workflowId={workflow?.ID ?? ''}
               attrs={workflow?.Attributes ?? []}
               nodeType={selectedNodeType}
               sameKindNodeTypes={sameKindNodeTypes}

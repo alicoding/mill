@@ -5,6 +5,7 @@ import * as CapabilitiesService from "./capabilitiesservice.js";
 import * as CompositionService from "./compositionservice.js";
 import * as ConfigureService from "./configureservice.js";
 import * as ExecutionService from "./executionservice.js";
+import * as GuardrailService from "./guardrailservice.js";
 import * as SettingsService from "./settingsservice.js";
 import * as SpecService from "./specservice.js";
 import * as TriggerService from "./triggerservice.js";
@@ -13,6 +14,7 @@ export {
     CompositionService,
     ConfigureService,
     ExecutionService,
+    GuardrailService,
     SettingsService,
     SpecService,
     TriggerService
@@ -25,6 +27,9 @@ export {
 export type {
     BuildInfo,
     HotkeyActivity,
+    MCPWriteRequest,
+    PendingApproval,
+    RuleTestResult,
     RunDetail,
     RunStep,
     RunSummary,

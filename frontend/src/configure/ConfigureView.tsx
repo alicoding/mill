@@ -4,6 +4,7 @@ import { ConfigureRequests } from './ConfigureRequests'
 import { ConfigureLists } from './ConfigureLists'
 import { ConfigureAttributes } from './ConfigureAttributes'
 import { ConfigureMCPServers } from './ConfigureMCPServers'
+import { ConfigureGuardrails } from './ConfigureGuardrails'
 
 // The Configure surface (docs/SPEC.md §3.5): four sections for
 // Configure-authored data -- Integration (HTTPRequests, 1:many
@@ -25,11 +26,13 @@ function ConfigureView() {
         <TabItem value="lists">Lists</TabItem>
         <TabItem value="attributes">Attributes</TabItem>
         <TabItem value="mcpservers">MCP Servers</TabItem>
+        <TabItem value="guardrails">Guardrails</TabItem>
       </TabList>
       <TabPanel value="integration"><ConfigureRequests /></TabPanel>
       <TabPanel value="lists"><ConfigureLists /></TabPanel>
       <TabPanel value="attributes"><ConfigureAttributes /></TabPanel>
       <TabPanel value="mcpservers"><ConfigureMCPServers /></TabPanel>
+      <TabPanel value="guardrails"><ConfigureGuardrails /></TabPanel>
     </Tabs>
   )
 }

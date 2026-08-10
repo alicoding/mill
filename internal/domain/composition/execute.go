@@ -2,6 +2,8 @@ package composition
 
 import (
 	"fmt"
+
+	"github.com/alicoding/mill/internal/domain/guardrail"
 )
 
 // StepRunner wraps one node's exec call so a durable caller (see
@@ -36,6 +38,38 @@ type ExecuteOptions struct {
 	// RunContext is threaded straight into the root ExecContext's own
 	// RunContext field -- see that field's doc comment (types.go).
 	RunContext any
+	// WorkflowID identifies which workflow definition this run executes
+	// -- the guardrail gate needs it to match workflow/instance-scoped
+	// rules (docs/adr/0019). Empty (direct ExecuteWorkflow calls, unit
+	// tests) simply means no workflow-scoped rule can match.
+	WorkflowID string
+}
+
+// GuardrailGate is the injected approval seam (docs/adr/0022): called
+// before every non-trigger/non-decision node executes; a non-nil error
+// aborts the run. The implementation lives in executionservice.go (the
+// only place holding the durable-execution context) -- same injected-
+// function pattern as SetHTTPRequestLookup, per CLAUDE.md's backend
+// rule. runCtx is the run's opaque RunContext (a DBOS context for a
+// durable run, nil for a direct in-memory execution).
+type GuardrailGate func(runCtx any, workflowID string, node Node, ec ExecContext) error
+
+var guardrailGate GuardrailGate
+
+// SetGuardrailGate installs the gate. A nil gate (the default, and
+// every composition unit test) means no gating -- the domain package
+// stays executable standalone.
+func SetGuardrailGate(g GuardrailGate) { guardrailGate = g }
+
+// NodeTypeEffect reports a node type's declared side-effect class
+// (docs/adr/0022's purity model); unknown IDs and undeclared types are
+// ClassNone.
+func NodeTypeEffect(nodeTypeID string) guardrail.EffectClass {
+	entry, ok := nodeTypeRegistry[nodeTypeID]
+	if !ok || entry.nodeType.Effect == "" {
+		return guardrail.ClassNone
+	}
+	return entry.nodeType.Effect
 }
 
 func firstOptions(opts []ExecuteOptions) ExecuteOptions {
@@ -102,6 +136,13 @@ func executeWorkflow(nodes []Node, edges []Edge, attrs []AttributeDef, run StepR
 			entry, ok := nodeTypeRegistry[node.NodeTypeID]
 			if !ok || entry.exec == nil {
 				return "", fmt.Errorf("unknown node type: %s", node.NodeTypeID)
+			}
+			// The guardrail gate runs before the node does (docs/adr/0022)
+			// -- an ask verdict parks here durably, a deny aborts the run.
+			if guardrailGate != nil {
+				if err := guardrailGate(opts.RunContext, opts.WorkflowID, node, ctx); err != nil {
+					return "", fmt.Errorf("node %s: %w", node.NodeTypeID, err)
+				}
 			}
 			ctx, err = run(node.ID, func() (ExecContext, error) { return entry.exec(node, ctx) })
 			if err != nil {
