@@ -84,13 +84,5 @@ func List() []Capability {
 			ID: "capability-review", Label: "Review queue", NavLabel: "Review", SpecSection: "8",
 			Status: StatusLocked, View: ViewReview,
 		},
-		{
-			ID: "copilot-bridge", Label: "M365 Copilot chat bridge", SpecSection: "2.1",
-			Status: StatusOpen, View: ViewPlaceholder,
-		},
-		{
-			ID: "guardrails", Label: "Guardrails / policy", SpecSection: "8",
-			Status: StatusOpen, View: ViewPlaceholder,
-		},
 	}
 }
