@@ -1322,7 +1322,7 @@ Plan step for this as a standing rule.
 | **Replay / re-run from history** | Re-invoke a past run, ideally resuming rather than restarting | Mechanism: adopt (DBOS `ForkWorkflow`/workflow-ID resume). UI/policy: build | `LOCKED` — a workflow's own Runs tab's "Redrive from here" (`ExecutionService.RedriveRun`, `dbos.ForkWorkflow`) is exactly this, built and e2e-verified |
 | **Draft/live versioning** | Edit a workflow without breaking the currently-live version | Build (no library owns Mill's own versioning semantics -- verified against installed DBOS v1.0.0: its `ApplicationVersion` versions the app binary, not definition data) | `LOCKED`, built -- [ADR-0021](adr/0021-workflow-lifecycle-and-versioning.md): head = draft, `Versions` = immutable snapshots, `PublishedVersion` = live (publish ≡ live), `Disabled` pauses triggers/child calls while test runs stay allowed (n8n's semantics); child-workflow version pinning; every run records its executed version. Shadow evaluation explicitly deferred (side-effectful nodes need §8's purity model first) |
 | **Live + shadow events / execution history** | Filterable log of past runs; dry-run a candidate change against real traffic before trusting it | Data: adopt (DBOS `GetStatus`/`ListWorkflows`). UI: build | `LOCKED` (execution-history half) — §7's per-workflow Runs tab (`WorkflowRunsPanel.tsx`, `ListRunsForWorkflow`/`GetWorkflowSteps`) built and e2e-verified. Shadow-events (dry-run a draft version against real traffic) stays unbuilt — no draft/live versioning concept exists yet (§3.2's own draft/live versioning gap, still real) |
-| **Guardrail preview / policy gate** | Approve/deny before a step actually runs | Build (core domain — no library has an opinion on Mill's guardrail semantics) | §8, `LOCKED` in shape, `OPEN` in detail |
+| **Guardrail preview / policy gate** | Approve/deny before a step actually runs | Build (core domain: `internal/domain/guardrail`); durable parking: adopt (DBOS `Send`/`Recv`/`SetEvent`, already adopted §7) | `LOCKED`, built — §8/ADR-0022: effect classes on every NodeType, ambient gate + explicit "Wait for approval" node, Configure → Guardrails authoring + dry-run tester |
 | **Visual composition surface** | Author a DAG, not just a list | Adopt (React Flow / `@xyflow/react`) — built ahead of ADR-0005 B2's original deferral trigger, by explicit decision (see the ADR's Update section) | §3, `CompositionCanvas.tsx`, `UX: PROTOTYPE` |
 
 **React Flow, checked directly against its actual source/docs (not
@@ -1941,9 +1941,19 @@ turns out to solve this without touching that dispute).
   clear go-enable-it-in-Settings error while off, writes nothing, and
   succeeds minting a new ID once a human flips the toggle.
   [ADR-0017](adr/0017-mcp-write-tools-guardrail-scope.md) `accepted`
-  for this scope; its per-write synchronous-approval half (and the two
-  host-behavior sub-questions) stays open, deliberately — the toggle
-  is per-instance opt-in, not a resolution of §8.
+  for this scope. **Its per-write synchronous-approval half is now
+  built too (ADR-0022's MCP section)**: with writes enabled, each
+  import parks on a BOUNDED 120-second in-process wait (bounded, not
+  indefinite — the 2026-07-28 MCP spec's own Tasks extension exists
+  precisely because hosts don't tolerate unboundedly-blocking tool
+  calls) while Mill's own window shows who's asking to write what
+  (`MCPWriteApprovals.tsx`, a Wails event + poll-on-mount); deny and
+  timeout both reject the write with nothing written. Per-write
+  approval defaults ON when writes are enabled — enabling writes must
+  not silently mean unattended writes — with an explicit Settings
+  opt-out ("Ask me before each MCP import"). Proven against a real MCP
+  client: a denied import writes nothing, an approved one proceeds
+  (`TestMCPWriteTools_PerWriteApproval`).
 
 ### 3.7 Global app settings
 
@@ -2539,11 +2549,42 @@ Full rationale in [`docs/adr/0003-browser-bridge-architecture.md`](adr/0003-brow
   mode against sample actions) before it's trusted live — a policy rule
   that's silently broader than intended is exactly how a guardrail fails
   quietly. Mechanism `OPEN`, requirement `LOCKED`.
-- Where rules are authored/stored and how they scope is now designed
-  (see the Rule scoping & precedence bullet below, ADR-0019) — not yet
-  implemented. Still genuinely open: exactly what a rule can express
-  beyond scope (allowlist commands? path scoping?), and how
-  pass/fail/pending/skipped states are communicated in the UI.
+- **The guardrail engine is BUILT — [ADR-0022](adr/0022-guardrail-execution-gate.md)
+  (`accepted`), implementing ADR-0019 (now `accepted` too).** What
+  "guardrail" means in Mill, sharpened in direct discussion: **hooks
+  around execution** (the Claude Code PreToolUse framing — §8's own
+  original lock restated as the definition). Every `NodeType` declares
+  an **effect class** (`none`/`read`/`local`/`external` — the purity
+  model ADR-0021's shadow evaluation was also blocked on); before any
+  effectful step executes, `internal/domain/guardrail` evaluates the
+  rule set (three ADR-0019 scopes, deny → ask → allow categorical
+  precedence, `expr-lang` conditions that fail safe). External steps
+  (`integration-http`, `mcp-tool-call` — and §6's command execution the
+  day it lands, automatically, via its effect class) **ask by default**:
+  the run parks durably on DBOS `Recv` (survives the process dying —
+  §7's sharpened requirement, verified in a real test), the workflow's
+  Runs tab shows exactly what wants to run with Approve/Deny, and
+  deny/timeout (24h) fails closed. Local-effect steps (clipboard
+  writes) default allow — §1's not-harder-than-baseline lock, the
+  hotkey loop stays uninterrupted. Rules are authored in **Configure →
+  Guardrails only** (a step's Inspector shows a read-only live verdict;
+  authoring inline was built first and removed after direct discussion
+  — policy is not step config), with the §8-locked **dry-run tester**
+  built in. **Nothing hidden**: any step that will ask or deny carries
+  a visible shield badge on the canvas before anyone runs it.
+  **Both industry approval patterns exist** (researched: AWS Step
+  Functions `waitForTaskToken` / Power Automate "wait for approval" /
+  n8n's HITL node on the explicit side; Claude Code hooks / GitHub
+  environment required-reviewers on the ambient side): the ambient gate
+  above, plus an explicit **"Wait for approval"** node type
+  (`guardrail-wait-approval`) — a checkpoint drawn into the flow that
+  always parks, un-skippable by allow rules. Proven end-to-end: Go
+  tests against real DBOS (park/deny-fails-closed/approve-executes/
+  allow-skips/deny-immediate/checkpoint-ignores-allow) plus a seeded
+  example ("Example: Approval-gated HTTP call") and deterministic e2e
+  (`guardrail.spec.ts`). Still genuinely open: richer rule expressions
+  (command allowlists, path scoping — blocked on §6 existing), and a
+  Settings knob for the 24h timeout.
 
 - **Rule scoping & precedence — `LOCKED` (design), `OPEN`
   (implementation): [ADR-0019](adr/0019-guardrail-rule-scoping-and-precedence.md)
@@ -2866,12 +2907,15 @@ recorded as a real design input (`OPEN`), never silently dropped.
 - Browser extension ↔ native app protocol details (§5)
 - Env/shell determinism rules (§6)
 - Session identity model spanning tab + agent run + process (§7)
-- Policy authoring format and storage (§8) — scoping/precedence design
-  now has its own ADR, [ADR-0019](adr/0019-guardrail-rule-scoping-and-precedence.md)
-  (`proposed`: three layers node-kind/Connector/workflow, deny-always-
-  wins precedence, OPA/Rego evaluated and rejected in favor of reusing
-  `expr-lang/expr`) but still needs implementation; the
-  pass/fail/pending/skipped UI-states question is untouched by this
+- Policy authoring format and storage (§8) — `LOCKED`, built:
+  [ADR-0022](adr/0022-guardrail-execution-gate.md) implements
+  ADR-0019 (both `accepted`): `internal/domain/guardrail`, effect
+  classes on every NodeType, the durable DBOS-parked approval gate,
+  Configure → Guardrails authoring + dry-run tester, canvas
+  nothing-hidden badges, the explicit "Wait for approval" node, and
+  MCP per-write approval (closing ADR-0017's open half). Still open:
+  richer rule expressions (command allowlists/path scoping — blocked
+  on §6), a timeout Settings knob
 - Global app settings (§3.7/[ADR-0020](adr/0020-global-app-settings.md))
   — launch-at-login, a global summon hotkey, auto-update wiring, a tray
   icon, per-view hotkeys, and window/tab/filter state persistence are

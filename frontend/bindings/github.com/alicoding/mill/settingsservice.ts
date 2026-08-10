@@ -67,6 +67,19 @@ export function GetLaunchAtLogin(): $CancellablePromise<boolean> {
 }
 
 /**
+ * GetMCPWriteApprovalRequired/SetMCPWriteApprovalRequired own the
+ * per-write approval toggle layered on the write gate above
+ * (millmcpservice_approval.go, ADR-0017's second half): with writes
+ * enabled, each import still parks for a human click unless this is
+ * explicitly relaxed. Defaults to REQUIRED when unset -- enabling
+ * writes must not silently mean unattended writes (§8's fail-safe
+ * default).
+ */
+export function GetMCPWriteApprovalRequired(): $CancellablePromise<boolean> {
+    return $Call.ByID(3649030537);
+}
+
+/**
  * GetMCPWriteEnabled/SetMCPWriteEnabled own the default-off gate for
  * Mill's MCP import tools (millmcpservice_tools.go, ADR-0017's
  * Update): whether an external MCP client may create workflows/
@@ -97,6 +110,21 @@ export function IsIsolatedData(): $CancellablePromise<boolean> {
 }
 
 /**
+ * PendingMCPWrites lists MCP writes currently awaiting a human
+ * decision (millmcpservice_approval.go).
+ */
+export function PendingMCPWrites(): $CancellablePromise<$models.MCPWriteRequest[] | null> {
+    return $Call.ByID(2162544141);
+}
+
+/**
+ * ResolveMCPWrite delivers the human's decision to a parked MCP write.
+ */
+export function ResolveMCPWrite(id: string, approve: boolean): $CancellablePromise<void> {
+    return $Call.ByID(749101771, id, approve);
+}
+
+/**
  * RestoreSummonHotkey re-registers a persisted summon hotkey on launch
  * -- called from main.go's ApplicationStarted handler, same timing
  * reasoning as TriggerService.Sync (global hotkey registration needs
@@ -114,6 +142,10 @@ export function RestoreSummonHotkey(): $CancellablePromise<void> {
  */
 export function SetLaunchAtLogin(enabled: boolean): $CancellablePromise<void> {
     return $Call.ByID(1701942847, enabled);
+}
+
+export function SetMCPWriteApprovalRequired(required: boolean): $CancellablePromise<void> {
+    return $Call.ByID(472986749, required);
 }
 
 export function SetMCPWriteEnabled(enabled: boolean): $CancellablePromise<void> {

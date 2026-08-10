@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Button, IconButton, Label, type LabelProps, Select, Stack, Text } from '@primer/react'
 import { DataTable, type Column } from '@primer/react/experimental'
-import { CheckCircleIcon, XCircleIcon, ClockIcon, XIcon } from '@primer/octicons-react'
+import { CheckCircleIcon, XCircleIcon, ClockIcon, XIcon, ShieldIcon, ShieldXIcon } from '@primer/octicons-react'
 import * as ExecutionService from '../../bindings/github.com/alicoding/mill/executionservice'
 import { RunKind, type RunDetail, type RunStep, type RunSummary } from '../../bindings/github.com/alicoding/mill/models'
 import styles from '../shared/ListCard.module.css'
@@ -32,6 +32,8 @@ const STEP_ICON: Record<RunStep['status'], React.ReactNode> = {
   succeeded: <CheckCircleIcon size={16} fill="var(--fgColor-success)" />,
   failed: <XCircleIcon size={16} fill="var(--fgColor-danger)" />,
   pending: <ClockIcon size={16} fill="var(--fgColor-muted)" />,
+  'awaiting-approval': <ShieldIcon size={16} fill="var(--fgColor-attention)" />,
+  denied: <ShieldXIcon size={16} fill="var(--fgColor-danger)" />,
 }
 
 interface WorkflowRunsPanelProps {
@@ -79,6 +81,33 @@ function WorkflowRunsPanel({ workflowId }: WorkflowRunsPanelProps) {
       .catch((err) => setError(String(err)))
   }, [selectedRunID])
 
+  // While the open run is still in flight (running, or parked awaiting
+  // approval), poll it -- a parked run's resume/deny happens
+  // asynchronously after ResolveApproval, and "nothing hidden" means
+  // the panel shows the transition without a manual refresh
+  // (docs/adr/0022's Update).
+  useEffect(() => {
+    if (!selectedRunID || !detail) return
+    const inFlight = detail.status === 'PENDING' || detail.status === 'RUNNING' || detail.status === 'ENQUEUED'
+    if (!inFlight) return
+    const timer = setInterval(() => {
+      ExecutionService.GetRun(selectedRunID).then(setDetail).catch(() => {})
+      refreshRuns()
+    }, 1000)
+    return () => clearInterval(timer)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedRunID, detail?.status])
+
+  const resolveApproval = (nodeID: string, approve: boolean) => {
+    if (!selectedRunID) return
+    setBusy(true)
+    setError('')
+    ExecutionService.ResolveApproval(selectedRunID, nodeID, approve)
+      .then(() => setBusy(false))
+      .catch((err) => { setError(String(err)); setBusy(false) })
+    // The in-flight poll below picks up the resumed/failed state.
+  }
+
   const redrive = (fromNodeID: string) => {
     if (!selectedRunID) return
     setBusy(true)
@@ -105,7 +134,11 @@ function WorkflowRunsPanel({ workflowId }: WorkflowRunsPanelProps) {
       header: 'Status',
       field: 'status',
       sortBy: 'alphanumeric',
-      renderCell: (run) => <Label variant={STATUS_VARIANT[run.status] ?? 'secondary'} size="small">{run.status}</Label>,
+      renderCell: (run) => run.pending ? (
+        <Label variant="attention" size="small" data-testid="run-awaiting-approval">awaiting approval</Label>
+      ) : (
+        <Label variant={STATUS_VARIANT[run.status] ?? 'secondary'} size="small">{run.status}</Label>
+      ),
     },
     {
       id: 'kind',
@@ -167,6 +200,34 @@ function WorkflowRunsPanel({ workflowId }: WorkflowRunsPanelProps) {
           </Stack>
           {detail.error && <Text as="p" className={styles.error}>{detail.error}</Text>}
 
+          {detail.pending && (
+            <div className={styles.card} data-testid="approval-banner" style={{ marginTop: 'var(--base-size-12)' }}>
+              <Stack direction="vertical" gap="condensed">
+                <Stack direction="horizontal" gap="condensed" align="center">
+                  <ShieldIcon size={16} fill="var(--fgColor-attention)" />
+                  <Text weight="semibold">Awaiting your approval</Text>
+                </Stack>
+                <Text size="small">
+                  The step <Text weight="semibold">{detail.pending.nodeTypeLabel || detail.pending.nodeTypeID}</Text>{' '}
+                  wants to run{detail.pending.ruleLabel ? ` (rule: ${detail.pending.ruleLabel})` : ' (external steps ask by default)'}.
+                </Text>
+                {detail.pending.payload && (
+                  <pre className={styles.result}>{detail.pending.payload}</pre>
+                )}
+                <Stack direction="horizontal" gap="condensed">
+                  <Button size="small" variant="primary" disabled={busy} data-testid="approve-step"
+                    onClick={() => resolveApproval(detail.pending!.nodeID, true)}>
+                    Approve and run
+                  </Button>
+                  <Button size="small" variant="danger" disabled={busy} data-testid="deny-step"
+                    onClick={() => resolveApproval(detail.pending!.nodeID, false)}>
+                    Deny
+                  </Button>
+                </Stack>
+              </Stack>
+            </div>
+          )}
+
           <Stack direction="vertical" gap="condensed" style={{ marginTop: 'var(--base-size-12)' }}>
             {(detail.steps ?? []).map((step) => (
               <Stack key={step.nodeID} direction="horizontal" justify="space-between" align="start" gap="condensed">
@@ -174,6 +235,11 @@ function WorkflowRunsPanel({ workflowId }: WorkflowRunsPanelProps) {
                   <span className={styles.icon}>{STEP_ICON[step.status]}</span>
                   <div>
                     <Text size="small" weight="semibold">{step.nodeTypeLabel || step.nodeTypeID}</Text>
+                    {step.guardrailEffect && (
+                      <Text as="p" size="small" className={styles.muted} data-testid="step-guardrail">
+                        Guardrail: {step.guardrailEffect}{step.guardrailRule ? ` (rule: ${step.guardrailRule})` : ''}
+                      </Text>
+                    )}
                     {step.output && <pre className={styles.result}>{step.output}</pre>}
                     {step.error && <Text as="p" size="small" className={styles.error}>{step.error}</Text>}
                   </div>

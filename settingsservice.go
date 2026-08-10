@@ -54,6 +54,7 @@ type SettingsService struct {
 	summonHK     persistedHotkey // zero value (nil Mods) means unassigned
 	updater      *updater.Updater
 	isolatedData bool
+	mcpService   *MillMCPService
 }
 
 // isolatedData is true whenever MILL_SETTINGS_PATH was set explicitly
@@ -447,4 +448,51 @@ func (s *SettingsService) SetMCPWriteEnabled(enabled bool) {
 		val = "true"
 	}
 	_ = s.store.Set(mcpWriteEnabledKey, val)
+}
+
+// GetMCPWriteApprovalRequired/SetMCPWriteApprovalRequired own the
+// per-write approval toggle layered on the write gate above
+// (millmcpservice_approval.go, ADR-0017's second half): with writes
+// enabled, each import still parks for a human click unless this is
+// explicitly relaxed. Defaults to REQUIRED when unset -- enabling
+// writes must not silently mean unattended writes (§8's fail-safe
+// default).
+func (s *SettingsService) GetMCPWriteApprovalRequired() bool {
+	v, ok := s.store.Get(mcpWriteApprovalKey).(string)
+	if !ok || v == "" {
+		return true
+	}
+	return v == "true"
+}
+
+func (s *SettingsService) SetMCPWriteApprovalRequired(required bool) {
+	val := "false"
+	if required {
+		val = "true"
+	}
+	_ = s.store.Set(mcpWriteApprovalKey, val)
+}
+
+// SetMCPService late-binds the MCP service so the two pending-write
+// RPCs below can delegate -- same late-bound-setter shape as
+// SetReservedCombo (MillMCPService is constructed after this service).
+//
+//wails:ignore
+func (s *SettingsService) SetMCPService(m *MillMCPService) { s.mcpService = m }
+
+// PendingMCPWrites lists MCP writes currently awaiting a human
+// decision (millmcpservice_approval.go).
+func (s *SettingsService) PendingMCPWrites() []MCPWriteRequest {
+	if s.mcpService == nil {
+		return nil
+	}
+	return s.mcpService.PendingMCPWrites()
+}
+
+// ResolveMCPWrite delivers the human's decision to a parked MCP write.
+func (s *SettingsService) ResolveMCPWrite(id string, approve bool) error {
+	if s.mcpService == nil {
+		return fmt.Errorf("MCP service not running")
+	}
+	return s.mcpService.ResolveMCPWrite(id, approve)
 }

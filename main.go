@@ -64,6 +64,7 @@ func init() {
 	// and provide a strongly typed JS/TS API for them.
 	application.RegisterEvent[string]("time")
 	application.RegisterEvent[HotkeyActivity]("hotkey-activity")
+	application.RegisterEvent[MCPWriteRequest]("mcp-write-approval")
 }
 
 // main function serves as the application's entry point. It initializes the application, creates a window,
@@ -129,7 +130,8 @@ func main() {
 		}
 		executionDatabaseURL = "sqlite:" + executionDBPath
 	}
-	executionService, err := NewExecutionService(executionDatabaseURL, compositionService)
+	guardrailService := NewGuardrailService(settingsStore, compositionService)
+	executionService, err := NewExecutionService(executionDatabaseURL, compositionService, guardrailService)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -168,6 +170,7 @@ func main() {
 		millMCPAddr = "127.0.0.1:8090"
 	}
 	millMCPService := NewMillMCPService(compositionService, configureService, settingsStore)
+	settingsService.SetMCPService(millMCPService)
 	if err := millMCPService.Start(millMCPAddr); err != nil {
 		logger.Error("mill MCP server", "error", err)
 	} else {
@@ -184,6 +187,7 @@ func main() {
 			application.NewService(compositionService),
 			application.NewService(triggerService),
 			application.NewService(configureService),
+			application.NewService(guardrailService),
 			application.NewService(executionService),
 			application.NewService(settingsService),
 		},

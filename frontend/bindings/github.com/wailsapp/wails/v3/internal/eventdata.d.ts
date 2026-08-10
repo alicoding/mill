@@ -13,6 +13,7 @@ declare module "@wailsio/runtime" {
     namespace Events {
         interface CustomEvents {
             "hotkey-activity": main$0.HotkeyActivity;
+            "mcp-write-approval": main$0.MCPWriteRequest;
             "time": string;
         }
     }

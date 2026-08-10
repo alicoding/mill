@@ -8,6 +8,7 @@ import (
 
 	"github.com/alicoding/mill/internal/adapters/execution"
 	"github.com/alicoding/mill/internal/domain/composition"
+	"github.com/alicoding/mill/internal/domain/guardrail"
 	"github.com/google/uuid"
 )
 
@@ -95,6 +96,13 @@ type RunStep struct {
 	Status        string `json:"status"`
 	Output        string `json:"output"`
 	Error         string `json:"error"`
+	// GuardrailEffect/GuardrailRule surface the step's recorded
+	// guardrail verdict (docs/adr/0022) -- what actually decided at run
+	// time, decoded from the checkpointed guardrail step, never a
+	// re-evaluation against possibly-changed rules. Empty when the
+	// effect-class default allowed without any rule involved.
+	GuardrailEffect string `json:"guardrailEffect,omitempty"`
+	GuardrailRule   string `json:"guardrailRule,omitempty"`
 }
 
 // RunSummary is one run's headline state -- the row shape for a
@@ -112,6 +120,9 @@ type RunSummary struct {
 	// Version is which definition snapshot executed (docs/adr/0021) --
 	// 0 means the draft head (a test run).
 	Version int `json:"version"`
+	// Pending is the run's live awaiting-approval state, if any
+	// (docs/adr/0022) -- non-nil only while a guardrail ask is parked.
+	Pending *PendingApproval `json:"pending,omitempty"`
 	// Values are the attribute values this run was invoked with
 	// (runInput.Values -- a test form's input, or a parent's resolved
 	// child bindings). The data behind Activity's per-attribute columns
@@ -133,8 +144,9 @@ type RunDetail struct {
 // See docs/adr/0004's Update for the full workflow/step mapping this
 // implements.
 type ExecutionService struct {
-	ctx  execution.Context
-	comp *CompositionService
+	ctx   execution.Context
+	comp  *CompositionService
+	guard *GuardrailService
 }
 
 // NewExecutionService builds and launches the durable-execution runtime
@@ -142,8 +154,8 @@ type ExecutionService struct {
 // doc comment for the sqlite-by-default, Postgres-by-config reasoning).
 // Registration happens inside execution.New, before Launch, per that
 // function's own doc comment.
-func NewExecutionService(databaseURL string, comp *CompositionService) (*ExecutionService, error) {
-	e := &ExecutionService{comp: comp}
+func NewExecutionService(databaseURL string, comp *CompositionService, guard *GuardrailService) (*ExecutionService, error) {
+	e := &ExecutionService{comp: comp, guard: guard}
 	ctx, err := execution.New("mill", databaseURL, func(ctx execution.Context) {
 		execution.RegisterWorkflow(ctx, e.runWorkflow, execution.WithWorkflowName(millRunWorkflowName))
 	})
@@ -151,6 +163,10 @@ func NewExecutionService(databaseURL string, comp *CompositionService) (*Executi
 		return nil, err
 	}
 	e.ctx = ctx
+	// The guardrail gate (docs/adr/0022) hooks composition's walk here
+	// -- the one place holding both the rules and the durable context.
+	composition.SetGuardrailGate(e.guardrailGate)
+	composition.SetApprovalWaiter(e.approvalWaiter)
 	return e, nil
 }
 
@@ -229,6 +245,13 @@ func (e *ExecutionService) RunWorkflow(workflowID string, kind RunKind, values m
 	// queryable afterward regardless (ListRuns/GetRun), so a
 	// live-streaming progress view isn't required for the "see what
 	// happened" half of execution visibility this exists for.
+	// EXCEPT when the graph could park awaiting a guardrail approval
+	// (docs/adr/0022): then return immediately with the run ID, so a
+	// Run click never hangs on a human decision -- the pending state
+	// surfaces via RunSummary.Pending instead.
+	if e.mayRequireApproval(wf.ID, nodes) {
+		return e.summaryFor(handle.GetWorkflowID())
+	}
 	if _, err := handle.GetResult(); err != nil {
 		// Not returned as a Go error -- a failed *run* is a normal,
 		// inspectable/redrivable outcome (that's the whole point of
@@ -343,6 +366,20 @@ func (e *ExecutionService) GetRun(runID string) (RunDetail, error) {
 				}
 			}
 		}
+		// Join the step's recorded guardrail verdict (docs/adr/0022) --
+		// checkpointed under its own "guardrail:<nodeID>" step name.
+		if g, ok := byNodeID["guardrail:"+n.ID]; ok && g.Error == nil {
+			if v, ok := decodeAny[guardrail.Verdict](g.Output); ok {
+				rs.GuardrailEffect = string(v.Effect)
+				rs.GuardrailRule = v.RuleLabel
+				if v.Effect == guardrail.EffectDeny && rs.Status == "pending" {
+					rs.Status = "denied"
+				}
+			}
+		}
+		if summary.Pending != nil && summary.Pending.NodeID == n.ID {
+			rs.Status = "awaiting-approval"
+		}
 		view = append(view, rs)
 	}
 
@@ -427,7 +464,7 @@ func (e *ExecutionService) summaryFromStatus(st execution.WorkflowStatus) RunSum
 		// production-traffic signal.
 		kind = RunKindTest
 	}
-	return RunSummary{
+	summary := RunSummary{
 		RunID:         st.ID,
 		WorkflowID:    in.WorkflowID,
 		WorkflowLabel: label,
@@ -440,4 +477,10 @@ func (e *ExecutionService) summaryFromStatus(st execution.WorkflowStatus) RunSum
 		Version:       in.Version,
 		Values:        in.Values,
 	}
+	// Only a still-running run can be parked on an approval -- skip the
+	// event poll for terminal runs (the common case in any list).
+	if summary.Status == "PENDING" || summary.Status == "RUNNING" || summary.Status == "ENQUEUED" {
+		summary.Pending = e.pendingApprovalFor(st.ID)
+	}
+	return summary
 }

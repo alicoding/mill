@@ -11,11 +11,17 @@ import { EntityRefField } from '../configure/EntityRefField'
 import { IntegrationBindingsEditor } from './IntegrationBindingsEditor'
 import { ChildWorkflowBindingsEditor } from './ChildWorkflowBindingsEditor'
 import { WorkflowHoverPreview } from './WorkflowHoverPreview'
+import { NodeGuardrailSection } from './NodeGuardrailSection'
 import styles from './CompositionCanvas.module.css'
 import runbookStyles from '../shared/ListCard.module.css'
 
 interface NodeInspectorProps {
   node: CanvasNode
+  // The owning workflow's ID ('' for a not-yet-saved workflow) -- the
+  // Guardrail section needs it for instance-scoped rules and the live
+  // dry-run verdict (docs/adr/0019: workflow-level rules stay inline
+  // in the Inspector; node-type/integration rules live in Configure).
+  workflowId: string
   // The owning workflow's declared Attributes -- what integration-http's
   // binding editor offers as bindable fields (same source
   // DecisionEdgeInspector's rule builder already reads via
@@ -48,7 +54,7 @@ interface NodeInspectorProps {
 // render of this component by node id, so switching the selected node
 // gets a clean remount rather than carrying stale nonce/local state
 // across selections.
-export function NodeInspector({ node, attrs, nodeType, sameKindNodeTypes, hasWorkflow, hotkeyCapture, onChangeType, onConfigChange }: NodeInspectorProps) {
+export function NodeInspector({ node, workflowId, attrs, nodeType, sameKindNodeTypes, hasWorkflow, hotkeyCapture, onChangeType, onConfigChange }: NodeInspectorProps) {
   const [payloadNonce, setPayloadNonce] = useState(0)
 
   return (
@@ -244,6 +250,10 @@ export function NodeInspector({ node, attrs, nodeType, sameKindNodeTypes, hasWor
           )}
         </FormControl>
       ))}
+
+      {workflowId && node.data.kind !== 'trigger' && node.data.kind !== 'decision' && (
+        <NodeGuardrailSection workflowId={workflowId} nodeId={node.id} />
+      )}
 
       {node.data.nodeTypeID === 'integration-http' && (
         <IntegrationBindingsEditor

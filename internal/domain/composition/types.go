@@ -28,6 +28,8 @@
 // (execution engine), and capabilitymap.go (the §3.3 capability map).
 package composition
 
+import "github.com/alicoding/mill/internal/domain/guardrail"
+
 // NodeKind mirrors SPEC.md §2's Capture -> Process -> Apply primitive,
 // plus Trigger (SPEC.md §3.4) and Decision (SPEC.md §3.5) -- Decision is
 // the one kind allowed more than one outgoing edge (see walk/nextNode).
@@ -99,6 +101,12 @@ type NodeType struct {
 	Label        string
 	Description  string
 	ConfigFields []ConfigField
+	// Effect is the node type's side-effect classification
+	// (docs/adr/0022's purity model): what the guardrail gate uses to
+	// pick a default verdict when no rule matches, and what ADR-0021's
+	// deferred shadow evaluation was blocked on. The zero value means
+	// ClassNone -- only node types with real I/O declare one.
+	Effect guardrail.EffectClass
 }
 
 // Position is a node's canvas coordinates. Ignored by execution entirely

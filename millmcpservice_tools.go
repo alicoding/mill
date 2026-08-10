@@ -114,6 +114,9 @@ func (m *MillMCPService) registerTools() {
 		if err := m.requireWriteEnabled(); err != nil {
 			return nil, importToolResult{}, err
 		}
+		if err := m.awaitWriteApproval("An MCP client wants to import a workflow"); err != nil {
+			return nil, importToolResult{}, err
+		}
 		wf, err := m.comp.ImportWorkflow(in.JSON)
 		if err != nil {
 			return nil, importToolResult{}, err
@@ -128,6 +131,9 @@ func (m *MillMCPService) registerTools() {
 			"'Allow MCP clients to import data' toggle in Mill's Settings (default off).",
 	}, func(_ context.Context, _ *mcp.CallToolRequest, in importToolArgs) (*mcp.CallToolResult, importToolResult, error) {
 		if err := m.requireWriteEnabled(); err != nil {
+			return nil, importToolResult{}, err
+		}
+		if err := m.awaitWriteApproval("An MCP client wants to import an HTTP request (integration)"); err != nil {
 			return nil, importToolResult{}, err
 		}
 		r, err := m.cfg.ImportHTTPRequest(in.JSON)
@@ -145,6 +151,9 @@ func (m *MillMCPService) registerTools() {
 		if err := m.requireWriteEnabled(); err != nil {
 			return nil, importToolResult{}, err
 		}
+		if err := m.awaitWriteApproval("An MCP client wants to import a List"); err != nil {
+			return nil, importToolResult{}, err
+		}
 		l, err := m.cfg.ImportList(in.JSON)
 		if err != nil {
 			return nil, importToolResult{}, err
@@ -158,6 +167,9 @@ func (m *MillMCPService) registerTools() {
 			"the human-set 'Allow MCP clients to import data' toggle in Mill's Settings (default off).",
 	}, func(_ context.Context, _ *mcp.CallToolRequest, in importToolArgs) (*mcp.CallToolResult, importToolResult, error) {
 		if err := m.requireWriteEnabled(); err != nil {
+			return nil, importToolResult{}, err
+		}
+		if err := m.awaitWriteApproval("An MCP client wants to import an MCP Server config"); err != nil {
 			return nil, importToolResult{}, err
 		}
 		s, err := m.cfg.ImportMCPServer(in.JSON)

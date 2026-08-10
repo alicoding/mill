@@ -1,6 +1,7 @@
 package main
 
 import (
+	"sync"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -38,6 +39,10 @@ type MillMCPService struct {
 	store  settings.Store
 	server *mcp.Server
 	http   *http.Server
+	// Per-write approval state (millmcpservice_approval.go,
+	// docs/adr/0017's second half).
+	pendingMu     sync.Mutex
+	pendingWrites map[string]pendingMCPWrite
 }
 
 // NewMillMCPService builds the MCP server and registers every

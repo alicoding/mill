@@ -1,6 +1,8 @@
 package composition
 
 import (
+	"github.com/alicoding/mill/internal/domain/httprequest"
+
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
@@ -79,6 +81,24 @@ func BuiltInWorkflows() []Workflow {
 		{ID: captureID, NodeTypeID: "capture-clipboard-html", Position: Position{X: 0, Y: 100}},
 		{ID: processID, NodeTypeID: "process-html-to-markdown", Position: Position{X: 0, Y: 200}},
 		{ID: applyID, NodeTypeID: "apply-clipboard-write-text", Position: Position{X: 0, Y: 300}},
+	})
+	if err != nil {
+		panic("built-in workflow references an unknown node type: " + err.Error())
+	}
+
+	// The guardrail proof (docs/adr/0022, and the standing seeded-
+	// examples principle): an external-effect step whose run parks
+	// awaiting approval by default. References the seeded no-auth
+	// HTTPRequest by its exported ID constant rather than a string that
+	// could drift.
+	const (
+		guardedTriggerID = "example-guarded-trigger"
+		guardedHTTPID    = "example-guarded-http"
+	)
+	guardedNodes, err := ResolveNodeDefaults([]Node{
+		{ID: guardedTriggerID, NodeTypeID: "trigger-manual", Position: Position{X: 0, Y: 0}},
+		{ID: guardedHTTPID, NodeTypeID: "integration-http", Position: Position{X: 0, Y: 100},
+			Config: map[string]string{"requestId": httprequest.ExampleNoneID}},
 	})
 	if err != nil {
 		panic("built-in workflow references an unknown node type: " + err.Error())
@@ -214,6 +234,16 @@ func BuiltInWorkflows() []Workflow {
 			Attributes:  []AttributeDef{{Key: "childResult", Label: "Child result", Type: FieldText}},
 			Edges: []Edge{
 				{ID: "example-parent-e0", Source: parentTriggerID, Target: parentChildID},
+			},
+			BuiltIn: true,
+		},
+		{
+			ID:          "example-guarded-http-workflow",
+			Label:       "Example: Approval-gated HTTP call",
+			Description: "Calls the seeded no-auth httpbin.org integration -- an EXTERNAL-effect step, so running it parks awaiting your approval (docs/SPEC.md §8's fail-safe default: friction is the default, speed is the opt-in). Approve or deny it from this workflow's own Runs tab. To skip the ask for trusted steps, add an allow rule under Configure > Guardrails -- and dry-run the rule there before relying on it.",
+			Nodes:       guardedNodes,
+			Edges: []Edge{
+				{ID: "example-guarded-e0", Source: guardedTriggerID, Target: guardedHTTPID},
 			},
 			BuiltIn: true,
 		},
