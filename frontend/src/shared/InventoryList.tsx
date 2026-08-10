@@ -111,9 +111,14 @@ function InventoryRow({ item }: { item: InventoryItem }) {
           <item.icon.Icon size={16} fill="var(--fgColor-onEmphasis)" />
         </span>
       </ActionList.LeadingVisual>
-      <Stack direction="horizontal" gap="condensed" align="center">
-        <Text weight="semibold">{item.label}</Text>
-        {item.labelBadges}
+      <Stack direction="horizontal" gap="condensed" align="center" className={styles.labelRow}>
+        {/* Single-line rows are the whole point of the dense-row
+            pattern (goal 0007; owner caught long labels folding into
+            3-4 stacked lines with badges tumbling underneath): the
+            label truncates with the full name on its title tooltip,
+            and badges never shrink or wrap below. */}
+        <Text weight="semibold" className={styles.label} title={item.label}>{item.label}</Text>
+        {item.labelBadges && <span className={styles.badges}>{item.labelBadges}</span>}
       </Stack>
       {item.description && (
         // ActionList.Description's inline+truncate branch (Primer's
