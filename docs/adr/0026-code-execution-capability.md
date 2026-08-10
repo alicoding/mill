@@ -103,6 +103,65 @@ not a security claim) → human-review → code-execution (`echo`-grade
 script against a seeded safe ExecEnv) → clipboard write. The §2.1 loop
 minus the browser bridge, live.
 
+## Amendment (2026-08-10, pre-implementation — owner-led, from direct
+## production pain on the work machine's prior DBOS-based attempt)
+
+Two design refinements plus a process-runtime baseline map, decided in
+discussion before goal 0004 builds. The owner's reported failures
+(shell/profile env breakage; "we went into DBOS handling it which is
+wrong"; daemon/background-process trouble; multi-command runs where
+"we don't know if it is stuck or still running, why it is taking long,
+and if we need to kill it") each name a capability a mature platform
+covers — mapped here so the build ships the platform, not just the
+feature.
+
+**Boundary statement, explicit:** DBOS owns workflow-state durability
+(what completed, with what result). It supervises NOTHING alive — it
+cannot kill, observe, or time out a running process (confirmed from
+source; its own comment: executing steps are not interrupted).
+Everything alive is `internal/adapters/procexec`'s job, full stop.
+Conflating the two is the exact failure the owner already paid for.
+
+**ExecEnv refinements ("materialize, don't inherit" — §1's thesis
+applied to environments):**
+- `Shell` becomes a typed choice (zsh/bash/sh), not free argv.
+- New **Profile mode**: `clean` (no profiles; only the stored env —
+  deterministic; DEFAULT, fail-safe) vs `login` (sources
+  .zprofile/.bash_profile — terminal parity, less deterministic).
+- **"Capture from my shell"**: one-click snapshot of the user's real
+  PATH (and selected vars) into the stored, visible, editable env —
+  determinism through materialization: clean mode AND your Homebrew/
+  mise paths, because they're written down, never re-derived.
+
+**Process-runtime baseline (beyond the original design):**
+1. **Last-output-at + elapsed, live per step** — silence duration is
+   the stuck signal ("running 4m · no output 3m"), not elapsed time.
+2. **Idle timeout** (no-output-for-N) distinct from the hard timeout —
+   CI's own pattern; kills the genuinely stuck without capping
+   legitimately long jobs.
+3. **Orphan policy**: the pgid is recorded durably BEFORE spawn; on
+   startup Mill reaps leftover process groups from crashed runs.
+   Daemonizing/background services are an explicit NON-GOAL (bounded
+   commands only; services belong to launchd).
+4. **Crash-mid-step recovery**: an un-checkpointed step re-executes on
+   DBOS resume — for a command, that's double execution. procexec
+   records "attempt started" durably pre-spawn; on recovery, an
+   interrupted effectful step PARKS for a human decision (rerun /
+   mark failed) instead of silently re-running. Fail-safe, §8's
+   posture; at-most-once by default for effectful steps.
+5. **Status vocabulary**: `cancelled` ≠ `failed` ≠ `interrupted` —
+   three distinct recorded outcomes with distinct UI treatment.
+6. **Concurrency guard**: per-workflow "don't start if already
+   running" option (schedule double-fire protection); DBOS Queues are
+   the eventual backing for real fan-out, not hand-rolled goroutines.
+
+**Seed decisions (from the same discussion):** the seeded example
+ships with a manual trigger + description pointing at the one-click
+swap to hotkey (a hotkey can't ship pre-bound; clipboard-watch firing
+on every copy would be obnoxious); reviewer edit-before-approve is
+named v2, not v1 (approve/deny only); the seeded "Safe sandbox" env is
+zsh + clean + Mill-created temp dir + minimal PATH.
+
 ## What acceptance decides (surfaced, not silently resolved)
 
 1. §1.1's `OPEN` bullet → `LOCKED` as "os/exec + explicit env,
