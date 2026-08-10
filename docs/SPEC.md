@@ -2931,6 +2931,19 @@ recorded as a real design input (`OPEN`), never silently dropped.
   indexes — a real drag changing the first grid track, persistence
   across reload, double-click reset clearing storage, the truncation
   CSS + title, and a no-horizontal-overflow default-layout check).
+- **Build-identity badge compares bundle vs. binary — `LOCKED`, built,
+  asked for directly ("the banner was meant to tell me if what you
+  claimed built vs what I see live is a match — that is not a
+  timestamp").** The old DEV ribbon showed the page's load time — a
+  clock, answering nothing about which build is running. Now the bundle
+  bakes in the repo HEAD it was compiled from (a Vite `define` running
+  `git rev-parse` at compile time, disabled outside a git checkout) and
+  compares it at runtime against the binary's own embedded build commit
+  (`GetBuildInfo`): a mismatch — the exact orphaned-stale-binary case
+  below, a fresh `task dev` bundle answered by an old process — shows a
+  loud red "STALE BUILD · app X ≠ repo Y — restart task dev" badge
+  regardless of dev/prod; matching dev builds show a quiet
+  `DEV · <hash>`. E2e-asserts the same-commit case never false-alarms.
 - **Dev-staleness root cause found and fixed — `LOCKED`.** Two
   compounding causes made "my app looks stale" recur: (1) every
   wails-built desktop binary passed `-buildvcs=false` (dev *and*
