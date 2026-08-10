@@ -33,7 +33,7 @@ live-review material, interleaved during owner reviews, not a lane.
 4. [x] [0004 — Code execution capability](0004-code-execution-capability.md) (ADR-0026 + amendments = complete brief; ~two agent builds)
 
 **Group C — Attention layer**
-5. [ ] [0005 — Pending-attention model](0005-pending-attention-model.md) (research/design first — owns the park/resolve eventing)
+5. [x] [0005 — Pending-attention model](0005-pending-attention-model.md) — core delivered 2026-08-10 (unified guardrail event + sidebar badge + traceless-timeout fix; OS-notification future named)
 6. [ ] [0002 — Review queue maturation](0002-review-queue-maturation.md) (remainder: pending badge built on 0005's eventing; kind filter/polish)
 
 **Unscheduled (reorder into a group when prioritized)**
