@@ -24,7 +24,7 @@ func approveDecision() ResolvedDecision {
 	return ResolvedDecision{
 		Label: "Approve", Category: string(decision.CategoryApprove),
 		Outputs: []decision.OutputField{
-			{Key: "decision", Label: "Decision", Type: "text", EnumValues: []string{"APPROVED", "DECLINED"}},
+			{Key: "decision", Label: "Decision", Type: "text", Options: []string{"APPROVED", "DECLINED"}},
 			{Key: "score", Label: "Score", Type: "number"},
 		},
 	}

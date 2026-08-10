@@ -11,8 +11,11 @@
 package decision
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
+
+	"github.com/alicoding/mill/internal/domain/typedfield"
 )
 
 // Category is a Decision's outcome classification -- immutable once
@@ -41,22 +44,28 @@ func validCategory(c Category) bool {
 }
 
 // OutputField declares one named, typed field in a Decision's terminal
-// result contract. Deliberately the same minimal vocabulary
-// composition.AttributeDef already uses (Key/Label/Type -- "text" /
-// "number" / "boolean" / "options", ConfigFieldType's own string
-// values) plus EnumValues (composition.ConfigField.Options's own
-// equivalent, one level down) -- NOT a fourth schema system (ADR-0027's
-// own explicit non-goal: convergence onto one canonical schema editor
-// stays SPEC.md §4.1's named future work). Type stays a plain string
-// here (not composition.ConfigFieldType) so this package never has to
-// import composition -- composition imports decision instead, the same
-// direction it already imports internal/domain/httprequest.
-type OutputField struct {
-	Key        string
-	Label      string
-	Type       string
-	EnumValues []string
-}
+// result contract. A type alias of typedfield.Field (docs/adr/0029,
+// Phase 2) -- the same canonical leaf composition.ConfigField/
+// AttributeDef converged onto in Phase 1, not a fourth schema system
+// (ADR-0027's own explicit non-goal: convergence onto one canonical
+// schema editor stays SPEC.md §4.1's named future work). typedfield is
+// a leaf package with zero internal imports, so decision importing it
+// creates no cycle -- composition already imports decision (and now
+// also typedfield directly, Phase 1), the same direction it already
+// imports internal/domain/httprequest.
+//
+// Wire change from this alias: the field this package used to call
+// EnumValues is now Options (typedfield.Field's own name for the
+// identical concept -- ConfigField/AttributeDef already called it
+// that). Decision's own UnmarshalJSON below migrates an
+// already-persisted {"EnumValues": [...]} document forward at decode
+// time, the same "migrate the old shape forward on load, never drop
+// real data" precedent ADR-0016's configure-connectors ->
+// configure-requests key rename already established -- just applied at
+// the field level here instead of the settings-key level, since
+// Decision unmarshals directly via encoding/json rather than through a
+// keyed settings-store migration.
+type OutputField = typedfield.Field
 
 // Decision is one reusable, Configure-authored terminal outcome.
 // WebhookRequestID optionally references an HTTPRequest entity by ID --
@@ -78,6 +87,55 @@ type Decision struct {
 	// built-in gets a tombstone (internal/services/seeding) so top-up
 	// seeding never resurrects it.
 	BuiltIn bool
+}
+
+// legacyOutputField mirrors the pre-ADR-0029 OutputField's own wire
+// shape, just enough to read its EnumValues key back out -- decoding a
+// document written before OutputField became typedfield.Field's
+// Options-named alias. Kept private and minimal (only the one field
+// that changed name) rather than a full duplicate struct.
+type legacyOutputField struct {
+	EnumValues []string `json:"EnumValues"`
+}
+
+// UnmarshalJSON migrates an already-persisted Decision's Outputs
+// forward: EnumValues -> Options, exactly once, only when a decoded
+// output field has no Options of its own (a document written before
+// this migration never has one; a document written after it always
+// does, so this is a no-op on anything already migrated -- safe to run
+// on every load, not just once). type alias avoids the naive
+// recursive-UnmarshalJSON trap (calling json.Unmarshal on *Decision
+// again from inside Decision's own UnmarshalJSON would recurse forever)
+// -- the same shape Go's own encoding/json docs recommend for this
+// exact situation.
+func (d *Decision) UnmarshalJSON(data []byte) error {
+	type alias Decision
+	var a alias
+	if err := json.Unmarshal(data, &a); err != nil {
+		return err
+	}
+	*d = Decision(a)
+
+	var wire struct {
+		Outputs []legacyOutputField `json:"Outputs"`
+	}
+	if err := json.Unmarshal(data, &wire); err != nil {
+		// The primary decode above already succeeded; a malformed
+		// Outputs shape here would have failed that too, so this
+		// second, narrower decode failing is unexpected -- fail safe
+		// by skipping the migration rather than erroring the whole
+		// load over a cosmetic legacy-field read.
+		return nil
+	}
+	for i := range d.Outputs {
+		if i >= len(wire.Outputs) {
+			break
+		}
+		if len(d.Outputs[i].Options) == 0 && len(wire.Outputs[i].EnumValues) > 0 {
+			d.Outputs[i].Options = wire.Outputs[i].EnumValues
+		}
+	}
+	return nil
 }
 
 // Validate checks a Decision is well-formed before it's persisted --

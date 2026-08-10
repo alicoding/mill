@@ -3,7 +3,6 @@
 
 export {
     Approach,
-    ConfigFieldType,
     NodeKind,
     Severity
 } from "./models.js";

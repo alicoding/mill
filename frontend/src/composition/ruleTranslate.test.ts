@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { translateToExpr, fieldsFromAttributes } from './ruleTranslate'
-import { ConfigFieldType } from '../../bindings/github.com/alicoding/mill/internal/domain/composition/models'
+import { Type as ConfigFieldType } from '../../bindings/github.com/alicoding/mill/internal/domain/typedfield/models'
+import type { AttributeDef } from '../../bindings/github.com/alicoding/mill/internal/domain/composition/models'
 import type { RuleGroupType } from 'react-querybuilder'
 
 describe('translateToExpr', () => {
@@ -104,12 +105,25 @@ describe('translateToExpr', () => {
   })
 })
 
+// attr fills in the full AttributeDef/typedfield.Field shape (docs/adr/0029
+// Phase 1) around the three fields this suite actually varies -- Key/
+// Label/Type -- so each test case below doesn't have to repeat every
+// zero-valued field.
+function attr(key: string, label: string, type: ConfigFieldType): AttributeDef {
+  return {
+    Key: key, Label: label, Type: type,
+    Required: false, Default: '', Description: '',
+    Options: null, Suggestions: null,
+    Secret: false, RefKind: '', Multiline: false, SystemManaged: false,
+  }
+}
+
 describe('fieldsFromAttributes', () => {
   it('maps AttributeDef Type to react-querybuilder inputType/datatype', () => {
     const fields = fieldsFromAttributes([
-      { Key: 'count', Label: 'Count', Type: ConfigFieldType.FieldNumber },
-      { Key: 'urgent', Label: 'Urgent', Type: ConfigFieldType.FieldBoolean },
-      { Key: 'status', Label: 'Status', Type: ConfigFieldType.FieldText },
+      attr('count', 'Count', ConfigFieldType.TypeNumber),
+      attr('urgent', 'Urgent', ConfigFieldType.TypeBoolean),
+      attr('status', 'Status', ConfigFieldType.TypeText),
     ])
     expect(fields).toEqual([
       { name: 'count', label: 'Count', inputType: 'number', datatype: 'number' },

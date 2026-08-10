@@ -6,6 +6,7 @@ import { ResizableTableContainer, TruncatedCell } from '../shared/ResizableTable
 import { ConfigureService } from '../shared/bindings'
 import type { Decision, OutputField } from '../../bindings/github.com/alicoding/mill/internal/domain/decision/models'
 import { Category } from '../../bindings/github.com/alicoding/mill/internal/domain/decision/models'
+import { Type as ConfigFieldType } from '../../bindings/github.com/alicoding/mill/internal/domain/typedfield/models'
 import { EntityRefField } from './EntityRefField'
 import { downloadJSON } from '../shared/downloadJSON'
 import { ViewModeToggle } from '../shared/ViewModeToggle'
@@ -26,7 +27,12 @@ const CATEGORY_LABEL: Record<string, string> = {
 const TYPE_OPTIONS = ['text', 'number', 'boolean', 'options']
 
 function emptyOutput(): OutputField {
-  return { Key: '', Label: '', Type: 'text', EnumValues: null }
+  return {
+    Key: '', Label: '', Type: ConfigFieldType.TypeText,
+    Required: false, Default: '', Description: '',
+    Options: null, Suggestions: null,
+    Secret: false, RefKind: '', Multiline: false, SystemManaged: false,
+  }
 }
 
 // Configure's Decisions section (docs/adr/0027): CRUD over
@@ -120,9 +126,9 @@ export function ConfigureDecisions() {
   const updateOutput = (i: number, field: keyof OutputField, value: string) => {
     setOutputs((prev) => prev.map((o, idx) => {
       if (idx !== i) return o
-      if (field === 'EnumValues') {
+      if (field === 'Options') {
         const values = value.split(',').map((v) => v.trim()).filter(Boolean)
-        return { ...o, EnumValues: values.length > 0 ? values : null }
+        return { ...o, Options: values.length > 0 ? values : null }
       }
       return { ...o, [field]: value }
     }))
@@ -221,8 +227,8 @@ export function ConfigureDecisions() {
                   </Select>
                   <TextInput
                     placeholder="enum values, comma separated"
-                    value={(o.EnumValues ?? []).join(', ')}
-                    onChange={(e) => updateOutput(i, 'EnumValues', e.target.value)}
+                    value={(o.Options ?? []).join(', ')}
+                    onChange={(e) => updateOutput(i, 'Options', e.target.value)}
                   />
                   <IconButton
                     icon={TrashIcon}

@@ -28,7 +28,10 @@
 // (execution engine), and capabilitymap.go (the §3.3 capability map).
 package composition
 
-import "github.com/alicoding/mill/internal/domain/guardrail"
+import (
+	"github.com/alicoding/mill/internal/domain/guardrail"
+	"github.com/alicoding/mill/internal/domain/typedfield"
+)
 
 // NodeKind mirrors SPEC.md §2's Capture -> Process -> Apply primitive,
 // plus Trigger (SPEC.md §3.4), Decision (routing -- ADR-0027 relabels
@@ -57,13 +60,24 @@ const (
 // fixedCollection, resourceLocator, ...) maps to Mill's own not-yet-built
 // Decision/Parallel nodes -- not stubbed here ahead of that need, same
 // discipline as NodeKind's own comment above.
-type ConfigFieldType string
+//
+// A type alias of typedfield.Type (docs/adr/0029, Phase 1): the
+// canonical leaf type lives in internal/domain/typedfield so
+// composition/decision/list can all converge onto one "name + typed
+// value" declaration without an import cycle (typedfield has zero
+// internal imports; composition already imports decision, so the
+// canonical type can't live inside composition itself). ConfigFieldType
+// stays a real, separately-named type here -- not just a bare
+// typedfield.Type reference at every call site -- so every existing Go
+// and generated-TS reference to composition.ConfigFieldType/FieldText
+// keeps resolving unchanged; only the underlying representation moved.
+type ConfigFieldType = typedfield.Type
 
 const (
-	FieldText    ConfigFieldType = "text"
-	FieldNumber  ConfigFieldType = "number"
-	FieldBoolean ConfigFieldType = "boolean"
-	FieldOptions ConfigFieldType = "options"
+	FieldText    = typedfield.TypeText
+	FieldNumber  = typedfield.TypeNumber
+	FieldBoolean = typedfield.TypeBoolean
+	FieldOptions = typedfield.TypeOptions
 )
 
 // ConfigField declares one configurable parameter a node type's nodes
@@ -71,42 +85,42 @@ const (
 // legitimately true for some nodes (capture/process here operate on
 // whatever's piped in, every Trigger node type today), not a placeholder
 // to fill in later.
-type ConfigField struct {
-	Key         string
-	Label       string
-	Description string
-	Default     string
-	Type        ConfigFieldType
-	// Options is only meaningful when Type == FieldOptions -- the set of
-	// values ResolveNodeDefaults will accept for this field.
-	Options []string
-	// RefKind marks a FieldText field whose value is the ID of a
-	// Configure-authored entity ("request" | "list" | "mcpserver"),
-	// empty for an ordinary text field (docs/adr/0009). Orthogonal to
-	// Type: the wire value is still a plain string ID (Type stays
-	// FieldText), RefKind only tells the frontend Inspector which
-	// Configure list to offer as a live picker instead of a bare text
-	// box. composition itself never reads RefKind -- nodeExec functions
-	// still just read the plain string ID out of Node.Config.
-	RefKind string
-	// Multiline marks a FieldText whose values are naturally multi-line
-	// documents (an HTML payload, a JSON arguments object) -- the
-	// Inspector renders a textarea for these and a single-line input for
-	// everything else (a key name, a cron string, a path). Added after a
-	// direct UI critique: every text field rendering as a 4-row textarea
-	// was a systemic spacing problem, not a per-field choice.
-	Multiline bool
-	// Suggestions is only meaningful when Type == FieldText -- unlike
-	// Options (FieldOptions' closed enum), any value is still accepted;
-	// these are offered as autocomplete hints only (an HTML5 datalist on
-	// the frontend). ADR-0016: the open-vs-closed distinction this field
-	// exists for was decided directly against real precedent -- Bruno's
-	// own .bru format offers named HTTP methods but keeps an explicit
-	// `method: CUSTOM` escape hatch rather than a closed enum, since a
-	// closed list can't express a new or uncommon method (e.g. RFC
-	// 10008's QUERY, published June 2026) without a code change.
-	Suggestions []string
-}
+//
+// A type alias of typedfield.Field (docs/adr/0029, Phase 1) -- zero
+// wire migration, since encoding/json unmarshals an already-persisted
+// {Key,Label,Description,Default,Type,Options,RefKind,Multiline,
+// Suggestions} document into the wider struct unchanged (absent fields
+// -- Required/Secret/SystemManaged -- fill their Go zero value). See
+// typedfield.Field's own doc comment for what each field means;
+// RefKind/Multiline/Suggestions below restate composition's own usage
+// of them, not a second definition.
+//
+// RefKind marks a FieldText field whose value is the ID of a
+// Configure-authored entity ("request" | "list" | "mcpserver"), empty
+// for an ordinary text field (docs/adr/0009). Orthogonal to Type: the
+// wire value is still a plain string ID (Type stays FieldText), RefKind
+// only tells the frontend Inspector which Configure list to offer as a
+// live picker instead of a bare text box. composition itself never
+// reads RefKind -- nodeExec functions still just read the plain string
+// ID out of Node.Config.
+//
+// Multiline marks a FieldText whose values are naturally multi-line
+// documents (an HTML payload, a JSON arguments object) -- the Inspector
+// renders a textarea for these and a single-line input for everything
+// else (a key name, a cron string, a path). Added after a direct UI
+// critique: every text field rendering as a 4-row textarea was a
+// systemic spacing problem, not a per-field choice.
+//
+// Suggestions is only meaningful when Type == FieldText -- unlike
+// Options (FieldOptions' closed enum), any value is still accepted;
+// these are offered as autocomplete hints only (an HTML5 datalist on
+// the frontend). ADR-0016: the open-vs-closed distinction this field
+// exists for was decided directly against real precedent -- Bruno's own
+// .bru format offers named HTTP methods but keeps an explicit
+// `method: CUSTOM` escape hatch rather than a closed enum, since a
+// closed list can't express a new or uncommon method (e.g. RFC 10008's
+// QUERY, published June 2026) without a code change.
+type ConfigField = typedfield.Field
 
 type NodeType struct {
 	ID           string
@@ -168,15 +182,18 @@ type Edge struct {
 // structured Attributes bag (see ExecContext) -- Configure-authored
 // (SPEC.md §3.5: "Input/Attributes... you would not tightly couple it in
 // the workflow"), but scoped to the one workflow that declares it (1:1),
-// unlike a reusable HTTPRequest or List. Reuses ConfigFieldType rather
-// than inventing a second type enum -- a workflow's attribute schema and
-// a node's config fields are the same kind of "name + typed value"
-// declaration.
-type AttributeDef struct {
-	Key   string
-	Label string
-	Type  ConfigFieldType
-}
+// unlike a reusable HTTPRequest or List.
+//
+// A type alias of typedfield.Field, same as ConfigField above
+// (docs/adr/0029, Phase 1) -- zero wire migration (an already-persisted
+// {Key,Label,Type} document unmarshals into the wider struct unchanged,
+// every other field its Go zero value). This is Phase 1's actual
+// payoff: AttributeDef immediately gains Options/Required/Default/
+// Description/Suggestions/RefKind/Multiline/Secret/SystemManaged for
+// free, closing the "AttributeDef carries no Options list" gap
+// ruleTranslate.ts's own comment previously named -- no UI wiring
+// changed by this alone, only the Go (and generated-TS) shape.
+type AttributeDef = typedfield.Field
 
 // Workflow is a node/edge graph. Branching exists now (Decision nodes,
 // see walk/nextNode) but is still constrained: every non-Decision node

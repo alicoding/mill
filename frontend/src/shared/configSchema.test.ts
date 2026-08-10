@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { ConfigFieldType } from '../../bindings/github.com/alicoding/mill/internal/domain/composition/models'
+import { Type as ConfigFieldType } from '../../bindings/github.com/alicoding/mill/internal/domain/typedfield/models'
 import { configFieldsToZodSchema, generateSamplePayload, type TypedField } from './configSchema'
 
 // docs/adr/0008's test-input form generalizes this module from a
@@ -11,9 +11,9 @@ import { configFieldsToZodSchema, generateSamplePayload, type TypedField } from 
 // both require on the wire.
 describe('configFieldsToZodSchema / generateSamplePayload with AttributeDef-shaped input', () => {
   const attributeLikeFields: TypedField[] = [
-    { Key: 'urgent', Type: ConfigFieldType.FieldBoolean },
-    { Key: 'retryCount', Type: ConfigFieldType.FieldNumber },
-    { Key: 'label', Type: ConfigFieldType.FieldText },
+    { Key: 'urgent', Type: ConfigFieldType.TypeBoolean },
+    { Key: 'retryCount', Type: ConfigFieldType.TypeNumber },
+    { Key: 'label', Type: ConfigFieldType.TypeText },
   ]
 
   it('builds a valid schema with no Options field present (AttributeDef never declares one)', () => {
@@ -29,7 +29,7 @@ describe('configFieldsToZodSchema / generateSamplePayload with AttributeDef-shap
   })
 
   it('falls back to a plain string for a FieldOptions field with no Options list', () => {
-    const fields: TypedField[] = [{ Key: 'choice', Type: ConfigFieldType.FieldOptions }]
+    const fields: TypedField[] = [{ Key: 'choice', Type: ConfigFieldType.TypeOptions }]
     const sample = generateSamplePayload(fields)
     expect(typeof sample.choice).toBe('string')
   })
