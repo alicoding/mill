@@ -109,6 +109,15 @@ func NewMillMCPService(version string, comp *compositionsvc.CompositionService, 
 		Description: "One Decision's full definition (same shape as its Export button's output). Never includes its webhook binding -- an HTTPRequest reference is local-instance-only.",
 	}, m.readDecision)
 
+	m.server.AddResource(&mcp.Resource{
+		URI: "mill://execenvs", Name: "execenvs", MIMEType: "application/json",
+		Description: "Every Execution Environment's ID, Label, and shell -- read mill://execenvs/{id} for its full definition (docs/adr/0026).",
+	}, m.readExecEnvsIndex)
+	m.server.AddResourceTemplate(&mcp.ResourceTemplate{
+		URITemplate: "mill://execenvs/{id}", Name: "execenv", MIMEType: "application/json",
+		Description: "One Execution Environment's full definition (same shape as its Export button's output).",
+	}, m.readExecEnv)
+
 	return m
 }
 
@@ -247,6 +256,25 @@ func (m *MillMCPService) readDecisionsIndex(_ context.Context, req *mcp.ReadReso
 func (m *MillMCPService) readDecision(_ context.Context, req *mcp.ReadResourceRequest) (*mcp.ReadResourceResult, error) {
 	id := idFromTemplateURI(req.Params.URI, "mill://decisions/")
 	data, err := m.cfg.ExportDecision(id)
+	if err != nil {
+		return nil, mcp.ResourceNotFoundError(req.Params.URI)
+	}
+	return &mcp.ReadResourceResult{
+		Contents: []*mcp.ResourceContents{{URI: req.Params.URI, MIMEType: "application/json", Text: data}},
+	}, nil
+}
+
+func (m *MillMCPService) readExecEnvsIndex(_ context.Context, req *mcp.ReadResourceRequest) (*mcp.ReadResourceResult, error) {
+	out := make([]resourceIndexEntry, 0)
+	for _, e := range m.cfg.ExecEnvs() {
+		out = append(out, resourceIndexEntry{ID: e.ID, Label: e.Label, Description: string(e.Shell)})
+	}
+	return jsonContents(req.Params.URI, out)
+}
+
+func (m *MillMCPService) readExecEnv(_ context.Context, req *mcp.ReadResourceRequest) (*mcp.ReadResourceResult, error) {
+	id := idFromTemplateURI(req.Params.URI, "mill://execenvs/")
+	data, err := m.cfg.ExportExecEnv(id)
 	if err != nil {
 		return nil, mcp.ResourceNotFoundError(req.Params.URI)
 	}

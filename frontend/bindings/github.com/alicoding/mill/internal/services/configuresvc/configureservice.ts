@@ -34,6 +34,9 @@ import * as composition$0 from "../../domain/composition/models.js";
 import * as decision$0 from "../../domain/decision/models.js";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
+import * as execenv$0 from "../../domain/execenv/models.js";
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: Unused imports
 import * as httprequest$0 from "../../domain/httprequest/models.js";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
@@ -48,6 +51,10 @@ import * as $models from "./models.js";
 
 export function CreateDecision(label: string, category: decision$0.Category, outputs: decision$0.OutputField[] | null, webhookRequestID: string): $CancellablePromise<decision$0.Decision> {
     return $Call.ByID(2725151274, label, category, outputs, webhookRequestID);
+}
+
+export function CreateExecEnv(label: string, shell: execenv$0.Shell, profileMode: execenv$0.ProfileMode, dir: string, env: string[] | null): $CancellablePromise<execenv$0.ExecEnv> {
+    return $Call.ByID(2549731420, label, shell, profileMode, dir, env);
 }
 
 /**
@@ -76,6 +83,10 @@ export function Decisions(): $CancellablePromise<decision$0.Decision[] | null> {
 
 export function DeleteDecision(id: string): $CancellablePromise<void> {
     return $Call.ByID(3396624017, id);
+}
+
+export function DeleteExecEnv(id: string): $CancellablePromise<void> {
+    return $Call.ByID(2790333249, id);
 }
 
 /**
@@ -113,8 +124,16 @@ export function DeleteMCPServer(id: string): $CancellablePromise<void> {
     return $Call.ByID(3847603582, id);
 }
 
+export function ExecEnvs(): $CancellablePromise<execenv$0.ExecEnv[] | null> {
+    return $Call.ByID(1392956673);
+}
+
 export function ExportDecision(id: string): $CancellablePromise<string> {
     return $Call.ByID(1497100540, id);
+}
+
+export function ExportExecEnv(id: string): $CancellablePromise<string> {
+    return $Call.ByID(1292699062, id);
 }
 
 export function ExportHTTPRequest(id: string): $CancellablePromise<string> {
@@ -146,6 +165,10 @@ export function HTTPRequests(): $CancellablePromise<httprequest$0.HTTPRequest[] 
 
 export function ImportDecision(jsonData: string): $CancellablePromise<decision$0.Decision> {
     return $Call.ByID(4077937019, jsonData);
+}
+
+export function ImportExecEnv(jsonData: string): $CancellablePromise<execenv$0.ExecEnv> {
+    return $Call.ByID(785482531, jsonData);
 }
 
 /**
@@ -264,6 +287,10 @@ export function TestHTTPRequestOperation(req: $models.TestHTTPRequestInput): $Ca
  */
 export function UpdateDecision(id: string, label: string, category: decision$0.Category, outputs: decision$0.OutputField[] | null, webhookRequestID: string): $CancellablePromise<decision$0.Decision> {
     return $Call.ByID(793782335, id, label, category, outputs, webhookRequestID);
+}
+
+export function UpdateExecEnv(id: string, label: string, shell: execenv$0.Shell, profileMode: execenv$0.ProfileMode, dir: string, env: string[] | null): $CancellablePromise<execenv$0.ExecEnv> {
+    return $Call.ByID(375575575, id, label, shell, profileMode, dir, env);
 }
 
 export function UpdateHTTPRequest(id: string, label: string, baseURL: string, method: string, body: string, authType: httprequest$0.AuthType, headers: { [_ in string]?: string } | null, openAPISpec: string, auth: httprequest$0.AuthConfig | null, jose: httprequest$0.JOSEConfig | null, description: string): $CancellablePromise<httprequest$0.HTTPRequest> {

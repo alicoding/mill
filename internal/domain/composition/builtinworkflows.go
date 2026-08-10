@@ -2,6 +2,7 @@ package composition
 
 import (
 	"github.com/alicoding/mill/internal/domain/decision"
+	"github.com/alicoding/mill/internal/domain/execenv"
 	"github.com/alicoding/mill/internal/domain/httprequest"
 	"github.com/alicoding/mill/internal/domain/list"
 	"github.com/alicoding/mill/internal/domain/mcpserver"
@@ -272,6 +273,38 @@ func BuiltInWorkflows() []Workflow {
 		panic("built-in workflow references an unknown node type: " + err.Error())
 	}
 
+	// Code execution (docs/adr/0026, goal 0004b, and the standing
+	// seeded-examples principle): SPEC §2.1's core loop -- a command
+	// runs locally, guardrailed -- minus the browser bridge, proven
+	// with a deterministic literal script rather than a real clipboard
+	// capture (ADR-0026's own seed decision: "ships manual-triggered ...
+	// keep it minimal + deterministic"). Runs inside the seeded "Safe
+	// sandbox" ExecEnv (Configure > Execution Environments); the run
+	// parks awaiting approval by default (code-execution's Effect is
+	// ClassExternal, same as integration-http) -- approve it from this
+	// workflow's own Runs tab. The description points at the one-click
+	// hotkey swap SPEC §2.1 actually wants, since a hotkey can't ship
+	// pre-bound (no combo is safe to claim on every user's machine) and
+	// a clipboard-watch trigger firing on every copy would be
+	// obnoxious as a default.
+	const (
+		codeExecTriggerID = "example-codeexec-trigger"
+		codeExecStepID    = "example-codeexec-step"
+		codeExecApplyID   = "example-codeexec-apply"
+	)
+	codeExecNodes, err := ResolveNodeDefaults([]Node{
+		{ID: codeExecTriggerID, NodeTypeID: "trigger-manual", Position: Position{X: 0, Y: 0}},
+		{ID: codeExecStepID, NodeTypeID: "code-execution", Position: Position{X: 0, Y: 100},
+			Config: map[string]string{
+				"envId": execenv.ExampleSafeSandboxID, "source": "literal",
+				"script": `echo "hello from mill"`, "timeoutSeconds": "30",
+			}},
+		{ID: codeExecApplyID, NodeTypeID: "apply-clipboard-write-text", Position: Position{X: 0, Y: 200}},
+	})
+	if err != nil {
+		panic("built-in workflow references an unknown node type: " + err.Error())
+	}
+
 	return []Workflow{
 		{
 			ID:          "load-sample-html-workflow",
@@ -410,6 +443,17 @@ func BuiltInWorkflows() []Workflow {
 			Nodes:       mcpNodes,
 			Edges: []Edge{
 				{ID: "example-mcp-e0", Source: mcpTriggerID, Target: mcpCallID},
+			},
+			BuiltIn: true,
+		},
+		{
+			ID:          "example-codeexec-workflow",
+			Label:       "Example: Run copied code",
+			Description: "Runs a real local command (echo \"hello from mill\") inside the seeded \"Safe sandbox\" execution environment (Configure > Execution Environments), then writes the result to the clipboard -- docs/SPEC.md §2.1's core loop, minus the browser bridge (docs/adr/0026). code-execution is an EXTERNAL-effect step, so running it parks awaiting your approval, same as the guarded HTTP example. Ships manual-triggered so it's safe by default; swap the trigger for a hotkey (canvas Inspector) to get the real one-press capture-and-run loop.",
+			Nodes:       codeExecNodes,
+			Edges: []Edge{
+				{ID: "example-codeexec-e0", Source: codeExecTriggerID, Target: codeExecStepID},
+				{ID: "example-codeexec-e1", Source: codeExecStepID, Target: codeExecApplyID},
 			},
 			BuiltIn: true,
 		},

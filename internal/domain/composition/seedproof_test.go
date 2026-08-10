@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/alicoding/mill/internal/domain/decision"
+	"github.com/alicoding/mill/internal/domain/execenv"
 	"github.com/alicoding/mill/internal/domain/httprequest"
 	"github.com/alicoding/mill/internal/domain/list"
 	"github.com/alicoding/mill/internal/domain/mcpserver"
@@ -86,6 +87,12 @@ var workflowProofRegistry = map[string]seedProof{
 		"triggersvc.TestSeededDisabledFilesystemWatch_FiresRealWorkflowOnFileCreate",
 		"e2e: seed-completeness.spec.ts > Disabled filesystem watch (presence only)",
 	),
+	"example-codeexec-workflow": proven(
+		"executionsvc.TestSeededCodeExecutionExample_Approve_RunsRealCommandAndWritesClipboard",
+		"executionsvc.TestSeededCodeExecutionExample_Deny_NeverStartsTheProcess",
+		"executionsvc.TestCancelRun_KillsARealRunningProcess",
+		"e2e: codeexec.spec.ts > Run copied code (approve path)",
+	),
 }
 
 // httpRequestProofRegistry: every httprequest.BuiltIn() ID.
@@ -145,6 +152,14 @@ var mcpServerProofRegistry = map[string]seedProof{
 	mcpserver.ExampleReferenceServerID: proven(
 		"composition.TestSeededMCPExample_EchoToolCall_RunsEndToEnd",
 		"configuresvc.TestConfigureService_FreshInstall_SeedsBuiltInMCPServers",
+	),
+}
+
+// execEnvProofRegistry: every execenv.BuiltIn() ID.
+var execEnvProofRegistry = map[string]seedProof{
+	execenv.ExampleSafeSandboxID: proven(
+		"executionsvc.TestSeededCodeExecutionExample_Approve_RunsRealCommandAndWritesClipboard",
+		"composition.TestCodeExecution_TempDirSentinel_ResolvesToARealExistingDir",
 	),
 }
 
@@ -227,6 +242,14 @@ func TestSeedProofRegistry_EveryMCPServerProvenOrExempt(t *testing.T) {
 		ids = append(ids, s.ID)
 	}
 	checkRegistry(t, "seeded MCP Server", ids, mcpServerProofRegistry)
+}
+
+func TestSeedProofRegistry_EveryExecEnvProvenOrExempt(t *testing.T) {
+	var ids []string
+	for _, e := range execenv.BuiltIn() {
+		ids = append(ids, e.ID)
+	}
+	checkRegistry(t, "seeded ExecEnv", ids, execEnvProofRegistry)
 }
 
 // TestNodeTypeProof_EveryNodeTypeProvenOrExempt is item 9's own

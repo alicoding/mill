@@ -1,0 +1,272 @@
+import { useEffect, useRef, useState } from 'react'
+import { Button, FormControl, Heading, IconButton, Label, Select, Stack, Text, TextInput } from '@primer/react'
+import { DownloadIcon, PlusIcon, TerminalIcon, TrashIcon, UploadIcon } from '@primer/octicons-react'
+import { DataTable } from '@primer/react/experimental'
+import { ResizableTableContainer, TruncatedCell } from '../shared/ResizableTable'
+import { ConfigureService } from '../shared/bindings'
+import type { ExecEnv } from '../../bindings/github.com/alicoding/mill/internal/domain/execenv/models'
+import { Shell, ProfileMode } from '../../bindings/github.com/alicoding/mill/internal/domain/execenv/models'
+import { downloadJSON } from '../shared/downloadJSON'
+import { ViewModeToggle } from '../shared/ViewModeToggle'
+import { useViewMode } from '../shared/viewMode'
+import { InventoryList, type InventoryItem } from '../shared/InventoryList'
+import { ENTITY_ICON } from '../shared/entityIcons'
+import styles from '../shared/ListCard.module.css'
+import PageContainer from '../shared/PageContainer'
+
+const TEMP_DIR_SENTINEL = '<mill-temp>'
+
+// Partial, not the full Record<Shell, string>/Record<ProfileMode,
+// string> -- $zero (the Go zero value) is never a value a saved
+// ExecEnv should carry (Validate rejects it), so every lookup below
+// falls back to the raw string (`SHELL_LABEL[e.Shell] ?? e.Shell`)
+// rather than forcing a meaningless "" -> label mapping into existence.
+const SHELL_LABEL: Partial<Record<Shell, string>> = {
+  [Shell.ShellZsh]: 'zsh',
+  [Shell.ShellBash]: 'bash',
+  [Shell.ShellSh]: 'sh',
+}
+
+const PROFILE_LABEL: Partial<Record<ProfileMode, string>> = {
+  [ProfileMode.ProfileClean]: 'Clean (no shell profile, deterministic)',
+  [ProfileMode.ProfileLogin]: 'Login (sources your shell profile)',
+}
+
+function envToRows(env: string[] | null | undefined): string[] {
+  return env && env.length > 0 ? env : ['']
+}
+
+// Configure's Execution Environments section (docs/adr/0026,
+// docs/SPEC.md §6): CRUD over ConfigureService's ExecEnvs, each a
+// reusable, pinned shell/dir/env a code-execution workflow node
+// resolves by ID -- the "materialize, don't inherit" Configure entity
+// ADR-0026's Amendment names. Mirrors ConfigureMCPServers.tsx's shape
+// (the Configure-entity recipe, docs/SPEC.md §9.5) closely: no
+// secret/auth concept here at all, same as MCP Server.
+export function ConfigureExecEnv() {
+  const [envs, setEnvs] = useState<ExecEnv[] | null>(null)
+  const [editingID, setEditingID] = useState<string | null>(null)
+  const [label, setLabel] = useState('')
+  const [shell, setShell] = useState<Shell>(Shell.ShellZsh)
+  const [profileMode, setProfileMode] = useState<ProfileMode>(ProfileMode.ProfileClean)
+  const [dir, setDir] = useState(TEMP_DIR_SENTINEL)
+  const [envRows, setEnvRows] = useState<string[]>([])
+  const [formOpen, setFormOpen] = useState(false)
+  const [error, setError] = useState('')
+  const [importError, setImportError] = useState<string | null>(null)
+  const importInputRef = useRef<HTMLInputElement>(null)
+  const [viewMode, setViewMode] = useViewMode('mill-execenvs-view-mode')
+
+  const refetch = () => {
+    ConfigureService.ExecEnvs().then((list) => setEnvs(list ?? [])).catch(console.error)
+  }
+
+  const exportEnv = (id: string, label: string) => {
+    ConfigureService.ExportExecEnv(id)
+      .then((json) => downloadJSON(`${label.trim() || 'execenv'}.json`, json))
+      .catch((err) => setImportError(String(err)))
+  }
+
+  const openImportPicker = () => {
+    setImportError(null)
+    importInputRef.current?.click()
+  }
+
+  const handleImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    file.text()
+      .then((text) => ConfigureService.ImportExecEnv(text))
+      .then(() => { setImportError(null); refetch() })
+      .catch((err) => setImportError(String(err)))
+  }
+
+  useEffect(refetch, [])
+
+  const startCreate = () => {
+    setEditingID(null)
+    setLabel('')
+    setShell(Shell.ShellZsh)
+    setProfileMode(ProfileMode.ProfileClean)
+    setDir(TEMP_DIR_SENTINEL)
+    setEnvRows([''])
+    setFormOpen(true)
+    setError('')
+  }
+
+  const startEdit = (e: ExecEnv) => {
+    setEditingID(e.ID)
+    setLabel(e.Label)
+    setShell(e.Shell)
+    setProfileMode(e.ProfileMode)
+    setDir(e.Dir)
+    setEnvRows(envToRows(e.Env))
+    setFormOpen(true)
+    setError('')
+  }
+
+  const save = async () => {
+    setError('')
+    try {
+      const env = envRows.map((r) => r.trim()).filter(Boolean)
+      if (editingID) {
+        await ConfigureService.UpdateExecEnv(editingID, label, shell, profileMode, dir, env)
+      } else {
+        await ConfigureService.CreateExecEnv(label, shell, profileMode, dir, env)
+      }
+      setFormOpen(false)
+      refetch()
+    } catch (err) {
+      setError(String(err))
+    }
+  }
+
+  const remove = (id: string) => {
+    ConfigureService.DeleteExecEnv(id).then(refetch).catch(console.error)
+  }
+
+  const updateEnvRow = (i: number, value: string) => {
+    setEnvRows((prev) => prev.map((r, idx) => (idx === i ? value : r)))
+  }
+
+  const envItems: InventoryItem[] = (envs ?? []).map((e) => ({
+    id: e.ID,
+    entity: 'execenv',
+    icon: ENTITY_ICON.execenv,
+    label: e.Label,
+    // No !e.BuiltIn guard on Delete -- same "ordinary, fully editable/
+    // deletable from the moment it exists" reasoning as
+    // ConfigureRequests.tsx/ConfigureLists.tsx's identical badge.
+    labelBadges: e.BuiltIn ? <Label variant="secondary" size="small">built-in</Label> : undefined,
+    description: `${SHELL_LABEL[e.Shell] ?? e.Shell} · ${e.ProfileMode} · ${e.Dir === TEMP_DIR_SENTINEL ? 'fresh temp dir per run' : e.Dir}`,
+    onOpen: () => startEdit(e),
+    menuActions: [
+      { label: 'Export', onClick: () => exportEnv(e.ID, e.Label) },
+      { label: 'Delete', onClick: () => remove(e.ID), danger: true },
+    ],
+  }))
+
+  return (
+    <PageContainer data-testid="configure-execenvs">
+      <Stack direction="horizontal" justify="space-between" align="center" className={styles.sectionHeading}>
+        <Heading as="h2" variant="small" id="execenvs-heading">Execution Environments</Heading>
+        <Stack direction="horizontal" gap="condensed">
+          <ViewModeToggle mode={viewMode} onChange={setViewMode} />
+          <input
+            ref={importInputRef}
+            type="file"
+            accept="application/json,.json"
+            data-testid="import-execenv-input"
+            style={{ display: 'none' }}
+            onChange={handleImportFile}
+          />
+          <Button leadingVisual={UploadIcon} size="small" onClick={openImportPicker} data-testid="import-execenv">
+            Import
+          </Button>
+          <Button leadingVisual={PlusIcon} size="small" onClick={startCreate} data-testid="new-execenv">
+            New environment
+          </Button>
+        </Stack>
+      </Stack>
+      {importError && (
+        <Text as="p" size="small" className={styles.error} data-testid="import-execenv-error">{importError}</Text>
+      )}
+
+      {formOpen && (
+        <PageContainer variant="narrow">
+        <div className={styles.card}>
+          <Stack direction="vertical" gap="condensed">
+            <FormControl>
+              <FormControl.Label>Label</FormControl.Label>
+              <TextInput value={label} onChange={(e) => setLabel(e.target.value)} block />
+            </FormControl>
+            <FormControl>
+              <FormControl.Label>Shell</FormControl.Label>
+              <Select value={shell} onChange={(e) => setShell(e.target.value as Shell)}>
+                {Object.values(Shell).filter((s) => s !== Shell.$zero).map((s) => (
+                  <Select.Option key={s} value={s}>{SHELL_LABEL[s] ?? s}</Select.Option>
+                ))}
+              </Select>
+            </FormControl>
+            <FormControl>
+              <FormControl.Label>Profile mode</FormControl.Label>
+              <FormControl.Caption>Clean is the fail-safe default -- no shell startup files are sourced, only the Env below is visible.</FormControl.Caption>
+              <Select value={profileMode} onChange={(e) => setProfileMode(e.target.value as ProfileMode)}>
+                {Object.values(ProfileMode).filter((p) => p !== ProfileMode.$zero).map((p) => (
+                  <Select.Option key={p} value={p}>{PROFILE_LABEL[p] ?? p}</Select.Option>
+                ))}
+              </Select>
+            </FormControl>
+            <FormControl>
+              <FormControl.Label>Working directory</FormControl.Label>
+              <FormControl.Caption>{`Use ${TEMP_DIR_SENTINEL} to mint a fresh, Mill-owned temp directory for each run, or a real absolute path.`}</FormControl.Caption>
+              <TextInput value={dir} onChange={(e) => setDir(e.target.value)} block />
+            </FormControl>
+            <Text size="small" weight="semibold">Environment variables (KEY=VALUE)</Text>
+            <FormControl.Caption>Explicit only -- never inherits Mill's own environment. Leave empty for a minimal default PATH.</FormControl.Caption>
+            {envRows.map((row, i) => (
+              <Stack key={i} direction="horizontal" gap="condensed" align="center">
+                <TextInput placeholder="PATH=/usr/bin:/bin" value={row} onChange={(e) => updateEnvRow(i, e.target.value)} block />
+                <IconButton
+                  icon={TrashIcon}
+                  aria-label="Remove variable"
+                  size="small"
+                  variant="invisible"
+                  onClick={() => setEnvRows((prev) => prev.filter((_, idx) => idx !== i))}
+                />
+              </Stack>
+            ))}
+            <Button size="small" variant="invisible" onClick={() => setEnvRows((prev) => [...prev, ''])}>
+              Add variable
+            </Button>
+            {error && <Text as="p" size="small" className={styles.error}>{error}</Text>}
+            <Stack direction="horizontal" gap="condensed">
+              <Button variant="primary" size="small" onClick={save}>Save environment</Button>
+              <Button size="small" variant="invisible" onClick={() => setFormOpen(false)}>Cancel</Button>
+            </Stack>
+          </Stack>
+        </div>
+        </PageContainer>
+      )}
+
+      {envs === null && <Text as="p" className={styles.muted}>Loading…</Text>}
+      {envs !== null && viewMode === 'table' && envs.length > 0 && (
+        <ResizableTableContainer storageKey="mill-cols-execenvs">
+          <DataTable
+            aria-labelledby="execenvs-heading"
+            data={envs.map((e) => ({ ...e, id: e.ID }))}
+            columns={[
+              { header: 'Label', field: 'Label', rowHeader: true, sortBy: 'alphanumeric' },
+              { header: 'Shell', id: 'shell', renderCell: (e) => SHELL_LABEL[e.Shell] ?? e.Shell },
+              { header: 'Profile', field: 'ProfileMode' },
+              { header: 'Dir', id: 'dir', width: 'growCollapse', minWidth: '160px', renderCell: (e) => <TruncatedCell text={e.Dir} /> },
+              {
+                header: '', id: 'actions', width: 'auto', align: 'end',
+                renderCell: (e) => (
+                  <Stack direction="horizontal" gap="condensed">
+                    <Button size="small" variant="invisible" onClick={() => startEdit(e)}>Edit</Button>
+                    <IconButton icon={DownloadIcon} aria-label={`Export ${e.Label}`} size="small" variant="invisible" onClick={() => exportEnv(e.ID, e.Label)} />
+                    <IconButton icon={TrashIcon} aria-label={`Delete ${e.Label}`} size="small" variant="invisible" onClick={() => remove(e.ID)} />
+                  </Stack>
+                ),
+              },
+            ]}
+          />
+        </ResizableTableContainer>
+      )}
+      {envs !== null && viewMode === 'rows' && !(formOpen && envs.length === 0) && (
+        <InventoryList
+          items={envItems}
+          searchPlaceholder="Search execution environments…"
+          emptyState={{
+            icon: TerminalIcon,
+            heading: 'No execution environments yet',
+            description: 'A reusable, pinned shell/directory/env a code-execution workflow node can run inside.',
+            action: <Button leadingVisual={PlusIcon} onClick={startCreate}>New environment</Button>,
+          }}
+        />
+      )}
+    </PageContainer>
+  )
+}
