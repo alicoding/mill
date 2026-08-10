@@ -25,3 +25,4 @@ in archive/ for the full verdict trail if ever needed).
 2. [ ] [0002 — Review queue maturation](0002-review-queue-maturation.md) (UX)
 3. [x] [0003 — MCP authoring live dogfood](archive/0003-mcp-authoring-dogfood.md) — delivered 2026-08-10, live with the owner (full loop incl. refused-while-off, per-write approval, auto-snapshot)
 4. [ ] [0004 — Code execution capability](0004-code-execution-capability.md) (backend; ADR-0026 accepted 2026-08-10 — implementation unblocked)
+5. [ ] [0005 — Pending-attention model](0005-pending-attention-model.md) (design/research: missed MCP approvals, notification center vs Activity vs Review — raised live during the 0003 dogfood; reorder freely)
