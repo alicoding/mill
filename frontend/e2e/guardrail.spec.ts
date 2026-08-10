@@ -116,3 +116,83 @@ test('Review queue shows the resolved outcome after a deny, filterable by workfl
   await page.getByLabel('Filter by workflow').selectOption({ label: 'Example: Human review with input' })
   await expect(page.getByTestId('review-resolved-item').filter({ hasText: GUARDED })).toHaveCount(0)
 })
+
+// Row drill-down (docs/goals/0002-review-queue-maturation.md item 5):
+// every Review row -- pending or resolved -- opens its run in the
+// app-wide work-tab shell at the workflow's Runs inner tab, with that
+// run's own detail already open. Also covers the root-caused
+// zero-time bug: a resolved row's timestamp must never render Go's
+// zero time ("1-12-31, ...").
+
+test('Review row drill-down: a resolved row opens its run on the Runs tab with detail preselected, and its timestamp is real', async ({ page }) => {
+  await page.goto('/')
+  const row = page.getByTestId('workflow-row').filter({ has: page.getByText(GUARDED, { exact: true }) })
+  await row.getByRole('button', { name: 'Run' }).click()
+
+  await page.getByRole('link', { name: 'Review' }).click()
+  const item = page.getByTestId('review-item').filter({ hasText: GUARDED }).first()
+  await expect(item).toBeVisible({ timeout: 10_000 })
+  await item.getByTestId('review-deny').click()
+
+  const resolvedItem = page.getByTestId('review-resolved-item').filter({ hasText: GUARDED }).first()
+  await expect(resolvedItem).toBeVisible({ timeout: 10_000 })
+
+  // The zero-time regression's exact repro string never renders, and
+  // the timestamp reflects a real, current run (executionservice.go's
+  // summaryFromStatus now falls back to CreatedAt when DBOS's own
+  // StartedAt is zero).
+  const timestampText = (await resolvedItem.textContent()) ?? ''
+  expect(timestampText).not.toContain('1-12-31')
+  expect(timestampText).toContain(String(new Date().getFullYear()))
+
+  // Clicking the row itself (not a button) drills into the run: its
+  // workflow's editor tab opens on the Runs inner tab, with this run's
+  // own detail already open -- the ONE run-detail viewer (docs/SPEC.md
+  // §7's lock), never rendered on Review itself.
+  await resolvedItem.click()
+  await expect(page.getByRole('tab', { name: 'Runs' })).toBeVisible()
+  const detail = page.getByTestId('run-detail')
+  await expect(detail).toBeVisible()
+  await expect(detail).toContainText('denied by user')
+})
+
+test('Review row drill-down: clicking a pending row opens its run too', async ({ page }) => {
+  await page.goto('/')
+  const row = page.getByTestId('workflow-row').filter({ has: page.getByText(GUARDED, { exact: true }) })
+  await row.getByRole('button', { name: 'Run' }).click()
+
+  await page.getByRole('link', { name: 'Review' }).click()
+  const item = page.getByTestId('review-item').filter({ hasText: GUARDED }).first()
+  await expect(item).toBeVisible({ timeout: 10_000 })
+
+  // Click the row's label text (outside the stopPropagation-wrapped
+  // input/button block) -- lands on the Runs tab with this still-parked
+  // run's own detail (the approval banner) already open.
+  await item.getByText(GUARDED, { exact: true }).click()
+  await expect(page.getByRole('tab', { name: 'Runs' })).toBeVisible()
+  const detail = page.getByTestId('run-detail')
+  await expect(detail).toBeVisible()
+  await expect(page.getByTestId('approval-banner')).toBeVisible()
+
+  // Clean up: deny from here so nothing stays parked for later tests.
+  await page.getByTestId('deny-step').click()
+  await expect(detail).toContainText('denied by user', { timeout: 10_000 })
+})
+
+test('Review row drill-down: pending-row Approve/Deny still resolve in place, without navigating', async ({ page }) => {
+  await page.goto('/')
+  const row = page.getByTestId('workflow-row').filter({ has: page.getByText(GUARDED, { exact: true }) })
+  await row.getByRole('button', { name: 'Run' }).click()
+
+  await page.getByRole('link', { name: 'Review' }).click()
+  const item = page.getByTestId('review-item').filter({ hasText: GUARDED }).first()
+  await expect(item).toBeVisible({ timeout: 10_000 })
+
+  // The Deny button's own onClick stops propagation to the row's --
+  // Review stays the active tab (no work tab opened) and the run
+  // resolves in place, exactly as it did before row drill-down existed.
+  await item.getByTestId('review-deny').click()
+  await expect(page.getByTestId('review-view')).toBeVisible()
+  await expect(page.getByRole('tab', { name: 'Runs' })).toHaveCount(0)
+  await expect(page.getByTestId('review-item').filter({ hasText: GUARDED })).toHaveCount(0, { timeout: 10_000 })
+})
