@@ -2587,6 +2587,20 @@ Full rationale in [`docs/adr/0003-browser-bridge-architecture.md`](adr/0003-brow
   (`guardrail.spec.ts`). Still genuinely open: richer rule expressions
   (command allowlists, path scoping — blocked on §6 existing), and a
   Settings knob for the 24h timeout.
+  **Update — the rule-authoring UI is removed pending the code-execution
+  design, by direct decision ("we should not have it here like we
+  discussed").** The Configure → Guardrails tab (rule CRUD + dry-run
+  tester) is deleted: where guardrail configuration lives —
+  workflow-level vs. global — is owned by the code-execution
+  capability's design (ADR-0023's pipeline model), not decided ahead of
+  it as a standalone Configure tab. The ENGINE stays fully built and
+  live (effect classes, default-ask for external steps, durable
+  parking, the Review queue, canvas badges, the read-only Inspector
+  verdict, `GuardrailService`'s rule CRUD/testing RPCs) — only the
+  authoring surface is parked; stored rules keep evaluating. The two
+  placeholder sidebar pages ("M365 Copilot chat bridge", "Guardrails /
+  policy") are removed from the nav/capability index too — unbuilt
+  concepts live in this doc, not as dead-end pages.
 
 - **Rule scoping & precedence — `LOCKED` (design), `OPEN`
   (implementation): [ADR-0019](adr/0019-guardrail-rule-scoping-and-precedence.md)
@@ -2742,7 +2756,24 @@ actually get built is `OPEN` — the list below is candidates, not commitments.
   agents"](https://www.anthropic.com/engineering/effective-context-engineering-for-ai-agents)
   for the just-in-time-retrieval reasoning above.
 
-### 9.2 Candidate skills/agents — `OPEN` (names + one-line justification only; none scaffolded yet)
+### 9.2 Candidate skills/agents — `OPEN` (names + one-line justification only)
+
+**First two real agents scaffolded (`.claude/agents/`), prompted by a
+direct ask to use subagents and to research how to run an expensive
+orchestrator model efficiently on Claude Code.** Researched against the
+current Claude Code docs first (sub-agents.md, model-config.md):
+delegation pays for volume work (exploration, suite runs, verbose
+output) whose results the main session only needs summarized — never
+for design decisions needing conversation context — and an agent
+definition's `model` frontmatter runs it on a cheaper model than the
+orchestrator. Shipped, each with a concrete recurring use already
+proven in real sessions (not speculative — the anti-proliferation
+rule): **test-investigator** (sonnet — runs the Go/e2e suites in the
+background and reports only real failures, encoding the shared-e2e-
+store discipline from .claude/rules/testing.md) and **explorer**
+(haiku — read-only codebase research with file:line answers, keeping
+bulk exploration out of the main context). The §9.2 candidates below
+remain unscaffolded, same gating as before.
 
 - **ddd-modeling-helper** (skill) — guides entity/value-object/aggregate
   boundary decisions when domain logic starts landing (§1.1 SOLID/DRY/DDD

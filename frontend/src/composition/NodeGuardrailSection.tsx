@@ -39,8 +39,7 @@ export function NodeGuardrailSection({ workflowId, nodeId }: { workflowId: strin
         This step {EFFECT_TEXT[verdict.effect] ?? verdict.effect}
         {verdict.ruleLabel
           ? ` — rule "${verdict.ruleLabel}".`
-          : verdict.effectClass === 'external' ? ' — external steps ask by default.' : '.'}
-        {' '}Rules are authored in Configure → Guardrails.
+          : verdict.effectClass === 'external' ? ' — external steps ask by default. Approvals happen in Review.' : '.'}
       </Text>
     </Stack>
   )
