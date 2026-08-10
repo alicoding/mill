@@ -1,9 +1,10 @@
 # ADR-0026: Code execution capability — environments, the code-block step, cancellation
 
 ## Status
-proposed — deliberately NOT accepted: §1.1's command-execution reading
-and §6 are `OPEN` in SPEC, and this design resolves both, so it needs
-the owner's explicit yes before implementation (goal 0004).
+accepted — explicit owner yes, 2026-08-10. Accepting resolves SPEC
+§1.1's command-execution reading, §6 (environments as Configure
+entities), and ADR-0023's global-vs-workflow guardrail placement, per
+"What acceptance decides" below. Implementation is goal 0004.
 
 ## Context
 

@@ -114,11 +114,15 @@ an implicit `FINAL`.
   core loop. `LOCKED`
 - CI/CD wired from day one, not bolted on later. `LOCKED`
 - Command/bash execution is mediated through Mill's own process (that's the
-  guardrail hook point), but the mechanism underneath should be standard OS
-  primitives (`os/exec`, a normal shell invocation) rather than a
-  custom-built sandboxing/process-isolation layer — compose what exists,
-  don't reinvent it. `OPEN` — confirm this reading is correct before it
-  drives design.
+  guardrail hook point), but the mechanism underneath is standard OS
+  primitives — `os/exec` with an explicit `Dir`/`Env`/shell-argv, never a
+  custom-built sandboxing/process-isolation layer — and the guardrail
+  engine (ADR-0022) is the safety layer. `LOCKED` — confirmed by explicit
+  owner acceptance of
+  [ADR-0026](adr/0026-code-execution-capability.md), whose research pass
+  verified no sandbox library fits macOS+Linux+no-daemon anyway
+  (go-landlock Linux-only, sandbox-exec Apple-deprecated, gVisor a
+  second runtime).
 - Architecture discipline: SOLID, DRY, DDD — proper domain/class separation
   once real domain logic exists. Not retrofitted onto the current two-file
   scaffold prematurely; applies as soon as actual capabilities land. `LOCKED`
@@ -2473,12 +2477,23 @@ Full rationale in [`docs/adr/0003-browser-bridge-architecture.md`](adr/0003-brow
 
 ## 6. Execution environment & determinism
 
-- `OPEN`. Must not blindly execute anywhere — command execution needs a
-  pinned working directory (reference: Claude Code's `~/.claude/projects`
-  scoping) and an explicit shell (zsh/sh/etc.) rather than an inherited,
-  ambiguous one.
-- Not yet decided: how env vars are scoped per project/workflow, whether
-  a workflow declares its required shell/interpreter or Mill infers it.
+- **Design `LOCKED` by [ADR-0026](adr/0026-code-execution-capability.md)
+  (`accepted` 2026-08-10, explicit owner decision); implementation is
+  goal 0004, unbuilt.** Must not blindly execute anywhere — resolved as
+  **Execution Environments as Configure entities**:
+  `ExecEnv{ID, Label, Shell, Dir, Env}`, 1:many reusable (§3.5's
+  two-axis test), picked per code-execution step via the ADR-0009
+  entity picker. `Shell` is explicit argv (e.g. `/bin/zsh -c`), `Dir`
+  pinned, `Env` explicit-only (empty = clean env + PATH, never
+  inherited ambient) — a workflow references a declared environment,
+  Mill never infers one.
+- The `code-execution` NodeType (effect `external`, ask-by-default via
+  the ambient guardrail gate), cancellation (process-group
+  SIGTERM→SIGKILL via a local CancelFunc registry, since DBOS cannot
+  interrupt an executing step — confirmed from its source), and the
+  guardrail-placement answer (global = node-type/ExecEnv-scoped rules,
+  workflow-level = the existing step-scoped rules) are all specified in
+  the ADR. Windows execution is an explicit non-goal.
 
 ## 7. Process & session tracking
 
@@ -3040,7 +3055,9 @@ recorded as a real design input (`OPEN`), never silently dropped.
   deliberately: shadow evaluation (blocked on a per-node purity model,
   §8), staged-traffic promotion, version diffing.
 - Browser extension ↔ native app protocol details (§5)
-- Env/shell determinism rules (§6)
+- Env/shell determinism rules (§6) — design `LOCKED` by ADR-0026
+  (`accepted`): ExecEnv Configure entities with pinned dir/shell/env;
+  implementation is goal 0004
 - Session identity model spanning tab + agent run + process (§7)
 - Policy authoring format and storage (§8) — `LOCKED`, built:
   [ADR-0022](adr/0022-guardrail-execution-gate.md) implements
@@ -3065,13 +3082,13 @@ recorded as a real design input (`OPEN`), never silently dropped.
   (`IntegrationBindingsEditor.tsx`), and `ValidateGraph`'s secret
   guardrail. ADR-0007 closed.
 - Bash-execution-through-our-process-but-nothing-is-ours reading (§1.1) —
-  confirm with the user. **A full proposed design now exists:
-  [ADR-0026](adr/0026-code-execution-capability.md) (code-execution
-  capability — ExecEnv Configure entities, the auto-guarded
-  code-execution node, cancellation via a local CancelFunc registry +
-  process-group kill, global-vs-workflow guardrail via rule scopes) —
-  deliberately `proposed`, since accepting it resolves this bullet, §6,
-  and ADR-0023's placement question; research evidence is in the ADR**
+  **resolved: [ADR-0026](adr/0026-code-execution-capability.md)
+  `accepted` 2026-08-10 by explicit owner decision** (ExecEnv Configure
+  entities, the auto-guarded code-execution node, cancellation via a
+  local CancelFunc registry + process-group kill, global-vs-workflow
+  guardrail via rule scopes — env-scope added). This closed §1.1's
+  command-execution bullet, §6, and ADR-0023's placement question in
+  one acceptance; implementation is goal 0004
 - Single execution path (§7/ADR-0008) — `LOCKED` and built: every
   workflow run (a workflow's own list-row Run button, a headless trigger
   fire) goes through one durable `ExecutionService.RunWorkflow`
