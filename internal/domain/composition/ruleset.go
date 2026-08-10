@@ -44,6 +44,7 @@ func init() {
 	RegisterNodeType(NodeType{
 		ID: "ruleset", Kind: KindProcess,
 		Label:       "Ruleset validation",
+		Output:      "payload unchanged, if all rules pass",
 		Description: "Validates the data flowing through this step against a set of named rules (business/data validation -- e.g. \"amount below limit\", \"country allowed\"). Every rule must pass for the payload to continue unchanged; any failing rule fails the run, naming exactly which rules failed. A rule that cannot evaluate counts as failed (fail-safe). Distinct from Decision (which routes) and from guardrail rules (which govern whether a step may execute at all).",
 		Effect:      guardrail.ClassNone,
 	}, func(node Node, ctx ExecContext) (ExecContext, error) {

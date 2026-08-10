@@ -13,6 +13,7 @@ func init() {
 	RegisterNodeType(NodeType{
 		ID: "apply-clipboard-write-text", Kind: KindApply,
 		Effect:      guardrail.ClassLocal,
+		Output:      "the text it wrote",
 		Label:       "Apply: write plain text to clipboard",
 		Description: "Writes the workflow's current payload to the clipboard as plain text.",
 	}, func(_ Node, ctx ExecContext) (ExecContext, error) {

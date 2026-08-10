@@ -108,6 +108,13 @@ type NodeType struct {
 	Label        string
 	Description  string
 	ConfigFields []ConfigField
+	// Output names what payload leaves this step (e.g. "HTML from the
+	// clipboard", "Markdown text") -- rendered on the canvas card so
+	// the data contract between steps is visible at authoring time
+	// (docs/SPEC.md §3.8's authoring-style direction, from the
+	// reference prototype's own `Output TypedPayload<...>` card line).
+	// Empty for entry points that only start the run.
+	Output string
 	// Effect is the node type's side-effect classification
 	// (docs/adr/0022's purity model): what the guardrail gate uses to
 	// pick a default verdict when no rule matches, and what ADR-0021's

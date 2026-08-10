@@ -261,3 +261,16 @@
 .canvasNodeGuardrail[data-effect='deny'] {
     background: var(--bgColor-danger-emphasis);
 }
+
+/* The on-card output signature (docs/SPEC.md §3.8's authoring-style
+   direction: the data contract between steps visible at authoring
+   time, from the reference prototype's own card layout). */
+.canvasNodeOutput {
+    display: block;
+    width: 100%;
+    color: var(--fgColor-muted);
+    font-size: 11px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}

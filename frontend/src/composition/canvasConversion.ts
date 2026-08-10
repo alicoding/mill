@@ -18,7 +18,7 @@ export function toCanvasNodes(nodes: CompNode[] | null, nodeTypes: NodeType[]): 
       id: n.ID,
       type: n.Kind,
       position: { x: n.Position?.X ?? 0, y: n.Position?.Y ?? 0 },
-      data: { nodeTypeID: n.NodeTypeID, kind: n.Kind, label: nt?.Label ?? n.NodeTypeID, config },
+      data: { nodeTypeID: n.NodeTypeID, kind: n.Kind, label: nt?.Label ?? n.NodeTypeID, output: nt?.Output ?? '', config },
     }
   })
 }

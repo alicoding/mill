@@ -31,16 +31,19 @@ func init() {
 	RegisterNodeType(NodeType{
 		ID: "trigger-manual", Kind: KindTrigger,
 		Label:       "Trigger: manual",
+		Output:      "empty payload — the run starts here",
 		Description: "Fires on-demand when a user clicks Run/Test. No listener process.",
 	}, nil)
 	RegisterNodeType(NodeType{
 		ID: "trigger-hotkey", Kind: KindTrigger,
 		Label:       "Trigger: hotkey",
+		Output:      "empty payload — the run starts here",
 		Description: "Fires on a global keyboard shortcut, even when Mill isn't focused. Bound via TriggerService, not a config field here -- pressing the combo is better UX than typing it.",
 	}, nil)
 	RegisterNodeType(NodeType{
 		ID: "trigger-schedule", Kind: KindTrigger,
 		Label:       "Trigger: schedule",
+		Output:      "empty payload — the run starts here",
 		Description: "Fires on a cron schedule.",
 		ConfigFields: []ConfigField{
 			{
@@ -53,11 +56,13 @@ func init() {
 	RegisterNodeType(NodeType{
 		ID: "trigger-clipboard-watch", Kind: KindTrigger,
 		Label:       "Trigger: clipboard change",
+		Output:      "the clipboard text that changed",
 		Description: "Fires whenever the clipboard's content changes.",
 	}, nil)
 	RegisterNodeType(NodeType{
 		ID: "trigger-filesystem-watch", Kind: KindTrigger,
 		Label:       "Trigger: filesystem change",
+		Output:      "the changed file path",
 		Description: "Fires when a file or folder under the configured path is added, changed, or deleted.",
 		ConfigFields: []ConfigField{
 			{
@@ -70,6 +75,7 @@ func init() {
 	RegisterNodeType(NodeType{
 		ID: "trigger-callable", Kind: KindTrigger,
 		Label:       "Trigger: callable by another workflow",
+		Output:      "the caller's typed input",
 		Description: "Fires only when invoked as a child by another workflow's Child Workflow node (docs/adr/0010) -- never by a real external event, no listener process. Modeled on n8n's own \"Execute Workflow Trigger\": a workflow rooted in this trigger declares itself a valid child target, decoupled from whatever its trigger would otherwise be. The child-workflow picker only lists workflows rooted here -- one rooted in a real-event trigger (filesystem-watch, clipboard-watch, ...) can't be invoked this way, since a parent has no way to synthesize that event.",
 	}, nil)
 }
