@@ -2,9 +2,19 @@
 
 ## Status
 
-proposed — architect pass complete (2026-08-10, goal 0013); three
-owner decisions flagged in "Open" below before it's `accepted` and
-built. This is SPEC §9.5's ranked-#1 platform-kernel investment: the
+accepted — 2026-08-10, the three flagged questions resolved with the
+architect's own recommendations (owner-delegated: "get what we know
+100% in"; all three low-stakes and reversible, recorded below):
+(1) **RefKind stays in core** — a harmless extra optional field, plausible
+List/Decision reuse; narrow later if it never materializes. (2) **Type
+stays a flat string-const** — a strict superset of everything today;
+0011's future `object`/`array` are additive values, revisit only if
+they need structure this flat enum can't express. (3) **Build Phases
+1–2 only; Phase 3 (openapispec) is an explicit fast-follow** — P1+P2
+meet acceptance ("two of four converged") at the smallest wire risk;
+P3 is the largest UI surface and genuinely separable. Any of the three
+is cheap to revisit — Phase 1 type-aliases don't lock RefKind
+placement, and P3-deferral is pure scope. This is SPEC §9.5's ranked-#1 platform-kernel investment: the
 four accreted field vocabularies (`ConfigField`, `AttributeDef`,
 `decision.OutputField`, `openapispec.Field`) converge so the next N
 capabilities declare fields once instead of adding a fifth.
