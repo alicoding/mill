@@ -4,12 +4,15 @@ Read this first in the morning, then `/clear` and start a fresh session
 on `docs/goals/BACKLOG.md`. This file is disposable — delete or
 overwrite it once you've read it.
 
-## What shipped (newest first, all committed, all suites green)
+## What shipped (newest first, all committed, all suites green — 89 e2e / 45 vitest / full Go)
 
 | Commit | What | Judge it by |
 |---|---|---|
+| 4731b6f | capture-clipboard: plain-text fallback when no HTML (SPEC §5) | — (behavior; tested) |
+| 865d320 | filesystem-watch: filename glob filter + changed-path payload | fs-watch trigger Inspector |
+| c6ed407 | this handoff doc | — |
 | ff1daef | e2e: 1 retry for a resizable-table drag flake | — (infra) |
-| 002e9a6 | human-review: "Ask for these attributes" subset, not all | open the seeded review example, add a human-review step, set the subset |
+| 002e9a6 | human-review: "Ask for these attributes" subset, not all | seeded review example + a human-review step |
 | 63839b9 | list-lookup: explicit If-no-match (fail/continue/default) | list-lookup node's Inspector |
 | f4ae037 | schedule: live cronstrue preview under the cron field | drag a schedule trigger, type a cron |
 | eac4dea | ruleset: visual condition builder (same as Decision edges) | ruleset node's Inspector — the two-surface inconsistency is gone |
@@ -20,6 +23,14 @@ overwrite it once you've read it.
 | bd854aa | MCP LLM-authoring protocol (introspect/validate/mutate/run + live sync) | needs the dogfood demo, goal 0003 |
 | c1b7d3f | DDD restructure: root → internal/services/*svc + e2e isolation guard | the repo tree; root is just main.go now |
 | 27be96d | build-identity badge (bundle-vs-binary commit, not a clock) | the top-right badge |
+
+**Goal 0001's node-maturity audit is done** — 7 node types matured
+(ruleset, schedule, list-lookup, human-review, filesystem-watch,
+capture-clipboard, plus the output signatures on all). The ONE
+remaining audited gap is **mcp-tool-call's raw-JSON args → a
+schema-driven editor** (fetch the tool's InputSchema, render typed
+fields) — left for a live session because its e2e needs a spawned MCP
+subprocess.
 
 ## Decisions that need YOUR call (surfaced, not silently made)
 
