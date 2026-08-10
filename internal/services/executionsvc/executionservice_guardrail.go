@@ -3,6 +3,7 @@ package executionsvc
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/alicoding/mill/internal/adapters/execution"
@@ -28,6 +29,18 @@ const (
 	guardrailApprovalTimeout = 24 * time.Hour
 )
 
+// parseCSVKeys splits a comma-separated attribute-key list, trimming
+// blanks -- the human-review node's input-subset config (goal 0001).
+func parseCSVKeys(raw string) []string {
+	var out []string
+	for _, part := range strings.Split(raw, ",") {
+		if k := strings.TrimSpace(part); k != "" {
+			out = append(out, k)
+		}
+	}
+	return out
+}
+
 // PendingApproval is what a parked run advertises via SetEvent -- the
 // §1 thesis applied to the guardrail itself: the human sees exactly
 // which step wants to run, with which config, before it happens.
@@ -40,6 +53,10 @@ type PendingApproval struct {
 	RuleLabel     string            `json:"ruleLabel"`
 	Resolved      bool              `json:"resolved"`
 	Decision      string            `json:"decision"`
+	// InputAttributes names which of the workflow's declared Attributes
+	// the reviewer should fill for a human-review checkpoint (goal 0001);
+	// empty means all. The Review queue renders only these.
+	InputAttributes []string `json:"inputAttributes,omitempty"`
 }
 
 type approvalDecision struct {
@@ -103,12 +120,13 @@ func (e *ExecutionService) parkForApproval(ctx execution.Context, node compositi
 		typeLabels[nt.ID] = nt.Label
 	}
 	pending := PendingApproval{
-		NodeID:        node.ID,
-		NodeTypeID:    node.NodeTypeID,
-		NodeTypeLabel: typeLabels[node.NodeTypeID],
-		Config:        node.Config,
-		Payload:       ec.Payload,
-		RuleLabel:     ruleLabel,
+		NodeID:          node.ID,
+		NodeTypeID:      node.NodeTypeID,
+		NodeTypeLabel:   typeLabels[node.NodeTypeID],
+		Config:          node.Config,
+		Payload:         ec.Payload,
+		RuleLabel:       ruleLabel,
+		InputAttributes: parseCSVKeys(node.Config["inputAttributes"]),
 	}
 	if err := execution.SetEvent(ctx, guardrailPendingEventKey, pending); err != nil {
 		return nil, fmt.Errorf("guardrail: publish pending approval: %w", err)
