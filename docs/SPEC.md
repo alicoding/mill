@@ -1323,6 +1323,8 @@ Plan step for this as a standing rule.
 | **Draft/live versioning** | Edit a workflow without breaking the currently-live version | Build (no library owns Mill's own versioning semantics -- verified against installed DBOS v1.0.0: its `ApplicationVersion` versions the app binary, not definition data) | `LOCKED`, built -- [ADR-0021](adr/0021-workflow-lifecycle-and-versioning.md): head = draft, `Versions` = immutable snapshots, `PublishedVersion` = live (publish ≡ live), `Disabled` pauses triggers/child calls while test runs stay allowed (n8n's semantics); child-workflow version pinning; every run records its executed version. Shadow evaluation explicitly deferred (side-effectful nodes need §8's purity model first) |
 | **Live + shadow events / execution history** | Filterable log of past runs; dry-run a candidate change against real traffic before trusting it | Data: adopt (DBOS `GetStatus`/`ListWorkflows`). UI: build | `LOCKED` (execution-history half) — §7's per-workflow Runs tab (`WorkflowRunsPanel.tsx`, `ListRunsForWorkflow`/`GetWorkflowSteps`) built and e2e-verified. Shadow-events (dry-run a draft version against real traffic) stays unbuilt — no draft/live versioning concept exists yet (§3.2's own draft/live versioning gap, still real) |
 | **Guardrail preview / policy gate** | Approve/deny before a step actually runs | Build (core domain: `internal/domain/guardrail`); durable parking: adopt (DBOS `Send`/`Recv`/`SetEvent`, already adopted §7) | `LOCKED`, built — §8/ADR-0022: effect classes on every NodeType, ambient gate + explicit "Wait for approval" node, Configure → Guardrails authoring + dry-run tester |
+| **Human review / HITL step** | Pause a run for a person: queue it, take their typed input, resume or stop | Park mechanism: adopt (DBOS Send/Recv, §7). Queue surface + input model: build (thin — composed over ListRuns + pending, not a case-management engine) | `LOCKED`, built — ADR-0023: `human-review` node + the Review queue (sidebar); reviewer input coerces via the same path as the test-input form |
+| **Ruleset validation** | Validate the payload/attributes flowing through a step against named business rules | Data model: build (JDM's shape reduced — GoRules ZEN is CGO/Rust, disqualified; grule rejected). Evaluation: adopt (`expr-lang`, already adopted) | `LOCKED`, built — ADR-0023: `ruleset` node, fail-safe (unevaluable rule counts as failed), failures named per rule |
 | **Visual composition surface** | Author a DAG, not just a list | Adopt (React Flow / `@xyflow/react`) — built ahead of ADR-0005 B2's original deferral trigger, by explicit decision (see the ADR's Update section) | §3, `CompositionCanvas.tsx`, `UX: PROTOTYPE` |
 
 **React Flow, checked directly against its actual source/docs (not
@@ -2604,6 +2606,34 @@ Full rationale in [`docs/adr/0003-browser-bridge-architecture.md`](adr/0003-brow
   ADR. Still genuinely open: how Claude Code's third `ask` state maps
   onto Mill's own pass/fail/pending/skipped UI states, and
   `internal/domain/guardrail` itself remains unbuilt.
+- **Three concepts disentangled from "guardrail," by direct correction —
+  [ADR-0023](adr/0023-hitl-ruleset-codeexec-disentangled.md)
+  (`accepted`), all but the third built.** (1) **Human-in-the-loop**:
+  the `human-review` node (renamed/extended from ADR-0022's
+  Wait-for-approval) pauses a run for a person who can approve, deny,
+  AND supply typed input — values for the workflow's declared
+  Attributes, coerced by the same path as the test-input form — that
+  flows into the resumed run; a **Review queue** (sidebar) lists every
+  parked run across every workflow (ambient-gate asks and checkpoints
+  share one pending mechanism), §3.2's case-management-style "Review"
+  surface in v1 form — composed from DBOS's own primitives + the
+  existing parked-run data, deliberately NOT a case-management engine
+  (no assignment/SLA/notes; "do not hand roll, do not go to
+  Camunda/Pega level" — direct decision). (2) **Ruleset validation**:
+  a `ruleset` node validates the data flowing through a step against
+  named rules — JDM's decision-model shape (GoRules ZEN itself is CGO
+  over a Rust core, disqualified by §1.1/§1.3; grule is sporadically
+  maintained with its own DSL, rejected) evaluated by the
+  already-adopted `expr-lang` and authored per-rule in the Inspector;
+  any failing or unevaluable rule fails the run, named. Distinct from
+  Decision (routing) and guardrail rules (execution policy) on
+  purpose. (3) **Code execution** stays design-only: the ADR records
+  the full target pipeline (typed event input → ruleset → code
+  execution with global+workflow-level config → human review →
+  DOM-or-clipboard terminal node), including kill/retry cancellation
+  semantics — §6 owns it. Seeded proof: "Example: Human review with
+  input" (park → typed input → capture-attribute → ruleset), covered
+  by a real Go test against DBOS and deterministic e2e.
 - **MCP write-tools guardrail scope —
   [ADR-0017](adr/0017-mcp-write-tools-guardrail-scope.md)
   (`proposed`).** §8's three-layer scoping above governs *running* an

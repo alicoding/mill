@@ -23,6 +23,7 @@ type ViewKind string
 
 const (
 	ViewActivity    ViewKind = "activity"
+	ViewReview      ViewKind = "review"
 	ViewComposition ViewKind = "composition"
 	ViewConfigure   ViewKind = "configure"
 	ViewPlaceholder ViewKind = "placeholder"
@@ -73,6 +74,15 @@ func List() []Capability {
 		{
 			ID: "activity-log", Label: "Activity / event log", NavLabel: "Activity", SpecSection: "2.2",
 			Status: StatusLocked, View: ViewActivity,
+		},
+		{
+			// The human-in-the-loop queue (docs/adr/0023): every parked
+			// run -- ambient guardrail asks and Human review checkpoints
+			// alike -- across every workflow, in one case-management-style
+			// inbox (§3.2's "Review" surface, v1). Composed from the
+			// already-built parked-run mechanism, not a new engine.
+			ID: "capability-review", Label: "Review queue", NavLabel: "Review", SpecSection: "8",
+			Status: StatusLocked, View: ViewReview,
 		},
 		{
 			ID: "copilot-bridge", Label: "M365 Copilot chat bridge", SpecSection: "2.1",

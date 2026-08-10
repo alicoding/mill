@@ -44,6 +44,10 @@ type PendingApproval struct {
 type approvalDecision struct {
 	NodeID  string
 	Approve bool
+	// Values is the reviewer's typed input (docs/adr/0023's human-review
+	// node): overrides for the workflow's declared Attributes, applied
+	// on resume. Empty for a plain approve and for ambient-gate asks.
+	Values map[string]string
 }
 
 // guardrailGate is installed as composition.SetGuardrailGate at
@@ -81,8 +85,10 @@ func (e *ExecutionService) guardrailGate(runCtx any, workflowID string, node com
 		return fmt.Errorf("guardrail: denied by rule %s", verdict.RuleID)
 	}
 
-	// Ask: park durably until a human decides.
-	return e.parkForApproval(ctx, node, ec, verdict.RuleLabel)
+	// Ask: park durably until a human decides (reviewer values are a
+	// human-review-node concept -- the ambient gate ignores them).
+	_, err = e.parkForApproval(ctx, node, ec, verdict.RuleLabel)
+	return err
 }
 
 // parkForApproval advertises the pending step (SetEvent) and blocks on
@@ -90,7 +96,7 @@ func (e *ExecutionService) guardrailGate(runCtx any, workflowID string, node com
 // Shared by the ambient gate's ask verdict and the explicit
 // "Wait for approval" node (composition.SetApprovalWaiter) -- both
 // patterns, one pending/approve/deny surface (docs/adr/0022's Update).
-func (e *ExecutionService) parkForApproval(ctx execution.Context, node composition.Node, ec composition.ExecContext, ruleLabel string) error {
+func (e *ExecutionService) parkForApproval(ctx execution.Context, node composition.Node, ec composition.ExecContext, ruleLabel string) (map[string]string, error) {
 	typeLabels := make(map[string]string)
 	for _, nt := range composition.NodeTypes() {
 		typeLabels[nt.ID] = nt.Label
@@ -104,12 +110,12 @@ func (e *ExecutionService) parkForApproval(ctx execution.Context, node compositi
 		RuleLabel:     ruleLabel,
 	}
 	if err := execution.SetEvent(ctx, guardrailPendingEventKey, pending); err != nil {
-		return fmt.Errorf("guardrail: publish pending approval: %w", err)
+		return nil, fmt.Errorf("guardrail: publish pending approval: %w", err)
 	}
 
 	decision, err := execution.Recv[approvalDecision](ctx, guardrailApprovalTopic, guardrailApprovalTimeout)
 	if err != nil {
-		return fmt.Errorf("guardrail: await approval: %w", err)
+		return nil, fmt.Errorf("guardrail: await approval: %w", err)
 	}
 
 	pending.Resolved = true
@@ -117,38 +123,40 @@ func (e *ExecutionService) parkForApproval(ctx execution.Context, node compositi
 		// Recv's timeout yields the zero value -- nobody answered.
 		pending.Decision = "timed out"
 		_ = execution.SetEvent(ctx, guardrailPendingEventKey, pending)
-		return fmt.Errorf("guardrail: approval timed out after %s", guardrailApprovalTimeout)
+		return nil, fmt.Errorf("guardrail: approval timed out after %s", guardrailApprovalTimeout)
 	}
 	if !decision.Approve {
 		pending.Decision = "denied"
 		_ = execution.SetEvent(ctx, guardrailPendingEventKey, pending)
-		return fmt.Errorf("guardrail: denied by user")
+		return nil, fmt.Errorf("guardrail: denied by user")
 	}
 	pending.Decision = "approved"
 	_ = execution.SetEvent(ctx, guardrailPendingEventKey, pending)
-	return nil
+	return decision.Values, nil
 }
 
 // approvalWaiter backs the explicit "Wait for approval" node
 // (composition.SetApprovalWaiter): always parks -- an allow rule skips
 // the policy ask, never a checkpoint the author drew deliberately. The
 // approver sees the node's configured message as the "rule" line.
-func (e *ExecutionService) approvalWaiter(runCtx any, node composition.Node, ec composition.ExecContext, message string) error {
+func (e *ExecutionService) approvalWaiter(runCtx any, node composition.Node, ec composition.ExecContext, message string) (map[string]string, error) {
 	ctx, ok := runCtx.(execution.Context)
 	if !ok || ctx == nil {
-		return fmt.Errorf("wait-for-approval: this run has no interactive context to ask in")
+		return nil, fmt.Errorf("human-review: this run has no interactive context to ask in")
 	}
 	if message == "" {
-		message = "explicit checkpoint in this workflow"
+		message = "human review checkpoint"
 	}
 	return e.parkForApproval(ctx, node, ec, message)
 }
 
 // ResolveApproval delivers the human's decision to a parked run -- the
-// Approve/Deny buttons' RPC. Send works from outside a workflow
-// (verified against the installed DBOS source).
-func (e *ExecutionService) ResolveApproval(runID, nodeID string, approve bool) error {
-	return execution.Send(e.ctx, runID, approvalDecision{NodeID: nodeID, Approve: approve}, guardrailApprovalTopic)
+// Approve/Deny buttons' RPC. values is the reviewer's typed input for
+// a human-review checkpoint (nil/empty for a plain approve or an
+// ambient-gate ask). Send works from outside a workflow (verified
+// against the installed DBOS source).
+func (e *ExecutionService) ResolveApproval(runID, nodeID string, approve bool, values map[string]string) error {
+	return execution.Send(e.ctx, runID, approvalDecision{NodeID: nodeID, Approve: approve, Values: values}, guardrailApprovalTopic)
 }
 
 // pendingApprovalFor polls a run's advertised pending approval (zero
@@ -172,9 +180,9 @@ func (e *ExecutionService) mayRequireApproval(workflowID string, nodes []composi
 		if n.Kind == composition.KindTrigger || n.Kind == composition.KindDecision {
 			continue
 		}
-		// The explicit Wait-for-approval node always parks -- it's a
-		// drawn checkpoint, not policy, so no allow rule vouches it away.
-		if n.NodeTypeID == "guardrail-wait-approval" {
+		// The human-review checkpoint always parks -- it's a drawn
+		// checkpoint, not policy, so no allow rule vouches it away.
+		if n.NodeTypeID == "human-review" {
 			return true
 		}
 		step := guardrail.Step{

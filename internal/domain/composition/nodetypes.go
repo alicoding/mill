@@ -162,6 +162,30 @@ func BuiltInWorkflows() []Workflow {
 		panic("built-in workflow references an unknown node type: " + err.Error())
 	}
 
+	// Human review + ruleset in one seed (docs/adr/0023, and the
+	// standing seeded-examples principle): running it parks in the
+	// Review queue; the reviewer's typed input (the 'note' Attribute)
+	// flows into the resumed run, is read into the payload, and is then
+	// validated by a ruleset -- both new concepts proven in one flow.
+	const (
+		reviewTriggerID = "example-review-trigger"
+		reviewStepID    = "example-review-step"
+		reviewCaptureID = "example-review-capture"
+		reviewRulesetID = "example-review-ruleset"
+	)
+	reviewNodes, err := ResolveNodeDefaults([]Node{
+		{ID: reviewTriggerID, NodeTypeID: "trigger-manual", Position: Position{X: 0, Y: 0}},
+		{ID: reviewStepID, NodeTypeID: "human-review", Position: Position{X: 0, Y: 100},
+			Config: map[string]string{"message": "Provide a note for this run, then approve"}},
+		{ID: reviewCaptureID, NodeTypeID: "capture-attribute", Position: Position{X: 0, Y: 200},
+			Config: map[string]string{"attribute": "note"}},
+		{ID: reviewRulesetID, NodeTypeID: "ruleset", Position: Position{X: 0, Y: 300},
+			Config: map[string]string{"rulesJSON": `[{"name":"note provided","condition":"Attributes['note'] != ''"}]`}},
+	})
+	if err != nil {
+		panic("built-in workflow references an unknown node type: " + err.Error())
+	}
+
 	// A disabled scheduled workflow (ADR-0021's inactive state): its
 	// every-minute schedule never arms while Disabled -- flip the
 	// toggle to watch it start firing into Activity.
@@ -244,6 +268,19 @@ func BuiltInWorkflows() []Workflow {
 			Nodes:       guardedNodes,
 			Edges: []Edge{
 				{ID: "example-guarded-e0", Source: guardedTriggerID, Target: guardedHTTPID},
+			},
+			BuiltIn: true,
+		},
+		{
+			ID:          "example-review-workflow",
+			Label:       "Example: Human review with input",
+			Description: "Pauses in the Review queue (sidebar > Review) for a person: type a note there, approve, and the run resumes with your note as its data -- read into the payload and validated by a ruleset (\"note provided\" must pass). Deny to stop it instead. Human-in-the-loop and ruleset validation demonstrated end to end (docs/adr/0023).",
+			Nodes:       reviewNodes,
+			Attributes:  []AttributeDef{{Key: "note", Label: "Note", Type: FieldText}},
+			Edges: []Edge{
+				{ID: "example-review-e0", Source: reviewTriggerID, Target: reviewStepID},
+				{ID: "example-review-e1", Source: reviewStepID, Target: reviewCaptureID},
+				{ID: "example-review-e2", Source: reviewCaptureID, Target: reviewRulesetID},
 			},
 			BuiltIn: true,
 		},

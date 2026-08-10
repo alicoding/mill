@@ -71,11 +71,13 @@ export function RedriveRun(runID: string, fromNodeID: string): $CancellablePromi
 
 /**
  * ResolveApproval delivers the human's decision to a parked run -- the
- * Approve/Deny buttons' RPC. Send works from outside a workflow
- * (verified against the installed DBOS source).
+ * Approve/Deny buttons' RPC. values is the reviewer's typed input for
+ * a human-review checkpoint (nil/empty for a plain approve or an
+ * ambient-gate ask). Send works from outside a workflow (verified
+ * against the installed DBOS source).
  */
-export function ResolveApproval(runID: string, nodeID: string, approve: boolean): $CancellablePromise<void> {
-    return $Call.ByID(3717967946, runID, nodeID, approve);
+export function ResolveApproval(runID: string, nodeID: string, approve: boolean, values: { [_ in string]?: string } | null): $CancellablePromise<void> {
+    return $Call.ByID(3717967946, runID, nodeID, approve, values);
 }
 
 /**

@@ -102,7 +102,7 @@ function WorkflowRunsPanel({ workflowId }: WorkflowRunsPanelProps) {
     if (!selectedRunID) return
     setBusy(true)
     setError('')
-    ExecutionService.ResolveApproval(selectedRunID, nodeID, approve)
+    ExecutionService.ResolveApproval(selectedRunID, nodeID, approve, {})
       .then(() => setBusy(false))
       .catch((err) => { setError(String(err)); setBusy(false) })
     // The in-flight poll below picks up the resumed/failed state.

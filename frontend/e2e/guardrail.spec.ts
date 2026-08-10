@@ -82,3 +82,49 @@ test('Configure Guardrails: an allow rule flips the dry-run verdict, and deletin
   await tester.getByTestId('test-guardrail-rules').click()
   await expect(page.getByTestId('guardrail-test-result')).toContainText('Require approval')
 })
+
+test('Review queue: a parked human-review run accepts typed input and resumes with it', async ({ page }) => {
+  await page.goto('/')
+  const seed = 'Example: Human review with input'
+  const row = page.getByTestId('workflow-row').filter({ has: page.getByText(seed, { exact: true }) })
+  await expect(row).toBeVisible()
+  await row.getByRole('button', { name: 'Run' }).click()
+
+  // The seed declares a 'note' Attribute, so Run opens the test-input
+  // dialog (docs/adr/0008) -- clear the generated value: providing the
+  // note is the REVIEWER's job in this flow.
+  const dialog = page.getByRole('dialog')
+  await dialog.getByLabel('Note').fill('')
+  await dialog.getByRole('button', { name: 'Run' }).click()
+
+  // The run parks; the Review queue (sidebar) lists it.
+  await page.getByRole('link', { name: 'Review' }).click()
+  const item = page.getByTestId('review-item').filter({ hasText: seed }).first()
+  await expect(item).toBeVisible({ timeout: 10_000 })
+  await expect(item).toContainText('Provide a note for this run, then approve')
+
+  // Typed input: fill the workflow's declared 'note' Attribute, approve.
+  await item.getByLabel('Note').fill('e2e reviewer note')
+  await item.getByTestId('review-approve').click()
+  await expect(page.getByTestId('review-item').filter({ hasText: seed })).toHaveCount(0, { timeout: 10_000 })
+
+  // The resumed run carried the input through capture-attribute and the
+  // ruleset: its durable history shows SUCCESS with the note as output.
+  await page.getByRole('link', { name: 'Workflows' }).click()
+  await row.getByRole('button', { name: `Edit ${seed}` }).click()
+  await page.getByRole('tab', { name: 'Runs' }).click()
+  await page.getByRole('button', { name: 'View' }).first().click()
+  await expect(page.getByTestId('run-detail')).toContainText('e2e reviewer note', { timeout: 10_000 })
+})
+
+test('Review queue: denying from the queue stops the run', async ({ page }) => {
+  await page.goto('/')
+  const row = page.getByTestId('workflow-row').filter({ has: page.getByText(GUARDED, { exact: true }) })
+  await row.getByRole('button', { name: 'Run' }).click()
+
+  await page.getByRole('link', { name: 'Review' }).click()
+  const item = page.getByTestId('review-item').filter({ hasText: GUARDED }).first()
+  await expect(item).toBeVisible({ timeout: 10_000 })
+  await item.getByTestId('review-deny').click()
+  await expect(page.getByTestId('review-item').filter({ hasText: GUARDED })).toHaveCount(0, { timeout: 10_000 })
+})

@@ -4,6 +4,7 @@ import {IconButton, Label, NavList, PageLayout, Text, useTheme} from "@primer/re
 import {DotFillIcon, GearIcon, SidebarCollapseIcon, SidebarExpandIcon} from "@primer/octicons-react";
 import SpecView from "../views/SpecView";
 import ActivityView from "../views/ActivityView";
+import ReviewView from "../views/ReviewView";
 import CompositionView from "../composition/CompositionView";
 import ConfigureView from "../configure/ConfigureView";
 import SettingsView from "../views/SettingsView";
@@ -37,6 +38,7 @@ function pageLabelFor(view: View, capabilities: { ID: string; Label: string; Nav
     case 'composition': return 'Workflows'
     case 'configure': return 'Configure'
     case 'activity': return 'Activity'
+    case 'review': return 'Review'
     case 'settings': return 'Settings'
     case 'spec': return 'Spec'
     case 'placeholder': {
@@ -367,6 +369,7 @@ function App() {
           <MCPWriteApprovals />
           <WorkTabShell pageLabel={pageLabelFor(view, capabilities)}>
             {view.kind === 'activity' && <ActivityView/>}
+            {view.kind === 'review' && <ReviewView/>}
 
             {view.kind === 'composition' && <CompositionView/>}
 
