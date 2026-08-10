@@ -27,7 +27,7 @@ Remaining, in order:
 
    | Node type | Maturity | Named gap |
    |---|---|---|
-   | ruleset | v1 | conditions are raw text — reuse the Decision-edge visual rule builder (react-querybuilder + ruleTranslate, already adopted); biggest inconsistency in the app: two condition surfaces, one visual one raw |
+   | ruleset | ~~v1~~ **mature** (delivered 2026-08-10) | now uses the SAME react-querybuilder + ruleTranslate visual builder as Decision edges, with the raw-expr fallback — the two-condition-surfaces inconsistency is closed |
    | mcp-tool-call | v1 | argumentsJSON is a raw JSON textarea — needs a bindings-style editor like integration-http's (fetch the tool's InputSchema via ListMCPServerTools, render typed fields) |
    | human-review | v1 | requests ALL declared attributes; should let the step name which ones (config: attribute subset) + message preview |
    | trigger-schedule | v1 | raw cron string, no human-readable preview ("every minute at :00") — adopt a cron-describe lib or render next-3-fire-times from the already-adopted scheduler |

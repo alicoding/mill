@@ -271,6 +271,7 @@ export function NodeInspector({ node, workflowId, attrs, nodeType, sameKindNodeT
       {node.data.nodeTypeID === 'ruleset' && (
         <RulesetEditor
           rulesRaw={node.data.config.rulesJSON ?? ''}
+          attrs={attrs}
           onChange={(raw) => onConfigChange('rulesJSON', raw)}
         />
       )}
