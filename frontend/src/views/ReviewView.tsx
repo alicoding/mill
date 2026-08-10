@@ -51,8 +51,13 @@ function ReviewView() {
       .catch((err) => setError(String(err)))
   }
 
-  const attrsFor = (workflowID: string) =>
-    workflows?.find((w) => w.ID === workflowID)?.Attributes ?? []
+  const attrsFor = (run: RunSummary) => {
+    const all = workflows?.find((w) => w.ID === run.workflowID)?.Attributes ?? []
+    const requested = run.pending?.inputAttributes ?? []
+    // A human-review step can name a subset of attributes to ask for
+    // (goal 0001); empty means all, the prior behavior.
+    return requested.length > 0 ? all.filter((a) => requested.includes(a.Key)) : all
+  }
 
   return (
     <PageContainer data-testid="review-view">
@@ -98,10 +103,10 @@ function ReviewView() {
               </Text>
               {run.pending?.payload && <pre className={styles.result}>{run.pending.payload}</pre>}
 
-              {attrsFor(run.workflowID).length > 0 && (
+              {attrsFor(run).length > 0 && (
                 <Stack direction="vertical" gap="condensed">
                   <Text size="small" weight="semibold">Your input (optional — flows into the resumed run)</Text>
-                  {attrsFor(run.workflowID).map((a) => (
+                  {attrsFor(run).map((a) => (
                     <FormControl key={a.Key}>
                       <FormControl.Label>{a.Label || a.Key}</FormControl.Label>
                       <TextInput

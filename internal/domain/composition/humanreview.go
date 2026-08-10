@@ -44,6 +44,16 @@ func init() {
 				Description: "Shown alongside the approval request, so future-you knows what this checkpoint is guarding.",
 				Default:     "", Type: FieldText,
 			},
+			{
+				// Which declared Attributes the reviewer is asked to fill
+				// (goal 0001 node maturity): the node used to request ALL
+				// of the workflow's attributes, which was noise when the
+				// step only needed one. Comma-separated keys; empty means
+				// all, preserving the prior behavior for existing nodes.
+				Key: "inputAttributes", Label: "Ask for these attributes",
+				Description: "Comma-separated Attribute keys the reviewer should fill in. Leave empty to ask for all of the workflow's Attributes.",
+				Default:     "", Type: FieldText,
+			},
 		},
 	}, func(node Node, ctx ExecContext) (ExecContext, error) {
 		values, err := waitForApprovalFn(ctx.RunContext, node, ctx, node.Config["message"])
