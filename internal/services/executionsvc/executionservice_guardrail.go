@@ -171,6 +171,18 @@ func (e *ExecutionService) pendingApprovalFor(runID string) *PendingApproval {
 	return &p
 }
 
+// approvalResolutionFor reads a run's RESOLVED approval outcome
+// ("approved"/"denied"/"timed out"), if it ever had one -- the Review
+// queue's recently-resolved visibility (goal 0002): the same event the
+// park wrote, read after resolution instead of before.
+func (e *ExecutionService) approvalResolutionFor(runID string) string {
+	p, err := execution.GetEvent[PendingApproval](e.ctx, runID, guardrailPendingEventKey, 0)
+	if err != nil || p.NodeID == "" || !p.Resolved {
+		return ""
+	}
+	return p.Decision
+}
+
 // mayRequireApproval pre-scans a graph for any step that could park
 // awaiting approval (guardrail.MayAsk's conservatism) -- RunWorkflow
 // blocks only when the answer is no, so a Run click never hangs on a

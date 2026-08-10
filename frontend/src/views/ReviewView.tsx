@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Button, FormControl, Heading, Label, Stack, Text, TextInput } from '@primer/react'
+import { Button, FormControl, Heading, Label, Select, Stack, Text, TextInput } from '@primer/react'
 import { ShieldIcon } from '@primer/octicons-react'
 import { ExecutionService } from '../shared/bindings'
 import type { RunSummary } from '../shared/bindings'
@@ -20,12 +20,20 @@ import PageContainer from '../shared/PageContainer'
 function ReviewView() {
   const workflows = useAppStore((s) => s.workflows)
   const [pending, setPending] = useState<RunSummary[] | null>(null)
+  const [resolved, setResolved] = useState<RunSummary[]>([])
   const [inputs, setInputs] = useState<Record<string, Record<string, string>>>({})
+  const [workflowFilter, setWorkflowFilter] = useState('')
   const [error, setError] = useState('')
 
   const refresh = () => {
     ExecutionService.ListRuns()
-      .then((runs) => setPending((runs ?? []).filter((r) => r.pending)))
+      .then((runs) => {
+        setPending((runs ?? []).filter((r) => r.pending))
+        // Recently resolved: runs that once parked, newest first --
+        // the queue's after-the-fact visibility (goal 0002), same
+        // event the park wrote, read after resolution.
+        setResolved((runs ?? []).filter((r) => r.resolution))
+      })
       .catch((err) => setError(String(err)))
   }
 
@@ -55,6 +63,19 @@ function ReviewView() {
       </Text>
       {error && <Text as="p" size="small" className={styles.error}>{error}</Text>}
 
+      {((pending?.length ?? 0) > 0 || resolved.length > 0) && (
+        <Stack direction="horizontal" gap="condensed" align="center">
+          <Select value={workflowFilter} onChange={(e) => setWorkflowFilter(e.target.value)} aria-label="Filter by workflow">
+            <Select.Option value="">All workflows</Select.Option>
+            {[...new Set([...(pending ?? []), ...resolved].map((r) => r.workflowID))].map((id) => (
+              <Select.Option key={id} value={id}>
+                {workflows?.find((w) => w.ID === id)?.Label ?? id}
+              </Select.Option>
+            ))}
+          </Select>
+        </Stack>
+      )}
+
       {pending !== null && pending.length === 0 && (
         <div className={styles.empty} data-testid="review-empty">
           <Text as="p">Nothing waiting for you.</Text>
@@ -62,7 +83,7 @@ function ReviewView() {
       )}
 
       <Stack direction="vertical" gap="normal">
-        {(pending ?? []).map((run) => (
+        {(pending ?? []).filter((r) => !workflowFilter || r.workflowID === workflowFilter).map((run) => (
           <div key={run.runID} className={styles.card} data-testid="review-item">
             <Stack direction="vertical" gap="condensed">
               <Stack direction="horizontal" gap="condensed" align="center">
@@ -109,6 +130,31 @@ function ReviewView() {
           </div>
         ))}
       </Stack>
+      {resolved.filter((r) => !workflowFilter || r.workflowID === workflowFilter).length > 0 && (
+        <>
+          <Heading as="h2" variant="small" className={styles.sectionHeading}>Recently resolved</Heading>
+          <Stack direction="vertical" gap="condensed">
+            {resolved.filter((r) => !workflowFilter || r.workflowID === workflowFilter).slice(0, 10).map((run) => (
+              <div key={run.runID} className={styles.card} data-testid="review-resolved-item">
+                <Stack direction="horizontal" gap="condensed" align="center" justify="space-between">
+                  <Stack direction="horizontal" gap="condensed" align="center">
+                    <Text weight="semibold">{run.workflowLabel}</Text>
+                    <Label
+                      size="small"
+                      variant={run.resolution === 'approved' ? 'success' : 'danger'}
+                      data-testid="review-resolution"
+                    >
+                      {run.resolution}
+                    </Label>
+                    <Label size="small" variant={run.status === 'SUCCESS' ? 'success' : 'secondary'}>{run.status}</Label>
+                  </Stack>
+                  <Text size="small" className={styles.muted}>{new Date(run.startedAt).toLocaleString()}</Text>
+                </Stack>
+              </div>
+            ))}
+          </Stack>
+        </>
+      )}
     </PageContainer>
   )
 }
