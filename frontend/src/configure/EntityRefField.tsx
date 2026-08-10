@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Dialog, FormControl, Select, TextInput } from '@primer/react'
-import { CompositionService, ConfigureService } from '../../bindings/github.com/alicoding/mill'
+import { CompositionService, ConfigureService } from '../shared/bindings'
 import { AuthType } from '../../bindings/github.com/alicoding/mill/internal/domain/httprequest/models'
 import type { Workflow } from '../../bindings/github.com/alicoding/mill/internal/domain/composition/models'
 

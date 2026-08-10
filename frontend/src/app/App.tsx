@@ -9,8 +9,8 @@ import CompositionView from "../composition/CompositionView";
 import ConfigureView from "../configure/ConfigureView";
 import SettingsView from "../views/SettingsView";
 import PlaceholderView from "../views/PlaceholderView";
-import { CapabilitiesService, SettingsService } from "../../bindings/github.com/alicoding/mill";
-import type { BuildInfo } from "../../bindings/github.com/alicoding/mill/models";
+import { CapabilitiesService, SettingsService } from '../shared/bindings'
+import type { BuildInfo } from '../shared/bindings'
 import { refreshNodeTypes, refreshRequests, refreshWorkflows, useAppStore, viewFor, viewsEqual, statusDotColor } from "../shared/store";
 import type { View } from "../shared/store";
 import { WorkTabShell } from "./WorkTabShell";
@@ -270,7 +270,7 @@ function App() {
         </Label>
       )}
       {isIsolatedData && (
-        <Label variant="accent" size="small" className={styles.isolatedDataRibbon}>
+        <Label variant="accent" size="small" className={styles.isolatedDataRibbon} data-testid="isolated-data-badge">
           TEST DATA
         </Label>
       )}

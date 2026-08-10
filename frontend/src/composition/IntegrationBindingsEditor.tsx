@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { FormControl, Label, Select, Stack, Text } from '@primer/react'
-import { ConfigureService } from '../../bindings/github.com/alicoding/mill'
+import { ConfigureService } from '../shared/bindings'
 import type { Field, Operation } from '../../bindings/github.com/alicoding/mill/internal/adapters/openapispec/models'
 import type { AttributeDef } from '../../bindings/github.com/alicoding/mill/internal/domain/composition/models'
 import { LiteralOrAttributeField } from '../shared/LiteralOrAttributeField'

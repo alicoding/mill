@@ -6,6 +6,25 @@ Full context, positioning, and open architecture questions live in
 @docs/SPEC.md — read it before making any design decision, and update it as
 decisions land. Do not treat this CLAUDE.md as a substitute for it.
 
+## Model economics: expensive models orchestrate, cheap models toil
+
+When the session runs on Fable or Opus, that model's job is design,
+research synthesis, architecture, review, and decisions — never the
+toiling work. Bulk/mechanical work gets delegated to a subagent on a
+cheaper model, picked by complexity: **Haiku** for read-only volume
+(codebase exploration, log/grep sweeps, doc lookups — `explorer` in
+`.claude/agents/`), **Sonnet** for well-specified mechanical
+implementation and verification runs (suite runs via
+`test-investigator`, bounded refactors/migrations executed from a
+written plan). Two hard rules: every `Agent` delegation states its
+model explicitly — never rely on inheritance, which silently runs the
+subagent on the expensive parent model — and the delegated task must
+be *fixed and bounded* (a written brief with objective gates), because
+subagents start cold and can't make the judgment calls the orchestrator
+context holds. If a task can't be specified tightly enough for Sonnet
+to execute against objective checks, that's a sign it's still
+design work — do it in the main session, don't delegate it.
+
 ## Working method: Research → Plan → Implement
 
 Every non-trivial change follows this order, no exceptions:
@@ -114,7 +133,10 @@ file. See `docs/SPEC.md` §9.1 for that split's own rationale.
 
 ## Project layout
 
-- `main.go`, `*service.go` — Go backend, Wails3 app bindings.
+- `main.go` — the only root Go file: embeds, window/tray setup, service
+  construction + wiring. Wails-bound services live in per-bounded-context
+  packages under `internal/services/<ctx>svc` (e.g. `compositionsvc`,
+  `triggersvc`), with shared helpers in `internal/services/{seeding,servicetest}`.
 - `frontend/` — React + TypeScript + Vite UI.
 - `docs/SPEC.md` — living concept doc, rendered inside the app itself (Spec
   view). Source of truth for positioning and architecture status
