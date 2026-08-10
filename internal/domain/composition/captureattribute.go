@@ -14,6 +14,7 @@ func init() {
 	RegisterNodeType(NodeType{
 		ID: "capture-attribute", Kind: KindCapture,
 		Label:       "Capture: attribute value",
+		Output:      "the attribute's value",
 		Description: "Replaces the payload with the value of one of this workflow's declared Attributes -- e.g. a callable workflow's typed input, or a value a Decision already routed on.",
 		ConfigFields: []ConfigField{
 			{

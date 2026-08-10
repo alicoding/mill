@@ -149,6 +149,7 @@ func init() {
 	RegisterNodeType(NodeType{
 		ID: "integration-http", Kind: KindProcess,
 		Effect:      guardrail.ClassExternal,
+		Output:      "HTTP response body",
 		Label:       "Integration: HTTP call",
 		Description: "Calls a Configure-authored integration's API and replaces the payload with the response body. The node only picks WHICH integration and binds data -- method, endpoint path, and body all live on the integration itself (Configure > Integration), by direct user decision: transport config at the workflow level was config in the wrong place. Legacy nodes saved with their own path/method/bodyTemplate config keep working (those keys still win when present); they're just no longer authorable here.",
 		ConfigFields: []ConfigField{

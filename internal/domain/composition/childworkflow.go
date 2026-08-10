@@ -36,6 +36,7 @@ func init() {
 	RegisterNodeType(NodeType{
 		ID: "child-workflow", Kind: KindProcess,
 		Label:       "Run another workflow",
+		Output:      "the child workflow's result",
 		Description: "Runs another of your workflows as a step and uses its result as this workflow's payload. The other workflow must start with the \"callable by another workflow\" trigger (docs/adr/0010) -- that's what marks it as safe to be invoked from here rather than by a hotkey or schedule of its own.",
 		ConfigFields: []ConfigField{
 			{
