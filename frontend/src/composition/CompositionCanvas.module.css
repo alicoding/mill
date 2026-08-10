@@ -205,7 +205,12 @@
     border-radius: var(--borderRadius-medium);
     background: var(--xy-node-background-color);
     border: var(--xy-node-border);
-    border-left: 3px solid transparent;
+    /* The run-status stripe is an inset box-shadow (rules below), NOT a
+       3px border-left: mixing border widths (1px top/right/bottom, 3px
+       left) makes the browser bevel the two together at the rounded
+       corners, smearing a visible arc artifact at top-/bottom-left --
+       caught from an owner's zoomed screenshot. A shadow doesn't
+       participate in corner joins, so the 1px border stays crisp. */
     display: flex;
     flex-direction: row;
     align-items: center;
@@ -308,20 +313,20 @@
    sets directly from RunStateContext, not a JS class-lookup table, so
    the color mapping can't drift out of sync with the label mapping. */
 .canvasNode[data-run-status='done'] {
-    border-left-color: var(--borderColor-success-emphasis);
+    box-shadow: inset 3px 0 0 var(--borderColor-success-emphasis);
 }
 .canvasNode[data-run-status='active'] {
-    border-left-color: var(--borderColor-accent-emphasis);
+    box-shadow: inset 3px 0 0 var(--borderColor-accent-emphasis);
 }
 .canvasNode[data-run-status='pending'] {
-    border-left-color: var(--borderColor-muted);
+    box-shadow: inset 3px 0 0 var(--borderColor-muted);
 }
 .canvasNode[data-run-status='failed'],
 .canvasNode[data-run-status='denied'] {
-    border-left-color: var(--borderColor-danger-emphasis);
+    box-shadow: inset 3px 0 0 var(--borderColor-danger-emphasis);
 }
 .canvasNode[data-run-status='awaiting-approval'] {
-    border-left-color: var(--borderColor-attention-emphasis);
+    box-shadow: inset 3px 0 0 var(--borderColor-attention-emphasis);
 }
 
 .runStatusTag {
