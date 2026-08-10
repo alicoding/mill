@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { ActionList, ActionMenu, Button, Heading, IconButton, Label, Stack, Text } from '@primer/react'
-import { DownloadIcon, PencilIcon, TrashIcon, UploadIcon } from '@primer/octicons-react'
+import { DownloadIcon, PencilIcon, PlugIcon, TrashIcon, UploadIcon } from '@primer/octicons-react'
 import { DataTable } from '@primer/react/experimental'
 import { ResizableTableContainer, TruncatedCell } from '../shared/ResizableTable'
 import { ViewModeToggle } from '../shared/ViewModeToggle'
@@ -9,6 +9,8 @@ import { ConfigureService } from '../shared/bindings'
 import { AUTH_LABEL } from './authTypeLabels'
 import { refreshRequests, useAppStore } from '../shared/store'
 import { downloadJSON } from '../shared/downloadJSON'
+import { InventoryList, type InventoryItem } from '../shared/InventoryList'
+import { ENTITY_ICON } from '../shared/entityIcons'
 import styles from '../shared/ListCard.module.css'
 import PageContainer from '../shared/PageContainer'
 
@@ -19,6 +21,14 @@ import PageContainer from '../shared/PageContainer'
 // any other section; this page is purely the list plus its create/
 // import/export actions. The request list itself is store-shared
 // (refreshRequests), the same one the shell's tabs read.
+//
+// Rows are the DEFAULT view (docs/goals/0007): InventoryList's shared
+// row replaces the old hand-rolled card branch -- distinct leading
+// icon/color from Workflows' own row, the exact ambiguity the goal's
+// owner-reported bug named ("thought they were on the workflow page
+// while on integrations"). Row click opens the read-only summary (the
+// existing label-link behavior); Edit/Export/Delete move into the
+// trailing ⋯ menu.
 export function ConfigureRequests() {
   const requests = useAppStore((s) => s.requests)
   const openWorkTab = useAppStore((s) => s.openWorkTab)
@@ -57,6 +67,53 @@ export function ConfigureRequests() {
     ConfigureService.DeleteHTTPRequest(id).then(() => refreshRequests()).catch(console.error)
   }
 
+  // One "New integration" entry point with a typed menu -- the
+  // integration *kind* is the first authoring decision (docs/SPEC.md
+  // §4.1's connector-kind row: REST today; DB/other kinds are future
+  // menu items here, not future pages). Shared between the header and
+  // the empty-state Blankslate below so there's exactly one create
+  // action, not two independent copies of it.
+  const newIntegrationMenu = (
+    <ActionMenu>
+      <ActionMenu.Button size="small" variant="primary" data-testid="new-integration">
+        New integration
+      </ActionMenu.Button>
+      <ActionMenu.Overlay width="medium">
+        <ActionList>
+          <ActionList.Item onSelect={() => openWorkTab({ kind: 'request-new' })} data-testid="new-integration-rest">
+            REST API request
+            <ActionList.Description variant="block">
+              Call an external HTTP API — typed request/response schema, auth, headers.
+            </ActionList.Description>
+          </ActionList.Item>
+        </ActionList>
+      </ActionMenu.Overlay>
+    </ActionMenu>
+  )
+
+  const requestItems: InventoryItem[] = (requests ?? []).map((r) => ({
+    id: r.ID,
+    entity: 'request',
+    icon: ENTITY_ICON.request,
+    label: r.Label,
+    labelBadges: (
+      <Stack direction="horizontal" gap="condensed" align="center">
+        <Label variant="secondary" size="small">{AUTH_LABEL[r.AuthType] ?? r.AuthType}</Label>
+        {/* No !r.BuiltIn guard on Delete -- a seeded example is ordinary
+            and fully editable/deletable (docs/SPEC.md §2.2's Update
+            note). */}
+        {r.BuiltIn && <Label variant="secondary" size="small">built-in</Label>}
+      </Stack>
+    ),
+    description: [r.BaseURL, r.Description].filter((s) => s && s.trim() !== '').join(' · '),
+    onOpen: () => openWorkTab({ kind: 'request-view', requestId: r.ID }),
+    menuActions: [
+      { label: 'Edit', onClick: () => openWorkTab({ kind: 'request-edit', requestId: r.ID }) },
+      { label: 'Export', onClick: () => exportRequest(r.ID, r.Label) },
+      { label: 'Delete', onClick: () => remove(r.ID), danger: true },
+    ],
+  }))
+
   return (
     <PageContainer data-testid="configure-requests">
       <Stack direction="horizontal" justify="space-between" align="center" className={styles.sectionHeading}>
@@ -74,26 +131,7 @@ export function ConfigureRequests() {
           <Button leadingVisual={UploadIcon} size="small" onClick={openImportPicker} data-testid="import-request">
             Import
           </Button>
-          {/* One "New integration" entry point with a typed menu --
-              the integration *kind* is the first authoring decision
-              (docs/SPEC.md §4.1's connector-kind row: REST today;
-              DB/other kinds are future menu items here, not future
-              pages). */}
-          <ActionMenu>
-            <ActionMenu.Button size="small" variant="primary" data-testid="new-integration">
-              New integration
-            </ActionMenu.Button>
-            <ActionMenu.Overlay width="medium">
-              <ActionList>
-                <ActionList.Item onSelect={() => openWorkTab({ kind: 'request-new' })} data-testid="new-integration-rest">
-                  REST API request
-                  <ActionList.Description variant="block">
-                    Call an external HTTP API — typed request/response schema, auth, headers.
-                  </ActionList.Description>
-                </ActionList.Item>
-              </ActionList>
-            </ActionMenu.Overlay>
-          </ActionMenu>
+          {newIntegrationMenu}
         </Stack>
       </Stack>
       {importError && (
@@ -101,9 +139,6 @@ export function ConfigureRequests() {
       )}
 
       {requests === null && <Text as="p" className={styles.muted}>Loading…</Text>}
-      {requests !== null && requests.length === 0 && (
-        <Text as="p" className={styles.muted}>No integrations yet.</Text>
-      )}
       {requests !== null && viewMode === 'table' && requests.length > 0 && (
         <ResizableTableContainer storageKey="mill-cols-requests">
           <DataTable
@@ -137,53 +172,17 @@ export function ConfigureRequests() {
           />
         </ResizableTableContainer>
       )}
-      {requests !== null && viewMode === 'cards' && (
-        <Stack direction="vertical" gap="condensed">
-          {requests.map((r) => (
-            <div key={r.ID} className={styles.card} data-testid="request-row">
-              <Stack direction="horizontal" justify="space-between" align="start" gap="normal">
-                <div
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => openWorkTab({ kind: 'request-view', requestId: r.ID })}
-                  onKeyDown={(e) => { if (e.key === 'Enter') openWorkTab({ kind: 'request-view', requestId: r.ID }) }}
-                  style={{ cursor: 'pointer' }}
-                >
-                  <Stack direction="horizontal" gap="condensed" align="center">
-                    <Text weight="semibold">{r.Label}</Text>
-                    <Label variant="secondary" size="small">{AUTH_LABEL[r.AuthType] ?? r.AuthType}</Label>
-                    {/* No !r.BuiltIn guard on Delete -- a seeded example
-                        is ordinary and fully editable/deletable
-                        (docs/SPEC.md §2.2's Update note). */}
-                    {r.BuiltIn && <Label variant="secondary" size="small">built-in</Label>}
-                  </Stack>
-                  <Text as="p" size="small" className={styles.muted}>{r.BaseURL}</Text>
-                  {r.Description && <Text as="p" size="small" className={styles.muted}>{r.Description}</Text>}
-                  <Text as="p" size="small" className={styles.muted}>ID: {r.ID}</Text>
-                </div>
-                <Stack direction="horizontal" gap="condensed">
-                  {/* Direct Edit -- one click into edit mode, no detour
-                      through the read-only summary first. */}
-                  <IconButton
-                    icon={PencilIcon}
-                    aria-label={`Edit ${r.Label}`}
-                    size="small"
-                    variant="invisible"
-                    onClick={() => openWorkTab({ kind: 'request-edit', requestId: r.ID })}
-                  />
-                  <IconButton
-                    icon={DownloadIcon}
-                    aria-label={`Export ${r.Label}`}
-                    size="small"
-                    variant="invisible"
-                    onClick={() => exportRequest(r.ID, r.Label)}
-                  />
-                  <IconButton icon={TrashIcon} aria-label={`Delete ${r.Label}`} size="small" variant="invisible" onClick={() => remove(r.ID)} />
-                </Stack>
-              </Stack>
-            </div>
-          ))}
-        </Stack>
+      {requests !== null && viewMode === 'rows' && (
+        <InventoryList
+          items={requestItems}
+          searchPlaceholder="Search integrations…"
+          emptyState={{
+            icon: PlugIcon,
+            heading: 'No integrations yet',
+            description: 'Call an external HTTP API with a typed request/response schema, auth, and headers.',
+            action: newIntegrationMenu,
+          }}
+        />
       )}
     </PageContainer>
   )

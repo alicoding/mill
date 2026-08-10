@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test'
+import { clickRowAction } from './inventoryRow'
 
 // Exercises ADR-0011's sectioned Request form + Manual schema editor
 // end-to-end: authoring an operation's output field (with an alias and
@@ -9,7 +10,7 @@ import { test, expect } from '@playwright/test'
 // server mode), not mocks.
 
 function requestRow(page: import('@playwright/test').Page, label: string) {
-  return page.getByTestId('request-row').filter({ has: page.getByText(label, { exact: true }) })
+  return page.locator('[data-testid="inventory-row"][data-entity="request"]').filter({ has: page.getByText(label, { exact: true }) })
 }
 
 // docs/adr/0014: the list is its own pinned tab now -- switch back to
@@ -18,7 +19,7 @@ function requestRow(page: import('@playwright/test').Page, label: string) {
 // and a hidden element isn't clickable.
 async function deleteRequest(page: import('@playwright/test').Page, label: string) {
   await page.getByRole('link', { name: 'Configure' }).click()
-  await requestRow(page, label).getByRole('button', { name: `Delete ${label}` }).click()
+  await clickRowAction(page, requestRow(page, label), 'Delete')
   await expect(requestRow(page, label)).toHaveCount(0)
 }
 

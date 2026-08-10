@@ -7,7 +7,7 @@ import { test, expect } from '@playwright/test'
 // the proof (standing seeded-examples principle).
 
 function workflowRow(page: import('@playwright/test').Page, label: string) {
-  return page.locator('[data-testid="workflow-row"]', { has: page.getByText(label, { exact: true }) })
+  return page.locator('[data-testid="inventory-row"][data-entity="workflow"]', { has: page.getByText(label, { exact: true }) })
 }
 
 test('Hovering the child-workflow NODE previews the child without blanking the parent canvas; Open jumps to its editor', async ({ page }) => {
@@ -17,7 +17,7 @@ test('Hovering the child-workflow NODE previews the child without blanking the p
   // Open the seeded parent's canvas -- the child-workflow node card
   // itself is the hover anchor (corrected per direct feedback), no
   // click/selection needed first.
-  await workflowRow(page, 'Example: Parent → child call').getByRole('button', { name: /Edit/ }).click()
+  await workflowRow(page, 'Example: Parent → child call').click()
   const panel = page.locator('[role="tabpanel"]:not([hidden])').last()
   const childNode = panel.locator('.react-flow__node', { hasText: 'Run another workflow' })
   await expect(childNode).toBeVisible()

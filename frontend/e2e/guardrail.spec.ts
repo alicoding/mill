@@ -11,13 +11,13 @@ const GUARDED = 'Example: Approval-gated HTTP call'
 
 test('Running the guarded seed parks awaiting approval; deny fails it closed', async ({ page }) => {
   await page.goto('/')
-  const row = page.getByTestId('workflow-row').filter({ has: page.getByText(GUARDED, { exact: true }) })
+  const row = page.locator('[data-testid="inventory-row"][data-entity="workflow"]').filter({ has: page.getByText(GUARDED, { exact: true }) })
   await expect(row).toBeVisible()
   await row.getByRole('button', { name: 'Run' }).click()
 
   // The run returns immediately (non-blocking start) -- open its Runs
   // tab to find it awaiting approval.
-  await row.getByRole('button', { name: `Edit ${GUARDED}` }).click()
+  await row.click()
   await page.getByRole('tab', { name: 'Runs' }).click()
   await expect(page.getByTestId('run-awaiting-approval').first()).toBeVisible({ timeout: 10_000 })
 
@@ -36,8 +36,8 @@ test('Running the guarded seed parks awaiting approval; deny fails it closed', a
 
 test('Nothing hidden: the canvas badges the guarded step and the Inspector shows its verdict', async ({ page }) => {
   await page.goto('/')
-  const row = page.getByTestId('workflow-row').filter({ has: page.getByText(GUARDED, { exact: true }) })
-  await row.getByRole('button', { name: `Edit ${GUARDED}` }).click()
+  const row = page.locator('[data-testid="inventory-row"][data-entity="workflow"]').filter({ has: page.getByText(GUARDED, { exact: true }) })
+  await row.click()
 
   // The HTTP step carries a visible shield badge BEFORE any run.
   const badge = page.getByTestId('canvas-guardrail-badge')
@@ -54,7 +54,7 @@ test('Nothing hidden: the canvas badges the guarded step and the Inspector shows
 test('Review queue: a parked human-review run accepts typed input and resumes with it', async ({ page }) => {
   await page.goto('/')
   const seed = 'Example: Human review with input'
-  const row = page.getByTestId('workflow-row').filter({ has: page.getByText(seed, { exact: true }) })
+  const row = page.locator('[data-testid="inventory-row"][data-entity="workflow"]').filter({ has: page.getByText(seed, { exact: true }) })
   await expect(row).toBeVisible()
   await row.getByRole('button', { name: 'Run' }).click()
 
@@ -79,7 +79,7 @@ test('Review queue: a parked human-review run accepts typed input and resumes wi
   // The resumed run carried the input through capture-attribute and the
   // ruleset: its durable history shows SUCCESS with the note as output.
   await page.getByRole('link', { name: 'Workflows' }).click()
-  await row.getByRole('button', { name: `Edit ${seed}` }).click()
+  await row.click()
   await page.getByRole('tab', { name: 'Runs' }).click()
   await page.getByRole('button', { name: 'View' }).first().click()
   await expect(page.getByTestId('run-detail')).toContainText('e2e reviewer note', { timeout: 10_000 })
@@ -87,7 +87,7 @@ test('Review queue: a parked human-review run accepts typed input and resumes wi
 
 test('Review queue: denying from the queue stops the run', async ({ page }) => {
   await page.goto('/')
-  const row = page.getByTestId('workflow-row').filter({ has: page.getByText(GUARDED, { exact: true }) })
+  const row = page.locator('[data-testid="inventory-row"][data-entity="workflow"]').filter({ has: page.getByText(GUARDED, { exact: true }) })
   await row.getByRole('button', { name: 'Run' }).click()
 
   await page.getByRole('link', { name: 'Review' }).click()
@@ -99,7 +99,7 @@ test('Review queue: denying from the queue stops the run', async ({ page }) => {
 
 test('Review queue shows the resolved outcome after a deny, filterable by workflow', async ({ page }) => {
   await page.goto('/')
-  const row = page.getByTestId('workflow-row').filter({ has: page.getByText(GUARDED, { exact: true }) })
+  const row = page.locator('[data-testid="inventory-row"][data-entity="workflow"]').filter({ has: page.getByText(GUARDED, { exact: true }) })
   await row.getByRole('button', { name: 'Run' }).click()
 
   await page.getByRole('link', { name: 'Review' }).click()
@@ -126,7 +126,7 @@ test('Review queue shows the resolved outcome after a deny, filterable by workfl
 
 test('Review row drill-down: a resolved row opens its run on the Runs tab with detail preselected, and its timestamp is real', async ({ page }) => {
   await page.goto('/')
-  const row = page.getByTestId('workflow-row').filter({ has: page.getByText(GUARDED, { exact: true }) })
+  const row = page.locator('[data-testid="inventory-row"][data-entity="workflow"]').filter({ has: page.getByText(GUARDED, { exact: true }) })
   await row.getByRole('button', { name: 'Run' }).click()
 
   await page.getByRole('link', { name: 'Review' }).click()
@@ -158,7 +158,7 @@ test('Review row drill-down: a resolved row opens its run on the Runs tab with d
 
 test('Review row drill-down: clicking a pending row opens its run too', async ({ page }) => {
   await page.goto('/')
-  const row = page.getByTestId('workflow-row').filter({ has: page.getByText(GUARDED, { exact: true }) })
+  const row = page.locator('[data-testid="inventory-row"][data-entity="workflow"]').filter({ has: page.getByText(GUARDED, { exact: true }) })
   await row.getByRole('button', { name: 'Run' }).click()
 
   await page.getByRole('link', { name: 'Review' }).click()
@@ -181,7 +181,7 @@ test('Review row drill-down: clicking a pending row opens its run too', async ({
 
 test('Review row drill-down: pending-row Approve/Deny still resolve in place, without navigating', async ({ page }) => {
   await page.goto('/')
-  const row = page.getByTestId('workflow-row').filter({ has: page.getByText(GUARDED, { exact: true }) })
+  const row = page.locator('[data-testid="inventory-row"][data-entity="workflow"]').filter({ has: page.getByText(GUARDED, { exact: true }) })
   await row.getByRole('button', { name: 'Run' }).click()
 
   await page.getByRole('link', { name: 'Review' }).click()

@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test'
+import { clickRowAction } from './inventoryRow'
 
 // Live run state on the authoring canvas (docs/SPEC.md §3.8's recorded
 // prototype element #2): DONE/ACTIVE/PENDING per node card, a CURRENT
@@ -8,7 +9,7 @@ import { test, expect } from '@playwright/test'
 // node parks unconditionally, before anything downstream of it runs).
 
 function workflowRow(page: import('@playwright/test').Page, label: string) {
-  return page.locator('[data-testid="workflow-row"]', { has: page.getByText(label, { exact: true }) })
+  return page.locator('[data-testid="inventory-row"][data-entity="workflow"]', { has: page.getByText(label, { exact: true }) })
 }
 
 // See composition.spec.ts's own copy of this helper for the full
@@ -109,11 +110,12 @@ test('Happy path: node cards reach done, the bar shows the finished run, and dis
   await activePanel(page).getByTestId('save-workflow').click()
 
   // Save closes the editor tab (app/WorkTabShell.tsx's onSaved) -- reopen
-  // it via Edit so the canvas's own Run button (only rendered for an
-  // already-saved workflow) is reachable.
+  // it via a row click (InventoryList's onOpen, docs/goals/0007) so the
+  // canvas's own Run button (only rendered for an already-saved
+  // workflow) is reachable.
   const row = workflowRow(page, label)
   await expect(row).toBeVisible()
-  await row.getByRole('button', { name: new RegExp(`Edit ${label}`) }).click()
+  await row.click()
   await expect(activePanel(page).locator('.react-flow__node')).toHaveCount(2)
 
   await activePanel(page).getByTestId('canvas-run').click()
@@ -132,7 +134,7 @@ test('Happy path: node cards reach done, the bar shows the finished run, and dis
   await expect(activePanel(page).getByTestId('node-run-status')).toHaveCount(0)
 
   await activePanel(page).getByRole('button', { name: 'Back to workflows' }).click()
-  await workflowRow(page, label).getByRole('button', { name: new RegExp(`Delete ${label}`) }).click()
+  await clickRowAction(page, workflowRow(page, label), 'Delete')
   await expect(workflowRow(page, label)).toHaveCount(0)
 })
 
@@ -159,7 +161,7 @@ test('Park then deny: the checkpoint node shows awaiting-approval, the bar offer
 
   const row = workflowRow(page, label)
   await expect(row).toBeVisible()
-  await row.getByRole('button', { name: new RegExp(`Edit ${label}`) }).click()
+  await row.click()
   await expect(activePanel(page).locator('.react-flow__node')).toHaveCount(3)
 
   await activePanel(page).getByTestId('canvas-run').click()
@@ -185,6 +187,6 @@ test('Park then deny: the checkpoint node shows awaiting-approval, the bar offer
 
   await activePanel(page).getByTestId('dismiss-run-state').click()
   await activePanel(page).getByRole('button', { name: 'Back to workflows' }).click()
-  await workflowRow(page, label).getByRole('button', { name: new RegExp(`Delete ${label}`) }).click()
+  await clickRowAction(page, workflowRow(page, label), 'Delete')
   await expect(workflowRow(page, label)).toHaveCount(0)
 })

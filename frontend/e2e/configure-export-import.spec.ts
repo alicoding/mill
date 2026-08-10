@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test'
+import { clickRowAction } from './inventoryRow'
 
 // Real Go bindings over HTTP (Wails3 server mode), not mocks -- same
 // setup as composition-export-import.spec.ts, covering
@@ -12,10 +13,10 @@ test('Exporting a Request downloads JSON that never carries its secret', async (
   await page.getByRole('link', { name: 'Configure' }).click()
   await page.getByRole('tab', { name: 'Integration', exact: true }).click()
 
-  const row = page.locator('[data-testid="request-row"]', { has: page.getByText('Example: API key header', { exact: false }) }).first()
+  const row = page.locator('[data-testid="inventory-row"][data-entity="request"]', { has: page.getByText('Example: API key header', { exact: false }) }).first()
   await expect(row).toBeVisible()
   const downloadPromise = page.waitForEvent('download')
-  await row.getByRole('button', { name: /Export/ }).click()
+  await clickRowAction(page, row, 'Export')
   const download = await downloadPromise
 
   const stream = await download.createReadStream()
@@ -49,10 +50,10 @@ test('Importing a Request file adds a new, independent request', async ({ page }
     buffer: Buffer.from(importJSON, 'utf-8'),
   })
 
-  const importedRow = page.locator('[data-testid="request-row"]', { has: page.getByText('E2E imported request', { exact: true }) })
+  const importedRow = page.locator('[data-testid="inventory-row"][data-entity="request"]', { has: page.getByText('E2E imported request', { exact: true }) })
   await expect(importedRow).toBeVisible()
 
-  await importedRow.getByRole('button', { name: /Delete E2E imported request/ }).click()
+  await clickRowAction(page, importedRow, 'Delete')
   await expect(importedRow).toHaveCount(0)
 })
 
@@ -67,11 +68,11 @@ test('Exporting and importing a List round-trips its entries', async ({ page }) 
   await page.getByPlaceholder('value').fill('blue')
   await page.getByRole('button', { name: 'Save list' }).click()
 
-  const originalRow = page.locator('[data-testid="list-row"]', { has: page.getByText('E2E export list', { exact: true }) })
+  const originalRow = page.locator('[data-testid="inventory-row"][data-entity="list"]', { has: page.getByText('E2E export list', { exact: true }) })
   await expect(originalRow).toBeVisible()
 
   const downloadPromise = page.waitForEvent('download')
-  await originalRow.getByRole('button', { name: /Export/ }).click()
+  await clickRowAction(page, originalRow, 'Export')
   const download = await downloadPromise
   const stream = await download.createReadStream()
   const chunks: Buffer[] = []
@@ -86,17 +87,15 @@ test('Exporting and importing a List round-trips its entries', async ({ page }) 
     buffer: Buffer.from(json, 'utf-8'),
   })
 
-  const rows = page.locator('[data-testid="list-row"]', { has: page.getByText('E2E export list', { exact: true }) })
+  const rows = page.locator('[data-testid="inventory-row"][data-entity="list"]', { has: page.getByText('E2E export list', { exact: true }) })
   await expect(rows).toHaveCount(2)
 
   // Clean up both -- the original and the import.
   for (let i = 0; i < 2; i++) {
-    await page.locator('[data-testid="list-row"]', { has: page.getByText('E2E export list', { exact: true }) })
-      .first()
-      .getByRole('button', { name: 'Delete' })
-      .click()
+    const remaining = page.locator('[data-testid="inventory-row"][data-entity="list"]', { has: page.getByText('E2E export list', { exact: true }) }).first()
+    await clickRowAction(page, remaining, 'Delete')
   }
-  await expect(page.locator('[data-testid="list-row"]', { has: page.getByText('E2E export list', { exact: true }) })).toHaveCount(0)
+  await expect(page.locator('[data-testid="inventory-row"][data-entity="list"]', { has: page.getByText('E2E export list', { exact: true }) })).toHaveCount(0)
 })
 
 test('Importing invalid JSON into an MCP Server shows an error', async ({ page }) => {

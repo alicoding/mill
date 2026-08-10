@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test'
+import { clickRowAction } from './inventoryRow'
 
 // Exercises docs/goals/0006-trigger-aware-workflows-list.md: each
 // Workflows-list row derives its label + affordance from its trigger
@@ -11,7 +12,7 @@ import { test, expect } from '@playwright/test'
 // Escape cancelling it -- never a real OS-level bind.
 
 function workflowRow(page: import('@playwright/test').Page, label: string) {
-  return page.locator('[data-testid="workflow-row"]', { has: page.getByText(label, { exact: true }) })
+  return page.locator('[data-testid="inventory-row"][data-entity="workflow"]', { has: page.getByText(label, { exact: true }) })
 }
 
 function activePanel(page: import('@playwright/test').Page) {
@@ -90,7 +91,7 @@ test('A schedule trigger row shows the humanized cron, is not-live before Publis
   await expect(trigger).toContainText('armed')
   await expect(row.getByTestId('trigger-row-publish')).toHaveCount(0)
 
-  await row.getByRole('button', { name: /Delete E2E schedule trigger row/ }).click()
+  await clickRowAction(page, row, 'Delete')
   await expect(workflowRow(page, 'E2E schedule trigger row')).toHaveCount(0)
 })
 
@@ -124,6 +125,6 @@ test('A hotkey trigger row offers inline "Add hotkey…" capture, cancelable wit
   await expect(row.getByText(/press a combo/i)).not.toBeVisible()
   await expect(row.getByTestId('row-add-hotkey')).toBeVisible()
 
-  await row.getByRole('button', { name: /Delete E2E hotkey trigger row/ }).click()
+  await clickRowAction(page, row, 'Delete')
   await expect(workflowRow(page, 'E2E hotkey trigger row')).toHaveCount(0)
 })

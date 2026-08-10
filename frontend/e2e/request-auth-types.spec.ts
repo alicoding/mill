@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test'
+import { clickRowAction } from './inventoryRow'
 
 // Exercises ADR-0015's auth-type catalogue through the real UI/backend,
 // not just the Go unit tests (authstrategy_test.go) -- proves the
@@ -9,12 +10,12 @@ import { test, expect } from '@playwright/test'
 // .claude/rules/testing.md.
 
 function requestRow(page: import('@playwright/test').Page, label: string) {
-  return page.getByTestId('request-row').filter({ has: page.getByText(label, { exact: true }) })
+  return page.locator('[data-testid="inventory-row"][data-entity="request"]').filter({ has: page.getByText(label, { exact: true }) })
 }
 
 async function deleteRequest(page: import('@playwright/test').Page, label: string) {
   await page.getByRole('link', { name: 'Configure' }).click()
-  await requestRow(page, label).getByRole('button', { name: `Delete ${label}` }).click()
+  await clickRowAction(page, requestRow(page, label), 'Delete')
   await expect(requestRow(page, label)).toHaveCount(0)
 }
 

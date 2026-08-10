@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test'
+import { clickRowAction } from './inventoryRow'
 
 // Exercises ADR-0007 Phase 3: once integration-http's requestId/path/
 // method match a declared operation on the request's OpenAPI spec, the
@@ -34,7 +35,7 @@ const bindingSpec = JSON.stringify({
 })
 
 function workflowRow(page: import('@playwright/test').Page, label: string) {
-  return page.locator('[data-testid="workflow-row"]', { has: page.getByText(label, { exact: true }) })
+  return page.locator('[data-testid="inventory-row"][data-entity="workflow"]', { has: page.getByText(label, { exact: true }) })
 }
 
 // .last(), not a bare match: a saved workflow's editor tab now nests a
@@ -49,7 +50,7 @@ function activePanel(page: import('@playwright/test').Page) {
 }
 
 function requestRow(page: import('@playwright/test').Page, label: string) {
-  return page.getByTestId('request-row').filter({ has: page.getByText(label, { exact: true }) })
+  return page.locator('[data-testid="inventory-row"][data-entity="request"]').filter({ has: page.getByText(label, { exact: true }) })
 }
 
 async function dragPaletteItemToCanvas(page: import('@playwright/test').Page, nodeTypeID: string) {
@@ -117,10 +118,10 @@ test('Matching an Integration node to a declared operation shows a binding edito
   await activePanel(page).getByTestId('save-workflow').click()
   await expect(workflowRow(page, 'E2E bindings workflow')).toBeVisible()
 
-  await workflowRow(page, 'E2E bindings workflow').getByRole('button', { name: /Delete/ }).click()
+  await clickRowAction(page, workflowRow(page, 'E2E bindings workflow'), 'Delete')
   await expect(workflowRow(page, 'E2E bindings workflow')).toHaveCount(0)
 
   await page.getByRole('link', { name: 'Configure' }).click()
-  await requestRow(page, 'E2E bindings request').first().getByRole('button', { name: 'Delete E2E bindings request' }).click()
+  await clickRowAction(page, requestRow(page, 'E2E bindings request').first(), 'Delete')
   await expect(requestRow(page, 'E2E bindings request')).toHaveCount(0)
 })

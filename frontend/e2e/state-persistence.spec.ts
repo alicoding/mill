@@ -27,8 +27,8 @@ test('An open Composition workflow tab persists across a reload', async ({ page 
   await page.goto('/')
   await page.getByRole('link', { name: 'Workflows' }).click()
 
-  const row = page.getByTestId('workflow-row').filter({ hasText: 'Load sample HTML' })
-  await row.getByRole('button', { name: /Edit/ }).click()
+  const row = page.locator('[data-testid="inventory-row"][data-entity="workflow"]').filter({ hasText: 'Load sample HTML' })
+  await row.click()
   await expect(page.getByRole('tab', { name: 'Load sample HTML' })).toBeVisible()
 
   await page.reload()
@@ -45,7 +45,7 @@ test('An open Configure request view tab persists across a reload', async ({ pag
   await page.getByRole('link', { name: 'Configure' }).click()
 
   const label = 'Example: No auth (httpbin.org)'
-  const row = page.getByTestId('request-row').filter({ has: page.getByText(label, { exact: true }) })
+  const row = page.locator('[data-testid="inventory-row"][data-entity="request"]').filter({ has: page.getByText(label, { exact: true }) })
   await row.getByText(label, { exact: true }).click()
   await expect(page.getByTestId('request-summary')).toBeVisible()
 

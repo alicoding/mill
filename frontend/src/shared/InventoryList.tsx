@@ -1,0 +1,191 @@
+import { useState, type ReactNode } from 'react'
+import { ActionList, ActionMenu, IconButton, Stack, Text, TextInput } from '@primer/react'
+import { Blankslate } from '@primer/react/experimental'
+import { KebabHorizontalIcon, SearchIcon, type Icon } from '@primer/octicons-react'
+import styles from './InventoryList.module.css'
+
+// The shared inventory-row component (docs/goals/0007-resource-
+// inventory-redesign.md): one dense, identity-differentiated row for
+// every resource-inventory page (Workflows, Integrations, Lists, MCP
+// Servers, Decisions), replacing five near-identical fat-card
+// renderers (the goal's own problem statement -- different pages
+// "look and feel the same," to the point of editing confusion). Built
+// on Primer's own ActionList -- native leading visual, inline
+// truncated description, trailing visual slots -- rather than
+// hand-assembled <div>s, per .claude/rules/frontend.md's "check the
+// kit's list family before hand-rolling a collection" rule; Mill had
+// only ever used ActionList inside dropdowns before this goal.
+//
+// `role="list"` on the container is load-bearing, not decorative: it's
+// what makes Primer render each Item as a plain <div> instead of a
+// native <button> (ActionList/Item.tsx's own `listSemantics` branch).
+// Without it, the primary action / kebab-menu buttons this component
+// nests inside a row would be invalid HTML (a <button> can't contain
+// another <button>) and would silently misbehave. Each nested
+// interactive element still needs its own guard against bubbling the
+// click up into the row's onOpen, done once here via a stopPropagation
+// wrapper around the whole trailing cluster rather than in every
+// caller.
+export interface InventoryItemIcon {
+  Icon: Icon
+  bg: string
+}
+
+export interface InventoryMenuAction {
+  label: string
+  onClick: () => void
+  danger?: boolean
+}
+
+export interface InventoryItem {
+  id: string
+  // Rendered as data-entity on the row -- the executable form of the
+  // goal's "recognition, not confirmation" acceptance bar (a test can
+  // assert two pages render different data-entity values without
+  // reading any text).
+  entity: string
+  icon: InventoryItemIcon
+  label: string
+  labelBadges?: ReactNode
+  description?: string
+  meta?: ReactNode
+  primaryAction?: ReactNode
+  onOpen: () => void
+  menuActions: InventoryMenuAction[]
+}
+
+export interface InventoryEmptyState {
+  icon: Icon
+  heading: string
+  description: string
+  action?: ReactNode
+}
+
+export function InventoryList({ items, emptyState, searchPlaceholder = 'Search…' }: {
+  items: InventoryItem[]
+  emptyState: InventoryEmptyState
+  searchPlaceholder?: string
+}) {
+  const [query, setQuery] = useState('')
+
+  // A truly empty inventory (nothing to search) gets the full
+  // Blankslate treatment, not a search box over zero rows.
+  if (items.length === 0) {
+    return <InventoryEmptyBlankslate state={emptyState} />
+  }
+
+  const q = query.trim().toLowerCase()
+  const filtered = q === ''
+    ? items
+    : items.filter((item) => item.label.toLowerCase().includes(q) || (item.description ?? '').toLowerCase().includes(q))
+
+  return (
+    <Stack direction="vertical" gap="condensed">
+      <TextInput
+        leadingVisual={SearchIcon}
+        placeholder={searchPlaceholder}
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+        aria-label="Search"
+        data-testid="inventory-search"
+        block
+      />
+      {filtered.length === 0 ? (
+        <Text as="p" size="small" className={styles.muted}>No matches for &quot;{query}&quot;.</Text>
+      ) : (
+        <ActionList role="list" showDividers>
+          {filtered.map((item) => (
+            <InventoryRow key={item.id} item={item} />
+          ))}
+        </ActionList>
+      )}
+    </Stack>
+  )
+}
+
+function InventoryRow({ item }: { item: InventoryItem }) {
+  return (
+    <ActionList.Item onSelect={item.onOpen} data-testid="inventory-row" data-entity={item.entity}>
+      <ActionList.LeadingVisual>
+        <span className={styles.icon} style={{ background: item.icon.bg }}>
+          <item.icon.Icon size={16} fill="var(--fgColor-onEmphasis)" />
+        </span>
+      </ActionList.LeadingVisual>
+      <Stack direction="horizontal" gap="condensed" align="center">
+        <Text weight="semibold">{item.label}</Text>
+        {item.labelBadges}
+      </Stack>
+      {item.description && (
+        // ActionList.Description's inline+truncate branch (Primer's
+        // compiled source, checked directly) only forwards `children`
+        // to the underlying Truncate element, not arbitrary props --
+        // data-testid has to live on a child span instead of the
+        // Description element itself.
+        <ActionList.Description variant="inline" truncate>
+          <span data-testid="inventory-row-description">{item.description}</span>
+        </ActionList.Description>
+      )}
+      <ActionList.TrailingVisual>
+        {/* Interactive trailing content (a primary action button, the
+            kebab menu) needs to stop the click/keypress from also
+            bubbling into the Item's own onSelect -- otherwise clicking
+            "Run" or opening the menu would also fire onOpen. It ALSO
+            needs pointerEvents: 'auto' explicitly -- checked directly
+            against Primer's compiled CSS, not assumed: TrailingVisual's
+            own wrapper class (VisualWrap) sets `pointer-events: none`
+            unconditionally, since Primer's own TrailingVisual is
+            designed for decorative content (a count, an icon), never
+            interactive controls. Without this override, every button
+            in here is present, "visible," but un-clickable -- confirmed
+            live via elementFromPoint() before writing this fix; the
+            click silently lands on the grid container instead. */}
+        <Stack
+          direction="horizontal"
+          gap="condensed"
+          align="center"
+          style={{ pointerEvents: 'auto' }}
+          onClick={(e) => e.stopPropagation()}
+          onKeyDown={(e) => e.stopPropagation()}
+        >
+          {item.meta}
+          {item.primaryAction}
+          {item.menuActions.length > 0 && (
+            <ActionMenu>
+              <ActionMenu.Anchor>
+                <IconButton
+                  icon={KebabHorizontalIcon}
+                  aria-label={`Actions for ${item.label}`}
+                  size="small"
+                  variant="invisible"
+                  data-testid="inventory-row-menu"
+                />
+              </ActionMenu.Anchor>
+              <ActionMenu.Overlay>
+                <ActionList>
+                  {item.menuActions.map((action) => (
+                    <ActionList.Item key={action.label} variant={action.danger ? 'danger' : 'default'} onSelect={action.onClick}>
+                      {action.label}
+                    </ActionList.Item>
+                  ))}
+                </ActionList>
+              </ActionMenu.Overlay>
+            </ActionMenu>
+          )}
+        </Stack>
+      </ActionList.TrailingVisual>
+    </ActionList.Item>
+  )
+}
+
+function InventoryEmptyBlankslate({ state }: { state: InventoryEmptyState }) {
+  return (
+    <Blankslate>
+      <Blankslate.Visual>
+        <state.icon size={32} />
+      </Blankslate.Visual>
+      <Blankslate.Heading>{state.heading}</Blankslate.Heading>
+      <Blankslate.Description>{state.description}</Blankslate.Description>
+      {state.action}
+    </Blankslate>
+  )
+}

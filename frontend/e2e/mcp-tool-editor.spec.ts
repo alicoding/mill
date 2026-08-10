@@ -1,5 +1,6 @@
 import { fileURLToPath } from 'node:url'
 import { test, expect } from '@playwright/test'
+import { clickRowAction } from './inventoryRow'
 
 // Exercises the mcp-tool-call node's schema-driven arguments editor
 // (docs/SPEC.md §3.6, MCPToolArgsEditor.tsx) over a real, spawned MCP
@@ -15,11 +16,11 @@ import { test, expect } from '@playwright/test'
 const fixturePath = fileURLToPath(new URL('./fixtures/mcp-fixture-server.mjs', import.meta.url))
 
 function workflowRow(page: import('@playwright/test').Page, label: string) {
-  return page.locator('[data-testid="workflow-row"]', { has: page.getByText(label, { exact: true }) })
+  return page.locator('[data-testid="inventory-row"][data-entity="workflow"]', { has: page.getByText(label, { exact: true }) })
 }
 
 function mcpServerRow(page: import('@playwright/test').Page, label: string) {
-  return page.getByTestId('mcpserver-row').filter({ has: page.getByText(label, { exact: true }) })
+  return page.locator('[data-testid="inventory-row"][data-entity="mcpserver"]').filter({ has: page.getByText(label, { exact: true }) })
 }
 
 // .last(), not a bare match: a saved workflow's editor tab now nests a
@@ -121,11 +122,11 @@ test('mcp-tool-call node: schema-driven typed argument fields once a real tool i
   await expect(workflowRow(page, 'E2E MCP tool editor workflow')).toBeVisible()
 
   // 7. Cleanup: delete the workflow and the MCP server.
-  await workflowRow(page, 'E2E MCP tool editor workflow').getByRole('button', { name: /Delete/ }).click()
+  await clickRowAction(page, workflowRow(page, 'E2E MCP tool editor workflow'), 'Delete')
   await expect(workflowRow(page, 'E2E MCP tool editor workflow')).toHaveCount(0)
 
   await page.getByRole('link', { name: 'Configure' }).click()
   await page.getByRole('tab', { name: 'MCP Servers' }).click()
-  await mcpServerRow(page, 'E2E MCP fixture').first().getByRole('button', { name: 'Delete E2E MCP fixture' }).click()
+  await clickRowAction(page, mcpServerRow(page, 'E2E MCP fixture').first(), 'Delete')
   await expect(mcpServerRow(page, 'E2E MCP fixture')).toHaveCount(0)
 })

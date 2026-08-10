@@ -1,17 +1,21 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Button, Heading, Stack, Text } from '@primer/react'
-import { PlusIcon, UploadIcon } from '@primer/octicons-react'
+import { Button, Heading, Label, Stack, Text } from '@primer/react'
+import { PlusIcon, UploadIcon, WorkflowIcon } from '@primer/octicons-react'
 import { CompositionService, ExecutionService, TriggerService } from '../shared/bindings'
 import { RunKind } from '../shared/bindings'
 import { generateSamplePayload } from '../shared/configSchema'
 import { refreshNodeTypes, refreshWorkflows, useAppStore } from '../shared/store'
+import { InventoryList, type InventoryItem } from '../shared/InventoryList'
+import { ENTITY_ICON } from '../shared/entityIcons'
 import TestRunDialog from './TestRunDialog'
 import styles from '../shared/ListCard.module.css'
 import PageContainer from '../shared/PageContainer'
 import { ViewModeToggle } from '../shared/ViewModeToggle'
 import { useViewMode } from '../shared/viewMode'
 import { WorkflowsTable } from './WorkflowsTable'
-import { WorkflowsCards } from './WorkflowsCards'
+import { TriggerRowLabel } from './TriggerRowLabel'
+import { findRootNode } from './triggerRowInfo'
+import { hasDraftDrift } from './draftDrift'
 
 // The Workflows list page (SPEC.md §3 / ADR-0005). Editor tabs no
 // longer live here: opening/editing a workflow goes through the store's
@@ -19,6 +23,17 @@ import { WorkflowsCards } from './WorkflowsCards'
 // an open canvas survives navigating to any other section. This page is
 // purely the inventory -- list, Run (a test run of the draft,
 // docs/adr/0008/0021), Import/Export, and open-in-tab actions.
+//
+// Rows are the DEFAULT view (docs/goals/0007-resource-inventory-
+// redesign.md): InventoryList's shared, identity-differentiated row
+// replaces the old WorkflowsCards.tsx fat-card renderer outright (not
+// hidden behind a flag -- deleted). Row click opens the editor (the
+// old pencil-icon Edit action, now the row's primary interaction, per
+// the goal's own reference-platform precedent: "row-click opens");
+// Export/Delete move into the row's trailing ⋯ menu. Run/Test stays a
+// directly-visible primary action, and the trigger-derived label/
+// Publish CTA (docs/goals/0006) stays directly visible too -- neither
+// is secondary enough to bury in a menu.
 function CompositionView() {
   const pushActivity = useAppStore((s) => s.pushActivity)
   const workflows = useAppStore((s) => s.workflows)
@@ -163,6 +178,72 @@ function CompositionView() {
       .catch((err) => setImportError(String(err)))
   }
 
+  const editDisabled = nodeTypes === null
+  const openEditor = (id: string) => {
+    if (editDisabled) return
+    openWorkTab({ kind: 'workflow-edit', workflowId: id })
+  }
+
+  const workflowItems: InventoryItem[] = (workflows ?? []).map((wf) => {
+    const isCallable = findRootNode(wf.Nodes, wf.Edges)?.NodeTypeID === 'trigger-callable'
+    const runTitle = hasDraftDrift(wf)
+      ? 'Test run of the draft — differs from the published version.'
+      : 'Test run of the draft.'
+    return {
+      id: wf.ID,
+      entity: 'workflow',
+      icon: ENTITY_ICON.workflow,
+      label: wf.Label,
+      labelBadges: (
+        <Stack direction="horizontal" gap="condensed" align="center">
+          {wf.BuiltIn && <Label variant="secondary" size="small">built-in</Label>}
+          {/* Lifecycle badges (docs/adr/0021): live version, or a never-
+              published draft; disabled pauses triggers. */}
+          {wf.PublishedVersion > 0
+            ? <Label variant="success" size="small">v{wf.PublishedVersion} live</Label>
+            : <Label variant="attention" size="small">draft</Label>}
+          {wf.Disabled && <Label variant="severe" size="small">disabled</Label>}
+        </Stack>
+      ),
+      description: wf.Description,
+      meta: (
+        <TriggerRowLabel
+          workflow={wf}
+          armed={armedWorkflows[wf.ID] === true}
+          publishing={publishingId === wf.ID}
+          onPublish={publishWorkflow}
+          onHotkeyChanged={refreshArmed}
+        />
+      ),
+      primaryAction: isCallable ? (
+        <Button
+          onClick={() => run(wf.ID)}
+          disabled={runningId === wf.ID}
+          size="small"
+          variant="invisible"
+          aria-label={`Test ${wf.Label}`}
+          title={runTitle}
+          data-testid="callable-test-run"
+        >
+          {runningId === wf.ID ? 'Running…' : 'Test'}
+        </Button>
+      ) : (
+        <Button onClick={() => run(wf.ID)} disabled={runningId === wf.ID} size="small" aria-label={`Run ${wf.Label}`} title={runTitle}>
+          {runningId === wf.ID ? 'Running…' : 'Run'}
+        </Button>
+      ),
+      // No !wf.BuiltIn guard -- every workflow, seeded or user-composed,
+      // is ordinary and fully editable/deletable from the moment it
+      // exists (docs/SPEC.md §2.2's Update note). BuiltIn only drives
+      // the informational "built-in" badge above.
+      onOpen: () => openEditor(wf.ID),
+      menuActions: [
+        { label: 'Export', onClick: () => exportWorkflow(wf.ID, wf.Label) },
+        { label: 'Delete', onClick: () => removeWorkflow(wf.ID), danger: true },
+      ],
+    }
+  })
+
   return (
     <PageContainer data-testid="composition-view">
       <Heading as="h1">Workflows</Heading>
@@ -220,33 +301,46 @@ function CompositionView() {
         <WorkflowsTable
           workflows={workflows}
           runningId={runningId}
-          editDisabled={nodeTypes === null}
+          editDisabled={editDisabled}
           armedWorkflows={armedWorkflows}
           publishingId={publishingId}
           onRun={run}
-          onEdit={(id) => openWorkTab({ kind: 'workflow-edit', workflowId: id })}
+          onEdit={openEditor}
           onExport={exportWorkflow}
           onDelete={removeWorkflow}
           onPublish={publishWorkflow}
           onHotkeyChanged={refreshArmed}
         />
       )}
-      {workflows !== null && viewMode === 'cards' && (
-        <WorkflowsCards
-          workflows={workflows}
-          nodeTypes={nodeTypes}
-          runningId={runningId}
-          errors={errors}
-          results={results}
-          armedWorkflows={armedWorkflows}
-          publishingId={publishingId}
-          onRun={run}
-          onEdit={(id) => openWorkTab({ kind: 'workflow-edit', workflowId: id })}
-          onExport={exportWorkflow}
-          onPublish={publishWorkflow}
-          onHotkeyChanged={refreshArmed}
-          onDelete={removeWorkflow}
+      {workflows !== null && viewMode === 'rows' && (
+        <InventoryList
+          items={workflowItems}
+          searchPlaceholder="Search workflows…"
+          emptyState={{
+            icon: WorkflowIcon,
+            heading: 'No workflows yet',
+            description: 'Compose a workflow from trigger, capture, process, and apply steps on the canvas.',
+            action: (
+              <Button leadingVisual={PlusIcon} onClick={() => openWorkTab({ kind: 'workflow-new' })} disabled={nodeTypes === null}>
+                New workflow
+              </Button>
+            ),
+          }}
         />
+      )}
+      {workflows !== null && viewMode === 'rows' && (workflows ?? []).some((wf) => errors[wf.ID] || results[wf.ID] !== undefined) && (
+        <Stack direction="vertical" gap="condensed" className={styles.sectionHeading}>
+          {workflows.map((wf) => {
+            if (!errors[wf.ID] && results[wf.ID] === undefined) return null
+            return (
+              <div key={wf.ID} data-testid="workflow-run-result" data-workflow-id={wf.ID}>
+                <Text weight="semibold" size="small">{wf.Label}</Text>
+                {errors[wf.ID] && <Text as="p" size="small" className={styles.error}>{errors[wf.ID]}</Text>}
+                {results[wf.ID] !== undefined && !errors[wf.ID] && <pre className={styles.result}>{results[wf.ID]}</pre>}
+              </div>
+            )
+          })}
+        </Stack>
       )}
 
       {testRunTarget && (
