@@ -53,6 +53,7 @@ func init() {
 			},
 			{
 				Key: "argumentsJSON", Label: "Arguments (JSON)",
+				Multiline:   true,
 				Description: "Optional JSON object of arguments to pass to the tool, sent as-is.",
 				Default:     "", Type: FieldText,
 			},

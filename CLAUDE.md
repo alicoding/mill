@@ -25,6 +25,18 @@ context holds. If a task can't be specified tightly enough for Sonnet
 to execute against objective checks, that's a sign it's still
 design work — do it in the main session, don't delegate it.
 
+## Goal backlog: `docs/goals/BACKLOG.md` is the delivery queue
+
+Requirements live in `docs/SPEC.md`; the committed, hand-reorderable
+priority queue of goals lives in `docs/goals/BACKLOG.md` (top item =
+next; UX/frontend-first is the standing tiebreak). Starting a session
+without an explicit goal from the user: take the top unchecked goal,
+read its goal file, follow Research → Plan → Implement. A delivered
+goal's file moves to `docs/goals/archive/` in the same commit that
+completes it. Adopted as a pattern, not a tool — researched
+(spec-kit/task-master/OpenSpec/BMAD all rejected with reasons recorded
+in BACKLOG.md's own header).
+
 ## Working method: Research → Plan → Implement
 
 Every non-trivial change follows this order, no exceptions:

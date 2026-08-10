@@ -275,9 +275,24 @@ function App() {
           (docs/SPEC.md §3.8's staleness class), shown loud regardless
           of dev/prod. Matching dev builds show the hash quietly. */}
       {buildStale ? (
-        <Label variant="danger" size="small" className={styles.devRibbon} data-testid="stale-build-badge">
-          STALE BUILD · app {binaryHead} ≠ repo {__MILL_REPO_HEAD__} — restart task dev
-        </Label>
+        // Inside the native webview the badge IS the action: one click
+        // quits this stale instance (the fresh one is already running
+        // -- that's how the bundle got newer). A server-mode browser
+        // tab only informs: it must never kill the shared server.
+        IS_NATIVE_WEBVIEW ? (
+          <Label
+            variant="danger" size="small"
+            className={`${styles.devRibbon} ${styles.devRibbonAction}`}
+            data-testid="stale-build-badge"
+            onClick={() => { void SettingsService.QuitApp() }}
+          >
+            STALE BUILD · app {binaryHead} ≠ repo {__MILL_REPO_HEAD__} — click to close this stale window
+          </Label>
+        ) : (
+          <Label variant="danger" size="small" className={styles.devRibbon} data-testid="stale-build-badge">
+            STALE BUILD · app {binaryHead} ≠ repo {__MILL_REPO_HEAD__} — restart task dev
+          </Label>
+        )
       ) : isDevBuild && (
         <Label variant="severe" size="small" className={styles.devRibbon} data-testid="dev-build-badge">
           DEV{binaryHead ? ` · ${binaryHead}` : ''}

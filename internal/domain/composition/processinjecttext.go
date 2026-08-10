@@ -19,6 +19,7 @@ func init() {
 		ConfigFields: []ConfigField{
 			{
 				Key: "text", Label: "Text to inject",
+				Multiline:   true,
 				Description: "The literal text this step adds to the payload. Left empty, this step is a no-op.",
 				Default:     "",
 				Type:        FieldText,

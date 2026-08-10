@@ -1,6 +1,9 @@
 package settingssvc
 
-import "runtime/debug"
+import (
+	"github.com/wailsapp/wails/v3/pkg/application"
+	"runtime/debug"
+)
 
 // BuildInfo is what's actually running, not what the source tree looks
 // like -- the two silently diverged this session (a desktop app process
@@ -48,4 +51,18 @@ func readBuildInfo() BuildInfo {
 		}
 	}
 	return bi
+}
+
+// QuitApp closes this application instance -- the stale-build badge's
+// one-click action (docs/SPEC.md §3.8): when a fresh bundle detects an
+// orphaned old binary behind it, the fix is quitting the stale
+// instance (the current `task dev` already runs a fresh one), and
+// making the badge itself the action beats hunting for the right
+// window (asked for directly). The frontend only offers it inside the
+// native webview -- a browser tab on the shared server-mode instance
+// must never be able to kill the server out from under other clients.
+func (s *SettingsService) QuitApp() {
+	if app := application.Get(); app != nil {
+		app.Quit()
+	}
 }
