@@ -118,6 +118,11 @@ function App() {
       '2': { kind: 'configure' },
       '3': { kind: 'activity' },
       '4': { kind: 'spec' },
+      // Cmd+, -- macOS's universal open-preferences shortcut (asked for
+      // directly). Same in-window keydown mechanism as Cmd+1-4, not an
+      // OS-level hotkey, and the same reason it's safe unscoped: Cmd+,
+      // isn't a combo real typing produces.
+      ',': { kind: 'settings' },
     };
     const onKeyDown = (e: KeyboardEvent) => {
       if (!e.metaKey || e.ctrlKey || e.altKey || e.shiftKey) return;
