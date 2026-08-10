@@ -20,16 +20,38 @@ Sketch (to be finalized against the research pass):
 | Callable | ↩ run by another workflow | no Run; Test only |
 
 ## Plan
-1. [ ] Research (in flight, launched 2026-08-10): n8n/Zapier/Raycast
-   list-row trigger affordances; the manual-Run semantics question —
-   today every list Run is a TEST run of the DRAFT (ADR-0008), which
-   is arguably wrong for a manual-trigger workflow whose click is its
-   production gesture (triggered-kind on published?). Also confirm all
-   row data already exists (hotkey bindings, cron, Disabled, callable
-   detection).
-2. [ ] Decide the manual-Run semantics with the owner (it changes run
-   history), write the row anatomy up (small ADR or a SPEC §3.4/§3.8
-   update), then implement with e2e.
+1. [x] Research (2026-08-10, primary-sourced): n8n's Active toggle
+   gates listener registration only, manual runs are ad-hoc and never
+   count as production (a manual-trigger workflow being "inactive" is
+   by design, not an error); Airflow tags `run_type: manual` in one
+   engine; Raycast renders hotkeys inline in the list, assignable
+   in-place ("Add Alias" placeholder, red conflict naming the owner),
+   and treats hotkey-set/unset as a filterable row property. Zapier's
+   list-row anatomy could not be primary-sourced (flagged, not
+   guessed). Mill-side: all row data already exists client-side (root
+   computation already duplicated in WorkflowsCards.tsx's orderNodes;
+   SchedulePreview.tsx reusable; ListHotkeys) except ONE gap — an
+   armed-state getter (TriggerService's arming is an unexported map,
+   gated on `!Disabled && PublishedVersion > 0`, triggerservice.go:184).
+2. [x] Owner decisions (2026-08-10, all three ratified explicitly):
+   - **Manual list-Run stays a test run of the draft** (every
+     researched precedent converges there; ADR-0008/0021 as built) —
+     but the button labels itself honestly: "Test run · draft", and
+     flags when the draft differs from the published version.
+   - **Armed is a tri-state** — armed / configured-but-not-live /
+     unconfigured — with a Publish CTA directly on a
+     configured-but-not-live row (the publish gate is what's actually
+     blocking the trigger from arming). Needs the small `ListArmed()`
+     (or equivalent) Go getter.
+   - **Hotkey assignment is inline from the row** (Raycast's full
+     pattern: "Add hotkey…" placeholder, click-to-record in place,
+     reusing the existing conflict UX).
+3. [ ] Implement with e2e: trigger label per row (per the research's
+   row-anatomy table — manual/hotkey/schedule/watch/callable), the
+   callable row demotes Run to a secondary "Test" action, tri-state
+   armed labels + Publish CTA, inline hotkey capture, honest Run
+   labeling. Sequenced after the goal-0002 drill-down build (tree
+   overlap).
 
 ## Acceptance
 Owner reviews the list live: every row's affordance matches its
