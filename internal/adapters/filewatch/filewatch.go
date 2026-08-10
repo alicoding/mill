@@ -7,6 +7,8 @@ package filewatch
 import (
 	"fmt"
 
+	"path/filepath"
+
 	"github.com/fsnotify/fsnotify"
 )
 
@@ -16,15 +18,26 @@ type Binding struct {
 	done    chan struct{}
 }
 
-// Watch registers a watch on path, calling fn whenever fsnotify reports a
-// create/write/remove/rename/chmod event under it. Forwards the
-// library's own event stream into an opaque callback, same "swapping the
-// underlying library later never changes this method's signature" shape
-// as internal/adapters/hotkey.Bind.
-func Watch(path string, fn func()) (*Binding, error) {
+// Watch registers a watch on path, calling fn(changedPath) whenever
+// fsnotify reports a create/write/remove/rename/chmod event under it.
+// pattern is an optional glob (path/filepath.Match syntax, e.g.
+// "*.md") matched against the changed file's base name -- empty means
+// every event fires. Passing the changed path (rather than a bare
+// signal) lets the workflow know WHICH file changed; the pattern makes
+// "only .md files" expressible (goal 0001 node maturity). Same
+// swap-the-library-freely shape as internal/adapters/hotkey.Bind.
+func Watch(path, pattern string, fn func(changedPath string)) (*Binding, error) {
 	w, err := fsnotify.NewWatcher()
 	if err != nil {
 		return nil, fmt.Errorf("filewatch: %w", err)
+	}
+	if pattern != "" {
+		// Validate the glob once, up front, so a bad pattern is a clear
+		// arm-time error rather than silently matching nothing forever.
+		if _, err := filepath.Match(pattern, "probe"); err != nil {
+			_ = w.Close()
+			return nil, fmt.Errorf("filewatch: invalid pattern %q: %w", pattern, err)
+		}
 	}
 	if err := w.Add(path); err != nil {
 		_ = w.Close()
@@ -35,11 +48,16 @@ func Watch(path string, fn func()) (*Binding, error) {
 	go func() {
 		for {
 			select {
-			case _, ok := <-w.Events:
+			case ev, ok := <-w.Events:
 				if !ok {
 					return
 				}
-				fn()
+				if pattern != "" {
+					if match, _ := filepath.Match(pattern, filepath.Base(ev.Name)); !match {
+						continue
+					}
+				}
+				fn(ev.Name)
 			case _, ok := <-w.Errors:
 				if !ok {
 					return
