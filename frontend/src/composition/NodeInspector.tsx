@@ -10,6 +10,7 @@ import { generateSamplePayload } from '../shared/configSchema'
 import { EntityRefField } from '../configure/EntityRefField'
 import { IntegrationBindingsEditor } from './IntegrationBindingsEditor'
 import { ChildWorkflowBindingsEditor } from './ChildWorkflowBindingsEditor'
+import { MCPToolArgsEditor } from './MCPToolArgsEditor'
 import { WorkflowHoverPreview } from './WorkflowHoverPreview'
 import { NodeGuardrailSection } from './NodeGuardrailSection'
 import { RulesetEditor } from './RulesetEditor'
@@ -163,7 +164,14 @@ export function NodeInspector({ node, workflowId, attrs, nodeType, sameKindNodeT
         </Button>
       )}
 
-      {(nodeType?.ConfigFields ?? []).map((field) => (
+      {(nodeType?.ConfigFields ?? [])
+        // toolName/argumentsJSON stay declared in Go ConfigFields (ADR-0025's
+        // list_node_types introspection is the LLM-authoring vocabulary,
+        // docs/SPEC.md §3.6) but are owned and rendered by MCPToolArgsEditor
+        // below instead of this generic loop -- a schema-driven tool
+        // picker and typed-argument fields, not a raw text box.
+        .filter((field) => !(node.data.nodeTypeID === 'mcp-tool-call' && (field.Key === 'toolName' || field.Key === 'argumentsJSON')))
+        .map((field) => (
         <FormControl key={`${field.Key}-${payloadNonce}`}>
           <FormControl.Label>{field.Label}</FormControl.Label>
           {field.Description && <FormControl.Caption>{field.Description}</FormControl.Caption>}
@@ -298,6 +306,17 @@ export function NodeInspector({ node, workflowId, attrs, nodeType, sameKindNodeT
           attrs={attrs}
           inputBindingsRaw={node.data.config.inputBindings ?? ''}
           onChangeInputBindings={(raw) => onConfigChange('inputBindings', raw)}
+        />
+      )}
+
+      {node.data.nodeTypeID === 'mcp-tool-call' && (
+        <MCPToolArgsEditor
+          mcpServerId={node.data.config.mcpServerId ?? ''}
+          toolName={node.data.config.toolName ?? ''}
+          argumentsRaw={node.data.config.argumentsJSON ?? ''}
+          attrs={attrs}
+          onChangeToolName={(v) => onConfigChange('toolName', v)}
+          onChangeArguments={(raw) => onConfigChange('argumentsJSON', raw)}
         />
       )}
     </Stack>

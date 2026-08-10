@@ -5,6 +5,7 @@ import (
 
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/alicoding/mill/internal/adapters/mcpclient"
 )
@@ -40,7 +41,7 @@ func init() {
 		Effect:      guardrail.ClassExternal,
 		Output:      "the tool's text result",
 		Label:       "MCP: tool call",
-		Description: "Calls one tool on a Configure-authored MCP server and replaces the payload with its text result (docs/SPEC.md §3.6). mcpServerId is FieldText for the same reason integration-http's requestId is -- runtime, Configure-authored data (the Inspector renders a live picker for it, RefKind, docs/adr/0009); toolName stays plain text -- use the Configure page's \"List tools\" button on the server to find the exact toolName and its expected arguments.",
+		Description: "Calls one tool on a Configure-authored MCP server and replaces the payload with its text result (docs/SPEC.md §3.6). mcpServerId is FieldText for the same reason integration-http's requestId is -- runtime, Configure-authored data (the Inspector renders a live picker for it, RefKind, docs/adr/0009); toolName is picked from the server's live tool list in the canvas Inspector (MCPToolArgsEditor.tsx), falling back to typing the exact name when the server can't be reached.",
 		ConfigFields: []ConfigField{
 			{
 				Key: "mcpServerId", Label: "MCP Server ID",
@@ -55,7 +56,7 @@ func init() {
 			{
 				Key: "argumentsJSON", Label: "Arguments (JSON)",
 				Multiline:   true,
-				Description: "Optional JSON object of arguments to pass to the tool, sent as-is.",
+				Description: "Optional JSON object of arguments to pass to the tool. Top-level string values of the form \"attr:<name>\" resolve to the named Attribute's typed value at run time (a number/boolean Attribute stays a JSON number/boolean, not stringified); every other value is sent as-is.",
 				Default:     "", Type: FieldText,
 			},
 		},
@@ -71,6 +72,7 @@ func init() {
 				return ctx, fmt.Errorf("mcp-tool-call: invalid argumentsJSON: %w", err)
 			}
 		}
+		arguments = resolveMCPArguments(arguments, ctx.Attributes)
 
 		result, err := mcpclient.CallTool(rs.Command, rs.Args, node.Config["toolName"], arguments)
 		if err != nil {
@@ -79,4 +81,43 @@ func init() {
 		ctx.Payload = result
 		return ctx, nil
 	})
+}
+
+// resolveMCPArguments resolves an mcp-tool-call node's parsed arguments
+// against the running Attributes bag -- deliberately its own function
+// rather than reusing resolveBindingValue (attributebinding.go), since
+// MCP tool arguments are structured JSON (a tool's inputSchema can
+// declare a number/boolean/object field) while resolveBindingValue's
+// callers (integration-http's path/query/header/body bindings) are all
+// flat strings on the wire. Only TOP-LEVEL string values carrying the
+// "attr:<name>" prefix are resolved -- a nested object/array value, a
+// non-string value, or a plain string with no prefix passes through
+// untouched, same permissive "resolve what's explicitly marked, leave
+// everything else alone" shape as resolveBindingValue. A missing
+// Attribute resolves to "" (the package's own permissive precedent for
+// an unset value, see resolveBindingValue's doc comment) rather than
+// erroring. Returns a new map; never mutates the input.
+func resolveMCPArguments(arguments map[string]any, attrs map[string]any) map[string]any {
+	if arguments == nil {
+		return nil
+	}
+	out := make(map[string]any, len(arguments))
+	for k, v := range arguments {
+		s, ok := v.(string)
+		if !ok {
+			out[k] = v
+			continue
+		}
+		name, ok := strings.CutPrefix(s, attrBindingPrefix)
+		if !ok {
+			out[k] = v
+			continue
+		}
+		if resolved, ok := attrs[name]; ok {
+			out[k] = resolved
+		} else {
+			out[k] = ""
+		}
+	}
+	return out
 }

@@ -12,10 +12,15 @@ function attrRef(key: string) {
 }
 
 export function LiteralOrAttributeField({
-  name, badge, value, attrs, onChange,
+  name, badge, required, value, attrs, onChange,
 }: {
   name: string
   badge?: string
+  // Appends a small accent "required" badge next to the label --
+  // MCPToolArgsEditor.tsx's own use (a tool's inputSchema.required),
+  // distinct from `badge` (a field's "In" placement in
+  // IntegrationBindingsEditor's use) so both can appear together.
+  required?: boolean
   value: string
   attrs: AttributeDef[]
   onChange: (value: string) => void
@@ -25,6 +30,7 @@ export function LiteralOrAttributeField({
     <FormControl key={name}>
       <FormControl.Label>
         {name} {badge && <Label size="small" variant="secondary">{badge}</Label>}
+        {required && <Label size="small" variant="accent">required</Label>}
       </FormControl.Label>
       <Stack direction="horizontal" gap="condensed">
         <Select
