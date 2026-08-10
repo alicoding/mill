@@ -49,15 +49,6 @@ async function dragPaletteItemToCanvas(page: import('@playwright/test').Page, no
   }, nodeTypeID)
 }
 
-// Removes the pre-populated starter node so a test can build an exact,
-// known node set instead of accounting for "the starter plus whatever I
-// added."
-async function deleteStarterNode(page: import('@playwright/test').Page) {
-  await activePanel(page).locator('.react-flow__node').click()
-  await activePanel(page).getByRole('button', { name: 'Delete selected' }).click()
-  await expect(activePanel(page).locator('.react-flow__node')).toHaveCount(0)
-}
-
 // Draws a real edge between two already-dropped nodes, found by the
 // (distinct) label text on their card -- CanvasNodeView.tsx's Handle
 // components (@xyflow/react) drive connection-dragging off native mouse
@@ -86,21 +77,42 @@ async function connectNodes(page: import('@playwright/test').Page, sourceLabel: 
   await page.mouse.up()
 }
 
-// Selects a canvas node by clicking its own top-left corner instead of
-// its center -- the same MiniMap-overlap hazard connectNodes() already
-// documents for a handle, confirmed here too, for real: a plain
-// `.click()` (which targets the element's center) and even
-// `.click({ force: true })` (which only skips Playwright's own
-// actionability check, not the browser's real hit-testing at that
-// pixel) both land on the MiniMap's SVG instead of the node whenever a
-// two-node layout happens to place this node in the canvas's bottom-
-// right corner, silently selecting nothing. A raw `page.mouse.click`
-// at the node's own top-left, a few pixels in, reliably lands on the
-// node's own card chrome instead.
+// Selects a canvas node by clicking a point PROVEN to land inside its
+// own card, not a fixed offset -- React Flow's own Controls (bottom-
+// left: zoom/lock/Fit View) and MiniMap (bottom-right) are real, drawn
+// UI chrome that Fit View's own layout can place any node underneath
+// depending on node count/viewport (confirmed directly: the exact same
+// top-left-corner offset that worked for a two-node graph lands on the
+// Controls panel's own IconButton once a third node shifts the layout,
+// silently selecting nothing -- neither a plain `.click()` (targets
+// the center) nor `.click({ force: true })` (skips Playwright's
+// actionability check, not the browser's real hit-testing) catches
+// this). Tries a few candidate points around the card, verifying via
+// document.elementFromPoint that each one actually resolves inside
+// THIS node's own `.react-flow__node` wrapper (a per-node badge is a
+// valid hit too -- it's still a descendant, clicks on it still select
+// the node) before clicking there for real.
 async function clickCanvasNode(page: import('@playwright/test').Page, panel: import('@playwright/test').Locator, label: string) {
-  const box = await panel.locator('.react-flow__node').filter({ hasText: label }).boundingBox()
+  const node = panel.locator('.react-flow__node').filter({ hasText: label })
+  const box = await node.boundingBox()
   if (!box) throw new Error(`clickCanvasNode: node "${label}" has no bounding box`)
-  await page.mouse.click(box.x + 10, box.y + 10)
+  const candidates = [
+    { x: box.x + 10, y: box.y + 10 },
+    { x: box.x + box.width - 10, y: box.y + 10 },
+    { x: box.x + box.width / 2, y: box.y + box.height / 2 },
+    { x: box.x + 10, y: box.y + box.height - 10 },
+  ]
+  for (const point of candidates) {
+    const insideNode = await page.evaluate(({ x, y }) => {
+      const el = document.elementFromPoint(x, y)
+      return !!el?.closest('.react-flow__node')
+    }, point)
+    if (insideNode) {
+      await page.mouse.click(point.x, point.y)
+      return
+    }
+  }
+  throw new Error(`clickCanvasNode: no point for node "${label}" resolved inside its own card -- covered by other canvas chrome at every candidate`)
 }
 
 // process-inject-text (SPEC.md §3.3) needs no bespoke Inspector UI of its
@@ -118,16 +130,19 @@ test('process-inject-text composes with an upstream node via the generic Inspect
   await withClipboardLock(async () => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Workflows' }).click()
+  // Keeps the starter trigger-manual node -- docs/adr/0028 requires a
+  // Trigger root, so Apply-then-Process alone can no longer be the
+  // whole graph on its own.
   await page.getByTestId('new-workflow').click()
-  await deleteStarterNode(page)
   await activePanel(page).getByTestId('toggle-palette').click()
 
   await dragPaletteItemToCanvas(page, 'apply-clipboard-write-html')
   await dragPaletteItemToCanvas(page, 'process-inject-text')
-  await expect(activePanel(page).locator('.react-flow__node')).toHaveCount(2)
+  await expect(activePanel(page).locator('.react-flow__node')).toHaveCount(3)
 
+  await connectNodes(page, 'Trigger: manual', 'Apply: write HTML to clipboard')
   await connectNodes(page, 'Apply: write HTML to clipboard', 'Process: Inject text')
-  await expect(activePanel(page).locator('.react-flow__edge')).toHaveCount(1)
+  await expect(activePanel(page).locator('.react-flow__edge')).toHaveCount(2)
 
   // Configure the upstream node's payload -- plain text (not real HTML)
   // so the base-payload marker is trivially substring-matchable in the

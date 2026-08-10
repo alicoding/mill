@@ -41,7 +41,8 @@ func TestMillMCPService_RealClientRoundTrip(t *testing.T) {
 	}()
 
 	if _, err := comp.CreateWorkflow("MCP e2e workflow", "for the real-client test",
-		[]composition.Node{{NodeTypeID: "capture-clipboard-html"}}, nil); err != nil {
+		[]composition.Node{{ID: "t", NodeTypeID: "trigger-manual"}, {ID: "c", NodeTypeID: "capture-clipboard-html"}},
+		[]composition.Edge{{ID: "e1", Source: "t", Target: "c"}}); err != nil {
 		t.Fatalf("CreateWorkflow: %v", err)
 	}
 

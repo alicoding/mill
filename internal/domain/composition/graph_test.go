@@ -87,7 +87,7 @@ func TestValidateGraph_DisconnectedIslandBehindACycle_Rejected(t *testing.T) {
 		{ID: "e2", Source: "c", Target: "d"},
 		{ID: "e3", Source: "d", Target: "c"},
 	}
-	if err := ValidateGraph(nodes, edges, nil); err == nil {
+	if err := ValidateGraphStrict(nodes, edges, nil); err == nil {
 		t.Fatal("ValidateGraph with a disconnected cycle-plus-chain graph returned nil error, want an error")
 	}
 }
@@ -95,18 +95,24 @@ func TestValidateGraph_DisconnectedIslandBehindACycle_Rejected(t *testing.T) {
 // --- Decision node: branching walk (ExecuteWorkflow) and save-time rule
 // validation (ValidateGraph). ---
 
-// decisionGraph builds a minimal Decision-rooted graph: decision-route ->
-// (condition, non-otherwise) -> apply-clipboard-write-html,
-// decision-route -> (otherwise) -> apply-clipboard-write-text. Which
-// clipboard function fires (WriteHTML vs WriteText) is the test's proof
-// of which branch actually ran.
+// decisionGraph builds a minimal Trigger-rooted Decision graph:
+// trigger-manual -> decision-route -> (condition, non-otherwise) ->
+// apply-clipboard-write-html, decision-route -> (otherwise) ->
+// apply-clipboard-write-text. Which clipboard function fires (WriteHTML
+// vs WriteText) is the test's proof of which branch actually ran. A
+// real Trigger root (docs/adr/0028: a non-Trigger root is a save-time
+// Error) even though ExecuteWorkflow itself (unlike ValidateGraph)
+// never checks a root's Kind -- kept Trigger-rooted anyway so this
+// fixture stays valid input for both.
 func decisionGraph(condition string) ([]Node, []Edge) {
 	nodes := []Node{
+		{ID: "t", NodeTypeID: "trigger-manual"},
 		{ID: "d", NodeTypeID: "decision-route"},
 		{ID: "yes", NodeTypeID: "apply-clipboard-write-html"},
 		{ID: "no", NodeTypeID: "apply-clipboard-write-text"},
 	}
 	edges := []Edge{
+		{ID: "t-d", Source: "t", Target: "d"},
 		{ID: "d-yes", Source: "d", Target: "yes", SourceHandle: condition},
 		{ID: "d-no", Source: "d", Target: "no", SourceHandle: otherwiseHandle},
 	}
@@ -195,7 +201,7 @@ func TestValidateGraph_Decision_Valid_Accepted(t *testing.T) {
 		t.Fatalf("ResolveNodeDefaults returned error: %v", err)
 	}
 	attrs := []AttributeDef{{Key: "urgent", Label: "Urgent", Type: FieldBoolean}}
-	if err := ValidateGraph(resolved, edges, attrs); err != nil {
+	if err := ValidateGraphStrict(resolved, edges, attrs); err != nil {
 		t.Errorf("ValidateGraph returned error for a valid decision graph: %v", err)
 	}
 }
@@ -213,7 +219,7 @@ func TestValidateGraph_Decision_MissingOtherwise_Rejected(t *testing.T) {
 		t.Fatalf("ResolveNodeDefaults returned error: %v", err)
 	}
 	attrs := []AttributeDef{{Key: "urgent", Label: "Urgent", Type: FieldBoolean}}
-	if err := ValidateGraph(resolved, edges, attrs); err == nil {
+	if err := ValidateGraphStrict(resolved, edges, attrs); err == nil {
 		t.Fatal("ValidateGraph with a decision node missing its otherwise edge returned nil error, want an error")
 	}
 }
@@ -225,7 +231,7 @@ func TestValidateGraph_Decision_InvalidExpressionSyntax_Rejected(t *testing.T) {
 		t.Fatalf("ResolveNodeDefaults returned error: %v", err)
 	}
 	attrs := []AttributeDef{{Key: "urgent", Label: "Urgent", Type: FieldBoolean}}
-	if err := ValidateGraph(resolved, edges, attrs); err == nil {
+	if err := ValidateGraphStrict(resolved, edges, attrs); err == nil {
 		t.Fatal("ValidateGraph with an invalid expression returned nil error, want an error")
 	}
 }
@@ -241,7 +247,7 @@ func TestValidateGraph_Decision_TypeMismatch_Rejected(t *testing.T) {
 		t.Fatalf("ResolveNodeDefaults returned error: %v", err)
 	}
 	attrs := []AttributeDef{{Key: "label", Label: "Label", Type: FieldText}}
-	if err := ValidateGraph(resolved, edges, attrs); err == nil {
+	if err := ValidateGraphStrict(resolved, edges, attrs); err == nil {
 		t.Fatal("ValidateGraph comparing a text attribute with '>' returned nil error, want an error")
 	}
 }
@@ -271,7 +277,7 @@ func TestValidateGraph_TerminalNode_OutgoingEdge_Rejected(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ResolveNodeDefaults returned error: %v", err)
 	}
-	if err := ValidateGraph(resolved, edges, nil); err == nil {
+	if err := ValidateGraphStrict(resolved, edges, nil); err == nil {
 		t.Fatal("ValidateGraph with an outgoing edge from a terminal node returned nil error, want an error")
 	}
 }
@@ -296,7 +302,7 @@ func TestValidateGraph_TerminalNode_NoOutgoingEdge_Accepted(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ResolveNodeDefaults returned error: %v", err)
 	}
-	if err := ValidateGraph(resolved, edges, nil); err != nil {
+	if err := ValidateGraphStrict(resolved, edges, nil); err != nil {
 		t.Fatalf("ValidateGraph with a well-formed terminal node returned error: %v", err)
 	}
 }
@@ -322,7 +328,7 @@ func TestValidateGraph_MultipleTerminalNodes_Accepted(t *testing.T) {
 	// buildGraph's own out-degree check never gets exercised -- add a
 	// second, always-false branch to d2 so both terminals are reachable.
 	edges = append([]Edge{{ID: "e3", Source: "r1", SourceHandle: "false", Target: "d2"}}, edges...)
-	if err := ValidateGraph(nodes, edges, nil); err != nil {
+	if err := ValidateGraphStrict(nodes, edges, nil); err != nil {
 		t.Fatalf("ValidateGraph with two terminal nodes returned error: %v", err)
 	}
 }

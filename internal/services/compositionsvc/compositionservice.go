@@ -86,6 +86,26 @@ func (c *CompositionService) NodeTypes() []composition.NodeType {
 	return composition.NodeTypes()
 }
 
+// ValidateDraft runs composition.ValidateGraph against not-yet-saved
+// canvas state -- the editor's own authoring-validation surface
+// (docs/adr/0028), called on a debounce after every nodes/edges/config
+// change so the toolbar badge and issues panel show every outstanding
+// problem (warnings included), not just the first thing a real Save
+// attempt would eventually reject on. Resolves node defaults first
+// (deriving Kind server-side, same as Create/Update) so a still-
+// drafting node's derived Kind can't drift from what a real save would
+// compute; an unresolvable node type (e.g. mid node-type-swap, before
+// the draft would ever be trusted for a real save) surfaces as a single
+// Error issue instead of a raw RPC failure, so the panel always has
+// something coherent to render.
+func (c *CompositionService) ValidateDraft(nodes []composition.Node, edges []composition.Edge, attrs []composition.AttributeDef) []composition.Issue {
+	resolved, err := composition.ResolveNodeDefaults(nodes)
+	if err != nil {
+		return []composition.Issue{{Severity: composition.SeverityError, Message: err.Error()}}
+	}
+	return composition.ValidateGraph(resolved, edges, attrs)
+}
+
 // CapabilityMap exposes docs/SPEC.md §3.3's capability map as real Go
 // data, not parsed docs -- composition's own sub-capabilities (Trigger,
 // Decision, Parallel Steps, ...), one level down from the page-level
@@ -130,7 +150,7 @@ func (c *CompositionService) CreateWorkflow(label, description string, nodes []c
 	if err != nil {
 		return composition.Workflow{}, err
 	}
-	if err := composition.ValidateGraph(resolved, edges, nil); err != nil {
+	if err := composition.ValidateGraphStrict(resolved, edges, nil); err != nil {
 		return composition.Workflow{}, err
 	}
 
@@ -184,7 +204,7 @@ func (c *CompositionService) UpdateWorkflow(id, label, description string, nodes
 		return composition.Workflow{}, fmt.Errorf("no workflow with id %q", id)
 	}
 
-	if err := composition.ValidateGraph(resolved, edges, c.user[idx].Attributes); err != nil {
+	if err := composition.ValidateGraphStrict(resolved, edges, c.user[idx].Attributes); err != nil {
 		c.mu.Unlock()
 		return composition.Workflow{}, err
 	}
@@ -239,7 +259,7 @@ func (c *CompositionService) UpdateAttributes(workflowID string, attrs []composi
 		return composition.Workflow{}, fmt.Errorf("no workflow with id %q", workflowID)
 	}
 
-	if err := composition.ValidateGraph(c.user[idx].Nodes, c.user[idx].Edges, attrs); err != nil {
+	if err := composition.ValidateGraphStrict(c.user[idx].Nodes, c.user[idx].Edges, attrs); err != nil {
 		c.mu.Unlock()
 		return composition.Workflow{}, err
 	}

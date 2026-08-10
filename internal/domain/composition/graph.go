@@ -1,8 +1,10 @@
 package composition
 
 import (
+	"errors"
 	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/alicoding/mill/internal/adapters/expression"
 	"github.com/alicoding/mill/internal/adapters/openapispec"
@@ -139,13 +141,52 @@ func attributesEnv(attrs []AttributeDef, values map[string]string) map[string]an
 	return env
 }
 
+// Severity classifies a validation Issue (docs/adr/0028): Error blocks
+// save (ValidateGraphStrict rolls up only these); Warning never blocks
+// anything -- it's purely informational for the editor's authoring-
+// validation panel and MCP's validate_workflow. One severity contract
+// everywhere: canvas save, UpdateWorkflow, and MCP update_workflow/
+// validate_workflow all agree, per the ADR's own decision.
+type Severity string
+
+const (
+	SeverityError   Severity = "error"
+	SeverityWarning Severity = "warning"
+)
+
+// Issue is one problem ValidateGraph found. NodeID/EdgeID identify the
+// offending node/edge when the issue is scoped to one -- both empty for
+// a whole-graph issue (e.g. "no starting node," which names no single
+// node/edge as the fix point). The editor's issues panel selects the
+// referenced node/edge when a row is clicked; the per-node canvas
+// badges group by NodeID the same way the guardrail badge already does
+// (docs/adr/0022's Update).
+type Issue struct {
+	Severity Severity
+	NodeID   string
+	EdgeID   string
+	Message  string
+}
+
+func errorIssue(nodeID, edgeID, msg string) Issue {
+	return Issue{Severity: SeverityError, NodeID: nodeID, EdgeID: edgeID, Message: msg}
+}
+
+func warningIssue(nodeID, edgeID, msg string) Issue {
+	return Issue{Severity: SeverityWarning, NodeID: nodeID, EdgeID: edgeID, Message: msg}
+}
+
 // ValidateGraph is the save-time half of "a save-time error and a
 // run-time error never disagree" (composition.go's own established
 // principle, first applied to the zod/Go validation-layer split, now
 // extended to Decision): compiles every Decision node's non-otherwise
 // edge against the workflow's declared Attributes schema, requires
-// exactly one otherwiseHandle edge per Decision node, and checks every
-// node is reachable from the root.
+// exactly one otherwiseHandle edge per Decision node, checks every node
+// is reachable from the root, and (docs/adr/0028) returns the FULL list
+// of everything wrong -- not just the first problem -- each labeled
+// Error or Warning. ValidateGraphStrict below is the error-or-nil
+// convenience form save paths use; ValidateGraph itself is what feeds
+// the editor's authoring-validation panel and MCP's validate_workflow.
 //
 // Reachability replaces the old linearOrder's "every node visited"
 // check, which no longer applies as-is: with branching, a single
@@ -155,31 +196,52 @@ func attributesEnv(attrs []AttributeDef, values map[string]string) map[string]an
 // ExecContext would take) specifically to still catch a genuinely
 // unreachable node -- one some Attributes value could never reach via
 // any branch, not just the one this particular run happened to take.
-func ValidateGraph(nodes []Node, edges []Edge, attrs []AttributeDef) error {
-	_, outgoingEdges, hasIncoming, err := buildGraph(nodes, edges)
+//
+// buildGraph's own structural checks (unknown edge references, a
+// terminal node with an outgoing edge, a non-Decision node with more
+// than one outgoing edge) stay fail-fast, single-issue: they describe a
+// graph shape the canvas's own draw-time layer (isValidConnection)
+// already prevents drawing in the first place, so a real user hits them
+// only via an edge case (a hand-authored import, a stale drag) --
+// unlike the rules below, which are real, expected mid-authoring states
+// (a not-yet-configured step, a dangling leaf) worth surfacing
+// alongside each other.
+func ValidateGraph(nodes []Node, edges []Edge, attrs []AttributeDef) []Issue {
+	byID, outgoingEdges, hasIncoming, err := buildGraph(nodes, edges)
 	if err != nil {
-		return err
-	}
-	root, err := findRoot(nodes, hasIncoming)
-	if err != nil {
-		return err
+		return []Issue{errorIssue("", "", err.Error())}
 	}
 
-	reachable := map[string]bool{root: true}
-	queue := []string{root}
-	for len(queue) > 0 {
-		id := queue[0]
-		queue = queue[1:]
-		for _, e := range outgoingEdges[id] {
-			if !reachable[e.Target] {
-				reachable[e.Target] = true
-				queue = append(queue, e.Target)
+	var issues []Issue
+
+	root, rootErr := findRoot(nodes, hasIncoming)
+	if rootErr != nil {
+		issues = append(issues, errorIssue("", "", rootErr.Error()))
+	} else {
+		// docs/adr/0028's new rule: a workflow's single starting node
+		// must be a Trigger -- a Trigger's output IS the workflow's
+		// input, one concept (SPEC.md §3.4), not something any other
+		// node kind can stand in for as the entry point.
+		if n, ok := byID[root]; ok && n.Kind != KindTrigger {
+			issues = append(issues, errorIssue(root, "", fmt.Sprintf("node %s: a workflow must start with a Trigger step", root)))
+		}
+
+		reachable := map[string]bool{root: true}
+		queue := []string{root}
+		for len(queue) > 0 {
+			id := queue[0]
+			queue = queue[1:]
+			for _, e := range outgoingEdges[id] {
+				if !reachable[e.Target] {
+					reachable[e.Target] = true
+					queue = append(queue, e.Target)
+				}
 			}
 		}
-	}
-	for _, n := range nodes {
-		if !reachable[n.ID] {
-			return fmt.Errorf("node %s is unreachable from the workflow's starting node", n.ID)
+		for _, n := range nodes {
+			if !reachable[n.ID] {
+				issues = append(issues, errorIssue(n.ID, "", fmt.Sprintf("node %s is unreachable from the workflow's starting node", n.ID)))
+			}
 		}
 	}
 
@@ -197,18 +259,93 @@ func ValidateGraph(nodes []Node, edges []Edge, attrs []AttributeDef) error {
 				continue
 			}
 			if err := expression.Compile(e.SourceHandle, env); err != nil {
-				return fmt.Errorf("decision node %s, edge %s: %w", n.ID, e.ID, err)
+				issues = append(issues, errorIssue(n.ID, e.ID, fmt.Sprintf("decision node %s, edge %s: %v", n.ID, e.ID, err)))
 			}
 		}
 		if otherwiseCount != 1 {
-			return fmt.Errorf("decision node %s must have exactly one \"otherwise\" edge, has %d", n.ID, otherwiseCount)
+			issues = append(issues, errorIssue(n.ID, "", fmt.Sprintf("decision node %s must have exactly one \"otherwise\" edge, has %d", n.ID, otherwiseCount)))
 		}
 	}
 
-	if err := validateOutputBindingSecrets(nodes); err != nil {
-		return err
+	issues = append(issues, validateOutputBindingSecrets(nodes)...)
+	issues = append(issues, validateLeaves(nodes, outgoingEdges)...)
+	issues = append(issues, validateRequiredRefs(nodes)...)
+
+	return issues
+}
+
+// ValidateGraphStrict rolls ValidateGraph's full issue list up into the
+// error-or-nil form every save path needs (docs/adr/0028: errors block
+// save, warnings never do). Joins EVERY Error-severity message -- not
+// just the first -- into one summary line, since a save-rejection
+// caller (the canvas's saveError banner, an MCP update_workflow
+// rejection) has no other channel back to the full list than this
+// returned error's own text.
+func ValidateGraphStrict(nodes []Node, edges []Edge, attrs []AttributeDef) error {
+	var msgs []string
+	for _, issue := range ValidateGraph(nodes, edges, attrs) {
+		if issue.Severity == SeverityError {
+			msgs = append(msgs, issue.Message)
+		}
 	}
-	return nil
+	switch len(msgs) {
+	case 0:
+		return nil
+	case 1:
+		return errors.New(msgs[0])
+	default:
+		return fmt.Errorf("%d problems: %s", len(msgs), strings.Join(msgs, "; "))
+	}
+}
+
+// validateLeaves is docs/adr/0028's ending-model warning: a Capture or
+// Process node with no outgoing edge computed something and delivered
+// it nowhere -- legal to save (fine for a test run), but flagged.
+// KindApply is deliberately exempt (an Apply ending is a real,
+// legitimate ending -- ADR-0028 rejected "unify Apply into terminal" as
+// removing real capability), and so is KindTerminal (the only
+// structurally terminal kind, ADR-0027) since it's neither Capture nor
+// Process to begin with.
+func validateLeaves(nodes []Node, outgoingEdges map[string][]Edge) []Issue {
+	var issues []Issue
+	for _, n := range nodes {
+		if n.Kind != KindCapture && n.Kind != KindProcess {
+			continue
+		}
+		if len(outgoingEdges[n.ID]) > 0 {
+			continue
+		}
+		issues = append(issues, warningIssue(n.ID, "",
+			fmt.Sprintf("node %s: this step's result isn't delivered anywhere -- fine for a test run; add an Apply or Decision step to act on it", n.ID)))
+	}
+	return issues
+}
+
+// validateRequiredRefs is docs/adr/0028's other new warning: a node
+// whose ConfigField declares a Configure-entity reference (RefKind --
+// requestId/listId/mcpServerId/workflowId/decisionId, docs/adr/0009)
+// but hasn't picked one yet. A warning, not an error: blocking would
+// forbid saving a work-in-progress draft, but the step genuinely will
+// fail the moment it actually runs.
+func validateRequiredRefs(nodes []Node) []Issue {
+	var issues []Issue
+	for _, n := range nodes {
+		nt, ok := nodeType(n.NodeTypeID)
+		if !ok {
+			continue
+		}
+		for _, field := range nt.ConfigFields {
+			if field.RefKind == "" {
+				continue
+			}
+			if strings.TrimSpace(n.Config[field.Key]) != "" {
+				continue
+			}
+			issues = append(issues, warningIssue(n.ID, "",
+				fmt.Sprintf("node %s: %s isn't set -- this step isn't configured yet and will fail at run time", n.ID, field.Label)))
+		}
+	}
+	return issues
 }
 
 // validateOutputBindingSecrets is ADR-0007 Phase 3's secret guardrail:
@@ -219,10 +356,11 @@ func ValidateGraph(nodes []Node, edges []Edge, attrs []AttributeDef) error {
 // §7) with no secret-handling of their own. Lenient about anything it
 // can't resolve (unknown request, unparseable spec, no matching
 // operation) -- those are separate, pre-existing failure modes with
-// their own error paths; this check only ever adds a rejection on top
-// of a graph that would otherwise be accepted, never papers over an
+// their own error paths; this check only ever adds an issue on top of a
+// graph that would otherwise be accepted, never papers over an
 // unrelated problem.
-func validateOutputBindingSecrets(nodes []Node) error {
+func validateOutputBindingSecrets(nodes []Node) []Issue {
+	var issues []Issue
 	for _, n := range nodes {
 		if n.NodeTypeID != "integration-http" || n.Config["outputBindings"] == "" {
 			continue
@@ -251,11 +389,11 @@ func validateOutputBindingSecrets(nodes []Node) error {
 		}
 		for fieldName, attrName := range bindings {
 			if secretFields[fieldName] {
-				return fmt.Errorf("node %s: field %q is a secret field and cannot be written to Attribute %q", n.ID, fieldName, attrName)
+				issues = append(issues, errorIssue(n.ID, "", fmt.Sprintf("node %s: field %q is a secret field and cannot be written to Attribute %q", n.ID, fieldName, attrName)))
 			}
 		}
 	}
-	return nil
+	return issues
 }
 
 // nextNode picks the one edge to follow from node, given its resolved
