@@ -24,6 +24,18 @@ canonical type model with resource-specific editor presentations").
 3. Sequence AFTER goal 0004 (code execution) unless 0011 is pulled
    forward — whichever first forces typed structured payloads.
 
+## Design (architect pass 2026-08-10 → [ADR-0029](../adr/0029-canonical-type-system.md), `proposed`)
+New leaf package `internal/domain/typedfield` (can't live in
+composition — the decision/list import cycle the current bare-string
+workaround dodges). Phased migration: P1 AttributeDef+ConfigField as
+type aliases (zero wire migration, Attributes gain Options/Required/
+Default immediately — meets the "two converged" bar); P2 decision
+(EnumValues→Options, ADR-0016's precedented rename); P3 openapispec
+(embed+extend for In/Path, largest UI surface — deferrable). Shared
+editor consolidation belongs to 0011, not here. THREE owner decisions
+teed up (ADR §Open): RefKind core-vs-extension, flat-Type sufficiency
+for 0011's object/array, and whether P3 is in-scope.
+
 ## Acceptance
 An accepted ADR; at least two of the four vocabularies actually
 converged onto the canonical shape with zero wire breakage; new
