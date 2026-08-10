@@ -211,7 +211,7 @@ for every step before `StartStep` into the new forked workflow ID, then
 re-invokes the registered workflow function from the top — steps before
 `StartStep` hit their copied checkpoint and don't re-execute (the same
 `RunAsStep` cache-hit behavior the original spike proved), steps from
-`StartStep` onward run fresh. This directly satisfies the Oscilar/n8n
+`StartStep` onward run fresh. This directly satisfies the reference platform's/n8n's
 "fix forward from the failed step, not from step 1" pattern (§3.2) for
 the case that matters most in practice: the failure was in the
 *environment* the step called into (e.g. a connector's API key was
