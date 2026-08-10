@@ -337,6 +337,33 @@ func (s *TriggerService) ListHotkeys() map[string]string {
 	return out
 }
 
+// ArmedWorkflows returns the workflow IDs that currently have a live
+// trigger listener registered -- reads s.active directly (the exact map
+// Sync populates/depopulates on every Create/Update/Delete/Publish/
+// Disable, and at startup) rather than recomputing Sync's own gate
+// (!Disabled && PublishedVersion > 0) a second time here or in the
+// frontend, so this can never drift from what's actually listening.
+// docs/goals/0006-trigger-aware-workflows-list.md's tri-state armed
+// label needs exactly this: armed / configured-but-not-live /
+// unconfigured, where "armed" has to be the real thing, not a guess at
+// it. A workflow absent from the result isn't necessarily unconfigured
+// -- besides Disabled/never-published, a schedule with an empty cron or
+// a filesystem-watch with an empty path also never starts a listener
+// (see triggerschedule.go/triggerfilesystemwatch.go's own nil, nil
+// returns) -- "configured" is a separate, frontend-derived judgment
+// about the node's own Config fields. trigger-manual/trigger-callable
+// never appear here at all: neither type ever registers a listener
+// (SPEC.md §3.4), by design, not an omission.
+func (s *TriggerService) ArmedWorkflows() map[string]bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	out := make(map[string]bool, len(s.active))
+	for id := range s.active {
+		out[id] = true
+	}
+	return out
+}
+
 // ClaimedCombos returns every currently-assigned per-workflow hotkey
 // binding, in trigger.HotkeyBinding shape -- the seam settingsservice.go
 // uses to check a new summon-hotkey assignment against every existing
