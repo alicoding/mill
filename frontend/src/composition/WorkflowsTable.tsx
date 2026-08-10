@@ -19,7 +19,7 @@ export function WorkflowsTable({ workflows, runningId, editDisabled, onRun, onEd
   onDelete: (id: string) => void
 }) {
   return (
-    <ResizableTableContainer>
+    <ResizableTableContainer storageKey="mill-cols-workflows">
       <DataTable
         aria-labelledby="workflows-heading"
         data={workflows.map((wf) => ({ ...wf, id: wf.ID }))}
@@ -36,7 +36,7 @@ export function WorkflowsTable({ workflows, runningId, editDisabled, onRun, onEd
               </Stack>
             ),
           },
-          { header: 'Description', id: 'description', renderCell: (wf) => <TruncatedCell text={wf.Description} /> },
+          { header: 'Description', id: 'description', width: 'growCollapse', minWidth: '200px', renderCell: (wf) => <TruncatedCell text={wf.Description} /> },
           { header: 'Steps', id: 'steps', width: 'auto', align: 'end', renderCell: (wf) => (wf.Nodes ?? []).length },
           {
             header: '', id: 'actions', width: 'auto', align: 'end',

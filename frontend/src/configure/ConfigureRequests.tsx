@@ -105,7 +105,7 @@ export function ConfigureRequests() {
         <Text as="p" className={styles.muted}>No integrations yet.</Text>
       )}
       {requests !== null && viewMode === 'table' && requests.length > 0 && (
-        <ResizableTableContainer>
+        <ResizableTableContainer storageKey="mill-cols-requests">
           <DataTable
             aria-labelledby="integrations-heading"
             data={requests.map((r) => ({ ...r, id: r.ID }))}
@@ -122,7 +122,7 @@ export function ConfigureRequests() {
               },
               { header: 'Method', id: 'method', width: 'auto', renderCell: (r) => r.Method || 'GET' },
               { header: 'Auth', id: 'auth', width: 'auto', renderCell: (r) => AUTH_LABEL[r.AuthType] ?? r.AuthType },
-              { header: 'URL', id: 'url', renderCell: (r) => <TruncatedCell text={r.BaseURL} /> },
+              { header: 'URL', id: 'url', width: 'growCollapse', minWidth: '160px', renderCell: (r) => <TruncatedCell text={r.BaseURL} /> },
               {
                 header: '', id: 'actions', width: 'auto', align: 'end',
                 renderCell: (r) => (

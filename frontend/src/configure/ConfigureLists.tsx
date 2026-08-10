@@ -176,7 +176,7 @@ export function ConfigureLists() {
         <Text as="p" className={styles.muted}>No lists yet.</Text>
       )}
       {lists !== null && viewMode === 'table' && lists.length > 0 && (
-        <ResizableTableContainer>
+        <ResizableTableContainer storageKey="mill-cols-lists">
           <DataTable
             aria-labelledby="lists-heading"
             data={lists.map((l) => ({ ...l, id: l.ID }))}
