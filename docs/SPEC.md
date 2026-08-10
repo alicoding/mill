@@ -3037,6 +3037,23 @@ recorded as a real design input (`OPEN`), never silently dropped.
   seeded example IS that pipeline ("Run copied coding action").
   Nothing built yet — this entry exists so the restyle is designed
   against the recorded reference, not from memory.
+  **Update 2026-08-10 — element #2 is built** (`liveRunState.ts` +
+  `LiveRunControls.tsx`, split component/non-component per
+  nodeKind.ts's precedent): a Run button on the canvas toolbar (the
+  Runs panel's "Canvas is the one Run entrypoint" comment made true),
+  DONE/ACTIVE/PENDING/FAILED/WAITING/DENIED tags with status-colored
+  card edges fed via a React context — deliberately outside the
+  zundo-wrapped canvas store so the 1s poll never spams undo
+  history — a bottom-center CURRENT STEP bar with inline
+  Approve/Deny (the same `ResolveApproval` RPC the Runs tab and
+  Review queue use), and mount-time adoption of an already-in-flight
+  or parked run (a trigger-fired run surfaces the moment the editor
+  opens). "Active" = the first not-yet-checkpointed step while the
+  run is in flight — DBOS checkpoints on completion, so that's the
+  honest approximation. Deterministic e2e (`live-run-state.spec.ts`):
+  a pure inject-text run reaching DONE, and a human-review park →
+  inline deny → fails closed. Elements #1 and #3–#6 remain recorded
+  design input, not built.
 - **Dev-staleness root cause found and fixed — `LOCKED`.** Two
   compounding causes made "my app looks stale" recur: (1) every
   wails-built desktop binary passed `-buildvcs=false` (dev *and*

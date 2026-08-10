@@ -19,9 +19,10 @@ Remaining, in order:
 1. Typed payload visibility on cards (the prototype's
    `Output TypedPayload<...>` line) — needs a per-node-type declared
    output description first (small Go addition, honest not invented).
-2. Live run state on the canvas (DONE/ACTIVE/PENDING per card +
-   inline approve/reject) — reuse the runs/pending data that already
-   exists; design pass against the prototype screenshot before code.
+2. ~~Live run state on the canvas~~ **delivered 2026-08-10** — canvas
+   Run button, per-card status tags/coloring, CURRENT STEP bar with
+   inline Approve/Deny, mount-time adoption of parked runs
+   (`liveRunState.ts`/`LiveRunControls.tsx`, SPEC §3.8's Update).
 3. Node maturity plan — audited 2026-08-10 (all 18 types), worked
    top-down from here:
 
