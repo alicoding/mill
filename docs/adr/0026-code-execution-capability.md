@@ -155,6 +155,33 @@ applied to environments):**
    running" option (schedule double-fire protection); DBOS Queues are
    the eventual backing for real fan-out, not hand-rolled goroutines.
 
+**Retry granularity & the intentional re-execution principle (same
+discussion, owner-led from a no-code framework precedent — multi-
+command runs tracked per command, retry-from-failure vs from-start as
+a user option, re-execution always intentional):**
+- **The canvas IS the command orchestrator — never a second one inside
+  the node.** Per-command tracking/sequencing/parallelism inside one
+  step's config would be a mini workflow engine hiding in a field (the
+  §0 inner-platform trap). One command per node is the canonical
+  shape: chaining = edges, parallel commands = the deferred Parallel
+  node (§3.3, which now has its concrete driver), and each command
+  gets checkpointing, live status, guardrail verdict, and a redrive
+  point from machinery that already exists and is already tested.
+- **"Split into steps"** authoring affordance bridges §2.1's
+  paste-a-block reality: paste a multi-line script into one node,
+  split it into a chained sequence of code-execution nodes (one
+  command each). An unsplit blob stays legal — one atomic retry unit,
+  by explicit choice.
+- **Both retry options are user choices, never forced** — Redrive-
+  from-here (DBOS fork; checkpointed steps provably never re-execute)
+  vs run-again-from-start already exist at node granularity; splitting
+  extends them to command granularity.
+- **Locked principle unifying recovery/redrive/rerun: an effectful
+  step executes at most once unless a human explicitly chooses
+  otherwise.** Recovery parks (never silently re-runs), redrive reuses
+  checkpoints, run-again is a deliberate button. "More than once" is
+  always intentional.
+
 **Seed decisions (from the same discussion):** the seeded example
 ships with a manual trigger + description pointing at the one-click
 swap to hotkey (a hotkey can't ship pre-bound; clipboard-watch firing
