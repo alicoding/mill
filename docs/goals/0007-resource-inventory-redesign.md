@@ -57,9 +57,18 @@ pattern?"). Two distinct problems, one design surface:
    grouped-versions view itself is recorded as future design input
    (valuable once real version history accumulates; today Versions
    lives in the editor tab), not built now.
-3. [ ] Implement once the cards verdict lands, with e2e; goal 0006's
-   trigger labels carry into the new row anatomy; adopt Blankslate
-   for empty states in the same pass.
+3. [x] Implemented (2026-08-10): `shared/InventoryList.tsx` +
+   `entityIcons.ts`; five call-site swaps; `WorkflowsCards.tsx` and
+   all cards branches deleted; rows default with legacy-'cards'
+   localStorage migration; search + Blankslate everywhere; trigger
+   labels carried in; 26 spec files migrated. Two real Primer
+   internals fixed en route (TrailingVisual's unconditional
+   pointer-events:none ate every Run/kebab click — diagnosed via
+   elementFromPoint; role="list" required so nested buttons stay
+   valid HTML). Final verification: 110/110 on a clean fixture
+   baseline (contamination from the mid-build broken-click era was
+   cleared and the three masked spec defects fixed, not explained
+   away). Owner's live recognition test = the acceptance gate.
 
 ## Acceptance
 Owner's own bar, stated directly (2026-08-10): "you want to feel like

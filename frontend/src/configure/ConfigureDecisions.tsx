@@ -10,6 +10,8 @@ import { EntityRefField } from './EntityRefField'
 import { downloadJSON } from '../shared/downloadJSON'
 import { ViewModeToggle } from '../shared/ViewModeToggle'
 import { useViewMode } from '../shared/viewMode'
+import { InventoryList, type InventoryItem } from '../shared/InventoryList'
+import { ENTITY_ICON } from '../shared/entityIcons'
 import styles from '../shared/ListCard.module.css'
 import PageContainer from '../shared/PageContainer'
 
@@ -37,6 +39,11 @@ function emptyOutput(): OutputField {
 // pre-filled, same client-side pattern RequestForm.tsx's own Duplicate
 // uses -- no backend DuplicateDecision RPC, checked against that
 // precedent directly).
+//
+// Rows are the DEFAULT view (docs/goals/0007): InventoryList's shared
+// row replaces the old hand-rolled card branch. Row click edits (same
+// as Lists/MCP Servers); Duplicate/Export/Delete move into the
+// trailing ⋯ menu.
 export function ConfigureDecisions() {
   const [decisions, setDecisions] = useState<Decision[] | null>(null)
   const [editingID, setEditingID] = useState<string | null>(null)
@@ -120,6 +127,21 @@ export function ConfigureDecisions() {
       return { ...o, [field]: value }
     }))
   }
+
+  const decisionItems: InventoryItem[] = (decisions ?? []).map((d) => ({
+    id: d.ID,
+    entity: 'decision',
+    icon: ENTITY_ICON.decision,
+    label: d.Label,
+    labelBadges: <Label variant="secondary" size="small">{CATEGORY_LABEL[d.Category] ?? d.Category}</Label>,
+    description: `Outputs: ${(d.Outputs ?? []).map((o) => o.Key).join(', ') || 'none'}`,
+    onOpen: () => startEdit(d),
+    menuActions: [
+      { label: 'Duplicate', onClick: () => startCreate(d) },
+      { label: 'Export', onClick: () => exportDecision(d.ID, d.Label) },
+      { label: 'Delete', onClick: () => remove(d.ID), danger: true },
+    ],
+  }))
 
   return (
     <PageContainer data-testid="configure-decisions">
@@ -233,9 +255,6 @@ export function ConfigureDecisions() {
       )}
 
       {decisions === null && <Text as="p" className={styles.muted}>Loading…</Text>}
-      {decisions !== null && decisions.length === 0 && !formOpen && (
-        <Text as="p" className={styles.muted}>No decisions yet.</Text>
-      )}
       {decisions !== null && viewMode === 'table' && decisions.length > 0 && (
         <ResizableTableContainer storageKey="mill-cols-decisions">
           <DataTable
@@ -261,31 +280,17 @@ export function ConfigureDecisions() {
           />
         </ResizableTableContainer>
       )}
-      {decisions !== null && viewMode === 'cards' && (
-        <Stack direction="vertical" gap="condensed">
-          {decisions.map((d) => (
-            <div key={d.ID} className={styles.card} data-testid="decision-row">
-              <Stack direction="horizontal" justify="space-between" align="start" gap="normal">
-                <div>
-                  <Stack direction="horizontal" gap="condensed" align="center">
-                    <Text weight="semibold">{d.Label}</Text>
-                    <Label variant="secondary">{CATEGORY_LABEL[d.Category] ?? d.Category}</Label>
-                  </Stack>
-                  <Text as="p" size="small" className={styles.muted}>
-                    Outputs: {(d.Outputs ?? []).map((o) => o.Key).join(', ') || 'none'}
-                  </Text>
-                  <Text as="p" size="small" className={styles.muted}>ID: {d.ID}</Text>
-                </div>
-                <Stack direction="horizontal" gap="condensed">
-                  <Button size="small" variant="invisible" onClick={() => startEdit(d)}>Edit</Button>
-                  <Button size="small" variant="invisible" onClick={() => startCreate(d)}>Duplicate</Button>
-                  <IconButton icon={DownloadIcon} aria-label={`Export ${d.Label}`} size="small" variant="invisible" onClick={() => exportDecision(d.ID, d.Label)} />
-                  <IconButton icon={TrashIcon} aria-label={`Delete ${d.Label}`} size="small" variant="invisible" onClick={() => remove(d.ID)} />
-                </Stack>
-              </Stack>
-            </div>
-          ))}
-        </Stack>
+      {decisions !== null && viewMode === 'rows' && !(formOpen && decisions.length === 0) && (
+        <InventoryList
+          items={decisionItems}
+          searchPlaceholder="Search decisions…"
+          emptyState={{
+            icon: ENTITY_ICON.decision.Icon,
+            heading: 'No decisions yet',
+            description: "A reusable, typed TERMINAL outcome a workflow's Decision node reaches to end the run.",
+            action: <Button leadingVisual={PlusIcon} onClick={() => startCreate()}>New decision</Button>,
+          }}
+        />
       )}
     </PageContainer>
   )

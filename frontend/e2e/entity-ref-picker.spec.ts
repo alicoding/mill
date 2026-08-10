@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test'
+import { clickRowAction } from './inventoryRow'
 
 // Exercises ADR-0009's live picker + inline quick-create: integration-
 // http's requestId field (RefKind: "request") renders as a Select
@@ -12,7 +13,7 @@ import { test, expect } from '@playwright/test'
 // deletion cleans up on its own.
 
 function workflowRow(page: import('@playwright/test').Page, label: string) {
-  return page.locator('[data-testid="workflow-row"]', { has: page.getByText(label, { exact: true }) })
+  return page.locator('[data-testid="inventory-row"][data-entity="workflow"]', { has: page.getByText(label, { exact: true }) })
 }
 
 // .last(), not a bare match: a saved workflow's editor tab now nests a
@@ -46,7 +47,7 @@ async function dragPaletteItemToCanvas(page: import('@playwright/test').Page, no
 }
 
 function requestRow(page: import('@playwright/test').Page, label: string) {
-  return page.getByTestId('request-row').filter({ has: page.getByText(label, { exact: true }) })
+  return page.locator('[data-testid="inventory-row"][data-entity="request"]').filter({ has: page.getByText(label, { exact: true }) })
 }
 
 // Removes the pre-populated starter node so only the dropped node exists
@@ -94,10 +95,10 @@ test('Selecting an Integration node offers a live request picker with inline qui
   await expect(workflowRow(page, 'E2E picker workflow')).toBeVisible()
 
   // Cleanup: the workflow, then the request it created.
-  await workflowRow(page, 'E2E picker workflow').getByRole('button', { name: /Delete/ }).click()
+  await clickRowAction(page, workflowRow(page, 'E2E picker workflow'), 'Delete')
   await expect(workflowRow(page, 'E2E picker workflow')).toHaveCount(0)
 
   await page.getByRole('link', { name: 'Configure' }).click()
-  await requestRow(page, 'E2E picker request').getByRole('button', { name: 'Delete E2E picker request' }).click()
+  await clickRowAction(page, requestRow(page, 'E2E picker request'), 'Delete')
   await expect(requestRow(page, 'E2E picker request')).toHaveCount(0)
 })

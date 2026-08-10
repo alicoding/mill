@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test'
+import { clickRowAction } from './inventoryRow'
 
 // Decision as a reusable, typed TERMINAL outcome (docs/adr/0027),
 // driven through the live app: Configure > Decisions CRUD (including
@@ -10,11 +11,11 @@ import { test, expect } from '@playwright/test'
 // terminalizing). The seed IS the proof (.claude/rules/testing.md).
 
 function decisionRow(page: import('@playwright/test').Page, label: string) {
-  return page.getByTestId('decision-row').filter({ has: page.getByText(label, { exact: true }) })
+  return page.locator('[data-testid="inventory-row"][data-entity="decision"]').filter({ has: page.getByText(label, { exact: true }) })
 }
 
 function workflowRow(page: import('@playwright/test').Page, label: string) {
-  return page.getByTestId('workflow-row').filter({ has: page.getByText(label, { exact: true }) })
+  return page.locator('[data-testid="inventory-row"][data-entity="workflow"]').filter({ has: page.getByText(label, { exact: true }) })
 }
 
 function activePanel(page: import('@playwright/test').Page) {
@@ -47,13 +48,15 @@ test('Configure > Decisions: create shows the immutability caption, edit disable
   await expect(row).toBeVisible()
   await expect(row).toContainText('Deny')
 
-  // Edit: the category control is now disabled, same caption visible.
-  await row.getByRole('button', { name: 'Edit' }).click()
+  // Edit: row click opens the edit form (InventoryList's onOpen,
+  // docs/goals/0007) -- the category control is now disabled, same
+  // caption visible.
+  await row.click()
   await expect(page.getByTestId('decision-category')).toBeDisabled()
   await expect(page.getByText('Cannot be changed after creation', { exact: false })).toBeVisible()
   await page.getByRole('button', { name: 'Cancel' }).click()
 
-  await row.getByRole('button', { name: `Delete ${label}` }).click()
+  await clickRowAction(page, row, 'Delete')
   await expect(decisionRow(page, label)).toHaveCount(0)
 })
 
@@ -64,7 +67,7 @@ test('Branch to a decision: the approve path terminalizes with a typed outcome, 
   const seed = 'Example: Branch to a decision'
   const row = workflowRow(page, seed)
   await expect(row).toBeVisible()
-  await row.getByRole('button', { name: new RegExp(`Edit ${seed}`) }).click()
+  await row.click()
   await expect(activePanel(page).locator('.react-flow__node').first()).toBeVisible()
 
   await activePanel(page).getByTestId('canvas-run').click()

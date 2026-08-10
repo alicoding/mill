@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test'
+import { clickRowAction } from './inventoryRow'
 
 // Exercises ADR-0016 Phase B's entity half + the unified schema intake
 // (docs/SPEC.md §4's Update): Method is a first-class request field
@@ -8,12 +9,12 @@ import { test, expect } from '@playwright/test'
 // mode), not mocks.
 
 function requestRow(page: import('@playwright/test').Page, label: string) {
-  return page.getByTestId('request-row').filter({ has: page.getByText(label, { exact: true }) })
+  return page.locator('[data-testid="inventory-row"][data-entity="request"]').filter({ has: page.getByText(label, { exact: true }) })
 }
 
 async function deleteRequest(page: import('@playwright/test').Page, label: string) {
   await page.getByRole('link', { name: 'Configure' }).click()
-  await requestRow(page, label).getByRole('button', { name: `Delete ${label}` }).click()
+  await clickRowAction(page, requestRow(page, label), 'Delete')
   await expect(requestRow(page, label)).toHaveCount(0)
 }
 

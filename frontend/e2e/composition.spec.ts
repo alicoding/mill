@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test'
+import { clickRowAction } from './inventoryRow'
 
 // Real Go bindings over HTTP (Wails3 server mode), not mocks -- same
 // setup/limitations as runbook.spec.ts (see its header comment):
@@ -20,7 +21,7 @@ import { test, expect } from '@playwright/test'
 // out the same way earlier.
 
 function workflowRow(page: import('@playwright/test').Page, label: string) {
-  return page.locator('[data-testid="workflow-row"]', { has: page.getByText(label, { exact: true }) })
+  return page.locator('[data-testid="inventory-row"][data-entity="workflow"]', { has: page.getByText(label, { exact: true }) })
 }
 
 // The active tab's content -- Primer's TabPanel keeps every open tab
@@ -94,15 +95,12 @@ test('Composition page lists built-in workflows; node primitives live in a colla
   await expect(workflowRow(page, 'Clipboard → Markdown')).toBeVisible()
   await expect(workflowRow(page, 'Load sample HTML').getByText('built-in')).toBeVisible()
 
-  // The workflow's step chain still renders as chips (walked from
-  // Nodes/Edges in execution order, not a flat Steps array) -- the list
-  // stays read-only, the canvas (entered via New workflow or Edit) is
-  // the only authoring surface, matching the reference platform's own
-  // Workflows-list/canvas split (docs/SPEC.md §3.2).
-  await expect(workflowRow(page, 'Clipboard → Markdown').getByText('Capture: clipboard HTML')).toBeVisible()
-  // Configuration is visible as part of composition, not hidden: the
-  // built-in's configured HTML value shows inline on its step chip.
-  await expect(workflowRow(page, 'Load sample HTML').getByText(/html:/i)).toBeVisible()
+  // The list itself stays a dense, read-only inventory row now
+  // (docs/goals/0007-resource-inventory-redesign.md): the full step
+  // chain (chips walked from Nodes/Edges) is no longer rendered inline
+  // per row -- the canvas (entered via row click or New workflow) is
+  // the only place composition detail shows, matching the reference
+  // platform's own compact-table/canvas split (docs/SPEC.md §3.2).
 
   // Node primitives (the drag palette) only appear once you're on the
   // canvas, and even then only once toggled open ("Add steps") -- not
@@ -147,9 +145,16 @@ test('A new workflow starts with a starter node placed, not a blank canvas', asy
 
   const row = workflowRow(page, 'E2E starter-only workflow')
   await expect(row).toBeVisible()
-  await row.getByRole('button', { name: /Delete/ }).click()
+  await clickRowAction(page, row, 'Delete')
   await expect(row).toHaveCount(0)
 })
+
+// A run's result renders below the InventoryList now, not inline
+// inside the row itself (docs/goals/0007's dense-row anatomy has no
+// room for a result preview) -- scoped by the same label match.
+function runResult(page: import('@playwright/test').Page, label: string) {
+  return page.getByTestId('workflow-run-result').filter({ has: page.getByText(label, { exact: true }) })
+}
 
 test('Running the load-sample workflow produces a visible response, success or error', async ({ page }) => {
   await page.goto('/')
@@ -158,7 +163,7 @@ test('Running the load-sample workflow produces a visible response, success or e
   // Asserts the full click -> Go binding -> render pipeline produces
   // SOME response, without hard-coding osascript's platform-specific
   // text (the result content is clipboard-dependent).
-  await expect(workflowRow(page, 'Load sample HTML').locator('pre')).toBeVisible()
+  await expect(runResult(page, 'Load sample HTML').locator('pre')).toBeVisible()
 })
 
 test('Running the clipboard-to-markdown workflow produces a visible response, success or error', async ({ page }) => {
@@ -170,7 +175,7 @@ test('Running the clipboard-to-markdown workflow produces a visible response, su
   // so this asserts the pipeline rendered SOME result, not a specific
   // outcome (updated 2026-08-10 when the §5 plain-text fallback landed;
   // "no HTML on clipboard" is no longer a guaranteed outcome).
-  await expect(workflowRow(page, 'Clipboard → Markdown').locator('pre')).toBeVisible()
+  await expect(runResult(page, 'Clipboard → Markdown').locator('pre')).toBeVisible()
 })
 
 test('Dragging a node onto the canvas configures it as it is added, then saves, runs and deletes for real', async ({ page }) => {
@@ -206,18 +211,16 @@ test('Dragging a node onto the canvas configures it as it is added, then saves, 
   const row = workflowRow(page, 'E2E custom workflow')
   await expect(row).toBeVisible()
   await expect(row.getByText('built-in')).toHaveCount(0)
-  // The configured (non-default) value is visible on the saved workflow,
-  // not just the node type's label -- proves configuration survived
-  // composition, not just the default.
-  await expect(row.getByText(/e2e configured value/)).toBeVisible()
 
   // Running it writes the *configured* HTML, not the built-in default --
   // deterministic even in a headless CI runner: this node only writes to
-  // the clipboard, it never reads from it.
+  // the clipboard, it never reads from it. The result (below the list,
+  // docs/goals/0007) shows the configured value, proving configuration
+  // survived composition through to execution, not just the default.
   await row.getByRole('button', { name: 'Run' }).click()
-  await expect(row.getByText(/e2e configured value/).last()).toBeVisible()
+  await expect(runResult(page, 'E2E custom workflow').getByText(/e2e configured value/)).toBeVisible()
 
-  await row.getByRole('button', { name: /Delete E2E custom workflow/ }).click()
+  await clickRowAction(page, row, 'Delete')
   await expect(workflowRow(page, 'E2E custom workflow')).toHaveCount(0)
 })
 
@@ -232,8 +235,16 @@ test('Seeded example workflows are ordinary, fully editable and deletable', asyn
   await page.getByRole('link', { name: 'Workflows' }).click()
   const row = workflowRow(page, 'Load sample HTML')
   await expect(row.getByText('built-in')).toBeVisible()
-  await expect(row.getByRole('button', { name: /Edit/ })).toBeVisible()
-  await expect(row.getByRole('button', { name: /Delete/ })).toBeVisible()
+  // Editable: row click opens the editor (InventoryList's onOpen,
+  // docs/goals/0007) -- no separate "Edit" button/menu item for
+  // Workflows, since that WOULD be the same action twice.
+  await row.click()
+  await expect(page.getByTestId('save-workflow')).toBeVisible()
+  await page.getByRole('tab', { name: 'Workflows' }).click()
+  // Deletable: the row's trailing ⋯ menu offers Delete.
+  await row.getByTestId('inventory-row-menu').click()
+  await expect(page.getByRole('menuitem', { name: 'Delete' })).toBeVisible()
+  await page.keyboard.press('Escape')
 })
 
 test('Editing an existing workflow updates it in place, not as a duplicate', async ({ page }) => {
@@ -254,8 +265,9 @@ test('Editing an existing workflow updates it in place, not as a duplicate', asy
   // Re-opening it loads the existing node (not the new-workflow starter)
   // and its already-configured default HTML value, and Save reads "Save
   // changes" rather than "Save workflow" -- confirming this is an edit,
-  // not a second composition.
-  await row.getByRole('button', { name: /Edit E2E editable workflow/ }).click()
+  // not a second composition. Row click opens the editor
+  // (InventoryList's onOpen, docs/goals/0007).
+  await row.click()
   await expect(activePanel(page).locator('.react-flow__node')).toHaveCount(1)
   await expect(activePanel(page).getByTestId('save-workflow')).toHaveText('Save changes')
   await expect(activePanel(page).getByLabel('Label')).toHaveValue('E2E editable workflow')
@@ -268,14 +280,18 @@ test('Editing an existing workflow updates it in place, not as a duplicate', asy
   await activePanel(page).getByTestId('save-workflow').click()
 
   // Same workflow, updated -- not a duplicate: the old label is gone,
-  // the new one shows the edited config, and there's exactly one row
-  // for it.
+  // and there's exactly one row for the new one. The row itself no
+  // longer surfaces a node's config value (docs/goals/0007's dense-row
+  // anatomy dropped the old step-chain chips), so "shows the edited
+  // config" is now proven by running it and reading the edited value
+  // out of the result, not by reading the row.
   await expect(workflowRow(page, 'E2E editable workflow')).toHaveCount(0)
   const updated = workflowRow(page, 'E2E editable workflow (edited)')
   await expect(updated).toHaveCount(1)
-  await expect(updated.getByText(/edited value/)).toBeVisible()
+  await updated.getByRole('button', { name: 'Run' }).click()
+  await expect(runResult(page, 'E2E editable workflow (edited)').getByText(/edited value/)).toBeVisible()
 
-  await updated.getByRole('button', { name: /Delete/ }).click()
+  await clickRowAction(page, updated, 'Delete')
   await expect(updated).toHaveCount(0)
 })
 
@@ -321,16 +337,16 @@ test('Editing the same workflow twice reuses its tab instead of opening a duplic
   const outerTabs = page.getByRole('tablist', { name: 'Open work' }).getByRole('tab')
 
   const row = workflowRow(page, 'E2E reused-tab workflow')
-  await row.getByRole('button', { name: /Edit/ }).click()
+  await row.click()
   await expect(outerTabs).toHaveCount(2) // Workflows + one editor tab
 
-  // Back to the list without closing the editor tab, then Edit the same
+  // Back to the list without closing the editor tab, then open the same
   // workflow again -- must switch to the existing tab, not open a second.
   await page.getByRole('tab', { name: 'Workflows' }).click()
-  await row.getByRole('button', { name: /Edit/ }).click()
+  await row.click()
   await expect(outerTabs).toHaveCount(2)
 
   await page.getByRole('tab', { name: 'Workflows' }).click()
-  await row.getByRole('button', { name: /Delete/ }).click()
+  await clickRowAction(page, row, 'Delete')
   await expect(row).toHaveCount(0)
 })

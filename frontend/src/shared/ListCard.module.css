@@ -32,8 +32,6 @@
     padding: var(--s-4) 0;
     color: var(--fgColor-muted);
 }
-.skeletonLine { margin-bottom: var(--base-size-8); }
-.itemControls { flex-shrink: 0; }
 .recording { color: var(--fgColor-attention); white-space: nowrap; }
 .error { color: var(--fgColor-danger); margin: var(--base-size-8) 0 0; }
 .result {
@@ -61,10 +59,10 @@
 .activitySpacer { display: inline-block; width: 12px; }
 
 /* CompositionView: a section header between the node-primitives list and
-   the workflows list, and the step chain (chips + config summary) inside
-   a workflow card (docs/SPEC.md §3's config-first-not-canvas prototype --
-   plain flex-wrapped chips, no graph/canvas library). */
+   the workflows list. .stepConfigField is CompositionCapabilityMap.tsx's
+   own step-chain config summary (a different, still-live surface) --
+   the workflows list's own step-chain rendering (docs/goals/0007)
+   moved to the canvas, this module's .stepChain class retired with it. */
 .sectionHeading { margin: var(--s-4) 0 var(--base-size-8); }
-.stepChain { flex-wrap: wrap; margin-top: var(--base-size-8); }
 .stepConfigField { margin-top: var(--base-size-8); }
 .filterRow { margin-bottom: var(--base-size-12); }
