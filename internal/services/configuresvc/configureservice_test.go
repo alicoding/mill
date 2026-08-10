@@ -136,7 +136,9 @@ func TestResolveList_UnknownID_Rejected(t *testing.T) {
 
 func TestUpdateWorkflowAttributes_DelegatesToCompositionService(t *testing.T) {
 	cfg, comp := newTestConfigureService(t)
-	wf, err := comp.CreateWorkflow("My workflow", "", []composition.Node{{NodeTypeID: "capture-clipboard-html"}}, nil)
+	wf, err := comp.CreateWorkflow("My workflow", "",
+		[]composition.Node{{ID: "t", NodeTypeID: "trigger-manual"}, {ID: "c", NodeTypeID: "capture-clipboard-html"}},
+		[]composition.Edge{{ID: "e1", Source: "t", Target: "c"}})
 	if err != nil {
 		t.Fatalf("CreateWorkflow returned error: %v", err)
 	}

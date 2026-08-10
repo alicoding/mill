@@ -47,8 +47,13 @@ test('Importing a workflow file adds a new, independent workflow without touchin
   const importJSON = JSON.stringify({
     label: 'E2E imported workflow',
     description: 'Imported by an e2e test',
-    nodes: [{ NodeTypeID: 'capture-clipboard-html' }],
-    edges: [],
+    // A Trigger root (docs/adr/0028) -- a lone Capture node alone is
+    // now the owner's own unsaveable repro.
+    nodes: [
+      { ID: 't', NodeTypeID: 'trigger-manual' },
+      { ID: 'c', NodeTypeID: 'capture-clipboard-html' },
+    ],
+    edges: [{ ID: 'e1', Source: 't', Target: 'c' }],
     attributes: [],
   })
   await page.getByTestId('import-workflow').click()

@@ -4,13 +4,15 @@
 export {
     Approach,
     ConfigFieldType,
-    NodeKind
+    NodeKind,
+    Severity
 } from "./models.js";
 
 export type {
     AttributeDef,
     ConfigField,
     Edge,
+    Issue,
     MapEntry,
     Node,
     NodeType,

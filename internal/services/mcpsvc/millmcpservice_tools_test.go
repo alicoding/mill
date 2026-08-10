@@ -36,7 +36,8 @@ func TestMillMCPService_Tools_ImportGatedExportOpen(t *testing.T) {
 	}()
 
 	wf, err := comp.CreateWorkflow("MCP tools workflow", "import/export tool test",
-		[]composition.Node{{NodeTypeID: "capture-clipboard-html"}}, nil)
+		[]composition.Node{{ID: "t", NodeTypeID: "trigger-manual"}, {ID: "c", NodeTypeID: "capture-clipboard-html"}},
+		[]composition.Edge{{ID: "e1", Source: "t", Target: "c"}})
 	if err != nil {
 		t.Fatalf("CreateWorkflow: %v", err)
 	}
@@ -156,7 +157,8 @@ func TestMCPWriteTools_PerWriteApproval(t *testing.T) {
 	}()
 
 	wf, err := comp.CreateWorkflow("Approval test workflow", "",
-		[]composition.Node{{NodeTypeID: "capture-clipboard-html"}}, nil)
+		[]composition.Node{{ID: "t", NodeTypeID: "trigger-manual"}, {ID: "c", NodeTypeID: "capture-clipboard-html"}},
+		[]composition.Edge{{ID: "e1", Source: "t", Target: "c"}})
 	if err != nil {
 		t.Fatalf("CreateWorkflow: %v", err)
 	}

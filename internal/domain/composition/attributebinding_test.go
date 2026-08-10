@@ -308,17 +308,21 @@ func TestValidateGraph_IntegrationHTTP_SecretOutputBinding_Rejected(t *testing.T
 		return ResolvedHTTPRequest{OpenAPISpec: bindingTestSpec}, nil
 	})
 	outputBindings, _ := json.Marshal(map[string]string{"token": "leakedToken"})
-	nodes, err := ResolveNodeDefaults([]Node{{
-		ID: "call", NodeTypeID: "integration-http",
-		Config: map[string]string{
-			"requestId": "conn-1", "path": "/widgets/{id}", "method": http.MethodPost,
-			"outputBindings": string(outputBindings),
+	nodes, err := ResolveNodeDefaults([]Node{
+		{ID: "t", NodeTypeID: "trigger-manual"},
+		{
+			ID: "call", NodeTypeID: "integration-http",
+			Config: map[string]string{
+				"requestId": "conn-1", "path": "/widgets/{id}", "method": http.MethodPost,
+				"outputBindings": string(outputBindings),
+			},
 		},
-	}})
+	})
 	if err != nil {
 		t.Fatalf("ResolveNodeDefaults returned error: %v", err)
 	}
-	if err := ValidateGraph(nodes, nil, nil); err == nil {
+	edges := []Edge{{ID: "t-call", Source: "t", Target: "call"}}
+	if err := ValidateGraphStrict(nodes, edges, nil); err == nil {
 		t.Fatal("ValidateGraph accepted a workflow binding a secret-classified field (token) to an Attribute, want a rejection")
 	}
 }
@@ -328,17 +332,25 @@ func TestValidateGraph_IntegrationHTTP_NonSecretOutputBinding_Accepted(t *testin
 		return ResolvedHTTPRequest{OpenAPISpec: bindingTestSpec}, nil
 	})
 	outputBindings, _ := json.Marshal(map[string]string{"name": "widgetName"})
-	nodes, err := ResolveNodeDefaults([]Node{{
-		ID: "call", NodeTypeID: "integration-http",
-		Config: map[string]string{
-			"requestId": "conn-1", "path": "/widgets/{id}", "method": http.MethodPost,
-			"outputBindings": string(outputBindings),
+	nodes, err := ResolveNodeDefaults([]Node{
+		{ID: "t", NodeTypeID: "trigger-manual"},
+		{
+			ID: "call", NodeTypeID: "integration-http",
+			Config: map[string]string{
+				"requestId": "conn-1", "path": "/widgets/{id}", "method": http.MethodPost,
+				"outputBindings": string(outputBindings),
+			},
 		},
-	}})
+	})
 	if err != nil {
 		t.Fatalf("ResolveNodeDefaults returned error: %v", err)
 	}
-	if err := ValidateGraph(nodes, nil, nil); err != nil {
+	edges := []Edge{{ID: "t-call", Source: "t", Target: "call"}}
+	// A trigger-manual -> integration-http chain with no further step is
+	// still a Process leaf (docs/adr/0028) -- a WARNING, which
+	// ValidateGraphStrict correctly never blocks on; only the Error-level
+	// secret-output rejection this test is actually about would fail it.
+	if err := ValidateGraphStrict(nodes, edges, nil); err != nil {
 		t.Errorf("ValidateGraph rejected a non-secret output binding: %v", err)
 	}
 }

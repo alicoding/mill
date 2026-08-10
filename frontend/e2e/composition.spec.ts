@@ -77,14 +77,64 @@ async function dragPaletteItemToCanvas(page: import('@playwright/test').Page, no
   }, nodeTypeID)
 }
 
-// Removes the pre-populated starter node so a test can build an exact,
-// known node set instead of accounting for "the starter plus whatever I
-// added." Selecting a lone node and using the toolbar's own Delete
-// control, not a shortcut -- exercises the real interaction.
-async function deleteStarterNode(page: import('@playwright/test').Page) {
-  await activePanel(page).locator('.react-flow__node').click()
-  await activePanel(page).getByRole('button', { name: 'Delete selected' }).click()
-  await expect(activePanel(page).locator('.react-flow__node')).toHaveCount(0)
+// See composition-canvas-interactions.spec.ts's own copy of these two
+// helpers for the full reasoning (Fit View first avoids the MiniMap-
+// overlap hazard a spiral-placed node's handle can land under; a raw
+// mouse click at a node's own top-left avoids the same hazard for
+// selection). Both tests below keep the starter trigger-manual node
+// now (docs/adr/0028 requires a Trigger root), connecting it to the
+// dropped Apply node instead of deleting the starter first.
+async function connectNodes(page: import('@playwright/test').Page, sourceLabel: string, targetLabel: string) {
+  const panel = activePanel(page)
+  await panel.getByRole('button', { name: 'Fit View' }).click()
+  await page.waitForTimeout(300)
+  const sourceHandle = panel.locator('.react-flow__node').filter({ hasText: sourceLabel }).locator('.react-flow__handle.source')
+  const targetHandle = panel.locator('.react-flow__node').filter({ hasText: targetLabel }).locator('.react-flow__handle.target')
+  const sourceBox = await sourceHandle.boundingBox()
+  const targetBox = await targetHandle.boundingBox()
+  if (!sourceBox || !targetBox) throw new Error('connectNodes: handle bounding box not found')
+  await page.mouse.move(sourceBox.x + sourceBox.width / 2, sourceBox.y + sourceBox.height / 2)
+  await page.mouse.down()
+  await page.mouse.move(targetBox.x + targetBox.width / 2, targetBox.y + targetBox.height / 2, { steps: 10 })
+  await page.mouse.up()
+}
+
+// Selects a canvas node by clicking a point PROVEN to land inside its
+// own card, not a fixed offset -- React Flow's own Controls (bottom-
+// left: zoom/lock/Fit View) and MiniMap (bottom-right) are real, drawn
+// UI chrome that Fit View's own layout can place any node underneath
+// depending on node count/viewport (confirmed directly: the exact same
+// top-left-corner offset that worked for a two-node graph lands on the
+// Controls panel's own IconButton once a third node shifts the layout,
+// silently selecting nothing -- neither a plain `.click()` (targets
+// the center) nor `.click({ force: true })` (skips Playwright's
+// actionability check, not the browser's real hit-testing) catches
+// this). Tries a few candidate points around the card, verifying via
+// document.elementFromPoint that each one actually resolves inside
+// THIS node's own `.react-flow__node` wrapper (a per-node badge is a
+// valid hit too -- it's still a descendant, clicks on it still select
+// the node) before clicking there for real.
+async function clickCanvasNode(page: import('@playwright/test').Page, panel: import('@playwright/test').Locator, label: string) {
+  const node = panel.locator('.react-flow__node').filter({ hasText: label })
+  const box = await node.boundingBox()
+  if (!box) throw new Error(`clickCanvasNode: node "${label}" has no bounding box`)
+  const candidates = [
+    { x: box.x + 10, y: box.y + 10 },
+    { x: box.x + box.width - 10, y: box.y + 10 },
+    { x: box.x + box.width / 2, y: box.y + box.height / 2 },
+    { x: box.x + 10, y: box.y + box.height - 10 },
+  ]
+  for (const point of candidates) {
+    const insideNode = await page.evaluate(({ x, y }) => {
+      const el = document.elementFromPoint(x, y)
+      return !!el?.closest('.react-flow__node')
+    }, point)
+    if (insideNode) {
+      await page.mouse.click(point.x, point.y)
+      return
+    }
+  }
+  throw new Error(`clickCanvasNode: no point for node "${label}" resolved inside its own card -- covered by other canvas chrome at every candidate`)
 }
 
 test('Composition page lists built-in workflows; node primitives live in a collapsible canvas panel, not the list', async ({ page }) => {
@@ -193,17 +243,19 @@ test('Dragging a node onto the canvas configures it as it is added, then saves, 
   await page.goto('/')
   await page.getByRole('link', { name: 'Workflows' }).click()
   await page.getByTestId('new-workflow').click()
-  await deleteStarterNode(page)
   await activePanel(page).getByTestId('toggle-palette').click()
 
+  // Keeps the starter trigger-manual node -- docs/adr/0028 requires a
+  // Trigger root, so Apply alone can no longer be the whole graph.
   await dragPaletteItemToCanvas(page, 'apply-clipboard-write-html')
-  await expect(activePanel(page).locator('.react-flow__node')).toHaveCount(1)
+  await expect(activePanel(page).locator('.react-flow__node')).toHaveCount(2)
+  await connectNodes(page, 'Trigger: manual', 'Apply: write HTML to clipboard')
 
   // Clicking the dropped node surfaces its config fields immediately in
   // the Inspector -- composing and configuring happen together, not as
   // separate passes (docs/SPEC.md §3), just moved from inline-in-a-list-
   // row (the old form) to inline-on-select (the canvas).
-  await activePanel(page).locator('.react-flow__node').click()
+  await clickCanvasNode(page, activePanel(page), 'Apply: write HTML to clipboard')
   const inspector = activePanel(page).getByTestId('composition-inspector')
   await expect(inspector).toContainText('Apply: write HTML to clipboard')
 
@@ -265,28 +317,30 @@ test('Editing an existing workflow updates it in place, not as a duplicate', asy
   await page.goto('/')
   await page.getByRole('link', { name: 'Workflows' }).click()
 
-  // Compose and save a workflow to edit.
+  // Compose and save a workflow to edit -- keeps the starter
+  // trigger-manual node (docs/adr/0028 requires a Trigger root) and
+  // connects it to the dropped Apply node.
   await page.getByTestId('new-workflow').click()
-  await deleteStarterNode(page)
   await activePanel(page).getByTestId('toggle-palette').click()
   await dragPaletteItemToCanvas(page, 'apply-clipboard-write-html')
+  await connectNodes(page, 'Trigger: manual', 'Apply: write HTML to clipboard')
   await activePanel(page).getByLabel('Label').fill('E2E editable workflow')
   await activePanel(page).getByTestId('save-workflow').click()
 
   const row = workflowRow(page, 'E2E editable workflow')
   await expect(row).toBeVisible()
 
-  // Re-opening it loads the existing node (not the new-workflow starter)
-  // and its already-configured default HTML value, and Save reads "Save
-  // changes" rather than "Save workflow" -- confirming this is an edit,
-  // not a second composition. Row click opens the editor
-  // (InventoryList's onOpen, docs/goals/0007).
+  // Re-opening it loads the existing two nodes (not the new-workflow
+  // single-starter default) and its already-configured default HTML
+  // value, and Save reads "Save changes" rather than "Save workflow" --
+  // confirming this is an edit, not a second composition. Row click
+  // opens the editor (InventoryList's onOpen, docs/goals/0007).
   await row.click()
-  await expect(activePanel(page).locator('.react-flow__node')).toHaveCount(1)
+  await expect(activePanel(page).locator('.react-flow__node')).toHaveCount(2)
   await expect(activePanel(page).getByTestId('save-workflow')).toHaveText('Save changes')
   await expect(activePanel(page).getByLabel('Label')).toHaveValue('E2E editable workflow')
 
-  await activePanel(page).locator('.react-flow__node').click()
+  await clickCanvasNode(page, activePanel(page), 'Apply: write HTML to clipboard')
   const configField = activePanel(page).getByTestId('canvas-config-field')
   await configField.fill('<p>edited value</p>')
   await configField.blur()

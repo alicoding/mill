@@ -17,6 +17,18 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
+// decodeValidation parses validate_workflow's own JSON wire shape
+// (docs/adr/0028: {"valid": bool, "issues": [...]}, millmcpservice_authoring.go's
+// validationResult) out of a tool result's text content.
+func decodeValidation(t *testing.T, raw string) validationResult {
+	t.Helper()
+	var out validationResult
+	if err := json.Unmarshal([]byte(raw), &out); err != nil {
+		t.Fatalf("validate_workflow result not JSON: %v\n%s", err, raw)
+	}
+	return out
+}
+
 // The full LLM-authoring loop (docs/adr/0025) against a real MCP client
 // over real HTTP and a real DBOS runtime: introspect the node-type
 // catalog, validate a bad-then-good definition without saving, update a
@@ -77,17 +89,33 @@ func TestMCPAuthoring_FullLoop(t *testing.T) {
 		t.Fatalf("list_node_types missing expected content:\n%.300s", catalog)
 	}
 
-	// Validation: a bad graph is named, nothing saved; a good one passes.
+	// Validation (docs/adr/0028): the FULL issue list comes back, not
+	// just the first problem -- a bad graph reports at least one error
+	// issue; a good graph is valid (no errors) but the good fixture
+	// below is itself a Trigger -> Process CHAIN ending in a leaf, so it
+	// carries a real warning issue too, proving both severities surface
+	// through this same tool.
 	bad := `{"label":"x","nodes":[{"id":"a","nodeTypeId":"no-such-type"}],"edges":[]}`
-	if v := text(call("validate_workflow", map[string]any{"json": bad})); !strings.HasPrefix(v, "invalid:") {
-		t.Fatalf("bad graph validated as %q", v)
+	badResult := decodeValidation(t, text(call("validate_workflow", map[string]any{"json": bad})))
+	if badResult.Valid || len(badResult.Issues) == 0 {
+		t.Fatalf("bad graph validated as %+v, want invalid with at least one issue", badResult)
 	}
 	good := `{"label":"MCP authored","nodes":[
 		{"ID":"t1","NodeTypeID":"trigger-manual"},
 		{"ID":"n1","NodeTypeID":"process-inject-text","Config":{"text":"[authored-v1]","placement":"append"}}],
 		"edges":[{"ID":"e1","Source":"t1","Target":"n1"}]}`
-	if v := text(call("validate_workflow", map[string]any{"json": good})); v != "valid" {
-		t.Fatalf("good graph validated as %q", v)
+	goodResult := decodeValidation(t, text(call("validate_workflow", map[string]any{"json": good})))
+	if !goodResult.Valid {
+		t.Fatalf("good graph validated as %+v, want valid (no error-severity issue)", goodResult)
+	}
+	var sawWarning bool
+	for _, issue := range goodResult.Issues {
+		if issue.Severity == composition.SeverityWarning {
+			sawWarning = true
+		}
+	}
+	if !sawWarning {
+		t.Fatalf("good graph (trigger -> process-inject-text, a dangling leaf) should report a Process-leaf warning issue, got %+v", goodResult.Issues)
 	}
 
 	// Mutation is refused while the write gate is off (fail-safe default).
