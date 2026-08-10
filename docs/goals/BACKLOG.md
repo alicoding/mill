@@ -29,3 +29,4 @@ in archive/ for the full verdict trail if ever needed).
 6. [x] [0006 — Trigger-aware Workflows list](0006-trigger-aware-workflows-list.md) — delivered 2026-08-10 (trigger labels, tri-state armed + Publish CTA, inline hotkey capture, callable demotion; owner live-acceptance pending as part of ongoing review)
 7. [ ] [0007 — Resource-inventory redesign](0007-resource-inventory-redesign.md) (UX: page-identity confusion + card-view dislike, raised live; decisions ratified, build in flight)
 8. [ ] [0008 — Authoring validation + ending model](0008-authoring-validation-and-ending-model.md) (owner-priority: next after 0007 — errors-block-save semantics decided; trigger-root error decided; Apply-vs-terminal unification is the ADR to write first)
+9. [ ] [0009 — E2e parallel isolation](0009-e2e-parallel-isolation.md) (infra: workers:1 + shared state is the root of slow suites, double-runs, and contamination — biggest verification-cost lever)
