@@ -50,12 +50,11 @@ interface NodeInspectorProps {
   // this canvas, if any (docs/adr/0031 items 3/5) -- undefined when no
   // run is displayed, or this node hasn't executed (yet).
   runStep?: RunStep
-  // Notifies the canvas to refetch its nothing-hidden guardrail badges
-  // (docs/adr/0031 item 1) after the "Breakpoint" toggle CRUDs a debug
-  // rule -- the toggle doesn't change any node's type/config, so the
-  // canvas's own nodeFingerprint-keyed effect would never notice it
-  // otherwise.
-  onBreakpointChange: () => void
+  // docs/goals/0022-workflow-view-mode.md: renders every field/control
+  // below inert via a native `<fieldset disabled>` wrapper -- see the
+  // component body's own comment for why that's the chosen mechanism
+  // over threading a readOnly prop through every sub-editor.
+  readOnly: boolean
   onChangeType: (newType: NodeType) => void
   onConfigChange: (key: string, value: string) => void
 }
@@ -70,10 +69,30 @@ interface NodeInspectorProps {
 // render of this component by node id, so switching the selected node
 // gets a clean remount rather than carrying stale nonce/local state
 // across selections.
-export function NodeInspector({ node, workflowId, attrs, nodeType, sameKindNodeTypes, hasWorkflow, hotkeyCapture, runStep, onBreakpointChange, onChangeType, onConfigChange }: NodeInspectorProps) {
+export function NodeInspector({ node, workflowId, attrs, nodeType, sameKindNodeTypes, hasWorkflow, hotkeyCapture, runStep, readOnly, onChangeType, onConfigChange }: NodeInspectorProps) {
   const [payloadNonce, setPayloadNonce] = useState(0)
 
+  // A native `<fieldset disabled>` cascades to every descendant form
+  // control (input/select/textarea/button) regardless of how deep it's
+  // nested through other React components -- the "prefer rendering the
+  // existing fields disabled over building a second inspector"
+  // instruction (docs/goals/0022), applied once here instead of
+  // threading a readOnly prop through IntegrationBindingsEditor/
+  // ChildWorkflowBindingsEditor/MCPToolArgsEditor/DecisionOutcomeBindingsEditor/
+  // RulesetEditor/EntityRefField individually. Border/margin/padding
+  // reset since a bare <fieldset> renders visible chrome by default;
+  // min-width:0 works around a real browser quirk (fieldsets default to
+  // min-width:min-content, which can fight this panel's own flex
+  // sizing). One real, deliberate gap: Primer's AnchoredOverlay/Dialog
+  // portal their OPEN content outside this DOM subtree, so a control
+  // already-open inside one (e.g. WorkflowHoverPreview's "Open" button)
+  // isn't disabled by this -- harmless here, since every trigger that
+  // OPENS such an overlay (EntityRefField's "+ Create new" option, the
+  // hotkey-capture buttons) is itself a normal descendant control this
+  // fieldset does disable, so the overlay can never be opened in the
+  // first place while read-only.
   return (
+    <fieldset disabled={readOnly} className={styles.inspectorFieldset}>
     <Stack direction="vertical" gap="condensed">
       <NodeExecutionSection step={runStep} />
       {/* Swapping type in place (same Kind only) instead of
@@ -288,7 +307,7 @@ export function NodeInspector({ node, workflowId, attrs, nodeType, sameKindNodeT
       ))}
 
       {workflowId && node.data.kind !== 'trigger' && node.data.kind !== 'decision' && (
-        <NodeGuardrailSection workflowId={workflowId} nodeId={node.id} onBreakpointChange={onBreakpointChange} />
+        <NodeGuardrailSection workflowId={workflowId} nodeId={node.id} />
       )}
 
       {node.data.nodeTypeID === 'trigger-schedule' && (
@@ -343,5 +362,6 @@ export function NodeInspector({ node, workflowId, attrs, nodeType, sameKindNodeT
         />
       )}
     </Stack>
+    </fieldset>
   )
 }

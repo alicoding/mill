@@ -1,11 +1,16 @@
 import { test, expect } from './fixtures/server'
 
 // Workflow breakpoints end to end in the live app (docs/adr/0031, goal
-// 0020), driven through the seeded "Example: Branch to a decision"
-// workflow -- the seed IS the proof (.claude/rules/testing.md). No
-// clipboard I/O anywhere in this workflow, so no clipboard lock is
-// needed (unlike composition.spec.ts's own default choice for the same
-// reason).
+// 0020, moved onto the node card by goal 0022 -- docs/goals/
+// 0022-workflow-view-mode.md), driven through the seeded "Example:
+// Branch to a decision" workflow -- the seed IS the proof
+// (.claude/rules/testing.md). No clipboard I/O anywhere in this
+// workflow, so no clipboard lock is needed (unlike composition.spec.ts's
+// own default choice for the same reason).
+//
+// Row click opens VIEW mode now (goal 0022) -- these tests deliberately
+// stay in view mode throughout, since a breakpoint is a debug act, not
+// an authoring edit (setting one must work without ever clicking Edit).
 
 const SEED = 'Example: Branch to a decision'
 const CAPTURE_NODE = 'example-branch-capture'
@@ -18,6 +23,14 @@ function activePanel(page: import('@playwright/test').Page) {
   return page.locator('[role="tabpanel"]:not([hidden])').last()
 }
 
+function captureNode(page: import('@playwright/test').Page) {
+  return activePanel(page).locator(`[data-id="${CAPTURE_NODE}"]`)
+}
+
+function breakpointToggle(page: import('@playwright/test').Page) {
+  return captureNode(page).getByTestId('canvas-breakpoint-toggle')
+}
+
 async function openSeed(page: import('@playwright/test').Page) {
   await page.goto('/')
   await page.getByRole('link', { name: 'Workflows' }).click()
@@ -27,38 +40,48 @@ async function openSeed(page: import('@playwright/test').Page) {
   await expect(activePanel(page).locator('.react-flow__node').first()).toBeVisible()
 }
 
-test('Toggling a breakpoint round-trips and shows the distinct debug badge before any run', async ({ page }) => {
+test('Toggling a breakpoint from the node card round-trips in VIEW mode, shows the distinct debug state, and the Inspector stays read-only', async ({ page }) => {
   await openSeed(page)
 
-  await activePanel(page).locator(`[data-id="${CAPTURE_NODE}"]`).click()
-  const toggle = page.getByTestId('toggle-breakpoint')
-  await expect(toggle).toHaveText('Add breakpoint')
+  // No Edit click anywhere in this test -- the card's own dot works
+  // in view mode (docs/goals/0022: "setting a breakpoint is a debug
+  // act, not an editing act").
+  await expect(page.getByTestId('edit-workflow')).toBeVisible()
+  await expect(page.getByTestId('save-workflow')).toHaveCount(0)
+
+  const toggle = breakpointToggle(page)
+  await expect(toggle).toHaveAttribute('data-set', 'false')
 
   await toggle.click()
-  await expect(toggle).toHaveText('Remove breakpoint', { timeout: 10_000 })
+  await expect(toggle).toHaveAttribute('data-set', 'true', { timeout: 10_000 })
+
+  // Selecting the node afterward shows the SAME state on the read-only
+  // Inspector status line -- no interactive toggle there anymore (goal
+  // 0022 moved it off the Inspector entirely).
+  await captureNode(page).click()
   await expect(page.getByTestId('breakpoint-badge')).toBeVisible()
+  await expect(page.getByTestId('breakpoint-status')).toContainText('Breakpoint set')
+  await expect(page.getByTestId('toggle-breakpoint')).toHaveCount(0)
 
-  // The canvas's own nothing-hidden badge -- a DISTINCT icon/testid from
-  // the guardrail shield, never conflated with it (docs/adr/0031 item 2).
-  const debugBadge = activePanel(page).locator(`[data-id="${CAPTURE_NODE}"]`).getByTestId('canvas-debug-badge')
-  await expect(debugBadge).toBeVisible({ timeout: 10_000 })
-  await expect(activePanel(page).locator(`[data-id="${CAPTURE_NODE}"]`).getByTestId('canvas-guardrail-badge')).toHaveCount(0)
+  // The guardrail shield is suppressed while the breakpoint IS the
+  // winning verdict (docs/adr/0031: "recognition, not confirmation" --
+  // the two must never read as one concept).
+  await expect(captureNode(page).getByTestId('canvas-guardrail-badge')).toHaveCount(0)
 
-  // Toggling off removes both the Inspector badge and the canvas one --
-  // clean up so later tests/specs don't inherit a stray breakpoint on
-  // this shared seeded workflow.
+  // Toggling off (still from the card) removes both the Inspector
+  // status and the toggle's own set state -- clean up so later
+  // tests/specs don't inherit a stray breakpoint on this shared seeded
+  // workflow.
   await toggle.click()
-  await expect(toggle).toHaveText('Add breakpoint', { timeout: 10_000 })
+  await expect(toggle).toHaveAttribute('data-set', 'false', { timeout: 10_000 })
   await expect(page.getByTestId('breakpoint-badge')).toHaveCount(0)
-  await expect(debugBadge).toHaveCount(0, { timeout: 10_000 })
 })
 
 test('A breakpoint pauses a run with edit-and-resume; Resume continues it with the edited value', async ({ page }) => {
   await openSeed(page)
 
-  await activePanel(page).locator(`[data-id="${CAPTURE_NODE}"]`).click()
-  await page.getByTestId('toggle-breakpoint').click()
-  await expect(page.getByTestId('toggle-breakpoint')).toHaveText('Remove breakpoint', { timeout: 10_000 })
+  await breakpointToggle(page).click()
+  await expect(breakpointToggle(page)).toHaveAttribute('data-set', 'true', { timeout: 10_000 })
 
   // Start with a LOW amount (would naturally reach Deny) -- the point
   // of edit-and-resume is that the value can change before it's read.
@@ -81,9 +104,8 @@ test('A breakpoint pauses a run with edit-and-resume; Resume continues it with t
   await expect(approveCard).toBeVisible({ timeout: 10_000 })
 
   // Cleanup: remove the breakpoint.
-  await activePanel(page).locator(`[data-id="${CAPTURE_NODE}"]`).click()
-  await page.getByTestId('toggle-breakpoint').click()
-  await expect(page.getByTestId('toggle-breakpoint')).toHaveText('Add breakpoint', { timeout: 10_000 })
+  await breakpointToggle(page).click()
+  await expect(breakpointToggle(page)).toHaveAttribute('data-set', 'false', { timeout: 10_000 })
 })
 
 test('Step mode pauses before every node; Step advances one, Continue finishes the rest', async ({ page }) => {

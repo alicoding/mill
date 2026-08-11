@@ -159,8 +159,13 @@ test('editing an existing saved workflow: unsaved edits survive a reload, with a
 
   // Reopen it and make a real, unsaved edit -- Save always closes the
   // work tab (confirmed by composition.spec.ts's own reused-tab test),
-  // so this is a fresh editor tab over the already-saved baseline.
+  // so this is a fresh editor tab over the already-saved baseline. Row
+  // click opens VIEW mode now (docs/goals/0022); Edit switches this
+  // SAME tab into the editor before any editing happens -- hot-exit
+  // scratch only ever tracks from that switch forward (view mode
+  // itself never checks a scratch at all, see useCanvasHotExit.ts).
   await row.click()
+  await activePanel(page).getByTestId('edit-workflow').click()
   await activePanel(page).getByTestId('toggle-palette').click()
   await dragPaletteItemToCanvas(page, 'process-inject-text')
   await connectNodes(page, 'Trigger: manual', 'Process: Inject text')

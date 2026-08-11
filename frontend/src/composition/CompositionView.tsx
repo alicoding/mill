@@ -189,9 +189,14 @@ function CompositionView() {
   }
 
   const editDisabled = nodeTypes === null
-  const openEditor = (id: string) => {
+  // mode (docs/goals/0022-workflow-view-mode.md): row click (InventoryList's
+  // onOpen) opens VIEW -- read-only inspection, Run/Runs/Versions all work;
+  // the row's own Edit action (its trailing menu here, the pencil in
+  // WorkflowsTable's row) opens EDIT explicitly. Reusing an already-open
+  // tab never downgrades edit->view (see store.ts's openWorkTab).
+  const openEditor = (id: string, mode: 'view' | 'edit') => {
     if (editDisabled) return
-    openWorkTab({ kind: 'workflow-edit', workflowId: id })
+    openWorkTab({ kind: 'workflow-edit', workflowId: id, mode })
   }
 
   const workflowItems: InventoryItem[] = (workflows ?? []).map((wf) => {
@@ -247,12 +252,20 @@ function CompositionView() {
           {runningId === wf.ID ? 'Running…' : 'Run'}
         </Button>
       ),
-      // No !wf.BuiltIn guard -- every workflow, seeded or user-composed,
-      // is ordinary and fully editable/deletable from the moment it
-      // exists (docs/SPEC.md §2.2's Update note). BuiltIn only drives
-      // the informational "built-in" badge above.
-      onOpen: () => openEditor(wf.ID),
+      // Row click opens VIEW mode (docs/goals/0022) -- read-only
+      // inspection, matching ADR-0014's inspect-first grammar already
+      // used for Integrations (ConfigureRequests.tsx's onOpen ->
+      // request-view). No !wf.BuiltIn guard -- every workflow, seeded or
+      // user-composed, is ordinary and fully editable/deletable from the
+      // moment it exists (docs/SPEC.md §2.2's Update note). BuiltIn only
+      // drives the informational "built-in" badge above.
+      onOpen: () => openEditor(wf.ID, 'view'),
       menuActions: [
+        // Edit is the explicit gesture (docs/goals/0022) -- same
+        // ConfigureRequests.tsx precedent, a plain menu item rather than
+        // a dedicated pencil icon in the row-view (WorkflowsTable's own
+        // table-view row already has a pencil for the same target).
+        { label: 'Edit', onClick: () => openEditor(wf.ID, 'edit') },
         { label: 'Export', onClick: () => exportWorkflow(wf.ID, wf.Label) },
         { label: 'Delete', onClick: () => removeWorkflow(wf.ID), danger: true },
       ],
@@ -320,7 +333,7 @@ function CompositionView() {
           armedWorkflows={armedWorkflows}
           publishingId={publishingId}
           onRun={run}
-          onEdit={openEditor}
+          onEdit={(id) => openEditor(id, 'edit')}
           onExport={exportWorkflow}
           onDelete={removeWorkflow}
           onPublish={publishWorkflow}

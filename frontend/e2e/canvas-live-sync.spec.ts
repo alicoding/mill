@@ -169,6 +169,10 @@ test('dirty canvas: external MCP edit shows a banner, keeps the local edit, and 
   const row = workflowRow(page, 'E2E live sync dirty')
   await expect(row).toBeVisible()
   await row.click()
+  // Row click opens VIEW mode (docs/goals/0022) -- a "dirty canvas"
+  // requires actually editing it, which needs the Edit switch first
+  // (Description is read-only in view mode).
+  await activePanel(page).getByTestId('edit-workflow').click()
 
   // A real, unsaved local edit -- the Description field, so it doesn't
   // touch the node graph itself (isolating what this test is actually

@@ -1,6 +1,6 @@
 import type { Ref } from 'react'
 import { Button, FormControl, IconButton, Stack, Text, TextInput, Textarea } from '@primer/react'
-import { ChevronDownIcon, ChevronUpIcon } from '@primer/octicons-react'
+import { ChevronDownIcon, ChevronUpIcon, PencilIcon } from '@primer/octicons-react'
 import type { Workflow } from '../../bindings/github.com/alicoding/mill/internal/domain/composition/models'
 import { RunButton, type RunButtonHandle } from './LiveRunControls'
 import styles from './CompositionCanvas.module.css'
@@ -19,6 +19,11 @@ interface CanvasMetaHeaderProps {
   saveError: string
   runButtonRef: Ref<RunButtonHandle>
   onStartRun: (values: Record<string, string>, stepped?: boolean, payload?: string) => void
+  // docs/goals/0022-workflow-view-mode.md: Save hides and an Edit
+  // button takes its place; Label/Description become read-only
+  // (disabled, not hidden -- still worth seeing at a glance).
+  readOnly: boolean
+  onSwitchToEdit?: () => void
 }
 
 // The canvas's own label/description/Save/Run bar -- split out of
@@ -40,6 +45,8 @@ export function CanvasMetaHeader({
   saveError,
   runButtonRef,
   onStartRun,
+  readOnly,
+  onSwitchToEdit,
 }: CanvasMetaHeaderProps) {
   return (
     <div className={styles.metaHeader}>
@@ -50,6 +57,7 @@ export function CanvasMetaHeader({
           aria-label="Label"
           placeholder="My workflow"
           size="small"
+          disabled={readOnly}
           className={styles.metaTitleInput}
         />
         <IconButton
@@ -59,19 +67,26 @@ export function CanvasMetaHeader({
           onClick={onToggleDesc}
           data-testid="toggle-description"
         />
-        <Button size="small" onClick={save} disabled={saving} data-testid="save-workflow">
-          {saving ? 'Saving…' : workflow ? 'Save changes' : 'Save workflow'}
-        </Button>
+        {readOnly ? (
+          <Button size="small" leadingVisual={PencilIcon} onClick={onSwitchToEdit} data-testid="edit-workflow">
+            Edit
+          </Button>
+        ) : (
+          <Button size="small" onClick={save} disabled={saving} data-testid="save-workflow">
+            {saving ? 'Saving…' : workflow ? 'Save changes' : 'Save workflow'}
+          </Button>
+        )}
         {/* Run is the canvas's one primary action once a workflow is
             saved (docs/SPEC.md §3.8) -- Save above is deliberately
-            demoted off variant="primary" so the two don't compete. */}
+            demoted off variant="primary" so the two don't compete.
+            Works in both view and edit mode (docs/goals/0022). */}
         <RunButton ref={runButtonRef} workflow={workflow} onStartRun={onStartRun} />
       </Stack>
       {saveError && <Text as="p" size="small" className={runbookStyles.error}>{saveError}</Text>}
       {descOpen && (
         <FormControl className={styles.metaDescription}>
           <FormControl.Label>Description</FormControl.Label>
-          <Textarea value={draftDescription} onChange={(e) => onDescriptionChange(e.target.value)} rows={2} block />
+          <Textarea value={draftDescription} onChange={(e) => onDescriptionChange(e.target.value)} rows={2} block disabled={readOnly} />
         </FormControl>
       )}
     </div>

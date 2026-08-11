@@ -185,7 +185,9 @@ export function CommandPalette() {
         description: 'Open in editor',
         searchText: `open editor ${wf.Label}`.toLowerCase(),
         leadingVisual: PencilIcon,
-        run: () => openWorkTab({ kind: 'workflow-edit', workflowId: wf.ID }),
+        // "Open in editor" is an explicit edit gesture (docs/goals/0022),
+        // matching the PencilIcon/description above.
+        run: () => openWorkTab({ kind: 'workflow-edit', workflowId: wf.ID, mode: 'edit' }),
       })
     }
 
