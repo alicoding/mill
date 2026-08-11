@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import {Events, WML} from "@wailsio/runtime";
 import {CounterLabel, IconButton, Label, NavList, PageLayout, Text, useTheme} from "@primer/react";
 import {DotFillIcon, GearIcon, SidebarCollapseIcon, SidebarExpandIcon} from "@primer/octicons-react";
+import HomeView from "../views/HomeView";
 import ActivityView from "../views/ActivityView";
 import ReviewView from "../views/ReviewView";
 import CompositionView from "../composition/CompositionView";
@@ -35,6 +36,7 @@ const isDevBuild = import.meta.env.DEV;
 // back to the page under the tabs" affordance.
 function pageLabelFor(view: View, capabilities: { ID: string; Label: string; NavLabel: string }[]): string {
   switch (view.kind) {
+    case 'home': return 'Home'
     case 'composition': return 'Workflows'
     case 'configure': return 'Configure'
     case 'activity': return 'Activity'
@@ -439,6 +441,8 @@ function App() {
               item a tab beside it, surviving sidebar navigation. */}
           <MCPWriteApprovals />
           <WorkTabShell pageLabel={pageLabelFor(view, capabilities)}>
+            {view.kind === 'home' && <HomeView/>}
+
             {view.kind === 'activity' && <ActivityView/>}
             {view.kind === 'review' && <ReviewView/>}
 

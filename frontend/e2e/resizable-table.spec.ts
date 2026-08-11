@@ -65,6 +65,7 @@ test('Table columns are drag-resizable and long cells truncate with a hover titl
 
 test('Tables fit their container by default — no horizontal overflow from long columns', async ({ page }) => {
   await page.goto('/')
+  await page.getByRole('link', { name: 'Workflows' }).click()
   // The Workflows table's Description column carries long seeded text;
   // width: 'growCollapse' + TruncatedCell must keep the grid inside
   // the container instead of forcing a horizontal scroll (the

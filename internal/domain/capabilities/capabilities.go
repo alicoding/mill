@@ -22,6 +22,7 @@ const (
 type ViewKind string
 
 const (
+	ViewHome        ViewKind = "home"
 	ViewActivity    ViewKind = "activity"
 	ViewReview      ViewKind = "review"
 	ViewComposition ViewKind = "composition"
@@ -53,16 +54,23 @@ type Capability struct {
 // exercise, which is the whole point of making this real Go data instead
 // of inferred text.
 // Order here is the sidebar's own order (App.tsx renders capabilities in
-// this exact array order, no separate sort) -- Composition and Configure
-// lead (the two real, working destinations -- Composition is already the
-// app's default landing view, per §2.2's Update note), Activity follows
-// right after (a monitoring surface, not a primary destination -- the
-// same "present but not top-billed" position n8n's own Executions
-// occupies relative to Workflows/Credentials), then the remaining
-// not-yet-built placeholders. See SPEC.md §3.5's "Sidebar restructuring"
-// bullet for the fuller reasoning.
+// this exact array order, no separate sort) -- Home now leads (docs/
+// goals/0014-home-dashboard.md, docs/SPEC.md §3.2.3: "the reason to open
+// Mill," and now the app's default landing view -- see store.ts), with
+// Composition and Configure right after it (the two other real, working
+// destinations -- Composition was the previous default landing view,
+// §2.2's Update note), Activity follows right after (a monitoring
+// surface, not a primary destination -- the same "present but not
+// top-billed" position n8n's own Executions occupies relative to
+// Workflows/Credentials), then the remaining not-yet-built placeholders.
+// See SPEC.md §3.5's "Sidebar restructuring" bullet for the fuller
+// reasoning.
 func List() []Capability {
 	return []Capability{
+		{
+			ID: "capability-home", Label: "Home", SpecSection: "3.2.3",
+			Status: StatusOpen, View: ViewHome,
+		},
 		{
 			ID: "capability-composition", Label: "Capability composition", NavLabel: "Workflows", SpecSection: "3",
 			Status: StatusOpen, View: ViewComposition,
