@@ -159,6 +159,16 @@ type ExecutionService struct {
 	// rather than a named field since callers never reach through it
 	// directly, only via CancelRun/registerProcess.
 	cancelState
+	// minutesSavedLookup resolves a workflow's current "minutes saved
+	// per run" estimate -- SettingsService's own persisted preference
+	// (docs/SPEC.md §3.7), wired in from main.go via
+	// SetMinutesSavedLookup, same injected-function-seam shape as
+	// composition.SetHTTPRequestLookup (.claude/rules/backend.md: data
+	// another layer owns, not a direct cross-service import). Nil until
+	// wired (e.g. a standalone Go test constructing ExecutionService
+	// directly) -- minutesSavedFor (executionservice_home.go) falls back
+	// to defaultMinutesSavedPerRun in that case.
+	minutesSavedLookup func(workflowID string) int
 }
 
 // NewExecutionService builds and launches the durable-execution runtime

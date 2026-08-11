@@ -26,6 +26,9 @@ test('the sidebar sits flush against the window left edge, not inset by outer pa
 
 test('a wide-variant list page (Workflows) is not capped to the old 1400px width on a wide window', async ({ page }) => {
   await page.goto('/')
+  // Home, not Workflows, is the default landing view (docs/goals/0014)
+  // -- navigate there explicitly rather than relying on the default.
+  await page.getByRole('link', { name: 'Workflows' }).click()
   const container = page.getByTestId('composition-view')
   await expect(container).toBeVisible()
   const box = await container.boundingBox()
