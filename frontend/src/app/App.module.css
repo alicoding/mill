@@ -81,8 +81,12 @@
     flex: 0 0 auto;
     display: flex;
     align-items: center;
+    /* Expanded: wordmark far left, collapse control far right (owner:
+       aligned with the nav rows' status-dot column). Collapsed: the
+       single rail-logo button still centers via its own margin:auto. */
+    justify-content: space-between;
     gap: var(--base-size-8);
-    padding: var(--base-size-4) var(--base-size-4) 0;
+    padding: var(--base-size-4) var(--base-size-8) 0;
 }
 
 /* Expanded top row: logo + wordmark far left (the identity anchor
