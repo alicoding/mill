@@ -183,6 +183,7 @@ test('Inventory rows stay single-line: long labels truncate, never wrap into tal
   // include deliberately long labels ("Example: Approval-gated HTTP
   // call"), so uniform row height against them IS the proof.
   await page.goto('/')
+  await page.getByRole('link', { name: 'Workflows' }).click()
   const rows = page.locator('[data-testid="inventory-row"][data-entity="workflow"]')
   await expect(rows.first()).toBeVisible()
   const heights = await rows.evaluateAll((els) => els.map((el) => el.getBoundingClientRect().height))

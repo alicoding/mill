@@ -17,11 +17,18 @@ export {
   RunKind,
 } from '../../bindings/github.com/alicoding/mill/internal/services/executionsvc'
 export type {
+  AmbientMetric,
+  DailyBucket,
+  ErrorRateMetric,
   GuardrailPendingChanged,
+  HomeMetrics,
   PendingApproval,
   RunDetail,
   RunStep,
   RunSummary,
+  TimeSavedMetric,
+  WorkflowTimeSaved,
+  WorkflowUsage,
 } from '../../bindings/github.com/alicoding/mill/internal/services/executionsvc'
 export { GuardrailService } from '../../bindings/github.com/alicoding/mill/internal/services/guardrailsvc'
 export type { RuleTestResult } from '../../bindings/github.com/alicoding/mill/internal/services/guardrailsvc'
@@ -31,5 +38,9 @@ export type {
   BuildInfo,
   UpdateCheckResult,
 } from '../../bindings/github.com/alicoding/mill/internal/services/settingssvc'
+// GetWorkflowMinutesSaved/ListWorkflowMinutesSaved/SetWorkflowMinutesSaved
+// (docs/goals/0014-home-dashboard.md) are plain SettingsService methods,
+// already covered by the `export { SettingsService }` line above -- no
+// separate export needed, same as every other RPC on that service.
 export { TriggerService } from '../../bindings/github.com/alicoding/mill/internal/services/triggersvc'
 export type { HotkeyActivity } from '../../bindings/github.com/alicoding/mill/internal/services/triggersvc'

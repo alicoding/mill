@@ -48,6 +48,19 @@ export function GetRun(runID: string): $CancellablePromise<$models.RunDetail> {
 }
 
 /**
+ * HomeMetrics computes docs/goals/0014's full Home payload for every
+ * run created in [fromISO, toISO) (RFC3339 instants -- the frontend
+ * computes the boundary for its "last 7/30 days" selector directly, so
+ * Go only ever parses an exact instant, never a fuzzy date string).
+ * includeTest widens ErrorRate/Series to also count "test" runs -- see
+ * each returned field's own doc comment for which of the five numbers
+ * that flag actually affects.
+ */
+export function HomeMetrics(fromISO: string, toISO: string, includeTest: boolean): $CancellablePromise<$models.HomeMetrics> {
+    return $Call.ByID(583988216, fromISO, toISO, includeTest);
+}
+
+/**
  * ListRuns returns recent runs across every workflow, most recent
  * first -- the data behind Activity's cross-workflow "did anything run"
  * feed and any other surface needing every run regardless of which

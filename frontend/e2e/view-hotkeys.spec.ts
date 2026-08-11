@@ -9,14 +9,22 @@ import { test, expect } from './fixtures/server'
 // longer rendered in-app), freeing up the slot; a durable run's own
 // history/redrive already lives on that workflow's own Runs tab
 // (docs/SPEC.md §7's Update), so there's no fifth top-level destination
-// to bind a hotkey to.
+// to bind a hotkey to. Cmd+1 through Cmd+4 still map to Workflows/
+// Configure/Activity/Review exactly as before (commands.ts unchanged) --
+// only the app's DEFAULT LANDING view moved, from Workflows to Home
+// (docs/goals/0014-home-dashboard.md), so every test below that used to
+// assume "start on Workflows" now jumps there via its own Cmd+1 first.
 
 test('Cmd+1 through Cmd+4 jump to their view from anywhere else in the app', async ({ page }) => {
   await page.goto('/')
 
-  // Start on Composition (the default landing view) and confirm each
-  // hotkey lands somewhere else first, so a false positive (already
-  // being on the target view) can't hide a broken hotkey.
+  // Home is the default landing view now -- confirm it, then jump to
+  // Workflows via its own hotkey before exercising Cmd+2 through Cmd+4,
+  // so a false positive (already being on the target view) can't hide a
+  // broken hotkey.
+  await expect(page.getByRole('heading', { name: 'Home', level: 1 })).toBeVisible()
+
+  await page.keyboard.press('Meta+1')
   await expect(page.getByRole('heading', { name: 'Workflows', level: 1 })).toBeVisible()
 
   await page.keyboard.press('Meta+2')
@@ -34,7 +42,7 @@ test('Cmd+1 through Cmd+4 jump to their view from anywhere else in the app', asy
 
 test('Cmd+, opens Settings — macOS\'s universal preferences shortcut', async ({ page }) => {
   await page.goto('/')
-  await expect(page.getByRole('heading', { name: 'Workflows', level: 1 })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Home', level: 1 })).toBeVisible()
 
   await page.keyboard.press('Meta+,')
   await expect(page.getByRole('heading', { name: 'Settings', level: 1 })).toBeVisible()
@@ -42,6 +50,12 @@ test('Cmd+, opens Settings — macOS\'s universal preferences shortcut', async (
 
 test('A view hotkey works while a text field has focus, matching browser tab-switching precedent', async ({ page }) => {
   await page.goto('/')
+  // Wait for the app to actually mount (and its keydown listener with
+  // it) before pressing anything -- a keypress fired immediately after
+  // goto(), with no intervening wait, races the page's own hydration.
+  await expect(page.getByRole('heading', { name: 'Home', level: 1 })).toBeVisible()
+  await page.keyboard.press('Meta+1')
+  await expect(page.getByRole('heading', { name: 'Workflows', level: 1 })).toBeVisible()
   await page.getByTestId('new-workflow').click()
   await page.getByLabel('Label').click()
 
@@ -51,9 +65,9 @@ test('A view hotkey works while a text field has focus, matching browser tab-swi
 
 test('Plain digit keys without Cmd do not navigate', async ({ page }) => {
   await page.goto('/')
-  await expect(page.getByRole('heading', { name: 'Workflows', level: 1 })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Home', level: 1 })).toBeVisible()
 
   await page.keyboard.press('3')
-  await expect(page.getByRole('heading', { name: 'Workflows', level: 1 })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Home', level: 1 })).toBeVisible()
   await expect(page.getByRole('heading', { name: 'Activity', level: 1 })).toHaveCount(0)
 })

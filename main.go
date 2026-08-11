@@ -145,6 +145,13 @@ func main() {
 	// already checks triggerService.ClaimedCombos() directly; this wires
 	// the other direction.
 	triggerService.SetReservedCombo(settingsService.ReservedCombo)
+	// docs/goals/0014-home-dashboard.md: Home's TimeSaved metric reads
+	// each workflow's user-editable "minutes saved per run" estimate,
+	// which SettingsService owns (its own persisted preference, §3.7) --
+	// wired in only now since ExecutionService is constructed before
+	// SettingsService exists, same late-bound-setter shape as
+	// SetReservedCombo just above.
+	executionService.SetMinutesSavedLookup(settingsService.GetWorkflowMinutesSaved)
 
 	// docs/SPEC.md §11 (task #12): Mill as MCP server, exposing its own
 	// workflows/Configure data as read-only Resources. MILL_MCP_ADDR

@@ -1,4 +1,5 @@
 import {
+  HomeIcon,
   PlugIcon,
   PulseIcon,
   ShieldCheckIcon,
@@ -14,6 +15,7 @@ import {
 // retired (docs/SPEC.md §2.2's Update note) -- capability-composition is
 // its successor and already has its own icon below.
 export const CAPABILITY_ICON: Record<string, Icon> = {
+  'capability-home': HomeIcon,
   'activity-log': PulseIcon,
   'capability-composition': WorkflowIcon,
   'capability-configure': PlugIcon,

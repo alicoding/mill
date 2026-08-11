@@ -116,6 +116,16 @@ export function GetSummonHotkey(): $CancellablePromise<string> {
 }
 
 /**
+ * GetWorkflowMinutesSaved returns workflowID's current minutes-saved
+ * estimate: its explicit override if SetWorkflowMinutesSaved was ever
+ * called for it, else defaultWorkflowMinutesSaved. This is the function
+ * value ExecutionService.SetMinutesSavedLookup wires in (main.go).
+ */
+export function GetWorkflowMinutesSaved(workflowID: string): $CancellablePromise<number> {
+    return $Call.ByID(1967529281, workflowID);
+}
+
+/**
  * IsIsolatedData reports whether this instance is running against a
  * non-default settings path (MILL_SETTINGS_PATH was set) -- see
  * NewSettingsService's own doc comment for the full reasoning.
@@ -134,6 +144,17 @@ export function IsIsolatedData(): $CancellablePromise<boolean> {
  */
 export function ListKeybindings(): $CancellablePromise<{ [_ in string]?: triggersvc$0.PersistedHotkey } | null> {
     return $Call.ByID(813958881);
+}
+
+/**
+ * ListWorkflowMinutesSaved returns every OVERRIDE only -- a workflow
+ * with no entry is still on the default. Home fetches this once per
+ * mount so its inline per-workflow edit control can show "still
+ * default" vs. an explicitly-set value, the same distinction
+ * ListKeybindings already draws for command bindings.
+ */
+export function ListWorkflowMinutesSaved(): $CancellablePromise<{ [_ in string]?: number } | null> {
+    return $Call.ByID(527074349);
 }
 
 /**
@@ -214,6 +235,16 @@ export function SetMCPWriteApprovalRequired(required: boolean): $CancellableProm
 
 export function SetMCPWriteEnabled(enabled: boolean): $CancellablePromise<void> {
     return $Call.ByID(213255560, enabled);
+}
+
+/**
+ * SetWorkflowMinutesSaved overrides workflowID's estimate. minutes must
+ * be positive -- Home's own formula (RunCount × MinutesPerRun) always
+ * multiplies by this value, and crediting zero or negative time saved
+ * is meaningless, never a real user intent.
+ */
+export function SetWorkflowMinutesSaved(workflowID: string, minutes: number): $CancellablePromise<void> {
+    return $Call.ByID(2551027173, workflowID, minutes);
 }
 
 /**

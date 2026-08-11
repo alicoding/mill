@@ -48,6 +48,7 @@ export interface ActivityEntry {
 // carries which capability it's standing in for, so PlaceholderView never
 // has to guess or fall back to a default.
 export type View =
+  | { kind: 'home' }
   | { kind: 'activity' }
   | { kind: 'review' }
   | { kind: 'composition' }
@@ -60,6 +61,8 @@ export type View =
 // consistently instead of re-deriving this per call site.
 export function viewFor(capability: Capability): View {
   switch (capability.View) {
+    case ViewKind.ViewHome:
+      return { kind: 'home' }
     case ViewKind.ViewActivity:
       return { kind: 'activity' }
     case ViewKind.ViewReview:
@@ -326,12 +329,14 @@ export const useAppStore = create<AppState>()(
       requests: null,
       activity: [],
       capabilities: [],
-      // Composition (the Workflows list) is the new landing page -- the
-      // direct successor to what Runbook used to be (docs/SPEC.md
-      // §2.2's Update note), not Activity, which is a secondary "what
-      // ran" view. Only the *initial* default before anything was ever
-      // persisted -- see the `persist` config below.
-      view: { kind: 'composition' },
+      // Home is the landing page (docs/goals/0014-home-dashboard.md,
+      // docs/SPEC.md §3.2.3: "the reason to open Mill" -- value
+      // accounting, usage mirror, what ran while the window was
+      // closed), superseding Composition/Workflows as the default
+      // (which held that role since §2.2's Update note, itself the
+      // direct successor to Runbook). Only the *initial* default before
+      // anything was ever persisted -- see the `persist` config below.
+      view: { kind: 'home' },
       setWorkflows: (workflows) => set({ workflows }),
       setNodeTypes: (nodeTypes) => set({ nodeTypes }),
       setRequests: (requests) => set({ requests }),

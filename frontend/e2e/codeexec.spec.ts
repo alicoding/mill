@@ -12,6 +12,7 @@ const SEED = 'Example: Run copied code'
 
 test('Nothing hidden: the code-execution step carries a guardrail ask badge before any run', async ({ page }) => {
   await page.goto('/')
+  await page.getByRole('link', { name: 'Workflows' }).click()
   const row = page.locator('[data-testid="inventory-row"][data-entity="workflow"]').filter({ has: page.getByText(SEED, { exact: true }) })
   await row.click()
 
@@ -26,6 +27,7 @@ test('Run copied code: approving the code-execution step runs the real command a
   // real-pasteboard e2e test (.claude/rules/testing.md).
   await withClipboardLock(async () => {
     await page.goto('/')
+    await page.getByRole('link', { name: 'Workflows' }).click()
     const row = page.locator('[data-testid="inventory-row"][data-entity="workflow"]').filter({ has: page.getByText(SEED, { exact: true }) })
     await expect(row).toBeVisible()
     // Exact match: the seed's own label contains the word "Run"

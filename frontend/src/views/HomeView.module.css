@@ -1,0 +1,38 @@
+/* Home-specific layout only -- card chrome itself reuses
+   shared/ListCard.module.css's already-shared .card class (the same
+   Primer-token-built card every other view already uses), per
+   docs/SPEC.md's "one module imported by every view that shares this
+   visual language" precedent. */
+
+.header {
+    margin-bottom: var(--base-size-16);
+    flex-wrap: wrap;
+    gap: var(--base-size-12);
+}
+
+.kpiRow {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: var(--base-size-16);
+    margin-bottom: var(--base-size-24);
+}
+
+.kpiCard {
+    display: flex;
+    flex-direction: column;
+    gap: var(--base-size-4);
+}
+
+.kpiValue {
+    font-size: var(--text-title-size-large);
+    font-weight: var(--base-text-weight-semibold);
+    margin: 0;
+}
+
+.section {
+    margin-bottom: var(--base-size-24);
+}
+
+.section :global(h2) {
+    margin-bottom: var(--base-size-4);
+}

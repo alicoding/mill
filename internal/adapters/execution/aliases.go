@@ -194,4 +194,14 @@ var (
 	// don't) have a parent -- the other half of docs/adr/0010's
 	// child-workflow tracking.
 	WithFilterHasParent = dbos.WithFilterHasParent
+
+	// WithFilterCreatedAfter/WithFilterCreatedBefore scope ListWorkflows
+	// to a real created-timestamp range -- Home's own metrics query
+	// (docs/goals/0014-home-dashboard.md, executionservice_home.go)
+	// needs "every run in this date range," which DBOS already supports
+	// natively (confirmed against dbos.ListWorkflowsInput's own
+	// StartTime/EndTime fields), so this filters server-side rather than
+	// fetching a fixed page and hoping it covers the range.
+	WithFilterCreatedAfter  = dbos.WithFilterCreatedAfter
+	WithFilterCreatedBefore = dbos.WithFilterCreatedBefore
 )
