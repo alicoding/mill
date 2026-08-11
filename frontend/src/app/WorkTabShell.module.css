@@ -1,18 +1,21 @@
-/* The app-wide work-tab strip row (goal 0018): the scrolling TabList
-   plus a pinned overflow/management ⌄ menu beside it, so many open tabs
-   stay one tidy row instead of wrapping onto a second line. */
-.tabStrip {
-    display: flex;
-    align-items: stretch;
-}
+/* The app-wide work-tab strip (goal 0018, and the titlebar-band move):
+   the scrolling TabList plus a pinned overflow/management ⌄ menu beside
+   it, so many open tabs stay one tidy row instead of wrapping onto a
+   second line. Both are now portaled directly into App.tsx's titlebar
+   band (App.module.css's .titlebar), which already supplies the flex
+   row + fixed height + background + bottom border -- no wrapping
+   .tabStrip element of its own needed here anymore. */
 
-/* Pinned beside the (scrolling) TabList -- never scrolls away. Its own
-   matching bottom border continues the tab strip's underline under the
-   button so the line is unbroken. */
+/* Pinned beside the (scrolling) TabList -- never scrolls away. No
+   border of its own: the titlebar band's own bottom border already
+   runs underneath it. */
 .overflow {
     flex: 0 0 auto;
     display: flex;
     align-items: center;
     padding: 0 var(--base-size-4);
-    border-bottom: 1px solid var(--borderColor-default);
+    /* Interactive (IconButton/ActionMenu) -- opt out of the titlebar
+       band's default draggable surface, same reasoning as Tabs.module.css's
+       .tab/.tabClose. */
+    --wails-draggable: no-drag;
 }

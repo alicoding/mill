@@ -47,9 +47,10 @@ function pageLabelFor(view: View, capabilities: { ID: string; Label: string; Nav
 // interface has no such global). The desktop window uses
 // MacTitleBarHiddenInset (main.go) -- content extends under the hidden
 // titlebar and the traffic lights float over the top-left -- so the
-// app shell must reserve that strip itself; env(safe-area-inset-*) is
-// always 0 on desktop and cannot cover it (real regression caught
-// live after the padding cleanup relied on it).
+// titlebar band below must reserve that strip itself with left inset;
+// env(safe-area-inset-*) is always 0 on desktop and cannot cover it
+// (real regression caught live after the old padding-based approach
+// relied on it).
 const IS_NATIVE_WEBVIEW = typeof window !== "undefined" && "_wails" in window;
 
 function App() {
@@ -73,6 +74,15 @@ function App() {
   // ribbon only fires for a live `vite serve`, never for any `go build`
   // output, dev or not).
   const [buildInfo, setBuildInfo] = useState<BuildInfo | null>(null);
+  // The titlebar band's own DOM node (Chrome-style tabs-in-titlebar,
+  // owner-requested), captured via a callback ref on the band div
+  // rendered below. WorkTabShell portals its TabList/overflow markup
+  // into it -- a plain DOM node, not a ref object, since createPortal
+  // needs the actual element and this crosses a component boundary.
+  // null on the very first render (the callback ref fires during
+  // commit, one tick after); WorkTabShell simply skips the portal
+  // until it's set, settling before anything can observe it.
+  const [titlebarSlot, setTitlebarSlot] = useState<HTMLDivElement | null>(null);
   const workflows = useAppStore((s) => s.workflows);
   const pushActivity = useAppStore((s) => s.pushActivity);
   const setCapabilities = useAppStore((s) => s.setCapabilities);
@@ -296,7 +306,21 @@ function App() {
   }, []);
 
   return (
-    <div className={`app-shell${IS_NATIVE_WEBVIEW ? ' app-shell--native-titlebar' : ''}`}>
+    <div className="app-shell">
+      {/* The titlebar band (Chrome-style tabs-in-titlebar, owner-
+          requested: "Chrome has the tab system at the very top -- we
+          should adopt that pattern"). A real, always-present chrome
+          element at the very top of .app-shell, above the PageLayout
+          row -- not padding reserving empty space the way the old
+          .app-shell--native-titlebar rule did. WorkTabShell (rendered
+          below, inside PageLayout.Content) portals its TabList +
+          overflow menu into this node; empty band space stays the
+          native window's drag handle (--wails-draggable:drag, App.module.css). */}
+      <div
+        ref={setTitlebarSlot}
+        className={`${styles.titlebar}${IS_NATIVE_WEBVIEW ? ` ${styles.titlebarNative}` : ''}`}
+        data-testid="titlebar-tabs"
+      />
       {/* Build-identity badge -- one glance answers "which build is
           this, and is it live." Extracted to BuildIdentityBadge.tsx
           (goal 0019); its own doc comment carries the full reasoning. */}
@@ -409,7 +433,7 @@ function App() {
               current section page is the first tab, every open work
               item a tab beside it, surviving sidebar navigation. */}
           <MCPWriteApprovals />
-          <WorkTabShell pageLabel={pageLabelFor(view, capabilities)}>
+          <WorkTabShell pageLabel={pageLabelFor(view, capabilities)} titlebarSlot={titlebarSlot}>
             {view.kind === 'home' && <HomeView/>}
 
             {view.kind === 'activity' && <ActivityView/>}

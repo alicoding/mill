@@ -1,3 +1,49 @@
+/* ----- Titlebar band (Chrome-style tabs-in-titlebar) ------------------------ */
+/* Owner-requested: "Chrome has the tab system at the very top -- we
+   should adopt that pattern." A real, fixed-height chrome element at
+   the very top of .app-shell (App.tsx, above the PageLayout row), not
+   padding reserving empty space the way the old
+   .app-shell--native-titlebar rule did. WorkTabShell portals its
+   TabList + overflow menu into this element (App.tsx's titlebarSlot),
+   so the actual tab markup lives in shared/Tabs.module.css /
+   WorkTabShell.module.css -- this file only owns the band's own chrome
+   (size, background, border, the native traffic-light inset).
+
+   Same bgColor-inset "recessed panel" token the sidebar already uses
+   (.sidebar > :first-child above/below) -- the band and the sidebar
+   read as one continuous L of chrome, exactly the Chrome/Slack/Notion
+   hiddenInset convention, rather than a title strip that looks like a
+   different surface floating over the sidebar.
+
+   --wails-draggable:drag makes the band's own empty flex space (after
+   the last tab, or wherever the portaled TabList doesn't cover) drag
+   the native window -- inherited by default from body (index.css) but
+   set explicitly here since this element IS the titlebar now, the same
+   "be explicit at the element that matters" convention every other
+   --wails-draggable rule in this file already follows. Individual tab
+   buttons/close controls/the overflow menu opt back out to no-drag
+   (Tabs.module.css, WorkTabShell.module.css) so clicking them still
+   works. Harmless no-op in server mode (no Wails runtime listening). */
+.titlebar {
+    flex: 0 0 auto;
+    height: 38px;
+    display: flex;
+    align-items: stretch;
+    background: var(--bgColor-inset);
+    border-bottom: 1px solid var(--borderColor-default);
+    --wails-draggable: drag;
+}
+
+/* Native desktop only (App.tsx adds this class inside the Wails
+   webview): the window uses MacTitleBarHiddenInset (main.go), so the
+   macOS traffic lights float over the top-left of the band -- reserve
+   that width so the pinned page tab doesn't render underneath them.
+   ~80px matches the standard hidden-inset traffic-light reservation
+   (Chrome/Slack/Notion's own convention for this exact window style). */
+.titlebarNative {
+    padding-left: 80px;
+}
+
 /* ----- Sidebar -------------------------------------------------------------- */
 /* className on PageLayout.Sidebar does NOT land on the actual sized element
    -- checked directly against PageLayout.js's compiled source, not assumed:
@@ -37,23 +83,6 @@
    verified visually, not just asserted. */
 .sidebarCollapsed > :first-child {
     width: 52px;
-}
-/* Native-titlebar band fix (owner-reported: the 38px strip
-   .app-shell--native-titlebar reserves above the PageLayout row took
-   the shell's default background — a white band over the grey sidebar
-   that read as broken UI). The hiddenInset convention real apps follow
-   (Slack/Notion-style) is the SIDEBAR surface extending to the window
-   top, traffic lights floating over it. Done here by pulling the
-   already-overridden sidebar panel up into the band (negative margin +
-   compensating height/padding) rather than moving the reservation into
-   both columns — the content side's .view-pane is the scroll container,
-   where a padding-top would let scrolled content slide up under the
-   lights. Content side stays shell-background (white-on-white,
-   invisible seam), which is exactly how it already rendered. */
-:global(.app-shell--native-titlebar) .sidebar > :first-child {
-    margin-top: -38px;
-    height: calc(100% + 38px);
-    padding-top: 38px;
 }
 .sidebarHeader {
     flex: 0 0 auto;

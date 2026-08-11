@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import type { ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 import { Tabs } from '@primer/react/experimental'
 import { ActionList, ActionMenu, Banner, IconButton } from '@primer/react'
 import { ChevronDownIcon } from '@primer/octicons-react'
@@ -21,13 +22,25 @@ import styles from './WorkTabShell.module.css'
 // (children); every open work item -- a workflow editor, an
 // integration view/edit -- is a tab beside it, surviving section
 // switches. Every panel stays mounted-hidden (shared/Tabs' own
-// semantics), so canvas edits survive navigating anywhere. The strip
-// row itself only renders once something is open -- no chrome tax on
-// pages with nothing open.
+// semantics), so canvas edits survive navigating anywhere.
+//
+// Chrome-style tabs-in-titlebar (owner-requested, "Chrome has the tab
+// system at the very top"): the strip itself now RENDERS inside the
+// titlebar band App.tsx owns at the very top of .app-shell, above the
+// PageLayout row -- not inside PageLayout.Content where it used to
+// live. `<Tabs>` is plain React context (@primer/react/experimental's
+// TabsContext -- confirmed directly against its compiled source, no
+// DOM-adjacency requirement between TabList/TabPanel), so the strip's
+// markup is portaled into `titlebarSlot` (a DOM node App.tsx hands
+// down, ref'd from the band it renders) while the panels stay in
+// normal flow here. The band always exists now -- unlike the old
+// workTabs.length>0 gate, which hid the whole strip (page tab
+// included) when nothing was open; the titlebar always shows at least
+// the page tab, since it IS the titlebar, not optional chrome.
 
 const PAGE_TAB = '__page__'
 
-export function WorkTabShell({ pageLabel, children }: { pageLabel: string; children: ReactNode }) {
+export function WorkTabShell({ pageLabel, titlebarSlot, children }: { pageLabel: string; titlebarSlot: HTMLDivElement | null; children: ReactNode }) {
   const workTabs = useAppStore((s) => s.workTabs)
   const activeWorkTabKey = useAppStore((s) => s.activeWorkTabKey)
   const activateWorkTab = useAppStore((s) => s.activateWorkTab)
@@ -139,73 +152,80 @@ export function WorkTabShell({ pageLabel, children }: { pageLabel: string; child
 
   const isCanvasTab = (tab: WorkTab) => tab.kind === 'workflow-edit' || tab.kind === 'workflow-new'
 
-  return (
-    <Tabs value={activeWorkTabKey ?? PAGE_TAB} onValueChange={({ value }) => activateWorkTab(value === PAGE_TAB ? null : value)}>
-      {workTabs.length > 0 && (
-        <div className={styles.tabStrip}>
-          <TabList aria-label="Open work">
-            <TabItem value={PAGE_TAB}>{pageLabel}</TabItem>
-            {workTabs.map((t) => (
-              <TabItem key={t.key} value={t.key} kicker={tabKindLabel(t)} onClose={() => closeAndClearScratch(t.key)}>
-                {tabLabel(t, workflowLabel, requestLabel)}
-                {/* Hot-exit dirty dot (docs/goals/0012) -- this tab's
-                    canvas currently differs from what's saved. */}
-                {workTabDirty[t.key] && (
-                  <span className={editorStyles.dirtyDot} aria-label="Unsaved changes" data-testid="dirty-indicator">
-                    {' '}•
-                  </span>
-                )}
-              </TabItem>
-            ))}
-          </TabList>
-          {/* Overflow + management menu (goal 0018): pinned beside the
-              scrolling TabList so many open tabs stay ONE row -- jump to
-              any open tab by name (reaches ones scrolled off), and close
-              others / close all in one action. Shown once there are 2+
-              work tabs, where managing them actually matters. */}
-          {workTabs.length >= 2 && (
-            <div className={styles.overflow}>
-              <ActionMenu>
-                <ActionMenu.Anchor>
-                  <IconButton
-                    icon={ChevronDownIcon}
-                    aria-label="All open tabs"
-                    size="small"
-                    variant="invisible"
-                    data-testid="work-tab-overflow"
-                  />
-                </ActionMenu.Anchor>
-                <ActionMenu.Overlay>
-                  <ActionList>
-                    <ActionList.Group>
-                      <ActionList.GroupHeading>Open tabs</ActionList.GroupHeading>
-                      {workTabs.map((t) => (
-                        <ActionList.Item
-                          key={t.key}
-                          selected={t.key === activeWorkTabKey}
-                          onSelect={() => activateWorkTab(t.key)}
-                        >
-                          {tabLabel(t, workflowLabel, requestLabel)}
-                        </ActionList.Item>
-                      ))}
-                    </ActionList.Group>
-                    <ActionList.Divider />
+  // The strip's actual markup -- always includes the pinned page tab
+  // now (no more workTabs.length>0 gate; the band it portals into IS
+  // the titlebar). Portaled into titlebarSlot rather than rendered in
+  // place, since the titlebar band lives above PageLayout in App.tsx,
+  // not inside PageLayout.Content where this component itself renders.
+  const stripContent = (
+    <>
+      <TabList aria-label="Open work">
+        <TabItem value={PAGE_TAB}>{pageLabel}</TabItem>
+        {workTabs.map((t) => (
+          <TabItem key={t.key} value={t.key} kicker={tabKindLabel(t)} onClose={() => closeAndClearScratch(t.key)}>
+            {tabLabel(t, workflowLabel, requestLabel)}
+            {/* Hot-exit dirty dot (docs/goals/0012) -- this tab's
+                canvas currently differs from what's saved. */}
+            {workTabDirty[t.key] && (
+              <span className={editorStyles.dirtyDot} aria-label="Unsaved changes" data-testid="dirty-indicator">
+                {' '}•
+              </span>
+            )}
+          </TabItem>
+        ))}
+      </TabList>
+      {/* Overflow + management menu (goal 0018): pinned beside the
+          scrolling TabList so many open tabs stay ONE row -- jump to
+          any open tab by name (reaches ones scrolled off), and close
+          others / close all in one action. Shown once there are 2+
+          work tabs, where managing them actually matters. */}
+      {workTabs.length >= 2 && (
+        <div className={styles.overflow}>
+          <ActionMenu>
+            <ActionMenu.Anchor>
+              <IconButton
+                icon={ChevronDownIcon}
+                aria-label="All open tabs"
+                size="small"
+                variant="invisible"
+                data-testid="work-tab-overflow"
+              />
+            </ActionMenu.Anchor>
+            <ActionMenu.Overlay>
+              <ActionList>
+                <ActionList.Group>
+                  <ActionList.GroupHeading>Open tabs</ActionList.GroupHeading>
+                  {workTabs.map((t) => (
                     <ActionList.Item
-                      disabled={activeWorkTabKey === null}
-                      onSelect={() => { if (activeWorkTabKey) closeOtherTabs(activeWorkTabKey) }}
+                      key={t.key}
+                      selected={t.key === activeWorkTabKey}
+                      onSelect={() => activateWorkTab(t.key)}
                     >
-                      Close other tabs
+                      {tabLabel(t, workflowLabel, requestLabel)}
                     </ActionList.Item>
-                    <ActionList.Item variant="danger" onSelect={closeAllTabs}>
-                      Close all tabs
-                    </ActionList.Item>
-                  </ActionList>
-                </ActionMenu.Overlay>
-              </ActionMenu>
-            </div>
-          )}
+                  ))}
+                </ActionList.Group>
+                <ActionList.Divider />
+                <ActionList.Item
+                  disabled={activeWorkTabKey === null}
+                  onSelect={() => { if (activeWorkTabKey) closeOtherTabs(activeWorkTabKey) }}
+                >
+                  Close other tabs
+                </ActionList.Item>
+                <ActionList.Item variant="danger" onSelect={closeAllTabs}>
+                  Close all tabs
+                </ActionList.Item>
+              </ActionList>
+            </ActionMenu.Overlay>
+          </ActionMenu>
         </div>
       )}
+    </>
+  )
+
+  return (
+    <Tabs value={activeWorkTabKey ?? PAGE_TAB} onValueChange={({ value }) => activateWorkTab(value === PAGE_TAB ? null : value)}>
+      {titlebarSlot && createPortal(stripContent, titlebarSlot)}
       <TabPanel value={PAGE_TAB}>{children}</TabPanel>
       {workTabs.map((t) => (
         <TabPanel key={t.key} value={t.key} className={isCanvasTab(t) ? editorStyles.editorPanel : undefined}>
