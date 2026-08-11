@@ -75,6 +75,22 @@ an implicit `FINAL`.
 - Hard constraint: the guardrailed path must not be harder than the baseline
   of what a person can already do natively (copy/paste, running a command
   themselves by hand). If it is, nobody adopts it. `LOCKED`
+- **Everything is real-time — the user never reloads or reopens to see
+  current state.** `LOCKED` (product value, owner-stated 2026-08-10).
+  A well-built Mill has nothing to "refresh": any change — a run
+  completing, an approval landing, an entity edited (by the UI, a
+  headless trigger, or an external MCP author) — propagates live to
+  every open surface via the event layer (`mill-data-changed`,
+  `guardrail-pending-changed`, the activity feed), never a manual
+  refresh or a close-and-reopen. This is *why* ⌘R-as-reload feels
+  wrong as a Mill concept (§0009's keymap): reload is a browser/dev
+  escape hatch (⌘⇧R), not a product affordance — if a user ever needs
+  it to see truth, a real-time surface is missing and that's the bug.
+  The standing audit this implies: every surface must ask "can this
+  ever show stale state the user would have to manually refresh?" and
+  close that gap (goal 0017). Same family as the §1 thesis (no gap
+  between what you see and what's real) — applied to *time*, not just
+  structure.
 - **Scope filter, learned from the screenshot-to-clipboard tangent**: before
   any capability goes into Mill, check whether the OS (or an existing
   launcher like Alfred/Raycast) already does it simply and well. If yes,

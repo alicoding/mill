@@ -51,3 +51,4 @@ live-review material, interleaved during owner reviews, not a lane.
 - [x] [0006 — Trigger-aware Workflows list](0006-trigger-aware-workflows-list.md) — 2026-08-10
 - [x] [0007 — Resource-inventory redesign](0007-resource-inventory-redesign.md) — 2026-08-10 (owner recognition test passed live: "like an addition")
 12. [ ] [0016 — Keymap system](0016-keymap-system.md) (VS Code-style customizable shortcuts; ⌘W closes the tab not the window — enabled by the recorder fix's menu machinery)
+13. [ ] [0017 — Real-time surfaces audit](0017-realtime-surfaces-audit.md) (product value locked in SPEC §1: never make the user refresh; audit every surface for stale state, fix via the existing event layer)
