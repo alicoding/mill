@@ -32,6 +32,26 @@ export function BuildIdentityBadge({ buildInfo }: { buildInfo: BuildInfo | null 
   // INSTALLED/SERVER split until goal 0021's dogfooding caught it.
   const isNativeWebview = buildInfo != null && !buildInfo.Server
   const binaryHead = buildInfo?.Revision ? buildInfo.Revision.slice(0, 7) : ''
+
+  // DEV wins over the stale comparison, deliberately (fixed 2026-08-11
+  // after it false-alarmed on every commit): under `task dev`, vite
+  // HMR IS the liveness guarantee, and __MILL_REPO_HEAD__ is baked ONCE
+  // at vite startup (vite.config's git rev-parse) while the Go binary's
+  // commit ADVANCES on every wails rebuild -- so committing during a
+  // running `task dev` legitimately makes binary != bundle, which is
+  // NOT staleness, just "committed forward since vite started." The
+  // binary-vs-bundle comparison only means something for installed/
+  // server builds, where `vite build` bakes the bundle at the SAME
+  // commit as the binary. Dev-orphan windows are handled by prevention
+  // now (the Taskfile pkill sweep, SPEC §3.8), not by this badge.
+  if (isDevBuild) {
+    return (
+      <Label variant="success" size="small" className={styles.devRibbon} data-testid="dev-build-badge">
+        DEV · live
+      </Label>
+    )
+  }
+
   const buildStale = Boolean(binaryHead && __MILL_REPO_HEAD__ && binaryHead !== __MILL_REPO_HEAD__)
 
   if (buildStale) {
@@ -51,14 +71,6 @@ export function BuildIdentityBadge({ buildInfo }: { buildInfo: BuildInfo | null 
     ) : (
       <Label variant="danger" size="small" className={styles.devRibbon} data-testid="stale-build-badge">
         STALE BUILD · app {binaryHead} ≠ repo {__MILL_REPO_HEAD__} — restart task dev
-      </Label>
-    )
-  }
-
-  if (isDevBuild) {
-    return (
-      <Label variant="success" size="small" className={styles.devRibbon} data-testid="dev-build-badge">
-        DEV · live
       </Label>
     )
   }
