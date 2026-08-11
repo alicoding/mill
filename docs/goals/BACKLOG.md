@@ -46,6 +46,7 @@ live-review material, interleaved during owner reviews, not a lane.
 
 **Standing**
 - [ ] [0001 — Authoring-surface overhaul](0001-authoring-surface-overhaul.md) (spacing audit + §3.8 prototype elements — live-review material)
+- [ ] [0021 — MCP dogfood gap closure](0021-mcp-dogfood-gap-closure.md) (owner-mandated 2026-08-11: orchestrator live-probes the MCP surface against the bank use cases, logs ranked gaps, fixes graduate out; phase 1 done — 4 gaps + 1 confirmed-by-design)
 
 **Delivered**
 - [x] [0003 — MCP authoring live dogfood](archive/0003-mcp-authoring-dogfood.md) — 2026-08-10
