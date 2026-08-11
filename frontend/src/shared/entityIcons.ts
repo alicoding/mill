@@ -20,13 +20,24 @@ import { CheckCircleIcon, ListUnorderedIcon, PlugIcon, ServerIcon, TerminalIcon,
 export interface EntityIcon {
   Icon: Icon
   bg: string
+  fg: string
 }
 
+// Soft-tint (not saturated-emphasis) leading visuals. `-emphasis` tokens
+// are full-saturation solid fills meant for ONE high-emphasis element on
+// a screen (a primary button); repeated as a solid block down every row
+// of a long inventory they read as loud and "hard on the eyes" (owner,
+// 2026-08-10 live testing). The industry-standard list-icon pattern
+// (Linear/GitHub/Notion) is a low-saturation `-muted` tint background
+// with the glyph in the MATCHING `-fg` color, not white-on-saturated --
+// same per-entity recognition hue, far calmer. Each bg/fg pair is one of
+// Primer's own status-color families (the same pairs its Label component
+// uses), so contrast is already vetted in both light and dark themes.
 export const ENTITY_ICON: Record<string, EntityIcon> = {
-  workflow: { Icon: WorkflowIcon, bg: 'var(--bgColor-done-emphasis)' },
-  request: { Icon: PlugIcon, bg: 'var(--bgColor-accent-emphasis)' },
-  list: { Icon: ListUnorderedIcon, bg: 'var(--bgColor-success-emphasis)' },
-  mcpserver: { Icon: ServerIcon, bg: 'var(--bgColor-severe-emphasis)' },
-  decision: { Icon: CheckCircleIcon, bg: 'var(--bgColor-sponsors-emphasis)' },
-  execenv: { Icon: TerminalIcon, bg: 'var(--bgColor-attention-emphasis)' },
+  workflow: { Icon: WorkflowIcon, bg: 'var(--bgColor-done-muted)', fg: 'var(--fgColor-done)' },
+  request: { Icon: PlugIcon, bg: 'var(--bgColor-accent-muted)', fg: 'var(--fgColor-accent)' },
+  list: { Icon: ListUnorderedIcon, bg: 'var(--bgColor-success-muted)', fg: 'var(--fgColor-success)' },
+  mcpserver: { Icon: ServerIcon, bg: 'var(--bgColor-severe-muted)', fg: 'var(--fgColor-severe)' },
+  decision: { Icon: CheckCircleIcon, bg: 'var(--bgColor-sponsors-muted)', fg: 'var(--fgColor-sponsors)' },
+  execenv: { Icon: TerminalIcon, bg: 'var(--bgColor-attention-muted)', fg: 'var(--fgColor-attention)' },
 }

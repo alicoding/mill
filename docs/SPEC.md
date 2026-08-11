@@ -3230,6 +3230,23 @@ recorded as a real design input (`OPEN`), never silently dropped.
   loud red "STALE BUILD · app X ≠ repo Y — restart task dev" badge
   regardless of dev/prod; matching dev builds show a quiet
   `DEV · <hash>`. E2e-asserts the same-commit case never false-alarms.
+  **Update (goal 0019, 2026-08-10): the badge now self-identifies the
+  ARTIFACT, not just bundle-vs-binary consistency.** The bundle-vs-binary
+  compare only ever rendered on a *mismatch*, so a matching INSTALLED
+  `.app` showed nothing and could masquerade as the live build — the
+  exact confusion the owner hit repeatedly (mistaking the stale
+  `/Applications/Mill.app` for current). One rule now: green
+  **`DEV · live`** means trust this window, anything else means it is not
+  the live dev build. `task dev` (vite serve, `import.meta.env.DEV`) is
+  up to date *by construction* (frontend Vite-HMR-live, Go auto-rebuilt
+  on save) → green `DEV · live`, no hash to decode; the installed `.app`
+  (native webview) always shows a neutral `INSTALLED · <commit>`; server
+  mode shows `SERVER · <commit>`; the red `STALE BUILD` stays the
+  orphaned-window exception. Deliberately NOT a live-git-HEAD comparison
+  — that false-alarms on docs/tooling commits (the annoyance the owner
+  already hit when a Taskfile commit tripped the old badge). Paired with
+  the Taskfile DX fix (`task dev` no longer wipes `bin/`; the loop is
+  documented: start once, leave running, frontend edits are instant HMR).
 - **Authoring-surface style direction — `OPEN`, recorded as real design
   input from a working style prototype the user built on the reference
   machine ("Mill Authoring", fixture data) and prefers over Mill's
