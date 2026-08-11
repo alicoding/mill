@@ -1663,7 +1663,7 @@ regular interval) or webhook/real-time (service pushes events instantly)"
 | **Hotkey (global shortcut)** | A | OS-level combo fires headlessly, even when Mill isn't focused | Adopt (`golang.design/x/hotkey`, already adopted, §2.2) | `LOCKED`, built — `trigger-hotkey` NodeType, registered/exclusivity-checked through `TriggerService` (`triggerservice.go`), binding captured via `CompositionCanvas`'s Inspector (`hotkeyCapture.ts`, extracted from the now-retired RunbookView) |
 | **Schedule / cron** | B | Fire on an interval or cron expression | Adopt — **not** `robfig/cron` (confirmed unmaintained since 2020, known panic/DST bugs, 50+ open PRs); `go-co-op/gocron` still wraps `robfig/cron/v3` underneath so it doesn't actually escape the problem. **`netresearch/go-cron`** (MIT) is a maintained, API-compatible fork that fixes exactly those bugs and tracks current Go | `LOCKED`, built — `trigger-schedule` NodeType, `internal/adapters/schedule`; the Inspector shows a live human-readable preview of the cron expression via `cronstrue` (MIT, zero runtime deps — verified against npm before adopting; standard 5-field cron only, `@every`/`@hourly` shortcuts show the raw value), goal 0001's node-maturity work |
 | **Clipboard change (watch)** | B | Detect clipboard content changing | Build — confirmed by reading `internal/adapters/clipboard` directly: it's `osascript`/`pbcopy`/`pbpaste` shell-outs with no "clipboard changed" event exposed anywhere in AppleScript; needs a small poll loop, same as every clipboard manager does this | `LOCKED`, built — `trigger-clipboard-watch` NodeType, `clipboard.WatchChanges` (polls the plain-text flavor, not HTML, since HTML is frequently absent) |
-| **Filesystem watch** | C | Fire when a file/folder is added/changed/deleted | Adopt (`fsnotify/fsnotify` — BSD-3-Clause, actively maintained, wraps OS syscalls — kqueue on macOS/BSD — via `golang.org/x/sys`, no cgo, no daemon) | `LOCKED`, built — `trigger-filesystem-watch` NodeType, `internal/adapters/filewatch`; direct analog to n8n's Local File Trigger |
+| **Filesystem watch** | C | Fire when a file/folder is added/changed/deleted | Adopt (`fsnotify/fsnotify` — BSD-3-Clause, actively maintained, wraps OS syscalls — kqueue on macOS/BSD — via `golang.org/x/sys`, no cgo, no daemon) | `LOCKED`, built — `trigger-filesystem-watch` NodeType, `internal/adapters/filewatch`; direct analog to n8n's Local File Trigger. Since the ADR-0030 capture floor, its fire carries the changed file's path as the run's initial payload (`ExecuteOptions.InitialPayload` — the "trigger's output IS the workflow's input" concept made real; other trigger types still pass empty, having no event data yet) |
 | **DOM event (browser bridge)** | C | Fire when a watched selector/element changes in a tab | Build (the relay itself is Mill's own §5 mechanism, already `LOCKED`) | `OPEN` — blocked on §5's still-open "reachable independent of native window" question |
 | **Incoming MCP tool call** | C | An agent/chat client invokes one of Mill's exposed tools | Adopt (Go SDK's `Server.AddReceivingMiddleware`, already `LOCKED`, §3.1) | `OPEN` as a graph Trigger kind — validated as a real, established category (not a Mill invention) by n8n shipping its own dedicated MCP Server Trigger node |
 | **Webhook / incoming HTTP** | C | External service POSTs an event to a Mill-owned endpoint | Not a library gap — Mill already runs an HTTP server in server-mode (Wails3 + stdlib `net/http`); the open question is purely whether Mill should run a public listener at all | `OPEN` — a scope/threat-model decision, not an adoption decision |
@@ -2691,6 +2691,39 @@ Full rationale in [`docs/adr/0003-browser-bridge-architecture.md`](adr/0003-brow
   requirement for this source, not a nice-to-have. Fallback-order note
   unchanged: try HTML → DOM-read → plain text/image. `OPEN` only on
   the on-site confirmation.
+- **The save-page capture floor is BUILT — ADR-0030's path C, shipped
+  the same day the matrix was written, deliberately before any IS&C
+  answer (it's the one path that needed no policy permission).**
+  Three new self-registered NodeTypes (ADR-0006's pattern, one file
+  each): `capture-file` (KindCapture, effect `read` — payload-as-path
+  mode reads the file a filesystem-watch trigger just saw, literal
+  mode reads a fixed path; via a new `internal/adapters/fileread`,
+  10MB guard), `process-extract-html` (KindProcess, pure — extracts
+  one CSS-selector-matched subtree via a new
+  `internal/adapters/htmlextract` wrapping **goquery** (BSD-3, pure
+  Go, adopted per the ADR-0030 research pass); default selector
+  `#main-content, main, article` is an *editable config default*, not
+  a hardcoded Confluence assumption; no match fails the step,
+  fail-safe, never a silent whole-document passthrough), and
+  `capture-clipboard-info` (KindCapture, `read` — a new
+  `clipboard.Info()` shells `osascript -e 'clipboard info'` and the
+  node reports which flavors are actually present, HTML/plain-text
+  summary first: §1's thesis pointed at the clipboard itself).
+  **Trigger fires now carry the event's own data as the run's initial
+  payload** — `ExecuteOptions.InitialPayload`, persisted in the DBOS
+  run input so replay/redrive sees it; only filesystem-watch has real
+  event data today (its changed path), the §3.4-locked "a trigger's
+  output IS the workflow's input" made literal. Two seeds (top-up,
+  proof-registered): "Example: Saved page → Markdown" (fs-watch →
+  capture-file → extract → markdown → clipboard; ships DISABLED with
+  a placeholder `~/Mill Captures` path) and "Example: Clipboard
+  inspector" (the on-site diagnostic for ADR-0030's checklist item
+  7). Proven end-to-end against real DBOS: a fixture page dropped in
+  a watched temp dir produces markdown of only the main-content
+  subtree, nav chrome absent
+  (`TestSeededSavedPageToMarkdown_FiresRealWorkflowAndExtractsMainContent`).
+  `LOCKED` (the floor); the extension remains the target end-state
+  per the matrix below.
 - **Capture mechanism under bank policy — decision matrix written, not
   decided: [ADR-0030](adr/0030-confluence-capture-mechanism-matrix.md)**
   (`proposed`). Four real paths — the ADR-0003 extension (only path

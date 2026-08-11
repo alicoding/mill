@@ -209,11 +209,15 @@ func (s *TriggerService) Sync(workflows []composition.Workflow) {
 // readable description of what triggered it (a hotkey's label, e.g.
 // "⌘⇧M"; empty for schedule/clipboard-watch/filesystem-watch triggers,
 // which have no single-glyph label the way a keyboard combo does).
-func (s *TriggerService) fire(workflowID, binding string) {
+// payload seeds the run's starting ExecContext.Payload (docs/SPEC.md
+// §3.4's Trigger row: "a trigger's output IS the workflow's input") --
+// only trigger-filesystem-watch has real event data to offer today (its
+// changed file path); every other trigger type passes "".
+func (s *TriggerService) fire(workflowID, binding, payload string) {
 	// nil values: a headless trigger fire has no user-supplied Attribute
 	// input to offer -- it runs with the workflow's own declared
 	// defaults, same as before docs/adr/0008's test-input form existed.
-	summary, err := s.exec.RunWorkflow(workflowID, executionsvc.RunKindTriggered, nil)
+	summary, err := s.exec.RunWorkflowWithPayload(workflowID, executionsvc.RunKindTriggered, nil, payload)
 	if err != nil {
 		// A call-level failure (unknown workflow, run couldn't start) --
 		// distinct from a failed *run*, handled below via summary.Error.

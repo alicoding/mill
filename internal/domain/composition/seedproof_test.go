@@ -87,6 +87,17 @@ var workflowProofRegistry = map[string]seedProof{
 		"triggersvc.TestSeededDisabledFilesystemWatch_FiresRealWorkflowOnFileCreate",
 		"e2e: seed-completeness.spec.ts > Disabled filesystem watch (presence only)",
 	),
+	"example-clipboard-inspector-workflow": proven(
+		"composition.TestFormatClipboardInfo_BothFlavorsPresent",
+		"composition.TestFormatClipboardInfo_HTMLAbsent",
+		"composition.TestFormatClipboardInfo_NeitherFlavor",
+		"composition.TestCaptureClipboardInfo_NodeExec_UsesTheInjectedSeam",
+		"e2e: seed-completeness.spec.ts > Clipboard inspector (presence only)",
+	),
+	"example-saved-page-to-markdown-workflow": proven(
+		"triggersvc.TestSeededSavedPageToMarkdown_FiresRealWorkflowAndExtractsMainContent",
+		"e2e: seed-completeness.spec.ts > Saved page to Markdown (presence only)",
+	),
 	"example-codeexec-workflow": proven(
 		"executionsvc.TestSeededCodeExecutionExample_Approve_RunsRealCommandAndWritesClipboard",
 		"executionsvc.TestSeededCodeExecutionExample_Deny_NeverStartsTheProcess",
