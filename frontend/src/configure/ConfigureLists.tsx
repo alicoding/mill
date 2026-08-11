@@ -11,6 +11,7 @@ import { useViewMode } from '../shared/viewMode'
 import { InventoryList, type InventoryItem } from '../shared/InventoryList'
 import { ENTITY_ICON } from '../shared/entityIcons'
 import { formatUpdated, sortByUpdatedDesc } from '../shared/inventorySort'
+import { useConfirmDelete } from '../shared/useConfirmDelete'
 import styles from '../shared/ListCard.module.css'
 import PageContainer from '../shared/PageContainer'
 
@@ -114,6 +115,15 @@ export function ConfigureLists() {
     ConfigureService.DeleteList(id).then(refetch).catch(console.error)
   }
 
+  // Table-view direct-wiring half of the Button-semantics convention
+  // (.claude/rules/frontend.md) -- see ConfigureRequests.tsx's
+  // identical comment.
+  const { requestDelete, dialog: confirmDialog } = useConfirmDelete<List>({
+    entityType: 'list',
+    labelOf: (l) => l.Label,
+    onConfirm: (l) => remove(l.ID),
+  })
+
   const updateRow = (i: number, field: 'key' | 'value', value: string) => {
     setRows((prev) => prev.map((r, idx) => (idx === i ? { ...r, [field]: value } : r)))
   }
@@ -136,7 +146,12 @@ export function ConfigureLists() {
     onOpen: () => startEdit(l),
     menuActions: [
       { label: 'Export', onClick: () => exportList(l.ID, l.Label) },
-      { label: 'Delete', onClick: () => remove(l.ID), danger: true },
+      {
+        label: 'Delete',
+        onClick: () => remove(l.ID),
+        danger: true,
+        confirm: { title: 'Delete list?', body: `This permanently deletes "${l.Label}". This cannot be undone.` },
+      },
     ],
   }))
 
@@ -157,7 +172,7 @@ export function ConfigureLists() {
           <Button leadingVisual={UploadIcon} size="small" onClick={openImportPicker} data-testid="import-list">
             Import
           </Button>
-          <Button leadingVisual={PlusIcon} size="small" onClick={startCreate} data-testid="new-list">
+          <Button leadingVisual={PlusIcon} variant="primary" size="small" onClick={startCreate} data-testid="new-list">
             New list
           </Button>
         </Stack>
@@ -217,7 +232,7 @@ export function ConfigureLists() {
                   <Stack direction="horizontal" gap="condensed">
                     <Button size="small" variant="invisible" onClick={() => startEdit(l)}>Edit</Button>
                     <IconButton icon={DownloadIcon} aria-label={`Export ${l.Label}`} size="small" variant="invisible" onClick={() => exportList(l.ID, l.Label)} />
-                    <IconButton icon={TrashIcon} aria-label={`Delete ${l.Label}`} size="small" variant="invisible" onClick={() => remove(l.ID)} />
+                    <IconButton icon={TrashIcon} aria-label={`Delete ${l.Label}`} size="small" variant="invisible" onClick={() => requestDelete(l)} />
                   </Stack>
                 ),
               },
@@ -233,10 +248,11 @@ export function ConfigureLists() {
             icon: ListUnorderedIcon,
             heading: 'No lists yet',
             description: "A reusable key/value lookup table a workflow's List node can resolve against.",
-            action: <Button leadingVisual={PlusIcon} onClick={startCreate}>New list</Button>,
+            action: <Button leadingVisual={PlusIcon} variant="primary" onClick={startCreate}>New list</Button>,
           }}
         />
       )}
+      {confirmDialog}
     </PageContainer>
   )
 }

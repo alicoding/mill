@@ -11,6 +11,7 @@ import { RequestTestPanel } from './RequestTestPanel'
 import { headersToRows, rowsToHeaders } from './requestHeaders'
 import { parseOpenAPIToOperations } from './openapiSynth'
 import { AUTH_LABEL, AUTH_UNIMPLEMENTED } from './authTypeLabels'
+import { ConfirmDialog } from '../shared/ConfirmDialog'
 import styles from '../shared/ListCard.module.css'
 import PageContainer from '../shared/PageContainer'
 
@@ -35,6 +36,12 @@ export function RequestSummary({ request, onEdit, onDuplicate, onDelete }: {
   const [operations, setOperations] = useState<OperationRef[] | string | null>(null)
   const [selectedOp, setSelectedOp] = useState('')
   const [fields, setFields] = useState<Operation | string | null>(null)
+  // Button-semantics convention (.claude/rules/frontend.md): the bare
+  // trash icon here is the direct-wiring half (RequestSummary owns no
+  // list state to route through InventoryList's own confirm field, so
+  // it wires ConfirmDialog itself rather than via the shared hook --
+  // there's exactly one entity in scope, not a collection).
+  const [confirmingDelete, setConfirmingDelete] = useState(false)
 
   useEffect(() => {
     setOperations(null)
@@ -76,7 +83,7 @@ export function RequestSummary({ request, onEdit, onDuplicate, onDelete }: {
         <Stack direction="horizontal" gap="condensed">
           <Button size="small" leadingVisual={PencilIcon} onClick={onEdit} data-testid="summary-edit">Edit</Button>
           <IconButton icon={CopyIcon} aria-label="Duplicate" size="small" variant="invisible" onClick={onDuplicate} />
-          <IconButton icon={TrashIcon} aria-label="Delete" size="small" variant="invisible" onClick={onDelete} />
+          <IconButton icon={TrashIcon} aria-label="Delete" size="small" variant="invisible" onClick={() => setConfirmingDelete(true)} />
         </Stack>
       </Stack>
 
@@ -162,6 +169,17 @@ export function RequestSummary({ request, onEdit, onDuplicate, onDelete }: {
         </TabPanel>
       </Tabs>
     </div>
+    {confirmingDelete && (
+      <ConfirmDialog
+        title="Delete integration?"
+        body={`This permanently deletes "${request.Label}". This cannot be undone.`}
+        onCancel={() => setConfirmingDelete(false)}
+        onConfirm={() => {
+          setConfirmingDelete(false)
+          onDelete()
+        }}
+      />
+    )}
     </PageContainer>
   )
 }

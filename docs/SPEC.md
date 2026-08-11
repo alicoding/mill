@@ -3411,6 +3411,21 @@ recorded as a real design input (`OPEN`), never silently dropped.
   `Intl.RelativeTimeFormat`, no new dependency. Zero-timestamp legacy
   data (persisted before this feature shipped) sorts below every
   stamped entity, in its original relative order — migration-free.
+  **Update — Primer's button-semantics convention adopted
+  systematically, `LOCKED`, built.** "Recognition, not confirmation"
+  (above) extended from visual identity to action weight: exactly one
+  primary button per page/region (a create CTA, a form's Save);
+  irreversible destruction of a persisted entity across all six
+  inventories is danger-styled *and* confirmed via a dialog naming the
+  entity (`shared/ConfirmDialog.tsx`, built on Primer's `Dialog` —
+  `InventoryList.tsx`'s kebab-menu Delete routes through an opt-in
+  `confirm` field automatically, a bare `TrashIcon` wires it directly
+  via `shared/useConfirmDelete.tsx`); repeated per-row actions
+  (Edit/Export/Run) stay neutral, never primary. Full rules and the two
+  deliberate exceptions (a callable child's demoted "Test" button, the
+  goal-0007 dense-row invisible actions) are enforced in
+  `.claude/rules/frontend.md`'s "Button semantics" section, not
+  restated here.
 - **User-facing "Composition" naming retired** — Activity's source
   chip says "Manual run" and its copy says "a direct Run click on a
   workflow"; the sidebar already said Workflows. Code-level
