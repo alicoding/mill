@@ -127,21 +127,38 @@ file. See `docs/SPEC.md` §9.1 for that split's own rationale.
 
 ## Build / dev commands
 
+**How to run Mill — the default is `task dev`, started once and left
+running.** This is the single source of truth for launching, settled
+during live testing (the reinstall-every-change loop was the wrong
+default):
+
+- **`task dev`** — THE way to run and iterate. Hot reload: **start it
+  once and leave it running.** Frontend edits (`frontend/src/**`) are
+  instant Vite HMR in the live window — no rebuild, no reinstall. Only a
+  Go change restarts the app, and only a change to a *bound Go method
+  signature* re-pays the ~20s `wails3 generate bindings` (Task skips it
+  otherwise). It no longer wipes `bin/` (that just forced a slow relink
+  for nothing — reverted this session). **Confirm you're on the live
+  build by the green `DEV · live` badge** (top-left); anything else
+  (`INSTALLED · <commit>` / `SERVER · <commit>`) is NOT the live build.
+  PATH note: `wails3` (and `ls_lint`, used by the pre-commit hook) live
+  in `~/go/bin` — put `export PATH="$HOME/go/bin:$PATH"` in your shell
+  profile once, or prefix commands with `PATH="$HOME/go/bin:$PATH"`.
+- **`task install:app`** — build + install the real `.app` to
+  `/Applications` (one correct command: fresh frontend → clean bundle →
+  clean-replace → verifies the embedded commit == HEAD). Use ONLY when
+  you need the installed app specifically: Accessibility-gated hotkeys,
+  the native menu, launch/Spotlight behaviour. NOT for normal iteration
+  — that's `task dev`. Never run it while `task dev` is running (two Mill
+  processes would share the same data files).
 - `task setup:hooks` — run once after cloning: installs Lefthook's
   pre-commit hooks (lint/vet/build, mirrors CI). Requires `brew install
   lefthook golangci-lint` and `go install
   github.com/loeffel-io/ls-lint/v2/cmd/ls_lint@v2.3.1` first.
-- `task dev` — run the app in dev mode with hot reload (frontend + backend).
-  Wipes `bin/` first (`task clean`, a dependency of `dev`/`build`/
-  `build:server`) so there's never more than one ambiguous binary
-  sitting around from a previous run.
-- `task build` — production build to `bin/`.
-- `task clean` — removes every build artifact from `bin/`. Runs
-  automatically before `dev`/`build`/`build:server`; safe to run
-  standalone too.
-- `wails3 dev` / `wails3 build` — underlying Wails3 CLI these Taskfile targets
-  wrap; see `Taskfile.yml` and `build/Taskfile.yml` for platform-specific
-  variants.
+- `task build` / `task package` — production binary / `.app` bundle to
+  `bin/` (both still `clean` first). `task clean` — clears `bin/`.
+- `wails3 dev` / `wails3 build` — the underlying Wails3 CLI these targets
+  wrap; see `Taskfile.yml` and `build/Taskfile.yml`.
 
 ## Project layout
 
