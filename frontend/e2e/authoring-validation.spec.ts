@@ -105,6 +105,10 @@ test('The owner\'s repro: a workflow whose root is not a Trigger cannot be saved
   const rootIssue = panel.getByTestId('validation-issue').filter({ hasText: 'must start with a Trigger step' })
   await expect(rootIssue).toBeVisible()
   await expect(rootIssue).toHaveAttribute('data-severity', 'error')
+  // The paste-anywhere copy affordance (asked for directly from live
+  // use): present whenever the panel is; content is unit-tested
+  // (validationCopy.test.ts), presence is what e2e owns here.
+  await expect(panel.getByTestId('copy-issues')).toBeVisible()
 
   await activePanel(page).getByLabel('Label').fill('E2E non-trigger-root repro')
   await activePanel(page).getByTestId('save-workflow').click()
