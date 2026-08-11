@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
-import { Button, FormControl, Heading, Label, Select, Stack, Text, TextInput } from '@primer/react'
-import { ShieldIcon } from '@primer/octicons-react'
+import { Button, Heading, Label, Select, Stack, Text } from '@primer/react'
+import { BugIcon, ShieldIcon } from '@primer/octicons-react'
 import { ExecutionService } from '../shared/bindings'
 import type { RunSummary } from '../shared/bindings'
+import { ApprovalValuesForm, attrsForPending } from '../shared/ApprovalValuesForm'
 import { useAppStore } from '../shared/store'
 import { formatRunStartedAt } from '../shared/runTime'
 import styles from '../shared/ListCard.module.css'
@@ -45,10 +46,16 @@ function ReviewView() {
     return () => clearInterval(timer)
   }, [])
 
+  // continueRun stays false uniformly (docs/adr/0031 §5): Review's two-
+  // button UI has no dedicated Step/Continue distinction, so a plain
+  // Approve on a STEPPED run's park behaves like "Step" (advance one
+  // node, park again) -- the safe default that never silently skips
+  // step mode. A user who wants full Step/Continue/Stop control over a
+  // stepped run uses the canvas's own CurrentStepBar instead.
   const resolve = (run: RunSummary, approve: boolean) => {
     if (!run.pending) return
     setError('')
-    ExecutionService.ResolveApproval(run.runID, run.pending.nodeID, approve, approve ? (inputs[run.runID] ?? {}) : {})
+    ExecutionService.ResolveApproval(run.runID, run.pending.nodeID, approve, approve ? (inputs[run.runID] ?? {}) : {}, false)
       .then(() => setTimeout(refresh, 700))
       .catch((err) => setError(String(err)))
   }
@@ -60,13 +67,12 @@ function ReviewView() {
   // §7's lock) -- Review itself never renders run detail.
   const openRun = (run: RunSummary) => requestOpenWorkflow(run.workflowID, run.runID)
 
-  const attrsFor = (run: RunSummary) => {
-    const all = workflows?.find((w) => w.ID === run.workflowID)?.Attributes ?? []
-    const requested = run.pending?.inputAttributes ?? []
-    // A human-review step can name a subset of attributes to ask for
-    // (goal 0001); empty means all, the prior behavior.
-    return requested.length > 0 ? all.filter((a) => requested.includes(a.Key)) : all
-  }
+  const attrsFor = (run: RunSummary) => attrsForPending(workflows?.find((w) => w.ID === run.workflowID)?.Attributes ?? [], run.pending?.inputAttributes)
+
+  // A breakpoint/step-mode debug park (docs/adr/0031) reads distinctly
+  // here too -- never the same badge/wording as a policy ask ("recognition,
+  // not confirmation").
+  const isDebugPark = (run: RunSummary) => run.pending?.source === 'debug'
 
   return (
     <PageContainer data-testid="review-view">
@@ -106,9 +112,11 @@ function ReviewView() {
           >
             <Stack direction="vertical" gap="condensed">
               <Stack direction="horizontal" gap="condensed" align="center">
-                <ShieldIcon size={16} />
+                {isDebugPark(run) ? <BugIcon size={16} /> : <ShieldIcon size={16} />}
                 <Text weight="semibold">{run.workflowLabel}</Text>
-                <Label variant="attention" size="small">awaiting approval</Label>
+                <Label variant={isDebugPark(run) ? 'done' : 'attention'} size="small" data-testid={isDebugPark(run) ? 'review-debug-badge' : undefined}>
+                  {isDebugPark(run) ? (run.pending?.stepped ? 'paused — step mode' : 'paused at breakpoint') : 'awaiting approval'}
+                </Label>
                 <Text size="small" className={styles.muted}>{formatRunStartedAt(run.startedAt)}</Text>
               </Stack>
               <Text size="small">
@@ -121,32 +129,18 @@ function ReviewView() {
                   card itself now opens the run (row drill-down, goal
                   0002 item 5) -- typing input or clicking Approve/Deny
                   must not also trigger that navigation. */}
-              {attrsFor(run).length > 0 && (
-                <Stack direction="vertical" gap="condensed" onClick={(e) => e.stopPropagation()}>
-                  <Text size="small" weight="semibold">Your input (optional — flows into the resumed run)</Text>
-                  {attrsFor(run).map((a) => (
-                    <FormControl key={a.Key}>
-                      <FormControl.Label>{a.Label || a.Key}</FormControl.Label>
-                      <TextInput
-                        size="small"
-                        value={inputs[run.runID]?.[a.Key] ?? ''}
-                        placeholder="leave empty to keep the current value"
-                        onChange={(e) => setInputs((prev) => ({
-                          ...prev,
-                          [run.runID]: { ...prev[run.runID], [a.Key]: e.target.value },
-                        }))}
-                      />
-                    </FormControl>
-                  ))}
-                </Stack>
-              )}
+              <ApprovalValuesForm
+                attrs={attrsFor(run)}
+                values={inputs[run.runID] ?? {}}
+                onChange={(key, value) => setInputs((prev) => ({ ...prev, [run.runID]: { ...prev[run.runID], [key]: value } }))}
+              />
 
               <Stack direction="horizontal" gap="condensed" onClick={(e) => e.stopPropagation()}>
                 <Button size="small" variant="primary" data-testid="review-approve" onClick={() => resolve(run, true)}>
-                  Approve and resume
+                  {isDebugPark(run) ? 'Resume' : 'Approve and resume'}
                 </Button>
                 <Button size="small" variant="danger" data-testid="review-deny" onClick={() => resolve(run, false)}>
-                  Deny
+                  {isDebugPark(run) ? 'Stop' : 'Deny'}
                 </Button>
               </Stack>
             </Stack>

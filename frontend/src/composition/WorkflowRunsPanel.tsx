@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
 import { Button, IconButton, Label, type LabelProps, Select, Stack, Text } from '@primer/react'
 import { DataTable, type Column } from '@primer/react/experimental'
-import { CheckCircleIcon, XCircleIcon, ClockIcon, XIcon, ShieldIcon, ShieldXIcon, StopIcon } from '@primer/octicons-react'
+import { BugIcon, CheckCircleIcon, XCircleIcon, ClockIcon, XIcon, ShieldIcon, ShieldXIcon, StopIcon } from '@primer/octicons-react'
 import { ExecutionService } from '../shared/bindings'
 import { RunKind, type RunDetail, type RunSummary } from '../shared/bindings'
+import type { AttributeDef } from '../../bindings/github.com/alicoding/mill/internal/domain/composition/models'
+import { ApprovalValuesForm, attrsForPending } from '../shared/ApprovalValuesForm'
 import { formatRunStartedAt } from '../shared/runTime'
 import styles from '../shared/ListCard.module.css'
 import PageContainer from '../shared/PageContainer'
@@ -42,6 +44,10 @@ const STEP_ICON: Record<string, React.ReactNode> = {
 
 interface WorkflowRunsPanelProps {
   workflowId: string
+  // The owning workflow's declared Attributes -- what a parked run's
+  // edit-and-resume form (docs/adr/0031 item 4) offers to override,
+  // same source the canvas's own TestRunDialog reads.
+  attrs: AttributeDef[]
   // Preselect this run's detail on mount/change -- the Review page's row
   // drill-down (docs/goals/0002-review-queue-maturation.md item 5).
   // Applied once per value via the effect below; onInitialRunConsumed
@@ -63,7 +69,7 @@ interface WorkflowRunsPanelProps {
 // Activity (views/ActivityView.tsx) stays the lightweight, cross-
 // workflow, session-only "did anything run at all" feed -- unrelated
 // and unchanged by this.
-function WorkflowRunsPanel({ workflowId, initialRunId, onInitialRunConsumed }: WorkflowRunsPanelProps) {
+function WorkflowRunsPanel({ workflowId, attrs, initialRunId, onInitialRunConsumed }: WorkflowRunsPanelProps) {
   const [runs, setRuns] = useState<RunSummary[] | null>(null)
   const [selectedRunID, setSelectedRunID] = useState<string | null>(null)
   // Scrolls the detail card into view when a row is picked -- the card
@@ -75,6 +81,10 @@ function WorkflowRunsPanel({ workflowId, initialRunId, onInitialRunConsumed }: W
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [kindFilter, setKindFilter] = useState<'all' | RunKind>('all')
+  // Edit-and-resume input (docs/adr/0031 item 4) -- keyed by run ID like
+  // ReviewView's own `inputs` state, so switching between parked runs
+  // doesn't bleed one's typed values into another's.
+  const [resumeValues, setResumeValues] = useState<Record<string, Record<string, string>>>({})
 
   const refreshRuns = () => {
     ExecutionService.ListRunsForWorkflow(workflowId)
@@ -128,11 +138,15 @@ function WorkflowRunsPanel({ workflowId, initialRunId, onInitialRunConsumed }: W
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedRunID, detail?.status])
 
-  const resolveApproval = (nodeID: string, approve: boolean) => {
+  // continueRun only matters for a stepped run's park (docs/adr/0031
+  // §5) -- Step passes false (keeps step mode on), Continue/Resume
+  // passes true. values is the edit-and-resume typed input (item 4),
+  // discarded on a deny/stop.
+  const resolveApproval = (nodeID: string, approve: boolean, continueRun = false) => {
     if (!selectedRunID) return
     setBusy(true)
     setError('')
-    ExecutionService.ResolveApproval(selectedRunID, nodeID, approve, {})
+    ExecutionService.ResolveApproval(selectedRunID, nodeID, approve, approve ? (resumeValues[selectedRunID] ?? {}) : {}, continueRun)
       .then(() => setBusy(false))
       .catch((err) => { setError(String(err)); setBusy(false) })
     // The in-flight poll below picks up the resumed/failed state.
@@ -280,33 +294,65 @@ function WorkflowRunsPanel({ workflowId, initialRunId, onInitialRunConsumed }: W
           </Stack>
           {detail.error && <Text as="p" className={styles.error}>{detail.error}</Text>}
 
-          {detail.pending && (
-            <div className={styles.card} data-testid="approval-banner" style={{ marginTop: 'var(--base-size-12)' }}>
-              <Stack direction="vertical" gap="condensed">
-                <Stack direction="horizontal" gap="condensed" align="center">
-                  <ShieldIcon size={16} fill="var(--fgColor-attention)" />
-                  <Text weight="semibold">Awaiting your approval</Text>
+          {detail.pending && (() => {
+            // A breakpoint or step-mode park is a DEBUG park
+            // (docs/adr/0031) -- distinct icon/wording/controls, never
+            // the same as a policy ask ("recognition, not
+            // confirmation"). A stepped run additionally offers Step
+            // (advance one node, keep stepping) beside Continue/Resume.
+            const pending = detail.pending
+            const isDebug = pending.source === 'debug'
+            const isStepped = pending.stepped
+            return (
+              <div className={styles.card} data-testid="approval-banner" style={{ marginTop: 'var(--base-size-12)' }}>
+                <Stack direction="vertical" gap="condensed">
+                  <Stack direction="horizontal" gap="condensed" align="center">
+                    {isDebug ? <BugIcon size={16} fill="var(--fgColor-done)" /> : <ShieldIcon size={16} fill="var(--fgColor-attention)" />}
+                    <Text weight="semibold" data-testid="approval-banner-heading">
+                      {isDebug ? (isStepped ? 'Paused — step mode' : 'Paused at breakpoint') : 'Awaiting your approval'}
+                    </Text>
+                  </Stack>
+                  <Text size="small">
+                    The step <Text weight="semibold">{pending.nodeTypeLabel || pending.nodeTypeID}</Text>{' '}
+                    {isDebug ? 'is paused here' : 'wants to run'}
+                    {pending.ruleLabel && !isDebug ? ` (rule: ${pending.ruleLabel})` : !isDebug ? ' (external steps ask by default)' : ''}.
+                  </Text>
+                  {pending.payload && (
+                    <pre className={styles.result}>{pending.payload}</pre>
+                  )}
+                  <ApprovalValuesForm
+                    attrs={attrsForPending(attrs, pending.inputAttributes)}
+                    values={resumeValues[selectedRunID ?? ''] ?? {}}
+                    onChange={(key, value) => setResumeValues((prev) => ({ ...prev, [selectedRunID ?? '']: { ...prev[selectedRunID ?? ''], [key]: value } }))}
+                    label={isDebug ? 'Edit before resuming (optional)' : undefined}
+                  />
+                  <Stack direction="horizontal" gap="condensed">
+                    {isDebug && isStepped && (
+                      <Button size="small" variant="primary" disabled={busy} data-testid="step-step"
+                        onClick={() => resolveApproval(pending.nodeID, true, false)}>
+                        Step
+                      </Button>
+                    )}
+                    {isDebug ? (
+                      <Button size="small" variant={isStepped ? 'default' : 'primary'} disabled={busy} data-testid="resume-step"
+                        onClick={() => resolveApproval(pending.nodeID, true, true)}>
+                        {isStepped ? 'Continue' : 'Resume'}
+                      </Button>
+                    ) : (
+                      <Button size="small" variant="primary" disabled={busy} data-testid="approve-step"
+                        onClick={() => resolveApproval(pending.nodeID, true)}>
+                        Approve and run
+                      </Button>
+                    )}
+                    <Button size="small" variant="danger" disabled={busy} data-testid={isDebug ? 'stop-step' : 'deny-step'}
+                      onClick={() => resolveApproval(pending.nodeID, false)}>
+                      {isDebug ? 'Stop' : 'Deny'}
+                    </Button>
+                  </Stack>
                 </Stack>
-                <Text size="small">
-                  The step <Text weight="semibold">{detail.pending.nodeTypeLabel || detail.pending.nodeTypeID}</Text>{' '}
-                  wants to run{detail.pending.ruleLabel ? ` (rule: ${detail.pending.ruleLabel})` : ' (external steps ask by default)'}.
-                </Text>
-                {detail.pending.payload && (
-                  <pre className={styles.result}>{detail.pending.payload}</pre>
-                )}
-                <Stack direction="horizontal" gap="condensed">
-                  <Button size="small" variant="primary" disabled={busy} data-testid="approve-step"
-                    onClick={() => resolveApproval(detail.pending!.nodeID, true)}>
-                    Approve and run
-                  </Button>
-                  <Button size="small" variant="danger" disabled={busy} data-testid="deny-step"
-                    onClick={() => resolveApproval(detail.pending!.nodeID, false)}>
-                    Deny
-                  </Button>
-                </Stack>
-              </Stack>
-            </div>
-          )}
+              </div>
+            )
+          })()}
 
           <Stack direction="vertical" gap="condensed" style={{ marginTop: 'var(--base-size-12)' }}>
             {(detail.steps ?? []).map((step) => (
@@ -314,7 +360,17 @@ function WorkflowRunsPanel({ workflowId, initialRunId, onInitialRunConsumed }: W
                 <Stack direction="horizontal" gap="condensed" align="start">
                   <span className={styles.icon}>{STEP_ICON[step.status]}</span>
                   <div>
-                    <Text size="small" weight="semibold">{step.nodeTypeLabel || step.nodeTypeID}</Text>
+                    <Stack direction="horizontal" gap="condensed" align="center">
+                      <Text size="small" weight="semibold">{step.nodeTypeLabel || step.nodeTypeID}</Text>
+                      {/* A breakpoint/step-mode debug park reads distinctly
+                          here too (docs/adr/0031 item 2) -- BugIcon, never
+                          the guardrail shield/wording. */}
+                      {step.guardrailSource === 'debug' && (
+                        <Label variant="done" size="small" data-testid="step-debug-badge">
+                          <BugIcon size={12} /> breakpoint
+                        </Label>
+                      )}
+                    </Stack>
                     {step.guardrailEffect && (
                       <Text as="p" size="small" className={styles.muted} data-testid="step-guardrail">
                         Guardrail: {step.guardrailEffect}{step.guardrailRule ? ` (rule: ${step.guardrailRule})` : ''}

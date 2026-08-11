@@ -123,7 +123,7 @@ func TestSeededDecisionWithReviewExample_Approve_Terminalizes(t *testing.T) {
 		t.Fatalf("pending.RuleLabel = %q, want it to name the reached Decision", pending.RuleLabel)
 	}
 
-	if err := exec.ResolveApproval(summary.RunID, pending.NodeID, true, nil); err != nil {
+	if err := exec.ResolveApproval(summary.RunID, pending.NodeID, true, nil, false); err != nil {
 		t.Fatalf("ResolveApproval: %v", err)
 	}
 	final := waitFor(t, "run to succeed", 10*time.Second, func() (RunSummary, bool) {
@@ -159,7 +159,7 @@ func TestSeededDecisionWithReviewExample_Deny_FailsClosed(t *testing.T) {
 		}
 		return s.Pending, true
 	})
-	if err := exec.ResolveApproval(summary.RunID, pending.NodeID, false, nil); err != nil {
+	if err := exec.ResolveApproval(summary.RunID, pending.NodeID, false, nil, false); err != nil {
 		t.Fatalf("ResolveApproval: %v", err)
 	}
 	final := waitFor(t, "run to fail", 10*time.Second, func() (RunSummary, bool) {
@@ -257,7 +257,7 @@ func TestDecisionOutcome_NoWebhook_NeverAsks_WebhookPresent_AsksAndFiresOnApprov
 		t.Fatal("the webhook fired BEFORE approval -- the ask must gate the whole step")
 	}
 
-	if err := exec.ResolveApproval(guardedSummary.RunID, pending.NodeID, true, nil); err != nil {
+	if err := exec.ResolveApproval(guardedSummary.RunID, pending.NodeID, true, nil, false); err != nil {
 		t.Fatalf("ResolveApproval: %v", err)
 	}
 	final := waitFor(t, "run to succeed", 10*time.Second, func() (RunSummary, bool) {

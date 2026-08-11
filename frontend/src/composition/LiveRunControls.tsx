@@ -1,9 +1,10 @@
-import { forwardRef, useCallback, useImperativeHandle, useMemo, useState } from 'react'
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useState } from 'react'
 import { Panel } from '@xyflow/react'
 import { Button, IconButton, Label, type LabelProps, Stack, Text } from '@primer/react'
-import { ShieldIcon, XIcon } from '@primer/octicons-react'
-import type { Workflow } from '../../bindings/github.com/alicoding/mill/internal/domain/composition/models'
+import { BugIcon, PlayIcon, ShieldIcon, SkipIcon, XIcon } from '@primer/octicons-react'
+import type { AttributeDef, Workflow } from '../../bindings/github.com/alicoding/mill/internal/domain/composition/models'
 import { generateSamplePayload } from '../shared/configSchema'
+import { ApprovalValuesForm, attrsForPending } from '../shared/ApprovalValuesForm'
 import TestRunDialog from './TestRunDialog'
 import { type BarState, truncate } from './liveRunState'
 import styles from './CompositionCanvas.module.css'
@@ -29,12 +30,24 @@ const FINISHED_VARIANT: Record<string, LabelProps['variant']> = {
 // queue use), or the finished outcome, dismissible. Renders nothing
 // when no run is displayed.
 export function CurrentStepBar({
-  barState, onResolve, onDismiss,
+  barState, attrs, onResolve, onDismiss,
 }: {
   barState: BarState | null
-  onResolve: (nodeID: string, approve: boolean) => void
+  // The owning workflow's declared Attributes -- what a debug park's
+  // edit-and-resume form (docs/adr/0031 item 4) offers to override.
+  attrs: AttributeDef[]
+  onResolve: (nodeID: string, approve: boolean, continueRun?: boolean, values?: Record<string, string>) => void
   onDismiss: () => void
 }) {
+  const parkedNodeID = barState?.mode === 'parked' ? barState.pending.nodeID : null
+  const [editValues, setEditValues] = useState<Record<string, string>>({})
+  // A fresh park (a different node, or the same node on a later run)
+  // starts with a clean edit form, not the previous park's leftover
+  // values.
+  useEffect(() => {
+    setEditValues({})
+  }, [parkedNodeID])
+
   if (!barState) return null
   return (
     <Panel position="bottom-center">
@@ -46,37 +59,84 @@ export function CurrentStepBar({
             <Text size="small" className={runbookStyles.muted}>Running…</Text>
           </Stack>
         )}
-        {barState.mode === 'parked' && (
-          <Stack direction="vertical" gap="condensed">
-            <Stack direction="horizontal" gap="condensed" align="center">
-              <ShieldIcon size={16} fill="var(--fgColor-attention)" />
-              <Text size="small" weight="semibold">
-                Awaiting approval: {barState.pending.nodeTypeLabel || barState.pending.nodeTypeID}
-              </Text>
+        {barState.mode === 'parked' && (() => {
+          // A breakpoint or step-mode park is a DEBUG park (docs/adr/0031)
+          // -- distinct wording/icon from a policy ask, never the same
+          // control set ("recognition, not confirmation"). A stepped
+          // run's park additionally offers Step (advance one node,
+          // keep stepping) alongside Continue (finish straight
+          // through) -- a plain breakpoint only ever offers one resume
+          // action, so Step is omitted there (nothing to "step to").
+          const isDebug = barState.pending.source === 'debug'
+          const isStepped = barState.pending.stepped
+          return (
+            <Stack direction="vertical" gap="condensed">
+              <Stack direction="horizontal" gap="condensed" align="center">
+                {isDebug ? <BugIcon size={16} fill="var(--fgColor-done)" /> : <ShieldIcon size={16} fill="var(--fgColor-attention)" />}
+                <Text size="small" weight="semibold" data-testid="current-step-bar-label">
+                  {isDebug
+                    ? `${isStepped ? 'Paused — step mode' : 'Paused at breakpoint'}: ${barState.pending.nodeTypeLabel || barState.pending.nodeTypeID}`
+                    : `Awaiting approval: ${barState.pending.nodeTypeLabel || barState.pending.nodeTypeID}`}
+                </Text>
+              </Stack>
+              {barState.pending.payload && (
+                <Text size="small" className={runbookStyles.muted}>{truncate(barState.pending.payload, 120)}</Text>
+              )}
+              {/* Edit-and-resume (docs/adr/0031 item 4), debug parks
+                  only -- an ordinary policy ask isn't an authoring
+                  surface for the run's own data. */}
+              {isDebug && (
+                <ApprovalValuesForm
+                  attrs={attrsForPending(attrs, barState.pending.inputAttributes)}
+                  values={editValues}
+                  onChange={(key, value) => setEditValues((prev) => ({ ...prev, [key]: value }))}
+                  label="Edit before resuming (optional)"
+                />
+              )}
+              <Stack direction="horizontal" gap="condensed">
+                {isDebug && isStepped && (
+                  <Button
+                    size="small"
+                    variant="primary"
+                    leadingVisual={SkipIcon}
+                    data-testid="canvas-step"
+                    onClick={() => onResolve(barState.pending.nodeID, true, false, editValues)}
+                  >
+                    Step
+                  </Button>
+                )}
+                {isDebug ? (
+                  <Button
+                    size="small"
+                    variant={isStepped ? 'default' : 'primary'}
+                    leadingVisual={PlayIcon}
+                    data-testid="canvas-resume-step"
+                    onClick={() => onResolve(barState.pending.nodeID, true, true, editValues)}
+                  >
+                    {isStepped ? 'Continue' : 'Resume'}
+                  </Button>
+                ) : (
+                  <Button
+                    size="small"
+                    variant="primary"
+                    data-testid="canvas-approve-step"
+                    onClick={() => onResolve(barState.pending.nodeID, true)}
+                  >
+                    Approve
+                  </Button>
+                )}
+                <Button
+                  size="small"
+                  variant="danger"
+                  data-testid={isDebug ? 'canvas-stop-step' : 'canvas-deny-step'}
+                  onClick={() => onResolve(barState.pending.nodeID, false)}
+                >
+                  {isDebug ? 'Stop' : 'Deny'}
+                </Button>
+              </Stack>
             </Stack>
-            {barState.pending.payload && (
-              <Text size="small" className={runbookStyles.muted}>{truncate(barState.pending.payload, 120)}</Text>
-            )}
-            <Stack direction="horizontal" gap="condensed">
-              <Button
-                size="small"
-                variant="primary"
-                data-testid="canvas-approve-step"
-                onClick={() => onResolve(barState.pending.nodeID, true)}
-              >
-                Approve
-              </Button>
-              <Button
-                size="small"
-                variant="danger"
-                data-testid="canvas-deny-step"
-                onClick={() => onResolve(barState.pending.nodeID, false)}
-              >
-                Deny
-              </Button>
-            </Stack>
-          </Stack>
-        )}
+          )
+        })()}
         {barState.mode === 'finished' && (
           <Stack direction="horizontal" gap="condensed" align="center">
             <Label variant={FINISHED_VARIANT[barState.status] ?? 'secondary'} size="small">{barState.status}</Label>
@@ -114,12 +174,16 @@ export interface RunButtonHandle {
 // Attributes opens the same test-input dialog the Workflows list's own
 // Run button opens; one with none runs immediately. Only rendered once
 // a workflow is saved -- a brand-new, not-yet-saved draft has no ID to
-// run against yet.
+// run against yet. A second, adjacent "Step" entrypoint starts the
+// SAME workflow in debug step mode instead (docs/adr/0031 §5) -- run
+// menu variant, not a separate dialog flow: the attrs-check-then-
+// dialog logic is identical, only the started run's mode differs.
 export const RunButton = forwardRef<RunButtonHandle, {
   workflow: Workflow | null | undefined
-  onStartRun: (values: Record<string, string>) => void
+  onStartRun: (values: Record<string, string>, stepped?: boolean) => void
 }>(function RunButton({ workflow, onStartRun }, ref) {
   const [testRunOpen, setTestRunOpen] = useState(false)
+  const [testRunStepped, setTestRunStepped] = useState(false)
   const [values, setValues] = useState<Record<string, string>>({})
 
   // Hooks run unconditionally (before the null-workflow early return
@@ -130,17 +194,18 @@ export const RunButton = forwardRef<RunButtonHandle, {
   // array reference.
   const attrs = useMemo(() => workflow?.Attributes ?? [], [workflow])
 
-  const handleClick = useCallback(() => {
+  const handleClick = useCallback((stepped: boolean) => {
     if (!workflow) return
     if (attrs.length > 0) {
       setValues(generateSamplePayload(attrs))
+      setTestRunStepped(stepped)
       setTestRunOpen(true)
       return
     }
-    onStartRun({})
+    onStartRun({}, stepped)
   }, [workflow, attrs, onStartRun])
 
-  useImperativeHandle(ref, () => ({ trigger: handleClick }), [handleClick])
+  useImperativeHandle(ref, () => ({ trigger: () => handleClick(false) }), [handleClick])
 
   if (!workflow) return null
 
@@ -149,12 +214,20 @@ export const RunButton = forwardRef<RunButtonHandle, {
       <Button
         variant="primary"
         size="small"
-        onClick={handleClick}
+        onClick={() => handleClick(false)}
         data-testid="canvas-run"
         title="Runs the saved draft (test run)."
       >
         Run
       </Button>
+      <IconButton
+        icon={BugIcon}
+        aria-label="Run in step mode"
+        size="small"
+        data-testid="canvas-run-stepped"
+        title="Run in step mode -- pauses before every node so you can inspect and edit its data (docs/adr/0031)."
+        onClick={() => handleClick(true)}
+      />
       {testRunOpen && (
         <TestRunDialog
           workflowLabel={workflow.Label}
@@ -163,7 +236,7 @@ export const RunButton = forwardRef<RunButtonHandle, {
           onChange={(key, value) => setValues((prev) => ({ ...prev, [key]: value }))}
           onCancel={() => setTestRunOpen(false)}
           onRun={() => {
-            onStartRun(values)
+            onStartRun(values, testRunStepped)
             setTestRunOpen(false)
           }}
         />

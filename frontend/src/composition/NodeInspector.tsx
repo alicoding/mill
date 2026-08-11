@@ -4,6 +4,7 @@ import { Button, Checkbox, FormControl, Label, Select, Stack, Text, TextInput, T
 import { KeyIcon } from '@primer/octicons-react'
 import type { AttributeDef, NodeType } from '../../bindings/github.com/alicoding/mill/internal/domain/composition/models'
 import { Type as ConfigFieldType } from '../../bindings/github.com/alicoding/mill/internal/domain/typedfield/models'
+import type { RunStep } from '../shared/bindings'
 import type { CanvasNode } from './canvasStore'
 import { useHotkeyCapture, isAccessibilityError, ACCESSIBILITY_SETTINGS_URL } from './hotkeyCapture'
 import { generateSamplePayload } from '../shared/configSchema'
@@ -14,6 +15,7 @@ import { DecisionOutcomeBindingsEditor } from './DecisionOutcomeBindingsEditor'
 import { MCPToolArgsEditor } from './MCPToolArgsEditor'
 import { WorkflowHoverPreview } from './WorkflowHoverPreview'
 import { NodeGuardrailSection } from './NodeGuardrailSection'
+import { NodeExecutionSection } from './NodeExecutionSection'
 import { RulesetEditor } from './RulesetEditor'
 import { SchedulePreview } from './SchedulePreview'
 import styles from './CompositionCanvas.module.css'
@@ -44,6 +46,16 @@ interface NodeInspectorProps {
   // subscription that must survive across a node re-selection, not reset
   // every time this component remounts.
   hotkeyCapture: ReturnType<typeof useHotkeyCapture>
+  // This node's recorded step data on the run currently displayed on
+  // this canvas, if any (docs/adr/0031 items 3/5) -- undefined when no
+  // run is displayed, or this node hasn't executed (yet).
+  runStep?: RunStep
+  // Notifies the canvas to refetch its nothing-hidden guardrail badges
+  // (docs/adr/0031 item 1) after the "Breakpoint" toggle CRUDs a debug
+  // rule -- the toggle doesn't change any node's type/config, so the
+  // canvas's own nodeFingerprint-keyed effect would never notice it
+  // otherwise.
+  onBreakpointChange: () => void
   onChangeType: (newType: NodeType) => void
   onConfigChange: (key: string, value: string) => void
 }
@@ -58,11 +70,12 @@ interface NodeInspectorProps {
 // render of this component by node id, so switching the selected node
 // gets a clean remount rather than carrying stale nonce/local state
 // across selections.
-export function NodeInspector({ node, workflowId, attrs, nodeType, sameKindNodeTypes, hasWorkflow, hotkeyCapture, onChangeType, onConfigChange }: NodeInspectorProps) {
+export function NodeInspector({ node, workflowId, attrs, nodeType, sameKindNodeTypes, hasWorkflow, hotkeyCapture, runStep, onBreakpointChange, onChangeType, onConfigChange }: NodeInspectorProps) {
   const [payloadNonce, setPayloadNonce] = useState(0)
 
   return (
     <Stack direction="vertical" gap="condensed">
+      <NodeExecutionSection step={runStep} />
       {/* Swapping type in place (same Kind only) instead of
           delete-and-redrag is what actually resolves the "why can't I
           add another trigger" dead end the palette's disabled Trigger
@@ -275,7 +288,7 @@ export function NodeInspector({ node, workflowId, attrs, nodeType, sameKindNodeT
       ))}
 
       {workflowId && node.data.kind !== 'trigger' && node.data.kind !== 'decision' && (
-        <NodeGuardrailSection workflowId={workflowId} nodeId={node.id} />
+        <NodeGuardrailSection workflowId={workflowId} nodeId={node.id} onBreakpointChange={onBreakpointChange} />
       )}
 
       {node.data.nodeTypeID === 'trigger-schedule' && (

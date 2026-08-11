@@ -42,6 +42,17 @@ export function CancelRun(runID: string): $CancellablePromise<void> {
  * falls back to a bare step list (no labels) if the definition was
  * since edited/deleted, rather than failing the whole call over
  * missing display metadata.
+ * 
+ * Steps that DID execute are returned in DBOS's own recorded execution
+ * order (StepID, sequential), not the graph DEFINITION's node order
+ * (docs/adr/0031 item 3): walking wf.Nodes was a real, previously-
+ * unfixed bug for any branching workflow -- a Decision node routing to
+ * the graph's SECOND-declared arm before its first would still list
+ * them in declaration order, misreporting what actually ran first.
+ * Anything the run hasn't reached yet (or, for a completed run, never
+ * reached down an untaken branch) is appended after, still "pending" --
+ * same visibility as before this fix, just no longer interleaved with
+ * the real executed sequence.
  */
 export function GetRun(runID: string): $CancellablePromise<$models.RunDetail> {
     return $Call.ByID(1904471609, runID);
@@ -100,13 +111,18 @@ export function RedriveRun(runID: string, fromNodeID: string): $CancellablePromi
 
 /**
  * ResolveApproval delivers the human's decision to a parked run -- the
- * Approve/Deny buttons' RPC. values is the reviewer's typed input for
- * a human-review checkpoint (nil/empty for a plain approve or an
- * ambient-gate ask). Send works from outside a workflow (verified
- * against the installed DBOS source).
+ * Approve/Deny (or, for a debug park, Resume/Step/Stop) buttons' RPC.
+ * values is the reviewer's typed input for a human-review checkpoint or
+ * a breakpoint edit-and-resume (nil/empty for a plain approve/resume or
+ * an ambient-gate ask). continueRun only matters for a stepped run's
+ * park (docs/adr/0031 §5): false keeps step mode on (the "Step"
+ * control -- the NEXT node parks again too), true clears it (the
+ * "Resume"/"Continue" control -- the run finishes straight through,
+ * per-node breakpoints still honored). Send works from outside a
+ * workflow (verified against the installed DBOS source).
  */
-export function ResolveApproval(runID: string, nodeID: string, approve: boolean, values: { [_ in string]?: string } | null): $CancellablePromise<void> {
-    return $Call.ByID(3409756583, runID, nodeID, approve, values);
+export function ResolveApproval(runID: string, nodeID: string, approve: boolean, values: { [_ in string]?: string } | null, continueRun: boolean): $CancellablePromise<void> {
+    return $Call.ByID(3409756583, runID, nodeID, approve, values, continueRun);
 }
 
 /**
@@ -133,6 +149,20 @@ export function ResolveApproval(runID: string, nodeID: string, approve: boolean,
  */
 export function RunWorkflow(workflowID: string, kind: $models.RunKind, values: { [_ in string]?: string } | null): $CancellablePromise<$models.RunSummary> {
     return $Call.ByID(2199477208, workflowID, kind, values);
+}
+
+/**
+ * RunWorkflowStepped starts a workflow run in debug "step mode"
+ * (docs/adr/0031 §5) -- a run-scoped debug variant of the normal Run
+ * action, always a test run of the draft head (matching ADR-0008's
+ * test-input dialog, never the published snapshot): the guardrail gate
+ * parks before EVERY node, not just external-effect ones, until a
+ * "Continue" resume clears it (executionservice_guardrail.go). Always
+ * starts non-blocking (the run is guaranteed to park at its first node)
+ * regardless of mayRequireApproval's own pre-scan.
+ */
+export function RunWorkflowStepped(workflowID: string, values: { [_ in string]?: string } | null): $CancellablePromise<$models.RunSummary> {
+    return $Call.ByID(309115967, workflowID, values);
 }
 
 /**

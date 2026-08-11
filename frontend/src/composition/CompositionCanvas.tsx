@@ -11,7 +11,6 @@ import {
 import type { Connection, Edge as RFEdge } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 import { useStore } from 'zustand'
-import { GuardrailService } from '../shared/bindings'
 import { Button, FormControl, IconButton, Stack, Text, TextInput, Textarea } from '@primer/react'
 import { ChevronDownIcon, ChevronUpIcon, ColumnsIcon, RedoIcon, SidebarCollapseIcon, SidebarExpandIcon, TrashIcon, UndoIcon } from '@primer/octicons-react'
 import { ArrowLeftIcon } from '@primer/octicons-react'
@@ -26,6 +25,7 @@ import { toDraftEdges, toDraftNodes } from './draftPayload'
 import { clearScratch } from './canvasScratch'
 import { computeInitialCanvas, useCanvasHotExit } from './useCanvasHotExit'
 import { useDraftValidation, groupIssuesByNode } from './useDraftValidation'
+import { useGuardrailBadges } from './useGuardrailBadges'
 import { ValidationSurface } from './ValidationPanel'
 import { NodePalette } from './NodePalette'
 import { DecisionEdgeInspector } from './DecisionEdgeInspector'
@@ -132,20 +132,10 @@ function CanvasInner({ nodeTypes, workflow, tabKey, onBack, onSaved }: Compositi
   }, [liveStepStatusByNodeId, liveRunDetail, nodes])
   const runStateContextValue = useMemo(() => ({ statusByNodeId }), [statusByNodeId])
 
-  // Nothing-hidden guardrail badges (docs/adr/0022's Update): fetch the
-  // saved workflow's per-step verdicts so a step that will ask or deny
-  // is marked on the canvas before anyone runs it. Keyed on node
-  // membership/type/config so adding an external step or repointing a
-  // requestId refreshes the badge; a brand-new unsaved workflow has no
-  // ID to evaluate against yet (badges appear after the first save).
-  const nodeFingerprint = nodes.map((n) => `${n.id}:${n.data.nodeTypeID}:${n.data.config.requestId ?? ''}`).join('|')
-  useEffect(() => {
-    if (!workflow?.ID) return
-    GuardrailService.WorkflowVerdicts(workflow.ID)
-      .then((v) => setGuardrailVerdicts((v ?? {}) as Record<string, { effect: string; ruleLabel: string }>))
-      .catch(() => {})
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [workflow?.ID, nodeFingerprint])
+  // Nothing-hidden guardrail badges (docs/adr/0022's Update, extended by
+  // docs/adr/0031's breakpoint toggle) -- see useGuardrailBadges.ts's
+  // own header comment for the full design.
+  const refreshGuardrailVerdicts = useGuardrailBadges(workflow?.ID, nodes, setGuardrailVerdicts)
 
   // Authoring-validation surface (docs/adr/0028): debounced live
   // ValidateDraft, mirrored onto every node's own badge the same way
@@ -440,7 +430,7 @@ function CanvasInner({ nodeTypes, workflow, tabKey, onBack, onSaved }: Compositi
                 </Text>
               </Stack>
             </Panel>
-            <CurrentStepBar barState={barState} onResolve={resolveApprovalStep} onDismiss={dismissRunState} />
+            <CurrentStepBar barState={barState} attrs={workflow?.Attributes ?? []} onResolve={resolveApprovalStep} onDismiss={dismissRunState} />
           </ReactFlow>
         </div>
 
@@ -471,6 +461,8 @@ function CanvasInner({ nodeTypes, workflow, tabKey, onBack, onSaved }: Compositi
               sameKindNodeTypes={sameKindNodeTypes}
               hasWorkflow={!!workflow}
               hotkeyCapture={hotkeyCapture}
+              runStep={liveRunDetail?.steps?.find((s) => s.nodeID === selectedNode.id)}
+              onBreakpointChange={refreshGuardrailVerdicts}
               onChangeType={(newType) => {
                 const config: Record<string, string> = {}
                 for (const field of newType.ConfigFields ?? []) config[field.Key] = field.Default

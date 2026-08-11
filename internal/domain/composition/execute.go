@@ -51,6 +51,10 @@ type ExecuteOptions struct {
 	// a manual/hotkey/schedule/clipboard-watch fire today) means exactly
 	// today's behavior -- a run starting from "".
 	InitialPayload string
+	// Stepped seeds the root ExecContext.Stepped -- see that field's own
+	// doc comment (types.go). False (every caller before this field
+	// existed) means exactly today's behavior.
+	Stepped bool
 }
 
 // GuardrailGate is the injected approval seam (docs/adr/0022): called
@@ -60,7 +64,14 @@ type ExecuteOptions struct {
 // function pattern as SetHTTPRequestLookup, per CLAUDE.md's backend
 // rule. runCtx is the run's opaque RunContext (a DBOS context for a
 // durable run, nil for a direct in-memory execution).
-type GuardrailGate func(runCtx any, workflowID string, node Node, ec ExecContext) error
+//
+// Returns the (possibly modified) ExecContext, not just an error
+// (docs/adr/0031 item 4/5): a breakpoint/step-mode park can apply an
+// edited Attribute value before the node runs, or clear Stepped on an
+// explicit Continue -- the gate is the only place that can carry such a
+// change back into the run, since a node's own exec function never sees
+// the pre-park ctx separately from its own transformation of it.
+type GuardrailGate func(runCtx any, workflowID string, node Node, ec ExecContext) (ExecContext, error)
 
 var guardrailGate GuardrailGate
 
@@ -125,7 +136,7 @@ func executeWorkflow(nodes []Node, edges []Edge, attrs []AttributeDef, run StepR
 		return "", err
 	}
 
-	ctx := ExecContext{Payload: opts.InitialPayload, Attributes: attributesEnv(attrs, opts.AttrValues), RunContext: opts.RunContext}
+	ctx := ExecContext{Payload: opts.InitialPayload, Attributes: attributesEnv(attrs, opts.AttrValues), RunContext: opts.RunContext, Stepped: opts.Stepped}
 	visited := make(map[string]bool, len(nodes))
 	current := root
 	for {
@@ -147,10 +158,14 @@ func executeWorkflow(nodes []Node, edges []Edge, attrs []AttributeDef, run StepR
 			}
 			// The guardrail gate runs before the node does (docs/adr/0022)
 			// -- an ask verdict parks here durably, a deny aborts the run.
+			// The gate may hand back a modified ctx (docs/adr/0031: an
+			// edited Attribute value, or Stepped cleared by Continue).
 			if guardrailGate != nil {
-				if err := guardrailGate(opts.RunContext, opts.WorkflowID, node, ctx); err != nil {
+				gated, err := guardrailGate(opts.RunContext, opts.WorkflowID, node, ctx)
+				if err != nil {
 					return "", fmt.Errorf("node %s: %w", node.NodeTypeID, err)
 				}
+				ctx = gated
 			}
 			ctx, err = run(node.ID, func() (ExecContext, error) { return entry.exec(node, ctx) })
 			if err != nil {
