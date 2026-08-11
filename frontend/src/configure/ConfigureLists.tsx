@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Button, FormControl, Heading, IconButton, Label, Stack, Text, TextInput } from '@primer/react'
 import { DownloadIcon, ListUnorderedIcon, PlusIcon, TrashIcon, UploadIcon } from '@primer/octicons-react'
 import { DataTable } from '@primer/react/experimental'
@@ -10,6 +10,7 @@ import { ViewModeToggle } from '../shared/ViewModeToggle'
 import { useViewMode } from '../shared/viewMode'
 import { InventoryList, type InventoryItem } from '../shared/InventoryList'
 import { ENTITY_ICON } from '../shared/entityIcons'
+import { formatUpdated, sortByUpdatedDesc } from '../shared/inventorySort'
 import styles from '../shared/ListCard.module.css'
 import PageContainer from '../shared/PageContainer'
 
@@ -117,11 +118,16 @@ export function ConfigureLists() {
     setRows((prev) => prev.map((r, idx) => (idx === i ? { ...r, [field]: value } : r)))
   }
 
-  const listItems: InventoryItem[] = (lists ?? []).map((l) => ({
+  // Last-updated-first, applied once so both view modes render the
+  // same order (docs/SPEC.md §3.8's InventoryList entry).
+  const sortedLists = useMemo(() => sortByUpdatedDesc(lists ?? [], (l) => l.UpdatedAt), [lists])
+
+  const listItems: InventoryItem[] = sortedLists.map((l) => ({
     id: l.ID,
     entity: 'list',
     icon: ENTITY_ICON.list,
     label: l.Label,
+    updatedLabel: formatUpdated(l.UpdatedAt),
     // No !l.BuiltIn guard on Delete -- a seeded example is ordinary and
     // fully editable/deletable (docs/SPEC.md §2.2's Update note), same
     // as ConfigureRequests.tsx's identical badge.
@@ -200,7 +206,7 @@ export function ConfigureLists() {
         <ResizableTableContainer storageKey="mill-cols-lists">
           <DataTable
             aria-labelledby="lists-heading"
-            data={lists.map((l) => ({ ...l, id: l.ID }))}
+            data={sortedLists.map((l) => ({ ...l, id: l.ID }))}
             columns={[
               { header: 'Label', field: 'Label', rowHeader: true, sortBy: 'alphanumeric' },
               { header: 'Entries', id: 'entries', width: 'auto', renderCell: (l) => Object.keys(l.Entries ?? {}).length },

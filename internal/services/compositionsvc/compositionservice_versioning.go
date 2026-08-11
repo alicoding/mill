@@ -35,6 +35,13 @@ func (c *CompositionService) mutateWorkflow(id string, fn func(composition.Workf
 		c.mu.Unlock()
 		return composition.Workflow{}, err
 	}
+	// CreatedAt is preserved for free -- fn mutates a copy of the
+	// already-stored workflow, never constructs a fresh struct literal,
+	// so its CreatedAt survives untouched. UpdatedAt always advances:
+	// every mutateWorkflow caller (PublishWorkflow,
+	// PublishExistingVersion, RestoreVersionToDraft,
+	// SetWorkflowDisabled) is a real persisted mutation.
+	updated.UpdatedAt = time.Now()
 	c.user[idx] = updated
 	c.mu.Unlock()
 

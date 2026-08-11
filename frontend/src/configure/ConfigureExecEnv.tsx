@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Button, FormControl, Heading, IconButton, Label, Select, Stack, Text, TextInput } from '@primer/react'
 import { DownloadIcon, PlusIcon, TerminalIcon, TrashIcon, UploadIcon } from '@primer/octicons-react'
 import { DataTable } from '@primer/react/experimental'
@@ -12,6 +12,7 @@ import { ViewModeToggle } from '../shared/ViewModeToggle'
 import { useViewMode } from '../shared/viewMode'
 import { InventoryList, type InventoryItem } from '../shared/InventoryList'
 import { ENTITY_ICON } from '../shared/entityIcons'
+import { formatUpdated, sortByUpdatedDesc } from '../shared/inventorySort'
 import styles from '../shared/ListCard.module.css'
 import PageContainer from '../shared/PageContainer'
 
@@ -158,11 +159,16 @@ export function ConfigureExecEnv() {
     }
   }
 
-  const envItems: InventoryItem[] = (envs ?? []).map((e) => ({
+  // Last-updated-first, applied once so both view modes render the
+  // same order (docs/SPEC.md §3.8's InventoryList entry).
+  const sortedEnvs = useMemo(() => sortByUpdatedDesc(envs ?? [], (e) => e.UpdatedAt), [envs])
+
+  const envItems: InventoryItem[] = sortedEnvs.map((e) => ({
     id: e.ID,
     entity: 'execenv',
     icon: ENTITY_ICON.execenv,
     label: e.Label,
+    updatedLabel: formatUpdated(e.UpdatedAt),
     // No !e.BuiltIn guard on Delete -- same "ordinary, fully editable/
     // deletable from the moment it exists" reasoning as
     // ConfigureRequests.tsx/ConfigureLists.tsx's identical badge.
@@ -296,7 +302,7 @@ export function ConfigureExecEnv() {
         <ResizableTableContainer storageKey="mill-cols-execenvs">
           <DataTable
             aria-labelledby="execenvs-heading"
-            data={envs.map((e) => ({ ...e, id: e.ID }))}
+            data={sortedEnvs.map((e) => ({ ...e, id: e.ID }))}
             columns={[
               { header: 'Label', field: 'Label', rowHeader: true, sortBy: 'alphanumeric' },
               { header: 'Shell', id: 'shell', renderCell: (e) => SHELL_LABEL[e.Shell] ?? e.Shell },

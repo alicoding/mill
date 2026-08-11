@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/alicoding/mill/internal/adapters/openapispec"
 	"github.com/alicoding/mill/internal/domain/composition"
@@ -103,10 +104,13 @@ func (c *ConfigureService) HTTPRequests() []httprequest.HTTPRequest {
 // options-struct pass at some point, but that's a separate, bigger
 // refactor than "add a field" -- not done speculatively here.
 func (c *ConfigureService) CreateHTTPRequest(label, baseURL, method, body string, authType httprequest.AuthType, headers map[string]string, openAPISpec string, auth *httprequest.AuthConfig, jose *httprequest.JOSEConfig, description string) (httprequest.HTTPRequest, error) {
+	now := time.Now()
 	req := httprequest.HTTPRequest{
 		ID: seeding.NewSlugID(label, "request"), Label: label,
 		BaseURL: baseURL, Method: strings.TrimSpace(method), Body: body, AuthType: authType, Headers: headers, OpenAPISpec: openAPISpec, Auth: auth, JOSE: jose,
 		Description: description,
+		CreatedAt:   now,
+		UpdatedAt:   now,
 	}
 	if err := httprequest.Validate(req); err != nil {
 		return httprequest.HTTPRequest{}, err
@@ -151,8 +155,11 @@ func (c *ConfigureService) UpdateHTTPRequest(id, label, baseURL, method, body st
 	// informational (httprequest.HTTPRequest's own doc comment) --
 	// editing a seeded example doesn't stop it having started as one.
 	// Same pattern CompositionService.UpdateWorkflow already
-	// established.
+	// established. CreatedAt is preserved from storage, never trusted
+	// from the wire; UpdatedAt always advances on a real update.
 	req.BuiltIn = c.requests[idx].BuiltIn
+	req.CreatedAt = c.requests[idx].CreatedAt
+	req.UpdatedAt = time.Now()
 	c.requests[idx] = req
 	c.mu.Unlock()
 

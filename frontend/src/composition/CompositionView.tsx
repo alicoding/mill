@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Button, Heading, Label, Stack, Text } from '@primer/react'
 import { PlusIcon, UploadIcon, WorkflowIcon } from '@primer/octicons-react'
 import { CompositionService, ExecutionService, TriggerService } from '../shared/bindings'
@@ -7,6 +7,7 @@ import { generateSamplePayload } from '../shared/configSchema'
 import { refreshNodeTypes, refreshWorkflows, useAppStore } from '../shared/store'
 import { InventoryList, type InventoryItem } from '../shared/InventoryList'
 import { ENTITY_ICON } from '../shared/entityIcons'
+import { formatUpdated, sortByUpdatedDesc } from '../shared/inventorySort'
 import TestRunDialog from './TestRunDialog'
 import { workflowPayloadHint } from './triggerPayload'
 import styles from '../shared/ListCard.module.css'
@@ -199,7 +200,12 @@ function CompositionView() {
     openWorkTab({ kind: 'workflow-edit', workflowId: id, mode })
   }
 
-  const workflowItems: InventoryItem[] = (workflows ?? []).map((wf) => {
+  // Last-updated-first, applied once here so every render of this data
+  // (both the row view below and WorkflowsTable's own DataTable) shows
+  // the same order (docs/SPEC.md §3.8's InventoryList entry).
+  const sortedWorkflows = useMemo(() => sortByUpdatedDesc(workflows ?? [], (wf) => wf.UpdatedAt), [workflows])
+
+  const workflowItems: InventoryItem[] = sortedWorkflows.map((wf) => {
     const isCallable = findRootNode(wf.Nodes, wf.Edges)?.NodeTypeID === 'trigger-callable'
     const runTitle = hasDraftDrift(wf)
       ? 'Test run of the draft — differs from the published version.'
@@ -209,6 +215,7 @@ function CompositionView() {
       entity: 'workflow',
       icon: ENTITY_ICON.workflow,
       label: wf.Label,
+      updatedLabel: formatUpdated(wf.UpdatedAt),
       labelBadges: (
         <Stack direction="horizontal" gap="condensed" align="center">
           {wf.BuiltIn && <Label variant="secondary" size="small">built-in</Label>}
@@ -327,7 +334,7 @@ function CompositionView() {
       {workflows === null && <Text as="p" className={styles.muted}>Loading…</Text>}
       {workflows !== null && viewMode === 'table' && workflows.length > 0 && (
         <WorkflowsTable
-          workflows={workflows}
+          workflows={sortedWorkflows}
           runningId={runningId}
           editDisabled={editDisabled}
           armedWorkflows={armedWorkflows}

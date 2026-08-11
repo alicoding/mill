@@ -3,6 +3,7 @@ package configuresvc
 import (
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/alicoding/mill/internal/adapters/mcpclient"
 	"github.com/alicoding/mill/internal/domain/composition"
@@ -42,7 +43,8 @@ func (c *ConfigureService) MCPServers() []mcpserver.MCPServer {
 }
 
 func (c *ConfigureService) CreateMCPServer(label, command string, args []string) (mcpserver.MCPServer, error) {
-	s := mcpserver.MCPServer{ID: seeding.NewSlugID(label, "mcp-server"), Label: label, Command: command, Args: args}
+	now := time.Now()
+	s := mcpserver.MCPServer{ID: seeding.NewSlugID(label, "mcp-server"), Label: label, Command: command, Args: args, CreatedAt: now, UpdatedAt: now}
 	if err := mcpserver.Validate(s); err != nil {
 		return mcpserver.MCPServer{}, err
 	}
@@ -73,6 +75,10 @@ func (c *ConfigureService) UpdateMCPServer(id, label, command string, args []str
 		c.mu.Unlock()
 		return mcpserver.MCPServer{}, fmt.Errorf("no MCP server with id %q", id)
 	}
+	// CreatedAt is preserved from the stored entity, never trusted from
+	// the wire; UpdatedAt always advances on a real update.
+	s.CreatedAt = c.mcpServers[idx].CreatedAt
+	s.UpdatedAt = time.Now()
 	c.mcpServers[idx] = s
 	c.mu.Unlock()
 

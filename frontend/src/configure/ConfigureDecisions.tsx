@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Button, FormControl, Heading, IconButton, Label, Select, Stack, Text, TextInput } from '@primer/react'
 import { DownloadIcon, PlusIcon, TrashIcon, UploadIcon } from '@primer/octicons-react'
 import { DataTable } from '@primer/react/experimental'
@@ -13,6 +13,7 @@ import { ViewModeToggle } from '../shared/ViewModeToggle'
 import { useViewMode } from '../shared/viewMode'
 import { InventoryList, type InventoryItem } from '../shared/InventoryList'
 import { ENTITY_ICON } from '../shared/entityIcons'
+import { formatUpdated, sortByUpdatedDesc } from '../shared/inventorySort'
 import styles from '../shared/ListCard.module.css'
 import PageContainer from '../shared/PageContainer'
 
@@ -134,11 +135,16 @@ export function ConfigureDecisions() {
     }))
   }
 
-  const decisionItems: InventoryItem[] = (decisions ?? []).map((d) => ({
+  // Last-updated-first, applied once so both view modes render the
+  // same order (docs/SPEC.md §3.8's InventoryList entry).
+  const sortedDecisions = useMemo(() => sortByUpdatedDesc(decisions ?? [], (d) => d.UpdatedAt), [decisions])
+
+  const decisionItems: InventoryItem[] = sortedDecisions.map((d) => ({
     id: d.ID,
     entity: 'decision',
     icon: ENTITY_ICON.decision,
     label: d.Label,
+    updatedLabel: formatUpdated(d.UpdatedAt),
     labelBadges: <Label variant="secondary" size="small">{CATEGORY_LABEL[d.Category] ?? d.Category}</Label>,
     description: `Outputs: ${(d.Outputs ?? []).map((o) => o.Key).join(', ') || 'none'}`,
     onOpen: () => startEdit(d),
@@ -265,7 +271,7 @@ export function ConfigureDecisions() {
         <ResizableTableContainer storageKey="mill-cols-decisions">
           <DataTable
             aria-labelledby="decisions-heading"
-            data={decisions.map((d) => ({ ...d, id: d.ID }))}
+            data={sortedDecisions.map((d) => ({ ...d, id: d.ID }))}
             columns={[
               { header: 'Label', field: 'Label', rowHeader: true, sortBy: 'alphanumeric' },
               { header: 'Category', id: 'category', renderCell: (d) => <Label variant="secondary">{CATEGORY_LABEL[d.Category] ?? d.Category}</Label> },
