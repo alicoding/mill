@@ -29,6 +29,7 @@ import styles from './InventoryList.module.css'
 export interface InventoryItemIcon {
   Icon: Icon
   bg: string
+  fg: string
 }
 
 export interface InventoryMenuAction {
@@ -108,7 +109,7 @@ function InventoryRow({ item }: { item: InventoryItem }) {
     <ActionList.Item onSelect={item.onOpen} data-testid="inventory-row" data-entity={item.entity}>
       <ActionList.LeadingVisual>
         <span className={styles.icon} style={{ background: item.icon.bg }}>
-          <item.icon.Icon size={16} fill="var(--fgColor-onEmphasis)" />
+          <item.icon.Icon size={16} fill={item.icon.fg} />
         </span>
       </ActionList.LeadingVisual>
       <Stack direction="horizontal" gap="condensed" align="center" className={styles.labelRow}>
