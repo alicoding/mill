@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { forwardRef, useCallback, useImperativeHandle, useMemo, useState } from 'react'
 import { Panel } from '@xyflow/react'
 import { Button, IconButton, Label, type LabelProps, Stack, Text } from '@primer/react'
 import { ShieldIcon, XIcon } from '@primer/octicons-react'
@@ -98,6 +98,16 @@ export function CurrentStepBar({
   )
 }
 
+// Exposed so the canvas's workflow.run command (docs/goals/0016-keymap-
+// system.md, shared/commands.ts) can trigger exactly the same
+// attrs-check-then-dialog-or-immediate-run logic a mouse click on the
+// button already runs, without lifting testRunOpen/values state out of
+// this component -- CompositionCanvas.tsx holds a ref and calls
+// `.trigger()` from its own canvasCommandRequest-consuming effect.
+export interface RunButtonHandle {
+  trigger: () => void
+}
+
 // The canvas's own Run entrypoint (docs/adr/0008's single execution
 // path, docs/SPEC.md §3.2's per-record test harness reused verbatim
 // from CompositionView.tsx/TestRunDialog): a workflow with declared
@@ -105,27 +115,34 @@ export function CurrentStepBar({
 // Run button opens; one with none runs immediately. Only rendered once
 // a workflow is saved -- a brand-new, not-yet-saved draft has no ID to
 // run against yet.
-export function RunButton({
-  workflow, onStartRun,
-}: {
+export const RunButton = forwardRef<RunButtonHandle, {
   workflow: Workflow | null | undefined
   onStartRun: (values: Record<string, string>) => void
-}) {
+}>(function RunButton({ workflow, onStartRun }, ref) {
   const [testRunOpen, setTestRunOpen] = useState(false)
   const [values, setValues] = useState<Record<string, string>>({})
 
-  if (!workflow) return null
+  // Hooks run unconditionally (before the null-workflow early return
+  // below), same reason useImperativeHandle has to sit here rather than
+  // after it -- React's own rules-of-hooks constraint, not a stylistic
+  // choice. Memoized (not a plain `?? []`) so handleClick's own
+  // useCallback identity below doesn't churn every render on a fresh
+  // array reference.
+  const attrs = useMemo(() => workflow?.Attributes ?? [], [workflow])
 
-  const attrs = workflow.Attributes ?? []
-
-  const handleClick = () => {
+  const handleClick = useCallback(() => {
+    if (!workflow) return
     if (attrs.length > 0) {
       setValues(generateSamplePayload(attrs))
       setTestRunOpen(true)
       return
     }
     onStartRun({})
-  }
+  }, [workflow, attrs, onStartRun])
+
+  useImperativeHandle(ref, () => ({ trigger: handleClick }), [handleClick])
+
+  if (!workflow) return null
 
   return (
     <>
@@ -153,4 +170,4 @@ export function RunButton({
       )}
     </>
   )
-}
+})

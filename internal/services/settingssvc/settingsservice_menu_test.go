@@ -91,3 +91,15 @@ func TestRestoreMenuAccelerators_NeverGoesNegative(t *testing.T) {
 func TestStripMenuAccelerators_NilMenu_DoesNotPanic(t *testing.T) {
 	stripMenuAccelerators(nil, map[*application.MenuItem]string{})
 }
+
+// TestReleaseMenuAccelerators_NoLiveApp_DoesNotPanic covers the same
+// no-live-app ceiling as TestSuspendRestoreMenuAccelerators_NoLiveApp_DoesNotPanic
+// above -- application.Get() is nil in every test run (no native Cocoa
+// run loop in headless CI), so this only proves the nil-app guard,
+// never a real accelerator release. The real release only happens
+// against a running desktop app (.claude/skills/run-mill, manual).
+func TestReleaseMenuAccelerators_NoLiveApp_DoesNotPanic(t *testing.T) {
+	set := newTestSettingsService(t)
+
+	set.ReleaseMenuAccelerators()
+}

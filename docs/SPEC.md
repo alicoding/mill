@@ -2168,16 +2168,73 @@ findings) and the build rationale are in
   a dedicated alpha-only asset Mill doesn't have yet, a named minor
   polish gap. Not independently verified on a real rendered macOS menu
   bar (no screen access in the session that built it).
+- **Keymap system — `LOCKED`, built (goal 0016).** Supersedes the
+  original "Per-view hotkeys" bullet below (kept, corrected, not
+  duplicated): Cmd+1-4/Cmd+, are now two of eleven ordinary commands in
+  a real registry (`frontend/src/shared/commands.ts`), each with a
+  default binding, dispatched by ONE window `keydown` listener in
+  `App.tsx` (`dispatchCommandForEvent`) that resolves the pressed combo
+  against every command's current EFFECTIVE binding (its
+  Settings-store override, if any, else its default) — replacing the
+  old hardcoded `VIEW_HOTKEYS` map, not running alongside it. Still
+  deliberately **not** a real OS-level hotkey, same reasoning as
+  before: in-window-only via plain browser `keydown`, active regardless
+  of focus (`comboFromEvent`, `shared/keybinding.ts`, requires Cmd or
+  Ctrl specifically — never a bare Shift+letter a text field would
+  otherwise consume). New commands: `tab.close` (⌘W), `tab.next`/
+  `tab.prev` (⌃Tab/⌃⇧Tab, cycling `[pinned Workflows tab, ...open work
+  tabs]`), `workflow.new` (⌘N), `workflow.save` (⌘S) / `workflow.run`
+  (⌘↩, Cmd+Enter — reach the ACTIVE canvas tab via a store-level
+  `canvasCommandRequest` signal, `composition/useCanvasCommandDispatch.ts`,
+  since `shared/` can't import `composition/`, same shape as
+  `openWorkflowRequest` above), and `palette.open` (⌘K, reserved for
+  goal 0015, `run` is a no-op today). `workflow.run`'s default moved
+  off an initial ⌘R pick to ⌘↩ by owner decision, once implementation
+  surfaced a real collision the original research missed: macOS's
+  `DefaultApplicationMenu()` installs View > Reload on Cmd+R
+  unconditionally, and the owner uses ⌘R/⌘⇧R as their own native-
+  reload debug escape hatch, not something to take over
+  (`keyFromEventCode`/`comboFromEvent`, `shared/keybinding.ts`, gained
+  Enter/NumpadEnter support — both normalize to one `'Enter'` key —
+  for this; `formatCombo` renders it as Apple's own `↩` glyph, not a
+  spelled-out `ENTER`). **⌘W's own menu-accelerator collision, the
+  exact `performKeyEquivalent:` bug class Suspend/RestoreMenuAccelerators
+  already existed to fix temporarily for hotkey recording** —
+  `SettingsService.ReleaseMenuAccelerators` (called once from
+  `main.go`'s `ApplicationStarted`, before any recorder could ever
+  suspend/restore) permanently strips only the native File > Close
+  accelerator (View > Reload was released here too during initial
+  implementation while `workflow.run`'s default was briefly ⌘R,
+  reverted once it moved to ⌘↩ — Reload/ForceReload stay native,
+  untouched) so that one keypress falls through to the command
+  dispatch instead — the menu item itself stays clickable by mouse,
+  only its keyboard shortcut moves. Desktop-manual-verified only (no
+  native application menu in headless server-mode e2e); the JS-level
+  `tab.close` dispatch itself is e2e-covered regardless.
+  **Settings → Keyboard Shortcuts** (`KeyboardShortcutsSection.tsx`) is
+  a searchable list of every command, each rebindable via the SAME
+  press-to-capture recorder workflow hotkeys use
+  (`composition/hotkeyCapture.ts`'s `useComboCapture` core, generalized
+  off its original workflow-only shape into `useHotkeyCapture` +
+  `useCommandKeybindingCapture` — identical menu-suspension/reserved-
+  combo/Escape/blur handling, different backing RPCs).
+  `SettingsService.ListKeybindings`/`SetKeybinding`/`ClearKeybinding`
+  (`settingsservice_keymap.go`) persist OVERRIDES ONLY, keyed by
+  command id, in the same one-atomic-JSON-blob shape the summon hotkey
+  uses — the full command set + each default lives in `commands.ts`
+  alone, deliberately never mirrored server-side. Conflict checking is
+  split across both sides on purpose: a clash against another command
+  still on its frontend-only DEFAULT can only be caught client-side
+  (`useCommandKeybindingCapture`'s own pre-check, before the RPC is
+  ever called); a clash against another OVERRIDDEN command or a
+  workflow's trigger hotkey (`TriggerService.ClaimedCombos`, reusing
+  `trigger.CheckConflict` verbatim) is caught server-side, naming the
+  conflicting command or workflow.
 - **Per-view hotkeys** — Cmd+1 through Cmd+4 jump to a top-level view
   (Composition/Configure/Activity/Spec, matching the sidebar order,
   down from an original five once Runs stopped being a top-level view —
-  §7's Update), via a plain `keydown` listener in `App.tsx` calling
-  `useAppStore`'s existing `setView`. Deliberately **not** a real
-  OS-level hotkey — in-window-only, so it doesn't need
-  `TriggerService`'s claimed-combo conflict check the summon hotkey
-  goes through. Active regardless of focus (Cmd+digit isn't a combo
-  real typing produces, matching browsers'/Slack's own Cmd+1-9
-  precedent).
+  §7's Update). Historical bullet, left as originally written; the
+  keymap-system entry above is the current shape.
 - **Window/tab/filter state persistence** — window position/size/
   maximized state is Go-side (`settingsservice.go`'s
   `LoadWindowGeometry`/`WatchWindowGeometry`, persisted via
