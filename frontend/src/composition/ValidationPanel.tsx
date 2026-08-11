@@ -1,7 +1,8 @@
 import { useState } from 'react'
-import { AnchoredOverlay, Label, Stack, Text } from '@primer/react'
-import { AlertFillIcon, XCircleFillIcon } from '@primer/octicons-react'
+import { AnchoredOverlay, Button, Label, Stack, Text } from '@primer/react'
+import { AlertFillIcon, CheckIcon, CopyIcon, XCircleFillIcon } from '@primer/octicons-react'
 import type { Issue } from '../../bindings/github.com/alicoding/mill/internal/domain/composition/models'
+import { formatIssuesForCopy } from './validationCopy'
 import styles from './CompositionCanvas.module.css'
 
 // The editor's own authoring-validation surface (docs/adr/0028): a
@@ -13,12 +14,25 @@ import styles from './CompositionCanvas.module.css'
 // on the canvas. Errors block Save; warnings never do (composition.go's
 // ValidateGraphStrict), but both surface here since the whole point is
 // nothing hidden before a save attempt, not just what will fail it.
-export function ValidationSurface({ issues, onSelectIssue }: {
+export function ValidationSurface({ issues, workflowLabel, onSelectIssue }: {
   issues: Issue[]
+  workflowLabel: string
   onSelectIssue: (issue: Issue) => void
 }) {
   const [open, setOpen] = useState(false)
+  const [copied, setCopied] = useState(false)
   if (issues.length === 0) return null
+
+  // Copy the whole issue list as one self-identifying text block --
+  // asked for directly: pasteable into a support/AI conversation
+  // without hand-transcribing panel rows. Same navigator.clipboard
+  // precedent as RequestTestPanel's Copy-error button.
+  const copyIssues = () => {
+    void navigator.clipboard.writeText(formatIssuesForCopy(workflowLabel, issues)).then(() => {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1500)
+    })
+  }
 
   const errorCount = issues.filter((i) => i.Severity === 'error').length
   const warningCount = issues.length - errorCount
@@ -47,6 +61,16 @@ export function ValidationSurface({ issues, onSelectIssue }: {
     >
       <div className={styles.validationPanel} data-testid="validation-panel">
         <Stack direction="vertical" gap="condensed">
+          <Button
+            size="small"
+            variant="invisible"
+            leadingVisual={copied ? CheckIcon : CopyIcon}
+            onClick={copyIssues}
+            data-testid="copy-issues"
+            alignContent="start"
+          >
+            {copied ? 'Copied' : 'Copy issues'}
+          </Button>
           {issues.map((issue, i) => (
             <button
               key={`${issue.NodeID}-${issue.EdgeID}-${i}`}
