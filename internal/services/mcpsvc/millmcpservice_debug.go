@@ -24,6 +24,10 @@ import (
 type runWorkflowSteppedArgs struct {
 	ID     string            `json:"id" jsonschema:"the workflow's ID"`
 	Values map[string]string `json:"values,omitempty" jsonschema:"optional starting Attribute values, keyed by attribute key"`
+	// Same trigger-input substitution as run_workflow's payload arg --
+	// a stepped debug session of a trigger-fed workflow needs its
+	// input exactly as much as a plain run does (goal 0021 gap 1).
+	Payload string `json:"payload,omitempty" jsonschema:"optional initial payload -- what the workflow's trigger would have delivered as the run's starting input"`
 }
 
 // debugPending fetches runID's live pending approval and rejects
@@ -66,7 +70,7 @@ func (m *MillMCPService) registerDebugTools() {
 		if m.exec == nil {
 			return nil, nil, fmt.Errorf("execution service not wired")
 		}
-		summary, err := m.exec.RunWorkflowStepped(in.ID, in.Values, "")
+		summary, err := m.exec.RunWorkflowStepped(in.ID, in.Values, in.Payload)
 		if err != nil {
 			return nil, nil, err
 		}

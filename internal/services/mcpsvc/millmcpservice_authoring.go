@@ -66,6 +66,12 @@ type validateWorkflowArgs struct {
 type runWorkflowArgs struct {
 	ID     string            `json:"id" jsonschema:"the workflow's ID"`
 	Values map[string]string `json:"values,omitempty" jsonschema:"optional starting Attribute values, keyed by attribute key"`
+	// Payload substitutes what the workflow's trigger would have
+	// delivered (a filesystem-watch trigger's changed file path) --
+	// the same seam the UI Run dialog's Initial-payload field uses;
+	// without it a trigger-fed workflow is untestable over MCP (goal
+	// 0021 gap 1, found live-probing the capture-floor seed).
+	Payload string `json:"payload,omitempty" jsonschema:"optional initial payload -- what the workflow's trigger would have delivered as the run's starting input (e.g. a file path for a filesystem-watch-fed workflow)"`
 }
 
 type runIDArgs struct {
@@ -252,7 +258,7 @@ func (m *MillMCPService) registerAuthoringTools() {
 		if m.exec == nil {
 			return nil, nil, fmt.Errorf("execution service not wired")
 		}
-		summary, err := m.exec.RunWorkflow(in.ID, executionsvc.RunKindTest, in.Values)
+		summary, err := m.exec.RunWorkflowWithPayload(in.ID, executionsvc.RunKindTest, in.Values, in.Payload)
 		if err != nil {
 			return nil, nil, err
 		}
