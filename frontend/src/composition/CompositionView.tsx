@@ -197,10 +197,15 @@ function CompositionView() {
       labelBadges: (
         <Stack direction="horizontal" gap="condensed" align="center">
           {wf.BuiltIn && <Label variant="secondary" size="small">built-in</Label>}
-          {/* Lifecycle badges (docs/adr/0021): live version, or a never-
-              published draft; disabled pauses triggers. */}
+          {/* Lifecycle badges (docs/adr/0021): only the EXCEPTIONAL state
+              gets colour -- "live/published" is the normal healthy default
+              (true on nearly every row), so a loud green there is pure
+              noise and makes the colour meaningless; it renders quiet
+              (secondary). A never-published draft (attention) and a
+              disabled workflow (severe) are the exceptions worth the eye.
+              Owner: the badge scatter "looks like broken UI." */}
           {wf.PublishedVersion > 0
-            ? <Label variant="success" size="small">v{wf.PublishedVersion} live</Label>
+            ? <Label variant="secondary" size="small">v{wf.PublishedVersion} live</Label>
             : <Label variant="attention" size="small">draft</Label>}
           {wf.Disabled && <Label variant="severe" size="small">disabled</Label>}
         </Stack>
