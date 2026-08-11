@@ -16,21 +16,13 @@ import type { View } from "../shared/store";
 import { dispatchCommandForEvent } from "../shared/commands";
 import { WorkTabShell } from "./WorkTabShell";
 import { MCPWriteApprovals } from "./MCPWriteApprovals";
+import { BuildIdentityBadge } from "./BuildIdentityBadge";
 import { COLOR_MODE_STORAGE_KEY, SIDEBAR_OPEN_STORAGE_KEY } from "./theme";
 import { CAPABILITY_ICON } from "./navIcon";
 import styles from "./App.module.css";
 
 // Show the actual Wails version this project was generated against.
 const wailsVersion = "v3.0.0-beta.4";
-
-// import.meta.env.DEV is Vite's own built-in flag, not something Mill
-// wires up itself: true only for a real `vite serve` process (what
-// `task dev`'s window actually renders through, per devServerURL in its
-// logs), false for every `vite build` output regardless of --mode --
-// verified directly, not assumed, since that distinction is easy to get
-// backwards. This is Mill's answer to "am I looking at a dev build,
-// and is it current" (see docs/SPEC.md's dev-build/hot-reload notes).
-const isDevBuild = import.meta.env.DEV;
 
 // The strip's first tab names the current sidebar section -- the "go
 // back to the page under the tabs" affordance.
@@ -80,8 +72,6 @@ function App() {
   // ribbon only fires for a live `vite serve`, never for any `go build`
   // output, dev or not).
   const [buildInfo, setBuildInfo] = useState<BuildInfo | null>(null);
-  const binaryHead = buildInfo?.Revision ? buildInfo.Revision.slice(0, 7) : "";
-  const buildStale = Boolean(binaryHead && __MILL_REPO_HEAD__ && binaryHead !== __MILL_REPO_HEAD__);
   const workflows = useAppStore((s) => s.workflows);
   const pushActivity = useAppStore((s) => s.pushActivity);
   const setCapabilities = useAppStore((s) => s.setCapabilities);
@@ -306,37 +296,10 @@ function App() {
 
   return (
     <div className={`app-shell${IS_NATIVE_WEBVIEW ? ' app-shell--native-titlebar' : ''}`}>
-      {/* Build-identity badge (asked for directly: the old load-time
-          clock answered nothing about WHICH build is running). The
-          bundle knows the repo HEAD it was compiled from; the binary
-          reports its own build commit -- a mismatch means an orphaned
-          stale binary is answering the RPCs behind a fresh bundle
-          (docs/SPEC.md §3.8's staleness class), shown loud regardless
-          of dev/prod. Matching dev builds show the hash quietly. */}
-      {buildStale ? (
-        // Inside the native webview the badge IS the action: one click
-        // quits this stale instance (the fresh one is already running
-        // -- that's how the bundle got newer). A server-mode browser
-        // tab only informs: it must never kill the shared server.
-        IS_NATIVE_WEBVIEW ? (
-          <Label
-            variant="danger" size="small"
-            className={`${styles.devRibbon} ${styles.devRibbonAction}`}
-            data-testid="stale-build-badge"
-            onClick={() => { void SettingsService.QuitApp() }}
-          >
-            STALE BUILD · app {binaryHead} ≠ repo {__MILL_REPO_HEAD__} — click to close this stale window
-          </Label>
-        ) : (
-          <Label variant="danger" size="small" className={styles.devRibbon} data-testid="stale-build-badge">
-            STALE BUILD · app {binaryHead} ≠ repo {__MILL_REPO_HEAD__} — restart task dev
-          </Label>
-        )
-      ) : isDevBuild && (
-        <Label variant="severe" size="small" className={styles.devRibbon} data-testid="dev-build-badge">
-          DEV{binaryHead ? ` · ${binaryHead}` : ''}
-        </Label>
-      )}
+      {/* Build-identity badge -- one glance answers "which build is
+          this, and is it live." Extracted to BuildIdentityBadge.tsx
+          (goal 0019); its own doc comment carries the full reasoning. */}
+      <BuildIdentityBadge buildInfo={buildInfo} />
       {isIsolatedData && (
         <Label variant="accent" size="small" className={styles.isolatedDataRibbon} data-testid="isolated-data-badge">
           TEST DATA
