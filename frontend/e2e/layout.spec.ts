@@ -47,3 +47,22 @@ test('a narrow-variant form page (Settings) still keeps its readable width cap',
   expect(box).not.toBeNull()
   expect(box!.width).toBeLessThanOrEqual(960)
 })
+
+test('the editor inner tab bar keeps its natural height, never growing to eat vertical space', async ({ page }) => {
+  // Regression coverage for the dead-space bug (owner-reported twice,
+  // confirmed by DOM probe): .tabList carried flex-grow for the
+  // titlebar strip's ROW context, but WorkflowEditorTab's inner bar
+  // sits in .editorPanel's COLUMN, where grow sizes HEIGHT -- the bar
+  // ballooned to 178px+ and pushed the panel content far down.
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Workflows' }).click()
+  await page
+    .locator('[data-testid="inventory-row"][data-entity="workflow"]')
+    .filter({ hasText: 'Clipboard → Markdown' })
+    .click()
+  const innerBar = page.getByRole('tablist', { name: 'Clipboard → Markdown sections' })
+  await expect(innerBar).toBeVisible()
+  const box = await innerBar.boundingBox()
+  if (!box) throw new Error('inner tab bar has no bounding box')
+  expect(box.height).toBeLessThan(60)
+})
