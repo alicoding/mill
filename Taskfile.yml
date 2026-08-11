@@ -89,8 +89,33 @@ tasks:
       - task: "{{.GOOS}}:run"
 
   dev:
-    summary: Runs the application in development mode
-    deps: [clean]
+    summary: Runs the application in development mode (hot reload)
+    desc: |
+      Deliberately does NOT depend on `clean` (unlike build/package):
+      wiping bin/ on every `task dev` throws away the linked binary and
+      forces a from-scratch relink each start, buying nothing for the dev
+      loop -- Go's own compile cache and Task's binding-generation
+      fingerprints (frontend/bindings tracked against Go sources) are what
+      actually keep restarts fast, and `task clean` doesn't clear either
+      of those, so cleaning here just adds a slow relink. The
+      stale-binary confusion the clean-before-build rule guards against is
+      already covered for dev by the app's own build-staleness badge
+      (SPEC §3.8) and by dev using bin/mill.dev.app specifically. Run
+      `task clean` by hand, or use `task build`/`package`/`install:app`
+      (which still clean), when you want a guaranteed-fresh artifact.
+
+      The dev loop, so it's not re-paid needlessly: START THIS ONCE and
+      LEAVE IT RUNNING. Frontend edits (frontend/src/**) are instant Vite
+      HMR in the live window -- no rebuild, no binding regen, no reinstall.
+      Only a Go change restarts the app, and even then the ~20s
+      `wails3 generate bindings` step is SKIPPED automatically whenever Go
+      sources are unchanged: Task fingerprints that step against the Go
+      files (build/Taskfile.yml `generate:bindings` sources ->
+      frontend/bindings/**), so it only re-runs after a real Go change.
+      `wails3 dev` has no `-skipbindings` passthrough (checked directly:
+      its only flags are -config/-port/-nocolour/-s), so there's no
+      manual override -- the fingerprint IS the mechanism, which is why
+      not wiping bin/ (above) matters.
     cmds:
       - wails3 dev -config ./build/config.yml -port {{.VITE_PORT}}
 

@@ -28,6 +28,23 @@ pattern (frequently-used float up, pinned, configurable).
 Pairs with 0014; the shared usage-stats read layer is the common
 prerequisite — whichever of the two goals goes first builds it.
 
+## Owner reinforcement (2026-08-10, live testing) — discoverability is THE point
+Owner hit the exact gap this closes: pressed ⌘1-4 (pages), wanted to
+switch TABS, had no idea how, and had to LEAVE the page and dig through
+Settings to find out. The principle: **unblock yourself in place** —
+the palette must be the "how do I do X / what's possible here" surface,
+not just a runner. Concrete requirements this adds:
+- **Every command row shows its shortcut inline** (⌘K → type "tab" →
+  see `Next tab · ⌃Tab` without leaving the page). The palette IS the
+  in-place shortcut reference, doubling as the ⌘? "keyboard help" the
+  owner also asked for — bind ⌘? (and/or ⌘/) to open it too, or open a
+  shortcuts-focused view.
+- Palette contents = commands (with shortcuts) + workflows (run) + tab
+  navigation (switch/close a specific open tab by name — directly
+  addresses the tab-UI friction below) + Configure entities.
+- Ties to SPEC §1's real-time/self-service ethos: never make the user
+  leave to learn how to do the thing they're mid-doing.
+
 ## Acceptance
 Owner summons, types three letters, runs a workflow — and the row
 they picked showed them the hotkey they'll use instead next time;
