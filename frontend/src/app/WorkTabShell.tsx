@@ -1,7 +1,8 @@
 import { useEffect } from 'react'
 import type { ReactNode } from 'react'
 import { Tabs } from '@primer/react/experimental'
-import { Banner } from '@primer/react'
+import { ActionList, ActionMenu, Banner, IconButton } from '@primer/react'
+import { ChevronDownIcon } from '@primer/octicons-react'
 import { ConfigureService } from '../shared/bindings'
 import { TabItem, TabList, TabPanel } from '../shared/Tabs'
 import { refreshRequests, refreshWorkflows, useAppStore, type WorkTab } from '../shared/store'
@@ -10,6 +11,7 @@ import { clearScratch } from '../composition/canvasScratch'
 import { RequestForm } from '../configure/RequestForm'
 import { RequestSummary } from '../configure/RequestSummary'
 import editorStyles from '../composition/CompositionView.module.css'
+import styles from './WorkTabShell.module.css'
 
 // The ONE app-wide work-tab strip (docs/SPEC.md §3.8, direct user
 // decision: two per-page strips isolating open work between pages was
@@ -43,6 +45,8 @@ export function WorkTabShell({ pageLabel, children }: { pageLabel: string; child
   const activeWorkTabKey = useAppStore((s) => s.activeWorkTabKey)
   const activateWorkTab = useAppStore((s) => s.activateWorkTab)
   const closeWorkTab = useAppStore((s) => s.closeWorkTab)
+  const closeAllWorkTabs = useAppStore((s) => s.closeAllWorkTabs)
+  const closeOtherWorkTabs = useAppStore((s) => s.closeOtherWorkTabs)
   const openWorkTab = useAppStore((s) => s.openWorkTab)
   const pruneWorkTabs = useAppStore((s) => s.pruneWorkTabs)
   const workflows = useAppStore((s) => s.workflows)
@@ -64,6 +68,18 @@ export function WorkTabShell({ pageLabel, children }: { pageLabel: string; child
   const closeAndClearScratch = (key: string) => {
     clearScratch(key)
     closeWorkTab(key)
+  }
+
+  // Bulk closers for the overflow ⌄ menu (goal 0018). Scratch clearing
+  // stays here (the store is scratch-agnostic): clear every key that's
+  // about to be removed, then let the store drop them from state.
+  const closeAllTabs = () => {
+    workTabs.forEach((t) => clearScratch(t.key))
+    closeAllWorkTabs()
+  }
+  const closeOtherTabs = (keepKey: string) => {
+    workTabs.forEach((t) => { if (t.key !== keepKey) clearScratch(t.key) })
+    closeOtherWorkTabs(keepKey)
   }
 
   // Drop restored tabs whose entity was deleted since last session --
@@ -139,21 +155,69 @@ export function WorkTabShell({ pageLabel, children }: { pageLabel: string; child
   return (
     <Tabs value={activeWorkTabKey ?? PAGE_TAB} onValueChange={({ value }) => activateWorkTab(value === PAGE_TAB ? null : value)}>
       {workTabs.length > 0 && (
-        <TabList aria-label="Open work">
-          <TabItem value={PAGE_TAB}>{pageLabel}</TabItem>
-          {workTabs.map((t) => (
-            <TabItem key={t.key} value={t.key} onClose={() => closeAndClearScratch(t.key)}>
-              {tabLabel(t, workflowLabel, requestLabel)}
-              {/* Hot-exit dirty dot (docs/goals/0012) -- this tab's
-                  canvas currently differs from what's saved. */}
-              {workTabDirty[t.key] && (
-                <span className={editorStyles.dirtyDot} aria-label="Unsaved changes" data-testid="dirty-indicator">
-                  {' '}•
-                </span>
-              )}
-            </TabItem>
-          ))}
-        </TabList>
+        <div className={styles.tabStrip}>
+          <TabList aria-label="Open work">
+            <TabItem value={PAGE_TAB}>{pageLabel}</TabItem>
+            {workTabs.map((t) => (
+              <TabItem key={t.key} value={t.key} onClose={() => closeAndClearScratch(t.key)}>
+                {tabLabel(t, workflowLabel, requestLabel)}
+                {/* Hot-exit dirty dot (docs/goals/0012) -- this tab's
+                    canvas currently differs from what's saved. */}
+                {workTabDirty[t.key] && (
+                  <span className={editorStyles.dirtyDot} aria-label="Unsaved changes" data-testid="dirty-indicator">
+                    {' '}•
+                  </span>
+                )}
+              </TabItem>
+            ))}
+          </TabList>
+          {/* Overflow + management menu (goal 0018): pinned beside the
+              scrolling TabList so many open tabs stay ONE row -- jump to
+              any open tab by name (reaches ones scrolled off), and close
+              others / close all in one action. Shown once there are 2+
+              work tabs, where managing them actually matters. */}
+          {workTabs.length >= 2 && (
+            <div className={styles.overflow}>
+              <ActionMenu>
+                <ActionMenu.Anchor>
+                  <IconButton
+                    icon={ChevronDownIcon}
+                    aria-label="All open tabs"
+                    size="small"
+                    variant="invisible"
+                    data-testid="work-tab-overflow"
+                  />
+                </ActionMenu.Anchor>
+                <ActionMenu.Overlay>
+                  <ActionList>
+                    <ActionList.Group>
+                      <ActionList.GroupHeading>Open tabs</ActionList.GroupHeading>
+                      {workTabs.map((t) => (
+                        <ActionList.Item
+                          key={t.key}
+                          selected={t.key === activeWorkTabKey}
+                          onSelect={() => activateWorkTab(t.key)}
+                        >
+                          {tabLabel(t, workflowLabel, requestLabel)}
+                        </ActionList.Item>
+                      ))}
+                    </ActionList.Group>
+                    <ActionList.Divider />
+                    <ActionList.Item
+                      disabled={activeWorkTabKey === null}
+                      onSelect={() => { if (activeWorkTabKey) closeOtherTabs(activeWorkTabKey) }}
+                    >
+                      Close other tabs
+                    </ActionList.Item>
+                    <ActionList.Item variant="danger" onSelect={closeAllTabs}>
+                      Close all tabs
+                    </ActionList.Item>
+                  </ActionList>
+                </ActionMenu.Overlay>
+              </ActionMenu>
+            </div>
+          )}
+        </div>
       )}
       <TabPanel value={PAGE_TAB}>{children}</TabPanel>
       {workTabs.map((t) => (

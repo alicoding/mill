@@ -7,11 +7,25 @@
    tokens, matching the rest of the app. */
 .tabList {
     display: flex;
-    flex-wrap: wrap;
-    flex-shrink: 0;
+    /* One tidy row that scrolls, never a second wrapped row (goal 0018,
+       owner: "not loving the tab UI" with tabs spilling onto line 2).
+       min-width:0 + flex lets it shrink inside the app-wide strip's flex
+       row (WorkTabShell) so the overflow ⌄ menu stays pinned beside it;
+       the inner-tab consumers (Configure/RequestSummary/WorkflowEditor)
+       have few, fixed tabs so they never actually scroll. Scrollbar
+       hidden -- the ⌄ menu is the discoverable overflow affordance, the
+       bar itself scrolls by trackpad/shift-wheel. */
+    flex: 1 1 auto;
+    min-width: 0;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
     gap: 2px;
     border-bottom: 1px solid var(--borderColor-default);
     padding: 0 var(--s-4);
+}
+.tabList::-webkit-scrollbar {
+    display: none;
 }
 .tabItem {
     position: relative;
@@ -27,6 +41,7 @@
     font-size: 14px;
     padding: var(--base-size-8) var(--base-size-24) var(--base-size-8) var(--base-size-12);
     cursor: pointer;
+    white-space: nowrap;
 }
 .tab:hover {
     color: var(--fgColor-default);
