@@ -286,6 +286,19 @@ and [`docs/adr/0002-cicd-pipeline-phased-rollout.md`](adr/0002-cicd-pipeline-pha
   merge-blocking except govulncheck. Precedent: wailsapp/wails's own v3 CI
   (native-OS matrix, no GoReleaser — wailsapp/wails#747 closed wont-fix).
   `LOCKED`
+- **Operating model: trunk-based locally, PR-per-goal to a
+  ruleset-gated `main`, push at least per session — `LOCKED`,
+  [ADR-0034](adr/0034-git-ci-operating-model.md)** (owner-ratified
+  2026-08-11 after research found the ignored-pipeline failure mode on
+  record in this repo's own run history: rapid direct pushes
+  cancelling a 43-minute suite until pushing stopped). Direct pushes
+  to `main` are blocked for everyone including the owner (bypass =
+  "for pull requests only"; a green PR self-merges reviewer-free);
+  required checks make green-before-main mechanical, not aspirational
+  — GitHub can't gate a direct push on checks at all. Secret-scanning
+  push protection enabled ahead of the 273-commit catch-up push. CI
+  path filtering deliberately deferred (required-checks/skipped-status
+  footgun — the ADR has the reasoning).
 - **Linux server-mode builds require `CGO_ENABLED=0` explicitly** — not
   optional, confirmed by actually building natively in a linux/amd64
   container, not assumed. Without it, Wails3's own
