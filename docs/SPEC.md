@@ -3233,15 +3233,25 @@ recorded as a real design input (`OPEN`), never silently dropped.
   callable-workflow picker's empty state now names the exact next step
   (create a workflow whose trigger is "callable by another workflow")
   instead of a dead-end empty dropdown.
-- **Native macOS titlebar strip reserved explicitly — `LOCKED`,
-  built.** The desktop window uses `MacTitleBarHiddenInset` (main.go),
-  so the traffic lights float over the content's top-left;
-  `env(safe-area-inset-*)` is always 0 on desktop and covers none of
-  it (a real regression the padding cleanup shipped, caught from a
-  screenshot). `App.tsx` adds `.app-shell--native-titlebar`
-  (38px top padding) only inside the Wails webview (`window._wails`
-  present) — a browser tab on the server-mode interface reserves
-  nothing.
+- **Native macOS titlebar strip — now the Chrome-style tab band
+  (superseding the original reserved-padding approach and the interim
+  sidebar-surface fix, both same-day 2026-08-11).** The desktop window
+  uses `MacTitleBarHiddenInset` (main.go); the titlebar region is a
+  real 38px band element (always present, both native and server
+  modes — native adds an 80px traffic-light inset), owner-requested
+  after Chrome's own pattern: **the app-wide work-tab strip lives IN
+  the titlebar**, delivered via a React portal from `WorkTabShell`
+  (Primer's experimental Tabs is plain context — TabList and panels
+  split across the portal safely, verified against its compiled
+  source). Band chrome: `--bgColor-inset` + hairline bottom border, so
+  band + sidebar read as one continuous L; the active tab takes
+  `--bgColor-default`, Chrome's attached-to-content look. Empty band
+  space drags the window (`--wails-draggable: drag`, the mechanism
+  verified in `@wailsio/runtime`'s own `drag.js`; tabs/buttons opt
+  out). The strip always renders now — zero work tabs shows just the
+  page tab — and the old `.app-shell--native-titlebar` padding rule
+  plus the sidebar pull-up fix are deleted, not superimposed. This
+  also reclaimed a full row of vertical space in every view.
 - **Source-first analytics on Activity — now `LOCKED`, built** (the
   reference pattern asked for directly: select the input source, see
   its activity, columns from the source's own attributes, search over

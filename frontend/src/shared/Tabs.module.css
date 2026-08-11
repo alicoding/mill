@@ -42,6 +42,15 @@
     padding: var(--base-size-8) var(--base-size-24) var(--base-size-8) var(--base-size-12);
     cursor: pointer;
     white-space: nowrap;
+    /* This TabList now also renders inside the app's titlebar band
+       (WorkTabShell, portaled -- docs/SPEC.md §3.8), where the
+       surrounding chrome is draggable-by-default (App.module.css's
+       .titlebar). Individual tab buttons must opt out so a click
+       selects/closes the tab instead of starting a window drag --
+       harmless everywhere else this component renders (Configure/
+       RequestSummary/WorkflowEditor's own inner tabs), since their
+       ancestor chrome is already --wails-draggable:no-drag. */
+    --wails-draggable: no-drag;
     /* Column layout for the optional two-line kind+label shape
        (.tabKicker below). Tabs without a kicker keep a single line and
        center vertically -- the strip's default stretch alignment gives
@@ -79,6 +88,14 @@
     color: var(--fgColor-default);
     border-bottom-color: var(--borderColor-accent-emphasis);
     font-weight: 600;
+    /* Chrome-style "attached" active tab: pop to the same background
+       the content pane below renders on, so the active tab visually
+       merges into what it's showing, distinct from the surrounding
+       chrome. A real effect in the titlebar band (App.module.css's
+       .titlebar sits on --bgColor-inset, the sidebar's grey); a no-op
+       everywhere this component's inner-tab usages already render
+       against --bgColor-default (Configure/RequestSummary/WorkflowEditor). */
+    background: var(--bgColor-default);
 }
 .tabClose {
     position: absolute;
@@ -91,6 +108,8 @@
     width: 18px;
     height: 18px;
     border-radius: var(--borderRadius-small);
+    /* Same titlebar-band drag opt-out as .tab above. */
+    --wails-draggable: no-drag;
     color: var(--fgColor-muted);
     cursor: pointer;
 }
