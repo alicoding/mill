@@ -75,6 +75,23 @@ an implicit `FINAL`.
 - Hard constraint: the guardrailed path must not be harder than the baseline
   of what a person can already do natively (copy/paste, running a command
   themselves by hand). If it is, nobody adopts it. `LOCKED`
+- **Blocked ≠ unsupported — Mill carries the capability superset; the
+  environment decides which are live.** `LOCKED` (owner-stated
+  2026-08-11, with the bank-reality reframe). Ground truth on the
+  target work machine: MCP is deny-all ([corporate-proxy] blocks the port) until
+  the bank's AI-tool control plane lands; no Confluence/Jira API
+  access; full-page clipboard copy loses structure. So Mill's true
+  near-term product is the local/offline/open-source substrate that
+  makes M365 Copilot and/or local Ollama usable there — reliable
+  structure-preserving DOM capture → markdown (§5, ADR-0030's decision
+  matrix), the §2.1 bridge, and a local AI node (pending decision) —
+  while the MCP/connector/canvas platform stays the long game, built
+  and shipped even where blocked. Never rip a capability out because
+  one environment blocks it (exactly how MCP already works: built,
+  live here, unusable at the bank). Open-source is load-bearing
+  distribution, not ideology: [corporate-proxy] scans and passes `git clone` of
+  OSS, which is what makes §1.1's install story the legal way onto the
+  work machine.
 - **Everything is real-time — the user never reloads or reopens to see
   current state.** `LOCKED` (product value, owner-stated 2026-08-10).
   A well-built Mill has nothing to "refresh": any change — a run
@@ -2644,23 +2661,37 @@ Full rationale in [`docs/adr/0003-browser-bridge-architecture.md`](adr/0003-brow
   desktop mode are separate build tags that don't run concurrently.
   Intersects with §7 (a "session" already needs to span tab + agent run +
   process). `OPEN`
-- **Data point, not yet confirmed**: user reports that copying an entire
-  Confluence page (as opposed to a smaller in-page selection) loses
-  structure on paste — comes out plain text only. Two different root causes
-  are possible: (a) Confluence puts real HTML on the clipboard for a
-  full-page copy but something downstream mishandles it, or (b) Confluence's
-  full-page copy degrades to plain-text-only at the source, in which case
-  there's nothing on the clipboard for any converter to work with. Testing
-  with §2.2's Runbook action (reuses the same clipboard-HTML-read path) to
-  find out which. If it's (b), that's a concrete case where clipboard-based
-  capture is fundamentally insufficient and DOM-read via the browser bridge
-  is the only reliable path — not just a nice-to-have for the M365 milestone,
-  a requirement for at least this source. Also noted in passing: image paste
-  from clipboard already works reliably in most chat apps (image clipboard
-  flavors are consistent across sources) — the inconsistency is specific to
-  rich-text/HTML flavors, worth keeping in mind when designing the capture
-  layer's fallback order (try HTML → try DOM-read → fall back to plain
-  text/image, not just clipboard-HTML-or-bust). `OPEN`, pending the test.
+- **Data point, root cause now researched (mechanism level)**: copying an
+  entire Confluence page loses structure on paste — plain text only.
+  The 2026-08-11 research pass (ADR-0030) resolved the (a)-mishandled-
+  downstream vs. (b)-degraded-at-source question toward (b)'s
+  mechanism: no browser-level rule makes large copies carry less
+  structure (default copy serializes the selection range to `text/html`
+  regardless of size), but a site's own `copy` event handler can fully
+  replace the clipboard payload (`clipboardData.setData` +
+  `preventDefault`, confirmed against MDN) — a rich editor doing so is
+  the likely cause, and it means Mill-side clipboard hardening cannot
+  recover structure never written. Empirical confirmation on the real
+  machine is ADR-0030's checklist item 7 (a clipboard-inspector
+  diagnostic). Consequence stands, now stronger: DOM capture is a
+  requirement for this source, not a nice-to-have. Fallback-order note
+  unchanged: try HTML → DOM-read → plain text/image. `OPEN` only on
+  the on-site confirmation.
+- **Capture mechanism under bank policy — decision matrix written, not
+  decided: [ADR-0030](adr/0030-confluence-capture-mechanism-matrix.md)**
+  (`proposed`). Four real paths — the ADR-0003 extension (only path
+  with write-back + tab identity; enterprise allowlist of an
+  open-source extension ID is a standard, real ask), bookmarklet
+  (last-resort — CSP blocks `javascript:` bookmarks in practice plus
+  two policy gates), save-page-then-parse (the guaranteed floor:
+  Chromium serializes the rendered DOM on ⌘S, and Mill already has
+  `trigger-filesystem-watch` + `html-to-markdown` — buildable now,
+  before any IS&C answer), and hardened clipboard (demoted to
+  diagnostic + fallback per the root-cause finding above). Each path's
+  policy kill-switches and exact IS&C ask are enumerated, plus the
+  owner's 7-item on-site checklist. `OPEN` pending those findings —
+  the gating unknown only the owner can resolve (§1.2's access
+  boundary).
 
 ## 6. Execution environment & determinism
 
@@ -3434,7 +3465,10 @@ infrastructure. This inheritance list IS the working definition of
   the definition lifecycle is Mill's own. Still open from that pass,
   deliberately: shadow evaluation (blocked on a per-node purity model,
   §8), staged-traffic promotion, version diffing.
-- Browser extension ↔ native app protocol details (§5)
+- Browser extension ↔ native app protocol details (§5); which capture
+  mechanism survives bank policy — matrix + on-site checklist in
+  [ADR-0030](adr/0030-confluence-capture-mechanism-matrix.md), awaiting
+  the owner's findings
 - Env/shell determinism rules (§6) — **`LOCKED` and BUILT** (goal
   0004, ADR-0026): ExecEnv Configure entities (typed shell + clean/
   login profile mode + pinned dir + explicit env), the code-execution
