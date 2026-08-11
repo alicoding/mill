@@ -29,6 +29,8 @@
 package composition
 
 import (
+	"time"
+
 	"github.com/alicoding/mill/internal/domain/guardrail"
 	"github.com/alicoding/mill/internal/domain/typedfield"
 )
@@ -214,6 +216,16 @@ type Workflow struct {
 	// with this prototype) vs. one a user composed and that persisted --
 	// the UI badges/protects built-ins accordingly.
 	BuiltIn bool
+	// CreatedAt/UpdatedAt are system-managed audit timestamps (SPEC.md
+	// §3.2.2's reserved-column pattern -- "system-managed audit
+	// columns... reserved, platform-owned, never user-removable"),
+	// stamped server-side at every persisted mutation (compositionsvc),
+	// never trusted from the wire. Zero value means pre-timestamp data
+	// (persisted before this field existed) -- migration-free, and
+	// inventory sort treats a zero CreatedAt/UpdatedAt as "unstamped,
+	// sorts last" (frontend/src/shared/inventorySort.ts).
+	CreatedAt time.Time
+	UpdatedAt time.Time
 	// Lifecycle & versioning (docs/adr/0021, versioning.go). The head
 	// fields above are the DRAFT; Versions are immutable snapshots;
 	// PublishedVersion (0 = never published) is what triggers and

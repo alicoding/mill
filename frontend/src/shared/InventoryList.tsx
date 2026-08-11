@@ -49,6 +49,13 @@ export interface InventoryItem {
   label: string
   labelBadges?: ReactNode
   description?: string
+  // A short, muted relative-time caption ("2m ago") rendered in the
+  // trailing metadata area (docs/SPEC.md §3.8's InventoryList entry --
+  // inventories default-sort last-updated-first; this is the row-level
+  // cue that order). Omitted entirely (not even a blank space) for an
+  // unstamped/legacy entity -- shared/inventorySort.ts's formatUpdated
+  // already returns '' for that case.
+  updatedLabel?: string
   meta?: ReactNode
   primaryAction?: ReactNode
   onOpen: () => void
@@ -153,6 +160,11 @@ function InventoryRow({ item }: { item: InventoryItem }) {
           onClick={(e) => e.stopPropagation()}
           onKeyDown={(e) => e.stopPropagation()}
         >
+          {item.updatedLabel && (
+            <Text size="small" className={styles.muted} data-testid="inventory-row-updated">
+              {item.updatedLabel}
+            </Text>
+          )}
           {item.meta}
           {item.primaryAction}
           {item.menuActions.length > 0 && (

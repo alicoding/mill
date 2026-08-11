@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Button, FormControl, Heading, IconButton, Label, Stack, Text, TextInput } from '@primer/react'
 import { DownloadIcon, PlusIcon, ServerIcon, TrashIcon, UploadIcon } from '@primer/octicons-react'
 import { DataTable } from '@primer/react/experimental'
@@ -11,6 +11,7 @@ import { ViewModeToggle } from '../shared/ViewModeToggle'
 import { useViewMode } from '../shared/viewMode'
 import { InventoryList, type InventoryItem } from '../shared/InventoryList'
 import { ENTITY_ICON } from '../shared/entityIcons'
+import { formatUpdated, sortByUpdatedDesc } from '../shared/inventorySort'
 import styles from '../shared/ListCard.module.css'
 import PageContainer from '../shared/PageContainer'
 
@@ -119,11 +120,16 @@ export function ConfigureMCPServers() {
     setArgRows((prev) => prev.map((a, idx) => (idx === i ? value : a)))
   }
 
-  const serverItems: InventoryItem[] = (servers ?? []).map((s) => ({
+  // Last-updated-first, applied once so both view modes render the
+  // same order (docs/SPEC.md §3.8's InventoryList entry).
+  const sortedServers = useMemo(() => sortByUpdatedDesc(servers ?? [], (s) => s.UpdatedAt), [servers])
+
+  const serverItems: InventoryItem[] = sortedServers.map((s) => ({
     id: s.ID,
     entity: 'mcpserver',
     icon: ENTITY_ICON.mcpserver,
     label: s.Label,
+    updatedLabel: formatUpdated(s.UpdatedAt),
     // No !s.BuiltIn guard on Delete -- same "ordinary, fully editable/
     // deletable from the moment it exists" reasoning as
     // ConfigureRequests.tsx/ConfigureLists.tsx's identical badge.
@@ -207,7 +213,7 @@ export function ConfigureMCPServers() {
         <ResizableTableContainer storageKey="mill-cols-mcpservers">
           <DataTable
             aria-labelledby="mcpservers-heading"
-            data={servers.map((s) => ({ ...s, id: s.ID }))}
+            data={sortedServers.map((s) => ({ ...s, id: s.ID }))}
             columns={[
               { header: 'Label', field: 'Label', rowHeader: true, sortBy: 'alphanumeric' },
               { header: 'Command', id: 'command', width: 'growCollapse', minWidth: '160px', renderCell: (s) => <TruncatedCell text={`${s.Command} ${(s.Args ?? []).join(' ')}`.trim()} /> },

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/alicoding/mill/internal/adapters/settings"
 	"github.com/alicoding/mill/internal/domain/composition"
@@ -154,6 +155,7 @@ func (c *CompositionService) CreateWorkflow(label, description string, nodes []c
 		return composition.Workflow{}, err
 	}
 
+	now := time.Now()
 	wf := composition.Workflow{
 		ID:          newWorkflowID(label),
 		Label:       label,
@@ -161,6 +163,8 @@ func (c *CompositionService) CreateWorkflow(label, description string, nodes []c
 		Nodes:       resolved,
 		Edges:       edges,
 		BuiltIn:     false,
+		CreatedAt:   now,
+		UpdatedAt:   now,
 	}
 
 	c.mu.Lock()
@@ -227,6 +231,12 @@ func (c *CompositionService) UpdateWorkflow(id, label, description string, nodes
 		Disabled:         c.user[idx].Disabled,
 		PublishedVersion: c.user[idx].PublishedVersion,
 		Versions:         c.user[idx].Versions,
+		// CreatedAt is preserved from storage, never trusted from the
+		// wire (there's no wire CreatedAt here at all, but the
+		// principle is the same as every other Update* path); UpdatedAt
+		// always advances to now on a real save.
+		CreatedAt: c.user[idx].CreatedAt,
+		UpdatedAt: time.Now(),
 	}
 	c.user[idx] = wf
 	c.mu.Unlock()
@@ -265,6 +275,7 @@ func (c *CompositionService) UpdateAttributes(workflowID string, attrs []composi
 	}
 
 	c.user[idx].Attributes = attrs
+	c.user[idx].UpdatedAt = time.Now()
 	wf := c.user[idx]
 	c.mu.Unlock()
 
@@ -326,8 +337,14 @@ func (c *CompositionService) persist() {
 func (c *CompositionService) restore() {
 	raw, ok := c.store.Get(workflowsKey).(string)
 	if !ok || raw == "" {
+		seeded := composition.BuiltInWorkflows()
+		now := time.Now()
+		for i := range seeded {
+			seeded[i].CreatedAt = now
+			seeded[i].UpdatedAt = now
+		}
 		c.mu.Lock()
-		c.user = composition.BuiltInWorkflows()
+		c.user = seeded
 		c.mu.Unlock()
 		return
 	}
@@ -357,8 +374,11 @@ func (c *CompositionService) topUpBuiltIns() {
 		have[wf.ID] = true
 	}
 	added := false
+	now := time.Now()
 	for _, wf := range composition.BuiltInWorkflows() {
 		if !have[wf.ID] && !tombstones[wf.ID] {
+			wf.CreatedAt = now
+			wf.UpdatedAt = now
 			c.user = append(c.user, wf)
 			added = true
 		}

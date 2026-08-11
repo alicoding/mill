@@ -3,6 +3,7 @@ package configuresvc
 import (
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/alicoding/mill/internal/adapters/shellenv"
 	"github.com/alicoding/mill/internal/domain/composition"
@@ -55,9 +56,11 @@ func (c *ConfigureService) ExecEnvs() []execenv.ExecEnv {
 }
 
 func (c *ConfigureService) CreateExecEnv(label string, shell execenv.Shell, profileMode execenv.ProfileMode, dir string, env []string) (execenv.ExecEnv, error) {
+	now := time.Now()
 	e := execenv.ExecEnv{
 		ID: seeding.NewSlugID(label, "execenv"), Label: label,
 		Shell: shell, ProfileMode: profileMode, Dir: dir, Env: env,
+		CreatedAt: now, UpdatedAt: now,
 	}
 	if err := execenv.Validate(e); err != nil {
 		return execenv.ExecEnv{}, err
@@ -91,8 +94,12 @@ func (c *ConfigureService) UpdateExecEnv(id, label string, shell execenv.Shell, 
 	}
 	// BuiltIn survives an edit (never authorable from this RPC) -- same
 	// "carried forward from the existing record" reasoning every other
-	// UpdateXxx in this package already applies.
+	// UpdateXxx in this package already applies. CreatedAt is preserved
+	// from storage, never trusted from the wire; UpdatedAt always
+	// advances on a real update.
 	e.BuiltIn = c.execEnvs[idx].BuiltIn
+	e.CreatedAt = c.execEnvs[idx].CreatedAt
+	e.UpdatedAt = time.Now()
 	c.execEnvs[idx] = e
 	c.mu.Unlock()
 

@@ -19,6 +19,7 @@ package httprequest
 import (
 	"fmt"
 	"strings"
+	"time"
 )
 
 // AuthType is how a request authenticates against the HTTPRequest's
@@ -203,6 +204,12 @@ type HTTPRequest struct {
 	// same Zapier/n8n-precedented pattern, applied here to HTTPRequests
 	// instead of Workflows).
 	BuiltIn bool
+	// CreatedAt/UpdatedAt are system-managed audit timestamps (SPEC.md
+	// §3.2.2's reserved-column pattern), stamped server-side at every
+	// persisted mutation (ConfigureService), never trusted from the
+	// wire. Zero value means pre-timestamp data -- migration-free.
+	CreatedAt time.Time
+	UpdatedAt time.Time
 }
 
 // Validate checks an HTTPRequest is well-formed before it's persisted --
