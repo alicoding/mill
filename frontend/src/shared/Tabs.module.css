@@ -42,6 +42,34 @@
     padding: var(--base-size-8) var(--base-size-24) var(--base-size-8) var(--base-size-12);
     cursor: pointer;
     white-space: nowrap;
+    /* Column layout for the optional two-line kind+label shape
+       (.tabKicker below). Tabs without a kicker keep a single line and
+       center vertically -- the strip's default stretch alignment gives
+       every tab the row's full height, so mixed one- and two-line tabs
+       share one bottom border line. */
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    gap: 1px;
+}
+
+/* The small uppercase kind line above a work tab's label -- what sort
+   of thing the tab holds (WORKFLOW / INTEGRATION), readable before the
+   name. aria-hidden in markup; purely a recognition cue. */
+.tabLabelRow {
+    display: inline-flex;
+    align-items: center;
+}
+
+.tabKicker {
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    line-height: 1;
+    color: var(--fgColor-muted);
+    opacity: 0.75;
 }
 .tab:hover {
     color: var(--fgColor-default);

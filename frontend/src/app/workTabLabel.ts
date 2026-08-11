@@ -9,6 +9,23 @@ import type { WorkTab } from '../shared/store'
 // -- that tripped react-refresh's "a file exporting a component should
 // only export components" lint rule the moment a second, non-component
 // export was added to it.
+// The tab's KIND line (the two-line work-tab pattern -- see
+// shared/Tabs.tsx's kicker prop): which sort of entity the tab holds,
+// shown small and uppercase above the label. Derived from the same
+// WorkTabSpec kind the strip already switches on -- one vocabulary,
+// same as entityIcons.ts's entity keys.
+export function tabKindLabel(tab: WorkTab): string {
+  switch (tab.kind) {
+    case 'workflow-edit':
+    case 'workflow-new':
+      return 'Workflow'
+    case 'request-view':
+    case 'request-edit':
+    case 'request-new':
+      return 'Integration'
+  }
+}
+
 export function tabLabel(tab: WorkTab, workflowLabel: (id: string) => string | undefined, requestLabel: (id: string) => string | undefined): string {
   switch (tab.kind) {
     case 'workflow-edit':

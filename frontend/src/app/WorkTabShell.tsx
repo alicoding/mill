@@ -11,7 +11,7 @@ import { clearScratch } from '../composition/canvasScratch'
 import { RequestForm } from '../configure/RequestForm'
 import { RequestSummary } from '../configure/RequestSummary'
 import editorStyles from '../composition/CompositionView.module.css'
-import { tabLabel } from './workTabLabel'
+import { tabKindLabel, tabLabel } from './workTabLabel'
 import styles from './WorkTabShell.module.css'
 
 // The ONE app-wide work-tab strip (docs/SPEC.md §3.8, direct user
@@ -146,7 +146,7 @@ export function WorkTabShell({ pageLabel, children }: { pageLabel: string; child
           <TabList aria-label="Open work">
             <TabItem value={PAGE_TAB}>{pageLabel}</TabItem>
             {workTabs.map((t) => (
-              <TabItem key={t.key} value={t.key} onClose={() => closeAndClearScratch(t.key)}>
+              <TabItem key={t.key} value={t.key} kicker={tabKindLabel(t)} onClose={() => closeAndClearScratch(t.key)}>
                 {tabLabel(t, workflowLabel, requestLabel)}
                 {/* Hot-exit dirty dot (docs/goals/0012) -- this tab's
                     canvas currently differs from what's saved. */}
