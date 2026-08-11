@@ -26,7 +26,13 @@ const MILL_SERVER_BIN = path.join(REPO_ROOT, 'bin', 'mill-server')
 // concurrently-running workers, unlike the ever-incrementing
 // `workerIndex`) gets one port from each range.
 const SERVER_BASE_PORT = 9400
-const MCP_BASE_PORT = 9500
+// Exported (unlike SERVER_BASE_PORT) so a spec that needs to talk MCP
+// directly -- e.g. canvas-live-sync.spec.ts, driving a real
+// update_workflow call against the open editor -- can compute this
+// worker's own MCP port (`MCP_BASE_PORT + testInfo.parallelIndex`,
+// same arithmetic the workerServer fixture below already uses to spawn
+// it) without spawning a second listener of its own.
+export const MCP_BASE_PORT = 9500
 // A dedicated, disjoint range for the one persistence spec
 // (persistence.spec.ts) that deliberately restarts its own server
 // against the same settings file mid-test -- never shared with the

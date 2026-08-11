@@ -11,8 +11,8 @@ import {
 import type { Connection, Edge as RFEdge } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 import { useStore } from 'zustand'
-import { Button, FormControl, IconButton, Stack, Text, TextInput, Textarea } from '@primer/react'
-import { ChevronDownIcon, ChevronUpIcon, ColumnsIcon, RedoIcon, SidebarCollapseIcon, SidebarExpandIcon, TrashIcon, UndoIcon } from '@primer/octicons-react'
+import { IconButton, Stack, Text } from '@primer/react'
+import { ColumnsIcon, RedoIcon, SidebarCollapseIcon, SidebarExpandIcon, TrashIcon, UndoIcon } from '@primer/octicons-react'
 import { ArrowLeftIcon } from '@primer/octicons-react'
 import { CompositionService } from '../shared/bindings'
 import type { NodeType, Node as CompNode, Edge as CompEdge, Workflow, Issue } from '../../bindings/github.com/alicoding/mill/internal/domain/composition/models'
@@ -24,6 +24,9 @@ import { draftWorkflowSchema } from './draftWorkflowSchema'
 import { toDraftEdges, toDraftNodes } from './draftPayload'
 import { clearScratch } from './canvasScratch'
 import { computeInitialCanvas, useCanvasHotExit } from './useCanvasHotExit'
+import { useCanvasLiveSync } from './useCanvasLiveSync'
+import { ExternalChangeBanner } from './ExternalChangeBanner'
+import { CanvasMetaHeader } from './CanvasMetaHeader'
 import { useDraftValidation, groupIssuesByNode } from './useDraftValidation'
 import { useGuardrailBadges } from './useGuardrailBadges'
 import { ValidationSurface } from './ValidationPanel'
@@ -32,7 +35,7 @@ import { DecisionEdgeInspector } from './DecisionEdgeInspector'
 import { NodeInspector } from './NodeInspector'
 import { useHotkeyCapture } from './hotkeyCapture'
 import { RunStateContext, useLiveRun } from './liveRunState'
-import { CurrentStepBar, RunButton, type RunButtonHandle } from './LiveRunControls'
+import { CurrentStepBar, type RunButtonHandle } from './LiveRunControls'
 import { useCanvasCommandDispatch } from './useCanvasCommandDispatch'
 import styles from './CompositionCanvas.module.css'
 import runbookStyles from '../shared/ListCard.module.css'
@@ -174,13 +177,37 @@ function CanvasInner({ nodeTypes, workflow, tabKey, onBack, onSaved }: Compositi
   const [saving, setSaving] = useState(false)
   const [layingOut, setLayingOut] = useState(false)
 
+  // What every dirty check (hot exit, live sync) compares the live
+  // draft against -- starts as the saved workflow's real content
+  // (initial.baseline), but is NOT frozen there: a clean external
+  // reload (useCanvasLiveSync below) advances it to the newly-loaded
+  // content, so a canvas that was clean before an external MCP edit
+  // stays clean (no false "dirty" scratch write) after adopting it.
+  const [baseline, setBaseline] = useState(initial.baseline)
+
   // Hot exit (docs/goals/0012-authoring-hot-exit.md): the canvas store/
   // draftLabel/draftDescription are already seeded correctly from
   // `initial` above (computeInitialCanvas), so this hook only has to
   // surface the mount-time restore decision and keep a debounced
   // scratch write + live dirty flag in sync afterward -- see
   // useCanvasHotExit.ts's own doc comment for the full reasoning.
-  useCanvasHotExit(tabKey, initial, nodes, edges, draftLabel, draftDescription)
+  useCanvasHotExit(tabKey, initial.restoredFromScratch, baseline, nodes, edges, draftLabel, draftDescription)
+
+  // Live sync (GAP B): an external MCP write to THIS workflow while the
+  // editor is open redraws the canvas immediately when clean, or offers
+  // a Reload/Keep-my-draft choice when dirty -- see
+  // useCanvasLiveSync.ts's own doc comment.
+  const { pendingExternalChange, reloadFromExternal, keepDraft } = useCanvasLiveSync({
+    workflowId: workflow?.ID,
+    nodeTypes,
+    useCanvasStore,
+    baseline,
+    setBaseline,
+    draftLabel,
+    draftDescription,
+    setDraftLabel,
+    setDraftDescription,
+  })
 
   const selectedNode = nodes.find((n) => n.id === selectedNodeId) ?? null
   const selectedNodeType = selectedNode ? nodeTypes.find((nt) => nt.ID === selectedNode.data.nodeTypeID) : undefined
@@ -339,39 +366,21 @@ function CanvasInner({ nodeTypes, workflow, tabKey, onBack, onSaved }: Compositi
 
   return (
     <div className={styles.canvasSection} data-testid="composition-canvas">
-      <div className={styles.metaHeader}>
-        <Stack direction="horizontal" gap="condensed" align="center">
-          <TextInput
-            value={draftLabel}
-            onChange={(e) => setDraftLabel(e.target.value)}
-            aria-label="Label"
-            placeholder="My workflow"
-            size="small"
-            className={styles.metaTitleInput}
-          />
-          <IconButton
-            icon={descOpen ? ChevronUpIcon : ChevronDownIcon}
-            aria-label={descOpen ? 'Hide details' : 'Add details'}
-            size="small"
-            onClick={() => setDescOpen((v) => !v)}
-            data-testid="toggle-description"
-          />
-          <Button size="small" onClick={save} disabled={saving} data-testid="save-workflow">
-            {saving ? 'Saving…' : workflow ? 'Save changes' : 'Save workflow'}
-          </Button>
-          {/* Run is the canvas's one primary action once a workflow is
-              saved (docs/SPEC.md §3.8) -- Save above is deliberately
-              demoted off variant="primary" so the two don't compete. */}
-          <RunButton ref={runButtonRef} workflow={workflow} onStartRun={startRun} />
-        </Stack>
-        {saveError && <Text as="p" size="small" className={runbookStyles.error}>{saveError}</Text>}
-        {descOpen && (
-          <FormControl className={styles.metaDescription}>
-            <FormControl.Label>Description</FormControl.Label>
-            <Textarea value={draftDescription} onChange={(e) => setDraftDescription(e.target.value)} rows={2} block />
-          </FormControl>
-        )}
-      </div>
+      {pendingExternalChange && <ExternalChangeBanner onReload={reloadFromExternal} onKeep={keepDraft} />}
+      <CanvasMetaHeader
+        workflow={workflow}
+        draftLabel={draftLabel}
+        onLabelChange={setDraftLabel}
+        descOpen={descOpen}
+        onToggleDesc={() => setDescOpen((v) => !v)}
+        draftDescription={draftDescription}
+        onDescriptionChange={setDraftDescription}
+        save={save}
+        saving={saving}
+        saveError={saveError}
+        runButtonRef={runButtonRef}
+        onStartRun={startRun}
+      />
 
       <RunStateContext.Provider value={runStateContextValue}>
       <div className={styles.canvasWrap}>

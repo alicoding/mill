@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useState } from 'react'
+import { Events } from '@wailsio/runtime'
 import { ExecutionService, RunKind } from '../shared/bindings'
 import type { PendingApproval, RunDetail } from '../shared/bindings'
 
@@ -32,6 +33,18 @@ export const RunStateContext = createContext<RunStateContextValue>({ statusByNod
 
 function isInFlightStatus(status: string): boolean {
   return status === 'PENDING' || status === 'RUNNING' || status === 'ENQUEUED'
+}
+
+// GAP A of the live-canvas-sync work (docs/SPEC.md §1's realtime lock):
+// should a newly-adopted run replace what this canvas currently
+// displays? Pure and exported for testing -- the actual decision is
+// small enough that getting it wrong silently (yanking the display away
+// from a run the user is watching) would be an easy, hard-to-notice
+// regression. `false` (an already-displayed run keeps priority) only
+// when a run is currently shown AND it's still in flight -- a finished
+// run (or nothing shown at all) always yields to whatever's newest.
+export function shouldAdoptExternalRun(hasActiveRun: boolean, activeRunInFlight: boolean): boolean {
+  return !hasActiveRun || !activeRunInFlight
 }
 
 export function truncate(s: string, max: number): string {
@@ -92,6 +105,36 @@ export function useLiveRun(workflowId: string | undefined): UseLiveRunResult {
       cancelled = true
     }
   }, [workflowId])
+
+  // GAP A: adopt a run started externally (an MCP run_workflow/debug
+  // tool call, millmcpservice_debug.go/millmcpservice_authoring.go --
+  // both emit `mill-data-changed` {entity:'run'}) while this editor
+  // stays open, not just on mount. Mirrors the mount-time adopt above
+  // (newest in-flight/pending run for this workflow), gated by
+  // shouldAdoptExternalRun so an already-in-flight run this user is
+  // watching never gets silently swapped out from under them.
+  useEffect(() => {
+    if (!workflowId) return
+    const hasActiveRun = activeRunId !== null
+    const activeInFlight = hasActiveRun && (isInFlightStatus(detail?.status ?? '') || detail?.pending != null)
+    if (!shouldAdoptExternalRun(hasActiveRun, activeInFlight)) return
+    return Events.On('mill-data-changed', (evt) => {
+      const data = evt.data as { entity?: string }
+      if (data?.entity !== 'run') return
+      ExecutionService.ListRunsForWorkflow(workflowId)
+        .then((runs) => {
+          const newest = (runs ?? [])[0]
+          if (newest && (isInFlightStatus(newest.status) || newest.pending != null)) {
+            setActiveRunId(newest.runID)
+          }
+        })
+        .catch(() => {})
+    })
+    // Keyed on detail?.status/detail?.pending, not the whole `detail`
+    // object -- same reasoning as the in-flight poll effect below (only
+    // a real status/pending transition should re-evaluate whether
+    // adoption is currently allowed, not every poll tick).
+  }, [workflowId, activeRunId, detail?.status, detail?.pending])
 
   // Fetch the full step breakdown whenever the displayed run changes --
   // covers both startRun's own resolve and the mount-time adopt above,
