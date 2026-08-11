@@ -1495,20 +1495,47 @@ contract is a **stricter form of ADR-0028's ending model**: Mill
 today *warns* on a process-leaf and requires a Trigger root, where the
 reference *hard-blocks* Save until entry→…→terminal is complete.
 
-`OPEN` throughout — nothing decided or built. Real questions this
+**The mechanism behind the strictness — owner-clarified, and it's the
+§1 thesis applied to authoring, not mere validation ceremony.** The
+reason the platform enforces a defined input contract before you can
+build is that a **schema-driven, contract-first** model makes every
+downstream variable reference reliable *by construction*: because the
+input's typed attributes are known up front, an expression builder or
+binding picker can offer a **dropdown/autocomplete of the real,
+defined attributes**, and referencing one is guaranteed to resolve at
+run time because the contract says it exists. Without the upfront
+contract, an author types variable names blind and hopes they're
+present when the workflow actually runs — the exact guess-vs-reality
+gap §1 names as where hallucination and silent failure live, here
+applied to *authoring* rather than execution (the same shape as the
+guardrail preview closing that gap for the about-to-run action). This
+reframes the divergence: it isn't "they block saves and Mill
+doesn't," it's "a required typed contract is what makes reliable
+variable autocomplete possible at all." Mill already proves the
+pattern works on the surfaces that DO pull from declared Attributes
+(the Decision rule builder offers the workflow's real Attributes as
+fields, §3.3; the integration/MCP binding editors take `attr:<name>`
+against them) — what's missing is that Attributes are optional and
+authored piecemeal, so the guarantee is partial: a reference can be
+offered before the schema that backs it is complete.
+
+`OPEN` throughout — nothing decided or built, but the mechanism above
+tilts question (1) below toward "yes, worth it." Real questions this
 raises for a future decision, not to guess at now: (1) should Mill's
 Trigger+Attributes split converge toward a single reusable **Input**
-entity (a real model change touching §3.3's schema, §3.4's triggers,
-and §3.5's Configure surface), or stay split with an Inputs tab added
-alongside Attributes? (2) should authoring validation (ADR-0028)
-promote the process-leaf *warning* to a Save-*blocking* error when a
-workflow has no terminal Decision — matching the reference's
-"must have a terminal" — or is Mill's warn-don't-block stance
-(drafts stay saveable through incompleteness, §3.8) the deliberate
-right call for a single-user tool? Both are model-level decisions
-gated on a real need, per §0's "map the capability before locking the
-schema" discipline — recorded here so the next authoring-model pass
-designs against this evidence, not memory.
+entity — a required, typed, contract-first schema that unlocks
+reliable variable autocomplete everywhere a step references data (a
+real model change touching §3.3's schema, §3.4's triggers, and §3.5's
+Configure surface) — or stay split with an Inputs tab added alongside
+Attributes? (2) should authoring validation (ADR-0028) promote the
+process-leaf *warning* to a Save-*blocking* error when a workflow has
+no terminal Decision — matching the reference's "must have a
+terminal" — or is Mill's warn-don't-block stance (drafts stay
+saveable through incompleteness, §3.8) the deliberate right call for a
+single-user tool? Both are model-level decisions gated on a real
+need, per §0's "map the capability before locking the schema"
+discipline — recorded here so the next authoring-model pass designs
+against this evidence, not memory.
 
 ### 3.3 Capability map — designing the node/edge schema against the full known need, not just today's two workflows
 
