@@ -82,10 +82,16 @@ func (e *ExecutionService) GetRun(runID string) (RunDetail, error) {
 	// excluded here (joined back in per-node below, same as before);
 	// Trigger/Decision nodes never get their own checkpointed step
 	// (execute.go skips run() for both), so nothing to filter for those.
+	// DBOS's own system operations (Send/Recv/SetEvent/Sleep -- e.g. an
+	// approval park records DBOS.setEvent + DBOS.recv + DBOS.sleep) are
+	// checkpointed as steps too, under the library's uniform "DBOS."
+	// name prefix -- excluded, or each would render as a blank,
+	// label-less row in the run detail (caught live: an approved
+	// guardrail run showed three bare checkmarks above its real steps).
 	seen := make(map[string]bool, len(sortedSteps))
 	var order []composition.Node
 	for _, s := range sortedSteps {
-		if strings.HasPrefix(s.StepName, "guardrail:") || seen[s.StepName] {
+		if strings.HasPrefix(s.StepName, "guardrail:") || strings.HasPrefix(s.StepName, "DBOS.") || seen[s.StepName] {
 			continue
 		}
 		seen[s.StepName] = true
