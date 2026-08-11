@@ -17,6 +17,7 @@ function baseWorkflow(overrides: Partial<Workflow>): Workflow {
   return {
     ID: 'wf-1', Label: 'Test workflow', Description: '', Nodes: [], Edges: [], Attributes: [],
     BuiltIn: false, Disabled: false, PublishedVersion: 0, Versions: [],
+    CreatedAt: '2026-01-01T00:00:00Z', UpdatedAt: '2026-01-01T00:00:00Z',
     ...overrides,
   }
 }

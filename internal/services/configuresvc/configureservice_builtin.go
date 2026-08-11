@@ -1,6 +1,8 @@
 package configuresvc
 
 import (
+	"time"
+
 	"github.com/alicoding/mill/internal/domain/composition"
 	"github.com/alicoding/mill/internal/domain/decision"
 	"github.com/alicoding/mill/internal/domain/execenv"
@@ -71,8 +73,10 @@ func (c *ConfigureService) topUpBuiltInRequests() {
 		have[r.ID] = true
 	}
 	var added []httprequest.HTTPRequest
+	now := time.Now()
 	for _, r := range httprequest.BuiltIn() {
 		if !have[r.ID] && !tombstones[r.ID] {
+			r.CreatedAt, r.UpdatedAt = now, now
 			c.requests = append(c.requests, r)
 			added = append(added, r)
 		}
@@ -109,8 +113,10 @@ func (c *ConfigureService) topUpBuiltInDecisions() {
 		have[d.ID] = true
 	}
 	added := false
+	now := time.Now()
 	for _, d := range decision.BuiltIn() {
 		if !have[d.ID] && !tombstones[d.ID] {
+			d.CreatedAt, d.UpdatedAt = now, now
 			c.decisions = append(c.decisions, d)
 			added = true
 		}
@@ -135,8 +141,10 @@ func (c *ConfigureService) topUpBuiltInLists() {
 		have[l.ID] = true
 	}
 	added := false
+	now := time.Now()
 	for _, l := range list.BuiltIn() {
 		if !have[l.ID] && !tombstones[l.ID] {
+			l.CreatedAt, l.UpdatedAt = now, now
 			c.lists = append(c.lists, l)
 			added = true
 		}
@@ -159,8 +167,10 @@ func (c *ConfigureService) topUpBuiltInMCPServers() {
 		have[s.ID] = true
 	}
 	added := false
+	now := time.Now()
 	for _, s := range mcpserver.BuiltIn() {
 		if !have[s.ID] && !tombstones[s.ID] {
+			s.CreatedAt, s.UpdatedAt = now, now
 			c.mcpServers = append(c.mcpServers, s)
 			added = true
 		}
@@ -183,8 +193,10 @@ func (c *ConfigureService) topUpBuiltInExecEnvs() {
 		have[e.ID] = true
 	}
 	added := false
+	now := time.Now()
 	for _, e := range execenv.BuiltIn() {
 		if !have[e.ID] && !tombstones[e.ID] {
+			e.CreatedAt, e.UpdatedAt = now, now
 			c.execEnvs = append(c.execEnvs, e)
 			added = true
 		}

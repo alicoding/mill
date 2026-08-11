@@ -14,6 +14,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/alicoding/mill/internal/domain/typedfield"
 )
@@ -87,6 +88,12 @@ type Decision struct {
 	// built-in gets a tombstone (internal/services/seeding) so top-up
 	// seeding never resurrects it.
 	BuiltIn bool
+	// CreatedAt/UpdatedAt are system-managed audit timestamps (SPEC.md
+	// §3.2.2's reserved-column pattern), stamped server-side at every
+	// persisted mutation (ConfigureService), never trusted from the
+	// wire. Zero value means pre-timestamp data -- migration-free.
+	CreatedAt time.Time
+	UpdatedAt time.Time
 }
 
 // legacyOutputField mirrors the pre-ADR-0029 OutputField's own wire

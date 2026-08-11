@@ -10,6 +10,7 @@ package list
 import (
 	"fmt"
 	"strings"
+	"time"
 )
 
 // List is one reusable, named lookup table. Entries maps an input key
@@ -26,6 +27,12 @@ type List struct {
 	// editable/deletable list from the moment it exists (docs/SPEC.md
 	// §2.2's Update note).
 	BuiltIn bool
+	// CreatedAt/UpdatedAt are system-managed audit timestamps (SPEC.md
+	// §3.2.2's reserved-column pattern), stamped server-side at every
+	// persisted mutation (ConfigureService), never trusted from the
+	// wire. Zero value means pre-timestamp data -- migration-free.
+	CreatedAt time.Time
+	UpdatedAt time.Time
 }
 
 // Validate checks a List is well-formed before it's persisted -- same

@@ -3357,6 +3357,22 @@ recorded as a real design input (`OPEN`), never silently dropped.
   deliberate, not gaps. The reference platform's grouped-by-workflow
   *versions* view (owner screenshots) is recorded future design
   input, distinct from cards.
+  **Update — every inventory now default-sorts last-updated-first,
+  `LOCKED`, built.** All six Configure-adjacent entities (Workflow,
+  HTTPRequest, List, MCPServer, Decision, ExecEnv) gained
+  system-managed `CreatedAt`/`UpdatedAt` audit timestamps (§3.2.2's
+  reserved-column pattern), stamped server-side on every
+  create/update/import/seed mutation and never trusted from the wire —
+  the same discipline §3.2's own "system-managed audit columns...
+  reserved, platform-owned, never user-removable" already named for
+  Lists specifically, now applied everywhere. Every inventory list
+  (row view and the `DataTable` view alike) sorts by `UpdatedAt`
+  descending via one shared `shared/inventorySort.ts`
+  (`sortByUpdatedDesc`/`formatUpdated`) — n8n's own default. A row's
+  trailing metadata shows a short relative-time caption ("2m ago") via
+  `Intl.RelativeTimeFormat`, no new dependency. Zero-timestamp legacy
+  data (persisted before this feature shipped) sorts below every
+  stamped entity, in its original relative order — migration-free.
 - **User-facing "Composition" naming retired** — Activity's source
   chip says "Manual run" and its copy says "a direct Run click on a
   workflow"; the sidebar already said Workflows. Code-level

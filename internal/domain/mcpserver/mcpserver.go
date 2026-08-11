@@ -12,6 +12,7 @@ package mcpserver
 import (
 	"fmt"
 	"strings"
+	"time"
 )
 
 // MCPServer is one reusable, named MCP server connection -- Command is
@@ -27,6 +28,12 @@ type MCPServer struct {
 	// decision.Decision.BuiltIn/list.List.BuiltIn: drives a "built-in"
 	// badge only, never gates Edit/Delete.
 	BuiltIn bool
+	// CreatedAt/UpdatedAt are system-managed audit timestamps (SPEC.md
+	// §3.2.2's reserved-column pattern), stamped server-side at every
+	// persisted mutation (ConfigureService), never trusted from the
+	// wire. Zero value means pre-timestamp data -- migration-free.
+	CreatedAt time.Time
+	UpdatedAt time.Time
 }
 
 // Validate checks an MCPServer is well-formed before it's persisted --

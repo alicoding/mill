@@ -3,6 +3,7 @@ package configuresvc
 import (
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/alicoding/mill/internal/domain/composition"
 	"github.com/alicoding/mill/internal/domain/decision"
@@ -45,9 +46,11 @@ func (c *ConfigureService) Decisions() []decision.Decision {
 }
 
 func (c *ConfigureService) CreateDecision(label string, category decision.Category, outputs []decision.OutputField, webhookRequestID string) (decision.Decision, error) {
+	now := time.Now()
 	d := decision.Decision{
 		ID: seeding.NewSlugID(label, "decision"), Label: label, Category: category,
 		Outputs: outputs, WebhookRequestID: webhookRequestID,
+		CreatedAt: now, UpdatedAt: now,
 	}
 	if err := decision.Validate(d); err != nil {
 		return decision.Decision{}, err
@@ -92,7 +95,13 @@ func (c *ConfigureService) UpdateDecision(id, label string, category decision.Ca
 			existing.Category)
 	}
 
-	d := decision.Decision{ID: id, Label: label, Category: category, Outputs: outputs, WebhookRequestID: webhookRequestID, BuiltIn: existing.BuiltIn}
+	d := decision.Decision{
+		ID: id, Label: label, Category: category, Outputs: outputs, WebhookRequestID: webhookRequestID, BuiltIn: existing.BuiltIn,
+		// CreatedAt is preserved from the stored entity, never trusted
+		// from the wire; UpdatedAt always advances on a real update.
+		CreatedAt: existing.CreatedAt,
+		UpdatedAt: time.Now(),
+	}
 	if err := decision.Validate(d); err != nil {
 		return decision.Decision{}, err
 	}

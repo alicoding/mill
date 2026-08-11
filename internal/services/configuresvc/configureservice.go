@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/alicoding/mill/internal/adapters/credential"
 	"github.com/alicoding/mill/internal/adapters/openapispec"
@@ -115,7 +116,8 @@ func (c *ConfigureService) Lists() []list.List {
 }
 
 func (c *ConfigureService) CreateList(label string, entries map[string]string) (list.List, error) {
-	l := list.List{ID: seeding.NewSlugID(label, "list"), Label: label, Entries: entries}
+	now := time.Now()
+	l := list.List{ID: seeding.NewSlugID(label, "list"), Label: label, Entries: entries, CreatedAt: now, UpdatedAt: now}
 	if err := list.Validate(l); err != nil {
 		return list.List{}, err
 	}
@@ -146,6 +148,13 @@ func (c *ConfigureService) UpdateList(id, label string, entries map[string]strin
 		c.mu.Unlock()
 		return list.List{}, fmt.Errorf("no list with id %q", id)
 	}
+	// CreatedAt is preserved from the stored entity, never trusted from
+	// the wire (the caller-supplied l above never set it); UpdatedAt
+	// always advances on a real update. BuiltIn's own pre-existing
+	// reset-on-update behavior is left exactly as it was -- out of this
+	// change's scope.
+	l.CreatedAt = c.lists[idx].CreatedAt
+	l.UpdatedAt = time.Now()
 	c.lists[idx] = l
 	c.mu.Unlock()
 
@@ -227,7 +236,12 @@ func (c *ConfigureService) restore() {
 			c.persistHTTPRequests()
 		}
 	} else {
-		c.requests = httprequest.BuiltIn()
+		seeded := httprequest.BuiltIn()
+		now := time.Now()
+		for i := range seeded {
+			seeded[i].CreatedAt, seeded[i].UpdatedAt = now, now
+		}
+		c.requests = seeded
 		c.seedBuiltInSecrets()
 	}
 	c.topUpBuiltInRequests()

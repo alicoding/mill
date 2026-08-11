@@ -42,6 +42,15 @@ export interface ExecEnv {
      * Edit/Delete.
      */
     "BuiltIn": boolean;
+
+    /**
+     * CreatedAt/UpdatedAt are system-managed audit timestamps (SPEC.md
+     * §3.2.2's reserved-column pattern), stamped server-side at every
+     * persisted mutation (ConfigureService), never trusted from the
+     * wire. Zero value means pre-timestamp data -- migration-free.
+     */
+    "CreatedAt": string;
+    "UpdatedAt": string;
 }
 
 /**

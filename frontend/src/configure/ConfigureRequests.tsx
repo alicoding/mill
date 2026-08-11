@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { ActionList, ActionMenu, Button, Heading, IconButton, Label, Stack, Text } from '@primer/react'
 import { DownloadIcon, PencilIcon, PlugIcon, TrashIcon, UploadIcon } from '@primer/octicons-react'
 import { DataTable } from '@primer/react/experimental'
@@ -11,6 +11,7 @@ import { refreshRequests, useAppStore } from '../shared/store'
 import { downloadJSON } from '../shared/downloadJSON'
 import { InventoryList, type InventoryItem } from '../shared/InventoryList'
 import { ENTITY_ICON } from '../shared/entityIcons'
+import { formatUpdated, sortByUpdatedDesc } from '../shared/inventorySort'
 import styles from '../shared/ListCard.module.css'
 import PageContainer from '../shared/PageContainer'
 
@@ -91,11 +92,16 @@ export function ConfigureRequests() {
     </ActionMenu>
   )
 
-  const requestItems: InventoryItem[] = (requests ?? []).map((r) => ({
+  // Last-updated-first, applied once so both view modes render the
+  // same order (docs/SPEC.md §3.8's InventoryList entry).
+  const sortedRequests = useMemo(() => sortByUpdatedDesc(requests ?? [], (r) => r.UpdatedAt), [requests])
+
+  const requestItems: InventoryItem[] = sortedRequests.map((r) => ({
     id: r.ID,
     entity: 'request',
     icon: ENTITY_ICON.request,
     label: r.Label,
+    updatedLabel: formatUpdated(r.UpdatedAt),
     labelBadges: (
       <Stack direction="horizontal" gap="condensed" align="center">
         <Label variant="secondary" size="small">{AUTH_LABEL[r.AuthType] ?? r.AuthType}</Label>
@@ -143,7 +149,7 @@ export function ConfigureRequests() {
         <ResizableTableContainer storageKey="mill-cols-requests">
           <DataTable
             aria-labelledby="integrations-heading"
-            data={requests.map((r) => ({ ...r, id: r.ID }))}
+            data={sortedRequests.map((r) => ({ ...r, id: r.ID }))}
             columns={[
               {
                 header: 'Label', field: 'Label', rowHeader: true, sortBy: 'alphanumeric',

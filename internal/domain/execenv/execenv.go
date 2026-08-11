@@ -18,6 +18,7 @@ package execenv
 import (
 	"fmt"
 	"strings"
+	"time"
 )
 
 // Shell is a closed, typed choice (ADR-0026's Amendment: "Shell becomes
@@ -94,6 +95,12 @@ type ExecEnv struct {
 	// list.List.BuiltIn: drives a "built-in" badge only, never gates
 	// Edit/Delete.
 	BuiltIn bool
+	// CreatedAt/UpdatedAt are system-managed audit timestamps (SPEC.md
+	// §3.2.2's reserved-column pattern), stamped server-side at every
+	// persisted mutation (ConfigureService), never trusted from the
+	// wire. Zero value means pre-timestamp data -- migration-free.
+	CreatedAt time.Time
+	UpdatedAt time.Time
 }
 
 // Validate checks an ExecEnv is well-formed before it's persisted --
