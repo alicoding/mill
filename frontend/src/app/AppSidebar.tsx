@@ -46,12 +46,13 @@ export function AppSidebar({ sidebarOpen, setSidebarOpen, view, setView, capabil
           <div className={styles.sidebarTopRow}>
             {sidebarOpen ? (
               <>
-                {/* Owner refinement: the logo+wordmark sit far left,
-                    the SAME slot the collapsed rail's logo occupies --
-                    the Mill identity never moves when the rail
-                    collapses; only the control beside it changes. */}
+                {/* Owner refinement (final form): expanded shows the
+                    WORDMARK alone far left (the icon reads badly at
+                    this size beside text -- collapsed keeps the icon,
+                    same anchor slot), and the collapse control sits at
+                    the row's FAR RIGHT, aligned with the nav rows'
+                    status-dot column. */}
                 <span className={styles.sidebarIdentity}>
-                  <img src={millIcon} alt="" className={styles.railLogo} />
                   <Text className={styles.sidebarWordmark}>Mill</Text>
                 </span>
                 <IconButton
