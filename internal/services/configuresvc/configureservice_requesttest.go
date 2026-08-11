@@ -48,7 +48,7 @@ type TestHTTPRequestInput struct {
 	Path              string
 	Method            string
 	// Values is a flat map of example (generated or hand-edited) field
-	// values keyed by the operation's declared Field.Name, resolved into
+	// values keyed by the operation's declared Field.Key, resolved into
 	// path/query/header/body placement by openapispec.BuildRequest.
 	Values map[string]string
 }
@@ -135,8 +135,8 @@ func (c *ConfigureService) TestHTTPRequestOperation(req TestHTTPRequestInput) (T
 	fullURL := composition.JoinRequestURL(req.BaseURL, resolvedPath)
 	for _, f := range op.InputFields {
 		if f.In == "path" {
-			if v, ok := req.Values[f.Name]; ok {
-				fullURL = strings.ReplaceAll(fullURL, "{"+f.Name+"}", v)
+			if v, ok := req.Values[f.Key]; ok {
+				fullURL = strings.ReplaceAll(fullURL, "{"+f.Key+"}", v)
 			}
 		}
 	}

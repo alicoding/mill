@@ -64,12 +64,12 @@ export function IntegrationBindingsEditor({
   const outputBindings = parseJSON(outputBindingsRaw)
 
   const setInputBinding = (field: Field, value: string) => {
-    onChangeInputBindings(JSON.stringify({ ...inputBindings, [field.Name]: value }))
+    onChangeInputBindings(JSON.stringify({ ...inputBindings, [field.Key]: value }))
   }
   const setOutputBinding = (field: Field, attrKey: string) => {
     const next = { ...outputBindings }
-    if (attrKey === DISCARD) delete next[field.Name]
-    else next[field.Name] = attrKey
+    if (attrKey === DISCARD) delete next[field.Key]
+    else next[field.Key] = attrKey
     onChangeOutputBindings(JSON.stringify(next))
   }
 
@@ -80,10 +80,10 @@ export function IntegrationBindingsEditor({
           <Text size="small" weight="semibold">Input bindings</Text>
           {inputFields.map((field) => (
             <LiteralOrAttributeField
-              key={field.Name}
-              name={field.Alias ? `${field.Alias} (${field.Name})` : field.Name}
+              key={field.Key}
+              name={field.Label ? `${field.Label} (${field.Key})` : field.Key}
               badge={field.In}
-              value={inputBindings[field.Name] ?? ''}
+              value={inputBindings[field.Key] ?? ''}
               attrs={attrs}
               onChange={(value) => setInputBinding(field, value)}
             />
@@ -94,18 +94,18 @@ export function IntegrationBindingsEditor({
         <>
           <Text size="small" weight="semibold">Output bindings</Text>
           {outputFields.map((field) => (
-            <FormControl key={field.Name}>
+            <FormControl key={field.Key}>
               <FormControl.Label>
-                {field.Alias ? `${field.Alias} (${field.Name})` : field.Name}
+                {field.Label ? `${field.Label} (${field.Key})` : field.Key}
                 {field.Path && <Label size="small" variant="accent">path: {field.Path}</Label>}
-                {field.IsSecret && <Label size="small" variant="danger">secret</Label>}
+                {field.Secret && <Label size="small" variant="danger">secret</Label>}
               </FormControl.Label>
-              {field.IsSecret ? (
+              {field.Secret ? (
                 <FormControl.Caption>Secret fields cannot be written to an Attribute.</FormControl.Caption>
               ) : (
                 <Select
-                  aria-label={`Write ${field.Name} to`}
-                  value={outputBindings[field.Name] ?? DISCARD}
+                  aria-label={`Write ${field.Key} to`}
+                  value={outputBindings[field.Key] ?? DISCARD}
                   onChange={(e) => setOutputBinding(field, e.target.value)}
                 >
                   <Select.Option value={DISCARD}>(discard)</Select.Option>

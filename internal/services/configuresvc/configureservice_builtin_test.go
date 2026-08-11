@@ -195,7 +195,7 @@ func TestBuiltIn_TypedExamples_DeclareRealFields(t *testing.T) {
 	if err != nil {
 		t.Fatalf("typed echo spec has no GET / operation: %v", err)
 	}
-	if len(op.InputFields) != 1 || op.InputFields[0].Name != "q" || op.InputFields[0].In != "query" {
+	if len(op.InputFields) != 1 || op.InputFields[0].Key != "q" || op.InputFields[0].In != "query" {
 		t.Errorf("typed echo inputs = %+v, want one query parameter q", op.InputFields)
 	}
 	wantPath := map[string]string{"url": "", "origin": "", "echoedQ": "args.q"}
@@ -203,13 +203,13 @@ func TestBuiltIn_TypedExamples_DeclareRealFields(t *testing.T) {
 		t.Fatalf("typed echo outputs = %+v, want url/origin/echoedQ", op.OutputFields)
 	}
 	for _, f := range op.OutputFields {
-		p, ok := wantPath[f.Name]
+		p, ok := wantPath[f.Key]
 		if !ok {
-			t.Errorf("unexpected typed echo output field %q", f.Name)
+			t.Errorf("unexpected typed echo output field %q", f.Key)
 			continue
 		}
 		if f.Path != p {
-			t.Errorf("output field %q Path = %q, want %q", f.Name, f.Path, p)
+			t.Errorf("output field %q Path = %q, want %q", f.Key, f.Path, p)
 		}
 	}
 
@@ -224,10 +224,15 @@ func TestBuiltIn_TypedExamples_DeclareRealFields(t *testing.T) {
 	}
 	types := map[string]string{}
 	for _, f := range op.OutputFields {
-		types[f.Name] = f.Type
+		types[f.Key] = string(f.Type)
 	}
-	if types["authenticated"] != "boolean" || types["token"] != "string" {
-		t.Errorf("typed bearer outputs = %+v, want authenticated:boolean + token:string", op.OutputFields)
+	// The OpenAPI document itself still declares "type": "string" for
+	// token (Mill's document vocabulary is unaffected by this) --
+	// schemaType (ADR-0029 Phase 3) translates that into typedfield's
+	// own "text", the Mill-side value this in-memory Field.Type now
+	// carries.
+	if types["authenticated"] != "boolean" || types["token"] != "text" {
+		t.Errorf("typed bearer outputs = %+v, want authenticated:boolean + token:text", op.OutputFields)
 	}
 }
 
