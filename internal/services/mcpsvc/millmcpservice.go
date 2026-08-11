@@ -42,10 +42,17 @@ type MillMCPService struct {
 	store  settings.Store
 	server *mcp.Server
 	http   *http.Server
-	// Per-write approval state (millmcpservice_approval.go,
-	// docs/adr/0017's second half).
-	pendingMu     sync.Mutex
-	pendingWrites map[string]pendingMCPWrite
+	// Per-write approval state: park-and-poll (millmcpservice_approval.go,
+	// docs/adr/0032, superseding ADR-0017's second half's old bounded-
+	// blocking-wait shape). writes is the durable pending/resolved
+	// record set, persisted via store; executors dispatches an approved
+	// write's real side effect by tool name (registerWriteExecutor,
+	// called once per gated tool during registerTools/
+	// registerAuthoringTools -- never mutated afterward, see execute's
+	// doc comment).
+	writesMu  sync.Mutex
+	writes    map[string]*MCPWriteRecord
+	executors map[string]mcpWriteExecutor
 	// exec backs the authoring tier's list_runs/get_run/run_workflow
 	// (millmcpservice_authoring.go); late-bound from main.go.
 	exec *executionsvc.ExecutionService
@@ -60,9 +67,16 @@ type MillMCPService struct {
 // read fresh on every import call, so flipping the Settings toggle
 // applies immediately, no restart.
 func NewMillMCPService(version string, comp *compositionsvc.CompositionService, cfg *configuresvc.ConfigureService, store settings.Store) *MillMCPService {
-	m := &MillMCPService{comp: comp, cfg: cfg, store: store}
+	m := &MillMCPService{comp: comp, cfg: cfg, store: store, executors: map[string]mcpWriteExecutor{}}
 	m.server = mcpserving.New("mill", version)
 	m.registerTools()
+	// Restart-survival (docs/adr/0032 §1): reload any pending/recently-
+	// resolved write record left over from a previous process. Must run
+	// after registerTools (so a loaded record's ToolName resolves
+	// against a populated executors map the moment it's approved) but
+	// before Start (so a client connecting immediately sees the
+	// restored state, not a race against a background load).
+	m.loadWrites()
 
 	m.server.AddResource(&mcp.Resource{
 		URI: "mill://workflows", Name: "workflows", MIMEType: "application/json",
