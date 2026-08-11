@@ -184,8 +184,9 @@ function SettingsView() {
 
       <Heading as="h2" variant="small" className={styles.sectionHeading}>Global hotkey</Heading>
       <Text as="p" size="small" className={styles.muted}>
-        Summons Mill's window from anywhere, like Raycast's ⌥Space or Alfred's own shortcut -- distinct from a
-        specific workflow's own trigger hotkey (set per-workflow on its canvas).
+        Opens Mill's Quick Panel from anywhere, like Raycast's ⌥Space or Alfred's own shortcut -- search and run a
+        workflow, or jump into Mill itself, without leaving what you were doing. Press again to dismiss it.
+        Distinct from a specific workflow's own trigger hotkey (set per-workflow on its canvas).
       </Text>
       <Stack direction="horizontal" gap="condensed" align="center" style={{ marginTop: 'var(--base-size-8)' }}>
         {summonRecording ? (

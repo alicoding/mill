@@ -46,9 +46,13 @@ const windowGeometryDebounce = 500 * time.Millisecond
 // adopted for per-workflow triggers -- same registration mechanism,
 // different callback).
 type SettingsService struct {
-	mu           sync.Mutex
-	store        settings.Store
-	window       *application.WebviewWindow
+	mu     sync.Mutex
+	store  settings.Store
+	window *application.WebviewWindow
+	// panel is the Quick Panel window (docs/adr/0033) -- a second,
+	// always-alive floating window the summon hotkey toggles, distinct
+	// from window (the main window) above. See settingsservice_panel.go.
+	panel        *application.WebviewWindow
 	trig         *triggersvc.TriggerService
 	summon       *hotkey.Binding
 	summonHK     triggersvc.PersistedHotkey // zero value (nil Mods) means unassigned

@@ -10,8 +10,15 @@ pattern (frequently-used float up, pinned, configurable).
 ## Design direction
 - **⌘K in-window palette** (industry-standard) built on Primer's
   `FilteredActionList` — already named in .claude/rules/frontend.md
-  as "fits a command-palette-style picker," unused until now. The
-  §3.7 OS summon hotkey opens the window INTO the palette.
+  as "fits a command-palette-style picker," unused until now.
+  **Superseded 2026-08-11**: the §3.7 OS summon hotkey no longer opens
+  the main window INTO this palette — it now toggles a dedicated
+  second floating window, the **Quick Panel**
+  (`docs/adr/0033-quick-panel-second-window.md`), a Raycast/Alfred-
+  style search-and-run surface separate from the main window entirely.
+  This ⌘K palette is unchanged and still the right surface for
+  *already being in Mill* (spans commands/tabs/workflows); the Quick
+  Panel is the new surface for *not yet being in Mill*.
 - Each row: workflow + its **trigger identity inline** — the
   assigned hotkey combo (the Raycast education loop: the palette is
   the on-ramp, the hotkey is the destination), armed state for
@@ -50,3 +57,9 @@ Owner summons, types three letters, runs a workflow — and the row
 they picked showed them the hotkey they'll use instead next time;
 their most-used workflows are already at the top without configuring
 anything.
+
+**Note (2026-08-11)**: "Owner summons" now means the Quick Panel
+(ADR-0033), not this ⌘K palette directly — the "types three letters,
+runs a workflow" run path is real and built there today; the
+inline-hotkey-hint and frecency/pins halves of this acceptance bar are
+still the unbuilt remainder this goal file tracks, for either surface.

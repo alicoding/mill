@@ -1,0 +1,34 @@
+/* Quick Panel (docs/adr/0033-quick-panel-second-window.md). Primer
+   design tokens only, per .claude/rules/frontend.md -- no bespoke
+   colors/spacing. One compact vertical surface filling the whole
+   frameless window: search input on top, workflow/action list below. */
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  width: 100vw;
+  background: var(--bgColor-default);
+  color: var(--fgColor-default);
+  overflow: hidden;
+}
+
+.status {
+  padding: var(--base-size-8, 8px) var(--base-size-16, 16px);
+  margin: 0;
+  color: var(--fgColor-muted);
+  border-top: 1px solid var(--borderColor-default);
+}
+
+.shortcut {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 var(--base-size-6, 6px);
+  border: 1px solid var(--borderColor-default);
+  border-radius: var(--borderRadius-medium);
+  background: var(--bgColor-muted);
+  color: var(--fgColor-muted);
+  font-size: var(--text-body-size-small);
+  font-family: var(--fontStack-monospace, monospace);
+  white-space: nowrap;
+}

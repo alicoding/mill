@@ -2365,14 +2365,34 @@ findings) and the build rationale are in
   named `ErrNotAppBundle`, surfaced in `SettingsView.tsx` as a plain
   note rather than a raw error.
 - **Global summon hotkey** — `golang.design/x/hotkey` (already adopted,
-  §2.2) for registration, `*application.WebviewWindow`'s
-  `Show()`/`Restore()`/`Focus()` for the callback. Persisted via the
-  same `internal/adapters/settings` store `TriggerService` uses.
+  §2.2) for registration. Persisted via the same
+  `internal/adapters/settings` store `TriggerService` uses.
   Bidirectional conflict detection with per-workflow hotkeys:
   `TriggerService.ClaimedCombos()`/`SetReservedCombo` (an
   injected-function seam, same shape as
   `SetConnectorLookup`/`SetListLookup`) so a workflow hotkey can't
-  collide with the summon hotkey or vice versa.
+  collide with the summon hotkey or vice versa. **Update
+  (2026-08-11): toggles the Quick Panel, not the main window —
+  [ADR-0033](adr/0033-quick-panel-second-window.md).** A second,
+  always-alive, `Hidden` floating window (`Frameless`,
+  `HideOnFocusLost`/`HideOnEscape`, `Mac.WindowLevel: Floating`,
+  loaded at the `/#/quickpanel` hash route since production asset
+  serving has no SPA fallback for a bare second path) hosts a
+  Raycast/Alfred-style search-and-run surface
+  (`app/QuickPanel.tsx`, reusing `app/CommandPalette.tsx`'s
+  `FilteredActionList`/run-workflow shapes) — `SettingsService.
+  TogglePanel` shows/dismisses it; `ShowWindow` (main window
+  show/restore/focus) stays reachable via the tray icon and the
+  panel's own "Open Mill"/"Open Settings" rows
+  (`OpenMainWindow`, emits `mill-navigate`). No first-party
+  non-activating-panel mechanism exists at beta.4 (`NSWindow`, not
+  `NSPanel` — confirmed against the pinned source, unmerged upstream
+  PRs tracked in the ADR), so showing the panel still activates Mill;
+  `yieldFocusIfMainHidden` hides the whole app on dismiss when the
+  main window also isn't visible, the accepted mitigation. Goal
+  0015's own ⌘K in-window palette is unchanged — still the surface
+  for *already being in Mill*, distinct from the Quick Panel's *not
+  yet being in Mill* summon target.
 - **Auto-update** — `app.Updater` (Wails3's own first-party,
   zero-new-dependency `v3/pkg/updater`) is `Init`'d in `main.go` with a
   GitHub Releases provider pointed at `alicoding/mill`;
