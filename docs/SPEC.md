@@ -1519,23 +1519,75 @@ against them) — what's missing is that Attributes are optional and
 authored piecemeal, so the guarantee is partial: a reference can be
 offered before the schema that backs it is complete.
 
-`OPEN` throughout — nothing decided or built, but the mechanism above
-tilts question (1) below toward "yes, worth it." Real questions this
-raises for a future decision, not to guess at now: (1) should Mill's
-Trigger+Attributes split converge toward a single reusable **Input**
-entity — a required, typed, contract-first schema that unlocks
-reliable variable autocomplete everywhere a step references data (a
-real model change touching §3.3's schema, §3.4's triggers, and §3.5's
-Configure surface) — or stay split with an Inputs tab added alongside
-Attributes? (2) should authoring validation (ADR-0028) promote the
-process-leaf *warning* to a Save-*blocking* error when a workflow has
-no terminal Decision — matching the reference's "must have a
-terminal" — or is Mill's warn-don't-block stance (drafts stay
-saveable through incompleteness, §3.8) the deliberate right call for a
-single-user tool? Both are model-level decisions gated on a real
-need, per §0's "map the capability before locking the schema"
-discipline — recorded here so the next authoring-model pass designs
-against this evidence, not memory.
+**Researched 2026-08-11 (owner asked "is this the right pattern"), and
+the answer corrects the tilt above: schema-FIRST-REQUIRED is one
+camp, and the wrong one for Mill — but the autocomplete win the owner
+actually wants is real and separable from it.** A primary-source
+survey (n8n/Zapier/Make/Workato/Pipedream/Retool/Windmill/Temporal/
+AWS Step Functions/Azure Logic Apps/Google Workflows/Dagster/Prefect/
+Airflow/Camunda) found a clean split by MECHANISM, not merit:
+- **Developer/typed-language tools** (Temporal, Windmill, Dagster,
+  Prefect) are schema-first only because the host language types the
+  input *for free* — compiler inheritance, not an authoring ceremony.
+- **Visual/no-code tools** (n8n, Zapier, Make, Retool, Pipedream)
+  converge hard on **schema-OPTIONAL, prior-actual-output-driven**:
+  none requires declaring a schema before the canvas is usable; they
+  deliver field-level autocomplete by introspecting something *real*
+  — a captured test/sample payload, a named prior step's actual
+  output, the diagram's own mappings.
+- **Camunda is the decisive datapoint** — the closest sibling to the
+  reference decisioning platform, doing the same regulated job, and
+  its own docs state the OPPOSITE posture: "In Camunda, you do not
+  declare process variables in the process model. This allows for a
+  lot of flexibility" — autocomplete comes from static analysis of
+  the diagram's mappings, not a predeclared record. So the reference
+  platform's upfront-schema enforcement is *that vendor's* choice for
+  cross-team contract stability at scale, not an industry universal.
+- **AWS Step Functions** (the most-deployed production orchestration
+  DSL) has ZERO input contract but strictly gates on GRAPH
+  COMPLETENESS (start resolves, every path reaches a terminal) — which
+  decouples "must reach a terminal" (worth enforcing, and already
+  ADR-0028's exact model) from "must have a typed input contract"
+  (SaaS governance ceremony).
+
+**The autocomplete-crux finding, directly refuting the earlier tilt:**
+a required upfront schema is NOT necessary for reliable variable
+autocomplete. What it uniquely buys is a guarantee before any data has
+ever flowed (cold-start typo-catching) — a narrow benefit, not the
+mechanism autocomplete depends on. Every schema-optional tool solves
+"no undefined reference" by validating against the *actual current
+graph/run state* at save/run time — late-bound but still enforced.
+
+**Verdict (`LOCKED` as a direction, nothing built): schema-OPTIONAL /
+late-bound, with Mill's own advantage over every SaaS tool — durable
+DBOS run history (§7) as a *real observed-shape* autocomplete source,
+which is exactly n8n's "pinned data" mechanism except Mill already has
+it.** So the two questions this section opened resolve:
+(1) **Do NOT converge Trigger+Attributes into a required upfront Input
+entity.** Keep `AttributeDef` (§3.4) as an OPT-IN contract that
+*sharpens* autocomplete when declared and never gates canvas usability
+when absent (matching Workato's optional typed Variables / Azure's
+optional Request-schema box). The mandatory-upfront-schema +
+un-deletable-entry + migration-blocking-schema-change shape is
+multi-tenant governance for many authors against one governed record
+— a single local user iterating on their own workflow has no other
+team depending on the contract, so the rigidity buys nothing and costs
+exactly the friction §1 already disqualifies ("must not be harder than
+the baseline").
+(2) **Keep ADR-0028's warn-don't-block for data-completeness, but the
+STRUCTURAL gate (a start node, reaches a terminal) is the
+AWS-precedented thing genuinely worth enforcing** — which ADR-0028
+already does. No change needed; the reference's "must have a terminal"
+is right, its "must have a typed input first" is not.
+
+**The actual near-term opportunity this surfaces (a real gap, not
+ceremony):** variable-reference **autocomplete sourced from prior-node
+output / run history** — the n8n/Camunda pattern Mill's binding
+editors (Decision rule builder, integration/MCP `attr:<name>`) don't
+fully have yet. That's the piece worth building; it delivers the
+reliability the owner wants WITHOUT the schema-first requirement.
+Recorded as future work, not scheduled. `OPEN` (the build); the
+adopt-vs-reject direction above is decided.
 
 ### 3.3 Capability map — designing the node/edge schema against the full known need, not just today's two workflows
 
