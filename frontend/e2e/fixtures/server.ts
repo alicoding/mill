@@ -12,10 +12,12 @@ import { fileURLToPath } from 'node:url'
 // `workers: 1` and the run-the-suite-twice discipline
 // (.claude/rules/testing.md). The binary itself is built exactly once,
 // in globalSetup (./global-setup.ts); this module only ever execs the
-// already-built bin/mill-server, once per worker.
+// already-built binary, once per worker -- from e2e's OWN .build/ dir,
+// never the repo's shared bin/ (see global-setup.ts's comment for the
+// dev-loop/e2e mutual-destruction incident that forced the split).
 
 const REPO_ROOT = path.resolve(fileURLToPath(new URL('.', import.meta.url)), '../../..')
-const MILL_SERVER_BIN = path.join(REPO_ROOT, 'bin', 'mill-server')
+const MILL_SERVER_BIN = path.join(REPO_ROOT, 'frontend', 'e2e', '.build', 'mill-server')
 
 // Port ranges deliberately clear of both Wails' own server-mode default
 // (8080) and Mill's own default MCP bind address (127.0.0.1:8090) --
