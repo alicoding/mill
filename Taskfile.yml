@@ -46,6 +46,43 @@ tasks:
       - task: "{{.GOOS}}:package"
       - '{{if eq .GOOS "darwin"}}echo "Packaged app: {{.BIN_DIR}}/{{.APP_NAME}}.app -- launch with: open {{.BIN_DIR}}/{{.APP_NAME}}.app"{{else if eq .GOOS "windows"}}echo "Packaged app: {{.BIN_DIR}}/{{.APP_NAME}}.exe"{{else}}echo "Packaged app: see {{.BIN_DIR}}/ for output"{{end}}'
 
+  install:app:
+    summary: Build a fully-fresh production app and install it to /Applications (macOS)
+    desc: |
+      The correct one-command reinstall -- fixes the manual-reinstall
+      footguns that bit repeatedly during live testing:
+        1. Stale frontend bundle: `task package` reuses frontend/dist,
+           so a Go-only change ships an old JS bundle and the app's own
+           build-staleness badge (correctly) flags app-commit !=
+           frontend-commit. This rebuilds the frontend first.
+        2. Stale bundle timestamp / straggler files: `ditto` MERGES into
+           an existing bundle rather than replacing it, so the bundle
+           dir mtime never refreshes and a removed-in-a-later-build file
+           can linger. This wipes bin/mill.app AND /Applications/Mill.app
+           first, then does a clean copy.
+        3. Wrong embedded commit: packaging before committing bakes the
+           old HEAD into vcs.revision. This verifies the installed
+           binary's embedded commit equals HEAD and warns loudly if not.
+      Prefer `task dev` for iterating (hot reload, no install). Use this
+      only when you need the real installed .app (Accessibility-gated
+      hotkeys, the native menu, launch/Spotlight behaviour).
+    cmds:
+      - '{{if ne .GOOS "darwin"}}echo "install:app is macOS-only"; exit 1{{end}}'
+      - cd frontend && {{.PACKAGE_MANAGER}} run build
+      - rm -rf {{.BIN_DIR}}/{{.APP_NAME}}.app
+      - task: package
+      - pkill -x {{.APP_NAME}} || true
+      - rm -rf /Applications/Mill.app
+      - ditto {{.BIN_DIR}}/{{.APP_NAME}}.app /Applications/Mill.app
+      - |
+        HEAD=$(git rev-parse HEAD)
+        GOT=$(go version -m /Applications/Mill.app/Contents/MacOS/{{.APP_NAME}} | sed -n 's/.*vcs.revision=//p')
+        if [ "$HEAD" = "$GOT" ]; then
+          echo "✅ Installed Mill.app @ ${GOT}  (matches HEAD; no stale-build badge expected)"
+        else
+          echo "⚠️  MISMATCH: installed ${GOT} != HEAD ${HEAD} -- did you commit before installing?"
+        fi
+
   run:
     summary: Runs the application
     cmds:
