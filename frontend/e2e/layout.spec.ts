@@ -142,3 +142,69 @@ test('the editor inner tab bar keeps its natural height, never growing to eat ve
   if (!box) throw new Error('inner tab bar has no bounding box')
   expect(box.height).toBeLessThan(60)
 })
+
+test.describe('tab strip vs build badge', () => {
+  // Narrow viewport ON PURPOSE: the ⌄ button hugs the END of the tab
+  // row, so the old fixed badge only covered it once enough tabs pushed
+  // the row's end under the window's top-right corner -- at this file's
+  // default 1800px with two short tabs they never meet, and a first cut
+  // of this test at that width passed against the BUGGY layout
+  // (verified, honestly: the repro must fill the strip, not just open
+  // the menu).
+  test.use({ viewport: { width: 1000, height: 800 } })
+
+  test('the tab-strip overflow button is clickable with the build badge present, and the badge lives inside the band', async ({ page }) => {
+  // Regression coverage for the owner-caught overlay bug (2026-08-11):
+  // the build-identity badge was position:fixed at the window's
+  // top-right, exactly over the tab strip's pinned "All open tabs" ⌄
+  // button, and intercepted its clicks -- the same overlay-blocks-chrome
+  // class the isolated-data ribbon already hit once with the sidebar
+  // toggle. The fix makes the badge a flex participant in the band's
+  // own right segment, so overlap is impossible by construction.
+  // Asserted as a real hit-test (elementFromPoint), not just
+  // visibility, per .claude/rules/testing.md -- visibility was never
+  // the problem, hit-interception was.
+  await page.goto('/')
+  const row = (label: string) =>
+    page.locator('[data-testid="inventory-row"][data-entity="workflow"]').filter({ hasText: label })
+  // Enough tabs to fill the strip so the ⌄ button lands at the band's
+  // right edge -- the geometry the bug needs.
+  for (const label of [
+    'Clipboard → Markdown',
+    'Load sample HTML',
+    'Example: Parent → child call',
+    'Example: Country code lookup',
+    'Example: MCP echo call',
+  ]) {
+    await page.getByRole('link', { name: 'Workflows' }).click()
+    await row(label).click()
+  }
+
+  // The badge (SERVER · <hash> under the e2e server build) renders
+  // inside the 38px band, not floating over it.
+  const badge = page.getByTestId('server-build-badge')
+  await expect(badge).toBeVisible()
+  const badgeBox = await badge.boundingBox()
+  if (!badgeBox) throw new Error('badge has no bounding box')
+  expect(badgeBox.y + badgeBox.height).toBeLessThanOrEqual(38)
+
+  // The overflow ⌄ button (shown at 2+ work tabs) is the top hit target
+  // at its own center -- the exact property the fixed badge broke.
+  const overflow = page.getByTestId('work-tab-overflow')
+  await expect(overflow).toBeVisible()
+  const box = await overflow.boundingBox()
+  if (!box) throw new Error('overflow button has no bounding box')
+  const hit = await page.evaluate(
+    ([x, y]) => document.elementFromPoint(x, y)?.closest('[data-testid="work-tab-overflow"]') != null,
+    [box.x + box.width / 2, box.y + box.height / 2],
+  )
+  expect(hit).toBe(true)
+
+  // And it actually works end-to-end -- which also cleans up this
+  // test's own tabs (within-file discipline).
+  await overflow.click()
+  await expect(page.getByRole('menuitem', { name: 'Close other tabs' })).toBeVisible()
+  await page.getByRole('menuitem', { name: 'Close all tabs' }).click()
+  await expect(page.getByTestId('work-tab-overflow')).toHaveCount(0)
+})
+})

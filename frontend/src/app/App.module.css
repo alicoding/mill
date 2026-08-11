@@ -330,12 +330,27 @@
 
 /* Dev-mode ribbon: only rendered when import.meta.env.DEV is true (App.tsx),
    so this rule is inert/unused in any real build. */
+/* The badge is a real flex participant in the titlebar band's right
+   segment (.titlebarRight), NOT a fixed overlay: at position:fixed
+   top/right it sat exactly over the tab strip's pinned overflow ⌄ menu
+   and intercepted its clicks (owner-caught live 2026-08-11) -- the same
+   overlay-blocks-chrome class .isolatedDataRibbon's comment below
+   already records for the sidebar toggle. In the band, overlap is
+   impossible by construction. */
 .devRibbon {
     --wails-draggable: no-drag;
-    position: fixed;
-    top: var(--base-size-8);
-    right: var(--base-size-8);
-    z-index: 2;
+    white-space: nowrap;
+}
+
+/* Third band segment, after the scrolling .titlebarTabs: pins the
+   build-identity badge at the band's right edge as ordinary flex
+   content. */
+.titlebarRight {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    padding: 0 var(--base-size-8);
+    --wails-draggable: no-drag;
 }
 
 /* Left side, not right, deliberately -- .devRibbon already owns the
