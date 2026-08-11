@@ -1452,6 +1452,64 @@ no Home today (lands on Workflows); Activity is the nearest analytics
 surface. Recorded as goal 0014, unscheduled; evidence gaps (suggestion
 basis, KPI authoring, metric semantics, freshness) stay open there.
 
+### 3.2.4 Workflow entry/ending contract reference review — design input, `OPEN`
+
+**Sixth owner-supplied reference review (2026-08-11, four
+screenshots, vendor-generic): how the platform models a workflow's
+required entry point and ending — the strictest divergence from
+Mill's own model found so far.** Observed, directly:
+
+- **Create is a two-way fork** — "Start from Scratch" or "Import
+  Workflow (JSON)". Mill already has both (New workflow / Import), no
+  gap.
+- **Start-from-scratch forces INPUT SELECTION before the canvas
+  exists** — a mandatory "Select workflow input" step: pick a
+  reusable, Configure-authored **Input** from a registry (the
+  owner's own tenant showed 45, searchable, with created/updated-by
+  columns) or "+ New input". The Input is a **first-class,
+  1:many-reusable entity picked up front**, not authored inline —
+  the single biggest divergence from Mill.
+- **The Input node is the un-deletable entry point**, a distinct
+  `Input` kind (NOT labeled a "Trigger"), carrying a typed **Schema**
+  (observed attributes: `context`/`country_of_incorporation`/
+  `business_structure`/`owners_info`/`structured_address`/
+  `business_number`, each typed String/Object) and a **required
+  "Default next step"** ("Go to → choose a starting step"; "A
+  starting step is required" is a hard, Save-blocking error — the
+  editor showed "2 errors").
+- **A workflow must reach a terminal** — the seeded example ran
+  Input → Decision (Approve), a real terminal outcome (§3.3's
+  Decision row / ADR-0027).
+
+**How this maps to Mill (the actionable part):** Mill splits what the
+reference fuses. Mill's entry point is a **Trigger** node; its typed
+data is separately-declared **Attributes**. The reference collapses
+both into ONE reusable **Input** entity that is simultaneously the
+entry point AND the typed schema AND a Configure-authored,
+cross-workflow-reusable resource. This is direct evidence for §3.2's
+already-open, scope-unclear "a separate **Inputs** tab distinct from
+Attributes" observation — the Inputs entity IS the typed entry point,
+reusable 1:many, and §3.2's Attributes are the per-workflow 1:1 half.
+The un-deletable-entry + required-next-step + required-terminal
+contract is a **stricter form of ADR-0028's ending model**: Mill
+today *warns* on a process-leaf and requires a Trigger root, where the
+reference *hard-blocks* Save until entry→…→terminal is complete.
+
+`OPEN` throughout — nothing decided or built. Real questions this
+raises for a future decision, not to guess at now: (1) should Mill's
+Trigger+Attributes split converge toward a single reusable **Input**
+entity (a real model change touching §3.3's schema, §3.4's triggers,
+and §3.5's Configure surface), or stay split with an Inputs tab added
+alongside Attributes? (2) should authoring validation (ADR-0028)
+promote the process-leaf *warning* to a Save-*blocking* error when a
+workflow has no terminal Decision — matching the reference's
+"must have a terminal" — or is Mill's warn-don't-block stance
+(drafts stay saveable through incompleteness, §3.8) the deliberate
+right call for a single-user tool? Both are model-level decisions
+gated on a real need, per §0's "map the capability before locking the
+schema" discipline — recorded here so the next authoring-model pass
+designs against this evidence, not memory.
+
 ### 3.3 Capability map — designing the node/edge schema against the full known need, not just today's two workflows
 
 Deciding the node/edge schema from today's two built-in, purely-linear
