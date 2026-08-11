@@ -59,6 +59,23 @@ func ReadText() (string, error) {
 	return string(out), nil
 }
 
+// Info returns macOS's own raw "clipboard info" report -- a
+// comma-separated list of alternating «class XXXX», byte-size pairs
+// naming every flavor currently on the pasteboard (e.g. "«class
+// utf8», 12, «class HTML», 14"). Unlike ReadHTML/ReadText, which each
+// commit to one flavor and fail if it's absent, this is a diagnostic:
+// "what's actually on the clipboard right now, and in what shapes" --
+// the same «class HTML»/plain-text presence question §5's capture
+// fallback order already has to answer implicitly, made directly
+// inspectable.
+func Info() (string, error) {
+	out, err := exec.Command("osascript", "-e", "clipboard info").Output()
+	if err != nil {
+		return "", fmt.Errorf("clipboard info failed: %w", err)
+	}
+	return strings.TrimSpace(string(out)), nil
+}
+
 // WatchChanges polls the clipboard's plain-text flavor on the given
 // interval and calls fn whenever it differs from the last-seen value.
 // Build, not adopt -- confirmed no clipboard-changed event exists via

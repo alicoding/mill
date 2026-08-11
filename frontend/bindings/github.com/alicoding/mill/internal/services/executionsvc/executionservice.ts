@@ -126,7 +126,23 @@ export function ResolveApproval(runID: string, nodeID: string, approve: boolean,
  * AttributeDef.Key (docs/adr/0008's test-input form) -- nil for a
  * workflow with no declared Attributes, or any caller (TriggerService's
  * headless fire path) that has no user-supplied values to offer.
+ * Delegates to RunWorkflowWithPayload with an empty starting payload --
+ * every existing caller of this method (Composition's canvas Run
+ * button, the MCP authoring loop's run_workflow tool) behaves exactly
+ * as before this field existed.
  */
 export function RunWorkflow(workflowID: string, kind: $models.RunKind, values: { [_ in string]?: string } | null): $CancellablePromise<$models.RunSummary> {
     return $Call.ByID(2199477208, workflowID, kind, values);
+}
+
+/**
+ * RunWorkflowWithPayload is RunWorkflow plus a starting payload for the
+ * root ExecContext (docs/SPEC.md §3.4's Trigger row: "a trigger's
+ * output IS the workflow's input") -- TriggerService's headless fire
+ * path uses this to thread a real trigger event's own data (e.g. a
+ * filesystem-watch trigger's changed file path) into the run instead of
+ * starting from "".
+ */
+export function RunWorkflowWithPayload(workflowID: string, kind: $models.RunKind, values: { [_ in string]?: string } | null, payload: string): $CancellablePromise<$models.RunSummary> {
+    return $Call.ByID(3815683294, workflowID, kind, values, payload);
 }

@@ -102,3 +102,33 @@ test('Example: Disabled filesystem watch workflow is present and ships disabled'
   await expect(row).toBeVisible()
   await expect(row.getByText('disabled', { exact: true })).toBeVisible()
 })
+
+// docs/SPEC.md §5/§8 (save-page capture floor + clipboard inspector):
+// presence-only, same reasoning as the rest of this file -- these two
+// new seeds' real execution semantics are proven at the Go layer
+// (composition's captureclipboardinfo_test.go/capturefile_test.go/
+// processextracthtml_test.go, triggersvc's
+// TestSeededSavedPageToMarkdown_FiresRealWorkflowAndExtractsMainContent),
+// this just confirms they're actually reachable through the live app.
+
+test('Example: Clipboard inspector workflow is present with the real capture-clipboard-info node on canvas', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Workflows' }).click()
+
+  const row = workflowRow(page, 'Example: Clipboard inspector')
+  await expect(row).toBeVisible()
+  await row.click()
+
+  const nodes = activePanel(page).locator('.react-flow__node')
+  await expect(nodes).toHaveCount(2)
+  await expect(nodes.filter({ hasText: 'Capture: clipboard info' })).toBeVisible()
+})
+
+test('Example: Saved page to Markdown workflow is present and ships disabled', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Workflows' }).click()
+
+  const row = workflowRow(page, 'Example: Saved page → Markdown')
+  await expect(row).toBeVisible()
+  await expect(row.getByText('disabled', { exact: true })).toBeVisible()
+})

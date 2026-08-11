@@ -17,7 +17,7 @@ func init() {
 		}
 		go func(id string) {
 			for range b.Keydown() {
-				s.fire(id, label)
+				s.fire(id, label, "")
 			}
 		}(workflowID)
 		return &activeListener{hotkey: b}, nil

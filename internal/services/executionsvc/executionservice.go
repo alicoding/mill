@@ -85,6 +85,15 @@ type runInput struct {
 	// Version records which definition snapshot this run executed
 	// (docs/adr/0021) -- 0 means the draft head (a test run).
 	Version int
+	// Payload seeds the run's starting ExecContext.Payload
+	// (composition.ExecuteOptions.InitialPayload) -- a headless trigger
+	// fire's own event data (docs/SPEC.md §3.4's Trigger row), e.g. a
+	// filesystem-watch trigger's changed file path. Empty for every run
+	// started before this field existed (an already-persisted runInput
+	// decodes it as "", identical to today's behavior) and for every
+	// caller with nothing to offer (a manual/hotkey/schedule/clipboard-
+	// watch fire, RunWorkflow's own zero-payload delegation below).
+	Payload string
 }
 
 // RunStep is one node's recorded execution within a run, for the
@@ -218,7 +227,7 @@ func (e *ExecutionService) runWorkflow(ctx execution.Context, in runInput) (stri
 		}, execution.WithStepName(stepID))
 	}
 	return composition.ExecuteWorkflowWithStepRunner(in.Nodes, in.Edges, in.Attributes, stepRunner,
-		composition.ExecuteOptions{AttrValues: in.Values, RunContext: ctx})
+		composition.ExecuteOptions{AttrValues: in.Values, RunContext: ctx, InitialPayload: in.Payload})
 }
 
 // RunWorkflow is the one execution entrypoint for the running app
@@ -237,7 +246,21 @@ func (e *ExecutionService) runWorkflow(ctx execution.Context, in runInput) (stri
 // AttributeDef.Key (docs/adr/0008's test-input form) -- nil for a
 // workflow with no declared Attributes, or any caller (TriggerService's
 // headless fire path) that has no user-supplied values to offer.
+// Delegates to RunWorkflowWithPayload with an empty starting payload --
+// every existing caller of this method (Composition's canvas Run
+// button, the MCP authoring loop's run_workflow tool) behaves exactly
+// as before this field existed.
 func (e *ExecutionService) RunWorkflow(workflowID string, kind RunKind, values map[string]string) (RunSummary, error) {
+	return e.RunWorkflowWithPayload(workflowID, kind, values, "")
+}
+
+// RunWorkflowWithPayload is RunWorkflow plus a starting payload for the
+// root ExecContext (docs/SPEC.md §3.4's Trigger row: "a trigger's
+// output IS the workflow's input") -- TriggerService's headless fire
+// path uses this to thread a real trigger event's own data (e.g. a
+// filesystem-watch trigger's changed file path) into the run instead of
+// starting from "".
+func (e *ExecutionService) RunWorkflowWithPayload(workflowID string, kind RunKind, values map[string]string, payload string) (RunSummary, error) {
 	wf, ok := e.findWorkflow(workflowID)
 	if !ok {
 		return RunSummary{}, fmt.Errorf("unknown workflow: %s", workflowID)
@@ -260,6 +283,7 @@ func (e *ExecutionService) RunWorkflow(workflowID string, kind RunKind, values m
 		Kind:       kind,
 		Values:     values,
 		Version:    version,
+		Payload:    payload,
 	}, execution.WithWorkflowID(runID))
 	if err != nil {
 		return RunSummary{}, fmt.Errorf("start run: %w", err)

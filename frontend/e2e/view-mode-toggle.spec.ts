@@ -116,10 +116,11 @@ test('The inventory search box filters rows by label', async ({ page }) => {
 
   const search = page.getByTestId('inventory-search')
   await expect(page.locator('[data-testid="inventory-row"][data-entity="workflow"]').filter({ hasText: 'Clipboard → Markdown' })).toBeVisible()
-  // "Markdown", not "Clipboard" -- "Load sample HTML"'s own description
-  // ("puts real HTML on the clipboard") would also match a "clipboard"
-  // substring, which isn't what this is testing.
-  await search.fill('Markdown')
+  // The full label, not a bare "Markdown" -- "Example: Saved page →
+  // Markdown" (the docs/adr/0030 capture-floor seed) matches a
+  // "Markdown" substring too, and "Load sample HTML"'s description
+  // ("puts real HTML on the clipboard") would match "clipboard".
+  await search.fill('Clipboard → Markdown')
   await expect(page.locator('[data-testid="inventory-row"][data-entity="workflow"]')).toHaveCount(1)
   await expect(page.getByText('Load sample HTML')).toHaveCount(0)
 

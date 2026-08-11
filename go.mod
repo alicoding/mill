@@ -4,6 +4,8 @@ go 1.25.0
 
 require (
 	github.com/JohannesKaufmann/html-to-markdown/v2 v2.5.2
+	github.com/PuerkitoBio/goquery v1.12.0
+	github.com/andybalholm/cascadia v1.3.4
 	github.com/dbos-inc/dbos-transact-golang v1.0.0
 	github.com/expr-lang/expr v1.17.8
 	github.com/fsnotify/fsnotify v1.10.1

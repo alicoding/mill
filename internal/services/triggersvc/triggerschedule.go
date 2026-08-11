@@ -10,7 +10,7 @@ func init() {
 		if cronExpr == "" {
 			return nil, nil
 		}
-		b, err := schedule.Add(cronExpr, func() { s.fire(workflowID, "") })
+		b, err := schedule.Add(cronExpr, func() { s.fire(workflowID, "", "") })
 		if err != nil {
 			return nil, err
 		}
