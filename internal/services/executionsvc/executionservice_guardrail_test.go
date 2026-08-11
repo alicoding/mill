@@ -152,6 +152,23 @@ func TestGuardrail_ExternalStepParks_ApproveExecutes(t *testing.T) {
 	if final.Pending != nil {
 		t.Error("a completed run must not report a pending approval")
 	}
+
+	// The park itself checkpoints DBOS system operations (DBOS.setEvent/
+	// DBOS.recv/DBOS.sleep) as steps -- GetRun must never surface them as
+	// rows (caught live: three blank, label-less checkmarks above the
+	// run's real steps).
+	detail, err := exec.GetRun(summary.RunID)
+	if err != nil {
+		t.Fatalf("GetRun: %v", err)
+	}
+	for _, s := range detail.Steps {
+		if strings.HasPrefix(s.NodeID, "DBOS.") {
+			t.Errorf("GetRun surfaced DBOS system step %q as a run-detail row", s.NodeID)
+		}
+		if s.NodeTypeID == "" {
+			t.Errorf("GetRun surfaced a row with no NodeTypeID (NodeID %q) -- renders as a blank checkmark", s.NodeID)
+		}
+	}
 }
 
 // An explicit allow rule skips the ask entirely (§8: speed is the
