@@ -24,9 +24,13 @@ import styles from './App.module.css'
 // exception for the genuine orphaned-window case (a fresh bundle answered
 // by an old binary -- docs/SPEC.md §3.8).
 const isDevBuild = import.meta.env.DEV
-const IS_NATIVE_WEBVIEW = typeof window !== 'undefined' && '_wails' in window
 
 export function BuildIdentityBadge({ buildInfo }: { buildInfo: BuildInfo | null }) {
+  // Go's own build tag (BuildInfo.Server), not a window-global sniff --
+  // `'_wails' in window` is true in server-mode browser tabs too (the
+  // runtime injects it everywhere), which silently broke this badge's
+  // INSTALLED/SERVER split until goal 0021's dogfooding caught it.
+  const isNativeWebview = buildInfo != null && !buildInfo.Server
   const binaryHead = buildInfo?.Revision ? buildInfo.Revision.slice(0, 7) : ''
   const buildStale = Boolean(binaryHead && __MILL_REPO_HEAD__ && binaryHead !== __MILL_REPO_HEAD__)
 
@@ -35,7 +39,7 @@ export function BuildIdentityBadge({ buildInfo }: { buildInfo: BuildInfo | null 
     // this stale instance (the fresh one is already running -- that's how
     // the bundle got newer). A server-mode browser tab only informs: it
     // must never kill the shared server.
-    return IS_NATIVE_WEBVIEW ? (
+    return isNativeWebview ? (
       <Label
         variant="danger" size="small"
         className={`${styles.devRibbon} ${styles.devRibbonAction}`}
@@ -59,7 +63,7 @@ export function BuildIdentityBadge({ buildInfo }: { buildInfo: BuildInfo | null 
     )
   }
 
-  if (IS_NATIVE_WEBVIEW) {
+  if (isNativeWebview) {
     return (
       <Label variant="secondary" size="small" className={styles.devRibbon} data-testid="installed-build-badge">
         INSTALLED{binaryHead ? ` · ${binaryHead}` : ''}

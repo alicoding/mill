@@ -30,7 +30,7 @@ export function TabList({ 'aria-label': ariaLabel, children }: { 'aria-label': s
 // <button role="tab">, not a nested <button> -- interactive elements
 // can't validly nest inside a <button>, which would also make a click
 // on Close ambiguously also select the tab.
-export function TabItem({ value, children, kicker, onClose }: { value: string; children: ReactNode; kicker?: string; onClose?: () => void }) {
+export function TabItem({ value, children, kicker, leadingVisual, onClose }: { value: string; children: ReactNode; kicker?: string; leadingVisual?: ReactNode; onClose?: () => void }) {
   const { tabProps } = useTab<HTMLButtonElement>({ value })
   return (
     <div className={styles.tabItem}>
@@ -45,8 +45,17 @@ export function TabItem({ value, children, kicker, onClose }: { value: string; c
         {kicker && <span aria-hidden="true" data-testid="tab-kicker" className={styles.tabKicker}>{kicker}</span>}
         {/* Row wrapper: .tab is a flex COLUMN now (kicker above label);
             without this, a multi-part label (text + dirty dot) would
-            stack vertically too. */}
-        <span className={styles.tabLabelRow}>{children}</span>
+            stack vertically too. leadingVisual is the VS Code tab
+            anatomy the titlebar band uses instead of the kicker
+            (owner: "you can expect your eyes to look at the tab in a
+            consistent place" -- mixed one-/two-line tabs put labels at
+            different baselines; icon + single line keeps ONE): the
+            entity glyph carries the kind cue, same visual language as
+            the inventory rows (shared/entityIcons.ts). */}
+        <span className={styles.tabLabelRow}>
+          {leadingVisual}
+          {children}
+        </span>
       </button>
       {onClose && (
         <span

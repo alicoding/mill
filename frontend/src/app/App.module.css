@@ -278,7 +278,12 @@
 .isolatedDataRibbon {
     --wails-draggable: no-drag;
     position: fixed;
-    top: var(--base-size-8);
+    /* BELOW the titlebar band (38px), not inside it: at top:8px this
+       ribbon sat exactly over the band's sidebar-collapse toggle and
+       intercepted its clicks -- caught by layout.spec's band-tracking
+       test (every e2e server runs isolated data, so the ribbon is
+       always up in tests). */
+    top: calc(38px + var(--base-size-8));
     left: var(--base-size-8);
     z-index: 2;
 }
