@@ -36,3 +36,19 @@ func applicationMenu(app *application.App) *application.Menu {
 	app.Menu.SetApplicationMenu(menu)
 	return menu
 }
+
+// onMainThread runs fn on the OS main thread and blocks until it
+// completes. Every native NSMenu mutation (SetApplicationMenu,
+// menu.Update, SetAccelerator) must happen on the main thread or AppKit
+// aborts the process with NSInternalInconsistencyException ("setting the
+// main menu on a non-main thread") -- and Suspend/Restore/Release are
+// all invoked off the main thread (a bound-method RPC handler, or
+// main.go's ApplicationStarted event handler, both goroutines). This
+// crash is desktop-only and no headless/server-mode run has a native
+// menu to trigger it, so it can only be caught by launching the real
+// app -- which is how it was found. InvokeSync is NOT re-entrant (it
+// blocks on a WaitGroup the main thread must drain), so callers must
+// never nest onMainThread calls.
+func onMainThread(fn func()) {
+	application.InvokeSync(fn)
+}
