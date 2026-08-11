@@ -17,7 +17,7 @@ import editorStyles from './CompositionView.module.css'
 // Owns its inner-tab state locally: each open work tab's
 // Canvas/Runs/Versions selection is independent.
 export function WorkflowEditorTab({
-  nodeTypes, workflow, tabKey, onBack, onSaved, onWorkflowsChanged,
+  nodeTypes, workflow, tabKey, mode, onBack, onSaved, onWorkflowsChanged, onSwitchToEdit,
 }: {
   nodeTypes: NodeType[]
   workflow: Workflow | null
@@ -27,13 +27,23 @@ export function WorkflowEditorTab({
   // `workflow?.ID`: a brand-new workflow-new tab has no workflow id yet,
   // and its tab key IS the stable identity a restored scratch keys off.
   tabKey: string
+  // docs/goals/0022-workflow-view-mode.md: 'view' renders the Canvas
+  // sub-panel read-only (Run/Runs/Versions all stay fully live); 'edit'
+  // is today's full editor, unchanged. Always 'edit' for a brand-new
+  // workflow (workflow === null).
+  mode: 'view' | 'edit'
   onBack: () => void
   onSaved: () => void
   // Refetches the workflow list without closing this tab -- what the
   // Versions tab's publish/disable/restore actions need (docs/adr/0021):
   // they mutate lifecycle state, not the draft being edited.
   onWorkflowsChanged: () => void
+  // Switches this SAME work tab from view to edit in place (the goal's
+  // own "without closing/reopening" requirement) -- store.ts's
+  // setWorkTabMode, called by CanvasMetaHeader's Edit button.
+  onSwitchToEdit: () => void
 }) {
+  const readOnly = mode === 'view'
   const [innerTab, setInnerTab] = useState('canvas')
 
   // Review row drill-down (docs/goals/0002-review-queue-maturation.md
@@ -51,7 +61,7 @@ export function WorkflowEditorTab({
   }, [focusRunId])
 
   if (!workflow) {
-    return <CompositionCanvas nodeTypes={nodeTypes} workflow={workflow} tabKey={tabKey} onBack={onBack} onSaved={onSaved} />
+    return <CompositionCanvas nodeTypes={nodeTypes} workflow={workflow} tabKey={tabKey} onBack={onBack} onSaved={onSaved} readOnly={false} onSwitchToEdit={onSwitchToEdit} />
   }
 
   return (
@@ -62,7 +72,7 @@ export function WorkflowEditorTab({
         <TabItem value="versions">Versions</TabItem>
       </TabList>
       <TabPanel value="canvas" className={editorStyles.editorPanel}>
-        <CompositionCanvas nodeTypes={nodeTypes} workflow={workflow} tabKey={tabKey} onBack={onBack} onSaved={onSaved} />
+        <CompositionCanvas nodeTypes={nodeTypes} workflow={workflow} tabKey={tabKey} onBack={onBack} onSaved={onSaved} readOnly={readOnly} onSwitchToEdit={onSwitchToEdit} />
       </TabPanel>
       <TabPanel value="runs">
         <WorkflowRunsPanel workflowId={workflow.ID} attrs={workflow.Attributes ?? []} initialRunId={focusRunId} onInitialRunConsumed={consumePendingRunFocus} />

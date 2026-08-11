@@ -11,8 +11,9 @@ import type { CanvasNode, CanvasState } from './canvasStore'
 // validation surface.
 //
 // Returns a stable `refresh` function (not just an internal effect) so
-// the Inspector's own "Breakpoint" toggle (docs/adr/0031 item 1) can
-// trigger the SAME refetch on demand: toggling a debug rule doesn't
+// the node card's own breakpoint toggle (docs/adr/0031 item 1,
+// breakpoints.ts -- moved off the Inspector onto the card by goal 0022)
+// can trigger the SAME refetch on demand: toggling a debug rule doesn't
 // change any node's type/config, so the fingerprint-keyed effect alone
 // would never notice it, and "visible as the debug badge before any
 // run" (the acceptance criterion) needs it to update immediately, not

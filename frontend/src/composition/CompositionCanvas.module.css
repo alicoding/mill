@@ -151,6 +151,18 @@
 .inspectorRecording {
     color: var(--fgColor-accent);
 }
+/* NodeInspector.tsx's read-only wrapper (docs/goals/0022): a bare
+   <fieldset> renders a visible border/legend-gutter/margin by default
+   -- reset to nothing so it's invisible chrome, purely a disabling
+   mechanism. min-width:0 works around fieldset's own default
+   min-width:min-content, which would otherwise fight this panel's
+   flex sizing (a real, documented browser quirk, not speculative). */
+.inspectorFieldset {
+    border: none;
+    margin: 0;
+    padding: 0;
+    min-width: 0;
+}
 /* A leaf item needs to read as a draggable card, not a plain nav-link
    row -- TreeView's own default styling (built for navigation/selection
    trees) doesn't signal "grab me" on its own. */
@@ -292,13 +304,28 @@
     background: var(--bgColor-danger-emphasis);
 }
 
-/* Distinct debug/breakpoint badge (docs/adr/0031): a step with an
-   instance-scoped Source:debug ask rule pauses for inspection, not
-   policy -- a different icon (BugIcon) AND a different corner
-   (bottom-left, mirroring .runStatusTag's bottom-right) from
-   .canvasNodeGuardrail's top-right shield, so a breakpoint never reads
-   as a guardrail policy verdict. */
-.canvasNodeDebug {
+/* VS Code-gutter-style breakpoint TOGGLE (docs/goals/0022, docs/adr/0031):
+   moved off the Inspector's own "Add/Remove breakpoint" button, which
+   put a debug control inside an authoring panel (owner: "not sure why
+   the debug is at the node level?" -- the same "policy is not step
+   config" lesson ADR-0022 already applied to guardrail rules,
+   applied here to a debug control instead). Always rendered now (not
+   conditional on being set) -- bottom-left, mirroring .runStatusTag's
+   bottom-right, and still a different icon/corner from
+   .canvasNodeGuardrail's top-right shield so a breakpoint never reads
+   as a guardrail policy verdict ("recognition, not confirmation").
+   Unset: invisible by default, a faint hollow ring on card hover (the
+   gutter's own "click here to set a breakpoint" affordance); hovering
+   the dot itself goes further. Set: always visible, solid
+   done-colored fill, regardless of hover. Works in both view and edit
+   mode -- setting a breakpoint is a debug act, not an authoring edit,
+   so it's deliberately NOT covered by NodeInspector's own
+   `<fieldset disabled>` (a separate control, not inside that fieldset
+   at all). A real <button>, not a <span>, styled to match the other
+   badges' circle shape -- `nodrag nopan` keeps a click here from also
+   starting a card drag or a canvas pan (@xyflow/react's own documented
+   class-based opt-out). */
+.canvasNodeBreakpoint {
     position: absolute;
     bottom: calc(-1 * var(--base-size-6, 6px));
     left: calc(-1 * var(--base-size-6, 6px));
@@ -308,10 +335,31 @@
     width: var(--base-size-20, 20px);
     height: var(--base-size-20, 20px);
     border-radius: 50%;
+    padding: 0;
+    line-height: 1;
+    cursor: pointer;
+    background: transparent;
+    color: var(--fgColor-muted);
+    fill: var(--fgColor-muted);
+    border: 1px solid var(--borderColor-default);
+    opacity: 0;
+    transition: opacity 120ms ease;
+}
+.canvasNode:hover .canvasNodeBreakpoint {
+    opacity: 0.55;
+}
+.canvasNodeBreakpoint:hover,
+.canvasNodeBreakpoint:focus-visible {
+    opacity: 1;
+}
+.canvasNodeBreakpoint[data-set='true'] {
+    opacity: 1;
     background: var(--bgColor-done-emphasis);
     color: var(--fgColor-onEmphasis);
     fill: var(--fgColor-onEmphasis);
-    border: 1px solid var(--borderColor-default);
+}
+.canvasNodeBreakpoint:disabled {
+    cursor: default;
 }
 
 /* The on-card output signature (docs/SPEC.md §3.8's authoring-style

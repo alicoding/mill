@@ -302,13 +302,22 @@ test('Seeded example workflows are ordinary, fully editable and deletable', asyn
   await page.getByRole('link', { name: 'Workflows' }).click()
   const row = workflowRow(page, 'Load sample HTML')
   await expect(row.getByText('built-in')).toBeVisible()
-  // Editable: row click opens the editor (InventoryList's onOpen,
-  // docs/goals/0007) -- no separate "Edit" button/menu item for
-  // Workflows, since that WOULD be the same action twice.
+  // Row click opens VIEW mode now (docs/goals/0022, InventoryList's
+  // onOpen) -- read-only inspection, no Save button.
   await row.click()
-  await expect(page.getByTestId('save-workflow')).toBeVisible()
+  await expect(page.getByTestId('save-workflow')).toHaveCount(0)
+  await expect(page.getByTestId('edit-workflow')).toBeVisible()
+  // Editable: the row's own trailing ⋯ menu offers an explicit Edit
+  // action (the goal's own explicit-gesture grammar), which switches
+  // this SAME tab into the full editor and activates it -- no separate
+  // navigation back to the list needed first.
   await page.getByRole('tab', { name: 'Workflows' }).click()
-  // Deletable: the row's trailing ⋯ menu offers Delete.
+  await row.getByTestId('inventory-row-menu').click()
+  await page.getByRole('menuitem', { name: 'Edit' }).click()
+  await expect(page.getByTestId('save-workflow')).toBeVisible()
+  // Back to the list for the Delete check below.
+  await page.getByRole('tab', { name: 'Workflows' }).click()
+  // Deletable: the same row menu offers Delete.
   await row.getByTestId('inventory-row-menu').click()
   await expect(page.getByRole('menuitem', { name: 'Delete' })).toBeVisible()
   await page.keyboard.press('Escape')
@@ -334,12 +343,14 @@ test('Editing an existing workflow updates it in place, not as a duplicate', asy
   await expect(row).toBeVisible()
 
   // Re-opening it loads the existing two nodes (not the new-workflow
-  // single-starter default) and its already-configured default HTML
-  // value, and Save reads "Save changes" rather than "Save workflow" --
-  // confirming this is an edit, not a second composition. Row click
-  // opens the editor (InventoryList's onOpen, docs/goals/0007).
+  // single-starter default), read-only at first (docs/goals/0022's row
+  // click = VIEW mode) -- Edit switches this same tab into the editor,
+  // where its already-configured default HTML value shows and Save
+  // reads "Save changes" rather than "Save workflow," confirming this
+  // is an edit, not a second composition.
   await row.click()
   await expect(activePanel(page).locator('.react-flow__node')).toHaveCount(2)
+  await activePanel(page).getByTestId('edit-workflow').click()
   await expect(activePanel(page).getByTestId('save-workflow')).toHaveText('Save changes')
   await expect(activePanel(page).getByLabel('Label')).toHaveValue('E2E editable workflow')
 

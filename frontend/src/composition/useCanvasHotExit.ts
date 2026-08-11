@@ -41,7 +41,18 @@ export interface InitialCanvasState {
 // make useCanvasHotExit's debounced dirty-check effect below see a
 // false "everything just got deleted" transition before the real
 // content ever arrived.
-export function computeInitialCanvas(workflow: Workflow | null | undefined, nodeTypes: NodeType[], tabKey: string): InitialCanvasState {
+// `readOnly` (docs/goals/0022-workflow-view-mode.md): a tab opened in
+// VIEW mode never checks for a hot-exit scratch at all -- a view tab
+// shows exactly the saved content, nothing to restore, since nothing
+// can have diverged from it (interactions are disabled). This is also
+// what keeps a stale scratch from a genuinely different, since-closed
+// edit session from silently resurfacing just because someone later
+// opens the same workflow to look at it. Only ever false for a
+// 'workflow-new' tab (composing is always editing) or a
+// 'workflow-edit' tab whose mode is 'edit' at MOUNT time -- switching
+// view->edit later doesn't retroactively re-check scratch (see
+// useCanvasHotExit's own readOnly gate below for why that's fine).
+export function computeInitialCanvas(workflow: Workflow | null | undefined, nodeTypes: NodeType[], tabKey: string, readOnly: boolean): InitialCanvasState {
   let nodes: CanvasNode[]
   let edges: RFEdge[]
   const label = workflow?.Label ?? ''
@@ -68,6 +79,9 @@ export function computeInitialCanvas(workflow: Workflow | null | undefined, node
   }
 
   const baseline = buildScratchDraft(label, description, nodes, edges)
+  if (readOnly) {
+    return { nodes, edges, label, description, restoredFromScratch: false, baseline }
+  }
   const scratch = readScratch(tabKey)
   if (scratch && !draftsEqual(scratch, baseline)) {
     return {
@@ -107,11 +121,21 @@ export function useCanvasHotExit(
   edges: RFEdge[],
   draftLabel: string,
   draftDescription: string,
+  // docs/goals/0022: hot-exit scratch/dirty tracking applies to EDIT
+  // mode only -- a VIEW tab's content can never diverge from baseline
+  // (interactions are disabled), so this is belt-and-suspenders with
+  // computeInitialCanvas's own readOnly gate above, not load-bearing on
+  // its own. Re-evaluated on every readOnly change (not just at mount):
+  // switching view->edit via the canvas's own Edit button starts this
+  // effect tracking from THAT moment forward, deliberately not
+  // retroactively re-checking for a scratch that predates the switch.
+  readOnly: boolean,
 ): void {
   const setWorkTabDirty = useAppStore((s) => s.setWorkTabDirty)
   const setWorkTabRestored = useAppStore((s) => s.setWorkTabRestored)
 
   useEffect(() => {
+    if (readOnly) return
     if (restoredFromScratch) {
       setWorkTabRestored(tabKey, true)
       setWorkTabDirty(tabKey, true)
@@ -120,6 +144,7 @@ export function useCanvasHotExit(
   }, [])
 
   useEffect(() => {
+    if (readOnly) return
     const current = buildScratchDraft(draftLabel, draftDescription, nodes, edges)
     const dirty = !draftsEqual(current, baseline)
     setWorkTabDirty(tabKey, dirty)
@@ -128,5 +153,5 @@ export function useCanvasHotExit(
     } else {
       clearScratch(tabKey)
     }
-  }, [nodes, edges, draftLabel, draftDescription, tabKey, baseline, setWorkTabDirty])
+  }, [nodes, edges, draftLabel, draftDescription, tabKey, baseline, setWorkTabDirty, readOnly])
 }

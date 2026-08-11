@@ -1,10 +1,9 @@
 import { useEffect, useState } from 'react'
-import { Button, Label, Stack, Text } from '@primer/react'
+import { Label, Stack, Text } from '@primer/react'
 import { BugIcon, ShieldIcon } from '@primer/octicons-react'
 import { GuardrailService } from '../shared/bindings'
 import type { RuleTestResult } from '../shared/bindings'
-import { Effect as GuardrailEffect } from '../../bindings/github.com/alicoding/mill/internal/domain/guardrail/models'
-import type { Rule } from '../../bindings/github.com/alicoding/mill/internal/domain/guardrail/models'
+import { useNodeBreakpoint } from './breakpoints'
 import styles from '../shared/ListCard.module.css'
 
 // Read-only guardrail visibility for the selected step (docs/adr/0022's
@@ -16,10 +15,16 @@ import styles from '../shared/ListCard.module.css'
 // editor made policy look like step config, which it isn't (corrected
 // directly in discussion).
 //
-// The "Breakpoint" toggle below is the one NAMED EXCEPTION to that rule
+// The breakpoint status line below is a NAMED EXCEPTION to that rule
 // (docs/adr/0031 item 1): a breakpoint borrows the guardrail Rule/park
-// plumbing without being policy -- it CRUDs exactly one instance-scoped
-// Source:debug rule for this node, never a policy rule.
+// plumbing without being policy -- exactly one instance-scoped
+// Source:debug rule for this node, never a policy rule. Goal 0022
+// moved the actual toggle OFF this Inspector panel and onto the node
+// card itself (owner: "not sure why the debug is at the node level?" --
+// the same "policy is not step config" lesson, applied to a debug
+// control instead of an authoring one) -- this section now only
+// SHOWS the current state, read from the same shared BreakpointContext
+// (breakpoints.ts) the card's own dot reads, never its own fetch/CRUD.
 
 const EFFECT_TEXT: Record<string, string> = {
   allow: 'runs without approval',
@@ -27,44 +32,13 @@ const EFFECT_TEXT: Record<string, string> = {
   deny: 'is denied and will not run',
 }
 
-const DEBUG_SOURCE = 'debug'
-
-export function NodeGuardrailSection({ workflowId, nodeId, onBreakpointChange }: { workflowId: string; nodeId: string; onBreakpointChange: () => void }) {
+export function NodeGuardrailSection({ workflowId, nodeId }: { workflowId: string; nodeId: string }) {
   const [verdict, setVerdict] = useState<RuleTestResult | null>(null)
-  const [breakpoint, setBreakpoint] = useState<Rule | null>(null)
-  const [breakpointBusy, setBreakpointBusy] = useState(false)
-
-  const refresh = () => {
-    GuardrailService.TestRules(workflowId, nodeId).then(setVerdict).catch(() => setVerdict(null))
-    GuardrailService.Rules()
-      .then((rules) => {
-        const bp = (rules ?? []).find((r) => r.Source === DEBUG_SOURCE && r.WorkflowID === workflowId && r.NodeID === nodeId)
-        setBreakpoint(bp ?? null)
-      })
-      .catch(() => setBreakpoint(null))
-  }
+  const breakpoint = useNodeBreakpoint(nodeId)
 
   useEffect(() => {
-    refresh()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    GuardrailService.TestRules(workflowId, nodeId).then(setVerdict).catch(() => setVerdict(null))
   }, [workflowId, nodeId])
-
-  const toggleBreakpoint = () => {
-    setBreakpointBusy(true)
-    const done = () => {
-      setBreakpointBusy(false)
-      refresh()
-      onBreakpointChange()
-    }
-    if (breakpoint) {
-      GuardrailService.DeleteRule(breakpoint.ID).then(done).catch(done)
-    } else {
-      GuardrailService.CreateRule({
-        ID: '', Label: 'Breakpoint', Effect: GuardrailEffect.EffectAsk, Source: DEBUG_SOURCE,
-        WorkflowID: workflowId, NodeID: nodeId, NodeTypeID: '', RequestID: '', Condition: '',
-      }).then(done).catch(done)
-    }
-  }
 
   return (
     <Stack direction="vertical" gap="condensed" data-testid="node-guardrail-section">
@@ -89,16 +63,11 @@ export function NodeGuardrailSection({ workflowId, nodeId, onBreakpointChange }:
         </>
       )}
       <Stack direction="horizontal" gap="condensed" align="center">
-        <BugIcon size={16} fill={breakpoint ? 'var(--bgColor-done-emphasis)' : 'var(--fgColor-muted)'} />
-        <Button
-          size="small"
-          disabled={breakpointBusy}
-          data-testid="toggle-breakpoint"
-          onClick={toggleBreakpoint}
-        >
-          {breakpoint ? 'Remove breakpoint' : 'Add breakpoint'}
-        </Button>
-        {breakpoint && (
+        <BugIcon size={16} fill={breakpoint.isSet ? 'var(--bgColor-done-emphasis)' : 'var(--fgColor-muted)'} />
+        <Text size="small" data-testid="breakpoint-status">
+          {breakpoint.isSet ? 'Breakpoint set' : 'No breakpoint'} — click the dot on the node card to {breakpoint.isSet ? 'remove it' : 'add one'}.
+        </Text>
+        {breakpoint.isSet && (
           <Label variant="done" size="small" data-testid="breakpoint-badge">Breakpoint</Label>
         )}
       </Stack>

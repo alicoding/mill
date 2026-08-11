@@ -6,6 +6,7 @@ import type { CanvasNode } from './canvasStore'
 import { KIND_ICON, KIND_ICON_BG, KIND_LABEL } from './nodeKind'
 import { WorkflowHoverPreview } from './WorkflowHoverPreview'
 import { useNodeRunStatus, type NodeRunStatus } from './liveRunState'
+import { useNodeBreakpoint } from './breakpoints'
 import styles from './CompositionCanvas.module.css'
 
 // Live run state (docs/SPEC.md §3.8's authoring-style direction, item
@@ -43,6 +44,7 @@ const RUN_STATUS_LABEL: Record<NodeRunStatus, string> = {
 export function CanvasNodeView({ id, data, selected }: NodeProps<CanvasNode>) {
   const Icon = KIND_ICON[data.kind]
   const runStatus = useNodeRunStatus(id)
+  const breakpoint = useNodeBreakpoint(id)
   // Trigger nodes have no target handle -- nothing should connect into
   // them, same as n8n's own trigger nodes having no input pin (they're
   // the entry point, not a step something else feeds).
@@ -91,20 +93,18 @@ export function CanvasNodeView({ id, data, selected }: NodeProps<CanvasNode>) {
           </Text>
         ) : null}
       </div>
-      {/* A breakpoint is a distinct debug badge, never the policy shield
-          (docs/adr/0031: "recognition, not confirmation -- the two must
-          never read as one concept") -- a different icon (BugIcon,
-          done-purple) AND a different corner (bottom-left) from the
-          guardrail shield's top-right. */}
-      {data.guardrailEffect === 'ask' && data.guardrailSource === 'debug' ? (
-        <span
-          className={styles.canvasNodeDebug}
-          data-testid="canvas-debug-badge"
-          title="Breakpoint: this step pauses for inspection before it runs"
-        >
-          <BugIcon size={12} />
-        </span>
-      ) : (data.guardrailEffect === 'ask' || data.guardrailEffect === 'deny') && (
+      {/* The guardrail shield is suppressed specifically when the
+          winning verdict IS the debug breakpoint rule (docs/adr/0031:
+          "recognition, not confirmation -- the two must never read as
+          one concept") -- the breakpoint dot below is now the single,
+          always-accurate signal for "is a breakpoint set here,"
+          independent of verdict precedence (goal 0022's Update to the
+          ADR: the shield's own guardrailEffect/Source come from
+          WorkflowVerdicts' per-node WINNING rule, which a stronger
+          policy deny could otherwise hide the debug rule's existence
+          behind -- the dot never has that gap, since it reads ground
+          truth). */}
+      {!(data.guardrailEffect === 'ask' && data.guardrailSource === 'debug') && (data.guardrailEffect === 'ask' || data.guardrailEffect === 'deny') && (
         <span
           className={styles.canvasNodeGuardrail}
           data-testid="canvas-guardrail-badge"
@@ -115,6 +115,41 @@ export function CanvasNodeView({ id, data, selected }: NodeProps<CanvasNode>) {
         >
           <ShieldIcon size={12} />
         </span>
+      )}
+      {/* VS Code-gutter-style breakpoint toggle (docs/goals/0022): a
+          real button, always rendered (not conditional on being set),
+          dim/hollow on card hover when unset, solid when set -- see
+          CompositionCanvas.module.css's .canvasNodeBreakpoint for the
+          full visual-state rationale. Never inside NodeInspector's own
+          read-only <fieldset> (a separate control entirely) -- setting
+          a breakpoint is a debug act, not an authoring edit, so it
+          stays clickable in BOTH view and edit mode. `nodrag nopan`
+          (React Flow's own documented class-based opt-out) keeps a
+          click here from starting a card drag or a canvas pan; every
+          Trigger/Decision node is excluded, matching the exact same
+          exclusion NodeGuardrailSection.tsx's own condition already
+          enforced for the Inspector button this replaces. */}
+      {!isTrigger && data.kind !== 'decision' && (
+        <button
+          type="button"
+          className={`${styles.canvasNodeBreakpoint} nodrag nopan`}
+          data-testid="canvas-breakpoint-toggle"
+          data-set={breakpoint.isSet}
+          disabled={!breakpoint.enabled || breakpoint.busy}
+          title={
+            !breakpoint.enabled
+              ? 'Save this workflow before setting breakpoints.'
+              : breakpoint.isSet
+                ? 'Breakpoint set — click to remove (pauses here for inspection before this step runs)'
+                : 'Click to pause here for inspection before this step runs'
+          }
+          onClick={(e) => {
+            e.stopPropagation()
+            breakpoint.toggle()
+          }}
+        >
+          <BugIcon size={12} />
+        </button>
       )}
       {validationSeverity && (
         <span

@@ -7,6 +7,22 @@ import type { HTTPRequest } from '../../bindings/github.com/alicoding/mill/inter
 import { ViewKind } from '../../bindings/github.com/alicoding/mill/internal/domain/capabilities/models'
 import type { Capability } from '../../bindings/github.com/alicoding/mill/internal/domain/capabilities/models'
 import type { KeyCombo } from './keybinding'
+import {
+  isRestorable,
+  migrateLegacyWorkTabs,
+  modeForRestoredCanvasTab,
+  sameWorkTarget,
+  shouldUpgradeToEdit,
+  type WorkTab,
+  type WorkTabSpec,
+} from './workTabs'
+
+// Re-exported so every existing `from '../shared/store'` import of
+// WorkTab/WorkTabSpec (app/WorkTabShell.tsx, composition/
+// WorkflowEditorTab.tsx, etc.) keeps working unchanged -- the types
+// themselves live in workTabs.ts now (split at the 500-line limit,
+// CLAUDE.md).
+export type { WorkTab, WorkTabSpec }
 
 // Which surface triggered a run -- 'trigger' covers every headless
 // source (hotkey, schedule, clipboard-watch, filesystem-watch; see
@@ -110,71 +126,6 @@ export function statusDotColor(status: string): string {
 
 const MAX_ACTIVITY_ENTRIES = 50
 
-// One app-wide work-tab strip (docs/SPEC.md §3.8, direct user decision:
-// per-page tab strips "isolated the tabs between pages, which is
-// incorrect model"). A WorkTab is an open work item -- a workflow
-// editor or an integration view/edit -- rendered by app/WorkTabShell.tsx
-// above whichever section page the sidebar has active; opening,
-// closing, and switching tabs is store state so any surface (a list
-// row, a hover-preview's Open, an Activity row) can open one without a
-// callback chain.
-export type WorkTabSpec =
-  | { kind: 'workflow-edit'; workflowId: string }
-  | { kind: 'workflow-new' }
-  | { kind: 'request-view'; requestId: string }
-  | { kind: 'request-edit'; requestId: string }
-  | { kind: 'request-new'; duplicateFromId?: string }
-
-export type WorkTab = WorkTabSpec & { key: string }
-
-// Which persisted tabs restore across a reload: saved-entity tabs, plus
-// 'workflow-new' -- never a 'request-edit'/'request-new' tab, whose
-// unsaved in-progress form state is already gone (Configure forms stay
-// out of hot exit's scope, docs/goals/0012-authoring-hot-exit.md; the
-// only-'view'-tabs discipline still holds there). 'workflow-new' is the
-// one exception: unlike a half-filled Configure form, its canvas state
-// IS recoverable, via the same localStorage hot-exit scratch a
-// 'workflow-edit' tab already restores from (canvasScratch.ts) -- so a
-// brand-new, not-yet-saved workflow's tab now persists across reload
-// too, not just already-saved ones.
-function isRestorable(tab: WorkTab): boolean {
-  return tab.kind === 'workflow-edit' || tab.kind === 'request-view' || tab.kind === 'workflow-new'
-}
-
-// One-time migration from the two per-page persistedTabs keys the
-// global strip replaces -- real persisted state on real machines, so
-// carried forward, not dropped (same discipline as ADR-0016's
-// configure-connectors migration). The old keys are left in place,
-// unread once the new key exists.
-function migrateLegacyWorkTabs(): WorkTab[] {
-  try {
-    const out: WorkTab[] = []
-    const comp = JSON.parse(localStorage.getItem('mill-composition-tabs') ?? 'null') as { ids?: string[] } | null
-    for (const id of comp?.ids ?? []) {
-      out.push({ key: crypto.randomUUID(), kind: 'workflow-edit', workflowId: id })
-    }
-    const req = JSON.parse(localStorage.getItem('mill-configure-request-tabs') ?? 'null') as { ids?: string[] } | null
-    for (const id of req?.ids ?? []) {
-      out.push({ key: crypto.randomUUID(), kind: 'request-view', requestId: id })
-    }
-    return out
-  } catch {
-    return []
-  }
-}
-
-// Reuse-if-open matching (the same one-tab-per-entity rule both old
-// per-page systems had): a saved entity opens at most one tab per
-// kind; '-new' tabs are always fresh.
-function sameWorkTarget(a: WorkTab, b: WorkTabSpec): boolean {
-  if (a.kind !== b.kind) return false
-  if (a.kind === 'workflow-edit' && b.kind === 'workflow-edit') return a.workflowId === b.workflowId
-  if ((a.kind === 'request-view' && b.kind === 'request-view') || (a.kind === 'request-edit' && b.kind === 'request-edit')) {
-    return a.requestId === b.requestId
-  }
-  return false
-}
-
 interface AppState {
   workflows: Workflow[] | null
   // nodeTypes/requests join workflows as store-shared server data (one
@@ -195,6 +146,14 @@ interface AppState {
   // the sidebar's current section page shows.
   workTabs: WorkTab[]
   activeWorkTabKey: string | null
+  // Reuses an already-open tab for the same target (sameWorkTarget)
+  // rather than opening a second one -- for a 'workflow-edit' target,
+  // reuse NEVER downgrades an already-'edit' tab back to 'view' just
+  // because a view-intent opener (a row click) asked for it again, but
+  // DOES upgrade an existing 'view' tab to 'edit' when the opener's own
+  // intent is explicitly edit (a pencil/menu action, mode: 'edit') --
+  // see setWorkTabMode below for the same in-place switch driven from
+  // inside an already-open tab's own Edit button.
   openWorkTab: (tab: WorkTabSpec) => void
   closeWorkTab: (key: string) => void
   // Bulk closers for the work-tab overflow menu (docs/goals/0018): close
@@ -232,6 +191,12 @@ interface AppState {
   // and the "unsaved changes restored" banner.
   workTabDirty: Record<string, boolean>
   setWorkTabDirty: (key: string, dirty: boolean) => void
+  // Switches an already-open 'workflow-edit' tab's mode in place
+  // (docs/goals/0022-workflow-view-mode.md) -- the canvas's own "Edit"
+  // button calls this directly by the tab's own key, never
+  // close-then-reopen. Forward only (view -> edit); nothing currently
+  // drives it the other way.
+  setWorkTabMode: (key: string, mode: 'view' | 'edit') => void
   // Set true only when a tab's canvas was seeded from restored hot-exit
   // scratch that differed from the saved/starter baseline at mount --
   // never from ordinary in-session editing, so the banner only ever
@@ -370,7 +335,15 @@ export const useAppStore = create<AppState>()(
       openWorkTab: (tab) =>
         set((state) => {
           const existing = state.workTabs.find((t) => sameWorkTarget(t, tab))
-          if (existing) return { activeWorkTabKey: existing.key }
+          if (existing) {
+            if (shouldUpgradeToEdit(existing, tab)) {
+              return {
+                activeWorkTabKey: existing.key,
+                workTabs: state.workTabs.map((t) => (t.key === existing.key ? { ...t, mode: 'edit' as const } : t)),
+              }
+            }
+            return { activeWorkTabKey: existing.key }
+          }
           const created: WorkTab = { ...tab, key: crypto.randomUUID() }
           return { workTabs: [...state.workTabs, created], activeWorkTabKey: created.key }
         }),
@@ -411,12 +384,20 @@ export const useAppStore = create<AppState>()(
           return { workTabs, activeWorkTabKey: stillActive ? state.activeWorkTabKey : null }
         }),
       pendingRunFocus: null,
+      // Opens (or reuses, whatever mode it's currently in) a workflow's
+      // tab from a jump/preview context -- hover-preview's Open, the
+      // Review queue's row drill-down, Home's Most-used list. Defaults
+      // a freshly-created tab to 'view' (docs/goals/0022): every one of
+      // these callers is a "go look at this workflow" gesture (a run's
+      // own data, a referenced child's layout), never an implicit edit
+      // request -- an Edit button is one click away inside the opened
+      // tab for whoever actually wants to change it.
       requestOpenWorkflow: (id, runId) =>
         set((state) => {
           const pendingRunFocus = runId ? { workflowId: id, runId } : null
           const existing = state.workTabs.find((t) => t.kind === 'workflow-edit' && t.workflowId === id)
           if (existing) return { activeWorkTabKey: existing.key, pendingRunFocus }
-          const created: WorkTab = { key: crypto.randomUUID(), kind: 'workflow-edit', workflowId: id }
+          const created: WorkTab = { key: crypto.randomUUID(), kind: 'workflow-edit', workflowId: id, mode: 'view' }
           return { workTabs: [...state.workTabs, created], activeWorkTabKey: created.key, pendingRunFocus }
         }),
       consumePendingRunFocus: () => set({ pendingRunFocus: null }),
@@ -426,6 +407,10 @@ export const useAppStore = create<AppState>()(
           if ((state.workTabDirty[key] ?? false) === dirty) return {}
           return { workTabDirty: { ...state.workTabDirty, [key]: dirty } }
         }),
+      setWorkTabMode: (key, mode) =>
+        set((state) => ({
+          workTabs: state.workTabs.map((t) => (t.key === key && t.kind === 'workflow-edit' ? { ...t, mode } : t)),
+        })),
       workTabRestored: {},
       setWorkTabRestored: (key, restored) =>
         set((state) => ({ workTabRestored: { ...state.workTabRestored, [key]: restored } })),
@@ -457,7 +442,20 @@ export const useAppStore = create<AppState>()(
       }),
       merge: (persisted, current) => {
         const p = (persisted ?? {}) as Partial<AppState>
-        const restored = (p.workTabs ?? []).filter(isRestorable)
+        // A 'workflow-edit' tab persisted before docs/goals/0022's
+        // `mode` field existed carries no mode at all -- backfill it
+        // rather than let it through undefined (every reader below
+        // assumes mode is always set). scratchKeyExists is the same
+        // conservative heuristic migrateLegacyWorkTabs uses: real
+        // scratch data still sitting under this tab's own key means
+        // there's real unsaved work to protect, so default to 'edit'
+        // (the actual pre-goal behavior, no worse than before); nothing
+        // there defaults to 'view', the safer choice (ADR-0014).
+        const restored = (p.workTabs ?? []).filter(isRestorable).map((t) =>
+          t.kind === 'workflow-edit' && t.mode === undefined
+            ? { ...t, mode: modeForRestoredCanvasTab(t.key) }
+            : t,
+        )
         return {
           ...current,
           ...p,

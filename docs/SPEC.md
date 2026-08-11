@@ -1624,7 +1624,7 @@ Plan step for this as a standing rule.
 | **Guardrail preview / policy gate** | Approve/deny before a step actually runs | Build (core domain: `internal/domain/guardrail`); durable parking: adopt (DBOS `Send`/`Recv`/`SetEvent`, already adopted §7) | `LOCKED`, built — §8/ADR-0022: effect classes on every NodeType, ambient gate + explicit "Wait for approval" node, Configure → Guardrails authoring + dry-run tester |
 | **Human review / HITL step** | Pause a run for a person: queue it, take their typed input, resume or stop | Park mechanism: adopt (DBOS Send/Recv, §7). Queue surface + input model: build (thin — composed over ListRuns + pending, not a case-management engine) | `LOCKED`, built — ADR-0023: `human-review` node + the Review queue (sidebar); reviewer input coerces via the same path as the test-input form |
 | **Ruleset validation** | Validate the payload/attributes flowing through a step against named business rules | Data model: build (JDM's shape reduced — GoRules ZEN is CGO/Rust, disqualified; grule rejected). Evaluation: adopt (`expr-lang`, already adopted) | `LOCKED`, built — ADR-0023: `ruleset` node, fail-safe (unevaluable rule counts as failed), failures named per rule |
-| **Visual composition surface** | Author a DAG, not just a list | Adopt (React Flow / `@xyflow/react`) — built ahead of ADR-0005 B2's original deferral trigger, by explicit decision (see the ADR's Update section) | §3, `CompositionCanvas.tsx`, `UX: PROTOTYPE` |
+| **Visual composition surface** | Author a DAG, not just a list | Adopt (React Flow / `@xyflow/react`) — built ahead of ADR-0005 B2's original deferral trigger, by explicit decision (see the ADR's Update section) | §3, `CompositionCanvas.tsx`, `UX: PROTOTYPE`. **View vs. edit mode (goal 0022):** a workflow row click opens the canvas READ-ONLY — React Flow interactions inert (`nodesDraggable`/`nodesConnectable`/`deleteKeyCode` off; `elementsSelectable` stays on, so a node's config is still inspectable), no authoring toolbar, `NodeInspector` wrapped in a disabled `<fieldset>` (cascades to every sub-editor, no per-field prop threading); Run/step-debug/Runs/Versions all work. Edit is the explicit switch (the row pencil, or a canvas Edit button) — same tab, in place, no remount (`mode: 'view'\|'edit'` on the `workflow-edit` WorkTabSpec). Extends ADR-0014's inspect-vs-edit split (built for Integrations) to workflows |
 
 **React Flow, checked directly against its actual source/docs (not
 assumed) specifically to shape the schema now without adopting the
@@ -3735,7 +3735,17 @@ infrastructure. This inheritance list IS the working definition of
   runtime while the dry-run tester (which passes it) claimed they
   were live** — found because breakpoints are instance-scoped rules.
   Rejected in the ADR, unchanged: run-to-node, ambient stepping,
-  checkpoint mutation, pin-data editor
+  checkpoint mutation, pin-data editor.
+  **Update (goal 0022): the breakpoint toggle moved OFF the Inspector
+  onto the node CARD itself** — a VS Code-gutter-style dot,
+  bottom-left, clicked to toggle the same debug-rule CRUD, working in
+  BOTH view and edit modes (setting a breakpoint is a debug act, not
+  an edit). Its ground truth now comes from a dedicated
+  `useBreakpoints`/`BreakpointContext` reading `GuardrailService.Rules()`
+  directly, independent of the winning-rule verdict projection —
+  which fixed a latent bug where a breakpoint's existence could be
+  hidden behind a stronger policy deny. The Inspector keeps only a
+  read-only "breakpoint set" status line.
 - Policy authoring format and storage (§8) — `LOCKED`, built:
   [ADR-0022](adr/0022-guardrail-execution-gate.md) implements
   ADR-0019 (both `accepted`): `internal/domain/guardrail`, effect

@@ -36,9 +36,12 @@ test('An open Composition workflow tab persists across a reload', async ({ page 
   await page.getByRole('link', { name: 'Workflows' }).click()
   // Restored into the app-wide strip (docs/SPEC.md §3.8) -- present
   // but not auto-activated; clicking it lands back in the editor.
+  // Row click opens VIEW mode (docs/goals/0022), so the restored tab
+  // is a view tab too -- assert the canvas itself rendered (mode-
+  // agnostic), not the edit-only Save button.
   await expect(page.getByRole('tab', { name: 'Load sample HTML' })).toBeVisible()
   await page.getByRole('tab', { name: 'Load sample HTML' }).click()
-  await expect(page.getByTestId('save-workflow')).toBeVisible()
+  await expect(page.getByTestId('composition-canvas')).toBeVisible()
 })
 
 test('An open Configure request view tab persists across a reload', async ({ page }) => {
