@@ -274,7 +274,12 @@ function CompositionView() {
         // table-view row already has a pencil for the same target).
         { label: 'Edit', onClick: () => openEditor(wf.ID, 'edit') },
         { label: 'Export', onClick: () => exportWorkflow(wf.ID, wf.Label) },
-        { label: 'Delete', onClick: () => removeWorkflow(wf.ID), danger: true },
+        {
+          label: 'Delete',
+          onClick: () => removeWorkflow(wf.ID),
+          danger: true,
+          confirm: { title: 'Delete workflow?', body: `This permanently deletes "${wf.Label}". This cannot be undone.` },
+        },
       ],
     }
   })
@@ -312,6 +317,7 @@ function CompositionView() {
           </Button>
           <Button
             leadingVisual={PlusIcon}
+            variant="primary"
             size="small"
             onClick={() => openWorkTab({ kind: 'workflow-new' })}
             disabled={nodeTypes === null}
@@ -356,7 +362,7 @@ function CompositionView() {
             heading: 'No workflows yet',
             description: 'Compose a workflow from trigger, capture, process, and apply steps on the canvas.',
             action: (
-              <Button leadingVisual={PlusIcon} onClick={() => openWorkTab({ kind: 'workflow-new' })} disabled={nodeTypes === null}>
+              <Button leadingVisual={PlusIcon} variant="primary" onClick={() => openWorkTab({ kind: 'workflow-new' })} disabled={nodeTypes === null}>
                 New workflow
               </Button>
             ),

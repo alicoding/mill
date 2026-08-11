@@ -2,6 +2,7 @@ import { Button, IconButton, Label, Stack } from '@primer/react'
 import { DownloadIcon, PencilIcon, TrashIcon } from '@primer/octicons-react'
 import { DataTable } from '@primer/react/experimental'
 import { ResizableTableContainer, TruncatedCell } from '../shared/ResizableTable'
+import { useConfirmDelete } from '../shared/useConfirmDelete'
 import type { Workflow } from '../../bindings/github.com/alicoding/mill/internal/domain/composition/models'
 import { TriggerRowLabel } from './TriggerRowLabel'
 import { findRootNode } from './triggerRowInfo'
@@ -31,6 +32,17 @@ export function WorkflowsTable({
   onPublish: (id: string) => void
   onHotkeyChanged: () => void
 }) {
+  // Table-view direct-wiring half of the Button-semantics convention
+  // (.claude/rules/frontend.md) -- the row menu path (WorkflowsTable's
+  // InventoryList sibling in CompositionView.tsx) gets confirmation
+  // for free via InventoryList's own opt-in `confirm` field; this
+  // TrashIcon is a bare icon button, so it wires ConfirmDialog directly
+  // via the shared hook.
+  const { requestDelete, dialog: confirmDialog } = useConfirmDelete<Workflow>({
+    entityType: 'workflow',
+    labelOf: (wf) => wf.Label,
+    onConfirm: (wf) => onDelete(wf.ID),
+  })
   return (
     <ResizableTableContainer storageKey="mill-cols-workflows">
       <DataTable
@@ -107,13 +119,14 @@ export function WorkflowsTable({
                   )}
                   <IconButton icon={PencilIcon} aria-label={`Edit ${wf.Label}`} size="small" variant="invisible" disabled={editDisabled} onClick={() => onEdit(wf.ID)} />
                   <IconButton icon={DownloadIcon} aria-label={`Export ${wf.Label}`} size="small" variant="invisible" onClick={() => onExport(wf.ID, wf.Label)} />
-                  <IconButton icon={TrashIcon} aria-label={`Delete ${wf.Label}`} size="small" variant="invisible" onClick={() => onDelete(wf.ID)} />
+                  <IconButton icon={TrashIcon} aria-label={`Delete ${wf.Label}`} size="small" variant="invisible" onClick={() => requestDelete(wf)} />
                 </Stack>
               )
             },
           },
         ]}
       />
+      {confirmDialog}
     </ResizableTableContainer>
   )
 }

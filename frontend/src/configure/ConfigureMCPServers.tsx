@@ -12,6 +12,7 @@ import { useViewMode } from '../shared/viewMode'
 import { InventoryList, type InventoryItem } from '../shared/InventoryList'
 import { ENTITY_ICON } from '../shared/entityIcons'
 import { formatUpdated, sortByUpdatedDesc } from '../shared/inventorySort'
+import { useConfirmDelete } from '../shared/useConfirmDelete'
 import styles from '../shared/ListCard.module.css'
 import PageContainer from '../shared/PageContainer'
 
@@ -110,6 +111,15 @@ export function ConfigureMCPServers() {
     ConfigureService.DeleteMCPServer(id).then(refetch).catch(console.error)
   }
 
+  // Table-view direct-wiring half of the Button-semantics convention
+  // (.claude/rules/frontend.md) -- see ConfigureRequests.tsx's
+  // identical comment.
+  const { requestDelete, dialog: confirmDialog } = useConfirmDelete<MCPServer>({
+    entityType: 'MCP server',
+    labelOf: (s) => s.Label,
+    onConfirm: (s) => remove(s.ID),
+  })
+
   const listTools = (id: string) => {
     ConfigureService.ListMCPServerTools(id)
       .then((tools) => setToolsByServer((prev) => ({ ...prev, [id]: tools ?? [] })))
@@ -139,7 +149,12 @@ export function ConfigureMCPServers() {
     menuActions: [
       { label: 'List tools', onClick: () => listTools(s.ID) },
       { label: 'Export', onClick: () => exportServer(s.ID, s.Label) },
-      { label: 'Delete', onClick: () => remove(s.ID), danger: true },
+      {
+        label: 'Delete',
+        onClick: () => remove(s.ID),
+        danger: true,
+        confirm: { title: 'Delete MCP server?', body: `This permanently deletes "${s.Label}". This cannot be undone.` },
+      },
     ],
   }))
 
@@ -160,7 +175,7 @@ export function ConfigureMCPServers() {
           <Button leadingVisual={UploadIcon} size="small" onClick={openImportPicker} data-testid="import-mcpserver">
             Import
           </Button>
-          <Button leadingVisual={PlusIcon} size="small" onClick={startCreate} data-testid="new-mcpserver">
+          <Button leadingVisual={PlusIcon} variant="primary" size="small" onClick={startCreate} data-testid="new-mcpserver">
             New MCP server
           </Button>
         </Stack>
@@ -225,7 +240,7 @@ export function ConfigureMCPServers() {
                     <Button size="small" variant="invisible" onClick={() => listTools(s.ID)}>List tools</Button>
                     <Button size="small" variant="invisible" onClick={() => startEdit(s)}>Edit</Button>
                     <IconButton icon={DownloadIcon} aria-label={`Export ${s.Label}`} size="small" variant="invisible" onClick={() => exportServer(s.ID, s.Label)} />
-                    <IconButton icon={TrashIcon} aria-label={`Delete ${s.Label}`} size="small" variant="invisible" onClick={() => remove(s.ID)} />
+                    <IconButton icon={TrashIcon} aria-label={`Delete ${s.Label}`} size="small" variant="invisible" onClick={() => requestDelete(s)} />
                   </Stack>
                 ),
               },
@@ -241,10 +256,11 @@ export function ConfigureMCPServers() {
             icon: ServerIcon,
             heading: 'No MCP servers yet',
             description: 'A reusable stdio connection an mcp-tool-call workflow node can resolve by ID.',
-            action: <Button leadingVisual={PlusIcon} onClick={startCreate}>New MCP server</Button>,
+            action: <Button leadingVisual={PlusIcon} variant="primary" onClick={startCreate}>New MCP server</Button>,
           }}
         />
       )}
+      {confirmDialog}
 
       {/* "List tools" (row menu action) renders its result here, below
           the list -- one panel per server that's been queried, same

@@ -95,3 +95,39 @@ Historical narrative — the real miss that surfaced both rules above,
 and the research behind the component-selection reference — is in
 `docs/SPEC.md` §9.1 and §3. This file is the reusable convention to
 apply going forward; SPEC.md is the record of why it was adopted.
+
+## Button semantics
+
+Primer's own button-variant convention, adopted systematically rather
+than per-page ad hoc (docs/SPEC.md §3.8):
+
+- **(a)** Exactly one `variant="primary"` button per page/region — the
+  page-level create CTA, or a form's Save. Never two primaries
+  competing in the same view.
+- **(b)** Irreversible destruction of a persisted entity is
+  `variant="danger"` (or `buttonType: 'danger'` on a Dialog footer
+  button) **and** confirmed via `shared/ConfirmDialog.tsx`, naming the
+  entity being deleted — never fired straight off a click.
+  `shared/InventoryList.tsx`'s `InventoryMenuAction.confirm` field
+  routes a kebab-menu Delete through the dialog automatically; a bare
+  `TrashIcon` `IconButton` (a DataTable row, a summary panel) wires
+  `ConfirmDialog` directly, via `shared/useConfirmDelete.tsx` when the
+  same page also renders a collection (avoids re-deriving the same
+  state/JSX per page — CLAUDE.md's "a fourth repetition is the signal
+  to share it").
+- **(c)** A decision pair (approve/deny a guardrail ask, a review
+  verdict) is `primary` (affirm) / `danger` (reject) — never both
+  neutral, never both colored the same way.
+- **(d)** A repeated per-row action (Edit, Export, Run in a list) is
+  never `primary`, even when it's the row's main action — repeating a
+  primary down every row of a list defeats rule (a)'s "exactly one."
+- **(e)** Everything else stays `variant="invisible"` (or the Primer
+  default) — neutral, not fighting for attention.
+
+Two deliberate exceptions, not violations of (d): a callable-child
+workflow's row demotes its Run to a secondary "Test" button (it can
+only ever be invoked by another workflow's Child Workflow node, so a
+primary-looking Run there is misleading, not just redundant); per-row
+Edit/Export/Duplicate actions in the goal-0007 dense-row pattern are
+`variant="invisible"` by design, matching (d) rather than departing
+from it.
