@@ -197,6 +197,13 @@ interface AppState {
   activeWorkTabKey: string | null
   openWorkTab: (tab: WorkTabSpec) => void
   closeWorkTab: (key: string) => void
+  // Bulk closers for the work-tab overflow menu (docs/goals/0018): close
+  // every open work tab, or every one except keepKey. Scratch cleanup for
+  // the closed keys stays WorkTabShell's job (this store has no scratch/
+  // localStorage knowledge) -- it clears scratch for the removed keys
+  // before calling these.
+  closeAllWorkTabs: () => void
+  closeOtherWorkTabs: (keepKey: string) => void
   activateWorkTab: (key: string | null) => void
   // Drops tabs whose entity no longer exists -- called by WorkTabShell
   // once real data is in, so a restored tab for a since-deleted
@@ -365,6 +372,21 @@ export const useAppStore = create<AppState>()(
           return {
             workTabs: state.workTabs.filter((t) => t.key !== key),
             activeWorkTabKey: state.activeWorkTabKey === key ? null : state.activeWorkTabKey,
+            workTabDirty,
+            workTabRestored,
+          }
+        }),
+      closeAllWorkTabs: () =>
+        set({ workTabs: [], activeWorkTabKey: null, workTabDirty: {}, workTabRestored: {} }),
+      closeOtherWorkTabs: (keepKey) =>
+        set((state) => {
+          const kept = state.workTabs.filter((t) => t.key === keepKey)
+          if (kept.length === state.workTabs.length) return {}
+          const workTabDirty = keepKey in state.workTabDirty ? { [keepKey]: state.workTabDirty[keepKey] } : {}
+          const workTabRestored = keepKey in state.workTabRestored ? { [keepKey]: state.workTabRestored[keepKey] } : {}
+          return {
+            workTabs: kept,
+            activeWorkTabKey: kept.length > 0 ? keepKey : null,
             workTabDirty,
             workTabRestored,
           }

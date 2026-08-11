@@ -1,0 +1,18 @@
+/* The app-wide work-tab strip row (goal 0018): the scrolling TabList
+   plus a pinned overflow/management ⌄ menu beside it, so many open tabs
+   stay one tidy row instead of wrapping onto a second line. */
+.tabStrip {
+    display: flex;
+    align-items: stretch;
+}
+
+/* Pinned beside the (scrolling) TabList -- never scrolls away. Its own
+   matching bottom border continues the tab strip's underline under the
+   button so the line is unbroken. */
+.overflow {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    padding: 0 var(--base-size-4);
+    border-bottom: 1px solid var(--borderColor-default);
+}
