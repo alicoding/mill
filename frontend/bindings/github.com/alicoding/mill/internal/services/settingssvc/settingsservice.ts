@@ -61,6 +61,17 @@ export function ClearKeybinding(commandID: string): $CancellablePromise<void> {
 }
 
 /**
+ * DismissPanel hides the Quick Panel and applies the focus-yield
+ * mitigation -- the bound RPC the panel's own frontend calls after a
+ * workflow run starts, or when its own Escape/dismiss affordance fires
+ * from JS rather than the native HideOnEscape key binding (e.g. a
+ * click outside the panel's content).
+ */
+export function DismissPanel(): $CancellablePromise<void> {
+    return $Call.ByID(3877156882);
+}
+
+/**
  * GetBuildInfo reports which commit this running instance was actually
  * built from (settingsservice_buildinfo.go) -- surfaced in the footer
  * so a stale, still-running process (e.g. a desktop app left open
@@ -171,6 +182,18 @@ export function NotifyPendingApproval(id: string, description: string, kind: str
 }
 
 /**
+ * OpenMainWindow shows/restores/focuses Mill's main window (ShowWindow's
+ * existing sequence) and, when view is non-empty, emits 'mill-navigate'
+ * so App.tsx switches to that view -- the Quick Panel's "Open Mill" and
+ * "Open Settings" rows both call this. Always dismisses the panel
+ * first, so jumping to the main window never leaves the floating panel
+ * sitting open behind it.
+ */
+export function OpenMainWindow(view: string): $CancellablePromise<void> {
+    return $Call.ByID(4036903373, view);
+}
+
+/**
  * PendingMCPWrites lists MCP writes currently awaiting a human
  * decision (millmcpservice_approval.go, docs/adr/0032).
  */
@@ -251,10 +274,13 @@ export function SetMCPWriteEnabled(enabled: boolean): $CancellablePromise<void> 
 }
 
 /**
- * SetPendingBadge applies count as the dock/taskbar badge -- a no-op
- * error in server mode (dockbadge_server.go), silently swallowed here
- * same as every other best-effort desktop-only affordance in this
- * service (the tray icon, the summon hotkey).
+ * SetPendingBadge applies count as the dock/taskbar badge -- best-effort
+ * (server mode's stub, or a desktop failure, must never break the
+ * caller), but a real failure is LOGGED, not swallowed: the first live
+ * test shipped with `_ =` here and the badge silently never appeared,
+ * leaving nothing anywhere to diagnose from (the exact silent-failure
+ * class §1's what-you-see-is-what-I-see thesis exists to prevent,
+ * applied to Mill's own plumbing).
  */
 export function SetPendingBadge(count: number): $CancellablePromise<void> {
     return $Call.ByID(4240483754, count);

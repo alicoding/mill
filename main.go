@@ -55,6 +55,11 @@ func init() {
 	application.RegisterEvent[mcpsvc.MCPWriteActivity]("mcp-write-activity")
 	application.RegisterEvent[mcpsvc.DataChanged](mcpsvc.DataChangedEventName)
 	application.RegisterEvent[executionsvc.GuardrailPendingChanged]("guardrail-pending-changed")
+	// docs/adr/0033: the Quick Panel's "Open Mill"/"Open Settings" rows
+	// (OpenMainWindow) emit this so App.tsx can switch the store's view
+	// once the main window is back in front -- broadcast to every open
+	// window, same as every other event registered here.
+	application.RegisterEvent[string]("mill-navigate")
 }
 
 // main function serves as the application's entry point. It initializes the application, creates a window,
@@ -320,6 +325,48 @@ func main() {
 	mainWindow = app.Window.NewWithOptions(windowOptions)
 	settingsService.SetWindow(mainWindow)
 	settingsService.WatchWindowGeometry()
+
+	// The Quick Panel (docs/adr/0033): a second, always-alive floating
+	// window the summon hotkey toggles -- a Raycast/Alfred/1Password-
+	// style quick-invoke surface, not the main window itself. Created
+	// once at startup, Hidden, and shown/hidden for the rest of the
+	// app's life (never destroyed/recreated) -- the same "second window,
+	// same services/bindings" shape the beta.4 SDK's own examples/
+	// spotlight demonstrates. URL is a hash route, not a bare path:
+	// production asset serving has no SPA fallback, so a bare path
+	// second window would 404 in a real installed build.
+	//
+	// Deliberately NOT ActivationPolicyAccessory (unlike the SDK's own
+	// spotlight example) -- that's an app-wide policy that would pull
+	// Mill's dock icon too, conflicting with §3.7's locked dock+tray
+	// coexistence. Deliberately NOT attempting a non-activating NSPanel
+	// either -- unmerged upstream at beta.4 (ADR-0033's research);
+	// showing this window still activates Mill and steals focus, which
+	// SettingsService's yieldFocusIfMainHidden mitigates on dismiss.
+	panelWindow := app.Window.NewWithOptions(application.WebviewWindowOptions{
+		Name:             "quickpanel",
+		Title:            "Mill Quick Panel",
+		Width:            560,
+		Height:           400,
+		Hidden:           true,
+		Frameless:        true,
+		DisableResize:    true,
+		InitialPosition:  application.WindowCentered,
+		HideOnFocusLost:  true,
+		HideOnEscape:     true,
+		BackgroundColour: application.NewRGB(6, 7, 15),
+		Mac: application.MacWindow{
+			Backdrop:           application.MacBackdropTranslucent,
+			WindowLevel:        application.MacWindowLevelFloating,
+			CollectionBehavior: application.MacWindowCollectionBehaviorCanJoinAllSpaces | application.MacWindowCollectionBehaviorFullScreenAuxiliary,
+			TitleBar: application.MacTitleBar{
+				AppearsTransparent: true,
+				Hide:               true,
+			},
+		},
+		URL: "/#/quickpanel",
+	})
+	settingsService.SetPanelWindow(panelWindow)
 
 	// docs/SPEC.md §3.7 (task #8): a tray icon as a running-indicator --
 	// closes a real gap run-mill's own SKILL.md already names ("no

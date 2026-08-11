@@ -68,8 +68,14 @@ func (s *SettingsService) bindSummon(mods []string, key string) error {
 	s.summon = b
 	s.mu.Unlock()
 	go func() {
+		// docs/adr/0033: the summon hotkey now TOGGLES the Quick Panel
+		// (visible -> dismiss it, hidden -> show+focus it) rather than
+		// showing the main window directly -- ShowWindow stays reachable
+		// via the tray icon's own click handler and the panel's own
+		// "Open Mill" row (OpenMainWindow), just no longer via this
+		// hotkey.
 		for range b.Keydown() {
-			s.ShowWindow()
+			s.TogglePanel()
 		}
 	}()
 	return nil
