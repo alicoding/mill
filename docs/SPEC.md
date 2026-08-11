@@ -3614,6 +3614,37 @@ recorded as a real design input (`OPEN`), never silently dropped.
   — two Mill windows, one stale, both sharing the real settings.json
   (§3.7's own dual-process hazard); with the footer now showing the
   commit hash in every build shape, a stale window identifies itself.
+  **Update (2026-08-11) — the dev-orphan root cause is now researched
+  to primary source, and BOTH the tooling fix and the production guard
+  it's often confused with are built, deliberately as two DIFFERENT
+  fixes.** Owner asked for the right pattern once. A pinned-version
+  read of Wails v3.0.0-beta.4 + `atterpac/refresh` v1.0.0 (the dev
+  supervisor) found: (1) the orphan is a SIGHUP gap — `wails3 dev`'s
+  supervisor traps only SIGINT+SIGTERM, so closing a terminal tab
+  (SIGHUP) kills the supervisor without running refresh's cleanup, and
+  the child `mill.dev.app` survives in its own process group; the NEXT
+  `task dev` has no memory of it and launches a second window.
+  (2) A `main.go` signal handler can't fix this — refresh kills the
+  old build with SIGKILL (uncatchable), and the orphan path never
+  signals the child at all. (3) **SingleInstance is the WRONG tool for
+  the dev-orphan** — its only semantics ("second launch defers to the
+  first, first wins") would make a fresh `wails3 dev` rebuild defer to
+  the STALE window instead of replacing it, the exact inverse of what
+  dev needs. So the two fixes: the dev-orphan gets a **Taskfile
+  defensive sweep** (`pkill -f` the leftover `mill.dev.app` before
+  `wails3 dev` starts, so a fresh `task dev` always begins from one
+  instance); and §3.7's real production data-corruption hazard (two
+  installed instances writing one settings.json/execution.db) gets
+  Wails3's **`SingleInstance`** guard (`singleinstance_{production,
+  dev}.go`, gated behind the `production` build tag so `task dev`
+  never activates it, no-op otherwise; a second launch of the
+  installed `.app` restores+focuses the existing window instead of
+  opening a duplicate). **Correction recorded honestly**: an earlier
+  claim this session that the "kill one window closes both" behavior
+  was confirmed shared-process-group sharing was WRONG — the code
+  gives each rebuild its own fresh pgid, so that coupling is not
+  by-design; the observed behavior stays unexplained (re-check with
+  `ps -o pgid` if it recurs), not a settled fact.
 
 ## 9.5 Platform kernel & extension contract
 
