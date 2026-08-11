@@ -6,12 +6,14 @@ import { ResizableTableContainer, TruncatedCell } from '../shared/ResizableTable
 import { ViewModeToggle } from '../shared/ViewModeToggle'
 import { useViewMode } from '../shared/viewMode'
 import { ConfigureService } from '../shared/bindings'
+import type { HTTPRequest } from '../../bindings/github.com/alicoding/mill/internal/domain/httprequest/models'
 import { AUTH_LABEL } from './authTypeLabels'
 import { refreshRequests, useAppStore } from '../shared/store'
 import { downloadJSON } from '../shared/downloadJSON'
 import { InventoryList, type InventoryItem } from '../shared/InventoryList'
 import { ENTITY_ICON } from '../shared/entityIcons'
 import { formatUpdated, sortByUpdatedDesc } from '../shared/inventorySort'
+import { useConfirmDelete } from '../shared/useConfirmDelete'
 import styles from '../shared/ListCard.module.css'
 import PageContainer from '../shared/PageContainer'
 
@@ -68,6 +70,17 @@ export function ConfigureRequests() {
     ConfigureService.DeleteHTTPRequest(id).then(() => refreshRequests()).catch(console.error)
   }
 
+  // Table-view direct-wiring half of the Button-semantics convention
+  // (.claude/rules/frontend.md) -- the row menu path below gets
+  // confirmation for free via InventoryList's own opt-in `confirm`
+  // field; the DataTable view's bare TrashIcon wires ConfirmDialog
+  // directly via the shared hook.
+  const { requestDelete, dialog: confirmDialog } = useConfirmDelete<HTTPRequest>({
+    entityType: 'integration',
+    labelOf: (r) => r.Label,
+    onConfirm: (r) => remove(r.ID),
+  })
+
   // One "New integration" entry point with a typed menu -- the
   // integration *kind* is the first authoring decision (docs/SPEC.md
   // §4.1's connector-kind row: REST today; DB/other kinds are future
@@ -116,7 +129,12 @@ export function ConfigureRequests() {
     menuActions: [
       { label: 'Edit', onClick: () => openWorkTab({ kind: 'request-edit', requestId: r.ID }) },
       { label: 'Export', onClick: () => exportRequest(r.ID, r.Label) },
-      { label: 'Delete', onClick: () => remove(r.ID), danger: true },
+      {
+        label: 'Delete',
+        onClick: () => remove(r.ID),
+        danger: true,
+        confirm: { title: 'Delete integration?', body: `This permanently deletes "${r.Label}". This cannot be undone.` },
+      },
     ],
   }))
 
@@ -170,7 +188,7 @@ export function ConfigureRequests() {
                   <Stack direction="horizontal" gap="condensed">
                     <IconButton icon={PencilIcon} aria-label={`Edit ${r.Label}`} size="small" variant="invisible" onClick={() => openWorkTab({ kind: 'request-edit', requestId: r.ID })} />
                     <IconButton icon={DownloadIcon} aria-label={`Export ${r.Label}`} size="small" variant="invisible" onClick={() => exportRequest(r.ID, r.Label)} />
-                    <IconButton icon={TrashIcon} aria-label={`Delete ${r.Label}`} size="small" variant="invisible" onClick={() => remove(r.ID)} />
+                    <IconButton icon={TrashIcon} aria-label={`Delete ${r.Label}`} size="small" variant="invisible" onClick={() => requestDelete(r)} />
                   </Stack>
                 ),
               },
@@ -190,6 +208,7 @@ export function ConfigureRequests() {
           }}
         />
       )}
+      {confirmDialog}
     </PageContainer>
   )
 }

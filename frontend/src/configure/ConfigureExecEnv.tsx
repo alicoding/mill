@@ -13,6 +13,7 @@ import { useViewMode } from '../shared/viewMode'
 import { InventoryList, type InventoryItem } from '../shared/InventoryList'
 import { ENTITY_ICON } from '../shared/entityIcons'
 import { formatUpdated, sortByUpdatedDesc } from '../shared/inventorySort'
+import { useConfirmDelete } from '../shared/useConfirmDelete'
 import styles from '../shared/ListCard.module.css'
 import PageContainer from '../shared/PageContainer'
 
@@ -137,6 +138,15 @@ export function ConfigureExecEnv() {
     ConfigureService.DeleteExecEnv(id).then(refetch).catch(console.error)
   }
 
+  // Table-view direct-wiring half of the Button-semantics convention
+  // (.claude/rules/frontend.md) -- see ConfigureRequests.tsx's
+  // identical comment.
+  const { requestDelete, dialog: confirmDialog } = useConfirmDelete<ExecEnv>({
+    entityType: 'execution environment',
+    labelOf: (e) => e.Label,
+    onConfirm: (e) => remove(e.ID),
+  })
+
   const updateEnvRow = (i: number, patch: Partial<EnvRow>) => {
     setEnvRows((prev) => prev.map((r, idx) => (idx === i ? { ...r, ...patch } : r)))
   }
@@ -177,7 +187,12 @@ export function ConfigureExecEnv() {
     onOpen: () => startEdit(e),
     menuActions: [
       { label: 'Export', onClick: () => exportEnv(e.ID, e.Label) },
-      { label: 'Delete', onClick: () => remove(e.ID), danger: true },
+      {
+        label: 'Delete',
+        onClick: () => remove(e.ID),
+        danger: true,
+        confirm: { title: 'Delete execution environment?', body: `This permanently deletes "${e.Label}". This cannot be undone.` },
+      },
     ],
   }))
 
@@ -198,7 +213,7 @@ export function ConfigureExecEnv() {
           <Button leadingVisual={UploadIcon} size="small" onClick={openImportPicker} data-testid="import-execenv">
             Import
           </Button>
-          <Button leadingVisual={PlusIcon} size="small" onClick={startCreate} data-testid="new-execenv">
+          <Button leadingVisual={PlusIcon} variant="primary" size="small" onClick={startCreate} data-testid="new-execenv">
             New environment
           </Button>
         </Stack>
@@ -314,7 +329,7 @@ export function ConfigureExecEnv() {
                   <Stack direction="horizontal" gap="condensed">
                     <Button size="small" variant="invisible" onClick={() => startEdit(e)}>Edit</Button>
                     <IconButton icon={DownloadIcon} aria-label={`Export ${e.Label}`} size="small" variant="invisible" onClick={() => exportEnv(e.ID, e.Label)} />
-                    <IconButton icon={TrashIcon} aria-label={`Delete ${e.Label}`} size="small" variant="invisible" onClick={() => remove(e.ID)} />
+                    <IconButton icon={TrashIcon} aria-label={`Delete ${e.Label}`} size="small" variant="invisible" onClick={() => requestDelete(e)} />
                   </Stack>
                 ),
               },
@@ -330,10 +345,11 @@ export function ConfigureExecEnv() {
             icon: TerminalIcon,
             heading: 'No execution environments yet',
             description: 'A reusable, pinned shell/directory/env a code-execution workflow node can run inside.',
-            action: <Button leadingVisual={PlusIcon} onClick={startCreate}>New environment</Button>,
+            action: <Button leadingVisual={PlusIcon} variant="primary" onClick={startCreate}>New environment</Button>,
           }}
         />
       )}
+      {confirmDialog}
     </PageContainer>
   )
 }

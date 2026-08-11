@@ -2,6 +2,7 @@ import { useState, type ReactNode } from 'react'
 import { ActionList, ActionMenu, IconButton, Stack, Text, TextInput } from '@primer/react'
 import { Blankslate } from '@primer/react/experimental'
 import { KebabHorizontalIcon, SearchIcon, type Icon } from '@primer/octicons-react'
+import { ConfirmDialog } from './ConfirmDialog'
 import styles from './InventoryList.module.css'
 
 // The shared inventory-row component (docs/goals/0007-resource-
@@ -36,6 +37,12 @@ export interface InventoryMenuAction {
   label: string
   onClick: () => void
   danger?: boolean
+  // Opt-in confirmation (Button-semantics rule (b), .claude/rules/
+  // frontend.md): when set, selecting this action shows ConfirmDialog
+  // naming the entity before onClick fires, instead of destroying
+  // straight off the kebab click. Every current caller sets this only
+  // on a Delete action.
+  confirm?: { title: string; body: string }
 }
 
 export interface InventoryItem {
@@ -112,7 +119,9 @@ export function InventoryList({ items, emptyState, searchPlaceholder = 'Searchâ€
 }
 
 function InventoryRow({ item }: { item: InventoryItem }) {
+  const [pendingConfirm, setPendingConfirm] = useState<InventoryMenuAction | null>(null)
   return (
+    <>
     <ActionList.Item onSelect={item.onOpen} data-testid="inventory-row" data-entity={item.entity}>
       <ActionList.LeadingVisual>
         <span className={styles.icon} style={{ background: item.icon.bg }}>
@@ -181,7 +190,11 @@ function InventoryRow({ item }: { item: InventoryItem }) {
               <ActionMenu.Overlay>
                 <ActionList>
                   {item.menuActions.map((action) => (
-                    <ActionList.Item key={action.label} variant={action.danger ? 'danger' : 'default'} onSelect={action.onClick}>
+                    <ActionList.Item
+                      key={action.label}
+                      variant={action.danger ? 'danger' : 'default'}
+                      onSelect={() => (action.confirm ? setPendingConfirm(action) : action.onClick())}
+                    >
                       {action.label}
                     </ActionList.Item>
                   ))}
@@ -192,6 +205,18 @@ function InventoryRow({ item }: { item: InventoryItem }) {
         </Stack>
       </ActionList.TrailingVisual>
     </ActionList.Item>
+    {pendingConfirm?.confirm && (
+      <ConfirmDialog
+        title={pendingConfirm.confirm.title}
+        body={pendingConfirm.confirm.body}
+        onCancel={() => setPendingConfirm(null)}
+        onConfirm={() => {
+          pendingConfirm.onClick()
+          setPendingConfirm(null)
+        }}
+      />
+    )}
+    </>
   )
 }
 

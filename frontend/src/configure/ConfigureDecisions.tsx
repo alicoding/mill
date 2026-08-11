@@ -14,6 +14,7 @@ import { useViewMode } from '../shared/viewMode'
 import { InventoryList, type InventoryItem } from '../shared/InventoryList'
 import { ENTITY_ICON } from '../shared/entityIcons'
 import { formatUpdated, sortByUpdatedDesc } from '../shared/inventorySort'
+import { useConfirmDelete } from '../shared/useConfirmDelete'
 import styles from '../shared/ListCard.module.css'
 import PageContainer from '../shared/PageContainer'
 
@@ -124,6 +125,15 @@ export function ConfigureDecisions() {
     ConfigureService.DeleteDecision(id).then(refetch).catch(console.error)
   }
 
+  // Table-view direct-wiring half of the Button-semantics convention
+  // (.claude/rules/frontend.md) -- see ConfigureRequests.tsx's
+  // identical comment.
+  const { requestDelete, dialog: confirmDialog } = useConfirmDelete<Decision>({
+    entityType: 'decision',
+    labelOf: (d) => d.Label,
+    onConfirm: (d) => remove(d.ID),
+  })
+
   const updateOutput = (i: number, field: keyof OutputField, value: string) => {
     setOutputs((prev) => prev.map((o, idx) => {
       if (idx !== i) return o
@@ -151,7 +161,12 @@ export function ConfigureDecisions() {
     menuActions: [
       { label: 'Duplicate', onClick: () => startCreate(d) },
       { label: 'Export', onClick: () => exportDecision(d.ID, d.Label) },
-      { label: 'Delete', onClick: () => remove(d.ID), danger: true },
+      {
+        label: 'Delete',
+        onClick: () => remove(d.ID),
+        danger: true,
+        confirm: { title: 'Delete decision?', body: `This permanently deletes "${d.Label}". This cannot be undone.` },
+      },
     ],
   }))
 
@@ -177,7 +192,7 @@ export function ConfigureDecisions() {
           >
             Import
           </Button>
-          <Button leadingVisual={PlusIcon} size="small" onClick={() => startCreate()} data-testid="new-decision">
+          <Button leadingVisual={PlusIcon} variant="primary" size="small" onClick={() => startCreate()} data-testid="new-decision">
             New decision
           </Button>
         </Stack>
@@ -284,7 +299,7 @@ export function ConfigureDecisions() {
                     <Button size="small" variant="invisible" onClick={() => startEdit(d)}>Edit</Button>
                     <Button size="small" variant="invisible" onClick={() => startCreate(d)}>Duplicate</Button>
                     <IconButton icon={DownloadIcon} aria-label={`Export ${d.Label}`} size="small" variant="invisible" onClick={() => exportDecision(d.ID, d.Label)} />
-                    <IconButton icon={TrashIcon} aria-label={`Delete ${d.Label}`} size="small" variant="invisible" onClick={() => remove(d.ID)} />
+                    <IconButton icon={TrashIcon} aria-label={`Delete ${d.Label}`} size="small" variant="invisible" onClick={() => requestDelete(d)} />
                   </Stack>
                 ),
               },
@@ -300,10 +315,11 @@ export function ConfigureDecisions() {
             icon: ENTITY_ICON.decision.Icon,
             heading: 'No decisions yet',
             description: "A reusable, typed TERMINAL outcome a workflow's Decision node reaches to end the run.",
-            action: <Button leadingVisual={PlusIcon} onClick={() => startCreate()}>New decision</Button>,
+            action: <Button leadingVisual={PlusIcon} variant="primary" onClick={() => startCreate()}>New decision</Button>,
           }}
         />
       )}
+      {confirmDialog}
     </PageContainer>
   )
 }

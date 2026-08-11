@@ -13,7 +13,17 @@ import type { Locator, Page } from '@playwright/test'
 // compiled source before relying on this), so the action item is
 // looked up at the page level once the menu is open -- safe because
 // only one row's menu is ever open at a time.
+//
+// Delete now routes through shared/ConfirmDialog.tsx (Button-semantics
+// convention, .claude/rules/frontend.md rule (b)) -- selecting the
+// menu item no longer destroys the entity directly, it opens a
+// confirmation dialog naming it. Every existing caller of this helper
+// stays unchanged; the confirm click is handled here once rather than
+// at each of the ~40 call sites.
 export async function clickRowAction(page: Page, row: Locator, actionLabel: string | RegExp) {
   await row.getByTestId('inventory-row-menu').click()
   await page.getByRole('menuitem', { name: actionLabel }).click()
+  if (actionLabel === 'Delete') {
+    await page.getByRole('alertdialog').getByRole('button', { name: 'Delete' }).click()
+  }
 }
