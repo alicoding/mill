@@ -5,6 +5,7 @@ import { SunIcon, MoonIcon, DeviceDesktopIcon, KeyIcon } from '@primer/octicons-
 import { SettingsService } from '../shared/bindings'
 import { describeCombo, keyFromEventCode, modsFromEvent, reservedByMacOS } from '../shared/keybinding'
 import { isAccessibilityError, ACCESSIBILITY_SETTINGS_URL } from '../composition/hotkeyCapture'
+import KeyboardShortcutsSection from './KeyboardShortcutsSection'
 import styles from '../shared/ListCard.module.css'
 import PageContainer from '../shared/PageContainer'
 
@@ -173,6 +174,13 @@ function SettingsView() {
               : launchAtLoginError}
         </Text>
       )}
+
+      <Heading as="h2" variant="small" className={styles.sectionHeading}>Keyboard Shortcuts</Heading>
+      <Text as="p" size="small" className={styles.muted}>
+        Every in-window command Mill dispatches (docs/goals/0016-keymap-system.md) -- rebind by clicking a combo
+        and pressing a new one, the same recorder used for a workflow's own trigger hotkey below.
+      </Text>
+      <KeyboardShortcutsSection />
 
       <Heading as="h2" variant="small" className={styles.sectionHeading}>Global hotkey</Heading>
       <Text as="p" size="small" className={styles.muted}>

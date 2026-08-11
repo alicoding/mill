@@ -22,6 +22,9 @@ import { Call as $Call, CancellablePromise as $CancellablePromise } from "@wails
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
 import * as mcpsvc$0 from "../mcpsvc/models.js";
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: Unused imports
+import * as triggersvc$0 from "../triggersvc/models.js";
 
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
@@ -47,6 +50,14 @@ export function AssignSummonHotkey(mods: string[] | null, key: string): $Cancell
  */
 export function CheckForUpdates(): $CancellablePromise<$models.UpdateCheckResult> {
     return $Call.ByID(3825907183);
+}
+
+/**
+ * ClearKeybinding removes commandID's override, if any, reverting it to
+ * its frontend-declared default binding.
+ */
+export function ClearKeybinding(commandID: string): $CancellablePromise<void> {
+    return $Call.ByID(3036020909, commandID);
 }
 
 /**
@@ -114,6 +125,18 @@ export function IsIsolatedData(): $CancellablePromise<boolean> {
 }
 
 /**
+ * ListKeybindings returns every command-keybinding OVERRIDE, raw
+ * (mods+key, not pre-formatted) -- the frontend formats for display
+ * itself (shared/keybinding.ts's formatCombo) so a default binding
+ * (never round-tripped through here) and an overridden one render
+ * identically. Keyed by command id; a command with no entry is still on
+ * its frontend-declared default.
+ */
+export function ListKeybindings(): $CancellablePromise<{ [_ in string]?: triggersvc$0.PersistedHotkey } | null> {
+    return $Call.ByID(813958881);
+}
+
+/**
  * PendingMCPWrites lists MCP writes currently awaiting a human
  * decision (millmcpservice_approval.go).
  */
@@ -161,6 +184,18 @@ export function RestoreMenuAccelerators(): $CancellablePromise<void> {
  */
 export function RestoreSummonHotkey(): $CancellablePromise<void> {
     return $Call.ByID(442997791);
+}
+
+/**
+ * SetKeybinding overrides commandID's binding to mods+key, rejecting a
+ * combo already claimed by another command's override, or by a
+ * per-workflow trigger hotkey (see this file's own header comment for
+ * why a still-default command can't be checked here). Returns the new
+ * binding's formatted label (e.g. "⌘⇧S"), same success shape as
+ * TriggerService.AssignHotkey / SettingsService.AssignSummonHotkey.
+ */
+export function SetKeybinding(commandID: string, mods: string[] | null, key: string): $CancellablePromise<string> {
+    return $Call.ByID(3022517904, commandID, mods, key);
 }
 
 /**

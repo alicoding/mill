@@ -27,3 +27,8 @@ export interface HotkeyActivity {
      */
     "result": string;
 }
+
+export interface PersistedHotkey {
+    "mods": string[] | null;
+    "key": string;
+}

@@ -1,11 +1,12 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import type { LabelProps } from '@primer/react'
-import { CompositionService, ConfigureService } from './bindings'
+import { CompositionService, ConfigureService, SettingsService } from './bindings'
 import type { NodeType, Workflow } from '../../bindings/github.com/alicoding/mill/internal/domain/composition/models'
 import type { HTTPRequest } from '../../bindings/github.com/alicoding/mill/internal/domain/httprequest/models'
 import { ViewKind } from '../../bindings/github.com/alicoding/mill/internal/domain/capabilities/models'
 import type { Capability } from '../../bindings/github.com/alicoding/mill/internal/domain/capabilities/models'
+import type { KeyCombo } from './keybinding'
 
 // Which surface triggered a run -- 'trigger' covers every headless
 // source (hotkey, schedule, clipboard-watch, filesystem-watch; see
@@ -232,6 +233,22 @@ interface AppState {
   workTabRestored: Record<string, boolean>
   setWorkTabRestored: (key: string, restored: boolean) => void
   dismissWorkTabRestored: (key: string) => void
+  // Command-keybinding overrides (docs/goals/0016-keymap-system.md) --
+  // shared/commands.ts's dispatcher and the Settings Keyboard Shortcuts
+  // section both read this; SettingsService owns persistence, this is
+  // just the last-fetched mirror. refreshKeybindings() (below) is the
+  // one fetch path, same shape as refreshWorkflows/refreshRequests.
+  keybindingOverrides: Record<string, KeyCombo>
+  setKeybindingOverrides: (overrides: Record<string, KeyCombo>) => void
+  // workflow.save/workflow.run (shared/commands.ts) can't import
+  // composition/CompositionCanvas.tsx directly (dependency-cruiser
+  // boundary, .claude/rules/frontend.md) -- this is the signal the
+  // ACTIVE canvas tab watches and consumes, same "different view trees,
+  // a store field beats a callback chain" shape as
+  // openWorkflowRequest/requestOpenWorkflow above.
+  canvasCommandRequest: 'save' | 'run' | null
+  requestCanvasCommand: (command: 'save' | 'run') => void
+  consumeCanvasCommandRequest: () => void
 }
 
 // Shared across App/ActivityView (SPEC.md §1.3): App.tsx still owns the
@@ -276,6 +293,28 @@ export function refreshRequests(): Promise<void> {
 export function refreshNodeTypes(): Promise<void> {
   return CompositionService.NodeTypes()
     .then((list) => useAppStore.getState().setNodeTypes(list ?? []))
+    .catch(console.error)
+}
+
+// refreshKeybindings (docs/goals/0016-keymap-system.md) mirrors the
+// shape above -- ListKeybindings returns raw {mods, key} per command id
+// (settingsservice_keymap.go's own doc comment on why: so a default and
+// an overridden binding render through the same frontend formatter,
+// shared/keybinding.ts's formatCombo, rather than one pre-formatted by
+// Go and one by the frontend independently). PersistedHotkey's fields
+// are lowercase in the generated bindings (its Go struct carries real
+// json tags, unlike trigger.HotkeyBinding's Mods/Key -- checked
+// directly against the regenerated frontend/bindings, not assumed).
+export function refreshKeybindings(): Promise<void> {
+  return SettingsService.ListKeybindings()
+    .then((map) => {
+      const overrides: Record<string, KeyCombo> = {}
+      for (const [id, hk] of Object.entries(map ?? {})) {
+        if (!hk) continue
+        overrides[id] = { mods: hk.mods ?? [], key: hk.key }
+      }
+      useAppStore.getState().setKeybindingOverrides(overrides)
+    })
     .catch(console.error)
 }
 
@@ -358,6 +397,11 @@ export const useAppStore = create<AppState>()(
           delete workTabRestored[key]
           return { workTabRestored }
         }),
+      keybindingOverrides: {},
+      setKeybindingOverrides: (overrides) => set({ keybindingOverrides: overrides }),
+      canvasCommandRequest: null,
+      requestCanvasCommand: (command) => set({ canvasCommandRequest: command }),
+      consumeCanvasCommandRequest: () => set({ canvasCommandRequest: null }),
     }),
     {
       name: 'mill-app-view',

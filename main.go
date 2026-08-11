@@ -222,6 +222,16 @@ func main() {
 	app.Event.OnApplicationEvent(events.Common.ApplicationStarted, func(*application.ApplicationEvent) {
 		triggerService.Sync(compositionService.Workflows())
 		settingsService.RestoreSummonHotkey()
+		// docs/goals/0016-keymap-system.md: releases the native File >
+		// Close (⌘W) menu accelerator so that keypress falls through to
+		// the keymap's own command dispatch (tab.close) instead of being
+		// intercepted by NSMenu first -- must run before any hotkey
+		// recorder could ever call SuspendMenuAccelerators (see
+		// ReleaseMenuAccelerators's own doc comment for why the ordering
+		// matters). View > Reload (⌘R/⌘⇧R) is deliberately left alone --
+		// workflow.run's default is ⌘↩, not ⌘R (owner decision: ⌘R stays
+		// the native browser/dev reload).
+		settingsService.ReleaseMenuAccelerators()
 	})
 
 	// Create a new window with the necessary options.

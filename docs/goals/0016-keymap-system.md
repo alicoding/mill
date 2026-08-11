@@ -37,7 +37,7 @@ RESERVED_COMBOS blocklist:
 | `tab.next`/`tab.prev` | ⌃Tab / ⌃⇧Tab | the one combo Safari AND VS Code share (⌘⇧]/[ = rebindable alias) |
 | `workflow.new` | ⌘N | editor "new typed document" convention — NOT ⌘T (browser blank-tab) |
 | `workflow.save` | ⌘S | maps to save-DRAFT only; Publish stays deliberate, no shortcut |
-| `workflow.run` | ⌘R | **owner ratifies — the one non-unanimous binding** (Xcode "Run" vs browser "Reload"; no live Mill collision) |
+| `workflow.run` | ⌘↩ (Cmd+Enter) | **Amended by owner decision (2026-08-10), superseding the original ⌘R pick below.** The original research claimed "no live Mill collision" but implementation found a real one: macOS's DefaultApplicationMenu() installs View > Reload on Cmd+R unconditionally (Wails' own `menuitem_roles.go`) — releasing that accelerator would have taken ⌘R away from the owner's own native-reload debug escape hatch (⌘⇧R too). ⌘↩ is the editor/chat "run/submit" convention (Slack send, ChatGPT/Claude submit, IDE run-configuration) with zero RESERVED_COMBOS or menu-accelerator collision, confirmed directly against `menuitem_roles.go` before picking it. *(Original, now-superseded note, kept for the record: "owner ratifies — the one non-unanimous binding," Xcode "Run" vs browser "Reload," ⌘R.)* |
 | `palette.open` (0015) | ⌘K | Linear/Slack standalone — NOT VS Code's ⌘⇧P; ⌘K there is a chord prefix. Alias ⌘P later (Notion pattern) if wanted |
 | view nav / settings | ⌘1–4 / ⌘, | already shipped, confirmed convention-correct |
 
