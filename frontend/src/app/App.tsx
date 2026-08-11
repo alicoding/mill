@@ -373,11 +373,16 @@ function App() {
           className={styles.titlebarTabs}
           data-testid="titlebar-tabs"
         />
+        {/* Build-identity badge -- one glance answers "which build is
+            this, and is it live." Extracted to BuildIdentityBadge.tsx
+            (goal 0019). Lives IN the band's right segment as flex
+            content, not a fixed overlay -- see App.module.css's
+            .devRibbon comment for the click-interception bug that
+            forced this. */}
+        <div className={styles.titlebarRight}>
+          <BuildIdentityBadge buildInfo={buildInfo} />
+        </div>
       </div>
-      {/* Build-identity badge -- one glance answers "which build is
-          this, and is it live." Extracted to BuildIdentityBadge.tsx
-          (goal 0019); its own doc comment carries the full reasoning. */}
-      <BuildIdentityBadge buildInfo={buildInfo} />
       {/* The ⌘K command palette (docs/goals/0015): renders off the
           store's paletteOpen flag regardless of which page/work tab is
           active, same "app-level chrome, mounted once" pattern as
