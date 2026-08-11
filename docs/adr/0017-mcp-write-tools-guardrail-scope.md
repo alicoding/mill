@@ -1,6 +1,6 @@
 # ADR-0017: Guardrail scope for MCP-driven writes
 
-Status: accepted — fully implemented (coarse default-off gate + export/import tools, and per-write synchronous approval via ADR-0022's MCP section: a bounded 120s in-process park surfaced in Mill's window, approval-required by default whenever writes are enabled)
+Status: accepted — fully implemented (coarse default-off gate + export/import tools, and per-write synchronous approval via ADR-0022's MCP section: a bounded 120s in-process park surfaced in Mill's window, approval-required by default whenever writes are enabled). The approval *mechanism* (the bounded synchronous 120s park) is superseded by [ADR-0032](0032-mcp-write-approval-park-and-poll.md) (park-and-poll + durable pending record + away-user attention layer) — this ADR's policy decisions (default-off gate, approval-by-default, deny-writes-nothing) are unchanged and carried forward there.
 
 ## Context
 
