@@ -457,6 +457,8 @@ func BuiltInWorkflows() []Workflow {
 			},
 			BuiltIn: true,
 		},
+		clipboardInspectorWorkflow(),
+		savedPageToMarkdownWorkflow(),
 		{
 			ID:          "example-disabled-filesystem-watch-workflow",
 			Label:       "Example: Disabled filesystem watch",

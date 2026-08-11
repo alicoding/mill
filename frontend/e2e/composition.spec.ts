@@ -172,8 +172,10 @@ test('Composition page lists built-in workflows; node primitives live in a colla
   // docs/adr/0022's Update + docs/adr/0023) + ruleset (docs/adr/0023's
   // payload-validation node) + decision-outcome (the terminal Decision
   // node, docs/adr/0027) + code-execution (docs/adr/0026's code
-  // execution capability, goal 0004b).
-  await expect(activePanel(page).getByTestId('palette-item')).toHaveCount(21)
+  // execution capability, goal 0004b) + capture-file,
+  // process-extract-html, capture-clipboard-info (the save-page
+  // capture floor + clipboard inspector, docs/adr/0030 / SPEC.md §5).
+  await expect(activePanel(page).getByTestId('palette-item')).toHaveCount(24)
 })
 
 test('A new workflow starts with a starter node placed, not a blank canvas', async ({ page }) => {

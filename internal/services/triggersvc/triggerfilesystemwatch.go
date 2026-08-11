@@ -10,7 +10,7 @@ func init() {
 		if path == "" {
 			return nil, nil
 		}
-		b, err := filewatch.Watch(path, config["pattern"], func(changed string) { s.fire(workflowID, changed) })
+		b, err := filewatch.Watch(path, config["pattern"], func(changed string) { s.fire(workflowID, changed, changed) })
 		if err != nil {
 			return nil, err
 		}

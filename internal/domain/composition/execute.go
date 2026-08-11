@@ -43,6 +43,14 @@ type ExecuteOptions struct {
 	// rules (docs/adr/0019). Empty (direct ExecuteWorkflow calls, unit
 	// tests) simply means no workflow-scoped rule can match.
 	WorkflowID string
+	// InitialPayload seeds the root ExecContext's Payload instead of the
+	// usual empty string -- a headless trigger fire's own event data
+	// (e.g. a filesystem-watch trigger's changed file path,
+	// docs/SPEC.md §3.4's Trigger row: "a trigger's output IS the
+	// workflow's input"). Empty (every caller before this field existed,
+	// a manual/hotkey/schedule/clipboard-watch fire today) means exactly
+	// today's behavior -- a run starting from "".
+	InitialPayload string
 }
 
 // GuardrailGate is the injected approval seam (docs/adr/0022): called
@@ -117,7 +125,7 @@ func executeWorkflow(nodes []Node, edges []Edge, attrs []AttributeDef, run StepR
 		return "", err
 	}
 
-	ctx := ExecContext{Attributes: attributesEnv(attrs, opts.AttrValues), RunContext: opts.RunContext}
+	ctx := ExecContext{Payload: opts.InitialPayload, Attributes: attributesEnv(attrs, opts.AttrValues), RunContext: opts.RunContext}
 	visited := make(map[string]bool, len(nodes))
 	current := root
 	for {
