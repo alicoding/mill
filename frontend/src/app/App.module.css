@@ -38,6 +38,23 @@
 .sidebarCollapsed > :first-child {
     width: 52px;
 }
+/* Native-titlebar band fix (owner-reported: the 38px strip
+   .app-shell--native-titlebar reserves above the PageLayout row took
+   the shell's default background — a white band over the grey sidebar
+   that read as broken UI). The hiddenInset convention real apps follow
+   (Slack/Notion-style) is the SIDEBAR surface extending to the window
+   top, traffic lights floating over it. Done here by pulling the
+   already-overridden sidebar panel up into the band (negative margin +
+   compensating height/padding) rather than moving the reservation into
+   both columns — the content side's .view-pane is the scroll container,
+   where a padding-top would let scrolled content slide up under the
+   lights. Content side stays shell-background (white-on-white,
+   invisible seam), which is exactly how it already rendered. */
+:global(.app-shell--native-titlebar) .sidebar > :first-child {
+    margin-top: -38px;
+    height: calc(100% + 38px);
+    padding-top: 38px;
+}
 .sidebarHeader {
     flex: 0 0 auto;
     display: flex;

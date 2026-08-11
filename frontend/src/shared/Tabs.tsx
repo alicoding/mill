@@ -30,12 +30,23 @@ export function TabList({ 'aria-label': ariaLabel, children }: { 'aria-label': s
 // <button role="tab">, not a nested <button> -- interactive elements
 // can't validly nest inside a <button>, which would also make a click
 // on Close ambiguously also select the tab.
-export function TabItem({ value, children, onClose }: { value: string; children: ReactNode; onClose?: () => void }) {
+export function TabItem({ value, children, kicker, onClose }: { value: string; children: ReactNode; kicker?: string; onClose?: () => void }) {
   const { tabProps } = useTab<HTMLButtonElement>({ value })
   return (
     <div className={styles.tabItem}>
       <button {...tabProps} type="button" className={styles.tab}>
-        {children}
+        {/* The two-line work-tab pattern (reference-platform precedent,
+            owner-requested): a small uppercase KIND line above the name,
+            so a tab self-identifies what sort of thing it holds before
+            the label is read (recognition-not-confirmation,
+            docs/SPEC.md §3.8). aria-hidden keeps it out of the tab's
+            accessible name -- every getByRole('tab', { name }) selector
+            and screen-reader announcement stays exactly the label. */}
+        {kicker && <span aria-hidden="true" data-testid="tab-kicker" className={styles.tabKicker}>{kicker}</span>}
+        {/* Row wrapper: .tab is a flex COLUMN now (kicker above label);
+            without this, a multi-part label (text + dirty dot) would
+            stack vertically too. */}
+        <span className={styles.tabLabelRow}>{children}</span>
       </button>
       {onClose && (
         <span
