@@ -9,13 +9,20 @@
     display: flex;
     /* One tidy row that scrolls, never a second wrapped row (goal 0018,
        owner: "not loving the tab UI" with tabs spilling onto line 2).
-       min-width:0 + flex lets it shrink inside the app-wide strip's flex
-       row (WorkTabShell) so the overflow ⌄ menu stays pinned beside it;
+       min-width:0 + flex-shrink lets it shrink inside the titlebar
+       band's flex row so the overflow ⌄ menu stays pinned beside it;
        the inner-tab consumers (Configure/RequestSummary/WorkflowEditor)
        have few, fixed tabs so they never actually scroll. Scrollbar
        hidden -- the ⌄ menu is the discoverable overflow affordance, the
-       bar itself scrolls by trackpad/shift-wheel. */
-    flex: 1 1 auto;
+       bar itself scrolls by trackpad/shift-wheel.
+       flex-GROW is deliberately 0: this class also renders inside flex
+       COLUMNS (WorkflowEditorTab's inner Canvas/Runs/Versions bar sits
+       in .editorPanel's column), where a grow factor sizes HEIGHT and
+       ballooned the tab bar to eat all spare vertical space -- the
+       owner's reported dead-space regression, confirmed by DOM probe
+       (tabList h=178px). Shrink-only keeps the row overflow behavior
+       and stops the column growth. */
+    flex: 0 1 auto;
     min-width: 0;
     flex-wrap: nowrap;
     overflow-x: auto;
