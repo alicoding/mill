@@ -23,6 +23,14 @@ const (
 	EffectDeny  Effect = "deny"
 )
 
+// SourceDebug marks a Rule as a breakpoint/step-mode debug park rather
+// than an authored policy rule (docs/adr/0031). The zero value ("")
+// means "policy" -- every rule stored before this field existed decodes
+// as policy, migration-free. Kept as a plain string (not a named type)
+// so the JSON wire shape and the Configure-authoring RPCs (CreateRule/
+// UpdateRule) need no new plumbing beyond the field itself.
+const SourceDebug = "debug"
+
 // Rule is one guardrail rule. Scope is expressed by which fields are
 // set: every non-empty scope field must match the step being evaluated
 // (docs/adr/0019's three scopes are all expressible -- NodeTypeID alone
@@ -41,6 +49,15 @@ type Rule struct {
 	// evaluation environment (Payload/Attributes/Config). Empty means
 	// the rule matches unconditionally within its scope.
 	Condition string
+	// Source distinguishes a breakpoint (SourceDebug) from an authored
+	// policy rule ("" -- docs/adr/0031's "named exception, not silent
+	// erosion": ADR-0022's Update locked rule AUTHORING out of the
+	// canvas Inspector, but a breakpoint borrows the same Rule/park
+	// plumbing without being policy itself). The canvas Inspector's
+	// "Breakpoint" toggle may only ever create/delete a SourceDebug
+	// rule; Configure > Guardrails (when it returns) governs policy
+	// rules exclusively.
+	Source string
 }
 
 // Validate rejects a rule that could never evaluate meaningfully --
@@ -58,6 +75,9 @@ func (r Rule) Validate() error {
 	}
 	if r.NodeID != "" && r.WorkflowID == "" {
 		return fmt.Errorf("guardrail: a step-scoped rule needs its workflow too")
+	}
+	if r.Source != "" && r.Source != SourceDebug {
+		return fmt.Errorf("guardrail: rule source must be empty (policy) or %q (got %q)", SourceDebug, r.Source)
 	}
 	if r.Condition != "" {
 		if err := expression.Compile(r.Condition, ConditionEnv("", nil, nil)); err != nil {
@@ -139,6 +159,11 @@ type Verdict struct {
 	// effect-class default decided.
 	RuleID    string `json:"ruleID,omitempty"`
 	RuleLabel string `json:"ruleLabel,omitempty"`
+	// Source mirrors the deciding rule's Source (SourceDebug or "" for
+	// policy/the effect-class default) -- docs/adr/0031: lets a
+	// downstream park distinguish a breakpoint from a policy ask without
+	// re-inspecting the rule set.
+	Source string `json:"source,omitempty"`
 }
 
 // Evaluate resolves a step against the rule set: any matching deny
@@ -156,7 +181,7 @@ func Evaluate(rules []Rule, step Step, class EffectClass) Verdict {
 	for _, want := range []Effect{EffectDeny, EffectAsk, EffectAllow} {
 		for _, r := range matched {
 			if r.Effect == want {
-				return Verdict{Effect: r.Effect, RuleID: r.ID, RuleLabel: r.Label}
+				return Verdict{Effect: r.Effect, RuleID: r.ID, RuleLabel: r.Label, Source: r.Source}
 			}
 		}
 	}

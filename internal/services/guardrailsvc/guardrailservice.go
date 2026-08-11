@@ -116,6 +116,12 @@ type RuleTestResult struct {
 	// so the tester can explain a default verdict ("external steps ask
 	// by default").
 	EffectClass string `json:"effectClass"`
+	// Source mirrors the deciding rule's guardrail.Source (SourceDebug
+	// for a breakpoint, "" for policy) -- docs/adr/0031: the canvas's
+	// nothing-hidden badge uses this to render the distinct debug badge
+	// instead of the policy shield when a breakpoint is what's actually
+	// asking.
+	Source string `json:"source,omitempty"`
 }
 
 // TestRules dry-runs the current rule set against one real workflow
@@ -159,6 +165,7 @@ func (g *GuardrailService) TestRules(workflowID, nodeID string) (RuleTestResult,
 		RuleID:      verdict.RuleID,
 		RuleLabel:   verdict.RuleLabel,
 		EffectClass: string(class),
+		Source:      verdict.Source,
 	}, nil
 }
 
@@ -210,7 +217,7 @@ func (g *GuardrailService) WorkflowVerdicts(workflowID string) (map[string]RuleT
 		class := composition.EffectForNode(n)
 		v := guardrail.Evaluate(rules, GuardrailStep(workflowID, n, composition.ExecContext{Attributes: attrs}), class)
 		out[n.ID] = RuleTestResult{
-			Effect: string(v.Effect), RuleID: v.RuleID, RuleLabel: v.RuleLabel, EffectClass: string(class),
+			Effect: string(v.Effect), RuleID: v.RuleID, RuleLabel: v.RuleLabel, EffectClass: string(class), Source: v.Source,
 		}
 	}
 	return out, nil

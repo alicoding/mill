@@ -22,6 +22,12 @@ export interface CanvasNodeData extends Record<string, unknown> {
   // will pause or refuse is marked on the canvas BEFORE anyone runs it.
   guardrailEffect?: string
   guardrailRule?: string
+  // Source distinguishes a breakpoint's ask ('debug') from a policy
+  // ask/deny ('' -- docs/adr/0031): CanvasNodeView renders a distinct
+  // debug badge instead of the guardrail shield when this is 'debug',
+  // so the two never read as one concept ("recognition, not
+  // confirmation").
+  guardrailSource?: string
   // This node's own authoring-validation issues (docs/adr/0028),
   // injected by CompositionCanvas from useDraftValidation's debounced
   // ValidateDraft call -- the same nothing-hidden pattern as
@@ -33,7 +39,7 @@ export interface CanvasNodeData extends Record<string, unknown> {
 
 export type CanvasNode = RFNode<CanvasNodeData>
 
-interface CanvasState {
+export interface CanvasState {
   nodes: CanvasNode[]
   edges: RFEdge[]
   onNodesChange: (changes: NodeChange<CanvasNode>[]) => void
@@ -45,7 +51,7 @@ interface CanvasState {
   updateEdgeCondition: (id: string, condition: string) => void
   removeSelected: () => void
   load: (nodes: CanvasNode[], edges: RFEdge[]) => void
-  setGuardrailVerdicts: (verdicts: Record<string, { effect: string; ruleLabel: string }>) => void
+  setGuardrailVerdicts: (verdicts: Record<string, { effect: string; ruleLabel: string; source?: string }>) => void
   setValidationIssues: (issuesByNodeId: Record<string, { severity: string; message: string }[]>) => void
   clear: () => void
 }
@@ -131,8 +137,12 @@ export function createCanvasStore(initialNodes: CanvasNode[] = [], initialEdges:
             nodes: get().nodes.map((n) => {
               const v = verdicts[n.id]
               const effect = v?.effect === 'ask' || v?.effect === 'deny' ? v.effect : undefined
-              if ((n.data.guardrailEffect ?? undefined) === effect && (!effect || n.data.guardrailRule === v?.ruleLabel)) return n
-              return { ...n, data: { ...n.data, guardrailEffect: effect, guardrailRule: v?.ruleLabel } }
+              const source = effect ? v?.source : undefined
+              if (
+                (n.data.guardrailEffect ?? undefined) === effect &&
+                (!effect || (n.data.guardrailRule === v?.ruleLabel && n.data.guardrailSource === source))
+              ) return n
+              return { ...n, data: { ...n.data, guardrailEffect: effect, guardrailRule: v?.ruleLabel, guardrailSource: source } }
             }),
           }),
         setValidationIssues: (issuesByNodeId) =>

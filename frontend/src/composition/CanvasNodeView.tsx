@@ -1,7 +1,7 @@
 import { Handle, Position as RFPosition } from '@xyflow/react'
 import type { NodeProps } from '@xyflow/react'
 import { Text } from '@primer/react'
-import { AlertFillIcon, ShieldIcon } from '@primer/octicons-react'
+import { AlertFillIcon, BugIcon, ShieldIcon } from '@primer/octicons-react'
 import type { CanvasNode } from './canvasStore'
 import { KIND_ICON, KIND_ICON_BG, KIND_LABEL } from './nodeKind'
 import { WorkflowHoverPreview } from './WorkflowHoverPreview'
@@ -91,7 +91,20 @@ export function CanvasNodeView({ id, data, selected }: NodeProps<CanvasNode>) {
           </Text>
         ) : null}
       </div>
-      {(data.guardrailEffect === 'ask' || data.guardrailEffect === 'deny') && (
+      {/* A breakpoint is a distinct debug badge, never the policy shield
+          (docs/adr/0031: "recognition, not confirmation -- the two must
+          never read as one concept") -- a different icon (BugIcon,
+          done-purple) AND a different corner (bottom-left) from the
+          guardrail shield's top-right. */}
+      {data.guardrailEffect === 'ask' && data.guardrailSource === 'debug' ? (
+        <span
+          className={styles.canvasNodeDebug}
+          data-testid="canvas-debug-badge"
+          title="Breakpoint: this step pauses for inspection before it runs"
+        >
+          <BugIcon size={12} />
+        </span>
+      ) : (data.guardrailEffect === 'ask' || data.guardrailEffect === 'deny') && (
         <span
           className={styles.canvasNodeGuardrail}
           data-testid="canvas-guardrail-badge"

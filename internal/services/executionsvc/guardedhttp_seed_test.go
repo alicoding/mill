@@ -72,7 +72,7 @@ func TestSeededGuardedHTTPWorkflow_DenyFailsClosed_NoHTTPCall(t *testing.T) {
 		t.Fatalf("pending.NodeTypeID = %q, want integration-http", pending.NodeTypeID)
 	}
 
-	if err := exec.ResolveApproval(summary.RunID, pending.NodeID, false, nil); err != nil {
+	if err := exec.ResolveApproval(summary.RunID, pending.NodeID, false, nil, false); err != nil {
 		t.Fatalf("ResolveApproval(deny): %v", err)
 	}
 
@@ -138,7 +138,7 @@ func TestSeededGuardedHTTPWorkflow_ApproveFiresRealHTTPCall(t *testing.T) {
 		return s.Pending, true
 	})
 
-	if err := exec.ResolveApproval(summary.RunID, pending.NodeID, true, nil); err != nil {
+	if err := exec.ResolveApproval(summary.RunID, pending.NodeID, true, nil, false); err != nil {
 		t.Fatalf("ResolveApproval(approve): %v", err)
 	}
 

@@ -69,6 +69,10 @@ var workflowProofRegistry = map[string]seedProof{
 	"example-branch-to-decision-workflow": proven(
 		"executionsvc.TestSeededBranchToDecisionExample_HighAmount_ApproveOutcome",
 		"executionsvc.TestSeededBranchToDecisionExample_LowAmount_DenyOutcome",
+		"executionsvc.TestBreakpoint_ParkEditResume_ChangesBranchTaken",
+		"executionsvc.TestStepMode_ParksBeforeEveryNode_StepThenContinue",
+		"mcpsvc.TestMCPDebugTools_SteppedSessionFullLoop",
+		"e2e: breakpoints.spec.ts",
 	),
 	"example-decision-with-review-workflow": proven(
 		"executionsvc.TestSeededDecisionWithReviewExample_Approve_Terminalizes",

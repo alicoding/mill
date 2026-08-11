@@ -110,6 +110,23 @@ export interface PendingApproval {
      * empty means all. The Review queue renders only these.
      */
     "inputAttributes"?: string[] | null;
+
+    /**
+     * Source distinguishes a breakpoint/step-mode debug park
+     * (guardrail.SourceDebug) from an ordinary policy ask or
+     * human-review checkpoint ("" -- docs/adr/0031). The UI's debug
+     * badge/Resume-Stop wording and the MCP debug tools (which hard-
+     * reject anything but a debug park) both key off this.
+     */
+    "source"?: string;
+
+    /**
+     * Stepped reports whether this run is a debug "step mode" session
+     * (docs/adr/0031 §5) -- true means EVERY node parks, not just this
+     * one, so the UI offers Step/Continue/Stop instead of plain
+     * Resume/Stop.
+     */
+    "stepped": boolean;
 }
 
 /**
@@ -186,7 +203,25 @@ export interface RunStep {
     "nodeTypeID": string;
     "nodeTypeLabel": string;
     "status": string;
+
+    /**
+     * Input/InputAttributes are this step's recorded INPUT (docs/adr/0031
+     * item 3): the immediately-preceding EXECUTED step's own recorded
+     * Payload/Attributes, or the run's own seeded starting values for
+     * the first executed step. Previously undiscoverable at all -- only
+     * a step's OUTPUT was ever surfaced.
+     */
+    "input"?: string;
+    "inputAttributes"?: { [_ in string]?: any } | null;
     "output": string;
+
+    /**
+     * OutputAttributes is this step's Attributes bag AFTER it ran --
+     * the DBOS checkpoint already stores the full ExecContext
+     * (Payload+Attributes), but only Payload was ever decoded into
+     * Output; Attributes was silently discarded until now.
+     */
+    "outputAttributes"?: { [_ in string]?: any } | null;
     "error": string;
 
     /**
@@ -198,6 +233,14 @@ export interface RunStep {
      */
     "guardrailEffect"?: string;
     "guardrailRule"?: string;
+
+    /**
+     * GuardrailSource mirrors the recorded verdict's Source
+     * (guardrail.SourceDebug for a breakpoint/step-mode park, "" for
+     * policy) -- the Runs tab's own distinct debug badge (docs/adr/0031
+     * item 2), never conflated with the policy shield.
+     */
+    "guardrailSource"?: string;
 }
 
 /**

@@ -79,4 +79,16 @@ export interface Rule {
      * the rule matches unconditionally within its scope.
      */
     "Condition": string;
+
+    /**
+     * Source distinguishes a breakpoint (SourceDebug) from an authored
+     * policy rule ("" -- docs/adr/0031's "named exception, not silent
+     * erosion": ADR-0022's Update locked rule AUTHORING out of the
+     * canvas Inspector, but a breakpoint borrows the same Rule/park
+     * plumbing without being policy itself). The canvas Inspector's
+     * "Breakpoint" toggle may only ever create/delete a SourceDebug
+     * rule; Configure > Guardrails (when it returns) governs policy
+     * rules exclusively.
+     */
+    "Source": string;
 }

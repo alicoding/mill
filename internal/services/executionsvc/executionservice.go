@@ -4,12 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/alicoding/mill/internal/adapters/execution"
 	"github.com/alicoding/mill/internal/domain/composition"
-	"github.com/alicoding/mill/internal/domain/guardrail"
 	"github.com/alicoding/mill/internal/services/compositionsvc"
 	"github.com/alicoding/mill/internal/services/guardrailsvc"
 	"github.com/google/uuid"
@@ -94,6 +92,11 @@ type runInput struct {
 	// caller with nothing to offer (a manual/hotkey/schedule/clipboard-
 	// watch fire, RunWorkflow's own zero-payload delegation below).
 	Payload string
+	// Stepped starts this run in debug "step mode" (docs/adr/0031 §5):
+	// the guardrail gate parks before every node. False for every run
+	// started before this field existed. Only RunWorkflowStepped sets
+	// it true.
+	Stepped bool
 }
 
 // RunStep is one node's recorded execution within a run, for the
@@ -106,8 +109,20 @@ type RunStep struct {
 	NodeTypeID    string `json:"nodeTypeID"`
 	NodeTypeLabel string `json:"nodeTypeLabel"`
 	Status        string `json:"status"`
-	Output        string `json:"output"`
-	Error         string `json:"error"`
+	// Input/InputAttributes are this step's recorded INPUT (docs/adr/0031
+	// item 3): the immediately-preceding EXECUTED step's own recorded
+	// Payload/Attributes, or the run's own seeded starting values for
+	// the first executed step. Previously undiscoverable at all -- only
+	// a step's OUTPUT was ever surfaced.
+	Input           string         `json:"input,omitempty"`
+	InputAttributes map[string]any `json:"inputAttributes,omitempty"`
+	Output          string         `json:"output"`
+	// OutputAttributes is this step's Attributes bag AFTER it ran --
+	// the DBOS checkpoint already stores the full ExecContext
+	// (Payload+Attributes), but only Payload was ever decoded into
+	// Output; Attributes was silently discarded until now.
+	OutputAttributes map[string]any `json:"outputAttributes,omitempty"`
+	Error            string         `json:"error"`
 	// GuardrailEffect/GuardrailRule surface the step's recorded
 	// guardrail verdict (docs/adr/0022) -- what actually decided at run
 	// time, decoded from the checkpointed guardrail step, never a
@@ -115,6 +130,11 @@ type RunStep struct {
 	// effect-class default allowed without any rule involved.
 	GuardrailEffect string `json:"guardrailEffect,omitempty"`
 	GuardrailRule   string `json:"guardrailRule,omitempty"`
+	// GuardrailSource mirrors the recorded verdict's Source
+	// (guardrail.SourceDebug for a breakpoint/step-mode park, "" for
+	// policy) -- the Runs tab's own distinct debug badge (docs/adr/0031
+	// item 2), never conflated with the policy shield.
+	GuardrailSource string `json:"guardrailSource,omitempty"`
 }
 
 // RunSummary is one run's headline state -- the row shape for a
@@ -227,7 +247,21 @@ func (e *ExecutionService) runWorkflow(ctx execution.Context, in runInput) (stri
 		}, execution.WithStepName(stepID))
 	}
 	return composition.ExecuteWorkflowWithStepRunner(in.Nodes, in.Edges, in.Attributes, stepRunner,
-		composition.ExecuteOptions{AttrValues: in.Values, RunContext: ctx, InitialPayload: in.Payload})
+		composition.ExecuteOptions{
+			AttrValues: in.Values, RunContext: ctx, InitialPayload: in.Payload,
+			// WorkflowID was never threaded through here before this
+			// change -- a real, previously-latent bug found while
+			// building breakpoints (docs/adr/0031): every workflow- and
+			// node-instance-scoped guardrail rule (ADR-0019's third
+			// scope, which a breakpoint IS) evaluated against an always-
+			// empty WorkflowID and so could never actually match at run
+			// time, even though guardrailservice.go's dry-run tester
+			// (which does pass workflowID) reported the rule as live.
+			// Fixed here, load-bearing for this feature, not a
+			// speculative unrelated cleanup.
+			WorkflowID: in.WorkflowID,
+			Stepped:    in.Stepped,
+		})
 }
 
 // RunWorkflow is the one execution entrypoint for the running app
@@ -251,7 +285,7 @@ func (e *ExecutionService) runWorkflow(ctx execution.Context, in runInput) (stri
 // button, the MCP authoring loop's run_workflow tool) behaves exactly
 // as before this field existed.
 func (e *ExecutionService) RunWorkflow(workflowID string, kind RunKind, values map[string]string) (RunSummary, error) {
-	return e.RunWorkflowWithPayload(workflowID, kind, values, "")
+	return e.runWorkflowStart(workflowID, kind, values, "", false)
 }
 
 // RunWorkflowWithPayload is RunWorkflow plus a starting payload for the
@@ -261,6 +295,22 @@ func (e *ExecutionService) RunWorkflow(workflowID string, kind RunKind, values m
 // filesystem-watch trigger's changed file path) into the run instead of
 // starting from "".
 func (e *ExecutionService) RunWorkflowWithPayload(workflowID string, kind RunKind, values map[string]string, payload string) (RunSummary, error) {
+	return e.runWorkflowStart(workflowID, kind, values, payload, false)
+}
+
+// RunWorkflowStepped starts a workflow run in debug "step mode"
+// (docs/adr/0031 §5) -- a run-scoped debug variant of the normal Run
+// action, always a test run of the draft head (matching ADR-0008's
+// test-input dialog, never the published snapshot): the guardrail gate
+// parks before EVERY node, not just external-effect ones, until a
+// "Continue" resume clears it (executionservice_guardrail.go). Always
+// starts non-blocking (the run is guaranteed to park at its first node)
+// regardless of mayRequireApproval's own pre-scan.
+func (e *ExecutionService) RunWorkflowStepped(workflowID string, values map[string]string) (RunSummary, error) {
+	return e.runWorkflowStart(workflowID, RunKindTest, values, "", true)
+}
+
+func (e *ExecutionService) runWorkflowStart(workflowID string, kind RunKind, values map[string]string, payload string, stepped bool) (RunSummary, error) {
 	wf, ok := e.findWorkflow(workflowID)
 	if !ok {
 		return RunSummary{}, fmt.Errorf("unknown workflow: %s", workflowID)
@@ -284,6 +334,7 @@ func (e *ExecutionService) RunWorkflowWithPayload(workflowID string, kind RunKin
 		Values:     values,
 		Version:    version,
 		Payload:    payload,
+		Stepped:    stepped,
 	}, execution.WithWorkflowID(runID))
 	if err != nil {
 		return RunSummary{}, fmt.Errorf("start run: %w", err)
@@ -296,10 +347,11 @@ func (e *ExecutionService) RunWorkflowWithPayload(workflowID string, kind RunKin
 	// live-streaming progress view isn't required for the "see what
 	// happened" half of execution visibility this exists for.
 	// EXCEPT when the graph could park awaiting a guardrail approval
-	// (docs/adr/0022): then return immediately with the run ID, so a
-	// Run click never hangs on a human decision -- the pending state
-	// surfaces via RunSummary.Pending instead.
-	if e.mayRequireApproval(wf.ID, nodes) {
+	// (docs/adr/0022), or this is a stepped run (guaranteed to park at
+	// its very first node, docs/adr/0031): then return immediately with
+	// the run ID, so a Run click never hangs on a human decision -- the
+	// pending state surfaces via RunSummary.Pending instead.
+	if stepped || e.mayRequireApproval(wf.ID, nodes) {
 		return e.summaryFor(handle.GetWorkflowID())
 	}
 	if _, err := handle.GetResult(); err != nil {
@@ -355,94 +407,6 @@ func (e *ExecutionService) listRuns(filterWorkflowID *string) ([]RunSummary, err
 		summaries = append(summaries, summary)
 	}
 	return summaries, nil
-}
-
-// GetRun returns one run's full per-node step breakdown, joined against
-// its workflow definition's current Nodes (by ID) for display labels --
-// falls back to a bare step list (no labels) if the definition was
-// since edited/deleted, rather than failing the whole call over
-// missing display metadata.
-func (e *ExecutionService) GetRun(runID string) (RunDetail, error) {
-	summary, err := e.summaryFor(runID)
-	if err != nil {
-		return RunDetail{}, err
-	}
-
-	steps, err := execution.GetWorkflowSteps(e.ctx, runID)
-	if err != nil {
-		return RunDetail{}, fmt.Errorf("get run steps: %w", err)
-	}
-
-	wf, haveWF := e.findWorkflow(summary.WorkflowID)
-	byID := make(map[string]composition.Node, len(wf.Nodes))
-	if haveWF {
-		for _, n := range wf.Nodes {
-			byID[n.ID] = n
-		}
-	}
-	typeLabels := make(map[string]string)
-	for _, nt := range composition.NodeTypes() {
-		typeLabels[nt.ID] = nt.Label
-	}
-
-	byNodeID := make(map[string]execution.StepInfo, len(steps))
-	for _, s := range steps {
-		byNodeID[s.StepName] = s
-	}
-
-	var view []RunStep
-	// Walk the definition's own node order when available so pending
-	// (not-yet-reached) nodes show up too, not just what DBOS recorded.
-	order := wf.Nodes
-	if !haveWF {
-		order = nil
-		for _, s := range steps {
-			order = append(order, composition.Node{ID: s.StepName})
-		}
-	}
-	for _, n := range order {
-		if n.Kind == composition.KindTrigger || n.Kind == composition.KindDecision {
-			continue
-		}
-		rs := RunStep{NodeID: n.ID, NodeTypeID: n.NodeTypeID, NodeTypeLabel: typeLabels[n.NodeTypeID], Status: "pending"}
-		if s, ok := byNodeID[n.ID]; ok {
-			if s.Error != nil {
-				rs.Status = "failed"
-				rs.Error = s.Error.Error()
-				// A code-execution step killed via CancelRun records a
-				// distinct status (docs/adr/0026: "cancelled != failed !=
-				// interrupted") -- matched by message, not error identity,
-				// since a checkpointed step's error crosses a DBOS
-				// JSON round trip (decodeAny's own doc comment) that
-				// only preserves Error(), never Go type/errors.Is.
-				if strings.Contains(rs.Error, composition.CancelledByUserMessage) {
-					rs.Status = "cancelled"
-				}
-			} else {
-				rs.Status = "succeeded"
-				if out, ok := decodeAny[composition.ExecContext](s.Output); ok {
-					rs.Output = out.Payload
-				}
-			}
-		}
-		// Join the step's recorded guardrail verdict (docs/adr/0022) --
-		// checkpointed under its own "guardrail:<nodeID>" step name.
-		if g, ok := byNodeID["guardrail:"+n.ID]; ok && g.Error == nil {
-			if v, ok := decodeAny[guardrail.Verdict](g.Output); ok {
-				rs.GuardrailEffect = string(v.Effect)
-				rs.GuardrailRule = v.RuleLabel
-				if v.Effect == guardrail.EffectDeny && rs.Status == "pending" {
-					rs.Status = "denied"
-				}
-			}
-		}
-		if summary.Pending != nil && summary.Pending.NodeID == n.ID {
-			rs.Status = "awaiting-approval"
-		}
-		view = append(view, rs)
-	}
-
-	return RunDetail{RunSummary: summary, Steps: view}, nil
 }
 
 // RedriveRun forks runID from the given node's step, reusing every
