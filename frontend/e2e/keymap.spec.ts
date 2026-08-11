@@ -42,12 +42,12 @@ test('Cmd+N opens a new-workflow tab', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Workflows' }).click()
 
-  // The work-tab strip (app/WorkTabShell.tsx) only renders once at
-  // least one work tab is open -- with none open yet, `role=tab`
-  // matches nothing at all, not even the pinned Workflows tab. So this
-  // asserts an absolute count (2: pinned + the new one), not a relative
-  // "+1" against a starting count of zero elements.
-  await expect(page.getByRole('tab')).toHaveCount(0)
+  // The titlebar band (app/App.tsx + app/WorkTabShell.tsx, Chrome-style
+  // tabs-in-titlebar) always renders -- it IS the titlebar -- so with no
+  // work tab open yet, `role=tab` still matches exactly one element: the
+  // pinned Workflows page tab. So this asserts an absolute count (1: the
+  // pinned tab alone), not zero.
+  await expect(page.getByRole('tab')).toHaveCount(1)
 
   await page.keyboard.press('Meta+n')
 
@@ -56,9 +56,29 @@ test('Cmd+N opens a new-workflow tab', async ({ page }) => {
   await expect(page.getByRole('tab', { name: 'New workflow' })).toBeVisible()
 
   await page.getByRole('button', { name: 'Close tab' }).click()
-  // Closing the only open work tab drops the strip back to zero tabs
-  // entirely (same reasoning as above, in reverse).
-  await expect(page.getByRole('tab')).toHaveCount(0)
+  // Closing the only open work tab drops back to just the pinned page
+  // tab (same reasoning as above, in reverse) -- never zero, the band
+  // itself never disappears.
+  await expect(page.getByRole('tab')).toHaveCount(1)
+})
+
+test('The titlebar band exists and holds the pinned page tab even with zero work tabs open', async ({ page }) => {
+  // Chrome-style tabs-in-titlebar (owner-requested): the band
+  // (app/App.tsx's own .titlebar element, data-testid="titlebar-tabs")
+  // is a real, always-present element -- not conditional chrome that
+  // only shows up once a work tab is open, the way the old
+  // WorkTabShell-owned strip was. Assert both: the band itself exists,
+  // and the pinned page tab (portaled into it by WorkTabShell) is
+  // inside it, with nothing else open.
+  await page.goto('/')
+  const band = page.getByTestId('titlebar-tabs')
+  await expect(band).toBeVisible()
+  await expect(band.getByRole('tab', { name: 'Home' })).toBeVisible()
+
+  await page.getByRole('link', { name: 'Workflows' }).click()
+  await expect(band.getByRole('tab', { name: 'Workflows' })).toBeVisible()
+  // Still exactly one tab -- the page tab alone, no work tabs open.
+  await expect(band.getByRole('tab')).toHaveCount(1)
 })
 
 test('Ctrl+Tab / Ctrl+Shift+Tab cycle the work-tab strip, wrapping through the pinned Workflows tab', async ({ page }) => {
@@ -106,13 +126,13 @@ test('Cmd+W closes the active work tab via the JS-level command dispatch (native
 
   await page.keyboard.press('Meta+w')
 
-  // Closing the only open work tab drops the strip back to zero tabs
-  // entirely (app/WorkTabShell.tsx only renders it once workTabs.length
-  // > 0) -- and, critically, this is JS state dropping to zero tabs,
-  // never a closed window/app (the whole point of the ⌘W reroute,
-  // docs/goals/0016): the underlying Workflows page is still right
-  // there, unaffected.
-  await expect(page.getByRole('tab')).toHaveCount(0)
+  // Closing the only open work tab drops back to just the pinned
+  // Workflows page tab (the titlebar band always shows at least that
+  // one -- app/App.tsx + app/WorkTabShell.tsx) -- and, critically, this
+  // is JS state closing a work tab, never a closed window/app (the
+  // whole point of the ⌘W reroute, docs/goals/0016): the underlying
+  // Workflows page is still right there, unaffected.
+  await expect(page.getByRole('tab')).toHaveCount(1)
   await expect(page.getByRole('heading', { name: 'Workflows', level: 1 })).toBeVisible()
 })
 

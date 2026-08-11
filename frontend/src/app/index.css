@@ -91,19 +91,18 @@ body {
     height: 100vh;
     height: 100dvh;
     display: flex;
-    flex-direction: column;             /* content area + footer pinned to the bottom */
+    flex-direction: column;             /* titlebar band + content area + footer, top to bottom */
     padding: env(safe-area-inset-top) env(safe-area-inset-right) 0 env(safe-area-inset-left);
 }
 
-/* Native desktop only (App.tsx adds this class inside the Wails
-   webview): the window uses MacTitleBarHiddenInset (main.go), so the
-   macOS traffic lights float over the top-left of the content area --
-   reserve that strip explicitly, since env(safe-area-inset-top) is 0
-   on desktop and covers nothing. 38px matches the standard hidden-inset
-   titlebar height the traffic lights are vertically centered in. */
-.app-shell--native-titlebar {
-    padding-top: 38px;
-}
+/* The titlebar band itself (App.tsx's own .titlebar/.titlebarNative,
+   App.module.css) is a real flex child of .app-shell, rendered first --
+   not a padding reservation on .app-shell. Previously this was a
+   .app-shell--native-titlebar padding-top:38px rule reserving empty
+   space above the content for the macOS hidden-inset traffic lights;
+   superseded by the Chrome-style tabs-in-titlebar band, which now
+   occupies that space as a real, always-present element (the work-tab
+   strip lives there) rather than blank padding. */
 
 /* Scrollable content pane -- since the PageLayout sidebar migration
    (docs/SPEC.md §2.2), applied only to PageLayout.Content (App.module.css)
