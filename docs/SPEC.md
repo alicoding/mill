@@ -3645,6 +3645,24 @@ recorded as a real design input (`OPEN`), never silently dropped.
   gives each rebuild its own fresh pgid, so that coupling is not
   by-design; the observed behavior stays unexplained (re-check with
   `ps -o pgid` if it recurs), not a settled fact.
+  **Also fixed the same day — the build-identity badge FALSE-alarmed
+  STALE on every commit during `task dev`.** Root cause: the badge
+  compared the Go binary's commit against `__MILL_REPO_HEAD__`, which
+  vite bakes ONCE at startup (`vite.config`'s `git rev-parse`) and
+  freezes for the whole session — but the binary's commit ADVANCES on
+  every wails rebuild, so committing during a running `task dev`
+  legitimately makes binary ≠ bundle, which the badge misread as
+  staleness and (worse) checked BEFORE the DEV·live case, so red STALE
+  won over green. Fixed: in a dev build (`import.meta.env.DEV`),
+  **DEV·live wins unconditionally** — vite HMR is the liveness
+  guarantee, and the frozen-bundle-vs-advancing-binary commit
+  comparison is structurally meaningless in dev. The binary-vs-bundle
+  comparison is kept only for installed/server builds, where `vite
+  build` bakes the bundle at the SAME commit as the binary (a mismatch
+  there is a real orphaned-process signal). Dev-orphan handling thus
+  moves cleanly from badge-DETECTION (which couldn't distinguish
+  "committed forward" from "orphaned binary" anyway) to Taskfile
+  PREVENTION (the sweep above) — prevention over false-alarm.
 
 ## 9.5 Platform kernel & extension contract
 
