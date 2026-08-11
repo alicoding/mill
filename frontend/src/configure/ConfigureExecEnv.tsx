@@ -7,6 +7,7 @@ import { ConfigureService } from '../shared/bindings'
 import type { ExecEnv } from '../../bindings/github.com/alicoding/mill/internal/domain/execenv/models'
 import { Shell, ProfileMode } from '../../bindings/github.com/alicoding/mill/internal/domain/execenv/models'
 import { downloadJSON } from '../shared/downloadJSON'
+import { envToRows, rowsToEnv, type EnvRow } from './execEnvRows'
 import { ViewModeToggle } from '../shared/ViewModeToggle'
 import { useViewMode } from '../shared/viewMode'
 import { InventoryList, type InventoryItem } from '../shared/InventoryList'
@@ -32,8 +33,16 @@ const PROFILE_LABEL: Partial<Record<ProfileMode, string>> = {
   [ProfileMode.ProfileLogin]: 'Login (sources your shell profile)',
 }
 
-function envToRows(env: string[] | null | undefined): string[] {
-  return env && env.length > 0 ? env : ['']
+// The caption must describe the SELECTED mode, not always Clean -- a
+// static caption showing Clean's semantics under a Login selection is
+// the UI describing a state that isn't real (docs/SPEC.md §1's thesis),
+// caught live from a screenshot. Wording matches execenv.go's own doc
+// comments on ProfileClean/ProfileLogin.
+const PROFILE_CAPTION: Partial<Record<ProfileMode, string>> = {
+  [ProfileMode.ProfileClean]:
+    'Fail-safe default -- no shell startup files are sourced; the step sees only the variables below.',
+  [ProfileMode.ProfileLogin]:
+    "Sources the shell's login startup files (.zprofile / .bash_profile) in addition to the variables below -- terminal parity, less deterministic.",
 }
 
 // Configure's Execution Environments section (docs/adr/0026,
@@ -50,7 +59,7 @@ export function ConfigureExecEnv() {
   const [shell, setShell] = useState<Shell>(Shell.ShellZsh)
   const [profileMode, setProfileMode] = useState<ProfileMode>(ProfileMode.ProfileClean)
   const [dir, setDir] = useState(TEMP_DIR_SENTINEL)
-  const [envRows, setEnvRows] = useState<string[]>([])
+  const [envRows, setEnvRows] = useState<EnvRow[]>([])
   const [formOpen, setFormOpen] = useState(false)
   const [error, setError] = useState('')
   const [importError, setImportError] = useState<string | null>(null)
@@ -90,7 +99,7 @@ export function ConfigureExecEnv() {
     setShell(Shell.ShellZsh)
     setProfileMode(ProfileMode.ProfileClean)
     setDir(TEMP_DIR_SENTINEL)
-    setEnvRows([''])
+    setEnvRows([{ key: '', value: '' }])
     setFormOpen(true)
     setError('')
   }
@@ -109,7 +118,7 @@ export function ConfigureExecEnv() {
   const save = async () => {
     setError('')
     try {
-      const env = envRows.map((r) => r.trim()).filter(Boolean)
+      const env = rowsToEnv(envRows)
       if (editingID) {
         await ConfigureService.UpdateExecEnv(editingID, label, shell, profileMode, dir, env)
       } else {
@@ -126,8 +135,8 @@ export function ConfigureExecEnv() {
     ConfigureService.DeleteExecEnv(id).then(refetch).catch(console.error)
   }
 
-  const updateEnvRow = (i: number, value: string) => {
-    setEnvRows((prev) => prev.map((r, idx) => (idx === i ? value : r)))
+  const updateEnvRow = (i: number, patch: Partial<EnvRow>) => {
+    setEnvRows((prev) => prev.map((r, idx) => (idx === i ? { ...r, ...patch } : r)))
   }
 
   const envItems: InventoryItem[] = (envs ?? []).map((e) => ({
@@ -191,7 +200,10 @@ export function ConfigureExecEnv() {
             </FormControl>
             <FormControl>
               <FormControl.Label>Profile mode</FormControl.Label>
-              <FormControl.Caption>Clean is the fail-safe default -- no shell startup files are sourced, only the Env below is visible.</FormControl.Caption>
+              {/* data-testid on an inner span: FormControl.Caption doesn't
+                  forward arbitrary props to its rendered element (checked
+                  the hard way -- an e2e getByTestId found nothing). */}
+              <FormControl.Caption><span data-testid="execenv-profile-caption">{PROFILE_CAPTION[profileMode] ?? ''}</span></FormControl.Caption>
               <Select value={profileMode} onChange={(e) => setProfileMode(e.target.value as ProfileMode)}>
                 {Object.values(ProfileMode).filter((p) => p !== ProfileMode.$zero).map((p) => (
                   <Select.Option key={p} value={p}>{PROFILE_LABEL[p] ?? p}</Select.Option>
@@ -203,11 +215,26 @@ export function ConfigureExecEnv() {
               <FormControl.Caption>{`Use ${TEMP_DIR_SENTINEL} to mint a fresh, Mill-owned temp directory for each run, or a real absolute path.`}</FormControl.Caption>
               <TextInput value={dir} onChange={(e) => setDir(e.target.value)} block />
             </FormControl>
-            <Text size="small" weight="semibold">Environment variables (KEY=VALUE)</Text>
+            <Text size="small" weight="semibold">Environment variables</Text>
             <FormControl.Caption>Explicit only -- never inherits Mill's own environment. Leave empty for a minimal default PATH.</FormControl.Caption>
             {envRows.map((row, i) => (
               <Stack key={i} direction="horizontal" gap="condensed" align="center">
-                <TextInput placeholder="PATH=/usr/bin:/bin" value={row} onChange={(e) => updateEnvRow(i, e.target.value)} block />
+                <TextInput
+                  placeholder="PATH"
+                  aria-label={`Variable ${i + 1} name`}
+                  data-testid="execenv-env-key"
+                  value={row.key}
+                  onChange={(e) => updateEnvRow(i, { key: e.target.value })}
+                  style={{ width: '30%' }}
+                />
+                <TextInput
+                  placeholder="/usr/bin:/bin"
+                  aria-label={`Variable ${i + 1} value`}
+                  data-testid="execenv-env-value"
+                  value={row.value}
+                  onChange={(e) => updateEnvRow(i, { value: e.target.value })}
+                  block
+                />
                 <IconButton
                   icon={TrashIcon}
                   aria-label="Remove variable"
@@ -217,7 +244,7 @@ export function ConfigureExecEnv() {
                 />
               </Stack>
             ))}
-            <Button size="small" variant="invisible" onClick={() => setEnvRows((prev) => [...prev, ''])}>
+            <Button size="small" variant="invisible" onClick={() => setEnvRows((prev) => [...prev, { key: '', value: '' }])}>
               Add variable
             </Button>
             {error && <Text as="p" size="small" className={styles.error}>{error}</Text>}
