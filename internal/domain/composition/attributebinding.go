@@ -84,7 +84,7 @@ func resolveInputBindings(specDoc string, config map[string]string, attrs map[st
 	pathParams = map[string]string{}
 	bodyFields := map[string]any{}
 	for _, f := range op.InputFields {
-		raw, ok := bindings[f.Name]
+		raw, ok := bindings[f.Key]
 		if !ok {
 			continue
 		}
@@ -94,14 +94,14 @@ func resolveInputBindings(specDoc string, config map[string]string, attrs map[st
 			// Substituted here for a legacy in-path template, and also
 			// returned raw so the caller can substitute over the full
 			// URL (one-URL model: templates may live in the URL field).
-			pathParams[f.Name] = val
-			path = strings.ReplaceAll(path, "{"+f.Name+"}", val)
+			pathParams[f.Key] = val
+			path = strings.ReplaceAll(path, "{"+f.Key+"}", val)
 		case "query":
-			query.Set(f.Name, val)
+			query.Set(f.Key, val)
 		case "header":
-			headers[f.Name] = val
+			headers[f.Key] = val
 		default: // "body"
-			bodyFields[f.Name] = val
+			bodyFields[f.Key] = val
 		}
 	}
 	if len(bodyFields) > 0 {
@@ -148,7 +148,7 @@ func applyOutputBindings(outputBindingsRaw, respBody, responseExtractPath string
 	pathByField := make(map[string]string, len(outputFields))
 	for _, f := range outputFields {
 		if f.Path != "" {
-			pathByField[f.Name] = f.Path
+			pathByField[f.Key] = f.Path
 		}
 	}
 

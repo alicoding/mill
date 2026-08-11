@@ -21,6 +21,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/alicoding/mill/internal/domain/typedfield"
 	"github.com/getkin/kin-openapi/openapi3"
 )
 
@@ -84,50 +85,35 @@ func (d *Document) Operations() []OperationRef {
 	return out
 }
 
-// Field is one declared input or output field of an Operation.
+// Field is one declared input or output field of an Operation --
+// ADR-0029 Phase 3: embeds the canonical typedfield.Field
+// (Key/Label/Type/Required/Default/Description/Options/Secret/...)
+// rather than hand-copying a fourth near-duplicate vocabulary. The
+// mapping from this package's original field names is a real semantic
+// unification, not a blind rename: Name->Key, Alias->Label (openapispec
+// never had a Label; Alias already meant "friendlier display name," the
+// same concept), Type string->typedfield.Type (schemaType translates
+// OpenAPI's own type/format keywords into it), EnumValues->Options,
+// IsSecret->Secret. In and Path stay openapispec-only extensions below
+// -- HTTP placement and nested-response extraction mean nothing to any
+// other typedfield consumer (ConfigField/AttributeDef/
+// decision.OutputField), ADR-0029's own "can't-unify" list. This
+// struct is a runtime VIEW computed fresh from a parsed OpenAPI
+// document every call -- never itself persisted -- so there is no wire
+// format of Field's own to keep compatible; the OpenAPI document JSON
+// underneath (Name/Alias/Path's real storage, via x-mill-* vendor
+// extensions) is completely unchanged by this.
 type Field struct {
-	Name     string
-	In       string // "path" | "query" | "header" | "cookie" | "body"
-	Type     string // "string" | "number" | "integer" | "boolean" | "object" | "array" | "map" | "date" | "datetime"
-	Required bool
-	// IsSecret flags a field composition.ValidateGraph's save-time
-	// guardrail (ADR-0007) refuses to let a workflow bind into an
-	// output Attribute -- true when the field's schema declares the
-	// OpenAPI-standard `format: "password"` (the spec's own documented
-	// convention for "mask this in a UI"), or its name looks
-	// secret-shaped (token/secret/password/apikey/authorization) as a
-	// defensive fallback for specs that don't bother with the format
-	// annotation. Applies uniformly to input and output fields -- a
-	// response can legitimately echo a sensitive field too.
-	IsSecret bool
-	// Alias is a friendlier reference name for this field (docs/adr/0011),
-	// read from the standard OpenAPI x-mill-alias vendor extension --
-	// empty when unset. Display-only: nothing in this package or
-	// composition's binding resolution treats Alias as a lookup key,
-	// only Name is ever used for that.
-	Alias string
+	typedfield.Field
+	// In is this field's HTTP placement: "path" | "query" | "header" |
+	// "cookie" | "body".
+	In string
 	// Path is a dot-separated path into (possibly nested) response JSON
 	// for extracting this field's value (docs/adr/0011), read from the
-	// x-mill-path extension -- empty means "read Name as a flat
+	// x-mill-path extension -- empty means "read Key as a flat
 	// top-level key," the behavior every field had before this existed.
 	// Only meaningful for output fields.
 	Path string
-	// Default is the field's declared OpenAPI `default` value,
-	// stringified (Default is `any` in the underlying schema -- Mill's
-	// own config/binding values are uniformly strings on the wire, same
-	// convention Node.Config/runInput.Values already use). Empty when
-	// unset -- OpenAPI's own `default` keyword, no vendor extension
-	// needed (unlike Alias/Path, which have no OpenAPI-standard
-	// equivalent).
-	Default string
-	// Description is the field's declared OpenAPI `description`.
-	Description string
-	// EnumValues is the field's declared OpenAPI `enum` list,
-	// stringified -- empty when unset. Same idea as ConfigField's
-	// FieldOptions (docs/SPEC.md §3.4), one level down: a connector
-	// schema field's own allowed-value constraint, not a NodeType
-	// config field's.
-	EnumValues []string
 }
 
 // fieldExtensions reads the x-mill-alias/x-mill-path vendor extensions
@@ -200,16 +186,18 @@ func (d *Document) Operation(path, method string) (*Operation, error) {
 		alias, path := fieldExtensions(p.Schema)
 		def, desc, enumValues := fieldSchemaExtras(p.Schema)
 		input = append(input, Field{
-			Name:        p.Name,
-			In:          p.In,
-			Type:        schemaType(p.Schema),
-			Required:    p.Required,
-			IsSecret:    isSecretField(p.Name, p.Schema),
-			Alias:       alias,
-			Path:        path,
-			Default:     def,
-			Description: desc,
-			EnumValues:  enumValues,
+			Field: typedfield.Field{
+				Key:         p.Name,
+				Label:       alias,
+				Type:        schemaType(p.Schema),
+				Required:    p.Required,
+				Default:     def,
+				Description: desc,
+				Options:     enumValues,
+				Secret:      isSecretField(p.Name, p.Schema),
+			},
+			In:   p.In,
+			Path: path,
 		})
 	}
 	if op.RequestBody != nil && op.RequestBody.Value != nil {
@@ -257,56 +245,66 @@ func bodyFields(content openapi3.Content) []Field {
 		alias, path := fieldExtensions(propRef)
 		def, desc, enumValues := fieldSchemaExtras(propRef)
 		out = append(out, Field{
-			Name:        name,
-			In:          "body",
-			Type:        schemaType(propRef),
-			Required:    required[name],
-			IsSecret:    isSecretField(name, propRef),
-			Alias:       alias,
-			Path:        path,
-			Default:     def,
-			Description: desc,
-			EnumValues:  enumValues,
+			Field: typedfield.Field{
+				Key:         name,
+				Label:       alias,
+				Type:        schemaType(propRef),
+				Required:    required[name],
+				Default:     def,
+				Description: desc,
+				Options:     enumValues,
+				Secret:      isSecretField(name, propRef),
+			},
+			In:   "body",
+			Path: path,
 		})
 	}
 	return out
 }
 
 // schemaType maps a schema's declared OpenAPI type/format into Mill's
-// own 9-value type vocabulary. "map" and "date"/"datetime" are the
-// three additions beyond the original 6 (string/number/integer/
-// boolean/object/array), per docs/SPEC.md §4.1's capability map:
-// OpenAPI has no dedicated "map" keyword -- the real, standard idiom
-// (confirmed directly against the spec, not assumed) is `type: object`
-// with `additionalProperties` set and no fixed `properties` -- and
-// date/date-time are the two standard `format` values on a `type:
-// string` schema (RFC 3339), not a new `type` of their own.
-func schemaType(ref *openapi3.SchemaRef) string {
+// canonical typedfield.Type vocabulary (ADR-0029 Phase 3) -- the
+// Mill<->OpenAPI translation boundary this package's own doc comment
+// already promised, extended here with "string"->TypeText (OpenAPI's
+// document keywords stay OpenAPI's own -- "string," never "text" --
+// only Mill's in-memory Field uses typedfield.Type). "map" and
+// "date"/"datetime" were already the three additions beyond the
+// original 6 (string/number/integer/boolean/object/array), per
+// docs/SPEC.md §4.1's capability map: OpenAPI has no dedicated "map"
+// keyword -- the real, standard idiom (confirmed directly against the
+// spec, not assumed) is `type: object` with `additionalProperties` set
+// and no fixed `properties` -- and date/date-time are the two standard
+// `format` values on a `type: string` schema (RFC 3339), not a new
+// `type` of their own. Every other OpenAPI type keyword
+// (number/integer/boolean/array) is already byte-identical to its
+// typedfield.Type constant, so the default branch is a plain
+// same-string conversion, not a lookup table.
+func schemaType(ref *openapi3.SchemaRef) typedfield.Type {
 	if ref == nil || ref.Value == nil || ref.Value.Type == nil {
-		return "string"
+		return typedfield.TypeText
 	}
 	s := ref.Value.Type.Slice()
 	if len(s) == 0 {
-		return "string"
+		return typedfield.TypeText
 	}
 	switch s[0] {
 	case "string":
 		switch ref.Value.Format {
 		case "date":
-			return "date"
+			return typedfield.TypeDate
 		case "date-time":
-			return "datetime"
+			return typedfield.TypeDatetime
 		default:
-			return "string"
+			return typedfield.TypeText
 		}
 	case "object":
 		ap := ref.Value.AdditionalProperties
 		if len(ref.Value.Properties) == 0 && (ap.Schema != nil || (ap.Has != nil && *ap.Has)) {
-			return "map"
+			return typedfield.TypeMap
 		}
-		return "object"
+		return typedfield.TypeObject
 	default:
-		return s[0]
+		return typedfield.Type(s[0])
 	}
 }
 
@@ -348,7 +346,7 @@ func isSecretField(name string, ref *openapi3.SchemaRef) bool {
 }
 
 func sortFields(fields []Field) {
-	sort.Slice(fields, func(i, j int) bool { return fields[i].Name < fields[j].Name })
+	sort.Slice(fields, func(i, j int) bool { return fields[i].Key < fields[j].Key })
 }
 
 // BuildRequest assembles a path/query/headers/body from an Operation's
@@ -367,19 +365,19 @@ func BuildRequest(pathTemplate string, op *Operation, values map[string]string) 
 	bodyObj := map[string]any{}
 
 	for _, f := range op.InputFields {
-		raw, ok := values[f.Name]
+		raw, ok := values[f.Key]
 		if !ok {
 			continue
 		}
 		switch f.In {
 		case "path":
-			resolvedPath = strings.ReplaceAll(resolvedPath, "{"+f.Name+"}", raw)
+			resolvedPath = strings.ReplaceAll(resolvedPath, "{"+f.Key+"}", raw)
 		case "query":
-			query.Set(f.Name, raw)
+			query.Set(f.Key, raw)
 		case "header":
-			headers[f.Name] = raw
+			headers[f.Key] = raw
 		default: // "body" (and any other placement kin-openapi never emits today)
-			bodyObj[f.Name] = coerceValue(f.Type, raw)
+			bodyObj[f.Key] = coerceValue(f.Type, raw)
 		}
 	}
 
@@ -401,17 +399,17 @@ func BuildRequest(pathTemplate string, op *Operation, values map[string]string) 
 // value that doesn't actually match its declared type) rather than
 // failing the whole request -- the real API is the actual validator
 // here, not this function.
-func coerceValue(fieldType, raw string) any {
+func coerceValue(fieldType typedfield.Type, raw string) any {
 	switch fieldType {
-	case "number":
+	case typedfield.TypeNumber:
 		if v, err := strconv.ParseFloat(raw, 64); err == nil {
 			return v
 		}
-	case "integer":
+	case typedfield.TypeInteger:
 		if v, err := strconv.ParseInt(raw, 10, 64); err == nil {
 			return v
 		}
-	case "boolean":
+	case typedfield.TypeBoolean:
 		if v, err := strconv.ParseBool(raw); err == nil {
 			return v
 		}

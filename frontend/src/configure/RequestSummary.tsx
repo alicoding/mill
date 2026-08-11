@@ -218,21 +218,21 @@ function SchemaFieldList({ label, fields }: { label: string; fields: Field[] | n
     <Stack direction="vertical" gap="condensed">
       <Text size="small" weight="semibold">{label}</Text>
       {list.map((f) => (
-        <Stack key={f.Name} direction="horizontal" gap="condensed" align="center">
-          <Text size="small">{f.Alias ? `${f.Alias} (${f.Name})` : f.Name}</Text>
+        <Stack key={f.Key} direction="horizontal" gap="condensed" align="center">
+          <Text size="small">{f.Label ? `${f.Label} (${f.Key})` : f.Key}</Text>
           <Label variant="secondary" size="small">{f.In}</Label>
           <Label variant="secondary" size="small">{f.Type}</Label>
           {f.Required && <Label size="small">required</Label>}
-          {f.IsSecret && <Label variant="danger" size="small">secret</Label>}
+          {f.Secret && <Label variant="danger" size="small">secret</Label>}
           {f.Path && <Label variant="accent" size="small">path: {f.Path}</Label>}
           {f.Default && <Label variant="accent" size="small">default: {f.Default}</Label>}
-          {f.EnumValues && f.EnumValues.length > 0 && <Label variant="accent" size="small">enum: {f.EnumValues.join(', ')}</Label>}
+          {f.Options && f.Options.length > 0 && <Label variant="accent" size="small">enum: {f.Options.join(', ')}</Label>}
         </Stack>
       ))}
       {list.some((f) => f.Description) && (
         <Stack direction="vertical" gap="condensed">
           {list.filter((f) => f.Description).map((f) => (
-            <Text key={f.Name} as="p" size="small" className={styles.muted}>{f.Name}: {f.Description}</Text>
+            <Text key={f.Key} as="p" size="small" className={styles.muted}>{f.Key}: {f.Description}</Text>
           ))}
         </Stack>
       )}
