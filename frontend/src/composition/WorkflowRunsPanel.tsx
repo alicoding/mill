@@ -380,9 +380,16 @@ function WorkflowRunsPanel({ workflowId, attrs, initialRunId, onInitialRunConsum
                     {step.error && <Text as="p" size="small" className={styles.error}>{step.error}</Text>}
                   </div>
                 </Stack>
+                {/* "Retry", not "redrive": redrive is AWS-specific jargon
+                    (SQS DLQ / Step Functions); the no-code space the owner
+                    navigates by says Retry (n8n) / Replay (Zapier) /
+                    Resubmit (Power Automate). Code-level RedriveRun/DBOS
+                    fork naming is untouched -- ADR-0016's code-vs-UI
+                    naming split, applied again (same class as the
+                    "idempotency key" -> "Skip duplicate runs" rewrite). */}
                 {step.status === 'failed' && (
                   <Button size="small" disabled={busy} onClick={() => redrive(step.nodeID)}>
-                    Redrive from here
+                    Retry from this step
                   </Button>
                 )}
               </Stack>
