@@ -350,7 +350,7 @@ func validateRequiredRefs(nodes []Node) []Issue {
 
 // validateOutputBindingSecrets is ADR-0007 Phase 3's secret guardrail:
 // an integration-http node may not write a secret-classified response
-// field (openapispec.Field.IsSecret -- format:"password", or a name
+// field (openapispec.Field.Secret -- format:"password", or a name
 // that looks secret-shaped) into a workflow Attribute, since Attributes
 // are plain, DBOS-checkpointed values (persisted to SQLite in plaintext,
 // §7) with no secret-handling of their own. Lenient about anything it
@@ -383,8 +383,8 @@ func validateOutputBindingSecrets(nodes []Node) []Issue {
 		}
 		secretFields := make(map[string]bool, len(op.OutputFields))
 		for _, f := range op.OutputFields {
-			if f.IsSecret {
-				secretFields[f.Name] = true
+			if f.Secret {
+				secretFields[f.Key] = true
 			}
 		}
 		for fieldName, attrName := range bindings {

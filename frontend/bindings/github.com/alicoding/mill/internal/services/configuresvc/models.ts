@@ -60,7 +60,7 @@ export interface TestHTTPRequestInput {
 
     /**
      * Values is a flat map of example (generated or hand-edited) field
-     * values keyed by the operation's declared Field.Name, resolved into
+     * values keyed by the operation's declared Field.Key, resolved into
      * path/query/header/body placement by openapispec.BuildRequest.
      */
     "Values": { [_ in string]?: string } | null;

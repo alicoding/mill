@@ -110,7 +110,7 @@ func TestOperation_GET_InputFields_HavePlacementAndSecretFlag(t *testing.T) {
 
 	byName := make(map[string]Field, len(op.InputFields))
 	for _, f := range op.InputFields {
-		byName[f.Name] = f
+		byName[f.Key] = f
 	}
 
 	orderID, ok := byName["orderId"]
@@ -125,8 +125,8 @@ func TestOperation_GET_InputFields_HavePlacementAndSecretFlag(t *testing.T) {
 	if !ok || apiKey.In != "header" {
 		t.Errorf("X-Api-Key field = %+v, want In=header", apiKey)
 	}
-	if !apiKey.IsSecret {
-		t.Error("X-Api-Key field.IsSecret = false, want true (name-based heuristic)")
+	if !apiKey.Secret {
+		t.Error("X-Api-Key field.Secret = false, want true (name-based heuristic)")
 	}
 }
 
@@ -145,15 +145,15 @@ func TestOperation_GET_OutputFields_PasswordFormatIsSecret(t *testing.T) {
 
 	byName := make(map[string]Field, len(op.OutputFields))
 	for _, f := range op.OutputFields {
-		byName[f.Name] = f
+		byName[f.Key] = f
 	}
 
 	status, ok := byName["status"]
-	if !ok || !status.Required || status.IsSecret {
+	if !ok || !status.Required || status.Secret {
 		t.Errorf("status field = %+v, want Required=true IsSecret=false", status)
 	}
 	token, ok := byName["sessionToken"]
-	if !ok || !token.IsSecret {
+	if !ok || !token.Secret {
 		t.Errorf("sessionToken field = %+v, want IsSecret=true (format: password)", token)
 	}
 }
@@ -173,7 +173,7 @@ func TestOperation_POST_RequestBodyFields(t *testing.T) {
 	}
 	var sawQuantity bool
 	for _, f := range op.InputFields {
-		if f.Name == "quantity" {
+		if f.Key == "quantity" {
 			sawQuantity = true
 			if f.In != "body" || f.Type != "integer" || !f.Required {
 				t.Errorf("quantity field = %+v, want In=body Type=integer Required=true", f)
@@ -245,20 +245,20 @@ func TestOperation_AliasAndPathExtensions_Extracted(t *testing.T) {
 		t.Fatalf("Operation: %v", err)
 	}
 
-	if len(op.InputFields) != 1 || op.InputFields[0].Alias != "widgetId" {
+	if len(op.InputFields) != 1 || op.InputFields[0].Label != "widgetId" {
 		t.Errorf("InputFields = %+v, want one field with Alias=widgetId", op.InputFields)
 	}
 
 	byName := make(map[string]Field, len(op.OutputFields))
 	for _, f := range op.OutputFields {
-		byName[f.Name] = f
+		byName[f.Key] = f
 	}
 	n, ok := byName["n"]
-	if !ok || n.Alias != "widgetName" || n.Path != "data.name" {
+	if !ok || n.Label != "widgetName" || n.Path != "data.name" {
 		t.Errorf("field %q = %+v, want Alias=widgetName Path=data.name", "n", n)
 	}
 	plain, ok := byName["plain"]
-	if !ok || plain.Alias != "" || plain.Path != "" {
+	if !ok || plain.Label != "" || plain.Path != "" {
 		t.Errorf("field %q = %+v, want empty Alias/Path (no extension set, backward compatible)", "plain", plain)
 	}
 }
@@ -367,7 +367,7 @@ func TestOperation_DefaultDescriptionEnum_Extracted(t *testing.T) {
 	}
 	byName := make(map[string]Field, len(op.InputFields))
 	for _, f := range op.InputFields {
-		byName[f.Name] = f
+		byName[f.Key] = f
 	}
 
 	status, ok := byName["status"]
@@ -375,12 +375,12 @@ func TestOperation_DefaultDescriptionEnum_Extracted(t *testing.T) {
 		t.Errorf("status = %+v, want Description=%q Default=%q", status, "current status", "pending")
 	}
 	wantEnum := []string{"pending", "active", "closed"}
-	if len(status.EnumValues) != len(wantEnum) {
-		t.Fatalf("status.EnumValues = %v, want %v", status.EnumValues, wantEnum)
+	if len(status.Options) != len(wantEnum) {
+		t.Fatalf("status.Options = %v, want %v", status.Options, wantEnum)
 	}
 	for i, v := range wantEnum {
-		if status.EnumValues[i] != v {
-			t.Errorf("status.EnumValues[%d] = %q, want %q", i, status.EnumValues[i], v)
+		if status.Options[i] != v {
+			t.Errorf("status.Options[%d] = %q, want %q", i, status.Options[i], v)
 		}
 	}
 
@@ -401,7 +401,7 @@ func TestOperation_MapDateDatetimeTypes_Extracted(t *testing.T) {
 	}
 	byName := make(map[string]Field, len(op.InputFields))
 	for _, f := range op.InputFields {
-		byName[f.Name] = f
+		byName[f.Key] = f
 	}
 
 	if got := byName["metadata"].Type; got != "map" {
