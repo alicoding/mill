@@ -132,11 +132,15 @@ export const COMMANDS: Command[] = [
   {
     id: 'palette.open',
     label: 'Open command palette',
-    // goal 0015 (unbuilt) owns the actual palette -- reserving the
-    // binding now so it's visible/rebindable-away-from ahead of time,
-    // per the goal's own instruction; run is deliberately a no-op.
+    // goal 0015: app/CommandPalette.tsx renders off the store's
+    // paletteOpen flag (a plain toggle, not open-only, matching most
+    // command-palette conventions -- pressing ⌘K again closes it
+    // without needing Escape). shared/ can't import the component
+    // itself (dependency-cruiser boundary), so this just flips the
+    // shared signal the same way workflow.save/workflow.run already
+    // do via canvasCommandRequest.
     defaultBinding: { mods: ['cmd'], key: 'K' },
-    run: () => {},
+    run: () => useAppStore.getState().togglePalette(),
   },
   {
     id: 'view.composition',

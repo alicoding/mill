@@ -259,6 +259,17 @@ interface AppState {
   canvasCommandRequest: 'save' | 'run' | null
   requestCanvasCommand: (command: 'save' | 'run') => void
   consumeCanvasCommandRequest: () => void
+  // The ⌘K command palette (docs/goals/0015-summon-quick-invoke.md).
+  // Lives here, not local useState in app/CommandPalette.tsx, because
+  // the thing that opens it -- palette.open's `run` in shared/commands.ts
+  // -- can't import a component from app/ (dependency-cruiser's
+  // shared-is-a-leaf rule, .claude/rules/frontend.md); same
+  // store-field-as-cross-tree-signal shape as canvasCommandRequest
+  // above, just a plain boolean instead of a one-shot request.
+  paletteOpen: boolean
+  openPalette: () => void
+  closePalette: () => void
+  togglePalette: () => void
 }
 
 // Shared across App/ActivityView (SPEC.md §1.3): App.tsx still owns the
@@ -429,6 +440,10 @@ export const useAppStore = create<AppState>()(
       canvasCommandRequest: null,
       requestCanvasCommand: (command) => set({ canvasCommandRequest: command }),
       consumeCanvasCommandRequest: () => set({ canvasCommandRequest: null }),
+      paletteOpen: false,
+      openPalette: () => set({ paletteOpen: true }),
+      closePalette: () => set({ paletteOpen: false }),
+      togglePalette: () => set((state) => ({ paletteOpen: !state.paletteOpen })),
     }),
     {
       name: 'mill-app-view',

@@ -1,0 +1,21 @@
+/* Command palette (docs/goals/0015-summon-quick-invoke.md). Primer
+   design tokens only, per .claude/rules/frontend.md -- no bespoke
+   colors/spacing. */
+
+.shortcut {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 var(--base-size-6, 6px);
+  border: 1px solid var(--borderColor-default);
+  border-radius: var(--borderRadius-medium);
+  background: var(--bgColor-muted);
+  color: var(--fgColor-muted);
+  font-size: var(--text-body-size-small);
+  font-family: var(--fontStack-monospace, monospace);
+  white-space: nowrap;
+}
+
+.empty {
+  padding: var(--base-size-16, 16px);
+  color: var(--fgColor-muted);
+}
