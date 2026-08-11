@@ -117,6 +117,16 @@ tasks:
       manual override -- the fingerprint IS the mechanism, which is why
       not wiping bin/ (above) matters.
     cmds:
+      # Defensive orphan sweep (researched root cause, SPEC §3.8): the
+      # `wails3 dev` supervisor only traps SIGINT+SIGTERM, not SIGHUP, so
+      # closing the terminal tab (rather than Ctrl-C) kills the supervisor
+      # without running refresh's own cleanup -- the child mill.dev.app
+      # process lives on in its own process group, orphaned, and the NEXT
+      # `task dev` has no memory of it and launches a SECOND window. This
+      # kills any such leftover before starting, so a fresh `task dev`
+      # always begins from exactly one live instance. `|| true`: a clean
+      # start (no orphan) is the normal case, not an error.
+      - pkill -f "{{.BIN_DIR}}/{{.APP_NAME}}.dev.app/Contents/MacOS/{{.APP_NAME}}" || true
       - wails3 dev -config ./build/config.yml -port {{.VITE_PORT}}
 
   setup:docker:

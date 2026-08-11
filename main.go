@@ -175,6 +175,12 @@ func main() {
 		logger.Info("mill MCP server listening", "addr", millMCPAddr)
 	}
 
+	// Declared before application.New so the SingleInstance callback's
+	// closure (below) can capture it; assigned with `=` once the window
+	// is actually created further down. The callback only fires on a real
+	// second launch, long after mainWindow is set.
+	var mainWindow *application.WebviewWindow
+
 	app := application.New(application.Options{
 		Name:        "mill",
 		Description: "Guardrailed agentic-workflow automation",
@@ -194,6 +200,13 @@ func main() {
 		Mac: application.MacOptions{
 			ApplicationShouldTerminateAfterLastWindowClosed: true,
 		},
+		// Production-only single-instance guard (docs/SPEC.md §3.7's
+		// data-corruption hazard). nil in dev/server builds -- see
+		// singleinstance_{production,dev}.go for why the guard must NOT
+		// be active under `wails3 dev`. getMainWindow closes over
+		// mainWindow, assigned below after the window is created (the
+		// callback only ever fires on a real second launch, long after).
+		SingleInstance: singleInstanceOptions(func() *application.WebviewWindow { return mainWindow }),
 	})
 
 	// Wails3's own first-party self-updater (v3/pkg/updater, confirmed
@@ -292,7 +305,7 @@ func main() {
 		// relying on it, not assumed.
 		windowOptions.InitialPosition = application.WindowXY
 	}
-	mainWindow := app.Window.NewWithOptions(windowOptions)
+	mainWindow = app.Window.NewWithOptions(windowOptions)
 	settingsService.SetWindow(mainWindow)
 	settingsService.WatchWindowGeometry()
 

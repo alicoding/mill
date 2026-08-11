@@ -1,6 +1,11 @@
 # Enforces the repo-layout rule for the root directory: the root holds
-# exactly ONE Go file, main.go (embeds + window/tray setup + service
-# construction/wiring). Every Wails-bound service lives in its own
+# main.go (embeds + window/tray setup + service construction/wiring)
+# plus its build-tag-split `package main` companions -- currently the
+# singleinstance_{production,dev}.go pair, which MUST be `package main`
+# (they're wired into main.go's application.New via a shared
+# singleInstanceOptions func) and so cannot move under internal/; the
+# production/!production split can't collapse into one file. Any OTHER
+# root .go file is still flagged. Every Wails-bound service lives in its own
 # bounded-context package under internal/services/<ctx>svc (the `svc`
 # suffix prevents package-name collisions with internal/domain/* and
 # internal/adapters/* -- never alias-import around a name), with shared
@@ -47,7 +52,7 @@
 #     added here -- that's the point, not a bug: root additions are
 #     layout decisions, never accidents.
 ls:
-  .go: regex:main
+  .go: regex:(main|singleinstance_(production|dev))
   .*: regex:(README|CLAUDE|Taskfile|lefthook|go|\.golangci|\.ls-lint)
 
 ignore:
