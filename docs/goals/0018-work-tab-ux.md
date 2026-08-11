@@ -25,6 +25,15 @@ owner's taste call; not locked here.
   self-unblock surface. This goal owns the *visual strip* behaviour
   (overflow vs wrap, close-others, eviction).
 
+## Status — pile-up fix BUILT (2026-08-10)
+Owner picked "Just the pile-up." Built: `.tabList` nowrap + overflow-x
+scroll (no more second row); a pinned `⌄` overflow menu (2+ tabs) beside
+the scrolling list = jump-to-any-open-tab-by-name + Close other tabs +
+Close all tabs (`closeOtherWorkTabs`/`closeAllWorkTabs` store actions).
+SPEC §3.8 updated in-change. Remaining, not yet built: right-click
+context menu on a tab (the ⌄ menu covers the same actions for now);
+open-on-demand tightening if peeking still leaves tabs.
+
 ## Acceptance
 Owner opens six things and the strip stays one tidy row with an overflow
 menu, can close-others in one action, and never has to leave the page to

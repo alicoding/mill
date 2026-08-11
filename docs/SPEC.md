@@ -3186,6 +3186,19 @@ recorded as a real design input (`OPEN`), never silently dropped.
   Open-didn't-activate bug. E2e-covered end-to-end
   (`composition.spec.ts` tab reuse, `state-persistence.spec.ts`
   restore-then-activate, `view-hotkeys.spec.ts`).
+  **Update (goal 0018, 2026-08-10, owner "not loving the tab UI"): the
+  strip never wraps and manages its own overflow.** `shared/Tabs.tsx`'s
+  `.tabList` is now `nowrap` + `overflow-x: auto` (scrollbar hidden) so
+  many open tabs stay ONE row that scrolls instead of spilling onto a
+  second line; a pinned `⌄` overflow/management menu
+  (`WorkTabShell.module.css`'s `.tabStrip`/`.overflow`, shown at 2+ work
+  tabs) sits beside the scrolling list — jump to any open tab by name
+  (reaching ones scrolled off), plus **Close other tabs** / **Close all
+  tabs** (`closeOtherWorkTabs`/`closeAllWorkTabs` store actions; scratch
+  cleanup for the closed keys stays WorkTabShell's job since the store is
+  scratch-agnostic). Industry pattern (VS Code/browser tab strips). The
+  inner-tab consumers (Configure/RequestSummary/WorkflowEditor) share the
+  same `nowrap` `.tabList` harmlessly — few, fixed tabs never overflow.
 - **Long-column table pattern — `LOCKED`, built
   (`shared/ResizableTable.tsx`), asked for directly.** Every DataTable
   surface (Workflows, Versions, Integrations, Lists, MCP Servers,
