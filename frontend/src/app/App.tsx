@@ -12,7 +12,6 @@ import PlaceholderView from "../views/PlaceholderView";
 import { CapabilitiesService, ExecutionService, SettingsService } from '../shared/bindings'
 import type { BuildInfo } from '../shared/bindings'
 import { refreshKeybindings, refreshNodeTypes, refreshRequests, refreshWorkflows, useAppStore, viewFor, viewsEqual, statusDotColor } from "../shared/store";
-import type { View } from "../shared/store";
 import { dispatchCommandForEvent } from "../shared/commands";
 import { WorkTabShell } from "./WorkTabShell";
 import { MCPWriteApprovals } from "./MCPWriteApprovals";
@@ -20,27 +19,11 @@ import { CommandPalette } from "./CommandPalette";
 import { BuildIdentityBadge } from "./BuildIdentityBadge";
 import { COLOR_MODE_STORAGE_KEY, SIDEBAR_OPEN_STORAGE_KEY } from "./theme";
 import { CAPABILITY_ICON } from "./navIcon";
+import { pageIconFor, pageLabelFor } from './pageMeta'
 import styles from "./App.module.css";
 
 // Show the actual Wails version this project was generated against.
 const wailsVersion = "v3.0.0-beta.4";
-
-// The strip's first tab names the current sidebar section -- the "go
-// back to the page under the tabs" affordance.
-function pageLabelFor(view: View, capabilities: { ID: string; Label: string; NavLabel: string }[]): string {
-  switch (view.kind) {
-    case 'home': return 'Home'
-    case 'composition': return 'Workflows'
-    case 'configure': return 'Configure'
-    case 'activity': return 'Activity'
-    case 'review': return 'Review'
-    case 'settings': return 'Settings'
-    case 'placeholder': {
-      const cap = capabilities.find((c) => c.ID === view.capabilityId)
-      return cap ? (cap.NavLabel || cap.Label) : 'Overview'
-    }
-  }
-}
 
 // True only inside the Wails native webview (the runtime injects
 // window._wails there; a plain browser tab on the server-mode HTTP
@@ -51,7 +34,14 @@ function pageLabelFor(view: View, capabilities: { ID: string; Label: string; Nav
 // env(safe-area-inset-*) is always 0 on desktop and cannot cover it
 // (real regression caught live after the old padding-based approach
 // relied on it).
-const IS_NATIVE_WEBVIEW = typeof window !== "undefined" && "_wails" in window;
+//
+// Detection is BuildInfo.Server (Go's own build tag), NOT `'_wails' in
+// window` -- found live (goal 0021): the Wails JS runtime injects
+// _wails in a plain browser tab on the server-mode interface too, so
+// that check was true everywhere and native-only chrome leaked into
+// server mode. Until GetBuildInfo lands (ms after mount), the shell
+// renders the server/browser shape -- the inset appearing a beat late
+// on the desktop beats it wrongly appearing at all in a browser.
 
 function App() {
   const view = useAppStore((s) => s.view);
@@ -74,6 +64,10 @@ function App() {
   // ribbon only fires for a live `vite serve`, never for any `go build`
   // output, dev or not).
   const [buildInfo, setBuildInfo] = useState<BuildInfo | null>(null);
+  // See the detection comment above App(): Go's build tag, not a
+  // window-global sniff; null (not yet fetched) renders the browser
+  // shape.
+  const isNativeWebview = buildInfo != null && !buildInfo.Server;
   // The titlebar band's own DOM node (Chrome-style tabs-in-titlebar,
   // owner-requested), captured via a callback ref on the band div
   // rendered below. WorkTabShell portals its TabList/overflow markup
@@ -324,12 +318,12 @@ function App() {
           inside PageLayout.Content) portals its TabList + overflow menu
           -- empty space there stays the native window's drag handle
           (--wails-draggable:drag, App.module.css). */}
-      <div className={`${styles.titlebar}${IS_NATIVE_WEBVIEW ? ` ${styles.titlebarNative}` : ''}`}>
+      <div className={`${styles.titlebar}${isNativeWebview ? ` ${styles.titlebarNative}` : ''}`}>
         <div
           className={sidebarOpen ? styles.titlebarLeft : `${styles.titlebarLeft} ${styles.titlebarLeftCollapsed}`}
           data-testid="titlebar-left"
         >
-          {IS_NATIVE_WEBVIEW && <div className={styles.trafficLightInset} aria-hidden="true" />}
+          {isNativeWebview && <div className={styles.trafficLightInset} aria-hidden="true" />}
           <IconButton
             icon={sidebarOpen ? SidebarCollapseIcon : SidebarExpandIcon}
             aria-label={sidebarOpen ? 'Collapse navigation' : 'Expand navigation'}
@@ -446,7 +440,7 @@ function App() {
               current section page is the first tab, every open work
               item a tab beside it, surviving sidebar navigation. */}
           <MCPWriteApprovals />
-          <WorkTabShell pageLabel={pageLabelFor(view, capabilities)} titlebarSlot={titlebarSlot}>
+          <WorkTabShell pageLabel={pageLabelFor(view, capabilities)} pageIcon={pageIconFor(view)} titlebarSlot={titlebarSlot}>
             {view.kind === 'home' && <HomeView/>}
 
             {view.kind === 'activity' && <ActivityView/>}

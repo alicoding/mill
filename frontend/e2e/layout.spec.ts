@@ -65,10 +65,15 @@ test('the titlebar band\'s left segment tracks the sidebar column: it resizes an
   // (52px, server mode has no traffic-light inset to widen it).
   expect(Math.abs(collapsedLeftBox!.width - 52)).toBeLessThan(2)
 
-  // (b) the first tab's x position shifts correspondingly -- the tab
-  // strip starts right where the left segment ends.
+  // (b) the first tab shifts left by EXACTLY the width the segment
+  // lost -- the lockstep invariant. Deliberately not "tab.x == segment
+  // right edge": the strip has its own legitimate padding between the
+  // divider and the first tab, and pinning that spacing here would turn
+  // a cosmetic padding tweak into a test failure.
   expect(collapsedTabBox!.x).toBeLessThan(expandedTabBox!.x)
-  expect(Math.abs(collapsedTabBox!.x - (collapsedLeftBox!.x + collapsedLeftBox!.width))).toBeLessThan(2)
+  const tabShift = expandedTabBox!.x - collapsedTabBox!.x
+  const segmentShrink = expandedLeftBox!.width - collapsedLeftBox!.width
+  expect(Math.abs(tabShift - segmentShrink)).toBeLessThan(2)
 
   // The sidebar column itself shrinks in lockstep -- proof the two
   // elements share the same width, not just two independent animations
