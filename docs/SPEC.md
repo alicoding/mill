@@ -2293,19 +2293,50 @@ turns out to solve this without touching that dispute).
   real DBOS: the author→validate→update→run→inspect loop end to end,
   including that the updated definition is what executes).
   [ADR-0017](adr/0017-mcp-write-tools-guardrail-scope.md) `accepted`
-  for this scope. **Its per-write synchronous-approval half is now
-  built too (ADR-0022's MCP section)**: with writes enabled, each
-  import parks on a BOUNDED 120-second in-process wait (bounded, not
-  indefinite — the 2026-07-28 MCP spec's own Tasks extension exists
-  precisely because hosts don't tolerate unboundedly-blocking tool
-  calls) while Mill's own window shows who's asking to write what
-  (`MCPWriteApprovals.tsx`, a Wails event + poll-on-mount); deny and
-  timeout both reject the write with nothing written. Per-write
-  approval defaults ON when writes are enabled — enabling writes must
-  not silently mean unattended writes — with an explicit Settings
-  opt-out ("Ask me before each MCP import"). Proven against a real MCP
-  client: a denied import writes nothing, an approved one proceeds
-  (`TestMCPWriteTools_PerWriteApproval`).
+  for this scope. **Its per-write approval half is now park-and-poll,
+  not a bounded blocking wait — [ADR-0032](adr/0032-mcp-write-approval-park-and-poll.md)
+  (`accepted`), superseding ADR-0022's MCP section's original
+  120-second-blocking-wait shape after a live failure and a research
+  pass found no surveyed product fail-closes a human approval on a
+  short window aimed at a possibly-away user, and that the blocking
+  HTTP response itself plausibly dies against a real host's own ~60s
+  transport timer before Mill's own timeout ever fires.** With writes
+  enabled, each gated write call waits a short in-call **courtesy
+  window (10s)** for a co-present approver — inside it, the call
+  returns the write's own final result directly, matching the old
+  one-call shape; past it, the call returns a SUCCESSFUL (never an
+  error) "parked pending human approval; id=…" result instead of
+  blocking further, so a real client polls the new ungated
+  `check_write_status {id}` tool instead of its connection dying. The
+  pending write is **durable** — the record (tool name + raw arguments,
+  not a live channel) persists via the settings store and survives a
+  Mill restart, executing the real write at approval time whether or
+  not the original requester still exists. Pending writes surface in
+  **two surfaces reading the one durable store**: `MCPWriteApprovals.tsx`
+  (the co-present banner, unchanged) and the **Review queue**
+  (`ReviewView.tsx`), as actionable rows distinct from a guardrail/debug
+  park ("recognition, not confirmation"). **Expiry: 24 hours** (matching
+  the guardrail park's own timeout) from creation for an unresolved
+  pending write, and from resolution for a resolved/denied/expired
+  outcome staying queryable before being swept; expiry and denial both
+  push the existing `mcp-write` Activity row (goal 0005 item 3, outcome
+  `expired`/`denied`). Per-write approval still defaults ON when writes
+  are enabled, deny/expiry still write nothing, and a write still
+  executes at-most-once. **The away-user attention layer (ADR-0032 §3)
+  is also built**: the sidebar's already-computed pending-decision count
+  mirrors to the dock badge (`internal/adapters/dockbadge`, wraps Wails3's
+  `dock.DockService`), and a new pending item while the window is
+  unfocused fires a real OS notification (`internal/adapters/notify`,
+  wraps `notifications.NotificationService`) — an MCP write's carries
+  Approve/Deny actions resolving directly; a guardrail/human-review
+  park's opens/focuses the window instead (typed input may be needed).
+  Both adapters are desktop-only (server-mode build-tag stub, same
+  shape as `internal/adapters/hotkey`). Proven against a real MCP
+  client: courtesy-window approve/deny, the parked-then-polled path,
+  24h expiry (injected, not slept), restart survival (a second service
+  instance against the same store), and at-most-once double-resolve
+  all Go-tested; a Review-queue row appearing and its Approve executing
+  the write is e2e-tested (`mcp-write-approval.spec.ts`).
 
 ### 3.7 Global app settings
 
@@ -2508,14 +2539,21 @@ findings) and the build rationale are in
   (desktop or server mode, dev or not), so it couldn't have caught this
   either.
 
-**Still `OPEN`, real named gaps:** a menu-bar/dock presence toggle and
-trigger-fire notifications (Wails3 ships first-party `dock`/
-`notifications` services for both, zero new dependency, but neither has
-a settled concrete design yet — what a dock toggle would control given
-Mill has no menu-bar-only mode, and what event a notification should
-fire on); appearance settings beyond light/dark; a default working
+**The `dock`/`notifications` mechanism named here as a future gap is now
+built, for the pending-approval use case — [ADR-0032](adr/0032-mcp-write-approval-park-and-poll.md)
+§3, `internal/adapters/dockbadge`/`internal/adapters/notify`.** §3.6's
+Update has the full writeup. A menu-bar/dock *presence toggle* (hiding
+the dock icon entirely) stays unbuilt — a different capability than the
+badge — and **trigger-fire notifications remain a named future use of
+the now-existing mechanism**, not built yet: the same `notify.SendPlain`/
+`SendActionable` primitives this pass added would carry it, once a
+concrete "fire on X" event is chosen.
+
+**Still `OPEN`, real named gaps:** a menu-bar/dock presence toggle (see
+above); appearance settings beyond light/dark; a default working
 directory/scope (blocked on §6); fullscreen window-state tracking
-(named above).
+(named above); trigger-fire notifications (mechanism now exists, event
+choice doesn't).
 
 ## 4. Connectors
 
@@ -3822,11 +3860,14 @@ infrastructure. This inheritance list IS the working definition of
   on §6), a timeout Settings knob
 - Global app settings (§3.7/[ADR-0020](adr/0020-global-app-settings.md))
   — launch-at-login, a global summon hotkey, auto-update wiring, a tray
-  icon, per-view hotkeys, and window/tab/filter state persistence are
-  all `LOCKED` and built. Still `OPEN`: menu-bar/dock toggle,
-  trigger-fire notifications (no settled design yet), the multi-tenant-
-  seam question (researched, recorded as deliberately declined),
-  fullscreen window-state tracking (deliberately not built, named gap)
+  icon, per-view hotkeys, window/tab/filter state persistence, and (via
+  [ADR-0032](adr/0032-mcp-write-approval-park-and-poll.md) §3) the dock
+  badge + actionable-OS-notification attention layer are all `LOCKED`
+  and built. Still `OPEN`: a menu-bar/dock presence toggle,
+  trigger-fire notifications (the dock/notify mechanism now exists,
+  which event should fire one doesn't), the multi-tenant-seam question
+  (researched, recorded as deliberately declined), fullscreen
+  window-state tracking (deliberately not built, named gap)
 - Connector input/output schema mechanism (§3.3/§3.5/§4/ADR-0007) —
   `LOCKED` and fully built (Phase 1+2+3): `internal/adapters/openapispec`,
   `Connector.OpenAPISpec`, Configure UI + "List operations", the

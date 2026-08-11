@@ -79,11 +79,11 @@ type runIDArgs struct {
 }
 
 func jsonResult(v any) (*mcp.CallToolResult, error) {
-	data, err := json.MarshalIndent(v, "", "  ")
+	text, err := jsonText(v)
 	if err != nil {
 		return nil, err
 	}
-	return textResult(string(data)), nil
+	return textResult(text), nil
 }
 
 // validationResult is validate_workflow's own wire shape (docs/adr/0028)
@@ -185,63 +185,91 @@ func (m *MillMCPService) registerAuthoringTools() {
 		return res, nil, jerr
 	})
 
-	// --- Mutation: write gate + per-write approval with a diff summary.
-	//     The previous draft is ALWAYS snapshotted first (revertible via
-	//     the Versions tab / RestoreVersionToDraft). ---
+	// --- Mutation: write gate + per-write approval (docs/adr/0032's
+	//     park-and-poll gateWrite) with a diff summary. The previous
+	//     draft is ALWAYS snapshotted first (revertible via the Versions
+	//     tab / RestoreVersionToDraft). ---
+	m.registerWriteExecutor("update_workflow", func(argsJSON string) (string, error) {
+		var in updateWorkflowArgs
+		if err := json.Unmarshal([]byte(argsJSON), &in); err != nil {
+			return "", err
+		}
+		if _, err := m.comp.SnapshotDraft(in.ID); err != nil {
+			return "", err
+		}
+		wf, err := m.comp.UpdateWorkflowFromExport(in.ID, in.JSON)
+		if err != nil {
+			return "", err
+		}
+		emitDataChanged("workflow", wf.ID)
+		return fmt.Sprintf("updated draft of %q (previous draft snapshotted as v%d)", wf.Label, len(wf.Versions)), nil
+	})
 	mcp.AddTool(m.server, &mcp.Tool{
 		Name:        "update_workflow",
-		Description: "Replace a workflow's DRAFT definition with exported-workflow JSON. The current draft is auto-snapshotted as a version first, so the change is always revertible from the workflow's Versions tab. Never touches the published version (publish_workflow is the separate go-live act). Requires the MCP-writes toggle; each write asks the human in Mill's window unless they relaxed per-write approval.",
+		Description: "Replace a workflow's DRAFT definition with exported-workflow JSON. The current draft is auto-snapshotted as a version first, so the change is always revertible from the workflow's Versions tab. Never touches the published version (publish_workflow is the separate go-live act). Requires the MCP-writes toggle; each write asks the human in Mill's window unless they relaxed per-write approval, and may park pending approval -- see import_workflow's description for the poll contract.",
 	}, func(_ context.Context, _ *mcp.CallToolRequest, in updateWorkflowArgs) (*mcp.CallToolResult, any, error) {
 		if err := m.requireWriteEnabled(); err != nil {
 			return nil, nil, err
 		}
-		if err := m.awaitWriteApproval(m.updateDiffSummary(in.ID, in.JSON)); err != nil {
-			return nil, nil, err
-		}
-		if _, err := m.comp.SnapshotDraft(in.ID); err != nil {
-			return nil, nil, err
-		}
-		wf, err := m.comp.UpdateWorkflowFromExport(in.ID, in.JSON)
+		argsJSON, err := marshalArgs(in)
 		if err != nil {
 			return nil, nil, err
 		}
-		emitDataChanged("workflow", wf.ID)
-		return textResult(fmt.Sprintf("updated draft of %q (previous draft snapshotted as v%d)", wf.Label, len(wf.Versions))), nil, nil
+		res, err := m.gateWrite("update_workflow", m.updateDiffSummary(in.ID, in.JSON), argsJSON)
+		return res, nil, err
 	})
 
-	mcp.AddTool(m.server, &mcp.Tool{
-		Name:        "publish_workflow",
-		Description: "Publish a workflow's current draft as the new live version (docs/adr/0021: triggers and child calls execute only the published snapshot). Requires the MCP-writes toggle + per-write approval.",
-	}, func(_ context.Context, _ *mcp.CallToolRequest, in idArgs) (*mcp.CallToolResult, any, error) {
-		if err := m.requireWriteEnabled(); err != nil {
-			return nil, nil, err
-		}
-		if err := m.awaitWriteApproval("An MCP client wants to PUBLISH workflow " + m.workflowLabel(in.ID) + " (its draft becomes the live version)"); err != nil {
-			return nil, nil, err
+	m.registerWriteExecutor("publish_workflow", func(argsJSON string) (string, error) {
+		var in idArgs
+		if err := json.Unmarshal([]byte(argsJSON), &in); err != nil {
+			return "", err
 		}
 		wf, err := m.comp.PublishWorkflow(in.ID)
 		if err != nil {
-			return nil, nil, err
+			return "", err
 		}
 		emitDataChanged("workflow", wf.ID)
-		return textResult(fmt.Sprintf("published %q as v%d (live)", wf.Label, wf.PublishedVersion)), nil, nil
+		return fmt.Sprintf("published %q as v%d (live)", wf.Label, wf.PublishedVersion), nil
 	})
-
 	mcp.AddTool(m.server, &mcp.Tool{
-		Name:        "delete_workflow",
-		Description: "Delete a workflow entirely (definition, versions, hotkey binding). Requires the MCP-writes toggle + per-write approval.",
+		Name:        "publish_workflow",
+		Description: "Publish a workflow's current draft as the new live version (docs/adr/0021: triggers and child calls execute only the published snapshot). Requires the MCP-writes toggle + per-write approval; may park pending approval -- see import_workflow's description for the poll contract.",
 	}, func(_ context.Context, _ *mcp.CallToolRequest, in idArgs) (*mcp.CallToolResult, any, error) {
 		if err := m.requireWriteEnabled(); err != nil {
 			return nil, nil, err
 		}
-		if err := m.awaitWriteApproval("An MCP client wants to DELETE workflow " + m.workflowLabel(in.ID)); err != nil {
+		argsJSON, err := marshalArgs(in)
+		if err != nil {
 			return nil, nil, err
+		}
+		res, err := m.gateWrite("publish_workflow", "An MCP client wants to PUBLISH workflow "+m.workflowLabel(in.ID)+" (its draft becomes the live version)", argsJSON)
+		return res, nil, err
+	})
+
+	m.registerWriteExecutor("delete_workflow", func(argsJSON string) (string, error) {
+		var in idArgs
+		if err := json.Unmarshal([]byte(argsJSON), &in); err != nil {
+			return "", err
 		}
 		if err := m.comp.DeleteWorkflow(in.ID); err != nil {
-			return nil, nil, err
+			return "", err
 		}
 		emitDataChanged("workflow", in.ID)
-		return textResult("deleted"), nil, nil
+		return "deleted", nil
+	})
+	mcp.AddTool(m.server, &mcp.Tool{
+		Name:        "delete_workflow",
+		Description: "Delete a workflow entirely (definition, versions, hotkey binding). Requires the MCP-writes toggle + per-write approval; may park pending approval -- see import_workflow's description for the poll contract.",
+	}, func(_ context.Context, _ *mcp.CallToolRequest, in idArgs) (*mcp.CallToolResult, any, error) {
+		if err := m.requireWriteEnabled(); err != nil {
+			return nil, nil, err
+		}
+		argsJSON, err := marshalArgs(in)
+		if err != nil {
+			return nil, nil, err
+		}
+		res, err := m.gateWrite("delete_workflow", "An MCP client wants to DELETE workflow "+m.workflowLabel(in.ID), argsJSON)
+		return res, nil, err
 	})
 
 	// --- Execution: behind the write gate (MCP may act on this

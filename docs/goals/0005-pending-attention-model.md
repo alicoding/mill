@@ -76,3 +76,20 @@ An ADR records the model (converged or deliberately split, with
 reasons and precedent); at minimum, a missed MCP write request is no
 longer silently traceless; the notification-vs-Activity-vs-Review
 boundary is written down in SPEC with each surface's one-line job.
+
+## Delivered — the OS-notification/away-user half shipped (2026-08-11)
+
+The one piece this goal named as "a bigger, separate scope than the
+badge fix" — real OS notifications for an unfocused window — is now
+built, via [ADR-0032](../adr/0032-mcp-write-approval-park-and-poll.md)
+§3, prompted by the exact live failure this goal's own header
+describes (an away user missing a pending MCP write). `internal/adapters/
+dockbadge`/`internal/adapters/notify` wrap `dock.DockService`/
+`notifications.NotificationService`; `SettingsService.SetPendingBadge`/
+`NotifyPendingApproval` are the bound RPCs; App.tsx's own pending-count
+effect mirrors the count to the badge and fires a notification per new
+item while `!document.hasFocus()`. This also folded in a deeper rework
+of the MCP-write mechanism itself (the old 120s bounded-blocking wait
+→ durable park-and-poll), since the research for the away-user problem
+found the blocking wait was the wrong shape regardless of notifications.
+ADR-0032 is the record; SPEC.md §3.6/§3.7 carry the summary.

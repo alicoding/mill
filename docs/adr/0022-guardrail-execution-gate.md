@@ -122,6 +122,18 @@ evaluation path, no parallel mechanism.
 
 ### MCP per-write approval (ADR-0017's open half)
 
+**Superseded by [ADR-0032](0032-mcp-write-approval-park-and-poll.md):**
+the 120s-bounded-blocking-wait mechanism described in this section as
+originally written no longer exists in the code — a live failure (an
+away user missed the window) plus research (no surveyed product
+fail-closes a human approval on a short window aimed at a possibly-away
+approver, and the blocking HTTP response itself plausibly dies against
+a real host's own transport timer first) replaced it with park-and-poll:
+a durable pending record, a short in-call courtesy window, and an
+away-user attention layer (dock badge + actionable OS notifications).
+Left as originally written below for the historical record of what
+shipped first and why it changed, not as the current shape.
+
 `import_*` MCP tools gain an optional per-write approval mode layered
 on the existing default-off toggle: each write parks on an in-process
 bounded wait (120s, per the MCP research above — not DBOS, these are

@@ -335,11 +335,11 @@ func (s *SettingsService) SetMCPWriteEnabled(enabled bool) {
 
 // GetMCPWriteApprovalRequired/SetMCPWriteApprovalRequired own the
 // per-write approval toggle layered on the write gate above
-// (millmcpservice_approval.go, ADR-0017's second half): with writes
-// enabled, each import still parks for a human click unless this is
-// explicitly relaxed. Defaults to REQUIRED when unset -- enabling
-// writes must not silently mean unattended writes (§8's fail-safe
-// default).
+// (millmcpservice_approval.go, docs/adr/0032's park-and-poll lifecycle):
+// with writes enabled, each import still parks for a human decision
+// unless this is explicitly relaxed. Defaults to REQUIRED when unset --
+// enabling writes must not silently mean unattended writes (§8's
+// fail-safe default).
 func (s *SettingsService) GetMCPWriteApprovalRequired() bool {
 	v, ok := s.store.Get(mcpsvc.MCPWriteApprovalKey).(string)
 	if !ok || v == "" {
@@ -364,7 +364,7 @@ func (s *SettingsService) SetMCPWriteApprovalRequired(required bool) {
 func (s *SettingsService) SetMCPService(m *mcpsvc.MillMCPService) { s.mcpService = m }
 
 // PendingMCPWrites lists MCP writes currently awaiting a human
-// decision (millmcpservice_approval.go).
+// decision (millmcpservice_approval.go, docs/adr/0032).
 func (s *SettingsService) PendingMCPWrites() []mcpsvc.MCPWriteRequest {
 	if s.mcpService == nil {
 		return nil

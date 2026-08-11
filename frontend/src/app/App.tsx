@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import {Events, WML} from "@wailsio/runtime";
 import {Label, PageLayout, useTheme} from "@primer/react";
 import HomeView from "../views/HomeView";
@@ -284,13 +284,51 @@ function App() {
   // (the same RPC ReviewView already filters on r.pending) and
   // PendingMCPWrites (MCPWriteApprovals' own RPC) -- no new backend
   // surface needed for a number that already exists two ways.
+  //
+  // Away-user attention layer (docs/adr/0032 §3), folded into the same
+  // effect since it reads the same two lists: the total count mirrors
+  // to the dock badge on every change, and each NEW pending item (an id
+  // not seen on a previous refresh) fires an actionable OS notification
+  // if the window is unfocused when it arrives -- a present user
+  // already sees the in-app banner/Review row, so notifying them too
+  // would be double-noise (document.hasFocus() gate). notifiedIds
+  // tracks what's already been pushed so a later re-fetch of the same
+  // still-pending item, or the user simply refocusing later, never
+  // re-notifies.
   const [reviewPendingCount, setReviewPendingCount] = useState(0);
+  const notifiedIds = useRef<Set<string>>(new Set());
   useEffect(() => {
     const refresh = () => {
       Promise.all([
-        ExecutionService.ListRuns().then((runs) => (runs ?? []).filter((r) => r.pending).length).catch(() => 0),
-        SettingsService.PendingMCPWrites().then((p) => (p ?? []).length).catch(() => 0),
-      ]).then(([guardrailPending, mcpPending]) => setReviewPendingCount(guardrailPending + mcpPending));
+        ExecutionService.ListRuns().then((runs) => (runs ?? []).filter((r) => r.pending)).catch(() => []),
+        SettingsService.PendingMCPWrites().then((p) => p ?? []).catch(() => []),
+      ]).then(([guardrailPending, mcpPending]) => {
+        setReviewPendingCount(guardrailPending.length + mcpPending.length);
+        void SettingsService.SetPendingBadge(guardrailPending.length + mcpPending.length).catch(() => {});
+
+        const items: { key: string; id: string; description: string; kind: string }[] = [
+          ...guardrailPending.map((r) => ({
+            key: `guardrail:${r.runID}`,
+            id: r.runID,
+            description: `${r.workflowLabel}: ${r.pending?.nodeTypeLabel || r.pending?.nodeTypeID || 'a step'} needs approval`,
+            kind: 'guardrail',
+          })),
+          ...mcpPending.map((w) => ({ key: `mcp-write:${w.id}`, id: w.id, description: w.description, kind: 'mcp-write' })),
+        ];
+
+        if (document.hasFocus()) {
+          // A present user already sees these live -- remember them so
+          // looking away later doesn't retroactively notify for
+          // something that arrived while the window had focus.
+          for (const item of items) notifiedIds.current.add(item.key);
+          return;
+        }
+        for (const item of items) {
+          if (notifiedIds.current.has(item.key)) continue;
+          notifiedIds.current.add(item.key);
+          void SettingsService.NotifyPendingApproval(item.id, item.description, item.kind).catch(() => {});
+        }
+      });
     };
     refresh();
     const offGuardrail = Events.On('guardrail-pending-changed', refresh);

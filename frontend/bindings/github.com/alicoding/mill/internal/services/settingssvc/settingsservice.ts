@@ -84,11 +84,11 @@ export function GetLaunchAtLogin(): $CancellablePromise<boolean> {
 /**
  * GetMCPWriteApprovalRequired/SetMCPWriteApprovalRequired own the
  * per-write approval toggle layered on the write gate above
- * (millmcpservice_approval.go, ADR-0017's second half): with writes
- * enabled, each import still parks for a human click unless this is
- * explicitly relaxed. Defaults to REQUIRED when unset -- enabling
- * writes must not silently mean unattended writes (§8's fail-safe
- * default).
+ * (millmcpservice_approval.go, docs/adr/0032's park-and-poll lifecycle):
+ * with writes enabled, each import still parks for a human decision
+ * unless this is explicitly relaxed. Defaults to REQUIRED when unset --
+ * enabling writes must not silently mean unattended writes (§8's
+ * fail-safe default).
  */
 export function GetMCPWriteApprovalRequired(): $CancellablePromise<boolean> {
     return $Call.ByID(2434294853);
@@ -158,8 +158,21 @@ export function ListWorkflowMinutesSaved(): $CancellablePromise<{ [_ in string]?
 }
 
 /**
+ * NotifyPendingApproval sends an actionable OS notification for a new
+ * pending item (docs/adr/0032 §3). kind "mcp-write" gets Approve/Deny
+ * action buttons resolving directly via ResolveMCPWrite; any other kind
+ * (a guardrail/human-review park) gets a plain notification whose
+ * default click shows+focuses the window instead -- typed input may be
+ * required to resolve those, so blind approval from a notification
+ * isn't offered.
+ */
+export function NotifyPendingApproval(id: string, description: string, kind: string): $CancellablePromise<void> {
+    return $Call.ByID(99139683, id, description, kind);
+}
+
+/**
  * PendingMCPWrites lists MCP writes currently awaiting a human
- * decision (millmcpservice_approval.go).
+ * decision (millmcpservice_approval.go, docs/adr/0032).
  */
 export function PendingMCPWrites(): $CancellablePromise<mcpsvc$0.MCPWriteRequest[] | null> {
     return $Call.ByID(1300694793);
@@ -235,6 +248,16 @@ export function SetMCPWriteApprovalRequired(required: boolean): $CancellableProm
 
 export function SetMCPWriteEnabled(enabled: boolean): $CancellablePromise<void> {
     return $Call.ByID(213255560, enabled);
+}
+
+/**
+ * SetPendingBadge applies count as the dock/taskbar badge -- a no-op
+ * error in server mode (dockbadge_server.go), silently swallowed here
+ * same as every other best-effort desktop-only affordance in this
+ * service (the tray icon, the summon hotkey).
+ */
+export function SetPendingBadge(count: number): $CancellablePromise<void> {
+    return $Call.ByID(4240483754, count);
 }
 
 /**

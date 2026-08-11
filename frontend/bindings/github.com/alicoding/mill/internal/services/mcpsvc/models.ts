@@ -13,10 +13,9 @@ export interface DataChanged {
 }
 
 /**
- * MCPWriteActivity is pushed for a missed (timed-out) or denied MCP
+ * MCPWriteActivity is pushed for a missed (expired) or denied MCP
  * write so it's no longer traceless (docs/goals/0005-pending-attention-
- * model.md item 3 -- solvable independent of MCP Tasks, one line at
- * this timeout branch). Reuses the same activity-push shape App.tsx's
+ * model.md item 3). Reuses the same activity-push shape App.tsx's
  * hotkey-activity handler already established, under a distinct
  * "mcp-write" ActivitySource so it's filterable, not conflated with a
  * workflow trigger.
@@ -25,17 +24,21 @@ export interface MCPWriteActivity {
     "description": string;
 
     /**
-     * Outcome is "denied" or "timed out" -- an approved write never
+     * Outcome is "denied" or "expired" -- an approved write never
      * reaches here, there's nothing traceless about it.
      */
     "outcome": string;
 }
 
 /**
- * MCPWriteRequest is one pending write, as surfaced to the frontend
- * (the Wails "mcp-write-approval" event and PendingMCPWrites).
+ * MCPWriteRequest is the frontend-facing shape for a still-PENDING
+ * write (the "mcp-write-approval" event payload and PendingMCPWrites'
+ * own return type) -- narrower than MCPWriteRecord (no ToolName/
+ * ArgsJSON/executor internals), same field names the banner/Review UI
+ * already bind against.
  */
 export interface MCPWriteRequest {
     "id": string;
     "description": string;
+    "createdAt": string;
 }

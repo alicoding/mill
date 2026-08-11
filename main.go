@@ -252,6 +252,18 @@ func main() {
 		// workflow.run's default is ⌘↩, not ⌘R (owner decision: ⌘R stays
 		// the native browser/dev reload).
 		settingsService.ReleaseMenuAccelerators()
+		// docs/adr/0032 §3: the away-user attention layer's OS-
+		// notification half (Approve/Deny actions on a pending MCP
+		// write, plain-click-to-focus on a guardrail park). Needs the
+		// native app to actually exist first, same reason
+		// RestoreSummonHotkey/ReleaseMenuAccelerators wait for this
+		// event rather than running from ServiceStartup. A failure here
+		// (a bare dev binary with no real bundle ID, or server mode) is
+		// logged and never fatal -- this is additive attention tooling,
+		// not something the rest of the app depends on.
+		if err := settingsService.SetupAwayAttention(); err != nil {
+			logger.Warn("away-attention notifications setup", "error", err)
+		}
 	})
 
 	// Create a new window with the necessary options.

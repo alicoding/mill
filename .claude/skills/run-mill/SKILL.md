@@ -133,6 +133,25 @@ standing verification tool for the window/tray-state class of check,
 not adopted as part of this skill's standard workflow in this pass
 (a one-off spike, not yet wired into CI/Lefthook or a habit).
 
+**Manual-only, same class of gap (docs/adr/0032 §3, the away-user
+attention layer): the dock badge and actionable OS notifications.**
+`internal/adapters/dockbadge` and `internal/adapters/notify` both
+no-op in server mode (their own `server` build-tag stubs), so headless
+e2e can call `SettingsService.SetPendingBadge`/`NotifyPendingApproval`
+and only ever observe "no error" from the server-side no-op path —
+never a rendered badge or a real UNUserNotificationCenter/Toast/D-Bus
+notification. Even a real desktop build can't be driven headlessly
+here: `notifications.Start`'s bundle-ID + delegate-init handshake
+needs a genuinely signed `.app` bundle (a bare `task dev` binary fails
+it, degrading to a logged warning by design), and neither a delivered
+notification's appearance nor an Approve/Deny tap routing back through
+`OnNotificationResponse` has an automatable hook. Verification stays a
+real desktop-mode manual check: trigger a pending MCP write or
+guardrail park while Mill is unfocused, confirm the dock badge count
+and the notification (with working Approve/Deny for an MCP write)
+appear, per `.claude/rules/testing.md`'s manual-only-registry
+discipline.
+
 ## Why not `wails3 dev`'s browser mode instead
 
 `wails3 dev` also lets you open `http://localhost:9245` (the Vite dev
