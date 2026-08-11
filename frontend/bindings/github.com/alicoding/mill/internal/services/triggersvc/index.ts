@@ -7,5 +7,6 @@ export {
 };
 
 export type {
-    HotkeyActivity
+    HotkeyActivity,
+    PersistedHotkey
 } from "./models.js";

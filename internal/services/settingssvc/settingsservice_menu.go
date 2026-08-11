@@ -124,6 +124,75 @@ func (s *SettingsService) RestoreMenuAccelerators() {
 // caller's job, once, after every item in the tree has been visited --
 // rebuilding per item would be wasteful, and would invalidate the impl
 // pointers Update() itself walks mid-traversal.
+// releasedMenuRoles are the native menu items whose accelerator is
+// permanently stripped at startup by ReleaseMenuAccelerators, below --
+// docs/goals/0016-keymap-system.md's keymap system found Mill's own
+// ⌘W default command combo silently colliding with a role
+// DefaultApplicationMenu() installs unconditionally, the exact
+// performKeyEquivalent: bug class this file's Suspend/Restore pair
+// already exists to work around for hotkey recording, just permanent
+// instead of bracketing a recording session:
+//   - File > Close (role CloseWindow, accelerator "Cmd+W") -- ⌘W is
+//     the keymap's tab.close, not "close the window."
+// The role is not removed from the menu, only its keyboard shortcut:
+// File > Close still closes the window when chosen by mouse (a
+// reasonable, distinct affordance from ⌘W's tab-close, matching native
+// macOS "File > Close closes the current window/document" convention).
+//
+// View > Reload (role Reload, "Cmd+R") was released here too during
+// initial implementation, since workflow.run's own default combo was
+// briefly ⌘R -- reverted by explicit owner decision once workflow.run
+// moved to ⌘↩ instead: ⌘R (and ⌘⇧R, ForceReload, already untouched)
+// stay the native browser/dev-webview reload, the owner's own debug
+// escape hatch. Left named here, not silently dropped, so a future
+// reader doesn't wonder why Reload was ever a candidate.
+var releasedMenuRoles = []application.Role{
+	application.CloseWindow,
+}
+
+// ReleaseMenuAccelerators permanently strips releasedMenuRoles' native
+// accelerators so their keypress falls through to the webview's own
+// keydown listener (the command registry, App.tsx) instead of being
+// intercepted by NSMenu's performKeyEquivalent: before it ever reaches
+// the page -- see releasedMenuRoles' own doc comment for the bug this
+// fixes and why (only) File > Close is in scope. Called once from
+// main.go's ApplicationStarted handler, before any hotkey recorder
+// could ever call SuspendMenuAccelerators -- this matters: Suspend's
+// own stripMenuAccelerators only saves an item's accelerator into
+// s.savedAccelerators when it's non-empty at the moment Suspend runs,
+// so as long as this runs first, Restore can never put Close's
+// accelerator back (it was never saved). Menu.FindByRole recurses the
+// whole tree, so this doesn't need to walk into the File submenu
+// itself. Desktop-only by construction, not a build tag: applicationMenu
+// (settingsservice_menu_desktop.go / _server.go) already returns nil in
+// server mode, degrading this to a safe no-op the same way Suspend/
+// Restore already do.
+//
+//wails:ignore
+func (s *SettingsService) ReleaseMenuAccelerators() {
+	app := application.Get()
+	if app == nil {
+		return // no live app yet (e.g. a unit test) -- nothing to release
+	}
+	menu := applicationMenu(app)
+	if menu == nil {
+		return // server mode -- see applicationMenu's own doc comment
+	}
+
+	changed := false
+	for _, role := range releasedMenuRoles {
+		item := menu.FindByRole(role)
+		if item == nil || item.GetAccelerator() == "" {
+			continue
+		}
+		item.RemoveAccelerator()
+		changed = true
+	}
+	if changed {
+		menu.Update()
+	}
+}
+
 func stripMenuAccelerators(menu *application.Menu, out map[*application.MenuItem]string) {
 	if menu == nil {
 		return

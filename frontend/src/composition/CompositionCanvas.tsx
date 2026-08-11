@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type DragEvent } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent } from 'react'
 import {
   ReactFlow,
   ReactFlowProvider,
@@ -32,7 +32,8 @@ import { DecisionEdgeInspector } from './DecisionEdgeInspector'
 import { NodeInspector } from './NodeInspector'
 import { useHotkeyCapture } from './hotkeyCapture'
 import { RunStateContext, useLiveRun } from './liveRunState'
-import { CurrentStepBar, RunButton } from './LiveRunControls'
+import { CurrentStepBar, RunButton, type RunButtonHandle } from './LiveRunControls'
+import { useCanvasCommandDispatch } from './useCanvasCommandDispatch'
 import styles from './CompositionCanvas.module.css'
 import runbookStyles from '../shared/ListCard.module.css'
 
@@ -101,6 +102,13 @@ function CanvasInner({ nodeTypes, workflow, tabKey, onBack, onSaved }: Compositi
   // null/undefined then). The Inspector below shows "save first" in that
   // case rather than silently disabling the control with no explanation.
   const hotkeyCapture = useHotkeyCapture(workflow?.ID ?? null)
+
+  // The keymap system's workflow.save/workflow.run commands reach this
+  // specific mounted canvas via useCanvasCommandDispatch, below (see
+  // its own header comment) -- runButtonRef lets the 'run' case reuse
+  // RunButton's own attrs-check-then-dialog logic instead of
+  // duplicating it here.
+  const runButtonRef = useRef<RunButtonHandle>(null)
 
   // Live run state (docs/SPEC.md §3.8's authoring-style direction, item
   // #2) -- the run currently displayed on this canvas, either started
@@ -337,6 +345,8 @@ function CanvasInner({ nodeTypes, workflow, tabKey, onBack, onSaved }: Compositi
     }
   }
 
+  useCanvasCommandDispatch(tabKey, save, runButtonRef)
+
   return (
     <div className={styles.canvasSection} data-testid="composition-canvas">
       <div className={styles.metaHeader}>
@@ -362,7 +372,7 @@ function CanvasInner({ nodeTypes, workflow, tabKey, onBack, onSaved }: Compositi
           {/* Run is the canvas's one primary action once a workflow is
               saved (docs/SPEC.md §3.8) -- Save above is deliberately
               demoted off variant="primary" so the two don't compete. */}
-          <RunButton workflow={workflow} onStartRun={startRun} />
+          <RunButton ref={runButtonRef} workflow={workflow} onStartRun={startRun} />
         </Stack>
         {saveError && <Text as="p" size="small" className={runbookStyles.error}>{saveError}</Text>}
         {descOpen && (

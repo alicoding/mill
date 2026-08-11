@@ -56,6 +56,13 @@ type SettingsService struct {
 	isolatedData bool
 	mcpService   *mcpsvc.MillMCPService
 
+	// keymap holds command-keybinding OVERRIDES only (goal 0016 --
+	// docs/goals/0016-keymap-system.md), keyed by command id
+	// (frontend/src/shared/commands.ts owns the full command set + each
+	// command's default binding; a command with no entry here is still
+	// on its frontend-declared default). See settingsservice_keymap.go.
+	keymap map[string]triggersvc.PersistedHotkey
+
 	// menuMu guards the native application menu's key-equivalents while a
 	// hotkey recorder is armed -- see SuspendMenuAccelerators's doc
 	// comment (settingsservice_menu.go) for the bug this exists to fix.
@@ -82,6 +89,7 @@ type SettingsService struct {
 func NewSettingsService(store settings.Store, trig *triggersvc.TriggerService, isolatedData bool) *SettingsService {
 	s := &SettingsService{store: store, trig: trig, isolatedData: isolatedData}
 	s.loadPersistedSummonHotkey()
+	s.loadPersistedKeymap()
 	return s
 }
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { describeCombo, keyFromEventCode, modsFromEvent, reservedByMacOS } from './keybinding'
+import { comboFromEvent, comboKey, describeCombo, formatCombo, keyFromEventCode, modsFromEvent, reservedByMacOS } from './keybinding'
 
 describe('keyFromEventCode', () => {
   it('strips the Key prefix from letter codes', () => {
@@ -17,6 +17,81 @@ describe('keyFromEventCode', () => {
   it('returns null for a modifier-only or unsupported code', () => {
     expect(keyFromEventCode('ShiftLeft')).toBeNull()
     expect(keyFromEventCode('ControlLeft')).toBeNull()
+  })
+
+  // docs/goals/0016-keymap-system.md's default keymap needs Tab
+  // (tab.next/prev) and Comma (settings.open) captured by the same
+  // recorder every other combo goes through -- the reserved-combo list
+  // already anticipated Tab support arriving ("defensively, in case
+  // keyFromEventCode ever grows Tab support").
+  it('passes Tab through unchanged', () => {
+    expect(keyFromEventCode('Tab')).toBe('Tab')
+  })
+
+  it('maps the Comma code to a literal comma', () => {
+    expect(keyFromEventCode('Comma')).toBe(',')
+  })
+
+  // workflow.run's default moved off ⌘R to ⌘↩ (owner decision: ⌘R
+  // stays the native browser/dev Reload) -- both the main Return key
+  // and the numpad Enter key normalize to the same 'Enter' key, since
+  // they're the same logical "run/submit" action.
+  it('normalizes both Enter and NumpadEnter to the same key', () => {
+    expect(keyFromEventCode('Enter')).toBe('Enter')
+    expect(keyFromEventCode('NumpadEnter')).toBe('Enter')
+  })
+})
+
+describe('comboFromEvent', () => {
+  const event = (init: Partial<KeyboardEvent>) => init as KeyboardEvent
+
+  it('requires Cmd or Ctrl -- never intercepts plain typing', () => {
+    expect(comboFromEvent(event({ code: 'KeyW', shiftKey: true }))).toBeNull()
+    expect(comboFromEvent(event({ code: 'KeyW' }))).toBeNull()
+  })
+
+  it('extracts mods+key for a real combo attempt', () => {
+    expect(comboFromEvent(event({ code: 'KeyW', metaKey: true }))).toEqual({ mods: ['cmd'], key: 'W' })
+  })
+
+  it('returns null for an unsupported key even with a modifier held', () => {
+    expect(comboFromEvent(event({ code: 'ArrowLeft', metaKey: true }))).toBeNull()
+  })
+
+  it('captures Ctrl+Tab, the keymap default for tab.next', () => {
+    expect(comboFromEvent(event({ code: 'Tab', ctrlKey: true }))).toEqual({ mods: ['ctrl'], key: 'Tab' })
+  })
+})
+
+describe('comboKey', () => {
+  it('is mod-order-independent, mirroring the Go side\'s comboKey', () => {
+    expect(comboKey(['cmd', 'shift'], 'S')).toBe(comboKey(['shift', 'cmd'], 'S'))
+  })
+
+  it('is case-independent on both mods and key', () => {
+    expect(comboKey(['CMD'], 'w')).toBe(comboKey(['cmd'], 'W'))
+  })
+
+  it('distinguishes different combos', () => {
+    expect(comboKey(['cmd'], 'W')).not.toBe(comboKey(['ctrl'], 'W'))
+  })
+})
+
+describe('formatCombo', () => {
+  it('renders mods as symbols, in the order given, then the uppercased key', () => {
+    expect(formatCombo(['cmd', 'shift'], 'w')).toBe('⌘⇧W')
+  })
+
+  it('matches the keymap defaults from docs/goals/0016', () => {
+    expect(formatCombo(['ctrl'], 'Tab')).toBe('⌃TAB')
+    expect(formatCombo(['cmd'], ',')).toBe('⌘,')
+  })
+
+  // workflow.run's default (⌘↩) -- Enter gets Apple's own glyph
+  // convention (Mail's "Send ⌘↩"), not the spelled-out 'ENTER' every
+  // other multi-letter key falls back to.
+  it('renders Enter as the ↩ glyph, not the spelled-out key name', () => {
+    expect(formatCombo(['cmd'], 'Enter')).toBe('⌘↩')
   })
 })
 

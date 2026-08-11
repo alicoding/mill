@@ -10,8 +10,9 @@ import SettingsView from "../views/SettingsView";
 import PlaceholderView from "../views/PlaceholderView";
 import { CapabilitiesService, ExecutionService, SettingsService } from '../shared/bindings'
 import type { BuildInfo } from '../shared/bindings'
-import { refreshNodeTypes, refreshRequests, refreshWorkflows, useAppStore, viewFor, viewsEqual, statusDotColor } from "../shared/store";
+import { refreshKeybindings, refreshNodeTypes, refreshRequests, refreshWorkflows, useAppStore, viewFor, viewsEqual, statusDotColor } from "../shared/store";
 import type { View } from "../shared/store";
+import { dispatchCommandForEvent } from "../shared/commands";
 import { WorkTabShell } from "./WorkTabShell";
 import { MCPWriteApprovals } from "./MCPWriteApprovals";
 import { COLOR_MODE_STORAGE_KEY, SIDEBAR_OPEN_STORAGE_KEY } from "./theme";
@@ -93,45 +94,34 @@ function App() {
   // module, leaving stray listeners firing on unrelated updates. Not
   // worth chasing further for a dev-convenience ribbon -- see SPEC.md.
 
-  // Per-view hotkeys (task #9, docs/SPEC.md §3.7) -- Cmd+1 through
-  // Cmd+4 jump straight to a top-level view, matching the sidebar's own
-  // order (Composition/Configure lead, Activity follows, Review is
-  // last). A durable run's own history/redrive now lives on that
-  // workflow's own Runs tab (docs/SPEC.md §7's Update), not a standalone
-  // view, so there's no fifth top-level destination to bind anymore.
-  // Deliberately in-window-only, not a global OS-level hotkey: this
-  // reuses plain browser keydown handling, the reversible/safer default
-  // named directly in the session goal that built this, distinct from
-  // TriggerService's real OS-level golang.design/x/hotkey registration
-  // (§3.4) that per-workflow and summon hotkeys use -- registering
-  // these globally too would mean checking them against TriggerService's
-  // own claimed-combo conflict space, a bigger design surface this pass
-  // deliberately doesn't take on. Matches browsers'/Slack's own Cmd+1-9
-  // tab-switching precedent: active regardless of which element has
-  // focus, not scoped away from text inputs, since Cmd+digit isn't a
-  // combo real typing produces.
+  // The keymap system's one window keydown listener (docs/goals/0016-
+  // keymap-system.md): resolves a pressed combo against every
+  // command's current EFFECTIVE binding (shared/commands.ts's
+  // dispatchCommandForEvent -- default, or this store's own
+  // keybindingOverrides if the owner rebound it in Settings) and runs
+  // the first match. This is the direct successor to the old, hardcoded
+  // Cmd+1-4/Cmd+, VIEW_HOTKEYS handler -- those four are now just
+  // ordinary commands (view.composition/configure/activity/review,
+  // settings.open) in COMMANDS, dispatched the exact same way, not a
+  // second parallel handler. Deliberately in-window-only, not a global
+  // OS-level hotkey, same reasoning the old handler already had: plain
+  // browser keydown handling is the reversible/safer default, distinct
+  // from TriggerService's real OS-level golang.design/x/hotkey
+  // registration (§3.4) that per-workflow and summon hotkeys use.
+  // Active regardless of which element has focus (comboFromEvent
+  // itself requires Cmd or Ctrl, never a bare key a text field would
+  // otherwise consume) -- matches browsers'/Slack's own Cmd+1-9
+  // tab-switching precedent.
+  const keybindingOverrides = useAppStore((s) => s.keybindingOverrides);
   useEffect(() => {
-    const VIEW_HOTKEYS: Record<string, View> = {
-      '1': { kind: 'composition' },
-      '2': { kind: 'configure' },
-      '3': { kind: 'activity' },
-      '4': { kind: 'review' },
-      // Cmd+, -- macOS's universal open-preferences shortcut (asked for
-      // directly). Same in-window keydown mechanism as Cmd+1-4, not an
-      // OS-level hotkey, and the same reason it's safe unscoped: Cmd+,
-      // isn't a combo real typing produces.
-      ',': { kind: 'settings' },
-    };
     const onKeyDown = (e: KeyboardEvent) => {
-      if (!e.metaKey || e.ctrlKey || e.altKey || e.shiftKey) return;
-      const target = VIEW_HOTKEYS[e.key];
-      if (!target) return;
-      e.preventDefault();
-      setView(target);
+      if (dispatchCommandForEvent(e, keybindingOverrides)) {
+        e.preventDefault();
+      }
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [setView]);
+  }, [keybindingOverrides]);
 
   // Icon-rail collapse (narrow persistent strip, not full hide/show) is a
   // well-established pattern -- but Primer genuinely ships none of its
@@ -213,6 +203,7 @@ function App() {
     void refreshWorkflows();
     void refreshNodeTypes();
     void refreshRequests();
+    void refreshKeybindings();
   }, []);
 
   useEffect(() => {
