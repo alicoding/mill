@@ -73,6 +73,21 @@ anything secret-shaped, and never force-push, amend a previous commit, or
 rewrite history without being explicitly asked — this rule covers regular
 commits, not destructive git operations.
 
+**Deliver through short-lived branches + a PR per goal; push at least
+once per session — never let unpushed work accumulate**
+([ADR-0034](docs/adr/0034-git-ci-operating-model.md), owner-ratified
+after this repo's own CI history demonstrated the ignored-pipeline
+failure). `main` is ruleset-protected: direct pushes are blocked (even
+for the owner — bypass is "for pull requests only"), the CI checks are
+required, and a green PR self-merges without waiting on anyone. So: a
+goal's work lands as ONE self-merged PR when its scope completes
+(quick out-of-goal fixes ride the next goal's PR or a small dedicated
+one); worktree/agent branches live only as long as their one task,
+then merge and delete. Required checks can't gate a direct push at all
+(GitHub evaluates a SHA's already-recorded status, never runs checks
+at push time) — the PR flow is what makes green-before-main real, not
+review ceremony.
+
 If `docs/SPEC.md` marks something `OPEN`, do not silently resolve it by
 implementing one option — surface the choice.
 
