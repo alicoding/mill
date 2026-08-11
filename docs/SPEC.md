@@ -2234,8 +2234,17 @@ findings) and the build rationale are in
   (⌘↩, Cmd+Enter — reach the ACTIVE canvas tab via a store-level
   `canvasCommandRequest` signal, `composition/useCanvasCommandDispatch.ts`,
   since `shared/` can't import `composition/`, same shape as
-  `openWorkflowRequest` above), and `palette.open` (⌘K, reserved for
-  goal 0015, `run` is a no-op today). `workflow.run`'s default moved
+  `openWorkflowRequest` above), and `palette.open` (⌘K — real since
+  goal 0015's core landed 2026-08-11: `app/CommandPalette.tsx` on
+  Primer's `FilteredActionList`, toggled via a store flag since
+  `shared/` can't import the component; lists every registry command
+  WITH its effective shortcut inline — the owner's
+  unblock-yourself-in-place requirement — plus workflows (Enter = the
+  same test-run semantics as the list Run button) and open work tabs
+  (jump/close). Frecency/pins, Configure entities, the pending-review
+  count, and a ⌘?/⌘/ alias — blocked on the 1:1 command↔binding
+  registry shape — stay recorded in the goal file, not silently
+  dropped). `workflow.run`'s default moved
   off an initial ⌘R pick to ⌘↩ by owner decision, once implementation
   surfaced a real collision the original research missed: macOS's
   `DefaultApplicationMenu()` installs View > Reload on Cmd+R

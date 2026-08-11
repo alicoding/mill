@@ -16,6 +16,7 @@ import type { View } from "../shared/store";
 import { dispatchCommandForEvent } from "../shared/commands";
 import { WorkTabShell } from "./WorkTabShell";
 import { MCPWriteApprovals } from "./MCPWriteApprovals";
+import { CommandPalette } from "./CommandPalette";
 import { BuildIdentityBadge } from "./BuildIdentityBadge";
 import { COLOR_MODE_STORAGE_KEY, SIDEBAR_OPEN_STORAGE_KEY } from "./theme";
 import { CAPABILITY_ICON } from "./navIcon";
@@ -300,6 +301,11 @@ function App() {
           this, and is it live." Extracted to BuildIdentityBadge.tsx
           (goal 0019); its own doc comment carries the full reasoning. */}
       <BuildIdentityBadge buildInfo={buildInfo} />
+      {/* The ⌘K command palette (docs/goals/0015): renders off the
+          store's paletteOpen flag regardless of which page/work tab is
+          active, same "app-level chrome, mounted once" pattern as
+          MCPWriteApprovals below. */}
+      <CommandPalette />
       {isIsolatedData && (
         <Label variant="accent" size="small" className={styles.isolatedDataRibbon} data-testid="isolated-data-badge">
           TEST DATA

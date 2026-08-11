@@ -11,6 +11,7 @@ import { clearScratch } from '../composition/canvasScratch'
 import { RequestForm } from '../configure/RequestForm'
 import { RequestSummary } from '../configure/RequestSummary'
 import editorStyles from '../composition/CompositionView.module.css'
+import { tabLabel } from './workTabLabel'
 import styles from './WorkTabShell.module.css'
 
 // The ONE app-wide work-tab strip (docs/SPEC.md §3.8, direct user
@@ -25,20 +26,6 @@ import styles from './WorkTabShell.module.css'
 // pages with nothing open.
 
 const PAGE_TAB = '__page__'
-
-function tabLabel(tab: WorkTab, workflowLabel: (id: string) => string | undefined, requestLabel: (id: string) => string | undefined): string {
-  switch (tab.kind) {
-    case 'workflow-edit':
-      return workflowLabel(tab.workflowId) ?? 'Workflow'
-    case 'workflow-new':
-      return 'New workflow'
-    case 'request-view':
-    case 'request-edit':
-      return requestLabel(tab.requestId) ?? 'Integration'
-    case 'request-new':
-      return 'New integration'
-  }
-}
 
 export function WorkTabShell({ pageLabel, children }: { pageLabel: string; children: ReactNode }) {
   const workTabs = useAppStore((s) => s.workTabs)
