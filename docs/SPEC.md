@@ -2759,7 +2759,17 @@ Full rationale in [`docs/adr/0003-browser-bridge-architecture.md`](adr/0003-brow
   (§7-adjacent, `internal/adapters/procexec`) is the process
   supervisor DBOS deliberately isn't — Setpgid group spawn, one shared
   SIGTERM→grace→SIGKILL kill path, four outcomes, proven against real
-  SIGTERM-trapping processes.
+  SIGTERM-trapping processes. **"Capture from my shell" (the
+  ADR-0026 amendment affordance) is built** (2026-08-11, prompted by
+  the owner's own PATH-less `task dev` failure demonstrating ambient
+  inheritance live): `internal/adapters/shellenv` runs the user's
+  login shell (`$SHELL -l -c`, 10s bound against hanging profiles)
+  and the ExecEnv form's "Capture PATH from my shell" button upserts
+  the result into the stored, visible, editable Env — determinism
+  through materialization, Homebrew/mise paths written down, never
+  re-derived at run time. The same form pass made the Profile-mode
+  caption follow the selected mode and turned Env editing into paired
+  key/value rows (a live-review catch, screenshot-prompted).
 - The `code-execution` NodeType (effect `external`, ask-by-default via
   the ambient guardrail gate — the §2.1 gesture, backed by the Review
   queue) is BUILT (`internal/domain/composition/codeexec.go`): config

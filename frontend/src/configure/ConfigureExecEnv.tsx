@@ -61,6 +61,7 @@ export function ConfigureExecEnv() {
   const [dir, setDir] = useState(TEMP_DIR_SENTINEL)
   const [envRows, setEnvRows] = useState<EnvRow[]>([])
   const [formOpen, setFormOpen] = useState(false)
+  const [capturing, setCapturing] = useState(false)
   const [error, setError] = useState('')
   const [importError, setImportError] = useState<string | null>(null)
   const importInputRef = useRef<HTMLInputElement>(null)
@@ -137,6 +138,24 @@ export function ConfigureExecEnv() {
 
   const updateEnvRow = (i: number, patch: Partial<EnvRow>) => {
     setEnvRows((prev) => prev.map((r, idx) => (idx === i ? { ...r, ...patch } : r)))
+  }
+
+  const captureShellPath = async () => {
+    setCapturing(true)
+    setError('')
+    try {
+      const path = await ConfigureService.CaptureShellPath()
+      setEnvRows((prev) => {
+        const idx = prev.findIndex((r) => r.key.trim() === 'PATH')
+        if (idx >= 0) return prev.map((r, i) => (i === idx ? { ...r, value: path } : r))
+        const blankless = prev.filter((r) => r.key.trim() !== '' || r.value.trim() !== '')
+        return [...blankless, { key: 'PATH', value: path }]
+      })
+    } catch (err) {
+      setError(String(err))
+    } finally {
+      setCapturing(false)
+    }
   }
 
   const envItems: InventoryItem[] = (envs ?? []).map((e) => ({
@@ -244,9 +263,24 @@ export function ConfigureExecEnv() {
                 />
               </Stack>
             ))}
-            <Button size="small" variant="invisible" onClick={() => setEnvRows((prev) => [...prev, { key: '', value: '' }])}>
-              Add variable
-            </Button>
+            <Stack direction="horizontal" gap="condensed">
+              <Button size="small" variant="invisible" onClick={() => setEnvRows((prev) => [...prev, { key: '', value: '' }])}>
+                Add variable
+              </Button>
+              {/* ADR-0026's Amendment, "Capture from my shell": snapshot the
+                  real login-shell PATH into the stored, editable env --
+                  determinism through materialization (clean mode AND your
+                  Homebrew/mise paths, written down, never re-derived). */}
+              <Button
+                size="small"
+                variant="invisible"
+                loading={capturing}
+                data-testid="capture-shell-path"
+                onClick={captureShellPath}
+              >
+                Capture PATH from my shell
+              </Button>
+            </Stack>
             {error && <Text as="p" size="small" className={styles.error}>{error}</Text>}
             <Stack direction="horizontal" gap="condensed">
               <Button variant="primary" size="small" onClick={save}>Save environment</Button>
