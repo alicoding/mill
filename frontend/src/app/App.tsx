@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react'
 import {Events, WML} from "@wailsio/runtime";
-import {CounterLabel, IconButton, Label, NavList, PageLayout, Text, useTheme} from "@primer/react";
-import {DotFillIcon, GearIcon, SidebarCollapseIcon, SidebarExpandIcon} from "@primer/octicons-react";
+import {Label, PageLayout, useTheme} from "@primer/react";
 import HomeView from "../views/HomeView";
 import ActivityView from "../views/ActivityView";
 import ReviewView from "../views/ReviewView";
@@ -11,14 +10,14 @@ import SettingsView from "../views/SettingsView";
 import PlaceholderView from "../views/PlaceholderView";
 import { CapabilitiesService, ExecutionService, SettingsService } from '../shared/bindings'
 import type { BuildInfo } from '../shared/bindings'
-import { refreshKeybindings, refreshNodeTypes, refreshRequests, refreshWorkflows, useAppStore, viewFor, viewsEqual, statusDotColor } from "../shared/store";
+import { refreshKeybindings, refreshNodeTypes, refreshRequests, refreshWorkflows, useAppStore } from "../shared/store";
 import { dispatchCommandForEvent } from "../shared/commands";
 import { WorkTabShell } from "./WorkTabShell";
+import { AppSidebar } from "./AppSidebar";
 import { MCPWriteApprovals } from "./MCPWriteApprovals";
 import { CommandPalette } from "./CommandPalette";
 import { BuildIdentityBadge } from "./BuildIdentityBadge";
 import { COLOR_MODE_STORAGE_KEY, SIDEBAR_OPEN_STORAGE_KEY } from "./theme";
-import { CAPABILITY_ICON } from "./navIcon";
 import { pageIconFor, pageLabelFor } from './pageMeta'
 import styles from "./App.module.css";
 
@@ -324,15 +323,12 @@ function App() {
           data-testid="titlebar-left"
         >
           {isNativeWebview && <div className={styles.trafficLightInset} aria-hidden="true" />}
-          <IconButton
-            icon={sidebarOpen ? SidebarCollapseIcon : SidebarExpandIcon}
-            aria-label={sidebarOpen ? 'Collapse navigation' : 'Expand navigation'}
-            size="small"
-            variant="invisible"
-            className={styles.titlebarSidebarToggle}
-            onClick={() => setSidebarOpen((v) => !v)}
-          />
-          {sidebarOpen && <Text className={styles.titlebarWordmark}>Mill</Text>}
+          {/* No content up here anymore (owner refinement: the Mill
+              identity lives in the sidebar's top row in BOTH states, so
+              it never moves when the rail collapses) -- this segment is
+              now purely the band's sidebar-width spacer: it carries the
+              divider line up through the band and, on native, the
+              traffic-light clearance. */}
         </div>
         <div
           ref={setTitlebarSlot}
@@ -349,11 +345,6 @@ function App() {
           active, same "app-level chrome, mounted once" pattern as
           MCPWriteApprovals below. */}
       <CommandPalette />
-      {isIsolatedData && (
-        <Label variant="accent" size="small" className={styles.isolatedDataRibbon} data-testid="isolated-data-badge">
-          TEST DATA
-        </Label>
-      )}
 
       {/* Every capability gets a nav entry, built or not (docs/SPEC.md
           §2.2) -- driven by CapabilitiesService's own data so the sidebar
@@ -363,77 +354,7 @@ function App() {
           (page-scroll-oriented, wrong fit here), while .Sidebar stays a
           persistent side rail at any width -- see docs/SPEC.md. */}
       <PageLayout className={styles.appBody} containerWidth="full" padding="none" rowGap="none" columnGap="none">
-        <PageLayout.Sidebar
-          className={styles.sidebar}
-          width="small"
-          responsiveVariant="default"
-          divider="line"
-          padding="condensed"
-        >
-          {/* The wordmark + collapse toggle that used to render here (a
-              .sidebarHeader row) moved up into the titlebar band's own
-              left segment above -- the fix for the reported flaw (they
-              used to sit orphaned below the band, and collapsing the
-              sidebar moved nothing up there). .sidebarNav is now the
-              sidebar's first real content. */}
-          <div className={styles.sidebarNav} data-testid="sidebar-nav">
-            <NavList>
-              {capabilities.map((c) => {
-                const target = viewFor(c);
-                const label = c.NavLabel || c.Label;
-                const NavIcon = CAPABILITY_ICON[c.ID];
-                return (
-                  <NavList.Item
-                    key={c.ID}
-                    href="#"
-                    aria-current={viewsEqual(view, target) ? 'page' : undefined}
-                    aria-label={sidebarOpen ? undefined : label}
-                    title={sidebarOpen ? undefined : label}
-                    onClick={(e) => { e.preventDefault(); setView(target) }}
-                  >
-                    {NavIcon && <NavList.LeadingVisual><NavIcon/></NavList.LeadingVisual>}
-                    {sidebarOpen && label}
-                    {sidebarOpen && (
-                      <NavList.TrailingVisual>
-                        {c.ID === 'capability-review' && reviewPendingCount > 0 && (
-                          <CounterLabel
-                            data-testid="review-pending-count"
-                            aria-label={`${reviewPendingCount} pending in Review`}
-                          >
-                            {reviewPendingCount}
-                          </CounterLabel>
-                        )}
-                        <span title={c.Status} className={styles.statusDot}>
-                          <DotFillIcon
-                            size={12}
-                            fill={statusDotColor(c.Status)}
-                            aria-label={c.Status}
-                          />
-                        </span>
-                      </NavList.TrailingVisual>
-                    )}
-                  </NavList.Item>
-                );
-              })}
-            </NavList>
-          </div>
-
-          {/* Settings pulled out of the NavList entirely, into a bottom-
-              anchored footer slot -- Notion/Slack's own pattern for
-              app-level config vs. content destinations (docs/SPEC.md
-              §3.5). Not a capability (no build status/SPEC section of
-              its own), so it isn't driven by CapabilitiesService.List()
-              the way the rows above are -- a fixed control. */}
-          <div className={styles.sidebarFooter}>
-            <IconButton
-              icon={GearIcon}
-              aria-label="Settings"
-              size="small"
-              variant="invisible"
-              onClick={() => setView({ kind: 'settings' })}
-            />
-          </div>
-        </PageLayout.Sidebar>
+        <AppSidebar sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} view={view} setView={setView} capabilities={capabilities} reviewPendingCount={reviewPendingCount} />
 
         <PageLayout.Content className="view-pane" padding="none">
           {/* The app-wide work-tab strip (docs/SPEC.md §3.8): the
@@ -465,6 +386,17 @@ function App() {
             <span title={buildInfo.Modified ? 'Built with uncommitted changes' : 'Commit this build was built from'}>
               · {buildInfo.Revision.slice(0, 7)}{buildInfo.Modified && '*'}
             </span>
+          )}
+          {/* Instance-identity info lives with instance-identity info:
+              this badge floated as a fixed ribbon twice, and BOTH spots
+              it picked got claimed by real chrome (first the titlebar
+              band's toggle, then the sidebar top row's) -- caught each
+              time by the band-tracking e2e's intercepted clicks. The
+              footer never moves. */}
+          {isIsolatedData && (
+            <Label variant="accent" size="small" data-testid="isolated-data-badge">
+              TEST DATA
+            </Label>
           )}
         </span>
         <span className={styles.time}>

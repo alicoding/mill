@@ -83,11 +83,15 @@ test('the titlebar band\'s left segment tracks the sidebar column: it resizes an
   expect(sidebarBox).not.toBeNull()
   expect(Math.abs(sidebarBox!.width - collapsedLeftBox!.width)).toBeLessThan(2)
 
-  // (c) the toggle lives inside the band segment, not orphaned below it.
+  // (c) the toggle lives in the SIDEBAR's own top row, below the band
+  // (owner design 2026-08-11: the control sits next to the nav it
+  // controls; collapsed, the same slot is the Mill icon that swaps to
+  // this expand affordance on hover/focus). Its x stays inside the
+  // rail column.
   const toggleBox = await page.getByRole('button', { name: 'Expand navigation' }).boundingBox()
   expect(toggleBox).not.toBeNull()
-  expect(toggleBox!.y).toBeGreaterThanOrEqual(collapsedLeftBox!.y)
-  expect(toggleBox!.y + toggleBox!.height).toBeLessThanOrEqual(collapsedLeftBox!.y + collapsedLeftBox!.height + 1)
+  expect(toggleBox!.y).toBeGreaterThanOrEqual(collapsedLeftBox!.y + collapsedLeftBox!.height - 1)
+  expect(toggleBox!.x + toggleBox!.width).toBeLessThanOrEqual(collapsedLeftBox!.x + collapsedLeftBox!.width + 1)
 
   // Restore the default state so this doesn't leak into other tests via
   // localStorage (each spec gets a fresh browser context in this suite,

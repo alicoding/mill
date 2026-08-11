@@ -74,9 +74,72 @@
     padding: 0;
 }
 
-.titlebarSidebarToggle {
-    --wails-draggable: no-drag;
+/* The sidebar's own top row, above the nav (owner design): expanded it
+   holds the collapse toggle far left; collapsed it holds the rail's
+   Mill-icon/expand-on-hover button. */
+.sidebarTopRow {
     flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    gap: var(--base-size-8);
+    padding: var(--base-size-4) var(--base-size-4) 0;
+}
+
+/* Expanded top row: logo + wordmark far left (the identity anchor
+   shared with the collapsed rail's logo slot), collapse control right
+   beside it. */
+.sidebarIdentity {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--base-size-8);
+    padding-left: var(--base-size-4);
+}
+.sidebarWordmark {
+    font-weight: 600;
+    font-size: 14px;
+}
+
+/* Collapsed-rail identity button: the Mill icon at rest, the expand
+   glyph on hover/keyboard focus -- one always-present button, so the
+   affordance is reachable by keyboard exactly like the expanded
+   toggle. */
+.railLogoButton {
+    appearance: none;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: var(--borderRadius-medium);
+    margin: 0 auto;
+}
+.railLogoButton:hover,
+.railLogoButton:focus-visible {
+    background: var(--control-transparent-bgColor-hover);
+}
+.railLogo {
+    width: 20px;
+    height: 20px;
+    border-radius: 4px;
+    display: block;
+}
+.railLogoHover {
+    position: absolute;
+    inset: 0;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    color: var(--fgColor-muted);
+    background: var(--bgColor-inset);
+    border-radius: var(--borderRadius-medium);
+}
+.railLogoButton:hover .railLogoHover,
+.railLogoButton:focus-visible .railLogoHover {
+    display: inline-flex;
 }
 .titlebarWordmark {
     font-weight: 600;
