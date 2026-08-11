@@ -6,13 +6,14 @@ import { ActionList, ActionMenu, Banner, IconButton } from '@primer/react'
 import { ChevronDownIcon } from '@primer/octicons-react'
 import { ConfigureService } from '../shared/bindings'
 import { TabItem, TabList, TabPanel } from '../shared/Tabs'
+import { ENTITY_ICON } from '../shared/entityIcons'
 import { refreshRequests, refreshWorkflows, useAppStore, type WorkTab } from '../shared/store'
 import { WorkflowEditorTab } from '../composition/WorkflowEditorTab'
 import { clearScratch } from '../composition/canvasScratch'
 import { RequestForm } from '../configure/RequestForm'
 import { RequestSummary } from '../configure/RequestSummary'
 import editorStyles from '../composition/CompositionView.module.css'
-import { tabKindLabel, tabLabel } from './workTabLabel'
+import { tabLabel } from './workTabLabel'
 import styles from './WorkTabShell.module.css'
 
 // The ONE app-wide work-tab strip (docs/SPEC.md §3.8, direct user
@@ -40,7 +41,23 @@ import styles from './WorkTabShell.module.css'
 
 const PAGE_TAB = '__page__'
 
-export function WorkTabShell({ pageLabel, titlebarSlot, children }: { pageLabel: string; titlebarSlot: HTMLDivElement | null; children: ReactNode }) {
+// The VS Code tab anatomy (owner-requested): every band tab is
+// icon + single-line label at ONE constant baseline -- the entity
+// glyph (shared/entityIcons.ts, the same kind cue the inventory rows
+// use) replaces the two-line kicker, which put labels at varying
+// heights inside the 38px band.
+function tabEntityVisual(tab: WorkTab): ReactNode {
+  const entity = tab.kind.startsWith('workflow') ? 'workflow' : 'request'
+  const e = ENTITY_ICON[entity]
+  if (!e) return null
+  return (
+    <span data-testid="tab-icon" data-entity={entity} style={{ color: e.fg, display: 'inline-flex' }}>
+      <e.Icon size={14} />
+    </span>
+  )
+}
+
+export function WorkTabShell({ pageLabel, pageIcon, titlebarSlot, children }: { pageLabel: string; pageIcon?: ReactNode; titlebarSlot: HTMLDivElement | null; children: ReactNode }) {
   const workTabs = useAppStore((s) => s.workTabs)
   const activeWorkTabKey = useAppStore((s) => s.activeWorkTabKey)
   const activateWorkTab = useAppStore((s) => s.activateWorkTab)
@@ -160,9 +177,9 @@ export function WorkTabShell({ pageLabel, titlebarSlot, children }: { pageLabel:
   const stripContent = (
     <>
       <TabList aria-label="Open work">
-        <TabItem value={PAGE_TAB}>{pageLabel}</TabItem>
+        <TabItem value={PAGE_TAB} leadingVisual={pageIcon}>{pageLabel}</TabItem>
         {workTabs.map((t) => (
-          <TabItem key={t.key} value={t.key} kicker={tabKindLabel(t)} onClose={() => closeAndClearScratch(t.key)}>
+          <TabItem key={t.key} value={t.key} leadingVisual={tabEntityVisual(t)} onClose={() => closeAndClearScratch(t.key)}>
             {tabLabel(t, workflowLabel, requestLabel)}
             {/* Hot-exit dirty dot (docs/goals/0012) -- this tab's
                 canvas currently differs from what's saved. */}

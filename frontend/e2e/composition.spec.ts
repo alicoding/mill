@@ -449,14 +449,17 @@ test('Editing the same workflow twice reuses its tab instead of opening a duplic
   await row.click()
   await expect(outerTabs).toHaveCount(2) // Workflows + one editor tab
 
-  // Two-line work-tab pattern: the editor tab carries an aria-hidden
-  // KIND line ("Workflow") above its label -- and precisely because
-  // it's aria-hidden, the tab's accessible NAME stays the bare label
-  // (asserted implicitly by every getByRole('tab', { name }) call in
-  // this suite still resolving).
-  await expect(outerTabs.nth(1).getByTestId('tab-kicker')).toHaveText('Workflow')
-  // The page tab has no kicker -- kind lines mark work items only.
-  await expect(outerTabs.nth(0).getByTestId('tab-kicker')).toHaveCount(0)
+  // VS Code tab anatomy (superseding the two-line kicker, which put
+  // labels at varying baselines in the titlebar band): every tab is
+  // icon + single-line label. The editor tab's icon carries the
+  // entity kind (the same cue inventory rows use); the page tab shows
+  // its section glyph. Both aria-hidden-adjacent (icon spans carry no
+  // text), so accessible tab NAMES stay the bare label -- asserted
+  // implicitly by every getByRole('tab', { name }) in this suite.
+  await expect(outerTabs.nth(1).locator('[data-testid="tab-icon"][data-entity="workflow"]')).toBeVisible()
+  await expect(outerTabs.nth(0).getByTestId('tab-icon')).toBeVisible()
+  // The kicker is retired in the band -- no two-line tabs remain.
+  await expect(page.getByTestId('tab-kicker')).toHaveCount(0)
 
   // Back to the list without closing the editor tab, then open the same
   // workflow again -- must switch to the existing tab, not open a second.

@@ -27,6 +27,19 @@ export interface BuildInfo {
      * more concerning kind of stale).
      */
     "Modified": boolean;
+
+    /**
+     * Server is true in the `server` build (headless HTTP mode) -- the
+     * AUTHORITATIVE native-vs-server signal for the frontend. Found the
+     * hard way (goal 0021 dogfooding): `'_wails' in window` is true in a
+     * plain browser tab on the server-mode interface too (the Wails JS
+     * runtime injects it in every mode), so frontend-side detection was
+     * silently wrong -- native-only chrome (the titlebar traffic-light
+     * inset) rendered in server mode, and the INSTALLED/SERVER badge
+     * split never actually worked. The build tag is the one place that
+     * genuinely knows.
+     */
+    "Server": boolean;
 }
 
 /**
