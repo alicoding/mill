@@ -65,6 +65,7 @@ export function WorkTabShell({ pageLabel, pageIcon, titlebarSlot, children }: { 
   const closeAllWorkTabs = useAppStore((s) => s.closeAllWorkTabs)
   const closeOtherWorkTabs = useAppStore((s) => s.closeOtherWorkTabs)
   const openWorkTab = useAppStore((s) => s.openWorkTab)
+  const setWorkTabMode = useAppStore((s) => s.setWorkTabMode)
   const pruneWorkTabs = useAppStore((s) => s.pruneWorkTabs)
   const workflows = useAppStore((s) => s.workflows)
   const nodeTypes = useAppStore((s) => s.nodeTypes)
@@ -121,14 +122,19 @@ export function WorkTabShell({ pageLabel, pageIcon, titlebarSlot, children }: { 
         if (nodeTypes === null) return null
         const workflow = tab.kind === 'workflow-edit' ? (workflows?.find((w) => w.ID === tab.workflowId) ?? null) : null
         if (tab.kind === 'workflow-edit' && workflow === null) return null
+        // A 'workflow-new' tab has no view mode -- composing a brand-new
+        // workflow is inherently an editing act (docs/goals/0022).
+        const mode = tab.kind === 'workflow-edit' ? tab.mode : 'edit'
         return (
           <WorkflowEditorTab
             nodeTypes={nodeTypes}
             workflow={workflow}
             tabKey={tab.key}
+            mode={mode}
             onBack={() => closeAndClearScratch(tab.key)}
             onSaved={() => { void refreshWorkflows(); closeWorkTab(tab.key) }}
             onWorkflowsChanged={() => void refreshWorkflows()}
+            onSwitchToEdit={() => setWorkTabMode(tab.key, 'edit')}
           />
         )
       }

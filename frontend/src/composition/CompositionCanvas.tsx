@@ -5,40 +5,34 @@ import {
   Background,
   Controls,
   MiniMap,
-  Panel,
   useReactFlow,
 } from '@xyflow/react'
 import type { Connection, Edge as RFEdge } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 import { useStore } from 'zustand'
-import { IconButton, Stack, Text } from '@primer/react'
-import { ColumnsIcon, RedoIcon, SidebarCollapseIcon, SidebarExpandIcon, TrashIcon, UndoIcon } from '@primer/octicons-react'
-import { ArrowLeftIcon } from '@primer/octicons-react'
-import { CompositionService } from '../shared/bindings'
-import type { NodeType, Node as CompNode, Edge as CompEdge, Workflow, Issue } from '../../bindings/github.com/alicoding/mill/internal/domain/composition/models'
+import { Text } from '@primer/react'
+import type { NodeType, Workflow, Issue } from '../../bindings/github.com/alicoding/mill/internal/domain/composition/models'
 import { createCanvasStore, type CanvasNode } from './canvasStore'
 import { rfNodeTypes } from './rfNodeTypes'
 import { CANVAS_NODE_WIDTH, CANVAS_NODE_HEIGHT } from './canvasConstants'
 import { findFreeDropPosition } from './canvasLayout'
-import { draftWorkflowSchema } from './draftWorkflowSchema'
-import { toDraftEdges, toDraftNodes } from './draftPayload'
-import { clearScratch } from './canvasScratch'
 import { computeInitialCanvas, useCanvasHotExit } from './useCanvasHotExit'
+import { useCanvasSave } from './useCanvasSave'
 import { useCanvasLiveSync } from './useCanvasLiveSync'
 import { ExternalChangeBanner } from './ExternalChangeBanner'
 import { CanvasMetaHeader } from './CanvasMetaHeader'
 import { useDraftValidation, groupIssuesByNode } from './useDraftValidation'
 import { useGuardrailBadges } from './useGuardrailBadges'
-import { ValidationSurface } from './ValidationPanel'
 import { NodePalette } from './NodePalette'
+import { CanvasToolbar } from './CanvasToolbar'
 import { DecisionEdgeInspector } from './DecisionEdgeInspector'
 import { NodeInspector } from './NodeInspector'
 import { useHotkeyCapture } from './hotkeyCapture'
 import { RunStateContext, useLiveRun } from './liveRunState'
+import { BreakpointContext, useBreakpoints } from './breakpoints'
 import { CurrentStepBar, type RunButtonHandle } from './LiveRunControls'
 import { useCanvasCommandDispatch } from './useCanvasCommandDispatch'
 import styles from './CompositionCanvas.module.css'
-import runbookStyles from '../shared/ListCard.module.css'
 
 interface CompositionCanvasProps {
   nodeTypes: NodeType[]
@@ -57,6 +51,21 @@ interface CompositionCanvasProps {
   tabKey: string
   onBack: () => void
   onSaved: () => void
+  // docs/goals/0022-workflow-view-mode.md: renders this SAME mounted
+  // canvas read-only in place (no remount) -- React Flow's own
+  // nodesDraggable/nodesConnectable/deleteKeyCode go inert, the
+  // authoring toolbar (palette/undo/redo/auto-layout/delete-selected)
+  // disappears, and NodeInspector wraps its fields in a disabled
+  // <fieldset>. elementsSelectable deliberately stays ON regardless
+  // (see the ReactFlow props below) -- selecting a node to read its
+  // config in the Inspector is inspection, not a mutation, and
+  // WorkflowHoverPreview.tsx's own elementsSelectable={false} is a
+  // fundamentally different case (a non-interactive glance thumbnail,
+  // never meant to be clicked into).
+  readOnly: boolean
+  // Switches THIS tab from view to edit in place (store.ts's
+  // setWorkTabMode) -- CanvasMetaHeader's own Edit button.
+  onSwitchToEdit?: () => void
 }
 
 // A prototype canvas for SPEC.md §3 / ADR-0005 -- built ahead of B2's
@@ -66,7 +75,7 @@ interface CompositionCanvasProps {
 // gets its node type's default config immediately, editable via the
 // Inspector the moment it's selected, never a bare unconfigured
 // reference.
-function CanvasInner({ nodeTypes, workflow, tabKey, onBack, onSaved }: CompositionCanvasProps) {
+function CanvasInner({ nodeTypes, workflow, tabKey, onBack, onSaved, readOnly, onSwitchToEdit }: CompositionCanvasProps) {
   // Computed once, synchronously, at first render -- see
   // computeInitialCanvas's own doc comment for why this isn't a
   // useEffect. `initial.baseline` (docs/goals/0012) is what every later
@@ -74,7 +83,11 @@ function CanvasInner({ nodeTypes, workflow, tabKey, onBack, onSaved }: Compositi
   // real content (or the empty-starter content for a new workflow),
   // never the restored scratch itself -- so a restored-but-unedited-
   // since-restore canvas still reads as dirty until an actual Save.
-  const [initial] = useState(() => computeInitialCanvas(workflow, nodeTypes, tabKey))
+  // `readOnly` is captured at its MOUNT-time value here (a lazy
+  // initializer runs once) -- see computeInitialCanvas's own doc
+  // comment on why a later view->edit switch deliberately doesn't
+  // retroactively re-check for a scratch.
+  const [initial] = useState(() => computeInitialCanvas(workflow, nodeTypes, tabKey, readOnly))
 
   // One store per mounted CanvasInner -- tabbed multi-editing
   // (CompositionView.tsx) can have several of these mounted at once,
@@ -140,6 +153,14 @@ function CanvasInner({ nodeTypes, workflow, tabKey, onBack, onSaved }: Compositi
   // own header comment for the full design.
   const refreshGuardrailVerdicts = useGuardrailBadges(workflow?.ID, nodes, setGuardrailVerdicts)
 
+  // Ground-truth breakpoint state (docs/adr/0031, goal 0022's move onto
+  // the node card itself) -- provided via context so every card can
+  // read/toggle its own without a per-node fetch; refreshGuardrailVerdicts
+  // is passed as onChanged so a toggle also refreshes the shield badges
+  // above (breakpoints.ts's own header comment explains why the two are
+  // separate fetches that both need refreshing on a toggle).
+  const breakpoints = useBreakpoints(workflow?.ID, refreshGuardrailVerdicts)
+
   // Authoring-validation surface (docs/adr/0028): debounced live
   // ValidateDraft, mirrored onto every node's own badge the same way
   // guardrail verdicts are above -- see useDraftValidation.ts.
@@ -173,8 +194,6 @@ function CanvasInner({ nodeTypes, workflow, tabKey, onBack, onSaved }: Compositi
   // it), only Description -- optional, used less -- is worth a
   // disclosure.
   const [descOpen, setDescOpen] = useState(!!workflow?.Description)
-  const [saveError, setSaveError] = useState('')
-  const [saving, setSaving] = useState(false)
   const [layingOut, setLayingOut] = useState(false)
 
   // What every dirty check (hot exit, live sync) compares the live
@@ -191,7 +210,7 @@ function CanvasInner({ nodeTypes, workflow, tabKey, onBack, onSaved }: Compositi
   // surface the mount-time restore decision and keep a debounced
   // scratch write + live dirty flag in sync afterward -- see
   // useCanvasHotExit.ts's own doc comment for the full reasoning.
-  useCanvasHotExit(tabKey, initial.restoredFromScratch, baseline, nodes, edges, draftLabel, draftDescription)
+  useCanvasHotExit(tabKey, initial.restoredFromScratch, baseline, nodes, edges, draftLabel, draftDescription, readOnly)
 
   // Live sync (GAP B): an external MCP write to THIS workflow while the
   // editor is open redraws the canvas immediately when clean, or offers
@@ -253,6 +272,12 @@ function CanvasInner({ nodeTypes, workflow, tabKey, onBack, onSaved }: Compositi
   const onCanvasDrop = useCallback(
     (event: DragEvent<HTMLDivElement>) => {
       event.preventDefault()
+      // Defensive: the palette that's the only real drag SOURCE for
+      // this handler is already absent in read-only mode (gated below),
+      // but a stray OS-level drag event (e.g. dragging a file over the
+      // canvas) could still reach onDrop -- belt-and-suspenders against
+      // mutating a read-only canvas's store.
+      if (readOnly) return
       const nodeTypeID = event.dataTransfer.getData('application/mill-node-type')
       const nt = nodeTypes.find((n) => n.ID === nodeTypeID)
       if (!nt) return
@@ -276,7 +301,7 @@ function CanvasInner({ nodeTypes, workflow, tabKey, onBack, onSaved }: Compositi
       }
       addNode(node)
     },
-    [nodeTypes, nodes, screenToFlowPosition, addNode],
+    [nodeTypes, nodes, screenToFlowPosition, addNode, readOnly],
   )
 
   // elkjs is a large (~1-2MB) synchronous bundle -- dynamically imported
@@ -315,52 +340,7 @@ function CanvasInner({ nodeTypes, workflow, tabKey, onBack, onSaved }: Compositi
     }
   }, [useCanvasStore])
 
-  const save = async () => {
-    setSaveError('')
-    const draft = {
-      Label: draftLabel,
-      Description: draftDescription,
-      Nodes: toDraftNodes(nodes),
-      Edges: toDraftEdges(edges),
-    }
-    const parsed = draftWorkflowSchema.safeParse(draft)
-    if (!parsed.success) {
-      setSaveError(parsed.error.issues[0]?.message ?? 'This workflow is not valid yet.')
-      return
-    }
-    setSaving(true)
-    try {
-      if (workflow) {
-        await CompositionService.UpdateWorkflow(
-          workflow.ID,
-          parsed.data.Label,
-          parsed.data.Description,
-          parsed.data.Nodes as CompNode[],
-          parsed.data.Edges as CompEdge[],
-        )
-      } else {
-        await CompositionService.CreateWorkflow(
-          parsed.data.Label,
-          parsed.data.Description,
-          parsed.data.Nodes as CompNode[],
-          parsed.data.Edges as CompEdge[],
-        )
-      }
-      // A successful Save is one of the two events that discard the
-      // hot-exit scratch (docs/goals/0012) -- the draft it was shadowing
-      // no longer exists as "unsaved." onSaved() (below) closes this
-      // tab (app/WorkTabShell.tsx), which also prunes workTabDirty/
-      // workTabRestored for tabKey -- this call only needs to handle
-      // the localStorage side, which shared/store.ts can't reach (it's
-      // a dependency-cruiser leaf and can't import composition/).
-      clearScratch(tabKey)
-      onSaved()
-    } catch (err) {
-      setSaveError(String(err))
-    } finally {
-      setSaving(false)
-    }
-  }
+  const { save, saving, saveError } = useCanvasSave(workflow, tabKey, readOnly, draftLabel, draftDescription, nodes, edges, onSaved)
 
   useCanvasCommandDispatch(tabKey, save, runButtonRef)
 
@@ -380,11 +360,14 @@ function CanvasInner({ nodeTypes, workflow, tabKey, onBack, onSaved }: Compositi
         saveError={saveError}
         runButtonRef={runButtonRef}
         onStartRun={startRun}
+        readOnly={readOnly}
+        onSwitchToEdit={onSwitchToEdit}
       />
 
       <RunStateContext.Provider value={runStateContextValue}>
+      <BreakpointContext.Provider value={breakpoints}>
       <div className={styles.canvasWrap}>
-        {paletteOpen && <NodePalette nodeTypes={nodeTypes} hasTrigger={nodes.some((n) => n.data.kind === 'trigger')} />}
+        {!readOnly && paletteOpen && <NodePalette nodeTypes={nodeTypes} hasTrigger={nodes.some((n) => n.data.kind === 'trigger')} />}
         <div className={styles.canvas} onDrop={onCanvasDrop} onDragOver={(e) => e.preventDefault()}>
           <ReactFlow
             nodes={nodes}
@@ -408,6 +391,18 @@ function CanvasInner({ nodeTypes, workflow, tabKey, onBack, onSaved }: Compositi
             }}
             onNodeDragStart={() => useCanvasStore.temporal.getState().pause()}
             onNodeDragStop={() => useCanvasStore.temporal.getState().resume()}
+            // docs/goals/0022: draggability/connectability go inert in
+            // view mode, but elementsSelectable stays true regardless
+            // (see CompositionCanvasProps.readOnly's own comment) --
+            // node click still needs to select+inspect. deleteKeyCode
+            // needs an explicit null in view mode: React Flow's own
+            // Backspace/Delete handling fires straight off node
+            // selection state, independent of nodesDraggable/
+            // nodesConnectable, so leaving it at its default would let
+            // a selected node still be deleted by keyboard.
+            nodesDraggable={!readOnly}
+            nodesConnectable={!readOnly}
+            deleteKeyCode={readOnly ? null : undefined}
             fitView
             // Cap fit-zoom at 100%: fitView's default happily zooms a
             // single starter node to fill the whole canvas, which read
@@ -419,26 +414,24 @@ function CanvasInner({ nodeTypes, workflow, tabKey, onBack, onSaved }: Compositi
             <Background />
             <Controls />
             <MiniMap pannable zoomable />
-            <Panel position="top-left" className={styles.canvasToolbar}>
-              <Stack direction="horizontal" gap="condensed" align="center">
-                <IconButton icon={ArrowLeftIcon} aria-label="Back to workflows" size="small" onClick={onBack} />
-                <IconButton
-                  icon={paletteOpen ? SidebarCollapseIcon : SidebarExpandIcon}
-                  aria-label={paletteOpen ? 'Hide add steps panel' : 'Add steps'}
-                  size="small"
-                  onClick={() => setPaletteOpen((v) => !v)}
-                  data-testid="toggle-palette"
-                />
-                <IconButton icon={UndoIcon} aria-label="Undo" size="small" disabled={!canUndo} onClick={() => useCanvasStore.temporal.getState().undo()} />
-                <IconButton icon={RedoIcon} aria-label="Redo" size="small" disabled={!canRedo} onClick={() => useCanvasStore.temporal.getState().redo()} />
-                <IconButton icon={ColumnsIcon} aria-label="Auto-layout" size="small" disabled={layingOut || nodes.length === 0} onClick={runAutoLayout} />
-                <IconButton icon={TrashIcon} aria-label="Delete selected" size="small" onClick={removeSelected} />
-                <ValidationSurface issues={validationIssues} workflowLabel={draftLabel} workflowId={workflow?.ID ?? ''} onSelectIssue={selectIssue} />
-                <Text size="small" className={runbookStyles.muted}>
-                  Add steps to drag a node type onto the canvas, connect them, click a node to configure it.
-                </Text>
-              </Stack>
-            </Panel>
+            <CanvasToolbar
+              onBack={onBack}
+              readOnly={readOnly}
+              paletteOpen={paletteOpen}
+              onTogglePalette={() => setPaletteOpen((v) => !v)}
+              canUndo={canUndo}
+              onUndo={() => useCanvasStore.temporal.getState().undo()}
+              canRedo={canRedo}
+              onRedo={() => useCanvasStore.temporal.getState().redo()}
+              layingOut={layingOut}
+              hasNodes={nodes.length > 0}
+              onAutoLayout={runAutoLayout}
+              onDeleteSelected={removeSelected}
+              validationIssues={validationIssues}
+              workflowLabel={draftLabel}
+              workflowId={workflow?.ID ?? ''}
+              onSelectIssue={selectIssue}
+            />
             <CurrentStepBar barState={barState} attrs={workflow?.Attributes ?? []} onResolve={resolveApprovalStep} onDismiss={dismissRunState} />
           </ReactFlow>
         </div>
@@ -471,7 +464,7 @@ function CanvasInner({ nodeTypes, workflow, tabKey, onBack, onSaved }: Compositi
               hasWorkflow={!!workflow}
               hotkeyCapture={hotkeyCapture}
               runStep={liveRunDetail?.steps?.find((s) => s.nodeID === selectedNode.id)}
-              onBreakpointChange={refreshGuardrailVerdicts}
+              readOnly={readOnly}
               onChangeType={(newType) => {
                 const config: Record<string, string> = {}
                 for (const field of newType.ConfigFields ?? []) config[field.Key] = field.Default
@@ -482,6 +475,7 @@ function CanvasInner({ nodeTypes, workflow, tabKey, onBack, onSaved }: Compositi
           )}
         </div>
       </div>
+      </BreakpointContext.Provider>
       </RunStateContext.Provider>
     </div>
   )
