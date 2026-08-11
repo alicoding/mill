@@ -238,6 +238,19 @@ function App() {
     })
   }, [])
 
+  // docs/adr/0033: the Quick Panel's "Open Settings" row (a separate
+  // Wails window, own React tree -- it can't call setView directly)
+  // asks the main window to navigate via SettingsService.OpenMainWindow,
+  // which shows/focuses this window and emits this event. Empty-string
+  // view (the panel's "Open Mill" row) means "just show the window,"
+  // no navigation.
+  useEffect(() => {
+    return Events.On('mill-navigate', (evt) => {
+      const target = evt.data as string;
+      if (target === 'settings') setView({ kind: 'settings' });
+    });
+  }, [setView]);
+
   useEffect(() => {
     return Events.On('hotkey-activity', (evt) => {
       pushActivity({

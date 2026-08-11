@@ -152,6 +152,42 @@ and the notification (with working Approve/Deny for an MCP write)
 appear, per `.claude/rules/testing.md`'s manual-only-registry
 discipline.
 
+**Manual-only, same class of gap: the Quick Panel's window-level
+behavior (docs/adr/0033-quick-panel-second-window.md).** `e2e/quick-panel.spec.ts`
+covers everything reachable through the served `/#/quickpanel` route
+itself (the panel renders, search autofocuses, a workflow row runs,
+the Open Mill/Open Settings rows exist) over real Go bindings in
+server mode. What it can NOT cover, for the same reason hotkey
+delivery above can't: server mode has no native run loop, and even a
+real desktop build has no automatable hook for these:
+- **The panel actually floating above other windows / following the
+  user across Spaces and full-screen apps** (`Mac.WindowLevel:
+  MacWindowLevelFloating` + `Mac.CollectionBehavior:
+  CanJoinAllSpaces|FullScreenAuxiliary`) — no headless check can
+  observe real macOS window ordering or Space membership.
+- **`HideOnFocusLost`/`HideOnEscape` actually dismissing the native
+  window** — these are native window-manager behaviors triggered by
+  real focus changes/keypresses at the OS level, not the DOM-scoped
+  events server mode can synthesize.
+- **The focus-yield mitigation** (`yieldFocusIfMainHidden` hiding the
+  whole app via `application.Get().Hide()`) — requires a real
+  `*application.App` with a live native `impl`; in server mode
+  `app.Hide()` is a no-op by construction (`BrowserWindow`'s own
+  no-op methods), so this can only be observed as "the RPC didn't
+  error," never as real focus actually returning to the previous app.
+- **The real global summon hotkey toggling the panel** — same
+  `golang.design/x/hotkey` global-listener gap as every other Mill
+  hotkey (above): needs the real desktop app, Accessibility-granted,
+  checked by hand.
+
+Verification for all four stays a real desktop-mode manual check:
+launch via `task dev`, set a summon hotkey in Settings, press it from
+another app, confirm the panel appears floating/frameless above
+everything (including a full-screen app on another Space), press it
+again (or Escape, or click away) and confirm it dismisses AND focus
+visibly returns to the app you were in before summoning — per
+`.claude/rules/testing.md`'s manual-only-registry discipline.
+
 ## Why not `wails3 dev`'s browser mode instead
 
 `wails3 dev` also lets you open `http://localhost:9245` (the Vite dev

@@ -6,6 +6,7 @@ import '@primer/primitives/dist/css/functional/themes/light.css'
 import '@primer/primitives/dist/css/functional/themes/dark.css'
 import { ThemeProvider, BaseStyles } from '@primer/react'
 import App from './App'
+import { QuickPanelApp } from './QuickPanelApp'
 import { COLOR_MODE_STORAGE_KEY } from './theme'
 
 // Read once, synchronously, before the first render, to seed
@@ -19,12 +20,28 @@ import { COLOR_MODE_STORAGE_KEY } from './theme'
 // renders, which it never does here.
 const initialColorMode = (localStorage.getItem(COLOR_MODE_STORAGE_KEY) as 'light' | 'dark' | 'auto' | null) ?? 'auto'
 
+// docs/adr/0033-quick-panel-second-window.md: the Quick Panel is a
+// second Wails window loading this SAME compiled bundle, at a hash
+// route rather than a bare path -- production asset serving has no SPA
+// fallback (confirmed directly), so a bare second path would 404 in a
+// real installed build; a hash route never leaves the one
+// already-served index.html. Branched once here, before the first
+// render, rather than pulled into a router dependency neither window
+// otherwise needs. QuickPanelApp owns its own ThemeProvider/BaseStyles
+// (it's a separate, minimal shell, not a view inside <App/>'s tree) --
+// so the branch happens above that wrapper, not inside a shared one.
+const isQuickPanel = window.location.hash === '#/quickpanel'
+
 ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
   <React.StrictMode>
-    <ThemeProvider colorMode={initialColorMode}>
-      <BaseStyles>
-        <App />
-      </BaseStyles>
-    </ThemeProvider>
+    {isQuickPanel ? (
+      <QuickPanelApp />
+    ) : (
+      <ThemeProvider colorMode={initialColorMode}>
+        <BaseStyles>
+          <App />
+        </BaseStyles>
+      </ThemeProvider>
+    )}
   </React.StrictMode>,
 )

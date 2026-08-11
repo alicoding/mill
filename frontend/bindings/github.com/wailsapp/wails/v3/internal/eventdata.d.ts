@@ -23,6 +23,7 @@ declare module "@wailsio/runtime" {
             "mcp-write-activity": mcpsvc$0.MCPWriteActivity;
             "mcp-write-approval": mcpsvc$0.MCPWriteRequest;
             "mill-data-changed": mcpsvc$0.DataChanged;
+            "mill-navigate": string;
             "time": string;
         }
     }
