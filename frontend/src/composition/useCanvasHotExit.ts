@@ -85,15 +85,24 @@ export function computeInitialCanvas(workflow: Workflow | null | undefined, node
 // Surfaces the mount-time restore decision into the shared store (once)
 // and keeps a debounced hot-exit scratch write + live dirty flag in
 // sync with every later nodes/edges/label/description change. Compares
-// against `initial.baseline` -- NOT the restored scratch -- so a
+// against `baseline` -- NOT the restored scratch -- so a
 // restored-but-untouched-since-restore canvas still reads dirty=true
 // until a real Save, matching the "never ambiguous that it's
 // uncommitted work" requirement. When the draft settles back to exactly
 // the baseline (e.g. an undo), the stale scratch is discarded rather
 // than left to linger.
+//
+// `restoredFromScratch`/`baseline` are taken as their own params rather
+// than the whole `InitialCanvasState` object: useCanvasLiveSync.ts
+// (GAP B, live-sync on an external MCP definition edit) needs to
+// replace the baseline a clean canvas is compared against AFTER a
+// successful external reload, which means baseline has to live in the
+// caller's own `useState` (mutable across the canvas's lifetime), not
+// stay frozen inside the mount-time `initial` object.
 export function useCanvasHotExit(
   tabKey: string,
-  initial: InitialCanvasState,
+  restoredFromScratch: boolean,
+  baseline: ScratchDraft,
   nodes: CanvasNode[],
   edges: RFEdge[],
   draftLabel: string,
@@ -103,7 +112,7 @@ export function useCanvasHotExit(
   const setWorkTabRestored = useAppStore((s) => s.setWorkTabRestored)
 
   useEffect(() => {
-    if (initial.restoredFromScratch) {
+    if (restoredFromScratch) {
       setWorkTabRestored(tabKey, true)
       setWorkTabDirty(tabKey, true)
     }
@@ -112,12 +121,12 @@ export function useCanvasHotExit(
 
   useEffect(() => {
     const current = buildScratchDraft(draftLabel, draftDescription, nodes, edges)
-    const dirty = !draftsEqual(current, initial.baseline)
+    const dirty = !draftsEqual(current, baseline)
     setWorkTabDirty(tabKey, dirty)
     if (dirty) {
       scheduleScratchWrite(tabKey, current)
     } else {
       clearScratch(tabKey)
     }
-  }, [nodes, edges, draftLabel, draftDescription, tabKey, initial.baseline, setWorkTabDirty])
+  }, [nodes, edges, draftLabel, draftDescription, tabKey, baseline, setWorkTabDirty])
 }

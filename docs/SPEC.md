@@ -2137,7 +2137,19 @@ turns out to solve this without touching that dispute).
   approval layer; external steps park in the Review queue regardless
   of who started the run). Every mutation emits a `mill-data-changed`
   event the open window's stores refresh on — the §1 thesis running
-  in both directions, live. `resolve_approval` is permanently
+  in both directions, live. **Extended 2026-08-11 to the open canvas
+  itself (goal 0021 phase 2: "see the canvas update while the MCP
+  author works")**: `useCanvasLiveSync` redraws a CLEAN open editor
+  in place on an external `update_workflow` (baseline advanced, undo
+  history cleared — a stale zundo stack would "undo" into the
+  pre-external state); a DIRTY canvas gets a dismissible
+  "changed outside this editor" banner (Reload / Keep-my-draft —
+  unsaved edits are never silently clobbered, the one real design
+  decision in the gap); and `useLiveRun` adopts externally-started
+  runs while the editor is open (an in-flight run being watched
+  keeps priority). Proven by a real-MCP-client e2e over per-worker
+  MCP listeners: clean-redraw and dirty-banner paths asserted
+  end-to-end. `resolve_approval` is permanently
   excluded by design (an LLM approving its own guarded actions
   collapses the guardrail); secrets stay categorically human-only.
   Proven by `TestMCPAuthoring_FullLoop` (real MCP client, real HTTP,
