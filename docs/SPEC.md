@@ -146,6 +146,16 @@ an implicit `FINAL`.
   it must run fully offline/on-prem with zero outbound calls it didn't
   explicitly initiate on the user's own behalf via a user-configured
   connector. `LOCKED`
+  **Invariant, owner-confirmed 2026-08-11, sharpening (not weakening)
+  the above: Mill exposes AI as a user-configured node (local Ollama /
+  BYO key), but never runs an autonomous decide-and-act agent loop
+  itself — the guardrail always sits between any AI output and a real
+  action.** An AI node is exactly the user-configured-connector case
+  this bullet already permits: the user brings the endpoint/key, a
+  local-Ollama call is zero-egress, and each step is one deterministic
+  configured call — never Mill deciding what to call next. What stays
+  forbidden is unchanged: Mill bundling a key, phoning home, or being
+  the agent. `LOCKED`
 - Single binary, no separate CLI/backend split. Wails3 already satisfies
   this (one Go binary embeds the compiled frontend) — this reinforces the
   existing scaffold choice, no change needed. `LOCKED`
@@ -1022,15 +1032,18 @@ confirmed directly, not taken on the research pass's word alone):
   MCP isn't overkill here; the alternative would be hand-rolling the same
   tool-schema contract worse.
 
-**Open conflict this surfaces, needs a decision**: §1.1 locks "Mill is not
-itself an LLM client — no AI API calls from Mill itself." Idea #1 above
-(Mill running a chat/agent loop that drives a user-supplied Ollama model)
-would make Mill an MCP **host**, which sits uneasily against that lock —
-even though Mill wouldn't be calling a *paid* API or phoning home, it would
-be the thing orchestrating a model's tool-calling loop, not just exposing
-tools to be orchestrated. Mill as MCP **server only** (exposing guardrailed
-tools, something else acts as host) fits §1.1 cleanly with zero tension.
-`OPEN` — this determines whether idea #1 is in scope at all.
+**The host/client conflict this surfaced is now resolved — `LOCKED`,
+by the owner-confirmed 2026-08-11 invariant (§1.1).** The invariant
+splits idea #1 cleanly instead of accepting or rejecting it whole:
+**AI-as-a-node is in scope** — one deterministic, user-configured
+completion call per step (local Ollama or BYO endpoint/key),
+structurally identical to `mcp-tool-call`/`integration-http` being
+protocol clients, with the guardrail between the AI's output and any
+real action; **Mill-as-agent-loop-host is permanently out** — Mill
+never orchestrates a model's decide-and-act tool-calling loop (that
+remains the external host's job, with Mill as MCP server exposing
+guardrailed tools to it). See §3.3's capability map for the AI node
+row.
 
 ### 3.2 Composition pattern from professional experience — kept generic, no vendor names
 
@@ -1466,6 +1479,7 @@ Plan step for this as a standing rule.
 | **Integration / Connector node** | Call an external HTTP API, auth'd | Wire protocol: adopt (stdlib `net/http`, via `internal/adapters/httpconnector`). Connector config/credential model: build (`internal/domain/connector`) + adopt (`zalando/go-keyring` via `internal/adapters/credential`) | `LOCKED` (execution) — `internal/domain/connector`'s `Connector{ID, Label, Type, BaseURL, AuthType, Headers}` + a new `integration-http` `NodeType` (`KindProcess`) execute real HTTP calls, resolving `AuthType`/secret into the right header (`X-Api-Key` or `Authorization: Bearer`) via `composition.SetConnectorLookup`'s injected seam (mirrors `TriggerService`'s `Syncer` pattern — the domain package doesn't own connector storage). §4 stays `OPEN` on the Configure-surface UI to author a Connector; see §3.5's own row |
 | **List** (a reusable lookup/reference dataset) | Look up an Attributes value against a named, Configure-authored table, write the match back into Attributes | Build (core domain — no library has an opinion on Mill's own List model; the lookup itself is a plain map read) | `LOCKED` (execution) — `internal/domain/list.List{ID, Label, Entries}` + a new `list-lookup` `NodeType` (`KindProcess`) resolve a `listId` via `composition.SetListLookup` (same injected-seam pattern as Integration/Connector's `SetConnectorLookup`) and write the matched entry into `ExecContext.Attributes[outputKey]`. Not in ADR-0005's original taxonomy at all (a real gap flagged in §3.5) — added here as the first thing built against it. §3.5 stays `OPEN` on the Configure-surface UI to author a List |
 | **MCP tool call** (§3.6's extension point — call a tool on a Configure-authored MCP server) | Call one tool on a locally-configured MCP server over stdio, replace the payload with its text result | Wire protocol: adopt (`modelcontextprotocol/go-sdk`'s client role, via `internal/adapters/mcpclient`). Server config/CRUD: build, same shape as Connector | `LOCKED` (execution + authoring, end-to-end) — `internal/domain/mcpserver.MCPServer{ID, Label, Command, Args}` + a new `mcp-tool-call` `NodeType` (`KindProcess`) resolve an `mcpServerId` via `composition.SetMCPServerLookup` and call `toolName` with `argumentsJSON`. Verified against a real spawned subprocess (an official MCP reference server via `npx`), not just unit tests — see §3.6 for the full writeup. This is the "add a new capability without a core code change" answer §3.6 set out to find |
+| **AI completion (local Ollama / BYO endpoint)** | Send a configured prompt + the running payload to a user-configured LLM endpoint, write the completion back into the payload — one deterministic call per step, never a loop (§1.1's owner-confirmed invariant, 2026-08-11) | Transport: adopt/reuse (Ollama and OpenAI-compatible endpoints are plain HTTP — candidate is the existing `httpconnector` path or a small dedicated adapter; research pass owed before building). Node/config model: build (the stamped Configure-entity recipe, same shape as MCP Server) | `OPEN` — invariant locked, nothing built; the named next capability after capture (ADR-0030). Local-Ollama variant is zero-egress and works at the bank |
 | **Durable step execution / retry / resume** | Survive the process dying mid-workflow, checkpoint per step, retry transient failures | Adopt (DBOS-Go) | `LOCKED` — ADR-0004 `accepted`, `internal/adapters/execution` + `executionservice.go` built and e2e-verified; a real regression test (`TestResumeAfterFailure_DoesNotReExecuteCheckpointedStep`) proves a checkpointed step doesn't re-execute on resume against a real DBOS SQLite runtime. Since [ADR-0008](adr/0008-single-execution-path.md), this is the *only* execution path — every run is durable, not an opt-in alternative to a plain in-memory Run |
 | **Replay / re-run from history** | Re-invoke a past run, ideally resuming rather than restarting | Mechanism: adopt (DBOS `ForkWorkflow`/workflow-ID resume). UI/policy: build | `LOCKED` — a workflow's own Runs tab's "Redrive from here" (`ExecutionService.RedriveRun`, `dbos.ForkWorkflow`) is exactly this, built and e2e-verified |
 | **Draft/live versioning** | Edit a workflow without breaking the currently-live version | Build (no library owns Mill's own versioning semantics -- verified against installed DBOS v1.0.0: its `ApplicationVersion` versions the app binary, not definition data) | `LOCKED`, built -- [ADR-0021](adr/0021-workflow-lifecycle-and-versioning.md): head = draft, `Versions` = immutable snapshots, `PublishedVersion` = live (publish ≡ live), `Disabled` pauses triggers/child calls while test runs stay allowed (n8n's semantics); child-workflow version pinning; every run records its executed version. Shadow evaluation explicitly deferred (side-effectful nodes need §8's purity model first) |
