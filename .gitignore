@@ -1,5 +1,9 @@
 .task
 bin
+# e2e's own server-binary build dir -- deliberately separate from bin/
+# so the dev loop and a running e2e suite can't destroy each other's
+# artifacts (frontend/e2e/global-setup.ts has the incident).
+frontend/e2e/.build/
 .DS_Store
 frontend/dist
 frontend/node_modules
