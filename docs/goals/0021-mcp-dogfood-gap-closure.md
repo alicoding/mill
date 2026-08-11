@@ -20,13 +20,12 @@ right terminal Decision.
 
 ### Gaps, ranked
 
-1. **[HIGH] `run_workflow`/`run_workflow_stepped` have no `payload`
-   argument** — an MCP agent cannot test any trigger-fed workflow
-   (the capture floor, the whole ADR-0030 near-term hero path). The
-   exact dead-end the UI's Run dialog got fixed for the same day
-   (Initial-payload field); the MCP surface never got the parallel
-   fix. Small: thread the same `RunWorkflowWithPayload`/stepped
-   param through the two tools' schemas.
+1. ~~**[HIGH] `run_workflow`/`run_workflow_stepped` have no `payload`
+   argument**~~ — **FIXED same day** (both tools accept `payload`,
+   threaded through `RunWorkflowWithPayload`/the stepped param;
+   proven by `TestMCPRunWorkflow_PayloadFlowsIntoCaptureFile`, a
+   real MCP client running a capture-file workflow against a real
+   temp file). Trigger-fed workflows are now testable over MCP.
 2. **[MED] Parked/stepped runs leak DBOS parking machinery
    (`DBOS.setEvent`/`DBOS.recv`/`DBOS.sleep`) as pseudo-steps** in
    `get_run`'s step list (empty nodeTypeID) — noise on exactly the
@@ -42,15 +41,19 @@ right terminal Decision.
    naming the cycle would let an authoring agent fix it in one
    round trip instead of discovering it after removing the wrong
    edge.
-5. **Confirmed by design, not a gap (owner should know):**
-   `run_workflow` executes WITHOUT the writes toggle — ADR-0025's
-   position that the guardrail engine is the run's own approval
-   layer (local-effect workflows run straight through; external
-   steps still park for a human). Revisit only if the owner wants
-   run-starting itself gated.
+5. **Corrected finding (initially misread):** `run_workflow` IS
+   gated by the writes toggle (`requireWriteEnabled`,
+   millmcpservice_authoring.go:249) — it succeeded in probing
+   because **the toggle was already ON in this instance's
+   settings** (left enabled from goal 0003's live dogfood on the
+   same settings.json). Owner awareness item: the toggle's state
+   predates today and nothing surfaces it ambiently — worth a
+   visible indicator (e.g. the Settings gear or footer noting "MCP
+   writes enabled") so a long-forgotten toggle isn't invisible
+   standing authority. Logged as gap, LOW-MED.
 
-## Phase 2 — authoring + step-debug loop (blocked on the owner
-flipping Settings → "Allow MCP clients to import data")
+## Phase 2 — authoring + step-debug loop (unblocked — the writes
+toggle is already on; per-write approval still gates each import)
 
 Planned probes: author a workflow from scratch via
 `validate_workflow`→`import_workflow`→`update_workflow`; per-write
