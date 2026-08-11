@@ -4,10 +4,21 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/alicoding/mill/internal/adapters/shellenv"
 	"github.com/alicoding/mill/internal/domain/composition"
 	"github.com/alicoding/mill/internal/domain/execenv"
 	"github.com/alicoding/mill/internal/services/seeding"
 )
+
+// CaptureShellPath returns the user's real login-shell $PATH -- the
+// ExecEnv form's "Capture from my shell" affordance (ADR-0026's
+// Amendment: determinism through materialization; the captured value
+// lands in the stored, visible, editable Env, never re-derived at run
+// time). A plain read with no side effects; the frontend decides what
+// to do with the value (upsert its PATH row).
+func (c *ConfigureService) CaptureShellPath() (string, error) {
+	return shellenv.CapturePath()
+}
 
 // execEnvsKey mirrors mcpServersKey/listsKey's shape (configureservice.go/
 // configuremcpserver.go): one atomic JSON blob, same settings.json

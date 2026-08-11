@@ -49,6 +49,18 @@ import * as mcpserver$0 from "../../domain/mcpserver/models.js";
 // @ts-ignore: Unused imports
 import * as $models from "./models.js";
 
+/**
+ * CaptureShellPath returns the user's real login-shell $PATH -- the
+ * ExecEnv form's "Capture from my shell" affordance (ADR-0026's
+ * Amendment: determinism through materialization; the captured value
+ * lands in the stored, visible, editable Env, never re-derived at run
+ * time). A plain read with no side effects; the frontend decides what
+ * to do with the value (upsert its PATH row).
+ */
+export function CaptureShellPath(): $CancellablePromise<string> {
+    return $Call.ByID(759717731);
+}
+
 export function CreateDecision(label: string, category: decision$0.Category, outputs: decision$0.OutputField[] | null, webhookRequestID: string): $CancellablePromise<decision$0.Decision> {
     return $Call.ByID(2725151274, label, category, outputs, webhookRequestID);
 }
