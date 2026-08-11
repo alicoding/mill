@@ -3,6 +3,7 @@ package composition
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -91,7 +92,17 @@ func TestCaptureFile_EmptyPath_Errors(t *testing.T) {
 	}
 	edges := []Edge{{ID: "e", Source: "t", Target: "c"}}
 
-	if _, err := ExecuteWorkflow(nodes, edges, nil); err == nil {
+	_, err = ExecuteWorkflow(nodes, edges, nil)
+	if err == nil {
 		t.Fatal("ExecuteWorkflow() error = nil, want an error for an empty payload/path")
+	}
+	// The error must be self-explanatory (docs/SPEC.md §1): name the
+	// cause (empty payload on a manual run) and both remedies -- caught
+	// live when the owner's first Run of the saved-page seed died with a
+	// bare "no path given".
+	for _, want := range []string{"payload is empty", "Initial payload", "literal"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Fatalf("error %q missing %q", err.Error(), want)
+		}
 	}
 }

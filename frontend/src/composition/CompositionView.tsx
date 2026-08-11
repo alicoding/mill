@@ -8,6 +8,7 @@ import { refreshNodeTypes, refreshWorkflows, useAppStore } from '../shared/store
 import { InventoryList, type InventoryItem } from '../shared/InventoryList'
 import { ENTITY_ICON } from '../shared/entityIcons'
 import TestRunDialog from './TestRunDialog'
+import { workflowPayloadHint } from './triggerPayload'
 import styles from '../shared/ListCard.module.css'
 import PageContainer from '../shared/PageContainer'
 import { ViewModeToggle } from '../shared/ViewModeToggle'
@@ -45,7 +46,7 @@ function CompositionView() {
   // Test-input form (docs/adr/0008, SPEC.md §3.2's "per-record test
   // harness"): set only while the dialog for a workflow with declared
   // Attributes is open.
-  const [testRunTarget, setTestRunTarget] = useState<{ id: string; values: Record<string, string> } | null>(null)
+  const [testRunTarget, setTestRunTarget] = useState<{ id: string; values: Record<string, string>; payload: string } | null>(null)
   const [importError, setImportError] = useState<string | null>(null)
   const importFileInputRef = useRef<HTMLInputElement>(null)
   const [viewMode, setViewMode] = useViewMode('mill-workflows-view-mode')
@@ -91,11 +92,16 @@ function CompositionView() {
   // Runs through ExecutionService.RunWorkflow, tagged RunKindTest --
   // docs/adr/0008's single execution path; per ADR-0021 a test run
   // executes the draft head, publish state untouched.
-  const runWithValues = (id: string, values: Record<string, string> | null) => {
+  const runWithValues = (id: string, values: Record<string, string> | null, payload?: string) => {
     const label = workflows?.find((w) => w.ID === id)?.Label ?? id
     setRunningId(id)
     setErrors((prev) => ({ ...prev, [id]: '' }))
-    ExecutionService.RunWorkflow(id, RunKind.RunKindTest, values)
+    // payload substitutes what the workflow's trigger would have
+    // delivered (triggerPayload.ts) -- same seam the canvas Run uses.
+    const call = payload
+      ? ExecutionService.RunWorkflowWithPayload(id, RunKind.RunKindTest, values, payload)
+      : ExecutionService.RunWorkflow(id, RunKind.RunKindTest, values)
+    call
       .then((summary) => {
         if (summary.error) {
           setErrors((prev) => ({ ...prev, [id]: summary.error }))
@@ -129,11 +135,15 @@ function CompositionView() {
   const run = (id: string) => {
     const wf = workflows?.find((w) => w.ID === id)
     const attrs = wf?.Attributes ?? []
-    if (attrs.length === 0) {
+    // The dialog also opens attribute-less when the trigger normally
+    // supplies the run's input (triggerPayload.ts) -- otherwise a test
+    // run of e.g. the saved-page seed is dead-on-arrival with an empty
+    // payload, the live failure that prompted this.
+    if (attrs.length === 0 && !workflowPayloadHint(wf)) {
       runWithValues(id, null)
       return
     }
-    setTestRunTarget({ id, values: generateSamplePayload(attrs) })
+    setTestRunTarget({ id, values: generateSamplePayload(attrs), payload: '' })
   }
 
   const removeWorkflow = (id: string) => {
@@ -354,9 +364,12 @@ function CompositionView() {
           attributes={workflows?.find((w) => w.ID === testRunTarget.id)?.Attributes ?? []}
           values={testRunTarget.values}
           onChange={(key, value) => setTestRunTarget((prev) => (prev ? { ...prev, values: { ...prev.values, [key]: value } } : prev))}
+          payloadHint={workflowPayloadHint(workflows?.find((w) => w.ID === testRunTarget.id))}
+          payload={testRunTarget.payload}
+          onPayloadChange={(value) => setTestRunTarget((prev) => (prev ? { ...prev, payload: value } : prev))}
           onCancel={() => setTestRunTarget(null)}
           onRun={() => {
-            runWithValues(testRunTarget.id, testRunTarget.values)
+            runWithValues(testRunTarget.id, testRunTarget.values, testRunTarget.payload || undefined)
             setTestRunTarget(null)
           }}
         />

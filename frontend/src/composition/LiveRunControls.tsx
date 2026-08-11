@@ -6,6 +6,7 @@ import type { AttributeDef, Workflow } from '../../bindings/github.com/alicoding
 import { generateSamplePayload } from '../shared/configSchema'
 import { ApprovalValuesForm, attrsForPending } from '../shared/ApprovalValuesForm'
 import TestRunDialog from './TestRunDialog'
+import { workflowPayloadHint } from './triggerPayload'
 import { type BarState, truncate } from './liveRunState'
 import styles from './CompositionCanvas.module.css'
 import runbookStyles from '../shared/ListCard.module.css'
@@ -180,11 +181,12 @@ export interface RunButtonHandle {
 // dialog logic is identical, only the started run's mode differs.
 export const RunButton = forwardRef<RunButtonHandle, {
   workflow: Workflow | null | undefined
-  onStartRun: (values: Record<string, string>, stepped?: boolean) => void
+  onStartRun: (values: Record<string, string>, stepped?: boolean, payload?: string) => void
 }>(function RunButton({ workflow, onStartRun }, ref) {
   const [testRunOpen, setTestRunOpen] = useState(false)
   const [testRunStepped, setTestRunStepped] = useState(false)
   const [values, setValues] = useState<Record<string, string>>({})
+  const [payload, setPayload] = useState('')
 
   // Hooks run unconditionally (before the null-workflow early return
   // below), same reason useImperativeHandle has to sit here rather than
@@ -193,17 +195,23 @@ export const RunButton = forwardRef<RunButtonHandle, {
   // useCallback identity below doesn't churn every render on a fresh
   // array reference.
   const attrs = useMemo(() => workflow?.Attributes ?? [], [workflow])
+  // Non-null when this workflow's trigger normally supplies the run's
+  // input (triggerPayload.ts) -- then the dialog opens even with zero
+  // Attributes, so a test run isn't dead-on-arrival with an empty
+  // payload (the saved-page seed's live failure).
+  const payloadHint = useMemo(() => workflowPayloadHint(workflow), [workflow])
 
   const handleClick = useCallback((stepped: boolean) => {
     if (!workflow) return
-    if (attrs.length > 0) {
+    if (attrs.length > 0 || payloadHint) {
       setValues(generateSamplePayload(attrs))
+      setPayload('')
       setTestRunStepped(stepped)
       setTestRunOpen(true)
       return
     }
     onStartRun({}, stepped)
-  }, [workflow, attrs, onStartRun])
+  }, [workflow, attrs, payloadHint, onStartRun])
 
   useImperativeHandle(ref, () => ({ trigger: () => handleClick(false) }), [handleClick])
 
@@ -234,9 +242,12 @@ export const RunButton = forwardRef<RunButtonHandle, {
           attributes={attrs}
           values={values}
           onChange={(key, value) => setValues((prev) => ({ ...prev, [key]: value }))}
+          payloadHint={payloadHint}
+          payload={payload}
+          onPayloadChange={setPayload}
           onCancel={() => setTestRunOpen(false)}
           onRun={() => {
-            onStartRun(values, testRunStepped)
+            onStartRun(values, testRunStepped, payload)
             setTestRunOpen(false)
           }}
         />

@@ -15,6 +15,7 @@ import type { AttributeDef } from '../../bindings/github.com/alicoding/mill/inte
 // crossed the 500-line limit adding workflow export/import.
 export default function TestRunDialog({
   workflowLabel, attributes, values, onChange, onCancel, onRun,
+  payloadHint, payload, onPayloadChange,
 }: {
   workflowLabel: string
   attributes: AttributeDef[]
@@ -22,6 +23,15 @@ export default function TestRunDialog({
   onChange: (key: string, value: string) => void
   onCancel: () => void
   onRun: () => void
+  // Trigger-supplied-payload substitution (triggerPayload.ts): when the
+  // workflow's trigger normally delivers the run's input (a
+  // filesystem-watch path), a manual test run offers this field so the
+  // run isn't dead-on-arrival with an empty payload -- the live failure
+  // the owner hit running the saved-page seed. Absent hint = no field,
+  // exactly the previous dialog.
+  payloadHint?: string | null
+  payload?: string
+  onPayloadChange?: (value: string) => void
 }) {
   return (
     <Dialog title={`Test run — ${workflowLabel}`} onClose={onCancel} footerButtons={[
@@ -29,6 +39,18 @@ export default function TestRunDialog({
       { content: 'Run', buttonType: 'primary', onClick: onRun },
     ]}>
       <Stack direction="vertical" gap="normal">
+        {payloadHint && onPayloadChange && (
+          <FormControl>
+            <FormControl.Label>Initial payload</FormControl.Label>
+            <FormControl.Caption>{payloadHint}</FormControl.Caption>
+            <TextInput
+              value={payload ?? ''}
+              block
+              data-testid="test-run-payload"
+              onChange={(e) => onPayloadChange(e.target.value)}
+            />
+          </FormControl>
+        )}
         {attributes.map((attr) => (
           <FormControl key={attr.Key}>
             <FormControl.Label>{attr.Label}</FormControl.Label>

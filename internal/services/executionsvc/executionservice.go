@@ -306,8 +306,12 @@ func (e *ExecutionService) RunWorkflowWithPayload(workflowID string, kind RunKin
 // "Continue" resume clears it (executionservice_guardrail.go). Always
 // starts non-blocking (the run is guaranteed to park at its first node)
 // regardless of mayRequireApproval's own pre-scan.
-func (e *ExecutionService) RunWorkflowStepped(workflowID string, values map[string]string) (RunSummary, error) {
-	return e.runWorkflowStart(workflowID, RunKindTest, values, "", true)
+// payload seeds the run's starting ExecContext.Payload, exactly like
+// RunWorkflowWithPayload -- a stepped test run of a workflow whose
+// trigger normally supplies the input (a filesystem-watch path) needs
+// the same substitute input a plain test run does.
+func (e *ExecutionService) RunWorkflowStepped(workflowID string, values map[string]string, payload string) (RunSummary, error) {
+	return e.runWorkflowStart(workflowID, RunKindTest, values, payload, true)
 }
 
 func (e *ExecutionService) runWorkflowStart(workflowID string, kind RunKind, values map[string]string, payload string, stepped bool) (RunSummary, error) {

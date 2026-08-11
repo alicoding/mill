@@ -394,6 +394,43 @@ test('Opening New workflow twice opens two tabs; closing one returns to the list
   await expect(activePanel(page).getByLabel('Label')).toHaveValue('Tab A')
 })
 
+test('Saved-page seed: a manual test run substitutes the trigger payload via the Run dialog', async ({ page }) => {
+  // The live failure this covers: the seed's capture-file reads its
+  // path from the payload the filesystem-watch trigger normally
+  // supplies -- a manual Run used to start empty-payloaded and die at
+  // capture-file with a bare error. The Run dialog now opens even with
+  // zero Attributes when the trigger supplies the input
+  // (triggerPayload.ts), offering an Initial-payload field. The spec
+  // and the server run on the same machine, so a spec-written temp
+  // file is a real, readable path for the server.
+  const fs = await import('node:fs')
+  const os = await import('node:os')
+  const path = await import('node:path')
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'mill-e2e-payload-'))
+  const file = path.join(dir, 'page.html')
+  fs.writeFileSync(file, '<nav>chrome nav</nav><main id="main-content"><h1>Captured Title</h1></main>')
+
+  // The seed's final step writes the REAL clipboard -- serialize
+  // through the shared lock (.claude/rules/testing.md).
+  await withClipboardLock(async () => {
+    await page.goto('/')
+    await page.getByRole('link', { name: 'Workflows' }).click()
+    const row = workflowRow(page, 'Example: Saved page → Markdown')
+    await expect(row).toBeVisible()
+    await row.getByRole('button', { name: 'Run Example: Saved page → Markdown', exact: true }).click()
+
+    const payloadField = page.getByTestId('test-run-payload')
+    await expect(payloadField).toBeVisible()
+    await payloadField.fill(file)
+    await page.getByRole('button', { name: 'Run', exact: true }).click()
+
+    const result = page.locator('[data-testid="workflow-run-result"]')
+    await expect(result).toContainText('Captured Title', { timeout: 15_000 })
+    await expect(result).not.toContainText('chrome nav')
+  })
+  fs.rmSync(dir, { recursive: true, force: true })
+})
+
 test('Editing the same workflow twice reuses its tab instead of opening a duplicate', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Workflows' }).click()
