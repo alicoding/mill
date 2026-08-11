@@ -40,7 +40,7 @@ live-review material, interleaved during owner reviews, not a lane.
 7. [x] [0012 — Authoring hot-exit](archive/0012-authoring-hot-exit.md) — canvas half delivered 2026-08-10 (scratch persistence + restored-unsaved banner + dirty dots; Configure forms recorded-remaining in the archived file)
 8. [x] [0013 — Canonical type system](archive/0013-canonical-type-system.md) — COMPLETE 2026-08-10 (typedfield leaf pkg; all 4 vocabularies converged incl. openapispec Phase 3; the #1 kernel investment)
 9. [ ] [0011 — Lists maturation](0011-lists-maturation.md) (typed datasets + List Search per SPEC §3.2.2's reference review; evidence-gap research first)
-10. [ ] [0014 — Home dashboard / value mirror](0014-home-dashboard.md) (the value mirror — owner's reason-to-open; shares the usage-stats substrate with 0015)
+10. [x] [0014 — Home dashboard / value mirror](archive/0014-home-dashboard.md) — delivered 2026-08-10 (Recharts, industry-decided metric semantics, editable minutes-saved, default landing)
 11. [ ] [0015 — Summon quick-invoke](0015-summon-quick-invoke.md) (⌘K palette on FilteredActionList; teaches hotkeys inline; frecency from the same usage substrate as 0014)
 
 **Standing**
