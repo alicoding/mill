@@ -34,6 +34,36 @@ update live, or only on remount/refetch/reopen?":
 3. Where a poll is genuinely the honest choice (an external resource
    Mill can't get an event for), document why.
 
+## Audit findings (2026-08-10) — ROOT CAUSE + fix-list
+**Root cause (one sentence): only the MCP layer emits
+`mill-data-changed`; direct UI mutations through the Wails services
+never do.** That's why the MCP-authoring dogfood felt live (it emits)
+while a plain UI create/edit doesn't reach other tabs/pickers.
+
+**The fix is uniform, not per-surface**: emit `mill-data-changed
+{Entity, ID}` (the existing `application.Get()` pattern from
+millmcpservice_authoring.go) from the DIRECT-mutation services:
+- `CompositionService`: after Create/Update/Delete/**Publish**Workflow
+  + UpdateWorkflowAttributes (entity:'workflow') — Publish-badge-stale
+  is a P0.
+- `ConfigureService`: after each entity's CRUD (entity:'request'/
+  'list'/'mcpserver') — fixes the Configure inventories AND the canvas
+  entity pickers not seeing new entities (the other P0).
+- `GuardrailService`: after rule CRUD (entity:'guardrail-rule') — so
+  canvas guardrail badges reflect external rule changes.
+Then the ❌ surfaces subscribe (most via App.tsx's existing
+mill-data-changed handler → store refresh; the canvas badge re-runs
+WorkflowVerdicts on entity:'guardrail-rule').
+
+**Polls — verdicts:**
+- Review queue's 2s poll → subscribe to guardrail-pending-changed
+  (the event now exists), keep poll as fallback. ⚠️→✅.
+- Runs-tab + canvas live-run 1s polls → **KEEP, documented**: DBOS
+  emits no per-step event, so polling an in-flight run is the honest
+  only-path (the real-time value's "poll justified in writing" clause).
+**Already ✅** (no work): Activity feed, the Review pending badge,
+MCP-write approvals, build-staleness badge.
+
 ## Acceptance
 The owner can: create/edit/delete an entity in one place and see it
 everywhere live; watch a run complete on its Runs tab without
