@@ -1,6 +1,7 @@
 package settingssvc
 
 import (
+	"log/slog"
 	"strings"
 
 	"github.com/alicoding/mill/internal/adapters/dockbadge"
@@ -15,12 +16,17 @@ import (
 // unfocused (the document.hasFocus() gate lives frontend-side, since
 // only the browser context knows that).
 
-// SetPendingBadge applies count as the dock/taskbar badge -- a no-op
-// error in server mode (dockbadge_server.go), silently swallowed here
-// same as every other best-effort desktop-only affordance in this
-// service (the tray icon, the summon hotkey).
+// SetPendingBadge applies count as the dock/taskbar badge -- best-effort
+// (server mode's stub, or a desktop failure, must never break the
+// caller), but a real failure is LOGGED, not swallowed: the first live
+// test shipped with `_ =` here and the badge silently never appeared,
+// leaving nothing anywhere to diagnose from (the exact silent-failure
+// class §1's what-you-see-is-what-I-see thesis exists to prevent,
+// applied to Mill's own plumbing).
 func (s *SettingsService) SetPendingBadge(count int) {
-	_ = dockbadge.Set(count)
+	if err := dockbadge.Set(count); err != nil {
+		slog.Warn("dock badge set failed", "count", count, "error", err)
+	}
 }
 
 // notificationID encodes which pending-item KIND a delivered
