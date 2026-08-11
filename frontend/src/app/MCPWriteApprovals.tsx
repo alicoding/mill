@@ -6,12 +6,14 @@ import { SettingsService } from '../shared/bindings'
 import type { MCPWriteRequest } from '../shared/bindings'
 import styles from './App.module.css'
 
-// The per-write MCP approval surface (docs/adr/0017's second half,
-// docs/adr/0022): when an external MCP client asks to import data and
-// the per-write toggle is on, the write parks server-side for up to two
-// minutes while this banner asks the human. Listens for the push event
-// AND polls once on mount, so a request raised before this window
-// rendered still shows up.
+// The per-write MCP approval surface (docs/adr/0032's park-and-poll
+// lifecycle, superseding ADR-0017/0022's old bounded-blocking-wait
+// shape): when an external MCP client asks to write and the per-write
+// toggle is on, the write parks as a durable record -- surviving even a
+// Mill restart -- while this banner (the co-present shortcut) and the
+// Review queue (ReviewView.tsx, always-durable surface) both ask the
+// human. Listens for the push event AND polls once on mount, so a
+// request raised before this window rendered still shows up.
 export function MCPWriteApprovals() {
   const [pending, setPending] = useState<MCPWriteRequest[]>([])
 

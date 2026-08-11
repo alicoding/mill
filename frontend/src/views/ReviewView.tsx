@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react'
 import { Button, Heading, Label, Select, Stack, Text } from '@primer/react'
-import { BugIcon, ShieldIcon } from '@primer/octicons-react'
-import { ExecutionService } from '../shared/bindings'
-import type { RunSummary } from '../shared/bindings'
+import { BugIcon, PlugIcon, ShieldIcon } from '@primer/octicons-react'
+import { Events } from '@wailsio/runtime'
+import { ExecutionService, SettingsService } from '../shared/bindings'
+import type { MCPWriteRequest, RunSummary } from '../shared/bindings'
 import { ApprovalValuesForm, attrsForPending } from '../shared/ApprovalValuesForm'
 import { useAppStore } from '../shared/store'
 import { formatRunStartedAt } from '../shared/runTime'
+import { formatUpdated } from '../shared/inventorySort'
 import styles from '../shared/ListCard.module.css'
 import PageContainer from '../shared/PageContainer'
 
@@ -24,6 +26,11 @@ function ReviewView() {
   const requestOpenWorkflow = useAppStore((s) => s.requestOpenWorkflow)
   const [pending, setPending] = useState<RunSummary[] | null>(null)
   const [resolved, setResolved] = useState<RunSummary[]>([])
+  // Pending MCP writes (docs/adr/0032 §2): the SAME durable pending
+  // store MCPWriteApprovals.tsx's banner reads, surfaced here too as
+  // actionable rows -- one store, multiple surfaces, never a second
+  // competing pending list (goal 0005).
+  const [pendingWrites, setPendingWrites] = useState<MCPWriteRequest[]>([])
   const [inputs, setInputs] = useState<Record<string, Record<string, string>>>({})
   const [workflowFilter, setWorkflowFilter] = useState('')
   const [error, setError] = useState('')
@@ -38,13 +45,22 @@ function ReviewView() {
         setResolved((runs ?? []).filter((r) => r.resolution))
       })
       .catch((err) => setError(String(err)))
+    SettingsService.PendingMCPWrites().then((p) => setPendingWrites(p ?? [])).catch(() => {})
   }
 
   useEffect(() => {
     refresh()
     const timer = setInterval(refresh, 2000)
-    return () => clearInterval(timer)
+    const offMCP = Events.On('mcp-write-approval', refresh)
+    return () => { clearInterval(timer); offMCP() }
   }, [])
+
+  const resolveWrite = (id: string, approve: boolean) => {
+    setError('')
+    SettingsService.ResolveMCPWrite(id, approve)
+      .then(() => setTimeout(refresh, 300))
+      .catch((err) => setError(String(err)))
+  }
 
   // continueRun stays false uniformly (docs/adr/0031 §5): Review's two-
   // button UI has no dedicated Step/Continue distinction, so a plain
@@ -78,8 +94,9 @@ function ReviewView() {
     <PageContainer data-testid="review-view">
       <Heading as="h1">Review</Heading>
       <Text as="p" className={styles.muted}>
-        Runs paused for a human — guardrail approvals and Human review checkpoints across every
-        workflow. Approve to resume (your input flows into the run), deny to stop it.
+        Everything waiting for a human — guardrail approvals and Human review checkpoints across
+        every workflow, plus MCP write requests from external clients. Approve to proceed
+        (a run resumes with your input; a write executes), deny to stop it.
       </Text>
       {error && <Text as="p" size="small" className={styles.error}>{error}</Text>}
 
@@ -96,11 +113,40 @@ function ReviewView() {
         </Stack>
       )}
 
-      {pending !== null && pending.length === 0 && (
+      {pending !== null && pending.length === 0 && pendingWrites.length === 0 && (
         <div className={styles.empty} data-testid="review-empty">
           <Text as="p">Nothing waiting for you.</Text>
         </div>
       )}
+
+      {/* Pending MCP writes (docs/adr/0032 §2): a distinct icon/label
+          from a guardrail/debug park ("recognition, not confirmation")
+          -- these are an external MCP client asking to change Mill's
+          own data, not a workflow run paused mid-execution. Not
+          filterable by workflow (they aren't scoped to one). */}
+      <Stack direction="vertical" gap="normal">
+        {pendingWrites.map((w) => (
+          <div key={w.id} className={styles.card} data-testid="review-mcp-write-item">
+            <Stack direction="vertical" gap="condensed">
+              <Stack direction="horizontal" gap="condensed" align="center">
+                <PlugIcon size={16} />
+                <Text weight="semibold">MCP write request</Text>
+                <Label variant="attention" size="small">awaiting approval</Label>
+                <Text size="small" className={styles.muted}>{formatUpdated(w.createdAt)}</Text>
+              </Stack>
+              <Text size="small">{w.description}</Text>
+              <Stack direction="horizontal" gap="condensed">
+                <Button size="small" variant="primary" data-testid="review-mcp-write-approve" onClick={() => resolveWrite(w.id, true)}>
+                  Approve
+                </Button>
+                <Button size="small" variant="danger" data-testid="review-mcp-write-deny" onClick={() => resolveWrite(w.id, false)}>
+                  Deny
+                </Button>
+              </Stack>
+            </Stack>
+          </div>
+        ))}
+      </Stack>
 
       <Stack direction="vertical" gap="normal">
         {(pending ?? []).filter((r) => !workflowFilter || r.workflowID === workflowFilter).map((run) => (

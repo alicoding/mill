@@ -2,6 +2,7 @@ package mcpsvc
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
@@ -13,9 +14,8 @@ import (
 // data reshaped as callable tools (many hosts reach for tools far more
 // readily than resources); the write side (import_*) is gated by a
 // single, coarse, default-off Settings toggle (ADR-0017 Option B's
-// authoring-capability gate). Per-write synchronous human approval --
-// Option B's second half -- remains real, open future work; the toggle
-// is deliberate per-instance opt-in, not a resolution of that.
+// authoring-capability gate) plus, when enabled, docs/adr/0032's
+// park-and-poll per-write approval (gateWrite, millmcpservice_approval.go).
 //
 // Secrets are structurally absent from everything these tools can
 // touch: exports never carry one (the wire shapes have no secret
@@ -57,9 +57,35 @@ func textResult(text string) *mcp.CallToolResult {
 	return &mcp.CallToolResult{Content: []mcp.Content{&mcp.TextContent{Text: text}}}
 }
 
+// jsonText marshals v as indented JSON text -- the shared building
+// block behind both jsonResult (millmcpservice_authoring.go) and every
+// gated-write executor below, whose return value is a plain string (an
+// executor is dispatched by name at approval time, long after any
+// *mcp.CallToolResult wrapping would matter).
+func jsonText(v any) (string, error) {
+	data, err := json.MarshalIndent(v, "", "  ")
+	if err != nil {
+		return "", err
+	}
+	return string(data), nil
+}
+
+// marshalArgs is the shared helper every gated-write tool handler below
+// uses to turn its already-typed, already-parsed args back into the
+// argsJSON string gateWrite persists -- reusing the same struct for
+// both the MCP call's own unmarshal and this re-marshal keeps the
+// executor's later json.Unmarshal trivially symmetric.
+func marshalArgs(in any) (string, error) {
+	data, err := json.Marshal(in)
+	if err != nil {
+		return "", err
+	}
+	return string(data), nil
+}
+
 // registerTools wires the export/import tool set. Export tools are
 // read-only and ungated; import tools all pass through
-// requireWriteEnabled.
+// requireWriteEnabled + gateWrite.
 func (m *MillMCPService) registerTools() {
 	m.registerAuthoringTools()
 	m.registerDebugTools()
@@ -108,81 +134,140 @@ func (m *MillMCPService) registerTools() {
 		return textResult(data), nil, nil
 	})
 
+	m.registerWriteExecutor("import_workflow", func(argsJSON string) (string, error) {
+		var in importToolArgs
+		if err := json.Unmarshal([]byte(argsJSON), &in); err != nil {
+			return "", err
+		}
+		wf, err := m.comp.ImportWorkflow(in.JSON)
+		if err != nil {
+			return "", err
+		}
+		emitDataChanged("workflow", wf.ID)
+		return jsonText(importToolResult{ID: wf.ID, Label: wf.Label})
+	})
 	mcp.AddTool(m.server, &mcp.Tool{
 		Name: "import_workflow",
 		Description: "Create a new workflow from an exported-workflow JSON definition. Always mints a new " +
 			"workflow ID, never overwrites an existing one. Requires the human-set 'Allow MCP clients to " +
-			"import data' toggle in Mill's Settings (default off).",
-	}, func(_ context.Context, _ *mcp.CallToolRequest, in importToolArgs) (*mcp.CallToolResult, importToolResult, error) {
+			"import data' toggle in Mill's Settings (default off); when per-write approval is also required " +
+			"(the default), the call may return a 'parked pending human approval' result -- poll " +
+			"check_write_status with the returned id.",
+	}, func(_ context.Context, _ *mcp.CallToolRequest, in importToolArgs) (*mcp.CallToolResult, any, error) {
 		if err := m.requireWriteEnabled(); err != nil {
-			return nil, importToolResult{}, err
+			return nil, nil, err
 		}
-		if err := m.awaitWriteApproval("An MCP client wants to import a workflow"); err != nil {
-			return nil, importToolResult{}, err
-		}
-		wf, err := m.comp.ImportWorkflow(in.JSON)
+		argsJSON, err := marshalArgs(in)
 		if err != nil {
-			return nil, importToolResult{}, err
+			return nil, nil, err
 		}
-		emitDataChanged("workflow", wf.ID)
-		return nil, importToolResult{ID: wf.ID, Label: wf.Label}, nil
+		res, err := m.gateWrite("import_workflow", "An MCP client wants to import a workflow", argsJSON)
+		return res, nil, err
 	})
 
+	m.registerWriteExecutor("import_request", func(argsJSON string) (string, error) {
+		var in importToolArgs
+		if err := json.Unmarshal([]byte(argsJSON), &in); err != nil {
+			return "", err
+		}
+		r, err := m.cfg.ImportHTTPRequest(in.JSON)
+		if err != nil {
+			return "", err
+		}
+		emitDataChanged("request", r.ID)
+		return jsonText(importToolResult{ID: r.ID, Label: r.Label})
+	})
 	mcp.AddTool(m.server, &mcp.Tool{
 		Name: "import_request",
 		Description: "Create a new HTTPRequest from an exported-request JSON definition. The imported request " +
 			"starts with no secret set (a human sets secrets in Mill's UI only). Requires the human-set " +
-			"'Allow MCP clients to import data' toggle in Mill's Settings (default off).",
-	}, func(_ context.Context, _ *mcp.CallToolRequest, in importToolArgs) (*mcp.CallToolResult, importToolResult, error) {
+			"'Allow MCP clients to import data' toggle in Mill's Settings (default off); may park pending " +
+			"approval -- see import_workflow's description for the poll contract.",
+	}, func(_ context.Context, _ *mcp.CallToolRequest, in importToolArgs) (*mcp.CallToolResult, any, error) {
 		if err := m.requireWriteEnabled(); err != nil {
-			return nil, importToolResult{}, err
+			return nil, nil, err
 		}
-		if err := m.awaitWriteApproval("An MCP client wants to import an HTTP request (integration)"); err != nil {
-			return nil, importToolResult{}, err
-		}
-		r, err := m.cfg.ImportHTTPRequest(in.JSON)
+		argsJSON, err := marshalArgs(in)
 		if err != nil {
-			return nil, importToolResult{}, err
+			return nil, nil, err
 		}
-		emitDataChanged("request", r.ID)
-		return nil, importToolResult{ID: r.ID, Label: r.Label}, nil
+		res, err := m.gateWrite("import_request", "An MCP client wants to import an HTTP request (integration)", argsJSON)
+		return res, nil, err
 	})
 
-	mcp.AddTool(m.server, &mcp.Tool{
-		Name: "import_list",
-		Description: "Create a new List from an exported-list JSON definition. Requires the human-set " +
-			"'Allow MCP clients to import data' toggle in Mill's Settings (default off).",
-	}, func(_ context.Context, _ *mcp.CallToolRequest, in importToolArgs) (*mcp.CallToolResult, importToolResult, error) {
-		if err := m.requireWriteEnabled(); err != nil {
-			return nil, importToolResult{}, err
-		}
-		if err := m.awaitWriteApproval("An MCP client wants to import a List"); err != nil {
-			return nil, importToolResult{}, err
+	m.registerWriteExecutor("import_list", func(argsJSON string) (string, error) {
+		var in importToolArgs
+		if err := json.Unmarshal([]byte(argsJSON), &in); err != nil {
+			return "", err
 		}
 		l, err := m.cfg.ImportList(in.JSON)
 		if err != nil {
-			return nil, importToolResult{}, err
+			return "", err
 		}
 		emitDataChanged("list", l.ID)
-		return nil, importToolResult{ID: l.ID, Label: l.Label}, nil
+		return jsonText(importToolResult{ID: l.ID, Label: l.Label})
+	})
+	mcp.AddTool(m.server, &mcp.Tool{
+		Name: "import_list",
+		Description: "Create a new List from an exported-list JSON definition. Requires the human-set " +
+			"'Allow MCP clients to import data' toggle in Mill's Settings (default off); may park pending " +
+			"approval -- see import_workflow's description for the poll contract.",
+	}, func(_ context.Context, _ *mcp.CallToolRequest, in importToolArgs) (*mcp.CallToolResult, any, error) {
+		if err := m.requireWriteEnabled(); err != nil {
+			return nil, nil, err
+		}
+		argsJSON, err := marshalArgs(in)
+		if err != nil {
+			return nil, nil, err
+		}
+		res, err := m.gateWrite("import_list", "An MCP client wants to import a List", argsJSON)
+		return res, nil, err
 	})
 
-	mcp.AddTool(m.server, &mcp.Tool{
-		Name: "import_mcpserver",
-		Description: "Create a new configured MCP Server from an exported-mcpserver JSON definition. Requires " +
-			"the human-set 'Allow MCP clients to import data' toggle in Mill's Settings (default off).",
-	}, func(_ context.Context, _ *mcp.CallToolRequest, in importToolArgs) (*mcp.CallToolResult, importToolResult, error) {
-		if err := m.requireWriteEnabled(); err != nil {
-			return nil, importToolResult{}, err
-		}
-		if err := m.awaitWriteApproval("An MCP client wants to import an MCP Server config"); err != nil {
-			return nil, importToolResult{}, err
+	m.registerWriteExecutor("import_mcpserver", func(argsJSON string) (string, error) {
+		var in importToolArgs
+		if err := json.Unmarshal([]byte(argsJSON), &in); err != nil {
+			return "", err
 		}
 		s, err := m.cfg.ImportMCPServer(in.JSON)
 		if err != nil {
-			return nil, importToolResult{}, err
+			return "", err
 		}
 		emitDataChanged("mcpserver", s.ID)
-		return nil, importToolResult{ID: s.ID, Label: s.Label}, nil
+		return jsonText(importToolResult{ID: s.ID, Label: s.Label})
+	})
+	mcp.AddTool(m.server, &mcp.Tool{
+		Name: "import_mcpserver",
+		Description: "Create a new configured MCP Server from an exported-mcpserver JSON definition. Requires " +
+			"the human-set 'Allow MCP clients to import data' toggle in Mill's Settings (default off); may park " +
+			"pending approval -- see import_workflow's description for the poll contract.",
+	}, func(_ context.Context, _ *mcp.CallToolRequest, in importToolArgs) (*mcp.CallToolResult, any, error) {
+		if err := m.requireWriteEnabled(); err != nil {
+			return nil, nil, err
+		}
+		argsJSON, err := marshalArgs(in)
+		if err != nil {
+			return nil, nil, err
+		}
+		res, err := m.gateWrite("import_mcpserver", "An MCP client wants to import an MCP Server config", argsJSON)
+		return res, nil, err
+	})
+
+	mcp.AddTool(m.server, &mcp.Tool{
+		Name: "check_write_status",
+		Description: "Poll a parked write's outcome by id (returned by a gated write tool's 'parked pending " +
+			"human approval' response). status is pending, approved (result carries the write's own success " +
+			"text), denied, or expired (no human decision within 24h). Outcomes stay queryable for 24h after " +
+			"resolution, then are swept.",
+	}, func(_ context.Context, _ *mcp.CallToolRequest, in checkWriteStatusArgs) (*mcp.CallToolResult, any, error) {
+		res, ok := m.writeStatus(in.ID)
+		if !ok {
+			return nil, nil, fmt.Errorf("no MCP write with id %s (it may have already been swept, 24h after resolution)", in.ID)
+		}
+		text, err := jsonText(res)
+		if err != nil {
+			return nil, nil, err
+		}
+		return textResult(text), nil, nil
 	})
 }
