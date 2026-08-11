@@ -41,7 +41,8 @@ live-review material, interleaved during owner reviews, not a lane.
 8. [x] [0013 — Canonical type system](archive/0013-canonical-type-system.md) — COMPLETE 2026-08-10 (typedfield leaf pkg; all 4 vocabularies converged incl. openapispec Phase 3; the #1 kernel investment)
 9. [ ] [0011 — Lists maturation](0011-lists-maturation.md) (typed datasets + List Search per SPEC §3.2.2's reference review; evidence-gap research first)
 10. [x] [0014 — Home dashboard / value mirror](archive/0014-home-dashboard.md) — delivered 2026-08-10 (Recharts, industry-decided metric semantics, editable minutes-saved, default landing)
-11. [ ] [0015 — Summon quick-invoke](0015-summon-quick-invoke.md) (⌘K palette on FilteredActionList; teaches hotkeys inline; frecency from the same usage substrate as 0014)
+11. [ ] [0015 — Summon quick-invoke](0015-summon-quick-invoke.md) (⌘K palette on FilteredActionList; teaches hotkeys inline; frecency from the same usage substrate as 0014) — build in flight 2026-08-11 (delegated agent, worktree)
+12. [ ] [0020 — Workflow breakpoints](0020-workflow-breakpoints.md) (pause·inspect·resume on the existing durable ask-park; ADR-0031 accepted by owner mandate 2026-08-11 — next build after 0015 lands)
 
 **Standing**
 - [ ] [0001 — Authoring-surface overhaul](0001-authoring-surface-overhaul.md) (spacing audit + §3.8 prototype elements — live-review material)
