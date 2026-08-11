@@ -14,9 +14,13 @@ import styles from './CompositionCanvas.module.css'
 // on the canvas. Errors block Save; warnings never do (composition.go's
 // ValidateGraphStrict), but both surface here since the whole point is
 // nothing hidden before a save attempt, not just what will fail it.
-export function ValidationSurface({ issues, workflowLabel, onSelectIssue }: {
+export function ValidationSurface({ issues, workflowLabel, workflowId, onSelectIssue }: {
   issues: Issue[]
   workflowLabel: string
+  // The saved workflow's id, or '' for a brand-new unsaved draft --
+  // the copy block carries it so a paste is directly actionable by an
+  // MCP author (tools key by id, labels aren't unique; goal 0021).
+  workflowId: string
   onSelectIssue: (issue: Issue) => void
 }) {
   const [open, setOpen] = useState(false)
@@ -28,7 +32,7 @@ export function ValidationSurface({ issues, workflowLabel, onSelectIssue }: {
   // without hand-transcribing panel rows. Same navigator.clipboard
   // precedent as RequestTestPanel's Copy-error button.
   const copyIssues = () => {
-    void navigator.clipboard.writeText(formatIssuesForCopy(workflowLabel, issues)).then(() => {
+    void navigator.clipboard.writeText(formatIssuesForCopy(workflowLabel, workflowId, issues)).then(() => {
       setCopied(true)
       setTimeout(() => setCopied(false), 1500)
     })
