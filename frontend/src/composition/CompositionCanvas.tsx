@@ -433,7 +433,7 @@ function CanvasInner({ nodeTypes, workflow, tabKey, onBack, onSaved }: Compositi
                 <IconButton icon={RedoIcon} aria-label="Redo" size="small" disabled={!canRedo} onClick={() => useCanvasStore.temporal.getState().redo()} />
                 <IconButton icon={ColumnsIcon} aria-label="Auto-layout" size="small" disabled={layingOut || nodes.length === 0} onClick={runAutoLayout} />
                 <IconButton icon={TrashIcon} aria-label="Delete selected" size="small" onClick={removeSelected} />
-                <ValidationSurface issues={validationIssues} workflowLabel={draftLabel} onSelectIssue={selectIssue} />
+                <ValidationSurface issues={validationIssues} workflowLabel={draftLabel} workflowId={workflow?.ID ?? ''} onSelectIssue={selectIssue} />
                 <Text size="small" className={runbookStyles.muted}>
                   Add steps to drag a node type onto the canvas, connect them, click a node to configure it.
                 </Text>
