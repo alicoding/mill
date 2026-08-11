@@ -15,3 +15,12 @@ import "github.com/wailsapp/wails/v3/pkg/application"
 func applicationMenu(app *application.App) *application.Menu {
 	return nil
 }
+
+// onMainThread runs fn inline in server mode: there is no native run
+// loop to dispatch to (application.InvokeSync would block forever), and
+// applicationMenu returns nil above so fn's native menu ops are all
+// short-circuited no-ops anyway. Mirrors the desktop counterpart's
+// signature so settingsservice_menu.go stays build-tag-free.
+func onMainThread(fn func()) {
+	fn()
+}

@@ -71,14 +71,16 @@ func (s *SettingsService) SuspendMenuAccelerators() {
 	if app == nil {
 		return // no live app yet (e.g. a unit test) -- nothing to suspend
 	}
-	menu := applicationMenu(app)
-	if menu == nil {
-		return // server mode, or GetApplicationMenu unavailable -- see doc comment above
-	}
-
-	s.savedAccelerators = map[*application.MenuItem]string{}
-	stripMenuAccelerators(menu, s.savedAccelerators)
-	menu.Update()
+	// Native NSMenu mutation must run on the main thread (see onMainThread).
+	onMainThread(func() {
+		menu := applicationMenu(app)
+		if menu == nil {
+			return // server mode, or GetApplicationMenu unavailable -- see doc comment above
+		}
+		s.savedAccelerators = map[*application.MenuItem]string{}
+		stripMenuAccelerators(menu, s.savedAccelerators)
+		menu.Update()
+	})
 }
 
 // RestoreMenuAccelerators reverses SuspendMenuAccelerators -- see its
@@ -107,12 +109,14 @@ func (s *SettingsService) RestoreMenuAccelerators() {
 	if app == nil {
 		return
 	}
-	for item, accel := range saved {
-		item.SetAccelerator(accel)
-	}
-	if menu := applicationMenu(app); menu != nil {
-		menu.Update()
-	}
+	onMainThread(func() {
+		for item, accel := range saved {
+			item.SetAccelerator(accel)
+		}
+		if menu := applicationMenu(app); menu != nil {
+			menu.Update()
+		}
+	})
 }
 
 // stripMenuAccelerators walks every item in menu, recording each
@@ -174,23 +178,29 @@ func (s *SettingsService) ReleaseMenuAccelerators() {
 	if app == nil {
 		return // no live app yet (e.g. a unit test) -- nothing to release
 	}
-	menu := applicationMenu(app)
-	if menu == nil {
-		return // server mode -- see applicationMenu's own doc comment
-	}
-
-	changed := false
-	for _, role := range releasedMenuRoles {
-		item := menu.FindByRole(role)
-		if item == nil || item.GetAccelerator() == "" {
-			continue
+	// Native NSMenu mutation must run on the main thread -- this method is
+	// called from main.go's ApplicationStarted handler, a goroutine, NOT
+	// the main thread; calling SetApplicationMenu/Update from here aborted
+	// the whole app ("setting the main menu on a non-main thread"), a
+	// desktop-only crash no server-mode e2e could catch. See onMainThread.
+	onMainThread(func() {
+		menu := applicationMenu(app)
+		if menu == nil {
+			return // server mode -- see applicationMenu's own doc comment
 		}
-		item.RemoveAccelerator()
-		changed = true
-	}
-	if changed {
-		menu.Update()
-	}
+		changed := false
+		for _, role := range releasedMenuRoles {
+			item := menu.FindByRole(role)
+			if item == nil || item.GetAccelerator() == "" {
+				continue
+			}
+			item.RemoveAccelerator()
+			changed = true
+		}
+		if changed {
+			menu.Update()
+		}
+	})
 }
 
 func stripMenuAccelerators(menu *application.Menu, out map[*application.MenuItem]string) {
