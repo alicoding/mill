@@ -58,6 +58,17 @@ type PendingApproval struct {
 	// the reviewer should fill for a human-review checkpoint (goal 0001);
 	// empty means all. The Review queue renders only these.
 	InputAttributes []string `json:"inputAttributes,omitempty"`
+	// Source distinguishes a breakpoint/step-mode debug park
+	// (guardrail.SourceDebug) from an ordinary policy ask or
+	// human-review checkpoint ("" -- docs/adr/0031). The UI's debug
+	// badge/Resume-Stop wording and the MCP debug tools (which hard-
+	// reject anything but a debug park) both key off this.
+	Source string `json:"source,omitempty"`
+	// Stepped reports whether this run is a debug "step mode" session
+	// (docs/adr/0031 §5) -- true means EVERY node parks, not just this
+	// one, so the UI offers Step/Continue/Stop instead of plain
+	// Resume/Stop.
+	Stepped bool `json:"stepped"`
 }
 
 // GuardrailPendingChanged is a minimal park/resolve signal, Emitted
@@ -97,14 +108,27 @@ type approvalDecision struct {
 	NodeID  string
 	Approve bool
 	// Values is the reviewer's typed input (docs/adr/0023's human-review
-	// node): overrides for the workflow's declared Attributes, applied
-	// on resume. Empty for a plain approve and for ambient-gate asks.
+	// node, and docs/adr/0031's breakpoint edit-and-resume): overrides
+	// for the workflow's declared Attributes, applied on resume. Empty
+	// for a plain approve and for ambient-gate asks.
 	Values map[string]string
+	// Continue clears a stepped run's Stepped flag on resume
+	// (docs/adr/0031 §5's "Continue" control) -- an approve with
+	// Continue=false (the default, e.g. "Step") keeps step mode on, so
+	// the NEXT node parks again too; Continue=true (e.g. "Resume"/
+	// "Continue") lets the run finish straight through (per-node
+	// breakpoints, if any, still hit -- they're independent rules, not
+	// gated by Stepped). Meaningless outside a stepped run.
+	Continue bool
 }
 
 // guardrailGate is installed as composition.SetGuardrailGate at
-// ExecutionService construction -- see docs/adr/0022 for the full flow.
-func (e *ExecutionService) guardrailGate(runCtx any, workflowID string, node composition.Node, ec composition.ExecContext) error {
+// ExecutionService construction -- see docs/adr/0022 for the full flow,
+// and docs/adr/0031 for the breakpoint/step-mode additions. Returns the
+// (possibly modified) ExecContext so a breakpoint's edit-and-resume
+// input, or a stepped run's Continue clearing ec.Stepped, can flow
+// forward into the node that's about to execute.
+func (e *ExecutionService) guardrailGate(runCtx any, workflowID string, node composition.Node, ec composition.ExecContext) (composition.ExecContext, error) {
 	// EffectForNode, not the static NodeTypeEffect: decision-outcome's
 	// actual effect class depends on whether the Decision it references
 	// carries a webhook (docs/adr/0027) -- every other NodeType's answer
@@ -117,43 +141,69 @@ func (e *ExecutionService) guardrailGate(runCtx any, workflowID string, node com
 		// No durable context (a direct composition.ExecuteWorkflow call
 		// -- unit tests never install the gate, so in the app this is
 		// unreachable per ADR-0008's single execution path). Fail safe
-		// anyway: an ask with nowhere to ask is a deny, not a pass.
+		// anyway: an ask with nowhere to ask is a deny, not a pass --
+		// including a stepped run, which by definition always needs to
+		// ask, even on an otherwise-allowed pure node.
 		v := guardrail.Evaluate(e.guard.Rules(), guardrailsvc.GuardrailStep(workflowID, node, ec), class)
-		if v.Effect != guardrail.EffectAllow {
-			return fmt.Errorf("guardrail: step requires approval but the run has no interactive context")
+		if v.Effect != guardrail.EffectAllow || ec.Stepped {
+			return ec, fmt.Errorf("guardrail: step requires approval but the run has no interactive context")
 		}
-		return nil
+		return ec, nil
 	}
 
+	// Step mode's override is computed INSIDE the checkpointed step
+	// (docs/adr/0031 §5), not after it -- the checkpoint is what GetRun/
+	// get_run later decode back into GuardrailEffect/GuardrailSource, so
+	// a step-mode-forced ask must be what actually gets recorded, not
+	// just what locally decides whether to park this one call. Never
+	// overrides an already-Deny verdict (deny always wins) or an
+	// already-Ask verdict (which keeps ITS OWN Source, so a real
+	// breakpoint or policy ask hit during a stepped run still reads as
+	// what it actually is, not generic "step mode").
 	verdict, err := execution.RunAsStep(ctx, func(context.Context) (guardrail.Verdict, error) {
-		return guardrail.Evaluate(e.guard.Rules(), guardrailsvc.GuardrailStep(workflowID, node, ec), class), nil
+		v := guardrail.Evaluate(e.guard.Rules(), guardrailsvc.GuardrailStep(workflowID, node, ec), class)
+		if ec.Stepped && v.Effect == guardrail.EffectAllow {
+			v = guardrail.Verdict{Effect: guardrail.EffectAsk, Source: guardrail.SourceDebug, RuleLabel: "Step mode"}
+		}
+		return v, nil
 	}, execution.WithStepName("guardrail:"+node.ID))
 	if err != nil {
-		return fmt.Errorf("guardrail: evaluate: %w", err)
+		return ec, fmt.Errorf("guardrail: evaluate: %w", err)
 	}
 
 	switch verdict.Effect {
 	case guardrail.EffectAllow:
-		return nil
+		return ec, nil
 	case guardrail.EffectDeny:
 		if verdict.RuleLabel != "" {
-			return fmt.Errorf("guardrail: denied by rule %q", verdict.RuleLabel)
+			return ec, fmt.Errorf("guardrail: denied by rule %q", verdict.RuleLabel)
 		}
-		return fmt.Errorf("guardrail: denied by rule %s", verdict.RuleID)
+		return ec, fmt.Errorf("guardrail: denied by rule %s", verdict.RuleID)
 	}
 
-	// Ask: park durably until a human decides (reviewer values are a
-	// human-review-node concept -- the ambient gate ignores them).
-	_, err = e.parkForApproval(ctx, node, ec, verdict.RuleLabel)
-	return err
+	// Ask: park durably until a human decides.
+	values, cont, err := e.parkForApproval(ctx, node, ec, verdict.RuleLabel, verdict.Source, ec.Stepped)
+	if err != nil {
+		return ec, err
+	}
+	ec = composition.ApplyAttributeOverrides(ec, values)
+	if cont {
+		ec.Stepped = false
+	}
+	return ec, nil
 }
 
 // parkForApproval advertises the pending step (SetEvent) and blocks on
 // the durable Recv until ResolveApproval answers or the timeout denies.
-// Shared by the ambient gate's ask verdict and the explicit
-// "Wait for approval" node (composition.SetApprovalWaiter) -- both
-// patterns, one pending/approve/deny surface (docs/adr/0022's Update).
-func (e *ExecutionService) parkForApproval(ctx execution.Context, node composition.Node, ec composition.ExecContext, ruleLabel string) (map[string]string, error) {
+// Shared by the ambient gate's ask verdict, the explicit
+// "Wait for approval" node (composition.SetApprovalWaiter), and step
+// mode's forced asks -- one pending/approve/deny surface (docs/adr/0022's
+// Update, extended by docs/adr/0031). source/stepped are advertised on
+// the PendingApproval so the UI/MCP can tell a breakpoint/step-mode
+// debug park apart from a policy ask or human-review checkpoint; the
+// returned bool is the resumer's Continue flag (docs/adr/0031 §5),
+// meaningless outside a stepped run.
+func (e *ExecutionService) parkForApproval(ctx execution.Context, node composition.Node, ec composition.ExecContext, ruleLabel, source string, stepped bool) (map[string]string, bool, error) {
 	typeLabels := make(map[string]string)
 	for _, nt := range composition.NodeTypes() {
 		typeLabels[nt.ID] = nt.Label
@@ -166,17 +216,19 @@ func (e *ExecutionService) parkForApproval(ctx execution.Context, node compositi
 		Payload:         ec.Payload,
 		RuleLabel:       ruleLabel,
 		InputAttributes: parseCSVKeys(node.Config["inputAttributes"]),
+		Source:          source,
+		Stepped:         stepped,
 	}
 	runID, _ := ctx.GetWorkflowID()
 
 	if err := execution.SetEvent(ctx, guardrailPendingEventKey, pending); err != nil {
-		return nil, fmt.Errorf("guardrail: publish pending approval: %w", err)
+		return nil, false, fmt.Errorf("guardrail: publish pending approval: %w", err)
 	}
 	emitGuardrailPendingChanged(runID, node.ID, false)
 
 	decision, err := execution.Recv[approvalDecision](ctx, guardrailApprovalTopic, guardrailApprovalTimeout)
 	if err != nil {
-		return nil, fmt.Errorf("guardrail: await approval: %w", err)
+		return nil, false, fmt.Errorf("guardrail: await approval: %w", err)
 	}
 
 	pending.Resolved = true
@@ -185,24 +237,28 @@ func (e *ExecutionService) parkForApproval(ctx execution.Context, node compositi
 		pending.Decision = "timed out"
 		_ = execution.SetEvent(ctx, guardrailPendingEventKey, pending)
 		emitGuardrailPendingChanged(runID, node.ID, true)
-		return nil, fmt.Errorf("guardrail: approval timed out after %s", guardrailApprovalTimeout)
+		return nil, false, fmt.Errorf("guardrail: approval timed out after %s", guardrailApprovalTimeout)
 	}
 	if !decision.Approve {
 		pending.Decision = "denied"
 		_ = execution.SetEvent(ctx, guardrailPendingEventKey, pending)
 		emitGuardrailPendingChanged(runID, node.ID, true)
-		return nil, fmt.Errorf("guardrail: denied by user")
+		return nil, false, fmt.Errorf("guardrail: denied by user")
 	}
 	pending.Decision = "approved"
 	_ = execution.SetEvent(ctx, guardrailPendingEventKey, pending)
 	emitGuardrailPendingChanged(runID, node.ID, true)
-	return decision.Values, nil
+	return decision.Values, decision.Continue, nil
 }
 
 // approvalWaiter backs the explicit "Wait for approval" node
 // (composition.SetApprovalWaiter): always parks -- an allow rule skips
 // the policy ask, never a checkpoint the author drew deliberately. The
-// approver sees the node's configured message as the "rule" line.
+// approver sees the node's configured message as the "rule" line. Not a
+// debug park (Source stays "" -- docs/adr/0031's MCP debug tools must
+// reject it, same as any other human-review checkpoint), and the
+// Continue flag is meaningless here (human-review is never a stepped
+// run), so both are discarded.
 func (e *ExecutionService) approvalWaiter(runCtx any, node composition.Node, ec composition.ExecContext, message string) (map[string]string, error) {
 	ctx, ok := runCtx.(execution.Context)
 	if !ok || ctx == nil {
@@ -211,16 +267,22 @@ func (e *ExecutionService) approvalWaiter(runCtx any, node composition.Node, ec 
 	if message == "" {
 		message = "human review checkpoint"
 	}
-	return e.parkForApproval(ctx, node, ec, message)
+	values, _, err := e.parkForApproval(ctx, node, ec, message, "", false)
+	return values, err
 }
 
 // ResolveApproval delivers the human's decision to a parked run -- the
-// Approve/Deny buttons' RPC. values is the reviewer's typed input for
-// a human-review checkpoint (nil/empty for a plain approve or an
-// ambient-gate ask). Send works from outside a workflow (verified
-// against the installed DBOS source).
-func (e *ExecutionService) ResolveApproval(runID, nodeID string, approve bool, values map[string]string) error {
-	return execution.Send(e.ctx, runID, approvalDecision{NodeID: nodeID, Approve: approve, Values: values}, guardrailApprovalTopic)
+// Approve/Deny (or, for a debug park, Resume/Step/Stop) buttons' RPC.
+// values is the reviewer's typed input for a human-review checkpoint or
+// a breakpoint edit-and-resume (nil/empty for a plain approve/resume or
+// an ambient-gate ask). continueRun only matters for a stepped run's
+// park (docs/adr/0031 §5): false keeps step mode on (the "Step"
+// control -- the NEXT node parks again too), true clears it (the
+// "Resume"/"Continue" control -- the run finishes straight through,
+// per-node breakpoints still honored). Send works from outside a
+// workflow (verified against the installed DBOS source).
+func (e *ExecutionService) ResolveApproval(runID, nodeID string, approve bool, values map[string]string, continueRun bool) error {
+	return execution.Send(e.ctx, runID, approvalDecision{NodeID: nodeID, Approve: approve, Values: values, Continue: continueRun}, guardrailApprovalTopic)
 }
 
 // pendingApprovalFor polls a run's advertised pending approval (zero

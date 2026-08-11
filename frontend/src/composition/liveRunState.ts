@@ -47,8 +47,17 @@ export interface UseLiveRunResult {
   detail: RunDetail | null
   statusByNodeId: Record<string, NodeRunStatus>
   barState: BarState | null
-  startRun: (values: Record<string, string>) => void
-  resolve: (nodeID: string, approve: boolean) => void
+  // stepped starts a debug "step mode" run (docs/adr/0031 §5) instead
+  // of a plain test run -- it parks before every node, not just
+  // external-effect ones.
+  startRun: (values: Record<string, string>, stepped?: boolean) => void
+  // continueRun only matters for a stepped run's park (docs/adr/0031
+  // §5): false is the "Step" control (keeps step mode on, the NEXT node
+  // parks again too), true is "Resume"/"Continue" (clears it, the run
+  // finishes straight through). Meaningless -- and harmless -- for a
+  // plain breakpoint or policy ask. values is the edit-and-resume typed
+  // input (item 4), discarded on a deny/stop.
+  resolve: (nodeID: string, approve: boolean, continueRun?: boolean, values?: Record<string, string>) => void
   dismiss: () => void
 }
 
@@ -114,20 +123,21 @@ export function useLiveRun(workflowId: string | undefined): UseLiveRunResult {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeRunId, detail?.status, detail?.pending])
 
-  const startRun = (values: Record<string, string>) => {
+  const startRun = (values: Record<string, string>, stepped?: boolean) => {
     if (!workflowId) return
     // Hides any stale finished/parked bar from a previous run while the
     // new one starts -- RunWorkflow blocks until completion or park, so
     // there's a real (if usually short) window with nothing to show yet.
     setDetail(null)
-    ExecutionService.RunWorkflow(workflowId, RunKind.RunKindTest, values)
-      .then((summary) => setActiveRunId(summary.runID))
-      .catch((err) => console.error(err))
+    const call = stepped
+      ? ExecutionService.RunWorkflowStepped(workflowId, values)
+      : ExecutionService.RunWorkflow(workflowId, RunKind.RunKindTest, values)
+    call.then((summary) => setActiveRunId(summary.runID)).catch((err) => console.error(err))
   }
 
-  const resolve = (nodeID: string, approve: boolean) => {
+  const resolve = (nodeID: string, approve: boolean, continueRun?: boolean, values?: Record<string, string>) => {
     if (!activeRunId) return
-    ExecutionService.ResolveApproval(activeRunId, nodeID, approve, {}).catch((err) => console.error(err))
+    ExecutionService.ResolveApproval(activeRunId, nodeID, approve, approve ? (values ?? {}) : {}, continueRun ?? false).catch((err) => console.error(err))
     // The in-flight poll above picks up the resumed/failed transition.
   }
 

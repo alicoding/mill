@@ -62,13 +62,8 @@ func init() {
 		}
 		// The reviewer's typed input overrides the named Attributes --
 		// same string-in, typed-out coercion the test-input form uses
-		// (docs/adr/0008), reusing coerceAttrValue so the two paths
-		// can't drift.
-		for key, raw := range values {
-			if current, ok := ctx.Attributes[key]; ok {
-				ctx.Attributes[key] = coerceAttrValue(current, raw)
-			}
-		}
-		return ctx, nil
+		// (docs/adr/0008), via the shared helper the guardrail gate's
+		// own breakpoint edit-and-resume path also uses (docs/adr/0031).
+		return ApplyAttributeOverrides(ctx, values), nil
 	})
 }

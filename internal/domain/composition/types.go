@@ -245,4 +245,13 @@ type ExecContext struct {
 	// caller that has no such context (every existing unit test,
 	// ExecuteWorkflow's own test-only primitive use).
 	RunContext any
+	// Stepped marks this run as a debug "step mode" session
+	// (docs/adr/0031 §5): the guardrail gate parks before EVERY node,
+	// not just external-effect ones, until a "Continue" resume clears
+	// it. Seeded once from ExecuteOptions.Stepped at the root ExecContext
+	// and carried forward untouched by every node's own exec function
+	// (they mutate-and-return the same struct, never reconstruct one
+	// from scratch) -- only the guardrail gate itself ever flips it back
+	// to false, on an explicit Continue.
+	Stepped bool
 }

@@ -100,12 +100,37 @@ func TestValidate(t *testing.T) {
 		{Rule{Effect: EffectAllow}, "scope"},
 		{Rule{Effect: EffectAllow, NodeID: "n"}, "workflow"},
 		{Rule{Effect: EffectAllow, NodeTypeID: "x", Condition: "not a ((( expr"}, "condition"},
+		{Rule{Effect: EffectAllow, NodeTypeID: "x", Source: "bogus"}, "source"},
 	}
 	for _, c := range cases {
 		err := c.rule.Validate()
 		if err == nil || !strings.Contains(err.Error(), c.want) {
 			t.Fatalf("rule %+v: err = %v, want mention of %q", c.rule, err, c.want)
 		}
+	}
+}
+
+// docs/adr/0031: Source is additive (zero value "" == policy, an
+// existing rule unaffected) and a matching debug rule's Source flows
+// through to the verdict, so a downstream park can tell a breakpoint
+// apart from a policy ask without re-inspecting the rule set.
+func TestEvaluate_SourceFlowsFromMatchingRuleToVerdict(t *testing.T) {
+	policy := Rule{ID: "p", Effect: EffectAllow, NodeTypeID: "list-lookup"}
+	if err := policy.Validate(); err != nil {
+		t.Fatalf("zero-value Source rejected: %v", err)
+	}
+	debug := Rule{ID: "bp", Label: "Breakpoint", Effect: EffectAsk, WorkflowID: "wf-1", NodeID: "node-1", Source: SourceDebug}
+	if err := debug.Validate(); err != nil {
+		t.Fatalf("valid debug rule rejected: %v", err)
+	}
+	v := Evaluate([]Rule{debug}, step(), ClassNone)
+	if v.Effect != EffectAsk || v.Source != SourceDebug {
+		t.Fatalf("verdict = %+v, want ask with Source=%q (a breakpoint asks even on a ClassNone/pure node)", v, SourceDebug)
+	}
+
+	v2 := Evaluate(nil, step(), ClassExternal)
+	if v2.Source != "" {
+		t.Fatalf("default-decided verdict Source = %q, want empty (policy)", v2.Source)
 	}
 }
 

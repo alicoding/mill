@@ -62,6 +62,7 @@ func textResult(text string) *mcp.CallToolResult {
 // requireWriteEnabled.
 func (m *MillMCPService) registerTools() {
 	m.registerAuthoringTools()
+	m.registerDebugTools()
 
 	mcp.AddTool(m.server, &mcp.Tool{
 		Name:        "export_workflow",

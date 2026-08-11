@@ -110,7 +110,7 @@ func TestSeededCodeExecutionExample_Approve_RunsRealCommandAndWritesClipboard(t 
 		t.Fatalf("pending.NodeTypeID = %q, want code-execution", pending.NodeTypeID)
 	}
 
-	if err := exec.ResolveApproval(summary.RunID, pending.NodeID, true, nil); err != nil {
+	if err := exec.ResolveApproval(summary.RunID, pending.NodeID, true, nil, false); err != nil {
 		t.Fatalf("ResolveApproval(approve): %v", err)
 	}
 
@@ -164,7 +164,7 @@ func TestSeededCodeExecutionExample_Deny_NeverStartsTheProcess(t *testing.T) {
 		return s.Pending, true
 	})
 
-	if err := exec.ResolveApproval(summary.RunID, pending.NodeID, false, nil); err != nil {
+	if err := exec.ResolveApproval(summary.RunID, pending.NodeID, false, nil, false); err != nil {
 		t.Fatalf("ResolveApproval(deny): %v", err)
 	}
 
@@ -229,7 +229,7 @@ func TestCancelRun_KillsARealRunningProcess(t *testing.T) {
 		}
 		return s.Pending, true
 	})
-	if err := exec.ResolveApproval(summary.RunID, pending.NodeID, true, nil); err != nil {
+	if err := exec.ResolveApproval(summary.RunID, pending.NodeID, true, nil, false); err != nil {
 		t.Fatalf("ResolveApproval(approve): %v", err)
 	}
 

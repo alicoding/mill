@@ -15,4 +15,13 @@ export interface RuleTestResult {
      * by default").
      */
     "effectClass": string;
+
+    /**
+     * Source mirrors the deciding rule's guardrail.Source (SourceDebug
+     * for a breakpoint, "" for policy) -- docs/adr/0031: the canvas's
+     * nothing-hidden badge uses this to render the distinct debug badge
+     * instead of the policy shield when a breakpoint is what's actually
+     * asking.
+     */
+    "source"?: string;
 }

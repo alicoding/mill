@@ -90,7 +90,7 @@ func TestGuardrail_ExternalStepParks_DenyFailsClosed(t *testing.T) {
 		t.Fatalf("pending = %+v, want node n1 / test-external-echo", pending)
 	}
 
-	if err := exec.ResolveApproval(summary.RunID, "n1", false, nil); err != nil {
+	if err := exec.ResolveApproval(summary.RunID, "n1", false, nil, false); err != nil {
 		t.Fatalf("ResolveApproval: %v", err)
 	}
 
@@ -135,7 +135,7 @@ func TestGuardrail_ExternalStepParks_ApproveExecutes(t *testing.T) {
 		return struct{}{}, err == nil && s.Pending != nil
 	})
 
-	if err := exec.ResolveApproval(summary.RunID, "n1", true, nil); err != nil {
+	if err := exec.ResolveApproval(summary.RunID, "n1", true, nil, false); err != nil {
 		t.Fatalf("ResolveApproval: %v", err)
 	}
 
@@ -298,7 +298,7 @@ func TestGuardrail_ExplicitWaitNode_ParksEvenWithAllowRule(t *testing.T) {
 		t.Fatalf("pending = %+v, want the checkpoint's own message surfaced", pending)
 	}
 
-	if err := exec.ResolveApproval(summary.RunID, "w1", true, nil); err != nil {
+	if err := exec.ResolveApproval(summary.RunID, "w1", true, nil, false); err != nil {
 		t.Fatalf("ResolveApproval: %v", err)
 	}
 	final := waitFor(t, "run to succeed", 10*time.Second, func() (RunSummary, bool) {
@@ -347,7 +347,7 @@ func TestSeededHumanReviewExample_TypedInputFlowsThrough(t *testing.T) {
 	if pending.RuleLabel != "Provide a note for this run, then approve" {
 		t.Fatalf("pending.RuleLabel = %q, want the checkpoint's configured message", pending.RuleLabel)
 	}
-	if err := exec.ResolveApproval(summary.RunID, pending.NodeID, true, map[string]string{"note": "reviewer says hi"}); err != nil {
+	if err := exec.ResolveApproval(summary.RunID, pending.NodeID, true, map[string]string{"note": "reviewer says hi"}, false); err != nil {
 		t.Fatalf("ResolveApproval: %v", err)
 	}
 	final := waitFor(t, "run to succeed", 10*time.Second, func() (RunSummary, bool) {
@@ -373,7 +373,7 @@ func TestSeededHumanReviewExample_TypedInputFlowsThrough(t *testing.T) {
 		}
 		return s.Pending, true
 	})
-	if err := exec.ResolveApproval(summary2.RunID, pending2.NodeID, true, nil); err != nil {
+	if err := exec.ResolveApproval(summary2.RunID, pending2.NodeID, true, nil, false); err != nil {
 		t.Fatalf("ResolveApproval(2): %v", err)
 	}
 	failed := waitFor(t, "run to fail on the ruleset", 10*time.Second, func() (RunSummary, bool) {

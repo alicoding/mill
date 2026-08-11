@@ -109,6 +109,23 @@ func coerceAttrValue(current any, raw string) any {
 	}
 }
 
+// ApplyAttributeOverrides merges resumed reviewer/debug input into
+// ctx.Attributes, coercing each value to match its Attribute's current
+// type -- shared by the human-review node's own exec function
+// (docs/adr/0023) and the ambient guardrail gate's breakpoint
+// edit-and-resume path (docs/adr/0031 item 4), so the two paths can't
+// drift on how resumed input is applied. Never rewrites Payload or
+// anything else on ctx -- exactly the "forward data" the ADR scopes
+// this to, never an already-committed checkpoint.
+func ApplyAttributeOverrides(ctx ExecContext, values map[string]string) ExecContext {
+	for key, raw := range values {
+		if current, ok := ctx.Attributes[key]; ok {
+			ctx.Attributes[key] = coerceAttrValue(current, raw)
+		}
+	}
+	return ctx
+}
+
 func attributesEnv(attrs []AttributeDef, values map[string]string) map[string]any {
 	env := make(map[string]any, len(attrs))
 	for _, a := range attrs {

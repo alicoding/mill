@@ -3542,17 +3542,32 @@ infrastructure. This inheritance list IS the working definition of
   (orphan reaping, crash-interrupt parking, idle-timeout UI,
   concurrency guard, split-into-steps) documented in §6 + in-code
 - Session identity model spanning tab + agent run + process (§7)
-- Workflow breakpoints (pause at a step, inspect/edit data, resume) —
-  design `LOCKED` by owner mandate:
-  [ADR-0031](adr/0031-workflow-breakpoints.md) (`accepted`
-  2026-08-11). Researched against n8n/Temporal/Airflow/Prefect/
-  Dagster/Camunda: Mill's durable guardrail ask-park already IS the
-  rare live-pause mechanism — the adopt is a `Source: debug` rule
-  tag + Inspector toggle + distinct badge, per-step input/attribute
-  visibility (fixing GetRun's definition-order walk), and
-  edit-and-resume via the existing typed-values form. Build queued
-  as goal 0020; run-to-node, ambient stepping, and checkpoint
-  mutation explicitly rejected in the ADR
+- Workflow breakpoints (pause at a step, inspect/edit data, resume,
+  step mode, MCP debugging) — `LOCKED`, BUILT same-day (goal 0020,
+  [ADR-0031](adr/0031-workflow-breakpoints.md)): `Rule.Source`
+  (`""`=policy | `debug` — zero-value migration-free), the canvas
+  Inspector's Breakpoint toggle (only ever CRUDs debug rules — the
+  named ADR-0022 exception), a distinct BugIcon badge
+  (bottom-left, never the shield's corner), "Paused at breakpoint" +
+  Resume/Stop wording, edit-and-resume via a shared
+  `ApprovalValuesForm` (Review + Runs tab + canvas bar), run-scoped
+  **step mode** (parks before every node — the gate was confirmed
+  already consulted for pure nodes, `execute.go`'s unconditional
+  call; Step/Continue/Stop in the CurrentStepBar), `GetRun` now
+  walking DBOS's actual recorded step order with per-step
+  Input/InputAttributes/OutputAttributes, and four MCP debug tools
+  (`run_workflow_stepped`/`step_run`/`resume_run`/`stop_run`)
+  gated by the write toggle and hard-scoped to debug parks —
+  ADR-0025's `resolve_approval` exclusion holds untouched. Proven:
+  park→attribute-edit→resume changes the branch taken (real DBOS),
+  a full MCP-client stepped session, 3 new e2e + 42 neighbor/
+  regression e2e green. **Building it surfaced and fixed a real
+  latent bug: `runWorkflow` never set `ExecuteOptions.WorkflowID`,
+  so workflow/instance-scoped guardrail rules NEVER matched at
+  runtime while the dry-run tester (which passes it) claimed they
+  were live** — found because breakpoints are instance-scoped rules.
+  Rejected in the ADR, unchanged: run-to-node, ambient stepping,
+  checkpoint mutation, pin-data editor
 - Policy authoring format and storage (§8) — `LOCKED`, built:
   [ADR-0022](adr/0022-guardrail-execution-gate.md) implements
   ADR-0019 (both `accepted`): `internal/domain/guardrail`, effect
