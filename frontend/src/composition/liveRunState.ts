@@ -50,7 +50,7 @@ export interface UseLiveRunResult {
   // stepped starts a debug "step mode" run (docs/adr/0031 §5) instead
   // of a plain test run -- it parks before every node, not just
   // external-effect ones.
-  startRun: (values: Record<string, string>, stepped?: boolean) => void
+  startRun: (values: Record<string, string>, stepped?: boolean, payload?: string) => void
   // continueRun only matters for a stepped run's park (docs/adr/0031
   // §5): false is the "Step" control (keeps step mode on, the NEXT node
   // parks again too), true is "Resume"/"Continue" (clears it, the run
@@ -123,15 +123,21 @@ export function useLiveRun(workflowId: string | undefined): UseLiveRunResult {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeRunId, detail?.status, detail?.pending])
 
-  const startRun = (values: Record<string, string>, stepped?: boolean) => {
+  const startRun = (values: Record<string, string>, stepped?: boolean, payload?: string) => {
     if (!workflowId) return
     // Hides any stale finished/parked bar from a previous run while the
     // new one starts -- RunWorkflow blocks until completion or park, so
     // there's a real (if usually short) window with nothing to show yet.
     setDetail(null)
+    // payload substitutes what the workflow's trigger would have
+    // delivered (triggerPayload.ts) -- threaded to both run variants,
+    // since a stepped debug run of a trigger-fed workflow needs its
+    // input exactly as much as a plain test run does.
     const call = stepped
-      ? ExecutionService.RunWorkflowStepped(workflowId, values)
-      : ExecutionService.RunWorkflow(workflowId, RunKind.RunKindTest, values)
+      ? ExecutionService.RunWorkflowStepped(workflowId, values, payload ?? '')
+      : payload
+        ? ExecutionService.RunWorkflowWithPayload(workflowId, RunKind.RunKindTest, values, payload)
+        : ExecutionService.RunWorkflow(workflowId, RunKind.RunKindTest, values)
     call.then((summary) => setActiveRunId(summary.runID)).catch((err) => console.error(err))
   }
 

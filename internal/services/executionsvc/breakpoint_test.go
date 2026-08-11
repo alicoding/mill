@@ -180,7 +180,7 @@ func TestStepMode_ParksBeforeEveryNode_StepThenContinue(t *testing.T) {
 	_, exec := newBreakpointHarness(t)
 	wfID := findBuiltInWorkflowID(t, exec.comp, "Example: Branch to a decision")
 
-	summary, err := exec.RunWorkflowStepped(wfID, map[string]string{"amount": "150"})
+	summary, err := exec.RunWorkflowStepped(wfID, map[string]string{"amount": "150"}, "")
 	if err != nil {
 		t.Fatalf("RunWorkflowStepped: %v", err)
 	}

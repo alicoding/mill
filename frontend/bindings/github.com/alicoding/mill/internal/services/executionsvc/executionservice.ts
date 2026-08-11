@@ -160,9 +160,13 @@ export function RunWorkflow(workflowID: string, kind: $models.RunKind, values: {
  * "Continue" resume clears it (executionservice_guardrail.go). Always
  * starts non-blocking (the run is guaranteed to park at its first node)
  * regardless of mayRequireApproval's own pre-scan.
+ * payload seeds the run's starting ExecContext.Payload, exactly like
+ * RunWorkflowWithPayload -- a stepped test run of a workflow whose
+ * trigger normally supplies the input (a filesystem-watch path) needs
+ * the same substitute input a plain test run does.
  */
-export function RunWorkflowStepped(workflowID: string, values: { [_ in string]?: string } | null): $CancellablePromise<$models.RunSummary> {
-    return $Call.ByID(309115967, workflowID, values);
+export function RunWorkflowStepped(workflowID: string, values: { [_ in string]?: string } | null, payload: string): $CancellablePromise<$models.RunSummary> {
+    return $Call.ByID(309115967, workflowID, values, payload);
 }
 
 /**

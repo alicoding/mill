@@ -2722,7 +2722,16 @@ Full rationale in [`docs/adr/0003-browser-bridge-architecture.md`](adr/0003-brow
   payload** — `ExecuteOptions.InitialPayload`, persisted in the DBOS
   run input so replay/redrive sees it; only filesystem-watch has real
   event data today (its changed path), the §3.4-locked "a trigger's
-  output IS the workflow's input" made literal. Two seeds (top-up,
+  output IS the workflow's input" made literal. **And a manual test
+  run can substitute that trigger input** (caught live the first time
+  the owner Ran the seed — empty payload, dead at capture-file): the
+  Run dialog now opens even attribute-less when the workflow's
+  trigger supplies the input (`triggerPayload.ts`'s hint map — one
+  entry today, extended alongside any future payload-bearing
+  trigger), offering an Initial-payload field threaded through
+  `RunWorkflowWithPayload`/`RunWorkflowStepped` (which gained the
+  same param); `capture-file`'s empty-payload error now names both
+  remedies instead of a bare "no path given". Two seeds (top-up,
   proof-registered): "Example: Saved page → Markdown" (fs-watch →
   capture-file → extract → markdown → clipboard; ships DISABLED with
   a placeholder `~/Mill Captures` path) and "Example: Clipboard

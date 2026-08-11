@@ -66,7 +66,7 @@ func (m *MillMCPService) registerDebugTools() {
 		if m.exec == nil {
 			return nil, nil, fmt.Errorf("execution service not wired")
 		}
-		summary, err := m.exec.RunWorkflowStepped(in.ID, in.Values)
+		summary, err := m.exec.RunWorkflowStepped(in.ID, in.Values, "")
 		if err != nil {
 			return nil, nil, err
 		}
