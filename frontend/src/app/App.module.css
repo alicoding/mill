@@ -3,15 +3,27 @@
    should adopt that pattern." A real, fixed-height chrome element at
    the very top of .app-shell (App.tsx, above the PageLayout row), not
    padding reserving empty space the way the old
-   .app-shell--native-titlebar rule did. WorkTabShell portals its
-   TabList + overflow menu into this element (App.tsx's titlebarSlot),
-   so the actual tab markup lives in shared/Tabs.module.css /
-   WorkTabShell.module.css -- this file only owns the band's own chrome
-   (size, background, border, the native traffic-light inset).
+   .app-shell--native-titlebar rule did.
+
+   Two segments, not one flat row -- the fix for a real reported flaw:
+   Chrome's tabs-in-titlebar pattern was applied without Chrome's own
+   precondition (no sidebar), so the band used to start tabs at a fixed
+   traffic-light inset and float them over the entire nav column, while
+   the sidebar's own wordmark+collapse header sat orphaned below the
+   band, and collapsing the sidebar moved nothing up here. Slack/VS
+   Code's shape is the correct reference instead: the band's LEFT
+   SEGMENT (.titlebarLeft below) belongs to the sidebar column and
+   tracks its width via the shared --mill-sidebar-width custom property
+   (index.css, set on .app-shell); the tab strip (.titlebarTabs) starts
+   at the true content-column edge and shifts with it. WorkTabShell
+   portals its TabList + overflow menu into .titlebarTabs specifically
+   (App.tsx's titlebarSlot ref) -- the actual tab markup still lives in
+   shared/Tabs.module.css / WorkTabShell.module.css, this file only owns
+   the band's own chrome.
 
    Same bgColor-inset "recessed panel" token the sidebar already uses
-   (.sidebar > :first-child above/below) -- the band and the sidebar
-   read as one continuous L of chrome, exactly the Chrome/Slack/Notion
+   (.sidebar > :first-child below) -- the band and the sidebar read as
+   one continuous L of chrome, exactly the Chrome/Slack/Notion
    hiddenInset convention, rather than a title strip that looks like a
    different surface floating over the sidebar.
 
@@ -21,9 +33,9 @@
    set explicitly here since this element IS the titlebar now, the same
    "be explicit at the element that matters" convention every other
    --wails-draggable rule in this file already follows. Individual tab
-   buttons/close controls/the overflow menu opt back out to no-drag
-   (Tabs.module.css, WorkTabShell.module.css) so clicking them still
-   works. Harmless no-op in server mode (no Wails runtime listening). */
+   buttons/close controls/the overflow menu/the sidebar toggle opt back
+   out to no-drag so clicking them still works. Harmless no-op in server
+   mode (no Wails runtime listening). */
 .titlebar {
     flex: 0 0 auto;
     height: 38px;
@@ -34,14 +46,80 @@
     --wails-draggable: drag;
 }
 
+/* The band's left segment -- the sidebar column's own strip of the
+   band. Tracks --mill-sidebar-width (index.css), the exact same value
+   the real PageLayout.Sidebar element uses below, so the two transition
+   together at the same 0.15s ease the sidebar already used and can
+   never drift apart. Holds (in order): the native traffic-light inset
+   (desktop only), the sidebar collapse/expand toggle (moved up from the
+   now-deleted .sidebarHeader), and the "Mill" wordmark. The border-right
+   continues the sidebar/content divider line up through the band, so
+   the left segment and the sidebar read as one continuous panel, not a
+   title strip floating over it. */
+.titlebarLeft {
+    flex: 0 0 var(--mill-sidebar-width);
+    display: flex;
+    align-items: center;
+    gap: var(--base-size-8);
+    padding: 0 var(--base-size-8);
+    border-right: 1px solid var(--borderColor-default);
+    overflow: hidden;
+    transition: flex-basis 0.15s ease;
+}
+/* Collapsed (no wordmark, just the toggle -- and the inset in native
+   mode): center the remaining content instead of hugging the left, same
+   treatment the old .sidebarCollapsed .sidebarHeader rule gave it. */
+.titlebarLeftCollapsed {
+    justify-content: center;
+    padding: 0;
+}
+
+.titlebarSidebarToggle {
+    --wails-draggable: no-drag;
+    flex: 0 0 auto;
+}
+.titlebarWordmark {
+    font-weight: 600;
+    font-size: 14px;
+    color: var(--fgColor-default);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
 /* Native desktop only (App.tsx adds this class inside the Wails
    webview): the window uses MacTitleBarHiddenInset (main.go), so the
-   macOS traffic lights float over the top-left of the band -- reserve
-   that width so the pinned page tab doesn't render underneath them.
-   ~80px matches the standard hidden-inset traffic-light reservation
-   (Chrome/Slack/Notion's own convention for this exact window style). */
-.titlebarNative {
-    padding-left: 80px;
+   macOS traffic lights float over the top-left of the band -- reserved
+   as a real element inside the left segment now (.trafficLightInset
+   below), ahead of the toggle, rather than padding spanning the whole
+   band the way the old rule did (that reservation has to stay INSIDE
+   the sidebar-tracking segment specifically, not the tab strip). A
+   collapsed 52px rail is narrower than the physical traffic-light
+   clearance, so this floors the segment's own width at a value wide
+   enough to clear the inset (~80px) plus the toggle button itself
+   (~28px) in that one case -- the one place this segment doesn't equal
+   --mill-sidebar-width exactly, a real, unavoidable OS-chrome
+   constraint rather than a design choice. Server mode never renders
+   this class at all, so it tracks the shared width exactly in both
+   states there (see layout.spec.ts's coverage). */
+.titlebarNative .titlebarLeft {
+    flex-basis: max(var(--mill-sidebar-width), 112px);
+}
+.trafficLightInset {
+    flex: 0 0 80px;
+    align-self: stretch;
+}
+
+/* The tab strip's own segment -- starts immediately at the content
+   column's true left edge (right after .titlebarLeft) and shifts with
+   it as the sidebar collapses/expands. WorkTabShell portals its
+   TabList + overflow menu directly into this element (App.tsx's
+   titlebarSlot ref, data-testid="titlebar-tabs"). */
+.titlebarTabs {
+    flex: 1 1 auto;
+    display: flex;
+    align-items: stretch;
+    min-width: 0;
 }
 
 /* ----- Sidebar -------------------------------------------------------------- */
@@ -74,38 +152,29 @@
        unset, so the sidebar and content pane were the same flat white
        with only a 1px divider line separating them. */
     background: var(--bgColor-inset);
+    /* Same shared custom property the titlebar band's left segment
+       reads (index.css/.titlebarLeft above) -- both expanded (256px)
+       and collapsed (52px) widths come from this one value now, so the
+       two elements can never drift apart. Overriding Primer's own
+       width:var(--pane-width-size) declaration on the real Sidebar node
+       relies on this module's CSS loading after Primer's in the bundle,
+       same assumption the earlier overflow override already relied on
+       and verified visually, not just asserted. */
+    width: var(--mill-sidebar-width);
 }
-/* Icon-rail width when collapsed. Primer's own Sidebar-iciWg rule sets
-   width:var(--pane-width-size) (a single, unqualified declaration, same
-   0-1-0 specificity as this structural selector) -- overriding it relies
-   on this module's CSS loading after Primer's in the bundle, same
-   assumption already relied on for the overflow override above and
-   verified visually, not just asserted. */
-.sidebarCollapsed > :first-child {
-    width: 52px;
-}
-.sidebarHeader {
-    flex: 0 0 auto;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    border-bottom: 1px solid var(--borderColor-default);
-    padding-bottom: var(--base-size-8);
-    margin-bottom: var(--base-size-8);
-}
-.sidebarCollapsed .sidebarHeader {
-    justify-content: center;
-}
-.sidebarWordmark {
-    font-weight: 600;
-    font-size: 14px;
-    color: var(--fgColor-default);
-}
+/* The wordmark + collapse toggle that used to live in a .sidebarHeader
+   div here moved up into the titlebar band's own left segment
+   (App.tsx/.titlebarLeft) -- the fix for the reported flaw (they used
+   to render orphaned below the band, and collapsing the sidebar moved
+   nothing in the band). Nothing replaces the header div; .sidebarNav is
+   now the sidebar's first real content and gets its own top spacing
+   directly instead. */
 .sidebarNav {
     flex: 1 1 auto;
     min-height: 0;
     overflow-y: auto;
     overflow-x: hidden;
+    padding-top: var(--base-size-8);
 }
 .sidebarFooter {
     flex: 0 0 auto;

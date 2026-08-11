@@ -306,21 +306,46 @@ function App() {
   }, []);
 
   return (
-    <div className="app-shell">
+    <div className="app-shell" data-sidebar-open={sidebarOpen}>
       {/* The titlebar band (Chrome-style tabs-in-titlebar, owner-
           requested: "Chrome has the tab system at the very top -- we
           should adopt that pattern"). A real, always-present chrome
           element at the very top of .app-shell, above the PageLayout
           row -- not padding reserving empty space the way the old
-          .app-shell--native-titlebar rule did. WorkTabShell (rendered
-          below, inside PageLayout.Content) portals its TabList +
-          overflow menu into this node; empty band space stays the
-          native window's drag handle (--wails-draggable:drag, App.module.css). */}
-      <div
-        ref={setTitlebarSlot}
-        className={`${styles.titlebar}${IS_NATIVE_WEBVIEW ? ` ${styles.titlebarNative}` : ''}`}
-        data-testid="titlebar-tabs"
-      />
+          .app-shell--native-titlebar rule did.
+
+          Two segments (App.module.css has the full reasoning for the
+          fix this is): .titlebarLeft is the sidebar column's own strip
+          of the band -- tracks the real sidebar's width via the shared
+          --mill-sidebar-width custom property (index.css), holds the
+          native traffic-light inset, the collapse/expand toggle (moved
+          up from the sidebar's own now-deleted header), and the
+          wordmark. .titlebarTabs is where WorkTabShell (rendered below,
+          inside PageLayout.Content) portals its TabList + overflow menu
+          -- empty space there stays the native window's drag handle
+          (--wails-draggable:drag, App.module.css). */}
+      <div className={`${styles.titlebar}${IS_NATIVE_WEBVIEW ? ` ${styles.titlebarNative}` : ''}`}>
+        <div
+          className={sidebarOpen ? styles.titlebarLeft : `${styles.titlebarLeft} ${styles.titlebarLeftCollapsed}`}
+          data-testid="titlebar-left"
+        >
+          {IS_NATIVE_WEBVIEW && <div className={styles.trafficLightInset} aria-hidden="true" />}
+          <IconButton
+            icon={sidebarOpen ? SidebarCollapseIcon : SidebarExpandIcon}
+            aria-label={sidebarOpen ? 'Collapse navigation' : 'Expand navigation'}
+            size="small"
+            variant="invisible"
+            className={styles.titlebarSidebarToggle}
+            onClick={() => setSidebarOpen((v) => !v)}
+          />
+          {sidebarOpen && <Text className={styles.titlebarWordmark}>Mill</Text>}
+        </div>
+        <div
+          ref={setTitlebarSlot}
+          className={styles.titlebarTabs}
+          data-testid="titlebar-tabs"
+        />
+      </div>
       {/* Build-identity badge -- one glance answers "which build is
           this, and is it live." Extracted to BuildIdentityBadge.tsx
           (goal 0019); its own doc comment carries the full reasoning. */}
@@ -345,31 +370,19 @@ function App() {
           persistent side rail at any width -- see docs/SPEC.md. */}
       <PageLayout className={styles.appBody} containerWidth="full" padding="none" rowGap="none" columnGap="none">
         <PageLayout.Sidebar
-          className={sidebarOpen ? styles.sidebar : `${styles.sidebar} ${styles.sidebarCollapsed}`}
+          className={styles.sidebar}
           width="small"
           responsiveVariant="default"
           divider="line"
           padding="condensed"
         >
-          {/* Wordmark + toggle share one row, both always reachable --
-              matches the reference platform's own logo-adjacent collapse
-              control rather than Mill's earlier footer-stranded button.
-              No wordmark yet in the collapsed rail: Mill has no compact
-              logo mark today (only the default Wails placeholder icon,
-              see build/appicon.png), so collapsed shows just the toggle,
-              centered, rather than fabricating a mark that doesn't exist
-              anywhere else in the app. */}
-          <div className={styles.sidebarHeader} data-testid="sidebar-header">
-            {sidebarOpen && <Text className={styles.sidebarWordmark}>Mill</Text>}
-            <IconButton
-              icon={sidebarOpen ? SidebarCollapseIcon : SidebarExpandIcon}
-              aria-label={sidebarOpen ? 'Collapse navigation' : 'Expand navigation'}
-              size="small"
-              variant="invisible"
-              onClick={() => setSidebarOpen((v) => !v)}
-            />
-          </div>
-          <div className={styles.sidebarNav}>
+          {/* The wordmark + collapse toggle that used to render here (a
+              .sidebarHeader row) moved up into the titlebar band's own
+              left segment above -- the fix for the reported flaw (they
+              used to sit orphaned below the band, and collapsing the
+              sidebar moved nothing up there). .sidebarNav is now the
+              sidebar's first real content. */}
+          <div className={styles.sidebarNav} data-testid="sidebar-nav">
             <NavList>
               {capabilities.map((c) => {
                 const target = viewFor(c);

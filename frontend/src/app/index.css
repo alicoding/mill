@@ -93,6 +93,30 @@ body {
     display: flex;
     flex-direction: column;             /* titlebar band + content area + footer, top to bottom */
     padding: env(safe-area-inset-top) env(safe-area-inset-right) 0 env(safe-area-inset-left);
+    /* Single source of truth for the sidebar column's width -- shared by
+       the real PageLayout.Sidebar element (App.module.css's `.sidebar >
+       :first-child`) and the titlebar band's own left segment
+       (App.module.css's `.titlebarLeft`), so the two can never visually
+       drift apart. This is the fix for the reported flaw: the titlebar
+       band used to ignore the sidebar column entirely (a fixed
+       traffic-light inset, tabs floating over the nav rail, nothing
+       moving when the rail collapsed) because Chrome's tabs-in-titlebar
+       pattern assumes no sidebar at all -- Slack/VS Code's own
+       shape (band hands its left edge off to the sidebar column) is the
+       correct reference once one exists. App.tsx flips
+       `data-sidebar-open` on this element; 256px pins Primer's own
+       `--pane-width-small` default explicitly rather than re-deriving it
+       twice -- checked directly against PageLayout's compiled CSS, that
+       token itself varies by breakpoint (240px at >=768px, 256px at
+       >=1012px, 100% below that), and Mill's desktop window lives well
+       above that breakpoint in practice, so one fixed number both
+       consumers can share beats two independent responsive reads landing
+       on different values. 52px matches the sidebar's existing collapsed
+       icon-rail width. */
+    --mill-sidebar-width: 256px;
+}
+.app-shell[data-sidebar-open="false"] {
+    --mill-sidebar-width: 52px;
 }
 
 /* The titlebar band itself (App.tsx's own .titlebar/.titlebarNative,
