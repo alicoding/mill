@@ -109,12 +109,18 @@ test('list-search node: configuring a real match parameter through the Inspector
   const panel = activePanel(page)
   await panel.getByLabel('Label').fill('E2E list-search config test')
 
+  // Deliberately no apply-clipboard-write-text terminal node -- this
+  // test proves the list-search Inspector's own authoring/execution,
+  // not clipboard I/O, and a clipboard apply step has no clipboard on
+  // a headless Linux CI runner (docs/SPEC.md §1.3; the same fix
+  // applied to the seeded "Example: Country lookup (search)" workflow
+  // after a real CI failure, builtinworkflows_list.go). Ending at
+  // list-search itself is an accepted, warn-only Process leaf
+  // (ADR-0028).
   await panel.getByTestId('toggle-palette').click()
   await dragPaletteItemToCanvas(page, 'list-search')
-  await dragPaletteItemToCanvas(page, 'apply-clipboard-write-text')
-  await expect(panel.locator('.react-flow__node')).toHaveCount(3)
+  await expect(panel.locator('.react-flow__node')).toHaveCount(2)
   await connectNodes(page, 'Trigger: manual', 'List: search')
-  await connectNodes(page, 'List: search', 'Apply: write plain text to clipboard')
 
   await clickCanvasNode(page, panel, 'List: search')
   const inspector = panel.getByTestId('composition-inspector')

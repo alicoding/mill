@@ -45,12 +45,19 @@ func builtInListWorkflows() []Workflow {
 	// Demonstrates a typed Object result (results/matched/first_match/
 	// match_count/list_id) a downstream step could branch on, not just
 	// a single scalar Attribute -- list-lookup's own seed above stays
-	// untouched, proving the two coexist.
+	// untouched, proving the two coexist. Deliberately ends AT
+	// list-search itself, mirroring list-lookup's own seed above,
+	// rather than adding a terminal apply-clipboard-write-text step:
+	// that step has no clipboard on a headless Linux CI runner
+	// (docs/SPEC.md §1.3) and would only be exercising clipboard I/O
+	// this seed isn't actually about -- caught by a real CI failure
+	// (goal 0011's own PR), not assumed. A Process leaf is an accepted,
+	// warn-only ending (ADR-0028), the same shape several other seeds
+	// already use.
 	const (
 		listSearchTriggerID = "example-list-search-trigger"
 		listSearchCaptureID = "example-list-search-capture"
 		listSearchStepID    = "example-list-search-step"
-		listSearchApplyID   = "example-list-search-apply"
 	)
 	const listSearchMatchParams = `[{"column":"code","value":"attr:code","matchType":"exact"}]`
 	listSearchNodes, err := ResolveNodeDefaults([]Node{
@@ -63,7 +70,6 @@ func builtInListWorkflows() []Workflow {
 				"matchParams":     listSearchMatchParams,
 				"outputAttribute": "searchResult",
 			}},
-		{ID: listSearchApplyID, NodeTypeID: "apply-clipboard-write-text", Position: Position{X: 0, Y: 300}},
 	})
 	if err != nil {
 		panic("built-in workflow references an unknown node type: " + err.Error())
@@ -88,7 +94,7 @@ func builtInListWorkflows() []Workflow {
 		{
 			ID:          "example-list-search-workflow",
 			Label:       "Example: Country lookup (search)",
-			Description: "Captures a typed 'code' Attribute and searches the seeded \"Example: Country codes\" List (Configure > Lists) via list-search -- an exact match on its 'code' column, writing a typed Object result ({results, matched, first_match, match_count, list_id}) into 'searchResult', then writes the captured code to the clipboard. Unlike list-lookup's plain scalar output, this demonstrates the richer typed result a downstream step (e.g. a Branch condition on searchResult.matched) could reference. Run it with code = US, CA, MX, or FR to see a match -- SU is a deliberately Expired seed row, excluded from matching by default (docs/goals/0011-lists-maturation.md).",
+			Description: "Captures a typed 'code' Attribute and searches the seeded \"Example: Country codes\" List (Configure > Lists) via list-search -- an exact match on its 'code' column, writing a typed Object result ({results, matched, first_match, match_count, list_id}) into 'searchResult'. Unlike list-lookup's plain scalar output, this demonstrates the richer typed result a downstream step (e.g. a Branch condition on searchResult.matched) could reference. Run it with code = US, CA, MX, or FR to see a match -- SU is a deliberately Expired seed row, excluded from matching by default (docs/goals/0011-lists-maturation.md).",
 			Nodes:       listSearchNodes,
 			Attributes: []AttributeDef{
 				{Key: "code", Label: "Code", Type: FieldText},
@@ -97,7 +103,6 @@ func builtInListWorkflows() []Workflow {
 			Edges: []Edge{
 				{ID: "example-list-search-e0", Source: listSearchTriggerID, Target: listSearchCaptureID},
 				{ID: "example-list-search-e1", Source: listSearchCaptureID, Target: listSearchStepID},
-				{ID: "example-list-search-e2", Source: listSearchStepID, Target: listSearchApplyID},
 			},
 			BuiltIn: true,
 		},
