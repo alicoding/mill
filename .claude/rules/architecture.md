@@ -63,6 +63,42 @@ Configure recipe, the MCP plane) that composition never reaches into;
 changes there need an ADR, same bar this file's other architecture
 decisions already carry.
 
+**Configure entity vs. node-local config — the owner's own framing:
+"business rules on canvas, integration rules in Configure."** A
+`ConfigField`'s value is a Configure-entity reference (`RefKind`,
+ADR-0009) exactly when two different workflows authored independently
+would want the *same* value and drifting apart would be a bug — a
+credential, an endpoint, a model, anything that names WHICH external
+thing a step talks to. It stays a plain node-local field exactly when
+the value is this one workflow's own decision-making — a condition, a
+threshold, a category list, a literal piece of text — the kind of
+thing every workflow legitimately answers differently, where forcing a
+shared Configure entity would just be indirection with no real reuse
+behind it. Codified here after a pre-flight audit (goal 0031, run
+before building the AI node family, since a wrong call here is exactly
+how a `RefKind` gets bolted on after the fact instead of designed in):
+every current `NodeType`'s `ConfigFields` was checked against this
+test, one by one. Verdict: **already fully consistent, zero
+misplacements found** — every field carrying a credential or an
+endpoint (`integration-http`'s `requestId`, `mcp-tool-call`'s
+`mcpServerId`, `code-execution`'s `envId`, `list-lookup`/`list-search`'s
+`listId`, `decision-outcome`'s `decisionId`, `child-workflow`'s
+`workflowId`) already carries `RefKind` and resolves through
+Configure; every field that's a workflow's own business/routing
+decision (`ruleset`'s `rulesJSON`, `human-review`'s `inputAttributes`,
+`capture-file`'s literal `path`, Branch's edge conditions) is correctly
+node-local, with no reusable "thing" behind it to promote (the same
+"nothing to configure" reasoning `docs/SPEC.md` §3.5's own two-axis
+recheck already applied to `capture-clipboard-html`/
+`process-html-to-markdown`). The AI node family built immediately
+after this audit follows the same split by construction: `aiproviderId`
+(which endpoint/model/credential) is `RefKind: "aiprovider"`;
+`ai-classify`'s `categories` list stays node-local (a Dify-precedent
+product decision, docs/goals/0031) since two workflows classifying into
+different category sets is normal, not drift. Revisit this audit's
+verdict only when a new `NodeType` actually adds a field that fails the
+test above — not on a schedule.
+
 **Max 500 lines per hand-written source file (`.go`/`.ts`/`.tsx`).**
 Enforced by `scripts/check-loc.sh`, run by both Lefthook (pre-commit)
 and CI's `file-loc-limit` job, so it can't land un-caught either way. A

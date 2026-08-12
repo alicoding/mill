@@ -49,6 +49,7 @@ func newTestConfigureService(t *testing.T) (*ConfigureService, *compositionsvc.C
 	cfg.requests = nil
 	cfg.lists = nil
 	cfg.mcpServers = nil
+	cfg.aiProviders = nil
 	return cfg, comp
 }
 

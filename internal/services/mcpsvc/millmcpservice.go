@@ -132,6 +132,15 @@ func NewMillMCPService(version string, comp *compositionsvc.CompositionService, 
 		Description: "One Execution Environment's full definition (same shape as its Export button's output).",
 	}, m.readExecEnv)
 
+	m.server.AddResource(&mcp.Resource{
+		URI: "mill://aiproviders", Name: "aiproviders", MIMEType: "application/json",
+		Description: "Every configured AI provider's ID, Label, and kind (openai-compatible/anthropic) -- read mill://aiproviders/{id} for its full definition (docs/goals/0031-ai-node-family.md). Never includes a secret.",
+	}, m.readAIProvidersIndex)
+	m.server.AddResourceTemplate(&mcp.ResourceTemplate{
+		URITemplate: "mill://aiproviders/{id}", Name: "aiprovider", MIMEType: "application/json",
+		Description: "One AI provider's full definition, minus its secret (same shape as its Export button's output).",
+	}, m.readAIProvider)
+
 	return m
 }
 
@@ -289,6 +298,25 @@ func (m *MillMCPService) readExecEnvsIndex(_ context.Context, req *mcp.ReadResou
 func (m *MillMCPService) readExecEnv(_ context.Context, req *mcp.ReadResourceRequest) (*mcp.ReadResourceResult, error) {
 	id := idFromTemplateURI(req.Params.URI, "mill://execenvs/")
 	data, err := m.cfg.ExportExecEnv(id)
+	if err != nil {
+		return nil, mcp.ResourceNotFoundError(req.Params.URI)
+	}
+	return &mcp.ReadResourceResult{
+		Contents: []*mcp.ResourceContents{{URI: req.Params.URI, MIMEType: "application/json", Text: data}},
+	}, nil
+}
+
+func (m *MillMCPService) readAIProvidersIndex(_ context.Context, req *mcp.ReadResourceRequest) (*mcp.ReadResourceResult, error) {
+	out := make([]resourceIndexEntry, 0)
+	for _, p := range m.cfg.AIProviders() {
+		out = append(out, resourceIndexEntry{ID: p.ID, Label: p.Label, Description: string(p.Kind)})
+	}
+	return jsonContents(req.Params.URI, out)
+}
+
+func (m *MillMCPService) readAIProvider(_ context.Context, req *mcp.ReadResourceRequest) (*mcp.ReadResourceResult, error) {
+	id := idFromTemplateURI(req.Params.URI, "mill://aiproviders/")
+	data, err := m.cfg.ExportAIProvider(id)
 	if err != nil {
 		return nil, mcp.ResourceNotFoundError(req.Params.URI)
 	}
