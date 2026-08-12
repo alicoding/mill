@@ -1,4 +1,8 @@
 {
+  "aiprovider:example-local-ollama": {
+    "seedRevision": 1,
+    "fingerprint": "75218e8e0727e6cbf04afd8ff25f8a461ccfea9c77fdccfb06ac824333fe4100"
+  },
   "decision:example-approve-decision": {
     "seedRevision": 1,
     "fingerprint": "b57c1ca6af05c2ecb257f657894a908759bd3de84bed6294b7ea35c958377924"
@@ -54,6 +58,10 @@
   "workflow:clipboard-html-to-markdown-workflow": {
     "seedRevision": 1,
     "fingerprint": "7a2c44dba4295f3d98f4e1b63d70d798e8c666edb156cc430dea368d21f76924"
+  },
+  "workflow:example-ai-summarize-workflow": {
+    "seedRevision": 1,
+    "fingerprint": "a3dbfca17c63bab9755f5d39e74c6f212b9e0666e8a48709b1111f40a3b47892"
   },
   "workflow:example-branch-to-decision-workflow": {
     "seedRevision": 1,

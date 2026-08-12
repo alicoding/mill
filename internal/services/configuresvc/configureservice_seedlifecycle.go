@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/alicoding/mill/internal/domain/aiprovider"
 	"github.com/alicoding/mill/internal/domain/decision"
 	"github.com/alicoding/mill/internal/domain/execenv"
 	"github.com/alicoding/mill/internal/domain/httprequest"
@@ -45,6 +46,9 @@ func (c *ConfigureService) SeedRevisions() map[string]int {
 	}
 	for _, e := range execenv.BuiltIn() {
 		out[e.ID] = e.Seed.SeedRevision
+	}
+	for _, p := range aiprovider.BuiltIn() {
+		out[p.ID] = p.Seed.SeedRevision
 	}
 	return out
 }

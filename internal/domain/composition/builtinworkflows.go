@@ -454,7 +454,10 @@ func BuiltInWorkflows() []Workflow {
 	// (.claude/rules/architecture.md).
 	workflows = append(workflows, builtInListWorkflows()...)
 	// docs/adr/0035: the forward-refactor proof, same split-file reasoning.
-	return append(workflows, builtInSystemEventWorkflows()...)
+	workflows = append(workflows, builtInSystemEventWorkflows()...)
+	// docs/goals/0031-ai-node-family.md item 4: the AI node family's own
+	// seeded proof, same split-file reasoning.
+	return append(workflows, builtInAIWorkflows()...)
 }
 
 // ExampleChildWorkflowID is exported so the parent seed above and any

@@ -44,6 +44,29 @@ call per step, never an agent loop inside Mill.
      invariant while remote/BYO-key asks by default. Two in-repo
      precedents pull opposite ways; this is a product/security taste
      call → morning handoff item.
+1a. [x] **PR1 shipped** (this branch, `goal/0031-ai-node-family`):
+    pre-flight audit of every registered `NodeType`'s `ConfigFields`
+    against the Configure-vs-workflow split (verdict: already fully
+    consistent, zero misplacements — codified in
+    `.claude/rules/architecture.md`); `internal/domain/aiprovider`
+    (`AIProvider{ID,Label,Kind,BaseURL,Model}` + seeded "Local Ollama
+    (localhost:11434)"); `internal/adapters/aiclient` (`openaicompat` +
+    `anthropic`, one `Complete` port, httptest-proven against both wire
+    shapes, structured-output request shape verified against each
+    provider's own docs before building); `configuresvc` CRUD +
+    Configure tab (`ConfigureAIProviders.tsx`) + `RefKind: "aiprovider"`
+    + dataevent emits + MCP read resource `mill://aiproviders`;
+    `process-ai-completion` (system prompt from config, user content =
+    prompt + payload, output replaces payload — composition documented
+    in the node's own `Description`); `EffectForNode`'s dynamic
+    downgrade to `ClassLocal` for an exact localhost/127.0.0.1/::1
+    `BaseURL` (owner-ratified 2026-08-12), unit-tested for port
+    suffixes/IPv6 brackets/scheme edge cases; seeded "Example: Summarize
+    with local AI" (disabled), proven end-to-end against real DBOS +
+    an httptest fixture (`executionsvc.TestSeededAISummarizeExample_
+    RunsEndToEndAgainstFixtureEndpoint`). SPEC.md §3.3/§3.5 updated.
+    `ai-extract-structured`/`ai-classify` deliberately deferred to PR2
+    (reviewability, per the session's own split instruction).
 2. [ ] Capability map + ADR: which family members Mill builds now vs
    later; the AI-provider Configure entity (1:many, stamped recipe —
    endpoint, model, BYO key in keychain); how the guardrail treats AI
