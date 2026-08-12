@@ -64,6 +64,12 @@ runs a workflow" run path is real and built there today; the
 inline-hotkey-hint and frecency/pins halves of this acceptance bar are
 still the unbuilt remainder this goal file tracks, for either surface.
 
+**Note (2026-08-12)**: frecency landed session 1; the command-shortcut
+half of the inline-hotkey-hint bar landed session 2 (both below). What
+remains against this Acceptance sentence's literal wording is narrower
+now: a workflow row's own Hotkey-TRIGGER combo (as opposed to an
+app-level command's shortcut, which is done) — see "Still open" below.
+
 ## Remainder delivered 2026-08-12 — three of four items, into the Quick Panel
 
 Investigated and confirmed DoR-met (the usage substrate, the RPCs, and
@@ -114,16 +120,67 @@ backend surface):
   the main window's Configure > Lists tab is visible with the seeded
   "Example: Country codes" row).
 
-## Still open — not touched this session, named so they're not silently dropped
+## Inline-hotkey-hint remainder delivered 2026-08-12 (session 2) — the COMMAND-shortcut half
 
-- **Inline hotkey hint per workflow row** (the ⌘K palette's own
-  documented simplification from the 2026-08-11 core build —
-  `app/CommandPalette.tsx`'s workflow-row comment: shows the trigger
-  NodeType label, e.g. "Hotkey trigger," not the live armed/hotkey-
-  combo detail `TriggerRowLabel.tsx` owns). Not part of this session's
-  investigated-DoR-met scope; still the literal "showed them the
-  hotkey they'll use instead next time" half of this goal's Acceptance
-  sentence.
+Owner's fresh ask (with screenshots): Chrome's own "Search Tabs"
+dropdown shows a bound shortcut inline next to the action, near where
+the user actually clicks it, not just in a central reference list.
+Built as one shared, O(1) single-source-of-truth piece rather than a
+per-surface copy:
+
+- `app/HotkeyHint.tsx`: `resolveHotkeyLabel(commandId, overrides)` (a
+  plain function, unit-tested in `HotkeyHint.test.ts` without needing
+  `@testing-library/react`, which this repo doesn't have installed),
+  `useCommandBinding` (the same resolution as a store-subscribed hook),
+  and `<HotkeyHint commandId="..." />` (renders the chip, or nothing
+  for an unbound command — never a placeholder). All three read the
+  exact same `shared/commands.ts` default + `store.ts`
+  `keybindingOverrides` merge `KeyboardShortcutsSection.tsx`'s Settings
+  list already used via `effectiveBinding` — a rebind in Settings is
+  reflected everywhere without a second hardcoded copy to drift.
+- **Two real commands + default bindings**, not just a display
+  pattern: `tab.closeOthers` (⌘⌥W, Safari's own "Close Other Tabs"
+  combo) and `tab.closeAll` (⌘⇧W, Safari's "Close Window" combo,
+  repurposed the same way `tab.close` already repurposed plain ⌘W) —
+  both wired into `app/WorkTabShell.tsx`'s tab-overflow menu, both
+  rebindable in Settings like every other command. Proven end-to-end
+  in `e2e/hotkey-hint.spec.ts`: the menu shows both hints, the real
+  shortcuts actually close tabs, and rebinding `tab.closeOthers` in
+  Settings updates the SAME hint the overflow menu renders (the
+  single-source-of-truth requirement, not a screenshot-alike).
+- Applied to `app/QuickPanel.tsx`'s "Open Settings" row, replacing a
+  literal hardcoded `"⌘,"` string that would have silently gone stale
+  the moment `settings.open` was ever rebound — a real, if minor, bug
+  this closes. `app/CommandPalette.tsx`'s own pre-existing command-row
+  shortcut rendering (built in the 2026-08-11 core, before this
+  session) was refactored onto the same shared component too, removing
+  its independent, duplicated `ShortcutHint` + `effectiveBinding`
+  computation (was one of two near-identical copies this session found
+  and consolidated, `QuickPanel.tsx`'s "Open Settings" hardcode being
+  the other).
+- Deliberately NOT built: a hint on QuickPanel's per-workflow "Run"
+  rows — no real `commands.ts` entry exists for "run this specific
+  workflow" (each is dispatched by ID, not a named command), and
+  inventing one to have something to hang a hint on would be exactly
+  the "don't invent per-workflow bindings that don't exist" trap this
+  session's own scope named up front.
+
+## Still open — the WORKFLOW-trigger half, distinct from the above
+
+- **Inline hotkey hint per workflow's own Hotkey TRIGGER** (still the
+  ⌘K palette's documented simplification from the 2026-08-11 core
+  build — `app/CommandPalette.tsx`'s workflow-row comment: shows the
+  trigger NodeType label, e.g. "Hotkey trigger," not the live
+  armed/hotkey-combo detail `TriggerRowLabel.tsx` owns). This is a
+  DIFFERENT registry than the command-shortcut work above — a
+  workflow's own trigger hotkey (`TriggerService`, per-workflow,
+  claimed via `TriggerService.ClaimedCombos`) rather than an app-level
+  command (`shared/commands.ts`). Still not built, still the literal
+  "showed them the hotkey they'll use instead next time" reading of
+  this goal's Acceptance sentence when "the row" is a workflow, not a
+  command — building it would need the workflow's own live trigger
+  combo fetched and formatted the way `TriggerRowLabel.tsx` already
+  does for the canvas, ported into the palette/panel's row-rendering.
 - **⌘?/⌘/ multi-binding alias** — needs a command to carry more than
   one `KeyCombo` (today's registry is 1:1, `shared/commands.ts`'s
   `defaultBinding: KeyCombo | null`); recorded as a BACKLOG.md
@@ -135,5 +192,6 @@ backend surface):
 
 This goal file stays OPEN (not archived) until the three items above
 are picked up — none of them block the palette/panel being genuinely
-useful today, but the Acceptance sentence isn't fully true until the
-first one lands.
+useful today (the command-shortcut half above is real and shipped),
+but the Acceptance sentence's workflow-row reading isn't fully true
+until the first one lands.
