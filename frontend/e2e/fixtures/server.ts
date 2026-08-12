@@ -106,7 +106,7 @@ export async function spawnMillServer(opts: SpawnServerOptions): Promise<Spawned
     await waitForHealth(`${baseURL}/health`, proc, 60_000)
   } catch (err) {
     proc.kill('SIGKILL')
-    throw new Error(`${String(err)}\nmill-server stderr:\n${stderrTail.join('')}`)
+    throw new Error(`${String(err)}\nmill-server stderr:\n${stderrTail.join('')}`, { cause: err })
   }
 
   // Isolation guard, preserved per-worker instead of once globally (the
