@@ -50,9 +50,38 @@ async function dragPaletteItemToCanvas(page: import('@playwright/test').Page, no
 
 // Removes the pre-populated starter node -- test (a) needs an exact,
 // known single-node graph (a lone Capture, no Trigger at all), not
-// "the starter plus whatever I added."
+// "the starter plus whatever I added." Selects it by clicking a point
+// PROVEN to land inside its own card, not a fixed offset -- see
+// composition-canvas-interactions.spec.ts's/child-workflow.spec.ts's own
+// copies of this pattern for the full MiniMap/Controls-overlap reasoning
+// (a plain `.click()` targets the card's center, which React Flow's own
+// Controls/MiniMap chrome can sit under depending on layout); this
+// file's own copy, since the helper is deliberately per-file. There's
+// only ever one node at this point (a brand-new workflow's starter), so
+// no label filter is needed.
 async function deleteStarterNode(page: import('@playwright/test').Page) {
-  await activePanel(page).locator('.react-flow__node').click()
+  const node = activePanel(page).locator('.react-flow__node').first()
+  const box = await node.boundingBox()
+  if (!box) throw new Error('deleteStarterNode: starter node has no bounding box')
+  const candidates = [
+    { x: box.x + 10, y: box.y + 10 },
+    { x: box.x + box.width - 10, y: box.y + 10 },
+    { x: box.x + box.width / 2, y: box.y + box.height / 2 },
+    { x: box.x + 10, y: box.y + box.height - 10 },
+  ]
+  let clicked = false
+  for (const point of candidates) {
+    const insideNode = await page.evaluate(({ x, y }) => {
+      const el = document.elementFromPoint(x, y)
+      return !!el?.closest('.react-flow__node')
+    }, point)
+    if (insideNode) {
+      await page.mouse.click(point.x, point.y)
+      clicked = true
+      break
+    }
+  }
+  if (!clicked) throw new Error('deleteStarterNode: no candidate point resolved inside the starter node\'s own card')
   await activePanel(page).getByRole('button', { name: 'Delete selected' }).click()
   await expect(activePanel(page).locator('.react-flow__node')).toHaveCount(0)
 }
