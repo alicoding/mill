@@ -876,6 +876,19 @@ and are still current** (not Runbook-specific, so they outlived it):
   (server, since the client can't be trusted), and the zod schema at
   save time — a canvas can represent shapes the domain can't execute,
   unlike the old linear-list form. `UX: PROTOTYPE`.
+- **`elkjs` license verdict (goal 0028, recorded — not previously
+  resolved despite being flagged above): EPL-2.0, the license of the
+  two `elkjs` offers under its dual license, is the one Mill takes.**
+  `LOCKED`. EPL-2.0 is copyleft on modifications to the covered work
+  itself, not on separate works that merely link/import it — and Mill
+  never modifies `elkjs`'s source, only imports the unmodified npm
+  package. It's also loaded via a dynamic `import()` into its own
+  separate bundle chunk (not statically bundled into Mill's Apache-2.0
+  code), which is the clean case even under EPL-2.0's own stricter
+  "larger work" language: an unmodified dependency, distributed as its
+  own separate file, invoked at runtime rather than compiled together.
+  No Apache-2.0/EPL-2.0 conflict on this shape. No tooling change
+  follows from this — it's a recorded verdict, not a new check.
 - **A workflow opens into the canvas via "New workflow" or by editing an
   existing one, each in its own tab — `CompositionView.tsx`'s tab bar,
   built on `@primer/react/experimental`'s headless `Tabs` state/ARIA

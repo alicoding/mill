@@ -114,7 +114,7 @@ func TestSeededSavedPageToMarkdown_FiresRealWorkflowAndExtractsMainContent(t *te
 </main>
 <footer>Site footer chrome</footer>
 </body></html>`
-	if err := os.WriteFile(filepath.Join(watchDir, "saved-page.html"), []byte(fixtureHTML), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(watchDir, "saved-page.html"), []byte(fixtureHTML), 0o600); err != nil {
 		t.Fatalf("WriteFile: %v", err)
 	}
 

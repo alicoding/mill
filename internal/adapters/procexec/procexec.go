@@ -170,7 +170,13 @@ func Start(spec Spec) (*Handle, error) {
 		grace = defaultGrace
 	}
 
-	cmd := exec.Command(spec.Argv[0], spec.Argv[1:]...) //nolint:gosec // Argv is caller-controlled per Spec's own doc; this package execs, it doesn't parse a shell string
+	// Deliberately exec.Command, not exec.CommandContext: this package's
+	// own doc above states its whole reason for existing -- it owns
+	// process supervision itself (graceful signal, then escalate to
+	// SIGKILL after GracePeriod, via kill.go's process-group kill), never
+	// a context's own immediate cancel-means-SIGKILL. Wiring a context in
+	// here would fight that design, not fix a gap.
+	cmd := exec.Command(spec.Argv[0], spec.Argv[1:]...) //nolint:gosec,noctx // Argv is caller-controlled per Spec's own doc, and lifecycle is this package's own job (see comment above)
 	cmd.Dir = spec.Dir
 	cmd.Env = spec.Env
 	cmd.SysProcAttr = setpgidAttr()

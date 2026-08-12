@@ -86,7 +86,7 @@ func TestSeededDisabledFilesystemWatch_FiresRealWorkflowOnFileCreate(t *testing.
 		t.Fatal("the re-pointed, enabled, published seed is not armed, want ArmedWorkflows() to report it live")
 	}
 
-	if err := os.WriteFile(filepath.Join(watchDir, "new-file.txt"), []byte("hello"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(watchDir, "new-file.txt"), []byte("hello"), 0o600); err != nil {
 		t.Fatalf("WriteFile: %v", err)
 	}
 
