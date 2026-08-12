@@ -118,6 +118,26 @@ this pipeline and on this code)**
     files are real, staged debt — see the four Standing tech-debt
     entries above (`app/`, `composition/`, `configure/`, `views/`
     minus Settings) for the rest of the migration.
+11. [x] [0033 — Reload session restore](archive/0033-reload-session-restore.md)
+    — DELIVERED 2026-08-12, owner-observed live: a real ⌘⇧R hard
+    reload mid-session (tab 3 of 3) discarded the open tab and landed
+    on Home. Root cause: `shared/store.ts`'s zustand `persist` already
+    round-tripped `view` + the restorable work tabs through
+    `localStorage` (built earlier, goal-adjacent to 0015/0018), but
+    `activeWorkTabKey` was deliberately excluded — "restored present,
+    never auto-activated" was the explicit prior design, which read as
+    losing your place whenever the underlying sidebar `view` happened
+    to be Home (opening a tab from Home's Most-Used list never touches
+    `view`). Fixed: `activeWorkTabKey` now persists too, filtered/
+    resolved through shared pure helpers (`shared/workTabs.ts`'s new
+    `activeKeyIfPresent`/`restoreWorkTabSnapshot`/`pruneStaleWorkTabs`,
+    unit-tested) so a reload restores the same page AND the same
+    active tab; a stale snapshot (a workflow deleted since) degrades
+    gracefully via the existing prune-on-load path. E2e-covered
+    (`state-persistence.spec.ts`, 3 new/updated goal-0033 cases) incl.
+    an explicit fresh/cleared-storage-still-boots-to-Home regression
+    guard (goal 0019's original concern). SPEC.md §1 + §3.7/§3.8
+    updated in the same change.
 
 **Ratified 2026-08-10 (owner): three groups, A→B→C. 0001 stays standing
 live-review material, interleaved during owner reviews, not a lane.**

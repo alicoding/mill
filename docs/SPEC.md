@@ -115,7 +115,18 @@ an implicit `FINAL`.
   tab that made the change, never another open surface. Fixed by giving
   every direct-mutation service its own `dataevent.Emit` call (one
   shared package, `internal/services/dataevent`) rather than treating
-  MCP as the sole live-sync source.
+  MCP as the sole live-sync source. **The thesis's completion criterion
+  includes a user never *needing* ⌘⇧R as a trust ritual** (goal
+  0033-reload-session-restore.md, owner-observed live: a real hard
+  reload mid-session, tab 3 of 3, discarded the open tab and landed on
+  Home) — goal 0017 above is the real fix (nothing should ever look
+  stale enough to make someone want to reload); this is the safety net
+  for the residual, legitimate dev/debug reload goal 0017 doesn't
+  eliminate: the current sidebar view and the open/active work tabs
+  now round-trip through `localStorage` (`shared/store.ts`'s zustand
+  `persist`, `shared/workTabs.ts`'s pure restore helpers) so a reload
+  — deliberate or not — restores the same place instead of resetting
+  to Home.
 - **Scope filter, learned from the screenshot-to-clipboard tangent**: before
   any capability goes into Mill, check whether the OS (or an existing
   launcher like Alfred/Raycast) already does it simply and well. If yes,
@@ -2650,23 +2661,30 @@ findings) and the build rationale are in
   maximized state is Go-side (`settingsservice.go`'s
   `LoadWindowGeometry`/`WatchWindowGeometry`, persisted via
   `internal/adapters/settings`, since only the backend has
-  `Position()`/`Size()`); active view, open Composition/Configure tabs,
-  and Activity's own filters are `localStorage` via zustand's own
-  `persist` middleware plus a shared `shared/persistedTabs.ts` helper.
-  `WebviewWindowOptions` needs `InitialPosition: WindowXY` set
-  explicitly or persisted `X`/`Y` are silently ignored (its zero value
-  is `WindowCentered`). Move/resize/maximize events are debounced
-  (500ms). An off-screen guard rejects a persisted position outside
-  plausible display bounds (a stale save from a since-disconnected
-  monitor) — Wails3, like Wails v2, has no monitor-identity API
-  (`wailsapp/wails#2739`), a known, accepted limitation, not a full
-  multi-monitor fix. **Fullscreen state is deliberately not tracked** —
-  reapplying persisted X/Y/Width/Height to a window last in fullscreen
-  would be meaningless, and macOS fullscreen's own multi-monitor
-  semantics are unresolved; a named future gap. Restored tabs skip
-  anything pointing at a since-deleted entity; Configure only restores
-  `'view'` tabs, never `'edit'` (an in-progress, unsaved edit form
-  shouldn't look "still open").
+  `Position()`/`Size()`); active sidebar view, the open app-wide work
+  tabs (`shared/store.ts`'s unified strip, §3.8's Update — superseding
+  the original per-page `shared/persistedTabs.ts`, since deleted), and
+  Activity's own filters are `localStorage` via zustand's own `persist`
+  middleware, with the restore-time pure logic split into
+  `shared/workTabs.ts` (`restoreWorkTabSnapshot`/`pruneStaleWorkTabs`,
+  unit-tested directly). `WebviewWindowOptions` needs `InitialPosition:
+  WindowXY` set explicitly or persisted `X`/`Y` are silently ignored
+  (its zero value is `WindowCentered`). Move/resize/maximize events are
+  debounced (500ms). An off-screen guard rejects a persisted position
+  outside plausible display bounds (a stale save from a
+  since-disconnected monitor) — Wails3, like Wails v2, has no
+  monitor-identity API (`wailsapp/wails#2739`), a known, accepted
+  limitation, not a full multi-monitor fix. **Fullscreen state is
+  deliberately not tracked** — reapplying persisted X/Y/Width/Height to
+  a window last in fullscreen would be meaningless, and macOS
+  fullscreen's own multi-monitor semantics are unresolved; a named
+  future gap. Restored tabs skip anything pointing at a since-deleted
+  entity (pruned once the real workflow/request list loads); Configure
+  only restores `'view'` tabs, never `'edit'` (an in-progress, unsaved
+  edit form shouldn't look "still open"). **The active tab itself now
+  restores too, not just the strip's contents** (goal
+  0033-reload-session-restore.md — see §3.8's Update for the full
+  before/after).
 
 **Researched, not built:**
 
@@ -3767,9 +3785,11 @@ recorded as a real design input (`OPEN`), never silently dropped.
   (it stays open in the strip) — navigating sections means "show me
   that page." Only inspect-shaped tabs restore across reload
   (`workflow-edit`/`request-view`, never an in-progress edit form,
-  matching §3.7's existing Configure-restore rule), restored inactive —
-  landing on the page, not inside a tab, after a reload. Tabs whose
-  entity was deleted prune automatically once the store's lists load.
+  matching §3.7's existing Configure-restore rule); which one (if any)
+  was active at reload time restores too, superseding the original
+  "restored present but inactive" behavior — see this section's goal
+  0033 Update below. Tabs whose entity was deleted prune automatically
+  once the store's lists load.
   `CompositionView`/`ConfigureRequests` slimmed to list-only pages
   whose open/edit actions call the store (`openWorkTab`); "open the
   child workflow from the parent" became a direct store action
@@ -3790,6 +3810,36 @@ recorded as a real design input (`OPEN`), never silently dropped.
   scratch-agnostic). Industry pattern (VS Code/browser tab strips). The
   inner-tab consumers (Configure/RequestSummary/WorkflowEditor) share the
   same `nowrap` `.tabList` harmlessly — few, fixed tabs never overflow.
+  **Update (goal 0033-reload-session-restore.md, 2026-08-12,
+  owner-observed live: a real ⌘⇧R hard reload mid-session, tab 3 of 3,
+  discarded the open tab and landed on Home): the previously-active
+  work tab now restores active, not just present.** Root cause: the
+  tabs themselves already round-tripped through `localStorage` (this
+  section's original build), but `activeWorkTabKey` was deliberately
+  excluded from persistence — "restored but not auto-activated" was
+  the explicit prior design. Live, that read as losing your place
+  entirely whenever the underlying sidebar `view` happened to be
+  `home` at the time (opening a tab from Home's Most-Used list, or the
+  Review queue's row drill-down, never touches `view` — only a sidebar
+  nav click does), which is exactly the incident. Fix: `activeWorkTabKey`
+  now persists too, filtered through the same `isRestorable` rule as
+  the tabs themselves (`shared/store.ts`'s `partialize`), and resolves
+  against whatever tabs actually survived restoration on the way back
+  in (`shared/workTabs.ts`'s `activeKeyIfPresent`) — a key with no
+  matching tab (the active tab wasn't itself restorable, or the
+  legacy-migration branch fired) degrades to `null` rather than
+  dangling. `pruneWorkTabs`'s own stale-entity handling (a workflow/
+  request deleted since the snapshot was taken) was refactored onto
+  the same shared pure helper (`pruneStaleWorkTabs`) so the "clear the
+  active key if it pointed at exactly the tab just dropped" rule can't
+  drift between the two call sites. Unit-tested directly
+  (`workTabs.test.ts`: `activeKeyIfPresent`, `restoreWorkTabSnapshot`,
+  `pruneStaleWorkTabs`); e2e-covered end-to-end
+  (`state-persistence.spec.ts`'s three goal-0033 tests: single tab
+  re-activates with no click needed, several tabs restore in order
+  with the correct one active and Home never shown, and a fresh/
+  cleared-storage boot still lands on Home unaffected — goal 0019's
+  original concern, still honored).
 - **Long-column table pattern — `LOCKED`, built
   (`shared/ResizableTable.tsx`), asked for directly.** Every DataTable
   surface (Workflows, Versions, Integrations, Lists, MCP Servers,

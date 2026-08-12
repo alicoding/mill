@@ -8,9 +8,10 @@ import { ViewKind } from '../../bindings/github.com/alicoding/mill/internal/doma
 import type { Capability } from '../../bindings/github.com/alicoding/mill/internal/domain/capabilities/models'
 import type { KeyCombo } from './keybinding'
 import {
+  activeKeyIfPresent,
   isRestorable,
-  migrateLegacyWorkTabs,
-  modeForRestoredCanvasTab,
+  pruneStaleWorkTabs,
+  restoreWorkTabSnapshot,
   sameWorkTarget,
   shouldUpgradeToEdit,
   type WorkTab,
@@ -383,12 +384,7 @@ export const useAppStore = create<AppState>()(
         }),
       activateWorkTab: (key) => set({ activeWorkTabKey: key }),
       pruneWorkTabs: (keep) =>
-        set((state) => {
-          const workTabs = state.workTabs.filter(keep)
-          if (workTabs.length === state.workTabs.length) return {}
-          const stillActive = workTabs.some((t) => t.key === state.activeWorkTabKey)
-          return { workTabs, activeWorkTabKey: stillActive ? state.activeWorkTabKey : null }
-        }),
+        set((state) => pruneStaleWorkTabs(state.workTabs, state.activeWorkTabKey, keep) ?? {}),
       pendingRunFocus: null,
       // Opens (or reuses, whatever mode it's currently in) a workflow's
       // tab from a jump/preview context -- hover-preview's Open, the
@@ -441,32 +437,34 @@ export const useAppStore = create<AppState>()(
       partialize: (state) => ({
         view: state.view,
         // Restorable work tabs only (saved-entity tabs; see
-        // isRestorable) -- the active key isn't persisted: landing on
-        // the section page with the strip populated is the less
-        // surprising restore than landing inside an editor.
+        // isRestorable).
         workTabs: state.workTabs.filter(isRestorable),
+        // The active tab itself (goal 0033 -- a real ⌘⇧R hard-reload
+        // mid-session, tab 3 of 3, dumped the owner back to Home
+        // despite the tabs themselves already restoring: they came
+        // back present in the strip but never re-activated, so the
+        // reload still cost the user their actual place). Only
+        // persisted when it points at a tab that will itself survive
+        // restoration -- an active 'request-edit'/'request-new' tab
+        // (in-progress, unsaved forms, never restorable) correctly
+        // degrades to "no active tab" rather than persisting a key
+        // with nothing to match it against.
+        activeWorkTabKey: activeKeyIfPresent(state.workTabs.filter(isRestorable), state.activeWorkTabKey),
       }),
       merge: (persisted, current) => {
         const p = (persisted ?? {}) as Partial<AppState>
-        // A 'workflow-edit' tab persisted before docs/goals/0022's
-        // `mode` field existed carries no mode at all -- backfill it
-        // rather than let it through undefined (every reader below
-        // assumes mode is always set). scratchKeyExists is the same
-        // conservative heuristic migrateLegacyWorkTabs uses: real
-        // scratch data still sitting under this tab's own key means
-        // there's real unsaved work to protect, so default to 'edit'
-        // (the actual pre-goal behavior, no worse than before); nothing
-        // there defaults to 'view', the safer choice (ADR-0014).
-        const restored = (p.workTabs ?? []).filter(isRestorable).map((t) =>
-          t.kind === 'workflow-edit' && t.mode === undefined
-            ? { ...t, mode: modeForRestoredCanvasTab(t.key) }
-            : t,
-        )
+        const { workTabs, activeWorkTabKey } = restoreWorkTabSnapshot(p.workTabs, p.activeWorkTabKey)
+        // A tab whose entity was deleted since the snapshot was taken
+        // still degrades gracefully one step later, once
+        // WorkTabShell's own pruneWorkTabs effect runs against the
+        // real workflow/request lists (its `pruneStaleWorkTabs` call
+        // clears activeWorkTabKey the same way) -- no deleted-entity
+        // handling needed at merge time, before that data even loads.
         return {
           ...current,
           ...p,
-          workTabs: restored.length > 0 ? restored : migrateLegacyWorkTabs(),
-          activeWorkTabKey: null,
+          workTabs,
+          activeWorkTabKey,
         }
       },
     },
