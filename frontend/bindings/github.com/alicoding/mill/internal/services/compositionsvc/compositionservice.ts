@@ -101,12 +101,44 @@ export function PublishWorkflow(id: string): $CancellablePromise<composition$0.W
 }
 
 /**
+ * ResetWorkflowToSeed replaces id's content with the current golden's
+ * (docs/goals/0037 item 4) -- a new published version, non-destructive
+ * (the prior history stays in Versions, reachable via the existing
+ * rollback UI), and clears the Modified latch. Deliberately its own
+ * method, not routed through mutateWorkflow: mutateWorkflow's own
+ * choke point (below) unconditionally re-latches Modified on every
+ * call, which would immediately undo the very reset this performs.
+ */
+export function ResetWorkflowToSeed(id: string): $CancellablePromise<composition$0.Workflow> {
+    return $Call.ByID(3221719814, id);
+}
+
+/**
+ * RestorableWorkflows returns every built-in workflow the user
+ * deliberately deleted (tombstoned) and not since restored -- the read
+ * model for a "Restore example…" affordance (docs/goals/0037 item 5),
+ * shown only when non-empty.
+ */
+export function RestorableWorkflows(): $CancellablePromise<composition$0.Workflow[] | null> {
+    return $Call.ByID(2845480415);
+}
+
+/**
  * RestoreVersionToDraft copies a snapshot's definition back into the
  * editable head -- the "load an old version into the editor" half of
  * rollback; publishing it afterward is a separate, explicit act.
  */
 export function RestoreVersionToDraft(id: string, version: number): $CancellablePromise<composition$0.Workflow> {
     return $Call.ByID(1369969118, id, version);
+}
+
+/**
+ * RestoreWorkflow un-tombstones id and re-seeds it at the current
+ * golden's content -- the reverse of DeleteWorkflow for a built-in
+ * (docs/goals/0037 item 5).
+ */
+export function RestoreWorkflow(id: string): $CancellablePromise<composition$0.Workflow> {
+    return $Call.ByID(3075661923, id);
 }
 
 /**

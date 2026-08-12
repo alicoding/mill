@@ -34,6 +34,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/alicoding/mill/internal/domain/seedorigin"
 	"github.com/alicoding/mill/internal/domain/typedfield"
 )
 
@@ -98,6 +99,10 @@ type List struct {
 	// wire. Zero value means pre-timestamp data -- migration-free.
 	CreatedAt time.Time
 	UpdatedAt time.Time
+	// Seed is this list's seed provenance (docs/goals/0037) -- zero
+	// value means "not of seed origin," migration-free. See
+	// composition.Workflow.Seed's doc comment for the full reasoning.
+	Seed seedorigin.Origin
 }
 
 // Validate checks a List is well-formed before it's persisted -- same

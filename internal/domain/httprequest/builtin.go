@@ -1,5 +1,7 @@
 package httprequest
 
+import "github.com/alicoding/mill/internal/domain/seedorigin"
+
 // BuiltIn ships one seeded, working example HTTPRequest per real
 // implemented AuthType (docs/SPEC.md §4's Update) -- the same standing
 // practice CompositionService.restore() already established for
@@ -92,6 +94,7 @@ func BuiltIn() []HTTPRequest {
 			BaseURL: "https://httpbin.org/get", AuthType: AuthNone, Method: "GET",
 			OpenAPISpec: typedEchoSpec,
 			BuiltIn:     true,
+			Seed:        seedorigin.Stamp(1),
 		},
 		{
 			ID: ExampleAPIKeyID, Label: "Example: API key header (httpbin.org)",
@@ -102,6 +105,7 @@ func BuiltIn() []HTTPRequest {
 			BaseURL: "https://httpbin.org/headers", AuthType: AuthAPIKey, Method: "GET",
 			OpenAPISpec: openAPISpecFor("httpbin headers echo"),
 			BuiltIn:     true,
+			Seed:        seedorigin.Stamp(1),
 		},
 		{
 			ID: ExampleBearerID, Label: "Example: Bearer token (httpbin.org)",
@@ -112,6 +116,7 @@ func BuiltIn() []HTTPRequest {
 			BaseURL: "https://httpbin.org/bearer", AuthType: AuthBearer, Method: "GET",
 			OpenAPISpec: typedBearerSpec,
 			BuiltIn:     true,
+			Seed:        seedorigin.Stamp(1),
 		},
 		{
 			ID: ExampleHMACID, Label: "Example: HMAC signature (httpbin.org)",
@@ -123,6 +128,7 @@ func BuiltIn() []HTTPRequest {
 			BaseURL: "https://httpbin.org/headers", AuthType: AuthHMAC, Method: "GET",
 			OpenAPISpec: openAPISpecFor("httpbin headers echo (HMAC)"),
 			BuiltIn:     true,
+			Seed:        seedorigin.Stamp(1),
 		},
 		{
 			ID: ExampleOAuth1ID, Label: "Example: OAuth 1.0a (postman-echo.com)",
@@ -135,6 +141,7 @@ func BuiltIn() []HTTPRequest {
 			Auth:        &AuthConfig{OAuth1: &OAuth1Config{ConsumerKey: "RKCGzna7bv9YD57c"}},
 			OpenAPISpec: openAPISpecFor("Postman Echo OAuth1"),
 			BuiltIn:     true,
+			Seed:        seedorigin.Stamp(1),
 		},
 		{
 			ID: ExampleOAuth2ID, Label: "Example: OAuth 2.0 client credentials (Spotify Web API)",
@@ -149,6 +156,7 @@ func BuiltIn() []HTTPRequest {
 			}},
 			OpenAPISpec: openAPISpecFor("Spotify Web API (bring your own app)"),
 			BuiltIn:     true,
+			Seed:        seedorigin.Stamp(1),
 		},
 		{
 			ID: ExampleQueryParamID, Label: "Example: Query-param API key (httpbin.org)",
@@ -158,6 +166,7 @@ func BuiltIn() []HTTPRequest {
 			BaseURL: "https://httpbin.org/get", AuthType: AuthQueryParam, Method: "GET",
 			OpenAPISpec: openAPISpecFor("httpbin query echo"),
 			BuiltIn:     true,
+			Seed:        seedorigin.Stamp(1),
 		},
 	}
 }

@@ -2,6 +2,7 @@ package composition
 
 import (
 	"github.com/alicoding/mill/internal/domain/list"
+	"github.com/alicoding/mill/internal/domain/seedorigin"
 	"github.com/alicoding/mill/internal/domain/typedfield"
 )
 
@@ -90,6 +91,7 @@ func builtInListWorkflows() []Workflow {
 				{ID: "example-list-e1", Source: listCaptureID, Target: listLookupID},
 			},
 			BuiltIn: true,
+			Seed:    seedorigin.Stamp(1),
 		},
 		{
 			ID:          "example-list-search-workflow",
@@ -105,6 +107,7 @@ func builtInListWorkflows() []Workflow {
 				{ID: "example-list-search-e1", Source: listSearchCaptureID, Target: listSearchStepID},
 			},
 			BuiltIn: true,
+			Seed:    seedorigin.Stamp(1),
 		},
 	}
 }

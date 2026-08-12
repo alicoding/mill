@@ -1,6 +1,9 @@
 package composition
 
-import "github.com/alicoding/mill/internal/domain/httprequest"
+import (
+	"github.com/alicoding/mill/internal/domain/httprequest"
+	"github.com/alicoding/mill/internal/domain/seedorigin"
+)
 
 // builtInSystemEventWorkflows returns the seeded workflow exercising
 // trigger-system-event (docs/adr/0035): the composed replacement for
@@ -47,6 +50,7 @@ func builtInSystemEventWorkflows() []Workflow {
 				{ID: "example-forward-approvals-e0", Source: forwardTriggerID, Target: forwardHTTPID},
 			},
 			BuiltIn:  true,
+			Seed:     seedorigin.Stamp(1),
 			Disabled: true,
 		},
 	}

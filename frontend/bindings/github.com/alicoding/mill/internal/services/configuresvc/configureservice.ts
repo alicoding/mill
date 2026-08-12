@@ -255,6 +255,120 @@ export function MCPServers(): $CancellablePromise<mcpserver$0.MCPServer[] | null
 }
 
 /**
+ * ResetDecisionToSeed mirrors ResetHTTPRequestToSeed for Decisions.
+ */
+export function ResetDecisionToSeed(id: string): $CancellablePromise<decision$0.Decision> {
+    return $Call.ByID(3124176177, id);
+}
+
+/**
+ * ResetExecEnvToSeed mirrors ResetHTTPRequestToSeed for ExecEnvs.
+ */
+export function ResetExecEnvToSeed(id: string): $CancellablePromise<execenv$0.ExecEnv> {
+    return $Call.ByID(654567745, id);
+}
+
+/**
+ * ResetHTTPRequestToSeed replaces id's content with the current
+ * golden's and clears the Modified latch (docs/goals/0037 item 4) --
+ * an explicit, on-demand act available regardless of current
+ * Modified/revision state, unlike reconcile's own conditional upgrade.
+ */
+export function ResetHTTPRequestToSeed(id: string): $CancellablePromise<httprequest$0.HTTPRequest> {
+    return $Call.ByID(3582620696, id);
+}
+
+/**
+ * ResetListToSeed mirrors ResetHTTPRequestToSeed for Lists -- also
+ * replaces Rows wholesale (upgradeListToGolden's own doc comment).
+ */
+export function ResetListToSeed(id: string): $CancellablePromise<list$0.List> {
+    return $Call.ByID(418099123, id);
+}
+
+/**
+ * ResetMCPServerToSeed mirrors ResetHTTPRequestToSeed for MCP Servers.
+ */
+export function ResetMCPServerToSeed(id: string): $CancellablePromise<mcpserver$0.MCPServer> {
+    return $Call.ByID(1063578386, id);
+}
+
+/**
+ * RestorableDecisions mirrors RestorableHTTPRequests for Decisions.
+ */
+export function RestorableDecisions(): $CancellablePromise<decision$0.Decision[] | null> {
+    return $Call.ByID(1640071762);
+}
+
+/**
+ * RestorableExecEnvs mirrors RestorableHTTPRequests for ExecEnvs.
+ */
+export function RestorableExecEnvs(): $CancellablePromise<execenv$0.ExecEnv[] | null> {
+    return $Call.ByID(334028898);
+}
+
+/**
+ * RestorableHTTPRequests returns every built-in request the user
+ * deliberately deleted (tombstoned) and not since restored -- the read
+ * model for a "Restore example…" affordance, shown only when non-empty.
+ */
+export function RestorableHTTPRequests(): $CancellablePromise<httprequest$0.HTTPRequest[] | null> {
+    return $Call.ByID(3137483177);
+}
+
+/**
+ * RestorableLists mirrors RestorableHTTPRequests for Lists.
+ */
+export function RestorableLists(): $CancellablePromise<list$0.List[] | null> {
+    return $Call.ByID(415549196);
+}
+
+/**
+ * RestorableMCPServers mirrors RestorableHTTPRequests for MCP Servers.
+ */
+export function RestorableMCPServers(): $CancellablePromise<mcpserver$0.MCPServer[] | null> {
+    return $Call.ByID(4091392795);
+}
+
+/**
+ * RestoreDecision mirrors RestoreHTTPRequest for Decisions.
+ */
+export function RestoreDecision(id: string): $CancellablePromise<decision$0.Decision> {
+    return $Call.ByID(490914664, id);
+}
+
+/**
+ * RestoreExecEnv mirrors RestoreHTTPRequest for ExecEnvs.
+ */
+export function RestoreExecEnv(id: string): $CancellablePromise<execenv$0.ExecEnv> {
+    return $Call.ByID(3109139362, id);
+}
+
+/**
+ * RestoreHTTPRequest un-tombstones id and re-seeds it (docs/goals/0037
+ * item 5) -- the reverse of DeleteHTTPRequest for a built-in. Also
+ * re-seeds the demo secret, same as a fresh install's own
+ * seedBuiltInSecrets.
+ */
+export function RestoreHTTPRequest(id: string): $CancellablePromise<httprequest$0.HTTPRequest> {
+    return $Call.ByID(2725388135, id);
+}
+
+/**
+ * RestoreList mirrors RestoreHTTPRequest for Lists.
+ */
+export function RestoreList(id: string): $CancellablePromise<list$0.List> {
+    return $Call.ByID(3916346846, id);
+}
+
+/**
+ * RestoreMCPServer mirrors RestoreHTTPRequest for MCP Servers.
+ */
+export function RestoreMCPServer(id: string): $CancellablePromise<mcpserver$0.MCPServer> {
+    return $Call.ByID(3242563609, id);
+}
+
+/**
  * SetHTTPRequestJOSEPrivateKey writes id's JOSE private key (Phase 3)
  * to its own, separate keychain entry -- write-only, same reasoning as
  * SetHTTPRequestSecret, but namespaced (joseKeychainID) so it can

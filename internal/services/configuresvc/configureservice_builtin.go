@@ -10,6 +10,7 @@ import (
 	"github.com/alicoding/mill/internal/domain/httprequest"
 	"github.com/alicoding/mill/internal/domain/list"
 	"github.com/alicoding/mill/internal/domain/mcpserver"
+	"github.com/alicoding/mill/internal/domain/seedorigin"
 	"github.com/alicoding/mill/internal/services/seeding"
 )
 
@@ -62,40 +63,67 @@ func (c *ConfigureService) seedBuiltInSecrets() {
 	_ = c.credentials.Set(httprequest.ExampleOAuth1ID, composition.EncodeOAuth1Secret(builtInOAuth1ConsumerSecret, ""))
 }
 
-// topUpBuiltInRequests mirrors CompositionService.topUpBuiltIns for the
-// seeded example HTTPRequests: any built-in whose ID is neither present
-// nor tombstoned is appended (and its demo secret seeded), so a newly
-// shipped example reaches existing instances too.
-func (c *ConfigureService) topUpBuiltInRequests() {
+// reconcileBuiltInRequests replaces the old insert-only
+// topUpBuiltInRequests with the full insert/upgrade/leave-alone/skip
+// algorithm (docs/goals/0037 -- see compositionsvc's
+// reconcileBuiltIns, the identical algorithm applied to Workflows, for
+// the full reasoning). Unlike Workflows, an HTTPRequest carries no
+// version history -- "upgrade" replaces its content in place rather
+// than publishing a new version. An existing entry whose ID matches a
+// golden but carries no SeedOrigin (SeedRevision == 0 -- predates this
+// goal) is migration-stamped Modified: true rather than silently
+// upgraded.
+func (c *ConfigureService) reconcileBuiltInRequests() {
 	tombstones := seeding.LoadTombstones(c.store)
-	c.mu.Lock()
-	have := make(map[string]bool, len(c.requests))
-	for _, r := range c.requests {
-		have[r.ID] = true
-	}
-	var added []httprequest.HTTPRequest
 	now := time.Now()
-	for _, r := range httprequest.BuiltIn() {
-		if !have[r.ID] && !tombstones[r.ID] {
-			r.CreatedAt, r.UpdatedAt = now, now
-			c.requests = append(c.requests, r)
-			added = append(added, r)
+	c.mu.Lock()
+	byID := make(map[string]int, len(c.requests))
+	for i, r := range c.requests {
+		byID[r.ID] = i
+	}
+	changed := false
+	var seededSecretsFor []httprequest.HTTPRequest
+	for _, golden := range httprequest.BuiltIn() {
+		idx, present := byID[golden.ID]
+		if !present {
+			if tombstones[golden.ID] {
+				continue
+			}
+			golden.CreatedAt, golden.UpdatedAt = now, now
+			c.requests = append(c.requests, golden)
+			seededSecretsFor = append(seededSecretsFor, golden)
+			changed = true
+			continue
+		}
+		existing := c.requests[idx]
+		if existing.Seed.SeedRevision == 0 {
+			existing.Seed = seedorigin.Origin{SeedRevision: golden.Seed.SeedRevision, Modified: true}
+			c.requests[idx] = existing
+			changed = true
+			continue
+		}
+		if existing.Seed.Modified {
+			continue
+		}
+		if existing.Seed.SeedRevision < golden.Seed.SeedRevision {
+			c.requests[idx] = upgradeRequestToGolden(existing, golden, now)
+			changed = true
 		}
 	}
 	c.mu.Unlock()
-	if len(added) == 0 {
+	if !changed {
 		return
 	}
 	// Startup reconciliation, not a user-initiated RPC -- log-only, same
-	// fire-and-forget treatment as compositionsvc's topUpBuiltIns
+	// fire-and-forget treatment the old top-up functions already used
 	// (docs/goals/0025 item 1).
 	if err := c.persistHTTPRequests(); err != nil {
-		slog.Error("failed to persist top-up-seeded HTTPRequests", "error", err)
+		slog.Error("failed to reconcile built-in HTTPRequests", "error", err)
 	}
-	// Seed demo secrets only for the newly added examples -- never
+	// Seed demo secrets only for newly-inserted examples -- never
 	// re-Set an already-present example's secret, which the user may
 	// have replaced with their own.
-	for _, r := range added {
+	for _, r := range seededSecretsFor {
 		if secret, ok := builtInSecrets[r.ID]; ok {
 			_ = c.credentials.Set(r.ID, secret)
 		}
@@ -105,118 +133,229 @@ func (c *ConfigureService) topUpBuiltInRequests() {
 	}
 }
 
-// topUpBuiltInDecisions mirrors topUpBuiltInRequests for the seeded
-// example Decisions (docs/adr/0027): any built-in whose ID is neither
-// present nor tombstoned is appended, so a newly shipped example
-// reaches existing instances too. Decisions carry no secret, so this
-// is simpler than the HTTPRequest version -- no credential seeding
-// step at all.
-func (c *ConfigureService) topUpBuiltInDecisions() {
+// upgradeRequestToGolden replaces existing's content with golden's,
+// preserving existing's identity (ID/CreatedAt) -- shared by
+// reconcile's upgrade branch and ResetHTTPRequestToSeed
+// (configureservice_seedlifecycle.go).
+func upgradeRequestToGolden(existing, golden httprequest.HTTPRequest, now time.Time) httprequest.HTTPRequest {
+	golden.CreatedAt = existing.CreatedAt
+	golden.UpdatedAt = now
+	golden.Seed = seedorigin.Stamp(golden.Seed.SeedRevision)
+	return golden
+}
+
+// reconcileBuiltInDecisions mirrors reconcileBuiltInRequests for the
+// seeded example Decisions (docs/adr/0027). Decisions carry no secret,
+// so this is simpler than the HTTPRequest version -- no credential
+// seeding step at all.
+func (c *ConfigureService) reconcileBuiltInDecisions() {
 	tombstones := seeding.LoadTombstones(c.store)
-	c.mu.Lock()
-	have := make(map[string]bool, len(c.decisions))
-	for _, d := range c.decisions {
-		have[d.ID] = true
-	}
-	added := false
 	now := time.Now()
-	for _, d := range decision.BuiltIn() {
-		if !have[d.ID] && !tombstones[d.ID] {
-			d.CreatedAt, d.UpdatedAt = now, now
-			c.decisions = append(c.decisions, d)
-			added = true
+	c.mu.Lock()
+	byID := make(map[string]int, len(c.decisions))
+	for i, d := range c.decisions {
+		byID[d.ID] = i
+	}
+	changed := false
+	for _, golden := range decision.BuiltIn() {
+		idx, present := byID[golden.ID]
+		if !present {
+			if tombstones[golden.ID] {
+				continue
+			}
+			golden.CreatedAt, golden.UpdatedAt = now, now
+			c.decisions = append(c.decisions, golden)
+			changed = true
+			continue
+		}
+		existing := c.decisions[idx]
+		if existing.Seed.SeedRevision == 0 {
+			existing.Seed = seedorigin.Origin{SeedRevision: golden.Seed.SeedRevision, Modified: true}
+			c.decisions[idx] = existing
+			changed = true
+			continue
+		}
+		if existing.Seed.Modified {
+			continue
+		}
+		if existing.Seed.SeedRevision < golden.Seed.SeedRevision {
+			c.decisions[idx] = upgradeDecisionToGolden(existing, golden, now)
+			changed = true
 		}
 	}
 	c.mu.Unlock()
-	if added {
+	if changed {
 		if err := c.persistDecisions(); err != nil {
-			slog.Error("failed to persist top-up-seeded Decisions", "error", err)
+			slog.Error("failed to reconcile built-in Decisions", "error", err)
 		}
 	}
 }
 
-// topUpBuiltInLists mirrors topUpBuiltInDecisions for the seeded example
-// Lists (docs/goals/0010 item 4): any built-in whose ID is neither
-// present nor tombstoned is appended, so a newly shipped example
-// reaches existing instances too. A List carries no secret, same
-// "simpler than the HTTPRequest version" reasoning topUpBuiltInDecisions
-// already gives.
-func (c *ConfigureService) topUpBuiltInLists() {
+func upgradeDecisionToGolden(existing, golden decision.Decision, now time.Time) decision.Decision {
+	golden.CreatedAt = existing.CreatedAt
+	golden.UpdatedAt = now
+	golden.Seed = seedorigin.Stamp(golden.Seed.SeedRevision)
+	return golden
+}
+
+// reconcileBuiltInLists mirrors reconcileBuiltInDecisions for the
+// seeded example Lists (docs/goals/0010 item 4). A List carries no
+// secret, same "simpler than the HTTPRequest version" reasoning
+// reconcileBuiltInDecisions already gives.
+func (c *ConfigureService) reconcileBuiltInLists() {
 	tombstones := seeding.LoadTombstones(c.store)
-	c.mu.Lock()
-	have := make(map[string]bool, len(c.lists))
-	for _, l := range c.lists {
-		have[l.ID] = true
-	}
-	added := false
 	now := time.Now()
-	for _, l := range list.BuiltIn() {
-		if !have[l.ID] && !tombstones[l.ID] {
-			l.CreatedAt, l.UpdatedAt = now, now
-			c.lists = append(c.lists, l)
-			added = true
+	c.mu.Lock()
+	byID := make(map[string]int, len(c.lists))
+	for i, l := range c.lists {
+		byID[l.ID] = i
+	}
+	changed := false
+	for _, golden := range list.BuiltIn() {
+		idx, present := byID[golden.ID]
+		if !present {
+			if tombstones[golden.ID] {
+				continue
+			}
+			golden.CreatedAt, golden.UpdatedAt = now, now
+			c.lists = append(c.lists, golden)
+			changed = true
+			continue
+		}
+		existing := c.lists[idx]
+		if existing.Seed.SeedRevision == 0 {
+			existing.Seed = seedorigin.Origin{SeedRevision: golden.Seed.SeedRevision, Modified: true}
+			c.lists[idx] = existing
+			changed = true
+			continue
+		}
+		if existing.Seed.Modified {
+			continue
+		}
+		if existing.Seed.SeedRevision < golden.Seed.SeedRevision {
+			c.lists[idx] = upgradeListToGolden(existing, golden, now)
+			changed = true
 		}
 	}
 	c.mu.Unlock()
-	if added {
+	if changed {
 		if err := c.persistLists(); err != nil {
-			slog.Error("failed to persist top-up-seeded Lists", "error", err)
+			slog.Error("failed to reconcile built-in Lists", "error", err)
 		}
 	}
 }
 
-// topUpBuiltInMCPServers mirrors topUpBuiltInLists for the seeded
-// example MCP Servers (docs/goals/0010 item 5): any built-in whose ID
-// is neither present nor tombstoned is appended, so a newly shipped
-// example reaches existing instances too.
-func (c *ConfigureService) topUpBuiltInMCPServers() {
+// upgradeListToGolden replaces existing's content -- including Rows --
+// with golden's. golden's Row IDs are stable literals (list.BuiltIn's
+// own activeRow/expiredRow helpers), so this is safe to replace
+// wholesale rather than row-by-row diffing.
+func upgradeListToGolden(existing, golden list.List, now time.Time) list.List {
+	golden.CreatedAt = existing.CreatedAt
+	golden.UpdatedAt = now
+	golden.Seed = seedorigin.Stamp(golden.Seed.SeedRevision)
+	return golden
+}
+
+// reconcileBuiltInMCPServers mirrors reconcileBuiltInLists for the
+// seeded example MCP Servers (docs/goals/0010 item 5).
+func (c *ConfigureService) reconcileBuiltInMCPServers() {
 	tombstones := seeding.LoadTombstones(c.store)
-	c.mu.Lock()
-	have := make(map[string]bool, len(c.mcpServers))
-	for _, s := range c.mcpServers {
-		have[s.ID] = true
-	}
-	added := false
 	now := time.Now()
-	for _, s := range mcpserver.BuiltIn() {
-		if !have[s.ID] && !tombstones[s.ID] {
-			s.CreatedAt, s.UpdatedAt = now, now
-			c.mcpServers = append(c.mcpServers, s)
-			added = true
+	c.mu.Lock()
+	byID := make(map[string]int, len(c.mcpServers))
+	for i, s := range c.mcpServers {
+		byID[s.ID] = i
+	}
+	changed := false
+	for _, golden := range mcpserver.BuiltIn() {
+		idx, present := byID[golden.ID]
+		if !present {
+			if tombstones[golden.ID] {
+				continue
+			}
+			golden.CreatedAt, golden.UpdatedAt = now, now
+			c.mcpServers = append(c.mcpServers, golden)
+			changed = true
+			continue
+		}
+		existing := c.mcpServers[idx]
+		if existing.Seed.SeedRevision == 0 {
+			existing.Seed = seedorigin.Origin{SeedRevision: golden.Seed.SeedRevision, Modified: true}
+			c.mcpServers[idx] = existing
+			changed = true
+			continue
+		}
+		if existing.Seed.Modified {
+			continue
+		}
+		if existing.Seed.SeedRevision < golden.Seed.SeedRevision {
+			c.mcpServers[idx] = upgradeMCPServerToGolden(existing, golden, now)
+			changed = true
 		}
 	}
 	c.mu.Unlock()
-	if added {
+	if changed {
 		if err := c.persistMCPServers(); err != nil {
-			slog.Error("failed to persist top-up-seeded MCP Servers", "error", err)
+			slog.Error("failed to reconcile built-in MCP Servers", "error", err)
 		}
 	}
 }
 
-// topUpBuiltInExecEnvs mirrors topUpBuiltInMCPServers for the seeded
-// example ExecEnv (docs/adr/0026, goal 0004b): any built-in whose ID is
-// neither present nor tombstoned is appended, so a newly shipped
-// example reaches existing instances too.
-func (c *ConfigureService) topUpBuiltInExecEnvs() {
+func upgradeMCPServerToGolden(existing, golden mcpserver.MCPServer, now time.Time) mcpserver.MCPServer {
+	golden.CreatedAt = existing.CreatedAt
+	golden.UpdatedAt = now
+	golden.Seed = seedorigin.Stamp(golden.Seed.SeedRevision)
+	return golden
+}
+
+// reconcileBuiltInExecEnvs mirrors reconcileBuiltInMCPServers for the
+// seeded example ExecEnv (docs/adr/0026, goal 0004b).
+func (c *ConfigureService) reconcileBuiltInExecEnvs() {
 	tombstones := seeding.LoadTombstones(c.store)
-	c.mu.Lock()
-	have := make(map[string]bool, len(c.execEnvs))
-	for _, e := range c.execEnvs {
-		have[e.ID] = true
-	}
-	added := false
 	now := time.Now()
-	for _, e := range execenv.BuiltIn() {
-		if !have[e.ID] && !tombstones[e.ID] {
-			e.CreatedAt, e.UpdatedAt = now, now
-			c.execEnvs = append(c.execEnvs, e)
-			added = true
+	c.mu.Lock()
+	byID := make(map[string]int, len(c.execEnvs))
+	for i, e := range c.execEnvs {
+		byID[e.ID] = i
+	}
+	changed := false
+	for _, golden := range execenv.BuiltIn() {
+		idx, present := byID[golden.ID]
+		if !present {
+			if tombstones[golden.ID] {
+				continue
+			}
+			golden.CreatedAt, golden.UpdatedAt = now, now
+			c.execEnvs = append(c.execEnvs, golden)
+			changed = true
+			continue
+		}
+		existing := c.execEnvs[idx]
+		if existing.Seed.SeedRevision == 0 {
+			existing.Seed = seedorigin.Origin{SeedRevision: golden.Seed.SeedRevision, Modified: true}
+			c.execEnvs[idx] = existing
+			changed = true
+			continue
+		}
+		if existing.Seed.Modified {
+			continue
+		}
+		if existing.Seed.SeedRevision < golden.Seed.SeedRevision {
+			c.execEnvs[idx] = upgradeExecEnvToGolden(existing, golden, now)
+			changed = true
 		}
 	}
 	c.mu.Unlock()
-	if added {
+	if changed {
 		if err := c.persistExecEnvs(); err != nil {
-			slog.Error("failed to persist top-up-seeded ExecEnvs", "error", err)
+			slog.Error("failed to reconcile built-in ExecEnvs", "error", err)
 		}
 	}
+}
+
+func upgradeExecEnvToGolden(existing, golden execenv.ExecEnv, now time.Time) execenv.ExecEnv {
+	golden.CreatedAt = existing.CreatedAt
+	golden.UpdatedAt = now
+	golden.Seed = seedorigin.Stamp(golden.Seed.SeedRevision)
+	return golden
 }

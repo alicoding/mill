@@ -113,6 +113,9 @@ func (c *ConfigureService) UpdateDecision(id, label string, category decision.Ca
 		// from the wire; UpdatedAt always advances on a real update.
 		CreatedAt: existing.CreatedAt,
 		UpdatedAt: time.Now(),
+		// Modified latch (docs/goals/0037 item 2), same reasoning as
+		// httprequest's UpdateHTTPRequest.
+		Seed: existing.Seed.Touch(),
 	}
 	if err := decision.Validate(d); err != nil {
 		return decision.Decision{}, err
