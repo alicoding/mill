@@ -44,10 +44,23 @@ import * as list$0 from "../../domain/list/models.js";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
 import * as mcpserver$0 from "../../domain/mcpserver/models.js";
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: Unused imports
+import * as typedfield$0 from "../../domain/typedfield/models.js";
 
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
 import * as $models from "./models.js";
+
+/**
+ * AddListRow appends a new, Active row to a List, minting its ID here
+ * (row-ID generation stays a service-layer concern, same as List IDs
+ * themselves via seeding.NewSlugID -- internal/domain/list stays pure
+ * per .claude/rules/backend.md).
+ */
+export function AddListRow(listID: string, values: { [_ in string]?: string } | null): $CancellablePromise<list$0.List> {
+    return $Call.ByID(197919857, listID, values);
+}
 
 /**
  * CaptureShellPath returns the user's real login-shell $PATH -- the
@@ -81,8 +94,8 @@ export function CreateHTTPRequest(label: string, baseURL: string, method: string
     return $Call.ByID(2634895949, label, baseURL, method, body, authType, headers, openAPISpec, auth, jose, description);
 }
 
-export function CreateList(label: string, entries: { [_ in string]?: string } | null): $CancellablePromise<list$0.List> {
-    return $Call.ByID(1760985996, label, entries);
+export function CreateList(label: string, description: string, columns: typedfield$0.Field[] | null): $CancellablePromise<list$0.List> {
+    return $Call.ByID(1760985996, label, description, columns);
 }
 
 export function CreateMCPServer(label: string, command: string, args: string[] | null): $CancellablePromise<mcpserver$0.MCPServer> {
@@ -130,6 +143,10 @@ export function DeleteHTTPRequestSecret(id: string): $CancellablePromise<void> {
 
 export function DeleteList(id: string): $CancellablePromise<void> {
     return $Call.ByID(1223896803, id);
+}
+
+export function DeleteListRow(listID: string, rowID: string): $CancellablePromise<list$0.List> {
+    return $Call.ByID(2135971241, listID, rowID);
 }
 
 export function DeleteMCPServer(id: string): $CancellablePromise<void> {
@@ -309,8 +326,16 @@ export function UpdateHTTPRequest(id: string, label: string, baseURL: string, me
     return $Call.ByID(248664070, id, label, baseURL, method, body, authType, headers, openAPISpec, auth, jose, description);
 }
 
-export function UpdateList(id: string, label: string, entries: { [_ in string]?: string } | null): $CancellablePromise<list$0.List> {
-    return $Call.ByID(437956429, id, label, entries);
+export function UpdateList(id: string, label: string, description: string, columns: typedfield$0.Field[] | null): $CancellablePromise<list$0.List> {
+    return $Call.ByID(437956429, id, label, description, columns);
+}
+
+/**
+ * UpdateListRow replaces one row's Values/Status (its ID/CreatedAt
+ * stay put; UpdatedAt is stamped here, not client-supplied).
+ */
+export function UpdateListRow(listID: string, rowID: string, values: { [_ in string]?: string } | null, status: list$0.RowStatus): $CancellablePromise<list$0.List> {
+    return $Call.ByID(783553507, listID, rowID, values, status);
 }
 
 export function UpdateMCPServer(id: string, label: string, command: string, args: string[] | null): $CancellablePromise<mcpserver$0.MCPServer> {

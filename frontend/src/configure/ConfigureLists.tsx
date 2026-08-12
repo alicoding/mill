@@ -1,10 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Button, FormControl, Heading, IconButton, Label, Stack, Text, TextInput } from '@primer/react'
+import { Button, Checkbox, FormControl, Heading, IconButton, Label, Select, Stack, Text, TextInput } from '@primer/react'
 import { DownloadIcon, ListUnorderedIcon, PlusIcon, TrashIcon, UploadIcon } from '@primer/octicons-react'
 import { DataTable } from '@primer/react/experimental'
 import { ResizableTableContainer } from '../shared/ResizableTable'
 import { ConfigureService } from '../shared/bindings'
-import type { List } from '../../bindings/github.com/alicoding/mill/internal/domain/list/models'
+import type { List, Row } from '../../bindings/github.com/alicoding/mill/internal/domain/list/models'
+import { RowStatus } from '../../bindings/github.com/alicoding/mill/internal/domain/list/models'
+import type { Field } from '../../bindings/github.com/alicoding/mill/internal/domain/typedfield/models'
+import { Type as ConfigFieldType } from '../../bindings/github.com/alicoding/mill/internal/domain/typedfield/models'
 import { downloadJSON } from '../shared/downloadJSON'
 import { ViewModeToggle } from '../shared/ViewModeToggle'
 import { useViewMode } from '../shared/viewMode'
@@ -15,45 +18,41 @@ import { useConfirmDelete } from '../shared/useConfirmDelete'
 import styles from '../shared/ListCard.module.css'
 import PageContainer from '../shared/PageContainer'
 
-interface EntryRow {
-  key: string
-  value: string
+const TYPE_LABEL: Record<string, string> = {
+  [ConfigFieldType.TypeText]: 'Text',
+  [ConfigFieldType.TypeNumber]: 'Number',
+  [ConfigFieldType.TypeBoolean]: 'Boolean',
 }
 
-function entriesToRows(entries: { [key: string]: string | undefined } | null | undefined): EntryRow[] {
-  return Object.entries(entries ?? {}).map(([key, value]) => ({ key, value: value ?? '' }))
-}
-
-function rowsToEntries(rows: EntryRow[]): Record<string, string> {
-  const out: Record<string, string> = {}
-  for (const r of rows) {
-    if (r.key.trim() !== '') out[r.key] = r.value
+function emptyColumn(): Field {
+  return {
+    Key: '', Label: '', Type: ConfigFieldType.TypeText, Required: false, Default: '', Description: '',
+    Options: null, Suggestions: null, Secret: false, RefKind: '', Multiline: false, SystemManaged: false,
   }
-  return out
 }
 
-// Configure's Lists section (docs/SPEC.md §3.5): CRUD over
-// ConfigureService's Lists, each a named key/value lookup table a
-// workflow's list-lookup node can resolve against (composition.go's
-// SetListLookup seam).
-//
-// Rows are the DEFAULT view (docs/goals/0007): InventoryList's shared
-// row replaces the old hand-rolled card branch. Row click edits
-// (today's only real per-row interaction, same as before this goal);
-// Export/Delete move into the trailing ⋯ menu.
+// Configure's Lists section (docs/SPEC.md §3.5, docs/goals/0011-lists-
+// maturation.md): CRUD over ConfigureService's typed Lists -- a
+// key/label/type Column-schema editor mirroring ConfigureAttributes.
+// tsx's own flat style (the goal's own instruction), plus a schema-
+// generated row editor once a list's columns are saved. Both a
+// list-lookup and a list-search workflow node resolve against these
+// same Columns/Rows.
 export function ConfigureLists() {
   const [lists, setLists] = useState<List[] | null>(null)
   const [editingID, setEditingID] = useState<string | null>(null)
   const [label, setLabel] = useState('')
-  const [rows, setRows] = useState<EntryRow[]>([])
+  const [description, setDescription] = useState('')
+  const [columns, setColumns] = useState<Field[]>([])
   const [formOpen, setFormOpen] = useState(false)
   const [error, setError] = useState('')
+  const [rowError, setRowError] = useState('')
   const [importError, setImportError] = useState<string | null>(null)
   const importInputRef = useRef<HTMLInputElement>(null)
   const [viewMode, setViewMode] = useViewMode('mill-lists-view-mode')
 
   const refetch = () => {
-    ConfigureService.Lists().then((list) => setLists(list ?? [])).catch(console.error)
+    ConfigureService.Lists().then((l) => setLists(l ?? [])).catch(console.error)
   }
 
   const exportList = (id: string, label: string) => {
@@ -79,32 +78,48 @@ export function ConfigureLists() {
 
   useEffect(refetch, [])
 
+  const editingList = lists?.find((l) => l.ID === editingID) ?? null
+
   const startCreate = () => {
     setEditingID(null)
     setLabel('')
-    setRows([{ key: '', value: '' }])
+    setDescription('')
+    setColumns([emptyColumn()])
     setFormOpen(true)
     setError('')
+    setRowError('')
   }
 
   const startEdit = (l: List) => {
     setEditingID(l.ID)
     setLabel(l.Label)
-    setRows(entriesToRows(l.Entries).length > 0 ? entriesToRows(l.Entries) : [{ key: '', value: '' }])
+    setDescription(l.Description)
+    setColumns(l.Columns && l.Columns.length > 0 ? l.Columns : [emptyColumn()])
     setFormOpen(true)
     setError('')
+    setRowError('')
   }
 
-  const save = async () => {
+  const updateColumn = (i: number, field: keyof Field, value: string) => {
+    setColumns((prev) => prev.map((c, idx) => (idx === i ? { ...c, [field]: value } : c)))
+  }
+
+  const saveSchema = async () => {
     setError('')
     try {
-      const entries = rowsToEntries(rows)
+      // Drop any never-touched blank column row (the default starting
+      // state for a new list, and what's left if the user deletes down
+      // to nothing) -- same "an empty draft row isn't a real column"
+      // filtering the old key/value editor's rowsToEntries applied, so
+      // Save still works with zero columns declared, not just a full one.
+      const nonEmptyColumns = columns.filter((c) => c.Key.trim() !== '')
+      let saved: List
       if (editingID) {
-        await ConfigureService.UpdateList(editingID, label, entries)
+        saved = await ConfigureService.UpdateList(editingID, label, description, nonEmptyColumns)
       } else {
-        await ConfigureService.CreateList(label, entries)
+        saved = await ConfigureService.CreateList(label, description, nonEmptyColumns)
       }
-      setFormOpen(false)
+      setEditingID(saved.ID)
       refetch()
     } catch (err) {
       setError(String(err))
@@ -124,8 +139,39 @@ export function ConfigureLists() {
     onConfirm: (l) => remove(l.ID),
   })
 
-  const updateRow = (i: number, field: 'key' | 'value', value: string) => {
-    setRows((prev) => prev.map((r, idx) => (idx === i ? { ...r, [field]: value } : r)))
+  const addRow = async () => {
+    if (!editingID) return
+    setRowError('')
+    const values: Record<string, string> = {}
+    for (const c of columns) values[c.Key] = ''
+    try {
+      await ConfigureService.AddListRow(editingID, values)
+      refetch()
+    } catch (err) {
+      setRowError(String(err))
+    }
+  }
+
+  const updateRow = async (rowID: string, values: Record<string, string>, status: RowStatus) => {
+    if (!editingID) return
+    setRowError('')
+    try {
+      await ConfigureService.UpdateListRow(editingID, rowID, values, status)
+      refetch()
+    } catch (err) {
+      setRowError(String(err))
+    }
+  }
+
+  const deleteRow = async (rowID: string) => {
+    if (!editingID) return
+    setRowError('')
+    try {
+      await ConfigureService.DeleteListRow(editingID, rowID)
+      refetch()
+    } catch (err) {
+      setRowError(String(err))
+    }
   }
 
   // Last-updated-first, applied once so both view modes render the
@@ -142,7 +188,7 @@ export function ConfigureLists() {
     // fully editable/deletable (docs/SPEC.md §2.2's Update note), same
     // as ConfigureRequests.tsx's identical badge.
     labelBadges: l.BuiltIn ? <Label variant="secondary" size="small">built-in</Label> : undefined,
-    description: `${Object.keys(l.Entries ?? {}).length} entries`,
+    description: `${(l.Columns ?? []).length} columns, ${(l.Rows ?? []).length} rows`,
     onOpen: () => startEdit(l),
     menuActions: [
       { label: 'Export', onClick: () => exportList(l.ID, l.Label) },
@@ -183,36 +229,74 @@ export function ConfigureLists() {
 
       {formOpen && (
         <PageContainer variant="narrow">
-        <div className={styles.card}>
-          <Stack direction="vertical" gap="condensed">
-            <FormControl>
-              <FormControl.Label>Label</FormControl.Label>
-              <TextInput value={label} onChange={(e) => setLabel(e.target.value)} block />
-            </FormControl>
-            <Text size="small" weight="semibold">Entries</Text>
-            {rows.map((row, i) => (
-              <Stack key={i} direction="horizontal" gap="condensed" align="center">
-                <TextInput placeholder="key" value={row.key} onChange={(e) => updateRow(i, 'key', e.target.value)} />
-                <TextInput placeholder="value" value={row.value} onChange={(e) => updateRow(i, 'value', e.target.value)} />
-                <IconButton
-                  icon={TrashIcon}
-                  aria-label="Remove row"
-                  size="small"
-                  variant="invisible"
-                  onClick={() => setRows((prev) => prev.filter((_, idx) => idx !== i))}
-                />
+          <div className={styles.card}>
+            <Stack direction="vertical" gap="condensed">
+              <FormControl>
+                <FormControl.Label>Label</FormControl.Label>
+                <TextInput value={label} onChange={(e) => setLabel(e.target.value)} block data-testid="list-label" />
+              </FormControl>
+              <FormControl>
+                <FormControl.Label>Description</FormControl.Label>
+                <TextInput value={description} onChange={(e) => setDescription(e.target.value)} block />
+              </FormControl>
+
+              <Text size="small" weight="semibold">Columns</Text>
+              {columns.map((c, i) => (
+                <Stack key={i} direction="horizontal" gap="condensed" align="center">
+                  <TextInput placeholder="key" value={c.Key} onChange={(e) => updateColumn(i, 'Key', e.target.value)} data-testid="list-column-key" />
+                  <TextInput placeholder="label" value={c.Label} onChange={(e) => updateColumn(i, 'Label', e.target.value)} />
+                  <Select value={c.Type} onChange={(e) => updateColumn(i, 'Type', e.target.value)} data-testid="list-column-type">
+                    {Object.entries(TYPE_LABEL).map(([v, l]) => (
+                      <Select.Option key={v} value={v}>{l}</Select.Option>
+                    ))}
+                  </Select>
+                  <IconButton
+                    icon={TrashIcon}
+                    aria-label="Remove column"
+                    size="small"
+                    variant="invisible"
+                    onClick={() => setColumns((prev) => prev.filter((_, idx) => idx !== i))}
+                  />
+                </Stack>
+              ))}
+              <Button size="small" variant="invisible" leadingVisual={PlusIcon} onClick={() => setColumns((prev) => [...prev, emptyColumn()])}>
+                Add column
+              </Button>
+
+              {error && <Text as="p" size="small" className={styles.error}>{error}</Text>}
+              <Stack direction="horizontal" gap="condensed">
+                <Button variant="primary" size="small" onClick={saveSchema} data-testid="save-list">Save list</Button>
+                <Button size="small" variant="invisible" onClick={() => setFormOpen(false)}>Close</Button>
               </Stack>
-            ))}
-            <Button size="small" variant="invisible" onClick={() => setRows((prev) => [...prev, { key: '', value: '' }])}>
-              Add row
-            </Button>
-            {error && <Text as="p" size="small" className={styles.error}>{error}</Text>}
-            <Stack direction="horizontal" gap="condensed">
-              <Button variant="primary" size="small" onClick={save}>Save list</Button>
-              <Button size="small" variant="invisible" onClick={() => setFormOpen(false)}>Cancel</Button>
             </Stack>
-          </Stack>
-        </div>
+          </div>
+
+          {editingID && editingList && (
+            <div className={styles.card} data-testid="list-rows-editor">
+              <Stack direction="vertical" gap="condensed">
+                <Text size="small" weight="semibold">Rows</Text>
+                {(editingList.Columns ?? []).length === 0 ? (
+                  <Text as="p" size="small" className={styles.muted}>Add at least one column, then Save, to start adding rows.</Text>
+                ) : (
+                  <>
+                    {(editingList.Rows ?? []).map((r) => (
+                      <RowEditor
+                        key={r.ID}
+                        row={r}
+                        columns={editingList.Columns ?? []}
+                        onSave={(values, status) => updateRow(r.ID, values, status)}
+                        onDelete={() => deleteRow(r.ID)}
+                      />
+                    ))}
+                    <Button size="small" variant="invisible" leadingVisual={PlusIcon} onClick={addRow} data-testid="add-list-row">
+                      Add row
+                    </Button>
+                  </>
+                )}
+                {rowError && <Text as="p" size="small" className={styles.error}>{rowError}</Text>}
+              </Stack>
+            </div>
+          )}
         </PageContainer>
       )}
 
@@ -224,7 +308,8 @@ export function ConfigureLists() {
             data={sortedLists.map((l) => ({ ...l, id: l.ID }))}
             columns={[
               { header: 'Label', field: 'Label', rowHeader: true, sortBy: 'alphanumeric' },
-              { header: 'Entries', id: 'entries', width: 'auto', renderCell: (l) => Object.keys(l.Entries ?? {}).length },
+              { header: 'Columns', id: 'columns', width: 'auto', renderCell: (l) => (l.Columns ?? []).length },
+              { header: 'Rows', id: 'rows', width: 'auto', renderCell: (l) => (l.Rows ?? []).length },
               { header: 'ID', field: 'ID' },
               {
                 header: '', id: 'actions', width: 'auto', align: 'end',
@@ -247,12 +332,71 @@ export function ConfigureLists() {
           emptyState={{
             icon: ListUnorderedIcon,
             heading: 'No lists yet',
-            description: "A reusable key/value lookup table a workflow's List node can resolve against.",
+            description: "A reusable typed dataset a workflow's List Search (or List Lookup) node can resolve against.",
             action: <Button leadingVisual={PlusIcon} variant="primary" onClick={startCreate}>New list</Button>,
           }}
         />
       )}
       {confirmDialog}
     </PageContainer>
+  )
+}
+
+// One row's inline editor -- a type-aware input per declared Column
+// (text/number/boolean; TypeOptions renders a Select over the
+// column's own Options, same as ConfigField's generic Inspector
+// rendering elsewhere) plus an Active/Expired status Select. Local
+// draft state with an explicit Save, rather than per-keystroke RPCs.
+function RowEditor({ row, columns, onSave, onDelete }: {
+  row: Row
+  columns: Field[]
+  onSave: (values: Record<string, string>, status: RowStatus) => void
+  onDelete: () => void
+}) {
+  const [values, setValues] = useState<Record<string, string>>(
+    Object.fromEntries(Object.entries(row.Values ?? {}).map(([k, v]) => [k, v ?? ''])),
+  )
+  const [status, setStatus] = useState<RowStatus>(row.Status)
+
+  const setValue = (key: string, v: string) => setValues((prev) => ({ ...prev, [key]: v }))
+
+  return (
+    <Stack direction="vertical" gap="condensed" className={styles.card} data-testid="list-row">
+      <Stack direction="horizontal" gap="condensed" wrap="wrap" align="center">
+        {columns.map((c) => (
+          <FormControl key={c.Key}>
+            <FormControl.Label visuallyHidden>{c.Label || c.Key}</FormControl.Label>
+            {c.Type === ConfigFieldType.TypeBoolean ? (
+              <Checkbox
+                checked={values[c.Key] === 'true'}
+                aria-label={c.Label || c.Key}
+                onChange={(e) => setValue(c.Key, String(e.target.checked))}
+              />
+            ) : c.Type === ConfigFieldType.TypeOptions ? (
+              <Select aria-label={c.Label || c.Key} value={values[c.Key] ?? ''} onChange={(e) => setValue(c.Key, e.target.value)}>
+                <Select.Option value="">(unset)</Select.Option>
+                {(c.Options ?? []).map((opt) => (
+                  <Select.Option key={opt} value={opt}>{opt}</Select.Option>
+                ))}
+              </Select>
+            ) : (
+              <TextInput
+                type={c.Type === ConfigFieldType.TypeNumber ? 'number' : 'text'}
+                placeholder={c.Label || c.Key}
+                aria-label={c.Label || c.Key}
+                value={values[c.Key] ?? ''}
+                onChange={(e) => setValue(c.Key, e.target.value)}
+              />
+            )}
+          </FormControl>
+        ))}
+        <Select aria-label="Row status" value={status} onChange={(e) => setStatus(e.target.value as RowStatus)} data-testid="list-row-status">
+          <Select.Option value={RowStatus.RowActive}>Active</Select.Option>
+          <Select.Option value={RowStatus.RowExpired}>Expired</Select.Option>
+        </Select>
+        <Button size="small" onClick={() => onSave(values, status)} data-testid="save-list-row">Save</Button>
+        <IconButton icon={TrashIcon} aria-label="Delete row" size="small" variant="invisible" onClick={onDelete} />
+      </Stack>
+    </Stack>
   )
 }

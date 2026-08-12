@@ -1,15 +1,28 @@
 package composition
 
-import "fmt"
+import (
+	"fmt"
 
-// ResolvedList is a List's entries, assembled by whatever owns List
+	"github.com/alicoding/mill/internal/domain/list"
+	"github.com/alicoding/mill/internal/domain/typedfield"
+)
+
+// ResolvedList is a List's data, assembled by whatever owns List
 // storage at request time. Same shape and same reasoning as
 // ResolvedHTTPRequest (integration.go): composition.go doesn't own List
 // persistence (ConfigureService does), so this is injected once via
 // SetListLookup rather than composition depending on ConfigureService
 // directly.
+//
+// Entries stays list-lookup's own flat key/value read -- the
+// resolver's own list.DeriveEntries output (goal 0011), computed
+// once at resolve time so list-lookup's execution logic here needed
+// zero changes when List grew typed columns. Columns/Rows are goal
+// 0011's typed additions, read by list-search (listsearch.go).
 type ResolvedList struct {
 	Entries map[string]string
+	Columns []typedfield.Field
+	Rows    []list.Row
 }
 
 // lookupListFn defaults to erroring so a list-lookup node run before

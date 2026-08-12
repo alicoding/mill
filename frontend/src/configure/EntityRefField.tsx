@@ -168,7 +168,7 @@ function QuickCreateDialog({ refKind, onCancel, onCreated }: { refKind: string; 
           break
         }
         case 'list': {
-          const l = await ConfigureService.CreateList(label, null)
+          const l = await ConfigureService.CreateList(label, '', null)
           id = l.ID
           break
         }
