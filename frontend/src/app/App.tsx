@@ -20,6 +20,7 @@ import { CommandPalette } from "./CommandPalette";
 import { BuildIdentityBadge } from "./BuildIdentityBadge";
 import { COLOR_MODE_STORAGE_KEY, SIDEBAR_OPEN_STORAGE_KEY } from "./theme";
 import { pageIconFor, pageLabelFor } from './pageMeta'
+import { useMillNavigate } from './useMillNavigate'
 import styles from "./App.module.css";
 
 // Show the actual Wails version this project was generated against.
@@ -252,22 +253,7 @@ function App() {
     })
   }, [])
 
-  // docs/adr/0033: the Quick Panel's "Open Settings" row (a separate
-  // Wails window, own React tree -- it can't call setView directly)
-  // asks the main window to navigate via SettingsService.OpenMainWindow,
-  // which shows/focuses this window and emits this event. Empty-string
-  // view (the panel's "Open Mill" row) means "just show the window,"
-  // no navigation. 'review' is the floating approval prompt's own
-  // "Open in Mill" row for a guardrail/human-review park
-  // (docs/goals/0023 item 1, app/ApprovalPrompt.tsx) -- same mechanism,
-  // one more target.
-  useEffect(() => {
-    return Events.On('mill-navigate', (evt) => {
-      const target = evt.data as string;
-      if (target === 'settings') setView({ kind: 'settings' });
-      if (target === 'review') setView({ kind: 'review' });
-    });
-  }, [setView]);
+  useMillNavigate(setView);
 
   useEffect(() => {
     return Events.On('hotkey-activity', (evt) => {
@@ -452,7 +438,7 @@ function App() {
 
             {view.kind === 'composition' && <CompositionView/>}
 
-            {view.kind === 'configure' && <ConfigureView/>}
+            {view.kind === 'configure' && <ConfigureView key={view.tab} initialTab={view.tab}/>}
 
             {view.kind === 'settings' && <SettingsView/>}
 

@@ -68,7 +68,13 @@ export type View =
   | { kind: 'activity' }
   | { kind: 'review' }
   | { kind: 'composition' }
-  | { kind: 'configure' }
+  // tab (goal 0015's remainder, QuickPanel's Configure-entity jump
+  // rows): which ConfigureView sub-tab to land on ('integration' /
+  // 'lists' / 'mcpservers' / ...), undefined = ConfigureView's own
+  // default. Optional so every existing `{ kind: 'configure' }` call
+  // site (sidebar nav, the ⌘K palette's view.configure command) stays
+  // valid unchanged -- landing on whichever tab was last open there.
+  | { kind: 'configure'; tab?: string }
   | { kind: 'settings' }
   | { kind: 'placeholder'; capabilityId: string }
 
