@@ -49,7 +49,7 @@ async function acquire(): Promise<void> {
         continue // lock vanished between the EEXIST and this stat -- retry immediately
       }
       if (Date.now() > deadline) {
-        throw new Error(`timed out waiting ${ACQUIRE_TIMEOUT_MS}ms for the real-clipboard lock (${LOCK_PATH})`)
+        throw new Error(`timed out waiting ${ACQUIRE_TIMEOUT_MS}ms for the real-clipboard lock (${LOCK_PATH})`, { cause: err })
       }
       await new Promise((resolve) => setTimeout(resolve, 100))
     }

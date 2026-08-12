@@ -32,6 +32,13 @@ export function StalenessBadge({
   showExpiry?: boolean
   testId?: string
 }) {
+  // Intentional: this badge's whole job is showing how stale `createdAt`
+  // is *right now*, same as every other relative-time/"time ago"
+  // component; reading the live clock at render is the correct behavior
+  // here, not a bug the rule is catching (worst case under concurrent
+  // rendering is a one-render-old relative-time label, not a
+  // correctness issue).
+  // eslint-disable-next-line react-hooks/purity
   const tier = ageTier(createdAt, Date.now(), thresholdMs)
   const relative = formatUpdated(typeof createdAt === 'string' ? createdAt : createdAt.toISOString())
   if (tier === 'fresh') {
