@@ -1,0 +1,7 @@
+# goal 0024 / ADR-0034: not review ceremony (solo repo, one owner) --
+# this exists so a workflow-file change coming from an external PR
+# (e.g. a Dependabot github-actions bump, or any future outside
+# contributor) always requires the owner's explicit sign-off before a
+# CI/CD definition itself can change, per GitHub's own CODEOWNERS
+# protection for workflow files.
+/.github/ @alicoding

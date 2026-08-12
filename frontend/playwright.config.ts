@@ -13,14 +13,22 @@ import { defineConfig } from '@playwright/test'
 // exactly once, in globalSetup, before any worker starts.
 export default defineConfig({
   testDir: './e2e',
-  // Real cores, not files: 4 locally (tune against the machine), fewer
-  // in CI where the runner typically has less parallel headroom. Each
-  // worker owns a fully isolated server + settings file (fixtures/
-  // server.ts), so raising this only costs machine resources, never
-  // correctness -- the one genuine shared-resource hazard left, the
-  // real OS clipboard, is handled per-test via
-  // ./e2e/fixtures/clipboardLock.ts, not by capping worker count.
-  workers: process.env.CI ? 2 : 4,
+  // Real cores, not files: 4 locally (tune against the machine), but 1
+  // in CI (goal 0024 / ADR-0034's un-deferred CI target architecture --
+  // Playwright's own CI guidance is workers: 1 for shared/limited-core
+  // runners). Downgraded from workers: 2 after a real, traced incident:
+  // a batch of 14 CI-only e2e failures turned out to be cross-worker
+  // resource contention on the GitHub-hosted runner (each worker owns
+  // its own isolated server + settings file, so it wasn't correctness,
+  // it was two servers competing for the same limited CPU/IO), not
+  // actual regressions -- they didn't reproduce locally or in isolation.
+  // ci.yml now shards the suite into 3 parallel JOBS instead (real
+  // process isolation, each on its own runner) to keep wall-clock time
+  // down without reintroducing in-runner worker contention. The one
+  // genuine shared-resource hazard left, the real OS clipboard, is
+  // handled per-test via ./e2e/fixtures/clipboardLock.ts regardless of
+  // worker count.
+  workers: process.env.CI ? 1 : 4,
   // fullyParallel stays false (Playwright's own default): tests within
   // one spec FILE still run serially against that worker's one server,
   // since several files deliberately share state/fixtures across their
