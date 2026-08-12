@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { ElementType, ReactNode } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Events } from '@wailsio/runtime'
 import { CounterLabel, Text } from '@primer/react'
 import { FilteredActionList } from '@primer/react/experimental'
@@ -51,11 +52,13 @@ interface PanelEntry extends PaletteSearchable {
   run: () => void
 }
 
-const GROUP_METADATA = [
-  { groupId: 'workflows' as const, header: { title: 'Workflows' } },
-  { groupId: 'configure' as const, header: { title: 'Configure' } },
-  { groupId: 'actions' as const, header: { title: 'Mill' } },
-]
+function groupMetadataFor(t: (key: string) => string) {
+  return [
+    { groupId: 'workflows' as const, header: { title: t('quickPanel.groups.workflows') } },
+    { groupId: 'configure' as const, header: { title: t('quickPanel.groups.configure') } },
+    { groupId: 'actions' as const, header: { title: t('quickPanel.groups.actions') } },
+  ]
+}
 
 // Frequency-only ranking window (goal 0015's remainder): the entire
 // local run history, not a rolling recent window -- "frequently-used
@@ -66,6 +69,8 @@ const GROUP_METADATA = [
 const FRECENCY_FROM_ISO = new Date(0).toISOString()
 
 export function QuickPanel() {
+  const { t } = useTranslation('app')
+  const GROUP_METADATA = groupMetadataFor(t)
   const workflows = useAppStore((s) => s.workflows)
   // Configure's three reusable, already-Wails-bound entity kinds
   // (goal 0015's remainder item 3) -- connectors ("Integration" in the
@@ -256,14 +261,14 @@ export function QuickPanel() {
     const wf = workflows?.find((w) => w.ID === id)
     const attrs = wf?.Attributes ?? []
     const values = attrs.length > 0 ? generateSamplePayload(attrs) : null
-    setStatus(`Running "${label}"…`)
+    setStatus(t('quickPanel.status.running', { label }))
     ExecutionService.RunWorkflow(id, RunKind.RunKindTest, values)
       .then((summary) => {
-        setStatus(summary.error ? `"${label}" failed: ${summary.error}` : `Started "${label}"`)
+        setStatus(summary.error ? t('quickPanel.status.failed', { label, error: summary.error }) : t('quickPanel.status.started', { label }))
         window.setTimeout(() => { void SettingsService.DismissPanel().catch(() => {}) }, 600)
       })
       .catch((err) => {
-        setStatus(`"${label}" failed: ${String(err)}`)
+        setStatus(t('quickPanel.status.failed', { label, error: String(err) }))
       })
   }
 
@@ -282,7 +287,7 @@ export function QuickPanel() {
     navigator.clipboard.readText()
       .then((text) => {
         if (!text.trim()) {
-          setClipboardApply({ json: text, preview: { recognized: false, error: 'Clipboard is empty -- copy a workflow export first' } })
+          setClipboardApply({ json: text, preview: { recognized: false, error: t('quickPanel.clipboard.emptyError') } })
           return
         }
         CompositionService.PreviewClipboardApply(text)
@@ -290,7 +295,7 @@ export function QuickPanel() {
           .catch((err) => setClipboardApply({ json: text, preview: { recognized: false, error: String(err) } }))
       })
       .catch((err) => {
-        setClipboardApply({ json: '', preview: { recognized: false, error: `Couldn't read the clipboard: ${String(err)}` } })
+        setClipboardApply({ json: '', preview: { recognized: false, error: t('quickPanel.clipboard.readError', { error: String(err) }) } })
       })
   }
 
@@ -303,7 +308,7 @@ export function QuickPanel() {
         id: `run:${wf.ID}`,
         groupId: 'workflows',
         text: wf.Label,
-        description: 'Enter to run',
+        description: t('quickPanel.entries.enterToRun'),
         searchText: wf.Label.toLowerCase(),
         leadingVisual: PlayIcon,
         run: () => runWorkflow(wf.ID, wf.Label),
@@ -320,7 +325,7 @@ export function QuickPanel() {
         id: `configure:integration:${req.ID}`,
         groupId: 'configure',
         text: req.Label,
-        description: 'Jump to Integration',
+        description: t('quickPanel.entries.jumpToIntegration'),
         searchText: req.Label.toLowerCase(),
         leadingVisual: ENTITY_ICON.request.Icon,
         run: () => jumpToConfigure('integration'),
@@ -331,7 +336,7 @@ export function QuickPanel() {
         id: `configure:lists:${list.ID}`,
         groupId: 'configure',
         text: list.Label,
-        description: 'Jump to Lists',
+        description: t('quickPanel.entries.jumpToLists'),
         searchText: list.Label.toLowerCase(),
         leadingVisual: ENTITY_ICON.list.Icon,
         run: () => jumpToConfigure('lists'),
@@ -342,7 +347,7 @@ export function QuickPanel() {
         id: `configure:mcpservers:${server.ID}`,
         groupId: 'configure',
         text: server.Label,
-        description: 'Jump to MCP Servers',
+        description: t('quickPanel.entries.jumpToMcpServers'),
         searchText: server.Label.toLowerCase(),
         leadingVisual: ENTITY_ICON.mcpserver.Icon,
         run: () => jumpToConfigure('mcpservers'),
@@ -351,7 +356,7 @@ export function QuickPanel() {
     entries.push({
       id: 'open-mill',
       groupId: 'actions',
-      text: 'Open Mill',
+      text: t('quickPanel.entries.openMill'),
       searchText: 'open mill window',
       leadingVisual: HomeIcon,
       run: () => openMain(''),
@@ -359,7 +364,7 @@ export function QuickPanel() {
     entries.push({
       id: 'open-settings',
       groupId: 'actions',
-      text: 'Open Settings',
+      text: t('quickPanel.entries.openSettings'),
       searchText: 'open settings preferences',
       leadingVisual: GearIcon,
       // HotkeyHint (app/HotkeyHint.tsx) reads settings.open's live
@@ -377,12 +382,12 @@ export function QuickPanel() {
     entries.push({
       id: 'open-review',
       groupId: 'actions',
-      text: 'Review',
-      description: reviewPendingCount > 0 ? `${reviewPendingCount} pending` : 'No pending reviews',
+      text: t('quickPanel.entries.review'),
+      description: reviewPendingCount > 0 ? t('quickPanel.entries.reviewPendingDescription', { count: reviewPendingCount }) : t('quickPanel.entries.reviewNoPending'),
       searchText: 'review pending approval guardrail mcp write',
       leadingVisual: CAPABILITY_ICON['capability-review'],
       trailingVisual: reviewPendingCount > 0 ? (
-        <CounterLabel data-testid="quick-panel-review-count" aria-label={`${reviewPendingCount} pending in Review`}>
+        <CounterLabel data-testid="quick-panel-review-count" aria-label={t('reviewPendingAriaLabel', { count: reviewPendingCount })}>
           {reviewPendingCount}
         </CounterLabel>
       ) : undefined,
@@ -397,8 +402,8 @@ export function QuickPanel() {
     entries.push({
       id: 'apply-clipboard',
       groupId: 'actions',
-      text: 'Apply from clipboard…',
-      description: 'Create or update a workflow from a copied Mill export',
+      text: t('quickPanel.entries.applyFromClipboard'),
+      description: t('quickPanel.entries.applyFromClipboardDescription'),
       searchText: 'apply from clipboard import paste workflow export',
       leadingVisual: CopyIcon,
       trailingVisual: <HotkeyHint commandId="panel.applyClipboard" />,
@@ -435,7 +440,7 @@ export function QuickPanel() {
           onCancel={() => setClipboardApply(null)}
           onApplied={(label, isUpdate) => {
             setClipboardApply(null)
-            setStatus(`${isUpdate ? 'Updated' : 'Created'} "${label}"`)
+            setStatus(isUpdate ? t('quickPanel.status.appliedUpdated', { label }) : t('quickPanel.status.appliedCreated', { label }))
             window.setTimeout(() => { void SettingsService.DismissPanel().catch(() => {}) }, 600)
           }}
         />
@@ -450,11 +455,11 @@ export function QuickPanel() {
         groupMetadata={GROUP_METADATA}
         filterValue={query}
         onFilterChange={(value) => setQuery(value)}
-        placeholderText="Search workflows or jump into Mill…"
+        placeholderText={t('quickPanel.searchPlaceholder')}
         inputRef={inputRef}
-        textInputProps={{ 'aria-label': 'Quick Panel search', autoFocus: true }}
+        textInputProps={{ 'aria-label': t('quickPanel.searchAriaLabel'), autoFocus: true }}
         showItemDividers
-        messageText={{ title: 'No matches', description: `Nothing matches "${query}"` }}
+        messageText={{ title: t('search.noMatchesTitle'), description: t('search.noMatchesDescription', { query }) }}
       />
       {status && (
         <Text as="p" size="small" className={styles.status} data-testid="quick-panel-status">
@@ -462,7 +467,7 @@ export function QuickPanel() {
         </Text>
       )}
       {allEntries.length === 0 && (
-        <Text as="p" size="small" className={styles.status}>No workflows yet.</Text>
+        <Text as="p" size="small" className={styles.status}>{t('quickPanel.noWorkflowsYet')}</Text>
       )}
     </div>
   )

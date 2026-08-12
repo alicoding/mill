@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import { CounterLabel, IconButton, NavList, PageLayout, Text } from '@primer/react'
 import { DotFillIcon, GearIcon, SidebarCollapseIcon, SidebarExpandIcon } from '@primer/octicons-react'
 import { viewFor, viewsEqual, statusDotColor } from '../shared/store'
@@ -20,6 +21,7 @@ export function AppSidebar({ sidebarOpen, setSidebarOpen, view, setView, capabil
   capabilities: Capability[]
   reviewPendingCount: number
 }) {
+  const { t } = useTranslation('app')
   return (
         <PageLayout.Sidebar
           className={styles.sidebar}
@@ -53,11 +55,11 @@ export function AppSidebar({ sidebarOpen, setSidebarOpen, view, setView, capabil
                     the row's FAR RIGHT, aligned with the nav rows'
                     status-dot column. */}
                 <span className={styles.sidebarIdentity}>
-                  <Text className={styles.sidebarWordmark}>Mill</Text>
+                  <Text className={styles.sidebarWordmark}>{t('appSidebar.wordmark')}</Text>
                 </span>
                 <IconButton
                   icon={SidebarCollapseIcon}
-                  aria-label="Collapse navigation"
+                  aria-label={t('appSidebar.collapseNavigation')}
                   size="small"
                   variant="invisible"
                   onClick={() => setSidebarOpen(false)}
@@ -66,7 +68,7 @@ export function AppSidebar({ sidebarOpen, setSidebarOpen, view, setView, capabil
             ) : (
               <button
                 type="button"
-                aria-label="Expand navigation"
+                aria-label={t('appSidebar.expandNavigation')}
                 className={styles.railLogoButton}
                 onClick={() => setSidebarOpen(true)}
               >
@@ -97,7 +99,7 @@ export function AppSidebar({ sidebarOpen, setSidebarOpen, view, setView, capabil
                         {c.ID === 'capability-review' && reviewPendingCount > 0 && (
                           <CounterLabel
                             data-testid="review-pending-count"
-                            aria-label={`${reviewPendingCount} pending in Review`}
+                            aria-label={t('reviewPendingAriaLabel', { count: reviewPendingCount })}
                           >
                             {reviewPendingCount}
                           </CounterLabel>
@@ -126,7 +128,7 @@ export function AppSidebar({ sidebarOpen, setSidebarOpen, view, setView, capabil
           <div className={styles.sidebarFooter}>
             <IconButton
               icon={GearIcon}
-              aria-label="Settings"
+              aria-label={t('appSidebar.settingsAriaLabel')}
               size="small"
               variant="invisible"
               onClick={() => setView({ kind: 'settings' })}

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Button, Stack, Text } from '@primer/react'
 import { ShieldIcon } from '@primer/octicons-react'
 import { Events } from '@wailsio/runtime'
@@ -16,6 +17,7 @@ import styles from './App.module.css'
 // human. Listens for the push event AND polls once on mount, so a
 // request raised before this window rendered still shows up.
 export function MCPWriteApprovals() {
+  const { t } = useTranslation('app')
   const [pending, setPending] = useState<MCPWriteRequest[]>([])
   const [error, setError] = useState('')
 
@@ -52,8 +54,8 @@ export function MCPWriteApprovals() {
             <StalenessBadge createdAt={p.createdAt} testId="mcp-write-approval-age" />
           </Stack>
           <Stack direction="horizontal" gap="condensed">
-            <Button size="small" variant="primary" onClick={() => resolve(p.id, true)}>Approve</Button>
-            <Button size="small" variant="danger" onClick={() => resolve(p.id, false)}>Deny</Button>
+            <Button size="small" variant="primary" onClick={() => resolve(p.id, true)}>{t('common:actions.approve')}</Button>
+            <Button size="small" variant="danger" onClick={() => resolve(p.id, false)}>{t('common:actions.deny')}</Button>
           </Stack>
         </Stack>
       ))}
