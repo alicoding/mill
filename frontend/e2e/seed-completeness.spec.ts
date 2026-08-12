@@ -128,6 +128,39 @@ test('Example: Disabled filesystem watch workflow is present and ships disabled'
   await expect(row.getByText('disabled', { exact: true })).toBeVisible()
 })
 
+// docs/goals/0031-ai-node-family.md: the AI node family's own seeded
+// proof, e2e half (the Go proof runs it end-to-end against an httptest
+// fixture -- executionsvc.TestSeededAISummarizeExample_
+// RunsEndToEndAgainstFixtureEndpoint). Never clicks Run here: the
+// seeded AIProvider points at a real localhost:11434 Ollama endpoint
+// this suite has no business depending on being present -- same
+// "prove presence/config from the outside" posture the MCP Server test
+// above already establishes for the identical reason.
+test('Seeded AI provider "Local Ollama (localhost:11434)" is present, built-in-badged', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Configure' }).click()
+  await page.getByRole('tab', { name: 'AI Providers' }).click()
+
+  const row = page.locator('[data-testid="inventory-row"][data-entity="aiprovider"]').filter({ has: page.getByText('Local Ollama (localhost:11434)', { exact: true }) })
+  await expect(row).toBeVisible()
+  await expect(row.getByText('built-in', { exact: true })).toBeVisible()
+  await expect(row).toContainText('http://localhost:11434')
+})
+
+test('Example: Summarize with local AI workflow is present with the real process-ai-completion node, ships disabled', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Workflows' }).click()
+
+  const row = workflowRow(page, 'Example: Summarize with local AI')
+  await expect(row).toBeVisible()
+  await expect(row.getByText('disabled', { exact: true })).toBeVisible()
+  await row.click()
+
+  const nodes = activePanel(page).locator('.react-flow__node')
+  await expect(nodes).toHaveCount(3)
+  await expect(nodes.filter({ hasText: 'AI: Completion' })).toBeVisible()
+})
+
 // docs/SPEC.md §5/§8 (save-page capture floor + clipboard inspector):
 // presence-only, same reasoning as the rest of this file -- these two
 // new seeds' real execution semantics are proven at the Go layer

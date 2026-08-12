@@ -5,6 +5,7 @@ import { AuthType } from '../../bindings/github.com/alicoding/mill/internal/doma
 import type { Workflow } from '../../bindings/github.com/alicoding/mill/internal/domain/composition/models'
 import { Category } from '../../bindings/github.com/alicoding/mill/internal/domain/decision/models'
 import { Shell, ProfileMode } from '../../bindings/github.com/alicoding/mill/internal/domain/execenv/models'
+import { Kind as AIProviderKind } from '../../bindings/github.com/alicoding/mill/internal/domain/aiprovider/models'
 
 // A workflow is only a valid child-workflow target if it's rooted in
 // trigger-callable (docs/adr/0010) -- mirrors trigger.ExtractTrigger's
@@ -51,6 +52,8 @@ async function fetchEntities(refKind: string): Promise<Entity[]> {
       return ((await ConfigureService.Decisions()) ?? []).map((d) => ({ ID: d.ID, Label: `${d.Label} (${d.Category})` }))
     case 'execenv':
       return (await ConfigureService.ExecEnvs()) ?? []
+    case 'aiprovider':
+      return (await ConfigureService.AIProviders()) ?? []
     default:
       return []
   }
@@ -64,12 +67,13 @@ const KIND_NOUN: Record<string, string> = {
   'workflow-scope': 'workflow',
   decision: 'decision',
   execenv: 'execution environment',
+  aiprovider: 'AI provider',
 }
 
 // docs/adr/0010 §2: no quick-create for a workflow reference -- creating
 // one is Composition's own existing "New workflow" flow, not a
 // lightweight sub-form; the picker only lists what already exists.
-const QUICK_CREATABLE_KINDS = new Set(['request', 'list', 'mcpserver', 'decision', 'execenv'])
+const QUICK_CREATABLE_KINDS = new Set(['request', 'list', 'mcpserver', 'decision', 'execenv', 'aiprovider'])
 
 export function EntityRefField({ refKind, value, onChange }: { refKind: string; value: string; onChange: (id: string) => void }) {
   const [entities, setEntities] = useState<Entity[] | null>(null)
@@ -164,8 +168,10 @@ const DECISION_CATEGORY_LABEL: Record<string, string> = {
 
 function QuickCreateDialog({ refKind, onCancel, onCreated }: { refKind: string; onCancel: () => void; onCreated: (id: string) => void }) {
   const [label, setLabel] = useState('')
-  const [secondary, setSecondary] = useState('') // Base URL (request) or Command (mcpserver); unused for list/decision
+  const [secondary, setSecondary] = useState('') // Base URL (request/aiprovider) or Command (mcpserver); unused for list/decision
   const [category, setCategory] = useState<Category>(Category.CategoryUncategorized)
+  const [aiKind, setAIKind] = useState<AIProviderKind>(AIProviderKind.KindOpenAICompat)
+  const [aiModel, setAIModel] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
@@ -195,6 +201,11 @@ function QuickCreateDialog({ refKind, onCancel, onCreated }: { refKind: string; 
           id = d.ID
           break
         }
+        case 'aiprovider': {
+          const p = await ConfigureService.CreateAIProvider(label, aiKind, secondary, aiModel)
+          id = p.ID
+          break
+        }
         case 'execenv': {
           // Sensible, deterministic defaults (mirrors the seeded "Safe
           // sandbox" env's own shape) -- Configure > Execution
@@ -218,13 +229,24 @@ function QuickCreateDialog({ refKind, onCancel, onCreated }: { refKind: string; 
 
   const secondaryLabel = refKind === 'request' ? 'URL' : refKind === 'mcpserver' ? 'Command' : null
 
+  // docs/adr/0009 §3's own "minimal, usable starting point" bar, applied
+  // to AIProvider's own required-field shape (aiprovider.Validate):
+  // Model is always required; BaseURL only for openai-compatible (an
+  // Anthropic provider defaults to the real api.anthropic.com when left
+  // blank, same as the full Configure form).
+  const createDisabled =
+    saving ||
+    !label ||
+    (secondaryLabel !== null && !secondary) ||
+    (refKind === 'aiprovider' && (!aiModel || (aiKind === AIProviderKind.KindOpenAICompat && !secondary)))
+
   return (
     <Dialog
       title={`Create ${KIND_NOUN[refKind]}`}
       onClose={onCancel}
       footerButtons={[
         { content: 'Cancel', onClick: onCancel },
-        { content: 'Create', buttonType: 'primary', onClick: create, disabled: saving || !label || (secondaryLabel !== null && !secondary) },
+        { content: 'Create', buttonType: 'primary', onClick: create, disabled: createDisabled },
       ]}
     >
       <FormControl>
@@ -247,6 +269,28 @@ function QuickCreateDialog({ refKind, onCancel, onCreated }: { refKind: string; 
             ))}
           </Select>
         </FormControl>
+      )}
+      {refKind === 'aiprovider' && (
+        <>
+          <FormControl>
+            <FormControl.Label>Kind</FormControl.Label>
+            <Select value={aiKind} onChange={(e) => setAIKind(e.target.value as AIProviderKind)}>
+              <Select.Option value={AIProviderKind.KindOpenAICompat}>OpenAI-compatible (Ollama, LM Studio, vLLM, BYO)</Select.Option>
+              <Select.Option value={AIProviderKind.KindAnthropic}>Anthropic</Select.Option>
+            </Select>
+          </FormControl>
+          <FormControl>
+            <FormControl.Label>Base URL</FormControl.Label>
+            <FormControl.Caption>
+              {aiKind === AIProviderKind.KindAnthropic ? 'Leave empty to use the real Anthropic API.' : 'e.g. http://localhost:11434 for local Ollama.'}
+            </FormControl.Caption>
+            <TextInput value={secondary} onChange={(e) => setSecondary(e.target.value)} placeholder="http://localhost:11434" block />
+          </FormControl>
+          <FormControl>
+            <FormControl.Label>Model</FormControl.Label>
+            <TextInput value={aiModel} onChange={(e) => setAIModel(e.target.value)} placeholder="llama3.2" block />
+          </FormControl>
+        </>
       )}
       {error && <FormControl.Caption>{error}</FormControl.Caption>}
     </Dialog>

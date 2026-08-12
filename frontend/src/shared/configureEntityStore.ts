@@ -4,6 +4,7 @@ import type { List } from '../../bindings/github.com/alicoding/mill/internal/dom
 import type { Decision } from '../../bindings/github.com/alicoding/mill/internal/domain/decision/models'
 import type { MCPServer } from '../../bindings/github.com/alicoding/mill/internal/domain/mcpserver/models'
 import type { ExecEnv } from '../../bindings/github.com/alicoding/mill/internal/domain/execenv/models'
+import type { AIProvider } from '../../bindings/github.com/alicoding/mill/internal/domain/aiprovider/models'
 
 // The other half of store.ts's "one fetch, many consumers" server-data
 // pattern (workflows/nodeTypes/requests) for Configure's remaining
@@ -24,10 +25,12 @@ interface ConfigureEntityState {
   decisions: Decision[] | null
   mcpServers: MCPServer[] | null
   execEnvs: ExecEnv[] | null
+  aiProviders: AIProvider[] | null
   setLists: (lists: List[]) => void
   setDecisions: (decisions: Decision[]) => void
   setMCPServers: (mcpServers: MCPServer[]) => void
   setExecEnvs: (execEnvs: ExecEnv[]) => void
+  setAIProviders: (aiProviders: AIProvider[]) => void
 }
 
 export const useConfigureEntityStore = create<ConfigureEntityState>()((set) => ({
@@ -35,10 +38,12 @@ export const useConfigureEntityStore = create<ConfigureEntityState>()((set) => (
   decisions: null,
   mcpServers: null,
   execEnvs: null,
+  aiProviders: null,
   setLists: (lists) => set({ lists }),
   setDecisions: (decisions) => set({ decisions }),
   setMCPServers: (mcpServers) => set({ mcpServers }),
   setExecEnvs: (execEnvs) => set({ execEnvs }),
+  setAIProviders: (aiProviders) => set({ aiProviders }),
 }))
 
 // refreshLists/refreshDecisions/refreshMCPServers/refreshExecEnvs mirror
@@ -67,5 +72,11 @@ export function refreshMCPServers(): Promise<void> {
 export function refreshExecEnvs(): Promise<void> {
   return ConfigureService.ExecEnvs()
     .then((list) => useConfigureEntityStore.getState().setExecEnvs(list ?? []))
+    .catch(console.error)
+}
+
+export function refreshAIProviders(): Promise<void> {
+  return ConfigureService.AIProviders()
+    .then((list) => useConfigureEntityStore.getState().setAIProviders(list ?? []))
     .catch(console.error)
 }

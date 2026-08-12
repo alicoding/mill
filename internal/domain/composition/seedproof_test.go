@@ -61,6 +61,9 @@ var workflowProofRegistry = map[string]seedProof{
 	"example-review-workflow": proven(
 		"executionsvc.TestSeededHumanReviewExample_TypedInputFlowsThrough",
 	),
+	"example-ai-summarize-workflow": proven(
+		"executionsvc.TestSeededAISummarizeExample_RunsEndToEndAgainstFixtureEndpoint",
+	),
 	"example-disabled-schedule-workflow": proven(
 		"executionsvc.TestSeededDisabledScheduleExample_TriggeredRunRejectedWhileDisabled",
 		"executionsvc.TestSeededDisabledScheduleExample_TestRunWorks",
