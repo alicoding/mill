@@ -8,6 +8,8 @@ import (
 	"github.com/alicoding/mill/internal/domain/httprequest"
 	"github.com/alicoding/mill/internal/domain/list"
 	"github.com/alicoding/mill/internal/domain/mcpserver"
+	"github.com/alicoding/mill/internal/domain/typedfield"
+	"github.com/alicoding/mill/internal/services/seeding"
 )
 
 // This file extends compositionservice_export.go's workflow export/
@@ -96,9 +98,19 @@ func (c *ConfigureService) ImportHTTPRequest(jsonData string) (httprequest.HTTPR
 
 // --- List ---
 
+// exportedList carries the typed shape (Columns/Rows, goal 0011) on
+// export, always. Entries stays accepted on IMPORT ONLY, for an old
+// export document written before this goal existed -- ImportList
+// below runs it through the exact same list.MigrateLegacyEntries a
+// real machine's persisted data goes through (configureservice.go's
+// migrateLegacyLists), so there's still only one migration code path,
+// not two.
 type exportedList struct {
-	Label   string            `json:"label"`
-	Entries map[string]string `json:"entries"`
+	Label       string             `json:"label"`
+	Description string             `json:"description,omitempty"`
+	Columns     []typedfield.Field `json:"columns,omitempty"`
+	Rows        []list.Row         `json:"rows,omitempty"`
+	Entries     map[string]string  `json:"entries,omitempty"`
 }
 
 func (c *ConfigureService) ExportList(id string) (string, error) {
@@ -117,7 +129,9 @@ func (c *ConfigureService) ExportList(id string) (string, error) {
 		return "", fmt.Errorf("no list with id %q", id)
 	}
 
-	data, err := json.MarshalIndent(exportedList{Label: l.Label, Entries: l.Entries}, "", "  ")
+	data, err := json.MarshalIndent(exportedList{
+		Label: l.Label, Description: l.Description, Columns: l.Columns, Rows: l.Rows,
+	}, "", "  ")
 	if err != nil {
 		return "", fmt.Errorf("export list: %w", err)
 	}
@@ -129,7 +143,42 @@ func (c *ConfigureService) ImportList(jsonData string) (list.List, error) {
 	if err := json.Unmarshal([]byte(jsonData), &in); err != nil {
 		return list.List{}, fmt.Errorf("import list: invalid JSON: %w", err)
 	}
-	return c.CreateList(in.Label, in.Entries)
+	columns, rows := in.Columns, in.Rows
+	if len(columns) == 0 && len(in.Entries) > 0 {
+		columns, rows = list.MigrateLegacyEntries(in.Entries, func() string { return seeding.NewSlugID("", "row") })
+	}
+
+	created, err := c.CreateList(in.Label, in.Description, columns)
+	if err != nil {
+		return list.List{}, err
+	}
+	if len(rows) == 0 {
+		return created, nil
+	}
+
+	c.mu.Lock()
+	idx := c.findListLocked(created.ID)
+	if idx == -1 {
+		c.mu.Unlock()
+		return list.List{}, fmt.Errorf("import list: created list %q vanished", created.ID)
+	}
+	previous := c.lists[idx]
+	c.lists[idx].Rows = rows
+	updated := c.lists[idx]
+	c.mu.Unlock()
+
+	if err := c.persistLists(); err != nil {
+		// Don't leave imported rows sitting in memory only
+		// (docs/goals/0025 item 2's memory-vs-store rule) -- the
+		// created list itself (empty rows) is already durably
+		// persisted via CreateList above, so reverting to it here is
+		// exact, not approximate.
+		c.mu.Lock()
+		c.revertListLocked(previous)
+		c.mu.Unlock()
+		return list.List{}, fmt.Errorf("import list: save rows: %w", err)
+	}
+	return updated, nil
 }
 
 // --- MCPServer ---

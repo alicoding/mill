@@ -82,3 +82,59 @@ Owner-aligned seed roster entry (a real lookup dataset + search
 workflow) proven per the layered-coverage model; the
 List-as-database boundary documented; evidence gaps resolved by
 research or explicitly deferred with reasons.
+
+## Delivered (2026-08-12)
+
+Harvested from a parallel owner session's in-progress worktree
+(`wt-lists`) and landed on `goal/0011-lists`, reconciled against main
+(typedfield's Phase 1/2 convergence, entity-level `CreatedAt`/
+`UpdatedAt`, ADR-0028 validation, confirmed-delete/`InventoryList`
+conventions, and SPEC §3.2.4 all landed on main after the worktree
+branched).
+
+- Item 1 (typed columns + rows): `internal/domain/list.List.Columns
+  []typedfield.Field` / `Rows []Row`, built directly against
+  ADR-0029's canonical vocabulary from day one — no parallel schema
+  system.
+- Item 2 (system-managed columns): `Row{ID, Values, CreatedAt,
+  UpdatedAt, Status}` — `Status` (`Active`/`Expired`) is a
+  platform-owned struct field, never a user-declared Column;
+  `CreatedBy`/`UpdatedBy` deliberately NOT modeled (Mill is
+  single-user forever, §3.7) — the goal's own open call, resolved.
+  Expired rows excluded from matching by default, uniform across
+  exact and fuzzy, with a per-step `includeExpired` opt-in (the
+  industry-research verdict this file recorded).
+- Item 3 (schema/row import): NOT built — CSV/JSON row+schema import
+  stays named, deliberately deferred future work (recorded in
+  SPEC.md §3.2.2's Update note).
+- Item 4 (`list-search`): built as a new `NodeType` alongside
+  `list-lookup` (kept, unchanged, via `list.DeriveEntries`'s
+  first-two-columns view) — multiple match parameters (column +
+  literal-or-`attr:<name>` value + exact/fuzzy, AND'd), fuzzy via
+  `github.com/hbollon/go-edlib` (MIT) behind
+  `internal/adapters/fuzzymatch`, Damerau-Levenshtein default; exact
+  match stays plain equality, never routed through the fuzzy lib.
+  Output is the fixed-by-construction typed Object `{results,
+  matched, first_match, match_count, list_id}`.
+- Item 5 (execution evidence): minimum bar only — `list_id` recorded
+  inline on every `list-search` output. Full per-run dataset-version
+  snapshotting stays deferred, named in SPEC.md, not silently dropped.
+- Item 6 (migration): `list.MigrateLegacyEntries` converts a
+  pre-0011 flat key/value List into synthesized `key`/`value` typed
+  Columns + Rows in place, on first load, idempotently.
+
+Proof: `internal/domain/list`, `internal/domain/typedfield`,
+`internal/domain/composition`, `internal/adapters/fuzzymatch`,
+`internal/services/configuresvc`, `internal/services/executionsvc`
+Go suites green (race + cover); two seeded workflows
+(`example-list-lookup-workflow`, `example-list-search-workflow`)
+against the shared seeded "Example: Country codes" List (typed
+code/name columns, one deliberately Expired row), each proven via a
+real-DBOS Go test AND a `seed-completeness.spec.ts` e2e case,
+registered in `seedproof_test.go`; a dedicated
+`configure-lists.spec.ts` e2e exercises the Configure Column/Row
+editors and the `list-search` node's Inspector
+(`ListSearchParamsEditor.tsx`) live through the canvas; `configure-
+export-import.spec.ts` round-trips a List's typed columns/rows.
+SPEC.md §3.2.2 (Update note), §3.3 (List row), and §3.5 (Configure
+table) all updated in the same change.

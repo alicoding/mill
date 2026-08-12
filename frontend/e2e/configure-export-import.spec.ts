@@ -57,19 +57,23 @@ test('Importing a Request file adds a new, independent request', async ({ page }
   await expect(importedRow).toHaveCount(0)
 })
 
-test('Exporting and importing a List round-trips its entries', async ({ page }) => {
+test('Exporting and importing a List round-trips its typed columns and rows', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Configure' }).click()
   await page.getByRole('tab', { name: 'Lists' }).click()
 
   await page.getByTestId('new-list').click()
   await page.getByLabel('Label').fill('E2E export list')
-  await page.getByPlaceholder('key').fill('color')
-  await page.getByPlaceholder('value').fill('blue')
+  await page.getByTestId('list-column-key').fill('color')
   await page.getByRole('button', { name: 'Save list' }).click()
+
+  await page.getByTestId('add-list-row').click()
+  await page.getByTestId('list-row').getByRole('textbox').fill('blue')
+  await page.getByTestId('save-list-row').click()
 
   const originalRow = page.locator('[data-testid="inventory-row"][data-entity="list"]', { has: page.getByText('E2E export list', { exact: true }) })
   await expect(originalRow).toBeVisible()
+  await expect(originalRow).toContainText('1 columns, 1 rows')
 
   const downloadPromise = page.waitForEvent('download')
   await clickRowAction(page, originalRow, 'Export')
@@ -78,7 +82,16 @@ test('Exporting and importing a List round-trips its entries', async ({ page }) 
   const chunks: Buffer[] = []
   for await (const chunk of stream) chunks.push(chunk as Buffer)
   const json = Buffer.concat(chunks).toString('utf-8')
-  expect(JSON.parse(json).entries).toEqual({ color: 'blue' })
+  const parsed = JSON.parse(json)
+  // internal/domain/typedfield.Field and internal/domain/list.Row carry
+  // no json struct tags of their own, so their fields marshal under
+  // their real Go names (Key, Values, ...) even though the top-level
+  // exportedList wrapper fields do (columns/rows, configureservice_
+  // export.go's own json tags).
+  expect(parsed.columns).toHaveLength(1)
+  expect(parsed.columns[0].Key).toBe('color')
+  expect(parsed.rows).toHaveLength(1)
+  expect(parsed.rows[0].Values.color).toBe('blue')
 
   await page.getByTestId('import-list').click()
   await page.getByTestId('import-list-input').setInputFiles({

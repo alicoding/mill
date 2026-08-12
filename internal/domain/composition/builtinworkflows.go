@@ -4,7 +4,6 @@ import (
 	"github.com/alicoding/mill/internal/domain/decision"
 	"github.com/alicoding/mill/internal/domain/execenv"
 	"github.com/alicoding/mill/internal/domain/httprequest"
-	"github.com/alicoding/mill/internal/domain/list"
 	"github.com/alicoding/mill/internal/domain/mcpserver"
 )
 
@@ -201,31 +200,6 @@ func BuiltInWorkflows() []Workflow {
 		panic("built-in workflow references an unknown node type: " + err.Error())
 	}
 
-	// List lookup (docs/goals/0010 item 4, docs/SPEC.md §3.3's List
-	// row): a typed 'code' Attribute is read into the payload via
-	// capture-attribute, then list-lookup resolves it against the
-	// seeded "Example: Country codes" List (Configure > Lists),
-	// writing the match into a second, declared 'countryName'
-	// Attribute -- the same "typed data flows through Attributes"
-	// pattern the parent/child example already established.
-	const (
-		listTriggerID = "example-list-trigger"
-		listCaptureID = "example-list-capture"
-		listLookupID  = "example-list-lookup"
-	)
-	listNodes, err := ResolveNodeDefaults([]Node{
-		{ID: listTriggerID, NodeTypeID: "trigger-manual", Position: Position{X: 0, Y: 0}},
-		{ID: listCaptureID, NodeTypeID: "capture-attribute", Position: Position{X: 0, Y: 100},
-			Config: map[string]string{"attribute": "code"}},
-		{ID: listLookupID, NodeTypeID: "list-lookup", Position: Position{X: 0, Y: 200},
-			Config: map[string]string{
-				"listId": list.ExampleCountryCodesID, "inputKey": "code", "outputKey": "countryName",
-			}},
-	})
-	if err != nil {
-		panic("built-in workflow references an unknown node type: " + err.Error())
-	}
-
 	// MCP tool call (docs/goals/0010 item 5, docs/SPEC.md §3.6): calls
 	// the seeded "Example: Reference server (npx)" MCP Server's real
 	// "echo" tool -- the exact round trip SPEC.md §3.6 already verified
@@ -305,7 +279,7 @@ func BuiltInWorkflows() []Workflow {
 		panic("built-in workflow references an unknown node type: " + err.Error())
 	}
 
-	return []Workflow{
+	workflows := []Workflow{
 		{
 			ID:          "load-sample-html-workflow",
 			Label:       "Load sample HTML",
@@ -422,21 +396,6 @@ func BuiltInWorkflows() []Workflow {
 			BuiltIn: true,
 		},
 		{
-			ID:          "example-list-lookup-workflow",
-			Label:       "Example: Country code lookup",
-			Description: "Captures a typed 'code' Attribute and looks it up in the seeded \"Example: Country codes\" List (Configure > Lists), writing the match into a 'countryName' Attribute (docs/SPEC.md §3.3's List row). Run it with code = US, CA, or MX to see a match; any other code fails the run (the List node's own default \"If no match: fail\" behavior).",
-			Nodes:       listNodes,
-			Attributes: []AttributeDef{
-				{Key: "code", Label: "Code", Type: FieldText},
-				{Key: "countryName", Label: "Country name", Type: FieldText},
-			},
-			Edges: []Edge{
-				{ID: "example-list-e0", Source: listTriggerID, Target: listCaptureID},
-				{ID: "example-list-e1", Source: listCaptureID, Target: listLookupID},
-			},
-			BuiltIn: true,
-		},
-		{
 			ID:          "example-mcp-echo-workflow",
 			Label:       "Example: MCP echo call",
 			Description: "Calls the seeded \"Example: Reference server (npx)\" MCP Server's echo tool (docs/SPEC.md §3.6) -- {\"message\":\"hello from mill\"} -> \"Echo: hello from mill\", the real round trip already verified live against the official MCP reference server. Needs Node/npx installed locally to actually run; the committed test suite proves this node's own logic without spawning it.",
@@ -471,6 +430,16 @@ func BuiltInWorkflows() []Workflow {
 			Disabled: true,
 		},
 	}
+
+	// List lookup + List search (docs/goals/0010 item 4, docs/goals/
+	// 0011-lists-maturation.md item 4): split into their own file
+	// (builtinworkflows_list.go) once this function crossed the
+	// 500-line convention -- List was the newest, most self-contained
+	// addition (neither seed's nodes are referenced anywhere else in
+	// this file), the same "split along a real seam" discipline
+	// composition.go's own earlier split already established
+	// (.claude/rules/architecture.md).
+	return append(workflows, builtInListWorkflows()...)
 }
 
 // ExampleChildWorkflowID is exported so the parent seed above and any

@@ -44,6 +44,10 @@ this pipeline and on this code)**
    backend-side `isAway`), alert-style authorization request (notify.Start),
    cross-device forward (`composition.SendJSONWebhook`,
    `ForwardPendingApproval`) — see ADR-0032's Update note
+4. [ ] [0026 — Request lifecycle honesty](0026-request-lifecycle-honesty.md)
+   — withdrawal verb (`cancel_write`, the MCP Tasks `tasks/cancel`
+   precedent ADR-0032 already mirrors) + staleness/expiry presentation
+   (owner-observed 2026-08-11: a 4h-old stale ask reads as breakage)
 
 **Ratified 2026-08-10 (owner): three groups, A→B→C. 0001 stays standing
 live-review material, interleaved during owner reviews, not a lane.**
@@ -63,7 +67,7 @@ live-review material, interleaved during owner reviews, not a lane.**
 **Unscheduled (reorder into a group when prioritized)**
 7. [x] [0012 — Authoring hot-exit](archive/0012-authoring-hot-exit.md) — canvas half delivered 2026-08-10 (scratch persistence + restored-unsaved banner + dirty dots; Configure forms recorded-remaining in the archived file)
 8. [x] [0013 — Canonical type system](archive/0013-canonical-type-system.md) — COMPLETE 2026-08-10 (typedfield leaf pkg; all 4 vocabularies converged incl. openapispec Phase 3; the #1 kernel investment)
-9. [ ] [0011 — Lists maturation](0011-lists-maturation.md) (typed datasets + List Search per SPEC §3.2.2's reference review; evidence-gap research first)
+9. [x] [0011 — Lists maturation](archive/0011-lists-maturation.md) — DELIVERED 2026-08-12 (harvested from a parallel owner session + reconciled onto main: typed Columns/Rows against ADR-0029's canonical typedfield, system-managed audit columns w/ Expired-excluded-by-default, `list-search` node w/ go-edlib fuzzy matching, in-place legacy-List migration; CSV import + full per-run dataset snapshot named-deferred)
 10. [x] [0014 — Home dashboard / value mirror](archive/0014-home-dashboard.md) — delivered 2026-08-10 (Recharts, industry-decided metric semantics, editable minutes-saved, default landing)
 11. [ ] [0015 — Summon quick-invoke](0015-summon-quick-invoke.md) — CORE delivered 2026-08-11 (⌘K palette: commands with inline shortcuts, workflow run, tab jump/close; delegated build); PHASE 2 delivered same day (ADR-0033: the summon hotkey opens a dedicated floating Quick Panel — frameless, floats over fullscreen, Esc/blur dismiss, focus-yield; supersedes "summon opens the main window"). Remainder open: frecency/pins (needs the 0014 usage substrate), Configure entities, pending-review count, ⌘?/⌘/ alias (needs multi-binding registry support)
 12. [x] [0022 — Workflow view mode](archive/0022-workflow-view-mode.md) — delivered 2026-08-11 (row click → read-only canvas w/ Run+step-debug; Edit explicit in-place mode switch; breakpoint dot moved onto the node card, both modes; fixed a latent bug where a policy deny could hide a breakpoint's existence)
