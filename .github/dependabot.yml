@@ -1,0 +1,59 @@
+version: 2
+
+# goal 0024 / ADR-0034: keeps the three dependency ecosystems Mill
+# actually has (Go module root, the frontend npm workspace, and the
+# pinned-by-SHA GitHub Actions this repo now uses throughout) current
+# without turning into PR noise for a single-maintainer repo -- weekly,
+# grouped minor/patch bumps, a capped open-PR count per ecosystem, and
+# majors left as individual PRs since those can be breaking.
+#
+# Auto-merge is deliberately NOT configured here -- it's a later,
+# ruleset-dependent follow-up (goal 0024 item 4): auto-merging a
+# Dependabot PR only makes sense once `ci-gate` is a required check a
+# green Dependabot PR can actually satisfy on its own.
+updates:
+  - package-ecosystem: gomod
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    groups:
+      go-dependencies:
+        update-types:
+          - minor
+          - patch
+    # Major version bumps stay individual PRs (no group) -- a Go major
+    # bump can be source-breaking and deserves its own review, not to be
+    # bundled with unrelated minor/patch noise.
+
+  - package-ecosystem: npm
+    directory: /frontend
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    groups:
+      npm-dependencies:
+        update-types:
+          - minor
+          - patch
+    # Same reasoning as gomod above: majors stay individual.
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    groups:
+      github-actions:
+        # Every action in this repo is now pinned to a full commit SHA
+        # (goal 0024) with a `# vX.Y.Z` trailing comment -- Dependabot's
+        # github-actions ecosystem understands that convention natively:
+        # it bumps the SHA and rewrites the version comment together, so
+        # the comments stay accurate without manual upkeep. Grouped as
+        # one bundle (not split minor/patch/major) since action bumps
+        # carry far lower blast radius than a language dependency major.
+        patterns:
+          - '*'

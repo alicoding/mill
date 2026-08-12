@@ -296,9 +296,14 @@ and [`docs/adr/0002-cicd-pipeline-phased-rollout.md`](adr/0002-cicd-pipeline-pha
   "for pull requests only"; a green PR self-merges reviewer-free);
   required checks make green-before-main mechanical, not aspirational
   — GitHub can't gate a direct push on checks at all. Secret-scanning
-  push protection enabled ahead of the 273-commit catch-up push. CI
-  path filtering deliberately deferred (required-checks/skipped-status
-  footgun — the ADR has the reasoning).
+  push protection enabled ahead of the 273-commit catch-up push.
+  **CI path filtering adopted (goal 0024, ADR-0034's own Update
+  section)** — not the workflow-level `on.paths` mechanism the ADR
+  originally deferred (that footgun is real and unchanged), but a
+  `changes` job (`dorny/paths-filter`) whose output gates every other
+  job via a job-level `if:`, so a skipped job still reports a real
+  (passing) status and a required check can never hang. Docs-only PRs
+  now fast-skip the full matrix instead of paying for it.
 - **Linux server-mode builds require `CGO_ENABLED=0` explicitly** — not
   optional, confirmed by actually building natively in a linux/amd64
   container, not assumed. Without it, Wails3's own
@@ -2571,6 +2576,17 @@ findings) and the build rationale are in
   live `vite serve` dev server, never for any `go build` output
   (desktop or server mode, dev or not), so it couldn't have caught this
   either.
+
+**Persistence-error handling, goal 0025: every settings-store write
+across the service layer now either propagates its error to the
+mutation RPC (with the in-memory state rolled back to match what's
+actually on disk on failure — no phantom-saved entity) or, for
+genuinely fire-and-forget background writes (window geometry, top-up-
+seeding reconciliation), logs via `slog` — never silently swallowed
+(`_ = store.Set(...)`) as before.** Applies uniformly across
+`settingssvc`/`compositionsvc`/`configuresvc`/`guardrailsvc`/`mcpsvc`,
+not settings-specific, but recorded here per this section's own
+persistence-mechanism scope.
 
 **The `dock`/`notifications` mechanism named here as a future gap is now
 built, for the pending-approval use case — [ADR-0032](adr/0032-mcp-write-approval-park-and-poll.md)

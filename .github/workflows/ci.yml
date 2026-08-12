@@ -6,29 +6,93 @@ on:
   pull_request:
     branches: [main]
 
+# Least-privilege default (goal 0024): every job gets read-only contents
+# access unless it explicitly needs more (the `changes` job overrides for
+# pull-requests: read; release.yml's attestation job separately overrides
+# for id-token/attestations write, unaffected by this).
+permissions:
+  contents: read
+
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
+  # goal 0024 / ADR-0034's un-deferred path-filtering: skip the heavy
+  # matrix on docs-only PRs without ever making a required check hang at
+  # "Expected" (ADR-0034's originally-cited footgun). The fix is the
+  # job-level `if:` pattern, not workflow-level `on.pull_request.paths` --
+  # a skipped job still REPORTS a (green, skip) status for the check, so
+  # a required check never hangs; only a `paths`-filtered workflow that
+  # doesn't run AT ALL would do that.
+  changes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      pull-requests: read
+    outputs:
+      code: ${{ steps.decide.outputs.code }}
+    steps:
+      # dorny/paths-filter fetches the changed-file list via the GitHub
+      # REST API for pull_request events -- no actions/checkout needed.
+      - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
+        id: filter
+        if: github.event_name == 'pull_request'
+        with:
+          # some-with-excludes (not the 'some' default): '**' matches
+          # every file, so with the default quantifier the negated rules
+          # would be silently ignored and `code` would always be true.
+          # some-with-excludes requires a changed file to match a
+          # positive rule (it does, via '**') AND match none of the
+          # negated ones -- i.e. true only if some changed file is
+          # outside docs/**, *.md (any depth), .claude/**, and LICENSE.
+          predicate-quantifier: 'some-with-excludes'
+          filters: |
+            code:
+              - '**'
+              - '!docs/**'
+              - '!**/*.md'
+              - '!.claude/**'
+              - '!LICENSE'
+      - name: Decide code output
+        id: decide
+        run: |
+          # paths-filter needs a diff base to compare against, which only
+          # exists for pull_request events. A `push` to main (the
+          # ADR-0034 catch-up push, or the ruleset's own PR-merge commit)
+          # has no PR base to diff -- path filtering is skipped entirely
+          # and `code` defaults true, so a push to main always runs the
+          # full suite, never silently skips it.
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            echo "code=${{ steps.filter.outputs.code }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "code=true" >> "$GITHUB_OUTPUT"
+          fi
+
   # Mirrors lefthook.yml's own file-loc-limit job -- same script, so the
   # two can't drift. No checkout-heavy setup needed (just git ls-files +
-  # wc), so this doesn't depend on the frontend job below.
+  # wc), so this doesn't depend on the frontend job below. Deliberately
+  # NOT gated on `changes.outputs.code` -- fast, and docs CAN violate it
+  # (a doc file itself can cross the line limit).
   file-loc-limit:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - run: ./scripts/check-loc.sh
 
   # Mirrors lefthook.yml's own rules-frontmatter job -- same script.
   # Catches a real bug class: a .claude/rules/*.md with an invalid
   # frontmatter key (e.g. a `globs:` typo instead of `paths:`) silently
   # never scopes the way it looks like it should, with no error anywhere
-  # else to surface it.
+  # else to surface it. Deliberately NOT gated on `changes.outputs.code`
+  # -- fast, and a docs-only PR is exactly the kind of change that could
+  # touch .claude/rules/*.md.
   rules-frontmatter:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - run: ./scripts/check-rules-frontmatter.sh
 
   # Enforces the root-layout rule (exactly one root Go file, main.go;
@@ -37,12 +101,14 @@ jobs:
   # tool covers this: see .ls-lint.yml's own header comment for the
   # config shape verified empirically before relying on it). go install
   # matches how this repo already sets up gopls/wails3 -- no
-  # npm/Homebrew step.
+  # npm/Homebrew step. Deliberately NOT gated on `changes.outputs.code`
+  # -- fast, and a stray root file can land in a docs-only PR too.
   root-file-naming:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-go@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version: '1.25'
           cache: true
@@ -53,10 +119,13 @@ jobs:
   # present (main.go embeds it via //go:embed all:frontend/dist), so they
   # download it instead of rebuilding it redundantly per job/OS.
   frontend:
+    needs: changes
+    if: success() && needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: '22'
           cache: 'npm'
@@ -71,15 +140,17 @@ jobs:
         working-directory: frontend
       - run: npm run build
         working-directory: frontend
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: frontend-dist
           path: frontend/dist
           retention-days: 1
 
   lint-go:
+    needs: [changes, frontend]
+    if: success() && needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
-    needs: frontend
+    timeout-minutes: 10
     env:
       # Same reason as build-go's ubuntu-latest entry: without this,
       # golangci-lint's own package-loading step needs cgo + X11 dev
@@ -89,23 +160,28 @@ jobs:
       # input, hence the job-level env instead.
       CGO_ENABLED: '0'
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/download-artifact@v8
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: frontend-dist
           path: frontend/dist
-      - uses: actions/setup-go@v7
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version: '1.25'
           cache: true
-      - uses: golangci/golangci-lint-action@v9
+      - uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9.3.0
         with:
           version: v2.12
           args: --build-tags=server
 
   build-go:
-    needs: frontend
+    needs: [changes, frontend]
+    if: success() && needs.changes.outputs.code == 'true'
     strategy:
+      # A 2-platform build-verification matrix must report both legs
+      # independently -- one platform failing shouldn't cancel the other
+      # before it's even reported (goal 0024).
+      fail-fast: false
       matrix:
         include:
           # macOS: desktop build (default tags) — primary target, per SPEC.md.
@@ -114,6 +190,7 @@ jobs:
           - os: macos-latest
             tags: ''
             cgo: '1'
+            timeout-minutes: 15
           # Linux: server-mode build only. CGO_ENABLED=0 is required, not
           # optional -- Wails3's own internal/operatingsystem and
           # internal/assetserver/webview packages are cgo-gated onto
@@ -128,16 +205,18 @@ jobs:
           - os: ubuntu-latest
             tags: server
             cgo: '0'
+            timeout-minutes: 10
     runs-on: ${{ matrix.os }}
+    timeout-minutes: ${{ matrix.timeout-minutes }}
     env:
       CGO_ENABLED: ${{ matrix.cgo }}
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/download-artifact@v8
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: frontend-dist
           path: frontend/dist
-      - uses: actions/setup-go@v7
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version: '1.25'
           cache: true
@@ -149,7 +228,8 @@ jobs:
       - run: go vet ${{ matrix.tags && format('-tags {0}', matrix.tags) || '' }} . ./internal/...
 
   test-go:
-    needs: frontend
+    needs: [changes, frontend]
+    if: success() && needs.changes.outputs.code == 'true'
     # macos-latest, not ubuntu-latest -- resolved a real contradiction the
     # dormant-pipeline period shipped unverified (caught by the first
     # catch-up run after ADR-0034): on ubuntu, CGO_ENABLED=0 is
@@ -164,13 +244,14 @@ jobs:
     # tags" debt. Server-tagged code still compiles in CI via build-go's
     # ubuntu entry and runs via the e2e job's server binary.
     runs-on: macos-latest
+    timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/download-artifact@v8
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: frontend-dist
           path: frontend/dist
-      - uses: actions/setup-go@v7
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version: '1.25'
           cache: true
@@ -183,8 +264,14 @@ jobs:
       - run: go test . ./internal/... -race -cover
 
   e2e:
+    needs: [changes, frontend]
+    if: success() && needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
-    needs: frontend
+    timeout-minutes: 15
+    strategy:
+      matrix:
+        shardIndex: [1, 2, 3]
+        shardTotal: [3]
     env:
       # Required for the same reason as build-go's ubuntu-latest entry:
       # playwright.config.ts's webServer builds the real server-mode
@@ -192,16 +279,16 @@ jobs:
       # in Wails3's GTK-gated desktop code.
       CGO_ENABLED: '0'
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/download-artifact@v8
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: frontend-dist
           path: frontend/dist
-      - uses: actions/setup-go@v7
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version: '1.25'
           cache: true
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: '22'
           cache: 'npm'
@@ -210,12 +297,18 @@ jobs:
         working-directory: frontend
       - run: npx playwright install --with-deps chromium
         working-directory: frontend
-      - run: npx playwright test
+      # 3-shard matrix + playwright.config.ts's workers: CI ? 1 : 4 (goal
+      # 0024): the prior single-job, workers:2-in-CI shape was the actual
+      # cause of a 14-failure batch traced to cross-worker contention on
+      # this runner's CPU/IO, not real regressions -- splitting into
+      # per-shard jobs (real process isolation) with one worker each
+      # removes the contention instead of just tuning the number down.
+      - run: npx playwright test --shard=${{ matrix.shardIndex }}/${{ matrix.shardTotal }}
         working-directory: frontend
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: failure()
         with:
-          name: playwright-report
+          name: playwright-report-${{ matrix.shardIndex }}
           path: frontend/playwright-report
           retention-days: 7
 
@@ -227,13 +320,19 @@ jobs:
     # primary target per SPEC.md, so this is the more representative scan
     # anyway, not a workaround-of-convenience.
     runs-on: macos-latest
+    timeout-minutes: 15
+    # Deliberately NOT gated on `changes.outputs.code` (goal 0024's
+    # explicit exception) -- advisory-only and cheap enough that skipping
+    # it on docs-only PRs isn't worth a second conditional to reason
+    # about; it still depends on `frontend`, so it naturally no-ops
+    # (skips) whenever frontend itself skips.
     needs: frontend
     continue-on-error: true # advisory only -- golang/govulncheck-action is
     # still self-described experimental (per ADR-0002's research); findings
     # are worth seeing, not worth blocking a merge on yet.
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/download-artifact@v8
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: frontend-dist
           path: frontend/dist
@@ -242,15 +341,65 @@ jobs:
       # space-separated string becomes ONE malformed pattern
       # ("no packages matched the provided patterns"), not two. Real
       # failure caught on the first actual CI run, not assumed.
-      - uses: golang/govulncheck-action@v1
+      - uses: golang/govulncheck-action@032d45514ae346b1db93c04b0c90b841c370344f # v1.1.0
         with:
           go-version-input: '1.25'
           go-package: ./internal/...
           repo-checkout: false # already checked out above; the action's
           # own default checkout would wipe the frontend-dist artifact
           # just downloaded, which the root package needs (//go:embed).
-      - uses: golang/govulncheck-action@v1
+      - uses: golang/govulncheck-action@032d45514ae346b1db93c04b0c90b841c370344f # v1.1.0
         with:
           go-version-input: '1.25'
           go-package: .
           repo-checkout: false
+
+  # New, goal 0024: flags a newly-introduced vulnerable/malicious/
+  # license-incompatible dependency directly on the PR that adds it
+  # (go.sum/package-lock.json diff), rather than only after the fact via
+  # govulncheck's advisory scan of what's already merged.
+  dependency-review:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
+
+  # The future single required check (goal 0024/ADR-0034): decouples the
+  # branch ruleset from job-name churn -- the ruleset names only
+  # `ci-gate`, so adding/renaming/splitting a job upstream never requires
+  # a matching ruleset edit. Runs unconditionally (`always()`) so it can
+  # itself observe every other job's result, including ones skipped by
+  # the `changes` gate above -- a skipped job counts as a pass (that's
+  # the whole point of gating on docs-only changes: nothing required
+  # should ever block on a job that correctly chose not to run).
+  ci-gate:
+    name: CI gate
+    needs:
+      - changes
+      - file-loc-limit
+      - rules-frontmatter
+      - root-file-naming
+      - frontend
+      - lint-go
+      - build-go
+      - test-go
+      - e2e
+      - govulncheck
+      - dependency-review
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Verify no required job failed or was cancelled
+        env:
+          NEEDS_CONTEXT: ${{ toJSON(needs) }}
+        run: |
+          failed=$(echo "$NEEDS_CONTEXT" | jq -r \
+            'to_entries[] | select(.value.result == "failure" or .value.result == "cancelled") | .key')
+          if [ -n "$failed" ]; then
+            echo "::error::Required job(s) failed or were cancelled: $failed"
+            exit 1
+          fi
+          echo "All required jobs passed or were correctly skipped."
