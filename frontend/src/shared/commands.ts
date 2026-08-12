@@ -95,6 +95,42 @@ export const COMMANDS: Command[] = [
     run: () => cycleWorkTab(-1),
   },
   {
+    id: 'tab.closeOthers',
+    label: 'Close other tabs',
+    // Safari's own convention for the identical action (Option+Cmd+W is
+    // literally "Close Other Tabs" there) -- picked over an arbitrary
+    // combo since Mill's tab strip already models the same browser-tab
+    // affordances (goal 0018). Checked against RESERVED_COMBOS
+    // (shared/keybinding.ts, none of which use W) and every other
+    // command's default above: no collision.
+    defaultBinding: { mods: ['cmd', 'option'], key: 'W' },
+    run: () => {
+      const { activeWorkTabKey, closeOtherWorkTabs } = useAppStore.getState()
+      // Mirrors WorkTabShell's own overflow-menu item, which disables
+      // "Close other tabs" while on the pinned page tab (nothing to
+      // keep relative to) -- same no-op here, not an arbitrary target.
+      if (!activeWorkTabKey) return
+      closeOtherWorkTabs(activeWorkTabKey)
+    },
+  },
+  {
+    id: 'tab.closeAll',
+    label: 'Close all tabs',
+    // Safari's "Close Window" combo (Shift+Cmd+W) repurposed the same
+    // way tab.close above already repurposed plain Cmd+W -- Mill has no
+    // multi-window tab groups, so "close every open work tab" is the
+    // closest real equivalent action in this app.
+    defaultBinding: { mods: ['cmd', 'shift'], key: 'W' },
+    // Deliberately does NOT clear each tab's hot-exit scratch
+    // (composition/canvasScratch.ts) -- same precedent tab.close's own
+    // ⌘W dispatch above already set: only the mouse-driven close paths
+    // (WorkTabShell's ✕ button and overflow-menu items) route through
+    // closeAndClearScratch/closeAllTabs's clearScratch wrapping; the
+    // keyboard dispatch path calls the store directly, unchanged by
+    // this goal.
+    run: () => useAppStore.getState().closeAllWorkTabs(),
+  },
+  {
     id: 'workflow.new',
     label: 'New workflow',
     defaultBinding: { mods: ['cmd'], key: 'N' },
@@ -141,6 +177,12 @@ export const COMMANDS: Command[] = [
     // do via canvasCommandRequest.
     defaultBinding: { mods: ['cmd'], key: 'K' },
     run: () => useAppStore.getState().togglePalette(),
+  },
+  {
+    id: 'view.home',
+    label: 'Go to Home',
+    defaultBinding: { mods: ['cmd'], key: '0' },
+    run: () => setView({ kind: 'home' }),
   },
   {
     id: 'view.composition',

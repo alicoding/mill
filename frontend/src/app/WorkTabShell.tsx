@@ -14,6 +14,7 @@ import { RequestForm } from '../configure/RequestForm'
 import { RequestSummary } from '../configure/RequestSummary'
 import editorStyles from '../composition/CompositionView.module.css'
 import { tabLabel } from './workTabLabel'
+import { HotkeyHint } from './HotkeyHint'
 import styles from './WorkTabShell.module.css'
 
 // The ONE app-wide work-tab strip (docs/SPEC.md §3.8, direct user
@@ -234,9 +235,18 @@ export function WorkTabShell({ pageLabel, pageIcon, titlebarSlot, children }: { 
                   onSelect={() => { if (activeWorkTabKey) closeOtherTabs(activeWorkTabKey) }}
                 >
                   Close other tabs
+                  {/* Inline hotkey hint (docs/goals/0015) -- reads the
+                      SAME registry Settings' Keyboard Shortcuts list
+                      reads from, never a second hardcoded copy. */}
+                  <ActionList.TrailingVisual>
+                    <HotkeyHint commandId="tab.closeOthers" />
+                  </ActionList.TrailingVisual>
                 </ActionList.Item>
                 <ActionList.Item variant="danger" onSelect={closeAllTabs}>
                   Close all tabs
+                  <ActionList.TrailingVisual>
+                    <HotkeyHint commandId="tab.closeAll" />
+                  </ActionList.TrailingVisual>
                 </ActionList.Item>
               </ActionList>
             </ActionMenu.Overlay>
