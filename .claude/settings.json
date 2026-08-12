@@ -1,0 +1,14 @@
+{
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo '{\"hookSpecificOutput\":{\"hookEventName\":\"UserPromptSubmit\",\"additionalContext\":\"Reminder: if this is new/ad-hoc work, name where it lands vs docs/goals/BACKLOG.md before implementing.\"}}'"
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -21,8 +21,29 @@ in archive/ for the full verdict trail if ever needed).
 
 ## Queue
 
-Ratified 2026-08-10 (owner): three groups, A→B→C. 0001 stays standing
-live-review material, interleaved during owner reviews, not a lane.
+Reprioritized 2026-08-11 (owner asked for the backlog to always carry
+the right order; session-born work reconciled into goal files the same
+day — see the header rule below). Standing rule, added to CLAUDE.md's
+backlog section in the same commit: **work discovered mid-session that
+outlives the session gets a goal file and a queue position before the
+session ends — never left only in an ephemeral session task list.**
+
+**Group D — Trust the substrate (2026-08-11, owner-mandated: "do it
+properly once"; ordered first because everything else ships through
+this pipeline and on this code)**
+1. [ ] [0024 — CI/CD target architecture + operating model](0024-cicd-target-architecture.md)
+   — IN FLIGHT: catch-up pushed, e2e triage + target-architecture
+   build land next, then the ruleset on a green main (ADR-0034)
+2. [ ] [0025 — Substance hardening](0025-substance-hardening.md) —
+   fix the audited green-but-wrong class (12 silent persistence
+   sites, unfailable test fake, uncovered safety-badge source);
+   frontend half already largely clean
+3. [ ] [0023 — Attention escalation](0023-attention-escalation.md) —
+   floating approval prompt + idle-aware presence + alert-style +
+   cross-device forward (twice-observed missed-decision pain)
+
+**Ratified 2026-08-10 (owner): three groups, A→B→C. 0001 stays standing
+live-review material, interleaved during owner reviews, not a lane.**
 
 **Group A — Foundation**
 1. [x] [0009 — E2e parallel isolation](archive/0009-e2e-parallel-isolation.md) — delivered 2026-08-10: 107/107 ×3 at 42-49s (was ~10min serial); double-run discipline retired structurally
@@ -41,7 +62,7 @@ live-review material, interleaved during owner reviews, not a lane.
 8. [x] [0013 — Canonical type system](archive/0013-canonical-type-system.md) — COMPLETE 2026-08-10 (typedfield leaf pkg; all 4 vocabularies converged incl. openapispec Phase 3; the #1 kernel investment)
 9. [ ] [0011 — Lists maturation](0011-lists-maturation.md) (typed datasets + List Search per SPEC §3.2.2's reference review; evidence-gap research first)
 10. [x] [0014 — Home dashboard / value mirror](archive/0014-home-dashboard.md) — delivered 2026-08-10 (Recharts, industry-decided metric semantics, editable minutes-saved, default landing)
-11. [ ] [0015 — Summon quick-invoke](0015-summon-quick-invoke.md) — CORE delivered 2026-08-11 (⌘K palette: commands with inline shortcuts, workflow run, tab jump/close; delegated build). Remainder open: frecency/pins (needs the 0014 usage substrate), Configure entities, pending-review count, ⌘?/⌘/ alias (needs multi-binding registry support)
+11. [ ] [0015 — Summon quick-invoke](0015-summon-quick-invoke.md) — CORE delivered 2026-08-11 (⌘K palette: commands with inline shortcuts, workflow run, tab jump/close; delegated build); PHASE 2 delivered same day (ADR-0033: the summon hotkey opens a dedicated floating Quick Panel — frameless, floats over fullscreen, Esc/blur dismiss, focus-yield; supersedes "summon opens the main window"). Remainder open: frecency/pins (needs the 0014 usage substrate), Configure entities, pending-review count, ⌘?/⌘/ alias (needs multi-binding registry support)
 12. [x] [0022 — Workflow view mode](archive/0022-workflow-view-mode.md) — delivered 2026-08-11 (row click → read-only canvas w/ Run+step-debug; Edit explicit in-place mode switch; breakpoint dot moved onto the node card, both modes; fixed a latent bug where a policy deny could hide a breakpoint's existence)
 13. [x] [0020 — Workflow breakpoints](archive/0020-workflow-breakpoints.md) — delivered 2026-08-11 (ADR-0031 full scope incl. step mode + MCP debug tools; delegated build; found+fixed the ExecuteOptions.WorkflowID never-set bug that silently disabled all workflow/instance-scoped guardrail rules at runtime)
 

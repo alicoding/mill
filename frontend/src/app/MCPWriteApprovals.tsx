@@ -16,6 +16,7 @@ import styles from './App.module.css'
 // request raised before this window rendered still shows up.
 export function MCPWriteApprovals() {
   const [pending, setPending] = useState<MCPWriteRequest[]>([])
+  const [error, setError] = useState('')
 
   const refresh = () => {
     SettingsService.PendingMCPWrites().then((p) => setPending(p ?? [])).catch(() => {})
@@ -26,13 +27,22 @@ export function MCPWriteApprovals() {
     return Events.On('mcp-write-approval', () => refresh())
   }, [])
 
+  // A direct user action's failure is SURFACED, never swallowed --
+  // audit-caught (2026-08-11): this used to be `.catch(() => {})` while
+  // ReviewView's resolveWrite for the identical action correctly showed
+  // the error; two paths to one guarded action must both tell the user
+  // when it didn't work. Background refresh above stays best-effort.
   const resolve = (id: string, approve: boolean) => {
-    SettingsService.ResolveMCPWrite(id, approve).catch(() => {}).finally(refresh)
+    setError('')
+    SettingsService.ResolveMCPWrite(id, approve).catch((err) => setError(String(err))).finally(refresh)
   }
 
-  if (pending.length === 0) return null
+  if (pending.length === 0 && !error) return null
   return (
     <div className={styles.mcpApprovalBanner} data-testid="mcp-write-approval-banner">
+      {error && (
+        <Text as="p" size="small" data-testid="mcp-write-approval-error">{error}</Text>
+      )}
       {pending.map((p) => (
         <Stack key={p.id} direction="horizontal" gap="condensed" align="center" justify="space-between">
           <Stack direction="horizontal" gap="condensed" align="center">

@@ -180,7 +180,12 @@ function App() {
   }, [colorMode, resolvedColorMode]);
 
   useEffect(() => {
-    Events.On('time', (timeValue) => {
+    // Unsubscribe returned like every other Events.On in this file --
+    // audit-caught (2026-08-11): this was the ONE subscription of six
+    // here with no cleanup, stacking a duplicate 'time' listener per
+    // HMR remount (the exact stray-listener class the build-identity
+    // comment above already documents for a reverted mechanism).
+    const off = Events.On('time', (timeValue) => {
       // On a narrow screen the full RFC1123 stamp is too wide for the footer, so
       // show just the clock time there (matching the CSS breakpoint).
       const full = timeValue.data;
@@ -189,6 +194,7 @@ function App() {
     });
     // Reload WML so it picks up the wml tags
     WML.Reload();
+    return off;
   }, []);
 
   useEffect(() => {
