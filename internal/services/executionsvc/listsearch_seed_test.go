@@ -61,11 +61,14 @@ func TestSeededListSearchExample_Match_WritesTypedResult(t *testing.T) {
 	if summary.Status != "SUCCESS" {
 		t.Fatalf("RunWorkflow(code=US) status = %q, want SUCCESS -- error: %s", summary.Status, summary.Error)
 	}
-	// The seed's final step (apply-clipboard-write-text) writes the
-	// captured code itself -- list-search's own typed result lives in
-	// the 'searchResult' Attribute, not the string Payload/Output,
-	// proven at the composition-unit-test layer
-	// (listsearch_test.go) rather than re-asserted here.
+	// The seed ends AT list-search itself (no terminal apply step --
+	// a real Linux-CI clipboard failure caught during goal 0011's own
+	// PR is why, see builtinworkflows_list.go), so the workflow's
+	// final Payload/Output is still whatever capture-attribute set it
+	// to; list-search's own typed result lives in the 'searchResult'
+	// Attribute, not the string Payload/Output, proven at the
+	// composition-unit-test layer (listsearch_test.go) rather than
+	// re-asserted here.
 	if summary.Output != "US" {
 		t.Errorf("RunWorkflow(code=US) output = %q, want %q", summary.Output, "US")
 	}
@@ -77,8 +80,7 @@ func TestSeededListSearchExample_NoMatch_WritesUnmatchedResult(t *testing.T) {
 	// Unlike list-lookup's onMiss="fail" default, list-search never
 	// fails the run on a miss -- it always writes a typed
 	// {matched:false, results:[], ...} object and lets the workflow
-	// continue (a Decision downstream would branch on it). The seed's
-	// own apply-clipboard-write-text step still runs.
+	// continue (a Decision downstream would branch on it).
 	summary, err := exec.RunWorkflow(wfID, RunKindTest, map[string]string{"code": "ZZ"})
 	if err != nil {
 		t.Fatalf("RunWorkflow: %v", err)
