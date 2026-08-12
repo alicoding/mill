@@ -15,7 +15,7 @@ var ErrUnsupportedInServerMode = errors.New("global hotkeys are not available in
 type Binding struct{}
 
 // Bind always fails in server mode; see ErrUnsupportedInServerMode.
-func Bind(mods []string, key string) (*Binding, error) {
+func Bind(_ []string, _ string) (*Binding, error) {
 	return nil, ErrUnsupportedInServerMode
 }
 

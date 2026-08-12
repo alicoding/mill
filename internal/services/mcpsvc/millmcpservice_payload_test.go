@@ -48,7 +48,7 @@ func TestMCPRunWorkflow_PayloadFlowsIntoCaptureFile(t *testing.T) {
 	}
 
 	path := filepath.Join(t.TempDir(), "page.html")
-	if err := os.WriteFile(path, []byte("<main>payload over MCP works</main>"), 0o644); err != nil {
+	if err := os.WriteFile(path, []byte("<main>payload over MCP works</main>"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 

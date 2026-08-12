@@ -27,7 +27,7 @@ func TestResumeAfterFailure_DoesNotReExecuteCheckpointedStep(t *testing.T) {
 	var step1Runs int32
 	var step2Attempts int32
 
-	step1 := func(_ context.Context) (string, error) {
+	step1 := func(_ context.Context) (string, error) { //nolint:unparam // Step[R]'s func(context.Context) (R, error) shape is required by RunAsStep's generic constraint; this step just never fails in this scenario
 		atomic.AddInt32(&step1Runs, 1)
 		return "step1-output", nil
 	}

@@ -14,10 +14,10 @@ var ErrUnsupportedInServerMode = errors.New("OS notifications are not available 
 func Start() error { return ErrUnsupportedInServerMode }
 
 // OnResponse is a no-op in server mode -- nothing ever calls callback.
-func OnResponse(callback func(Response)) {}
+func OnResponse(_ func(Response)) {}
 
 // SendActionable is a no-op in server mode.
-func SendActionable(id, title, body string) error { return ErrUnsupportedInServerMode }
+func SendActionable(_, _, _ string) error { return ErrUnsupportedInServerMode }
 
 // SendPlain is a no-op in server mode.
-func SendPlain(id, title, body string) error { return ErrUnsupportedInServerMode }
+func SendPlain(_, _, _ string) error { return ErrUnsupportedInServerMode }

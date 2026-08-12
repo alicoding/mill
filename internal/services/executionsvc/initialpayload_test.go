@@ -30,7 +30,7 @@ func TestRunWorkflowWithPayload_TestKind_FlowsIntoCaptureFile(t *testing.T) {
 	}
 
 	path := filepath.Join(t.TempDir(), "page.html")
-	if err := os.WriteFile(path, []byte("<main>hello payload</main>"), 0o644); err != nil {
+	if err := os.WriteFile(path, []byte("<main>hello payload</main>"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 

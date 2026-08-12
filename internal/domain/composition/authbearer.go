@@ -10,7 +10,7 @@ import (
 // from the original AuthHeader switch (ADR-0015), byte-identical
 // behavior.
 func init() {
-	RegisterAuthStrategy(httprequest.AuthBearer, func(rc ResolvedHTTPRequest, method, path string, headers map[string]string, query url.Values, body string) error {
+	RegisterAuthStrategy(httprequest.AuthBearer, func(rc ResolvedHTTPRequest, _, _ string, headers map[string]string, _ url.Values, _ string) error {
 		headers["Authorization"] = "Bearer " + rc.Secret
 		return nil
 	})

@@ -18,7 +18,7 @@ const (
 	DenyActionID    = "deny"
 	// CategoryMCPWrite groups the two actions above under one reusable
 	// category, registered once at startup (Start).
-	CategoryMCPWrite = "mill-mcp-write"
+	CategoryMCPWrite = "mill-mcp-write" //nolint:gosec // an OS-notification category name, not a credential (G101 false positive)
 	// DefaultActionID mirrors notifications.DefaultActionIdentifier --
 	// the ActionIdentifier a Response carries when the user clicked the
 	// notification body itself, not an action button. Hardcoded rather

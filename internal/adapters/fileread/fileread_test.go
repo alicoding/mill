@@ -10,7 +10,7 @@ import (
 func TestRead_ReturnsFileContents(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "page.html")
 	const want = "<main id=\"main-content\">hello</main>"
-	if err := os.WriteFile(path, []byte(want), 0o644); err != nil {
+	if err := os.WriteFile(path, []byte(want), 0o600); err != nil {
 		t.Fatal(err)
 	}
 
@@ -39,7 +39,7 @@ func TestRead_EmptyPath_Errors(t *testing.T) {
 
 func TestRead_OverSizeLimit_Errors(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "huge.html")
-	f, err := os.Create(path)
+	f, err := os.Create(path) //nolint:gosec // t.TempDir()-scoped test fixture path, not user input
 	if err != nil {
 		t.Fatal(err)
 	}

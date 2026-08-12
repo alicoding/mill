@@ -9,7 +9,7 @@ import (
 )
 
 func TestExecute_GET_ReturnsBodyAndStatus(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte(`{"ok":true}`))
 	}))
@@ -101,7 +101,7 @@ func TestExecute_QueryMethod_SendsBody(t *testing.T) {
 // covers the "pass a non-retried HTTP-level response through as data"
 // contract composition/integration.go's status check depends on.
 func TestExecute_NonRetriedStatus_NoError(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		_, _ = w.Write([]byte("boom"))
 	}))
@@ -132,7 +132,7 @@ func TestExecute_RetriedStatusExhausted_Errors(t *testing.T) {
 	})
 
 	var calls int
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		calls++
 		w.WriteHeader(http.StatusInternalServerError)
 		_, _ = w.Write([]byte("boom"))

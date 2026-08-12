@@ -233,7 +233,7 @@ func TestCreateHTTPRequest_AuthConfig_PersistsAndSurvivesRestore(t *testing.T) {
 	// (configureservice_test.go) for why.
 	cfg.requests = nil
 
-	auth := &httprequest.AuthConfig{OAuth2: &httprequest.OAuth2Config{
+	auth := &httprequest.AuthConfig{OAuth2: &httprequest.OAuth2Config{ //nolint:gosec // TokenURL below is a fixture URL, not a credential (G101 false positive)
 		GrantType: "client_credentials", TokenURL: "https://auth.example.com/token", ClientID: "client-1", Scope: "read",
 	}}
 	req, err := cfg.CreateHTTPRequest("OAuth2 API", "https://example.com", "", "", httprequest.AuthOAuth2, nil, "", auth, nil, "")

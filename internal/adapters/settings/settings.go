@@ -33,7 +33,7 @@ type Store interface {
 // install it won't exist yet. A missing file is not an error (first run);
 // Load only fails on a genuinely corrupt/unreadable file.
 func New(filename string) (*kvstore.KVStoreService, error) {
-	if err := os.MkdirAll(filepath.Dir(filename), 0o755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(filename), 0o750); err != nil {
 		return nil, fmt.Errorf("creating settings directory: %w", err)
 	}
 	store := kvstore.NewWithConfig(&kvstore.Config{

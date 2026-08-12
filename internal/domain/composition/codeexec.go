@@ -82,7 +82,7 @@ func SetCodeRunner(fn func(procexec.Spec) (*procexec.Handle, error)) {
 // here (waitForApprovalFn's own park/resume doesn't need one since it
 // blocks synchronously, but a live process handle needs to be
 // reachable from OUTSIDE this call while it's still running).
-var registerRunningProcessFn = func(runCtx any, nodeID string, h *procexec.Handle) func() {
+var registerRunningProcessFn = func(_ any, _ string, _ *procexec.Handle) func() {
 	return func() {}
 }
 

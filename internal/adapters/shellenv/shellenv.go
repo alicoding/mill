@@ -7,12 +7,19 @@
 package shellenv
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
 	"strings"
 	"time"
 )
+
+// captureTimeout bounds CapturePath's shell invocation -- a broken shell
+// profile can hang (a profile that prompts, an `exec` loop), and this
+// must not hang its caller (the RPC) indefinitely.
+const captureTimeout = 10 * time.Second
 
 // CapturePath runs the user's login shell (from $SHELL, falling back
 // to macOS's default /bin/zsh) with -l -c so the login startup files
@@ -26,23 +33,20 @@ func CapturePath() (string, error) {
 	if shell == "" {
 		shell = "/bin/zsh"
 	}
-	cmd := exec.Command(shell, "-l", "-c", `printf %s "$PATH"`)
-	// A broken shell profile can hang (a profile that prompts, an
-	// `exec` loop) -- bound it rather than hanging the RPC.
-	done := make(chan struct{})
-	var out []byte
-	var err error
-	go func() {
-		out, err = cmd.Output()
-		close(done)
-	}()
-	select {
-	case <-done:
-	case <-time.After(10 * time.Second):
-		_ = cmd.Process.Kill()
-		return "", fmt.Errorf("shell %s did not produce a PATH within 10s -- a login profile may be hanging", shell)
-	}
+	ctx, cancel := context.WithTimeout(context.Background(), captureTimeout)
+	defer cancel()
+	// shell comes from the user's own $SHELL (or the macOS default) --
+	// this process already runs with the user's own privileges, so
+	// there's no privilege boundary being crossed by running their own
+	// configured shell; exec.CommandContext never invokes a shell of its
+	// own (argv goes straight to execve), so there's no injection
+	// surface via the fixed "-l"/"-c"/printf arguments either.
+	cmd := exec.CommandContext(ctx, shell, "-l", "-c", `printf %s "$PATH"`) //nolint:gosec // runs the user's own $SHELL with the user's own privileges, by design
+	out, err := cmd.Output()
 	if err != nil {
+		if errors.Is(ctx.Err(), context.DeadlineExceeded) {
+			return "", fmt.Errorf("shell %s did not produce a PATH within %s -- a login profile may be hanging", shell, captureTimeout)
+		}
 		return "", fmt.Errorf("running %s -l failed: %w", shell, err)
 	}
 	path := strings.TrimSpace(string(out))

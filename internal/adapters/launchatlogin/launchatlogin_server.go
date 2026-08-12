@@ -3,16 +3,16 @@
 package launchatlogin
 
 // Enable always fails in server mode; see ErrUnsupportedInServerMode.
-func Enable(execPath string) error {
+func Enable(_ string) error {
 	return ErrUnsupportedInServerMode
 }
 
 // Disable always fails in server mode; see ErrUnsupportedInServerMode.
-func Disable(execPath string) error {
+func Disable(_ string) error {
 	return ErrUnsupportedInServerMode
 }
 
 // IsEnabled always fails in server mode; see ErrUnsupportedInServerMode.
-func IsEnabled(execPath string) (bool, error) {
+func IsEnabled(_ string) (bool, error) {
 	return false, ErrUnsupportedInServerMode
 }

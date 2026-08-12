@@ -5,6 +5,7 @@
 package clipboard
 
 import (
+	"context"
 	"encoding/hex"
 	"fmt"
 	"os/exec"
@@ -12,11 +13,18 @@ import (
 	"time"
 )
 
+// cmdTimeout bounds every osascript/pbcopy/pbpaste invocation below --
+// same fail-safe reasoning as mcpclient's own timeout const (docs/SPEC.md
+// §8): a hung clipboard subprocess must not hang its caller indefinitely.
+const cmdTimeout = 5 * time.Second
+
 // ReadHTML asks macOS for the HTML flavor of the current clipboard
 // contents. AppleScript returns raw AppleEvent data as a hex-encoded
 // "«data HTMLxxxx»" literal, so it needs unwrapping before it's usable HTML.
 func ReadHTML() (string, error) {
-	out, err := exec.Command("osascript", "-e", "the clipboard as «class HTML»").Output()
+	ctx, cancel := context.WithTimeout(context.Background(), cmdTimeout)
+	defer cancel()
+	out, err := exec.CommandContext(ctx, "osascript", "-e", "the clipboard as «class HTML»").Output()
 	if err != nil {
 		return "", fmt.Errorf("no HTML on clipboard: %w", err)
 	}
@@ -36,8 +44,14 @@ func ReadHTML() (string, error) {
 // HTML flavor from a hex-encoded "«data HTMLxxxx»" literal, the same
 // encoding it hands back when reading.
 func WriteHTML(html string) error {
+	// script is built entirely from a hex encoding of html, which by
+	// construction contains only [0-9a-f] -- there is no AppleScript
+	// metacharacter (a literal «, », or quote) html's raw bytes could
+	// ever inject into the assembled script.
 	script := "set the clipboard to «data HTML" + hex.EncodeToString([]byte(html)) + "»"
-	if err := exec.Command("osascript", "-e", script).Run(); err != nil {
+	ctx, cancel := context.WithTimeout(context.Background(), cmdTimeout)
+	defer cancel()
+	if err := exec.CommandContext(ctx, "osascript", "-e", script).Run(); err != nil { //nolint:gosec // script is hex-encoded (see above), no injectable characters possible
 		return fmt.Errorf("osascript set-clipboard failed: %w", err)
 	}
 	return nil
@@ -45,14 +59,18 @@ func WriteHTML(html string) error {
 
 // WriteText sets the clipboard's plain-text flavor via pbcopy.
 func WriteText(text string) error {
-	cmd := exec.Command("pbcopy")
+	ctx, cancel := context.WithTimeout(context.Background(), cmdTimeout)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, "pbcopy")
 	cmd.Stdin = strings.NewReader(text)
 	return cmd.Run()
 }
 
 // ReadText reads the clipboard's plain-text flavor via pbpaste.
 func ReadText() (string, error) {
-	out, err := exec.Command("pbpaste").Output()
+	ctx, cancel := context.WithTimeout(context.Background(), cmdTimeout)
+	defer cancel()
+	out, err := exec.CommandContext(ctx, "pbpaste").Output()
 	if err != nil {
 		return "", fmt.Errorf("pbpaste failed: %w", err)
 	}
@@ -69,7 +87,9 @@ func ReadText() (string, error) {
 // fallback order already has to answer implicitly, made directly
 // inspectable.
 func Info() (string, error) {
-	out, err := exec.Command("osascript", "-e", "clipboard info").Output()
+	ctx, cancel := context.WithTimeout(context.Background(), cmdTimeout)
+	defer cancel()
+	out, err := exec.CommandContext(ctx, "osascript", "-e", "clipboard info").Output()
 	if err != nil {
 		return "", fmt.Errorf("clipboard info failed: %w", err)
 	}
