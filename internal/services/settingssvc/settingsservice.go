@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"os"
 	"sync"
 	"time"
@@ -172,12 +173,22 @@ func (s *SettingsService) LoadWindowGeometry() (x, y, width, height int, maximiz
 	return g.X, g.Y, g.Width, g.Height, g.Maximized, true
 }
 
+// persistWindowGeometry is called from a debounced OnWindowEvent
+// callback (WatchWindowGeometry below), not a request a caller is
+// waiting on -- genuinely fire-and-forget background state, docs/goals/
+// 0025 item 1's own named example. Logged rather than silently dropped
+// so a persistent failure (e.g. a corrupted settings file) is at least
+// diagnosable; a single failed write just means the window reopens at
+// its default position/size next launch, not a data-loss-shaped bug.
 func (s *SettingsService) persistWindowGeometry(g windowGeometry) {
 	data, err := json.Marshal(g)
 	if err != nil {
+		slog.Error("failed to marshal window geometry", "error", err)
 		return
 	}
-	_ = s.store.Set(windowGeometryKey, string(data))
+	if err := s.store.Set(windowGeometryKey, string(data)); err != nil {
+		slog.Error("failed to persist window geometry", "error", err)
+	}
 }
 
 // WatchWindowGeometry wires OnWindowEvent listeners (events.Common.
@@ -329,12 +340,20 @@ func (s *SettingsService) GetMCPWriteEnabled() bool {
 	return ok && v == "true"
 }
 
-func (s *SettingsService) SetMCPWriteEnabled(enabled bool) {
+// SetMCPWriteEnabled returns the persist error (docs/goals/0025 item 1)
+// rather than swallowing it -- this is a security-relevant toggle
+// (whether an external MCP client may write to this instance at all);
+// a click that silently failed to take effect is exactly the kind of
+// gap §8's fail-safe posture exists to prevent.
+func (s *SettingsService) SetMCPWriteEnabled(enabled bool) error {
 	val := "false"
 	if enabled {
 		val = "true"
 	}
-	_ = s.store.Set(mcpsvc.MCPWriteEnabledKey, val)
+	if err := s.store.Set(mcpsvc.MCPWriteEnabledKey, val); err != nil {
+		return fmt.Errorf("save MCP write toggle: %w", err)
+	}
+	return nil
 }
 
 // GetMCPWriteApprovalRequired/SetMCPWriteApprovalRequired own the
@@ -352,12 +371,20 @@ func (s *SettingsService) GetMCPWriteApprovalRequired() bool {
 	return v == "true"
 }
 
-func (s *SettingsService) SetMCPWriteApprovalRequired(required bool) {
+// SetMCPWriteApprovalRequired returns the persist error, same reasoning
+// as SetMCPWriteEnabled -- relaxing this to "unattended" (required =
+// false) failing to save silently is a security-relevant gap;
+// re-tightening it (required = true) failing to save silently would be
+// worse (the user believes approval is required again when it isn't).
+func (s *SettingsService) SetMCPWriteApprovalRequired(required bool) error {
 	val := "false"
 	if required {
 		val = "true"
 	}
-	_ = s.store.Set(mcpsvc.MCPWriteApprovalKey, val)
+	if err := s.store.Set(mcpsvc.MCPWriteApprovalKey, val); err != nil {
+		return fmt.Errorf("save MCP write approval toggle: %w", err)
+	}
+	return nil
 }
 
 // SetMCPService late-binds the MCP service so the two pending-write

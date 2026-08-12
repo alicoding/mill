@@ -108,6 +108,67 @@ func TestAssignHotkey_RejectsConflict(t *testing.T) {
 	}
 }
 
+// TestFinalizeHotkeyAssignment_RejectsConflictArisingAfterTheEarlyCheck
+// is the docs/goals/0025 item 5 repro for AssignHotkey's TOCTOU window:
+// finalizeHotkeyAssignment is the re-check-under-lock AssignHotkey runs
+// AFTER its own real hotkey.Bind() probe -- exactly the point where a
+// second, concurrent AssignHotkey call for a different workflow could
+// have raced in and claimed the same combo in between. Calling it
+// directly (skipping the real OS bind, which can't run headless -- see
+// this file's own header comment) simulates exactly that outcome: seed
+// the conflicting binding as if another goroutine had just won the
+// race, then assert this call sees it and rejects, the same way the
+// live re-check would.
+func TestFinalizeHotkeyAssignment_RejectsConflictArisingAfterTheEarlyCheck(t *testing.T) {
+	store := servicetest.NewFakeStore()
+	comp := compositionsvc.NewCompositionService(store)
+	s := NewTriggerService(comp, slog.Default(), store)
+
+	// Simulates a second, concurrent AssignHotkey call having already
+	// won the race and claimed this combo for a different workflow,
+	// after this call's own earlier (unlocked) CheckConflict already
+	// passed -- the exact interleaving finalizeHotkeyAssignment exists
+	// to catch.
+	s.hkRaw["load-sample-html-workflow"] = PersistedHotkey{Mods: []string{"cmd", "shift"}, Key: "M"}
+
+	label, err := s.finalizeHotkeyAssignment("clipboard-html-to-markdown-workflow", []string{"cmd", "shift"}, "M")
+	if err == nil {
+		t.Fatalf("finalizeHotkeyAssignment() with a now-conflicting combo: want error, got label %q", label)
+	}
+	if !strings.Contains(err.Error(), "Load sample HTML") {
+		t.Errorf("finalizeHotkeyAssignment() error = %q, want it to name the conflicting workflow", err.Error())
+	}
+	// The losing call must not have written its own binding -- s.hkRaw
+	// must still show only the winner's entry.
+	if _, wrote := s.hkRaw["clipboard-html-to-markdown-workflow"]; wrote {
+		t.Error("finalizeHotkeyAssignment() wrote a binding for the losing workflow despite returning an error")
+	}
+}
+
+// TestFinalizeHotkeyAssignment_NoConflict_WritesBinding is the
+// companion happy-path case: with no conflicting entry, the re-check
+// passes and the binding is recorded in s.hkRaw.
+func TestFinalizeHotkeyAssignment_NoConflict_WritesBinding(t *testing.T) {
+	store := servicetest.NewFakeStore()
+	comp := compositionsvc.NewCompositionService(store)
+	s := NewTriggerService(comp, slog.Default(), store)
+
+	label, err := s.finalizeHotkeyAssignment("some-workflow", []string{"cmd", "shift"}, "M")
+	if err != nil {
+		t.Fatalf("finalizeHotkeyAssignment() error = %v, want nil", err)
+	}
+	if label == "" {
+		t.Error("finalizeHotkeyAssignment() returned an empty label on success")
+	}
+	hk, ok := s.hkRaw["some-workflow"]
+	if !ok {
+		t.Fatal("finalizeHotkeyAssignment() did not write a binding for some-workflow")
+	}
+	if hk.Key != "M" || len(hk.Mods) != 2 {
+		t.Errorf("finalizeHotkeyAssignment() wrote %+v, want {Mods:[cmd shift] Key:M}", hk)
+	}
+}
+
 func TestAssignHotkey_RequiresAtLeastOneModifier(t *testing.T) {
 	store := servicetest.NewFakeStore()
 	comp := compositionsvc.NewCompositionService(store)

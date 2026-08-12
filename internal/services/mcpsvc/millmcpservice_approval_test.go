@@ -9,6 +9,7 @@ package mcpsvc
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"strings"
 	"testing"
 	"time"
@@ -19,6 +20,11 @@ import (
 	"github.com/alicoding/mill/internal/services/servicetest"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
+
+// errFakeMCPPersist is the injected failure servicetest.FakeStore.SetErr
+// returns for the persist-failure tests below (docs/goals/0025 items
+// 1/2).
+var errFakeMCPPersist = errors.New("fake persist failure")
 
 
 // mcpApprovalHarness spins up a real MillMCPService + real MCP client
@@ -382,5 +388,88 @@ func TestMCPWriteTools_RestartSurvival_PendingRecordSurvivesNewServiceInstance(t
 	case <-mcpDone:
 	case <-time.After(2 * time.Second):
 		t.Log("original instance's gateWrite call did not return before test end (harmless: its own courtesy window simply elapsed on an id nobody there ever resolved)")
+	}
+}
+
+// docs/goals/0025 items 1/2: persistWritesLocked used to swallow its
+// error (`_ = m.store.Set(...)`), so a failed durable park looked
+// exactly like a successful one to the caller, and a failed resolution
+// record looked like nothing had gone wrong at all. Called directly
+// (bypassing the real HTTP/MCP-client harness the other tests in this
+// file use) since gateWrite/ResolveMCPWrite are plain unexported
+// methods here in-package -- no server needs to be running to exercise
+// the park-and-poll persistence path itself.
+
+func TestGateWrite_PersistFailureAtParkTime_ReturnsErrorAndLeavesNoRecord(t *testing.T) {
+	store := servicetest.NewFakeStore()
+	comp := compositionsvc.NewCompositionService(store)
+	cfg := configuresvc.NewConfigureService(store, comp, servicetest.FakeCredentialStore{})
+	m := NewMillMCPService("0.0.0-test", comp, cfg, store)
+
+	// approvalRequired() defaults to true with nothing set -- gateWrite
+	// takes the park path, which is where the persist call under test
+	// lives; it fails before ever reaching the courtesy-window wait, so
+	// this returns immediately regardless of mcpWriteCourtesyWindow.
+	store.SetErr = errFakeMCPPersist
+	res, err := m.gateWrite("some_tool", "a test write that should never durably park", "{}")
+	if err == nil {
+		t.Fatalf("gateWrite() with a failing store: want error, got nil (res=%+v)", res)
+	}
+
+	store.SetErr = nil
+	if pending := m.PendingMCPWrites(); len(pending) != 0 {
+		t.Errorf("PendingMCPWrites() after a failed park = %+v, want empty -- a write that failed to durably persist must not sit in memory looking parked", pending)
+	}
+}
+
+// TestResolveMCPWrite_PersistFailure_StillDeniesButReturnsError covers
+// the DENY path specifically (not approve): denying has no real side
+// effect to worry about re-running, so this is the case where
+// finalizeLocked's own deliberate no-rollback choice is safe to assert
+// directly -- the decision still applies in memory (Status flips to
+// denied) even though the durable record of it failed to save, and
+// that failure is still surfaced to the caller rather than swallowed.
+func TestResolveMCPWrite_PersistFailure_StillDeniesButReturnsError(t *testing.T) {
+	store := servicetest.NewFakeStore()
+	comp := compositionsvc.NewCompositionService(store)
+	cfg := configuresvc.NewConfigureService(store, comp, servicetest.FakeCredentialStore{})
+	m := NewMillMCPService("0.0.0-test", comp, cfg, store)
+
+	mcpWriteCourtesyWindow = 10 * time.Millisecond
+	t.Cleanup(func() { mcpWriteCourtesyWindow = 10 * time.Second })
+
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		_, _ = m.gateWrite("some_tool", "a test write to deny", "{}")
+	}()
+
+	var id string
+	deadline := time.Now().Add(2 * time.Second)
+	for time.Now().Before(deadline) {
+		if pending := m.PendingMCPWrites(); len(pending) == 1 {
+			id = pending[0].ID
+			break
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+	if id == "" {
+		t.Fatal("write never parked")
+	}
+	<-done // let the courtesy window elapse so gateWrite's own call returns
+
+	store.SetErr = errFakeMCPPersist
+	err := m.ResolveMCPWrite(id, false)
+	if err == nil {
+		t.Fatal("ResolveMCPWrite(deny) with a failing store: want error, got nil")
+	}
+	store.SetErr = nil
+
+	status, ok := m.writeStatus(id)
+	if !ok {
+		t.Fatal("writeStatus after a failed-to-persist denial: record disappeared entirely")
+	}
+	if status.Status != string(MCPWriteStatusDenied) {
+		t.Errorf("writeStatus.Status = %q, want %q -- the denial decision itself is real even though it failed to durably save", status.Status, MCPWriteStatusDenied)
 	}
 }

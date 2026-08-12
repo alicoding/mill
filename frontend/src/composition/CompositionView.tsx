@@ -109,7 +109,12 @@ function CompositionView() {
           pushActivity({
             id: crypto.randomUUID(), time: new Date().toLocaleTimeString(), timestamp: Date.now(),
             source: 'composition', workflowID: id, label,
-            success: false, detail: summary.error, result: '',
+            // result carries the ERROR on failure (not '') so the row
+            // stays expandable and the full error is inspectable, same
+            // as a success's output -- §1's nothing-hidden applied to
+            // failures. Found via Linux CI: clipboard steps fail there,
+            // and '' made every failed row silently unexpandable.
+            success: false, detail: summary.error, result: summary.error,
           })
           return
         }
@@ -125,7 +130,7 @@ function CompositionView() {
         pushActivity({
           id: crypto.randomUUID(), time: new Date().toLocaleTimeString(), timestamp: Date.now(),
           source: 'composition', workflowID: id, label,
-          success: false, detail: String(err), result: '',
+          success: false, detail: String(err), result: String(err),
         })
       })
       .finally(() => setRunningId(null))

@@ -1,6 +1,7 @@
 package settingssvc
 
 import (
+	"errors"
 	"log/slog"
 	"strings"
 	"testing"
@@ -9,6 +10,11 @@ import (
 	"github.com/alicoding/mill/internal/services/servicetest"
 	"github.com/alicoding/mill/internal/services/triggersvc"
 )
+
+// errFakeSettingsPersist is the injected failure servicetest.FakeStore.
+// SetErr returns for the persist-failure tests below (docs/goals/0025
+// items 1/2).
+var errFakeSettingsPersist = errors.New("fake persist failure")
 
 // Same "seed state directly, assert rejection happens before any real
 // OS call" discipline as settingsservice_test.go's summon-hotkey tests
@@ -116,7 +122,9 @@ func TestClearKeybinding_RemovesOverride(t *testing.T) {
 	if _, err := set.SetKeybinding("workflow.new", []string{"cmd", "shift"}, "N"); err != nil {
 		t.Fatalf("SetKeybinding() error = %v, want nil", err)
 	}
-	set.ClearKeybinding("workflow.new")
+	if err := set.ClearKeybinding("workflow.new"); err != nil {
+		t.Fatalf("ClearKeybinding() error = %v, want nil", err)
+	}
 
 	if _, ok := set.ListKeybindings()["workflow.new"]; ok {
 		t.Error("ListKeybindings() still has workflow.new after ClearKeybinding()")
@@ -129,7 +137,9 @@ func TestClearKeybinding_UnknownCommand_DoesNotPanic(t *testing.T) {
 	trig := triggersvc.NewTriggerService(comp, slog.Default(), store)
 	set := NewSettingsService(store, trig, false)
 
-	set.ClearKeybinding("does.not.exist")
+	if err := set.ClearKeybinding("does.not.exist"); err != nil {
+		t.Fatalf("ClearKeybinding() on an unknown command error = %v, want nil", err)
+	}
 }
 
 func TestListKeybindings_EmptyWhenNothingOverridden(t *testing.T) {
@@ -163,5 +173,50 @@ func TestKeymap_PersistsAndReloads(t *testing.T) {
 	}
 	if len(hk.Mods) != 1 || hk.Mods[0] != "cmd" || hk.Key != "R" {
 		t.Errorf("reloaded ListKeybindings()[workflow.run] = %+v, want {Mods:[cmd] Key:R}", hk)
+	}
+}
+
+// docs/goals/0025 items 1/2, the settingssvc keymap path specifically
+// named in the audit: SetKeybinding/ClearKeybinding used to swallow
+// persistKeymap's error, leaving a phantom-saved (Set) or
+// non-rolled-back (Clear) override in memory whenever the store write
+// actually failed -- servicetest.FakeStore.SetErr makes this
+// reproducible for the first time.
+
+func TestSetKeybinding_PersistFailure_ReturnsErrorAndDoesNotPhantomSave(t *testing.T) {
+	store := servicetest.NewFakeStore()
+	comp := compositionsvc.NewCompositionService(store)
+	trig := triggersvc.NewTriggerService(comp, slog.Default(), store)
+	set := NewSettingsService(store, trig, false)
+
+	store.SetErr = errFakeSettingsPersist
+	if _, err := set.SetKeybinding("workflow.save", []string{"cmd", "shift"}, "S"); err == nil {
+		t.Fatal("SetKeybinding() with a failing store: want error, got nil")
+	}
+
+	store.SetErr = nil
+	if got := set.ListKeybindings(); len(got) != 0 {
+		t.Errorf("ListKeybindings() after a failed SetKeybinding = %v, want empty (no phantom-saved override)", got)
+	}
+}
+
+func TestClearKeybinding_PersistFailure_ReturnsErrorAndRestoresOverride(t *testing.T) {
+	store := servicetest.NewFakeStore()
+	comp := compositionsvc.NewCompositionService(store)
+	trig := triggersvc.NewTriggerService(comp, slog.Default(), store)
+	set := NewSettingsService(store, trig, false)
+
+	if _, err := set.SetKeybinding("workflow.save", []string{"cmd", "shift"}, "S"); err != nil {
+		t.Fatalf("SetKeybinding() error = %v, want nil", err)
+	}
+
+	store.SetErr = errFakeSettingsPersist
+	if err := set.ClearKeybinding("workflow.save"); err == nil {
+		t.Fatal("ClearKeybinding() with a failing store: want error, got nil")
+	}
+
+	store.SetErr = nil
+	if _, ok := set.ListKeybindings()["workflow.save"]; !ok {
+		t.Error("ListKeybindings() lost the workflow.save override after a failed ClearKeybinding -- the removal was not rolled back")
 	}
 }

@@ -13,6 +13,13 @@ package servicetest
 // persist/restore plumbing can be tested without a real file on disk.
 type FakeStore struct {
 	data map[string]any
+	// SetErr, when non-nil, is returned by Set instead of actually
+	// storing the value -- failure injection for docs/goals/0025's
+	// persistence-error-propagation class, which was structurally
+	// untestable before this (every persist() call site swallowed its
+	// error with `_ =`, so there was no way to make Set fail and observe
+	// what a caller did about it).
+	SetErr error
 }
 
 // NewFakeStore returns an empty in-memory store.
@@ -25,8 +32,12 @@ func (f *FakeStore) Get(key string) any {
 	return f.data[key]
 }
 
-// Set stores value under key.
+// Set stores value under key, or returns SetErr without storing anything
+// if it's set -- see SetErr's own doc comment.
 func (f *FakeStore) Set(key string, value any) error {
+	if f.SetErr != nil {
+		return f.SetErr
+	}
 	f.data[key] = value
 	return nil
 }

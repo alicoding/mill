@@ -110,7 +110,9 @@ func TestSettingsService_PersistAndLoadSummonHotkey(t *testing.T) {
 	set := NewSettingsService(store, trig, false)
 
 	set.summonHK = triggersvc.PersistedHotkey{Mods: []string{"option", "shift"}, Key: "Space"}
-	set.persistSummonHotkey()
+	if err := set.persistSummonHotkey(); err != nil {
+		t.Fatalf("persistSummonHotkey: %v", err)
+	}
 
 	reloaded := NewSettingsService(store, trig, false)
 	if got := reloaded.GetSummonHotkey(); got == "" {

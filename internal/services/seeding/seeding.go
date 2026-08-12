@@ -11,6 +11,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"regexp"
 	"sort"
 	"strings"
@@ -66,10 +67,14 @@ func LoadTombstones(store settings.Store) map[string]bool {
 // RecordTombstone persists id into the tombstone list -- call only for
 // IDs that belong to a built-in seed set (a user-authored ID can never
 // be resurrected by top-up, so tombstoning it would be dead weight).
-func RecordTombstone(store settings.Store, id string) {
+// Returns the persist error so a caller deleting a built-in can decide
+// whether to roll the deletion back rather than silently leaving an
+// untombstoned built-in that top-up seeding would resurrect on the next
+// restart (docs/goals/0025 item 1/2).
+func RecordTombstone(store settings.Store, id string) error {
 	tombstones := LoadTombstones(store)
 	if tombstones[id] {
-		return
+		return nil
 	}
 	tombstones[id] = true
 	ids := make([]string, 0, len(tombstones))
@@ -79,7 +84,10 @@ func RecordTombstone(store settings.Store, id string) {
 	sort.Strings(ids)
 	data, err := json.Marshal(ids)
 	if err != nil {
-		return
+		return fmt.Errorf("marshal seed tombstones: %w", err)
 	}
-	_ = store.Set(seedTombstonesKey, string(data))
+	if err := store.Set(seedTombstonesKey, string(data)); err != nil {
+		return fmt.Errorf("persist seed tombstones: %w", err)
+	}
+	return nil
 }

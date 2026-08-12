@@ -51,7 +51,7 @@ func (s *SettingsService) loadPersistedKeymap() {
 	s.mu.Unlock()
 }
 
-func (s *SettingsService) persistKeymap() {
+func (s *SettingsService) persistKeymap() error {
 	s.mu.Lock()
 	raw := make(map[string]triggersvc.PersistedHotkey, len(s.keymap))
 	for id, hk := range s.keymap {
@@ -61,9 +61,12 @@ func (s *SettingsService) persistKeymap() {
 
 	data, err := json.Marshal(raw)
 	if err != nil {
-		return
+		return fmt.Errorf("marshal command keybindings: %w", err)
 	}
-	_ = s.store.Set(keymapKey, string(data))
+	if err := s.store.Set(keymapKey, string(data)); err != nil {
+		return fmt.Errorf("persist command keybindings: %w", err)
+	}
+	return nil
 }
 
 // ListKeybindings returns every command-keybinding OVERRIDE, raw
@@ -118,18 +121,47 @@ func (s *SettingsService) SetKeybinding(commandID string, mods []string, key str
 	if s.keymap == nil {
 		s.keymap = map[string]triggersvc.PersistedHotkey{}
 	}
+	previous, hadPrevious := s.keymap[commandID]
 	s.keymap[commandID] = triggersvc.PersistedHotkey{Mods: mods, Key: key}
 	s.mu.Unlock()
-	s.persistKeymap()
+
+	if err := s.persistKeymap(); err != nil {
+		// Don't leave a phantom-saved override in memory that a restart
+		// would drop (docs/goals/0025 item 2) -- restore whatever was
+		// there before (nothing, for a command that was still on its
+		// frontend default).
+		s.mu.Lock()
+		if hadPrevious {
+			s.keymap[commandID] = previous
+		} else {
+			delete(s.keymap, commandID)
+		}
+		s.mu.Unlock()
+		return "", fmt.Errorf("save keybinding: %w", err)
+	}
 
 	return triggersvc.FormatBinding(mods, key), nil
 }
 
 // ClearKeybinding removes commandID's override, if any, reverting it to
-// its frontend-declared default binding.
-func (s *SettingsService) ClearKeybinding(commandID string) {
+// its frontend-declared default binding. Returns the persist error
+// (docs/goals/0025 item 1) rather than swallowing it, and restores the
+// removed override in memory if the save failed, so a user who thinks
+// they cleared a binding doesn't have it silently come back after a
+// restart while the UI shows it as already cleared.
+func (s *SettingsService) ClearKeybinding(commandID string) error {
 	s.mu.Lock()
+	previous, existed := s.keymap[commandID]
 	delete(s.keymap, commandID)
 	s.mu.Unlock()
-	s.persistKeymap()
+
+	if err := s.persistKeymap(); err != nil {
+		if existed {
+			s.mu.Lock()
+			s.keymap[commandID] = previous
+			s.mu.Unlock()
+		}
+		return fmt.Errorf("save keybinding clear: %w", err)
+	}
+	return nil
 }

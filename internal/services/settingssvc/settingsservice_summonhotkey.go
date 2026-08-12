@@ -32,15 +32,18 @@ func (s *SettingsService) loadPersistedSummonHotkey() {
 	s.mu.Unlock()
 }
 
-func (s *SettingsService) persistSummonHotkey() {
+func (s *SettingsService) persistSummonHotkey() error {
 	s.mu.Lock()
 	hk := s.summonHK
 	s.mu.Unlock()
 	data, err := json.Marshal(hk)
 	if err != nil {
-		return
+		return fmt.Errorf("marshal summon hotkey: %w", err)
 	}
-	_ = s.store.Set(summonHotkeyKey, string(data))
+	if err := s.store.Set(summonHotkeyKey, string(data)); err != nil {
+		return fmt.Errorf("persist summon hotkey: %w", err)
+	}
+	return nil
 }
 
 // RestoreSummonHotkey re-registers a persisted summon hotkey on launch
@@ -110,13 +113,28 @@ func (s *SettingsService) AssignSummonHotkey(mods []string, key string) (string,
 	_ = probe.Unbind()
 
 	s.mu.Lock()
+	previousHK := s.summonHK
 	if s.summon != nil {
 		_ = s.summon.Unbind()
 		s.summon = nil
 	}
 	s.summonHK = triggersvc.PersistedHotkey{Mods: mods, Key: key}
 	s.mu.Unlock()
-	s.persistSummonHotkey()
+
+	if err := s.persistSummonHotkey(); err != nil {
+		// Roll the persisted-state record back so memory matches what's
+		// actually on disk (docs/goals/0025 item 2) -- note this does
+		// NOT re-establish the previous OS-level binding, which was
+		// already unbound above; on this failure path nothing is
+		// actually bound until the user retries (a narrower gap than
+		// leaving mismatched state, and the same shape as most other
+		// hotkey-unbind failures in this file, which are already
+		// best-effort `_ = ...Unbind()`).
+		s.mu.Lock()
+		s.summonHK = previousHK
+		s.mu.Unlock()
+		return "", fmt.Errorf("save summon hotkey: %w", err)
+	}
 
 	if err := s.bindSummon(mods, key); err != nil {
 		return "", err
@@ -125,15 +143,26 @@ func (s *SettingsService) AssignSummonHotkey(mods []string, key string) (string,
 }
 
 // UnassignSummonHotkey removes the app-level summon hotkey, if any.
-func (s *SettingsService) UnassignSummonHotkey() {
+// Returns the persist error (docs/goals/0025 item 1) rather than
+// swallowing it, restoring the in-memory record on failure so it
+// matches what's still on disk.
+func (s *SettingsService) UnassignSummonHotkey() error {
 	s.mu.Lock()
+	previousHK := s.summonHK
 	if s.summon != nil {
 		_ = s.summon.Unbind()
 		s.summon = nil
 	}
 	s.summonHK = triggersvc.PersistedHotkey{}
 	s.mu.Unlock()
-	s.persistSummonHotkey()
+
+	if err := s.persistSummonHotkey(); err != nil {
+		s.mu.Lock()
+		s.summonHK = previousHK
+		s.mu.Unlock()
+		return fmt.Errorf("save summon hotkey removal: %w", err)
+	}
+	return nil
 }
 
 // GetSummonHotkey returns the current summon hotkey's human-readable
