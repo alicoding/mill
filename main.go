@@ -15,6 +15,7 @@ import (
 	"github.com/alicoding/mill/internal/services/capabilitysvc"
 	"github.com/alicoding/mill/internal/services/compositionsvc"
 	"github.com/alicoding/mill/internal/services/configuresvc"
+	"github.com/alicoding/mill/internal/services/dataevent"
 	"github.com/alicoding/mill/internal/services/executionsvc"
 	"github.com/alicoding/mill/internal/services/guardrailsvc"
 	"github.com/alicoding/mill/internal/services/mcpsvc"
@@ -53,7 +54,7 @@ func init() {
 	application.RegisterEvent[triggersvc.HotkeyActivity]("hotkey-activity")
 	application.RegisterEvent[mcpsvc.MCPWriteRequest]("mcp-write-approval")
 	application.RegisterEvent[mcpsvc.MCPWriteActivity]("mcp-write-activity")
-	application.RegisterEvent[mcpsvc.DataChanged](mcpsvc.DataChangedEventName)
+	application.RegisterEvent[dataevent.Changed](dataevent.EventName)
 	application.RegisterEvent[executionsvc.GuardrailPendingChanged]("guardrail-pending-changed")
 	// docs/adr/0033: the Quick Panel's "Open Mill"/"Open Settings" rows
 	// (OpenMainWindow) emit this so App.tsx can switch the store's view

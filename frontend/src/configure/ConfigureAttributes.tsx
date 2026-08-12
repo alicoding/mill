@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { Button, FormControl, Heading, IconButton, Select, Stack, Text, TextInput } from '@primer/react'
 import { PlusIcon, TrashIcon } from '@primer/octicons-react'
-import { CompositionService, ConfigureService } from '../shared/bindings'
-import type { AttributeDef, Workflow } from '../../bindings/github.com/alicoding/mill/internal/domain/composition/models'
+import { ConfigureService } from '../shared/bindings'
+import type { AttributeDef } from '../../bindings/github.com/alicoding/mill/internal/domain/composition/models'
 import { Type as ConfigFieldType } from '../../bindings/github.com/alicoding/mill/internal/domain/typedfield/models'
+import { refreshWorkflows, useAppStore } from '../shared/store'
 import styles from '../shared/ListCard.module.css'
 import PageContainer from '../shared/PageContainer'
 
@@ -22,16 +23,18 @@ const TYPE_LABEL: Record<string, string> = {
 // no way to build a choice-set from it; see ruleTranslate.ts's
 // fieldsFromAttributes for the same exclusion on the read side.
 export function ConfigureAttributes() {
-  const [workflows, setWorkflows] = useState<Workflow[] | null>(null)
+  // Store-shared workflows (shared/store.ts's refreshWorkflows/
+  // useAppStore) instead of this page's own CompositionService.
+  // Workflows() fetch (goal 0017 P1-1: it's the same list every other
+  // surface reads, and App.tsx already fetches it once on mount and
+  // refreshes it on mill-data-changed{entity:"workflow"} -- a second,
+  // page-local copy could only ever drift from that).
+  const workflows = useAppStore((s) => s.workflows)
   const [selectedID, setSelectedID] = useState('')
   const [attrs, setAttrs] = useState<AttributeDef[]>([])
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [saved, setSaved] = useState(false)
-
-  useEffect(() => {
-    CompositionService.Workflows().then((list) => setWorkflows(list ?? [])).catch(console.error)
-  }, [])
 
   const selectWorkflow = (id: string) => {
     setSelectedID(id)
@@ -49,8 +52,8 @@ export function ConfigureAttributes() {
     setSaved(false)
     setSaving(true)
     try {
-      const updated = await ConfigureService.UpdateWorkflowAttributes(selectedID, attrs)
-      setWorkflows((prev) => prev?.map((w) => (w.ID === selectedID ? updated : w)) ?? null)
+      await ConfigureService.UpdateWorkflowAttributes(selectedID, attrs)
+      void refreshWorkflows()
       setSaved(true)
     } catch (err) {
       setError(String(err))

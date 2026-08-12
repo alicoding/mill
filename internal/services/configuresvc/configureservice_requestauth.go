@@ -9,6 +9,7 @@ import (
 	"github.com/alicoding/mill/internal/adapters/openapispec"
 	"github.com/alicoding/mill/internal/domain/composition"
 	"github.com/alicoding/mill/internal/domain/httprequest"
+	"github.com/alicoding/mill/internal/services/dataevent"
 	"github.com/alicoding/mill/internal/services/seeding"
 )
 
@@ -134,6 +135,7 @@ func (c *ConfigureService) CreateHTTPRequest(label, baseURL, method, body string
 		c.mu.Unlock()
 		return httprequest.HTTPRequest{}, fmt.Errorf("save request: %w", err)
 	}
+	dataevent.Emit("request", req.ID) // goal 0017: live-sync every open surface
 	return req, nil
 }
 
@@ -185,6 +187,7 @@ func (c *ConfigureService) UpdateHTTPRequest(id, label, baseURL, method, body st
 		c.mu.Unlock()
 		return httprequest.HTTPRequest{}, fmt.Errorf("save request: %w", err)
 	}
+	dataevent.Emit("request", req.ID) // goal 0017: live-sync every open surface
 	return req, nil
 }
 
@@ -230,6 +233,7 @@ func (c *ConfigureService) DeleteHTTPRequest(id string) error {
 	}
 	_ = c.credentials.Delete(id)
 	_ = c.credentials.Delete(joseKeychainID(id))
+	dataevent.Emit("request", id) // goal 0017: live-sync every open surface
 	return nil
 }
 

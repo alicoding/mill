@@ -9,6 +9,7 @@ import { RowStatus } from '../../bindings/github.com/alicoding/mill/internal/dom
 import type { Field } from '../../bindings/github.com/alicoding/mill/internal/domain/typedfield/models'
 import { Type as ConfigFieldType } from '../../bindings/github.com/alicoding/mill/internal/domain/typedfield/models'
 import { downloadJSON } from '../shared/downloadJSON'
+import { refreshLists, useConfigureEntityStore } from '../shared/configureEntityStore'
 import { ViewModeToggle } from '../shared/ViewModeToggle'
 import { useViewMode } from '../shared/viewMode'
 import { InventoryList, type InventoryItem } from '../shared/InventoryList'
@@ -39,7 +40,12 @@ function emptyColumn(): Field {
 // list-lookup and a list-search workflow node resolve against these
 // same Columns/Rows.
 export function ConfigureLists() {
-  const [lists, setLists] = useState<List[] | null>(null)
+  // Store-shared (refreshLists, shared/configureEntityStore.ts), the
+  // same one-fetch-many-consumers pattern store.ts's workflows/requests
+  // already use -- so App.tsx's mill-data-changed handler pushing a
+  // live update lands here even when this tab is already open,
+  // mounted, and idle (goal 0017 P1-1).
+  const lists = useConfigureEntityStore((s) => s.lists)
   const [editingID, setEditingID] = useState<string | null>(null)
   const [label, setLabel] = useState('')
   const [description, setDescription] = useState('')
@@ -52,7 +58,7 @@ export function ConfigureLists() {
   const [viewMode, setViewMode] = useViewMode('mill-lists-view-mode')
 
   const refetch = () => {
-    ConfigureService.Lists().then((l) => setLists(l ?? [])).catch(console.error)
+    void refreshLists()
   }
 
   const exportList = (id: string, label: string) => {

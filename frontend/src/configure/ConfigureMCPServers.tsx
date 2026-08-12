@@ -7,6 +7,7 @@ import { ConfigureService } from '../shared/bindings'
 import type { MCPServer } from '../../bindings/github.com/alicoding/mill/internal/domain/mcpserver/models'
 import type { Tool } from '../../bindings/github.com/alicoding/mill/internal/adapters/mcpclient/models'
 import { downloadJSON } from '../shared/downloadJSON'
+import { refreshMCPServers, useConfigureEntityStore } from '../shared/configureEntityStore'
 import { ViewModeToggle } from '../shared/ViewModeToggle'
 import { useViewMode } from '../shared/viewMode'
 import { InventoryList, type InventoryItem } from '../shared/InventoryList'
@@ -34,7 +35,9 @@ function argsToRows(args: string[] | null | undefined): string[] {
 // the list, one panel per server that's been queried), just triggered
 // from the menu instead of a dedicated button.
 export function ConfigureMCPServers() {
-  const [servers, setServers] = useState<MCPServer[] | null>(null)
+  // Store-shared (refreshMCPServers, shared/configureEntityStore.ts) --
+  // see ConfigureLists.tsx's identical comment (goal 0017 P1-1).
+  const servers = useConfigureEntityStore((s) => s.mcpServers)
   const [editingID, setEditingID] = useState<string | null>(null)
   const [label, setLabel] = useState('')
   const [command, setCommand] = useState('')
@@ -47,7 +50,7 @@ export function ConfigureMCPServers() {
   const [viewMode, setViewMode] = useViewMode('mill-mcpservers-view-mode')
 
   const refetch = () => {
-    ConfigureService.MCPServers().then((list) => setServers(list ?? [])).catch(console.error)
+    void refreshMCPServers()
   }
 
   const exportServer = (id: string, label: string) => {
