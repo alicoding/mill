@@ -1,6 +1,7 @@
 import { Label } from '@primer/react'
 import { SettingsService } from '../shared/bindings'
 import type { BuildInfo } from '../shared/bindings'
+import { useGoSourceStale } from './goLiveness'
 import styles from './App.module.css'
 
 // Extracted from App.tsx along the 500-line seam (goal 0019). ONE rule
@@ -25,6 +26,11 @@ import styles from './App.module.css'
 // by an old binary -- docs/SPEC.md §3.8).
 const isDevBuild = import.meta.env.DEV
 
+// Third badge state (goal 0029, dev-liveness honesty): amber
+// `DEV · go-stale` when Go source has moved since this binary was
+// built but the rebuild hasn't landed yet -- the comparison logic and
+// its own reasoning live in ./goLiveness (pulled out so it can be
+// unit-tested without dragging @primer/react's CSS into Vitest).
 export function BuildIdentityBadge({ buildInfo }: { buildInfo: BuildInfo | null }) {
   // Go's own build tag (BuildInfo.Server), not a window-global sniff --
   // `'_wails' in window` is true in server-mode browser tabs too (the
@@ -32,6 +38,9 @@ export function BuildIdentityBadge({ buildInfo }: { buildInfo: BuildInfo | null 
   // INSTALLED/SERVER split until goal 0021's dogfooding caught it.
   const isNativeWebview = buildInfo != null && !buildInfo.Server
   const binaryHead = buildInfo?.Revision ? buildInfo.Revision.slice(0, 7) : ''
+  // Called unconditionally (rules of hooks) -- it no-ops outside a dev
+  // build or before buildInfo has arrived, per its own guard.
+  const goSourceStale = useGoSourceStale(buildInfo?.BuiltAt)
 
   // DEV wins over the stale comparison, deliberately (fixed 2026-08-11
   // after it false-alarmed on every commit): under `task dev`, vite
@@ -45,6 +54,21 @@ export function BuildIdentityBadge({ buildInfo }: { buildInfo: BuildInfo | null 
   // commit as the binary. Dev-orphan windows are handled by prevention
   // now (the Taskfile pkill sweep, SPEC §3.8), not by this badge.
   if (isDevBuild) {
+    // Third state (goal 0029): Go source has moved since this binary
+    // was linked and no rebuild has landed within the grace window --
+    // named remedy in both the visible label and the tooltip, since
+    // amber (unlike green/red) isn't self-explanatory at a glance.
+    if (goSourceStale) {
+      return (
+        <Label
+          variant="attention" size="small" className={styles.devRibbon}
+          data-testid="dev-go-stale-badge"
+          title="Go changes not yet in this binary — restart task dev"
+        >
+          DEV · go-stale
+        </Label>
+      )
+    }
     return (
       <Label variant="success" size="small" className={styles.devRibbon} data-testid="dev-build-badge">
         DEV · live

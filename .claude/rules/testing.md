@@ -124,6 +124,18 @@ layer per capability," never "a seed per thing":
 - **Manual-only registry** — OS-bound checks (hotkey delivery, real
   clipboard, tray) listed explicitly with reasons, never silently
   absent (see goal 0010's enforcement).
+- **Dev-loop timing checks** — a non-seed instance of the same manual-
+  only discipline, outside goal 0010's seed/NodeType registry (that
+  machinery is keyed to seeded artifacts; this isn't one). Goal 0029's
+  BuildIdentityBadge third state (amber `DEV · go-stale`) depends on a
+  real `wails3 dev` rebuild wedging or running slow — CI has no live
+  file watcher or real Go recompile-and-relaunch cycle to reproduce
+  that timing deterministically. The pure comparison logic
+  (`isGoSourceStale`, `frontend/src/app/goLiveness.ts`) is unit-tested
+  directly (`goLiveness.test.ts`); the full live behavior — an actually
+  wedged watcher flipping the badge amber in a real window — stays a
+  manual desktop-mode check (`.claude/skills/run-mill`), named here
+  rather than silently absent.
 
 From the UX point of view the seed layer stays privileged — it's the
 one a human can SEE working — but correctness under change belongs to

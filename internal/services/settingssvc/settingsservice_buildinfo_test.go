@@ -12,3 +12,15 @@ func TestReadBuildInfo_DoesNotPanic(t *testing.T) {
 		t.Errorf("Revision %q longer than the documented 12-char cap", bi.Revision)
 	}
 }
+
+// TestReadBuildInfo_BuiltAtIsThisProcessesOwnExecutableMtime (goal
+// 0029): `go test` builds and runs a real temporary executable on
+// disk, so os.Executable()+os.Stat() must resolve for the test binary
+// exactly as it does for a `go build`/`wails3 dev` output -- BuiltAt
+// should come back positive, not silently zero.
+func TestReadBuildInfo_BuiltAtIsThisProcessesOwnExecutableMtime(t *testing.T) {
+	bi := readBuildInfo()
+	if bi.BuiltAt <= 0 {
+		t.Fatalf("BuiltAt = %d, want a positive unix-millis mtime (os.Executable/os.Stat should resolve for a real test binary)", bi.BuiltAt)
+	}
+}

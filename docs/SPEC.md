@@ -3933,6 +3933,30 @@ recorded as a real design input (`OPEN`), never silently dropped.
   moves cleanly from badge-DETECTION (which couldn't distinguish
   "committed forward" from "orphaned binary" anyway) to Taskfile
   PREVENTION (the sweep above) — prevention over false-alarm.
+  **Update (goal 0029, 2026-08-12): a third badge state closes the
+  remaining honesty gap — DEV·live proved the FRONTEND was live, never
+  the GO side.** Two real incidents in one night: a disk-full
+  `wails3 dev` rebuild wedged silently with the badge still green, and
+  separately a slow watcher cycle left the running binary 15 commits
+  behind while the badge stayed green — the owner debugged a working
+  Settings feature as broken because of it. Amber **`DEV · go-stale`**
+  (tooltip/label: "Go changes not yet in this binary — restart task
+  dev") now renders whenever `internal/**/*.go`'s newest mtime has
+  outlived `BuildInfo.BuiltAt` (the running binary's own executable
+  mtime, `settingsservice_buildinfo.go`) by more than a 30s grace
+  window — long enough to absorb a normal save-triggered rebuild
+  (including the ~20s bindings-regen path) without flapping. The
+  comparison input is served by a vite dev-only middleware computing
+  the mtime AT REQUEST TIME (`vite.config.ts`'s `goLivenessPlugin`,
+  `/__mill/go-source-mtime`) — chosen over a task-dev-written heartbeat
+  file (the goal's other candidate) because it needs no new watcher
+  process of its own to itself go stale. Deliberately Go-source-mtime,
+  never git HEAD, repeating goal 0019's own lesson: a docs-only or
+  frontend-only commit never touches a working-tree file's mtime, so it
+  can't move this comparison. Paired dev-loop guards from the same
+  incidents: `task dev`'s start sweep also clears an orphaned vite-port
+  listener (`lsof -ti :9245`), and a non-blocking pre-start disk check
+  warns (never blocks) below 2GB free, naming `go clean -cache`.
 
 ## 9.5 Platform kernel & extension contract
 

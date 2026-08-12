@@ -7,6 +7,9 @@ import type { Events } from "@wailsio/runtime";
 
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
+import type * as dataevent$0 from "../../../../alicoding/mill/internal/services/dataevent/models.js";
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: Unused imports
 import type * as executionsvc$0 from "../../../../alicoding/mill/internal/services/executionsvc/models.js";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
@@ -22,7 +25,7 @@ declare module "@wailsio/runtime" {
             "hotkey-activity": triggersvc$0.HotkeyActivity;
             "mcp-write-activity": mcpsvc$0.MCPWriteActivity;
             "mcp-write-approval": mcpsvc$0.MCPWriteRequest;
-            "mill-data-changed": mcpsvc$0.DataChanged;
+            "mill-data-changed": dataevent$0.Changed;
             "mill-navigate": string;
             "time": string;
         }
