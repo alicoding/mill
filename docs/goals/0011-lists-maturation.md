@@ -82,3 +82,38 @@ Owner-aligned seed roster entry (a real lookup dataset + search
 workflow) proven per the layered-coverage model; the
 List-as-database boundary documented; evidence gaps resolved by
 research or explicitly deferred with reasons.
+
+
+## Design section (research pass delivered 2026-08-12 — full report in session record)
+
+Key verdicts, primary-sourced:
+- **Fuzzy matching: adopt `hbollon/go-edlib`** (MIT, zero deps,
+  Damerau-Levenshtein; exact match never routes through it).
+  `sahilm/fuzzy`/`lithammer/fuzzysearch` rejected on algorithm CLASS
+  (subsequence finders, not approximate equality); `agext/levenshtein`
+  rejected on staleness+license. Framing correction: Airtable/Excel/
+  n8n-core do NOT ship edit-distance fuzzy — exact is the industry
+  default; fuzzy stays secondary/opt-in.
+- **Output stability**: the list-search Object shape is fixed by
+  construction (Mill-written struct, never column-inferred) —
+  ADR-0029's boundary satisfied; first-match-only never changes type.
+- **Rows**: {ID, Values, CreatedAt, UpdatedAt, Status(active/expired)}
+  — NO CreatedBy/UpdatedBy (single-user-forever, §3.2.4's own
+  anti-governance verdict). Expired rows excluded from matching by
+  default, per-step opt-in.
+- **Snapshot-per-execution REFRAMED**: DBOS step-checkpointing already
+  guarantees replay never re-evaluates a changed List (Temporal
+  precedent confirms the class) — the gap is audit evidence only;
+  list_id inline in the typed output + the matched rows already
+  captured IS the minimal honest record. Full content-hash deferred as
+  enhancement, not gap.
+- **Storage**: stay on the settings JSON store (sibling-entity
+  consistency); SQLite-via-DBOS is the named future trigger the day a
+  real four-digit-row List exists — not before.
+
+**GATING DECISION, owner-owned:** `.claude/worktrees/wt-lists` holds a
+near-complete uncommitted implementation of this goal from a parallel
+session, on a branch diverged behind main (pre-§3.2.4, pre-goal-0018).
+Rebase-and-land vs treat-as-scratch must be decided by the owner before
+any build starts — another session's live workspace is never touched
+from this one.
