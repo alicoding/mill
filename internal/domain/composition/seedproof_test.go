@@ -212,9 +212,9 @@ var nodeTypeProofRegistry = map[string]seedProof{
 // wasn't updated to match).
 func checkRegistry(t *testing.T, kind string, realIDs []string, registry map[string]seedProof) {
 	t.Helper()
-	real := make(map[string]bool, len(realIDs))
+	realSet := make(map[string]bool, len(realIDs))
 	for _, id := range realIDs {
-		real[id] = true
+		realSet[id] = true
 		p, ok := registry[id]
 		if !ok {
 			t.Errorf("%s %q has no seedProof registry entry -- add one to seedproof_test.go naming its proof tests (proven(...)) or a ManualOnly reason", kind, id)
@@ -225,7 +225,7 @@ func checkRegistry(t *testing.T, kind string, realIDs []string, registry map[str
 		}
 	}
 	for id := range registry {
-		if !real[id] {
+		if !realSet[id] {
 			t.Errorf("seedProof registry has an entry for %q, but no such %s currently exists -- remove the stale entry (or the artifact was renamed and the registry key needs updating)", id, kind)
 		}
 	}

@@ -43,7 +43,14 @@ func ListTools(command string, args []string) ([]Tool, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
-	transport := &mcp.CommandTransport{Command: exec.Command(command, args...)}
+	// command/args are the user's own MCP-server-connector configuration
+	// (Configure), the deliberate feature -- launching a user-chosen
+	// executable, the same class as shellenv's own login-shell launch.
+	// exec.Command never invokes a shell (argv is passed directly to
+	// execve), so there's no shell-metacharacter injection surface
+	// either; the risk here is "runs what the user configured," which is
+	// the intended behavior, not a vulnerability to close.
+	transport := &mcp.CommandTransport{Command: exec.CommandContext(ctx, command, args...)} //nolint:gosec // user-configured connector command, by design (see comment above)
 	return listTools(ctx, transport)
 }
 
@@ -56,7 +63,14 @@ func CallTool(command string, args []string, toolName string, arguments map[stri
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
-	transport := &mcp.CommandTransport{Command: exec.Command(command, args...)}
+	// command/args are the user's own MCP-server-connector configuration
+	// (Configure), the deliberate feature -- launching a user-chosen
+	// executable, the same class as shellenv's own login-shell launch.
+	// exec.Command never invokes a shell (argv is passed directly to
+	// execve), so there's no shell-metacharacter injection surface
+	// either; the risk here is "runs what the user configured," which is
+	// the intended behavior, not a vulnerability to close.
+	transport := &mcp.CommandTransport{Command: exec.CommandContext(ctx, command, args...)} //nolint:gosec // user-configured connector command, by design (see comment above)
 	return callTool(ctx, transport, toolName, arguments)
 }
 

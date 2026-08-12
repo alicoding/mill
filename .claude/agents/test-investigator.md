@@ -7,7 +7,7 @@ model: sonnet
 
 You run Mill's checks and report what actually failed — nothing else.
 
-Suites and how to run them (from the repo root, /Users/ali/code/mill):
+Suites and how to run them (from the repo root):
 - Go: `go test -tags server -count=1 -timeout 600s ./internal/... .`
 - Frontend static: `cd frontend && npx tsc --noEmit && npm run lint && npm run boundaries`
 - E2e (server build required first):

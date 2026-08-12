@@ -22,7 +22,7 @@ import (
 // future work, §3.2's own "extend when a real request needs it"
 // principle applied here the same as everywhere else.
 func init() {
-	RegisterAuthStrategy(httprequest.AuthHMAC, func(rc ResolvedHTTPRequest, method, path string, headers map[string]string, query url.Values, body string) error {
+	RegisterAuthStrategy(httprequest.AuthHMAC, func(rc ResolvedHTTPRequest, method, path string, headers map[string]string, _ url.Values, body string) error {
 		headerName := "X-Signature"
 		if rc.Auth != nil && rc.Auth.HMAC != nil && rc.Auth.HMAC.HeaderName != "" {
 			headerName = rc.Auth.HMAC.HeaderName

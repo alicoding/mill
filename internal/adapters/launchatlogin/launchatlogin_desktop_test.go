@@ -18,7 +18,7 @@ func TestAppBundlePath(t *testing.T) {
 }
 
 func TestAppBundlePath_DevBinary_ErrNotAppBundle(t *testing.T) {
-	_, err := appBundlePath("/Users/ali/code/mill/bin/mill.dev")
+	_, err := appBundlePath("/tmp/mill-dev-build/bin/mill.dev")
 	if !errors.Is(err, ErrNotAppBundle) {
 		t.Errorf("appBundlePath on a bare dev binary: err = %v, want ErrNotAppBundle", err)
 	}

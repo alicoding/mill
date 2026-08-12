@@ -1,6 +1,7 @@
 package clipboard
 
 import (
+	"context"
 	"os"
 	"os/exec"
 	"runtime"
@@ -49,7 +50,9 @@ func TestWriteText(t *testing.T) {
 		t.Fatalf("WriteText() error: %v", err)
 	}
 
-	out, err := exec.Command("pbpaste").Output()
+	ctx, cancel := context.WithTimeout(context.Background(), cmdTimeout)
+	defer cancel()
+	out, err := exec.CommandContext(ctx, "pbpaste").Output()
 	if err != nil {
 		t.Fatalf("pbpaste failed while verifying WriteText(): %v", err)
 	}

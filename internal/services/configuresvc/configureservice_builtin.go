@@ -44,7 +44,7 @@ var builtInSecrets = map[string]string{
 // with this exact credential returned {"status":"pass","message":
 // "OAuth-1.0a signature verification was successful"} from the
 // server's own side, not just self-consistent with Mill's own tests.
-const builtInOAuth1ConsumerSecret = `D+EdQ-gs$-%@2Nu7`
+const builtInOAuth1ConsumerSecret = `D+EdQ-gs$-%@2Nu7` //nolint:gosec // Postman's own published, intentionally public test credential -- not a real secret (see doc comment above)
 
 // seedBuiltInSecrets writes each seeded example's demo secret into the
 // OS keychain -- called only from ConfigureService.restore() on a

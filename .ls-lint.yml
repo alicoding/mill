@@ -53,7 +53,12 @@
 #     layout decisions, never accidents.
 ls:
   .go: regex:(main|singleinstance_(production|dev))
-  .*: regex:(README|CLAUDE|Taskfile|lefthook|go|\.golangci|\.ls-lint)
+  # SECURITY/CONTRIBUTING added goal 0028 (public-repo hygiene): both are
+  # standard GitHub community-profile root files, same allowlist family as
+  # README below (checked, not new -- CODE_OF_CONDUCT deliberately stays
+  # OUT per goal 0028's skip list until a second contributor exists, so
+  # it's not pre-added here).
+  .*: regex:(README|SECURITY|CONTRIBUTING|CLAUDE|Taskfile|lefthook|go|\.golangci|\.ls-lint)
 
 ignore:
   - build

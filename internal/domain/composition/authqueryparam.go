@@ -14,7 +14,7 @@ import (
 // vendor needing a different query-param name is real future work, not
 // solved speculatively here).
 func init() {
-	RegisterAuthStrategy(httprequest.AuthQueryParam, func(rc ResolvedHTTPRequest, method, path string, headers map[string]string, query url.Values, body string) error {
+	RegisterAuthStrategy(httprequest.AuthQueryParam, func(rc ResolvedHTTPRequest, _, _ string, _ map[string]string, query url.Values, _ string) error {
 		query.Set("apikey", rc.Secret)
 		return nil
 	})

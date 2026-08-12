@@ -23,7 +23,7 @@ import (
 // (WithWorkflowID): re-invoking with the same key returns the child's
 // already-recorded result instead of re-running it. Empty means "a
 // fresh run every time," the same default every other run gets.
-var runChildWorkflowFn = func(runCtx any, workflowID string, attrValues map[string]string, idempotencyKey string, pinnedVersion int) (string, error) {
+var runChildWorkflowFn = func(_ any, workflowID string, _ map[string]string, _ string, _ int) (string, error) {
 	return "", fmt.Errorf("no child-workflow runner registered (yet) for workflow %q", workflowID)
 }
 
@@ -37,7 +37,7 @@ func SetChildWorkflowRunner(fn func(runCtx any, workflowID string, attrValues ma
 func init() {
 	RegisterNodeType(NodeType{
 		ID: "child-workflow", Kind: KindProcess,
-		Label:       "Run another workflow",
+		Label: "Run another workflow",
 		// Effect is explicitly ClassNone (never left at the zero value) --
 		// docs/adr/0022: "Child workflows carry no class of their own
 		// (none): the child's own steps are gated inside the child's own

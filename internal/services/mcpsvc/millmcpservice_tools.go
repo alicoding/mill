@@ -25,7 +25,7 @@ import (
 // MCPWriteEnabledKey stores the gate as the string "true"/"false" --
 // matching every other settings key's string convention
 // (settingsservice.go).
-const MCPWriteEnabledKey = "mcp-write-tools-enabled"
+const MCPWriteEnabledKey = "mcp-write-tools-enabled" //nolint:gosec // a settings-store key name, not a credential (G101 false positive)
 
 func (m *MillMCPService) writeEnabled() bool {
 	v, ok := m.store.Get(MCPWriteEnabledKey).(string)

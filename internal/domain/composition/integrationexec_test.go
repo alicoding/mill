@@ -115,7 +115,7 @@ func TestExecuteWorkflow_IntegrationHTTP_QueryMethod_Accepted(t *testing.T) {
 }
 
 func TestExecuteWorkflow_IntegrationHTTP_UnknownHTTPRequest_Rejected(t *testing.T) {
-	withHTTPRequestLookup(t, func(id string) (ResolvedHTTPRequest, error) {
+	withHTTPRequestLookup(t, func(_ string) (ResolvedHTTPRequest, error) {
 		return ResolvedHTTPRequest{}, errors.New("no such request")
 	})
 
