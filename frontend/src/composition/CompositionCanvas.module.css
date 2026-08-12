@@ -163,6 +163,32 @@
     padding: 0;
     min-width: 0;
 }
+/* docs/goals/0036-view-mode-ux-hardening.md item 3: the fieldset cascade
+   above blocks every descendant control FUNCTIONALLY (native <fieldset
+   disabled> cascades to any input/select/textarea/button no matter how
+   deep it's nested through other React components), but it does nothing
+   VISUALLY -- investigated directly against the installed Primer build
+   (node_modules/@primer/react/dist/internal/components/
+   TextInputWrapper-*.css, Select's own Select.module.css.js): TextInput/
+   Select/Textarea key their muted background/border off their OWN
+   `disabled` REACT PROP (which stamps a `data-disabled` attribute on
+   their internal wrapper span), never off the native `:disabled` CSS
+   pseudo-class the fieldset cascade actually puts on the real
+   <input>/<select> underneath. Threading an explicit `disabled` prop
+   through NodeInspector's half-dozen nested editors (Integration
+   BindingsEditor, ChildWorkflowBindingsEditor, MCPToolArgsEditor,
+   RulesetEditor, ...) would work but not generically -- a `<fieldset>`
+   itself IS a real form-associated element that genuinely matches
+   `:disabled` (unlike the plain `<span>` wrappers Primer's inputs
+   render), so muting the whole panel from that one ancestor selector
+   covers every current AND future control uniformly. Same opacity +
+   cursor treatment as .paletteItemDisabled further down this file
+   (goal 0022's own precedent for muting a disabled control), chosen
+   over hiding the block behind a second, separately-styled inspector. */
+.inspectorFieldset:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
 /* A leaf item needs to read as a draggable card, not a plain nav-link
    row -- TreeView's own default styling (built for navigation/selection
    trees) doesn't signal "grab me" on its own. */
