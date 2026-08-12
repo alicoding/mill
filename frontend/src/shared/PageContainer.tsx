@@ -6,7 +6,7 @@ import styles from './PageContainer.module.css'
 // for width/inset (docs/SPEC.md's "Window/scroll layout foundation"
 // Update). One component, one place to change if a variant's width ever
 // needs to move.
-export type PageContainerVariant = 'wide' | 'narrow' | 'full'
+type PageContainerVariant = 'wide' | 'narrow' | 'full'
 
 const VARIANT_CLASS: Record<PageContainerVariant, string> = {
   wide: styles.wide,

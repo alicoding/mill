@@ -34,7 +34,7 @@ this pipeline and on this code)**
 1. [ ] [0024 — CI/CD target architecture + operating model](0024-cicd-target-architecture.md)
    — IN FLIGHT: catch-up pushed, e2e triage + target-architecture
    build land next, then the ruleset on a green main (ADR-0034)
-2. [ ] [0025 — Substance hardening](0025-substance-hardening.md) —
+2. [x] [0025 — Substance hardening](archive/0025-substance-hardening.md) — DELIVERED 2026-08-12 (both audit waves + LOW items) —
    fix the audited green-but-wrong class (12 silent persistence
    sites, unfailable test fake, uncovered safety-badge source);
    frontend half already largely clean
@@ -58,7 +58,7 @@ live-review material, interleaved during owner reviews, not a lane.**
 
 **Group C — Attention layer**
 5. [x] [0005 — Pending-attention model](0005-pending-attention-model.md) — core delivered 2026-08-10 (unified guardrail event + sidebar badge + traceless-timeout fix; OS-notification future named)
-6. [ ] [0002 — Review queue maturation](0002-review-queue-maturation.md) (remainder: pending badge built on 0005's eventing; kind filter/polish)
+6. [x] [0002 — Review queue maturation](archive/0002-review-queue-maturation.md) — DELIVERED 2026-08-12 (kind filter over four pending kinds, Blankslate/loading polish; badge came via 0005)
 
 **Unscheduled (reorder into a group when prioritized)**
 7. [x] [0012 — Authoring hot-exit](archive/0012-authoring-hot-exit.md) — canvas half delivered 2026-08-10 (scratch persistence + restored-unsaved banner + dirty dots; Configure forms recorded-remaining in the archived file)

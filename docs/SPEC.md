@@ -2864,6 +2864,12 @@ choice doesn't).
   UI — Phase B's own bigger, separate design surface.
 - Jira/Confluence as a first-class example: still `OPEN`, unbuilt — the
   generic request type is real, but no named-vendor preset exists yet.
+  Same future-preset category, owner-named 2026-08-11 after goal 0023's
+  generic forward shipped: **communication presets** (Discord webhook /
+  Telegram bot / Twilio SMS / ntfy push — n8n's communication node
+  category) — the generic HTTPRequest already reaches all of them; a
+  preset earns a build when real wiring hits real friction, not
+  speculatively.
 - Whether connectors are built-in or a plugin surface: still `OPEN`.
 - **Backend CRUD + Configure UI — `LOCKED` and built, end-to-end.**
   `ConfigureService` (`configureservice.go`) is the Wails-bound service —
