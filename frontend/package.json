@@ -18,7 +18,7 @@
     "@primer/octicons-react": "^19.33.0",
     "@primer/primitives": "^11.10.0",
     "@primer/react": "^38.35.0",
-    "@wailsio/runtime": "latest",
+    "@wailsio/runtime": "3.0.0-beta.5",
     "@xyflow/react": "^12.11.2",
     "cronstrue": "^3.24.0",
     "elkjs": "^0.12.0",

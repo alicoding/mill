@@ -16,7 +16,7 @@ require (
 	github.com/hbollon/go-edlib v1.7.0
 	github.com/modelcontextprotocol/go-sdk v1.7.0
 	github.com/netresearch/go-cron v0.15.1
-	github.com/wailsapp/wails/v3 v3.0.0-beta.4
+	github.com/wailsapp/wails/v3 v3.0.0-beta.5
 	github.com/zalando/go-keyring v0.2.8
 	golang.design/x/hotkey v0.6.1
 	golang.org/x/oauth2 v0.36.0
