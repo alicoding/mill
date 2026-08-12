@@ -91,6 +91,7 @@ func (c *ConfigureService) UpdateMCPServer(id, label, command string, args []str
 	// the wire; UpdatedAt always advances on a real update.
 	s.CreatedAt = c.mcpServers[idx].CreatedAt
 	s.UpdatedAt = time.Now()
+	s.Seed = c.mcpServers[idx].Seed.Touch() // docs/goals/0037 item 2
 	previous := c.mcpServers[idx]
 	c.mcpServers[idx] = s
 	c.mu.Unlock()

@@ -91,3 +91,29 @@ func RecordTombstone(store settings.Store, id string) error {
 	}
 	return nil
 }
+
+// ClearTombstone removes id from the tombstone list -- the reverse of
+// RecordTombstone, called by a "Restore example…" RPC
+// (docs/goals/0037 item 5) so top-up/reconcile seeding can bring a
+// deliberately-deleted built-in back. A no-op (nil error) if id was
+// never tombstoned.
+func ClearTombstone(store settings.Store, id string) error {
+	tombstones := LoadTombstones(store)
+	if !tombstones[id] {
+		return nil
+	}
+	delete(tombstones, id)
+	ids := make([]string, 0, len(tombstones))
+	for t := range tombstones {
+		ids = append(ids, t)
+	}
+	sort.Strings(ids)
+	data, err := json.Marshal(ids)
+	if err != nil {
+		return fmt.Errorf("marshal seed tombstones: %w", err)
+	}
+	if err := store.Set(seedTombstonesKey, string(data)); err != nil {
+		return fmt.Errorf("persist seed tombstones: %w", err)
+	}
+	return nil
+}

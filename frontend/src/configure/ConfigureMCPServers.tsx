@@ -14,6 +14,8 @@ import { InventoryList, type InventoryItem } from '../shared/InventoryList'
 import { ENTITY_ICON } from '../shared/entityIcons'
 import { formatUpdated, sortByUpdatedDesc } from '../shared/inventorySort'
 import { useConfirmDelete } from '../shared/useConfirmDelete'
+import { describeSeedReset } from '../shared/seedLifecycle'
+import { RestoreExamplesButton } from '../shared/RestoreExamplesButton'
 import styles from '../shared/ListCard.module.css'
 import PageContainer from '../shared/PageContainer'
 
@@ -48,6 +50,15 @@ export function ConfigureMCPServers() {
   const [importError, setImportError] = useState<string | null>(null)
   const importInputRef = useRef<HTMLInputElement>(null)
   const [viewMode, setViewMode] = useViewMode('mill-mcpservers-view-mode')
+  // Seed lifecycle (docs/goals/0037) -- see CompositionView.tsx's
+  // identical state for the full reasoning.
+  const [seedRevisions, setSeedRevisions] = useState<Record<string, number | undefined>>({})
+  const [restorable, setRestorable] = useState<MCPServer[]>([])
+
+  const refreshSeedLifecycle = () => {
+    ConfigureService.SeedRevisions().then((m) => setSeedRevisions(m ?? {})).catch(console.error)
+    ConfigureService.RestorableMCPServers().then((r) => setRestorable(r ?? [])).catch(console.error)
+  }
 
   const refetch = () => {
     void refreshMCPServers()
@@ -74,7 +85,10 @@ export function ConfigureMCPServers() {
       .catch((err) => setImportError(String(err)))
   }
 
-  useEffect(refetch, [])
+  useEffect(() => {
+    refetch()
+    refreshSeedLifecycle()
+  }, [])
 
   const startCreate = () => {
     setEditingID(null)
@@ -111,7 +125,25 @@ export function ConfigureMCPServers() {
   }
 
   const remove = (id: string) => {
-    ConfigureService.DeleteMCPServer(id).then(refetch).catch(console.error)
+    ConfigureService.DeleteMCPServer(id).then(() => {
+      refetch()
+      refreshSeedLifecycle()
+    }).catch(console.error)
+  }
+
+  // Reset-to-shipped-example / restore-deleted-example (docs/goals/0037
+  // items 4/5).
+  const resetToSeed = (id: string) => {
+    ConfigureService.ResetMCPServerToSeed(id).then(() => {
+      refetch()
+      refreshSeedLifecycle()
+    }).catch((err) => setImportError(String(err)))
+  }
+  const restoreExample = (id: string) => {
+    ConfigureService.RestoreMCPServer(id).then(() => {
+      refetch()
+      refreshSeedLifecycle()
+    }).catch((err) => setImportError(String(err)))
   }
 
   // Table-view direct-wiring half of the Button-semantics convention
@@ -137,29 +169,36 @@ export function ConfigureMCPServers() {
   // same order (docs/SPEC.md §3.8's InventoryList entry).
   const sortedServers = useMemo(() => sortByUpdatedDesc(servers ?? [], (s) => s.UpdatedAt), [servers])
 
-  const serverItems: InventoryItem[] = sortedServers.map((s) => ({
-    id: s.ID,
-    entity: 'mcpserver',
-    icon: ENTITY_ICON.mcpserver,
-    label: s.Label,
-    updatedLabel: formatUpdated(s.UpdatedAt),
-    // No !s.BuiltIn guard on Delete -- same "ordinary, fully editable/
-    // deletable from the moment it exists" reasoning as
-    // ConfigureRequests.tsx/ConfigureLists.tsx's identical badge.
-    labelBadges: s.BuiltIn ? <Label variant="secondary" size="small">built-in</Label> : undefined,
-    description: `${s.Command} ${(s.Args ?? []).join(' ')}`.trim(),
-    onOpen: () => startEdit(s),
-    menuActions: [
-      { label: 'List tools', onClick: () => listTools(s.ID) },
-      { label: 'Export', onClick: () => exportServer(s.ID, s.Label) },
-      {
-        label: 'Delete',
-        onClick: () => remove(s.ID),
-        danger: true,
-        confirm: { title: 'Delete MCP server?', body: `This permanently deletes "${s.Label}". This cannot be undone.` },
-      },
-    ],
-  }))
+  const serverItems: InventoryItem[] = sortedServers.map((s) => {
+    const seedReset = describeSeedReset(s.Seed, seedRevisions[s.ID] ?? s.Seed.SeedRevision)
+    return {
+      id: s.ID,
+      entity: 'mcpserver',
+      icon: ENTITY_ICON.mcpserver,
+      label: s.Label,
+      updatedLabel: formatUpdated(s.UpdatedAt),
+      // No !s.BuiltIn guard on Delete -- same "ordinary, fully editable/
+      // deletable from the moment it exists" reasoning as
+      // ConfigureRequests.tsx/ConfigureLists.tsx's identical badge.
+      labelBadges: s.BuiltIn ? <Label variant="secondary" size="small">built-in</Label> : undefined,
+      description: `${s.Command} ${(s.Args ?? []).join(' ')}`.trim(),
+      onOpen: () => startEdit(s),
+      menuActions: [
+        { label: 'List tools', onClick: () => listTools(s.ID) },
+        { label: 'Export', onClick: () => exportServer(s.ID, s.Label) },
+        // Reset-to-shipped-example (docs/goals/0037 item 4) -- hidden
+        // (not shown-disabled) when already current, same reasoning
+        // CompositionView.tsx's identical wiring documents.
+        ...(s.BuiltIn && !seedReset.disabled ? [{ label: seedReset.label, onClick: () => resetToSeed(s.ID) }] : []),
+        {
+          label: 'Delete',
+          onClick: () => remove(s.ID),
+          danger: true,
+          confirm: { title: 'Delete MCP server?', body: `This permanently deletes "${s.Label}". This cannot be undone.` },
+        },
+      ],
+    }
+  })
 
   return (
     <PageContainer data-testid="configure-mcpservers">
@@ -178,6 +217,7 @@ export function ConfigureMCPServers() {
           <Button leadingVisual={UploadIcon} size="small" onClick={openImportPicker} data-testid="import-mcpserver">
             Import
           </Button>
+          <RestoreExamplesButton items={restorable} onRestore={restoreExample} />
           <Button leadingVisual={PlusIcon} variant="primary" size="small" onClick={startCreate} data-testid="new-mcpserver">
             New MCP server
           </Button>

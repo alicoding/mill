@@ -112,6 +112,7 @@ func (c *ConfigureService) UpdateExecEnv(id, label string, shell execenv.Shell, 
 	e.BuiltIn = c.execEnvs[idx].BuiltIn
 	e.CreatedAt = c.execEnvs[idx].CreatedAt
 	e.UpdatedAt = time.Now()
+	e.Seed = c.execEnvs[idx].Seed.Touch() // docs/goals/0037 item 2
 	previous := c.execEnvs[idx]
 	c.execEnvs[idx] = e
 	c.mu.Unlock()

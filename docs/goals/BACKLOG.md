@@ -163,6 +163,25 @@ live-review material, interleaved during owner reviews, not a lane.**
 12. [x] [0022 — Workflow view mode](archive/0022-workflow-view-mode.md) — delivered 2026-08-11 (row click → read-only canvas w/ Run+step-debug; Edit explicit in-place mode switch; breakpoint dot moved onto the node card, both modes; fixed a latent bug where a policy deny could hide a breakpoint's existence)
 13. [x] [0036 — View-mode UX hardening](archive/0036-view-mode-ux-hardening.md) — delivered 2026-08-12 (owner-found live UX gaps in goal 0022): table view's Label cell now opens VIEW mode (`WorkflowsTable.tsx`'s Link cell, matching row view's existing click-to-view) — the pencil's straight-to-Edit was the ONLY entry table view had; a "Viewing" mode chip (`CanvasMetaHeader.tsx`, Primer `Label` + `EyeIcon`) makes read-only status legible before touching anything; `NodeInspector`'s disabled `<fieldset>` now renders visibly muted (`opacity`/`cursor` on `:disabled`) — root cause investigated directly against the installed Primer build: `TextInput`/`Select` key their muted visuals off their OWN `disabled` React prop (a `data-disabled` attribute stamped on an internal wrapper `<span>`), never off the native `:disabled` CSS pseudo-class the fieldset cascade already puts on the real `<input>`/`<select>` underneath — fixed at the fieldset-ancestor CSS level (which genuinely matches `:disabled`) rather than threading a prop through NodeInspector's half-dozen nested editors.
 14. [x] [0020 — Workflow breakpoints](archive/0020-workflow-breakpoints.md) — delivered 2026-08-11 (ADR-0031 full scope incl. step mode + MCP debug tools; delegated build; found+fixed the ExecuteOptions.WorkflowID never-set bug that silently disabled all workflow/instance-scoped guardrail rules at runtime)
+15. [x] [0037 — Seed lifecycle](archive/0037-seed-lifecycle.md) —
+    owner-delegated, research-locked design, delivered 2026-08-12:
+    `SeedOrigin{SeedRevision, Modified}` provenance on all 30 goldens
+    (17 workflows + 13 Configure entities); the old insert-only
+    top-up became reconcile (insert/upgrade-in-place/leave-Modified-
+    alone/skip-tombstoned), the `Modified` latch set at the write-time
+    choke points (`mutateWorkflow`/`UpdateWorkflow`/`UpdateAttributes`;
+    each Configure entity's own `Update*`), covering both UI-RPC and
+    MCP write paths; reset-to-shipped-example + restore-deleted-example
+    RPCs and UI wired into all 6 resource-inventory pages
+    (`shared/seedLifecycle.ts`/`shared/RestoreExamplesButton.tsx`,
+    reused rather than duplicated 6×); `TestSeedFingerprints_
+    MatchCommittedRecord` (`internal/services/seeding`) CI-enforces the
+    SeedRevision-bump discipline; `seed-liveness.yml` (goal 0010) now
+    opens/updates a labeled tracking issue on failure instead of only
+    logging it. Full local suite green (Go build/vet/lint/test, 231
+    frontend unit tests, 55-file/177-test e2e suite — the two known
+    flaky specs, `canvas-live-sync`/an isolated `guardrail.spec.ts`
+    contention flake, both confirmed transient on an isolated rerun).
 
 **Standing**
 - [ ] E2e CI flake investigation (owner-directed 2026-08-12: "add to the backlog when problem found so that we prioritize to unblock us") — three distinct e2e specs have each independently failed once on a shard, then gone green on an immediate rerun, across three different PRs in one session: `resizable-table.spec.ts` (drag-handle bounding-box), `canvas-live-sync.spec.ts` (MCP `update_workflow` live-redraw assertion), and (Go side, same class) `TestMillMCPService_RealClientRoundTrip` (already fixed — its 2s `Shutdown` timeout was genuinely too tight for a loaded shared runner, bumped to 10s, PR #21). Each so far individually diagnosed as unrelated to the PR that triggered it and confirmed transient by a clean rerun — but three in one session is a real pattern worth investigating as a batch rather than re-diagnosing from scratch every time: is the shared macOS/ubuntu CI runner under-resourced for the current suite size, are these three specs sharing some real timing sensitivity (a fixed wait/assertion window too tight for runner variance), or is this the general shape more of the suite's specs have and will keep surfacing one at a time. DoR: pull the actual CI run history for these (and any other) specs' pass/fail/rerun rate over the last N runs before assuming root cause; DoD: either a fix (raise a shared timeout/wait pattern, add strategic retries per goal 0024's existing e2e-retry precedent) or, if genuinely just runner variance, a documented decision to accept it with reasoning, not silence.

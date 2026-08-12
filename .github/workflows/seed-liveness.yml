@@ -30,6 +30,14 @@ jobs:
     # (it names exactly which seed and endpoint), never worth blocking
     # a merge that has nothing to do with it.
     continue-on-error: true
+    # issues: write is the one elevated permission this job needs (the
+    # failure-tracking step below) -- least-privilege default otherwise
+    # (ci.yml's own workflow-level `contents: read` doesn't apply here,
+    # this workflow has no top-level permissions block, so state it
+    # explicitly rather than inherit the runner's default token scope).
+    permissions:
+      contents: read
+      issues: write
     env:
       # Same reasoning as ci.yml's test-go job: this package
       # transitively imports Wails3 packages that are cgo-gated onto
@@ -42,4 +50,39 @@ jobs:
         with:
           go-version: '1.25'
           cache: true
-      - run: go test -tags liveness ./internal/services/configuresvc/... -run TestSeededHTTPRequests_LiveEndpointsRespond -v
+      - name: Run the seed-liveness test
+        id: liveness
+        run: go test -tags liveness ./internal/services/configuresvc/... -run TestSeededHTTPRequests_LiveEndpointsRespond -v
+      # docs/goals/0037 item 8: a rotted seed (an endpoint that changed
+      # shape or went away) previously surfaced only in this job's own
+      # log, which nobody watches for an advisory, non-blocking check --
+      # this makes the failure durable and visible instead. One tracking
+      # issue, deduped by label (never a fresh issue per failed week);
+      # commented on, not reopened, if a prior one is still open --
+      # reopening/closing automatically isn't attempted, since only a
+      # human confirming the seed itself was fixed (not just that this
+      # week's run happened to pass) should close it.
+      - name: Open or update the tracking issue on failure
+        if: failure() && steps.liveness.outcome == 'failure'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          # Idempotent: --force creates the label on first use and is a
+          # harmless no-op update on every run after that, so this
+          # workflow never depends on the label having been created out
+          # of band first.
+          gh label create seed-liveness --repo "$GITHUB_REPOSITORY" --color D93F0B --description "A seeded example's real external endpoint stopped responding as documented" --force
+          existing=$(gh issue list --repo "$GITHUB_REPOSITORY" --label seed-liveness --state open --json number --jq '.[0].number // empty')
+          body="The weekly seed-liveness check failed: $RUN_URL
+
+          One of httprequest.BuiltIn()'s seeded example requests no longer round-trips against its real external endpoint (httpbin.org/postman-echo.com) as its own Description claims -- see the run log for which one and how. This is advisory only (an external service's own uptime/shape, not a Mill regression) but the seed's claim is now false until it's fixed or the example's Description is corrected."
+          if [ -n "$existing" ]; then
+            gh issue comment "$existing" --repo "$GITHUB_REPOSITORY" --body "$body"
+          else
+            gh issue create --repo "$GITHUB_REPOSITORY" \
+              --title "Seed liveness: a seeded example's external endpoint is failing" \
+              --label seed-liveness \
+              --body "$body"
+          fi

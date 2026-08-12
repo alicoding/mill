@@ -812,6 +812,35 @@ and are still current** (not Runbook-specific, so they outlived it):
   forms — genuinely single-column form UI, a legitimate width cap, not
   the same misapplication) kept 960px. `LOCKED`.
 
+### 2.3 Seed lifecycle — provenance, upgrade-in-place, reset, restore
+
+`LOCKED` (`docs/goals/0037-seed-lifecycle.md`). §2.2's "fully editable,
+not a protected template" principle created a real gap once seeding
+became top-up rather than fresh-install-only (goal 0010): an existing
+install's copy of a seeded example could never receive a later
+improvement, and there was no way to tell "still exactly what shipped"
+from "the user has since edited this," so an upgrade could never be
+done safely. The fix, researched against prior art rather than
+invented (Kubernetes Server-Side Apply's move from client-side hash/
+diff detection to write-time field ownership; Grafana's own
+ignored-provisioning-`version` bug; Helm's versioned-history-over-
+in-place-mutation): every built-in-origin artifact carries
+`SeedOrigin{SeedRevision, Modified}`, `Modified` latched at the moment
+any real mutation reaches it through any path (never re-derived later
+by diffing content); reconcile then safely upgrades an unmodified,
+stale artifact in place (a new published workflow version, or an
+in-place Configure-entity content replace) while leaving a `Modified`
+one alone regardless of how far its revision has drifted. A reset-to-
+shipped-example and a restore-deleted-example affordance give the
+owner an explicit, on-demand way back to golden either way.
+
+**No ambient "N seeds outdated" badge anywhere** — deliberate,
+converged from the same prior art (none of k8s/Grafana/Helm's own UIs
+nag ambiently about drift either): staleness is on-demand disclosure
+only, surfaced at the row/canvas level exactly where a user is already
+looking at that specific artifact, never as a standing indicator
+competing for attention across the whole app.
+
 ## 3. Capability composition — how nodes connect
 
 - `OPEN`. Reference lineage: n8n (typed node inputs/outputs, credentials

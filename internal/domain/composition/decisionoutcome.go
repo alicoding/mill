@@ -142,9 +142,9 @@ func resolveDecisionOutputs(bindingsRaw string, outputs []decision.OutputField, 
 func init() {
 	RegisterNodeType(NodeType{
 		ID: "decision-outcome", Kind: KindTerminal,
-		Effect: guardrail.ClassLocal,
-		Output: "the typed decision outcome",
-		Label:  "Decision",
+		Effect:      guardrail.ClassLocal,
+		Output:      "the typed decision outcome",
+		Label:       "Decision",
 		Description: "Ends the workflow with a Configure-authored, typed terminal outcome (docs/adr/0027): an outcome category (approve/deny/manual-review/action-needed/uncategorized) plus this Decision's own typed result fields. A manual-review Decision parks the run in the Review queue first -- approve continues to the outcome, deny/timeout fails closed, same mechanism the human-review node uses. A Decision with a configured webhook fires it (the same HTTPRequest execution path integration-http uses, with the outcome's typed outputs as the body) once the outcome is computed, and -- unlike a plain Decision -- asks for approval by default, exactly like integration-http does for the identical kind of outbound call.",
 		ConfigFields: []ConfigField{
 			{
