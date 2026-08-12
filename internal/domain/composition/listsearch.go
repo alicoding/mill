@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/alicoding/mill/internal/adapters/fuzzymatch"
+	"github.com/alicoding/mill/internal/domain/guardrail"
 	"github.com/alicoding/mill/internal/domain/list"
 )
 
@@ -39,6 +40,10 @@ func init() {
 	RegisterNodeType(NodeType{
 		ID: "list-search", Kind: KindProcess,
 		Label: "List: search",
+		// ClassRead: same classification as list-lookup above -- reads a
+		// Configure-authored List's persisted rows, not left at the zero
+		// value (docs/goals/0030-node-standard.md item b).
+		Effect: guardrail.ClassRead,
 		Output: "payload unchanged; matches -> a typed Object attribute " +
 			"({results, matched, first_match, match_count, list_id})",
 		Description: "Searches a Configure-authored List's rows against one or more match parameters " +
