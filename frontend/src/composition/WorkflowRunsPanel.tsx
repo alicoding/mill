@@ -7,6 +7,8 @@ import { RunKind, type RunDetail, type RunSummary } from '../shared/bindings'
 import type { AttributeDef } from '../../bindings/github.com/alicoding/mill/internal/domain/composition/models'
 import { ApprovalValuesForm, attrsForPending } from '../shared/ApprovalValuesForm'
 import { formatRunStartedAt } from '../shared/runTime'
+import { StalenessBadge } from '../shared/StalenessBadge'
+import { ENQUEUED_STALE_THRESHOLD_MS, isStuckEnqueued } from '../shared/enqueuedStale'
 import styles from '../shared/ListCard.module.css'
 import PageContainer from '../shared/PageContainer'
 
@@ -201,11 +203,27 @@ function WorkflowRunsPanel({ workflowId, attrs, initialRunId, onInitialRunConsum
       // tr:has([data-selected='true']) (ListCard.module.css).
       renderCell: (run) => (
         <span data-run-id={run.runID} data-selected={selectedRunID === run.runID}>
-          {run.pending ? (
-            <Label variant="attention" size="small" data-testid="run-awaiting-approval">awaiting approval</Label>
-          ) : (
-            <Label variant={STATUS_VARIANT[run.status] ?? 'secondary'} size="small">{run.status}</Label>
-          )}
+          <Stack direction="horizontal" gap="condensed" align="center">
+            {run.pending ? (
+              <Label variant="attention" size="small" data-testid="run-awaiting-approval">awaiting approval</Label>
+            ) : (
+              <Label variant={STATUS_VARIANT[run.status] ?? 'secondary'} size="small">{run.status}</Label>
+            )}
+            {/* Stuck-ENQUEUED presentation (docs/goals/0026 item 8): a
+                run that queued forever without ever starting reads as
+                live otherwise -- age emphasis, same tier language as
+                the pending-approval staleness treatment (item 2), at
+                its own 5-minute bar. No "expires in" caption -- an
+                ENQUEUED run has no 24h clock of its own. */}
+            {isStuckEnqueued(run) && (
+              <StalenessBadge
+                createdAt={run.startedAt}
+                thresholdMs={ENQUEUED_STALE_THRESHOLD_MS}
+                showExpiry={false}
+                testId="run-enqueued-stale"
+              />
+            )}
+          </Stack>
         </span>
       ),
     },
@@ -273,6 +291,14 @@ function WorkflowRunsPanel({ workflowId, attrs, initialRunId, onInitialRunConsum
           <Stack direction="horizontal" justify="space-between" align="center">
             <Stack direction="horizontal" gap="condensed" align="center">
               <Label variant={STATUS_VARIANT[detail.status] ?? 'secondary'} size="small">{detail.status}</Label>
+              {isStuckEnqueued(detail) && (
+                <StalenessBadge
+                  createdAt={detail.startedAt}
+                  thresholdMs={ENQUEUED_STALE_THRESHOLD_MS}
+                  showExpiry={false}
+                  testId="run-detail-enqueued-stale"
+                />
+              )}
               {/* The run's own identity, so two identical-outcome runs
                   are still tellable apart in the detail header -- the
                   other half of the selected-row fix above. */}
