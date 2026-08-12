@@ -19,7 +19,7 @@ require (
 	github.com/wailsapp/wails/v3 v3.0.0-beta.4
 	github.com/zalando/go-keyring v0.2.8
 	golang.design/x/hotkey v0.6.1
-	golang.org/x/oauth2 v0.35.0
+	golang.org/x/oauth2 v0.36.0
 )
 
 require (
