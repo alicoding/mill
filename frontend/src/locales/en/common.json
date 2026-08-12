@@ -1,6 +1,8 @@
 {
   "actions": {
     "change": "Change",
-    "clear": "Clear"
+    "clear": "Clear",
+    "approve": "Approve",
+    "deny": "Deny"
   }
 }
