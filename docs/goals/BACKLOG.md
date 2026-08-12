@@ -108,6 +108,16 @@ this pipeline and on this code)**
    2026-08-12: the guardrailed AI-node family (n8n/Make/Zapier/
    Dify taxonomy convergence), Mill's category-defining capability;
    research not started.
+10. [ ] [0032 — Copy management](0032-copy-management.md) — owner-observed
+    2026-08-12: 40 of 72 `.tsx` files carried inline hardcoded copy, no
+    i18n library. Research + adopt decision DONE and library landed
+    2026-08-12: `react-i18next` + `i18next`, namespace-per-bounded-
+    context JSON (`frontend/src/locales/en/`), init wired in
+    `app/i18n.ts`; `SettingsView.tsx` migrated as the proof-of-pattern
+    slice. Deliberately left OPEN, not archived: the remaining ~39
+    files are real, staged debt — see the four Standing tech-debt
+    entries above (`app/`, `composition/`, `configure/`, `views/`
+    minus Settings) for the rest of the migration.
 
 **Ratified 2026-08-10 (owner): three groups, A→B→C. 0001 stays standing
 live-review material, interleaved during owner reviews, not a lane.**
@@ -138,6 +148,10 @@ live-review material, interleaved during owner reviews, not a lane.**
 - [ ] [0021 — MCP dogfood gap closure](0021-mcp-dogfood-gap-closure.md) (owner-mandated 2026-08-11: orchestrator live-probes the MCP surface against the bank use cases, logs ranked gaps, fixes graduate out; phase 1 done — 4 gaps + 1 confirmed-by-design)
 - [ ] Workflow pins/favorites (tech debt, split from goal 0015's remainder 2026-08-12) — no pin/favorite concept exists anywhere in Mill today (grepped before scoping it out); needs its own small schema decision (which store owns a pin list, per-workflow or a plain ID set) before any build — deliberately not invented ad hoc under 0015's frecency-only ship. Quick Panel's workflow list sorts by frequency alone until this lands.
 - [ ] ⌘?/⌘/ multi-binding keybinding alias (tech debt, split from goal 0015's remainder 2026-08-12) — the owner's goal-0015 "bind ⌘? (and/or ⌘/) to open the palette too" ask needs a command to carry more than one `KeyCombo`; today's registry (`shared/commands.ts`) is 1:1 (`defaultBinding: KeyCombo | null`). Needs a real schema call (array vs. a small alias table) before it's buildable — real data-model infrastructure, not a self-contained UI change.
+- [ ] Copy-management migration — `app/` (tech debt, split from goal 0032 2026-08-12) — extract `app/`'s remaining hardcoded JSX copy (App.tsx's shell chrome, QuickPanel/QuickPanelApp, ApprovalPromptApp, workflowFrecency-adjacent UI, etc. — ~11 files carry inline strings) into `frontend/src/locales/en/app.json` (already scaffolded, currently `{}`) following `SettingsView.tsx`'s established pattern (`useTranslation()`/`t()`, namespace-per-bounded-context). DoR: read `docs/goals/0032-copy-management.md` for the locked i18n pattern before starting — no new library/schema decision needed, this is mechanical extraction. DoD: every `app/*.tsx` file free of inline user-facing string literals in JSX (aria-labels included), `app.json` populated, existing e2e specs touching `app/` still pass unchanged (translated text must match original English exactly).
+- [ ] Copy-management migration — `composition/` (tech debt, split from goal 0032 2026-08-12) — same extraction as above, scoped to `composition/`'s ~22 files with inline copy (canvas node cards, palette, validation messages, trigger/schedule UI) into `frontend/src/locales/en/composition.json`. Largest of the four remaining slices — consider whether it splits further once started (per-node-type vs. whole-folder) rather than treating it as one atomic PR. Same DoR/DoD shape as the `app/` entry above.
+- [ ] Copy-management migration — `configure/` (tech debt, split from goal 0032 2026-08-12) — same extraction, scoped to `configure/`'s ~14 files (connector/list/MCP-server forms, OpenAPI synth UI) into `frontend/src/locales/en/configure.json`. Same DoR/DoD shape as the `app/` entry above.
+- [ ] Copy-management migration — `views/` minus Settings (tech debt, split from goal 0032 2026-08-12) — same extraction, scoped to the remaining `views/*.tsx` files (Settings already migrated into `views.json`'s `settings` namespace) — add sibling namespaces (e.g. `views.json`'s `home`, `activity`, etc. keys) per view. Same DoR/DoD shape as the `app/` entry above. Once all four of these land, revisit `eslint-plugin-i18next`'s `no-literal-string` rule (evaluated and deliberately deferred in goal 0032 — see `docs/SPEC.md`'s copy-management bullet) as a guard against regression.
 
 **Delivered**
 - [x] [0003 — MCP authoring live dogfood](archive/0003-mcp-authoring-dogfood.md) — 2026-08-10

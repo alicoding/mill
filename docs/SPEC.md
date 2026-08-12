@@ -286,6 +286,37 @@ and [`docs/adr/0002-cicd-pipeline-phased-rollout.md`](adr/0002-cicd-pipeline-pha
   `*.module.css` files (`RunbookView.module.css` shared by `RunbookView`
   and `ActivityView`, which already reused the same card/list visual
   language). `frontend/public/style.css` deleted. `LOCKED`
+- **Copy management: `react-i18next` v17.0.11 + `i18next` v26.3.6
+  adopted, namespace-per-bounded-context JSON — `LOCKED` (partial
+  migration, goal 0032).** Owner-observed: 40 of 72 `.tsx` files carry
+  inline hardcoded copy, no i18n library present. Research first
+  framed this as a headless-CMS question (Decap/Sveltia/Keystatic/
+  Tina) — rejected on architecture fit, not quality: every git-native
+  CMS candidate needs either a hosted OAuth intermediary or a locally-
+  running backend daemon, disqualified outright by §1.1's no-hosted-
+  service/no-second-daemon constraint. The owner reframed it mid-
+  research: this is plain i18n (key → string JSON, no authoring UI, no
+  CMS product), not localization or centralized authoring — so the
+  real adopt-vs-build call is a plain i18n library, and `react-i18next`
+  is MIT, zero-server, and the standard choice for React. Resources
+  (`frontend/src/locales/en/{common,app,composition,configure,
+  views}.json`, mirroring `frontend/src`'s own bounded-context folders)
+  are imported statically and bundled at build time — no runtime
+  fetch, no network call, matching every hard constraint in §1.1.
+  Initialized once in `frontend/src/app/i18n.ts`, imported for its
+  side effect from `main.tsx`; every other folder just calls
+  `useTranslation()` from the `react-i18next` package directly, never
+  importing the init module (dependency-cruiser's existing bounded-
+  context boundaries, ADR-0012, apply unchanged). Migrated as proof:
+  `SettingsView.tsx` (`views.json`'s `settings` namespace +
+  `common.json`'s shared action verbs). The remaining ~39 files are
+  tracked debt, not silently orphaned — see `docs/goals/BACKLOG.md`'s
+  copy-management entries. `eslint-plugin-i18next` (a lint guard
+  against new hardcoded strings) was evaluated and deliberately not
+  added yet: its `no-literal-string` rule would immediately flag every
+  still-unmigrated file, failing the lint gate repo-wide rather than
+  just guarding new code — revisit once migration is far enough along
+  that the false-positive surface is small.
 - CI: GitHub Actions, all four ADR-0002 phases shipped in
   `.github/workflows/ci.yml` + `.github/workflows/release.yml`.
   `golangci-lint` v2, ESLint flat config, Vitest, `go test -race -cover`,

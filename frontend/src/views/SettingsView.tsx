@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Browser } from '@wailsio/runtime'
 import { Button, Checkbox, FormControl, Heading, Label, SegmentedControl, Stack, Text, TextInput, useTheme } from '@primer/react'
 import { SunIcon, MoonIcon, DeviceDesktopIcon, KeyIcon } from '@primer/octicons-react'
@@ -33,6 +34,10 @@ const COLOR_MODES = ['light', 'dark', 'auto'] as const
 // state (a login item, a global hotkey registration), not something the
 // browser layer can hold on its own.
 function SettingsView() {
+  // 'views' is the default namespace (settings.* keys); 'common:'
+  // prefix reaches the shared common.json namespace explicitly
+  // (docs/goals/0032-copy-management.md's proof-of-pattern slice).
+  const { t } = useTranslation('views')
   const { colorMode, setColorMode } = useTheme()
 
   const [launchAtLogin, setLaunchAtLoginState] = useState<boolean | null>(null)
@@ -114,7 +119,7 @@ function SettingsView() {
       const reserved = reservedByMacOS(mods, key)
       if (reserved) {
         setSummonRecording(false)
-        setSummonError(`${describeCombo(mods, key)} is reserved by macOS (${reserved}) — pick another combo`)
+        setSummonError(t('settings.globalHotkey.reservedError', { combo: describeCombo(mods, key), reason: reserved }))
         return
       }
 
@@ -164,7 +169,7 @@ function SettingsView() {
     setUpdateStatus('')
     SettingsService.CheckForUpdates()
       .then((result) => {
-        setUpdateStatus(result.updateAvailable ? `Update available: v${result.version}` : "You're on the latest version.")
+        setUpdateStatus(result.updateAvailable ? t('settings.updates.updateAvailable', { version: result.version }) : t('settings.updates.upToDate'))
       })
       .catch((err) => setUpdateStatus(String(err)))
       .finally(() => setUpdateChecking(false))
@@ -172,25 +177,24 @@ function SettingsView() {
 
   return (
     <PageContainer variant="narrow" data-testid="settings-view">
-      <Heading as="h1">Settings</Heading>
+      <Heading as="h1">{t('settings.title')}</Heading>
       <Text as="p" className={styles.subtitle}>
-        App-level preferences -- not workflow or Configure-authored data (that lives in Composition/Configure), a
-        UI preference persisted locally to this machine.
+        {t('settings.subtitle')}
       </Text>
       {settingsLoadError && (
         <Text as="p" size="small" className={styles.error} data-testid="settings-load-error">
-          Couldn&apos;t load some settings -- the app may need a restart.
+          {t('settings.loadError')}
         </Text>
       )}
 
-      <Heading as="h2" variant="small" className={styles.sectionHeading}>Appearance</Heading>
-      <SegmentedControl aria-label="Color theme" onChange={(i) => setColorMode(COLOR_MODES[i])}>
-        <SegmentedControl.IconButton icon={SunIcon} aria-label="Light theme" selected={colorMode === 'light'} />
-        <SegmentedControl.IconButton icon={MoonIcon} aria-label="Dark theme" selected={colorMode === 'dark'} />
-        <SegmentedControl.IconButton icon={DeviceDesktopIcon} aria-label="Match system theme" selected={!colorMode || colorMode === 'auto'} />
+      <Heading as="h2" variant="small" className={styles.sectionHeading}>{t('settings.sections.appearance')}</Heading>
+      <SegmentedControl aria-label={t('settings.appearance.themeLabel')} onChange={(i) => setColorMode(COLOR_MODES[i])}>
+        <SegmentedControl.IconButton icon={SunIcon} aria-label={t('settings.appearance.lightLabel')} selected={colorMode === 'light'} />
+        <SegmentedControl.IconButton icon={MoonIcon} aria-label={t('settings.appearance.darkLabel')} selected={colorMode === 'dark'} />
+        <SegmentedControl.IconButton icon={DeviceDesktopIcon} aria-label={t('settings.appearance.systemLabel')} selected={!colorMode || colorMode === 'auto'} />
       </SegmentedControl>
 
-      <Heading as="h2" variant="small" className={styles.sectionHeading}>General</Heading>
+      <Heading as="h2" variant="small" className={styles.sectionHeading}>{t('settings.sections.general')}</Heading>
       <FormControl>
         <Checkbox
           checked={launchAtLogin ?? false}
@@ -198,44 +202,41 @@ function SettingsView() {
           onChange={(e) => toggleLaunchAtLogin(e.target.checked)}
           data-testid="launch-at-login-checkbox"
         />
-        <FormControl.Label>Launch Mill at login</FormControl.Label>
-        <FormControl.Caption>Starts Mill automatically when you log in, same as Raycast/Alfred (docs/SPEC.md §3.7).</FormControl.Caption>
+        <FormControl.Label>{t('settings.general.launchAtLoginLabel')}</FormControl.Label>
+        <FormControl.Caption>{t('settings.general.launchAtLoginCaption')}</FormControl.Caption>
       </FormControl>
       {launchAtLoginError && (
         <Text as="p" size="small" className={styles.error}>
           {launchAtLoginError.includes('dev binary')
-            ? 'Not available in this dev build -- only a built .app bundle can be a login item.'
+            ? t('settings.general.errorDevBinary')
             : launchAtLoginError.includes('server mode')
-              ? 'Not available in server mode -- there is no login-item concept without a desktop app to register.'
+              ? t('settings.general.errorServerMode')
               : launchAtLoginError}
         </Text>
       )}
 
-      <Heading as="h2" variant="small" className={styles.sectionHeading}>Keyboard Shortcuts</Heading>
+      <Heading as="h2" variant="small" className={styles.sectionHeading}>{t('settings.sections.keyboardShortcuts')}</Heading>
       <Text as="p" size="small" className={styles.muted}>
-        Every in-window command Mill dispatches (docs/goals/0016-keymap-system.md) -- rebind by clicking a combo
-        and pressing a new one, the same recorder used for a workflow's own trigger hotkey below.
+        {t('settings.keyboardShortcuts.description')}
       </Text>
       <KeyboardShortcutsSection />
 
-      <Heading as="h2" variant="small" className={styles.sectionHeading}>Global hotkey</Heading>
+      <Heading as="h2" variant="small" className={styles.sectionHeading}>{t('settings.sections.globalHotkey')}</Heading>
       <Text as="p" size="small" className={styles.muted}>
-        Opens Mill's Quick Panel from anywhere, like Raycast's ⌥Space or Alfred's own shortcut -- search and run a
-        workflow, or jump into Mill itself, without leaving what you were doing. Press again to dismiss it.
-        Distinct from a specific workflow's own trigger hotkey (set per-workflow on its canvas).
+        {t('settings.globalHotkey.description')}
       </Text>
       <Stack direction="horizontal" gap="condensed" align="center" style={{ marginTop: 'var(--base-size-8)' }}>
         {summonRecording ? (
-          <Text size="small" className={styles.recording}>Press a combo… (Esc to cancel)</Text>
+          <Text size="small" className={styles.recording}>{t('settings.globalHotkey.recording')}</Text>
         ) : summonBinding ? (
           <>
             <Label variant="secondary"><KeyIcon size={12} /> {summonBinding}</Label>
-            <Button size="small" variant="invisible" onClick={() => setSummonRecording(true)}>Change</Button>
-            <Button size="small" variant="invisible" onClick={clearSummonHotkey}>Clear</Button>
+            <Button size="small" variant="invisible" onClick={() => setSummonRecording(true)}>{t('common:actions.change')}</Button>
+            <Button size="small" variant="invisible" onClick={clearSummonHotkey}>{t('common:actions.clear')}</Button>
           </>
         ) : (
           <Button size="small" variant="invisible" onClick={() => setSummonRecording(true)} data-testid="set-summon-hotkey">
-            Set shortcut
+            {t('settings.globalHotkey.setShortcut')}
           </Button>
         )}
       </Stack>
@@ -244,13 +245,13 @@ function SettingsView() {
           <Text as="p" size="small" className={styles.error}>{summonError}</Text>
           {isAccessibilityError(summonError) && (
             <Button size="small" onClick={() => Browser.OpenURL(ACCESSIBILITY_SETTINGS_URL)}>
-              Open Accessibility Settings
+              {t('settings.globalHotkey.openAccessibilitySettings')}
             </Button>
           )}
         </Stack>
       )}
 
-      <Heading as="h2" variant="small" className={styles.sectionHeading}>MCP access</Heading>
+      <Heading as="h2" variant="small" className={styles.sectionHeading}>{t('settings.sections.mcpAccess')}</Heading>
       <FormControl>
         <Checkbox
           checked={mcpWriteEnabled ?? false}
@@ -261,11 +262,9 @@ function SettingsView() {
           }}
           data-testid="mcp-write-enabled-checkbox"
         />
-        <FormControl.Label>Allow MCP clients to import data</FormControl.Label>
+        <FormControl.Label>{t('settings.mcp.allowImportLabel')}</FormControl.Label>
         <FormControl.Caption>
-          Off by default (docs/adr/0017): when on, an external MCP client connected to Mill&apos;s local MCP
-          server can create workflows, integrations, lists, and MCP-server entries via the import tools --
-          reading/exporting is always allowed and never includes secrets. Applies immediately, no restart.
+          {t('settings.mcp.allowImportCaption')}
         </FormControl.Caption>
       </FormControl>
       {mcpWriteEnabled && (
@@ -279,23 +278,19 @@ function SettingsView() {
             }}
             data-testid="mcp-write-approval-checkbox"
           />
-          <FormControl.Label>Ask me before each MCP import</FormControl.Label>
+          <FormControl.Label>{t('settings.mcp.askBeforeImportLabel')}</FormControl.Label>
           <FormControl.Caption>
-            On by default (docs/adr/0022): each import parks until you approve it in Mill&apos;s window
-            (or times out after 2 minutes, which denies it). Turning this off lets an enabled MCP client
-            import without a per-write click -- enabling writes shouldn&apos;t silently mean unattended writes.
+            {t('settings.mcp.askBeforeImportCaption')}
           </FormControl.Caption>
         </FormControl>
       )}
 
-      <Heading as="h2" variant="small" className={styles.sectionHeading}>Notifications</Heading>
+      <Heading as="h2" variant="small" className={styles.sectionHeading}>{t('settings.sections.notifications')}</Heading>
       <Text as="p" size="small" className={styles.muted}>
-        A parked guardrail ask or MCP write notifies you and shows a floating approval prompt (docs/adr/0032,
-        docs/goals/0023) once you&apos;re away -- not merely unfocused, but idle past the threshold below, or
-        genuinely unfocused. A present, actively-using-Mill window is never double-noised.
+        {t('settings.notifications.description')}
       </Text>
       <FormControl>
-        <FormControl.Label>Away after (seconds)</FormControl.Label>
+        <FormControl.Label>{t('settings.notifications.awayAfterLabel')}</FormControl.Label>
         <TextInput
           type="number"
           min={1}
@@ -307,21 +302,17 @@ function SettingsView() {
           size="small"
         />
         <FormControl.Caption>
-          How long the Mac must sit idle (no keyboard/mouse/trackpad input) while Mill is focused before
-          you&apos;re treated as away -- 300s (5 minutes) by default, matching Teams&apos; own away-status
-          default. Losing focus entirely always counts as away regardless of this number.
+          {t('settings.notifications.awayAfterCaption')}
         </FormControl.Caption>
       </FormControl>
       <Text as="p" size="small" className={styles.muted}>
-        For the notification to alert instead of only appearing quietly in Notification Center, allow it in
-        System Settings → Notifications → Mill → Alerts (docs/goals/0023 item 3) -- Mill requests notification
-        permission on first launch, but macOS still defaults new apps to Banners, which auto-dismiss.
+        {t('settings.notifications.alertPermissionNote')}
       </Text>
 
-      <Heading as="h2" variant="small" className={styles.sectionHeading}>Updates</Heading>
+      <Heading as="h2" variant="small" className={styles.sectionHeading}>{t('settings.sections.updates')}</Heading>
       <Stack direction="horizontal" gap="condensed" align="center">
         <Button size="small" onClick={checkForUpdates} disabled={updateChecking} data-testid="check-for-updates">
-          {updateChecking ? 'Checking…' : 'Check for updates'}
+          {updateChecking ? t('settings.updates.checking') : t('settings.updates.checkButton')}
         </Button>
         {updateStatus && <Text size="small" className={styles.muted}>{updateStatus}</Text>}
       </Stack>
