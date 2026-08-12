@@ -1,5 +1,7 @@
 # Welcome to Your New Wails3 Project!
 
+[![CI](https://github.com/alicoding/mill/actions/workflows/ci.yml/badge.svg)](https://github.com/alicoding/mill/actions/workflows/ci.yml)
+
 Congratulations on generating your Wails3 application! This README will guide you through the next steps to get your project up and running.
 
 ## Getting Started

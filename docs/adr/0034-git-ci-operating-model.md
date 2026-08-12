@@ -93,3 +93,74 @@ direct-push-with-checks configuration to prefer instead.
 - The ruleset's live rejection behavior gets one manual dry-run
   verification (attempt a direct push after activation) rather than
   being trusted from docs alone.
+
+## Update (2026-08-11) — adopted budgets, and path filtering un-deferred
+
+Goal 0024's target-architecture pass (`.github/workflows/ci.yml`)
+closes out the two items this ADR originally left open: no timing
+budget was ever stated, and path filtering was explicitly deferred.
+Both are resolved now, the second one reversed.
+
+- **Adopted budgets, per DORA's own elite-performer guidance (a ≤10-
+  minute build/test cycle) rather than an invented number**: **≤7
+  minutes is the target**, **10 minutes is the hard ceiling** a job is
+  allowed to approach before it's treated as a defect, not a fluke.
+  Per-job `timeout-minutes` in `ci.yml` are set to roughly **3× each
+  job's measured baseline** — generous enough that a legitimate slow
+  run doesn't get killed mid-flight (a timeout is a circuit breaker
+  against a genuinely hung job — an infinite loop, a wedged process
+  spawn — not a budget-enforcement mechanism; the ≤7min/10min figures
+  above are the actual budget, watched by a human reading run
+  duration, not by the timeout itself): `changes` 5, `file-loc-limit`
+  5, `rules-frontmatter` 5, `root-file-naming` 5, `frontend` 10,
+  `lint-go` 10, `build-go` (macOS leg) 15 / (Linux leg) 10, `test-go`
+  10, each `e2e` shard 15, `govulncheck` 15, `dependency-review` 5,
+  `ci-gate` 5.
+- **3-consecutive-breach escalation rule**: a job breaching the
+  10-minute ceiling on 3 consecutive runs (not one — a single slow run
+  can be real-world noise: a cold GitHub Actions cache, a slow
+  upstream package-registry pull) is treated as a genuine regression
+  needing investigation (a new heavy dependency, an accidentally
+  serialized step, real contention), not a number to quietly raise.
+  Raising the timeout instead of investigating is exactly the
+  rerun-until-green failure mode this ADR's own Consequences section
+  already rejects, one level down.
+- **Retry-quarantine policy**: Mill does not use blanket step-level
+  retries to paper over flakiness (no `retry:`/`continue-on-error`
+  used as a flake mask anywhere in `ci.yml`) — `.claude/rules/
+  testing.md`'s existing discipline already governs this
+  (`playwright.config.ts`'s one `retries: 1` is scoped, documented,
+  and justified by a named, understood timing flake, not a blanket
+  policy). A job that becomes reliably flaky gets quarantined
+  explicitly (an owner-visible, named `continue-on-error` with a
+  comment stating why and a follow-up to fix it, the same treatment
+  `govulncheck` already gets for a different, legitimate reason — an
+  external tool's own experimental status) rather than silently
+  retried until it passes. No new mechanism needed; this section
+  exists to make the policy explicit rather than assumed.
+- **CI path filtering — un-deferred, adopted.** The original deferral
+  reasoning (`paths`-filtered workflows report no status at all for a
+  skipped run, hanging a required check at "Expected" forever) is
+  still correct about workflow-level `on.pull_request.paths` — that
+  mechanism is still not used anywhere in `ci.yml`. What changed is
+  the *mechanism*: a new first job, `changes` (`dorny/paths-filter`,
+  SHA-pinned), computes whether the PR's diff is entirely
+  docs/**/*.md/.claude/**/LICENSE, and every other job (except
+  `govulncheck`, left as a `frontend`-cascaded no-op) gets
+  `if: success() && needs.changes.outputs.code == 'true'`. This is a
+  **job-level** conditional, not a workflow-level path filter — the
+  job still runs the GitHub Actions scheduler's own bookkeeping and
+  **reports a real status** (`skipped`, which GitHub's required-checks
+  mechanism treats as a pass), it just no-ops its steps. A skipped job
+  can never hang a required check at "Expected" the way an
+  entirely-non-triggered workflow run can — that failure mode was
+  specific to `on.paths`, not to conditional execution in general, and
+  doesn't reappear here. `ci-gate` (the new aggregator, also un-defers
+  the "which jobs does the ruleset actually require" question — see
+  goal 0024 item 4) explicitly treats a `skipped` upstream result as a
+  pass, matching this. The original "docs-only PRs are rare under
+  Mill's same-change rule, so the savings are small" observation still
+  holds as *why this wasn't urgent*, not as a reason it's wrong to
+  build now that the mechanism is understood and the felt cost (a
+  15-minute-plus e2e matrix run on a pure `docs/goals/*.md` edit) is
+  real.
