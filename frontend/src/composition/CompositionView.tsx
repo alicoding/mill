@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Events } from '@wailsio/runtime'
 import { Button, Heading, Label, Stack, Text } from '@primer/react'
 import { PlusIcon, UploadIcon, WorkflowIcon } from '@primer/octicons-react'
 import { CompositionService, ExecutionService, TriggerService } from '../shared/bindings'
@@ -70,6 +71,20 @@ function CompositionView() {
     void refreshWorkflows()
     void refreshNodeTypes()
     refreshArmed()
+  }, [refreshArmed])
+
+  // goal 0017 P2: a Publish/disable/delete elsewhere (another tab, an
+  // MCP author) can arm or disarm a workflow's trigger listener --
+  // armedWorkflows used to only refresh from THIS page's own Publish
+  // button/mount, so that badge could silently go stale for a change
+  // made anywhere else. refreshWorkflows() already runs on the same
+  // event (App.tsx), but the list's own store update doesn't imply
+  // TriggerService's separately-tracked armed-set changed too.
+  useEffect(() => {
+    return Events.On('mill-data-changed', (evt) => {
+      const entity = (evt.data as { entity?: string })?.entity
+      if (entity === 'workflow') refreshArmed()
+    })
   }, [refreshArmed])
 
   // The row-level Publish CTA (docs/goals/0006, decision 2): publishing

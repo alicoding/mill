@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/alicoding/mill/internal/domain/composition"
+	"github.com/alicoding/mill/internal/services/dataevent"
 )
 
 // Workflow lifecycle & versioning RPCs (docs/adr/0021) -- the
@@ -57,6 +58,11 @@ func (c *CompositionService) mutateWorkflow(id string, fn func(composition.Workf
 		return composition.Workflow{}, fmt.Errorf("save workflow: %w", err)
 	}
 	c.notifySyncer()
+	// Live-sync (goal 0017): the ONE choke point every lifecycle
+	// mutation (Publish/PublishExistingVersion/RestoreVersionToDraft/
+	// SetWorkflowDisabled/SnapshotDraft) routes through -- one emit call
+	// covers all five instead of duplicating it per caller.
+	dataevent.Emit("workflow", updated.ID)
 	return updated, nil
 }
 

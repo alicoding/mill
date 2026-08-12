@@ -107,7 +107,15 @@ an implicit `FINAL`.
   ever show stale state the user would have to manually refresh?" and
   close that gap (goal 0017). Same family as the §1 thesis (no gap
   between what you see and what's real) — applied to *time*, not just
-  structure.
+  structure. **Including Mill's own UI mutations, not just external
+  ones**: goal 0017's audit found the event layer's emit side lived in
+  ONE place (`mcpsvc`, MCP-authored writes only) — a direct-UI create/
+  edit/delete through `CompositionService`/`ConfigureService`/
+  `GuardrailService` emitted nothing at all, so it only ever reached the
+  tab that made the change, never another open surface. Fixed by giving
+  every direct-mutation service its own `dataevent.Emit` call (one
+  shared package, `internal/services/dataevent`) rather than treating
+  MCP as the sole live-sync source.
 - **Scope filter, learned from the screenshot-to-clipboard tangent**: before
   any capability goes into Mill, check whether the OS (or an existing
   launcher like Alfred/Raycast) already does it simply and well. If yes,
