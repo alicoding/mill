@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"time"
 
+	"github.com/alicoding/mill/internal/domain/aiprovider"
 	"github.com/alicoding/mill/internal/domain/composition"
 	"github.com/alicoding/mill/internal/domain/decision"
 	"github.com/alicoding/mill/internal/domain/execenv"
@@ -97,6 +98,12 @@ func AllSeedFingerprints() map[string]SeedFingerprint {
 		rev := e.Seed.SeedRevision
 		e.ID, e.CreatedAt, e.UpdatedAt, e.Seed = "", time.Time{}, time.Time{}, seedorigin.Origin{}
 		out[keyFor("execenv", id)] = SeedFingerprint{SeedRevision: rev, Fingerprint: fingerprintContent(e)}
+	}
+	for _, p := range aiprovider.BuiltIn() {
+		id := p.ID
+		rev := p.Seed.SeedRevision
+		p.ID, p.CreatedAt, p.UpdatedAt, p.Seed = "", time.Time{}, time.Time{}, seedorigin.Origin{}
+		out[keyFor("aiprovider", id)] = SeedFingerprint{SeedRevision: rev, Fingerprint: fingerprintContent(p)}
 	}
 	return out
 }

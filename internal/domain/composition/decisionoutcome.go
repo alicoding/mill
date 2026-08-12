@@ -61,6 +61,14 @@ func EffectForNode(node Node) guardrail.EffectClass {
 			return guardrail.ClassExternal
 		}
 	}
+	// docs/goals/0031-ai-node-family.md: the AI node family's own
+	// dynamic override (aiprovider.go) downgrades ClassExternal to
+	// ClassLocal for a loopback AIProvider BaseURL -- additive, exactly
+	// like the decision-outcome case above, every other NodeType's
+	// effect is unaffected.
+	if class, ok := aiNodeEffectOverride(node); ok {
+		return class
+	}
 	return NodeTypeEffect(node.NodeTypeID)
 }
 

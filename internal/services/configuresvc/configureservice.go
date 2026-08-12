@@ -10,6 +10,7 @@ import (
 	"github.com/alicoding/mill/internal/adapters/credential"
 	"github.com/alicoding/mill/internal/adapters/openapispec"
 	"github.com/alicoding/mill/internal/adapters/settings"
+	"github.com/alicoding/mill/internal/domain/aiprovider"
 	"github.com/alicoding/mill/internal/domain/composition"
 	"github.com/alicoding/mill/internal/domain/decision"
 	"github.com/alicoding/mill/internal/domain/execenv"
@@ -72,6 +73,7 @@ type ConfigureService struct {
 	mcpServers  []mcpserver.MCPServer
 	decisions   []decision.Decision
 	execEnvs    []execenv.ExecEnv
+	aiProviders []aiprovider.AIProvider
 	composition *compositionsvc.CompositionService
 }
 
@@ -81,6 +83,7 @@ func NewConfigureService(store settings.Store, comp *compositionsvc.CompositionS
 	c.restoreMCPServers()
 	c.restoreDecisions()
 	c.restoreExecEnvs()
+	c.restoreAIProviders()
 	// reconcileBuiltIn* (configureservice_builtin.go, docs/goals/0037)
 	// supersede the old insert-only topUpBuiltIn*: insert/upgrade/
 	// leave-alone/skip per golden, not just insert.
@@ -88,11 +91,13 @@ func NewConfigureService(store settings.Store, comp *compositionsvc.CompositionS
 	c.reconcileBuiltInLists()
 	c.reconcileBuiltInMCPServers()
 	c.reconcileBuiltInExecEnvs()
+	c.reconcileBuiltInAIProviders()
 	composition.SetHTTPRequestLookup(c.resolveHTTPRequest)
 	composition.SetListLookup(c.resolveList)
 	composition.SetMCPServerLookup(c.resolveMCPServer)
 	composition.SetDecisionLookup(c.resolveDecision)
 	composition.SetExecEnvLookup(c.resolveExecEnv)
+	composition.SetAIProviderLookup(c.resolveAIProvider)
 	return c
 }
 

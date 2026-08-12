@@ -28,6 +28,9 @@ import * as mcpclient$0 from "../../adapters/mcpclient/models.js";
 import * as openapispec$0 from "../../adapters/openapispec/models.js";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
+import * as aiprovider$0 from "../../domain/aiprovider/models.js";
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: Unused imports
 import * as composition$0 from "../../domain/composition/models.js";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
@@ -52,6 +55,10 @@ import * as typedfield$0 from "../../domain/typedfield/models.js";
 // @ts-ignore: Unused imports
 import * as $models from "./models.js";
 
+export function AIProviders(): $CancellablePromise<aiprovider$0.AIProvider[] | null> {
+    return $Call.ByID(3861562536);
+}
+
 /**
  * AddListRow appends a new, Active row to a List, minting its ID here
  * (row-ID generation stays a service-layer concern, same as List IDs
@@ -72,6 +79,10 @@ export function AddListRow(listID: string, values: { [_ in string]?: string } | 
  */
 export function CaptureShellPath(): $CancellablePromise<string> {
     return $Call.ByID(759717731);
+}
+
+export function CreateAIProvider(label: string, kind: aiprovider$0.Kind, baseURL: string, model: string): $CancellablePromise<aiprovider$0.AIProvider> {
+    return $Call.ByID(427493887, label, kind, baseURL, model);
 }
 
 export function CreateDecision(label: string, category: decision$0.Category, outputs: decision$0.OutputField[] | null, webhookRequestID: string): $CancellablePromise<decision$0.Decision> {
@@ -104,6 +115,25 @@ export function CreateMCPServer(label: string, command: string, args: string[] |
 
 export function Decisions(): $CancellablePromise<decision$0.Decision[] | null> {
     return $Call.ByID(3569228287);
+}
+
+/**
+ * DeleteAIProvider also removes any keychain secret for id -- best-
+ * effort (a delete on an id with no stored secret is a harmless no-op-
+ * shaped error, not surfaced), same reasoning DeleteHTTPRequest's own
+ * c.credentials.Delete call already documents.
+ */
+export function DeleteAIProvider(id: string): $CancellablePromise<void> {
+    return $Call.ByID(2537752540, id);
+}
+
+/**
+ * DeleteAIProviderSecret clears id's secret without deleting the
+ * provider itself -- e.g. switching a BYO endpoint back to no
+ * credential.
+ */
+export function DeleteAIProviderSecret(id: string): $CancellablePromise<void> {
+    return $Call.ByID(2178752064, id);
 }
 
 export function DeleteDecision(id: string): $CancellablePromise<void> {
@@ -157,6 +187,10 @@ export function ExecEnvs(): $CancellablePromise<execenv$0.ExecEnv[] | null> {
     return $Call.ByID(1392956673);
 }
 
+export function ExportAIProvider(id: string): $CancellablePromise<string> {
+    return $Call.ByID(677240817, id);
+}
+
 export function ExportDecision(id: string): $CancellablePromise<string> {
     return $Call.ByID(1497100540, id);
 }
@@ -190,6 +224,15 @@ export function HTTPRequestOperationFields(id: string, path: string, method: str
 
 export function HTTPRequests(): $CancellablePromise<httprequest$0.HTTPRequest[] | null> {
     return $Call.ByID(1886035734);
+}
+
+/**
+ * ImportAIProvider always creates a new AIProvider with no secret set --
+ * exportedAIProvider never carries one, same as ImportMCPServer's own
+ * no-credential-to-import shape.
+ */
+export function ImportAIProvider(jsonData: string): $CancellablePromise<aiprovider$0.AIProvider> {
+    return $Call.ByID(2109937718, jsonData);
 }
 
 export function ImportDecision(jsonData: string): $CancellablePromise<decision$0.Decision> {
@@ -255,6 +298,13 @@ export function MCPServers(): $CancellablePromise<mcpserver$0.MCPServer[] | null
 }
 
 /**
+ * ResetAIProviderToSeed mirrors ResetMCPServerToSeed for AI providers.
+ */
+export function ResetAIProviderToSeed(id: string): $CancellablePromise<aiprovider$0.AIProvider> {
+    return $Call.ByID(2473880440, id);
+}
+
+/**
  * ResetDecisionToSeed mirrors ResetHTTPRequestToSeed for Decisions.
  */
 export function ResetDecisionToSeed(id: string): $CancellablePromise<decision$0.Decision> {
@@ -294,6 +344,13 @@ export function ResetMCPServerToSeed(id: string): $CancellablePromise<mcpserver$
 }
 
 /**
+ * RestorableAIProviders mirrors RestorableMCPServers for AI providers.
+ */
+export function RestorableAIProviders(): $CancellablePromise<aiprovider$0.AIProvider[] | null> {
+    return $Call.ByID(3321973737);
+}
+
+/**
  * RestorableDecisions mirrors RestorableHTTPRequests for Decisions.
  */
 export function RestorableDecisions(): $CancellablePromise<decision$0.Decision[] | null> {
@@ -328,6 +385,13 @@ export function RestorableLists(): $CancellablePromise<list$0.List[] | null> {
  */
 export function RestorableMCPServers(): $CancellablePromise<mcpserver$0.MCPServer[] | null> {
     return $Call.ByID(4091392795);
+}
+
+/**
+ * RestoreAIProvider mirrors RestoreMCPServer for AI providers.
+ */
+export function RestoreAIProvider(id: string): $CancellablePromise<aiprovider$0.AIProvider> {
+    return $Call.ByID(3669826701, id);
 }
 
 /**
@@ -384,6 +448,16 @@ export function SeedRevisions(): $CancellablePromise<{ [_ in string]?: number } 
 }
 
 /**
+ * SetAIProviderSecret writes id's secret (an API key, or Anthropic's
+ * x-api-key) to the OS keychain. Write-only by design (docs/SPEC.md
+ * §3.5): no GetSecret binding exists on this service -- the frontend
+ * can set a secret but never read one back.
+ */
+export function SetAIProviderSecret(id: string, secret: string): $CancellablePromise<void> {
+    return $Call.ByID(970513691, id, secret);
+}
+
+/**
  * SetHTTPRequestJOSEPrivateKey writes id's JOSE private key (Phase 3)
  * to its own, separate keychain entry -- write-only, same reasoning as
  * SetHTTPRequestSecret, but namespaced (joseKeychainID) so it can
@@ -430,6 +504,10 @@ export function SetHTTPRequestSecret(id: string, secret: string): $CancellablePr
  */
 export function TestHTTPRequestOperation(req: $models.TestHTTPRequestInput): $CancellablePromise<$models.TestHTTPRequestResult> {
     return $Call.ByID(2859699262, req);
+}
+
+export function UpdateAIProvider(id: string, label: string, kind: aiprovider$0.Kind, baseURL: string, model: string): $CancellablePromise<aiprovider$0.AIProvider> {
+    return $Call.ByID(3997420794, id, label, kind, baseURL, model);
 }
 
 /**

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/alicoding/mill/internal/domain/aiprovider"
 	"github.com/alicoding/mill/internal/domain/decision"
 	"github.com/alicoding/mill/internal/domain/httprequest"
 	"github.com/alicoding/mill/internal/domain/list"
@@ -264,4 +265,51 @@ func (c *ConfigureService) ImportDecision(jsonData string) (decision.Decision, e
 		return decision.Decision{}, fmt.Errorf("import decision: invalid JSON: %w", err)
 	}
 	return c.CreateDecision(in.Label, in.Category, in.Outputs, "")
+}
+
+// --- AIProvider ---
+
+// exportedAIProvider omits any secret by construction, same as every
+// other exported*/Export* shape in this file -- AIProvider carries no
+// secret field at all (aiprovider.AIProvider's own doc comment), so
+// there's nothing to strip.
+type exportedAIProvider struct {
+	Label   string          `json:"label"`
+	Kind    aiprovider.Kind `json:"kind"`
+	BaseURL string          `json:"baseURL"`
+	Model   string          `json:"model"`
+}
+
+func (c *ConfigureService) ExportAIProvider(id string) (string, error) {
+	c.mu.Lock()
+	var p aiprovider.AIProvider
+	found := false
+	for _, entry := range c.aiProviders {
+		if entry.ID == id {
+			p = entry
+			found = true
+			break
+		}
+	}
+	c.mu.Unlock()
+	if !found {
+		return "", fmt.Errorf("no AI provider with id %q", id)
+	}
+
+	data, err := json.MarshalIndent(exportedAIProvider{Label: p.Label, Kind: p.Kind, BaseURL: p.BaseURL, Model: p.Model}, "", "  ")
+	if err != nil {
+		return "", fmt.Errorf("export AI provider: %w", err)
+	}
+	return string(data), nil
+}
+
+// ImportAIProvider always creates a new AIProvider with no secret set --
+// exportedAIProvider never carries one, same as ImportMCPServer's own
+// no-credential-to-import shape.
+func (c *ConfigureService) ImportAIProvider(jsonData string) (aiprovider.AIProvider, error) {
+	var in exportedAIProvider
+	if err := json.Unmarshal([]byte(jsonData), &in); err != nil {
+		return aiprovider.AIProvider{}, fmt.Errorf("import AI provider: invalid JSON: %w", err)
+	}
+	return c.CreateAIProvider(in.Label, in.Kind, in.BaseURL, in.Model)
 }
