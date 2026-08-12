@@ -57,6 +57,29 @@ this pipeline and on this code)**
    jump-to-workflow preview; stuck-ENQUEUED runs get age emphasis +
    Stop in WorkflowRunsPanel/Activity's runs explorer. Item 4
    (session-side hygiene) intentionally not a Mill code change.
+5. [ ] [0027 — Core vs composition boundary](0027-core-vs-composition-boundary.md)
+   — ADR-0035 accepted 2026-08-11 (owner-mandated, "worth aligning on
+   the principle more explicitly," triggered by the forward-toggle
+   violation caught live hours after §9.5's kernel doc landed); the
+   build half (items 4-5) in flight this session: `trigger-system-event`
+   unparked, the forward refactored into a seeded composed workflow.
+6. [ ] [0028 — Public-repo hygiene](0028-public-repo-hygiene.md) —
+   research delivered 2026-08-12 (community-profile score 28%,
+   exposure sweep clean, LICENSE already correct); the close-the-gaps
+   build (README/SECURITY/CONTRIBUTING/Scorecard/lint hardening) not
+   started.
+7. [ ] [0029 — Dev-liveness honesty](0029-dev-liveness-honesty.md) —
+   the DEV·live badge's Go-liveness blind spot, now having claimed a
+   second scalp (ADR-0035's Consequences note); a third badge state
+   (amber DEV·go-stale) not yet built.
+8. [ ] [0030 — Node standard](0030-node-standard.md) — owner-mandated
+   2026-08-12: a written, precedent-researched (n8n community-node
+   review) conformance standard every NodeType is checked against;
+   not started.
+9. [ ] [0031 — AI node family](0031-ai-node-family.md) — owner-engaged
+   2026-08-12: the guardrailed AI-node family (n8n/Make/Zapier/
+   Dify taxonomy convergence), Mill's category-defining capability;
+   research not started.
 
 **Ratified 2026-08-10 (owner): three groups, A→B→C. 0001 stays standing
 live-review material, interleaved during owner reviews, not a lane.**
