@@ -1,6 +1,6 @@
 import type { Ref } from 'react'
-import { Button, FormControl, IconButton, Stack, Text, TextInput, Textarea } from '@primer/react'
-import { ChevronDownIcon, ChevronUpIcon, PencilIcon } from '@primer/octicons-react'
+import { Button, FormControl, IconButton, Label, Stack, Text, TextInput, Textarea } from '@primer/react'
+import { ChevronDownIcon, ChevronUpIcon, EyeIcon, PencilIcon } from '@primer/octicons-react'
 import type { Workflow } from '../../bindings/github.com/alicoding/mill/internal/domain/composition/models'
 import { RunButton, type RunButtonHandle } from './LiveRunControls'
 import styles from './CompositionCanvas.module.css'
@@ -68,9 +68,23 @@ export function CanvasMetaHeader({
           data-testid="toggle-description"
         />
         {readOnly ? (
-          <Button size="small" leadingVisual={PencilIcon} onClick={onSwitchToEdit} data-testid="edit-workflow">
-            Edit
-          </Button>
+          <>
+            {/* docs/goals/0036-view-mode-ux-hardening.md item 2: the
+                ambient cue that this canvas is read-only, present before
+                any interaction -- the fieldset-disabled inspector fields
+                only reveal themselves as inert once a node is selected;
+                this chip is visible the moment the tab opens. Same Label
+                family as the row-level 'v1 live'/'draft'/'disabled'
+                badges (CompositionView.tsx) and the hotkey-binding badge
+                (NodeInspector.tsx) -- one recognizable idiom, not a new
+                one just for this. */}
+            <Label variant="secondary" size="small" data-testid="view-mode-chip">
+              <EyeIcon size={12} /> Viewing
+            </Label>
+            <Button size="small" leadingVisual={PencilIcon} onClick={onSwitchToEdit} data-testid="edit-workflow">
+              Edit
+            </Button>
+          </>
         ) : (
           <Button size="small" onClick={save} disabled={saving} data-testid="save-workflow">
             {saving ? 'Saving…' : workflow ? 'Save changes' : 'Save workflow'}

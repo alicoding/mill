@@ -93,7 +93,7 @@ export function NodeInspector({ node, workflowId, attrs, nodeType, sameKindNodeT
   // fieldset does disable, so the overlay can never be opened in the
   // first place while read-only.
   return (
-    <fieldset disabled={readOnly} className={styles.inspectorFieldset}>
+    <fieldset disabled={readOnly} className={styles.inspectorFieldset} data-testid="inspector-fieldset">
     <Stack direction="vertical" gap="condensed">
       <NodeExecutionSection step={runStep} />
       {/* Swapping type in place (same Kind only) instead of

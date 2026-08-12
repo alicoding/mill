@@ -1,4 +1,4 @@
-import { Button, IconButton, Label, Stack } from '@primer/react'
+import { Button, IconButton, Label, Link, Stack } from '@primer/react'
 import { DownloadIcon, PencilIcon, TrashIcon } from '@primer/octicons-react'
 import { DataTable } from '@primer/react/experimental'
 import { ResizableTableContainer, TruncatedCell } from '../shared/ResizableTable'
@@ -15,7 +15,7 @@ import { hasDraftDrift } from './draftDrift'
 // card view; only the presentation differs.
 export function WorkflowsTable({
   workflows, runningId, editDisabled, armedWorkflows, publishingId,
-  onRun, onEdit, onExport, onDelete, onPublish, onHotkeyChanged,
+  onRun, onOpenView, onEdit, onExport, onDelete, onPublish, onHotkeyChanged,
 }: {
   workflows: Workflow[]
   runningId: string | null
@@ -26,6 +26,13 @@ export function WorkflowsTable({
   armedWorkflows: Record<string, boolean | undefined>
   publishingId: string | null
   onRun: (id: string) => void
+  // docs/goals/0036-view-mode-ux-hardening.md item 1: table view's own
+  // entry into VIEW mode -- InventoryList's row-view already opens VIEW
+  // on a plain row click (CompositionView.tsx's onOpen); the table view
+  // had no equivalent, so the Label cell becomes the same affordance
+  // here, matching goal 0022's "row click inspects, Edit is explicit"
+  // grammar rather than adding a second table-only entry point.
+  onOpenView: (id: string) => void
   onEdit: (id: string) => void
   onExport: (id: string, label: string) => void
   onDelete: (id: string) => void
@@ -49,7 +56,19 @@ export function WorkflowsTable({
         aria-labelledby="workflows-heading"
         data={workflows.map((wf) => ({ ...wf, id: wf.ID }))}
         columns={[
-          { header: 'Label', field: 'Label', rowHeader: true, sortBy: 'alphanumeric' },
+          {
+            // rowHeader stays true (the accessible name for the row);
+            // renderCell layers the click-to-view affordance on top of
+            // the same field, sort/field wiring untouched -- DataTable's
+            // own sort strategy reads `field`/`sortBy`, not renderCell's
+            // output (checked against DataTable.js's getValue()).
+            header: 'Label', field: 'Label', rowHeader: true, sortBy: 'alphanumeric',
+            renderCell: (wf) => (
+              <Link as="button" type="button" onClick={() => onOpenView(wf.ID)} data-testid="workflow-view-link">
+                {wf.Label}
+              </Link>
+            ),
+          },
           {
             // growCollapse (not 'auto'): a Publish CTA + badge can run
             // wide (schedule/filesystem-watch text plus a badge plus a
