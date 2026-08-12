@@ -4,5 +4,6 @@
 export type {
     DataChanged,
     MCPWriteActivity,
-    MCPWriteRequest
+    MCPWriteRequest,
+    MCPWriteResolved
 } from "./models.js";

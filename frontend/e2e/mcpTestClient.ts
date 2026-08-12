@@ -11,6 +11,37 @@ import { MCP_BASE_PORT, expect } from './fixtures/server'
 // own testMatch glob, same "plain helper module" shape as
 // inventoryRow.ts.
 
+// backdatePendingMCPWrite drives the e2e-only debug knob
+// (SettingsService.DebugBackdatePendingMCPWrite, docs/goals/0026 item 2)
+// directly over Wails3's own runtime call wire protocol, bypassing the
+// generated bindings entirely -- page.evaluate can't `import` a
+// production-bundled chunk by a stable path, and the generated
+// bindings' own numeric method IDs (Call.ByID) are regenerated per
+// `wails3 generate bindings` run, too fragile to hardcode in a test.
+// The METHOD NAME form (Call.ByName, "package.Struct.Method") is the
+// stable identifier Wails3 itself resolves bound methods by
+// server-side (confirmed directly against @wailsio/runtime's own
+// dist/calls.js + dist/runtime.js, and wails3's own bindings_test.go
+// MethodName format) -- this replicates that exact wire shape via a
+// plain POST, the same request the generated binding itself would send.
+export async function backdatePendingMCPWrite(page: Page, id: string, ageMinutes: number): Promise<void> {
+  const res = await page.request.post('/wails/runtime', {
+    headers: { 'x-wails-client-id': 'e2e-test-knob', 'Content-Type': 'application/json' },
+    data: {
+      object: 0, // objectNames.Call
+      method: 0, // CallBinding
+      args: {
+        'call-id': `e2e-backdate-${Date.now()}`,
+        methodName: 'github.com/alicoding/mill/internal/services/settingssvc.SettingsService.DebugBackdatePendingMCPWrite',
+        args: [id, ageMinutes],
+      },
+    },
+  })
+  if (!res.ok()) {
+    throw new Error(`backdatePendingMCPWrite failed: ${res.status()} ${await res.text()}`)
+  }
+}
+
 export async function connectMCPClient(workerIndex: number): Promise<Client> {
   const client = new Client({ name: 'mill-e2e', version: '0.0.0' })
   const transport = new StreamableHTTPClientTransport(new URL(`http://127.0.0.1:${MCP_BASE_PORT + workerIndex}`))
