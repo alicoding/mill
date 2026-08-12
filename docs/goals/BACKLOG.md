@@ -38,9 +38,12 @@ this pipeline and on this code)**
    fix the audited green-but-wrong class (12 silent persistence
    sites, unfailable test fake, uncovered safety-badge source);
    frontend half already largely clean
-3. [ ] [0023 — Attention escalation](0023-attention-escalation.md) —
-   floating approval prompt + idle-aware presence + alert-style +
-   cross-device forward (twice-observed missed-decision pain)
+3. [x] [0023 — Attention escalation](archive/0023-attention-escalation.md) —
+   delivered: floating approval prompt (ADR-0033's mechanism reused,
+   `#/approvalprompt`), idle-aware presence gate (`internal/adapters/idletime`,
+   backend-side `isAway`), alert-style authorization request (notify.Start),
+   cross-device forward (`composition.SendJSONWebhook`,
+   `ForwardPendingApproval`) — see ADR-0032's Update note
 
 **Ratified 2026-08-10 (owner): three groups, A→B→C. 0001 stays standing
 live-review material, interleaved during owner reviews, not a lane.**

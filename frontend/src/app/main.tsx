@@ -7,6 +7,7 @@ import '@primer/primitives/dist/css/functional/themes/dark.css'
 import { ThemeProvider, BaseStyles } from '@primer/react'
 import App from './App'
 import { QuickPanelApp } from './QuickPanelApp'
+import { ApprovalPromptApp } from './ApprovalPromptApp'
 import { COLOR_MODE_STORAGE_KEY } from './theme'
 
 // Read once, synchronously, before the first render, to seed
@@ -30,12 +31,20 @@ const initialColorMode = (localStorage.getItem(COLOR_MODE_STORAGE_KEY) as 'light
 // otherwise needs. QuickPanelApp owns its own ThemeProvider/BaseStyles
 // (it's a separate, minimal shell, not a view inside <App/>'s tree) --
 // so the branch happens above that wrapper, not inside a shared one.
+//
+// The floating approval prompt (docs/goals/0023-attention-escalation.md
+// item 1) reuses the exact same mechanism, a second hash route loading
+// this same bundle -- ADR-0033's "the Quick Panel is now the reusable
+// small-floating-second-window surface" consequence, applied.
 const isQuickPanel = window.location.hash === '#/quickpanel'
+const isApprovalPrompt = window.location.hash === '#/approvalprompt'
 
 ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
   <React.StrictMode>
     {isQuickPanel ? (
       <QuickPanelApp />
+    ) : isApprovalPrompt ? (
+      <ApprovalPromptApp />
     ) : (
       <ThemeProvider colorMode={initialColorMode}>
         <BaseStyles>

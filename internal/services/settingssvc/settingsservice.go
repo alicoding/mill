@@ -53,13 +53,19 @@ type SettingsService struct {
 	// panel is the Quick Panel window (docs/adr/0033) -- a second,
 	// always-alive floating window the summon hotkey toggles, distinct
 	// from window (the main window) above. See settingsservice_panel.go.
-	panel        *application.WebviewWindow
-	trig         *triggersvc.TriggerService
-	summon       *hotkey.Binding
-	summonHK     triggersvc.PersistedHotkey // zero value (nil Mods) means unassigned
-	updater      *updater.Updater
-	isolatedData bool
-	mcpService   *mcpsvc.MillMCPService
+	panel *application.WebviewWindow
+	// approvalPrompt is the floating approval-prompt window
+	// (docs/goals/0023-attention-escalation.md item 1) -- ADR-0033's
+	// second-window mechanism reused, but shown by the backend itself
+	// (NotifyPendingApproval's away verdict) rather than toggled by a
+	// hotkey. See settingsservice_approvalprompt.go.
+	approvalPrompt *application.WebviewWindow
+	trig           *triggersvc.TriggerService
+	summon         *hotkey.Binding
+	summonHK       triggersvc.PersistedHotkey // zero value (nil Mods) means unassigned
+	updater        *updater.Updater
+	isolatedData   bool
+	mcpService     *mcpsvc.MillMCPService
 
 	// keymap holds command-keybinding OVERRIDES only (goal 0016 --
 	// docs/goals/0016-keymap-system.md), keyed by command id

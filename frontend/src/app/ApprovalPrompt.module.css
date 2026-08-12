@@ -1,0 +1,26 @@
+/* The floating approval prompt (docs/goals/0023-attention-escalation.md
+   item 1). Primer design tokens only, per .claude/rules/frontend.md --
+   no bespoke colors/spacing. One compact surface filling the whole
+   frameless window. */
+
+.prompt {
+  display: flex;
+  align-items: center;
+  height: 100vh;
+  width: 100vw;
+  padding: var(--base-size-16, 16px);
+  background: var(--bgColor-default);
+  color: var(--fgColor-default);
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.muted {
+  color: var(--fgColor-muted);
+  margin: 0;
+}
+
+.error {
+  color: var(--fgColor-danger);
+  margin: 0;
+}
