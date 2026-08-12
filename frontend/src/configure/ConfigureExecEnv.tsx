@@ -7,6 +7,7 @@ import { ConfigureService } from '../shared/bindings'
 import type { ExecEnv } from '../../bindings/github.com/alicoding/mill/internal/domain/execenv/models'
 import { Shell, ProfileMode } from '../../bindings/github.com/alicoding/mill/internal/domain/execenv/models'
 import { downloadJSON } from '../shared/downloadJSON'
+import { refreshExecEnvs, useConfigureEntityStore } from '../shared/configureEntityStore'
 import { envToRows, rowsToEnv, type EnvRow } from './execEnvRows'
 import { ViewModeToggle } from '../shared/ViewModeToggle'
 import { useViewMode } from '../shared/viewMode'
@@ -55,7 +56,9 @@ const PROFILE_CAPTION: Partial<Record<ProfileMode, string>> = {
 // (the Configure-entity recipe, docs/SPEC.md §9.5) closely: no
 // secret/auth concept here at all, same as MCP Server.
 export function ConfigureExecEnv() {
-  const [envs, setEnvs] = useState<ExecEnv[] | null>(null)
+  // Store-shared (refreshExecEnvs, shared/configureEntityStore.ts) --
+  // see ConfigureLists.tsx's identical comment (goal 0017 P1-1).
+  const envs = useConfigureEntityStore((s) => s.execEnvs)
   const [editingID, setEditingID] = useState<string | null>(null)
   const [label, setLabel] = useState('')
   const [shell, setShell] = useState<Shell>(Shell.ShellZsh)
@@ -70,7 +73,7 @@ export function ConfigureExecEnv() {
   const [viewMode, setViewMode] = useViewMode('mill-execenvs-view-mode')
 
   const refetch = () => {
-    ConfigureService.ExecEnvs().then((list) => setEnvs(list ?? [])).catch(console.error)
+    void refreshExecEnvs()
   }
 
   const exportEnv = (id: string, label: string) => {

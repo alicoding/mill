@@ -1,4 +1,5 @@
 import { lazy, Suspense, useCallback, useEffect, useState } from 'react'
+import { Events } from '@wailsio/runtime'
 import { Checkbox, FormControl, Heading, SegmentedControl, Spinner, Stack, Text } from '@primer/react'
 import { Blankslate } from '@primer/react/experimental'
 import { GraphIcon } from '@primer/octicons-react'
@@ -48,6 +49,19 @@ export default function HomeView() {
   }, [rangeDays, includeTest])
 
   useEffect(() => { refresh() }, [refresh])
+
+  // goal 0017 P1-3: Home is "the reason to open Mill" (docs/SPEC.md
+  // §3.2.3) -- it must show a run that happened while the window sat
+  // open on this page (a headless trigger, an MCP-driven run_workflow)
+  // without the owner having to switch away and back. metrics (and the
+  // mostUsed list HomeMostUsed.tsx renders from it) are both derived
+  // from this one refresh() call, so one subscription covers both.
+  useEffect(() => {
+    return Events.On('mill-data-changed', (evt) => {
+      const entity = (evt.data as { entity?: string })?.entity
+      if (entity === 'run') refresh()
+    })
+  }, [refresh])
 
   useEffect(() => {
     // The generated binding types this `{ [_ in string]?: number }` (an

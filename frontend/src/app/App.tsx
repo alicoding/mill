@@ -11,6 +11,7 @@ import PlaceholderView from "../views/PlaceholderView";
 import { CapabilitiesService, ExecutionService, SettingsService } from '../shared/bindings'
 import type { BuildInfo } from '../shared/bindings'
 import { refreshKeybindings, refreshNodeTypes, refreshRequests, refreshWorkflows, useAppStore } from "../shared/store";
+import { refreshDecisions, refreshExecEnvs, refreshLists, refreshMCPServers } from "../shared/configureEntityStore";
 import { dispatchCommandForEvent } from "../shared/commands";
 import { WorkTabShell } from "./WorkTabShell";
 import { AppSidebar } from "./AppSidebar";
@@ -230,17 +231,24 @@ function App() {
   // it's the only one of the two sources that fires headlessly;
   // Composition Run-button clicks push directly from their own handler,
   // since they already resolve synchronously in the browser.
-  // Live sync for MCP-driven authoring (docs/adr/0025): when an
-  // external LLM changes data through Mill's MCP server, the open
-  // window refreshes it immediately -- §1's what-you-see-is-what-I-see
-  // thesis running in both directions. One coarse refresh per entity
-  // kind; the stores are cheap to re-fetch at Mill's scale.
+  // Live sync (docs/adr/0025 + goal 0017): every direct-mutation
+  // service now emits this, not just mcpsvc -- one refresher per
+  // entity kind, each routed to its own store (shared/store.ts's
+  // workflows/requests, shared/configureEntityStore.ts's lists/
+  // decisions/mcpServers/execEnvs). Was previously misrouted for
+  // 'list'/'mcpserver' (refreshRequests()+refreshWorkflows(), neither
+  // of which holds either); 'decision'/'execenv' are new entity
+  // strings. 'guardrail-rule' has no shared-store consumer here --
+  // useGuardrailBadges/the Guardrails section subscribe to it directly.
   useEffect(() => {
     return Events.On('mill-data-changed', (evt) => {
       const entity = (evt.data as { entity?: string })?.entity
       if (entity === 'workflow' || entity === 'run') void refreshWorkflows()
       if (entity === 'request') void refreshRequests()
-      if (entity === 'list' || entity === 'mcpserver') { void refreshRequests(); void refreshWorkflows() }
+      if (entity === 'list') void refreshLists()
+      if (entity === 'mcpserver') void refreshMCPServers()
+      if (entity === 'decision') void refreshDecisions()
+      if (entity === 'execenv') void refreshExecEnvs()
     })
   }, [])
 
