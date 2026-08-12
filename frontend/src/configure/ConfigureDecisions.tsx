@@ -9,6 +9,7 @@ import { Category } from '../../bindings/github.com/alicoding/mill/internal/doma
 import { Type as ConfigFieldType } from '../../bindings/github.com/alicoding/mill/internal/domain/typedfield/models'
 import { EntityRefField } from './EntityRefField'
 import { downloadJSON } from '../shared/downloadJSON'
+import { refreshDecisions, useConfigureEntityStore } from '../shared/configureEntityStore'
 import { ViewModeToggle } from '../shared/ViewModeToggle'
 import { useViewMode } from '../shared/viewMode'
 import { InventoryList, type InventoryItem } from '../shared/InventoryList'
@@ -53,7 +54,9 @@ function emptyOutput(): OutputField {
 // as Lists/MCP Servers); Duplicate/Export/Delete move into the
 // trailing ⋯ menu.
 export function ConfigureDecisions() {
-  const [decisions, setDecisions] = useState<Decision[] | null>(null)
+  // Store-shared (refreshDecisions, shared/configureEntityStore.ts) --
+  // see ConfigureLists.tsx's identical comment (goal 0017 P1-1).
+  const decisions = useConfigureEntityStore((s) => s.decisions)
   const [editingID, setEditingID] = useState<string | null>(null)
   const [label, setLabel] = useState('')
   const [category, setCategory] = useState<Category>(Category.CategoryUncategorized)
@@ -66,7 +69,7 @@ export function ConfigureDecisions() {
   const [viewMode, setViewMode] = useViewMode('mill-decisions-view-mode')
 
   const refetch = () => {
-    ConfigureService.Decisions().then((list) => setDecisions(list ?? [])).catch(console.error)
+    void refreshDecisions()
   }
   useEffect(refetch, [])
 

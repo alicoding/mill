@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/alicoding/mill/internal/domain/guardrail"
+	"github.com/alicoding/mill/internal/services/dataevent"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
@@ -74,7 +75,7 @@ func (m *MillMCPService) registerDebugTools() {
 		if err != nil {
 			return nil, nil, err
 		}
-		emitDataChanged("run", summary.RunID)
+		dataevent.Emit("run", summary.RunID)
 		res, err := jsonResult(summary)
 		return res, nil, err
 	})
@@ -96,7 +97,7 @@ func (m *MillMCPService) registerDebugTools() {
 		if err := m.exec.ResolveApproval(in.RunID, nodeID, true, nil, false); err != nil {
 			return nil, nil, err
 		}
-		emitDataChanged("run", in.RunID)
+		dataevent.Emit("run", in.RunID)
 		return textResult(fmt.Sprintf("stepped past %s -- use get_run to inspect it, or step_run/resume_run/stop_run again if it parked once more", nodeID)), nil, nil
 	})
 
@@ -116,7 +117,7 @@ func (m *MillMCPService) registerDebugTools() {
 		if err := m.exec.ResolveApproval(in.RunID, nodeID, true, nil, true); err != nil {
 			return nil, nil, err
 		}
-		emitDataChanged("run", in.RunID)
+		dataevent.Emit("run", in.RunID)
 		return textResult(fmt.Sprintf("resumed past %s -- use get_run to see the final result (or the next breakpoint, if one is hit)", nodeID)), nil, nil
 	})
 
@@ -136,7 +137,7 @@ func (m *MillMCPService) registerDebugTools() {
 		if err := m.exec.ResolveApproval(in.RunID, nodeID, false, nil, false); err != nil {
 			return nil, nil, err
 		}
-		emitDataChanged("run", in.RunID)
+		dataevent.Emit("run", in.RunID)
 		return textResult(fmt.Sprintf("stopped at %s", nodeID)), nil, nil
 	})
 }

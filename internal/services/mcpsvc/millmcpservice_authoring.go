@@ -6,9 +6,9 @@ import (
 	"fmt"
 
 	"github.com/alicoding/mill/internal/domain/composition"
+	"github.com/alicoding/mill/internal/services/dataevent"
 	"github.com/alicoding/mill/internal/services/executionsvc"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
-	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
 // The LLM-authoring tool tier (docs/adr/0025): an external MCP client
@@ -23,25 +23,6 @@ import (
 // park in the human's Review queue regardless of who started the run.
 // resolve_approval is PERMANENTLY EXCLUDED by design, not omission: an
 // LLM approving its own guarded runs would collapse the guardrail.
-
-// DataChanged is the live-sync event (docs/adr/0025): emitted after
-// any MCP-driven mutation so an open Mill window refreshes what the
-// LLM just changed -- §1's what-you-see-is-what-I-see thesis running
-// in both directions.
-type DataChanged struct {
-	Entity string `json:"entity"`
-	ID     string `json:"id"`
-}
-
-// DataChangedEventName is registered by main.go (RegisterEvent) and
-// listened for in App.tsx.
-const DataChangedEventName = "mill-data-changed"
-
-func emitDataChanged(entity, id string) {
-	if app := application.Get(); app != nil {
-		app.Event.Emit(DataChangedEventName, DataChanged{Entity: entity, ID: id})
-	}
-}
 
 // SetExecutionService late-binds the execution service for the
 // list_runs/get_run/run_workflow tools -- same late-bound-setter shape
@@ -201,7 +182,10 @@ func (m *MillMCPService) registerAuthoringTools() {
 		if err != nil {
 			return "", err
 		}
-		emitDataChanged("workflow", wf.ID)
+		// No manual dataevent.Emit here -- SnapshotDraft/UpdateWorkflow/
+		// UpdateAttributes (compositionsvc) already emit "workflow"
+		// internally now (goal 0017), so an MCP-driven update_workflow
+		// still lands the exact same live-sync event it always did.
 		return fmt.Sprintf("updated draft of %q (previous draft snapshotted as v%d)", wf.Label, len(wf.Versions)), nil
 	})
 	mcp.AddTool(m.server, &mcp.Tool{
@@ -228,7 +212,9 @@ func (m *MillMCPService) registerAuthoringTools() {
 		if err != nil {
 			return "", err
 		}
-		emitDataChanged("workflow", wf.ID)
+		// PublishWorkflow (compositionsvc, via mutateWorkflow) already
+		// emits "workflow" -- see the update_workflow executor's comment
+		// above.
 		return fmt.Sprintf("published %q as v%d (live)", wf.Label, wf.PublishedVersion), nil
 	})
 	mcp.AddTool(m.server, &mcp.Tool{
@@ -254,7 +240,8 @@ func (m *MillMCPService) registerAuthoringTools() {
 		if err := m.comp.DeleteWorkflow(in.ID); err != nil {
 			return "", err
 		}
-		emitDataChanged("workflow", in.ID)
+		// DeleteWorkflow (compositionsvc) already emits "workflow" -- see
+		// the update_workflow executor's comment above.
 		return "deleted", nil
 	})
 	mcp.AddTool(m.server, &mcp.Tool{
@@ -290,7 +277,7 @@ func (m *MillMCPService) registerAuthoringTools() {
 		if err != nil {
 			return nil, nil, err
 		}
-		emitDataChanged("run", summary.RunID)
+		dataevent.Emit("run", summary.RunID)
 		res, err := jsonResult(summary)
 		return res, nil, err
 	})

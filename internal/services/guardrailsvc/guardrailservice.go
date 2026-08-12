@@ -9,6 +9,7 @@ import (
 	"github.com/alicoding/mill/internal/domain/composition"
 	"github.com/alicoding/mill/internal/domain/guardrail"
 	"github.com/alicoding/mill/internal/services/compositionsvc"
+	"github.com/alicoding/mill/internal/services/dataevent"
 	"github.com/google/uuid"
 )
 
@@ -83,6 +84,7 @@ func (g *GuardrailService) CreateRule(rule guardrail.Rule) (guardrail.Rule, erro
 		g.rules = g.rules[:len(g.rules)-1]
 		return guardrail.Rule{}, fmt.Errorf("save guardrail rule: %w", err)
 	}
+	dataevent.Emit("guardrail-rule", rule.ID) // goal 0017: live-sync every open surface
 	return rule, nil
 }
 
@@ -102,6 +104,7 @@ func (g *GuardrailService) UpdateRule(rule guardrail.Rule) error {
 				g.rules[i] = previous
 				return fmt.Errorf("save guardrail rule: %w", err)
 			}
+			dataevent.Emit("guardrail-rule", rule.ID) // goal 0017: live-sync every open surface
 			return nil
 		}
 	}
@@ -133,6 +136,7 @@ func (g *GuardrailService) DeleteRule(id string) error {
 		g.rules[idx] = removed
 		return fmt.Errorf("save guardrail rule deletion: %w", err)
 	}
+	dataevent.Emit("guardrail-rule", id) // goal 0017: live-sync every open surface
 	return nil
 }
 
