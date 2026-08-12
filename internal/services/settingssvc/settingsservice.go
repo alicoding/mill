@@ -25,6 +25,15 @@ import (
 // settings.json file rather than a second store/file.
 const summonHotkeyKey = "settings-summon-hotkey"
 
+// legacyForwardApprovalsEnabledKey is the settings key
+// ForwardPendingApproval used to persist before docs/adr/0035's forward
+// refactor deleted that private send path in favor of the seeded
+// "Example: Forward pending approvals" workflow. Kept here, read-only,
+// purely so a user who had the old toggle on gets a one-line startup
+// notice instead of the feature silently vanishing -- never re-added as
+// a real Get/Set RPC.
+const legacyForwardApprovalsEnabledKey = "settings-forward-approvals-enabled"
+
 // windowGeometryKey persists window position/size/maximized state --
 // docs/SPEC.md §3.7's Update. Same one-atomic-JSON-blob-per-key shape
 // as summonHotkeyKey.
@@ -101,6 +110,18 @@ func NewSettingsService(store settings.Store, trig *triggersvc.TriggerService, i
 	s := &SettingsService{store: store, trig: trig, isolatedData: isolatedData}
 	s.loadPersistedSummonHotkey()
 	s.loadPersistedKeymap()
+	// docs/adr/0035: never silently drop a user's old forward config --
+	// if the pre-refactor toggle's key is present at all (any value,
+	// including "false" -- presence means the user visited the old
+	// Settings section, not necessarily that it was on), name the
+	// replacement once at startup. Reads nothing else from the key; the
+	// old value itself carries no useful migration -- there's no
+	// HTTPRequest ID to carry forward into the new seeded workflow's
+	// config, since the user still has to pick/confirm their real
+	// notification endpoint either way.
+	if _, ok := store.Get(legacyForwardApprovalsEnabledKey).(string); ok {
+		slog.Info("the Settings > Forward pending approvals toggle moved: enable and re-point the seeded \"Example: Forward pending approvals\" workflow instead (docs/adr/0035)")
+	}
 	return s
 }
 

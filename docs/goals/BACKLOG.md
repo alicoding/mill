@@ -57,12 +57,13 @@ this pipeline and on this code)**
    jump-to-workflow preview; stuck-ENQUEUED runs get age emphasis +
    Stop in WorkflowRunsPanel/Activity's runs explorer. Item 4
    (session-side hygiene) intentionally not a Mill code change.
-5. [ ] [0027 — Core vs composition boundary](0027-core-vs-composition-boundary.md)
-   — ADR-0035 accepted 2026-08-11 (owner-mandated, "worth aligning on
-   the principle more explicitly," triggered by the forward-toggle
-   violation caught live hours after §9.5's kernel doc landed); the
-   build half (items 4-5) in flight this session: `trigger-system-event`
-   unparked, the forward refactored into a seeded composed workflow.
+5. [x] [0027 — Core vs composition boundary](archive/0027-core-vs-composition-boundary.md)
+   — DELIVERED 2026-08-12: ADR-0035's build half — `trigger-system-event`
+   unparked (four events, loop-rule enforced at emission), the forward
+   refactored from a Settings toggle + private send path into a seeded,
+   editable "Example: Forward pending approvals" workflow; the decision
+   test written into `.claude/rules/architecture.md`; SettingsView's
+   silent-mount-fetch class fixed alongside.
 6. [ ] [0028 — Public-repo hygiene](0028-public-repo-hygiene.md) —
    research delivered 2026-08-12 (community-profile score 28%,
    exposure sweep clean, LICENSE already correct); the close-the-gaps

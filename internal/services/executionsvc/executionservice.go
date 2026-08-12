@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/alicoding/mill/internal/adapters/execution"
@@ -198,6 +199,12 @@ type ExecutionService struct {
 	// directly) -- minutesSavedFor (executionservice_home.go) falls back
 	// to defaultMinutesSavedPerRun in that case.
 	minutesSavedLookup func(workflowID string) int
+	// systemEventSink is the injected dispatch seam for docs/adr/0035's
+	// trigger-system-event family -- see executionservice_systemevent.go.
+	// Wired from main.go via SetSystemEventSink once TriggerService
+	// exists; nil in every standalone test that builds ExecutionService
+	// directly, same as minutesSavedLookup above.
+	systemEventSink func(SystemEvent)
 }
 
 // NewExecutionService builds and launches the durable-execution runtime
@@ -246,7 +253,7 @@ func (e *ExecutionService) runWorkflow(ctx execution.Context, in runInput) (stri
 			return fn()
 		}, execution.WithStepName(stepID))
 	}
-	return composition.ExecuteWorkflowWithStepRunner(in.Nodes, in.Edges, in.Attributes, stepRunner,
+	output, err := composition.ExecuteWorkflowWithStepRunner(in.Nodes, in.Edges, in.Attributes, stepRunner,
 		composition.ExecuteOptions{
 			AttrValues: in.Values, RunContext: ctx, InitialPayload: in.Payload,
 			// WorkflowID was never threaded through here before this
@@ -262,6 +269,34 @@ func (e *ExecutionService) runWorkflow(ctx execution.Context, in runInput) (stri
 			WorkflowID: in.WorkflowID,
 			Stepped:    in.Stepped,
 		})
+
+	// run-completed/run-failed (docs/adr/0035 item 4): emitted HERE, not
+	// at an observation call site (RunWorkflow's own GetResult, or
+	// TriggerService.fire's summary read), because this DBOS-registered
+	// function is the one place that runs to completion for EVERY run
+	// regardless of how it started or whether anything is still awaiting
+	// its result -- a run that parked and later resumed asynchronously
+	// (a human approving hours later) finishes here too, long after
+	// RunWorkflowStart's own caller already returned. One emission point
+	// covers both "the GetResult completion path AND triggerservice's
+	// fire completion" the goal names, since both are downstream of this
+	// same function. run-cancelled is deliberately NOT decided here --
+	// CancelRun (executionservice_cancel.go) emits it directly, since
+	// that's the synchronous, user-initiated stop path; skip here (via
+	// the CancelledByUserMessage marker, the same one
+	// executionservice_getrun.go already uses to tell "cancelled" apart
+	// from "failed" at the step level) so a cancelled run isn't ALSO
+	// reported as failed.
+	runID, _ := ctx.GetWorkflowID()
+	switch {
+	case err == nil:
+		e.emitSystemEvent(SystemEventRunCompleted, runID, "")
+	case strings.Contains(err.Error(), composition.CancelledByUserMessage):
+		// CancelRun already emitted run-cancelled for this runID.
+	default:
+		e.emitSystemEvent(SystemEventRunFailed, runID, "")
+	}
+	return output, err
 }
 
 // RunWorkflow is the one execution entrypoint for the running app

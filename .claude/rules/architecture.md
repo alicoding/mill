@@ -39,6 +39,30 @@ a named library — check before reaching for a `.map()` + custom markup
 or a hand-rolled parser (see `.claude/rules/frontend.md` for the
 concrete UI-collection instance of this).
 
+**The core/composition boundary — before building ANY new capability,
+ask: is this a node, a trigger, a connector, or a true kernel
+change?** ([ADR-0035](../../docs/adr/0035-core-vs-composition-boundary.md),
+`docs/SPEC.md` §9.5's Update.) If a user could plausibly say "I want
+that, but to a different channel / with a condition / on a different
+event," it's composition-shaped and MUST arrive as composition — a
+self-registered `NodeType`, a trigger event, a Configure entity —
+never a bespoke service path plus a Settings toggle. Settings toggles
+configure the kernel; they never implement a side effect. Recorded
+counterexample, the reason this rule exists: cross-device notification
+shipped as a Settings checkbox wired to a private send path
+(`ForwardPendingApproval`) instead of a connector + trigger
+composition, caught live and refactored into a seeded, editable
+workflow. The flip side of the same rule: platform-internal behavior
+MAY and SHOULD consume Mill's own composition surface (a built-in,
+seeded, fully-editable workflow) rather than hand-rolling a parallel
+mini-pipeline for something the surface can already express — the app
+dogfooding its own platform, inspectable and guarded like anything a
+user builds. `docs/SPEC.md` §9.5 carries the protected-kernel list
+(graph engine, guardrail gate, durable execution, registries, the
+Configure recipe, the MCP plane) that composition never reaches into;
+changes there need an ADR, same bar this file's other architecture
+decisions already carry.
+
 **Max 500 lines per hand-written source file (`.go`/`.ts`/`.tsx`).**
 Enforced by `scripts/check-loc.sh`, run by both Lefthook (pre-commit)
 and CI's `file-loc-limit` job, so it can't land un-caught either way. A
