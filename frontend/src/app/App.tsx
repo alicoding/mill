@@ -278,11 +278,17 @@ function App() {
     });
   }, [pushActivity, workflows]);
 
-  // A missed (timed-out) or denied MCP write is no longer traceless
-  // (docs/goals/0005-pending-attention-model.md item 3): pushed into
-  // the same Activity feed under the 'mcp-write' source, same push
-  // shape as the hotkey-activity handler above -- no workflowID/binding
-  // of its own, just what was denied/missed and why.
+  // A missed (timed-out), denied, or cancelled MCP write is no longer
+  // traceless (docs/goals/0005-pending-attention-model.md item 3):
+  // pushed into the same Activity feed under the 'mcp-write' source,
+  // same push shape as the hotkey-activity handler above. workflowID/
+  // result now carry real content (docs/goals/0026 item 7 -- "so what I
+  // can do and nothing I can do"): workflowID is set only when the
+  // gated tool named an existing target (update/publish/delete_workflow;
+  // empty for import_* tools, which mint a new entity), which is what
+  // makes ActivityView's existing WorkflowHoverPreview jump-to-workflow
+  // icon appear for this row, same as any run row; result is what the
+  // row's existing canExpand/expand-to-detail mechanism shows.
   useEffect(() => {
     return Events.On('mcp-write-activity', (evt) => {
       pushActivity({
@@ -290,11 +296,11 @@ function App() {
         time: new Date().toLocaleTimeString(),
         timestamp: Date.now(),
         source: 'mcp-write',
-        workflowID: '',
+        workflowID: evt.data.workflowID ?? '',
         label: evt.data.description,
         success: false,
         detail: evt.data.outcome,
-        result: '',
+        result: evt.data.result ?? '',
       });
     });
   }, [pushActivity]);

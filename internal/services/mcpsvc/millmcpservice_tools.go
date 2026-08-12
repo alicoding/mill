@@ -270,4 +270,17 @@ func (m *MillMCPService) registerTools() {
 		}
 		return textResult(text), nil, nil
 	})
+
+	mcp.AddTool(m.server, &mcp.Tool{
+		Name: "cancel_write",
+		Description: "Withdraw your OWN still-pending gated write by id (the id from a 'parked pending human " +
+			"approval' response). Cancelled is a distinct outcome from denied -- use this when the write no " +
+			"longer matters, not when you expect a human to say no. Ungated: cancelling never needs approval, " +
+			"it only ever reduces pending work. Errors if the write was already resolved or doesn't exist.",
+	}, func(_ context.Context, _ *mcp.CallToolRequest, in checkWriteStatusArgs) (*mcp.CallToolResult, any, error) {
+		if err := m.CancelMCPWrite(in.ID); err != nil {
+			return nil, nil, err
+		}
+		return textResult(fmt.Sprintf("cancelled write %s -- nothing was written", in.ID)), nil, nil
+	})
 }

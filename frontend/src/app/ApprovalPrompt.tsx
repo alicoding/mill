@@ -4,6 +4,7 @@ import { ShieldIcon } from '@primer/octicons-react'
 import { Events } from '@wailsio/runtime'
 import { ExecutionService, SettingsService } from '../shared/bindings'
 import type { RunSummary, MCPWriteRequest } from '../shared/bindings'
+import { StalenessBadge } from '../shared/StalenessBadge'
 import styles from './ApprovalPrompt.module.css'
 
 // docs/goals/0023-attention-escalation.md item 1: the floating
@@ -117,6 +118,7 @@ export function ApprovalPrompt() {
             <ShieldIcon size={16} />
             <Text weight="semibold" size="small" data-testid="approval-prompt-description">{oldest.description}</Text>
           </Stack>
+          <StalenessBadge createdAt={new Date(oldest.time)} testId="approval-prompt-age" />
           {items.length > 1 && (
             <Text size="small" className={styles.muted}>+{items.length - 1} more waiting</Text>
           )}
