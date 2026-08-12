@@ -126,7 +126,24 @@ an implicit `FINAL`.
   now round-trip through `localStorage` (`shared/store.ts`'s zustand
   `persist`, `shared/workTabs.ts`'s pure restore helpers) so a reload
   — deliberate or not — restores the same place instead of resetting
-  to Home.
+  to Home. **Update (2026-08-12, e2e CI flake investigation): goal
+  0017's per-service `dataevent.Emit` fanout had a real race.** Giving
+  every direct-mutation service its own emit call means a single
+  logical write can now fire the SAME `mill-data-changed` event more
+  than once for the same entity (an MCP `update_workflow` write emits
+  from both `SnapshotDraft` and `UpdateWorkflow`; a canvas that just
+  created its own workflow can still be mid-flight on that emit when it
+  re-subscribes) — and since the event carries no payload, every
+  handler independently re-fetches, so several near-simultaneous
+  fetches can resolve out of order. `useCanvasLiveSync.ts`
+  (`frontend/src/composition/`) was the one caller sensitive to this
+  (its clean-vs-dirty decision), fixed with a monotonic per-hook
+  request-sequence guard that drops a response once a newer event has
+  arrived since it was dispatched — the general lesson for any FUTURE
+  `mill-data-changed` consumer that both reacts to the event AND
+  compares against locally-held state: assume the event can fire more
+  than once per logical change and can deliver out of order, don't
+  assume "one event in, one fetch, apply unconditionally" is safe.
 - **Scope filter, learned from the screenshot-to-clipboard tangent**: before
   any capability goes into Mill, check whether the OS (or an existing
   launcher like Alfred/Raycast) already does it simply and well. If yes,

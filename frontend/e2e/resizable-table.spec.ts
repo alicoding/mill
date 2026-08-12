@@ -26,6 +26,17 @@ test('Table columns are drag-resizable and long cells truncate with a hover titl
   const firstTrack = () =>
     table.evaluate((t) => parseFloat(getComputedStyle(t).gridTemplateColumns.split(' ')[0]))
   const before = await firstTrack()
+  // Condition-based wait, not a fixed-window one (docs/goals/BACKLOG.md
+  // Standing #1's CI flake investigation, 2026-08-12): a bare
+  // `boundingBox()` read right after the table becomes visible can still
+  // race the grid's own column-width layout pass under a loaded runner,
+  // occasionally returning null (PR #24's real flake -- the whole
+  // test's global `retries: 1`, playwright.config.ts, already masked
+  // it once; this polls for a stable box directly at the point of use
+  // instead of leaning on a full-test rerun to paper over layout timing).
+  await expect
+    .poll(() => handles.first().boundingBox().then((b) => b !== null), { timeout: 5_000 })
+    .toBe(true)
   const box = await handles.first().boundingBox()
   if (!box) throw new Error('resize handle has no bounding box')
   const x = box.x + box.width / 2
