@@ -4,8 +4,7 @@ import { Dialog, Text } from '@primer/react'
 import { FilteredActionList } from '@primer/react/experimental'
 import { CommandPaletteIcon, PencilIcon, PlayIcon, TabIcon, XIcon } from '@primer/octicons-react'
 import { ExecutionService, RunKind } from '../shared/bindings'
-import { COMMANDS, effectiveBinding } from '../shared/commands'
-import { formatCombo } from '../shared/keybinding'
+import { COMMANDS } from '../shared/commands'
 import { generateSamplePayload } from '../shared/configSchema'
 import { useAppStore } from '../shared/store'
 import type { WorkTab } from '../shared/store'
@@ -14,6 +13,7 @@ import { findRootNode } from '../composition/triggerRowInfo'
 import { clearScratch } from '../composition/canvasScratch'
 import { filterPaletteEntries } from './paletteFilter'
 import type { PaletteSearchable } from './paletteFilter'
+import { HotkeyHint } from './HotkeyHint'
 import styles from './CommandPalette.module.css'
 
 // The ⌘K command palette (docs/goals/0015-summon-quick-invoke.md): the
@@ -71,10 +71,6 @@ const GROUP_METADATA = [
   { groupId: 'tabs' as const, header: { title: 'Open tabs' } },
 ]
 
-function ShortcutHint({ text }: { text: string }) {
-  return <span className={styles.shortcut}>{text}</span>
-}
-
 // A workflow row's description: the label of its root Trigger node's
 // NodeType (e.g. "Hotkey trigger", "Schedule trigger") -- a cheap,
 // purely-textual derivation (findRootNode + a nodeTypes lookup, no RPC,
@@ -90,7 +86,6 @@ function ShortcutHint({ text }: { text: string }) {
 export function CommandPalette() {
   const paletteOpen = useAppStore((s) => s.paletteOpen)
   const closePalette = useAppStore((s) => s.closePalette)
-  const keybindingOverrides = useAppStore((s) => s.keybindingOverrides)
   const workflows = useAppStore((s) => s.workflows)
   const nodeTypes = useAppStore((s) => s.nodeTypes)
   const requests = useAppStore((s) => s.requests)
@@ -154,14 +149,19 @@ export function CommandPalette() {
     const entries: PaletteEntry[] = []
 
     for (const command of COMMANDS) {
-      const binding = effectiveBinding(command, keybindingOverrides)
       entries.push({
         id: `cmd:${command.id}`,
         groupId: 'commands',
         text: command.label,
         searchText: `${command.label} ${command.id}`.toLowerCase(),
         leadingVisual: CommandPaletteIcon,
-        trailingVisual: binding ? <ShortcutHint text={formatCombo(binding.mods, binding.key)} /> : undefined,
+        // HotkeyHint (app/HotkeyHint.tsx) resolves the command's live
+        // effective binding itself (default merged with any Settings
+        // override) and renders nothing when unbound -- the single
+        // source of truth every inline hint in the app now shares
+        // (docs/goals/0015), replacing this file's own former local
+        // ShortcutHint + effectiveBinding computation.
+        trailingVisual: <HotkeyHint commandId={command.id} />,
         run: command.run,
       })
     }
@@ -215,7 +215,7 @@ export function CommandPalette() {
 
     return entries
     // eslint-disable-next-line react-hooks/exhaustive-deps -- runWorkflowTest/closeTab close over workflows/pushActivity/etc, already listed
-  }, [keybindingOverrides, workflows, nodeTypes, requests, workTabs])
+  }, [workflows, nodeTypes, requests, workTabs])
 
   const filtered = filterPaletteEntries(allEntries, query)
 

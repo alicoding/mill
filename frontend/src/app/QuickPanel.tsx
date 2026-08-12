@@ -6,13 +6,14 @@ import { FilteredActionList } from '@primer/react/experimental'
 import { GearIcon, HomeIcon, PlayIcon } from '@primer/octicons-react'
 import { ExecutionService, RunKind, SettingsService } from '../shared/bindings'
 import { generateSamplePayload } from '../shared/configSchema'
-import { useAppStore, refreshWorkflows, refreshRequests } from '../shared/store'
+import { useAppStore, refreshWorkflows, refreshRequests, refreshKeybindings } from '../shared/store'
 import { useConfigureEntityStore, refreshLists, refreshMCPServers } from '../shared/configureEntityStore'
 import { ENTITY_ICON } from '../shared/entityIcons'
 import { CAPABILITY_ICON } from './navIcon'
 import { filterPaletteEntries } from './paletteFilter'
 import type { PaletteSearchable } from './paletteFilter'
 import { sortWorkflowsByFrecency } from './workflowFrecency'
+import { HotkeyHint } from './HotkeyHint'
 import styles from './QuickPanel.module.css'
 
 // docs/adr/0033-quick-panel-second-window.md: the search+run surface
@@ -61,10 +62,6 @@ const GROUP_METADATA = [
 // instant, not an "all time" flag, so this is simply an instant well
 // before Mill could have any real run history.
 const FRECENCY_FROM_ISO = new Date(0).toISOString()
-
-function ShortcutHint({ text }: { text: string }) {
-  return <span className={styles.shortcut}>{text}</span>
-}
 
 export function QuickPanel() {
   const workflows = useAppStore((s) => s.workflows)
@@ -121,6 +118,16 @@ export function QuickPanel() {
       void refreshLists()
       void refreshMCPServers()
       void refreshFrecency()
+      // This window is a separate Wails webview/JS context from the
+      // main window (docs/adr/0033) -- its own keybindingOverrides copy
+      // (shared/store.ts) only ever reflects whatever was true the last
+      // time THIS window fetched it, never a live push from a rebind
+      // made in the main window's Settings. Refetching on every show
+      // (same "fresh session" reasoning as the refreshes above) is
+      // enough for the O(1)-source-of-truth requirement to hold in
+      // practice: the hint is wrong for at most the current show, never
+      // permanently stale.
+      void refreshKeybindings()
       setQuery('')
       setStatus(null)
       // One frame so a just-unhidden webview has actually finished
@@ -313,7 +320,13 @@ export function QuickPanel() {
       text: 'Open Settings',
       searchText: 'open settings preferences',
       leadingVisual: GearIcon,
-      trailingVisual: <ShortcutHint text="⌘," />,
+      // HotkeyHint (app/HotkeyHint.tsx) reads settings.open's live
+      // effective binding (shared/commands.ts + any Settings override)
+      // -- this row used to hardcode "⌘," directly, which would have
+      // silently gone stale the moment someone rebound settings.open in
+      // Settings (docs/goals/0015's O(1) single-source-of-truth
+      // requirement).
+      trailingVisual: <HotkeyHint commandId="settings.open" />,
       run: () => openMain('settings'),
     })
     // Pending-review count (goal 0015's remainder item 2): always

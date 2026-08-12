@@ -2613,7 +2613,22 @@ findings) and the build rationale are in
   detail* the Acceptance sentence's "showed them the hotkey" half
   names — and a ⌘?/⌘/ alias (blocked on the 1:1 command↔binding
   registry shape) both stay recorded in the goal file, not silently
-  dropped. `workflow.run`'s default moved
+  dropped. **Update (2026-08-12, session 2)**: the COMMAND-shortcut
+  half of that inline-hotkey-hint gap (as opposed to the still-open
+  per-workflow-TRIGGER half above) is now built and shared, not
+  per-surface: `app/HotkeyHint.tsx` (`resolveHotkeyLabel`/
+  `useCommandBinding`/`<HotkeyHint commandId="..." />`) is the one
+  place every inline shortcut chip resolves a command's live binding
+  (default merged with any Settings override) — CommandPalette's own
+  command rows now render through it too (was a duplicated local
+  `ShortcutHint` + `effectiveBinding` computation before), as does a
+  hardcoded `"⌘,"` in `QuickPanel.tsx`'s "Open Settings" row that this
+  replaced (a real staleness bug: it would have silently ignored a
+  rebind). Two new commands, `tab.closeOthers` (⌘⌥W) and `tab.closeAll`
+  (⌘⇧W, both Safari's own combos for the identical actions), got real
+  default bindings — not just a display label — wired into
+  `WorkTabShell.tsx`'s tab-overflow menu alongside their hints.
+  `workflow.run`'s default moved
   off an initial ⌘R pick to ⌘↩ by owner decision, once implementation
   surfaced a real collision the original research missed: macOS's
   `DefaultApplicationMenu()` installs View > Reload on Cmd+R
@@ -2659,7 +2674,10 @@ findings) and the build rationale are in
   (Composition/Configure/Activity/Spec, matching the sidebar order,
   down from an original five once Runs stopped being a top-level view —
   §7's Update). Historical bullet, left as originally written; the
-  keymap-system entry above is the current shape.
+  keymap-system entry above is the current shape. **Update
+  (2026-08-12)**: `view.home` (⌘0, `commands.ts`) fills the one real
+  gap this left — Composition/Configure/Activity/Review all had a
+  Cmd+N jump but Home never did.
 - **Window/tab/filter state persistence** — window position/size/
   maximized state is Go-side (`settingsservice.go`'s
   `LoadWindowGeometry`/`WatchWindowGeometry`, persisted via
