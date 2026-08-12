@@ -42,14 +42,20 @@ type PersistedHotkey struct {
 	Key  string   `json:"key"`
 }
 
-// activeListener is a tagged union over the four live-listener kinds a
+// activeListener is a tagged union over the live-listener kinds a
 // registered trigger can hold -- exactly one field is non-nil per
-// registry entry (trigger-manual holds none at all; it has no listener).
+// registry entry (trigger-manual/trigger-callable hold none at all; they
+// have no listener).
 type activeListener struct {
 	hotkey    *hotkey.Binding
 	schedule  *schedule.Binding
 	clipStop  func()
 	fileWatch *filewatch.Binding
+	// sysEventStop unregisters a trigger-system-event listener from
+	// TriggerService's own sysEvents map (triggersystemevent.go) -- unlike
+	// the other three, there's no external OS resource to release, only
+	// this in-process registry entry to remove.
+	sysEventStop func()
 }
 
 func (l *activeListener) stop() {
@@ -67,6 +73,9 @@ func (l *activeListener) stop() {
 	}
 	if l.fileWatch != nil {
 		_ = l.fileWatch.Close()
+	}
+	if l.sysEventStop != nil {
+		l.sysEventStop()
 	}
 }
 
@@ -94,6 +103,14 @@ type TriggerService struct {
 	logger   *slog.Logger
 	store    settings.Store
 	reserved func() (mods []string, key string, ok bool) // see SetReservedCombo
+	// sysEvents indexes every armed trigger-system-event listener by
+	// event kind (docs/adr/0035) -- populated/depopulated by Sync via
+	// each entry's start/stop, mutated only while s.mu is held (see
+	// triggersystemevent.go). Keyed by SystemEventKind's string value
+	// (executionsvc.SystemEventKind) rather than that type itself, to
+	// keep this file from needing to import executionsvc just for a map
+	// key type.
+	sysEvents map[string][]systemEventBinding
 }
 
 // SetExecutionService wires the durable-execution runtime a headless fire
@@ -110,11 +127,12 @@ func (s *TriggerService) SetExecutionService(e *executionsvc.ExecutionService) {
 
 func NewTriggerService(comp *compositionsvc.CompositionService, logger *slog.Logger, store settings.Store) *TriggerService {
 	s := &TriggerService{
-		active: make(map[string]*activeListener),
-		hkRaw:  make(map[string]PersistedHotkey),
-		comp:   comp,
-		logger: logger,
-		store:  store,
+		active:    make(map[string]*activeListener),
+		hkRaw:     make(map[string]PersistedHotkey),
+		comp:      comp,
+		logger:    logger,
+		store:     store,
+		sysEvents: make(map[string][]systemEventBinding),
 	}
 	s.loadPersistedHotkeys()
 	return s

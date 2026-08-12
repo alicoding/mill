@@ -225,6 +225,11 @@ func (e *ExecutionService) parkForApproval(ctx execution.Context, node compositi
 		return nil, false, fmt.Errorf("guardrail: publish pending approval: %w", err)
 	}
 	emitGuardrailPendingChanged(runID, node.ID, false)
+	// docs/adr/0035: the decision-parked half of trigger-system-event --
+	// only the park is a system event (not the resolve below), matching
+	// the forward-pending-approvals use case: something to act on NOW,
+	// not a record of how it was later resolved.
+	e.emitSystemEvent(SystemEventDecisionParked, runID, node.ID)
 
 	decision, err := execution.Recv[approvalDecision](ctx, guardrailApprovalTopic, guardrailApprovalTimeout)
 	if err != nil {

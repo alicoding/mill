@@ -93,7 +93,16 @@ func (e *ExecutionService) CancelRun(runID string) error {
 		h.Cancel()
 	}
 
-	return execution.CancelWorkflow(e.ctx, runID)
+	err := execution.CancelWorkflow(e.ctx, runID)
+	if err == nil {
+		// docs/adr/0035: emitted here, the synchronous user-initiated stop
+		// path, rather than left for runWorkflow's own completion switch
+		// to infer from an error message -- runWorkflow deliberately
+		// skips run-cancelled itself (see its own comment) so this run
+		// isn't reported twice.
+		e.emitSystemEvent(SystemEventRunCancelled, runID, "")
+	}
+	return err
 }
 
 // cancelState is embedded into ExecutionService (executionservice.go)

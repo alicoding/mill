@@ -41,6 +41,12 @@ async function fetchEntities(refKind: string): Promise<Entity[]> {
       return (await ConfigureService.MCPServers()) ?? []
     case 'workflow':
       return ((await CompositionService.Workflows()) ?? []).filter(isCallableWorkflow)
+    // docs/adr/0035: trigger-system-event's workflowScope picker -- every
+    // workflow is a valid scope target (not just callable ones, unlike
+    // 'workflow' above), since any workflow can be the SOURCE of a
+    // decision-parked/run-completed/run-failed/run-cancelled event.
+    case 'workflow-scope':
+      return (await CompositionService.Workflows()) ?? []
     case 'decision':
       return ((await ConfigureService.Decisions()) ?? []).map((d) => ({ ID: d.ID, Label: `${d.Label} (${d.Category})` }))
     case 'execenv':
@@ -55,6 +61,7 @@ const KIND_NOUN: Record<string, string> = {
   list: 'list',
   mcpserver: 'MCP server',
   workflow: 'callable workflow',
+  'workflow-scope': 'workflow',
   decision: 'decision',
   execenv: 'execution environment',
 }
@@ -96,7 +103,13 @@ export function EntityRefField({ refKind, value, onChange }: { refKind: string; 
         onChange={(e) => handleSelect(e.target.value)}
       >
         <Select.Option value="">
-          {entities === null ? 'Loading…' : value ? `Unknown ${KIND_NOUN[refKind]} (${value})` : `Select a ${KIND_NOUN[refKind]}…`}
+          {entities === null
+            ? 'Loading…'
+            : value
+              ? `Unknown ${KIND_NOUN[refKind]} (${value})`
+              : refKind === 'workflow-scope'
+                ? 'All workflows'
+                : `Select a ${KIND_NOUN[refKind]}…`}
         </Select.Option>
         {(entities ?? []).map((entity) => (
           <Select.Option key={entity.ID} value={entity.ID}>{entity.Label}</Select.Option>
