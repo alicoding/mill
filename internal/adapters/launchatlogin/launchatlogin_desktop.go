@@ -3,11 +3,17 @@
 package launchatlogin
 
 import (
+	"context"
 	"fmt"
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"time"
 )
+
+// osascriptTimeout bounds every osascript invocation below -- same
+// fail-safe reasoning as clipboard's own cmdTimeout.
+const osascriptTimeout = 5 * time.Second
 
 // appBundlePath walks up from a running executable's path
 // (.../Foo.app/Contents/MacOS/Foo) to the .app bundle itself. Returns
@@ -38,7 +44,12 @@ func Enable(execPath string) error {
 		`tell application "System Events" to make login item at end with properties {path:%q, hidden:false, name:%q}`,
 		bundlePath, appName(bundlePath),
 	)
-	if out, err := exec.Command("osascript", "-e", script).CombinedOutput(); err != nil {
+	ctx, cancel := context.WithTimeout(context.Background(), osascriptTimeout)
+	defer cancel()
+	// bundlePath/appName derive from execPath, which callers pass as
+	// Mill's own running executable path (os.Executable()), never
+	// arbitrary external/user input.
+	if out, err := exec.CommandContext(ctx, "osascript", "-e", script).CombinedOutput(); err != nil { //nolint:gosec // script is built from Mill's own executable path, not external input (see comment above)
 		return fmt.Errorf("osascript enable login item failed: %w (%s)", err, strings.TrimSpace(string(out)))
 	}
 	return nil
@@ -52,10 +63,13 @@ func Disable(execPath string) error {
 		return err
 	}
 	script := fmt.Sprintf(`tell application "System Events" to delete login item %q`, appName(bundlePath))
+	ctx, cancel := context.WithTimeout(context.Background(), osascriptTimeout)
+	defer cancel()
 	// System Events errors if the named login item doesn't exist --
 	// that's the expected "already disabled" case, not a real failure,
-	// so it's deliberately not surfaced as one.
-	_ = exec.Command("osascript", "-e", script).Run()
+	// so it's deliberately not surfaced as one. script is built from
+	// Mill's own executable path (see Enable's own comment above).
+	_ = exec.CommandContext(ctx, "osascript", "-e", script).Run() //nolint:gosec // script is built from Mill's own executable path, not external input
 	return nil
 }
 
@@ -68,7 +82,9 @@ func IsEnabled(execPath string) (bool, error) {
 	}
 	name := appName(bundlePath)
 	script := `tell application "System Events" to get the name of every login item`
-	out, err := exec.Command("osascript", "-e", script).Output()
+	ctx, cancel := context.WithTimeout(context.Background(), osascriptTimeout)
+	defer cancel()
+	out, err := exec.CommandContext(ctx, "osascript", "-e", script).Output()
 	if err != nil {
 		return false, fmt.Errorf("osascript list login items failed: %w", err)
 	}

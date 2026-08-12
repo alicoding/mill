@@ -28,7 +28,7 @@ func init() {
 	})
 }
 
-func newGuardedHarness(t *testing.T) (*compositionsvc.CompositionService, *guardrailsvc.GuardrailService, *ExecutionService, string) {
+func newGuardedHarness(t *testing.T) (*guardrailsvc.GuardrailService, *ExecutionService, string) {
 	t.Helper()
 	store := servicetest.NewFakeStore()
 	comp := compositionsvc.NewCompositionService(store)
@@ -47,7 +47,7 @@ func newGuardedHarness(t *testing.T) (*compositionsvc.CompositionService, *guard
 	if err != nil {
 		t.Fatalf("CreateWorkflow: %v", err)
 	}
-	return comp, guard, exec, wf.ID
+	return guard, exec, wf.ID
 }
 
 func waitFor[T any](t *testing.T, what string, timeout time.Duration, poll func() (T, bool)) T {
@@ -69,7 +69,7 @@ func waitFor[T any](t *testing.T, what string, timeout time.Duration, poll func(
 // hangs on a human), advertises exactly which step wants to run, and a
 // deny fails the run closed with the reason recorded.
 func TestGuardrail_ExternalStepParks_DenyFailsClosed(t *testing.T) {
-	_, _, exec, wfID := newGuardedHarness(t)
+	_, exec, wfID := newGuardedHarness(t)
 
 	summary, err := exec.RunWorkflow(wfID, RunKindTest, nil)
 	if err != nil {
@@ -124,7 +124,7 @@ func TestGuardrail_ExternalStepParks_DenyFailsClosed(t *testing.T) {
 // The full ask flow, approved: the parked step executes after approval
 // and the run completes with the step's real output.
 func TestGuardrail_ExternalStepParks_ApproveExecutes(t *testing.T) {
-	_, _, exec, wfID := newGuardedHarness(t)
+	_, exec, wfID := newGuardedHarness(t)
 
 	summary, err := exec.RunWorkflow(wfID, RunKindTest, nil)
 	if err != nil {
@@ -175,7 +175,7 @@ func TestGuardrail_ExternalStepParks_ApproveExecutes(t *testing.T) {
 // opt-in): the run completes synchronously, and the recorded verdict
 // names the rule that skipped it -- the "skipped" state made auditable.
 func TestGuardrail_AllowRuleSkipsApproval(t *testing.T) {
-	_, guard, exec, wfID := newGuardedHarness(t)
+	guard, exec, wfID := newGuardedHarness(t)
 
 	rule, err := guard.CreateRule(guardrail.Rule{
 		Label: "echo is trusted", Effect: guardrail.EffectAllow, NodeTypeID: "test-external-echo",
@@ -207,7 +207,7 @@ func TestGuardrail_AllowRuleSkipsApproval(t *testing.T) {
 
 // A deny rule fails the run immediately -- no park, no approval option.
 func TestGuardrail_DenyRuleFailsImmediately(t *testing.T) {
-	_, guard, exec, wfID := newGuardedHarness(t)
+	guard, exec, wfID := newGuardedHarness(t)
 
 	if _, err := guard.CreateRule(guardrail.Rule{
 		Label: "no external calls", Effect: guardrail.EffectDeny, NodeTypeID: "test-external-echo",
@@ -235,7 +235,7 @@ func TestGuardrail_DenyRuleFailsImmediately(t *testing.T) {
 // §8's locked testability requirement, checked against both the default
 // and a rule-driven outcome.
 func TestGuardrail_TestRulesMatchesLiveVerdict(t *testing.T) {
-	_, guard, _, wfID := newGuardedHarness(t)
+	guard, _, wfID := newGuardedHarness(t)
 
 	res, err := guard.TestRules(wfID, "n1")
 	if err != nil {

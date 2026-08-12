@@ -82,7 +82,7 @@ func oauth1Nonce() string {
 // resulting credentials as an "Authorization: OAuth ..." header per
 // §3.5.1 (the header transport, the most common of RFC 5849's three).
 func init() {
-	RegisterAuthStrategy(httprequest.AuthOAuth1, func(rc ResolvedHTTPRequest, method, path string, headers map[string]string, query url.Values, body string) error {
+	RegisterAuthStrategy(httprequest.AuthOAuth1, func(rc ResolvedHTTPRequest, method, path string, headers map[string]string, query url.Values, _ string) error {
 		var cfg httprequest.OAuth1Config
 		if rc.Auth != nil && rc.Auth.OAuth1 != nil {
 			cfg = *rc.Auth.OAuth1

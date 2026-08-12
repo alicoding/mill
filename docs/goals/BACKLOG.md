@@ -64,11 +64,19 @@ this pipeline and on this code)**
    editable "Example: Forward pending approvals" workflow; the decision
    test written into `.claude/rules/architecture.md`; SettingsView's
    silent-mount-fetch class fixed alongside.
-6. [ ] [0028 — Public-repo hygiene](0028-public-repo-hygiene.md) —
-   research delivered 2026-08-12 (community-profile score 28%,
-   exposure sweep clean, LICENSE already correct); the close-the-gaps
-   build (README/SECURITY/CONTRIBUTING/Scorecard/lint hardening) not
-   started.
+6. [x] [0028 — Public-repo hygiene](archive/0028-public-repo-hygiene.md)
+   — DELIVERED 2026-08-12: README rewrite (truthful positioning +
+   the toolchain prerequisites CLAUDE.md itself never states),
+   SECURITY.md (GitHub PVR enabled live), CONTRIBUTING.md + bug-report
+   issue template, OpenSSF Scorecard workflow + badge, golangci-lint
+   first pass (gosec/bodyclose/noctx/revive/unparam) triaged to zero
+   findings on both build-tag variants — one real bug fixed
+   (`mcpserving.Serve` missing `ReadHeaderTimeout`), revive's
+   exported/package-comments rules deliberately disabled (fights
+   house style); dependency-review deny-licenses; elkjs EPL-2.0
+   verdict recorded in SPEC §3; both literal `/Users/ali` paths
+   de-literalized. Second lint pass (gocritic/prealloc/contextcheck/
+   sqlclosecheck) named as explicit future work, not done here.
 7. [ ] [0029 — Dev-liveness honesty](0029-dev-liveness-honesty.md) —
    the DEV·live badge's Go-liveness blind spot, now having claimed a
    second scalp (ADR-0035's Consequences note); a third badge state

@@ -21,7 +21,7 @@ import (
 // main.go to the same durable DBOS park the ambient gate uses
 // (executionservice_guardrail.go), so both patterns share one pending/
 // approve/deny surface. Same injected-seam shape as runChildWorkflowFn.
-var waitForApprovalFn = func(runCtx any, node Node, ec ExecContext, message string) (map[string]string, error) {
+var waitForApprovalFn = func(_ any, _ Node, _ ExecContext, _ string) (map[string]string, error) {
 	return nil, fmt.Errorf("no approval waiter registered -- this run has no interactive context to ask in")
 }
 

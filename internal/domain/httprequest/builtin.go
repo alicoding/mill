@@ -40,9 +40,9 @@ const (
 // the COMPLETE endpoint URL and its single operation's path is "/",
 // which appends nothing at execution -- one URL, one place, matching
 // the request form's own single URL field.
-func openAPISpecFor(title, path string) string {
+func openAPISpecFor(title string) string {
 	return `{"openapi":"3.0.3","info":{"title":"` + title + `","version":"1.0.0"},` +
-		`"paths":{"` + path + `":{"get":{"summary":"` + title + `","responses":{"200":{"description":"OK"}}}}}}`
+		`"paths":{"/":{"get":{"summary":"` + title + `","responses":{"200":{"description":"OK"}}}}}}`
 }
 
 // Two seeds carry a real *typed* schema (input parameters + typed
@@ -100,7 +100,7 @@ func BuiltIn() []HTTPRequest {
 				"validate the key's value (httpbin has no concept of a 'correct' key), so this is a " +
 				"self-consistency check, not third-party-verified auth.",
 			BaseURL: "https://httpbin.org/headers", AuthType: AuthAPIKey, Method: "GET",
-			OpenAPISpec: openAPISpecFor("httpbin headers echo", "/"),
+			OpenAPISpec: openAPISpecFor("httpbin headers echo"),
 			BuiltIn:     true,
 		},
 		{
@@ -121,7 +121,7 @@ func BuiltIn() []HTTPRequest {
 				"the signed headers back so you can see them, but doesn't verify the signature -- " +
 				"self-consistency check only, same caveat as the API-key example above.",
 			BaseURL: "https://httpbin.org/headers", AuthType: AuthHMAC, Method: "GET",
-			OpenAPISpec: openAPISpecFor("httpbin headers echo (HMAC)", "/"),
+			OpenAPISpec: openAPISpecFor("httpbin headers echo (HMAC)"),
 			BuiltIn:     true,
 		},
 		{
@@ -133,7 +133,7 @@ func BuiltIn() []HTTPRequest {
 				"successful\"} before this was seeded, not just self-consistent with Mill's own tests.",
 			BaseURL: "https://postman-echo.com/oauth1", AuthType: AuthOAuth1, Method: "GET",
 			Auth:        &AuthConfig{OAuth1: &OAuth1Config{ConsumerKey: "RKCGzna7bv9YD57c"}},
-			OpenAPISpec: openAPISpecFor("Postman Echo OAuth1", "/"),
+			OpenAPISpec: openAPISpecFor("Postman Echo OAuth1"),
 			BuiltIn:     true,
 		},
 		{
@@ -144,10 +144,10 @@ func BuiltIn() []HTTPRequest {
 				"own repo will never carry a real client secret. Register a free Spotify developer " +
 				"app and fill in the Client ID/Secret yourself to make this one actually run.",
 			BaseURL: "https://api.spotify.com/v1/browse/new-releases", AuthType: AuthOAuth2, Method: "GET",
-			Auth: &AuthConfig{OAuth2: &OAuth2Config{
+			Auth: &AuthConfig{OAuth2: &OAuth2Config{ //nolint:gosec // TokenURL below is a public token endpoint URL, not a credential (G101 false positive) -- this seed ships with no Client ID/Secret, see Description above
 				GrantType: "client_credentials", TokenURL: "https://accounts.spotify.com/api/token",
 			}},
-			OpenAPISpec: openAPISpecFor("Spotify Web API (bring your own app)", "/"),
+			OpenAPISpec: openAPISpecFor("Spotify Web API (bring your own app)"),
 			BuiltIn:     true,
 		},
 		{
@@ -156,7 +156,7 @@ func BuiltIn() []HTTPRequest {
 				"which echoes back the query it received -- same self-consistency-only caveat as the " +
 				"header-based API-key example (httpbin doesn't validate the value).",
 			BaseURL: "https://httpbin.org/get", AuthType: AuthQueryParam, Method: "GET",
-			OpenAPISpec: openAPISpecFor("httpbin query echo", "/"),
+			OpenAPISpec: openAPISpecFor("httpbin query echo"),
 			BuiltIn:     true,
 		},
 	}

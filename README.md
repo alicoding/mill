@@ -1,61 +1,65 @@
-# Welcome to Your New Wails3 Project!
+# Mill
 
 [![CI](https://github.com/alicoding/mill/actions/workflows/ci.yml/badge.svg)](https://github.com/alicoding/mill/actions/workflows/ci.yml)
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/alicoding/mill/badge)](https://scorecard.dev/viewer/?uri=github.com/alicoding/mill)
 
-Congratulations on generating your Wails3 application! This README will guide you through the next steps to get your project up and running.
+Mill is a guardrailed, agentic-workflow desktop app: it lets an AI agent (or
+a human) compose and run automations — capturing data, processing it,
+applying an action — while keeping every step reviewable and reversible.
+The core idea is *what-you-see-is-what-I-see*: an AI acting on a system it
+can't verify has to guess at the real state (what's actually on the
+clipboard, what a command will really do, what a setting is really set to),
+and that gap between the guess and reality is exactly where hallucination
+and silent failure live. Mill closes that gap by giving both the human and
+the AI the same verified, structured view of state — and a guardrail that
+previews an action before it happens, instead of trusting a text
+description of it. Mill isn't a novel category: it composes existing
+primitives (a workflow authoring layer with guardrails) the way a generic
+credential manager or a generic workflow-automation tool would, applied to
+agent-guarded local actions instead.
 
-## Getting Started
+## Status
 
-1. Navigate to your project directory in the terminal.
+Mill is under active development, pre-1.0. Several UX surfaces are
+explicitly prototype-quality (tracked as such in `docs/SPEC.md`) while the
+underlying capability is real and exercised end-to-end. Expect rough edges
+in presentation before you expect them in behavior — and expect both to
+keep changing release to release.
 
-2. To run your application in development mode, use the following command:
+## Install
 
-   ```
-   wails3 dev
-   ```
+Mill ships as a single Go binary with the frontend compiled in (no
+separate CLI/backend, no hosted-service dependency) — `git clone` plus a
+local build is the whole install story. You'll need Go 1.25+, Node 22+,
+the [Task](https://taskfile.dev) CLI, and the Wails3 CLI first:
 
-   This will start your application and enable hot-reloading for both frontend and backend changes.
+```sh
+brew install go node go-task lefthook golangci-lint
+go install github.com/loeffel-io/ls-lint/v2/cmd/ls_lint@v2.3.1
+go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0-beta.4
+# make sure $(go env GOPATH)/bin (usually ~/go/bin) is on your PATH
 
-3. To build your application for production, use:
+git clone https://github.com/alicoding/mill.git
+cd mill
+task setup:hooks   # installs Lefthook's pre-commit hooks (mirrors CI)
 
-   ```
-   wails3 build
-   ```
+# Run it
+task dev           # starts Mill with hot reload — leave it running
+```
 
-   This will create a production-ready executable in the `build` directory.
+`task dev` is the way to iterate: frontend edits hot-reload instantly, and
+only a Go change triggers a restart. See `CLAUDE.md` for the full set of
+build/dev commands (`task install:app`, `task build`, `task package`, ...).
 
-## Exploring Wails3 Features
+## Documentation
 
-Now that you have your project set up, it's time to explore the features that Wails3 offers:
+- [`docs/SPEC.md`](docs/SPEC.md) — the living architecture and positioning
+  doc (also rendered inside the app itself). Source of truth for what
+  Mill is, what's decided (`LOCKED`), and what's still open (`OPEN`).
+- [`CONTRIBUTING.md`](CONTRIBUTING.md) — how to propose a change.
+- [`SECURITY.md`](SECURITY.md) — how to report a vulnerability and what's
+  in scope.
 
-1. **Check out the examples**: The best way to learn is by example. Visit the `examples` directory in the `v3/examples` directory to see various sample applications.
+## License
 
-2. **Run an example**: To run any of the examples, navigate to the example's directory and use:
-
-   ```
-   go run .
-   ```
-
-   Note: Some examples may be under development during the alpha phase.
-
-3. **Explore the documentation**: Visit the [Wails3 documentation](https://v3.wails.io/) for in-depth guides and API references.
-
-4. **Join the community**: Have questions or want to share your progress? Join the [Wails Discord](https://discord.gg/JDdSxwjhGf) or visit the [Wails discussions on GitHub](https://github.com/wailsapp/wails/discussions).
-
-## Project Structure
-
-Take a moment to familiarize yourself with your project structure:
-
-- `frontend/`: Contains your frontend code (HTML, CSS, JavaScript/TypeScript)
-- `main.go`: The entry point of your Go backend
-- `app.go`: Define your application structure and methods here
-- `wails.json`: Configuration file for your Wails project
-
-## Next Steps
-
-1. Modify the frontend in the `frontend/` directory to create your desired UI.
-2. Add backend functionality in `main.go`.
-3. Use `wails3 dev` to see your changes in real-time.
-4. When ready, build your application with `wails3 build`.
-
-Happy coding with Wails3! If you encounter any issues or have questions, don't hesitate to consult the documentation or reach out to the Wails community.
+[Apache-2.0](LICENSE).

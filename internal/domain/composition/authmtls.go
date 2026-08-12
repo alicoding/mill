@@ -16,7 +16,7 @@ import (
 // Certificates + software.sslmate.com/src/go-pkcs12 for P12 decoding,
 // per docs/SPEC.md §4.1's research) is real future work.
 func init() {
-	RegisterAuthStrategy(httprequest.AuthMTLS, func(rc ResolvedHTTPRequest, method, path string, headers map[string]string, query url.Values, body string) error {
+	RegisterAuthStrategy(httprequest.AuthMTLS, func(_ ResolvedHTTPRequest, _, _ string, _ map[string]string, _ url.Values, _ string) error {
 		return fmt.Errorf("mTLS is not yet implemented (docs/adr/0015) -- deliberately deferred, not a bug")
 	})
 }

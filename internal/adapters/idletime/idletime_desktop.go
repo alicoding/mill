@@ -3,6 +3,7 @@
 package idletime
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os/exec"
@@ -10,6 +11,10 @@ import (
 	"strings"
 	"time"
 )
+
+// ioregTimeout bounds the ioreg invocation below -- same fail-safe
+// reasoning as clipboard's own cmdTimeout.
+const ioregTimeout = 5 * time.Second
 
 // Seconds shells out to `ioreg -c IOHIDSystem` -- the same
 // shell-out-to-a-real-OS-command pattern internal/adapters/clipboard
@@ -23,7 +28,9 @@ import (
 // IOHIDSystem's own idle-time property is plain IORegistry data any
 // process can read.
 func Seconds() (time.Duration, error) {
-	out, err := exec.Command("ioreg", "-c", "IOHIDSystem").Output()
+	ctx, cancel := context.WithTimeout(context.Background(), ioregTimeout)
+	defer cancel()
+	out, err := exec.CommandContext(ctx, "ioreg", "-c", "IOHIDSystem").Output()
 	if err != nil {
 		return 0, fmt.Errorf("idletime: ioreg: %w", err)
 	}

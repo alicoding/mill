@@ -38,7 +38,12 @@ func Read(path string) (string, error) {
 		return "", fmt.Errorf("fileread: %q is %d bytes, over the %d byte limit", path, info.Size(), MaxBytes)
 	}
 
-	data, err := os.ReadFile(path)
+	// path is a user-configured value (the capture-file node's path,
+	// which composition.go registers as guardrail.ClassRead) -- reading
+	// an arbitrary path IS this connector's job; the node's own step
+	// already goes through Mill's guardrail preview/approval gate before
+	// this ever runs, so this is not a missing validation to add here.
+	data, err := os.ReadFile(path) //nolint:gosec // guardrail-gated user-configured path, by design (see comment above)
 	if err != nil {
 		return "", fmt.Errorf("fileread: %w", err)
 	}

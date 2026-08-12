@@ -5,6 +5,16 @@ linters:
   enable:
     - unused
     - staticcheck
+    # goal 0028, first strengthening pass (security + HTTP-client hygiene
+    # matching what the code actually does -- procexec/httpconnector/
+    # openapispec are the real attack-surface packages). Second pass
+    # (gocritic/prealloc/contextcheck/sqlclosecheck) is deliberately not
+    # part of this goal -- tracked as future work in goal 0028's file.
+    - gosec
+    - bodyclose
+    - noctx
+    - revive
+    - unparam
   exclusions:
     paths:
       - frontend
@@ -12,6 +22,24 @@ linters:
       - third_party$
       - builtin$
       - examples$
+
+  settings:
+    revive:
+      rules:
+        # This repo has never doc-commented every exported symbol --
+        # confirmed by the first real run of this rule, which flagged
+        # ~40 pre-existing exported consts/types/funcs across files that
+        # already had real, deliberate doc comments on the pieces that
+        # matter (packages, non-obvious functions) and none on
+        # self-explanatory ones (e.g. `StatusLocked Status = "LOCKED"`).
+        # Enforcing full Java/godoc-style coverage retroactively is
+        # ceremony that fights the established house style, not a real
+        # finding -- goal 0028's own explicit "tune revive if its
+        # defaults fight house style" guidance (e.g. package-comments).
+        - name: exported
+          disabled: true
+        - name: package-comments
+          disabled: true
 
 formatters:
   exclusions:

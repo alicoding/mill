@@ -20,7 +20,7 @@ import (
 // new AuthType is a pure addition, zero changes to any other strategy
 // file, whether or not that type's own behavior is fully built yet.
 func init() {
-	RegisterAuthStrategy(httprequest.AuthOAuth1Vendor, func(rc ResolvedHTTPRequest, method, path string, headers map[string]string, query url.Values, body string) error {
+	RegisterAuthStrategy(httprequest.AuthOAuth1Vendor, func(_ ResolvedHTTPRequest, _, _ string, _ map[string]string, _ url.Values, _ string) error {
 		return fmt.Errorf("the vendor-specific OAuth 1.0a variant is not yet implemented -- its exact signing convention was never confirmed (docs/adr/0015); use AuthOAuth1 (standard RFC 5849) if that fits, or file the real requirement")
 	})
 }

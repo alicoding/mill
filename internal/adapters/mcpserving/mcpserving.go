@@ -13,9 +13,17 @@ package mcpserving
 
 import (
 	"net/http"
+	"time"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
+
+// readHeaderTimeout bounds how long the server waits to read a request's
+// headers -- a real gosec finding (G112), not a false positive: even a
+// loopback-only listener is reachable by any other local process, and an
+// http.Server with no ReadHeaderTimeout is vulnerable to a slow-headers
+// (Slowloris-style) connection-exhaustion attack from one such process.
+const readHeaderTimeout = 5 * time.Second
 
 // New constructs an MCP server with the given name/version identity.
 // Thin on purpose -- there's little to wrap here (the SDK's
@@ -36,7 +44,7 @@ func New(name, version string) *mcp.Server {
 // already returned.
 func Serve(addr string, server *mcp.Server) (*http.Server, <-chan error) {
 	handler := mcp.NewStreamableHTTPHandler(func(*http.Request) *mcp.Server { return server }, nil)
-	httpServer := &http.Server{Addr: addr, Handler: handler}
+	httpServer := &http.Server{Addr: addr, Handler: handler, ReadHeaderTimeout: readHeaderTimeout}
 	errCh := make(chan error, 1)
 	go func() {
 		if err := httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {

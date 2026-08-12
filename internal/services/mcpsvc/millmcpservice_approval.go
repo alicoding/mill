@@ -27,7 +27,7 @@ import (
 // still needs a human click. Defaults to REQUIRED when unset -- enabling
 // writes must not silently mean unattended writes (§8's fail-safe
 // default); relaxing to unattended is its own explicit opt-out.
-const MCPWriteApprovalKey = "mcp-write-approval-required"
+const MCPWriteApprovalKey = "mcp-write-approval-required" //nolint:gosec // a settings-store key name, not a credential (G101 false positive)
 
 // mcpPendingWritesKey persists every MCPWriteRecord (pending and, for
 // 24h, resolved) as one JSON blob -- same one-atomic-blob-per-key shape
@@ -469,4 +469,3 @@ func (m *MillMCPService) loadWrites() {
 	// that expires from then on.
 	_ = m.sweepLocked(time.Now())
 }
-

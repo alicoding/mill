@@ -22,7 +22,7 @@ func TestWatch_FiresOnFileCreate(t *testing.T) {
 	}
 	defer func() { _ = b.Close() }()
 
-	if err := os.WriteFile(filepath.Join(dir, "new-file.txt"), []byte("hello"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, "new-file.txt"), []byte("hello"), 0o600); err != nil {
 		t.Fatalf("WriteFile() error: %v", err)
 	}
 
@@ -56,7 +56,7 @@ func TestWatch_CloseStopsFiring(t *testing.T) {
 		t.Fatalf("Close() error: %v", err)
 	}
 
-	if err := os.WriteFile(filepath.Join(dir, "after-close.txt"), []byte("hello"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, "after-close.txt"), []byte("hello"), 0o600); err != nil {
 		t.Fatalf("WriteFile() error: %v", err)
 	}
 
@@ -84,12 +84,12 @@ func TestWatch_PatternFilter(t *testing.T) {
 	defer func() { _ = b.Close() }()
 
 	// A non-matching file must NOT fire.
-	if err := os.WriteFile(filepath.Join(dir, "ignore.txt"), []byte("x"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, "ignore.txt"), []byte("x"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	// A matching file must fire, delivering its path.
 	mdPath := filepath.Join(dir, "note.md")
-	if err := os.WriteFile(mdPath, []byte("x"), 0o644); err != nil {
+	if err := os.WriteFile(mdPath, []byte("x"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 

@@ -18,10 +18,9 @@ func swapExecEnvLookupForTest(t *testing.T, fn func(id string) (ResolvedExecEnv,
 	t.Cleanup(func() { lookupExecEnvFn = orig })
 }
 
-func testExecEnv(t *testing.T, extraEnv ...string) ResolvedExecEnv {
+func testExecEnv(t *testing.T) ResolvedExecEnv {
 	t.Helper()
-	env := append([]string{"PATH=/bin:/usr/bin"}, extraEnv...)
-	return ResolvedExecEnv{Shell: "sh", ProfileMode: "clean", Dir: t.TempDir(), Env: env}
+	return ResolvedExecEnv{Shell: "sh", ProfileMode: "clean", Dir: t.TempDir(), Env: []string{"PATH=/bin:/usr/bin"}}
 }
 
 func runCodeExecution(t *testing.T, node Node, payload string) (ExecContext, error) {

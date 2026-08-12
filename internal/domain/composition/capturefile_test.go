@@ -13,7 +13,7 @@ import (
 // §3.4).
 func TestCaptureFile_PayloadMode_ReadsPathFromPayload(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "page.html")
-	if err := os.WriteFile(path, []byte("payload-mode contents"), 0o644); err != nil {
+	if err := os.WriteFile(path, []byte("payload-mode contents"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 
@@ -40,7 +40,7 @@ func TestCaptureFile_PayloadMode_ReadsPathFromPayload(t *testing.T) {
 // instead.
 func TestCaptureFile_LiteralMode_ReadsConfiguredPath(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "page.html")
-	if err := os.WriteFile(path, []byte("literal-mode contents"), 0o644); err != nil {
+	if err := os.WriteFile(path, []byte("literal-mode contents"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 
