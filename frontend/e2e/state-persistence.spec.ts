@@ -24,7 +24,7 @@ test('The active view persists across a reload', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'Activity', exact: true })).toBeVisible()
 })
 
-test('An open Composition workflow tab persists across a reload', async ({ page }) => {
+test('An open Composition workflow tab persists across a reload, active and all (goal 0033)', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Workflows' }).click()
 
@@ -33,18 +33,18 @@ test('An open Composition workflow tab persists across a reload', async ({ page 
   await expect(page.getByRole('tab', { name: 'Load sample HTML' })).toBeVisible()
 
   await page.reload()
-  await page.getByRole('link', { name: 'Workflows' }).click()
-  // Restored into the app-wide strip (docs/SPEC.md §3.8) -- present
-  // but not auto-activated; clicking it lands back in the editor.
-  // Row click opens VIEW mode (docs/goals/0022), so the restored tab
-  // is a view tab too -- assert the canvas itself rendered (mode-
-  // agnostic), not the edit-only Save button.
-  await expect(page.getByRole('tab', { name: 'Load sample HTML' })).toBeVisible()
-  await page.getByRole('tab', { name: 'Load sample HTML' }).click()
+  // Restored into the app-wide strip AND re-activated (goal 0033: a
+  // real hard-reload mid-session must never cost the user their
+  // place) -- no click needed, the editor is immediately visible
+  // again exactly as it was before the reload. Row click opens VIEW
+  // mode (docs/goals/0022), so the restored tab is a view tab too --
+  // assert the canvas itself rendered (mode-agnostic), not the
+  // edit-only Save button.
+  await expect(page.getByRole('tab', { name: 'Load sample HTML' })).toHaveAttribute('aria-selected', 'true')
   await expect(page.getByTestId('composition-canvas')).toBeVisible()
 })
 
-test('An open Configure request view tab persists across a reload', async ({ page }) => {
+test('An open Configure request view tab persists across a reload, active and all (goal 0033)', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Configure' }).click()
 
@@ -54,12 +54,72 @@ test('An open Configure request view tab persists across a reload', async ({ pag
   await expect(page.getByTestId('request-summary')).toBeVisible()
 
   await page.reload()
-  await page.getByRole('link', { name: 'Configure' }).click()
-  // Restored into the app-wide strip, not auto-activated -- click it.
-  await expect(page.getByRole('tab', { name: label })).toBeVisible()
-  await page.getByRole('tab', { name: label }).click()
+  // Restored into the app-wide strip AND re-activated -- no click
+  // needed (goal 0033).
+  await expect(page.getByRole('tab', { name: label })).toHaveAttribute('aria-selected', 'true')
   await expect(page.getByTestId('request-summary')).toBeVisible()
   await expect(page.getByRole('heading', { name: label })).toBeVisible()
+})
+
+// The exact incident this goal fixes (docs/goals/0033-reload-session-
+// restore.md, owner-observed live): several tabs open, a specific one
+// active, a hard reload (⌘⇧R -- a real page reload is the closest
+// Playwright equivalent) discarded the open tab and landed on Home
+// instead. Reproduced faithfully: opening a workflow tab from a row
+// click never touches `view` (shared/store.ts's openWorkTab/
+// requestOpenWorkflow), so the underlying sidebar page here stays
+// whatever it last was set to by an explicit nav click -- exercising
+// both halves (page AND active tab) restoring correctly together, not
+// just each in isolation the way the two single-tab tests above do.
+test('Several open work tabs restore in order, with the SAME one active, after a reload (goal 0033)', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Workflows' }).click()
+
+  const rowA = page.locator('[data-testid="inventory-row"][data-entity="workflow"]').filter({ hasText: 'Load sample HTML' })
+  const rowB = page.locator('[data-testid="inventory-row"][data-entity="workflow"]')
+    .filter({ hasText: 'Example: Echo message (callable child)' })
+
+  await rowA.click()
+  await expect(page.getByRole('tab', { name: 'Load sample HTML' })).toHaveAttribute('aria-selected', 'true')
+
+  // Opening rowA's tab replaced the list with its editor -- switch
+  // back to the page tab (not the sidebar link, which would also
+  // work but is a bigger hammer) to see the list again before
+  // opening a second row.
+  await page.getByRole('tab', { name: 'Workflows' }).click()
+  await rowB.click()
+  await expect(page.getByRole('tab', { name: 'Example: Echo message (callable child)' })).toHaveAttribute('aria-selected', 'true')
+  // Opening a second tab deactivates the first, never closes it.
+  await expect(page.getByRole('tab', { name: 'Load sample HTML' })).toHaveAttribute('aria-selected', 'false')
+
+  await page.reload()
+
+  // Both tabs are back, in the same order, and the tab that was
+  // active (B) is active again -- not the page tab (which would mean
+  // "landed on the section page"), and definitely not Home.
+  const tabs = page.getByRole('tab')
+  await expect(tabs.nth(1)).toHaveText(/Load sample HTML/)
+  await expect(tabs.nth(2)).toHaveText(/Example: Echo message/)
+  await expect(page.getByRole('tab', { name: 'Example: Echo message (callable child)' })).toHaveAttribute('aria-selected', 'true')
+  await expect(page.getByRole('tab', { name: 'Load sample HTML' })).toHaveAttribute('aria-selected', 'false')
+  await expect(page.getByRole('heading', { name: 'Home', exact: true })).toHaveCount(0)
+
+  // The other tab still switches to cleanly -- nothing about the
+  // restored activation left the strip in a broken state.
+  await page.getByRole('tab', { name: 'Load sample HTML' }).click()
+  await expect(page.getByRole('tab', { name: 'Load sample HTML' })).toHaveAttribute('aria-selected', 'true')
+  await expect(page.getByRole('tab', { name: 'Example: Echo message (callable child)' })).toHaveAttribute('aria-selected', 'false')
+})
+
+// Regression guard for goal 0019's original concern, restated by goal
+// 0033's own Acceptance: a never-been-used app (no localStorage
+// snapshot at all) must still land on Home, completely unaffected by
+// any of the restore machinery above.
+test('A fresh boot with no persisted snapshot still lands on Home (goal 0019 regression guard)', async ({ page }) => {
+  await page.goto('/')
+  expect(await page.evaluate(() => localStorage.getItem('mill-app-view'))).toBeNull()
+  await expect(page.getByTestId('home-view')).toBeVisible()
+  await expect(page.getByRole('tab')).toHaveCount(1) // just the page tab, no work tabs open
 })
 
 // Real OS clipboard I/O (goal 0009) -- "Load sample HTML" writes to it.

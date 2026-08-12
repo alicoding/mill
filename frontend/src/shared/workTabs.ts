@@ -127,3 +127,59 @@ export function shouldUpgradeToEdit(existing: WorkTab, requested: WorkTabSpec): 
     && existing.mode !== 'edit'
   )
 }
+
+// Whether a candidate active-tab key survives being written to, or
+// read back from, persisted storage: it must point at a tab actually
+// present in the given list. Shared by store.ts's `persist` config in
+// both directions -- `partialize` (does the CURRENTLY active tab even
+// qualify to be saved -- it must itself be `isRestorable`) and `merge`
+// (does the PERSISTED active tab match a tab that actually came back)
+// -- so the two checks can't drift apart (docs/goals/0033-reload-
+// session-restore.md: a real hard-reload mid-session, tab 3 of 3,
+// dumped the owner back to Home even though the tabs themselves were
+// already restoring -- present in the strip but never re-activated,
+// which still cost the user their actual place).
+export function activeKeyIfPresent(workTabs: WorkTab[], key: string | null | undefined): string | null {
+  return key != null && workTabs.some((t) => t.key === key) ? key : null
+}
+
+// The persisted-workTabs half of store.ts's zustand `merge` config,
+// pulled out here so it's unit-testable without constructing a full
+// AppState fixture. Backfills a pre-goal-0022 tab missing `mode`,
+// falls back to the one-time legacy migration when nothing restorable
+// survived, and resolves the persisted active tab against whatever
+// workTabs actually came back -- a stale/unmatched key (e.g. one
+// filtered out by isRestorable) degrades to null rather than pointing
+// at nothing. Does NOT know about deleted workflows/requests --
+// that's `pruneStaleWorkTabs` below, run once real data loads.
+export function restoreWorkTabSnapshot(
+  persistedWorkTabs: WorkTab[] | undefined,
+  persistedActiveKey: string | null | undefined,
+): { workTabs: WorkTab[]; activeWorkTabKey: string | null } {
+  const restored = (persistedWorkTabs ?? []).filter(isRestorable).map((t) =>
+    t.kind === 'workflow-edit' && t.mode === undefined
+      ? { ...t, mode: modeForRestoredCanvasTab(t.key) }
+      : t,
+  )
+  const workTabs = restored.length > 0 ? restored : migrateLegacyWorkTabs()
+  return { workTabs, activeWorkTabKey: activeKeyIfPresent(workTabs, persistedActiveKey) }
+}
+
+// The pure decision behind store.ts's `pruneWorkTabs` action: drop
+// tabs whose backing entity no longer exists (a workflow/request
+// deleted since the tab was opened, or since a reload's snapshot was
+// taken -- goal 0033's graceful-degradation case for a stale
+// snapshot), and clear the active key too when it pointed at exactly
+// the tab that just got dropped. Returns null (a no-op sentinel,
+// matching the store action's own `return {}` short-circuit) when
+// nothing was actually removed, so the caller can skip a pointless
+// `set()`.
+export function pruneStaleWorkTabs(
+  workTabs: WorkTab[],
+  activeWorkTabKey: string | null,
+  keep: (tab: WorkTab) => boolean,
+): { workTabs: WorkTab[]; activeWorkTabKey: string | null } | null {
+  const kept = workTabs.filter(keep)
+  if (kept.length === workTabs.length) return null
+  return { workTabs: kept, activeWorkTabKey: activeKeyIfPresent(kept, activeWorkTabKey) }
+}
