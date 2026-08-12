@@ -64,6 +64,10 @@ var workflowProofRegistry = map[string]seedProof{
 	"example-ai-summarize-workflow": proven(
 		"executionsvc.TestSeededAISummarizeExample_RunsEndToEndAgainstFixtureEndpoint",
 	),
+	"example-ai-classify-branch-workflow": proven(
+		"executionsvc.TestSeededAIClassifyBranchExample_UrgentRoutesToUrgentBranch",
+		"executionsvc.TestSeededAIClassifyBranchExample_NormalRoutesToNormalBranch",
+	),
 	"example-disabled-schedule-workflow": proven(
 		"executionsvc.TestSeededDisabledScheduleExample_TriggeredRunRejectedWhileDisabled",
 		"executionsvc.TestSeededDisabledScheduleExample_TestRunWorks",
@@ -205,6 +209,17 @@ var nodeTypeProofRegistry = map[string]seedProof{
 	),
 	"trigger-clipboard-watch": manualOnly(
 		"Needs a real macOS pasteboard session -- docs/SPEC.md §1.3: the real clipboard round-trip test is \"skipped specifically in CI, not just on non-macOS -- GitHub's macos-latest runners are headless, no GUI/pasteboard session for osascript either.\" The polling/no-op-on-empty-config mechanism is otherwise identical to trigger-filesystem-watch's already-proven shape.",
+	),
+	// docs/goals/0031-ai-node-family.md: deliberately unseeded (only
+	// ai-completion and ai-classify get a seeded workflow, per the
+	// goal's own scope) -- proven at the unit layer instead
+	// (.claude/rules/testing.md's "never force the seed pattern onto
+	// everything"), covering schema-building, typed-Attribute writing,
+	// and the zero-value-on-missing-field fallback.
+	"process-ai-extract-structured": proven(
+		"composition.TestAIExtractStructuredExec_WritesTypedAttributes",
+		"composition.TestAIExtractStructuredExec_MissingFieldGetsZeroValue",
+		"composition.TestBuildExtractSchema_EveryFieldRequiredWithMappedType",
 	),
 }
 
