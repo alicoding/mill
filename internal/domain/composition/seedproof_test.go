@@ -114,6 +114,12 @@ var workflowProofRegistry = map[string]seedProof{
 		"executionsvc.TestCancelRun_KillsARealRunningProcess",
 		"e2e: codeexec.spec.ts > Run copied code (approve path)",
 	),
+	"example-forward-approvals-workflow": proven(
+		"triggersvc.TestSeededForwardApprovalsExample_DecisionParked_PostsRealHTTPCall",
+		"triggersvc.TestSystemEvent_LoopRule_SystemEventTriggeredRunEmitsNothing",
+		"triggersvc.TestSystemEvent_RunCompleted_FiresForManualAndTriggeredRuns",
+		"e2e: seed-completeness.spec.ts > Forward pending approvals (presence/trigger-label only)",
+	),
 }
 
 // httpRequestProofRegistry: every httprequest.BuiltIn() ID.
