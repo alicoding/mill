@@ -157,3 +157,24 @@ test('Example: Saved page to Markdown workflow is present and ships disabled', a
   await expect(row).toBeVisible()
   await expect(row.getByText('disabled', { exact: true })).toBeVisible()
 })
+
+// docs/adr/0035: the composed replacement for ForwardPendingApproval's
+// deleted private send path -- real execution semantics (the decision-
+// parked emission, the loop rule, run-completed firing for both RunKinds)
+// are proven at the Go layer (triggersvc's systemevent_seed_test.go);
+// this confirms the seed is actually reachable through the live app and
+// shows its real trigger-system-event label, same presence-only bar
+// every other real-event-driven seed above already sets.
+test('Example: Forward pending approvals workflow is present, disabled, with the real trigger-system-event node on canvas', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Workflows' }).click()
+
+  const row = workflowRow(page, 'Example: Forward pending approvals')
+  await expect(row).toBeVisible()
+  await expect(row.getByText('disabled', { exact: true })).toBeVisible()
+  await row.click()
+
+  const nodes = activePanel(page).locator('.react-flow__node')
+  await expect(nodes).toHaveCount(2)
+  await expect(nodes.filter({ hasText: 'Trigger: system event' })).toBeVisible()
+})

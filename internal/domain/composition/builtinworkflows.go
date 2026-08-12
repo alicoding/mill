@@ -439,7 +439,9 @@ func BuiltInWorkflows() []Workflow {
 	// this file), the same "split along a real seam" discipline
 	// composition.go's own earlier split already established
 	// (.claude/rules/architecture.md).
-	return append(workflows, builtInListWorkflows()...)
+	workflows = append(workflows, builtInListWorkflows()...)
+	// docs/adr/0035: the forward-refactor proof, same split-file reasoning.
+	return append(workflows, builtInSystemEventWorkflows()...)
 }
 
 // ExampleChildWorkflowID is exported so the parent seed above and any

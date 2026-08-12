@@ -5,7 +5,6 @@ import { SunIcon, MoonIcon, DeviceDesktopIcon, KeyIcon } from '@primer/octicons-
 import { SettingsService } from '../shared/bindings'
 import { describeCombo, keyFromEventCode, modsFromEvent, reservedByMacOS } from '../shared/keybinding'
 import { isAccessibilityError, ACCESSIBILITY_SETTINGS_URL } from '../composition/hotkeyCapture'
-import { EntityRefField } from '../configure/EntityRefField'
 import KeyboardShortcutsSection from './KeyboardShortcutsSection'
 import styles from '../shared/ListCard.module.css'
 import PageContainer from '../shared/PageContainer'
@@ -49,12 +48,21 @@ function SettingsView() {
   const [mcpWriteEnabled, setMCPWriteEnabledState] = useState<boolean | null>(null)
   const [mcpApprovalRequired, setMCPApprovalRequiredState] = useState<boolean | null>(null)
 
-  // Attention/notifications (docs/goals/0023-attention-escalation.md
-  // items 2/3/4): the idle-aware presence-gate threshold, and the
-  // cross-device forward's own enable toggle + configured HTTPRequest.
+  // Attention/notifications (docs/goals/0023-attention-escalation.md item
+  // 2): the idle-aware presence-gate threshold. The cross-device forward's
+  // own toggle moved to composition (docs/adr/0035) -- see the seeded
+  // "Example: Forward pending approvals" workflow instead.
   const [idleThreshold, setIdleThresholdState] = useState<number | null>(null)
-  const [forwardEnabled, setForwardEnabledState] = useState<boolean | null>(null)
-  const [forwardRequestID, setForwardRequestIDState] = useState('')
+
+  // docs/adr/0035's audit finding: these mount fetches used to fail
+  // silently (console.error only), leaving their controls disabled
+  // forever with no visible explanation -- the "untogglable checkbox"/
+  // "empty stepper" bugs reported live were a stale binary, but a real
+  // fetch failure (a genuinely broken RPC) would have looked identical.
+  // One shared banner rather than a per-field message: these three all
+  // fail for the same reason (the backend didn't answer), and a build
+  // this small doesn't need per-control diagnosis.
+  const [settingsLoadError, setSettingsLoadError] = useState(false)
 
   useEffect(() => {
     SettingsService.GetLaunchAtLogin()
@@ -62,22 +70,16 @@ function SettingsView() {
       .catch((err) => setLaunchAtLoginError(String(err)))
     SettingsService.GetSummonHotkey()
       .then((label) => setSummonBinding(label || null))
-      .catch(console.error)
+      .catch((err) => { console.error(err); setSettingsLoadError(true) })
     SettingsService.GetMCPWriteEnabled()
       .then(setMCPWriteEnabledState)
-      .catch(console.error)
+      .catch((err) => { console.error(err); setSettingsLoadError(true) })
     SettingsService.GetMCPWriteApprovalRequired()
       .then(setMCPApprovalRequiredState)
-      .catch(console.error)
+      .catch((err) => { console.error(err); setSettingsLoadError(true) })
     SettingsService.GetAttentionIdleThreshold()
       .then(setIdleThresholdState)
-      .catch(console.error)
-    SettingsService.GetForwardApprovalsEnabled()
-      .then(setForwardEnabledState)
-      .catch(console.error)
-    SettingsService.GetForwardApprovalsRequestID()
-      .then((id) => setForwardRequestIDState(id ?? ''))
-      .catch(console.error)
+      .catch((err) => { console.error(err); setSettingsLoadError(true) })
   }, [])
 
   // Same menu-accelerator-suspension bracket as
@@ -157,15 +159,6 @@ function SettingsView() {
       .catch(console.error)
   }
 
-  const toggleForwardEnabled = (enabled: boolean) => {
-    SettingsService.SetForwardApprovalsEnabled(enabled).then(() => setForwardEnabledState(enabled)).catch(console.error)
-  }
-
-  const setForwardRequestID = (id: string) => {
-    setForwardRequestIDState(id)
-    SettingsService.SetForwardApprovalsRequestID(id).catch(console.error)
-  }
-
   const checkForUpdates = () => {
     setUpdateChecking(true)
     setUpdateStatus('')
@@ -184,6 +177,11 @@ function SettingsView() {
         App-level preferences -- not workflow or Configure-authored data (that lives in Composition/Configure), a
         UI preference persisted locally to this machine.
       </Text>
+      {settingsLoadError && (
+        <Text as="p" size="small" className={styles.error} data-testid="settings-load-error">
+          Couldn&apos;t load some settings -- the app may need a restart.
+        </Text>
+      )}
 
       <Heading as="h2" variant="small" className={styles.sectionHeading}>Appearance</Heading>
       <SegmentedControl aria-label="Color theme" onChange={(i) => setColorMode(COLOR_MODES[i])}>
@@ -319,29 +317,6 @@ function SettingsView() {
         System Settings → Notifications → Mill → Alerts (docs/goals/0023 item 3) -- Mill requests notification
         permission on first launch, but macOS still defaults new apps to Banners, which auto-dismiss.
       </Text>
-
-      <Heading as="h2" variant="small" className={styles.sectionHeading}>Forward pending approvals</Heading>
-      <FormControl>
-        <Checkbox
-          checked={forwardEnabled ?? false}
-          disabled={forwardEnabled === null}
-          onChange={(e) => toggleForwardEnabled(e.target.checked)}
-          data-testid="forward-approvals-enabled-checkbox"
-        />
-        <FormControl.Label>Forward to another device</FormControl.Label>
-        <FormControl.Caption>
-          Off by default (docs/goals/0023 item 4). When on, every new pending guardrail ask or MCP write fires
-          the integration below (e.g. ntfy/Telegram/a webhook receiver you configure) with{' '}
-          <code>{'{kind, id, description, createdAt}'}</code> as the body -- the only layer that reaches you
-          entirely away from this Mac. Fire-and-forget: a delivery failure never blocks the park.
-        </FormControl.Caption>
-      </FormControl>
-      {forwardEnabled && (
-        <FormControl>
-          <FormControl.Label>Integration</FormControl.Label>
-          <EntityRefField refKind="request" value={forwardRequestID} onChange={setForwardRequestID} />
-        </FormControl>
-      )}
 
       <Heading as="h2" variant="small" className={styles.sectionHeading}>Updates</Heading>
       <Stack direction="horizontal" gap="condensed" align="center">

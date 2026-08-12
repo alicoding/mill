@@ -18,6 +18,20 @@ test('Settings page shows Launch at login and Global hotkey sections', async ({ 
   await expect(page.getByText('Global hotkey')).toBeVisible()
 })
 
+// docs/adr/0035: the forward-refactor proof's Settings half --
+// ForwardPendingApproval's private send path and its own Settings
+// section (checkbox + request picker) are deleted, replaced by the
+// seeded "Example: Forward pending approvals" workflow (proven in
+// seed-completeness.spec.ts). This is the negative half: the old
+// section must actually be GONE, not just unused.
+test('Settings no longer shows the Forward pending approvals section', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Settings' }).click()
+  await expect(page.getByTestId('settings-view')).toBeVisible()
+  await expect(page.getByText('Forward pending approvals')).toHaveCount(0)
+  await expect(page.getByTestId('forward-approvals-enabled-checkbox')).toHaveCount(0)
+})
+
 test('Launch at login checkbox reflects the real server-mode error', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('button', { name: 'Settings' }).click()

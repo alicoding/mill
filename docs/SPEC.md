@@ -1645,7 +1645,7 @@ Plan step for this as a standing rule.
 |---|---|---|---|
 | **Capture / Process / Apply** | Read structured state from a source, transform it, deliver it | Build (core domain) | `LOCKED`, §2 — built for clipboard/markdown |
 | **Text injection** (a fixed hint/instruction pasted alongside a workflow's real output — e.g. telling an M365 Copilot chat what other tools are available) | Prepend or append configured static text to the payload | Build (core domain, `process-inject-text`, ADR-0006's self-registration pattern) — no templating engine; conditional injection composes for free with an upstream Decision node instead of adding branching logic to the node itself | `LOCKED`, built — `internal/domain/composition/processinjecttext.go`, e2e-verified (`composition-canvas-interactions.spec.ts`) end-to-end including via the generic ConfigField Inspector, no bespoke UI |
-| **Trigger** | Entry-point node: listen for *any* event source (hotkey, clipboard change, a browser-bridge DOM event per §5, an incoming MCP `tools/call` per §3.1, a schedule) and emit its data as the workflow's starting input — not "the hotkey mechanism," a general category the hotkey is one instance of. A trigger's output *is* the workflow's input; these are one concept, not two. | Each concrete event source adopts its own library behind an adapter (hotkey/schedule/filesystem-watch do; clipboard-watch is a small build); the abstraction unifying them into one node kind, and `TriggerService`'s registry/exclusivity, are Mill's own | `LOCKED`, built (manual/hotkey/schedule/clipboard-watch/filesystem-watch) — see §3.4 for the fuller map. DOM-event and MCP-call triggers remain unbuilt, gated on §5/§3.1 |
+| **Trigger** | Entry-point node: listen for *any* event source (hotkey, clipboard change, a browser-bridge DOM event per §5, an incoming MCP `tools/call` per §3.1, a schedule, Mill's own execution engine) and emit its data as the workflow's starting input — not "the hotkey mechanism," a general category the hotkey is one instance of. A trigger's output *is* the workflow's input; these are one concept, not two. | Each concrete event source adopts its own library behind an adapter (hotkey/schedule/filesystem-watch do; clipboard-watch is a small build); the abstraction unifying them into one node kind, and `TriggerService`'s registry/exclusivity, are Mill's own | `LOCKED`, built (manual/hotkey/schedule/clipboard-watch/filesystem-watch/callable/system-event) — see §3.4 for the fuller map, including `trigger-system-event`'s [ADR-0035](adr/0035-core-vs-composition-boundary.md) unparking. DOM-event and MCP-call triggers remain unbuilt, gated on §5/§3.1 |
 | **Branch / routing** (UI-renamed from "Decision: route", ADR-0027) | Route execution down one of several named output edges based on a condition evaluated against the running payload | Node/graph semantics: build (core domain — composition rules). Expression evaluation underneath: adopt (`expr-lang/expr`, MIT, sandboxed/side-effect-free/loop-bounded by design — verified directly, not assumed) rather than hand-writing a condition parser | `LOCKED` (execution engine + authoring) — `internal/domain/composition`'s `ExecContext`/`ValidateGraph`/`nextNode` walk real branches end-to-end; `KindDecision` + `decision-route` NodeType render and connect on the canvas. Conditions are authored visually via a `react-querybuilder` rule builder (`DecisionEdgeInspector.tsx`), translated to `expr-lang/expr` — see §3.5's Branch row |
 | **Decision (terminal outcome)** | Terminate a branch with a reusable, Configure-authored typed outcome: category + typed outputs + optional webhook; manual-review category parks into the Review queue first | Entity/CRUD/terminal-node semantics: build (core domain, the List/MCP-Server pattern). Webhook transport: reuse (the referenced HTTPRequest's own execution path via the extracted `httpsend.go` — never a second HTTP client). Park mechanism: reuse (the same `waitForApprovalFn` human-review uses) | `LOCKED`, built — [ADR-0027](adr/0027-decision-terminal-outcome.md): `internal/domain/decision`, `KindTerminal` + `decision-outcome` (no source handle, three-layer outgoing-edge rejection), Configure → Decisions tab, typed `outputBindings`, seeded branch-to-decision + manual-review examples proven against real DBOS, 96/96 e2e twice. Building it surfaced and fixed a real latent bug: the guardrail gate and dry-run tester read the *static* per-NodeType effect class, which would have hung a manual-review Decision run — generalized to `EffectForNode` (dynamic: a webhook-bearing Decision is `external`, a plain one `local`) and `NodeAlwaysParks` (human-review's hardcoded check, generalized). MCP write-tools for Decisions (`import_decision`/`export_decision`) are a named, mechanical follow-up — read Resources (`mill://decisions`) shipped |
 | **Parallel Steps** | Fan out to multiple steps concurrently, then join | Graph/fan-in semantics: build. Concurrency execution: DBOS's `Queue`/`WithWorkerConcurrency` (§7) is a plausible real backing mechanism once designed, not hand-rolled goroutine management | ADR-0005 names it, deferred |
@@ -1809,10 +1809,12 @@ Zapier, Raycast — chosen because they're the platforms already anchoring
 this design elsewhere in this doc) rather than invented from Mill's two
 existing entry points (hotkey, manual click).
 
-**Built** — `KindTrigger`, five `NodeType`s, `TriggerService`, typed
-`ConfigField`s, hotkey exclusivity, and payload generation are all
-real code; the design reasoning below is accurate as originally
-written, not a later correction.
+**Built** — `KindTrigger`, six `NodeType`s (a sixth, `trigger-system-event`,
+added by [ADR-0035](adr/0035-core-vs-composition-boundary.md) — see the
+System/meta row below), `TriggerService`, typed `ConfigField`s, hotkey
+exclusivity, and payload generation are all real code; the design
+reasoning below is accurate as originally written, not a later
+correction.
 
 **Grouping is by delivery mechanism, not business domain** — this is the
 axis that actually determines config shape and the adopt-vs-build call
@@ -1842,7 +1844,7 @@ regular interval) or webhook/real-time (service pushes events instantly)"
 | **Incoming MCP tool call** | C | An agent/chat client invokes one of Mill's exposed tools | Adopt (Go SDK's `Server.AddReceivingMiddleware`, already `LOCKED`, §3.1) | `OPEN` as a graph Trigger kind — validated as a real, established category (not a Mill invention) by n8n shipping its own dedicated MCP Server Trigger node |
 | **Webhook / incoming HTTP** | C | External service POSTs an event to a Mill-owned endpoint | Not a library gap — Mill already runs an HTTP server in server-mode (Wails3 + stdlib `net/http`); the open question is purely whether Mill should run a public listener at all | `OPEN` — a scope/threat-model decision, not an adoption decision |
 | **App/connector-specific** (e.g. email/IMAP) | B or C | Poll or push scoped to one external service | Depends on §4 Connectors | `PARKED` until §4 resolves — not a distinct Trigger *kind*, a connector-scoped instance of Group B/C |
-| **System/meta** (run failed, workflow updated) | D | Fired by Mill's own execution engine | Build, depends on §7 | `PARKED` until §7's execution engine lands — direct analog to n8n's Error Trigger / Workflow Trigger |
+| **System/meta** (decision-parked, run-completed/-failed/-cancelled) | D | Fired by Mill's own execution engine | Build (`trigger-system-event`, §7's engine) | `LOCKED`, built ([ADR-0035](adr/0035-core-vs-composition-boundary.md)) — direct analog to n8n's Error Trigger / Workflow Trigger, unparked once §7 landed. Config: `event` (options, one of the four above) + `workflowScope` (empty/"all", or one specific workflow's ID via the ADR-0009 picker, `RefKind: "workflow-scope"`). Fire payload (`InitialPayload`, JSON): `{event, runId, workflowId, workflowLabel, nodeId?, timestamp}` — `nodeId` only set for `decision-parked`. **Loop rule** (n8n's Error Trigger precedent, enforced at emission): a run whose OWN root trigger is `trigger-system-event` never emits a system event of its own, of ANY kind — a chain always bottoms out after one hop. Dispatch seam: `ExecutionService` exposes `SetSystemEventSink` (an injected-function seam, mirrors `SetConnectorLookup`); `TriggerService.DispatchSystemEvent` is wired in from `main.go`, keeping the import direction one-way (`executionsvc` never imports `triggersvc`). Emission sites: `parkForApproval` (decision-parked, `executionservice_guardrail.go`), `runWorkflow` (run-completed/run-failed, the one DBOS-registered function every run kind executes through), `CancelRun` (run-cancelled). First composed consumer: the seeded "Example: Forward pending approvals" workflow (§3.7's Update) — the forward-refactor proof. |
 | **Callable by another workflow** | D | Fired only when a Child Workflow node (docs/adr/0010) invokes this workflow — never a real external event | Build (composition rule; execution rides on DBOS's native parent/child call, already adopted §7) | `LOCKED`, built — `trigger-callable` NodeType, no listener process (same shape as `trigger-manual`); direct analog to n8n's Execute Workflow Trigger |
 
 **Architecture conclusion: each trigger type is its own `NodeType` under
@@ -2652,8 +2654,12 @@ Update has the full writeup. A menu-bar/dock *presence toggle* (hiding
 the dock icon entirely) stays unbuilt — a different capability than the
 badge — and **trigger-fire notifications remain a named future use of
 the now-existing mechanism**, not built yet: the same `notify.SendPlain`/
-`SendActionable` primitives this pass added would carry it, once a
-concrete "fire on X" event is chosen.
+`SendActionable` primitives this pass added would carry it. **Update
+(ADR-0035): the concrete "fire on X" event this was blocked on now
+exists** — `trigger-system-event`'s four events — but wiring an
+OS-notification NodeType (rather than `NotifyPendingApproval` staying
+Settings-governed kernel chrome) is still unbuilt; the forward's own
+HTTP path is the first composed consumer, not this one.
 
 **Attention escalation — `LOCKED` and built (docs/goals/archive/0023-
 attention-escalation.md, ADR-0032's Update).** The `document.hasFocus()`-only
@@ -2671,12 +2677,28 @@ write or "Open in Mill" for a guardrail park. **(3)** alert-style
 authorization is now actually requested (`notify.Start` previously
 never called `RequestNotificationAuthorization` at all); Settings
 documents the System Settings → Notifications → Mill → Alerts toggle.
-**(4)** a cross-device forward, `composition.SendJSONWebhook` (reuses
-the integration-http/decision-outcome transport tail) +
-`SettingsService.ForwardPendingApproval`, default-off, POSTs
-`{kind, id, description, createdAt}` to a Settings-configured
-HTTPRequest, independent of the presence gate — the layer that reaches
-the owner with no local Mac to notify on at all.
+**(4)** a cross-device forward — **Update ([ADR-0035](adr/0035-core-vs-composition-boundary.md),
+2026-08-12): moved from a Settings toggle + private send path
+(`SettingsService.ForwardPendingApproval`, `composition.SendJSONWebhook`
+— both deleted) to composition**, the forward-refactor's own proof: a
+seeded, DISABLED-by-default workflow, "Example: Forward pending
+approvals" (`trigger-system-event(decision-parked)` →
+`integration-http` against the same seeded no-auth HTTPRequest
+"Example: Approval-gated HTTP call" already uses, re-pointed by the
+user at their real endpoint). `integration-http`'s body resolution
+(`integration.go`) now falls back to `ctx.Payload` when neither the
+node nor the integration configures one, so the trigger's own JSON
+event becomes the POST body with zero templating needed. Same fail-safe
+default as any other external-effect step (SPEC §8): parks awaiting
+approval until the user adds a Configure > Guardrails allow rule
+scoped to this one node, exactly like the guarded-HTTP example already
+demonstrates. A migration note logs once at startup if a pre-refactor
+`settings-forward-approvals-enabled` key is present, naming the
+replacement — config is never silently dropped. The OS-notification
+half (`NotifyPendingApproval`) is unchanged, staying a Settings-
+governed kernel default (the away-user attention layer, §9.5's
+protected-kernel list) — only the HTTP forward moved; full
+notification-as-a-node is named future work, not built.
 
 **Staleness presentation — `LOCKED` and built
 (docs/goals/archive/0026-request-lifecycle-honesty.md), applying the §1
@@ -3943,6 +3965,27 @@ infrastructure. This inheritance list IS the working definition of
    tags (§11.2, standing); a stable local signing identity (§2.2 —
    the Accessibility re-grant tax on every reinstall); Configure-
    entity draft/live lifecycle (workflows have it; entities don't).
+
+**Update ([ADR-0035](adr/0035-core-vs-composition-boundary.md),
+2026-08-12): the core/composition BOUNDARY, sharpened.** This
+section's extension contract said what a new capability brings/
+inherits; ADR-0035 adds the decision test that determines whether a
+capability should even reach for that contract vs. a true kernel
+change: **is this a node, a trigger, a connector — or a true kernel
+change?** If a user could plausibly say "I want that, but to a
+different channel / with a condition / on a different event," it's
+composition-shaped and MUST arrive as composition, never a bespoke
+service path plus a Settings toggle. Recorded counterexample: cross-
+device notification shipped hours after this section was first
+written, AS a Settings toggle + private send path
+(`ForwardPendingApproval`) — caught live, refactored into the seeded
+"Example: Forward pending approvals" workflow (§3.7's Update). The
+kernel list above stays the protected-kernel definition; ADR-0035's
+second contract is new: platform-internal behavior MAY and SHOULD
+consume the same composition surface as built-in, seeded, editable
+workflows (the app dogfooding its own platform) — what the platform
+never does is hand-roll a parallel mini-pipeline for something the
+surface can already express.
 
 ## 10. Open questions log
 
