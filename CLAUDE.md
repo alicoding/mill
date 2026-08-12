@@ -3,8 +3,12 @@
 Wails3 desktop app: Go backend + React/TypeScript/Vite frontend, compiled to a
 single binary. Will become a guardrailed agentic-workflow/automation tool.
 Full context, positioning, and open architecture questions live in
-@docs/SPEC.md — read it before making any design decision, and update it as
-decisions land. Do not treat this CLAUDE.md as a substitute for it.
+`docs/SPEC.md` — read the relevant sections before any design decision, and
+update it as decisions land. Do not treat this CLAUDE.md as a substitute for
+it. (Deliberately a backticked pointer, not an `@`-import: the unbackticked
+form eagerly loaded the entire ~74k-token SPEC.md into every session's
+context — the exact always-loaded anti-pattern SPEC §9.1 documents; found
+2026-08-11 via the context-engineering research, confirmed empirically.)
 
 ## Model economics: expensive models orchestrate, cheap models toil
 
@@ -31,7 +35,22 @@ Requirements live in `docs/SPEC.md`; the committed, hand-reorderable
 priority queue of goals lives in `docs/goals/BACKLOG.md` (top item =
 next; UX/frontend-first is the standing tiebreak). Starting a session
 without an explicit goal from the user: take the top unchecked goal,
-read its goal file, follow Research → Plan → Implement. A delivered
+read its goal file, follow Research → Plan → Implement. **Work
+discovered mid-session that outlives the session gets a goal file and
+a queue position before the session ends** — an ephemeral session task
+list is working memory, never the record; the backlog must always
+carry the true priority order (owner-directed 2026-08-11, after
+session-born work drifted out of the queue).
+
+**Before starting an ad-hoc request that isn't the queue's current top
+item, name in one sentence where it lands against
+`docs/goals/BACKLOG.md`**: it supersedes/reorders the queue, merges
+into an existing goal, becomes a new goal (per the reconciliation rule
+above), or is a below-goal-granularity fix riding the next PR with no
+goal file. No separate triage step or log — the sentence in the
+response IS the record. (A `UserPromptSubmit` hook in
+`.claude/settings.json` re-surfaces this just-in-time; kanban
+classes-of-service precedent, researched 2026-08-11.) A delivered
 goal's file moves to `docs/goals/archive/` in the same commit that
 completes it. Adopted as a pattern, not a tool — researched
 (spec-kit/task-master/OpenSpec/BMAD all rejected with reasons recorded
