@@ -18,6 +18,7 @@ import { WorkflowHoverPreview } from './WorkflowHoverPreview'
 import { NodeGuardrailSection } from './NodeGuardrailSection'
 import { NodeExecutionSection } from './NodeExecutionSection'
 import { RulesetEditor } from './RulesetEditor'
+import { AIExtractFieldsEditor } from './AIExtractFieldsEditor'
 import { SchedulePreview } from './SchedulePreview'
 import styles from './CompositionCanvas.module.css'
 import runbookStyles from '../shared/ListCard.module.css'
@@ -206,6 +207,10 @@ export function NodeInspector({ node, workflowId, attrs, nodeType, sameKindNodeT
         // picker and typed-argument fields, not a raw text box.
         .filter((field) => !(node.data.nodeTypeID === 'mcp-tool-call' && (field.Key === 'toolName' || field.Key === 'argumentsJSON')))
         .filter((field) => !(node.data.nodeTypeID === 'list-search' && field.Key === 'matchParams'))
+        // outputFields is owned and rendered by AIExtractFieldsEditor below
+        // instead of this generic loop -- a typed field-row editor, not a
+        // raw JSON textarea (node-standard item 1).
+        .filter((field) => !(node.data.nodeTypeID === 'process-ai-extract-structured' && field.Key === 'outputFields'))
         .map((field) => (
         <FormControl key={`${field.Key}-${payloadNonce}`}>
           <FormControl.Label>{field.Label}</FormControl.Label>
@@ -370,6 +375,13 @@ export function NodeInspector({ node, workflowId, attrs, nodeType, sameKindNodeT
           attrs={attrs}
           outputBindingsRaw={node.data.config.outputBindings ?? ''}
           onChangeOutputBindings={(raw) => onConfigChange('outputBindings', raw)}
+        />
+      )}
+
+      {node.data.nodeTypeID === 'process-ai-extract-structured' && (
+        <AIExtractFieldsEditor
+          outputFieldsRaw={node.data.config.outputFields ?? ''}
+          onChange={(raw) => onConfigChange('outputFields', raw)}
         />
       )}
     </Stack>
