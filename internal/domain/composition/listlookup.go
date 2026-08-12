@@ -3,6 +3,7 @@ package composition
 import (
 	"fmt"
 
+	"github.com/alicoding/mill/internal/domain/guardrail"
 	"github.com/alicoding/mill/internal/domain/list"
 	"github.com/alicoding/mill/internal/domain/typedfield"
 )
@@ -43,6 +44,12 @@ func init() {
 	RegisterNodeType(NodeType{
 		ID: "list-lookup", Kind: KindProcess,
 		Label:       "List: lookup",
+		// ClassRead: resolves a Configure-authored List's persisted
+		// entries (lookupListFn) -- the same "reads state outside this
+		// workflow's own payload/Attributes" classification capture-file
+		// declares for a local filesystem read, not left at the zero
+		// value (docs/goals/0030-node-standard.md item b).
+		Effect:      guardrail.ClassRead,
 		Output:      "payload unchanged; match → attribute",
 		Description: "Looks up an Attributes value in a Configure-authored List and writes the matched entry back into Attributes. listId is FieldText for the same reason integration-http's requestId is above -- Lists are runtime, Configure-authored data (the Inspector renders a live picker for it, RefKind, docs/adr/0009).",
 		ConfigFields: []ConfigField{

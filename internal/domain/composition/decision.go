@@ -14,6 +14,7 @@ func init() {
 	RegisterNodeType(NodeType{
 		ID: "decision-route", Kind: KindDecision,
 		Label:       "Branch: route",
+		Output:      "payload and Attributes unchanged; routes to the matching outgoing edge",
 		Description: "Routes to one of several next steps based on a rule evaluated against this workflow's Attributes. A pure routing point -- its conditions live on its outgoing edges (SPEC.md §3.5), not here.",
 	}, nil)
 }
