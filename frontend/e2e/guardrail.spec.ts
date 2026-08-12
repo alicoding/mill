@@ -1,4 +1,9 @@
 import { test, expect } from './fixtures/server'
+import { clickRowAction } from './inventoryRow'
+import {
+  connectMCPClient, exportWorkflowViaMCP, findWorkflowIdByLabel,
+  enableMCPWritesWithApprovalRequired, restoreMCPWriteDefaults,
+} from './mcpTestClient'
 
 // The guardrail execution gate end-to-end in the live app (docs/SPEC.md
 // §8, ADR-0019/0022), driven through the seeded "Example:
@@ -239,4 +244,99 @@ test('Review row drill-down: pending-row Approve/Deny still resolve in place, wi
   await expect(page.getByTestId('review-view')).toBeVisible()
   await expect(page.getByRole('tab', { name: 'Runs' })).toHaveCount(0)
   await expect(page.getByTestId('review-item').filter({ hasText: GUARDED })).toHaveCount(0, { timeout: 10_000 })
+})
+
+// Kind filter + empty/loading polish (docs/goals/0002-review-queue-
+// maturation.md item 4): three real pending kinds parked at once
+// (a policy ask, a human-review checkpoint, and an MCP write request --
+// docs/adr/0032), proving the Select appears only once 2+ kinds are
+// present, narrows correctly per kind, and the calm Blankslate empty
+// state shows once every kind is cleared back to zero.
+test('Review kind filter narrows pending rows by kind, and the Blankslate empty state shows once cleared', async ({ page }, testInfo) => {
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Workflows' }).click()
+
+  // Kind 1: a policy ask.
+  const askRow = page.locator('[data-testid="inventory-row"][data-entity="workflow"]').filter({ has: page.getByText(GUARDED, { exact: true }) })
+  await askRow.getByRole('button', { name: 'Run' }).click()
+
+  // Kind 2: a human-review checkpoint.
+  const reviewSeed = 'Example: Human review with input'
+  const reviewRow = page.locator('[data-testid="inventory-row"][data-entity="workflow"]').filter({ has: page.getByText(reviewSeed, { exact: true }) })
+  await reviewRow.getByRole('button', { name: 'Run' }).click()
+  const dialog = page.getByRole('dialog')
+  await dialog.getByLabel('Note').fill('')
+  await dialog.getByRole('button', { name: 'Run' }).click()
+
+  // Kind 3: an MCP write request -- export/re-import a throwaway
+  // workflow over a real MCP client, same shape mcp-write-approval.spec.ts
+  // uses (mcpTestClient.ts is the shared helper both now import).
+  await enableMCPWritesWithApprovalRequired(page)
+  await page.getByRole('link', { name: 'Workflows' }).click()
+  await page.getByTestId('new-workflow').click()
+  await page.locator('[role="tabpanel"]:not([hidden])').last().getByLabel('Label').fill('E2E kind-filter MCP source')
+  await page.locator('[role="tabpanel"]:not([hidden])').last().getByTestId('save-workflow').click()
+  const mcpSourceRow = page.locator('[data-testid="inventory-row"][data-entity="workflow"]').filter({ has: page.getByText('E2E kind-filter MCP source', { exact: true }) })
+  await expect(mcpSourceRow).toBeVisible()
+
+  const client = await connectMCPClient(testInfo.parallelIndex)
+  const sourceId = await findWorkflowIdByLabel(client, 'E2E kind-filter MCP source')
+  const exported = await exportWorkflowViaMCP(client, sourceId)
+  const importResultPromise = client.callTool({ name: 'import_workflow', arguments: { json: exported } })
+
+  // All three kinds pending at once -- the Select appears (2+ kinds).
+  await page.getByRole('link', { name: 'Review' }).click()
+  const kindSelect = page.getByTestId('review-kind-filter')
+  await expect(kindSelect).toBeVisible({ timeout: 15_000 })
+
+  // "Awaiting approval" narrows to just the guardrail ask.
+  await kindSelect.selectOption({ label: 'Awaiting approval' })
+  await expect(page.getByTestId('review-item').filter({ hasText: GUARDED })).toBeVisible()
+  await expect(page.getByTestId('review-item').filter({ hasText: reviewSeed })).toHaveCount(0)
+  await expect(page.getByTestId('review-mcp-write-item')).toHaveCount(0)
+
+  // "Human review" narrows to just the checkpoint.
+  await kindSelect.selectOption({ label: 'Human review' })
+  await expect(page.getByTestId('review-item').filter({ hasText: reviewSeed })).toBeVisible()
+  await expect(page.getByTestId('review-item').filter({ hasText: GUARDED })).toHaveCount(0)
+  await expect(page.getByTestId('review-mcp-write-item')).toHaveCount(0)
+
+  // "MCP write request" narrows to just the pending write.
+  await kindSelect.selectOption({ label: 'MCP write request' })
+  await expect(page.getByTestId('review-mcp-write-item')).toBeVisible()
+  await expect(page.getByTestId('review-item')).toHaveCount(0)
+
+  // Back to "All kinds": every row is visible again.
+  await kindSelect.selectOption({ label: 'All kinds' })
+  await expect(page.getByTestId('review-item').filter({ hasText: GUARDED })).toBeVisible()
+  await expect(page.getByTestId('review-item').filter({ hasText: reviewSeed })).toBeVisible()
+  await expect(page.getByTestId('review-mcp-write-item')).toBeVisible()
+
+  // Clear every kind back to zero: deny both runs, approve the write.
+  await page.getByTestId('review-item').filter({ hasText: GUARDED }).getByTestId('review-deny').click()
+  await expect(page.getByTestId('review-item').filter({ hasText: GUARDED })).toHaveCount(0, { timeout: 10_000 })
+  await page.getByTestId('review-item').filter({ hasText: reviewSeed }).getByTestId('review-deny').click()
+  await expect(page.getByTestId('review-item').filter({ hasText: reviewSeed })).toHaveCount(0, { timeout: 10_000 })
+  await page.getByTestId('review-mcp-write-item').getByTestId('review-mcp-write-approve').click()
+  await expect(page.getByTestId('review-mcp-write-item')).toHaveCount(0, { timeout: 10_000 })
+
+  const result = await importResultPromise
+  await client.close()
+  if (result.isError) throw new Error(`import_workflow ultimately errored: ${JSON.stringify(result.content)}`)
+
+  // Nothing pending: the kind Select disappears (fewer than 2 kinds
+  // present) and the calm Blankslate empty state shows.
+  await expect(page.getByTestId('review-kind-filter')).toHaveCount(0)
+  await expect(page.getByTestId('review-empty')).toBeVisible({ timeout: 10_000 })
+
+  // Cleanup: both minted workflows (import always mints a new ID), and
+  // the MCP-write settings toggle.
+  await page.getByRole('link', { name: 'Workflows' }).click()
+  let remaining = await mcpSourceRow.count()
+  while (remaining > 0) {
+    await clickRowAction(page, mcpSourceRow.first(), 'Delete')
+    remaining -= 1
+    await expect(mcpSourceRow).toHaveCount(remaining)
+  }
+  await restoreMCPWriteDefaults(page)
 })

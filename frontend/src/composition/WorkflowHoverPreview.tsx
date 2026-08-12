@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { Button, Stack, Text } from '@primer/react'
 import { AnchoredOverlay } from '@primer/react'
@@ -51,6 +51,14 @@ export function WorkflowHoverPreview({ workflowId, children }: {
     if (timer.current !== null) window.clearTimeout(timer.current)
     timer.current = null
   }
+
+  // A hover-then-navigate-away (the row itself gets removed, e.g. a
+  // deleted workflow, or the whole surface unmounts) must not fire the
+  // scheduled open against a gone component -- clear the pending timer
+  // on unmount, same as cancelOpen already does on mouseleave.
+  useEffect(() => () => {
+    if (timer.current !== null) window.clearTimeout(timer.current)
+  }, [])
 
   return (
     <AnchoredOverlay

@@ -34,9 +34,19 @@ Frontend wave (audit came back largely clean; remainder):
 8. [x] Vitest for `canvasScratch.normalize/draftsEqual` (hot-exit
    dirty-detection — data-loss-adjacent pure logic) and
    `requestDraft.authConfigFrom/joseConfigFrom`.
-9. [ ] LOW items: WorkflowHoverPreview unmount timer, unused
-   PageContainerVariant export, authoring-validation.spec's unhardened
-   canvas click.
+9. [x] LOW items (delivered 2026-08-11): `WorkflowHoverPreview.tsx`'s
+   `scheduleOpen` timeout now clears on unmount (a real `useEffect`
+   cleanup, alongside the existing mouseleave-triggered `cancelOpen`);
+   `PageContainer.tsx`'s `PageContainerVariant` type is no longer
+   exported (verified zero references outside the file first — it was
+   dead public surface, kept as an internal type alias);
+   `authoring-validation.spec.ts`'s `deleteStarterNode` now uses the
+   same candidate-point/`elementFromPoint` verification the sibling
+   specs (`composition-canvas-interactions.spec.ts`,
+   `child-workflow.spec.ts`) already use for canvas-node clicks,
+   rather than a plain `.click()` that could land on React Flow's own
+   Controls/MiniMap chrome — this file's own local copy, per the
+   suite's per-file-helper convention.
 
 ## Acceptance
 Every accepted finding fixed with its committed repro (a persist
