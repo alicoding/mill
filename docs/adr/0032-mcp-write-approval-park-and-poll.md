@@ -172,3 +172,49 @@ this channel; unchanged.
 - ADR-0017's status gains a pointer here; SPEC §3.6 (MCP approval
   paragraph) and §3.7 (the notifications `OPEN` item, now partly
   resolved by this) update in the implementing change.
+
+## Update — the presence gate corrected from focus to idle+focus, plus a floating prompt and a cross-device forward (docs/goals/0023-attention-escalation.md, delivered)
+
+The `document.hasFocus()` gate this ADR's §3 originally specified had
+a real, observed bug: a focused-but-unattended Mac (the window sitting
+in the foreground while the user was away from the desk entirely)
+never notified, since a focused window read as "present" regardless of
+how long it had sat idle. Corrected, all four items delivered:
+
+- **Presence moved backend-side.** `internal/adapters/idletime`
+  (`ioreg -c IOHIDSystem`'s `HIDIdleTime` counter — zero cgo, no TCC
+  gate, confirmed directly) plus `SettingsService.isAway(focused)`:
+  away = unfocused OR idle ≥ threshold (default 300s, a Settings
+  knob). `NotifyPendingApproval` now takes the frontend's own
+  `document.hasFocus()` reading as a parameter instead of gating
+  client-side, so App.tsx's per-new-item loop always reports and the
+  backend makes the one presence decision. An idletime read error
+  (server mode, or a real desktop failure) fails TOWARD away — §8's
+  fail-safe posture applied here too.
+- **A floating approval prompt**, not just the OS notification: the
+  same away verdict also shows a small always-on-top window
+  (`#/approvalprompt`, ADR-0033's second-window mechanism reused
+  verbatim — Hidden/Frameless/floating/hash-routed — deliberately NOT
+  `HideOnFocusLost`, since a decision prompt must not vanish just
+  because focus wandered; Escape is its one explicit dismiss). Shows
+  the oldest unresolved pending item; Approve/Deny inline for an MCP
+  write, "Open in Mill" for a guardrail/human-review park (blind
+  approval from the prompt is never offered, mirroring the
+  notification's own split above).
+- **Alert-style authorization is now actually requested.** Checked
+  directly against the pinned notifications module's native
+  implementation: `RequestNotificationAuthorization` has no per-type
+  parameter to request Alert specifically — it always requests
+  `UNAuthorizationOptionAlert | Sound | Badge` as one fixed bundle, so
+  there was nothing to select, only something to call — which
+  `notify.Start` had never done at all until now (a real gap, not a
+  design choice). Backgrounded so app startup doesn't block on the
+  permission dialog.
+- **A cross-device forward** for when there's no local Mac to notify
+  on at all: `composition.SendJSONWebhook` (the exact same transport
+  tail integration-http/decision-outcome's own webhook already share
+  — never a second HTTP client) plus `SettingsService.ForwardPendingApproval`,
+  a fire-and-forget, default-off, Settings-configured POST of
+  `{kind, id, description, createdAt}` to the owner's own
+  Configure-authored HTTPRequest (ntfy/Telegram/etc. — §1.1-clean),
+  independent of the presence gate above.

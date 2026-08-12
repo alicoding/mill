@@ -368,6 +368,39 @@ func main() {
 	})
 	settingsService.SetPanelWindow(panelWindow)
 
+	// The floating approval prompt (docs/goals/0023-attention-escalation.md
+	// item 1): the incoming-call/askpass pattern, ADR-0033's second-
+	// window mechanism reused rather than re-derived -- always-alive,
+	// Hidden, floating above every Space/full-screen app, hash-routed.
+	// Shown by the BACKEND itself (SettingsService.NotifyPendingApproval's
+	// away verdict), never by a hotkey. Deliberately NOT HideOnFocusLost
+	// (unlike the Quick Panel above): a decision prompt must not vanish
+	// just because focus wandered -- Escape (HideOnEscape) is its one
+	// explicit, native dismiss path.
+	approvalPromptWindow := app.Window.NewWithOptions(application.WebviewWindowOptions{
+		Name:             "approvalprompt",
+		Title:            "Mill Approval",
+		Width:            520,
+		Height:           200,
+		Hidden:           true,
+		Frameless:        true,
+		DisableResize:    true,
+		InitialPosition:  application.WindowCentered,
+		HideOnEscape:     true,
+		BackgroundColour: application.NewRGB(6, 7, 15),
+		Mac: application.MacWindow{
+			Backdrop:           application.MacBackdropTranslucent,
+			WindowLevel:        application.MacWindowLevelFloating,
+			CollectionBehavior: application.MacWindowCollectionBehaviorCanJoinAllSpaces | application.MacWindowCollectionBehaviorFullScreenAuxiliary,
+			TitleBar: application.MacTitleBar{
+				AppearsTransparent: true,
+				Hide:               true,
+			},
+		},
+		URL: "/#/approvalprompt",
+	})
+	settingsService.SetApprovalPromptWindow(approvalPromptWindow)
+
 	// docs/SPEC.md §3.7 (task #8): a tray icon as a running-indicator --
 	// closes a real gap run-mill's own SKILL.md already names ("no
 	// automated path to verify a real desktop-only state"), and answers

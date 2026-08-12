@@ -2598,6 +2598,29 @@ the now-existing mechanism**, not built yet: the same `notify.SendPlain`/
 `SendActionable` primitives this pass added would carry it, once a
 concrete "fire on X" event is chosen.
 
+**Attention escalation — `LOCKED` and built (docs/goals/archive/0023-
+attention-escalation.md, ADR-0032's Update).** The `document.hasFocus()`-only
+presence gate above had a real bug (focused-but-idle read as present,
+observed live) — corrected, plus two layers added: **(1)** an
+idle-aware presence gate, `internal/adapters/idletime` (`ioreg -c
+IOHIDSystem`, zero cgo) + `SettingsService.isAway` (away = unfocused OR
+idle ≥ a Settings-configurable threshold, default 300s; an idletime
+read error fails toward away, §8's posture); `NotifyPendingApproval`
+now takes the frontend's `hasFocus()` reading as a param instead of
+gating client-side. **(2)** a floating approval prompt at the same
+away verdict — `#/approvalprompt`, ADR-0033's second-window mechanism
+reused (deliberately not `HideOnFocusLost`), Approve/Deny for an MCP
+write or "Open in Mill" for a guardrail park. **(3)** alert-style
+authorization is now actually requested (`notify.Start` previously
+never called `RequestNotificationAuthorization` at all); Settings
+documents the System Settings → Notifications → Mill → Alerts toggle.
+**(4)** a cross-device forward, `composition.SendJSONWebhook` (reuses
+the integration-http/decision-outcome transport tail) +
+`SettingsService.ForwardPendingApproval`, default-off, POSTs
+`{kind, id, description, createdAt}` to a Settings-configured
+HTTPRequest, independent of the presence gate — the layer that reaches
+the owner with no local Mac to notify on at all.
+
 **Still `OPEN`, real named gaps:** a menu-bar/dock presence toggle (see
 above); appearance settings beyond light/dark; a default working
 directory/scope (blocked on §6); fullscreen window-state tracking
