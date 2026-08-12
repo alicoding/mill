@@ -148,6 +148,34 @@ func (s *SettingsService) TogglePanel() {
 	p.Focus()
 }
 
+// ShowPanel shows+focuses the Quick Panel -- the bound counterpart to
+// TogglePanel (which stays //wails:ignore, Go-internal-only: the
+// summon hotkey's own callback is the only caller that ever needs
+// toggle-off semantics). docs/goals/0039's panel.applyClipboard command
+// needs a way to bring the panel forward from JS when its bound hotkey
+// fires while a DIFFERENT window (the main window) has keyboard focus --
+// reuses TogglePanel's own show branch (including the
+// summonShouldHideMain guard) rather than duplicating it, just without
+// the dismiss-if-already-visible branch a toggle would need.
+func (s *SettingsService) ShowPanel() {
+	s.mu.Lock()
+	p := s.panel
+	main := s.window
+	s.mu.Unlock()
+	if p == nil {
+		return
+	}
+	if p.IsVisible() {
+		p.Focus()
+		return
+	}
+	if main != nil && summonShouldHideMain(main.IsVisible(), main.IsFocused()) {
+		main.Hide()
+	}
+	p.Show()
+	p.Focus()
+}
+
 // DismissPanel hides the Quick Panel and applies the focus-yield
 // mitigation -- the bound RPC the panel's own frontend calls after a
 // workflow run starts, or when its own Escape/dismiss affordance fires

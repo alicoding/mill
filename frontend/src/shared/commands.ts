@@ -2,6 +2,7 @@ import type { KeyCombo } from './keybinding'
 import { comboFromEvent, comboKey } from './keybinding'
 import { useAppStore } from './store'
 import type { View } from './store'
+import { SettingsService } from './bindings'
 
 // The command registry (docs/goals/0016-keymap-system.md): named
 // commands with a default binding, dispatched by one window keydown
@@ -213,6 +214,21 @@ export const COMMANDS: Command[] = [
     label: 'Open Settings',
     defaultBinding: { mods: ['cmd'], key: ',' },
     run: () => setView({ kind: 'settings' }),
+  },
+  {
+    id: 'panel.applyClipboard',
+    label: 'Apply from clipboard',
+    // docs/goals/0039: no default binding, same "reserve the id ahead
+    // of the binding" precedent palette.open set before goal 0015 built
+    // the palette -- bindable via Settings like every other command.
+    // run() opens the Quick Panel (SettingsService.ShowPanel) rather
+    // than performing the read-clipboard-and-preview flow here: that
+    // flow needs a preview UI to render into, and the Quick Panel's own
+    // "Apply from clipboard..." row (QuickPanel.tsx) is that UI -- this
+    // command exists so the action is discoverable/rebindable/
+    // HotkeyHint-shown, not to duplicate the flow in the main window.
+    defaultBinding: null,
+    run: () => { void SettingsService.ShowPanel() },
   },
 ]
 
