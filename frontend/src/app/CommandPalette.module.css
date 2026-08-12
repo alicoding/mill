@@ -1,19 +1,9 @@
 /* Command palette (docs/goals/0015-summon-quick-invoke.md). Primer
    design tokens only, per .claude/rules/frontend.md -- no bespoke
-   colors/spacing. */
-
-.shortcut {
-  display: inline-flex;
-  align-items: center;
-  padding: 0 var(--base-size-6, 6px);
-  border: 1px solid var(--borderColor-default);
-  border-radius: var(--borderRadius-medium);
-  background: var(--bgColor-muted);
-  color: var(--fgColor-muted);
-  font-size: var(--text-body-size-small);
-  font-family: var(--fontStack-monospace, monospace);
-  white-space: nowrap;
-}
+   colors/spacing. The former local `.shortcut` chip class moved to
+   app/HotkeyHint.module.css (docs/goals/0015's inline-hotkey-hint
+   remainder) -- shared with QuickPanel.tsx and WorkTabShell.tsx now,
+   not redefined per file. */
 
 .empty {
   padding: var(--base-size-16, 16px);

@@ -19,16 +19,3 @@
   color: var(--fgColor-muted);
   border-top: 1px solid var(--borderColor-default);
 }
-
-.shortcut {
-  display: inline-flex;
-  align-items: center;
-  padding: 0 var(--base-size-6, 6px);
-  border: 1px solid var(--borderColor-default);
-  border-radius: var(--borderRadius-medium);
-  background: var(--bgColor-muted);
-  color: var(--fgColor-muted);
-  font-size: var(--text-body-size-small);
-  font-family: var(--fontStack-monospace, monospace);
-  white-space: nowrap;
-}
