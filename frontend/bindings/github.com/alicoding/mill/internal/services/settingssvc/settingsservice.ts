@@ -65,6 +65,19 @@ export function ClearKeybinding(commandID: string): $CancellablePromise<void> {
 }
 
 /**
+ * DebugBackdatePendingMCPWrite is an e2e-only test knob (docs/goals/0026
+ * item 2's staleness presentation) -- see MillMCPService.
+ * DebugBackdatePendingWrite's own doc comment for why this has to be an
+ * in-process call rather than an external settings-file edit. Refuses
+ * outside isolated test data (the same IsIsolatedData signal every
+ * e2e run already sets via MILL_SETTINGS_PATH) -- never reachable
+ * against a real production instance.
+ */
+export function DebugBackdatePendingMCPWrite(id: string, ageMinutes: number): $CancellablePromise<void> {
+    return $Call.ByID(561097732, id, ageMinutes);
+}
+
+/**
  * DismissApprovalPrompt hides the floating approval prompt and applies
  * the same focus-yield mitigation DismissPanel already uses -- called
  * by the prompt's own frontend once the last pending item resolves (or
@@ -281,6 +294,15 @@ export function QuitApp(): $CancellablePromise<void> {
  */
 export function ResolveMCPWrite(id: string, approve: boolean): $CancellablePromise<void> {
     return $Call.ByID(2304068895, id, approve);
+}
+
+/**
+ * ResolvedMCPWrites lists every already-resolved MCP write still in its
+ * 24h retention window (docs/goals/0026 item 6) -- Review's
+ * Recently-resolved section reads this alongside its own resolved runs.
+ */
+export function ResolvedMCPWrites(): $CancellablePromise<mcpsvc$0.MCPWriteResolved[] | null> {
+    return $Call.ByID(3844643736);
 }
 
 /**

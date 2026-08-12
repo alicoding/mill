@@ -64,6 +64,19 @@ type (
 	// ListWorkflowsOption configures one ListWorkflows call.
 	ListWorkflowsOption = dbos.ListWorkflowsOption
 
+	// Queue is a registered DBOS queue handle -- docs/goals/0026 item 8's
+	// regression coverage needs a real, reproducible way to construct a
+	// still-ENQUEUED run (a zero-worker-concurrency queue never dequeues
+	// anything submitted to it); Mill's own production run path doesn't
+	// use a queue today (RunWorkflow starts every run directly), so this
+	// is currently a test-only alias, kept here rather than in the test
+	// file itself since it's still a real re-export of the underlying
+	// SDK type, same shape as every other alias in this file.
+	Queue = dbos.Queue
+
+	// QueueOption configures one RegisterQueue call.
+	QueueOption = dbos.QueueOption
+
 	// Client is DBOS's narrower, non-launched handle -- every Context
 	// is also a Client (Context embeds Client, confirmed directly
 	// against the installed dbos.Context/dbos.Client interface
@@ -147,6 +160,14 @@ func CancelWorkflow(ctx Client, workflowID string, opts ...CancelWorkflowOption)
 	return dbos.CancelWorkflow(ctx, workflowID, opts...)
 }
 
+// RegisterQueue registers a named DBOS queue -- test-only today (see
+// the Queue alias's own doc comment); confirmed directly against the
+// installed SDK that this is safe to call even after Launch (its own
+// queues_test.go registers queues post-launch throughout).
+func RegisterQueue(ctx Client, name string, opts ...QueueOption) (Queue, error) {
+	return dbos.RegisterQueue(ctx, name, opts...)
+}
+
 var (
 	// GetWorkflowSteps returns one run's recorded step history, in
 	// order -- the data behind the execution-visibility UI.
@@ -163,6 +184,18 @@ var (
 	// WithWorkflowID pins a run's ID instead of letting DBOS generate
 	// one -- Mill always supplies its own (a fresh UUID per run).
 	WithWorkflowID = dbos.WithWorkflowID
+
+	// WithQueue submits a run through a registered Queue instead of
+	// starting it directly -- test-only today (see the Queue alias's own
+	// doc comment).
+	WithQueue = dbos.WithQueue
+
+	// WithWorkerConcurrency caps how many queued workflows this executor
+	// dequeues concurrently -- test-only today; a queue registered with
+	// 0 never dequeues anything submitted to it, the real DBOS mechanism
+	// docs/goals/0026 item 8's regression test uses to construct a
+	// reproducibly-stuck ENQUEUED run.
+	WithWorkerConcurrency = dbos.WithWorkerConcurrency
 
 	// WithWorkflowName pins a RegisterWorkflow call's recorded name
 	// instead of deriving it from the Go function's own runtime name --

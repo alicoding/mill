@@ -13,21 +13,37 @@ export interface DataChanged {
 }
 
 /**
- * MCPWriteActivity is pushed for a missed (expired) or denied MCP
- * write so it's no longer traceless (docs/goals/0005-pending-attention-
- * model.md item 3). Reuses the same activity-push shape App.tsx's
- * hotkey-activity handler already established, under a distinct
- * "mcp-write" ActivitySource so it's filterable, not conflated with a
- * workflow trigger.
+ * MCPWriteActivity is pushed for a resolved (denied/cancelled/expired,
+ * or approved-but-failed) MCP write so it's no longer traceless
+ * (docs/goals/0005-pending-attention-model.md item 3). Reuses the same
+ * activity-push shape App.tsx's hotkey-activity handler already
+ * established, under a distinct "mcp-write" ActivitySource so it's
+ * filterable, not conflated with a workflow trigger.
  */
 export interface MCPWriteActivity {
     "description": string;
 
     /**
-     * Outcome is "denied" or "expired" -- an approved write never
-     * reaches here, there's nothing traceless about it.
+     * Outcome is "denied", "cancelled", or "expired" -- an
+     * approved-and-succeeded write never reaches here, there's nothing
+     * traceless about it.
      */
     "outcome": string;
+
+    /**
+     * ToolName/WorkflowID/Result back Activity's own MCP-write row
+     * actions (docs/goals/0026 item 7: "so what I can do and nothing I
+     * can do") -- ToolName is the gated tool this record was for;
+     * WorkflowID is the workflow it targeted, when the tool names one
+     * (update_workflow/publish_workflow/delete_workflow's own "id"
+     * argument -- empty for import_* tools, which mint a NEW entity
+     * rather than referencing an existing one, so there's nothing to
+     * jump to); Result is what the Activity row's expandable detail
+     * panel shows.
+     */
+    "toolName"?: string;
+    "workflowID"?: string;
+    "result"?: string;
 }
 
 /**
@@ -41,4 +57,33 @@ export interface MCPWriteRequest {
     "id": string;
     "description": string;
     "createdAt": string;
+
+    /**
+     * LastPolledAt mirrors MCPWriteRecord's own field (docs/goals/0026
+     * item 3) -- nil when the requester has never called
+     * check_write_status on this id yet.
+     */
+    "lastPolledAt"?: string | null;
+}
+
+/**
+ * MCPWriteResolved is the frontend-facing shape for an already-resolved
+ * write (docs/goals/0026 item 6) -- Review's Recently-resolved section
+ * reads this alongside RunSummary's own resolved rows, merged
+ * newest-first. Retained for the same 24h window check_write_status
+ * already promises (sweepLocked's own retention) -- "durable across a
+ * restart" and "still visible for the same window an MCP client can
+ * still poll" are the same guarantee, not two.
+ */
+export interface MCPWriteResolved {
+    "id": string;
+    "description": string;
+
+    /**
+     * approved / denied / cancelled / expired
+     */
+    "status": string;
+    "error"?: string;
+    "createdAt": string;
+    "resolvedAt": string;
 }
