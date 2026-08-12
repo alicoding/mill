@@ -7,6 +7,14 @@
 // by service moves and stay direct.
 export { CapabilitiesService } from '../../bindings/github.com/alicoding/mill/internal/services/capabilitysvc'
 export { CompositionService } from '../../bindings/github.com/alicoding/mill/internal/services/compositionsvc'
+export {
+  ClipboardApplyAction,
+  ClipboardApplyKind,
+} from '../../bindings/github.com/alicoding/mill/internal/services/compositionsvc'
+export type {
+  ClipboardApplyPreview,
+  ClipboardUnresolvedRef,
+} from '../../bindings/github.com/alicoding/mill/internal/services/compositionsvc'
 export { ConfigureService } from '../../bindings/github.com/alicoding/mill/internal/services/configuresvc'
 export type {
   TestHTTPRequestInput,

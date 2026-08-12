@@ -38,7 +38,21 @@ import (
 // make two exports of the same unchanged workflow look different to
 // git), confirmed via research before designing this shape, not
 // assumed absent.
+//
+// ID (docs/goals/0039) is an EXCEPTION to "never carries id" above, and
+// deliberately asymmetric: ExportWorkflow below never sets it (the
+// export wire shape is unchanged, still omits id via omitempty), but
+// the shape now ACCEPTS one on the way in -- clipboard-apply's
+// create-vs-update decision (compositionservice_clipboardapply.go)
+// reads it to tell "no id -- create" (today's ImportWorkflow semantics,
+// untouched) from "id present and matches a real workflow here --
+// update through the same SnapshotDraft+UpdateWorkflowFromExport
+// chokepoint MCP's update_workflow tool already uses" apart. Whether
+// ExportWorkflow itself should start emitting id (e.g. for a
+// push-my-edits-back round trip) is an explicit open question left to
+// a future share-story goal, not resolved here.
 type exportedWorkflow struct {
+	ID          string                     `json:"id,omitempty"`
 	Label       string                     `json:"label"`
 	Description string                     `json:"description"`
 	Nodes       []composition.Node         `json:"nodes"`

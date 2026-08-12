@@ -1,0 +1,21 @@
+/* Quick Panel clipboard-apply preview (docs/goals/0039). Primer design
+   tokens only, per .claude/rules/frontend.md -- no bespoke colors. */
+
+.panel {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--base-size-16, 16px);
+}
+
+.note {
+  color: var(--fgColor-muted);
+}
+
+.unresolvedList {
+  margin: 0;
+  padding-left: var(--base-size-16, 16px);
+}
+
+.actions {
+  justify-content: flex-end;
+}

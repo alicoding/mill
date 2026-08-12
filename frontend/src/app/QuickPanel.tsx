@@ -3,8 +3,9 @@ import type { ElementType, ReactNode } from 'react'
 import { Events } from '@wailsio/runtime'
 import { CounterLabel, Text } from '@primer/react'
 import { FilteredActionList } from '@primer/react/experimental'
-import { GearIcon, HomeIcon, PlayIcon } from '@primer/octicons-react'
-import { ExecutionService, RunKind, SettingsService } from '../shared/bindings'
+import { CopyIcon, GearIcon, HomeIcon, PlayIcon } from '@primer/octicons-react'
+import { CompositionService, ExecutionService, RunKind, SettingsService } from '../shared/bindings'
+import type { ClipboardApplyPreview } from '../shared/bindings'
 import { generateSamplePayload } from '../shared/configSchema'
 import { useAppStore, refreshWorkflows, refreshRequests, refreshKeybindings } from '../shared/store'
 import { useConfigureEntityStore, refreshLists, refreshMCPServers } from '../shared/configureEntityStore'
@@ -14,6 +15,7 @@ import { filterPaletteEntries } from './paletteFilter'
 import type { PaletteSearchable } from './paletteFilter'
 import { sortWorkflowsByFrecency } from './workflowFrecency'
 import { HotkeyHint } from './HotkeyHint'
+import { QuickPanelClipboardApply } from './QuickPanelClipboardApply'
 import styles from './QuickPanel.module.css'
 
 // docs/adr/0033-quick-panel-second-window.md: the search+run surface
@@ -101,6 +103,14 @@ export function QuickPanel() {
   // those; duplicating them per-window would double-fire OS
   // notifications for the same pending item).
   const [reviewPendingCount, setReviewPendingCount] = useState(0)
+  // docs/goals/0039: non-null swaps the panel body from the search list
+  // into QuickPanelClipboardApply's preview-confirm view. json is the
+  // exact clipboard text the preview was computed from -- re-sent to
+  // ConfirmClipboardApply on confirm rather than re-read from the
+  // clipboard a second time (the user's gesture already captured it
+  // once; a second OS-level read has no reason to differ and would
+  // just be a second permission prompt).
+  const [clipboardApply, setClipboardApply] = useState<{ json: string; preview: ClipboardApplyPreview } | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
   // Declared before the effects that reference them (react-hooks/
@@ -257,6 +267,33 @@ export function QuickPanel() {
       })
   }
 
+  // docs/goals/0039: reads the clipboard on the row's own click/Enter
+  // (the user gesture the Clipboard API requires) and hands the raw
+  // text to PreviewClipboardApply -- checked what exists first: the
+  // clipboard adapter (internal/adapters/clipboard) is wired for
+  // workflow-EXECUTION-side capture/apply nodes, not exposed as a
+  // general read-text RPC, and this window is an ordinary Wails webview
+  // where navigator.clipboard.readText() already works. Never throws
+  // through to the caller -- every failure path (permission denied,
+  // empty clipboard, malformed/unrecognized payload) becomes a
+  // Recognized=false preview so QuickPanelClipboardApply's own error
+  // view renders it, same as a genuinely bad payload would.
+  const applyFromClipboard = () => {
+    navigator.clipboard.readText()
+      .then((text) => {
+        if (!text.trim()) {
+          setClipboardApply({ json: text, preview: { recognized: false, error: 'Clipboard is empty -- copy a workflow export first' } })
+          return
+        }
+        CompositionService.PreviewClipboardApply(text)
+          .then((preview) => setClipboardApply({ json: text, preview }))
+          .catch((err) => setClipboardApply({ json: text, preview: { recognized: false, error: String(err) } }))
+      })
+      .catch((err) => {
+        setClipboardApply({ json: '', preview: { recognized: false, error: `Couldn't read the clipboard: ${String(err)}` } })
+      })
+  }
+
   const allEntries = useMemo<PanelEntry[]>(() => {
     const entries: PanelEntry[] = []
     // Frecency-sorted (goal 0015's remainder item 1) -- frequency-only,
@@ -351,8 +388,24 @@ export function QuickPanel() {
       ) : undefined,
       run: () => openMain('review'),
     })
+    // docs/goals/0039: always present, same "unblock-yourself-in-place"
+    // reasoning Review's own row above documents -- the bank-critical
+    // door (MCP is deny-all at the owner's bank; clipboard+hotkey is the
+    // transport). trailingVisual shows panel.applyClipboard's bound key
+    // once the owner rebinds it (shared/commands.ts's defaultBinding is
+    // null); HotkeyHint renders nothing until then.
+    entries.push({
+      id: 'apply-clipboard',
+      groupId: 'actions',
+      text: 'Apply from clipboard…',
+      description: 'Create or update a workflow from a copied Mill export',
+      searchText: 'apply from clipboard import paste workflow export',
+      leadingVisual: CopyIcon,
+      trailingVisual: <HotkeyHint commandId="panel.applyClipboard" />,
+      run: applyFromClipboard,
+    })
     return entries
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- runWorkflow/jumpToConfigure/openMain close over state already listed or are stable
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- runWorkflow/jumpToConfigure/openMain/applyFromClipboard close over state already listed or are stable
   }, [workflows, mostUsedRank, requests, lists, mcpServers, reviewPendingCount])
 
   const filtered = filterPaletteEntries(allEntries, query)
@@ -367,6 +420,28 @@ export function QuickPanel() {
     trailingVisual: entry.trailingVisual,
     onAction: () => entry.run(),
   }))
+
+  // docs/goals/0039: a non-null clipboardApply swaps the ENTIRE panel
+  // body into the preview-confirm view -- the frameless floating window
+  // (ADR-0033) has no room for a second, nested surface, so this is a
+  // full replacement, not an overlay. Cancel/Applied both clear the
+  // state, returning to the ordinary search list.
+  if (clipboardApply) {
+    return (
+      <div className={styles.panel} data-testid="quick-panel">
+        <QuickPanelClipboardApply
+          json={clipboardApply.json}
+          preview={clipboardApply.preview}
+          onCancel={() => setClipboardApply(null)}
+          onApplied={(label, isUpdate) => {
+            setClipboardApply(null)
+            setStatus(`${isUpdate ? 'Updated' : 'Created'} "${label}"`)
+            window.setTimeout(() => { void SettingsService.DismissPanel().catch(() => {}) }, 600)
+          }}
+        />
+      </div>
+    )
+  }
 
   return (
     <div className={styles.panel} data-testid="quick-panel">
