@@ -1,5 +1,7 @@
 package decision
 
+import "github.com/alicoding/mill/internal/domain/seedorigin"
+
 // Seeded example Decisions (docs/adr/0027, and the standing "the seed
 // IS the proof" rule, .claude/rules/testing.md): one per category the
 // v1 seeded workflows exercise. Approve/Deny share an output shape
@@ -29,15 +31,15 @@ func BuiltIn() []Decision {
 	return []Decision{
 		{
 			ID: ExampleApproveID, Label: "Approve (example)", Category: CategoryApprove,
-			Outputs: approveDenyOutputs, BuiltIn: true,
+			Outputs: approveDenyOutputs, BuiltIn: true, Seed: seedorigin.Stamp(1),
 		},
 		{
 			ID: ExampleDenyID, Label: "Deny (example)", Category: CategoryDeny,
-			Outputs: approveDenyOutputs, BuiltIn: true,
+			Outputs: approveDenyOutputs, BuiltIn: true, Seed: seedorigin.Stamp(1),
 		},
 		{
 			ID: ExampleManualReviewID, Label: "Manual review (example)", Category: CategoryManualReview,
-			Outputs: []OutputField{{Key: "reviewedBy", Label: "Reviewed by", Type: "text"}}, BuiltIn: true,
+			Outputs: []OutputField{{Key: "reviewedBy", Label: "Reviewed by", Type: "text"}}, BuiltIn: true, Seed: seedorigin.Stamp(1),
 		},
 	}
 }

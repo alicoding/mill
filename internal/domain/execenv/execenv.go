@@ -19,6 +19,8 @@ import (
 	"fmt"
 	"strings"
 	"time"
+
+	"github.com/alicoding/mill/internal/domain/seedorigin"
 )
 
 // Shell is a closed, typed choice (ADR-0026's Amendment: "Shell becomes
@@ -101,6 +103,10 @@ type ExecEnv struct {
 	// wire. Zero value means pre-timestamp data -- migration-free.
 	CreatedAt time.Time
 	UpdatedAt time.Time
+	// Seed is this ExecEnv's seed provenance (docs/goals/0037) -- zero
+	// value means "not of seed origin," migration-free. See
+	// composition.Workflow.Seed's doc comment for the full reasoning.
+	Seed seedorigin.Origin
 }
 
 // Validate checks an ExecEnv is well-formed before it's persisted --

@@ -3,6 +3,7 @@ package list
 import (
 	"time"
 
+	"github.com/alicoding/mill/internal/domain/seedorigin"
 	"github.com/alicoding/mill/internal/domain/typedfield"
 )
 
@@ -66,6 +67,7 @@ func BuiltIn() []List {
 				expiredRow("row-su", "SU", "Soviet Union"),
 			},
 			BuiltIn: true,
+			Seed:    seedorigin.Stamp(1),
 		},
 	}
 }

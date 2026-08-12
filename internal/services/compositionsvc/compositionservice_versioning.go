@@ -42,9 +42,17 @@ func (c *CompositionService) mutateWorkflow(id string, fn func(composition.Workf
 	// so its CreatedAt survives untouched. UpdatedAt always advances:
 	// every mutateWorkflow caller (PublishWorkflow,
 	// PublishExistingVersion, RestoreVersionToDraft,
-	// SetWorkflowDisabled) is a real persisted mutation.
+	// SetWorkflowDisabled, SnapshotDraft) is a real persisted mutation.
 	previous := c.user[idx]
 	updated.UpdatedAt = time.Now()
+	// Modified latch (docs/goals/0037 item 2): the ONE choke point
+	// every lifecycle mutation routes through -- a build-in-origin
+	// workflow is permanently protected from reconcile's upgrade path
+	// the moment any of these fire, same as UpdateWorkflow/
+	// UpdateAttributes' own Seed.Touch() calls. ResetWorkflowToSeed
+	// deliberately does NOT go through mutateWorkflow, precisely to
+	// avoid this line immediately re-latching the reset it's clearing.
+	updated.Seed = updated.Seed.Touch()
 	c.user[idx] = updated
 	c.mu.Unlock()
 

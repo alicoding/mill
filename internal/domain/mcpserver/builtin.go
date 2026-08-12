@@ -1,5 +1,7 @@
 package mcpserver
 
+import "github.com/alicoding/mill/internal/domain/seedorigin"
+
 // ExampleReferenceServerID is the seeded example MCP Server's ID --
 // exported so composition.BuiltInWorkflows' own mcp-tool-call seed
 // (nodetypes.go) can reference it without a string literal that could
@@ -30,6 +32,7 @@ func BuiltIn() []MCPServer {
 			Command: "npx",
 			Args:    []string{"-y", "@modelcontextprotocol/server-everything"},
 			BuiltIn: true,
+			Seed:    seedorigin.Stamp(1),
 		},
 	}
 }

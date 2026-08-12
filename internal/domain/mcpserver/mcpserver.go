@@ -13,6 +13,8 @@ import (
 	"fmt"
 	"strings"
 	"time"
+
+	"github.com/alicoding/mill/internal/domain/seedorigin"
 )
 
 // MCPServer is one reusable, named MCP server connection -- Command is
@@ -34,6 +36,10 @@ type MCPServer struct {
 	// wire. Zero value means pre-timestamp data -- migration-free.
 	CreatedAt time.Time
 	UpdatedAt time.Time
+	// Seed is this MCP server's seed provenance (docs/goals/0037) --
+	// zero value means "not of seed origin," migration-free. See
+	// composition.Workflow.Seed's doc comment for the full reasoning.
+	Seed seedorigin.Origin
 }
 
 // Validate checks an MCPServer is well-formed before it's persisted --

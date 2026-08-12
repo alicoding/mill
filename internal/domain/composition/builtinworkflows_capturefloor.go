@@ -1,5 +1,7 @@
 package composition
 
+import "github.com/alicoding/mill/internal/domain/seedorigin"
+
 // The save-page capture floor + clipboard inspector seeds -- split out
 // of builtinworkflows.go once that file crossed the 500-line limit
 // (.claude/rules/architecture.md), same "split along a real seam"
@@ -35,6 +37,7 @@ func clipboardInspectorWorkflow() Workflow {
 			{ID: "example-clipinfo-e0", Source: triggerID, Target: captureID},
 		},
 		BuiltIn: true,
+		Seed:    seedorigin.Stamp(1),
 	}
 }
 
@@ -82,6 +85,7 @@ func savedPageToMarkdownWorkflow() Workflow {
 			{ID: "example-savedpage-e3", Source: markdownID, Target: applyID},
 		},
 		BuiltIn:  true,
+		Seed:     seedorigin.Stamp(1),
 		Disabled: true,
 	}
 }

@@ -20,6 +20,7 @@ function makeWorkflow(id: string, label = id): Workflow {
     Disabled: false,
     PublishedVersion: 0,
     Versions: [],
+    Seed: { SeedRevision: 0, Modified: false },
   }
 }
 

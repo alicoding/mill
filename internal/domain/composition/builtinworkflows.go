@@ -5,6 +5,7 @@ import (
 	"github.com/alicoding/mill/internal/domain/execenv"
 	"github.com/alicoding/mill/internal/domain/httprequest"
 	"github.com/alicoding/mill/internal/domain/mcpserver"
+	"github.com/alicoding/mill/internal/domain/seedorigin"
 )
 
 // BuiltInWorkflows are the workflows this prototype ships seeded --
@@ -289,6 +290,7 @@ func BuiltInWorkflows() []Workflow {
 				{ID: "load-sample-html-e1", Source: loadSampleTriggerID, Target: "load-sample-html"},
 			},
 			BuiltIn: true,
+			Seed:    seedorigin.Stamp(1),
 		},
 		{
 			ID:          "clipboard-html-to-markdown-workflow",
@@ -301,6 +303,7 @@ func BuiltInWorkflows() []Workflow {
 				{ID: "clipboard-to-markdown-e2", Source: processID, Target: applyID},
 			},
 			BuiltIn: true,
+			Seed:    seedorigin.Stamp(1),
 		},
 		{
 			ID:          ExampleChildWorkflowID,
@@ -313,6 +316,7 @@ func BuiltInWorkflows() []Workflow {
 				{ID: "example-child-e1", Source: childCaptureID, Target: childInjectID},
 			},
 			BuiltIn:          true,
+			Seed:             seedorigin.Stamp(1),
 			PublishedVersion: 1,
 			Versions: []WorkflowVersion{{
 				Version:     1,
@@ -336,6 +340,7 @@ func BuiltInWorkflows() []Workflow {
 				{ID: "example-parent-e0", Source: parentTriggerID, Target: parentChildID},
 			},
 			BuiltIn: true,
+			Seed:    seedorigin.Stamp(1),
 		},
 		{
 			ID:          "example-guarded-http-workflow",
@@ -346,6 +351,7 @@ func BuiltInWorkflows() []Workflow {
 				{ID: "example-guarded-e0", Source: guardedTriggerID, Target: guardedHTTPID},
 			},
 			BuiltIn: true,
+			Seed:    seedorigin.Stamp(1),
 		},
 		{
 			ID:          "example-review-workflow",
@@ -359,6 +365,7 @@ func BuiltInWorkflows() []Workflow {
 				{ID: "example-review-e2", Source: reviewCaptureID, Target: reviewRulesetID},
 			},
 			BuiltIn: true,
+			Seed:    seedorigin.Stamp(1),
 		},
 		{
 			ID:          "example-disabled-schedule-workflow",
@@ -369,6 +376,7 @@ func BuiltInWorkflows() []Workflow {
 				{ID: "example-disabled-e0", Source: disabledTriggerID, Target: disabledInjectID},
 			},
 			BuiltIn:  true,
+			Seed:     seedorigin.Stamp(1),
 			Disabled: true,
 		},
 		{
@@ -384,6 +392,7 @@ func BuiltInWorkflows() []Workflow {
 				{ID: "example-branch-e3", Source: branchRouteID, SourceHandle: otherwiseHandle, Target: branchDenyID},
 			},
 			BuiltIn: true,
+			Seed:    seedorigin.Stamp(1),
 		},
 		{
 			ID:          "example-decision-with-review-workflow",
@@ -394,6 +403,7 @@ func BuiltInWorkflows() []Workflow {
 				{ID: "example-decision-review-e0", Source: decisionReviewTriggerID, Target: decisionReviewOutcomeID},
 			},
 			BuiltIn: true,
+			Seed:    seedorigin.Stamp(1),
 		},
 		{
 			ID:          "example-mcp-echo-workflow",
@@ -404,6 +414,7 @@ func BuiltInWorkflows() []Workflow {
 				{ID: "example-mcp-e0", Source: mcpTriggerID, Target: mcpCallID},
 			},
 			BuiltIn: true,
+			Seed:    seedorigin.Stamp(1),
 		},
 		{
 			ID:          "example-codeexec-workflow",
@@ -415,6 +426,7 @@ func BuiltInWorkflows() []Workflow {
 				{ID: "example-codeexec-e1", Source: codeExecStepID, Target: codeExecApplyID},
 			},
 			BuiltIn: true,
+			Seed:    seedorigin.Stamp(1),
 		},
 		clipboardInspectorWorkflow(),
 		savedPageToMarkdownWorkflow(),
@@ -427,6 +439,7 @@ func BuiltInWorkflows() []Workflow {
 				{ID: "example-fswatch-e0", Source: fsTriggerID, Target: fsInjectID},
 			},
 			BuiltIn:  true,
+			Seed:     seedorigin.Stamp(1),
 			Disabled: true,
 		},
 	}

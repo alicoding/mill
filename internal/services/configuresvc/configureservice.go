@@ -81,10 +81,13 @@ func NewConfigureService(store settings.Store, comp *compositionsvc.CompositionS
 	c.restoreMCPServers()
 	c.restoreDecisions()
 	c.restoreExecEnvs()
-	c.topUpBuiltInDecisions()
-	c.topUpBuiltInLists()
-	c.topUpBuiltInMCPServers()
-	c.topUpBuiltInExecEnvs()
+	// reconcileBuiltIn* (configureservice_builtin.go, docs/goals/0037)
+	// supersede the old insert-only topUpBuiltIn*: insert/upgrade/
+	// leave-alone/skip per golden, not just insert.
+	c.reconcileBuiltInDecisions()
+	c.reconcileBuiltInLists()
+	c.reconcileBuiltInMCPServers()
+	c.reconcileBuiltInExecEnvs()
 	composition.SetHTTPRequestLookup(c.resolveHTTPRequest)
 	composition.SetListLookup(c.resolveList)
 	composition.SetMCPServerLookup(c.resolveMCPServer)
@@ -145,7 +148,7 @@ func (c *ConfigureService) restore() {
 		c.requests = seeded
 		c.seedBuiltInSecrets()
 	}
-	c.topUpBuiltInRequests()
+	c.reconcileBuiltInRequests()
 	if raw, ok := c.store.Get(listsKey).(string); ok && raw != "" {
 		var lists []list.List
 		if err := json.Unmarshal([]byte(raw), &lists); err == nil {

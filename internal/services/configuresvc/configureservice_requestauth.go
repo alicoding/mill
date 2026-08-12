@@ -172,6 +172,10 @@ func (c *ConfigureService) UpdateHTTPRequest(id, label, baseURL, method, body st
 	req.BuiltIn = c.requests[idx].BuiltIn
 	req.CreatedAt = c.requests[idx].CreatedAt
 	req.UpdatedAt = time.Now()
+	// Modified latch (docs/goals/0037 item 2): a real content edit
+	// reaching a built-in-origin request permanently protects it from
+	// reconcile's upgrade path.
+	req.Seed = c.requests[idx].Seed.Touch()
 	previous := c.requests[idx]
 	c.requests[idx] = req
 	c.mu.Unlock()

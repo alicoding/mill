@@ -1,5 +1,7 @@
 package execenv
 
+import "github.com/alicoding/mill/internal/domain/seedorigin"
+
 // ExampleSafeSandboxID is the seeded example ExecEnv's ID -- exported
 // so composition.BuiltInWorkflows' own "Example: Run copied code" seed
 // (builtinworkflows.go) can reference it without a string literal that
@@ -42,6 +44,7 @@ func BuiltIn() []ExecEnv {
 			Dir:         TempDirSentinel,
 			Env:         []string{"PATH=/usr/bin:/bin:/usr/sbin:/sbin"},
 			BuiltIn:     true,
+			Seed:        seedorigin.Stamp(1),
 		},
 	}
 }

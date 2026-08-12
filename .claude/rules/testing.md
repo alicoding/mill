@@ -98,9 +98,14 @@ capability lands, add or extend a seeded example (workflow,
 HTTPRequest, ...) that uses it, prove it live, and cover the seed with
 a real test (the Go suite runs the exact seeded artifacts — see
 `TestSeededParentChildExample_TypedInputAndOutput_RunsEndToEnd`).
-Seeding is top-up with delete-tombstones (`topUpBuiltIns`,
+Seeding is top-up with delete-tombstones (`reconcileBuiltIns`,
 `configureservice_builtin.go`), so new examples reach existing
-instances — never fresh-install-only.
+instances — never fresh-install-only. Changing an existing golden's
+content (not just adding a new one) needs its own discipline, CI-
+enforced: bump that golden's `SeedRevision` in the same change, or
+`TestSeedFingerprints_MatchCommittedRecord` (`internal/services/
+seeding`) fails the build — see `docs/goals/0037-seed-lifecycle.md` for
+the full reconcile/reset/restore design this protects.
 
 **Refined by direct owner decision (2026-08-10): seeds are one layer,
 not the universal proof — don't force the seed pattern onto

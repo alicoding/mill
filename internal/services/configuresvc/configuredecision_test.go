@@ -41,16 +41,16 @@ func TestConfigureService_FreshInstall_SeedsBuiltInDecisions(t *testing.T) {
 // A deleted built-in Decision is tombstoned, so a later top-up call
 // (simulating the next NewConfigureService construction, e.g. a
 // restart) never resurrects it -- same discipline
-// topUpBuiltInRequests already has.
+// reconcileBuiltInRequests already has.
 func TestConfigureService_DeletedBuiltInDecision_NotResurrectedByTopUp(t *testing.T) {
 	cfg := newDecisionHarness(t)
 	if err := cfg.DeleteDecision(decision.ExampleApproveID); err != nil {
 		t.Fatalf("DeleteDecision: %v", err)
 	}
-	cfg.topUpBuiltInDecisions()
+	cfg.reconcileBuiltInDecisions()
 	for _, d := range cfg.Decisions() {
 		if d.ID == decision.ExampleApproveID {
-			t.Fatal("topUpBuiltInDecisions resurrected a deliberately deleted built-in Decision")
+			t.Fatal("reconcileBuiltInDecisions resurrected a deliberately deleted built-in Decision")
 		}
 	}
 }

@@ -16,6 +16,8 @@ import { InventoryList, type InventoryItem } from '../shared/InventoryList'
 import { ENTITY_ICON } from '../shared/entityIcons'
 import { formatUpdated, sortByUpdatedDesc } from '../shared/inventorySort'
 import { useConfirmDelete } from '../shared/useConfirmDelete'
+import { describeSeedReset } from '../shared/seedLifecycle'
+import { RestoreExamplesButton } from '../shared/RestoreExamplesButton'
 import styles from '../shared/ListCard.module.css'
 import PageContainer from '../shared/PageContainer'
 
@@ -67,11 +69,23 @@ export function ConfigureDecisions() {
   const [importError, setImportError] = useState<string | null>(null)
   const importInputRef = useRef<HTMLInputElement>(null)
   const [viewMode, setViewMode] = useViewMode('mill-decisions-view-mode')
+  // Seed lifecycle (docs/goals/0037) -- see CompositionView.tsx's
+  // identical state for the full reasoning.
+  const [seedRevisions, setSeedRevisions] = useState<Record<string, number | undefined>>({})
+  const [restorable, setRestorable] = useState<Decision[]>([])
+
+  const refreshSeedLifecycle = () => {
+    ConfigureService.SeedRevisions().then((m) => setSeedRevisions(m ?? {})).catch(console.error)
+    ConfigureService.RestorableDecisions().then((r) => setRestorable(r ?? [])).catch(console.error)
+  }
 
   const refetch = () => {
     void refreshDecisions()
   }
-  useEffect(refetch, [])
+  useEffect(() => {
+    refetch()
+    refreshSeedLifecycle()
+  }, [])
 
   const exportDecision = (id: string, decisionLabel: string) => {
     ConfigureService.ExportDecision(id)
@@ -125,7 +139,25 @@ export function ConfigureDecisions() {
   }
 
   const remove = (id: string) => {
-    ConfigureService.DeleteDecision(id).then(refetch).catch(console.error)
+    ConfigureService.DeleteDecision(id).then(() => {
+      refetch()
+      refreshSeedLifecycle()
+    }).catch(console.error)
+  }
+
+  // Reset-to-shipped-example / restore-deleted-example (docs/goals/0037
+  // items 4/5).
+  const resetToSeed = (id: string) => {
+    ConfigureService.ResetDecisionToSeed(id).then(() => {
+      refetch()
+      refreshSeedLifecycle()
+    }).catch((err) => setImportError(String(err)))
+  }
+  const restoreExample = (id: string) => {
+    ConfigureService.RestoreDecision(id).then(() => {
+      refetch()
+      refreshSeedLifecycle()
+    }).catch((err) => setImportError(String(err)))
   }
 
   // Table-view direct-wiring half of the Button-semantics convention
@@ -152,26 +184,33 @@ export function ConfigureDecisions() {
   // same order (docs/SPEC.md §3.8's InventoryList entry).
   const sortedDecisions = useMemo(() => sortByUpdatedDesc(decisions ?? [], (d) => d.UpdatedAt), [decisions])
 
-  const decisionItems: InventoryItem[] = sortedDecisions.map((d) => ({
-    id: d.ID,
-    entity: 'decision',
-    icon: ENTITY_ICON.decision,
-    label: d.Label,
-    updatedLabel: formatUpdated(d.UpdatedAt),
-    labelBadges: <Label variant="secondary" size="small">{CATEGORY_LABEL[d.Category] ?? d.Category}</Label>,
-    description: `Outputs: ${(d.Outputs ?? []).map((o) => o.Key).join(', ') || 'none'}`,
-    onOpen: () => startEdit(d),
-    menuActions: [
-      { label: 'Duplicate', onClick: () => startCreate(d) },
-      { label: 'Export', onClick: () => exportDecision(d.ID, d.Label) },
-      {
-        label: 'Delete',
-        onClick: () => remove(d.ID),
-        danger: true,
-        confirm: { title: 'Delete decision?', body: `This permanently deletes "${d.Label}". This cannot be undone.` },
-      },
-    ],
-  }))
+  const decisionItems: InventoryItem[] = sortedDecisions.map((d) => {
+    const seedReset = describeSeedReset(d.Seed, seedRevisions[d.ID] ?? d.Seed.SeedRevision)
+    return {
+      id: d.ID,
+      entity: 'decision',
+      icon: ENTITY_ICON.decision,
+      label: d.Label,
+      updatedLabel: formatUpdated(d.UpdatedAt),
+      labelBadges: <Label variant="secondary" size="small">{CATEGORY_LABEL[d.Category] ?? d.Category}</Label>,
+      description: `Outputs: ${(d.Outputs ?? []).map((o) => o.Key).join(', ') || 'none'}`,
+      onOpen: () => startEdit(d),
+      menuActions: [
+        { label: 'Duplicate', onClick: () => startCreate(d) },
+        { label: 'Export', onClick: () => exportDecision(d.ID, d.Label) },
+        // Reset-to-shipped-example (docs/goals/0037 item 4) -- hidden
+        // (not shown-disabled) when already current, same reasoning
+        // CompositionView.tsx's identical wiring documents.
+        ...(d.BuiltIn && !seedReset.disabled ? [{ label: seedReset.label, onClick: () => resetToSeed(d.ID) }] : []),
+        {
+          label: 'Delete',
+          onClick: () => remove(d.ID),
+          danger: true,
+          confirm: { title: 'Delete decision?', body: `This permanently deletes "${d.Label}". This cannot be undone.` },
+        },
+      ],
+    }
+  })
 
   return (
     <PageContainer data-testid="configure-decisions">
@@ -195,6 +234,7 @@ export function ConfigureDecisions() {
           >
             Import
           </Button>
+          <RestoreExamplesButton items={restorable} onRestore={restoreExample} />
           <Button leadingVisual={PlusIcon} variant="primary" size="small" onClick={() => startCreate()} data-testid="new-decision">
             New decision
           </Button>
