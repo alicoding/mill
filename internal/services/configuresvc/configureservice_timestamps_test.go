@@ -131,7 +131,7 @@ func TestCreateList_StampsBothTimestamps(t *testing.T) {
 	cfg, _ := newTestConfigureService(t)
 
 	before := time.Now()
-	l, err := cfg.CreateList("Region codes", map[string]string{"US": "United States"})
+	l, err := cfg.CreateList("Region codes", "", regionCodeColumns())
 	after := time.Now()
 	if err != nil {
 		t.Fatalf("CreateList: %v", err)
@@ -151,7 +151,7 @@ func TestCreateList_StampsBothTimestamps(t *testing.T) {
 func TestUpdateList_PreservesCreatedAt_AdvancesUpdatedAt(t *testing.T) {
 	cfg, _ := newTestConfigureService(t)
 
-	l, err := cfg.CreateList("Region codes", map[string]string{"US": "United States"})
+	l, err := cfg.CreateList("Region codes", "", regionCodeColumns())
 	if err != nil {
 		t.Fatalf("CreateList: %v", err)
 	}
@@ -159,7 +159,7 @@ func TestUpdateList_PreservesCreatedAt_AdvancesUpdatedAt(t *testing.T) {
 
 	time.Sleep(2 * time.Millisecond)
 
-	updated, err := cfg.UpdateList(l.ID, "Region codes (edited)", map[string]string{"US": "United States", "CA": "Canada"})
+	updated, err := cfg.UpdateList(l.ID, "Region codes (edited)", "edited", regionCodeColumns())
 	if err != nil {
 		t.Fatalf("UpdateList: %v", err)
 	}

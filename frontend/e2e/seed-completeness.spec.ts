@@ -37,7 +37,10 @@ test('Seeded List "Example: Country codes" is present, built-in-badged, with its
   const row = page.locator('[data-testid="inventory-row"][data-entity="list"]').filter({ has: page.getByText('Example: Country codes', { exact: true }) })
   await expect(row).toBeVisible()
   await expect(row.getByText('built-in', { exact: true })).toBeVisible()
-  await expect(row).toContainText('3 entries')
+  // docs/goals/0011-lists-maturation.md: the seed grew typed
+  // code/name columns + 5 rows (4 Active + 1 deliberately Expired),
+  // replacing the old flat key/value "N entries" description.
+  await expect(row).toContainText('2 columns, 5 rows')
 })
 
 test('Seeded MCP Server "Example: Reference server (npx)" is present, built-in-badged, pointed at the real reference server', async ({ page }) => {
@@ -68,6 +71,28 @@ test('Example: Country code lookup runs a real match through the seeded List', a
   // The workflow declares 'code'/'countryName' Attributes -- Run opens
   // the test-input dialog (docs/adr/0008). US is a real entry in the
   // seeded List.
+  const dialog = page.getByRole('dialog')
+  await dialog.getByLabel('Code').fill('US')
+  await dialog.getByRole('button', { name: 'Run' }).click()
+
+  const bar = activePanel(page).getByTestId('current-step-bar')
+  await expect(bar).toContainText('SUCCESS', { timeout: 15_000 })
+})
+
+test('Example: Country lookup (search) runs a real exact match through list-search', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Workflows' }).click()
+
+  const row = workflowRow(page, 'Example: Country lookup (search)')
+  await expect(row).toBeVisible()
+  await row.click()
+  await expect(activePanel(page).locator('.react-flow__node').first()).toBeVisible()
+
+  await activePanel(page).getByTestId('canvas-run').click()
+
+  // The workflow declares 'code'/'searchResult' Attributes -- only
+  // 'code' matters for this run (list-search always overwrites
+  // 'searchResult' with its own typed result, docs/goals/0011).
   const dialog = page.getByRole('dialog')
   await dialog.getByLabel('Code').fill('US')
   await dialog.getByRole('button', { name: 'Run' }).click()

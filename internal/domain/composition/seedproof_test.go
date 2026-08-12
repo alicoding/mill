@@ -83,6 +83,12 @@ var workflowProofRegistry = map[string]seedProof{
 		"executionsvc.TestSeededCountryLookupExample_NoMatch_FailsClosed",
 		"e2e: seed-completeness.spec.ts > Country code lookup",
 	),
+	"example-list-search-workflow": proven(
+		"executionsvc.TestSeededListSearchExample_Match_WritesTypedResult",
+		"executionsvc.TestSeededListSearchExample_NoMatch_WritesUnmatchedResult",
+		"executionsvc.TestSeededListSearchExample_ExpiredRow_ExcludedByDefault",
+		"e2e: seed-completeness.spec.ts > Example: Country lookup (search) runs a real exact match through list-search",
+	),
 	"example-mcp-echo-workflow": proven(
 		"composition.TestSeededMCPExample_EchoToolCall_RunsEndToEnd",
 		"e2e: seed-completeness.spec.ts > MCP echo call (presence/config only)",

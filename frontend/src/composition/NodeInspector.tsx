@@ -13,6 +13,7 @@ import { IntegrationBindingsEditor } from './IntegrationBindingsEditor'
 import { ChildWorkflowBindingsEditor } from './ChildWorkflowBindingsEditor'
 import { DecisionOutcomeBindingsEditor } from './DecisionOutcomeBindingsEditor'
 import { MCPToolArgsEditor } from './MCPToolArgsEditor'
+import { ListSearchParamsEditor } from './ListSearchParamsEditor'
 import { WorkflowHoverPreview } from './WorkflowHoverPreview'
 import { NodeGuardrailSection } from './NodeGuardrailSection'
 import { NodeExecutionSection } from './NodeExecutionSection'
@@ -204,6 +205,7 @@ export function NodeInspector({ node, workflowId, attrs, nodeType, sameKindNodeT
         // below instead of this generic loop -- a schema-driven tool
         // picker and typed-argument fields, not a raw text box.
         .filter((field) => !(node.data.nodeTypeID === 'mcp-tool-call' && (field.Key === 'toolName' || field.Key === 'argumentsJSON')))
+        .filter((field) => !(node.data.nodeTypeID === 'list-search' && field.Key === 'matchParams'))
         .map((field) => (
         <FormControl key={`${field.Key}-${payloadNonce}`}>
           <FormControl.Label>{field.Label}</FormControl.Label>
@@ -350,6 +352,15 @@ export function NodeInspector({ node, workflowId, attrs, nodeType, sameKindNodeT
           attrs={attrs}
           onChangeToolName={(v) => onConfigChange('toolName', v)}
           onChangeArguments={(raw) => onConfigChange('argumentsJSON', raw)}
+        />
+      )}
+
+      {node.data.nodeTypeID === 'list-search' && (
+        <ListSearchParamsEditor
+          listId={node.data.config.listId ?? ''}
+          matchParamsRaw={node.data.config.matchParams ?? ''}
+          attrs={attrs}
+          onChangeMatchParams={(raw) => onConfigChange('matchParams', raw)}
         />
       )}
 
