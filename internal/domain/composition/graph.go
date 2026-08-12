@@ -51,8 +51,15 @@ func buildGraph(nodes []Node, edges []Edge) (byID map[string]Node, outgoingEdges
 
 // findRoot returns the single node with no incoming edge -- the
 // workflow's entry point, same definition internal/domain/trigger's
-// ExtractTrigger already relies on.
-func findRoot(nodes []Node, hasIncoming map[string]bool) (string, error) {
+// ExtractTrigger already relies on. Zero roots (every node has an
+// incoming edge) is exactly the case a pure cycle produces -- goal
+// 0021 gap 4's dogfood finding: the old message ("a workflow must have
+// exactly one starting node") was technically true but left an
+// authoring agent to discover which nodes loop by process of
+// elimination. When it's a cycle, name it -- findAnyCycle walks the
+// same outgoingEdges buildGraph already produced, so this costs
+// nothing extra to compute.
+func findRoot(nodes []Node, outgoingEdges map[string][]Edge, hasIncoming map[string]bool) (string, error) {
 	var root string
 	rootCount := 0
 	for _, n := range nodes {
@@ -60,6 +67,12 @@ func findRoot(nodes []Node, hasIncoming map[string]bool) (string, error) {
 			root = n.ID
 			rootCount++
 		}
+	}
+	if rootCount == 0 {
+		if cycle := findAnyCycle(nodes, outgoingEdges); len(cycle) > 0 {
+			return "", fmt.Errorf("a workflow must have exactly one starting node (found none -- every node has an incoming edge because these nodes form a cycle: %s)", strings.Join(cycle, " -> "))
+		}
+		return "", fmt.Errorf("a workflow must have exactly one starting node")
 	}
 	if rootCount != 1 {
 		return "", fmt.Errorf("a workflow must have exactly one starting node")
@@ -231,7 +244,7 @@ func ValidateGraph(nodes []Node, edges []Edge, attrs []AttributeDef) []Issue {
 
 	var issues []Issue
 
-	root, rootErr := findRoot(nodes, hasIncoming)
+	root, rootErr := findRoot(nodes, outgoingEdges, hasIncoming)
 	if rootErr != nil {
 		issues = append(issues, errorIssue("", "", rootErr.Error()))
 	} else {

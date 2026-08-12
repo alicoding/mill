@@ -2,6 +2,7 @@ package composition
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/alicoding/mill/internal/domain/guardrail"
 )
@@ -131,19 +132,31 @@ func executeWorkflow(nodes []Node, edges []Edge, attrs []AttributeDef, run StepR
 	if err != nil {
 		return "", err
 	}
-	root, err := findRoot(nodes, hasIncoming)
+	root, err := findRoot(nodes, outgoingEdges, hasIncoming)
 	if err != nil {
 		return "", err
 	}
 
 	ctx := ExecContext{Payload: opts.InitialPayload, Attributes: attributesEnv(attrs, opts.AttrValues), RunContext: opts.RunContext, Stepped: opts.Stepped}
-	visited := make(map[string]bool, len(nodes))
+	// visited records each node's position in path (traversal order) so
+	// a cycle hit below can report the actual loop -- e.g. "b -> c -> b"
+	// -- instead of a bare "contains a cycle" (goal 0021 gap 4: a
+	// generic message left an authoring agent to find the loop by
+	// process of elimination; a root-level cycle is already named by
+	// findRoot/findAnyCycle above, this is the sibling case where the
+	// graph has a valid single root but loops somewhere downstream of
+	// it, which ValidateGraph's reachability check doesn't catch since
+	// every node in the loop IS reachable from the root).
+	visited := make(map[string]int, len(nodes))
+	var path []string
 	current := root
 	for {
-		if visited[current] {
-			return "", fmt.Errorf("workflow graph contains a cycle")
+		if idx, ok := visited[current]; ok {
+			cycle := append(append([]string{}, path[idx:]...), current)
+			return "", fmt.Errorf("workflow graph contains a cycle: %s", strings.Join(cycle, " -> "))
 		}
-		visited[current] = true
+		visited[current] = len(path)
+		path = append(path, current)
 
 		node := byID[current]
 		// Trigger and Decision nodes carry no payload transformation --

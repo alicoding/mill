@@ -209,9 +209,15 @@ export interface RunStep {
      * item 3): the immediately-preceding EXECUTED step's own recorded
      * Payload/Attributes, or the run's own seeded starting values for
      * the first executed step. Previously undiscoverable at all -- only
-     * a step's OUTPUT was ever surfaced.
+     * a step's OUTPUT was ever surfaced. Input deliberately has NO
+     * omitempty, matching Output below -- goal 0021 gap 3, caught live:
+     * a run started with no payload seeded a genuinely empty first-step
+     * Input, and omitempty dropped the JSON key entirely over MCP,
+     * reading as "the field doesn't exist" rather than "it's empty" --
+     * indistinguishable from a real mapping bug. An always-present key
+     * (empty string when there's truly nothing) is unambiguous.
      */
-    "input"?: string;
+    "input": string;
     "inputAttributes"?: { [_ in string]?: any } | null;
     "output": string;
 

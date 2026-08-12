@@ -3,6 +3,7 @@ package executionsvc
 import (
 	"encoding/json"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -13,6 +14,27 @@ import (
 	"github.com/alicoding/mill/internal/services/guardrailsvc"
 	"github.com/alicoding/mill/internal/services/servicetest"
 )
+
+// assertNoDBOSPseudoSteps is goal 0021 gap 2's proof, applied to the
+// stepped/breakpoint park flow specifically: parkForApproval
+// (executionservice_guardrail.go) is the SAME underlying mechanism a
+// plain guardrail-policy ask uses (DBOS SetEvent/Recv, both checkpointed
+// under the library's own uniform "DBOS." step-name prefix), and the
+// existing prefix filter in GetRun (goal 0026's fix, commit 3e0433e)
+// already covers it -- this asserts that holds for a STEPPED run too,
+// not just an ordinary policy-ask park, since the dogfood pass that
+// logged gap 2 explicitly named "parked/stepped runs".
+func assertNoDBOSPseudoSteps(t *testing.T, when string, steps []RunStep) {
+	t.Helper()
+	for _, s := range steps {
+		if strings.HasPrefix(s.NodeID, "DBOS.") {
+			t.Errorf("%s: GetRun surfaced a DBOS system pseudo-step %q -- must be filtered", when, s.NodeID)
+		}
+		if s.NodeTypeID == "" {
+			t.Errorf("%s: GetRun surfaced a row with no NodeTypeID (NodeID %q) -- renders as a blank checkmark", when, s.NodeID)
+		}
+	}
+}
 
 // Workflow breakpoints (docs/adr/0031, goal 0020) proven end-to-end
 // against the seeded "Example: Branch to a decision" workflow -- "the
@@ -228,6 +250,7 @@ func TestStepMode_ParksBeforeEveryNode_StepThenContinue(t *testing.T) {
 	if !sawCheckpointedDebugSource {
 		t.Fatal("GetRun did not report the first stepped-mode park at all")
 	}
+	assertNoDBOSPseudoSteps(t, "GetRun (first stepped park)", parkedDetail.Steps)
 
 	// "Step": advance exactly one node, park again at the next
 	// (decision-route has no exec of its own -- Trigger/Decision nodes
@@ -265,4 +288,13 @@ func TestStepMode_ParksBeforeEveryNode_StepThenContinue(t *testing.T) {
 	if final.Pending != nil {
 		t.Fatal("a completed run must not report a pending approval")
 	}
+
+	// Final GetRun, after TWO parks/resolutions -- the debugger's most
+	// likely inspection point (a finished stepped run) must not leak any
+	// of the DBOS system steps either park checkpointed.
+	finalDetail, err := exec.GetRun(summary.RunID)
+	if err != nil {
+		t.Fatalf("GetRun (final): %v", err)
+	}
+	assertNoDBOSPseudoSteps(t, "GetRun (final, stepped run)", finalDetail.Steps)
 }
