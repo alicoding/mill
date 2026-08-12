@@ -59,6 +59,10 @@
     "seedRevision": 1,
     "fingerprint": "7a2c44dba4295f3d98f4e1b63d70d798e8c666edb156cc430dea368d21f76924"
   },
+  "workflow:example-ai-classify-branch-workflow": {
+    "seedRevision": 1,
+    "fingerprint": "51ed2cde4d3271ca557dbf85d050ad68cee61f1c6bc75480a64d81028144db5c"
+  },
   "workflow:example-ai-summarize-workflow": {
     "seedRevision": 1,
     "fingerprint": "a3dbfca17c63bab9755f5d39e74c6f212b9e0666e8a48709b1111f40a3b47892"

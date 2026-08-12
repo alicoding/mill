@@ -193,9 +193,10 @@ test('Composition page lists built-in workflows; node primitives live in a colla
   // capture floor + clipboard inspector, docs/adr/0030 / SPEC.md §5) +
   // list-search (docs/goals/0011-lists-maturation.md's richer, typed
   // successor to list-lookup) + trigger-system-event (docs/adr/0035's
-  // unparked System/meta trigger) + process-ai-completion (the AI node
-  // family's first member, docs/goals/0031-ai-node-family.md).
-  await expect(activePanel(page).getByTestId('palette-item')).toHaveCount(27)
+  // unparked System/meta trigger) + process-ai-completion,
+  // process-ai-extract-structured, process-ai-classify (the AI node
+  // family, docs/goals/0031-ai-node-family.md).
+  await expect(activePanel(page).getByTestId('palette-item')).toHaveCount(29)
 })
 
 test('A new workflow starts with a starter node placed, not a blank canvas', async ({ page }) => {

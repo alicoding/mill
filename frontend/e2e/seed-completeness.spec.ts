@@ -211,3 +211,24 @@ test('Example: Forward pending approvals workflow is present, disabled, with the
   await expect(nodes).toHaveCount(2)
   await expect(nodes.filter({ hasText: 'Trigger: system event' })).toBeVisible()
 })
+
+// docs/goals/0031-ai-node-family.md: THE decisioning composition --
+// AI: Classify writes a category Attribute, Branch routes on it. Never
+// clicks Run here for the same "no real Ollama in CI" reasoning the
+// AI: Completion seed test above documents; the Go proof
+// (executionsvc.TestSeededAIClassifyBranchExample_UrgentRoutesToUrgentBranch/
+// _NormalRoutesToNormalBranch) runs both branch outcomes end to end
+// against an httptest fixture.
+test('Example: AI classify -> branch workflow is present with the real process-ai-classify + Branch nodes, ships disabled', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Workflows' }).click()
+
+  const row = workflowRow(page, 'Example: AI classify -> branch')
+  await expect(row).toBeVisible()
+  await expect(row.getByText('disabled', { exact: true })).toBeVisible()
+  await row.click()
+
+  const nodes = activePanel(page).locator('.react-flow__node')
+  await expect(nodes).toHaveCount(6)
+  await expect(nodes.filter({ hasText: 'AI: Classify' })).toBeVisible()
+})
