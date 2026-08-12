@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Events } from '@wailsio/runtime'
 import { Button, Label, Stack, Text, TextInput } from '@primer/react'
 import { DataTable, type Column } from '@primer/react/experimental'
 import { StopIcon } from '@primer/octicons-react'
@@ -37,6 +38,17 @@ export function ActivityRunsExplorer({ workflow }: { workflow: Workflow }) {
     setRuns(null)
     setError('')
     refresh()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [workflow.ID])
+
+  // goal 0017 P1-4: this explorer's durable run history used to update
+  // only on mount/workflow-switch -- scoped to the selected workflow,
+  // same as WorkflowRunsPanel.tsx's identical subscription.
+  useEffect(() => {
+    return Events.On('mill-data-changed', (evt) => {
+      const entity = (evt.data as { entity?: string })?.entity
+      if (entity === 'run') refresh()
+    })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [workflow.ID])
 

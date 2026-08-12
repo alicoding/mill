@@ -88,9 +88,19 @@ function ReviewView() {
 
   useEffect(() => {
     refresh()
+    // goal 0017 P2: guardrail-pending-changed (executionsvc, already
+    // emitted on every park/resolve -- App.tsx's own pending-badge
+    // effect already consumes it) gets the queue refreshing on the SAME
+    // event that already exists, instead of waiting up to 2s for the
+    // poll below. The poll itself stays: it's the documented fallback
+    // for anything that changes queue state without a dedicated event
+    // (a park racing this subscription's mount, a clock-based staleness
+    // badge aging past its threshold with nothing else to trigger a
+    // re-render).
     const timer = setInterval(refresh, 2000)
     const offMCP = Events.On('mcp-write-approval', refresh)
-    return () => { clearInterval(timer); offMCP() }
+    const offGuardrail = Events.On('guardrail-pending-changed', refresh)
+    return () => { clearInterval(timer); offMCP(); offGuardrail() }
   }, [])
 
   const resolveWrite = (id: string, approve: boolean) => {

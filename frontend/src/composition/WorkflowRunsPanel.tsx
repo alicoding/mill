@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { Events } from '@wailsio/runtime'
 import { Button, IconButton, Label, type LabelProps, Select, Stack, Text } from '@primer/react'
 import { DataTable, type Column } from '@primer/react/experimental'
 import { BugIcon, CheckCircleIcon, XCircleIcon, ClockIcon, XIcon, ShieldIcon, ShieldXIcon, StopIcon } from '@primer/octicons-react'
@@ -96,6 +97,22 @@ function WorkflowRunsPanel({ workflowId, attrs, initialRunId, onInitialRunConsum
 
   useEffect(() => {
     refreshRuns()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [workflowId])
+
+  // goal 0017 P1-2: this tab's base run list used to update only on
+  // mount/workflow-switch -- a run started elsewhere (another tab, a
+  // headless trigger, an MCP author's run_workflow) never appeared here
+  // without reopening the tab. mill-data-changed{entity:"run"} is
+  // already emitted for every run kind (executionsvc's own run-start/
+  // debug-tool paths); the in-flight-run detail poll above stays --
+  // DBOS has no per-step event, so polling an already-open run's own
+  // step-by-step progress is still the honest only-path.
+  useEffect(() => {
+    return Events.On('mill-data-changed', (evt) => {
+      const entity = (evt.data as { entity?: string })?.entity
+      if (entity === 'run') refreshRuns()
+    })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [workflowId])
 
