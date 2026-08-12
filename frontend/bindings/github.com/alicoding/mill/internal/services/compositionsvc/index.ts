@@ -5,3 +5,13 @@ import * as CompositionService from "./compositionservice.js";
 export {
     CompositionService
 };
+
+export {
+    ClipboardApplyAction,
+    ClipboardApplyKind
+} from "./models.js";
+
+export type {
+    ClipboardApplyPreview,
+    ClipboardUnresolvedRef
+} from "./models.js";
