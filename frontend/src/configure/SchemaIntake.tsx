@@ -28,7 +28,7 @@ function detect(text: string, sampleTarget: 'body' | 'response'): { result?: Int
   if (trimmed === '') return { error: 'Nothing to load -- paste content or drop a file first.' }
 
   let parsed: unknown
-  let isJSON = false
+  let isJSON: boolean
   try {
     parsed = JSON.parse(trimmed)
     isJSON = true

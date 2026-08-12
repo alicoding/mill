@@ -19,7 +19,13 @@ export function TabList({ 'aria-label': ariaLabel, children }: { 'aria-label': s
   // shape; this app's @types/react (18) is stricter about what a JSX
   // ref accepts -- a version-skew typing mismatch, not a real bug, so
   // the ref is re-asserted rather than fighting the two packages' types.
+  // The rule's ref-shaped-property heuristic false-positives on this
+  // headless-hook idiom: useTabList returns `ref` bundled into the same
+  // props object as every other DOM attribute (react-aria-style API),
+  // so spreading it and re-asserting its type (see comment above) IS
+  // the attach point, not a stray read of `.current` during render.
   return (
+    // eslint-disable-next-line react-hooks/refs
     <div {...tabListProps} ref={tabListProps.ref as Ref<HTMLDivElement>} className={styles.tabList}>
       {children}
     </div>
