@@ -1,9 +1,79 @@
 package composition
 
 import (
+	"strings"
 	"testing"
 )
 
+// pureNodeTypes is the CLOSED allow-list of NodeType IDs permitted to
+// leave Effect at its Go zero value ("") -- docs/goals/0030-node-
+// standard.md item (b), the standard's priority machine check. The
+// zero value is silently indistinguishable from guardrail.ClassNone at
+// run time (NodeTypeEffect, execute.go: `entry.nodeType.Effect == ""`
+// resolves to ClassNone), and ClassNone -- like every class except
+// ClassExternal -- defaults to ALLOW with no guardrail gate at all
+// (guardrail.DefaultEffect). A node type with real I/O left at the zero
+// value would silently run ungated; this list exists so that can only
+// happen for an ID a human explicitly reviewed and named here, never by
+// omission. New node types MUST declare Effect explicitly (ruleset and
+// human-review are the house style: `Effect: guardrail.ClassNone`
+// written out, not left blank) -- add to this list ONLY for a node
+// verified to have no I/O of its own, with the reason recorded inline.
+var pureNodeTypes = map[string]string{
+	// Trigger kinds and decision-route register with exec: nil
+	// (registry.go) -- ExecuteWorkflow's own Kind check skips them
+	// structurally before the guardrail gate is ever reached
+	// (execute.go), so no Effect class is meaningful for any of them.
+	"trigger-manual":           "exec=nil entry point, never reaches the guardrail gate",
+	"trigger-hotkey":           "exec=nil entry point, never reaches the guardrail gate",
+	"trigger-schedule":         "exec=nil entry point, never reaches the guardrail gate",
+	"trigger-clipboard-watch":  "exec=nil entry point, never reaches the guardrail gate",
+	"trigger-filesystem-watch": "exec=nil entry point, never reaches the guardrail gate",
+	"trigger-callable":         "exec=nil entry point, never reaches the guardrail gate",
+	"trigger-system-event":     "exec=nil entry point, never reaches the guardrail gate",
+	"decision-route":           "exec=nil, pure routing -- conditions live on its outgoing edges",
+	// Genuine no-I/O transforms/reads: operate only on the in-memory
+	// ExecContext (Payload/Attributes) already threaded through, no
+	// external/local/read effect of any kind.
+	"capture-attribute":        "reads ExecContext.Attributes in-memory, no I/O",
+	"process-extract-html":     "pure string/DOM transform on the in-memory payload, no I/O",
+	"process-inject-text":      "pure string transform on the in-memory payload, no I/O",
+	"process-html-to-markdown": "pure string transform on the in-memory payload, no I/O",
+}
+
+// kindIDPrefix is the Kind -> required ID-prefix convention item (c)
+// enforces (docs/goals/0030-node-standard.md). Every NEW NodeType's ID
+// must start with its Kind's prefix; idPrefixExceptions below is the
+// CLOSED list of IDs that predate this convention.
+var kindIDPrefix = map[NodeKind]string{
+	KindTrigger:  "trigger-",
+	KindCapture:  "capture-",
+	KindProcess:  "process-",
+	KindApply:    "apply-",
+	KindDecision: "decision-",
+	KindTerminal: "terminal-",
+}
+
+// idPrefixExceptions is the CLOSED allow-list of pre-pattern IDs that
+// don't follow kindIDPrefix -- every one of them shipped before this
+// standard existed. This list must never grow; a new node type's ID
+// has to follow its Kind's prefix.
+var idPrefixExceptions = map[string]bool{
+	"child-workflow":   true, // KindProcess
+	"code-execution":   true, // KindProcess
+	"human-review":     true, // KindProcess
+	"ruleset":          true, // KindProcess
+	"integration-http": true, // KindProcess
+	"list-lookup":      true, // KindProcess
+	"list-search":      true, // KindProcess
+	"mcp-tool-call":    true, // KindProcess
+	"decision-outcome": true, // KindTerminal, named for its pre-ADR-0027 "Decision" identity
+}
+
+// TestNodeTypes is the Mill Node Standard's machine-checkable subset
+// (docs/goals/0030-node-standard.md, .claude/rules/node-standard.md):
+// every registered NodeType is reviewed against these checks, not just
+// spot-checked by eye.
 func TestNodeTypes(t *testing.T) {
 	types := NodeTypes()
 	if len(types) == 0 {
@@ -18,10 +88,48 @@ func TestNodeTypes(t *testing.T) {
 			t.Errorf("duplicate node type ID %q", nt.ID)
 		}
 		seen[nt.ID] = true
+
+		// (a) Every ConfigField carries a Description -- the standard's
+		// "typed fields document themselves" requirement; an
+		// undocumented field forces guessing at authoring time.
 		for _, f := range nt.ConfigFields {
 			if f.Key == "" || f.Label == "" {
 				t.Errorf("node type %q has a config field with an empty Key/Label: %+v", nt.ID, f)
 			}
+			if f.Description == "" {
+				t.Errorf("node type %q config field %q has an empty Description (standard item a)", nt.ID, f.Key)
+			}
+		}
+
+		// (b) Effect must be explicit, not the silently-permissive zero
+		// value -- see pureNodeTypes' own doc comment for the danger.
+		if nt.Effect == "" {
+			if _, ok := pureNodeTypes[nt.ID]; !ok {
+				t.Errorf("node type %q has no explicit Effect class (standard item b): "+
+					"the zero value silently resolves to ClassNone/allow-with-no-guardrail-gate "+
+					"(NodeTypeEffect, execute.go) -- either declare Effect explicitly in its "+
+					"RegisterNodeType call, or add its ID to pureNodeTypes in nodetypes_test.go "+
+					"with a reason, if it genuinely performs no I/O", nt.ID)
+			}
+		}
+
+		// (c) ID is prefixed by its Kind's naming convention, unless
+		// it's a named pre-pattern exception.
+		if prefix, ok := kindIDPrefix[nt.Kind]; ok && !strings.HasPrefix(nt.ID, prefix) {
+			if !idPrefixExceptions[nt.ID] {
+				t.Errorf("node type %q (Kind %q) doesn't start with the Kind's %q prefix (standard item c) "+
+					"and isn't in idPrefixExceptions", nt.ID, nt.Kind, prefix)
+			}
+		}
+
+		// (d) Output is non-empty for every NodeType -- required
+		// universally (every currently-registered NodeType, including
+		// every terminal/apply kind, already declares one; no kind gets
+		// a free pass).
+		if nt.Output == "" {
+			t.Errorf("node type %q has an empty Output (standard item d): "+
+				"name what payload/Attributes state leaves this step, even if it's "+
+				"\"payload unchanged\" (see ruleset/decision-route)", nt.ID)
 		}
 	}
 }
