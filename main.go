@@ -142,6 +142,11 @@ func main() {
 	// docs/adr/0010: a child-workflow node's real DBOS parent/child
 	// invocation, wired the same late-bound way for the same reason.
 	executionService.WireChildWorkflowRunner()
+	// docs/adr/0035: the trigger-system-event dispatch seam --
+	// ExecutionService (the producer) never imports triggersvc (the
+	// consumer); this wires them together, same late-bound-setter shape
+	// as every other injected-function seam here.
+	executionService.SetSystemEventSink(triggerService.DispatchSystemEvent)
 
 	settingsService := settingssvc.NewSettingsService(settingsStore, triggerService, settingsPath != defaultSettingsPath)
 	// Bidirectional hotkey-conflict check (docs/SPEC.md §3.7): a

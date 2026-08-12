@@ -100,20 +100,6 @@ export function DismissPanel(): $CancellablePromise<void> {
 }
 
 /**
- * ForwardPendingApproval fires the configured cross-device forward for
- * one new pending item -- fire-and-forget: it returns immediately, and
- * a delivery failure is only slog-logged, never surfaced back to the
- * caller or allowed to block anything. App.tsx's own per-new-item loop
- * calls this alongside NotifyPendingApproval, unconditionally --
- * unlike the presence gate, forwarding doesn't depend on local
- * focus/idle at all, since the whole point is reaching the owner when
- * there may be no local Mac attention to gate on in the first place.
- */
-export function ForwardPendingApproval(id: string, description: string, kind: string): $CancellablePromise<void> {
-    return $Call.ByID(4270514639, id, description, kind);
-}
-
-/**
  * GetAttentionIdleThreshold returns the configured idle-seconds
  * threshold: the presence gate below treats the user as away once
  * idletime.Seconds() reaches this, even while the window is focused --
@@ -132,21 +118,6 @@ export function GetAttentionIdleThreshold(): $CancellablePromise<number> {
  */
 export function GetBuildInfo(): $CancellablePromise<$models.BuildInfo> {
     return $Call.ByID(2673585232);
-}
-
-/**
- * GetForwardApprovalsEnabled reports whether the forward is armed.
- */
-export function GetForwardApprovalsEnabled(): $CancellablePromise<boolean> {
-    return $Call.ByID(3422319504);
-}
-
-/**
- * GetForwardApprovalsRequestID returns the configured HTTPRequest's ID
- * (empty means unconfigured).
- */
-export function GetForwardApprovalsRequestID(): $CancellablePromise<string> {
-    return $Call.ByID(1205123449);
 }
 
 /**
@@ -336,24 +307,6 @@ export function RestoreSummonHotkey(): $CancellablePromise<void> {
  */
 export function SetAttentionIdleThreshold(seconds: number): $CancellablePromise<void> {
     return $Call.ByID(454955395, seconds);
-}
-
-/**
- * SetForwardApprovalsEnabled persists the toggle, returning the persist
- * error (same reasoning as every other settings toggle here: a save
- * that silently didn't take effect leaves the user believing the
- * forward is armed when it isn't, or vice versa).
- */
-export function SetForwardApprovalsEnabled(enabled: boolean): $CancellablePromise<void> {
-    return $Call.ByID(1952175932, enabled);
-}
-
-/**
- * SetForwardApprovalsRequestID persists which Configure-authored
- * HTTPRequest to forward pending-approval events through.
- */
-export function SetForwardApprovalsRequestID(id: string): $CancellablePromise<void> {
-    return $Call.ByID(60838469, id);
 }
 
 /**
