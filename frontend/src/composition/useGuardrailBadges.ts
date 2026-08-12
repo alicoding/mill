@@ -1,4 +1,5 @@
 import { useCallback, useEffect } from 'react'
+import { Events } from '@wailsio/runtime'
 import { GuardrailService } from '../shared/bindings'
 import type { CanvasNode, CanvasState } from './canvasStore'
 
@@ -36,6 +37,19 @@ export function useGuardrailBadges(workflowId: string | undefined, nodes: Canvas
     refresh()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [workflowId, nodeFingerprint])
+
+  // goal 0017 P2: a policy guardrail rule changed in Configure >
+  // Guardrails (another tab, or an external MCP author once that
+  // surface exists) must re-run this canvas's verdicts too -- the
+  // nodeFingerprint-keyed effect above only notices a NODE edit, never
+  // a rule edit elsewhere, so a canvas left open could show a stale
+  // ask/deny badge after its governing rule changed underneath it.
+  useEffect(() => {
+    return Events.On('mill-data-changed', (evt) => {
+      const entity = (evt.data as { entity?: string })?.entity
+      if (entity === 'guardrail-rule') refresh()
+    })
+  }, [refresh])
 
   return refresh
 }

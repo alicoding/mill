@@ -7,6 +7,7 @@ import (
 
 	"github.com/alicoding/mill/internal/domain/composition"
 	"github.com/alicoding/mill/internal/domain/decision"
+	"github.com/alicoding/mill/internal/services/dataevent"
 	"github.com/alicoding/mill/internal/services/seeding"
 )
 
@@ -71,6 +72,7 @@ func (c *ConfigureService) CreateDecision(label string, category decision.Catego
 		c.mu.Unlock()
 		return decision.Decision{}, fmt.Errorf("save decision: %w", err)
 	}
+	dataevent.Emit("decision", d.ID) // goal 0017: live-sync every open surface
 	return d, nil
 }
 
@@ -143,6 +145,7 @@ func (c *ConfigureService) UpdateDecision(id, label string, category decision.Ca
 		c.mu.Unlock()
 		return decision.Decision{}, fmt.Errorf("save decision: %w", err)
 	}
+	dataevent.Emit("decision", d.ID) // goal 0017: live-sync every open surface
 	return d, nil
 }
 
@@ -182,6 +185,7 @@ func (c *ConfigureService) DeleteDecision(id string) error {
 		c.mu.Unlock()
 		return fmt.Errorf("save decision deletion: %w", err)
 	}
+	dataevent.Emit("decision", id) // goal 0017: live-sync every open surface
 	return nil
 }
 

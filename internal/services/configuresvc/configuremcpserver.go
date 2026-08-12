@@ -8,6 +8,7 @@ import (
 	"github.com/alicoding/mill/internal/adapters/mcpclient"
 	"github.com/alicoding/mill/internal/domain/composition"
 	"github.com/alicoding/mill/internal/domain/mcpserver"
+	"github.com/alicoding/mill/internal/services/dataevent"
 	"github.com/alicoding/mill/internal/services/seeding"
 )
 
@@ -64,6 +65,7 @@ func (c *ConfigureService) CreateMCPServer(label, command string, args []string)
 		c.mu.Unlock()
 		return mcpserver.MCPServer{}, fmt.Errorf("save MCP server: %w", err)
 	}
+	dataevent.Emit("mcpserver", s.ID) // goal 0017: live-sync every open surface
 	return s, nil
 }
 
@@ -104,6 +106,7 @@ func (c *ConfigureService) UpdateMCPServer(id, label, command string, args []str
 		c.mu.Unlock()
 		return mcpserver.MCPServer{}, fmt.Errorf("save MCP server: %w", err)
 	}
+	dataevent.Emit("mcpserver", s.ID) // goal 0017: live-sync every open surface
 	return s, nil
 }
 
@@ -144,6 +147,7 @@ func (c *ConfigureService) DeleteMCPServer(id string) error {
 		c.mu.Unlock()
 		return fmt.Errorf("save MCP server deletion: %w", err)
 	}
+	dataevent.Emit("mcpserver", id) // goal 0017: live-sync every open surface
 	return nil
 }
 

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/alicoding/mill/internal/services/dataevent"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
@@ -143,7 +144,9 @@ func (m *MillMCPService) registerTools() {
 		if err != nil {
 			return "", err
 		}
-		emitDataChanged("workflow", wf.ID)
+		// ImportWorkflow delegates to CreateWorkflow (compositionsvc),
+		// which already emits "workflow" (goal 0017) -- no manual emit
+		// needed here.
 		return jsonText(importToolResult{ID: wf.ID, Label: wf.Label})
 	})
 	mcp.AddTool(m.server, &mcp.Tool{
@@ -174,7 +177,8 @@ func (m *MillMCPService) registerTools() {
 		if err != nil {
 			return "", err
 		}
-		emitDataChanged("request", r.ID)
+		// ImportHTTPRequest delegates to CreateHTTPRequest (configuresvc),
+		// which already emits "request" (goal 0017).
 		return jsonText(importToolResult{ID: r.ID, Label: r.Label})
 	})
 	mcp.AddTool(m.server, &mcp.Tool{
@@ -204,7 +208,11 @@ func (m *MillMCPService) registerTools() {
 		if err != nil {
 			return "", err
 		}
-		emitDataChanged("list", l.ID)
+		// Kept explicit (unlike the other import_* tools above): ImportList
+		// does a SECOND mutation after CreateList (attaching rows), which
+		// CreateList's own internal emit can't see -- this is the one that
+		// actually reflects rows being present.
+		dataevent.Emit("list", l.ID)
 		return jsonText(importToolResult{ID: l.ID, Label: l.Label})
 	})
 	mcp.AddTool(m.server, &mcp.Tool{
@@ -233,7 +241,8 @@ func (m *MillMCPService) registerTools() {
 		if err != nil {
 			return "", err
 		}
-		emitDataChanged("mcpserver", s.ID)
+		// ImportMCPServer delegates to CreateMCPServer (configuresvc),
+		// which already emits "mcpserver" (goal 0017).
 		return jsonText(importToolResult{ID: s.ID, Label: s.Label})
 	})
 	mcp.AddTool(m.server, &mcp.Tool{

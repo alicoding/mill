@@ -10,6 +10,7 @@ import (
 
 	"github.com/alicoding/mill/internal/adapters/settings"
 	"github.com/alicoding/mill/internal/domain/composition"
+	"github.com/alicoding/mill/internal/services/dataevent"
 	"github.com/alicoding/mill/internal/services/seeding"
 )
 
@@ -185,6 +186,11 @@ func (c *CompositionService) CreateWorkflow(label, description string, nodes []c
 		return composition.Workflow{}, fmt.Errorf("save workflow: %w", err)
 	}
 	c.notifySyncer()
+	// Live-sync (goal 0017): a direct UI create must reach every other
+	// open surface exactly like an MCP-authored one already does
+	// (docs/adr/0025) -- ImportWorkflow delegates here, so this single
+	// call covers both entry points.
+	dataevent.Emit("workflow", wf.ID)
 	return wf, nil
 }
 
@@ -275,6 +281,7 @@ func (c *CompositionService) UpdateWorkflow(id, label, description string, nodes
 		return composition.Workflow{}, fmt.Errorf("save workflow: %w", err)
 	}
 	c.notifySyncer()
+	dataevent.Emit("workflow", wf.ID) // goal 0017: live-sync every open surface
 	return wf, nil
 }
 
@@ -330,6 +337,7 @@ func (c *CompositionService) UpdateAttributes(workflowID string, attrs []composi
 		c.mu.Unlock()
 		return composition.Workflow{}, fmt.Errorf("save workflow attributes: %w", err)
 	}
+	dataevent.Emit("workflow", wf.ID) // goal 0017: live-sync every open surface
 	return wf, nil
 }
 
@@ -375,6 +383,7 @@ func (c *CompositionService) DeleteWorkflow(id string) error {
 		return fmt.Errorf("save workflow deletion: %w", err)
 	}
 	c.notifySyncer()
+	dataevent.Emit("workflow", id) // goal 0017: live-sync every open surface
 	return nil
 }
 

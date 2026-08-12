@@ -8,6 +8,7 @@ import (
 	"github.com/alicoding/mill/internal/adapters/shellenv"
 	"github.com/alicoding/mill/internal/domain/composition"
 	"github.com/alicoding/mill/internal/domain/execenv"
+	"github.com/alicoding/mill/internal/services/dataevent"
 	"github.com/alicoding/mill/internal/services/seeding"
 )
 
@@ -81,6 +82,7 @@ func (c *ConfigureService) CreateExecEnv(label string, shell execenv.Shell, prof
 		c.mu.Unlock()
 		return execenv.ExecEnv{}, fmt.Errorf("save execution environment: %w", err)
 	}
+	dataevent.Emit("execenv", e.ID) // goal 0017: live-sync every open surface
 	return e, nil
 }
 
@@ -125,6 +127,7 @@ func (c *ConfigureService) UpdateExecEnv(id, label string, shell execenv.Shell, 
 		c.mu.Unlock()
 		return execenv.ExecEnv{}, fmt.Errorf("save execution environment: %w", err)
 	}
+	dataevent.Emit("execenv", e.ID) // goal 0017: live-sync every open surface
 	return e, nil
 }
 
@@ -165,6 +168,7 @@ func (c *ConfigureService) DeleteExecEnv(id string) error {
 		c.mu.Unlock()
 		return fmt.Errorf("save execution environment deletion: %w", err)
 	}
+	dataevent.Emit("execenv", id) // goal 0017: live-sync every open surface
 	return nil
 }
 
