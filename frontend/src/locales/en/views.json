@@ -1,0 +1,56 @@
+{
+  "settings": {
+    "title": "Settings",
+    "subtitle": "App-level preferences -- not workflow or Configure-authored data (that lives in Composition/Configure), a UI preference persisted locally to this machine.",
+    "loadError": "Couldn't load some settings -- the app may need a restart.",
+    "sections": {
+      "appearance": "Appearance",
+      "general": "General",
+      "keyboardShortcuts": "Keyboard Shortcuts",
+      "globalHotkey": "Global hotkey",
+      "mcpAccess": "MCP access",
+      "notifications": "Notifications",
+      "updates": "Updates"
+    },
+    "appearance": {
+      "themeLabel": "Color theme",
+      "lightLabel": "Light theme",
+      "darkLabel": "Dark theme",
+      "systemLabel": "Match system theme"
+    },
+    "general": {
+      "launchAtLoginLabel": "Launch Mill at login",
+      "launchAtLoginCaption": "Starts Mill automatically when you log in, same as Raycast/Alfred (docs/SPEC.md §3.7).",
+      "errorDevBinary": "Not available in this dev build -- only a built .app bundle can be a login item.",
+      "errorServerMode": "Not available in server mode -- there is no login-item concept without a desktop app to register."
+    },
+    "keyboardShortcuts": {
+      "description": "Every in-window command Mill dispatches (docs/goals/0016-keymap-system.md) -- rebind by clicking a combo and pressing a new one, the same recorder used for a workflow's own trigger hotkey below."
+    },
+    "globalHotkey": {
+      "description": "Opens Mill's Quick Panel from anywhere, like Raycast's ⌥Space or Alfred's own shortcut -- search and run a workflow, or jump into Mill itself, without leaving what you were doing. Press again to dismiss it. Distinct from a specific workflow's own trigger hotkey (set per-workflow on its canvas).",
+      "recording": "Press a combo… (Esc to cancel)",
+      "setShortcut": "Set shortcut",
+      "reservedError": "{{combo}} is reserved by macOS ({{reason}}) — pick another combo",
+      "openAccessibilitySettings": "Open Accessibility Settings"
+    },
+    "mcp": {
+      "allowImportLabel": "Allow MCP clients to import data",
+      "allowImportCaption": "Off by default (docs/adr/0017): when on, an external MCP client connected to Mill's local MCP server can create workflows, integrations, lists, and MCP-server entries via the import tools -- reading/exporting is always allowed and never includes secrets. Applies immediately, no restart.",
+      "askBeforeImportLabel": "Ask me before each MCP import",
+      "askBeforeImportCaption": "On by default (docs/adr/0022): each import parks until you approve it in Mill's window (or times out after 2 minutes, which denies it). Turning this off lets an enabled MCP client import without a per-write click -- enabling writes shouldn't silently mean unattended writes."
+    },
+    "notifications": {
+      "description": "A parked guardrail ask or MCP write notifies you and shows a floating approval prompt (docs/adr/0032, docs/goals/0023) once you're away -- not merely unfocused, but idle past the threshold below, or genuinely unfocused. A present, actively-using-Mill window is never double-noised.",
+      "awayAfterLabel": "Away after (seconds)",
+      "awayAfterCaption": "How long the Mac must sit idle (no keyboard/mouse/trackpad input) while Mill is focused before you're treated as away -- 300s (5 minutes) by default, matching Teams' own away-status default. Losing focus entirely always counts as away regardless of this number.",
+      "alertPermissionNote": "For the notification to alert instead of only appearing quietly in Notification Center, allow it in System Settings → Notifications → Mill → Alerts (docs/goals/0023 item 3) -- Mill requests notification permission on first launch, but macOS still defaults new apps to Banners, which auto-dismiss."
+    },
+    "updates": {
+      "checkButton": "Check for updates",
+      "checking": "Checking…",
+      "updateAvailable": "Update available: v{{version}}",
+      "upToDate": "You're on the latest version."
+    }
+  }
+}
