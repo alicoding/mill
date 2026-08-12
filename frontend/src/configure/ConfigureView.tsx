@@ -22,9 +22,16 @@ import { ConfigureExecEnv } from './ConfigureExecEnv'
 // wrappers, Tabs.tsx) -- every panel stays mounted (a `hidden`
 // attribute toggles, not unmount), so switching tabs never loses
 // in-progress form state in the others.
-function ConfigureView() {
+//
+// initialTab (goal 0015's remainder): QuickPanel's Configure-entity
+// jump rows land here on the specific tab an entity lives in, via
+// App.tsx's `key={view.tab}` forcing a fresh mount (Tabs is
+// uncontrolled -- defaultValue only applies on mount, so an
+// already-open Configure view wouldn't otherwise re-select on a
+// second jump to a different tab).
+function ConfigureView({ initialTab }: { initialTab?: string }) {
   return (
-    <Tabs defaultValue="integration">
+    <Tabs defaultValue={initialTab ?? 'integration'}>
       <TabList aria-label="Configure">
         <TabItem value="integration">Integration</TabItem>
         <TabItem value="lists">Lists</TabItem>

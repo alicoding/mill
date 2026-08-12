@@ -106,6 +106,6 @@ export function isPollStale(
 // rather than a second Intl.RelativeTimeFormat instance.
 export function formatLastChecked(lastPolledAt: string | Date | null | undefined, now: number = Date.now()): string {
   if (!isPollStale(lastPolledAt, now)) return ''
-  const rel = formatUpdated(lastPolledAt as string)
+  const rel = formatUpdated(lastPolledAt as string, now)
   return rel ? `requester last checked ${rel}` : ''
 }
