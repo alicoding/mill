@@ -127,6 +127,26 @@ tasks:
       # always begins from exactly one live instance. `|| true`: a clean
       # start (no orphan) is the normal case, not an error.
       - pkill -f "{{.BIN_DIR}}/{{.APP_NAME}}.dev.app/Contents/MacOS/{{.APP_NAME}}" || true
+      # Same failure mode, the vite side (goal 0029, hit live tonight):
+      # a supervisor killed via SIGHUP can leave the vite dev server
+      # itself still bound to VITE_PORT (strictPort: true in
+      # vite.config.ts), so the NEXT `wails3 dev` fails to bind instead
+      # of just starting -- kill whatever's still listening first.
+      - lsof -ti :{{.VITE_PORT}} | xargs kill -9 2>/dev/null || true
+      # Disk-space warning (goal 0029, hit live tonight): a Go rebuild
+      # can fail or wedge SILENTLY when the disk fills up mid-link, and
+      # the build-identity badge has no way to tell "wedged" apart from
+      # "idle" from the outside -- so warn loudly up front instead.
+      # Non-blocking by design (never refuse to start the dev loop over
+      # this) -- df -Pk's portable single-line-per-filesystem format
+      # avoids the wrapped-output parsing footgun plain `df` has on
+      # long device paths.
+      - |
+        FREE_KB=$(df -Pk . | awk 'NR==2 {print $4}')
+        if [ -n "$FREE_KB" ] && [ "$FREE_KB" -lt 2097152 ] 2>/dev/null; then
+          FREE_GB=$(( FREE_KB / 1024 / 1024 ))
+          echo "⚠️  Disk space low (~${FREE_GB}GB free) -- Go rebuilds can fail or wedge silently, and BuildIdentityBadge's go-stale detection can't tell that apart from a healthy idle watcher. Run 'go clean -cache' to free space."
+        fi
       - wails3 dev -config ./build/config.yml -port {{.VITE_PORT}}
 
   setup:docker:

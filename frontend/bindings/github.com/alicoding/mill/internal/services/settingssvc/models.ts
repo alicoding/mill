@@ -40,6 +40,21 @@ export interface BuildInfo {
      * genuinely knows.
      */
     "Server": boolean;
+
+    /**
+     * BuiltAt is the unix-millis mtime of THIS PROCESS'S OWN executable
+     * file -- when it was actually linked, not when its source was last
+     * committed. Deliberately not vcs.time (goal 0029, dev-liveness
+     * honesty): vcs.time reflects the last COMMIT's timestamp, which
+     * stays frozen across every `wails3 dev` relink of an uncommitted
+     * change (vcs.modified just goes true) -- exactly the case a wedged
+     * or slow rebuild watcher needs distinguished from "healthy." A
+     * binary's own mtime moves on every real relink regardless of git
+     * state, so the frontend can compare it against the newest mtime of
+     * internal/** /*.go (vite's dev-only middleware, vite.config.ts) to
+     * tell "rebuilt after this save" from "still running the old one."
+     */
+    "BuiltAt": number;
 }
 
 /**

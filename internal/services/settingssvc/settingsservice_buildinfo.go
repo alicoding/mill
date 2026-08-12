@@ -1,8 +1,10 @@
 package settingssvc
 
 import (
-	"github.com/wailsapp/wails/v3/pkg/application"
+	"os"
 	"runtime/debug"
+
+	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
 // BuildInfo is what's actually running, not what the source tree looks
@@ -34,6 +36,18 @@ type BuildInfo struct {
 	// split never actually worked. The build tag is the one place that
 	// genuinely knows.
 	Server bool
+	// BuiltAt is the unix-millis mtime of THIS PROCESS'S OWN executable
+	// file -- when it was actually linked, not when its source was last
+	// committed. Deliberately not vcs.time (goal 0029, dev-liveness
+	// honesty): vcs.time reflects the last COMMIT's timestamp, which
+	// stays frozen across every `wails3 dev` relink of an uncommitted
+	// change (vcs.modified just goes true) -- exactly the case a wedged
+	// or slow rebuild watcher needs distinguished from "healthy." A
+	// binary's own mtime moves on every real relink regardless of git
+	// state, so the frontend can compare it against the newest mtime of
+	// internal/**/*.go (vite's dev-only middleware, vite.config.ts) to
+	// tell "rebuilt after this save" from "still running the old one."
+	BuiltAt int64
 }
 
 // readBuildInfo extracts the vcs.* build settings Go's own toolchain
@@ -61,6 +75,11 @@ func readBuildInfo() BuildInfo {
 		}
 	}
 	bi.Server = isServerBuild
+	if exe, err := os.Executable(); err == nil {
+		if st, err := os.Stat(exe); err == nil {
+			bi.BuiltAt = st.ModTime().UnixMilli()
+		}
+	}
 	return bi
 }
 
