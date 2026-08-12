@@ -44,7 +44,12 @@ func newListLookupSeedHarness(t *testing.T) (*ExecutionService, string) {
 	composition.SetListLookup(func(id string) (composition.ResolvedList, error) {
 		for _, l := range list.BuiltIn() {
 			if l.ID == id {
-				return composition.ResolvedList{Entries: l.Entries}, nil
+				// list.DeriveEntries (goal 0011): the seeded List is
+				// now typed (code/name columns), same derived
+				// first-two-columns view ConfigureService.resolveList
+				// uses in production -- list-lookup's own execution
+				// logic needed zero changes.
+				return composition.ResolvedList{Entries: list.DeriveEntries(l), Columns: l.Columns, Rows: l.Rows}, nil
 			}
 		}
 		return composition.ResolvedList{}, fmt.Errorf("no list with id %q", id)

@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/alicoding/mill/internal/domain/httprequest"
+	"github.com/alicoding/mill/internal/domain/typedfield"
 )
 
 func TestExportImportHTTPRequest_RoundTrips_NeverCarriesASecret(t *testing.T) {
@@ -56,11 +57,22 @@ func TestExportImportHTTPRequest_RoundTrips_NeverCarriesASecret(t *testing.T) {
 	}
 }
 
+func testListColumns() []typedfield.Field {
+	return []typedfield.Field{
+		{Key: "a", Label: "A", Type: typedfield.TypeText},
+		{Key: "b", Label: "B", Type: typedfield.TypeText},
+	}
+}
+
 func TestExportImportList_RoundTrips(t *testing.T) {
 	cfg, _ := newTestConfigureService(t)
-	created, err := cfg.CreateList("My list", map[string]string{"a": "1", "b": "2"})
+	created, err := cfg.CreateList("My list", "a list", testListColumns())
 	if err != nil {
 		t.Fatalf("CreateList: %v", err)
+	}
+	created, err = cfg.AddListRow(created.ID, map[string]string{"a": "1", "b": "2"})
+	if err != nil {
+		t.Fatalf("AddListRow: %v", err)
 	}
 
 	exported, err := cfg.ExportList(created.ID)
@@ -75,17 +87,44 @@ func TestExportImportList_RoundTrips(t *testing.T) {
 	if imported.ID == created.ID {
 		t.Error("ImportList reused the original ID -- should always mint a new one")
 	}
-	if imported.Label != created.Label {
-		t.Errorf("imported.Label = %q, want %q", imported.Label, created.Label)
+	if imported.Label != created.Label || imported.Description != created.Description {
+		t.Errorf("imported = %+v, want matching Label/Description from %+v", imported, created)
 	}
-	if len(imported.Entries) != 2 || imported.Entries["a"] != "1" || imported.Entries["b"] != "2" {
-		t.Errorf("imported.Entries = %+v, want a copy of %+v", imported.Entries, created.Entries)
+	if len(imported.Columns) != 2 {
+		t.Errorf("imported.Columns = %+v, want 2 columns", imported.Columns)
+	}
+	if len(imported.Rows) != 1 || imported.Rows[0].Values["a"] != "1" || imported.Rows[0].Values["b"] != "2" {
+		t.Errorf("imported.Rows = %+v, want a copy of the one created row", imported.Rows)
+	}
+}
+
+func TestImportList_LegacyEntriesShape_Migrates(t *testing.T) {
+	cfg, _ := newTestConfigureService(t)
+	// An old export document written before goal 0011 -- no
+	// columns/rows, just the flat key/value shape.
+	legacy := `{"label":"Old list","entries":{"US":"United States","CA":"Canada"}}`
+	imported, err := cfg.ImportList(legacy)
+	if err != nil {
+		t.Fatalf("ImportList(legacy shape): %v", err)
+	}
+	if len(imported.Columns) != 2 || imported.Columns[0].Key != "key" || imported.Columns[1].Key != "value" {
+		t.Fatalf("imported.Columns = %+v, want synthesized [key, value]", imported.Columns)
+	}
+	if len(imported.Rows) != 2 {
+		t.Fatalf("imported.Rows = %+v, want 2 rows", imported.Rows)
+	}
+	entries := map[string]string{}
+	for _, r := range imported.Rows {
+		entries[r.Values["key"]] = r.Values["value"]
+	}
+	if entries["US"] != "United States" || entries["CA"] != "Canada" {
+		t.Errorf("imported entries = %+v, want the legacy key/value pairs preserved", entries)
 	}
 }
 
 func TestExportList_IsDeterministic(t *testing.T) {
 	cfg, _ := newTestConfigureService(t)
-	created, err := cfg.CreateList("My list", map[string]string{"a": "1", "b": "2", "c": "3"})
+	created, err := cfg.CreateList("My list", "", testListColumns())
 	if err != nil {
 		t.Fatalf("CreateList: %v", err)
 	}

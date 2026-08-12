@@ -7,6 +7,8 @@ import (
 	"github.com/alicoding/mill/internal/adapters/credential"
 	"github.com/alicoding/mill/internal/domain/composition"
 	"github.com/alicoding/mill/internal/domain/httprequest"
+	"github.com/alicoding/mill/internal/domain/list"
+	"github.com/alicoding/mill/internal/domain/typedfield"
 	"github.com/alicoding/mill/internal/services/compositionsvc"
 	"github.com/alicoding/mill/internal/services/servicetest"
 	"github.com/zalando/go-keyring"
@@ -85,9 +87,16 @@ func TestRestore_MigratesLegacyConnectorsKey(t *testing.T) {
 	}
 }
 
+func regionCodeColumns() []typedfield.Field {
+	return []typedfield.Field{
+		{Key: "code", Label: "Code", Type: typedfield.TypeText},
+		{Key: "name", Label: "Name", Type: typedfield.TypeText},
+	}
+}
+
 func TestCreateList_ValidatesAndPersists(t *testing.T) {
 	cfg, _ := newTestConfigureService(t)
-	l, err := cfg.CreateList("Region codes", map[string]string{"US": "United States"})
+	l, err := cfg.CreateList("Region codes", "", regionCodeColumns())
 	if err != nil {
 		t.Fatalf("CreateList returned error: %v", err)
 	}
@@ -99,14 +108,14 @@ func TestCreateList_ValidatesAndPersists(t *testing.T) {
 
 func TestUpdateList_UnknownID_Rejected(t *testing.T) {
 	cfg, _ := newTestConfigureService(t)
-	if _, err := cfg.UpdateList("does-not-exist", "New label", nil); err == nil {
+	if _, err := cfg.UpdateList("does-not-exist", "New label", "", nil); err == nil {
 		t.Fatal("UpdateList with an unknown id returned nil error, want an error")
 	}
 }
 
 func TestDeleteList_RemovesIt(t *testing.T) {
 	cfg, _ := newTestConfigureService(t)
-	l, err := cfg.CreateList("Region codes", nil)
+	l, err := cfg.CreateList("Region codes", "", nil)
 	if err != nil {
 		t.Fatalf("CreateList returned error: %v", err)
 	}
@@ -132,7 +141,7 @@ func TestCreateList_PersistFailure_ReturnsErrorAndDoesNotPhantomSave(t *testing.
 	cfg.lists = nil
 
 	store.SetErr = errFakeConfigurePersist
-	if _, err := cfg.CreateList("Should not stick", nil); err == nil {
+	if _, err := cfg.CreateList("Should not stick", "", nil); err == nil {
 		t.Fatal("CreateList() with a failing store: want error, got nil")
 	}
 
@@ -148,7 +157,7 @@ func TestDeleteList_PersistFailure_ReturnsErrorAndRestoresIt(t *testing.T) {
 	cfg := NewConfigureService(store, comp, credential.New())
 	cfg.lists = nil
 
-	l, err := cfg.CreateList("Should survive the failed delete", nil)
+	l, err := cfg.CreateList("Should survive the failed delete", "", nil)
 	if err != nil {
 		t.Fatalf("CreateList: %v", err)
 	}
@@ -167,9 +176,12 @@ func TestDeleteList_PersistFailure_ReturnsErrorAndRestoresIt(t *testing.T) {
 
 func TestResolveList_ReturnsEntries(t *testing.T) {
 	cfg, _ := newTestConfigureService(t)
-	l, err := cfg.CreateList("Region codes", map[string]string{"US": "United States"})
+	l, err := cfg.CreateList("Region codes", "", regionCodeColumns())
 	if err != nil {
 		t.Fatalf("CreateList returned error: %v", err)
+	}
+	if _, err := cfg.AddListRow(l.ID, map[string]string{"code": "US", "name": "United States"}); err != nil {
+		t.Fatalf("AddListRow returned error: %v", err)
 	}
 	rl, err := cfg.resolveList(l.ID)
 	if err != nil {
@@ -177,6 +189,39 @@ func TestResolveList_ReturnsEntries(t *testing.T) {
 	}
 	if rl.Entries["US"] != "United States" {
 		t.Errorf("resolveList Entries = %+v, want US -> United States", rl.Entries)
+	}
+}
+
+func TestAddListRow_UpdateListRow_DeleteListRow(t *testing.T) {
+	cfg, _ := newTestConfigureService(t)
+	l, err := cfg.CreateList("Region codes", "", regionCodeColumns())
+	if err != nil {
+		t.Fatalf("CreateList returned error: %v", err)
+	}
+
+	l, err = cfg.AddListRow(l.ID, map[string]string{"code": "US", "name": "United States"})
+	if err != nil {
+		t.Fatalf("AddListRow returned error: %v", err)
+	}
+	if len(l.Rows) != 1 || l.Rows[0].Status != list.RowActive {
+		t.Fatalf("after AddListRow, Rows = %+v, want one Active row", l.Rows)
+	}
+	rowID := l.Rows[0].ID
+
+	l, err = cfg.UpdateListRow(l.ID, rowID, map[string]string{"code": "US", "name": "USA"}, list.RowExpired)
+	if err != nil {
+		t.Fatalf("UpdateListRow returned error: %v", err)
+	}
+	if l.Rows[0].Values["name"] != "USA" || l.Rows[0].Status != list.RowExpired {
+		t.Fatalf("after UpdateListRow, row = %+v, want name=USA status=Expired", l.Rows[0])
+	}
+
+	l, err = cfg.DeleteListRow(l.ID, rowID)
+	if err != nil {
+		t.Fatalf("DeleteListRow returned error: %v", err)
+	}
+	if len(l.Rows) != 0 {
+		t.Errorf("after DeleteListRow, Rows = %+v, want empty", l.Rows)
 	}
 }
 
