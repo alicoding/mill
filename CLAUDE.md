@@ -50,7 +50,18 @@ above), or is a below-goal-granularity fix riding the next PR with no
 goal file. No separate triage step or log — the sentence in the
 response IS the record. (A `UserPromptSubmit` hook in
 `.claude/settings.json` re-surfaces this just-in-time; kanban
-classes-of-service precedent, researched 2026-08-11.) A delivered
+classes-of-service precedent, researched 2026-08-11.)
+
+**With a ratified queue, sessions self-drive — owner-directed
+2026-08-11: "keep the work going without waiting for me."** Finish a
+goal (or hit a real block), pull the next queue item, delegate per the
+model-economics rules, continue — never idle awaiting a go-ahead the
+queue already gave. Stop for the owner ONLY when: a decision has no
+defensible industry precedent to research against (pure taste/product
+calls), it's a SPEC `OPEN` item (the existing surfacing rule), or
+it's destructive/outward-facing beyond the already-granted defaults
+(commits/pushes-per-ADR-0034 are granted; force-push/history rewrites
+are not). Owner check-ins are progress reports, not permission gates. A delivered
 goal's file moves to `docs/goals/archive/` in the same commit that
 completes it. Adopted as a pattern, not a tool — researched
 (spec-kit/task-master/OpenSpec/BMAD all rejected with reasons recorded
