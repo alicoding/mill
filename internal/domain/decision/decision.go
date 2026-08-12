@@ -16,6 +16,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/alicoding/mill/internal/domain/seedorigin"
 	"github.com/alicoding/mill/internal/domain/typedfield"
 )
 
@@ -94,6 +95,10 @@ type Decision struct {
 	// wire. Zero value means pre-timestamp data -- migration-free.
 	CreatedAt time.Time
 	UpdatedAt time.Time
+	// Seed is this decision's seed provenance (docs/goals/0037) --
+	// zero value means "not of seed origin," migration-free. See
+	// composition.Workflow.Seed's doc comment for the full reasoning.
+	Seed seedorigin.Origin
 }
 
 // legacyOutputField mirrors the pre-ADR-0029 OutputField's own wire

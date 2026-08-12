@@ -3,6 +3,9 @@
 
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
+import * as seedorigin$0 from "../seedorigin/models.js";
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: Unused imports
 import * as typedfield$0 from "../typedfield/models.js";
 
 /**
@@ -61,6 +64,13 @@ export interface Decision {
      */
     "CreatedAt": string;
     "UpdatedAt": string;
+
+    /**
+     * Seed is this decision's seed provenance (docs/goals/0037) --
+     * zero value means "not of seed origin," migration-free. See
+     * composition.Workflow.Seed's doc comment for the full reasoning.
+     */
+    "Seed": seedorigin$0.Origin;
 }
 
 /**

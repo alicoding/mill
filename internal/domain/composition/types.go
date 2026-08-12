@@ -32,6 +32,7 @@ import (
 	"time"
 
 	"github.com/alicoding/mill/internal/domain/guardrail"
+	"github.com/alicoding/mill/internal/domain/seedorigin"
 	"github.com/alicoding/mill/internal/domain/typedfield"
 )
 
@@ -235,6 +236,14 @@ type Workflow struct {
 	Disabled         bool
 	PublishedVersion int
 	Versions         []WorkflowVersion
+	// Seed is this workflow's seed provenance (docs/goals/0037):
+	// zero value (SeedRevision 0) means "not of seed origin" --
+	// migration-free for every workflow persisted before this field
+	// existed, same discipline Disabled/PublishedVersion's own doc
+	// comments already apply. Platform-owned, stamped only by
+	// CompositionService's reconcile/reset/mutation-choke-point logic,
+	// never accepted from the wire.
+	Seed seedorigin.Origin
 }
 
 // ExecContext threads through a workflow's execution. Payload is the

@@ -1,0 +1,122 @@
+{
+  "decision:example-approve-decision": {
+    "seedRevision": 1,
+    "fingerprint": "b57c1ca6af05c2ecb257f657894a908759bd3de84bed6294b7ea35c958377924"
+  },
+  "decision:example-deny-decision": {
+    "seedRevision": 1,
+    "fingerprint": "270acbd40d41b6f82bcd6e4fa92c1de8c9a6b8d80be72d9dd7d842b9eafe6608"
+  },
+  "decision:example-manual-review-decision": {
+    "seedRevision": 1,
+    "fingerprint": "1e3a73d9e169872ce5d509c99e5e538acb6bff763c13c70deb02cdebb0665196"
+  },
+  "execenv:example-safe-sandbox-execenv": {
+    "seedRevision": 1,
+    "fingerprint": "aa9a964c09faafbd8e7ebbeff3e75aa438878bdb9e1207c4dcd5c0bbba8de0bc"
+  },
+  "list:example-country-codes-list": {
+    "seedRevision": 1,
+    "fingerprint": "7a030353a95d25714b690416ac0ac90d9d37e7b9a8fc88227b3265f56bfd1eae"
+  },
+  "mcpserver:example-reference-mcpserver": {
+    "seedRevision": 1,
+    "fingerprint": "039af69260ea3c243cabc1f58ef0fb40524dbd4743b5c9f19e8224d9b1796549"
+  },
+  "request:example-apikey-httpbin": {
+    "seedRevision": 1,
+    "fingerprint": "78f0254ea9bf750793fcf49eb23979defa44ae9e5387d246d18d819dd78f986e"
+  },
+  "request:example-bearer-httpbin": {
+    "seedRevision": 1,
+    "fingerprint": "ecfac51fff4f10c02f71beb592f143b8b34c400388728daa1593aa919f991bc2"
+  },
+  "request:example-hmac-httpbin": {
+    "seedRevision": 1,
+    "fingerprint": "cdbb866e709ee07ec3d821141d1a1c6f89e1e2a86b31b0f382eb3eccec2baf68"
+  },
+  "request:example-none-httpbin": {
+    "seedRevision": 1,
+    "fingerprint": "afbadde9cf95232f3a2521b7e40fd9fe6740e1dbae3df8a598c74beb26a584cf"
+  },
+  "request:example-oauth1-postman-echo": {
+    "seedRevision": 1,
+    "fingerprint": "15ab86dd91d184008729bc181a80d7c3efe89572141b7c3d3455891bd4d8cb6a"
+  },
+  "request:example-oauth2-spotify": {
+    "seedRevision": 1,
+    "fingerprint": "0c86b49dcaae77b60f050a7bb839aafc118f6af7b10897bc12657631c690359d"
+  },
+  "request:example-queryparam-httpbin": {
+    "seedRevision": 1,
+    "fingerprint": "d9e35d3d3d3bcf5bbb3f11775b82255ca335462c3854b5f1dffa5012707a4f61"
+  },
+  "workflow:clipboard-html-to-markdown-workflow": {
+    "seedRevision": 1,
+    "fingerprint": "7a2c44dba4295f3d98f4e1b63d70d798e8c666edb156cc430dea368d21f76924"
+  },
+  "workflow:example-branch-to-decision-workflow": {
+    "seedRevision": 1,
+    "fingerprint": "b2b98d1f707356dc7fe08b3c291775524b4402ebf3ba27ecab02fe982fec8350"
+  },
+  "workflow:example-child-echo-workflow": {
+    "seedRevision": 1,
+    "fingerprint": "8783ff1dc68670690c3f78bba078e1d1af15916425b963de0600ddbb45b46aa7"
+  },
+  "workflow:example-clipboard-inspector-workflow": {
+    "seedRevision": 1,
+    "fingerprint": "a8109f0d40a89c292315760ca9f67779afb8680eaee4f669a79d633c43ee52d6"
+  },
+  "workflow:example-codeexec-workflow": {
+    "seedRevision": 1,
+    "fingerprint": "8cd510ceb06b99a6f1cc8d3ff3e3fa78241ee95091b3f1ba3ee1fd907d721be6"
+  },
+  "workflow:example-decision-with-review-workflow": {
+    "seedRevision": 1,
+    "fingerprint": "0ca49125b648758df1a56ece7d063d1c168a166f641bfe7a3f14244d8807e61a"
+  },
+  "workflow:example-disabled-filesystem-watch-workflow": {
+    "seedRevision": 1,
+    "fingerprint": "be1067decf106d413cccdfe29e36c62d74470562efcc849b2fb4249750af6f5d"
+  },
+  "workflow:example-disabled-schedule-workflow": {
+    "seedRevision": 1,
+    "fingerprint": "4bfc1dd32dc61be6be162756e9138a3729ff207a2454792a28ab5754aa57528d"
+  },
+  "workflow:example-forward-approvals-workflow": {
+    "seedRevision": 1,
+    "fingerprint": "15d99a91b5b2834e1cc51c6eb1ae613ee427703f2853111d5af0f62835e89a84"
+  },
+  "workflow:example-guarded-http-workflow": {
+    "seedRevision": 1,
+    "fingerprint": "4053016b48638bded03d850beb6309062b50be6c46047b0ff3628069c1924c79"
+  },
+  "workflow:example-list-lookup-workflow": {
+    "seedRevision": 1,
+    "fingerprint": "60ae49d91e011e68e9123af6319f2b9bca7f30fc3beb08aae06ca0283ea500a9"
+  },
+  "workflow:example-list-search-workflow": {
+    "seedRevision": 1,
+    "fingerprint": "73ede3f472f25a3f5bc26546e5ea00c93a58c9edcd32683d04b1044d6e543d25"
+  },
+  "workflow:example-mcp-echo-workflow": {
+    "seedRevision": 1,
+    "fingerprint": "9ca9adb3b07319884429eca40496fd03370f95536c17a9f55fdc3b719df4c1d1"
+  },
+  "workflow:example-parent-workflow": {
+    "seedRevision": 1,
+    "fingerprint": "c81feca8cf0d9f6eb5a08ebdaf2d163600f463bb41e5633cb8313e1578d0951d"
+  },
+  "workflow:example-review-workflow": {
+    "seedRevision": 1,
+    "fingerprint": "ca317dfd828ebc8691990404a77dd8ac7e50983dfbe72be93cadc97fce519b55"
+  },
+  "workflow:example-saved-page-to-markdown-workflow": {
+    "seedRevision": 1,
+    "fingerprint": "62dbe4acad765f963bd23f41ee5965792a61668f68df432a40b9878ebba01b94"
+  },
+  "workflow:load-sample-html-workflow": {
+    "seedRevision": 1,
+    "fingerprint": "0f3d7b07d5e264f79b04f0c2a4603f83d4cca2ff07819a803e8039f69d1d1140"
+  }
+}

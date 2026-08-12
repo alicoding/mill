@@ -14,6 +14,8 @@ import { InventoryList, type InventoryItem } from '../shared/InventoryList'
 import { ENTITY_ICON } from '../shared/entityIcons'
 import { formatUpdated, sortByUpdatedDesc } from '../shared/inventorySort'
 import { useConfirmDelete } from '../shared/useConfirmDelete'
+import { describeSeedReset } from '../shared/seedLifecycle'
+import { RestoreExamplesButton } from '../shared/RestoreExamplesButton'
 import styles from '../shared/ListCard.module.css'
 import PageContainer from '../shared/PageContainer'
 
@@ -38,9 +40,19 @@ export function ConfigureRequests() {
   const [importError, setImportError] = useState<string | null>(null)
   const importInputRef = useRef<HTMLInputElement>(null)
   const [viewMode, setViewMode] = useViewMode('mill-requests-view-mode')
+  // Seed lifecycle (docs/goals/0037) -- see CompositionView.tsx's
+  // identical state for the full reasoning.
+  const [seedRevisions, setSeedRevisions] = useState<Record<string, number | undefined>>({})
+  const [restorable, setRestorable] = useState<HTTPRequest[]>([])
+
+  const refreshSeedLifecycle = () => {
+    ConfigureService.SeedRevisions().then((m) => setSeedRevisions(m ?? {})).catch(console.error)
+    ConfigureService.RestorableHTTPRequests().then((r) => setRestorable(r ?? [])).catch(console.error)
+  }
 
   useEffect(() => {
     void refreshRequests()
+    refreshSeedLifecycle()
   }, [])
 
   // Never carries a secret -- ExportHTTPRequest's own contract
@@ -67,7 +79,25 @@ export function ConfigureRequests() {
   }
 
   const remove = (id: string) => {
-    ConfigureService.DeleteHTTPRequest(id).then(() => refreshRequests()).catch(console.error)
+    ConfigureService.DeleteHTTPRequest(id).then(() => {
+      void refreshRequests()
+      refreshSeedLifecycle()
+    }).catch(console.error)
+  }
+
+  // Reset-to-shipped-example / restore-deleted-example (docs/goals/0037
+  // items 4/5).
+  const resetToSeed = (id: string) => {
+    ConfigureService.ResetHTTPRequestToSeed(id).then(() => {
+      void refreshRequests()
+      refreshSeedLifecycle()
+    }).catch((err) => setImportError(String(err)))
+  }
+  const restoreExample = (id: string) => {
+    ConfigureService.RestoreHTTPRequest(id).then(() => {
+      void refreshRequests()
+      refreshSeedLifecycle()
+    }).catch((err) => setImportError(String(err)))
   }
 
   // Table-view direct-wiring half of the Button-semantics convention
@@ -109,34 +139,41 @@ export function ConfigureRequests() {
   // same order (docs/SPEC.md §3.8's InventoryList entry).
   const sortedRequests = useMemo(() => sortByUpdatedDesc(requests ?? [], (r) => r.UpdatedAt), [requests])
 
-  const requestItems: InventoryItem[] = sortedRequests.map((r) => ({
-    id: r.ID,
-    entity: 'request',
-    icon: ENTITY_ICON.request,
-    label: r.Label,
-    updatedLabel: formatUpdated(r.UpdatedAt),
-    labelBadges: (
-      <Stack direction="horizontal" gap="condensed" align="center">
-        <Label variant="secondary" size="small">{AUTH_LABEL[r.AuthType] ?? r.AuthType}</Label>
-        {/* No !r.BuiltIn guard on Delete -- a seeded example is ordinary
-            and fully editable/deletable (docs/SPEC.md §2.2's Update
-            note). */}
-        {r.BuiltIn && <Label variant="secondary" size="small">built-in</Label>}
-      </Stack>
-    ),
-    description: [r.BaseURL, r.Description].filter((s) => s && s.trim() !== '').join(' · '),
-    onOpen: () => openWorkTab({ kind: 'request-view', requestId: r.ID }),
-    menuActions: [
-      { label: 'Edit', onClick: () => openWorkTab({ kind: 'request-edit', requestId: r.ID }) },
-      { label: 'Export', onClick: () => exportRequest(r.ID, r.Label) },
-      {
-        label: 'Delete',
-        onClick: () => remove(r.ID),
-        danger: true,
-        confirm: { title: 'Delete integration?', body: `This permanently deletes "${r.Label}". This cannot be undone.` },
-      },
-    ],
-  }))
+  const requestItems: InventoryItem[] = sortedRequests.map((r) => {
+    const seedReset = describeSeedReset(r.Seed, seedRevisions[r.ID] ?? r.Seed.SeedRevision)
+    return {
+      id: r.ID,
+      entity: 'request',
+      icon: ENTITY_ICON.request,
+      label: r.Label,
+      updatedLabel: formatUpdated(r.UpdatedAt),
+      labelBadges: (
+        <Stack direction="horizontal" gap="condensed" align="center">
+          <Label variant="secondary" size="small">{AUTH_LABEL[r.AuthType] ?? r.AuthType}</Label>
+          {/* No !r.BuiltIn guard on Delete -- a seeded example is ordinary
+              and fully editable/deletable (docs/SPEC.md §2.2's Update
+              note). */}
+          {r.BuiltIn && <Label variant="secondary" size="small">built-in</Label>}
+        </Stack>
+      ),
+      description: [r.BaseURL, r.Description].filter((s) => s && s.trim() !== '').join(' · '),
+      onOpen: () => openWorkTab({ kind: 'request-view', requestId: r.ID }),
+      menuActions: [
+        { label: 'Edit', onClick: () => openWorkTab({ kind: 'request-edit', requestId: r.ID }) },
+        { label: 'Export', onClick: () => exportRequest(r.ID, r.Label) },
+        // Reset-to-shipped-example (docs/goals/0037 item 4) -- hidden
+        // (not shown-disabled) when already current, same reasoning
+        // CompositionView.tsx's identical wiring documents.
+        ...(r.BuiltIn && !seedReset.disabled ? [{ label: seedReset.label, onClick: () => resetToSeed(r.ID) }] : []),
+        {
+          label: 'Delete',
+          onClick: () => remove(r.ID),
+          danger: true,
+          confirm: { title: 'Delete integration?', body: `This permanently deletes "${r.Label}". This cannot be undone.` },
+        },
+      ],
+    }
+  })
 
   return (
     <PageContainer data-testid="configure-requests">
@@ -155,6 +192,7 @@ export function ConfigureRequests() {
           <Button leadingVisual={UploadIcon} size="small" onClick={openImportPicker} data-testid="import-request">
             Import
           </Button>
+          <RestoreExamplesButton items={restorable} onRestore={restoreExample} />
           {newIntegrationMenu}
         </Stack>
       </Stack>

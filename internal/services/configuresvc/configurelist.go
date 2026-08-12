@@ -121,6 +121,7 @@ func (c *ConfigureService) UpdateList(id, label, description string, columns []t
 	// the wire; UpdatedAt always advances on a real update.
 	l.Label, l.Description, l.Columns = label, description, columns
 	l.UpdatedAt = time.Now()
+	l.Seed = l.Seed.Touch() // docs/goals/0037 item 2
 	if err := list.Validate(l); err != nil {
 		c.mu.Unlock()
 		return list.List{}, err
@@ -158,6 +159,7 @@ func (c *ConfigureService) AddListRow(listID string, values map[string]string) (
 	l := previous
 	l.Rows = append(append([]list.Row{}, l.Rows...), row)
 	l.UpdatedAt = now
+	l.Seed = l.Seed.Touch() // docs/goals/0037 item 2
 	if err := list.Validate(l); err != nil {
 		c.mu.Unlock()
 		return list.List{}, err
@@ -207,6 +209,7 @@ func (c *ConfigureService) UpdateListRow(listID, rowID string, values map[string
 	rows[rowIdx].UpdatedAt = now
 	l.Rows = rows
 	l.UpdatedAt = now
+	l.Seed = l.Seed.Touch() // docs/goals/0037 item 2
 	if err := list.Validate(l); err != nil {
 		c.mu.Unlock()
 		return list.List{}, err
@@ -248,6 +251,7 @@ func (c *ConfigureService) DeleteListRow(listID, rowID string) (list.List, error
 	}
 	l.Rows = rows
 	l.UpdatedAt = time.Now()
+	l.Seed = l.Seed.Touch() // docs/goals/0037 item 2
 	c.lists[idx] = l
 	c.mu.Unlock()
 

@@ -16,6 +16,7 @@ function baseRequest(overrides: Partial<HTTPRequest> = {}): HTTPRequest {
     ID: 'req-1', Label: 'Test request', BaseURL: 'https://example.com', Method: 'GET', AuthType: AuthType.AuthNone,
     Headers: null, Body: '', Description: '', OpenAPISpec: '', Auth: null, JOSE: null, BuiltIn: false,
     CreatedAt: '', UpdatedAt: '',
+    Seed: { SeedRevision: 0, Modified: false },
     ...overrides,
   }
 }

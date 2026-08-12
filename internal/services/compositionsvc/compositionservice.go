@@ -3,7 +3,6 @@ package compositionsvc
 import (
 	"encoding/json"
 	"fmt"
-	"log/slog"
 	"strings"
 	"sync"
 	"time"
@@ -267,6 +266,11 @@ func (c *CompositionService) UpdateWorkflow(id, label, description string, nodes
 		// always advances to now on a real save.
 		CreatedAt: c.user[idx].CreatedAt,
 		UpdatedAt: time.Now(),
+		// Modified latch (docs/goals/0037 item 2): a real content edit
+		// reaching a built-in-origin workflow through this RPC (also
+		// the MCP update_workflow path, via UpdateWorkflowFromExport)
+		// permanently protects it from reconcile's upgrade path.
+		Seed: c.user[idx].Seed.Touch(),
 	}
 	previous := c.user[idx]
 	c.user[idx] = wf
@@ -328,6 +332,9 @@ func (c *CompositionService) UpdateAttributes(workflowID string, attrs []composi
 	previous := c.user[idx]
 	c.user[idx].Attributes = attrs
 	c.user[idx].UpdatedAt = time.Now()
+	// Modified latch (docs/goals/0037 item 2) -- same reasoning as
+	// UpdateWorkflow's own Seed.Touch() call above.
+	c.user[idx].Seed = c.user[idx].Seed.Touch()
 	wf := c.user[idx]
 	c.mu.Unlock()
 
@@ -448,45 +455,10 @@ func (c *CompositionService) restore() {
 	c.mu.Lock()
 	c.user = user
 	c.mu.Unlock()
-	c.topUpBuiltIns()
-}
-
-// topUpBuiltIns appends any built-in example workflow whose ID is
-// neither present nor tombstoned -- seeding is top-up, not
-// fresh-install-only, by direct user decision ("I don't have any real
-// data... every feature we build needs proof with a seeded example"):
-// a newly shipped seeded example must reach an existing instance, or
-// the proof never reaches the person it was built for. Deleting a
-// built-in still sticks (Delete* records a tombstone), preserving
-// §2.2's fully-editable/deletable principle.
-func (c *CompositionService) topUpBuiltIns() {
-	tombstones := seeding.LoadTombstones(c.store)
-	c.mu.Lock()
-	have := make(map[string]bool, len(c.user))
-	for _, wf := range c.user {
-		have[wf.ID] = true
-	}
-	added := false
-	now := time.Now()
-	for _, wf := range composition.BuiltInWorkflows() {
-		if !have[wf.ID] && !tombstones[wf.ID] {
-			wf.CreatedAt = now
-			wf.UpdatedAt = now
-			c.user = append(c.user, wf)
-			added = true
-		}
-	}
-	c.mu.Unlock()
-	if added {
-		// Startup reconciliation, not a user-initiated mutation waiting
-		// on a response -- nothing to return the error to (this runs
-		// from the constructor). Logged so a failure is at least
-		// diagnosable rather than silently dropped (docs/goals/0025
-		// item 1's fire-and-forget bucket).
-		if err := c.persist(); err != nil {
-			slog.Error("failed to persist top-up-seeded workflows", "error", err)
-		}
-	}
+	// reconcileBuiltIns (compositionservice_seedlifecycle.go,
+	// docs/goals/0037) supersedes the old insert-only topUpBuiltIns:
+	// insert/upgrade/leave-alone/skip per golden, not just insert.
+	c.reconcileBuiltIns()
 }
 
 // newWorkflowID derives a readable, collision-resistant ID from the

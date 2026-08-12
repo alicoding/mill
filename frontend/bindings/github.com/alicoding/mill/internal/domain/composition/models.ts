@@ -9,6 +9,9 @@ import * as capabilities$0 from "../capabilities/models.js";
 import * as guardrail$0 from "../guardrail/models.js";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
+import * as seedorigin$0 from "../seedorigin/models.js";
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: Unused imports
 import * as typedfield$0 from "../typedfield/models.js";
 
 /**
@@ -291,6 +294,17 @@ export interface Workflow {
     "Disabled": boolean;
     "PublishedVersion": number;
     "Versions": WorkflowVersion[] | null;
+
+    /**
+     * Seed is this workflow's seed provenance (docs/goals/0037):
+     * zero value (SeedRevision 0) means "not of seed origin" --
+     * migration-free for every workflow persisted before this field
+     * existed, same discipline Disabled/PublishedVersion's own doc
+     * comments already apply. Platform-owned, stamped only by
+     * CompositionService's reconcile/reset/mutation-choke-point logic,
+     * never accepted from the wire.
+     */
+    "Seed": seedorigin$0.Origin;
 }
 
 /**

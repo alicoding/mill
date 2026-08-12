@@ -172,9 +172,9 @@ func TestSeededBuiltIns_AreStamped(t *testing.T) {
 // TestTopUpBuiltIns_StampsNewlyAddedWorkflow simulates an existing
 // instance (persisted data already present, one workflow missing --
 // the exact "a newly shipped example reaches existing instances" shape
-// topUpBuiltIns exists for) and asserts the newly appended built-in
-// gets a fresh stamp distinct from whatever an old persisted workflow
-// already carried.
+// reconcileBuiltIns' insert branch exists for) and asserts the newly
+// appended built-in gets a fresh stamp distinct from whatever an old
+// persisted workflow already carried.
 func TestTopUpBuiltIns_StampsNewlyAddedWorkflow(t *testing.T) {
 	store := servicetest.NewFakeStore()
 

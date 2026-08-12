@@ -15,6 +15,8 @@ import { InventoryList, type InventoryItem } from '../shared/InventoryList'
 import { ENTITY_ICON } from '../shared/entityIcons'
 import { formatUpdated, sortByUpdatedDesc } from '../shared/inventorySort'
 import { useConfirmDelete } from '../shared/useConfirmDelete'
+import { describeSeedReset } from '../shared/seedLifecycle'
+import { RestoreExamplesButton } from '../shared/RestoreExamplesButton'
 import styles from '../shared/ListCard.module.css'
 import PageContainer from '../shared/PageContainer'
 
@@ -71,6 +73,15 @@ export function ConfigureExecEnv() {
   const [importError, setImportError] = useState<string | null>(null)
   const importInputRef = useRef<HTMLInputElement>(null)
   const [viewMode, setViewMode] = useViewMode('mill-execenvs-view-mode')
+  // Seed lifecycle (docs/goals/0037) -- see CompositionView.tsx's
+  // identical state for the full reasoning.
+  const [seedRevisions, setSeedRevisions] = useState<Record<string, number | undefined>>({})
+  const [restorable, setRestorable] = useState<ExecEnv[]>([])
+
+  const refreshSeedLifecycle = () => {
+    ConfigureService.SeedRevisions().then((m) => setSeedRevisions(m ?? {})).catch(console.error)
+    ConfigureService.RestorableExecEnvs().then((r) => setRestorable(r ?? [])).catch(console.error)
+  }
 
   const refetch = () => {
     void refreshExecEnvs()
@@ -97,7 +108,10 @@ export function ConfigureExecEnv() {
       .catch((err) => setImportError(String(err)))
   }
 
-  useEffect(refetch, [])
+  useEffect(() => {
+    refetch()
+    refreshSeedLifecycle()
+  }, [])
 
   const startCreate = () => {
     setEditingID(null)
@@ -138,7 +152,25 @@ export function ConfigureExecEnv() {
   }
 
   const remove = (id: string) => {
-    ConfigureService.DeleteExecEnv(id).then(refetch).catch(console.error)
+    ConfigureService.DeleteExecEnv(id).then(() => {
+      refetch()
+      refreshSeedLifecycle()
+    }).catch(console.error)
+  }
+
+  // Reset-to-shipped-example / restore-deleted-example (docs/goals/0037
+  // items 4/5).
+  const resetToSeed = (id: string) => {
+    ConfigureService.ResetExecEnvToSeed(id).then(() => {
+      refetch()
+      refreshSeedLifecycle()
+    }).catch((err) => setImportError(String(err)))
+  }
+  const restoreExample = (id: string) => {
+    ConfigureService.RestoreExecEnv(id).then(() => {
+      refetch()
+      refreshSeedLifecycle()
+    }).catch((err) => setImportError(String(err)))
   }
 
   // Table-view direct-wiring half of the Button-semantics convention
@@ -176,28 +208,35 @@ export function ConfigureExecEnv() {
   // same order (docs/SPEC.md §3.8's InventoryList entry).
   const sortedEnvs = useMemo(() => sortByUpdatedDesc(envs ?? [], (e) => e.UpdatedAt), [envs])
 
-  const envItems: InventoryItem[] = sortedEnvs.map((e) => ({
-    id: e.ID,
-    entity: 'execenv',
-    icon: ENTITY_ICON.execenv,
-    label: e.Label,
-    updatedLabel: formatUpdated(e.UpdatedAt),
-    // No !e.BuiltIn guard on Delete -- same "ordinary, fully editable/
-    // deletable from the moment it exists" reasoning as
-    // ConfigureRequests.tsx/ConfigureLists.tsx's identical badge.
-    labelBadges: e.BuiltIn ? <Label variant="secondary" size="small">built-in</Label> : undefined,
-    description: `${SHELL_LABEL[e.Shell] ?? e.Shell} · ${e.ProfileMode} · ${e.Dir === TEMP_DIR_SENTINEL ? 'fresh temp dir per run' : e.Dir}`,
-    onOpen: () => startEdit(e),
-    menuActions: [
-      { label: 'Export', onClick: () => exportEnv(e.ID, e.Label) },
-      {
-        label: 'Delete',
-        onClick: () => remove(e.ID),
-        danger: true,
-        confirm: { title: 'Delete execution environment?', body: `This permanently deletes "${e.Label}". This cannot be undone.` },
-      },
-    ],
-  }))
+  const envItems: InventoryItem[] = sortedEnvs.map((e) => {
+    const seedReset = describeSeedReset(e.Seed, seedRevisions[e.ID] ?? e.Seed.SeedRevision)
+    return {
+      id: e.ID,
+      entity: 'execenv',
+      icon: ENTITY_ICON.execenv,
+      label: e.Label,
+      updatedLabel: formatUpdated(e.UpdatedAt),
+      // No !e.BuiltIn guard on Delete -- same "ordinary, fully editable/
+      // deletable from the moment it exists" reasoning as
+      // ConfigureRequests.tsx/ConfigureLists.tsx's identical badge.
+      labelBadges: e.BuiltIn ? <Label variant="secondary" size="small">built-in</Label> : undefined,
+      description: `${SHELL_LABEL[e.Shell] ?? e.Shell} · ${e.ProfileMode} · ${e.Dir === TEMP_DIR_SENTINEL ? 'fresh temp dir per run' : e.Dir}`,
+      onOpen: () => startEdit(e),
+      menuActions: [
+        { label: 'Export', onClick: () => exportEnv(e.ID, e.Label) },
+        // Reset-to-shipped-example (docs/goals/0037 item 4) -- hidden
+        // (not shown-disabled) when already current, same reasoning
+        // CompositionView.tsx's identical wiring documents.
+        ...(e.BuiltIn && !seedReset.disabled ? [{ label: seedReset.label, onClick: () => resetToSeed(e.ID) }] : []),
+        {
+          label: 'Delete',
+          onClick: () => remove(e.ID),
+          danger: true,
+          confirm: { title: 'Delete execution environment?', body: `This permanently deletes "${e.Label}". This cannot be undone.` },
+        },
+      ],
+    }
+  })
 
   return (
     <PageContainer data-testid="configure-execenvs">
@@ -216,6 +255,7 @@ export function ConfigureExecEnv() {
           <Button leadingVisual={UploadIcon} size="small" onClick={openImportPicker} data-testid="import-execenv">
             Import
           </Button>
+          <RestoreExamplesButton items={restorable} onRestore={restoreExample} />
           <Button leadingVisual={PlusIcon} variant="primary" size="small" onClick={startCreate} data-testid="new-execenv">
             New environment
           </Button>

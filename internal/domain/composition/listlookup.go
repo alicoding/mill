@@ -43,7 +43,7 @@ func SetListLookup(fn func(listID string) (ResolvedList, error)) {
 func init() {
 	RegisterNodeType(NodeType{
 		ID: "list-lookup", Kind: KindProcess,
-		Label:       "List: lookup",
+		Label: "List: lookup",
 		// ClassRead: resolves a Configure-authored List's persisted
 		// entries (lookupListFn) -- the same "reads state outside this
 		// workflow's own payload/Attributes" classification capture-file
