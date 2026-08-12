@@ -15,7 +15,14 @@ permissions:
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  # Conditional, per GitHub's own docs pattern: a superseded PR run
+  # SHOULD die (per-PR synthetic ref), but main's post-merge runs must
+  # each complete — with `true` here, two merges landing close together
+  # cancelled the earlier merge commit's own verification run, leaving
+  # that main SHA's CI status permanently incomplete (observed live
+  # 2026-08-12: merges #1/#10 showed cancelled; the mirror image of
+  # ADR-0034's bisect-blind-spot concern).
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
   # goal 0024 / ADR-0034's un-deferred path-filtering: skip the heavy
