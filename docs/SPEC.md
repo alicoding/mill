@@ -2375,6 +2375,44 @@ turns out to solve this without touching that dispute).
   all Go-tested; a Review-queue row appearing and its Approve executing
   the write is e2e-tested (`mcp-write-approval.spec.ts`).
 
+**A fourth verb — `cancel_write` — and a requester-liveness heartbeat
+are now built (docs/goals/archive/0026-request-lifecycle-honesty.md),
+completing park/poll/resolve/**WITHDRAW**.** `cancel_write {id}`
+(`mcpsvc`, ungated — cancelling your own request only ever reduces
+pending work) lets the requesting client withdraw its own still-pending
+write; `cancelled` is a distinct `MCPWriteStatus`, never conflated with
+`denied`, sharing `ResolveMCPWrite`'s at-most-once locking discipline.
+`check_write_status` now also records `LastPolledAt` on every real poll
+— the requester's own heartbeat — surfaced to Review as a muted
+"requester last checked Nm ago" hint, shown only past a 5-minute
+staleness bar (never on fresh polling, no noise). **A real BUG found
+live in the same pass**: `ResolveMCPWrite` and the lazy expiry sweep
+never fired the `mcp-write-approval` pending-count signal at all — a
+resolved write's Activity/Review traces were correct, but the sidebar
+badge and any poll-less surface (the banner, the floating prompt) could
+hold a phantom pending count against an already-empty queue. Root
+cause, once traced: `main.go`'s `application.RegisterEvent[MCPWriteRequest]
+("mcp-write-approval")` binds that event name to an exact Go type
+(Wails3's own documented behavior — "data types are matched exactly and
+no conversion is performed") — emitting a bare `struct{}{}` silently
+failed that check and the event was dropped before ever reaching a
+browser client. Fixed by emitting a zero-value `MCPWriteRequest`
+instead; every resolution path (approve/deny/cancel/expiry) now pings
+it unconditionally. **Resolved MCP writes are now durable in Review's
+own Recently-resolved section** (`MCPWriteResolved`/`ResolvedMCPWrites`,
+merged newest-first alongside resolved runs, distinct `PlugIcon`
+identity, not clickable) — previously the only trace of a
+denied/expired write was session-only Activity, gone on restart, even
+though the 24h outcome record was already persisted. **Activity's own
+MCP-write rows are no longer action-dead**: expandable (the existing
+`canExpand`/`result` mechanism) with a jump-to-target-workflow
+`WorkflowHoverPreview` icon when the gated tool named an existing
+workflow (`update_workflow`/`publish_workflow`/`delete_workflow`'s own
+`id` argument — empty for `import_*` tools, which mint a new entity).
+Proven end-to-end against a real MCP client, including the exact
+phantom-badge regression (deny from Review, assert the sidebar badge
+clears with no other page event) — `mcp-write-cancel.spec.ts`.
+
 ### 3.7 Global app settings
 
 `SettingsService` (`settingsservice.go`) owns Mill's global settings
@@ -2639,6 +2677,28 @@ the integration-http/decision-outcome transport tail) +
 `{kind, id, description, createdAt}` to a Settings-configured
 HTTPRequest, independent of the presence gate — the layer that reaches
 the owner with no local Mac to notify on at all.
+
+**Staleness presentation — `LOCKED` and built
+(docs/goals/archive/0026-request-lifecycle-honesty.md), applying the §1
+thesis to time-honesty of a pending ask.** Owner-observed 2026-08-11: a
+4-hour-old test write sat in Review looking exactly as urgent as a
+fresh one ("feels like I missed something"). Age-tiered, not binary:
+fresh (<15 minutes) renders as-is; older gets visible emphasis (an
+attention-colored age badge) plus an "expires in Nh" caption counting
+down the shared 24h clock (`frontend/src/shared/staleness.ts`'s
+`ageTier`/`formatExpiresIn`, one implementation reused by ReviewView's
+pending rows — both guardrail/human-review/debug parks and MCP write
+requests — the `MCPWriteApprovals` banner, and the floating approval
+prompt, `shared/StalenessBadge.tsx`). **No auto-dismiss** — the VS Code
+severity-rule precedent (§9.1-adjacent) holds; expiry is the only
+terminal timer, staleness is presentation only. The same age-tier
+mechanism, at its own 5-minute bar, now also flags a **stuck-ENQUEUED
+run** (a real zombie run — queued forever, never dequeued — found in
+production data) in `WorkflowRunsPanel` and Activity's runs explorer,
+alongside the Stop/`CancelRun` affordance DBOS's own `CancelWorkflow`
+already supports for that status ("cancels a running or enqueued
+workflow," confirmed against a real constructed ENQUEUED run, not just
+trusted from the doc comment — `TestListRuns_EnqueuedRun_PresentationFieldsAndCancelPath`).
 
 **Still `OPEN`, real named gaps:** a menu-bar/dock presence toggle (see
 above); appearance settings beyond light/dark; a default working

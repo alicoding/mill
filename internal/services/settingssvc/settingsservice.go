@@ -416,3 +416,30 @@ func (s *SettingsService) ResolveMCPWrite(id string, approve bool) error {
 	}
 	return s.mcpService.ResolveMCPWrite(id, approve)
 }
+
+// ResolvedMCPWrites lists every already-resolved MCP write still in its
+// 24h retention window (docs/goals/0026 item 6) -- Review's
+// Recently-resolved section reads this alongside its own resolved runs.
+func (s *SettingsService) ResolvedMCPWrites() []mcpsvc.MCPWriteResolved {
+	if s.mcpService == nil {
+		return nil
+	}
+	return s.mcpService.ResolvedMCPWrites()
+}
+
+// DebugBackdatePendingMCPWrite is an e2e-only test knob (docs/goals/0026
+// item 2's staleness presentation) -- see MillMCPService.
+// DebugBackdatePendingWrite's own doc comment for why this has to be an
+// in-process call rather than an external settings-file edit. Refuses
+// outside isolated test data (the same IsIsolatedData signal every
+// e2e run already sets via MILL_SETTINGS_PATH) -- never reachable
+// against a real production instance.
+func (s *SettingsService) DebugBackdatePendingMCPWrite(id string, ageMinutes int) error {
+	if !s.isolatedData {
+		return fmt.Errorf("debug test knobs are only available against isolated test data")
+	}
+	if s.mcpService == nil {
+		return fmt.Errorf("MCP service not running")
+	}
+	return s.mcpService.DebugBackdatePendingWrite(id, ageMinutes)
+}

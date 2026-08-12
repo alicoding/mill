@@ -4,11 +4,12 @@ import { Blankslate } from '@primer/react/experimental'
 import { BugIcon, InboxIcon, PersonIcon, PlugIcon, ShieldIcon } from '@primer/octicons-react'
 import { Events } from '@wailsio/runtime'
 import { ExecutionService, SettingsService } from '../shared/bindings'
-import type { MCPWriteRequest, RunSummary } from '../shared/bindings'
+import type { MCPWriteRequest, MCPWriteResolved, RunSummary } from '../shared/bindings'
 import { ApprovalValuesForm, attrsForPending } from '../shared/ApprovalValuesForm'
 import { useAppStore } from '../shared/store'
 import { formatRunStartedAt } from '../shared/runTime'
-import { formatUpdated } from '../shared/inventorySort'
+import { StalenessBadge } from '../shared/StalenessBadge'
+import { formatLastChecked } from '../shared/staleness'
 import styles from '../shared/ListCard.module.css'
 import PageContainer from '../shared/PageContainer'
 
@@ -59,6 +60,13 @@ function ReviewView() {
   // actionable rows -- one store, multiple surfaces, never a second
   // competing pending list (goal 0005).
   const [pendingWrites, setPendingWrites] = useState<MCPWriteRequest[]>([])
+  // Resolved MCP writes (docs/goals/0026 item 6) -- the durable 24h
+  // outcome records (approved/denied/cancelled/expired), merged into
+  // Recently-resolved alongside run resolutions rather than living in a
+  // second, separate list; today only session-only Activity showed
+  // these at all, gone on restart even though the record itself was
+  // already durable.
+  const [resolvedWrites, setResolvedWrites] = useState<MCPWriteResolved[]>([])
   const [inputs, setInputs] = useState<Record<string, Record<string, string>>>({})
   const [workflowFilter, setWorkflowFilter] = useState('')
   const [kindFilter, setKindFilter] = useState<KindFilterValue>('')
@@ -75,6 +83,7 @@ function ReviewView() {
       })
       .catch((err) => setError(String(err)))
     SettingsService.PendingMCPWrites().then((p) => setPendingWrites(p ?? [])).catch(() => {})
+    SettingsService.ResolvedMCPWrites().then((p) => setResolvedWrites(p ?? [])).catch(() => {})
   }
 
   useEffect(() => {
@@ -137,6 +146,22 @@ function ReviewView() {
   const showKindFilter = presentKinds.size >= 2
   const kindMatches = (run: RunSummary) => !kindFilter || kindFilter === pendingKind(run)
   const showPendingWrites = kindFilter === '' || kindFilter === 'mcp-write'
+
+  // Recently-resolved is a merged, newest-first list of run resolutions
+  // AND resolved MCP writes (docs/goals/0026 item 6) -- one section, not
+  // two adjacent lists, same "recognition, not confirmation" discipline
+  // the pending rows already use (PlugIcon distinguishes a write row).
+  // MCP writes aren't scoped to a workflow, so they're excluded whenever
+  // a workflow filter is active (nothing for them to match).
+  type ResolvedEntry =
+    | { kind: 'run'; key: string; time: number; run: RunSummary }
+    | { kind: 'mcp-write'; key: string; time: number; write: MCPWriteResolved }
+  const resolvedEntries: ResolvedEntry[] = [
+    ...resolved
+      .filter((r) => !workflowFilter || r.workflowID === workflowFilter)
+      .map((run): ResolvedEntry => ({ kind: 'run', key: run.runID, time: Date.parse(run.completedAt || run.startedAt), run })),
+    ...(workflowFilter ? [] : resolvedWrites.map((w): ResolvedEntry => ({ kind: 'mcp-write', key: w.id, time: Date.parse(w.resolvedAt), write: w }))),
+  ].sort((a, b) => b.time - a.time)
 
   // Loading: the first ListRuns() round trip hasn't resolved yet --
   // Home.tsx's own centered-Spinner-under-the-Heading treatment is the
@@ -202,27 +227,37 @@ function ReviewView() {
           filterable by workflow (they aren't scoped to one), but the
           kind filter does hide them like any other kind. */}
       <Stack direction="vertical" gap="normal">
-        {showPendingWrites && pendingWrites.map((w) => (
-          <div key={w.id} className={styles.card} data-testid="review-mcp-write-item">
-            <Stack direction="vertical" gap="condensed">
-              <Stack direction="horizontal" gap="condensed" align="center">
-                <PlugIcon size={16} />
-                <Text weight="semibold">MCP write request</Text>
-                <Label variant="attention" size="small">awaiting approval</Label>
-                <Text size="small" className={styles.muted}>{formatUpdated(w.createdAt)}</Text>
+        {showPendingWrites && pendingWrites.map((w) => {
+          const lastChecked = formatLastChecked(w.lastPolledAt)
+          return (
+            <div key={w.id} className={styles.card} data-testid="review-mcp-write-item" data-mcp-write-id={w.id}>
+              <Stack direction="vertical" gap="condensed">
+                <Stack direction="horizontal" gap="condensed" align="center">
+                  <PlugIcon size={16} />
+                  <Text weight="semibold">MCP write request</Text>
+                  <Label variant="attention" size="small">awaiting approval</Label>
+                  <StalenessBadge createdAt={w.createdAt} testId="review-mcp-write-age" />
+                </Stack>
+                <Text size="small">{w.description}</Text>
+                {/* Requester-liveness hint (docs/goals/0026 item 3): only
+                    rendered once check_write_status hasn't been called in
+                    >5m -- an abandoned request visibly reads as abandoned,
+                    a fresh-polling one stays silent (no noise). */}
+                {lastChecked && (
+                  <Text size="small" className={styles.muted} data-testid="review-mcp-write-last-checked">{lastChecked}</Text>
+                )}
+                <Stack direction="horizontal" gap="condensed">
+                  <Button size="small" variant="primary" data-testid="review-mcp-write-approve" onClick={() => resolveWrite(w.id, true)}>
+                    Approve
+                  </Button>
+                  <Button size="small" variant="danger" data-testid="review-mcp-write-deny" onClick={() => resolveWrite(w.id, false)}>
+                    Deny
+                  </Button>
+                </Stack>
               </Stack>
-              <Text size="small">{w.description}</Text>
-              <Stack direction="horizontal" gap="condensed">
-                <Button size="small" variant="primary" data-testid="review-mcp-write-approve" onClick={() => resolveWrite(w.id, true)}>
-                  Approve
-                </Button>
-                <Button size="small" variant="danger" data-testid="review-mcp-write-deny" onClick={() => resolveWrite(w.id, false)}>
-                  Deny
-                </Button>
-              </Stack>
-            </Stack>
-          </div>
-        ))}
+            </div>
+          )
+        })}
       </Stack>
 
       <Stack direction="vertical" gap="normal">
@@ -240,7 +275,7 @@ function ReviewView() {
                 <Label variant={isDebugPark(run) ? 'done' : 'attention'} size="small" data-testid={isDebugPark(run) ? 'review-debug-badge' : undefined}>
                   {isDebugPark(run) ? (run.pending?.stepped ? 'paused — step mode' : 'paused at breakpoint') : 'awaiting approval'}
                 </Label>
-                <Text size="small" className={styles.muted}>{formatRunStartedAt(run.startedAt)}</Text>
+                <StalenessBadge createdAt={run.startedAt} testId="review-item-age" />
               </Stack>
               <Text size="small">
                 Step <Text weight="semibold">{run.pending?.nodeTypeLabel || run.pending?.nodeTypeID}</Text>
@@ -270,30 +305,53 @@ function ReviewView() {
           </div>
         ))}
       </Stack>
-      {resolved.filter((r) => !workflowFilter || r.workflowID === workflowFilter).length > 0 && (
+      {resolvedEntries.length > 0 && (
         <>
           <Heading as="h2" variant="small" className={styles.sectionHeading}>Recently resolved</Heading>
           <Stack direction="vertical" gap="condensed">
-            {resolved.filter((r) => !workflowFilter || r.workflowID === workflowFilter).slice(0, 10).map((run) => (
+            {resolvedEntries.slice(0, 10).map((entry) => entry.kind === 'run' ? (
               <div
-                key={run.runID}
+                key={entry.key}
                 className={`${styles.card} ${styles.activityRowClickable}`}
                 data-testid="review-resolved-item"
-                onClick={() => openRun(run)}
+                onClick={() => openRun(entry.run)}
               >
                 <Stack direction="horizontal" gap="condensed" align="center" justify="space-between">
                   <Stack direction="horizontal" gap="condensed" align="center">
-                    <Text weight="semibold">{run.workflowLabel}</Text>
+                    <Text weight="semibold">{entry.run.workflowLabel}</Text>
                     <Label
                       size="small"
-                      variant={run.resolution === 'approved' ? 'success' : 'danger'}
+                      variant={entry.run.resolution === 'approved' ? 'success' : 'danger'}
                       data-testid="review-resolution"
                     >
-                      {run.resolution}
+                      {entry.run.resolution}
                     </Label>
-                    <Label size="small" variant={run.status === 'SUCCESS' ? 'success' : 'secondary'}>{run.status}</Label>
+                    <Label size="small" variant={entry.run.status === 'SUCCESS' ? 'success' : 'secondary'}>{entry.run.status}</Label>
                   </Stack>
-                  <Text size="small" className={styles.muted}>{formatRunStartedAt(run.startedAt)}</Text>
+                  <Text size="small" className={styles.muted}>{formatRunStartedAt(entry.run.startedAt)}</Text>
+                </Stack>
+              </div>
+            ) : (
+              // A resolved MCP write (docs/goals/0026 item 6) -- the same
+              // durable 24h outcome record check_write_status reads,
+              // surfaced here so it isn't only visible via session-only
+              // Activity (gone on restart). PlugIcon matches the pending
+              // row's own identity cue ("recognition, not confirmation");
+              // not clickable -- there's no run to drill into.
+              <div key={entry.key} className={styles.card} data-testid="review-resolved-mcp-write-item">
+                <Stack direction="horizontal" gap="condensed" align="center" justify="space-between">
+                  <Stack direction="horizontal" gap="condensed" align="center">
+                    <PlugIcon size={16} />
+                    <Text weight="semibold">{entry.write.description}</Text>
+                    <Label
+                      size="small"
+                      variant={entry.write.status === 'approved' ? 'success' : 'danger'}
+                      data-testid="review-resolved-mcp-write-status"
+                    >
+                      {entry.write.status}
+                    </Label>
+                  </Stack>
+                  <Text size="small" className={styles.muted}>{formatRunStartedAt(entry.write.resolvedAt)}</Text>
                 </Stack>
               </div>
             ))}
