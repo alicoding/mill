@@ -149,6 +149,22 @@ legitimately keeps focus.
   UX compromise, not a solved problem — a genuine non-activating panel
   would be strictly better and should replace this the day Wails3 ships
   one (tracked above).
+- **Update (goal 0035, owner-observed live):** the round trip was
+  asymmetric for its first cut — `yieldFocusIfMainHidden` only ran on
+  dismiss, so a main window that was already open but merely
+  backgrounded (the user working in a different app) had nothing
+  stopping it from riding the panel's own app-activation into view
+  alongside it, silently breaking this ADR's "without leaving what you
+  were doing" promise. Fixed by making `TogglePanel` symmetric:
+  `summonShouldHideMain` (`settingsservice_panel.go`) hides main BEFORE
+  showing the panel when main is visible but not the currently-focused
+  window (`WebviewWindow.IsFocused()` — confirmed against the beta.4
+  source to be `[nsWindow isKeyWindow]`, a real per-window OS signal,
+  not an app-wide "Mill is active" flag). When main is visible AND
+  focused (the user was genuinely in it), this is a no-op — hiding it
+  out from under a user actively using it would be a worse bug than the
+  one being fixed. Still a mitigation, not a fix at the framework
+  level, same as the dismiss side.
 - The Quick Panel is now the reusable "small floating second window"
   surface in Mill's architecture — the attention-escalation work (a
   floating approval prompt for an away-user guardrail/MCP-write park,

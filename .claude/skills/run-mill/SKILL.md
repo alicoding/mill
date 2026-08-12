@@ -179,14 +179,32 @@ real desktop build has no automatable hook for these:
   `golang.design/x/hotkey` global-listener gap as every other Mill
   hotkey (above): needs the real desktop app, Accessibility-granted,
   checked by hand.
+- **The summon-side focus guard** (goal 0035, `summonShouldHideMain` +
+  `TogglePanel`'s `main.Hide()` call in `settingsservice_panel.go`) —
+  hides an already-open-but-backgrounded main window before it can ride
+  the panel's app-activation into view, keyed off `main.IsFocused()`
+  (`isKeyWindow` on macOS). Same gap as the focus-yield mitigation
+  above: needs a real `*application.App`/native window to observe
+  `IsVisible()`/`IsFocused()` truthfully, and needs a genuinely
+  different frontmost app at the moment the hotkey fires — neither
+  exists in server mode. The pure decision function itself
+  (`summonShouldHideMain`) IS unit-tested
+  (`settingsservice_panel_test.go`, `TestSummonShouldHideMain`, all
+  four visible×focused combinations) — only the real-window wiring
+  around it is manual-only.
 
-Verification for all four stays a real desktop-mode manual check:
+Verification for all five stays a real desktop-mode manual check:
 launch via `task dev`, set a summon hotkey in Settings, press it from
 another app, confirm the panel appears floating/frameless above
 everything (including a full-screen app on another Space), press it
 again (or Escape, or click away) and confirm it dismisses AND focus
 visibly returns to the app you were in before summoning — per
-`.claude/rules/testing.md`'s manual-only-registry discipline.
+`.claude/rules/testing.md`'s manual-only-registry discipline. For the
+summon-side guard specifically: with Mill's main window open but NOT
+frontmost (another app active), press the summon hotkey and confirm
+ONLY the panel appears — the main window must not flash/raise at all;
+then click into the main window directly, press summon again, and
+confirm the panel opens without the main window disappearing.
 
 ## Why not `wails3 dev`'s browser mode instead
 

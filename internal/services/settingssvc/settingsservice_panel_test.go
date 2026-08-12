@@ -37,3 +37,35 @@ func TestYieldFocusIfMainHidden_NilWindow_DoesNotPanic(t *testing.T) {
 	s := newTestSettingsService(t)
 	s.yieldFocusIfMainHidden()
 }
+
+// TestSummonShouldHideMain covers all four cases of the pure guard
+// TogglePanel now runs before showing the Quick Panel (the fix for the
+// owner-observed bug: a main window already open but backgrounded in a
+// different app surfaced alongside the panel on summon). This is the
+// one piece of the fix that doesn't need a real OS window, per
+// .claude/rules/testing.md's own note that the condition-check
+// function can get a pure unit test even when the full window-level
+// behavior can't (registered manual-only in
+// .claude/skills/run-mill/SKILL.md instead).
+func TestSummonShouldHideMain(t *testing.T) {
+	cases := []struct {
+		name           string
+		visible        bool
+		focused        bool
+		wantShouldHide bool
+	}{
+		{"not visible at all -- nothing to hide", false, false, false},
+		{"not visible, somehow reported focused -- still nothing to hide", false, true, false},
+		{"visible but not focused -- open in the background, exactly the bug", true, false, true},
+		{"visible and focused -- user is actively in it, must not hide", true, true, false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := summonShouldHideMain(tc.visible, tc.focused)
+			if got != tc.wantShouldHide {
+				t.Errorf("summonShouldHideMain(visible=%v, focused=%v) = %v, want %v",
+					tc.visible, tc.focused, got, tc.wantShouldHide)
+			}
+		})
+	}
+}

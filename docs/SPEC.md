@@ -2536,7 +2536,15 @@ findings) and the build rationale are in
   main window also isn't visible, the accepted mitigation. Goal
   0015's own ⌘K in-window palette is unchanged — still the surface
   for *already being in Mill*, distinct from the Quick Panel's *not
-  yet being in Mill* summon target. **Update (2026-08-12)**: the
+  yet being in Mill* summon target. **Update (2026-08-12, goal 0035,
+  owner-observed live)**: the mitigation was asymmetric — an
+  already-open-but-backgrounded main window had nothing stopping it
+  from surfacing alongside the panel on summon, since app-activation
+  raises every Mill window, not just the one shown. `TogglePanel` now
+  hides main first when it's visible but not the OS-focused window
+  (`summonShouldHideMain`, keyed off `WebviewWindow.IsFocused()` —
+  confirmed against source to be `isKeyWindow`, a genuine per-window
+  signal), leaving it alone when the user was actually in it. **Update (2026-08-12)**: the
   Quick Panel's workflow list is frecency-sorted (frequency-only,
   `app/workflowFrecency.ts`, off goal 0014's `HomeMetrics.mostUsed`),
   a "Review" row surfaces the panel's own independent pending-review

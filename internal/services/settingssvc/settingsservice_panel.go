@@ -17,10 +17,15 @@ import (
 // canBecomeKeyWindow is hardcoded YES; see ADR-0033 for the full
 // research) -- showing ANY window, including this floating one,
 // activates Mill and steals keyboard focus from whatever app the user
-// was in. yieldFocusIfMainHidden below is the accepted mitigation: the
-// moment the panel is dismissed, if Mill's own main window isn't what
-// the user is now looking at either, hide the whole app so macOS hands
-// focus back to the previous app instead of leaving Mill's (now empty)
+// was in, and macOS raises EVERY one of Mill's windows on that
+// activation, not just the one just shown. The mitigation is now
+// symmetric on both ends of the round trip: TogglePanel's own
+// summonShouldHideMain guard (below) hides an already-open-but-
+// backgrounded main window BEFORE showing the panel, so it never rides
+// the activation wave into view; yieldFocusIfMainHidden hides the
+// whole app the moment the panel is dismissed, if Mill's main window
+// isn't what the user is now looking at either, so macOS hands focus
+// back to the previous app instead of leaving Mill's (now empty)
 // frontmost app state stuck on screen.
 
 // SetPanelWindow wires the Quick Panel window, created by main.go right
@@ -75,6 +80,34 @@ func (s *SettingsService) yieldFocusIfMainHidden() {
 	}
 }
 
+// summonShouldHideMain reports whether TogglePanel's summon-side guard
+// (below) should hide the main window before showing the panel, given
+// the two pieces of state available at the instant the summon fires:
+// whether main is currently visible, and whether it currently holds
+// native keyboard focus (confirmed against the beta.4 source --
+// WebviewWindow.IsFocused, webview_window.go, calls through to the
+// macOS impl's isFocused, webview_window_darwin.go, which is literally
+// `[nsWindow isKeyWindow]`). isKeyWindow is a real per-window OS
+// signal, not an app-wide "is Mill active" flag: it can only be true
+// if Mill is the frontmost app AND this specific window has keyboard
+// focus. So the four cases resolve cleanly:
+//   - not visible            -> false (nothing to hide either way)
+//   - visible, not focused   -> true  (open in the background while a
+//     different app -- e.g. a terminal -- was frontmost: exactly the
+//     bug this guards against, an already-open main window riding the
+//     panel's app-activation wave into view)
+//   - visible, focused       -> false (the user was genuinely looking
+//     at main and pressed summon deliberately -- hiding it out from
+//     under them would be a worse bug than the one being fixed)
+//
+// Extracted as a pure function specifically so this condition -- the
+// one part of the fix with no dependency on a real OS window -- gets a
+// real unit test rather than joining the panel's other window-level
+// behavior in the manual-only registry (.claude/skills/run-mill/SKILL.md).
+func summonShouldHideMain(mainVisible, mainFocused bool) bool {
+	return mainVisible && !mainFocused
+}
+
 // TogglePanel shows+focuses the Quick Panel if hidden, or dismisses it
 // (via DismissPanel, so the same focus-yield mitigation applies) if
 // already visible. Called from the summon hotkey's callback
@@ -83,10 +116,23 @@ func (s *SettingsService) yieldFocusIfMainHidden() {
 // dismissal is native via HideOnEscape; its explicit dismiss action
 // calls DismissPanel below instead).
 //
+// Symmetric with yieldFocusIfMainHidden's dismiss-side mitigation:
+// showing the panel activates Mill at the OS level (the same beta.4
+// gap documented above), and macOS raises EVERY one of Mill's windows
+// on activation, not just the one just shown. Without this guard, a
+// main window that was already open but merely backgrounded (the user
+// working in a different app) would surface right alongside the panel
+// -- silently breaking the Quick Panel's own promise of reaching it
+// "without leaving what you were doing." summonShouldHideMain decides
+// whether that's actually what's happening, using the one real signal
+// available (see its own doc comment); this only ever hides a window
+// the user wasn't actively looking at a moment ago.
+//
 //wails:ignore
 func (s *SettingsService) TogglePanel() {
 	s.mu.Lock()
 	p := s.panel
+	main := s.window
 	s.mu.Unlock()
 	if p == nil {
 		return
@@ -94,6 +140,9 @@ func (s *SettingsService) TogglePanel() {
 	if p.IsVisible() {
 		s.DismissPanel()
 		return
+	}
+	if main != nil && summonShouldHideMain(main.IsVisible(), main.IsFocused()) {
+		main.Hide()
 	}
 	p.Show()
 	p.Focus()
