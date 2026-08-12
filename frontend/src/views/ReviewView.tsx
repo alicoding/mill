@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
-import { Button, Heading, Label, Select, Stack, Text } from '@primer/react'
-import { BugIcon, PlugIcon, ShieldIcon } from '@primer/octicons-react'
+import { Button, Heading, Label, Select, Spinner, Stack, Text } from '@primer/react'
+import { Blankslate } from '@primer/react/experimental'
+import { BugIcon, InboxIcon, PersonIcon, PlugIcon, ShieldIcon } from '@primer/octicons-react'
 import { Events } from '@wailsio/runtime'
 import { ExecutionService, SettingsService } from '../shared/bindings'
 import type { MCPWriteRequest, RunSummary } from '../shared/bindings'
@@ -10,6 +11,33 @@ import { formatRunStartedAt } from '../shared/runTime'
 import { formatUpdated } from '../shared/inventorySort'
 import styles from '../shared/ListCard.module.css'
 import PageContainer from '../shared/PageContainer'
+
+// The four kinds a Review row can be (goal 0002 item 4) -- discriminated
+// off the SAME fields the row's own icon/badge already key on
+// (isDebugPark below, PendingApproval.nodeTypeID), never a new field.
+// 'mcp-write' isn't a RunSummary at all (docs/adr/0032's own pending
+// store) -- it's counted separately and only ever shown when present.
+type PendingKind = 'ask' | 'human-review' | 'debug'
+type KindFilterValue = '' | PendingKind | 'mcp-write'
+
+// Order the kind Select's options render in when 2+ are present --
+// fixed, not Set-insertion-order, so the list doesn't reshuffle as
+// different kinds come and go.
+const KIND_ORDER: Array<Exclude<KindFilterValue, ''>> = ['ask', 'human-review', 'debug', 'mcp-write']
+
+// Wording reused verbatim from what the row itself already renders
+// (isDebugPark's Label text, the pendingWrites card's "MCP write
+// request" heading, the nodeTypeLabel "Human review" the Step line
+// already shows) -- the filter must never invent new prose the row
+// doesn't already carry. Debug park has two row variants (breakpoint /
+// step mode); "Paused at breakpoint" is the base-case wording, since one
+// filter bucket covers both.
+const KIND_LABELS: Record<Exclude<KindFilterValue, ''>, string> = {
+  ask: 'Awaiting approval',
+  'human-review': 'Human review',
+  debug: 'Paused at breakpoint',
+  'mcp-write': 'MCP write request',
+}
 
 // The Review queue (docs/adr/0023, §3.2's case-management-style
 // "Review" surface in v1 form): every parked run across every workflow
@@ -33,6 +61,7 @@ function ReviewView() {
   const [pendingWrites, setPendingWrites] = useState<MCPWriteRequest[]>([])
   const [inputs, setInputs] = useState<Record<string, Record<string, string>>>({})
   const [workflowFilter, setWorkflowFilter] = useState('')
+  const [kindFilter, setKindFilter] = useState<KindFilterValue>('')
   const [error, setError] = useState('')
 
   const refresh = () => {
@@ -89,6 +118,37 @@ function ReviewView() {
   // here too -- never the same badge/wording as a policy ask ("recognition,
   // not confirmation").
   const isDebugPark = (run: RunSummary) => run.pending?.source === 'debug'
+  // A Human review checkpoint (internal/domain/composition/humanreview.go)
+  // is its own kind, distinct from an ambient guardrail policy ask, even
+  // though both currently share the "awaiting approval" badge text -- the
+  // leading icon (PersonIcon vs ShieldIcon) is the recognition cue.
+  const isHumanReview = (run: RunSummary) => run.pending?.nodeTypeID === 'human-review'
+  const pendingKind = (run: RunSummary): PendingKind => {
+    if (isDebugPark(run)) return 'debug'
+    if (isHumanReview(run)) return 'human-review'
+    return 'ask'
+  }
+
+  // Kinds actually present right now, across both pending runs and
+  // pending MCP writes -- the Select only renders once 2+ are present
+  // (the repo's single-option-select-is-noise rule, SPEC §3.5).
+  const presentKinds = new Set<Exclude<KindFilterValue, ''>>((pending ?? []).map(pendingKind))
+  if (pendingWrites.length > 0) presentKinds.add('mcp-write')
+  const showKindFilter = presentKinds.size >= 2
+  const kindMatches = (run: RunSummary) => !kindFilter || kindFilter === pendingKind(run)
+  const showPendingWrites = kindFilter === '' || kindFilter === 'mcp-write'
+
+  // Loading: the first ListRuns() round trip hasn't resolved yet --
+  // Home.tsx's own centered-Spinner-under-the-Heading treatment is the
+  // suite's standard for this (no dedicated skeleton component exists).
+  if (pending === null) {
+    return (
+      <PageContainer data-testid="review-view">
+        <Heading as="h1">Review</Heading>
+        <Spinner />
+      </PageContainer>
+    )
+  }
 
   return (
     <PageContainer data-testid="review-view">
@@ -100,32 +160,49 @@ function ReviewView() {
       </Text>
       {error && <Text as="p" size="small" className={styles.error}>{error}</Text>}
 
-      {((pending?.length ?? 0) > 0 || resolved.length > 0) && (
+      {(pending.length > 0 || resolved.length > 0) && (
         <Stack direction="horizontal" gap="condensed" align="center">
           <Select value={workflowFilter} onChange={(e) => setWorkflowFilter(e.target.value)} aria-label="Filter by workflow">
             <Select.Option value="">All workflows</Select.Option>
-            {[...new Set([...(pending ?? []), ...resolved].map((r) => r.workflowID))].map((id) => (
+            {[...new Set([...pending, ...resolved].map((r) => r.workflowID))].map((id) => (
               <Select.Option key={id} value={id}>
                 {workflows?.find((w) => w.ID === id)?.Label ?? id}
               </Select.Option>
             ))}
           </Select>
+          {showKindFilter && (
+            <Select
+              value={kindFilter}
+              onChange={(e) => setKindFilter(e.target.value as KindFilterValue)}
+              aria-label="Filter by kind"
+              data-testid="review-kind-filter"
+            >
+              <Select.Option value="">All kinds</Select.Option>
+              {KIND_ORDER.filter((k) => presentKinds.has(k)).map((k) => (
+                <Select.Option key={k} value={k}>{KIND_LABELS[k]}</Select.Option>
+              ))}
+            </Select>
+          )}
         </Stack>
       )}
 
-      {pending !== null && pending.length === 0 && pendingWrites.length === 0 && (
-        <div className={styles.empty} data-testid="review-empty">
-          <Text as="p">Nothing waiting for you.</Text>
-        </div>
+      {pending.length === 0 && pendingWrites.length === 0 && (
+        <Blankslate data-testid="review-empty">
+          <Blankslate.Visual>
+            <InboxIcon size={32} />
+          </Blankslate.Visual>
+          <Blankslate.Heading>Nothing waiting for you</Blankslate.Heading>
+        </Blankslate>
       )}
 
       {/* Pending MCP writes (docs/adr/0032 §2): a distinct icon/label
           from a guardrail/debug park ("recognition, not confirmation")
           -- these are an external MCP client asking to change Mill's
           own data, not a workflow run paused mid-execution. Not
-          filterable by workflow (they aren't scoped to one). */}
+          filterable by workflow (they aren't scoped to one), but the
+          kind filter does hide them like any other kind. */}
       <Stack direction="vertical" gap="normal">
-        {pendingWrites.map((w) => (
+        {showPendingWrites && pendingWrites.map((w) => (
           <div key={w.id} className={styles.card} data-testid="review-mcp-write-item">
             <Stack direction="vertical" gap="condensed">
               <Stack direction="horizontal" gap="condensed" align="center">
@@ -149,7 +226,7 @@ function ReviewView() {
       </Stack>
 
       <Stack direction="vertical" gap="normal">
-        {(pending ?? []).filter((r) => !workflowFilter || r.workflowID === workflowFilter).map((run) => (
+        {pending.filter((r) => (!workflowFilter || r.workflowID === workflowFilter) && kindMatches(r)).map((run) => (
           <div
             key={run.runID}
             className={`${styles.card} ${styles.activityRowClickable}`}
@@ -158,7 +235,7 @@ function ReviewView() {
           >
             <Stack direction="vertical" gap="condensed">
               <Stack direction="horizontal" gap="condensed" align="center">
-                {isDebugPark(run) ? <BugIcon size={16} /> : <ShieldIcon size={16} />}
+                {isDebugPark(run) ? <BugIcon size={16} /> : isHumanReview(run) ? <PersonIcon size={16} /> : <ShieldIcon size={16} />}
                 <Text weight="semibold">{run.workflowLabel}</Text>
                 <Label variant={isDebugPark(run) ? 'done' : 'attention'} size="small" data-testid={isDebugPark(run) ? 'review-debug-badge' : undefined}>
                   {isDebugPark(run) ? (run.pending?.stepped ? 'paused — step mode' : 'paused at breakpoint') : 'awaiting approval'}
