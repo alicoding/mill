@@ -54,10 +54,25 @@ export function CheckForUpdates(): $CancellablePromise<$models.UpdateCheckResult
 
 /**
  * ClearKeybinding removes commandID's override, if any, reverting it to
- * its frontend-declared default binding.
+ * its frontend-declared default binding. Returns the persist error
+ * (docs/goals/0025 item 1) rather than swallowing it, and restores the
+ * removed override in memory if the save failed, so a user who thinks
+ * they cleared a binding doesn't have it silently come back after a
+ * restart while the UI shows it as already cleared.
  */
 export function ClearKeybinding(commandID: string): $CancellablePromise<void> {
     return $Call.ByID(3036020909, commandID);
+}
+
+/**
+ * DismissApprovalPrompt hides the floating approval prompt and applies
+ * the same focus-yield mitigation DismissPanel already uses -- called
+ * by the prompt's own frontend once the last pending item resolves (or
+ * there's nothing left to show on mount), the DismissPanel-equivalent
+ * RPC for this window.
+ */
+export function DismissApprovalPrompt(): $CancellablePromise<void> {
+    return $Call.ByID(2270399157);
 }
 
 /**
@@ -72,6 +87,30 @@ export function DismissPanel(): $CancellablePromise<void> {
 }
 
 /**
+ * ForwardPendingApproval fires the configured cross-device forward for
+ * one new pending item -- fire-and-forget: it returns immediately, and
+ * a delivery failure is only slog-logged, never surfaced back to the
+ * caller or allowed to block anything. App.tsx's own per-new-item loop
+ * calls this alongside NotifyPendingApproval, unconditionally --
+ * unlike the presence gate, forwarding doesn't depend on local
+ * focus/idle at all, since the whole point is reaching the owner when
+ * there may be no local Mac attention to gate on in the first place.
+ */
+export function ForwardPendingApproval(id: string, description: string, kind: string): $CancellablePromise<void> {
+    return $Call.ByID(4270514639, id, description, kind);
+}
+
+/**
+ * GetAttentionIdleThreshold returns the configured idle-seconds
+ * threshold: the presence gate below treats the user as away once
+ * idletime.Seconds() reaches this, even while the window is focused --
+ * the fix for the focused-but-idle suppression case.
+ */
+export function GetAttentionIdleThreshold(): $CancellablePromise<number> {
+    return $Call.ByID(420254759);
+}
+
+/**
  * GetBuildInfo reports which commit this running instance was actually
  * built from (settingsservice_buildinfo.go) -- surfaced in the footer
  * so a stale, still-running process (e.g. a desktop app left open
@@ -80,6 +119,21 @@ export function DismissPanel(): $CancellablePromise<void> {
  */
 export function GetBuildInfo(): $CancellablePromise<$models.BuildInfo> {
     return $Call.ByID(2673585232);
+}
+
+/**
+ * GetForwardApprovalsEnabled reports whether the forward is armed.
+ */
+export function GetForwardApprovalsEnabled(): $CancellablePromise<boolean> {
+    return $Call.ByID(3422319504);
+}
+
+/**
+ * GetForwardApprovalsRequestID returns the configured HTTPRequest's ID
+ * (empty means unconfigured).
+ */
+export function GetForwardApprovalsRequestID(): $CancellablePromise<string> {
+    return $Call.ByID(1205123449);
 }
 
 /**
@@ -169,16 +223,23 @@ export function ListWorkflowMinutesSaved(): $CancellablePromise<{ [_ in string]?
 }
 
 /**
- * NotifyPendingApproval sends an actionable OS notification for a new
- * pending item (docs/adr/0032 §3). kind "mcp-write" gets Approve/Deny
- * action buttons resolving directly via ResolveMCPWrite; any other kind
- * (a guardrail/human-review park) gets a plain notification whose
- * default click shows+focuses the window instead -- typed input may be
- * required to resolve those, so blind approval from a notification
- * isn't offered.
+ * NotifyPendingApproval sends an actionable OS notification AND shows
+ * the floating approval prompt (docs/goals/0023 item 1) for a new
+ * pending item (docs/adr/0032 §3), but ONLY when isAway(focused) says
+ * the user is away -- the single decision point both surfaces share, so
+ * "notify" and "show the floating prompt" can never disagree about
+ * presence. focused is the caller's own document.hasFocus() reading
+ * (App.tsx) -- only the browser context knows that; everything else
+ * about presence (idle time, the threshold) is resolved in isAway.
+ * 
+ * kind "mcp-write" gets Approve/Deny action buttons resolving directly
+ * via ResolveMCPWrite; any other kind (a guardrail/human-review park)
+ * gets a plain notification whose default click shows+focuses the main
+ * window instead -- typed input may be required to resolve those, so
+ * blind approval from a notification isn't offered.
  */
-export function NotifyPendingApproval(id: string, description: string, kind: string): $CancellablePromise<void> {
-    return $Call.ByID(99139683, id, description, kind);
+export function NotifyPendingApproval(id: string, description: string, kind: string, focused: boolean): $CancellablePromise<void> {
+    return $Call.ByID(99139683, id, description, kind, focused);
 }
 
 /**
@@ -244,6 +305,36 @@ export function RestoreSummonHotkey(): $CancellablePromise<void> {
 }
 
 /**
+ * SetAttentionIdleThreshold persists seconds (a non-positive value
+ * resets to the default, mirroring a cleared Settings field rather than
+ * persisting a nonsensical threshold), returning the persist error --
+ * same reasoning as every other settings toggle in this package: a
+ * save that silently didn't take effect leaves the user believing a
+ * threshold applies when it doesn't.
+ */
+export function SetAttentionIdleThreshold(seconds: number): $CancellablePromise<void> {
+    return $Call.ByID(454955395, seconds);
+}
+
+/**
+ * SetForwardApprovalsEnabled persists the toggle, returning the persist
+ * error (same reasoning as every other settings toggle here: a save
+ * that silently didn't take effect leaves the user believing the
+ * forward is armed when it isn't, or vice versa).
+ */
+export function SetForwardApprovalsEnabled(enabled: boolean): $CancellablePromise<void> {
+    return $Call.ByID(1952175932, enabled);
+}
+
+/**
+ * SetForwardApprovalsRequestID persists which Configure-authored
+ * HTTPRequest to forward pending-approval events through.
+ */
+export function SetForwardApprovalsRequestID(id: string): $CancellablePromise<void> {
+    return $Call.ByID(60838469, id);
+}
+
+/**
  * SetKeybinding overrides commandID's binding to mods+key, rejecting a
  * combo already claimed by another command's override, or by a
  * per-workflow trigger hotkey (see this file's own header comment for
@@ -265,10 +356,24 @@ export function SetLaunchAtLogin(enabled: boolean): $CancellablePromise<void> {
     return $Call.ByID(2080722787, enabled);
 }
 
+/**
+ * SetMCPWriteApprovalRequired returns the persist error, same reasoning
+ * as SetMCPWriteEnabled -- relaxing this to "unattended" (required =
+ * false) failing to save silently is a security-relevant gap;
+ * re-tightening it (required = true) failing to save silently would be
+ * worse (the user believes approval is required again when it isn't).
+ */
 export function SetMCPWriteApprovalRequired(required: boolean): $CancellablePromise<void> {
     return $Call.ByID(4059084081, required);
 }
 
+/**
+ * SetMCPWriteEnabled returns the persist error (docs/goals/0025 item 1)
+ * rather than swallowing it -- this is a security-relevant toggle
+ * (whether an external MCP client may write to this instance at all);
+ * a click that silently failed to take effect is exactly the kind of
+ * gap §8's fail-safe posture exists to prevent.
+ */
 export function SetMCPWriteEnabled(enabled: boolean): $CancellablePromise<void> {
     return $Call.ByID(213255560, enabled);
 }
@@ -361,6 +466,9 @@ export function SuspendMenuAccelerators(): $CancellablePromise<void> {
 
 /**
  * UnassignSummonHotkey removes the app-level summon hotkey, if any.
+ * Returns the persist error (docs/goals/0025 item 1) rather than
+ * swallowing it, restoring the in-memory record on failure so it
+ * matches what's still on disk.
  */
 export function UnassignSummonHotkey(): $CancellablePromise<void> {
     return $Call.ByID(2578647287);

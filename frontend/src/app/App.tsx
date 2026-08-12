@@ -249,11 +249,15 @@ function App() {
   // asks the main window to navigate via SettingsService.OpenMainWindow,
   // which shows/focuses this window and emits this event. Empty-string
   // view (the panel's "Open Mill" row) means "just show the window,"
-  // no navigation.
+  // no navigation. 'review' is the floating approval prompt's own
+  // "Open in Mill" row for a guardrail/human-review park
+  // (docs/goals/0023 item 1, app/ApprovalPrompt.tsx) -- same mechanism,
+  // one more target.
   useEffect(() => {
     return Events.On('mill-navigate', (evt) => {
       const target = evt.data as string;
       if (target === 'settings') setView({ kind: 'settings' });
+      if (target === 'review') setView({ kind: 'review' });
     });
   }, [setView]);
 
@@ -304,16 +308,26 @@ function App() {
   // PendingMCPWrites (MCPWriteApprovals' own RPC) -- no new backend
   // surface needed for a number that already exists two ways.
   //
-  // Away-user attention layer (docs/adr/0032 §3), folded into the same
-  // effect since it reads the same two lists: the total count mirrors
-  // to the dock badge on every change, and each NEW pending item (an id
-  // not seen on a previous refresh) fires an actionable OS notification
-  // if the window is unfocused when it arrives -- a present user
-  // already sees the in-app banner/Review row, so notifying them too
-  // would be double-noise (document.hasFocus() gate). notifiedIds
-  // tracks what's already been pushed so a later re-fetch of the same
-  // still-pending item, or the user simply refocusing later, never
-  // re-notifies.
+  // Away-user attention layer (docs/adr/0032 §3, sharpened by
+  // docs/goals/0023-attention-escalation.md items 1/2/4), folded into
+  // the same effect since it reads the same two lists: the total count
+  // mirrors to the dock badge on every change, and each NEW pending
+  // item (an id not seen on a previous refresh) is reported to the
+  // backend exactly once -- notifiedIds tracks what's already been
+  // reported so a later re-fetch of the same still-pending item never
+  // re-fires either call below.
+  //
+  // The presence decision itself (present vs. away) moved BACKEND-side
+  // (SettingsService.NotifyPendingApproval's own isAway) -- this effect
+  // only supplies its own document.hasFocus() reading and always calls
+  // it for every new item; the backend decides whether that's actually
+  // "present" (focused AND recently-active) or "away" (idle past the
+  // configured threshold, or unfocused), fixing the previously-observed
+  // focused-but-idle suppression bug a frontend-only gate couldn't see.
+  // ForwardPendingApproval (item 4, the cross-device forward) fires
+  // unconditionally alongside it -- forwarding doesn't depend on local
+  // focus/idle at all, since its whole point is reaching the owner when
+  // there may be no local Mac attention to gate on in the first place.
   const [reviewPendingCount, setReviewPendingCount] = useState(0);
   const notifiedIds = useRef<Set<string>>(new Set());
   useEffect(() => {
@@ -335,17 +349,11 @@ function App() {
           ...mcpPending.map((w) => ({ key: `mcp-write:${w.id}`, id: w.id, description: w.description, kind: 'mcp-write' })),
         ];
 
-        if (document.hasFocus()) {
-          // A present user already sees these live -- remember them so
-          // looking away later doesn't retroactively notify for
-          // something that arrived while the window had focus.
-          for (const item of items) notifiedIds.current.add(item.key);
-          return;
-        }
         for (const item of items) {
           if (notifiedIds.current.has(item.key)) continue;
           notifiedIds.current.add(item.key);
-          void SettingsService.NotifyPendingApproval(item.id, item.description, item.kind).catch(() => {});
+          void SettingsService.ForwardPendingApproval(item.id, item.description, item.kind).catch(() => {});
+          void SettingsService.NotifyPendingApproval(item.id, item.description, item.kind, document.hasFocus()).catch(() => {});
         }
       });
     };

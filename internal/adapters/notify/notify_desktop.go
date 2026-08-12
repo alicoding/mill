@@ -5,6 +5,7 @@ package notify
 import (
 	"context"
 	"fmt"
+	"log/slog"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
 	"github.com/wailsapp/wails/v3/pkg/services/notifications"
@@ -31,6 +32,29 @@ func Start() error {
 	if err := svc.ServiceStartup(context.Background(), application.ServiceOptions{}); err != nil {
 		return fmt.Errorf("notifications startup: %w", err)
 	}
+
+	// Alert-style authorization (docs/goals/0023-attention-escalation.md
+	// item 3): the pinned notifications API's own
+	// RequestNotificationAuthorization has no per-type parameter to
+	// request Alert *specifically* -- checked directly against the
+	// native implementation (notifications_darwin.m): it always
+	// requests UNAuthorizationOptionAlert | Sound | Badge together as
+	// one fixed bundle, with no Go-level option to narrow that. So
+	// there is nothing to configure beyond calling it -- Alert is
+	// already included, unconditionally, in the only authorization
+	// request this SDK version can make. Backgrounded: this can block
+	// on the native permission dialog (up to its own internal 3-minute
+	// timeout) and app startup must not stall on the user's decision,
+	// same "never fatal, log and continue" posture as the rest of this
+	// package. This was previously never called at all -- a real,
+	// closeable gap (Send* would silently never actually alert without
+	// it ever having been requested).
+	go func() {
+		if _, err := svc.RequestNotificationAuthorization(); err != nil {
+			slog.Warn("notification authorization request failed", "error", err)
+		}
+	}()
+
 	return svc.RegisterNotificationCategory(notifications.NotificationCategory{
 		ID: CategoryMCPWrite,
 		Actions: []notifications.NotificationAction{

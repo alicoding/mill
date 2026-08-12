@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
 import { Browser } from '@wailsio/runtime'
-import { Button, Checkbox, FormControl, Heading, Label, SegmentedControl, Stack, Text, useTheme } from '@primer/react'
+import { Button, Checkbox, FormControl, Heading, Label, SegmentedControl, Stack, Text, TextInput, useTheme } from '@primer/react'
 import { SunIcon, MoonIcon, DeviceDesktopIcon, KeyIcon } from '@primer/octicons-react'
 import { SettingsService } from '../shared/bindings'
 import { describeCombo, keyFromEventCode, modsFromEvent, reservedByMacOS } from '../shared/keybinding'
 import { isAccessibilityError, ACCESSIBILITY_SETTINGS_URL } from '../composition/hotkeyCapture'
+import { EntityRefField } from '../configure/EntityRefField'
 import KeyboardShortcutsSection from './KeyboardShortcutsSection'
 import styles from '../shared/ListCard.module.css'
 import PageContainer from '../shared/PageContainer'
@@ -48,6 +49,13 @@ function SettingsView() {
   const [mcpWriteEnabled, setMCPWriteEnabledState] = useState<boolean | null>(null)
   const [mcpApprovalRequired, setMCPApprovalRequiredState] = useState<boolean | null>(null)
 
+  // Attention/notifications (docs/goals/0023-attention-escalation.md
+  // items 2/3/4): the idle-aware presence-gate threshold, and the
+  // cross-device forward's own enable toggle + configured HTTPRequest.
+  const [idleThreshold, setIdleThresholdState] = useState<number | null>(null)
+  const [forwardEnabled, setForwardEnabledState] = useState<boolean | null>(null)
+  const [forwardRequestID, setForwardRequestIDState] = useState('')
+
   useEffect(() => {
     SettingsService.GetLaunchAtLogin()
       .then(setLaunchAtLoginState)
@@ -60,6 +68,15 @@ function SettingsView() {
       .catch(console.error)
     SettingsService.GetMCPWriteApprovalRequired()
       .then(setMCPApprovalRequiredState)
+      .catch(console.error)
+    SettingsService.GetAttentionIdleThreshold()
+      .then(setIdleThresholdState)
+      .catch(console.error)
+    SettingsService.GetForwardApprovalsEnabled()
+      .then(setForwardEnabledState)
+      .catch(console.error)
+    SettingsService.GetForwardApprovalsRequestID()
+      .then((id) => setForwardRequestIDState(id ?? ''))
       .catch(console.error)
   }, [])
 
@@ -126,6 +143,27 @@ function SettingsView() {
   const clearSummonHotkey = () => {
     setSummonError('')
     SettingsService.UnassignSummonHotkey().then(() => setSummonBinding(null)).catch(console.error)
+  }
+
+  // docs/goals/0023-attention-escalation.md item 2: committed on blur
+  // (a numeric field on every keystroke would spam SetAttentionIdleThreshold
+  // with half-typed values) -- a non-positive/empty value resets to the
+  // backend's own default, mirrored client-side by simply refetching.
+  const commitIdleThreshold = (raw: string) => {
+    const n = parseInt(raw, 10)
+    SettingsService.SetAttentionIdleThreshold(Number.isFinite(n) ? n : 0)
+      .then(() => SettingsService.GetAttentionIdleThreshold())
+      .then(setIdleThresholdState)
+      .catch(console.error)
+  }
+
+  const toggleForwardEnabled = (enabled: boolean) => {
+    SettingsService.SetForwardApprovalsEnabled(enabled).then(() => setForwardEnabledState(enabled)).catch(console.error)
+  }
+
+  const setForwardRequestID = (id: string) => {
+    setForwardRequestIDState(id)
+    SettingsService.SetForwardApprovalsRequestID(id).catch(console.error)
   }
 
   const checkForUpdates = () => {
@@ -249,6 +287,59 @@ function SettingsView() {
             (or times out after 2 minutes, which denies it). Turning this off lets an enabled MCP client
             import without a per-write click -- enabling writes shouldn&apos;t silently mean unattended writes.
           </FormControl.Caption>
+        </FormControl>
+      )}
+
+      <Heading as="h2" variant="small" className={styles.sectionHeading}>Notifications</Heading>
+      <Text as="p" size="small" className={styles.muted}>
+        A parked guardrail ask or MCP write notifies you and shows a floating approval prompt (docs/adr/0032,
+        docs/goals/0023) once you&apos;re away -- not merely unfocused, but idle past the threshold below, or
+        genuinely unfocused. A present, actively-using-Mill window is never double-noised.
+      </Text>
+      <FormControl>
+        <FormControl.Label>Away after (seconds)</FormControl.Label>
+        <TextInput
+          type="number"
+          min={1}
+          defaultValue={idleThreshold ?? undefined}
+          key={idleThreshold ?? 'loading'}
+          onBlur={(e) => commitIdleThreshold(e.target.value)}
+          disabled={idleThreshold === null}
+          data-testid="attention-idle-threshold-input"
+          size="small"
+        />
+        <FormControl.Caption>
+          How long the Mac must sit idle (no keyboard/mouse/trackpad input) while Mill is focused before
+          you&apos;re treated as away -- 300s (5 minutes) by default, matching Teams&apos; own away-status
+          default. Losing focus entirely always counts as away regardless of this number.
+        </FormControl.Caption>
+      </FormControl>
+      <Text as="p" size="small" className={styles.muted}>
+        For the notification to alert instead of only appearing quietly in Notification Center, allow it in
+        System Settings → Notifications → Mill → Alerts (docs/goals/0023 item 3) -- Mill requests notification
+        permission on first launch, but macOS still defaults new apps to Banners, which auto-dismiss.
+      </Text>
+
+      <Heading as="h2" variant="small" className={styles.sectionHeading}>Forward pending approvals</Heading>
+      <FormControl>
+        <Checkbox
+          checked={forwardEnabled ?? false}
+          disabled={forwardEnabled === null}
+          onChange={(e) => toggleForwardEnabled(e.target.checked)}
+          data-testid="forward-approvals-enabled-checkbox"
+        />
+        <FormControl.Label>Forward to another device</FormControl.Label>
+        <FormControl.Caption>
+          Off by default (docs/goals/0023 item 4). When on, every new pending guardrail ask or MCP write fires
+          the integration below (e.g. ntfy/Telegram/a webhook receiver you configure) with{' '}
+          <code>{'{kind, id, description, createdAt}'}</code> as the body -- the only layer that reaches you
+          entirely away from this Mac. Fire-and-forget: a delivery failure never blocks the park.
+        </FormControl.Caption>
+      </FormControl>
+      {forwardEnabled && (
+        <FormControl>
+          <FormControl.Label>Integration</FormControl.Label>
+          <EntityRefField refKind="request" value={forwardRequestID} onChange={setForwardRequestID} />
         </FormControl>
       )}
 
