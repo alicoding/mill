@@ -73,10 +73,20 @@ this pipeline and on this code)**
    the DEV·live badge's Go-liveness blind spot, now having claimed a
    second scalp (ADR-0035's Consequences note); a third badge state
    (amber DEV·go-stale) not yet built.
-8. [ ] [0030 — Node standard](0030-node-standard.md) — owner-mandated
-   2026-08-12: a written, precedent-researched (n8n community-node
-   review) conformance standard every NodeType is checked against;
-   not started.
+8. [x] [0030 — Node standard](archive/0030-node-standard.md) —
+   DELIVERED 2026-08-12: `.claude/rules/node-standard.md` (8-item
+   checklist, citing n8n's community-node/UX/error-handling
+   guidelines, Zapier's publishing requirements, Raycast's store
+   checklist; explicit rejections + the credential rule +
+   NodeType-versioning-is-latent note); `TestNodeTypes`
+   (nodetypes_test.go) machine-checks 4 of the 8 items (Description
+   non-empty, explicit Effect via a closed pureNodeTypes allow-list,
+   universal Output, Kind-ID-prefix via a closed idPrefixExceptions
+   allow-list) — the error-prefix convention stays review-checked,
+   not grep-tested (fragility tradeoff recorded in the rule file).
+   Audit found and fixed 3 real gaps: list-lookup/list-search/
+   child-workflow had no declared Effect (silently defaulting to the
+   permissive zero value), decision-route had no Output.
 9. [ ] [0031 — AI node family](0031-ai-node-family.md) — owner-engaged
    2026-08-12: the guardrailed AI-node family (n8n/Make/Zapier/
    Dify taxonomy convergence), Mill's category-defining capability;

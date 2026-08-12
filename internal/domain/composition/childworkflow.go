@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+
+	"github.com/alicoding/mill/internal/domain/guardrail"
 )
 
 // runChildWorkflowFn defaults to erroring so a child-workflow node run
@@ -36,6 +38,11 @@ func init() {
 	RegisterNodeType(NodeType{
 		ID: "child-workflow", Kind: KindProcess,
 		Label:       "Run another workflow",
+		// Effect is explicitly ClassNone (never left at the zero value) --
+		// docs/adr/0022: "Child workflows carry no class of their own
+		// (none): the child's own steps are gated inside the child's own
+		// run -- gating the invocation too would double-charge."
+		Effect:      guardrail.ClassNone,
 		Output:      "the child workflow's result",
 		Description: "Runs another of your workflows as a step and uses its result as this workflow's payload. The other workflow must start with the \"callable by another workflow\" trigger (docs/adr/0010) -- that's what marks it as safe to be invoked from here rather than by a hotkey or schedule of its own.",
 		ConfigFields: []ConfigField{
