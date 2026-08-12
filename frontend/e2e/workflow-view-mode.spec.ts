@@ -13,6 +13,34 @@ function activePanel(page: import('@playwright/test').Page) {
   return page.locator('[role="tabpanel"]:not([hidden])').last()
 }
 
+// Same targeting technique as composition-canvas-interactions.spec.ts's
+// own clickCanvasNode -- React Flow's own Controls panel can sit over a
+// node's corner depending on layout, so this tries a few points inside
+// the node's bounding box and only clicks one confirmed (via
+// elementFromPoint) to actually resolve inside the node's own card.
+async function clickCanvasNode(page: import('@playwright/test').Page, panel: import('@playwright/test').Locator, label: string) {
+  const node = panel.locator('.react-flow__node').filter({ hasText: label })
+  const box = await node.boundingBox()
+  if (!box) throw new Error(`clickCanvasNode: node "${label}" has no bounding box`)
+  const candidates = [
+    { x: box.x + 10, y: box.y + 10 },
+    { x: box.x + box.width - 10, y: box.y + 10 },
+    { x: box.x + box.width / 2, y: box.y + box.height / 2 },
+    { x: box.x + 10, y: box.y + box.height - 10 },
+  ]
+  for (const point of candidates) {
+    const insideNode = await page.evaluate(({ x, y }) => {
+      const el = document.elementFromPoint(x, y)
+      return !!el?.closest('.react-flow__node')
+    }, point)
+    if (insideNode) {
+      await page.mouse.click(point.x, point.y)
+      return
+    }
+  }
+  throw new Error(`clickCanvasNode: no point for node "${label}" resolved inside its own card`)
+}
+
 test('Row click opens VIEW mode: no palette toggle, a drag attempt does not move the node, Runs/Versions stay reachable', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Workflows' }).click()
@@ -106,4 +134,76 @@ test('Run works from view mode without switching to Edit', async ({ page }) => {
   await expect(page.getByTestId('save-workflow')).toHaveCount(0)
 
   await page.getByTestId('dismiss-run-state').click()
+})
+
+// docs/goals/0036-view-mode-ux-hardening.md item 1: the table view
+// (WorkflowsTable.tsx) had NO entry into view mode at all -- only the
+// pencil, straight to Edit. The Label cell is now the same click-to-view
+// affordance InventoryList's row view already gives for free.
+test('Table view: clicking a workflow label opens VIEW mode, not Edit', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Workflows' }).click()
+  await page.getByRole('button', { name: 'Table view' }).click()
+
+  const table = page.getByRole('table', { name: 'Saved workflows' })
+  await expect(table).toBeVisible()
+  // exact: true -- the row's own Edit/Export/Delete/Run IconButtons all
+  // carry aria-labels that CONTAIN "Load sample HTML" as a substring
+  // ("Edit Load sample HTML" etc.), which would otherwise also match.
+  await table.getByRole('button', { name: 'Load sample HTML', exact: true }).click()
+
+  const panel = activePanel(page)
+  await expect(panel.locator('.react-flow__node')).toHaveCount(2)
+  await expect(page.getByTestId('save-workflow')).toHaveCount(0)
+  await expect(page.getByTestId('edit-workflow')).toBeVisible()
+
+  await page.getByRole('button', { name: 'Close tab' }).last().click()
+  // Restore row view so other specs relying on the default aren't
+  // affected by this file's own table-view toggle (view-mode-toggle.
+  // spec.ts's own restore convention, localStorage persists across specs).
+  await page.getByRole('button', { name: 'Row view' }).click()
+})
+
+// docs/goals/0036-view-mode-ux-hardening.md item 2: the ambient cue that
+// a tab is read-only, visible the moment it opens -- before a user ever
+// selects a node and discovers the Inspector is inert.
+test('View-mode chip is present in view, absent once switched to Edit', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Workflows' }).click()
+  await workflowRow(page, 'Load sample HTML').click()
+
+  const chip = page.getByTestId('view-mode-chip')
+  await expect(chip).toBeVisible()
+  await expect(chip).toContainText('Viewing')
+
+  await page.getByTestId('edit-workflow').click()
+  await expect(chip).toHaveCount(0)
+  await expect(page.getByTestId('save-workflow')).toBeVisible()
+
+  await page.getByRole('button', { name: 'Close tab' }).last().click()
+})
+
+// docs/goals/0036-view-mode-ux-hardening.md item 3: the native <fieldset
+// disabled> already blocks every Inspector field FUNCTIONALLY (proven by
+// the drag/breakpoint test above and by composition-canvas-interactions.
+// spec.ts's own editing coverage never running against a view tab) -- this
+// proves the still-missing VISUAL half landed: a selected node's config
+// fieldset actually renders muted in view mode, and full-strength again
+// once switched to Edit, the same node still selected.
+test('View mode: inspector fields render visibly muted, not just functionally blocked', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Workflows' }).click()
+  await workflowRow(page, 'Load sample HTML').click()
+
+  const panel = activePanel(page)
+  await clickCanvasNode(page, panel, 'Apply: write HTML to clipboard')
+  const fieldset = panel.getByTestId('inspector-fieldset')
+  await expect(fieldset).toHaveCSS('opacity', '0.6')
+  await expect(fieldset).toHaveCSS('cursor', 'not-allowed')
+
+  await page.getByTestId('edit-workflow').click()
+  await clickCanvasNode(page, panel, 'Apply: write HTML to clipboard')
+  await expect(panel.getByTestId('inspector-fieldset')).toHaveCSS('opacity', '1')
+
+  await page.getByRole('button', { name: 'Close tab' }).last().click()
 })

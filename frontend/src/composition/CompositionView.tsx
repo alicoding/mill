@@ -366,6 +366,7 @@ function CompositionView() {
           armedWorkflows={armedWorkflows}
           publishingId={publishingId}
           onRun={run}
+          onOpenView={(id) => openEditor(id, 'view')}
           onEdit={(id) => openEditor(id, 'edit')}
           onExport={exportWorkflow}
           onDelete={removeWorkflow}
