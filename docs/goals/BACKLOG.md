@@ -77,10 +77,19 @@ this pipeline and on this code)**
    verdict recorded in SPEC §3; both literal `/Users/ali` paths
    de-literalized. Second lint pass (gocritic/prealloc/contextcheck/
    sqlclosecheck) named as explicit future work, not done here.
-7. [ ] [0029 — Dev-liveness honesty](0029-dev-liveness-honesty.md) —
-   the DEV·live badge's Go-liveness blind spot, now having claimed a
-   second scalp (ADR-0035's Consequences note); a third badge state
-   (amber DEV·go-stale) not yet built.
+7. [x] [0029 — Dev-liveness honesty](archive/0029-dev-liveness-honesty.md)
+   — DELIVERED 2026-08-12: third badge state amber `DEV · go-stale`
+   (`frontend/src/app/goLiveness.ts` + `BuildIdentityBadge.tsx`),
+   comparing `BuildInfo.BuiltAt` (the running binary's own executable
+   mtime) against the newest `internal/**/*.go` mtime served by a
+   vite dev-only middleware (`vite.config.ts`'s `goLivenessPlugin`) —
+   chosen over a task-dev-heartbeat-file candidate since it needs no
+   new watcher process; deliberately Go-source-mtime, never git HEAD,
+   so it can't repeat goal 0019's false-alarm. `task dev`'s start
+   sweep also clears an orphaned vite port and warns (non-blocking)
+   below 2GB free disk. Pure comparison unit-tested
+   (`goLiveness.test.ts`); the full live-wedge behavior entered
+   `.claude/rules/testing.md`'s manual-only note.
 8. [x] [0030 — Node standard](archive/0030-node-standard.md) —
    DELIVERED 2026-08-12: `.claude/rules/node-standard.md` (8-item
    checklist, citing n8n's community-node/UX/error-handling

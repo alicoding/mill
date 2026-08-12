@@ -1,5 +1,7 @@
 import { execSync } from "node:child_process";
-import { defineConfig } from "vite";
+import { readdirSync, statSync } from "node:fs";
+import { join, resolve } from "node:path";
+import { defineConfig, type Plugin } from "vite";
 import { configDefaults } from "vitest/config";
 import react from "@vitejs/plugin-react";
 import wails from "@wailsio/runtime/plugins/vite";
@@ -18,6 +20,58 @@ function repoHead(): string {
   }
 }
 
+// Newest mtime (unix millis) among internal/**/*.go, walked AT REQUEST
+// TIME rather than cached at vite startup -- goal 0029's dev-liveness
+// signal. Deliberately Go-source-only (not git HEAD, not the whole
+// repo): a docs-only or frontend-only commit must never move this
+// value, matching goal 0019's already-learned lesson that a git-HEAD
+// comparison false-alarms on exactly that kind of commit. Walking the
+// tree per-request (rather than watching it) is cheap enough for a
+// project this size and needs no extra watcher process to itself go
+// stale.
+function newestGoSourceMtimeMs(dir: string): number {
+  let newest = 0;
+  let entries: ReturnType<typeof readdirSync>;
+  try {
+    entries = readdirSync(dir, { withFileTypes: true });
+  } catch {
+    return newest;
+  }
+  for (const entry of entries) {
+    const full = join(dir, entry.name);
+    if (entry.isDirectory()) {
+      newest = Math.max(newest, newestGoSourceMtimeMs(full));
+    } else if (entry.isFile() && entry.name.endsWith(".go")) {
+      try {
+        newest = Math.max(newest, statSync(full).mtimeMs);
+      } catch {
+        // Race: file removed between readdir and stat -- skip it, the
+        // next poll will see the settled state either way.
+      }
+    }
+  }
+  return newest;
+}
+
+// Dev-only middleware (configureServer only runs under `vite dev`/
+// `wails3 dev`, never `vite build`) serving BuildIdentityBadge's
+// go-liveness comparison input: `{ mtimeMs }`, the newest mtime under
+// internal/**/*.go. Paired with BuildInfo.BuiltAt (the running Go
+// binary's own executable mtime) in BuildIdentityBadge.tsx to detect a
+// wedged or slow `wails3 dev` rebuild watcher -- SPEC §3.8, goal 0029.
+function goLivenessPlugin(): Plugin {
+  const internalDir = resolve(import.meta.dirname, "../internal");
+  return {
+    name: "mill-go-liveness",
+    configureServer(server) {
+      server.middlewares.use("/__mill/go-source-mtime", (_req, res) => {
+        res.setHeader("Content-Type", "application/json");
+        res.end(JSON.stringify({ mtimeMs: newestGoSourceMtimeMs(internalDir) }));
+      });
+    },
+  };
+}
+
 // https://vitejs.dev/config/
 export default defineConfig({
   define: {
@@ -28,7 +82,7 @@ export default defineConfig({
     port: Number(process.env.WAILS_VITE_PORT) || 9245,
     strictPort: true,
   },
-  plugins: [react(), wails("./bindings")],
+  plugins: [react(), wails("./bindings"), goLivenessPlugin()],
   test: {
     // e2e/**/*.spec.ts are Playwright tests (real browser + server),
     // not Vitest unit tests -- exclude them here or Vitest tries to run
