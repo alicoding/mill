@@ -2491,7 +2491,19 @@ findings) and the build rationale are in
   main window also isn't visible, the accepted mitigation. Goal
   0015's own ⌘K in-window palette is unchanged — still the surface
   for *already being in Mill*, distinct from the Quick Panel's *not
-  yet being in Mill* summon target.
+  yet being in Mill* summon target. **Update (2026-08-12)**: the
+  Quick Panel's workflow list is frecency-sorted (frequency-only,
+  `app/workflowFrecency.ts`, off goal 0014's `HomeMetrics.mostUsed`),
+  a "Review" row surfaces the panel's own independent pending-review
+  count (its own window, its own `ListRuns`/`PendingMCPWrites` read +
+  `guardrail-pending-changed`/`mcp-write-approval` subscription — it
+  can't share App.tsx's, a separate React tree entirely), and
+  connector/List/MCP-Server rows jump the main window to the right
+  Configure tab (`OpenMainWindow('configure:<tab>')`, a new
+  `app/useMillNavigate.ts` hook parsing the target, `ConfigureView`'s
+  new `initialTab` prop) — goal 0015's own remaining Acceptance
+  halves, see that goal file for what's still open (pins, the ⌘K
+  palette's own inline-hotkey-per-row detail, a ⌘?/⌘/ alias).
 - **Auto-update** — `app.Updater` (Wails3's own first-party,
   zero-new-dependency `v3/pkg/updater`) is `Init`'d in `main.go` with a
   GitHub Releases provider pointed at `alicoding/mill`;
@@ -2540,10 +2552,23 @@ findings) and the build rationale are in
   WITH its effective shortcut inline — the owner's
   unblock-yourself-in-place requirement — plus workflows (Enter = the
   same test-run semantics as the list Run button) and open work tabs
-  (jump/close). Frecency/pins, Configure entities, the pending-review
-  count, and a ⌘?/⌘/ alias — blocked on the 1:1 command↔binding
-  registry shape — stay recorded in the goal file, not silently
-  dropped). `workflow.run`'s default moved
+  (jump/close). **Update (2026-08-12)**: frecency, Configure entities,
+  and the pending-review count — goal 0015's own remaining Acceptance
+  halves — landed into the **Quick Panel** (`app/QuickPanel.tsx`,
+  ADR-0033), not this ⌘K palette: frequency-only workflow sort off
+  goal 0014's `HomeMetrics.mostUsed` (`app/workflowFrecency.ts`; pins
+  stayed out — no pin/favorite concept exists anywhere in Mill, a
+  BACKLOG.md tech-debt line rather than invented schema), connector/
+  List/MCP-Server rows that jump the main window to the right
+  Configure tab (`SettingsService.OpenMainWindow('configure:<tab>')`
+  → `app/useMillNavigate.ts` → `ConfigureView`'s `initialTab`), and
+  the panel's own independent pending-review read+subscribe (separate
+  Wails window, can't share App.tsx's). This ⌘K palette's own
+  still-open gap — the *inline per-workflow hotkey/armed-state
+  detail* the Acceptance sentence's "showed them the hotkey" half
+  names — and a ⌘?/⌘/ alias (blocked on the 1:1 command↔binding
+  registry shape) both stay recorded in the goal file, not silently
+  dropped. `workflow.run`'s default moved
   off an initial ⌘R pick to ⌘↩ by owner decision, once implementation
   surfaced a real collision the original research missed: macOS's
   `DefaultApplicationMenu()` installs View > Reload on Cmd+R
