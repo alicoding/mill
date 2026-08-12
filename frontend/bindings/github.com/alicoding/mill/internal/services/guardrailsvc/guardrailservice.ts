@@ -24,7 +24,13 @@ import * as guardrail$0 from "../../domain/guardrail/models.js";
 import * as $models from "./models.js";
 
 /**
- * CreateRule validates and stores a new rule, minting its ID.
+ * CreateRule validates and stores a new rule, minting its ID. On a
+ * persist failure the appended rule is rolled back rather than left
+ * live in memory only -- a rule that silently failed to save must not
+ * appear to be gating anything (docs/goals/0025 item 2's memory-vs-
+ * store consistency rule, applied to guardrail rules too since a
+ * phantom-saved rule here is worse than most: it's the thing deciding
+ * whether a step needs approval).
  */
 export function CreateRule(rule: guardrail$0.Rule): $CancellablePromise<guardrail$0.Rule> {
     return $Call.ByID(3694735496, rule);
@@ -32,7 +38,9 @@ export function CreateRule(rule: guardrail$0.Rule): $CancellablePromise<guardrai
 
 /**
  * DeleteRule removes a rule by ID; deleting an absent rule is a no-op,
- * matching every other Configure entity's delete semantics.
+ * matching every other Configure entity's delete semantics. Returns the
+ * persist error (rather than swallowing it, docs/goals/0025 item 1) and
+ * restores the deleted rule if the store write fails.
  */
 export function DeleteRule(id: string): $CancellablePromise<void> {
     return $Call.ByID(1475597571, id);
@@ -58,7 +66,7 @@ export function TestRules(workflowID: string, nodeID: string): $CancellablePromi
 
 /**
  * UpdateRule replaces an existing rule in place, same validation as
- * create.
+ * create; rolls back to the previous rule value if the persist fails.
  */
 export function UpdateRule(rule: guardrail$0.Rule): $CancellablePromise<void> {
     return $Call.ByID(2711428157, rule);
