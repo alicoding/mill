@@ -63,11 +63,25 @@ const relativeFormatter = new Intl.RelativeTimeFormat('en', { numeric: 'auto' })
 // is exactly what Intl already solves). Falls back to
 // toLocaleDateString beyond ~7 days, where a relative phrase stops
 // being more useful than an actual date.
-export function formatUpdated(ts: unknown): string {
+//
+// now defaults to the real clock (every UI call site wants that) but is
+// a real parameter, not a hardcoded Date.now() -- found live in this
+// session (not part of this goal's own scope, fixed here as a small,
+// CI-blocking out-of-goal fix per CLAUDE.md): shared/staleness.ts's
+// formatLastChecked already accepted its own `now` override for
+// deterministic testing, but silently dropped it calling this function
+// with one argument, so the override was pure decoration -- the
+// second real clock is what actually decided the output.
+// staleness.test.ts's own hardcoded NOW anchor (2026-08-11) caught this
+// for real once the wall clock actually crossed a day boundary past it
+// mid-session, flipping a "9 minutes ago" expectation to "yesterday" --
+// exactly the class of bug a real `now` parameter, honored end to end,
+// prevents.
+export function formatUpdated(ts: unknown, now: number = Date.now()): string {
   const ms = parseUpdated(ts)
   if (ms === null) return ''
 
-  const diffMs = ms - Date.now()
+  const diffMs = ms - now
   const absDiffMs = Math.abs(diffMs)
 
   if (absDiffMs < 1000 * 60 * 60 * 24 * 7) {

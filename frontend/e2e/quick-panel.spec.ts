@@ -1,5 +1,10 @@
+import type { Client } from '@modelcontextprotocol/sdk/client/index.js'
 import { test, expect } from './fixtures/server'
 import { clickRowAction } from './inventoryRow'
+import {
+  connectMCPClient, enableMCPWritesWithApprovalRequired, exportWorkflowViaMCP,
+  findWorkflowIdByLabel, restoreMCPWriteDefaults,
+} from './mcpTestClient'
 
 // Exercises the Quick Panel's frontend (docs/adr/0033-quick-panel-
 // second-window.md, app/QuickPanel.tsx) at its hash route
@@ -130,4 +135,159 @@ test('a seeded workflow is listed and Enter runs it, showing a started confirmat
   await expect(page.getByTestId('quick-panel-status')).toContainText(`Started "${label}"`)
 
   await deleteWorkflow(page, label)
+})
+
+// docs/goals/0015-summon-quick-invoke.md's remainder, item 3: Configure
+// entities as searchable/jumpable rows. Reuses the seeded "Example:
+// Country codes" List (internal/domain/list/builtin.go) rather than
+// creating a throwaway one, same reasoning configure-lists.spec.ts's
+// own header comment gives -- nothing List-shaped to clean up.
+test('typing a few chars and picking a Configure entity jumps the main window to its tab', async ({ page }) => {
+  // Two real pages against the SAME worker server -- the main window
+  // and the Quick Panel are genuinely separate Wails windows in
+  // production (ADR-0033); realtime-cross-surface.spec.ts's own "two
+  // open surfaces" pattern is the real cross-window shape to test
+  // against, not one page simulating both. The Quick Panel's jump row
+  // asks the MAIN window to navigate (SettingsService.OpenMainWindow,
+  // app/useMillNavigate.ts) -- it never renders Configure itself.
+  const mainPage = await page.context().newPage()
+  try {
+    await mainPage.goto('/')
+
+    await page.goto('/#/quickpanel')
+    const search = page.getByRole('combobox', { name: 'Quick Panel search' })
+    await expect(search).toBeFocused()
+    await search.fill('country')
+
+    const option = page.getByRole('option', { name: 'Example: Country codes' })
+    await expect(option).toBeVisible()
+    await option.click()
+
+    // ConfigureView's Lists tab panel becomes visible on the MAIN
+    // window -- every TabPanel stays mounted (ConfigureView.tsx's own
+    // doc comment), so `toBeVisible()` (not just present in the DOM) is
+    // the real "did the jump land on the right tab" signal.
+    await expect(mainPage.getByTestId('configure-lists')).toBeVisible({ timeout: 10_000 })
+    await expect(
+      mainPage.locator('[data-testid="inventory-row"][data-entity="list"]', {
+        has: mainPage.getByText('Example: Country codes', { exact: true }),
+      }),
+    ).toBeVisible()
+  } finally {
+    await mainPage.close()
+  }
+})
+
+// docs/goals/0015-summon-quick-invoke.md's remainder, item 1: frecency
+// sort. workflowFrecency.test.ts already covers the pure ranking
+// function in isolation; this proves the live wiring end to end
+// (QuickPanel actually calls ExecutionService.HomeMetrics and reads its
+// response's real field names -- a casing/wiring mistake here would
+// pass the pure unit test but fail this one).
+test('a workflow run from the panel a few times sorts above one that was never run', async ({ page }) => {
+  const frequentLabel = 'ZzE2eFrecencyFrequent'
+  const neverRunLabel = 'ZzE2eFrecencyNeverRun'
+  // neverRunLabel created FIRST, frequentLabel second -- so the
+  // fetch's own default (creation-order-ish) fallback would already
+  // put neverRunLabel ahead absent any frecency reordering. Only the
+  // frecency sort itself can flip that, making this a real proof
+  // rather than a coincidental pass.
+  await createSimpleWorkflow(page, neverRunLabel)
+  await createSimpleWorkflow(page, frequentLabel)
+
+  await page.goto('about:blank')
+  await page.goto('/#/quickpanel')
+  const search = page.getByRole('combobox', { name: 'Quick Panel search' })
+  await expect(search).toBeFocused()
+
+  // Run the "frequent" workflow twice via the panel's own Enter-to-run
+  // path (ExecutionService.RunWorkflow, RunKindTest) -- the exact usage
+  // HomeMetrics' MostUsed counts (executionservice_home.go's
+  // mostUsedFor: every run regardless of Kind/Status).
+  for (let i = 0; i < 2; i++) {
+    await search.fill(frequentLabel)
+    await expect(page.getByRole('option', { name: frequentLabel })).toBeVisible()
+    await page.keyboard.press('Enter')
+    await expect(page.getByTestId('quick-panel-status')).toContainText(`Started "${frequentLabel}"`)
+    await search.fill('')
+  }
+
+  // DBOS run history becomes queryable shortly after RunWorkflow
+  // returns, not necessarily synchronously with it -- retry the
+  // fresh-mount reload + order check rather than a fixed sleep.
+  await expect(async () => {
+    await page.goto('about:blank')
+    await page.goto('/#/quickpanel')
+    await expect(page.getByRole('combobox', { name: 'Quick Panel search' })).toBeFocused()
+    await page.getByRole('combobox', { name: 'Quick Panel search' }).fill('ZzE2eFrecency')
+    const optionTexts = await page.getByRole('option').allTextContents()
+    const frequentIndex = optionTexts.findIndex((t) => t.includes(frequentLabel))
+    const neverRunIndex = optionTexts.findIndex((t) => t.includes(neverRunLabel))
+    expect(frequentIndex).toBeGreaterThanOrEqual(0)
+    expect(neverRunIndex).toBeGreaterThanOrEqual(0)
+    expect(frequentIndex).toBeLessThan(neverRunIndex)
+  }).toPass({ timeout: 15_000 })
+
+  await deleteWorkflow(page, frequentLabel)
+  await deleteWorkflow(page, neverRunLabel)
+})
+
+// docs/goals/0015-summon-quick-invoke.md's remainder, item 2:
+// pending-review count. Judged e2e-feasible (not manual-only, per
+// .claude/rules/testing.md's own decision criterion) -- the same real
+// MCP write client + park-and-poll lifecycle mcp-write-approval.spec.ts
+// already drives headlessly. This proves the LIVE subscription (the
+// panel stays open, on the same page, across the park -- no reload
+// between parking the write and reading the badge), not just the
+// on-mount fetch every other assertion here already exercises
+// incidentally.
+test('a parked MCP write bumps the Quick Panel review badge live, no reload', async ({ page }, testInfo) => {
+  await enableMCPWritesWithApprovalRequired(page)
+
+  const sourceLabel = 'ZzE2eQuickPanelReviewSource'
+  await createSimpleWorkflow(page, sourceLabel)
+
+  await page.goto('about:blank')
+  await page.goto('/#/quickpanel')
+  const search = page.getByRole('combobox', { name: 'Quick Panel search' })
+  await expect(search).toBeFocused()
+
+  const client = await connectMCPClient(testInfo.parallelIndex)
+  let importResultPromise: ReturnType<Client['callTool']>
+  try {
+    const sourceId = await findWorkflowIdByLabel(client, sourceLabel)
+    const exported = await exportWorkflowViaMCP(client, sourceId)
+    importResultPromise = client.callTool({ name: 'import_workflow', arguments: { json: exported } })
+
+    const badge = page.getByTestId('quick-panel-review-count')
+    await expect(badge).toHaveText('1', { timeout: 15_000 })
+
+    // Resolve it via the main window's real Review queue -- same
+    // approve path mcp-write-approval.spec.ts exercises end to end --
+    // so the park doesn't leak into another test's own pending count.
+    await page.goto('/')
+    await page.getByRole('link', { name: 'Review' }).click()
+    const item = page.getByTestId('review-mcp-write-item').first()
+    await expect(item).toBeVisible({ timeout: 15_000 })
+    await item.getByTestId('review-mcp-write-approve').click()
+    await expect(page.getByTestId('review-mcp-write-item')).toHaveCount(0, { timeout: 10_000 })
+
+    const result = await importResultPromise
+    if (result.isError) {
+      throw new Error(`import_workflow ultimately errored after approval: ${JSON.stringify(result.content)}`)
+    }
+  } finally {
+    await client.close()
+  }
+
+  // Cleanup: both minted workflows (the source + the one approving the
+  // import minted) and the settings toggle.
+  await page.getByRole('link', { name: 'Workflows' }).click()
+  let remaining = await workflowRow(page, sourceLabel).count()
+  while (remaining > 0) {
+    await clickRowAction(page, workflowRow(page, sourceLabel).first(), 'Delete')
+    remaining -= 1
+    await expect(workflowRow(page, sourceLabel)).toHaveCount(remaining)
+  }
+  await restoreMCPWriteDefaults(page)
 })
