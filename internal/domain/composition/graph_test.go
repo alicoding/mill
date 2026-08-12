@@ -1,6 +1,7 @@
 package composition
 
 import (
+	"strings"
 	"testing"
 )
 
@@ -63,6 +64,72 @@ func TestExecuteWorkflow_MultipleRootsMergingIntoOneNode_Rejected(t *testing.T) 
 	}
 	if _, err := ExecuteWorkflow(nodes, edges, nil); err == nil {
 		t.Fatal("ExecuteWorkflow with two roots merging into one node returned nil error, want an error")
+	}
+}
+
+// TestFindRoot_PureCycle_NamesTheLoopingNodes is goal 0021 gap 4's
+// repro: a graph where every node has an incoming edge (a pure cycle,
+// no Trigger at all) used to report only "a workflow must have exactly
+// one starting node" -- true, but it left an authoring agent to find
+// the loop by process of elimination. findRoot must now name the
+// actual node IDs that loop.
+func TestFindRoot_PureCycle_NamesTheLoopingNodes(t *testing.T) {
+	nodes := []Node{
+		{ID: "a", NodeTypeID: "process-inject-text"},
+		{ID: "b", NodeTypeID: "process-inject-text"},
+		{ID: "c", NodeTypeID: "process-inject-text"},
+	}
+	edges := []Edge{
+		{ID: "e1", Source: "a", Target: "b"},
+		{ID: "e2", Source: "b", Target: "c"},
+		{ID: "e3", Source: "c", Target: "a"},
+	}
+
+	_, err := ExecuteWorkflow(nodes, edges, nil)
+	if err == nil {
+		t.Fatal("ExecuteWorkflow on a pure cycle returned nil error, want an error")
+	}
+	if !strings.Contains(err.Error(), "a -> b -> c -> a") {
+		t.Fatalf("error = %q, want it to name the actual cycle (a -> b -> c -> a)", err.Error())
+	}
+
+	issues := ValidateGraph(nodes, edges, nil)
+	var found bool
+	for _, iss := range issues {
+		if strings.Contains(iss.Message, "a -> b -> c -> a") {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("ValidateGraph issues = %+v, want one naming the cycle (a -> b -> c -> a)", issues)
+	}
+}
+
+// TestExecuteWorkflow_CycleDownstreamOfARealRoot_NamesTheLoopingNodes
+// is the sibling case: a graph WITH a valid, unique Trigger root (so
+// findRoot succeeds and ValidateGraph's reachability walk sees every
+// node as reachable -- it doesn't check for cycles, only
+// unreachability) but that loops further downstream. Only actual
+// execution's own traversal catches this one, and its error must name
+// the loop too, not just say "contains a cycle".
+func TestExecuteWorkflow_CycleDownstreamOfARealRoot_NamesTheLoopingNodes(t *testing.T) {
+	nodes := []Node{
+		{ID: "t", NodeTypeID: "trigger-manual", Kind: KindTrigger},
+		{ID: "a", NodeTypeID: "process-inject-text"},
+		{ID: "b", NodeTypeID: "process-inject-text"},
+	}
+	edges := []Edge{
+		{ID: "e1", Source: "t", Target: "a"},
+		{ID: "e2", Source: "a", Target: "b"},
+		{ID: "e3", Source: "b", Target: "a"},
+	}
+
+	_, err := ExecuteWorkflow(nodes, edges, nil)
+	if err == nil {
+		t.Fatal("ExecuteWorkflow on a downstream cycle returned nil error, want an error")
+	}
+	if !strings.Contains(err.Error(), "a -> b -> a") {
+		t.Fatalf("error = %q, want it to name the actual loop (a -> b -> a)", err.Error())
 	}
 }
 

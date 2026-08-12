@@ -113,9 +113,11 @@ type RunStep struct {
 	// Input/InputAttributes are this step's recorded INPUT (docs/adr/0031
 	// item 3): the immediately-preceding EXECUTED step's own recorded
 	// Payload/Attributes, or the run's own seeded starting values for
-	// the first executed step. Previously undiscoverable at all -- only
-	// a step's OUTPUT was ever surfaced.
-	Input           string         `json:"input,omitempty"`
+	// the first executed step. No omitempty on Input, matching Output
+	// below (goal 0021 gap 3): omitempty on a genuinely-empty first
+	// step dropped the JSON key entirely over MCP, indistinguishable
+	// from a real mapping bug.
+	Input           string         `json:"input"`
 	InputAttributes map[string]any `json:"inputAttributes,omitempty"`
 	Output          string         `json:"output"`
 	// OutputAttributes is this step's Attributes bag AFTER it ran --
