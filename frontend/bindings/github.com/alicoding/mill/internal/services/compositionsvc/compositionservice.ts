@@ -142,6 +142,18 @@ export function RestoreWorkflow(id: string): $CancellablePromise<composition$0.W
 }
 
 /**
+ * SeedRevisions returns the CURRENTLY SHIPPED revision of every golden
+ * workflow, keyed by ID -- lets the frontend's reset affordance render
+ * an accurate "Reset to shipped example vN" (docs/goals/0037 item 4)
+ * without guessing: a Modified workflow's own Seed.SeedRevision freezes
+ * at whatever it was when the latch fired, which can drift behind the
+ * code's current golden if a later Mill release bumps it further.
+ */
+export function SeedRevisions(): $CancellablePromise<{ [_ in string]?: number } | null> {
+    return $Call.ByID(3687732097);
+}
+
+/**
  * SetWorkflowDisabled flips the inactive state (ADR-0021: disabling
  * pauses production -- triggers and child calls -- while test runs
  * stay allowed, n8n's own semantics).

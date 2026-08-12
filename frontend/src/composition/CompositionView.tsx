@@ -9,6 +9,9 @@ import { refreshNodeTypes, refreshWorkflows, useAppStore } from '../shared/store
 import { InventoryList, type InventoryItem } from '../shared/InventoryList'
 import { ENTITY_ICON } from '../shared/entityIcons'
 import { formatUpdated, sortByUpdatedDesc } from '../shared/inventorySort'
+import { describeSeedReset } from '../shared/seedLifecycle'
+import { RestoreExamplesButton } from '../shared/RestoreExamplesButton'
+import type { Workflow } from '../../bindings/github.com/alicoding/mill/internal/domain/composition/models'
 import TestRunDialog from './TestRunDialog'
 import { workflowPayloadHint } from './triggerPayload'
 import styles from '../shared/ListCard.module.css'
@@ -60,6 +63,19 @@ function CompositionView() {
   const [armedWorkflows, setArmedWorkflows] = useState<Record<string, boolean | undefined>>({})
   const [publishingId, setPublishingId] = useState<string | null>(null)
   const [publishError, setPublishError] = useState<string | null>(null)
+  // Seed lifecycle (docs/goals/0037): the currently-shipped revision
+  // per golden ID (drives the reset menu item's "vN" label) and the
+  // tombstoned-but-restorable list (drives the header's "Restore
+  // example…" button, hidden entirely when empty). Page-local state,
+  // same as armedWorkflows above -- rarely changes, only this page
+  // needs it.
+  const [seedRevisions, setSeedRevisions] = useState<Record<string, number | undefined>>({})
+  const [restorable, setRestorable] = useState<Workflow[]>([])
+
+  const refreshSeedLifecycle = useCallback(() => {
+    CompositionService.SeedRevisions().then((m) => setSeedRevisions(m ?? {})).catch(console.error)
+    CompositionService.RestorableWorkflows().then((r) => setRestorable(r ?? [])).catch(console.error)
+  }, [])
 
   const refreshArmed = useCallback(() => {
     TriggerService.ArmedWorkflows()
@@ -71,7 +87,8 @@ function CompositionView() {
     void refreshWorkflows()
     void refreshNodeTypes()
     refreshArmed()
-  }, [refreshArmed])
+    refreshSeedLifecycle()
+  }, [refreshArmed, refreshSeedLifecycle])
 
   // goal 0017 P2: a Publish/disable/delete elsewhere (another tab, an
   // MCP author) can arm or disarm a workflow's trigger listener --
@@ -168,7 +185,29 @@ function CompositionView() {
   }
 
   const removeWorkflow = (id: string) => {
-    CompositionService.DeleteWorkflow(id).then(() => refreshWorkflows()).catch(console.error)
+    CompositionService.DeleteWorkflow(id).then(() => {
+      void refreshWorkflows()
+      refreshSeedLifecycle() // a deleted built-in becomes restorable
+    }).catch(console.error)
+  }
+
+  // Reset-to-shipped-example (docs/goals/0037 item 4): non-destructive
+  // for a workflow -- appends the golden's content as a new published
+  // version, prior history untouched, reachable via the existing
+  // Versions UI.
+  const resetToSeed = (id: string) => {
+    CompositionService.ResetWorkflowToSeed(id).then(() => {
+      void refreshWorkflows()
+      refreshSeedLifecycle()
+    }).catch((err) => setPublishError(String(err)))
+  }
+
+  // Restore-deleted-example (docs/goals/0037 item 5).
+  const restoreExample = (id: string) => {
+    CompositionService.RestoreWorkflow(id).then(() => {
+      void refreshWorkflows()
+      refreshSeedLifecycle()
+    }).catch((err) => setPublishError(String(err)))
   }
 
   // Downloads id's current definition as a portable .json file --
@@ -230,6 +269,7 @@ function CompositionView() {
     const runTitle = hasDraftDrift(wf)
       ? 'Test run of the draft — differs from the published version.'
       : 'Test run of the draft.'
+    const seedReset = describeSeedReset(wf.Seed, seedRevisions[wf.ID] ?? wf.Seed.SeedRevision)
     return {
       id: wf.ID,
       entity: 'workflow',
@@ -294,6 +334,13 @@ function CompositionView() {
         // table-view row already has a pencil for the same target).
         { label: 'Edit', onClick: () => openEditor(wf.ID, 'edit') },
         { label: 'Export', onClick: () => exportWorkflow(wf.ID, wf.Label) },
+        // Reset-to-shipped-example (docs/goals/0037 item 4): on-demand
+        // disclosure only, built-in-origin rows only. InventoryMenuAction
+        // has no `disabled` concept, so an already-current seed's item is
+        // HIDDEN rather than shown-disabled (the Primer disabled-
+        // affordance rule's own "disabled OR hidden" allowance) -- only
+        // a genuinely actionable reset ever appears in the menu.
+        ...(wf.BuiltIn && !seedReset.disabled ? [{ label: seedReset.label, onClick: () => resetToSeed(wf.ID) }] : []),
         {
           label: 'Delete',
           onClick: () => removeWorkflow(wf.ID),
@@ -335,6 +382,7 @@ function CompositionView() {
           >
             Import
           </Button>
+          <RestoreExamplesButton items={restorable} onRestore={restoreExample} />
           <Button
             leadingVisual={PlusIcon}
             variant="primary"

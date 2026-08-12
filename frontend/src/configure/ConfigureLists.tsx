@@ -16,6 +16,8 @@ import { InventoryList, type InventoryItem } from '../shared/InventoryList'
 import { ENTITY_ICON } from '../shared/entityIcons'
 import { formatUpdated, sortByUpdatedDesc } from '../shared/inventorySort'
 import { useConfirmDelete } from '../shared/useConfirmDelete'
+import { describeSeedReset } from '../shared/seedLifecycle'
+import { RestoreExamplesButton } from '../shared/RestoreExamplesButton'
 import styles from '../shared/ListCard.module.css'
 import PageContainer from '../shared/PageContainer'
 
@@ -56,6 +58,15 @@ export function ConfigureLists() {
   const [importError, setImportError] = useState<string | null>(null)
   const importInputRef = useRef<HTMLInputElement>(null)
   const [viewMode, setViewMode] = useViewMode('mill-lists-view-mode')
+  // Seed lifecycle (docs/goals/0037) -- see CompositionView.tsx's
+  // identical state for the full reasoning.
+  const [seedRevisions, setSeedRevisions] = useState<Record<string, number | undefined>>({})
+  const [restorable, setRestorable] = useState<List[]>([])
+
+  const refreshSeedLifecycle = () => {
+    ConfigureService.SeedRevisions().then((m) => setSeedRevisions(m ?? {})).catch(console.error)
+    ConfigureService.RestorableLists().then((r) => setRestorable(r ?? [])).catch(console.error)
+  }
 
   const refetch = () => {
     void refreshLists()
@@ -82,7 +93,10 @@ export function ConfigureLists() {
       .catch((err) => setImportError(String(err)))
   }
 
-  useEffect(refetch, [])
+  useEffect(() => {
+    refetch()
+    refreshSeedLifecycle()
+  }, [])
 
   const editingList = lists?.find((l) => l.ID === editingID) ?? null
 
@@ -133,7 +147,25 @@ export function ConfigureLists() {
   }
 
   const remove = (id: string) => {
-    ConfigureService.DeleteList(id).then(refetch).catch(console.error)
+    ConfigureService.DeleteList(id).then(() => {
+      refetch()
+      refreshSeedLifecycle()
+    }).catch(console.error)
+  }
+
+  // Reset-to-shipped-example / restore-deleted-example (docs/goals/0037
+  // items 4/5).
+  const resetToSeed = (id: string) => {
+    ConfigureService.ResetListToSeed(id).then(() => {
+      refetch()
+      refreshSeedLifecycle()
+    }).catch((err) => setImportError(String(err)))
+  }
+  const restoreExample = (id: string) => {
+    ConfigureService.RestoreList(id).then(() => {
+      refetch()
+      refreshSeedLifecycle()
+    }).catch((err) => setImportError(String(err)))
   }
 
   // Table-view direct-wiring half of the Button-semantics convention
@@ -184,28 +216,35 @@ export function ConfigureLists() {
   // same order (docs/SPEC.md §3.8's InventoryList entry).
   const sortedLists = useMemo(() => sortByUpdatedDesc(lists ?? [], (l) => l.UpdatedAt), [lists])
 
-  const listItems: InventoryItem[] = sortedLists.map((l) => ({
-    id: l.ID,
-    entity: 'list',
-    icon: ENTITY_ICON.list,
-    label: l.Label,
-    updatedLabel: formatUpdated(l.UpdatedAt),
-    // No !l.BuiltIn guard on Delete -- a seeded example is ordinary and
-    // fully editable/deletable (docs/SPEC.md §2.2's Update note), same
-    // as ConfigureRequests.tsx's identical badge.
-    labelBadges: l.BuiltIn ? <Label variant="secondary" size="small">built-in</Label> : undefined,
-    description: `${(l.Columns ?? []).length} columns, ${(l.Rows ?? []).length} rows`,
-    onOpen: () => startEdit(l),
-    menuActions: [
-      { label: 'Export', onClick: () => exportList(l.ID, l.Label) },
-      {
-        label: 'Delete',
-        onClick: () => remove(l.ID),
-        danger: true,
-        confirm: { title: 'Delete list?', body: `This permanently deletes "${l.Label}". This cannot be undone.` },
-      },
-    ],
-  }))
+  const listItems: InventoryItem[] = sortedLists.map((l) => {
+    const seedReset = describeSeedReset(l.Seed, seedRevisions[l.ID] ?? l.Seed.SeedRevision)
+    return {
+      id: l.ID,
+      entity: 'list',
+      icon: ENTITY_ICON.list,
+      label: l.Label,
+      updatedLabel: formatUpdated(l.UpdatedAt),
+      // No !l.BuiltIn guard on Delete -- a seeded example is ordinary and
+      // fully editable/deletable (docs/SPEC.md §2.2's Update note), same
+      // as ConfigureRequests.tsx's identical badge.
+      labelBadges: l.BuiltIn ? <Label variant="secondary" size="small">built-in</Label> : undefined,
+      description: `${(l.Columns ?? []).length} columns, ${(l.Rows ?? []).length} rows`,
+      onOpen: () => startEdit(l),
+      menuActions: [
+        { label: 'Export', onClick: () => exportList(l.ID, l.Label) },
+        // Reset-to-shipped-example (docs/goals/0037 item 4) -- hidden
+        // (not shown-disabled) when already current, same reasoning
+        // CompositionView.tsx's identical wiring documents.
+        ...(l.BuiltIn && !seedReset.disabled ? [{ label: seedReset.label, onClick: () => resetToSeed(l.ID) }] : []),
+        {
+          label: 'Delete',
+          onClick: () => remove(l.ID),
+          danger: true,
+          confirm: { title: 'Delete list?', body: `This permanently deletes "${l.Label}". This cannot be undone.` },
+        },
+      ],
+    }
+  })
 
   return (
     <PageContainer data-testid="configure-lists">
@@ -224,6 +263,7 @@ export function ConfigureLists() {
           <Button leadingVisual={UploadIcon} size="small" onClick={openImportPicker} data-testid="import-list">
             Import
           </Button>
+          <RestoreExamplesButton items={restorable} onRestore={restoreExample} />
           <Button leadingVisual={PlusIcon} variant="primary" size="small" onClick={startCreate} data-testid="new-list">
             New list
           </Button>

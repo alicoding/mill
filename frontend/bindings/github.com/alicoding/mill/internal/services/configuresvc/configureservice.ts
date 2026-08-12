@@ -369,6 +369,21 @@ export function RestoreMCPServer(id: string): $CancellablePromise<mcpserver$0.MC
 }
 
 /**
+ * SeedRevisions returns the CURRENTLY SHIPPED revision of every golden
+ * Configure entity (every type this service owns), keyed by its own
+ * ID -- IDs are unique across all five entity types (each domain
+ * package's own ExampleXID constants), so one flat map is enough,
+ * unlike seeding.AllSeedFingerprints' kind-namespaced keys (that one
+ * also needs to disambiguate an entity from a workflow sharing the
+ * same map; this map never mixes with CompositionService.SeedRevisions'
+ * own separate call). Lets the frontend's reset affordance render an
+ * accurate "Reset to shipped example vN" (docs/goals/0037 item 4).
+ */
+export function SeedRevisions(): $CancellablePromise<{ [_ in string]?: number } | null> {
+    return $Call.ByID(2403654017);
+}
+
+/**
  * SetHTTPRequestJOSEPrivateKey writes id's JOSE private key (Phase 3)
  * to its own, separate keychain entry -- write-only, same reasoning as
  * SetHTTPRequestSecret, but namespaced (joseKeychainID) so it can

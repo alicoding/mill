@@ -18,6 +18,20 @@ import (
 // compositionservice_versioning.go/compositionservice_export.go
 // already follow.
 
+// SeedRevisions returns the CURRENTLY SHIPPED revision of every golden
+// workflow, keyed by ID -- lets the frontend's reset affordance render
+// an accurate "Reset to shipped example vN" (docs/goals/0037 item 4)
+// without guessing: a Modified workflow's own Seed.SeedRevision freezes
+// at whatever it was when the latch fired, which can drift behind the
+// code's current golden if a later Mill release bumps it further.
+func (c *CompositionService) SeedRevisions() map[string]int {
+	out := make(map[string]int)
+	for _, wf := range composition.BuiltInWorkflows() {
+		out[wf.ID] = wf.Seed.SeedRevision
+	}
+	return out
+}
+
 // reconcileBuiltIns replaces the old topUpBuiltIns: for every golden
 // workflow, absent+untombstoned inserts it (stamped at the golden's
 // SeedRevision); present+unmodified+stale upgrades it in place (a new

@@ -5,7 +5,10 @@ import (
 	"time"
 
 	"github.com/alicoding/mill/internal/domain/decision"
+	"github.com/alicoding/mill/internal/domain/execenv"
 	"github.com/alicoding/mill/internal/domain/httprequest"
+	"github.com/alicoding/mill/internal/domain/list"
+	"github.com/alicoding/mill/internal/domain/mcpserver"
 	"github.com/alicoding/mill/internal/services/dataevent"
 	"github.com/alicoding/mill/internal/services/seeding"
 )
@@ -16,6 +19,35 @@ import (
 // MCPServer/ExecEnv) purely to stay under the 500-line convention; same
 // per-concern organization every other configureservice_*.go file in
 // this package already follows.
+
+// SeedRevisions returns the CURRENTLY SHIPPED revision of every golden
+// Configure entity (every type this service owns), keyed by its own
+// ID -- IDs are unique across all five entity types (each domain
+// package's own ExampleXID constants), so one flat map is enough,
+// unlike seeding.AllSeedFingerprints' kind-namespaced keys (that one
+// also needs to disambiguate an entity from a workflow sharing the
+// same map; this map never mixes with CompositionService.SeedRevisions'
+// own separate call). Lets the frontend's reset affordance render an
+// accurate "Reset to shipped example vN" (docs/goals/0037 item 4).
+func (c *ConfigureService) SeedRevisions() map[string]int {
+	out := make(map[string]int)
+	for _, r := range httprequest.BuiltIn() {
+		out[r.ID] = r.Seed.SeedRevision
+	}
+	for _, d := range decision.BuiltIn() {
+		out[d.ID] = d.Seed.SeedRevision
+	}
+	for _, l := range list.BuiltIn() {
+		out[l.ID] = l.Seed.SeedRevision
+	}
+	for _, s := range mcpserver.BuiltIn() {
+		out[s.ID] = s.Seed.SeedRevision
+	}
+	for _, e := range execenv.BuiltIn() {
+		out[e.ID] = e.Seed.SeedRevision
+	}
+	return out
+}
 
 // findGoldenRequest returns a copy of the golden HTTPRequest with id,
 // if one exists among httprequest.BuiltIn().
