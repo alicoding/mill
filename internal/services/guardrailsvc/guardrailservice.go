@@ -44,12 +44,15 @@ func (g *GuardrailService) restore() {
 	}
 }
 
-func (g *GuardrailService) persist() {
+func (g *GuardrailService) persist() error {
 	data, err := json.Marshal(g.rules)
 	if err != nil {
-		return
+		return fmt.Errorf("marshal guardrail rules: %w", err)
 	}
-	_ = g.store.Set(guardrailRulesKey, string(data))
+	if err := g.store.Set(guardrailRulesKey, string(data)); err != nil {
+		return fmt.Errorf("persist guardrail rules: %w", err)
+	}
+	return nil
 }
 
 // Rules returns every stored rule.
@@ -61,7 +64,13 @@ func (g *GuardrailService) Rules() []guardrail.Rule {
 	return out
 }
 
-// CreateRule validates and stores a new rule, minting its ID.
+// CreateRule validates and stores a new rule, minting its ID. On a
+// persist failure the appended rule is rolled back rather than left
+// live in memory only -- a rule that silently failed to save must not
+// appear to be gating anything (docs/goals/0025 item 2's memory-vs-
+// store consistency rule, applied to guardrail rules too since a
+// phantom-saved rule here is worse than most: it's the thing deciding
+// whether a step needs approval).
 func (g *GuardrailService) CreateRule(rule guardrail.Rule) (guardrail.Rule, error) {
 	rule.ID = uuid.NewString()
 	if err := rule.Validate(); err != nil {
@@ -70,12 +79,15 @@ func (g *GuardrailService) CreateRule(rule guardrail.Rule) (guardrail.Rule, erro
 	g.mu.Lock()
 	defer g.mu.Unlock()
 	g.rules = append(g.rules, rule)
-	g.persist()
+	if err := g.persist(); err != nil {
+		g.rules = g.rules[:len(g.rules)-1]
+		return guardrail.Rule{}, fmt.Errorf("save guardrail rule: %w", err)
+	}
 	return rule, nil
 }
 
 // UpdateRule replaces an existing rule in place, same validation as
-// create.
+// create; rolls back to the previous rule value if the persist fails.
 func (g *GuardrailService) UpdateRule(rule guardrail.Rule) error {
 	if err := rule.Validate(); err != nil {
 		return err
@@ -84,8 +96,12 @@ func (g *GuardrailService) UpdateRule(rule guardrail.Rule) error {
 	defer g.mu.Unlock()
 	for i, r := range g.rules {
 		if r.ID == rule.ID {
+			previous := g.rules[i]
 			g.rules[i] = rule
-			g.persist()
+			if err := g.persist(); err != nil {
+				g.rules[i] = previous
+				return fmt.Errorf("save guardrail rule: %w", err)
+			}
 			return nil
 		}
 	}
@@ -93,18 +109,31 @@ func (g *GuardrailService) UpdateRule(rule guardrail.Rule) error {
 }
 
 // DeleteRule removes a rule by ID; deleting an absent rule is a no-op,
-// matching every other Configure entity's delete semantics.
-func (g *GuardrailService) DeleteRule(id string) {
+// matching every other Configure entity's delete semantics. Returns the
+// persist error (rather than swallowing it, docs/goals/0025 item 1) and
+// restores the deleted rule if the store write fails.
+func (g *GuardrailService) DeleteRule(id string) error {
 	g.mu.Lock()
 	defer g.mu.Unlock()
-	kept := g.rules[:0]
-	for _, r := range g.rules {
-		if r.ID != id {
-			kept = append(kept, r)
+	idx := -1
+	for i, r := range g.rules {
+		if r.ID == id {
+			idx = i
+			break
 		}
 	}
-	g.rules = kept
-	g.persist()
+	if idx == -1 {
+		return nil
+	}
+	removed := g.rules[idx]
+	g.rules = append(g.rules[:idx], g.rules[idx+1:]...)
+	if err := g.persist(); err != nil {
+		g.rules = append(g.rules, guardrail.Rule{})
+		copy(g.rules[idx+1:], g.rules[idx:])
+		g.rules[idx] = removed
+		return fmt.Errorf("save guardrail rule deletion: %w", err)
+	}
+	return nil
 }
 
 // RuleTestResult is one dry-run's outcome for the Configure tester.

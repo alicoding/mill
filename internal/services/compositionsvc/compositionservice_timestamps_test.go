@@ -193,21 +193,24 @@ func TestTopUpBuiltIns_StampsNewlyAddedWorkflow(t *testing.T) {
 	c0.mu.Lock()
 	c0.user = existing
 	c0.mu.Unlock()
-	c0.persist()
+	if err := c0.persist(); err != nil {
+		t.Fatalf("persist: %v", err)
+	}
 
 	before := time.Now()
 	c1 := NewCompositionService(store)
 	after := time.Now()
 
-	var found *composition.Workflow
+	var found composition.Workflow
+	ok := false
 	for _, wf := range c1.Workflows() {
 		if wf.ID == all[0].ID {
-			w := wf
-			found = &w
+			found = wf
+			ok = true
 			break
 		}
 	}
-	if found == nil {
+	if !ok {
 		t.Fatalf("top-up did not add missing built-in %q", all[0].ID)
 	}
 	if found.CreatedAt.Before(before) || found.CreatedAt.After(after) {

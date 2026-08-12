@@ -123,7 +123,17 @@ func (c *ConfigureService) CreateHTTPRequest(label, baseURL, method, body string
 	c.requests = append(c.requests, req)
 	c.mu.Unlock()
 
-	c.persistHTTPRequests()
+	if err := c.persistHTTPRequests(); err != nil {
+		c.mu.Lock()
+		for i, existing := range c.requests {
+			if existing.ID == req.ID {
+				c.requests = append(c.requests[:i], c.requests[i+1:]...)
+				break
+			}
+		}
+		c.mu.Unlock()
+		return httprequest.HTTPRequest{}, fmt.Errorf("save request: %w", err)
+	}
 	return req, nil
 }
 
@@ -160,10 +170,21 @@ func (c *ConfigureService) UpdateHTTPRequest(id, label, baseURL, method, body st
 	req.BuiltIn = c.requests[idx].BuiltIn
 	req.CreatedAt = c.requests[idx].CreatedAt
 	req.UpdatedAt = time.Now()
+	previous := c.requests[idx]
 	c.requests[idx] = req
 	c.mu.Unlock()
 
-	c.persistHTTPRequests()
+	if err := c.persistHTTPRequests(); err != nil {
+		c.mu.Lock()
+		for i, existing := range c.requests {
+			if existing.ID == id {
+				c.requests[i] = previous
+				break
+			}
+		}
+		c.mu.Unlock()
+		return httprequest.HTTPRequest{}, fmt.Errorf("save request: %w", err)
+	}
 	return req, nil
 }
 
@@ -185,19 +206,44 @@ func (c *ConfigureService) DeleteHTTPRequest(id string) error {
 		c.mu.Unlock()
 		return fmt.Errorf("no request with id %q", id)
 	}
-	wasBuiltIn := c.requests[idx].BuiltIn
+	removed := c.requests[idx]
+	wasBuiltIn := removed.BuiltIn
 	c.requests = append(c.requests[:idx], c.requests[idx+1:]...)
 	c.mu.Unlock()
 
 	// A deleted built-in gets a tombstone so top-up seeding never
-	// resurrects it (configureservice_builtin.go).
+	// resurrects it (configureservice_builtin.go). Removal and tombstone
+	// must succeed together (docs/goals/0025 item 2).
 	if wasBuiltIn {
-		seeding.RecordTombstone(c.store, id)
+		if err := seeding.RecordTombstone(c.store, id); err != nil {
+			c.mu.Lock()
+			c.requests = insertHTTPRequestAt(c.requests, idx, removed)
+			c.mu.Unlock()
+			return fmt.Errorf("tombstone deleted request %q: %w", id, err)
+		}
 	}
-	c.persistHTTPRequests()
+	if err := c.persistHTTPRequests(); err != nil {
+		c.mu.Lock()
+		c.requests = insertHTTPRequestAt(c.requests, idx, removed)
+		c.mu.Unlock()
+		return fmt.Errorf("save request deletion: %w", err)
+	}
 	_ = c.credentials.Delete(id)
 	_ = c.credentials.Delete(joseKeychainID(id))
 	return nil
+}
+
+// insertHTTPRequestAt reinserts r at idx (clamped to the current
+// length) -- used to undo DeleteHTTPRequest's removal when the
+// tombstone or persist step that must accompany it fails.
+func insertHTTPRequestAt(requests []httprequest.HTTPRequest, idx int, r httprequest.HTTPRequest) []httprequest.HTTPRequest {
+	if idx < 0 || idx > len(requests) {
+		idx = len(requests)
+	}
+	requests = append(requests, httprequest.HTTPRequest{})
+	copy(requests[idx+1:], requests[idx:])
+	requests[idx] = r
+	return requests
 }
 
 // ListHTTPRequestOperations parses id's stored OpenAPISpec and returns
@@ -343,7 +389,7 @@ func (c *ConfigureService) DeleteHTTPRequestJOSEPrivateKey(id string) error {
 	return c.credentials.Delete(joseKeychainID(id))
 }
 
-func (c *ConfigureService) persistHTTPRequests() {
+func (c *ConfigureService) persistHTTPRequests() error {
 	c.mu.Lock()
 	requests := make([]httprequest.HTTPRequest, len(c.requests))
 	copy(requests, c.requests)
@@ -351,7 +397,10 @@ func (c *ConfigureService) persistHTTPRequests() {
 
 	data, err := json.Marshal(requests)
 	if err != nil {
-		return
+		return fmt.Errorf("marshal requests: %w", err)
 	}
-	_ = c.store.Set(requestsKey, string(data))
+	if err := c.store.Set(requestsKey, string(data)); err != nil {
+		return fmt.Errorf("persist requests: %w", err)
+	}
+	return nil
 }

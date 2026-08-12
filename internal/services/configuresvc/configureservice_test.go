@@ -1,6 +1,7 @@
 package configuresvc
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/alicoding/mill/internal/adapters/credential"
@@ -10,6 +11,11 @@ import (
 	"github.com/alicoding/mill/internal/services/servicetest"
 	"github.com/zalando/go-keyring"
 )
+
+// errFakeConfigurePersist is the injected failure servicetest.FakeStore.
+// SetErr returns for the persist-failure tests below (docs/goals/0025
+// items 1/2).
+var errFakeConfigurePersist = errors.New("fake persist failure")
 
 // TestMain swaps in an in-memory keyring for the whole package's test
 // run -- ConfigureService's request-secret methods go through the real
@@ -109,6 +115,53 @@ func TestDeleteList_RemovesIt(t *testing.T) {
 	}
 	if len(cfg.Lists()) != 0 {
 		t.Error("Lists() still returns entries after DeleteList")
+	}
+}
+
+// docs/goals/0025 items 1/2, the Configure-entity representative case
+// (the audit's own "plus one Configure entity" requirement): List's
+// persist* methods used to swallow their error, leaving a phantom-saved
+// (Create) or non-rolled-back (Delete) entity in memory whenever the
+// store write actually failed. Lists rather than HTTPRequests/Decisions/
+// etc. since it needs no keychain/OpenAPI-spec scaffolding to exercise.
+
+func TestCreateList_PersistFailure_ReturnsErrorAndDoesNotPhantomSave(t *testing.T) {
+	store := servicetest.NewFakeStore()
+	comp := compositionsvc.NewCompositionService(store)
+	cfg := NewConfigureService(store, comp, credential.New())
+	cfg.lists = nil
+
+	store.SetErr = errFakeConfigurePersist
+	if _, err := cfg.CreateList("Should not stick", nil); err == nil {
+		t.Fatal("CreateList() with a failing store: want error, got nil")
+	}
+
+	store.SetErr = nil
+	if got := cfg.Lists(); len(got) != 0 {
+		t.Errorf("Lists() after a failed persist = %+v, want empty (no phantom-saved list)", got)
+	}
+}
+
+func TestDeleteList_PersistFailure_ReturnsErrorAndRestoresIt(t *testing.T) {
+	store := servicetest.NewFakeStore()
+	comp := compositionsvc.NewCompositionService(store)
+	cfg := NewConfigureService(store, comp, credential.New())
+	cfg.lists = nil
+
+	l, err := cfg.CreateList("Should survive the failed delete", nil)
+	if err != nil {
+		t.Fatalf("CreateList: %v", err)
+	}
+
+	store.SetErr = errFakeConfigurePersist
+	if err := cfg.DeleteList(l.ID); err == nil {
+		t.Fatal("DeleteList() with a failing store: want error, got nil")
+	}
+
+	store.SetErr = nil
+	got := cfg.Lists()
+	if len(got) != 1 || got[0].ID != l.ID {
+		t.Errorf("Lists() after a failed DeleteList = %+v, want %s restored (the removal was not rolled back)", got, l.ID)
 	}
 }
 

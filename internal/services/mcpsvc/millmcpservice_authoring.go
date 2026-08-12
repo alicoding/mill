@@ -299,14 +299,28 @@ func (m *MillMCPService) registerAuthoringTools() {
 // updateDiffSummary renders the approval banner's what-changes preview
 // for an update_workflow ask -- the PreToolUse-style preview applied to
 // authoring (docs/adr/0025): the human sees the shape of the change,
-// not just that "something" wants to write.
+// not just that "something" wants to write. On a malformed proposed
+// definition, next stays the zero value, which would otherwise render
+// as a fabricated "nodes 3→0, edges 2→0" -- reading as "this deletes
+// everything" to the approver when the real problem is just that the
+// document didn't parse. docs/goals/0025 item 4: say so honestly
+// instead (the actual gateWrite call still happens either way -- the
+// real json.Unmarshal inside UpdateWorkflow itself is what actually
+// rejects the malformed document, this is only the preview text).
 func (m *MillMCPService) updateDiffSummary(id, jsonData string) string {
 	var next struct {
 		Label string             `json:"label"`
 		Nodes []composition.Node `json:"nodes"`
 		Edges []composition.Edge `json:"edges"`
 	}
-	_ = json.Unmarshal([]byte(jsonData), &next)
+	if err := json.Unmarshal([]byte(jsonData), &next); err != nil {
+		for _, wf := range m.comp.Workflows() {
+			if wf.ID == id {
+				return fmt.Sprintf("An MCP client wants to UPDATE workflow %q (unable to parse proposed definition)", wf.Label)
+			}
+		}
+		return "An MCP client wants to UPDATE workflow " + id + " (unable to parse proposed definition)"
+	}
 	for _, wf := range m.comp.Workflows() {
 		if wf.ID == id {
 			s := fmt.Sprintf("An MCP client wants to UPDATE workflow %q: nodes %d→%d, edges %d→%d",
