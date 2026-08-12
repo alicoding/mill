@@ -20,6 +20,10 @@ import { Call as $Call, CancellablePromise as $CancellablePromise } from "@wails
 // @ts-ignore: Unused imports
 import * as composition$0 from "../../domain/composition/models.js";
 
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: Unused imports
+import * as $models from "./models.js";
+
 /**
  * CapabilityMap exposes docs/SPEC.md §3.3's capability map as real Go
  * data, not parsed docs -- composition's own sub-capabilities (Trigger,
@@ -29,6 +33,16 @@ import * as composition$0 from "../../domain/composition/models.js";
  */
 export function CapabilityMap(): $CancellablePromise<composition$0.MapEntry[] | null> {
     return $Call.ByID(1178766968);
+}
+
+/**
+ * ConfirmClipboardApply re-parses jsonData and applies it -- create or
+ * update, independently re-deriving the Action rather than trusting a
+ * caller-cached preview verdict, since the clipboard/workflow list could
+ * have changed between preview and confirm.
+ */
+export function ConfirmClipboardApply(jsonData: string): $CancellablePromise<composition$0.Workflow> {
+    return $Call.ByID(215205686, jsonData);
 }
 
 /**
@@ -82,6 +96,17 @@ export function ImportWorkflow(jsonData: string): $CancellablePromise<compositio
 
 export function NodeTypes(): $CancellablePromise<composition$0.NodeType[] | null> {
     return $Call.ByID(1317568469);
+}
+
+/**
+ * PreviewClipboardApply parses jsonData (clipboard contents) and reports
+ * what ConfirmClipboardApply would do WITHOUT persisting anything --
+ * docs/goals/0039's preview-confirm model. See ClipboardApplyPreview's
+ * own doc comment for why malformed/unrecognized input is a value, not
+ * an error.
+ */
+export function PreviewClipboardApply(jsonData: string): $CancellablePromise<$models.ClipboardApplyPreview> {
+    return $Call.ByID(3204913770, jsonData);
 }
 
 /**

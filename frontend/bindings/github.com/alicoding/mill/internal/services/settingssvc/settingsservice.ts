@@ -377,6 +377,21 @@ export function SetWorkflowMinutesSaved(workflowID: string, minutes: number): $C
 }
 
 /**
+ * ShowPanel shows+focuses the Quick Panel -- the bound counterpart to
+ * TogglePanel (which stays //wails:ignore, Go-internal-only: the
+ * summon hotkey's own callback is the only caller that ever needs
+ * toggle-off semantics). docs/goals/0039's panel.applyClipboard command
+ * needs a way to bring the panel forward from JS when its bound hotkey
+ * fires while a DIFFERENT window (the main window) has keyboard focus --
+ * reuses TogglePanel's own show branch (including the
+ * summonShouldHideMain guard) rather than duplicating it, just without
+ * the dismiss-if-already-visible branch a toggle would need.
+ */
+export function ShowPanel(): $CancellablePromise<void> {
+    return $Call.ByID(4093568137);
+}
+
+/**
  * SuspendMenuAccelerators strips every key-equivalent (accelerator) off
  * the native application menu -- Close Window (Cmd+W), Quit (Cmd+Q),
  * Undo/Copy/Paste, Reload, Zoom, etc. -- for as long as at least one

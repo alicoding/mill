@@ -2528,6 +2528,36 @@ Proven end-to-end against a real MCP client, including the exact
 phantom-badge regression (deny from Review, assert the sidebar badge
 clears with no other page event) — `mcp-write-cancel.spec.ts`.
 
+**One API, many doors — clipboard apply (docs/goals/0039), the
+bank-critical transport.** At the owner's bank MCP is deny-all, so a
+copy/paste + hotkey path is the near-term way a workflow definition
+gets INTO Mill without an MCP client at all. Rather than a parallel
+mechanism, "Apply from clipboard…" in the Quick Panel (ADR-0033) is a
+THIRD door onto the exact same export/import document format described
+above — n8n's own share/import precedent (one canonical JSON, one
+accepting path, every entry point — its UI paste, its file import, its
+community-workflow URLs — just another door onto it), checked before
+building this. `CompositionService.PreviewClipboardApply`/
+`ConfirmClipboardApply` (`compositionservice_clipboardapply.go`)
+structure-sniff the pasted JSON (`nodes`+`edges` → a workflow; other
+Configure-entity export shapes are a named follow-up, not yet wired)
+and reuse `exportedWorkflow` unchanged except for one addition: an
+optional `id` the export side still never emits, but the accepted
+shape now reads — absent mints a new workflow (`ImportWorkflow`,
+unchanged), present-and-matching updates the existing one through the
+identical `SnapshotDraft`+`UpdateWorkflowFromExport` chokepoint
+`update_workflow` already uses, present-but-unknown falls back to
+create with a note. Deliberately bypasses ADR-0032's park-and-poll
+gate entirely — that model exists for a possibly-away MCP caller;
+pressing the summon hotkey and clicking the row IS the human being
+present, so this is a plain preview-then-one-Confirm instead. The
+preview also walks every node for a `RefKind` reference that doesn't
+resolve locally (`composition.RefExists`, the same lookup seams
+execution already uses) or a `NodeTypeID` this instance's registry
+doesn't recognize, surfacing each non-blocking (ADR-0028's warning
+precedent, and the sharing-research verdict that import-then-fix, not
+placeholder auto-creation, is what n8n/Zapier/Node-RED converge on).
+
 ### 3.7 Global app settings
 
 `SettingsService` (`settingsservice.go`) owns Mill's global settings
