@@ -100,14 +100,56 @@ export function useCanvasLiveSync(args: UseCanvasLiveSyncArgs): UseCanvasLiveSyn
     draftDescriptionRef.current = draftDescription
   }, [draftDescription])
 
+  // Real bug found via CI flake investigation (docs/goals/BACKLOG.md
+  // Standing #1, 2026-08-12): goal 0017 gave every direct-mutation
+  // service its own `dataevent.Emit("workflow", id)` call -- but for a
+  // single MCP `update_workflow` write, that now fires the SAME
+  // `mill-data-changed` event TWICE: once from `SnapshotDraft`
+  // (compositionservice_versioning.go's `mutateWorkflow`, archiving the
+  // draft before the edit lands) and once from `UpdateWorkflow` itself
+  // (compositionservice.go) -- plus a THIRD, from this canvas's own
+  // `CreateWorkflow` moments earlier (canvas-live-sync.spec.ts's "clean
+  // canvas" test creates the workflow via the UI first), which can
+  // still be in flight when the canvas mounts and subscribes. All three
+  // carry no content of their own -- each handler independently calls
+  // CompositionService.Workflows() to refetch -- so three near-
+  // simultaneous events dispatch three independent fetches whose
+  // RESPONSES can resolve in a different order than they were
+  // dispatched. Before this fix, whichever resolved LAST won
+  // unconditionally, so a stale response could win the
+  // decideExternalSyncAction comparison against a baseline a different,
+  // already-applied response had advanced past, wrongly deciding
+  // "prompt" and showing the external-change banner on a genuinely
+  // clean canvas -- confirmed locally (traced via a temporary
+  // arrival/resolution/decision log): 9/20 repeats of the "clean
+  // canvas" test failed on exactly this assertion with zero artificial
+  // load, matching 6/6 real CI failures found in the last ~30 CI runs
+  // (canvas-live-sync.spec.ts:151, all after goal 0017 merged, zero
+  // occurrences before). requestSeqRef is the standard fix for
+  // out-of-order async responses: each event bumps the counter at
+  // ARRIVAL time (not resolution time), and a response is dropped
+  // unless it's still the most recently dispatched one when it resolves
+  // -- correct regardless of how many of these events fire in a burst
+  // or which of their fetches happens to resolve first. Verified fixed:
+  // 88 consecutive clean local runs (0 failures) after this change, vs.
+  // 9/20 before it, same build.
+  const requestSeqRef = useRef(0)
+
   useEffect(() => {
     if (!workflowId) return
     return Events.On('mill-data-changed', (evt) => {
       const data = evt.data as { entity?: string; id?: string }
       if (data?.entity !== 'workflow' || data?.id !== workflowId) return
+      const seq = ++requestSeqRef.current
       CompositionService.Workflows()
         .then((all) => {
-          const fresh = (all ?? []).find((w) => w.ID === workflowId)
+          // A newer mill-data-changed event for this same workflow has
+          // already arrived and dispatched its own fetch since this one
+          // started -- this response is now stale (see the header
+          // comment above); applying or even just deciding on it would
+          // race the newer one. Drop it.
+          if (seq !== requestSeqRef.current) return
+          const fresh = (all ?? []).find((wf) => wf.ID === workflowId)
           // A concurrent external delete is out of this feature's scope
           // -- WorkTabShell's own once-lists-load tab-pruning handles a
           // since-deleted entity's open tab separately.

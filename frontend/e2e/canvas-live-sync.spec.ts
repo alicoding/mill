@@ -125,6 +125,26 @@ async function restoreMCPWriteDefaults(page: Page): Promise<void> {
   }
 }
 
+// Closes the open editor tab, deletes the named workflow row, and
+// restores the shared MCP-write settings -- shared by both tests below,
+// each wrapping this in an outer try/finally so it ALWAYS runs, even
+// when an assertion above throws. Before this, both tests only ran
+// their cleanup on the happy path: a failed assertion inside the MCP
+// round-trip (this file's own live race, fixed in useCanvasLiveSync.ts)
+// left "E2E live sync clean"/"dirty" undeleted AND unattended MCP
+// writes still enabled for the rest of this worker's shard -- traced
+// live as the mechanism behind a real cascade (this spec's own flake
+// tripping configure-lists.spec.ts's "list-search node" test in the
+// same shard-1 CI run, docs/goals/BACKLOG.md Standing #1). Kept as
+// cleanup hardening regardless of the race fix -- any OTHER future
+// assertion failure in either test would hit the exact same cascade
+// without it.
+async function cleanupWorkflow(page: Page, label: string): Promise<void> {
+  await page.getByRole('button', { name: 'Close tab' }).last().click()
+  await clickRowAction(page, workflowRow(page, label), 'Delete')
+  await restoreMCPWriteDefaults(page)
+}
+
 test('clean canvas: an external MCP update_workflow redraws the open editor live, no reload', async ({ page }, testInfo) => {
   await enableUnattendedMCPWrites(page)
 
@@ -138,24 +158,24 @@ test('clean canvas: an external MCP update_workflow redraws the open editor live
   await row.click()
   await expect(activePanel(page).locator('.react-flow__node')).toHaveCount(1)
 
-  const client = await connectMCPClient(testInfo.parallelIndex)
   try {
-    const workflowId = await findWorkflowIdByLabel(client, 'E2E live sync clean')
-    await updateWorkflowViaMCP(client, workflowId, twoNodeDefinition('E2E live sync clean', 'clean-path marker'))
+    const client = await connectMCPClient(testInfo.parallelIndex)
+    try {
+      const workflowId = await findWorkflowIdByLabel(client, 'E2E live sync clean')
+      await updateWorkflowViaMCP(client, workflowId, twoNodeDefinition('E2E live sync clean', 'clean-path marker'))
 
-    // No page.reload(), no re-navigation -- the redraw has to happen
-    // purely from the `mill-data-changed` event this canvas subscribed
-    // to (useCanvasLiveSync.ts).
-    await expect(activePanel(page).locator('.react-flow__node')).toHaveCount(2, { timeout: 10_000 })
-    await expect(activePanel(page).locator('.react-flow__node').filter({ hasText: 'Process: Inject text' })).toBeVisible()
-    await expect(page.getByTestId('external-change-banner')).toHaveCount(0)
+      // No page.reload(), no re-navigation -- the redraw has to happen
+      // purely from the `mill-data-changed` event this canvas subscribed
+      // to (useCanvasLiveSync.ts).
+      await expect(activePanel(page).locator('.react-flow__node')).toHaveCount(2, { timeout: 10_000 })
+      await expect(activePanel(page).locator('.react-flow__node').filter({ hasText: 'Process: Inject text' })).toBeVisible()
+      await expect(page.getByTestId('external-change-banner')).toHaveCount(0)
+    } finally {
+      await client.close()
+    }
   } finally {
-    await client.close()
+    await cleanupWorkflow(page, 'E2E live sync clean')
   }
-
-  await page.getByRole('button', { name: 'Close tab' }).last().click()
-  await clickRowAction(page, workflowRow(page, 'E2E live sync clean'), 'Delete')
-  await restoreMCPWriteDefaults(page)
 })
 
 test('dirty canvas: external MCP edit shows a banner, keeps the local edit, and Reload applies the fresh definition', async ({ page }, testInfo) => {
@@ -180,32 +200,32 @@ test('dirty canvas: external MCP edit shows a banner, keeps the local edit, and 
   await activePanel(page).getByTestId('toggle-description').click()
   await activePanel(page).getByLabel('Description').fill('local unsaved edit')
 
-  const client = await connectMCPClient(testInfo.parallelIndex)
   try {
-    const workflowId = await findWorkflowIdByLabel(client, 'E2E live sync dirty')
-    await updateWorkflowViaMCP(client, workflowId, twoNodeDefinition('E2E live sync dirty', 'dirty-path marker'))
+    const client = await connectMCPClient(testInfo.parallelIndex)
+    try {
+      const workflowId = await findWorkflowIdByLabel(client, 'E2E live sync dirty')
+      await updateWorkflowViaMCP(client, workflowId, twoNodeDefinition('E2E live sync dirty', 'dirty-path marker'))
 
-    const banner = page.getByTestId('external-change-banner')
-    await expect(banner).toBeVisible({ timeout: 10_000 })
+      const banner = page.getByTestId('external-change-banner')
+      await expect(banner).toBeVisible({ timeout: 10_000 })
 
-    // The local edit is untouched -- the external change was NOT
-    // applied automatically while dirty.
-    await expect(activePanel(page).getByLabel('Description')).toHaveValue('local unsaved edit')
-    await expect(activePanel(page).locator('.react-flow__node')).toHaveCount(1)
+      // The local edit is untouched -- the external change was NOT
+      // applied automatically while dirty.
+      await expect(activePanel(page).getByLabel('Description')).toHaveValue('local unsaved edit')
+      await expect(activePanel(page).locator('.react-flow__node')).toHaveCount(1)
 
-    await banner.getByRole('button', { name: 'Reload' }).click()
+      await banner.getByRole('button', { name: 'Reload' }).click()
 
-    // Reload discards the local draft and loads the fresh (external)
-    // definition.
-    await expect(banner).toHaveCount(0)
-    await expect(activePanel(page).locator('.react-flow__node')).toHaveCount(2)
-    await expect(activePanel(page).locator('.react-flow__node').filter({ hasText: 'Process: Inject text' })).toBeVisible()
-    await expect(activePanel(page).getByLabel('Description')).toHaveValue('')
+      // Reload discards the local draft and loads the fresh (external)
+      // definition.
+      await expect(banner).toHaveCount(0)
+      await expect(activePanel(page).locator('.react-flow__node')).toHaveCount(2)
+      await expect(activePanel(page).locator('.react-flow__node').filter({ hasText: 'Process: Inject text' })).toBeVisible()
+      await expect(activePanel(page).getByLabel('Description')).toHaveValue('')
+    } finally {
+      await client.close()
+    }
   } finally {
-    await client.close()
+    await cleanupWorkflow(page, 'E2E live sync dirty')
   }
-
-  await page.getByRole('button', { name: 'Close tab' }).last().click()
-  await clickRowAction(page, workflowRow(page, 'E2E live sync dirty'), 'Delete')
-  await restoreMCPWriteDefaults(page)
 })
