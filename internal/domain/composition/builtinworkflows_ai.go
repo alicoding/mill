@@ -45,6 +45,44 @@ func builtInAIWorkflows() []Workflow {
 		panic("built-in workflow references an unknown node type: " + err.Error())
 	}
 
+	// "Example: AI classify -> branch" -- THE decisioning composition
+	// docs/goals/0031-ai-node-family.md names explicitly: ai-classify
+	// writes a category into an Attribute, and Branch (decision-route)
+	// routes on it, same "capture -> AI step -> guarded action" shape
+	// the goal's own Acceptance criterion describes. Two categories
+	// ("urgent"/"normal") keep the example legible; each branch ends in
+	// a visible process-inject-text marker so a real run's outcome is
+	// obvious without needing a second Configure entity (a Decision)
+	// just to demonstrate routing.
+	const (
+		classifyTriggerID = "example-ai-classify-trigger"
+		classifyCaptureID = "example-ai-classify-capture"
+		classifyStepID    = "example-ai-classify-step"
+		classifyRouteID   = "example-ai-classify-route"
+		classifyUrgentID  = "example-ai-classify-urgent"
+		classifyNormalID  = "example-ai-classify-normal"
+	)
+	classifyNodes, err := ResolveNodeDefaults([]Node{
+		{ID: classifyTriggerID, NodeTypeID: "trigger-manual", Position: Position{X: 0, Y: 0}},
+		{ID: classifyCaptureID, NodeTypeID: "capture-attribute", Position: Position{X: 0, Y: 100},
+			Config: map[string]string{"attribute": "text"}},
+		{ID: classifyStepID, NodeTypeID: "process-ai-classify", Position: Position{X: 0, Y: 200},
+			Config: map[string]string{
+				aiProviderIDConfigKey: aiprovider.ExampleLocalOllamaID,
+				"instruction":         "Classify this support message as urgent or normal.",
+				"categories":          "urgent\nnormal",
+				"outputAttribute":     "category",
+			}},
+		{ID: classifyRouteID, NodeTypeID: "decision-route", Position: Position{X: 0, Y: 300}},
+		{ID: classifyUrgentID, NodeTypeID: "process-inject-text", Position: Position{X: -120, Y: 400},
+			Config: map[string]string{"text": "-- routed as URGENT", "placement": "append"}},
+		{ID: classifyNormalID, NodeTypeID: "process-inject-text", Position: Position{X: 120, Y: 400},
+			Config: map[string]string{"text": "-- routed as NORMAL", "placement": "append"}},
+	})
+	if err != nil {
+		panic("built-in workflow references an unknown node type: " + err.Error())
+	}
+
 	return []Workflow{
 		{
 			ID:          "example-ai-summarize-workflow",
@@ -59,6 +97,26 @@ func builtInAIWorkflows() []Workflow {
 			BuiltIn:    true,
 			Seed:       seedorigin.Stamp(1),
 			Disabled:   true,
+		},
+		{
+			ID:          "example-ai-classify-branch-workflow",
+			Label:       "Example: AI classify -> branch",
+			Description: "Reads this workflow's declared \"text\" Attribute, asks a local Ollama endpoint to classify it as urgent or normal (Configure > AI Providers > \"Local Ollama (localhost:11434)\"), then Branches on the written \"category\" Attribute -- the AI node family's own decisioning composition (docs/goals/0031-ai-node-family.md): AI writes a typed classification, Branch acts on it, no new mechanism invented. Ships DISABLED and requires a real Ollama install (https://ollama.com) -- enable once Ollama is running, or point the AI provider at your own BYO endpoint instead.",
+			Nodes:       classifyNodes,
+			Edges: []Edge{
+				{ID: "example-ai-classify-e0", Source: classifyTriggerID, Target: classifyCaptureID},
+				{ID: "example-ai-classify-e1", Source: classifyCaptureID, Target: classifyStepID},
+				{ID: "example-ai-classify-e2", Source: classifyStepID, Target: classifyRouteID},
+				{ID: "example-ai-classify-e3", Source: classifyRouteID, SourceHandle: `category == "urgent"`, Target: classifyUrgentID},
+				{ID: "example-ai-classify-e4", Source: classifyRouteID, SourceHandle: otherwiseHandle, Target: classifyNormalID},
+			},
+			Attributes: []AttributeDef{
+				{Key: "text", Label: "Text to classify", Type: FieldText, Description: "The support message this workflow classifies -- bind a real value via a test run, or wire an upstream step to set it."},
+				{Key: "category", Label: "Category (written by AI: Classify)", Type: FieldText, Description: "The chosen category -- written by the AI: Classify step, read by the Branch below."},
+			},
+			BuiltIn:  true,
+			Seed:     seedorigin.Stamp(1),
+			Disabled: true,
 		},
 	}
 }

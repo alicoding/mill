@@ -67,23 +67,49 @@ call per step, never an agent loop inside Mill.
     RunsEndToEndAgainstFixtureEndpoint`). SPEC.md §3.3/§3.5 updated.
     `ai-extract-structured`/`ai-classify` deliberately deferred to PR2
     (reviewability, per the session's own split instruction).
-2. [ ] Capability map + ADR: which family members Mill builds now vs
-   later; the AI-provider Configure entity (1:many, stamped recipe —
-   endpoint, model, BYO key in keychain); how the guardrail treats AI
-   steps (effect class; an AI call is external egress unless
-   localhost — verdict needed); structured-output handling into
-   Attributes (the typed-payload story).
-3. [ ] Build the first members against goal 0030's node standard
-   (conformance from birth): likely `ai-completion` +
-   `ai-extract-structured` (writes typed Attributes — the one that
-   composes with Decision routing for real decisioning workflows).
-4. [ ] Seeded proof: an example workflow using a local Ollama
-   endpoint (documented as requiring user setup, seeded DISABLED like
-   the fs-watch example) + e2e against a fixture HTTP endpoint
-   (deterministic, no real model in CI).
+2. [x] Capability map: which family members Mill builds now vs later,
+   the AI-provider Configure entity's shape, the guardrail effect-class
+   verdict, and structured-output-into-Attributes handling all landed
+   as `docs/SPEC.md` §3.3's own AI node family row (extending an
+   existing capability-map entry, not a new architectural surface — no
+   separate ADR needed, same bar §3.3's other rows already apply:
+   ADR-0027 exists only where the decision was genuinely novel).
+3. [x] **PR2 shipped** (`goal/0031-ai-node-family-pr2`): the remaining
+   two family members, against goal 0030's node standard from birth.
+   `process-ai-extract-structured` — own dedicated output-field editor
+   (`AIExtractFieldsEditor.tsx`, node-standard item 1: typed fields not
+   raw JSON), builds a JSON-schema-constrained request from the
+   declared fields, writes each into Attributes (natively typed, no
+   string coercion needed — the provider's structured JSON response
+   already carries real types), zero-valued fallback for a field the
+   provider's response omits. Proven at the unit layer (deliberately
+   unseeded — `.claude/rules/testing.md`'s "never force the seed
+   pattern onto everything": two extraction steps legitimately want
+   different shapes). `process-ai-classify` — categories authored as a
+   node-local newline-separated list (the pre-flight audit's own
+   principle: a business decision, not a shared Configure resource),
+   JSON-schema `enum`-constrained request, fail-safe rejection of a
+   response outside the declared categories (node-standard item 6).
+4. [x] Seeded proof: "Example: AI classify -> branch" (classify +
+   Branch routing on the written category — THE decisioning
+   composition), disabled, referencing the same seeded "Local Ollama"
+   provider PR1 shipped; proven end-to-end against real DBOS + an
+   httptest fixture for both branch outcomes
+   (`executionsvc.TestSeededAIClassifyBranchExample_
+   UrgentRoutesToUrgentBranch`/`_NormalRoutesToNormalBranch`). "Example:
+   Summarize with local AI" (PR1) covers the completion half.
+   `docs/SPEC.md` §3.3 flipped `OPEN` → `LOCKED`.
 
 ## Acceptance
 A user with Ollama running composes "capture → AI step → guarded
 action" with zero Mill code changes beyond config; the AI provider
 entity is reusable across workflows; every family member passes the
-0030 standard; CI proves the path with a fixture endpoint.
+0030 standard; CI proves the path with a fixture endpoint. **Met**: the
+seeded "Example: Summarize with local AI" and "Example: AI classify ->
+branch" workflows are exactly this composition (trigger → capture →
+AI step, the classify example additionally routing through Branch on
+the AI-written category), both referencing the one reusable seeded
+`AIProvider`; `TestNodeTypes`/`TestNodeTypeProof_EveryNodeTypeProvenOrExempt`
+enforce node-standard conformance for all three members; the two
+`executionsvc` seed tests (PR1 + PR2) run the real path against an
+httptest fixture in CI, no real model required.
