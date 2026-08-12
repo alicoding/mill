@@ -9,8 +9,14 @@ explicit bar.
 ## Plan
 1. [x] ADR-0034 (operating model), secret-scanning/push-protection/
    Dependabot-security enabled, 275-commit catch-up pushed (2026-08-11).
-2. [ ] Land the e2e triage fixes + the test-go macos fix; push; verify
-   the first green main run.
+2. [x] Land the e2e triage fixes + the test-go macos fix; push; verify
+   the first green main run. **Done 2026-08-12: run 31551731472, the
+   new architecture's own maiden run — the first fully green main in
+   this repo's CI history. 4.5min wall-clock (target ≤7; the old
+   failure era peaked at 43); e2e shards 2.4–3.4m each (was 5.8m
+   contended single-job); dependency-review correctly skipped on a
+   push event; the ci-gate job reports as check "CI gate" — the
+   ruleset's required-check context.**
 3. [x] Implement the target architecture from the research report
    (in the CI deep-research agent's output, treat as the brief):
    `changes` job (dorny/paths-filter, SHA-pinned, docs-only skip),
