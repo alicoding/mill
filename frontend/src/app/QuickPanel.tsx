@@ -103,6 +103,25 @@ export function QuickPanel() {
   const [reviewPendingCount, setReviewPendingCount] = useState(0)
   const inputRef = useRef<HTMLInputElement>(null)
 
+  // Declared before the effects that reference them (react-hooks/
+  // immutability, eslint-plugin-react-hooks 7.x's React-Compiler-derived
+  // check) -- functionally identical either way since the effects only
+  // invoke these in later callbacks, but the rule wants the lexical
+  // declaration to precede any reference.
+  const refreshFrecency = () => {
+    ExecutionService.HomeMetrics(FRECENCY_FROM_ISO, new Date().toISOString(), true)
+      .then((metrics) => {
+        const rank: Record<string, number> = {}
+        for (const usage of metrics.mostUsed ?? []) rank[usage.workflowID] = usage.runCount
+        setMostUsedRank(rank)
+      })
+      .catch(() => {})
+  }
+
+  const openMain = (view: string) => {
+    void SettingsService.OpenMainWindow(view).catch(() => {})
+  }
+
   // Every show of this window is a fresh session, not a continuation --
   // refetch so a workflow created/renamed/deleted since the panel was
   // last open is never stale, and reset any leftover query/status from
@@ -147,16 +166,6 @@ export function QuickPanel() {
       document.removeEventListener('visibilitychange', onVisibility)
     }
   }, [])
-
-  const refreshFrecency = () => {
-    ExecutionService.HomeMetrics(FRECENCY_FROM_ISO, new Date().toISOString(), true)
-      .then((metrics) => {
-        const rank: Record<string, number> = {}
-        for (const usage of metrics.mostUsed ?? []) rank[usage.workflowID] = usage.runCount
-        setMostUsedRank(rank)
-      })
-      .catch(() => {})
-  }
 
   // Live sync while the panel stays open (goal 0017's mill-data-changed
   // infra, docs/adr/0025): a Configure entity created/renamed/deleted
@@ -210,10 +219,6 @@ export function QuickPanel() {
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [])
-
-  const openMain = (view: string) => {
-    void SettingsService.OpenMainWindow(view).catch(() => {})
-  }
 
   // A Configure-entity row's "run" is a jump, not an execution: shows
   // the main window navigated straight to the tab that entity lives on
