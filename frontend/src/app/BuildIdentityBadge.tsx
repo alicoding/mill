@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import { Label } from '@primer/react'
 import { SettingsService } from '../shared/bindings'
 import type { BuildInfo } from '../shared/bindings'
@@ -32,6 +33,7 @@ const isDevBuild = import.meta.env.DEV
 // its own reasoning live in ./goLiveness (pulled out so it can be
 // unit-tested without dragging @primer/react's CSS into Vitest).
 export function BuildIdentityBadge({ buildInfo }: { buildInfo: BuildInfo | null }) {
+  const { t } = useTranslation('app')
   // Go's own build tag (BuildInfo.Server), not a window-global sniff --
   // `'_wails' in window` is true in server-mode browser tabs too (the
   // runtime injects it everywhere), which silently broke this badge's
@@ -63,15 +65,15 @@ export function BuildIdentityBadge({ buildInfo }: { buildInfo: BuildInfo | null 
         <Label
           variant="attention" size="small" className={styles.devRibbon}
           data-testid="dev-go-stale-badge"
-          title="Go changes not yet in this binary — restart task dev"
+          title={t('buildIdentityBadge.goStaleTooltip')}
         >
-          DEV · go-stale
+          {t('buildIdentityBadge.devGoStale')}
         </Label>
       )
     }
     return (
       <Label variant="success" size="small" className={styles.devRibbon} data-testid="dev-build-badge">
-        DEV · live
+        {t('buildIdentityBadge.devLive')}
       </Label>
     )
   }
@@ -90,11 +92,11 @@ export function BuildIdentityBadge({ buildInfo }: { buildInfo: BuildInfo | null 
         data-testid="stale-build-badge"
         onClick={() => { void SettingsService.QuitApp() }}
       >
-        STALE BUILD · app {binaryHead} ≠ repo {__MILL_REPO_HEAD__} — click to close this stale window
+        {t('buildIdentityBadge.staleBuildClickToClose', { binaryHead, repoHead: __MILL_REPO_HEAD__ })}
       </Label>
     ) : (
       <Label variant="danger" size="small" className={styles.devRibbon} data-testid="stale-build-badge">
-        STALE BUILD · app {binaryHead} ≠ repo {__MILL_REPO_HEAD__} — restart task dev
+        {t('buildIdentityBadge.staleBuildRestart', { binaryHead, repoHead: __MILL_REPO_HEAD__ })}
       </Label>
     )
   }
@@ -102,14 +104,14 @@ export function BuildIdentityBadge({ buildInfo }: { buildInfo: BuildInfo | null 
   if (isNativeWebview) {
     return (
       <Label variant="secondary" size="small" className={styles.devRibbon} data-testid="installed-build-badge">
-        INSTALLED{binaryHead ? ` · ${binaryHead}` : ''}
+        {t('buildIdentityBadge.installed')}{binaryHead ? ` · ${binaryHead}` : ''}
       </Label>
     )
   }
 
   return (
     <Label variant="secondary" size="small" className={styles.devRibbon} data-testid="server-build-badge">
-      SERVER{binaryHead ? ` · ${binaryHead}` : ''}
+      {t('buildIdentityBadge.server')}{binaryHead ? ` · ${binaryHead}` : ''}
     </Label>
   )
 }

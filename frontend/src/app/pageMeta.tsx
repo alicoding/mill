@@ -9,17 +9,17 @@ import { CAPABILITY_ICON } from './navIcon'
 
 // The strip's first tab names the current sidebar section -- the "go
 // back to the page under the tabs" affordance.
-export function pageLabelFor(view: View, capabilities: { ID: string; Label: string; NavLabel: string }[]): string {
+export function pageLabelFor(view: View, capabilities: { ID: string; Label: string; NavLabel: string }[], t: (key: string) => string): string {
   switch (view.kind) {
-    case 'home': return 'Home'
-    case 'composition': return 'Workflows'
-    case 'configure': return 'Configure'
-    case 'activity': return 'Activity'
-    case 'review': return 'Review'
-    case 'settings': return 'Settings'
+    case 'home': return t('pageMeta.home')
+    case 'composition': return t('pageMeta.workflows')
+    case 'configure': return t('pageMeta.configure')
+    case 'activity': return t('pageMeta.activity')
+    case 'review': return t('pageMeta.review')
+    case 'settings': return t('pageMeta.settings')
     case 'placeholder': {
       const cap = capabilities.find((c) => c.ID === view.capabilityId)
-      return cap ? (cap.NavLabel || cap.Label) : 'Overview'
+      return cap ? (cap.NavLabel || cap.Label) : t('pageMeta.overview')
     }
   }
 }

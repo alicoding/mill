@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { useTranslation } from 'react-i18next'
 import {Events, WML} from "@wailsio/runtime";
 import {Label, PageLayout, useTheme} from "@primer/react";
 import HomeView from "../views/HomeView";
@@ -45,9 +46,10 @@ const wailsVersion = "v3.0.0-beta.4";
 // on the desktop beats it wrongly appearing at all in a browser.
 
 function App() {
+  const { t } = useTranslation('app')
   const view = useAppStore((s) => s.view);
   const setView = useAppStore((s) => s.setView);
-  const [time, setTime] = useState<string>('Listening for Time event...');
+  const [time, setTime] = useState<string>(t('shell.listeningForTime'));
   // Whether this instance is running against an isolated settings/
   // execution-db path (MILL_SETTINGS_PATH set -- every e2e run already
   // does this, and it's the same signal a LAN/Tailscale-reachable
@@ -344,7 +346,7 @@ function App() {
           ...guardrailPending.map((r) => ({
             key: `guardrail:${r.runID}`,
             id: r.runID,
-            description: `${r.workflowLabel}: ${r.pending?.nodeTypeLabel || r.pending?.nodeTypeID || 'a step'} needs approval`,
+            description: t('pendingApprovalDescription', { workflowLabel: r.workflowLabel, step: r.pending?.nodeTypeLabel || r.pending?.nodeTypeID || t('pendingApprovalStepFallback') }),
             kind: 'guardrail',
           })),
           ...mcpPending.map((w) => ({ key: `mcp-write:${w.id}`, id: w.id, description: w.description, kind: 'mcp-write' })),
@@ -361,7 +363,7 @@ function App() {
     const offGuardrail = Events.On('guardrail-pending-changed', refresh);
     const offMCP = Events.On('mcp-write-approval', refresh);
     return () => { offGuardrail(); offMCP(); };
-  }, []);
+  }, [t]);
 
   return (
     <div className="app-shell" data-sidebar-open={sidebarOpen}>
@@ -431,7 +433,7 @@ function App() {
               current section page is the first tab, every open work
               item a tab beside it, surviving sidebar navigation. */}
           <MCPWriteApprovals />
-          <WorkTabShell pageLabel={pageLabelFor(view, capabilities)} pageIcon={pageIconFor(view)} titlebarSlot={titlebarSlot}>
+          <WorkTabShell pageLabel={pageLabelFor(view, capabilities, t)} pageIcon={pageIconFor(view)} titlebarSlot={titlebarSlot}>
             {view.kind === 'home' && <HomeView/>}
 
             {view.kind === 'activity' && <ActivityView/>}
@@ -453,7 +455,7 @@ function App() {
         <span className={styles.version}>
           <span>{wailsVersion}</span>
           {buildInfo?.Revision && (
-            <span title={buildInfo.Modified ? 'Built with uncommitted changes' : 'Commit this build was built from'}>
+            <span title={buildInfo.Modified ? t('shell.buildModifiedTooltip') : t('shell.buildRevisionTooltip')}>
               · {buildInfo.Revision.slice(0, 7)}{buildInfo.Modified && '*'}
             </span>
           )}
@@ -465,7 +467,7 @@ function App() {
               footer never moves. */}
           {isIsolatedData && (
             <Label variant="accent" size="small" data-testid="isolated-data-badge">
-              TEST DATA
+              {t('shell.testDataBadge')}
             </Label>
           )}
         </span>
@@ -474,7 +476,7 @@ function App() {
           <span>{time}</span>
         </span>
         <span className={styles.rightControls}>
-          <a className={styles.docs} data-wml-openURL="https://v3.wails.io" aria-label="Wails documentation">Docs
+          <a className={styles.docs} data-wml-openURL="https://v3.wails.io" aria-label={t('shell.docsLinkAriaLabel')}>{t('shell.docsLinkText')}
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg>
           </a>
         </span>
