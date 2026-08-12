@@ -330,10 +330,10 @@ function App() {
   // "present" (focused AND recently-active) or "away" (idle past the
   // configured threshold, or unfocused), fixing the previously-observed
   // focused-but-idle suppression bug a frontend-only gate couldn't see.
-  // ForwardPendingApproval (item 4, the cross-device forward) fires
-  // unconditionally alongside it -- forwarding doesn't depend on local
-  // focus/idle at all, since its whole point is reaching the owner when
-  // there may be no local Mac attention to gate on in the first place.
+  // The cross-device forward moved to composition (docs/adr/0035): a
+  // decision-parked system event now reaches the seeded "Example: Forward
+  // pending approvals" workflow through TriggerService, not a call from
+  // here -- ForwardPendingApproval's own private send path is deleted.
   const [reviewPendingCount, setReviewPendingCount] = useState(0);
   const notifiedIds = useRef<Set<string>>(new Set());
   useEffect(() => {
@@ -358,7 +358,6 @@ function App() {
         for (const item of items) {
           if (notifiedIds.current.has(item.key)) continue;
           notifiedIds.current.add(item.key);
-          void SettingsService.ForwardPendingApproval(item.id, item.description, item.kind).catch(() => {});
           void SettingsService.NotifyPendingApproval(item.id, item.description, item.kind, document.hasFocus()).catch(() => {});
         }
       });

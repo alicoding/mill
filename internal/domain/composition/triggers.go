@@ -83,4 +83,25 @@ func init() {
 		Output:      "the caller's typed input",
 		Description: "Fires only when invoked as a child by another workflow's Child Workflow node (docs/adr/0010) -- never by a real external event, no listener process. Modeled on n8n's own \"Execute Workflow Trigger\": a workflow rooted in this trigger declares itself a valid child target, decoupled from whatever its trigger would otherwise be. The child-workflow picker only lists workflows rooted here -- one rooted in a real-event trigger (filesystem-watch, clipboard-watch, ...) can't be invoked this way, since a parent has no way to synthesize that event.",
 	}, nil)
+	RegisterNodeType(NodeType{
+		ID: "trigger-system-event", Kind: KindTrigger,
+		Label: "Trigger: system event",
+		Output: "JSON payload: {event, runId, workflowId, workflowLabel, nodeId?, timestamp} -- " +
+			"the run/decision that caused this event. nodeId is only set for decision-parked (the " +
+			"parked node's ID); empty for run-completed/run-failed/run-cancelled.",
+		Description: "Fires when Mill's own execution engine emits an internal event -- docs/adr/0035, SPEC.md §3.4's Group D unparked. Mill dogfoods its own trigger/composition surface for platform-internal behavior (the forward-pending-approvals example workflow is the first real user) instead of a bespoke Go code path per event. Loop rule (docs/adr/0035 item 4, n8n's Error-Trigger precedent): a run whose OWN root trigger is trigger-system-event never emits a system event of its own, regardless of kind -- a chain always bottoms out after one hop, so this trigger can never fire itself into a cycle.",
+		ConfigFields: []ConfigField{
+			{
+				Key: "event", Label: "Event",
+				Description: "Which internal event fires this trigger. \"Decision parked\" fires when a guardrail ask or human-review checkpoint parks awaiting approval; the other three fire once a run reaches a terminal state.",
+				Default:     "decision-parked", Type: FieldOptions,
+				Options: []string{"decision-parked", "run-completed", "run-failed", "run-cancelled"},
+			},
+			{
+				Key: "workflowScope", Label: "Workflow scope",
+				Description: "Fire for every workflow's matching event, or scope to one specific workflow. Empty means all workflows.",
+				Default:     "", Type: FieldText, RefKind: "workflow-scope",
+			},
+		},
+	}, nil)
 }

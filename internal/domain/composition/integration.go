@@ -173,6 +173,19 @@ func init() {
 		if body == "" {
 			body = rc.Body
 		}
+		if body == "" {
+			// No body configured anywhere -- neither the node's own legacy
+			// override nor the integration's static Body field -- forward
+			// whatever payload flowed into this step verbatim, so a step
+			// whose whole job is "send what I was given" (docs/adr/0035's
+			// trigger-system-event forward example: the trigger's JSON
+			// event becomes this call's body) doesn't need a templating
+			// mechanism just to pass its input through. Backward-
+			// compatible: every existing seed reaching this node starts
+			// from an empty trigger-manual payload, so this produces the
+			// same empty body as before for all of them.
+			body = ctx.Payload
+		}
 		method, urlPath := defaultMethodAndPath(rc, node.Config["method"], node.Config["path"])
 
 		headers := make(map[string]string, len(rc.Headers)+1)

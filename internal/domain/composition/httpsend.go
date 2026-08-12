@@ -80,31 +80,3 @@ func sendHTTPRequest(rc ResolvedHTTPRequest, method, urlPath, body string, heade
 	}
 	return DecryptJOSEResponse(rc.JOSE, rc.JOSEPrivateKeyPEM, resp.Body)
 }
-
-// SendJSONWebhook fires requestID's configured HTTPRequest with body
-// (already-marshaled JSON) as its request body, through the exact same
-// transport tail integration-http and decision-outcome's own webhook
-// already share (sendHTTPRequest above) -- never a second HTTP client
-// (docs/SPEC.md §4). body REPLACES the request's own configured body
-// entirely, the same "the outcome's JSON becomes the whole body"
-// mechanism decisionoutcome.go's webhook already establishes.
-//
-// Exported for callers outside this package with no node/graph context
-// of their own to route a webhook call through -- the cross-device
-// pending-approval forward (docs/goals/0023-attention-escalation.md
-// item 4, SettingsService.ForwardPendingApproval) is the first such
-// caller. Same "domain package exposes a narrow seam, the owning
-// service calls it" shape SetHTTPRequestLookup already establishes in
-// the other direction.
-func SendJSONWebhook(requestID, body string) (string, error) {
-	rc, err := lookupHTTPRequestFn(requestID)
-	if err != nil {
-		return "", err
-	}
-	method, path := defaultMethodAndPath(rc, "", "")
-	headers := make(map[string]string, len(rc.Headers))
-	for k, v := range rc.Headers {
-		headers[k] = v
-	}
-	return sendHTTPRequest(rc, method, path, body, headers, url.Values{}, nil)
-}
