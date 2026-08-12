@@ -164,3 +164,10 @@ Both are resolved now, the second one reversed.
   build now that the mechanism is understood and the felt cost (a
   15-minute-plus e2e matrix run on a pure `docs/goals/*.md` edit) is
   real.
+- **`e2e` job's shard matrix gained `fail-fast: false`** (goal 0026),
+  after a real incident (PR 11, run 31557343422): shard 3 failed
+  legitimately, and GitHub Actions' own fail-fast default immediately
+  cancelled shards 1 and 2 mid-run rather than letting them report
+  their own verdicts — signal lost, not just noise, the same class of
+  problem `build-go`'s own 2-platform matrix already carried this flag
+  for.

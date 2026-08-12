@@ -44,10 +44,19 @@ this pipeline and on this code)**
    backend-side `isAway`), alert-style authorization request (notify.Start),
    cross-device forward (`composition.SendJSONWebhook`,
    `ForwardPendingApproval`) — see ADR-0032's Update note
-4. [ ] [0026 — Request lifecycle honesty](0026-request-lifecycle-honesty.md)
-   — withdrawal verb (`cancel_write`, the MCP Tasks `tasks/cancel`
-   precedent ADR-0032 already mirrors) + staleness/expiry presentation
-   (owner-observed 2026-08-11: a 4h-old stale ask reads as breakage)
+4. [x] [0026 — Request lifecycle honesty](archive/0026-request-lifecycle-honesty.md)
+   — delivered 2026-08-12: `cancel_write` MCP tool (a distinct
+   outcome from denied, ungated, at-most-once); age-tiered staleness
+   presentation (Review/banner/floating prompt) + "expires in Nh";
+   requester-liveness hint (`lastPolledAt`, >5m-stale gate); the
+   phantom-badge BUG fixed (every resolution path — approve/deny/
+   cancel/expiry — now pings the pending-changed signal, found live:
+   an empty-struct payload silently failed Wails3's own registered-
+   event type check); resolved MCP writes now durable in Review's
+   Recently-resolved; Activity MCP-write rows are expandable with a
+   jump-to-workflow preview; stuck-ENQUEUED runs get age emphasis +
+   Stop in WorkflowRunsPanel/Activity's runs explorer. Item 4
+   (session-side hygiene) intentionally not a Mill code change.
 
 **Ratified 2026-08-10 (owner): three groups, A→B→C. 0001 stays standing
 live-review material, interleaved during owner reviews, not a lane.**

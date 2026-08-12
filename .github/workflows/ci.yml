@@ -269,6 +269,19 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     strategy:
+      # fail-fast: false -- real incident, not a hypothetical (PR 11,
+      # run 31557343422, 2026-08-12): shard 3 failed on a real e2e
+      # regression, and GitHub Actions' own fail-fast DEFAULT (true when
+      # unset) immediately cancelled shards 1 and 2 mid-run rather than
+      # letting them finish -- both were killed ~2.5 minutes into a
+      # passing-so-far run, so their own genuine pass/fail signal was
+      # simply never collected ("shard-2-cancelled-while-green": it
+      # wasn't red, it never got the chance to report). A 3-way sharded
+      # suite needs every shard's own verdict to know what's actually
+      # broken, not just "at least one shard is red" -- the same
+      # reasoning build-go's own 2-platform matrix comment already
+      # states for its own fail-fast: false, applied here too.
+      fail-fast: false
       matrix:
         shardIndex: [1, 2, 3]
         shardTotal: [3]

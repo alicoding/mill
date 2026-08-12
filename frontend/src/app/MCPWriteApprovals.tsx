@@ -4,6 +4,7 @@ import { ShieldIcon } from '@primer/octicons-react'
 import { Events } from '@wailsio/runtime'
 import { SettingsService } from '../shared/bindings'
 import type { MCPWriteRequest } from '../shared/bindings'
+import { StalenessBadge } from '../shared/StalenessBadge'
 import styles from './App.module.css'
 
 // The per-write MCP approval surface (docs/adr/0032's park-and-poll
@@ -48,6 +49,7 @@ export function MCPWriteApprovals() {
           <Stack direction="horizontal" gap="condensed" align="center">
             <ShieldIcon size={16} />
             <Text size="small" weight="semibold">{p.description}</Text>
+            <StalenessBadge createdAt={p.createdAt} testId="mcp-write-approval-age" />
           </Stack>
           <Stack direction="horizontal" gap="condensed">
             <Button size="small" variant="primary" onClick={() => resolve(p.id, true)}>Approve</Button>
