@@ -356,7 +356,8 @@ function WorkflowRunsPanel({ workflowId, attrs, initialRunId, onInitialRunConsum
 
           <Stack direction="vertical" gap="condensed" style={{ marginTop: 'var(--base-size-12)' }}>
             {(detail.steps ?? []).map((step) => (
-              <Stack key={step.nodeID} direction="horizontal" justify="space-between" align="start" gap="condensed">
+              <Stack key={step.nodeID} direction="horizontal" justify="space-between" align="start" gap="condensed"
+                data-testid="run-step" data-node-type-id={step.nodeTypeID}>
                 <Stack direction="horizontal" gap="condensed" align="start">
                   <span className={styles.icon}>{STEP_ICON[step.status]}</span>
                   <div>

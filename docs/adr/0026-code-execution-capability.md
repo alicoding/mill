@@ -187,7 +187,23 @@ ships with a manual trigger + description pointing at the one-click
 swap to hotkey (a hotkey can't ship pre-bound; clipboard-watch firing
 on every copy would be obnoxious); reviewer edit-before-approve is
 named v2, not v1 (approve/deny only); the seeded "Safe sandbox" env is
-zsh + clean + Mill-created temp dir + minimal PATH.
+~~zsh~~ **sh** + clean + Mill-created temp dir + minimal PATH.
+
+**Correction (2026-08-11, found via CI): the seed shipped with `Shell:
+zsh`, a real portability bug, not just a CI quirk.** macOS ships
+`/bin/zsh` by default (Catalina+), but most headless Linux
+distributions -- including GitHub's `ubuntu-latest` runners and any
+minimal Linux server install -- do not, so `shellArgv`'s hardcoded
+`/bin/zsh` path made the code-execution capability's own built-in
+proof unable to run anything at all on Linux server mode, a
+first-class deployment target this same doc's §1.3 CI matrix already
+builds and tests for. `/bin/sh` is POSIX-guaranteed present on both
+platforms and satisfies this seed's own stated intent identically (no
+unconditional startup-file read to suppress in `-c` mode either way,
+per `shellArgv`'s own doc comment) -- switched the built-in
+`ExampleSafeSandboxID` env (`internal/domain/execenv/builtin.go`) from
+`ShellZsh` to `ShellSh`. Not a reversal of the zsh/bash/sh typed-choice
+design itself (unchanged) -- only the seed's own default.
 
 ## What acceptance decides (surfaced, not silently resolved)
 
