@@ -197,3 +197,63 @@ func TestMCPAuthoring_FullLoop(t *testing.T) {
 		t.Fatalf("delete_workflow: %+v", res.Content)
 	}
 }
+
+// TestUpdateDiffSummary_MalformedJSON_NeverFabricatesCounts is the
+// docs/goals/0025 item 4 repro: a proposed definition that fails to
+// parse must not silently render as "nodes N→0, edges N→0" (next
+// staying its zero value after a swallowed json.Unmarshal error) --
+// that reads to the human approver as "this deletes everything," a
+// fabricated claim about a document Mill never actually understood.
+func TestUpdateDiffSummary_MalformedJSON_NeverFabricatesCounts(t *testing.T) {
+	store := servicetest.NewFakeStore()
+	comp := compositionsvc.NewCompositionService(store)
+	cfg := configuresvc.NewConfigureService(store, comp, servicetest.FakeCredentialStore{})
+	svc := NewMillMCPService("0.0.0-test", comp, cfg, store)
+
+	wf, err := comp.CreateWorkflow("Diff summary target", "",
+		[]composition.Node{{ID: "t", NodeTypeID: "trigger-manual"}, {ID: "c", NodeTypeID: "capture-clipboard-html"}},
+		[]composition.Edge{{ID: "e1", Source: "t", Target: "c"}})
+	if err != nil {
+		t.Fatalf("CreateWorkflow: %v", err)
+	}
+
+	got := svc.updateDiffSummary(wf.ID, "{not valid json")
+
+	if strings.Contains(got, "→0") || strings.Contains(got, "2→") {
+		t.Fatalf("updateDiffSummary(malformed JSON) = %q, contains a fabricated node/edge count", got)
+	}
+	if !strings.Contains(got, "unable to parse proposed definition") {
+		t.Errorf("updateDiffSummary(malformed JSON) = %q, want it to say the proposed definition couldn't be parsed", got)
+	}
+	if !strings.Contains(got, wf.Label) {
+		t.Errorf("updateDiffSummary(malformed JSON) = %q, want it to still name the target workflow %q", got, wf.Label)
+	}
+}
+
+// TestUpdateDiffSummary_WellFormedJSON_StillReportsRealCounts guards
+// against a fix for the above accidentally breaking the normal path --
+// a well-formed proposed definition must still render real node/edge
+// counts, not the malformed-input message.
+func TestUpdateDiffSummary_WellFormedJSON_StillReportsRealCounts(t *testing.T) {
+	store := servicetest.NewFakeStore()
+	comp := compositionsvc.NewCompositionService(store)
+	cfg := configuresvc.NewConfigureService(store, comp, servicetest.FakeCredentialStore{})
+	svc := NewMillMCPService("0.0.0-test", comp, cfg, store)
+
+	wf, err := comp.CreateWorkflow("Diff summary target 2", "",
+		[]composition.Node{{ID: "t", NodeTypeID: "trigger-manual"}},
+		nil)
+	if err != nil {
+		t.Fatalf("CreateWorkflow: %v", err)
+	}
+
+	proposed := `{"label":"Diff summary target 2","nodes":[{"id":"t","nodeTypeId":"trigger-manual"},{"id":"c","nodeTypeId":"capture-clipboard-html"}],"edges":[{"id":"e1","source":"t","target":"c"}]}`
+	got := svc.updateDiffSummary(wf.ID, proposed)
+
+	if strings.Contains(got, "unable to parse") {
+		t.Fatalf("updateDiffSummary(well-formed JSON) = %q, want a real diff, not the parse-failure message", got)
+	}
+	if !strings.Contains(got, "nodes 1→2") || !strings.Contains(got, "edges 0→1") {
+		t.Errorf("updateDiffSummary(well-formed JSON) = %q, want it to report the real 1→2 node / 0→1 edge change", got)
+	}
+}

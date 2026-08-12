@@ -2,6 +2,7 @@ package compositionsvc
 
 import (
 	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/alicoding/mill/internal/domain/composition"
@@ -41,11 +42,20 @@ func (c *CompositionService) mutateWorkflow(id string, fn func(composition.Workf
 	// every mutateWorkflow caller (PublishWorkflow,
 	// PublishExistingVersion, RestoreVersionToDraft,
 	// SetWorkflowDisabled) is a real persisted mutation.
+	previous := c.user[idx]
 	updated.UpdatedAt = time.Now()
 	c.user[idx] = updated
 	c.mu.Unlock()
 
-	c.persist()
+	if err := c.persist(); err != nil {
+		// Roll back -- same docs/goals/0025 item 2 rule as Create/
+		// UpdateWorkflow: a lifecycle change (publish/disable/rollback)
+		// that failed to persist must not appear to have taken effect.
+		c.mu.Lock()
+		c.restoreByIDLocked(id, previous)
+		c.mu.Unlock()
+		return composition.Workflow{}, fmt.Errorf("save workflow: %w", err)
+	}
 	c.notifySyncer()
 	return updated, nil
 }
@@ -112,6 +122,11 @@ func (c *CompositionService) migratePublish() {
 	}
 	c.mu.Unlock()
 	if changed {
-		c.persist()
+		// Startup migration, same fire-and-forget/log-only treatment as
+		// topUpBuiltIns (compositionservice.go) -- runs from the
+		// constructor, nothing to return the error to.
+		if err := c.persist(); err != nil {
+			slog.Error("failed to persist auto-published workflows", "error", err)
+		}
 	}
 }

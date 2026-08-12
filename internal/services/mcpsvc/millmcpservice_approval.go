@@ -3,6 +3,7 @@ package mcpsvc
 import (
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"sort"
 	"time"
 
@@ -196,7 +197,16 @@ func (m *MillMCPService) gateWrite(toolName, description, argsJSON string) (*mcp
 		m.writes = map[string]*MCPWriteRecord{}
 	}
 	m.writes[rec.ID] = rec
-	m.persistWritesLocked()
+	if err := m.persistWritesLocked(); err != nil {
+		// The record's durability across a restart is the entire point
+		// of parking it (docs/adr/0032 §1: "the record... is what must
+		// be durable") -- a record that only lives in memory isn't a
+		// real park, so don't leave a phantom-parked write behind; fail
+		// the call instead (docs/goals/0025 items 1/2).
+		delete(m.writes, rec.ID)
+		m.writesMu.Unlock()
+		return nil, fmt.Errorf("park write for approval: %w", err)
+	}
 	m.writesMu.Unlock()
 
 	// Surface it to the desktop window; the frontend also polls
@@ -227,13 +237,28 @@ func (m *MillMCPService) gateWrite(toolName, description, argsJSON string) (*mcp
 // callers do that themselves after unlocking (an Activity push touches
 // the Wails event system, kept out of the critical section on
 // principle, same as the pre-ADR-0032 code's own lock-free emit).
-func (m *MillMCPService) finalizeLocked(rec *MCPWriteRecord, status MCPWriteStatus, resultText, errText string) {
+//
+// Deliberately does NOT roll rec's in-memory fields back on a persist
+// failure, unlike every other rollback-on-persist-failure site in this
+// change (docs/goals/0025 items 1/2): for an approved write, the real
+// side effect (m.execute, called by ResolveMCPWrite before this runs)
+// has already happened by the time this is reached, so reverting
+// Status back to "pending" would let a second ResolveMCPWrite call
+// re-run that same executor after a crash/restart wiped the
+// unpersisted change -- a real double-execution risk strictly worse
+// than a resolution that's merely slow to durably record. The error is
+// still returned and surfaced to the human (a durability gap worth
+// knowing about), it just doesn't undo a decision that's already real.
+func (m *MillMCPService) finalizeLocked(rec *MCPWriteRecord, status MCPWriteStatus, resultText, errText string) error {
 	now := time.Now()
 	rec.Status = status
 	rec.ResultText = resultText
 	rec.Error = errText
 	rec.ResolvedAt = &now
-	m.persistWritesLocked()
+	if err := m.persistWritesLocked(); err != nil {
+		return fmt.Errorf("save write resolution: %w", err)
+	}
+	return nil
 }
 
 // signalLocked wakes a courtesy-window select still waiting on rec, if
@@ -276,17 +301,22 @@ func (m *MillMCPService) ResolveMCPWrite(id string, approve bool) error {
 	}
 
 	var activityOutcome string
+	var finalizeErr error
 	if !approve {
-		m.finalizeLocked(rec, MCPWriteStatusDenied, "", "denied by the user in Mill's window")
+		finalizeErr = m.finalizeLocked(rec, MCPWriteStatusDenied, "", "denied by the user in Mill's window")
 		activityOutcome = string(MCPWriteStatusDenied)
 	} else {
 		resultText, err := m.execute(rec.ToolName, rec.ArgsJSON)
 		if err != nil {
-			m.finalizeLocked(rec, MCPWriteStatusApproved, "", err.Error())
+			finalizeErr = m.finalizeLocked(rec, MCPWriteStatusApproved, "", err.Error())
 		} else {
-			m.finalizeLocked(rec, MCPWriteStatusApproved, resultText, "")
+			finalizeErr = m.finalizeLocked(rec, MCPWriteStatusApproved, resultText, "")
 		}
 	}
+	// Signal regardless of finalizeErr -- the decision (and, for
+	// approve, the real side effect) already happened; a courtesy-window
+	// caller still waiting must not hang just because the durable record
+	// of it lagged.
 	m.signalLocked(rec)
 	description := rec.Description
 	m.writesMu.Unlock()
@@ -295,19 +325,31 @@ func (m *MillMCPService) ResolveMCPWrite(id string, approve bool) error {
 	if activityOutcome != "" {
 		emitMCPWriteActivity(description, activityOutcome)
 	}
+	if finalizeErr != nil {
+		// The decision (and any real side effect) is final either way --
+		// this error means it failed to durably RECORD, which the human
+		// resolving it from Mill's window should still learn about
+		// (docs/goals/0025 items 1/2's "approval-record" case), not a
+		// silent `_ =`.
+		return finalizeErr
+	}
 	return nil
 }
 
 // persistWritesLocked marshals m.writes to the settings store -- caller
-// must hold writesMu. Best-effort: a marshal failure here would be a
-// Mill bug (every field is a plain string/time/enum), not a runtime
-// condition worth surfacing mid-call.
-func (m *MillMCPService) persistWritesLocked() {
+// must hold writesMu. Returns the marshal/store error rather than
+// swallowing it (docs/goals/0025 item 1) -- callers decide whether to
+// propagate (gateWrite/finalizeLocked, an approval-record write) or log
+// (sweepLocked's own incidental bookkeeping, below).
+func (m *MillMCPService) persistWritesLocked() error {
 	data, err := json.Marshal(m.writes)
 	if err != nil {
-		return
+		return fmt.Errorf("marshal pending MCP writes: %w", err)
 	}
-	_ = m.store.Set(mcpPendingWritesKey, string(data))
+	if err := m.store.Set(mcpPendingWritesKey, string(data)); err != nil {
+		return fmt.Errorf("persist pending MCP writes: %w", err)
+	}
+	return nil
 }
 
 // loadWrites reloads every persisted MCPWriteRecord from the settings
@@ -364,7 +406,14 @@ func (m *MillMCPService) sweepLocked(now time.Time) []string {
 		}
 	}
 	if changed {
-		m.persistWritesLocked()
+		// Incidental bookkeeping riding along a read call (PendingMCPWrites/
+		// writeStatus/ResolveMCPWrite/loadWrites all call this) -- log-only,
+		// same fire-and-forget treatment as the compositionsvc/configuresvc
+		// top-up-seeding sweeps (docs/goals/0025 item 1). A failure here
+		// just means the same records get swept again on the next call.
+		if err := m.persistWritesLocked(); err != nil {
+			slog.Error("failed to persist MCP write sweep", "error", err)
+		}
 	}
 	return expired
 }

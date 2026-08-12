@@ -1,6 +1,7 @@
 package configuresvc
 
 import (
+	"log/slog"
 	"time"
 
 	"github.com/alicoding/mill/internal/domain/composition"
@@ -85,7 +86,12 @@ func (c *ConfigureService) topUpBuiltInRequests() {
 	if len(added) == 0 {
 		return
 	}
-	c.persistHTTPRequests()
+	// Startup reconciliation, not a user-initiated RPC -- log-only, same
+	// fire-and-forget treatment as compositionsvc's topUpBuiltIns
+	// (docs/goals/0025 item 1).
+	if err := c.persistHTTPRequests(); err != nil {
+		slog.Error("failed to persist top-up-seeded HTTPRequests", "error", err)
+	}
 	// Seed demo secrets only for the newly added examples -- never
 	// re-Set an already-present example's secret, which the user may
 	// have replaced with their own.
@@ -123,7 +129,9 @@ func (c *ConfigureService) topUpBuiltInDecisions() {
 	}
 	c.mu.Unlock()
 	if added {
-		c.persistDecisions()
+		if err := c.persistDecisions(); err != nil {
+			slog.Error("failed to persist top-up-seeded Decisions", "error", err)
+		}
 	}
 }
 
@@ -151,7 +159,9 @@ func (c *ConfigureService) topUpBuiltInLists() {
 	}
 	c.mu.Unlock()
 	if added {
-		c.persistLists()
+		if err := c.persistLists(); err != nil {
+			slog.Error("failed to persist top-up-seeded Lists", "error", err)
+		}
 	}
 }
 
@@ -177,7 +187,9 @@ func (c *ConfigureService) topUpBuiltInMCPServers() {
 	}
 	c.mu.Unlock()
 	if added {
-		c.persistMCPServers()
+		if err := c.persistMCPServers(); err != nil {
+			slog.Error("failed to persist top-up-seeded MCP Servers", "error", err)
+		}
 	}
 }
 
@@ -203,6 +215,8 @@ func (c *ConfigureService) topUpBuiltInExecEnvs() {
 	}
 	c.mu.Unlock()
 	if added {
-		c.persistExecEnvs()
+		if err := c.persistExecEnvs(); err != nil {
+			slog.Error("failed to persist top-up-seeded ExecEnvs", "error", err)
+		}
 	}
 }

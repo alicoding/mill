@@ -104,14 +104,14 @@ test('Clicking an action opens its result, and multiple entries can be expanded 
   await expect(rows).toHaveCount(2)
 
   // A row's Action cell is only clickable when its result is non-empty
-  // (ActivityView.tsx: canExpand = entry.result !== '', which gates
-  // onClick entirely -- an empty-result row renders the same testid with
-  // no handler at all, so clicking it is a silent no-op, not an error).
-  // Asserting "completed" here first makes that failure mode loud and
-  // diagnosable (a real run failure) instead of a confusing 0-or-1
-  // detail-panel count with no indication why.
-  await expect(rows.nth(0)).toContainText('completed')
-  await expect(rows.nth(1)).toContainText('completed')
+  // (ActivityView.tsx: canExpand = entry.result !== ''). Both outcomes
+  // now guarantee a non-empty result -- success carries the output,
+  // failure carries the error (CompositionView.tsx, the Linux-CI fix:
+  // clipboard steps fail there and previously produced result:'' rows
+  // that were silently unexpandable). So this test's expansion feature
+  // works on every platform regardless of the runs' outcomes, and no
+  // outcome-text gate is needed -- the detail-panel counts below are
+  // the real assertions.
 
   // Clicking each row's clickable Action cell opens its own detail panel
   // -- both stay open at once, preserving the comparison feature the old

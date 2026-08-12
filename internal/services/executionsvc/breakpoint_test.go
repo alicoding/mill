@@ -62,7 +62,7 @@ func TestBreakpoint_ParkEditResume_ChangesBranchTaken(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CreateRule (breakpoint): %v", err)
 	}
-	t.Cleanup(func() { guard.DeleteRule(rule.ID) })
+	t.Cleanup(func() { _ = guard.DeleteRule(rule.ID) })
 
 	// Started low (would naturally take the "otherwise" -> Deny arm).
 	summary, err := exec.RunWorkflow(wfID, RunKindTest, map[string]string{"amount": "50"})

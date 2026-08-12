@@ -3,6 +3,7 @@ package compositionsvc
 import (
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"strings"
 	"sync"
 	"time"
@@ -171,9 +172,32 @@ func (c *CompositionService) CreateWorkflow(label, description string, nodes []c
 	c.user = append(c.user, wf)
 	c.mu.Unlock()
 
-	c.persist()
+	if err := c.persist(); err != nil {
+		// Persist failed -- don't leave a phantom-saved workflow in
+		// memory that a restart would silently drop (docs/goals/0025
+		// item 2: memory and store must not diverge). Remove by ID
+		// rather than assuming it's still the last element -- a
+		// concurrent Create could have appended after us before we
+		// re-acquire the lock.
+		c.mu.Lock()
+		c.removeByIDLocked(wf.ID)
+		c.mu.Unlock()
+		return composition.Workflow{}, fmt.Errorf("save workflow: %w", err)
+	}
 	c.notifySyncer()
 	return wf, nil
+}
+
+// removeByIDLocked removes the workflow with id from c.user, if present.
+// Caller must hold c.mu. Shared by CreateWorkflow's persist-failure
+// rollback and DeleteWorkflow's own removal.
+func (c *CompositionService) removeByIDLocked(id string) {
+	for i, wf := range c.user {
+		if wf.ID == id {
+			c.user = append(c.user[:i], c.user[i+1:]...)
+			return
+		}
+	}
 }
 
 // UpdateWorkflow replaces an existing user-composed workflow's nodes/
@@ -238,12 +262,32 @@ func (c *CompositionService) UpdateWorkflow(id, label, description string, nodes
 		CreatedAt: c.user[idx].CreatedAt,
 		UpdatedAt: time.Now(),
 	}
+	previous := c.user[idx]
 	c.user[idx] = wf
 	c.mu.Unlock()
 
-	c.persist()
+	if err := c.persist(); err != nil {
+		// Roll back to the pre-update value -- see CreateWorkflow's own
+		// rollback comment for why (docs/goals/0025 item 2).
+		c.mu.Lock()
+		c.restoreByIDLocked(id, previous)
+		c.mu.Unlock()
+		return composition.Workflow{}, fmt.Errorf("save workflow: %w", err)
+	}
 	c.notifySyncer()
 	return wf, nil
+}
+
+// restoreByIDLocked overwrites the workflow with id back to prev, if
+// still present -- caller must hold c.mu. Shared rollback helper for
+// UpdateWorkflow/UpdateAttributes's persist-failure paths.
+func (c *CompositionService) restoreByIDLocked(id string, prev composition.Workflow) {
+	for i, wf := range c.user {
+		if wf.ID == id {
+			c.user[i] = prev
+			return
+		}
+	}
 }
 
 // UpdateAttributes replaces a workflow's declared Attributes schema in
@@ -274,12 +318,18 @@ func (c *CompositionService) UpdateAttributes(workflowID string, attrs []composi
 		return composition.Workflow{}, err
 	}
 
+	previous := c.user[idx]
 	c.user[idx].Attributes = attrs
 	c.user[idx].UpdatedAt = time.Now()
 	wf := c.user[idx]
 	c.mu.Unlock()
 
-	c.persist()
+	if err := c.persist(); err != nil {
+		c.mu.Lock()
+		c.restoreByIDLocked(workflowID, previous)
+		c.mu.Unlock()
+		return composition.Workflow{}, fmt.Errorf("save workflow attributes: %w", err)
+	}
 	return wf, nil
 }
 
@@ -298,21 +348,52 @@ func (c *CompositionService) DeleteWorkflow(id string) error {
 		c.mu.Unlock()
 		return fmt.Errorf("no workflow with id %q", id)
 	}
-	wasBuiltIn := c.user[idx].BuiltIn
+	removed := c.user[idx]
+	wasBuiltIn := removed.BuiltIn
 	c.user = append(c.user[:idx], c.user[idx+1:]...)
 	c.mu.Unlock()
 
 	// A deleted built-in gets a tombstone so top-up seeding (restore)
-	// never resurrects it -- deletion stays permanent (§2.2).
+	// never resurrects it -- deletion stays permanent (§2.2). Tombstone
+	// and removal must succeed together: if the tombstone can't be
+	// persisted, leaving the in-memory removal in place would mean the
+	// next restart's top-up seeding silently resurrects a workflow the
+	// user just deleted (docs/goals/0025 item 2) -- so roll the removal
+	// back and fail the whole delete instead.
 	if wasBuiltIn {
-		seeding.RecordTombstone(c.store, id)
+		if err := seeding.RecordTombstone(c.store, id); err != nil {
+			c.mu.Lock()
+			c.insertAtLocked(idx, removed)
+			c.mu.Unlock()
+			return fmt.Errorf("tombstone deleted workflow %q: %w", id, err)
+		}
 	}
-	c.persist()
+	if err := c.persist(); err != nil {
+		c.mu.Lock()
+		c.insertAtLocked(idx, removed)
+		c.mu.Unlock()
+		return fmt.Errorf("save workflow deletion: %w", err)
+	}
 	c.notifySyncer()
 	return nil
 }
 
-func (c *CompositionService) persist() {
+// insertAtLocked reinserts wf at idx (clamped to the current length) --
+// caller must hold c.mu. Used to undo DeleteWorkflow's removal when the
+// tombstone or persist step that must accompany it fails (docs/goals/0025
+// item 2's memory-vs-store consistency rule); the exact index rarely
+// matters (nothing depends on workflow order), it's just the least
+// surprising place to put it back.
+func (c *CompositionService) insertAtLocked(idx int, wf composition.Workflow) {
+	if idx < 0 || idx > len(c.user) {
+		idx = len(c.user)
+	}
+	c.user = append(c.user, composition.Workflow{})
+	copy(c.user[idx+1:], c.user[idx:])
+	c.user[idx] = wf
+}
+
+func (c *CompositionService) persist() error {
 	c.mu.Lock()
 	user := make([]composition.Workflow, len(c.user))
 	copy(user, c.user)
@@ -320,9 +401,12 @@ func (c *CompositionService) persist() {
 
 	data, err := json.Marshal(user)
 	if err != nil {
-		return
+		return fmt.Errorf("marshal workflows: %w", err)
 	}
-	_ = c.store.Set(workflowsKey, string(data))
+	if err := c.store.Set(workflowsKey, string(data)); err != nil {
+		return fmt.Errorf("persist workflows: %w", err)
+	}
+	return nil
 }
 
 // restore loads persisted workflows, or -- on a genuinely fresh install,
@@ -385,7 +469,14 @@ func (c *CompositionService) topUpBuiltIns() {
 	}
 	c.mu.Unlock()
 	if added {
-		c.persist()
+		// Startup reconciliation, not a user-initiated mutation waiting
+		// on a response -- nothing to return the error to (this runs
+		// from the constructor). Logged so a failure is at least
+		// diagnosable rather than silently dropped (docs/goals/0025
+		// item 1's fire-and-forget bucket).
+		if err := c.persist(); err != nil {
+			slog.Error("failed to persist top-up-seeded workflows", "error", err)
+		}
 	}
 }
 

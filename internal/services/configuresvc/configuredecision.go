@@ -60,7 +60,17 @@ func (c *ConfigureService) CreateDecision(label string, category decision.Catego
 	c.decisions = append(c.decisions, d)
 	c.mu.Unlock()
 
-	c.persistDecisions()
+	if err := c.persistDecisions(); err != nil {
+		c.mu.Lock()
+		for i, existing := range c.decisions {
+			if existing.ID == d.ID {
+				c.decisions = append(c.decisions[:i], c.decisions[i+1:]...)
+				break
+			}
+		}
+		c.mu.Unlock()
+		return decision.Decision{}, fmt.Errorf("save decision: %w", err)
+	}
 	return d, nil
 }
 
@@ -118,10 +128,21 @@ func (c *ConfigureService) UpdateDecision(id, label string, category decision.Ca
 		c.mu.Unlock()
 		return decision.Decision{}, fmt.Errorf("no decision with id %q", id)
 	}
+	previous := c.decisions[idx]
 	c.decisions[idx] = d
 	c.mu.Unlock()
 
-	c.persistDecisions()
+	if err := c.persistDecisions(); err != nil {
+		c.mu.Lock()
+		for i, existing := range c.decisions {
+			if existing.ID == id {
+				c.decisions[i] = previous
+				break
+			}
+		}
+		c.mu.Unlock()
+		return decision.Decision{}, fmt.Errorf("save decision: %w", err)
+	}
 	return d, nil
 }
 
@@ -138,18 +159,43 @@ func (c *ConfigureService) DeleteDecision(id string) error {
 		c.mu.Unlock()
 		return fmt.Errorf("no decision with id %q", id)
 	}
-	wasBuiltIn := c.decisions[idx].BuiltIn
+	removed := c.decisions[idx]
+	wasBuiltIn := removed.BuiltIn
 	c.decisions = append(c.decisions[:idx], c.decisions[idx+1:]...)
 	c.mu.Unlock()
 
 	// A deleted built-in gets a tombstone so top-up seeding never
 	// resurrects it (topUpBuiltInDecisions, configureservice_builtin.go)
-	// -- same discipline DeleteHTTPRequest already applies.
+	// -- same discipline DeleteHTTPRequest already applies. Removal and
+	// tombstone must succeed together (docs/goals/0025 item 2).
 	if wasBuiltIn {
-		seeding.RecordTombstone(c.store, id)
+		if err := seeding.RecordTombstone(c.store, id); err != nil {
+			c.mu.Lock()
+			c.decisions = insertDecisionAt(c.decisions, idx, removed)
+			c.mu.Unlock()
+			return fmt.Errorf("tombstone deleted decision %q: %w", id, err)
+		}
 	}
-	c.persistDecisions()
+	if err := c.persistDecisions(); err != nil {
+		c.mu.Lock()
+		c.decisions = insertDecisionAt(c.decisions, idx, removed)
+		c.mu.Unlock()
+		return fmt.Errorf("save decision deletion: %w", err)
+	}
 	return nil
+}
+
+// insertDecisionAt reinserts d at idx (clamped to the current length)
+// -- used to undo DeleteDecision's removal when the tombstone or
+// persist step that must accompany it fails.
+func insertDecisionAt(decisions []decision.Decision, idx int, d decision.Decision) []decision.Decision {
+	if idx < 0 || idx > len(decisions) {
+		idx = len(decisions)
+	}
+	decisions = append(decisions, decision.Decision{})
+	copy(decisions[idx+1:], decisions[idx:])
+	decisions[idx] = d
+	return decisions
 }
 
 // No DuplicateDecision RPC: checked against the precedent first
@@ -165,7 +211,7 @@ func (c *ConfigureService) DeleteDecision(id string) error {
 
 // --- persistence ---
 
-func (c *ConfigureService) persistDecisions() {
+func (c *ConfigureService) persistDecisions() error {
 	c.mu.Lock()
 	decisions := make([]decision.Decision, len(c.decisions))
 	copy(decisions, c.decisions)
@@ -173,9 +219,12 @@ func (c *ConfigureService) persistDecisions() {
 
 	data, err := json.Marshal(decisions)
 	if err != nil {
-		return
+		return fmt.Errorf("marshal decisions: %w", err)
 	}
-	_ = c.store.Set(decisionsKey, string(data))
+	if err := c.store.Set(decisionsKey, string(data)); err != nil {
+		return fmt.Errorf("persist decisions: %w", err)
+	}
+	return nil
 }
 
 func (c *ConfigureService) restoreDecisions() {

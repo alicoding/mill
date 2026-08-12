@@ -3,6 +3,7 @@ package configuresvc
 import (
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"sync"
 	"time"
 
@@ -126,8 +127,26 @@ func (c *ConfigureService) CreateList(label string, entries map[string]string) (
 	c.lists = append(c.lists, l)
 	c.mu.Unlock()
 
-	c.persistLists()
+	if err := c.persistLists(); err != nil {
+		// Don't leave a phantom-saved list in memory that a restart
+		// would drop (docs/goals/0025 item 2's memory-vs-store rule).
+		c.mu.Lock()
+		c.removeListByIDLocked(l.ID)
+		c.mu.Unlock()
+		return list.List{}, fmt.Errorf("save list: %w", err)
+	}
 	return l, nil
+}
+
+// removeListByIDLocked removes the list with id from c.lists, if
+// present -- caller must hold c.mu.
+func (c *ConfigureService) removeListByIDLocked(id string) {
+	for i, l := range c.lists {
+		if l.ID == id {
+			c.lists = append(c.lists[:i], c.lists[i+1:]...)
+			return
+		}
+	}
 }
 
 func (c *ConfigureService) UpdateList(id, label string, entries map[string]string) (list.List, error) {
@@ -155,10 +174,21 @@ func (c *ConfigureService) UpdateList(id, label string, entries map[string]strin
 	// change's scope.
 	l.CreatedAt = c.lists[idx].CreatedAt
 	l.UpdatedAt = time.Now()
+	previous := c.lists[idx]
 	c.lists[idx] = l
 	c.mu.Unlock()
 
-	c.persistLists()
+	if err := c.persistLists(); err != nil {
+		c.mu.Lock()
+		for i, existing := range c.lists {
+			if existing.ID == id {
+				c.lists[i] = previous
+				break
+			}
+		}
+		c.mu.Unlock()
+		return list.List{}, fmt.Errorf("save list: %w", err)
+	}
 	return l, nil
 }
 
@@ -175,18 +205,45 @@ func (c *ConfigureService) DeleteList(id string) error {
 		c.mu.Unlock()
 		return fmt.Errorf("no list with id %q", id)
 	}
-	wasBuiltIn := c.lists[idx].BuiltIn
+	removed := c.lists[idx]
+	wasBuiltIn := removed.BuiltIn
 	c.lists = append(c.lists[:idx], c.lists[idx+1:]...)
 	c.mu.Unlock()
 
 	// A deleted built-in gets a tombstone so top-up seeding never
 	// resurrects it (topUpBuiltInLists, configureservice_builtin.go) --
 	// same discipline DeleteHTTPRequest/DeleteDecision already apply.
+	// Removal and tombstone must succeed together (docs/goals/0025 item
+	// 2): an untombstoned removal would silently come back on the next
+	// restart's top-up seeding.
 	if wasBuiltIn {
-		seeding.RecordTombstone(c.store, id)
+		if err := seeding.RecordTombstone(c.store, id); err != nil {
+			c.mu.Lock()
+			c.lists = insertListAt(c.lists, idx, removed)
+			c.mu.Unlock()
+			return fmt.Errorf("tombstone deleted list %q: %w", id, err)
+		}
 	}
-	c.persistLists()
+	if err := c.persistLists(); err != nil {
+		c.mu.Lock()
+		c.lists = insertListAt(c.lists, idx, removed)
+		c.mu.Unlock()
+		return fmt.Errorf("save list deletion: %w", err)
+	}
 	return nil
+}
+
+// insertListAt reinserts l at idx (clamped to the current length) --
+// used to undo DeleteList's removal when the tombstone or persist step
+// that must accompany it fails.
+func insertListAt(lists []list.List, idx int, l list.List) []list.List {
+	if idx < 0 || idx > len(lists) {
+		idx = len(lists)
+	}
+	lists = append(lists, list.List{})
+	copy(lists[idx+1:], lists[idx:])
+	lists[idx] = l
+	return lists
 }
 
 // --- Attributes (delegates to CompositionService -- see SPEC.md §3.5's
@@ -198,7 +255,7 @@ func (c *ConfigureService) UpdateWorkflowAttributes(workflowID string, attrs []c
 
 // --- persistence ---
 
-func (c *ConfigureService) persistLists() {
+func (c *ConfigureService) persistLists() error {
 	c.mu.Lock()
 	lists := make([]list.List, len(c.lists))
 	copy(lists, c.lists)
@@ -206,9 +263,12 @@ func (c *ConfigureService) persistLists() {
 
 	data, err := json.Marshal(lists)
 	if err != nil {
-		return
+		return fmt.Errorf("marshal lists: %w", err)
 	}
-	_ = c.store.Set(listsKey, string(data))
+	if err := c.store.Set(listsKey, string(data)); err != nil {
+		return fmt.Errorf("persist lists: %w", err)
+	}
+	return nil
 }
 
 // restore loads persisted HTTPRequests/Lists. HTTPRequests has three
@@ -233,7 +293,15 @@ func (c *ConfigureService) restore() {
 		var requests []httprequest.HTTPRequest
 		if err := json.Unmarshal([]byte(raw), &requests); err == nil {
 			c.requests = requests
-			c.persistHTTPRequests()
+			// Startup migration, not a user-initiated RPC -- nothing to
+			// return the error to (this runs from the constructor).
+			// Logged so a failure is diagnosable rather than silently
+			// dropped (docs/goals/0025 item 1's fire-and-forget bucket);
+			// worst case the migration simply re-runs identically on the
+			// next launch, since legacyConnectorsKey itself is untouched.
+			if err := c.persistHTTPRequests(); err != nil {
+				slog.Error("failed to persist migrated legacy connectors", "error", err)
+			}
 		}
 	} else {
 		seeded := httprequest.BuiltIn()

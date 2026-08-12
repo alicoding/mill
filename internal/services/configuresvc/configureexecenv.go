@@ -70,7 +70,17 @@ func (c *ConfigureService) CreateExecEnv(label string, shell execenv.Shell, prof
 	c.execEnvs = append(c.execEnvs, e)
 	c.mu.Unlock()
 
-	c.persistExecEnvs()
+	if err := c.persistExecEnvs(); err != nil {
+		c.mu.Lock()
+		for i, existing := range c.execEnvs {
+			if existing.ID == e.ID {
+				c.execEnvs = append(c.execEnvs[:i], c.execEnvs[i+1:]...)
+				break
+			}
+		}
+		c.mu.Unlock()
+		return execenv.ExecEnv{}, fmt.Errorf("save execution environment: %w", err)
+	}
 	return e, nil
 }
 
@@ -100,10 +110,21 @@ func (c *ConfigureService) UpdateExecEnv(id, label string, shell execenv.Shell, 
 	e.BuiltIn = c.execEnvs[idx].BuiltIn
 	e.CreatedAt = c.execEnvs[idx].CreatedAt
 	e.UpdatedAt = time.Now()
+	previous := c.execEnvs[idx]
 	c.execEnvs[idx] = e
 	c.mu.Unlock()
 
-	c.persistExecEnvs()
+	if err := c.persistExecEnvs(); err != nil {
+		c.mu.Lock()
+		for i, existing := range c.execEnvs {
+			if existing.ID == id {
+				c.execEnvs[i] = previous
+				break
+			}
+		}
+		c.mu.Unlock()
+		return execenv.ExecEnv{}, fmt.Errorf("save execution environment: %w", err)
+	}
 	return e, nil
 }
 
@@ -120,18 +141,44 @@ func (c *ConfigureService) DeleteExecEnv(id string) error {
 		c.mu.Unlock()
 		return fmt.Errorf("no execution environment with id %q", id)
 	}
-	wasBuiltIn := c.execEnvs[idx].BuiltIn
+	removed := c.execEnvs[idx]
+	wasBuiltIn := removed.BuiltIn
 	c.execEnvs = append(c.execEnvs[:idx], c.execEnvs[idx+1:]...)
 	c.mu.Unlock()
 
 	// A deleted built-in gets a tombstone so top-up seeding never
 	// resurrects it (topUpBuiltInExecEnvs, configureservice_builtin.go)
 	// -- same discipline every other Delete* in this package applies.
+	// Removal and tombstone must succeed together (docs/goals/0025
+	// item 2).
 	if wasBuiltIn {
-		seeding.RecordTombstone(c.store, id)
+		if err := seeding.RecordTombstone(c.store, id); err != nil {
+			c.mu.Lock()
+			c.execEnvs = insertExecEnvAt(c.execEnvs, idx, removed)
+			c.mu.Unlock()
+			return fmt.Errorf("tombstone deleted execution environment %q: %w", id, err)
+		}
 	}
-	c.persistExecEnvs()
+	if err := c.persistExecEnvs(); err != nil {
+		c.mu.Lock()
+		c.execEnvs = insertExecEnvAt(c.execEnvs, idx, removed)
+		c.mu.Unlock()
+		return fmt.Errorf("save execution environment deletion: %w", err)
+	}
 	return nil
+}
+
+// insertExecEnvAt reinserts e at idx (clamped to the current length) --
+// used to undo DeleteExecEnv's removal when the tombstone or persist
+// step that must accompany it fails.
+func insertExecEnvAt(envs []execenv.ExecEnv, idx int, e execenv.ExecEnv) []execenv.ExecEnv {
+	if idx < 0 || idx > len(envs) {
+		idx = len(envs)
+	}
+	envs = append(envs, execenv.ExecEnv{})
+	copy(envs[idx+1:], envs[idx:])
+	envs[idx] = e
+	return envs
 }
 
 // --- export/import (configureservice_export.go's pattern, kept here
@@ -178,7 +225,7 @@ func (c *ConfigureService) ImportExecEnv(jsonData string) (execenv.ExecEnv, erro
 
 // --- persistence ---
 
-func (c *ConfigureService) persistExecEnvs() {
+func (c *ConfigureService) persistExecEnvs() error {
 	c.mu.Lock()
 	execEnvs := make([]execenv.ExecEnv, len(c.execEnvs))
 	copy(execEnvs, c.execEnvs)
@@ -186,9 +233,12 @@ func (c *ConfigureService) persistExecEnvs() {
 
 	data, err := json.Marshal(execEnvs)
 	if err != nil {
-		return
+		return fmt.Errorf("marshal execution environments: %w", err)
 	}
-	_ = c.store.Set(execEnvsKey, string(data))
+	if err := c.store.Set(execEnvsKey, string(data)); err != nil {
+		return fmt.Errorf("persist execution environments: %w", err)
+	}
+	return nil
 }
 
 func (c *ConfigureService) restoreExecEnvs() {

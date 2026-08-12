@@ -74,7 +74,14 @@ func (s *SettingsService) SetupAwayAttention() error {
 			return
 		}
 		if kind == "mcp-write" && (r.ActionIdentifier == notify.ApproveActionID || r.ActionIdentifier == notify.DenyActionID) {
-			_ = s.ResolveMCPWrite(id, r.ActionIdentifier == notify.ApproveActionID)
+			if err := s.ResolveMCPWrite(id, r.ActionIdentifier == notify.ApproveActionID); err != nil {
+				// Same reasoning as SetPendingBadge above: a notification
+				// Approve/Deny tap has no UI of its own to surface an
+				// error through (the user already dismissed the
+				// notification), so this is the only place a failure
+				// here is diagnosable at all (docs/goals/0025 item 6).
+				slog.Error("failed to resolve MCP write from notification action", "id", id, "approve", r.ActionIdentifier == notify.ApproveActionID, "error", err)
+			}
 			return
 		}
 		// A guardrail/human-review park's action button, or any
