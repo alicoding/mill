@@ -42,18 +42,22 @@ async function runBothWorkflows(page: import('@playwright/test').Page) {
   await withClipboardLock(async () => {
   await page.getByRole('link', { name: 'Workflows' }).click()
 
-  // Waits for the full disabled -> enabled cycle, not just "enabled"
-  // (which could pass immediately if checked before React ever disables
-  // the button, never actually confirming the run finished).
+  // Waits for each run's own visible result (success or error) to
+  // appear, not for the button's transient disabled state -- asserting
+  // a state that only exists mid-flight is unreliable once the run
+  // itself can finish in well under a single Playwright poll interval
+  // (e.g. on Linux, WriteHTML's exec.Command fails to even find
+  // "osascript" in $PATH near-instantly, unlike a real macOS clipboard
+  // round trip -- docs/SPEC.md §1.3), so "disabled" can already be gone
+  // before the very first check ever runs. The result container
+  // appearing is a definitive post-completion signal instead.
   const loadButton = page.getByRole('button', { name: /Run Load sample HTML/ })
   await loadButton.click()
-  await expect(loadButton).toBeDisabled()
-  await expect(loadButton).toBeEnabled()
+  await expect(page.getByTestId('workflow-run-result').filter({ has: page.getByText('Load sample HTML', { exact: true }) })).toBeVisible()
 
   const markdownButton = page.getByRole('button', { name: /Run Clipboard → Markdown/ })
   await markdownButton.click()
-  await expect(markdownButton).toBeDisabled()
-  await expect(markdownButton).toBeEnabled()
+  await expect(page.getByTestId('workflow-run-result').filter({ has: page.getByText('Clipboard → Markdown', { exact: true }) })).toBeVisible()
   })
 }
 

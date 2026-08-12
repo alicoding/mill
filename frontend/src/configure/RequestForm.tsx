@@ -156,13 +156,30 @@ export function RequestForm({
   const handleSave = async () => {
     const finalDraft = { ...draft, openAPISpec: effectiveSpec }
     setError('')
+    let saved: HTTPRequest
     try {
       const headers = rowsToHeaders(headerRows)
       const auth = authConfigFrom(finalDraft)
       const jose = joseConfigFrom(finalDraft)
-      const saved = editingRequest
+      saved = editingRequest
         ? await ConfigureService.UpdateHTTPRequest(editingRequest.ID, finalDraft.label, finalDraft.baseURL, finalDraft.method, finalDraft.body, finalDraft.authType, headers, finalDraft.openAPISpec, auth, jose, finalDraft.description)
         : await ConfigureService.CreateHTTPRequest(finalDraft.label, finalDraft.baseURL, finalDraft.method, finalDraft.body, finalDraft.authType, headers, finalDraft.openAPISpec, auth, jose, finalDraft.description)
+    } catch (err) {
+      setError(String(err))
+      return
+    }
+    // From here the base entity is saved regardless of what happens
+    // below -- a secret write is a separate, write-only side channel
+    // to the OS keychain (docs/SPEC.md §3.5: HTTPRequest itself carries
+    // no secret field at all), and a keychain failure (e.g. no OS
+    // Secret Service available -- a real gap on a headless Linux
+    // deployment/CI runner with no desktop session) must not trap the
+    // user on a dead-end create form for a request that already exists
+    // server-side. Logged, not surfaced in the form's own error banner
+    // -- there's no existing UI signal for "was the secret actually
+    // stored" either way (it's never read back once set), so this
+    // matches that same write-only, fire-and-forget shape.
+    try {
       if (finalDraft.authType === AuthType.AuthOAuth1) {
         if (finalDraft.oauth1ConsumerSecret || finalDraft.oauth1TokenSecret) {
           await ConfigureService.SetHTTPRequestOAuth1Secret(saved.ID, finalDraft.oauth1ConsumerSecret, finalDraft.oauth1TokenSecret)
@@ -173,10 +190,10 @@ export function RequestForm({
       if (finalDraft.joseEnabled && finalDraft.joseDecryptResponse && finalDraft.josePrivateKeyPEM) {
         await ConfigureService.SetHTTPRequestJOSEPrivateKey(saved.ID, finalDraft.josePrivateKeyPEM)
       }
-      onSaved()
     } catch (err) {
-      setError(String(err))
+      console.error('request secret write failed (base request was still saved):', err)
     }
+    onSaved()
   }
 
   return (

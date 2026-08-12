@@ -170,13 +170,41 @@ test('process-inject-text composes with an upstream node via the generic Inspect
 
   const row = workflowRow(page, 'E2E inject-text workflow')
   await expect(row).toBeVisible()
-  await row.getByRole('button', { name: 'Run' }).click()
 
-  // A run's result renders below the InventoryList now, not inline in
-  // the row itself (docs/goals/0007's dense-row anatomy has no room for
-  // a result preview).
-  const result = page.getByTestId('workflow-run-result').filter({ has: page.getByText('E2E inject-text workflow', { exact: true }) }).locator('pre')
-  await expect(result).toHaveText('e2e base payload\n\ne2e injected hint')
+  // The composed ordering survived save -- proven by reading each
+  // node's persisted config back in read-only view mode (a row click,
+  // docs/goals/0022), not by running the workflow and reading the
+  // clipboard-written result: the upstream node here is
+  // apply-clipboard-write-html, which needs a real OS clipboard
+  // (osascript on macOS) and errors on every call on a headless Linux
+  // CI runner (docs/SPEC.md §1.3), so a successful-run result string
+  // isn't environment-independent. Go-level ordering is already
+  // covered by TestExecuteWorkflow_InjectText_PrependIsAppliedBeforeExistingPayload;
+  // this proves the UI composed the two nodes in the right position
+  // (Trigger -> Apply -> Process, asserted above via the edge count)
+  // and persisted each field correctly.
+  await row.click()
+  // Fit View + Zoom Out first, same reasoning as live-run-state.spec.ts's
+  // own fitAndSpaceOut helper: reopening a saved 3-node graph doesn't
+  // necessarily land in a viewport where every node's card is clear of
+  // React Flow's own fixed-position Controls/MiniMap chrome, and Fit
+  // View alone can still leave one edge-case node overlapping it.
+  const panel = activePanel(page)
+  await panel.getByRole('button', { name: 'Fit View' }).click()
+  await page.waitForTimeout(300)
+  await panel.getByRole('button', { name: 'Zoom Out' }).click()
+  await page.waitForTimeout(200)
+  await clickCanvasNode(page, activePanel(page), 'Apply: write HTML to clipboard')
+  await expect(activePanel(page).getByTestId('canvas-config-field')).toHaveValue('e2e base payload')
+  await clickCanvasNode(page, activePanel(page), 'Process: Inject text')
+  await expect(activePanel(page).locator('textarea[data-testid="canvas-config-field"]')).toHaveValue('e2e injected hint')
+  await expect(activePanel(page).locator('select[data-testid="canvas-config-field"]')).toHaveValue('append')
+  await page.getByRole('link', { name: 'Workflows' }).click()
+
+  // Running it still exercises the click -> Go binding -> render
+  // pipeline end to end -- asserts SOME response, success or error.
+  await row.getByRole('button', { name: 'Run' }).click()
+  await expect(page.getByTestId('workflow-run-result').filter({ has: page.getByText('E2E inject-text workflow', { exact: true }) })).toBeVisible()
 
   await clickRowAction(page, row, 'Delete')
   await expect(workflowRow(page, 'E2E inject-text workflow')).toHaveCount(0)

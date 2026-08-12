@@ -44,6 +44,17 @@ export default defineConfig({
   // Caught directly as a real spurious timeout, not pre-emptively
   // padded on a guess.
   timeout: 60_000,
+  // Playwright's own default reporter (list locally, dot in CI) never
+  // writes a report to disk -- ci.yml's e2e job already expects one at
+  // frontend/playwright-report on failure (its own upload-artifact
+  // step), but with no reporter configured that path never existed,
+  // confirmed directly against a real failed CI run (2026-08-11's
+  // Linux-e2e investigation): "No files were found with the provided
+  // path" swallowed the one artifact that would have shown per-failure
+  // screenshots/traces instead of bare text logs. `open: 'never'` so a
+  // local `npx playwright test` run never pops a browser tab
+  // mid-session.
+  reporter: [['html', { open: 'never' }], ['list']],
   globalSetup: './e2e/global-setup.ts',
   use: {
     // No static baseURL here -- ./e2e/fixtures/server.ts overrides the
