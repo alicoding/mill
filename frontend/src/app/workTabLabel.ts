@@ -14,28 +14,28 @@ import type { WorkTab } from '../shared/store'
 // shown small and uppercase above the label. Derived from the same
 // WorkTabSpec kind the strip already switches on -- one vocabulary,
 // same as entityIcons.ts's entity keys.
-export function tabKindLabel(tab: WorkTab): string {
+export function tabKindLabel(tab: WorkTab, t: (key: string) => string): string {
   switch (tab.kind) {
     case 'workflow-edit':
     case 'workflow-new':
-      return 'Workflow'
+      return t('workTabLabel.workflow')
     case 'request-view':
     case 'request-edit':
     case 'request-new':
-      return 'Integration'
+      return t('workTabLabel.integration')
   }
 }
 
-export function tabLabel(tab: WorkTab, workflowLabel: (id: string) => string | undefined, requestLabel: (id: string) => string | undefined): string {
+export function tabLabel(tab: WorkTab, workflowLabel: (id: string) => string | undefined, requestLabel: (id: string) => string | undefined, t: (key: string) => string): string {
   switch (tab.kind) {
     case 'workflow-edit':
-      return workflowLabel(tab.workflowId) ?? 'Workflow'
+      return workflowLabel(tab.workflowId) ?? t('workTabLabel.workflow')
     case 'workflow-new':
-      return 'New workflow'
+      return t('workTabLabel.newWorkflow')
     case 'request-view':
     case 'request-edit':
-      return requestLabel(tab.requestId) ?? 'Integration'
+      return requestLabel(tab.requestId) ?? t('workTabLabel.integration')
     case 'request-new':
-      return 'New integration'
+      return t('workTabLabel.newIntegration')
   }
 }

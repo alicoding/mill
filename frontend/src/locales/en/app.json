@@ -1,1 +1,130 @@
-{}
+{
+  "reviewPendingAriaLabel": "{{count}} pending in Review",
+  "pendingApprovalDescription": "{{workflowLabel}}: {{step}} needs approval",
+  "pendingApprovalStepFallback": "a step",
+  "openTabs": "Open tabs",
+  "search": {
+    "noMatchesTitle": "No matches",
+    "noMatchesDescription": "Nothing matches \"{{query}}\""
+  },
+  "shell": {
+    "listeningForTime": "Listening for Time event...",
+    "buildModifiedTooltip": "Built with uncommitted changes",
+    "buildRevisionTooltip": "Commit this build was built from",
+    "testDataBadge": "TEST DATA",
+    "docsLinkAriaLabel": "Wails documentation",
+    "docsLinkText": "Docs"
+  },
+  "quickPanel": {
+    "groups": {
+      "workflows": "Workflows",
+      "configure": "Configure",
+      "actions": "Mill"
+    },
+    "entries": {
+      "enterToRun": "Enter to run",
+      "jumpToIntegration": "Jump to Integration",
+      "jumpToLists": "Jump to Lists",
+      "jumpToMcpServers": "Jump to MCP Servers",
+      "openMill": "Open Mill",
+      "openSettings": "Open Settings",
+      "review": "Review",
+      "reviewPendingDescription": "{{count}} pending",
+      "reviewNoPending": "No pending reviews",
+      "applyFromClipboard": "Apply from clipboard…",
+      "applyFromClipboardDescription": "Create or update a workflow from a copied Mill export"
+    },
+    "status": {
+      "running": "Running \"{{label}}\"…",
+      "failed": "\"{{label}}\" failed: {{error}}",
+      "started": "Started \"{{label}}\"",
+      "appliedUpdated": "Updated \"{{label}}\"",
+      "appliedCreated": "Created \"{{label}}\""
+    },
+    "clipboard": {
+      "emptyError": "Clipboard is empty -- copy a workflow export first",
+      "readError": "Couldn't read the clipboard: {{error}}"
+    },
+    "searchPlaceholder": "Search workflows or jump into Mill…",
+    "searchAriaLabel": "Quick Panel search",
+    "noWorkflowsYet": "No workflows yet."
+  },
+  "quickPanelClipboardApply": {
+    "unrecognizedTitle": "Couldn't read that as a Mill export",
+    "back": "Back",
+    "summaryUpdate": "This will UPDATE \"{{label}}\" — replacing the current draft (the published version stays untouched until you publish).",
+    "summaryCreate": "This will CREATE \"{{label}}\" ({{nodeCount}} node{{plural}}).",
+    "unresolvedTitle": "{{count}} reference{{plural}} won't resolve here",
+    "unresolvedItemPrefix": "node",
+    "unresolvedItemSuffix": "references \"{{value}}\", which doesn't exist here — point it at one before running",
+    "applyFailedTitle": "Apply failed",
+    "cancel": "Cancel",
+    "applying": "Applying…",
+    "update": "Update",
+    "create": "Create"
+  },
+  "approvalPrompt": {
+    "moreWaiting": "+{{count}} more waiting",
+    "openInMill": "Open in Mill",
+    "empty": "No pending approvals."
+  },
+  "appSidebar": {
+    "wordmark": "Mill",
+    "collapseNavigation": "Collapse navigation",
+    "expandNavigation": "Expand navigation",
+    "settingsAriaLabel": "Settings"
+  },
+  "buildIdentityBadge": {
+    "goStaleTooltip": "Go changes not yet in this binary — restart task dev",
+    "devGoStale": "DEV · go-stale",
+    "devLive": "DEV · live",
+    "staleBuildClickToClose": "STALE BUILD · app {{binaryHead}} ≠ repo {{repoHead}} — click to close this stale window",
+    "staleBuildRestart": "STALE BUILD · app {{binaryHead}} ≠ repo {{repoHead}} — restart task dev",
+    "installed": "INSTALLED",
+    "server": "SERVER"
+  },
+  "commandPalette": {
+    "groups": {
+      "commands": "Commands",
+      "workflows": "Workflows",
+      "tabs": "Open tabs"
+    },
+    "testRun": "Test run",
+    "runLabel": "Run: {{label}}",
+    "openInEditor": "Open in editor",
+    "openLabel": "Open: {{label}}",
+    "switchToLabel": "Switch to: {{label}}",
+    "openTab": "Open tab",
+    "closeLabel": "Close: {{label}}",
+    "closeTab": "Close tab",
+    "title": "Command palette",
+    "subtitle": "Run a command, jump to a workflow, or switch tabs",
+    "searchPlaceholder": "Type a command, workflow, or tab…",
+    "searchAriaLabel": "Search the command palette",
+    "nothingToSearchYet": "Nothing to search yet."
+  },
+  "pageMeta": {
+    "home": "Home",
+    "workflows": "Workflows",
+    "configure": "Configure",
+    "activity": "Activity",
+    "review": "Review",
+    "settings": "Settings",
+    "overview": "Overview"
+  },
+  "workTabLabel": {
+    "workflow": "Workflow",
+    "integration": "Integration",
+    "newWorkflow": "New workflow",
+    "newIntegration": "New integration"
+  },
+  "workTabShell": {
+    "openWorkAriaLabel": "Open work",
+    "unsavedChangesAriaLabel": "Unsaved changes",
+    "allOpenTabsAriaLabel": "All open tabs",
+    "closeOtherTabs": "Close other tabs",
+    "closeAllTabs": "Close all tabs",
+    "restoredTitle": "Unsaved changes restored",
+    "restoredDescription": "This workflow had unsaved edits from before Mill last closed or reloaded — they're back, not yet saved."
+  }
+}

@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import type { ReactNode } from 'react'
+import { useTranslation } from 'react-i18next'
 import { createPortal } from 'react-dom'
 import { Tabs } from '@primer/react/experimental'
 import { ActionList, ActionMenu, Banner, IconButton } from '@primer/react'
@@ -59,6 +60,7 @@ function tabEntityVisual(tab: WorkTab): ReactNode {
 }
 
 export function WorkTabShell({ pageLabel, pageIcon, titlebarSlot, children }: { pageLabel: string; pageIcon?: ReactNode; titlebarSlot: HTMLDivElement | null; children: ReactNode }) {
+  const { t } = useTranslation('app')
   const workTabs = useAppStore((s) => s.workTabs)
   const activeWorkTabKey = useAppStore((s) => s.activeWorkTabKey)
   const activateWorkTab = useAppStore((s) => s.activateWorkTab)
@@ -183,15 +185,15 @@ export function WorkTabShell({ pageLabel, pageIcon, titlebarSlot, children }: { 
   // not inside PageLayout.Content where this component itself renders.
   const stripContent = (
     <>
-      <TabList aria-label="Open work">
+      <TabList aria-label={t('workTabShell.openWorkAriaLabel')}>
         <TabItem value={PAGE_TAB} leadingVisual={pageIcon}>{pageLabel}</TabItem>
-        {workTabs.map((t) => (
-          <TabItem key={t.key} value={t.key} leadingVisual={tabEntityVisual(t)} onClose={() => closeAndClearScratch(t.key)}>
-            {tabLabel(t, workflowLabel, requestLabel)}
+        {workTabs.map((tab) => (
+          <TabItem key={tab.key} value={tab.key} leadingVisual={tabEntityVisual(tab)} onClose={() => closeAndClearScratch(tab.key)}>
+            {tabLabel(tab, workflowLabel, requestLabel, t)}
             {/* Hot-exit dirty dot (docs/goals/0012) -- this tab's
                 canvas currently differs from what's saved. */}
-            {workTabDirty[t.key] && (
-              <span className={editorStyles.dirtyDot} aria-label="Unsaved changes" data-testid="dirty-indicator">
+            {workTabDirty[tab.key] && (
+              <span className={editorStyles.dirtyDot} aria-label={t('workTabShell.unsavedChangesAriaLabel')} data-testid="dirty-indicator">
                 {' '}•
               </span>
             )}
@@ -209,7 +211,7 @@ export function WorkTabShell({ pageLabel, pageIcon, titlebarSlot, children }: { 
             <ActionMenu.Anchor>
               <IconButton
                 icon={ChevronDownIcon}
-                aria-label="All open tabs"
+                aria-label={t('workTabShell.allOpenTabsAriaLabel')}
                 size="small"
                 variant="invisible"
                 data-testid="work-tab-overflow"
@@ -218,14 +220,14 @@ export function WorkTabShell({ pageLabel, pageIcon, titlebarSlot, children }: { 
             <ActionMenu.Overlay>
               <ActionList>
                 <ActionList.Group>
-                  <ActionList.GroupHeading>Open tabs</ActionList.GroupHeading>
-                  {workTabs.map((t) => (
+                  <ActionList.GroupHeading>{t('openTabs')}</ActionList.GroupHeading>
+                  {workTabs.map((tab) => (
                     <ActionList.Item
-                      key={t.key}
-                      selected={t.key === activeWorkTabKey}
-                      onSelect={() => activateWorkTab(t.key)}
+                      key={tab.key}
+                      selected={tab.key === activeWorkTabKey}
+                      onSelect={() => activateWorkTab(tab.key)}
                     >
-                      {tabLabel(t, workflowLabel, requestLabel)}
+                      {tabLabel(tab, workflowLabel, requestLabel, t)}
                     </ActionList.Item>
                   ))}
                 </ActionList.Group>
@@ -234,7 +236,7 @@ export function WorkTabShell({ pageLabel, pageIcon, titlebarSlot, children }: { 
                   disabled={activeWorkTabKey === null}
                   onSelect={() => { if (activeWorkTabKey) closeOtherTabs(activeWorkTabKey) }}
                 >
-                  Close other tabs
+                  {t('workTabShell.closeOtherTabs')}
                   {/* Inline hotkey hint (docs/goals/0015) -- reads the
                       SAME registry Settings' Keyboard Shortcuts list
                       reads from, never a second hardcoded copy. */}
@@ -243,7 +245,7 @@ export function WorkTabShell({ pageLabel, pageIcon, titlebarSlot, children }: { 
                   </ActionList.TrailingVisual>
                 </ActionList.Item>
                 <ActionList.Item variant="danger" onSelect={closeAllTabs}>
-                  Close all tabs
+                  {t('workTabShell.closeAllTabs')}
                   <ActionList.TrailingVisual>
                     <HotkeyHint commandId="tab.closeAll" />
                   </ActionList.TrailingVisual>
@@ -260,24 +262,24 @@ export function WorkTabShell({ pageLabel, pageIcon, titlebarSlot, children }: { 
     <Tabs value={activeWorkTabKey ?? PAGE_TAB} onValueChange={({ value }) => activateWorkTab(value === PAGE_TAB ? null : value)}>
       {titlebarSlot && createPortal(stripContent, titlebarSlot)}
       <TabPanel value={PAGE_TAB}>{children}</TabPanel>
-      {workTabs.map((t) => (
-        <TabPanel key={t.key} value={t.key} className={isCanvasTab(t) ? editorStyles.editorPanel : undefined}>
+      {workTabs.map((tab) => (
+        <TabPanel key={tab.key} value={tab.key} className={isCanvasTab(tab) ? editorStyles.editorPanel : undefined}>
           {/* Hot-exit "restored" banner (docs/goals/0012) -- shown only
               for a tab whose canvas was seeded from a pre-reload/quit
               scratch that differed from what's saved. Dismissing it is
               purely informational: the scratch itself keeps shadowing
               the draft until Save or a deliberate close, and the tab
               stays marked dirty. */}
-          {isCanvasTab(t) && workTabRestored[t.key] && (
+          {isCanvasTab(tab) && workTabRestored[tab.key] && (
             <Banner
               variant="info"
-              title="Unsaved changes restored"
-              description="This workflow had unsaved edits from before Mill last closed or reloaded — they're back, not yet saved."
-              onDismiss={() => dismissWorkTabRestored(t.key)}
+              title={t('workTabShell.restoredTitle')}
+              description={t('workTabShell.restoredDescription')}
+              onDismiss={() => dismissWorkTabRestored(tab.key)}
               data-testid="restored-unsaved"
             />
           )}
-          {renderTab(t)}
+          {renderTab(tab)}
         </TabPanel>
       ))}
     </Tabs>

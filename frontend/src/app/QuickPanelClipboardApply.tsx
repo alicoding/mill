@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Banner, Button, Stack, Text } from '@primer/react'
 import { ArrowLeftIcon } from '@primer/octicons-react'
 import { CompositionService, ClipboardApplyAction } from '../shared/bindings'
@@ -28,6 +29,7 @@ interface Props {
 }
 
 export function QuickPanelClipboardApply({ json, preview, onCancel, onApplied }: Props) {
+  const { t } = useTranslation('app')
   const [busy, setBusy] = useState(false)
   const [confirmError, setConfirmError] = useState<string | null>(null)
 
@@ -36,8 +38,8 @@ export function QuickPanelClipboardApply({ json, preview, onCancel, onApplied }:
   if (!preview.recognized) {
     return (
       <Stack className={styles.panel} gap="condensed" data-testid="quick-panel-clipboard-apply-error">
-        <Banner variant="critical" title="Couldn't read that as a Mill export" description={preview.error} />
-        <Button leadingVisual={ArrowLeftIcon} onClick={onCancel} block>Back</Button>
+        <Banner variant="critical" title={t('quickPanelClipboardApply.unrecognizedTitle')} description={preview.error} />
+        <Button leadingVisual={ArrowLeftIcon} onClick={onCancel} block>{t('quickPanelClipboardApply.back')}</Button>
       </Stack>
     )
   }
@@ -45,8 +47,8 @@ export function QuickPanelClipboardApply({ json, preview, onCancel, onApplied }:
   const isUpdate = preview.action === ClipboardApplyAction.ClipboardApplyActionUpdate
   const nodeCount = preview.nodeCount ?? 0
   const summary = isUpdate
-    ? `This will UPDATE "${preview.label}" — replacing the current draft (the published version stays untouched until you publish).`
-    : `This will CREATE "${preview.label}" (${nodeCount} node${nodeCount === 1 ? '' : 's'}).`
+    ? t('quickPanelClipboardApply.summaryUpdate', { label: preview.label })
+    : t('quickPanelClipboardApply.summaryCreate', { label: preview.label, nodeCount, plural: nodeCount === 1 ? '' : 's' })
 
   const confirm = () => {
     setBusy(true)
@@ -70,14 +72,13 @@ export function QuickPanelClipboardApply({ json, preview, onCancel, onApplied }:
       {unresolved.length > 0 && (
         <Banner
           variant="warning"
-          title={`${unresolved.length} reference${unresolved.length === 1 ? '' : 's'} won't resolve here`}
+          title={t('quickPanelClipboardApply.unresolvedTitle', { count: unresolved.length, plural: unresolved.length === 1 ? '' : 's' })}
           data-testid="quick-panel-clipboard-apply-unresolved"
           description={
             <ul className={styles.unresolvedList}>
               {unresolved.map((ref, i) => (
                 <li key={`${ref.nodeID}-${ref.field}-${i}`}>
-                  node <code>{ref.nodeID}</code>: <code>{ref.field}</code> ({ref.refKind}) references
-                  {' '}"{ref.value}", which doesn't exist here — point it at one before running
+                  {t('quickPanelClipboardApply.unresolvedItemPrefix')} <code>{ref.nodeID}</code>: <code>{ref.field}</code> ({ref.refKind}) {t('quickPanelClipboardApply.unresolvedItemSuffix', { value: ref.value })}
                 </li>
               ))}
             </ul>
@@ -85,17 +86,17 @@ export function QuickPanelClipboardApply({ json, preview, onCancel, onApplied }:
         />
       )}
       {confirmError && (
-        <Banner variant="critical" title="Apply failed" description={confirmError} data-testid="quick-panel-clipboard-apply-confirm-error" />
+        <Banner variant="critical" title={t('quickPanelClipboardApply.applyFailedTitle')} description={confirmError} data-testid="quick-panel-clipboard-apply-confirm-error" />
       )}
       <Stack direction="horizontal" gap="condensed" className={styles.actions}>
-        <Button onClick={onCancel} disabled={busy}>Cancel</Button>
+        <Button onClick={onCancel} disabled={busy}>{t('quickPanelClipboardApply.cancel')}</Button>
         <Button
           variant="primary"
           onClick={confirm}
           disabled={busy}
           data-testid="quick-panel-clipboard-apply-confirm"
         >
-          {busy ? 'Applying…' : isUpdate ? 'Update' : 'Create'}
+          {busy ? t('quickPanelClipboardApply.applying') : isUpdate ? t('quickPanelClipboardApply.update') : t('quickPanelClipboardApply.create')}
         </Button>
       </Stack>
     </Stack>

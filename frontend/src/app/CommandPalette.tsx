@@ -1,5 +1,6 @@
 import { useMemo, useRef, useState } from 'react'
 import type { ElementType, ReactNode } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Dialog, Text } from '@primer/react'
 import { FilteredActionList } from '@primer/react/experimental'
 import { CommandPaletteIcon, PencilIcon, PlayIcon, TabIcon, XIcon } from '@primer/octicons-react'
@@ -65,11 +66,13 @@ interface PaletteEntry extends PaletteSearchable {
   run: () => void
 }
 
-const GROUP_METADATA = [
-  { groupId: 'commands' as const, header: { title: 'Commands' } },
-  { groupId: 'workflows' as const, header: { title: 'Workflows' } },
-  { groupId: 'tabs' as const, header: { title: 'Open tabs' } },
-]
+function groupMetadataFor(t: (key: string) => string) {
+  return [
+    { groupId: 'commands' as const, header: { title: t('commandPalette.groups.commands') } },
+    { groupId: 'workflows' as const, header: { title: t('commandPalette.groups.workflows') } },
+    { groupId: 'tabs' as const, header: { title: t('commandPalette.groups.tabs') } },
+  ]
+}
 
 // A workflow row's description: the label of its root Trigger node's
 // NodeType (e.g. "Hotkey trigger", "Schedule trigger") -- a cheap,
@@ -84,6 +87,8 @@ const GROUP_METADATA = [
 // standalone helper -- it's a one-line lookup once findRootNode has run.
 
 export function CommandPalette() {
+  const { t } = useTranslation('app')
+  const GROUP_METADATA = groupMetadataFor(t)
   const paletteOpen = useAppStore((s) => s.paletteOpen)
   const closePalette = useAppStore((s) => s.closePalette)
   const workflows = useAppStore((s) => s.workflows)
@@ -172,8 +177,8 @@ export function CommandPalette() {
       entries.push({
         id: `run:${wf.ID}`,
         groupId: 'workflows',
-        text: `Run: ${wf.Label}`,
-        description: kindLabel ?? 'Test run',
+        text: t('commandPalette.runLabel', { label: wf.Label }),
+        description: kindLabel ?? t('commandPalette.testRun'),
         searchText: `run ${wf.Label}`.toLowerCase(),
         leadingVisual: PlayIcon,
         run: () => runWorkflowTest(wf.ID, wf.Label),
@@ -181,8 +186,8 @@ export function CommandPalette() {
       entries.push({
         id: `open:${wf.ID}`,
         groupId: 'workflows',
-        text: `Open: ${wf.Label}`,
-        description: 'Open in editor',
+        text: t('commandPalette.openLabel', { label: wf.Label }),
+        description: t('commandPalette.openInEditor'),
         searchText: `open editor ${wf.Label}`.toLowerCase(),
         leadingVisual: PencilIcon,
         // "Open in editor" is an explicit edit gesture (docs/goals/0022),
@@ -192,12 +197,12 @@ export function CommandPalette() {
     }
 
     for (const tab of workTabs) {
-      const label = tabLabel(tab, workflowLabel, requestLabel)
+      const label = tabLabel(tab, workflowLabel, requestLabel, t)
       entries.push({
         id: `switch:${tab.key}`,
         groupId: 'tabs',
-        text: `Switch to: ${label}`,
-        description: 'Open tab',
+        text: t('commandPalette.switchToLabel', { label }),
+        description: t('commandPalette.openTab'),
         searchText: `switch tab ${label}`.toLowerCase(),
         leadingVisual: TabIcon,
         run: () => activateWorkTab(tab.key),
@@ -205,8 +210,8 @@ export function CommandPalette() {
       entries.push({
         id: `close:${tab.key}`,
         groupId: 'tabs',
-        text: `Close: ${label}`,
-        description: 'Close tab',
+        text: t('commandPalette.closeLabel', { label }),
+        description: t('commandPalette.closeTab'),
         searchText: `close tab ${label}`.toLowerCase(),
         leadingVisual: XIcon,
         run: () => closeTab(tab),
@@ -215,7 +220,7 @@ export function CommandPalette() {
 
     return entries
     // eslint-disable-next-line react-hooks/exhaustive-deps -- runWorkflowTest/closeTab close over workflows/pushActivity/etc, already listed
-  }, [workflows, nodeTypes, requests, workTabs])
+  }, [workflows, nodeTypes, requests, workTabs, t])
 
   const filtered = filterPaletteEntries(allEntries, query)
 
@@ -237,8 +242,8 @@ export function CommandPalette() {
 
   return (
     <Dialog
-      title="Command palette"
-      subtitle="Run a command, jump to a workflow, or switch tabs"
+      title={t('commandPalette.title')}
+      subtitle={t('commandPalette.subtitle')}
       onClose={() => closePalette()}
       width="large"
       height="auto"
@@ -249,14 +254,14 @@ export function CommandPalette() {
         groupMetadata={GROUP_METADATA}
         filterValue={query}
         onFilterChange={(value) => setQuery(value)}
-        placeholderText="Type a command, workflow, or tab…"
+        placeholderText={t('commandPalette.searchPlaceholder')}
         inputRef={inputRef}
-        textInputProps={{ 'aria-label': 'Search the command palette' }}
+        textInputProps={{ 'aria-label': t('commandPalette.searchAriaLabel') }}
         showItemDividers
-        messageText={{ title: 'No matches', description: `Nothing matches "${query}"` }}
+        messageText={{ title: t('search.noMatchesTitle'), description: t('search.noMatchesDescription', { query }) }}
       />
       {allEntries.length === 0 && (
-        <Text as="p" size="small" className={styles.empty}>Nothing to search yet.</Text>
+        <Text as="p" size="small" className={styles.empty}>{t('commandPalette.nothingToSearchYet')}</Text>
       )}
     </Dialog>
   )

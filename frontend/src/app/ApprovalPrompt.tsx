@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Button, Stack, Text } from '@primer/react'
 import { ShieldIcon } from '@primer/octicons-react'
 import { Events } from '@wailsio/runtime'
@@ -33,6 +34,7 @@ type PromptItem =
   | { kind: 'guardrail'; id: string; description: string; time: number }
 
 export function ApprovalPrompt() {
+  const { t } = useTranslation('app')
   const [guardrail, setGuardrail] = useState<RunSummary[]>([])
   const [mcpWrites, setMcpWrites] = useState<MCPWriteRequest[]>([])
   const [loaded, setLoaded] = useState(false)
@@ -76,7 +78,7 @@ export function ApprovalPrompt() {
     const g: PromptItem[] = guardrail.map((r) => ({
       kind: 'guardrail',
       id: r.runID,
-      description: `${r.workflowLabel}: ${r.pending?.nodeTypeLabel || r.pending?.nodeTypeID || 'a step'} needs approval`,
+      description: t('pendingApprovalDescription', { workflowLabel: r.workflowLabel, step: r.pending?.nodeTypeLabel || r.pending?.nodeTypeID || t('pendingApprovalStepFallback') }),
       time: Date.parse(r.startedAt),
     }))
     const m: PromptItem[] = mcpWrites.map((w) => ({
@@ -86,7 +88,7 @@ export function ApprovalPrompt() {
       time: Date.parse(w.createdAt),
     }))
     return [...g, ...m].sort((a, b) => a.time - b.time)
-  }, [guardrail, mcpWrites])
+  }, [guardrail, mcpWrites, t])
 
   const oldest = items[0] ?? null
 
@@ -120,27 +122,27 @@ export function ApprovalPrompt() {
           </Stack>
           <StalenessBadge createdAt={new Date(oldest.time)} testId="approval-prompt-age" />
           {items.length > 1 && (
-            <Text size="small" className={styles.muted}>+{items.length - 1} more waiting</Text>
+            <Text size="small" className={styles.muted}>{t('approvalPrompt.moreWaiting', { count: items.length - 1 })}</Text>
           )}
           {oldest.kind === 'mcp-write' ? (
             <Stack direction="horizontal" gap="condensed">
               <Button size="small" variant="primary" onClick={() => resolveWrite(oldest.id, true)} data-testid="approval-prompt-approve">
-                Approve
+                {t('common:actions.approve')}
               </Button>
               <Button size="small" variant="danger" onClick={() => resolveWrite(oldest.id, false)} data-testid="approval-prompt-deny">
-                Deny
+                {t('common:actions.deny')}
               </Button>
             </Stack>
           ) : (
             <Button size="small" variant="primary" onClick={openInMill} data-testid="approval-prompt-open">
-              Open in Mill
+              {t('approvalPrompt.openInMill')}
             </Button>
           )}
           {error && <Text size="small" className={styles.error}>{error}</Text>}
         </Stack>
       )}
       {!oldest && loaded && (
-        <Text size="small" className={styles.muted} data-testid="approval-prompt-empty">No pending approvals.</Text>
+        <Text size="small" className={styles.muted} data-testid="approval-prompt-empty">{t('approvalPrompt.empty')}</Text>
       )}
     </div>
   )
