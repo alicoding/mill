@@ -77,6 +77,22 @@ async function dragPaletteItemToCanvas(page: import('@playwright/test').Page, no
   }, nodeTypeID)
 }
 
+// See live-run-state.spec.ts's own copy of this helper for the full
+// reasoning: Fit View alone can still leave a node's own card
+// overlapping React Flow's fixed-position Controls/MiniMap chrome
+// (bottom-left/bottom-right) depending on node count and viewport, and
+// Zoom Out gives clickCanvasNode more clearance from both. Used before
+// re-selecting a node on an already-saved, reopened canvas (view mode),
+// where -- unlike a fresh compose pass -- nothing has fitted the
+// viewport yet.
+async function fitAndSpaceOut(page: import('@playwright/test').Page) {
+  const panel = activePanel(page)
+  await panel.getByRole('button', { name: 'Fit View' }).click()
+  await page.waitForTimeout(300)
+  await panel.getByRole('button', { name: 'Zoom Out' }).click()
+  await page.waitForTimeout(200)
+}
+
 // See composition-canvas-interactions.spec.ts's own copy of these two
 // helpers for the full reasoning (Fit View first avoids the MiniMap-
 // overlap hazard a spiral-placed node's handle can land under; a raw
@@ -210,35 +226,12 @@ function runResult(page: import('@playwright/test').Page, label: string) {
   return page.getByTestId('workflow-run-result').filter({ has: page.getByText(label, { exact: true }) })
 }
 
-// Real OS clipboard I/O (goal 0009: frontend/e2e/fixtures/clipboardLock.ts) --
-// the whole test body runs under the cross-process lock since it both
-// writes to and reads the one shared real pasteboard.
-test('Running the load-sample workflow produces a visible response, success or error', async ({ page }) => {
-  await withClipboardLock(async () => {
-  await page.goto('/')
-  await page.getByRole('link', { name: 'Workflows' }).click()
-  await workflowRow(page, 'Load sample HTML').getByRole('button', { name: 'Run' }).click()
-  // Asserts the full click -> Go binding -> render pipeline produces
-  // SOME response, without hard-coding osascript's platform-specific
-  // text (the result content is clipboard-dependent).
-  await expect(runResult(page, 'Load sample HTML').locator('pre')).toBeVisible()
-  })
-})
-
-// Real OS clipboard I/O (goal 0009) -- same lock as above.
-test('Running the clipboard-to-markdown workflow produces a visible response, success or error', async ({ page }) => {
-  await withClipboardLock(async () => {
-  await page.goto('/')
-  await page.getByRole('link', { name: 'Workflows' }).click()
-  await workflowRow(page, 'Clipboard → Markdown').getByRole('button', { name: 'Run' }).click()
-  // The result is clipboard-dependent (real HTML converts; no HTML
-  // falls back to plain text per SPEC §5; an empty clipboard errors) --
-  // so this asserts the pipeline rendered SOME result, not a specific
-  // outcome (updated 2026-08-10 when the §5 plain-text fallback landed;
-  // "no HTML on clipboard" is no longer a guaranteed outcome).
-  await expect(runResult(page, 'Clipboard → Markdown').locator('pre')).toBeVisible()
-  })
-})
+// "Running the load-sample/clipboard-to-markdown workflows" and the
+// "Saved-page seed" Run-dialog test moved to
+// composition-seeded-runs.spec.ts once this file crossed the 500-line
+// limit (CLAUDE.md) -- that file's own header comment has the seam
+// this split follows (running a SEEDED workflow via the list vs.
+// composing/editing one from scratch, which stays here).
 
 // Real OS clipboard I/O (goal 0009) -- writes apply-clipboard-write-html.
 test('Dragging a node onto the canvas configures it as it is added, then saves, runs and deletes for real', async ({ page }) => {
@@ -278,13 +271,24 @@ test('Dragging a node onto the canvas configures it as it is added, then saves, 
   await expect(row).toBeVisible()
   await expect(row.getByText('built-in')).toHaveCount(0)
 
-  // Running it writes the *configured* HTML, not the built-in default --
-  // deterministic even in a headless CI runner: this node only writes to
-  // the clipboard, it never reads from it. The result (below the list,
-  // docs/goals/0007) shows the configured value, proving configuration
-  // survived composition through to execution, not just the default.
+  // The configured HTML (not the built-in default) survived save --
+  // proven by reading it back off the saved node in read-only view mode
+  // (a row click, docs/goals/0022), not by running the workflow and
+  // reading the clipboard's own content: apply-clipboard-write-html
+  // needs a real OS clipboard (osascript on macOS), which errors on
+  // every call on a headless Linux CI runner (docs/SPEC.md §1.3), so a
+  // successful-write result string isn't environment-independent.
+  await row.click()
+  await fitAndSpaceOut(page)
+  await clickCanvasNode(page, activePanel(page), 'Apply: write HTML to clipboard')
+  await expect(activePanel(page).getByTestId('canvas-config-field')).toHaveValue(customHTML)
+  await page.getByRole('link', { name: 'Workflows' }).click()
+
+  // Running it still exercises the click -> Go binding -> render
+  // pipeline end to end -- asserts SOME response, success or error,
+  // same reasoning as the built-in seeds' own run tests above.
   await row.getByRole('button', { name: 'Run' }).click()
-  await expect(runResult(page, 'E2E custom workflow').getByText(/e2e configured value/)).toBeVisible()
+  await expect(runResult(page, 'E2E custom workflow')).toBeVisible()
 
   await clickRowAction(page, row, 'Delete')
   await expect(workflowRow(page, 'E2E custom workflow')).toHaveCount(0)
@@ -365,13 +369,27 @@ test('Editing an existing workflow updates it in place, not as a duplicate', asy
   // and there's exactly one row for the new one. The row itself no
   // longer surfaces a node's config value (docs/goals/0007's dense-row
   // anatomy dropped the old step-chain chips), so "shows the edited
-  // config" is now proven by running it and reading the edited value
-  // out of the result, not by reading the row.
+  // config" is proven by reopening the canvas in read-only view mode
+  // (a row click, docs/goals/0022) and reading the persisted
+  // ConfigField value back -- not by running the workflow and reading
+  // the edited value out of the clipboard: apply-clipboard-write-html
+  // needs a real OS clipboard (osascript on macOS), which errors on
+  // every call on a headless Linux CI runner (docs/SPEC.md §1.3), so a
+  // successful-write result string isn't environment-independent.
   await expect(workflowRow(page, 'E2E editable workflow')).toHaveCount(0)
   const updated = workflowRow(page, 'E2E editable workflow (edited)')
   await expect(updated).toHaveCount(1)
+
+  await updated.click()
+  await fitAndSpaceOut(page)
+  await clickCanvasNode(page, activePanel(page), 'Apply: write HTML to clipboard')
+  await expect(activePanel(page).getByTestId('canvas-config-field')).toHaveValue('<p>edited value</p>')
+  await page.getByRole('link', { name: 'Workflows' }).click()
+
+  // Running it still exercises the click -> Go binding -> render
+  // pipeline end to end -- asserts SOME response, success or error.
   await updated.getByRole('button', { name: 'Run' }).click()
-  await expect(runResult(page, 'E2E editable workflow (edited)').getByText(/edited value/)).toBeVisible()
+  await expect(runResult(page, 'E2E editable workflow (edited)')).toBeVisible()
 
   await clickRowAction(page, updated, 'Delete')
   await expect(updated).toHaveCount(0)
@@ -403,43 +421,6 @@ test('Opening New workflow twice opens two tabs; closing one returns to the list
   // Tab A is still open, with its draft label intact.
   await page.getByRole('tab').nth(1).click()
   await expect(activePanel(page).getByLabel('Label')).toHaveValue('Tab A')
-})
-
-test('Saved-page seed: a manual test run substitutes the trigger payload via the Run dialog', async ({ page }) => {
-  // The live failure this covers: the seed's capture-file reads its
-  // path from the payload the filesystem-watch trigger normally
-  // supplies -- a manual Run used to start empty-payloaded and die at
-  // capture-file with a bare error. The Run dialog now opens even with
-  // zero Attributes when the trigger supplies the input
-  // (triggerPayload.ts), offering an Initial-payload field. The spec
-  // and the server run on the same machine, so a spec-written temp
-  // file is a real, readable path for the server.
-  const fs = await import('node:fs')
-  const os = await import('node:os')
-  const path = await import('node:path')
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'mill-e2e-payload-'))
-  const file = path.join(dir, 'page.html')
-  fs.writeFileSync(file, '<nav>chrome nav</nav><main id="main-content"><h1>Captured Title</h1></main>')
-
-  // The seed's final step writes the REAL clipboard -- serialize
-  // through the shared lock (.claude/rules/testing.md).
-  await withClipboardLock(async () => {
-    await page.goto('/')
-    await page.getByRole('link', { name: 'Workflows' }).click()
-    const row = workflowRow(page, 'Example: Saved page → Markdown')
-    await expect(row).toBeVisible()
-    await row.getByRole('button', { name: 'Run Example: Saved page → Markdown', exact: true }).click()
-
-    const payloadField = page.getByTestId('test-run-payload')
-    await expect(payloadField).toBeVisible()
-    await payloadField.fill(file)
-    await page.getByRole('button', { name: 'Run', exact: true }).click()
-
-    const result = page.locator('[data-testid="workflow-run-result"]')
-    await expect(result).toContainText('Captured Title', { timeout: 15_000 })
-    await expect(result).not.toContainText('chrome nav')
-  })
-  fs.rmSync(dir, { recursive: true, force: true })
 })
 
 test('Editing the same workflow twice reuses its tab instead of opening a duplicate', async ({ page }) => {
