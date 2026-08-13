@@ -546,6 +546,12 @@ and [`docs/adr/0002-cicd-pipeline-phased-rollout.md`](adr/0002-cicd-pipeline-pha
   revisit when there's a way to actually verify them. Server-mode Docker
   image also not part of v1 release scope — no confirmed hosted-deployment
   use case. `LOCKED` (macOS-only scope) / `PARKED` (the rest)
+- **Release cadence: a release tags when a user-visible capability goal
+  archives, not on a clock** — release notes then describe something a
+  user can feel (goal 0045). The release asset is the launchable
+  `mill.app` zip (no build required, provenance-attested); `git clone`
+  + local build remains the fully documented developer path, per §1.1's
+  install-story constraint. `LOCKED`
 
 ### 1.4 Architecture at a glance
 
