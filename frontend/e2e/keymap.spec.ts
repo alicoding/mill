@@ -201,3 +201,44 @@ test('Settings: rebinding a command persists, the new combo works, and a conflic
   await expect(saveRowAgain.getByTestId('keymap-row-reset')).toHaveCount(0)
   await expect(saveRowAgain.getByTestId('keymap-row-combo')).toHaveText('⌘S')
 })
+
+// docs/goals/BACKLOG.md Standing #6 -- ⌘?/⌘/ multi-binding aliases on
+// palette.open. commands.test.ts already covers dispatchCommandForEvent
+// matching an extraBinding in isolation; this proves the live wiring
+// (App.tsx's real keydown listener, the real Dialog toggling) for both
+// aliases, not just Cmd+K.
+test('Cmd+/ and Cmd+Shift+/ (the extra palette.open bindings) both open the command palette, same as Cmd+K', async ({ page }) => {
+  await page.goto('/')
+  const paletteDialog = page.getByRole('dialog', { name: 'Command palette' })
+
+  await page.keyboard.press('Meta+/')
+  await expect(paletteDialog).toBeVisible()
+  await page.keyboard.press('Escape')
+  await expect(paletteDialog).toHaveCount(0)
+
+  await page.keyboard.press('Meta+Shift+/')
+  await expect(paletteDialog).toBeVisible()
+  await page.keyboard.press('Escape')
+  await expect(paletteDialog).toHaveCount(0)
+})
+
+// Settings' Keyboard Shortcuts list renders the extras as read-only
+// secondary chips (views/KeyboardShortcutsSection.tsx) -- distinct from
+// the primary combo button above it, which stays the only
+// click-to-rebind target.
+test('Settings shows palette.open\'s extra bindings as read-only secondary chips', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Settings' }).click()
+
+  const paletteRow = page.locator('[data-testid="keymap-row"][data-command-id="palette.open"]')
+  await expect(paletteRow.getByTestId('keymap-row-combo')).toHaveText('⌘K')
+
+  const extraChips = paletteRow.getByTestId('keymap-row-extra-binding')
+  await expect(extraChips).toHaveCount(2)
+  await expect(extraChips.nth(0)).toHaveText('⌘/')
+  await expect(extraChips.nth(1)).toHaveText('⌘⇧/')
+
+  // A command with no extraBindings (e.g. workflow.save) renders none.
+  const saveRow = page.locator('[data-testid="keymap-row"][data-command-id="workflow.save"]')
+  await expect(saveRow.getByTestId('keymap-row-extra-binding')).toHaveCount(0)
+})

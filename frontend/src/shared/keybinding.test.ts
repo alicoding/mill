@@ -40,6 +40,14 @@ describe('keyFromEventCode', () => {
     expect(keyFromEventCode('Enter')).toBe('Enter')
     expect(keyFromEventCode('NumpadEnter')).toBe('Enter')
   })
+
+  // docs/goals/BACKLOG.md Standing #6 (⌘?/⌘/ palette aliases): the '/'
+  // physical key, shift-independent like every other key here -- Shift
+  // held or not is captured separately as a mod (modsFromEvent), not a
+  // second key value.
+  it('maps the Slash code to a literal forward slash', () => {
+    expect(keyFromEventCode('Slash')).toBe('/')
+  })
 })
 
 describe('comboFromEvent', () => {
@@ -60,6 +68,15 @@ describe('comboFromEvent', () => {
 
   it('captures Ctrl+Tab, the keymap default for tab.next', () => {
     expect(comboFromEvent(event({ code: 'Tab', ctrlKey: true }))).toEqual({ mods: ['ctrl'], key: 'Tab' })
+  })
+
+  // docs/goals/BACKLOG.md Standing #6: ⌘/ and ⌘? (Shift+/) are distinct
+  // KeyCombos distinguished by the shift mod, both on the same
+  // physical '/' key -- palette.open's two extraBindings
+  // (shared/commands.ts) rely on this distinction.
+  it('distinguishes Cmd+/ from Cmd+Shift+/ (the ⌘? glyph) via the shift mod, same physical key', () => {
+    expect(comboFromEvent(event({ code: 'Slash', metaKey: true }))).toEqual({ mods: ['cmd'], key: '/' })
+    expect(comboFromEvent(event({ code: 'Slash', metaKey: true, shiftKey: true }))).toEqual({ mods: ['cmd', 'shift'], key: '/' })
   })
 })
 
