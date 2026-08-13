@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Button, Heading, Label, Select, Spinner, Stack, Text } from '@primer/react'
+import { Button, Heading, Select, Spinner, Stack, Text } from '@primer/react'
+import { StatusStamp } from '../shared/StatusStamp'
 import { Blankslate } from '@primer/react/experimental'
 import { BugIcon, InboxIcon, PersonIcon, PlugIcon, ShieldIcon } from '@primer/octicons-react'
 import { Events } from '@wailsio/runtime'
@@ -12,6 +13,7 @@ import { formatRunStartedAt } from '../shared/runTime'
 import { StalenessBadge } from '../shared/StalenessBadge'
 import { formatLastChecked } from '../shared/staleness'
 import styles from '../shared/ListCard.module.css'
+import monoStyles from '../shared/monoText.module.css'
 import PageContainer from '../shared/PageContainer'
 
 // The four kinds a Review row can be (goal 0002 item 4) -- discriminated
@@ -249,7 +251,7 @@ function ReviewView() {
                 <Stack direction="horizontal" gap="condensed" align="center">
                   <PlugIcon size={16} />
                   <Text weight="semibold">{t('reviewView.mcpWriteRequest')}</Text>
-                  <Label variant="attention" size="small">{t('reviewView.awaitingApprovalLower')}</Label>
+                  <StatusStamp variant="caution">{t('reviewView.awaitingApprovalLower')}</StatusStamp>
                   <StalenessBadge createdAt={w.createdAt} testId="review-mcp-write-age" />
                 </Stack>
                 <Text size="small">{w.description}</Text>
@@ -286,9 +288,9 @@ function ReviewView() {
               <Stack direction="horizontal" gap="condensed" align="center">
                 {isDebugPark(run) ? <BugIcon size={16} /> : isHumanReview(run) ? <PersonIcon size={16} /> : <ShieldIcon size={16} />}
                 <Text weight="semibold">{run.workflowLabel}</Text>
-                <Label variant={isDebugPark(run) ? 'done' : 'attention'} size="small" data-testid={isDebugPark(run) ? 'review-debug-badge' : undefined}>
+                <StatusStamp variant={isDebugPark(run) ? 'identity' : 'caution'} data-testid={isDebugPark(run) ? 'review-debug-badge' : undefined}>
                   {isDebugPark(run) ? (run.pending?.stepped ? t('reviewView.pausedStepModeLower') : t('reviewView.pausedAtBreakpointLower')) : t('reviewView.awaitingApprovalLower')}
-                </Label>
+                </StatusStamp>
                 <StalenessBadge createdAt={run.startedAt} testId="review-item-age" />
               </Stack>
               <Text size="small">
@@ -333,13 +335,12 @@ function ReviewView() {
                 <Stack direction="horizontal" gap="condensed" align="center" justify="space-between">
                   <Stack direction="horizontal" gap="condensed" align="center">
                     <Text weight="semibold">{entry.run.workflowLabel}</Text>
-                    <Label
-                      size="small"
+                    <StatusStamp
                       variant={entry.run.resolution === 'approved' ? 'success' : 'danger'}
                       data-testid="review-resolution"
                     >
                       {entry.run.resolution}
-                    </Label>
+                    </StatusStamp>
                     {/* Design-wave-1 fix #4: ERROR/failed pills were
                         falling through to 'secondary' (gray), the same
                         neutral tone as any other non-SUCCESS status --
@@ -348,15 +349,14 @@ function ReviewView() {
                         danger. Same three-way mapping
                         ActivityRunsExplorer.tsx's own run-status pill
                         already uses correctly. */}
-                    <Label
-                      size="small"
-                      variant={entry.run.status === 'SUCCESS' ? 'success' : entry.run.status === 'ERROR' ? 'danger' : 'attention'}
+                    <StatusStamp
+                      variant={entry.run.status === 'SUCCESS' ? 'success' : entry.run.status === 'ERROR' ? 'danger' : 'caution'}
                       data-testid="review-resolved-status"
                     >
                       {entry.run.status}
-                    </Label>
+                    </StatusStamp>
                   </Stack>
-                  <Text size="small" className={styles.muted}>{formatRunStartedAt(entry.run.startedAt)}</Text>
+                  <Text size="small" className={`${styles.muted} ${monoStyles.mono}`}>{formatRunStartedAt(entry.run.startedAt)}</Text>
                 </Stack>
               </div>
             ) : (
@@ -371,15 +371,14 @@ function ReviewView() {
                   <Stack direction="horizontal" gap="condensed" align="center">
                     <PlugIcon size={16} />
                     <Text weight="semibold">{entry.write.description}</Text>
-                    <Label
-                      size="small"
+                    <StatusStamp
                       variant={entry.write.status === 'approved' ? 'success' : 'danger'}
                       data-testid="review-resolved-mcp-write-status"
                     >
                       {entry.write.status}
-                    </Label>
+                    </StatusStamp>
                   </Stack>
-                  <Text size="small" className={styles.muted}>{formatRunStartedAt(entry.write.resolvedAt)}</Text>
+                  <Text size="small" className={`${styles.muted} ${monoStyles.mono}`}>{formatRunStartedAt(entry.write.resolvedAt)}</Text>
                 </Stack>
               </div>
             ))}

@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Button, Checkbox, FormControl, Heading, IconButton, Label, Select, Stack, Text, TextInput, VisuallyHidden } from '@primer/react'
+import { Button, Checkbox, FormControl, Heading, IconButton, Select, Stack, Text, TextInput, VisuallyHidden } from '@primer/react'
 import { DownloadIcon, ListUnorderedIcon, PlusIcon, TrashIcon, UploadIcon } from '@primer/octicons-react'
 import { DataTable } from '@primer/react/experimental'
+import { StatusStamp } from '../shared/StatusStamp'
 import { ResizableTableContainer } from '../shared/ResizableTable'
 import { ConfigureService } from '../shared/bindings'
 import type { List, Row } from '../../bindings/github.com/alicoding/mill/internal/domain/list/models'
@@ -232,7 +233,7 @@ export function ConfigureLists() {
       // No !l.BuiltIn guard on Delete -- a seeded example is ordinary and
       // fully editable/deletable (docs/SPEC.md §2.2's Update note), same
       // as ConfigureRequests.tsx's identical badge.
-      labelBadges: l.BuiltIn ? <Label variant="secondary" size="small">{t('builtIn')}</Label> : undefined,
+      labelBadges: l.BuiltIn ? <StatusStamp variant="identity">{t('builtIn')}</StatusStamp> : undefined,
       description: t('configureLists.columnsRowsSummary', { columns: (l.Columns ?? []).length, rows: (l.Rows ?? []).length }),
       onOpen: () => startEdit(l),
       menuActions: [

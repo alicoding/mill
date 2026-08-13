@@ -33,6 +33,11 @@
     -webkit-text-size-adjust: 100%;
 }
 
+/* Mill's own accent + node-kind + mono tokens live in mill-tokens.css,
+   imported from main.tsx AFTER @primer/primitives' theme CSS
+   (deliberately, not here) -- see that file's header comment for why
+   this needed a real separate file rather than living in this one. */
+
 * { box-sizing: border-box; }
 
 html {

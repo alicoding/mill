@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next'
-import { Heading, Label, Text, Button } from '@primer/react'
+import { Heading, Text, Button } from '@primer/react'
 import { useAppStore, statusVariant } from '../shared/store'
+import { StatusStamp } from '../shared/StatusStamp'
 import styles from '../shared/ListCard.module.css'
 import PageContainer from '../shared/PageContainer'
 
@@ -32,9 +33,9 @@ function PlaceholderView({ capabilityId }: PlaceholderViewProps) {
         {capability && (
           <Text as="p" weight="semibold">
             {capability.Label}{' '}
-            <Label variant={statusVariant(capability.Status)}>
+            <StatusStamp variant={statusVariant(capability.Status)}>
               {capability.Status}
-            </Label>
+            </StatusStamp>
           </Text>
         )}
         <Text as="p" size="small" className={styles.muted}>

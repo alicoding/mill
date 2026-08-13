@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { ActionList, ActionMenu, Button, Heading, IconButton, Label, Stack, Text, VisuallyHidden } from '@primer/react'
 import { DownloadIcon, PencilIcon, PlugIcon, TrashIcon, UploadIcon } from '@primer/octicons-react'
 import { DataTable } from '@primer/react/experimental'
+import { StatusStamp } from '../shared/StatusStamp'
 import { ResizableTableContainer, TruncatedCell } from '../shared/ResizableTable'
 import { ViewModeToggle } from '../shared/ViewModeToggle'
 import { useViewMode } from '../shared/viewMode'
@@ -156,7 +157,7 @@ export function ConfigureRequests() {
           {/* No !r.BuiltIn guard on Delete -- a seeded example is ordinary
               and fully editable/deletable (docs/SPEC.md §2.2's Update
               note). */}
-          {r.BuiltIn && <Label variant="secondary" size="small">{t('builtIn')}</Label>}
+          {r.BuiltIn && <StatusStamp variant="identity">{t('builtIn')}</StatusStamp>}
         </Stack>
       ),
       description: [r.BaseURL, r.Description].filter((s) => s && s.trim() !== '').join(' · '),
@@ -227,7 +228,7 @@ export function ConfigureRequests() {
               },
               { header: t('configureRequests.columns.method'), id: 'method', width: 'auto', renderCell: (r) => r.Method || 'GET' },
               { header: t('configureRequests.columns.auth'), id: 'auth', width: 'auto', renderCell: (r) => AUTH_LABEL_MAP[r.AuthType] ?? r.AuthType },
-              { header: t('configureRequests.columns.url'), id: 'url', width: 'growCollapse', minWidth: '160px', renderCell: (r) => <TruncatedCell text={r.BaseURL} /> },
+              { header: t('configureRequests.columns.url'), id: 'url', width: 'growCollapse', minWidth: '160px', renderCell: (r) => <TruncatedCell text={r.BaseURL} mono /> },
               {
                 header: '', id: 'actions', width: 'auto', align: 'end',
                 renderCell: (r) => (

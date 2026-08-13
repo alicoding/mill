@@ -57,3 +57,54 @@ test('the canvas minimap is themed in dark mode, not React Flow\'s light default
   // dark in dark mode.
   expect(bg).not.toBe('rgb(255, 255, 255)')
 })
+
+// Design wave 2: Mill's own teal accent (app/index.css) is layered
+// over Primer's shared --bgColor-accent-emphasis/-muted,
+// --borderColor-accent-emphasis/-muted, --fgColor-accent tokens via
+// `html:root`/`html[data-color-mode=...]` selectors carrying one extra
+// specificity segment over Primer's own bare `:root`/attribute
+// selectors -- this proves that actually wins the real cascade in a
+// live browser (not just "should win" from reading the CSS), in both
+// themes, rather than trusting the specificity math alone.
+test('Mill\'s teal accent tokens override Primer\'s default blue, light and dark', async ({ page }) => {
+  await page.goto('/')
+
+  const readAccent = () => page.evaluate(() => {
+    const style = getComputedStyle(document.documentElement)
+    return {
+      emphasis: style.getPropertyValue('--bgColor-accent-emphasis').trim(),
+      fg: style.getPropertyValue('--fgColor-accent').trim(),
+    }
+  })
+
+  const light = await readAccent()
+  expect(light.emphasis.toLowerCase()).toBe('#1f6f6b')
+  expect(light.fg.toLowerCase()).toBe('#1f6f6b')
+  // Never Primer's own default accent blue -- the actual regression
+  // this guards (a same-specificity override losing to import order).
+  expect(light.emphasis.toLowerCase()).not.toBe('#0969da')
+
+  await switchToDarkTheme(page)
+  const dark = await readAccent()
+  expect(dark.emphasis.toLowerCase()).toBe('#2b7d77')
+  expect(dark.fg.toLowerCase()).toBe('#3fa39e')
+  expect(dark.emphasis.toLowerCase()).not.toBe('#1f6feb')
+})
+
+// StatusStamp (design wave 2, goal 0001 audit §1): a real rendered
+// stamp resolves to the semantic colors its variant promises, and the
+// `identity` variant specifically resolves to Mill's own teal accent
+// rather than Primer's default blue -- the concrete "green triple
+// duty"-style collision this component exists to prevent, proven for
+// the accent/identity pairing the same way the kind-color test proves
+// it for canvas nodes.
+test('StatusStamp variants resolve to distinct, correct colors', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Workflows' }).click()
+
+  const builtInStamp = page.locator('[data-testid="inventory-row"][data-entity="workflow"] [data-variant="identity"]').first()
+  await expect(builtInStamp).toBeVisible()
+  const color = await builtInStamp.evaluate((el) => getComputedStyle(el).color)
+  // rgb(31, 111, 107) == #1f6f6b, the light-theme accent fg.
+  expect(color).toBe('rgb(31, 111, 107)')
+})

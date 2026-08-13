@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Events } from '@wailsio/runtime'
-import { Button, Heading, Label, Stack, Text } from '@primer/react'
+import { Button, Heading, Stack, Text } from '@primer/react'
 import { PlusIcon, UploadIcon, WorkflowIcon } from '@primer/octicons-react'
+import { StatusStamp } from '../shared/StatusStamp'
 import { CompositionService, ExecutionService, TriggerService } from '../shared/bindings'
 import { RunKind } from '../shared/bindings'
 import { generateSamplePayload } from '../shared/configSchema'
@@ -280,18 +281,19 @@ function CompositionView() {
       updatedLabel: formatUpdated(wf.UpdatedAt),
       labelBadges: (
         <Stack direction="horizontal" gap="condensed" align="center">
-          {wf.BuiltIn && <Label variant="secondary" size="small">{t('compositionView.builtIn')}</Label>}
-          {/* Lifecycle badges (docs/adr/0021): only the EXCEPTIONAL state
-              gets colour -- "live/published" is the normal healthy default
-              (true on nearly every row), so a loud green there is pure
-              noise and makes the colour meaningless; it renders quiet
-              (secondary). A never-published draft (attention) and a
-              disabled workflow (severe) are the exceptions worth the eye.
-              Owner: the badge scatter "looks like broken UI." */}
+          {wf.BuiltIn && <StatusStamp variant="identity">{t('compositionView.builtIn')}</StatusStamp>}
+          {/* Lifecycle badges: ADR-0021's original "only the exceptional
+              state gets colour" reasoning (a quiet secondary here, since
+              live/published is the normal healthy default on nearly every
+              row) is superseded by design wave 2's StatusStamp unification
+              -- the same state now needs to render identically everywhere
+              it appears (WorkflowsTable.tsx's own status column already
+              rendered Published as success/green), so consistency across
+              surfaces wins over per-surface noise-reduction. */}
           {wf.PublishedVersion > 0
-            ? <Label variant="secondary" size="small">{t('publishedVersionLive', { version: wf.PublishedVersion })}</Label>
-            : <Label variant="attention" size="small">{t('compositionView.draft')}</Label>}
-          {wf.Disabled && <Label variant="severe" size="small">{t('disabled')}</Label>}
+            ? <StatusStamp variant="success">{t('publishedVersionLive', { version: wf.PublishedVersion })}</StatusStamp>
+            : <StatusStamp variant="caution">{t('compositionView.draft')}</StatusStamp>}
+          {wf.Disabled && <StatusStamp variant="danger">{t('disabled')}</StatusStamp>}
         </Stack>
       ),
       description: wf.Description,

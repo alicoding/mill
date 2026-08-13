@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Label, Stack, Text } from '@primer/react'
+import { Stack, Text } from '@primer/react'
 import { BugIcon, ShieldIcon } from '@primer/octicons-react'
 import { GuardrailService } from '../shared/bindings'
 import type { RuleTestResult } from '../shared/bindings'
+import { StatusStamp } from '../shared/StatusStamp'
 import { useNodeBreakpoint } from './breakpoints'
 import styles from '../shared/ListCard.module.css'
 
@@ -51,13 +52,12 @@ export function NodeGuardrailSection({ workflowId, nodeId }: { workflowId: strin
         <>
           <Stack direction="horizontal" gap="condensed" align="center">
             <ShieldIcon size={16} />
-            <Label
-              variant={verdict.effect === 'deny' ? 'danger' : verdict.effect === 'ask' ? 'attention' : 'success'}
-              size="small"
+            <StatusStamp
+              variant={verdict.effect === 'deny' ? 'danger' : verdict.effect === 'ask' ? 'caution' : 'success'}
               data-testid="node-guardrail-verdict"
             >
               {verdict.effect}
-            </Label>
+            </StatusStamp>
           </Stack>
           <Text size="small" className={styles.muted}>
             {t('nodeGuardrailSection.stepEffect', {
@@ -70,7 +70,7 @@ export function NodeGuardrailSection({ workflowId, nodeId }: { workflowId: strin
         </>
       )}
       <Stack direction="horizontal" gap="condensed" align="center">
-        <BugIcon size={16} fill={breakpoint.isSet ? 'var(--bgColor-done-emphasis)' : 'var(--fgColor-muted)'} />
+        <BugIcon size={16} fill={breakpoint.isSet ? 'var(--fgColor-accent)' : 'var(--fgColor-muted)'} />
         <Text size="small" data-testid="breakpoint-status">
           {t('nodeGuardrailSection.breakpointHint', {
             state: breakpoint.isSet ? t('nodeGuardrailSection.breakpointSet') : t('nodeGuardrailSection.noBreakpoint'),
@@ -78,7 +78,7 @@ export function NodeGuardrailSection({ workflowId, nodeId }: { workflowId: strin
           })}
         </Text>
         {breakpoint.isSet && (
-          <Label variant="done" size="small" data-testid="breakpoint-badge">{t('nodeGuardrailSection.breakpointBadge')}</Label>
+          <StatusStamp variant="identity" data-testid="breakpoint-badge">{t('nodeGuardrailSection.breakpointBadge')}</StatusStamp>
         )}
       </Stack>
       <Text size="small" className={styles.muted}>

@@ -1,0 +1,13 @@
+/* Design wave 2 (goal 0001, audit §2): the shared mono utility for
+   machine-readable facts -- URLs/endpoint & base URLs, IDs/slugs,
+   shell commands, cron expressions, timestamps in tables/lists,
+   doc-path references, hashes. A class, not a component: the only
+   thing every call site needs is one CSS property (font-family), so a
+   `<MachineFact>` wrapper component would just be a `<span
+   className={...}>` with extra indirection -- the smallest correct
+   mechanism per CLAUDE.md's reuse-boundary rule. Key combos already
+   have their own richer renderer (shared/KeyComboChip.tsx, design
+   wave 1) -- this is deliberately not for those. */
+.mono {
+    font-family: var(--mill-mono);
+}

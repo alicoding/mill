@@ -137,6 +137,60 @@ the real Settings dark-theme toggle and asserts computed
 than a manual-only note — Settings already ships a working dark-theme
 `SegmentedControl`, so this was e2e-feasible, not desktop-only.
 
+## Design wave 2 — delivered (2026-08-13)
+
+The taste-layer pass named as a separate later piece in wave 1's own
+note above: identity tokens across the whole app (not just the
+authoring surface), driven by the same full-app design audit's
+sections 1/2/6. Two sequential PRs; this is PR 1. Full detail in
+`docs/SPEC.md` §3.8-area's new "Design system tokens" bullet — summary
+here:
+
+1. **Accent scale**: Mill's own desaturated verdigris/teal, layered
+   over Primer's functional accent tokens (`app/mill-tokens.css`) so
+   every Primer component reading them picks it up for free. Proven
+   via a computed-style e2e test against the real compiled page after
+   a same-specificity attempt first looked correct on paper and still
+   lost the cascade.
+2. **Node-Kind canvas colors decoupled from status semantics**
+   (`composition/nodeKind.ts`): no longer aliased to Primer's shared
+   `--bgColor-success-emphasis`/etc. — own fixed `--mill-kind-*`
+   tokens, closing the audit's "green triple duty" finding (a
+   `process`-kind node and a `success`-status pill used to be the
+   literal same green).
+3. **`shared/StatusStamp.tsx`**: one stamp component replacing 7 ad-hoc
+   `<Label variant="...">` pill families (workflow live/draft/
+   disabled, run SUCCESS/ERROR, guardrail approved/denied, built-in,
+   trigger armed/not-live, run kind, dev-build identity) — five
+   semantic variants only (`success`/`caution`/`danger`/`neutral`/
+   `identity`). Primer `Label` stays for genuine categorization tags
+   (auth type, field `In`/`Type`) — not a wholesale replacement.
+   Two stray un-migrated key-combo sites found during the sweep
+   (`NodeInspector.tsx`'s per-node hotkey editor, `SettingsView.tsx`'s
+   global summon hotkey) now render through wave 1's own
+   `KeyComboChip` too, closing a gap wave 1's commit message claimed
+   was already closed everywhere.
+4. **Mono utility** (`shared/monoText.module.css`): applied to MCP
+   server commands, AI provider/Integration base URLs, run timestamps,
+   ExecEnv directories, Decision output keys.
+
+Proofs: `e2e/dark-mode.spec.ts` gained two new tests — one asserting
+the real computed `--bgColor-accent-emphasis`/`--fgColor-accent`
+values in both themes (the actual cascade-order regression this
+caught), one asserting a rendered StatusStamp's computed color.
+Existing suites green (196/196 e2e, full Go suite, vitest, tsc,
+eslint, boundaries, check-loc) — 3 pre-existing timing-flake e2e tests
+unrelated to this change (confirmed via isolated reruns, none touching
+a Label/StatusStamp testid or variant). Screenshots: `scratchpad/audit/
+*-after.png` (workflows list, Configure MCP Servers, Settings, light +
+dark) for the owner's review against the `-light.png`/`-dark.png`
+before-references from the original audit.
+
+Goal stays OPEN — wave 3 (palette IA regrouping, Configure Attributes
+tab conformance) is the second PR of this same design pass, and the
+owner's own live sign-off (this goal's stated Acceptance) hasn't
+happened yet.
+
 ## Live-review additions (2026-08-10)
 - Hotkey recorder vs native menu accelerators (owner hit ⌘⇧W while
   recording — the window closed, and since Mill exits on last-window-

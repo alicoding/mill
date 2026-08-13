@@ -330,7 +330,7 @@ export function ConfigureDecisions() {
             columns={[
               { header: t('configureDecisions.columns.label'), field: 'Label', rowHeader: true, sortBy: 'alphanumeric' },
               { header: t('configureDecisions.columns.category'), id: 'category', renderCell: (d) => <Label variant="secondary">{CATEGORY_LABEL[d.Category] ?? d.Category}</Label> },
-              { header: t('configureDecisions.columns.outputs'), id: 'outputs', width: 'growCollapse', minWidth: '160px', renderCell: (d) => <TruncatedCell text={(d.Outputs ?? []).map((o) => o.Key).join(', ')} /> },
+              { header: t('configureDecisions.columns.outputs'), id: 'outputs', width: 'growCollapse', minWidth: '160px', renderCell: (d) => <TruncatedCell text={(d.Outputs ?? []).map((o) => o.Key).join(', ')} mono /> },
               { header: t('configureDecisions.columns.id'), field: 'ID' },
               {
                 header: '', id: 'actions', width: 'auto', align: 'end',
