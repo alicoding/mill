@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Button, FormControl, IconButton, Select, Stack, Text, TextInput } from '@primer/react'
 import { PlusIcon, TrashIcon } from '@primer/octicons-react'
 import { ConfigureService } from '../shared/bindings'
@@ -43,6 +44,7 @@ export function ListSearchParamsEditor({
   attrs: AttributeDef[]
   onChangeMatchParams: (raw: string) => void
 }) {
+  const { t } = useTranslation('composition')
   const [lists, setLists] = useState<List[] | null>(null)
 
   useEffect(() => {
@@ -62,62 +64,62 @@ export function ListSearchParamsEditor({
 
   return (
     <Stack direction="vertical" gap="condensed" data-testid="list-search-params-editor">
-      <Text size="small" weight="semibold">Match parameters</Text>
+      <Text size="small" weight="semibold">{t('listSearchParamsEditor.matchParameters')}</Text>
       {!listId && (
-        <Text as="p" size="small" className={styles.muted}>Pick a List above first.</Text>
+        <Text as="p" size="small" className={styles.muted}>{t('listSearchParamsEditor.pickListFirst')}</Text>
       )}
       {listId && columns.length === 0 && (
         <Text as="p" size="small" className={styles.muted}>
-          That List has no declared columns yet -- add some in Configure &gt; Lists.
+          {t('listSearchParamsEditor.noColumnsYet')}
         </Text>
       )}
       {params.map((p, i) => (
         <Stack key={i} direction="vertical" gap="condensed" className={styles.card}>
           <Stack direction="horizontal" gap="condensed" align="center">
             <FormControl>
-              <FormControl.Label visuallyHidden>Column</FormControl.Label>
+              <FormControl.Label visuallyHidden>{t('listSearchParamsEditor.column')}</FormControl.Label>
               <Select
-                aria-label="Column"
+                aria-label={t('listSearchParamsEditor.column')}
                 data-testid="list-search-param-column"
                 value={p.column}
                 onChange={(e) => updateParam(i, { column: e.target.value })}
               >
-                <Select.Option value="">(pick a column)</Select.Option>
+                <Select.Option value="">{t('listSearchParamsEditor.pickColumn')}</Select.Option>
                 {columns.map((c) => (
                   <Select.Option key={c.Key} value={c.Key}>{c.Label || c.Key}</Select.Option>
                 ))}
               </Select>
             </FormControl>
             <FormControl>
-              <FormControl.Label visuallyHidden>Match type</FormControl.Label>
+              <FormControl.Label visuallyHidden>{t('listSearchParamsEditor.matchType')}</FormControl.Label>
               <Select
-                aria-label="Match type"
+                aria-label={t('listSearchParamsEditor.matchType')}
                 data-testid="list-search-param-matchtype"
                 value={p.matchType}
                 onChange={(e) => updateParam(i, { matchType: e.target.value as 'exact' | 'fuzzy' })}
               >
-                <Select.Option value="exact">Exact</Select.Option>
-                <Select.Option value="fuzzy">Fuzzy</Select.Option>
+                <Select.Option value="exact">{t('listSearchParamsEditor.exact')}</Select.Option>
+                <Select.Option value="fuzzy">{t('listSearchParamsEditor.fuzzy')}</Select.Option>
               </Select>
             </FormControl>
             <IconButton
               icon={TrashIcon}
-              aria-label="Remove match parameter"
+              aria-label={t('listSearchParamsEditor.removeMatchParameterAriaLabel')}
               size="small"
               variant="invisible"
               onClick={() => removeParam(i)}
             />
           </Stack>
           <LiteralOrAttributeField
-            name="Value"
+            name={t('listSearchParamsEditor.value')}
             value={p.value}
             attrs={attrs}
             onChange={(v) => updateParam(i, { value: v })}
           />
           {p.matchType === 'fuzzy' && (
             <FormControl>
-              <FormControl.Label>Threshold</FormControl.Label>
-              <FormControl.Caption>0..1 similarity (Damerau-Levenshtein); defaults to 0.7 if left blank.</FormControl.Caption>
+              <FormControl.Label>{t('listSearchParamsEditor.threshold')}</FormControl.Label>
+              <FormControl.Caption>{t('listSearchParamsEditor.thresholdCaption')}</FormControl.Caption>
               <TextInput
                 type="number"
                 data-testid="list-search-param-threshold"
@@ -132,7 +134,7 @@ export function ListSearchParamsEditor({
         </Stack>
       ))}
       <Button size="small" variant="invisible" leadingVisual={PlusIcon} onClick={addParam} data-testid="add-list-search-param">
-        Add match parameter
+        {t('listSearchParamsEditor.addMatchParameter')}
       </Button>
     </Stack>
   )

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Label, Stack, Text } from '@primer/react'
 import { BugIcon, ShieldIcon } from '@primer/octicons-react'
 import { GuardrailService } from '../shared/bindings'
@@ -26,13 +27,17 @@ import styles from '../shared/ListCard.module.css'
 // SHOWS the current state, read from the same shared BreakpointContext
 // (breakpoints.ts) the card's own dot reads, never its own fetch/CRUD.
 
-const EFFECT_TEXT: Record<string, string> = {
-  allow: 'runs without approval',
-  ask: 'asks for your approval before running',
-  deny: 'is denied and will not run',
+function effectTextFor(t: (key: string) => string): Record<string, string> {
+  return {
+    allow: t('nodeGuardrailSection.effect.allow'),
+    ask: t('nodeGuardrailSection.effect.ask'),
+    deny: t('nodeGuardrailSection.effect.deny'),
+  }
 }
 
 export function NodeGuardrailSection({ workflowId, nodeId }: { workflowId: string; nodeId: string }) {
+  const { t } = useTranslation('composition')
+  const EFFECT_TEXT = effectTextFor(t)
   const [verdict, setVerdict] = useState<RuleTestResult | null>(null)
   const breakpoint = useNodeBreakpoint(nodeId)
 
@@ -55,24 +60,29 @@ export function NodeGuardrailSection({ workflowId, nodeId }: { workflowId: strin
             </Label>
           </Stack>
           <Text size="small" className={styles.muted}>
-            This step {EFFECT_TEXT[verdict.effect] ?? verdict.effect}
-            {verdict.ruleLabel
-              ? ` — rule "${verdict.ruleLabel}".`
-              : verdict.effectClass === 'external' ? ' — external steps ask by default. Approvals happen in Review.' : '.'}
+            {t('nodeGuardrailSection.stepEffect', {
+              effectText: EFFECT_TEXT[verdict.effect] ?? verdict.effect,
+              suffix: verdict.ruleLabel
+                ? t('nodeGuardrailSection.ruleSuffix', { rule: verdict.ruleLabel })
+                : verdict.effectClass === 'external' ? t('nodeGuardrailSection.externalSuffix') : t('nodeGuardrailSection.plainSuffix'),
+            })}
           </Text>
         </>
       )}
       <Stack direction="horizontal" gap="condensed" align="center">
         <BugIcon size={16} fill={breakpoint.isSet ? 'var(--bgColor-done-emphasis)' : 'var(--fgColor-muted)'} />
         <Text size="small" data-testid="breakpoint-status">
-          {breakpoint.isSet ? 'Breakpoint set' : 'No breakpoint'} — click the dot on the node card to {breakpoint.isSet ? 'remove it' : 'add one'}.
+          {t('nodeGuardrailSection.breakpointHint', {
+            state: breakpoint.isSet ? t('nodeGuardrailSection.breakpointSet') : t('nodeGuardrailSection.noBreakpoint'),
+            action: breakpoint.isSet ? t('nodeGuardrailSection.removeIt') : t('nodeGuardrailSection.addOne'),
+          })}
         </Text>
         {breakpoint.isSet && (
-          <Label variant="done" size="small" data-testid="breakpoint-badge">Breakpoint</Label>
+          <Label variant="done" size="small" data-testid="breakpoint-badge">{t('nodeGuardrailSection.breakpointBadge')}</Label>
         )}
       </Stack>
       <Text size="small" className={styles.muted}>
-        A run pauses here to let you inspect and edit its data before it continues -- a debugging aid, not policy.
+        {t('nodeGuardrailSection.breakpointDescription')}
       </Text>
     </Stack>
   )

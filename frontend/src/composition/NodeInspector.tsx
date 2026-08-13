@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Browser } from '@wailsio/runtime'
 import { Button, Checkbox, FormControl, Label, Select, Stack, Text, TextInput, Textarea } from '@primer/react'
 import { KeyIcon } from '@primer/octicons-react'
@@ -72,6 +73,7 @@ interface NodeInspectorProps {
 // gets a clean remount rather than carrying stale nonce/local state
 // across selections.
 export function NodeInspector({ node, workflowId, attrs, nodeType, sameKindNodeTypes, hasWorkflow, hotkeyCapture, runStep, readOnly, onChangeType, onConfigChange }: NodeInspectorProps) {
+  const { t } = useTranslation('composition')
   const [payloadNonce, setPayloadNonce] = useState(0)
 
   // A native `<fieldset disabled>` cascades to every descendant form
@@ -110,7 +112,7 @@ export function NodeInspector({ node, workflowId, attrs, nodeType, sameKindNodeT
           yet). */}
       {sameKindNodeTypes.length > 1 ? (
         <FormControl>
-          <FormControl.Label>Node type</FormControl.Label>
+          <FormControl.Label>{t('nodeInspector.nodeType')}</FormControl.Label>
           <Select
             value={node.data.nodeTypeID}
             data-testid="change-node-type"
@@ -139,24 +141,24 @@ export function NodeInspector({ node, workflowId, attrs, nodeType, sameKindNodeT
         <Stack direction="vertical" gap="condensed">
           {!hasWorkflow && (
             <Text size="small" className={runbookStyles.muted}>
-              Save this workflow before assigning a hotkey.
+              {t('nodeInspector.saveBeforeHotkey')}
             </Text>
           )}
           {hasWorkflow && (
             <>
               {hotkeyCapture.recording ? (
-                <Text size="small" className={styles.inspectorRecording}>Press a combo… (Esc to cancel)</Text>
+                <Text size="small" className={styles.inspectorRecording}>{t('pressCombo')}</Text>
               ) : hotkeyCapture.binding ? (
                 <Stack direction="horizontal" gap="condensed" align="center">
                   <Label variant="secondary">
                     <KeyIcon size={12} /> {hotkeyCapture.binding}
                   </Label>
-                  <Button size="small" variant="invisible" onClick={hotkeyCapture.startRecording}>Change</Button>
-                  <Button size="small" variant="invisible" onClick={hotkeyCapture.clear}>Clear</Button>
+                  <Button size="small" variant="invisible" onClick={hotkeyCapture.startRecording}>{t('common:actions.change')}</Button>
+                  <Button size="small" variant="invisible" onClick={hotkeyCapture.clear}>{t('common:actions.clear')}</Button>
                 </Stack>
               ) : (
                 <Button size="small" variant="invisible" onClick={hotkeyCapture.startRecording}>
-                  Set shortcut
+                  {t('nodeInspector.setShortcut')}
                 </Button>
               )}
               {hotkeyCapture.error && (
@@ -164,7 +166,7 @@ export function NodeInspector({ node, workflowId, attrs, nodeType, sameKindNodeT
                   <Text as="p" size="small" className={runbookStyles.error}>{hotkeyCapture.error}</Text>
                   {isAccessibilityError(hotkeyCapture.error) && (
                     <Button size="small" onClick={() => Browser.OpenURL(ACCESSIBILITY_SETTINGS_URL)}>
-                      Open Accessibility Settings
+                      {t('nodeInspector.openAccessibilitySettings')}
                     </Button>
                   )}
                 </Stack>
@@ -175,7 +177,7 @@ export function NodeInspector({ node, workflowId, attrs, nodeType, sameKindNodeT
       )}
 
       {(nodeType?.ConfigFields ?? []).length === 0 && node.data.nodeTypeID !== 'trigger-hotkey' && (
-        <Text size="small" className={runbookStyles.muted}>This node type takes no configuration.</Text>
+        <Text size="small" className={runbookStyles.muted}>{t('nodeInspector.noConfiguration')}</Text>
       )}
 
       {/* Trigger nodes specifically, not any node with fields -- this is
@@ -195,7 +197,7 @@ export function NodeInspector({ node, workflowId, attrs, nodeType, sameKindNodeT
             setPayloadNonce((n) => n + 1)
           }}
         >
-          Generate test payload
+          {t('nodeInspector.generateTestPayload')}
         </Button>
       )}
 
@@ -229,7 +231,7 @@ export function NodeInspector({ node, workflowId, attrs, nodeType, sameKindNodeT
               {field.RefKind === 'workflow' && (node.data.config[field.Key] ?? '') !== '' && (
                 <WorkflowHoverPreview workflowId={node.data.config[field.Key]}>
                   <Text size="small" className={runbookStyles.muted} style={{ cursor: 'default', textDecoration: 'underline dotted' }}>
-                    Hover to preview the child — click Open to edit it
+                    {t('nodeInspector.hoverToPreviewChild')}
                   </Text>
                 </WorkflowHoverPreview>
               )}
@@ -284,7 +286,7 @@ export function NodeInspector({ node, workflowId, attrs, nodeType, sameKindNodeT
                 // method: inherit the request's own) and stated in the
                 // field's Description caption, not hardcoded here.
                 return [
-                  <Select.Option key="" value="">(default)</Select.Option>,
+                  <Select.Option key="" value="">{t('nodeInspector.defaultOption')}</Select.Option>,
                   ...options.map((s) => <Select.Option key={s} value={s}>{s}</Select.Option>),
                 ]
               })()}
