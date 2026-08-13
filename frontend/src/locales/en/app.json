@@ -32,7 +32,9 @@
       "reviewPendingDescription": "{{count}} pending",
       "reviewNoPending": "No pending reviews",
       "applyFromClipboard": "Apply from clipboard…",
-      "applyFromClipboardDescription": "Create or update a workflow from a copied Mill export"
+      "applyFromClipboardDescription": "Create or update a workflow from a copied Mill export",
+      "pinWorkflow": "Pin \"{{label}}\"",
+      "unpinWorkflow": "Unpin \"{{label}}\""
     },
     "status": {
       "running": "Running \"{{label}}\"…",
@@ -98,6 +100,8 @@
     "openTab": "Open tab",
     "closeLabel": "Close: {{label}}",
     "closeTab": "Close tab",
+    "pinWorkflow": "Pin \"{{label}}\"",
+    "unpinWorkflow": "Unpin \"{{label}}\"",
     "title": "Command palette",
     "subtitle": "Run a command, jump to a workflow, or switch tabs",
     "searchPlaceholder": "Type a command, workflow, or tab…",
