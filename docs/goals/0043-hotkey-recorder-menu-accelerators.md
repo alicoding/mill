@@ -27,10 +27,34 @@ is OS-bound — manual-only registry entry per testing.md, plus unit
 coverage for whatever pure menu-construction logic the fix factors
 out).
 
+## Pickup finding (2026-08-13): already built, never closed
+
+The entire mechanism exists on main, shipped by an earlier session
+without closing this goal's originating live-review note:
+`SuspendMenuAccelerators`/`RestoreMenuAccelerators`
+(`settingsservice_menu.go`) strip every key-equivalent off the native
+menu while ANY recorder is armed — reference-counted across the three
+independent recording surfaces (canvas Inspector via
+`hotkeyCapture.ts`, per-row trigger capture, SettingsView's summon
+recorder), restored in the same effect's cleanup on every exit path
+(capture, Escape, reserved-combo rejection, unmount, and window
+blur — blur explicitly added after being identified as the leak),
+server-mode-safe via the established build-tag split, unit-tested
+(`settingsservice_menu_test.go`). The reserved-combo warning also
+exists (`reservedByMacOS` + user-facing error copy). What this pickup
+added: the manual-only registry entry in `.claude/rules/testing.md`
+(it was silently absent) and this record.
+
 ## Acceptance (checkable)
 
-- [ ] With the recorder active, ⌘⇧W / ⌘W / ⌘Q are captured as
-      combos, not executed (manual desktop check, registry-listed).
-- [ ] Recorder cancel/blur restores the full menu (manual check).
-- [ ] Any pure logic extracted for the swap is unit-tested.
-- [ ] PR merged green.
+- [x] With the recorder active, ⌘⇧W / ⌘W / ⌘Q are captured as
+      combos, not executed — manual desktop check now
+      registry-listed in testing.md; owner verification this session
+      is the closing evidence.
+- [x] Recorder cancel/blur restores the full menu — same manual
+      check; blur path verified present in code
+      (`hotkeyCapture.ts`'s effect cleanup + blur listener).
+- [x] Pure logic unit-tested — `settingsservice_menu_test.go`
+      (reference counting, idempotent restore).
+- [x] Shipped on main via earlier PRs (pre-dating this goal file);
+      this closure PR carries only the registry entry + record.

@@ -135,7 +135,16 @@ layer per capability," never "a seed per thing":
   the full away branch can't run under `go test`); the real
   bounce-once-on-a-parked-approval behavior is OS-bound and
   CI-invisible — verify it desktop-mode by parking an approval while
-  unfocused.
+  unfocused. Second non-seed instance: menu-accelerator suspension
+  during hotkey recording (`SuspendMenuAccelerators`/
+  `RestoreMenuAccelerators`, `settingsservice_menu.go`) — the
+  reference-count logic is unit-tested
+  (`settingsservice_menu_test.go`), but NSMenu's
+  `performKeyEquivalent:` interception only exists in a real desktop
+  window: verify desktop-mode by arming any hotkey recorder and
+  pressing ⌘⇧W / ⌘W / ⌘Q (each must be captured as a combo, never
+  close the window or quit), then Escape/blur out and confirm the
+  menu accelerators work again.
 - **Dev-loop timing checks** — a non-seed instance of the same manual-
   only discipline, outside goal 0010's seed/NodeType registry (that
   machinery is keyed to seeded artifacts; this isn't one). Goal 0029's
