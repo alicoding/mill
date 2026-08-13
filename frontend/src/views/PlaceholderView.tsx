@@ -19,16 +19,23 @@ function PlaceholderView({ capabilityId }: PlaceholderViewProps) {
 
   return (
     <PageContainer>
-      <Heading as="h1">{capability?.Label ?? t('placeholderView.notBuiltYet')}</Heading>
-      <Text as="p" className={styles.subtitle}>
+      {/* Design-wave-1 fix #6: the sidebar nav row already names this
+          capability -- the h1 is now the descriptive subtitle itself,
+          with the capability's own name (still useful, distinct from
+          the generic subtitle copy) moved into the card below next to
+          its build-status pill. */}
+      <Heading as="h1" variant="medium" className={styles.subtitle}>
         {t('placeholderView.subtitle')}
-      </Text>
+      </Heading>
 
       <div className={styles.card}>
         {capability && (
-          <Label variant={statusVariant(capability.Status)}>
-            {capability.Status}
-          </Label>
+          <Text as="p" weight="semibold">
+            {capability.Label}{' '}
+            <Label variant={statusVariant(capability.Status)}>
+              {capability.Status}
+            </Label>
+          </Text>
         )}
         <Text as="p" size="small" className={styles.muted}>
           {t('placeholderView.specSectionNote', { section: capability?.SpecSection ?? '?' })}

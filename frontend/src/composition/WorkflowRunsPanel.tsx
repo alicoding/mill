@@ -3,7 +3,8 @@ import { useTranslation } from 'react-i18next'
 import { Events } from '@wailsio/runtime'
 import { Button, IconButton, Label, type LabelProps, Select, Stack, Text } from '@primer/react'
 import { DataTable, type Column } from '@primer/react/experimental'
-import { BugIcon, CheckCircleIcon, XCircleIcon, ClockIcon, XIcon, ShieldIcon, ShieldXIcon, StopIcon } from '@primer/octicons-react'
+import { Blankslate } from '@primer/react/experimental'
+import { BugIcon, CheckCircleIcon, XCircleIcon, ClockIcon, XIcon, ShieldIcon, ShieldXIcon, StopIcon, HistoryIcon } from '@primer/octicons-react'
 import { ExecutionService } from '../shared/bindings'
 import { RunKind, type RunDetail, type RunSummary } from '../shared/bindings'
 import type { AttributeDef } from '../../bindings/github.com/alicoding/mill/internal/domain/composition/models'
@@ -281,10 +282,17 @@ function WorkflowRunsPanel({ workflowId, attrs, initialRunId, onInitialRunConsum
         <div className={styles.empty}><Text as="p">{t('loading')}</Text></div>
       )}
 
+      {/* Design-wave-1 fix #7: was a bare centered line of text -- the
+          same Blankslate (icon + one-line invitation) pattern
+          ReviewView's "Nothing waiting for you" empty state already
+          uses, so Runs reads at the same quality bar. */}
       {runs !== null && runs.length === 0 && (
-        <div className={styles.empty}>
-          <Text as="p">{t('workflowRunsPanel.noRunsYet')}</Text>
-        </div>
+        <Blankslate data-testid="workflow-runs-empty">
+          <Blankslate.Visual>
+            <HistoryIcon size={32} />
+          </Blankslate.Visual>
+          <Blankslate.Heading>{t('workflowRunsPanel.noRunsYet')}</Blankslate.Heading>
+        </Blankslate>
       )}
 
       {runs !== null && runs.length > 0 && (

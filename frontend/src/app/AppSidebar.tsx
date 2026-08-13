@@ -119,20 +119,30 @@ export function AppSidebar({ sidebarOpen, setSidebarOpen, view, setView, capabil
             </NavList>
           </div>
 
-          {/* Settings pulled out of the NavList entirely, into a bottom-
-              anchored footer slot -- Notion/Slack's own pattern for
-              app-level config vs. content destinations (docs/SPEC.md
-              §3.5). Not a capability (no build status/SPEC section of
-              its own), so it isn't driven by CapabilitiesService.List()
-              the way the rows above are -- a fixed control. */}
+          {/* Settings pulled out of the capability NavList, into a
+              bottom-anchored footer slot -- Notion/Slack's own pattern
+              for app-level config vs. content destinations
+              (docs/SPEC.md §3.5). Not a capability (no build status/SPEC
+              section of its own), so it isn't driven by
+              CapabilitiesService.List() the way the rows above are --
+              but it's still a real nav row (Linear/VS Code convention:
+              nav list top, flex spacer, footer nav row bottom), not a
+              floating icon -- same NavList.Item shape, keyboard/aria
+              treatment, and active-state highlight as the capability
+              rows above (design-wave-1 fix #1). */}
           <div className={styles.sidebarFooter}>
-            <IconButton
-              icon={GearIcon}
-              aria-label={t('appSidebar.settingsAriaLabel')}
-              size="small"
-              variant="invisible"
-              onClick={() => setView({ kind: 'settings' })}
-            />
+            <NavList>
+              <NavList.Item
+                href="#"
+                aria-current={view.kind === 'settings' ? 'page' : undefined}
+                aria-label={sidebarOpen ? undefined : t('appSidebar.settingsAriaLabel')}
+                title={sidebarOpen ? undefined : t('appSidebar.settingsAriaLabel')}
+                onClick={(e) => { e.preventDefault(); setView({ kind: 'settings' }) }}
+              >
+                <NavList.LeadingVisual><GearIcon /></NavList.LeadingVisual>
+                {sidebarOpen && t('appSidebar.settingsLabel')}
+              </NavList.Item>
+            </NavList>
           </div>
         </PageLayout.Sidebar>
   )

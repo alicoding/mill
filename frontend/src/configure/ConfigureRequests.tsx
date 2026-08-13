@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ActionList, ActionMenu, Button, Heading, IconButton, Label, Stack, Text } from '@primer/react'
+import { ActionList, ActionMenu, Button, Heading, IconButton, Label, Stack, Text, VisuallyHidden } from '@primer/react'
 import { DownloadIcon, PencilIcon, PlugIcon, TrashIcon, UploadIcon } from '@primer/octicons-react'
 import { DataTable } from '@primer/react/experimental'
 import { ResizableTableContainer, TruncatedCell } from '../shared/ResizableTable'
@@ -180,8 +180,13 @@ export function ConfigureRequests() {
 
   return (
     <PageContainer data-testid="configure-requests">
-      <Stack direction="horizontal" justify="space-between" align="center" className={styles.sectionHeading}>
-        <Heading as="h2" variant="small" id="integrations-heading">{t('configureRequests.heading')}</Heading>
+      <Stack direction="horizontal" justify="end" align="center" className={styles.sectionHeading}>
+        {/* Design-wave-1 fix #6: the Configure tab already names this
+            section -- visually hidden (not removed) so the aria-labelledby
+            wiring below and the a11y heading structure both stay intact. */}
+        <VisuallyHidden>
+          <Heading as="h2" variant="small" id="integrations-heading">{t('configureRequests.heading')}</Heading>
+        </VisuallyHidden>
         <Stack direction="horizontal" gap="condensed">
           <ViewModeToggle mode={viewMode} onChange={setViewMode} />
           <input

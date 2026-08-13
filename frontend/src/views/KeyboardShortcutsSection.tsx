@@ -6,6 +6,7 @@ import { COMMANDS, effectiveBinding } from '../shared/commands'
 import type { KeyCombo } from '../shared/keybinding'
 import { formatCombo } from '../shared/keybinding'
 import { useAppStore } from '../shared/store'
+import { KeyComboChip } from '../shared/KeyComboChip'
 import { useCommandKeybindingCapture } from '../composition/hotkeyCapture'
 import styles from '../shared/ListCard.module.css'
 
@@ -99,7 +100,11 @@ function KeymapRow({ commandId, label, binding, isOverridden }: {
               onClick={hk.startRecording}
               data-testid="keymap-row-combo"
             >
-              {displayLabel}
+              {/* Design-wave-1 fix #5: was bare text -- the ONE keycap-
+                  chip renderer (shared/KeyComboChip.tsx, the same one
+                  the command palette's inline hints already use) now
+                  covers Settings too. */}
+              <KeyComboChip label={displayLabel} />
             </Button>
           )}
           {isOverridden && !hk.recording && (

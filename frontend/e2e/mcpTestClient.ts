@@ -76,7 +76,7 @@ export async function exportWorkflowViaMCP(client: Client, id: string): Promise<
 // "unattended" helper which deliberately relaxes approval.
 export async function enableMCPWritesWithApprovalRequired(page: Page): Promise<void> {
   await page.goto('/')
-  await page.getByRole('button', { name: 'Settings' }).click()
+  await page.getByRole('link', { name: 'Settings' }).click()
   const writeCheckbox = page.getByTestId('mcp-write-enabled-checkbox')
   await expect(writeCheckbox).toBeEnabled()
   if (!(await writeCheckbox.isChecked())) {
@@ -96,7 +96,7 @@ export async function enableMCPWritesWithApprovalRequired(page: Page): Promise<v
 // approval required stays on either way.
 export async function restoreMCPWriteDefaults(page: Page): Promise<void> {
   await page.goto('/')
-  await page.getByRole('button', { name: 'Settings' }).click()
+  await page.getByRole('link', { name: 'Settings' }).click()
   const writeCheckbox = page.getByTestId('mcp-write-enabled-checkbox')
   if (await writeCheckbox.isChecked()) {
     await writeCheckbox.click()
