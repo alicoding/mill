@@ -71,13 +71,16 @@ type HomeMetrics struct {
 }
 
 // TimeSavedMetric is docs/goals/0014's Layer-1 value accounting: minutes
-// saved = Σ over Success + RunKind:triggered runs of that workflow's
-// current minutes-saved estimate. A test run credits nothing (it's
-// authoring/preview, not automation replacing manual work -- crediting
-// it would be "Zapier crediting an editor preview," the goal's own
-// framing) and a failed run credits nothing (nothing was actually
-// automated) -- neither is affected by HomeMetrics' IncludeTest flag,
-// which only widens the error-rate/series half.
+// saved = Σ over Success + non-test-kind runs (RunKindTriggered or
+// RunKindMCP, goal 0021 Phase 3 -- an MCP client running a workflow
+// "for real" is automation replacing manual work exactly like a
+// trigger fire) of that workflow's current minutes-saved estimate. A
+// test run credits nothing (it's authoring/preview, not automation
+// replacing manual work -- crediting it would be "Zapier crediting an
+// editor preview," the goal's own framing) and a failed run credits
+// nothing (nothing was actually automated) -- neither is affected by
+// HomeMetrics' IncludeTest flag, which only widens the error-rate/
+// series half.
 type TimeSavedMetric struct {
 	TotalMinutes int                 `json:"totalMinutes"`
 	ByWorkflow   []WorkflowTimeSaved `json:"byWorkflow"`
@@ -137,12 +140,17 @@ type WorkflowUsage struct {
 	RunCount      int    `json:"runCount"`
 }
 
-// AmbientMetric is the ambient (triggered -- "Mill worked while the
-// window was closed") vs. manual (test) fire ratio -- goal 0014 calls
-// this "arguably THE metric." Always computed over every run in range
-// regardless of HomeMetrics.IncludeTest, which only scopes ErrorRate/
-// Series -- excluding test runs here would make the ratio unable to
-// answer its own question.
+// AmbientMetric is the ambient (triggered/MCP -- automation acting
+// without a human clicking Run/Test in the UI) vs. manual (test) fire
+// ratio -- goal 0014 calls this "arguably THE metric." TriggeredCount
+// counts every non-test RunKind (RunKindTriggered's headless "Mill
+// worked while the window was closed" case AND RunKindMCP's "an agent
+// asked for real," goal 0021 Phase 3) -- both are Mill acting on the
+// user's behalf without a manual click, the actual question this ratio
+// answers. Always computed over every run in range regardless of
+// HomeMetrics.IncludeTest, which only scopes ErrorRate/Series --
+// excluding test runs here would make the ratio unable to answer its
+// own question.
 type AmbientMetric struct {
 	TriggeredCount int      `json:"triggeredCount"`
 	ManualCount    int      `json:"manualCount"`
@@ -183,7 +191,7 @@ func (e *ExecutionService) HomeMetrics(fromISO, toISO string, includeTest bool) 
 
 	scoped := make([]RunSummary, 0, len(runs))
 	for _, r := range runs {
-		if includeTest || r.Kind == RunKindTriggered {
+		if includeTest || !r.Kind.isTest() {
 			scoped = append(scoped, r)
 		}
 	}
@@ -228,7 +236,7 @@ func (e *ExecutionService) timeSavedFor(runs []RunSummary) TimeSavedMetric {
 	byWorkflow := map[string]*acc{}
 	var order []string
 	for _, r := range runs {
-		if r.Kind != RunKindTriggered || r.Status != "SUCCESS" {
+		if r.Kind.isTest() || r.Status != "SUCCESS" {
 			continue
 		}
 		a, ok := byWorkflow[r.WorkflowID]
@@ -295,10 +303,10 @@ func mostUsedFor(runs []RunSummary) []WorkflowUsage {
 func ambientFor(runs []RunSummary) AmbientMetric {
 	var m AmbientMetric
 	for _, r := range runs {
-		if r.Kind == RunKindTriggered {
-			m.TriggeredCount++
-		} else {
+		if r.Kind.isTest() {
 			m.ManualCount++
+		} else {
+			m.TriggeredCount++
 		}
 	}
 	total := m.TriggeredCount + m.ManualCount

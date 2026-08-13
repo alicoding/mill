@@ -2449,9 +2449,10 @@ turns out to solve this without touching that dispute).
   per-write approval with a diff summary — and every update
   **auto-snapshots the previous draft as a version first**, so any
   LLM change is one load-into-draft from undone), and execution
-  (`run_workflow`, test kind — the guardrail engine is the run's own
-  approval layer; external steps park in the Review queue regardless
-  of who started the run). Every mutation emits a `mill-data-changed`
+  (`run_workflow`, real (`mcp`) kind by default since goal 0021 Phase 3,
+  `test:true` opts into `test` kind — the guardrail engine is the run's
+  own approval layer; external steps park in the Review queue
+  regardless of who started the run). Every mutation emits a `mill-data-changed`
   event the open window's stores refresh on — the §1 thesis running
   in both directions, live. **Extended 2026-08-11 to the open canvas
   itself (goal 0021 phase 2: "see the canvas update while the MCP
@@ -2516,6 +2517,20 @@ turns out to solve this without touching that dispute).
   instance against the same store), and at-most-once double-resolve
   all Go-tested; a Review-queue row appearing and its Approve executing
   the write is e2e-tested (`mcp-write-approval.spec.ts`).
+
+**Two interop gaps closed 2026-08-13 (goal 0021 Phase 3), found by a
+real MCP client's own live probe, not code review**: every entity/run-
+identifying tool argument now accepts both its original name and an
+explicit canonical one (`workflowId` for a workflow, `runId` for a
+run — listed first in the schema, backward compatible, resolved by one
+shared helper rather than per tool); and `run_workflow` gained a `test`
+argument (default `false`) landing a real `RunKindMCP` run counted in
+Home's automation metrics exactly like a genuine trigger fire, instead
+of always landing the metrics-excluded `test` kind with no way to opt
+out — `run_workflow_stepped` still stays `test` kind unconditionally
+(a debug/inspection surface, never production automation). Both still
+execute the current draft head; only the identifier vocabulary and the
+metrics classification changed.
 
 **A fourth verb — `cancel_write` — and a requester-liveness heartbeat
 are now built (docs/goals/archive/0026-request-lifecycle-honesty.md),
