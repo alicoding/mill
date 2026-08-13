@@ -1,7 +1,7 @@
 {
   "settings": {
     "title": "Settings",
-    "subtitle": "App-level preferences -- not workflow or Configure-authored data (that lives in Composition/Configure), a UI preference persisted locally to this machine.",
+    "subtitle": "App-level preferences, stored locally on this machine — not workflow or Configure data.",
     "loadError": "Couldn't load some settings -- the app may need a restart.",
     "sections": {
       "appearance": "Appearance",
@@ -20,15 +20,15 @@
     },
     "general": {
       "launchAtLoginLabel": "Launch Mill at login",
-      "launchAtLoginCaption": "Starts Mill automatically when you log in, same as Raycast/Alfred (docs/SPEC.md §3.7).",
+      "launchAtLoginCaption": "Starts Mill automatically when you log in.",
       "errorDevBinary": "Not available in this dev build -- only a built .app bundle can be a login item.",
       "errorServerMode": "Not available in server mode -- there is no login-item concept without a desktop app to register."
     },
     "keyboardShortcuts": {
-      "description": "Every in-window command Mill dispatches (docs/goals/0016-keymap-system.md) -- rebind by clicking a combo and pressing a new one, the same recorder used for a workflow's own trigger hotkey below."
+      "description": "Every in-window command Mill dispatches. Rebind one by clicking its combo and pressing a new one — the same recorder used for a workflow's own trigger hotkey below."
     },
     "globalHotkey": {
-      "description": "Opens Mill's Quick Panel from anywhere, like Raycast's ⌥Space or Alfred's own shortcut -- search and run a workflow, or jump into Mill itself, without leaving what you were doing. Press again to dismiss it. Distinct from a specific workflow's own trigger hotkey (set per-workflow on its canvas).",
+      "description": "Opens Mill's Quick Panel from anywhere, even when Mill is in the background — search and run a workflow, or jump into Mill itself. Press again to dismiss it. Distinct from a workflow's own trigger hotkey, set per-workflow on its canvas.",
       "recording": "Press a combo… (Esc to cancel)",
       "setShortcut": "Set shortcut",
       "reservedError": "{{combo}} is reserved by macOS ({{reason}}) — pick another combo",
@@ -36,15 +36,15 @@
     },
     "mcp": {
       "allowImportLabel": "Allow MCP clients to import data",
-      "allowImportCaption": "Off by default (docs/adr/0017): when on, an external MCP client connected to Mill's local MCP server can create workflows, integrations, lists, and MCP-server entries via the import tools -- reading/exporting is always allowed and never includes secrets. Applies immediately, no restart.",
+      "allowImportCaption": "When on, MCP clients connected to Mill can create workflows, integrations, lists, and MCP-server entries via the import tools. Reading and exporting are always allowed and never include secrets. Off by default; changes apply immediately, no restart needed.",
       "askBeforeImportLabel": "Ask me before each MCP import",
-      "askBeforeImportCaption": "On by default (docs/adr/0022): each import parks until you approve it in Mill's window (or times out after 2 minutes, which denies it). Turning this off lets an enabled MCP client import without a per-write click -- enabling writes shouldn't silently mean unattended writes."
+      "askBeforeImportCaption": "Each import parks until you approve it in Mill, or times out after 2 minutes and is denied. Turning this off lets an enabled MCP client import without a per-write approval. On by default."
     },
     "notifications": {
-      "description": "A parked guardrail ask or MCP write notifies you and shows a floating approval prompt (docs/adr/0032, docs/goals/0023) once you're away -- not merely unfocused, but idle past the threshold below, or genuinely unfocused. A present, actively-using-Mill window is never double-noised.",
+      "description": "A parked guardrail ask or MCP write notifies you with a floating approval prompt once you're away — idle past the threshold below, or your window loses focus entirely. An actively-used Mill window is never notified twice.",
       "awayAfterLabel": "Away after (seconds)",
-      "awayAfterCaption": "How long the Mac must sit idle (no keyboard/mouse/trackpad input) while Mill is focused before you're treated as away -- 300s (5 minutes) by default, matching Teams' own away-status default. Losing focus entirely always counts as away regardless of this number.",
-      "alertPermissionNote": "For the notification to alert instead of only appearing quietly in Notification Center, allow it in System Settings → Notifications → Mill → Alerts (docs/goals/0023 item 3) -- Mill requests notification permission on first launch, but macOS still defaults new apps to Banners, which auto-dismiss."
+      "awayAfterCaption": "How long the Mac sits idle (no keyboard, mouse, or trackpad input) while Mill is focused before you're treated as away. Defaults to 300 seconds (5 minutes). Losing focus entirely always counts as away, regardless of this setting.",
+      "alertPermissionNote": "To alert instead of appearing quietly in Notification Center, allow it in System Settings → Notifications → Mill → Alerts. Mill requests notification permission on first launch, but macOS still defaults new apps to Banners, which auto-dismiss."
     },
     "updates": {
       "checkButton": "Check for updates",
@@ -67,7 +67,7 @@
   "placeholderView": {
     "notBuiltYet": "Not built yet",
     "subtitle": "This part of Mill hasn't been built yet.",
-    "specSectionNote": "See docs/SPEC.md §{{section}} for the current thinking on this.",
+    "specSectionNote": "Not available in the UI yet.",
     "backToWorkflows": "Back to Workflows"
   },
   "homeFormat": {
@@ -91,14 +91,14 @@
       "usageDescription": "{{count}} run{{plural}} · ≈ {{total}} at {{minutes}} min/run"
     },
     "heading": "Home",
-    "subtitle": "Time saved, what ran, and what to learn from it — all from local run history. Nothing here ever leaves this machine.",
+    "subtitle": "Time saved, what ran, and what to learn from it, all from local run history that never leaves this machine.",
     "timeRangeAriaLabel": "Time range",
     "last7Days": "Last 7 days",
     "last30Days": "Last 30 days",
     "noRunsBlankslateHeading": "No runs yet in this range",
     "noRunsBlankslateDescription": "Run or trigger a workflow and come back — Home fills in as soon as something runs.",
     "volumeErrorHeading": "Volume & error rate",
-    "volumeErrorDescription": "Daily, in your local timezone. A day's error rate only shows once it has at least 3 finished runs — fewer than that and one failure would misleadingly read as 100%.",
+    "volumeErrorDescription": "Daily, in your local timezone. Error rate only shows once a day has at least 3 finished runs, so one failure can't misleadingly read as 100%.",
     "mostUsedHeading": "Most-used workflows",
     "mostUsedDescription": "Every run counts here, however it fired. Editing a workflow's minutes-saved estimate feeds the Time saved figure above.",
     "timeSaved": "Time saved",
@@ -106,7 +106,7 @@
     "timeSavedFormula": "{{label}}: {{count}} run{{plural}} × {{perRun}} min = {{total}}",
     "errorRate": "Error rate",
     "noFinishedRuns": "No finished runs yet in this range.",
-    "errorRateVolume": "{{errorCount}} of {{total}} finished runs failed. A retry that eventually succeeded doesn’t count as a failure; parked and cancelled runs are excluded.",
+    "errorRateVolume": "{{errorCount}} of {{total}} finished runs failed. A retry that eventually succeeded doesn’t count as a failure, and parked or cancelled runs are excluded.",
     "includeManualTestRuns": "Include manual test runs",
     "ambientVsManual": "Ambient vs. manual",
     "noRunsInRangeShort": "No runs yet in this range.",
@@ -137,7 +137,7 @@
       "mcp-write": "MCP write"
     },
     "heading": "Activity",
-    "subtitle": "What ran, whether triggered headlessly (hotkey, schedule, clipboard/filesystem watch) or a direct Run click on a workflow — a headless trigger fires with no other feedback, so this is the only place to see it happened at all. Session-only: this list isn't persisted across restarts.",
+    "subtitle": "Every run this session, whether it fired headlessly (hotkey, schedule, clipboard or filesystem watch) or you clicked Run — the only place a headless trigger shows up, cleared when Mill restarts.",
     "inputSourceAriaLabel": "Input source",
     "allWorkflowsLiveFeed": "All workflows (live feed)",
     "filterBySourceAriaLabel": "Filter by source",
@@ -148,7 +148,7 @@
     "failed": "Failed",
     "searchPlaceholder": "Search what ran or its result…",
     "searchAriaLabel": "Search activity",
-    "noActivityYet": "No activity yet — run a workflow, or wait for a trigger to fire, to see it appear here. Pick a specific workflow above to browse its durable run history instead.",
+    "noActivityYet": "No activity yet. Run a workflow, or wait for a trigger to fire, to see it appear here. Pick a workflow above to browse its full run history instead.",
     "noActivityMatchesFilter": "No activity matches this filter.",
     "previewAriaLabel": "Preview {{label}}",
     "closeAriaLabel": "Close",
@@ -168,7 +168,7 @@
       "mcp-write": "MCP write request"
     },
     "heading": "Review",
-    "subtitle": "Everything waiting for a human — guardrail approvals and Human review checkpoints across every workflow, plus MCP write requests from external clients. Approve to proceed (a run resumes with your input; a write executes), deny to stop it.",
+    "subtitle": "Everything waiting for a human — guardrail approvals, Human review checkpoints, and MCP write requests — approve to proceed, deny to stop it.",
     "filterByWorkflowAriaLabel": "Filter by workflow",
     "allWorkflows": "All workflows",
     "filterByKindAriaLabel": "Filter by kind",
