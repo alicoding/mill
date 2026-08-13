@@ -34,7 +34,7 @@ export function ValidationSurface({ issues, workflowLabel, workflowId, onSelectI
   // without hand-transcribing panel rows. Same navigator.clipboard
   // precedent as RequestTestPanel's Copy-error button.
   const copyIssues = () => {
-    void navigator.clipboard.writeText(formatIssuesForCopy(workflowLabel, workflowId, issues)).then(() => {
+    void navigator.clipboard.writeText(formatIssuesForCopy(t, workflowLabel, workflowId, issues)).then(() => {
       setCopied(true)
       setTimeout(() => setCopied(false), 1500)
     })

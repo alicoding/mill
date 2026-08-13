@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { FormControl, Label, Select, Stack, Text } from '@primer/react'
 import { ConfigureService } from '../shared/bindings'
 import type { Field, Operation } from '../../bindings/github.com/alicoding/mill/internal/adapters/openapispec/models'
@@ -36,6 +37,7 @@ export function IntegrationBindingsEditor({
   onChangeInputBindings: (raw: string) => void
   onChangeOutputBindings: (raw: string) => void
 }) {
+  const { t } = useTranslation('composition')
   const [operation, setOperation] = useState<Operation | null | 'none'>(null)
 
   useEffect(() => {
@@ -77,7 +79,7 @@ export function IntegrationBindingsEditor({
     <Stack direction="vertical" gap="condensed" data-testid="integration-bindings-editor">
       {inputFields.length > 0 && (
         <>
-          <Text size="small" weight="semibold">Input bindings</Text>
+          <Text size="small" weight="semibold">{t('integrationBindingsEditor.inputBindings')}</Text>
           {inputFields.map((field) => (
             <LiteralOrAttributeField
               key={field.Key}
@@ -92,25 +94,25 @@ export function IntegrationBindingsEditor({
       )}
       {outputFields.length > 0 && (
         <>
-          <Text size="small" weight="semibold">Output bindings</Text>
+          <Text size="small" weight="semibold">{t('integrationBindingsEditor.outputBindings')}</Text>
           {outputFields.map((field) => (
             <FormControl key={field.Key}>
               <FormControl.Label>
                 {field.Label ? `${field.Label} (${field.Key})` : field.Key}
-                {field.Path && <Label size="small" variant="accent">path: {field.Path}</Label>}
-                {field.Secret && <Label size="small" variant="danger">secret</Label>}
+                {field.Path && <Label size="small" variant="accent">{t('integrationBindingsEditor.pathLabel', { path: field.Path })}</Label>}
+                {field.Secret && <Label size="small" variant="danger">{t('integrationBindingsEditor.secret')}</Label>}
               </FormControl.Label>
               {field.Secret ? (
-                <FormControl.Caption>Secret fields cannot be written to an Attribute.</FormControl.Caption>
+                <FormControl.Caption>{t('integrationBindingsEditor.secretCaption')}</FormControl.Caption>
               ) : (
                 <Select
-                  aria-label={`Write ${field.Key} to`}
+                  aria-label={t('integrationBindingsEditor.writeFieldToAriaLabel', { field: field.Key })}
                   value={outputBindings[field.Key] ?? DISCARD}
                   onChange={(e) => setOutputBinding(field, e.target.value)}
                 >
-                  <Select.Option value={DISCARD}>(discard)</Select.Option>
+                  <Select.Option value={DISCARD}>{t('integrationBindingsEditor.discard')}</Select.Option>
                   {attrs.map((a) => (
-                    <Select.Option key={a.Key} value={a.Key}>Attribute: {a.Label}</Select.Option>
+                    <Select.Option key={a.Key} value={a.Key}>{t('integrationBindingsEditor.attributeOption', { label: a.Label })}</Select.Option>
                   ))}
                 </Select>
               )}

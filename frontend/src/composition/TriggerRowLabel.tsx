@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import { Button, Label, Stack, Text } from '@primer/react'
 import { KeyIcon } from '@primer/octicons-react'
 import type { Workflow } from '../../bindings/github.com/alicoding/mill/internal/domain/composition/models'
@@ -33,6 +34,7 @@ interface TriggerRowLabelProps {
 // the same thing. Shared by WorkflowsTable.tsx and CompositionView.tsx's
 // InventoryList rows (docs/goals/0007, the former WorkflowsCards.tsx).
 export function TriggerRowLabel({ workflow, armed, publishing, onPublish, onHotkeyChanged }: TriggerRowLabelProps) {
+  const { t } = useTranslation('composition')
   const rootNode = findRootNode(workflow.Nodes, workflow.Edges)
   const nodeTypeID = rootNode?.NodeTypeID ?? null
 
@@ -49,7 +51,7 @@ export function TriggerRowLabel({ workflow, armed, publishing, onPublish, onHotk
   if (nodeTypeID === 'trigger-manual') {
     return (
       <Label size="small" variant="secondary" data-testid="trigger-row-label" data-trigger-type={nodeTypeID}>
-        Manual
+        {t('triggerRowLabel.manual')}
       </Label>
     )
   }
@@ -57,7 +59,7 @@ export function TriggerRowLabel({ workflow, armed, publishing, onPublish, onHotk
   if (nodeTypeID === 'trigger-callable') {
     return (
       <Label size="small" variant="secondary" data-testid="trigger-row-label" data-trigger-type={nodeTypeID}>
-        Run by another workflow
+        {t('triggerRowLabel.runByAnotherWorkflow')}
       </Label>
     )
   }
@@ -67,7 +69,7 @@ export function TriggerRowLabel({ workflow, armed, publishing, onPublish, onHotk
     if (!cron) {
       return (
         <Label size="small" variant="secondary" data-testid="trigger-row-label" data-trigger-type={nodeTypeID}>
-          no schedule set
+          {t('triggerRowLabel.noScheduleSet')}
         </Label>
       )
     }
@@ -75,7 +77,7 @@ export function TriggerRowLabel({ workflow, armed, publishing, onPublish, onHotk
     const text = description.kind === 'invalid'
       ? cron // an invalid-but-non-empty cron shows the raw value, per the goal's own row-anatomy note
       : description.kind === 'shortcut'
-        ? `Runs on the schedule shortcut ${description.value}`
+        ? t('triggerRowLabel.scheduleShortcut', { value: description.value })
         : description.text
     return (
       <ArmableTriggerRow nodeTypeID={nodeTypeID} text={text} armed={armed} publishing={publishing}
@@ -85,7 +87,7 @@ export function TriggerRowLabel({ workflow, armed, publishing, onPublish, onHotk
 
   if (nodeTypeID === 'trigger-clipboard-watch') {
     return (
-      <ArmableTriggerRow nodeTypeID={nodeTypeID} text="Watching clipboard" armed={armed} publishing={publishing}
+      <ArmableTriggerRow nodeTypeID={nodeTypeID} text={t('triggerRowLabel.watchingClipboard')} armed={armed} publishing={publishing}
         onPublish={() => onPublish(workflow.ID)} />
     )
   }
@@ -95,7 +97,7 @@ export function TriggerRowLabel({ workflow, armed, publishing, onPublish, onHotk
     if (!path) {
       return (
         <Label size="small" variant="secondary" data-testid="trigger-row-label" data-trigger-type={nodeTypeID}>
-          no path configured
+          {t('triggerRowLabel.noPathConfigured')}
         </Label>
       )
     }
@@ -124,6 +126,7 @@ function ArmableTriggerRow({ nodeTypeID, text, armed, publishing, onPublish }: {
   publishing: boolean
   onPublish: () => void
 }) {
+  const { t } = useTranslation('composition')
   return (
     // wrap="wrap" + minWidth: 0 -- the Label/Button here (unlike
     // TruncatedCell's own text) don't shrink on their own; without
@@ -135,12 +138,12 @@ function ArmableTriggerRow({ nodeTypeID, text, armed, publishing, onPublish }: {
     <Stack direction="horizontal" gap="condensed" align="center" wrap="wrap" style={{ minWidth: 0 }} data-testid="trigger-row-label" data-trigger-type={nodeTypeID}>
       <TruncatedCell text={text} />
       {armed ? (
-        <Label variant="success" size="small">armed</Label>
+        <Label variant="success" size="small">{t('armed')}</Label>
       ) : (
         <>
-          <Label variant="attention" size="small">not live</Label>
+          <Label variant="attention" size="small">{t('notLive')}</Label>
           <Button size="small" variant="invisible" onClick={onPublish} disabled={publishing} data-testid="trigger-row-publish">
-            {publishing ? 'Publishing…' : 'Publish'}
+            {publishing ? t('publishing') : t('publish')}
           </Button>
         </>
       )}
@@ -154,38 +157,39 @@ function ArmableTriggerRow({ nodeTypeID, text, armed, publishing, onPublish }: {
 // same press-to-record flow and conflict-error copy NodeInspector.tsx
 // already uses, just triggered from the row instead of the canvas.
 function HotkeyRowLabel({ workflow, armed, publishing, onPublish, onHotkeyChanged }: TriggerRowLabelProps) {
+  const { t } = useTranslation('composition')
   const hk = useHotkeyCapture(workflow.ID, onHotkeyChanged)
 
   return (
     <Stack direction="horizontal" gap="condensed" align="center" wrap="wrap" style={{ minWidth: 0 }} data-testid="trigger-row-label" data-trigger-type="trigger-hotkey">
       {hk.recording ? (
-        <Text size="small" className={runbookStyles.recording}>Press a combo… (Esc to cancel)</Text>
+        <Text size="small" className={runbookStyles.recording}>{t('pressCombo')}</Text>
       ) : hk.binding ? (
         <>
           <Button
             size="small"
             variant="invisible"
             leadingVisual={KeyIcon}
-            title="Click to change"
+            title={t('triggerRowLabel.clickToChange')}
             onClick={hk.startRecording}
             data-testid="trigger-row-hotkey-combo"
           >
             {hk.binding}
           </Button>
           {armed ? (
-            <Label variant="success" size="small">armed</Label>
+            <Label variant="success" size="small">{t('armed')}</Label>
           ) : (
             <>
-              <Label variant="attention" size="small">not live</Label>
+              <Label variant="attention" size="small">{t('notLive')}</Label>
               <Button size="small" variant="invisible" onClick={() => onPublish(workflow.ID)} disabled={publishing} data-testid="trigger-row-publish">
-                {publishing ? 'Publishing…' : 'Publish'}
+                {publishing ? t('publishing') : t('publish')}
               </Button>
             </>
           )}
         </>
       ) : (
         <Button size="small" variant="invisible" onClick={hk.startRecording} data-testid="row-add-hotkey">
-          Add hotkey…
+          {t('triggerRowLabel.addHotkey')}
         </Button>
       )}
       {hk.error && <Text size="small" className={runbookStyles.error}>{hk.error}</Text>}
