@@ -165,33 +165,51 @@ per-surface copy:
   the "don't invent per-workflow bindings that don't exist" trap this
   session's own scope named up front.
 
-## Still open — the WORKFLOW-trigger half, distinct from the above
+## Workflow-trigger hotkey hint delivered 2026-08-13 — the last open item
 
-- **Inline hotkey hint per workflow's own Hotkey TRIGGER** (still the
-  ⌘K palette's documented simplification from the 2026-08-11 core
-  build — `app/CommandPalette.tsx`'s workflow-row comment: shows the
-  trigger NodeType label, e.g. "Hotkey trigger," not the live
-  armed/hotkey-combo detail `TriggerRowLabel.tsx` owns). This is a
-  DIFFERENT registry than the command-shortcut work above — a
-  workflow's own trigger hotkey (`TriggerService`, per-workflow,
-  claimed via `TriggerService.ClaimedCombos`) rather than an app-level
-  command (`shared/commands.ts`). Still not built, still the literal
-  "showed them the hotkey they'll use instead next time" reading of
-  this goal's Acceptance sentence when "the row" is a workflow, not a
-  command — building it would need the workflow's own live trigger
-  combo fetched and formatted the way `TriggerRowLabel.tsx` already
-  does for the canvas, ported into the palette/panel's row-rendering.
-- **⌘?/⌘/ multi-binding alias** — needs a command to carry more than
-  one `KeyCombo` (today's registry is 1:1, `shared/commands.ts`'s
-  `defaultBinding: KeyCombo | null`); recorded as a BACKLOG.md
-  tech-debt line, not silently dropped.
-- **Pins/favorites** — no schema exists yet for either surface;
-  recorded as its own, smaller BACKLOG.md tech-debt line (separate
-  from the alias — different kind of missing infra, a data model vs a
-  registry shape).
+The three "Still open" items below (as this section previously read)
+are all now delivered: pins/favorites and the ⌘?/⌘/ alias landed
+2026-08-13 (BACKLOG.md Standing #5/#6); this session closed the last
+one, the workflow-row's own Hotkey-TRIGGER combo.
 
-This goal file stays OPEN (not archived) until the three items above
-are picked up — none of them block the palette/panel being genuinely
-useful today (the command-shortcut half above is real and shipped),
-but the Acceptance sentence's workflow-row reading isn't fully true
-until the first one lands.
+Real wall hit during Research: the design brief assumed the combo
+lived in the trigger-hotkey node's `Config` map, matching
+`TriggerRowLabel.tsx`'s rendering — it doesn't. `trigger-hotkey` has no
+`ConfigFields` at all (`internal/domain/composition/triggers.go`); the
+binding lives in `TriggerService`'s own workflow-ID-keyed store
+(`triggerhotkeyassignment.go`), and `TriggerRowLabel.tsx` reads it via
+`TriggerService.ListHotkeys()` (already frontend-bound, already used
+by `composition/hotkeyCapture.ts`), not `Node.Config`. Adapted rather
+than hand-rolling a different design: both `app/CommandPalette.tsx` and
+`app/QuickPanel.tsx` now fetch `ListHotkeys()` once per open/mount (the
+same one-fetch-per-show shape each file already used for
+`HomeMetrics`' frecency map), map `workflowID -> formatted combo`, and
+render it via the existing `shared/KeyComboChip.tsx` — the shared
+`app/WorkflowRowTrailingVisual.tsx` component both files now render
+through, combining the chip with the existing pin toggle. Still no
+armed-state fetch (display-when-configured, `TriggerRowLabel.tsx`'s own
+precedent for schedule/watch triggers) and no new frontend-facing RPC —
+`ListHotkeys()` already existed.
+
+A second, narrower wall: real hotkey assignment
+(`TriggerService.AssignHotkey`) always fails in server mode — there is
+no native run loop for `hotkey.Bind`'s OS probe to succeed through
+(`internal/adapters/hotkey/hotkey_server.go`), so no e2e path could
+ever complete the interactive press-to-capture flow
+(`trigger-row.spec.ts`'s own hotkey test already stops at
+Escape-cancels-recording for exactly this reason). Closed with an
+e2e-only debug knob, `SettingsService.DebugAssignWorkflowHotkey` →
+`TriggerService.DebugAssignHotkey`, gated on `isolatedData` the same
+way the precedent `DebugBackdatePendingMCPWrite` already is — skips
+only the OS probe, still runs the same TOCTOU-safe conflict check a
+real assignment does. `frontend/e2e/hotkeyDebugKnob.ts` drives it over
+Wails3's raw runtime-call wire protocol (same shape
+`mcpTestClient.ts`'s `backdatePendingMCPWrite` already established).
+
+Proven e2e in both surfaces — `command-palette.spec.ts` and
+`quick-panel.spec.ts` each gained a case asserting a trigger-hotkey
+row's Run entry carries the combo chip (`data-testid=
+"workflow-hotkey-chip"`) and a manual-trigger row carries none.
+
+This goal file is now fully delivered against its Acceptance sentence
+and moves to `docs/goals/archive/`.

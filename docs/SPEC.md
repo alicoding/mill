@@ -2681,7 +2681,10 @@ findings) and the build rationale are in
   Primer `PinIcon` toggle on both the Quick Panel's and this ⌘K
   palette's workflow rows, `app/workflowFrecency.ts`'s
   `sortWorkflowsByPinnedAndFrecency` sorting pinned rows (in pin order)
-  above the existing frecency-sorted tail in both surfaces.
+  above the existing frecency-sorted tail in both surfaces. The
+  remaining item named above (the inline-hotkey-per-row detail) is also
+  now built — see the Update (2026-08-13) below, under the Keymap
+  system bullet.
 - **Auto-update** — `app.Updater` (Wails3's own first-party,
   zero-new-dependency `v3/pkg/updater`) is `Init`'d in `main.go` with a
   GitHub Releases provider pointed at `alicoding/mill`;
@@ -2757,7 +2760,15 @@ findings) and the build rationale are in
   `ShortcutHint` + `effectiveBinding` computation before), as does a
   hardcoded `"⌘,"` in `QuickPanel.tsx`'s "Open Settings" row that this
   replaced (a real staleness bug: it would have silently ignored a
-  rebind). Two new commands, `tab.closeOthers` (⌘⌥W) and `tab.closeAll`
+  rebind). **Update (2026-08-13)**: the per-workflow-TRIGGER half above
+  is now built too, closing goal 0015 entirely. A trigger-hotkey
+  workflow's own assigned combo (`TriggerService.ListHotkeys()`, the
+  same source `composition/TriggerRowLabel.tsx` reads for the canvas)
+  now renders inline via `shared/KeyComboChip.tsx` on both surfaces'
+  workflow rows, through a shared `app/WorkflowRowTrailingVisual.tsx`
+  component — display-when-configured only, no live armed-state fetch,
+  the same simplification `TriggerRowLabel.tsx` already uses for its
+  own schedule/watch rows. Two new commands, `tab.closeOthers` (⌘⌥W) and `tab.closeAll`
   (⌘⇧W, both Safari's own combos for the identical actions), got real
   default bindings — not just a display label — wired into
   `WorkTabShell.tsx`'s tab-overflow menu alongside their hints.

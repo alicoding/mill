@@ -5,6 +5,7 @@ import {
   connectMCPClient, enableMCPWritesWithApprovalRequired, exportWorkflowViaMCP,
   findWorkflowIdByLabel, restoreMCPWriteDefaults,
 } from './mcpTestClient'
+import { assignDebugWorkflowHotkey } from './hotkeyDebugKnob'
 
 // Exercises the Quick Panel's frontend (docs/adr/0033-quick-panel-
 // second-window.md, app/QuickPanel.tsx) at its hash route
@@ -85,6 +86,21 @@ async function createSimpleWorkflow(page: import('@playwright/test').Page, label
   await fitAndSpaceOut(page)
   await connectNodes(page, 'Trigger: manual', 'Process: Inject text')
   await expect(activePanel(page).locator('.react-flow__edge')).toHaveCount(1)
+  await activePanel(page).getByLabel('Label').fill(label)
+  await activePanel(page).getByTestId('save-workflow').click()
+  await expect(workflowRow(page, label)).toBeVisible()
+}
+
+// A single trigger-hotkey root node, no second step -- matches
+// trigger-row.spec.ts's own hotkey-row test recipe and command-palette.
+// spec.ts's own copy of this helper (a bare Trigger node is a valid,
+// saveable graph; nothing here needs to actually run).
+async function createHotkeyTriggerWorkflow(page: import('@playwright/test').Page, label: string) {
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Workflows' }).click()
+  await page.getByTestId('new-workflow').click()
+  await activePanel(page).locator('.react-flow__node').first().click()
+  await activePanel(page).getByTestId('change-node-type').selectOption('trigger-hotkey')
   await activePanel(page).getByLabel('Label').fill(label)
   await activePanel(page).getByTestId('save-workflow').click()
   await expect(workflowRow(page, label)).toBeVisible()
@@ -378,4 +394,47 @@ test('pinning a workflow from the panel row sorts it above frecency, unpinning r
 
   await deleteWorkflow(page, pinnedLabel)
   await deleteWorkflow(page, frequentLabel)
+})
+
+// docs/goals/0015-summon-quick-invoke.md's last open item: a workflow
+// row's own Hotkey-trigger combo, the Quick Panel half (command-palette.
+// spec.ts covers the ⌘K palette). Real hotkey assignment can't run
+// headlessly (see hotkeyDebugKnob.ts's own header comment) --
+// assignDebugWorkflowHotkey records the combo server-side the same way
+// a real AssignHotkey call would, minus the OS probe.
+test('a workflow row shows its own hotkey-trigger combo inline; a non-hotkey trigger shows none', async ({ page }, testInfo) => {
+  const hotkeyLabel = 'ZzE2ePanelHotkeyChipX'
+  const manualLabel = 'ZzE2ePanelNoHotkeyChip'
+  await createHotkeyTriggerWorkflow(page, hotkeyLabel)
+  await createSimpleWorkflow(page, manualLabel)
+
+  const client = await connectMCPClient(testInfo.parallelIndex)
+  let hotkeyWorkflowId: string
+  try {
+    hotkeyWorkflowId = await findWorkflowIdByLabel(client, hotkeyLabel)
+  } finally {
+    await client.close()
+  }
+  await assignDebugWorkflowHotkey(page, hotkeyWorkflowId, ['CMD', 'SHIFT'], 'M')
+
+  await page.goto('about:blank')
+  await page.goto('/#/quickpanel')
+  const search = page.getByRole('combobox', { name: 'Quick Panel search' })
+  await expect(search).toBeFocused()
+
+  await search.fill(hotkeyLabel)
+  const hotkeyOption = page.getByRole('option', { name: hotkeyLabel })
+  await expect(hotkeyOption).toBeVisible()
+  await expect(hotkeyOption.getByTestId('workflow-hotkey-chip')).toHaveText('⌘⇧M')
+
+  // A manual-trigger row carries no hotkey-chip testid at all -- not
+  // just an empty one -- since WorkflowRowTrailingVisual only renders
+  // KeyComboChip when a combo is actually present.
+  await search.fill(manualLabel)
+  const manualOption = page.getByRole('option', { name: manualLabel })
+  await expect(manualOption).toBeVisible()
+  await expect(manualOption.getByTestId('workflow-hotkey-chip')).toHaveCount(0)
+
+  await deleteWorkflow(page, hotkeyLabel)
+  await deleteWorkflow(page, manualLabel)
 })

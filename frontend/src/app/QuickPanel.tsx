@@ -1,21 +1,20 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import type { ElementType, ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Events } from '@wailsio/runtime'
-import { CounterLabel, IconButton, Text } from '@primer/react'
+import { Text } from '@primer/react'
 import { FilteredActionList } from '@primer/react/experimental'
-import { CopyIcon, GearIcon, HomeIcon, PinIcon, PlayIcon } from '@primer/octicons-react'
-import { CompositionService, ExecutionService, RunKind, SettingsService } from '../shared/bindings'
+import { PlayIcon } from '@primer/octicons-react'
+import { CompositionService, ExecutionService, RunKind, SettingsService, TriggerService } from '../shared/bindings'
 import type { ClipboardApplyPreview } from '../shared/bindings'
 import { generateSamplePayload } from '../shared/configSchema'
 import { useAppStore, refreshWorkflows, refreshRequests, refreshKeybindings } from '../shared/store'
 import { useConfigureEntityStore, refreshLists, refreshMCPServers } from '../shared/configureEntityStore'
-import { ENTITY_ICON } from '../shared/entityIcons'
-import { CAPABILITY_ICON } from './navIcon'
+import { findRootNode } from '../composition/triggerRowInfo'
 import { filterPaletteEntries } from './paletteFilter'
-import type { PaletteSearchable } from './paletteFilter'
 import { sortWorkflowsByPinnedAndFrecency } from './workflowFrecency'
-import { HotkeyHint } from './HotkeyHint'
+import { WorkflowRowTrailingVisual } from './WorkflowRowTrailingVisual'
+import { buildConfigureAndActionEntries } from './quickPanelActionEntries'
+import type { PanelEntry } from './quickPanelActionEntries'
 import { QuickPanelClipboardApply } from './QuickPanelClipboardApply'
 import styles from './QuickPanel.module.css'
 
@@ -39,18 +38,6 @@ import styles from './QuickPanel.module.css'
 // HideOnFocusLost, or the SettingsService.DismissPanel RPC below) --
 // this component never calls window.close() or touches window
 // visibility itself.
-
-type PanelGroupId = 'workflows' | 'configure' | 'actions'
-
-interface PanelEntry extends PaletteSearchable {
-  id: string
-  groupId: PanelGroupId
-  text: string
-  description?: string
-  leadingVisual: ElementType
-  trailingVisual?: ReactNode
-  run: () => void
-}
 
 function groupMetadataFor(t: (key: string) => string) {
   return [
@@ -101,6 +88,12 @@ export function QuickPanel() {
   // yet, so this is frequency-only, matching what the substrate
   // actually provides today.
   const [mostUsedRank, setMostUsedRank] = useState<Record<string, number>>({})
+  // workflowID -> its trigger-hotkey combo label (TriggerService.
+  // ListHotkeys(), e.g. "⌘⇧M") -- the workflow-trigger half of goal
+  // 0015's inline-hotkey-hint remainder, display-when-configured only
+  // (no live armed-state fetch, same simplification the palette's own
+  // hotkeyCombos state documents).
+  const [hotkeyCombos, setHotkeyCombos] = useState<Record<string, string | undefined>>({})
   // Pending-review count (goal 0015's remainder item 2): the Quick
   // Panel is its own Wails window (ADR-0033) -- App.tsx's own
   // reviewPendingCount effect only runs in the main window's React
@@ -138,6 +131,10 @@ export function QuickPanel() {
       .catch(() => {})
   }
 
+  const refreshHotkeyCombos = () => {
+    TriggerService.ListHotkeys().then((combos) => setHotkeyCombos(combos ?? {})).catch(() => {})
+  }
+
   const openMain = (view: string) => {
     void SettingsService.OpenMainWindow(view).catch(() => {})
   }
@@ -157,6 +154,7 @@ export function QuickPanel() {
       void refreshLists()
       void refreshMCPServers()
       void refreshFrecency()
+      void refreshHotkeyCombos()
       // This window is a separate Wails webview/JS context from the
       // main window (docs/adr/0033) -- its own keybindingOverrides copy
       // (shared/store.ts) only ever reflects whatever was true the last
@@ -311,6 +309,8 @@ export function QuickPanel() {
     // unpinned tail, see mostUsedRank's own declaration comment.
     for (const wf of sortWorkflowsByPinnedAndFrecency(workflows ?? [], mostUsedRank, pinnedWorkflowIds)) {
       const pinned = pinnedWorkflowIds.includes(wf.ID)
+      const root = findRootNode(wf.Nodes, wf.Edges)
+      const combo = root?.NodeTypeID === 'trigger-hotkey' ? hotkeyCombos[wf.ID] : undefined
       entries.push({
         id: `run:${wf.ID}`,
         groupId: 'workflows',
@@ -318,123 +318,31 @@ export function QuickPanel() {
         description: t('quickPanel.entries.enterToRun'),
         searchText: wf.Label.toLowerCase(),
         leadingVisual: PlayIcon,
-        // A subtle pin toggle (stopPropagation so the click doesn't
-        // also fire the row's own onAction/run) -- pinned shows a
-        // filled/accent-colored indicator, unpinned a muted outline.
         trailingVisual: (
-          <IconButton
-            icon={PinIcon}
-            aria-label={pinned ? t('quickPanel.entries.unpinWorkflow', { label: wf.Label }) : t('quickPanel.entries.pinWorkflow', { label: wf.Label })}
-            size="small"
-            variant="invisible"
-            className={pinned ? styles.pinnedIndicator : styles.pinToggle}
-            onClick={(e) => {
-              e.stopPropagation()
-              togglePinnedWorkflow(wf.ID)
-            }}
+          <WorkflowRowTrailingVisual
+            combo={combo}
+            pinned={pinned}
+            pinnedClassName={styles.pinnedIndicator}
+            unpinnedClassName={styles.pinToggle}
+            pinAriaLabel={pinned ? t('quickPanel.entries.unpinWorkflow', { label: wf.Label }) : t('quickPanel.entries.pinWorkflow', { label: wf.Label })}
+            onTogglePin={() => togglePinnedWorkflow(wf.ID)}
           />
         ),
         run: () => runWorkflow(wf.ID, wf.Label),
       })
     }
-    // Configure entities (goal 0015's remainder item 3): connectors
-    // ("Integration" tab), Lists, MCP Servers -- searchable/jumpable
-    // rows alongside workflows, same ENTITY_ICON per-kind leading
-    // visual InventoryList rows already use elsewhere (recognition, not
-    // confirmation), each landing on its own Configure tab via
-    // jumpToConfigure.
-    for (const req of requests ?? []) {
-      entries.push({
-        id: `configure:integration:${req.ID}`,
-        groupId: 'configure',
-        text: req.Label,
-        description: t('quickPanel.entries.jumpToIntegration'),
-        searchText: req.Label.toLowerCase(),
-        leadingVisual: ENTITY_ICON.request.Icon,
-        run: () => jumpToConfigure('integration'),
-      })
-    }
-    for (const list of lists ?? []) {
-      entries.push({
-        id: `configure:lists:${list.ID}`,
-        groupId: 'configure',
-        text: list.Label,
-        description: t('quickPanel.entries.jumpToLists'),
-        searchText: list.Label.toLowerCase(),
-        leadingVisual: ENTITY_ICON.list.Icon,
-        run: () => jumpToConfigure('lists'),
-      })
-    }
-    for (const server of mcpServers ?? []) {
-      entries.push({
-        id: `configure:mcpservers:${server.ID}`,
-        groupId: 'configure',
-        text: server.Label,
-        description: t('quickPanel.entries.jumpToMcpServers'),
-        searchText: server.Label.toLowerCase(),
-        leadingVisual: ENTITY_ICON.mcpserver.Icon,
-        run: () => jumpToConfigure('mcpservers'),
-      })
-    }
-    entries.push({
-      id: 'open-mill',
-      groupId: 'actions',
-      text: t('quickPanel.entries.openMill'),
-      searchText: 'open mill window',
-      leadingVisual: HomeIcon,
-      run: () => openMain(''),
-    })
-    entries.push({
-      id: 'open-settings',
-      groupId: 'actions',
-      text: t('quickPanel.entries.openSettings'),
-      searchText: 'open settings preferences',
-      leadingVisual: GearIcon,
-      // HotkeyHint (app/HotkeyHint.tsx) reads settings.open's live
-      // effective binding (shared/commands.ts + any Settings override)
-      // -- this row used to hardcode "⌘," directly, which would have
-      // silently gone stale the moment someone rebound settings.open in
-      // Settings (docs/goals/0015's O(1) single-source-of-truth
-      // requirement).
-      trailingVisual: <HotkeyHint commandId="settings.open" />,
-      run: () => openMain('settings'),
-    })
-    // Pending-review count (goal 0015's remainder item 2): always
-    // present (unblock-yourself-in-place -- "Review" is a real jump
-    // target even at zero), badged with the live count once non-zero.
-    entries.push({
-      id: 'open-review',
-      groupId: 'actions',
-      text: t('quickPanel.entries.review'),
-      description: reviewPendingCount > 0 ? t('quickPanel.entries.reviewPendingDescription', { count: reviewPendingCount }) : t('quickPanel.entries.reviewNoPending'),
-      searchText: 'review pending approval guardrail mcp write',
-      leadingVisual: CAPABILITY_ICON['capability-review'],
-      trailingVisual: reviewPendingCount > 0 ? (
-        <CounterLabel data-testid="quick-panel-review-count" aria-label={t('reviewPendingAriaLabel', { count: reviewPendingCount })}>
-          {reviewPendingCount}
-        </CounterLabel>
-      ) : undefined,
-      run: () => openMain('review'),
-    })
-    // docs/goals/0039: always present, same "unblock-yourself-in-place"
-    // reasoning Review's own row above documents -- the enterprise-critical
-    // door (MCP can be unavailable in locked-down enterprise environments; clipboard+hotkey is the
-    // transport). trailingVisual shows panel.applyClipboard's bound key
-    // once the user rebinds it (shared/commands.ts's defaultBinding is
-    // null); HotkeyHint renders nothing until then.
-    entries.push({
-      id: 'apply-clipboard',
-      groupId: 'actions',
-      text: t('quickPanel.entries.applyFromClipboard'),
-      description: t('quickPanel.entries.applyFromClipboardDescription'),
-      searchText: 'apply from clipboard import paste workflow export',
-      leadingVisual: CopyIcon,
-      trailingVisual: <HotkeyHint commandId="panel.applyClipboard" />,
-      run: applyFromClipboard,
-    })
+    // Configure-entity jump rows + the panel's fixed action rows
+    // (goal 0015's remainder items 2/3) -- extracted to
+    // quickPanelActionEntries.tsx (architecture.md's 500-line
+    // convention); this useMemo owns only the workflow-row loop above,
+    // which needs per-row pin/hotkey-chip state this shared builder
+    // doesn't.
+    entries.push(...buildConfigureAndActionEntries({
+      t, requests, lists, mcpServers, reviewPendingCount, jumpToConfigure, openMain, applyFromClipboard,
+    }))
     return entries
     // eslint-disable-next-line react-hooks/exhaustive-deps -- runWorkflow/jumpToConfigure/openMain/applyFromClipboard/togglePinnedWorkflow close over state already listed or are stable
-  }, [workflows, mostUsedRank, pinnedWorkflowIds, requests, lists, mcpServers, reviewPendingCount])
+  }, [workflows, mostUsedRank, hotkeyCombos, pinnedWorkflowIds, requests, lists, mcpServers, reviewPendingCount])
 
   const filtered = filterPaletteEntries(allEntries, query)
 

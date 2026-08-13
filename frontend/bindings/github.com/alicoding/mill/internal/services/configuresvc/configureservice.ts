@@ -96,8 +96,8 @@ export function CreateExecEnv(label: string, shell: execenv$0.Shell, profileMode
 /**
  * CreateHTTPRequest/UpdateHTTPRequest's positional-param list is
  * getting long (9 now, after ADR-0016 Phase B's method) -- a real
- * ergonomics cost (this session already had to patch every call site
- * twice via scripted regex when Auth/JOSE were added), worth an
+ * ergonomics cost (every call site needs a scripted-regex patch when a
+ * field like Auth/JOSE is added), worth an
  * options-struct pass at some point, but that's a separate, bigger
  * refactor than "add a field" -- not done speculatively here.
  */
