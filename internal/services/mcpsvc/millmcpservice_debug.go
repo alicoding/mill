@@ -23,7 +23,7 @@ import (
 // Mill's own window (the CurrentStepBar shows the exact same park).
 
 type runWorkflowSteppedArgs struct {
-	ID     string            `json:"id" jsonschema:"the workflow's ID"`
+	workflowIDArgs
 	Values map[string]string `json:"values,omitempty" jsonschema:"optional starting Attribute values, keyed by attribute key"`
 	// Same trigger-input substitution as run_workflow's payload arg --
 	// a stepped debug session of a trigger-fed workflow needs its
@@ -63,15 +63,22 @@ func (m *MillMCPService) registerDebugTools() {
 		Description: "Start a workflow run in STEPPED debug mode (docs/adr/0031): it pauses before EVERY node, not just " +
 			"external-effect ones, so each one's input/output can be inspected via get_run before deciding whether to " +
 			"continue. Drive the resulting paused run with step_run/resume_run/stop_run. Always a test run of the draft " +
-			"head. Requires the MCP-writes toggle.",
+			"head, unconditionally -- unlike run_workflow, there is no test:false option here: a stepped session is " +
+			"inherently an inspection/debug surface (a human or agent watching each node one at a time), never a " +
+			"production invocation, so it always stays out of Home's automation metrics by default (goal 0021 Phase 3; " +
+			"use run_workflow with test:false for a real production run). Requires the MCP-writes toggle.",
 	}, func(_ context.Context, _ *mcp.CallToolRequest, in runWorkflowSteppedArgs) (*mcp.CallToolResult, any, error) {
 		if err := m.requireWriteEnabled(); err != nil {
+			return nil, nil, err
+		}
+		id, err := in.resolve()
+		if err != nil {
 			return nil, nil, err
 		}
 		if m.exec == nil {
 			return nil, nil, fmt.Errorf("execution service not wired")
 		}
-		summary, err := m.exec.RunWorkflowStepped(in.ID, in.Values, in.Payload)
+		summary, err := m.exec.RunWorkflowStepped(id, in.Values, in.Payload)
 		if err != nil {
 			return nil, nil, err
 		}

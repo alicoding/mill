@@ -10,9 +10,9 @@ instance, not code reading.
 
 ## Phase 1 — read/introspection surface (2026-08-11 probed, 2026-08-12
 gaps 2-4 closed — Phase 1 now fully complete: every gap either fixed or
-explicitly declined/confirmed-by-design. Phase 2/3 remain open below,
-unblocked but not yet run -- they need live interactive probing, not
-code changes.)
+explicitly declined/confirmed-by-design. Phase 2 probed and its gaps
+closed 2026-08-13 (Phase 3 below); Phase 4 (real-use-case fidelity)
+remains open.)
 
 What already works well, verified live: `list_node_types` is a real
 authoring vocabulary (full typed ConfigFields, defaults, options,
@@ -103,8 +103,10 @@ right terminal Decision.
    writes enabled") so a long-forgotten toggle isn't invisible
    standing authority. Logged as gap, LOW-MED.
 
-## Phase 2 — authoring + step-debug loop (unblocked — the writes
-toggle is already on; per-write approval still gates each import)
+## Phase 2 — authoring + step-debug loop (2026-08-13 live-probed by the
+orchestrator against a real MCP client — the planned author-from-
+scratch + full `run_workflow_stepped` session probes below; now
+complete)
 
 Planned probes: author a workflow from scratch via
 `validate_workflow`→`import_workflow`→`update_workflow`; per-write
@@ -113,7 +115,76 @@ approval UX friction; a full `run_workflow_stepped` session
 verification (the in-flight build) — owner watches the canvas while
 the MCP author works.
 
-## Phase 3 — real-use-case fidelity (partially unblocked)
+**Positive finding, proven live, not assumed:** the full author→run→
+inspect loop works end to end over a real MCP client — validate→
+import→update→run→get_run all round-tripped correctly, per-write
+approval gated each mutation as designed, and a real
+`run_workflow_stepped` session (inspect→step→resume) advanced node by
+node exactly as ADR-0031 describes. No new gap in the loop mechanics
+themselves.
+
+**Gaps found, both closed same day (Phase 3 below):**
+
+6. ~~**[MED] Inconsistent identifier argument names across the tool
+   surface**~~ — **FIXED 2026-08-13.** The live probe burned failed
+   round trips guessing argument names: `import_workflow{json}`,
+   `run_workflow{id,values,payload}`, `update_workflow{id,json}`,
+   `export_workflow{id}` all took a bare `id`, while `get_run{runId}`
+   and `list_runs{workflowId}` already used more explicit names —
+   validation errors were readable, but the inconsistency itself was
+   pure interop friction, not a real design difference across entity
+   kinds. Fixed at the argument-resolution level: a single
+   `workflowIDArgs` struct (`WorkflowID`/`ID`, canonical name first)
+   embedded by every workflow-identifying tool
+   (`run_workflow`/`run_workflow_stepped`/`update_workflow`/
+   `publish_workflow`/`delete_workflow`/`export_workflow`), with one
+   shared `resolve()` deciding which wins if a caller sends both —
+   never per-tool copy-paste. `get_run`/`list_runs`/`step_run`/
+   `resume_run`/`stop_run` already used their own canonical names
+   (`runId`/`workflowId`) before this fix. Fully backward compatible —
+   `id` keeps working unchanged. Proven by
+   `TestMCPIdentifierAliases_CanonicalNamesResolveAcrossTheSurface`
+   (every tool driven end to end using ONLY the new canonical names)
+   and `TestMCPIdentifierAliases_LegacyIdStillResolves` (the original
+   `id` name, real MCP client, real HTTP).
+7. ~~**[MED] `run_workflow` always landed `test` kind, no way to opt
+   out**~~ — **FIXED 2026-08-13.** Externally-triggered production
+   runs were silently excluded from Home's automation metrics by
+   default (`RunKindTest` is the one kind Home's Ambient/TimeSaved/
+   ErrorRate framing always excludes) — wrong for a real agent
+   invoking a workflow for real, not authoring/debugging it.
+   `run_workflow` gained an optional `test` boolean (default `false`):
+   `false` now lands a new `RunKindMCP` run kind, counted in Home's
+   metrics exactly like a genuine trigger fire; `test:true` still lands
+   `RunKindTest`, matching the UI's own Test-run button. Deliberately a
+   DISTINCT kind from `RunKindTriggered` rather than reusing it: no MCP
+   tool offers a "run the published version" choice the way a real
+   trigger fire does (ADR-0021 locks trigger/child-call execution to
+   the published snapshot) — both `test` and the new `mcp` kind still
+   execute the current DRAFT head; only the metrics classification
+   changes (`RunKind.runsDraft`/`RunKind.isTest`,
+   `internal/services/executionsvc/executionservice_runkind.go`).
+   `run_workflow_stepped` intentionally has no `test` argument at all
+   and always stays `RunKindTest` — a debug/inspection surface (pauses
+   before EVERY node), never production automation, documented as such
+   in its own tool description. Proven by
+   `TestMCPRunWorkflow_TestFlagControlsRunKindAndHomeVisibility`: the
+   default run lands `mcp` kind and counts in
+   `HomeMetrics(...).Ambient.TriggeredCount`; `test:true` lands `test`
+   kind and counts in `.Ambient.ManualCount`; `run_workflow_stepped`
+   stays `test` regardless.
+
+## Phase 3 — MCP tool surface gap closure (2026-08-13, delivered)
+
+Both Phase 2 gaps above (6, 7) fixed same day as found, full local
+suite green, PR self-merged. This closes everything actionable that
+Phase 2's live probing surfaced — no other judgment calls came up
+needing the owner (the mandate's own "Phase 3 judgments that need the
+owner surface as found" case never triggered this round).
+
+## Phase 4 — real-use-case fidelity (partially unblocked, still open —
+distinct from Phase 3 above, a different scope: fidelity/breadth work,
+not tool-surface ergonomics)
 
 - **Markdown fidelity on realistic Confluence HTML** — the actual
   daily-pain quality bar: tables, code blocks, panels/macros, nested
@@ -123,9 +194,10 @@ the MCP author works.
 - **§2.1 M365 bridge dry run** — compose capture→code-exec→clipboard
   end-to-end with the pieces that exist; name what's still missing
   (DOM capture, auto-paste target).
-- **AI node** (§3.3 map row, invariant locked) — still unbuilt; the
-  local-Ollama variant is the zero-egress win. Research pass owed
-  before building.
+- ~~**AI node** (§3.3 map row, invariant locked)~~ — **DELIVERED via a
+  separate goal, [0031 — AI node family](archive/0031-ai-node-family.md),
+  2026-08-12**, not this goal's own work; struck here so this list
+  doesn't read as still-outstanding.
 
 ## Acceptance (rolling)
 
@@ -133,4 +205,9 @@ Each phase's gaps either fixed (with the standing proof discipline)
 or explicitly declined with a recorded reason; the phase-2/3 probes
 run and their findings logged here; this file graduates items out as
 they land, and archives when the owner calls the surface
-real-use-ready.
+real-use-ready. **Not archived yet as of Phase 3's 2026-08-13
+delivery**: Phase 4's Confluence-markdown-fidelity and M365-bridge
+items remain genuinely open, substantial, unaddressed work — this
+session's scope was Phase 2/3's tool-surface gap closure only, and the
+file's own archival bar is the owner calling the surface real-use-ready,
+not an agent's unilateral judgment that one phase's items closed.
