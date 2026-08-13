@@ -26,12 +26,12 @@ func TestToMarkdown_ConfluenceFixtures(t *testing.T) {
 		{
 			name:     "code block macro",
 			fixture:  "code-block-macro",
-			property: "code content survives in a fenced block; the syntaxhighlighter language hint is currently dropped (no info-string)",
+			property: "code content survives in a fenced block; the syntaxhighlighter language hint is preserved as the fence's info-string",
 		},
 		{
 			name:     "info and warning panels",
 			fixture:  "info-warning-panels",
-			property: "panel body text survives; the info-vs-warning panel type is currently lost (both become plain paragraphs)",
+			property: "panel body text survives as a blockquote whose leading bold label names the panel type (info vs. warning)",
 		},
 		{
 			name:     "three-level nested lists",
@@ -41,12 +41,12 @@ func TestToMarkdown_ConfluenceFixtures(t *testing.T) {
 		{
 			name:     "ak-task-list task list",
 			fixture:  "ak-task-list",
-			property: "task item text survives as a plain bullet list; DONE/TODO checkbox state is currently dropped (no GFM checkbox syntax)",
+			property: "task item text survives with its DONE/TODO state as a GFM checkbox (- [x] / - [ ])",
 		},
 		{
 			name:     "expand-container macro",
 			fixture:  "expand-container",
-			property: "control and content text both survive; the expand/collapse semantics are currently lost (flattened to sequential paragraphs)",
+			property: "control text becomes a <details><summary> title, with the content preserved as markdown in the body",
 		},
 		{
 			name:     "status lozenge",
@@ -66,7 +66,7 @@ func TestToMarkdown_ConfluenceFixtures(t *testing.T) {
 		{
 			name:     "emoticon with data-emoji-fallback",
 			fixture:  "emoticon-emoji-fallback",
-			property: "the emoticon currently becomes a dead markdown image link (the data-emoji-fallback character is not used, and the relative image src does not resolve)",
+			property: "the emoticon becomes its data-emoji-fallback character, not a dead relative-src image link",
 		},
 		{
 			name:     "panel inside a table cell",
