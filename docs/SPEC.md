@@ -2729,9 +2729,9 @@ findings) and the build rationale are in
   Wails window, can't share App.tsx's). This ⌘K palette's own
   still-open gap — the *inline per-workflow hotkey/armed-state
   detail* the Acceptance sentence's "showed them the hotkey" half
-  names — and a ⌘?/⌘/ alias (blocked on the 1:1 command↔binding
-  registry shape) both stay recorded in the goal file, not silently
-  dropped. **Update (2026-08-12, session 2)**: the COMMAND-shortcut
+  names — stays recorded in the goal file, not silently dropped; the
+  ⌘?/⌘/ alias (previously blocked on the 1:1 command↔binding registry
+  shape) shipped later, see the Update below. **Update (2026-08-12, session 2)**: the COMMAND-shortcut
   half of that inline-hotkey-hint gap (as opposed to the still-open
   per-workflow-TRIGGER half above) is now built and shared, not
   per-surface: `app/HotkeyHint.tsx` (`resolveHotkeyLabel`/
@@ -2787,7 +2787,18 @@ findings) and the build rationale are in
   ever called); a clash against another OVERRIDDEN command or a
   workflow's trigger hotkey (`TriggerService.ClaimedCombos`, reusing
   `trigger.CheckConflict` verbatim) is caught server-side, naming the
-  conflicting command or workflow.
+  conflicting command or workflow. **Update (2026-08-13, BACKLOG.md
+  Standing #6)**: `Command` gained an optional `extraBindings:
+  KeyCombo[]` alongside `defaultBinding` — always-on additional
+  bindings for the same command, deliberately NOT run through the
+  override/rebind machinery above (Settings still only rebinds the
+  primary; extras render as read-only secondary `KeyComboChip`s next to
+  it). `palette.open` carries ⌘/ and ⌘? as its two extras (the ⌘K
+  palette's own "owner reinforcement" request from goal 0015, deferred
+  at the time as a cross-cutting registry change) — both land on the
+  physical `/` key (`keyFromEventCode`, `shared/keybinding.ts`, gained
+  `Slash` support), distinguished by the Shift mod exactly the way
+  every other key here already is shift-independent.
 - **Per-view hotkeys** — Cmd+1 through Cmd+4 jump to a top-level view
   (Composition/Configure/Activity/Spec, matching the sidebar order,
   down from an original five once Runs stopped being a top-level view —
