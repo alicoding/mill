@@ -49,6 +49,16 @@ accepted)**
    live and attestation-verified. The cut surfaced and fixed three
    more latent defects (raw-binary asset, release.yml invalid YAML —
    now gated by workflow-lint, GPL-3 setup-task action wrapper)
+5. [ ] [0046 — Schema evolution](0046-schema-evolution.md) —
+   owner-raised from a real regulated-platform incident
+   (rename-forbidden / retype-permanent / live-referenced decisions
+   forcing a ~30-version manual cleanup); research delivered
+   2026-08-13 with a five-part design sketch reusing ADR-0021's
+   versioning, seeding's tombstones, and the Field Key/Label split;
+   opens with the ADR that decides the semantics. Verified gap:
+   Mill's Configure entities are live-referenced (a pinned workflow
+   still resolves TODAY's decision definition) and deletes have no
+   reference-integrity check
 
 **Group E — Public-repo hygiene (2026-08-13, owner-directed: source
 comments explain code per standard practice — business/product
