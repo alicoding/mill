@@ -28,6 +28,23 @@ backlog section in the same commit: **work discovered mid-session that
 outlives the session gets a goal file and a queue position before the
 session ends — never left only in an ephemeral session task list.**
 
+**Group F — Real-use fidelity + rhythm (2026-08-13, owner-picked all
+four in the post-0041 planning round; this order recommended and
+accepted)**
+1. [ ] [0042 — Markdown fidelity pass 2](0042-markdown-fidelity-pass-2.md)
+   — implement the five pinned Confluence degradations (language
+   hints, task lists, emoji fallback, panel types, expand→details);
+   corpus + goldens from PR #78 are the proof harness
+2. [ ] [0043 — Hotkey recorder vs menu accelerators](0043-hotkey-recorder-menu-accelerators.md)
+   — overdue owner-hit bug (⌘⇧W while recording closed the app);
+   accelerator-free menu swap during capture
+3. [ ] [0044 — M365 bridge dry run + capture research](0044-m365-bridge-dry-run.md)
+   — absorbs goal 0021 Phase 4's last bullet; gap list + the
+   browser-extension-at-a-locked-down-enterprise decision research
+4. [ ] [0045 — v0.2.0 + release cadence](0045-release-cadence.md)
+   — tag-on-capability-goal-archive rule; v0.2.0 cuts when 0042
+   archives
+
 **Group E — Public-repo hygiene (2026-08-13, owner-directed: source
 comments explain code per standard practice — business/product
 decisions and the owner's own words live in docs/, cited by id, never
