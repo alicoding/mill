@@ -72,7 +72,7 @@ function App() {
   // shape.
   const isNativeWebview = buildInfo != null && !buildInfo.Server;
   // The titlebar band's own DOM node (Chrome-style tabs-in-titlebar,
-  // owner-requested), captured via a callback ref on the band div
+  // deliberately adopted), captured via a callback ref on the band div
   // rendered below. WorkTabShell portals its TabList/overflow markup
   // into it -- a plain DOM node, not a ref object, since createPortal
   // needs the actual element and this crosses a component boundary.

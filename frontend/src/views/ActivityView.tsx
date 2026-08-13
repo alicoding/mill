@@ -144,7 +144,7 @@ function ActivityView() {
             )}
             <Text size="small">{entry.label}</Text>
             {/* A separate peek icon, not the label itself, anchors the
-                hover-preview (docs/SPEC.md §3.8's n8n/Oscilar pattern)
+                hover-preview (docs/SPEC.md §3.8's n8n pattern)
                 -- the label keeps its existing expand-the-result click
                 untouched (a first cut wrapped the label and silently
                 broke that click; caught by the existing activity e2e). */}

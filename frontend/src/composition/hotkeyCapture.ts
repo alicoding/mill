@@ -64,7 +64,7 @@ function useComboCapture(enabled: boolean, adapter: ComboCaptureAdapter, onChang
   // performKeyEquivalent: intercepts a key-equivalent-matching keypress
   // (Cmd+W Close Window, Cmd+Q Quit, ...) at the menu-bar layer before
   // it ever reaches this listener, e.preventDefault() included -- a
-  // real, owner-hit bug (Cmd+Shift+W closed the window mid-recording,
+  // real, live-reproduced bug (Cmd+Shift+W closed the window mid-recording,
   // and since the last window closing quits the app, that ended the
   // recording session entirely). Suspend is called unconditionally
   // whenever recording flips true; Restore is in the *same* effect's

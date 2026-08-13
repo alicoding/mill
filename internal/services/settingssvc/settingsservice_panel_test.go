@@ -40,7 +40,7 @@ func TestYieldFocusIfMainHidden_NilWindow_DoesNotPanic(t *testing.T) {
 
 // TestSummonShouldHideMain covers all four cases of the pure guard
 // TogglePanel now runs before showing the Quick Panel (the fix for the
-// owner-observed bug: a main window already open but backgrounded in a
+// live-reproduced bug: a main window already open but backgrounded in a
 // different app surfaced alongside the panel on summon). This is the
 // one piece of the fix that doesn't need a real OS window, per
 // .claude/rules/testing.md's own note that the condition-check

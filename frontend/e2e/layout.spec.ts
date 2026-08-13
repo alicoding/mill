@@ -125,7 +125,7 @@ test('a narrow-variant form page (Settings) still keeps its readable width cap',
 })
 
 test('the editor inner tab bar keeps its natural height, never growing to eat vertical space', async ({ page }) => {
-  // Regression coverage for the dead-space bug (owner-reported twice,
+  // Regression coverage for the dead-space bug (live-reproduced twice,
   // confirmed by DOM probe): .tabList carried flex-grow for the
   // titlebar strip's ROW context, but WorkflowEditorTab's inner bar
   // sits in .editorPanel's COLUMN, where grow sizes HEIGHT -- the bar
@@ -154,7 +154,7 @@ test.describe('tab strip vs build badge', () => {
   test.use({ viewport: { width: 1000, height: 800 } })
 
   test('the tab-strip overflow button is clickable with the build badge present, and the badge lives inside the band', async ({ page }) => {
-  // Regression coverage for the owner-caught overlay bug (2026-08-11):
+  // Regression coverage for the live-caught overlay bug (2026-08-11):
   // the build-identity badge was position:fixed at the window's
   // top-right, exactly over the tab strip's pinned "All open tabs" ⌄
   // button, and intercepted its clicks -- the same overlay-blocks-chrome

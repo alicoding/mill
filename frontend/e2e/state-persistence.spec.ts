@@ -62,7 +62,7 @@ test('An open Configure request view tab persists across a reload, active and al
 })
 
 // The exact incident this goal fixes (docs/goals/0033-reload-session-
-// restore.md, owner-observed live): several tabs open, a specific one
+// restore.md, observed live): several tabs open, a specific one
 // active, a hard reload (⌘⇧R -- a real page reload is the closest
 // Playwright equivalent) discarded the open tab and landed on Home
 // instead. Reproduced faithfully: opening a workflow tab from a row

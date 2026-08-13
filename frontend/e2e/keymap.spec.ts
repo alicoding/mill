@@ -63,7 +63,7 @@ test('Cmd+N opens a new-workflow tab', async ({ page }) => {
 })
 
 test('The titlebar band exists and holds the pinned page tab even with zero work tabs open', async ({ page }) => {
-  // Chrome-style tabs-in-titlebar (owner-requested): the band
+  // Chrome-style tabs-in-titlebar (a deliberate design choice): the band
   // (app/App.tsx's own .titlebar element, data-testid="titlebar-tabs")
   // is a real, always-present element -- not conditional chrome that
   // only shows up once a work tab is open, the way the old

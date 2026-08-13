@@ -1,6 +1,6 @@
 import { test, expect } from './fixtures/server'
 
-// docs/SPEC.md §3.8's hover-preview pattern (n8n/Oscilar), over real Go
+// docs/SPEC.md §3.8's hover-preview pattern (n8n), over real Go
 // bindings: hovering a workflow reference shows that workflow's actual
 // layout in a small read-only canvas, and Open jumps straight into its
 // editor tab. Exercised on the seeded parent→child pair -- the seed IS

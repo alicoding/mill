@@ -3,8 +3,8 @@
 Standing dogfood effort, owner-mandated 2026-08-11 ("start having you
 test all these and find gaps on what is missing to make it become
 real useful for real use cases"). The orchestrator drives Mill's real
-MCP surface against the bank use cases (memory
-`project-mill-bank-reality`) and logs gaps here; each gap graduates
+MCP surface against the locked-down-enterprise use cases (memory
+the enterprise-reality context) and logs gaps here; each gap graduates
 to a fix in priority order. Findings from live probing of the running
 instance, not code reading.
 

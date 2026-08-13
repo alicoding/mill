@@ -89,7 +89,7 @@ function SettingsView() {
 
   // Same menu-accelerator-suspension bracket as
   // composition/hotkeyCapture.ts's useHotkeyCapture -- see its own
-  // comment for the full reasoning (a real, owner-hit bug: an
+  // comment for the full reasoning (a real, live-reproduced bug: an
   // app-menu-reserved combo pressed while a recorder was armed closed
   // the window, since NSMenu's performKeyEquivalent: intercepts the
   // keypress before this listener ever sees it). This is the third,
