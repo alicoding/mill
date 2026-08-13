@@ -32,6 +32,12 @@ session ends — never left only in an ephemeral session task list.**
 comments explain code per standard practice — business/product
 decisions and the owner's own words live in docs/, cited by id, never
 inline in source)**
+0. [ ] [0041 — OSS trust standards](0041-oss-trust-standards.md) —
+   owner-directed 2026-08-13, IN PROGRESS same session: adopt the
+   trust signals high-trust OSS projects converge on, reject solo-repo
+   ceremony with recorded reasons; baseline inventoried (Scorecard
+   5.0, empty repo metadata, unexercised release.yml, missing
+   community files), research agent dispatched
 1. [x] [0038 — Comment hygiene: constraints, not narrative](archive/0038-comment-hygiene.md) — delivered 2026-08-13
    — rule (`.claude/rules/comments.md`) + gate
    (`check-comment-hygiene.sh`, lefthook + CI `comment-hygiene` job in
