@@ -43,9 +43,15 @@ explicit bar.
    same category as the ruleset in item 4, left for the orchestrator
    to flip once these files are proven green in real CI (this session
    was scoped to files only, no repo-settings access).
-4. [ ] Create the ruleset (block direct push/force-push/deletion,
+4. [x] Create the ruleset (block direct push/force-push/deletion,
    require PR + the `ci-gate` check, owner bypass "for pull requests
-   only"); dry-run a direct push to confirm rejection.
+   only"); dry-run a direct push to confirm rejection. **Done —
+   verified live 2026-08-13: ruleset 20723094 "main-protection
+   (ADR-0034)" active with rules `deletion`/`non_fast_forward`/
+   `pull_request`/`required_status_checks` (context "CI gate") and
+   admin bypass restricted to `pull_request` mode; a dry-run direct
+   push of an empty commit was rejected with GH013 naming both the
+   PR requirement and the required check.**
 5. [x] Amend ADR-0034 with the adopted budgets (≤7min target / 10min
    DORA ceiling; 3-consecutive-breach escalation rule; retry-quarantine
    policy) — un-defer its path-filtering deferral with the job-level
@@ -56,3 +62,13 @@ explicit bar.
 A PR through the new ruleset goes green inside the budget; a direct
 push to main is rejected; a docs-only PR merges via fast-skipped jobs
 without hanging any required check.
+
+**All three verified against shipped reality 2026-08-13:**
+- PR #55 (a 52-file code change) went green through the ruleset in
+  ~5min wall-clock, inside the ≤7min budget (run 31706356731).
+- The direct-push dry-run was rejected (GH013, both rules named) —
+  plan item 4's evidence above.
+- PR #45 (docs-only, `BACKLOG.md`) merged with every code job
+  (`build-go`/`e2e`/`frontend`/`lint-go`/`test-go`/`govulncheck`)
+  path-filter-skipped and the required "CI gate" check passing in 3s
+  (run 31663476641) — no required check hung on a skipped job.
