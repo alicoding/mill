@@ -23,7 +23,7 @@ func init() {
 		Label:  "Test: external echo",
 		Effect: guardrail.ClassExternal,
 	}, func(_ composition.Node, ctx composition.ExecContext) (composition.ExecContext, error) {
-		ctx.Payload = ctx.Payload + "[external-executed]"
+		ctx.Payload += "[external-executed]"
 		return ctx, nil
 	})
 }
