@@ -1,0 +1,126 @@
+import { test, expect } from './fixtures/server'
+
+// Design wave 3 (goal 0001, audit §5): the palette's regrouping into 9
+// frontend display groups (composition/paletteGroups.ts) instead of
+// the 6 domain Kinds, plus the new search box. Real Go bindings over
+// HTTP (Wails3 server mode) -- NodeTypes() is the real backend
+// registry, not a fixture list, so a future node type landing without
+// a matching NODE_TYPE_GROUP entry would show up here as a stray
+// fallback-mapped item, not silently pass.
+
+function activePanel(page: import('@playwright/test').Page) {
+  return page.locator('[role="tabpanel"]:not([hidden])').last()
+}
+
+async function openPaletteOnNewWorkflow(page: import('@playwright/test').Page) {
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Workflows' }).click()
+  await page.getByTestId('new-workflow').click()
+  await activePanel(page).getByTestId('toggle-palette').click()
+}
+
+// Native HTML5 drag events (dragstart/dragover/drop), not a raw mouse
+// down/move/up sequence -- CompositionCanvas's onCanvasDrop and
+// NodePalette's onPaletteDragStart are wired to the real HTML5 Drag
+// and Drop API, which mouse events alone don't trigger. Same pattern
+// e2e/ai-extract-fields-editor.spec.ts's own dragPaletteItemToCanvas
+// already established; duplicated here rather than shared since each
+// spec file already keeps its own small helper set.
+async function dragPaletteItemToCanvas(page: import('@playwright/test').Page, nodeTypeID: string) {
+  await page.evaluate((id) => {
+    const panel = document.querySelector('[role="tabpanel"]:not([hidden])')
+    if (!panel) throw new Error('no active tabpanel')
+    const palette = panel.querySelector(`[data-node-type-id="${id}"]`)
+    const canvas = panel.querySelector('.react-flow__pane')
+    if (!palette || !canvas) throw new Error(`drag setup failed: palette found=${!!palette} canvas found=${!!canvas}`)
+    const dataTransfer = new DataTransfer()
+    const rect = canvas.getBoundingClientRect()
+    const clientX = rect.x + rect.width / 2
+    const clientY = rect.y + rect.height / 2
+    palette.dispatchEvent(new DragEvent('dragstart', { bubbles: true, cancelable: true, dataTransfer }))
+    canvas.dispatchEvent(new DragEvent('dragover', { bubbles: true, cancelable: true, dataTransfer, clientX, clientY }))
+    canvas.dispatchEvent(new DragEvent('drop', { bubbles: true, cancelable: true, dataTransfer, clientX, clientY }))
+  }, nodeTypeID)
+}
+
+test('the palette renders 9 groups with the expected membership', async ({ page }) => {
+  await openPaletteOnNewWorkflow(page)
+  const panel = activePanel(page)
+
+  const groups = panel.getByTestId('palette-group')
+  await expect(groups).toHaveCount(9)
+
+  const expectedGroupIDs = ['triggers', 'capture', 'transform', 'ai', 'data', 'actions', 'flow', 'guardrails', 'apply']
+  for (const id of expectedGroupIDs) {
+    await expect(panel.locator(`[data-testid="palette-group"][data-group-id="${id}"]`)).toBeVisible()
+  }
+
+  // Spot-check membership by node-type-id (stable, not display text --
+  // see paletteGroups.ts's NODE_TYPE_GROUP for the full map).
+  const membership: Record<string, string[]> = {
+    ai: ['process-ai-classify', 'process-ai-completion', 'process-ai-extract-structured'],
+    data: ['list-lookup', 'list-search'],
+    guardrails: ['human-review', 'ruleset', 'decision-outcome'],
+    flow: ['child-workflow', 'decision-route'],
+  }
+  for (const [groupID, nodeTypeIDs] of Object.entries(membership)) {
+    const group = panel.locator(`[data-testid="palette-group"][data-group-id="${groupID}"]`)
+    for (const ntID of nodeTypeIDs) {
+      await expect(group.locator(`[data-node-type-id="${ntID}"]`)).toBeVisible()
+    }
+  }
+})
+
+test('palette labels are shortened under their group (no repeated prefix)', async ({ page }) => {
+  await openPaletteOnNewWorkflow(page)
+  const panel = activePanel(page)
+
+  // "AI: Classify" -> "Classify" under the AI group; the palette item's
+  // own text is the short form, never the full "<Group>: " prefix.
+  const classifyItem = panel.locator('[data-node-type-id="process-ai-classify"]')
+  await expect(classifyItem).toHaveText('Classify')
+
+  const httpItem = panel.locator('[data-node-type-id="integration-http"]')
+  await expect(httpItem).toHaveText('HTTP call')
+
+  // Already-clean labels (no colon prefix) pass through unchanged.
+  const childItem = panel.locator('[data-node-type-id="child-workflow"]')
+  await expect(childItem).toHaveText('Run another workflow')
+})
+
+test('canvas node cards keep their full, self-contained label after being dropped from the palette', async ({ page }) => {
+  await openPaletteOnNewWorkflow(page)
+  await dragPaletteItemToCanvas(page, 'process-ai-classify')
+
+  // A card on canvas has no surrounding group context, so it keeps the
+  // full "AI: Classify" label -- only the palette display shortens.
+  await expect(activePanel(page).locator('.react-flow__node').filter({ hasText: 'AI: Classify' })).toBeVisible()
+})
+
+test('palette search matches both the shortened display name and the full underlying label', async ({ page }) => {
+  await openPaletteOnNewWorkflow(page)
+  const panel = activePanel(page)
+  const search = panel.getByTestId('palette-search')
+
+  // "classify" matches the SHORT displayed text ("Classify").
+  await search.fill('classify')
+  await expect(panel.locator('[data-node-type-id="process-ai-classify"]')).toBeVisible()
+  await expect(panel.getByTestId('palette-item')).toHaveCount(1)
+
+  // "AI:" only appears in the FULL underlying label ("AI: Classify"),
+  // never in the shortened display text ("Classify") -- still matches.
+  await search.fill('AI:')
+  await expect(panel.locator('[data-node-type-id="process-ai-classify"]')).toBeVisible()
+  await expect(panel.locator('[data-node-type-id="process-ai-completion"]')).toBeVisible()
+  await expect(panel.locator('[data-node-type-id="process-ai-extract-structured"]')).toBeVisible()
+
+  // A query matching nothing shows the empty state, not a silently
+  // blank tree.
+  await search.fill('zzz-no-such-step')
+  await expect(panel.getByTestId('palette-item')).toHaveCount(0)
+  await expect(panel.getByTestId('palette-no-matches')).toBeVisible()
+
+  // Clearing the query restores the full 29-item palette.
+  await search.fill('')
+  await expect(panel.getByTestId('palette-item')).toHaveCount(29)
+})

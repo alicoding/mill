@@ -1,11 +1,14 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Button, FormControl, Heading, IconButton, Select, Stack, Text, TextInput } from '@primer/react'
-import { PlusIcon, TrashIcon } from '@primer/octicons-react'
+import { Button, Heading, IconButton, Select, Stack, Text, TextInput, VisuallyHidden } from '@primer/react'
+import { PlusIcon, TrashIcon, WorkflowIcon } from '@primer/octicons-react'
 import { ConfigureService } from '../shared/bindings'
-import type { AttributeDef } from '../../bindings/github.com/alicoding/mill/internal/domain/composition/models'
+import type { AttributeDef, Workflow } from '../../bindings/github.com/alicoding/mill/internal/domain/composition/models'
 import { Type as ConfigFieldType } from '../../bindings/github.com/alicoding/mill/internal/domain/typedfield/models'
 import { refreshWorkflows, useAppStore } from '../shared/store'
+import { InventoryList, type InventoryItem } from '../shared/InventoryList'
+import { ENTITY_ICON } from '../shared/entityIcons'
+import { StatusStamp } from '../shared/StatusStamp'
 import styles from '../shared/ListCard.module.css'
 import PageContainer from '../shared/PageContainer'
 
@@ -25,6 +28,15 @@ function typeLabelFor(t: (key: string) => string): Record<string, string> {
 // field (docs/adr/0029 Phase 1) has no authoring UI here yet, so there's
 // no way to build a choice-set from it; see ruleTranslate.ts's
 // fieldsFromAttributes for the same exclusion on the read side.
+//
+// Design wave 3 (goal 0001, audit §5): conforms to its 6 Configure
+// siblings' own pattern (InventoryList rows + VisuallyHidden heading)
+// instead of a bare `<Select>` dropdown -- the entities here ARE
+// workflows (there's no separate "Attributes" resource to list), so
+// each row IS a workflow, same ENTITY_ICON.workflow every other
+// workflow-referencing surface uses (recognition, not confirmation).
+// Row click opens the same schema editor this tab always had, just
+// reached the same way every sibling tab's Edit is reached.
 export function ConfigureAttributes() {
   const { t } = useTranslation('configure')
   const TYPE_LABEL = typeLabelFor(t)
@@ -41,9 +53,9 @@ export function ConfigureAttributes() {
   const [error, setError] = useState('')
   const [saved, setSaved] = useState(false)
 
-  const selectWorkflow = (id: string) => {
-    setSelectedID(id)
-    setAttrs(workflows?.find((w) => w.ID === id)?.Attributes ?? [])
+  const selectWorkflow = (wf: Workflow) => {
+    setSelectedID(wf.ID)
+    setAttrs(wf.Attributes ?? [])
     setError('')
     setSaved(false)
   }
@@ -67,86 +79,108 @@ export function ConfigureAttributes() {
     }
   }
 
+  const selectedWorkflow = workflows?.find((w) => w.ID === selectedID) ?? null
+
+  const items: InventoryItem[] = (workflows ?? []).map((wf) => {
+    const count = (wf.Attributes ?? []).length
+    return {
+      id: wf.ID,
+      entity: 'workflow',
+      icon: ENTITY_ICON.workflow,
+      label: wf.Label,
+      labelBadges: wf.BuiltIn ? <StatusStamp variant="identity">{t('builtIn')}</StatusStamp> : undefined,
+      description: t('configureAttributes.attributeCountSummary', { count, plural: count === 1 ? '' : 's' }),
+      onOpen: () => selectWorkflow(wf),
+      menuActions: [],
+    }
+  })
+
   return (
-    <PageContainer variant="narrow" data-testid="configure-attributes">
-      {/* Design-wave-1 fix #6: the Configure tab itself already says
-          "Attributes" -- the h2 is now the descriptive copy itself
-          (the one Configure tab with real subtitle text to promote;
-          its six siblings have no such copy, so they keep a visually-
-          hidden heading instead -- see ConfigureLists.tsx etc). */}
-      <Heading as="h2" variant="small" className={styles.sectionHeading}>
-        {t('configureAttributes.description')}
-      </Heading>
+    <PageContainer data-testid="configure-attributes">
+      <Stack direction="horizontal" justify="end" align="center" className={styles.sectionHeading}>
+        {/* Design-wave-1 fix #6's pattern, applied here too now that this
+            tab conforms to the sibling structure (wave 3): the tab
+            label already names the section. */}
+        <VisuallyHidden>
+          <Heading as="h2" variant="small" id="attributes-heading">{t('configureAttributes.heading')}</Heading>
+        </VisuallyHidden>
+      </Stack>
 
       {workflows === null && <Text as="p" className={styles.muted}>{t('loading')}</Text>}
       {workflows !== null && (
-        <FormControl>
-          <FormControl.Label>{t('configureAttributes.workflow')}</FormControl.Label>
-          <Select value={selectedID} onChange={(e) => selectWorkflow(e.target.value)} data-testid="attributes-workflow-select">
-            <Select.Option value="">{t('configureAttributes.selectWorkflow')}</Select.Option>
-            {workflows.map((w) => (
-              <Select.Option key={w.ID} value={w.ID}>{w.Label}</Select.Option>
-            ))}
-          </Select>
-        </FormControl>
+        <InventoryList
+          items={items}
+          searchPlaceholder={t('configureAttributes.searchPlaceholder')}
+          emptyState={{
+            icon: WorkflowIcon,
+            heading: t('configureAttributes.emptyHeading'),
+            description: t('configureAttributes.emptyDescription'),
+          }}
+        />
       )}
 
-      {selectedID && (
-        <div className={styles.card}>
-          <Stack direction="vertical" gap="condensed">
-            {attrs.map((a, i) => (
-              <Stack key={i} direction="horizontal" gap="condensed" align="center">
-                <TextInput placeholder={t('configureAttributes.keyPlaceholder')} value={a.Key} onChange={(e) => updateAttr(i, 'Key', e.target.value)} />
-                <TextInput placeholder={t('configureAttributes.labelPlaceholder')} value={a.Label} onChange={(e) => updateAttr(i, 'Label', e.target.value)} />
-                <Select value={a.Type} onChange={(e) => updateAttr(i, 'Type', e.target.value)}>
-                  {Object.entries(TYPE_LABEL).map(([v, l]) => (
-                    <Select.Option key={v} value={v}>{l}</Select.Option>
-                  ))}
-                </Select>
-                <IconButton
-                  icon={TrashIcon}
-                  aria-label={t('configureAttributes.removeAttributeAriaLabel')}
-                  size="small"
-                  variant="invisible"
-                  onClick={() => setAttrs((prev) => prev.filter((_, idx) => idx !== i))}
-                />
+      {selectedWorkflow && (
+        <PageContainer variant="narrow">
+          <div className={styles.card} data-testid="attributes-editor">
+            <Stack direction="vertical" gap="condensed">
+              <Stack direction="horizontal" justify="space-between" align="center">
+                <Text size="small" weight="semibold">{selectedWorkflow.Label}</Text>
+                <Button size="small" variant="invisible" onClick={() => setSelectedID('')}>{t('configureAttributes.closeEditor')}</Button>
               </Stack>
-            ))}
-            <Button
-              size="small"
-              variant="invisible"
-              leadingVisual={PlusIcon}
-              onClick={() =>
-                setAttrs((prev) => [
-                  ...prev,
-                  {
-                    Key: '',
-                    Label: '',
-                    Type: ConfigFieldType.TypeText,
-                    Required: false,
-                    Default: '',
-                    Description: '',
-                    Options: null,
-                    Suggestions: null,
-                    Secret: false,
-                    RefKind: '',
-                    Multiline: false,
-                    SystemManaged: false,
-                  },
-                ])
-              }
-            >
-              {t('configureAttributes.addAttribute')}
-            </Button>
-            {error && <Text as="p" size="small" className={styles.error}>{error}</Text>}
-            {saved && !error && <Text as="p" size="small">{t('configureAttributes.saved')}</Text>}
-            <Stack direction="horizontal">
-              <Button variant="primary" size="small" onClick={save} disabled={saving} data-testid="save-attributes">
-                {saving ? t('configureAttributes.saving') : t('configureAttributes.saveAttributes')}
+              {attrs.map((a, i) => (
+                <Stack key={i} direction="horizontal" gap="condensed" align="center">
+                  <TextInput placeholder={t('configureAttributes.keyPlaceholder')} value={a.Key} onChange={(e) => updateAttr(i, 'Key', e.target.value)} />
+                  <TextInput placeholder={t('configureAttributes.labelPlaceholder')} value={a.Label} onChange={(e) => updateAttr(i, 'Label', e.target.value)} />
+                  <Select value={a.Type} onChange={(e) => updateAttr(i, 'Type', e.target.value)}>
+                    {Object.entries(TYPE_LABEL).map(([v, l]) => (
+                      <Select.Option key={v} value={v}>{l}</Select.Option>
+                    ))}
+                  </Select>
+                  <IconButton
+                    icon={TrashIcon}
+                    aria-label={t('configureAttributes.removeAttributeAriaLabel')}
+                    size="small"
+                    variant="invisible"
+                    onClick={() => setAttrs((prev) => prev.filter((_, idx) => idx !== i))}
+                  />
+                </Stack>
+              ))}
+              <Button
+                size="small"
+                variant="invisible"
+                leadingVisual={PlusIcon}
+                onClick={() =>
+                  setAttrs((prev) => [
+                    ...prev,
+                    {
+                      Key: '',
+                      Label: '',
+                      Type: ConfigFieldType.TypeText,
+                      Required: false,
+                      Default: '',
+                      Description: '',
+                      Options: null,
+                      Suggestions: null,
+                      Secret: false,
+                      RefKind: '',
+                      Multiline: false,
+                      SystemManaged: false,
+                    },
+                  ])
+                }
+              >
+                {t('configureAttributes.addAttribute')}
               </Button>
+              {error && <Text as="p" size="small" className={styles.error}>{error}</Text>}
+              {saved && !error && <Text as="p" size="small">{t('configureAttributes.saved')}</Text>}
+              <Stack direction="horizontal">
+                <Button variant="primary" size="small" onClick={save} disabled={saving} data-testid="save-attributes">
+                  {saving ? t('configureAttributes.saving') : t('configureAttributes.saveAttributes')}
+                </Button>
+              </Stack>
             </Stack>
-          </Stack>
-        </div>
+          </div>
+        </PageContainer>
       )}
     </PageContainer>
   )

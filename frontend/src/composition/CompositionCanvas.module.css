@@ -311,14 +311,21 @@
 .canvasNodeSelected {
     box-shadow: var(--xy-node-boxshadow-selected);
 }
-.paletteItemIcon {
+/* Design wave 3: the palette's group-header icon is now a plain themed
+   glyph (paletteGroups.ts's PALETTE_GROUP_ICON), not a Kind-colored
+   square -- muted to match .paletteGroupLabel's own color, since a
+   display group can mix domain Kinds and a single square color would
+   misrepresent some of its own members. */
+.paletteGroupIcon {
+    color: var(--fgColor-muted);
     flex: 0 0 auto;
-    width: 26px;
-    height: 26px;
-    border-radius: var(--borderRadius-medium);
-    display: flex;
-    align-items: center;
-    justify-content: center;
+}
+.paletteSearch {
+    margin-bottom: var(--base-size-8);
+}
+.paletteNoMatches {
+    color: var(--fgColor-muted);
+    padding: var(--base-size-8) 0;
 }
 
 /* Nothing-hidden guardrail badge (docs/adr/0022's Update): marks a step

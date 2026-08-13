@@ -1,8 +1,8 @@
-import type { DragEvent } from 'react'
+import { useMemo, useState, type DragEvent } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Text, TreeView } from '@primer/react'
+import { Text, TextInput, TreeView } from '@primer/react'
 import type { NodeType } from '../../bindings/github.com/alicoding/mill/internal/domain/composition/models'
-import { KIND_ICON, KIND_ICON_BG, KIND_LABEL } from './nodeKind'
+import { PALETTE_GROUP_ICON, PALETTE_GROUP_LABEL, PALETTE_GROUP_ORDER, paletteGroupFor, shortLabel, type PaletteGroupId } from './paletteGroups'
 import styles from './CompositionCanvas.module.css'
 
 interface NodePaletteProps {
@@ -18,29 +18,13 @@ function onPaletteDragStart(event: DragEvent<HTMLLIElement>, nt: NodeType) {
   event.dataTransfer.effectAllowed = 'move'
 }
 
-function kindIcon(kind: string) {
-  const Icon = KIND_ICON[kind]
-  return (
-    <div className={styles.paletteItemIcon} style={{ background: KIND_ICON_BG[kind] ?? 'var(--bgColor-neutral-emphasis)' }}>
-      {Icon ? <Icon size={14} fill="var(--fgColor-onEmphasis)" /> : null}
-    </div>
-  )
-}
-
-// The node-type Label strings themselves are "<Kind>: <specifics>" (e.g.
-// "Trigger: clipboard change") -- necessary when they stood alone in the
-// old flat list, redundant now that the TreeView group header already
-// says "Trigger". Stripping the repeated prefix here is a display-only
-// transform; nt.Label itself (used verbatim by canvas node cards and the
-// saved-workflow step chips) is untouched.
-function shortLabel(nt: NodeType): string {
-  const prefix = `${KIND_LABEL[nt.Kind] ?? nt.Kind}: `
-  const short = nt.Label.startsWith(prefix) ? nt.Label.slice(prefix.length) : nt.Label
-  // One casing convention for the whole palette (Sentence case) -- the
-  // raw labels mix "callable by another workflow" with "Run another
-  // workflow" with "HTML → Markdown", which read as three different
-  // conventions in one list (reported directly). Display-only.
-  return short.charAt(0).toUpperCase() + short.slice(1)
+// A plain themed icon, not a Kind-colored square (paletteGroups.ts's
+// PALETTE_GROUP_ICON comment has the reasoning -- a display group can
+// mix domain Kinds, so a single Kind-derived color would misrepresent
+// some of its own members).
+function groupIcon(group: PaletteGroupId) {
+  const Icon = PALETTE_GROUP_ICON[group]
+  return <Icon size={14} className={styles.paletteGroupIcon} />
 }
 
 // The "Add steps" drag-source panel -- toggled open/closed from
@@ -49,14 +33,11 @@ function shortLabel(nt: NodeType): string {
 // CompositionCanvas's onCanvasDrop reads back out on drop, so this
 // component needs no callback prop wired in from the parent.
 //
-// Grouped by Kind via TreeView rather than a flat list -- a flat .map()
-// over node types stopped scanning well once the count grew past a
-// handful (docs/SPEC.md §9.1, .claude/rules/frontend.md). TreeView.Item
-// spreads its remaining props onto the rendered <li> (confirmed against
-// @primer/react's compiled source), so draggable/onDragStart/data-testid
-// carry over from the old per-item <div> unchanged -- only the container
-// element changed, not the drag mechanism CompositionCanvas's drop
-// handler and the e2e suite both depend on.
+// Design wave 3 (goal 0001, audit §5): grouped by the frontend's own
+// 9 display groups (paletteGroups.ts) instead of the 6 domain Kinds --
+// see that file's header comment for why (14 of 29 node types share
+// one Kind). Still a TreeView, not a flat list, for the same reason
+// wave 1 introduced it (docs/SPEC.md §9.1, .claude/rules/frontend.md).
 //
 // Trigger entries disable once the canvas already has one: every Trigger
 // node is a graph root (isValidConnection refuses an edge into one), so
@@ -66,20 +47,57 @@ function shortLabel(nt: NodeType): string {
 // beats a raw Save-time error a user has to decode after the fact.
 export function NodePalette({ nodeTypes, hasTrigger }: NodePaletteProps) {
   const { t } = useTranslation('composition')
-  const kinds = [...new Set(nodeTypes.map((nt) => nt.Kind))]
-  const byKind = new Map(kinds.map((kind) => [kind, nodeTypes.filter((nt) => nt.Kind === kind)]))
+  const [query, setQuery] = useState('')
+
+  // Matches both the shortened palette label AND the full nt.Label
+  // (task requirement -- "run" matches "Code: run command" even though
+  // the palette itself only shows "Run command"), case-insensitive.
+  const normalizedQuery = query.trim().toLowerCase()
+  const matches = (nt: NodeType) => {
+    if (!normalizedQuery) return true
+    return nt.Label.toLowerCase().includes(normalizedQuery) || shortLabel(nt).toLowerCase().includes(normalizedQuery)
+  }
+
+  const byGroup = useMemo(() => {
+    const map = new Map<string, NodeType[]>()
+    for (const nt of nodeTypes) {
+      const group = paletteGroupFor(nt)
+      const list = map.get(group) ?? []
+      list.push(nt)
+      map.set(group, list)
+    }
+    return map
+  }, [nodeTypes])
+
+  const visibleGroups = PALETTE_GROUP_ORDER.filter((g) => (byGroup.get(g) ?? []).some(matches))
+  const noMatches = normalizedQuery !== '' && visibleGroups.length === 0
 
   return (
     <div className={styles.palette} data-testid="palette-panel">
       <Text size="small" weight="semibold" className={styles.paletteHeading}>{t('nodePalette.addSteps')}</Text>
+      <TextInput
+        size="small"
+        block
+        placeholder={t('nodePalette.searchPlaceholder')}
+        aria-label={t('nodePalette.searchAriaLabel')}
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+        data-testid="palette-search"
+        className={styles.paletteSearch}
+      />
+      {noMatches && (
+        <Text as="p" size="small" className={styles.paletteNoMatches} data-testid="palette-no-matches">
+          {t('nodePalette.noMatches', { query })}
+        </Text>
+      )}
       <TreeView aria-label={t('nodePalette.addSteps')}>
-        {kinds.map((kind) => (
-          <TreeView.Item key={kind} id={`palette-kind-${kind}`} defaultExpanded>
-            <TreeView.LeadingVisual>{kindIcon(kind)}</TreeView.LeadingVisual>
-            <span className={styles.paletteGroupLabel}>{KIND_LABEL[kind] ?? kind}</span>
+        {visibleGroups.map((group) => (
+          <TreeView.Item key={group} id={`palette-group-${group}`} defaultExpanded data-testid="palette-group" data-group-id={group}>
+            <TreeView.LeadingVisual>{groupIcon(group)}</TreeView.LeadingVisual>
+            <span className={styles.paletteGroupLabel}>{PALETTE_GROUP_LABEL[group]}</span>
             <TreeView.SubTree>
-              {byKind.get(kind)!.map((nt) => {
-                const disabled = kind === 'trigger' && hasTrigger
+              {(byGroup.get(group) ?? []).filter(matches).map((nt) => {
+                const disabled = nt.Kind === 'trigger' && hasTrigger
                 return (
                   <TreeView.Item
                     key={nt.ID}
