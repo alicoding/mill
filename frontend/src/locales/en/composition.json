@@ -27,7 +27,7 @@
     "runButtonTooltip": "Runs the saved draft (test run).",
     "run": "Run",
     "runInStepModeAriaLabel": "Run in step mode",
-    "runInStepModeTooltip": "Run in step mode -- pauses before every node so you can inspect and edit its data (docs/adr/0031)."
+    "runInStepModeTooltip": "Pauses before every node so you can inspect and edit its data."
   },
   "canvasNodeView": {
     "runStatus": {
@@ -68,7 +68,7 @@
   },
   "rulesetEditor": {
     "heading": "Rules",
-    "description": "Every rule must pass for the data to continue; any failing rule fails the run, named. Build a condition against this workflow's Attributes, or type an expr-lang expression directly — the same surface Decision branches use.",
+    "description": "Every rule must pass for the data to continue — a failing rule fails the run, named. Build a condition against this workflow's Attributes, or type an expression directly.",
     "ruleN": "Rule {{n}}",
     "deleteRuleAriaLabel": "Delete rule {{n}}",
     "name": "Name",
@@ -86,7 +86,7 @@
     "hideRawJson": "Hide raw JSON",
     "rawJson": "Raw JSON",
     "argumentsRawJsonLabel": "Arguments (raw JSON)",
-    "rawArgsCaption": "Optional JSON object of arguments to pass to the tool. Top-level string values of the form \"attr:<name>\" resolve to the named Attribute's typed value at run time; every other value is sent as-is.",
+    "rawArgsCaption": "Optional JSON object of arguments for the tool. A top-level string value like \"attr:<name>\" resolves to that Attribute's value at run time; everything else is sent as-is.",
     "argumentsJson": "Arguments (JSON)",
     "required": "required",
     "unset": "(unset)"
@@ -128,7 +128,7 @@
     "currentConditionPrefix": "Current condition:",
     "notSet": "(not set)",
     "fallbackCheckboxLabel": "This is the fallback (\"otherwise\") branch",
-    "noAttributesYet": "This workflow has no Attributes yet -- add some on the Configure page to build a condition against them, or type an expression directly below.",
+    "noAttributesYet": "This workflow has no Attributes yet. Add some on the Configure page, or type an expression directly below.",
     "expressionCaptionPrefix": "An expr-lang boolean expression (e.g.",
     "expressionCaptionSuffix": ")."
   },
@@ -221,7 +221,7 @@
   },
   "externalChangeBanner": {
     "title": "This workflow was changed outside this editor",
-    "description": "An MCP client updated this workflow's definition while you had unsaved edits open. Keeping your draft means saving here later will overwrite that external change (last write wins).",
+    "description": "An MCP client updated this workflow while you had unsaved edits open. Saving your draft here later will overwrite that external change.",
     "reload": "Reload",
     "keepMyDraft": "Keep my draft"
   },
@@ -253,7 +253,7 @@
   },
   "compositionView": {
     "heading": "Workflows",
-    "subtitle": "Compose a workflow by connecting trigger, capture, process, and apply steps on a canvas — configuring each step happens as you add it, right there on the canvas. Every workflow, including the seeded examples below, is fully editable and deletable from the moment it exists.",
+    "subtitle": "Build a workflow by connecting trigger, capture, process, and apply steps on a canvas — every workflow, including the examples below, is fully editable and deletable.",
     "savedWorkflowsHeading": "Saved workflows",
     "import": "Import",
     "newWorkflow": "New workflow",
@@ -306,7 +306,7 @@
     "enable": "Enable",
     "disable": "Disable",
     "publishCurrentDraft": "Publish current draft",
-    "description": "The canvas edits the draft. Triggers and child-workflow calls always run the published (live) version — publishing is the explicit go-live act, and a test Run exercises the draft without publishing. Disabling pauses triggers and child calls; test runs keep working.",
+    "description": "The canvas edits the draft. Triggers and child-workflow calls always run the published version; a test run exercises the draft without publishing. Disabling a version pauses its triggers and child calls, but test runs keep working.",
     "noVersionsYet": "No versions yet — publish the draft to create v1.",
     "columns": {
       "version": "Version",
