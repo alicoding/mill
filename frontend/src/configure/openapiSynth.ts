@@ -149,9 +149,9 @@ export function synthesizeOpenAPISpec(operations: ManualOperation[]): string {
 // operation-scoped, not a per-field-row concept CSV's shape fits;
 // both stay Manual-editor-only, not silently dropped, just out of
 // this accelerator's stated scope.
-export function parseCSVToOperations(csvText: string): { operations: ManualOperation[]; errors: string[] } {
+export function parseCSVToOperations(t: (key: string, opts?: Record<string, unknown>) => string, csvText: string): { operations: ManualOperation[]; errors: string[] } {
   const result = Papa.parse<Record<string, string>>(csvText, { header: true, skipEmptyLines: true })
-  const errors = result.errors.map((e) => `Row ${e.row ?? '?'}: ${e.message}`)
+  const errors = result.errors.map((e) => t('openapiSynth.csvRowError', { row: e.row ?? '?', message: e.message }))
 
   const byOperation = new Map<string, ManualOperation>()
   for (const row of result.data) {
@@ -239,12 +239,12 @@ function fieldFromSchema(name: string, schema: JSONSchemaLike, placement: Manual
 // non-JSON media types are silently skipped rather than guessed at.
 // JSON only (no YAML) -- this runs in the browser with no YAML parser
 // adopted for it; paste JSON, or keep editing via the raw-text mode.
-export function parseOpenAPIToOperations(specText: string): { operations: ManualOperation[]; errors: string[] } {
+export function parseOpenAPIToOperations(t: (key: string, opts?: Record<string, unknown>) => string, specText: string): { operations: ManualOperation[]; errors: string[] } {
   let doc: { paths?: Record<string, Record<string, unknown>> }
   try {
     doc = JSON.parse(specText)
   } catch {
-    return { operations: [], errors: ['Not valid JSON -- switch back to "Paste OpenAPI" to edit as YAML or fix the JSON first.'] }
+    return { operations: [], errors: [t('openapiSynth.notValidJsonSwitchBack')] }
   }
   const operations: ManualOperation[] = []
   for (const [path, pathItem] of Object.entries(doc.paths ?? {})) {

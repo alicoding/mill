@@ -1,5 +1,16 @@
 import { describe, expect, it } from 'vitest'
 import { parseCSVToOperations, parseOpenAPIToOperations, synthesizeOpenAPISpec, type ManualOperation } from './openapiSynth'
+import configure from '../locales/en/configure.json'
+
+// A minimal stand-in for react-i18next's t() -- same pattern
+// composition/validationCopy.test.ts uses, resolving the real English
+// strings from configure.json rather than pulling react-i18next's
+// provider/hook machinery into a non-component test.
+function t(key: string, vars: Record<string, unknown> = {}): string {
+  const value = key.split('.').reduce<unknown>((node, part) => (node as Record<string, unknown> | undefined)?.[part], configure)
+  if (typeof value !== 'string') throw new Error(`missing configure.json key: ${key}`)
+  return value.replace(/\{\{(\w+)\}\}/g, (_, name: string) => String(vars[name] ?? ''))
+}
 
 describe('synthesizeOpenAPISpec', () => {
   it('places path/query/header fields as parameters and body fields in requestBody, with secret -> format:password', () => {
@@ -97,7 +108,7 @@ describe('parseCSVToOperations', () => {
       '/widgets/{id},GET,output,token,body,string,false,true,,',
     ].join('\n')
 
-    const { operations, errors } = parseCSVToOperations(csv)
+    const { operations, errors } = parseCSVToOperations(t, csv)
     expect(errors).toEqual([])
     expect(operations).toHaveLength(1)
     const op = operations[0]
@@ -111,7 +122,7 @@ describe('parseCSVToOperations', () => {
 
   it('skips rows missing a required column rather than throwing', () => {
     const csv = ['path,method,direction,name', ',GET,input,noPath', '/widgets,,input,noMethod', '/widgets,GET,input,'].join('\n')
-    const { operations } = parseCSVToOperations(csv)
+    const { operations } = parseCSVToOperations(t, csv)
     expect(operations).toHaveLength(0)
   })
 })
@@ -127,7 +138,7 @@ describe('parseOpenAPIToOperations (reverse of synthesizeOpenAPISpec)', () => {
       outputFields: [{ name: 'n', in: 'body', type: 'string', required: false, secret: false, extractPath: 'data.name' }],
     }]
     const spec = synthesizeOpenAPISpec(original)
-    const { operations, errors } = parseOpenAPIToOperations(spec)
+    const { operations, errors } = parseOpenAPIToOperations(t, spec)
 
     expect(errors).toEqual([])
     expect(operations).toHaveLength(1)
@@ -140,7 +151,7 @@ describe('parseOpenAPIToOperations (reverse of synthesizeOpenAPISpec)', () => {
   })
 
   it('returns a clear error for invalid JSON instead of throwing', () => {
-    const { operations, errors } = parseOpenAPIToOperations('not json')
+    const { operations, errors } = parseOpenAPIToOperations(t, 'not json')
     expect(operations).toEqual([])
     expect(errors.length).toBeGreaterThan(0)
   })
@@ -161,7 +172,7 @@ describe('parseOpenAPIToOperations (reverse of synthesizeOpenAPISpec)', () => {
       responseExtractPath: 'envelope.payload',
     }]
     const spec = synthesizeOpenAPISpec(original)
-    const { operations, errors } = parseOpenAPIToOperations(spec)
+    const { operations, errors } = parseOpenAPIToOperations(t, spec)
 
     expect(errors).toEqual([])
     expect(operations).toHaveLength(1)
