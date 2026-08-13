@@ -24,11 +24,11 @@ enforced standard now that the repo is public.
    the pinned property, not the discovery story.
 
 **Acceptance** (checkable predicates)
-- [ ] `./scripts/check-comment-hygiene.sh` exits 0 on the full tree.
-- [ ] `.claude/rules/comments.md` exists, frontmatter check passes.
-- [ ] lefthook.yml and ci.yml both run the script; `ci-gate` lists the
+- [x] `./scripts/check-comment-hygiene.sh` exits 0 on the full tree.
+- [x] `.claude/rules/comments.md` exists, frontmatter check passes.
+- [x] lefthook.yml and ci.yml both run the script; `ci-gate` lists the
       CI job in `needs`.
-- [ ] No technical information lost: every rewritten comment still
+- [x] No technical information lost: every rewritten comment still
       states the constraint or property the original did (review
       check, not grep).
-- [ ] Full local suite green; goal PR merged with `ci-gate` green.
+- [x] Full local suite green; goal PR merged with `ci-gate` green.

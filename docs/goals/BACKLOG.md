@@ -32,7 +32,7 @@ session ends — never left only in an ephemeral session task list.**
 comments explain code per standard practice — business/product
 decisions and the owner's own words live in docs/, cited by id, never
 inline in source)**
-1. [ ] [0038 — Comment hygiene: constraints, not narrative](0038-comment-hygiene.md)
+1. [x] [0038 — Comment hygiene: constraints, not narrative](archive/0038-comment-hygiene.md) — delivered 2026-08-13
    — rule (`.claude/rules/comments.md`) + gate
    (`check-comment-hygiene.sh`, lefthook + CI `comment-hygiene` job in
    `ci-gate`) + one sweep of the 65 baseline narrative comments
