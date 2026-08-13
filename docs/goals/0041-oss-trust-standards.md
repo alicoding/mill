@@ -45,6 +45,101 @@ accepted subset as one PR (or two if config-only GitHub-settings
 changes separate cleanly from file changes), recording each
 reject-with-reason below as the research resolves.
 
+## Slice 1 — mechanical Scorecard fixes (2026-08-13, ahead of the
+research report since the tool itself names the fix)
+
+- Vulnerabilities (was 5 findings): `golang.org/x/image` v0.41.0 →
+  v0.43.0 (4 advisories: GO-2026-4961/5061/5062/5066, webp/tiff decode
+  panics — indirect dep, CI govulncheck was green because the
+  vulnerable paths are uncalled; bumped anyway, zero-cost);
+  `nanoid` 3.3.17 → 3.3.18 (GHSA-2v37-7h3g-55p8, transitive of
+  vite→postcss, lockfile-only bump).
+- Token-Permissions (was 0): top-level `permissions: read-all` added
+  to release.yml and seed-liveness.yml — both already had correct
+  job-level elevations; only the workflow-level default was missing.
+  ci.yml and scorecard.yml were already compliant.
+- Pinned-Dependencies (was 7): the three container base images
+  digest-pinned (Dockerfile.cross's golang:1.26-bookworm,
+  Dockerfile.server's golang:alpine + distroless/static-debian12,
+  digests as resolved by Scorecard's own remediation output);
+  dependabot.yml gains a `docker` ecosystem entry so the digests
+  don't rot. ACCEPTED, not fixed, two remaining warns:
+  Dockerfile.cross's Zig download already verifies sha256 against
+  Zig's official manifest (Scorecard can't see through the manifest
+  indirection — a false positive in effect), and
+  build/linux/appimage/build.sh downloads linuxdeploy's `continuous`
+  tag (a rolling release with no stable digest; the whole file is
+  Wails scaffold for a PARKED platform per release.yml's own note —
+  not worth hand-patching vendored scaffold for a platform Mill
+  doesn't ship).
+
+## Slice 2 — research verdicts applied (2026-08-13; the research
+report's full sources live in the session transcript, its verdicts
+here)
+
+Calibration finding that frames everything: live Scorecard for
+respected small projects — fzf 6.5, bat 5.5, glow 4.9, cli/cli 6.8 —
+with Token-Permissions 0 for ALL of them, SAST 0 for 3/4,
+CII-Best-Practices 0 for all (none even has a bestpractices.dev
+entry, checked directly). Mill's 5.0 was never broken relative to its
+peer set; only specific cheap items were worth fixing.
+
+ADOPTED:
+- PR template (`.github/pull_request_template.md`) — the one
+  community-checklist item 3/4 of the comparison set carries that
+  Mill lacked.
+- Repo description + topics set via `gh repo edit` (was empty — the
+  "is this abandoned?" smell). Homepage left unset: there is no
+  website, and pointing it at the repo itself is noise.
+- CodeQL default setup enabled (Go + JS/TS) — additive to the gosec
+  already running in golangci (Scorecard's SAST check only recognizes
+  CodeQL/SonarCloud uploads; gosec is real but structurally
+  invisible to it); free on public-repo runners; GitHub-managed, no
+  workflow file to maintain.
+- (Slice 1 above: permissions, vulnerability bumps, image pins.)
+
+DEFERRED, each with a named trigger:
+- GitHub Discussions — flip when a second contributor/user exists
+  (the same trigger already recorded for CODE_OF_CONDUCT).
+- release-please changelog automation — after the 2nd+ release
+  exists; automating notes before one release ever shipped is
+  ceremony. (git-cliff REJECTED outright regardless: Rust binary,
+  hard-constraint violation even CI-only.)
+- SBOM on releases — when an actual consumer asks.
+- Uploading the provenance-attestation bundle as a release asset —
+  only moves Scorecard's Signed-Releases number; the substantive
+  mechanism (`gh attestation verify <binary> -R alicoding/mill`)
+  already works via the existing attest-build-provenance step.
+
+REJECTED with reasons (don't relitigate):
+- OpenSSF Best Practices badge — zero adoption in the comparison set
+  (fzf/bat/cli-cli/wails all absent from bestpractices.dev's index);
+  ~40% hand-written self-certification prose.
+- SUPPORT.md / issue-template config.yml / feature-request template —
+  optional-only per GitHub's own docs; absent from every comparison
+  repo without registering as a gap.
+- REUSE/SPDX per-file headers — solves multi-license ambiguity Mill
+  (single Apache-2.0, copyleft-denylisted ingestion in CI) doesn't
+  have.
+- ADOPTERS.md / ROADMAP.md — BACKLOG.md already is the public
+  roadmap; a second register is the exact anti-pattern
+  delivery-discipline.md forbids.
+- Chasing Scorecard checks a solo repo structurally can't move:
+  Code-Review (needs a second human), Maintained (time-gated — repo
+  created 2026-08-06, floored at 0 until ~2026-11-04, then resolves
+  itself given daily commits), Branch-Protection's
+  require-approvers items (would deadlock the solo self-merge flow
+  ADR-0034 built).
+
+OWNER DECISION SURFACED (outward-facing, not taken autonomously):
+- Cut v0.1.0 via the existing never-fired release.yml. Research
+  verdict: a dead release workflow on a daily-commit repo reads as
+  unfinished rather than deliberate; a tagged, provenance-attested
+  v0.x is additive to (not competing with) the git-clone install
+  story. Mechanics are ready — release.yml's preflight requires the
+  tag to match build/config.yml's version. Awaiting the owner's call
+  on timing.
+
 ## Acceptance (checkable)
 
 - [ ] Every gap named in the Baseline section above is either SHIPPED
