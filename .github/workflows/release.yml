@@ -116,15 +116,22 @@ jobs:
       - name: Create GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
-        # --notes text is prepended to the generated notes; the app is
-        # ad-hoc signed (no Apple Developer ID), so first launch needs
-        # the standard right-click -> Open confirmation.
+        # --notes-file text is prepended to the generated notes; the app
+        # is ad-hoc signed (no Apple Developer ID), so first launch
+        # needs the standard right-click -> Open confirmation. Notes are
+        # built line-by-line into a file: every line of a run:| block
+        # must stay indented (an unindented continuation terminates the
+        # literal scalar -- the v0.2.0 first-run failure), and backticks
+        # must stay escaped inside double quotes (command substitution).
         run: |
+          {
+            echo "## Install"
+            echo ""
+            echo "Download the \`.zip\`, unzip, and drag \`mill.app\` to Applications — no build needed. First launch: **right-click the app → Open → Open** (it is ad-hoc signed, not notarized — macOS asks once). Verify the download came from this repo's CI: \`gh attestation verify <the .zip> -R ${GITHUB_REPOSITORY}\`. Prefer building from source? \`git clone\` + the README's few commands work on any Mac."
+          } > /tmp/release-notes.md
           gh release create "${GITHUB_REF_NAME}" \
             --repo "${GITHUB_REPOSITORY}" \
             --title "${GITHUB_REF_NAME}" \
             --generate-notes \
-            --notes "## Install
-
-Download the \`.zip\`, unzip, and drag \`mill.app\` to Applications — no build needed. First launch: **right-click the app → Open → Open** (it is ad-hoc signed, not notarized — macOS asks once). Verify the download came from this repo's CI: \`gh attestation verify <the .zip> -R ${GITHUB_REPOSITORY}\`. Prefer building from source? \`git clone\` + the README's few commands work on any Mac." \
+            --notes-file /tmp/release-notes.md \
             dist/*
