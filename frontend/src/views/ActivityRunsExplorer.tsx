@@ -2,8 +2,8 @@ import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Events } from '@wailsio/runtime'
 import { Button, Label, Stack, Text, TextInput } from '@primer/react'
-import { DataTable, type Column } from '@primer/react/experimental'
-import { StopIcon } from '@primer/octicons-react'
+import { DataTable, type Column, Blankslate } from '@primer/react/experimental'
+import { StopIcon, HistoryIcon } from '@primer/octicons-react'
 import { ResizableTableContainer, TruncatedCell } from '../shared/ResizableTable'
 import { ExecutionService } from '../shared/bindings'
 import type { RunSummary } from '../shared/bindings'
@@ -149,12 +149,22 @@ export function ActivityRunsExplorer({ workflow }: { workflow: Workflow }) {
       />
       {error && <Text as="p" size="small" className={styles.error}>{error}</Text>}
       {runs === null && !error && <Text as="p" className={styles.muted}>{t('activityRunsExplorer.loading')}</Text>}
+      {/* Design-wave-1 fix #7: the "no runs yet" case (as opposed to
+          "no runs match this search", still plain text -- a search
+          miss isn't the same invitation-to-act moment) now matches
+          WorkflowRunsPanel's own Blankslate treatment, the same
+          icon+one-line-invitation pattern Review's empty state uses. */}
       {runs !== null && filtered.length === 0 && (
-        <Text as="p" className={styles.muted}>
-          {runs.length === 0
-            ? t('activityRunsExplorer.noRecordedRuns')
-            : t('activityRunsExplorer.noRunsMatchSearch')}
-        </Text>
+        runs.length === 0 ? (
+          <Blankslate data-testid="activity-runs-explorer-empty">
+            <Blankslate.Visual>
+              <HistoryIcon size={32} />
+            </Blankslate.Visual>
+            <Blankslate.Heading>{t('activityRunsExplorer.noRecordedRuns')}</Blankslate.Heading>
+          </Blankslate>
+        ) : (
+          <Text as="p" className={styles.muted}>{t('activityRunsExplorer.noRunsMatchSearch')}</Text>
+        )
       )}
       {filtered.length > 0 && (
         <ResizableTableContainer storageKey="mill-cols-activity-runs">

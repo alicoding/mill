@@ -36,7 +36,7 @@ test('Home shows a time-saved figure with its formula, a rendered chart, and a l
     await expect(runButton).toBeEnabled({ timeout: 15_000 })
 
     await page.getByRole('link', { name: 'Home' }).click()
-    await expect(page.getByRole('heading', { name: 'Home', level: 1 })).toBeVisible()
+    await expect(page.getByTestId('home-view')).toBeVisible()
 
     // Time saved: a figure AND its formula/explanation are always
     // visible (goal 0014's "never fake precision" rule). The two runs
@@ -91,6 +91,5 @@ test('Cmd+1 through Cmd+4 style view links still reach Home from the sidebar as 
   // Default landing view -- confirms goal 0014's own acceptance framing
   // ("Owner lands on Home, recognizes it instantly") without depending
   // on any prior test's state.
-  await expect(page.getByRole('heading', { name: 'Home', level: 1 })).toBeVisible()
   await expect(page.getByTestId('home-view')).toBeVisible()
 })

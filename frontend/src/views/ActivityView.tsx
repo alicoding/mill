@@ -178,11 +178,12 @@ function ActivityView() {
   ]
 
   return (
-    <PageContainer>
-      <Heading as="h1">{t('activityView.heading')}</Heading>
-      <Text as="p" className={styles.subtitle}>
+    <PageContainer data-testid="activity-view">
+      {/* Design-wave-1 fix #6: the sidebar nav row already says
+          "Activity" -- the h1 is now the descriptive subtitle itself. */}
+      <Heading as="h1" variant="medium" className={styles.subtitle}>
         {t('activityView.subtitle')}
-      </Text>
+      </Heading>
 
       <Stack direction="horizontal" gap="condensed" className={styles.filterRow}>
         <Select value={sourceWorkflow} onChange={(e) => setSourceWorkflow(e.target.value)} aria-label={t('activityView.inputSourceAriaLabel')} data-testid="activity-source-workflow">

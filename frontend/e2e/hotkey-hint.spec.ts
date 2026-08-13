@@ -81,7 +81,7 @@ test('Settings: rebinding Close other tabs updates the SAME inline hint the tab-
   // Rebind tab.closeOthers off its ⌘⌥W default onto Ctrl+Shift+O (no
   // collision with any other command's default or a RESERVED_COMBOS
   // entry, shared/keybinding.ts).
-  await page.getByRole('button', { name: 'Settings' }).click()
+  await page.getByRole('link', { name: 'Settings' }).click()
   const row = page.locator('[data-testid="keymap-row"][data-command-id="tab.closeOthers"]')
   await expect(row.getByTestId('keymap-row-combo')).toHaveText('⌘⌥W')
   await row.getByTestId('keymap-row-combo').click()
@@ -112,7 +112,7 @@ test('Settings: rebinding Close other tabs updates the SAME inline hint the tab-
   // Cleanup: reset the override and close the remaining tab, so this
   // doesn't leak into any other spec sharing this worker's settings file
   // (.claude/rules/testing.md's within-file/within-worker discipline).
-  await page.getByRole('button', { name: 'Settings' }).click()
+  await page.getByRole('link', { name: 'Settings' }).click()
   const rowAgain = page.locator('[data-testid="keymap-row"][data-command-id="tab.closeOthers"]')
   await rowAgain.getByTestId('keymap-row-reset').click()
   await expect(rowAgain.getByTestId('keymap-row-combo')).toHaveText('⌘⌥W')

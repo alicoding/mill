@@ -18,10 +18,10 @@ import { withClipboardLock } from './fixtures/clipboardLock'
 test('The active view persists across a reload', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Activity' }).click()
-  await expect(page.getByRole('heading', { name: 'Activity', exact: true })).toBeVisible()
+  await expect(page.getByTestId('activity-view')).toBeVisible()
 
   await page.reload()
-  await expect(page.getByRole('heading', { name: 'Activity', exact: true })).toBeVisible()
+  await expect(page.getByTestId('activity-view')).toBeVisible()
 })
 
 test('An open Composition workflow tab persists across a reload, active and all (goal 0033)', async ({ page }) => {
@@ -102,7 +102,7 @@ test('Several open work tabs restore in order, with the SAME one active, after a
   await expect(tabs.nth(2)).toHaveText(/Example: Echo message/)
   await expect(page.getByRole('tab', { name: 'Example: Echo message (callable child)' })).toHaveAttribute('aria-selected', 'true')
   await expect(page.getByRole('tab', { name: 'Load sample HTML' })).toHaveAttribute('aria-selected', 'false')
-  await expect(page.getByRole('heading', { name: 'Home', exact: true })).toHaveCount(0)
+  await expect(page.getByTestId('home-view')).toHaveCount(0)
 
   // The other tab still switches to cleanly -- nothing about the
   // restored activation left the strip in a broken state.

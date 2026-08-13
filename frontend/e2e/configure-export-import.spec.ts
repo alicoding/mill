@@ -11,7 +11,7 @@ import { clickRowAction } from './inventoryRow'
 test('Exporting a Request downloads JSON that never carries its secret', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Configure' }).click()
-  await page.getByRole('tab', { name: 'Integration', exact: true }).click()
+  await page.getByRole('tab', { name: 'Integrations', exact: true }).click()
 
   const row = page.locator('[data-testid="inventory-row"][data-entity="request"]', { has: page.getByText('Example: API key header', { exact: false }) }).first()
   await expect(row).toBeVisible()
@@ -36,7 +36,7 @@ test('Exporting a Request downloads JSON that never carries its secret', async (
 test('Importing a Request file adds a new, independent request', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Configure' }).click()
-  await page.getByRole('tab', { name: 'Integration', exact: true }).click()
+  await page.getByRole('tab', { name: 'Integrations', exact: true }).click()
 
   const importJSON = JSON.stringify({
     label: 'E2E imported request',

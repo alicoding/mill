@@ -89,7 +89,12 @@ export default function HomeView() {
   if (!metrics) {
     return (
       <PageContainer variant="wide" data-testid="home-view">
-        <Heading as="h1">{t('home.heading')}</Heading>
+        {/* Design-wave-1 fix #6: the sidebar nav row already names this
+            page ("Home") -- the h1 no longer repeats that label, it IS
+            the descriptive subtitle (promoted to the top, at a smaller
+            heading weight than the removed giant duplicate), so an
+            aria-level heading still exists for a11y. */}
+        <Heading as="h1" variant="medium">{t('home.subtitle')}</Heading>
         <Spinner />
       </PageContainer>
     )
@@ -101,10 +106,9 @@ export default function HomeView() {
     <PageContainer variant="wide" data-testid="home-view">
       <Stack direction="horizontal" justify="space-between" align="center" className={styles.header}>
         <div>
-          <Heading as="h1">{t('home.heading')}</Heading>
-          <Text as="p" size="small" className={listStyles.muted}>
+          <Heading as="h1" variant="medium" className={listStyles.muted}>
             {t('home.subtitle')}
-          </Text>
+          </Heading>
         </div>
         <SegmentedControl
           aria-label={t('home.timeRangeAriaLabel')}

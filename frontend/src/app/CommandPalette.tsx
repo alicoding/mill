@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { ElementType, ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Dialog, Text } from '@primer/react'
@@ -14,6 +14,7 @@ import { findRootNode } from '../composition/triggerRowInfo'
 import { clearScratch } from '../composition/canvasScratch'
 import { filterPaletteEntries } from './paletteFilter'
 import type { PaletteSearchable } from './paletteFilter'
+import { sortWorkflowsByFrecency } from './workflowFrecency'
 import { HotkeyHint } from './HotkeyHint'
 import styles from './CommandPalette.module.css'
 
@@ -74,6 +75,26 @@ function groupMetadataFor(t: (key: string) => string) {
   ]
 }
 
+// Rest-state bound (design-wave-1 fix #2, Spotlight/Raycast/VS Code
+// convention: an empty query shows a short, useful default rather than
+// every command/workflow/tab at once). Nav commands are every
+// "Go to <capability>" command plus Settings -- the same `view.*` id
+// prefix shared/commands.ts already uses, checked once here rather
+// than re-deriving a parallel label list.
+function isNavCommandId(id: string): boolean {
+  return id.startsWith('view.') || id === 'settings.open'
+}
+const REST_STATE_WORKFLOW_LIMIT = 5
+
+// Frecency ranking window: the entire local run history, same
+// frequency-only reasoning + "all time" instant app/QuickPanel.tsx's
+// own FRECENCY_FROM_ISO already documents (ExecutionService.HomeMetrics'
+// MostUsed, goal 0014's value mirror) -- this is a second, independent
+// fetch of the same substrate, not a new algorithm: the palette
+// (main-window Dialog) and the Quick Panel (its own Wails window,
+// ADR-0033) are different JS contexts with no shared store.
+const FRECENCY_FROM_ISO = new Date(0).toISOString()
+
 // A workflow row's description: the label of its root Trigger node's
 // NodeType (e.g. "Hotkey trigger", "Schedule trigger") -- a cheap,
 // purely-textual derivation (findRootNode + a nodeTypes lookup, no RPC,
@@ -100,7 +121,23 @@ export function CommandPalette() {
   const closeWorkTab = useAppStore((s) => s.closeWorkTab)
   const pushActivity = useAppStore((s) => s.pushActivity)
   const [query, setQuery] = useState('')
+  const [mostUsedRank, setMostUsedRank] = useState<Record<string, number>>({})
   const inputRef = useRef<HTMLInputElement>(null)
+
+  // Fetched on every open (not on mount -- the palette stays mounted
+  // and toggled via paletteOpen, so a stale rank from an earlier open
+  // would otherwise persist across a full session's worth of runs),
+  // same substrate app/QuickPanel.tsx's own refreshFrecency reads.
+  useEffect(() => {
+    if (!paletteOpen) return
+    ExecutionService.HomeMetrics(FRECENCY_FROM_ISO, new Date().toISOString(), true)
+      .then((metrics) => {
+        const rank: Record<string, number> = {}
+        for (const usage of metrics.mostUsed ?? []) rank[usage.workflowID] = usage.runCount
+        setMostUsedRank(rank)
+      })
+      .catch(() => {})
+  }, [paletteOpen])
 
   // Runs a workflow through the exact same RPC + RunKind CompositionView's
   // own list-row Run button uses (ExecutionService.RunWorkflow,
@@ -150,31 +187,27 @@ export function CommandPalette() {
     closeWorkTab(tab.key)
   }
 
-  const allEntries = useMemo<PaletteEntry[]>(() => {
-    const entries: PaletteEntry[] = []
+  const commandEntry = (command: (typeof COMMANDS)[number]): PaletteEntry => ({
+    id: `cmd:${command.id}`,
+    groupId: 'commands',
+    text: command.label,
+    searchText: `${command.label} ${command.id}`.toLowerCase(),
+    leadingVisual: CommandPaletteIcon,
+    // HotkeyHint (app/HotkeyHint.tsx) resolves the command's live
+    // effective binding itself (default merged with any Settings
+    // override) and renders nothing when unbound -- the single
+    // source of truth every inline hint in the app now shares
+    // (docs/goals/0015), replacing this file's own former local
+    // ShortcutHint + effectiveBinding computation.
+    trailingVisual: <HotkeyHint commandId={command.id} />,
+    run: command.run,
+  })
 
-    for (const command of COMMANDS) {
-      entries.push({
-        id: `cmd:${command.id}`,
-        groupId: 'commands',
-        text: command.label,
-        searchText: `${command.label} ${command.id}`.toLowerCase(),
-        leadingVisual: CommandPaletteIcon,
-        // HotkeyHint (app/HotkeyHint.tsx) resolves the command's live
-        // effective binding itself (default merged with any Settings
-        // override) and renders nothing when unbound -- the single
-        // source of truth every inline hint in the app now shares
-        // (docs/goals/0015), replacing this file's own former local
-        // ShortcutHint + effectiveBinding computation.
-        trailingVisual: <HotkeyHint commandId={command.id} />,
-        run: command.run,
-      })
-    }
-
-    for (const wf of workflows ?? []) {
-      const root = findRootNode(wf.Nodes, wf.Edges)
-      const kindLabel = root ? nodeTypes?.find((nt) => nt.ID === root.NodeTypeID)?.Label : undefined
-      entries.push({
+  const workflowEntries = (wf: NonNullable<typeof workflows>[number]): PaletteEntry[] => {
+    const root = findRootNode(wf.Nodes, wf.Edges)
+    const kindLabel = root ? nodeTypes?.find((nt) => nt.ID === root.NodeTypeID)?.Label : undefined
+    return [
+      {
         id: `run:${wf.ID}`,
         groupId: 'workflows',
         text: t('commandPalette.runLabel', { label: wf.Label }),
@@ -182,8 +215,8 @@ export function CommandPalette() {
         searchText: `run ${wf.Label}`.toLowerCase(),
         leadingVisual: PlayIcon,
         run: () => runWorkflowTest(wf.ID, wf.Label),
-      })
-      entries.push({
+      },
+      {
         id: `open:${wf.ID}`,
         groupId: 'workflows',
         text: t('commandPalette.openLabel', { label: wf.Label }),
@@ -193,12 +226,14 @@ export function CommandPalette() {
         // "Open in editor" is an explicit edit gesture (docs/goals/0022),
         // matching the PencilIcon/description above.
         run: () => openWorkTab({ kind: 'workflow-edit', workflowId: wf.ID, mode: 'edit' }),
-      })
-    }
+      },
+    ]
+  }
 
-    for (const tab of workTabs) {
-      const label = tabLabel(tab, workflowLabel, requestLabel, t)
-      entries.push({
+  const tabEntries = (tab: WorkTab): PaletteEntry[] => {
+    const label = tabLabel(tab, workflowLabel, requestLabel, t)
+    return [
+      {
         id: `switch:${tab.key}`,
         groupId: 'tabs',
         text: t('commandPalette.switchToLabel', { label }),
@@ -206,8 +241,8 @@ export function CommandPalette() {
         searchText: `switch tab ${label}`.toLowerCase(),
         leadingVisual: TabIcon,
         run: () => activateWorkTab(tab.key),
-      })
-      entries.push({
+      },
+      {
         id: `close:${tab.key}`,
         groupId: 'tabs',
         text: t('commandPalette.closeLabel', { label }),
@@ -215,14 +250,34 @@ export function CommandPalette() {
         searchText: `close tab ${label}`.toLowerCase(),
         leadingVisual: XIcon,
         run: () => closeTab(tab),
-      })
+      },
+    ]
+  }
+
+  // Rest state (empty query): a bounded set -- every "Go to <X>" nav
+  // command + the settings.open command, plus the ~5 most
+  // frequently-run workflows (design-wave-1 fix #2's rest-state
+  // requirement) -- rather than the full command+workflow+tab list
+  // FilteredActionList would otherwise render unfiltered. Work tabs
+  // stay unbounded either way: there are only ever as many as the user
+  // actually has open, already a small, self-limiting set.
+  const restState = query.trim().length === 0
+
+  const allEntries = useMemo<PaletteEntry[]>(() => {
+    if (restState) {
+      const navCommands = COMMANDS.filter((c) => isNavCommandId(c.id)).map(commandEntry)
+      const topWorkflows = sortWorkflowsByFrecency(workflows ?? [], mostUsedRank).slice(0, REST_STATE_WORKFLOW_LIMIT)
+      return [...navCommands, ...topWorkflows.flatMap(workflowEntries), ...workTabs.flatMap(tabEntries)]
     }
+    return [
+      ...COMMANDS.map(commandEntry),
+      ...(workflows ?? []).flatMap(workflowEntries),
+      ...workTabs.flatMap(tabEntries),
+    ]
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- commandEntry/workflowEntries/tabEntries close over workflows/nodeTypes/requests/workTabs/mostUsedRank/t, already listed
+  }, [restState, workflows, nodeTypes, requests, workTabs, mostUsedRank, t])
 
-    return entries
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- runWorkflowTest/closeTab close over workflows/pushActivity/etc, already listed
-  }, [workflows, nodeTypes, requests, workTabs, t])
-
-  const filtered = filterPaletteEntries(allEntries, query)
+  const filtered = restState ? allEntries : filterPaletteEntries(allEntries, query)
 
   const items = filtered.map((entry) => ({
     key: entry.id,
@@ -250,6 +305,7 @@ export function CommandPalette() {
       initialFocusRef={inputRef}
     >
       <FilteredActionList
+        className={styles.list}
         items={items}
         groupMetadata={GROUP_METADATA}
         filterValue={query}

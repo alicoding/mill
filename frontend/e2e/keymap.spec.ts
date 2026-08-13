@@ -99,7 +99,7 @@ test('Ctrl+Tab / Ctrl+Shift+Tab cycle the work-tab strip, wrapping through the p
   // last work tab wraps back to the pinned tab.
   await page.keyboard.press('Control+Tab')
   await expect(page.getByRole('tab', { name: 'Workflows' })).toHaveAttribute('aria-selected', 'true')
-  await expect(page.getByRole('heading', { name: 'Workflows', level: 1 })).toBeVisible()
+  await expect(page.getByTestId('composition-view')).toBeVisible()
 
   await page.keyboard.press('Control+Tab')
   await expect(newWorkflowTabs.nth(0)).toHaveAttribute('aria-selected', 'true')
@@ -133,16 +133,28 @@ test('Cmd+W closes the active work tab via the JS-level command dispatch (native
   // whole point of the ⌘W reroute, docs/goals/0016): the underlying
   // Workflows page is still right there, unaffected.
   await expect(page.getByRole('tab')).toHaveCount(1)
-  await expect(page.getByRole('heading', { name: 'Workflows', level: 1 })).toBeVisible()
+  await expect(page.getByTestId('composition-view')).toBeVisible()
 })
 
 test('Settings: rebinding a command persists, the new combo works, and a conflicting rebind is rejected', async ({ page }) => {
   await page.goto('/')
-  await page.getByRole('button', { name: 'Settings' }).click()
+  await page.getByRole('link', { name: 'Settings' }).click()
 
   const saveRow = page.locator('[data-testid="keymap-row"][data-command-id="workflow.save"]')
   await expect(saveRow).toBeVisible()
   await expect(saveRow.getByTestId('keymap-row-combo')).toHaveText('⌘S')
+
+  // Design-wave-1 fix #5: the combo renders through the shared keycap
+  // chip (shared/KeyComboChip.tsx) -- the same monospace/bordered look
+  // the command palette's inline hints already use -- not bare text
+  // next to the Change button anymore. Selected by KeyComboChip's own
+  // default testid, not a bare `span` search -- Primer's `Button`
+  // nests several of its own internal wrapper spans around any
+  // children, so a generic `span` locator resolves to more than one
+  // element (a real strict-mode failure hit while writing this test).
+  const comboChip = saveRow.getByTestId('keymap-row-combo').getByTestId('key-combo-chip')
+  await expect(comboChip).toHaveText('⌘S')
+  await expect(comboChip).toHaveCSS('font-family', /monospace/)
 
   // Rebind workflow.save off its ⌘S default onto ⌘⇧S.
   await saveRow.getByTestId('keymap-row-combo').click()
@@ -154,7 +166,7 @@ test('Settings: rebinding a command persists, the new combo works, and a conflic
   // Persists across a reload (SettingsService.SetKeybinding, a real
   // settings-store write, not just local component state).
   await page.reload()
-  await page.getByRole('button', { name: 'Settings' }).click()
+  await page.getByRole('link', { name: 'Settings' }).click()
   const reloadedRow = page.locator('[data-testid="keymap-row"][data-command-id="workflow.save"]')
   await expect(reloadedRow.getByTestId('keymap-row-combo')).toHaveText('⌘⇧S')
 
@@ -174,7 +186,7 @@ test('Settings: rebinding a command persists, the new combo works, and a conflic
   // naming the conflicting command -- the frontend-side half of the
   // conflict check (composition/hotkeyCapture.ts's useCommandKeybindingCapture),
   // since only shared/commands.ts knows every command's default.
-  await page.getByRole('button', { name: 'Settings' }).click()
+  await page.getByRole('link', { name: 'Settings' }).click()
   const saveRowAgain = page.locator('[data-testid="keymap-row"][data-command-id="workflow.save"]')
   await saveRowAgain.getByTestId('keymap-row-combo').click()
   await page.keyboard.press('Meta+n')

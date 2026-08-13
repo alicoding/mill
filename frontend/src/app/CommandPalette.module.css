@@ -9,3 +9,19 @@
   padding: var(--base-size-16, 16px);
   color: var(--fgColor-muted);
 }
+
+/* Design-wave-1 fix #2: fixed max-height with internal scroll
+   (Spotlight/Raycast/VS Code convention) instead of growing the Dialog
+   to fit however many results match. FilteredActionList's own root is
+   already `display:flex; flex-direction:column; overflow:hidden` with
+   its item container set to `flex-grow:1; overflow:auto` -- capping
+   the root's height here is enough to turn that container into the
+   actual scroll region; the search input (a sibling before it, inside
+   the same flex column) stays anchored above the scroll. Keyboard
+   navigation scrolling the highlighted row into view comes for free
+   from FilteredActionList's own active-descendant handling once this
+   scroll region exists (@primer/behaviors' scrollIntoView, unmodified
+   here). */
+.list {
+  max-height: min(60vh, 480px);
+}

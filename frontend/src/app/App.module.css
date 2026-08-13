@@ -245,9 +245,6 @@
 }
 .sidebarFooter {
     flex: 0 0 auto;
-    display: flex;
-    align-items: center;
-    justify-content: center;
     border-top: 1px solid var(--borderColor-default);
     padding-top: var(--base-size-8);
     margin-top: var(--base-size-8);

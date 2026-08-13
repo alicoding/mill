@@ -4,7 +4,6 @@ import {
   ReactFlowProvider,
   Background,
   Controls,
-  MiniMap,
   useReactFlow,
 } from '@xyflow/react'
 import type { Connection, Edge as RFEdge } from '@xyflow/react'
@@ -22,6 +21,7 @@ import { useCanvasSave } from './useCanvasSave'
 import { useCanvasLiveSync } from './useCanvasLiveSync'
 import { ExternalChangeBanner } from './ExternalChangeBanner'
 import { CanvasMetaHeader } from './CanvasMetaHeader'
+import { ThemedMiniMap } from './ThemedMiniMap'
 import { useDraftValidation, groupIssuesByNode } from './useDraftValidation'
 import { useGuardrailBadges } from './useGuardrailBadges'
 import { NodePalette } from './NodePalette'
@@ -415,7 +415,7 @@ function CanvasInner({ nodeTypes, workflow, tabKey, onBack, onSaved, readOnly, o
           >
             <Background />
             <Controls />
-            <MiniMap pannable zoomable />
+            <ThemedMiniMap />
             <CanvasToolbar
               onBack={onBack}
               readOnly={readOnly}

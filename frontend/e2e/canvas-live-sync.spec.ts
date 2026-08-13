@@ -89,7 +89,7 @@ function twoNodeDefinition(label: string, marker: string): string {
 // through, not park in the MCPWriteApprovals UI.
 async function enableUnattendedMCPWrites(page: Page): Promise<void> {
   await page.goto('/')
-  await page.getByRole('button', { name: 'Settings' }).click()
+  await page.getByRole('link', { name: 'Settings' }).click()
   const writeCheckbox = page.getByTestId('mcp-write-enabled-checkbox')
   await expect(writeCheckbox).toBeEnabled()
   if (!(await writeCheckbox.isChecked())) {
@@ -110,7 +110,7 @@ async function enableUnattendedMCPWrites(page: Page): Promise<void> {
 // worker never inherits an unattended-MCP-writes instance.
 async function restoreMCPWriteDefaults(page: Page): Promise<void> {
   await page.goto('/')
-  await page.getByRole('button', { name: 'Settings' }).click()
+  await page.getByRole('link', { name: 'Settings' }).click()
   const approvalCheckbox = page.getByTestId('mcp-write-approval-checkbox')
   if (await approvalCheckbox.count()) {
     if (!(await approvalCheckbox.isChecked())) {
