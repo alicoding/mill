@@ -16,7 +16,7 @@ require (
 	github.com/hbollon/go-edlib v1.7.0
 	github.com/modelcontextprotocol/go-sdk v1.7.0
 	github.com/netresearch/go-cron v0.15.1
-	github.com/wailsapp/wails/v3 v3.0.0-beta.5
+	github.com/wailsapp/wails/v3 v3.0.0-beta.6
 	github.com/zalando/go-keyring v0.2.8
 	golang.design/x/hotkey v0.6.1
 	golang.org/x/oauth2 v0.36.0
@@ -56,7 +56,7 @@ require (
 	github.com/yosida95/uritemplate/v3 v3.0.2 // indirect
 	golang.org/x/image v0.41.0 // indirect
 	golang.org/x/mod v0.37.0 // indirect
-	golang.org/x/net v0.55.0 // indirect
+	golang.org/x/net v0.56.0 // indirect
 	golang.org/x/sync v0.22.0 // indirect
 	golang.org/x/sys v0.47.0 // indirect
 	golang.org/x/text v0.40.0 // indirect
