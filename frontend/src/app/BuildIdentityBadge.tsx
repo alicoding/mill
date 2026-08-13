@@ -5,14 +5,14 @@ import type { BuildInfo } from '../shared/bindings'
 import { useGoSourceStale } from './goLiveness'
 import styles from './App.module.css'
 
-// Extracted from App.tsx along the 500-line seam (goal 0019). ONE rule
-// for the owner: a green "DEV · live" means trust this window; anything
-// else means it is NOT the live dev build. The recurring confusion this
-// fixes (docs/goals/0019-build-freshness-clarity.md): the old badge only
+// Extracted from App.tsx along the 500-line seam (goal 0019). ONE rule:
+// a green "DEV · live" means trust this window; anything else means it
+// is NOT the live dev build. The recurring confusion this fixes
+// (docs/goals/0019-build-freshness-clarity.md): the old badge only
 // compared the frontend bundle to the Go binary (internal consistency),
 // so a matching INSTALLED .app rendered nothing at all and could
-// masquerade as current -- exactly how the owner kept mistaking the
-// stale /Applications/Mill.app for the live build. So every artifact now
+// masquerade as current, making it easy to mistake a stale
+// /Applications/Mill.app for the live build. So every artifact now
 // self-identifies:
 //   - task dev (import.meta.env.DEV, i.e. vite serve): the frontend is
 //     Vite-HMR-live and Go auto-rebuilds on save, so it is up to date BY
@@ -36,16 +36,16 @@ export function BuildIdentityBadge({ buildInfo }: { buildInfo: BuildInfo | null 
   const { t } = useTranslation('app')
   // Go's own build tag (BuildInfo.Server), not a window-global sniff --
   // `'_wails' in window` is true in server-mode browser tabs too (the
-  // runtime injects it everywhere), which silently broke this badge's
-  // INSTALLED/SERVER split until goal 0021's dogfooding caught it.
+  // runtime injects it everywhere), which silently breaks this badge's
+  // INSTALLED/SERVER split if relied on (goal 0021).
   const isNativeWebview = buildInfo != null && !buildInfo.Server
   const binaryHead = buildInfo?.Revision ? buildInfo.Revision.slice(0, 7) : ''
   // Called unconditionally (rules of hooks) -- it no-ops outside a dev
   // build or before buildInfo has arrived, per its own guard.
   const goSourceStale = useGoSourceStale(buildInfo?.BuiltAt)
 
-  // DEV wins over the stale comparison, deliberately (fixed 2026-08-11
-  // after it false-alarmed on every commit): under `task dev`, vite
+  // DEV wins over the stale comparison, deliberately -- false-alarming
+  // on every commit is wrong: under `task dev`, vite
   // HMR IS the liveness guarantee, and __MILL_REPO_HEAD__ is baked ONCE
   // at vite startup (vite.config's git rev-parse) while the Go binary's
   // commit ADVANCES on every wails rebuild -- so committing during a

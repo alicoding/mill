@@ -5,9 +5,9 @@ import { useEffect, useState } from 'react'
 // construction); it says nothing about the GO SIDE, and two real
 // incidents in one night proved that gap costs real debugging time: a
 // disk-full `wails3 dev` rebuild wedged silently with the badge still
-// green, and a separate slow watcher cycle left the running binary 15
-// commits behind while the badge stayed green -- the owner debugged a
-// working Settings feature as broken because of it. A third state
+// green, and a separate slow watcher cycle left the running binary
+// commits behind while the badge stayed green -- misleading a working
+// Settings feature into looking broken. A third state
 // closes it: amber `DEV · go-stale` when Go source has moved since
 // this binary was built but the rebuild hasn't landed yet.
 //

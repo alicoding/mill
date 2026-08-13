@@ -165,8 +165,8 @@ export const COMMANDS: Command[] = [
   {
     id: 'workflow.run',
     label: 'Run workflow',
-    // ⌘↩ (Cmd+Enter), not ⌘R -- owner decision: ⌘R stays the native
-    // browser/dev View > Reload (⌘⇧R too, the owner's own debug escape
+    // ⌘↩ (Cmd+Enter), not ⌘R: ⌘R stays the native
+    // browser/dev View > Reload (⌘⇧R too, the developer's own debug escape
     // hatch), so SettingsService.ReleaseMenuAccelerators no longer
     // touches it (settingsservice_menu.go). Cmd+Enter is the editor/
     // chat "run/submit the current thing" convention (Slack send,

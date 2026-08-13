@@ -105,8 +105,8 @@ export function WorkflowHoverPreview({ workflowId, children }: {
             <div style={{ width: 320, height: 200, border: '1px solid var(--borderColor-default)', borderRadius: 'var(--borderRadius-medium)' }}>
               {/* Its own provider, non-negotiable: a bare <ReactFlow>
                   mounted while a real canvas is on screen joins that
-                  canvas's store and empties it (real bug, caught live
-                  -- hovering the preview blanked the parent canvas).
+                  canvas's store and empties it -- hovering the preview
+                  blanks the parent canvas without it.
                   React Flow's own docs require a provider per flow
                   when multiple flows render on one page. */}
               <ReactFlowProvider>

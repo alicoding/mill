@@ -29,7 +29,7 @@ test('Hovering the child-workflow NODE previews the child without blanking the p
   // The child's real layout renders (its own React Flow instance with
   // its three nodes), not just a text summary.
   await expect(preview.locator('.react-flow__node')).toHaveCount(3)
-  // Regression (caught live): the preview's nested React Flow used to
+  // Regression: the preview's nested React Flow used to
   // join the parent canvas's store and EMPTY it -- the parent's two
   // nodes must still be on its canvas while the preview is open
   // (the overlay portals outside the tabpanel, so this scope only

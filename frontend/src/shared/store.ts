@@ -455,8 +455,8 @@ export const useAppStore = create<AppState>()(
         // Restorable work tabs only (saved-entity tabs; see
         // isRestorable).
         workTabs: state.workTabs.filter(isRestorable),
-        // The active tab itself (goal 0033 -- a real ⌘⇧R hard-reload
-        // mid-session, tab 3 of 3, dumped the owner back to Home
+        // The active tab itself (goal 0033 -- a ⌘⇧R hard-reload
+        // with multiple tabs open used to drop back to Home
         // despite the tabs themselves already restoring: they came
         // back present in the strip but never re-activated, so the
         // reload still cost the user their actual place). Only

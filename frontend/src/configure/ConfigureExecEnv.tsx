@@ -46,8 +46,8 @@ function profileLabelFor(t: (key: string) => string): Partial<Record<ProfileMode
 
 // The caption must describe the SELECTED mode, not always Clean -- a
 // static caption showing Clean's semantics under a Login selection is
-// the UI describing a state that isn't real (docs/SPEC.md §1's thesis),
-// caught live from a screenshot. Wording matches execenv.go's own doc
+// the UI describing a state that isn't real (docs/SPEC.md §1's thesis).
+// Wording matches execenv.go's own doc
 // comments on ProfileClean/ProfileLogin.
 function profileCaptionFor(t: (key: string) => string): Partial<Record<ProfileMode, string>> {
   return {

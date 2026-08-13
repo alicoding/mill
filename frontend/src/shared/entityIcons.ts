@@ -4,8 +4,8 @@ import { CheckCircleIcon, ListUnorderedIcon, PlugIcon, ServerIcon, SparkleFillIc
 // (docs/goals/0007-resource-inventory-redesign.md): the ambient
 // "recognition, not confirmation" cue the goal's acceptance bar names
 // -- a distinct icon + background color per resource type, rendered as
-// every row's LeadingVisual, so Workflows and Integrations (the two
-// pages the owner actually confused) never share a silhouette again.
+// every row's LeadingVisual, so Workflows and Integrations (two
+// visually similar list pages) never share a silhouette again.
 //
 // Follows the same icon+bg-token pairing composition/nodeKind.ts
 // already established for node kinds (KIND_ICON/KIND_ICON_BG) rather
@@ -26,8 +26,8 @@ export interface EntityIcon {
 // Soft-tint (not saturated-emphasis) leading visuals. `-emphasis` tokens
 // are full-saturation solid fills meant for ONE high-emphasis element on
 // a screen (a primary button); repeated as a solid block down every row
-// of a long inventory they read as loud and "hard on the eyes" (owner,
-// 2026-08-10 live testing). The industry-standard list-icon pattern
+// of a long inventory they read as loud and "hard on the eyes". The
+// industry-standard list-icon pattern
 // (Linear/GitHub/Notion) is a low-saturation `-muted` tint background
 // with the glyph in the MATCHING `-fg` color, not white-on-saturated --
 // same per-entity recognition hue, far calmer. Each bg/fg pair is one of

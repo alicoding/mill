@@ -24,8 +24,7 @@ func findBuiltInWorkflowID(t *testing.T, comp *compositionsvc.CompositionService
 	return ""
 }
 
-// Real regression test for a bug caught live while building the Runs UI:
-// WorkflowStatus.Input/Output and StepInfo.Output all come back from DBOS
+// Regression: WorkflowStatus.Input/Output and StepInfo.Output all come back from DBOS
 // as a raw JSON *string*, not an already-decoded Go value -- decodeAny's
 // first version assumed the latter (a plausible but wrong reading of the
 // Serializer interface's doc comments) and silently produced a

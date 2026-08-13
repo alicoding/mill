@@ -55,7 +55,7 @@ export default function HomeView() {
   // goal 0017 P1-3: Home is "the reason to open Mill" (docs/SPEC.md
   // §3.2.3) -- it must show a run that happened while the window sat
   // open on this page (a headless trigger, an MCP-driven run_workflow)
-  // without the owner having to switch away and back. metrics (and the
+  // without the user having to switch away and back. metrics (and the
   // mostUsed list HomeMostUsed.tsx renders from it) are both derived
   // from this one refresh() call, so one subscription covers both.
   useEffect(() => {

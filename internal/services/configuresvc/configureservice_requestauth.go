@@ -18,7 +18,7 @@ import (
 // Auth *httprequest.AuthConfig param on Create/UpdateHTTPRequest, plus
 // the OAuth1 dual-secret convenience method below) would have pushed
 // that file past the 500-line limit (scripts/check-loc.sh). Mirrors
-// the configureservice_requesttest.go split already done this session
+// the configureservice_requesttest.go split
 // -- same file, same *ConfigureService receiver, just organized by
 // concern rather than piled into one file. Lists/Attributes/restore
 // stay in configureservice.go. Renamed from configureservice_
@@ -100,8 +100,8 @@ func (c *ConfigureService) HTTPRequests() []httprequest.HTTPRequest {
 
 // CreateHTTPRequest/UpdateHTTPRequest's positional-param list is
 // getting long (9 now, after ADR-0016 Phase B's method) -- a real
-// ergonomics cost (this session already had to patch every call site
-// twice via scripted regex when Auth/JOSE were added), worth an
+// ergonomics cost (every call site needs a scripted-regex patch when a
+// field like Auth/JOSE is added), worth an
 // options-struct pass at some point, but that's a separate, bigger
 // refactor than "add a field" -- not done speculatively here.
 func (c *ConfigureService) CreateHTTPRequest(label, baseURL, method, body string, authType httprequest.AuthType, headers map[string]string, openAPISpec string, auth *httprequest.AuthConfig, jose *httprequest.JOSEConfig, description string) (httprequest.HTTPRequest, error) {

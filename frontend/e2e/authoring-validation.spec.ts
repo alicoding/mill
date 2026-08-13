@@ -5,9 +5,9 @@ import { clickRowAction } from './inventoryRow'
 // (errors block save, warnings never do), driven through the real
 // canvas -- not just the Go-level ValidateGraph/ValidateGraphStrict
 // unit tests (internal/domain/composition/graph_test.go). Covers the
-// three acceptance scenarios named in goal 0008: (a) the owner's own
-// demonstrated repro (a workflow whose root isn't a Trigger) can no
-// longer save, with the error named in the issues panel; (b) a
+// three acceptance scenarios named in goal 0008: (a) a workflow whose
+// root isn't a Trigger can no longer save, with the error named in
+// the issues panel; (b) a
 // trigger-rooted workflow ending in a Process leaf saves anyway, with
 // a visible warning on both the toolbar badge and the node itself, and
 // clicking the panel row selects that node; (c) an existing seeded
@@ -108,7 +108,7 @@ async function connectNodes(page: import('@playwright/test').Page, sourceLabel: 
 // debounce + a real RPC) needs real slack beyond the debounce itself.
 const VALIDATION_TIMEOUT = 5_000
 
-test('The owner\'s repro: a workflow whose root is not a Trigger cannot be saved, with the error named in the issues panel', async ({ page }) => {
+test('A workflow whose root is not a Trigger cannot be saved, with the error named in the issues panel', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Workflows' }).click()
   await page.getByTestId('new-workflow').click()

@@ -65,16 +65,15 @@ const relativeFormatter = new Intl.RelativeTimeFormat('en', { numeric: 'auto' })
 // being more useful than an actual date.
 //
 // now defaults to the real clock (every UI call site wants that) but is
-// a real parameter, not a hardcoded Date.now() -- found live in this
-// session (not part of this goal's own scope, fixed here as a small,
-// CI-blocking out-of-goal fix per CLAUDE.md): shared/staleness.ts's
-// formatLastChecked already accepted its own `now` override for
-// deterministic testing, but silently dropped it calling this function
-// with one argument, so the override was pure decoration -- the
-// second real clock is what actually decided the output.
-// staleness.test.ts's own hardcoded NOW anchor (2026-08-11) caught this
-// for real once the wall clock actually crossed a day boundary past it
-// mid-session, flipping a "9 minutes ago" expectation to "yesterday" --
+// a real parameter, not a hardcoded Date.now(): shared/staleness.ts's
+// formatLastChecked accepts its own `now` override for
+// deterministic testing, and must pass it through when calling this
+// function -- dropping it and calling with one argument makes the
+// override pure decoration, since the
+// second real clock is what actually decides the output.
+// staleness.test.ts's own hardcoded NOW anchor is proof: once the wall
+// clock crosses a day boundary past it, a dropped override flips a
+// "9 minutes ago" expectation to "yesterday" --
 // exactly the class of bug a real `now` parameter, honored end to end,
 // prevents.
 export function formatUpdated(ts: unknown, now: number = Date.now()): string {

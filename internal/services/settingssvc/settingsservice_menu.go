@@ -145,9 +145,9 @@ func (s *SettingsService) RestoreMenuAccelerators() {
 //
 // View > Reload (role Reload, "Cmd+R") was released here too during
 // initial implementation, since workflow.run's own default combo was
-// briefly ⌘R -- reverted by explicit owner decision once workflow.run
+// briefly ⌘R -- reverted once workflow.run
 // moved to ⌘↩ instead: ⌘R (and ⌘⇧R, ForceReload, already untouched)
-// stay the native browser/dev-webview reload, the owner's own debug
+// stay the native browser/dev-webview reload, the developer's own debug
 // escape hatch. Left named here, not silently dropped, so a future
 // reader doesn't wonder why Reload was ever a candidate.
 var releasedMenuRoles = []application.Role{

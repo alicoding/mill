@@ -74,7 +74,7 @@ type runWorkflowArgs struct {
 	// delivered (a filesystem-watch trigger's changed file path) --
 	// the same seam the UI Run dialog's Initial-payload field uses;
 	// without it a trigger-fed workflow is untestable over MCP (goal
-	// 0021 gap 1, found live-probing the capture-floor seed).
+	// 0021 gap 1).
 	Payload string `json:"payload,omitempty" jsonschema:"optional initial payload -- what the workflow's trigger would have delivered as the run's starting input (e.g. a file path for a filesystem-watch-fed workflow)"`
 	// Test controls which RunKind this run is tagged (goal 0021 Phase 3
 	// gap 2: the live probe found every MCP run landed "test" kind with

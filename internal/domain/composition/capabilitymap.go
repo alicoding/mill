@@ -119,7 +119,7 @@ func CapabilityMap() []MapEntry {
 			Approach:       ApproachMixed,
 			ApproachDetail: "Mechanism: adopt (DBOS ForkWorkflow/workflow-ID resume). UI/policy: build.",
 			Status:         capabilities.StatusOpen,
-			StatusDetail:   "Named this session, not built.",
+			StatusDetail:   "Named, not built.",
 		},
 		{
 			ID: "versioning", Name: "Draft/live versioning",
