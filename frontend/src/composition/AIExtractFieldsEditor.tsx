@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import { Button, FormControl, IconButton, Select, Stack, Text, TextInput } from '@primer/react'
 import { PlusIcon, TrashIcon } from '@primer/octicons-react'
 import { Type as ConfigFieldType } from '../../bindings/github.com/alicoding/mill/internal/domain/typedfield/models'
@@ -22,11 +23,13 @@ interface AIExtractField {
   Options?: string[] | null
 }
 
-const TYPE_LABEL: Record<string, string> = {
-  [ConfigFieldType.TypeText]: 'Text',
-  [ConfigFieldType.TypeNumber]: 'Number',
-  [ConfigFieldType.TypeBoolean]: 'Boolean',
-  [ConfigFieldType.TypeOptions]: 'Options (enum)',
+function typeLabelFor(t: (key: string) => string): Record<string, string> {
+  return {
+    [ConfigFieldType.TypeText]: t('aiExtractFieldsEditor.typeLabel.text'),
+    [ConfigFieldType.TypeNumber]: t('aiExtractFieldsEditor.typeLabel.number'),
+    [ConfigFieldType.TypeBoolean]: t('aiExtractFieldsEditor.typeLabel.boolean'),
+    [ConfigFieldType.TypeOptions]: t('aiExtractFieldsEditor.typeLabel.options'),
+  }
 }
 
 function parseFields(raw: string): AIExtractField[] {
@@ -43,24 +46,26 @@ export function AIExtractFieldsEditor({ outputFieldsRaw, onChange }: {
   outputFieldsRaw: string
   onChange: (raw: string) => void
 }) {
+  const { t } = useTranslation('composition')
+  const TYPE_LABEL = typeLabelFor(t)
   const fields = parseFields(outputFieldsRaw)
   const write = (next: AIExtractField[]) => onChange(JSON.stringify(next))
 
   return (
     <Stack direction="vertical" gap="condensed" data-testid="ai-extract-fields-editor">
-      <Text size="small" weight="semibold">Output fields</Text>
+      <Text size="small" weight="semibold">{t('aiExtractFieldsEditor.outputFields')}</Text>
       <Text size="small" as="p" className={styles.muted}>
-        Each field becomes an Attribute of the same key, populated from the AI provider's structured response.
+        {t('aiExtractFieldsEditor.description')}
       </Text>
       {fields.map((f, i) => (
         <Stack key={i} direction="vertical" gap="condensed" className={styles.card}>
           <Stack direction="horizontal" gap="condensed" align="center">
             <TextInput
-              size="small" placeholder="key" value={f.Key} data-testid="ai-extract-field-key"
+              size="small" placeholder={t('aiExtractFieldsEditor.keyPlaceholder')} value={f.Key} data-testid="ai-extract-field-key"
               onChange={(e) => write(fields.map((x, j) => (j === i ? { ...x, Key: e.target.value } : x)))}
             />
             <TextInput
-              size="small" placeholder="label" value={f.Label}
+              size="small" placeholder={t('aiExtractFieldsEditor.labelPlaceholder')} value={f.Label}
               onChange={(e) => write(fields.map((x, j) => (j === i ? { ...x, Label: e.target.value } : x)))}
             />
             <Select
@@ -72,13 +77,13 @@ export function AIExtractFieldsEditor({ outputFieldsRaw, onChange }: {
               ))}
             </Select>
             <IconButton
-              icon={TrashIcon} aria-label="Remove field" size="small" variant="invisible"
+              icon={TrashIcon} aria-label={t('aiExtractFieldsEditor.removeFieldAriaLabel')} size="small" variant="invisible"
               onClick={() => write(fields.filter((_, j) => j !== i))}
             />
           </Stack>
           {f.Type === ConfigFieldType.TypeOptions && (
             <FormControl>
-              <FormControl.Label>Allowed values (comma-separated)</FormControl.Label>
+              <FormControl.Label>{t('aiExtractFieldsEditor.allowedValues')}</FormControl.Label>
               <TextInput
                 size="small" block value={(f.Options ?? []).join(', ')}
                 onChange={(e) => write(fields.map((x, j) => (j === i ? { ...x, Options: e.target.value.split(',').map((v) => v.trim()).filter(Boolean) } : x)))}
@@ -91,7 +96,7 @@ export function AIExtractFieldsEditor({ outputFieldsRaw, onChange }: {
         size="small" leadingVisual={PlusIcon} data-testid="ai-extract-add-field"
         onClick={() => write([...fields, { Key: '', Label: '', Type: ConfigFieldType.TypeText }])}
       >
-        Add field
+        {t('aiExtractFieldsEditor.addField')}
       </Button>
     </Stack>
   )

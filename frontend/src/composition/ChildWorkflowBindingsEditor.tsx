@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Stack, Text } from '@primer/react'
 import { CompositionService } from '../shared/bindings'
 import type { AttributeDef, Workflow } from '../../bindings/github.com/alicoding/mill/internal/domain/composition/models'
@@ -28,6 +29,7 @@ export function ChildWorkflowBindingsEditor({
   inputBindingsRaw: string
   onChangeInputBindings: (raw: string) => void
 }) {
+  const { t } = useTranslation('composition')
   const [target, setTarget] = useState<Workflow | null | 'none'>(null)
 
   useEffect(() => {
@@ -51,7 +53,7 @@ export function ChildWorkflowBindingsEditor({
 
   return (
     <Stack direction="vertical" gap="condensed" data-testid="child-workflow-bindings-editor">
-      <Text size="small" weight="semibold">Child workflow input</Text>
+      <Text size="small" weight="semibold">{t('childWorkflowBindingsEditor.heading')}</Text>
       {childAttrs.map((attr) => (
         <LiteralOrAttributeField
           key={attr.Key}

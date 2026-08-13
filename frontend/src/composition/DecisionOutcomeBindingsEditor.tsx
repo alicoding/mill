@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Stack, Text } from '@primer/react'
 import { ConfigureService } from '../shared/bindings'
 import type { AttributeDef } from '../../bindings/github.com/alicoding/mill/internal/domain/composition/models'
@@ -30,6 +31,7 @@ export function DecisionOutcomeBindingsEditor({
   outputBindingsRaw: string
   onChangeOutputBindings: (raw: string) => void
 }) {
+  const { t } = useTranslation('composition')
   const [target, setTarget] = useState<Decision | null | 'none'>(null)
 
   useEffect(() => {
@@ -53,9 +55,9 @@ export function DecisionOutcomeBindingsEditor({
 
   return (
     <Stack direction="vertical" gap="condensed" data-testid="decision-outcome-bindings-editor">
-      <Text size="small" weight="semibold">Decision outputs</Text>
+      <Text size="small" weight="semibold">{t('decisionOutcomeBindingsEditor.heading')}</Text>
       <Text size="small" as="p">
-        {target.Label} ({target.Category}) -- values written into this Decision&apos;s typed result when reached.
+        {t('decisionOutcomeBindingsEditor.description', { label: target.Label, category: target.Category })}
       </Text>
       {outputs.map((field) => (
         <LiteralOrAttributeField

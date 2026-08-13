@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Button, FormControl, Heading, IconButton, Stack, Text, TextInput } from '@primer/react'
 import { PlusIcon, TrashIcon } from '@primer/octicons-react'
 import type { RuleGroupType } from 'react-querybuilder'
@@ -38,6 +39,7 @@ export function RulesetEditor({ rulesRaw, attrs, onChange }: {
   attrs: AttributeDef[]
   onChange: (raw: string) => void
 }) {
+  const { t } = useTranslation('composition')
   const rules = parseRules(rulesRaw)
   const fields = fieldsFromAttributes(attrs)
   // One in-progress visual query per rule index (local; the committed
@@ -47,23 +49,21 @@ export function RulesetEditor({ rulesRaw, attrs, onChange }: {
 
   return (
     <Stack direction="vertical" gap="condensed" data-testid="ruleset-editor">
-      <Heading as="h3" variant="small">Rules</Heading>
+      <Heading as="h3" variant="small">{t('rulesetEditor.heading')}</Heading>
       <Text size="small" className={styles.muted}>
-        Every rule must pass for the data to continue; any failing rule fails the run, named. Build a
-        condition against this workflow's Attributes, or type an expr-lang expression directly — the same
-        surface Decision branches use.
+        {t('rulesetEditor.description')}
       </Text>
       {rules.map((r, i) => (
         <Stack key={i} direction="vertical" gap="condensed" className={styles.card}>
           <Stack direction="horizontal" justify="space-between" align="center">
-            <Text size="small" weight="semibold">Rule {i + 1}</Text>
-            <IconButton icon={TrashIcon} aria-label={`Delete rule ${i + 1}`} size="small" variant="invisible"
+            <Text size="small" weight="semibold">{t('rulesetEditor.ruleN', { n: i + 1 })}</Text>
+            <IconButton icon={TrashIcon} aria-label={t('rulesetEditor.deleteRuleAriaLabel', { n: i + 1 })} size="small" variant="invisible"
               onClick={() => write(rules.filter((_, j) => j !== i))} />
           </Stack>
           <FormControl>
-            <FormControl.Label>Name</FormControl.Label>
+            <FormControl.Label>{t('rulesetEditor.name')}</FormControl.Label>
             <TextInput
-              size="small" block value={r.name} placeholder="e.g. amount below limit"
+              size="small" block value={r.name} placeholder={t('rulesetEditor.namePlaceholder')}
               data-testid="ruleset-rule-name"
               onChange={(e) => write(rules.map((x, j) => (j === i ? { ...x, name: e.target.value } : x)))}
             />
@@ -77,14 +77,14 @@ export function RulesetEditor({ rulesRaw, attrs, onChange }: {
               />
               <Button size="small" data-testid="ruleset-apply-built"
                 onClick={() => write(rules.map((x, j) => (j === i ? { ...x, condition: translateToExpr(queries[i] ?? EMPTY_QUERY) } : x)))}>
-                Apply built condition
+                {t('applyBuiltCondition')}
               </Button>
             </>
           )}
           <FormControl>
-            <FormControl.Label>{fields.length > 0 ? 'Or edit the expression directly' : 'Condition'}</FormControl.Label>
+            <FormControl.Label>{fields.length > 0 ? t('editExpressionDirectly') : t('rulesetEditor.condition')}</FormControl.Label>
             <TextInput
-              size="small" block value={r.condition} placeholder={'e.g. Attributes["amount"] < 100'}
+              size="small" block value={r.condition} placeholder={t('rulesetEditor.conditionPlaceholder')}
               data-testid="ruleset-rule-condition"
               onChange={(e) => write(rules.map((x, j) => (j === i ? { ...x, condition: e.target.value } : x)))}
             />
@@ -94,7 +94,7 @@ export function RulesetEditor({ rulesRaw, attrs, onChange }: {
       <div>
         <Button size="small" leadingVisual={PlusIcon} data-testid="ruleset-add-rule"
           onClick={() => write([...rules, { name: '', condition: '' }])}>
-          Add rule
+          {t('rulesetEditor.addRule')}
         </Button>
       </div>
     </Stack>

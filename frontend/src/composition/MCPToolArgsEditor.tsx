@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Button, Checkbox, FormControl, Label, Select, Stack, Text, TextInput, Textarea } from '@primer/react'
 import { ConfigureService } from '../shared/bindings'
 import type { Tool } from '../../bindings/github.com/alicoding/mill/internal/adapters/mcpclient/models'
@@ -36,10 +37,6 @@ function parseArgs(raw: string): Record<string, unknown> {
   }
 }
 
-const RAW_ARGS_CAPTION =
-  'Optional JSON object of arguments to pass to the tool. Top-level string values of the form "attr:<name>" ' +
-  "resolve to the named Attribute's typed value at run time; every other value is sent as-is."
-
 export function MCPToolArgsEditor({
   mcpServerId, toolName, argumentsRaw, attrs, onChangeToolName, onChangeArguments,
 }: {
@@ -50,6 +47,7 @@ export function MCPToolArgsEditor({
   onChangeToolName: (v: string) => void
   onChangeArguments: (raw: string) => void
 }) {
+  const { t } = useTranslation('composition')
   const [tools, setTools] = useState<Tool[] | 'failed' | null>(null)
   const [showRaw, setShowRaw] = useState(false)
 
@@ -67,7 +65,7 @@ export function MCPToolArgsEditor({
   }, [mcpServerId])
 
   const toolList = Array.isArray(tools) ? tools : null
-  const selectedTool = toolList?.find((t) => t.Name === toolName)
+  const selectedTool = toolList?.find((tool) => tool.Name === toolName)
   const schemaFields: ToolSchemaField[] = selectedTool ? parseToolInputSchema(selectedTool.InputSchema) : []
 
   const argsObj = parseArgs(argumentsRaw)
@@ -80,20 +78,20 @@ export function MCPToolArgsEditor({
   }
 
   const toolOptions = toolList
-    ? (toolName && !toolList.some((t) => t.Name === toolName) ? [...toolList.map((t) => t.Name), toolName] : toolList.map((t) => t.Name))
+    ? (toolName && !toolList.some((tool) => tool.Name === toolName) ? [...toolList.map((tool) => tool.Name), toolName] : toolList.map((tool) => tool.Name))
     : []
 
   return (
     <Stack direction="vertical" gap="condensed" data-testid="mcp-tool-args-editor">
       {toolList ? (
         <FormControl>
-          <FormControl.Label>Tool</FormControl.Label>
+          <FormControl.Label>{t('mcpToolArgsEditor.tool')}</FormControl.Label>
           <Select
             value={toolName}
             data-testid="mcp-tool-select"
             onChange={(e) => onChangeToolName(e.target.value)}
           >
-            <Select.Option value="">(pick a tool)</Select.Option>
+            <Select.Option value="">{t('mcpToolArgsEditor.pickTool')}</Select.Option>
             {toolOptions.map((name) => (
               <Select.Option key={name} value={name}>{name}</Select.Option>
             ))}
@@ -104,8 +102,8 @@ export function MCPToolArgsEditor({
         </FormControl>
       ) : (
         <FormControl>
-          <FormControl.Label>Tool name</FormControl.Label>
-          <FormControl.Caption>The exact tool name, from that server's own tool list.</FormControl.Caption>
+          <FormControl.Label>{t('mcpToolArgsEditor.toolName')}</FormControl.Label>
+          <FormControl.Caption>{t('mcpToolArgsEditor.toolNameCaption')}</FormControl.Caption>
           <TextInput
             value={toolName}
             block
@@ -117,7 +115,7 @@ export function MCPToolArgsEditor({
 
       {schemaFields.length > 0 ? (
         <>
-          <Text size="small" weight="semibold">Arguments</Text>
+          <Text size="small" weight="semibold">{t('mcpToolArgsEditor.arguments')}</Text>
           {schemaFields.map((field) => (
             <ToolArgField
               key={field.name}
@@ -134,12 +132,12 @@ export function MCPToolArgsEditor({
             data-testid="mcp-args-raw-toggle"
             onClick={() => setShowRaw((v) => !v)}
           >
-            {showRaw ? 'Hide raw JSON' : 'Raw JSON'}
+            {showRaw ? t('mcpToolArgsEditor.hideRawJson') : t('mcpToolArgsEditor.rawJson')}
           </Button>
           {showRaw && (
             <FormControl>
-              <FormControl.Label visuallyHidden>Arguments (raw JSON)</FormControl.Label>
-              <FormControl.Caption>{RAW_ARGS_CAPTION}</FormControl.Caption>
+              <FormControl.Label visuallyHidden>{t('mcpToolArgsEditor.argumentsRawJsonLabel')}</FormControl.Label>
+              <FormControl.Caption>{t('mcpToolArgsEditor.rawArgsCaption')}</FormControl.Caption>
               <Textarea
                 defaultValue={argumentsRaw}
                 rows={4}
@@ -152,8 +150,8 @@ export function MCPToolArgsEditor({
         </>
       ) : (
         <FormControl>
-          <FormControl.Label>Arguments (JSON)</FormControl.Label>
-          <FormControl.Caption>{RAW_ARGS_CAPTION}</FormControl.Caption>
+          <FormControl.Label>{t('mcpToolArgsEditor.argumentsJson')}</FormControl.Label>
+          <FormControl.Caption>{t('mcpToolArgsEditor.rawArgsCaption')}</FormControl.Caption>
           <Textarea
             defaultValue={argumentsRaw}
             rows={4}
@@ -177,7 +175,8 @@ function ToolArgField({ field, value, attrs, onSet, onDelete }: {
   onSet: (value: unknown) => void
   onDelete: () => void
 }) {
-  const requiredBadge = field.required && <Label size="small" variant="accent">required</Label>
+  const { t } = useTranslation('composition')
+  const requiredBadge = field.required && <Label size="small" variant="accent">{t('mcpToolArgsEditor.required')}</Label>
 
   switch (field.type) {
     case 'string':
@@ -202,7 +201,7 @@ function ToolArgField({ field, value, attrs, onSet, onDelete }: {
             value={typeof value === 'string' ? value : ''}
             onChange={(e) => (e.target.value === '' ? onDelete() : onSet(e.target.value))}
           >
-            <Select.Option value="">(unset)</Select.Option>
+            <Select.Option value="">{t('mcpToolArgsEditor.unset')}</Select.Option>
             {(field.enumValues ?? []).map((v) => (
               <Select.Option key={v} value={v}>{v}</Select.Option>
             ))}
