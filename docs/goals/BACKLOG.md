@@ -28,6 +28,15 @@ backlog section in the same commit: **work discovered mid-session that
 outlives the session gets a goal file and a queue position before the
 session ends — never left only in an ephemeral session task list.**
 
+**Group E — Public-repo hygiene (2026-08-13, owner-directed: source
+comments explain code per standard practice — business/product
+decisions and the owner's own words live in docs/, cited by id, never
+inline in source)**
+1. [ ] [0038 — Comment hygiene: constraints, not narrative](0038-comment-hygiene.md)
+   — rule (`.claude/rules/comments.md`) + gate
+   (`check-comment-hygiene.sh`, lefthook + CI `comment-hygiene` job in
+   `ci-gate`) + one sweep of the 65 baseline narrative comments
+
 **Group D — Trust the substrate (2026-08-11, owner-mandated: "do it
 properly once"; ordered first because everything else ships through
 this pipeline and on this code)**

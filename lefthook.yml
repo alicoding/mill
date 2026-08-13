@@ -8,6 +8,9 @@ pre-commit:
     - name: file-loc-limit
       glob: "*.{go,ts,tsx}"
       run: ./scripts/check-loc.sh
+    - name: comment-hygiene
+      glob: "*.{go,ts,tsx}"
+      run: ./scripts/check-comment-hygiene.sh
     - name: rules-frontmatter
       # Lefthook's `**` requires 1+ directories deep (non-standard --
       # confirmed against its own docs, not gitignore-style zero-or-more),
