@@ -59,6 +59,12 @@ accepted)**
    Mill's Configure entities are live-referenced (a pinned workflow
    still resolves TODAY's decision definition) and deletes have no
    reference-integrity check
+6. [ ] [0047 — Node audience/complexity facet](0047-node-audience-facet.md)
+   — owner-proposed; session recommendation recorded: function stays
+   the primary palette grouping, audience/complexity becomes a
+   NodeType metadata field + progressive-disclosure facet (not a
+   "for business users" taxonomy); policy-gated node availability
+   deferred with a multi-user trigger
 
 **Group E — Public-repo hygiene (2026-08-13, owner-directed: source
 comments explain code per standard practice — business/product
