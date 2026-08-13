@@ -131,7 +131,7 @@ jobs:
           {
             echo "## Install"
             echo ""
-            echo "Download the \`.zip\`, unzip, and drag \`mill.app\` to Applications — no build needed. First launch: **right-click the app → Open → Open** (it is ad-hoc signed, not notarized — macOS asks once). Verify the download came from this repo's CI: \`gh attestation verify <the .zip> -R ${GITHUB_REPOSITORY}\`. Prefer building from source? \`git clone\` + the README's few commands work on any Mac."
+            echo "Download the \`.zip\`, unzip, and drag \`mill.app\` to Applications — no build needed. The app is not Apple-notarized, so the first launch is blocked with **\"Apple could not verify…\" — click Done (not Move to Trash), then System Settings → Privacy & Security → scroll to the mill message → Open Anyway** (one time only; on pre-Sequoia macOS, right-click → Open works instead). Terminal alternative: \`xattr -d com.apple.quarantine /Applications/mill.app\`. Verify the download came from this repo's CI: \`gh attestation verify <the .zip> -R ${GITHUB_REPOSITORY}\`. Prefer building from source? \`git clone\` + the README's few commands work on any Mac."
           } > /tmp/release-notes.md
           gh release create "${GITHUB_REF_NAME}" \
             --repo "${GITHUB_REPOSITORY}" \
