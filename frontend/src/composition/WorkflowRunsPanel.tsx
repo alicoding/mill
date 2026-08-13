@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Events } from '@wailsio/runtime'
 import { Button, IconButton, Label, type LabelProps, Select, Stack, Text } from '@primer/react'
 import { DataTable, type Column } from '@primer/react/experimental'
@@ -73,6 +74,7 @@ interface WorkflowRunsPanelProps {
 // workflow, session-only "did anything run at all" feed -- unrelated
 // and unchanged by this.
 function WorkflowRunsPanel({ workflowId, attrs, initialRunId, onInitialRunConsumed }: WorkflowRunsPanelProps) {
+  const { t } = useTranslation('composition')
   const [runs, setRuns] = useState<RunSummary[] | null>(null)
   const [selectedRunID, setSelectedRunID] = useState<string | null>(null)
   // Scrolls the detail card into view when a row is picked -- the card
@@ -126,8 +128,8 @@ function WorkflowRunsPanel({ workflowId, attrs, initialRunId, onInitialRunConsum
   useEffect(() => {
     if (!selectedRunID) return
     // After the detail fetch lands and the card mounts/re-renders.
-    const t = setTimeout(() => detailRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 150)
-    return () => clearTimeout(t)
+    const timer = setTimeout(() => detailRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 150)
+    return () => clearTimeout(timer)
   }, [selectedRunID])
 
   useEffect(() => {
@@ -208,7 +210,7 @@ function WorkflowRunsPanel({ workflowId, attrs, initialRunId, onInitialRunConsum
   const columns: Column<RunRow>[] = [
     {
       id: 'status',
-      header: 'Status',
+      header: t('workflowRunsPanel.columns.status'),
       field: 'status',
       sortBy: 'alphanumeric',
       // The data-run-id/data-selected span is the row's identity anchor
@@ -222,7 +224,7 @@ function WorkflowRunsPanel({ workflowId, attrs, initialRunId, onInitialRunConsum
         <span data-run-id={run.runID} data-selected={selectedRunID === run.runID}>
           <Stack direction="horizontal" gap="condensed" align="center">
             {run.pending ? (
-              <Label variant="attention" size="small" data-testid="run-awaiting-approval">awaiting approval</Label>
+              <Label variant="attention" size="small" data-testid="run-awaiting-approval">{t('workflowRunsPanel.awaitingApproval')}</Label>
             ) : (
               <Label variant={STATUS_VARIANT[run.status] ?? 'secondary'} size="small">{run.status}</Label>
             )}
@@ -246,14 +248,14 @@ function WorkflowRunsPanel({ workflowId, attrs, initialRunId, onInitialRunConsum
     },
     {
       id: 'kind',
-      header: 'Kind',
+      header: t('workflowRunsPanel.columns.kind'),
       field: 'kind',
       sortBy: 'alphanumeric',
       renderCell: (run) => <Label variant={KIND_VARIANT[run.kind]} size="small">{KIND_LABEL[run.kind]}</Label>,
     },
     {
       id: 'started',
-      header: 'Started',
+      header: t('workflowRunsPanel.columns.started'),
       field: 'startedAt',
       sortBy: 'datetime',
       renderCell: (run) => <Text size="small" className={styles.muted}>{formatRunStartedAt(run.startedAt)}</Text>,
@@ -263,22 +265,22 @@ function WorkflowRunsPanel({ workflowId, attrs, initialRunId, onInitialRunConsum
   return (
     <PageContainer data-testid="workflow-runs-panel">
       <Stack direction="horizontal" gap="condensed" align="center" className={styles.filterRow}>
-        <Select value={kindFilter} onChange={(e) => setKindFilter(e.target.value as 'all' | RunKind)} aria-label="Filter by kind">
-          <Select.Option value="all">All kinds</Select.Option>
-          <Select.Option value={RunKind.RunKindTest}>Test</Select.Option>
-          <Select.Option value={RunKind.RunKindTriggered}>Triggered</Select.Option>
+        <Select value={kindFilter} onChange={(e) => setKindFilter(e.target.value as 'all' | RunKind)} aria-label={t('workflowRunsPanel.filterByKindAriaLabel')}>
+          <Select.Option value="all">{t('workflowRunsPanel.allKinds')}</Select.Option>
+          <Select.Option value={RunKind.RunKindTest}>{t('workflowRunsPanel.test')}</Select.Option>
+          <Select.Option value={RunKind.RunKindTriggered}>{t('workflowRunsPanel.triggered')}</Select.Option>
         </Select>
       </Stack>
 
       {error && <Text as="p" className={styles.error}>{error}</Text>}
 
       {runs === null && (
-        <div className={styles.empty}><Text as="p">Loading…</Text></div>
+        <div className={styles.empty}><Text as="p">{t('loading')}</Text></div>
       )}
 
       {runs !== null && runs.length === 0 && (
         <div className={styles.empty}>
-          <Text as="p">No runs yet — run this workflow from its Canvas tab.</Text>
+          <Text as="p">{t('workflowRunsPanel.noRunsYet')}</Text>
         </div>
       )}
 
@@ -320,7 +322,7 @@ function WorkflowRunsPanel({ workflowId, attrs, initialRunId, onInitialRunConsum
                   are still tellable apart in the detail header -- the
                   other half of the selected-row fix above. */}
               <Text size="small" weight="semibold" data-testid="run-detail-identity">
-                Run · {formatRunStartedAt(detail.startedAt)}
+                {t('workflowRunsPanel.runIdentity', { started: formatRunStartedAt(detail.startedAt) })}
               </Text>
             </Stack>
             <Stack direction="horizontal" gap="condensed" align="center">
@@ -329,10 +331,10 @@ function WorkflowRunsPanel({ workflowId, attrs, initialRunId, onInitialRunConsum
                   size="small" variant="danger" leadingVisual={StopIcon} disabled={busy}
                   data-testid="cancel-run" onClick={cancelRun}
                 >
-                  Stop
+                  {t('stop')}
                 </Button>
               )}
-              <IconButton icon={XIcon} aria-label="Close" size="small" variant="invisible" onClick={() => setSelectedRunID(null)} />
+              <IconButton icon={XIcon} aria-label={t('workflowRunsPanel.closeAriaLabel')} size="small" variant="invisible" onClick={() => setSelectedRunID(null)} />
             </Stack>
           </Stack>
           {detail.error && <Text as="p" className={styles.error}>{detail.error}</Text>}
@@ -352,13 +354,13 @@ function WorkflowRunsPanel({ workflowId, attrs, initialRunId, onInitialRunConsum
                   <Stack direction="horizontal" gap="condensed" align="center">
                     {isDebug ? <BugIcon size={16} fill="var(--fgColor-done)" /> : <ShieldIcon size={16} fill="var(--fgColor-attention)" />}
                     <Text weight="semibold" data-testid="approval-banner-heading">
-                      {isDebug ? (isStepped ? 'Paused — step mode' : 'Paused at breakpoint') : 'Awaiting your approval'}
+                      {isDebug ? (isStepped ? t('pausedStepMode') : t('pausedAtBreakpoint')) : t('workflowRunsPanel.awaitingYourApproval')}
                     </Text>
                   </Stack>
                   <Text size="small">
-                    The step <Text weight="semibold">{pending.nodeTypeLabel || pending.nodeTypeID}</Text>{' '}
-                    {isDebug ? 'is paused here' : 'wants to run'}
-                    {pending.ruleLabel && !isDebug ? ` (rule: ${pending.ruleLabel})` : !isDebug ? ' (external steps ask by default)' : ''}.
+                    {t('workflowRunsPanel.theStepPrefix')} <Text weight="semibold">{pending.nodeTypeLabel || pending.nodeTypeID}</Text>{' '}
+                    {isDebug ? t('workflowRunsPanel.stepIsPausedHere') : t('workflowRunsPanel.stepWantsToRun')}
+                    {pending.ruleLabel && !isDebug ? t('workflowRunsPanel.ruleSuffix', { rule: pending.ruleLabel }) : !isDebug ? t('workflowRunsPanel.externalStepsAskByDefault') : ''}.
                   </Text>
                   {pending.payload && (
                     <pre className={styles.result}>{pending.payload}</pre>
@@ -367,29 +369,29 @@ function WorkflowRunsPanel({ workflowId, attrs, initialRunId, onInitialRunConsum
                     attrs={attrsForPending(attrs, pending.inputAttributes)}
                     values={resumeValues[selectedRunID ?? ''] ?? {}}
                     onChange={(key, value) => setResumeValues((prev) => ({ ...prev, [selectedRunID ?? '']: { ...prev[selectedRunID ?? ''], [key]: value } }))}
-                    label={isDebug ? 'Edit before resuming (optional)' : undefined}
+                    label={isDebug ? t('editBeforeResuming') : undefined}
                   />
                   <Stack direction="horizontal" gap="condensed">
                     {isDebug && isStepped && (
                       <Button size="small" variant="primary" disabled={busy} data-testid="step-step"
                         onClick={() => resolveApproval(pending.nodeID, true, false)}>
-                        Step
+                        {t('step')}
                       </Button>
                     )}
                     {isDebug ? (
                       <Button size="small" variant={isStepped ? 'default' : 'primary'} disabled={busy} data-testid="resume-step"
                         onClick={() => resolveApproval(pending.nodeID, true, true)}>
-                        {isStepped ? 'Continue' : 'Resume'}
+                        {isStepped ? t('continue') : t('resume')}
                       </Button>
                     ) : (
                       <Button size="small" variant="primary" disabled={busy} data-testid="approve-step"
                         onClick={() => resolveApproval(pending.nodeID, true)}>
-                        Approve and run
+                        {t('workflowRunsPanel.approveAndRun')}
                       </Button>
                     )}
                     <Button size="small" variant="danger" disabled={busy} data-testid={isDebug ? 'stop-step' : 'deny-step'}
                       onClick={() => resolveApproval(pending.nodeID, false)}>
-                      {isDebug ? 'Stop' : 'Deny'}
+                      {isDebug ? t('stop') : t('deny')}
                     </Button>
                   </Stack>
                 </Stack>
@@ -411,13 +413,13 @@ function WorkflowRunsPanel({ workflowId, attrs, initialRunId, onInitialRunConsum
                           the guardrail shield/wording. */}
                       {step.guardrailSource === 'debug' && (
                         <Label variant="done" size="small" data-testid="step-debug-badge">
-                          <BugIcon size={12} /> breakpoint
+                          <BugIcon size={12} /> {t('workflowRunsPanel.breakpointBadge')}
                         </Label>
                       )}
                     </Stack>
                     {step.guardrailEffect && (
                       <Text as="p" size="small" className={styles.muted} data-testid="step-guardrail">
-                        Guardrail: {step.guardrailEffect}{step.guardrailRule ? ` (rule: ${step.guardrailRule})` : ''}
+                        {t('workflowRunsPanel.guardrailLabel', { effect: step.guardrailEffect, ruleSuffix: step.guardrailRule ? t('workflowRunsPanel.ruleSuffix', { rule: step.guardrailRule }) : '' })}
                       </Text>
                     )}
                     {step.output && <pre className={styles.result}>{step.output}</pre>}
@@ -433,7 +435,7 @@ function WorkflowRunsPanel({ workflowId, attrs, initialRunId, onInitialRunConsum
                     "idempotency key" -> "Skip duplicate runs" rewrite). */}
                 {step.status === 'failed' && (
                   <Button size="small" disabled={busy} onClick={() => redrive(step.nodeID)}>
-                    Retry from this step
+                    {t('workflowRunsPanel.retryFromThisStep')}
                   </Button>
                 )}
               </Stack>

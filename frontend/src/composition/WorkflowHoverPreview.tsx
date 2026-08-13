@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Button, Stack, Text } from '@primer/react'
 import { AnchoredOverlay } from '@primer/react'
 import { ReactFlow, ReactFlowProvider, Background } from '@xyflow/react'
@@ -24,6 +25,7 @@ export function WorkflowHoverPreview({ workflowId, children }: {
   workflowId: string
   children: ReactNode
 }) {
+  const { t } = useTranslation('composition')
   const [open, setOpen] = useState(false)
   const [workflow, setWorkflow] = useState<Workflow | null | 'missing'>(null)
   const [nodeTypes, setNodeTypes] = useState<NodeType[]>([])
@@ -65,7 +67,7 @@ export function WorkflowHoverPreview({ workflowId, children }: {
       open={open}
       onOpen={() => setOpen(true)}
       onClose={() => setOpen(false)}
-      overlayProps={{ role: 'dialog', 'aria-label': 'Workflow preview' }}
+      overlayProps={{ role: 'dialog', 'aria-label': t('workflowHoverPreview.previewAriaLabel') }}
       renderAnchor={(allAnchorProps) => {
         // onClick deliberately dropped: on a canvas node, a click means
         // select-the-node (React Flow's own semantics), and elsewhere a
@@ -86,8 +88,8 @@ export function WorkflowHoverPreview({ workflowId, children }: {
       }}
     >
       <div onMouseLeave={() => setOpen(false)} style={{ padding: 'var(--base-size-8)' }} data-testid="workflow-preview">
-        {workflow === null && <Text size="small">Loading…</Text>}
-        {workflow === 'missing' && <Text size="small">This workflow no longer exists.</Text>}
+        {workflow === null && <Text size="small">{t('loading')}</Text>}
+        {workflow === 'missing' && <Text size="small">{t('workflowHoverPreview.workflowNoLongerExists')}</Text>}
         {workflow !== null && workflow !== 'missing' && (
           <Stack direction="vertical" gap="condensed">
             <Stack direction="horizontal" justify="space-between" align="center" gap="normal">
@@ -97,7 +99,7 @@ export function WorkflowHoverPreview({ workflowId, children }: {
                 onClick={() => { setOpen(false); requestOpenWorkflow(workflow.ID) }}
                 data-testid="workflow-preview-open"
               >
-                Open
+                {t('workflowHoverPreview.open')}
               </Button>
             </Stack>
             <div style={{ width: 320, height: 200, border: '1px solid var(--borderColor-default)', borderRadius: 'var(--borderRadius-medium)' }}>
@@ -112,7 +114,7 @@ export function WorkflowHoverPreview({ workflowId, children }: {
                 nodes={(workflow.Nodes ?? []).map((n) => ({
                   id: n.ID,
                   position: { x: n.Position?.X ?? 0, y: n.Position?.Y ?? 0 },
-                  data: { label: nodeTypes.find((t) => t.ID === n.NodeTypeID)?.Label ?? n.NodeTypeID },
+                  data: { label: nodeTypes.find((nt) => nt.ID === n.NodeTypeID)?.Label ?? n.NodeTypeID },
                 }))}
                 edges={(workflow.Edges ?? []).map((e) => ({ id: e.ID, source: e.Source, target: e.Target }))}
                 fitView

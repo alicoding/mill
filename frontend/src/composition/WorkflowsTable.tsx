@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import { Button, IconButton, Label, Link, Stack } from '@primer/react'
 import { DownloadIcon, PencilIcon, TrashIcon } from '@primer/octicons-react'
 import { DataTable } from '@primer/react/experimental'
@@ -39,6 +40,7 @@ export function WorkflowsTable({
   onPublish: (id: string) => void
   onHotkeyChanged: () => void
 }) {
+  const { t } = useTranslation('composition')
   // Table-view direct-wiring half of the Button-semantics convention
   // (.claude/rules/frontend.md) -- the row menu path (WorkflowsTable's
   // InventoryList sibling in CompositionView.tsx) gets confirmation
@@ -62,7 +64,7 @@ export function WorkflowsTable({
             // the same field, sort/field wiring untouched -- DataTable's
             // own sort strategy reads `field`/`sortBy`, not renderCell's
             // output (checked against DataTable.js's getValue()).
-            header: 'Label', field: 'Label', rowHeader: true, sortBy: 'alphanumeric',
+            header: t('workflowsTable.columns.label'), field: 'Label', rowHeader: true, sortBy: 'alphanumeric',
             renderCell: (wf) => (
               <Link as="button" type="button" onClick={() => onOpenView(wf.ID)} data-testid="workflow-view-link">
                 {wf.Label}
@@ -76,7 +78,7 @@ export function WorkflowsTable({
             // widest cell and reintroduce the horizontal-overflow bug
             // §3.8's long-column pattern exists to prevent, same
             // reasoning as the Description column below.
-            header: 'Trigger', id: 'trigger', width: 'growCollapse', minWidth: '90px',
+            header: t('workflowsTable.columns.trigger'), id: 'trigger', width: 'growCollapse', minWidth: '90px',
             renderCell: (wf) => (
               <TriggerRowLabel
                 workflow={wf}
@@ -88,18 +90,18 @@ export function WorkflowsTable({
             ),
           },
           {
-            header: 'Status', id: 'status', width: 'auto',
+            header: t('workflowsTable.columns.status'), id: 'status', width: 'auto',
             renderCell: (wf) => (
               <Stack direction="horizontal" gap="condensed">
                 {wf.PublishedVersion > 0
-                  ? <Label variant="success" size="small">v{wf.PublishedVersion} live</Label>
-                  : <Label variant="attention" size="small">draft</Label>}
-                {wf.Disabled && <Label variant="severe" size="small">disabled</Label>}
+                  ? <Label variant="success" size="small">{t('publishedVersionLive', { version: wf.PublishedVersion })}</Label>
+                  : <Label variant="attention" size="small">{t('workflowsTable.draft')}</Label>}
+                {wf.Disabled && <Label variant="severe" size="small">{t('disabled')}</Label>}
               </Stack>
             ),
           },
-          { header: 'Description', id: 'description', width: 'growCollapse', minWidth: '200px', renderCell: (wf) => <TruncatedCell text={wf.Description} /> },
-          { header: 'Steps', id: 'steps', width: 'auto', align: 'end', renderCell: (wf) => (wf.Nodes ?? []).length },
+          { header: t('workflowsTable.columns.description'), id: 'description', width: 'growCollapse', minWidth: '200px', renderCell: (wf) => <TruncatedCell text={wf.Description} /> },
+          { header: t('workflowsTable.columns.steps'), id: 'steps', width: 'auto', align: 'end', renderCell: (wf) => (wf.Nodes ?? []).length },
           {
             header: '', id: 'actions', width: 'auto', align: 'end',
             renderCell: (wf) => {
@@ -115,8 +117,8 @@ export function WorkflowsTable({
               // a real, useful thing to do while authoring it.
               const isCallable = findRootNode(wf.Nodes, wf.Edges)?.NodeTypeID === 'trigger-callable'
               const runTitle = hasDraftDrift(wf)
-                ? 'Test run of the draft — differs from the published version.'
-                : 'Test run of the draft.'
+                ? t('workflowsTable.runTitleDrifted')
+                : t('workflowsTable.runTitle')
               return (
                 <Stack direction="horizontal" gap="condensed">
                   {isCallable ? (
@@ -125,20 +127,20 @@ export function WorkflowsTable({
                       variant="invisible"
                       onClick={() => onRun(wf.ID)}
                       disabled={runningId === wf.ID}
-                      aria-label={`Test ${wf.Label}`}
+                      aria-label={t('workflowsTable.testAriaLabel', { label: wf.Label })}
                       title={runTitle}
                       data-testid="callable-test-run"
                     >
-                      {runningId === wf.ID ? 'Running…' : 'Test'}
+                      {runningId === wf.ID ? t('running') : t('workflowsTable.test')}
                     </Button>
                   ) : (
-                    <Button size="small" onClick={() => onRun(wf.ID)} disabled={runningId === wf.ID} aria-label={`Run ${wf.Label}`} title={runTitle}>
-                      {runningId === wf.ID ? 'Running…' : 'Run'}
+                    <Button size="small" onClick={() => onRun(wf.ID)} disabled={runningId === wf.ID} aria-label={t('workflowsTable.runAriaLabel', { label: wf.Label })} title={runTitle}>
+                      {runningId === wf.ID ? t('running') : t('workflowsTable.run')}
                     </Button>
                   )}
-                  <IconButton icon={PencilIcon} aria-label={`Edit ${wf.Label}`} size="small" variant="invisible" disabled={editDisabled} onClick={() => onEdit(wf.ID)} />
-                  <IconButton icon={DownloadIcon} aria-label={`Export ${wf.Label}`} size="small" variant="invisible" onClick={() => onExport(wf.ID, wf.Label)} />
-                  <IconButton icon={TrashIcon} aria-label={`Delete ${wf.Label}`} size="small" variant="invisible" onClick={() => requestDelete(wf)} />
+                  <IconButton icon={PencilIcon} aria-label={t('workflowsTable.editAriaLabel', { label: wf.Label })} size="small" variant="invisible" disabled={editDisabled} onClick={() => onEdit(wf.ID)} />
+                  <IconButton icon={DownloadIcon} aria-label={t('workflowsTable.exportAriaLabel', { label: wf.Label })} size="small" variant="invisible" onClick={() => onExport(wf.ID, wf.Label)} />
+                  <IconButton icon={TrashIcon} aria-label={t('workflowsTable.deleteAriaLabel', { label: wf.Label })} size="small" variant="invisible" onClick={() => requestDelete(wf)} />
                 </Stack>
               )
             },
