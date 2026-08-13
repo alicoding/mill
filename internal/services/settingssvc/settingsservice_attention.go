@@ -9,6 +9,7 @@ import (
 	"github.com/alicoding/mill/internal/adapters/dockbadge"
 	"github.com/alicoding/mill/internal/adapters/idletime"
 	"github.com/alicoding/mill/internal/adapters/notify"
+	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
 // The away-user attention layer (docs/adr/0032 §3, sharpened by
@@ -102,6 +103,18 @@ func (s *SettingsService) SetPendingBadge(count int) {
 	}
 }
 
+// dockBounceFn is NotifyPendingApproval's one seam to the OS dock
+// bounce: window.Flash maps to a single NSInformationalRequest on
+// macOS (bounces once and self-completes; disabling is a no-op) and a
+// taskbar flash on Windows. A package var so the away-branch wiring is
+// unit-testable; the real dock behavior is OS-bound and stays a
+// manual-only check (.claude/rules/testing.md).
+var dockBounceFn = func(w *application.WebviewWindow) {
+	if w != nil {
+		w.Flash(true)
+	}
+}
+
 // notificationID encodes which pending-item KIND a delivered
 // notification was for directly into its own ID (kind + ":" + id) --
 // the simplest way for the OnNotificationResponse routing below to
@@ -131,6 +144,16 @@ func (s *SettingsService) NotifyPendingApproval(id, description, kind string, fo
 		// not-harder-than-baseline lock).
 		return nil
 	}
+	// One-shot dock bounce, same kernel attention-layer class as the
+	// dock badge (docs/adr/0032 §3, ADR-0035's kernel/composition
+	// boundary): an away user gets a single informational bounce per
+	// newly-parked item, alongside the notification and the floating
+	// prompt -- never a repeating/critical request.
+	s.mu.Lock()
+	w := s.window
+	s.mu.Unlock()
+	dockBounceFn(w)
+
 	const title = "Mill: approval needed"
 	notifID := notificationID(kind, id)
 	var sendErr error
