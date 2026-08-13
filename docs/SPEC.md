@@ -4503,6 +4503,57 @@ surface can already express.
   authoring UI — Phase B's own bigger, genuinely separate design
   surface, tracked in the ADR, not silently folded into what shipped.
 
+- **Design system tokens, `LOCKED`, built (goal 0001, design wave 2,
+  2026-08-13) — a deliberate identity layer over Primer, not
+  per-surface ad hoc styling.** Prompted by a full-app design audit
+  (screenshots, both themes) finding pill/color/typography drift that
+  outlived wave 1's convention fixes above. Three pieces, all
+  app/frontend/src/app/mill-tokens.css + shared/:
+  - **Accent scale**: a desaturated verdigris/teal (`#1F6F6B` light /
+    `#3FA39E` dark text, `#2B7D77` dark fill — the two dark shades
+    split for contrast reasons Primer's own dark theme already
+    demonstrates: a fill needs contrast FOR white content painted on
+    it, text needs contrast AGAINST the page behind it) layered over
+    Primer's functional `--bgColor-accent-*`/`--borderColor-accent-*`/
+    `--fgColor-accent` tokens, so every Primer component reading them
+    (links, focus rings, selected tabs, the sidebar active row) picks
+    it up for free. Lives in its own `mill-tokens.css`, imported
+    *after* `@primer/primitives`' theme CSS in `main.tsx` — Primer's
+    own light.css sets these tokens on three selectors including one
+    matching its ThemeProvider's internal wrapper `<div>` directly
+    (not just `:root`), so a same-specificity override has to win by
+    load order, not by a selector-specificity trick alone (an earlier
+    attempt at boosted specificity looked correct on paper and still
+    lost the real cascade — caught by a computed-style e2e proof
+    against the compiled page, not assumed from reading the CSS).
+  - **Node-Kind canvas colors decoupled from status semantics**
+    (`composition/nodeKind.ts`'s `KIND_ICON_BG`, confined to
+    canvas/palette only): previously aliased Primer's own
+    `--bgColor-success-emphasis`/`--bgColor-attention-emphasis`/etc.
+    directly, so a `process`-kind node card and a `success`-status
+    pill rendered the literal same green ("green triple duty") — now
+    each kind has its own fixed `--mill-kind-*` custom property,
+    contrast-checked independently, never aliased to a Primer semantic
+    token or the accent scale above.
+  - **`shared/StatusStamp.tsx`**: one stamp component (mono uppercase
+    label, slightly-squared radius, subtle border) replacing 7 ad-hoc
+    `<Label variant="...">` pill families across the app (workflow
+    live/draft/disabled, run SUCCESS/ERROR, guardrail approved/denied,
+    built-in badges, trigger armed/not-live, run kind, dev-build
+    identity). Five semantic variants only — `success`/`caution`/
+    `danger`/`neutral`/`identity` — deliberately fewer than Primer's
+    own variant palette, so two different pill families can never
+    drift onto different colors for the same meaning again. Primer's
+    `Label` stays in use for genuine categorization tags (auth type,
+    field `In`/`Type`, a Decision's category column) — StatusStamp is
+    for STATE, Label stays for CATEGORY, not a wholesale replacement.
+  - **Mono utility** (`shared/monoText.module.css`'s single `.mono`
+    class, a `--mill-mono` ui-monospace stack): applied to
+    machine-readable facts — MCP server commands, AI provider/
+    Integration base URLs, run timestamps, ExecEnv directories,
+    Decision output keys — a class, not a component, since the only
+    thing every call site needs is one CSS property.
+
 ## 11. Enterprise / regulated deployment readiness
 
 `OPEN` throughout — this section is Research only. Nothing here is

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Events } from '@wailsio/runtime'
-import { Button, IconButton, Label, type LabelProps, Select, Stack, Text } from '@primer/react'
+import { Button, IconButton, Select, Stack, Text } from '@primer/react'
 import { DataTable, type Column } from '@primer/react/experimental'
 import { Blankslate } from '@primer/react/experimental'
 import { BugIcon, CheckCircleIcon, XCircleIcon, ClockIcon, XIcon, ShieldIcon, ShieldXIcon, StopIcon, HistoryIcon } from '@primer/octicons-react'
@@ -11,16 +11,18 @@ import type { AttributeDef } from '../../bindings/github.com/alicoding/mill/inte
 import { ApprovalValuesForm, attrsForPending } from '../shared/ApprovalValuesForm'
 import { formatRunStartedAt } from '../shared/runTime'
 import { StalenessBadge } from '../shared/StalenessBadge'
+import { StatusStamp, type StatusStampVariant } from '../shared/StatusStamp'
 import { ENQUEUED_STALE_THRESHOLD_MS, isStuckEnqueued } from '../shared/enqueuedStale'
 import styles from '../shared/ListCard.module.css'
+import monoStyles from '../shared/monoText.module.css'
 import PageContainer from '../shared/PageContainer'
 
-const STATUS_VARIANT: Record<string, LabelProps['variant']> = {
+const STATUS_VARIANT: Record<string, StatusStampVariant> = {
   SUCCESS: 'success',
   ERROR: 'danger',
-  PENDING: 'attention',
-  ENQUEUED: 'attention',
-  CANCELLED: 'secondary',
+  PENDING: 'caution',
+  ENQUEUED: 'caution',
+  CANCELLED: 'neutral',
   MAX_RECOVERY_ATTEMPTS_EXCEEDED: 'danger',
 }
 
@@ -32,10 +34,13 @@ function kindLabelFor(t: (key: string) => string): Record<RunKind, string> {
   }
 }
 
-const KIND_VARIANT: Record<RunKind, LabelProps['variant']> = {
-  [RunKind.$zero]: 'secondary',
-  [RunKind.RunKindTest]: 'secondary',
-  [RunKind.RunKindTriggered]: 'severe',
+// Both neutral -- "how did this run start" is categorization, not a
+// status verdict, so it doesn't earn either of the semantic colors
+// (the old severe/orange on `triggered` read as a warning it wasn't).
+const KIND_VARIANT: Record<RunKind, StatusStampVariant> = {
+  [RunKind.$zero]: 'neutral',
+  [RunKind.RunKindTest]: 'neutral',
+  [RunKind.RunKindTriggered]: 'neutral',
 }
 
 const STEP_ICON: Record<string, React.ReactNode> = {
@@ -228,9 +233,9 @@ function WorkflowRunsPanel({ workflowId, attrs, initialRunId, onInitialRunConsum
         <span data-run-id={run.runID} data-selected={selectedRunID === run.runID}>
           <Stack direction="horizontal" gap="condensed" align="center">
             {run.pending ? (
-              <Label variant="attention" size="small" data-testid="run-awaiting-approval">{t('workflowRunsPanel.awaitingApproval')}</Label>
+              <StatusStamp variant="caution" data-testid="run-awaiting-approval">{t('workflowRunsPanel.awaitingApproval')}</StatusStamp>
             ) : (
-              <Label variant={STATUS_VARIANT[run.status] ?? 'secondary'} size="small">{run.status}</Label>
+              <StatusStamp variant={STATUS_VARIANT[run.status] ?? 'neutral'}>{run.status}</StatusStamp>
             )}
             {/* Stuck-ENQUEUED presentation (docs/goals/0026 item 8): a
                 run that queued forever without ever starting reads as
@@ -255,14 +260,14 @@ function WorkflowRunsPanel({ workflowId, attrs, initialRunId, onInitialRunConsum
       header: t('workflowRunsPanel.columns.kind'),
       field: 'kind',
       sortBy: 'alphanumeric',
-      renderCell: (run) => <Label variant={KIND_VARIANT[run.kind]} size="small">{KIND_LABEL[run.kind]}</Label>,
+      renderCell: (run) => <StatusStamp variant={KIND_VARIANT[run.kind]}>{KIND_LABEL[run.kind]}</StatusStamp>,
     },
     {
       id: 'started',
       header: t('workflowRunsPanel.columns.started'),
       field: 'startedAt',
       sortBy: 'datetime',
-      renderCell: (run) => <Text size="small" className={styles.muted}>{formatRunStartedAt(run.startedAt)}</Text>,
+      renderCell: (run) => <Text size="small" className={`${styles.muted} ${monoStyles.mono}`}>{formatRunStartedAt(run.startedAt)}</Text>,
     },
   ]
 
@@ -320,7 +325,7 @@ function WorkflowRunsPanel({ workflowId, attrs, initialRunId, onInitialRunConsum
         <div ref={detailRef} className={styles.card} data-testid="run-detail" style={{ marginTop: 'var(--base-size-16)' }}>
           <Stack direction="horizontal" justify="space-between" align="center">
             <Stack direction="horizontal" gap="condensed" align="center">
-              <Label variant={STATUS_VARIANT[detail.status] ?? 'secondary'} size="small">{detail.status}</Label>
+              <StatusStamp variant={STATUS_VARIANT[detail.status] ?? 'neutral'}>{detail.status}</StatusStamp>
               {isStuckEnqueued(detail) && (
                 <StalenessBadge
                   createdAt={detail.startedAt}
@@ -423,9 +428,9 @@ function WorkflowRunsPanel({ workflowId, attrs, initialRunId, onInitialRunConsum
                           here too (docs/adr/0031 item 2) -- BugIcon, never
                           the guardrail shield/wording. */}
                       {step.guardrailSource === 'debug' && (
-                        <Label variant="done" size="small" data-testid="step-debug-badge">
+                        <StatusStamp variant="identity" data-testid="step-debug-badge">
                           <BugIcon size={12} /> {t('workflowRunsPanel.breakpointBadge')}
-                        </Label>
+                        </StatusStamp>
                       )}
                     </Stack>
                     {step.guardrailEffect && (

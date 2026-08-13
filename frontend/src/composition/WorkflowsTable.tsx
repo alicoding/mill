@@ -1,7 +1,8 @@
 import { useTranslation } from 'react-i18next'
-import { Button, IconButton, Label, Link, Stack } from '@primer/react'
+import { Button, IconButton, Link, Stack } from '@primer/react'
 import { DownloadIcon, PencilIcon, TrashIcon } from '@primer/octicons-react'
 import { DataTable } from '@primer/react/experimental'
+import { StatusStamp } from '../shared/StatusStamp'
 import { ResizableTableContainer, TruncatedCell } from '../shared/ResizableTable'
 import { useConfirmDelete } from '../shared/useConfirmDelete'
 import type { Workflow } from '../../bindings/github.com/alicoding/mill/internal/domain/composition/models'
@@ -94,9 +95,9 @@ export function WorkflowsTable({
             renderCell: (wf) => (
               <Stack direction="horizontal" gap="condensed">
                 {wf.PublishedVersion > 0
-                  ? <Label variant="success" size="small">{t('publishedVersionLive', { version: wf.PublishedVersion })}</Label>
-                  : <Label variant="attention" size="small">{t('workflowsTable.draft')}</Label>}
-                {wf.Disabled && <Label variant="severe" size="small">{t('disabled')}</Label>}
+                  ? <StatusStamp variant="success">{t('publishedVersionLive', { version: wf.PublishedVersion })}</StatusStamp>
+                  : <StatusStamp variant="caution">{t('workflowsTable.draft')}</StatusStamp>}
+                {wf.Disabled && <StatusStamp variant="danger">{t('disabled')}</StatusStamp>}
               </Stack>
             ),
           },
