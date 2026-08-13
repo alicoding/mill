@@ -3,11 +3,9 @@ import { findFreeDropPosition } from './canvasLayout'
 import type { CanvasNode } from './canvasStore'
 import { CANVAS_NODE_WIDTH, CANVAS_NODE_HEIGHT } from './canvasConstants'
 
-// Real bug this covers: a node dropped on/near an existing one used to
-// land stacked on top of it (docs/SPEC.md §3), producing the unreadable
-// mess and broken React Flow selection outline in the original bug
-// report. Caught live via manual reproduction, then discarded as a
-// throwaway script -- these are that reproduction made permanent
+// Regression: a node dropped on/near an existing one used to
+// land stacked on top of it (docs/SPEC.md §3), producing an unreadable
+// mess and a broken React Flow selection outline
 // (.claude/rules/testing.md).
 function node(id: string, x: number, y: number): CanvasNode {
   return { id, type: 'trigger', position: { x, y }, data: { nodeTypeID: 'trigger-manual', kind: 'trigger', label: 'Trigger: manual', config: {} } }

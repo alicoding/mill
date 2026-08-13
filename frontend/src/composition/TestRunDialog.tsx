@@ -27,8 +27,8 @@ export default function TestRunDialog({
   // Trigger-supplied-payload substitution (triggerPayload.ts): when the
   // workflow's trigger normally delivers the run's input (a
   // filesystem-watch path), a manual test run offers this field so the
-  // run isn't dead-on-arrival with an empty payload -- the live failure
-  // the owner hit running the saved-page seed. Absent hint = no field,
+  // run isn't dead-on-arrival with an empty payload -- an empty payload
+  // fails a manual run of the saved-page seed. Absent hint = no field,
   // exactly the previous dialog.
   payloadHint?: string | null
   payload?: string

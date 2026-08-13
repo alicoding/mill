@@ -48,7 +48,7 @@ test('Importing a workflow file adds a new, independent workflow without touchin
     label: 'E2E imported workflow',
     description: 'Imported by an e2e test',
     // A Trigger root (docs/adr/0028) -- a lone Capture node alone is
-    // now the owner's own unsaveable repro.
+    // unsaveable.
     nodes: [
       { ID: 't', NodeTypeID: 'trigger-manual' },
       { ID: 'c', NodeTypeID: 'capture-clipboard-html' },

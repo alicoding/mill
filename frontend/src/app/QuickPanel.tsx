@@ -420,7 +420,7 @@ export function QuickPanel() {
     // reasoning Review's own row above documents -- the enterprise-critical
     // door (MCP can be unavailable in locked-down enterprise environments; clipboard+hotkey is the
     // transport). trailingVisual shows panel.applyClipboard's bound key
-    // once the owner rebinds it (shared/commands.ts's defaultBinding is
+    // once the user rebinds it (shared/commands.ts's defaultBinding is
     // null); HotkeyHint renders nothing until then.
     entries.push({
       id: 'apply-clipboard',

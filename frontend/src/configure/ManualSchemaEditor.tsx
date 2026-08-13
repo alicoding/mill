@@ -11,7 +11,7 @@ import styles from '../shared/ListCard.module.css'
 //
 // Each field renders as ONE compact line -- name, type, and badges for
 // whatever else is set -- with everything beyond name/type edited in a
-// popup Dialog (the pencil), by direct user decision: the previous
+// popup Dialog (the pencil): the previous
 // two-line rows of eight inline inputs wrapped into visibly broken
 // layout and buried what mattered.
 

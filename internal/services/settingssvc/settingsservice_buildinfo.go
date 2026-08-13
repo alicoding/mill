@@ -8,8 +8,8 @@ import (
 )
 
 // BuildInfo is what's actually running, not what the source tree looks
-// like -- the two silently diverged this session (a desktop app process
-// stayed up across an entire session's worth of commits, showing hours-
+// like -- the two can silently diverge (a desktop app process
+// staying up across many commits, showing hours-
 // stale UI, with nothing anywhere flagging it). Wails3's own SDK reads
 // the identical runtime/debug.ReadBuildInfo() data (application_debug.go)
 // but only wires it up under `!production` and never exposes it to the

@@ -83,11 +83,10 @@ test('the titlebar band\'s left segment tracks the sidebar column: it resizes an
   expect(sidebarBox).not.toBeNull()
   expect(Math.abs(sidebarBox!.width - collapsedLeftBox!.width)).toBeLessThan(2)
 
-  // (c) the toggle lives in the SIDEBAR's own top row, below the band
-  // (owner design 2026-08-11: the control sits next to the nav it
-  // controls; collapsed, the same slot is the Mill icon that swaps to
-  // this expand affordance on hover/focus). Its x stays inside the
-  // rail column.
+  // (c) the toggle lives in the SIDEBAR's own top row, below the band:
+  // the control sits next to the nav it controls; collapsed, the same
+  // slot is the Mill icon that swaps to this expand affordance on
+  // hover/focus. Its x stays inside the rail column.
   const toggleBox = await page.getByRole('button', { name: 'Expand navigation' }).boundingBox()
   expect(toggleBox).not.toBeNull()
   expect(toggleBox!.y).toBeGreaterThanOrEqual(collapsedLeftBox!.y + collapsedLeftBox!.height - 1)
@@ -154,10 +153,9 @@ test.describe('tab strip vs build badge', () => {
   test.use({ viewport: { width: 1000, height: 800 } })
 
   test('the tab-strip overflow button is clickable with the build badge present, and the badge lives inside the band', async ({ page }) => {
-  // Regression coverage for the live-caught overlay bug (2026-08-11):
-  // the build-identity badge was position:fixed at the window's
-  // top-right, exactly over the tab strip's pinned "All open tabs" ⌄
-  // button, and intercepted its clicks -- the same overlay-blocks-chrome
+  // Regression: a position:fixed build-identity badge at the window's
+  // top-right sat exactly over the tab strip's pinned "All open tabs" ⌄
+  // button and intercepted its clicks -- the same overlay-blocks-chrome
   // class the isolated-data ribbon already hit once with the sidebar
   // toggle. The fix makes the badge a flex participant in the band's
   // own right segment, so overlap is impossible by construction.

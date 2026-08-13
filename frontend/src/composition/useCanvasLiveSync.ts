@@ -101,7 +101,7 @@ export function useCanvasLiveSync(args: UseCanvasLiveSyncArgs): UseCanvasLiveSyn
   }, [draftDescription])
 
   // Real bug found via CI flake investigation (docs/goals/BACKLOG.md
-  // Standing #1, 2026-08-12): goal 0017 gave every direct-mutation
+  // Standing #1): goal 0017 gave every direct-mutation
   // service its own `dataevent.Emit("workflow", id)` call -- but for a
   // single MCP `update_workflow` write, that now fires the SAME
   // `mill-data-changed` event TWICE: once from `SnapshotDraft`

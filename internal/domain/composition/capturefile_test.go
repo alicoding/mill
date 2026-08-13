@@ -97,8 +97,7 @@ func TestCaptureFile_EmptyPath_Errors(t *testing.T) {
 		t.Fatal("ExecuteWorkflow() error = nil, want an error for an empty payload/path")
 	}
 	// The error must be self-explanatory (docs/SPEC.md §1): name the
-	// cause (empty payload on a manual run) and both remedies -- caught
-	// live when the owner's first Run of the saved-page seed died with a
+	// cause (empty payload on a manual run) and both remedies, not a
 	// bare "no path given".
 	for _, want := range []string{"payload is empty", "Initial payload", "literal"} {
 		if !strings.Contains(err.Error(), want) {

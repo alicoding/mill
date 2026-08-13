@@ -351,8 +351,8 @@ func TestExecuteWorkflow_IntegrationHTTP_MethodFallsBackToRequests(t *testing.T)
 // The workflow node no longer authors transport/body -- with only a
 // requestId configured, method comes from the request's own Method,
 // the endpoint path from its single declared operation, and the body
-// from its own Body field (direct user decision: "form fields that
-// should not be done at the workflow level").
+// from its own Body field: transport/body fields belong on the
+// request, not the workflow level.
 func TestExecuteWorkflow_IntegrationHTTP_TransportComesFromTheRequest(t *testing.T) {
 	var gotMethod, gotPath, gotBody string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

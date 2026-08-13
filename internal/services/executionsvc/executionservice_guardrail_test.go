@@ -155,8 +155,8 @@ func TestGuardrail_ExternalStepParks_ApproveExecutes(t *testing.T) {
 
 	// The park itself checkpoints DBOS system operations (DBOS.setEvent/
 	// DBOS.recv/DBOS.sleep) as steps -- GetRun must never surface them as
-	// rows (caught live: three blank, label-less checkmarks above the
-	// run's real steps).
+	// rows: they would otherwise render as blank, label-less checkmarks above the
+	// run's real steps.
 	detail, err := exec.GetRun(summary.RunID)
 	if err != nil {
 		t.Fatalf("GetRun: %v", err)

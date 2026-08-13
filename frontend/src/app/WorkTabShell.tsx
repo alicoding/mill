@@ -103,9 +103,9 @@ export function WorkTabShell({ pageLabel, pageIcon, titlebarSlot, children }: { 
     closeOtherWorkTabs(keepKey)
   }
 
-  // Drop restored tabs whose entity was deleted since last session --
-  // once, when both lists are actually in (never against a still-null
-  // list, which would wrongly prune everything).
+  // Drop restored tabs whose entity was deleted while the app was
+  // closed -- once, when both lists are actually in (never against a
+  // still-null list, which would wrongly prune everything).
   useEffect(() => {
     if (workflows === null || requests === null) return
     pruneWorkTabs((tab) => {

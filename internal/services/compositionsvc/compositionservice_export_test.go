@@ -27,8 +27,8 @@ func newTestCompositionService(t *testing.T) *CompositionService {
 // triggerAndCaptureNodes is a minimal, real, Trigger-rooted two-node
 // graph (docs/adr/0028: a non-Trigger root is now a save-time Error) --
 // used by every export/import fixture below in place of the old
-// single-Capture-node fixture, which is now exactly the owner's own
-// unsaveable repro (docs/adr/0028's Context section).
+// single-Capture-node fixture, which is now unsaveable
+// (docs/adr/0028's Context section).
 func triggerAndCaptureNodes() ([]composition.Node, []composition.Edge) {
 	nodes := []composition.Node{
 		{ID: "t", NodeTypeID: "trigger-manual"},
