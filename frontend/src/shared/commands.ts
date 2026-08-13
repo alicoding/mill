@@ -31,6 +31,19 @@ export interface Command {
   // palette.open, whose binding is reserved ahead of goal 0015 actually
   // building the palette.
   defaultBinding: KeyCombo | null
+  // Additional, always-on bindings for the SAME command (docs/goals/
+  // BACKLOG.md Standing #6) -- backward-compatible (every existing
+  // command simply omits it). Deliberately NOT user-rebindable this
+  // pass: Settings' recorder-based rebinding UI
+  // (views/KeyboardShortcutsSection.tsx) edits `defaultBinding` only
+  // (via keybindingOverrides, same as before); extras render as
+  // read-only secondary KeyComboChips there and are never looked up in
+  // keybindingOverrides by dispatchCommandForEvent below -- a real
+  // "edit an alias" feature (its own override storage keyed by
+  // command+index, its own Go-side persistence) is more than this
+  // item's scope covers, named as a future extension rather than half-
+  // built here.
+  extraBindings?: KeyCombo[]
   run: () => void
 }
 
@@ -177,6 +190,19 @@ export const COMMANDS: Command[] = [
     // shared signal the same way workflow.save/workflow.run already
     // do via canvasCommandRequest.
     defaultBinding: { mods: ['cmd'], key: 'K' },
+    // ⌘? / ⌘/ aliases (docs/goals/BACKLOG.md Standing #6, the "owner
+    // reinforcement" note CommandPalette.tsx used to document as
+    // deliberately not built): both land on the same physical '/' key
+    // (keyFromEventCode is shift-independent, shared/keybinding.ts),
+    // distinguished by the Shift mod -- ⌘/ is the bare combo, ⌘? adds
+    // Shift (what actually produces the '?' glyph). Checked against
+    // every other command's defaultBinding above and RESERVED_COMBOS
+    // (shared/keybinding.ts): neither uses the '/' key on macOS, no
+    // collision.
+    extraBindings: [
+      { mods: ['cmd'], key: '/' },
+      { mods: ['cmd', 'shift'], key: '/' },
+    ],
     run: () => useAppStore.getState().togglePalette(),
   },
   {
@@ -245,21 +271,24 @@ export function effectiveBinding(command: Command, overrides: Record<string, Key
 }
 
 // dispatchCommandForEvent resolves a keydown against every command's
-// current effective binding and runs the first match -- called from
-// App.tsx's one window keydown listener, folding in what used to be a
-// separate, hardcoded Cmd+1-4/Cmd+, handler (view.*/settings.open are
-// now just ordinary commands in COMMANDS above, same dispatch path).
-// Returns whether a command actually ran, so the caller knows whether
-// to preventDefault (never swallow an unbound combo -- native
-// editing shortcuts, browser devtools, etc. must keep working).
+// current effective binding (its primary, override-aware) PLUS every
+// extraBindings entry (docs/goals/BACKLOG.md Standing #6 -- always-on,
+// never override-checked, see Command.extraBindings' own doc comment)
+// and runs the first match -- called from App.tsx's one window keydown
+// listener, folding in what used to be a separate, hardcoded Cmd+1-4/
+// Cmd+, handler (view.*/settings.open are now just ordinary commands
+// in COMMANDS above, same dispatch path). Returns whether a command
+// actually ran, so the caller knows whether to preventDefault (never
+// swallow an unbound combo -- native editing shortcuts, browser
+// devtools, etc. must keep working).
 export function dispatchCommandForEvent(e: KeyboardEvent, overrides: Record<string, KeyCombo>): boolean {
   const pressed = comboFromEvent(e)
   if (!pressed) return false
   const want = comboKey(pressed.mods, pressed.key)
   for (const command of COMMANDS) {
     const binding = effectiveBinding(command, overrides)
-    if (!binding) continue
-    if (comboKey(binding.mods, binding.key) === want) {
+    const bindings = binding ? [binding, ...(command.extraBindings ?? [])] : (command.extraBindings ?? [])
+    if (bindings.some((b) => comboKey(b.mods, b.key) === want)) {
       command.run()
       return true
     }

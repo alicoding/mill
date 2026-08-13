@@ -60,6 +60,7 @@ export default function KeyboardShortcutsSection() {
                 label={command.label}
                 binding={effectiveBinding(command, keybindingOverrides)}
                 isOverridden={command.id in keybindingOverrides}
+                extraBindings={command.extraBindings}
               />
             </ActionList.Item>
           ))}
@@ -69,11 +70,12 @@ export default function KeyboardShortcutsSection() {
   )
 }
 
-function KeymapRow({ commandId, label, binding, isOverridden }: {
+function KeymapRow({ commandId, label, binding, isOverridden, extraBindings }: {
   commandId: string
   label: string
   binding: KeyCombo | null
   isOverridden: boolean
+  extraBindings?: KeyCombo[]
 }) {
   const { t } = useTranslation('views')
   const hk = useCommandKeybindingCapture(commandId)
@@ -111,6 +113,23 @@ function KeymapRow({ commandId, label, binding, isOverridden }: {
             <Button size="small" variant="invisible" onClick={hk.clear} data-testid="keymap-row-reset">
               {t('keyboardShortcutsSection.reset')}
             </Button>
+          )}
+          {/* Multi-binding aliases (docs/goals/BACKLOG.md Standing #6):
+              read-only this pass -- Command.extraBindings' own doc
+              comment (shared/commands.ts) covers why these aren't
+              wired into the press-to-capture recorder above. */}
+          {extraBindings && extraBindings.length > 0 && !hk.recording && (
+            <Stack direction="horizontal" gap="condensed" align="center">
+              <Text size="small" className={styles.muted}>{t('keyboardShortcutsSection.alsoLabel')}</Text>
+              {extraBindings.map((extra) => (
+                <KeyComboChip
+                  key={formatCombo(extra.mods, extra.key)}
+                  label={formatCombo(extra.mods, extra.key)}
+                  title={t('keyboardShortcutsSection.extraBindingTitle')}
+                  data-testid="keymap-row-extra-binding"
+                />
+              ))}
+            </Stack>
           )}
         </Stack>
       </Stack>

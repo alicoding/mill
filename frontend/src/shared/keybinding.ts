@@ -17,6 +17,13 @@ export function keyFromEventCode(code: string): string | null {
   if (code === 'Tab') return 'Tab'
   if (code === 'Comma') return ','
   if (code === 'Enter' || code === 'NumpadEnter') return 'Enter'
+  // docs/goals/BACKLOG.md Standing #6 (⌘?/⌘/ palette aliases): the
+  // physical key is the same whether Shift is held or not (Shift+/
+  // producing '?' is exactly the shift-independence this function's
+  // own header comment already documents for every other key) -- the
+  // Shift MOD is what distinguishes ⌘/ from ⌘? at the KeyCombo level
+  // (modsFromEvent below), not a second key value here.
+  if (code === 'Slash') return '/'
   return null
 }
 
