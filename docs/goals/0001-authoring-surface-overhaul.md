@@ -246,6 +246,27 @@ the owner's own live sign-off against the goal's stated Acceptance
 authoring-surface items (typed payload visibility on cards, the
 spacing audit) that predate both waves and were never in their scope.
 
+## Design wave 4 — app mark + icon (2026-08-13, owner-requested and
+owner-picked)
+
+Mill's first real mark, replacing the stock framework "W" that still
+shipped as both `build/appicon.png` and the sidebar rail's
+`millicon.png`. Owner chose candidate B ("Gate": capture-blue node →
+guardrail teal diamond → apply-orange node) from a three-option
+preview sheet (millwheel / gate / M-monogram, each rendered at
+512→32px icon sizes, dock context, and sidebar context) — the same
+node-edge-through-a-gate motif the README banner (PR #61) established,
+drawn from the wave-2 identity tokens. Landed: `build/appicon.png`
+(1024 squircle tile, transparent corners) with regenerated
+`darwin/icons.icns` + `windows/icon.ico` (`wails3 generate icons`);
+`frontend/src/app/millicon.png` (the collapsed-rail slot — expanded
+deliberately stays wordmark-only per the wave-1 owner refinement);
+`frontend/public/mill.svg` favicon replacing the stock `wails.png`
+reference in index.html. Verified live in server mode (rail renders
+the new tile). The full three-candidate sheet + chosen-mark SVG source
+live in the session scratchpad; the mark's canonical committed form is
+the favicon SVG.
+
 ## Live-review additions (2026-08-10)
 - Hotkey recorder vs native menu accelerators (owner hit ⌘⇧W while
   recording — the window closed, and since Mill exits on last-window-

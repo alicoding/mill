@@ -1,0 +1,17 @@
+<svg width="128" height="128" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+  <!-- Mill mark (goal 0001 identity): node -> guardrail gate -> node,
+       on the app-icon tile so the browser tab stays legible at 16px. -->
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1c2330"/><stop offset="1" stop-color="#0d1117"/>
+    </linearGradient>
+  </defs>
+  <rect x="1" y="1" width="98" height="98" rx="22" fill="url(#bg)"/>
+  <g transform="translate(50 50) scale(0.72) translate(-50 -50)">
+    <line x1="14" y1="50" x2="33" y2="50" stroke="#8b949e" stroke-width="5" stroke-linecap="round"/>
+    <line x1="67" y1="50" x2="86" y2="50" stroke="#8b949e" stroke-width="5" stroke-linecap="round"/>
+    <circle cx="14" cy="50" r="9" fill="#0969DA"/>
+    <circle cx="86" cy="50" r="9" fill="#D4590B"/>
+    <rect x="36.5" y="36.5" width="27" height="27" rx="5.5" transform="rotate(45 50 50)" fill="none" stroke="#3FA39E" stroke-width="7.5"/>
+  </g>
+</svg>
