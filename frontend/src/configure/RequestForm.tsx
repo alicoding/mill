@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Button, FormControl, Heading, IconButton, Select, Stack, Text, TextInput, Textarea } from '@primer/react'
 import { PlusIcon, TrashIcon } from '@primer/octicons-react'
 import { ConfigureService } from '../shared/bindings'
@@ -57,6 +58,7 @@ export function RequestForm({
   onSaved: () => void
   onCancel: () => void
 }) {
+  const { t } = useTranslation('configure')
   const seed = editingRequest ?? duplicateFrom
   const [draft, setDraft] = useState<RequestDraft>(() => {
     if (editingRequest) return draftFrom(editingRequest)
@@ -78,7 +80,7 @@ export function RequestForm({
   const [manualOperations, setManualOperations] = useState<ManualOperation[]>(() => {
     const spec = seed?.OpenAPISpec ?? ''
     if (spec.trim() === '') return [emptyOperation()]
-    const { operations } = parseOpenAPIToOperations(spec)
+    const { operations } = parseOpenAPIToOperations(t, spec)
     return operations.length > 0 ? operations : [emptyOperation()]
   })
   const [schemaDirty, setSchemaDirty] = useState(false)
@@ -142,14 +144,14 @@ export function RequestForm({
     : draft.openAPISpec
   const effectiveOperations = effectiveDirty
     ? (opsHaveContent ? toSchemaOps(manualOperations) : [])
-    : parseOpenAPIToOperations(draft.openAPISpec).operations
+    : parseOpenAPIToOperations(t, draft.openAPISpec).operations
 
   // Direct raw-spec editing (the disclosure textarea below) makes the
   // raw text authoritative again and re-seeds the editor from it.
   const editRawSpec = (specText: string) => {
     setDraft({ ...draft, openAPISpec: specText })
     setSchemaDirty(false)
-    const { operations } = parseOpenAPIToOperations(specText)
+    const { operations } = parseOpenAPIToOperations(t, specText)
     setManualOperations(operations.length > 0 ? operations : [emptyOperation()])
   }
 
@@ -201,10 +203,10 @@ export function RequestForm({
     <div className={styles.card}>
       <Stack direction="vertical" gap="normal">
         <section>
-          <Heading as="h3" variant="small" className={styles.sectionHeading}>General</Heading>
+          <Heading as="h3" variant="small" className={styles.sectionHeading}>{t('requestForm.general')}</Heading>
           <Stack direction="vertical" gap="condensed">
             <FormControl>
-              <FormControl.Label>Label</FormControl.Label>
+              <FormControl.Label>{t('requestForm.label')}</FormControl.Label>
               <TextInput value={draft.label} onChange={(e) => setDraft({ ...draft, label: e.target.value })} block />
             </FormControl>
             {/* Method + URL side by side, the first thing after the
@@ -216,7 +218,7 @@ export function RequestForm({
                 presents a typed choice. */}
             <Stack direction="horizontal" gap="condensed" align="end">
               <FormControl>
-                <FormControl.Label>Method</FormControl.Label>
+                <FormControl.Label>{t('requestForm.method')}</FormControl.Label>
                 <Select
                   value={draft.method || 'GET'}
                   onChange={(e) => setDraft({ ...draft, method: e.target.value })}
@@ -229,26 +231,23 @@ export function RequestForm({
                 </Select>
               </FormControl>
               <FormControl style={{ flexGrow: 1 }}>
-                <FormControl.Label>URL</FormControl.Label>
+                <FormControl.Label>{t('requestForm.url')}</FormControl.Label>
                 <FormControl.Caption>
-                  The complete URL this integration calls -- path included, one place ({'{'}param{'}'}
-                  templates welcome, bound via the Schema&apos;s path parameters).
+                  {t('requestForm.urlCaption', { brace: '{', closeBrace: '}' })}
                 </FormControl.Caption>
-                <TextInput value={draft.baseURL} onChange={(e) => setDraft({ ...draft, baseURL: e.target.value })} placeholder="https://api.example.com/v1/widgets/{id}" block />
+                <TextInput value={draft.baseURL} onChange={(e) => setDraft({ ...draft, baseURL: e.target.value })} placeholder={t('requestForm.urlPlaceholder')} block />
               </FormControl>
             </Stack>
             <FormControl>
-              <FormControl.Label>Body</FormControl.Label>
+              <FormControl.Label>{t('requestForm.body')}</FormControl.Label>
               <FormControl.Caption>
-                Optional -- a raw request body sent as-is (e.g. fixed JSON). If the Schema below declares
-                body fields and a workflow binds them, the bound body wins; this is the fallback. Lives
-                here, not on the workflow node: transport and payload shape are the integration&apos;s own.
+                {t('requestForm.bodyCaption')}
               </FormControl.Caption>
               <Textarea value={draft.body} onChange={(e) => setDraft({ ...draft, body: e.target.value })} rows={2} block data-testid="request-body" />
             </FormControl>
             <FormControl>
-              <FormControl.Label>Description</FormControl.Label>
-              <FormControl.Caption>Optional -- what this request is for, or any caveat worth noting.</FormControl.Caption>
+              <FormControl.Label>{t('requestForm.description')}</FormControl.Label>
+              <FormControl.Caption>{t('requestForm.descriptionCaption')}</FormControl.Caption>
               <Textarea value={draft.description} onChange={(e) => setDraft({ ...draft, description: e.target.value })} rows={2} block data-testid="request-description" />
             </FormControl>
           </Stack>
@@ -257,39 +256,34 @@ export function RequestForm({
         <RequestAuthSections draft={draft} setDraft={setDraft} isEditing={isEditing} />
 
         <section>
-          <Heading as="h3" variant="small" className={styles.sectionHeading}>Headers</Heading>
+          <Heading as="h3" variant="small" className={styles.sectionHeading}>{t('requestForm.headers')}</Heading>
           <Stack direction="vertical" gap="condensed">
             <Text as="p" size="small" className={styles.muted}>
-              Static headers (e.g. a required API version) sent with every call, in addition to
-              whatever the Auth type adds.
+              {t('requestForm.headersDescription')}
             </Text>
             {headerRows.map((row, i) => (
               <Stack key={i} direction="horizontal" gap="condensed" align="center">
-                <TextInput placeholder="header name" value={row.key} onChange={(e) => updateHeaderRow(i, 'key', e.target.value)} data-testid="request-header-key" />
-                <TextInput placeholder="value" value={row.value} onChange={(e) => updateHeaderRow(i, 'value', e.target.value)} data-testid="request-header-value" />
-                <IconButton icon={TrashIcon} aria-label="Remove header" size="small" variant="invisible" onClick={() => setHeaderRows(headerRows.filter((_, idx) => idx !== i))} />
+                <TextInput placeholder={t('requestForm.headerNamePlaceholder')} value={row.key} onChange={(e) => updateHeaderRow(i, 'key', e.target.value)} data-testid="request-header-key" />
+                <TextInput placeholder={t('requestForm.valuePlaceholder')} value={row.value} onChange={(e) => updateHeaderRow(i, 'value', e.target.value)} data-testid="request-header-value" />
+                <IconButton icon={TrashIcon} aria-label={t('requestForm.removeHeaderAriaLabel')} size="small" variant="invisible" onClick={() => setHeaderRows(headerRows.filter((_, idx) => idx !== i))} />
               </Stack>
             ))}
             <Button size="small" variant="invisible" leadingVisual={PlusIcon} onClick={() => setHeaderRows([...headerRows, { key: '', value: '' }])} data-testid="add-request-header">
-              Add header
+              {t('requestForm.addHeader')}
             </Button>
           </Stack>
         </section>
 
         <section>
-          <Heading as="h3" variant="small" className={styles.sectionHeading}>Schema</Heading>
+          <Heading as="h3" variant="small" className={styles.sectionHeading}>{t('requestForm.schema')}</Heading>
           <Stack direction="vertical" gap="normal">
             <Text as="p" size="small" className={styles.muted}>
-              The payload&apos;s structure only -- typed input/output fields a workflow node can bind
-              Attributes to (ADR-0007). Method and URL live above; they are never part of the schema.
-              Leave empty to keep using a literal request body.
+              {t('requestForm.schemaDescription')}
             </Text>
             <SchemaIntake onLoad={applyIntake} />
             {manualOperations.length > 1 && (
               <Text as="p" size="small" className={styles.muted} data-testid="multi-operation-note">
-                This request&apos;s stored schema declares {manualOperations.length} operations. A Mill
-                request is one call (1:1 with its operation) -- remove the extras below, or Duplicate
-                the request once per operation.
+                {t('requestForm.multiOperationNote', { count: manualOperations.length })}
               </Text>
             )}
             <ManualSchemaEditor operations={manualOperations} onChange={editOperations} requestMethod={draft.method} />
@@ -299,7 +293,7 @@ export function RequestForm({
               onClick={() => setRawSpecOpen(!rawSpecOpen)}
               data-testid="toggle-raw-openapi"
             >
-              {rawSpecOpen ? 'Hide raw OpenAPI' : 'View raw OpenAPI'}
+              {rawSpecOpen ? t('requestForm.hideRawOpenapi') : t('requestForm.viewRawOpenapi')}
             </Button>
             {rawSpecOpen && (
               <Textarea
@@ -314,7 +308,7 @@ export function RequestForm({
         </section>
 
         <section>
-          <Heading as="h3" variant="small" className={styles.sectionHeading}>Test</Heading>
+          <Heading as="h3" variant="small" className={styles.sectionHeading}>{t('requestForm.test')}</Heading>
           <RequestTestPanel
             operations={effectiveOperations}
             effectiveSpec={effectiveSpec}
@@ -332,8 +326,8 @@ export function RequestForm({
 
       {error && <Text as="p" size="small" className={styles.error}>{error}</Text>}
       <Stack direction="horizontal" gap="condensed" style={{ marginTop: 'var(--base-size-12)' }}>
-        <Button variant="primary" size="small" onClick={handleSave}>Save request</Button>
-        <Button size="small" variant="invisible" onClick={onCancel}>Cancel</Button>
+        <Button variant="primary" size="small" onClick={handleSave}>{t('requestForm.saveRequest')}</Button>
+        <Button size="small" variant="invisible" onClick={onCancel}>{t('requestForm.cancel')}</Button>
       </Stack>
     </div>
     </PageContainer>

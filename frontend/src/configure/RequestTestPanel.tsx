@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Button, FormControl, IconButton, Label, Select, SegmentedControl, Stack, Text, TextInput, Textarea } from '@primer/react'
 import { CopyIcon, PlayIcon, SyncIcon } from '@primer/octicons-react'
 import { ConfigureService } from '../shared/bindings'
@@ -49,6 +50,7 @@ export function RequestTestPanel({
   secret: string
   requestID: string | null
 }) {
+  const { t } = useTranslation('configure')
   const [selectedKey, setSelectedKey] = useState('')
   const [values, setValues] = useState<Record<string, string>>({})
   const [log, setLog] = useState<LogEntry[]>([])
@@ -102,7 +104,7 @@ export function RequestTestPanel({
     try {
       const parsed: unknown = JSON.parse(text || '{}')
       if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
-        setJsonError('Must be a JSON object, e.g. {"id": "123"}.')
+        setJsonError(t('requestTestPanel.mustBeJsonObject'))
         return
       }
       const next: Record<string, string> = {}
@@ -110,7 +112,7 @@ export function RequestTestPanel({
       setValues(next)
       setJsonError('')
     } catch {
-      setJsonError('Not valid JSON.')
+      setJsonError(t('requestTestPanel.notValidJson'))
     }
   }
 
@@ -149,19 +151,19 @@ export function RequestTestPanel({
   }
 
   if (effectiveSpec.trim() === '') {
-    return <Text as="p" size="small" className={styles.muted}>Declare a Schema first (Schema tab) -- testing needs at least one operation.</Text>
+    return <Text as="p" size="small" className={styles.muted}>{t('requestTestPanel.declareSchemaFirst')}</Text>
   }
   if (operations.length === 0) {
-    return <Text as="p" size="small" className={styles.muted}>The Schema tab doesn&apos;t declare any operations yet.</Text>
+    return <Text as="p" size="small" className={styles.muted}>{t('requestTestPanel.noOperationsYet')}</Text>
   }
 
   return (
     <Stack direction="vertical" gap="normal" data-testid="request-test-panel">
       {operations.length > 1 ? (
         <FormControl>
-          <FormControl.Label>Operation</FormControl.Label>
+          <FormControl.Label>{t('requestTestPanel.operation')}</FormControl.Label>
           <Select value={selectedKey} onChange={(e) => selectOperation(e.target.value)} data-testid="test-operation-select">
-            <Select.Option value="">Select an operation…</Select.Option>
+            <Select.Option value="">{t('requestTestPanel.selectOperation')}</Select.Option>
             {operations.map((op) => {
               const key = `${op.method} ${op.path}`
               return <Select.Option key={key} value={key}>{key}</Select.Option>
@@ -170,7 +172,7 @@ export function RequestTestPanel({
         </FormControl>
       ) : (
         <Stack direction="horizontal" gap="condensed" align="center">
-          <Text size="small" weight="semibold">Operation</Text>
+          <Text size="small" weight="semibold">{t('requestTestPanel.operation')}</Text>
           <Label variant="secondary" size="small" data-testid="test-operation-single">{`${operations[0].method} ${operations[0].path}`}</Label>
         </Stack>
       )}
@@ -180,14 +182,14 @@ export function RequestTestPanel({
           {selected.inputFields.length > 0 && (
             <Stack direction="vertical" gap="condensed">
               <Stack direction="horizontal" justify="space-between" align="center">
-                <Text size="small" weight="semibold">Example values</Text>
+                <Text size="small" weight="semibold">{t('requestTestPanel.exampleValues')}</Text>
                 <Stack direction="horizontal" gap="condensed" align="center">
-                  <SegmentedControl aria-label="Payload input mode" size="small" onChange={(i) => switchPayloadMode(i === 0 ? 'fields' : 'json')}>
-                    <SegmentedControl.Button selected={payloadMode === 'fields'}>Per-field</SegmentedControl.Button>
-                    <SegmentedControl.Button selected={payloadMode === 'json'}>Raw JSON</SegmentedControl.Button>
+                  <SegmentedControl aria-label={t('requestTestPanel.payloadInputModeAriaLabel')} size="small" onChange={(i) => switchPayloadMode(i === 0 ? 'fields' : 'json')}>
+                    <SegmentedControl.Button selected={payloadMode === 'fields'}>{t('requestTestPanel.perField')}</SegmentedControl.Button>
+                    <SegmentedControl.Button selected={payloadMode === 'json'}>{t('requestTestPanel.rawJson')}</SegmentedControl.Button>
                   </SegmentedControl>
                   <Button size="small" variant="invisible" leadingVisual={SyncIcon} onClick={generateSample} data-testid="generate-sample-payload">
-                    Generate example values
+                    {t('requestTestPanel.generateExampleValues')}
                   </Button>
                 </Stack>
               </Stack>
@@ -207,7 +209,7 @@ export function RequestTestPanel({
               ) : (
                 <>
                   <Textarea
-                    aria-label="Payload JSON"
+                    aria-label={t('requestTestPanel.payloadJsonAriaLabel')}
                     value={jsonText}
                     onChange={(e) => editJsonText(e.target.value)}
                     rows={6}
@@ -221,28 +223,28 @@ export function RequestTestPanel({
           )}
 
           <Button variant="primary" size="small" leadingVisual={PlayIcon} onClick={runTest} disabled={running} data-testid="run-request-test">
-            {running ? 'Running…' : 'Run test'}
+            {running ? t('requestTestPanel.running') : t('requestTestPanel.runTest')}
           </Button>
         </>
       )}
 
       {log.length > 0 && (
         <Stack direction="vertical" gap="condensed" data-testid="request-test-log">
-          <Text size="small" weight="semibold">Request log (this session only)</Text>
+          <Text size="small" weight="semibold">{t('requestTestPanel.requestLog')}</Text>
           {log.map((entry) => (
             <div key={entry.id} className={styles.card} data-testid="request-test-log-entry">
               <Stack direction="horizontal" gap="condensed" align="center">
                 <Text size="small" className={styles.muted}>{entry.at}</Text>
                 <Label variant="secondary" size="small">{entry.method} {entry.path}</Label>
                 {entry.Error ? (
-                  <Label variant="danger" size="small">error</Label>
+                  <Label variant="danger" size="small">{t('requestTestPanel.error')}</Label>
                 ) : (
                   <Label variant={entry.StatusCode >= 400 ? 'danger' : 'success'} size="small">{entry.StatusCode}</Label>
                 )}
                 <Text size="small" className={styles.muted}>{entry.DurationMs}ms</Text>
                 <IconButton
                   icon={CopyIcon}
-                  aria-label="Copy"
+                  aria-label={t('requestTestPanel.copyAriaLabel')}
                   size="small"
                   variant="invisible"
                   onClick={() => { void navigator.clipboard.writeText(entry.Error || entry.Body) }}

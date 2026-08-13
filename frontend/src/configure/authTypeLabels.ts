@@ -4,16 +4,18 @@ import { AuthType } from '../../bindings/github.com/alicoding/mill/internal/doma
 // §4.1) -- shared by RequestForm.tsx (the Select options) and
 // RequestSummary.tsx (the read-only Details tab), so the two never
 // drift into two different label sets for the same AuthType.
-export const AUTH_LABEL: Record<string, string> = {
-  [AuthType.AuthNone]: 'None',
-  [AuthType.AuthAPIKey]: 'API key',
-  [AuthType.AuthBearer]: 'Bearer token',
-  [AuthType.AuthHMAC]: 'HMAC signature',
-  [AuthType.AuthOAuth1]: 'OAuth 1.0a (HMAC-SHA1)',
-  [AuthType.AuthOAuth1Vendor]: 'OAuth 1.0a (vendor variant)',
-  [AuthType.AuthOAuth2]: 'OAuth 2.0 (client credentials)',
-  [AuthType.AuthQueryParam]: 'Query parameter',
-  [AuthType.AuthMTLS]: 'Mutual TLS (mTLS)',
+export function authLabelFor(t: (key: string) => string): Record<string, string> {
+  return {
+    [AuthType.AuthNone]: t('authTypeLabels.none'),
+    [AuthType.AuthAPIKey]: t('authTypeLabels.apiKey'),
+    [AuthType.AuthBearer]: t('authTypeLabels.bearer'),
+    [AuthType.AuthHMAC]: t('authTypeLabels.hmac'),
+    [AuthType.AuthOAuth1]: t('authTypeLabels.oauth1'),
+    [AuthType.AuthOAuth1Vendor]: t('authTypeLabels.oauth1Vendor'),
+    [AuthType.AuthOAuth2]: t('authTypeLabels.oauth2'),
+    [AuthType.AuthQueryParam]: t('authTypeLabels.queryParam'),
+    [AuthType.AuthMTLS]: t('authTypeLabels.mtls'),
+  }
 }
 
 // AuthTypes whose strategy is a real, registered stub that always

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Dialog, FormControl, Select, TextInput } from '@primer/react'
 import { CompositionService, ConfigureService } from '../shared/bindings'
 import { AuthType } from '../../bindings/github.com/alicoding/mill/internal/domain/httprequest/models'
@@ -59,15 +60,17 @@ async function fetchEntities(refKind: string): Promise<Entity[]> {
   }
 }
 
-const KIND_NOUN: Record<string, string> = {
-  request: 'request',
-  list: 'list',
-  mcpserver: 'MCP server',
-  workflow: 'callable workflow',
-  'workflow-scope': 'workflow',
-  decision: 'decision',
-  execenv: 'execution environment',
-  aiprovider: 'AI provider',
+function kindNounFor(t: (key: string) => string): Record<string, string> {
+  return {
+    request: t('entityRefField.kindNoun.request'),
+    list: t('entityRefField.kindNoun.list'),
+    mcpserver: t('entityRefField.kindNoun.mcpserver'),
+    workflow: t('entityRefField.kindNoun.workflow'),
+    'workflow-scope': t('entityRefField.kindNoun.workflow-scope'),
+    decision: t('entityRefField.kindNoun.decision'),
+    execenv: t('entityRefField.kindNoun.execenv'),
+    aiprovider: t('entityRefField.kindNoun.aiprovider'),
+  }
 }
 
 // docs/adr/0010 §2: no quick-create for a workflow reference -- creating
@@ -76,6 +79,8 @@ const KIND_NOUN: Record<string, string> = {
 const QUICK_CREATABLE_KINDS = new Set(['request', 'list', 'mcpserver', 'decision', 'execenv', 'aiprovider'])
 
 export function EntityRefField({ refKind, value, onChange }: { refKind: string; value: string; onChange: (id: string) => void }) {
+  const { t } = useTranslation('configure')
+  const KIND_NOUN = kindNounFor(t)
   const [entities, setEntities] = useState<Entity[] | null>(null)
   const [creating, setCreating] = useState(false)
   const [error, setError] = useState('')
@@ -108,18 +113,18 @@ export function EntityRefField({ refKind, value, onChange }: { refKind: string; 
       >
         <Select.Option value="">
           {entities === null
-            ? 'Loading…'
+            ? t('loading')
             : value
-              ? `Unknown ${KIND_NOUN[refKind]} (${value})`
+              ? t('entityRefField.unknownEntity', { noun: KIND_NOUN[refKind], value })
               : refKind === 'workflow-scope'
-                ? 'All workflows'
-                : `Select a ${KIND_NOUN[refKind]}…`}
+                ? t('entityRefField.allWorkflows')
+                : t('entityRefField.selectEntity', { noun: KIND_NOUN[refKind] })}
         </Select.Option>
         {(entities ?? []).map((entity) => (
           <Select.Option key={entity.ID} value={entity.ID}>{entity.Label}</Select.Option>
         ))}
         {QUICK_CREATABLE_KINDS.has(refKind) && (
-          <Select.Option value={CREATE_NEW}>+ Create new {KIND_NOUN[refKind]}…</Select.Option>
+          <Select.Option value={CREATE_NEW}>{t('entityRefField.createNewEntity', { noun: KIND_NOUN[refKind] })}</Select.Option>
         )}
       </Select>
       {error && <span>{error}</span>}
@@ -129,8 +134,7 @@ export function EntityRefField({ refKind, value, onChange }: { refKind: string; 
           next step instead of leaving a silent empty dropdown. */}
       {refKind === 'workflow' && entities !== null && entities.length === 0 && (
         <span data-testid="no-callable-workflows-hint">
-          No callable workflows yet — create a workflow whose trigger is &quot;callable by another
-          workflow&quot; (drag that trigger from the palette onto a new workflow&apos;s canvas), then pick it here.
+          {t('entityRefField.noCallableWorkflowsHint')}
         </span>
       )}
       {creating && (
@@ -158,15 +162,20 @@ export function EntityRefField({ refKind, value, onChange }: { refKind: string; 
 // webhook here; Configure > Decisions is the canonical place to add
 // those afterward, same "quick-create produces a usable starting point,
 // Configure refines it" split every other kind here already has).
-const DECISION_CATEGORY_LABEL: Record<string, string> = {
-  [Category.CategoryApprove]: 'Approve',
-  [Category.CategoryDeny]: 'Deny',
-  [Category.CategoryManualReview]: 'Manual review',
-  [Category.CategoryActionNeeded]: 'Action needed',
-  [Category.CategoryUncategorized]: 'Uncategorized',
+export function decisionCategoryLabelFor(t: (key: string) => string): Record<string, string> {
+  return {
+    [Category.CategoryApprove]: t('entityRefField.decisionCategoryLabel.approve'),
+    [Category.CategoryDeny]: t('entityRefField.decisionCategoryLabel.deny'),
+    [Category.CategoryManualReview]: t('entityRefField.decisionCategoryLabel.manualReview'),
+    [Category.CategoryActionNeeded]: t('entityRefField.decisionCategoryLabel.actionNeeded'),
+    [Category.CategoryUncategorized]: t('entityRefField.decisionCategoryLabel.uncategorized'),
+  }
 }
 
 function QuickCreateDialog({ refKind, onCancel, onCreated }: { refKind: string; onCancel: () => void; onCreated: (id: string) => void }) {
+  const { t } = useTranslation('configure')
+  const KIND_NOUN = kindNounFor(t)
+  const DECISION_CATEGORY_LABEL = decisionCategoryLabelFor(t)
   const [label, setLabel] = useState('')
   const [secondary, setSecondary] = useState('') // Base URL (request/aiprovider) or Command (mcpserver); unused for list/decision
   const [category, setCategory] = useState<Category>(Category.CategoryUncategorized)
@@ -227,7 +236,7 @@ function QuickCreateDialog({ refKind, onCancel, onCreated }: { refKind: string; 
     }
   }
 
-  const secondaryLabel = refKind === 'request' ? 'URL' : refKind === 'mcpserver' ? 'Command' : null
+  const secondaryLabel = refKind === 'request' ? t('entityRefField.url') : refKind === 'mcpserver' ? t('entityRefField.command') : null
 
   // docs/adr/0009 §3's own "minimal, usable starting point" bar, applied
   // to AIProvider's own required-field shape (aiprovider.Validate):
@@ -242,15 +251,15 @@ function QuickCreateDialog({ refKind, onCancel, onCreated }: { refKind: string; 
 
   return (
     <Dialog
-      title={`Create ${KIND_NOUN[refKind]}`}
+      title={t('entityRefField.createEntityTitle', { noun: KIND_NOUN[refKind] })}
       onClose={onCancel}
       footerButtons={[
-        { content: 'Cancel', onClick: onCancel },
-        { content: 'Create', buttonType: 'primary', onClick: create, disabled: createDisabled },
+        { content: t('entityRefField.cancel'), onClick: onCancel },
+        { content: t('entityRefField.create'), buttonType: 'primary', onClick: create, disabled: createDisabled },
       ]}
     >
       <FormControl>
-        <FormControl.Label>Label</FormControl.Label>
+        <FormControl.Label>{t('entityRefField.label')}</FormControl.Label>
         <TextInput value={label} onChange={(e) => setLabel(e.target.value)} block />
       </FormControl>
       {secondaryLabel && (
@@ -261,8 +270,8 @@ function QuickCreateDialog({ refKind, onCancel, onCreated }: { refKind: string; 
       )}
       {refKind === 'decision' && (
         <FormControl>
-          <FormControl.Label>Category</FormControl.Label>
-          <FormControl.Caption>Cannot be changed after creation -- duplicate this Decision to create one with a different category.</FormControl.Caption>
+          <FormControl.Label>{t('entityRefField.category')}</FormControl.Label>
+          <FormControl.Caption>{t('entityRefField.categoryCaption')}</FormControl.Caption>
           <Select value={category} onChange={(e) => setCategory(e.target.value as Category)}>
             {Object.values(Category).filter((c) => c !== Category.$zero).map((c) => (
               <Select.Option key={c} value={c}>{DECISION_CATEGORY_LABEL[c] ?? c}</Select.Option>
@@ -273,22 +282,22 @@ function QuickCreateDialog({ refKind, onCancel, onCreated }: { refKind: string; 
       {refKind === 'aiprovider' && (
         <>
           <FormControl>
-            <FormControl.Label>Kind</FormControl.Label>
+            <FormControl.Label>{t('entityRefField.kind')}</FormControl.Label>
             <Select value={aiKind} onChange={(e) => setAIKind(e.target.value as AIProviderKind)}>
-              <Select.Option value={AIProviderKind.KindOpenAICompat}>OpenAI-compatible (Ollama, LM Studio, vLLM, BYO)</Select.Option>
-              <Select.Option value={AIProviderKind.KindAnthropic}>Anthropic</Select.Option>
+              <Select.Option value={AIProviderKind.KindOpenAICompat}>{t('entityRefField.openaiCompatOption')}</Select.Option>
+              <Select.Option value={AIProviderKind.KindAnthropic}>{t('entityRefField.anthropicOption')}</Select.Option>
             </Select>
           </FormControl>
           <FormControl>
-            <FormControl.Label>Base URL</FormControl.Label>
+            <FormControl.Label>{t('entityRefField.baseUrl')}</FormControl.Label>
             <FormControl.Caption>
-              {aiKind === AIProviderKind.KindAnthropic ? 'Leave empty to use the real Anthropic API.' : 'e.g. http://localhost:11434 for local Ollama.'}
+              {aiKind === AIProviderKind.KindAnthropic ? t('entityRefField.baseUrlCaptionAnthropic') : t('entityRefField.baseUrlCaptionOther')}
             </FormControl.Caption>
-            <TextInput value={secondary} onChange={(e) => setSecondary(e.target.value)} placeholder="http://localhost:11434" block />
+            <TextInput value={secondary} onChange={(e) => setSecondary(e.target.value)} placeholder={t('entityRefField.baseUrlPlaceholder')} block />
           </FormControl>
           <FormControl>
-            <FormControl.Label>Model</FormControl.Label>
-            <TextInput value={aiModel} onChange={(e) => setAIModel(e.target.value)} placeholder="llama3.2" block />
+            <FormControl.Label>{t('entityRefField.model')}</FormControl.Label>
+            <TextInput value={aiModel} onChange={(e) => setAIModel(e.target.value)} placeholder={t('entityRefField.modelPlaceholder')} block />
           </FormControl>
         </>
       )}
