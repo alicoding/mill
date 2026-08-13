@@ -1,5 +1,6 @@
 import { Handle, Position as RFPosition } from '@xyflow/react'
 import type { NodeProps } from '@xyflow/react'
+import { useTranslation } from 'react-i18next'
 import { Text } from '@primer/react'
 import { AlertFillIcon, BugIcon, ShieldIcon } from '@primer/octicons-react'
 import type { CanvasNode } from './canvasStore'
@@ -16,13 +17,15 @@ import styles from './CompositionCanvas.module.css'
 // CompositionCanvas.module.css) rather than a second class-lookup table
 // here, so the two mappings (tag text, tag/edge color) can't drift
 // silently out of sync.
-const RUN_STATUS_LABEL: Record<NodeRunStatus, string> = {
-  done: 'DONE',
-  active: 'ACTIVE',
-  pending: 'PENDING',
-  failed: 'FAILED',
-  'awaiting-approval': 'WAITING',
-  denied: 'DENIED',
+function runStatusLabelFor(t: (key: string) => string): Record<NodeRunStatus, string> {
+  return {
+    done: t('canvasNodeView.runStatus.done'),
+    active: t('canvasNodeView.runStatus.active'),
+    pending: t('canvasNodeView.runStatus.pending'),
+    failed: t('canvasNodeView.runStatus.failed'),
+    'awaiting-approval': t('canvasNodeView.runStatus.awaiting-approval'),
+    denied: t('canvasNodeView.runStatus.denied'),
+  }
 }
 
 // Top/bottom handles, not left/right -- a top-to-bottom chain with each
@@ -42,6 +45,8 @@ const RUN_STATUS_LABEL: Record<NodeRunStatus, string> = {
 // nodeKind.ts) since Mill's node kinds are Capture/Process/Apply, not
 // that reference's fuller Input/Decision/Ruleset/... taxonomy.
 export function CanvasNodeView({ id, data, selected }: NodeProps<CanvasNode>) {
+  const { t } = useTranslation('composition')
+  const RUN_STATUS_LABEL = runStatusLabelFor(t)
   const Icon = KIND_ICON[data.kind]
   const runStatus = useNodeRunStatus(id)
   const breakpoint = useNodeBreakpoint(id)
@@ -88,7 +93,7 @@ export function CanvasNodeView({ id, data, selected }: NodeProps<CanvasNode>) {
           {data.label}
         </Text>
         {data.output ? (
-          <Text size="small" className={styles.canvasNodeOutput} title={`Output: ${data.output}`}>
+          <Text size="small" className={styles.canvasNodeOutput} title={t('canvasNodeView.outputTitle', { output: data.output })}>
             → {data.output}
           </Text>
         ) : null}
@@ -110,8 +115,8 @@ export function CanvasNodeView({ id, data, selected }: NodeProps<CanvasNode>) {
           data-testid="canvas-guardrail-badge"
           data-effect={data.guardrailEffect}
           title={data.guardrailEffect === 'deny'
-            ? `Denied by guardrail rule${data.guardrailRule ? ` "${data.guardrailRule}"` : ''} — this step will not run`
-            : `Asks for approval before running${data.guardrailRule ? ` — ${data.guardrailRule}` : ''}`}
+            ? t('canvasNodeView.guardrailDeniedTitle', { ruleSuffix: data.guardrailRule ? t('canvasNodeView.guardrailRuleSuffix', { rule: data.guardrailRule }) : '' })
+            : t('canvasNodeView.guardrailAskTitle', { ruleSuffix: data.guardrailRule ? t('canvasNodeView.guardrailAskRuleSuffix', { rule: data.guardrailRule }) : '' })}
         >
           <ShieldIcon size={12} />
         </span>
@@ -138,10 +143,10 @@ export function CanvasNodeView({ id, data, selected }: NodeProps<CanvasNode>) {
           disabled={!breakpoint.enabled || breakpoint.busy}
           title={
             !breakpoint.enabled
-              ? 'Save this workflow before setting breakpoints.'
+              ? t('canvasNodeView.breakpointSaveFirst')
               : breakpoint.isSet
-                ? 'Breakpoint set — click to remove (pauses here for inspection before this step runs)'
-                : 'Click to pause here for inspection before this step runs'
+                ? t('canvasNodeView.breakpointSetTitle')
+                : t('canvasNodeView.breakpointUnsetTitle')
           }
           onClick={(e) => {
             e.stopPropagation()

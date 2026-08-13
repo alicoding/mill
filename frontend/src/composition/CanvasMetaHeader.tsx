@@ -1,4 +1,5 @@
 import type { Ref } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Button, FormControl, IconButton, Label, Stack, Text, TextInput, Textarea } from '@primer/react'
 import { ChevronDownIcon, ChevronUpIcon, EyeIcon, PencilIcon } from '@primer/octicons-react'
 import type { Workflow } from '../../bindings/github.com/alicoding/mill/internal/domain/composition/models'
@@ -48,21 +49,22 @@ export function CanvasMetaHeader({
   readOnly,
   onSwitchToEdit,
 }: CanvasMetaHeaderProps) {
+  const { t } = useTranslation('composition')
   return (
     <div className={styles.metaHeader}>
       <Stack direction="horizontal" gap="condensed" align="center">
         <TextInput
           value={draftLabel}
           onChange={(e) => onLabelChange(e.target.value)}
-          aria-label="Label"
-          placeholder="My workflow"
+          aria-label={t('canvasMetaHeader.labelAriaLabel')}
+          placeholder={t('canvasMetaHeader.labelPlaceholder')}
           size="small"
           disabled={readOnly}
           className={styles.metaTitleInput}
         />
         <IconButton
           icon={descOpen ? ChevronUpIcon : ChevronDownIcon}
-          aria-label={descOpen ? 'Hide details' : 'Add details'}
+          aria-label={descOpen ? t('canvasMetaHeader.hideDetails') : t('canvasMetaHeader.addDetails')}
           size="small"
           onClick={onToggleDesc}
           data-testid="toggle-description"
@@ -79,15 +81,15 @@ export function CanvasMetaHeader({
                 (NodeInspector.tsx) -- one recognizable idiom, not a new
                 one just for this. */}
             <Label variant="secondary" size="small" data-testid="view-mode-chip">
-              <EyeIcon size={12} /> Viewing
+              <EyeIcon size={12} /> {t('canvasMetaHeader.viewing')}
             </Label>
             <Button size="small" leadingVisual={PencilIcon} onClick={onSwitchToEdit} data-testid="edit-workflow">
-              Edit
+              {t('canvasMetaHeader.edit')}
             </Button>
           </>
         ) : (
           <Button size="small" onClick={save} disabled={saving} data-testid="save-workflow">
-            {saving ? 'Saving…' : workflow ? 'Save changes' : 'Save workflow'}
+            {saving ? t('canvasMetaHeader.saving') : workflow ? t('canvasMetaHeader.saveChanges') : t('canvasMetaHeader.saveWorkflow')}
           </Button>
         )}
         {/* Run is the canvas's one primary action once a workflow is
@@ -99,7 +101,7 @@ export function CanvasMetaHeader({
       {saveError && <Text as="p" size="small" className={runbookStyles.error}>{saveError}</Text>}
       {descOpen && (
         <FormControl className={styles.metaDescription}>
-          <FormControl.Label>Description</FormControl.Label>
+          <FormControl.Label>{t('canvasMetaHeader.description')}</FormControl.Label>
           <Textarea value={draftDescription} onChange={(e) => onDescriptionChange(e.target.value)} rows={2} block disabled={readOnly} />
         </FormControl>
       )}

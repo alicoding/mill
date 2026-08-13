@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Events } from '@wailsio/runtime'
 import { Button, Heading, Label, Stack, Text } from '@primer/react'
 import { PlusIcon, UploadIcon, WorkflowIcon } from '@primer/octicons-react'
@@ -41,6 +42,7 @@ import { hasDraftDrift } from './draftDrift'
 // Publish CTA (docs/goals/0006) stays directly visible too -- neither
 // is secondary enough to bury in a menu.
 function CompositionView() {
+  const { t } = useTranslation('composition')
   const pushActivity = useAppStore((s) => s.pushActivity)
   const workflows = useAppStore((s) => s.workflows)
   const nodeTypes = useAppStore((s) => s.nodeTypes)
@@ -267,8 +269,8 @@ function CompositionView() {
   const workflowItems: InventoryItem[] = sortedWorkflows.map((wf) => {
     const isCallable = findRootNode(wf.Nodes, wf.Edges)?.NodeTypeID === 'trigger-callable'
     const runTitle = hasDraftDrift(wf)
-      ? 'Test run of the draft — differs from the published version.'
-      : 'Test run of the draft.'
+      ? t('compositionView.runTitleDrifted')
+      : t('compositionView.runTitle')
     const seedReset = describeSeedReset(wf.Seed, seedRevisions[wf.ID] ?? wf.Seed.SeedRevision)
     return {
       id: wf.ID,
@@ -278,7 +280,7 @@ function CompositionView() {
       updatedLabel: formatUpdated(wf.UpdatedAt),
       labelBadges: (
         <Stack direction="horizontal" gap="condensed" align="center">
-          {wf.BuiltIn && <Label variant="secondary" size="small">built-in</Label>}
+          {wf.BuiltIn && <Label variant="secondary" size="small">{t('compositionView.builtIn')}</Label>}
           {/* Lifecycle badges (docs/adr/0021): only the EXCEPTIONAL state
               gets colour -- "live/published" is the normal healthy default
               (true on nearly every row), so a loud green there is pure
@@ -287,9 +289,9 @@ function CompositionView() {
               disabled workflow (severe) are the exceptions worth the eye.
               Owner: the badge scatter "looks like broken UI." */}
           {wf.PublishedVersion > 0
-            ? <Label variant="secondary" size="small">v{wf.PublishedVersion} live</Label>
-            : <Label variant="attention" size="small">draft</Label>}
-          {wf.Disabled && <Label variant="severe" size="small">disabled</Label>}
+            ? <Label variant="secondary" size="small">{t('publishedVersionLive', { version: wf.PublishedVersion })}</Label>
+            : <Label variant="attention" size="small">{t('compositionView.draft')}</Label>}
+          {wf.Disabled && <Label variant="severe" size="small">{t('disabled')}</Label>}
         </Stack>
       ),
       description: wf.Description,
@@ -308,15 +310,15 @@ function CompositionView() {
           disabled={runningId === wf.ID}
           size="small"
           variant="invisible"
-          aria-label={`Test ${wf.Label}`}
+          aria-label={t('compositionView.testAriaLabel', { label: wf.Label })}
           title={runTitle}
           data-testid="callable-test-run"
         >
-          {runningId === wf.ID ? 'Running…' : 'Test'}
+          {runningId === wf.ID ? t('running') : t('compositionView.test')}
         </Button>
       ) : (
-        <Button onClick={() => run(wf.ID)} disabled={runningId === wf.ID} size="small" aria-label={`Run ${wf.Label}`} title={runTitle}>
-          {runningId === wf.ID ? 'Running…' : 'Run'}
+        <Button onClick={() => run(wf.ID)} disabled={runningId === wf.ID} size="small" aria-label={t('compositionView.runAriaLabel', { label: wf.Label })} title={runTitle}>
+          {runningId === wf.ID ? t('running') : t('compositionView.run')}
         </Button>
       ),
       // Row click opens VIEW mode (docs/goals/0022) -- read-only
@@ -332,8 +334,8 @@ function CompositionView() {
         // ConfigureRequests.tsx precedent, a plain menu item rather than
         // a dedicated pencil icon in the row-view (WorkflowsTable's own
         // table-view row already has a pencil for the same target).
-        { label: 'Edit', onClick: () => openEditor(wf.ID, 'edit') },
-        { label: 'Export', onClick: () => exportWorkflow(wf.ID, wf.Label) },
+        { label: t('compositionView.menu.edit'), onClick: () => openEditor(wf.ID, 'edit') },
+        { label: t('compositionView.menu.export'), onClick: () => exportWorkflow(wf.ID, wf.Label) },
         // Reset-to-shipped-example (docs/goals/0037 item 4): on-demand
         // disclosure only, built-in-origin rows only. InventoryMenuAction
         // has no `disabled` concept, so an already-current seed's item is
@@ -342,10 +344,10 @@ function CompositionView() {
         // a genuinely actionable reset ever appears in the menu.
         ...(wf.BuiltIn && !seedReset.disabled ? [{ label: seedReset.label, onClick: () => resetToSeed(wf.ID) }] : []),
         {
-          label: 'Delete',
+          label: t('compositionView.menu.delete'),
           onClick: () => removeWorkflow(wf.ID),
           danger: true,
-          confirm: { title: 'Delete workflow?', body: `This permanently deletes "${wf.Label}". This cannot be undone.` },
+          confirm: { title: t('compositionView.deleteConfirmTitle'), body: t('compositionView.deleteConfirmBody', { label: wf.Label }) },
         },
       ],
     }
@@ -353,17 +355,13 @@ function CompositionView() {
 
   return (
     <PageContainer data-testid="composition-view">
-      <Heading as="h1">Workflows</Heading>
+      <Heading as="h1">{t('compositionView.heading')}</Heading>
       <Text as="p" className={styles.subtitle}>
-        Compose a workflow by connecting trigger, capture, process, and
-        apply steps on a canvas — configuring each step happens as you
-        add it, right there on the canvas. Every workflow, including the
-        seeded examples below, is fully editable and deletable from the
-        moment it exists.
+        {t('compositionView.subtitle')}
       </Text>
 
       <Stack direction="horizontal" justify="space-between" align="center" className={styles.sectionHeading}>
-        <Heading as="h2" variant="small" id="workflows-heading">Saved workflows</Heading>
+        <Heading as="h2" variant="small" id="workflows-heading">{t('compositionView.savedWorkflowsHeading')}</Heading>
         <Stack direction="horizontal" gap="condensed">
           <ViewModeToggle mode={viewMode} onChange={setViewMode} />
           <input
@@ -380,7 +378,7 @@ function CompositionView() {
             onClick={openImportPicker}
             data-testid="import-workflow"
           >
-            Import
+            {t('compositionView.import')}
           </Button>
           <RestoreExamplesButton items={restorable} onRestore={restoreExample} />
           <Button
@@ -391,7 +389,7 @@ function CompositionView() {
             disabled={nodeTypes === null}
             data-testid="new-workflow"
           >
-            New workflow
+            {t('compositionView.newWorkflow')}
           </Button>
         </Stack>
       </Stack>
@@ -405,7 +403,7 @@ function CompositionView() {
           {publishError}
         </Text>
       )}
-      {workflows === null && <Text as="p" className={styles.muted}>Loading…</Text>}
+      {workflows === null && <Text as="p" className={styles.muted}>{t('loading')}</Text>}
       {workflows !== null && viewMode === 'table' && workflows.length > 0 && (
         <WorkflowsTable
           workflows={sortedWorkflows}
@@ -425,14 +423,14 @@ function CompositionView() {
       {workflows !== null && viewMode === 'rows' && (
         <InventoryList
           items={workflowItems}
-          searchPlaceholder="Search workflows…"
+          searchPlaceholder={t('compositionView.searchPlaceholder')}
           emptyState={{
             icon: WorkflowIcon,
-            heading: 'No workflows yet',
-            description: 'Compose a workflow from trigger, capture, process, and apply steps on the canvas.',
+            heading: t('compositionView.emptyHeading'),
+            description: t('compositionView.emptyDescription'),
             action: (
               <Button leadingVisual={PlusIcon} variant="primary" onClick={() => openWorkTab({ kind: 'workflow-new' })} disabled={nodeTypes === null}>
-                New workflow
+                {t('compositionView.newWorkflow')}
               </Button>
             ),
           }}

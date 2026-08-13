@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Tabs } from '@primer/react/experimental'
 import type { NodeType, Workflow } from '../../bindings/github.com/alicoding/mill/internal/domain/composition/models'
 import CompositionCanvas from './CompositionCanvas'
@@ -43,6 +44,7 @@ export function WorkflowEditorTab({
   // setWorkTabMode, called by CanvasMetaHeader's Edit button.
   onSwitchToEdit: () => void
 }) {
+  const { t } = useTranslation('composition')
   const readOnly = mode === 'view'
   const [innerTab, setInnerTab] = useState('canvas')
 
@@ -66,10 +68,10 @@ export function WorkflowEditorTab({
 
   return (
     <Tabs value={innerTab} onValueChange={({ value }) => setInnerTab(value)}>
-      <TabList aria-label={`${workflow.Label} sections`}>
-        <TabItem value="canvas">Canvas</TabItem>
-        <TabItem value="runs">Runs</TabItem>
-        <TabItem value="versions">Versions</TabItem>
+      <TabList aria-label={t('workflowEditorTab.sectionsAriaLabel', { label: workflow.Label })}>
+        <TabItem value="canvas">{t('workflowEditorTab.canvas')}</TabItem>
+        <TabItem value="runs">{t('workflowEditorTab.runs')}</TabItem>
+        <TabItem value="versions">{t('workflowEditorTab.versions')}</TabItem>
       </TabList>
       <TabPanel value="canvas" className={editorStyles.editorPanel}>
         <CompositionCanvas nodeTypes={nodeTypes} workflow={workflow} tabKey={tabKey} onBack={onBack} onSaved={onSaved} readOnly={readOnly} onSwitchToEdit={onSwitchToEdit} />

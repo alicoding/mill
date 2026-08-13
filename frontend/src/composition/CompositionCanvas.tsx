@@ -10,6 +10,7 @@ import {
 import type { Connection, Edge as RFEdge } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 import { useStore } from 'zustand'
+import { useTranslation } from 'react-i18next'
 import { Text } from '@primer/react'
 import type { NodeType, Workflow, Issue } from '../../bindings/github.com/alicoding/mill/internal/domain/composition/models'
 import { createCanvasStore, type CanvasNode } from './canvasStore'
@@ -76,6 +77,7 @@ interface CompositionCanvasProps {
 // Inspector the moment it's selected, never a bare unconfigured
 // reference.
 function CanvasInner({ nodeTypes, workflow, tabKey, onBack, onSaved, readOnly, onSwitchToEdit }: CompositionCanvasProps) {
+  const { t } = useTranslation('composition')
   // Computed once, synchronously, at first render -- see
   // computeInitialCanvas's own doc comment for why this isn't a
   // useEffect. `initial.baseline` (docs/goals/0012) is what every later
@@ -442,7 +444,7 @@ function CanvasInner({ nodeTypes, workflow, tabKey, onBack, onSaved, readOnly, o
         >
           {!selectedNode && !selectedEdgeFromDecision && (
             <Text className={styles.inspectorEmpty} size="small">
-              {selectedEdge ? 'Only a Decision node’s outgoing edges are configurable.' : 'Select a node to configure it.'}
+              {selectedEdge ? t('compositionCanvas.onlyDecisionEdgesConfigurable') : t('compositionCanvas.selectNodeToConfigure')}
             </Text>
           )}
           {selectedEdgeFromDecision && selectedEdge && (
