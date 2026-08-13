@@ -1,0 +1,22 @@
+/* The one keycap-chip look for a rendered key combo (design-wave-1 fix
+   #5: Settings' Keyboard Shortcuts list and a workflow's own hotkey-
+   trigger row each rendered their combo as bare text next to a Change
+   button -- no border/monospace treatment at all -- while the command
+   palette's inline hints already had one. Moved here from
+   app/HotkeyHint.module.css (byte-for-byte, just relocated) so
+   views/composition/app can all render through the SAME class instead
+   of each defining/duplicating it -- shared/ is the one bounded-context
+   folder every other layer may import from
+   (.claude/rules/frontend.md's dependency-cruiser boundary). */
+.hint {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 var(--base-size-6, 6px);
+  border: 1px solid var(--borderColor-default);
+  border-radius: var(--borderRadius-medium);
+  background: var(--bgColor-muted);
+  color: var(--fgColor-muted);
+  font-size: var(--text-body-size-small);
+  font-family: var(--fontStack-monospace, monospace);
+  white-space: nowrap;
+}

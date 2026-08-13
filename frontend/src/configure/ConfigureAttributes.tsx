@@ -69,10 +69,14 @@ export function ConfigureAttributes() {
 
   return (
     <PageContainer variant="narrow" data-testid="configure-attributes">
-      <Heading as="h2" variant="small" className={styles.sectionHeading}>{t('configureAttributes.heading')}</Heading>
-      <Text as="p" size="small" className={styles.muted}>
+      {/* Design-wave-1 fix #6: the Configure tab itself already says
+          "Attributes" -- the h2 is now the descriptive copy itself
+          (the one Configure tab with real subtitle text to promote;
+          its six siblings have no such copy, so they keep a visually-
+          hidden heading instead -- see ConfigureLists.tsx etc). */}
+      <Heading as="h2" variant="small" className={styles.sectionHeading}>
         {t('configureAttributes.description')}
-      </Text>
+      </Heading>
 
       {workflows === null && <Text as="p" className={styles.muted}>{t('loading')}</Text>}
       {workflows !== null && (

@@ -72,7 +72,8 @@
     "wordmark": "Mill",
     "collapseNavigation": "Collapse navigation",
     "expandNavigation": "Expand navigation",
-    "settingsAriaLabel": "Settings"
+    "settingsAriaLabel": "Settings",
+    "settingsLabel": "Settings"
   },
   "buildIdentityBadge": {
     "goStaleTooltip": "Go changes not yet in this binary — restart task dev",

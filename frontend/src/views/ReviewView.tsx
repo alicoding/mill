@@ -184,7 +184,9 @@ function ReviewView() {
   if (pending === null) {
     return (
       <PageContainer data-testid="review-view">
-        <Heading as="h1">{t('reviewView.heading')}</Heading>
+        {/* Design-wave-1 fix #6: the sidebar nav row already says
+            "Review" -- the h1 is now the descriptive subtitle itself. */}
+        <Heading as="h1" variant="medium">{t('reviewView.subtitle')}</Heading>
         <Spinner />
       </PageContainer>
     )
@@ -192,10 +194,9 @@ function ReviewView() {
 
   return (
     <PageContainer data-testid="review-view">
-      <Heading as="h1">{t('reviewView.heading')}</Heading>
-      <Text as="p" className={styles.muted}>
+      <Heading as="h1" variant="medium" className={styles.muted}>
         {t('reviewView.subtitle')}
-      </Text>
+      </Heading>
       {error && <Text as="p" size="small" className={styles.error}>{error}</Text>}
 
       {(pending.length > 0 || resolved.length > 0) && (
@@ -339,7 +340,21 @@ function ReviewView() {
                     >
                       {entry.run.resolution}
                     </Label>
-                    <Label size="small" variant={entry.run.status === 'SUCCESS' ? 'success' : 'secondary'}>{entry.run.status}</Label>
+                    {/* Design-wave-1 fix #4: ERROR/failed pills were
+                        falling through to 'secondary' (gray), the same
+                        neutral tone as any other non-SUCCESS status --
+                        losing the failure semantics the 'denied'
+                        resolution pill right next to it already has in
+                        danger. Same three-way mapping
+                        ActivityRunsExplorer.tsx's own run-status pill
+                        already uses correctly. */}
+                    <Label
+                      size="small"
+                      variant={entry.run.status === 'SUCCESS' ? 'success' : entry.run.status === 'ERROR' ? 'danger' : 'attention'}
+                      data-testid="review-resolved-status"
+                    >
+                      {entry.run.status}
+                    </Label>
                   </Stack>
                   <Text size="small" className={styles.muted}>{formatRunStartedAt(entry.run.startedAt)}</Text>
                 </Stack>

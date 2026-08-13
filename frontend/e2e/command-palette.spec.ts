@@ -90,6 +90,41 @@ async function createSimpleWorkflow(page: import('@playwright/test').Page, label
   await expect(workflowRow(page, label)).toBeVisible()
 }
 
+// Design-wave-1 fix #2: rest-state bound + fixed max-height/internal
+// scroll, Spotlight/Raycast/VS Code convention (the palette used to
+// render every command+workflow+tab unfiltered and grow the Dialog to
+// fit however many results that was).
+test('Meta+K rest-state shows a bounded set (nav commands only) until a query narrows it', async ({ page }) => {
+  await page.goto('/')
+  await page.keyboard.press('Meta+k')
+  await expect(paletteDialog(page)).toBeVisible()
+
+  // Nav ("Go to <X>" + Settings) commands are present at rest.
+  await expect(paletteDialog(page).getByRole('option', { name: /Go to Workflows/ })).toBeVisible()
+  await expect(paletteDialog(page).getByRole('option', { name: 'Open Settings' })).toBeVisible()
+
+  // A non-nav command ("Next tab") stays out of the rest-state list --
+  // it only appears once the user actually searches for it, same as
+  // the existing "typing filters to a command" test above proves for
+  // the query-driven path.
+  await expect(paletteDialog(page).getByRole('option', { name: /Next tab/ })).toHaveCount(0)
+
+  await page.keyboard.press('Escape')
+})
+
+test('the palette list is height-bounded with internal scroll, not the Dialog growing unbounded', async ({ page }) => {
+  await page.goto('/')
+  await page.keyboard.press('Meta+k')
+  await expect(paletteDialog(page)).toBeVisible()
+
+  const list = paletteDialog(page).locator('[data-testid="filtered-action-list"]')
+  await expect(list).toBeVisible()
+  const maxHeight = await list.evaluate((el) => getComputedStyle(el).maxHeight)
+  expect(maxHeight).not.toBe('none')
+
+  await page.keyboard.press('Escape')
+})
+
 test('Meta+K opens the palette; typing filters to a command and shows its effective shortcut', async ({ page }) => {
   await page.goto('/')
 

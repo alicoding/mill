@@ -81,3 +81,24 @@
 .clickableRunsTable tbody tr:has([data-selected='true']) {
     background: var(--bgColor-accent-muted);
 }
+
+/* Design-wave-1 fix #3b: a Primer TextInput's wrapper span already
+   themes via `--bgColor-default` (settings-mid-dark.png showed a solid
+   white box regardless), but `type="number"` renders WebKit's native
+   spin-button/text-field internals -- a browser-chrome layer the
+   wrapper's background-color doesn't reach, and whose own default
+   rendering doesn't reliably pick up an ancestor's `color-scheme`
+   (App.tsx sets it on `<html>`) inside a Wails WKWebView. Declaring
+   `color-scheme` again directly on the `<input>` plus an explicit
+   themed background covers both: the native chrome now renders in the
+   right scheme, and the fallback background-color removes the white
+   box even if a particular WebKit version still ignores color-scheme
+   for this control. Targets the real `<input>` via a descendant
+   selector since TextInput's own `className` prop lands on the
+   wrapper `<span>`, not the input itself (checked directly against
+   node_modules/@primer/react/dist/TextInput/TextInput.js). */
+.themedNumberInput input[type='number'] {
+    color-scheme: inherit;
+    background-color: var(--bgColor-default);
+    color: var(--fgColor-default);
+}

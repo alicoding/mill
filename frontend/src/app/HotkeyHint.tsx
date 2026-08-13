@@ -2,7 +2,7 @@ import { findCommand, effectiveBinding } from '../shared/commands'
 import type { KeyCombo } from '../shared/keybinding'
 import { formatCombo } from '../shared/keybinding'
 import { useAppStore } from '../shared/store'
-import styles from './HotkeyHint.module.css'
+import { KeyComboChip } from '../shared/KeyComboChip'
 
 // The single O(1) read every inline hotkey hint in the app goes
 // through (docs/goals/0015-summon-quick-invoke.md, owner's explicit
@@ -44,9 +44,5 @@ export function useCommandBinding(commandId: string): string | null {
 export function HotkeyHint({ commandId }: { commandId: string }) {
   const label = useCommandBinding(commandId)
   if (!label) return null
-  return (
-    <span className={styles.hint} data-testid="hotkey-hint" data-command-id={commandId}>
-      {label}
-    </span>
-  )
+  return <KeyComboChip label={label} data-testid="hotkey-hint" data-command-id={commandId} />
 }

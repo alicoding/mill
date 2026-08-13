@@ -133,6 +133,14 @@ test('A workflow with no runs yet shows an empty state on its Runs tab, scoped t
   const runsPanel = page.getByTestId('workflow-runs-panel')
   await expect(runsPanel.getByText(/No runs yet/)).toBeVisible()
 
+  // Design-wave-1 fix #7: the empty state is now a real Blankslate
+  // (icon + one-line invitation), the same pattern Review's own
+  // "Nothing waiting for you" empty state uses -- not a bare line of
+  // centered text.
+  const emptyState = runsPanel.getByTestId('workflow-runs-empty')
+  await expect(emptyState).toBeVisible()
+  await expect(emptyState.locator('svg')).toBeVisible()
+
   // Cleanup: delete is a Workflows-list row action, not something inside
   // the editor tab itself -- also closes the tab, no separate
   // closeEditorTab call needed.

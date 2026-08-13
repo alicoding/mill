@@ -177,10 +177,11 @@ function SettingsView() {
 
   return (
     <PageContainer variant="narrow" data-testid="settings-view">
-      <Heading as="h1">{t('settings.title')}</Heading>
-      <Text as="p" className={styles.subtitle}>
+      {/* Design-wave-1 fix #6: the sidebar footer row already says
+          "Settings" -- the h1 is now the descriptive subtitle itself. */}
+      <Heading as="h1" variant="medium" className={styles.subtitle}>
         {t('settings.subtitle')}
-      </Text>
+      </Heading>
       {settingsLoadError && (
         <Text as="p" size="small" className={styles.error} data-testid="settings-load-error">
           {t('settings.loadError')}
@@ -292,6 +293,7 @@ function SettingsView() {
       <FormControl>
         <FormControl.Label>{t('settings.notifications.awayAfterLabel')}</FormControl.Label>
         <TextInput
+          className={styles.themedNumberInput}
           type="number"
           min={1}
           defaultValue={idleThreshold ?? undefined}

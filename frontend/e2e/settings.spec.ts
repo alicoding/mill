@@ -12,7 +12,7 @@ import { test, expect } from './fixtures/server'
 
 test('Settings page shows Launch at login and Global hotkey sections', async ({ page }) => {
   await page.goto('/')
-  await page.getByRole('button', { name: 'Settings' }).click()
+  await page.getByRole('link', { name: 'Settings' }).click()
   await expect(page.getByTestId('settings-view')).toBeVisible()
   await expect(page.getByText('Launch Mill at login')).toBeVisible()
   await expect(page.getByText('Global hotkey')).toBeVisible()
@@ -26,7 +26,7 @@ test('Settings page shows Launch at login and Global hotkey sections', async ({ 
 // section must actually be GONE, not just unused.
 test('Settings no longer shows the Forward pending approvals section', async ({ page }) => {
   await page.goto('/')
-  await page.getByRole('button', { name: 'Settings' }).click()
+  await page.getByRole('link', { name: 'Settings' }).click()
   await expect(page.getByTestId('settings-view')).toBeVisible()
   await expect(page.getByText('Forward pending approvals')).toHaveCount(0)
   await expect(page.getByTestId('forward-approvals-enabled-checkbox')).toHaveCount(0)
@@ -34,7 +34,7 @@ test('Settings no longer shows the Forward pending approvals section', async ({ 
 
 test('Launch at login checkbox reflects the real server-mode error', async ({ page }) => {
   await page.goto('/')
-  await page.getByRole('button', { name: 'Settings' }).click()
+  await page.getByRole('link', { name: 'Settings' }).click()
 
   const checkbox = page.getByTestId('launch-at-login-checkbox')
   await expect(checkbox).toBeVisible()
@@ -49,7 +49,7 @@ test('Launch at login checkbox reflects the real server-mode error', async ({ pa
 
 test('Setting a global summon hotkey shows the recording state', async ({ page }) => {
   await page.goto('/')
-  await page.getByRole('button', { name: 'Settings' }).click()
+  await page.getByRole('link', { name: 'Settings' }).click()
 
   await page.getByTestId('set-summon-hotkey').click()
   await expect(page.getByText(/press a combo/i)).toBeVisible()
@@ -63,7 +63,7 @@ test('Setting a global summon hotkey shows the recording state', async ({ page }
 
 test('Check for updates produces a visible status, found or error', async ({ page }) => {
   await page.goto('/')
-  await page.getByRole('button', { name: 'Settings' }).click()
+  await page.getByRole('link', { name: 'Settings' }).click()
 
   // A real call to the GitHub Releases provider (alicoding/mill has no
   // releases yet) -- deterministic either way in this environment
@@ -78,7 +78,7 @@ test('Check for updates produces a visible status, found or error', async ({ pag
 
 test('MCP write gate toggles from Settings and persists across a reload', async ({ page }) => {
   await page.goto('/')
-  await page.getByRole('button', { name: 'Settings' }).click()
+  await page.getByRole('link', { name: 'Settings' }).click()
 
   const checkbox = page.getByTestId('mcp-write-enabled-checkbox')
   await expect(checkbox).toBeEnabled()
@@ -96,7 +96,7 @@ test('MCP write gate toggles from Settings and persists across a reload', async 
   await expect(checkbox).toBeChecked()
 
   await page.reload()
-  await page.getByRole('button', { name: 'Settings' }).click()
+  await page.getByRole('link', { name: 'Settings' }).click()
   const afterReload = page.getByTestId('mcp-write-enabled-checkbox')
   await expect(afterReload).toBeChecked()
 
