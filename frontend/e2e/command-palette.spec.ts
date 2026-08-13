@@ -1,5 +1,7 @@
 import { test, expect } from './fixtures/server'
 import { clickRowAction } from './inventoryRow'
+import { connectMCPClient, findWorkflowIdByLabel } from './mcpTestClient'
+import { assignDebugWorkflowHotkey } from './hotkeyDebugKnob'
 
 // Exercises the ⌘K command palette (docs/goals/0015-summon-quick-invoke.md,
 // app/CommandPalette.tsx) over real Go bindings (Wails3 server mode),
@@ -85,6 +87,19 @@ async function createSimpleWorkflow(page: import('@playwright/test').Page, label
   await fitAndSpaceOut(page)
   await connectNodes(page, 'Trigger: manual', 'Process: Inject text')
   await expect(activePanel(page).locator('.react-flow__edge')).toHaveCount(1)
+  await activePanel(page).getByLabel('Label').fill(label)
+  await activePanel(page).getByTestId('save-workflow').click()
+  await expect(workflowRow(page, label)).toBeVisible()
+}
+
+// A single trigger-hotkey root node, no second step -- matches
+// trigger-row.spec.ts's own hotkey-row test recipe (a bare Trigger node
+// is a valid, saveable graph; nothing here needs to actually run).
+async function createHotkeyTriggerWorkflow(page: import('@playwright/test').Page, label: string) {
+  await page.getByRole('link', { name: 'Workflows' }).click()
+  await page.getByTestId('new-workflow').click()
+  await activePanel(page).locator('.react-flow__node').first().click()
+  await activePanel(page).getByTestId('change-node-type').selectOption('trigger-hotkey')
   await activePanel(page).getByLabel('Label').fill(label)
   await activePanel(page).getByTestId('save-workflow').click()
   await expect(workflowRow(page, label)).toBeVisible()
@@ -182,4 +197,52 @@ test('Enter on a workflow"s Run row test-runs it, closes the palette, and the ru
   const row = workflowRow(page, label)
   await clickRowAction(page, row, 'Delete')
   await expect(row).toHaveCount(0)
+})
+
+// docs/goals/0015-summon-quick-invoke.md's last open item: a workflow
+// row's own Hotkey-trigger combo, not just an app-level command's
+// shortcut (already covered by hotkey-hint.spec.ts). Real hotkey
+// assignment can't run headlessly (see hotkeyDebugKnob.ts's own header
+// comment) -- assignDebugWorkflowHotkey records the combo server-side
+// the same way a real AssignHotkey call would, minus the OS probe.
+test('a workflow row shows its own hotkey-trigger combo inline; a non-hotkey trigger shows none', async ({ page }, testInfo) => {
+  const hotkeyLabel = 'ZzE2ePaletteHotkeyChipX'
+  const manualLabel = 'ZzE2ePaletteNoHotkeyChip'
+  await page.goto('/')
+  await createHotkeyTriggerWorkflow(page, hotkeyLabel)
+  await createSimpleWorkflow(page, manualLabel)
+
+  const client = await connectMCPClient(testInfo.parallelIndex)
+  let hotkeyWorkflowId: string
+  try {
+    hotkeyWorkflowId = await findWorkflowIdByLabel(client, hotkeyLabel)
+  } finally {
+    await client.close()
+  }
+  await assignDebugWorkflowHotkey(page, hotkeyWorkflowId, ['CMD', 'SHIFT'], 'M')
+
+  await page.keyboard.press('Meta+k')
+  await expect(paletteDialog(page)).toBeVisible()
+
+  await paletteDialog(page).getByRole('combobox').fill(hotkeyLabel)
+  const hotkeyOption = paletteDialog(page).getByRole('option', { name: new RegExp(`Run: ${hotkeyLabel}`) })
+  await expect(hotkeyOption).toBeVisible()
+  await expect(hotkeyOption.getByTestId('workflow-hotkey-chip')).toHaveText('⌘⇧M')
+
+  // A manual-trigger row's Run entry carries no hotkey-chip testid at
+  // all -- not just an empty one -- since WorkflowRowTrailingVisual only
+  // renders KeyComboChip when a combo is actually present.
+  await paletteDialog(page).getByRole('combobox').fill(manualLabel)
+  const manualOption = paletteDialog(page).getByRole('option', { name: new RegExp(`Run: ${manualLabel}`) })
+  await expect(manualOption).toBeVisible()
+  await expect(manualOption.getByTestId('workflow-hotkey-chip')).toHaveCount(0)
+
+  await page.keyboard.press('Escape')
+
+  // Cleanup.
+  await page.getByRole('link', { name: 'Workflows' }).click()
+  await clickRowAction(page, workflowRow(page, hotkeyLabel), 'Delete')
+  await expect(workflowRow(page, hotkeyLabel)).toHaveCount(0)
+  await clickRowAction(page, workflowRow(page, manualLabel), 'Delete')
+  await expect(workflowRow(page, manualLabel)).toHaveCount(0)
 })

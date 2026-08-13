@@ -143,6 +143,32 @@ func (s *TriggerService) UnassignHotkey(workflowID string) {
 	s.Sync(s.comp.Workflows())
 }
 
+// DebugAssignHotkey records workflowID's combo directly, skipping the
+// real hotkey.Bind OS probe AssignHotkey requires -- global hotkey
+// registration cannot succeed outside a native run loop (hotkey_server.go's
+// Bind always errors), so e2e coverage of anything downstream of an
+// assigned combo needs an entry point that doesn't depend on a real OS
+// bind. Still runs the same TOCTOU-safe conflict check AssignHotkey does
+// (finalizeHotkeyAssignment), just without the probe or the reserved-
+// summon-hotkey cross-check. Exported for settingssvc's isolated-data-
+// gated debug RPC only, never a frontend RPC directly -- same
+// //wails:ignore shape FindWorkflow already uses for the same reason.
+//
+//wails:ignore
+func (s *TriggerService) DebugAssignHotkey(workflowID string, mods []string, key string) (string, error) {
+	if len(mods) == 0 {
+		return "", fmt.Errorf("at least one modifier (cmd/ctrl/shift/option) is required")
+	}
+	label, err := s.finalizeHotkeyAssignment(workflowID, mods, key)
+	if err != nil {
+		return "", err
+	}
+	s.persistHotkeys()
+	s.logger.Info("trigger hotkey debug-assigned", "workflow", workflowID, "binding", label)
+	s.Sync(s.comp.Workflows())
+	return label, nil
+}
+
 // ListHotkeys returns every workflow ID with an assigned hotkey, mapped
 // to its human-readable binding label (e.g. "⌘⇧M").
 func (s *TriggerService) ListHotkeys() map[string]string {

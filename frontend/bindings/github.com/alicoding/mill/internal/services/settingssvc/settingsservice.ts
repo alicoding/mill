@@ -65,6 +65,18 @@ export function ClearKeybinding(commandID: string): $CancellablePromise<void> {
 }
 
 /**
+ * DebugAssignWorkflowHotkey is an e2e-only test knob, same gating as
+ * DebugBackdatePendingMCPWrite above: workflow-hotkey-trigger e2e
+ * coverage needs a combo actually recorded against a workflow, but real
+ * hotkey assignment (TriggerService.AssignHotkey) always fails outside a
+ * native run loop (see TriggerService.DebugAssignHotkey's own doc
+ * comment) -- this delegates to that bypass, gated the same way.
+ */
+export function DebugAssignWorkflowHotkey(workflowID: string, mods: string[] | null, key: string): $CancellablePromise<string> {
+    return $Call.ByID(1815201285, workflowID, mods, key);
+}
+
+/**
  * DebugBackdatePendingMCPWrite is an e2e-only test knob (docs/goals/0026
  * item 2's staleness presentation) -- see MillMCPService.
  * DebugBackdatePendingWrite's own doc comment for why this has to be an
