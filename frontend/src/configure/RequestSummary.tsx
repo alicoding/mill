@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Button, Heading, IconButton, Label, Select, Stack, Text } from '@primer/react'
 import { PencilIcon, CopyIcon, TrashIcon } from '@primer/octicons-react'
 import { Tabs } from '@primer/react/experimental'
@@ -10,7 +11,7 @@ import type { Field, Operation, OperationRef } from '../../bindings/github.com/a
 import { RequestTestPanel } from './RequestTestPanel'
 import { headersToRows, rowsToHeaders } from './requestHeaders'
 import { parseOpenAPIToOperations } from './openapiSynth'
-import { AUTH_LABEL, AUTH_UNIMPLEMENTED } from './authTypeLabels'
+import { authLabelFor, AUTH_UNIMPLEMENTED } from './authTypeLabels'
 import { ConfirmDialog } from '../shared/ConfirmDialog'
 import styles from '../shared/ListCard.module.css'
 import PageContainer from '../shared/PageContainer'
@@ -33,6 +34,8 @@ export function RequestSummary({ request, onEdit, onDuplicate, onDelete }: {
   onDuplicate: () => void
   onDelete: () => void
 }) {
+  const { t } = useTranslation('configure')
+  const AUTH_LABEL_MAP = authLabelFor(t)
   const [operations, setOperations] = useState<OperationRef[] | string | null>(null)
   const [selectedOp, setSelectedOp] = useState('')
   const [fields, setFields] = useState<Operation | string | null>(null)
@@ -70,7 +73,7 @@ export function RequestSummary({ request, onEdit, onDuplicate, onDelete }: {
   }, [request.ID, selectedOp])
 
   const opsList = Array.isArray(operations) ? operations : []
-  const testOperations = request.OpenAPISpec ? parseOpenAPIToOperations(request.OpenAPISpec).operations : []
+  const testOperations = request.OpenAPISpec ? parseOpenAPIToOperations(t, request.OpenAPISpec).operations : []
 
   return (
     <PageContainer variant="narrow">
@@ -78,48 +81,48 @@ export function RequestSummary({ request, onEdit, onDuplicate, onDelete }: {
       <Stack direction="horizontal" justify="space-between" align="center" className={styles.sectionHeading}>
         <Stack direction="horizontal" gap="condensed" align="center">
           <Heading as="h2" variant="small">{request.Label}</Heading>
-          {request.BuiltIn && <Label variant="secondary" size="small">built-in</Label>}
+          {request.BuiltIn && <Label variant="secondary" size="small">{t('builtIn')}</Label>}
         </Stack>
         <Stack direction="horizontal" gap="condensed">
-          <Button size="small" leadingVisual={PencilIcon} onClick={onEdit} data-testid="summary-edit">Edit</Button>
-          <IconButton icon={CopyIcon} aria-label="Duplicate" size="small" variant="invisible" onClick={onDuplicate} />
-          <IconButton icon={TrashIcon} aria-label="Delete" size="small" variant="invisible" onClick={() => setConfirmingDelete(true)} />
+          <Button size="small" leadingVisual={PencilIcon} onClick={onEdit} data-testid="summary-edit">{t('edit')}</Button>
+          <IconButton icon={CopyIcon} aria-label={t('duplicate')} size="small" variant="invisible" onClick={onDuplicate} />
+          <IconButton icon={TrashIcon} aria-label={t('delete')} size="small" variant="invisible" onClick={() => setConfirmingDelete(true)} />
         </Stack>
       </Stack>
 
       <Tabs defaultValue="details">
-        <TabList aria-label="Request summary">
-          <TabItem value="details">Details</TabItem>
-          <TabItem value="attributes">Available attributes</TabItem>
-          <TabItem value="input">Input parameters</TabItem>
-          <TabItem value="test">Testing</TabItem>
+        <TabList aria-label={t('requestSummary.requestSummaryAriaLabel')}>
+          <TabItem value="details">{t('requestSummary.details')}</TabItem>
+          <TabItem value="attributes">{t('requestSummary.availableAttributes')}</TabItem>
+          <TabItem value="input">{t('requestSummary.inputParameters')}</TabItem>
+          <TabItem value="test">{t('requestSummary.testing')}</TabItem>
         </TabList>
 
         <TabPanel value="details">
           <Stack direction="vertical" gap="condensed">
-            {request.Description && <DetailRow label="Description" value={request.Description} />}
-            <DetailRow label="Method" value={request.Method || 'GET'} />
-            <DetailRow label="URL" value={request.BaseURL} />
-            {request.Body !== '' && <DetailRow label="Body" value={request.Body} />}
+            {request.Description && <DetailRow label={t('requestSummary.description')} value={request.Description} />}
+            <DetailRow label={t('requestSummary.method')} value={request.Method || 'GET'} />
+            <DetailRow label={t('requestSummary.url')} value={request.BaseURL} />
+            {request.Body !== '' && <DetailRow label={t('requestSummary.body')} value={request.Body} />}
             <DetailRow
-              label="Auth type"
-              value={AUTH_LABEL[request.AuthType] ?? request.AuthType}
+              label={t('requestSummary.authType')}
+              value={AUTH_LABEL_MAP[request.AuthType] ?? request.AuthType}
               suffix={AUTH_UNIMPLEMENTED.has(request.AuthType)
-                ? <Label variant="attention" size="small">not yet implemented</Label>
+                ? <Label variant="attention" size="small">{t('requestSummary.notYetImplemented')}</Label>
                 : undefined}
             />
             <DetailRow
-              label="Headers"
+              label={t('requestSummary.headers')}
               value={request.Headers && Object.keys(request.Headers).length > 0
                 ? Object.entries(request.Headers).map(([k, v]) => `${k}: ${v}`).join(', ')
-                : '(none)'}
+                : t('requestSummary.none')}
             />
-            <DetailRow label="Schema" value={request.OpenAPISpec ? 'Declared' : 'Not declared'} />
+            <DetailRow label={t('requestSummary.schema')} value={request.OpenAPISpec ? t('requestSummary.declared') : t('requestSummary.notDeclared')} />
             <DetailRow
-              label="JOSE encryption"
+              label={t('requestSummary.joseEncryption')}
               value={request.JOSE?.Enabled
-                ? `Enabled${request.JOSE.DecryptResponse ? ' (decrypts responses)' : ''}`
-                : 'Disabled'}
+                ? `${t('requestSummary.enabled')}${request.JOSE.DecryptResponse ? t('requestSummary.decryptsResponses') : ''}`
+                : t('requestSummary.disabled')}
             />
           </Stack>
         </TabPanel>
@@ -132,7 +135,7 @@ export function RequestSummary({ request, onEdit, onDuplicate, onDelete }: {
             selectedOp={selectedOp}
             onSelectOp={setSelectedOp}
             fields={fields}
-            renderFields={(f) => <SchemaFieldList label="Output" fields={f.OutputFields} />}
+            renderFields={(f) => <SchemaFieldList label={t('requestSummary.outputFieldsLabel')} fields={f.OutputFields} />}
           />
         </TabPanel>
 
@@ -146,8 +149,8 @@ export function RequestSummary({ request, onEdit, onDuplicate, onDelete }: {
             fields={fields}
             renderFields={(f) => (
               <>
-                <SchemaFieldList label="Parameters (path / query / header)" fields={(f.InputFields ?? []).filter((x) => x.In !== 'body')} />
-                <SchemaFieldList label="Request body" fields={(f.InputFields ?? []).filter((x) => x.In === 'body')} />
+                <SchemaFieldList label={t('requestSummary.parametersLabel')} fields={(f.InputFields ?? []).filter((x) => x.In !== 'body')} />
+                <SchemaFieldList label={t('requestSummary.requestBodyLabel')} fields={(f.InputFields ?? []).filter((x) => x.In === 'body')} />
               </>
             )}
           />
@@ -171,8 +174,8 @@ export function RequestSummary({ request, onEdit, onDuplicate, onDelete }: {
     </div>
     {confirmingDelete && (
       <ConfirmDialog
-        title="Delete integration?"
-        body={`This permanently deletes "${request.Label}". This cannot be undone.`}
+        title={t('requestSummary.deleteConfirmTitle')}
+        body={t('requestSummary.deleteConfirmBody', { label: request.Label })}
         onCancel={() => setConfirmingDelete(false)}
         onConfirm={() => {
           setConfirmingDelete(false)
@@ -203,15 +206,16 @@ function OperationFieldsTab({ operations, opsList, selectedOp, onSelectOp, field
   fields: Operation | string | null
   renderFields: (f: Operation) => React.ReactNode
 }) {
-  if (operations === null) return <Text as="p" size="small" className={styles.muted}>No schema declared for this request.</Text>
+  const { t } = useTranslation('configure')
+  if (operations === null) return <Text as="p" size="small" className={styles.muted}>{t('requestSummary.noSchemaDeclared')}</Text>
   if (typeof operations === 'string') return <Text as="p" size="small" className={styles.error}>{operations}</Text>
-  if (opsList.length === 0) return <Text as="p" size="small" className={styles.muted}>This spec declares no operations.</Text>
+  if (opsList.length === 0) return <Text as="p" size="small" className={styles.muted}>{t('requestSummary.noOperationsInSpec')}</Text>
 
   return (
     <Stack direction="vertical" gap="normal">
       {opsList.length > 1 ? (
-        <Select aria-label="Operation" value={selectedOp} onChange={(e) => onSelectOp(e.target.value)}>
-          <Select.Option value="">Select an operation…</Select.Option>
+        <Select aria-label={t('requestSummary.operationAriaLabel')} value={selectedOp} onChange={(e) => onSelectOp(e.target.value)}>
+          <Select.Option value="">{t('requestSummary.selectOperation')}</Select.Option>
           {opsList.map((op) => {
             const key = `${op.Method} ${op.Path}`
             return <Select.Option key={key} value={key}>{key}</Select.Option>
@@ -219,7 +223,7 @@ function OperationFieldsTab({ operations, opsList, selectedOp, onSelectOp, field
         </Select>
       ) : (
         <Stack direction="horizontal" gap="condensed" align="center">
-          <Text size="small" weight="semibold">Operation</Text>
+          <Text size="small" weight="semibold">{t('requestSummary.operation')}</Text>
           <Label variant="secondary" size="small">{`${opsList[0].Method} ${opsList[0].Path}`}</Label>
         </Stack>
       )}
@@ -230,6 +234,7 @@ function OperationFieldsTab({ operations, opsList, selectedOp, onSelectOp, field
 }
 
 function SchemaFieldList({ label, fields }: { label: string; fields: Field[] | null | undefined }) {
+  const { t } = useTranslation('configure')
   const list = fields ?? []
   if (list.length === 0) return null
   return (
@@ -240,11 +245,11 @@ function SchemaFieldList({ label, fields }: { label: string; fields: Field[] | n
           <Text size="small">{f.Label ? `${f.Label} (${f.Key})` : f.Key}</Text>
           <Label variant="secondary" size="small">{f.In}</Label>
           <Label variant="secondary" size="small">{f.Type}</Label>
-          {f.Required && <Label size="small">required</Label>}
-          {f.Secret && <Label variant="danger" size="small">secret</Label>}
-          {f.Path && <Label variant="accent" size="small">path: {f.Path}</Label>}
-          {f.Default && <Label variant="accent" size="small">default: {f.Default}</Label>}
-          {f.Options && f.Options.length > 0 && <Label variant="accent" size="small">enum: {f.Options.join(', ')}</Label>}
+          {f.Required && <Label size="small">{t('required')}</Label>}
+          {f.Secret && <Label variant="danger" size="small">{t('secret')}</Label>}
+          {f.Path && <Label variant="accent" size="small">{t('requestSummary.pathLabel', { path: f.Path })}</Label>}
+          {f.Default && <Label variant="accent" size="small">{t('requestSummary.defaultLabel', { value: f.Default })}</Label>}
+          {f.Options && f.Options.length > 0 && <Label variant="accent" size="small">{t('requestSummary.enumLabel', { values: f.Options.join(', ') })}</Label>}
         </Stack>
       ))}
       {list.some((f) => f.Description) && (

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Button, Checkbox, FormControl, Heading, IconButton, Label, Select, Stack, Text, TextInput } from '@primer/react'
 import { DownloadIcon, ListUnorderedIcon, PlusIcon, TrashIcon, UploadIcon } from '@primer/octicons-react'
 import { DataTable } from '@primer/react/experimental'
@@ -21,10 +22,12 @@ import { RestoreExamplesButton } from '../shared/RestoreExamplesButton'
 import styles from '../shared/ListCard.module.css'
 import PageContainer from '../shared/PageContainer'
 
-const TYPE_LABEL: Record<string, string> = {
-  [ConfigFieldType.TypeText]: 'Text',
-  [ConfigFieldType.TypeNumber]: 'Number',
-  [ConfigFieldType.TypeBoolean]: 'Boolean',
+function typeLabelFor(t: (key: string) => string): Record<string, string> {
+  return {
+    [ConfigFieldType.TypeText]: t('configureLists.typeLabel.text'),
+    [ConfigFieldType.TypeNumber]: t('configureLists.typeLabel.number'),
+    [ConfigFieldType.TypeBoolean]: t('configureLists.typeLabel.boolean'),
+  }
 }
 
 function emptyColumn(): Field {
@@ -42,6 +45,8 @@ function emptyColumn(): Field {
 // list-lookup and a list-search workflow node resolve against these
 // same Columns/Rows.
 export function ConfigureLists() {
+  const { t } = useTranslation('configure')
+  const TYPE_LABEL = typeLabelFor(t)
   // Store-shared (refreshLists, shared/configureEntityStore.ts), the
   // same one-fetch-many-consumers pattern store.ts's workflows/requests
   // already use -- so App.tsx's mill-data-changed handler pushing a
@@ -227,20 +232,20 @@ export function ConfigureLists() {
       // No !l.BuiltIn guard on Delete -- a seeded example is ordinary and
       // fully editable/deletable (docs/SPEC.md §2.2's Update note), same
       // as ConfigureRequests.tsx's identical badge.
-      labelBadges: l.BuiltIn ? <Label variant="secondary" size="small">built-in</Label> : undefined,
-      description: `${(l.Columns ?? []).length} columns, ${(l.Rows ?? []).length} rows`,
+      labelBadges: l.BuiltIn ? <Label variant="secondary" size="small">{t('builtIn')}</Label> : undefined,
+      description: t('configureLists.columnsRowsSummary', { columns: (l.Columns ?? []).length, rows: (l.Rows ?? []).length }),
       onOpen: () => startEdit(l),
       menuActions: [
-        { label: 'Export', onClick: () => exportList(l.ID, l.Label) },
+        { label: t('export'), onClick: () => exportList(l.ID, l.Label) },
         // Reset-to-shipped-example (docs/goals/0037 item 4) -- hidden
         // (not shown-disabled) when already current, same reasoning
         // CompositionView.tsx's identical wiring documents.
         ...(l.BuiltIn && !seedReset.disabled ? [{ label: seedReset.label, onClick: () => resetToSeed(l.ID) }] : []),
         {
-          label: 'Delete',
+          label: t('delete'),
           onClick: () => remove(l.ID),
           danger: true,
-          confirm: { title: 'Delete list?', body: `This permanently deletes "${l.Label}". This cannot be undone.` },
+          confirm: { title: t('configureLists.deleteConfirmTitle'), body: t('configureLists.deleteConfirmBody', { label: l.Label }) },
         },
       ],
     }
@@ -249,7 +254,7 @@ export function ConfigureLists() {
   return (
     <PageContainer data-testid="configure-lists">
       <Stack direction="horizontal" justify="space-between" align="center" className={styles.sectionHeading}>
-        <Heading as="h2" variant="small" id="lists-heading">Lists</Heading>
+        <Heading as="h2" variant="small" id="lists-heading">{t('configureLists.heading')}</Heading>
         <Stack direction="horizontal" gap="condensed">
           <ViewModeToggle mode={viewMode} onChange={setViewMode} />
           <input
@@ -261,11 +266,11 @@ export function ConfigureLists() {
             onChange={handleImportFile}
           />
           <Button leadingVisual={UploadIcon} size="small" onClick={openImportPicker} data-testid="import-list">
-            Import
+            {t('import')}
           </Button>
           <RestoreExamplesButton items={restorable} onRestore={restoreExample} />
           <Button leadingVisual={PlusIcon} variant="primary" size="small" onClick={startCreate} data-testid="new-list">
-            New list
+            {t('configureLists.newList')}
           </Button>
         </Stack>
       </Stack>
@@ -278,19 +283,19 @@ export function ConfigureLists() {
           <div className={styles.card}>
             <Stack direction="vertical" gap="condensed">
               <FormControl>
-                <FormControl.Label>Label</FormControl.Label>
+                <FormControl.Label>{t('configureLists.label')}</FormControl.Label>
                 <TextInput value={label} onChange={(e) => setLabel(e.target.value)} block data-testid="list-label" />
               </FormControl>
               <FormControl>
-                <FormControl.Label>Description</FormControl.Label>
+                <FormControl.Label>{t('configureLists.description')}</FormControl.Label>
                 <TextInput value={description} onChange={(e) => setDescription(e.target.value)} block />
               </FormControl>
 
-              <Text size="small" weight="semibold">Columns</Text>
+              <Text size="small" weight="semibold">{t('configureLists.columns')}</Text>
               {columns.map((c, i) => (
                 <Stack key={i} direction="horizontal" gap="condensed" align="center">
-                  <TextInput placeholder="key" value={c.Key} onChange={(e) => updateColumn(i, 'Key', e.target.value)} data-testid="list-column-key" />
-                  <TextInput placeholder="label" value={c.Label} onChange={(e) => updateColumn(i, 'Label', e.target.value)} />
+                  <TextInput placeholder={t('configureLists.keyPlaceholder')} value={c.Key} onChange={(e) => updateColumn(i, 'Key', e.target.value)} data-testid="list-column-key" />
+                  <TextInput placeholder={t('configureLists.labelPlaceholder')} value={c.Label} onChange={(e) => updateColumn(i, 'Label', e.target.value)} />
                   <Select value={c.Type} onChange={(e) => updateColumn(i, 'Type', e.target.value)} data-testid="list-column-type">
                     {Object.entries(TYPE_LABEL).map(([v, l]) => (
                       <Select.Option key={v} value={v}>{l}</Select.Option>
@@ -298,7 +303,7 @@ export function ConfigureLists() {
                   </Select>
                   <IconButton
                     icon={TrashIcon}
-                    aria-label="Remove column"
+                    aria-label={t('configureLists.removeColumnAriaLabel')}
                     size="small"
                     variant="invisible"
                     onClick={() => setColumns((prev) => prev.filter((_, idx) => idx !== i))}
@@ -306,13 +311,13 @@ export function ConfigureLists() {
                 </Stack>
               ))}
               <Button size="small" variant="invisible" leadingVisual={PlusIcon} onClick={() => setColumns((prev) => [...prev, emptyColumn()])}>
-                Add column
+                {t('configureLists.addColumn')}
               </Button>
 
               {error && <Text as="p" size="small" className={styles.error}>{error}</Text>}
               <Stack direction="horizontal" gap="condensed">
-                <Button variant="primary" size="small" onClick={saveSchema} data-testid="save-list">Save list</Button>
-                <Button size="small" variant="invisible" onClick={() => setFormOpen(false)}>Close</Button>
+                <Button variant="primary" size="small" onClick={saveSchema} data-testid="save-list">{t('configureLists.saveList')}</Button>
+                <Button size="small" variant="invisible" onClick={() => setFormOpen(false)}>{t('configureLists.close')}</Button>
               </Stack>
             </Stack>
           </div>
@@ -320,9 +325,9 @@ export function ConfigureLists() {
           {editingID && editingList && (
             <div className={styles.card} data-testid="list-rows-editor">
               <Stack direction="vertical" gap="condensed">
-                <Text size="small" weight="semibold">Rows</Text>
+                <Text size="small" weight="semibold">{t('configureLists.rows')}</Text>
                 {(editingList.Columns ?? []).length === 0 ? (
-                  <Text as="p" size="small" className={styles.muted}>Add at least one column, then Save, to start adding rows.</Text>
+                  <Text as="p" size="small" className={styles.muted}>{t('configureLists.addColumnFirst')}</Text>
                 ) : (
                   <>
                     {(editingList.Rows ?? []).map((r) => (
@@ -335,7 +340,7 @@ export function ConfigureLists() {
                       />
                     ))}
                     <Button size="small" variant="invisible" leadingVisual={PlusIcon} onClick={addRow} data-testid="add-list-row">
-                      Add row
+                      {t('configureLists.addRow')}
                     </Button>
                   </>
                 )}
@@ -346,24 +351,24 @@ export function ConfigureLists() {
         </PageContainer>
       )}
 
-      {lists === null && <Text as="p" className={styles.muted}>Loading…</Text>}
+      {lists === null && <Text as="p" className={styles.muted}>{t('loading')}</Text>}
       {lists !== null && viewMode === 'table' && lists.length > 0 && (
         <ResizableTableContainer storageKey="mill-cols-lists">
           <DataTable
             aria-labelledby="lists-heading"
             data={sortedLists.map((l) => ({ ...l, id: l.ID }))}
             columns={[
-              { header: 'Label', field: 'Label', rowHeader: true, sortBy: 'alphanumeric' },
-              { header: 'Columns', id: 'columns', width: 'auto', renderCell: (l) => (l.Columns ?? []).length },
-              { header: 'Rows', id: 'rows', width: 'auto', renderCell: (l) => (l.Rows ?? []).length },
-              { header: 'ID', field: 'ID' },
+              { header: t('configureLists.tableColumns.label'), field: 'Label', rowHeader: true, sortBy: 'alphanumeric' },
+              { header: t('configureLists.tableColumns.columns'), id: 'columns', width: 'auto', renderCell: (l) => (l.Columns ?? []).length },
+              { header: t('configureLists.tableColumns.rows'), id: 'rows', width: 'auto', renderCell: (l) => (l.Rows ?? []).length },
+              { header: t('configureLists.tableColumns.id'), field: 'ID' },
               {
                 header: '', id: 'actions', width: 'auto', align: 'end',
                 renderCell: (l) => (
                   <Stack direction="horizontal" gap="condensed">
-                    <Button size="small" variant="invisible" onClick={() => startEdit(l)}>Edit</Button>
-                    <IconButton icon={DownloadIcon} aria-label={`Export ${l.Label}`} size="small" variant="invisible" onClick={() => exportList(l.ID, l.Label)} />
-                    <IconButton icon={TrashIcon} aria-label={`Delete ${l.Label}`} size="small" variant="invisible" onClick={() => requestDelete(l)} />
+                    <Button size="small" variant="invisible" onClick={() => startEdit(l)}>{t('edit')}</Button>
+                    <IconButton icon={DownloadIcon} aria-label={t('configureLists.exportAriaLabel', { label: l.Label })} size="small" variant="invisible" onClick={() => exportList(l.ID, l.Label)} />
+                    <IconButton icon={TrashIcon} aria-label={t('configureLists.deleteAriaLabel', { label: l.Label })} size="small" variant="invisible" onClick={() => requestDelete(l)} />
                   </Stack>
                 ),
               },
@@ -374,12 +379,12 @@ export function ConfigureLists() {
       {lists !== null && viewMode === 'rows' && !(formOpen && lists.length === 0) && (
         <InventoryList
           items={listItems}
-          searchPlaceholder="Search lists…"
+          searchPlaceholder={t('configureLists.searchPlaceholder')}
           emptyState={{
             icon: ListUnorderedIcon,
-            heading: 'No lists yet',
-            description: "A reusable typed dataset a workflow's List Search (or List Lookup) node can resolve against.",
-            action: <Button leadingVisual={PlusIcon} variant="primary" onClick={startCreate}>New list</Button>,
+            heading: t('configureLists.emptyHeading'),
+            description: t('configureLists.emptyDescription'),
+            action: <Button leadingVisual={PlusIcon} variant="primary" onClick={startCreate}>{t('configureLists.newList')}</Button>,
           }}
         />
       )}
@@ -399,6 +404,7 @@ function RowEditor({ row, columns, onSave, onDelete }: {
   onSave: (values: Record<string, string>, status: RowStatus) => void
   onDelete: () => void
 }) {
+  const { t } = useTranslation('configure')
   const [values, setValues] = useState<Record<string, string>>(
     Object.fromEntries(Object.entries(row.Values ?? {}).map(([k, v]) => [k, v ?? ''])),
   )
@@ -420,7 +426,7 @@ function RowEditor({ row, columns, onSave, onDelete }: {
               />
             ) : c.Type === ConfigFieldType.TypeOptions ? (
               <Select aria-label={c.Label || c.Key} value={values[c.Key] ?? ''} onChange={(e) => setValue(c.Key, e.target.value)}>
-                <Select.Option value="">(unset)</Select.Option>
+                <Select.Option value="">{t('configureLists.unset')}</Select.Option>
                 {(c.Options ?? []).map((opt) => (
                   <Select.Option key={opt} value={opt}>{opt}</Select.Option>
                 ))}
@@ -436,12 +442,12 @@ function RowEditor({ row, columns, onSave, onDelete }: {
             )}
           </FormControl>
         ))}
-        <Select aria-label="Row status" value={status} onChange={(e) => setStatus(e.target.value as RowStatus)} data-testid="list-row-status">
-          <Select.Option value={RowStatus.RowActive}>Active</Select.Option>
-          <Select.Option value={RowStatus.RowExpired}>Expired</Select.Option>
+        <Select aria-label={t('configureLists.rowStatusAriaLabel')} value={status} onChange={(e) => setStatus(e.target.value as RowStatus)} data-testid="list-row-status">
+          <Select.Option value={RowStatus.RowActive}>{t('configureLists.active')}</Select.Option>
+          <Select.Option value={RowStatus.RowExpired}>{t('configureLists.expired')}</Select.Option>
         </Select>
-        <Button size="small" onClick={() => onSave(values, status)} data-testid="save-list-row">Save</Button>
-        <IconButton icon={TrashIcon} aria-label="Delete row" size="small" variant="invisible" onClick={onDelete} />
+        <Button size="small" onClick={() => onSave(values, status)} data-testid="save-list-row">{t('configureLists.save')}</Button>
+        <IconButton icon={TrashIcon} aria-label={t('configureLists.deleteRowAriaLabel')} size="small" variant="invisible" onClick={onDelete} />
       </Stack>
     </Stack>
   )

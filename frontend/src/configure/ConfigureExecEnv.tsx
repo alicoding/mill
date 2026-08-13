@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Button, FormControl, Heading, IconButton, Label, Select, Stack, Text, TextInput } from '@primer/react'
 import { DownloadIcon, PlusIcon, TerminalIcon, TrashIcon, UploadIcon } from '@primer/octicons-react'
 import { DataTable } from '@primer/react/experimental'
@@ -27,15 +28,19 @@ const TEMP_DIR_SENTINEL = '<mill-temp>'
 // ExecEnv should carry (Validate rejects it), so every lookup below
 // falls back to the raw string (`SHELL_LABEL[e.Shell] ?? e.Shell`)
 // rather than forcing a meaningless "" -> label mapping into existence.
-const SHELL_LABEL: Partial<Record<Shell, string>> = {
-  [Shell.ShellZsh]: 'zsh',
-  [Shell.ShellBash]: 'bash',
-  [Shell.ShellSh]: 'sh',
+function shellLabelFor(t: (key: string) => string): Partial<Record<Shell, string>> {
+  return {
+    [Shell.ShellZsh]: t('configureExecEnv.shellLabel.zsh'),
+    [Shell.ShellBash]: t('configureExecEnv.shellLabel.bash'),
+    [Shell.ShellSh]: t('configureExecEnv.shellLabel.sh'),
+  }
 }
 
-const PROFILE_LABEL: Partial<Record<ProfileMode, string>> = {
-  [ProfileMode.ProfileClean]: 'Clean (no shell profile, deterministic)',
-  [ProfileMode.ProfileLogin]: 'Login (sources your shell profile)',
+function profileLabelFor(t: (key: string) => string): Partial<Record<ProfileMode, string>> {
+  return {
+    [ProfileMode.ProfileClean]: t('configureExecEnv.profileLabel.clean'),
+    [ProfileMode.ProfileLogin]: t('configureExecEnv.profileLabel.login'),
+  }
 }
 
 // The caption must describe the SELECTED mode, not always Clean -- a
@@ -43,11 +48,11 @@ const PROFILE_LABEL: Partial<Record<ProfileMode, string>> = {
 // the UI describing a state that isn't real (docs/SPEC.md §1's thesis),
 // caught live from a screenshot. Wording matches execenv.go's own doc
 // comments on ProfileClean/ProfileLogin.
-const PROFILE_CAPTION: Partial<Record<ProfileMode, string>> = {
-  [ProfileMode.ProfileClean]:
-    'Fail-safe default -- no shell startup files are sourced; the step sees only the variables below.',
-  [ProfileMode.ProfileLogin]:
-    "Sources the shell's login startup files (.zprofile / .bash_profile) in addition to the variables below -- terminal parity, less deterministic.",
+function profileCaptionFor(t: (key: string) => string): Partial<Record<ProfileMode, string>> {
+  return {
+    [ProfileMode.ProfileClean]: t('configureExecEnv.profileCaption.clean'),
+    [ProfileMode.ProfileLogin]: t('configureExecEnv.profileCaption.login'),
+  }
 }
 
 // Configure's Execution Environments section (docs/adr/0026,
@@ -58,6 +63,10 @@ const PROFILE_CAPTION: Partial<Record<ProfileMode, string>> = {
 // (the Configure-entity recipe, docs/SPEC.md §9.5) closely: no
 // secret/auth concept here at all, same as MCP Server.
 export function ConfigureExecEnv() {
+  const { t } = useTranslation('configure')
+  const SHELL_LABEL = shellLabelFor(t)
+  const PROFILE_LABEL = profileLabelFor(t)
+  const PROFILE_CAPTION = profileCaptionFor(t)
   // Store-shared (refreshExecEnvs, shared/configureEntityStore.ts) --
   // see ConfigureLists.tsx's identical comment (goal 0017 P1-1).
   const envs = useConfigureEntityStore((s) => s.execEnvs)
@@ -219,20 +228,20 @@ export function ConfigureExecEnv() {
       // No !e.BuiltIn guard on Delete -- same "ordinary, fully editable/
       // deletable from the moment it exists" reasoning as
       // ConfigureRequests.tsx/ConfigureLists.tsx's identical badge.
-      labelBadges: e.BuiltIn ? <Label variant="secondary" size="small">built-in</Label> : undefined,
-      description: `${SHELL_LABEL[e.Shell] ?? e.Shell} · ${e.ProfileMode} · ${e.Dir === TEMP_DIR_SENTINEL ? 'fresh temp dir per run' : e.Dir}`,
+      labelBadges: e.BuiltIn ? <Label variant="secondary" size="small">{t('builtIn')}</Label> : undefined,
+      description: `${SHELL_LABEL[e.Shell] ?? e.Shell} · ${e.ProfileMode} · ${e.Dir === TEMP_DIR_SENTINEL ? t('configureExecEnv.freshTempDirPerRun') : e.Dir}`,
       onOpen: () => startEdit(e),
       menuActions: [
-        { label: 'Export', onClick: () => exportEnv(e.ID, e.Label) },
+        { label: t('export'), onClick: () => exportEnv(e.ID, e.Label) },
         // Reset-to-shipped-example (docs/goals/0037 item 4) -- hidden
         // (not shown-disabled) when already current, same reasoning
         // CompositionView.tsx's identical wiring documents.
         ...(e.BuiltIn && !seedReset.disabled ? [{ label: seedReset.label, onClick: () => resetToSeed(e.ID) }] : []),
         {
-          label: 'Delete',
+          label: t('delete'),
           onClick: () => remove(e.ID),
           danger: true,
-          confirm: { title: 'Delete execution environment?', body: `This permanently deletes "${e.Label}". This cannot be undone.` },
+          confirm: { title: t('configureExecEnv.deleteConfirmTitle'), body: t('configureExecEnv.deleteConfirmBody', { label: e.Label }) },
         },
       ],
     }
@@ -241,7 +250,7 @@ export function ConfigureExecEnv() {
   return (
     <PageContainer data-testid="configure-execenvs">
       <Stack direction="horizontal" justify="space-between" align="center" className={styles.sectionHeading}>
-        <Heading as="h2" variant="small" id="execenvs-heading">Execution Environments</Heading>
+        <Heading as="h2" variant="small" id="execenvs-heading">{t('configureExecEnv.heading')}</Heading>
         <Stack direction="horizontal" gap="condensed">
           <ViewModeToggle mode={viewMode} onChange={setViewMode} />
           <input
@@ -253,11 +262,11 @@ export function ConfigureExecEnv() {
             onChange={handleImportFile}
           />
           <Button leadingVisual={UploadIcon} size="small" onClick={openImportPicker} data-testid="import-execenv">
-            Import
+            {t('import')}
           </Button>
           <RestoreExamplesButton items={restorable} onRestore={restoreExample} />
           <Button leadingVisual={PlusIcon} variant="primary" size="small" onClick={startCreate} data-testid="new-execenv">
-            New environment
+            {t('configureExecEnv.newEnvironment')}
           </Button>
         </Stack>
       </Stack>
@@ -270,11 +279,11 @@ export function ConfigureExecEnv() {
         <div className={styles.card}>
           <Stack direction="vertical" gap="condensed">
             <FormControl>
-              <FormControl.Label>Label</FormControl.Label>
+              <FormControl.Label>{t('configureExecEnv.label')}</FormControl.Label>
               <TextInput value={label} onChange={(e) => setLabel(e.target.value)} block />
             </FormControl>
             <FormControl>
-              <FormControl.Label>Shell</FormControl.Label>
+              <FormControl.Label>{t('configureExecEnv.shell')}</FormControl.Label>
               <Select value={shell} onChange={(e) => setShell(e.target.value as Shell)}>
                 {Object.values(Shell).filter((s) => s !== Shell.$zero).map((s) => (
                   <Select.Option key={s} value={s}>{SHELL_LABEL[s] ?? s}</Select.Option>
@@ -282,7 +291,7 @@ export function ConfigureExecEnv() {
               </Select>
             </FormControl>
             <FormControl>
-              <FormControl.Label>Profile mode</FormControl.Label>
+              <FormControl.Label>{t('configureExecEnv.profileMode')}</FormControl.Label>
               {/* data-testid on an inner span: FormControl.Caption doesn't
                   forward arbitrary props to its rendered element (checked
                   the hard way -- an e2e getByTestId found nothing). */}
@@ -294,25 +303,25 @@ export function ConfigureExecEnv() {
               </Select>
             </FormControl>
             <FormControl>
-              <FormControl.Label>Working directory</FormControl.Label>
-              <FormControl.Caption>{`Use ${TEMP_DIR_SENTINEL} to mint a fresh, Mill-owned temp directory for each run, or a real absolute path.`}</FormControl.Caption>
+              <FormControl.Label>{t('configureExecEnv.workingDirectory')}</FormControl.Label>
+              <FormControl.Caption>{t('configureExecEnv.workingDirectoryCaption', { sentinel: TEMP_DIR_SENTINEL })}</FormControl.Caption>
               <TextInput value={dir} onChange={(e) => setDir(e.target.value)} block />
             </FormControl>
-            <Text size="small" weight="semibold">Environment variables</Text>
-            <FormControl.Caption>Explicit only -- never inherits Mill's own environment. Leave empty for a minimal default PATH.</FormControl.Caption>
+            <Text size="small" weight="semibold">{t('configureExecEnv.environmentVariables')}</Text>
+            <FormControl.Caption>{t('configureExecEnv.environmentVariablesCaption')}</FormControl.Caption>
             {envRows.map((row, i) => (
               <Stack key={i} direction="horizontal" gap="condensed" align="center">
                 <TextInput
-                  placeholder="PATH"
-                  aria-label={`Variable ${i + 1} name`}
+                  placeholder={t('configureExecEnv.pathPlaceholder')}
+                  aria-label={t('configureExecEnv.variableNameAriaLabel', { n: i + 1 })}
                   data-testid="execenv-env-key"
                   value={row.key}
                   onChange={(e) => updateEnvRow(i, { key: e.target.value })}
                   style={{ width: '30%' }}
                 />
                 <TextInput
-                  placeholder="/usr/bin:/bin"
-                  aria-label={`Variable ${i + 1} value`}
+                  placeholder={t('configureExecEnv.pathValuePlaceholder')}
+                  aria-label={t('configureExecEnv.variableValueAriaLabel', { n: i + 1 })}
                   data-testid="execenv-env-value"
                   value={row.value}
                   onChange={(e) => updateEnvRow(i, { value: e.target.value })}
@@ -320,7 +329,7 @@ export function ConfigureExecEnv() {
                 />
                 <IconButton
                   icon={TrashIcon}
-                  aria-label="Remove variable"
+                  aria-label={t('configureExecEnv.removeVariableAriaLabel')}
                   size="small"
                   variant="invisible"
                   onClick={() => setEnvRows((prev) => prev.filter((_, idx) => idx !== i))}
@@ -329,7 +338,7 @@ export function ConfigureExecEnv() {
             ))}
             <Stack direction="horizontal" gap="condensed">
               <Button size="small" variant="invisible" onClick={() => setEnvRows((prev) => [...prev, { key: '', value: '' }])}>
-                Add variable
+                {t('configureExecEnv.addVariable')}
               </Button>
               {/* ADR-0026's Amendment, "Capture from my shell": snapshot the
                   real login-shell PATH into the stored, editable env --
@@ -342,37 +351,37 @@ export function ConfigureExecEnv() {
                 data-testid="capture-shell-path"
                 onClick={captureShellPath}
               >
-                Capture PATH from my shell
+                {t('configureExecEnv.capturePathFromShell')}
               </Button>
             </Stack>
             {error && <Text as="p" size="small" className={styles.error}>{error}</Text>}
             <Stack direction="horizontal" gap="condensed">
-              <Button variant="primary" size="small" onClick={save}>Save environment</Button>
-              <Button size="small" variant="invisible" onClick={() => setFormOpen(false)}>Cancel</Button>
+              <Button variant="primary" size="small" onClick={save}>{t('configureExecEnv.saveEnvironment')}</Button>
+              <Button size="small" variant="invisible" onClick={() => setFormOpen(false)}>{t('entityRefField.cancel')}</Button>
             </Stack>
           </Stack>
         </div>
         </PageContainer>
       )}
 
-      {envs === null && <Text as="p" className={styles.muted}>Loading…</Text>}
+      {envs === null && <Text as="p" className={styles.muted}>{t('loading')}</Text>}
       {envs !== null && viewMode === 'table' && envs.length > 0 && (
         <ResizableTableContainer storageKey="mill-cols-execenvs">
           <DataTable
             aria-labelledby="execenvs-heading"
             data={sortedEnvs.map((e) => ({ ...e, id: e.ID }))}
             columns={[
-              { header: 'Label', field: 'Label', rowHeader: true, sortBy: 'alphanumeric' },
-              { header: 'Shell', id: 'shell', renderCell: (e) => SHELL_LABEL[e.Shell] ?? e.Shell },
-              { header: 'Profile', field: 'ProfileMode' },
-              { header: 'Dir', id: 'dir', width: 'growCollapse', minWidth: '160px', renderCell: (e) => <TruncatedCell text={e.Dir} /> },
+              { header: t('configureExecEnv.columns.label'), field: 'Label', rowHeader: true, sortBy: 'alphanumeric' },
+              { header: t('configureExecEnv.columns.shell'), id: 'shell', renderCell: (e) => SHELL_LABEL[e.Shell] ?? e.Shell },
+              { header: t('configureExecEnv.columns.profile'), field: 'ProfileMode' },
+              { header: t('configureExecEnv.columns.dir'), id: 'dir', width: 'growCollapse', minWidth: '160px', renderCell: (e) => <TruncatedCell text={e.Dir} /> },
               {
                 header: '', id: 'actions', width: 'auto', align: 'end',
                 renderCell: (e) => (
                   <Stack direction="horizontal" gap="condensed">
-                    <Button size="small" variant="invisible" onClick={() => startEdit(e)}>Edit</Button>
-                    <IconButton icon={DownloadIcon} aria-label={`Export ${e.Label}`} size="small" variant="invisible" onClick={() => exportEnv(e.ID, e.Label)} />
-                    <IconButton icon={TrashIcon} aria-label={`Delete ${e.Label}`} size="small" variant="invisible" onClick={() => requestDelete(e)} />
+                    <Button size="small" variant="invisible" onClick={() => startEdit(e)}>{t('edit')}</Button>
+                    <IconButton icon={DownloadIcon} aria-label={t('configureExecEnv.exportAriaLabel', { label: e.Label })} size="small" variant="invisible" onClick={() => exportEnv(e.ID, e.Label)} />
+                    <IconButton icon={TrashIcon} aria-label={t('configureExecEnv.deleteAriaLabel', { label: e.Label })} size="small" variant="invisible" onClick={() => requestDelete(e)} />
                   </Stack>
                 ),
               },
@@ -383,12 +392,12 @@ export function ConfigureExecEnv() {
       {envs !== null && viewMode === 'rows' && !(formOpen && envs.length === 0) && (
         <InventoryList
           items={envItems}
-          searchPlaceholder="Search execution environments…"
+          searchPlaceholder={t('configureExecEnv.searchPlaceholder')}
           emptyState={{
             icon: TerminalIcon,
-            heading: 'No execution environments yet',
-            description: 'A reusable, pinned shell/directory/env a code-execution workflow node can run inside.',
-            action: <Button leadingVisual={PlusIcon} variant="primary" onClick={startCreate}>New environment</Button>,
+            heading: t('configureExecEnv.emptyHeading'),
+            description: t('configureExecEnv.emptyDescription'),
+            action: <Button leadingVisual={PlusIcon} variant="primary" onClick={startCreate}>{t('configureExecEnv.newEnvironment')}</Button>,
           }}
         />
       )}

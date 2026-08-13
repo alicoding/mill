@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Button, FormControl, Heading, Label, Select, Stack, Text, TextInput } from '@primer/react'
 import { DownloadIcon, PlusIcon, SparkleFillIcon, UploadIcon } from '@primer/octicons-react'
 import { DataTable } from '@primer/react/experimental'
@@ -19,9 +20,11 @@ import { RestoreExamplesButton } from '../shared/RestoreExamplesButton'
 import styles from '../shared/ListCard.module.css'
 import PageContainer from '../shared/PageContainer'
 
-const KIND_LABEL: Record<string, string> = {
-  [AIProviderKind.KindOpenAICompat]: 'OpenAI-compatible (Ollama, LM Studio, vLLM, BYO)',
-  [AIProviderKind.KindAnthropic]: 'Anthropic',
+function kindLabelFor(t: (key: string) => string): Record<string, string> {
+  return {
+    [AIProviderKind.KindOpenAICompat]: t('configureAIProviders.kindLabel.openaiCompat'),
+    [AIProviderKind.KindAnthropic]: t('configureAIProviders.kindLabel.anthropic'),
+  }
 }
 
 // Configure's AI Providers section (docs/goals/0031-ai-node-family.md):
@@ -35,6 +38,8 @@ const KIND_LABEL: Record<string, string> = {
 // after the entity itself saves; the field never pre-fills on edit and
 // always clears after a successful save.
 export function ConfigureAIProviders() {
+  const { t } = useTranslation('configure')
+  const KIND_LABEL = kindLabelFor(t)
   const providers = useConfigureEntityStore((s) => s.aiProviders)
   const [editingID, setEditingID] = useState<string | null>(null)
   const [label, setLabel] = useState('')
@@ -169,17 +174,17 @@ export function ConfigureAIProviders() {
       icon: ENTITY_ICON.aiprovider,
       label: p.Label,
       updatedLabel: formatUpdated(p.UpdatedAt),
-      labelBadges: p.BuiltIn ? <Label variant="secondary" size="small">built-in</Label> : undefined,
+      labelBadges: p.BuiltIn ? <Label variant="secondary" size="small">{t('builtIn')}</Label> : undefined,
       description: `${KIND_LABEL[p.Kind] ?? p.Kind} – ${p.Model}${p.BaseURL ? ` – ${p.BaseURL}` : ''}`,
       onOpen: () => startEdit(p),
       menuActions: [
-        { label: 'Export', onClick: () => exportProvider(p.ID, p.Label) },
+        { label: t('export'), onClick: () => exportProvider(p.ID, p.Label) },
         ...(p.BuiltIn && !seedReset.disabled ? [{ label: seedReset.label, onClick: () => resetToSeed(p.ID) }] : []),
         {
-          label: 'Delete',
+          label: t('delete'),
           onClick: () => remove(p.ID),
           danger: true,
-          confirm: { title: 'Delete AI provider?', body: `This permanently deletes "${p.Label}". This cannot be undone.` },
+          confirm: { title: t('configureAIProviders.deleteConfirmTitle'), body: t('configureAIProviders.deleteConfirmBody', { label: p.Label }) },
         },
       ],
     }
@@ -188,7 +193,7 @@ export function ConfigureAIProviders() {
   return (
     <PageContainer data-testid="configure-aiproviders">
       <Stack direction="horizontal" justify="space-between" align="center" className={styles.sectionHeading}>
-        <Heading as="h2" variant="small" id="aiproviders-heading">AI Providers</Heading>
+        <Heading as="h2" variant="small" id="aiproviders-heading">{t('configureAIProviders.heading')}</Heading>
         <Stack direction="horizontal" gap="condensed">
           <ViewModeToggle mode={viewMode} onChange={setViewMode} />
           <input
@@ -200,11 +205,11 @@ export function ConfigureAIProviders() {
             onChange={handleImportFile}
           />
           <Button leadingVisual={UploadIcon} size="small" onClick={openImportPicker} data-testid="import-aiprovider">
-            Import
+            {t('import')}
           </Button>
           <RestoreExamplesButton items={restorable} onRestore={restoreExample} />
           <Button leadingVisual={PlusIcon} variant="primary" size="small" onClick={startCreate} data-testid="new-aiprovider">
-            New AI provider
+            {t('configureAIProviders.newAiProvider')}
           </Button>
         </Stack>
       </Stack>
@@ -217,62 +222,62 @@ export function ConfigureAIProviders() {
         <div className={styles.card}>
           <Stack direction="vertical" gap="condensed">
             <FormControl>
-              <FormControl.Label>Label</FormControl.Label>
+              <FormControl.Label>{t('configureAIProviders.label')}</FormControl.Label>
               <TextInput value={label} onChange={(e) => setLabel(e.target.value)} block />
             </FormControl>
             <FormControl>
-              <FormControl.Label>Kind</FormControl.Label>
+              <FormControl.Label>{t('configureAIProviders.kind')}</FormControl.Label>
               <Select value={kind} onChange={(e) => setKind(e.target.value as AIProviderKind)} data-testid="aiprovider-kind">
                 <Select.Option value={AIProviderKind.KindOpenAICompat}>{KIND_LABEL[AIProviderKind.KindOpenAICompat]}</Select.Option>
                 <Select.Option value={AIProviderKind.KindAnthropic}>{KIND_LABEL[AIProviderKind.KindAnthropic]}</Select.Option>
               </Select>
             </FormControl>
             <FormControl>
-              <FormControl.Label>Base URL</FormControl.Label>
+              <FormControl.Label>{t('configureAIProviders.baseUrl')}</FormControl.Label>
               <FormControl.Caption>
                 {kind === AIProviderKind.KindAnthropic
-                  ? 'Leave empty to use the real Anthropic API (api.anthropic.com).'
-                  : 'e.g. http://localhost:11434 for local Ollama, or any OpenAI-compatible endpoint.'}
+                  ? t('configureAIProviders.baseUrlCaptionAnthropic')
+                  : t('configureAIProviders.baseUrlCaptionOther')}
               </FormControl.Caption>
-              <TextInput value={baseURL} onChange={(e) => setBaseURL(e.target.value)} placeholder="http://localhost:11434" block />
+              <TextInput value={baseURL} onChange={(e) => setBaseURL(e.target.value)} placeholder={t('configureAIProviders.baseUrlPlaceholder')} block />
             </FormControl>
             <FormControl>
-              <FormControl.Label>Model</FormControl.Label>
-              <TextInput value={model} onChange={(e) => setModel(e.target.value)} placeholder="llama3.2" block />
+              <FormControl.Label>{t('configureAIProviders.model')}</FormControl.Label>
+              <TextInput value={model} onChange={(e) => setModel(e.target.value)} placeholder={t('configureAIProviders.modelPlaceholder')} block />
             </FormControl>
             <FormControl>
-              <FormControl.Label>Secret (API key)</FormControl.Label>
-              <FormControl.Caption>Write-only -- never shown again after saving. Leave empty for a local, unauthenticated endpoint (e.g. Ollama).</FormControl.Caption>
+              <FormControl.Label>{t('configureAIProviders.secretApiKey')}</FormControl.Label>
+              <FormControl.Caption>{t('configureAIProviders.secretCaption')}</FormControl.Caption>
               <TextInput type="password" value={secret} onChange={(e) => setSecret(e.target.value)} block />
             </FormControl>
             {error && <Text as="p" size="small" className={styles.error}>{error}</Text>}
             <Stack direction="horizontal" gap="condensed">
-              <Button variant="primary" size="small" onClick={save}>Save AI provider</Button>
-              <Button size="small" variant="invisible" onClick={() => setFormOpen(false)}>Cancel</Button>
+              <Button variant="primary" size="small" onClick={save}>{t('configureAIProviders.saveAiProvider')}</Button>
+              <Button size="small" variant="invisible" onClick={() => setFormOpen(false)}>{t('entityRefField.cancel')}</Button>
             </Stack>
           </Stack>
         </div>
         </PageContainer>
       )}
 
-      {providers === null && <Text as="p" className={styles.muted}>Loading…</Text>}
+      {providers === null && <Text as="p" className={styles.muted}>{t('loading')}</Text>}
       {providers !== null && viewMode === 'table' && providers.length > 0 && (
         <ResizableTableContainer storageKey="mill-cols-aiproviders">
           <DataTable
             aria-labelledby="aiproviders-heading"
             data={sortedProviders.map((p) => ({ ...p, id: p.ID }))}
             columns={[
-              { header: 'Label', field: 'Label', rowHeader: true, sortBy: 'alphanumeric' },
-              { header: 'Kind', id: 'kind', renderCell: (p) => <Text>{KIND_LABEL[p.Kind] ?? p.Kind}</Text> },
-              { header: 'Model', field: 'Model' },
-              { header: 'Base URL', id: 'baseURL', width: 'growCollapse', minWidth: '160px', renderCell: (p) => <TruncatedCell text={p.BaseURL} /> },
+              { header: t('configureAIProviders.columns.label'), field: 'Label', rowHeader: true, sortBy: 'alphanumeric' },
+              { header: t('configureAIProviders.columns.kind'), id: 'kind', renderCell: (p) => <Text>{KIND_LABEL[p.Kind] ?? p.Kind}</Text> },
+              { header: t('configureAIProviders.columns.model'), field: 'Model' },
+              { header: t('configureAIProviders.columns.baseUrl'), id: 'baseURL', width: 'growCollapse', minWidth: '160px', renderCell: (p) => <TruncatedCell text={p.BaseURL} /> },
               {
                 header: '', id: 'actions', width: 'auto', align: 'end',
                 renderCell: (p) => (
                   <Stack direction="horizontal" gap="condensed">
-                    <Button size="small" variant="invisible" onClick={() => startEdit(p)}>Edit</Button>
-                    <Button size="small" variant="invisible" onClick={() => exportProvider(p.ID, p.Label)} leadingVisual={DownloadIcon}>Export</Button>
-                    <Button size="small" variant="invisible" onClick={() => requestDelete(p)}>Delete</Button>
+                    <Button size="small" variant="invisible" onClick={() => startEdit(p)}>{t('edit')}</Button>
+                    <Button size="small" variant="invisible" onClick={() => exportProvider(p.ID, p.Label)} leadingVisual={DownloadIcon}>{t('export')}</Button>
+                    <Button size="small" variant="invisible" onClick={() => requestDelete(p)}>{t('delete')}</Button>
                   </Stack>
                 ),
               },
@@ -283,12 +288,12 @@ export function ConfigureAIProviders() {
       {providers !== null && viewMode === 'rows' && !(formOpen && providers.length === 0) && (
         <InventoryList
           items={providerItems}
-          searchPlaceholder="Search AI providers…"
+          searchPlaceholder={t('configureAIProviders.searchPlaceholder')}
           emptyState={{
             icon: SparkleFillIcon,
-            heading: 'No AI providers yet',
-            description: 'A reusable connection to local Ollama or a BYO OpenAI-compatible/Anthropic endpoint an AI workflow step can resolve by ID.',
-            action: <Button leadingVisual={PlusIcon} variant="primary" onClick={startCreate}>New AI provider</Button>,
+            heading: t('configureAIProviders.emptyHeading'),
+            description: t('configureAIProviders.emptyDescription'),
+            action: <Button leadingVisual={PlusIcon} variant="primary" onClick={startCreate}>{t('configureAIProviders.newAiProvider')}</Button>,
           }}
         />
       )}
