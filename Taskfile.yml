@@ -38,7 +38,11 @@ tasks:
     deps: [clean]
     cmds:
       - task: "{{.GOOS}}:build"
-      - 'echo "Built raw binary: {{.BIN_DIR}}/{{.APP_NAME}}{{exeExt}} -- this is NOT a launchable app bundle. Run `task package` to produce one, or `task run` to build and launch in one step."'
+      # Plain quotes, never backticks: backticks in a sh string are
+      # command substitution -- the previous wording executed
+      # 'task package' and 'task run' (launching the real app) just to
+      # print this message.
+      - 'echo "Built raw binary: {{.BIN_DIR}}/{{.APP_NAME}}{{exeExt}} -- this is NOT a launchable app bundle. Run ''task package'' to produce one, or ''task run'' to build and launch in one step."'
 
   package:
     summary: Packages a production build of the application
