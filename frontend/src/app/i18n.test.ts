@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import i18n from './i18n'
 
-// docs/goals/0032-copy-management.md's proof-of-pattern slice: confirms
+// docs/goals/archive/0032-copy-management.md's proof-of-pattern slice: confirms
 // the init actually wires resources up (a config typo or a missing
 // namespace in the `ns` list would otherwise only surface as a blank
 // string live, in whichever component happened to call t() first).

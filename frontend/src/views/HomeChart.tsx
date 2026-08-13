@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import { Bar, CartesianGrid, ComposedChart, Legend, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import type { DailyBucket } from '../shared/bindings'
 
@@ -20,6 +21,7 @@ import type { DailyBucket } from '../shared/bindings'
 // canvas lib would need manual palette re-resolution + redraw on every
 // theme switch).
 export default function HomeChart({ series }: { series: DailyBucket[] }) {
+  const { t } = useTranslation('views')
   return (
     <ResponsiveContainer width="100%" height={240}>
       <ComposedChart data={series} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
@@ -29,14 +31,14 @@ export default function HomeChart({ series }: { series: DailyBucket[] }) {
           yAxisId="left"
           allowDecimals={false}
           tick={{ fill: 'var(--fgColor-muted)', fontSize: 12 }}
-          label={{ value: 'Runs', angle: -90, position: 'insideLeft', fill: 'var(--fgColor-muted)', fontSize: 12 }}
+          label={{ value: t('home.chart.runsAxisLabel'), angle: -90, position: 'insideLeft', fill: 'var(--fgColor-muted)', fontSize: 12 }}
         />
         <YAxis
           yAxisId="right"
           orientation="right"
           domain={[0, 100]}
           tick={{ fill: 'var(--fgColor-muted)', fontSize: 12 }}
-          label={{ value: 'Error %', angle: 90, position: 'insideRight', fill: 'var(--fgColor-muted)', fontSize: 12 }}
+          label={{ value: t('home.chart.errorPercentAxisLabel'), angle: 90, position: 'insideRight', fill: 'var(--fgColor-muted)', fontSize: 12 }}
         />
         <Tooltip
           contentStyle={{
@@ -50,8 +52,8 @@ export default function HomeChart({ series }: { series: DailyBucket[] }) {
         {/* Counts stack first, directly above the error-rate line --
             never a bare rate without its own volume right there
             (docs/goals/0014's own explicit rule). */}
-        <Bar yAxisId="left" dataKey="success" stackId="runs" name="Succeeded" fill="var(--fgColor-success)" />
-        <Bar yAxisId="left" dataKey="error" stackId="runs" name="Failed" fill="var(--fgColor-danger)" />
+        <Bar yAxisId="left" dataKey="success" stackId="runs" name={t('home.chart.succeeded')} fill="var(--fgColor-success)" />
+        <Bar yAxisId="left" dataKey="error" stackId="runs" name={t('home.chart.failed')} fill="var(--fgColor-danger)" />
         {/* Deliberately NOT connectNulls: a day below the minimum
             sample size (Go's minBucketRunsForRate) has no RatePercent
             at all, and bridging over it would visually imply a trend
@@ -63,7 +65,7 @@ export default function HomeChart({ series }: { series: DailyBucket[] }) {
           yAxisId="right"
           type="monotone"
           dataKey="ratePercent"
-          name="Error rate"
+          name={t('home.chart.errorRate')}
           stroke="var(--fgColor-attention)"
           dot={{ r: 3 }}
         />

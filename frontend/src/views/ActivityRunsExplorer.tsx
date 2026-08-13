@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Events } from '@wailsio/runtime'
 import { Button, Label, Stack, Text, TextInput } from '@primer/react'
 import { DataTable, type Column } from '@primer/react/experimental'
@@ -23,6 +24,7 @@ import styles from '../shared/ListCard.module.css'
 // (values from what each run was invoked with) and search across
 // attribute values and output.
 export function ActivityRunsExplorer({ workflow }: { workflow: Workflow }) {
+  const { t } = useTranslation('views')
   const [runs, setRuns] = useState<RunSummary[] | null>(null)
   const [error, setError] = useState('')
   const [search, setSearch] = useState('')
@@ -76,19 +78,19 @@ export function ActivityRunsExplorer({ workflow }: { workflow: Workflow }) {
 
   const columns: Column<RunSummary & { id: string }>[] = [
     {
-      id: 'started', header: 'Started', width: 'auto',
+      id: 'started', header: t('activityRunsExplorer.columns.started'), width: 'auto',
       renderCell: (run) => <Text size="small" className={styles.muted}>{formatRunStartedAt(run.startedAt as unknown as string)}</Text>,
     },
     {
-      id: 'kind', header: 'Kind', width: 'auto',
+      id: 'kind', header: t('activityRunsExplorer.columns.kind'), width: 'auto',
       renderCell: (run) => <Label size="small" variant={run.kind === 'triggered' ? 'severe' : 'secondary'}>{run.kind}</Label>,
     },
     {
-      id: 'version', header: 'Version', width: 'auto',
-      renderCell: (run) => (run.version > 0 ? `v${run.version}` : 'draft'),
+      id: 'version', header: t('activityRunsExplorer.columns.version'), width: 'auto',
+      renderCell: (run) => (run.version > 0 ? `v${run.version}` : t('activityRunsExplorer.draft')),
     },
     {
-      id: 'status', header: 'Status', width: 'auto',
+      id: 'status', header: t('activityRunsExplorer.columns.status'), width: 'auto',
       renderCell: (run) => (
         <Stack direction="horizontal" gap="condensed" align="center">
           <Label size="small" variant={run.status === 'SUCCESS' ? 'success' : run.status === 'ERROR' ? 'danger' : 'attention'}>
@@ -117,7 +119,7 @@ export function ActivityRunsExplorer({ workflow }: { workflow: Workflow }) {
           data-testid="activity-run-cancel"
           onClick={() => cancelRun(run.runID)}
         >
-          Stop
+          {t('activityRunsExplorer.stop')}
         </Button>
       ) : null,
     },
@@ -129,7 +131,7 @@ export function ActivityRunsExplorer({ workflow }: { workflow: Workflow }) {
       renderCell: (run) => <Text size="small">{run.values?.[a.Key] ?? ''}</Text>,
     })),
     {
-      id: 'output', header: 'Output', width: 'growCollapse', minWidth: '160px',
+      id: 'output', header: t('activityRunsExplorer.columns.output'), width: 'growCollapse', minWidth: '160px',
       renderCell: (run) => <TruncatedCell text={run.output ?? ''} />,
     },
   ]
@@ -140,24 +142,24 @@ export function ActivityRunsExplorer({ workflow }: { workflow: Workflow }) {
         value={search}
         onChange={(e) => setSearch(e.target.value)}
         placeholder={attrs.length > 0
-          ? `Search runs by ${attrs.map((a) => a.Label || a.Key).join(', ')} or output…`
-          : 'Search runs by output…'}
-        aria-label="Search runs"
+          ? t('activityRunsExplorer.searchByAttrsOrOutput', { attrs: attrs.map((a) => a.Label || a.Key).join(', ') })
+          : t('activityRunsExplorer.searchByOutput')}
+        aria-label={t('activityRunsExplorer.searchAriaLabel')}
         data-testid="runs-explorer-search"
       />
       {error && <Text as="p" size="small" className={styles.error}>{error}</Text>}
-      {runs === null && !error && <Text as="p" className={styles.muted}>Loading…</Text>}
+      {runs === null && !error && <Text as="p" className={styles.muted}>{t('activityRunsExplorer.loading')}</Text>}
       {runs !== null && filtered.length === 0 && (
         <Text as="p" className={styles.muted}>
           {runs.length === 0
-            ? 'No recorded runs for this workflow yet — durable run history appears here after a Run or trigger fire.'
-            : 'No runs match this search.'}
+            ? t('activityRunsExplorer.noRecordedRuns')
+            : t('activityRunsExplorer.noRunsMatchSearch')}
         </Text>
       )}
       {filtered.length > 0 && (
         <ResizableTableContainer storageKey="mill-cols-activity-runs">
           <DataTable
-            aria-label={`${workflow.Label} runs`}
+            aria-label={t('activityRunsExplorer.runsAriaLabel', { label: workflow.Label })}
             data={filtered.map((r) => ({ ...r, id: r.runID }))}
             columns={columns}
           />
