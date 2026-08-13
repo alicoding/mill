@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Button, FormControl, Heading, IconButton, Label, Select, Stack, Text, TextInput } from '@primer/react'
 import { DownloadIcon, PlusIcon, TrashIcon, UploadIcon } from '@primer/octicons-react'
 import { DataTable } from '@primer/react/experimental'
@@ -7,7 +8,7 @@ import { ConfigureService } from '../shared/bindings'
 import type { Decision, OutputField } from '../../bindings/github.com/alicoding/mill/internal/domain/decision/models'
 import { Category } from '../../bindings/github.com/alicoding/mill/internal/domain/decision/models'
 import { Type as ConfigFieldType } from '../../bindings/github.com/alicoding/mill/internal/domain/typedfield/models'
-import { EntityRefField } from './EntityRefField'
+import { EntityRefField, decisionCategoryLabelFor } from './EntityRefField'
 import { downloadJSON } from '../shared/downloadJSON'
 import { refreshDecisions, useConfigureEntityStore } from '../shared/configureEntityStore'
 import { ViewModeToggle } from '../shared/ViewModeToggle'
@@ -20,14 +21,6 @@ import { describeSeedReset } from '../shared/seedLifecycle'
 import { RestoreExamplesButton } from '../shared/RestoreExamplesButton'
 import styles from '../shared/ListCard.module.css'
 import PageContainer from '../shared/PageContainer'
-
-const CATEGORY_LABEL: Record<string, string> = {
-  [Category.CategoryApprove]: 'Approve',
-  [Category.CategoryDeny]: 'Deny',
-  [Category.CategoryManualReview]: 'Manual review',
-  [Category.CategoryActionNeeded]: 'Action needed',
-  [Category.CategoryUncategorized]: 'Uncategorized',
-}
 
 const TYPE_OPTIONS = ['text', 'number', 'boolean', 'options']
 
@@ -56,6 +49,8 @@ function emptyOutput(): OutputField {
 // as Lists/MCP Servers); Duplicate/Export/Delete move into the
 // trailing ⋯ menu.
 export function ConfigureDecisions() {
+  const { t } = useTranslation('configure')
+  const CATEGORY_LABEL = decisionCategoryLabelFor(t)
   // Store-shared (refreshDecisions, shared/configureEntityStore.ts) --
   // see ConfigureLists.tsx's identical comment (goal 0017 P1-1).
   const decisions = useConfigureEntityStore((s) => s.decisions)
@@ -193,20 +188,20 @@ export function ConfigureDecisions() {
       label: d.Label,
       updatedLabel: formatUpdated(d.UpdatedAt),
       labelBadges: <Label variant="secondary" size="small">{CATEGORY_LABEL[d.Category] ?? d.Category}</Label>,
-      description: `Outputs: ${(d.Outputs ?? []).map((o) => o.Key).join(', ') || 'none'}`,
+      description: t('configureDecisions.outputsSummary', { keys: (d.Outputs ?? []).map((o) => o.Key).join(', ') || t('configureDecisions.none') }),
       onOpen: () => startEdit(d),
       menuActions: [
-        { label: 'Duplicate', onClick: () => startCreate(d) },
-        { label: 'Export', onClick: () => exportDecision(d.ID, d.Label) },
+        { label: t('configureDecisions.duplicate'), onClick: () => startCreate(d) },
+        { label: t('export'), onClick: () => exportDecision(d.ID, d.Label) },
         // Reset-to-shipped-example (docs/goals/0037 item 4) -- hidden
         // (not shown-disabled) when already current, same reasoning
         // CompositionView.tsx's identical wiring documents.
         ...(d.BuiltIn && !seedReset.disabled ? [{ label: seedReset.label, onClick: () => resetToSeed(d.ID) }] : []),
         {
-          label: 'Delete',
+          label: t('delete'),
           onClick: () => remove(d.ID),
           danger: true,
-          confirm: { title: 'Delete decision?', body: `This permanently deletes "${d.Label}". This cannot be undone.` },
+          confirm: { title: t('configureDecisions.deleteConfirmTitle'), body: t('configureDecisions.deleteConfirmBody', { label: d.Label }) },
         },
       ],
     }
@@ -215,7 +210,7 @@ export function ConfigureDecisions() {
   return (
     <PageContainer data-testid="configure-decisions">
       <Stack direction="horizontal" justify="space-between" align="center" className={styles.sectionHeading}>
-        <Heading as="h2" variant="small" id="decisions-heading">Decisions</Heading>
+        <Heading as="h2" variant="small" id="decisions-heading">{t('configureDecisions.heading')}</Heading>
         <Stack direction="horizontal" gap="condensed">
           <ViewModeToggle mode={viewMode} onChange={setViewMode} />
           <input
@@ -232,17 +227,16 @@ export function ConfigureDecisions() {
             onClick={() => importInputRef.current?.click()}
             data-testid="import-decision"
           >
-            Import
+            {t('import')}
           </Button>
           <RestoreExamplesButton items={restorable} onRestore={restoreExample} />
           <Button leadingVisual={PlusIcon} variant="primary" size="small" onClick={() => startCreate()} data-testid="new-decision">
-            New decision
+            {t('configureDecisions.newDecision')}
           </Button>
         </Stack>
       </Stack>
       <Text as="p" size="small" className={styles.muted}>
-        A Decision is a reusable, typed TERMINAL outcome -- a workflow&apos;s Decision node reaches one of these to
-        end the run with a real category and typed result, instead of just running out of steps.
+        {t('configureDecisions.pageDescription')}
       </Text>
       {importError && (
         <Text as="p" size="small" className={styles.error} data-testid="import-decision-error">{importError}</Text>
@@ -253,15 +247,15 @@ export function ConfigureDecisions() {
           <div className={styles.card}>
             <Stack direction="vertical" gap="condensed">
               <FormControl>
-                <FormControl.Label>Label</FormControl.Label>
+                <FormControl.Label>{t('configureDecisions.label')}</FormControl.Label>
                 <TextInput value={label} onChange={(e) => setLabel(e.target.value)} block />
               </FormControl>
               <FormControl disabled={!!editingID}>
-                <FormControl.Label>Category</FormControl.Label>
+                <FormControl.Label>{t('configureDecisions.category')}</FormControl.Label>
                 <FormControl.Caption>
                   {editingID
-                    ? 'Cannot be changed after creation -- duplicate this Decision to create one with a different category.'
-                    : 'Cannot be changed after creation -- duplicate this Decision later to create one with a different category.'}
+                    ? t('configureDecisions.categoryCaptionEditing')
+                    : t('configureDecisions.categoryCaptionCreating')}
                 </FormControl.Caption>
                 <Select
                   value={category}
@@ -275,28 +269,27 @@ export function ConfigureDecisions() {
                 </Select>
               </FormControl>
 
-              <Text size="small" weight="semibold">Outputs</Text>
+              <Text size="small" weight="semibold">{t('configureDecisions.outputs')}</Text>
               <Text as="p" size="small" className={styles.muted}>
-                This Decision&apos;s typed result fields -- what a workflow&apos;s decision-outcome node binds
-                values into when it reaches this outcome.
+                {t('configureDecisions.outputsDescription')}
               </Text>
               {outputs.map((o, i) => (
                 <Stack key={i} direction="horizontal" gap="condensed" align="center">
-                  <TextInput placeholder="key" value={o.Key} onChange={(e) => updateOutput(i, 'Key', e.target.value)} />
-                  <TextInput placeholder="label" value={o.Label} onChange={(e) => updateOutput(i, 'Label', e.target.value)} />
+                  <TextInput placeholder={t('configureDecisions.keyPlaceholder')} value={o.Key} onChange={(e) => updateOutput(i, 'Key', e.target.value)} />
+                  <TextInput placeholder={t('configureDecisions.labelPlaceholder')} value={o.Label} onChange={(e) => updateOutput(i, 'Label', e.target.value)} />
                   <Select value={o.Type} onChange={(e) => updateOutput(i, 'Type', e.target.value)}>
-                    {TYPE_OPTIONS.map((t) => (
-                      <Select.Option key={t} value={t}>{t}</Select.Option>
+                    {TYPE_OPTIONS.map((opt) => (
+                      <Select.Option key={opt} value={opt}>{opt}</Select.Option>
                     ))}
                   </Select>
                   <TextInput
-                    placeholder="enum values, comma separated"
+                    placeholder={t('configureDecisions.enumValuesPlaceholder')}
                     value={(o.Options ?? []).join(', ')}
                     onChange={(e) => updateOutput(i, 'Options', e.target.value)}
                   />
                   <IconButton
                     icon={TrashIcon}
-                    aria-label="Remove output"
+                    aria-label={t('configureDecisions.removeOutputAriaLabel')}
                     size="small"
                     variant="invisible"
                     onClick={() => setOutputs((prev) => prev.filter((_, idx) => idx !== i))}
@@ -304,45 +297,44 @@ export function ConfigureDecisions() {
                 </Stack>
               ))}
               <Button size="small" variant="invisible" leadingVisual={PlusIcon} onClick={() => setOutputs((prev) => [...prev, emptyOutput()])}>
-                Add output
+                {t('configureDecisions.addOutput')}
               </Button>
 
-              <Text size="small" weight="semibold">Webhook (optional)</Text>
+              <Text size="small" weight="semibold">{t('configureDecisions.webhookOptional')}</Text>
               <Text as="p" size="small" className={styles.muted}>
-                Fires this HTTPRequest with the outcome&apos;s outputs as its body when this Decision is reached.
-                External calls ask for approval by default, same as an Integration step.
+                {t('configureDecisions.webhookDescription')}
               </Text>
               <EntityRefField refKind="request" value={webhookRequestID} onChange={setWebhookRequestID} />
 
               {error && <Text as="p" size="small" className={styles.error}>{error}</Text>}
               <Stack direction="horizontal" gap="condensed">
-                <Button variant="primary" size="small" onClick={save} data-testid="save-decision">Save decision</Button>
-                <Button size="small" variant="invisible" onClick={() => setFormOpen(false)}>Cancel</Button>
+                <Button variant="primary" size="small" onClick={save} data-testid="save-decision">{t('configureDecisions.saveDecision')}</Button>
+                <Button size="small" variant="invisible" onClick={() => setFormOpen(false)}>{t('entityRefField.cancel')}</Button>
               </Stack>
             </Stack>
           </div>
         </PageContainer>
       )}
 
-      {decisions === null && <Text as="p" className={styles.muted}>Loading…</Text>}
+      {decisions === null && <Text as="p" className={styles.muted}>{t('loading')}</Text>}
       {decisions !== null && viewMode === 'table' && decisions.length > 0 && (
         <ResizableTableContainer storageKey="mill-cols-decisions">
           <DataTable
             aria-labelledby="decisions-heading"
             data={sortedDecisions.map((d) => ({ ...d, id: d.ID }))}
             columns={[
-              { header: 'Label', field: 'Label', rowHeader: true, sortBy: 'alphanumeric' },
-              { header: 'Category', id: 'category', renderCell: (d) => <Label variant="secondary">{CATEGORY_LABEL[d.Category] ?? d.Category}</Label> },
-              { header: 'Outputs', id: 'outputs', width: 'growCollapse', minWidth: '160px', renderCell: (d) => <TruncatedCell text={(d.Outputs ?? []).map((o) => o.Key).join(', ')} /> },
-              { header: 'ID', field: 'ID' },
+              { header: t('configureDecisions.columns.label'), field: 'Label', rowHeader: true, sortBy: 'alphanumeric' },
+              { header: t('configureDecisions.columns.category'), id: 'category', renderCell: (d) => <Label variant="secondary">{CATEGORY_LABEL[d.Category] ?? d.Category}</Label> },
+              { header: t('configureDecisions.columns.outputs'), id: 'outputs', width: 'growCollapse', minWidth: '160px', renderCell: (d) => <TruncatedCell text={(d.Outputs ?? []).map((o) => o.Key).join(', ')} /> },
+              { header: t('configureDecisions.columns.id'), field: 'ID' },
               {
                 header: '', id: 'actions', width: 'auto', align: 'end',
                 renderCell: (d) => (
                   <Stack direction="horizontal" gap="condensed">
-                    <Button size="small" variant="invisible" onClick={() => startEdit(d)}>Edit</Button>
-                    <Button size="small" variant="invisible" onClick={() => startCreate(d)}>Duplicate</Button>
-                    <IconButton icon={DownloadIcon} aria-label={`Export ${d.Label}`} size="small" variant="invisible" onClick={() => exportDecision(d.ID, d.Label)} />
-                    <IconButton icon={TrashIcon} aria-label={`Delete ${d.Label}`} size="small" variant="invisible" onClick={() => requestDelete(d)} />
+                    <Button size="small" variant="invisible" onClick={() => startEdit(d)}>{t('edit')}</Button>
+                    <Button size="small" variant="invisible" onClick={() => startCreate(d)}>{t('configureDecisions.duplicate')}</Button>
+                    <IconButton icon={DownloadIcon} aria-label={t('configureDecisions.exportAriaLabel', { label: d.Label })} size="small" variant="invisible" onClick={() => exportDecision(d.ID, d.Label)} />
+                    <IconButton icon={TrashIcon} aria-label={t('configureDecisions.deleteAriaLabel', { label: d.Label })} size="small" variant="invisible" onClick={() => requestDelete(d)} />
                   </Stack>
                 ),
               },
@@ -353,12 +345,12 @@ export function ConfigureDecisions() {
       {decisions !== null && viewMode === 'rows' && !(formOpen && decisions.length === 0) && (
         <InventoryList
           items={decisionItems}
-          searchPlaceholder="Search decisions…"
+          searchPlaceholder={t('configureDecisions.searchPlaceholder')}
           emptyState={{
             icon: ENTITY_ICON.decision.Icon,
-            heading: 'No decisions yet',
-            description: "A reusable, typed TERMINAL outcome a workflow's Decision node reaches to end the run.",
-            action: <Button leadingVisual={PlusIcon} variant="primary" onClick={() => startCreate()}>New decision</Button>,
+            heading: t('configureDecisions.emptyHeading'),
+            description: t('configureDecisions.emptyDescription'),
+            action: <Button leadingVisual={PlusIcon} variant="primary" onClick={() => startCreate()}>{t('configureDecisions.newDecision')}</Button>,
           }}
         />
       )}

@@ -19,20 +19,20 @@ const TYPE_MAP: Record<string, ManualField['type']> = {
   array: 'array',
 }
 
-export function inferFieldsFromSample(jsonText: string): { fields: ManualField[]; error: string } {
+export function inferFieldsFromSample(t: (key: string) => string, jsonText: string): { fields: ManualField[]; error: string } {
   let value: unknown
   try {
     value = JSON.parse(jsonText)
   } catch {
-    return { fields: [], error: 'Not valid JSON.' }
+    return { fields: [], error: t('pasteSample.notValidJson') }
   }
   if (typeof value !== 'object' || value === null || Array.isArray(value)) {
-    return { fields: [], error: 'Paste a JSON object (e.g. {"name": "..."}), not an array or a bare value.' }
+    return { fields: [], error: t('pasteSample.pasteJsonObject') }
   }
 
   const schema = createSchema(value)
   if (!schema.properties) {
-    return { fields: [], error: 'No fields found in the pasted sample.' }
+    return { fields: [], error: t('pasteSample.noFieldsFound') }
   }
   const required = new Set(schema.required ?? [])
   const fields: ManualField[] = Object.entries(schema.properties).map(([name, propSchema]) => {

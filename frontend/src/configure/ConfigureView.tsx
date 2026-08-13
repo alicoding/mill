@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import { Tabs } from '@primer/react/experimental'
 import { TabItem, TabList, TabPanel } from '../shared/Tabs'
 import { ConfigureRequests } from './ConfigureRequests'
@@ -34,16 +35,17 @@ import { ConfigureAIProviders } from './ConfigureAIProviders'
 // already-open Configure view wouldn't otherwise re-select on a
 // second jump to a different tab).
 function ConfigureView({ initialTab }: { initialTab?: string }) {
+  const { t } = useTranslation('configure')
   return (
     <Tabs defaultValue={initialTab ?? 'integration'}>
-      <TabList aria-label="Configure">
-        <TabItem value="integration">Integration</TabItem>
-        <TabItem value="lists">Lists</TabItem>
-        <TabItem value="attributes">Attributes</TabItem>
-        <TabItem value="mcpservers">MCP Servers</TabItem>
-        <TabItem value="decisions">Decisions</TabItem>
-        <TabItem value="execenvs">Execution Environments</TabItem>
-        <TabItem value="aiproviders">AI Providers</TabItem>
+      <TabList aria-label={t('configureView.ariaLabel')}>
+        <TabItem value="integration">{t('configureView.integration')}</TabItem>
+        <TabItem value="lists">{t('configureView.lists')}</TabItem>
+        <TabItem value="attributes">{t('configureView.attributes')}</TabItem>
+        <TabItem value="mcpservers">{t('configureView.mcpServers')}</TabItem>
+        <TabItem value="decisions">{t('configureView.decisions')}</TabItem>
+        <TabItem value="execenvs">{t('configureView.execEnvs')}</TabItem>
+        <TabItem value="aiproviders">{t('configureView.aiProviders')}</TabItem>
       </TabList>
       <TabPanel value="integration"><ConfigureRequests /></TabPanel>
       <TabPanel value="lists"><ConfigureLists /></TabPanel>

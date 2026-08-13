@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Button, Checkbox, Dialog, FormControl, Heading, IconButton, Label, Select, Stack, Text, TextInput } from '@primer/react'
 import { PencilIcon, PlusIcon, TrashIcon } from '@primer/octicons-react'
 import { type ManualField, type ManualOperation } from './openapiSynth'
@@ -66,6 +67,7 @@ function OperationEditor({ operation, singleOpMethod, onChange, onRemove }: {
   onChange: (patch: Partial<ManualOperation>) => void
   onRemove?: () => void
 }) {
+  const { t } = useTranslation('configure')
   // Which field's advanced settings are open in the popup editor.
   const [editing, setEditing] = useState<{ list: 'input' | 'output'; index: number } | null>(null)
 
@@ -93,11 +95,11 @@ function OperationEditor({ operation, singleOpMethod, onChange, onRemove }: {
       <Stack direction="horizontal" justify="space-between" align="center">
         <Stack direction="horizontal" gap="condensed" align="center">
           {singleOpMethod !== undefined ? (
-            <Label variant="secondary" title="The request's own Method (set at the top of this form) -- the schema only describes the payload, never the transport.">
+            <Label variant="secondary" title={t('manualSchemaEditor.methodTooltip')}>
               {singleOpMethod}
             </Label>
           ) : (
-            <Select aria-label="Method" value={operation.method} onChange={(e) => onChange({ method: e.target.value })}>
+            <Select aria-label={t('manualSchemaEditor.methodAriaLabel')} value={operation.method} onChange={(e) => onChange({ method: e.target.value })}>
               {HTTP_METHODS.map((m) => <Select.Option key={m} value={m}>{m}</Select.Option>)}
             </Select>
           )}
@@ -109,26 +111,25 @@ function OperationEditor({ operation, singleOpMethod, onChange, onRemove }: {
               input until it's cleared; multi-op specs keep theirs
               (genuinely distinct endpoints). */}
           {(singleOpMethod === undefined || (operation.path !== '' && operation.path !== '/')) && (
-            <TextInput aria-label="Path" placeholder="/widgets/{id}" value={operation.path} onChange={(e) => onChange({ path: e.target.value })} />
+            <TextInput aria-label={t('manualSchemaEditor.pathAriaLabel')} placeholder={t('manualSchemaEditor.pathPlaceholder')} value={operation.path} onChange={(e) => onChange({ path: e.target.value })} />
           )}
         </Stack>
-        {onRemove && <IconButton icon={TrashIcon} aria-label="Remove operation" size="small" variant="invisible" onClick={onRemove} />}
+        {onRemove && <IconButton icon={TrashIcon} aria-label={t('manualSchemaEditor.removeOperationAriaLabel')} size="small" variant="invisible" onClick={onRemove} />}
       </Stack>
 
       <TextInput
-        aria-label="Response extract expression"
-        placeholder="Response extract expression (optional, e.g. envelope.payload)"
+        aria-label={t('manualSchemaEditor.responseExtractAriaLabel')}
+        placeholder={t('manualSchemaEditor.responseExtractPlaceholder')}
         value={operation.responseExtractPath ?? ''}
         onChange={(e) => onChange({ responseExtractPath: e.target.value || undefined })}
         block
       />
 
-      <Heading as="h4" variant="small" className={styles.sectionHeading}>Input — request schema</Heading>
+      <Heading as="h4" variant="small" className={styles.sectionHeading}>{t('manualSchemaEditor.inputHeading')}</Heading>
       <Text as="p" size="small" className={styles.muted}>
-        The attributes this request accepts. Parameters first (path / query / header -- how the call is
-        addressed over HTTP), then the request body (the payload itself).
+        {t('manualSchemaEditor.inputDescription')}
       </Text>
-      <Text size="small" weight="semibold">Parameters (path / query / header)</Text>
+      <Text size="small" weight="semibold">{t('manualSchemaEditor.parameters')}</Text>
       {paramFields.map(({ f, i }) => (
         <FieldLine key={i} field={f} showIn
           onChange={(patch) => updateInputField(i, patch)}
@@ -137,10 +138,10 @@ function OperationEditor({ operation, singleOpMethod, onChange, onRemove }: {
         />
       ))}
       <Button size="small" variant="invisible" leadingVisual={PlusIcon} onClick={() => onChange({ inputFields: [...operation.inputFields, emptyParamField()] })}>
-        Add parameter
+        {t('manualSchemaEditor.addParameter')}
       </Button>
 
-      <Text size="small" weight="semibold">Request body</Text>
+      <Text size="small" weight="semibold">{t('manualSchemaEditor.requestBody')}</Text>
       {bodyFields.map(({ f, i }) => (
         <FieldLine key={i} field={f}
           onChange={(patch) => updateInputField(i, patch)}
@@ -149,13 +150,12 @@ function OperationEditor({ operation, singleOpMethod, onChange, onRemove }: {
         />
       ))}
       <Button size="small" variant="invisible" leadingVisual={PlusIcon} onClick={() => onChange({ inputFields: [...operation.inputFields, emptyBodyField()] })}>
-        Add body field
+        {t('manualSchemaEditor.addBodyField')}
       </Button>
 
-      <Heading as="h4" variant="small" className={styles.sectionHeading}>Output — response schema</Heading>
+      <Heading as="h4" variant="small" className={styles.sectionHeading}>{t('manualSchemaEditor.outputHeading')}</Heading>
       <Text as="p" size="small" className={styles.muted}>
-        The attributes this request&apos;s response provides -- what a workflow node can read out of the
-        response and bind into its own Attributes.
+        {t('manualSchemaEditor.outputDescription')}
       </Text>
       {operation.outputFields.map((f, i) => (
         <FieldLine key={i} field={f} isOutput
@@ -165,7 +165,7 @@ function OperationEditor({ operation, singleOpMethod, onChange, onRemove }: {
         />
       ))}
       <Button size="small" variant="invisible" leadingVisual={PlusIcon} onClick={() => onChange({ outputFields: [...operation.outputFields, emptyBodyField()] })}>
-        Add output field
+        {t('manualSchemaEditor.addOutputField')}
       </Button>
 
       {editing !== null && editingField && (
@@ -191,26 +191,27 @@ function FieldLine({ field, showIn, isOutput, onChange, onEdit, onRemove }: {
   onEdit: () => void
   onRemove: () => void
 }) {
+  const { t } = useTranslation('configure')
   return (
     <Stack direction="horizontal" gap="condensed" align="center" data-testid="manual-field-row">
-      <TextInput aria-label="Field name" placeholder="name" value={field.name} onChange={(e) => onChange({ name: e.target.value })} />
+      <TextInput aria-label={t('manualSchemaEditor.fieldNameAriaLabel')} placeholder={t('manualSchemaEditor.namePlaceholder')} value={field.name} onChange={(e) => onChange({ name: e.target.value })} />
       {showIn && (
-        <Select aria-label="Field placement" value={field.in} onChange={(e) => onChange({ in: e.target.value as ManualField['in'] })}>
+        <Select aria-label={t('manualSchemaEditor.fieldPlacementAriaLabel')} value={field.in} onChange={(e) => onChange({ in: e.target.value as ManualField['in'] })}>
           {PARAM_INS.map((v) => <Select.Option key={v} value={v}>{v}</Select.Option>)}
         </Select>
       )}
-      <Select aria-label="Field type" value={field.type} onChange={(e) => onChange({ type: e.target.value as ManualField['type'] })}>
+      <Select aria-label={t('manualSchemaEditor.fieldTypeAriaLabel')} value={field.type} onChange={(e) => onChange({ type: e.target.value as ManualField['type'] })}>
         {FIELD_TYPES.map((v) => <Select.Option key={v} value={v}>{v}</Select.Option>)}
       </Select>
-      {field.required && <Label size="small" variant="accent">required</Label>}
-      {field.secret && <Label size="small" variant="attention">secret</Label>}
-      {field.alias && <Label size="small" variant="secondary">alias: {field.alias}</Label>}
-      {isOutput && field.extractPath && <Label size="small" variant="secondary">path: {field.extractPath}</Label>}
+      {field.required && <Label size="small" variant="accent">{t('required')}</Label>}
+      {field.secret && <Label size="small" variant="attention">{t('secret')}</Label>}
+      {field.alias && <Label size="small" variant="secondary">{t('manualSchemaEditor.aliasLabel', { alias: field.alias })}</Label>}
+      {isOutput && field.extractPath && <Label size="small" variant="secondary">{t('manualSchemaEditor.pathLabel', { path: field.extractPath })}</Label>}
       {/* Not "Edit field <name>" -- getByLabel matches substrings, and
           that phrasing collides with the adjacent "Field name" input's
           own aria-label in tests and screen-reader listings alike. */}
-      <IconButton icon={PencilIcon} aria-label={`Edit ${field.name || 'unnamed'} settings`} size="small" variant="invisible" onClick={onEdit} data-testid="field-edit-open" />
-      <IconButton icon={TrashIcon} aria-label="Remove field" size="small" variant="invisible" onClick={onRemove} />
+      <IconButton icon={PencilIcon} aria-label={t('manualSchemaEditor.editFieldSettingsAriaLabel', { name: field.name || t('manualSchemaEditor.unnamed') })} size="small" variant="invisible" onClick={onEdit} data-testid="field-edit-open" />
+      <IconButton icon={TrashIcon} aria-label={t('manualSchemaEditor.removeFieldAriaLabel')} size="small" variant="invisible" onClick={onRemove} />
     </Stack>
   )
 }
@@ -226,49 +227,48 @@ function FieldEditDialog({ field, isOutput, onChange, onClose }: {
   onChange: (patch: Partial<ManualField>) => void
   onClose: () => void
 }) {
+  const { t } = useTranslation('configure')
   return (
-    <Dialog title={`Field: ${field.name || '(unnamed)'}`} onClose={onClose} width="large" data-testid="field-edit-dialog">
+    <Dialog title={t('manualSchemaEditor.fieldDialogTitle', { name: field.name || t('manualSchemaEditor.unnamedParens') })} onClose={onClose} width="large" data-testid="field-edit-dialog">
       <Stack direction="vertical" gap="condensed">
         {!isOutput && (
           <FormControl>
             <Checkbox checked={field.required} onChange={(e) => onChange({ required: e.target.checked })} />
-            <FormControl.Label>Required</FormControl.Label>
+            <FormControl.Label>{t('manualSchemaEditor.required')}</FormControl.Label>
           </FormControl>
         )}
         <FormControl>
           <Checkbox checked={field.secret} onChange={(e) => onChange({ secret: e.target.checked })} />
-          <FormControl.Label>Secret</FormControl.Label>
+          <FormControl.Label>{t('manualSchemaEditor.secret')}</FormControl.Label>
           <FormControl.Caption>
-            A secret output can never be mapped into a workflow Attribute (ValidateGraph rejects it at
-            save time -- ADR-0007&apos;s guardrail).
+            {t('manualSchemaEditor.secretCaption')}
           </FormControl.Caption>
         </FormControl>
         <FormControl>
-          <FormControl.Label>Alias</FormControl.Label>
-          <FormControl.Caption>Optional friendlier name shown in binding editors instead of the wire name.</FormControl.Caption>
+          <FormControl.Label>{t('manualSchemaEditor.alias')}</FormControl.Label>
+          <FormControl.Caption>{t('manualSchemaEditor.aliasCaption')}</FormControl.Caption>
           <TextInput value={field.alias ?? ''} onChange={(e) => onChange({ alias: e.target.value || undefined })} block />
         </FormControl>
         {isOutput && (
           <FormControl>
-            <FormControl.Label>Extract path</FormControl.Label>
-            <FormControl.Caption>Optional dot-path into nested response JSON, e.g. data.name.</FormControl.Caption>
+            <FormControl.Label>{t('manualSchemaEditor.extractPath')}</FormControl.Label>
+            <FormControl.Caption>{t('manualSchemaEditor.extractPathCaption')}</FormControl.Caption>
             <TextInput value={field.extractPath ?? ''} onChange={(e) => onChange({ extractPath: e.target.value || undefined })} block />
           </FormControl>
         )}
         <FormControl>
-          <FormControl.Label>Default value</FormControl.Label>
+          <FormControl.Label>{t('manualSchemaEditor.defaultValue')}</FormControl.Label>
           <TextInput value={field.default ?? ''} onChange={(e) => onChange({ default: e.target.value || undefined })} block />
         </FormControl>
         <FormControl>
-          <FormControl.Label>Description</FormControl.Label>
+          <FormControl.Label>{t('manualSchemaEditor.description')}</FormControl.Label>
           <TextInput value={field.description ?? ''} onChange={(e) => onChange({ description: e.target.value || undefined })} block />
         </FormControl>
         {field.type === 'string' && (
           <FormControl>
-            <FormControl.Label>Allowed values</FormControl.Label>
+            <FormControl.Label>{t('manualSchemaEditor.allowedValues')}</FormControl.Label>
             <FormControl.Caption>
-              Optional, comma-separated (an enum). Plain text input, not Primer&apos;s TextInputWithTokens --
-              that component is deprecated in the installed version (checked directly, ADR-0011).
+              {t('manualSchemaEditor.allowedValuesCaption')}
             </FormControl.Caption>
             <TextInput
               value={field.enumValues?.join(', ') ?? ''}
@@ -281,7 +281,7 @@ function FieldEditDialog({ field, isOutput, onChange, onClose }: {
           </FormControl>
         )}
         <Stack direction="horizontal" gap="condensed">
-          <Button variant="primary" size="small" onClick={onClose} data-testid="field-edit-done">Done</Button>
+          <Button variant="primary" size="small" onClick={onClose} data-testid="field-edit-done">{t('manualSchemaEditor.done')}</Button>
         </Stack>
       </Stack>
     </Dialog>

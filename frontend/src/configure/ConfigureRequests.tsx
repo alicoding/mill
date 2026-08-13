@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { ActionList, ActionMenu, Button, Heading, IconButton, Label, Stack, Text } from '@primer/react'
 import { DownloadIcon, PencilIcon, PlugIcon, TrashIcon, UploadIcon } from '@primer/octicons-react'
 import { DataTable } from '@primer/react/experimental'
@@ -7,7 +8,7 @@ import { ViewModeToggle } from '../shared/ViewModeToggle'
 import { useViewMode } from '../shared/viewMode'
 import { ConfigureService } from '../shared/bindings'
 import type { HTTPRequest } from '../../bindings/github.com/alicoding/mill/internal/domain/httprequest/models'
-import { AUTH_LABEL } from './authTypeLabels'
+import { authLabelFor } from './authTypeLabels'
 import { refreshRequests, useAppStore } from '../shared/store'
 import { downloadJSON } from '../shared/downloadJSON'
 import { InventoryList, type InventoryItem } from '../shared/InventoryList'
@@ -35,6 +36,8 @@ import PageContainer from '../shared/PageContainer'
 // existing label-link behavior); Edit/Export/Delete move into the
 // trailing ⋯ menu.
 export function ConfigureRequests() {
+  const { t } = useTranslation('configure')
+  const AUTH_LABEL_MAP = authLabelFor(t)
   const requests = useAppStore((s) => s.requests)
   const openWorkTab = useAppStore((s) => s.openWorkTab)
   const [importError, setImportError] = useState<string | null>(null)
@@ -120,14 +123,14 @@ export function ConfigureRequests() {
   const newIntegrationMenu = (
     <ActionMenu>
       <ActionMenu.Button size="small" variant="primary" data-testid="new-integration">
-        New integration
+        {t('configureRequests.newIntegration')}
       </ActionMenu.Button>
       <ActionMenu.Overlay width="medium">
         <ActionList>
           <ActionList.Item onSelect={() => openWorkTab({ kind: 'request-new' })} data-testid="new-integration-rest">
-            REST API request
+            {t('configureRequests.restApiRequest')}
             <ActionList.Description variant="block">
-              Call an external HTTP API — typed request/response schema, auth, headers.
+              {t('configureRequests.restApiRequestDescription')}
             </ActionList.Description>
           </ActionList.Item>
         </ActionList>
@@ -149,27 +152,27 @@ export function ConfigureRequests() {
       updatedLabel: formatUpdated(r.UpdatedAt),
       labelBadges: (
         <Stack direction="horizontal" gap="condensed" align="center">
-          <Label variant="secondary" size="small">{AUTH_LABEL[r.AuthType] ?? r.AuthType}</Label>
+          <Label variant="secondary" size="small">{AUTH_LABEL_MAP[r.AuthType] ?? r.AuthType}</Label>
           {/* No !r.BuiltIn guard on Delete -- a seeded example is ordinary
               and fully editable/deletable (docs/SPEC.md §2.2's Update
               note). */}
-          {r.BuiltIn && <Label variant="secondary" size="small">built-in</Label>}
+          {r.BuiltIn && <Label variant="secondary" size="small">{t('builtIn')}</Label>}
         </Stack>
       ),
       description: [r.BaseURL, r.Description].filter((s) => s && s.trim() !== '').join(' · '),
       onOpen: () => openWorkTab({ kind: 'request-view', requestId: r.ID }),
       menuActions: [
-        { label: 'Edit', onClick: () => openWorkTab({ kind: 'request-edit', requestId: r.ID }) },
-        { label: 'Export', onClick: () => exportRequest(r.ID, r.Label) },
+        { label: t('edit'), onClick: () => openWorkTab({ kind: 'request-edit', requestId: r.ID }) },
+        { label: t('export'), onClick: () => exportRequest(r.ID, r.Label) },
         // Reset-to-shipped-example (docs/goals/0037 item 4) -- hidden
         // (not shown-disabled) when already current, same reasoning
         // CompositionView.tsx's identical wiring documents.
         ...(r.BuiltIn && !seedReset.disabled ? [{ label: seedReset.label, onClick: () => resetToSeed(r.ID) }] : []),
         {
-          label: 'Delete',
+          label: t('delete'),
           onClick: () => remove(r.ID),
           danger: true,
-          confirm: { title: 'Delete integration?', body: `This permanently deletes "${r.Label}". This cannot be undone.` },
+          confirm: { title: t('requestSummary.deleteConfirmTitle'), body: t('requestSummary.deleteConfirmBody', { label: r.Label }) },
         },
       ],
     }
@@ -178,7 +181,7 @@ export function ConfigureRequests() {
   return (
     <PageContainer data-testid="configure-requests">
       <Stack direction="horizontal" justify="space-between" align="center" className={styles.sectionHeading}>
-        <Heading as="h2" variant="small" id="integrations-heading">Integrations</Heading>
+        <Heading as="h2" variant="small" id="integrations-heading">{t('configureRequests.heading')}</Heading>
         <Stack direction="horizontal" gap="condensed">
           <ViewModeToggle mode={viewMode} onChange={setViewMode} />
           <input
@@ -190,7 +193,7 @@ export function ConfigureRequests() {
             onChange={handleImportFile}
           />
           <Button leadingVisual={UploadIcon} size="small" onClick={openImportPicker} data-testid="import-request">
-            Import
+            {t('import')}
           </Button>
           <RestoreExamplesButton items={restorable} onRestore={restoreExample} />
           {newIntegrationMenu}
@@ -200,7 +203,7 @@ export function ConfigureRequests() {
         <Text as="p" size="small" className={styles.error} data-testid="import-request-error">{importError}</Text>
       )}
 
-      {requests === null && <Text as="p" className={styles.muted}>Loading…</Text>}
+      {requests === null && <Text as="p" className={styles.muted}>{t('loading')}</Text>}
       {requests !== null && viewMode === 'table' && requests.length > 0 && (
         <ResizableTableContainer storageKey="mill-cols-requests">
           <DataTable
@@ -208,7 +211,7 @@ export function ConfigureRequests() {
             data={sortedRequests.map((r) => ({ ...r, id: r.ID }))}
             columns={[
               {
-                header: 'Label', field: 'Label', rowHeader: true, sortBy: 'alphanumeric',
+                header: t('configureRequests.columns.label'), field: 'Label', rowHeader: true, sortBy: 'alphanumeric',
                 renderCell: (r) => (
                   <span role="button" tabIndex={0} style={{ cursor: 'pointer', fontWeight: 600 }}
                     onClick={() => openWorkTab({ kind: 'request-view', requestId: r.ID })}
@@ -217,16 +220,16 @@ export function ConfigureRequests() {
                   </span>
                 ),
               },
-              { header: 'Method', id: 'method', width: 'auto', renderCell: (r) => r.Method || 'GET' },
-              { header: 'Auth', id: 'auth', width: 'auto', renderCell: (r) => AUTH_LABEL[r.AuthType] ?? r.AuthType },
-              { header: 'URL', id: 'url', width: 'growCollapse', minWidth: '160px', renderCell: (r) => <TruncatedCell text={r.BaseURL} /> },
+              { header: t('configureRequests.columns.method'), id: 'method', width: 'auto', renderCell: (r) => r.Method || 'GET' },
+              { header: t('configureRequests.columns.auth'), id: 'auth', width: 'auto', renderCell: (r) => AUTH_LABEL_MAP[r.AuthType] ?? r.AuthType },
+              { header: t('configureRequests.columns.url'), id: 'url', width: 'growCollapse', minWidth: '160px', renderCell: (r) => <TruncatedCell text={r.BaseURL} /> },
               {
                 header: '', id: 'actions', width: 'auto', align: 'end',
                 renderCell: (r) => (
                   <Stack direction="horizontal" gap="condensed">
-                    <IconButton icon={PencilIcon} aria-label={`Edit ${r.Label}`} size="small" variant="invisible" onClick={() => openWorkTab({ kind: 'request-edit', requestId: r.ID })} />
-                    <IconButton icon={DownloadIcon} aria-label={`Export ${r.Label}`} size="small" variant="invisible" onClick={() => exportRequest(r.ID, r.Label)} />
-                    <IconButton icon={TrashIcon} aria-label={`Delete ${r.Label}`} size="small" variant="invisible" onClick={() => requestDelete(r)} />
+                    <IconButton icon={PencilIcon} aria-label={t('configureRequests.editAriaLabel', { label: r.Label })} size="small" variant="invisible" onClick={() => openWorkTab({ kind: 'request-edit', requestId: r.ID })} />
+                    <IconButton icon={DownloadIcon} aria-label={t('configureRequests.exportAriaLabel', { label: r.Label })} size="small" variant="invisible" onClick={() => exportRequest(r.ID, r.Label)} />
+                    <IconButton icon={TrashIcon} aria-label={t('configureRequests.deleteAriaLabel', { label: r.Label })} size="small" variant="invisible" onClick={() => requestDelete(r)} />
                   </Stack>
                 ),
               },
@@ -237,11 +240,11 @@ export function ConfigureRequests() {
       {requests !== null && viewMode === 'rows' && (
         <InventoryList
           items={requestItems}
-          searchPlaceholder="Search integrations…"
+          searchPlaceholder={t('configureRequests.searchPlaceholder')}
           emptyState={{
             icon: PlugIcon,
-            heading: 'No integrations yet',
-            description: 'Call an external HTTP API with a typed request/response schema, auth, and headers.',
+            heading: t('configureRequests.emptyHeading'),
+            description: t('configureRequests.emptyDescription'),
             action: newIntegrationMenu,
           }}
         />

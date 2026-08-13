@@ -1,4 +1,5 @@
 import { useCallback, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Button, Select, Stack, Text, Textarea } from '@primer/react'
 import { useDropzone } from 'react-dropzone'
 import { parseCSVToOperations, parseOpenAPIToOperations, type ManualField, type ManualOperation } from './openapiSynth'
@@ -23,9 +24,9 @@ export type IntakeResult =
   | { kind: 'csv'; operations: ManualOperation[] }
   | { kind: 'sample'; fields: ManualField[]; target: 'body' | 'response' }
 
-function detect(text: string, sampleTarget: 'body' | 'response'): { result?: IntakeResult; error?: string } {
+function detect(t: (key: string, opts?: Record<string, unknown>) => string, text: string, sampleTarget: 'body' | 'response'): { result?: IntakeResult; error?: string } {
   const trimmed = text.trim()
-  if (trimmed === '') return { error: 'Nothing to load -- paste content or drop a file first.' }
+  if (trimmed === '') return { error: t('schemaIntake.nothingToLoad') }
 
   let parsed: unknown
   let isJSON: boolean
@@ -37,39 +38,39 @@ function detect(text: string, sampleTarget: 'body' | 'response'): { result?: Int
   }
 
   if (isJSON && typeof parsed === 'object' && parsed !== null && ('openapi' in parsed || 'swagger' in parsed)) {
-    const { operations, errors } = parseOpenAPIToOperations(trimmed)
+    const { operations, errors } = parseOpenAPIToOperations(t, trimmed)
     if (errors.length > 0) return { error: errors.join(' ') }
-    if (operations.length === 0) return { error: 'The OpenAPI document declares no operations.' }
+    if (operations.length === 0) return { error: t('schemaIntake.noOperationsDeclared') }
     return { result: { kind: 'openapi', operations } }
   }
 
   if (isJSON) {
-    const { fields, error } = inferFieldsFromSample(trimmed)
+    const { fields, error } = inferFieldsFromSample(t, trimmed)
     if (error) return { error }
     return { result: { kind: 'sample', fields, target: sampleTarget } }
   }
 
-  const { operations, errors } = parseCSVToOperations(trimmed)
+  const { operations, errors } = parseCSVToOperations(t, trimmed)
   if (operations.length > 0) {
     return { result: { kind: 'csv', operations } }
   }
   const detail = errors.length > 0 ? ` (${errors.join('; ')})` : ''
   return {
-    error: `Couldn't recognize this as OpenAPI JSON, a JSON sample, or CSV${detail}. ` +
-      'CSV needs a header row: path,method,direction,name,in,type,required,secret,alias,extractPath.',
+    error: t('schemaIntake.unrecognizedFormat', { detail }),
   }
 }
 
 export function SchemaIntake({ onLoad }: { onLoad: (result: IntakeResult) => void }) {
+  const { t } = useTranslation('configure')
   const [text, setText] = useState('')
   const [sampleTarget, setSampleTarget] = useState<'body' | 'response'>('body')
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
 
   const load = (raw: string) => {
-    const { result, error: err } = detect(raw, sampleTarget)
+    const { result, error: err } = detect(t, raw, sampleTarget)
     if (err || !result) {
-      setError(err ?? 'Nothing loaded.')
+      setError(err ?? t('schemaIntake.nothingLoaded'))
       setNotice('')
       return
     }
@@ -78,8 +79,8 @@ export function SchemaIntake({ onLoad }: { onLoad: (result: IntakeResult) => voi
     setText('')
     setNotice(
       result.kind === 'sample'
-        ? `Inferred ${result.fields.length} field${result.fields.length === 1 ? '' : 's'} from the JSON sample -- review below.`
-        : `Loaded ${result.operations.length} operation${result.operations.length === 1 ? '' : 's'} from ${result.kind === 'openapi' ? 'the OpenAPI document' : 'CSV'} -- review below.`,
+        ? t('schemaIntake.inferredFieldsNotice', { count: result.fields.length, plural: result.fields.length === 1 ? '' : 's' })
+        : t('schemaIntake.loadedOperationsNotice', { count: result.operations.length, plural: result.operations.length === 1 ? '' : 's', source: result.kind === 'openapi' ? t('schemaIntake.theOpenApiDocument') : t('schemaIntake.csv') }),
     )
   }
 
@@ -113,17 +114,17 @@ export function SchemaIntake({ onLoad }: { onLoad: (result: IntakeResult) => voi
         <Textarea
           value={text}
           onChange={(e) => setText(e.target.value)}
-          placeholder={'Paste an OpenAPI document, a JSON sample payload, or CSV field rows here -- or drop a .json/.csv file.'}
+          placeholder={t('schemaIntake.textareaPlaceholder')}
           rows={4}
           block
           data-testid="schema-intake-text"
         />
         <Stack direction="horizontal" gap="condensed" align="center" style={{ marginTop: 'var(--base-size-8)' }}>
-          <Button size="small" onClick={() => load(text)} data-testid="schema-intake-load">Load</Button>
-          <Button size="small" variant="invisible" onClick={open}>Choose file…</Button>
-          <Select size="small" aria-label="Treat JSON sample as" value={sampleTarget} onChange={(e) => setSampleTarget(e.target.value as 'body' | 'response')}>
-            <Select.Option value="body">Sample is: input (request payload)</Select.Option>
-            <Select.Option value="response">Sample is: output (response)</Select.Option>
+          <Button size="small" onClick={() => load(text)} data-testid="schema-intake-load">{t('schemaIntake.load')}</Button>
+          <Button size="small" variant="invisible" onClick={open}>{t('schemaIntake.chooseFile')}</Button>
+          <Select size="small" aria-label={t('schemaIntake.treatSampleAsAriaLabel')} value={sampleTarget} onChange={(e) => setSampleTarget(e.target.value as 'body' | 'response')}>
+            <Select.Option value="body">{t('schemaIntake.sampleIsInput')}</Select.Option>
+            <Select.Option value="response">{t('schemaIntake.sampleIsOutput')}</Select.Option>
           </Select>
         </Stack>
       </div>

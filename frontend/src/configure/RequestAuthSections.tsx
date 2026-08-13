@@ -1,6 +1,7 @@
+import { useTranslation } from 'react-i18next'
 import { Checkbox, FormControl, Heading, Label, Select, Stack, Text, TextInput, Textarea } from '@primer/react'
 import { AuthType } from '../../bindings/github.com/alicoding/mill/internal/domain/httprequest/models'
-import { AUTH_LABEL, AUTH_UNIMPLEMENTED } from './authTypeLabels'
+import { authLabelFor, AUTH_UNIMPLEMENTED } from './authTypeLabels'
 import type { RequestDraft } from './requestDraft'
 import styles from '../shared/ListCard.module.css'
 
@@ -15,27 +16,27 @@ export function RequestAuthSections({ draft, setDraft, isEditing }: {
   setDraft: (d: RequestDraft) => void
   isEditing: boolean
 }) {
+  const { t } = useTranslation('configure')
+  const AUTH_LABEL_MAP = authLabelFor(t)
   return (
     <>
       <section>
-        <Heading as="h3" variant="small" className={styles.sectionHeading}>Auth</Heading>
+        <Heading as="h3" variant="small" className={styles.sectionHeading}>{t('requestAuthSections.auth')}</Heading>
         <Stack direction="vertical" gap="condensed">
           <FormControl>
-            <FormControl.Label>Auth type</FormControl.Label>
+            <FormControl.Label>{t('requestAuthSections.authType')}</FormControl.Label>
             <Select value={draft.authType} onChange={(e) => setDraft({ ...draft, authType: e.target.value as AuthType })}>
               {Object.values(AuthType).filter((v) => v !== '').map((v) => (
-                <Select.Option key={v} value={v}>{AUTH_LABEL[v] ?? v}</Select.Option>
+                <Select.Option key={v} value={v}>{AUTH_LABEL_MAP[v] ?? v}</Select.Option>
               ))}
             </Select>
           </FormControl>
 
           {AUTH_UNIMPLEMENTED.has(draft.authType) && (
             <Stack direction="horizontal" gap="condensed" align="center">
-              <Label variant="attention" size="small">Not yet implemented</Label>
+              <Label variant="attention" size="small">{t('requestAuthSections.notYetImplemented')}</Label>
               <Text as="p" size="small" className={styles.muted}>
-                This auth type is registered (docs/adr/0015) but its strategy isn&apos;t built yet -- a
-                workflow run through this request will fail with a clear error rather than a guessed
-                signature. Selectable now so the request can be configured ahead of that work landing.
+                {t('requestAuthSections.notYetImplementedDescription')}
               </Text>
             </Stack>
           )}
@@ -43,16 +44,16 @@ export function RequestAuthSections({ draft, setDraft, isEditing }: {
           {draft.authType === AuthType.AuthOAuth2 && (
             <>
               <FormControl>
-                <FormControl.Label>Token URL</FormControl.Label>
-                <TextInput value={draft.oauth2TokenURL} onChange={(e) => setDraft({ ...draft, oauth2TokenURL: e.target.value })} placeholder="https://auth.example.com/oauth/token" block />
+                <FormControl.Label>{t('requestAuthSections.tokenUrl')}</FormControl.Label>
+                <TextInput value={draft.oauth2TokenURL} onChange={(e) => setDraft({ ...draft, oauth2TokenURL: e.target.value })} placeholder={t('requestAuthSections.tokenUrlPlaceholder')} block />
               </FormControl>
               <FormControl>
-                <FormControl.Label>Client ID</FormControl.Label>
+                <FormControl.Label>{t('requestAuthSections.clientId')}</FormControl.Label>
                 <TextInput value={draft.oauth2ClientID} onChange={(e) => setDraft({ ...draft, oauth2ClientID: e.target.value })} block />
               </FormControl>
               <FormControl>
-                <FormControl.Label>Scope</FormControl.Label>
-                <FormControl.Caption>Optional -- leave blank to request no specific scope.</FormControl.Caption>
+                <FormControl.Label>{t('requestAuthSections.scope')}</FormControl.Label>
+                <FormControl.Caption>{t('requestAuthSections.scopeCaption')}</FormControl.Caption>
                 <TextInput value={draft.oauth2Scope} onChange={(e) => setDraft({ ...draft, oauth2Scope: e.target.value })} block />
               </FormControl>
             </>
@@ -60,21 +61,21 @@ export function RequestAuthSections({ draft, setDraft, isEditing }: {
 
           {draft.authType === AuthType.AuthHMAC && (
             <FormControl>
-              <FormControl.Label>Signature header name</FormControl.Label>
-              <FormControl.Caption>Defaults to X-Signature when left blank.</FormControl.Caption>
-              <TextInput value={draft.hmacHeaderName} onChange={(e) => setDraft({ ...draft, hmacHeaderName: e.target.value })} placeholder="X-Signature" block />
+              <FormControl.Label>{t('requestAuthSections.signatureHeaderName')}</FormControl.Label>
+              <FormControl.Caption>{t('requestAuthSections.signatureHeaderCaption')}</FormControl.Caption>
+              <TextInput value={draft.hmacHeaderName} onChange={(e) => setDraft({ ...draft, hmacHeaderName: e.target.value })} placeholder={t('requestAuthSections.signatureHeaderPlaceholder')} block />
             </FormControl>
           )}
 
           {draft.authType === AuthType.AuthOAuth1 && (
             <>
               <FormControl>
-                <FormControl.Label>Consumer key</FormControl.Label>
+                <FormControl.Label>{t('requestAuthSections.consumerKey')}</FormControl.Label>
                 <TextInput value={draft.oauth1ConsumerKey} onChange={(e) => setDraft({ ...draft, oauth1ConsumerKey: e.target.value })} block />
               </FormControl>
               <FormControl>
-                <FormControl.Label>Token</FormControl.Label>
-                <FormControl.Caption>Optional -- omit for 2-legged OAuth 1.0a (RFC 5849).</FormControl.Caption>
+                <FormControl.Label>{t('requestAuthSections.token')}</FormControl.Label>
+                <FormControl.Caption>{t('requestAuthSections.tokenCaption')}</FormControl.Caption>
                 <TextInput value={draft.oauth1Token} onChange={(e) => setDraft({ ...draft, oauth1Token: e.target.value })} block />
               </FormControl>
             </>
@@ -83,25 +84,25 @@ export function RequestAuthSections({ draft, setDraft, isEditing }: {
           {draft.authType === AuthType.AuthOAuth1 ? (
             <>
               <FormControl>
-                <FormControl.Label>Consumer secret</FormControl.Label>
+                <FormControl.Label>{t('requestAuthSections.consumerSecret')}</FormControl.Label>
                 <FormControl.Caption>
-                  Write-only -- stored in the OS keychain, never readable back through Mill.
-                  {isEditing && ' Leave blank to keep the existing secret.'}
+                  {t('requestAuthSections.secretCaption')}
+                  {isEditing && t('requestAuthSections.leaveBlankToKeepSecret')}
                 </FormControl.Caption>
                 <TextInput type="password" value={draft.oauth1ConsumerSecret} onChange={(e) => setDraft({ ...draft, oauth1ConsumerSecret: e.target.value })} block />
               </FormControl>
               <FormControl>
-                <FormControl.Label>Token secret</FormControl.Label>
-                <FormControl.Caption>Optional -- omit for 2-legged OAuth 1.0a, same as Token above.</FormControl.Caption>
+                <FormControl.Label>{t('requestAuthSections.tokenSecret')}</FormControl.Label>
+                <FormControl.Caption>{t('requestAuthSections.tokenSecretCaption')}</FormControl.Caption>
                 <TextInput type="password" value={draft.oauth1TokenSecret} onChange={(e) => setDraft({ ...draft, oauth1TokenSecret: e.target.value })} block />
               </FormControl>
             </>
           ) : draft.authType !== AuthType.AuthNone && (
             <FormControl>
-              <FormControl.Label>{draft.authType === AuthType.AuthOAuth2 ? 'Client secret' : 'Secret'}</FormControl.Label>
+              <FormControl.Label>{draft.authType === AuthType.AuthOAuth2 ? t('requestAuthSections.clientSecret') : t('requestAuthSections.secret')}</FormControl.Label>
               <FormControl.Caption>
-                Write-only -- stored in the OS keychain, never readable back through Mill.
-                {isEditing && ' Leave blank to keep the existing secret.'}
+                {t('requestAuthSections.secretCaption')}
+                {isEditing && t('requestAuthSections.leaveBlankToKeepSecret')}
               </FormControl.Caption>
               <TextInput type="password" value={draft.secret} onChange={(e) => setDraft({ ...draft, secret: e.target.value })} block />
             </FormControl>
@@ -110,11 +111,10 @@ export function RequestAuthSections({ draft, setDraft, isEditing }: {
       </section>
 
       <section>
-        <Heading as="h3" variant="small" className={styles.sectionHeading}>JOSE encryption</Heading>
+        <Heading as="h3" variant="small" className={styles.sectionHeading}>{t('requestAuthSections.joseEncryption')}</Heading>
         <Stack direction="vertical" gap="condensed">
           <Text as="p" size="small" className={styles.muted}>
-            Optional, independent of Auth type above (Phase 3, ADR-0015) -- encrypts what Mill sends to
-            this request, and optionally decrypts what it receives back (JWE, RFC 7516).
+            {t('requestAuthSections.joseDescription')}
           </Text>
           <Stack direction="horizontal" gap="condensed" align="center">
             <Checkbox
@@ -122,13 +122,13 @@ export function RequestAuthSections({ draft, setDraft, isEditing }: {
               onChange={(e) => setDraft({ ...draft, joseEnabled: e.target.checked })}
               data-testid="jose-enabled-checkbox"
             />
-            <Text size="small">Enable JOSE encryption</Text>
+            <Text size="small">{t('requestAuthSections.enableJose')}</Text>
           </Stack>
           {draft.joseEnabled && (
             <>
               <FormControl>
-                <FormControl.Label>Recipient public key (PEM)</FormControl.Label>
-                <FormControl.Caption>The vendor&apos;s RSA public key -- used to encrypt the outgoing request body. Not a secret.</FormControl.Caption>
+                <FormControl.Label>{t('requestAuthSections.recipientPublicKey')}</FormControl.Label>
+                <FormControl.Caption>{t('requestAuthSections.recipientPublicKeyCaption')}</FormControl.Caption>
                 <Textarea
                   value={draft.joseRecipientPublicKeyPEM}
                   onChange={(e) => setDraft({ ...draft, joseRecipientPublicKeyPEM: e.target.value })}
@@ -141,18 +141,17 @@ export function RequestAuthSections({ draft, setDraft, isEditing }: {
                 <Checkbox
                   checked={draft.joseDecryptResponse}
                   onChange={(e) => setDraft({ ...draft, joseDecryptResponse: e.target.checked })}
-                  aria-label="Decrypt response"
+                  aria-label={t('requestAuthSections.decryptResponseAriaLabel')}
                   data-testid="jose-decrypt-response-checkbox"
                 />
-                <Text size="small">Decrypt response (this request&apos;s replies are also JWE-encrypted)</Text>
+                <Text size="small">{t('requestAuthSections.decryptResponseLabel')}</Text>
               </Stack>
               {draft.joseDecryptResponse && (
                 <FormControl>
-                  <FormControl.Label>Mill&apos;s private key (PEM)</FormControl.Label>
+                  <FormControl.Label>{t('requestAuthSections.millsPrivateKey')}</FormControl.Label>
                   <FormControl.Caption>
-                    Write-only -- stored in the OS keychain, separately from the Auth secret above, never
-                    readable back through Mill.
-                    {isEditing && ' Leave blank to keep the existing key.'}
+                    {t('requestAuthSections.millsPrivateKeyCaption')}
+                    {isEditing && t('requestAuthSections.leaveBlankToKeepKey')}
                   </FormControl.Caption>
                   <Textarea
                     value={draft.josePrivateKeyPEM}

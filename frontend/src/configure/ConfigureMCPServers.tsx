@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Button, FormControl, Heading, IconButton, Label, Stack, Text, TextInput } from '@primer/react'
 import { DownloadIcon, PlusIcon, ServerIcon, TrashIcon, UploadIcon } from '@primer/octicons-react'
 import { DataTable } from '@primer/react/experimental'
@@ -37,6 +38,7 @@ function argsToRows(args: string[] | null | undefined): string[] {
 // the list, one panel per server that's been queried), just triggered
 // from the menu instead of a dedicated button.
 export function ConfigureMCPServers() {
+  const { t } = useTranslation('configure')
   // Store-shared (refreshMCPServers, shared/configureEntityStore.ts) --
   // see ConfigureLists.tsx's identical comment (goal 0017 P1-1).
   const servers = useConfigureEntityStore((s) => s.mcpServers)
@@ -180,21 +182,21 @@ export function ConfigureMCPServers() {
       // No !s.BuiltIn guard on Delete -- same "ordinary, fully editable/
       // deletable from the moment it exists" reasoning as
       // ConfigureRequests.tsx/ConfigureLists.tsx's identical badge.
-      labelBadges: s.BuiltIn ? <Label variant="secondary" size="small">built-in</Label> : undefined,
+      labelBadges: s.BuiltIn ? <Label variant="secondary" size="small">{t('builtIn')}</Label> : undefined,
       description: `${s.Command} ${(s.Args ?? []).join(' ')}`.trim(),
       onOpen: () => startEdit(s),
       menuActions: [
-        { label: 'List tools', onClick: () => listTools(s.ID) },
-        { label: 'Export', onClick: () => exportServer(s.ID, s.Label) },
+        { label: t('configureMCPServers.listTools'), onClick: () => listTools(s.ID) },
+        { label: t('export'), onClick: () => exportServer(s.ID, s.Label) },
         // Reset-to-shipped-example (docs/goals/0037 item 4) -- hidden
         // (not shown-disabled) when already current, same reasoning
         // CompositionView.tsx's identical wiring documents.
         ...(s.BuiltIn && !seedReset.disabled ? [{ label: seedReset.label, onClick: () => resetToSeed(s.ID) }] : []),
         {
-          label: 'Delete',
+          label: t('delete'),
           onClick: () => remove(s.ID),
           danger: true,
-          confirm: { title: 'Delete MCP server?', body: `This permanently deletes "${s.Label}". This cannot be undone.` },
+          confirm: { title: t('configureMCPServers.deleteConfirmTitle'), body: t('configureMCPServers.deleteConfirmBody', { label: s.Label }) },
         },
       ],
     }
@@ -203,7 +205,7 @@ export function ConfigureMCPServers() {
   return (
     <PageContainer data-testid="configure-mcpservers">
       <Stack direction="horizontal" justify="space-between" align="center" className={styles.sectionHeading}>
-        <Heading as="h2" variant="small" id="mcpservers-heading">MCP Servers</Heading>
+        <Heading as="h2" variant="small" id="mcpservers-heading">{t('configureMCPServers.heading')}</Heading>
         <Stack direction="horizontal" gap="condensed">
           <ViewModeToggle mode={viewMode} onChange={setViewMode} />
           <input
@@ -215,11 +217,11 @@ export function ConfigureMCPServers() {
             onChange={handleImportFile}
           />
           <Button leadingVisual={UploadIcon} size="small" onClick={openImportPicker} data-testid="import-mcpserver">
-            Import
+            {t('import')}
           </Button>
           <RestoreExamplesButton items={restorable} onRestore={restoreExample} />
           <Button leadingVisual={PlusIcon} variant="primary" size="small" onClick={startCreate} data-testid="new-mcpserver">
-            New MCP server
+            {t('configureMCPServers.newMcpServer')}
           </Button>
         </Stack>
       </Stack>
@@ -232,21 +234,21 @@ export function ConfigureMCPServers() {
         <div className={styles.card}>
           <Stack direction="vertical" gap="condensed">
             <FormControl>
-              <FormControl.Label>Label</FormControl.Label>
+              <FormControl.Label>{t('configureMCPServers.label')}</FormControl.Label>
               <TextInput value={label} onChange={(e) => setLabel(e.target.value)} block />
             </FormControl>
             <FormControl>
-              <FormControl.Label>Command</FormControl.Label>
-              <FormControl.Caption>Run over stdio, e.g. a locally installed MCP server binary.</FormControl.Caption>
-              <TextInput value={command} onChange={(e) => setCommand(e.target.value)} placeholder="my-mcp-server" block />
+              <FormControl.Label>{t('configureMCPServers.command')}</FormControl.Label>
+              <FormControl.Caption>{t('configureMCPServers.commandCaption')}</FormControl.Caption>
+              <TextInput value={command} onChange={(e) => setCommand(e.target.value)} placeholder={t('configureMCPServers.commandPlaceholder')} block />
             </FormControl>
-            <Text size="small" weight="semibold">Arguments</Text>
+            <Text size="small" weight="semibold">{t('configureMCPServers.arguments')}</Text>
             {argRows.map((arg, i) => (
               <Stack key={i} direction="horizontal" gap="condensed" align="center">
-                <TextInput placeholder="--flag" value={arg} onChange={(e) => updateArgRow(i, e.target.value)} />
+                <TextInput placeholder={t('configureMCPServers.argPlaceholder')} value={arg} onChange={(e) => updateArgRow(i, e.target.value)} />
                 <IconButton
                   icon={TrashIcon}
-                  aria-label="Remove argument"
+                  aria-label={t('configureMCPServers.removeArgumentAriaLabel')}
                   size="small"
                   variant="invisible"
                   onClick={() => setArgRows((prev) => prev.filter((_, idx) => idx !== i))}
@@ -254,36 +256,36 @@ export function ConfigureMCPServers() {
               </Stack>
             ))}
             <Button size="small" variant="invisible" onClick={() => setArgRows((prev) => [...prev, ''])}>
-              Add argument
+              {t('configureMCPServers.addArgument')}
             </Button>
             {error && <Text as="p" size="small" className={styles.error}>{error}</Text>}
             <Stack direction="horizontal" gap="condensed">
-              <Button variant="primary" size="small" onClick={save}>Save MCP server</Button>
-              <Button size="small" variant="invisible" onClick={() => setFormOpen(false)}>Cancel</Button>
+              <Button variant="primary" size="small" onClick={save}>{t('configureMCPServers.saveMcpServer')}</Button>
+              <Button size="small" variant="invisible" onClick={() => setFormOpen(false)}>{t('entityRefField.cancel')}</Button>
             </Stack>
           </Stack>
         </div>
         </PageContainer>
       )}
 
-      {servers === null && <Text as="p" className={styles.muted}>Loading…</Text>}
+      {servers === null && <Text as="p" className={styles.muted}>{t('loading')}</Text>}
       {servers !== null && viewMode === 'table' && servers.length > 0 && (
         <ResizableTableContainer storageKey="mill-cols-mcpservers">
           <DataTable
             aria-labelledby="mcpservers-heading"
             data={sortedServers.map((s) => ({ ...s, id: s.ID }))}
             columns={[
-              { header: 'Label', field: 'Label', rowHeader: true, sortBy: 'alphanumeric' },
-              { header: 'Command', id: 'command', width: 'growCollapse', minWidth: '160px', renderCell: (s) => <TruncatedCell text={`${s.Command} ${(s.Args ?? []).join(' ')}`.trim()} /> },
-              { header: 'ID', field: 'ID' },
+              { header: t('configureMCPServers.columns.label'), field: 'Label', rowHeader: true, sortBy: 'alphanumeric' },
+              { header: t('configureMCPServers.columns.command'), id: 'command', width: 'growCollapse', minWidth: '160px', renderCell: (s) => <TruncatedCell text={`${s.Command} ${(s.Args ?? []).join(' ')}`.trim()} /> },
+              { header: t('configureMCPServers.columns.id'), field: 'ID' },
               {
                 header: '', id: 'actions', width: 'auto', align: 'end',
                 renderCell: (s) => (
                   <Stack direction="horizontal" gap="condensed">
-                    <Button size="small" variant="invisible" onClick={() => listTools(s.ID)}>List tools</Button>
-                    <Button size="small" variant="invisible" onClick={() => startEdit(s)}>Edit</Button>
-                    <IconButton icon={DownloadIcon} aria-label={`Export ${s.Label}`} size="small" variant="invisible" onClick={() => exportServer(s.ID, s.Label)} />
-                    <IconButton icon={TrashIcon} aria-label={`Delete ${s.Label}`} size="small" variant="invisible" onClick={() => requestDelete(s)} />
+                    <Button size="small" variant="invisible" onClick={() => listTools(s.ID)}>{t('configureMCPServers.listTools')}</Button>
+                    <Button size="small" variant="invisible" onClick={() => startEdit(s)}>{t('edit')}</Button>
+                    <IconButton icon={DownloadIcon} aria-label={t('configureMCPServers.exportAriaLabel', { label: s.Label })} size="small" variant="invisible" onClick={() => exportServer(s.ID, s.Label)} />
+                    <IconButton icon={TrashIcon} aria-label={t('configureMCPServers.deleteAriaLabel', { label: s.Label })} size="small" variant="invisible" onClick={() => requestDelete(s)} />
                   </Stack>
                 ),
               },
@@ -294,12 +296,12 @@ export function ConfigureMCPServers() {
       {servers !== null && viewMode === 'rows' && !(formOpen && servers.length === 0) && (
         <InventoryList
           items={serverItems}
-          searchPlaceholder="Search MCP servers…"
+          searchPlaceholder={t('configureMCPServers.searchPlaceholder')}
           emptyState={{
             icon: ServerIcon,
-            heading: 'No MCP servers yet',
-            description: 'A reusable stdio connection an mcp-tool-call workflow node can resolve by ID.',
-            action: <Button leadingVisual={PlusIcon} variant="primary" onClick={startCreate}>New MCP server</Button>,
+            heading: t('configureMCPServers.emptyHeading'),
+            description: t('configureMCPServers.emptyDescription'),
+            action: <Button leadingVisual={PlusIcon} variant="primary" onClick={startCreate}>{t('configureMCPServers.newMcpServer')}</Button>,
           }}
         />
       )}
@@ -314,11 +316,11 @@ export function ConfigureMCPServers() {
         const server = servers?.find((s) => s.ID === id)
         return (
           <div key={id} className={styles.card} data-testid="mcpserver-tools">
-            <Text weight="semibold" size="small">{server?.Label ?? id} — tools</Text>
+            <Text weight="semibold" size="small">{t('configureMCPServers.serverTools', { label: server?.Label ?? id })}</Text>
             {typeof result === 'string' ? (
               <Text as="p" size="small" className={styles.error}>{result}</Text>
             ) : result.length === 0 ? (
-              <Text as="p" size="small" className={styles.muted}>This server exposes no tools.</Text>
+              <Text as="p" size="small" className={styles.muted}>{t('configureMCPServers.noToolsExposed')}</Text>
             ) : (
               <Stack direction="vertical" gap="condensed">
                 {(result as Tool[]).map((tool) => (
