@@ -323,9 +323,11 @@
     "allKinds": "All kinds",
     "test": "Test",
     "triggered": "Triggered",
+    "mcp": "MCP",
     "kindLabel": {
       "test": "test",
-      "triggered": "triggered"
+      "triggered": "triggered",
+      "mcp": "mcp"
     },
     "noRunsYet": "No runs yet — run this workflow from its Canvas tab.",
     "columns": {

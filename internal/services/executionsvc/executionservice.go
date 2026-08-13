@@ -48,20 +48,6 @@ func decodeAny[T any](v any) (T, bool) {
 // this isn't left to derive from the bound method's runtime name.
 const millRunWorkflowName = "mill.run-workflow"
 
-// RunKind classifies why a run started (docs/adr/0008) -- "test" for a
-// manual/UI-driven run (Composition's canvas Run button, the Runs page's
-// own quick-run picker), "triggered" for a real external event
-// (TriggerService's headless listeners; not wired to this path yet, see
-// ADR-0008's own named follow-on). Not a DBOS SetWorkflowAttributes call
-// -- travels in runInput alongside every other per-run value, the
-// existing pattern this struct already uses.
-type RunKind string
-
-const (
-	RunKindTest      RunKind = "test"
-	RunKindTriggered RunKind = "triggered"
-)
-
 // runInput is one durable run's DBOS workflow input -- WorkflowID is the
 // composition.Workflow definition this run executes; the graph itself
 // (Nodes/Edges/Attributes) travels alongside it so a run's own
@@ -357,10 +343,11 @@ func (e *ExecutionService) runWorkflowStart(workflowID string, kind RunKind, val
 		return RunSummary{}, fmt.Errorf("unknown workflow: %s", workflowID)
 	}
 
-	// ADR-0021: a test run executes the draft head (the pre-publish
-	// check); a triggered run executes the published snapshot and is
-	// rejected on a disabled or never-published workflow.
-	nodes, edges, attrs, version, err := composition.ResolveRunnable(wf, kind == RunKindTest, 0)
+	// ADR-0021: a test or MCP run executes the draft head (the
+	// pre-publish check, RunKind.runsDraft); a triggered run executes
+	// the published snapshot and is rejected on a disabled or
+	// never-published workflow.
+	nodes, edges, attrs, version, err := composition.ResolveRunnable(wf, kind.runsDraft(), 0)
 	if err != nil {
 		return RunSummary{}, err
 	}

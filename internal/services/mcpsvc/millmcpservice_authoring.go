@@ -31,12 +31,35 @@ import (
 // needed.
 func (m *MillMCPService) SetExecutionService(e *executionsvc.ExecutionService) { m.exec = e }
 
-type idArgs struct {
-	ID string `json:"id" jsonschema:"the entity's ID"`
+// workflowIDArgs is the alias-resolution shape embedded by every tool
+// below that identifies a workflow (goal 0021 Phase 3 gap 1: the live
+// MCP probe found run_workflow/update_workflow/export_workflow/
+// publish_workflow/delete_workflow all took a bare "id" while
+// get_run/list_runs already used the more explicit runId/workflowId --
+// pure interop friction across one entity kind, not a real design
+// difference). WorkflowID is the canonical name (declared first, so it
+// orders first in the generated schema); ID is kept, unchanged, as the
+// original name every existing caller already sends -- both stay
+// optional at the schema level so either alone validates, and resolve
+// is the one place that requires at least one and decides which wins
+// if a caller (mistakenly) sends both.
+type workflowIDArgs struct {
+	WorkflowID string `json:"workflowId,omitempty" jsonschema:"the workflow's ID (canonical name; 'id' is also accepted as a backward-compatible alias)"`
+	ID         string `json:"id,omitempty" jsonschema:"alias for workflowId, kept for backward compatibility"`
+}
+
+func (a workflowIDArgs) resolve() (string, error) {
+	if a.WorkflowID != "" {
+		return a.WorkflowID, nil
+	}
+	if a.ID != "" {
+		return a.ID, nil
+	}
+	return "", fmt.Errorf("workflowId (or its alias id) is required")
 }
 
 type updateWorkflowArgs struct {
-	ID   string `json:"id" jsonschema:"the workflow's ID (list mill://workflows to discover)"`
+	workflowIDArgs
 	JSON string `json:"json" jsonschema:"the full workflow definition as exported-workflow JSON (same shape export_workflow returns) -- replaces the draft head; the previous draft is auto-snapshotted as a version first"`
 }
 
@@ -45,7 +68,7 @@ type validateWorkflowArgs struct {
 }
 
 type runWorkflowArgs struct {
-	ID     string            `json:"id" jsonschema:"the workflow's ID"`
+	workflowIDArgs
 	Values map[string]string `json:"values,omitempty" jsonschema:"optional starting Attribute values, keyed by attribute key"`
 	// Payload substitutes what the workflow's trigger would have
 	// delivered (a filesystem-watch trigger's changed file path) --
@@ -53,6 +76,14 @@ type runWorkflowArgs struct {
 	// without it a trigger-fed workflow is untestable over MCP (goal
 	// 0021 gap 1, found live-probing the capture-floor seed).
 	Payload string `json:"payload,omitempty" jsonschema:"optional initial payload -- what the workflow's trigger would have delivered as the run's starting input (e.g. a file path for a filesystem-watch-fed workflow)"`
+	// Test controls which RunKind this run is tagged (goal 0021 Phase 3
+	// gap 2: the live probe found every MCP run landed "test" kind with
+	// no way to opt out, silently excluded from Home's automation
+	// metrics by default -- wrong for a production agent invoking a
+	// real workflow). Both values execute the same DRAFT head --
+	// test only changes what the run counts AS, see
+	// executionsvc.RunKind.runsDraft's own doc comment.
+	Test bool `json:"test,omitempty" jsonschema:"true tags this run 'test' kind (excluded from Home's automation metrics by default, same as the UI's Test-run button); false (the default) tags it a real production run, counted in Home's metrics like a genuine trigger fire. Either way this always executes the current DRAFT head, never the published version."`
 }
 
 type runIDArgs struct {
@@ -175,10 +206,14 @@ func (m *MillMCPService) registerAuthoringTools() {
 		if err := json.Unmarshal([]byte(argsJSON), &in); err != nil {
 			return "", err
 		}
-		if _, err := m.comp.SnapshotDraft(in.ID); err != nil {
+		id, err := in.resolve()
+		if err != nil {
 			return "", err
 		}
-		wf, err := m.comp.UpdateWorkflowFromExport(in.ID, in.JSON)
+		if _, err := m.comp.SnapshotDraft(id); err != nil {
+			return "", err
+		}
+		wf, err := m.comp.UpdateWorkflowFromExport(id, in.JSON)
 		if err != nil {
 			return "", err
 		}
@@ -195,20 +230,28 @@ func (m *MillMCPService) registerAuthoringTools() {
 		if err := m.requireWriteEnabled(); err != nil {
 			return nil, nil, err
 		}
+		id, err := in.resolve()
+		if err != nil {
+			return nil, nil, err
+		}
 		argsJSON, err := marshalArgs(in)
 		if err != nil {
 			return nil, nil, err
 		}
-		res, err := m.gateWrite("update_workflow", m.updateDiffSummary(in.ID, in.JSON), argsJSON)
+		res, err := m.gateWrite("update_workflow", m.updateDiffSummary(id, in.JSON), argsJSON)
 		return res, nil, err
 	})
 
 	m.registerWriteExecutor("publish_workflow", func(argsJSON string) (string, error) {
-		var in idArgs
+		var in workflowIDArgs
 		if err := json.Unmarshal([]byte(argsJSON), &in); err != nil {
 			return "", err
 		}
-		wf, err := m.comp.PublishWorkflow(in.ID)
+		id, err := in.resolve()
+		if err != nil {
+			return "", err
+		}
+		wf, err := m.comp.PublishWorkflow(id)
 		if err != nil {
 			return "", err
 		}
@@ -220,24 +263,32 @@ func (m *MillMCPService) registerAuthoringTools() {
 	mcp.AddTool(m.server, &mcp.Tool{
 		Name:        "publish_workflow",
 		Description: "Publish a workflow's current draft as the new live version (docs/adr/0021: triggers and child calls execute only the published snapshot). Requires the MCP-writes toggle + per-write approval; may park pending approval -- see import_workflow's description for the poll contract.",
-	}, func(_ context.Context, _ *mcp.CallToolRequest, in idArgs) (*mcp.CallToolResult, any, error) {
+	}, func(_ context.Context, _ *mcp.CallToolRequest, in workflowIDArgs) (*mcp.CallToolResult, any, error) {
 		if err := m.requireWriteEnabled(); err != nil {
+			return nil, nil, err
+		}
+		id, err := in.resolve()
+		if err != nil {
 			return nil, nil, err
 		}
 		argsJSON, err := marshalArgs(in)
 		if err != nil {
 			return nil, nil, err
 		}
-		res, err := m.gateWrite("publish_workflow", "An MCP client wants to PUBLISH workflow "+m.workflowLabel(in.ID)+" (its draft becomes the live version)", argsJSON)
+		res, err := m.gateWrite("publish_workflow", "An MCP client wants to PUBLISH workflow "+m.workflowLabel(id)+" (its draft becomes the live version)", argsJSON)
 		return res, nil, err
 	})
 
 	m.registerWriteExecutor("delete_workflow", func(argsJSON string) (string, error) {
-		var in idArgs
+		var in workflowIDArgs
 		if err := json.Unmarshal([]byte(argsJSON), &in); err != nil {
 			return "", err
 		}
-		if err := m.comp.DeleteWorkflow(in.ID); err != nil {
+		id, err := in.resolve()
+		if err != nil {
+			return "", err
+		}
+		if err := m.comp.DeleteWorkflow(id); err != nil {
 			return "", err
 		}
 		// DeleteWorkflow (compositionsvc) already emits "workflow" -- see
@@ -247,15 +298,19 @@ func (m *MillMCPService) registerAuthoringTools() {
 	mcp.AddTool(m.server, &mcp.Tool{
 		Name:        "delete_workflow",
 		Description: "Delete a workflow entirely (definition, versions, hotkey binding). Requires the MCP-writes toggle + per-write approval; may park pending approval -- see import_workflow's description for the poll contract.",
-	}, func(_ context.Context, _ *mcp.CallToolRequest, in idArgs) (*mcp.CallToolResult, any, error) {
+	}, func(_ context.Context, _ *mcp.CallToolRequest, in workflowIDArgs) (*mcp.CallToolResult, any, error) {
 		if err := m.requireWriteEnabled(); err != nil {
+			return nil, nil, err
+		}
+		id, err := in.resolve()
+		if err != nil {
 			return nil, nil, err
 		}
 		argsJSON, err := marshalArgs(in)
 		if err != nil {
 			return nil, nil, err
 		}
-		res, err := m.gateWrite("delete_workflow", "An MCP client wants to DELETE workflow "+m.workflowLabel(in.ID), argsJSON)
+		res, err := m.gateWrite("delete_workflow", "An MCP client wants to DELETE workflow "+m.workflowLabel(id), argsJSON)
 		return res, nil, err
 	})
 
@@ -264,16 +319,29 @@ func (m *MillMCPService) registerAuthoringTools() {
 	//     for the run itself -- external-effect steps park in the
 	//     human's Review queue no matter who started the run. ---
 	mcp.AddTool(m.server, &mcp.Tool{
-		Name:        "run_workflow",
-		Description: "Run a workflow (test kind -- executes the draft head, same as the UI's Run button). External-effect steps (HTTP, MCP tool calls) pause in the human's Review queue for approval; the run may return still-pending. Use get_run to inspect the result. Requires the MCP-writes toggle.",
+		Name: "run_workflow",
+		Description: "Run a workflow, executing the current DRAFT head (same as the UI's Run button). Default " +
+			"(test:false) tags the run a REAL production run, counted in Home's automation metrics like a genuine " +
+			"trigger fire; test:true tags it 'test' kind instead (excluded from Home's metrics by default, same as " +
+			"a manual authoring/debug click) -- either way the executed graph is identical. External-effect steps " +
+			"(HTTP, MCP tool calls) pause in the human's Review queue for approval; the run may return " +
+			"still-pending. Use get_run to inspect the result. Requires the MCP-writes toggle.",
 	}, func(_ context.Context, _ *mcp.CallToolRequest, in runWorkflowArgs) (*mcp.CallToolResult, any, error) {
 		if err := m.requireWriteEnabled(); err != nil {
+			return nil, nil, err
+		}
+		id, err := in.resolve()
+		if err != nil {
 			return nil, nil, err
 		}
 		if m.exec == nil {
 			return nil, nil, fmt.Errorf("execution service not wired")
 		}
-		summary, err := m.exec.RunWorkflowWithPayload(in.ID, executionsvc.RunKindTest, in.Values, in.Payload)
+		kind := executionsvc.RunKindMCP
+		if in.Test {
+			kind = executionsvc.RunKindTest
+		}
+		summary, err := m.exec.RunWorkflowWithPayload(id, kind, in.Values, in.Payload)
 		if err != nil {
 			return nil, nil, err
 		}

@@ -94,8 +94,12 @@ func (m *MillMCPService) registerTools() {
 	mcp.AddTool(m.server, &mcp.Tool{
 		Name:        "export_workflow",
 		Description: "Export one workflow's full definition as JSON (same shape as the UI's Export button). Read-only.",
-	}, func(_ context.Context, _ *mcp.CallToolRequest, in exportToolArgs) (*mcp.CallToolResult, any, error) {
-		data, err := m.comp.ExportWorkflow(in.ID)
+	}, func(_ context.Context, _ *mcp.CallToolRequest, in workflowIDArgs) (*mcp.CallToolResult, any, error) {
+		id, err := in.resolve()
+		if err != nil {
+			return nil, nil, err
+		}
+		data, err := m.comp.ExportWorkflow(id)
 		if err != nil {
 			return nil, nil, err
 		}

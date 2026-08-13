@@ -49,8 +49,9 @@ type MCPWriteActivity struct {
 
 // targetWorkflowID extracts the workflow a mutation tool's own args
 // named, when it names one at all -- update_workflow/publish_workflow/
-// delete_workflow all take a top-level "id" (see updateWorkflowArgs/
-// idArgs in millmcpservice_authoring.go); import_* tools have no
+// delete_workflow all embed workflowIDArgs (millmcpservice_authoring.go),
+// so either the canonical "workflowId" or the legacy "id" alias
+// resolves the same way a live call would; import_* tools have no
 // existing target (they mint a new ID), so this deliberately returns ""
 // for anything else rather than guessing.
 func targetWorkflowID(toolName, argsJSON string) string {
@@ -59,13 +60,12 @@ func targetWorkflowID(toolName, argsJSON string) string {
 	default:
 		return ""
 	}
-	var in struct {
-		ID string `json:"id"`
-	}
+	var in workflowIDArgs
 	if err := json.Unmarshal([]byte(argsJSON), &in); err != nil {
 		return ""
 	}
-	return in.ID
+	id, _ := in.resolve()
+	return id
 }
 
 // emitMCPWriteActivity pushes MCPWriteActivity to the frontend.

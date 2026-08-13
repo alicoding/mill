@@ -31,16 +31,22 @@ function kindLabelFor(t: (key: string) => string): Record<RunKind, string> {
     [RunKind.$zero]: t('workflowRunsPanel.kindLabel.test'), // pre-docs/adr/0008 runs recorded before Kind existed default to "test" server-side (executionservice.go)
     [RunKind.RunKindTest]: t('workflowRunsPanel.kindLabel.test'),
     [RunKind.RunKindTriggered]: t('workflowRunsPanel.kindLabel.triggered'),
+    // RunKindMCP: an external MCP client's run_workflow with test:false
+    // (goal 0021 Phase 3 gap 2) -- a real production run, same as
+    // "triggered", just started by an agent instead of a headless
+    // listener.
+    [RunKind.RunKindMCP]: t('workflowRunsPanel.kindLabel.mcp'),
   }
 }
 
-// Both neutral -- "how did this run start" is categorization, not a
+// All neutral -- "how did this run start" is categorization, not a
 // status verdict, so it doesn't earn either of the semantic colors
 // (the old severe/orange on `triggered` read as a warning it wasn't).
 const KIND_VARIANT: Record<RunKind, StatusStampVariant> = {
   [RunKind.$zero]: 'neutral',
   [RunKind.RunKindTest]: 'neutral',
   [RunKind.RunKindTriggered]: 'neutral',
+  [RunKind.RunKindMCP]: 'neutral',
 }
 
 const STEP_ICON: Record<string, React.ReactNode> = {
@@ -278,6 +284,7 @@ function WorkflowRunsPanel({ workflowId, attrs, initialRunId, onInitialRunConsum
           <Select.Option value="all">{t('workflowRunsPanel.allKinds')}</Select.Option>
           <Select.Option value={RunKind.RunKindTest}>{t('workflowRunsPanel.test')}</Select.Option>
           <Select.Option value={RunKind.RunKindTriggered}>{t('workflowRunsPanel.triggered')}</Select.Option>
+          <Select.Option value={RunKind.RunKindMCP}>{t('workflowRunsPanel.mcp')}</Select.Option>
         </Select>
       </Stack>
 
