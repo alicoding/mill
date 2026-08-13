@@ -1,4 +1,5 @@
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Panel } from '@xyflow/react'
 import { Button, IconButton, Label, type LabelProps, Stack, Text } from '@primer/react'
 import { BugIcon, PlayIcon, ShieldIcon, SkipIcon, XIcon } from '@primer/octicons-react'
@@ -40,6 +41,7 @@ export function CurrentStepBar({
   onResolve: (nodeID: string, approve: boolean, continueRun?: boolean, values?: Record<string, string>) => void
   onDismiss: () => void
 }) {
+  const { t } = useTranslation('composition')
   const parkedNodeID = barState?.mode === 'parked' ? barState.pending.nodeID : null
   const [editValues, setEditValues] = useState<Record<string, string>>({})
   // A fresh park (a different node, or the same node on a later run)
@@ -55,9 +57,9 @@ export function CurrentStepBar({
       <div className={styles.currentStepBar} data-testid="current-step-bar">
         {barState.mode === 'in-flight' && (
           <Stack direction="horizontal" gap="condensed" align="center">
-            <Text size="small" className={styles.currentStepBarLabel}>Current step</Text>
+            <Text size="small" className={styles.currentStepBarLabel}>{t('liveRunControls.currentStep')}</Text>
             <Text size="small" weight="semibold">{barState.activeStepLabel}</Text>
-            <Text size="small" className={runbookStyles.muted}>Running…</Text>
+            <Text size="small" className={runbookStyles.muted}>{t('running')}</Text>
           </Stack>
         )}
         {barState.mode === 'parked' && (() => {
@@ -76,8 +78,8 @@ export function CurrentStepBar({
                 {isDebug ? <BugIcon size={16} fill="var(--fgColor-done)" /> : <ShieldIcon size={16} fill="var(--fgColor-attention)" />}
                 <Text size="small" weight="semibold" data-testid="current-step-bar-label">
                   {isDebug
-                    ? `${isStepped ? 'Paused — step mode' : 'Paused at breakpoint'}: ${barState.pending.nodeTypeLabel || barState.pending.nodeTypeID}`
-                    : `Awaiting approval: ${barState.pending.nodeTypeLabel || barState.pending.nodeTypeID}`}
+                    ? t('liveRunControls.pausedNodeLabel', { paused: isStepped ? t('pausedStepMode') : t('pausedAtBreakpoint'), node: barState.pending.nodeTypeLabel || barState.pending.nodeTypeID })
+                    : t('liveRunControls.awaitingApprovalNodeLabel', { node: barState.pending.nodeTypeLabel || barState.pending.nodeTypeID })}
                 </Text>
               </Stack>
               {barState.pending.payload && (
@@ -91,7 +93,7 @@ export function CurrentStepBar({
                   attrs={attrsForPending(attrs, barState.pending.inputAttributes)}
                   values={editValues}
                   onChange={(key, value) => setEditValues((prev) => ({ ...prev, [key]: value }))}
-                  label="Edit before resuming (optional)"
+                  label={t('editBeforeResuming')}
                 />
               )}
               <Stack direction="horizontal" gap="condensed">
@@ -103,7 +105,7 @@ export function CurrentStepBar({
                     data-testid="canvas-step"
                     onClick={() => onResolve(barState.pending.nodeID, true, false, editValues)}
                   >
-                    Step
+                    {t('step')}
                   </Button>
                 )}
                 {isDebug ? (
@@ -114,7 +116,7 @@ export function CurrentStepBar({
                     data-testid="canvas-resume-step"
                     onClick={() => onResolve(barState.pending.nodeID, true, true, editValues)}
                   >
-                    {isStepped ? 'Continue' : 'Resume'}
+                    {isStepped ? t('continue') : t('resume')}
                   </Button>
                 ) : (
                   <Button
@@ -123,7 +125,7 @@ export function CurrentStepBar({
                     data-testid="canvas-approve-step"
                     onClick={() => onResolve(barState.pending.nodeID, true)}
                   >
-                    Approve
+                    {t('liveRunControls.approve')}
                   </Button>
                 )}
                 <Button
@@ -132,7 +134,7 @@ export function CurrentStepBar({
                   data-testid={isDebug ? 'canvas-stop-step' : 'canvas-deny-step'}
                   onClick={() => onResolve(barState.pending.nodeID, false)}
                 >
-                  {isDebug ? 'Stop' : 'Deny'}
+                  {isDebug ? t('stop') : t('deny')}
                 </Button>
               </Stack>
             </Stack>
@@ -146,7 +148,7 @@ export function CurrentStepBar({
             )}
             <IconButton
               icon={XIcon}
-              aria-label="Dismiss run state"
+              aria-label={t('liveRunControls.dismissRunStateAriaLabel')}
               size="small"
               variant="invisible"
               data-testid="dismiss-run-state"
@@ -183,6 +185,7 @@ export const RunButton = forwardRef<RunButtonHandle, {
   workflow: Workflow | null | undefined
   onStartRun: (values: Record<string, string>, stepped?: boolean, payload?: string) => void
 }>(function RunButton({ workflow, onStartRun }, ref) {
+  const { t } = useTranslation('composition')
   const [testRunOpen, setTestRunOpen] = useState(false)
   const [testRunStepped, setTestRunStepped] = useState(false)
   const [values, setValues] = useState<Record<string, string>>({})
@@ -224,16 +227,16 @@ export const RunButton = forwardRef<RunButtonHandle, {
         size="small"
         onClick={() => handleClick(false)}
         data-testid="canvas-run"
-        title="Runs the saved draft (test run)."
+        title={t('liveRunControls.runButtonTooltip')}
       >
-        Run
+        {t('liveRunControls.run')}
       </Button>
       <IconButton
         icon={BugIcon}
-        aria-label="Run in step mode"
+        aria-label={t('liveRunControls.runInStepModeAriaLabel')}
         size="small"
         data-testid="canvas-run-stepped"
-        title="Run in step mode -- pauses before every node so you can inspect and edit its data (docs/adr/0031)."
+        title={t('liveRunControls.runInStepModeTooltip')}
         onClick={() => handleClick(true)}
       />
       {testRunOpen && (

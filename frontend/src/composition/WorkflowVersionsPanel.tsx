@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Button, Heading, Label, Stack, Text } from '@primer/react'
 import { DataTable } from '@primer/react/experimental'
 import { ResizableTableContainer, TruncatedCell } from '../shared/ResizableTable'
@@ -16,6 +17,7 @@ export function WorkflowVersionsPanel({ workflow, onChanged }: {
   workflow: Workflow
   onChanged: () => void
 }) {
+  const { t } = useTranslation('composition')
   const [error, setError] = useState('')
 
   const act = (p: Promise<unknown>) => {
@@ -29,13 +31,13 @@ export function WorkflowVersionsPanel({ workflow, onChanged }: {
     <PageContainer data-testid="workflow-versions-panel">
       <Stack direction="horizontal" justify="space-between" align="center" className={styles.sectionHeading}>
         <Stack direction="horizontal" gap="condensed" align="center">
-          <Heading as="h2" variant="small" id="versions-heading">Versions</Heading>
+          <Heading as="h2" variant="small" id="versions-heading">{t('workflowVersionsPanel.heading')}</Heading>
           {workflow.PublishedVersion > 0 ? (
-            <Label variant="success" data-testid="published-badge">v{workflow.PublishedVersion} live</Label>
+            <Label variant="success" data-testid="published-badge">{t('publishedVersionLive', { version: workflow.PublishedVersion })}</Label>
           ) : (
-            <Label variant="attention" data-testid="published-badge">never published</Label>
+            <Label variant="attention" data-testid="published-badge">{t('workflowVersionsPanel.neverPublished')}</Label>
           )}
-          {workflow.Disabled && <Label variant="severe" data-testid="disabled-badge">disabled</Label>}
+          {workflow.Disabled && <Label variant="severe" data-testid="disabled-badge">{t('disabled')}</Label>}
         </Stack>
         <Stack direction="horizontal" gap="condensed">
           <Button
@@ -44,7 +46,7 @@ export function WorkflowVersionsPanel({ workflow, onChanged }: {
             onClick={() => act(CompositionService.SetWorkflowDisabled(workflow.ID, !workflow.Disabled))}
             data-testid="toggle-disabled"
           >
-            {workflow.Disabled ? 'Enable' : 'Disable'}
+            {workflow.Disabled ? t('workflowVersionsPanel.enable') : t('workflowVersionsPanel.disable')}
           </Button>
           <Button
             size="small"
@@ -52,20 +54,18 @@ export function WorkflowVersionsPanel({ workflow, onChanged }: {
             onClick={() => act(CompositionService.PublishWorkflow(workflow.ID))}
             data-testid="publish-workflow"
           >
-            Publish current draft
+            {t('workflowVersionsPanel.publishCurrentDraft')}
           </Button>
         </Stack>
       </Stack>
 
       <Text as="p" size="small" className={styles.muted}>
-        The canvas edits the draft. Triggers and child-workflow calls always run the published (live)
-        version — publishing is the explicit go-live act, and a test Run exercises the draft without
-        publishing. Disabling pauses triggers and child calls; test runs keep working.
+        {t('workflowVersionsPanel.description')}
       </Text>
       {error && <Text as="p" size="small" className={styles.error} data-testid="versions-error">{error}</Text>}
 
       {versions.length === 0 && (
-        <Text as="p" className={styles.muted}>No versions yet — publish the draft to create v1.</Text>
+        <Text as="p" className={styles.muted}>{t('workflowVersionsPanel.noVersionsYet')}</Text>
       )}
       {versions.length > 0 && (
         <ResizableTableContainer storageKey="mill-cols-versions">
@@ -74,30 +74,30 @@ export function WorkflowVersionsPanel({ workflow, onChanged }: {
             data={versions.map((v) => ({ ...v, id: v.Version }))}
             columns={[
               {
-                header: 'Version', field: 'Version', rowHeader: true, width: 'auto',
+                header: t('workflowVersionsPanel.columns.version'), field: 'Version', rowHeader: true, width: 'auto',
                 renderCell: (v) => (
                   <Stack direction="horizontal" gap="condensed" align="center">
                     <Text weight="semibold">v{v.Version}</Text>
-                    {v.Version === workflow.PublishedVersion && <Label variant="success" size="small">live</Label>}
+                    {v.Version === workflow.PublishedVersion && <Label variant="success" size="small">{t('workflowVersionsPanel.live')}</Label>}
                   </Stack>
                 ),
               },
               {
-                header: 'Saved', id: 'saved', width: 'auto',
+                header: t('workflowVersionsPanel.columns.saved'), id: 'saved', width: 'auto',
                 renderCell: (v) => new Date(v.SavedAt as unknown as string).toLocaleString(),
               },
-              { header: 'Label', id: 'label', width: 'growCollapse', minWidth: '160px', renderCell: (v) => <TruncatedCell text={v.Label} /> },
+              { header: t('workflowVersionsPanel.columns.label'), id: 'label', width: 'growCollapse', minWidth: '160px', renderCell: (v) => <TruncatedCell text={v.Label} /> },
               {
                 header: '', id: 'actions', width: 'auto', align: 'end',
                 renderCell: (v) => (
                   <Stack direction="horizontal" gap="condensed">
                     {v.Version !== workflow.PublishedVersion && (
                       <Button size="small" onClick={() => act(CompositionService.PublishExistingVersion(workflow.ID, v.Version))}>
-                        Make live
+                        {t('workflowVersionsPanel.makeLive')}
                       </Button>
                     )}
                     <Button size="small" variant="invisible" onClick={() => act(CompositionService.RestoreVersionToDraft(workflow.ID, v.Version))}>
-                      Load into draft
+                      {t('workflowVersionsPanel.loadIntoDraft')}
                     </Button>
                   </Stack>
                 ),

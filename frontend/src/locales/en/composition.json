@@ -1,1 +1,91 @@
-{}
+{
+  "pausedStepMode": "Paused — step mode",
+  "pausedAtBreakpoint": "Paused at breakpoint",
+  "editBeforeResuming": "Edit before resuming (optional)",
+  "step": "Step",
+  "continue": "Continue",
+  "resume": "Resume",
+  "deny": "Deny",
+  "stop": "Stop",
+  "running": "Running…",
+  "loading": "Loading…",
+  "disabled": "disabled",
+  "publishedVersionLive": "v{{version}} live",
+  "liveRunControls": {
+    "currentStep": "Current step",
+    "pausedNodeLabel": "{{paused}}: {{node}}",
+    "awaitingApprovalNodeLabel": "Awaiting approval: {{node}}",
+    "approve": "Approve",
+    "dismissRunStateAriaLabel": "Dismiss run state",
+    "runButtonTooltip": "Runs the saved draft (test run).",
+    "run": "Run",
+    "runInStepModeAriaLabel": "Run in step mode",
+    "runInStepModeTooltip": "Run in step mode -- pauses before every node so you can inspect and edit its data (docs/adr/0031)."
+  },
+  "workflowHoverPreview": {
+    "previewAriaLabel": "Workflow preview",
+    "workflowNoLongerExists": "This workflow no longer exists.",
+    "open": "Open"
+  },
+  "workflowsTable": {
+    "columns": {
+      "label": "Label",
+      "trigger": "Trigger",
+      "status": "Status",
+      "description": "Description",
+      "steps": "Steps"
+    },
+    "draft": "draft",
+    "runTitleDrifted": "Test run of the draft — differs from the published version.",
+    "runTitle": "Test run of the draft.",
+    "testAriaLabel": "Test {{label}}",
+    "runAriaLabel": "Run {{label}}",
+    "editAriaLabel": "Edit {{label}}",
+    "exportAriaLabel": "Export {{label}}",
+    "deleteAriaLabel": "Delete {{label}}",
+    "test": "Test",
+    "run": "Run"
+  },
+  "workflowVersionsPanel": {
+    "heading": "Versions",
+    "neverPublished": "never published",
+    "enable": "Enable",
+    "disable": "Disable",
+    "publishCurrentDraft": "Publish current draft",
+    "description": "The canvas edits the draft. Triggers and child-workflow calls always run the published (live) version — publishing is the explicit go-live act, and a test Run exercises the draft without publishing. Disabling pauses triggers and child calls; test runs keep working.",
+    "noVersionsYet": "No versions yet — publish the draft to create v1.",
+    "columns": {
+      "version": "Version",
+      "saved": "Saved",
+      "label": "Label"
+    },
+    "live": "live",
+    "makeLive": "Make live",
+    "loadIntoDraft": "Load into draft"
+  },
+  "workflowRunsPanel": {
+    "filterByKindAriaLabel": "Filter by kind",
+    "allKinds": "All kinds",
+    "test": "Test",
+    "triggered": "Triggered",
+    "noRunsYet": "No runs yet — run this workflow from its Canvas tab.",
+    "columns": {
+      "status": "Status",
+      "kind": "Kind",
+      "started": "Started"
+    },
+    "awaitingApproval": "awaiting approval",
+    "runIdentity": "Run · {{started}}",
+    "closeAriaLabel": "Close",
+    "awaitingYourApproval": "Awaiting your approval",
+    "theStepPrefix": "The step",
+    "stepIsPausedHere": "is paused here",
+    "stepWantsToRun": "wants to run",
+    "ruleSuffix": " (rule: {{rule}})",
+    "externalStepsAskByDefault": " (external steps ask by default)",
+    "approveAndRun": "Approve and run",
+    "breakpointBadge": "breakpoint",
+    "guardrailLabel": "Guardrail: {{effect}}{{ruleSuffix}}",
+    "retryFromThisStep": "Retry from this step"
+  }
+}
