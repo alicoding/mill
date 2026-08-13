@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import { ActionList, ActionMenu } from '@primer/react'
 import { HistoryIcon } from '@primer/octicons-react'
 
@@ -21,11 +22,12 @@ export function RestoreExamplesButton({ items, onRestore }: {
   // Appears only when applicable (docs/goals/0037 item 5's own wording)
   // -- no empty/disabled placeholder button cluttering a page that has
   // nothing tombstoned.
+  const { t } = useTranslation('common')
   if (items.length === 0) return null
   return (
     <ActionMenu>
       <ActionMenu.Button leadingVisual={HistoryIcon} size="small" data-testid="restore-examples-menu">
-        Restore example…
+        {t('restoreExamplesButton.restoreExample')}
       </ActionMenu.Button>
       <ActionMenu.Overlay>
         <ActionList>

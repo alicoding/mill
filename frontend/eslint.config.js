@@ -2,6 +2,7 @@ import js from '@eslint/js'
 import globals from 'globals'
 import reactHooks from 'eslint-plugin-react-hooks'
 import reactRefresh from 'eslint-plugin-react-refresh'
+import i18next from 'eslint-plugin-i18next'
 import tseslint from 'typescript-eslint'
 
 export default tseslint.config(
@@ -38,6 +39,33 @@ export default tseslint.config(
         'warn',
         { allowConstantExport: true },
       ],
+    },
+  },
+  {
+    // The regression guard docs/goals/0032-copy-management.md's own
+    // Plan step deliberately deferred until the four migration slices
+    // closed the gap (app/composition/configure/views -- all now
+    // t()-driven, checked empirically clean against this exact rule
+    // before it was ever turned on, not assumed). Scoped to src/ only
+    // (not e2e/ fixtures, not config files) and to jsx-text-only mode
+    // (the plugin's own default): checked directly against this
+    // codebase first -- 'jsx-only' (attribute values too) produced ~290
+    // warnings dominated by Primer/DataTable prop names (`stackId`,
+    // `dataKey`, `weight`, `testId`, `entity`, ...) sitting on custom
+    // (non-native-DOM) JSX elements deep inside object-literal props,
+    // not real copy; taming that would need a large, brittle
+    // Primer-specific attribute allowlist for a marginal catch (new
+    // hardcoded aria-label/title/placeholder attributes) this
+    // conservative mode doesn't cover. jsx-text-only -- JSX text
+    // children only -- gave a small, accurate signal instead (5 real
+    // leftovers found and fixed in shared/, composition/, configure/
+    // the same session this rule landed), so it's the honest default,
+    // not a static config the plugin ships defensively.
+    files: ['src/**/*.{ts,tsx}'],
+    ignores: ['**/*.test.ts', '**/*.test.tsx'],
+    plugins: { i18next },
+    rules: {
+      'i18next/no-literal-string': ['error', { mode: 'jsx-text-only' }],
     },
   },
 )

@@ -77,7 +77,7 @@ export function WorkflowVersionsPanel({ workflow, onChanged }: {
                 header: t('workflowVersionsPanel.columns.version'), field: 'Version', rowHeader: true, width: 'auto',
                 renderCell: (v) => (
                   <Stack direction="horizontal" gap="condensed" align="center">
-                    <Text weight="semibold">v{v.Version}</Text>
+                    <Text weight="semibold">{t('workflowVersionsPanel.versionPrefix', { version: v.Version })}</Text>
                     {v.Version === workflow.PublishedVersion && <Label variant="success" size="small">{t('workflowVersionsPanel.live')}</Label>}
                   </Stack>
                 ),

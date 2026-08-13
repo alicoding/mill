@@ -241,7 +241,7 @@ export function RequestTestPanel({
                 ) : (
                   <Label variant={entry.StatusCode >= 400 ? 'danger' : 'success'} size="small">{entry.StatusCode}</Label>
                 )}
-                <Text size="small" className={styles.muted}>{entry.DurationMs}ms</Text>
+                <Text size="small" className={styles.muted}>{t('requestTestPanel.durationMs', { ms: entry.DurationMs })}</Text>
                 <IconButton
                   icon={CopyIcon}
                   aria-label={t('requestTestPanel.copyAriaLabel')}
