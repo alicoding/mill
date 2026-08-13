@@ -29,7 +29,7 @@ test('Running the guarded seed parks awaiting approval; deny fails it closed', a
 
   // Open the parked run by clicking its ROW (owner's model: the row IS
   // the View affordance, no separate button). Selection feedback
-  // (owner-reported: identical-outcome runs made a click look like a
+  // (live-reproduced: identical-outcome runs made a click look like a
   // no-op): the clicked row highlights via its data-selected anchor,
   // and the detail header carries the run's own timestamp identity.
   await page.getByTestId('runs-table').locator('tbody tr').first().click()

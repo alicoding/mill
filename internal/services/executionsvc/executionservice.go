@@ -102,7 +102,7 @@ type runInput struct {
 
 // RunStep is one node's recorded execution within a run, for the
 // execution-visibility UI (docs/SPEC.md §3.2's "shows through the path
-// ... where it stopped", researched from Oscilar/n8n). Status is
+// ... where it stopped", researched from n8n). Status is
 // "succeeded"/"failed"/"pending" -- pending means DBOS has no recorded
 // step yet (the run never reached that node).
 type RunStep struct {

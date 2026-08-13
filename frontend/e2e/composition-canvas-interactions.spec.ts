@@ -260,7 +260,7 @@ test('A canvas node card never clips its own handles/badges (no card-level overf
   await page.getByRole('link', { name: 'Workflows' }).click()
   await page.getByTestId('new-workflow').click()
 
-  // Real, owner-reported visual bug: .canvasNode carried overflow:hidden
+  // Real, live-reproduced visual bug: .canvasNode carried overflow:hidden
   // (from the uniform-card restyle), which shaved the React Flow Handles
   // rendered inside it to half-moon slivers at the card edges -- and
   // silently also clipped the guardrail badge's -6px and the run-status

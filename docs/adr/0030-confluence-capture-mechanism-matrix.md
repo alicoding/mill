@@ -1,26 +1,26 @@
-# ADR-0030: Confluence/Jira capture mechanism under bank policy — decision matrix
+# ADR-0030: Confluence/Jira capture mechanism under enterprise policy — decision matrix
 
 ## Status
 proposed — awaiting the owner's on-site policy findings (the checklist
 below). This ADR deliberately does NOT pick a winner; it exists so the
-owner can find out at the bank which paths survive policy, and so the
+owner can find out in a locked-down enterprise environment which paths survive policy, and so the
 decision then gets made against evidence instead of memory.
 
 ## Context
 
 The strategic reframe (2026-08-11 session, memory
-`project-mill-bank-reality`): Mill's near-term product is the local,
+the enterprise-reality context): Mill's near-term product is the local,
 offline, open-source substrate that makes M365 Copilot / local Ollama
-usable at the bank. Bank ground truth, owner-stated: MCP is deny-all
-(Zscaler blocks the port), there is no Confluence or Jira API access,
+usable in a locked-down enterprise environment. Enterprise ground truth: MCP can be deny-all
+(the TLS-inspecting network proxy blocks the port), there is no Confluence or Jira API access,
 and clipboard capture of a full Confluence page loses structure (§5's
 data point, now confirmed as the core daily pain). Content must come
 from the **rendered DOM**.
 
 §5/ADR-0003 already locked the *architecture* for a browser extension
 (WXT + offscreen iframe onto the server-mode page). What it never
-addressed — because the bank reality wasn't known then — is whether an
-extension can be **loaded at all** on the bank machine, and what the
+addressed — because the locked-down enterprise environment reality wasn't known then — is whether an
+extension can be **loaded at all** on the locked-down enterprise environment machine, and what the
 alternatives cost if it can't. The gating unknown only the owner can
 resolve (§1.2's access boundary): enterprise browser policy on the
 actual work machine.
@@ -57,7 +57,7 @@ Mill's extension ID, optionally force-installed from a self-hosted CRX,
 no Chrome Web Store listing required. Route 2 is strengthened by Mill
 being open-source: IS&C can review the exact code being allowlisted —
 the same reasoning that makes git-clone the distribution mechanism.
-Microsoft Edge (likely the bank's M365 browser) ships the identical
+Microsoft Edge (likely the enterprise environment's M365 browser) ships the identical
 policy set.
 
 **B — Bookmarklet.** Three independent failure modes, two of them
@@ -65,7 +65,7 @@ outside IS&C's gift: Confluence's own CSP (site-controlled), the
 `URLBlocklist javascript://*` policy, and the Local Network Access
 permission prompt on the `fetch()` to Mill's localhost port
 (mixed-content rules exempt localhost as potentially-trustworthy, but
-LNA is a separate, newer gate — enforcement status on the bank's exact
+LNA is a separate, newer gate — enforcement status on the enterprise environment's exact
 Chrome/Edge build needs a live check). Last resort; only worth
 pursuing if A is denied AND C proves unusable.
 
@@ -91,12 +91,12 @@ in-editor selections is exactly the confirmed mechanism. Consequence:
 "hardening" Mill's clipboard read cannot fix this. What Mill CAN do
 cheaply is a **clipboard-inspector seeded workflow** (capture → report
 exactly which flavors are present and how big) — the §1 thesis applied
-to the clipboard itself, and the diagnostic the owner runs at the bank
+to the clipboard itself, and the diagnostic the owner runs in a locked-down enterprise environment
 to confirm (b) empirically in one paste.
 
 ## The owner's on-site checklist (the actual deliverable)
 
-Run on the bank machine, in the browser actually used for Confluence:
+Run on the locked-down enterprise environment machine, in the browser actually used for Confluence:
 
 1. **Which browser** — Chrome or Edge (policies mirror; the answer
    scopes which policy console IS&C would touch).
@@ -127,7 +127,7 @@ Run on the bank machine, in the browser actually used for Confluence:
 
 - Path C is buildable immediately and independently of every checklist
   answer — a candidate next build regardless of the extension outcome,
-  and the only path that ships bank-usable capture value before IS&C
+  and the only path that ships enterprise-usable capture value before a security control plane
   responds to anything.
 - Path A stays the target end-state (ADR-0003's architecture is
   unchanged by this ADR); the checklist decides *when/whether* it's

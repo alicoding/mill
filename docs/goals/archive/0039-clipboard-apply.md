@@ -1,7 +1,7 @@
 # Goal 0039 — Clipboard apply: "Apply from clipboard…" in the Quick Panel
 
-Owner-driven, 2026-08-12 — the bank-critical door. At the owner's bank
-MCP is deny-all (`docs/goals BACKLOG` bank-reality memory), so a
+Owner-driven, 2026-08-12 — the enterprise-critical door. At a locked-down enterprise environment
+MCP is deny-all (the enterprise-reality context), so a
 clipboard + hotkey transport is the near-term path for getting a
 workflow definition INTO Mill without an MCP client. n8n's own
 share/import precedent (one canonical JSON document, one import API,
