@@ -42,7 +42,7 @@ export function TabItem({ value, children, kicker, leadingVisual, onClose }: { v
     <div className={styles.tabItem}>
       <button {...tabProps} type="button" className={styles.tab}>
         {/* The two-line work-tab pattern (reference-platform precedent,
-            owner-requested): a small uppercase KIND line above the name,
+            deliberately adopted): a small uppercase KIND line above the name,
             so a tab self-identifies what sort of thing it holds before
             the label is read (recognition-not-confirmation,
             docs/SPEC.md §3.8). aria-hidden keeps it out of the tab's

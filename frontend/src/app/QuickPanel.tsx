@@ -394,8 +394,8 @@ export function QuickPanel() {
       run: () => openMain('review'),
     })
     // docs/goals/0039: always present, same "unblock-yourself-in-place"
-    // reasoning Review's own row above documents -- the bank-critical
-    // door (MCP is deny-all at the owner's bank; clipboard+hotkey is the
+    // reasoning Review's own row above documents -- the enterprise-critical
+    // door (MCP can be unavailable in locked-down enterprise environments; clipboard+hotkey is the
     // transport). trailingVisual shows panel.applyClipboard's bound key
     // once the owner rebinds it (shared/commands.ts's defaultBinding is
     // null); HotkeyHint renders nothing until then.

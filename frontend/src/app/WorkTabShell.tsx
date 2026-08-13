@@ -27,7 +27,7 @@ import styles from './WorkTabShell.module.css'
 // switches. Every panel stays mounted-hidden (shared/Tabs' own
 // semantics), so canvas edits survive navigating anywhere.
 //
-// Chrome-style tabs-in-titlebar (owner-requested, "Chrome has the tab
+// Chrome-style tabs-in-titlebar (a deliberate adoption, "Chrome has the tab
 // system at the very top"): the strip itself now RENDERS inside the
 // titlebar band App.tsx owns at the very top of .app-shell, above the
 // PageLayout row -- not inside PageLayout.Content where it used to
@@ -43,7 +43,7 @@ import styles from './WorkTabShell.module.css'
 
 const PAGE_TAB = '__page__'
 
-// The VS Code tab anatomy (owner-requested): every band tab is
+// The VS Code tab anatomy (a deliberate design choice): every band tab is
 // icon + single-line label at ONE constant baseline -- the entity
 // glyph (shared/entityIcons.ts, the same kind cue the inventory rows
 // use) replaces the two-line kicker, which put labels at varying

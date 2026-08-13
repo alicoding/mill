@@ -2,7 +2,7 @@
 
 ## Goal
 Owner-raised 2026-08-12: converged capabilities real workflow/decisioning
-platforms ([decisioning-vendor], n8n, Zapier, and the broader BRMS/rules-engine
+platforms (n8n, Zapier, and the broader BRMS/rules-engine
 space — GoRules' Zen Engine named specifically) all eventually need —
 decision tables, rule-engine-style condition evaluation, and
 aggregation across steps/runs — that Mill hasn't built and hasn't
@@ -27,7 +27,7 @@ beyond single expr-lang expressions is adopted.**
 
 ## Plan
 1. [x] Research DONE 2026-08-12 (real WebSearch/WebFetch, no guessing from training):
-   - [decisioning-vendor]'s actual decisioning model — rule chains, decision
+   - a commercial risk-decisioning platform's model — rule chains, decision
      tables/matrices, data aggregation within rules (most directly
      relevant precedent given ADR-0027's own typed-outcome shape
      already parallels risk/fraud decisioning platforms).

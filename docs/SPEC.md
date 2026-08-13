@@ -77,9 +77,9 @@ an implicit `FINAL`.
   themselves by hand). If it is, nobody adopts it. `LOCKED`
 - **Blocked ≠ unsupported — Mill carries the capability superset; the
   environment decides which are live.** `LOCKED` (owner-stated
-  2026-08-11, with the bank-reality reframe). Ground truth on the
-  target work machine: MCP is deny-all ([corporate-proxy] blocks the port) until
-  the bank's AI-tool control plane lands; no Confluence/Jira API
+  2026-08-11, with the locked-down enterprise environment-reality reframe). Ground truth on the
+  target work machine: MCP is deny-all (the TLS-inspecting network proxy blocks the port) until
+  the enterprise environment's AI-tool control plane lands; no Confluence/Jira API
   access; full-page clipboard copy loses structure. So Mill's true
   near-term product is the local/offline/open-source substrate that
   makes M365 Copilot and/or local Ollama usable there — reliable
@@ -88,8 +88,8 @@ an implicit `FINAL`.
   while the MCP/connector/canvas platform stays the long game, built
   and shipped even where blocked. Never rip a capability out because
   one environment blocks it (exactly how MCP already works: built,
-  live here, unusable at the bank). Open-source is load-bearing
-  distribution, not ideology: [corporate-proxy] scans and passes `git clone` of
+  live here, unusable in a locked-down enterprise environment). Open-source is load-bearing
+  distribution, not ideology: enterprise network-security scanning passes `git clone` of
   OSS, which is what makes §1.1's install story the legal way onto the
   work machine.
 - **Everything is real-time — the user never reloads or reopens to see
@@ -158,7 +158,7 @@ an implicit `FINAL`.
 ### 1.1 Hard constraints & delivery model
 
 - No `cargo`/Rust compilation anywhere in Mill's own build or dependency
-  pipeline. Reason: at the bank, [corporate-proxy] intercepts/breaks cargo's network
+  pipeline. Reason: in a locked-down enterprise environment, TLS-inspecting proxies intercept/break cargo's network
   calls to crates.io, and Artifactory has no Rust feed to route around it —
   so anything that requires `cargo build`/`cargo install` from source will
   not build there, in CI or locally. This rules out e.g. Tauri as an
@@ -254,7 +254,7 @@ an implicit `FINAL`.
   BMAD: team-persona ceremony) — the missing capability was only ever
   a committed, ordered markdown file.
 - Access boundary: the actual work laptop this is being built for is behind
-  [corporate-proxy] at the bank and is not something the assistant helping design Mill
+  a TLS-inspecting proxy in a locked-down enterprise environment and is not something the assistant helping design Mill
   has any live access to — no inspecting the real clipboard, no observing
   M365/Loop/Copilot behavior directly, no running commands against that
   machine's real session. Design and research proceed from the user's
@@ -982,7 +982,7 @@ competing for attention across the whole app.
   its own bundle chunk, dual-licensed EPL-2.0/GPL-3.0-or-later rather
   than MIT like the rest of Mill's tree, same shape as §3.1's MCP SDK
   license-transition note and worth the same compliance glance given
-  the bank context), and `zod` (validates a draft workflow against the
+  the locked-down enterprise environment context), and `zod` (validates a draft workflow against the
   same shape `CreateWorkflow` receives, before Save). Graph validity is
   enforced at three points that must agree: `isValidConnection` at draw
   time (client), `ValidateGraph` (composition.go) at save/run time
@@ -1136,7 +1136,7 @@ confirmed directly, not taken on the research pass's word alone):
   implemented. Clean fit with the single-binary constraint. License
   mid-transition MIT → Apache-2.0 (new code Apache-2.0; unrelicensed old
   contributions stay MIT) — confirmed directly against the repo's `LICENSE`
-  file, worth a compliance glance given the bank context but not a blocker.
+  file, worth a compliance glance given the locked-down enterprise environment context but not a blocker.
 - **Bring-your-own-model is real, not assumed**: the spec is explicit that
   MCP "does not dictate how AI applications use LLMs" — the host owns the
   model choice, Ollama-or-any-key is genuinely in-scope, this isn't Mill
@@ -1159,9 +1159,9 @@ confirmed directly, not taken on the research pass's word alone):
 - **Correction to the transport question**: local **stdio** transport is
   confirmed to be pure local IPC — "newline-delimited messages over the
   standard streams of a client-launched subprocess," zero network egress,
-  never touches [corporate-proxy] or any network security stack. Remote transports
+  never touches the network security stack. Remote transports
   (SSE, streamable HTTP) are the actual egress path and what enterprise
-  MCP-security policy typically targets. Not verified against the bank's
+  MCP-security policy typically targets. Not verified against the enterprise environment's
   actual policy text — **worth asking IS&C directly** whether the block
   names remote/HTTP MCP specifically, since local stdio MCP may already be
   usable today regardless of the broader block.
@@ -2547,7 +2547,7 @@ phantom-badge regression (deny from Review, assert the sidebar badge
 clears with no other page event) — `mcp-write-cancel.spec.ts`.
 
 **One API, many doors — clipboard apply (docs/goals/0039), the
-bank-critical transport.** At the owner's bank MCP is deny-all, so a
+enterprise-critical transport.** At a locked-down enterprise environment MCP is deny-all, so a
 copy/paste + hotkey path is the near-term way a workflow definition
 gets INTO Mill without an MCP client at all. Rather than a parallel
 mechanism, "Apply from clipboard…" in the Quick Panel (ADR-0033) is a
@@ -3327,7 +3327,7 @@ Full rationale in [`docs/adr/0003-browser-bridge-architecture.md`](adr/0003-brow
   (`TestSeededSavedPageToMarkdown_FiresRealWorkflowAndExtractsMainContent`).
   `LOCKED` (the floor); the extension remains the target end-state
   per the matrix below.
-- **Capture mechanism under bank policy — decision matrix written, not
+- **Capture mechanism under enterprise policy — decision matrix written, not
   decided: [ADR-0030](adr/0030-confluence-capture-mechanism-matrix.md)**
   (`proposed`). Four real paths — the ADR-0003 extension (only path
   with write-back + tab identity; enterprise allowlist of an
@@ -4293,7 +4293,7 @@ surface can already express.
   deliberately: shadow evaluation (blocked on a per-node purity model,
   §8), staged-traffic promotion, version diffing.
 - Browser extension ↔ native app protocol details (§5); which capture
-  mechanism survives bank policy — matrix + on-site checklist in
+  mechanism survives enterprise lockdown — matrix + on-site checklist in
   [ADR-0030](adr/0030-confluence-capture-mechanism-matrix.md), awaiting
   the owner's findings
 - Env/shell determinism rules (§6) — **`LOCKED` and BUILT** (goal
@@ -4501,7 +4501,7 @@ decided, locked, or built; no code changed as a result of it beyond
 what's already independently justified and recorded elsewhere (the
 credential-store interface, §3.5's Configure section, and the execution
 DSN parameterization, §7). Prompted directly: the user wants to run Mill
-at a bank eventually, wants to keep a public OSS edition too, and asked
+in a regulated enterprise eventually, wants to keep a public OSS edition too, and asked
 what the industry pattern is for that split and whether Mill's current
 hexagonal architecture (Go domain/adapters + Wails3 single-binary shell
 + React frontend) could support it. Two research passes, kept separate
@@ -4543,7 +4543,7 @@ package github.com/alicoding/mill/internal/domain/httprequest not
 allowed`). This means Grafana's exact mechanism — a wholly separate
 private repo importing the public repo's swappable pieces, merged at
 build time — **is not directly reachable for Mill as structured today**.
-A bank-side private repo cannot `import
+An enterprise-side private repo cannot `import
 "github.com/alicoding/mill/internal/adapters/credential"` at all.
 
 **Recommendation (research-stage, not adopted): Coder's shape, minus
@@ -4570,7 +4570,7 @@ not one.**
 - **`internal/adapters/settings.Store` already works as a real port.**
   Every consumer (`ConfigureService`, `CompositionService`,
   `TriggerService`) depends on the `Store` interface (`Get`/`Set`), not
-  the concrete `*kvstore.KVStoreService` type. A bank-mandated backing
+  the concrete `*kvstore.KVStoreService` type. An enterprise-mandated backing
   store swaps in cleanly, zero domain-code changes. Confirmed working,
   not a gap.
 - **`internal/adapters/execution` (DBOS) doesn't need an adapter swap at
@@ -4634,7 +4634,7 @@ compromise against it.
 
 Choosing "runtime injection over build variants" (if it's ever chosen —
 nothing here commits to it) would foreclose compile-time exclusion of
-code from the public binary — if a bank's real requirement ever turns
+code from the public binary — if a regulated deployment's real requirement ever turns
 out to be "the proprietary logic must not be in the shipped public
 artifact," runtime injection can't satisfy that; only build tags or a
 genuinely separate module could, and §11.1 already establishes that a
