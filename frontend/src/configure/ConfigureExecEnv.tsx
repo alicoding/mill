@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button, FormControl, Heading, IconButton, Select, Stack, Text, TextInput, VisuallyHidden } from '@primer/react'
-import { DownloadIcon, PlusIcon, TerminalIcon, TrashIcon, UploadIcon } from '@primer/octicons-react'
+import { DownloadIcon, PencilIcon, PlusIcon, TerminalIcon, TrashIcon, UploadIcon } from '@primer/octicons-react'
 import { DataTable } from '@primer/react/experimental'
 import { StatusStamp } from '../shared/StatusStamp'
 import { ResizableTableContainer, TruncatedCell } from '../shared/ResizableTable'
@@ -385,7 +385,7 @@ export function ConfigureExecEnv() {
                 header: '', id: 'actions', width: 'auto', align: 'end',
                 renderCell: (e) => (
                   <Stack direction="horizontal" gap="condensed">
-                    <Button size="small" variant="invisible" onClick={() => startEdit(e)}>{t('edit')}</Button>
+                    <IconButton icon={PencilIcon} aria-label={t('configureExecEnv.editAriaLabel', { label: e.Label })} size="small" variant="invisible" onClick={() => startEdit(e)} />
                     <IconButton icon={DownloadIcon} aria-label={t('configureExecEnv.exportAriaLabel', { label: e.Label })} size="small" variant="invisible" onClick={() => exportEnv(e.ID, e.Label)} />
                     <IconButton icon={TrashIcon} aria-label={t('configureExecEnv.deleteAriaLabel', { label: e.Label })} size="small" variant="invisible" onClick={() => requestDelete(e)} />
                   </Stack>

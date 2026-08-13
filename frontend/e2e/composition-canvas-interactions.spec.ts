@@ -339,7 +339,11 @@ test('Running a workflow with declared Attributes shows an auto-filled test-inpu
 
   await page.getByRole('link', { name: 'Configure' }).click()
   await page.getByRole('tab', { name: 'Attributes' }).click()
-  await page.getByTestId('attributes-workflow-select').selectOption({ label: 'E2E attributes workflow' })
+  // Design wave 3: ConfigureAttributes conforms to its sibling tabs'
+  // InventoryList-row pattern -- row click opens the schema editor,
+  // replacing the old bare `<Select>` dropdown.
+  await page.locator('[data-testid="inventory-row"][data-entity="workflow"]', { has: page.getByText('E2E attributes workflow', { exact: true }) }).click()
+  await expect(page.getByTestId('attributes-editor')).toBeVisible()
   await page.getByRole('button', { name: 'Add attribute' }).click()
   await page.getByPlaceholder('key').fill('urgent')
   await page.getByPlaceholder('label').fill('Urgent')

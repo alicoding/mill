@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button, FormControl, Heading, IconButton, Label, Select, Stack, Text, TextInput, VisuallyHidden } from '@primer/react'
-import { DownloadIcon, PlusIcon, TrashIcon, UploadIcon } from '@primer/octicons-react'
+import { CopyIcon, DownloadIcon, PencilIcon, PlusIcon, TrashIcon, UploadIcon } from '@primer/octicons-react'
 import { DataTable } from '@primer/react/experimental'
 import { ResizableTableContainer, TruncatedCell } from '../shared/ResizableTable'
 import { ConfigureService } from '../shared/bindings'
@@ -336,8 +336,8 @@ export function ConfigureDecisions() {
                 header: '', id: 'actions', width: 'auto', align: 'end',
                 renderCell: (d) => (
                   <Stack direction="horizontal" gap="condensed">
-                    <Button size="small" variant="invisible" onClick={() => startEdit(d)}>{t('edit')}</Button>
-                    <Button size="small" variant="invisible" onClick={() => startCreate(d)}>{t('configureDecisions.duplicate')}</Button>
+                    <IconButton icon={PencilIcon} aria-label={t('configureDecisions.editAriaLabel', { label: d.Label })} size="small" variant="invisible" onClick={() => startEdit(d)} />
+                    <IconButton icon={CopyIcon} aria-label={t('configureDecisions.duplicateAriaLabel', { label: d.Label })} size="small" variant="invisible" onClick={() => startCreate(d)} />
                     <IconButton icon={DownloadIcon} aria-label={t('configureDecisions.exportAriaLabel', { label: d.Label })} size="small" variant="invisible" onClick={() => exportDecision(d.ID, d.Label)} />
                     <IconButton icon={TrashIcon} aria-label={t('configureDecisions.deleteAriaLabel', { label: d.Label })} size="small" variant="invisible" onClick={() => requestDelete(d)} />
                   </Stack>

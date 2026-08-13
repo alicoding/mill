@@ -4554,6 +4554,70 @@ surface can already express.
     Decision output keys — a class, not a component, since the only
     thing every call site needs is one CSS property.
 
+- **Node palette information architecture, `LOCKED`, built (goal 0001,
+  design wave 3, 2026-08-13) — grouped by frontend display group, not
+  domain Kind.** Same full-app design audit's §5 finding: the palette
+  grouped strictly by the 6 domain Kinds (`composition/nodeKind.ts`,
+  a real, LOCKED backend concept), but 14 of Mill's 29 node types share
+  the single `process` Kind (every AI node, both List nodes, the
+  Integration/MCP/code-exec actions, `child-workflow`, `human-review`,
+  `ruleset`), so a Kind-grouped palette put all of those in one
+  undifferentiated 14-item bucket.
+  - `composition/paletteGroups.ts`: a frontend-only display map (9
+    groups — Triggers/Capture/Transform/AI/Data/Actions/Flow/
+    Guardrails/Apply) keyed by NodeType ID, entirely separate from the
+    domain Kind registry it's built from — a node's Kind (what the
+    canvas/execution engine reasons about) is unchanged. Every one of
+    the 29 registered NodeType IDs has an explicit entry (vitest
+    asserts this); an unmapped future ID falls back to its Kind's
+    nearest group and warns to the dev console — never crashes, never
+    hides the item.
+  - Palette labels shorten under their group's own header ("AI:
+    Classify" → "Classify") via a generic strip-the-first-`"word: "`-
+    prefix transform, not a Kind-derived one — wave 1's original
+    version computed the prefix from the item's Kind label, which
+    silently failed for most of the app's node types (their real
+    prefixes — "AI:", "Code:", "List:", "MCP:" — don't match their
+    Kind's label word, e.g. Kind `process`'s "Process: " prefix never
+    matched "AI: Classify"). Canvas node cards and saved-workflow step
+    chips keep the node's full, self-contained label — a card has no
+    surrounding group context to shorten against; only the palette
+    display shortens.
+  - A search box (new — the palette previously had none) filters
+    across all groups, matching either the shortened display text or
+    the full underlying label.
+  - Group-header icons are a themed glyph per group (`ShieldIcon` for
+    Guardrails, `SparkleFillIcon` for AI, etc.), not a Kind-colored
+    square: two of the 9 groups (`flow`: `child-workflow` is Kind
+    `process`, `decision-route` is Kind `decision`; `guardrails`:
+    `human-review`/`ruleset` are Kind `process`, `decision-outcome` is
+    Kind `terminal`) mix domain Kinds, so a single Kind-derived color
+    for the whole group would misrepresent some of its own members.
+- **Configure → Attributes conforms to its sibling tabs' own pattern,
+  `LOCKED`, built (goal 0001, design wave 3).** Was the one Configure
+  tab still shaped as a bare `<Select>` workflow picker + inline
+  editor, instead of the `InventoryList`-rows + `VisuallyHidden`
+  heading structure its 6 siblings all share. The rows here ARE
+  workflows (there's no separate "Attributes" resource to list, so
+  each row uses `ENTITY_ICON.workflow`, the same entity icon every
+  other workflow-referencing surface uses) — row click opens the same
+  schema editor this tab always had. Supersedes wave 1's earlier
+  exception for this one tab (a visible, not hidden, heading, since it
+  had real subtitle copy no sibling did) — consistency with the other
+  6 tabs' structure now wins over that per-tab distinction.
+- **Configure row-action icon-button consistency, `LOCKED`, built
+  (goal 0001, design wave 3).** 5 of 6 Configure tabs with a `DataTable`
+  view (AI Providers, MCP Servers, Lists, Decisions, Execution
+  Environments) rendered their row's Edit action as a text `Button`,
+  inconsistent with `WorkflowsTable.tsx`/`ConfigureRequests.tsx`'s own
+  established icon-`IconButton` convention (Export/Delete already used
+  icons on all 6 tabs — only Edit, and AI Providers' Export/Delete too,
+  were the outliers). Now `PencilIcon` everywhere Edit appears in a
+  table row, `CopyIcon` for Decisions' Duplicate action (matching
+  `RequestSummary.tsx`'s own existing Duplicate-as-`CopyIcon`
+  precedent) — no bespoke icon invented for MCP Servers' "List tools"
+  action, which has no established equivalent elsewhere in the app.
+
 ## 11. Enterprise / regulated deployment readiness
 
 `OPEN` throughout — this section is Research only. Nothing here is
