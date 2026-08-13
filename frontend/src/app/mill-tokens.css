@@ -1,0 +1,112 @@
+/* Mill's own accent scale + node-kind identity colors + mono stack
+   (design wave 2, goal 0001). A separate file from index.css,
+   imported from main.tsx AFTER @primer/primitives' light.css/dark.css
+   -- deliberately, and load-bearing, not a style preference:
+
+   Primer's light.css sets --bgColor-accent-emphasis (and friends) on
+   THREE selectors, not one -- a bare `:root` fallback, PLUS an
+   explicit `[data-color-mode="light"][data-light-theme="light"],
+   [data-color-mode="auto"][data-light-theme="light"]` pair (2
+   attribute selectors, specificity 0,2,0). Mill's default colorMode
+   is "auto" (main.tsx), so that second, higher-specificity rule is
+   what's actually live in the common case, not the bare `:root`
+   fallback. A same-specificity override loses ties to whichever rule
+   loads LAST in the compiled bundle, so this file matches Primer's
+   own selector shape exactly (not a boosted one -- an earlier attempt
+   at `html[data-color-mode=...]` for extra specificity turned out to
+   target the wrong element: Primer's rule ALSO directly matches its
+   own ThemeProvider wrapper <div> inside <body>, which is what all of
+   Mill's real components actually inherit these tokens FROM, not
+   <html> -- a directly-matched declaration on that div always beats
+   whatever <html> resolves to, regardless of specificity, since a
+   value declared directly on an element always wins over one merely
+   inherited from an ancestor) and instead wins by loading later in
+   the cascade. Caught by this file's own e2e proof
+   (e2e/dark-mode.spec.ts's accent-token test) failing against the
+   REAL compiled page after the specificity-only version looked
+   correct on paper -- not assumed correct from reading the CSS.
+
+   Primer's own structure is "muted" (subtle bg tint) + "emphasis"
+   (strong fill) + a separate fgColor for text/links; matched here
+   rather than inventing an extra step Primer itself doesn't have.
+
+   Values contrast-checked against Primer's own --bgColor-default for
+   both themes (WCAG relative-luminance formula, not eyeballed):
+   light #1F6F6B on #ffffff = 5.92:1; dark #3FA39E on #0d1117 = 6.26:1;
+   dark emphasis fill #2B7D77 under white icon/text = 4.88:1 -- all
+   clear AA passes. Dark mode splits fill (bgColor-accent-emphasis,
+   needs contrast FOR white content painted on top of it) from text
+   (fgColor-accent, needs contrast AGAINST the near-black page behind
+   it) into two different shades, same reason Primer's own dark theme
+   does (#1f6feb fill vs #4493f8 text) -- a single bright value can't
+   satisfy both roles at once (the bright anchor alone under white
+   text is only 3.02:1, a real AA fail). */
+
+:root,
+[data-color-mode="light"][data-light-theme="light"],
+[data-color-mode="auto"][data-light-theme="light"] {
+    --mill-accent-emphasis: #1F6F6B;
+    --mill-accent-fg: #1F6F6B;
+    --mill-accent-muted: #DAF3F1;
+    --mill-accent-border-muted: #4FB3AC66;
+
+    --bgColor-accent-emphasis: var(--mill-accent-emphasis);
+    --borderColor-accent-emphasis: var(--mill-accent-emphasis);
+    --fgColor-accent: var(--mill-accent-fg);
+    --bgColor-accent-muted: var(--mill-accent-muted);
+    --borderColor-accent-muted: var(--mill-accent-border-muted);
+
+    /* Node-Kind identity colors -- composition/nodeKind.ts's
+       KIND_ICON_BG, canvas + palette ONLY (never read outside those
+       two consumers, confirmed by grep before this change). Their own
+       custom properties, deliberately never aliased to Primer's
+       semantic accent/success/attention/danger tokens or to the
+       --mill-accent-* app-brand scale above, so a node kind's color
+       can never collide with a status meaning on the same card --
+       the design-audit "green triple duty" finding: Kind `process`
+       used to BE Primer's literal --bgColor-success-emphasis, the
+       exact token StatusStamp's success variant renders, so a process
+       node showing a "run succeeded" status pill doubled the same
+       green for two unrelated meanings on one card. `process` and
+       `decision` (the two kinds that used to alias success-green and
+       attention-amber respectively) get shifted hues here; the other
+       four keep their prior look, just vendored as fixed values
+       instead of borrowed semantic tokens. */
+    --mill-kind-trigger: #8250DF;
+    --mill-kind-capture: #0969DA;
+    --mill-kind-process: #4B7314;
+    --mill-kind-apply: #BC4C00;
+    --mill-kind-decision: #4C6EF5;
+    --mill-kind-terminal: #BF3989;
+
+    /* Mono stack for machine-readable facts (design wave 2, audit §2):
+       URLs/endpoints, IDs/slugs, shell commands, cron expressions,
+       timestamps, doc-path references, hashes. ui-monospace resolves
+       to SF Mono on macOS (Safari/WebKit, which is what Wails' native
+       webview embeds); the rest is a standard cross-platform fallback
+       chain. Consumed via shared/monoText.module.css's `.mono` class,
+       not inlined per call site. Theme-independent, so it lives in
+       the shared block rather than repeated per theme below. */
+    --mill-mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+}
+
+[data-color-mode="dark"][data-dark-theme="dark"],
+[data-color-mode="auto"][data-light-theme="dark"] {
+    --mill-accent-emphasis: #2B7D77;
+    --mill-accent-fg: #3FA39E;
+    --mill-accent-muted: #3FA39E1a;
+    --mill-accent-border-muted: #3FA39E66;
+
+    --bgColor-accent-emphasis: var(--mill-accent-emphasis);
+    --borderColor-accent-emphasis: var(--mill-accent-emphasis);
+    --fgColor-accent: var(--mill-accent-fg);
+    --bgColor-accent-muted: var(--mill-accent-muted);
+    --borderColor-accent-muted: var(--mill-accent-border-muted);
+
+    --mill-kind-trigger: #8957E5;
+    --mill-kind-capture: #1F6FEB;
+    --mill-kind-process: #4F7A16;
+    --mill-kind-apply: #BD561D;
+    --mill-kind-decision: #3B5BDB;
+    --mill-kind-terminal: #BF4B8A;
+}

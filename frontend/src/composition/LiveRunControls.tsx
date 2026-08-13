@@ -1,7 +1,8 @@
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Panel } from '@xyflow/react'
-import { Button, IconButton, Label, type LabelProps, Stack, Text } from '@primer/react'
+import { Button, IconButton, Stack, Text } from '@primer/react'
+import { StatusStamp, type StatusStampVariant } from '../shared/StatusStamp'
 import { BugIcon, PlayIcon, ShieldIcon, SkipIcon, XIcon } from '@primer/octicons-react'
 import type { AttributeDef, Workflow } from '../../bindings/github.com/alicoding/mill/internal/domain/composition/models'
 import { generateSamplePayload } from '../shared/configSchema'
@@ -18,10 +19,10 @@ import runbookStyles from '../shared/ListCard.module.css'
 // Fast Refresh's only-export-components rule intact). See that file's
 // header comment for the full design rationale.
 
-const FINISHED_VARIANT: Record<string, LabelProps['variant']> = {
+const FINISHED_VARIANT: Record<string, StatusStampVariant> = {
   SUCCESS: 'success',
   ERROR: 'danger',
-  CANCELLED: 'secondary',
+  CANCELLED: 'neutral',
   MAX_RECOVERY_ATTEMPTS_EXCEEDED: 'danger',
 }
 
@@ -142,7 +143,7 @@ export function CurrentStepBar({
         })()}
         {barState.mode === 'finished' && (
           <Stack direction="horizontal" gap="condensed" align="center">
-            <Label variant={FINISHED_VARIANT[barState.status] ?? 'secondary'} size="small">{barState.status}</Label>
+            <StatusStamp variant={FINISHED_VARIANT[barState.status] ?? 'neutral'}>{barState.status}</StatusStamp>
             {barState.error && (
               <Text size="small" className={runbookStyles.error}>{truncate(barState.error, 120)}</Text>
             )}

@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Browser } from '@wailsio/runtime'
-import { Button, Checkbox, FormControl, Label, Select, Stack, Text, TextInput, Textarea } from '@primer/react'
+import { Button, Checkbox, FormControl, Select, Stack, Text, TextInput, Textarea } from '@primer/react'
 import { KeyIcon } from '@primer/octicons-react'
+import { KeyComboChip } from '../shared/KeyComboChip'
 import type { AttributeDef, NodeType } from '../../bindings/github.com/alicoding/mill/internal/domain/composition/models'
 import { Type as ConfigFieldType } from '../../bindings/github.com/alicoding/mill/internal/domain/typedfield/models'
 import type { RunStep } from '../shared/bindings'
@@ -150,9 +151,8 @@ export function NodeInspector({ node, workflowId, attrs, nodeType, sameKindNodeT
                 <Text size="small" className={styles.inspectorRecording}>{t('pressCombo')}</Text>
               ) : hotkeyCapture.binding ? (
                 <Stack direction="horizontal" gap="condensed" align="center">
-                  <Label variant="secondary">
-                    <KeyIcon size={12} /> {hotkeyCapture.binding}
-                  </Label>
+                  <KeyIcon size={12} />
+                  <KeyComboChip label={hotkeyCapture.binding} />
                   <Button size="small" variant="invisible" onClick={hotkeyCapture.startRecording}>{t('common:actions.change')}</Button>
                   <Button size="small" variant="invisible" onClick={hotkeyCapture.clear}>{t('common:actions.clear')}</Button>
                 </Stack>

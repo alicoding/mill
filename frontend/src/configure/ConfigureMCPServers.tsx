@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Button, FormControl, Heading, IconButton, Label, Stack, Text, TextInput, VisuallyHidden } from '@primer/react'
+import { Button, FormControl, Heading, IconButton, Stack, Text, TextInput, VisuallyHidden } from '@primer/react'
 import { DownloadIcon, PlusIcon, ServerIcon, TrashIcon, UploadIcon } from '@primer/octicons-react'
 import { DataTable } from '@primer/react/experimental'
+import { StatusStamp } from '../shared/StatusStamp'
 import { ResizableTableContainer, TruncatedCell } from '../shared/ResizableTable'
 import { ConfigureService } from '../shared/bindings'
 import type { MCPServer } from '../../bindings/github.com/alicoding/mill/internal/domain/mcpserver/models'
@@ -182,7 +183,7 @@ export function ConfigureMCPServers() {
       // No !s.BuiltIn guard on Delete -- same "ordinary, fully editable/
       // deletable from the moment it exists" reasoning as
       // ConfigureRequests.tsx/ConfigureLists.tsx's identical badge.
-      labelBadges: s.BuiltIn ? <Label variant="secondary" size="small">{t('builtIn')}</Label> : undefined,
+      labelBadges: s.BuiltIn ? <StatusStamp variant="identity">{t('builtIn')}</StatusStamp> : undefined,
       description: `${s.Command} ${(s.Args ?? []).join(' ')}`.trim(),
       onOpen: () => startEdit(s),
       menuActions: [
@@ -281,7 +282,7 @@ export function ConfigureMCPServers() {
             data={sortedServers.map((s) => ({ ...s, id: s.ID }))}
             columns={[
               { header: t('configureMCPServers.columns.label'), field: 'Label', rowHeader: true, sortBy: 'alphanumeric' },
-              { header: t('configureMCPServers.columns.command'), id: 'command', width: 'growCollapse', minWidth: '160px', renderCell: (s) => <TruncatedCell text={`${s.Command} ${(s.Args ?? []).join(' ')}`.trim()} /> },
+              { header: t('configureMCPServers.columns.command'), id: 'command', width: 'growCollapse', minWidth: '160px', renderCell: (s) => <TruncatedCell text={`${s.Command} ${(s.Args ?? []).join(' ')}`.trim()} mono /> },
               { header: t('configureMCPServers.columns.id'), field: 'ID' },
               {
                 header: '', id: 'actions', width: 'auto', align: 'end',

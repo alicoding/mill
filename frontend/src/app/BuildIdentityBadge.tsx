@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import { Label } from '@primer/react'
+import { StatusStamp } from '../shared/StatusStamp'
 import { SettingsService } from '../shared/bindings'
 import type { BuildInfo } from '../shared/bindings'
 import { useGoSourceStale } from './goLiveness'
@@ -62,19 +62,19 @@ export function BuildIdentityBadge({ buildInfo }: { buildInfo: BuildInfo | null 
     // amber (unlike green/red) isn't self-explanatory at a glance.
     if (goSourceStale) {
       return (
-        <Label
-          variant="attention" size="small" className={styles.devRibbon}
+        <StatusStamp
+          variant="caution" className={styles.devRibbon}
           data-testid="dev-go-stale-badge"
           title={t('buildIdentityBadge.goStaleTooltip')}
         >
           {t('buildIdentityBadge.devGoStale')}
-        </Label>
+        </StatusStamp>
       )
     }
     return (
-      <Label variant="success" size="small" className={styles.devRibbon} data-testid="dev-build-badge">
+      <StatusStamp variant="success" className={styles.devRibbon} data-testid="dev-build-badge">
         {t('buildIdentityBadge.devLive')}
-      </Label>
+      </StatusStamp>
     )
   }
 
@@ -86,32 +86,32 @@ export function BuildIdentityBadge({ buildInfo }: { buildInfo: BuildInfo | null 
     // the bundle got newer). A server-mode browser tab only informs: it
     // must never kill the shared server.
     return isNativeWebview ? (
-      <Label
-        variant="danger" size="small"
+      <StatusStamp
+        variant="danger"
         className={`${styles.devRibbon} ${styles.devRibbonAction}`}
         data-testid="stale-build-badge"
         onClick={() => { void SettingsService.QuitApp() }}
       >
         {t('buildIdentityBadge.staleBuildClickToClose', { binaryHead, repoHead: __MILL_REPO_HEAD__ })}
-      </Label>
+      </StatusStamp>
     ) : (
-      <Label variant="danger" size="small" className={styles.devRibbon} data-testid="stale-build-badge">
+      <StatusStamp variant="danger" className={styles.devRibbon} data-testid="stale-build-badge">
         {t('buildIdentityBadge.staleBuildRestart', { binaryHead, repoHead: __MILL_REPO_HEAD__ })}
-      </Label>
+      </StatusStamp>
     )
   }
 
   if (isNativeWebview) {
     return (
-      <Label variant="secondary" size="small" className={styles.devRibbon} data-testid="installed-build-badge">
+      <StatusStamp variant="neutral" className={styles.devRibbon} data-testid="installed-build-badge">
         {t('buildIdentityBadge.installed')}{binaryHead ? ` · ${binaryHead}` : ''}
-      </Label>
+      </StatusStamp>
     )
   }
 
   return (
-    <Label variant="secondary" size="small" className={styles.devRibbon} data-testid="server-build-badge">
+    <StatusStamp variant="neutral" className={styles.devRibbon} data-testid="server-build-badge">
       {t('buildIdentityBadge.server')}{binaryHead ? ` · ${binaryHead}` : ''}
-    </Label>
+    </StatusStamp>
   )
 }

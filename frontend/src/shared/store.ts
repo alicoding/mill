@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import type { LabelProps } from '@primer/react'
+import type { StatusStampVariant } from './StatusStamp'
 import { CompositionService, ConfigureService, SettingsService } from './bindings'
 import type { NodeType, Workflow } from '../../bindings/github.com/alicoding/mill/internal/domain/composition/models'
 import type { HTTPRequest } from '../../bindings/github.com/alicoding/mill/internal/domain/httprequest/models'
@@ -107,14 +107,14 @@ export function viewsEqual(a: View, b: View): boolean {
 
 // Shared by PlaceholderView and the sidebar nav's status dot -- DRYed
 // up here rather than left as separate copies.
-const STATUS_VARIANT: Record<string, LabelProps['variant']> = {
+const STATUS_VARIANT: Record<string, StatusStampVariant> = {
   LOCKED: 'success',
-  OPEN: 'attention',
-  PARKED: 'secondary',
+  OPEN: 'caution',
+  PARKED: 'neutral',
 }
 
-export function statusVariant(status: string): LabelProps['variant'] {
-  return STATUS_VARIANT[status] ?? 'secondary'
+export function statusVariant(status: string): StatusStampVariant {
+  return STATUS_VARIANT[status] ?? 'neutral'
 }
 
 // Same three-way status mapping as statusVariant, expressed as a

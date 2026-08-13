@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Button, FormControl, Heading, IconButton, Label, Select, Stack, Text, TextInput, VisuallyHidden } from '@primer/react'
+import { Button, FormControl, Heading, IconButton, Select, Stack, Text, TextInput, VisuallyHidden } from '@primer/react'
 import { DownloadIcon, PlusIcon, TerminalIcon, TrashIcon, UploadIcon } from '@primer/octicons-react'
 import { DataTable } from '@primer/react/experimental'
+import { StatusStamp } from '../shared/StatusStamp'
 import { ResizableTableContainer, TruncatedCell } from '../shared/ResizableTable'
 import { ConfigureService } from '../shared/bindings'
 import type { ExecEnv } from '../../bindings/github.com/alicoding/mill/internal/domain/execenv/models'
@@ -228,7 +229,7 @@ export function ConfigureExecEnv() {
       // No !e.BuiltIn guard on Delete -- same "ordinary, fully editable/
       // deletable from the moment it exists" reasoning as
       // ConfigureRequests.tsx/ConfigureLists.tsx's identical badge.
-      labelBadges: e.BuiltIn ? <Label variant="secondary" size="small">{t('builtIn')}</Label> : undefined,
+      labelBadges: e.BuiltIn ? <StatusStamp variant="identity">{t('builtIn')}</StatusStamp> : undefined,
       description: `${SHELL_LABEL[e.Shell] ?? e.Shell} · ${e.ProfileMode} · ${e.Dir === TEMP_DIR_SENTINEL ? t('configureExecEnv.freshTempDirPerRun') : e.Dir}`,
       onOpen: () => startEdit(e),
       menuActions: [
@@ -379,7 +380,7 @@ export function ConfigureExecEnv() {
               { header: t('configureExecEnv.columns.label'), field: 'Label', rowHeader: true, sortBy: 'alphanumeric' },
               { header: t('configureExecEnv.columns.shell'), id: 'shell', renderCell: (e) => SHELL_LABEL[e.Shell] ?? e.Shell },
               { header: t('configureExecEnv.columns.profile'), field: 'ProfileMode' },
-              { header: t('configureExecEnv.columns.dir'), id: 'dir', width: 'growCollapse', minWidth: '160px', renderCell: (e) => <TruncatedCell text={e.Dir} /> },
+              { header: t('configureExecEnv.columns.dir'), id: 'dir', width: 'growCollapse', minWidth: '160px', renderCell: (e) => <TruncatedCell text={e.Dir} mono /> },
               {
                 header: '', id: 'actions', width: 'auto', align: 'end',
                 renderCell: (e) => (

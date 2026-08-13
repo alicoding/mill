@@ -1,11 +1,13 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Button, Heading, Label, Stack, Text } from '@primer/react'
+import { Button, Heading, Stack, Text } from '@primer/react'
 import { DataTable } from '@primer/react/experimental'
+import { StatusStamp } from '../shared/StatusStamp'
 import { ResizableTableContainer, TruncatedCell } from '../shared/ResizableTable'
 import { CompositionService } from '../shared/bindings'
 import type { Workflow } from '../../bindings/github.com/alicoding/mill/internal/domain/composition/models'
 import styles from '../shared/ListCard.module.css'
+import monoStyles from '../shared/monoText.module.css'
 import PageContainer from '../shared/PageContainer'
 
 // The Versions tab on a saved workflow's editor (docs/adr/0021): the
@@ -33,11 +35,11 @@ export function WorkflowVersionsPanel({ workflow, onChanged }: {
         <Stack direction="horizontal" gap="condensed" align="center">
           <Heading as="h2" variant="small" id="versions-heading">{t('workflowVersionsPanel.heading')}</Heading>
           {workflow.PublishedVersion > 0 ? (
-            <Label variant="success" data-testid="published-badge">{t('publishedVersionLive', { version: workflow.PublishedVersion })}</Label>
+            <StatusStamp variant="success" data-testid="published-badge">{t('publishedVersionLive', { version: workflow.PublishedVersion })}</StatusStamp>
           ) : (
-            <Label variant="attention" data-testid="published-badge">{t('workflowVersionsPanel.neverPublished')}</Label>
+            <StatusStamp variant="caution" data-testid="published-badge">{t('workflowVersionsPanel.neverPublished')}</StatusStamp>
           )}
-          {workflow.Disabled && <Label variant="severe" data-testid="disabled-badge">{t('disabled')}</Label>}
+          {workflow.Disabled && <StatusStamp variant="danger" data-testid="disabled-badge">{t('disabled')}</StatusStamp>}
         </Stack>
         <Stack direction="horizontal" gap="condensed">
           <Button
@@ -78,13 +80,13 @@ export function WorkflowVersionsPanel({ workflow, onChanged }: {
                 renderCell: (v) => (
                   <Stack direction="horizontal" gap="condensed" align="center">
                     <Text weight="semibold">{t('workflowVersionsPanel.versionPrefix', { version: v.Version })}</Text>
-                    {v.Version === workflow.PublishedVersion && <Label variant="success" size="small">{t('workflowVersionsPanel.live')}</Label>}
+                    {v.Version === workflow.PublishedVersion && <StatusStamp variant="success">{t('workflowVersionsPanel.live')}</StatusStamp>}
                   </Stack>
                 ),
               },
               {
                 header: t('workflowVersionsPanel.columns.saved'), id: 'saved', width: 'auto',
-                renderCell: (v) => new Date(v.SavedAt as unknown as string).toLocaleString(),
+                renderCell: (v) => <span className={monoStyles.mono}>{new Date(v.SavedAt as unknown as string).toLocaleString()}</span>,
               },
               { header: t('workflowVersionsPanel.columns.label'), id: 'label', width: 'growCollapse', minWidth: '160px', renderCell: (v) => <TruncatedCell text={v.Label} /> },
               {

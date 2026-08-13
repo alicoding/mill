@@ -1,0 +1,60 @@
+/* Design wave 2 (goal 0001, audit §1): one stamp shape for every
+   status/state pill in the app, replacing 7 ad-hoc `<Label
+   variant="...">` families that had each independently picked their
+   own subset of Primer's variant palette. Deliberately NOT a rounded
+   Primer Label pill -- a slightly-squared badge with a mono uppercase
+   label and a real (if subtle) border, reading as "a stamped fact,"
+   distinct from Primer's own softer rounded Label used for
+   categorization tags (Configure's AUTH_LABEL_MAP, Decisions'
+   category column) that intentionally stay Label -- StatusStamp is
+   for STATE (live/draft/success/error/...), Label stays for
+   CATEGORY. */
+.stamp {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-family: var(--mill-mono);
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    line-height: 1.4;
+    padding: 1px 6px;
+    border-radius: 4px;
+    border: 1px solid transparent;
+    white-space: nowrap;
+}
+
+.success {
+    color: var(--fgColor-success);
+    background: var(--bgColor-success-muted);
+    border-color: var(--borderColor-success-muted);
+}
+
+.caution {
+    color: var(--fgColor-attention);
+    background: var(--bgColor-attention-muted);
+    border-color: var(--borderColor-attention-muted);
+}
+
+.danger {
+    color: var(--fgColor-danger);
+    background: var(--bgColor-danger-muted);
+    border-color: var(--borderColor-danger-muted);
+}
+
+.neutral {
+    color: var(--fgColor-muted);
+    background: var(--bgColor-neutral-muted);
+    border-color: var(--borderColor-muted);
+}
+
+/* Mill's own accent (index.css's --mill-accent-*) -- identity badges
+   like "Built-in" and "Test Data" read as Mill's own voice, not a
+   status verdict, the same distinction StatusStamp variants draw
+   between "done/success" (green) elsewhere. */
+.identity {
+    color: var(--fgColor-accent);
+    background: var(--bgColor-accent-muted);
+    border-color: var(--borderColor-accent-muted);
+}

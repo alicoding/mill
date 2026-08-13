@@ -5,6 +5,12 @@ import './index.css'
 import '@primer/primitives/dist/css/primitives.css'
 import '@primer/primitives/dist/css/functional/themes/light.css'
 import '@primer/primitives/dist/css/functional/themes/dark.css'
+// AFTER Primer's own theme CSS, deliberately -- mill-tokens.css's own
+// header comment has the full reasoning (a same-specificity override
+// needs to win the cascade tie by load order here, not just win on
+// paper via a selector-specificity trick that turned out to target
+// the wrong element).
+import './mill-tokens.css'
 import { ThemeProvider, BaseStyles } from '@primer/react'
 import App from './App'
 import { QuickPanelApp } from './QuickPanelApp'

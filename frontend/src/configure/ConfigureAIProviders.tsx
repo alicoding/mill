@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Button, FormControl, Heading, Label, Select, Stack, Text, TextInput, VisuallyHidden } from '@primer/react'
+import { Button, FormControl, Heading, Select, Stack, Text, TextInput, VisuallyHidden } from '@primer/react'
 import { DownloadIcon, PlusIcon, SparkleFillIcon, UploadIcon } from '@primer/octicons-react'
 import { DataTable } from '@primer/react/experimental'
+import { StatusStamp } from '../shared/StatusStamp'
 import { ResizableTableContainer, TruncatedCell } from '../shared/ResizableTable'
 import { ConfigureService } from '../shared/bindings'
 import type { AIProvider } from '../../bindings/github.com/alicoding/mill/internal/domain/aiprovider/models'
@@ -174,7 +175,7 @@ export function ConfigureAIProviders() {
       icon: ENTITY_ICON.aiprovider,
       label: p.Label,
       updatedLabel: formatUpdated(p.UpdatedAt),
-      labelBadges: p.BuiltIn ? <Label variant="secondary" size="small">{t('builtIn')}</Label> : undefined,
+      labelBadges: p.BuiltIn ? <StatusStamp variant="identity">{t('builtIn')}</StatusStamp> : undefined,
       description: `${KIND_LABEL[p.Kind] ?? p.Kind} – ${p.Model}${p.BaseURL ? ` – ${p.BaseURL}` : ''}`,
       onOpen: () => startEdit(p),
       menuActions: [
@@ -275,7 +276,7 @@ export function ConfigureAIProviders() {
               { header: t('configureAIProviders.columns.label'), field: 'Label', rowHeader: true, sortBy: 'alphanumeric' },
               { header: t('configureAIProviders.columns.kind'), id: 'kind', renderCell: (p) => <Text>{KIND_LABEL[p.Kind] ?? p.Kind}</Text> },
               { header: t('configureAIProviders.columns.model'), field: 'Model' },
-              { header: t('configureAIProviders.columns.baseUrl'), id: 'baseURL', width: 'growCollapse', minWidth: '160px', renderCell: (p) => <TruncatedCell text={p.BaseURL} /> },
+              { header: t('configureAIProviders.columns.baseUrl'), id: 'baseURL', width: 'growCollapse', minWidth: '160px', renderCell: (p) => <TruncatedCell text={p.BaseURL} mono /> },
               {
                 header: '', id: 'actions', width: 'auto', align: 'end',
                 renderCell: (p) => (
