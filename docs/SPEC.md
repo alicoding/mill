@@ -4213,6 +4213,22 @@ recorded as a real design input (`OPEN`), never silently dropped.
   incidents: `task dev`'s start sweep also clears an orphaned vite-port
   listener (`lsof -ti :9245`), and a non-blocking pre-start disk check
   warns (never blocks) below 2GB free, naming `go clean -cache`.
+  **Update (2026-08-13, BACKLOG.md Standing #8): the start-of-session
+  sweep above only ever ran ONCE, at `task dev` startup — orphans could
+  still accumulate WITHIN one long-running session, one per Go-rebuild
+  cycle, directly caught live (a running session had two concurrent
+  `mill.dev.app` processes, one orphaned into a foreign process group
+  `atterpac/refresh`'s own tracking never reaped — root cause not fully
+  pinned to one line in a vendored dependency this repo doesn't own).**
+  Two mechanical fixes: `build/config.yml`'s `dev_mode.executes` gained
+  a `type: blocking` reap step (`pkill -f` the `.dev.app` binary,
+  re-runs every reload cycle, confirmed against the vendored engine
+  source) right before the `primary` run step, backstopping refresh's
+  own kill regardless of whether it succeeds; and `internal/devguard` (a
+  real, unit-tested Go package) runs as `Taskfile.yml`'s `dev:` task's
+  first step, refusing a second concurrent `task dev` by naming the
+  already-running PID instead of letting the existing sweep silently
+  kill a genuinely live first session's own vite/app.
 
 ## 9.5 Platform kernel & extension contract
 
