@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import { Banner } from '@primer/react'
 
 interface ExternalChangeBannerProps {
@@ -16,13 +17,14 @@ interface ExternalChangeBannerProps {
 // consequence of that choice (Save still overwrites the external edit,
 // the existing last-write-wins behavior, not new here).
 export function ExternalChangeBanner({ onReload, onKeep }: ExternalChangeBannerProps) {
+  const { t } = useTranslation('composition')
   return (
     <Banner
       variant="warning"
-      title="This workflow was changed outside this editor"
-      description="An MCP client updated this workflow's definition while you had unsaved edits open. Keeping your draft means saving here later will overwrite that external change (last write wins)."
-      primaryAction={<Banner.PrimaryAction onClick={onReload}>Reload</Banner.PrimaryAction>}
-      secondaryAction={<Banner.SecondaryAction onClick={onKeep}>Keep my draft</Banner.SecondaryAction>}
+      title={t('externalChangeBanner.title')}
+      description={t('externalChangeBanner.description')}
+      primaryAction={<Banner.PrimaryAction onClick={onReload}>{t('externalChangeBanner.reload')}</Banner.PrimaryAction>}
+      secondaryAction={<Banner.SecondaryAction onClick={onKeep}>{t('externalChangeBanner.keepMyDraft')}</Banner.SecondaryAction>}
       onDismiss={onKeep}
       data-testid="external-change-banner"
     />

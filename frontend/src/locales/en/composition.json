@@ -22,6 +22,117 @@
     "runInStepModeAriaLabel": "Run in step mode",
     "runInStepModeTooltip": "Run in step mode -- pauses before every node so you can inspect and edit its data (docs/adr/0031)."
   },
+  "canvasNodeView": {
+    "runStatus": {
+      "done": "DONE",
+      "active": "ACTIVE",
+      "pending": "PENDING",
+      "failed": "FAILED",
+      "awaiting-approval": "WAITING",
+      "denied": "DENIED"
+    },
+    "outputTitle": "Output: {{output}}",
+    "guardrailDeniedTitle": "Denied by guardrail rule{{ruleSuffix}} — this step will not run",
+    "guardrailRuleSuffix": " \"{{rule}}\"",
+    "guardrailAskTitle": "Asks for approval before running{{ruleSuffix}}",
+    "guardrailAskRuleSuffix": " — {{rule}}",
+    "breakpointSaveFirst": "Save this workflow before setting breakpoints.",
+    "breakpointSetTitle": "Breakpoint set — click to remove (pauses here for inspection before this step runs)",
+    "breakpointUnsetTitle": "Click to pause here for inspection before this step runs"
+  },
+  "hotkeyCapture": {
+    "reservedByMacOS": "{{combo}} is reserved by macOS ({{reason}}) — pick another combo",
+    "clashWithCommand": "this combo is already bound to command \"{{label}}\" -- pick another, or reset it there first"
+  },
+  "draftWorkflowSchema": {
+    "needsLabel": "A workflow needs a label",
+    "needsAtLeastOneNode": "A workflow needs at least one node",
+    "danglingConnection": "A connection references a node that no longer exists.",
+    "terminalCannotHaveOutgoing": "A Decision node (a terminal outcome) cannot have an outgoing connection.",
+    "onlyBranchCanFanOut": "Only a Branch node can have more than one outgoing connection.",
+    "needsExactlyOneStart": "A workflow must have exactly one starting node.",
+    "notValidYetFallback": "This workflow is not valid yet."
+  },
+  "validationPanel": {
+    "errorCount": "{{count}} error{{plural}}",
+    "warningCount": "{{count}} warning{{plural}}",
+    "issuesAriaLabel": "Workflow validation issues",
+    "copied": "Copied",
+    "copyIssues": "Copy issues"
+  },
+  "workflowEditorTab": {
+    "sectionsAriaLabel": "{{label}} sections",
+    "canvas": "Canvas",
+    "runs": "Runs",
+    "versions": "Versions"
+  },
+  "testRunDialog": {
+    "title": "Test run — {{label}}",
+    "cancel": "Cancel",
+    "run": "Run",
+    "initialPayload": "Initial payload"
+  },
+  "nodePalette": {
+    "addSteps": "Add steps",
+    "onlyOneTriggerTitle": "A workflow can only have one trigger. Select the existing trigger node on the canvas to change its type instead."
+  },
+  "externalChangeBanner": {
+    "title": "This workflow was changed outside this editor",
+    "description": "An MCP client updated this workflow's definition while you had unsaved edits open. Keeping your draft means saving here later will overwrite that external change (last write wins).",
+    "reload": "Reload",
+    "keepMyDraft": "Keep my draft"
+  },
+  "canvasMetaHeader": {
+    "labelAriaLabel": "Label",
+    "labelPlaceholder": "My workflow",
+    "hideDetails": "Hide details",
+    "addDetails": "Add details",
+    "viewing": "Viewing",
+    "edit": "Edit",
+    "saving": "Saving…",
+    "saveChanges": "Save changes",
+    "saveWorkflow": "Save workflow",
+    "description": "Description"
+  },
+  "canvasToolbar": {
+    "backAriaLabel": "Back to workflows",
+    "hideAddStepsAriaLabel": "Hide add steps panel",
+    "addStepsAriaLabel": "Add steps",
+    "undoAriaLabel": "Undo",
+    "redoAriaLabel": "Redo",
+    "autoLayoutAriaLabel": "Auto-layout",
+    "deleteSelectedAriaLabel": "Delete selected",
+    "addStepsHint": "Add steps to drag a node type onto the canvas, connect them, click a node to configure it."
+  },
+  "compositionCanvas": {
+    "onlyDecisionEdgesConfigurable": "Only a Decision node’s outgoing edges are configurable.",
+    "selectNodeToConfigure": "Select a node to configure it."
+  },
+  "compositionView": {
+    "heading": "Workflows",
+    "subtitle": "Compose a workflow by connecting trigger, capture, process, and apply steps on a canvas — configuring each step happens as you add it, right there on the canvas. Every workflow, including the seeded examples below, is fully editable and deletable from the moment it exists.",
+    "savedWorkflowsHeading": "Saved workflows",
+    "import": "Import",
+    "newWorkflow": "New workflow",
+    "builtIn": "built-in",
+    "draft": "draft",
+    "testAriaLabel": "Test {{label}}",
+    "runAriaLabel": "Run {{label}}",
+    "runTitleDrifted": "Test run of the draft — differs from the published version.",
+    "runTitle": "Test run of the draft.",
+    "test": "Test",
+    "run": "Run",
+    "menu": {
+      "edit": "Edit",
+      "export": "Export",
+      "delete": "Delete"
+    },
+    "deleteConfirmTitle": "Delete workflow?",
+    "deleteConfirmBody": "This permanently deletes \"{{label}}\". This cannot be undone.",
+    "searchPlaceholder": "Search workflows…",
+    "emptyHeading": "No workflows yet",
+    "emptyDescription": "Compose a workflow from trigger, capture, process, and apply steps on the canvas."
+  },
   "workflowHoverPreview": {
     "previewAriaLabel": "Workflow preview",
     "workflowNoLongerExists": "This workflow no longer exists.",
@@ -68,6 +179,10 @@
     "allKinds": "All kinds",
     "test": "Test",
     "triggered": "Triggered",
+    "kindLabel": {
+      "test": "test",
+      "triggered": "triggered"
+    },
     "noRunsYet": "No runs yet — run this workflow from its Canvas tab.",
     "columns": {
       "status": "Status",

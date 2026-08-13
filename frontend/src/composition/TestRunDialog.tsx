@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import { Checkbox, Dialog, FormControl, Stack, TextInput } from '@primer/react'
 import { Type as ConfigFieldType } from '../../bindings/github.com/alicoding/mill/internal/domain/typedfield/models'
 import type { AttributeDef } from '../../bindings/github.com/alicoding/mill/internal/domain/composition/models'
@@ -33,15 +34,16 @@ export default function TestRunDialog({
   payload?: string
   onPayloadChange?: (value: string) => void
 }) {
+  const { t } = useTranslation('composition')
   return (
-    <Dialog title={`Test run — ${workflowLabel}`} onClose={onCancel} footerButtons={[
-      { content: 'Cancel', onClick: onCancel },
-      { content: 'Run', buttonType: 'primary', onClick: onRun },
+    <Dialog title={t('testRunDialog.title', { label: workflowLabel })} onClose={onCancel} footerButtons={[
+      { content: t('testRunDialog.cancel'), onClick: onCancel },
+      { content: t('testRunDialog.run'), buttonType: 'primary', onClick: onRun },
     ]}>
       <Stack direction="vertical" gap="normal">
         {payloadHint && onPayloadChange && (
           <FormControl>
-            <FormControl.Label>Initial payload</FormControl.Label>
+            <FormControl.Label>{t('testRunDialog.initialPayload')}</FormControl.Label>
             <FormControl.Caption>{payloadHint}</FormControl.Caption>
             <TextInput
               value={payload ?? ''}

@@ -1,4 +1,5 @@
 import { Panel } from '@xyflow/react'
+import { useTranslation } from 'react-i18next'
 import { IconButton, Stack, Text } from '@primer/react'
 import { ArrowLeftIcon, ColumnsIcon, RedoIcon, SidebarCollapseIcon, SidebarExpandIcon, TrashIcon, UndoIcon } from '@primer/octicons-react'
 import type { Issue } from '../../bindings/github.com/alicoding/mill/internal/domain/composition/models'
@@ -40,29 +41,30 @@ export function CanvasToolbar({
   onBack, readOnly, paletteOpen, onTogglePalette, canUndo, onUndo, canRedo, onRedo,
   layingOut, hasNodes, onAutoLayout, onDeleteSelected, validationIssues, workflowLabel, workflowId, onSelectIssue,
 }: CanvasToolbarProps) {
+  const { t } = useTranslation('composition')
   return (
     <Panel position="top-left" className={styles.canvasToolbar}>
       <Stack direction="horizontal" gap="condensed" align="center">
-        <IconButton icon={ArrowLeftIcon} aria-label="Back to workflows" size="small" onClick={onBack} />
+        <IconButton icon={ArrowLeftIcon} aria-label={t('canvasToolbar.backAriaLabel')} size="small" onClick={onBack} />
         {!readOnly && (
           <>
             <IconButton
               icon={paletteOpen ? SidebarCollapseIcon : SidebarExpandIcon}
-              aria-label={paletteOpen ? 'Hide add steps panel' : 'Add steps'}
+              aria-label={paletteOpen ? t('canvasToolbar.hideAddStepsAriaLabel') : t('canvasToolbar.addStepsAriaLabel')}
               size="small"
               onClick={onTogglePalette}
               data-testid="toggle-palette"
             />
-            <IconButton icon={UndoIcon} aria-label="Undo" size="small" disabled={!canUndo} onClick={onUndo} />
-            <IconButton icon={RedoIcon} aria-label="Redo" size="small" disabled={!canRedo} onClick={onRedo} />
-            <IconButton icon={ColumnsIcon} aria-label="Auto-layout" size="small" disabled={layingOut || !hasNodes} onClick={onAutoLayout} />
-            <IconButton icon={TrashIcon} aria-label="Delete selected" size="small" onClick={onDeleteSelected} />
+            <IconButton icon={UndoIcon} aria-label={t('canvasToolbar.undoAriaLabel')} size="small" disabled={!canUndo} onClick={onUndo} />
+            <IconButton icon={RedoIcon} aria-label={t('canvasToolbar.redoAriaLabel')} size="small" disabled={!canRedo} onClick={onRedo} />
+            <IconButton icon={ColumnsIcon} aria-label={t('canvasToolbar.autoLayoutAriaLabel')} size="small" disabled={layingOut || !hasNodes} onClick={onAutoLayout} />
+            <IconButton icon={TrashIcon} aria-label={t('canvasToolbar.deleteSelectedAriaLabel')} size="small" onClick={onDeleteSelected} />
           </>
         )}
         <ValidationSurface issues={validationIssues} workflowLabel={workflowLabel} workflowId={workflowId} onSelectIssue={onSelectIssue} />
         {!readOnly && (
           <Text size="small" className={runbookStyles.muted}>
-            Add steps to drag a node type onto the canvas, connect them, click a node to configure it.
+            {t('canvasToolbar.addStepsHint')}
           </Text>
         )}
       </Stack>

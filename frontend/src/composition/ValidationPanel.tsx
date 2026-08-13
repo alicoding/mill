@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { AnchoredOverlay, Button, Label, Stack, Text } from '@primer/react'
 import { AlertFillIcon, CheckIcon, CopyIcon, XCircleFillIcon } from '@primer/octicons-react'
 import type { Issue } from '../../bindings/github.com/alicoding/mill/internal/domain/composition/models'
@@ -23,6 +24,7 @@ export function ValidationSurface({ issues, workflowLabel, workflowId, onSelectI
   workflowId: string
   onSelectIssue: (issue: Issue) => void
 }) {
+  const { t } = useTranslation('composition')
   const [open, setOpen] = useState(false)
   const [copied, setCopied] = useState(false)
   if (issues.length === 0) return null
@@ -41,15 +43,15 @@ export function ValidationSurface({ issues, workflowLabel, workflowId, onSelectI
   const errorCount = issues.filter((i) => i.Severity === 'error').length
   const warningCount = issues.length - errorCount
   const parts: string[] = []
-  if (errorCount > 0) parts.push(`${errorCount} error${errorCount === 1 ? '' : 's'}`)
-  if (warningCount > 0) parts.push(`${warningCount} warning${warningCount === 1 ? '' : 's'}`)
+  if (errorCount > 0) parts.push(t('validationPanel.errorCount', { count: errorCount, plural: errorCount === 1 ? '' : 's' }))
+  if (warningCount > 0) parts.push(t('validationPanel.warningCount', { count: warningCount, plural: warningCount === 1 ? '' : 's' }))
 
   return (
     <AnchoredOverlay
       open={open}
       onOpen={() => setOpen(true)}
       onClose={() => setOpen(false)}
-      overlayProps={{ role: 'dialog', 'aria-label': 'Workflow validation issues' }}
+      overlayProps={{ role: 'dialog', 'aria-label': t('validationPanel.issuesAriaLabel') }}
       renderAnchor={(anchorProps) => (
         <Label
           {...anchorProps}
@@ -73,7 +75,7 @@ export function ValidationSurface({ issues, workflowLabel, workflowId, onSelectI
             data-testid="copy-issues"
             alignContent="start"
           >
-            {copied ? 'Copied' : 'Copy issues'}
+            {copied ? t('validationPanel.copied') : t('validationPanel.copyIssues')}
           </Button>
           {issues.map((issue, i) => (
             <button
