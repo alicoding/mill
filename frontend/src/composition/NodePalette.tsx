@@ -1,4 +1,5 @@
 import type { DragEvent } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Text, TreeView } from '@primer/react'
 import type { NodeType } from '../../bindings/github.com/alicoding/mill/internal/domain/composition/models'
 import { KIND_ICON, KIND_ICON_BG, KIND_LABEL } from './nodeKind'
@@ -64,13 +65,14 @@ function shortLabel(nt: NodeType): string {
 // default-safe-guardrail shape SPEC.md §8 already uses elsewhere, and
 // beats a raw Save-time error a user has to decode after the fact.
 export function NodePalette({ nodeTypes, hasTrigger }: NodePaletteProps) {
+  const { t } = useTranslation('composition')
   const kinds = [...new Set(nodeTypes.map((nt) => nt.Kind))]
   const byKind = new Map(kinds.map((kind) => [kind, nodeTypes.filter((nt) => nt.Kind === kind)]))
 
   return (
     <div className={styles.palette} data-testid="palette-panel">
-      <Text size="small" weight="semibold" className={styles.paletteHeading}>Add steps</Text>
-      <TreeView aria-label="Add steps">
+      <Text size="small" weight="semibold" className={styles.paletteHeading}>{t('nodePalette.addSteps')}</Text>
+      <TreeView aria-label={t('nodePalette.addSteps')}>
         {kinds.map((kind) => (
           <TreeView.Item key={kind} id={`palette-kind-${kind}`} defaultExpanded>
             <TreeView.LeadingVisual>{kindIcon(kind)}</TreeView.LeadingVisual>
@@ -88,7 +90,7 @@ export function NodePalette({ nodeTypes, hasTrigger }: NodePaletteProps) {
                     aria-disabled={disabled}
                     title={
                       disabled
-                        ? 'A workflow can only have one trigger. Select the existing trigger node on the canvas to change its type instead.'
+                        ? t('nodePalette.onlyOneTriggerTitle')
                         : nt.Label
                     }
                     data-testid="palette-item"

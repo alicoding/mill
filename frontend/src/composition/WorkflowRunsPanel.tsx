@@ -23,10 +23,12 @@ const STATUS_VARIANT: Record<string, LabelProps['variant']> = {
   MAX_RECOVERY_ATTEMPTS_EXCEEDED: 'danger',
 }
 
-const KIND_LABEL: Record<RunKind, string> = {
-  [RunKind.$zero]: 'test', // pre-docs/adr/0008 runs recorded before Kind existed default to "test" server-side (executionservice.go)
-  [RunKind.RunKindTest]: 'test',
-  [RunKind.RunKindTriggered]: 'triggered',
+function kindLabelFor(t: (key: string) => string): Record<RunKind, string> {
+  return {
+    [RunKind.$zero]: t('workflowRunsPanel.kindLabel.test'), // pre-docs/adr/0008 runs recorded before Kind existed default to "test" server-side (executionservice.go)
+    [RunKind.RunKindTest]: t('workflowRunsPanel.kindLabel.test'),
+    [RunKind.RunKindTriggered]: t('workflowRunsPanel.kindLabel.triggered'),
+  }
 }
 
 const KIND_VARIANT: Record<RunKind, LabelProps['variant']> = {
@@ -75,6 +77,7 @@ interface WorkflowRunsPanelProps {
 // and unchanged by this.
 function WorkflowRunsPanel({ workflowId, attrs, initialRunId, onInitialRunConsumed }: WorkflowRunsPanelProps) {
   const { t } = useTranslation('composition')
+  const KIND_LABEL = kindLabelFor(t)
   const [runs, setRuns] = useState<RunSummary[] | null>(null)
   const [selectedRunID, setSelectedRunID] = useState<string | null>(null)
   // Scrolls the detail card into view when a row is picked -- the card
