@@ -8,6 +8,9 @@ pre-commit:
     - name: file-loc-limit
       glob: "*.{go,ts,tsx}"
       run: ./scripts/check-loc.sh
+    - name: workflow-yaml
+      glob: ".github/workflows/*.yml"
+      run: ./scripts/check-workflow-yaml.sh
     - name: comment-hygiene
       glob: "*.{go,ts,tsx}"
       run: ./scripts/check-comment-hygiene.sh

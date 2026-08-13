@@ -88,6 +88,25 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - run: ./scripts/check-loc.sh
 
+  # Mirrors lefthook.yml's own workflow-yaml job -- same script, plus
+  # actionlint for semantic checks the parse can't see. Unconditional
+  # like file-loc-limit: GitHub only parses a workflow when its trigger
+  # fires, so a syntax error in a tag-triggered workflow otherwise
+  # merges through green CI and detonates at release time (v0.2.0's
+  # first run).
+  workflow-lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - run: ./scripts/check-workflow-yaml.sh
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: '1.25'
+          cache: false
+      - run: go install github.com/rhysd/actionlint/cmd/actionlint@v1.7.7
+      - run: actionlint
+
   # Mirrors lefthook.yml's own comment-hygiene job -- same script
   # (.claude/rules/comments.md is the standard it enforces). Grep-only,
   # so like file-loc-limit it needs no build setup and no changes gate.
@@ -421,6 +440,7 @@ jobs:
     needs:
       - changes
       - file-loc-limit
+      - workflow-lint
       - comment-hygiene
       - ui-copy
       - rules-frontmatter
