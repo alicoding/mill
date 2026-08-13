@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Browser } from '@wailsio/runtime'
-import { Button, Checkbox, FormControl, Heading, Label, SegmentedControl, Stack, Text, TextInput, useTheme } from '@primer/react'
+import { Button, Checkbox, FormControl, Heading, SegmentedControl, Stack, Text, TextInput, useTheme } from '@primer/react'
 import { SunIcon, MoonIcon, DeviceDesktopIcon, KeyIcon } from '@primer/octicons-react'
+import { KeyComboChip } from '../shared/KeyComboChip'
 import { SettingsService } from '../shared/bindings'
 import { describeCombo, keyFromEventCode, modsFromEvent, reservedByMacOS } from '../shared/keybinding'
 import { isAccessibilityError, ACCESSIBILITY_SETTINGS_URL } from '../composition/hotkeyCapture'
@@ -231,7 +232,8 @@ function SettingsView() {
           <Text size="small" className={styles.recording}>{t('settings.globalHotkey.recording')}</Text>
         ) : summonBinding ? (
           <>
-            <Label variant="secondary"><KeyIcon size={12} /> {summonBinding}</Label>
+            <KeyIcon size={12} />
+            <KeyComboChip label={summonBinding} />
             <Button size="small" variant="invisible" onClick={() => setSummonRecording(true)}>{t('common:actions.change')}</Button>
             <Button size="small" variant="invisible" onClick={clearSummonHotkey}>{t('common:actions.clear')}</Button>
           </>

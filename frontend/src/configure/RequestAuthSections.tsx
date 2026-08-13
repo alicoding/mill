@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next'
-import { Checkbox, FormControl, Heading, Label, Select, Stack, Text, TextInput, Textarea } from '@primer/react'
+import { Checkbox, FormControl, Heading, Select, Stack, Text, TextInput, Textarea } from '@primer/react'
+import { StatusStamp } from '../shared/StatusStamp'
 import { AuthType } from '../../bindings/github.com/alicoding/mill/internal/domain/httprequest/models'
 import { authLabelFor, AUTH_UNIMPLEMENTED } from './authTypeLabels'
 import type { RequestDraft } from './requestDraft'
@@ -34,7 +35,7 @@ export function RequestAuthSections({ draft, setDraft, isEditing }: {
 
           {AUTH_UNIMPLEMENTED.has(draft.authType) && (
             <Stack direction="horizontal" gap="condensed" align="center">
-              <Label variant="attention" size="small">{t('requestAuthSections.notYetImplemented')}</Label>
+              <StatusStamp variant="caution">{t('requestAuthSections.notYetImplemented')}</StatusStamp>
               <Text as="p" size="small" className={styles.muted}>
                 {t('requestAuthSections.notYetImplementedDescription')}
               </Text>

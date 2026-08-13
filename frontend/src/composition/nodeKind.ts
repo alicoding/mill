@@ -19,14 +19,6 @@ import { CheckCircleIcon, DownloadIcon, GitBranchIcon, SyncIcon, UploadIcon, Zap
 // as a user-facing noun now names the new `terminal` kind instead --
 // same code-vs-UI naming split ADR-0016 already established (e.g.
 // HTTPRequest's Integration umbrella term).
-export const KIND_VARIANT: Record<string, 'accent' | 'success' | 'severe' | 'done' | 'attention' | 'sponsors'> = {
-  trigger: 'done',
-  capture: 'accent',
-  process: 'success',
-  apply: 'severe',
-  decision: 'attention',
-  terminal: 'sponsors',
-}
 
 export const KIND_LABEL: Record<string, string> = {
   trigger: 'Trigger',
@@ -58,11 +50,18 @@ export const KIND_ICON: Record<string, Icon> = {
   terminal: CheckCircleIcon,
 }
 
+// design wave 2 (goal 0001): fixed to Mill's own --mill-kind-* custom
+// properties (app/index.css) instead of Primer's shared semantic
+// tokens (--bgColor-success-emphasis etc.) -- those are also what
+// StatusStamp's variants render with, so aliasing them here made a
+// node's identity color and a status pill's meaning collide on the
+// same card (the audit's "green triple duty" finding). See
+// index.css's own comment for the token values and contrast checks.
 export const KIND_ICON_BG: Record<string, string> = {
-  trigger: 'var(--bgColor-done-emphasis)',
-  capture: 'var(--bgColor-accent-emphasis)',
-  process: 'var(--bgColor-success-emphasis)',
-  apply: 'var(--bgColor-severe-emphasis)',
-  decision: 'var(--bgColor-attention-emphasis)',
-  terminal: 'var(--bgColor-sponsors-emphasis)',
+  trigger: 'var(--mill-kind-trigger)',
+  capture: 'var(--mill-kind-capture)',
+  process: 'var(--mill-kind-process)',
+  apply: 'var(--mill-kind-apply)',
+  decision: 'var(--mill-kind-decision)',
+  terminal: 'var(--mill-kind-terminal)',
 }

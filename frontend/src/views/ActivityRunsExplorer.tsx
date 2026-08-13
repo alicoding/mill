@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Events } from '@wailsio/runtime'
-import { Button, Label, Stack, Text, TextInput } from '@primer/react'
+import { Button, Stack, Text, TextInput } from '@primer/react'
 import { DataTable, type Column, Blankslate } from '@primer/react/experimental'
 import { StopIcon, HistoryIcon } from '@primer/octicons-react'
 import { ResizableTableContainer, TruncatedCell } from '../shared/ResizableTable'
@@ -10,8 +10,10 @@ import type { RunSummary } from '../shared/bindings'
 import type { Workflow } from '../../bindings/github.com/alicoding/mill/internal/domain/composition/models'
 import { formatRunStartedAt } from '../shared/runTime'
 import { StalenessBadge } from '../shared/StalenessBadge'
+import { StatusStamp } from '../shared/StatusStamp'
 import { ENQUEUED_STALE_THRESHOLD_MS, isStuckEnqueued } from '../shared/enqueuedStale'
 import styles from '../shared/ListCard.module.css'
+import monoStyles from '../shared/monoText.module.css'
 
 // The source-first half of the reference analytics pattern
 // (docs/SPEC.md §3.2, asked for directly: "select the input source
@@ -79,11 +81,13 @@ export function ActivityRunsExplorer({ workflow }: { workflow: Workflow }) {
   const columns: Column<RunSummary & { id: string }>[] = [
     {
       id: 'started', header: t('activityRunsExplorer.columns.started'), width: 'auto',
-      renderCell: (run) => <Text size="small" className={styles.muted}>{formatRunStartedAt(run.startedAt as unknown as string)}</Text>,
+      renderCell: (run) => <Text size="small" className={`${styles.muted} ${monoStyles.mono}`}>{formatRunStartedAt(run.startedAt as unknown as string)}</Text>,
     },
     {
       id: 'kind', header: t('activityRunsExplorer.columns.kind'), width: 'auto',
-      renderCell: (run) => <Label size="small" variant={run.kind === 'triggered' ? 'severe' : 'secondary'}>{run.kind}</Label>,
+      // Both neutral -- categorization (how the run started), not a
+      // status verdict; see WorkflowRunsPanel.tsx's own KIND_VARIANT.
+      renderCell: (run) => <StatusStamp variant="neutral">{run.kind}</StatusStamp>,
     },
     {
       id: 'version', header: t('activityRunsExplorer.columns.version'), width: 'auto',
@@ -93,9 +97,9 @@ export function ActivityRunsExplorer({ workflow }: { workflow: Workflow }) {
       id: 'status', header: t('activityRunsExplorer.columns.status'), width: 'auto',
       renderCell: (run) => (
         <Stack direction="horizontal" gap="condensed" align="center">
-          <Label size="small" variant={run.status === 'SUCCESS' ? 'success' : run.status === 'ERROR' ? 'danger' : 'attention'}>
+          <StatusStamp variant={run.status === 'SUCCESS' ? 'success' : run.status === 'ERROR' ? 'danger' : 'caution'}>
             {run.status}
-          </Label>
+          </StatusStamp>
           {/* Stuck-ENQUEUED presentation (docs/goals/0026 item 8) --
               same age-tier language as item 2's pending-approval
               treatment, at ENQUEUED's own 5-minute bar. */}

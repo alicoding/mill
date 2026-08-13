@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import {Events, WML} from "@wailsio/runtime";
-import {Label, PageLayout, useTheme} from "@primer/react";
+import {PageLayout, useTheme} from "@primer/react";
+import { StatusStamp } from '../shared/StatusStamp'
 import HomeView from "../views/HomeView";
 import ActivityView from "../views/ActivityView";
 import ReviewView from "../views/ReviewView";
@@ -466,9 +467,9 @@ function App() {
               time by the band-tracking e2e's intercepted clicks. The
               footer never moves. */}
           {isIsolatedData && (
-            <Label variant="accent" size="small" data-testid="isolated-data-badge">
+            <StatusStamp variant="identity" data-testid="isolated-data-badge">
               {t('shell.testDataBadge')}
-            </Label>
+            </StatusStamp>
           )}
         </span>
         <span className={styles.time}>

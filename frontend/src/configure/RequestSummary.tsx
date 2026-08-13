@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button, Heading, IconButton, Label, Select, Stack, Text } from '@primer/react'
+import { StatusStamp } from '../shared/StatusStamp'
+import monoStyles from '../shared/monoText.module.css'
 import { PencilIcon, CopyIcon, TrashIcon } from '@primer/octicons-react'
 import { Tabs } from '@primer/react/experimental'
 import { TabItem, TabList, TabPanel } from '../shared/Tabs'
@@ -81,7 +83,7 @@ export function RequestSummary({ request, onEdit, onDuplicate, onDelete }: {
       <Stack direction="horizontal" justify="space-between" align="center" className={styles.sectionHeading}>
         <Stack direction="horizontal" gap="condensed" align="center">
           <Heading as="h2" variant="small">{request.Label}</Heading>
-          {request.BuiltIn && <Label variant="secondary" size="small">{t('builtIn')}</Label>}
+          {request.BuiltIn && <StatusStamp variant="identity">{t('builtIn')}</StatusStamp>}
         </Stack>
         <Stack direction="horizontal" gap="condensed">
           <Button size="small" leadingVisual={PencilIcon} onClick={onEdit} data-testid="summary-edit">{t('edit')}</Button>
@@ -101,14 +103,14 @@ export function RequestSummary({ request, onEdit, onDuplicate, onDelete }: {
         <TabPanel value="details">
           <Stack direction="vertical" gap="condensed">
             {request.Description && <DetailRow label={t('requestSummary.description')} value={request.Description} />}
-            <DetailRow label={t('requestSummary.method')} value={request.Method || 'GET'} />
-            <DetailRow label={t('requestSummary.url')} value={request.BaseURL} />
+            <DetailRow label={t('requestSummary.method')} value={request.Method || 'GET'} mono />
+            <DetailRow label={t('requestSummary.url')} value={request.BaseURL} mono />
             {request.Body !== '' && <DetailRow label={t('requestSummary.body')} value={request.Body} />}
             <DetailRow
               label={t('requestSummary.authType')}
               value={AUTH_LABEL_MAP[request.AuthType] ?? request.AuthType}
               suffix={AUTH_UNIMPLEMENTED.has(request.AuthType)
-                ? <Label variant="attention" size="small">{t('requestSummary.notYetImplemented')}</Label>
+                ? <StatusStamp variant="caution">{t('requestSummary.notYetImplemented')}</StatusStamp>
                 : undefined}
             />
             <DetailRow
@@ -187,11 +189,11 @@ export function RequestSummary({ request, onEdit, onDuplicate, onDelete }: {
   )
 }
 
-function DetailRow({ label, value, suffix }: { label: string; value: string; suffix?: ReactNode }) {
+function DetailRow({ label, value, suffix, mono }: { label: string; value: string; suffix?: ReactNode; mono?: boolean }) {
   return (
     <Stack direction="horizontal" gap="condensed" align="center">
       <Text size="small" weight="semibold" style={{ minWidth: '100px' }}>{label}</Text>
-      <Text size="small" className={styles.muted}>{value}</Text>
+      <Text size="small" className={`${styles.muted} ${mono ? monoStyles.mono : ''}`}>{value}</Text>
       {suffix}
     </Stack>
   )

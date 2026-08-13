@@ -2,6 +2,7 @@ import { useLayoutEffect, useRef } from 'react'
 import type { ReactNode } from 'react'
 import { Table } from '@primer/react/experimental'
 import styles from './ResizableTable.module.css'
+import monoStyles from './monoText.module.css'
 
 // Drag-to-resize columns for Primer's DataTable, plus the
 // truncate-with-hover-tooltip cell that pairs with it (docs/SPEC.md
@@ -147,6 +148,9 @@ export function ResizableTableContainer({ children, storageKey }: {
 
 // The cell half of the pattern: truncate to the column's width, show
 // the full value on hover via the browser's own title tooltip.
-export function TruncatedCell({ text }: { text: string }) {
-  return <span className={styles.truncate} title={text}>{text}</span>
+// `mono` (design wave 2, audit §2): machine-readable columns -- MCP
+// server commands, AI provider base URLs, IDs/slugs -- render in
+// shared/monoText.module.css's mono stack instead of body text.
+export function TruncatedCell({ text, mono }: { text: string; mono?: boolean }) {
+  return <span className={mono ? `${styles.truncate} ${monoStyles.mono}` : styles.truncate} title={text}>{text}</span>
 }

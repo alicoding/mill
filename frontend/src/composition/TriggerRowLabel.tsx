@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next'
-import { Button, Label, Stack, Text } from '@primer/react'
+import { Button, Stack, Text } from '@primer/react'
+import { StatusStamp } from '../shared/StatusStamp'
 import { KeyIcon } from '@primer/octicons-react'
 import type { Workflow } from '../../bindings/github.com/alicoding/mill/internal/domain/composition/models'
 import { TruncatedCell } from '../shared/ResizableTable'
@@ -51,17 +52,17 @@ export function TriggerRowLabel({ workflow, armed, publishing, onPublish, onHotk
 
   if (nodeTypeID === 'trigger-manual') {
     return (
-      <Label size="small" variant="secondary" data-testid="trigger-row-label" data-trigger-type={nodeTypeID}>
+      <StatusStamp variant="neutral" data-testid="trigger-row-label" data-trigger-type={nodeTypeID}>
         {t('triggerRowLabel.manual')}
-      </Label>
+      </StatusStamp>
     )
   }
 
   if (nodeTypeID === 'trigger-callable') {
     return (
-      <Label size="small" variant="secondary" data-testid="trigger-row-label" data-trigger-type={nodeTypeID}>
+      <StatusStamp variant="neutral" data-testid="trigger-row-label" data-trigger-type={nodeTypeID}>
         {t('triggerRowLabel.runByAnotherWorkflow')}
-      </Label>
+      </StatusStamp>
     )
   }
 
@@ -69,9 +70,9 @@ export function TriggerRowLabel({ workflow, armed, publishing, onPublish, onHotk
     const cron = (config.cron ?? '').trim()
     if (!cron) {
       return (
-        <Label size="small" variant="secondary" data-testid="trigger-row-label" data-trigger-type={nodeTypeID}>
+        <StatusStamp variant="neutral" data-testid="trigger-row-label" data-trigger-type={nodeTypeID}>
           {t('triggerRowLabel.noScheduleSet')}
-        </Label>
+        </StatusStamp>
       )
     }
     const description = describeCron(cron)
@@ -97,9 +98,9 @@ export function TriggerRowLabel({ workflow, armed, publishing, onPublish, onHotk
     const path = (config.path ?? '').trim()
     if (!path) {
       return (
-        <Label size="small" variant="secondary" data-testid="trigger-row-label" data-trigger-type={nodeTypeID}>
+        <StatusStamp variant="neutral" data-testid="trigger-row-label" data-trigger-type={nodeTypeID}>
           {t('triggerRowLabel.noPathConfigured')}
-        </Label>
+        </StatusStamp>
       )
     }
     const pattern = (config.pattern ?? '').trim()
@@ -139,10 +140,10 @@ function ArmableTriggerRow({ nodeTypeID, text, armed, publishing, onPublish }: {
     <Stack direction="horizontal" gap="condensed" align="center" wrap="wrap" style={{ minWidth: 0 }} data-testid="trigger-row-label" data-trigger-type={nodeTypeID}>
       <TruncatedCell text={text} />
       {armed ? (
-        <Label variant="success" size="small">{t('armed')}</Label>
+        <StatusStamp variant="success">{t('armed')}</StatusStamp>
       ) : (
         <>
-          <Label variant="attention" size="small">{t('notLive')}</Label>
+          <StatusStamp variant="danger">{t('notLive')}</StatusStamp>
           <Button size="small" variant="invisible" onClick={onPublish} disabled={publishing} data-testid="trigger-row-publish">
             {publishing ? t('publishing') : t('publish')}
           </Button>
@@ -180,10 +181,10 @@ function HotkeyRowLabel({ workflow, armed, publishing, onPublish, onHotkeyChange
             <KeyComboChip label={hk.binding} />
           </Button>
           {armed ? (
-            <Label variant="success" size="small">{t('armed')}</Label>
+            <StatusStamp variant="success">{t('armed')}</StatusStamp>
           ) : (
             <>
-              <Label variant="attention" size="small">{t('notLive')}</Label>
+              <StatusStamp variant="danger">{t('notLive')}</StatusStamp>
               <Button size="small" variant="invisible" onClick={() => onPublish(workflow.ID)} disabled={publishing} data-testid="trigger-row-publish">
                 {publishing ? t('publishing') : t('publish')}
               </Button>

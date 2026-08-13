@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button, FormControl, IconButton, Label, Select, SegmentedControl, Stack, Text, TextInput, Textarea } from '@primer/react'
+import { StatusStamp } from '../shared/StatusStamp'
 import { CopyIcon, PlayIcon, SyncIcon } from '@primer/octicons-react'
 import { ConfigureService } from '../shared/bindings'
 import type { AuthConfig, AuthType, JOSEConfig } from '../../bindings/github.com/alicoding/mill/internal/domain/httprequest/models'
@@ -8,6 +9,7 @@ import type { TestHTTPRequestResult } from '../shared/bindings'
 import type { ManualOperation } from './openapiSynth'
 import { generateOperationSample } from './testPayload'
 import styles from '../shared/ListCard.module.css'
+import monoStyles from '../shared/monoText.module.css'
 
 // Session-local test-attempt log, capped the same way Activity's own
 // session-only feed is (docs/SPEC.md §2.2's ring buffer) -- a test call
@@ -234,12 +236,12 @@ export function RequestTestPanel({
           {log.map((entry) => (
             <div key={entry.id} className={styles.card} data-testid="request-test-log-entry">
               <Stack direction="horizontal" gap="condensed" align="center">
-                <Text size="small" className={styles.muted}>{entry.at}</Text>
+                <Text size="small" className={`${styles.muted} ${monoStyles.mono}`}>{entry.at}</Text>
                 <Label variant="secondary" size="small">{entry.method} {entry.path}</Label>
                 {entry.Error ? (
-                  <Label variant="danger" size="small">{t('requestTestPanel.error')}</Label>
+                  <StatusStamp variant="danger">{t('requestTestPanel.error')}</StatusStamp>
                 ) : (
-                  <Label variant={entry.StatusCode >= 400 ? 'danger' : 'success'} size="small">{entry.StatusCode}</Label>
+                  <StatusStamp variant={entry.StatusCode >= 400 ? 'danger' : 'success'}>{entry.StatusCode}</StatusStamp>
                 )}
                 <Text size="small" className={styles.muted}>{t('requestTestPanel.durationMs', { ms: entry.DurationMs })}</Text>
                 <IconButton
