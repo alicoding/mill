@@ -116,7 +116,28 @@ tasks:
       its only flags are -config/-port/-nocolour/-s), so there's no
       manual override -- the fingerprint IS the mechanism, which is why
       not wiping bin/ (above) matters.
+
+      A second concurrent `task dev` REFUSES to start (internal/devguard,
+      docs/goals/BACKLOG.md Standing #8b), naming the already-running
+      PID instead of silently killing the first session's own vite/app.
+      build/config.yml's dev_mode.executes also reaps any leftover
+      mill.dev.app before each Go-rebuild relaunch WITHIN one session
+      -- the one residual, CI-unprovable gap (a real live wedge/rebuild
+      timing under an actually-running watcher) is named explicitly in
+      the manual-only registry (.claude/skills/run-mill/SKILL.md), not
+      silently assumed fixed.
     cmds:
+      # Concurrent-start guard (docs/goals/BACKLOG.md Standing #8b,
+      # owner-hit 2026-08-12 evening: THREE concurrent mill.dev.app
+      # instances, a real crash risk on a 16GB machine). Runs BEFORE the
+      # destructive sweep below: a second `task dev` invoked while a
+      # first is already live must REFUSE to start, not silently kill
+      # the first session's own vite/app the way the sweep would --
+      # internal/devguard checks for an already-running `wails3 dev`
+      # process for this repo and exits non-zero naming its PID, which
+      # aborts this whole task before the sweep steps ever run (Task's
+      # own default: stop on the first failing cmd).
+      - go run ./internal/devguard -port {{.VITE_PORT}}
       # Defensive orphan sweep (researched root cause, SPEC §3.8): the
       # `wails3 dev` supervisor only traps SIGINT+SIGTERM, not SIGHUP, so
       # closing the terminal tab (rather than Ctrl-C) kills the supervisor
@@ -125,7 +146,10 @@ tasks:
       # `task dev` has no memory of it and launches a SECOND window. This
       # kills any such leftover before starting, so a fresh `task dev`
       # always begins from exactly one live instance. `|| true`: a clean
-      # start (no orphan) is the normal case, not an error.
+      # start (no orphan) is the normal case, not an error. Only reached
+      # once the guard above has already confirmed no LIVE `wails3 dev`
+      # is running, so anything found here is safely presumed a genuine
+      # orphan, never a second session's own live process.
       - pkill -f "{{.BIN_DIR}}/{{.APP_NAME}}.dev.app/Contents/MacOS/{{.APP_NAME}}" || true
       # Same failure mode, the vite side (goal 0029, hit live tonight):
       # a supervisor killed via SIGHUP can leave the vite dev server
