@@ -98,6 +98,15 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - run: ./scripts/check-comment-hygiene.sh
 
+  # Mirrors lefthook.yml's own ui-copy job -- same script
+  # (.claude/rules/ux-writing.md is the standard it enforces).
+  ui-copy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - run: ./scripts/check-ui-copy.sh
+
   # Mirrors lefthook.yml's own rules-frontmatter job -- same script.
   # Catches a real bug class: a .claude/rules/*.md with an invalid
   # frontmatter key (e.g. a `globs:` typo instead of `paths:`) silently
@@ -413,6 +422,7 @@ jobs:
       - changes
       - file-loc-limit
       - comment-hygiene
+      - ui-copy
       - rules-frontmatter
       - root-file-naming
       - frontend
