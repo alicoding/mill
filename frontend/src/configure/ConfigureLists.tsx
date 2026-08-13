@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Button, Checkbox, FormControl, Heading, IconButton, Label, Select, Stack, Text, TextInput } from '@primer/react'
+import { Button, Checkbox, FormControl, Heading, IconButton, Label, Select, Stack, Text, TextInput, VisuallyHidden } from '@primer/react'
 import { DownloadIcon, ListUnorderedIcon, PlusIcon, TrashIcon, UploadIcon } from '@primer/octicons-react'
 import { DataTable } from '@primer/react/experimental'
 import { ResizableTableContainer } from '../shared/ResizableTable'
@@ -253,8 +253,13 @@ export function ConfigureLists() {
 
   return (
     <PageContainer data-testid="configure-lists">
-      <Stack direction="horizontal" justify="space-between" align="center" className={styles.sectionHeading}>
-        <Heading as="h2" variant="small" id="lists-heading">{t('configureLists.heading')}</Heading>
+      <Stack direction="horizontal" justify="end" align="center" className={styles.sectionHeading}>
+        {/* Design-wave-1 fix #6: the Configure tab already names this
+            section -- visually hidden (not removed) so the aria-labelledby
+            wiring below and the a11y heading structure both stay intact. */}
+        <VisuallyHidden>
+          <Heading as="h2" variant="small" id="lists-heading">{t('configureLists.heading')}</Heading>
+        </VisuallyHidden>
         <Stack direction="horizontal" gap="condensed">
           <ViewModeToggle mode={viewMode} onChange={setViewMode} />
           <input

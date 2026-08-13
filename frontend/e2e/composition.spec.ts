@@ -156,7 +156,7 @@ async function clickCanvasNode(page: import('@playwright/test').Page, panel: imp
 test('Composition page lists built-in workflows; node primitives live in a collapsible canvas panel, not the list', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Workflows' }).click()
-  await expect(page.getByRole('heading', { name: 'Workflows', level: 1 })).toBeVisible()
+  await expect(page.getByTestId('composition-view')).toBeVisible()
 
   await expect(workflowRow(page, 'Load sample HTML')).toBeVisible()
   await expect(workflowRow(page, 'Clipboard → Markdown')).toBeVisible()
@@ -421,7 +421,7 @@ test('Opening New workflow twice opens two tabs; closing one returns to the list
   // Closing the active tab (Tab B) falls back to the Workflows list.
   await page.getByRole('button', { name: 'Close tab' }).last().click()
   await expect(page.getByRole('tab')).toHaveCount(2)
-  await expect(page.getByRole('heading', { name: 'Workflows', level: 1 })).toBeVisible()
+  await expect(page.getByTestId('composition-view')).toBeVisible()
 
   // Tab A is still open, with its draft label intact.
   await page.getByRole('tab').nth(1).click()

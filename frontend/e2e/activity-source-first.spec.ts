@@ -1,4 +1,5 @@
 import { test, expect } from './fixtures/server'
+import { clickRowAction } from './inventoryRow'
 
 // docs/SPEC.md §3.2's source-first analytics pattern on Activity
 // (asked for directly): pick the input source (a workflow) and see its
@@ -51,4 +52,35 @@ test('Selecting a source workflow shows its durable runs with attribute columns 
   // Back to the live feed.
   await page.getByTestId('activity-source-workflow').selectOption('all')
   await expect(explorer).toHaveCount(0)
+})
+
+// Design-wave-1 fix #7: a workflow with zero durable run history shows
+// a real Blankslate (icon + one-line invitation), the same quality bar
+// Review's own empty state already has -- not a bare line of text.
+// Brand-new/saved-but-never-run (same "guaranteed zero history"
+// reasoning workflow-runs-panel.spec.ts's own equivalent test uses),
+// not a seeded workflow, since another spec sharing this worker could
+// have already produced a run against any seeded one.
+test('A never-run workflow shows the Runs-explorer empty state as a Blankslate', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Workflows' }).click()
+  await page.getByTestId('new-workflow').click()
+  await page.getByLabel('Label').click()
+  await page.getByLabel('Label').fill('E2E activity-explorer-empty workflow')
+  await page.getByTestId('save-workflow').click()
+
+  await page.getByRole('link', { name: 'Activity' }).click()
+  await page.getByTestId('activity-source-workflow').selectOption({ label: 'E2E activity-explorer-empty workflow' })
+
+  const explorer = page.getByTestId('activity-runs-explorer')
+  await expect(explorer).toBeVisible()
+  const emptyState = explorer.getByTestId('activity-runs-explorer-empty')
+  await expect(emptyState).toBeVisible()
+  await expect(emptyState.locator('svg')).toBeVisible()
+
+  // Cleanup.
+  await page.getByRole('link', { name: 'Workflows' }).click()
+  const row = workflowRow(page, 'E2E activity-explorer-empty workflow')
+  await clickRowAction(page, row, 'Delete')
+  await expect(row).toHaveCount(0)
 })

@@ -459,7 +459,7 @@
   },
   "configureView": {
     "ariaLabel": "Configure",
-    "integration": "Integration",
+    "integration": "Integrations",
     "lists": "Lists",
     "attributes": "Attributes",
     "mcpServers": "MCP Servers",

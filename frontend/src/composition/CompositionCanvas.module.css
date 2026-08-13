@@ -122,6 +122,20 @@
     --xy-controls-button-color: var(--fgColor-default);
     --xy-minimap-background-color: var(--bgColor-muted);
 }
+/* Design-wave-1 fix #3c: React Flow's attribution link (kept -- its
+   license requires the credit link unless on a paid plan) ships a
+   hardcoded translucent white/black background and a fixed #999 anchor
+   color, both gated behind the same react-flow `.dark`-class scheme
+   .canvas's own --xy-* overrides above work around -- legible-but-quiet
+   in both Mill themes via Primer tokens instead of react-flow's
+   defaults. */
+.canvas :global(.react-flow__attribution) {
+    background: var(--bgColor-muted);
+    border-top-left-radius: var(--borderRadius-medium);
+}
+.canvas :global(.react-flow__attribution a) {
+    color: var(--fgColor-muted);
+}
 /* Reserves space only while it has something to show -- canvas-first
    layout (docs/SPEC.md §3's layout pass): the config surface appears on
    selection instead of permanently claiming 260px for a "Select a node

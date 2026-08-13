@@ -21,7 +21,7 @@ import { clickRowAction } from './inventoryRow'
 // for specs that want to exercise the approval banner instead).
 async function enableUnattendedMCPWrites(page: Page): Promise<void> {
   await page.goto('/')
-  await page.getByRole('button', { name: 'Settings' }).click()
+  await page.getByRole('link', { name: 'Settings' }).click()
   const writeCheckbox = page.getByTestId('mcp-write-enabled-checkbox')
   await expect(writeCheckbox).toBeEnabled()
   if (!(await writeCheckbox.isChecked())) {
@@ -38,7 +38,7 @@ async function enableUnattendedMCPWrites(page: Page): Promise<void> {
 
 async function restoreMCPWriteDefaults(page: Page): Promise<void> {
   await page.goto('/')
-  await page.getByRole('button', { name: 'Settings' }).click()
+  await page.getByRole('link', { name: 'Settings' }).click()
   const approvalCheckbox = page.getByTestId('mcp-write-approval-checkbox')
   if (await approvalCheckbox.count() && !(await approvalCheckbox.isChecked())) {
     await approvalCheckbox.click()

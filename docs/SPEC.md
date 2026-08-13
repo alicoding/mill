@@ -2182,25 +2182,34 @@ exist yet.
   confirmed against n8n's own left nav (Credentials is a real top-level
   item there, separate from Workflows — the precedent for Configure
   deserving the same top-level billing).
-- **Settings is pulled out of the `NavList` entirely**, into a
-  bottom-anchored sidebar footer slot (`.sidebarFooter`, a plain
-  `IconButton` — confirmed against real precedent before building, not
-  assumed: Notion anchors workspace settings at the bottom of its
-  sidebar behind the workspace name, Slack gates it behind the profile
-  menu, neither treats Settings as a flat item alongside content pages).
-  Not a `capability` — no build status or SPEC section of its own, same
-  reasoning that already makes the Spec entry fixed rather than
-  data-driven. `SettingsView.tsx` now hosts the theme `SegmentedControl`,
-  moved out of the app's bottom bar (which previously shared it with the
+- **Settings is pulled out of the capability `NavList` entirely**, into
+  a bottom-anchored sidebar footer slot (`.sidebarFooter` — confirmed
+  against real precedent before building, not assumed: Notion anchors
+  workspace settings at the bottom of its sidebar behind the workspace
+  name, Slack gates it behind the profile menu, neither treats Settings
+  as a flat item alongside content pages). Not a `capability` — no
+  build status or SPEC section of its own, same reasoning that already
+  makes the Spec entry fixed rather than data-driven.
+  `SettingsView.tsx` now hosts the theme `SegmentedControl`, moved out
+  of the app's bottom bar (which previously shared it with the
   version/clock/docs link) — the bottom bar keeps only those.
   Persisting the choice and mirroring it onto `<html>` stays in
   `App.tsx` (global app-shell behavior that must run regardless of
   whether the Settings page is even mounted), read via Primer's own
   shared `useTheme()` context rather than duplicated. Verified
   end-to-end on the real server-mode app: Composition/Configure/Activity
-  render in the new order, the gear icon opens Settings, switching to
+  render in the new order, the footer row opens Settings, switching to
   dark theme there applies across the whole app (sidebar, content,
-  footer) exactly as it did from the old footer location.
+  footer) exactly as it did from the old footer location. **Update
+  (design wave 1, 2026-08-12):** the footer slot itself was a floating
+  centered `IconButton`, not a real nav row — no keyboard/aria parity
+  with the capability rows above it, no active-state highlight when
+  Settings was open (an audit-caught convention violation, not a
+  behavior gap). Now a `NavList.Item` (same shape/keyboard treatment
+  as every capability row, `aria-current="page"` when `view.kind ===
+  'settings'`), still anchored at the bottom via the same flex-spacer
+  layout (`.sidebarNav`'s `flex: 1 1 auto` pushes `.sidebarFooter` down
+  — Linear/VS Code's own nav-list-top/footer-row-bottom convention).
 
 `LOCKED` and built: Integration/Connector, List, Attributes, and
 Decision authoring (the `ConfigureView.tsx` page + `ConfigureService`),

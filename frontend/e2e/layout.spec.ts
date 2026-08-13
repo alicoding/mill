@@ -116,7 +116,7 @@ test('a wide-variant list page (Workflows) is not capped to the old 1400px width
 
 test('a narrow-variant form page (Settings) still keeps its readable width cap', async ({ page }) => {
   await page.goto('/')
-  await page.getByRole('button', { name: 'Settings' }).click()
+  await page.getByRole('link', { name: 'Settings' }).click()
   const container = page.getByTestId('settings-view')
   await expect(container).toBeVisible()
   const box = await container.boundingBox()

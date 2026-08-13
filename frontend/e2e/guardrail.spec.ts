@@ -128,6 +128,14 @@ test('Review queue shows the resolved outcome after a deny, filterable by workfl
   await expect(resolvedItem).toBeVisible({ timeout: 10_000 })
   await expect(resolvedItem.getByTestId('review-resolution')).toHaveText('denied')
 
+  // Design-wave-1 fix #4: a denied run's status pill reads ERROR and
+  // must carry the same failure semantics (Primer's danger variant) as
+  // the 'denied' resolution pill right next to it -- it used to fall
+  // through to the neutral 'secondary' tone (review-light.png).
+  const statusPill = resolvedItem.getByTestId('review-resolved-status')
+  await expect(statusPill).toHaveText('ERROR')
+  await expect(statusPill).toHaveAttribute('data-variant', 'danger')
+
   // The workflow filter narrows both sections.
   await page.getByLabel('Filter by workflow').selectOption({ label: 'Example: Human review with input' })
   await expect(page.getByTestId('review-resolved-item').filter({ hasText: GUARDED })).toHaveCount(0)

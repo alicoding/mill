@@ -355,10 +355,13 @@ function CompositionView() {
 
   return (
     <PageContainer data-testid="composition-view">
-      <Heading as="h1">{t('compositionView.heading')}</Heading>
-      <Text as="p" className={styles.subtitle}>
+      {/* Design-wave-1 fix #6: the sidebar/tab already says "Workflows"
+          -- the h1 is now the descriptive subtitle itself (promoted,
+          appropriate weight), not a duplicate "Capability composition"
+          label above it. */}
+      <Heading as="h1" variant="medium" className={styles.subtitle}>
         {t('compositionView.subtitle')}
-      </Text>
+      </Heading>
 
       <Stack direction="horizontal" justify="space-between" align="center" className={styles.sectionHeading}>
         <Heading as="h2" variant="small" id="workflows-heading">{t('compositionView.savedWorkflowsHeading')}</Heading>
