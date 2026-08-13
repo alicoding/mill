@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Heading, IconButton, Label, type LabelProps, Select, Stack, Text, TextInput } from '@primer/react'
 import { DataTable, type Column } from '@primer/react/experimental'
 import { ChevronDownIcon, ChevronRightIcon, CheckCircleIcon, WorkflowIcon, XCircleIcon, XIcon } from '@primer/octicons-react'
@@ -8,10 +9,12 @@ import { ActivityRunsExplorer } from './ActivityRunsExplorer'
 import styles from '../shared/ListCard.module.css'
 import PageContainer from '../shared/PageContainer'
 
-const SOURCE_LABEL: Record<ActivitySource, string> = {
-  trigger: 'Trigger',
-  composition: 'Manual run',
-  'mcp-write': 'MCP write',
+function sourceLabelFor(t: (key: string) => string): Record<ActivitySource, string> {
+  return {
+    trigger: t('activityView.sourceLabel.trigger'),
+    composition: t('activityView.sourceLabel.composition'),
+    'mcp-write': t('activityView.sourceLabel.mcp-write'),
+  }
 }
 
 const SOURCE_VARIANT: Record<ActivitySource, LabelProps['variant']> = {
@@ -48,6 +51,8 @@ const OUTCOME_FILTER_STORAGE_KEY = 'mill-activity-outcome-filter'
 // side by side) is deliberately preserved, not dropped: selectedIds
 // stays a Set, and one panel renders per selected entry.
 function ActivityView() {
+  const { t } = useTranslation('views')
+  const SOURCE_LABEL = sourceLabelFor(t)
   const activity = useAppStore((s) => s.activity)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [sourceFilter, setSourceFilter] = useState<'all' | ActivitySource>(
@@ -98,7 +103,7 @@ function ActivityView() {
   const columns: Column<ActivityEntry>[] = [
     {
       id: 'time',
-      header: 'Time',
+      header: t('activityView.columns.time'),
       field: 'timestamp',
       sortBy: 'basic',
       width: '120px',
@@ -106,7 +111,7 @@ function ActivityView() {
     },
     {
       id: 'source',
-      header: 'Source',
+      header: t('activityView.columns.source'),
       field: 'source',
       sortBy: 'alphanumeric',
       renderCell: (entry) => (
@@ -118,7 +123,7 @@ function ActivityView() {
     },
     {
       id: 'action',
-      header: 'Action',
+      header: t('activityView.columns.action'),
       width: 'grow',
       renderCell: (entry) => {
         const canExpand = entry.result !== ''
@@ -146,7 +151,7 @@ function ActivityView() {
             {entry.workflowID && (
               <span onClick={(e) => e.stopPropagation()}>
                 <WorkflowHoverPreview workflowId={entry.workflowID}>
-                  <WorkflowIcon size={12} aria-label={`Preview ${entry.label}`} />
+                  <WorkflowIcon size={12} aria-label={t('activityView.previewAriaLabel', { label: entry.label })} />
                 </WorkflowHoverPreview>
               </span>
             )}
@@ -156,7 +161,7 @@ function ActivityView() {
     },
     {
       id: 'outcome',
-      header: 'Outcome',
+      header: t('activityView.columns.outcome'),
       field: 'success',
       sortBy: 'basic',
       renderCell: (entry) => (
@@ -174,18 +179,14 @@ function ActivityView() {
 
   return (
     <PageContainer>
-      <Heading as="h1">Activity</Heading>
+      <Heading as="h1">{t('activityView.heading')}</Heading>
       <Text as="p" className={styles.subtitle}>
-        What ran, whether triggered headlessly (hotkey, schedule,
-        clipboard/filesystem watch) or a direct Run click on a workflow —
-        a headless trigger fires with no other feedback, so this is the
-        only place to see it happened at all. Session-only: this list
-        isn&apos;t persisted across restarts.
+        {t('activityView.subtitle')}
       </Text>
 
       <Stack direction="horizontal" gap="condensed" className={styles.filterRow}>
-        <Select value={sourceWorkflow} onChange={(e) => setSourceWorkflow(e.target.value)} aria-label="Input source" data-testid="activity-source-workflow">
-          <Select.Option value="all">All workflows (live feed)</Select.Option>
+        <Select value={sourceWorkflow} onChange={(e) => setSourceWorkflow(e.target.value)} aria-label={t('activityView.inputSourceAriaLabel')} data-testid="activity-source-workflow">
+          <Select.Option value="all">{t('activityView.allWorkflowsLiveFeed')}</Select.Option>
           {(workflows ?? []).map((w) => (
             <Select.Option key={w.ID} value={w.ID}>{w.Label}</Select.Option>
           ))}
@@ -196,22 +197,22 @@ function ActivityView() {
 
       {!selectedWorkflow && activity.length > 0 && (
         <Stack direction="horizontal" gap="condensed" className={styles.filterRow}>
-          <Select value={sourceFilter} onChange={(e) => setSourceFilter(e.target.value as 'all' | ActivitySource)} aria-label="Filter by source">
-            <Select.Option value="all">All sources</Select.Option>
-            <Select.Option value="trigger">Trigger</Select.Option>
-            <Select.Option value="composition">Manual run</Select.Option>
-            <Select.Option value="mcp-write">MCP write</Select.Option>
+          <Select value={sourceFilter} onChange={(e) => setSourceFilter(e.target.value as 'all' | ActivitySource)} aria-label={t('activityView.filterBySourceAriaLabel')}>
+            <Select.Option value="all">{t('activityView.allSources')}</Select.Option>
+            <Select.Option value="trigger">{t('activityView.sourceLabel.trigger')}</Select.Option>
+            <Select.Option value="composition">{t('activityView.sourceLabel.composition')}</Select.Option>
+            <Select.Option value="mcp-write">{t('activityView.sourceLabel.mcp-write')}</Select.Option>
           </Select>
-          <Select value={outcomeFilter} onChange={(e) => setOutcomeFilter(e.target.value as OutcomeFilter)} aria-label="Filter by outcome">
-            <Select.Option value="all">All outcomes</Select.Option>
-            <Select.Option value="success">Success</Select.Option>
-            <Select.Option value="failed">Failed</Select.Option>
+          <Select value={outcomeFilter} onChange={(e) => setOutcomeFilter(e.target.value as OutcomeFilter)} aria-label={t('activityView.filterByOutcomeAriaLabel')}>
+            <Select.Option value="all">{t('activityView.allOutcomes')}</Select.Option>
+            <Select.Option value="success">{t('activityView.success')}</Select.Option>
+            <Select.Option value="failed">{t('activityView.failed')}</Select.Option>
           </Select>
           <TextInput
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search what ran or its result…"
-            aria-label="Search activity"
+            placeholder={t('activityView.searchPlaceholder')}
+            aria-label={t('activityView.searchAriaLabel')}
             data-testid="activity-search"
           />
         </Stack>
@@ -219,13 +220,13 @@ function ActivityView() {
 
       {!selectedWorkflow && activity.length === 0 && (
         <div className={styles.empty}>
-          <Text as="p">No activity yet — run a workflow, or wait for a trigger to fire, to see it appear here. Pick a specific workflow above to browse its durable run history instead.</Text>
+          <Text as="p">{t('activityView.noActivityYet')}</Text>
         </div>
       )}
 
       {!selectedWorkflow && activity.length > 0 && filtered.length === 0 && (
         <div className={styles.empty}>
-          <Text as="p">No activity matches this filter.</Text>
+          <Text as="p">{t('activityView.noActivityMatchesFilter')}</Text>
         </div>
       )}
 
@@ -237,7 +238,7 @@ function ActivityView() {
         <div key={entry.id} data-testid="activity-detail">
           <Stack direction="horizontal" justify="space-between" align="center">
             <Text size="small" weight="semibold">{entry.label} — {entry.time}</Text>
-            <IconButton icon={XIcon} aria-label="Close" size="small" variant="invisible" onClick={() => toggle(entry.id)} />
+            <IconButton icon={XIcon} aria-label={t('activityView.closeAriaLabel')} size="small" variant="invisible" onClick={() => toggle(entry.id)} />
           </Stack>
           <pre className={styles.result}>{entry.result}</pre>
         </div>
@@ -245,7 +246,7 @@ function ActivityView() {
 
       {filtersActive && filtered.length > 0 && (
         <Text as="p" size="small" className={styles.muted}>
-          Showing {filtered.length} of {activity.length}.
+          {t('activityView.showingCount', { shown: filtered.length, total: activity.length })}
         </Text>
       )}
     </PageContainer>

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { ActionList, Button, Stack, Text, TextInput } from '@primer/react'
 import { KeyIcon, SearchIcon } from '@primer/octicons-react'
 import { COMMANDS, effectiveBinding } from '../shared/commands'
@@ -27,6 +28,7 @@ import styles from '../shared/ListCard.module.css'
 // nest real interactive buttons (Change/Reset) as valid HTML instead of
 // a <button> inside a <button>.
 export default function KeyboardShortcutsSection() {
+  const { t } = useTranslation('views')
   const [query, setQuery] = useState('')
   const keybindingOverrides = useAppStore((s) => s.keybindingOverrides)
 
@@ -39,15 +41,15 @@ export default function KeyboardShortcutsSection() {
     <Stack direction="vertical" gap="condensed">
       <TextInput
         leadingVisual={SearchIcon}
-        placeholder="Search commands…"
+        placeholder={t('keyboardShortcutsSection.searchPlaceholder')}
         value={query}
         onChange={(e) => setQuery(e.target.value)}
-        aria-label="Search commands"
+        aria-label={t('keyboardShortcutsSection.searchAriaLabel')}
         data-testid="keymap-search"
         block
       />
       {filtered.length === 0 ? (
-        <Text as="p" size="small" className={styles.muted}>No matches for &quot;{query}&quot;.</Text>
+        <Text as="p" size="small" className={styles.muted}>{t('keyboardShortcutsSection.noMatches', { query })}</Text>
       ) : (
         <ActionList role="list" showDividers data-testid="keymap-list">
           {filtered.map((command) => (
@@ -72,13 +74,14 @@ function KeymapRow({ commandId, label, binding, isOverridden }: {
   binding: KeyCombo | null
   isOverridden: boolean
 }) {
+  const { t } = useTranslation('views')
   const hk = useCommandKeybindingCapture(commandId)
 
   // hk.binding only ever reflects a real OVERRIDE (useCommandKeybindingCapture
   // reads SettingsService.ListKeybindings, which never carries a
   // frontend-only default) -- falls back to the merged `binding` prop
   // (shared/commands.ts's effectiveBinding) for a still-default command.
-  const displayLabel = hk.binding ?? (binding ? formatCombo(binding.mods, binding.key) : 'Unbound')
+  const displayLabel = hk.binding ?? (binding ? formatCombo(binding.mods, binding.key) : t('keyboardShortcutsSection.unbound'))
 
   return (
     <Stack direction="vertical" gap="none" style={{ width: '100%' }}>
@@ -86,13 +89,13 @@ function KeymapRow({ commandId, label, binding, isOverridden }: {
         <Text size="small">{label}</Text>
         <Stack direction="horizontal" gap="condensed" align="center">
           {hk.recording ? (
-            <Text size="small" className={styles.recording}>Press a combo… (Esc to cancel)</Text>
+            <Text size="small" className={styles.recording}>{t('keyboardShortcutsSection.pressCombo')}</Text>
           ) : (
             <Button
               size="small"
               variant="invisible"
               leadingVisual={KeyIcon}
-              title="Click to change"
+              title={t('keyboardShortcutsSection.clickToChange')}
               onClick={hk.startRecording}
               data-testid="keymap-row-combo"
             >
@@ -101,7 +104,7 @@ function KeymapRow({ commandId, label, binding, isOverridden }: {
           )}
           {isOverridden && !hk.recording && (
             <Button size="small" variant="invisible" onClick={hk.clear} data-testid="keymap-row-reset">
-              Reset
+              {t('keyboardShortcutsSection.reset')}
             </Button>
           )}
         </Stack>

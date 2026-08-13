@@ -28,7 +28,7 @@ const edgeSchema = z.object({
   Target: z.string().min(1),
 })
 // A function, not a module-level constant: the validation messages are
-// user-facing copy (docs/goals/0032-copy-management.md), and zod's own
+// user-facing copy (docs/goals/archive/0032-copy-management.md), and zod's own
 // message strings are baked in at schema-construction time -- so the
 // schema is (cheaply) rebuilt per save with the caller's current `t`,
 // rather than trying to retrofit i18n into a frozen schema object.

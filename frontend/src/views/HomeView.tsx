@@ -1,4 +1,5 @@
 import { lazy, Suspense, useCallback, useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Events } from '@wailsio/runtime'
 import { Checkbox, FormControl, Heading, SegmentedControl, Spinner, Stack, Text } from '@primer/react'
 import { Blankslate } from '@primer/react/experimental'
@@ -30,6 +31,7 @@ function rangeToISO(days: RangeDays): { from: string; to: string } {
 }
 
 export default function HomeView() {
+  const { t } = useTranslation('views')
   const [rangeDays, setRangeDays] = useState<RangeDays>(7)
   // Error rate/Series default to triggered-only (n8n's manual-exclusion
   // convention, docs/goals/0014) -- this is the "flag to include test"
@@ -87,7 +89,7 @@ export default function HomeView() {
   if (!metrics) {
     return (
       <PageContainer variant="wide" data-testid="home-view">
-        <Heading as="h1">Home</Heading>
+        <Heading as="h1">{t('home.heading')}</Heading>
         <Spinner />
       </PageContainer>
     )
@@ -99,18 +101,18 @@ export default function HomeView() {
     <PageContainer variant="wide" data-testid="home-view">
       <Stack direction="horizontal" justify="space-between" align="center" className={styles.header}>
         <div>
-          <Heading as="h1">Home</Heading>
+          <Heading as="h1">{t('home.heading')}</Heading>
           <Text as="p" size="small" className={listStyles.muted}>
-            Time saved, what ran, and what to learn from it — all from local run history. Nothing here ever leaves this machine.
+            {t('home.subtitle')}
           </Text>
         </div>
         <SegmentedControl
-          aria-label="Time range"
+          aria-label={t('home.timeRangeAriaLabel')}
           size="small"
           onChange={(i) => setRangeDays(i === 0 ? 7 : 30)}
         >
-          <SegmentedControl.Button selected={rangeDays === 7}>Last 7 days</SegmentedControl.Button>
-          <SegmentedControl.Button selected={rangeDays === 30}>Last 30 days</SegmentedControl.Button>
+          <SegmentedControl.Button selected={rangeDays === 7}>{t('home.last7Days')}</SegmentedControl.Button>
+          <SegmentedControl.Button selected={rangeDays === 30}>{t('home.last30Days')}</SegmentedControl.Button>
         </SegmentedControl>
       </Stack>
 
@@ -119,9 +121,9 @@ export default function HomeView() {
           <Blankslate.Visual>
             <GraphIcon size={32} />
           </Blankslate.Visual>
-          <Blankslate.Heading>No runs yet in this range</Blankslate.Heading>
+          <Blankslate.Heading>{t('home.noRunsBlankslateHeading')}</Blankslate.Heading>
           <Blankslate.Description>
-            Run or trigger a workflow and come back — Home fills in as soon as something runs.
+            {t('home.noRunsBlankslateDescription')}
           </Blankslate.Description>
         </Blankslate>
       ) : (
@@ -133,10 +135,9 @@ export default function HomeView() {
           </div>
 
           <section className={styles.section}>
-            <Heading as="h2" variant="small">Volume &amp; error rate</Heading>
+            <Heading as="h2" variant="small">{t('home.volumeErrorHeading')}</Heading>
             <Text as="p" size="small" className={listStyles.muted}>
-              Daily, in your local timezone. A day&apos;s error rate only shows once it has at least 3 finished runs —
-              fewer than that and one failure would misleadingly read as 100%.
+              {t('home.volumeErrorDescription')}
             </Text>
             <Suspense fallback={<Spinner />}>
               <HomeChart series={metrics.series ?? []} />
@@ -144,10 +145,9 @@ export default function HomeView() {
           </section>
 
           <section className={styles.section}>
-            <Heading as="h2" variant="small">Most-used workflows</Heading>
+            <Heading as="h2" variant="small">{t('home.mostUsedHeading')}</Heading>
             <Text as="p" size="small" className={listStyles.muted}>
-              Every run counts here, however it fired. Editing a workflow&apos;s minutes-saved estimate feeds the Time
-              saved figure above.
+              {t('home.mostUsedDescription')}
             </Text>
             <HomeMostUsed
               usage={metrics.mostUsed ?? []}
@@ -162,21 +162,21 @@ export default function HomeView() {
 }
 
 function TimeSavedCard({ timeSaved }: { timeSaved: HomeMetrics['timeSaved'] }) {
+  const { t } = useTranslation('views')
   const byWorkflow = timeSaved.byWorkflow ?? []
   return (
     <div className={`${listStyles.card} ${styles.kpiCard}`} data-testid="kpi-time-saved">
-      <Text as="p" size="small" className={listStyles.muted}>Time saved</Text>
-      <Text as="p" className={styles.kpiValue}>{formatMinutes(timeSaved.totalMinutes)}</Text>
+      <Text as="p" size="small" className={listStyles.muted}>{t('home.timeSaved')}</Text>
+      <Text as="p" className={styles.kpiValue}>{formatMinutes(t, timeSaved.totalMinutes)}</Text>
       {byWorkflow.length === 0 ? (
         <Text as="p" size="small" className={listStyles.muted} data-testid="time-saved-formula">
-          No ambient (triggered) runs yet in this range — a manual test run doesn&apos;t count as automation replacing
-          your own work.
+          {t('home.noAmbientRuns')}
         </Text>
       ) : (
         <Stack direction="vertical" gap="none" data-testid="time-saved-formula">
           {byWorkflow.map((w) => (
             <Text as="p" size="small" className={listStyles.muted} key={w.workflowID}>
-              {w.workflowLabel}: {w.runCount} run{w.runCount === 1 ? '' : 's'} × {w.minutesPerRun} min = {formatMinutes(w.totalMinutes)}
+              {t('home.timeSavedFormula', { label: w.workflowLabel, count: w.runCount, plural: w.runCount === 1 ? '' : 's', perRun: w.minutesPerRun, total: formatMinutes(t, w.totalMinutes) })}
             </Text>
           ))}
         </Stack>
@@ -190,17 +190,17 @@ function ErrorRateCard({ errorRate, includeTest, onIncludeTestChange }: {
   includeTest: boolean
   onIncludeTestChange: (v: boolean) => void
 }) {
+  const { t } = useTranslation('views')
   return (
     <div className={`${listStyles.card} ${styles.kpiCard}`} data-testid="kpi-error-rate">
-      <Text as="p" size="small" className={listStyles.muted}>Error rate</Text>
+      <Text as="p" size="small" className={listStyles.muted}>{t('home.errorRate')}</Text>
       <Text as="p" className={styles.kpiValue}>
         {errorRate.ratePercent == null ? '—' : `${errorRate.ratePercent.toFixed(0)}%`}
       </Text>
       <Text as="p" size="small" className={listStyles.muted} data-testid="error-rate-volume">
         {errorRate.totalTerminal === 0
-          ? 'No finished runs yet in this range.'
-          : `${errorRate.errorCount} of ${errorRate.totalTerminal} finished runs failed. A retry that eventually ` +
-            'succeeded doesn’t count as a failure; parked and cancelled runs are excluded.'}
+          ? t('home.noFinishedRuns')
+          : t('home.errorRateVolume', { errorCount: errorRate.errorCount, total: errorRate.totalTerminal })}
       </Text>
       <FormControl>
         <Checkbox
@@ -208,25 +208,25 @@ function ErrorRateCard({ errorRate, includeTest, onIncludeTestChange }: {
           onChange={(e) => onIncludeTestChange(e.target.checked)}
           data-testid="include-test-runs-checkbox"
         />
-        <FormControl.Label>Include manual test runs</FormControl.Label>
+        <FormControl.Label>{t('home.includeManualTestRuns')}</FormControl.Label>
       </FormControl>
     </div>
   )
 }
 
 function AmbientCard({ ambient }: { ambient: HomeMetrics['ambient'] }) {
+  const { t } = useTranslation('views')
   const total = ambient.triggeredCount + ambient.manualCount
   return (
     <div className={`${listStyles.card} ${styles.kpiCard}`} data-testid="kpi-ambient">
-      <Text as="p" size="small" className={listStyles.muted}>Ambient vs. manual</Text>
+      <Text as="p" size="small" className={listStyles.muted}>{t('home.ambientVsManual')}</Text>
       <Text as="p" className={styles.kpiValue}>
         {ambient.ambientPercent == null ? '—' : `${ambient.ambientPercent.toFixed(0)}%`}
       </Text>
       <Text as="p" size="small" className={listStyles.muted}>
         {total === 0
-          ? 'No runs yet in this range.'
-          : `${ambient.triggeredCount} ran on their own (hotkey, schedule, watch) · ${ambient.manualCount} you ran ` +
-            'by hand.'}
+          ? t('home.noRunsInRangeShort')
+          : t('home.ambientBreakdown', { triggered: ambient.triggeredCount, manual: ambient.manualCount })}
       </Text>
     </div>
   )

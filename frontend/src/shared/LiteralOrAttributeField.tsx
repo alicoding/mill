@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import { FormControl, Label, Select, Stack, TextInput } from '@primer/react'
 import type { AttributeDef } from '../../bindings/github.com/alicoding/mill/internal/domain/composition/models'
 
@@ -25,27 +26,28 @@ export function LiteralOrAttributeField({
   attrs: AttributeDef[]
   onChange: (value: string) => void
 }) {
+  const { t } = useTranslation('common')
   const isAttr = value.startsWith('attr:')
   return (
     <FormControl key={name}>
       <FormControl.Label>
         {name} {badge && <Label size="small" variant="secondary">{badge}</Label>}
-        {required && <Label size="small" variant="accent">required</Label>}
+        {required && <Label size="small" variant="accent">{t('literalOrAttributeField.required')}</Label>}
       </FormControl.Label>
       <Stack direction="horizontal" gap="condensed">
         <Select
-          aria-label={`${name} source`}
+          aria-label={t('literalOrAttributeField.sourceAriaLabel', { name })}
           value={isAttr ? value : LITERAL}
           onChange={(e) => onChange(e.target.value === LITERAL ? '' : e.target.value)}
         >
-          <Select.Option value={LITERAL}>Literal value</Select.Option>
+          <Select.Option value={LITERAL}>{t('literalOrAttributeField.literalValue')}</Select.Option>
           {attrs.map((a) => (
-            <Select.Option key={a.Key} value={attrRef(a.Key)}>Attribute: {a.Label}</Select.Option>
+            <Select.Option key={a.Key} value={attrRef(a.Key)}>{t('literalOrAttributeField.attributeOption', { label: a.Label })}</Select.Option>
           ))}
         </Select>
         {!isAttr && (
           <TextInput
-            aria-label={`${name} literal value`}
+            aria-label={t('literalOrAttributeField.literalValueAriaLabel', { name })}
             value={value}
             onChange={(e) => onChange(e.target.value)}
           />

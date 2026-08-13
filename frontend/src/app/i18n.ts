@@ -6,7 +6,7 @@ import composition from '../locales/en/composition.json'
 import configure from '../locales/en/configure.json'
 import views from '../locales/en/views.json'
 
-// docs/goals/0032-copy-management.md's locked research verdict:
+// docs/goals/archive/0032-copy-management.md's locked research verdict:
 // react-i18next + i18next, namespace-per-bounded-context JSON --
 // mirroring frontend/src's own app/composition/configure/shared/views
 // folders -- chosen over every git-native headless-CMS candidate

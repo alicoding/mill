@@ -315,18 +315,19 @@ and [`docs/adr/0002-cicd-pipeline-phased-rollout.md`](adr/0002-cicd-pipeline-pha
   and `ActivityView`, which already reused the same card/list visual
   language). `frontend/public/style.css` deleted. `LOCKED`
 - **Copy management: `react-i18next` v17.0.11 + `i18next` v26.3.6
-  adopted, namespace-per-bounded-context JSON — `LOCKED` (partial
-  migration, goal 0032).** Owner-observed: 40 of 72 `.tsx` files carry
-  inline hardcoded copy, no i18n library present. Research first
-  framed this as a headless-CMS question (Decap/Sveltia/Keystatic/
-  Tina) — rejected on architecture fit, not quality: every git-native
-  CMS candidate needs either a hosted OAuth intermediary or a locally-
-  running backend daemon, disqualified outright by §1.1's no-hosted-
-  service/no-second-daemon constraint. The owner reframed it mid-
-  research: this is plain i18n (key → string JSON, no authoring UI, no
-  CMS product), not localization or centralized authoring — so the
-  real adopt-vs-build call is a plain i18n library, and `react-i18next`
-  is MIT, zero-server, and the standard choice for React. Resources
+  adopted, namespace-per-bounded-context JSON — `LOCKED`, migration
+  complete + guarded (goal 0032, closed).** Owner-observed: 40 of 72
+  `.tsx` files carried inline hardcoded copy, no i18n library present.
+  Research first framed this as a headless-CMS question (Decap/
+  Sveltia/Keystatic/Tina) — rejected on architecture fit, not quality:
+  every git-native CMS candidate needs either a hosted OAuth
+  intermediary or a locally-running backend daemon, disqualified
+  outright by §1.1's no-hosted-service/no-second-daemon constraint. The
+  owner reframed it mid-research: this is plain i18n (key → string
+  JSON, no authoring UI, no CMS product), not localization or
+  centralized authoring — so the real adopt-vs-build call is a plain
+  i18n library, and `react-i18next` is MIT, zero-server, and the
+  standard choice for React. Resources
   (`frontend/src/locales/en/{common,app,composition,configure,
   views}.json`, mirroring `frontend/src`'s own bounded-context folders)
   are imported statically and bundled at build time — no runtime
@@ -335,16 +336,32 @@ and [`docs/adr/0002-cicd-pipeline-phased-rollout.md`](adr/0002-cicd-pipeline-pha
   side effect from `main.tsx`; every other folder just calls
   `useTranslation()` from the `react-i18next` package directly, never
   importing the init module (dependency-cruiser's existing bounded-
-  context boundaries, ADR-0012, apply unchanged). Migrated as proof:
-  `SettingsView.tsx` (`views.json`'s `settings` namespace +
-  `common.json`'s shared action verbs). The remaining ~39 files are
-  tracked debt, not silently orphaned — see `docs/goals/BACKLOG.md`'s
-  copy-management entries. `eslint-plugin-i18next` (a lint guard
-  against new hardcoded strings) was evaluated and deliberately not
-  added yet: its `no-literal-string` rule would immediately flag every
-  still-unmigrated file, failing the lint gate repo-wide rather than
-  just guarding new code — revisit once migration is far enough along
-  that the false-positive surface is small.
+  context boundaries, ADR-0012, apply unchanged). Migrated in five
+  staged PRs off the `SettingsView.tsx` proof-of-pattern slice:
+  `app/`, `composition/` (split further into panels/canvas/inspector
+  sub-PRs — the largest slice, ~6600 non-test lines), `configure/`,
+  and `views/` minus Settings — every `.tsx`/`.ts` file's inline
+  user-facing string literals (including aria-labels/placeholders/
+  titles) extracted, translated text matching the original English
+  exactly so existing e2e assertions kept passing unchanged. A handful
+  of pure-function modules (validation/formatting helpers whose copy
+  is baked in at module-load time, not render time — e.g.
+  `composition/draftWorkflowSchema.ts`, `configure/openapiSynth.ts`,
+  `views/homeFormat.ts`) take a `t` translate function as an explicit
+  argument instead of a React hook, since they're called outside
+  component render. `eslint-plugin-i18next`'s `no-literal-string` rule
+  is now wired into `frontend/eslint.config.js`, scoped to
+  `src/**/*.{ts,tsx}` (test files excluded), in `jsx-text-only` mode —
+  checked empirically against this exact codebase before enabling:
+  `jsx-only` mode (which also checks JSX attribute values) produced
+  ~290 warnings dominated by Primer/DataTable prop names sitting on
+  custom JSX elements, not real copy, and would need a large, brittle
+  attribute-name allowlist to tame for a marginal catch; `jsx-text-only`
+  (JSX text children only, the plugin's own default) gave a small,
+  accurate signal that caught five genuine remaining hardcoded strings
+  in `shared/` (never in this migration's four-slice scope, since
+  `shared/` isn't a bounded-context page folder) plus two in already-
+  migrated files, all fixed in the same change that turned the rule on.
 - CI: GitHub Actions, all four ADR-0002 phases shipped in
   `.github/workflows/ci.yml` + `.github/workflows/release.yml`.
   `golangci-lint` v2, ESLint flat config, Vitest, `go test -race -cover`,

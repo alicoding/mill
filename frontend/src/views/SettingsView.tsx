@@ -36,7 +36,7 @@ const COLOR_MODES = ['light', 'dark', 'auto'] as const
 function SettingsView() {
   // 'views' is the default namespace (settings.* keys); 'common:'
   // prefix reaches the shared common.json namespace explicitly
-  // (docs/goals/0032-copy-management.md's proof-of-pattern slice).
+  // (docs/goals/archive/0032-copy-management.md's proof-of-pattern slice).
   const { t } = useTranslation('views')
   const { colorMode, setColorMode } = useTheme()
 

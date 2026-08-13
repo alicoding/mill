@@ -351,6 +351,7 @@
     "runTest": "Run test",
     "requestLog": "Request log (this session only)",
     "error": "error",
+    "durationMs": "{{ms}}ms",
     "copyAriaLabel": "Copy"
   },
   "configureRequests": {
