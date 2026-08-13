@@ -42,9 +42,13 @@ accepted)**
 3. [ ] [0044 — M365 bridge dry run + capture research](0044-m365-bridge-dry-run.md)
    — absorbs goal 0021 Phase 4's last bullet; gap list + the
    browser-extension-at-a-locked-down-enterprise decision research
-4. [ ] [0045 — v0.2.0 + release cadence](0045-release-cadence.md)
-   — tag-on-capability-goal-archive rule; v0.2.0 cuts when 0042
-   archives
+4. [x] [0045 — v0.2.0 + release cadence](archive/0045-release-cadence.md)
+   — DELIVERED 2026-08-13: cadence rule LOCKED in SPEC §1.3
+   (tag-on-capability-goal-archive; the asset is the launchable
+   mill.app zip, clone-build stays the documented dev path); v0.2.0
+   live and attestation-verified. The cut surfaced and fixed three
+   more latent defects (raw-binary asset, release.yml invalid YAML —
+   now gated by workflow-lint, GPL-3 setup-task action wrapper)
 
 **Group E — Public-repo hygiene (2026-08-13, owner-directed: source
 comments explain code per standard practice — business/product
