@@ -60,7 +60,9 @@
     "pressCombo": "Press a combo… (Esc to cancel)",
     "clickToChange": "Click to change",
     "reset": "Reset",
-    "unbound": "Unbound"
+    "unbound": "Unbound",
+    "alsoLabel": "Also:",
+    "extraBindingTitle": "Additional shortcut (not editable here)"
   },
   "placeholderView": {
     "notBuiltYet": "Not built yet",

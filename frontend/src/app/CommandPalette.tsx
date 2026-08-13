@@ -40,20 +40,15 @@ import styles from './CommandPalette.module.css'
 // onClose('escape') and preventDefault()s, so Escape-to-close needs no
 // extra wiring here.
 //
-// ⌘? / ⌘/ aliases (the goal's "owner reinforcement" note) are
-// deliberately NOT built: shared/commands.ts's Command shape is one
-// binding per command (`defaultBinding: KeyCombo | null`), and both
-// dispatchCommandForEvent and the Settings "Keyboard Shortcuts" rebind
-// UI (KeyboardShortcutsSection.tsx) key off that 1:1 assumption, as
-// does the Go side's persisted-override map (settingsservice_keymap.go,
-// one KeyCombo per command id). Adding a second real `palette.open`
-// command row instead would show two identically-labelled, independently
-// rebindable rows in Settings -- not a clean alias. A real alias needs
-// either `defaultBinding: KeyCombo[]` threaded through all of the above,
-// or teaching shared/keybinding.ts's keyFromEventCode a bare '/'/'?' key
-// outside the registry entirely -- both cross-cutting enough that this
-// stays ⌘K-only per this goal's own "don't restructure the registry,
-// ship ⌘K only and note the deferral" instruction.
+// ⌘? / ⌘/ aliases (the goal's "owner reinforcement" note, deferred at
+// the time as a cross-cutting registry change) landed later as
+// docs/goals/BACKLOG.md Standing #6: shared/commands.ts's Command grew
+// an optional `extraBindings: KeyCombo[]` alongside `defaultBinding`
+// (backward-compatible), and shared/keybinding.ts's keyFromEventCode
+// now recognizes the '/' key. dispatchCommandForEvent checks every
+// command's extras too; this Dialog itself needs no changes -- it
+// still just renders off the store's paletteOpen flag regardless of
+// which bound combo flipped it.
 
 type PaletteGroupId = 'commands' | 'workflows' | 'tabs'
 
