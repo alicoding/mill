@@ -191,6 +191,43 @@ not tool-surface ergonomics)
   lists through `process-extract-html` → `html-to-markdown`. Build a
   realistic fixture corpus; assess where structure survives and
   where it degrades; feed findings into the ADR-0030 checklist trip.
+
+  **Research delivered 2026-08-13 (agent-run, empirically verified
+  against the exact `html-to-markdown` v2.5.2 in go.mod):**
+  - **[HIGH — the headline]** `internal/adapters/markdown/markdown.go`
+    calls the library's bare `htmltomarkdown.ConvertString`, which
+    wires only `plugin/base` + `plugin/commonmark` — **not
+    `plugin/table`** — so every Confluence table converts to one
+    run-on text line with all row/column structure destroyed
+    (verified: `RegionQ1Q2 EMEA1012 Growing`). Fix is adding the
+    library's own `plugin/table` (+ `plugin/strikethrough`) via
+    `converter.NewConverter`; colspan/rowspan then flatten per the
+    plugin's documented GFM behavior (spanned content top-left,
+    blanks elsewhere), which is the correct ceiling for pipe tables.
+  - **Fixture corpus: hand-write it (12 cases specified).** No
+    adoptable corpus exists — checked the library's own goldens
+    (generic, not Confluence), pandoc (no Confluence reader),
+    cjberg/confluence-to-markdown (stale 2023, decade-old Server
+    markup), highsource/confluence-to-markdown-converter (storage-XML
+    input, wrong shape, dead 2017), Spenhouet/confluence-markdown-
+    exporter (MIT, live, best rendered-markup ground truth — but
+    Python; reference source only). Case list with real Cloud markup
+    (class names corroborated against Spenhouet's tested converter +
+    Atlassian docs): table w/ colspan+rowspan; code-block macro
+    (`data-syntaxhighlighter-params="brush: java"` — language hint
+    silently dropped today, the library only reads `language-*`
+    classes); info/note/warning/tip panels (panel TYPE lost);
+    3-level nested lists (works, keep as regression); task lists
+    (`ak-task-list` — checkbox state dropped, no GFM `- [x]`);
+    expand macro (collapse semantics lost; Spenhouet re-renders as
+    `<details>`); status lozenges (semantic color lost); multi-column
+    layouts (acceptable linearization); page links/mentions (works);
+    emoticons (`data-emoji-fallback` — currently emits a DEAD image
+    link, worse than dropping); panel-inside-table-cell; bare `<pre>`
+    negative control.
+  - Full report with sources + verified converter outputs in the
+    session transcript; per-case snippets land with the fixture
+    corpus itself.
 - **§2.1 M365 bridge dry run** — compose capture→code-exec→clipboard
   end-to-end with the pieces that exist; name what's still missing
   (DOM capture, auto-paste target).
