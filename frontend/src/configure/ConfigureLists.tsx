@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button, Checkbox, FormControl, Heading, IconButton, Select, Stack, Text, TextInput, VisuallyHidden } from '@primer/react'
-import { DownloadIcon, ListUnorderedIcon, PlusIcon, TrashIcon, UploadIcon } from '@primer/octicons-react'
+import { DownloadIcon, ListUnorderedIcon, PencilIcon, PlusIcon, TrashIcon, UploadIcon } from '@primer/octicons-react'
 import { DataTable } from '@primer/react/experimental'
 import { StatusStamp } from '../shared/StatusStamp'
 import { ResizableTableContainer } from '../shared/ResizableTable'
@@ -372,7 +372,7 @@ export function ConfigureLists() {
                 header: '', id: 'actions', width: 'auto', align: 'end',
                 renderCell: (l) => (
                   <Stack direction="horizontal" gap="condensed">
-                    <Button size="small" variant="invisible" onClick={() => startEdit(l)}>{t('edit')}</Button>
+                    <IconButton icon={PencilIcon} aria-label={t('configureLists.editAriaLabel', { label: l.Label })} size="small" variant="invisible" onClick={() => startEdit(l)} />
                     <IconButton icon={DownloadIcon} aria-label={t('configureLists.exportAriaLabel', { label: l.Label })} size="small" variant="invisible" onClick={() => exportList(l.ID, l.Label)} />
                     <IconButton icon={TrashIcon} aria-label={t('configureLists.deleteAriaLabel', { label: l.Label })} size="small" variant="invisible" onClick={() => requestDelete(l)} />
                   </Stack>

@@ -191,6 +191,61 @@ tab conformance) is the second PR of this same design pass, and the
 owner's own live sign-off (this goal's stated Acceptance) hasn't
 happened yet.
 
+## Design wave 3 — delivered (2026-08-13)
+
+The second and final PR of the same design pass wave 2 opened, driven
+by the same audit's sections 5 (palette IA) and its own follow-on
+consistency findings. Full detail in `docs/SPEC.md` §3.8-area's three
+new bullets — summary here:
+
+1. **Node palette regrouped from 6 domain Kinds to 9 frontend display
+   groups** (`composition/paletteGroups.ts`, all 29 registered
+   NodeType IDs mapped, unknown-ID fallback + dev warn). Fixes the
+   audit's finding that 14 of 29 node types shared one Kind
+   (`process`), making the old Kind-grouped palette put AI/List/
+   Integration/MCP/code-exec/child-workflow/human-review/ruleset all
+   in one undifferentiated bucket.
+2. **Palette label shortening fixed**: the generic strip-first-prefix
+   transform (not a Kind-derived one) — the original wave-1 version
+   silently failed to shorten most labels, since their real prefixes
+   ("AI:", "Code:", "List:", "MCP:") don't match their Kind's own
+   label word. Canvas cards and step chips keep the full label
+   unchanged (no group context to shorten against there).
+3. **Palette search added** (previously none) — matches both the
+   shortened display text and the full underlying label.
+4. **Configure → Attributes conforms to its 6 siblings' pattern**:
+   `InventoryList` rows (each row IS a workflow) + `VisuallyHidden`
+   heading, replacing the bare `<Select>` picker — supersedes wave 1's
+   earlier exception for this one tab.
+5. **Configure row-action icon-button consistency**: `PencilIcon`
+   replaces the text "Edit" button across all 5 Configure `DataTable`
+   tabs that still had one; `CopyIcon` for Decisions' Duplicate
+   (matching `RequestSummary.tsx`'s existing precedent).
+
+Proofs: `composition/paletteGroups.test.ts` (every registered NodeType
+ID maps to a group, the Kind-fallback path for an unknown ID, the
+label-shortening transform across every real label in the app);
+`e2e/node-palette.spec.ts` (9 groups with the expected membership,
+label shortening, search matching both short and full names, canvas
+cards keeping their full label after a real drag-drop); two existing
+specs (`composition-canvas-interactions.spec.ts`,
+`realtime-cross-surface.spec.ts`) updated from the old `<Select>`-based
+Attributes assertions to the new row-based ones. Full local gate green
+(tsc/eslint/boundaries/vitest/check-loc/golangci-lint/go vet/go build
+desktop+server/go test/ls_lint) plus a full Playwright e2e run
+(200/200 including 3 pre-existing timing-flake tests that passed clean
+on Playwright's own automatic retry, none touching the palette,
+Configure icon-buttons, or ConfigureAttributes). Screenshots:
+`scratchpad/audit/*-after.png` (the palette open + mid-search, both
+themes; Configure Attributes' row list and its open editor, both
+themes; a Configure table showing the new icon-button row actions).
+
+Goal stays OPEN — both design-wave PRs are delivered; what remains is
+the owner's own live sign-off against the goal's stated Acceptance
+(a judgment call, not a checklist), plus the goal's original
+authoring-surface items (typed payload visibility on cards, the
+spacing audit) that predate both waves and were never in their scope.
+
 ## Live-review additions (2026-08-10)
 - Hotkey recorder vs native menu accelerators (owner hit ⌘⇧W while
   recording — the window closed, and since Mill exits on last-window-

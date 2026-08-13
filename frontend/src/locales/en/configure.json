@@ -26,16 +26,18 @@
       "boolean": "Boolean"
     },
     "heading": "Attributes",
-    "description": "Attributes are scoped to a single workflow (1:1) -- pick one to edit its declared schema. Decision edges in that workflow evaluate against these fields.",
-    "workflow": "Workflow",
-    "selectWorkflow": "Select a workflow…",
     "keyPlaceholder": "key",
     "labelPlaceholder": "label",
     "removeAttributeAriaLabel": "Remove attribute",
     "addAttribute": "Add attribute",
     "saved": "Saved.",
     "saving": "Saving…",
-    "saveAttributes": "Save attributes"
+    "saveAttributes": "Save attributes",
+    "searchPlaceholder": "Search workflows…",
+    "attributeCountSummary": "{{count}} attribute{{plural}} declared",
+    "emptyHeading": "No workflows yet",
+    "emptyDescription": "Create a workflow first (Workflows > New workflow), then come back here to declare its Attributes schema.",
+    "closeEditor": "Close"
   },
   "requestSummary": {
     "requestSummaryAriaLabel": "Request summary",
@@ -98,6 +100,7 @@
       "rows": "Rows",
       "id": "ID"
     },
+    "editAriaLabel": "Edit {{label}}",
     "exportAriaLabel": "Export {{label}}",
     "deleteAriaLabel": "Delete {{label}}",
     "searchPlaceholder": "Search lists…",
@@ -150,6 +153,7 @@
       "profile": "Profile",
       "dir": "Dir"
     },
+    "editAriaLabel": "Edit {{label}}",
     "exportAriaLabel": "Export {{label}}",
     "deleteAriaLabel": "Delete {{label}}",
     "searchPlaceholder": "Search execution environments…",
@@ -184,6 +188,8 @@
       "id": "ID"
     },
     "duplicate": "Duplicate",
+    "editAriaLabel": "Edit {{label}}",
+    "duplicateAriaLabel": "Duplicate {{label}}",
     "exportAriaLabel": "Export {{label}}",
     "deleteAriaLabel": "Delete {{label}}",
     "searchPlaceholder": "Search decisions…",
@@ -212,6 +218,7 @@
       "id": "ID"
     },
     "listTools": "List tools",
+    "editAriaLabel": "Edit {{label}}",
     "exportAriaLabel": "Export {{label}}",
     "deleteAriaLabel": "Delete {{label}}",
     "searchPlaceholder": "Search MCP servers…",
@@ -246,6 +253,9 @@
       "model": "Model",
       "baseUrl": "Base URL"
     },
+    "editAriaLabel": "Edit {{label}}",
+    "exportAriaLabel": "Export {{label}}",
+    "deleteAriaLabel": "Delete {{label}}",
     "deleteConfirmTitle": "Delete AI provider?",
     "deleteConfirmBody": "This permanently deletes \"{{label}}\". This cannot be undone.",
     "searchPlaceholder": "Search AI providers…",
