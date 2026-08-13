@@ -20,8 +20,8 @@ import PageContainer from '../shared/PageContainer'
 export type { HeaderRow, RequestDraft }
 
 // Same open set integration-http's own method field suggests (ADR-0016,
-// internal/domain/composition/integration.go) -- autocomplete hints on
-// rendered as a Select by direct user decision (wire stays open).
+// internal/domain/composition/integration.go) -- autocomplete hints
+// rendered as a Select, not a hard enum (wire stays open).
 const METHOD_SUGGESTIONS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS', 'QUERY']
 // The subset OpenAPI 3.x can actually express as a PathItem field --
 // used only when synthesizing the schema document, never to restrict

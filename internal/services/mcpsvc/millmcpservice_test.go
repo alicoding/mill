@@ -34,9 +34,8 @@ func TestMillMCPService_RealClientRoundTrip(t *testing.T) {
 	}
 	defer func() {
 		// 2s previously flaked on shared CI runners under load
-		// ("Shutdown: context deadline exceeded") -- confirmed a runner-
-		// timing flake, not a real bug, by rerunning the exact failing
-		// job to green (goal 0021 Phase-1-remainder PR #20, 2026-08-12).
+		// ("Shutdown: context deadline exceeded") -- a runner-
+		// timing flake, not a real bug (goal 0021 Phase-1-remainder PR #20).
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
 		if err := svc.Shutdown(ctx); err != nil {

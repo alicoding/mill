@@ -55,11 +55,10 @@ export default defineConfig({
   // Playwright's own default reporter (list locally, dot in CI) never
   // writes a report to disk -- ci.yml's e2e job already expects one at
   // frontend/playwright-report on failure (its own upload-artifact
-  // step), but with no reporter configured that path never existed,
-  // confirmed directly against a real failed CI run (2026-08-11's
-  // Linux-e2e investigation): "No files were found with the provided
-  // path" swallowed the one artifact that would have shown per-failure
-  // screenshots/traces instead of bare text logs. `open: 'never'` so a
+  // step), but with no reporter configured that path never existed:
+  // "No files were found with the provided path" swallowed the one
+  // artifact that would have shown per-failure screenshots/traces
+  // instead of bare text logs. `open: 'never'` so a
   // local `npx playwright test` run never pops a browser tab
   // mid-session.
   reporter: [['html', { open: 'never' }], ['list']],

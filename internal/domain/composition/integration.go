@@ -27,7 +27,7 @@ type ResolvedHTTPRequest struct {
 	// Body is the request's own raw body, sent as-is when neither the
 	// schema's bound body fields nor a legacy node-level bodyTemplate
 	// produce one -- transport/payload config lives on the request, not
-	// the workflow node (direct user decision).
+	// the workflow node.
 	Body     string
 	AuthType httprequest.AuthType
 	Headers  map[string]string
@@ -149,7 +149,7 @@ func init() {
 		Effect:      guardrail.ClassExternal,
 		Output:      "HTTP response body",
 		Label:       "Integration: HTTP call",
-		Description: "Calls a Configure-authored integration's API and replaces the payload with the response body. The node only picks WHICH integration and binds data -- method, endpoint path, and body all live on the integration itself (Configure > Integration), by direct user decision: transport config at the workflow level was config in the wrong place. Legacy nodes saved with their own path/method/bodyTemplate config keep working (those keys still win when present); they're just no longer authorable here.",
+		Description: "Calls a Configure-authored integration's API and replaces the payload with the response body. The node only picks WHICH integration and binds data -- method, endpoint path, and body all live on the integration itself (Configure > Integration): transport configuration belongs on the integration, not the workflow node. Legacy nodes saved with their own path/method/bodyTemplate config keep working (those keys still win when present); they're just no longer authorable here.",
 		ConfigFields: []ConfigField{
 			{
 				Key: "requestId", Label: "Integration",

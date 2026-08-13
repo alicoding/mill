@@ -28,7 +28,7 @@ const ExampleSafeSandboxID = "example-safe-sandbox-execenv"
 // managers, etc -- exactly the "materialize, don't inherit" principle
 // ADR-0026's Amendment names).
 //
-// Shell is sh, not zsh (ADR-0026's Correction, 2026-08-11): zsh is a
+// Shell is sh, not zsh (ADR-0026's Correction): zsh is a
 // macOS-only default (ships since Catalina) that most headless Linux
 // distributions -- including this repo's own Linux server-mode CI
 // target, docs/SPEC.md §1.3 -- don't install, which made this seed

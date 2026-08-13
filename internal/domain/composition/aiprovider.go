@@ -75,11 +75,11 @@ var aiNodeTypeIDs = map[string]bool{
 const aiProviderIDConfigKey = "aiproviderId"
 
 // isLocalAIHost reports whether baseURL's host is EXACTLY localhost,
-// 127.0.0.1, or ::1 (docs/goals/0031-ai-node-family.md's owner-ratified
-// Effect design: "downgrade to ClassLocal when the resolved
-// AIProvider.BaseURL host is exactly localhost/127.0.0.1/[::1]" -- a
+// 127.0.0.1, or ::1 (docs/goals/0031-ai-node-family.md's Effect design:
+// downgrade to ClassLocal when the resolved
+// AIProvider.BaseURL host is exactly localhost/127.0.0.1/[::1] -- a
 // narrow, explicit allow-list, not a broader 127.0.0.0/8 loopback CIDR
-// check, matching the goal's own literal wording). url.Parse +
+// check). url.Parse +
 // u.Hostname() handles every documented edge case without hand-rolled
 // string surgery: a port suffix ("localhost:11434"), IPv6 brackets
 // ("[::1]:11434" -- Hostname() strips both the brackets and the port),

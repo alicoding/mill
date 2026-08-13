@@ -11,8 +11,8 @@ import (
 
 // A manual TEST run can substitute the input its trigger would have
 // supplied (docs/SPEC.md §3.4: a trigger's output IS the workflow's
-// input) -- caught live: the owner's first Run of the saved-page seed
-// died at capture-file with an empty payload, because only headless
+// input) -- without it, a manual Run of the saved-page seed
+// dies at capture-file with an empty payload, because only headless
 // trigger fires ever passed InitialPayload. RunWorkflowWithPayload is
 // the same entrypoint the Run dialog's new Initial-payload field calls.
 func TestRunWorkflowWithPayload_TestKind_FlowsIntoCaptureFile(t *testing.T) {

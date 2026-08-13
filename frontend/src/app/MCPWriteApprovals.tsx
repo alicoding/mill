@@ -31,8 +31,8 @@ export function MCPWriteApprovals() {
   }, [])
 
   // A direct user action's failure is SURFACED, never swallowed --
-  // audit-caught (2026-08-11): this used to be `.catch(() => {})` while
-  // ReviewView's resolveWrite for the identical action correctly showed
+  // a bare `.catch(() => {})` here would diverge from ReviewView's
+  // resolveWrite for the identical action, which correctly shows
   // the error; two paths to one guarded action must both tell the user
   // when it didn't work. Background refresh above stays best-effort.
   const resolve = (id: string, approve: boolean) => {

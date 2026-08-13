@@ -11,8 +11,8 @@ import (
 )
 
 // docs/goals/0010 items 7-9: the enforcement half. "Is everything
-// proven?" must become a question CI answers, not one the owner
-// answers by clicking through the app. This file is a human-maintained
+// proven?" must become a question CI answers, not one answered
+// by clicking through the app. This file is a human-maintained
 // registry, not a test-source parser -- deliberately: verifying the
 // named test functions actually EXIST would mean parsing Go test
 // source at test-run time, which the goal itself rejected as too
@@ -199,7 +199,7 @@ var execEnvProofRegistry = map[string]seedProof{
 
 // nodeTypeProofRegistry: every registered NodeType NOT used by any node
 // in composition.BuiltInWorkflows() -- the layered-coverage refinement
-// (goal 0010 item 9, .claude/rules/testing.md's 2026-08-10 update):
+// (goal 0010 item 9, .claude/rules/testing.md):
 // don't force a contrived seed onto a NodeType a different layer
 // already proves better. Each entry names its real proof layer/test
 // (unit/integration/interaction-e2e) or a ManualOnly reason.

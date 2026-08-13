@@ -5,10 +5,10 @@ import { useAppStore } from '../shared/store'
 import { KeyComboChip } from '../shared/KeyComboChip'
 
 // The single O(1) read every inline hotkey hint in the app goes
-// through (docs/goals/0015-summon-quick-invoke.md, owner's explicit
-// "single source of truth" constraint): a command's CURRENT effective
-// binding is its keybindingOverrides entry (set via Settings ->
-// Keyboard Shortcuts, shared/store.ts) if the owner rebound it, else
+// through (docs/goals/0015-summon-quick-invoke.md's single-source-of-
+// truth constraint): a command's CURRENT effective binding is its
+// keybindingOverrides entry (set via Settings ->
+// Keyboard Shortcuts, shared/store.ts) if the user rebound it, else
 // its shared/commands.ts default -- the exact same merge
 // KeyboardShortcutsSection.tsx's own list already performs via
 // effectiveBinding. Before this, CommandPalette.tsx and QuickPanel.tsx

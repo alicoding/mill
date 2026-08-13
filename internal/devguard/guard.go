@@ -1,7 +1,7 @@
 // Package main implements devguard, the `task dev` concurrent-start
-// check (docs/goals/BACKLOG.md Standing #8b, owner-hit 2026-08-12
-// evening: THREE concurrent mill.dev.app instances in the dock, a real
-// crash risk on a 16GB machine). Root cause: `task dev` run a second
+// check (docs/goals/BACKLOG.md Standing #8b): THREE concurrent
+// mill.dev.app instances in the dock is a real
+// crash risk on a 16GB machine. Root cause: `task dev` run a second
 // time while a first session was already live -- the existing
 // orphan-sweep (Taskfile.yml's `dev:` task, goal 0029) unconditionally
 // kills whatever's on the Vite port and any leftover mill.dev.app

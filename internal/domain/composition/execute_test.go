@@ -107,7 +107,7 @@ func TestExecuteWorkflow_ClipboardHTMLToMarkdown_NoHTMLOnClipboard(t *testing.T)
 	// No HTML flavor, but plain text present: SPEC §5's capture
 	// fallback (HTML -> plain text) means the workflow succeeds on the
 	// text rather than erroring (updated from the old HTML-or-nothing
-	// behavior, 2026-08-10 goal 0001).
+	// behavior, goal 0001).
 	withFakeClipboard(t, func() (string, error) {
 		return "", errors.New("no HTML on clipboard")
 	}, nil, nil)

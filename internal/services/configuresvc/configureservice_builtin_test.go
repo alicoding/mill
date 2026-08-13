@@ -236,9 +236,9 @@ func TestBuiltIn_TypedExamples_DeclareRealFields(t *testing.T) {
 	}
 }
 
-// Top-up seeding (direct user decision: "every feature we build needs
-// proof with a seeded example" -- so a newly shipped example must reach
-// an EXISTING instance, not just fresh installs): a persisted store
+// Top-up seeding: every capability ships a seeded example that
+// exercises it (.claude/rules/testing.md), so a newly shipped example
+// must reach an EXISTING instance, not just fresh installs. A persisted store
 // missing a built-in gets it appended on restore; a deliberately
 // deleted built-in is tombstoned and stays gone across restarts.
 func TestTopUpSeeding_AddsNewBuiltIns_ButNeverResurrectsDeletedOnes(t *testing.T) {

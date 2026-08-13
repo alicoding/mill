@@ -40,10 +40,10 @@ func NewSlugID(label, fallback string) string {
 
 // seedTombstonesKey records built-in example IDs the user deliberately
 // deleted, so top-up seeding (topUpBuiltIns on each service) never
-// resurrects them -- seeds are top-up rather than fresh-install-only by
-// direct user decision ("every feature we build needs proof with a
-// seeded example" -- a new example must reach an existing instance),
-// and the tombstone is what keeps §2.2's fully-deletable principle
+// resurrects them -- seeds are top-up rather than fresh-install-only:
+// every capability ships a seeded example that exercises it
+// (.claude/rules/testing.md), and a new example must reach an existing
+// instance; the tombstone is what keeps §2.2's fully-deletable principle
 // true at the same time.
 const seedTombstonesKey = "seed-tombstones"
 

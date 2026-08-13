@@ -38,8 +38,7 @@ func init() {
 			// The step's own most common failure, made self-explanatory
 			// (docs/SPEC.md §1's thesis): a manual test run starts with an
 			// empty payload unless one is supplied, so payload-as-path has
-			// nothing to read -- caught live the first time the owner
-			// clicked Run on the saved-page seed.
+			// nothing to read.
 			return ctx, fmt.Errorf("capture-file: the payload is empty, so there is no file path to read -- " +
 				"this step expects an upstream trigger (e.g. filesystem watch) to supply the path; " +
 				"on a manual test run, fill in the Run dialog's Initial payload with a file path, " +

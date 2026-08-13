@@ -12,7 +12,7 @@ interface PlaceholderViewProps {
 // Generic "not built yet" page for any capability whose docs/SPEC.md
 // entry exists but has no real UI yet -- reuses ListCard.module.css's
 // card/empty/muted classes rather than a bespoke stylesheet, matching
-// this session's CSS Modules decision (SPEC.md §1.3).
+// the project's CSS Modules decision (SPEC.md §1.3).
 function PlaceholderView({ capabilityId }: PlaceholderViewProps) {
   const { t } = useTranslation('views')
   const capability = useAppStore((s) => s.capabilities.find((c) => c.ID === capabilityId))

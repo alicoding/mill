@@ -35,11 +35,10 @@ const wailsVersion = "v3.0.0-beta.4";
 // titlebar and the traffic lights float over the top-left -- so the
 // titlebar band below must reserve that strip itself with left inset;
 // env(safe-area-inset-*) is always 0 on desktop and cannot cover it
-// (real regression caught live after the old padding-based approach
-// relied on it).
+// (a padding-based approach relying on it regresses).
 //
 // Detection is BuildInfo.Server (Go's own build tag), NOT `'_wails' in
-// window` -- found live (goal 0021): the Wails JS runtime injects
+// window` (goal 0021): the Wails JS runtime injects
 // _wails in a plain browser tab on the server-mode interface too, so
 // that check was true everywhere and native-only chrome leaked into
 // server mode. Until GetBuildInfo lands (ms after mount), the shell
@@ -99,7 +98,7 @@ function App() {
   // keymap-system.md): resolves a pressed combo against every
   // command's current EFFECTIVE binding (shared/commands.ts's
   // dispatchCommandForEvent -- default, or this store's own
-  // keybindingOverrides if the owner rebound it in Settings) and runs
+  // keybindingOverrides if the user rebound it in Settings) and runs
   // the first match. This is the direct successor to the old, hardcoded
   // Cmd+1-4/Cmd+, VIEW_HOTKEYS handler -- those four are now just
   // ordinary commands (view.composition/configure/activity/review,
@@ -186,10 +185,10 @@ function App() {
 
   useEffect(() => {
     // Unsubscribe returned like every other Events.On in this file --
-    // audit-caught (2026-08-11): this was the ONE subscription of six
-    // here with no cleanup, stacking a duplicate 'time' listener per
-    // HMR remount (the exact stray-listener class the build-identity
-    // comment above already documents for a reverted mechanism).
+    // without it this is the ONE subscription of six here with no
+    // cleanup, stacking a duplicate 'time' listener per HMR remount
+    // (the exact stray-listener class the build-identity comment above
+    // already documents for a reverted mechanism).
     const off = Events.On('time', (timeValue) => {
       // On a narrow screen the full RFC1123 stamp is too wide for the footer, so
       // show just the clock time there (matching the CSS breakpoint).

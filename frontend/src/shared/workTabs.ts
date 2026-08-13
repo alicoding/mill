@@ -6,9 +6,9 @@
 // `from '../shared/store'` import of WorkTab/WorkTabSpec keeps working
 // unchanged; the store itself imports the functions directly.
 
-// One app-wide work-tab strip (docs/SPEC.md §3.8, direct user decision:
-// per-page tab strips "isolated the tabs between pages, which is
-// incorrect model"). A WorkTab is an open work item -- a workflow
+// One app-wide work-tab strip (docs/SPEC.md §3.8): per-page tab strips
+// isolate the tabs between pages, which is an incorrect model.
+// A WorkTab is an open work item -- a workflow
 // editor or an integration view/edit -- rendered by app/WorkTabShell.tsx
 // above whichever section page the sidebar has active; opening,
 // closing, and switching tabs is store state so any surface (a list
@@ -135,8 +135,8 @@ export function shouldUpgradeToEdit(existing: WorkTab, requested: WorkTabSpec): 
 // qualify to be saved -- it must itself be `isRestorable`) and `merge`
 // (does the PERSISTED active tab match a tab that actually came back)
 // -- so the two checks can't drift apart (docs/goals/0033-reload-
-// session-restore.md: a real hard-reload mid-session, tab 3 of 3,
-// dumped the owner back to Home even though the tabs themselves were
+// session-restore.md: a hard-reload with multiple tabs open used to
+// drop back to Home even though the tabs themselves were
 // already restoring -- present in the strip but never re-activated,
 // which still cost the user their actual place).
 export function activeKeyIfPresent(workTabs: WorkTab[], key: string | null | undefined): string | null {

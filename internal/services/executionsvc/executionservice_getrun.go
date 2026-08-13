@@ -86,8 +86,8 @@ func (e *ExecutionService) GetRun(runID string) (RunDetail, error) {
 	// approval park records DBOS.setEvent + DBOS.recv + DBOS.sleep) are
 	// checkpointed as steps too, under the library's uniform "DBOS."
 	// name prefix -- excluded, or each would render as a blank,
-	// label-less row in the run detail (caught live: an approved
-	// guardrail run showed three bare checkmarks above its real steps).
+	// label-less row in the run detail (an approved
+	// guardrail run would show three bare checkmarks above its real steps).
 	seen := make(map[string]bool, len(sortedSteps))
 	var order []composition.Node
 	for _, s := range sortedSteps {

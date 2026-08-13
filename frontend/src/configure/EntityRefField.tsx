@@ -24,7 +24,7 @@ function isCallableWorkflow(wf: Workflow): boolean {
 // replacing the previous "paste the ID by hand" gap. One generic
 // component parameterized by RefKind rather than three near-duplicates
 // -- the same "one mechanism, parameterized" shape RunKind/TypedField
-// already established this session. RefKind "request" renamed from
+// already establishes. RefKind "request" renamed from
 // "connector" by ADR-0016.
 const CREATE_NEW = '__create_new__'
 
