@@ -3,10 +3,28 @@
 // touches call sites.
 package markdown
 
-import htmltomarkdown "github.com/JohannesKaufmann/html-to-markdown/v2"
+import (
+	"github.com/JohannesKaufmann/html-to-markdown/v2/converter"
+	"github.com/JohannesKaufmann/html-to-markdown/v2/plugin/base"
+	"github.com/JohannesKaufmann/html-to-markdown/v2/plugin/commonmark"
+	"github.com/JohannesKaufmann/html-to-markdown/v2/plugin/strikethrough"
+	"github.com/JohannesKaufmann/html-to-markdown/v2/plugin/table"
+)
 
 // ToMarkdown converts HTML to Markdown, preserving structure (headings,
-// bold, lists) instead of flattening it to plain text.
+// bold, lists, tables, strikethrough) instead of flattening it to plain
+// text. Built via converter.NewConverter with an explicit plugin list
+// rather than the library's package-level ConvertString, which wires only
+// base+commonmark and silently collapses every table to a single run-on
+// line (no plugin/table).
 func ToMarkdown(html string) (string, error) {
-	return htmltomarkdown.ConvertString(html)
+	conv := converter.NewConverter(
+		converter.WithPlugins(
+			base.NewBasePlugin(),
+			commonmark.NewCommonmarkPlugin(),
+			table.NewTablePlugin(),
+			strikethrough.NewStrikethroughPlugin(),
+		),
+	)
+	return conv.ConvertString(html)
 }
