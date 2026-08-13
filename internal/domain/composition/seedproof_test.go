@@ -250,48 +250,54 @@ func checkRegistry(t *testing.T, kind string, realIDs []string, registry map[str
 }
 
 func TestSeedProofRegistry_EveryWorkflowProvenOrExempt(t *testing.T) {
-	var ids []string
-	for _, wf := range BuiltInWorkflows() {
+	workflows := BuiltInWorkflows()
+	ids := make([]string, 0, len(workflows))
+	for _, wf := range workflows {
 		ids = append(ids, wf.ID)
 	}
 	checkRegistry(t, "seeded workflow", ids, workflowProofRegistry)
 }
 
 func TestSeedProofRegistry_EveryHTTPRequestProvenOrExempt(t *testing.T) {
-	var ids []string
-	for _, r := range httprequest.BuiltIn() {
+	requests := httprequest.BuiltIn()
+	ids := make([]string, 0, len(requests))
+	for _, r := range requests {
 		ids = append(ids, r.ID)
 	}
 	checkRegistry(t, "seeded HTTPRequest", ids, httpRequestProofRegistry)
 }
 
 func TestSeedProofRegistry_EveryDecisionProvenOrExempt(t *testing.T) {
-	var ids []string
-	for _, d := range decision.BuiltIn() {
+	decisions := decision.BuiltIn()
+	ids := make([]string, 0, len(decisions))
+	for _, d := range decisions {
 		ids = append(ids, d.ID)
 	}
 	checkRegistry(t, "seeded Decision", ids, decisionProofRegistry)
 }
 
 func TestSeedProofRegistry_EveryListProvenOrExempt(t *testing.T) {
-	var ids []string
-	for _, l := range list.BuiltIn() {
+	lists := list.BuiltIn()
+	ids := make([]string, 0, len(lists))
+	for _, l := range lists {
 		ids = append(ids, l.ID)
 	}
 	checkRegistry(t, "seeded List", ids, listProofRegistry)
 }
 
 func TestSeedProofRegistry_EveryMCPServerProvenOrExempt(t *testing.T) {
-	var ids []string
-	for _, s := range mcpserver.BuiltIn() {
+	servers := mcpserver.BuiltIn()
+	ids := make([]string, 0, len(servers))
+	for _, s := range servers {
 		ids = append(ids, s.ID)
 	}
 	checkRegistry(t, "seeded MCP Server", ids, mcpServerProofRegistry)
 }
 
 func TestSeedProofRegistry_EveryExecEnvProvenOrExempt(t *testing.T) {
-	var ids []string
-	for _, e := range execenv.BuiltIn() {
+	execEnvs := execenv.BuiltIn()
+	ids := make([]string, 0, len(execEnvs))
+	for _, e := range execEnvs {
 		ids = append(ids, e.ID)
 	}
 	checkRegistry(t, "seeded ExecEnv", ids, execEnvProofRegistry)

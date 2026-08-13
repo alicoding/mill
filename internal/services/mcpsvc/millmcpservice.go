@@ -193,8 +193,9 @@ type resourceIndexEntry struct {
 }
 
 func (m *MillMCPService) readWorkflowsIndex(_ context.Context, req *mcp.ReadResourceRequest) (*mcp.ReadResourceResult, error) {
-	out := make([]resourceIndexEntry, 0)
-	for _, wf := range m.comp.Workflows() {
+	workflows := m.comp.Workflows()
+	out := make([]resourceIndexEntry, 0, len(workflows))
+	for _, wf := range workflows {
 		out = append(out, resourceIndexEntry{ID: wf.ID, Label: wf.Label, Description: wf.Description})
 	}
 	return jsonContents(req.Params.URI, out)
@@ -212,8 +213,9 @@ func (m *MillMCPService) readWorkflow(_ context.Context, req *mcp.ReadResourceRe
 }
 
 func (m *MillMCPService) readRequestsIndex(_ context.Context, req *mcp.ReadResourceRequest) (*mcp.ReadResourceResult, error) {
-	out := make([]resourceIndexEntry, 0)
-	for _, r := range m.cfg.HTTPRequests() {
+	requests := m.cfg.HTTPRequests()
+	out := make([]resourceIndexEntry, 0, len(requests))
+	for _, r := range requests {
 		out = append(out, resourceIndexEntry{ID: r.ID, Label: r.Label, Description: r.Description})
 	}
 	return jsonContents(req.Params.URI, out)
@@ -231,8 +233,9 @@ func (m *MillMCPService) readRequest(_ context.Context, req *mcp.ReadResourceReq
 }
 
 func (m *MillMCPService) readListsIndex(_ context.Context, req *mcp.ReadResourceRequest) (*mcp.ReadResourceResult, error) {
-	out := make([]resourceIndexEntry, 0)
-	for _, l := range m.cfg.Lists() {
+	lists := m.cfg.Lists()
+	out := make([]resourceIndexEntry, 0, len(lists))
+	for _, l := range lists {
 		out = append(out, resourceIndexEntry{ID: l.ID, Label: l.Label})
 	}
 	return jsonContents(req.Params.URI, out)
@@ -250,8 +253,9 @@ func (m *MillMCPService) readList(_ context.Context, req *mcp.ReadResourceReques
 }
 
 func (m *MillMCPService) readMCPServersIndex(_ context.Context, req *mcp.ReadResourceRequest) (*mcp.ReadResourceResult, error) {
-	out := make([]resourceIndexEntry, 0)
-	for _, s := range m.cfg.MCPServers() {
+	servers := m.cfg.MCPServers()
+	out := make([]resourceIndexEntry, 0, len(servers))
+	for _, s := range servers {
 		out = append(out, resourceIndexEntry{ID: s.ID, Label: s.Label, Description: s.Command})
 	}
 	return jsonContents(req.Params.URI, out)
@@ -269,8 +273,9 @@ func (m *MillMCPService) readMCPServer(_ context.Context, req *mcp.ReadResourceR
 }
 
 func (m *MillMCPService) readDecisionsIndex(_ context.Context, req *mcp.ReadResourceRequest) (*mcp.ReadResourceResult, error) {
-	out := make([]resourceIndexEntry, 0)
-	for _, d := range m.cfg.Decisions() {
+	decisions := m.cfg.Decisions()
+	out := make([]resourceIndexEntry, 0, len(decisions))
+	for _, d := range decisions {
 		out = append(out, resourceIndexEntry{ID: d.ID, Label: d.Label, Description: string(d.Category)})
 	}
 	return jsonContents(req.Params.URI, out)
@@ -288,8 +293,9 @@ func (m *MillMCPService) readDecision(_ context.Context, req *mcp.ReadResourceRe
 }
 
 func (m *MillMCPService) readExecEnvsIndex(_ context.Context, req *mcp.ReadResourceRequest) (*mcp.ReadResourceResult, error) {
-	out := make([]resourceIndexEntry, 0)
-	for _, e := range m.cfg.ExecEnvs() {
+	execEnvs := m.cfg.ExecEnvs()
+	out := make([]resourceIndexEntry, 0, len(execEnvs))
+	for _, e := range execEnvs {
 		out = append(out, resourceIndexEntry{ID: e.ID, Label: e.Label, Description: string(e.Shell)})
 	}
 	return jsonContents(req.Params.URI, out)
@@ -307,8 +313,9 @@ func (m *MillMCPService) readExecEnv(_ context.Context, req *mcp.ReadResourceReq
 }
 
 func (m *MillMCPService) readAIProvidersIndex(_ context.Context, req *mcp.ReadResourceRequest) (*mcp.ReadResourceResult, error) {
-	out := make([]resourceIndexEntry, 0)
-	for _, p := range m.cfg.AIProviders() {
+	providers := m.cfg.AIProviders()
+	out := make([]resourceIndexEntry, 0, len(providers))
+	for _, p := range providers {
 		out = append(out, resourceIndexEntry{ID: p.ID, Label: p.Label, Description: string(p.Kind)})
 	}
 	return jsonContents(req.Params.URI, out)
