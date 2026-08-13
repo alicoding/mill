@@ -24,10 +24,10 @@ sweep tractable (all copy lives in `frontend/src/locales/en/*.json`).
    old text.
 
 **Acceptance** (checkable predicates)
-- [ ] `./scripts/check-ui-copy.sh` exits 0.
-- [ ] No locale string names another product as its explanation.
-- [ ] Every page header/subtitle is a single sentence.
-- [ ] Strings over 120 characters are rewritten or individually
+- [x] `./scripts/check-ui-copy.sh` exits 0.
+- [x] No locale string names another product as its explanation.
+- [x] Every page header/subtitle is a single sentence.
+- [x] Strings over 120 characters are rewritten or individually
       justified in the PR body (a caption that genuinely needs an
       enumeration, e.g. a cron phrase list, may stay).
-- [ ] Full local suite + e2e green; PR merged with `ci-gate` green.
+- [x] Full local suite + e2e green; PR merged with `ci-gate` green.
