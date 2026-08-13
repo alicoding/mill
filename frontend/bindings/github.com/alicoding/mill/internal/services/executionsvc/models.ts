@@ -185,7 +185,11 @@ export interface RunDetail {
  * client's run_workflow call with test:false (goal 0021 Phase 3 gap 2).
  * Not a DBOS SetWorkflowAttributes call -- travels in runInput alongside
  * every other per-run value, the existing pattern this struct already
- * uses.
+ * uses. Split out of executionservice.go once that file crossed the
+ * 500-line limit (CLAUDE.md/§1.3) -- RunKind's own classification rules
+ * are a genuinely separable concern from starting/listing/redriving a
+ * run, the same "split along a real seam" discipline
+ * executionservice_summary.go/executionservice_home.go already applied.
  */
 export enum RunKind {
     /**
