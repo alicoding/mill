@@ -16,6 +16,7 @@ jobs:
   # own release-v3.yml does the same check before its build matrix.
   preflight:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Verify tag matches build/config.yml version
@@ -49,6 +50,9 @@ jobs:
   build-macos:
     needs: preflight
     runs-on: macos-latest
+    # A wedged build must fail fast, not burn the 6h default (the first
+    # live run sat 63 minutes in a hung step before manual cancel).
+    timeout-minutes: 30
     permissions:
       id-token: write
       attestations: write
@@ -70,7 +74,13 @@ jobs:
       # frontend deps -> generate bindings -> frontend build -> go build.
       # No GoReleaser (see ADR-0002 / wailsapp/wails#747, closed wont-fix) --
       # this mirrors what the Wails team does for its own releases.
+      # MILL_SKIP_BINDINGS: bindings generation launches the real app to
+      # extract bindings and never exits on a headless runner (first live
+      # run of this workflow hung 63 minutes exactly there); the repo
+      # commits frontend/bindings, so a release build uses them as-is.
       - run: task build
+        env:
+          MILL_SKIP_BINDINGS: "1"
       - name: Rename binary with platform/arch/version suffix
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
@@ -87,6 +97,7 @@ jobs:
   release:
     needs: build-macos
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     permissions:
       contents: write
     steps:
