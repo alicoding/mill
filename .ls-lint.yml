@@ -74,3 +74,12 @@ ignore:
   - .playwright-mcp
   - .gitignore
   - .DS_Store
+  # docs/goals/BACKLOG.md Standing #11c: a stray root-level node_modules
+  # (created by an npm/npx invocation run from the repo root instead of
+  # frontend/) broke root-file-naming once, 2026-08-12 -- top-level
+  # rules apply recursively (this file's own scoping note above), so an
+  # accidental root node_modules would otherwise get every file inside
+  # it flagged against the .go/.* patterns above. frontend/node_modules
+  # is already covered by the `frontend` ignore entry; this is
+  # specifically the root-level accident case.
+  - node_modules

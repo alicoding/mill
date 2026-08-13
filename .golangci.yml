@@ -7,14 +7,25 @@ linters:
     - staticcheck
     # goal 0028, first strengthening pass (security + HTTP-client hygiene
     # matching what the code actually does -- procexec/httpconnector/
-    # openapispec are the real attack-surface packages). Second pass
-    # (gocritic/prealloc/contextcheck/sqlclosecheck) is deliberately not
-    # part of this goal -- tracked as future work in goal 0028's file.
+    # openapispec are the real attack-surface packages).
     - gosec
     - bodyclose
     - noctx
     - revive
     - unparam
+    # Second pass (docs/goals/BACKLOG.md Standing #11b, named as future
+    # work in goal 0028): gocritic (style/perf/correctness diagnostics),
+    # prealloc (slice-append capacity hints), contextcheck (context.Context
+    # propagation, non-inherited-context bugs), sqlclosecheck (unclosed
+    # *sql.Rows/*sql.Stmt). Findings triaged to zero on both build-tag
+    # variants (default + `server`), same discipline as the first pass --
+    # real ones fixed, a rule that genuinely misfires against this repo's
+    # own house style gets a scoped settings tweak or a per-line `//nolint`
+    # with a reason, never a blanket disable.
+    - gocritic
+    - prealloc
+    - contextcheck
+    - sqlclosecheck
   exclusions:
     paths:
       - frontend
