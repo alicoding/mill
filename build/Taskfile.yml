@@ -188,7 +188,18 @@ tasks:
     generates:
       - frontend/bindings/**/*
     cmds:
-      - wails3 generate bindings -f '{{.BUILD_FLAGS}}' -clean=true{{if eq .OBFUSCATED "true"}} -obfuscated{{end}} -ts -i
+      # MILL_SKIP_BINDINGS=1 uses the committed frontend/bindings as-is.
+      # Required on headless CI (release.yml): bindings generation works
+      # by building and LAUNCHING the real app to extract bindings, and
+      # on a runner that launched app never exits -- a fresh checkout has
+      # no Task fingerprint cache, so the sources-based skip that
+      # protects the local dev loop never applies there.
+      - |
+        if [ "${MILL_SKIP_BINDINGS:-}" = "1" ]; then
+          echo "MILL_SKIP_BINDINGS=1 -- using committed frontend/bindings unchanged"
+        else
+          wails3 generate bindings -f '{{.BUILD_FLAGS}}' -clean=true{{if eq .OBFUSCATED "true"}} -obfuscated{{end}} -ts -i
+        fi
 
   generate:icons:
     summary: Generates Windows `.ico` and Mac `.icns` from an image; on macOS, `-iconcomposerinput appicon.icon -macassetdir darwin` also produces `Assets.car` from a `.icon` file (skipped on other platforms).
