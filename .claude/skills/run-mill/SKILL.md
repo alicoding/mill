@@ -193,6 +193,29 @@ real desktop build has no automatable hook for these:
   four visible×focused combinations) — only the real-window wiring
   around it is manual-only.
 
+**Manual-only, a different class of gap: `task dev`'s own concurrent-
+start guard and per-rebuild reap (docs/goals/BACKLOG.md Standing #8,
+`internal/devguard`, `Taskfile.yml`'s `dev:` task, `build/config.yml`'s
+`dev_mode.executes`).** `internal/devguard`'s own decision logic (does
+a `ps`/`lsof` snapshot show an existing session) is unit-tested
+directly (`guard_test.go`) and was verified live against a genuinely
+running `task dev` session during this item's own build (correctly
+named the real PID and refused). What CI structurally cannot prove:
+CI never runs `task dev` itself (no live file watcher, no real Go
+recompile-and-relaunch cycle — the exact reasoning
+`.claude/rules/testing.md`'s "Dev-loop timing checks" entry already
+gives for `BuildIdentityBadge`'s go-stale state), so (a) the
+PER-REBUILD reap in `build/config.yml` actually preventing orphan
+accumulation across SEVERAL real Go-triggered rebuilds within one live
+session, and (b) a genuine second `task dev` terminal invocation
+actually refusing to start (not just the guard binary run standalone),
+both stay real desktop-mode manual checks: start `task dev`, touch a
+watched `.go` file several times in a row and confirm `ps aux | grep
+mill.dev.app` never shows more than one instance after each relaunch,
+then (in a second terminal, same repo) run `task dev` again and
+confirm it exits immediately naming the first session's PID rather
+than launching a second window.
+
 Verification for all five stays a real desktop-mode manual check:
 launch via `task dev`, set a summon hotkey in Settings, press it from
 another app, confirm the panel appears floating/frameless above
