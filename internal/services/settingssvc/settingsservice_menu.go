@@ -7,7 +7,7 @@ import "github.com/wailsapp/wails/v3/pkg/application"
 // Undo/Copy/Paste, Reload, Zoom, etc. -- for as long as at least one
 // hotkey recorder is armed.
 //
-// The bug this exists to fix, owner-hit directly: on macOS, NSMenu's
+// The bug this exists to fix, hit live: on macOS, NSMenu's
 // performKeyEquivalent: intercepts a key-equivalent-matching keypress
 // at the menu-bar layer BEFORE it ever reaches the webview's own
 // keydown listener -- there is no "capture phase" for

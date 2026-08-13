@@ -11,7 +11,7 @@ import { useAppStore } from '../shared/store'
 // Hover a workflow reference anywhere (an Activity row, a
 // child-workflow step) to see that workflow's actual layout in a small
 // read-only canvas, with a jump straight into its editor -- the
-// n8n/[decisioning-vendor] pattern requested directly (docs/SPEC.md §3.8). Composed
+// n8n pattern requested directly (docs/SPEC.md §3.8). Composed
 // from already-adopted pieces only: Primer's AnchoredOverlay for the
 // popup, React Flow itself (the same engine the real canvas uses) for
 // the layout, and the store's openWorkflowRequest for the jump. The

@@ -31,7 +31,7 @@ import PageContainer from '../shared/PageContainer'
 // Rows are the DEFAULT view (docs/goals/0007): InventoryList's shared
 // row replaces the old hand-rolled card branch -- distinct leading
 // icon/color from Workflows' own row, the exact ambiguity the goal's
-// owner-reported bug named ("thought they were on the workflow page
+// live-reproduced bug named ("thought they were on the workflow page
 // while on integrations"). Row click opens the read-only summary (the
 // existing label-link behavior); Edit/Export/Delete move into the
 // trailing ⋯ menu.

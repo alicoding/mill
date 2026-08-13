@@ -4,7 +4,7 @@ import { formatUpdated } from './inventorySort'
 // waiting on a human" surface (docs/goals/0026 items 2/3/8): a pending
 // MCP write, a guardrail/human-review park, and a stuck-ENQUEUED run
 // all share the same 24h clock (ADR-0032's expiry, mirrored by the
-// guardrail park's own timeout, §8) and the same owner-observed
+// guardrail park's own timeout, §8) and the same live-observed
 // problem -- a stale item reading exactly as urgent as a fresh one
 // ("feels like I missed something / it's not working"). One
 // implementation, reused by ReviewView/MCPWriteApprovals/ApprovalPrompt

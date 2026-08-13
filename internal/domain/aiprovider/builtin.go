@@ -16,7 +16,7 @@ const ExampleLocalOllamaID = "example-local-ollama"
 //
 // Points at Ollama's own documented default local port
 // (http://localhost:11434, OpenAI-compatible /v1) -- zero-egress and
-// works at the bank (docs/SPEC.md's own AI-completion row). The
+// works in fully-offline enterprise environments (docs/SPEC.md's own AI-completion row). The
 // workflows that reference it (builtinworkflows_ai.go) ship DISABLED,
 // same "documented as requiring user setup" precedent
 // trigger-filesystem-watch's own seeded example already established --

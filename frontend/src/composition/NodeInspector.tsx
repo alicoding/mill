@@ -225,7 +225,7 @@ export function NodeInspector({ node, workflowId, attrs, nodeType, sameKindNodeT
                 onChange={(id) => onConfigChange(field.Key, id)}
               />
               {/* Hover-preview + jump for a selected workflow reference
-                  (docs/SPEC.md §3.8's n8n/[decisioning-vendor] pattern) -- see the
+                  (docs/SPEC.md §3.8's n8n pattern) -- see the
                   child's real layout and open it in its own editor tab
                   without hunting through the Workflows list. */}
               {field.RefKind === 'workflow' && (node.data.config[field.Key] ?? '') !== '' && (
