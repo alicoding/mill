@@ -49,10 +49,11 @@ flagged inline rather than presented as settled.
 per-tab session identity — everything §2.1 and the multi-tab problem
 need. Two distinct ways in, gated by different policies: (1) unpacked
 "Load unpacked" via developer mode — gated by
-`ExtensionDeveloperModeSettings` (a dedicated policy; whether
-`ExtensionInstallBlocklist "*"` also blocks unpacked loading is
-unconfirmed — the dedicated policy's existence suggests they're
-separate code paths); (2) the enterprise-legit route — IS&C allowlists
+`ExtensionDeveloperModeSettings` (a dedicated policy — CONFIRMED
+separate from `ExtensionInstallBlocklist` by goal 0044's research
+pass, 2026-08-13, against Edge's own policy docs: once set, the
+dedicated policy fully governs the Developer Mode toggle, independent
+of the install blocklist); (2) the enterprise-legit route — IS&C allowlists
 Mill's extension ID, optionally force-installed from a self-hosted CRX,
 no Chrome Web Store listing required. Route 2 is strengthened by Mill
 being open-source: IS&C can review the exact code being allowlisted —
