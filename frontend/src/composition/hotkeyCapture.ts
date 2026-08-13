@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { SettingsService, TriggerService } from '../shared/bindings'
 import { comboKey, describeCombo, formatCombo, keyFromEventCode, modsFromEvent, reservedByMacOS } from '../shared/keybinding'
 import { refreshKeybindings, useAppStore } from '../shared/store'
@@ -39,6 +40,7 @@ interface ComboCaptureAdapter {
 // for yet" gate, so a null commandId/workflowId still cleanly disables
 // recording via either wrapper below.
 function useComboCapture(enabled: boolean, adapter: ComboCaptureAdapter, onChanged?: () => void) {
+  const { t } = useTranslation('composition')
   const [binding, setBinding] = useState<string | null>(null)
   const [error, setError] = useState('')
   const [recording, setRecording] = useState(false)
@@ -93,7 +95,7 @@ function useComboCapture(enabled: boolean, adapter: ComboCaptureAdapter, onChang
       const reserved = reservedByMacOS(mods, key)
       if (reserved) {
         setRecording(false)
-        setError(`${describeCombo(mods, key)} is reserved by macOS (${reserved}) — pick another combo`)
+        setError(t('hotkeyCapture.reservedByMacOS', { combo: describeCombo(mods, key), reason: reserved }))
         return
       }
 
@@ -160,6 +162,7 @@ export function useHotkeyCapture(workflowId: string | null, onChanged?: () => vo
 // store directly and needs the new binding live immediately -- a
 // rebound command works without a reload.
 export function useCommandKeybindingCapture(commandId: string | null, onChanged?: () => void) {
+  const { t } = useTranslation('composition')
   const adapter = useMemo<ComboCaptureAdapter>(() => ({
     currentBinding: () => SettingsService.ListKeybindings().then((map) => {
       const hk = (map ?? {})[commandId ?? '']
@@ -188,7 +191,7 @@ export function useCommandKeybindingCapture(commandId: string | null, onChanged?
         return binding !== null && comboKey(binding.mods, binding.key) === want
       })
       if (clash) {
-        return Promise.reject(new Error(`this combo is already bound to command "${clash.label}" -- pick another, or reset it there first`))
+        return Promise.reject(new Error(t('hotkeyCapture.clashWithCommand', { label: clash.label })))
       }
       return SettingsService.SetKeybinding(commandId ?? '', mods, key).then((label) => {
         void refreshKeybindings()
@@ -196,6 +199,6 @@ export function useCommandKeybindingCapture(commandId: string | null, onChanged?
       })
     },
     unassign: () => SettingsService.ClearKeybinding(commandId ?? '').then(() => { void refreshKeybindings() }),
-  }), [commandId])
+  }), [commandId, t])
   return useComboCapture(commandId !== null, adapter, onChanged)
 }

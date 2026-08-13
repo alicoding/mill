@@ -1,9 +1,10 @@
 import { useState } from 'react'
 import type { Edge as RFEdge } from '@xyflow/react'
+import { useTranslation } from 'react-i18next'
 import { CompositionService } from '../shared/bindings'
 import type { Node as CompNode, Edge as CompEdge, Workflow } from '../../bindings/github.com/alicoding/mill/internal/domain/composition/models'
 import type { CanvasNode } from './canvasStore'
-import { draftWorkflowSchema } from './draftWorkflowSchema'
+import { buildDraftWorkflowSchema } from './draftWorkflowSchema'
 import { toDraftEdges, toDraftNodes } from './draftPayload'
 import { clearScratch } from './canvasScratch'
 
@@ -34,6 +35,7 @@ export function useCanvasSave(
   edges: RFEdge[],
   onSaved: () => void,
 ): UseCanvasSaveResult {
+  const { t } = useTranslation('composition')
   const [saveError, setSaveError] = useState('')
   const [saving, setSaving] = useState(false)
 
@@ -46,9 +48,9 @@ export function useCanvasSave(
       Nodes: toDraftNodes(nodes),
       Edges: toDraftEdges(edges),
     }
-    const parsed = draftWorkflowSchema.safeParse(draft)
+    const parsed = buildDraftWorkflowSchema(t).safeParse(draft)
     if (!parsed.success) {
-      setSaveError(parsed.error.issues[0]?.message ?? 'This workflow is not valid yet.')
+      setSaveError(parsed.error.issues[0]?.message ?? t('draftWorkflowSchema.notValidYetFallback'))
       return
     }
     setSaving(true)

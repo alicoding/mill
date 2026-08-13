@@ -27,38 +27,45 @@ const edgeSchema = z.object({
   SourceHandle: z.string(),
   Target: z.string().min(1),
 })
-export const draftWorkflowSchema = z
-  .object({
-    Label: z.string().trim().min(1, 'A workflow needs a label'),
-    Description: z.string(),
-    Nodes: z.array(nodeSchema).min(1, 'A workflow needs at least one node'),
-    Edges: z.array(edgeSchema),
-  })
-  .superRefine((draft, ctx) => {
-    const ids = new Set(draft.Nodes.map((n) => n.ID))
-    const kindByID = new Map(draft.Nodes.map((n) => [n.ID, n.Kind]))
-    const outDegree = new Map<string, number>()
-    const hasIncoming = new Set<string>()
-    for (const e of draft.Edges) {
-      if (!ids.has(e.Source) || !ids.has(e.Target)) {
-        ctx.addIssue({ code: 'custom', message: 'A connection references a node that no longer exists.' })
+// A function, not a module-level constant: the validation messages are
+// user-facing copy (docs/goals/0032-copy-management.md), and zod's own
+// message strings are baked in at schema-construction time -- so the
+// schema is (cheaply) rebuilt per save with the caller's current `t`,
+// rather than trying to retrofit i18n into a frozen schema object.
+export function buildDraftWorkflowSchema(t: (key: string) => string) {
+  return z
+    .object({
+      Label: z.string().trim().min(1, t('draftWorkflowSchema.needsLabel')),
+      Description: z.string(),
+      Nodes: z.array(nodeSchema).min(1, t('draftWorkflowSchema.needsAtLeastOneNode')),
+      Edges: z.array(edgeSchema),
+    })
+    .superRefine((draft, ctx) => {
+      const ids = new Set(draft.Nodes.map((n) => n.ID))
+      const kindByID = new Map(draft.Nodes.map((n) => [n.ID, n.Kind]))
+      const outDegree = new Map<string, number>()
+      const hasIncoming = new Set<string>()
+      for (const e of draft.Edges) {
+        if (!ids.has(e.Source) || !ids.has(e.Target)) {
+          ctx.addIssue({ code: 'custom', message: t('draftWorkflowSchema.danglingConnection') })
+        }
+        outDegree.set(e.Source, (outDegree.get(e.Source) ?? 0) + 1)
+        hasIncoming.add(e.Target)
       }
-      outDegree.set(e.Source, (outDegree.get(e.Source) ?? 0) + 1)
-      hasIncoming.add(e.Target)
-    }
-    for (const [id, count] of outDegree) {
-      // A terminal node (docs/adr/0027 -- code kind "terminal", the
-      // user-facing "Decision" node) may have NO outgoing connection at
-      // all -- checked before the >1 rule below, since that rule alone
-      // would accept exactly one outgoing edge from a terminal node.
-      if (count > 0 && kindByID.get(id) === 'terminal') {
-        ctx.addIssue({ code: 'custom', message: 'A Decision node (a terminal outcome) cannot have an outgoing connection.' })
+      for (const [id, count] of outDegree) {
+        // A terminal node (docs/adr/0027 -- code kind "terminal", the
+        // user-facing "Decision" node) may have NO outgoing connection at
+        // all -- checked before the >1 rule below, since that rule alone
+        // would accept exactly one outgoing edge from a terminal node.
+        if (count > 0 && kindByID.get(id) === 'terminal') {
+          ctx.addIssue({ code: 'custom', message: t('draftWorkflowSchema.terminalCannotHaveOutgoing') })
+        }
+        if (count > 1 && kindByID.get(id) !== 'decision') {
+          ctx.addIssue({ code: 'custom', message: t('draftWorkflowSchema.onlyBranchCanFanOut') })
+        }
       }
-      if (count > 1 && kindByID.get(id) !== 'decision') {
-        ctx.addIssue({ code: 'custom', message: 'Only a Branch node can have more than one outgoing connection.' })
+      if (draft.Nodes.filter((n) => !hasIncoming.has(n.ID)).length !== 1) {
+        ctx.addIssue({ code: 'custom', message: t('draftWorkflowSchema.needsExactlyOneStart') })
       }
-    }
-    if (draft.Nodes.filter((n) => !hasIncoming.has(n.ID)).length !== 1) {
-      ctx.addIssue({ code: 'custom', message: 'A workflow must have exactly one starting node.' })
-    }
-  })
+    })
+}
