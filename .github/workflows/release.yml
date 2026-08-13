@@ -67,9 +67,13 @@ jobs:
           node-version: '22'
           cache: 'npm'
           cache-dependency-path: frontend/package-lock.json
-      - uses: arduino/setup-task@c0bc642852239c2689f73f4ea6459c29405f3c52 # v3.0.0
-      - name: Install wails3 CLI
-        run: go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0-beta.6
+      # Task installed via go install, not arduino/setup-task: the tool
+      # itself is MIT but that ACTION wrapper is GPL-3.0, which trips
+      # dependency-review's deny-licenses on any PR touching this file.
+      - name: Install Task and wails3 CLI
+        run: |
+          go install github.com/go-task/task/v3/cmd/task@v3.52.0
+          go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0-beta.6
       # task build already chains: go mod tidy -> generate icons -> install
       # frontend deps -> generate bindings -> frontend build -> go build.
       # No GoReleaser (see ADR-0002 / wailsapp/wails#747, closed wont-fix) --
