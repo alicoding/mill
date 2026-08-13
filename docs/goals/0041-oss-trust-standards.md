@@ -140,6 +140,29 @@ OWNER DECISION SURFACED (outward-facing, not taken autonomously):
   tag to match build/config.yml's version. Awaiting the owner's call
   on timing.
 
+## CodeQL first-run triage (2026-08-13, same day)
+
+First scan (Go/TS/JS/Java/Actions) + the post-merge Scorecard SARIF
+re-upload produced 21 code-scanning alerts; triage outcome:
+- The fixed-this-goal items (Token-Permissions, Vulnerabilities, the
+  server-image pins, the actions/missing-workflow-permissions hit)
+  auto-closed on the post-merge runs — confirmed via the open-alerts
+  API, not assumed.
+- 3 real CodeQL findings, ALL in `build/android/` (java/path-injection
+  ×2, unsafe-content-uri-resolution): vendored Wails3 scaffold for a
+  parked platform Mill doesn't build — dismissed won't-fix with that
+  reason on each alert (CodeQL dismissals persist across runs).
+- Zero CodeQL findings in Mill's own Go/TS code.
+- Remaining open alerts are Scorecard's own weekly-regenerating
+  meta-state and match this file's recorded verdicts exactly
+  (CII/Fuzzing rejected, Maintained time-gated, Code-Review/
+  Branch-Protection solo-structural, the two accepted
+  downloadThenRun pins, gradle-wrapper.jar in the same parked
+  scaffold); SASTID should self-clear once Scorecard's next run
+  detects the now-active github-code-scanning app. Left open
+  deliberately — dismissing regenerating SARIF alerts is churn, and
+  the Security tab staying honest about accepted state is the point.
+
 ## Acceptance (checkable)
 
 - [ ] Every gap named in the Baseline section above is either SHIPPED
