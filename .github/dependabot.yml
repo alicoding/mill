@@ -33,6 +33,12 @@ updates:
       interval: weekly
       day: monday
     open-pull-requests-limit: 5
+    ignore:
+      # TS 7.0 has no stable compiler API; typescript-eslint declares
+      # typescript >=4.8.4 <6.1.0 and cannot run on it (their issue
+      # #12518, closed not-planned until TS 7.1). Revisit at TS 7.1.
+      - dependency-name: typescript
+        versions: [">=7.0.0 <7.1.0"]
     groups:
       npm-dependencies:
         update-types:
