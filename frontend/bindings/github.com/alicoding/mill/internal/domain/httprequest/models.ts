@@ -130,8 +130,7 @@ export interface HTTPRequest {
     /**
      * Body is an optional raw request body sent as-is when the schema's
      * bound body fields don't produce one -- request-level, not
-     * workflow-node-level, by direct user decision ("form fields that
-     * should not be done at the workflow level"): transport and payload
+     * workflow-node-level: transport and payload
      * shape belong to the Integration; a workflow node only binds data.
      * ADR-0016 Phase B's body half in its minimal raw form; the typed
      * body-type picker (form-data/GraphQL/...) remains named future work.

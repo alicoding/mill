@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { ElementType, ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Dialog, IconButton, Text } from '@primer/react'
+import { Dialog, Text } from '@primer/react'
 import { FilteredActionList } from '@primer/react/experimental'
-import { CommandPaletteIcon, PencilIcon, PinIcon, PlayIcon, TabIcon, XIcon } from '@primer/octicons-react'
-import { ExecutionService, RunKind } from '../shared/bindings'
+import { CommandPaletteIcon, PencilIcon, PlayIcon, TabIcon, XIcon } from '@primer/octicons-react'
+import { ExecutionService, RunKind, TriggerService } from '../shared/bindings'
 import { COMMANDS } from '../shared/commands'
 import { generateSamplePayload } from '../shared/configSchema'
 import { useAppStore } from '../shared/store'
@@ -16,6 +16,7 @@ import { filterPaletteEntries } from './paletteFilter'
 import type { PaletteSearchable } from './paletteFilter'
 import { sortWorkflowsByPinnedAndFrecency } from './workflowFrecency'
 import { HotkeyHint } from './HotkeyHint'
+import { WorkflowRowTrailingVisual } from './WorkflowRowTrailingVisual'
 import styles from './CommandPalette.module.css'
 
 // The ⌘K command palette (docs/goals/0015-summon-quick-invoke.md): the
@@ -92,15 +93,18 @@ const FRECENCY_FROM_ISO = new Date(0).toISOString()
 
 // A workflow row's description: the label of its root Trigger node's
 // NodeType (e.g. "Hotkey trigger", "Schedule trigger") -- a cheap,
-// purely-textual derivation (findRootNode + a nodeTypes lookup, no RPC,
-// no live hook) rather than the full interactive TriggerRowLabel
-// (composition/TriggerRowLabel.tsx, which owns its own hotkey-capture
-// state and Publish button -- built for a table row, not a
-// filtered-list item). Doesn't show the live armed/hotkey-combo detail
-// TriggerRowLabel does; that's a real, named simplification, not an
-// oversight -- see this task's own report for the full reasoning.
-// Computed inline in the entries useMemo below rather than as a
-// standalone helper -- it's a one-line lookup once findRootNode has run.
+// purely-textual derivation (findRootNode + a nodeTypes lookup) rather
+// than the full interactive TriggerRowLabel (composition/TriggerRowLabel.tsx,
+// which owns its own hotkey-capture state and Publish button -- built
+// for a table row, not a filtered-list item). Still doesn't show the
+// live ARMED fact TriggerRowLabel does (that's TriggerService.Sync's
+// own gate, a separate live-listener check this row has no need to
+// re-derive) -- but a trigger-hotkey root's own assigned combo IS shown
+// (below, via hotkeyCombos), the same display-when-configured
+// simplification TriggerRowLabel's own schedule/watch rows already use
+// for "configured" vs "armed." Computed inline in the entries useMemo
+// below rather than as a standalone helper -- it's a one-line lookup
+// once findRootNode has run.
 
 export function CommandPalette() {
   const { t } = useTranslation('app')
@@ -123,6 +127,10 @@ export function CommandPalette() {
   const togglePinnedWorkflow = useAppStore((s) => s.togglePinnedWorkflow)
   const [query, setQuery] = useState('')
   const [mostUsedRank, setMostUsedRank] = useState<Record<string, number>>({})
+  // workflowID -> its trigger-hotkey combo label (TriggerService.
+  // ListHotkeys(), e.g. "⌘⇧M") -- fetched the same "on every open, not
+  // on mount" way mostUsedRank is, below.
+  const [hotkeyCombos, setHotkeyCombos] = useState<Record<string, string | undefined>>({})
   const inputRef = useRef<HTMLInputElement>(null)
 
   // Fetched on every open (not on mount -- the palette stays mounted
@@ -138,6 +146,7 @@ export function CommandPalette() {
         setMostUsedRank(rank)
       })
       .catch(() => {})
+    TriggerService.ListHotkeys().then((combos) => setHotkeyCombos(combos ?? {})).catch(() => {})
   }, [paletteOpen])
 
   // Runs a workflow through the exact same RPC + RunKind CompositionView's
@@ -207,6 +216,7 @@ export function CommandPalette() {
   const workflowEntries = (wf: NonNullable<typeof workflows>[number]): PaletteEntry[] => {
     const root = findRootNode(wf.Nodes, wf.Edges)
     const kindLabel = root ? nodeTypes?.find((nt) => nt.ID === root.NodeTypeID)?.Label : undefined
+    const combo = root?.NodeTypeID === 'trigger-hotkey' ? hotkeyCombos[wf.ID] : undefined
     const pinned = pinnedWorkflowIds.includes(wf.ID)
     return [
       {
@@ -216,22 +226,14 @@ export function CommandPalette() {
         description: kindLabel ?? t('commandPalette.testRun'),
         searchText: `run ${wf.Label}`.toLowerCase(),
         leadingVisual: PlayIcon,
-        // A subtle pin toggle (docs/goals/BACKLOG.md Standing #5),
-        // same shape app/QuickPanel.tsx's own workflow row carries --
-        // stopPropagation so the click doesn't also trigger the row's
-        // own onAction (which would run the workflow AND close the
-        // palette).
         trailingVisual: (
-          <IconButton
-            icon={PinIcon}
-            aria-label={pinned ? t('commandPalette.unpinWorkflow', { label: wf.Label }) : t('commandPalette.pinWorkflow', { label: wf.Label })}
-            size="small"
-            variant="invisible"
-            className={pinned ? styles.pinnedIndicator : styles.pinToggle}
-            onClick={(e) => {
-              e.stopPropagation()
-              togglePinnedWorkflow(wf.ID)
-            }}
+          <WorkflowRowTrailingVisual
+            combo={combo}
+            pinned={pinned}
+            pinnedClassName={styles.pinnedIndicator}
+            unpinnedClassName={styles.pinToggle}
+            pinAriaLabel={pinned ? t('commandPalette.unpinWorkflow', { label: wf.Label }) : t('commandPalette.pinWorkflow', { label: wf.Label })}
+            onTogglePin={() => togglePinnedWorkflow(wf.ID)}
           />
         ),
         run: () => runWorkflowTest(wf.ID, wf.Label),
@@ -294,8 +296,8 @@ export function CommandPalette() {
       ...sortWorkflowsByPinnedAndFrecency(workflows ?? [], mostUsedRank, pinnedWorkflowIds).flatMap(workflowEntries),
       ...workTabs.flatMap(tabEntries),
     ]
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- commandEntry/workflowEntries/tabEntries close over workflows/nodeTypes/requests/workTabs/mostUsedRank/pinnedWorkflowIds/togglePinnedWorkflow/t, already listed
-  }, [restState, workflows, nodeTypes, requests, workTabs, mostUsedRank, pinnedWorkflowIds, t])
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- commandEntry/workflowEntries/tabEntries close over workflows/nodeTypes/requests/workTabs/mostUsedRank/hotkeyCombos/pinnedWorkflowIds/togglePinnedWorkflow/t, already listed
+  }, [restState, workflows, nodeTypes, requests, workTabs, mostUsedRank, hotkeyCombos, pinnedWorkflowIds, t])
 
   const filtered = restState ? allEntries : filterPaletteEntries(allEntries, query)
 

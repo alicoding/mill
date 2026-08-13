@@ -464,3 +464,16 @@ func (s *SettingsService) DebugBackdatePendingMCPWrite(id string, ageMinutes int
 	}
 	return s.mcpService.DebugBackdatePendingWrite(id, ageMinutes)
 }
+
+// DebugAssignWorkflowHotkey is an e2e-only test knob, same gating as
+// DebugBackdatePendingMCPWrite above: workflow-hotkey-trigger e2e
+// coverage needs a combo actually recorded against a workflow, but real
+// hotkey assignment (TriggerService.AssignHotkey) always fails outside a
+// native run loop (see TriggerService.DebugAssignHotkey's own doc
+// comment) -- this delegates to that bypass, gated the same way.
+func (s *SettingsService) DebugAssignWorkflowHotkey(workflowID string, mods []string, key string) (string, error) {
+	if !s.isolatedData {
+		return "", fmt.Errorf("debug test knobs are only available against isolated test data")
+	}
+	return s.trig.DebugAssignHotkey(workflowID, mods, key)
+}
