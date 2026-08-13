@@ -132,13 +132,28 @@ REJECTED with reasons (don't relitigate):
   ADR-0034 built).
 
 OWNER DECISION SURFACED (outward-facing, not taken autonomously):
-- Cut v0.1.0 via the existing never-fired release.yml. Research
-  verdict: a dead release workflow on a daily-commit repo reads as
-  unfinished rather than deliberate; a tagged, provenance-attested
-  v0.x is additive to (not competing with) the git-clone install
-  story. Mechanics are ready — release.yml's preflight requires the
-  tag to match build/config.yml's version. Awaiting the owner's call
-  on timing.
+- Cut v0.1.0 via the existing never-fired release.yml — **owner
+  approved 2026-08-13, DELIVERED same day** after three attempts that
+  were themselves the dogfood payoff: attempt 1 hung 63 minutes
+  (cancelled by hand), attempt 2 hit the new 30-minute job timeout,
+  and the flushed logs surfaced TWO real latent defects fixed in the
+  process — (a) `generate:bindings` always runs on a fingerprint-less
+  fresh checkout and extracts bindings by LAUNCHING the real app,
+  which never exits headless (`MILL_SKIP_BINDINGS=1`, set only by
+  release.yml, now uses the committed bindings; PR #79, plus
+  timeout-minutes 5/30/10 on the three jobs); (b) the root `build`
+  task's help echo wrapped `task package`/`task run` in backticks
+  inside a sh string — command substitution, so printing the message
+  executed both tasks and launched the app; both hangs died in
+  `darwin:run`, and any local `task build` did the same (the probable
+  source of Standing #8's phantom concurrent instances; PR #80,
+  plain quotes). Attempt 3: green in ~6 minutes end to end. Release
+  v0.1.0 is live with `mill-0.1.0-macos-arm64` + `SHA256SUMS`,
+  generated notes, and `gh attestation verify
+  mill-0.1.0-macos-arm64 -R alicoding/mill` confirmed passing against
+  the actually-downloaded asset. The git-clone install story is
+  unchanged; the release is the provenance/verification artifact the
+  research framed it as.
 
 ## CodeQL first-run triage (2026-08-13, same day)
 
@@ -163,16 +178,33 @@ re-upload produced 21 code-scanning alerts; triage outcome:
   deliberately — dismissing regenerating SARIF alerts is churn, and
   the Security tab staying honest about accepted state is the point.
 
-## Acceptance (checkable)
+## Acceptance (checked against what SHIPPED, 2026-08-13)
 
-- [ ] Every gap named in the Baseline section above is either SHIPPED
+- [x] Every gap named in the Baseline section above is either SHIPPED
       (file/setting landed, verifiable in the repo) or REJECTED with a
-      recorded reason in this file — no silent skips.
-- [ ] Scorecard: Token-Permissions raised from 0 (permissions blocks
-      on every workflow); the Vulnerabilities-check findings
-      identified and each fixed or recorded as accepted; any other
-      check adopted (e.g. SAST) green in its first run.
-- [ ] Repo metadata (description, topics) set — the "is this
-      abandoned?" smell gone.
-- [ ] Anything deliberately deferred carries a named trigger (e.g.
-      "first release when X"), not an open-ended someday.
+      recorded reason in this file — no silent skips. (Shipped: PR
+      template, description+topics, CodeQL, permissions, vuln bumps,
+      image pins + docker Dependabot, v0.1.0 release + CHANGELOG-via-
+      generated-notes. Rejected/deferred with reasons: everything in
+      Slice 2's lists, incl. SUPPORT.md/config.yml/feature-request
+      template, Discussions, homepage.)
+- [x] Scorecard: Token-Permissions fixed (both flagged workflows;
+      confirmed auto-closed in code scanning); all five
+      Vulnerabilities findings identified and fixed (x/image 0.43,
+      nanoid 3.3.18; confirmed auto-closed); CodeQL adopted and its
+      first scan green on Mill's own code (3 vendored-scaffold
+      findings dismissed with reasons). Scorecard's own aggregate
+      re-scores on its weekly cron — the peer-calibration verdict
+      stands regardless.
+- [x] Repo metadata (description, topics) set — verified via
+      gh repo edit, 10 topics live.
+- [x] Anything deliberately deferred carries a named trigger:
+      Discussions (second contributor), release-please (2nd+
+      release), SBOM (a consumer asks), attestation-as-release-asset
+      (only if the Scorecard number ever matters), TS 7 (TS 7.1
+      stable compiler API — recorded in dependabot.yml itself).
+
+Delivered across PRs #63, #70, #73 (icon rides goal 0001), #76
+(version), #79/#80 (release-pipeline fixes the release exercise
+itself surfaced), release run 31738976103 (v0.1.0 live, attestation
+verified). Archived same day.
