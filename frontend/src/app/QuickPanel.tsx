@@ -2,9 +2,9 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import type { ElementType, ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Events } from '@wailsio/runtime'
-import { CounterLabel, Text } from '@primer/react'
+import { CounterLabel, IconButton, Text } from '@primer/react'
 import { FilteredActionList } from '@primer/react/experimental'
-import { CopyIcon, GearIcon, HomeIcon, PlayIcon } from '@primer/octicons-react'
+import { CopyIcon, GearIcon, HomeIcon, PinIcon, PlayIcon } from '@primer/octicons-react'
 import { CompositionService, ExecutionService, RunKind, SettingsService } from '../shared/bindings'
 import type { ClipboardApplyPreview } from '../shared/bindings'
 import { generateSamplePayload } from '../shared/configSchema'
@@ -14,7 +14,7 @@ import { ENTITY_ICON } from '../shared/entityIcons'
 import { CAPABILITY_ICON } from './navIcon'
 import { filterPaletteEntries } from './paletteFilter'
 import type { PaletteSearchable } from './paletteFilter'
-import { sortWorkflowsByFrecency } from './workflowFrecency'
+import { sortWorkflowsByPinnedAndFrecency } from './workflowFrecency'
 import { HotkeyHint } from './HotkeyHint'
 import { QuickPanelClipboardApply } from './QuickPanelClipboardApply'
 import styles from './QuickPanel.module.css'
@@ -85,6 +85,11 @@ export function QuickPanel() {
   const requests = useAppStore((s) => s.requests)
   const lists = useConfigureEntityStore((s) => s.lists)
   const mcpServers = useConfigureEntityStore((s) => s.mcpServers)
+  // Workflow pins/favorites (docs/goals/BACKLOG.md Standing #5): a
+  // plain ordered workflow-ID list, store-owned/localStorage-tier --
+  // see shared/store.ts's own declaration comment for the schema.
+  const pinnedWorkflowIds = useAppStore((s) => s.pinnedWorkflowIds)
+  const togglePinnedWorkflow = useAppStore((s) => s.togglePinnedWorkflow)
   const [query, setQuery] = useState('')
   const [status, setStatus] = useState<string | null>(null)
   // Frecency ranking (goal 0015's remainder item 1): workflowID ->
@@ -301,9 +306,11 @@ export function QuickPanel() {
 
   const allEntries = useMemo<PanelEntry[]>(() => {
     const entries: PanelEntry[] = []
-    // Frecency-sorted (goal 0015's remainder item 1) -- frequency-only,
-    // see mostUsedRank's own declaration comment.
-    for (const wf of sortWorkflowsByFrecency(workflows ?? [], mostUsedRank)) {
+    // Pinned-then-frecency-sorted (docs/goals/BACKLOG.md Standing #5 +
+    // goal 0015's remainder item 1) -- frequency-only among the
+    // unpinned tail, see mostUsedRank's own declaration comment.
+    for (const wf of sortWorkflowsByPinnedAndFrecency(workflows ?? [], mostUsedRank, pinnedWorkflowIds)) {
+      const pinned = pinnedWorkflowIds.includes(wf.ID)
       entries.push({
         id: `run:${wf.ID}`,
         groupId: 'workflows',
@@ -311,6 +318,22 @@ export function QuickPanel() {
         description: t('quickPanel.entries.enterToRun'),
         searchText: wf.Label.toLowerCase(),
         leadingVisual: PlayIcon,
+        // A subtle pin toggle (stopPropagation so the click doesn't
+        // also fire the row's own onAction/run) -- pinned shows a
+        // filled/accent-colored indicator, unpinned a muted outline.
+        trailingVisual: (
+          <IconButton
+            icon={PinIcon}
+            aria-label={pinned ? t('quickPanel.entries.unpinWorkflow', { label: wf.Label }) : t('quickPanel.entries.pinWorkflow', { label: wf.Label })}
+            size="small"
+            variant="invisible"
+            className={pinned ? styles.pinnedIndicator : styles.pinToggle}
+            onClick={(e) => {
+              e.stopPropagation()
+              togglePinnedWorkflow(wf.ID)
+            }}
+          />
+        ),
         run: () => runWorkflow(wf.ID, wf.Label),
       })
     }
@@ -410,8 +433,8 @@ export function QuickPanel() {
       run: applyFromClipboard,
     })
     return entries
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- runWorkflow/jumpToConfigure/openMain/applyFromClipboard close over state already listed or are stable
-  }, [workflows, mostUsedRank, requests, lists, mcpServers, reviewPendingCount])
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- runWorkflow/jumpToConfigure/openMain/applyFromClipboard/togglePinnedWorkflow close over state already listed or are stable
+  }, [workflows, mostUsedRank, pinnedWorkflowIds, requests, lists, mcpServers, reviewPendingCount])
 
   const filtered = filterPaletteEntries(allEntries, query)
 

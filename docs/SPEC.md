@@ -2658,8 +2658,15 @@ findings) and the build rationale are in
   Configure tab (`OpenMainWindow('configure:<tab>')`, a new
   `app/useMillNavigate.ts` hook parsing the target, `ConfigureView`'s
   new `initialTab` prop) — goal 0015's own remaining Acceptance
-  halves, see that goal file for what's still open (pins, the ⌘K
-  palette's own inline-hotkey-per-row detail, a ⌘?/⌘/ alias).
+  halves, see that goal file for what's still open (the ⌘K palette's
+  own inline-hotkey-per-row detail, a ⌘?/⌘/ alias). **Update
+  (2026-08-13, BACKLOG.md Standing #5)**: pins/favorites landed —
+  `pinnedWorkflowIds: string[]` on `shared/store.ts`'s existing
+  persisted store (localStorage tier, same as `activeWorkTabKey`), a
+  Primer `PinIcon` toggle on both the Quick Panel's and this ⌘K
+  palette's workflow rows, `app/workflowFrecency.ts`'s
+  `sortWorkflowsByPinnedAndFrecency` sorting pinned rows (in pin order)
+  above the existing frecency-sorted tail in both surfaces.
 - **Auto-update** — `app.Updater` (Wails3's own first-party,
   zero-new-dependency `v3/pkg/updater`) is `Init`'d in `main.go` with a
   GitHub Releases provider pointed at `alicoding/mill`;
@@ -2713,8 +2720,8 @@ findings) and the build rationale are in
   halves — landed into the **Quick Panel** (`app/QuickPanel.tsx`,
   ADR-0033), not this ⌘K palette: frequency-only workflow sort off
   goal 0014's `HomeMetrics.mostUsed` (`app/workflowFrecency.ts`; pins
-  stayed out — no pin/favorite concept exists anywhere in Mill, a
-  BACKLOG.md tech-debt line rather than invented schema), connector/
+  landed later as their own BACKLOG.md tech-debt line — see the
+  Update above), connector/
   List/MCP-Server rows that jump the main window to the right
   Configure tab (`SettingsService.OpenMainWindow('configure:<tab>')`
   → `app/useMillNavigate.ts` → `ConfigureView`'s `initialTab`), and

@@ -19,3 +19,26 @@
   color: var(--fgColor-muted);
   border-top: 1px solid var(--borderColor-default);
 }
+
+/* Workflow pin toggle (docs/goals/BACKLOG.md Standing #5): subtle
+   muted outline when unpinned, accent-colored "filled" indicator once
+   pinned -- both states are the same IconButton (PinIcon), just
+   recolored via currentColor, matching CommandPalette.module.css's
+   identical pair below. `pointer-events: auto` re-enables clicking:
+   Primer's own ActionList.Item wraps every trailingVisual in a
+   `VisualWrap` span with `pointer-events: none` (its trailing visuals
+   are decorative by convention, not interactive) -- confirmed directly
+   against the installed @primer/react's compiled ActionList.module.css,
+   not assumed. A `none` ancestor still lets a descendant re-enable
+   itself via `auto`, which is exactly what turns this row's pin toggle
+   back into a real click target without fighting the library's own
+   pointer-events reset. */
+.pinToggle {
+  color: var(--fgColor-muted);
+  pointer-events: auto;
+}
+
+.pinnedIndicator {
+  color: var(--fgColor-accent);
+  pointer-events: auto;
+}
