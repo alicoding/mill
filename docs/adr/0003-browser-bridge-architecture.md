@@ -96,6 +96,14 @@ itself (~30 lines of `encoding/binary` + `encoding/json`) would have to
 be Mill-authored either way — exactly what the rule excludes, regardless
 of how trivial the protocol is.
 
+Scope note (goal 0044 research, 2026-08-13): this rejection is about
+protocol authorship ONLY — it was never an admin-rights problem.
+Native-messaging-host manifests register per-user with no admin/root
+on both Windows (`HKEY_CURRENT_USER\...\NativeMessagingHosts`) and
+macOS (`~/Library/Application Support/.../NativeMessagingHosts/`),
+per Chrome's own native-messaging docs. If an adequate Go library
+ever appears, admin rights would not be the blocker.
+
 ### B. Direct localhost fetch/WebSocket from the extension
 Extension calls `http://localhost:8080` directly via `fetch()` or the
 `@wailsio/runtime` client with `setTransport()` pointed at that origin.
