@@ -311,6 +311,7 @@
       "label": "Label"
     },
     "live": "live",
+    "versionPrefix": "v{{version}}",
     "makeLive": "Make live",
     "loadIntoDraft": "Load into draft"
   },

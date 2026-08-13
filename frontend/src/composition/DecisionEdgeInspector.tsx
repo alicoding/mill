@@ -67,6 +67,10 @@ export function DecisionEdgeInspector({ edgeId, condition, attrs, onApply }: Dec
           <FormControl>
             <FormControl.Label>{t('editExpressionDirectly')}</FormControl.Label>
             <FormControl.Caption>
+              {/* expr-lang code syntax, not natural-language copy --
+                  deliberately untranslated (docs/goals/0032's guard
+                  rule allowlist). */}
+              {/* eslint-disable-next-line i18next/no-literal-string */}
               {t('decisionEdgeInspector.expressionCaptionPrefix')} <code>count &gt; 5 &amp;&amp; status == "active"</code>{t('decisionEdgeInspector.expressionCaptionSuffix')}
             </FormControl.Caption>
             <TextInput

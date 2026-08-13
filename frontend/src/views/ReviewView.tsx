@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Button, Heading, Label, Select, Spinner, Stack, Text } from '@primer/react'
 import { Blankslate } from '@primer/react/experimental'
 import { BugIcon, InboxIcon, PersonIcon, PlugIcon, ShieldIcon } from '@primer/octicons-react'
@@ -33,11 +34,13 @@ const KIND_ORDER: Array<Exclude<KindFilterValue, ''>> = ['ask', 'human-review', 
 // doesn't already carry. Debug park has two row variants (breakpoint /
 // step mode); "Paused at breakpoint" is the base-case wording, since one
 // filter bucket covers both.
-const KIND_LABELS: Record<Exclude<KindFilterValue, ''>, string> = {
-  ask: 'Awaiting approval',
-  'human-review': 'Human review',
-  debug: 'Paused at breakpoint',
-  'mcp-write': 'MCP write request',
+function kindLabelsFor(t: (key: string) => string): Record<Exclude<KindFilterValue, ''>, string> {
+  return {
+    ask: t('reviewView.kindLabels.ask'),
+    'human-review': t('reviewView.kindLabels.human-review'),
+    debug: t('reviewView.kindLabels.debug'),
+    'mcp-write': t('reviewView.kindLabels.mcp-write'),
+  }
 }
 
 // The Review queue (docs/adr/0023, §3.2's case-management-style
@@ -51,6 +54,8 @@ const KIND_LABELS: Record<Exclude<KindFilterValue, ''>, string> = {
 // a case-management engine (no assignment/SLA/notes -- the
 // Camunda/Pega line, not crossed).
 function ReviewView() {
+  const { t } = useTranslation('views')
+  const KIND_LABELS = kindLabelsFor(t)
   const workflows = useAppStore((s) => s.workflows)
   const requestOpenWorkflow = useAppStore((s) => s.requestOpenWorkflow)
   const [pending, setPending] = useState<RunSummary[] | null>(null)
@@ -179,7 +184,7 @@ function ReviewView() {
   if (pending === null) {
     return (
       <PageContainer data-testid="review-view">
-        <Heading as="h1">Review</Heading>
+        <Heading as="h1">{t('reviewView.heading')}</Heading>
         <Spinner />
       </PageContainer>
     )
@@ -187,18 +192,16 @@ function ReviewView() {
 
   return (
     <PageContainer data-testid="review-view">
-      <Heading as="h1">Review</Heading>
+      <Heading as="h1">{t('reviewView.heading')}</Heading>
       <Text as="p" className={styles.muted}>
-        Everything waiting for a human — guardrail approvals and Human review checkpoints across
-        every workflow, plus MCP write requests from external clients. Approve to proceed
-        (a run resumes with your input; a write executes), deny to stop it.
+        {t('reviewView.subtitle')}
       </Text>
       {error && <Text as="p" size="small" className={styles.error}>{error}</Text>}
 
       {(pending.length > 0 || resolved.length > 0) && (
         <Stack direction="horizontal" gap="condensed" align="center">
-          <Select value={workflowFilter} onChange={(e) => setWorkflowFilter(e.target.value)} aria-label="Filter by workflow">
-            <Select.Option value="">All workflows</Select.Option>
+          <Select value={workflowFilter} onChange={(e) => setWorkflowFilter(e.target.value)} aria-label={t('reviewView.filterByWorkflowAriaLabel')}>
+            <Select.Option value="">{t('reviewView.allWorkflows')}</Select.Option>
             {[...new Set([...pending, ...resolved].map((r) => r.workflowID))].map((id) => (
               <Select.Option key={id} value={id}>
                 {workflows?.find((w) => w.ID === id)?.Label ?? id}
@@ -209,10 +212,10 @@ function ReviewView() {
             <Select
               value={kindFilter}
               onChange={(e) => setKindFilter(e.target.value as KindFilterValue)}
-              aria-label="Filter by kind"
+              aria-label={t('reviewView.filterByKindAriaLabel')}
               data-testid="review-kind-filter"
             >
-              <Select.Option value="">All kinds</Select.Option>
+              <Select.Option value="">{t('reviewView.allKinds')}</Select.Option>
               {KIND_ORDER.filter((k) => presentKinds.has(k)).map((k) => (
                 <Select.Option key={k} value={k}>{KIND_LABELS[k]}</Select.Option>
               ))}
@@ -226,7 +229,7 @@ function ReviewView() {
           <Blankslate.Visual>
             <InboxIcon size={32} />
           </Blankslate.Visual>
-          <Blankslate.Heading>Nothing waiting for you</Blankslate.Heading>
+          <Blankslate.Heading>{t('reviewView.nothingWaiting')}</Blankslate.Heading>
         </Blankslate>
       )}
 
@@ -244,8 +247,8 @@ function ReviewView() {
               <Stack direction="vertical" gap="condensed">
                 <Stack direction="horizontal" gap="condensed" align="center">
                   <PlugIcon size={16} />
-                  <Text weight="semibold">MCP write request</Text>
-                  <Label variant="attention" size="small">awaiting approval</Label>
+                  <Text weight="semibold">{t('reviewView.mcpWriteRequest')}</Text>
+                  <Label variant="attention" size="small">{t('reviewView.awaitingApprovalLower')}</Label>
                   <StalenessBadge createdAt={w.createdAt} testId="review-mcp-write-age" />
                 </Stack>
                 <Text size="small">{w.description}</Text>
@@ -258,10 +261,10 @@ function ReviewView() {
                 )}
                 <Stack direction="horizontal" gap="condensed">
                   <Button size="small" variant="primary" data-testid="review-mcp-write-approve" onClick={() => resolveWrite(w.id, true)}>
-                    Approve
+                    {t('reviewView.approve')}
                   </Button>
                   <Button size="small" variant="danger" data-testid="review-mcp-write-deny" onClick={() => resolveWrite(w.id, false)}>
-                    Deny
+                    {t('reviewView.deny')}
                   </Button>
                 </Stack>
               </Stack>
@@ -283,13 +286,13 @@ function ReviewView() {
                 {isDebugPark(run) ? <BugIcon size={16} /> : isHumanReview(run) ? <PersonIcon size={16} /> : <ShieldIcon size={16} />}
                 <Text weight="semibold">{run.workflowLabel}</Text>
                 <Label variant={isDebugPark(run) ? 'done' : 'attention'} size="small" data-testid={isDebugPark(run) ? 'review-debug-badge' : undefined}>
-                  {isDebugPark(run) ? (run.pending?.stepped ? 'paused — step mode' : 'paused at breakpoint') : 'awaiting approval'}
+                  {isDebugPark(run) ? (run.pending?.stepped ? t('reviewView.pausedStepModeLower') : t('reviewView.pausedAtBreakpointLower')) : t('reviewView.awaitingApprovalLower')}
                 </Label>
                 <StalenessBadge createdAt={run.startedAt} testId="review-item-age" />
               </Stack>
               <Text size="small">
-                Step <Text weight="semibold">{run.pending?.nodeTypeLabel || run.pending?.nodeTypeID}</Text>
-                {run.pending?.ruleLabel ? ` — ${run.pending.ruleLabel}` : ' — external steps ask by default'}
+                {t('reviewView.stepPrefix')} <Text weight="semibold">{run.pending?.nodeTypeLabel || run.pending?.nodeTypeID}</Text>
+                {run.pending?.ruleLabel ? t('reviewView.ruleSuffix', { rule: run.pending.ruleLabel }) : t('reviewView.externalStepsDefault')}
               </Text>
               {run.pending?.payload && <pre className={styles.result}>{run.pending.payload}</pre>}
 
@@ -305,10 +308,10 @@ function ReviewView() {
 
               <Stack direction="horizontal" gap="condensed" onClick={(e) => e.stopPropagation()}>
                 <Button size="small" variant="primary" data-testid="review-approve" onClick={() => resolve(run, true)}>
-                  {isDebugPark(run) ? 'Resume' : 'Approve and resume'}
+                  {isDebugPark(run) ? t('reviewView.resume') : t('reviewView.approveAndResume')}
                 </Button>
                 <Button size="small" variant="danger" data-testid="review-deny" onClick={() => resolve(run, false)}>
-                  {isDebugPark(run) ? 'Stop' : 'Deny'}
+                  {isDebugPark(run) ? t('reviewView.stop') : t('reviewView.deny')}
                 </Button>
               </Stack>
             </Stack>
@@ -317,7 +320,7 @@ function ReviewView() {
       </Stack>
       {resolvedEntries.length > 0 && (
         <>
-          <Heading as="h2" variant="small" className={styles.sectionHeading}>Recently resolved</Heading>
+          <Heading as="h2" variant="small" className={styles.sectionHeading}>{t('reviewView.recentlyResolved')}</Heading>
           <Stack direction="vertical" gap="condensed">
             {resolvedEntries.slice(0, 10).map((entry) => entry.kind === 'run' ? (
               <div

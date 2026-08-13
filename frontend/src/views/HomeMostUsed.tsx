@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Text, TextInput } from '@primer/react'
 import { GraphIcon } from '@primer/octicons-react'
 import { InventoryList } from '../shared/InventoryList'
@@ -30,6 +31,7 @@ function MinutesSavedEditor({ workflowId, minutes, onSaved }: {
   minutes: number
   onSaved: (minutes: number) => void
 }) {
+  const { t } = useTranslation('views')
   const [value, setValue] = useState(String(minutes))
   const [saving, setSaving] = useState(false)
 
@@ -59,7 +61,7 @@ function MinutesSavedEditor({ workflowId, minutes, onSaved }: {
         if (e.key === 'Enter') e.currentTarget.blur()
       }}
       disabled={saving}
-      aria-label="Minutes saved per run"
+      aria-label={t('home.mostUsed.minutesSavedAriaLabel')}
       data-testid="minutes-saved-input"
       style={{ width: 64 }}
     />
@@ -71,23 +73,24 @@ export function HomeMostUsed({ usage, minutesByWorkflow, onMinutesChanged }: {
   minutesByWorkflow: Record<string, number>
   onMinutesChanged: (workflowId: string, minutes: number) => void
 }) {
+  const { t } = useTranslation('views')
   const requestOpenWorkflow = useAppStore((s) => s.requestOpenWorkflow)
 
   if (usage.length === 0) {
     return (
       <Text as="p" size="small" className={listStyles.muted}>
-        No workflow runs yet in this range.
+        {t('home.mostUsed.noRunsInRange')}
       </Text>
     )
   }
 
   return (
     <InventoryList
-      searchPlaceholder="Search workflows…"
+      searchPlaceholder={t('home.mostUsed.searchPlaceholder')}
       emptyState={{
         icon: GraphIcon,
-        heading: 'Nothing ran yet',
-        description: 'Run or trigger a workflow to see it here.',
+        heading: t('home.mostUsed.nothingRanYet'),
+        description: t('home.mostUsed.runOrTriggerHint'),
       }}
       items={usage.map((u) => {
         const minutes = minutesByWorkflow[u.workflowID] ?? DEFAULT_MINUTES_FALLBACK
@@ -97,7 +100,7 @@ export function HomeMostUsed({ usage, minutesByWorkflow, onMinutesChanged }: {
           entity: 'workflow',
           icon: ENTITY_ICON.workflow,
           label: u.workflowLabel,
-          description: `${u.runCount} run${u.runCount === 1 ? '' : 's'} · ≈ ${formatMinutes(total)} at ${minutes} min/run`,
+          description: t('home.mostUsed.usageDescription', { count: u.runCount, plural: u.runCount === 1 ? '' : 's', total: formatMinutes(t, total), minutes }),
           onOpen: () => requestOpenWorkflow(u.workflowID),
           menuActions: [],
           meta: (

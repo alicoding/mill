@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import { Heading, Label, Text, Button } from '@primer/react'
 import { useAppStore, statusVariant } from '../shared/store'
 import styles from '../shared/ListCard.module.css'
@@ -12,14 +13,15 @@ interface PlaceholderViewProps {
 // card/empty/muted classes rather than a bespoke stylesheet, matching
 // this session's CSS Modules decision (SPEC.md §1.3).
 function PlaceholderView({ capabilityId }: PlaceholderViewProps) {
+  const { t } = useTranslation('views')
   const capability = useAppStore((s) => s.capabilities.find((c) => c.ID === capabilityId))
   const setView = useAppStore((s) => s.setView)
 
   return (
     <PageContainer>
-      <Heading as="h1">{capability?.Label ?? 'Not built yet'}</Heading>
+      <Heading as="h1">{capability?.Label ?? t('placeholderView.notBuiltYet')}</Heading>
       <Text as="p" className={styles.subtitle}>
-        This part of Mill hasn't been built yet.
+        {t('placeholderView.subtitle')}
       </Text>
 
       <div className={styles.card}>
@@ -29,10 +31,10 @@ function PlaceholderView({ capabilityId }: PlaceholderViewProps) {
           </Label>
         )}
         <Text as="p" size="small" className={styles.muted}>
-          See docs/SPEC.md §{capability?.SpecSection ?? '?'} for the current thinking on this.
+          {t('placeholderView.specSectionNote', { section: capability?.SpecSection ?? '?' })}
         </Text>
         <Button size="small" onClick={() => setView({ kind: 'composition' })}>
-          Back to Workflows
+          {t('placeholderView.backToWorkflows')}
         </Button>
       </div>
     </PageContainer>

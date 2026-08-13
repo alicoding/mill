@@ -6,7 +6,7 @@ import composition from '../locales/en/composition.json'
 const issue = (partial: Partial<Issue>): Issue => ({ Severity: Severity.SeverityError, Message: '', NodeID: '', EdgeID: '', ...partial } as Issue)
 
 // A minimal stand-in for react-i18next's t() -- this is a pure-function
-// unit test (docs/goals/0032-copy-management.md's migration), so it
+// unit test (docs/goals/archive/0032-copy-management.md's migration), so it
 // resolves the real English strings from composition.json's own nested
 // keys and does the same {{var}} interpolation i18next performs,
 // without pulling react-i18next's provider/hook machinery into a

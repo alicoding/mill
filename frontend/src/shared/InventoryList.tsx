@@ -1,4 +1,5 @@
 import { useState, type ReactNode } from 'react'
+import { useTranslation } from 'react-i18next'
 import { ActionList, ActionMenu, IconButton, Stack, Text, TextInput } from '@primer/react'
 import { Blankslate } from '@primer/react/experimental'
 import { KebabHorizontalIcon, SearchIcon, type Icon } from '@primer/octicons-react'
@@ -76,11 +77,12 @@ export interface InventoryEmptyState {
   action?: ReactNode
 }
 
-export function InventoryList({ items, emptyState, searchPlaceholder = 'Searchâ€¦' }: {
+export function InventoryList({ items, emptyState, searchPlaceholder }: {
   items: InventoryItem[]
   emptyState: InventoryEmptyState
   searchPlaceholder?: string
 }) {
+  const { t } = useTranslation('common')
   const [query, setQuery] = useState('')
 
   // A truly empty inventory (nothing to search) gets the full
@@ -98,15 +100,15 @@ export function InventoryList({ items, emptyState, searchPlaceholder = 'Searchâ€
     <Stack direction="vertical" gap="condensed">
       <TextInput
         leadingVisual={SearchIcon}
-        placeholder={searchPlaceholder}
+        placeholder={searchPlaceholder ?? t('inventoryList.defaultSearchPlaceholder')}
         value={query}
         onChange={(e) => setQuery(e.target.value)}
-        aria-label="Search"
+        aria-label={t('inventoryList.searchAriaLabel')}
         data-testid="inventory-search"
         block
       />
       {filtered.length === 0 ? (
-        <Text as="p" size="small" className={styles.muted}>No matches for &quot;{query}&quot;.</Text>
+        <Text as="p" size="small" className={styles.muted}>{t('inventoryList.noMatchesFor', { query })}</Text>
       ) : (
         <ActionList role="list" showDividers>
           {filtered.map((item) => (
@@ -119,6 +121,7 @@ export function InventoryList({ items, emptyState, searchPlaceholder = 'Searchâ€
 }
 
 function InventoryRow({ item }: { item: InventoryItem }) {
+  const { t } = useTranslation('common')
   const [pendingConfirm, setPendingConfirm] = useState<InventoryMenuAction | null>(null)
   return (
     <>
@@ -181,7 +184,7 @@ function InventoryRow({ item }: { item: InventoryItem }) {
               <ActionMenu.Anchor>
                 <IconButton
                   icon={KebabHorizontalIcon}
-                  aria-label={`Actions for ${item.label}`}
+                  aria-label={t('inventoryList.actionsForAriaLabel', { label: item.label })}
                   size="small"
                   variant="invisible"
                   data-testid="inventory-row-menu"

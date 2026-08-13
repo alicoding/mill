@@ -52,5 +52,138 @@
       "updateAvailable": "Update available: v{{version}}",
       "upToDate": "You're on the latest version."
     }
+  },
+  "keyboardShortcutsSection": {
+    "searchPlaceholder": "Search commands…",
+    "searchAriaLabel": "Search commands",
+    "noMatches": "No matches for \"{{query}}\".",
+    "pressCombo": "Press a combo… (Esc to cancel)",
+    "clickToChange": "Click to change",
+    "reset": "Reset",
+    "unbound": "Unbound"
+  },
+  "placeholderView": {
+    "notBuiltYet": "Not built yet",
+    "subtitle": "This part of Mill hasn't been built yet.",
+    "specSectionNote": "See docs/SPEC.md §{{section}} for the current thinking on this.",
+    "backToWorkflows": "Back to Workflows"
+  },
+  "homeFormat": {
+    "minutes": "{{n}} min",
+    "hours": "{{n}} hrs"
+  },
+  "home": {
+    "chart": {
+      "runsAxisLabel": "Runs",
+      "errorPercentAxisLabel": "Error %",
+      "succeeded": "Succeeded",
+      "failed": "Failed",
+      "errorRate": "Error rate"
+    },
+    "mostUsed": {
+      "minutesSavedAriaLabel": "Minutes saved per run",
+      "noRunsInRange": "No workflow runs yet in this range.",
+      "searchPlaceholder": "Search workflows…",
+      "nothingRanYet": "Nothing ran yet",
+      "runOrTriggerHint": "Run or trigger a workflow to see it here.",
+      "usageDescription": "{{count}} run{{plural}} · ≈ {{total}} at {{minutes}} min/run"
+    },
+    "heading": "Home",
+    "subtitle": "Time saved, what ran, and what to learn from it — all from local run history. Nothing here ever leaves this machine.",
+    "timeRangeAriaLabel": "Time range",
+    "last7Days": "Last 7 days",
+    "last30Days": "Last 30 days",
+    "noRunsBlankslateHeading": "No runs yet in this range",
+    "noRunsBlankslateDescription": "Run or trigger a workflow and come back — Home fills in as soon as something runs.",
+    "volumeErrorHeading": "Volume & error rate",
+    "volumeErrorDescription": "Daily, in your local timezone. A day's error rate only shows once it has at least 3 finished runs — fewer than that and one failure would misleadingly read as 100%.",
+    "mostUsedHeading": "Most-used workflows",
+    "mostUsedDescription": "Every run counts here, however it fired. Editing a workflow's minutes-saved estimate feeds the Time saved figure above.",
+    "timeSaved": "Time saved",
+    "noAmbientRuns": "No ambient (triggered) runs yet in this range — a manual test run doesn't count as automation replacing your own work.",
+    "timeSavedFormula": "{{label}}: {{count}} run{{plural}} × {{perRun}} min = {{total}}",
+    "errorRate": "Error rate",
+    "noFinishedRuns": "No finished runs yet in this range.",
+    "errorRateVolume": "{{errorCount}} of {{total}} finished runs failed. A retry that eventually succeeded doesn’t count as a failure; parked and cancelled runs are excluded.",
+    "includeManualTestRuns": "Include manual test runs",
+    "ambientVsManual": "Ambient vs. manual",
+    "noRunsInRangeShort": "No runs yet in this range.",
+    "ambientBreakdown": "{{triggered}} ran on their own (hotkey, schedule, watch) · {{manual}} you ran by hand."
+  },
+  "activityRunsExplorer": {
+    "columns": {
+      "started": "Started",
+      "kind": "Kind",
+      "version": "Version",
+      "status": "Status",
+      "output": "Output"
+    },
+    "draft": "draft",
+    "stop": "Stop",
+    "searchByAttrsOrOutput": "Search runs by {{attrs}} or output…",
+    "searchByOutput": "Search runs by output…",
+    "searchAriaLabel": "Search runs",
+    "loading": "Loading…",
+    "noRecordedRuns": "No recorded runs for this workflow yet — durable run history appears here after a Run or trigger fire.",
+    "noRunsMatchSearch": "No runs match this search.",
+    "runsAriaLabel": "{{label}} runs"
+  },
+  "activityView": {
+    "sourceLabel": {
+      "trigger": "Trigger",
+      "composition": "Manual run",
+      "mcp-write": "MCP write"
+    },
+    "heading": "Activity",
+    "subtitle": "What ran, whether triggered headlessly (hotkey, schedule, clipboard/filesystem watch) or a direct Run click on a workflow — a headless trigger fires with no other feedback, so this is the only place to see it happened at all. Session-only: this list isn't persisted across restarts.",
+    "inputSourceAriaLabel": "Input source",
+    "allWorkflowsLiveFeed": "All workflows (live feed)",
+    "filterBySourceAriaLabel": "Filter by source",
+    "allSources": "All sources",
+    "filterByOutcomeAriaLabel": "Filter by outcome",
+    "allOutcomes": "All outcomes",
+    "success": "Success",
+    "failed": "Failed",
+    "searchPlaceholder": "Search what ran or its result…",
+    "searchAriaLabel": "Search activity",
+    "noActivityYet": "No activity yet — run a workflow, or wait for a trigger to fire, to see it appear here. Pick a specific workflow above to browse its durable run history instead.",
+    "noActivityMatchesFilter": "No activity matches this filter.",
+    "previewAriaLabel": "Preview {{label}}",
+    "closeAriaLabel": "Close",
+    "showingCount": "Showing {{shown}} of {{total}}.",
+    "columns": {
+      "time": "Time",
+      "source": "Source",
+      "action": "Action",
+      "outcome": "Outcome"
+    }
+  },
+  "reviewView": {
+    "kindLabels": {
+      "ask": "Awaiting approval",
+      "human-review": "Human review",
+      "debug": "Paused at breakpoint",
+      "mcp-write": "MCP write request"
+    },
+    "heading": "Review",
+    "subtitle": "Everything waiting for a human — guardrail approvals and Human review checkpoints across every workflow, plus MCP write requests from external clients. Approve to proceed (a run resumes with your input; a write executes), deny to stop it.",
+    "filterByWorkflowAriaLabel": "Filter by workflow",
+    "allWorkflows": "All workflows",
+    "filterByKindAriaLabel": "Filter by kind",
+    "allKinds": "All kinds",
+    "nothingWaiting": "Nothing waiting for you",
+    "mcpWriteRequest": "MCP write request",
+    "awaitingApprovalLower": "awaiting approval",
+    "approve": "Approve",
+    "deny": "Deny",
+    "pausedStepModeLower": "paused — step mode",
+    "pausedAtBreakpointLower": "paused at breakpoint",
+    "stepPrefix": "Step",
+    "ruleSuffix": " — {{rule}}",
+    "externalStepsDefault": " — external steps ask by default",
+    "resume": "Resume",
+    "approveAndResume": "Approve and resume",
+    "stop": "Stop",
+    "recentlyResolved": "Recently resolved"
   }
 }

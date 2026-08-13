@@ -4,5 +4,21 @@
     "clear": "Clear",
     "approve": "Approve",
     "deny": "Deny"
+  },
+  "inventoryList": {
+    "defaultSearchPlaceholder": "Search…",
+    "searchAriaLabel": "Search",
+    "noMatchesFor": "No matches for \"{{query}}\".",
+    "actionsForAriaLabel": "Actions for {{label}}"
+  },
+  "literalOrAttributeField": {
+    "required": "required",
+    "sourceAriaLabel": "{{name}} source",
+    "literalValue": "Literal value",
+    "attributeOption": "Attribute: {{label}}",
+    "literalValueAriaLabel": "{{name}} literal value"
+  },
+  "restoreExamplesButton": {
+    "restoreExample": "Restore example…"
   }
 }
