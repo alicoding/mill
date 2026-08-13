@@ -8,6 +8,13 @@
   "deny": "Deny",
   "stop": "Stop",
   "running": "Running…",
+  "pressCombo": "Press a combo… (Esc to cancel)",
+  "armed": "armed",
+  "notLive": "not live",
+  "publishing": "Publishing…",
+  "publish": "Publish",
+  "applyBuiltCondition": "Apply built condition",
+  "editExpressionDirectly": "Or edit the expression directly",
   "loading": "Loading…",
   "disabled": "disabled",
   "publishedVersionLive": "v{{version}} live",
@@ -40,6 +47,134 @@
     "breakpointSetTitle": "Breakpoint set — click to remove (pauses here for inspection before this step runs)",
     "breakpointUnsetTitle": "Click to pause here for inspection before this step runs"
   },
+  "aiExtractFieldsEditor": {
+    "typeLabel": {
+      "text": "Text",
+      "number": "Number",
+      "boolean": "Boolean",
+      "options": "Options (enum)"
+    },
+    "outputFields": "Output fields",
+    "description": "Each field becomes an Attribute of the same key, populated from the AI provider's structured response.",
+    "keyPlaceholder": "key",
+    "labelPlaceholder": "label",
+    "removeFieldAriaLabel": "Remove field",
+    "allowedValues": "Allowed values (comma-separated)",
+    "addField": "Add field"
+  },
+  "schedulePreview": {
+    "invalidCron": "Not a valid cron expression yet.",
+    "scheduleShortcutPrefix": "Runs on the schedule shortcut"
+  },
+  "rulesetEditor": {
+    "heading": "Rules",
+    "description": "Every rule must pass for the data to continue; any failing rule fails the run, named. Build a condition against this workflow's Attributes, or type an expr-lang expression directly — the same surface Decision branches use.",
+    "ruleN": "Rule {{n}}",
+    "deleteRuleAriaLabel": "Delete rule {{n}}",
+    "name": "Name",
+    "namePlaceholder": "e.g. amount below limit",
+    "condition": "Condition",
+    "conditionPlaceholder": "e.g. Attributes[\"amount\"] < 100",
+    "addRule": "Add rule"
+  },
+  "mcpToolArgsEditor": {
+    "tool": "Tool",
+    "pickTool": "(pick a tool)",
+    "toolName": "Tool name",
+    "toolNameCaption": "The exact tool name, from that server's own tool list.",
+    "arguments": "Arguments",
+    "hideRawJson": "Hide raw JSON",
+    "rawJson": "Raw JSON",
+    "argumentsRawJsonLabel": "Arguments (raw JSON)",
+    "rawArgsCaption": "Optional JSON object of arguments to pass to the tool. Top-level string values of the form \"attr:<name>\" resolve to the named Attribute's typed value at run time; every other value is sent as-is.",
+    "argumentsJson": "Arguments (JSON)",
+    "required": "required",
+    "unset": "(unset)"
+  },
+  "listSearchParamsEditor": {
+    "matchParameters": "Match parameters",
+    "pickListFirst": "Pick a List above first.",
+    "noColumnsYet": "That List has no declared columns yet -- add some in Configure > Lists.",
+    "column": "Column",
+    "pickColumn": "(pick a column)",
+    "matchType": "Match type",
+    "exact": "Exact",
+    "fuzzy": "Fuzzy",
+    "removeMatchParameterAriaLabel": "Remove match parameter",
+    "value": "Value",
+    "threshold": "Threshold",
+    "thresholdCaption": "0..1 similarity (Damerau-Levenshtein); defaults to 0.7 if left blank.",
+    "addMatchParameter": "Add match parameter"
+  },
+  "decisionOutcomeBindingsEditor": {
+    "heading": "Decision outputs",
+    "description": "{{label}} ({{category}}) -- values written into this Decision's typed result when reached."
+  },
+  "integrationBindingsEditor": {
+    "inputBindings": "Input bindings",
+    "outputBindings": "Output bindings",
+    "pathLabel": "path: {{path}}",
+    "secret": "secret",
+    "secretCaption": "Secret fields cannot be written to an Attribute.",
+    "writeFieldToAriaLabel": "Write {{field}} to",
+    "discard": "(discard)",
+    "attributeOption": "Attribute: {{label}}"
+  },
+  "childWorkflowBindingsEditor": {
+    "heading": "Child workflow input"
+  },
+  "decisionEdgeInspector": {
+    "heading": "Decision branch",
+    "currentConditionPrefix": "Current condition:",
+    "notSet": "(not set)",
+    "fallbackCheckboxLabel": "This is the fallback (\"otherwise\") branch",
+    "noAttributesYet": "This workflow has no Attributes yet -- add some on the Configure page to build a condition against them, or type an expression directly below.",
+    "expressionCaptionPrefix": "An expr-lang boolean expression (e.g.",
+    "expressionCaptionSuffix": ")."
+  },
+  "triggerRowLabel": {
+    "manual": "Manual",
+    "runByAnotherWorkflow": "Run by another workflow",
+    "noScheduleSet": "no schedule set",
+    "scheduleShortcut": "Runs on the schedule shortcut {{value}}",
+    "watchingClipboard": "Watching clipboard",
+    "noPathConfigured": "no path configured",
+    "clickToChange": "Click to change",
+    "addHotkey": "Add hotkey…"
+  },
+  "nodeExecutionSection": {
+    "heading": "This run's step data",
+    "input": "Input",
+    "output": "Output"
+  },
+  "nodeGuardrailSection": {
+    "effect": {
+      "allow": "runs without approval",
+      "ask": "asks for your approval before running",
+      "deny": "is denied and will not run"
+    },
+    "stepEffect": "This step {{effectText}}{{suffix}}",
+    "ruleSuffix": " — rule \"{{rule}}\".",
+    "externalSuffix": " — external steps ask by default. Approvals happen in Review.",
+    "plainSuffix": ".",
+    "breakpointSet": "Breakpoint set",
+    "noBreakpoint": "No breakpoint",
+    "breakpointHint": "{{state}} — click the dot on the node card to {{action}}.",
+    "removeIt": "remove it",
+    "addOne": "add one",
+    "breakpointBadge": "Breakpoint",
+    "breakpointDescription": "A run pauses here to let you inspect and edit its data before it continues -- a debugging aid, not policy."
+  },
+  "nodeInspector": {
+    "nodeType": "Node type",
+    "saveBeforeHotkey": "Save this workflow before assigning a hotkey.",
+    "setShortcut": "Set shortcut",
+    "openAccessibilitySettings": "Open Accessibility Settings",
+    "noConfiguration": "This node type takes no configuration.",
+    "generateTestPayload": "Generate test payload",
+    "hoverToPreviewChild": "Hover to preview the child — click Open to edit it",
+    "defaultOption": "(default)"
+  },
   "hotkeyCapture": {
     "reservedByMacOS": "{{combo}} is reserved by macOS ({{reason}}) — pick another combo",
     "clashWithCommand": "this combo is already bound to command \"{{label}}\" -- pick another, or reset it there first"
@@ -59,6 +194,11 @@
     "issuesAriaLabel": "Workflow validation issues",
     "copied": "Copied",
     "copyIssues": "Copy issues"
+  },
+  "validationCopy": {
+    "header": "Mill workflow \"{{label}}\" (id: {{id}}) — validation issues ({{counts}}):",
+    "nodeLocation": " node {{id}}",
+    "edgeLocation": " edge {{id}}"
   },
   "workflowEditorTab": {
     "sectionsAriaLabel": "{{label}} sections",

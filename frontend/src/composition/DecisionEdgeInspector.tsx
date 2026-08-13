@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import type { RuleGroupType } from 'react-querybuilder'
 import { QueryBuilder } from 'react-querybuilder'
 import 'react-querybuilder/dist/query-builder.css'
@@ -28,6 +29,7 @@ interface DecisionEdgeInspectorProps {
 // current condition is also always shown as read-only text, and a raw
 // text input is offered as the power-user path for editing it directly.
 export function DecisionEdgeInspector({ edgeId, condition, attrs, onApply }: DecisionEdgeInspectorProps) {
+  const { t } = useTranslation('composition')
   const [query, setQuery] = useState<RuleGroupType>(EMPTY_QUERY)
   const [rawValue, setRawValue] = useState(condition)
   const isOtherwise = condition === OTHERWISE
@@ -35,38 +37,37 @@ export function DecisionEdgeInspector({ edgeId, condition, attrs, onApply }: Dec
 
   return (
     <Stack direction="vertical" gap="condensed" key={edgeId}>
-      <Text weight="semibold">Decision branch</Text>
+      <Text weight="semibold">{t('decisionEdgeInspector.heading')}</Text>
       <Text size="small" className={runbookStyles.muted}>
-        Current condition: {condition ? <code>{condition}</code> : '(not set)'}
+        {t('decisionEdgeInspector.currentConditionPrefix')} {condition ? <code>{condition}</code> : t('decisionEdgeInspector.notSet')}
       </Text>
 
       <Checkbox
         checked={isOtherwise}
         onChange={(e) => onApply(e.target.checked ? OTHERWISE : '')}
       />
-      <Text size="small">This is the fallback ("otherwise") branch</Text>
+      <Text size="small">{t('decisionEdgeInspector.fallbackCheckboxLabel')}</Text>
 
       {!isOtherwise && (
         <>
           {fields.length === 0 && (
             <Text size="small" className={runbookStyles.muted}>
-              This workflow has no Attributes yet -- add some on the Configure page to build a condition against
-              them, or type an expression directly below.
+              {t('decisionEdgeInspector.noAttributesYet')}
             </Text>
           )}
           {fields.length > 0 && (
             <>
               <QueryBuilder fields={fields} query={query} onQueryChange={setQuery} />
               <Button size="small" onClick={() => onApply(translateToExpr(query))}>
-                Apply built condition
+                {t('applyBuiltCondition')}
               </Button>
             </>
           )}
 
           <FormControl>
-            <FormControl.Label>Or edit the expression directly</FormControl.Label>
+            <FormControl.Label>{t('editExpressionDirectly')}</FormControl.Label>
             <FormControl.Caption>
-              An expr-lang boolean expression (e.g. <code>count &gt; 5 &amp;&amp; status == "active"</code>).
+              {t('decisionEdgeInspector.expressionCaptionPrefix')} <code>count &gt; 5 &amp;&amp; status == "active"</code>{t('decisionEdgeInspector.expressionCaptionSuffix')}
             </FormControl.Caption>
             <TextInput
               value={rawValue}
