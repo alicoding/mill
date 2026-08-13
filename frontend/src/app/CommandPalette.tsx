@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { ElementType, ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Dialog, Text } from '@primer/react'
+import { Dialog, IconButton, Text } from '@primer/react'
 import { FilteredActionList } from '@primer/react/experimental'
-import { CommandPaletteIcon, PencilIcon, PlayIcon, TabIcon, XIcon } from '@primer/octicons-react'
+import { CommandPaletteIcon, PencilIcon, PinIcon, PlayIcon, TabIcon, XIcon } from '@primer/octicons-react'
 import { ExecutionService, RunKind } from '../shared/bindings'
 import { COMMANDS } from '../shared/commands'
 import { generateSamplePayload } from '../shared/configSchema'
@@ -14,7 +14,7 @@ import { findRootNode } from '../composition/triggerRowInfo'
 import { clearScratch } from '../composition/canvasScratch'
 import { filterPaletteEntries } from './paletteFilter'
 import type { PaletteSearchable } from './paletteFilter'
-import { sortWorkflowsByFrecency } from './workflowFrecency'
+import { sortWorkflowsByPinnedAndFrecency } from './workflowFrecency'
 import { HotkeyHint } from './HotkeyHint'
 import styles from './CommandPalette.module.css'
 
@@ -120,6 +120,12 @@ export function CommandPalette() {
   const activateWorkTab = useAppStore((s) => s.activateWorkTab)
   const closeWorkTab = useAppStore((s) => s.closeWorkTab)
   const pushActivity = useAppStore((s) => s.pushActivity)
+  // Workflow pins/favorites (docs/goals/BACKLOG.md Standing #5) -- same
+  // store-owned ordered id list app/QuickPanel.tsx reads, shared across
+  // both surfaces since they run in the same main-window JS context
+  // (unlike the Quick Panel's separate Wails window).
+  const pinnedWorkflowIds = useAppStore((s) => s.pinnedWorkflowIds)
+  const togglePinnedWorkflow = useAppStore((s) => s.togglePinnedWorkflow)
   const [query, setQuery] = useState('')
   const [mostUsedRank, setMostUsedRank] = useState<Record<string, number>>({})
   const inputRef = useRef<HTMLInputElement>(null)
@@ -206,6 +212,7 @@ export function CommandPalette() {
   const workflowEntries = (wf: NonNullable<typeof workflows>[number]): PaletteEntry[] => {
     const root = findRootNode(wf.Nodes, wf.Edges)
     const kindLabel = root ? nodeTypes?.find((nt) => nt.ID === root.NodeTypeID)?.Label : undefined
+    const pinned = pinnedWorkflowIds.includes(wf.ID)
     return [
       {
         id: `run:${wf.ID}`,
@@ -214,6 +221,24 @@ export function CommandPalette() {
         description: kindLabel ?? t('commandPalette.testRun'),
         searchText: `run ${wf.Label}`.toLowerCase(),
         leadingVisual: PlayIcon,
+        // A subtle pin toggle (docs/goals/BACKLOG.md Standing #5),
+        // same shape app/QuickPanel.tsx's own workflow row carries --
+        // stopPropagation so the click doesn't also trigger the row's
+        // own onAction (which would run the workflow AND close the
+        // palette).
+        trailingVisual: (
+          <IconButton
+            icon={PinIcon}
+            aria-label={pinned ? t('commandPalette.unpinWorkflow', { label: wf.Label }) : t('commandPalette.pinWorkflow', { label: wf.Label })}
+            size="small"
+            variant="invisible"
+            className={pinned ? styles.pinnedIndicator : styles.pinToggle}
+            onClick={(e) => {
+              e.stopPropagation()
+              togglePinnedWorkflow(wf.ID)
+            }}
+          />
+        ),
         run: () => runWorkflowTest(wf.ID, wf.Label),
       },
       {
@@ -266,16 +291,16 @@ export function CommandPalette() {
   const allEntries = useMemo<PaletteEntry[]>(() => {
     if (restState) {
       const navCommands = COMMANDS.filter((c) => isNavCommandId(c.id)).map(commandEntry)
-      const topWorkflows = sortWorkflowsByFrecency(workflows ?? [], mostUsedRank).slice(0, REST_STATE_WORKFLOW_LIMIT)
+      const topWorkflows = sortWorkflowsByPinnedAndFrecency(workflows ?? [], mostUsedRank, pinnedWorkflowIds).slice(0, REST_STATE_WORKFLOW_LIMIT)
       return [...navCommands, ...topWorkflows.flatMap(workflowEntries), ...workTabs.flatMap(tabEntries)]
     }
     return [
       ...COMMANDS.map(commandEntry),
-      ...(workflows ?? []).flatMap(workflowEntries),
+      ...sortWorkflowsByPinnedAndFrecency(workflows ?? [], mostUsedRank, pinnedWorkflowIds).flatMap(workflowEntries),
       ...workTabs.flatMap(tabEntries),
     ]
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- commandEntry/workflowEntries/tabEntries close over workflows/nodeTypes/requests/workTabs/mostUsedRank/t, already listed
-  }, [restState, workflows, nodeTypes, requests, workTabs, mostUsedRank, t])
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- commandEntry/workflowEntries/tabEntries close over workflows/nodeTypes/requests/workTabs/mostUsedRank/pinnedWorkflowIds/togglePinnedWorkflow/t, already listed
+  }, [restState, workflows, nodeTypes, requests, workTabs, mostUsedRank, pinnedWorkflowIds, t])
 
   const filtered = restState ? allEntries : filterPaletteEntries(allEntries, query)
 

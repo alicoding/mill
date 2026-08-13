@@ -291,3 +291,91 @@ test('a parked MCP write bumps the Quick Panel review badge live, no reload', as
   }
   await restoreMCPWriteDefaults(page)
 })
+
+// docs/goals/BACKLOG.md Standing #5 -- workflow pins/favorites.
+// workflowFrecency.test.ts already covers the pure
+// sortWorkflowsByPinnedAndFrecency function; this proves the live
+// wiring end to end: pinning via the panel row's own toggle overrides
+// frecency ranking, unpinning reverts to it, and the pin survives a
+// reload (the localStorage-tier persistence the schema calls for).
+test('pinning a workflow from the panel row sorts it above frecency, unpinning reverts, and the pin persists across reload', async ({ page }) => {
+  const pinnedLabel = 'ZzE2ePinTargetPinned'
+  const frequentLabel = 'ZzE2ePinTargetFrequent'
+  // frequentLabel created FIRST, pinnedLabel second -- so absent any
+  // pin, frequentLabel's own run count would already outrank
+  // pinnedLabel (same "real proof, not a coincidental pass" discipline
+  // as the frecency test above).
+  await createSimpleWorkflow(page, frequentLabel)
+  await createSimpleWorkflow(page, pinnedLabel)
+
+  await page.goto('about:blank')
+  await page.goto('/#/quickpanel')
+  const search = page.getByRole('combobox', { name: 'Quick Panel search' })
+  await expect(search).toBeFocused()
+
+  // Build up frequentLabel's frecency via the panel's own Enter-to-run
+  // path, same as the frecency test above.
+  for (let i = 0; i < 2; i++) {
+    await search.fill(frequentLabel)
+    await expect(page.getByRole('option', { name: frequentLabel })).toBeVisible()
+    await page.keyboard.press('Enter')
+    await expect(page.getByTestId('quick-panel-status')).toContainText(`Started "${frequentLabel}"`)
+    await search.fill('')
+  }
+
+  const orderedLabels = async () => {
+    await search.fill('ZzE2ePinTarget')
+    const texts = await page.getByRole('option').allTextContents()
+    return texts
+  }
+
+  // Before pinning: DBOS run history becomes queryable shortly after
+  // RunWorkflow returns, not necessarily synchronously -- retry the
+  // fresh-mount reload + order check rather than a fixed sleep, same
+  // as the frecency test.
+  await expect(async () => {
+    await page.goto('about:blank')
+    await page.goto('/#/quickpanel')
+    await expect(search).toBeFocused()
+    const texts = await orderedLabels()
+    const frequentIndex = texts.findIndex((t) => t.includes(frequentLabel))
+    const pinnedIndex = texts.findIndex((t) => t.includes(pinnedLabel))
+    expect(frequentIndex).toBeGreaterThanOrEqual(0)
+    expect(pinnedIndex).toBeGreaterThanOrEqual(0)
+    expect(frequentIndex).toBeLessThan(pinnedIndex)
+  }).toPass({ timeout: 15_000 })
+
+  // Pin the never-run workflow via its row's pin toggle -- it should
+  // now sort ABOVE the frequently-run one despite having zero runs.
+  await search.fill(pinnedLabel)
+  await expect(page.getByRole('option', { name: pinnedLabel })).toBeVisible()
+  await page.getByRole('button', { name: `Pin "${pinnedLabel}"` }).click()
+  await expect(page.getByRole('button', { name: `Unpin "${pinnedLabel}"` })).toBeVisible()
+
+  let texts = await orderedLabels()
+  let frequentIndex = texts.findIndex((t) => t.includes(frequentLabel))
+  let pinnedIndex = texts.findIndex((t) => t.includes(pinnedLabel))
+  expect(pinnedIndex).toBeLessThan(frequentIndex)
+
+  // Persists across reload: a fresh mount of the same window still
+  // shows the pin above frecency, with no re-pinning gesture.
+  await page.goto('about:blank')
+  await page.goto('/#/quickpanel')
+  await expect(page.getByRole('combobox', { name: 'Quick Panel search' })).toBeFocused()
+  texts = await orderedLabels()
+  frequentIndex = texts.findIndex((t) => t.includes(frequentLabel))
+  pinnedIndex = texts.findIndex((t) => t.includes(pinnedLabel))
+  expect(pinnedIndex).toBeLessThan(frequentIndex)
+  await expect(page.getByRole('button', { name: `Unpin "${pinnedLabel}"` })).toBeVisible()
+
+  // Unpinning reverts to frecency order.
+  await page.getByRole('button', { name: `Unpin "${pinnedLabel}"` }).click()
+  await expect(page.getByRole('button', { name: `Pin "${pinnedLabel}"` })).toBeVisible()
+  texts = await orderedLabels()
+  frequentIndex = texts.findIndex((t) => t.includes(frequentLabel))
+  pinnedIndex = texts.findIndex((t) => t.includes(pinnedLabel))
+  expect(frequentIndex).toBeLessThan(pinnedIndex)
+
+  await deleteWorkflow(page, pinnedLabel)
+  await deleteWorkflow(page, frequentLabel)
+})
