@@ -11,6 +11,9 @@ pre-commit:
     - name: comment-hygiene
       glob: "*.{go,ts,tsx}"
       run: ./scripts/check-comment-hygiene.sh
+    - name: ui-copy
+      glob: "frontend/src/locales/**/*.json"
+      run: ./scripts/check-ui-copy.sh
     - name: rules-frontmatter
       # Lefthook's `**` requires 1+ directories deep (non-standard --
       # confirmed against its own docs, not gitignore-style zero-or-more),

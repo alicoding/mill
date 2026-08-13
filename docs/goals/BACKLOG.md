@@ -36,6 +36,11 @@ inline in source)**
    — rule (`.claude/rules/comments.md`) + gate
    (`check-comment-hygiene.sh`, lefthook + CI `comment-hygiene` job in
    `ci-gate`) + one sweep of the 65 baseline narrative comments
+2. [ ] [0040 — UX copy voice: product copy, not spec narrative](0040-ux-copy-voice.md)
+   — owner-directed 2026-08-13 from the live app: rule
+   (`.claude/rules/ux-writing.md`) + gate (`check-ui-copy.sh`: no
+   internal doc refs in locale JSON, 13 baseline) + sweep of page
+   headers, over-length captions, and vendor-name explanations
 
 **Group D — Trust the substrate (2026-08-11, owner-mandated: "do it
 properly once"; ordered first because everything else ships through
