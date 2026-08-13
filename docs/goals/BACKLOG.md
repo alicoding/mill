@@ -40,9 +40,14 @@ inline in source)**
 **Group D — Trust the substrate (2026-08-11, owner-mandated: "do it
 properly once"; ordered first because everything else ships through
 this pipeline and on this code)**
-1. [ ] [0024 — CI/CD target architecture + operating model](0024-cicd-target-architecture.md)
-   — IN FLIGHT: catch-up pushed, e2e triage + target-architecture
-   build land next, then the ruleset on a green main (ADR-0034)
+1. [x] [0024 — CI/CD target architecture + operating model](archive/0024-cicd-target-architecture.md)
+   — DELIVERED, closed 2026-08-13: all file-level work had landed
+   progressively (green maiden run 2026-08-12, budgets/sharding/
+   path-filtering/SHA-pinning); the last open item (ruleset +
+   direct-push dry-run) verified live — ruleset 20723094 active,
+   dry-run push rejected (GH013), docs-only PR #45 fast-skipped
+   with "CI gate" green; all three acceptance predicates evidenced
+   in the archived goal file
 2. [x] [0025 — Substance hardening](archive/0025-substance-hardening.md) — DELIVERED 2026-08-12 (both audit waves + LOW items) —
    fix the audited green-but-wrong class (12 silent persistence
    sites, unfailable test fake, uncovered safety-badge source);
