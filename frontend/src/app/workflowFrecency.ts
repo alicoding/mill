@@ -29,3 +29,26 @@ export function sortWorkflowsByFrecency(workflows: Workflow[], runCounts: Record
   // survives unchanged until real usage data exists to reorder it.
   return [...workflows].sort((a, b) => (runCounts[b.ID] ?? 0) - (runCounts[a.ID] ?? 0))
 }
+
+// Workflow pins/favorites (docs/goals/BACKLOG.md Standing #5, split
+// from goal 0015's remainder, schema LOCKED at prioritization): pinned
+// rows sort ABOVE every frecency-sorted unpinned row, in `pinnedIds`'s
+// own order (pin recency -- see shared/store.ts's togglePinnedWorkflow).
+// A plain partition-then-concat over the existing frecency sort rather
+// than a new comparator -- reuses sortWorkflowsByFrecency for the
+// unpinned tail instead of re-deriving frecency ordering here too.
+export function sortWorkflowsByPinnedAndFrecency(
+  workflows: Workflow[],
+  runCounts: Record<string, number>,
+  pinnedIds: string[],
+): Workflow[] {
+  const pinnedSet = new Set(pinnedIds)
+  const pinned = pinnedIds
+    .map((id) => workflows.find((wf) => wf.ID === id))
+    .filter((wf): wf is Workflow => wf !== undefined)
+  const unpinned = sortWorkflowsByFrecency(
+    workflows.filter((wf) => !pinnedSet.has(wf.ID)),
+    runCounts,
+  )
+  return [...pinned, ...unpinned]
+}

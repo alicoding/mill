@@ -242,6 +242,15 @@ interface AppState {
   openPalette: () => void
   closePalette: () => void
   togglePalette: () => void
+  // Workflow pins/favorites (docs/goals/BACKLOG.md Standing #5, split
+  // from goal 0015's remainder): a plain ordered workflow-ID list,
+  // store-owned, localStorage-tier -- schema LOCKED at prioritization,
+  // no per-workflow field and no new Go surface. Newly-pinned ids
+  // append to the end (pin order = pin recency); sortWorkflowsBy
+  // PinnedAndFrecency (app/workflowFrecency.ts) renders pinned rows in
+  // this array's order, above every frecency-sorted unpinned row.
+  pinnedWorkflowIds: string[]
+  togglePinnedWorkflow: (id: string) => void
 }
 
 // Shared across App/ActivityView (SPEC.md §1.3): App.tsx still owns the
@@ -431,6 +440,13 @@ export const useAppStore = create<AppState>()(
       openPalette: () => set({ paletteOpen: true }),
       closePalette: () => set({ paletteOpen: false }),
       togglePalette: () => set((state) => ({ paletteOpen: !state.paletteOpen })),
+      pinnedWorkflowIds: [],
+      togglePinnedWorkflow: (id) =>
+        set((state) => ({
+          pinnedWorkflowIds: state.pinnedWorkflowIds.includes(id)
+            ? state.pinnedWorkflowIds.filter((pinned) => pinned !== id)
+            : [...state.pinnedWorkflowIds, id],
+        })),
     }),
     {
       name: 'mill-app-view',
@@ -450,6 +466,14 @@ export const useAppStore = create<AppState>()(
         // degrades to "no active tab" rather than persisting a key
         // with nothing to match it against.
         activeWorkTabKey: activeKeyIfPresent(state.workTabs.filter(isRestorable), state.activeWorkTabKey),
+        // Pins are plain workflow-ID strings, not entity snapshots -- no
+        // restore/prune step needed at merge time the way workTabs
+        // needs one; a pin for a since-deleted workflow just never
+        // matches anything in the live `workflows` list and silently
+        // renders nothing extra (the pin toggle itself always reflects
+        // the CURRENT workflow list, never this persisted array
+        // directly).
+        pinnedWorkflowIds: state.pinnedWorkflowIds,
       }),
       merge: (persisted, current) => {
         const p = (persisted ?? {}) as Partial<AppState>

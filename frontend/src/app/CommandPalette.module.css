@@ -25,3 +25,18 @@
 .list {
   max-height: min(60vh, 480px);
 }
+
+/* Workflow pin toggle (docs/goals/BACKLOG.md Standing #5) -- same pair
+   (including the `pointer-events: auto` override of Primer's own
+   trailingVisual `VisualWrap` reset) as app/QuickPanel.module.css's
+   identical classes; see that file's own comment for the full
+   reasoning. */
+.pinToggle {
+  color: var(--fgColor-muted);
+  pointer-events: auto;
+}
+
+.pinnedIndicator {
+  color: var(--fgColor-accent);
+  pointer-events: auto;
+}
