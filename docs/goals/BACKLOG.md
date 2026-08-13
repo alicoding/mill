@@ -32,12 +32,20 @@ session ends — never left only in an ephemeral session task list.**
 comments explain code per standard practice — business/product
 decisions and the owner's own words live in docs/, cited by id, never
 inline in source)**
-0. [ ] [0041 — OSS trust standards](0041-oss-trust-standards.md) —
-   owner-directed 2026-08-13, IN PROGRESS same session: adopt the
-   trust signals high-trust OSS projects converge on, reject solo-repo
-   ceremony with recorded reasons; baseline inventoried (Scorecard
-   5.0, empty repo metadata, unexercised release.yml, missing
-   community files), research agent dispatched
+0. [x] [0041 — OSS trust standards](archive/0041-oss-trust-standards.md) —
+   DELIVERED 2026-08-13, same day opened: peer-calibrated research
+   (fzf/bat/glow/cli-cli live Scorecard + community profiles) split
+   every gap into adopt/defer-with-trigger/reject-with-reason — all
+   recorded in the archived file. Shipped: all 5 OSV vulnerability
+   findings cleared, Token-Permissions fixed, container images
+   digest-pinned + docker Dependabot, CodeQL (zero findings in own
+   code), PR template, repo description+topics, and the
+   owner-approved **v0.1.0 release** — whose three-attempt delivery
+   itself surfaced and fixed two real latent defects (headless
+   bindings-generation app launch, and the build task's
+   backtick-substitution echo that executed `task run` — the probable
+   source of Standing #8's phantom dev instances). Release live with
+   provenance attestation verified against the downloaded asset.
 1. [x] [0038 — Comment hygiene: constraints, not narrative](archive/0038-comment-hygiene.md) — delivered 2026-08-13
    — rule (`.claude/rules/comments.md`) + gate
    (`check-comment-hygiene.sh`, lefthook + CI `comment-hygiene` job in
