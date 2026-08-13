@@ -42,9 +42,9 @@ behaviors are recorded in goal 0021's Phase 4 research section.
 
 ## Acceptance (checkable)
 
-- [ ] All five cases' goldens show the corrected output (no
+- [x] All five cases' goldens show the corrected output (no
       pinned-degradation wording left for them in the test names).
-- [ ] The seven already-correct cases' goldens unchanged.
-- [ ] Full local gate suite green; PR merged green.
-- [ ] Goal 0021's Phase 4 assessment table updated to reflect the new
+- [x] The seven already-correct cases' goldens unchanged.
+- [x] Full local gate suite green; PR merged green.
+- [x] Goal 0021's Phase 4 assessment table updated to reflect the new
       verdicts (this goal referenced from there).

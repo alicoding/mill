@@ -31,10 +31,11 @@ session ends — never left only in an ephemeral session task list.**
 **Group F — Real-use fidelity + rhythm (2026-08-13, owner-picked all
 four in the post-0041 planning round; this order recommended and
 accepted)**
-1. [ ] [0042 — Markdown fidelity pass 2](0042-markdown-fidelity-pass-2.md)
-   — implement the five pinned Confluence degradations (language
-   hints, task lists, emoji fallback, panel types, expand→details);
-   corpus + goldens from PR #78 are the proof harness
+1. [x] [0042 — Markdown fidelity pass 2](archive/0042-markdown-fidelity-pass-2.md)
+   — implemented the five pinned Confluence degradations (language
+   hints, task lists, emoji fallback, panel types, expand→details) as
+   custom renderers on the converter; corpus + goldens from PR #78
+   were the proof harness
 2. [ ] [0043 — Hotkey recorder vs menu accelerators](0043-hotkey-recorder-menu-accelerators.md)
    — overdue owner-hit bug (⌘⇧W while recording closed the app);
    accelerator-free menu swap during capture
