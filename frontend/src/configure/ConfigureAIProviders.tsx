@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Button, FormControl, Heading, Select, Stack, Text, TextInput, VisuallyHidden } from '@primer/react'
-import { DownloadIcon, PlusIcon, SparkleFillIcon, UploadIcon } from '@primer/octicons-react'
+import { Button, FormControl, Heading, IconButton, Select, Stack, Text, TextInput, VisuallyHidden } from '@primer/react'
+import { DownloadIcon, PencilIcon, PlusIcon, SparkleFillIcon, TrashIcon, UploadIcon } from '@primer/octicons-react'
 import { DataTable } from '@primer/react/experimental'
 import { StatusStamp } from '../shared/StatusStamp'
 import { ResizableTableContainer, TruncatedCell } from '../shared/ResizableTable'
@@ -281,9 +281,9 @@ export function ConfigureAIProviders() {
                 header: '', id: 'actions', width: 'auto', align: 'end',
                 renderCell: (p) => (
                   <Stack direction="horizontal" gap="condensed">
-                    <Button size="small" variant="invisible" onClick={() => startEdit(p)}>{t('edit')}</Button>
-                    <Button size="small" variant="invisible" onClick={() => exportProvider(p.ID, p.Label)} leadingVisual={DownloadIcon}>{t('export')}</Button>
-                    <Button size="small" variant="invisible" onClick={() => requestDelete(p)}>{t('delete')}</Button>
+                    <IconButton icon={PencilIcon} aria-label={t('configureAIProviders.editAriaLabel', { label: p.Label })} size="small" variant="invisible" onClick={() => startEdit(p)} />
+                    <IconButton icon={DownloadIcon} aria-label={t('configureAIProviders.exportAriaLabel', { label: p.Label })} size="small" variant="invisible" onClick={() => exportProvider(p.ID, p.Label)} />
+                    <IconButton icon={TrashIcon} aria-label={t('configureAIProviders.deleteAriaLabel', { label: p.Label })} size="small" variant="invisible" onClick={() => requestDelete(p)} />
                   </Stack>
                 ),
               },

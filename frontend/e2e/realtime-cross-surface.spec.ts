@@ -96,11 +96,12 @@ test('a direct-UI workflow create in one window reaches a canvas picker open in 
     await page.goto('/')
     await page.getByRole('link', { name: 'Configure' }).click()
     await page.getByRole('tab', { name: 'Attributes' }).click()
-    const select = page.getByTestId('attributes-workflow-select')
-    await expect(select).toBeVisible()
-
+    // Design wave 3: ConfigureAttributes conforms to its sibling tabs'
+    // InventoryList-row pattern (each row IS a workflow), replacing the
+    // old bare `<Select>` dropdown this test used to assert against.
     const label = 'E2E cross-surface workflow'
-    await expect(select.locator('option', { hasText: label })).toHaveCount(0)
+    const attributesRow = page.locator('[data-testid="inventory-row"][data-entity="workflow"]', { has: page.getByText(label, { exact: true }) })
+    await expect(attributesRow).toHaveCount(0)
 
     // A genuinely direct-UI create (the Workflows page's own "New
     // workflow" button + Save, no MCP involved at all) on the SECOND
@@ -115,7 +116,7 @@ test('a direct-UI workflow create in one window reaches a canvas picker open in 
     // No page.reload() on page (the first page/window) -- ConfigureAttributes.tsx
     // now reads shared/store.ts's workflows store, refreshed by
     // App.tsx's mill-data-changed{entity:"workflow"} handler.
-    await expect(select.locator('option', { hasText: label })).toHaveCount(1, { timeout: 10_000 })
+    await expect(attributesRow).toHaveCount(1, { timeout: 10_000 })
 
     await page2.getByRole('link', { name: 'Workflows' }).click()
     const row = page2.locator('[data-testid="inventory-row"][data-entity="workflow"]', { has: page2.getByText(label, { exact: true }) })

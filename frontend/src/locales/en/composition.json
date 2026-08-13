@@ -214,7 +214,10 @@
   },
   "nodePalette": {
     "addSteps": "Add steps",
-    "onlyOneTriggerTitle": "A workflow can only have one trigger. Select the existing trigger node on the canvas to change its type instead."
+    "onlyOneTriggerTitle": "A workflow can only have one trigger. Select the existing trigger node on the canvas to change its type instead.",
+    "searchPlaceholder": "Search steps…",
+    "searchAriaLabel": "Search steps",
+    "noMatches": "No steps match \"{{query}}\""
   },
   "externalChangeBanner": {
     "title": "This workflow was changed outside this editor",
