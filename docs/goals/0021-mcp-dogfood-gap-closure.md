@@ -245,30 +245,27 @@ not tool-surface ergonomics)
   | Case | Verdict | Pinned property |
   |---|---|---|
   | Table w/ colspan+rowspan | structural-loss-fixed | Real pipe table; spanned cells land top-left with blanks elsewhere (GFM ceiling) |
-  | Code-block macro (`data-syntaxhighlighter-params`) | degrades-acceptably | Code content survives in a fenced block; language hint dropped (no info-string) |
-  | Info/warning panels | degrades-acceptably | Body text survives; info-vs-warning panel type lost (both become plain paragraphs) |
+  | Code-block macro (`data-syntaxhighlighter-params`) | fixed ([goal 0042](archive/0042-markdown-fidelity-pass-2.md)) | Code content survives in a fenced block; the syntaxhighlighter language hint now survives too, as the fence's info-string |
+  | Info/warning panels | fixed ([goal 0042](archive/0042-markdown-fidelity-pass-2.md)) | Body text survives as a blockquote whose leading bold label now names the panel type (info vs. warning) |
   | 3-level nested lists | survives | Nesting depth and item text survive as indented list items |
-  | `ak-task-list` task list | degrades-acceptably | Item text survives as a plain bullet list; DONE/TODO state dropped (no GFM checkbox) |
-  | expand-container macro | degrades-acceptably | Control and content text both survive; expand/collapse semantics lost (flattened) |
+  | `ak-task-list` task list | fixed ([goal 0042](archive/0042-markdown-fidelity-pass-2.md)) | Item text survives with its DONE/TODO state now expressed as a GFM checkbox (`- [x]`/`- [ ]`) |
+  | expand-container macro | fixed ([goal 0042](archive/0042-markdown-fidelity-pass-2.md)) | Control text becomes a `<details><summary>` title; content now survives as markdown inside the details body |
   | Status lozenge | degrades-acceptably | Label text survives; semantic color/status type lost |
   | columnLayout two-equal | degrades-acceptably | Both column bodies survive as sequential paragraphs (acceptable linearization) |
   | Confluence page link | survives | Real markdown link with href and text preserved |
-  | Emoticon (`data-emoji-fallback`) | degrades-acceptably (worst case) | Becomes a dead markdown image link — the fallback character is unused and the relative src doesn't resolve |
-  | Panel inside a table cell | structural-loss-fixed | Enclosing table survives as a one-cell pipe table; panel type inside the cell lost, same as standalone |
+  | Emoticon (`data-emoji-fallback`) | fixed ([goal 0042](archive/0042-markdown-fidelity-pass-2.md)) | Now renders the fallback character directly, replacing the prior dead relative-src image link |
+  | Panel inside a table cell | structural-loss-fixed | Enclosing table survives as a one-cell pipe table; panel type inside the cell still lost, deliberately — a GFM pipe-table cell can't hold a block-level blockquote, so goal 0042's panel rule skips any panel with a `td`/`th` ancestor |
   | Bare `<pre>` (negative control) | survives | Plain preformatted text with no macro wrapper survives unchanged |
 
-  Follow-up candidates named here, **not implemented this pass** —
-  each needs its own scoping decision before landing:
-  - `syntaxhighlighter-brush`→language-hint rule (feed the fenced
-    code block's info-string from `data-syntaxhighlighter-params`).
-  - Task-list checkbox rule (`ak-task-list`/`data-task-state` →
-    GFM `- [x]`/`- [ ]`).
-  - Emoji `data-emoji-fallback` rule (emit the fallback character
-    instead of a dead image link).
-  - Panel-type labeling (info/warning/note/tip distinguished in the
-    markdown output, not collapsed to identical plain paragraphs).
-  - Expand→details (Spenhouet's own precedent: re-render as HTML
-    `<details>`/`<summary>` rather than flattening).
+  All five follow-up candidates named in the prior pass — the
+  syntaxhighlighter-brush language hint, the task-list checkbox rule,
+  the emoji fallback rule, panel-type labeling, and expand→details —
+  are **delivered via [goal 0042](archive/0042-markdown-fidelity-pass-2.md)**,
+  each as a custom renderer registered on the converter (the library's
+  own v2 Register API), proven by the same fixture corpus's updated
+  goldens. Status lozenge and columnLayout linearization remain
+  named-but-undecided; panel-inside-a-table-cell remains degraded by
+  design (see its row above).
 - **§2.1 M365 bridge dry run** — compose capture→code-exec→clipboard
   end-to-end with the pieces that exist; name what's still missing
   (DOM capture, auto-paste target).

@@ -16,7 +16,8 @@ import (
 // text. Built via converter.NewConverter with an explicit plugin list
 // rather than the library's package-level ConvertString, which wires only
 // base+commonmark and silently collapses every table to a single run-on
-// line (no plugin/table).
+// line (no plugin/table). registerConfluenceRules adds Mill-owned renderers
+// (goal 0042) for Confluence markup the stock plugins degrade or drop.
 func ToMarkdown(html string) (string, error) {
 	conv := converter.NewConverter(
 		converter.WithPlugins(
@@ -26,5 +27,6 @@ func ToMarkdown(html string) (string, error) {
 			strikethrough.NewStrikethroughPlugin(),
 		),
 	)
+	registerConfluenceRules(conv)
 	return conv.ConvertString(html)
 }

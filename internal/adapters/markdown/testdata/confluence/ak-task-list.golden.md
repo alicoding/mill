@@ -1,2 +1,2 @@
-- Ship the fix
-- Write the follow-up
+- [x] Ship the fix
+- [ ] Write the follow-up
