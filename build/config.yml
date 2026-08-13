@@ -56,6 +56,33 @@ dev_mode:
       type: blocking
     - cmd: wails3 task common:dev:frontend
       type: background
+    # Per-rebuild reap (docs/goals/BACKLOG.md Standing #8a, owner-hit
+    # 2026-08-12 evening: THREE concurrent mill.dev.app instances,
+    # traced live to this exact gap). `type: blocking` steps re-run on
+    # EVERY reload cycle (refresh's own process.ProcessManager.Reload,
+    # github.com/atterpac/refresh -- confirmed directly against the
+    # vendored source, not assumed), unlike `background` above (first
+    # run only). The `primary` step below (wails3 task run) is SUPPOSED
+    # to have its own previous instance killed automatically by
+    # refresh's ProcessManager before each restart (a process-group
+    # SIGKILL) -- but a live-running dev session was directly observed
+    # with two concurrent mill.dev.app processes from the SAME session,
+    # one of them orphaned into a foreign process group refresh's own
+    # tracking never reaped (root cause not fully pinned down: possibly
+    # a globally-installed `wails3` CLI binary built against a
+    # different `refresh` version than what this repo's own go.mod
+    # pins for the app itself). Rather than patch a vendored third-party
+    # dependency this repo doesn't own, this step is an independent,
+    # pattern-based reap -- the same `pkill -f` shape Taskfile.yml's own
+    # dev: task already uses for its start-of-session sweep -- that
+    # runs regardless of whether refresh's own internal kill succeeds,
+    # so an orphan can no longer survive past the NEXT rebuild cycle
+    # even when refresh's own tracking misses it. Matches the exact
+    # path Taskfile.yml's darwin:run task builds
+    # (bin/mill.dev.app/Contents/MacOS/mill); `|| true` since the
+    # common case (nothing stale yet) isn't an error.
+    - cmd: pkill -f "bin/mill.dev.app/Contents/MacOS/mill" || true
+      type: blocking
     - cmd: wails3 task run
       type: primary
 
