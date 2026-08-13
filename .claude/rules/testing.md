@@ -128,7 +128,14 @@ layer per capability," never "a seed per thing":
   (the seeded integrations' endpoints), non-blocking.
 - **Manual-only registry** — OS-bound checks (hotkey delivery, real
   clipboard, tray) listed explicitly with reasons, never silently
-  absent (see goal 0010's enforcement).
+  absent (see goal 0010's enforcement). Non-seed instance: the
+  away-attention dock bounce (`dockBounceFn`,
+  `settingsservice_attention.go`) — only its nil-window guard is
+  unit-testable (the notify adapter's cgo send aborts headless, so
+  the full away branch can't run under `go test`); the real
+  bounce-once-on-a-parked-approval behavior is OS-bound and
+  CI-invisible — verify it desktop-mode by parking an approval while
+  unfocused.
 - **Dev-loop timing checks** — a non-seed instance of the same manual-
   only discipline, outside goal 0010's seed/NodeType registry (that
   machinery is keyed to seeded artifacts; this isn't one). Goal 0029's

@@ -2505,9 +2505,12 @@ turns out to solve this without touching that dispute).
   executes at-most-once. **The away-user attention layer (ADR-0032 §3)
   is also built**: the sidebar's already-computed pending-decision count
   mirrors to the dock badge (`internal/adapters/dockbadge`, wraps Wails3's
-  `dock.DockService`), and a new pending item while the window is
-  unfocused fires a real OS notification (`internal/adapters/notify`,
-  wraps `notifications.NotificationService`) — an MCP write's carries
+  `dock.DockService`), and a new pending item while the user is away
+  fires a real OS notification (`internal/adapters/notify`,
+  wraps `notifications.NotificationService`) plus a one-shot dock
+  bounce (`window.Flash`, a single informational attention request —
+  never repeating/critical; same kernel attention-layer class as the
+  badge) — an MCP write's notification carries
   Approve/Deny actions resolving directly; a guardrail/human-review
   park's opens/focuses the window instead (typed input may be needed).
   Both adapters are desktop-only (server-mode build-tag stub, same
