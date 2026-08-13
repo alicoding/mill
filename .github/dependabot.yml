@@ -40,6 +40,17 @@ updates:
           - patch
     # Same reasoning as gomod above: majors stay individual.
 
+  - package-ecosystem: docker
+    directory: /build/docker
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 2
+    # The two Dockerfiles' base images are digest-pinned (goal 0041,
+    # Scorecard Pinned-Dependencies); this keeps those digests from
+    # rotting the same way the github-actions entry below keeps SHA
+    # pins current.
+
   - package-ecosystem: github-actions
     directory: /
     schedule:

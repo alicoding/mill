@@ -45,6 +45,34 @@ accepted subset as one PR (or two if config-only GitHub-settings
 changes separate cleanly from file changes), recording each
 reject-with-reason below as the research resolves.
 
+## Slice 1 — mechanical Scorecard fixes (2026-08-13, ahead of the
+research report since the tool itself names the fix)
+
+- Vulnerabilities (was 5 findings): `golang.org/x/image` v0.41.0 →
+  v0.43.0 (4 advisories: GO-2026-4961/5061/5062/5066, webp/tiff decode
+  panics — indirect dep, CI govulncheck was green because the
+  vulnerable paths are uncalled; bumped anyway, zero-cost);
+  `nanoid` 3.3.17 → 3.3.18 (GHSA-2v37-7h3g-55p8, transitive of
+  vite→postcss, lockfile-only bump).
+- Token-Permissions (was 0): top-level `permissions: read-all` added
+  to release.yml and seed-liveness.yml — both already had correct
+  job-level elevations; only the workflow-level default was missing.
+  ci.yml and scorecard.yml were already compliant.
+- Pinned-Dependencies (was 7): the three container base images
+  digest-pinned (Dockerfile.cross's golang:1.26-bookworm,
+  Dockerfile.server's golang:alpine + distroless/static-debian12,
+  digests as resolved by Scorecard's own remediation output);
+  dependabot.yml gains a `docker` ecosystem entry so the digests
+  don't rot. ACCEPTED, not fixed, two remaining warns:
+  Dockerfile.cross's Zig download already verifies sha256 against
+  Zig's official manifest (Scorecard can't see through the manifest
+  indirection — a false positive in effect), and
+  build/linux/appimage/build.sh downloads linuxdeploy's `continuous`
+  tag (a rolling release with no stable digest; the whole file is
+  Wails scaffold for a PARKED platform per release.yml's own note —
+  not worth hand-patching vendored scaffold for a platform Mill
+  doesn't ship).
+
 ## Acceptance (checkable)
 
 - [ ] Every gap named in the Baseline section above is either SHIPPED

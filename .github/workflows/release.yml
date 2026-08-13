@@ -5,6 +5,10 @@ on:
     tags:
       - 'v*.*.*'
 
+# Least-privilege default; jobs that need more elevate individually
+# (build-macos: id-token/attestations, release: contents write).
+permissions: read-all
+
 jobs:
   # Cheap fail-fast before spending time on a real build: the pushed tag
   # must match build/config.yml's own version, so a build never gets
