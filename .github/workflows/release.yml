@@ -78,20 +78,25 @@ jobs:
       # extract bindings and never exits on a headless runner (first live
       # run of this workflow hung 63 minutes exactly there); the repo
       # commits frontend/bindings, so a release build uses them as-is.
-      - run: task build
+      # task package (not task build): the raw binary is not a
+      # launchable macOS artifact -- v0.1.0 shipped it and double-click
+      # hit Finder's "no application set to open" dialog. The .app
+      # bundle zipped with ditto (preserves bundle metadata/resource
+      # forks the way plain zip may not) is what a person downloads.
+      - run: task package
         env:
           MILL_SKIP_BINDINGS: "1"
-      - name: Rename binary with platform/arch/version suffix
+      - name: Zip app bundle with platform/arch/version suffix
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
-          mv bin/mill "bin/mill-${VERSION}-macos-$(uname -m)"
+          ditto -c -k --keepParent bin/mill.app "bin/mill-${VERSION}-macos-$(uname -m).zip"
       - uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
         with:
-          subject-path: bin/mill-*
+          subject-path: bin/mill-*.zip
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: mill-macos
-          path: bin/mill-*
+          path: bin/mill-*.zip
           retention-days: 7
 
   release:
@@ -111,9 +116,15 @@ jobs:
       - name: Create GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
+        # --notes text is prepended to the generated notes; the app is
+        # ad-hoc signed (no Apple Developer ID), so first launch needs
+        # the standard right-click -> Open confirmation.
         run: |
           gh release create "${GITHUB_REF_NAME}" \
             --repo "${GITHUB_REPOSITORY}" \
             --title "${GITHUB_REF_NAME}" \
             --generate-notes \
+            --notes "## Install
+
+Download the \`.zip\`, unzip, and drag \`mill.app\` to Applications — no build needed. First launch: **right-click the app → Open → Open** (it is ad-hoc signed, not notarized — macOS asks once). Verify the download came from this repo's CI: \`gh attestation verify <the .zip> -R ${GITHUB_REPOSITORY}\`. Prefer building from source? \`git clone\` + the README's few commands work on any Mac." \
             dist/*
