@@ -90,6 +90,16 @@ tasks:
 
   dev:
     summary: Runs the application in development mode (hot reload)
+    env:
+      # The dev app must never contend for the LaunchAgent server's MCP
+      # listener: both binaries fall back to 127.0.0.1:8090 when
+      # MILL_MCP_ADDR is unset (main.go), so a dev relaunch that wins
+      # the 8090 race locks the KeepAlive'd com.alicoding.mill-server
+      # into an EX_CONFIG respawn loop until the dev app exits. Pinning
+      # dev to 8091 keeps the two MCP planes disjoint by construction;
+      # external MCP clients keep 8090 = the managed server, 8091 = the
+      # dev/desktop instance.
+      MILL_MCP_ADDR: 127.0.0.1:8091
     desc: |
       Deliberately does NOT depend on `clean` (unlike build/package):
       wiping bin/ on every `task dev` throws away the linked binary and
