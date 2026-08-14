@@ -195,8 +195,9 @@ test('Composition page lists built-in workflows; node primitives live in a colla
   // successor to list-lookup) + trigger-system-event (docs/adr/0035's
   // unparked System/meta trigger) + process-ai-completion,
   // process-ai-extract-structured, process-ai-classify (the AI node
-  // family, docs/goals/0031-ai-node-family.md).
-  await expect(activePanel(page).getByTestId('palette-item')).toHaveCount(29)
+  // family, docs/goals/0031-ai-node-family.md) + apply-file-write (the
+  // write inverse of capture-file, goal 0044).
+  await expect(activePanel(page).getByTestId('palette-item')).toHaveCount(30)
 })
 
 test('A new workflow starts with a starter node placed, not a blank canvas', async ({ page }) => {
