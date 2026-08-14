@@ -6,6 +6,7 @@ import (
 
 	"github.com/alicoding/mill/internal/adapters/execution"
 	"github.com/alicoding/mill/internal/adapters/procexec"
+	"github.com/alicoding/mill/internal/services/dataevent"
 )
 
 // Cancellation (docs/adr/0026's Amendment, goal 0004b): DBOS cannot
@@ -101,6 +102,14 @@ func (e *ExecutionService) CancelRun(runID string) error {
 		// skips run-cancelled itself (see its own comment) so this run
 		// isn't reported twice.
 		e.emitSystemEvent(SystemEventRunCancelled, runID, "")
+		// A run cancelled while still ENQUEUED never reaches runWorkflow
+		// at all (DBOS never dequeues it), so that function's own
+		// completion emit never fires -- this is the only live-sync
+		// signal such a run gets. A run cancelled while already RUNNING
+		// also gets runWorkflow's unconditional completion emit once its
+		// step unwinds; a second mill-data-changed for the same run is
+		// harmless (a refetch, not a state mutation).
+		dataevent.Emit("run", runID)
 	}
 	return err
 }

@@ -136,6 +136,46 @@ func TestDataEvent_WorkflowMutations(t *testing.T) {
 	})
 }
 
+// TestDataEvent_SeedLifecycleMutations proves goal 0017's P0-2 for
+// ResetWorkflowToSeed/RestoreWorkflow (compositionservice_seedlifecycle.go,
+// docs/goals/0037 items 4/5) -- both bypass the mutateWorkflow choke
+// point TestDataEvent_WorkflowMutations' other subtests all route
+// through, so they need their own direct emit coverage. Reuses
+// firstGoldenID/the golden-workflow fixture
+// compositionservice_seedlifecycle_test.go's own Reset/Restore tests
+// already establish.
+func TestDataEvent_SeedLifecycleMutations(t *testing.T) {
+	t.Run("ResetWorkflowToSeed", func(t *testing.T) {
+		c := NewCompositionService(servicetest.NewFakeStore())
+		id := firstGoldenID(t)
+		if _, err := c.UpdateWorkflow(id, "User's own edit", "", []composition.Node{{ID: "t", NodeTypeID: "trigger-manual"}}, nil); err != nil {
+			t.Fatalf("UpdateWorkflow: %v", err)
+		}
+
+		got := captureEmits(t)
+		reset, err := c.ResetWorkflowToSeed(id)
+		if err != nil {
+			t.Fatalf("ResetWorkflowToSeed: %v", err)
+		}
+		assertEmittedWorkflow(t, *got, reset.ID)
+	})
+
+	t.Run("RestoreWorkflow", func(t *testing.T) {
+		c := NewCompositionService(servicetest.NewFakeStore())
+		id := firstGoldenID(t)
+		if err := c.DeleteWorkflow(id); err != nil {
+			t.Fatalf("DeleteWorkflow: %v", err)
+		}
+
+		got := captureEmits(t)
+		restored, err := c.RestoreWorkflow(id)
+		if err != nil {
+			t.Fatalf("RestoreWorkflow: %v", err)
+		}
+		assertEmittedWorkflow(t, *got, restored.ID)
+	})
+}
+
 // assertEmittedWorkflow fails the test unless got contains at least
 // one dataevent.Changed{"workflow", id} pair -- every mutation this
 // file tests emits the "workflow" entity, so entity itself isn't a

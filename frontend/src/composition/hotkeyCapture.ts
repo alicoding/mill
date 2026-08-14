@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { Events } from '@wailsio/runtime'
 import { SettingsService, TriggerService } from '../shared/bindings'
 import { comboKey, describeCombo, formatCombo, keyFromEventCode, modsFromEvent, reservedByMacOS } from '../shared/keybinding'
 import { refreshKeybindings, useAppStore } from '../shared/store'
@@ -29,6 +30,12 @@ interface ComboCaptureAdapter {
   currentBinding: () => Promise<string | null>
   assign: (mods: string[], key: string) => Promise<string>
   unassign: () => Promise<void>
+  // Which mill-data-changed entity carries this adapter's own combo --
+  // "hotkey" (a workflow trigger) or "keybinding" (a command override).
+  // Lets useComboCapture refetch currentBinding when the SAME target
+  // changes from elsewhere (another open tab/window's recorder), not
+  // just after this hook instance's own assign/unassign call.
+  entity: 'hotkey' | 'keybinding'
 }
 
 // Extracted from the now-retired RunbookView.tsx (docs/SPEC.md §2.2's
@@ -55,6 +62,21 @@ function useComboCapture(enabled: boolean, adapter: ComboCaptureAdapter, onChang
     // below (a useMemo keyed on the real id, not enabled/onChanged) --
     // depending on it directly would refetch on every unrelated
     // re-render; `enabled` is the real trigger for "the target changed."
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [enabled])
+
+  // Live sync: this target's combo can change from a DIFFERENT open
+  // recorder instance (another tab's NodeInspector, the Settings
+  // Keyboard Shortcuts row, a second window) -- without this, only the
+  // instance that made the change saw its own onChanged callback, and
+  // every other mounted recorder for the same target stayed on its
+  // mount-time snapshot until closed and reopened.
+  useEffect(() => {
+    if (!enabled) return
+    return Events.On('mill-data-changed', (evt) => {
+      const changed = (evt.data as { entity?: string })?.entity
+      if (changed === adapter.entity) adapter.currentBinding().then(setBinding).catch(console.error)
+    })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [enabled])
 
@@ -148,6 +170,7 @@ export function useHotkeyCapture(workflowId: string | null, onChanged?: () => vo
     currentBinding: () => TriggerService.ListHotkeys().then((list) => (list ?? {})[workflowId ?? ''] ?? null),
     assign: (mods, key) => TriggerService.AssignHotkey(workflowId ?? '', mods, key),
     unassign: () => TriggerService.UnassignHotkey(workflowId ?? ''),
+    entity: 'hotkey',
   }), [workflowId])
   return useComboCapture(workflowId !== null, adapter, onChanged)
 }
@@ -199,6 +222,7 @@ export function useCommandKeybindingCapture(commandId: string | null, onChanged?
       })
     },
     unassign: () => SettingsService.ClearKeybinding(commandId ?? '').then(() => { void refreshKeybindings() }),
+    entity: 'keybinding',
   }), [commandId, t])
   return useComboCapture(commandId !== null, adapter, onChanged)
 }

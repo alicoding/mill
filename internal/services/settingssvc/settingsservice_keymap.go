@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/alicoding/mill/internal/domain/trigger"
+	"github.com/alicoding/mill/internal/services/dataevent"
 	"github.com/alicoding/mill/internal/services/triggersvc"
 )
 
@@ -140,6 +141,7 @@ func (s *SettingsService) SetKeybinding(commandID string, mods []string, key str
 		return "", fmt.Errorf("save keybinding: %w", err)
 	}
 
+	dataevent.Emit("keybinding", commandID)
 	return triggersvc.FormatBinding(mods, key), nil
 }
 
@@ -163,5 +165,6 @@ func (s *SettingsService) ClearKeybinding(commandID string) error {
 		}
 		return fmt.Errorf("save keybinding clear: %w", err)
 	}
+	dataevent.Emit("keybinding", commandID)
 	return nil
 }
