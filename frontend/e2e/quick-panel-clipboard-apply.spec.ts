@@ -216,8 +216,8 @@ test('a dangling entity reference is listed in the preview but confirm still suc
     // never its root trigger -- ValidateGraph rejects a second outgoing
     // edge off any non-Decision node, and the trigger already has one
     // (to process-inject-text).
-    const leaf = exported.nodes[exported.nodes.length - 1]
-    exported.nodes.push({ ID: 'zz-dangling-http', NodeTypeID: 'integration-http', Config: { requestId: 'zz-definitely-not-a-real-request-id' } })
+    const leaf = exported.steps[exported.steps.length - 1]
+    exported.steps.push({ ID: 'zz-dangling-http', StepTypeID: 'integration-http', Config: { requestId: 'zz-definitely-not-a-real-request-id' } })
     exported.edges.push({ ID: 'zz-dangling-edge', Source: leaf.ID, Target: 'zz-dangling-http' })
     payload = JSON.stringify(exported)
   } finally {

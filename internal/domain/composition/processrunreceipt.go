@@ -41,10 +41,13 @@ type RunEvidence struct {
 // RunEvidenceStep is one already-executed step's recorded outcome,
 // narrowed from executionsvc's own RunStep to what a portable receipt
 // needs (never the full Input/Output payload bodies -- those are the
-// run's own business data, not the receipt's job to duplicate).
+// run's own business data, not the receipt's job to duplicate). Field
+// names are step-vocabulary outright, no legacy alias (docs/goals/0053
+// tier 2): this envelope was born after the vocabulary decision, so
+// there is no prior export to stay compatible with.
 type RunEvidenceStep struct {
-	NodeID          string `json:"nodeId"`
-	NodeTypeID      string `json:"nodeTypeId"`
+	StepID          string `json:"stepId"`
+	StepTypeID      string `json:"stepTypeId"`
 	Status          string `json:"status"`
 	GuardrailEffect string `json:"guardrailEffect,omitempty"`
 	GuardrailRule   string `json:"guardrailRule,omitempty"`

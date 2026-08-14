@@ -181,3 +181,11 @@ the contract travels as files/clipboard/MCP, period (SPEC §1.1).
       not-yet-built note now that all three slices have shipped.
 
 All 8 acceptance boxes now met — the contract surface goal is complete.
+
+Slice 4 (2026-08-14, pre-freeze): goal 0053 tier 2's wire-vocabulary
+rename landed inside this contract while nothing had yet pulled a
+schema id, per goal 0053's own sequencing (`nodes` → `steps`,
+`NodeTypeID` → `StepTypeID`, `nodeId`/`nodeTypeId` →
+`stepId`/`stepTypeId`, `list_node_types` → `list_step_types` with a
+deprecated alias, `RefKind: "node-type"` → `"step-type"`) — full detail
+recorded in `docs/goals/0053-step-vocabulary.md`'s own acceptance box.

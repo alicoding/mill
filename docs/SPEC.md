@@ -4396,6 +4396,11 @@ drift-checked the same way as the other seven; the seeded "Example: Run
 receipt" workflow proves it end to end, including a real schema-
 validation assertion against the committed schema file.
 
+**Slice 4, also `LOCKED`:** every wire key says step, not node
+(`nodes` → `steps`, `list_node_types` → `list_step_types` with the old
+name kept working as an alias) — legacy exports keep importing
+unchanged.
+
 ## 10. Open questions log
 
 - Decision as a reusable typed terminal outcome (§3.3/§3.5) —
