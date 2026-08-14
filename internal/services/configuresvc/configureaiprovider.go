@@ -80,10 +80,29 @@ func (c *ConfigureService) AIProviders() []aiprovider.AIProvider {
 	return out
 }
 
+// aiProviderExistsLocked reports whether id names a real local
+// AIProvider -- callers must hold c.mu. ImportAIProvider's own
+// create-vs-update check (configureservice_export.go).
+func (c *ConfigureService) aiProviderExistsLocked(id string) bool {
+	for _, p := range c.aiProviders {
+		if p.ID == id {
+			return true
+		}
+	}
+	return false
+}
+
 func (c *ConfigureService) CreateAIProvider(label string, kind aiprovider.Kind, baseURL, model string) (aiprovider.AIProvider, error) {
+	return c.createAIProviderWithID(seeding.NewSlugID(label, "aiprovider"), label, kind, baseURL, model)
+}
+
+// createAIProviderWithID is CreateAIProvider's own logic, parameterized
+// on the new provider's id -- the seam ImportAIProvider uses to
+// preserve a caller-supplied id (ADR-0036 decision 3).
+func (c *ConfigureService) createAIProviderWithID(id, label string, kind aiprovider.Kind, baseURL, model string) (aiprovider.AIProvider, error) {
 	now := time.Now()
 	p := aiprovider.AIProvider{
-		ID: seeding.NewSlugID(label, "aiprovider"), Label: label, Kind: kind, BaseURL: baseURL, Model: model,
+		ID: id, Label: label, Kind: kind, BaseURL: baseURL, Model: model,
 		CreatedAt: now, UpdatedAt: now,
 	}
 	if err := aiprovider.Validate(p); err != nil {

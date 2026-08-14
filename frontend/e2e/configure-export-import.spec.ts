@@ -25,7 +25,9 @@ test('Exporting a Request downloads JSON that never carries its secret', async (
   const text = Buffer.concat(chunks).toString('utf-8')
   const parsed = JSON.parse(text)
 
-  expect(parsed.id).toBeUndefined()
+  expect(typeof parsed.id).toBe('string')
+  expect(parsed.id.length).toBeGreaterThan(0)
+  expect(parsed.schema).toBe('mill://schema/request/v1')
   expect(typeof parsed.label).toBe('string')
   // The seeded API-key example has a real demo secret in the keychain
   // (docs/SPEC.md §4's Update) -- if it ever leaked into export output,
@@ -88,26 +90,32 @@ test('Exporting and importing a List round-trips its typed columns and rows', as
   // their real Go names (Key, Values, ...) even though the top-level
   // exportedList wrapper fields do (columns/rows, configureservice_
   // export.go's own json tags).
+  expect(typeof parsed.id).toBe('string')
   expect(parsed.columns).toHaveLength(1)
   expect(parsed.columns[0].Key).toBe('color')
   expect(parsed.rows).toHaveLength(1)
   expect(parsed.rows[0].Values.color).toBe('blue')
 
+  // Re-importing this export's id matches the list still sitting here
+  // (ADR-0036 decision 3), so the file-picker confirms the update
+  // before applying it (the same visibility bar every import surface
+  // now shares) rather than silently creating a duplicate.
   await page.getByTestId('import-list').click()
   await page.getByTestId('import-list-input').setInputFiles({
     name: 'list.json',
     mimeType: 'application/json',
     buffer: Buffer.from(json, 'utf-8'),
   })
+  const dialog = page.getByRole('alertdialog')
+  await expect(dialog).toBeVisible()
+  await expect(dialog).toContainText('E2E export list')
+  await dialog.getByRole('button', { name: 'Update' }).click()
 
   const rows = page.locator('[data-testid="inventory-row"][data-entity="list"]', { has: page.getByText('E2E export list', { exact: true }) })
-  await expect(rows).toHaveCount(2)
+  await expect(rows).toHaveCount(1)
+  await expect(rows).toContainText('1 columns, 1 rows')
 
-  // Clean up both -- the original and the import.
-  for (let i = 0; i < 2; i++) {
-    const remaining = page.locator('[data-testid="inventory-row"][data-entity="list"]', { has: page.getByText('E2E export list', { exact: true }) }).first()
-    await clickRowAction(page, remaining, 'Delete')
-  }
+  await clickRowAction(page, rows, 'Delete')
   await expect(page.locator('[data-testid="inventory-row"][data-entity="list"]', { has: page.getByText('E2E export list', { exact: true }) })).toHaveCount(0)
 })
 

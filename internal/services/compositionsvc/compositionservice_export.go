@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/alicoding/mill/internal/contract"
 	"github.com/alicoding/mill/internal/domain/composition"
 )
 
@@ -39,19 +40,20 @@ import (
 // git), confirmed via research before designing this shape, not
 // assumed absent.
 //
-// ID (docs/goals/0039) is an EXCEPTION to "never carries id" above, and
-// deliberately asymmetric: ExportWorkflow below never sets it (the
-// export wire shape is unchanged, still omits id via omitempty), but
-// the shape now ACCEPTS one on the way in -- clipboard-apply's
-// create-vs-update decision (compositionservice_clipboardapply.go)
-// reads it to tell "no id -- create" (today's ImportWorkflow semantics,
-// untouched) from "id present and matches a real workflow here --
-// update through the same SnapshotDraft+UpdateWorkflowFromExport
-// chokepoint MCP's update_workflow tool already uses" apart. Whether
-// ExportWorkflow itself should start emitting id (e.g. for a
-// push-my-edits-back round trip) is an explicit open question left to
-// a future share-story goal, not resolved here.
+// ID (docs/goals/0039, resolved by ADR-0036) is an EXCEPTION to "never
+// carries id" above: ExportWorkflow now always emits the workflow's
+// real id, and the shape accepts one on the way in too -- the same
+// field drives both directions of the uniform import rule (ADR-0036
+// decision 3, implemented in ImportWorkflow below): absent -> create a
+// fresh id; present and unknown locally -> create preserving it (the
+// two-machine bridge identity ADR-0036 exists for); present and known
+// locally -> update through the same SnapshotDraft+
+// UpdateWorkflowFromExport chokepoint MCP's update_workflow tool
+// already uses. Schema carries the envelope's contract id (ADR-0036
+// decision 2) -- absent is accepted on import (every pre-ADR-0036
+// export), present is validated by contract.ValidateImportSchema.
 type exportedWorkflow struct {
+	Schema      string                     `json:"schema"`
 	ID          string                     `json:"id,omitempty"`
 	Label       string                     `json:"label"`
 	Description string                     `json:"description"`
@@ -81,6 +83,8 @@ func (c *CompositionService) ExportWorkflow(id string) (string, error) {
 	}
 
 	out := exportedWorkflow{
+		Schema:      contract.SchemaID("workflow"),
+		ID:          wf.ID,
 		Label:       wf.Label,
 		Description: wf.Description,
 		Nodes:       wf.Nodes,
@@ -95,28 +99,49 @@ func (c *CompositionService) ExportWorkflow(id string) (string, error) {
 }
 
 // ImportWorkflow parses jsonData (ExportWorkflow's own output, or a
-// hand-authored file in the same shape) and composes it as a brand-new
-// workflow -- see exportedWorkflow's own doc comment for why a new ID
-// is always generated rather than the file's origin workflow being
-// resurrected/overwritten. Reuses CreateWorkflow for validation
-// (ResolveNodeDefaults, ValidateGraph, the label/non-empty-nodes
-// checks) rather than duplicating it -- an imported workflow is held to
-// exactly the same bar as one composed by hand on the canvas, no
-// import-specific leniency. Attributes apply as a second step through
-// UpdateAttributes, matching the existing compose-then-configure-
-// attributes flow every hand-composed workflow already goes through
-// (Configure's Attributes tab) -- not a special import-only path.
+// hand-authored file in the same shape) and applies ADR-0036 decision
+// 3's uniform import rule: no id -> create fresh (delegates to
+// CreateWorkflow, held to exactly the same validation bar as a
+// hand-composed workflow, no import-specific leniency); an id unknown
+// here -> create preserving that id; an id matching a local workflow ->
+// update through the same snapshot-then-replace chokepoint MCP's
+// update_workflow tool uses. Attributes apply as a second step through
+// UpdateAttributes on the create paths, matching the existing compose-
+// then-configure-attributes flow every hand-composed workflow already
+// goes through (Configure's Attributes tab).
 func (c *CompositionService) ImportWorkflow(jsonData string) (composition.Workflow, error) {
 	var in exportedWorkflow
 	if err := json.Unmarshal([]byte(jsonData), &in); err != nil {
 		return composition.Workflow{}, fmt.Errorf("import workflow: invalid JSON: %w", err)
+	}
+	if err := contract.ValidateImportSchema("workflow", in.Schema); err != nil {
+		return composition.Workflow{}, fmt.Errorf("import workflow: %w", err)
+	}
+
+	if in.ID != "" {
+		c.mu.Lock()
+		found := c.workflowExistsLocked(in.ID)
+		c.mu.Unlock()
+		if found {
+			if _, err := c.SnapshotDraft(in.ID); err != nil {
+				return composition.Workflow{}, err
+			}
+			return c.UpdateWorkflowFromExport(in.ID, jsonData)
+		}
+		wf, err := c.createWorkflowWithID(in.ID, in.Label, in.Description, in.Nodes, in.Edges)
+		if err != nil {
+			return composition.Workflow{}, err
+		}
+		if len(in.Attributes) == 0 {
+			return wf, nil
+		}
+		return c.UpdateAttributes(wf.ID, in.Attributes)
 	}
 
 	wf, err := c.CreateWorkflow(in.Label, in.Description, in.Nodes, in.Edges)
 	if err != nil {
 		return composition.Workflow{}, err
 	}
-
 	if len(in.Attributes) == 0 {
 		return wf, nil
 	}

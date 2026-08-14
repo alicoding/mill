@@ -1,7 +1,7 @@
 import { test, expect } from './fixtures/server'
 import { clickRowAction } from './inventoryRow'
 import {
-  connectMCPClient, exportWorkflowViaMCP, findWorkflowIdByLabel,
+  connectMCPClient, exportWorkflowViaMCP, findWorkflowIdByLabel, stripExportedID,
   enableMCPWritesWithApprovalRequired, restoreMCPWriteDefaults,
 } from './mcpTestClient'
 
@@ -290,7 +290,10 @@ test('Review kind filter narrows pending rows by kind, and the Blankslate empty 
   const client = await connectMCPClient(testInfo.parallelIndex)
   const sourceId = await findWorkflowIdByLabel(client, 'E2E kind-filter MCP source')
   const exported = await exportWorkflowViaMCP(client, sourceId)
-  const importResultPromise = client.callTool({ name: 'import_workflow', arguments: { json: exported } })
+  // ADR-0036: strip the source's real id so this exercises the create
+  // path (a second, independent workflow), not an update-in-place of
+  // the source that's still present.
+  const importResultPromise = client.callTool({ name: 'import_workflow', arguments: { json: stripExportedID(exported) } })
 
   // All three kinds pending at once -- the Select appears (2+ kinds).
   await page.getByRole('link', { name: 'Review' }).click()

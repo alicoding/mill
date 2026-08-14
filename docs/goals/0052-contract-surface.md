@@ -98,20 +98,36 @@ the contract travels as files/clipboard/MCP, period (SPEC §1.1).
 
 ## Acceptance (checkable)
 
-- [ ] Every importable envelope (all seven families) has a generated
+- [x] Every importable envelope (all seven families) has a generated
       schema; CI fails when types change without regeneration; a
-      hand-edit fails the same check.
-- [ ] The symmetry audit is recorded in this file: every import
-      surface listed with its UI-reachable export confirmed (or the
-      gap fixed in-goal).
-- [ ] Exports carry a stable schema id; the id's evolution rules are
-      recorded in the same ADR that goal 0046 consumes (one
-      semantics, cross-referenced).
-- [ ] The export-id ADR is written and implemented; a far-side-shaped
-      round trip (export → modify → reimport-as-update) passes as a
-      test through the real import path.
-- [ ] State manifest readable via MCP and present in exports; values
-      match the build (asserted in test against build info).
+      hand-edit fails the same check — slice 1 (ADR-0036):
+      `internal/contract`, invopop/jsonschema, drift gate is
+      `TestContractSchemas_MatchCommitted` (regenerate-and-compare, so
+      local and CI enforce identically).
+- [x] The symmetry audit is recorded in this file: all seven
+      families verified bidirectional 2026-08-14 (inventory pass) —
+      every family's export AND import reachable from its own page's
+      row menu / file picker; no gaps found, nothing to fix.
+- [x] Exports carry a stable schema id (`mill://schema/<family>/v1`
+      in every envelope's `schema` field); evolution rules
+      (additive-optional within a major, breaking changes bump) are
+      ADR-0036 Decision 2 — the single change-classification
+      vocabulary goal 0046's entity-field ADR consumes.
+- [x] The export-id ADR is written and implemented (ADR-0036
+      Decision 3; the compositionservice_export.go open question is
+      resolved and its comment updated): all seven exports emit `id`,
+      one uniform import rule everywhere, update-not-create confirmed
+      by the committed round-trip test through the real
+      clipboard-apply confirm path (prior state snapshotted).
+      Re-import of a known id now updates in place behind a
+      confirm-first dialog on every file-picker surface.
+- [ ] State manifest readable via MCP; values match the build
+      (asserted in test against build info). AMENDED by ADR-0036
+      Decision 4: NOT stamped into entity exports — that would churn
+      every exported file on every app upgrade, breaking the
+      byte-identical-when-unchanged property; the envelope's schema id
+      is the per-export versioning, the manifest travels beside the
+      data (mill://manifest + the root document). Slice 2.
 - [ ] A seeded workflow demonstrates the evidence-receipt node
       end-to-end (seeds ARE the proof).
 - [ ] The root contract document is generated, committed,
@@ -119,6 +135,6 @@ the contract travels as files/clipboard/MCP, period (SPEC §1.1).
       one file; node discovery supports type/metadata filtering; both
       forms derive from the same registry code paths (asserted by a
       test comparing them).
-- [ ] SPEC.md gains the contract-surface section (status LOCKED for
-      the format decision, with the rejected-formats reasoning
-      pointed at this file).
+- [x] SPEC.md gains the contract-surface section — §9.6, LOCKED for
+      the slice-1 mechanics, rejected-formats reasoning pointed at
+      this file; remaining slices named there as not-yet-built.

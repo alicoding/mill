@@ -16,6 +16,7 @@ import { InventoryList, type InventoryItem } from '../shared/InventoryList'
 import { ENTITY_ICON } from '../shared/entityIcons'
 import { formatUpdated, sortByUpdatedDesc } from '../shared/inventorySort'
 import { useConfirmDelete } from '../shared/useConfirmDelete'
+import { useImportConfirm } from '../shared/useImportConfirm'
 import { describeSeedReset } from '../shared/seedLifecycle'
 import { RestoreExamplesButton } from '../shared/RestoreExamplesButton'
 import styles from '../shared/ListCard.module.css'
@@ -78,14 +79,20 @@ export function ConfigureMCPServers() {
     importInputRef.current?.click()
   }
 
+  // A payload whose id matches a server already here updates it in
+  // place instead of creating a new one -- confirmed first via
+  // importConfirm below, naming the server it will replace.
+  const runImport = (text: string) => {
+    ConfigureService.ImportMCPServer(text)
+      .then(() => { setImportError(null); refetch() })
+      .catch((err) => setImportError(String(err)))
+  }
+  const importConfirm = useImportConfirm({ existing: servers ?? [], onImport: runImport })
   const handleImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     e.target.value = ''
     if (!file) return
-    file.text()
-      .then((text) => ConfigureService.ImportMCPServer(text))
-      .then(() => { setImportError(null); refetch() })
-      .catch((err) => setImportError(String(err)))
+    file.text().then(importConfirm.requestImport).catch((err) => setImportError(String(err)))
   }
 
   useEffect(() => {
@@ -312,6 +319,7 @@ export function ConfigureMCPServers() {
         />
       )}
       {confirmDialog}
+      {importConfirm.dialog}
 
       {/* "List tools" (row menu action) renders its result here, below
           the list -- one panel per server that's been queried, same

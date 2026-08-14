@@ -83,9 +83,16 @@ func (c *ConfigureService) revertListLocked(previous list.List) {
 }
 
 func (c *ConfigureService) CreateList(label, description string, columns []typedfield.Field) (list.List, error) {
+	return c.createListWithID(seeding.NewSlugID(label, "list"), label, description, columns)
+}
+
+// createListWithID is CreateList's own logic, parameterized on the new
+// list's id -- the seam ImportList uses to preserve a caller-supplied
+// id (ADR-0036 decision 3).
+func (c *ConfigureService) createListWithID(id, label, description string, columns []typedfield.Field) (list.List, error) {
 	now := time.Now()
 	l := list.List{
-		ID: seeding.NewSlugID(label, "list"), Label: label, Description: description,
+		ID: id, Label: label, Description: description,
 		Columns: columns, CreatedAt: now, UpdatedAt: now,
 	}
 	if err := list.Validate(l); err != nil {

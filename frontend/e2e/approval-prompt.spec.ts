@@ -3,7 +3,7 @@ import type { Client } from '@modelcontextprotocol/sdk/client/index.js'
 import { test, expect } from './fixtures/server'
 import { clickRowAction } from './inventoryRow'
 import {
-  connectMCPClient, exportWorkflowViaMCP, findWorkflowIdByLabel,
+  connectMCPClient, exportWorkflowViaMCP, findWorkflowIdByLabel, stripExportedID,
   enableMCPWritesWithApprovalRequired, restoreMCPWriteDefaults,
 } from './mcpTestClient'
 
@@ -56,7 +56,7 @@ test('a parked MCP write shows in the approval prompt, and Approve resolves it',
     // Fire the gated import -- parks as a durable pending record
     // (docs/adr/0032), independent of whether this specific browser
     // page happens to be watching for it.
-    importResultPromise = client.callTool({ name: 'import_workflow', arguments: { json: exported } })
+    importResultPromise = client.callTool({ name: 'import_workflow', arguments: { json: stripExportedID(exported) } })
 
     // A fresh cross-document navigation to the approval prompt's own
     // route (not a same-document hash change from an already-loaded

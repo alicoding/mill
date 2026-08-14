@@ -88,6 +88,18 @@ func (c *ConfigureService) resolveHTTPRequest(id string) (composition.ResolvedHT
 	}, nil
 }
 
+// requestExistsLocked reports whether id names a real local HTTPRequest
+// -- callers must hold c.mu. ImportHTTPRequest's own create-vs-update
+// check (configureservice_export.go).
+func (c *ConfigureService) requestExistsLocked(id string) bool {
+	for _, r := range c.requests {
+		if r.ID == id {
+			return true
+		}
+	}
+	return false
+}
+
 // --- HTTPRequests ---
 
 func (c *ConfigureService) HTTPRequests() []httprequest.HTTPRequest {
@@ -105,9 +117,16 @@ func (c *ConfigureService) HTTPRequests() []httprequest.HTTPRequest {
 // options-struct pass at some point, but that's a separate, bigger
 // refactor than "add a field" -- not done speculatively here.
 func (c *ConfigureService) CreateHTTPRequest(label, baseURL, method, body string, authType httprequest.AuthType, headers map[string]string, openAPISpec string, auth *httprequest.AuthConfig, jose *httprequest.JOSEConfig, description string) (httprequest.HTTPRequest, error) {
+	return c.createHTTPRequestWithID(seeding.NewSlugID(label, "request"), label, baseURL, method, body, authType, headers, openAPISpec, auth, jose, description)
+}
+
+// createHTTPRequestWithID is CreateHTTPRequest's own logic,
+// parameterized on the new request's id -- the seam ImportHTTPRequest
+// uses to preserve a caller-supplied id (ADR-0036 decision 3).
+func (c *ConfigureService) createHTTPRequestWithID(id, label, baseURL, method, body string, authType httprequest.AuthType, headers map[string]string, openAPISpec string, auth *httprequest.AuthConfig, jose *httprequest.JOSEConfig, description string) (httprequest.HTTPRequest, error) {
 	now := time.Now()
 	req := httprequest.HTTPRequest{
-		ID: seeding.NewSlugID(label, "request"), Label: label,
+		ID: id, Label: label,
 		BaseURL: baseURL, Method: strings.TrimSpace(method), Body: body, AuthType: authType, Headers: headers, OpenAPISpec: openAPISpec, Auth: auth, JOSE: jose,
 		Description: description,
 		CreatedAt:   now,

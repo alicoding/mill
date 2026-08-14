@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "mill://schema/aiprovider/v1",
+  "properties": {
+    "schema": {
+      "type": "string"
+    },
+    "id": {
+      "type": "string"
+    },
+    "label": {
+      "type": "string"
+    },
+    "kind": {
+      "type": "string"
+    },
+    "baseURL": {
+      "type": "string"
+    },
+    "model": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "type": "object",
+  "required": [
+    "schema",
+    "label",
+    "kind",
+    "baseURL",
+    "model"
+  ]
+}

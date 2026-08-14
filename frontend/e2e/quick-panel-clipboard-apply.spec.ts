@@ -116,7 +116,13 @@ test('a valid workflow export creates a new workflow, visible live with no reloa
   } finally {
     await client.close()
   }
-  const payload = JSON.stringify({ ...JSON.parse(exported), label: createdLabel })
+  // ADR-0036: ExportWorkflow now always carries the source's real id,
+  // so it's stripped here -- this test proves the CREATE path, not the
+  // update-in-place path a real matching id would now correctly take
+  // (that path's own coverage is the "matching id updates" test below).
+  const parsedExport = JSON.parse(exported) as Record<string, unknown>
+  delete parsedExport.id
+  const payload = JSON.stringify({ ...parsedExport, label: createdLabel })
 
   // A second, already-open surface on the Workflows list -- proves the
   // new row appears LIVE (goal 0017's mill-data-changed infra), not
@@ -199,6 +205,9 @@ test('a dangling entity reference is listed in the preview but confirm still suc
   try {
     const sourceId = await findWorkflowIdByLabel(client, sourceLabel)
     const exported = JSON.parse(await exportWorkflowViaMCP(client, sourceId))
+    // ADR-0036: strip the source's real id (proves the CREATE path, not
+    // an update-in-place of the source fixture).
+    delete exported.id
     // Splice in an integration-http node referencing an HTTPRequest id
     // that doesn't exist anywhere on this instance -- a real dangling
     // reference (docs/goals/0039 item 5), not just an unset one.

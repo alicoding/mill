@@ -3,7 +3,7 @@ import type { Client } from '@modelcontextprotocol/sdk/client/index.js'
 import { test, expect } from './fixtures/server'
 import { clickRowAction } from './inventoryRow'
 import {
-  connectMCPClient, exportWorkflowViaMCP, findWorkflowIdByLabel,
+  connectMCPClient, exportWorkflowViaMCP, findWorkflowIdByLabel, stripExportedID,
   enableMCPWritesWithApprovalRequired, restoreMCPWriteDefaults,
 } from './mcpTestClient'
 
@@ -42,7 +42,7 @@ test('a parked MCP write appears as a Review row and approving it there executes
     // parks (courtesy window default 10s in production; the request
     // is durable regardless of how long the call itself keeps
     // waiting) rather than completing immediately.
-    importResultPromise = client.callTool({ name: 'import_workflow', arguments: { json: exported } })
+    importResultPromise = client.callTool({ name: 'import_workflow', arguments: { json: stripExportedID(exported) } })
 
     // The Review queue surfaces it as an actionable row -- the SAME
     // durable pending store the banner reads (docs/adr/0032 §2).
