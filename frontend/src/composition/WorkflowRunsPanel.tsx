@@ -120,11 +120,16 @@ function WorkflowRunsPanel({ workflowId, attrs, initialRunId, onInitialRunConsum
   // goal 0017 P1-2: this tab's base run list used to update only on
   // mount/workflow-switch -- a run started elsewhere (another tab, a
   // headless trigger, an MCP author's run_workflow) never appeared here
-  // without reopening the tab. mill-data-changed{entity:"run"} is
-  // already emitted for every run kind (executionsvc's own run-start/
-  // debug-tool paths); the in-flight-run detail poll above stays --
-  // DBOS has no per-step event, so polling an already-open run's own
-  // step-by-step progress is still the honest only-path.
+  // without reopening the tab. mill-data-changed{entity:"run"} fires at
+  // run start (executionsvc runWorkflowStart) and run completion
+  // (executionsvc runWorkflow) for every run kind, plus the MCP debug
+  // tools; executionsvc's own emits are pinned by
+  // TestRunWorkflow_EmitsRunDataEventOnStartAndCompletion, since this
+  // panel stays mounted across section-tab switches and a missing emit
+  // leaves it stale until a full reload. The in-flight-run detail poll
+  // above stays -- DBOS has no per-step event, so polling an
+  // already-open run's own step-by-step progress is still the honest
+  // only-path.
   useEffect(() => {
     return Events.On('mill-data-changed', (evt) => {
       const entity = (evt.data as { entity?: string })?.entity
