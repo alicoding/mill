@@ -121,20 +121,38 @@ the contract travels as files/clipboard/MCP, period (SPEC §1.1).
       clipboard-apply confirm path (prior state snapshotted).
       Re-import of a known id now updates in place behind a
       confirm-first dialog on every file-picker surface.
-- [ ] State manifest readable via MCP; values match the build
+- [x] State manifest readable via MCP; values match the build
       (asserted in test against build info). AMENDED by ADR-0036
       Decision 4: NOT stamped into entity exports — that would churn
       every exported file on every app upgrade, breaking the
       byte-identical-when-unchanged property; the envelope's schema id
       is the per-export versioning, the manifest travels beside the
-      data (mill://manifest + the root document). Slice 2.
+      data (mill://manifest + the root document). Slice 2, built:
+      `mill://manifest` + the root document's `manifest` field, backed
+      by `internal/adapters/buildinfo` (extracted from settingssvc's
+      own reader so both sides read one implementation) and
+      `contract.BuildManifest`; test asserts values against a real
+      `buildinfo.Read()` + the constructor-wired version, not
+      hardcoded expectations.
 - [ ] A seeded workflow demonstrates the evidence-receipt node
-      end-to-end (seeds ARE the proof).
-- [ ] The root contract document is generated, committed,
+      end-to-end (seeds ARE the proof). Remaining: slice 3.
+- [x] The root contract document is generated, committed,
       drift-checked, exposed as an MCP resource, and exportable as
       one file; node discovery supports type/metadata filtering; both
       forms derive from the same registry code paths (asserted by a
-      test comparing them).
+      test comparing them). Slice 2, built:
+      `internal/contract/contract.json` (schemas + node catalog +
+      import contract, manifest deliberately omitted per Decision 4),
+      drift-checked by `TestRootContractDocument_MatchCommitted`;
+      served over `mill://contract` and Settings' Export contract
+      action with the manifest injected at request time
+      (`contract.Served`); `list_node_types` gained an optional `kind`
+      filter (trigger/capture/process/apply/decision — the
+      audience/complexity facet stays goal 0047's, not added here).
+      The document's node catalog and the tool's own catalog both call
+      `composition.NodeTypes()` directly (no second serializer);
+      `TestContractDocumentNodeCatalog_MatchesListNodeTypesTool` pins
+      the equality.
 - [x] SPEC.md gains the contract-surface section — §9.6, LOCKED for
       the slice-1 mechanics, rejected-formats reasoning pointed at
       this file; remaining slices named there as not-yet-built.

@@ -1,0 +1,1734 @@
+{
+  "schemas": {
+    "aiprovider": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$id": "mill://schema/aiprovider/v1",
+      "properties": {
+        "schema": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "kind": {
+          "type": "string"
+        },
+        "baseURL": {
+          "type": "string"
+        },
+        "model": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "schema",
+        "label",
+        "kind",
+        "baseURL",
+        "model"
+      ]
+    },
+    "decision": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$id": "mill://schema/decision/v1",
+      "$defs": {
+        "Field": {
+          "properties": {
+            "Key": {
+              "type": "string"
+            },
+            "Label": {
+              "type": "string"
+            },
+            "Type": {
+              "type": "string"
+            },
+            "Required": {
+              "type": "boolean"
+            },
+            "Default": {
+              "type": "string"
+            },
+            "Description": {
+              "type": "string"
+            },
+            "Options": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "Suggestions": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "Secret": {
+              "type": "boolean"
+            },
+            "RefKind": {
+              "type": "string"
+            },
+            "Multiline": {
+              "type": "boolean"
+            },
+            "SystemManaged": {
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": false,
+          "type": "object",
+          "required": [
+            "Key",
+            "Label",
+            "Type",
+            "Required",
+            "Default",
+            "Description",
+            "Options",
+            "Suggestions",
+            "Secret",
+            "RefKind",
+            "Multiline",
+            "SystemManaged"
+          ]
+        }
+      },
+      "properties": {
+        "schema": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string"
+        },
+        "outputs": {
+          "items": {
+            "$ref": "#/$defs/Field"
+          },
+          "type": "array"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "schema",
+        "label",
+        "category",
+        "outputs"
+      ]
+    },
+    "execenv": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$id": "mill://schema/execenv/v1",
+      "properties": {
+        "schema": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "shell": {
+          "type": "string"
+        },
+        "profileMode": {
+          "type": "string"
+        },
+        "dir": {
+          "type": "string"
+        },
+        "env": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "schema",
+        "label",
+        "shell",
+        "profileMode",
+        "dir",
+        "env"
+      ]
+    },
+    "list": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$id": "mill://schema/list/v1",
+      "$defs": {
+        "Field": {
+          "properties": {
+            "Key": {
+              "type": "string"
+            },
+            "Label": {
+              "type": "string"
+            },
+            "Type": {
+              "type": "string"
+            },
+            "Required": {
+              "type": "boolean"
+            },
+            "Default": {
+              "type": "string"
+            },
+            "Description": {
+              "type": "string"
+            },
+            "Options": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "Suggestions": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "Secret": {
+              "type": "boolean"
+            },
+            "RefKind": {
+              "type": "string"
+            },
+            "Multiline": {
+              "type": "boolean"
+            },
+            "SystemManaged": {
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": false,
+          "type": "object",
+          "required": [
+            "Key",
+            "Label",
+            "Type",
+            "Required",
+            "Default",
+            "Description",
+            "Options",
+            "Suggestions",
+            "Secret",
+            "RefKind",
+            "Multiline",
+            "SystemManaged"
+          ]
+        },
+        "Row": {
+          "properties": {
+            "ID": {
+              "type": "string"
+            },
+            "Values": {
+              "additionalProperties": {
+                "type": "string"
+              },
+              "type": "object"
+            },
+            "CreatedAt": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "UpdatedAt": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "Status": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false,
+          "type": "object",
+          "required": [
+            "ID",
+            "Values",
+            "CreatedAt",
+            "UpdatedAt",
+            "Status"
+          ]
+        }
+      },
+      "properties": {
+        "schema": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "columns": {
+          "items": {
+            "$ref": "#/$defs/Field"
+          },
+          "type": "array"
+        },
+        "rows": {
+          "items": {
+            "$ref": "#/$defs/Row"
+          },
+          "type": "array"
+        },
+        "entries": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "type": "object"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "schema",
+        "label"
+      ]
+    },
+    "mcpserver": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$id": "mill://schema/mcpserver/v1",
+      "properties": {
+        "schema": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "command": {
+          "type": "string"
+        },
+        "args": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "schema",
+        "label",
+        "command",
+        "args"
+      ]
+    },
+    "request": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$id": "mill://schema/request/v1",
+      "$defs": {
+        "AuthConfig": {
+          "properties": {
+            "OAuth2": {
+              "$ref": "#/$defs/OAuth2Config"
+            },
+            "HMAC": {
+              "$ref": "#/$defs/HMACConfig"
+            },
+            "OAuth1": {
+              "$ref": "#/$defs/OAuth1Config"
+            }
+          },
+          "additionalProperties": false,
+          "type": "object",
+          "required": [
+            "OAuth2",
+            "HMAC",
+            "OAuth1"
+          ]
+        },
+        "HMACConfig": {
+          "properties": {
+            "HeaderName": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false,
+          "type": "object",
+          "required": [
+            "HeaderName"
+          ]
+        },
+        "JOSEConfig": {
+          "properties": {
+            "Enabled": {
+              "type": "boolean"
+            },
+            "Algorithm": {
+              "type": "string"
+            },
+            "ContentEncryption": {
+              "type": "string"
+            },
+            "RecipientPublicKeyPEM": {
+              "type": "string"
+            },
+            "DecryptResponse": {
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": false,
+          "type": "object",
+          "required": [
+            "Enabled",
+            "Algorithm",
+            "ContentEncryption",
+            "RecipientPublicKeyPEM",
+            "DecryptResponse"
+          ]
+        },
+        "OAuth1Config": {
+          "properties": {
+            "ConsumerKey": {
+              "type": "string"
+            },
+            "Token": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false,
+          "type": "object",
+          "required": [
+            "ConsumerKey",
+            "Token"
+          ]
+        },
+        "OAuth2Config": {
+          "properties": {
+            "GrantType": {
+              "type": "string"
+            },
+            "TokenURL": {
+              "type": "string"
+            },
+            "ClientID": {
+              "type": "string"
+            },
+            "Scope": {
+              "type": "string"
+            },
+            "ContentType": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false,
+          "type": "object",
+          "required": [
+            "GrantType",
+            "TokenURL",
+            "ClientID",
+            "Scope",
+            "ContentType"
+          ]
+        }
+      },
+      "properties": {
+        "schema": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "baseURL": {
+          "type": "string"
+        },
+        "method": {
+          "type": "string"
+        },
+        "body": {
+          "type": "string"
+        },
+        "authType": {
+          "type": "string"
+        },
+        "headers": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "type": "object"
+        },
+        "openAPISpec": {
+          "type": "string"
+        },
+        "auth": {
+          "$ref": "#/$defs/AuthConfig"
+        },
+        "jose": {
+          "$ref": "#/$defs/JOSEConfig"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "schema",
+        "label",
+        "description",
+        "baseURL",
+        "method",
+        "body",
+        "authType",
+        "headers",
+        "openAPISpec"
+      ]
+    },
+    "workflow": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$id": "mill://schema/workflow/v1",
+      "$defs": {
+        "Edge": {
+          "properties": {
+            "ID": {
+              "type": "string"
+            },
+            "Source": {
+              "type": "string"
+            },
+            "SourceHandle": {
+              "type": "string"
+            },
+            "Target": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false,
+          "type": "object",
+          "required": [
+            "ID",
+            "Source",
+            "SourceHandle",
+            "Target"
+          ]
+        },
+        "Field": {
+          "properties": {
+            "Key": {
+              "type": "string"
+            },
+            "Label": {
+              "type": "string"
+            },
+            "Type": {
+              "type": "string"
+            },
+            "Required": {
+              "type": "boolean"
+            },
+            "Default": {
+              "type": "string"
+            },
+            "Description": {
+              "type": "string"
+            },
+            "Options": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "Suggestions": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "Secret": {
+              "type": "boolean"
+            },
+            "RefKind": {
+              "type": "string"
+            },
+            "Multiline": {
+              "type": "boolean"
+            },
+            "SystemManaged": {
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": false,
+          "type": "object",
+          "required": [
+            "Key",
+            "Label",
+            "Type",
+            "Required",
+            "Default",
+            "Description",
+            "Options",
+            "Suggestions",
+            "Secret",
+            "RefKind",
+            "Multiline",
+            "SystemManaged"
+          ]
+        },
+        "Node": {
+          "properties": {
+            "ID": {
+              "type": "string"
+            },
+            "Kind": {
+              "type": "string"
+            },
+            "NodeTypeID": {
+              "type": "string"
+            },
+            "Config": {
+              "additionalProperties": {
+                "type": "string"
+              },
+              "type": "object"
+            },
+            "Position": {
+              "$ref": "#/$defs/Position"
+            }
+          },
+          "additionalProperties": false,
+          "type": "object",
+          "required": [
+            "ID",
+            "Kind",
+            "NodeTypeID",
+            "Config",
+            "Position"
+          ]
+        },
+        "Position": {
+          "properties": {
+            "X": {
+              "type": "number"
+            },
+            "Y": {
+              "type": "number"
+            }
+          },
+          "additionalProperties": false,
+          "type": "object",
+          "required": [
+            "X",
+            "Y"
+          ]
+        }
+      },
+      "properties": {
+        "schema": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "nodes": {
+          "items": {
+            "$ref": "#/$defs/Node"
+          },
+          "type": "array"
+        },
+        "edges": {
+          "items": {
+            "$ref": "#/$defs/Edge"
+          },
+          "type": "array"
+        },
+        "attributes": {
+          "items": {
+            "$ref": "#/$defs/Field"
+          },
+          "type": "array"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "schema",
+        "label",
+        "description",
+        "nodes",
+        "edges",
+        "attributes"
+      ]
+    }
+  },
+  "nodeTypes": [
+    {
+      "ID": "trigger-callable",
+      "Kind": "trigger",
+      "Label": "Trigger: callable by another workflow",
+      "Description": "Fires only when invoked as a child by another workflow's Child Workflow step (docs/adr/0010) -- never by a real external event, no listener process. Modeled on n8n's own \"Execute Workflow Trigger\": a workflow rooted in this trigger declares itself a valid child target, decoupled from whatever its trigger would otherwise be. The child-workflow picker only lists workflows rooted here -- one rooted in a real-event trigger (filesystem-watch, clipboard-watch, ...) can't be invoked this way, since a parent has no way to synthesize that event.",
+      "ConfigFields": null,
+      "Output": "the caller's typed input",
+      "Effect": ""
+    },
+    {
+      "ID": "trigger-clipboard-watch",
+      "Kind": "trigger",
+      "Label": "Trigger: clipboard change",
+      "Description": "Fires whenever the clipboard's content changes.",
+      "ConfigFields": null,
+      "Output": "the clipboard text that changed",
+      "Effect": ""
+    },
+    {
+      "ID": "trigger-filesystem-watch",
+      "Kind": "trigger",
+      "Label": "Trigger: filesystem change",
+      "Description": "Fires when a file or folder under the configured path is added, changed, or deleted.",
+      "ConfigFields": [
+        {
+          "Key": "path",
+          "Label": "Path to watch",
+          "Type": "text",
+          "Required": false,
+          "Default": "",
+          "Description": "Absolute path to a file or directory.",
+          "Options": null,
+          "Suggestions": null,
+          "Secret": false,
+          "RefKind": "",
+          "Multiline": false,
+          "SystemManaged": false
+        },
+        {
+          "Key": "pattern",
+          "Label": "Filename pattern (optional)",
+          "Type": "text",
+          "Required": false,
+          "Default": "",
+          "Description": "A glob like *.md or report-*.csv -- only files whose name matches fire the trigger. Leave empty to fire on any change.",
+          "Options": null,
+          "Suggestions": null,
+          "Secret": false,
+          "RefKind": "",
+          "Multiline": false,
+          "SystemManaged": false
+        }
+      ],
+      "Output": "the changed file path",
+      "Effect": ""
+    },
+    {
+      "ID": "trigger-hotkey",
+      "Kind": "trigger",
+      "Label": "Trigger: hotkey",
+      "Description": "Fires on a global keyboard shortcut, even when Mill isn't focused. Bound via TriggerService, not a config field here -- pressing the combo is better UX than typing it.",
+      "ConfigFields": null,
+      "Output": "empty payload — the run starts here",
+      "Effect": ""
+    },
+    {
+      "ID": "trigger-manual",
+      "Kind": "trigger",
+      "Label": "Trigger: manual",
+      "Description": "Fires on-demand when a user clicks Run/Test. No listener process.",
+      "ConfigFields": null,
+      "Output": "empty payload — the run starts here",
+      "Effect": ""
+    },
+    {
+      "ID": "trigger-schedule",
+      "Kind": "trigger",
+      "Label": "Trigger: schedule",
+      "Description": "Fires on a cron schedule.",
+      "ConfigFields": [
+        {
+          "Key": "cron",
+          "Label": "Cron expression",
+          "Type": "text",
+          "Required": false,
+          "Default": "",
+          "Description": "Standard 5-field cron expression (minute hour day month weekday).",
+          "Options": null,
+          "Suggestions": null,
+          "Secret": false,
+          "RefKind": "",
+          "Multiline": false,
+          "SystemManaged": false
+        }
+      ],
+      "Output": "empty payload — the run starts here",
+      "Effect": ""
+    },
+    {
+      "ID": "trigger-system-event",
+      "Kind": "trigger",
+      "Label": "Trigger: system event",
+      "Description": "Fires when Mill's own execution engine emits an internal event -- docs/adr/0035, SPEC.md §3.4's Group D unparked. Mill dogfoods its own trigger/composition surface for platform-internal behavior (the forward-pending-approvals example workflow is the first real user) instead of a bespoke Go code path per event. Loop rule (docs/adr/0035 item 4, n8n's Error-Trigger precedent): a run whose OWN root trigger is trigger-system-event never emits a system event of its own, regardless of kind -- a chain always bottoms out after one hop, so this trigger can never fire itself into a cycle.",
+      "ConfigFields": [
+        {
+          "Key": "event",
+          "Label": "Event",
+          "Type": "options",
+          "Required": false,
+          "Default": "decision-parked",
+          "Description": "Which internal event fires this trigger. \"Decision parked\" fires when a guardrail ask or human-review checkpoint parks awaiting approval; the other three fire once a run reaches a terminal state.",
+          "Options": [
+            "decision-parked",
+            "run-completed",
+            "run-failed",
+            "run-cancelled"
+          ],
+          "Suggestions": null,
+          "Secret": false,
+          "RefKind": "",
+          "Multiline": false,
+          "SystemManaged": false
+        },
+        {
+          "Key": "workflowScope",
+          "Label": "Workflow scope",
+          "Type": "text",
+          "Required": false,
+          "Default": "",
+          "Description": "Fire for every workflow's matching event, or scope to one specific workflow. Empty means all workflows.",
+          "Options": null,
+          "Suggestions": null,
+          "Secret": false,
+          "RefKind": "workflow-scope",
+          "Multiline": false,
+          "SystemManaged": false
+        }
+      ],
+      "Output": "JSON payload: {event, runId, workflowId, workflowLabel, nodeId?, timestamp} -- the run/decision that caused this event. nodeId is only set for decision-parked (the parked step's ID); empty for run-completed/run-failed/run-cancelled.",
+      "Effect": ""
+    },
+    {
+      "ID": "capture-attribute",
+      "Kind": "capture",
+      "Label": "Capture: attribute value",
+      "Description": "Replaces the payload with the value of one of this workflow's declared Attributes -- e.g. a callable workflow's typed input, or a value a Decision already routed on.",
+      "ConfigFields": [
+        {
+          "Key": "attribute",
+          "Label": "Attribute",
+          "Type": "text",
+          "Required": false,
+          "Default": "",
+          "Description": "The declared Attribute key to read (Configure \u003e Attributes, or the typed input a calling workflow bound).",
+          "Options": null,
+          "Suggestions": null,
+          "Secret": false,
+          "RefKind": "",
+          "Multiline": false,
+          "SystemManaged": false
+        }
+      ],
+      "Output": "the attribute's value",
+      "Effect": ""
+    },
+    {
+      "ID": "capture-clipboard-html",
+      "Kind": "capture",
+      "Label": "Capture: clipboard HTML",
+      "Description": "Reads the clipboard's HTML. If there's no HTML flavor (many apps only put plain text), falls back to the plain-text flavor rather than failing -- the capture fallback order docs/SPEC.md §5 names (try HTML, then plain text; DOM-read via the browser bridge is the third tier, not built yet).",
+      "ConfigFields": null,
+      "Output": "HTML from the clipboard",
+      "Effect": "read"
+    },
+    {
+      "ID": "capture-clipboard-info",
+      "Kind": "capture",
+      "Label": "Capture: clipboard info",
+      "Description": "Reads macOS's own \"clipboard info\" report (which flavors -- HTML, plain text, images, ... -- are currently on the pasteboard, and their byte sizes) and summarizes whether HTML and plain text are present, followed by the raw report. A diagnostic for the Confluence-style clipboard ambiguity docs/SPEC.md §5 names: whether HTML was actually on the clipboard, made directly inspectable instead of inferred from a capture succeeding or failing.",
+      "ConfigFields": null,
+      "Output": "a summary of the clipboard's flavors",
+      "Effect": "read"
+    },
+    {
+      "ID": "capture-file",
+      "Kind": "capture",
+      "Label": "Capture: file",
+      "Description": "Reads a local file into the payload. \"payload\" source treats the CURRENT payload as the file path (what a filesystem-watch trigger's changed-path output supplies, docs/SPEC.md §3.4); \"literal\" source reads a fixed path instead.",
+      "ConfigFields": [
+        {
+          "Key": "source",
+          "Label": "Path source",
+          "Type": "options",
+          "Required": false,
+          "Default": "payload",
+          "Description": "\"payload\" reads the path from the upstream payload (a filesystem-watch trigger's changed path); \"literal\" reads the fixed path below instead.",
+          "Options": [
+            "payload",
+            "literal"
+          ],
+          "Suggestions": null,
+          "Secret": false,
+          "RefKind": "",
+          "Multiline": false,
+          "SystemManaged": false
+        },
+        {
+          "Key": "path",
+          "Label": "Path",
+          "Type": "text",
+          "Required": false,
+          "Default": "",
+          "Description": "The file path to read when \"Path source\" is literal. Ignored when source is payload.",
+          "Options": null,
+          "Suggestions": null,
+          "Secret": false,
+          "RefKind": "",
+          "Multiline": false,
+          "SystemManaged": false
+        }
+      ],
+      "Output": "the file's contents",
+      "Effect": "read"
+    },
+    {
+      "ID": "child-workflow",
+      "Kind": "process",
+      "Label": "Run another workflow",
+      "Description": "Runs another of your workflows as a step and uses its result as this workflow's payload. The other workflow must start with the \"callable by another workflow\" trigger (docs/adr/0010) -- that's what marks it as safe to be invoked from here rather than by a hotkey or schedule of its own.",
+      "ConfigFields": [
+        {
+          "Key": "workflowId",
+          "Label": "Workflow",
+          "Type": "text",
+          "Required": false,
+          "Default": "",
+          "Description": "Which workflow to run. Only workflows whose trigger is \"callable by another workflow\" appear here -- if the list is empty, create a workflow and drag that trigger onto its canvas first.",
+          "Options": null,
+          "Suggestions": null,
+          "Secret": false,
+          "RefKind": "workflow",
+          "Multiline": false,
+          "SystemManaged": false
+        },
+        {
+          "Key": "idempotencyKey",
+          "Label": "Skip duplicate runs (optional)",
+          "Type": "text",
+          "Required": false,
+          "Default": "",
+          "Description": "Leave empty to run fresh every time (the normal case). To make repeated runs with the same input reuse the first run's recorded result instead of running again, put a value here that identifies the input -- a literal, or attr:\u003cname\u003e to use one of this workflow's attributes.",
+          "Options": null,
+          "Suggestions": null,
+          "Secret": false,
+          "RefKind": "",
+          "Multiline": false,
+          "SystemManaged": false
+        },
+        {
+          "Key": "version",
+          "Label": "Pin to version (optional)",
+          "Type": "text",
+          "Required": false,
+          "Default": "",
+          "Description": "Leave empty to always call the child's published version. Enter a version number to pin this step to that exact snapshot, unaffected by later publishes.",
+          "Options": null,
+          "Suggestions": null,
+          "Secret": false,
+          "RefKind": "",
+          "Multiline": false,
+          "SystemManaged": false
+        },
+        {
+          "Key": "outputAttribute",
+          "Label": "Store result in attribute (optional)",
+          "Type": "text",
+          "Required": false,
+          "Default": "",
+          "Description": "Also write the child workflow's result into this workflow's named Attribute, so later steps (a Decision condition, another binding) can reference it as attr:\u003cname\u003e.",
+          "Options": null,
+          "Suggestions": null,
+          "Secret": false,
+          "RefKind": "",
+          "Multiline": false,
+          "SystemManaged": false
+        }
+      ],
+      "Output": "the child workflow's result",
+      "Effect": "none"
+    },
+    {
+      "ID": "code-execution",
+      "Kind": "process",
+      "Label": "Code: run command",
+      "Description": "Runs one command locally, inside a Configure-authored ExecEnv (pinned shell/dir/env -- docs/SPEC.md §6, docs/adr/0026). External effect -- the ambient guardrail gate asks by default, same as integration-http/mcp-tool-call. Source \"payload\" runs the captured/upstream payload as the command (SPEC §2.1's paste-a-command loop); \"literal\" runs a fixed script instead. A running command can be stopped from this workflow's Runs tab (real process-group kill, not just marking the run failed) -- DBOS itself cannot interrupt an executing step (ADR-0026's Amendment), so Mill's own procexec supervises the live process directly.",
+      "ConfigFields": [
+        {
+          "Key": "envId",
+          "Label": "Execution environment",
+          "Type": "text",
+          "Required": false,
+          "Default": "",
+          "Description": "Which Configure-authored environment (shell, working directory, env vars) this command runs inside.",
+          "Options": null,
+          "Suggestions": null,
+          "Secret": false,
+          "RefKind": "execenv",
+          "Multiline": false,
+          "SystemManaged": false
+        },
+        {
+          "Key": "source",
+          "Label": "Command source",
+          "Type": "options",
+          "Required": false,
+          "Default": "payload",
+          "Description": "\"payload\" runs the captured/upstream payload as the command; \"literal\" runs the script below instead.",
+          "Options": [
+            "payload",
+            "literal"
+          ],
+          "Suggestions": null,
+          "Secret": false,
+          "RefKind": "",
+          "Multiline": false,
+          "SystemManaged": false
+        },
+        {
+          "Key": "script",
+          "Label": "Script",
+          "Type": "text",
+          "Required": false,
+          "Default": "",
+          "Description": "The command to run when \"Command source\" is literal. Ignored when source is payload.",
+          "Options": null,
+          "Suggestions": null,
+          "Secret": false,
+          "RefKind": "",
+          "Multiline": true,
+          "SystemManaged": false
+        },
+        {
+          "Key": "timeoutSeconds",
+          "Label": "Timeout (seconds)",
+          "Type": "number",
+          "Required": false,
+          "Default": "120",
+          "Description": "Kills the command if it hasn't finished within this many seconds.",
+          "Options": null,
+          "Suggestions": null,
+          "Secret": false,
+          "RefKind": "",
+          "Multiline": false,
+          "SystemManaged": false
+        }
+      ],
+      "Output": "combined stdout+stderr from the executed command",
+      "Effect": "external"
+    },
+    {
+      "ID": "human-review",
+      "Kind": "process",
+      "Label": "Human review",
+      "Description": "Pauses the run for a person: the item lands in the Review queue (and this workflow's Runs tab), where a reviewer can approve, deny, and fill in values for this workflow's declared Attributes -- their input flows into the resumed run. Denying (or 24 hours of silence) stops the run. A deliberate, visible checkpoint you drew into the flow -- the ambient guardrail rules (Configure \u003e Guardrails) never skip it.",
+      "ConfigFields": [
+        {
+          "Key": "message",
+          "Label": "Message to the approver",
+          "Type": "text",
+          "Required": false,
+          "Default": "",
+          "Description": "Shown alongside the approval request, so future-you knows what this checkpoint is guarding.",
+          "Options": null,
+          "Suggestions": null,
+          "Secret": false,
+          "RefKind": "",
+          "Multiline": false,
+          "SystemManaged": false
+        },
+        {
+          "Key": "inputAttributes",
+          "Label": "Ask for these attributes",
+          "Type": "text",
+          "Required": false,
+          "Default": "",
+          "Description": "Comma-separated Attribute keys the reviewer should fill in. Leave empty to ask for all of the workflow's Attributes.",
+          "Options": null,
+          "Suggestions": null,
+          "Secret": false,
+          "RefKind": "",
+          "Multiline": false,
+          "SystemManaged": false
+        }
+      ],
+      "Output": "payload unchanged, after approval",
+      "Effect": "none"
+    },
+    {
+      "ID": "integration-http",
+      "Kind": "process",
+      "Label": "Integration: HTTP call",
+      "Description": "Calls a Configure-authored integration's API and replaces the payload with the response body. The step only picks WHICH integration and binds data -- method, endpoint path, and body all live on the integration itself (Configure \u003e Integration): transport configuration belongs on the integration, not the workflow step. Legacy steps saved with their own path/method/bodyTemplate config keep working (those keys still win when present); they're just no longer authorable here.",
+      "ConfigFields": [
+        {
+          "Key": "requestId",
+          "Label": "Integration",
+          "Type": "text",
+          "Required": false,
+          "Default": "",
+          "Description": "Which Configure-authored integration this step calls.",
+          "Options": null,
+          "Suggestions": null,
+          "Secret": false,
+          "RefKind": "request",
+          "Multiline": false,
+          "SystemManaged": false
+        }
+      ],
+      "Output": "HTTP response body",
+      "Effect": "external"
+    },
+    {
+      "ID": "list-lookup",
+      "Kind": "process",
+      "Label": "List: lookup",
+      "Description": "Looks up an Attributes value in a Configure-authored List and writes the matched entry back into Attributes. listId is FieldText for the same reason integration-http's requestId is above -- Lists are runtime, Configure-authored data (the Inspector renders a live picker for it, RefKind, docs/adr/0009).",
+      "ConfigFields": [
+        {
+          "Key": "listId",
+          "Label": "List ID",
+          "Type": "text",
+          "Required": false,
+          "Default": "",
+          "Description": "The ID of a list configured on the Configure page.",
+          "Options": null,
+          "Suggestions": null,
+          "Secret": false,
+          "RefKind": "list",
+          "Multiline": false,
+          "SystemManaged": false
+        },
+        {
+          "Key": "inputKey",
+          "Label": "Input attribute",
+          "Type": "text",
+          "Required": false,
+          "Default": "",
+          "Description": "Which Attributes field's value to look up.",
+          "Options": null,
+          "Suggestions": null,
+          "Secret": false,
+          "RefKind": "",
+          "Multiline": false,
+          "SystemManaged": false
+        },
+        {
+          "Key": "outputKey",
+          "Label": "Output attribute",
+          "Type": "text",
+          "Required": false,
+          "Default": "",
+          "Description": "Which Attributes field the matched value gets written to.",
+          "Options": null,
+          "Suggestions": null,
+          "Secret": false,
+          "RefKind": "",
+          "Multiline": false,
+          "SystemManaged": false
+        },
+        {
+          "Key": "onMiss",
+          "Label": "If no match",
+          "Type": "options",
+          "Required": false,
+          "Default": "fail",
+          "Description": "What to do when the input value isn't in the list.",
+          "Options": [
+            "fail",
+            "continue",
+            "default"
+          ],
+          "Suggestions": null,
+          "Secret": false,
+          "RefKind": "",
+          "Multiline": false,
+          "SystemManaged": false
+        },
+        {
+          "Key": "defaultValue",
+          "Label": "Default value",
+          "Type": "text",
+          "Required": false,
+          "Default": "",
+          "Description": "Written to the output attribute when there's no match and \"If no match\" is \"default\".",
+          "Options": null,
+          "Suggestions": null,
+          "Secret": false,
+          "RefKind": "",
+          "Multiline": false,
+          "SystemManaged": false
+        }
+      ],
+      "Output": "payload unchanged; match → attribute",
+      "Effect": "read"
+    },
+    {
+      "ID": "list-search",
+      "Kind": "process",
+      "Label": "List: search",
+      "Description": "Searches a Configure-authored List's rows against one or more match parameters (exact or fuzzy, per-column, AND'd together) and writes the result into Attributes. Supersedes list-lookup for anything beyond a single exact key match -- list-lookup keeps working unchanged for existing workflows. Expired rows are excluded by default (docs/goals/0011-lists-maturation.md's own researched default, uniform across exact and fuzzy matching); \"Include expired rows\" opts in.",
+      "ConfigFields": [
+        {
+          "Key": "listId",
+          "Label": "List",
+          "Type": "text",
+          "Required": false,
+          "Default": "",
+          "Description": "The Configure-authored List to search.",
+          "Options": null,
+          "Suggestions": null,
+          "Secret": false,
+          "RefKind": "list",
+          "Multiline": false,
+          "SystemManaged": false
+        },
+        {
+          "Key": "matchParams",
+          "Label": "Match parameters",
+          "Type": "text",
+          "Required": false,
+          "Default": "",
+          "Description": "JSON array of match criteria, ALL must match (AND): [{\"column\":\"code\",\"value\":\"attr:code\",\"matchType\":\"exact\"},{\"column\":\"name\",\"value\":\"Untied States\",\"matchType\":\"fuzzy\",\"threshold\":0.7}]. value is a literal or \"attr:\u003cname\u003e\". Authored via the Inspector's match-parameter rows; this raw field stays the LLM-authoring vocabulary (docs/adr/0025).",
+          "Options": null,
+          "Suggestions": null,
+          "Secret": false,
+          "RefKind": "",
+          "Multiline": true,
+          "SystemManaged": false
+        },
+        {
+          "Key": "includeExpired",
+          "Label": "Include expired rows",
+          "Type": "boolean",
+          "Required": false,
+          "Default": "false",
+          "Description": "Off by default -- Expired rows never match unless explicitly included.",
+          "Options": null,
+          "Suggestions": null,
+          "Secret": false,
+          "RefKind": "",
+          "Multiline": false,
+          "SystemManaged": false
+        },
+        {
+          "Key": "firstMatchOnly",
+          "Label": "Stop at first match",
+          "Type": "boolean",
+          "Required": false,
+          "Default": "false",
+          "Description": "Stops scanning after the first match. The output shape stays the same typed Object either way -- results just has at most one entry -- so turning this on or off never changes what a downstream Decision/binding can reference.",
+          "Options": null,
+          "Suggestions": null,
+          "Secret": false,
+          "RefKind": "",
+          "Multiline": false,
+          "SystemManaged": false
+        },
+        {
+          "Key": "outputAttribute",
+          "Label": "Output attribute",
+          "Type": "text",
+          "Required": false,
+          "Default": "",
+          "Description": "Which Attributes field receives the typed search-result object.",
+          "Options": null,
+          "Suggestions": null,
+          "Secret": false,
+          "RefKind": "",
+          "Multiline": false,
+          "SystemManaged": false
+        }
+      ],
+      "Output": "payload unchanged; matches -\u003e a typed Object attribute ({results, matched, first_match, match_count, list_id})",
+      "Effect": "read"
+    },
+    {
+      "ID": "mcp-tool-call",
+      "Kind": "process",
+      "Label": "MCP: tool call",
+      "Description": "Calls one tool on a Configure-authored MCP server and replaces the payload with its text result (docs/SPEC.md §3.6). mcpServerId is FieldText for the same reason integration-http's requestId is -- runtime, Configure-authored data (the Inspector renders a live picker for it, RefKind, docs/adr/0009); toolName is picked from the server's live tool list in the canvas Inspector (MCPToolArgsEditor.tsx), falling back to typing the exact name when the server can't be reached.",
+      "ConfigFields": [
+        {
+          "Key": "mcpServerId",
+          "Label": "MCP Server ID",
+          "Type": "text",
+          "Required": false,
+          "Default": "",
+          "Description": "The ID of an MCP server configured on the Configure page.",
+          "Options": null,
+          "Suggestions": null,
+          "Secret": false,
+          "RefKind": "mcpserver",
+          "Multiline": false,
+          "SystemManaged": false
+        },
+        {
+          "Key": "toolName",
+          "Label": "Tool name",
+          "Type": "text",
+          "Required": false,
+          "Default": "",
+          "Description": "The exact tool name, from that server's own tool list.",
+          "Options": null,
+          "Suggestions": null,
+          "Secret": false,
+          "RefKind": "",
+          "Multiline": false,
+          "SystemManaged": false
+        },
+        {
+          "Key": "argumentsJSON",
+          "Label": "Arguments (JSON)",
+          "Type": "text",
+          "Required": false,
+          "Default": "",
+          "Description": "Optional JSON object of arguments to pass to the tool. Top-level string values of the form \"attr:\u003cname\u003e\" resolve to the named Attribute's typed value at run time (a number/boolean Attribute stays a JSON number/boolean, not stringified); every other value is sent as-is.",
+          "Options": null,
+          "Suggestions": null,
+          "Secret": false,
+          "RefKind": "",
+          "Multiline": true,
+          "SystemManaged": false
+        }
+      ],
+      "Output": "the tool's text result",
+      "Effect": "external"
+    },
+    {
+      "ID": "process-ai-classify",
+      "Kind": "process",
+      "Label": "AI: Classify",
+      "Description": "Sends the running payload (plus an optional instruction) to a Configure-authored AI provider and asks it to pick exactly one of this step's own declared categories, writing the choice into a named Attribute -- a dedicated classification step (Dify's own precedent researched in docs/goals/0031-ai-node-family.md), not composed from extract-structured, since \"pick one of these labels\" is common enough across real workflows to deserve its own shape. Pairs with Branch: route on the written Attribute to act on the classification. The category list is this workflow's own business decision (step-local, not Configure-authored) -- two workflows classifying into different category sets is normal, not drift.",
+      "ConfigFields": [
+        {
+          "Key": "aiproviderId",
+          "Label": "AI provider",
+          "Type": "text",
+          "Required": false,
+          "Default": "",
+          "Description": "Which Configure-authored AI provider (local Ollama or a BYO endpoint) this step calls.",
+          "Options": null,
+          "Suggestions": null,
+          "Secret": false,
+          "RefKind": "aiprovider",
+          "Multiline": false,
+          "SystemManaged": false
+        },
+        {
+          "Key": "instruction",
+          "Label": "Instruction",
+          "Type": "text",
+          "Required": false,
+          "Default": "",
+          "Description": "Optional guidance sent as the user message, followed by the current payload. Leave empty to classify the payload with no extra instruction.",
+          "Options": null,
+          "Suggestions": null,
+          "Secret": false,
+          "RefKind": "",
+          "Multiline": true,
+          "SystemManaged": false
+        },
+        {
+          "Key": "categories",
+          "Label": "Categories",
+          "Type": "text",
+          "Required": false,
+          "Default": "",
+          "Description": "One category per line -- the AI picks exactly one of these.",
+          "Options": null,
+          "Suggestions": null,
+          "Secret": false,
+          "RefKind": "",
+          "Multiline": true,
+          "SystemManaged": false
+        },
+        {
+          "Key": "outputAttribute",
+          "Label": "Write category to",
+          "Type": "text",
+          "Required": false,
+          "Default": "",
+          "Description": "The declared Attribute key the chosen category is written into.",
+          "Options": null,
+          "Suggestions": null,
+          "Secret": false,
+          "RefKind": "",
+          "Multiline": false,
+          "SystemManaged": false
+        }
+      ],
+      "Output": "unchanged payload -- the chosen category is written into the named Attribute below",
+      "Effect": "external"
+    },
+    {
+      "ID": "process-ai-completion",
+      "Kind": "process",
+      "Label": "AI: Completion",
+      "Description": "Sends a prompt (plus the running payload) to a Configure-authored AI provider -- local Ollama, or a BYO OpenAI-compatible/Anthropic endpoint -- and replaces the payload with its text completion. Composition (docs/goals/0031-ai-node-family.md): the system prompt is this step's own System prompt field; the user message is Prompt followed by the current payload (blank-line separated) when the payload is non-empty, else Prompt alone. One deterministic call per run -- never a loop or autonomous agent behavior (docs/SPEC.md §1.1's locked invariant). A local (localhost/127.0.0.1/::1) provider runs without an approval ask; any other endpoint asks by default, the same posture integration-http already has for outbound calls.",
+      "ConfigFields": [
+        {
+          "Key": "aiproviderId",
+          "Label": "AI provider",
+          "Type": "text",
+          "Required": false,
+          "Default": "",
+          "Description": "Which Configure-authored AI provider (local Ollama or a BYO endpoint) this step calls.",
+          "Options": null,
+          "Suggestions": null,
+          "Secret": false,
+          "RefKind": "aiprovider",
+          "Multiline": false,
+          "SystemManaged": false
+        },
+        {
+          "Key": "systemPrompt",
+          "Label": "System prompt",
+          "Type": "text",
+          "Required": false,
+          "Default": "",
+          "Description": "Optional system-level instruction sent ahead of the user message. Leave empty for none.",
+          "Options": null,
+          "Suggestions": null,
+          "Secret": false,
+          "RefKind": "",
+          "Multiline": true,
+          "SystemManaged": false
+        },
+        {
+          "Key": "prompt",
+          "Label": "Prompt",
+          "Type": "text",
+          "Required": false,
+          "Default": "",
+          "Description": "The instruction sent as the user message, followed by the current payload (if any).",
+          "Options": null,
+          "Suggestions": null,
+          "Secret": false,
+          "RefKind": "",
+          "Multiline": true,
+          "SystemManaged": false
+        }
+      ],
+      "Output": "the AI completion text, replacing the payload",
+      "Effect": "external"
+    },
+    {
+      "ID": "process-ai-extract-structured",
+      "Kind": "process",
+      "Label": "AI: Extract structured data",
+      "Description": "Sends a prompt (plus the running payload) to a Configure-authored AI provider, requests a JSON-schema-constrained structured response, and writes each declared output field into this workflow's Attributes by the same key -- the step that composes with Branch for real decisioning (docs/goals/0031-ai-node-family.md). Composition matches process-ai-completion: user content = Prompt + payload. Every declared field is required in the requested schema; a field the provider's response omits still appears in Attributes, zero-valued for its type.",
+      "ConfigFields": [
+        {
+          "Key": "aiproviderId",
+          "Label": "AI provider",
+          "Type": "text",
+          "Required": false,
+          "Default": "",
+          "Description": "Which Configure-authored AI provider (local Ollama or a BYO endpoint) this step calls.",
+          "Options": null,
+          "Suggestions": null,
+          "Secret": false,
+          "RefKind": "aiprovider",
+          "Multiline": false,
+          "SystemManaged": false
+        },
+        {
+          "Key": "prompt",
+          "Label": "Prompt",
+          "Type": "text",
+          "Required": false,
+          "Default": "",
+          "Description": "The extraction instruction sent as the user message, followed by the current payload (if any).",
+          "Options": null,
+          "Suggestions": null,
+          "Secret": false,
+          "RefKind": "",
+          "Multiline": true,
+          "SystemManaged": false
+        },
+        {
+          "Key": "outputFields",
+          "Label": "Output fields",
+          "Type": "text",
+          "Required": false,
+          "Default": "",
+          "Description": "The typed fields this step extracts -- each becomes an Attribute of the same key, authored via the field editor below (not raw JSON).",
+          "Options": null,
+          "Suggestions": null,
+          "Secret": false,
+          "RefKind": "",
+          "Multiline": true,
+          "SystemManaged": false
+        }
+      ],
+      "Output": "unchanged payload -- the extracted typed result is written into the named Attributes below",
+      "Effect": "external"
+    },
+    {
+      "ID": "process-extract-html",
+      "Kind": "process",
+      "Label": "Process: extract HTML subtree",
+      "Description": "Extracts one element (by CSS selector) out of the payload's HTML, dropping everything else -- e.g. a saved page's main-content region, stripping nav/header/footer chrome before converting to Markdown. Fails the step if nothing matches (fail-safe: never silently passes the whole, unfiltered document through).",
+      "ConfigFields": [
+        {
+          "Key": "selector",
+          "Label": "CSS selector",
+          "Type": "text",
+          "Required": false,
+          "Default": "#main-content, main, article",
+          "Description": "A CSS selector, optionally comma-separated (e.g. \"#main-content, main, article\") -- the first matching element (in document order) is kept.",
+          "Options": null,
+          "Suggestions": null,
+          "Secret": false,
+          "RefKind": "",
+          "Multiline": false,
+          "SystemManaged": false
+        }
+      ],
+      "Output": "the matched element's outer HTML",
+      "Effect": ""
+    },
+    {
+      "ID": "process-html-to-markdown",
+      "Kind": "process",
+      "Label": "Process: HTML → Markdown",
+      "Description": "Converts HTML into Markdown, preserving structure (headings, bold, lists).",
+      "ConfigFields": null,
+      "Output": "Markdown text",
+      "Effect": ""
+    },
+    {
+      "ID": "process-inject-text",
+      "Kind": "process",
+      "Label": "Process: Inject text",
+      "Description": "Prepends or appends configured static text to the payload -- e.g. a fixed hint or instruction pasted alongside a workflow's real output.",
+      "ConfigFields": [
+        {
+          "Key": "text",
+          "Label": "Text to inject",
+          "Type": "text",
+          "Required": false,
+          "Default": "",
+          "Description": "The literal text this step adds to the payload. Left empty, this step is a no-op.",
+          "Options": null,
+          "Suggestions": null,
+          "Secret": false,
+          "RefKind": "",
+          "Multiline": true,
+          "SystemManaged": false
+        },
+        {
+          "Key": "placement",
+          "Label": "Placement",
+          "Type": "options",
+          "Required": false,
+          "Default": "append",
+          "Description": "Where the text goes relative to the existing payload.",
+          "Options": [
+            "prepend",
+            "append"
+          ],
+          "Suggestions": null,
+          "Secret": false,
+          "RefKind": "",
+          "Multiline": false,
+          "SystemManaged": false
+        }
+      ],
+      "Output": "payload with text injected",
+      "Effect": ""
+    },
+    {
+      "ID": "ruleset",
+      "Kind": "process",
+      "Label": "Ruleset validation",
+      "Description": "Validates the data flowing through this step against a set of named rules (business/data validation -- e.g. \"amount below limit\", \"country allowed\"). Every rule must pass for the payload to continue unchanged; any failing rule fails the run, naming exactly which rules failed. A rule that cannot evaluate counts as failed (fail-safe). Distinct from Decision (which routes) and from guardrail rules (which govern whether a step may execute at all).",
+      "ConfigFields": null,
+      "Output": "payload unchanged, if all rules pass",
+      "Effect": "none"
+    },
+    {
+      "ID": "apply-clipboard-write-html",
+      "Kind": "apply",
+      "Label": "Apply: write HTML to clipboard",
+      "Description": "Writes configured HTML to the clipboard.",
+      "ConfigFields": [
+        {
+          "Key": "html",
+          "Label": "HTML to write",
+          "Type": "text",
+          "Required": false,
+          "Default": "\u003ch2\u003eQuarterly update\u003c/h2\u003e\n\u003cp\u003eHere's a quick summary, with \u003cstrong\u003ethe important bit\u003c/strong\u003e called out.\u003c/p\u003e\n\u003cul\u003e\n  \u003cli\u003eRunbook actions now support global keyboard shortcuts\u003c/li\u003e\n  \u003cli\u003eClipboard capture preserves \u003cem\u003ereal\u003c/em\u003e structure, not flattened text\u003c/li\u003e\n  \u003cli\u003eThe UI now runs on Primer, not hand-rolled CSS\u003c/li\u003e\n\u003c/ul\u003e",
+          "Description": "The HTML content this step puts on the clipboard.",
+          "Options": null,
+          "Suggestions": null,
+          "Secret": false,
+          "RefKind": "",
+          "Multiline": true,
+          "SystemManaged": false
+        }
+      ],
+      "Output": "the HTML it wrote",
+      "Effect": "local"
+    },
+    {
+      "ID": "apply-clipboard-write-text",
+      "Kind": "apply",
+      "Label": "Apply: write plain text to clipboard",
+      "Description": "Writes the workflow's current payload to the clipboard as plain text.",
+      "ConfigFields": null,
+      "Output": "the text it wrote",
+      "Effect": "local"
+    },
+    {
+      "ID": "apply-file-write",
+      "Kind": "apply",
+      "Label": "Apply: write to file",
+      "Description": "Writes the payload to a local file, appending to or overwriting its existing contents.",
+      "ConfigFields": [
+        {
+          "Key": "path",
+          "Label": "File path",
+          "Type": "text",
+          "Required": false,
+          "Default": "",
+          "Description": "Where to write. Use an absolute path, or start with ~ for your home folder.",
+          "Options": null,
+          "Suggestions": null,
+          "Secret": false,
+          "RefKind": "",
+          "Multiline": false,
+          "SystemManaged": false
+        },
+        {
+          "Key": "mode",
+          "Label": "Mode",
+          "Type": "options",
+          "Required": false,
+          "Default": "append",
+          "Description": "Append adds to the end of the file. Overwrite replaces its entire contents.",
+          "Options": [
+            "append",
+            "overwrite"
+          ],
+          "Suggestions": null,
+          "Secret": false,
+          "RefKind": "",
+          "Multiline": false,
+          "SystemManaged": false
+        },
+        {
+          "Key": "createDirs",
+          "Label": "Create missing folders",
+          "Type": "boolean",
+          "Required": false,
+          "Default": "true",
+          "Description": "Creates the file's parent folders if they don't exist yet. Off fails the step instead when a folder is missing.",
+          "Options": null,
+          "Suggestions": null,
+          "Secret": false,
+          "RefKind": "",
+          "Multiline": false,
+          "SystemManaged": false
+        },
+        {
+          "Key": "timestamp",
+          "Label": "Timestamp",
+          "Type": "options",
+          "Required": false,
+          "Default": "none",
+          "Description": "Append mode only: \"datetime\" puts a date-and-time line before each entry. Ignored in overwrite mode.",
+          "Options": [
+            "none",
+            "datetime"
+          ],
+          "Suggestions": null,
+          "Secret": false,
+          "RefKind": "",
+          "Multiline": false,
+          "SystemManaged": false
+        }
+      ],
+      "Output": "the payload it wrote, unchanged",
+      "Effect": "local"
+    },
+    {
+      "ID": "decision-route",
+      "Kind": "decision",
+      "Label": "Branch: route",
+      "Description": "Routes to one of several next steps based on a rule evaluated against this workflow's Attributes. A pure routing point -- its conditions live on its outgoing edges (SPEC.md §3.5), not here.",
+      "ConfigFields": null,
+      "Output": "payload and Attributes unchanged; routes to the matching outgoing edge",
+      "Effect": ""
+    },
+    {
+      "ID": "decision-outcome",
+      "Kind": "terminal",
+      "Label": "Decision",
+      "Description": "Ends the workflow with a Configure-authored, typed terminal outcome (docs/adr/0027): an outcome category (approve/deny/manual-review/action-needed/uncategorized) plus this Decision's own typed result fields. A manual-review Decision parks the run in the Review queue first -- approve continues to the outcome, deny/timeout fails closed, same mechanism the human-review step uses. A Decision with a configured webhook fires it (the same HTTPRequest execution path integration-http uses, with the outcome's typed outputs as the body) once the outcome is computed, and -- unlike a plain Decision -- asks for approval by default, exactly like integration-http does for the identical kind of outbound call.",
+      "ConfigFields": [
+        {
+          "Key": "decisionId",
+          "Label": "Decision",
+          "Type": "text",
+          "Required": false,
+          "Default": "",
+          "Description": "Which Configure-authored Decision this terminal step reaches.",
+          "Options": null,
+          "Suggestions": null,
+          "Secret": false,
+          "RefKind": "decision",
+          "Multiline": false,
+          "SystemManaged": false
+        }
+      ],
+      "Output": "the typed decision outcome",
+      "Effect": "local"
+    }
+  ],
+  "import": {
+    "idAbsent": "create a fresh local id",
+    "idPresentUnknownLocally": "create, preserving the given id",
+    "idPresentKnownLocally": "update in place through the existing chokepoint",
+    "readersIgnoreUnknownFields": true,
+    "supportedSchemas": [
+      "mill://schema/aiprovider/v1",
+      "mill://schema/decision/v1",
+      "mill://schema/execenv/v1",
+      "mill://schema/list/v1",
+      "mill://schema/mcpserver/v1",
+      "mill://schema/request/v1",
+      "mill://schema/workflow/v1"
+    ]
+  }
+}

@@ -227,14 +227,24 @@ export function HTTPRequests(): $CancellablePromise<httprequest$0.HTTPRequest[] 
 }
 
 /**
- * ImportAIProvider always creates a new AIProvider with no secret set --
+ * ImportAIProvider applies ADR-0036 decision 3's uniform import rule
+ * (this file's own header comment). No secret ever round-trips --
  * exportedAIProvider never carries one, same as ImportMCPServer's own
- * no-credential-to-import shape.
+ * no-credential-to-import shape; an updated provider keeps its existing
+ * local secret untouched (UpdateAIProvider never touches it either).
  */
 export function ImportAIProvider(jsonData: string): $CancellablePromise<aiprovider$0.AIProvider> {
     return $Call.ByID(2109937718, jsonData);
 }
 
+/**
+ * ImportDecision applies ADR-0036 decision 3's uniform import rule
+ * (this file's own header comment). WebhookRequestID is never part of
+ * the wire shape (exportedDecision's own doc comment); an update
+ * through this path clears it to the same "re-author it after import"
+ * state a create already left it in, since UpdateDecision has no other
+ * value to preserve it from.
+ */
 export function ImportDecision(jsonData: string): $CancellablePromise<decision$0.Decision> {
     return $Call.ByID(4077937019, jsonData);
 }
@@ -244,20 +254,33 @@ export function ImportExecEnv(jsonData: string): $CancellablePromise<execenv$0.E
 }
 
 /**
- * ImportHTTPRequest always creates a new HTTPRequest with no secret set
- * -- exportedHTTPRequest never carries one, so the imported request
- * starts exactly like a freshly hand-authored one that hasn't had
- * SetHTTPRequestSecret called yet, same as CreateHTTPRequest's own
- * existing behavior for a request with AuthType != AuthNone.
+ * ImportHTTPRequest applies ADR-0036 decision 3's uniform import rule
+ * (this file's own header comment). No secret ever round-trips --
+ * exportedHTTPRequest never carries one, so a created-preserving-id or
+ * freshly created request starts exactly like a hand-authored one that
+ * hasn't had SetHTTPRequestSecret called yet; an updated request keeps
+ * its existing local secret untouched (UpdateHTTPRequest never touches
+ * it either).
  */
 export function ImportHTTPRequest(jsonData: string): $CancellablePromise<httprequest$0.HTTPRequest> {
     return $Call.ByID(4183227914, jsonData);
 }
 
+/**
+ * ImportList applies ADR-0036 decision 3's uniform import rule (this
+ * file's own header comment); the id-present-and-known path routes
+ * through UpdateList rather than the create-only path Entries-migration
+ * legacy exports also used, then applies rows the same way as a fresh
+ * create.
+ */
 export function ImportList(jsonData: string): $CancellablePromise<list$0.List> {
     return $Call.ByID(2746040697, jsonData);
 }
 
+/**
+ * ImportMCPServer applies ADR-0036 decision 3's uniform import rule
+ * (this file's own header comment).
+ */
 export function ImportMCPServer(jsonData: string): $CancellablePromise<mcpserver$0.MCPServer> {
     return $Call.ByID(337785048, jsonData);
 }
