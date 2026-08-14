@@ -23,7 +23,8 @@ import (
 
 // ClipboardApplyKind identifies the recognized payload shape --
 // "workflow" is the only one this goal implements (structure-sniffed by
-// the presence of both "nodes" and "edges"). Other Configure-entity
+// the presence of "edges" plus either "steps" or the legacy "nodes"
+// key). Other Configure-entity
 // export shapes (HTTPRequest/List/MCPServer/Decision,
 // configureservice_export.go) are a named, deliberate follow-up, not
 // silently dropped -- see the goal file.
@@ -69,18 +70,20 @@ type ClipboardApplyPreview struct {
 }
 
 // detectClipboardPayloadKind structure-sniffs raw JSON the same way MCP's
-// own tools discriminate export shapes: a workflow payload carries both
-// "nodes" and "edges" arrays (exportedWorkflow's own wire shape); no
-// other recognized kind exists yet.
+// own tools discriminate export shapes: a workflow payload carries an
+// "edges" array plus either "steps" (the current wire vocabulary,
+// docs/goals/0053 tier 2) or the legacy "nodes" key every export
+// produced before it; no other recognized kind exists yet.
 func detectClipboardPayloadKind(jsonData string) (ClipboardApplyKind, bool) {
 	var probe struct {
+		Steps json.RawMessage `json:"steps"`
 		Nodes json.RawMessage `json:"nodes"`
 		Edges json.RawMessage `json:"edges"`
 	}
 	if err := json.Unmarshal([]byte(jsonData), &probe); err != nil {
 		return "", false
 	}
-	if probe.Nodes != nil && probe.Edges != nil {
+	if (probe.Steps != nil || probe.Nodes != nil) && probe.Edges != nil {
 		return ClipboardApplyKindWorkflow, true
 	}
 	return "", false
@@ -104,8 +107,8 @@ func (c *CompositionService) PreviewClipboardApply(jsonData string) (ClipboardAp
 	if err := json.Unmarshal([]byte(jsonData), &in); err != nil {
 		return ClipboardApplyPreview{Error: "not valid JSON: " + err.Error()}, nil
 	}
-	if in.Label == "" || len(in.Nodes) == 0 {
-		return ClipboardApplyPreview{Error: "not a valid workflow export -- missing a label or any nodes"}, nil
+	if in.Label == "" || len(in.Steps) == 0 {
+		return ClipboardApplyPreview{Error: "not a valid workflow export -- missing a label or any steps"}, nil
 	}
 	if err := contract.ValidateImportSchema("workflow", in.Schema); err != nil {
 		return ClipboardApplyPreview{Error: err.Error()}, nil
@@ -115,8 +118,8 @@ func (c *CompositionService) PreviewClipboardApply(jsonData string) (ClipboardAp
 		Recognized: true,
 		Kind:       ClipboardApplyKindWorkflow,
 		Label:      in.Label,
-		NodeCount:  len(in.Nodes),
-		Unresolved: c.unresolvedRefs(in.Nodes),
+		NodeCount:  len(in.Steps),
+		Unresolved: c.unresolvedRefs(nodesFromSteps(in.Steps)),
 	}
 
 	if in.ID == "" {
@@ -174,7 +177,11 @@ func (c *CompositionService) workflowExistsLocked(id string) bool {
 // recognize, or a non-empty RefKind-bearing config value that doesn't
 // resolve to a real local entity. Non-blocking by design (ADR-0028's
 // warning-severity precedent) -- this only ever informs the preview,
-// never rejects ConfirmClipboardApply.
+// never rejects ConfirmClipboardApply. The "step-type" RefKind below
+// (docs/goals/0053 tier 2) is display-only, rendered verbatim by the
+// clipboard-apply preview panel -- it is never dispatched through
+// composition.RefExists or matched against anything persisted, so
+// renaming its string value carries no compatibility constraint.
 func (c *CompositionService) unresolvedRefs(nodes []composition.Node) []ClipboardUnresolvedRef {
 	catalog := make(map[string]composition.NodeType, len(composition.NodeTypes()))
 	for _, nt := range composition.NodeTypes() {
@@ -192,7 +199,7 @@ func (c *CompositionService) unresolvedRefs(nodes []composition.Node) []Clipboar
 	for _, n := range nodes {
 		nt, ok := catalog[n.NodeTypeID]
 		if !ok {
-			out = append(out, ClipboardUnresolvedRef{NodeID: n.ID, Field: "nodeTypeID", RefKind: "node-type", Value: n.NodeTypeID})
+			out = append(out, ClipboardUnresolvedRef{NodeID: n.ID, Field: "stepTypeID", RefKind: "step-type", Value: n.NodeTypeID})
 			continue // no ConfigFields catalog to check this node's Config against
 		}
 		for _, field := range nt.ConfigFields {

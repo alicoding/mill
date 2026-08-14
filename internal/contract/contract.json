@@ -365,10 +365,10 @@
         },
         "RunEvidenceStep": {
           "properties": {
-            "nodeId": {
+            "stepId": {
               "type": "string"
             },
-            "nodeTypeId": {
+            "stepTypeId": {
               "type": "string"
             },
             "status": {
@@ -387,8 +387,8 @@
           "additionalProperties": false,
           "type": "object",
           "required": [
-            "nodeId",
-            "nodeTypeId",
+            "stepId",
+            "stepTypeId",
             "status"
           ]
         }
@@ -693,7 +693,23 @@
             "SystemManaged"
           ]
         },
-        "Node": {
+        "Position": {
+          "properties": {
+            "X": {
+              "type": "number"
+            },
+            "Y": {
+              "type": "number"
+            }
+          },
+          "additionalProperties": false,
+          "type": "object",
+          "required": [
+            "X",
+            "Y"
+          ]
+        },
+        "Step": {
           "properties": {
             "ID": {
               "type": "string"
@@ -701,7 +717,7 @@
             "Kind": {
               "type": "string"
             },
-            "NodeTypeID": {
+            "StepTypeID": {
               "type": "string"
             },
             "Config": {
@@ -719,25 +735,9 @@
           "required": [
             "ID",
             "Kind",
-            "NodeTypeID",
+            "StepTypeID",
             "Config",
             "Position"
-          ]
-        },
-        "Position": {
-          "properties": {
-            "X": {
-              "type": "number"
-            },
-            "Y": {
-              "type": "number"
-            }
-          },
-          "additionalProperties": false,
-          "type": "object",
-          "required": [
-            "X",
-            "Y"
           ]
         }
       },
@@ -754,9 +754,9 @@
         "description": {
           "type": "string"
         },
-        "nodes": {
+        "steps": {
           "items": {
-            "$ref": "#/$defs/Node"
+            "$ref": "#/$defs/Step"
           },
           "type": "array"
         },
@@ -779,10 +779,11 @@
         "schema",
         "label",
         "description",
-        "nodes",
+        "steps",
         "edges",
         "attributes"
-      ]
+      ],
+      "description": "\"steps\" is this envelope's current wire vocabulary; a document using the legacy \"nodes\" key (every workflow export produced before this rename) is still accepted on import."
     }
   },
   "nodeTypes": [

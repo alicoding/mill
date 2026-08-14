@@ -54,11 +54,26 @@ and this goal picks the one users already see in their run results.
       label converted; §3.2–§9 architecture narrative retains Node
       where interleaved with code identifiers, per this line's own
       allowance.
-- [ ] Goal 0052's contract items reference this decision and ship
-      step-vocabulary wire names (checked there, recorded here) —
-      open until 0052 lands; `RefKind: "node-type"` in the
-      clipboard-apply preview is 0052 wire vocabulary, deliberately
-      untouched here.
+- [x] Goal 0052's contract items reference this decision and ship
+      step-vocabulary wire names — delivered 2026-08-14 (goal 0052
+      slice 4, ahead of the contract freeze): workflow export envelope
+      `nodes` → `steps`, per-step `NodeTypeID` → `StepTypeID` (import
+      accepts both the current and the legacy pre-rename keys forever,
+      documented in the workflow schema's own description); the
+      receipt envelope's `nodeId`/`nodeTypeId` → `stepId`/`stepTypeId`
+      outright (no legacy alias — that envelope was born after this
+      decision, so there was never a prior export to stay compatible
+      with); MCP tool `list_node_types` → `list_step_types` as the
+      primary name, `list_node_types` kept registered as a working
+      deprecated alias (same handler); `RefKind: "node-type"` in the
+      clipboard-apply preview → `"step-type"` (display-only, verified
+      never dispatched through `composition.RefExists` or matched
+      against anything persisted, so the rename carries no
+      compatibility constraint). `composition.Node`/`Edge`/`Workflow`
+      stay completely untouched — they carry no json tags and are the
+      same untagged shape the settings-store persistence and DBOS
+      runInput checkpoints already share, so the wire rename lives
+      entirely in a dedicated `compositionsvc.Step` DTO instead.
 - [x] Internal identifiers demonstrably unchanged (no mass rename in
       the diff) — NodeType/composition.Node/test ids/CSS/wire names
       all intact; the diff touches strings and docs only.

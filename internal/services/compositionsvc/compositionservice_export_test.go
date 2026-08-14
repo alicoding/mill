@@ -143,7 +143,7 @@ func TestImportWorkflow_UnknownID_CreatesPreservingIt(t *testing.T) {
 	exported := `{
 		"id": "workflow-from-elsewhere",
 		"label": "from elsewhere",
-		"nodes": [{"id": "t", "nodeTypeID": "trigger-manual"}, {"id": "c", "nodeTypeID": "capture-clipboard-html"}],
+		"steps": [{"id": "t", "StepTypeID": "trigger-manual"}, {"id": "c", "StepTypeID": "capture-clipboard-html"}],
 		"edges": [{"id": "e1", "source": "t", "target": "c"}]
 	}`
 
@@ -167,7 +167,7 @@ func TestImportWorkflow_NoID_MintsAFreshOne(t *testing.T) {
 	comp := newTestCompositionService(t)
 	exported := `{
 		"label": "no id at all",
-		"nodes": [{"id": "t", "nodeTypeID": "trigger-manual"}, {"id": "c", "nodeTypeID": "capture-clipboard-html"}],
+		"steps": [{"id": "t", "StepTypeID": "trigger-manual"}, {"id": "c", "StepTypeID": "capture-clipboard-html"}],
 		"edges": [{"id": "e1", "source": "t", "target": "c"}]
 	}`
 
@@ -184,6 +184,54 @@ func TestImportWorkflow_NoID_MintsAFreshOne(t *testing.T) {
 	}
 	if len(comp.Workflows()) != 2 {
 		t.Errorf("Workflows() has %d entries, want 2", len(comp.Workflows()))
+	}
+}
+
+// TestImportWorkflow_LegacyNodesKey_ImportsIdentically pins
+// docs/goals/0053 tier 2's backward-compatibility promise: a document
+// using the pre-rename "nodes"/"NodeTypeID" wire vocabulary -- every
+// workflow export ever produced before this change -- imports to the
+// exact same result as the current "steps"/"StepTypeID" vocabulary,
+// forever.
+func TestImportWorkflow_LegacyNodesKey_ImportsIdentically(t *testing.T) {
+	legacy := `{
+		"label": "legacy vocabulary",
+		"description": "pre-0053 export",
+		"nodes": [{"id": "t", "NodeTypeID": "trigger-manual"}, {"id": "c", "NodeTypeID": "capture-clipboard-html"}],
+		"edges": [{"id": "e1", "source": "t", "target": "c"}]
+	}`
+	current := `{
+		"label": "legacy vocabulary",
+		"description": "pre-0053 export",
+		"steps": [{"id": "t", "StepTypeID": "trigger-manual"}, {"id": "c", "StepTypeID": "capture-clipboard-html"}],
+		"edges": [{"id": "e1", "source": "t", "target": "c"}]
+	}`
+
+	compLegacy := newTestCompositionService(t)
+	fromLegacy, err := compLegacy.ImportWorkflow(legacy)
+	if err != nil {
+		t.Fatalf("ImportWorkflow(legacy \"nodes\" vocabulary): %v", err)
+	}
+
+	compCurrent := newTestCompositionService(t)
+	fromCurrent, err := compCurrent.ImportWorkflow(current)
+	if err != nil {
+		t.Fatalf("ImportWorkflow(current \"steps\" vocabulary): %v", err)
+	}
+
+	if fromLegacy.Label != fromCurrent.Label || fromLegacy.Description != fromCurrent.Description {
+		t.Errorf("legacy import = %+v, current import = %+v, want matching Label/Description", fromLegacy, fromCurrent)
+	}
+	if len(fromLegacy.Nodes) != len(fromCurrent.Nodes) {
+		t.Fatalf("legacy import has %d nodes, current has %d, want equal", len(fromLegacy.Nodes), len(fromCurrent.Nodes))
+	}
+	for i := range fromLegacy.Nodes {
+		if fromLegacy.Nodes[i].NodeTypeID != fromCurrent.Nodes[i].NodeTypeID {
+			t.Errorf("node[%d].NodeTypeID: legacy = %q, current = %q, want equal", i, fromLegacy.Nodes[i].NodeTypeID, fromCurrent.Nodes[i].NodeTypeID)
+		}
+	}
+	if len(fromLegacy.Edges) != len(fromCurrent.Edges) {
+		t.Errorf("legacy import has %d edges, current has %d, want equal", len(fromLegacy.Edges), len(fromCurrent.Edges))
 	}
 }
 
@@ -257,7 +305,7 @@ func TestImportWorkflow_InvalidJSON_Rejected(t *testing.T) {
 
 func TestImportWorkflow_EmptyLabel_Rejected(t *testing.T) {
 	comp := newTestCompositionService(t)
-	if _, err := comp.ImportWorkflow(`{"label":"","nodes":[{"nodeTypeID":"capture-clipboard-html"}]}`); err == nil {
+	if _, err := comp.ImportWorkflow(`{"label":"","steps":[{"StepTypeID":"capture-clipboard-html"}]}`); err == nil {
 		t.Error("ImportWorkflow with an empty label returned nil error, want one (matches CreateWorkflow's own validation)")
 	}
 }
@@ -267,7 +315,7 @@ func TestImportWorkflow_InvalidGraphShape_Rejected(t *testing.T) {
 	// Two roots (two nodes, no edge joining them) is rejected by
 	// ValidateGraph -- confirms ImportWorkflow holds an imported file to
 	// exactly the same bar as a hand-composed workflow, not a weaker one.
-	badJSON := `{"label":"bad","nodes":[{"nodeTypeID":"trigger-manual"},{"nodeTypeID":"trigger-manual"}]}`
+	badJSON := `{"label":"bad","steps":[{"StepTypeID":"trigger-manual"},{"StepTypeID":"trigger-manual"}]}`
 	if _, err := comp.ImportWorkflow(badJSON); err == nil {
 		t.Error("ImportWorkflow with two root nodes returned nil error, want ValidateGraph's rejection")
 	} else if !strings.Contains(err.Error(), "") {
@@ -281,7 +329,7 @@ func TestImportWorkflow_AppliesAttributes(t *testing.T) {
 	comp := newTestCompositionService(t)
 	exported := `{
 		"label": "with attributes",
-		"nodes": [{"id": "t", "nodeTypeID": "trigger-manual"}, {"id": "c", "nodeTypeID": "capture-clipboard-html"}],
+		"steps": [{"id": "t", "StepTypeID": "trigger-manual"}, {"id": "c", "StepTypeID": "capture-clipboard-html"}],
 		"edges": [{"id": "e1", "source": "t", "target": "c"}],
 		"attributes": [{"key": "count", "label": "Count", "type": "number"}]
 	}`

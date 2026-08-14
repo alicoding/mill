@@ -21,16 +21,16 @@ import (
 // connectors -- copying/bringing in an entity means a new identity, not
 // resurrecting the old one, so importing the same file twice (or into a
 // different Mill instance) can never silently collide with or overwrite
-// an existing workflow. Node/Edge IDs inside the graph ARE preserved
+// an existing workflow. Step/Edge IDs inside the graph ARE preserved
 // as-is: those are relative references (Edge.Source/Target point at a
-// Node.ID within the same file), not global identity, and must stay
+// Step.ID within the same file), not global identity, and must stay
 // intact for the graph to reconstruct correctly.
 //
 // Stable/deterministic by construction, not by extra bookkeeping: every
 // field here is already-stored data (never regenerated on save), and
 // Go's encoding/json guarantees deterministic output for it -- struct
 // fields marshal in a fixed declaration order and map[string]string
-// (Node.Config) marshals with keys sorted, confirmed against the
+// (Step.Config) marshals with keys sorted, confirmed against the
 // encoding/json source, not assumed. Two exports of an unchanged
 // workflow therefore produce byte-identical JSON, so a workflow
 // committed to git diffs cleanly on a real change and not otherwise --
@@ -52,14 +52,131 @@ import (
 // already uses. Schema carries the envelope's contract id (ADR-0036
 // decision 2) -- absent is accepted on import (every pre-ADR-0036
 // export), present is validated by contract.ValidateImportSchema.
+//
+// Steps (docs/goals/0053 tier 2) is the wire-vocabulary rename of what
+// used to be the "nodes" key -- composition.Node/Edge/Workflow carry NO
+// json tags of their own and marshal through encoding/json's own
+// capitalized-field-name default, and that exact same untagged shape is
+// what persist()/restore() (compositionservice.go) already
+// json.Marshal/Unmarshal into the settings store for every saved
+// workflow, and what executionsvc's DBOS runInput checkpoints into
+// durable storage. Renaming a tag directly on composition.Node would
+// silently stop either from round-tripping already-persisted data, so
+// this envelope uses its own dedicated Step DTO (below) instead of
+// composition.Node directly -- isolating the export/import wire rename
+// from the shared, untagged domain shape entirely. UnmarshalJSON below
+// accepts the legacy "nodes" key forever (every export produced before
+// this rename).
 type exportedWorkflow struct {
 	Schema      string                     `json:"schema"`
 	ID          string                     `json:"id,omitempty"`
 	Label       string                     `json:"label"`
 	Description string                     `json:"description"`
-	Nodes       []composition.Node         `json:"nodes"`
+	Steps       []Step                     `json:"steps"`
 	Edges       []composition.Edge         `json:"edges"`
 	Attributes  []composition.AttributeDef `json:"attributes"`
+}
+
+// UnmarshalJSON accepts the current "steps" key and, forever, the
+// legacy "nodes" key every export produced before docs/goals/0053 tier
+// 2 -- a workflow committed to git, or an external agent's cached
+// export, keeps importing to an identical result. "steps" wins when a
+// document somehow carries both.
+func (w *exportedWorkflow) UnmarshalJSON(data []byte) error {
+	var raw struct {
+		Schema      string                     `json:"schema"`
+		ID          string                     `json:"id,omitempty"`
+		Label       string                     `json:"label"`
+		Description string                     `json:"description"`
+		Steps       []Step                     `json:"steps"`
+		LegacyNodes []Step                     `json:"nodes"`
+		Edges       []composition.Edge         `json:"edges"`
+		Attributes  []composition.AttributeDef `json:"attributes"`
+	}
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return err
+	}
+	steps := raw.Steps
+	if len(steps) == 0 && len(raw.LegacyNodes) > 0 {
+		steps = raw.LegacyNodes
+	}
+	*w = exportedWorkflow{
+		Schema: raw.Schema, ID: raw.ID, Label: raw.Label, Description: raw.Description,
+		Steps: steps, Edges: raw.Edges, Attributes: raw.Attributes,
+	}
+	return nil
+}
+
+// Step is exportedWorkflow's own per-step wire shape -- see
+// exportedWorkflow's doc comment for why this is a dedicated DTO rather
+// than composition.Node directly. StepTypeID replaces what used to be
+// the "NodeTypeID" wire key (docs/goals/0053 tier 2); UnmarshalJSON
+// below accepts the legacy key forever, the same "steps"/"nodes"
+// fallback exportedWorkflow itself implements one level up.
+type Step struct {
+	ID         string
+	Kind       composition.NodeKind
+	StepTypeID string
+	Config     map[string]string
+	Position   composition.Position
+}
+
+// UnmarshalJSON accepts the current "StepTypeID" key and, forever, the
+// legacy "NodeTypeID" key -- "StepTypeID" wins when a document somehow
+// carries both.
+func (s *Step) UnmarshalJSON(data []byte) error {
+	var raw struct {
+		ID             string
+		Kind           composition.NodeKind
+		StepTypeID     string
+		LegacyNodeType string `json:"NodeTypeID"`
+		Config         map[string]string
+		Position       composition.Position
+	}
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return err
+	}
+	s.ID, s.Kind, s.Config, s.Position = raw.ID, raw.Kind, raw.Config, raw.Position
+	s.StepTypeID = raw.StepTypeID
+	if s.StepTypeID == "" {
+		s.StepTypeID = raw.LegacyNodeType
+	}
+	return nil
+}
+
+// stepsFromNodes/nodesFromSteps convert between the wire DTO above and
+// composition.Node -- the domain type every CompositionService method
+// (CreateWorkflow, UpdateWorkflow, ...) actually takes, unchanged by
+// this rename.
+func stepsFromNodes(nodes []composition.Node) []Step {
+	out := make([]Step, len(nodes))
+	for i, n := range nodes {
+		out[i] = Step{ID: n.ID, Kind: n.Kind, StepTypeID: n.NodeTypeID, Config: n.Config, Position: n.Position}
+	}
+	return out
+}
+
+func nodesFromSteps(steps []Step) []composition.Node {
+	out := make([]composition.Node, len(steps))
+	for i, s := range steps {
+		out[i] = composition.Node{ID: s.ID, Kind: s.Kind, NodeTypeID: s.StepTypeID, Config: s.Config, Position: s.Position}
+	}
+	return out
+}
+
+// DecodeWorkflowGraph parses jsonData (exported-workflow JSON, or a
+// hand-authored document in the same shape) into its label/nodes/edges/
+// attributes, accepting both the current "steps" and the legacy
+// "nodes" wire vocabulary (docs/goals/0053 tier 2) -- exported for
+// callers (MCP's validate_workflow / update_workflow diff preview) that
+// only need the parsed graph, not a persisted CompositionService, so
+// there is exactly one implementation of the dual-vocabulary parse.
+func DecodeWorkflowGraph(jsonData string) (label string, nodes []composition.Node, edges []composition.Edge, attributes []composition.AttributeDef, err error) {
+	var in exportedWorkflow
+	if err = json.Unmarshal([]byte(jsonData), &in); err != nil {
+		return "", nil, nil, nil, err
+	}
+	return in.Label, nodesFromSteps(in.Steps), in.Edges, in.Attributes, nil
 }
 
 // ExportWorkflow serializes id's current definition as an indented,
@@ -87,7 +204,7 @@ func (c *CompositionService) ExportWorkflow(id string) (string, error) {
 		ID:          wf.ID,
 		Label:       wf.Label,
 		Description: wf.Description,
-		Nodes:       wf.Nodes,
+		Steps:       stepsFromNodes(wf.Nodes),
 		Edges:       wf.Edges,
 		Attributes:  wf.Attributes,
 	}
@@ -128,7 +245,7 @@ func (c *CompositionService) ImportWorkflow(jsonData string) (composition.Workfl
 			}
 			return c.UpdateWorkflowFromExport(in.ID, jsonData)
 		}
-		wf, err := c.createWorkflowWithID(in.ID, in.Label, in.Description, in.Nodes, in.Edges)
+		wf, err := c.createWorkflowWithID(in.ID, in.Label, in.Description, nodesFromSteps(in.Steps), in.Edges)
 		if err != nil {
 			return composition.Workflow{}, err
 		}
@@ -138,7 +255,7 @@ func (c *CompositionService) ImportWorkflow(jsonData string) (composition.Workfl
 		return c.UpdateAttributes(wf.ID, in.Attributes)
 	}
 
-	wf, err := c.CreateWorkflow(in.Label, in.Description, in.Nodes, in.Edges)
+	wf, err := c.CreateWorkflow(in.Label, in.Description, nodesFromSteps(in.Steps), in.Edges)
 	if err != nil {
 		return composition.Workflow{}, err
 	}
@@ -171,7 +288,7 @@ func (c *CompositionService) UpdateWorkflowFromExport(id, jsonData string) (comp
 	if err := json.Unmarshal([]byte(jsonData), &in); err != nil {
 		return composition.Workflow{}, fmt.Errorf("update workflow: invalid JSON: %w", err)
 	}
-	wf, err := c.UpdateWorkflow(id, in.Label, in.Description, in.Nodes, in.Edges)
+	wf, err := c.UpdateWorkflow(id, in.Label, in.Description, nodesFromSteps(in.Steps), in.Edges)
 	if err != nil {
 		return composition.Workflow{}, err
 	}

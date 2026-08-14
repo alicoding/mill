@@ -69,7 +69,7 @@ func TestProcessRunReceipt_RendersEvidenceAsJSON(t *testing.T) {
 		return RunEvidence{
 			Schema: "mill://schema/receipt/v1", RunID: "run-1", WorkflowID: "wf-1",
 			WorkflowLabel: "Test workflow", Version: 2, Kind: "test",
-			Steps: []RunEvidenceStep{{NodeID: "prior", NodeTypeID: "process-inject-text", Status: "succeeded"}},
+			Steps: []RunEvidenceStep{{StepID: "prior", StepTypeID: "process-inject-text", Status: "succeeded"}},
 			Build: RunEvidenceBuild{Version: "1.2.3", Commit: "abc123", Modified: false},
 		}, nil
 	})
@@ -100,7 +100,7 @@ func TestProcessRunReceipt_RendersEvidenceAsJSON(t *testing.T) {
 	if evidence.RunID != "run-1" || evidence.WorkflowID != "wf-1" {
 		t.Errorf("evidence = %+v, want RunID run-1 / WorkflowID wf-1", evidence)
 	}
-	if len(evidence.Steps) != 1 || evidence.Steps[0].NodeID != "prior" {
+	if len(evidence.Steps) != 1 || evidence.Steps[0].StepID != "prior" {
 		t.Errorf("evidence.Steps = %+v, want exactly one prior step", evidence.Steps)
 	}
 	if evidence.Build.Version != "1.2.3" {

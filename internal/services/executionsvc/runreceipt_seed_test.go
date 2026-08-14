@@ -81,7 +81,7 @@ func TestSeededRunReceiptExample_RunsEndToEndAndValidatesAgainstSchema(t *testin
 	// Only the inject step ran before this one -- the trigger never
 	// checkpoints (execute.go), and this node's own step hasn't been
 	// checkpointed yet when the lookup runs mid-step.
-	if len(evidence.Steps) != 1 || evidence.Steps[0].NodeTypeID != "process-inject-text" {
+	if len(evidence.Steps) != 1 || evidence.Steps[0].StepTypeID != "process-inject-text" {
 		t.Errorf("evidence.Steps = %+v, want exactly the one prior process-inject-text step", evidence.Steps)
 	}
 	if evidence.Build.Version != "9.9.9-test" {
