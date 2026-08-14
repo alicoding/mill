@@ -3,7 +3,7 @@ import { test, expect } from './fixtures/server'
 import { clickRowAction } from './inventoryRow'
 import {
   connectMCPClient, enableMCPWritesWithApprovalRequired, exportWorkflowViaMCP,
-  findWorkflowIdByLabel, restoreMCPWriteDefaults,
+  findWorkflowIdByLabel, restoreMCPWriteDefaults, stripExportedID,
 } from './mcpTestClient'
 import { assignDebugWorkflowHotkey } from './hotkeyDebugKnob'
 
@@ -273,7 +273,7 @@ test('a parked MCP write bumps the Quick Panel review badge live, no reload', as
   try {
     const sourceId = await findWorkflowIdByLabel(client, sourceLabel)
     const exported = await exportWorkflowViaMCP(client, sourceId)
-    importResultPromise = client.callTool({ name: 'import_workflow', arguments: { json: exported } })
+    importResultPromise = client.callTool({ name: 'import_workflow', arguments: { json: stripExportedID(exported) } })
 
     const badge = page.getByTestId('quick-panel-review-count')
     await expect(badge).toHaveText('1', { timeout: 15_000 })

@@ -4341,6 +4341,38 @@ workflows (the app dogfooding its own platform) — what the platform
 never does is hand-roll a parallel mini-pipeline for something the
 surface can already express.
 
+## 9.6 Contract surface — generated schema, schema identity, export id
+
+**`LOCKED` for the mechanics below (goal 0052 slice 1,
+[ADR-0036](adr/0036-contract-surface-schema-identity.md)); the format
+decision itself (JSON Schema over protobuf/OpenAPI) was made and
+recorded in the goal file.** An export is an instance; a schema is the
+contract — an external agent that never touches the app needs both,
+since an example alone can't say what's required, legal, or variable.
+
+Every one of the seven importable envelope families (workflow;
+HTTPRequest/List/MCPServer/Decision/AIProvider/ExecEnv in Configure)
+now has a JSON Schema generated from its Go wire type by
+`github.com/invopop/jsonschema`, committed under
+`internal/contract/schemas/`, embedded via `go:embed`, and drift-
+checked by a plain Go test that regenerates in memory and byte-compares
+against the committed file — a type change without regeneration and a
+hand-edited schema both fail the same check. Each schema carries a
+stable `mill://schema/<family>/v1` id, and every export envelope now
+carries that same id in a `schema` field plus the entity's own `id`.
+Import applies one uniform rule across all seven families: id absent
+creates fresh; id present and unknown locally creates AT that id
+(preserving it — the two-machine bridge identity a far-side agent's
+export → edit → write-back needs); id present and known locally
+updates in place through the family's existing update path. A
+file-picker import that would update rather than create confirms
+first, naming the entity it will replace.
+
+Not yet built (goal 0052's remaining slices): the root contract
+document assembling every schema + the node catalog + the import
+contract into one file/MCP resource, node-discovery filtering, the
+machine-readable state manifest, and the evidence-receipt envelope.
+
 ## 10. Open questions log
 
 - Decision as a reusable typed terminal outcome (§3.3/§3.5) —

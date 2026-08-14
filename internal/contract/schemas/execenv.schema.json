@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "mill://schema/execenv/v1",
+  "properties": {
+    "schema": {
+      "type": "string"
+    },
+    "id": {
+      "type": "string"
+    },
+    "label": {
+      "type": "string"
+    },
+    "shell": {
+      "type": "string"
+    },
+    "profileMode": {
+      "type": "string"
+    },
+    "dir": {
+      "type": "string"
+    },
+    "env": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    }
+  },
+  "additionalProperties": false,
+  "type": "object",
+  "required": [
+    "schema",
+    "label",
+    "shell",
+    "profileMode",
+    "dir",
+    "env"
+  ]
+}

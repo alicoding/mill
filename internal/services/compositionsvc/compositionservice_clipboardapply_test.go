@@ -71,6 +71,28 @@ func TestPreviewClipboardApply_UnrecognizedShape_ReturnsReadableError(t *testing
 	}
 }
 
+// TestPreviewClipboardApply_UnsupportedSchemaMajor_ReturnsReadableError
+// pins ADR-0036 decision 2's import rule reaching the clipboard-apply
+// preview path too, not just the seven Import* methods: a schema value
+// naming a major this build doesn't support is rejected as a value-
+// level Error, same as any other malformed/unrecognized payload.
+func TestPreviewClipboardApply_UnsupportedSchemaMajor_ReturnsReadableError(t *testing.T) {
+	comp := newTestCompositionService(t)
+	nodes, edges := triggerAndCaptureNodes()
+	payload := exportedWorkflowJSON(t, exportedWorkflow{Schema: "mill://schema/workflow/v99", Label: "future export", Nodes: nodes, Edges: edges})
+
+	preview, err := comp.PreviewClipboardApply(payload)
+	if err != nil {
+		t.Fatalf("PreviewClipboardApply returned a Go error: %v", err)
+	}
+	if preview.Recognized {
+		t.Error("preview.Recognized = true for an unsupported schema major, want false")
+	}
+	if preview.Error == "" {
+		t.Error("preview.Error is empty for an unsupported schema major, want a readable message")
+	}
+}
+
 func TestPreviewClipboardApply_NoID_DetectsCreate(t *testing.T) {
 	comp := newTestCompositionService(t)
 	nodes, edges := triggerAndCaptureNodes()
@@ -187,7 +209,11 @@ func TestConfirmClipboardApply_MatchingID_UpdatesThroughSnapshotDraft(t *testing
 	}
 }
 
-func TestConfirmClipboardApply_UnknownID_CreatesInsteadOfErroring(t *testing.T) {
+// TestConfirmClipboardApply_UnknownID_CreatesPreservingIt pins ADR-0036
+// decision 3: an id this instance has never seen creates a new
+// workflow AT that id, not a freshly minted one -- the two-machine
+// bridge identity the ADR exists for.
+func TestConfirmClipboardApply_UnknownID_CreatesPreservingIt(t *testing.T) {
 	comp := newTestCompositionService(t)
 	nodes, edges := triggerAndCaptureNodes()
 	payload := exportedWorkflowJSON(t, exportedWorkflow{ID: "does-not-exist-locally", Label: "orphaned id create", Nodes: nodes, Edges: edges})
@@ -196,8 +222,8 @@ func TestConfirmClipboardApply_UnknownID_CreatesInsteadOfErroring(t *testing.T) 
 	if err != nil {
 		t.Fatalf("ConfirmClipboardApply with an unknown id returned an error, want a fallback create: %v", err)
 	}
-	if wf.ID == "does-not-exist-locally" {
-		t.Error("ConfirmClipboardApply resurrected the orphaned id instead of minting a new one")
+	if wf.ID != "does-not-exist-locally" {
+		t.Errorf("ConfirmClipboardApply.ID = %q, want the preserved id %q", wf.ID, "does-not-exist-locally")
 	}
 	if len(comp.Workflows()) != 1 {
 		t.Errorf("Workflows() has %d entries, want 1", len(comp.Workflows()))
@@ -351,5 +377,66 @@ func TestPreviewClipboardApply_ResolvedWorkflowRef_NotFlagged(t *testing.T) {
 	}
 	if len(preview.Unresolved) != 0 {
 		t.Errorf("preview.Unresolved = %+v, want empty for a workflowId that matches a real local workflow", preview.Unresolved)
+	}
+}
+
+// TestClipboardApply_ExportModifyReimport_UpdatesTheSameIDWithSnapshot
+// is ADR-0036's far-side-shaped round trip (goal 0052 acceptance box
+// 4): ExportWorkflow (now carrying id) -> a far-side edit to the raw
+// JSON -> back through the real clipboard-apply confirm path. Asserts
+// the SAME id was updated (never a second workflow created) and the
+// pre-edit state survived as a snapshot -- the two-machine bridge
+// (export at work, refine elsewhere, write back by id) this ADR exists
+// for.
+func TestClipboardApply_ExportModifyReimport_UpdatesTheSameIDWithSnapshot(t *testing.T) {
+	comp := newTestCompositionService(t)
+	nodes, edges := triggerAndCaptureNodes()
+	original, err := comp.CreateWorkflow("Bridge original", "before the far side touched it", nodes, edges)
+	if err != nil {
+		t.Fatalf("CreateWorkflow: %v", err)
+	}
+
+	exported, err := comp.ExportWorkflow(original.ID)
+	if err != nil {
+		t.Fatalf("ExportWorkflow: %v", err)
+	}
+
+	// The far side edits the raw JSON document directly -- exactly what
+	// an external agent with no Mill UI access does -- never a Go struct.
+	var raw map[string]any
+	if err := json.Unmarshal([]byte(exported), &raw); err != nil {
+		t.Fatalf("exported output is not valid JSON: %v", err)
+	}
+	raw["label"] = "Bridge edited far side"
+	edited, err := json.Marshal(raw)
+	if err != nil {
+		t.Fatalf("re-marshal edited payload: %v", err)
+	}
+
+	confirmed, err := comp.ConfirmClipboardApply(string(edited))
+	if err != nil {
+		t.Fatalf("ConfirmClipboardApply: %v", err)
+	}
+
+	if confirmed.ID != original.ID {
+		t.Fatalf("ConfirmClipboardApply.ID = %q, want the original id %q (update, not create)", confirmed.ID, original.ID)
+	}
+	if confirmed.Label != "Bridge edited far side" {
+		t.Errorf("confirmed.Label = %q, want the far side's edit applied", confirmed.Label)
+	}
+	if got := len(comp.Workflows()); got != 1 {
+		t.Fatalf("Workflows() has %d entries, want 1 (updated in place, no duplicate)", got)
+	}
+
+	// The prior state (pre-edit label) is recoverable -- SnapshotDraft
+	// ran before the write (ConfirmClipboardApply -> ImportWorkflow's
+	// known-id branch), so it's in Versions, not lost.
+	updated := comp.Workflows()[0]
+	if len(updated.Versions) == 0 {
+		t.Fatal("updated workflow has no Versions -- the pre-write snapshot never happened")
+	}
+	last := updated.Versions[len(updated.Versions)-1]
+	if last.Label != "Bridge original" {
+		t.Errorf("snapshot Versions[-1].Label = %q, want the pre-edit label %q", last.Label, "Bridge original")
 	}
 }

@@ -71,6 +71,17 @@ export async function exportWorkflowViaMCP(client: Client, id: string): Promise<
   return content[0]?.text ?? ''
 }
 
+// ADR-0036: export_workflow now always carries the source workflow's
+// real id, so re-importing it unmodified updates that workflow in
+// place rather than creating a second, independent one. Callers that
+// want the create path (most of this suite's "import always mints a
+// new ID" fixtures) strip it first via this helper.
+export function stripExportedID(exported: string): string {
+  const parsed = JSON.parse(exported) as Record<string, unknown>
+  delete parsed.id
+  return JSON.stringify(parsed)
+}
+
 // Writes ON, per-write approval left ON (the default) -- the shape most
 // callers need, distinct from canvas-live-sync.spec.ts's own
 // "unattended" helper which deliberately relaxes approval.

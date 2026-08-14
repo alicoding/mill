@@ -1,0 +1,139 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "mill://schema/list/v1",
+  "$defs": {
+    "Field": {
+      "properties": {
+        "Key": {
+          "type": "string"
+        },
+        "Label": {
+          "type": "string"
+        },
+        "Type": {
+          "type": "string"
+        },
+        "Required": {
+          "type": "boolean"
+        },
+        "Default": {
+          "type": "string"
+        },
+        "Description": {
+          "type": "string"
+        },
+        "Options": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "Suggestions": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "Secret": {
+          "type": "boolean"
+        },
+        "RefKind": {
+          "type": "string"
+        },
+        "Multiline": {
+          "type": "boolean"
+        },
+        "SystemManaged": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "Key",
+        "Label",
+        "Type",
+        "Required",
+        "Default",
+        "Description",
+        "Options",
+        "Suggestions",
+        "Secret",
+        "RefKind",
+        "Multiline",
+        "SystemManaged"
+      ]
+    },
+    "Row": {
+      "properties": {
+        "ID": {
+          "type": "string"
+        },
+        "Values": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "type": "object"
+        },
+        "CreatedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "UpdatedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "Status": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "ID",
+        "Values",
+        "CreatedAt",
+        "UpdatedAt",
+        "Status"
+      ]
+    }
+  },
+  "properties": {
+    "schema": {
+      "type": "string"
+    },
+    "id": {
+      "type": "string"
+    },
+    "label": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "columns": {
+      "items": {
+        "$ref": "#/$defs/Field"
+      },
+      "type": "array"
+    },
+    "rows": {
+      "items": {
+        "$ref": "#/$defs/Row"
+      },
+      "type": "array"
+    },
+    "entries": {
+      "additionalProperties": {
+        "type": "string"
+      },
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "type": "object",
+  "required": [
+    "schema",
+    "label"
+  ]
+}

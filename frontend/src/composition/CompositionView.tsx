@@ -13,6 +13,7 @@ import { ENTITY_ICON } from '../shared/entityIcons'
 import { formatUpdated, sortByUpdatedDesc } from '../shared/inventorySort'
 import { describeSeedReset } from '../shared/seedLifecycle'
 import { RestoreExamplesButton } from '../shared/RestoreExamplesButton'
+import { useImportConfirm } from '../shared/useImportConfirm'
 import type { Workflow } from '../../bindings/github.com/alicoding/mill/internal/domain/composition/models'
 import TestRunDialog from './TestRunDialog'
 import { workflowPayloadHint } from './triggerPayload'
@@ -236,19 +237,24 @@ function CompositionView() {
     importFileInputRef.current?.click()
   }
 
-  // ImportWorkflow always mints a new workflow (ADR-0013's Duplicate
-  // precedent), so success is exactly "one more row," never a merge.
-  const handleImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    e.target.value = '' // allow re-selecting the same file next time
-    if (!file) return
-    file.text()
-      .then((text) => CompositionService.ImportWorkflow(text))
+  // A payload whose id matches a workflow already here updates it in
+  // place instead of creating a new one -- confirmed first via
+  // importConfirm below, naming the workflow it will replace. An
+  // id-less payload (or one naming an id unknown here) always creates.
+  const runImport = (text: string) => {
+    CompositionService.ImportWorkflow(text)
       .then(() => {
         setImportError(null)
         void refreshWorkflows()
       })
       .catch((err) => setImportError(String(err)))
+  }
+  const importConfirm = useImportConfirm({ existing: workflows ?? [], onImport: runImport })
+  const handleImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    e.target.value = '' // allow re-selecting the same file next time
+    if (!file) return
+    file.text().then(importConfirm.requestImport).catch((err) => setImportError(String(err)))
   }
 
   const editDisabled = nodeTypes === null
@@ -472,6 +478,7 @@ function CompositionView() {
           }}
         />
       )}
+      {importConfirm.dialog}
     </PageContainer>
   )
 }

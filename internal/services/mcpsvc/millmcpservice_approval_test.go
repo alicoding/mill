@@ -87,9 +87,31 @@ func newMCPApprovalHarness(t *testing.T, addr, workflowLabel string) *mcpApprova
 
 	return &mcpApprovalHarness{
 		store: store, comp: comp, cfg: cfg, svc: m, session: session, ctx: ctx,
-		exported: res.Content[0].(*mcp.TextContent).Text,
+		// id-stripped (ADR-0036 decision 3): these tests exercise the
+		// import tool's create path, not the create-preserving-id/
+		// update-in-place paths a real export's own id would now
+		// trigger against the source workflow still sitting in comp.
+		exported: stripJSONIDField(t, res.Content[0].(*mcp.TextContent).Text),
 		before:   len(comp.Workflows()),
 	}
+}
+
+// stripJSONIDField removes the top-level "id" key from a JSON object
+// document -- forces ADR-0036 decision 3's fresh-create import path in
+// a test whose exported payload would otherwise carry an id matching a
+// still-present source entity (the update-in-place path).
+func stripJSONIDField(t *testing.T, doc string) string {
+	t.Helper()
+	var raw map[string]any
+	if err := json.Unmarshal([]byte(doc), &raw); err != nil {
+		t.Fatalf("stripJSONIDField: invalid JSON: %v", err)
+	}
+	delete(raw, "id")
+	out, err := json.Marshal(raw)
+	if err != nil {
+		t.Fatalf("stripJSONIDField: re-marshal: %v", err)
+	}
+	return string(out)
 }
 
 // callImport starts an import_workflow call in the background and
@@ -345,7 +367,10 @@ func TestMCPWriteTools_RestartSurvival_PendingRecordSurvivesNewServiceInstance(t
 	}
 	before := len(comp.Workflows())
 
-	argsJSON, err := marshalArgs(importToolArgs{JSON: exported})
+	// id-stripped (ADR-0036 decision 3): exercises the create path, not
+	// the update-in-place path a real matching id would now trigger
+	// against wf, which is still present in comp.
+	argsJSON, err := marshalArgs(importToolArgs{JSON: stripJSONIDField(t, exported)})
 	if err != nil {
 		t.Fatalf("marshalArgs: %v", err)
 	}

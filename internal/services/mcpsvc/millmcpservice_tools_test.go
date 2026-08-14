@@ -110,8 +110,13 @@ func TestMillMCPService_Tools_ImportGatedExportOpen(t *testing.T) {
 	if err := store.Set(MCPWriteEnabledKey, "true"); err != nil {
 		t.Fatalf("store.Set: %v", err)
 	}
+	// ADR-0036 decision 3: the exported payload now carries wf.ID, which
+	// still exists in comp -- stripped here so this exercises the tool's
+	// create path, not the update-in-place path a real matching id would
+	// now correctly trigger (that path's own test lives in
+	// millmcpservice_approval_test.go's harness).
 	res, err = session.CallTool(ctx, &mcp.CallToolParams{
-		Name: "import_workflow", Arguments: map[string]any{"json": exported},
+		Name: "import_workflow", Arguments: map[string]any{"json": stripJSONIDField(t, exported)},
 	})
 	if err != nil {
 		t.Fatalf("CallTool(import_workflow, gate on): %v", err)

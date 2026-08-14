@@ -46,10 +46,29 @@ func (c *ConfigureService) Decisions() []decision.Decision {
 	return out
 }
 
+// decisionExistsLocked reports whether id names a real local Decision
+// -- callers must hold c.mu. ImportDecision's own create-vs-update
+// check (configureservice_export.go).
+func (c *ConfigureService) decisionExistsLocked(id string) bool {
+	for _, d := range c.decisions {
+		if d.ID == id {
+			return true
+		}
+	}
+	return false
+}
+
 func (c *ConfigureService) CreateDecision(label string, category decision.Category, outputs []decision.OutputField, webhookRequestID string) (decision.Decision, error) {
+	return c.createDecisionWithID(seeding.NewSlugID(label, "decision"), label, category, outputs, webhookRequestID)
+}
+
+// createDecisionWithID is CreateDecision's own logic, parameterized on
+// the new decision's id -- the seam ImportDecision uses to preserve a
+// caller-supplied id (ADR-0036 decision 3).
+func (c *ConfigureService) createDecisionWithID(id, label string, category decision.Category, outputs []decision.OutputField, webhookRequestID string) (decision.Decision, error) {
 	now := time.Now()
 	d := decision.Decision{
-		ID: seeding.NewSlugID(label, "decision"), Label: label, Category: category,
+		ID: id, Label: label, Category: category,
 		Outputs: outputs, WebhookRequestID: webhookRequestID,
 		CreatedAt: now, UpdatedAt: now,
 	}

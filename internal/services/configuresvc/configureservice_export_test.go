@@ -9,7 +9,30 @@ import (
 	"github.com/alicoding/mill/internal/domain/typedfield"
 )
 
-func TestExportImportHTTPRequest_RoundTrips_NeverCarriesASecret(t *testing.T) {
+// stripIDField removes the top-level "id" key from a JSON object
+// document -- used to force ADR-0036 decision 3's fresh-create path in
+// a test whose exported payload would otherwise carry an id matching a
+// local entity (the update-in-place path).
+func stripIDField(t *testing.T, doc string) string {
+	t.Helper()
+	var raw map[string]any
+	if err := json.Unmarshal([]byte(doc), &raw); err != nil {
+		t.Fatalf("stripIDField: invalid JSON: %v", err)
+	}
+	delete(raw, "id")
+	out, err := json.Marshal(raw)
+	if err != nil {
+		t.Fatalf("stripIDField: re-marshal: %v", err)
+	}
+	return string(out)
+}
+
+// TestExportImportHTTPRequest_KnownID_UpdatesInPlace pins ADR-0036
+// decision 3's update path: an export's id now matches its source
+// request, so importing it back updates that request rather than
+// creating a duplicate -- and never touches the keychain (UpdateHTTP
+// Request doesn't), so the existing secret survives the round trip.
+func TestExportImportHTTPRequest_KnownID_UpdatesInPlace(t *testing.T) {
 	cfg, _ := newTestConfigureService(t)
 	created, err := cfg.CreateHTTPRequest("My request", "https://example.com", "QUERY", "", httprequest.AuthAPIKey, nil, "", nil, nil, "a description")
 	if err != nil {
@@ -31,16 +54,16 @@ func TestExportImportHTTPRequest_RoundTrips_NeverCarriesASecret(t *testing.T) {
 	if err := json.Unmarshal([]byte(exported), &raw); err != nil {
 		t.Fatalf("exported output is not valid JSON: %v", err)
 	}
-	if _, ok := raw["id"]; ok {
-		t.Error("exported JSON carries an id field -- should be omitted")
+	if got, _ := raw["id"].(string); got != created.ID {
+		t.Errorf("exported id = %q, want %q", got, created.ID)
 	}
 
 	imported, err := cfg.ImportHTTPRequest(exported)
 	if err != nil {
 		t.Fatalf("ImportHTTPRequest: %v", err)
 	}
-	if imported.ID == created.ID {
-		t.Error("ImportHTTPRequest reused the original ID -- should always mint a new one")
+	if imported.ID != created.ID {
+		t.Errorf("ImportHTTPRequest.ID = %q, want the same id %q (update in place)", imported.ID, created.ID)
 	}
 	if imported.Label != created.Label || imported.BaseURL != created.BaseURL || imported.AuthType != created.AuthType {
 		t.Errorf("imported = %+v, want matching Label/BaseURL/AuthType from %+v", imported, created)
@@ -50,10 +73,40 @@ func TestExportImportHTTPRequest_RoundTrips_NeverCarriesASecret(t *testing.T) {
 	if imported.Method != "QUERY" {
 		t.Errorf("imported.Method = %q, want QUERY", imported.Method)
 	}
-	// The imported request never had SetHTTPRequestSecret called on it --
-	// it should have no usable secret of its own.
+	if _, err := cfg.credentials.Get(imported.ID); err != nil {
+		t.Errorf("updated HTTPRequest lost its keychain secret: %v", err)
+	}
+}
+
+// TestExportImportHTTPRequest_NoID_CreatesFreshWithoutASecret covers
+// decision 3's fresh-create path: an id-less payload (a hand-authored
+// file, or any export written before ADR-0036) mints a new request
+// with no secret of its own -- ExportHTTPRequest never puts one on the
+// wire in the first place.
+func TestExportImportHTTPRequest_NoID_CreatesFreshWithoutASecret(t *testing.T) {
+	cfg, _ := newTestConfigureService(t)
+	created, err := cfg.CreateHTTPRequest("My request", "https://example.com", "GET", "", httprequest.AuthAPIKey, nil, "", nil, nil, "a description")
+	if err != nil {
+		t.Fatalf("CreateHTTPRequest: %v", err)
+	}
+	if err := cfg.SetHTTPRequestSecret(created.ID, "super-secret-value"); err != nil {
+		t.Fatalf("SetHTTPRequestSecret: %v", err)
+	}
+	exported, err := cfg.ExportHTTPRequest(created.ID)
+	if err != nil {
+		t.Fatalf("ExportHTTPRequest: %v", err)
+	}
+	fresh := stripIDField(t, exported)
+
+	imported, err := cfg.ImportHTTPRequest(fresh)
+	if err != nil {
+		t.Fatalf("ImportHTTPRequest: %v", err)
+	}
+	if imported.ID == created.ID {
+		t.Error("ImportHTTPRequest of an id-less payload reused the original ID -- should mint a fresh one")
+	}
 	if _, err := cfg.credentials.Get(imported.ID); err == nil {
-		t.Error("imported HTTPRequest has a secret in the keychain -- import must never carry one over")
+		t.Error("freshly created HTTPRequest has a secret in the keychain -- import must never carry one over")
 	}
 }
 
@@ -64,7 +117,9 @@ func testListColumns() []typedfield.Field {
 	}
 }
 
-func TestExportImportList_RoundTrips(t *testing.T) {
+// TestExportImportList_KnownID_UpdatesInPlace pins ADR-0036 decision
+// 3's update path for List.
+func TestExportImportList_KnownID_UpdatesInPlace(t *testing.T) {
 	cfg, _ := newTestConfigureService(t)
 	created, err := cfg.CreateList("My list", "a list", testListColumns())
 	if err != nil {
@@ -84,8 +139,8 @@ func TestExportImportList_RoundTrips(t *testing.T) {
 		t.Fatalf("ImportList: %v", err)
 	}
 
-	if imported.ID == created.ID {
-		t.Error("ImportList reused the original ID -- should always mint a new one")
+	if imported.ID != created.ID {
+		t.Errorf("ImportList.ID = %q, want the same id %q (update in place)", imported.ID, created.ID)
 	}
 	if imported.Label != created.Label || imported.Description != created.Description {
 		t.Errorf("imported = %+v, want matching Label/Description from %+v", imported, created)
@@ -95,6 +150,35 @@ func TestExportImportList_RoundTrips(t *testing.T) {
 	}
 	if len(imported.Rows) != 1 || imported.Rows[0].Values["a"] != "1" || imported.Rows[0].Values["b"] != "2" {
 		t.Errorf("imported.Rows = %+v, want a copy of the one created row", imported.Rows)
+	}
+	if got := cfg.Lists(); len(got) != 1 {
+		t.Errorf("Lists() has %d entries, want 1 (updated in place, not duplicated)", len(got))
+	}
+}
+
+// TestExportImportList_NoID_CreatesFresh covers decision 3's
+// fresh-create path for List.
+func TestExportImportList_NoID_CreatesFresh(t *testing.T) {
+	cfg, _ := newTestConfigureService(t)
+	created, err := cfg.CreateList("My list", "a list", testListColumns())
+	if err != nil {
+		t.Fatalf("CreateList: %v", err)
+	}
+	exported, err := cfg.ExportList(created.ID)
+	if err != nil {
+		t.Fatalf("ExportList: %v", err)
+	}
+	fresh := stripIDField(t, exported)
+
+	imported, err := cfg.ImportList(fresh)
+	if err != nil {
+		t.Fatalf("ImportList: %v", err)
+	}
+	if imported.ID == created.ID {
+		t.Error("ImportList of an id-less payload reused the original ID -- should mint a fresh one")
+	}
+	if got := cfg.Lists(); len(got) != 2 {
+		t.Errorf("Lists() has %d entries, want 2", len(got))
 	}
 }
 
@@ -142,7 +226,9 @@ func TestExportList_IsDeterministic(t *testing.T) {
 	}
 }
 
-func TestExportImportMCPServer_RoundTrips(t *testing.T) {
+// TestExportImportMCPServer_KnownID_UpdatesInPlace pins ADR-0036
+// decision 3's update path for MCPServer.
+func TestExportImportMCPServer_KnownID_UpdatesInPlace(t *testing.T) {
 	cfg, _ := newTestConfigureService(t)
 	created, err := cfg.CreateMCPServer("My server", "npx", []string{"-y", "some-package"})
 	if err != nil {
@@ -158,11 +244,40 @@ func TestExportImportMCPServer_RoundTrips(t *testing.T) {
 		t.Fatalf("ImportMCPServer: %v", err)
 	}
 
-	if imported.ID == created.ID {
-		t.Error("ImportMCPServer reused the original ID -- should always mint a new one")
+	if imported.ID != created.ID {
+		t.Errorf("ImportMCPServer.ID = %q, want the same id %q (update in place)", imported.ID, created.ID)
 	}
 	if imported.Label != created.Label || imported.Command != created.Command || len(imported.Args) != len(created.Args) {
 		t.Errorf("imported = %+v, want matching Label/Command/Args from %+v", imported, created)
+	}
+	if got := cfg.MCPServers(); len(got) != 1 {
+		t.Errorf("MCPServers() has %d entries, want 1 (updated in place, not duplicated)", len(got))
+	}
+}
+
+// TestExportImportMCPServer_NoID_CreatesFresh covers decision 3's
+// fresh-create path for MCPServer.
+func TestExportImportMCPServer_NoID_CreatesFresh(t *testing.T) {
+	cfg, _ := newTestConfigureService(t)
+	created, err := cfg.CreateMCPServer("My server", "npx", []string{"-y", "some-package"})
+	if err != nil {
+		t.Fatalf("CreateMCPServer: %v", err)
+	}
+	exported, err := cfg.ExportMCPServer(created.ID)
+	if err != nil {
+		t.Fatalf("ExportMCPServer: %v", err)
+	}
+	fresh := stripIDField(t, exported)
+
+	imported, err := cfg.ImportMCPServer(fresh)
+	if err != nil {
+		t.Fatalf("ImportMCPServer: %v", err)
+	}
+	if imported.ID == created.ID {
+		t.Error("ImportMCPServer of an id-less payload reused the original ID -- should mint a fresh one")
+	}
+	if got := cfg.MCPServers(); len(got) != 2 {
+		t.Errorf("MCPServers() has %d entries, want 2", len(got))
 	}
 }
 

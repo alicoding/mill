@@ -43,9 +43,28 @@ func (c *ConfigureService) MCPServers() []mcpserver.MCPServer {
 	return out
 }
 
+// mcpServerExistsLocked reports whether id names a real local
+// MCPServer -- callers must hold c.mu. ImportMCPServer's own
+// create-vs-update check (configureservice_export.go).
+func (c *ConfigureService) mcpServerExistsLocked(id string) bool {
+	for _, s := range c.mcpServers {
+		if s.ID == id {
+			return true
+		}
+	}
+	return false
+}
+
 func (c *ConfigureService) CreateMCPServer(label, command string, args []string) (mcpserver.MCPServer, error) {
+	return c.createMCPServerWithID(seeding.NewSlugID(label, "mcp-server"), label, command, args)
+}
+
+// createMCPServerWithID is CreateMCPServer's own logic, parameterized
+// on the new server's id -- the seam ImportMCPServer uses to preserve a
+// caller-supplied id (ADR-0036 decision 3).
+func (c *ConfigureService) createMCPServerWithID(id, label, command string, args []string) (mcpserver.MCPServer, error) {
 	now := time.Now()
-	s := mcpserver.MCPServer{ID: seeding.NewSlugID(label, "mcp-server"), Label: label, Command: command, Args: args, CreatedAt: now, UpdatedAt: now}
+	s := mcpserver.MCPServer{ID: id, Label: label, Command: command, Args: args, CreatedAt: now, UpdatedAt: now}
 	if err := mcpserver.Validate(s); err != nil {
 		return mcpserver.MCPServer{}, err
 	}

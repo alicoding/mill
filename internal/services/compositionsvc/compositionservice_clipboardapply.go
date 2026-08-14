@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/alicoding/mill/internal/contract"
 	"github.com/alicoding/mill/internal/domain/composition"
 )
 
@@ -106,6 +107,9 @@ func (c *CompositionService) PreviewClipboardApply(jsonData string) (ClipboardAp
 	if in.Label == "" || len(in.Nodes) == 0 {
 		return ClipboardApplyPreview{Error: "not a valid workflow export -- missing a label or any nodes"}, nil
 	}
+	if err := contract.ValidateImportSchema("workflow", in.Schema); err != nil {
+		return ClipboardApplyPreview{Error: err.Error()}, nil
+	}
 
 	preview := ClipboardApplyPreview{
 		Recognized: true,
@@ -133,10 +137,12 @@ func (c *CompositionService) PreviewClipboardApply(jsonData string) (ClipboardAp
 	return preview, nil
 }
 
-// ConfirmClipboardApply re-parses jsonData and applies it -- create or
-// update, independently re-deriving the Action rather than trusting a
-// caller-cached preview verdict, since the clipboard/workflow list could
-// have changed between preview and confirm.
+// ConfirmClipboardApply re-parses jsonData and applies it. Kind-sniffs
+// and validates the payload shape itself (clipboard-specific error
+// messages), then delegates the actual create-vs-update decision to
+// ImportWorkflow -- ADR-0036 decision 3's uniform id rule, so this and
+// every other workflow import entry point (file picker, MCP) share
+// exactly one implementation of it.
 func (c *CompositionService) ConfirmClipboardApply(jsonData string) (composition.Workflow, error) {
 	kind, ok := detectClipboardPayloadKind(jsonData)
 	if !ok {
@@ -144,28 +150,6 @@ func (c *CompositionService) ConfirmClipboardApply(jsonData string) (composition
 	}
 	if kind != ClipboardApplyKindWorkflow {
 		return composition.Workflow{}, fmt.Errorf("clipboard apply: unsupported payload kind %q", kind)
-	}
-
-	var in exportedWorkflow
-	if err := json.Unmarshal([]byte(jsonData), &in); err != nil {
-		return composition.Workflow{}, fmt.Errorf("clipboard apply: invalid JSON: %w", err)
-	}
-
-	if in.ID != "" {
-		c.mu.Lock()
-		found := c.workflowExistsLocked(in.ID)
-		c.mu.Unlock()
-		if found {
-			// The exact chokepoint MCP's update_workflow tool uses
-			// (millmcpservice_authoring.go): snapshot the current draft
-			// first (always revertible from Versions), then replace it.
-			if _, err := c.SnapshotDraft(in.ID); err != nil {
-				return composition.Workflow{}, err
-			}
-			return c.UpdateWorkflowFromExport(in.ID, jsonData)
-		}
-		// id present but no local match -- falls through to create,
-		// matching PreviewClipboardApply's own create-with-a-note verdict.
 	}
 	return c.ImportWorkflow(jsonData)
 }

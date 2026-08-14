@@ -70,7 +70,12 @@ func TestExportWorkflow_RoundTripsThroughImport(t *testing.T) {
 	}
 }
 
-func TestImportWorkflow_GeneratesANewID_NeverReusesTheOriginal(t *testing.T) {
+// TestImportWorkflow_KnownID_UpdatesInPlace pins ADR-0036 decision 3:
+// an export now carries the source workflow's real id, so importing it
+// back into the same instance (id matches a local workflow) updates
+// that workflow rather than creating a duplicate -- the two-machine
+// bridge write-back this ADR exists for.
+func TestImportWorkflow_KnownID_UpdatesInPlace(t *testing.T) {
 	comp := newTestCompositionService(t)
 	nodes, edges := triggerAndCaptureNodes()
 	created, err := comp.CreateWorkflow("My workflow", "", nodes, edges)
@@ -88,15 +93,18 @@ func TestImportWorkflow_GeneratesANewID_NeverReusesTheOriginal(t *testing.T) {
 		t.Fatalf("ImportWorkflow: %v", err)
 	}
 
-	if imported.ID == created.ID {
-		t.Errorf("ImportWorkflow reused the original ID %q -- should always mint a new one (ADR-0013's Duplicate precedent)", created.ID)
+	if imported.ID != created.ID {
+		t.Errorf("ImportWorkflow minted a new ID %q for a known id %q -- should update in place", imported.ID, created.ID)
 	}
-	if len(comp.Workflows()) != 2 {
-		t.Errorf("Workflows() has %d entries, want 2 (the original plus the import, not an overwrite)", len(comp.Workflows()))
+	if len(comp.Workflows()) != 1 {
+		t.Errorf("Workflows() has %d entries, want 1 (updated in place, not duplicated)", len(comp.Workflows()))
 	}
 }
 
-func TestImportWorkflow_TwiceFromTheSameFile_CreatesTwoIndependentWorkflows(t *testing.T) {
+// TestImportWorkflow_TwiceFromTheSameFile_StaysOneWorkflow extends the
+// same rule: re-importing an unchanged export repeatedly is idempotent
+// (every import matches the same id), never accumulates duplicates.
+func TestImportWorkflow_TwiceFromTheSameFile_StaysOneWorkflow(t *testing.T) {
 	comp := newTestCompositionService(t)
 	nodes, edges := triggerAndCaptureNodes()
 	created, err := comp.CreateWorkflow("My workflow", "", nodes, edges)
@@ -117,11 +125,65 @@ func TestImportWorkflow_TwiceFromTheSameFile_CreatesTwoIndependentWorkflows(t *t
 		t.Fatalf("second ImportWorkflow: %v", err)
 	}
 
-	if first.ID == second.ID {
-		t.Errorf("two imports of the same file produced the same ID %q -- each import must be independent, never a silent update", first.ID)
+	if first.ID != second.ID || first.ID != created.ID {
+		t.Errorf("repeated imports of the same file produced different ids (%q, %q, source %q) -- should all resolve to the same workflow", first.ID, second.ID, created.ID)
 	}
-	if len(comp.Workflows()) != 3 {
-		t.Errorf("Workflows() has %d entries, want 3 (original + two independent imports)", len(comp.Workflows()))
+	if len(comp.Workflows()) != 1 {
+		t.Errorf("Workflows() has %d entries, want 1", len(comp.Workflows()))
+	}
+}
+
+// TestImportWorkflow_UnknownID_CreatesPreservingIt is the other half of
+// decision 3: an id this instance has never seen creates a NEW
+// workflow at that exact id, so a far-side agent that edits an export
+// and writes it back to a fresh Mill instance keeps one stable logical
+// identity across the bridge, rather than silently getting a random id.
+func TestImportWorkflow_UnknownID_CreatesPreservingIt(t *testing.T) {
+	comp := newTestCompositionService(t)
+	exported := `{
+		"id": "workflow-from-elsewhere",
+		"label": "from elsewhere",
+		"nodes": [{"id": "t", "nodeTypeID": "trigger-manual"}, {"id": "c", "nodeTypeID": "capture-clipboard-html"}],
+		"edges": [{"id": "e1", "source": "t", "target": "c"}]
+	}`
+
+	imported, err := comp.ImportWorkflow(exported)
+	if err != nil {
+		t.Fatalf("ImportWorkflow: %v", err)
+	}
+	if imported.ID != "workflow-from-elsewhere" {
+		t.Errorf("ImportWorkflow.ID = %q, want the preserved id %q", imported.ID, "workflow-from-elsewhere")
+	}
+	if len(comp.Workflows()) != 1 {
+		t.Errorf("Workflows() has %d entries, want 1", len(comp.Workflows()))
+	}
+}
+
+// TestImportWorkflow_NoID_MintsAFreshOne is decision 3's third case: a
+// payload with no id at all (a hand-authored file, or any export
+// written before ADR-0036) still creates with a freshly minted id --
+// today's ImportWorkflow behavior, unchanged.
+func TestImportWorkflow_NoID_MintsAFreshOne(t *testing.T) {
+	comp := newTestCompositionService(t)
+	exported := `{
+		"label": "no id at all",
+		"nodes": [{"id": "t", "nodeTypeID": "trigger-manual"}, {"id": "c", "nodeTypeID": "capture-clipboard-html"}],
+		"edges": [{"id": "e1", "source": "t", "target": "c"}]
+	}`
+
+	first, err := comp.ImportWorkflow(exported)
+	if err != nil {
+		t.Fatalf("first ImportWorkflow: %v", err)
+	}
+	second, err := comp.ImportWorkflow(exported)
+	if err != nil {
+		t.Fatalf("second ImportWorkflow: %v", err)
+	}
+	if first.ID == "" || second.ID == "" || first.ID == second.ID {
+		t.Errorf("two id-less imports got ids (%q, %q) -- want two distinct, freshly minted ids", first.ID, second.ID)
+	}
+	if len(comp.Workflows()) != 2 {
+		t.Errorf("Workflows() has %d entries, want 2", len(comp.Workflows()))
 	}
 }
 
@@ -147,7 +209,11 @@ func TestExportWorkflow_IsDeterministic_RepeatedExportsAreByteIdentical(t *testi
 	}
 }
 
-func TestExportWorkflow_OmitsIDAndBuiltInFromTheWireShape(t *testing.T) {
+// TestExportWorkflow_CarriesIDAndSchemaOmitsBuiltIn pins ADR-0036
+// decision 3 (export always emits the real id) and decision 2 (the
+// envelope's schema field) together, alongside the still-true absence
+// of builtIn from the wire shape.
+func TestExportWorkflow_CarriesIDAndSchemaOmitsBuiltIn(t *testing.T) {
 	comp := newTestCompositionService(t)
 	nodes, edges := triggerAndCaptureNodes()
 	created, err := comp.CreateWorkflow("My workflow", "", nodes, edges)
@@ -164,8 +230,11 @@ func TestExportWorkflow_OmitsIDAndBuiltInFromTheWireShape(t *testing.T) {
 	if err := json.Unmarshal([]byte(exported), &raw); err != nil {
 		t.Fatalf("exported output is not valid JSON: %v", err)
 	}
-	if _, ok := raw["id"]; ok {
-		t.Error("exported JSON carries an id field -- it should be omitted, ImportWorkflow always mints a new one")
+	if got, _ := raw["id"].(string); got != created.ID {
+		t.Errorf("exported id = %q, want %q", got, created.ID)
+	}
+	if got, _ := raw["schema"].(string); got != "mill://schema/workflow/v1" {
+		t.Errorf("exported schema = %q, want %q", got, "mill://schema/workflow/v1")
 	}
 	if _, ok := raw["builtIn"]; ok {
 		t.Error("exported JSON carries a builtIn field -- it should be omitted, an imported workflow is never a protected built-in")
