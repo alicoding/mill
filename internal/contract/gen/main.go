@@ -35,4 +35,14 @@ func main() {
 			os.Exit(1)
 		}
 	}
+
+	doc, err := contract.GenerateDocument()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "contract gen: document:", err)
+		os.Exit(1)
+	}
+	if err := os.WriteFile("contract.json", doc, 0o600); err != nil {
+		fmt.Fprintln(os.Stderr, "contract gen: write contract.json:", err)
+		os.Exit(1)
+	}
 }

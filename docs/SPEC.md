@@ -4368,10 +4368,23 @@ updates in place through the family's existing update path. A
 file-picker import that would update rather than create confirms
 first, naming the entity it will replace.
 
-Not yet built (goal 0052's remaining slices): the root contract
-document assembling every schema + the node catalog + the import
-contract into one file/MCP resource, node-discovery filtering, the
-machine-readable state manifest, and the evidence-receipt envelope.
+**Slice 2 additions, also `LOCKED`:** a machine-readable state
+manifest (app version, embedded commit + modified flag, desktop/server
+mode, the schema-id list with majors) served as `mill://manifest` and
+inside the root contract document's `manifest` field — never stamped
+into an entity export (ADR-0036 decision 4). The root contract
+document itself (`internal/contract/contract.json`, committed +
+drift-checked the same way as the per-family schemas) bundles every
+envelope schema, the full node-type catalog, and the import contract
+stated as data; served over `mill://contract` and Settings' Export
+contract action with the manifest injected live. Its node catalog is
+produced by the same `composition.NodeTypes()` call `list_node_types`
+itself uses — proven equal by a committed test, so the two can't
+silently diverge. `list_node_types` also gained an optional `kind`
+filter (trigger/capture/process/apply/decision).
+
+Not yet built (goal 0052's remaining slice): the evidence-receipt
+envelope.
 
 ## 10. Open questions log
 

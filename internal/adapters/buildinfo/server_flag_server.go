@@ -1,5 +1,5 @@
 //go:build server
 
-package settingssvc
+package buildinfo
 
 const isServerBuild = true

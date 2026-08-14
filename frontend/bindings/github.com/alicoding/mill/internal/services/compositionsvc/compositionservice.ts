@@ -36,10 +36,12 @@ export function CapabilityMap(): $CancellablePromise<composition$0.MapEntry[] | 
 }
 
 /**
- * ConfirmClipboardApply re-parses jsonData and applies it -- create or
- * update, independently re-deriving the Action rather than trusting a
- * caller-cached preview verdict, since the clipboard/workflow list could
- * have changed between preview and confirm.
+ * ConfirmClipboardApply re-parses jsonData and applies it. Kind-sniffs
+ * and validates the payload shape itself (clipboard-specific error
+ * messages), then delegates the actual create-vs-update decision to
+ * ImportWorkflow -- ADR-0036 decision 3's uniform id rule, so this and
+ * every other workflow import entry point (file picker, MCP) share
+ * exactly one implementation of it.
  */
 export function ConfirmClipboardApply(jsonData: string): $CancellablePromise<composition$0.Workflow> {
     return $Call.ByID(215205686, jsonData);
@@ -78,17 +80,16 @@ export function ExportWorkflow(id: string): $CancellablePromise<string> {
 
 /**
  * ImportWorkflow parses jsonData (ExportWorkflow's own output, or a
- * hand-authored file in the same shape) and composes it as a brand-new
- * workflow -- see exportedWorkflow's own doc comment for why a new ID
- * is always generated rather than the file's origin workflow being
- * resurrected/overwritten. Reuses CreateWorkflow for validation
- * (ResolveNodeDefaults, ValidateGraph, the label/non-empty-nodes
- * checks) rather than duplicating it -- an imported workflow is held to
- * exactly the same bar as one composed by hand on the canvas, no
- * import-specific leniency. Attributes apply as a second step through
- * UpdateAttributes, matching the existing compose-then-configure-
- * attributes flow every hand-composed workflow already goes through
- * (Configure's Attributes tab) -- not a special import-only path.
+ * hand-authored file in the same shape) and applies ADR-0036 decision
+ * 3's uniform import rule: no id -> create fresh (delegates to
+ * CreateWorkflow, held to exactly the same validation bar as a
+ * hand-composed workflow, no import-specific leniency); an id unknown
+ * here -> create preserving that id; an id matching a local workflow ->
+ * update through the same snapshot-then-replace chokepoint MCP's
+ * update_workflow tool uses. Attributes apply as a second step through
+ * UpdateAttributes on the create paths, matching the existing compose-
+ * then-configure-attributes flow every hand-composed workflow already
+ * goes through (Configure's Attributes tab).
  */
 export function ImportWorkflow(jsonData: string): $CancellablePromise<composition$0.Workflow> {
     return $Call.ByID(1581677120, jsonData);

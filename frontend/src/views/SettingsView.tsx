@@ -51,6 +51,8 @@ function SettingsView() {
   const [updateStatus, setUpdateStatus] = useState('')
   const [updateChecking, setUpdateChecking] = useState(false)
 
+  const [contractExportError, setContractExportError] = useState('')
+
   const [mcpWriteEnabled, setMCPWriteEnabledState] = useState<boolean | null>(null)
   const [mcpApprovalRequired, setMCPApprovalRequiredState] = useState<boolean | null>(null)
 
@@ -163,6 +165,24 @@ function SettingsView() {
       .then(() => SettingsService.GetAttentionIdleThreshold())
       .then(setIdleThresholdState)
       .catch(console.error)
+  }
+
+  // Same fetch-JSON-then-download-a-blob shape as CompositionView's own
+  // exportWorkflow -- one file, no server round trip beyond the RPC
+  // itself.
+  const exportContract = () => {
+    setContractExportError('')
+    SettingsService.ExportContract()
+      .then((json) => {
+        const blob = new Blob([json], { type: 'application/json' })
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = 'mill-contract.json'
+        a.click()
+        URL.revokeObjectURL(url)
+      })
+      .catch(() => setContractExportError(t('settings.contract.exportError')))
   }
 
   const checkForUpdates = () => {
@@ -286,6 +306,19 @@ function SettingsView() {
             {t('settings.mcp.askBeforeImportCaption')}
           </FormControl.Caption>
         </FormControl>
+      )}
+
+      <Heading as="h2" variant="small" className={styles.sectionHeading}>{t('settings.sections.contract')}</Heading>
+      <Text as="p" size="small" className={styles.muted}>
+        {t('settings.contract.description')}
+      </Text>
+      <Stack direction="horizontal" gap="condensed" align="center" style={{ marginTop: 'var(--base-size-8)' }}>
+        <Button size="small" onClick={exportContract} data-testid="export-contract">
+          {t('settings.contract.exportButton')}
+        </Button>
+      </Stack>
+      {contractExportError && (
+        <Text as="p" size="small" className={styles.error}>{contractExportError}</Text>
       )}
 
       <Heading as="h2" variant="small" className={styles.sectionHeading}>{t('settings.sections.notifications')}</Heading>

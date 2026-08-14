@@ -1,9 +1,9 @@
 package settingssvc
 
 import (
-	"os"
-	"runtime/debug"
+	"fmt"
 
+	"github.com/alicoding/mill/internal/adapters/buildinfo"
 	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
@@ -50,37 +50,34 @@ type BuildInfo struct {
 	BuiltAt int64
 }
 
-// readBuildInfo extracts the vcs.* build settings Go's own toolchain
-// embeds by default (-buildvcs=true, the default in a git checkout) --
-// confirmed directly, not assumed: Wails3's own startup log
+// readBuildInfo delegates to internal/adapters/buildinfo -- the same
+// underlying runtime/debug.ReadBuildInfo() read the state manifest
+// (internal/contract, ADR-0036 decision 4) uses, extracted there at
+// goal 0052 slice 2 so mcpsvc (which cannot import settingssvc, a
+// one-way edge) reads identical values instead of a second copy of this
+// logic. Confirmed directly, not assumed: Wails3's own startup log
 // ("Build Info: ... vcs.revision=... vcs.modified=...") already proved
-// this data is present in exactly this build setup, this just reads the
-// same stdlib source unconditionally instead of Wails3's !production-
-// gated copy of it.
+// this data is present in exactly this build setup.
 func readBuildInfo() BuildInfo {
-	info, ok := debug.ReadBuildInfo()
-	if !ok {
-		return BuildInfo{}
+	info := buildinfo.Read()
+	return BuildInfo{
+		Revision: info.Revision,
+		Modified: info.Modified,
+		Server:   info.Server,
+		BuiltAt:  info.BuiltAt,
 	}
-	var bi BuildInfo
-	for _, s := range info.Settings {
-		switch s.Key {
-		case "vcs.revision":
-			bi.Revision = s.Value
-			if len(bi.Revision) > 12 {
-				bi.Revision = bi.Revision[:12]
-			}
-		case "vcs.modified":
-			bi.Modified = s.Value == "true"
-		}
+}
+
+// ExportContract returns the root contract document (goal 0052 item 6):
+// every envelope schema, the node-type catalog, the import/update rule,
+// and this instance's live manifest, as one JSON document -- the
+// Settings page's Export contract action, and the same document
+// mill://contract serves over MCP (MillMCPService.ContractDocument).
+func (s *SettingsService) ExportContract() (string, error) {
+	if s.mcpService == nil {
+		return "", fmt.Errorf("MCP service not running")
 	}
-	bi.Server = isServerBuild
-	if exe, err := os.Executable(); err == nil {
-		if st, err := os.Stat(exe); err == nil {
-			bi.BuiltAt = st.ModTime().UnixMilli()
-		}
-	}
-	return bi
+	return s.mcpService.ContractDocument()
 }
 
 // QuitApp closes this application instance -- the stale-build badge's
