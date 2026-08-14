@@ -55,14 +55,24 @@ for the session. Anything else is a gap.
       regression test at the TestHook seam) or explicitly rejected
       with a reason recorded here.
 - [ ] Every mutating service package has emit coverage in its tests
-      for the methods that mutate displayed state. Not fully true yet:
-      `internal/services/mcpsvc` (millmcpservice_authoring.go,
-      millmcpservice_debug.go, millmcpservice_tools.go) calls
-      `dataevent.Emit` at several sites with no `dataevent.TestHook`-seam
-      test anywhere in that package — pre-existing from goal 0017, out
-      of this goal's Cluster A/B scope, named here rather than silently
-      left off the list. executionsvc/triggersvc/settingssvc — this
-      goal's own scope — now have that coverage (see below).
+      for the methods that mutate displayed state. `mcpsvc` (this
+      goal's own remaining box-3 item, addressed after the initial
+      pass) now has `dataevent.TestHook` coverage for every one of its
+      own `dataevent.Emit` call sites — see below. A full sweep of
+      every OTHER service package's `dataevent.Emit` call sites against
+      its own `*_dataevent_test.go` coverage (done while closing the
+      mcpsvc gap, not scoped to this goal originally) found two more
+      pre-existing, goal-0017-vintage gaps, both out of this goal's
+      scope, named here rather than silently left off the list:
+      `compositionsvc.ResetWorkflowToSeed` / `RestoreWorkflow`
+      (`compositionservice_seedlifecycle.go`) and
+      `configuresvc.CreateAIProvider` / `UpdateAIProvider` /
+      `DeleteAIProvider` (`configureaiprovider.go`) each emit with no
+      `TestHook`-seam test anywhere in their package.
+      executionsvc/triggersvc/settingssvc/mcpsvc — this goal's own
+      scope — are now fully covered; guardrailsvc was already fully
+      covered; compositionsvc and configuresvc are each fully covered
+      except for the one method/trio named above.
 - [ ] No surface in the app requires a reload to reflect a mutation
       Mill itself performed — spot-checked live on at least the
       surfaces the inventory flagged most suspicious.
@@ -87,6 +97,7 @@ out to be a non-gap on inspection.
 | `SettingsService.SetKeybinding` / `ClearKeybinding` | fixed — no `"keybinding"` entity existed at all | `internal/services/settingssvc/settingsservice_keymap.go` |
 | Run step-by-step progress (an open run's own in-flight step list) | non-gap: deliberate poll — DBOS has no per-step push event to subscribe to | n/a |
 | Run detail of the currently-selected in-flight run | non-gap: deliberate poll — same reason as above | n/a |
+| `MillMCPService`'s own `dataevent.Emit` call sites (`run_workflow`, the four debug tools, `import_list`'s second-mutation emit) | verified emitting correctly all along — the gap was test coverage only (box 3), not a missing emit; the other `import_*` tools delegate to an already-covered compositionsvc/configuresvc emit and needed no change | tests only: `internal/services/mcpsvc/millmcpservice_dataevent_test.go` |
 
 New `dataevent` entity strings: `"hotkey"` (ID = the workflow ID the
 combo binds to) and `"keybinding"` (ID = the command ID the combo
@@ -100,12 +111,18 @@ the existing `TestRunWorkflow_EmitsRunDataEventOnStartAndCompletion`
 pattern — mutex-guarded since the DBOS completion emit fires on a
 different goroutine),
 `internal/services/triggersvc/triggerhotkeyassignment_dataevent_test.go`,
-and
 `internal/services/settingssvc/settingsservice_keymap_dataevent_test.go`
 (both following `compositionservice_dataevent_test.go`'s
-`captureEmits` shape). No frontend vitest precedent exists yet for
-asserting an `Events.On('mill-data-changed', …)` refresh (no existing
-`*.test.tsx` covers it for any prior surface either, including the
-already-shipped `WorkflowRunsPanel.tsx` instance) — these Go tests plus
-the full Playwright e2e suite are this change's proof, matching
-testing.md's layering.
+`captureEmits` shape), and
+`internal/services/mcpsvc/millmcpservice_dataevent_test.go` (three
+tests against the real `StreamableClientTransport` harness
+`millmcpservice_authoring_test.go`/`millmcpservice_debug_test.go`
+already establish — `run_workflow`, all four debug tools across two
+stepped sessions, and `import_list`'s own second-mutation emit;
+mutex-guarded for the same cross-goroutine reason as executionsvc's).
+No frontend vitest precedent exists yet for asserting an
+`Events.On('mill-data-changed', …)` refresh (no existing `*.test.tsx`
+covers it for any prior surface either, including the already-shipped
+`WorkflowRunsPanel.tsx` instance) — these Go tests plus the full
+Playwright e2e suite are this change's proof, matching testing.md's
+layering.
