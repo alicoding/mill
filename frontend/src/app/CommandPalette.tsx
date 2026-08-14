@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { Dialog, Text } from '@primer/react'
 import { FilteredActionList } from '@primer/react/experimental'
 import { CommandPaletteIcon, PencilIcon, PlayIcon, TabIcon, XIcon } from '@primer/octicons-react'
+import { Events } from '@wailsio/runtime'
 import { ExecutionService, RunKind, TriggerService } from '../shared/bindings'
 import { COMMANDS } from '../shared/commands'
 import { generateSamplePayload } from '../shared/configSchema'
@@ -148,6 +149,17 @@ export function CommandPalette() {
       .catch(() => {})
     TriggerService.ListHotkeys().then((combos) => setHotkeyCombos(combos ?? {})).catch(() => {})
   }, [paletteOpen])
+
+  // Live sync while the palette stays open: a hotkey assigned/cleared
+  // elsewhere (Composition's NodeInspector, another open tab) refreshes
+  // the inline combo hints without waiting for the palette to be
+  // closed and reopened.
+  useEffect(() => {
+    return Events.On('mill-data-changed', (evt) => {
+      const entity = (evt.data as { entity?: string })?.entity
+      if (entity === 'hotkey') TriggerService.ListHotkeys().then((combos) => setHotkeyCombos(combos ?? {})).catch(() => {})
+    })
+  }, [])
 
   // Runs a workflow through the exact same RPC + RunKind CompositionView's
   // own list-row Run button uses (ExecutionService.RunWorkflow,

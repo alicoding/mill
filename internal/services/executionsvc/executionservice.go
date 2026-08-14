@@ -441,6 +441,12 @@ func (e *ExecutionService) RedriveRun(runID, fromNodeID string) (RunSummary, err
 	if err != nil {
 		return RunSummary{}, fmt.Errorf("redrive: %w", err)
 	}
+	// The fork enters DBOS via ForkWorkflow, not runWorkflowStart, so the
+	// latter's own start emit never fires for forkedID -- announce it
+	// here so an open Runs panel shows the redriven run immediately
+	// rather than only once it completes (runWorkflow's own completion
+	// emit still covers that half).
+	dataevent.Emit("run", forkedID)
 	if _, err := handle.GetResult(); err != nil {
 		_ = err // see RunWorkflowDurable's identical comment
 	}

@@ -253,6 +253,7 @@ function App() {
       if (entity === 'decision') void refreshDecisions()
       if (entity === 'execenv') void refreshExecEnvs()
       if (entity === 'aiprovider') void refreshAIProviders()
+      if (entity === 'keybinding') void refreshKeybindings()
     })
   }, [])
 

@@ -191,8 +191,11 @@ export function QuickPanel() {
   // this window happens to be open updates the jump rows without
   // waiting for the next show. Scoped to just the entity kinds this
   // panel actually renders (workflow/run for frecency+the row list,
-  // request/list/mcpserver for the Configure jump rows); 'run' also
-  // refreshes frecency since a new run changes MostUsed's ranking.
+  // request/list/mcpserver for the Configure jump rows, hotkey/
+  // keybinding for the inline combo hints); 'run' also refreshes
+  // frecency since a new run changes MostUsed's ranking. hotkey/
+  // keybinding are ALSO refetched on every show (focusAndReset above)
+  // -- this closes the gap while the panel stays open between shows.
   useEffect(() => {
     return Events.On('mill-data-changed', (evt) => {
       const entity = (evt.data as { entity?: string })?.entity
@@ -201,6 +204,8 @@ export function QuickPanel() {
       if (entity === 'request') void refreshRequests()
       if (entity === 'list') void refreshLists()
       if (entity === 'mcpserver') void refreshMCPServers()
+      if (entity === 'hotkey') refreshHotkeyCombos()
+      if (entity === 'keybinding') void refreshKeybindings()
     })
   }, [])
 
