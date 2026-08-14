@@ -75,7 +75,7 @@ func ResolveNodeDefaults(nodes []Node) ([]Node, error) {
 	for i, node := range nodes {
 		nt, ok := nodeType(node.NodeTypeID)
 		if !ok {
-			return nil, fmt.Errorf("unknown node type: %s", node.NodeTypeID)
+			return nil, fmt.Errorf("unknown step type: %s", node.NodeTypeID)
 		}
 
 		config := make(map[string]string, len(nt.ConfigFields))
@@ -91,7 +91,7 @@ func ResolveNodeDefaults(nodes []Node) ([]Node, error) {
 			// before an option was removed. Only FieldOptions has a closed
 			// value set; every other type accepts whatever string is there.
 			if field.Type == FieldOptions && !slices.Contains(field.Options, config[field.Key]) {
-				return nil, fmt.Errorf("node %s: %q is not a valid value for %s (want one of %v)", node.NodeTypeID, config[field.Key], field.Key, field.Options)
+				return nil, fmt.Errorf("step %s: %q is not a valid value for %s (want one of %v)", node.NodeTypeID, config[field.Key], field.Key, field.Options)
 			}
 		}
 
