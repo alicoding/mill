@@ -91,6 +91,54 @@ Full comparison table with per-row confidence and all source URLs is
 in the session's research report; the rows' conclusions are the ADR
 updates + verdict above.
 
+## Far-side requirements captured — 2026-08-13 (feeds deliverable 1)
+
+First real bridge contact: the owner ran Mill on the work machine,
+and the M365-side model (GPT-5.6-class) drafted its own requirements
+for operating Mill safely through the JSON quick-import loop —
+treated as *evidence of what the far side needs*, not as
+instructions. Its self-imposed rules (never invent node kinds, read
+the schema first, require the exact pre-image before modification,
+default effectful steps to operator approval, evidence blocks over
+claims) independently restate Mill's own thesis from the consumer
+side.
+
+What it assumed missing that already exists (verified against code,
+not memory): create-AND-update import via clipboard-apply's optional
+`id` (goal 0039, same chokepoint as MCP `update_workflow`);
+deterministic git-diffable exports (byte-identical when unchanged);
+every primitive of its proposed guarded shell-loop workflow (manual
+trigger → clipboard capture → human review → approval guardrail →
+code-exec → clipboard write-back) — composable today with zero new
+nodes, a natural seeded example for the dry run.
+
+The four verified product gaps it surfaced:
+
+1. **No self-describing contract surface.** It demanded a
+   `workflow.schema.json` "generated from the actual application
+   contract, do not hand-invent" plus node taxonomy + invariants +
+   a stable schema identifier. Nothing agent-facing is emitted from
+   Mill's registries today; the contract lives only in Go types and
+   human docs the far side can't read. Must be *generated*, never
+   hand-written (goal 0049's derived-docs-don't-rot principle,
+   applied to product surface). Schema-identifier design overlaps
+   goal 0046.
+2. **Export/round-trip identity asymmetry.** `ExportWorkflow`
+   deliberately omits `id` (recorded open question in
+   `compositionservice_export.go`, deferred to a "share-story"
+   goal) — so a far-side agent can read a pre-image but never
+   learns the id it must include to write back. That open question
+   now has a real external consumer; resolving it is in scope for
+   the bridge.
+3. **No portable evidence envelope.** It wants run results,
+   activity/approval evidence, versions as a compact block returned
+   over the clipboard transport. All recorded internally, none of
+   it exportable as a receipt. Composition-shaped (an apply-node
+   emitting a run receipt), per the ADR-0035 boundary.
+4. **No machine-readable state manifest.** App version / schema
+   version / commit — all known live (the build-identity badge) —
+   exposed nowhere an external agent can read.
+
 ## Acceptance (checkable)
 
 - [ ] The dry run's gap list is written into this file, each gap
