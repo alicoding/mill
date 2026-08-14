@@ -192,9 +192,13 @@ test('editing an existing saved workflow: unsaved edits survive a reload, with a
   await clickCanvasNode(page, activePanel(page), 'Process: Inject text')
   await expect(activePanel(page).locator('textarea[data-testid="canvas-config-field"]')).toHaveValue('e2e edit-target marker')
 
-  // Deliberate close discards the scratch; the underlying saved
-  // workflow (created by this test) still needs deleting.
+  // Deliberate close on a dirty tab now prompts (docs/goals/0048-
+  // unsaved-close-guard.md) -- "Don't save" is the discard path this
+  // test is proving, same end state as before that goal. The
+  // underlying saved workflow (created by this test) still needs
+  // deleting.
   await page.getByRole('button', { name: 'Close tab' }).last().click()
+  await page.getByRole('alertdialog').getByRole('button', { name: 'Don\'t save' }).click()
   await clickRowAction(page, workflowRow(page, 'E2E hot-exit edit target'), 'Delete')
 })
 
@@ -232,7 +236,10 @@ test('deliberately closing a tab discards its scratch', async ({ page }) => {
     .poll(() => page.evaluate(() => Object.keys(localStorage).filter((k) => k.startsWith('mill-canvas-scratch:')).length))
     .toBe(1)
 
+  // Dirty-tab close now prompts (docs/goals/0048-unsaved-close-guard.md)
+  // -- "Don't save" is the discard path this test proves.
   await page.getByRole('button', { name: 'Close tab' }).last().click()
+  await page.getByRole('alertdialog').getByRole('button', { name: 'Don\'t save' }).click()
 
   await expect(
     page.evaluate(() => Object.keys(localStorage).filter((k) => k.startsWith('mill-canvas-scratch:')).length),
@@ -273,5 +280,8 @@ test('a new-workflow tab (never saved) also survives a reload, edits intact', as
   await expect(activePanel(page).locator('textarea[data-testid="canvas-config-field"]')).toHaveValue('e2e new-workflow marker')
 
   // Never saved -- no server-side entity to clean up, just the tab.
+  // Still dirty (restored from scratch), so closing prompts
+  // (docs/goals/0048-unsaved-close-guard.md) -- "Don't save" discards it.
   await page.getByRole('button', { name: 'Close tab' }).last().click()
+  await page.getByRole('alertdialog').getByRole('button', { name: 'Don\'t save' }).click()
 })

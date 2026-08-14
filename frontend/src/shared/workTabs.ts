@@ -31,6 +31,16 @@ export type WorkTabSpec =
 
 export type WorkTab = WorkTabSpec & { key: string }
 
+// docs/goals/0048: the one close-guard signal every close path (mouse
+// and keyboard) sets instead of calling a store closer directly --
+// same store-field-as-cross-tree-signal seam as store.ts's own
+// canvasCommandRequest, since shared/ can't import the dialog-owning
+// app/ layer that actually consumes it.
+export type WorkTabCloseRequest =
+  | { kind: 'one'; key: string }
+  | { kind: 'all' }
+  | { kind: 'others'; keepKey: string }
+
 // Which persisted tabs restore across a reload: saved-entity tabs, plus
 // 'workflow-new' -- never a 'request-edit'/'request-new' tab, whose
 // unsaved in-progress form state is already gone (Configure forms stay
@@ -182,4 +192,24 @@ export function pruneStaleWorkTabs(
   const kept = workTabs.filter(keep)
   if (kept.length === workTabs.length) return null
   return { workTabs: kept, activeWorkTabKey: activeKeyIfPresent(kept, activeWorkTabKey) }
+}
+
+// The pure decision behind the unsaved-close guard (docs/goals/0048):
+// which of the tabs a close request would remove are actually dirty --
+// an empty result means the request closes silently, a non-empty one
+// means the guard must prompt before it proceeds. workTabDirty only
+// ever carries entries for canvas tabs (composition/useCanvasHotExit.ts
+// is the sole writer), so no separate tab-kind check is needed here.
+export function dirtyKeysForCloseRequest(
+  workTabs: WorkTab[],
+  workTabDirty: Record<string, boolean>,
+  request: WorkTabCloseRequest,
+): string[] {
+  const candidates =
+    request.kind === 'one'
+      ? workTabs.filter((t) => t.key === request.key)
+      : request.kind === 'others'
+        ? workTabs.filter((t) => t.key !== request.keepKey)
+        : workTabs
+  return candidates.filter((t) => workTabDirty[t.key]).map((t) => t.key)
 }

@@ -10,12 +10,12 @@ import { TabItem, TabList, TabPanel } from '../shared/Tabs'
 import { ENTITY_ICON } from '../shared/entityIcons'
 import { refreshRequests, refreshWorkflows, useAppStore, type WorkTab } from '../shared/store'
 import { WorkflowEditorTab } from '../composition/WorkflowEditorTab'
-import { clearScratch } from '../composition/canvasScratch'
 import { RequestForm } from '../configure/RequestForm'
 import { RequestSummary } from '../configure/RequestSummary'
 import editorStyles from '../composition/CompositionView.module.css'
 import { tabLabel } from './workTabLabel'
 import { HotkeyHint } from './HotkeyHint'
+import { useWorkTabCloseGuard } from './useWorkTabCloseGuard'
 import styles from './WorkTabShell.module.css'
 
 // The ONE app-wide work-tab strip (docs/SPEC.md §3.8, direct user
@@ -65,8 +65,6 @@ export function WorkTabShell({ pageLabel, pageIcon, titlebarSlot, children }: { 
   const activeWorkTabKey = useAppStore((s) => s.activeWorkTabKey)
   const activateWorkTab = useAppStore((s) => s.activateWorkTab)
   const closeWorkTab = useAppStore((s) => s.closeWorkTab)
-  const closeAllWorkTabs = useAppStore((s) => s.closeAllWorkTabs)
-  const closeOtherWorkTabs = useAppStore((s) => s.closeOtherWorkTabs)
   const openWorkTab = useAppStore((s) => s.openWorkTab)
   const setWorkTabMode = useAppStore((s) => s.setWorkTabMode)
   const pruneWorkTabs = useAppStore((s) => s.pruneWorkTabs)
@@ -80,28 +78,13 @@ export function WorkTabShell({ pageLabel, pageIcon, titlebarSlot, children }: { 
   const workTabRestored = useAppStore((s) => s.workTabRestored)
   const dismissWorkTabRestored = useAppStore((s) => s.dismissWorkTabRestored)
 
-  // Deliberate tab close/back (the ✕, or the canvas's own Back arrow)
-  // is the other event that discards a canvas tab's hot-exit scratch --
-  // wraps closeWorkTab so every path off a work tab funnels through one
-  // place. A no-op for tab kinds that never write scratch (Configure
-  // forms are out of this goal's scope) since clearing a key that was
-  // never written is harmless.
-  const closeAndClearScratch = (key: string) => {
-    clearScratch(key)
-    closeWorkTab(key)
-  }
-
-  // Bulk closers for the overflow ⌄ menu (goal 0018). Scratch clearing
-  // stays here (the store is scratch-agnostic): clear every key that's
-  // about to be removed, then let the store drop them from state.
-  const closeAllTabs = () => {
-    workTabs.forEach((t) => clearScratch(t.key))
-    closeAllWorkTabs()
-  }
-  const closeOtherTabs = (keepKey: string) => {
-    workTabs.forEach((t) => { if (t.key !== keepKey) clearScratch(t.key) })
-    closeOtherWorkTabs(keepKey)
-  }
+  // The unsaved-close guard (docs/goals/0048-unsaved-close-guard.md):
+  // every close path below -- ✕, the canvas Back arrow, the overflow
+  // menu's Close all/Close others -- sets the same signal the keyboard
+  // dispatch (shared/commands.ts) sets, so a dirty tab is prompted and
+  // scratch is cleared in exactly one place regardless of which path
+  // fired it.
+  const { requestClose, dialog: closeGuardDialog } = useWorkTabCloseGuard()
 
   // Drop restored tabs whose entity was deleted while the app was
   // closed -- once, when both lists are actually in (never against a
@@ -134,7 +117,7 @@ export function WorkTabShell({ pageLabel, pageIcon, titlebarSlot, children }: { 
             workflow={workflow}
             tabKey={tab.key}
             mode={mode}
-            onBack={() => closeAndClearScratch(tab.key)}
+            onBack={() => requestClose({ kind: 'one', key: tab.key })}
             onSaved={() => { void refreshWorkflows(); closeWorkTab(tab.key) }}
             onWorkflowsChanged={() => void refreshWorkflows()}
             onSwitchToEdit={() => setWorkTabMode(tab.key, 'edit')}
@@ -188,7 +171,7 @@ export function WorkTabShell({ pageLabel, pageIcon, titlebarSlot, children }: { 
       <TabList aria-label={t('workTabShell.openWorkAriaLabel')}>
         <TabItem value={PAGE_TAB} leadingVisual={pageIcon}>{pageLabel}</TabItem>
         {workTabs.map((tab) => (
-          <TabItem key={tab.key} value={tab.key} leadingVisual={tabEntityVisual(tab)} onClose={() => closeAndClearScratch(tab.key)}>
+          <TabItem key={tab.key} value={tab.key} leadingVisual={tabEntityVisual(tab)} onClose={() => requestClose({ kind: 'one', key: tab.key })}>
             {tabLabel(tab, workflowLabel, requestLabel, t)}
             {/* Hot-exit dirty dot (docs/goals/0012) -- this tab's
                 canvas currently differs from what's saved. */}
@@ -234,7 +217,7 @@ export function WorkTabShell({ pageLabel, pageIcon, titlebarSlot, children }: { 
                 <ActionList.Divider />
                 <ActionList.Item
                   disabled={activeWorkTabKey === null}
-                  onSelect={() => { if (activeWorkTabKey) closeOtherTabs(activeWorkTabKey) }}
+                  onSelect={() => { if (activeWorkTabKey) requestClose({ kind: 'others', keepKey: activeWorkTabKey }) }}
                 >
                   {t('workTabShell.closeOtherTabs')}
                   {/* Inline hotkey hint (docs/goals/0015) -- reads the
@@ -244,7 +227,7 @@ export function WorkTabShell({ pageLabel, pageIcon, titlebarSlot, children }: { 
                     <HotkeyHint commandId="tab.closeOthers" />
                   </ActionList.TrailingVisual>
                 </ActionList.Item>
-                <ActionList.Item variant="danger" onSelect={closeAllTabs}>
+                <ActionList.Item variant="danger" onSelect={() => requestClose({ kind: 'all' })}>
                   {t('workTabShell.closeAllTabs')}
                   <ActionList.TrailingVisual>
                     <HotkeyHint commandId="tab.closeAll" />
@@ -282,6 +265,7 @@ export function WorkTabShell({ pageLabel, pageIcon, titlebarSlot, children }: { 
           {renderTab(tab)}
         </TabPanel>
       ))}
+      {closeGuardDialog}
     </Tabs>
   )
 }

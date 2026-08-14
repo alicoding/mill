@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   activeKeyIfPresent,
+  dirtyKeysForCloseRequest,
   pruneStaleWorkTabs,
   restoreWorkTabSnapshot,
   shouldUpgradeToEdit,
@@ -120,5 +121,36 @@ describe('pruneStaleWorkTabs', () => {
     const existingIds = new Set(['wf1'])
     const result = pruneStaleWorkTabs(tabs, 'k2', (t) => t.kind !== 'workflow-edit' || existingIds.has(t.workflowId))
     expect(result).toEqual({ workTabs: [tabAt('k1', 'wf1')], activeWorkTabKey: null })
+  })
+})
+
+// docs/goals/0048-unsaved-close-guard.md: the pure decision behind
+// whether a close request needs to prompt at all -- an empty result
+// means the request closes silently.
+describe('dirtyKeysForCloseRequest', () => {
+  const tabs = [tabAt('k1', 'wf1'), tabAt('k2', 'wf2'), tabAt('k3', 'wf3')]
+
+  it('kind "one": returns the key when that single tab is dirty', () => {
+    expect(dirtyKeysForCloseRequest(tabs, { k1: true }, { kind: 'one', key: 'k1' })).toEqual(['k1'])
+  })
+
+  it('kind "one": returns nothing when that single tab is clean', () => {
+    expect(dirtyKeysForCloseRequest(tabs, { k2: true }, { kind: 'one', key: 'k1' })).toEqual([])
+  })
+
+  it('kind "all": returns every dirty key regardless of position', () => {
+    expect(dirtyKeysForCloseRequest(tabs, { k1: true, k3: true }, { kind: 'all' })).toEqual(['k1', 'k3'])
+  })
+
+  it('kind "all": returns nothing when every tab is clean', () => {
+    expect(dirtyKeysForCloseRequest(tabs, {}, { kind: 'all' })).toEqual([])
+  })
+
+  it('kind "others": excludes the kept tab even when it is itself dirty', () => {
+    expect(dirtyKeysForCloseRequest(tabs, { k1: true, k2: true }, { kind: 'others', keepKey: 'k1' })).toEqual(['k2'])
+  })
+
+  it('kind "others": returns nothing when only the kept tab is dirty', () => {
+    expect(dirtyKeysForCloseRequest(tabs, { k1: true }, { kind: 'others', keepKey: 'k1' })).toEqual([])
   })
 })

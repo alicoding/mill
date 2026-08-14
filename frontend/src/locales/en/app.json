@@ -131,5 +131,19 @@
     "closeAllTabs": "Close all tabs",
     "restoredTitle": "Unsaved changes restored",
     "restoredDescription": "This workflow had unsaved edits from before Mill last closed or reloaded — they're back, not yet saved."
+  },
+  "closeTabDialog": {
+    "title": "Save changes to \"{{label}}\"?",
+    "body": "Your unsaved changes will be lost if you don't save them.",
+    "save": "Save",
+    "dontSave": "Don't save",
+    "cancel": "Cancel"
+  },
+  "closeTabsDialog": {
+    "titleAll": "Close all tabs?",
+    "titleOthers": "Close other tabs?",
+    "body": "{{count}} tab{{plural}} {{has}} unsaved changes.",
+    "confirm": "Close tabs",
+    "cancel": "Cancel"
   }
 }
