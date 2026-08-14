@@ -68,9 +68,15 @@ for the session. Anything else is a gap.
       `TestDataEvent_AIProviderMutations`). No mutating service package
       has a `dataevent.Emit` call site left without a `TestHook`-seam
       test.
-- [ ] No surface in the app requires a reload to reflect a mutation
-      Mill itself performed — spot-checked live on at least the
-      surfaces the inventory flagged most suspicious.
+- [x] No surface in the app requires a reload to reflect a mutation
+      Mill itself performed — spot-checked live 2026-08-14 on both
+      flagged-most-suspicious surface families: the runs panel
+      (reproduced stale pre-fix, verified updating live post-fix on
+      an isolated server instance — the exact Canvas → Run → Runs
+      sequence the owner hit), and the keybinding surfaces (rebound
+      "Apply from clipboard" to a combo in Settings on the merged
+      build; the Command Palette showed the new combo with no
+      reload).
 
 ## Audit verdict
 

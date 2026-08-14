@@ -59,13 +59,15 @@ accepted)**
    the rejected word); internal identifiers untouched.
    IMPLEMENTED 2026-08-14 (PR #110 merged); box 3 (0052 wire names)
    stays open pending 0052
-6. [ ] [0057 — Live-sync audit: no reload, ever](0057-live-sync-audit.md)
-   — owner-directed 2026-08-14 after the runs-panel staleness hit
-   live ("why do we have to reload our app ever in any part");
-   generalizes that bug class: inventory every emit/subscription/
-   fetch-once surface, fix real gaps with TestHook-seam regression
-   tests, emit-coverage tests per mutating service. Queue-jumped
-   ahead of 0052 by the owner's ask
+6. [x] [0057 — Live-sync audit: no reload, ever](archive/0057-live-sync-audit.md)
+   — DELIVERED 2026-08-14, same day raised (owner-directed after the
+   runs-panel staleness hit live). Runs-panel fix (PR #111) + full
+   audit (PR #113): three run-lifecycle emits (ResolveApproval/
+   CancelRun/RedriveRun), new hotkey/keybinding entity vocabulary
+   wired through five previously fetch-once surfaces, TestHook-seam
+   emit coverage for EVERY mutating service package, both suspicious
+   surface families live-verified. Two deliberate polls (step
+   progress, in-flight detail) recorded as design, not gaps
 7. [ ] [0052 — Contract maturity: generated schema + versioned envelope](0052-contract-surface.md)
    — owner-directed 2026-08-13 ("follow the mature pattern") after
    the far-side contact: schema-first discipline adopted as generated
