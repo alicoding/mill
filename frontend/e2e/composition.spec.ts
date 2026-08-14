@@ -418,8 +418,11 @@ test('Opening New workflow twice opens two tabs; closing one returns to the list
 
   await expect(page.getByRole('tab')).toHaveCount(3) // Workflows + two New workflow tabs
 
-  // Closing the active tab (Tab B) falls back to the Workflows list.
+  // Closing the active, dirty tab (Tab B) prompts (docs/goals/0048-
+  // unsaved-close-guard.md); "Don't save" discards it and falls back
+  // to the Workflows list.
   await page.getByRole('button', { name: 'Close tab' }).last().click()
+  await page.getByRole('alertdialog').getByRole('button', { name: 'Don\'t save' }).click()
   await expect(page.getByRole('tab')).toHaveCount(2)
   await expect(page.getByTestId('composition-view')).toBeVisible()
 
