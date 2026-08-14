@@ -136,11 +136,21 @@ user-owned files, no notes app gets built:
 Gaps to verify during the dry run (verify, don't assume): a
 file-append apply step exists (capture-file reads; the append/write
 direction needs checking); md→styled-HTML render+open as an apply
-path. Diagram adjunct: diagram-as-code (Mermaid) as text source of
+path. **Boundary guard (owner-raised: "I don't know if it is Mill
+product boundary")** — each gap step is built ONLY if it passes the
+multi-use capability test on its own merits (ADR-0035's "different
+target/condition/event" question, judged against uses beyond this
+scenario): file-append likely passes (logs, CSVs, any accumulation
+workflow); render+open is the shakier one — if its only driver is
+reading these notes, it is a single-use feature and does not get
+built. Diagram adjunct: diagram-as-code (Mermaid) as text source of
 truth riding the same scratch pipeline; work checklist item 8 below
-covers the draw.io interop unknown. Mill deliberately does NOT
-become a notes app or a diagram platform (SPEC §0's point-solution
-boundary) — everything above is composition.
+covers the draw.io interop unknown — that toolchain is the owner's
+personal stack, NOT Mill scope; Mill's maximum involvement is a
+user-composed glue workflow shelling out to the converter. Mill
+deliberately does NOT become a notes app or a diagram platform
+(SPEC §0's point-solution boundary) — everything above is
+composition.
 
 ## Far-side requirements captured — 2026-08-13 (feeds deliverable 1)
 
