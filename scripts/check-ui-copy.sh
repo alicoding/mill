@@ -22,11 +22,12 @@ while IFS= read -r -d '' file; do
   fi
 done < <(git ls-files -z -- 'frontend/src/locales/*.json')
 
-# Seeded workflow descriptions (builtinworkflows*.go) render straight
-# into the palette/canvas the same as locale strings do, so they carry
-# the same no-internal-docs bar. Scoped to lines that actually declare
-# a Description (rather than the whole file) so this doesn't flag the
-# package's own doc-citing comments, which are legitimate.
+# Seeded entity descriptions render straight into the app the same as
+# locale strings do (workflow seeds into the palette/canvas, list and
+# HTTP-request seeds into Configure), so they carry the same
+# no-internal-docs bar. Scoped to lines that actually declare a
+# Description (rather than the whole file) so this doesn't flag the
+# packages' own doc-citing comments, which are legitimate.
 while IFS= read -r -d '' file; do
   hits="$(grep -nE 'Description:' "$file" | grep -E "$pattern" || true)"
   if [[ -n "$hits" ]]; then
@@ -35,7 +36,7 @@ while IFS= read -r -d '' file; do
       violations=$((violations + 1))
     done <<< "$hits"
   fi
-done < <(git ls-files -z -- 'internal/domain/composition/builtinworkflows*.go')
+done < <(git ls-files -z -- 'internal/domain/composition/builtinworkflows*.go' 'internal/domain/list/builtin.go' 'internal/domain/httprequest/builtin.go')
 
 if [[ "$violations" -gt 0 ]]; then
   echo
