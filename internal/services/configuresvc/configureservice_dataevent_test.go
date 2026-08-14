@@ -3,6 +3,7 @@ package configuresvc
 import (
 	"testing"
 
+	"github.com/alicoding/mill/internal/domain/aiprovider"
 	"github.com/alicoding/mill/internal/domain/composition"
 	"github.com/alicoding/mill/internal/domain/decision"
 	"github.com/alicoding/mill/internal/domain/execenv"
@@ -189,6 +190,33 @@ func TestDataEvent_ExecEnvMutations(t *testing.T) {
 		t.Fatalf("DeleteExecEnv: %v", err)
 	}
 	assertEmitted(t, *got, "execenv", e.ID)
+}
+
+// TestDataEvent_AIProviderMutations proves goal 0017's P0-2 for AI
+// Providers -- "aiprovider" is a NEW entity string on the wire
+// (goal 0031's AI node family).
+func TestDataEvent_AIProviderMutations(t *testing.T) {
+	cfg, _ := newTestConfigureService(t)
+
+	got := captureEmits(t)
+	p, err := cfg.CreateAIProvider("Emit test provider", aiprovider.KindAnthropic, "", "claude")
+	if err != nil {
+		t.Fatalf("CreateAIProvider: %v", err)
+	}
+	assertEmitted(t, *got, "aiprovider", p.ID)
+
+	got = captureEmits(t)
+	p, err = cfg.UpdateAIProvider(p.ID, "Emit test provider (edited)", aiprovider.KindAnthropic, "", "claude")
+	if err != nil {
+		t.Fatalf("UpdateAIProvider: %v", err)
+	}
+	assertEmitted(t, *got, "aiprovider", p.ID)
+
+	got = captureEmits(t)
+	if err := cfg.DeleteAIProvider(p.ID); err != nil {
+		t.Fatalf("DeleteAIProvider: %v", err)
+	}
+	assertEmitted(t, *got, "aiprovider", p.ID)
 }
 
 // TestDataEvent_UpdateWorkflowAttributes_DelegatesToComposition proves

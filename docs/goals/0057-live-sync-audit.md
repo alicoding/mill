@@ -54,25 +54,20 @@ for the session. Anything else is a gap.
 - [x] Every classified gap is either fixed (emit + subscription +
       regression test at the TestHook seam) or explicitly rejected
       with a reason recorded here.
-- [ ] Every mutating service package has emit coverage in its tests
-      for the methods that mutate displayed state. `mcpsvc` (this
-      goal's own remaining box-3 item, addressed after the initial
-      pass) now has `dataevent.TestHook` coverage for every one of its
-      own `dataevent.Emit` call sites — see below. A full sweep of
-      every OTHER service package's `dataevent.Emit` call sites against
-      its own `*_dataevent_test.go` coverage (done while closing the
-      mcpsvc gap, not scoped to this goal originally) found two more
-      pre-existing, goal-0017-vintage gaps, both out of this goal's
-      scope, named here rather than silently left off the list:
-      `compositionsvc.ResetWorkflowToSeed` / `RestoreWorkflow`
-      (`compositionservice_seedlifecycle.go`) and
-      `configuresvc.CreateAIProvider` / `UpdateAIProvider` /
-      `DeleteAIProvider` (`configureaiprovider.go`) each emit with no
-      `TestHook`-seam test anywhere in their package.
-      executionsvc/triggersvc/settingssvc/mcpsvc — this goal's own
-      scope — are now fully covered; guardrailsvc was already fully
-      covered; compositionsvc and configuresvc are each fully covered
-      except for the one method/trio named above.
+- [x] Every mutating service package has emit coverage in its tests
+      for the methods that mutate displayed state. Confirmed complete
+      across every service package with a `dataevent.Emit` call site:
+      executionsvc, triggersvc, settingssvc, mcpsvc (this goal's own
+      scope), guardrailsvc (already covered pre-goal), and — closing
+      the two gaps a full sweep found while verifying this box —
+      compositionsvc's `ResetWorkflowToSeed`/`RestoreWorkflow`
+      (`compositionservice_seedlifecycle.go`, now covered by
+      `TestDataEvent_SeedLifecycleMutations`) and configuresvc's
+      `CreateAIProvider`/`UpdateAIProvider`/`DeleteAIProvider`
+      (`configureaiprovider.go`, now covered by
+      `TestDataEvent_AIProviderMutations`). No mutating service package
+      has a `dataevent.Emit` call site left without a `TestHook`-seam
+      test.
 - [ ] No surface in the app requires a reload to reflect a mutation
       Mill itself performed — spot-checked live on at least the
       surfaces the inventory flagged most suspicious.
@@ -120,6 +115,15 @@ tests against the real `StreamableClientTransport` harness
 already establish — `run_workflow`, all four debug tools across two
 stepped sessions, and `import_list`'s own second-mutation emit;
 mutex-guarded for the same cross-goroutine reason as executionsvc's).
+The two gaps found while confirming box 3 (outside this goal's
+original Cluster A/B scope, but closed in the same pass) are covered
+by `TestDataEvent_SeedLifecycleMutations` (added to
+`internal/services/compositionsvc/compositionservice_dataevent_test.go`,
+reusing `compositionservice_seedlifecycle_test.go`'s own
+`firstGoldenID` fixture) and
+`TestDataEvent_AIProviderMutations` (added to
+`internal/services/configuresvc/configureservice_dataevent_test.go`,
+same `captureEmits` shape as its sibling entity tests in that file).
 No frontend vitest precedent exists yet for asserting an
 `Events.On('mill-data-changed', …)` refresh (no existing `*.test.tsx`
 covers it for any prior surface either, including the already-shipped
