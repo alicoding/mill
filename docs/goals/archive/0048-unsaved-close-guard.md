@@ -59,22 +59,26 @@ future goal if wanted.
 
 ## Acceptance (checkable)
 
-- [ ] Closing a dirty canvas tab by ANY path (✕, Back arrow, ⌘W,
+All items test-proven in PR #95 (unit + Playwright e2e per the goal's
+own proof plan); owner live sign-off on the real desktop build
+2026-08-14 ("close guard worked") — the archival bar this goal named.
+
+- [x] Closing a dirty canvas tab by ANY path (✕, Back arrow, ⌘W,
       overflow Close all, overflow Close others, ⌘⇧W, ⌘⌥W) never
       discards silently: single-tab shows Save / Don't save / Cancel;
       bulk shows the summary confirm.
-- [ ] Cancel leaves tabs, drafts, and dirty state untouched.
-- [ ] Don't save / Close tabs closes and clears scratch — reopening
+- [x] Cancel leaves tabs, drafts, and dirty state untouched.
+- [x] Don't save / Close tabs closes and clears scratch — reopening
       the workflow shows the saved state, with no orphaned
       `mill-canvas-scratch:*` keys left behind (keyboard and mouse
       paths identical).
-- [ ] Save from the dialog persists the draft (existing save flow) and
+- [x] Save from the dialog persists the draft (existing save flow) and
       the tab closes itself on success.
-- [ ] A clean tab (no dirty dot) closes with no dialog on every path.
-- [ ] Reload/quit behavior unchanged: hot-exit scratch still survives
+- [x] A clean tab (no dirty dot) closes with no dialog on every path.
+- [x] Reload/quit behavior unchanged: hot-exit scratch still survives
       and restores (goal 0012 regression guard).
-- [ ] Proof at the right layers (testing.md): a unit test for the pure
+- [x] Proof at the right layers (testing.md): a unit test for the pure
       which-tabs-are-dirty/guard-decision helper; a Playwright e2e for
       the prompt flow (dirty → ⌘⇧W → dialog → each button's outcome).
-- [ ] Dialog copy passes ux-writing.md (front-loaded, no internals) and
+- [x] Dialog copy passes ux-writing.md (front-loaded, no internals) and
       lives in the locale files.

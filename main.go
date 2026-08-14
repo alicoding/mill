@@ -34,7 +34,7 @@ import (
 // mismatches, so this can't silently drift behind a tag again (it
 // shipped as 0.1.0 while v0.2.0 was live, making the updater offer a
 // build its own version).
-const millVersion = "0.2.0"
+const millVersion = "0.3.0"
 
 // Wails uses Go's `embed` package to embed the frontend files into the binary.
 // Any files in the frontend/dist folder will be embedded into the binary and
