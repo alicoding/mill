@@ -281,10 +281,73 @@ The four verified product gaps it surfaced:
    version / commit — all known live (the build-identity badge) —
    exposed nowhere an external agent can read.
 
+## Scenario-1 dry run — executed 2026-08-14, named-gaps list
+
+Run for real, not desk-checked: a realistic Confluence-view-format
+saved page (info/warning macros, titled bash+sql code macros, a
+confluenceTable with status lozenges, an inline task list, an expand
+macro, user mentions, relative page links, an attached image, a
+two-column layout section) fed through the seeded
+"Example: Saved page → Markdown" workflow (capture-file →
+extract-HTML-subtree → html-to-markdown → clipboard write) on an
+isolated server-mode instance at the merged `2d4c3ad`; the run
+completed SUCCESS in the durable execution record and the converted
+Markdown landed on the real clipboard.
+
+**What already works (no gap):** info/warning macros → semantic
+`> **Info:**`/`> **Warning:**` blockquotes; code macros → fenced
+blocks with correct languages (brush param mapped) and their titles
+kept; tables → clean Markdown tables with lozenges flattened to
+their text; expand macro → `<details><summary>` (renders collapsed
+in most Markdown viewers); user mentions → plain links; column
+layouts → linearized sections in order. The §2.1 floor loop is real.
+
+**Named gaps, each with what it would take:**
+
+1. **Task-list state is lost** — a checked `inline-task-list` item
+   flattens to a plain bullet, not GFM `- [x]`. Takes: a
+   Confluence-task-list normalization rule in the html-to-markdown
+   step's conversion path; small and bounded, repro committed-test
+   material (this sample page).
+2. **HTML entities leak inside table cells** — `Delta &lt; $0.01`
+   survived entity-encoded instead of decoding to `<`. Bug-shaped,
+   same repro. Takes: entity decoding on the table-cell text path.
+3. **Relative URLs stay relative** — page links
+   (`/display/TEAM/...`) and attachment images arrive dead for any
+   paste target. The saved-page floor structurally lacks the origin
+   URL; full fix is exactly the ADR-0003 extension tier (which
+   knows the page URL at capture time). Interim option, judged
+   against ADR-0035 before building: an optional base-URL config
+   field on the conversion step. Not built in this pass.
+4. **The page title is dropped** — the H1 lives outside the
+   main-content subtree the extract step selects, so the output
+   starts at the first paragraph. Takes: an optional
+   "prepend document title" flag on extract-HTML-subtree, or a
+   selector union; small.
+5. **Seed descriptions leak internal doc references into the UI**
+   (`docs/SPEC.md §2.1/§5`, ADR ids — visible in the live app's
+   description fields; ux-writing.md's no-internal-docs rule is
+   currently only gated for locale files). Takes: reword the seeded
+   descriptions + extend `check-ui-copy.sh` to seeded copy;
+   golden-change discipline applies (SeedRevision bumps). Rides a
+   future PR as a below-goal-granularity fix.
+6. **Auto-paste into the far side stays deliberately absent** — the
+   human paste IS the approval gate (the direction split recorded
+   above); named here so it's never mistaken for an oversight.
+
+Verification-path note for future dry runs: canvas Run pops a
+confirm dialog before running a draft; automation looking for the
+run must confirm it (it renders in the app's portal root, outside
+the workflow panel's own subtree).
+
 ## Acceptance (checkable)
 
-- [ ] The dry run's gap list is written into this file, each gap
-      named with what it would take.
+- [x] The dry run's gap list is written into this file, each gap
+      named with what it would take — scenario 1 executed and
+      recorded 2026-08-14 (six gaps above); scenario 2 resolved the
+      same day (apply-file-write shipped, two named-not-built
+      verdicts); the far side's four product gaps recorded
+      2026-08-13.
 - [x] The capture-path comparison (extension vs. fallback ladder,
       with policy precedent and sources) is written into this file,
       decision-ready for the owner — delivered above, 2026-08-13,
