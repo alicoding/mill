@@ -14,6 +14,7 @@ import (
 	"github.com/alicoding/mill/internal/contract"
 	_ "github.com/alicoding/mill/internal/services/compositionsvc"
 	_ "github.com/alicoding/mill/internal/services/configuresvc"
+	_ "github.com/alicoding/mill/internal/services/executionsvc"
 )
 
 func main() {

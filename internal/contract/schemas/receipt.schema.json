@@ -1,0 +1,99 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "mill://schema/receipt/v1",
+  "$defs": {
+    "RunEvidenceBuild": {
+      "properties": {
+        "version": {
+          "type": "string"
+        },
+        "commit": {
+          "type": "string"
+        },
+        "modified": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "version",
+        "modified"
+      ]
+    },
+    "RunEvidenceStep": {
+      "properties": {
+        "nodeId": {
+          "type": "string"
+        },
+        "nodeTypeId": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "guardrailEffect": {
+          "type": "string"
+        },
+        "guardrailRule": {
+          "type": "string"
+        },
+        "guardrailSource": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "nodeId",
+        "nodeTypeId",
+        "status"
+      ]
+    }
+  },
+  "properties": {
+    "schema": {
+      "type": "string"
+    },
+    "runId": {
+      "type": "string"
+    },
+    "workflowId": {
+      "type": "string"
+    },
+    "workflowLabel": {
+      "type": "string"
+    },
+    "version": {
+      "type": "integer"
+    },
+    "kind": {
+      "type": "string"
+    },
+    "startedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "steps": {
+      "items": {
+        "$ref": "#/$defs/RunEvidenceStep"
+      },
+      "type": "array"
+    },
+    "build": {
+      "$ref": "#/$defs/RunEvidenceBuild"
+    }
+  },
+  "additionalProperties": false,
+  "type": "object",
+  "required": [
+    "schema",
+    "runId",
+    "workflowId",
+    "version",
+    "kind",
+    "startedAt",
+    "steps",
+    "build"
+  ]
+}

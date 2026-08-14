@@ -15,16 +15,16 @@ const ALL_REGISTERED_NODE_TYPE_IDS = [
   'capture-clipboard-html', 'capture-clipboard-info', 'capture-file', 'capture-attribute',
   'process-extract-html', 'process-html-to-markdown', 'process-inject-text',
   'process-ai-classify', 'process-ai-completion', 'process-ai-extract-structured',
-  'list-lookup', 'list-search',
+  'list-lookup', 'list-search', 'process-run-receipt',
   'integration-http', 'mcp-tool-call', 'code-execution',
   'child-workflow', 'decision-route',
   'human-review', 'ruleset', 'decision-outcome',
-  'apply-clipboard-write-html', 'apply-clipboard-write-text',
+  'apply-clipboard-write-html', 'apply-clipboard-write-text', 'apply-file-write',
 ]
 
 describe('paletteGroupFor', () => {
-  it('has exactly 29 registered node types accounted for', () => {
-    expect(ALL_REGISTERED_NODE_TYPE_IDS).toHaveLength(29)
+  it('has exactly 31 registered node types accounted for', () => {
+    expect(ALL_REGISTERED_NODE_TYPE_IDS).toHaveLength(31)
   })
 
   it('maps every registered NodeType ID to one of the 9 display groups, without warning', () => {

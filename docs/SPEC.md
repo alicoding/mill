@@ -4383,8 +4383,18 @@ itself uses — proven equal by a committed test, so the two can't
 silently diverge. `list_node_types` also gained an optional `kind`
 filter (trigger/capture/process/apply/decision).
 
-Not yet built (goal 0052's remaining slice): the evidence-receipt
-envelope.
+**Slice 3 additions, also `LOCKED` — the contract surface is now
+complete.** The evidence-receipt envelope arrives as composition, not a
+new apply path (ADR-0035's own boundary): a `process-run-receipt`
+`NodeType` renders the current run's own recorded evidence-so-far
+(steps, their guardrail verdicts, and which Mill build ran them) into
+the payload as a JSON receipt, then composes with an existing Apply
+node (clipboard/file write) to hand it to an external agent. Its
+envelope joins the schema registry as the eighth family
+(`mill://schema/receipt/v1`, `internal/contract`), generated and
+drift-checked the same way as the other seven; the seeded "Example: Run
+receipt" workflow proves it end to end, including a real schema-
+validation assertion against the committed schema file.
 
 ## 10. Open questions log
 

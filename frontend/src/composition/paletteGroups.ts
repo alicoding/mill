@@ -73,7 +73,7 @@ export const PALETTE_GROUP_ICON: Record<PaletteGroupId, Icon> = {
 
 // Every registered NodeType ID as of this change (internal/domain/
 // composition/*.go's RegisterNodeType call sites, checked directly
-// against the Go registry, not guessed) -- 30 total, every one
+// against the Go registry, not guessed) -- 31 total, every one
 // accounted for. vitest (paletteGroups.test.ts) asserts every ID
 // NodeTypes() actually returns has an entry here, so this map can't
 // silently drift from the backend registry.
@@ -99,9 +99,10 @@ const NODE_TYPE_GROUP: Record<string, PaletteGroupId> = {
   'process-ai-classify': 'ai',
   'process-ai-completion': 'ai',
   'process-ai-extract-structured': 'ai',
-  // Data (2)
+  // Data (3)
   'list-lookup': 'data',
   'list-search': 'data',
+  'process-run-receipt': 'data',
   // Actions (3)
   'integration-http': 'actions',
   'mcp-tool-call': 'actions',
