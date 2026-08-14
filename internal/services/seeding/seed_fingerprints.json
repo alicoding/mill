@@ -123,6 +123,10 @@
     "seedRevision": 2,
     "fingerprint": "8cd5dd6b18cd02c7c0dc0e4429c42a1449832c8e8541da949bb59d2af849d808"
   },
+  "workflow:example-run-receipt-workflow": {
+    "seedRevision": 1,
+    "fingerprint": "e921d28bd06f3623e9f5fe6ec73bbcf62b3c60de64584eb41c365a6a0dfc5205"
+  },
   "workflow:example-saved-page-to-markdown-workflow": {
     "seedRevision": 2,
     "fingerprint": "d2f4f984eeea9a607e3d9947baed642ca80e881a85e46ee4259a889738edc883"

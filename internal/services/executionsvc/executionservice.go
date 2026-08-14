@@ -194,6 +194,12 @@ type ExecutionService struct {
 	// exists; nil in every standalone test that builds ExecutionService
 	// directly, same as minutesSavedLookup above.
 	systemEventSink func(SystemEvent)
+	// version is the app version string a run receipt's Build field
+	// stamps (executionservice_receipt.go) -- set via SetVersion once
+	// main.go's millVersion const is available; empty in every
+	// standalone test that builds ExecutionService directly, same as
+	// minutesSavedLookup/systemEventSink above.
+	version string
 }
 
 // NewExecutionService builds and launches the durable-execution runtime
@@ -218,6 +224,10 @@ func NewExecutionService(databaseURL string, comp *compositionsvc.CompositionSer
 	// procexec.Handle here so CancelRun can reach it from outside the
 	// run (executionservice_cancel.go).
 	composition.SetProcessRegistrar(e.registerProcess)
+	// goal 0052 slice 3, ADR-0036: a process-run-receipt node reads this
+	// run's own recorded evidence-so-far through this seam
+	// (executionservice_receipt.go).
+	composition.SetRunEvidenceLookup(e.runEvidenceLookup)
 	return e, nil
 }
 

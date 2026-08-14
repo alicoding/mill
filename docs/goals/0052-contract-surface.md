@@ -62,12 +62,15 @@ re-litigated):
 4. **Machine-readable state manifest** — app version / schema id /
    commit (all already known live) exposed where an external agent
    can read them: an MCP resource plus inclusion in exports/receipts.
-5. **Evidence envelope (far-side gap 3)** — a portable run receipt
-   (run result, approval evidence, versions, exit data) emitted via
-   composition (an apply-node writing the receipt to
-   clipboard/file), per the ADR-0035 boundary. Rides here as the
-   contract's return path; splits out to its own goal only if
-   implementation shows it's bigger than one session.
+5. **Evidence envelope (far-side gap 3) — built, slice 3.** A portable
+   run receipt (run result so far, guardrail/approval evidence,
+   versions, build info) rendered by a new `process-run-receipt`
+   `NodeType` and composed with an existing Apply node (clipboard/file
+   write), per the ADR-0035 boundary — no bespoke send path. Its
+   envelope joined `internal/contract` as the eighth family
+   (`mill://schema/receipt/v1`); the seeded "Example: Run receipt"
+   workflow proves it end to end, including validating the produced
+   receipt against the committed schema.
 6. **The agent-facing bundle, in two forms — one root document +
    queryable discovery** (owner-sharpened 2026-08-13, from the
    industry convention of a single all-APIs contract file: hand an
@@ -134,8 +137,27 @@ the contract travels as files/clipboard/MCP, period (SPEC §1.1).
       `contract.BuildManifest`; test asserts values against a real
       `buildinfo.Read()` + the constructor-wired version, not
       hardcoded expectations.
-- [ ] A seeded workflow demonstrates the evidence-receipt node
-      end-to-end (seeds ARE the proof). Remaining: slice 3.
+- [x] A seeded workflow demonstrates the evidence-receipt node
+      end-to-end (seeds ARE the proof). Slice 3, built: a new
+      `process-run-receipt` `NodeType` (`internal/domain/composition`,
+      `guardrail.ClassRead`) renders the current run's own recorded
+      evidence-so-far via an injected `SetRunEvidenceLookup` seam
+      (composition never imports `execution.Context`, same shape
+      `SetProcessRegistrar` already established); wired from
+      `executionsvc`, which resolves the run's own opaque `RunContext`
+      into a real `runID` and assembles `composition.RunEvidence` from
+      `GetRun`'s existing per-step breakdown plus
+      `internal/adapters/buildinfo`. The envelope joined
+      `internal/contract` as the eighth family
+      (`mill://schema/receipt/v1`), generated + drift-checked
+      identically to the other seven. The seeded "Example: Run receipt"
+      workflow (manual trigger → `process-inject-text` → `process-run-
+      receipt` → `apply-clipboard-write-text`) proves it end to end
+      (`executionsvc.TestSeededRunReceiptExample_RunsEndToEndAndValidatesAgainstSchema`),
+      including validating the produced receipt against the committed
+      schema file via `santhosh-tekuri/jsonschema/v6` (already an
+      indirect dependency of `modelcontextprotocol/go-sdk`, promoted to
+      direct — no new external dependency).
 - [x] The root contract document is generated, committed,
       drift-checked, exposed as an MCP resource, and exportable as
       one file; node discovery supports type/metadata filtering; both
@@ -155,4 +177,7 @@ the contract travels as files/clipboard/MCP, period (SPEC §1.1).
       the equality.
 - [x] SPEC.md gains the contract-surface section — §9.6, LOCKED for
       the slice-1 mechanics, rejected-formats reasoning pointed at
-      this file; remaining slices named there as not-yet-built.
+      this file; slice 3's additions folded in, replacing the earlier
+      not-yet-built note now that all three slices have shipped.
+
+All 8 acceptance boxes now met — the contract surface goal is complete.

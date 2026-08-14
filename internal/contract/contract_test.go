@@ -7,6 +7,7 @@ import (
 	"github.com/alicoding/mill/internal/contract"
 	_ "github.com/alicoding/mill/internal/services/compositionsvc"
 	_ "github.com/alicoding/mill/internal/services/configuresvc"
+	_ "github.com/alicoding/mill/internal/services/executionsvc"
 )
 
 // TestContractSchemas_MatchCommitted is ADR-0036's drift gate: it
