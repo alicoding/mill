@@ -29,8 +29,8 @@ test('Exporting a workflow downloads a portable JSON file with its real definiti
   const parsed = JSON.parse(Buffer.concat(chunks).toString('utf-8'))
 
   expect(parsed.label).toBe('Load sample HTML')
-  expect(Array.isArray(parsed.nodes)).toBe(true)
-  expect(parsed.nodes.length).toBeGreaterThan(0)
+  expect(Array.isArray(parsed.steps)).toBe(true)
+  expect(parsed.steps.length).toBeGreaterThan(0)
   // ExportWorkflow's own contract: carries the workflow's real id and
   // its envelope schema id, never a builtIn flag -- an imported
   // workflow is never a protected built-in.
@@ -50,7 +50,9 @@ test('Importing a workflow file adds a new, independent workflow without touchin
     label: 'E2E imported workflow',
     description: 'Imported by an e2e test',
     // A Trigger root (docs/adr/0028) -- a lone Capture node alone is
-    // unsaveable.
+    // unsaveable. Deliberately the legacy "nodes"/"NodeTypeID" wire
+    // vocabulary (docs/goals/0053 tier 2) through the real file-picker
+    // path, proving that import path's backward-compat fallback live.
     nodes: [
       { ID: 't', NodeTypeID: 'trigger-manual' },
       { ID: 'c', NodeTypeID: 'capture-clipboard-html' },

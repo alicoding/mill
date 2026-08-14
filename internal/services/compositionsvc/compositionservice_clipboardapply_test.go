@@ -79,7 +79,7 @@ func TestPreviewClipboardApply_UnrecognizedShape_ReturnsReadableError(t *testing
 func TestPreviewClipboardApply_UnsupportedSchemaMajor_ReturnsReadableError(t *testing.T) {
 	comp := newTestCompositionService(t)
 	nodes, edges := triggerAndCaptureNodes()
-	payload := exportedWorkflowJSON(t, exportedWorkflow{Schema: "mill://schema/workflow/v99", Label: "future export", Nodes: nodes, Edges: edges})
+	payload := exportedWorkflowJSON(t, exportedWorkflow{Schema: "mill://schema/workflow/v99", Label: "future export", Steps: stepsFromNodes(nodes), Edges: edges})
 
 	preview, err := comp.PreviewClipboardApply(payload)
 	if err != nil {
@@ -96,7 +96,7 @@ func TestPreviewClipboardApply_UnsupportedSchemaMajor_ReturnsReadableError(t *te
 func TestPreviewClipboardApply_NoID_DetectsCreate(t *testing.T) {
 	comp := newTestCompositionService(t)
 	nodes, edges := triggerAndCaptureNodes()
-	payload := exportedWorkflowJSON(t, exportedWorkflow{Label: "new one", Nodes: nodes, Edges: edges})
+	payload := exportedWorkflowJSON(t, exportedWorkflow{Label: "new one", Steps: stepsFromNodes(nodes), Edges: edges})
 
 	preview, err := comp.PreviewClipboardApply(payload)
 	if err != nil {
@@ -121,7 +121,7 @@ func TestPreviewClipboardApply_MatchingID_DetectsUpdate(t *testing.T) {
 		t.Fatalf("CreateWorkflow: %v", err)
 	}
 
-	payload := exportedWorkflowJSON(t, exportedWorkflow{ID: existing.ID, Label: "renamed", Nodes: nodes, Edges: edges})
+	payload := exportedWorkflowJSON(t, exportedWorkflow{ID: existing.ID, Label: "renamed", Steps: stepsFromNodes(nodes), Edges: edges})
 	preview, err := comp.PreviewClipboardApply(payload)
 	if err != nil {
 		t.Fatalf("PreviewClipboardApply: %v", err)
@@ -140,7 +140,7 @@ func TestPreviewClipboardApply_MatchingID_DetectsUpdate(t *testing.T) {
 func TestPreviewClipboardApply_UnknownID_DetectsCreateWithNote(t *testing.T) {
 	comp := newTestCompositionService(t)
 	nodes, edges := triggerAndCaptureNodes()
-	payload := exportedWorkflowJSON(t, exportedWorkflow{ID: "no-such-workflow-id", Label: "orphaned id", Nodes: nodes, Edges: edges})
+	payload := exportedWorkflowJSON(t, exportedWorkflow{ID: "no-such-workflow-id", Label: "orphaned id", Steps: stepsFromNodes(nodes), Edges: edges})
 
 	preview, err := comp.PreviewClipboardApply(payload)
 	if err != nil {
@@ -157,7 +157,7 @@ func TestPreviewClipboardApply_UnknownID_DetectsCreateWithNote(t *testing.T) {
 func TestConfirmClipboardApply_NoID_CreatesNewWorkflow(t *testing.T) {
 	comp := newTestCompositionService(t)
 	nodes, edges := triggerAndCaptureNodes()
-	payload := exportedWorkflowJSON(t, exportedWorkflow{Label: "created via clipboard", Nodes: nodes, Edges: edges})
+	payload := exportedWorkflowJSON(t, exportedWorkflow{Label: "created via clipboard", Steps: stepsFromNodes(nodes), Edges: edges})
 
 	wf, err := comp.ConfirmClipboardApply(payload)
 	if err != nil {
@@ -183,7 +183,7 @@ func TestConfirmClipboardApply_MatchingID_UpdatesThroughSnapshotDraft(t *testing
 	}
 
 	updatedNodes, updatedEdges := triggerAndCaptureNodes()
-	payload := exportedWorkflowJSON(t, exportedWorkflow{ID: existing.ID, Label: "updated label", Nodes: updatedNodes, Edges: updatedEdges})
+	payload := exportedWorkflowJSON(t, exportedWorkflow{ID: existing.ID, Label: "updated label", Steps: stepsFromNodes(updatedNodes), Edges: updatedEdges})
 
 	wf, err := comp.ConfirmClipboardApply(payload)
 	if err != nil {
@@ -216,7 +216,7 @@ func TestConfirmClipboardApply_MatchingID_UpdatesThroughSnapshotDraft(t *testing
 func TestConfirmClipboardApply_UnknownID_CreatesPreservingIt(t *testing.T) {
 	comp := newTestCompositionService(t)
 	nodes, edges := triggerAndCaptureNodes()
-	payload := exportedWorkflowJSON(t, exportedWorkflow{ID: "does-not-exist-locally", Label: "orphaned id create", Nodes: nodes, Edges: edges})
+	payload := exportedWorkflowJSON(t, exportedWorkflow{ID: "does-not-exist-locally", Label: "orphaned id create", Steps: stepsFromNodes(nodes), Edges: edges})
 
 	wf, err := comp.ConfirmClipboardApply(payload)
 	if err != nil {
@@ -234,7 +234,7 @@ func TestConfirmClipboardApply_InvalidGraphShape_Rejected(t *testing.T) {
 	comp := newTestCompositionService(t)
 	// Two roots -- ValidateGraph's own rejection, same bar ImportWorkflow
 	// already holds hand-authored files to (compositionservice_export_test.go).
-	badJSON := `{"label":"bad","nodes":[{"nodeTypeID":"trigger-manual"},{"nodeTypeID":"trigger-manual"}],"edges":[]}`
+	badJSON := `{"label":"bad","steps":[{"StepTypeID":"trigger-manual"},{"StepTypeID":"trigger-manual"}],"edges":[]}`
 	if _, err := comp.ConfirmClipboardApply(badJSON); err == nil {
 		t.Error("ConfirmClipboardApply with two root nodes returned nil error, want ValidateGraph's rejection")
 	}
@@ -247,7 +247,7 @@ func TestPreviewClipboardApply_UnresolvedRefs_UnknownNodeType(t *testing.T) {
 		{ID: "bogus", NodeTypeID: "totally-not-a-real-node-type"},
 	}
 	edges := []composition.Edge{{ID: "e1", Source: "t", Target: "bogus"}}
-	payload := exportedWorkflowJSON(t, exportedWorkflow{Label: "unknown node type", Nodes: nodes, Edges: edges})
+	payload := exportedWorkflowJSON(t, exportedWorkflow{Label: "unknown node type", Steps: stepsFromNodes(nodes), Edges: edges})
 
 	preview, err := comp.PreviewClipboardApply(payload)
 	if err != nil {
@@ -257,8 +257,8 @@ func TestPreviewClipboardApply_UnresolvedRefs_UnknownNodeType(t *testing.T) {
 		t.Fatalf("preview.Unresolved has %d entries, want 1; got %+v", len(preview.Unresolved), preview.Unresolved)
 	}
 	got := preview.Unresolved[0]
-	if got.NodeID != "bogus" || got.RefKind != "node-type" || got.Value != "totally-not-a-real-node-type" {
-		t.Errorf("preview.Unresolved[0] = %+v, want NodeID=bogus RefKind=node-type Value=totally-not-a-real-node-type", got)
+	if got.NodeID != "bogus" || got.RefKind != "step-type" || got.Value != "totally-not-a-real-node-type" {
+		t.Errorf("preview.Unresolved[0] = %+v, want NodeID=bogus RefKind=step-type Value=totally-not-a-real-node-type", got)
 	}
 }
 
@@ -276,7 +276,7 @@ func TestPreviewClipboardApply_UnresolvedRefs_DanglingRequestRef(t *testing.T) {
 		{ID: "http", NodeTypeID: "integration-http", Config: map[string]string{"requestId": "ghost-request-id"}},
 	}
 	edges := []composition.Edge{{ID: "e1", Source: "t", Target: "http"}}
-	payload := exportedWorkflowJSON(t, exportedWorkflow{Label: "dangling request ref", Nodes: nodes, Edges: edges})
+	payload := exportedWorkflowJSON(t, exportedWorkflow{Label: "dangling request ref", Steps: stepsFromNodes(nodes), Edges: edges})
 
 	preview, err := comp.PreviewClipboardApply(payload)
 	if err != nil {
@@ -305,7 +305,7 @@ func TestPreviewClipboardApply_ResolvedRequestRef_NotFlagged(t *testing.T) {
 		{ID: "http", NodeTypeID: "integration-http", Config: map[string]string{"requestId": "real-request-id"}},
 	}
 	edges := []composition.Edge{{ID: "e1", Source: "t", Target: "http"}}
-	payload := exportedWorkflowJSON(t, exportedWorkflow{Label: "resolved request ref", Nodes: nodes, Edges: edges})
+	payload := exportedWorkflowJSON(t, exportedWorkflow{Label: "resolved request ref", Steps: stepsFromNodes(nodes), Edges: edges})
 
 	preview, err := comp.PreviewClipboardApply(payload)
 	if err != nil {
@@ -323,7 +323,7 @@ func TestPreviewClipboardApply_EmptyRef_NotFlaggedAsDangling(t *testing.T) {
 		{ID: "http", NodeTypeID: "integration-http", Config: map[string]string{}},
 	}
 	edges := []composition.Edge{{ID: "e1", Source: "t", Target: "http"}}
-	payload := exportedWorkflowJSON(t, exportedWorkflow{Label: "unset ref, not dangling", Nodes: nodes, Edges: edges})
+	payload := exportedWorkflowJSON(t, exportedWorkflow{Label: "unset ref, not dangling", Steps: stepsFromNodes(nodes), Edges: edges})
 
 	preview, err := comp.PreviewClipboardApply(payload)
 	if err != nil {
@@ -341,7 +341,7 @@ func TestPreviewClipboardApply_DanglingWorkflowRef(t *testing.T) {
 		{ID: "child", NodeTypeID: "child-workflow", Config: map[string]string{"workflowId": "ghost-workflow-id"}},
 	}
 	edges := []composition.Edge{{ID: "e1", Source: "t", Target: "child"}}
-	payload := exportedWorkflowJSON(t, exportedWorkflow{Label: "dangling workflow ref", Nodes: nodes, Edges: edges})
+	payload := exportedWorkflowJSON(t, exportedWorkflow{Label: "dangling workflow ref", Steps: stepsFromNodes(nodes), Edges: edges})
 
 	preview, err := comp.PreviewClipboardApply(payload)
 	if err != nil {
@@ -369,7 +369,7 @@ func TestPreviewClipboardApply_ResolvedWorkflowRef_NotFlagged(t *testing.T) {
 		{ID: "child", NodeTypeID: "child-workflow", Config: map[string]string{"workflowId": target.ID}},
 	}
 	edges := []composition.Edge{{ID: "e1", Source: "t", Target: "child"}}
-	payload := exportedWorkflowJSON(t, exportedWorkflow{Label: "resolved workflow ref", Nodes: nodes, Edges: edges})
+	payload := exportedWorkflowJSON(t, exportedWorkflow{Label: "resolved workflow ref", Steps: stepsFromNodes(nodes), Edges: edges})
 
 	preview, err := comp.PreviewClipboardApply(payload)
 	if err != nil {

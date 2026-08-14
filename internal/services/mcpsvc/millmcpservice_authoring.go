@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/alicoding/mill/internal/domain/composition"
+	"github.com/alicoding/mill/internal/services/compositionsvc"
 	"github.com/alicoding/mill/internal/services/dataevent"
 	"github.com/alicoding/mill/internal/services/executionsvc"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
@@ -97,7 +98,7 @@ type runIDArgs struct {
 // directly, so an invalid value reaches filterNodeTypesByKind for the
 // legal-values error rather than failing opaque JSON-schema validation.
 type listNodeTypesArgs struct {
-	Kind string `json:"kind,omitempty" jsonschema:"optional: only node types of this kind (trigger, capture, process, apply, or decision). Omit for the full catalog."`
+	Kind string `json:"kind,omitempty" jsonschema:"optional: only step types of this kind (trigger, capture, process, apply, or decision). Omit for the full catalog."`
 }
 
 // filterableNodeKinds is the set list_node_types' kind filter accepts --
@@ -181,17 +182,26 @@ func hasErrorIssue(issues []composition.Issue) bool {
 // Called from registerTools alongside the export/import set.
 func (m *MillMCPService) registerAuthoringTools() {
 	// --- Introspection: read-only, ungated. ---
-	mcp.AddTool(m.server, &mcp.Tool{
-		Name:        "list_node_types",
-		Description: "The node-type catalog an authored workflow composes from: ID, kind, label, description, effect class (none/read/local/external -- external steps require human approval by default), and each config field's key/type/options/reference kind. Optional kind filters to one kind (trigger/capture/process/apply/decision); omit for the full catalog. Read this before authoring; node type IDs and config keys must match it exactly.",
-	}, func(_ context.Context, _ *mcp.CallToolRequest, in listNodeTypesArgs) (*mcp.CallToolResult, any, error) {
+	// listStepTypes backs both tool names below -- list_step_types (the
+	// primary name, docs/goals/0053 tier 2) and list_node_types (kept
+	// registered as a working deprecated alias, same handler, so an
+	// existing caller never breaks).
+	listStepTypes := func(_ context.Context, _ *mcp.CallToolRequest, in listNodeTypesArgs) (*mcp.CallToolResult, any, error) {
 		filtered, err := filterNodeTypesByKind(composition.NodeTypes(), in.Kind)
 		if err != nil {
 			return nil, nil, err
 		}
 		res, err := jsonResult(filtered)
 		return res, nil, err
-	})
+	}
+	mcp.AddTool(m.server, &mcp.Tool{
+		Name:        "list_step_types",
+		Description: "The step-type catalog an authored workflow composes from: ID, kind, label, description, effect class (none/read/local/external -- external steps require human approval by default), and each config field's key/type/options/reference kind. Optional kind filters to one kind (trigger/capture/process/apply/decision); omit for the full catalog. Read this before authoring; step type IDs and config keys must match it exactly.",
+	}, listStepTypes)
+	mcp.AddTool(m.server, &mcp.Tool{
+		Name:        "list_node_types",
+		Description: "Deprecated name of list_step_types, kept working for existing callers -- returns the identical catalog. Prefer list_step_types in new integrations.",
+	}, listStepTypes)
 
 	mcp.AddTool(m.server, &mcp.Tool{
 		Name:        "list_runs",
@@ -238,22 +248,17 @@ func (m *MillMCPService) registerAuthoringTools() {
 		Name:        "validate_workflow",
 		Description: "Validate a workflow definition (exported-workflow JSON) without saving. Returns the FULL issue list (docs/adr/0028), not just the first problem: every graph rule Mill checks (trigger root, reachability, Decision edge conditions, secret-output guardrail, dangling Capture/Process leaves, unset entity references), each labeled 'error' or 'warning'. 'valid' is true iff no error-severity issue is present -- warnings never block update_workflow, they're informational only. Iterate here before update_workflow.",
 	}, func(_ context.Context, _ *mcp.CallToolRequest, in validateWorkflowArgs) (*mcp.CallToolResult, any, error) {
-		var def struct {
-			Label      string                     `json:"label"`
-			Nodes      []composition.Node         `json:"nodes"`
-			Edges      []composition.Edge         `json:"edges"`
-			Attributes []composition.AttributeDef `json:"attributes"`
-		}
-		if err := json.Unmarshal([]byte(in.JSON), &def); err != nil {
+		_, nodes, edges, attributes, err := compositionsvc.DecodeWorkflowGraph(in.JSON)
+		if err != nil {
 			res, jerr := jsonResult(validationResult{Issues: []composition.Issue{{Severity: composition.SeverityError, Message: "not parseable as exported-workflow JSON: " + err.Error()}}})
 			return res, nil, jerr
 		}
-		resolved, err := composition.ResolveNodeDefaults(def.Nodes)
+		resolved, err := composition.ResolveNodeDefaults(nodes)
 		if err != nil {
 			res, jerr := jsonResult(validationResult{Issues: []composition.Issue{{Severity: composition.SeverityError, Message: err.Error()}}})
 			return res, nil, jerr
 		}
-		issues := composition.ValidateGraph(resolved, def.Edges, def.Attributes)
+		issues := composition.ValidateGraph(resolved, edges, attributes)
 		res, jerr := jsonResult(validationResult{Valid: !hasErrorIssue(issues), Issues: issues})
 		return res, nil, jerr
 	})
@@ -416,20 +421,17 @@ func (m *MillMCPService) registerAuthoringTools() {
 // for an update_workflow ask -- the PreToolUse-style preview applied to
 // authoring (docs/adr/0025): the human sees the shape of the change,
 // not just that "something" wants to write. On a malformed proposed
-// definition, next stays the zero value, which would otherwise render
-// as a fabricated "nodes 3→0, edges 2→0" -- reading as "this deletes
-// everything" to the approver when the real problem is just that the
-// document didn't parse. docs/goals/0025 item 4: say so honestly
-// instead (the actual gateWrite call still happens either way -- the
-// real json.Unmarshal inside UpdateWorkflow itself is what actually
-// rejects the malformed document, this is only the preview text).
+// definition, nextNodes/nextEdges stay nil, which would otherwise
+// render as a fabricated "steps 3→0, edges 2→0" -- reading as "this
+// deletes everything" to the approver when the real problem is just
+// that the document didn't parse. docs/goals/0025 item 4: say so
+// honestly instead (the actual gateWrite call still happens either way
+// -- the real json.Unmarshal inside UpdateWorkflow itself is what
+// actually rejects the malformed document, this is only the preview
+// text).
 func (m *MillMCPService) updateDiffSummary(id, jsonData string) string {
-	var next struct {
-		Label string             `json:"label"`
-		Nodes []composition.Node `json:"nodes"`
-		Edges []composition.Edge `json:"edges"`
-	}
-	if err := json.Unmarshal([]byte(jsonData), &next); err != nil {
+	nextLabel, nextNodes, nextEdges, _, err := compositionsvc.DecodeWorkflowGraph(jsonData)
+	if err != nil {
 		for _, wf := range m.comp.Workflows() {
 			if wf.ID == id {
 				return fmt.Sprintf("An MCP client wants to UPDATE workflow %q (unable to parse proposed definition)", wf.Label)
@@ -439,10 +441,10 @@ func (m *MillMCPService) updateDiffSummary(id, jsonData string) string {
 	}
 	for _, wf := range m.comp.Workflows() {
 		if wf.ID == id {
-			s := fmt.Sprintf("An MCP client wants to UPDATE workflow %q: nodes %d→%d, edges %d→%d",
-				wf.Label, len(wf.Nodes), len(next.Nodes), len(wf.Edges), len(next.Edges))
-			if next.Label != "" && next.Label != wf.Label {
-				s += fmt.Sprintf(", rename to %q", next.Label)
+			s := fmt.Sprintf("An MCP client wants to UPDATE workflow %q: steps %d→%d, edges %d→%d",
+				wf.Label, len(wf.Nodes), len(nextNodes), len(wf.Edges), len(nextEdges))
+			if nextLabel != "" && nextLabel != wf.Label {
+				s += fmt.Sprintf(", rename to %q", nextLabel)
 			}
 			return s + " (previous draft is snapshotted first)"
 		}

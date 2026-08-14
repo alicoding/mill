@@ -23,10 +23,10 @@
     },
     "RunEvidenceStep": {
       "properties": {
-        "nodeId": {
+        "stepId": {
           "type": "string"
         },
-        "nodeTypeId": {
+        "stepTypeId": {
           "type": "string"
         },
         "status": {
@@ -45,8 +45,8 @@
       "additionalProperties": false,
       "type": "object",
       "required": [
-        "nodeId",
-        "nodeTypeId",
+        "stepId",
+        "stepTypeId",
         "status"
       ]
     }

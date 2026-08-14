@@ -83,10 +83,10 @@ func TestMCPAuthoring_FullLoop(t *testing.T) {
 		return res.Content[0].(*mcp.TextContent).Text
 	}
 
-	// Introspection: the catalog names real node types, ungated.
-	catalog := text(call("list_node_types", nil))
+	// Introspection: the catalog names real step types, ungated.
+	catalog := text(call("list_step_types", nil))
 	if !strings.Contains(catalog, "process-inject-text") || !strings.Contains(catalog, "Effect") {
-		t.Fatalf("list_node_types missing expected content:\n%.300s", catalog)
+		t.Fatalf("list_step_types missing expected content:\n%.300s", catalog)
 	}
 
 	// Validation (docs/adr/0028): the FULL issue list comes back, not
@@ -95,14 +95,14 @@ func TestMCPAuthoring_FullLoop(t *testing.T) {
 	// below is itself a Trigger -> Process CHAIN ending in a leaf, so it
 	// carries a real warning issue too, proving both severities surface
 	// through this same tool.
-	bad := `{"label":"x","nodes":[{"id":"a","nodeTypeId":"no-such-type"}],"edges":[]}`
+	bad := `{"label":"x","steps":[{"id":"a","StepTypeID":"no-such-type"}],"edges":[]}`
 	badResult := decodeValidation(t, text(call("validate_workflow", map[string]any{"json": bad})))
 	if badResult.Valid || len(badResult.Issues) == 0 {
 		t.Fatalf("bad graph validated as %+v, want invalid with at least one issue", badResult)
 	}
-	good := `{"label":"MCP authored","nodes":[
-		{"ID":"t1","NodeTypeID":"trigger-manual"},
-		{"ID":"n1","NodeTypeID":"process-inject-text","Config":{"text":"[authored-v1]","placement":"append"}}],
+	good := `{"label":"MCP authored","steps":[
+		{"ID":"t1","StepTypeID":"trigger-manual"},
+		{"ID":"n1","StepTypeID":"process-inject-text","Config":{"text":"[authored-v1]","placement":"append"}}],
 		"edges":[{"ID":"e1","Source":"t1","Target":"n1"}]}`
 	goodResult := decodeValidation(t, text(call("validate_workflow", map[string]any{"json": good})))
 	if !goodResult.Valid {
@@ -247,13 +247,13 @@ func TestUpdateDiffSummary_WellFormedJSON_StillReportsRealCounts(t *testing.T) {
 		t.Fatalf("CreateWorkflow: %v", err)
 	}
 
-	proposed := `{"label":"Diff summary target 2","nodes":[{"id":"t","nodeTypeId":"trigger-manual"},{"id":"c","nodeTypeId":"capture-clipboard-html"}],"edges":[{"id":"e1","source":"t","target":"c"}]}`
+	proposed := `{"label":"Diff summary target 2","steps":[{"id":"t","StepTypeID":"trigger-manual"},{"id":"c","StepTypeID":"capture-clipboard-html"}],"edges":[{"id":"e1","source":"t","target":"c"}]}`
 	got := svc.updateDiffSummary(wf.ID, proposed)
 
 	if strings.Contains(got, "unable to parse") {
 		t.Fatalf("updateDiffSummary(well-formed JSON) = %q, want a real diff, not the parse-failure message", got)
 	}
-	if !strings.Contains(got, "nodes 1→2") || !strings.Contains(got, "edges 0→1") {
-		t.Errorf("updateDiffSummary(well-formed JSON) = %q, want it to report the real 1→2 node / 0→1 edge change", got)
+	if !strings.Contains(got, "steps 1→2") || !strings.Contains(got, "edges 0→1") {
+		t.Errorf("updateDiffSummary(well-formed JSON) = %q, want it to report the real 1→2 step / 0→1 edge change", got)
 	}
 }
