@@ -36,15 +36,13 @@ accepted)**
    hints, task lists, emoji fallback, panel types, expand→details) as
    custom renderers on the converter; corpus + goldens from PR #78
    were the proof harness
-2. [ ] [0048 — Unsaved-changes close guard](0048-unsaved-close-guard.md)
-   — owner-hit live 2026-08-13: "Close all tabs" silently discarded a
-   dirty workflow draft (mouse paths clear scratch with no prompt;
-   keyboard paths orphan it — tab-key-scoped scratch is unreachable
-   after reopen). VS Code-precedent Save/Don't save/Cancel on single
-   close, summary confirm on bulk; queue-jumped as live data loss.
-   IMPLEMENTED same day (PR #95 merged, all acceptance items
-   test-proven); stays open pending the owner's live sign-off, then
-   archives
+2. [x] [0048 — Unsaved-changes close guard](archive/0048-unsaved-close-guard.md)
+   — DELIVERED: implemented 2026-08-13 (PR #95, all acceptance items
+   test-proven), owner live sign-off 2026-08-14 ("close guard
+   worked"). VS Code-precedent Save/Don't save/Cancel on single
+   close, summary confirm on bulk, every mouse+keyboard path through
+   one guarded funnel. Its archive is the v0.3.0 release trigger per
+   SPEC §1.3's cadence rule
 3. [ ] [0043 — Hotkey recorder vs menu accelerators](0043-hotkey-recorder-menu-accelerators.md)
    — overdue owner-hit bug (⌘⇧W while recording closed the app);
    accelerator-free menu swap during capture
