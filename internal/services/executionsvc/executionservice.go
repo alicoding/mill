@@ -10,6 +10,7 @@ import (
 	"github.com/alicoding/mill/internal/adapters/execution"
 	"github.com/alicoding/mill/internal/domain/composition"
 	"github.com/alicoding/mill/internal/services/compositionsvc"
+	"github.com/alicoding/mill/internal/services/dataevent"
 	"github.com/alicoding/mill/internal/services/guardrailsvc"
 	"github.com/google/uuid"
 )
@@ -284,6 +285,13 @@ func (e *ExecutionService) runWorkflow(ctx execution.Context, in runInput) (stri
 	default:
 		e.emitSystemEvent(SystemEventRunFailed, runID, "")
 	}
+	// Live-sync counterpart of runWorkflowStart's start emit, placed
+	// here for the same reason as the system events above: every run
+	// finishes through this function (including a parked run resumed
+	// hours later), so open run lists refresh to the final status
+	// without a reload. Unconditional -- cancelled and failed rows go
+	// stale exactly like successful ones.
+	dataevent.Emit("run", runID)
 	return output, err
 }
 
@@ -368,6 +376,14 @@ func (e *ExecutionService) runWorkflowStart(workflowID string, kind RunKind, val
 		return RunSummary{}, fmt.Errorf("start run: %w", err)
 	}
 
+	// Live-sync (goal 0017, docs/adr/0025): announce the new run so an
+	// already-open Runs panel shows it without a remount -- the panel
+	// listens for mill-data-changed{entity:"run"} and stays mounted
+	// across section-tab switches, so a missing start emit leaves it
+	// stale until a full reload. Completion emits from runWorkflow
+	// itself (the one point every run finishes through).
+	dataevent.Emit("run", runID)
+
 	// Blocking -- matches the plain-Run UX this replaces (docs/adr/0008):
 	// Mill's node executions (clipboard/HTTP/MCP calls) are sub-second to
 	// a few seconds, and every run's full step history is durably
@@ -391,50 +407,6 @@ func (e *ExecutionService) runWorkflowStart(workflowID string, kind RunKind, val
 	}
 
 	return e.summaryFor(handle.GetWorkflowID())
-}
-
-// ListRuns returns recent runs across every workflow, most recent
-// first -- the data behind Activity's cross-workflow "did anything run"
-// feed and any other surface needing every run regardless of which
-// workflow it belongs to.
-func (e *ExecutionService) ListRuns() ([]RunSummary, error) {
-	return e.listRuns(nil)
-}
-
-// ListRunsForWorkflow returns recent runs for one workflow only, most
-// recent first -- the data behind a workflow's own Runs tab
-// (docs/SPEC.md §7's Update: durable-run visibility moved from a
-// standalone page into the workflow it belongs to, per real precedent
-// -- n8n/Retool/Airflow all scope this to the individual workflow's own
-// page, never a global page reached via a workflow picker). DBOS has no
-// native filter on runInput.WorkflowID (an arbitrary field inside the
-// generically-serialized Input, not something ListWorkflows' own
-// filters -- WithFilterWorkflowIDs et al. -- can query against), so this
-// filters post-decode the same way summaryFromStatus already decodes
-// runInput for every other field.
-func (e *ExecutionService) ListRunsForWorkflow(workflowID string) ([]RunSummary, error) {
-	return e.listRuns(&workflowID)
-}
-
-func (e *ExecutionService) listRuns(filterWorkflowID *string) ([]RunSummary, error) {
-	statuses, err := execution.ListWorkflows(e.ctx,
-		execution.WithFilterName(millRunWorkflowName),
-		execution.WithFilterSortDesc(),
-		execution.WithFilterLimit(50),
-	)
-	if err != nil {
-		return nil, fmt.Errorf("list runs: %w", err)
-	}
-
-	summaries := make([]RunSummary, 0, len(statuses))
-	for _, st := range statuses {
-		summary := e.summaryFromStatus(st)
-		if filterWorkflowID != nil && summary.WorkflowID != *filterWorkflowID {
-			continue
-		}
-		summaries = append(summaries, summary)
-	}
-	return summaries, nil
 }
 
 // RedriveRun forks runID from the given node's step, reusing every
