@@ -37,11 +37,17 @@ import (
 // already calls (compositionservice_export.go, configureservice_export.go)
 // -- one read-model, not a second one built for this.
 type MillMCPService struct {
-	comp   *compositionsvc.CompositionService
-	cfg    *configuresvc.ConfigureService
-	store  settings.Store
-	server *mcp.Server
-	http   *http.Server
+	comp *compositionsvc.CompositionService
+	cfg  *configuresvc.ConfigureService
+	// version is the app version passed in at construction (main.go's
+	// millVersion) -- carried here (not just handed to mcpserving.New)
+	// so the state manifest (millmcpservice_contract.go, ADR-0036
+	// decision 4) reads the same value the updater compares releases
+	// against, instead of a second copy of the constant.
+	version string
+	store   settings.Store
+	server  *mcp.Server
+	http    *http.Server
 	// Per-write approval state: park-and-poll (millmcpservice_approval.go,
 	// docs/adr/0032, superseding ADR-0017's second half's old bounded-
 	// blocking-wait shape). writes is the durable pending/resolved
@@ -67,9 +73,10 @@ type MillMCPService struct {
 // read fresh on every import call, so flipping the Settings toggle
 // applies immediately, no restart.
 func NewMillMCPService(version string, comp *compositionsvc.CompositionService, cfg *configuresvc.ConfigureService, store settings.Store) *MillMCPService {
-	m := &MillMCPService{comp: comp, cfg: cfg, store: store, executors: map[string]mcpWriteExecutor{}}
+	m := &MillMCPService{comp: comp, cfg: cfg, version: version, store: store, executors: map[string]mcpWriteExecutor{}}
 	m.server = mcpserving.New("mill", version)
 	m.registerTools()
+	m.registerContractResources()
 	// Restart-survival (docs/adr/0032 §1): reload any pending/recently-
 	// resolved write record left over from a previous process. Must run
 	// after registerTools (so a loaded record's ToolName resolves

@@ -112,6 +112,17 @@ export function DismissPanel(): $CancellablePromise<void> {
 }
 
 /**
+ * ExportContract returns the root contract document (goal 0052 item 6):
+ * every envelope schema, the node-type catalog, the import/update rule,
+ * and this instance's live manifest, as one JSON document -- the
+ * Settings page's Export contract action, and the same document
+ * mill://contract serves over MCP (MillMCPService.ContractDocument).
+ */
+export function ExportContract(): $CancellablePromise<string> {
+    return $Call.ByID(1468729940);
+}
+
+/**
  * GetAttentionIdleThreshold returns the configured idle-seconds
  * threshold: the presence gate below treats the user as away once
  * idletime.Seconds() reaches this, even while the window is focused --

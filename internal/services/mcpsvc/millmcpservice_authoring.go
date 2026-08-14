@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/alicoding/mill/internal/domain/composition"
 	"github.com/alicoding/mill/internal/services/dataevent"
@@ -90,6 +91,62 @@ type runIDArgs struct {
 	RunID string `json:"runId" jsonschema:"a run's ID as returned by run_workflow or list_runs"`
 }
 
+// listNodeTypesArgs is list_node_types' optional discovery filter (goal
+// 0052 item 6's second form: queryable discovery alongside the root
+// contract document). Kind stays a plain string, not composition.NodeKind
+// directly, so an invalid value reaches filterNodeTypesByKind for the
+// legal-values error rather than failing opaque JSON-schema validation.
+type listNodeTypesArgs struct {
+	Kind string `json:"kind,omitempty" jsonschema:"optional: only node types of this kind (trigger, capture, process, apply, or decision). Omit for the full catalog."`
+}
+
+// filterableNodeKinds is the set list_node_types' kind filter accepts --
+// deliberately not composition.KindTerminal: goal 0052 item 6 names the
+// five composable kinds only, terminal nodes (decision-outcome) are
+// reached by their decision, never composed as a filterable family of
+// their own.
+var filterableNodeKinds = []composition.NodeKind{
+	composition.KindTrigger,
+	composition.KindCapture,
+	composition.KindProcess,
+	composition.KindApply,
+	composition.KindDecision,
+}
+
+// filterNodeTypesByKind is list_node_types' catalog-selection step and
+// the root contract document's own catalog source (internal/contract's
+// GenerateDocument calls composition.NodeTypes() directly for the
+// unfiltered case) -- both read the identical composition.NodeTypes()
+// slice, so a filtered or full result here can never diverge from what
+// the document embeds. An empty kind returns the full catalog unchanged
+// (today's behavior, preserved exactly).
+func filterNodeTypesByKind(all []composition.NodeType, kind string) ([]composition.NodeType, error) {
+	if kind == "" {
+		return all, nil
+	}
+	valid := false
+	for _, k := range filterableNodeKinds {
+		if string(k) == kind {
+			valid = true
+			break
+		}
+	}
+	if !valid {
+		names := make([]string, len(filterableNodeKinds))
+		for i, k := range filterableNodeKinds {
+			names[i] = string(k)
+		}
+		return nil, fmt.Errorf("unknown kind %q -- legal values: %s", kind, strings.Join(names, ", "))
+	}
+	out := make([]composition.NodeType, 0, len(all))
+	for _, nt := range all {
+		if string(nt.Kind) == kind {
+			out = append(out, nt)
+		}
+	}
+	return out, nil
+}
+
 func jsonResult(v any) (*mcp.CallToolResult, error) {
 	text, err := jsonText(v)
 	if err != nil {
@@ -126,9 +183,13 @@ func (m *MillMCPService) registerAuthoringTools() {
 	// --- Introspection: read-only, ungated. ---
 	mcp.AddTool(m.server, &mcp.Tool{
 		Name:        "list_node_types",
-		Description: "The full node-type catalog an authored workflow composes from: ID, kind, label, description, effect class (none/read/local/external -- external steps require human approval by default), and each config field's key/type/options/reference kind. Read this before authoring; node type IDs and config keys must match it exactly.",
-	}, func(_ context.Context, _ *mcp.CallToolRequest, _ struct{}) (*mcp.CallToolResult, any, error) {
-		res, err := jsonResult(composition.NodeTypes())
+		Description: "The node-type catalog an authored workflow composes from: ID, kind, label, description, effect class (none/read/local/external -- external steps require human approval by default), and each config field's key/type/options/reference kind. Optional kind filters to one kind (trigger/capture/process/apply/decision); omit for the full catalog. Read this before authoring; node type IDs and config keys must match it exactly.",
+	}, func(_ context.Context, _ *mcp.CallToolRequest, in listNodeTypesArgs) (*mcp.CallToolResult, any, error) {
+		filtered, err := filterNodeTypesByKind(composition.NodeTypes(), in.Kind)
+		if err != nil {
+			return nil, nil, err
+		}
+		res, err := jsonResult(filtered)
 		return res, nil, err
 	})
 
