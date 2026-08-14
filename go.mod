@@ -3,6 +3,7 @@ module github.com/alicoding/mill
 go 1.25.0
 
 require (
+	github.com/JohannesKaufmann/dom v0.3.1
 	github.com/JohannesKaufmann/html-to-markdown/v2 v2.5.2
 	github.com/PuerkitoBio/goquery v1.12.0
 	github.com/andybalholm/cascadia v1.3.4
@@ -19,12 +20,12 @@ require (
 	github.com/wailsapp/wails/v3 v3.0.0-beta.6
 	github.com/zalando/go-keyring v0.2.8
 	golang.design/x/hotkey v0.6.1
+	golang.org/x/net v0.56.0
 	golang.org/x/oauth2 v0.36.0
 )
 
 require (
 	git.sr.ht/~jackmordaunt/go-toast/v2 v2.0.3 // indirect
-	github.com/JohannesKaufmann/dom v0.3.1 // indirect
 	github.com/adrg/xdg v0.5.3 // indirect
 	github.com/coder/websocket v1.8.14 // indirect
 	github.com/danieljoos/wincred v1.2.3 // indirect
@@ -56,7 +57,6 @@ require (
 	github.com/yosida95/uritemplate/v3 v3.0.2 // indirect
 	golang.org/x/image v0.43.0 // indirect
 	golang.org/x/mod v0.37.0 // indirect
-	golang.org/x/net v0.56.0 // indirect
 	golang.org/x/sync v0.22.0 // indirect
 	golang.org/x/sys v0.47.0 // indirect
 	golang.org/x/text v0.40.0 // indirect
