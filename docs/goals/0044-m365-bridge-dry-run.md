@@ -87,10 +87,25 @@ researchable further from outside):**
    "Example: Clipboard inspector" — which `text/html` flavors
    actually land?
 8. In the work draw.io build: is Mermaid insert available
-   (Extras/Insert → Mermaid)? If yes, diagram-as-code text files
-   can be the source of truth with draw.io as the mandated
-   rendering surface — the whole diagram-organizing pain collapses
-   into the notes pipeline.
+   (Extras/Insert → Mermaid)? Research-verified 2026-08-13 (primary
+   sources; full ladder + rejections in the session record): the
+   insert renders client-side (works air-gapped), and Mermaid
+   flowchart+subgraph — NEVER Mermaid's still-experimental C4
+   type — is the one diagram language with BOTH directions of the
+   owner's lock-and-sync-back workflow: draw.io insert forward,
+   `convert2mermaid` (MIT, local CLI) to regenerate text from a
+   hand-edited .drawio backward (structure survives, positions
+   don't; ≤2 nesting levels per diagram, one C4 level per file).
+   Trap, verified: the insert stores the mermaid source in the
+   file, but canvas hand-edits leave it stale — reopening the
+   dialog and applying silently discards them; after hand-edits,
+   regenerate text via converter, never the dialog. Corrections on
+   record: Structurizr Lite is archived (successor `structurizr
+   local`; best pure C4 modeler, zero draw.io path); draw.io's
+   PlantUML insert is being removed — route nothing new through
+   it. Checklist ask reduces to: confirm the insert exists in the
+   work build, and one-time `npm i -g convert2mermaid`
+   (sideloadable).
 
 Full comparison table with per-row confidence and all source URLs is
 in the session's research report; the rows' conclusions are the ADR
