@@ -24,6 +24,12 @@ export function keyFromEventCode(code: string): string | null {
   // Shift MOD is what distinguishes ⌘/ from ⌘? at the KeyCombo level
   // (modsFromEvent below), not a second key value here.
   if (code === 'Slash') return '/'
+  // Bracket keys exist for tab.next/tab.prev's ⌘⇧]/⌘⇧[ extra bindings
+  // (shared/commands.ts) -- the browser convention for cycling tabs.
+  // Shift-independent like every other key here: the '{'/'}' glyphs are
+  // the same physical keys, distinguished only by the Shift mod.
+  if (code === 'BracketLeft') return '['
+  if (code === 'BracketRight') return ']'
   return null
 }
 

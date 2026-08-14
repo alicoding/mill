@@ -47,6 +47,21 @@ describe('dispatchCommandForEvent with extraBindings', () => {
     expect(dispatchCommandForEvent(event({ code: 'KeyP', metaKey: true }), overrides)).toBe(true)
   })
 
+  it('tab.next/tab.prev carry the browser-convention bracket aliases', () => {
+    expect(findCommand('tab.next')?.extraBindings).toEqual([{ mods: ['cmd', 'shift'], key: ']' }])
+    expect(findCommand('tab.prev')?.extraBindings).toEqual([{ mods: ['cmd', 'shift'], key: '[' }])
+  })
+
+  it('Cmd+Shift+] and Cmd+Shift+[ dispatch (tab cycling via the aliases)', () => {
+    expect(dispatchCommandForEvent(event({ code: 'BracketRight', metaKey: true, shiftKey: true }), {})).toBe(true)
+    expect(dispatchCommandForEvent(event({ code: 'BracketLeft', metaKey: true, shiftKey: true }), {})).toBe(true)
+  })
+
+  it('bare Cmd+] stays unbound -- the aliases require Shift, exact-mods matching', () => {
+    expect(dispatchCommandForEvent(event({ code: 'BracketRight', metaKey: true }), {})).toBe(false)
+    expect(dispatchCommandForEvent(event({ code: 'BracketLeft', metaKey: true }), {})).toBe(false)
+  })
+
   it('a command with no extraBindings is unaffected (backward-compatible)', () => {
     // tab.close has no extras -- only its own Cmd+W default dispatches
     // it, same behavior as before this feature existed.
