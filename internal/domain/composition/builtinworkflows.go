@@ -458,7 +458,10 @@ func BuiltInWorkflows() []Workflow {
 	workflows = append(workflows, builtInSystemEventWorkflows()...)
 	// docs/goals/0031-ai-node-family.md item 4: the AI node family's own
 	// seeded proof, same split-file reasoning.
-	return append(workflows, builtInAIWorkflows()...)
+	workflows = append(workflows, builtInAIWorkflows()...)
+	// goal 0052 slice 3, ADR-0036: the evidence-receipt node's own
+	// seeded proof, same split-file reasoning.
+	return append(workflows, builtInReceiptWorkflows()...)
 }
 
 // ExampleChildWorkflowID is exported so the parent seed above and any

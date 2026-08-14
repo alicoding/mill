@@ -133,6 +133,10 @@ var workflowProofRegistry = map[string]seedProof{
 		"triggersvc.TestSystemEvent_RunCompleted_FiresForManualAndTriggeredRuns",
 		"e2e: seed-completeness.spec.ts > Forward pending approvals (presence/trigger-label only)",
 	),
+	"example-run-receipt-workflow": proven(
+		"composition.TestProcessRunReceipt_RendersEvidenceAsJSON",
+		"executionsvc.TestSeededRunReceiptExample_RunsEndToEndAndValidatesAgainstSchema",
+	),
 }
 
 // httpRequestProofRegistry: every httprequest.BuiltIn() ID.

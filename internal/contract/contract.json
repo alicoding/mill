@@ -340,6 +340,105 @@
         "args"
       ]
     },
+    "receipt": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$id": "mill://schema/receipt/v1",
+      "$defs": {
+        "RunEvidenceBuild": {
+          "properties": {
+            "version": {
+              "type": "string"
+            },
+            "commit": {
+              "type": "string"
+            },
+            "modified": {
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": false,
+          "type": "object",
+          "required": [
+            "version",
+            "modified"
+          ]
+        },
+        "RunEvidenceStep": {
+          "properties": {
+            "nodeId": {
+              "type": "string"
+            },
+            "nodeTypeId": {
+              "type": "string"
+            },
+            "status": {
+              "type": "string"
+            },
+            "guardrailEffect": {
+              "type": "string"
+            },
+            "guardrailRule": {
+              "type": "string"
+            },
+            "guardrailSource": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false,
+          "type": "object",
+          "required": [
+            "nodeId",
+            "nodeTypeId",
+            "status"
+          ]
+        }
+      },
+      "properties": {
+        "schema": {
+          "type": "string"
+        },
+        "runId": {
+          "type": "string"
+        },
+        "workflowId": {
+          "type": "string"
+        },
+        "workflowLabel": {
+          "type": "string"
+        },
+        "version": {
+          "type": "integer"
+        },
+        "kind": {
+          "type": "string"
+        },
+        "startedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "steps": {
+          "items": {
+            "$ref": "#/$defs/RunEvidenceStep"
+          },
+          "type": "array"
+        },
+        "build": {
+          "$ref": "#/$defs/RunEvidenceBuild"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "schema",
+        "runId",
+        "workflowId",
+        "version",
+        "kind",
+        "startedAt",
+        "steps",
+        "build"
+      ]
+    },
     "request": {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "$id": "mill://schema/request/v1",
@@ -1569,6 +1668,15 @@
       "Effect": ""
     },
     {
+      "ID": "process-run-receipt",
+      "Kind": "process",
+      "Label": "Process: Run receipt",
+      "Description": "Renders this run's own recorded evidence -- its steps so far, their guardrail verdicts, and which Mill build ran them -- as a JSON receipt, replacing the payload. Only covers steps that ran BEFORE this one, since the run is still in flight when this step executes. Compose it with an Apply step (clipboard/file write) to hand the receipt to an external agent -- there is no separate send path.",
+      "ConfigFields": null,
+      "Output": "a JSON receipt of this run's steps so far",
+      "Effect": "read"
+    },
+    {
       "ID": "ruleset",
       "Kind": "process",
       "Label": "Ruleset validation",
@@ -1727,6 +1835,7 @@
       "mill://schema/execenv/v1",
       "mill://schema/list/v1",
       "mill://schema/mcpserver/v1",
+      "mill://schema/receipt/v1",
       "mill://schema/request/v1",
       "mill://schema/workflow/v1"
     ]

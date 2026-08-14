@@ -149,6 +149,8 @@ func main() {
 	// consumer); this wires them together, same late-bound-setter shape
 	// as every other injected-function seam here.
 	executionService.SetSystemEventSink(triggerService.DispatchSystemEvent)
+	// goal 0052 slice 3: the version a run receipt's Build field stamps.
+	executionService.SetVersion(millVersion)
 
 	settingsService := settingssvc.NewSettingsService(settingsStore, triggerService, settingsPath != defaultSettingsPath)
 	// Bidirectional hotkey-conflict check (docs/SPEC.md §3.7): a
