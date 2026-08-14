@@ -68,11 +68,28 @@ re-litigated):
    clipboard/file), per the ADR-0035 boundary. Rides here as the
    contract's return path; splits out to its own goal only if
    implementation shows it's bigger than one session.
-6. **The agent-facing bundle** — the far side's MILL-EXPERT-shaped
-   ask (taxonomy, invariants, import contract) becomes a *generated*
-   artifact assembled from the registries and the schema above,
-   never hand-authored prose; exposed as MCP resources and an
-   exportable file set.
+6. **The agent-facing bundle, in two forms — one root document +
+   queryable discovery** (owner-sharpened 2026-08-13, from the
+   industry convention of a single all-APIs contract file: hand an
+   LLM ONE artifact and it knows the whole surface):
+   - **One root contract document** — a single generated file (and
+     matching `mill://contract` MCP resource) that contains or
+     indexes everything: every envelope schema (item 1), the node
+     catalog with per-type config-field metadata, the import/update
+     contract, invariants, and the state manifest (item 4). This is
+     the transport form for MCP-denied environments — the far side
+     gets one file over the clipboard/file bridge and needs nothing
+     else. Assembled from the registries, never hand-authored.
+   - **Queryable discovery for live contexts** — MCP already exposes
+     the entity families as resources (`mill://workflows`,
+     `mill://decisions`, …) and a `list_node_types` tool; extend
+     node discovery with filter parameters (kind, and the
+     audience/complexity facet once goal 0047 lands its metadata
+     field) so an agent can search the catalog by type/metadata
+     rather than pulling the full list — the same node-discovery
+     shape the workflow-automation field converged on. The static
+     root document and the live MCP surface are generated from the
+     SAME registry code paths, so they cannot drift apart.
 
 ## Not in scope
 
@@ -97,8 +114,11 @@ the contract travels as files/clipboard/MCP, period (SPEC §1.1).
       match the build (asserted in test against build info).
 - [ ] A seeded workflow demonstrates the evidence-receipt node
       end-to-end (seeds ARE the proof).
-- [ ] The agent bundle is generated, committed, drift-checked, and
-      exposed via MCP resources.
+- [ ] The root contract document is generated, committed,
+      drift-checked, exposed as an MCP resource, and exportable as
+      one file; node discovery supports type/metadata filtering; both
+      forms derive from the same registry code paths (asserted by a
+      test comparing them).
 - [ ] SPEC.md gains the contract-surface section (status LOCKED for
       the format decision, with the rejected-formats reasoning
       pointed at this file).
