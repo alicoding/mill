@@ -49,14 +49,15 @@ accepted)**
 4. [ ] [0044 — M365 bridge dry run + capture research](0044-m365-bridge-dry-run.md)
    — absorbs goal 0021 Phase 4's last bullet; gap list + the
    browser-extension-at-a-locked-down-enterprise decision research
-5. [ ] [0053 — "Step", not "node": vocabulary rename](0053-step-vocabulary.md)
+5. [x] [0053 — "Step", not "node": vocabulary rename](archive/0053-step-vocabulary.md)
    — owner-ratified 2026-08-13 ("a step in the workflow, not a node
    in the workflow"; generic without being engineer-only; run
    history already says step). UI copy sweep here; wire names land
    inside 0052 (sequenced before it so the contract never freezes
    the rejected word); internal identifiers untouched.
-   IMPLEMENTED 2026-08-14 (PR #110 merged); box 3 (0052 wire names)
-   stays open pending 0052
+   DELIVERED 2026-08-14: UI sweep PR #110; wire tier landed inside
+   0052's freeze (PR #123 -- steps/StepTypeID with legacy aliases
+   forever, list_step_types primary). ARCHIVED
 6. [x] [0057 — Live-sync audit: no reload, ever](archive/0057-live-sync-audit.md)
    — DELIVERED 2026-08-14, same day raised (owner-directed after the
    runs-panel staleness hit live). Runs-panel fix (PR #111) + full
@@ -66,7 +67,7 @@ accepted)**
    emit coverage for EVERY mutating service package, both suspicious
    surface families live-verified. Two deliberate polls (step
    progress, in-flight detail) recorded as design, not gaps
-7. [ ] [0052 — Contract maturity: generated schema + versioned envelope](0052-contract-surface.md)
+7. [x] [0052 — Contract maturity: generated schema + versioned envelope](archive/0052-contract-surface.md)
    — owner-directed 2026-08-13 ("follow the mature pattern") after
    the far-side contact: schema-first discipline adopted as generated
    JSON Schema from Go types (protobuf/gRPC/OpenAPI rejected with
@@ -74,7 +75,15 @@ accepted)**
    the export-id open question; evidence receipt rides as item 5;
    coordinates schema-id evolution semantics with 0046's ADR.
    Sequenced directly after 0044 — the dry run sharpens what the
-   contract must express
+   contract must express. DELIVERED 2026-08-14 in four slices
+   (PRs #117/#118/#119/#123): 8 schema families + drift gates,
+   export id + uniform import, manifest, root contract document,
+   discovery filter, receipt step, step wire vocabulary. ARCHIVED.
+   **PENDING OWNER CALL: 0052 is a capability-goal archive, so the
+   cadence rule says tag v0.4.0 — held because v0.3.0 shipped the
+   same day; ask the owner before cutting. Known remainder for a
+   future sweep: node wording in MCP debug-tool descriptions + the
+   root document's nodeTypes key (PR #123's flagged leftovers)**
 8. [ ] [0058 — Step inspector UX: config + I/O together](0058-step-inspector-ux.md)
    — owner-raised 2026-08-14 ("the tiny sidebar for everything seems
    to be a weird difficult pattern"): review-first goal — precedent
