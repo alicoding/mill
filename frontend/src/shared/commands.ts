@@ -85,7 +85,7 @@ export const COMMANDS: Command[] = [
     label: 'Close tab',
     defaultBinding: { mods: ['cmd'], key: 'W' },
     run: () => {
-      const { activeWorkTabKey, closeWorkTab } = useAppStore.getState()
+      const { activeWorkTabKey, requestWorkTabClose } = useAppStore.getState()
       // No active work tab means we're already on the pinned page --
       // "falling back to the pinned tab" (the goal's own last-tab note)
       // is a no-op here, not zero. The window-only-when-none-remain
@@ -93,7 +93,10 @@ export const COMMANDS: Command[] = [
       // just lets THIS keypress reach here instead of Cocoa's own Close
       // -- it never hands window-closing back to JS).
       if (!activeWorkTabKey) return
-      closeWorkTab(activeWorkTabKey)
+      // Routes through the close-guard signal (docs/goals/0048) rather
+      // than calling closeWorkTab directly -- app/useWorkTabCloseGuard.ts
+      // decides whether the tab is dirty and prompts before it closes.
+      requestWorkTabClose({ kind: 'one', key: activeWorkTabKey })
     },
   },
   {
@@ -128,12 +131,12 @@ export const COMMANDS: Command[] = [
     // command's default above: no collision.
     defaultBinding: { mods: ['cmd', 'option'], key: 'W' },
     run: () => {
-      const { activeWorkTabKey, closeOtherWorkTabs } = useAppStore.getState()
+      const { activeWorkTabKey, requestWorkTabClose } = useAppStore.getState()
       // Mirrors WorkTabShell's own overflow-menu item, which disables
       // "Close other tabs" while on the pinned page tab (nothing to
       // keep relative to) -- same no-op here, not an arbitrary target.
       if (!activeWorkTabKey) return
-      closeOtherWorkTabs(activeWorkTabKey)
+      requestWorkTabClose({ kind: 'others', keepKey: activeWorkTabKey })
     },
   },
   {
@@ -144,14 +147,7 @@ export const COMMANDS: Command[] = [
     // multi-window tab groups, so "close every open work tab" is the
     // closest real equivalent action in this app.
     defaultBinding: { mods: ['cmd', 'shift'], key: 'W' },
-    // Deliberately does NOT clear each tab's hot-exit scratch
-    // (composition/canvasScratch.ts) -- same precedent tab.close's own
-    // ⌘W dispatch above already set: only the mouse-driven close paths
-    // (WorkTabShell's ✕ button and overflow-menu items) route through
-    // closeAndClearScratch/closeAllTabs's clearScratch wrapping; the
-    // keyboard dispatch path calls the store directly, unchanged by
-    // this goal.
-    run: () => useAppStore.getState().closeAllWorkTabs(),
+    run: () => useAppStore.getState().requestWorkTabClose({ kind: 'all' }),
   },
   {
     id: 'workflow.new',

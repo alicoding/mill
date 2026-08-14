@@ -15,6 +15,7 @@ import {
   sameWorkTarget,
   shouldUpgradeToEdit,
   type WorkTab,
+  type WorkTabCloseRequest,
   type WorkTabSpec,
 } from './workTabs'
 
@@ -23,7 +24,7 @@ import {
 // WorkflowEditorTab.tsx, etc.) keeps working unchanged -- the types
 // themselves live in workTabs.ts now (split at the 500-line limit,
 // CLAUDE.md).
-export type { WorkTab, WorkTabSpec }
+export type { WorkTab, WorkTabSpec, WorkTabCloseRequest }
 
 // Which surface triggered a run -- 'trigger' covers every headless
 // source (hotkey, schedule, clipboard-watch, filesystem-watch; see
@@ -225,30 +226,30 @@ interface AppState {
   // workflow.save/workflow.run (shared/commands.ts) can't import
   // composition/CompositionCanvas.tsx directly (dependency-cruiser
   // boundary, .claude/rules/frontend.md) -- this is the signal the
-  // ACTIVE canvas tab watches and consumes, same "different view trees,
-  // a store field beats a callback chain" shape as
-  // openWorkflowRequest/requestOpenWorkflow above.
+  // ACTIVE canvas tab watches and consumes, same store-field-beats-a-
+  // callback-chain shape as openWorkflowRequest above.
   canvasCommandRequest: 'save' | 'run' | null
   requestCanvasCommand: (command: 'save' | 'run') => void
   consumeCanvasCommandRequest: () => void
-  // The ⌘K command palette (docs/goals/0015-summon-quick-invoke.md).
-  // Lives here, not local useState in app/CommandPalette.tsx, because
-  // the thing that opens it -- palette.open's `run` in shared/commands.ts
-  // -- can't import a component from app/ (dependency-cruiser's
-  // shared-is-a-leaf rule, .claude/rules/frontend.md); same
-  // store-field-as-cross-tree-signal shape as canvasCommandRequest
-  // above, just a plain boolean instead of a one-shot request.
+  // Every close path (docs/goals/0048) sets this instead of calling a
+  // closer directly -- app/useWorkTabCloseGuard.ts is the one place
+  // deciding whether a dirty tab needs a prompt.
+  workTabCloseRequest: WorkTabCloseRequest | null
+  requestWorkTabClose: (request: WorkTabCloseRequest) => void
+  consumeWorkTabCloseRequest: () => void
+  // The ⌘K command palette (docs/goals/0015): same store-field-as-
+  // cross-tree-signal shape as canvasCommandRequest above, since
+  // palette.open's `run` (shared/commands.ts) can't import the
+  // app/CommandPalette.tsx component that renders off this flag.
   paletteOpen: boolean
   openPalette: () => void
   closePalette: () => void
   togglePalette: () => void
-  // Workflow pins/favorites (docs/goals/BACKLOG.md Standing #5, split
-  // from goal 0015's remainder): a plain ordered workflow-ID list,
-  // store-owned, localStorage-tier -- schema LOCKED at prioritization,
-  // no per-workflow field and no new Go surface. Newly-pinned ids
-  // append to the end (pin order = pin recency); sortWorkflowsBy
-  // PinnedAndFrecency (app/workflowFrecency.ts) renders pinned rows in
-  // this array's order, above every frecency-sorted unpinned row.
+  // Workflow pins/favorites (docs/goals/BACKLOG.md Standing #5): a plain
+  // ordered workflow-ID list, store-owned, localStorage-tier. Newly-
+  // pinned ids append to the end; sortWorkflowsByPinnedAndFrecency
+  // (app/workflowFrecency.ts) renders pinned rows in this array's
+  // order, above every frecency-sorted unpinned row.
   pinnedWorkflowIds: string[]
   togglePinnedWorkflow: (id: string) => void
 }
@@ -436,6 +437,9 @@ export const useAppStore = create<AppState>()(
       canvasCommandRequest: null,
       requestCanvasCommand: (command) => set({ canvasCommandRequest: command }),
       consumeCanvasCommandRequest: () => set({ canvasCommandRequest: null }),
+      workTabCloseRequest: null,
+      requestWorkTabClose: (request) => set({ workTabCloseRequest: request }),
+      consumeWorkTabCloseRequest: () => set({ workTabCloseRequest: null }),
       paletteOpen: false,
       openPalette: () => set({ paletteOpen: true }),
       closePalette: () => set({ paletteOpen: false }),
