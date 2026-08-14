@@ -106,6 +106,12 @@ researchable further from outside):**
    it. Checklist ask reduces to: confirm the insert exists in the
    work build, and one-time `npm i -g convert2mermaid`
    (sideloadable).
+9. Does the work M365 Copilot ground on a `.md`/`.txt` file sitting
+   in the personal OneDrive folder, or only Office formats? Decides
+   the scratch file's extension (fallbacks are trivial: `.txt`, or a
+   periodic save-as-docx step). The scratch-hub loop below depends on
+   Copilot being able to READ the synced scratch; write-back stays
+   Mill-side either way.
 
 Full comparison table with per-row confidence and all source URLs is
 in the session's research report; the rows' conclusions are the ADR
@@ -151,6 +157,81 @@ user-composed glue workflow shelling out to the converter. Mill
 deliberately does NOT become a notes app or a diagram platform
 (SPEC §0's point-solution boundary) — everything above is
 composition.
+
+## Scenario-2 gap verification — resolved 2026-08-14 (research-verified)
+
+"Verify, don't assume" pass, run against the code, with the gap fix
+shipped in the same change:
+
+- **File-append apply step: was a real gap, now closed as
+  `apply-file-write`** (`internal/domain/composition/applyfilewrite.go`
+  — append/overwrite modes, `~`-expanded literal path,
+  create-missing-folders, optional datetime entry stamps; effect
+  `local` per ADR-0022, ungated by default, so hotkey capture stays
+  one keystroke). Passed the ADR-0035 multi-use test on its own
+  merits: log/CSV/any-accumulation workflows and "write the processed
+  result where another tool reads it" are same-step-different-target
+  uses; it is also the symmetric write inverse of the already-shipped
+  `capture-file`. Config shape adopted from the converged
+  self-hosted-platform precedent, primary-source-verified (research
+  agent, 2026-08-14): n8n's Read/Write Files from Disk (append
+  toggle), Node-RED's core `file` node (append/overwrite +
+  create-directory option + write-time newline shaping — the
+  precedent class for the timestamp option), Huginn's `LocalFileAgent`
+  (append boolean + templated path). Cloud-native platforms (Zapier,
+  Make) have no local-file primitive at all — absence checked, not
+  assumed. Mill's path stays literal (no templating engine, SPEC
+  §3.3's standing decision); the "dated scratch" need is met by
+  write-time entry stamps instead of dated *filenames*, which is what
+  path templating would otherwise have existed for. Seeded proof:
+  "Example: Scratch capture" (manual trigger → clipboard capture →
+  append to `~/Mill Scratch/scratch.md` with stamps; no seed arms a
+  global hotkey by default — the user assigns one).
+- **`code-execution` could NOT paper over the gap — and payload-on-
+  stdin is named, not built.** A literal script never receives the
+  payload (`procexec.Spec` has no stdin field; ExecEnv env is fixed
+  config), and `source: payload` runs the payload AS the command —
+  wrong semantics and shell-injection-shaped for note text. Extending
+  code-execution with payload-on-stdin (literal scripts as Unix
+  filters: pandoc, jq, the convert2mermaid glue in checklist item 8)
+  has split precedent: Huginn's ShellCommandAgent ships a first-class
+  `stdin` option; Node-RED built exactly this in community PR #4880
+  and closed it unmerged citing no demonstrated demand; n8n's Execute
+  Command has neither and is disabled by default since v2.0 for
+  injection-class risk. Verdict: not built now — with
+  `apply-file-write` shipped, no scenario-2 step needs it; build it
+  when a workflow actually needs a filter step, judged then against
+  ADR-0035.
+- **Render+open (read workflow): confirmed single-use, not built** —
+  exactly as the boundary guard pre-flagged. Its only driver is
+  reading these notes; if payload-on-stdin ever lands, md→HTML→open
+  becomes user-composed glue with zero Mill surface, the right shape
+  for it.
+
+**Direction split confirmed from the far side (owner-reported
+2026-08-14): the work M365 Copilot is read-only over OneDrive/
+Notebook/Loop content — it cannot write any of them.** This is not a
+blocker; it is the division of labor the bridge already assumes:
+Copilot reads and reasons (the direction it's allowed and the
+direction that's hard for a human), the human clipboard hop is the
+approval gate, and Mill is the local hand that writes. The scattered
+work surfaces (physical notebook, Excel, Loop, OneNote) resolve into
+one loop: a plain scratch file in a OneDrive-synced folder is the
+single writable substrate (Mill appends via hotkey capture; the sync
+client, not Mill, moves bytes — the no-outbound-calls constraint
+holds); Copilot reads the synced scratch plus everything else it
+already indexes and does the organizing/reformatting; results return
+over the clipboard bridge and Mill applies them locally. Loop/OneNote/
+Excel become read-sources Copilot mines, not places the owner
+maintains by hand. Checklist item 9 above is the one unknown gating
+the file extension.
+
+With the node shipped, scenario 2 composes end to end from existing
+steps: capture = trigger (manual in the seed; hotkey once assigned) →
+clipboard capture → `apply-file-write` (append + stamps); reformat =
+`capture-file` → AI completion (home) or the M365 clipboard bridge
+(work) → `apply-file-write` (overwrite); read = deliberately out of
+scope per the boundary verdict above.
 
 ## Far-side requirements captured — 2026-08-13 (feeds deliverable 1)
 
