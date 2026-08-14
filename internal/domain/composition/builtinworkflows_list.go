@@ -80,7 +80,7 @@ func builtInListWorkflows() []Workflow {
 		{
 			ID:          "example-list-lookup-workflow",
 			Label:       "Example: Country code lookup",
-			Description: "Captures a typed 'code' Attribute and looks it up in the seeded \"Example: Country codes\" List (Configure > Lists), writing the match into a 'countryName' Attribute (docs/SPEC.md §3.3's List row). Run it with code = US, CA, or MX to see a match; any other code fails the run (the List node's own default \"If no match: fail\" behavior).",
+			Description: "Captures a typed 'code' Attribute and looks it up in the seeded \"Example: Country codes\" List (Configure > Lists), writing the match into a 'countryName' Attribute. Run it with code = US, CA, or MX to see a match; any other code fails the run (the List step's own default \"If no match: fail\" behavior).",
 			Nodes:       listNodes,
 			Attributes: []AttributeDef{
 				{Key: "code", Label: "Code", Type: FieldText},
@@ -91,12 +91,12 @@ func builtInListWorkflows() []Workflow {
 				{ID: "example-list-e1", Source: listCaptureID, Target: listLookupID},
 			},
 			BuiltIn: true,
-			Seed:    seedorigin.Stamp(1),
+			Seed:    seedorigin.Stamp(2),
 		},
 		{
 			ID:          "example-list-search-workflow",
 			Label:       "Example: Country lookup (search)",
-			Description: "Captures a typed 'code' Attribute and searches the seeded \"Example: Country codes\" List (Configure > Lists) via list-search -- an exact match on its 'code' column, writing a typed Object result ({results, matched, first_match, match_count, list_id}) into 'searchResult'. Unlike list-lookup's plain scalar output, this demonstrates the richer typed result a downstream step (e.g. a Branch condition on searchResult.matched) could reference. Run it with code = US, CA, MX, or FR to see a match -- SU is a deliberately Expired seed row, excluded from matching by default (docs/goals/0011-lists-maturation.md).",
+			Description: "Captures a typed 'code' Attribute and searches the seeded \"Example: Country codes\" List (Configure > Lists) via list-search -- an exact match on its 'code' column, writing a typed Object result ({results, matched, first_match, match_count, list_id}) into 'searchResult'. Unlike list-lookup's plain scalar output, this demonstrates the richer typed result a downstream step (e.g. a Branch condition on searchResult.matched) could reference. Run it with code = US, CA, MX, or FR to see a match -- SU is a deliberately Expired seed row, excluded from matching by default.",
 			Nodes:       listSearchNodes,
 			Attributes: []AttributeDef{
 				{Key: "code", Label: "Code", Type: FieldText},
@@ -107,7 +107,7 @@ func builtInListWorkflows() []Workflow {
 				{ID: "example-list-search-e1", Source: listSearchCaptureID, Target: listSearchStepID},
 			},
 			BuiltIn: true,
-			Seed:    seedorigin.Stamp(1),
+			Seed:    seedorigin.Stamp(2),
 		},
 	}
 }

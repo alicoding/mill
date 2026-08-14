@@ -125,7 +125,7 @@ func ExecuteWorkflowWithStepRunner(nodes []Node, edges []Edge, attrs []Attribute
 
 func executeWorkflow(nodes []Node, edges []Edge, attrs []AttributeDef, run StepRunner, opts ExecuteOptions) (string, error) {
 	if len(nodes) == 0 {
-		return "", fmt.Errorf("a workflow needs at least one node")
+		return "", fmt.Errorf("a workflow needs at least one step")
 	}
 
 	byID, outgoingEdges, hasIncoming, err := buildGraph(nodes, edges)
@@ -167,7 +167,7 @@ func executeWorkflow(nodes []Node, edges []Edge, attrs []AttributeDef, run StepR
 		if node.Kind != KindTrigger && node.Kind != KindDecision {
 			entry, ok := nodeTypeRegistry[node.NodeTypeID]
 			if !ok || entry.exec == nil {
-				return "", fmt.Errorf("unknown node type: %s", node.NodeTypeID)
+				return "", fmt.Errorf("unknown step type: %s", node.NodeTypeID)
 			}
 			// The guardrail gate runs before the node does (docs/adr/0022)
 			// -- an ask verdict parks here durably, a deny aborts the run.
@@ -176,13 +176,13 @@ func executeWorkflow(nodes []Node, edges []Edge, attrs []AttributeDef, run StepR
 			if guardrailGate != nil {
 				gated, err := guardrailGate(opts.RunContext, opts.WorkflowID, node, ctx)
 				if err != nil {
-					return "", fmt.Errorf("node %s: %w", node.NodeTypeID, err)
+					return "", fmt.Errorf("step %s: %w", node.NodeTypeID, err)
 				}
 				ctx = gated
 			}
 			ctx, err = run(node.ID, func() (ExecContext, error) { return entry.exec(node, ctx) })
 			if err != nil {
-				return "", fmt.Errorf("node %s: %w", node.NodeTypeID, err)
+				return "", fmt.Errorf("step %s: %w", node.NodeTypeID, err)
 			}
 		}
 

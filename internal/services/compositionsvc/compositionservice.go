@@ -145,7 +145,7 @@ func (c *CompositionService) CreateWorkflow(label, description string, nodes []c
 		return composition.Workflow{}, fmt.Errorf("a workflow needs a label")
 	}
 	if len(nodes) == 0 {
-		return composition.Workflow{}, fmt.Errorf("a workflow needs at least one node")
+		return composition.Workflow{}, fmt.Errorf("a workflow needs at least one step")
 	}
 
 	resolved, err := composition.ResolveNodeDefaults(nodes)
@@ -216,7 +216,7 @@ func (c *CompositionService) UpdateWorkflow(id, label, description string, nodes
 		return composition.Workflow{}, fmt.Errorf("a workflow needs a label")
 	}
 	if len(nodes) == 0 {
-		return composition.Workflow{}, fmt.Errorf("a workflow needs at least one node")
+		return composition.Workflow{}, fmt.Errorf("a workflow needs at least one step")
 	}
 
 	resolved, err := composition.ResolveNodeDefaults(nodes)

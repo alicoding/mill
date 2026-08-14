@@ -18,10 +18,10 @@ export function formatIssuesForCopy(t: (key: string, opts?: Record<string, unkno
 
   const lines = issues.map((i) => {
     // ValidateGraph's own Message usually already leads with
-    // "node <id>: "/"edge <id>: " -- adding our own location fragment
-    // then double-prefixed every line (caught from a real paste, goal
-    // 0021). Only add a location when the message doesn't carry one.
-    const alreadyLocated = i.Message.startsWith('node ') || i.Message.startsWith('edge ')
+    // "step <id>: "/"edge <id>: " -- adding our own location fragment
+    // then double-prefixed every line. Only add a location when the
+    // message doesn't carry one.
+    const alreadyLocated = i.Message.startsWith('step ') || i.Message.startsWith('edge ')
     const where = alreadyLocated ? '' : i.NodeID ? t('validationCopy.nodeLocation', { id: i.NodeID }) : i.EdgeID ? t('validationCopy.edgeLocation', { id: i.EdgeID }) : ''
     return `- [${i.Severity}]${where}: ${i.Message}`
   })
