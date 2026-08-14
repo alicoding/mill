@@ -41,7 +41,10 @@ accepted)**
    dirty workflow draft (mouse paths clear scratch with no prompt;
    keyboard paths orphan it — tab-key-scoped scratch is unreachable
    after reopen). VS Code-precedent Save/Don't save/Cancel on single
-   close, summary confirm on bulk; queue-jumped as live data loss
+   close, summary confirm on bulk; queue-jumped as live data loss.
+   IMPLEMENTED same day (PR #95 merged, all acceptance items
+   test-proven); stays open pending the owner's live sign-off, then
+   archives
 3. [ ] [0043 — Hotkey recorder vs menu accelerators](0043-hotkey-recorder-menu-accelerators.md)
    — overdue owner-hit bug (⌘⇧W while recording closed the app);
    accelerator-free menu swap during capture
@@ -55,7 +58,26 @@ accepted)**
    live and attestation-verified. The cut surfaced and fixed three
    more latent defects (raw-binary asset, release.yml invalid YAML —
    now gated by workflow-lint, GPL-3 setup-task action wrapper)
-6. [ ] [0046 — Schema evolution](0046-schema-evolution.md) —
+6. [ ] [0051 — Run-analytics dashboard v2](0051-run-analytics-dashboard.md)
+   — owner-directed 2026-08-13; research DELIVERED same day (n8n/
+   Zapier/Make/Windmill/Temporal/Airflow/Power Automate survey): Home
+   already covers most of the converged set; ships avg-duration KPI +
+   per-workflow duration column (no schema change), trigger-recency
+   insight (workflow-level proxy), node-type failure breakdown on
+   Activity; two data-model gaps recorded as deferred (per-step
+   timestamps, trigger fire-log). Slotted ahead of 0049/0050 per the
+   UX-first tiebreak
+7. [ ] [0049 — Docs anti-rot mechanics](0049-docs-anti-rot.md)
+   — owner-ratified 2026-08-13 from the two-agent docs survey: path-
+   reference checker (lefthook+CI), generated ADR index with
+   drift-fail, revive package-comments floor, AGENTS.md interop,
+   README Spec-view fix; rejected list recorded in the goal file
+8. [ ] [0050 — Codebase structure audit](0050-codebase-structure-audit.md)
+   — owner-raised 2026-08-13 (OSS flat-structure critique): audit
+   layout against official Go guidance + what OSS reviewers actually
+   flag, verdict table + a citable layout ADR; only audit-justified
+   moves, no conformance churn
+9. [ ] [0046 — Schema evolution](0046-schema-evolution.md) —
    owner-raised from a real regulated-platform incident
    (rename-forbidden / retype-permanent / live-referenced decisions
    forcing a ~30-version manual cleanup); research delivered
@@ -65,7 +87,7 @@ accepted)**
    Mill's Configure entities are live-referenced (a pinned workflow
    still resolves TODAY's decision definition) and deletes have no
    reference-integrity check
-7. [ ] [0047 — Node audience/complexity facet](0047-node-audience-facet.md)
+10. [ ] [0047 — Node audience/complexity facet](0047-node-audience-facet.md)
    — owner-proposed; session recommendation recorded: function stays
    the primary palette grouping, audience/complexity becomes a
    NodeType metadata field + progressive-disclosure facet (not a
