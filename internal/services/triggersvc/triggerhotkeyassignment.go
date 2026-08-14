@@ -6,6 +6,7 @@ import (
 
 	"github.com/alicoding/mill/internal/adapters/hotkey"
 	"github.com/alicoding/mill/internal/domain/trigger"
+	"github.com/alicoding/mill/internal/services/dataevent"
 )
 
 // Split out of triggerservice.go once that file crossed the 500-line
@@ -97,6 +98,7 @@ func (s *TriggerService) AssignHotkey(workflowID string, mods []string, key stri
 	s.logger.Info("trigger hotkey assigned", "workflow", workflowID, "binding", label)
 
 	s.Sync(s.comp.Workflows())
+	dataevent.Emit("hotkey", workflowID)
 
 	return label, nil
 }
@@ -141,6 +143,7 @@ func (s *TriggerService) UnassignHotkey(workflowID string) {
 	s.persistHotkeys()
 	s.logger.Info("trigger hotkey unassigned", "workflow", workflowID)
 	s.Sync(s.comp.Workflows())
+	dataevent.Emit("hotkey", workflowID)
 }
 
 // DebugAssignHotkey records workflowID's combo directly, skipping the
@@ -166,6 +169,7 @@ func (s *TriggerService) DebugAssignHotkey(workflowID string, mods []string, key
 	s.persistHotkeys()
 	s.logger.Info("trigger hotkey debug-assigned", "workflow", workflowID, "binding", label)
 	s.Sync(s.comp.Workflows())
+	dataevent.Emit("hotkey", workflowID)
 	return label, nil
 }
 

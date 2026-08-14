@@ -48,14 +48,64 @@ for the session. Anything else is a gap.
 
 ## Acceptance (checkable)
 
-- [ ] The inventory matrix (or a distilled gap table) is recorded in
+- [x] The inventory matrix (or a distilled gap table) is recorded in
       this file, every fetch-once surface classified as
       gap / deliberate-poll / session-immutable with a reason.
-- [ ] Every classified gap is either fixed (emit + subscription +
+- [x] Every classified gap is either fixed (emit + subscription +
       regression test at the TestHook seam) or explicitly rejected
       with a reason recorded here.
 - [ ] Every mutating service package has emit coverage in its tests
-      for the methods that mutate displayed state.
+      for the methods that mutate displayed state. Not fully true yet:
+      `internal/services/mcpsvc` (millmcpservice_authoring.go,
+      millmcpservice_debug.go, millmcpservice_tools.go) calls
+      `dataevent.Emit` at several sites with no `dataevent.TestHook`-seam
+      test anywhere in that package — pre-existing from goal 0017, out
+      of this goal's Cluster A/B scope, named here rather than silently
+      left off the list. executionsvc/triggersvc/settingssvc — this
+      goal's own scope — now have that coverage (see below).
 - [ ] No surface in the app requires a reload to reflect a mutation
       Mill itself performed — spot-checked live on at least the
       surfaces the inventory flagged most suspicious.
+
+## Audit verdict
+
+Every candidate from Cluster A (run-lifecycle emits) and Cluster B
+(hotkey/keybinding vocabulary), verified against the code before
+fixing per this goal's own instruction — none of the candidates turned
+out to be a non-gap on inspection.
+
+| Surface / method | Classification | Where the fix landed |
+|---|---|---|
+| `ExecutionService.ResolveApproval` | fixed — a parked run's resolution changed its user-visible state immediately but no emit fired until the resumed graph finished | `internal/services/executionsvc/executionservice_guardrail.go` |
+| `ExecutionService.CancelRun` | fixed — a run cancelled while still `ENQUEUED` never reaches `runWorkflow`, so its completion emit never fires for that run | `internal/services/executionsvc/executionservice_cancel.go` |
+| `ExecutionService.RedriveRun` | fixed — the forked run enters DBOS via `ForkWorkflow` directly, bypassing `runWorkflowStart`'s own start emit | `internal/services/executionsvc/executionservice.go` |
+| `app/CommandPalette.tsx` hotkey combo hints | fixed — fetched only on palette open, no subscription while the palette stayed open | `frontend/src/app/CommandPalette.tsx` |
+| `app/QuickPanel.tsx` hotkey/keybinding hints | fixed — only refetched on window show/focus, not while the panel stayed open between shows | `frontend/src/app/QuickPanel.tsx` |
+| `composition/hotkeyCapture.ts` `useComboCapture` (backs both `useHotkeyCapture` and `useCommandKeybindingCapture`, so also `NodeInspector.tsx`/`TriggerRowLabel.tsx`) | fixed — a target's own combo fetched once per mount/target-change, no subscription for a change made by a DIFFERENT open recorder instance | `frontend/src/composition/hotkeyCapture.ts` |
+| `views/KeyboardShortcutsSection.tsx` | fixed — covered by the `hotkeyCapture.ts` hook fix (its own recorder's binding) plus `App.tsx`'s central router now refreshing `keybindingOverrides` (the `effectiveBinding` fallback prop) | `frontend/src/app/App.tsx`, `frontend/src/composition/hotkeyCapture.ts` |
+| `TriggerService.AssignHotkey` / `UnassignHotkey` / `DebugAssignHotkey` | fixed — no `"hotkey"` entity existed at all | `internal/services/triggersvc/triggerhotkeyassignment.go` |
+| `SettingsService.SetKeybinding` / `ClearKeybinding` | fixed — no `"keybinding"` entity existed at all | `internal/services/settingssvc/settingsservice_keymap.go` |
+| Run step-by-step progress (an open run's own in-flight step list) | non-gap: deliberate poll — DBOS has no per-step push event to subscribe to | n/a |
+| Run detail of the currently-selected in-flight run | non-gap: deliberate poll — same reason as above | n/a |
+
+New `dataevent` entity strings: `"hotkey"` (ID = the workflow ID the
+combo binds to) and `"keybinding"` (ID = the command ID the combo
+overrides), documented in `dataevent.go`'s `Changed` doc comment.
+
+Emit-coverage tests now exist at the `dataevent.TestHook` seam for
+every mutator this goal touched:
+`internal/services/executionsvc/executionservice_dataevent_test.go`
+(`ResolveApproval`/`CancelRun`-while-`ENQUEUED`/`RedriveRun`, extending
+the existing `TestRunWorkflow_EmitsRunDataEventOnStartAndCompletion`
+pattern — mutex-guarded since the DBOS completion emit fires on a
+different goroutine),
+`internal/services/triggersvc/triggerhotkeyassignment_dataevent_test.go`,
+and
+`internal/services/settingssvc/settingsservice_keymap_dataevent_test.go`
+(both following `compositionservice_dataevent_test.go`'s
+`captureEmits` shape). No frontend vitest precedent exists yet for
+asserting an `Events.On('mill-data-changed', …)` refresh (no existing
+`*.test.tsx` covers it for any prior surface either, including the
+already-shipped `WorkflowRunsPanel.tsx` instance) — these Go tests plus
+the full Playwright e2e suite are this change's proof, matching
+testing.md's layering.

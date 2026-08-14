@@ -9,6 +9,7 @@ import (
 	"github.com/alicoding/mill/internal/adapters/execution"
 	"github.com/alicoding/mill/internal/domain/composition"
 	"github.com/alicoding/mill/internal/domain/guardrail"
+	"github.com/alicoding/mill/internal/services/dataevent"
 	"github.com/alicoding/mill/internal/services/guardrailsvc"
 	"github.com/wailsapp/wails/v3/pkg/application"
 )
@@ -287,7 +288,18 @@ func (e *ExecutionService) approvalWaiter(runCtx any, node composition.Node, ec 
 // per-node breakpoints still honored). Send works from outside a
 // workflow (verified against the installed DBOS source).
 func (e *ExecutionService) ResolveApproval(runID, nodeID string, approve bool, values map[string]string, continueRun bool) error {
-	return execution.Send(e.ctx, runID, approvalDecision{NodeID: nodeID, Approve: approve, Values: values, Continue: continueRun}, guardrailApprovalTopic)
+	err := execution.Send(e.ctx, runID, approvalDecision{NodeID: nodeID, Approve: approve, Values: values, Continue: continueRun}, guardrailApprovalTopic)
+	if err == nil {
+		// The parked run's user-visible state (pending -> resolved)
+		// changes the instant this Send lands, but the run only reaches
+		// runWorkflow's own completion emit once the resumed graph
+		// finishes executing -- which may be seconds away if steps
+		// remain after this node. Emit here too so an open Runs panel
+		// reflects the resolution immediately, not just at final
+		// completion.
+		dataevent.Emit("run", runID)
+	}
+	return err
 }
 
 // pendingApprovalFor polls a run's advertised pending approval (zero

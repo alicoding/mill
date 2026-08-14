@@ -18,7 +18,9 @@ import "github.com/wailsapp/wails/v3/pkg/application"
 
 // Changed is the live-sync event payload: which kind of entity changed
 // (e.g. "workflow", "request", "list", "mcpserver", "decision",
-// "execenv", "guardrail-rule", "run") and its ID.
+// "execenv", "guardrail-rule", "run", "hotkey", "keybinding") and its
+// ID -- "hotkey" carries the workflow ID its combo binds to,
+// "keybinding" carries the command ID its combo overrides.
 type Changed struct {
 	Entity string `json:"entity"`
 	ID     string `json:"id"`
