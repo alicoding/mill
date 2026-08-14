@@ -36,20 +36,26 @@ accepted)**
    hints, task lists, emoji fallback, panel types, expand→details) as
    custom renderers on the converter; corpus + goldens from PR #78
    were the proof harness
-2. [ ] [0043 — Hotkey recorder vs menu accelerators](0043-hotkey-recorder-menu-accelerators.md)
+2. [ ] [0048 — Unsaved-changes close guard](0048-unsaved-close-guard.md)
+   — owner-hit live 2026-08-13: "Close all tabs" silently discarded a
+   dirty workflow draft (mouse paths clear scratch with no prompt;
+   keyboard paths orphan it — tab-key-scoped scratch is unreachable
+   after reopen). VS Code-precedent Save/Don't save/Cancel on single
+   close, summary confirm on bulk; queue-jumped as live data loss
+3. [ ] [0043 — Hotkey recorder vs menu accelerators](0043-hotkey-recorder-menu-accelerators.md)
    — overdue owner-hit bug (⌘⇧W while recording closed the app);
    accelerator-free menu swap during capture
-3. [ ] [0044 — M365 bridge dry run + capture research](0044-m365-bridge-dry-run.md)
+4. [ ] [0044 — M365 bridge dry run + capture research](0044-m365-bridge-dry-run.md)
    — absorbs goal 0021 Phase 4's last bullet; gap list + the
    browser-extension-at-a-locked-down-enterprise decision research
-4. [x] [0045 — v0.2.0 + release cadence](archive/0045-release-cadence.md)
+5. [x] [0045 — v0.2.0 + release cadence](archive/0045-release-cadence.md)
    — DELIVERED 2026-08-13: cadence rule LOCKED in SPEC §1.3
    (tag-on-capability-goal-archive; the asset is the launchable
    mill.app zip, clone-build stays the documented dev path); v0.2.0
    live and attestation-verified. The cut surfaced and fixed three
    more latent defects (raw-binary asset, release.yml invalid YAML —
    now gated by workflow-lint, GPL-3 setup-task action wrapper)
-5. [ ] [0046 — Schema evolution](0046-schema-evolution.md) —
+6. [ ] [0046 — Schema evolution](0046-schema-evolution.md) —
    owner-raised from a real regulated-platform incident
    (rename-forbidden / retype-permanent / live-referenced decisions
    forcing a ~30-version manual cleanup); research delivered
@@ -59,7 +65,7 @@ accepted)**
    Mill's Configure entities are live-referenced (a pinned workflow
    still resolves TODAY's decision definition) and deletes have no
    reference-integrity check
-6. [ ] [0047 — Node audience/complexity facet](0047-node-audience-facet.md)
+7. [ ] [0047 — Node audience/complexity facet](0047-node-audience-facet.md)
    — owner-proposed; session recommendation recorded: function stays
    the primary palette grouping, audience/complexity becomes a
    NodeType metadata field + progressive-disclosure facet (not a
