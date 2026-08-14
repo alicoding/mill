@@ -44,6 +44,34 @@ phases):
   the kit's own components (Dialog/SplitPageLayout/whatever fits),
   never hand-rolled chrome.
 
+## Review verdict — DECIDED 2026-08-14 (owner-picked from ranked mockups)
+
+Precedent research (primary sources, current versions, full report in
+the session record): the actively-evolving field (n8n, Windmill,
+Retool, Zapier) converged on step config and step run data living in
+ONE interaction opened from the canvas; only n8n gives true
+side-by-side co-visibility (its Node Details View: input | parameters
+| output panes, opened on double-click, with Schema/Table/JSON data
+views and drag-to-map from input to fields). Node-RED's
+config-drawer-plus-separate-debug-sidebar is the abandoned shape —
+and structurally the closest to Mill's current 260px inspector +
+separate Runs tab, which is exactly the pain raised. Key grounding:
+`NodeInspector.tsx` ALREADY receives `runStep` and renders
+`NodeExecutionSection` — the data is plumbed; only the surface is
+wrong.
+
+**Chosen: the three-pane step-detail overlay** (owner-picked over a
+bottom data drawer and a tabbed modal, both recorded as rejected —
+the drawer leaves config cramped, tabs never co-show config and
+data): double-click (or an explicit expand affordance) opens a large
+overlay above the canvas — input (last recorded run) | the existing
+generic ConfigField rendering | output — with text/JSON toggles on
+the data panes; Esc/click-away returns to canvas; the sidebar stays
+for quick glances. Drag-to-map from input into fields is explicitly
+DEFERRED (n8n's expression-mapping machinery is a capability, not a
+layout — it gets its own goal if wanted). Build from Primer's kit
+per frontend.md.
+
 ## Acceptance (checkable)
 
 - [ ] Precedent review recorded here (per-tool, current versions,
