@@ -100,12 +100,21 @@ export const COMMANDS: Command[] = [
     id: 'tab.next',
     label: 'Next tab',
     defaultBinding: { mods: ['ctrl'], key: 'Tab' },
+    // ⌘⇧] -- the browser convention (Safari/Chrome "Show Next Tab")
+    // for the identical action, alongside Ctrl+Tab the same way
+    // palette.open carries its ⌘//⌘? aliases. Checked against
+    // RESERVED_COMBOS (shared/keybinding.ts), every other command's
+    // bindings here, and the native menu (no bracket accelerators):
+    // no collision.
+    extraBindings: [{ mods: ['cmd', 'shift'], key: ']' }],
     run: () => cycleWorkTab(1),
   },
   {
     id: 'tab.prev',
     label: 'Previous tab',
     defaultBinding: { mods: ['ctrl', 'shift'], key: 'Tab' },
+    // ⌘⇧[ -- same browser convention as tab.next's ⌘⇧] above.
+    extraBindings: [{ mods: ['cmd', 'shift'], key: '[' }],
     run: () => cycleWorkTab(-1),
   },
   {
