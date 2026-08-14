@@ -1,0 +1,164 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "mill://schema/request/v1",
+  "$defs": {
+    "AuthConfig": {
+      "properties": {
+        "OAuth2": {
+          "$ref": "#/$defs/OAuth2Config"
+        },
+        "HMAC": {
+          "$ref": "#/$defs/HMACConfig"
+        },
+        "OAuth1": {
+          "$ref": "#/$defs/OAuth1Config"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "OAuth2",
+        "HMAC",
+        "OAuth1"
+      ]
+    },
+    "HMACConfig": {
+      "properties": {
+        "HeaderName": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "HeaderName"
+      ]
+    },
+    "JOSEConfig": {
+      "properties": {
+        "Enabled": {
+          "type": "boolean"
+        },
+        "Algorithm": {
+          "type": "string"
+        },
+        "ContentEncryption": {
+          "type": "string"
+        },
+        "RecipientPublicKeyPEM": {
+          "type": "string"
+        },
+        "DecryptResponse": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "Enabled",
+        "Algorithm",
+        "ContentEncryption",
+        "RecipientPublicKeyPEM",
+        "DecryptResponse"
+      ]
+    },
+    "OAuth1Config": {
+      "properties": {
+        "ConsumerKey": {
+          "type": "string"
+        },
+        "Token": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "ConsumerKey",
+        "Token"
+      ]
+    },
+    "OAuth2Config": {
+      "properties": {
+        "GrantType": {
+          "type": "string"
+        },
+        "TokenURL": {
+          "type": "string"
+        },
+        "ClientID": {
+          "type": "string"
+        },
+        "Scope": {
+          "type": "string"
+        },
+        "ContentType": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "GrantType",
+        "TokenURL",
+        "ClientID",
+        "Scope",
+        "ContentType"
+      ]
+    }
+  },
+  "properties": {
+    "schema": {
+      "type": "string"
+    },
+    "id": {
+      "type": "string"
+    },
+    "label": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "baseURL": {
+      "type": "string"
+    },
+    "method": {
+      "type": "string"
+    },
+    "body": {
+      "type": "string"
+    },
+    "authType": {
+      "type": "string"
+    },
+    "headers": {
+      "additionalProperties": {
+        "type": "string"
+      },
+      "type": "object"
+    },
+    "openAPISpec": {
+      "type": "string"
+    },
+    "auth": {
+      "$ref": "#/$defs/AuthConfig"
+    },
+    "jose": {
+      "$ref": "#/$defs/JOSEConfig"
+    }
+  },
+  "additionalProperties": false,
+  "type": "object",
+  "required": [
+    "schema",
+    "label",
+    "description",
+    "baseURL",
+    "method",
+    "body",
+    "authType",
+    "headers",
+    "openAPISpec"
+  ]
+}

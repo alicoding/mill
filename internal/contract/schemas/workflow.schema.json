@@ -1,0 +1,181 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "mill://schema/workflow/v1",
+  "$defs": {
+    "Edge": {
+      "properties": {
+        "ID": {
+          "type": "string"
+        },
+        "Source": {
+          "type": "string"
+        },
+        "SourceHandle": {
+          "type": "string"
+        },
+        "Target": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "ID",
+        "Source",
+        "SourceHandle",
+        "Target"
+      ]
+    },
+    "Field": {
+      "properties": {
+        "Key": {
+          "type": "string"
+        },
+        "Label": {
+          "type": "string"
+        },
+        "Type": {
+          "type": "string"
+        },
+        "Required": {
+          "type": "boolean"
+        },
+        "Default": {
+          "type": "string"
+        },
+        "Description": {
+          "type": "string"
+        },
+        "Options": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "Suggestions": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "Secret": {
+          "type": "boolean"
+        },
+        "RefKind": {
+          "type": "string"
+        },
+        "Multiline": {
+          "type": "boolean"
+        },
+        "SystemManaged": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "Key",
+        "Label",
+        "Type",
+        "Required",
+        "Default",
+        "Description",
+        "Options",
+        "Suggestions",
+        "Secret",
+        "RefKind",
+        "Multiline",
+        "SystemManaged"
+      ]
+    },
+    "Node": {
+      "properties": {
+        "ID": {
+          "type": "string"
+        },
+        "Kind": {
+          "type": "string"
+        },
+        "NodeTypeID": {
+          "type": "string"
+        },
+        "Config": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "type": "object"
+        },
+        "Position": {
+          "$ref": "#/$defs/Position"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "ID",
+        "Kind",
+        "NodeTypeID",
+        "Config",
+        "Position"
+      ]
+    },
+    "Position": {
+      "properties": {
+        "X": {
+          "type": "number"
+        },
+        "Y": {
+          "type": "number"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "X",
+        "Y"
+      ]
+    }
+  },
+  "properties": {
+    "schema": {
+      "type": "string"
+    },
+    "id": {
+      "type": "string"
+    },
+    "label": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "nodes": {
+      "items": {
+        "$ref": "#/$defs/Node"
+      },
+      "type": "array"
+    },
+    "edges": {
+      "items": {
+        "$ref": "#/$defs/Edge"
+      },
+      "type": "array"
+    },
+    "attributes": {
+      "items": {
+        "$ref": "#/$defs/Field"
+      },
+      "type": "array"
+    }
+  },
+  "additionalProperties": false,
+  "type": "object",
+  "required": [
+    "schema",
+    "label",
+    "description",
+    "nodes",
+    "edges",
+    "attributes"
+  ]
+}

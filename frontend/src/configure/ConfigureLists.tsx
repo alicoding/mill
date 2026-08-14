@@ -18,6 +18,7 @@ import { InventoryList, type InventoryItem } from '../shared/InventoryList'
 import { ENTITY_ICON } from '../shared/entityIcons'
 import { formatUpdated, sortByUpdatedDesc } from '../shared/inventorySort'
 import { useConfirmDelete } from '../shared/useConfirmDelete'
+import { useImportConfirm } from '../shared/useImportConfirm'
 import { describeSeedReset } from '../shared/seedLifecycle'
 import { RestoreExamplesButton } from '../shared/RestoreExamplesButton'
 import styles from '../shared/ListCard.module.css'
@@ -89,14 +90,20 @@ export function ConfigureLists() {
     importInputRef.current?.click()
   }
 
+  // A payload whose id matches a list already here updates it in place
+  // instead of creating a new one -- confirmed first via importConfirm
+  // below, naming the list it will replace.
+  const runImport = (text: string) => {
+    ConfigureService.ImportList(text)
+      .then(() => { setImportError(null); refetch() })
+      .catch((err) => setImportError(String(err)))
+  }
+  const importConfirm = useImportConfirm({ existing: lists ?? [], onImport: runImport })
   const handleImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     e.target.value = ''
     if (!file) return
-    file.text()
-      .then((text) => ConfigureService.ImportList(text))
-      .then(() => { setImportError(null); refetch() })
-      .catch((err) => setImportError(String(err)))
+    file.text().then(importConfirm.requestImport).catch((err) => setImportError(String(err)))
   }
 
   useEffect(() => {
@@ -395,6 +402,7 @@ export function ConfigureLists() {
         />
       )}
       {confirmDialog}
+      {importConfirm.dialog}
     </PageContainer>
   )
 }

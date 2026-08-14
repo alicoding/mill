@@ -16,6 +16,7 @@ import { InventoryList, type InventoryItem } from '../shared/InventoryList'
 import { ENTITY_ICON } from '../shared/entityIcons'
 import { formatUpdated, sortByUpdatedDesc } from '../shared/inventorySort'
 import { useConfirmDelete } from '../shared/useConfirmDelete'
+import { useImportConfirm } from '../shared/useImportConfirm'
 import { describeSeedReset } from '../shared/seedLifecycle'
 import { RestoreExamplesButton } from '../shared/RestoreExamplesButton'
 import styles from '../shared/ListCard.module.css'
@@ -78,14 +79,20 @@ export function ConfigureAIProviders() {
     importInputRef.current?.click()
   }
 
+  // A payload whose id matches a provider already here updates it in
+  // place instead of creating a new one -- confirmed first via
+  // importConfirm below, naming the provider it will replace.
+  const runImport = (text: string) => {
+    ConfigureService.ImportAIProvider(text)
+      .then(() => { setImportError(null); refetch() })
+      .catch((err) => setImportError(String(err)))
+  }
+  const importConfirm = useImportConfirm({ existing: providers ?? [], onImport: runImport })
   const handleImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     e.target.value = ''
     if (!file) return
-    file.text()
-      .then((text) => ConfigureService.ImportAIProvider(text))
-      .then(() => { setImportError(null); refetch() })
-      .catch((err) => setImportError(String(err)))
+    file.text().then(importConfirm.requestImport).catch((err) => setImportError(String(err)))
   }
 
   useEffect(() => {
@@ -304,6 +311,7 @@ export function ConfigureAIProviders() {
         />
       )}
       {confirmDialog}
+      {importConfirm.dialog}
     </PageContainer>
   )
 }

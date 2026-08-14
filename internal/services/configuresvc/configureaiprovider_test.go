@@ -158,7 +158,12 @@ func TestSeededAIProvider_PresentOnFreshInstall(t *testing.T) {
 	}
 }
 
-func TestExportImportAIProvider_RoundTripsWithoutSecret(t *testing.T) {
+// TestExportImportAIProvider_FreshImportNeverCarriesASecret covers
+// ADR-0036 decision 3's create paths (no id, and an id unknown here):
+// ExportAIProvider never puts the secret on the wire, so a newly
+// created provider -- at a fresh id or a preserved-but-locally-unknown
+// one -- never has one set either.
+func TestExportImportAIProvider_FreshImportNeverCarriesASecret(t *testing.T) {
 	cfg, _ := newTestConfigureService(t)
 	p, err := cfg.CreateAIProvider("BYO endpoint", aiprovider.KindOpenAICompat, "http://localhost:1234", "custom-model")
 	if err != nil {
@@ -176,18 +181,56 @@ func TestExportImportAIProvider_RoundTripsWithoutSecret(t *testing.T) {
 		t.Fatalf("ExportAIProvider leaked the secret into its output: %s", got)
 	}
 
-	imported, err := cfg.ImportAIProvider(data)
+	// Strip the id so this exercises the fresh-create path, not the
+	// update-in-place path a matching id would take (that path's own
+	// secret-preservation behavior is TestExportImportAIProvider_
+	// UpdateInPlace_PreservesTheExistingSecret, below).
+	fresh := stripIDField(t, data)
+
+	imported, err := cfg.ImportAIProvider(fresh)
 	if err != nil {
 		t.Fatalf("ImportAIProvider returned error: %v", err)
 	}
 	if imported.ID == p.ID {
-		t.Error("ImportAIProvider reused the original ID -- import must always mint a new entity (ADR-0013's Duplicate precedent)")
+		t.Error("ImportAIProvider of an id-less payload reused the original ID -- should mint a fresh one")
 	}
 	if imported.Label != p.Label || imported.BaseURL != p.BaseURL || imported.Model != p.Model {
 		t.Errorf("imported provider %+v doesn't match the original's content", imported)
 	}
 	if rp, err := cfg.resolveAIProvider(imported.ID); err != nil || rp.APIKey != "" {
 		t.Errorf("imported provider has a non-empty secret (APIKey=%q, err=%v), want none set", rp.APIKey, err)
+	}
+}
+
+// TestExportImportAIProvider_UpdateInPlace_PreservesTheExistingSecret
+// covers decision 3's third case: an id matching a local provider
+// updates it through UpdateAIProvider, which never touches the
+// keychain -- re-importing a provider's config (e.g. after editing it
+// on another machine) must never silently wipe its stored credential.
+func TestExportImportAIProvider_UpdateInPlace_PreservesTheExistingSecret(t *testing.T) {
+	cfg, _ := newTestConfigureService(t)
+	p, err := cfg.CreateAIProvider("BYO endpoint", aiprovider.KindOpenAICompat, "http://localhost:1234", "custom-model")
+	if err != nil {
+		t.Fatalf("CreateAIProvider returned error: %v", err)
+	}
+	if err := cfg.SetAIProviderSecret(p.ID, "keep-me"); err != nil {
+		t.Fatalf("SetAIProviderSecret: %v", err)
+	}
+
+	data, err := cfg.ExportAIProvider(p.ID)
+	if err != nil {
+		t.Fatalf("ExportAIProvider returned error: %v", err)
+	}
+
+	imported, err := cfg.ImportAIProvider(data)
+	if err != nil {
+		t.Fatalf("ImportAIProvider returned error: %v", err)
+	}
+	if imported.ID != p.ID {
+		t.Errorf("ImportAIProvider.ID = %q, want the same id %q (update in place)", imported.ID, p.ID)
+	}
+	if rp, err := cfg.resolveAIProvider(imported.ID); err != nil || rp.APIKey != "keep-me" {
+		t.Errorf("resolveAIProvider after update: APIKey=%q, err=%v, want %q preserved", rp.APIKey, err, "keep-me")
 	}
 }
 

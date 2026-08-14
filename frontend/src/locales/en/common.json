@@ -20,5 +20,10 @@
   },
   "restoreExamplesButton": {
     "restoreExample": "Restore example…"
+  },
+  "importConfirm": {
+    "title": "Update existing item?",
+    "body": "This file matches \"{{label}}\" already here. Importing replaces its current content.",
+    "confirm": "Update"
   }
 }

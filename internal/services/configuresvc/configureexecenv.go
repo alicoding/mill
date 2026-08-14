@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/alicoding/mill/internal/adapters/shellenv"
+	"github.com/alicoding/mill/internal/contract"
 	"github.com/alicoding/mill/internal/domain/composition"
 	"github.com/alicoding/mill/internal/domain/execenv"
 	"github.com/alicoding/mill/internal/services/dataevent"
@@ -56,10 +57,29 @@ func (c *ConfigureService) ExecEnvs() []execenv.ExecEnv {
 	return out
 }
 
+// execEnvExistsLocked reports whether id names a real local ExecEnv --
+// callers must hold c.mu. ImportExecEnv's own create-vs-update check
+// (this file's own export/import section, below).
+func (c *ConfigureService) execEnvExistsLocked(id string) bool {
+	for _, e := range c.execEnvs {
+		if e.ID == id {
+			return true
+		}
+	}
+	return false
+}
+
 func (c *ConfigureService) CreateExecEnv(label string, shell execenv.Shell, profileMode execenv.ProfileMode, dir string, env []string) (execenv.ExecEnv, error) {
+	return c.createExecEnvWithID(seeding.NewSlugID(label, "execenv"), label, shell, profileMode, dir, env)
+}
+
+// createExecEnvWithID is CreateExecEnv's own logic, parameterized on
+// the new environment's id -- the seam ImportExecEnv uses to preserve a
+// caller-supplied id (ADR-0036 decision 3).
+func (c *ConfigureService) createExecEnvWithID(id, label string, shell execenv.Shell, profileMode execenv.ProfileMode, dir string, env []string) (execenv.ExecEnv, error) {
 	now := time.Now()
 	e := execenv.ExecEnv{
-		ID: seeding.NewSlugID(label, "execenv"), Label: label,
+		ID: id, Label: label,
 		Shell: shell, ProfileMode: profileMode, Dir: dir, Env: env,
 		CreatedAt: now, UpdatedAt: now,
 	}
@@ -189,7 +209,13 @@ func insertExecEnvAt(envs []execenv.ExecEnv, idx int, e execenv.ExecEnv) []exece
 // --- export/import (configureservice_export.go's pattern, kept here
 // since this whole entity lives in one file per the recipe) ---
 
+// Schema/ID follow ADR-0036 decision 3's uniform import rule
+// (configureservice_export.go's own header comment carries the full
+// statement); this family implements it here rather than there since
+// the whole entity lives in one file per the recipe.
 type exportedExecEnv struct {
+	Schema      string              `json:"schema"`
+	ID          string              `json:"id,omitempty"`
 	Label       string              `json:"label"`
 	Shell       execenv.Shell       `json:"shell"`
 	ProfileMode execenv.ProfileMode `json:"profileMode"`
@@ -213,7 +239,7 @@ func (c *ConfigureService) ExportExecEnv(id string) (string, error) {
 		return "", fmt.Errorf("no execution environment with id %q", id)
 	}
 
-	data, err := json.MarshalIndent(exportedExecEnv{Label: e.Label, Shell: e.Shell, ProfileMode: e.ProfileMode, Dir: e.Dir, Env: e.Env}, "", "  ")
+	data, err := json.MarshalIndent(exportedExecEnv{Schema: contract.SchemaID("execenv"), ID: e.ID, Label: e.Label, Shell: e.Shell, ProfileMode: e.ProfileMode, Dir: e.Dir, Env: e.Env}, "", "  ")
 	if err != nil {
 		return "", fmt.Errorf("export execution environment: %w", err)
 	}
@@ -224,6 +250,19 @@ func (c *ConfigureService) ImportExecEnv(jsonData string) (execenv.ExecEnv, erro
 	var in exportedExecEnv
 	if err := json.Unmarshal([]byte(jsonData), &in); err != nil {
 		return execenv.ExecEnv{}, fmt.Errorf("import execution environment: invalid JSON: %w", err)
+	}
+	if err := contract.ValidateImportSchema("execenv", in.Schema); err != nil {
+		return execenv.ExecEnv{}, fmt.Errorf("import execution environment: %w", err)
+	}
+
+	if in.ID != "" {
+		c.mu.Lock()
+		found := c.execEnvExistsLocked(in.ID)
+		c.mu.Unlock()
+		if found {
+			return c.UpdateExecEnv(in.ID, in.Label, in.Shell, in.ProfileMode, in.Dir, in.Env)
+		}
+		return c.createExecEnvWithID(in.ID, in.Label, in.Shell, in.ProfileMode, in.Dir, in.Env)
 	}
 	return c.CreateExecEnv(in.Label, in.Shell, in.ProfileMode, in.Dir, in.Env)
 }

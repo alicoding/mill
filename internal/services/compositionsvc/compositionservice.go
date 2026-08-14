@@ -141,6 +141,15 @@ func (c *CompositionService) Workflows() []composition.Workflow {
 // validates that at run time, and the canvas is separately designed to
 // prevent drawing an invalid graph in the first place.
 func (c *CompositionService) CreateWorkflow(label, description string, nodes []composition.Node, edges []composition.Edge) (composition.Workflow, error) {
+	return c.createWorkflowWithID(newWorkflowID(label), label, description, nodes, edges)
+}
+
+// createWorkflowWithID is CreateWorkflow's own logic, parameterized on
+// the new workflow's id -- the seam ImportWorkflow uses to preserve a
+// caller-supplied id (ADR-0036 decision 3: an id present but unknown
+// locally creates a new workflow AT that id, not a freshly minted one,
+// so a two-machine bridge round trip can write back by id).
+func (c *CompositionService) createWorkflowWithID(id, label, description string, nodes []composition.Node, edges []composition.Edge) (composition.Workflow, error) {
 	if strings.TrimSpace(label) == "" {
 		return composition.Workflow{}, fmt.Errorf("a workflow needs a label")
 	}
@@ -158,7 +167,7 @@ func (c *CompositionService) CreateWorkflow(label, description string, nodes []c
 
 	now := time.Now()
 	wf := composition.Workflow{
-		ID:          newWorkflowID(label),
+		ID:          id,
 		Label:       label,
 		Description: description,
 		Nodes:       resolved,

@@ -5,8 +5,8 @@ import { clickRowAction } from './inventoryRow'
 // setup as composition.spec.ts, split into its own file once that file
 // crossed the 500-line limit adding this coverage (CLAUDE.md). Workflow
 // export/import (compositionservice_export.go): ExportWorkflow's own
-// determinism/omitted-ID contract and ImportWorkflow's always-mint-a-
-// new-workflow behavior (ADR-0013's Duplicate precedent).
+// id/schema envelope contract and ImportWorkflow's uniform create-vs-
+// update rule (ADR-0036 decision 3).
 
 function workflowRow(page: import('@playwright/test').Page, label: string) {
   return page.locator('[data-testid="inventory-row"][data-entity="workflow"]', { has: page.getByText(label, { exact: true }) })
@@ -31,10 +31,12 @@ test('Exporting a workflow downloads a portable JSON file with its real definiti
   expect(parsed.label).toBe('Load sample HTML')
   expect(Array.isArray(parsed.nodes)).toBe(true)
   expect(parsed.nodes.length).toBeGreaterThan(0)
-  // ExportWorkflow's own contract: never carries the workflow's own ID
-  // or builtIn flag -- ImportWorkflow always mints a new ID, and an
-  // imported workflow is never a protected built-in.
-  expect(parsed.id).toBeUndefined()
+  // ExportWorkflow's own contract: carries the workflow's real id and
+  // its envelope schema id, never a builtIn flag -- an imported
+  // workflow is never a protected built-in.
+  expect(typeof parsed.id).toBe('string')
+  expect(parsed.id.length).toBeGreaterThan(0)
+  expect(parsed.schema).toBe('mill://schema/workflow/v1')
   expect(parsed.builtIn).toBeUndefined()
 })
 
@@ -72,6 +74,54 @@ test('Importing a workflow file adds a new, independent workflow without touchin
 
   await clickRowAction(page, importedRow, 'Delete')
   await expect(workflowRow(page, 'E2E imported workflow')).toHaveCount(0)
+})
+
+test('Re-importing an exported file with a known id updates in place after confirming', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Workflows' }).click()
+
+  const importJSON = JSON.stringify({
+    label: 'E2E update-in-place workflow',
+    description: 'original description',
+    nodes: [
+      { ID: 't', NodeTypeID: 'trigger-manual' },
+      { ID: 'c', NodeTypeID: 'capture-clipboard-html' },
+    ],
+    edges: [{ ID: 'e1', Source: 't', Target: 'c' }],
+    attributes: [],
+  })
+  await page.getByTestId('import-workflow').click()
+  await page.getByTestId('import-workflow-input').setInputFiles({
+    name: 'workflow.json', mimeType: 'application/json', buffer: Buffer.from(importJSON, 'utf-8'),
+  })
+  const row = workflowRow(page, 'E2E update-in-place workflow')
+  await expect(row).toBeVisible()
+  const before = await workflowRow(page, 'E2E update-in-place workflow').count()
+
+  const downloadPromise = page.waitForEvent('download')
+  await clickRowAction(page, row, 'Export')
+  const stream = await (await downloadPromise).createReadStream()
+  const chunks: Buffer[] = []
+  for await (const chunk of stream) chunks.push(chunk as Buffer)
+  const exported = JSON.parse(Buffer.concat(chunks).toString('utf-8'))
+  exported.description = 'updated description'
+
+  // ADR-0036's UI visibility bar: a file-picker import whose payload id
+  // matches a workflow already here must confirm before it overwrites.
+  await page.getByTestId('import-workflow').click()
+  await page.getByTestId('import-workflow-input').setInputFiles({
+    name: 'workflow.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(exported), 'utf-8'),
+  })
+  const dialog = page.getByRole('alertdialog')
+  await expect(dialog).toBeVisible()
+  await expect(dialog).toContainText('E2E update-in-place workflow')
+  await dialog.getByRole('button', { name: 'Update' }).click()
+
+  await expect(workflowRow(page, 'E2E update-in-place workflow')).toHaveCount(before)
+  await expect(row.getByText('updated description')).toBeVisible()
+
+  await clickRowAction(page, row, 'Delete')
+  await expect(workflowRow(page, 'E2E update-in-place workflow')).toHaveCount(0)
 })
 
 test('Importing invalid JSON shows an error instead of silently failing', async ({ page }) => {

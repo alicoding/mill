@@ -16,6 +16,7 @@ import { InventoryList, type InventoryItem } from '../shared/InventoryList'
 import { ENTITY_ICON } from '../shared/entityIcons'
 import { formatUpdated, sortByUpdatedDesc } from '../shared/inventorySort'
 import { useConfirmDelete } from '../shared/useConfirmDelete'
+import { useImportConfirm } from '../shared/useImportConfirm'
 import { describeSeedReset } from '../shared/seedLifecycle'
 import { RestoreExamplesButton } from '../shared/RestoreExamplesButton'
 import styles from '../shared/ListCard.module.css'
@@ -72,14 +73,20 @@ export function ConfigureRequests() {
     importInputRef.current?.click()
   }
 
+  // A payload whose id matches a request already here updates it in
+  // place instead of creating a new one -- confirmed first via
+  // importConfirm below, naming the request it will replace.
+  const runImport = (text: string) => {
+    ConfigureService.ImportHTTPRequest(text)
+      .then(() => { setImportError(null); void refreshRequests() })
+      .catch((err) => setImportError(String(err)))
+  }
+  const importConfirm = useImportConfirm({ existing: requests ?? [], onImport: runImport })
   const handleImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     e.target.value = ''
     if (!file) return
-    file.text()
-      .then((text) => ConfigureService.ImportHTTPRequest(text))
-      .then(() => { setImportError(null); void refreshRequests() })
-      .catch((err) => setImportError(String(err)))
+    file.text().then(importConfirm.requestImport).catch((err) => setImportError(String(err)))
   }
 
   const remove = (id: string) => {
@@ -256,6 +263,7 @@ export function ConfigureRequests() {
         />
       )}
       {confirmDialog}
+      {importConfirm.dialog}
     </PageContainer>
   )
 }

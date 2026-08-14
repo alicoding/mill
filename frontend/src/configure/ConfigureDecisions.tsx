@@ -17,6 +17,7 @@ import { InventoryList, type InventoryItem } from '../shared/InventoryList'
 import { ENTITY_ICON } from '../shared/entityIcons'
 import { formatUpdated, sortByUpdatedDesc } from '../shared/inventorySort'
 import { useConfirmDelete } from '../shared/useConfirmDelete'
+import { useImportConfirm } from '../shared/useImportConfirm'
 import { describeSeedReset } from '../shared/seedLifecycle'
 import { RestoreExamplesButton } from '../shared/RestoreExamplesButton'
 import styles from '../shared/ListCard.module.css'
@@ -88,14 +89,20 @@ export function ConfigureDecisions() {
       .catch((err) => setImportError(String(err)))
   }
 
+  // A payload whose id matches a decision already here updates it in
+  // place instead of creating a new one -- confirmed first via
+  // importConfirm below, naming the decision it will replace.
+  const runImport = (text: string) => {
+    ConfigureService.ImportDecision(text)
+      .then(() => { setImportError(null); refetch() })
+      .catch((err) => setImportError(String(err)))
+  }
+  const importConfirm = useImportConfirm({ existing: decisions ?? [], onImport: runImport })
   const importDecision = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     e.target.value = ''
     if (!file) return
-    file.text()
-      .then((text) => ConfigureService.ImportDecision(text))
-      .then(() => { setImportError(null); refetch() })
-      .catch((err) => setImportError(String(err)))
+    file.text().then(importConfirm.requestImport).catch((err) => setImportError(String(err)))
   }
 
   const startCreate = (prefill?: Decision) => {
@@ -360,6 +367,7 @@ export function ConfigureDecisions() {
         />
       )}
       {confirmDialog}
+      {importConfirm.dialog}
     </PageContainer>
   )
 }

@@ -149,8 +149,11 @@ func TestDeleteDecision_UnknownID_Errors(t *testing.T) {
 
 // Export/Import mirrors ExportList/ExportMCPServer's own round-trip
 // shape -- a new ID is always minted, never overwriting.
-func TestExportImportDecision_RoundTrips(t *testing.T) {
+// TestExportImportDecision_KnownID_UpdatesInPlace pins ADR-0036
+// decision 3's update path for Decision.
+func TestExportImportDecision_KnownID_UpdatesInPlace(t *testing.T) {
 	cfg := newDecisionHarness(t)
+	before := len(cfg.Decisions()) // ADR-0027 seeds built-in decisions on a fresh install
 	src, err := cfg.CreateDecision("Exportable", decision.CategoryDeny,
 		[]decision.OutputField{{Key: "reason", Label: "Reason", Type: "text"}}, "")
 	if err != nil {
@@ -164,10 +167,41 @@ func TestExportImportDecision_RoundTrips(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ImportDecision: %v", err)
 	}
-	if imported.ID == src.ID {
-		t.Fatal("ImportDecision reused the source's ID instead of minting a new one")
+	if imported.ID != src.ID {
+		t.Fatalf("ImportDecision.ID = %q, want the same id %q (update in place)", imported.ID, src.ID)
 	}
 	if imported.Label != src.Label || imported.Category != src.Category || len(imported.Outputs) != len(src.Outputs) {
 		t.Fatalf("imported Decision = %+v, want it to mirror the exported source %+v", imported, src)
+	}
+	if got := len(cfg.Decisions()); got != before+1 {
+		t.Fatalf("Decisions() has %d entries, want %d (updated in place, not duplicated)", got, before+1)
+	}
+}
+
+// TestExportImportDecision_NoID_CreatesFresh covers decision 3's
+// fresh-create path for Decision.
+func TestExportImportDecision_NoID_CreatesFresh(t *testing.T) {
+	cfg := newDecisionHarness(t)
+	before := len(cfg.Decisions()) // ADR-0027 seeds built-in decisions on a fresh install
+	src, err := cfg.CreateDecision("Exportable", decision.CategoryDeny,
+		[]decision.OutputField{{Key: "reason", Label: "Reason", Type: "text"}}, "")
+	if err != nil {
+		t.Fatalf("CreateDecision: %v", err)
+	}
+	data, err := cfg.ExportDecision(src.ID)
+	if err != nil {
+		t.Fatalf("ExportDecision: %v", err)
+	}
+	fresh := stripIDField(t, data)
+
+	imported, err := cfg.ImportDecision(fresh)
+	if err != nil {
+		t.Fatalf("ImportDecision: %v", err)
+	}
+	if imported.ID == src.ID {
+		t.Fatal("ImportDecision of an id-less payload reused the source's ID -- should mint a fresh one")
+	}
+	if got := len(cfg.Decisions()); got != before+2 {
+		t.Fatalf("Decisions() has %d entries, want %d", got, before+2)
 	}
 }
