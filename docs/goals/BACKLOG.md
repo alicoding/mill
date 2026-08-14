@@ -66,14 +66,22 @@ accepted)**
    coordinates schema-id evolution semantics with 0046's ADR.
    Sequenced directly after 0044 — the dry run sharpens what the
    contract must express
-7. [x] [0045 — v0.2.0 + release cadence](archive/0045-release-cadence.md)
+7. [ ] [0054 — Step designer + declare-vs-code boundary](0054-step-designer.md)
+   — owner-directed 2026-08-13: declare new step types in-product
+   (v1 = promote HTTPRequest operations / MCP tools / child
+   workflows into named palette types, stored as data) + the ADR
+   ratifying WHEN code is genuinely required (new engine) vs
+   declaration suffices (naming/mapping over existing engines).
+   After 0052 — declared types must be first-class in the generated
+   contract from day one; benefits from 0047's palette facet
+8. [x] [0045 — v0.2.0 + release cadence](archive/0045-release-cadence.md)
    — DELIVERED 2026-08-13: cadence rule LOCKED in SPEC §1.3
    (tag-on-capability-goal-archive; the asset is the launchable
    mill.app zip, clone-build stays the documented dev path); v0.2.0
    live and attestation-verified. The cut surfaced and fixed three
    more latent defects (raw-binary asset, release.yml invalid YAML —
    now gated by workflow-lint, GPL-3 setup-task action wrapper)
-8. [ ] [0051 — Run-analytics dashboard v2](0051-run-analytics-dashboard.md)
+9. [ ] [0051 — Run-analytics dashboard v2](0051-run-analytics-dashboard.md)
    — owner-directed 2026-08-13; research DELIVERED same day (n8n/
    Zapier/Make/Windmill/Temporal/Airflow/Power Automate survey): Home
    already covers most of the converged set; ships avg-duration KPI +
@@ -82,17 +90,17 @@ accepted)**
    Activity; two data-model gaps recorded as deferred (per-step
    timestamps, trigger fire-log). Slotted ahead of 0049/0050 per the
    UX-first tiebreak
-9. [ ] [0049 — Docs anti-rot mechanics](0049-docs-anti-rot.md)
+10. [ ] [0049 — Docs anti-rot mechanics](0049-docs-anti-rot.md)
    — owner-ratified 2026-08-13 from the two-agent docs survey: path-
    reference checker (lefthook+CI), generated ADR index with
    drift-fail, revive package-comments floor, AGENTS.md interop,
    README Spec-view fix; rejected list recorded in the goal file
-10. [ ] [0050 — Codebase structure audit](0050-codebase-structure-audit.md)
+11. [ ] [0050 — Codebase structure audit](0050-codebase-structure-audit.md)
    — owner-raised 2026-08-13 (OSS flat-structure critique): audit
    layout against official Go guidance + what OSS reviewers actually
    flag, verdict table + a citable layout ADR; only audit-justified
    moves, no conformance churn
-11. [ ] [0046 — Schema evolution](0046-schema-evolution.md) —
+12. [ ] [0046 — Schema evolution](0046-schema-evolution.md) —
    owner-raised from a real regulated-platform incident
    (rename-forbidden / retype-permanent / live-referenced decisions
    forcing a ~30-version manual cleanup); research delivered
@@ -102,7 +110,7 @@ accepted)**
    Mill's Configure entities are live-referenced (a pinned workflow
    still resolves TODAY's decision definition) and deletes have no
    reference-integrity check
-12. [ ] [0047 — Node audience/complexity facet](0047-node-audience-facet.md)
+13. [ ] [0047 — Node audience/complexity facet](0047-node-audience-facet.md)
    — owner-proposed; session recommendation recorded: function stays
    the primary palette grouping, audience/complexity becomes a
    NodeType metadata field + progressive-disclosure facet (not a
