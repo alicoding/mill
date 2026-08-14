@@ -36,15 +36,33 @@ and this goal picks the one users already see in their run results.
 
 ## Acceptance (checkable)
 
-- [ ] No user-visible surface (locale strings, palette, editor,
+- [x] No user-visible surface (locale strings, palette, editor,
       Settings, seeded descriptions) contains "node" as the term for
       a workflow step; grep-verified across locales +
-      manually-eyeballed canvas/palette pass.
-- [ ] SPEC.md's surface-describing sections use step; internal/
-      architecture sections may keep Node where naming code types.
+      manually-eyeballed canvas/palette pass — delivered 2026-08-14:
+      grep proof zero rendered "node" (locale values, Go
+      Label/Description/Output, validation/run error text), the one
+      legitimate remainder being a Node.js reference; the full
+      Playwright suite exercises the real palette/canvas copy. Rider
+      delivered in the same change (goal 0044 dry-run gap 5): all
+      seeded descriptions dropped internal doc references, and
+      check-ui-copy.sh now gates seeded descriptions (workflow, list,
+      HTTP-request seeds) alongside locale JSON.
+- [x] SPEC.md's surface-describing sections use step; internal/
+      architecture sections may keep Node where naming code types —
+      surface walkthrough sentences and a stale quoted Inspector
+      label converted; §3.2–§9 architecture narrative retains Node
+      where interleaved with code identifiers, per this line's own
+      allowance.
 - [ ] Goal 0052's contract items reference this decision and ship
-      step-vocabulary wire names (checked there, recorded here).
-- [ ] Internal identifiers demonstrably unchanged (no mass rename in
-      the diff).
-- [ ] E2e/unit suites green; any test asserting on visible copy
-      updated in the same change.
+      step-vocabulary wire names (checked there, recorded here) —
+      open until 0052 lands; `RefKind: "node-type"` in the
+      clipboard-apply preview is 0052 wire vocabulary, deliberately
+      untouched here.
+- [x] Internal identifiers demonstrably unchanged (no mass rename in
+      the diff) — NodeType/composition.Node/test ids/CSS/wire names
+      all intact; the diff touches strings and docs only.
+- [x] E2e/unit suites green; any test asserting on visible copy
+      updated in the same change — vitest 270/270, full Playwright
+      207 passed (3 pre-existing timing flakes passed on retry),
+      validationCopy prefix guard updated to the step prefix.

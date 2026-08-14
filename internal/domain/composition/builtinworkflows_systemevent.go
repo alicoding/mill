@@ -44,13 +44,13 @@ func builtInSystemEventWorkflows() []Workflow {
 		{
 			ID:          "example-forward-approvals-workflow",
 			Label:       "Example: Forward pending approvals",
-			Description: "Fires whenever ANY workflow parks awaiting approval (docs/adr/0035) and POSTs the event -- {event, runId, workflowId, workflowLabel, nodeId, timestamp} -- to the integration below. Re-point \"Integration\" (canvas Inspector) at your real notification endpoint (ntfy/Telegram/a webhook receiver you configure under Configure > Integrations), then enable this workflow -- it ships DISABLED so it never calls out anywhere until you do. Replaces the old Settings > Forward pending approvals toggle: this workflow IS the forward now, visible and editable like any other, instead of a private code path.",
+			Description: "Fires whenever ANY workflow parks awaiting approval and POSTs the event -- {event, runId, workflowId, workflowLabel, nodeId, timestamp} -- to the integration below. Re-point \"Integration\" (canvas Inspector) at your real notification endpoint (ntfy/Telegram/a webhook receiver you configure under Configure > Integrations), then enable this workflow -- it ships DISABLED so it never calls out anywhere until you do. Replaces the old Settings > Forward pending approvals toggle: this workflow IS the forward now, visible and editable like any other, instead of a private code path.",
 			Nodes:       forwardNodes,
 			Edges: []Edge{
 				{ID: "example-forward-approvals-e0", Source: forwardTriggerID, Target: forwardHTTPID},
 			},
 			BuiltIn:  true,
-			Seed:     seedorigin.Stamp(1),
+			Seed:     seedorigin.Stamp(2),
 			Disabled: true,
 		},
 	}

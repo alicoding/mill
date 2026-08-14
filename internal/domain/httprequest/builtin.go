@@ -121,14 +121,14 @@ func BuiltIn() []HTTPRequest {
 		{
 			ID: ExampleHMACID, Label: "Example: HMAC signature (httpbin.org)",
 			Description: "Signs method+path+timestamp+body with HMAC-SHA256, sent as " +
-				"X-Signature/X-Timestamp headers (Mill's own stated default, ADR-0015 -- no " +
+				"X-Signature/X-Timestamp headers (Mill's own stated default -- no " +
 				"universal HMAC convention exists to validate against). httpbin.org/headers echoes " +
 				"the signed headers back so you can see them, but doesn't verify the signature -- " +
 				"self-consistency check only, same caveat as the API-key example above.",
 			BaseURL: "https://httpbin.org/headers", AuthType: AuthHMAC, Method: "GET",
 			OpenAPISpec: openAPISpecFor("httpbin headers echo (HMAC)"),
 			BuiltIn:     true,
-			Seed:        seedorigin.Stamp(1),
+			Seed:        seedorigin.Stamp(2),
 		},
 		{
 			ID: ExampleOAuth1ID, Label: "Example: OAuth 1.0a (postman-echo.com)",

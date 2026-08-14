@@ -84,7 +84,7 @@ an implicit `FINAL`.
   near-term product is the local/offline/open-source substrate that
   makes M365 Copilot and/or local Ollama usable there — reliable
   structure-preserving DOM capture → markdown (§5, ADR-0030's decision
-  matrix), the §2.1 bridge, and a local AI node (pending decision) —
+  matrix), the §2.1 bridge, and a local AI step (pending decision) —
   while the MCP/connector/canvas platform stays the long game, built
   and shipped even where blocked. Never rip a capability out because
   one environment blocks it (exactly how MCP already works: built,
@@ -183,10 +183,10 @@ an implicit `FINAL`.
   explicitly initiate on the user's own behalf via a user-configured
   connector. `LOCKED`
   **Invariant, owner-confirmed 2026-08-11, sharpening (not weakening)
-  the above: Mill exposes AI as a user-configured node (local Ollama /
+  the above: Mill exposes AI as a user-configured step (local Ollama /
   BYO key), but never runs an autonomous decide-and-act agent loop
   itself — the guardrail always sits between any AI output and a real
-  action.** An AI node is exactly the user-configured-connector case
+  action.** An AI step is exactly the user-configured-connector case
   this bullet already permits: the user brings the endpoint/key, a
   local-Ollama call is zero-egress, and each step is one deterministic
   configured call — never Mill deciding what to call next. What stays
@@ -974,8 +974,8 @@ competing for attention across the whole app.
   surface, adopted ahead of ADR-0005 B2's own stated deferral trigger ("2+
   real multi-step workflows exist to design against") by explicit decision
   — see ADR-0005's own Update section, not a silent resolution of §3's
-  `OPEN` status.** Drag a node type from the palette onto the canvas,
-  connect nodes by dragging between handles, click a node or edge to
+  `OPEN` status.** Drag a step type from the palette onto the canvas,
+  connect steps by dragging between handles, click a step or edge to
   configure it in a right-side Inspector — composing and configuring
   happen in one motion. `Workflow.Nodes []Node` + `Workflow.Edges []Edge`
   (§3.3's schema) replaced the old `Workflow.Steps []Step`; the
@@ -1078,7 +1078,7 @@ competing for attention across the whole app.
   rules and any already-drawn edges stay valid) — modeled on Zapier's
   own in-place trigger-event swap rather than n8n, which has no
   "replace node" feature (a standing, unresolved community request).
-  Surfaced as a "Node type" `Select` in the Inspector, shown only when
+  Surfaced as a "Step type" `Select` in the Inspector, shown only when
   the selected node's Kind has more than one NodeType to choose from
   (most Kinds today have exactly one — Capture, Decision — where a
   single-option dropdown would be noise, not a control, same reasoning

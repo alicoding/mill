@@ -51,7 +51,7 @@ func BuiltIn() []List {
 		{
 			ID:    ExampleCountryCodesID,
 			Label: "Example: Country codes",
-			Description: "A typed lookup dataset (code -> country name) -- goal 0011's seeded proof for " +
+			Description: "A typed lookup dataset (code -> country name) -- the seeded proof for " +
 				"both list-lookup (legacy, via the derived key/value view over its first two columns) and " +
 				"list-search (typed exact/fuzzy matching). Includes one deliberately Expired row (a defunct " +
 				"code) demonstrating the exclude-by-default rule live.",
@@ -67,7 +67,7 @@ func BuiltIn() []List {
 				expiredRow("row-su", "SU", "Soviet Union"),
 			},
 			BuiltIn: true,
-			Seed:    seedorigin.Stamp(1),
+			Seed:    seedorigin.Stamp(2),
 		},
 	}
 }

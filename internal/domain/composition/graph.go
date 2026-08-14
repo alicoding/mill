@@ -28,10 +28,10 @@ func buildGraph(nodes []Node, edges []Edge) (byID map[string]Node, outgoingEdges
 	hasIncoming = make(map[string]bool, len(edges))
 	for _, e := range edges {
 		if _, ok := byID[e.Source]; !ok {
-			return nil, nil, nil, fmt.Errorf("edge references unknown source node: %s", e.Source)
+			return nil, nil, nil, fmt.Errorf("edge references unknown source step: %s", e.Source)
 		}
 		if _, ok := byID[e.Target]; !ok {
-			return nil, nil, nil, fmt.Errorf("edge references unknown target node: %s", e.Target)
+			return nil, nil, nil, fmt.Errorf("edge references unknown target step: %s", e.Target)
 		}
 		outgoingEdges[e.Source] = append(outgoingEdges[e.Source], e)
 		hasIncoming[e.Target] = true
@@ -39,10 +39,10 @@ func buildGraph(nodes []Node, edges []Edge) (byID map[string]Node, outgoingEdges
 
 	for _, n := range nodes {
 		if n.Kind == KindTerminal && len(outgoingEdges[n.ID]) > 0 {
-			return nil, nil, nil, fmt.Errorf("node %s: a terminal node (docs/adr/0027) may not have an outgoing edge", n.ID)
+			return nil, nil, nil, fmt.Errorf("step %s: a terminal step may not have an outgoing edge", n.ID)
 		}
 		if n.Kind != KindDecision && len(outgoingEdges[n.ID]) > 1 {
-			return nil, nil, nil, fmt.Errorf("node %s: only a Decision node may have more than one outgoing edge", n.ID)
+			return nil, nil, nil, fmt.Errorf("step %s: only a Decision step may have more than one outgoing edge", n.ID)
 		}
 	}
 
@@ -70,12 +70,12 @@ func findRoot(nodes []Node, outgoingEdges map[string][]Edge, hasIncoming map[str
 	}
 	if rootCount == 0 {
 		if cycle := findAnyCycle(nodes, outgoingEdges); len(cycle) > 0 {
-			return "", fmt.Errorf("a workflow must have exactly one starting node (found none -- every node has an incoming edge because these nodes form a cycle: %s)", strings.Join(cycle, " -> "))
+			return "", fmt.Errorf("a workflow must have exactly one starting step (found none -- every step has an incoming edge because these steps form a cycle: %s)", strings.Join(cycle, " -> "))
 		}
-		return "", fmt.Errorf("a workflow must have exactly one starting node")
+		return "", fmt.Errorf("a workflow must have exactly one starting step")
 	}
 	if rootCount != 1 {
-		return "", fmt.Errorf("a workflow must have exactly one starting node")
+		return "", fmt.Errorf("a workflow must have exactly one starting step")
 	}
 	return root, nil
 }
@@ -253,7 +253,7 @@ func ValidateGraph(nodes []Node, edges []Edge, attrs []AttributeDef) []Issue {
 		// input, one concept (SPEC.md §3.4), not something any other
 		// node kind can stand in for as the entry point.
 		if n, ok := byID[root]; ok && n.Kind != KindTrigger {
-			issues = append(issues, errorIssue(root, "", fmt.Sprintf("node %s: a workflow must start with a Trigger step", root)))
+			issues = append(issues, errorIssue(root, "", fmt.Sprintf("step %s: a workflow must start with a Trigger step", root)))
 		}
 
 		reachable := map[string]bool{root: true}
@@ -270,7 +270,7 @@ func ValidateGraph(nodes []Node, edges []Edge, attrs []AttributeDef) []Issue {
 		}
 		for _, n := range nodes {
 			if !reachable[n.ID] {
-				issues = append(issues, errorIssue(n.ID, "", fmt.Sprintf("node %s is unreachable from the workflow's starting node", n.ID)))
+				issues = append(issues, errorIssue(n.ID, "", fmt.Sprintf("step %s is unreachable from the workflow's starting step", n.ID)))
 			}
 		}
 	}
@@ -289,11 +289,11 @@ func ValidateGraph(nodes []Node, edges []Edge, attrs []AttributeDef) []Issue {
 				continue
 			}
 			if err := expression.Compile(e.SourceHandle, env); err != nil {
-				issues = append(issues, errorIssue(n.ID, e.ID, fmt.Sprintf("decision node %s, edge %s: %v", n.ID, e.ID, err)))
+				issues = append(issues, errorIssue(n.ID, e.ID, fmt.Sprintf("decision step %s, edge %s: %v", n.ID, e.ID, err)))
 			}
 		}
 		if otherwiseCount != 1 {
-			issues = append(issues, errorIssue(n.ID, "", fmt.Sprintf("decision node %s must have exactly one \"otherwise\" edge, has %d", n.ID, otherwiseCount)))
+			issues = append(issues, errorIssue(n.ID, "", fmt.Sprintf("decision step %s must have exactly one \"otherwise\" edge, has %d", n.ID, otherwiseCount)))
 		}
 	}
 
@@ -346,7 +346,7 @@ func validateLeaves(nodes []Node, outgoingEdges map[string][]Edge) []Issue {
 			continue
 		}
 		issues = append(issues, warningIssue(n.ID, "",
-			fmt.Sprintf("node %s: this step's result isn't delivered anywhere -- fine for a test run; add an Apply or Decision step to act on it", n.ID)))
+			fmt.Sprintf("step %s: this step's result isn't delivered anywhere -- fine for a test run; add an Apply or Decision step to act on it", n.ID)))
 	}
 	return issues
 }
@@ -372,7 +372,7 @@ func validateRequiredRefs(nodes []Node) []Issue {
 				continue
 			}
 			issues = append(issues, warningIssue(n.ID, "",
-				fmt.Sprintf("node %s: %s isn't set -- this step isn't configured yet and will fail at run time", n.ID, field.Label)))
+				fmt.Sprintf("step %s: %s isn't set -- this step isn't configured yet and will fail at run time", n.ID, field.Label)))
 		}
 	}
 	return issues
@@ -419,7 +419,7 @@ func validateOutputBindingSecrets(nodes []Node) []Issue {
 		}
 		for fieldName, attrName := range bindings {
 			if secretFields[fieldName] {
-				issues = append(issues, errorIssue(n.ID, "", fmt.Sprintf("node %s: field %q is a secret field and cannot be written to Attribute %q", n.ID, fieldName, attrName)))
+				issues = append(issues, errorIssue(n.ID, "", fmt.Sprintf("step %s: field %q is a secret field and cannot be written to Attribute %q", n.ID, fieldName, attrName)))
 			}
 		}
 	}
@@ -455,7 +455,7 @@ func nextNode(node Node, outgoing []Edge, ctx ExecContext) (string, error) {
 		}
 	}
 	if otherwise == "" {
-		return "", fmt.Errorf("decision node %s has no otherwise edge", node.ID)
+		return "", fmt.Errorf("decision step %s has no otherwise edge", node.ID)
 	}
 	return otherwise, nil
 }

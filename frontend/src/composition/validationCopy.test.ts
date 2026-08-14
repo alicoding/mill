@@ -18,31 +18,31 @@ function t(key: string, vars: Record<string, unknown> = {}): string {
 }
 
 describe('formatIssuesForCopy', () => {
-  it('names the workflow, its id, counts, and each issue with its node/edge id', () => {
+  it('names the workflow, its id, counts, and each issue with its step/edge id', () => {
     const out = formatIssuesForCopy(t, 'Load sample HTML', 'load-sample-html-workflow', [
       issue({ Severity: Severity.SeverityError, NodeID: 'n1', Message: 'a workflow must start with a Trigger step' }),
       issue({ Severity: Severity.SeverityWarning, EdgeID: 'e7', Message: 'dangling edge' }),
     ])
     expect(out).toBe(
       'Mill workflow "Load sample HTML" (id: load-sample-html-workflow) — validation issues (1 error · 1 warning):\n' +
-      '- [error] node n1: a workflow must start with a Trigger step\n' +
+      '- [error] step n1: a workflow must start with a Trigger step\n' +
       '- [warning] edge e7: dangling edge',
     )
   })
 
-  it('never double-prefixes when the message already carries its node location', () => {
-    // ValidateGraph's real messages lead with "node <id>: " -- caught
-    // from an actual paste that read "node X: node X: ..." (goal 0021).
+  it('never double-prefixes when the message already carries its step location', () => {
+    // ValidateGraph's real messages lead with "step <id>: " -- guards
+    // against reading "step X: step X: ...".
     const out = formatIssuesForCopy(t, 'W', 'w-id', [
-      issue({ NodeID: 'n1', Message: 'node n1: a workflow must start with a Trigger step' }),
+      issue({ NodeID: 'n1', Message: 'step n1: a workflow must start with a Trigger step' }),
     ])
-    expect(out).toContain('- [error]: node n1: a workflow must start with a Trigger step')
-    expect(out).not.toContain('node n1: node n1:')
+    expect(out).toContain('- [error]: step n1: a workflow must start with a Trigger step')
+    expect(out).not.toContain('step n1: step n1:')
   })
 
-  it('omits the location fragment when an issue has no node or edge id', () => {
-    const out = formatIssuesForCopy(t, 'W', 'w-id', [issue({ Message: 'graph has no nodes' })])
-    expect(out).toContain('- [error]: graph has no nodes')
+  it('omits the location fragment when an issue has no step or edge id', () => {
+    const out = formatIssuesForCopy(t, 'W', 'w-id', [issue({ Message: 'graph has no steps' })])
+    expect(out).toContain('- [error]: graph has no steps')
   })
 
   it('pluralizes counts', () => {

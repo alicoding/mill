@@ -27,7 +27,7 @@
     "runButtonTooltip": "Runs the saved draft (test run).",
     "run": "Run",
     "runInStepModeAriaLabel": "Run in step mode",
-    "runInStepModeTooltip": "Pauses before every node so you can inspect and edit its data."
+    "runInStepModeTooltip": "Pauses before every step so you can inspect and edit its data."
   },
   "canvasNodeView": {
     "runStatus": {
@@ -159,18 +159,18 @@
     "plainSuffix": ".",
     "breakpointSet": "Breakpoint set",
     "noBreakpoint": "No breakpoint",
-    "breakpointHint": "{{state}} — click the dot on the node card to {{action}}.",
+    "breakpointHint": "{{state}} — click the dot on the step card to {{action}}.",
     "removeIt": "remove it",
     "addOne": "add one",
     "breakpointBadge": "Breakpoint",
     "breakpointDescription": "A run pauses here to let you inspect and edit its data before it continues -- a debugging aid, not policy."
   },
   "nodeInspector": {
-    "nodeType": "Node type",
+    "nodeType": "Step type",
     "saveBeforeHotkey": "Save this workflow before assigning a hotkey.",
     "setShortcut": "Set shortcut",
     "openAccessibilitySettings": "Open Accessibility Settings",
-    "noConfiguration": "This node type takes no configuration.",
+    "noConfiguration": "This step type takes no configuration.",
     "generateTestPayload": "Generate test payload",
     "hoverToPreviewChild": "Hover to preview the child — click Open to edit it",
     "defaultOption": "(default)"
@@ -181,11 +181,11 @@
   },
   "draftWorkflowSchema": {
     "needsLabel": "A workflow needs a label",
-    "needsAtLeastOneNode": "A workflow needs at least one node",
-    "danglingConnection": "A connection references a node that no longer exists.",
-    "terminalCannotHaveOutgoing": "A Decision node (a terminal outcome) cannot have an outgoing connection.",
-    "onlyBranchCanFanOut": "Only a Branch node can have more than one outgoing connection.",
-    "needsExactlyOneStart": "A workflow must have exactly one starting node.",
+    "needsAtLeastOneNode": "A workflow needs at least one step",
+    "danglingConnection": "A connection references a step that no longer exists.",
+    "terminalCannotHaveOutgoing": "A Decision step (a terminal outcome) cannot have an outgoing connection.",
+    "onlyBranchCanFanOut": "Only a Branch step can have more than one outgoing connection.",
+    "needsExactlyOneStart": "A workflow must have exactly one starting step.",
     "notValidYetFallback": "This workflow is not valid yet."
   },
   "validationPanel": {
@@ -197,7 +197,7 @@
   },
   "validationCopy": {
     "header": "Mill workflow \"{{label}}\" (id: {{id}}) — validation issues ({{counts}}):",
-    "nodeLocation": " node {{id}}",
+    "nodeLocation": " step {{id}}",
     "edgeLocation": " edge {{id}}"
   },
   "workflowEditorTab": {
@@ -214,7 +214,7 @@
   },
   "nodePalette": {
     "addSteps": "Add steps",
-    "onlyOneTriggerTitle": "A workflow can only have one trigger. Select the existing trigger node on the canvas to change its type instead.",
+    "onlyOneTriggerTitle": "A workflow can only have one trigger. Select the existing trigger step on the canvas to change its type instead.",
     "searchPlaceholder": "Search steps…",
     "searchAriaLabel": "Search steps",
     "noMatches": "No steps match \"{{query}}\""
@@ -245,11 +245,11 @@
     "redoAriaLabel": "Redo",
     "autoLayoutAriaLabel": "Auto-layout",
     "deleteSelectedAriaLabel": "Delete selected",
-    "addStepsHint": "Add steps to drag a node type onto the canvas, connect them, click a node to configure it."
+    "addStepsHint": "Add steps to drag a step type onto the canvas, connect them, click a step to configure it."
   },
   "compositionCanvas": {
-    "onlyDecisionEdgesConfigurable": "Only a Decision node’s outgoing edges are configurable.",
-    "selectNodeToConfigure": "Select a node to configure it."
+    "onlyDecisionEdgesConfigurable": "Only a Decision step’s outgoing edges are configurable.",
+    "selectNodeToConfigure": "Select a step to configure it."
   },
   "compositionView": {
     "heading": "Workflows",
