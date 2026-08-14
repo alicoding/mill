@@ -45,6 +45,11 @@ describe('keyFromEventCode', () => {
   // physical key, shift-independent like every other key here -- Shift
   // held or not is captured separately as a mod (modsFromEvent), not a
   // second key value.
+  it('maps the bracket codes to literal brackets (tab.next/prev ⌘⇧]/⌘⇧[ aliases)', () => {
+    expect(keyFromEventCode('BracketLeft')).toBe('[')
+    expect(keyFromEventCode('BracketRight')).toBe(']')
+  })
+
   it('maps the Slash code to a literal forward slash', () => {
     expect(keyFromEventCode('Slash')).toBe('/')
   })
