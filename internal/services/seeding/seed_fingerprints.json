@@ -127,6 +127,10 @@
     "seedRevision": 1,
     "fingerprint": "62dbe4acad765f963bd23f41ee5965792a61668f68df432a40b9878ebba01b94"
   },
+  "workflow:example-scratch-capture-workflow": {
+    "seedRevision": 1,
+    "fingerprint": "d4744c5e857cb1f851e78559633a1963a271d6c2d79ad37557e49dfbe7dcb41d"
+  },
   "workflow:load-sample-html-workflow": {
     "seedRevision": 1,
     "fingerprint": "0f3d7b07d5e264f79b04f0c2a4603f83d4cca2ff07819a803e8039f69d1d1140"

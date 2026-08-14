@@ -89,3 +89,40 @@ func savedPageToMarkdownWorkflow() Workflow {
 		Disabled: true,
 	}
 }
+
+// scratchCaptureWorkflow is the capture-first note-taking loop's
+// simplest form: whatever's on the clipboard, appended straight to a
+// running scratch file with a timestamp, no filing decision at capture
+// time. Ships manual-triggered (every other capture-shaped seed in
+// this package does the same) so it never writes to a real path on
+// your machine until you run it yourself; swap the trigger for a
+// hotkey (canvas Inspector) for the one-keystroke version.
+func scratchCaptureWorkflow() Workflow {
+	const (
+		triggerID = "example-scratchcapture-trigger"
+		captureID = "example-scratchcapture-capture"
+		applyID   = "example-scratchcapture-apply"
+	)
+	nodes, err := ResolveNodeDefaults([]Node{
+		{ID: triggerID, NodeTypeID: "trigger-manual", Position: Position{X: 0, Y: 0}},
+		{ID: captureID, NodeTypeID: "capture-clipboard-html", Position: Position{X: 0, Y: 100}},
+		{ID: applyID, NodeTypeID: "apply-file-write", Position: Position{X: 0, Y: 200},
+			Config: map[string]string{"path": "~/Mill Scratch/scratch.md", "mode": "append", "createDirs": "true", "timestamp": "datetime"}},
+	})
+	if err != nil {
+		panic("built-in workflow references an unknown node type: " + err.Error())
+	}
+
+	return Workflow{
+		ID:          "example-scratch-capture-workflow",
+		Label:       "Example: Scratch capture",
+		Description: "Grabs whatever's on the clipboard and appends it to a scratch file, each entry stamped with the date and time -- run it whenever you copy something worth keeping, and sort it out later.",
+		Nodes:       nodes,
+		Edges: []Edge{
+			{ID: "example-scratchcapture-e0", Source: triggerID, Target: captureID},
+			{ID: "example-scratchcapture-e1", Source: captureID, Target: applyID},
+		},
+		BuiltIn: true,
+		Seed:    seedorigin.Stamp(1),
+	}
+}

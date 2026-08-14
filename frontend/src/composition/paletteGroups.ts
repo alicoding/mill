@@ -73,7 +73,7 @@ export const PALETTE_GROUP_ICON: Record<PaletteGroupId, Icon> = {
 
 // Every registered NodeType ID as of this change (internal/domain/
 // composition/*.go's RegisterNodeType call sites, checked directly
-// against the Go registry, not guessed) -- 29 total, every one
+// against the Go registry, not guessed) -- 30 total, every one
 // accounted for. vitest (paletteGroups.test.ts) asserts every ID
 // NodeTypes() actually returns has an entry here, so this map can't
 // silently drift from the backend registry.
@@ -113,9 +113,10 @@ const NODE_TYPE_GROUP: Record<string, PaletteGroupId> = {
   'human-review': 'guardrails',
   'ruleset': 'guardrails',
   'decision-outcome': 'guardrails',
-  // Apply (2)
+  // Apply (3)
   'apply-clipboard-write-html': 'apply',
   'apply-clipboard-write-text': 'apply',
+  'apply-file-write': 'apply',
 }
 
 // Fallback for a NodeType ID this map hasn't been updated for yet

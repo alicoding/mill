@@ -115,6 +115,12 @@ var workflowProofRegistry = map[string]seedProof{
 		"triggersvc.TestSeededSavedPageToMarkdown_FiresRealWorkflowAndExtractsMainContent",
 		"e2e: seed-completeness.spec.ts > Saved page to Markdown (presence only)",
 	),
+	"example-scratch-capture-workflow": proven(
+		"composition.TestApplyFileWrite_Append_CreatesFile",
+		"composition.TestApplyFileWrite_Append_SecondEntryIsBlankLineSeparated",
+		"composition.TestApplyFileWrite_Append_TimestampDatetime_PrependsStampLine",
+		"composition.TestApplyFileWrite_CreateDirsTrue_CreatesNestedParents",
+	),
 	"example-codeexec-workflow": proven(
 		"executionsvc.TestSeededCodeExecutionExample_Approve_RunsRealCommandAndWritesClipboard",
 		"executionsvc.TestSeededCodeExecutionExample_Deny_NeverStartsTheProcess",
