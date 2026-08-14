@@ -27,14 +27,27 @@ re-litigated):
 
 ## Scope (absorbs far-side gaps 1, 2, 4 from goal 0044; gap 3 rides)
 
-1. **Generated `workflow.schema.json`** — JSON Schema for the
-   export/import envelope, generated from the Go types (candidate:
-   `invopop/jsonschema`; verify current fit at implementation, adopt
-   per the reuse rule, hand-roll only on demonstrated misfit).
-   Committed, with a CI drift-fail when the types change and the
-   schema wasn't regenerated (the exact generated-doc pattern goal
+1. **Generated schema for EVERY importable envelope** — owner
+   principle, 2026-08-13: an export is an *instance*, a schema is the
+   *contract*; an external author (an LLM that never touches the app)
+   needs both — one exported example as the few-shot, the schema as
+   the rule, since an example can't say what's required, legal, or
+   variable. Seven envelope families exist today, all already
+   import/export-paired at the service layer (Workflow +
+   HTTPRequest/List/Decision/ExecEnv/MCPServer/AIProvider in
+   configuresvc): each gets JSON Schema generated from its Go types
+   (candidate: `invopop/jsonschema`; verify fit at implementation,
+   adopt per the reuse rule). Committed, with a CI drift-fail when
+   types change without regeneration (the generated-doc pattern goal
    0049 establishes for the ADR index — same mechanism, product
    surface).
+
+   **Symmetry audit rides here:** enumerate every import-shaped
+   surface (the seven envelopes; OpenAPI intake is exempt — its
+   contract is the external OpenAPI standard) and verify each
+   family's export is UI-reachable wherever its import is — a
+   service method no surface exposes doesn't satisfy the
+   import-implies-export rule.
 2. **Stable schema identifier** — a `SCHEMA_ID`/version embedded in
    exports and the schema itself; evolution rules (what may change
    within an id, what forces a new one) decided in coordination with
@@ -68,9 +81,12 @@ the contract travels as files/clipboard/MCP, period (SPEC §1.1).
 
 ## Acceptance (checkable)
 
-- [ ] `workflow.schema.json` generated from Go types; CI fails when
-      types change without regeneration; a hand-edit fails the same
-      check.
+- [ ] Every importable envelope (all seven families) has a generated
+      schema; CI fails when types change without regeneration; a
+      hand-edit fails the same check.
+- [ ] The symmetry audit is recorded in this file: every import
+      surface listed with its UI-reachable export confirmed (or the
+      gap fixed in-goal).
 - [ ] Exports carry a stable schema id; the id's evolution rules are
       recorded in the same ADR that goal 0046 consumes (one
       semantics, cross-referenced).
