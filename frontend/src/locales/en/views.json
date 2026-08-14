@@ -42,7 +42,7 @@
       "askBeforeImportCaption": "Each import parks until you approve it in Mill, or times out after 2 minutes and is denied. Turning this off lets an enabled MCP client import without a per-write approval. On by default."
     },
     "contract": {
-      "description": "The full node catalog, every data schema, and this app's version in one file — hand it to an agent that can't reach Mill directly.",
+      "description": "The full step catalog, every data schema, and this app's version in one file — hand it to an agent that can't reach Mill directly.",
       "exportButton": "Export contract",
       "exportError": "Couldn't export the contract — try again."
     },
