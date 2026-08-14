@@ -86,10 +86,46 @@ researchable further from outside):**
 7. Copy a full page and a small selection; run the seeded
    "Example: Clipboard inspector" — which `text/html` flavors
    actually land?
+8. In the work draw.io build: is Mermaid insert available
+   (Extras/Insert → Mermaid)? If yes, diagram-as-code text files
+   can be the source of truth with draw.io as the mandated
+   rendering surface — the whole diagram-organizing pain collapses
+   into the notes pipeline.
 
 Full comparison table with per-row confidence and all source URLs is
 in the session's research report; the rows' conclusions are the ADR
 updates + verdict above.
+
+## Second dry-run scenario — JIT scratch capture (owner-raised 2026-08-13)
+
+The owner's real daily note-taking pain is capture-first vs
+organize-first: every tool bounced off (organize-at-write-time
+systems) demanded filing decisions at the moment of least attention;
+the habit only forms when capture costs one keystroke and
+organization happens later, by machinery. That loop is a Mill
+composition over existing steps — Mill is the pipe, notes stay plain
+user-owned files, no notes app gets built:
+
+1. **Capture workflow:** global hotkey → capture selection/clipboard
+   → append to a dated scratch file. Zero decisions at write time.
+2. **Reformat workflow:** hotkey → capture scratch → AI reformat per
+   category instruction → apply organized result back. At home via
+   an AI-provider step; at work via the M365 clipboard bridge — the
+   same loop this goal's dry run exercises, pointed at the owner's
+   own notes (a higher-frequency daily test than the Confluence
+   page scenario).
+3. **Read workflow:** scratch/markdown → styled HTML → open in
+   browser; reading experience without a built-in reader or
+   forcing source-format editing.
+
+Gaps to verify during the dry run (verify, don't assume): a
+file-append apply step exists (capture-file reads; the append/write
+direction needs checking); md→styled-HTML render+open as an apply
+path. Diagram adjunct: diagram-as-code (Mermaid) as text source of
+truth riding the same scratch pipeline; work checklist item 8 below
+covers the draw.io interop unknown. Mill deliberately does NOT
+become a notes app or a diagram platform (SPEC §0's point-solution
+boundary) — everything above is composition.
 
 ## Far-side requirements captured — 2026-08-13 (feeds deliverable 1)
 
