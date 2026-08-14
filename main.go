@@ -28,12 +28,13 @@ import (
 )
 
 // millVersion is the version CurrentVersion the updater compares
-// releases against. No real tagged-release process exists yet
-// (docs/SPEC.md §3.7's own note) -- this is a placeholder that keeps
-// the mechanism wired and correct so a real release process has
-// nothing left to build here, not a claim that auto-update is a
-// finished, working pipeline today.
-const millVersion = "0.1.0"
+// releases against. Three places must agree on a release's version --
+// the git tag, build/config.yml's info.version, and this constant --
+// and release.yml's verify step fails the release when any pair
+// mismatches, so this can't silently drift behind a tag again (it
+// shipped as 0.1.0 while v0.2.0 was live, making the updater offer a
+// build its own version).
+const millVersion = "0.2.0"
 
 // Wails uses Go's `embed` package to embed the frontend files into the binary.
 // Any files in the frontend/dist folder will be embedded into the binary and
@@ -228,7 +229,16 @@ func main() {
 	// would only happen from a malformed static Config, not a network
 	// call (New doesn't hit the network) -- logged, not fatal, since a
 	// broken updater must never block the app from starting.
-	if ghProvider, err := updaterGithub.New(updaterGithub.Config{Repository: "alicoding/mill"}); err != nil {
+	// AssetMatcher: the default matcher requires the literal GOOS in the
+	// asset name; Mill's assets say "macos", not "darwin" (see
+	// settingssvc.UpdaterAssetMatcher). ChecksumAsset: release.yml
+	// publishes SHA256SUMS next to the zip -- naming it makes the
+	// provider verify the download against it.
+	if ghProvider, err := updaterGithub.New(updaterGithub.Config{
+		Repository:    "alicoding/mill",
+		AssetMatcher:  settingssvc.UpdaterAssetMatcher,
+		ChecksumAsset: "SHA256SUMS",
+	}); err != nil {
 		logger.Error("updater provider init", "error", err)
 	} else if err := app.Updater.Init(updater.Config{
 		CurrentVersion: millVersion,
