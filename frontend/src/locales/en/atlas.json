@@ -29,7 +29,28 @@
     "import": "Import",
     "importConfirmTitle": "This import will update existing items",
     "importConfirmBody": "{{count}} kinds, cards, or links already exist here and will be updated in place.",
-    "importConfirmButton": "Import"
+    "importConfirmButton": "Import",
+    "matrix": "Matrix",
+    "coverage": "Coverage"
+  },
+  "matrix": {
+    "title": "Traceability matrix",
+    "cardColumn": "Card",
+    "rowKindLabel": "Kind",
+    "columnFilterLabel": "Link kind",
+    "anyLinkKind": "Any",
+    "absentCell": "None",
+    "empty": "No cards of this kind in this space yet."
+  },
+  "coverage": {
+    "title": "Coverage",
+    "linkKindLabel": "Link kind",
+    "linkedStat": "{{covered}}/{{total}} linked",
+    "mirrorHeading": "Mirrors",
+    "mirroredStat": "{{covered}}/{{total}} mirrored",
+    "noLinkKinds": "No link kinds are declared yet.",
+    "viewMissing": "View missing ({{count}})",
+    "hideMissing": "Hide missing"
   },
   "overlay": {
     "title": "{{title}}",
@@ -37,7 +58,11 @@
     "noteLabel": "Note",
     "noFields": "This kind has no fields to fill in.",
     "sourceLabel": "Source URL",
-    "mirrorPath": "Mirrors to {{path}}",
+    "mirrorPathLabel": "Mirror path",
+    "mirrorContentHeading": "Mirrored content",
+    "mirrorLoading": "Loading mirrored content…",
+    "mirrorTooLarge": "This file is {{size}}, too large to preview here.",
+    "mirrorUnsupported": "This file is {{size}}. Open it to view its content.",
     "lastSynced": "Last synced {{when}}",
     "neverSynced": "Never synced",
     "refreshWorkflowLabel": "Refresh workflow",

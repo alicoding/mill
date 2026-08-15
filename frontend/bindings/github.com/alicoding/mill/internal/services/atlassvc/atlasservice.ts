@@ -155,6 +155,18 @@ export function Links(): $CancellablePromise<atlas$0.Link[] | null> {
 }
 
 /**
+ * MirrorContent resolves cardID's MirrorPath into a read-only overlay
+ * preview: markdown renders to HTML, plain text passes through as-is,
+ * an image becomes base64-encoded bytes paired with its MIME type, and
+ * anything else (or anything over mirrorPreviewMaxBytes) reports only
+ * its kind and size -- the overlay's existing reveal-file action is
+ * what a user reaches for beyond that.
+ */
+export function MirrorContent(cardID: string): $CancellablePromise<atlas$0.MirrorContent> {
+    return $Call.ByID(3797489642, cardID);
+}
+
+/**
  * MoveCard reparents a card (sibling-vs-child move, ADR-0038's
  * create-time framing extended to a later move) -- rejects a
  * newParentID that would make the card its own ancestor

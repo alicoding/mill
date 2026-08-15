@@ -49,3 +49,21 @@ func Read(path string) (string, error) {
 	}
 	return string(data), nil
 }
+
+// Stat returns path's size in bytes without reading its content --
+// lets a caller decide whether a file is worth reading at all (e.g.
+// Atlas's mirror-content preview, which must not load an oversized
+// file just to find out it's oversized) before paying that cost.
+func Stat(path string) (int64, error) {
+	if path == "" {
+		return 0, fmt.Errorf("fileread: no path given")
+	}
+	info, err := os.Stat(path)
+	if err != nil {
+		return 0, fmt.Errorf("fileread: %w", err)
+	}
+	if info.IsDir() {
+		return 0, fmt.Errorf("fileread: %q is a directory, not a file", path)
+	}
+	return info.Size(), nil
+}

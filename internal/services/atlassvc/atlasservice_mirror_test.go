@@ -1,0 +1,178 @@
+package atlassvc
+
+import (
+	"encoding/base64"
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+
+	"github.com/alicoding/mill/internal/domain/atlas"
+)
+
+// newMirroredCard creates a fresh Kind + Card whose MirrorPath points
+// at a file written with content under t.TempDir(), returning the
+// card. UpdateCard (not CreateCard's own mirrorPath parameter) is used
+// so this exercises the same write path the overlay's Save action
+// takes.
+func newMirroredCard(t *testing.T, a *AtlasService, filename, content string) atlas.Card {
+	t.Helper()
+	k, err := a.CreateKind("Doc", "", "", nil)
+	if err != nil {
+		t.Fatalf("CreateKind: %v", err)
+	}
+	c, err := a.CreateCard(k.ID, "Mirrored", "", nil, "", nil, "", "", "", "")
+	if err != nil {
+		t.Fatalf("CreateCard: %v", err)
+	}
+	path := filepath.Join(t.TempDir(), filename)
+	if err := os.WriteFile(path, []byte(content), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	updated, err := a.UpdateCard(c.ID, c.Title, c.Note, c.Fields, c.Source, path, c.RefreshWorkflowID)
+	if err != nil {
+		t.Fatalf("UpdateCard: %v", err)
+	}
+	return updated
+}
+
+func TestMirrorContent_Markdown_RendersHTML(t *testing.T) {
+	a := newTestAtlasService(t)
+	c := newMirroredCard(t, a, "notes.md", "# Title\n\nBody text.")
+
+	got, err := a.MirrorContent(c.ID)
+	if err != nil {
+		t.Fatalf("MirrorContent: %v", err)
+	}
+	if got.Kind != atlas.MirrorKindMarkdown {
+		t.Errorf("Kind = %q, want markdown", got.Kind)
+	}
+	if !strings.Contains(got.Content, "<h1>Title</h1>") {
+		t.Errorf("Content = %q, want rendered <h1>Title</h1>", got.Content)
+	}
+	if got.TooLarge {
+		t.Error("TooLarge = true for a small file")
+	}
+}
+
+func TestMirrorContent_PlainText_PassesThroughAsIs(t *testing.T) {
+	a := newTestAtlasService(t)
+	c := newMirroredCard(t, a, "log.txt", "line one\nline two")
+
+	got, err := a.MirrorContent(c.ID)
+	if err != nil {
+		t.Fatalf("MirrorContent: %v", err)
+	}
+	if got.Kind != atlas.MirrorKindText {
+		t.Errorf("Kind = %q, want text", got.Kind)
+	}
+	if got.Content != "line one\nline two" {
+		t.Errorf("Content = %q, want the raw file content unchanged", got.Content)
+	}
+}
+
+func TestMirrorContent_Image_ReturnsBase64WithMimeType(t *testing.T) {
+	a := newTestAtlasService(t)
+	raw := []byte{0x89, 0x50, 0x4e, 0x47} // not a valid PNG, but classification is extension-only
+	c := newMirroredCard(t, a, "photo.png", string(raw))
+
+	got, err := a.MirrorContent(c.ID)
+	if err != nil {
+		t.Fatalf("MirrorContent: %v", err)
+	}
+	if got.Kind != atlas.MirrorKindImage {
+		t.Errorf("Kind = %q, want image", got.Kind)
+	}
+	if got.MimeType != "image/png" {
+		t.Errorf("MimeType = %q, want image/png", got.MimeType)
+	}
+	decoded, err := base64.StdEncoding.DecodeString(got.Content)
+	if err != nil {
+		t.Fatalf("Content is not valid base64: %v", err)
+	}
+	if string(decoded) != string(raw) {
+		t.Errorf("decoded Content = %q, want %q", decoded, raw)
+	}
+}
+
+func TestMirrorContent_OtherKind_ReportsSizeWithoutContent(t *testing.T) {
+	a := newTestAtlasService(t)
+	c := newMirroredCard(t, a, "archive.zip", "not really a zip, just bytes")
+
+	got, err := a.MirrorContent(c.ID)
+	if err != nil {
+		t.Fatalf("MirrorContent: %v", err)
+	}
+	if got.Kind != atlas.MirrorKindOther {
+		t.Errorf("Kind = %q, want other", got.Kind)
+	}
+	if got.Content != "" {
+		t.Errorf("Content = %q, want empty for an unsupported kind", got.Content)
+	}
+	if got.Size == 0 {
+		t.Error("Size = 0, want the file's real size even though content isn't loaded")
+	}
+}
+
+func TestMirrorContent_OverSizeCap_ReportsTooLargeWithoutContent(t *testing.T) {
+	a := newTestAtlasService(t)
+	k, err := a.CreateKind("Doc", "", "", nil)
+	if err != nil {
+		t.Fatalf("CreateKind: %v", err)
+	}
+	c, err := a.CreateCard(k.ID, "Mirrored", "", nil, "", nil, "", "", "", "")
+	if err != nil {
+		t.Fatalf("CreateCard: %v", err)
+	}
+	path := filepath.Join(t.TempDir(), "huge.md")
+	f, err := os.Create(path) //nolint:gosec // t.TempDir()-scoped test fixture path, not user input
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := f.Truncate(mirrorPreviewMaxBytes + 1); err != nil {
+		_ = f.Close()
+		t.Fatal(err)
+	}
+	if err := f.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := a.UpdateCard(c.ID, c.Title, c.Note, c.Fields, c.Source, path, c.RefreshWorkflowID); err != nil {
+		t.Fatalf("UpdateCard: %v", err)
+	}
+
+	got, err := a.MirrorContent(c.ID)
+	if err != nil {
+		t.Fatalf("MirrorContent: %v", err)
+	}
+	if !got.TooLarge {
+		t.Error("TooLarge = false, want true for a file over mirrorPreviewMaxBytes")
+	}
+	if got.Content != "" {
+		t.Errorf("Content = %q, want empty when TooLarge", got.Content)
+	}
+	if got.Size != mirrorPreviewMaxBytes+1 {
+		t.Errorf("Size = %d, want %d", got.Size, mirrorPreviewMaxBytes+1)
+	}
+}
+
+func TestMirrorContent_NoMirrorPath_Errors(t *testing.T) {
+	a := newTestAtlasService(t)
+	k, err := a.CreateKind("Doc", "", "", nil)
+	if err != nil {
+		t.Fatalf("CreateKind: %v", err)
+	}
+	c, err := a.CreateCard(k.ID, "No mirror", "", nil, "", nil, "", "", "", "")
+	if err != nil {
+		t.Fatalf("CreateCard: %v", err)
+	}
+	if _, err := a.MirrorContent(c.ID); err == nil {
+		t.Error("MirrorContent() for a card with no MirrorPath = nil error, want an error")
+	}
+}
+
+func TestMirrorContent_UnknownCard_Errors(t *testing.T) {
+	a := newTestAtlasService(t)
+	if _, err := a.MirrorContent("does-not-exist"); err == nil {
+		t.Error("MirrorContent() for an unknown card = nil error, want an error")
+	}
+}

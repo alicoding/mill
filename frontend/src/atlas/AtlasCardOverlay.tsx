@@ -13,6 +13,7 @@ import { StatusStamp } from '../shared/StatusStamp'
 import { AtlasKindChip } from './AtlasKindChip'
 import { AtlasFieldsForm } from './AtlasFieldsForm'
 import { AtlasCardOverlayLinks } from './AtlasCardOverlayLinks'
+import { AtlasCardMirrorPreview } from './AtlasCardMirrorPreview'
 import { atlasCardShareActions } from './atlasCardShare'
 import { useConfirmDelete } from '../shared/useConfirmDelete'
 import runbookStyles from '../shared/ListCard.module.css'
@@ -38,6 +39,7 @@ export function AtlasCardOverlay({ card, kind, allCards, links, linkKinds, onClo
   const [note, setNote] = useState(card.Note)
   const [fields, setFields] = useState<Record<string, string>>((card.Fields ?? {}) as Record<string, string>)
   const [source, setSource] = useState(card.Source)
+  const [mirrorPath, setMirrorPath] = useState(card.MirrorPath)
   const [refreshWorkflowID, setRefreshWorkflowID] = useState(card.RefreshWorkflowID)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
@@ -98,7 +100,7 @@ export function AtlasCardOverlay({ card, kind, allCards, links, linkKinds, onClo
     setSaving(true)
     setError('')
     try {
-      await AtlasService.UpdateCard(card.ID, title, note, fields, source, card.MirrorPath, refreshWorkflowID)
+      await AtlasService.UpdateCard(card.ID, title, note, fields, source, mirrorPath, refreshWorkflowID)
       onSaved()
       onClose()
     } catch (err) {
@@ -171,12 +173,20 @@ export function AtlasCardOverlay({ card, kind, allCards, links, linkKinds, onClo
           )}
         </FormControl>
 
-        {card.MirrorPath && (
-          <Text as="p" size="small" className={runbookStyles.muted}>{t('overlay.mirrorPath', { path: card.MirrorPath })}</Text>
-        )}
+        <FormControl>
+          <FormControl.Label>{t('overlay.mirrorPathLabel')}</FormControl.Label>
+          <TextInput value={mirrorPath} data-testid="atlas-overlay-mirror-path" onChange={(e) => setMirrorPath(e.target.value)} block />
+        </FormControl>
         <Text as="p" size="small" className={runbookStyles.muted}>
           {card.LastSyncedAt && formatUpdated(card.LastSyncedAt) ? t('overlay.lastSynced', { when: formatUpdated(card.LastSyncedAt) }) : t('overlay.neverSynced')}
         </Text>
+
+        {card.MirrorPath && (
+          <Stack direction="vertical" gap="condensed" data-testid="atlas-card-mirror-content">
+            <Text weight="semibold">{t('overlay.mirrorContentHeading')}</Text>
+            <AtlasCardMirrorPreview cardID={card.ID} mirrorPath={card.MirrorPath} />
+          </Stack>
+        )}
 
         <FormControl>
           <FormControl.Label>{t('overlay.refreshWorkflowLabel')}</FormControl.Label>

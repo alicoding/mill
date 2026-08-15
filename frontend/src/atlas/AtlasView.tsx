@@ -13,6 +13,8 @@ import { AtlasToolbar } from './AtlasToolbar'
 import { AtlasShelves } from './AtlasShelves'
 import { AtlasCanvasSpace } from './AtlasCanvasSpace'
 import { AtlasCardOverlay } from './AtlasCardOverlay'
+import { AtlasMatrixView } from './AtlasMatrixView'
+import { AtlasCoverageView } from './AtlasCoverageView'
 import { ATLAS_CARD_HEIGHT, ATLAS_CARD_WIDTH } from './atlasCanvasConstants'
 import { findFreeDropPosition } from '../shared/canvasLayout'
 import runbookStyles from '../shared/ListCard.module.css'
@@ -33,6 +35,11 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
 
   const [viewedID, setViewedID] = useState('')
   const [overlayCardID, setOverlayCardID] = useState<string | null>(null)
+  // Traceability matrix / coverage (docs/goals/0064): both are viewed-
+  // space-scoped dialogs, so a single boolean each is enough state --
+  // no card/kind selection needs to survive a close/reopen.
+  const [matrixOpen, setMatrixOpen] = useState(false)
+  const [coverageOpen, setCoverageOpen] = useState(false)
   const [hiddenKindIDs, setHiddenKindIDs] = useState<string[]>([])
   // The depth/peek toggle (goal 0061 slice C): server-side now, part of
   // the same per-space Lens AtlasService.SetLens/Lens already persists
@@ -96,6 +103,15 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
   const navigate = (id: string) => setViewedID(id)
   const drill = (id: string) => setViewedID(id)
   const openOverlay = (id: string) => setOverlayCardID(id)
+
+  // The matrix/coverage dialogs' own "click a target/missing card"
+  // action -- closes whichever projection dialog is open first, so the
+  // overlay never renders stacked behind it.
+  const openCardFromProjection = (id: string) => {
+    setMatrixOpen(false)
+    setCoverageOpen(false)
+    setOverlayCardID(id)
+  }
 
   const changeHidden = (hidden: string[]) => {
     setHiddenKindIDs(hidden)
@@ -167,6 +183,8 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
         onExport={exportAtlas}
         onImportFile={importFile}
         onShareError={setShareError}
+        onOpenMatrix={() => setMatrixOpen(true)}
+        onOpenCoverage={() => setCoverageOpen(true)}
       />
 
       {importError && <Text as="p" size="small" className={runbookStyles.error} data-testid="atlas-import-error">{importError}</Text>}
@@ -208,6 +226,24 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
         />
       )}
       {importConfirm.dialog}
+
+      <AtlasMatrixView
+        open={matrixOpen}
+        onClose={() => setMatrixOpen(false)}
+        cards={childrenAll}
+        kinds={allKinds}
+        links={allLinks}
+        linkKinds={allLinkKinds}
+        onOpenCard={openCardFromProjection}
+      />
+      <AtlasCoverageView
+        open={coverageOpen}
+        onClose={() => setCoverageOpen(false)}
+        cards={childrenAll}
+        links={allLinks}
+        linkKinds={allLinkKinds}
+        onOpenCard={openCardFromProjection}
+      />
     </div>
   )
 }

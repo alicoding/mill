@@ -180,6 +180,58 @@ export interface LinkKind {
 }
 
 /**
+ * MirrorContent is a card's MirrorPath resolved into a read-only
+ * overlay preview (docs/goals/0064), returned by atlassvc.AtlasService.
+ * MirrorContent. Size is always populated (even when TooLarge or
+ * Kind==MirrorKindOther) so the overlay's type+size+reveal fallback
+ * always has something to show. Content holds rendered HTML for
+ * MirrorKindMarkdown, raw text for MirrorKindText, or base64-encoded
+ * bytes (paired with MimeType) for MirrorKindImage -- empty for
+ * MirrorKindOther or whenever TooLarge is true.
+ */
+export interface MirrorContent {
+    "Kind": MirrorKind;
+    "MimeType": string;
+    "Size": number;
+    "Content": string;
+    "TooLarge": boolean;
+}
+
+/**
+ * MirrorKind classifies a mirrored file for the card overlay's preview
+ * (docs/goals/0064): a pure, extension-only decision, no I/O -- the
+ * service layer (atlassvc) is what actually stats/reads the file this
+ * classifies.
+ */
+export enum MirrorKind {
+    /**
+     * The Go zero value for the underlying type of the enum.
+     */
+    $zero = "",
+
+    /**
+     * MirrorKindMarkdown renders through the markdown adapter to HTML.
+     */
+    MirrorKindMarkdown = "markdown",
+
+    /**
+     * MirrorKindText renders as plain, preformatted text.
+     */
+    MirrorKindText = "text",
+
+    /**
+     * MirrorKindImage renders inline as an image.
+     */
+    MirrorKindImage = "image",
+
+    /**
+     * MirrorKindOther never has its content loaded -- the overlay shows
+     * only its kind and size, plus the existing reveal-file action.
+     */
+    MirrorKindOther = "other",
+};
+
+/**
  * Position is a card's location within its PARENT's canvas -- only
  * meaningful when the parent's EffectiveViewMode is ViewModeCanvas;
  * nil for a card whose parent renders as shelves (or for a root card,
