@@ -1095,6 +1095,36 @@ competing for attention across the whole app.
   The Inspector collapses to 0 width when nothing is selected and
   expands to 260px once a node or edge is. `UX: PROTOTYPE` still
   applies to Composition overall.
+- **Step detail (goal 0058): a large three-pane overlay — recorded
+  input | configuration | recorded output — opened from a canvas
+  double-click or an explicit expand `IconButton` in the sidebar
+  Inspector's header, in place of splitting a step's config (sidebar)
+  and its run data (the separate Runs tab) across two undersized
+  surfaces.** Precedent review (n8n, Windmill, Retool, Zapier, current
+  versions): the field converged on one interaction opening config and
+  run data together from the canvas; n8n alone gives true side-by-side
+  co-visibility (its Node Details View). `StepDetailOverlay.tsx` builds
+  from Primer's own `Dialog`, at a custom CSS width
+  (`min(1400px, calc(100vw - 64px))`) rather than its largest named
+  preset (`xlarge`, 640px, too narrow for three real panes) — `Dialog`'s
+  own `width` prop is documented to accept any CSS width value, so this
+  stays the kit's supported surface, not a hand-rolled overlay; Esc/
+  backdrop-click/close-button/focus-trap all stay `Dialog`'s own
+  behavior. The CONFIG pane renders `NodeConfigFields.tsx`, extracted
+  out of `NodeInspector.tsx` (which now composes it) so the sidebar and
+  the overlay share the exact same generic ConfigField rendering and
+  edit semantics — never a forked copy. The DATA panes
+  (`StepDetailDataPane.tsx`) show the workflow's LATEST recorded run
+  regardless of status, fetched via `useLatestRunStep.ts`
+  (`ExecutionService.ListRunsForWorkflow` + `GetRun`, mirroring
+  `WorkflowRunsPanel.tsx`'s own sequence) — deliberately independent of
+  the canvas's `useLiveRun`, which only auto-adopts a run still in
+  flight at mount time by design. Each data pane offers a Text/JSON
+  toggle (`SegmentedControl`, `stepDetailJson.ts`'s `isJsonLike`) when
+  its payload parses as a JSON object/array, and one empty-state line
+  when the step has no recorded data yet. Drag-to-map from input into
+  config fields is explicitly deferred (a capability, not a layout).
+  `UX: PROTOTYPE`.
 
 ### 3.1 Raw material — root cause of the heredoc pain, not yet resolved
 
