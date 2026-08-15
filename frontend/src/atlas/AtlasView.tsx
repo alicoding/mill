@@ -5,9 +5,10 @@ import { Text } from '@primer/react'
 import { ViewMode } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 import type { Position } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 import { AtlasService } from '../shared/bindings'
+import { downloadJSON } from '../shared/downloadJSON'
 import { refreshAtlas, useAtlasStore } from './atlasStore'
 import { applyLens, childrenOf, groupByKind } from './atlasGrouping'
-import { useAtlasDepth } from './useAtlasDepth'
+import { useAtlasImportConfirm } from './useAtlasImportConfirm'
 import { AtlasToolbar } from './AtlasToolbar'
 import { AtlasShelves } from './AtlasShelves'
 import { AtlasCanvasSpace } from './AtlasCanvasSpace'
@@ -33,7 +34,13 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
   const [viewedID, setViewedID] = useState('')
   const [overlayCardID, setOverlayCardID] = useState<string | null>(null)
   const [hiddenKindIDs, setHiddenKindIDs] = useState<string[]>([])
-  const [depth, setDepth] = useAtlasDepth(viewedID)
+  // The depth/peek toggle (goal 0061 slice C): server-side now, part of
+  // the same per-space Lens AtlasService.SetLens/Lens already persists
+  // (absorbed from its previous browser-localStorage home) -- fetched
+  // alongside hiddenKindIDs below, in the same effect, since both live
+  // in the one Lens record per container.
+  const [peek, setPeek] = useState(false)
+  const [importError, setImportError] = useState<string | null>(null)
   // Quick Panel's card-search jump (docs/goals/0061 item 6) supplies a
   // card ID once, at mount -- consumed exactly once (this ref guards
   // against re-applying it on every later data refresh, which would
@@ -58,7 +65,15 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
   }, [initialCardID, cards])
 
   useEffect(() => {
-    AtlasService.Lens(viewedID).then((hidden) => setHiddenKindIDs(hidden ?? [])).catch(() => setHiddenKindIDs([]))
+    AtlasService.Lens(viewedID)
+      .then((lens) => {
+        setHiddenKindIDs(lens?.HiddenKindIDs ?? [])
+        setPeek(lens?.Peek ?? false)
+      })
+      .catch(() => {
+        setHiddenKindIDs([])
+        setPeek(false)
+      })
   }, [viewedID])
 
   const allCards = cards ?? []
@@ -80,7 +95,28 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
 
   const changeHidden = (hidden: string[]) => {
     setHiddenKindIDs(hidden)
-    void AtlasService.SetLens(viewedID, hidden).catch(console.error)
+    void AtlasService.SetLens(viewedID, hidden, peek).catch(console.error)
+  }
+
+  const changePeek = (nextPeek: boolean) => {
+    setPeek(nextPeek)
+    void AtlasService.SetLens(viewedID, hiddenKindIDs, nextPeek).catch(console.error)
+  }
+
+  const exportAtlas = () => {
+    AtlasService.ExportAtlas()
+      .then((json) => downloadJSON('atlas.json', json))
+      .catch((err) => setImportError(String(err)))
+  }
+
+  const runImport = (text: string) => {
+    AtlasService.ImportAtlas(text)
+      .then(() => { setImportError(null); void refreshAtlas() })
+      .catch((err) => setImportError(String(err)))
+  }
+  const importConfirm = useAtlasImportConfirm({ kinds: allKinds, linkKinds: allLinkKinds, cards: allCards, links: allLinks, onImport: runImport })
+  const importFile = (file: File) => {
+    file.text().then(importConfirm.requestImport).catch((err) => setImportError(String(err)))
   }
 
   const changeViewMode = (mode: ViewMode) => {
@@ -117,14 +153,18 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
         presentKinds={presentKinds}
         hiddenKindIDs={hiddenKindIDs}
         onChangeHidden={changeHidden}
-        depth={depth}
-        onChangeDepth={setDepth}
+        peek={peek}
+        onChangePeek={changePeek}
         viewMode={effectiveViewMode}
         onChangeViewMode={changeViewMode}
         showViewModeToggle={viewedID !== ''}
         canAddSibling={viewedID !== ''}
         onCreate={createCard}
+        onExport={exportAtlas}
+        onImportFile={importFile}
       />
+
+      {importError && <Text as="p" size="small" className={runbookStyles.error} data-testid="atlas-import-error">{importError}</Text>}
 
       {childrenAll.length === 0 ? (
         <div className={styles.emptyState} data-testid="atlas-empty-space">
@@ -135,7 +175,7 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
           cards={visibleChildren}
           allCards={allCards}
           kinds={allKinds}
-          peeking={depth === 'peek'}
+          peeking={peek}
           onDrill={drill}
           onOpenOverlay={openOverlay}
         />
@@ -144,7 +184,7 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
           cards={visibleChildren}
           allCards={allCards}
           kinds={allKinds}
-          peeking={depth === 'peek'}
+          peeking={peek}
           onDrill={drill}
           onOpenOverlay={openOverlay}
         />
@@ -161,6 +201,7 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
           onSaved={() => void refreshAtlas()}
         />
       )}
+      {importConfirm.dialog}
     </div>
   )
 }

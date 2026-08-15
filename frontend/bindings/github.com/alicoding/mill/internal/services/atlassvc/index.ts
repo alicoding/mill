@@ -5,3 +5,7 @@ import * as AtlasService from "./atlasservice.js";
 export {
     AtlasService
 };
+
+export type {
+    AtlasImportSummary
+} from "./models.js";

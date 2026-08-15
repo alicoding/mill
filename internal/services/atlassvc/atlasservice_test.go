@@ -1,6 +1,7 @@
 package atlassvc
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/alicoding/mill/internal/domain/atlas"
@@ -320,24 +321,71 @@ func TestCreateLink_UnknownLinkKind_Errors(t *testing.T) {
 
 func TestSetLens_RoundTrips(t *testing.T) {
 	a := newTestAtlasService(t)
-	if err := a.SetLens("container-1", []string{"kind-a", "kind-b"}); err != nil {
+	if err := a.SetLens("container-1", []string{"kind-a", "kind-b"}, false); err != nil {
 		t.Fatalf("SetLens: %v", err)
 	}
 	got := a.Lens("container-1")
-	if len(got) != 2 || got[0] != "kind-a" || got[1] != "kind-b" {
-		t.Errorf("Lens() = %v, want [kind-a kind-b]", got)
+	if len(got.HiddenKindIDs) != 2 || got.HiddenKindIDs[0] != "kind-a" || got.HiddenKindIDs[1] != "kind-b" {
+		t.Errorf("Lens().HiddenKindIDs = %v, want [kind-a kind-b]", got.HiddenKindIDs)
+	}
+	if got.Peek {
+		t.Error("Lens().Peek = true, want false")
 	}
 }
 
 func TestSetLens_EmptyClearsLens(t *testing.T) {
 	a := newTestAtlasService(t)
-	if err := a.SetLens("container-1", []string{"kind-a"}); err != nil {
+	if err := a.SetLens("container-1", []string{"kind-a"}, false); err != nil {
 		t.Fatalf("SetLens: %v", err)
 	}
-	if err := a.SetLens("container-1", nil); err != nil {
+	if err := a.SetLens("container-1", nil, false); err != nil {
 		t.Fatalf("SetLens: %v", err)
 	}
-	if got := a.Lens("container-1"); len(got) != 0 {
-		t.Errorf("Lens() after clearing = %v, want empty", got)
+	if got := a.Lens("container-1"); len(got.HiddenKindIDs) != 0 || got.Peek {
+		t.Errorf("Lens() after clearing = %+v, want zero value", got)
+	}
+}
+
+// TestSetLens_PeekRoundTrips proves the depth/peek toggle (goal 0061
+// slice C, absorbed from its previous browser-localStorage home)
+// persists independently of the hidden-kinds filter.
+func TestSetLens_PeekRoundTrips(t *testing.T) {
+	a := newTestAtlasService(t)
+	if err := a.SetLens("container-1", nil, true); err != nil {
+		t.Fatalf("SetLens: %v", err)
+	}
+	got := a.Lens("container-1")
+	if !got.Peek {
+		t.Error("Lens().Peek = false, want true")
+	}
+	if len(got.HiddenKindIDs) != 0 {
+		t.Errorf("Lens().HiddenKindIDs = %v, want empty", got.HiddenKindIDs)
+	}
+}
+
+// TestLensSetting_LegacyBareArrayStillLoads proves a pre-goal-0061-
+// slice-C persisted Lenses entry (a bare JSON array of hidden Kind IDs,
+// the only wire shape that ever existed before Peek) still decodes
+// correctly -- the additive-migration guarantee atlas.LensSetting's own
+// UnmarshalJSON documents.
+func TestLensSetting_LegacyBareArrayStillLoads(t *testing.T) {
+	store := servicetest.NewFakeStore()
+	first := NewAtlasService(store)
+	if err := first.SetLens("container-1", []string{"kind-a"}, false); err != nil {
+		t.Fatalf("SetLens: %v", err)
+	}
+
+	// Simulate a pre-Peek persisted blob by rewriting the stored Lenses
+	// entry back to its legacy bare-array shape.
+	raw, _ := store.Get(atlasStateKey).(string)
+	raw = strings.Replace(raw, `"container-1":{"HiddenKindIDs":["kind-a"],"Peek":false}`, `"container-1":["kind-a"]`, 1)
+	if err := store.Set(atlasStateKey, raw); err != nil {
+		t.Fatalf("Set: %v", err)
+	}
+
+	second := NewAtlasService(store)
+	got := second.Lens("container-1")
+	if len(got.HiddenKindIDs) != 1 || got.HiddenKindIDs[0] != "kind-a" {
+		t.Errorf("Lens() after legacy load = %+v, want HiddenKindIDs [kind-a]", got)
 	}
 }

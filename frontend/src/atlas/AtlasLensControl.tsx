@@ -4,7 +4,6 @@ import { Button, Checkbox, CheckboxGroup, Dialog, FormControl, SegmentedControl 
 import { FilterIcon } from '@primer/octicons-react'
 import { ViewMode } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 import type { Kind } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
-import type { AtlasDepth } from './useAtlasDepth'
 
 // The per-space lens (docs/goals/0061): which Kinds stay visible among
 // the viewed space's children, the depth toggle (this level only vs
@@ -12,12 +11,12 @@ import type { AtlasDepth } from './useAtlasDepth'
 // children (canvas/shelves, atlas.Card.ViewMode) -- one small Dialog
 // rather than a popover, matching EntityRefField's own QuickCreateDialog
 // shape for a compact settings form.
-export function AtlasLensControl({ presentKinds, hiddenKindIDs, onChangeHidden, depth, onChangeDepth, viewMode, onChangeViewMode, showViewModeToggle }: {
+export function AtlasLensControl({ presentKinds, hiddenKindIDs, onChangeHidden, peek, onChangePeek, viewMode, onChangeViewMode, showViewModeToggle }: {
   presentKinds: Kind[]
   hiddenKindIDs: string[]
   onChangeHidden: (hidden: string[]) => void
-  depth: AtlasDepth
-  onChangeDepth: (depth: AtlasDepth) => void
+  peek: boolean
+  onChangePeek: (peek: boolean) => void
   viewMode: ViewMode
   onChangeViewMode: (mode: ViewMode) => void
   // Root (docs/goals/0061: "the virtual top") has no backing Card, so
@@ -47,9 +46,9 @@ export function AtlasLensControl({ presentKinds, hiddenKindIDs, onChangeHidden, 
             </SegmentedControl>
           )}
 
-          <SegmentedControl aria-label={t('lens.depthAriaLabel')} onChange={(i) => onChangeDepth(i === 0 ? 'level' : 'peek')}>
-            <SegmentedControl.Button selected={depth === 'level'}>{t('lens.depthLevel')}</SegmentedControl.Button>
-            <SegmentedControl.Button selected={depth === 'peek'}>{t('lens.depthPeek')}</SegmentedControl.Button>
+          <SegmentedControl aria-label={t('lens.depthAriaLabel')} onChange={(i) => onChangePeek(i === 1)}>
+            <SegmentedControl.Button selected={!peek}>{t('lens.depthLevel')}</SegmentedControl.Button>
+            <SegmentedControl.Button selected={peek}>{t('lens.depthPeek')}</SegmentedControl.Button>
           </SegmentedControl>
 
           {presentKinds.length > 0 && (

@@ -35,11 +35,12 @@ type persistedState struct {
 	LinkKinds []atlas.LinkKind
 	Cards     []atlas.Card
 	Links     []atlas.Link
-	// Lenses maps a container card's ID to the Kind IDs hidden in that
-	// container's view -- per-space density filtering (ADR-0038's
-	// design principles), persisted server-side so it round-trips
-	// across sessions like everything else here.
-	Lenses map[string][]string
+	// Lenses maps a container card's ID to its per-space density filter
+	// (which Kind IDs stay hidden, and the depth/peek toggle) --
+	// persisted server-side so it round-trips across sessions like
+	// everything else here. atlas.LensSetting's own UnmarshalJSON keeps
+	// a pre-goal-0061-slice-C bare-array entry loading correctly.
+	Lenses map[string]atlas.LensSetting
 }
 
 // AtlasService holds Atlas's full in-memory state behind one mutex,
@@ -51,7 +52,7 @@ type AtlasService struct {
 	linkKinds []atlas.LinkKind
 	cards     []atlas.Card
 	links     []atlas.Link
-	lenses    map[string][]string
+	lenses    map[string]atlas.LensSetting
 }
 
 // NewAtlasService restores any persisted state, then reconciles the
@@ -61,7 +62,7 @@ type AtlasService struct {
 // added later reaches an existing install too (.claude/rules/
 // testing.md's seed top-up discipline).
 func NewAtlasService(store settings.Store) *AtlasService {
-	a := &AtlasService{store: store, lenses: map[string][]string{}}
+	a := &AtlasService{store: store, lenses: map[string]atlas.LensSetting{}}
 	a.restore()
 	a.reconcileBuiltIns()
 	return a

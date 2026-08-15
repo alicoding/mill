@@ -57,6 +57,19 @@ func (e *ExecutionService) SetSystemEventSink(sink func(SystemEvent)) {
 	e.systemEventSink = sink
 }
 
+// SetRunCompletionSink installs goal 0061 slice C's run-completion seam
+// -- see the runCompletionSink field's own doc comment
+// (executionservice.go) for what it's for and why it's separate from
+// the system-event sink above (that one dispatches a trigger-system-
+// event NodeType's own fire, gated by the loop rule emitSystemEvent
+// applies; this one is a plain, ungated "a run finished" notification
+// atlassvc needs regardless of what triggers exist).
+//
+//wails:ignore
+func (e *ExecutionService) SetRunCompletionSink(sink func(runID string, succeeded bool)) {
+	e.runCompletionSink = sink
+}
+
 // emitSystemEvent looks up runID's own recorded input to resolve which
 // workflow/label fired kind, and applies the loop rule (docs/adr/0035
 // item 4, n8n's Error-Trigger precedent): a run whose OWN root trigger is

@@ -29,8 +29,16 @@ func (a *AtlasService) checkLinkReferencesLocked(fromCardID, toCardID, linkKindI
 // --- Links ---
 
 func (a *AtlasService) CreateLink(fromCardID, toCardID, linkKindID, label string) (atlas.Link, error) {
+	return a.createLinkWithID(seeding.NewSlugID(label, "link"), fromCardID, toCardID, linkKindID, label)
+}
+
+// createLinkWithID is CreateLink's own logic, parameterized on the new
+// link's id -- the seam ImportAtlas uses to preserve a caller-supplied
+// id (ADR-0036 decision 3), same shape as compositionsvc's
+// createWorkflowWithID/configuresvc's createListWithID.
+func (a *AtlasService) createLinkWithID(id, fromCardID, toCardID, linkKindID, label string) (atlas.Link, error) {
 	l := atlas.Link{
-		ID: seeding.NewSlugID(label, "link"), FromCardID: fromCardID, ToCardID: toCardID,
+		ID: id, FromCardID: fromCardID, ToCardID: toCardID,
 		LinkKindID: linkKindID, Label: label,
 	}
 	if err := atlas.ValidateLink(l); err != nil {
@@ -125,16 +133,19 @@ func insertLinkAt(links []atlas.Link, idx int, l atlas.Link) []atlas.Link {
 
 // SetLens persists the per-space lens for containerID: which Kind IDs
 // stay hidden when viewing that container's children (ADR-0038's
-// density-is-a-lens-choice principle). An empty hiddenKindIDs clears
-// the lens for that container rather than storing an empty slice --
+// density-is-a-lens-choice principle), and the depth/peek toggle (goal
+// 0061 slice C -- absorbed here from its previous browser-localStorage
+// home). A setting with nothing real in it (no hidden kinds, peek off)
+// clears the container's entry rather than storing a no-op one --
 // keeps the persisted map from growing entries with no real content.
-func (a *AtlasService) SetLens(containerID string, hiddenKindIDs []string) error {
+func (a *AtlasService) SetLens(containerID string, hiddenKindIDs []string, peek bool) error {
+	setting := atlas.LensSetting{HiddenKindIDs: hiddenKindIDs, Peek: peek}
 	a.mu.Lock()
 	previous, had := a.lenses[containerID]
-	if len(hiddenKindIDs) == 0 {
+	if setting.IsZero() {
 		delete(a.lenses, containerID)
 	} else {
-		a.lenses[containerID] = hiddenKindIDs
+		a.lenses[containerID] = setting
 	}
 	perr := a.persistLocked()
 	if perr != nil {
@@ -152,13 +163,13 @@ func (a *AtlasService) SetLens(containerID string, hiddenKindIDs []string) error
 	return nil
 }
 
-// Lens returns the hidden Kind IDs for containerID, or nil if no lens
-// is set.
-func (a *AtlasService) Lens(containerID string) []string {
+// Lens returns the persisted lens setting for containerID -- the zero
+// value (no hidden kinds, peek off) when none is set.
+func (a *AtlasService) Lens(containerID string) atlas.LensSetting {
 	a.mu.RLock()
 	defer a.mu.RUnlock()
-	hidden := a.lenses[containerID]
-	out := make([]string, len(hidden))
-	copy(out, hidden)
+	setting := a.lenses[containerID]
+	out := atlas.LensSetting{HiddenKindIDs: make([]string, len(setting.HiddenKindIDs)), Peek: setting.Peek}
+	copy(out.HiddenKindIDs, setting.HiddenKindIDs)
 	return out
 }

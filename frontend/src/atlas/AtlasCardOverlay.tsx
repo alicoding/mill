@@ -1,10 +1,15 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Button, Dialog, FormControl, Stack, Text, TextInput, Textarea } from '@primer/react'
+import { Events } from '@wailsio/runtime'
+import { Button, Dialog, FormControl, Link as PrimerLink, Stack, Text, TextInput, Textarea } from '@primer/react'
+import { SyncIcon } from '@primer/octicons-react'
 import type { Card, Kind, Link, LinkKind } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
-import { AtlasService } from '../shared/bindings'
+import { AtlasService, ExecutionService } from '../shared/bindings'
+import { useAppStore } from '../shared/store'
 import { EntityRefField } from '../configure/EntityRefField'
 import { formatUpdated } from '../shared/inventorySort'
+import { runStatusVariant } from '../shared/runTime'
+import { StatusStamp } from '../shared/StatusStamp'
 import { AtlasKindChip } from './AtlasKindChip'
 import { AtlasFieldsForm } from './AtlasFieldsForm'
 import { AtlasCardOverlayLinks } from './AtlasCardOverlayLinks'
@@ -27,6 +32,7 @@ export function AtlasCardOverlay({ card, kind, allCards, links, linkKinds, onClo
   onSaved: () => void
 }) {
   const { t } = useTranslation('atlas')
+  const requestOpenWorkflow = useAppStore((s) => s.requestOpenWorkflow)
   const [title, setTitle] = useState(card.Title)
   const [note, setNote] = useState(card.Note)
   const [fields, setFields] = useState<Record<string, string>>((card.Fields ?? {}) as Record<string, string>)
@@ -34,6 +40,47 @@ export function AtlasCardOverlay({ card, kind, allCards, links, linkKinds, onClo
   const [refreshWorkflowID, setRefreshWorkflowID] = useState(card.RefreshWorkflowID)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  const [updating, setUpdating] = useState(false)
+  // Receipt provenance (goal 0061 slice C, ADR-0038 decision 4): the
+  // run's live status, fetched whenever card.ReceiptRunID changes and
+  // refreshed on every "run" dataevent so a parked-then-resolved run's
+  // status updates here without reopening the overlay.
+  const [receiptStatus, setReceiptStatus] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!card.ReceiptRunID) {
+      setReceiptStatus(null)
+      return
+    }
+    const refresh = () => {
+      ExecutionService.GetRun(card.ReceiptRunID).then((detail) => setReceiptStatus(detail.status)).catch(() => setReceiptStatus(null))
+    }
+    refresh()
+    return Events.On('mill-data-changed', (evt) => {
+      if ((evt.data as { entity?: string })?.entity === 'run') refresh()
+    })
+  }, [card.ReceiptRunID])
+
+  const updateNow = async () => {
+    setUpdating(true)
+    setError('')
+    try {
+      await AtlasService.UpdateNow(card.ID)
+      onSaved()
+    } catch (err) {
+      setError(String(err))
+    } finally {
+      setUpdating(false)
+    }
+  }
+
+  // Navigates by the card's PERSISTED RefreshWorkflowID, not the
+  // possibly-edited-but-unsaved draft field state below -- the receipt
+  // run id was produced by whatever workflow was actually configured
+  // when that run started.
+  const openRun = () => {
+    if (card.ReceiptRunID && card.RefreshWorkflowID) requestOpenWorkflow(card.RefreshWorkflowID, card.ReceiptRunID)
+  }
 
   const save = async () => {
     setSaving(true)
@@ -121,11 +168,36 @@ export function AtlasCardOverlay({ card, kind, allCards, links, linkKinds, onClo
 
         <FormControl>
           <FormControl.Label>{t('overlay.refreshWorkflowLabel')}</FormControl.Label>
-          <EntityRefField refKind="workflow" value={refreshWorkflowID} onChange={setRefreshWorkflowID} />
+          <Stack direction="horizontal" gap="condensed" align="center">
+            <EntityRefField refKind="workflow" value={refreshWorkflowID} onChange={setRefreshWorkflowID} />
+            {card.RefreshWorkflowID && (
+              <Button
+                leadingVisual={SyncIcon}
+                size="small"
+                variant="invisible"
+                data-testid="atlas-overlay-update-now"
+                disabled={updating}
+                onClick={() => void updateNow()}
+              >
+                {updating ? t('overlay.updating') : t('overlay.updateNow')}
+              </Button>
+            )}
+          </Stack>
         </FormControl>
 
         {card.ReceiptRunID && (
-          <Text as="p" size="small" className={runbookStyles.muted}>{t('overlay.receiptRunID', { id: card.ReceiptRunID })}</Text>
+          <Text as="p" size="small" className={runbookStyles.muted}>
+            {t('overlay.receiptRunID')}{' '}
+            <PrimerLink as="button" type="button" data-testid="atlas-overlay-receipt-run" onClick={openRun}>
+              {card.ReceiptRunID}
+            </PrimerLink>
+            {receiptStatus && (
+              <>
+                {' '}
+                <StatusStamp variant={runStatusVariant(receiptStatus)} data-testid="atlas-overlay-receipt-status">{receiptStatus}</StatusStamp>
+              </>
+            )}
+          </Text>
         )}
 
         <AtlasCardOverlayLinks card={card} allCards={allCards} links={links} linkKinds={linkKinds} onAdd={addLink} onRemove={removeLink} />
