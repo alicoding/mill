@@ -20,6 +20,7 @@ type WorkflowVersion struct {
 	Description string
 	Nodes       []Node
 	Edges       []Edge
+	Notes       []Note
 	Attributes  []AttributeDef
 }
 
@@ -40,6 +41,7 @@ func SnapshotHead(wf Workflow, now time.Time) WorkflowVersion {
 		Description: wf.Description,
 		Nodes:       wf.Nodes,
 		Edges:       wf.Edges,
+		Notes:       wf.Notes,
 		Attributes:  wf.Attributes,
 	}
 }

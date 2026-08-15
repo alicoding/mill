@@ -126,10 +126,15 @@ accepted)**
    **Slice A (backend: data-backed registry, Configure entity,
    contract family, seeded proof) shipped — see the goal file's own
    "Slice A status" section. Remaining: slice B, the designer UI.**
-12. [ ] [0055 — Canvas note block](0055-canvas-note-block.md)
+12. [x] [0055 — Canvas note block](0055-canvas-note-block.md)
    — owner-raised 2026-08-14 (n8n sticky-note precedent): annotation
    in the authoring space; not a step (no ports/execution); rides
-   the workflow envelope, so coordinates with 0052's schema
+   the workflow envelope, so coordinates with 0052's schema.
+   DELIVERED 2026-08-14: `composition.Note`, its own `UpdateNotes` RPC,
+   ADDITIVE-OPTIONAL envelope field (ADR-0036), a distinct React Flow
+   node type with `NodeResizer`, seeded on "Example: Scratch capture"
+   (SeedRevision 1→2). NOT ARCHIVED (goal file kept in place per this
+   session's instruction).
 13. [ ] [0056 — Workbench boundary definition](0056-workbench-boundary.md)
    — owner-raised 2026-08-14 ("we never truly defined what Mill
    boundary to be"): the POSITIVE product statement — capture lands

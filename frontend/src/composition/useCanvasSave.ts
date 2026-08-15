@@ -3,9 +3,9 @@ import type { Edge as RFEdge } from '@xyflow/react'
 import { useTranslation } from 'react-i18next'
 import { CompositionService } from '../shared/bindings'
 import type { Node as CompNode, Edge as CompEdge, Workflow } from '../../bindings/github.com/alicoding/mill/internal/domain/composition/models'
-import type { CanvasNode } from './canvasStore'
+import type { CanvasNode, CanvasNoteNode } from './canvasStore'
 import { buildDraftWorkflowSchema } from './draftWorkflowSchema'
-import { toDraftEdges, toDraftNodes } from './draftPayload'
+import { toDraftEdges, toDraftNodes, toDraftNotes } from './draftPayload'
 import { clearScratch } from './canvasScratch'
 
 export interface UseCanvasSaveResult {
@@ -33,6 +33,7 @@ export function useCanvasSave(
   draftDescription: string,
   nodes: CanvasNode[],
   edges: RFEdge[],
+  notes: CanvasNoteNode[],
   onSaved: () => void,
 ): UseCanvasSaveResult {
   const { t } = useTranslation('composition')
@@ -55,22 +56,30 @@ export function useCanvasSave(
     }
     setSaving(true)
     try {
-      if (workflow) {
-        await CompositionService.UpdateWorkflow(
-          workflow.ID,
-          parsed.data.Label,
-          parsed.data.Description,
-          parsed.data.Nodes as CompNode[],
-          parsed.data.Edges as CompEdge[],
-        )
-      } else {
-        await CompositionService.CreateWorkflow(
-          parsed.data.Label,
-          parsed.data.Description,
-          parsed.data.Nodes as CompNode[],
-          parsed.data.Edges as CompEdge[],
-        )
-      }
+      // Notes (docs/goals/0055) save through their own RPC, the same
+      // shape UpdateAttributes already established for a workflow-scoped
+      // collection that isn't Nodes/Edges -- CreateWorkflow/UpdateWorkflow
+      // never take Notes directly, so this always needs the id from
+      // whichever branch below just ran.
+      const savedID = workflow
+        ? (
+            await CompositionService.UpdateWorkflow(
+              workflow.ID,
+              parsed.data.Label,
+              parsed.data.Description,
+              parsed.data.Nodes as CompNode[],
+              parsed.data.Edges as CompEdge[],
+            )
+          ).ID
+        : (
+            await CompositionService.CreateWorkflow(
+              parsed.data.Label,
+              parsed.data.Description,
+              parsed.data.Nodes as CompNode[],
+              parsed.data.Edges as CompEdge[],
+            )
+          ).ID
+      await CompositionService.UpdateNotes(savedID, toDraftNotes(notes))
       // A successful Save is one of the two events that discard the
       // hot-exit scratch (docs/goals/0012) -- the draft it was
       // shadowing no longer exists as "unsaved." onSaved() closes this

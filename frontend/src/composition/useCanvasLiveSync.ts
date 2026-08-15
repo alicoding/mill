@@ -3,7 +3,7 @@ import { Events } from '@wailsio/runtime'
 import type { NodeType, Workflow } from '../../bindings/github.com/alicoding/mill/internal/domain/composition/models'
 import { CompositionService } from '../shared/bindings'
 import type { CanvasStore } from './canvasStore'
-import { toCanvasNodes, toRFEdges } from './canvasConversion'
+import { toCanvasNodes, toCanvasNotes, toRFEdges } from './canvasConversion'
 import { buildScratchDraft, draftsEqual, type ScratchDraft } from './canvasScratch'
 
 // GAP B of the live-canvas-sync work (docs/SPEC.md §1's realtime lock,
@@ -70,9 +70,11 @@ function applyExternalWorkflow(
 ): void {
   const freshNodes = toCanvasNodes(workflow.Nodes, nodeTypes)
   const freshEdges = toRFEdges(workflow.Edges)
+  const freshNotes = toCanvasNotes(workflow.Notes)
   useCanvasStore.getState().load(freshNodes, freshEdges)
+  useCanvasStore.getState().loadNotes(freshNotes)
   useCanvasStore.temporal.getState().clear()
-  setBaseline(buildScratchDraft(workflow.Label, workflow.Description, freshNodes, freshEdges))
+  setBaseline(buildScratchDraft(workflow.Label, workflow.Description, freshNodes, freshEdges, freshNotes))
   setDraftLabel(workflow.Label)
   setDraftDescription(workflow.Description)
 }
@@ -154,8 +156,8 @@ export function useCanvasLiveSync(args: UseCanvasLiveSyncArgs): UseCanvasLiveSyn
           // -- WorkTabShell's own once-lists-load tab-pruning handles a
           // since-deleted entity's open tab separately.
           if (!fresh) return
-          const { nodes: storeNodes, edges: storeEdges } = useCanvasStore.getState()
-          const currentDraft = buildScratchDraft(draftLabelRef.current, draftDescriptionRef.current, storeNodes, storeEdges)
+          const { nodes: storeNodes, edges: storeEdges, notes: storeNotes } = useCanvasStore.getState()
+          const currentDraft = buildScratchDraft(draftLabelRef.current, draftDescriptionRef.current, storeNodes, storeEdges, storeNotes)
           if (decideExternalSyncAction(currentDraft, baselineRef.current) === 'apply') {
             applyExternalWorkflow(fresh, nodeTypes, useCanvasStore, setBaseline, setDraftLabel, setDraftDescription)
           } else {

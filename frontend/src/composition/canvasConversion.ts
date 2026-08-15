@@ -1,6 +1,7 @@
 import type { Edge as RFEdge } from '@xyflow/react'
-import type { NodeType, Node as CompNode, Edge as CompEdge } from '../../bindings/github.com/alicoding/mill/internal/domain/composition/models'
-import type { CanvasNode } from './canvasStore'
+import type { NodeType, Node as CompNode, Edge as CompEdge, Note as CompNote } from '../../bindings/github.com/alicoding/mill/internal/domain/composition/models'
+import type { CanvasNode, CanvasNoteNode } from './canvasStore'
+import { CANVAS_NOTE_WIDTH, CANVAS_NOTE_HEIGHT } from './canvasConstants'
 
 // Converts a persisted Workflow's Nodes/Edges (Wails' PascalCase wire
 // shape) into React Flow's own node/edge shape, for loading an existing
@@ -21,6 +22,25 @@ export function toCanvasNodes(nodes: CompNode[] | null, nodeTypes: NodeType[]): 
       data: { nodeTypeID: n.NodeTypeID, kind: n.Kind, label: nt?.Label ?? n.NodeTypeID, output: nt?.Output ?? '', config },
     }
   })
+}
+
+// Converts a persisted Workflow's Notes into React Flow's own note-node
+// shape (docs/goals/0055) -- the same "load an existing workflow onto
+// the canvas" direction toCanvasNodes handles for steps. Size falls
+// back to the note's default box when never resized (Size's zero
+// value, composition.Note's own doc comment) -- width/height live as
+// RFNode's own top-level fields, not inside `data`, so NodeResizer's
+// resize changes (canvasStore.ts's onNotesChange) write straight onto
+// them with no extra sync code.
+export function toCanvasNotes(notes: CompNote[] | null): CanvasNoteNode[] {
+  return (notes ?? []).map((n) => ({
+    id: n.ID,
+    type: 'note',
+    position: { x: n.Position?.X ?? 0, y: n.Position?.Y ?? 0 },
+    width: n.Size?.Width || CANVAS_NOTE_WIDTH,
+    height: n.Size?.Height || CANVAS_NOTE_HEIGHT,
+    data: { text: n.Text, color: n.Color ?? '' },
+  }))
 }
 
 // SourceHandle carries a Decision edge's condition string (or the

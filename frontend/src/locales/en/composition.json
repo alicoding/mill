@@ -47,6 +47,17 @@
     "breakpointSetTitle": "Breakpoint set — click to remove (pauses here for inspection before this step runs)",
     "breakpointUnsetTitle": "Click to pause here for inspection before this step runs"
   },
+  "canvasNoteView": {
+    "textAriaLabel": "Note text",
+    "emptyPlaceholder": "Double-click to add a note",
+    "color": {
+      "default": "Default color",
+      "yellow": "Yellow",
+      "blue": "Blue",
+      "green": "Green",
+      "pink": "Pink"
+    }
+  },
   "aiExtractFieldsEditor": {
     "typeLabel": {
       "text": "Text",
@@ -256,6 +267,7 @@
     "redoAriaLabel": "Redo",
     "autoLayoutAriaLabel": "Auto-layout",
     "deleteSelectedAriaLabel": "Delete selected",
+    "addNoteAriaLabel": "Add note",
     "addStepsHint": "Add steps to drag a step type onto the canvas, connect them, click a step to configure it."
   },
   "compositionCanvas": {

@@ -9,3 +9,9 @@
 // couldn't handle), which is what surfaced this split.
 export const CANVAS_NODE_WIDTH = 220
 export const CANVAS_NODE_HEIGHT = 78
+
+// A freshly added note's starting box (CanvasNoteView.tsx) -- resizable
+// afterward via NodeResizer, never smaller than this (its own minWidth/
+// minHeight props use the same numbers).
+export const CANVAS_NOTE_WIDTH = 220
+export const CANVAS_NOTE_HEIGHT = 140

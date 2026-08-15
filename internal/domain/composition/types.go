@@ -214,6 +214,42 @@ type Edge struct {
 // changed by this alone, only the Go (and generated-TS) shape.
 type AttributeDef = typedfield.Field
 
+// NoteColor is a note's optional background tint, drawn from a small
+// fixed set -- n8n's own sticky-note precedent (docs/goals/0055's
+// research: a small named palette, not an open-ended color picker, is
+// what converged in practice). The empty value is the neutral default.
+type NoteColor string
+
+const (
+	NoteColorDefault NoteColor = ""
+	NoteColorYellow  NoteColor = "yellow"
+	NoteColorBlue    NoteColor = "blue"
+	NoteColorGreen   NoteColor = "green"
+	NoteColorPink    NoteColor = "pink"
+)
+
+// Size is a note's canvas dimensions. Zero value means "never
+// resized" -- the canvas falls back to its own default box.
+type Size struct {
+	Width  float64
+	Height float64
+}
+
+// Note is a free-floating authoring-space annotation on a workflow's
+// canvas (docs/goals/0055, n8n's "sticky note" precedent) -- explicitly
+// NOT a step: no Kind, no NodeTypeID, no ports, no outgoing/incoming
+// Edge, never touched by ValidateGraph/ExecuteWorkflow/the guardrail
+// gate (those only ever take Nodes/Edges as parameters, never Notes --
+// see note_test.go). A workflow's Notes exist purely to document itself
+// for whoever opens the canvas next.
+type Note struct {
+	ID       string
+	Text     string
+	Position Position
+	Size     Size
+	Color    NoteColor
+}
+
 // Workflow is a node/edge graph. Branching exists now (Decision nodes,
 // see walk/nextNode) but is still constrained: every non-Decision node
 // keeps at most one outgoing edge, so "graph" in practice means "a chain
@@ -224,6 +260,10 @@ type Workflow struct {
 	Description string
 	Nodes       []Node
 	Edges       []Edge
+	// Notes are free-floating authoring-space annotations -- NOT steps
+	// (see Note's own doc comment). Never read by ValidateGraph,
+	// ExecuteWorkflow, or anything execution-adjacent.
+	Notes []Note
 	// Attributes is this workflow's declared structured-field schema --
 	// what a Decision node's rule builder offers as available fields, and
 	// what a generated test payload (§3.4) can seed. Does not itself

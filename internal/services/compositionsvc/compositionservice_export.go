@@ -67,6 +67,10 @@ import (
 // from the shared, untagged domain shape entirely. UnmarshalJSON below
 // accepts the legacy "nodes" key forever (every export produced before
 // this rename).
+// Notes (docs/goals/0055, ADR-0036 decision 2) is an ADDITIVE-OPTIONAL
+// envelope field: `omitempty` so an export with no notes stays
+// byte-identical to a pre-0055 one, and every existing importer already
+// ignores an unknown/absent field -- no schema major bump.
 type exportedWorkflow struct {
 	Schema      string                     `json:"schema"`
 	ID          string                     `json:"id,omitempty"`
@@ -74,6 +78,7 @@ type exportedWorkflow struct {
 	Description string                     `json:"description"`
 	Steps       []Step                     `json:"steps"`
 	Edges       []composition.Edge         `json:"edges"`
+	Notes       []composition.Note         `json:"notes,omitempty"`
 	Attributes  []composition.AttributeDef `json:"attributes"`
 }
 
@@ -91,6 +96,7 @@ func (w *exportedWorkflow) UnmarshalJSON(data []byte) error {
 		Steps       []Step                     `json:"steps"`
 		LegacyNodes []Step                     `json:"nodes"`
 		Edges       []composition.Edge         `json:"edges"`
+		Notes       []composition.Note         `json:"notes,omitempty"`
 		Attributes  []composition.AttributeDef `json:"attributes"`
 	}
 	if err := json.Unmarshal(data, &raw); err != nil {
@@ -102,7 +108,7 @@ func (w *exportedWorkflow) UnmarshalJSON(data []byte) error {
 	}
 	*w = exportedWorkflow{
 		Schema: raw.Schema, ID: raw.ID, Label: raw.Label, Description: raw.Description,
-		Steps: steps, Edges: raw.Edges, Attributes: raw.Attributes,
+		Steps: steps, Edges: raw.Edges, Notes: raw.Notes, Attributes: raw.Attributes,
 	}
 	return nil
 }
@@ -206,6 +212,7 @@ func (c *CompositionService) ExportWorkflow(id string) (string, error) {
 		Description: wf.Description,
 		Steps:       stepsFromNodes(wf.Nodes),
 		Edges:       wf.Edges,
+		Notes:       wf.Notes,
 		Attributes:  wf.Attributes,
 	}
 	data, err := json.MarshalIndent(out, "", "  ")
@@ -215,6 +222,25 @@ func (c *CompositionService) ExportWorkflow(id string) (string, error) {
 	return string(data), nil
 }
 
+// applyImportedExtras applies an imported export's Attributes and Notes
+// once wf already exists with its Nodes/Edges -- shared by
+// ImportWorkflow's two create paths (id-preserving and fresh-id), since
+// both need the identical "apply each if present" sequence.
+func (c *CompositionService) applyImportedExtras(wf composition.Workflow, in exportedWorkflow) (composition.Workflow, error) {
+	var err error
+	if len(in.Attributes) > 0 {
+		if wf, err = c.UpdateAttributes(wf.ID, in.Attributes); err != nil {
+			return composition.Workflow{}, err
+		}
+	}
+	if len(in.Notes) > 0 {
+		if wf, err = c.UpdateNotes(wf.ID, in.Notes); err != nil {
+			return composition.Workflow{}, err
+		}
+	}
+	return wf, nil
+}
+
 // ImportWorkflow parses jsonData (ExportWorkflow's own output, or a
 // hand-authored file in the same shape) and applies ADR-0036 decision
 // 3's uniform import rule: no id -> create fresh (delegates to
@@ -222,10 +248,10 @@ func (c *CompositionService) ExportWorkflow(id string) (string, error) {
 // hand-composed workflow, no import-specific leniency); an id unknown
 // here -> create preserving that id; an id matching a local workflow ->
 // update through the same snapshot-then-replace chokepoint MCP's
-// update_workflow tool uses. Attributes apply as a second step through
-// UpdateAttributes on the create paths, matching the existing compose-
-// then-configure-attributes flow every hand-composed workflow already
-// goes through (Configure's Attributes tab).
+// update_workflow tool uses. Attributes/Notes apply as a second step
+// (applyImportedExtras) on the create paths, matching the existing
+// compose-then-configure flow every hand-composed workflow already
+// goes through (Configure's Attributes tab, the canvas's own notes).
 func (c *CompositionService) ImportWorkflow(jsonData string) (composition.Workflow, error) {
 	var in exportedWorkflow
 	if err := json.Unmarshal([]byte(jsonData), &in); err != nil {
@@ -249,20 +275,14 @@ func (c *CompositionService) ImportWorkflow(jsonData string) (composition.Workfl
 		if err != nil {
 			return composition.Workflow{}, err
 		}
-		if len(in.Attributes) == 0 {
-			return wf, nil
-		}
-		return c.UpdateAttributes(wf.ID, in.Attributes)
+		return c.applyImportedExtras(wf, in)
 	}
 
 	wf, err := c.CreateWorkflow(in.Label, in.Description, nodesFromSteps(in.Steps), in.Edges)
 	if err != nil {
 		return composition.Workflow{}, err
 	}
-	if len(in.Attributes) == 0 {
-		return wf, nil
-	}
-	return c.UpdateAttributes(wf.ID, in.Attributes)
+	return c.applyImportedExtras(wf, in)
 }
 
 // SnapshotDraft captures id's current draft head as a new immutable
@@ -282,7 +302,10 @@ func (c *CompositionService) SnapshotDraft(id string) (composition.Workflow, err
 // ExportWorkflow produces and ImportWorkflow consumes, reused as the
 // update protocol so there is exactly one document format
 // (docs/adr/0025). Validation is UpdateWorkflow's own (ValidateGraph,
-// ResolveNodeDefaults); attributes update alongside when present.
+// ResolveNodeDefaults); attributes/notes update alongside when the
+// field is explicitly present (nil means "the source document never
+// declared this field," not "clear it" -- an older export with no
+// "notes" key must never wipe an existing workflow's notes).
 func (c *CompositionService) UpdateWorkflowFromExport(id, jsonData string) (composition.Workflow, error) {
 	var in exportedWorkflow
 	if err := json.Unmarshal([]byte(jsonData), &in); err != nil {
@@ -292,8 +315,15 @@ func (c *CompositionService) UpdateWorkflowFromExport(id, jsonData string) (comp
 	if err != nil {
 		return composition.Workflow{}, err
 	}
-	if in.Attributes == nil {
-		return wf, nil
+	if in.Attributes != nil {
+		if wf, err = c.UpdateAttributes(id, in.Attributes); err != nil {
+			return composition.Workflow{}, err
+		}
 	}
-	return c.UpdateAttributes(id, in.Attributes)
+	if in.Notes != nil {
+		if wf, err = c.UpdateNotes(id, in.Notes); err != nil {
+			return composition.Workflow{}, err
+		}
+	}
+	return wf, nil
 }

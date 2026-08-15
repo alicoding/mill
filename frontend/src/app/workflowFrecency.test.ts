@@ -13,6 +13,7 @@ function makeWorkflow(id: string, label = id): Workflow {
     Description: '',
     Nodes: [],
     Edges: [],
+    Notes: [],
     Attributes: [],
     BuiltIn: false,
     CreatedAt: '',

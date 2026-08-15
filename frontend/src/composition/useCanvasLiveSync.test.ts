@@ -15,6 +15,7 @@ const baseline: ScratchDraft = {
   description: '',
   nodes: [{ ID: 't', Kind: NodeKind.KindTrigger, NodeTypeID: 'trigger-manual', Config: {}, Position: { X: 0, Y: 0 } }],
   edges: [],
+  notes: [],
 }
 
 describe('decideExternalSyncAction', () => {
