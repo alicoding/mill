@@ -36,7 +36,8 @@
     "searchPlaceholder": "Search workflows…",
     "attributeCountSummary": "{{count}} attribute{{plural}} declared",
     "emptyHeading": "No workflows yet",
-    "emptyDescription": "Create a workflow first (Workflows > New workflow), then come back here to declare its Attributes schema.",
+    "emptyDescription": "Attributes are declared per workflow — create one to get started.",
+    "goToWorkflows": "Go to Workflows",
     "closeEditor": "Close"
   },
   "requestSummary": {

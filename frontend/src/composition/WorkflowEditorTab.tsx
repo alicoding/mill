@@ -77,7 +77,13 @@ export function WorkflowEditorTab({
         <CompositionCanvas nodeTypes={nodeTypes} workflow={workflow} tabKey={tabKey} onBack={onBack} onSaved={onSaved} readOnly={readOnly} onSwitchToEdit={onSwitchToEdit} />
       </TabPanel>
       <TabPanel value="runs">
-        <WorkflowRunsPanel workflowId={workflow.ID} attrs={workflow.Attributes ?? []} initialRunId={focusRunId} onInitialRunConsumed={consumePendingRunFocus} />
+        <WorkflowRunsPanel
+          workflowId={workflow.ID}
+          attrs={workflow.Attributes ?? []}
+          initialRunId={focusRunId}
+          onInitialRunConsumed={consumePendingRunFocus}
+          onSwitchToCanvas={() => setInnerTab('canvas')}
+        />
       </TabPanel>
       <TabPanel value="versions">
         <WorkflowVersionsPanel workflow={workflow} onChanged={onWorkflowsChanged} />

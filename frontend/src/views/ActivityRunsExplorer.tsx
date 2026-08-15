@@ -8,6 +8,7 @@ import { ResizableTableContainer, TruncatedCell } from '../shared/ResizableTable
 import { ExecutionService } from '../shared/bindings'
 import type { RunSummary } from '../shared/bindings'
 import type { Workflow } from '../../bindings/github.com/alicoding/mill/internal/domain/composition/models'
+import { useAppStore } from '../shared/store'
 import { formatRunStartedAt } from '../shared/runTime'
 import { StalenessBadge } from '../shared/StalenessBadge'
 import { StatusStamp } from '../shared/StatusStamp'
@@ -27,6 +28,7 @@ import monoStyles from '../shared/monoText.module.css'
 // attribute values and output.
 export function ActivityRunsExplorer({ workflow }: { workflow: Workflow }) {
   const { t } = useTranslation('views')
+  const requestOpenWorkflow = useAppStore((s) => s.requestOpenWorkflow)
   const [runs, setRuns] = useState<RunSummary[] | null>(null)
   const [error, setError] = useState('')
   const [search, setSearch] = useState('')
@@ -165,6 +167,10 @@ export function ActivityRunsExplorer({ workflow }: { workflow: Workflow }) {
               <HistoryIcon size={32} />
             </Blankslate.Visual>
             <Blankslate.Heading>{t('activityRunsExplorer.noRecordedRuns')}</Blankslate.Heading>
+            <Blankslate.Description>{t('activityRunsExplorer.noRecordedRunsDescription')}</Blankslate.Description>
+            <Blankslate.PrimaryAction onClick={() => requestOpenWorkflow(workflow.ID)}>
+              {t('activityRunsExplorer.openWorkflow')}
+            </Blankslate.PrimaryAction>
           </Blankslate>
         ) : (
           <Text as="p" className={styles.muted}>{t('activityRunsExplorer.noRunsMatchSearch')}</Text>

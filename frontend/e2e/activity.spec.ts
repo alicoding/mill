@@ -137,3 +137,12 @@ test('Activity page shows an empty state before anything has run', async ({ page
   await expect(page.getByText('No activity yet')).toBeVisible()
   await expect(dataRows(page)).toHaveCount(0)
 })
+
+test('Activity empty state\'s primary action navigates to Workflows', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Activity' }).click()
+  await expect(page.getByTestId('activity-empty')).toBeVisible()
+
+  await page.getByTestId('activity-empty').getByRole('button', { name: 'Run a workflow' }).click()
+  await expect(page.getByTestId('composition-view')).toBeVisible()
+})

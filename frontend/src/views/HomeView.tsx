@@ -6,6 +6,7 @@ import { Blankslate } from '@primer/react/experimental'
 import { GraphIcon } from '@primer/octicons-react'
 import { ExecutionService, SettingsService } from '../shared/bindings'
 import type { HomeMetrics } from '../shared/bindings'
+import { useAppStore } from '../shared/store'
 import PageContainer from '../shared/PageContainer'
 import { HomeMostUsed } from './HomeMostUsed'
 import { formatMinutes } from './homeFormat'
@@ -32,6 +33,7 @@ function rangeToISO(days: RangeDays): { from: string; to: string } {
 
 export default function HomeView() {
   const { t } = useTranslation('views')
+  const setView = useAppStore((s) => s.setView)
   const [rangeDays, setRangeDays] = useState<RangeDays>(7)
   // Error rate/Series default to triggered-only (n8n's manual-exclusion
   // convention, docs/goals/0014) -- this is the "flag to include test"
@@ -129,6 +131,9 @@ export default function HomeView() {
           <Blankslate.Description>
             {t('home.noRunsBlankslateDescription')}
           </Blankslate.Description>
+          <Blankslate.PrimaryAction onClick={() => setView({ kind: 'composition' })}>
+            {t('emptyStateActions.runAWorkflow')}
+          </Blankslate.PrimaryAction>
         </Blankslate>
       ) : (
         <>

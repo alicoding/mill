@@ -141,6 +141,19 @@ test('A workflow with no runs yet shows an empty state on its Runs tab, scoped t
   await expect(emptyState).toBeVisible()
   await expect(emptyState.locator('svg')).toBeVisible()
 
+  // The empty state's own primary action switches this same editor tab
+  // to Canvas (the one Run entrypoint) instead of just telling the user
+  // to go there themselves. The Canvas/Runs/Versions tab buttons are
+  // siblings of the inner tabpanels (not descendants), same reasoning
+  // runsTab() above is scoped by -- so the tab itself is found via the
+  // OUTER, workflow-named tabpanel, while the switched-to content is
+  // found via the now-active INNER one (activePanel()).
+  await emptyState.getByRole('button', { name: 'Go to Canvas' }).click()
+  await expect(
+    page.getByRole('tabpanel', { name: 'E2E runs-empty-state workflow' }).getByRole('tab', { name: 'Canvas', selected: true }),
+  ).toBeVisible()
+  await expect(activePanel(page).getByTestId('composition-canvas')).toBeVisible()
+
   // Cleanup: delete is a Workflows-list row action, not something inside
   // the editor tab itself -- also closes the tab, no separate
   // closeEditorTab call needed.
