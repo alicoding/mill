@@ -130,6 +130,9 @@ accepted)**
    — owner-raised 2026-08-14 (n8n sticky-note precedent): annotation
    in the authoring space; not a step (no ports/execution); rides
    the workflow envelope, so coordinates with 0052's schema.
+   DELIVERED 2026-08-15 (PR #136): Notes on Workflow/Version,
+   additive envelope field, resizable/colored canvas notes,
+   dirty-path integrated, seeded + e2e proven. ARCHIVED.
    DELIVERED 2026-08-14: `composition.Note`, its own `UpdateNotes` RPC,
    ADDITIVE-OPTIONAL envelope field (ADR-0036), a distinct React Flow
    node type with `NodeResizer`, seeded on "Example: Scratch capture"
