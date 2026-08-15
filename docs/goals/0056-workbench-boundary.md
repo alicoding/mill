@@ -62,6 +62,27 @@ entity families join the generated contract). Does not block the
 0044→0053→0052→0054 arc.
 
 
+
+## The sharpest owner articulation — 2026-08-14 (the M9 requirement)
+
+"I need to see it as a status page... if I can't see what the LLM is
+seeing, how do I know if it is hallucinating... like a sticky board
+but super organized — vendor status already there in front of you,
+just turn your head." Named precisely: a GLANCEABLE BOARD that is a
+projection over the SAME files the AI is grounded on — one substrate,
+two readers (human glance, LLM context). This is the §0 thesis
+(what-you-see-is-what-I-see) extended from workflows to knowledge,
+and it reframes this goal's question: not "should Mill do notes"
+(answered no — the notes layer belongs to existing tools) but
+"should Mill be the PROJECTION layer over user-owned files." In the
+goal's fit-gap matrix (the working artifact) this is row M9 — the
+first requirement where every bridge falls short and "build" could
+be earned; the verdict stays open for this goal's research to
+decide, per the method above. Also recorded: the owner's felt
+"I'm not doing it right" — the truthful framing is that the
+projection layer is a missing product category, not a failure of
+personal organization.
+
 ## Working method — DECIDED 2026-08-14 (owner-directed): fit-gap analysis, constraints as knock-outs
 
 The boundary question is answered by the enterprise software-selection
