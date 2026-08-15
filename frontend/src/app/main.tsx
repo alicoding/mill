@@ -46,6 +46,21 @@ const initialColorMode = (localStorage.getItem(COLOR_MODE_STORAGE_KEY) as 'light
 const isQuickPanel = window.location.hash === '#/quickpanel'
 const isApprovalPrompt = window.location.hash === '#/approvalprompt'
 
+// PWA installability (goal 0068): Chrome's install-prompt criteria
+// require a registered service worker with a fetch handler (see
+// public/service-worker.js's own comment for why it never caches) on
+// top of the manifest link (index.html) and a secure-context origin --
+// the documented mechanism is server mode reached over a tailnet's own
+// HTTPS (`tailscale serve` + the tailnet's HTTPS certs), not something
+// this app can provision itself. import.meta.env.PROD-gated so `task
+// dev`'s hot-reload loop never has a service worker sitting between it
+// and the Vite dev server.
+if (import.meta.env.PROD && 'serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    void navigator.serviceWorker.register('/service-worker.js').catch(() => {})
+  })
+}
+
 ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
   <React.StrictMode>
     {isQuickPanel ? (

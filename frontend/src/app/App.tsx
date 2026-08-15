@@ -18,6 +18,7 @@ import { refreshAIProviders, refreshDeclaredStepTypes, refreshDecisions, refresh
 import { dispatchCommandForEvent } from "../shared/commands";
 import { WorkTabShell } from "./WorkTabShell";
 import { AppSidebar } from "./AppSidebar";
+import { MobileNavToggle } from "./MobileNavToggle";
 import { MCPWriteApprovals } from "./MCPWriteApprovals";
 import { CommandPalette } from "./CommandPalette";
 import { BuildIdentityBadge } from "./BuildIdentityBadge";
@@ -150,6 +151,10 @@ function App() {
   useEffect(() => {
     localStorage.setItem(SIDEBAR_OPEN_STORAGE_KEY, String(sidebarOpen));
   }, [sidebarOpen]);
+
+  // The narrow-viewport nav drawer -- distinct from sidebarOpen above
+  // (the desktop rail collapse), session-only: always starts closed.
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   // colorMode/setColorMode/resolvedColorMode come from Primer's own
   // useTheme() -- light/dark/auto(=system) is a built-in ThemeProvider
@@ -376,35 +381,25 @@ function App() {
 
   return (
     <div className="app-shell" data-sidebar-open={sidebarOpen}>
-      {/* The titlebar band (Chrome-style tabs-in-titlebar, owner-
-          requested: "Chrome has the tab system at the very top -- we
-          should adopt that pattern"). A real, always-present chrome
-          element at the very top of .app-shell, above the PageLayout
-          row -- not padding reserving empty space the way the old
-          .app-shell--native-titlebar rule did.
-
-          Two segments (App.module.css has the full reasoning for the
-          fix this is): .titlebarLeft is the sidebar column's own strip
-          of the band -- tracks the real sidebar's width via the shared
-          --mill-sidebar-width custom property (index.css), holds the
-          native traffic-light inset, the collapse/expand toggle (moved
-          up from the sidebar's own now-deleted header), and the
-          wordmark. .titlebarTabs is where WorkTabShell (rendered below,
-          inside PageLayout.Content) portals its TabList + overflow menu
-          -- empty space there stays the native window's drag handle
-          (--wails-draggable:drag, App.module.css). */}
+      {/* The titlebar band (Chrome-style tabs-in-titlebar): a real,
+          always-present chrome element at the very top of .app-shell,
+          above the PageLayout row. Two segments (App.module.css has the
+          full reasoning): .titlebarLeft tracks the sidebar column's own
+          width (--mill-sidebar-width, index.css); .titlebarTabs is where
+          WorkTabShell portals its TabList -- empty space there stays the
+          native window's drag handle (--wails-draggable:drag). */}
       <div className={`${styles.titlebar}${isNativeWebview ? ` ${styles.titlebarNative}` : ''}`}>
         <div
           className={sidebarOpen ? styles.titlebarLeft : `${styles.titlebarLeft} ${styles.titlebarLeftCollapsed}`}
           data-testid="titlebar-left"
         >
           {isNativeWebview && <div className={styles.trafficLightInset} aria-hidden="true" />}
-          {/* No content up here anymore (owner refinement: the Mill
-              identity lives in the sidebar's top row in BOTH states, so
-              it never moves when the rail collapses) -- this segment is
-              now purely the band's sidebar-width spacer: it carries the
-              divider line up through the band and, on native, the
-              traffic-light clearance. */}
+          {/* Otherwise this segment is purely the band's sidebar-width
+              spacer (the Mill identity lives in the sidebar's own top
+              row in both rail states, so nothing else renders up here
+              at desktop widths) -- MobileNavToggle is the one exception,
+              CSS-visible only below 768px. */}
+          <MobileNavToggle onOpen={() => setMobileNavOpen(true)} />
         </div>
         <div
           ref={setTitlebarSlot}
@@ -435,7 +430,7 @@ function App() {
           (page-scroll-oriented, wrong fit here), while .Sidebar stays a
           persistent side rail at any width -- see docs/SPEC.md. */}
       <PageLayout className={styles.appBody} containerWidth="full" padding="none" rowGap="none" columnGap="none">
-        <AppSidebar sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} view={view} setView={setView} capabilities={capabilities} reviewPendingCount={reviewPendingCount} />
+        <AppSidebar sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} mobileNavOpen={mobileNavOpen} setMobileNavOpen={setMobileNavOpen} view={view} setView={setView} capabilities={capabilities} reviewPendingCount={reviewPendingCount} />
 
         <PageLayout.Content className="view-pane" padding="none">
           {/* The app-wide work-tab strip (docs/SPEC.md §3.8): the

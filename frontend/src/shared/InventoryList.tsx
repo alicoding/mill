@@ -168,6 +168,7 @@ function InventoryRow({ item }: { item: InventoryItem }) {
           direction="horizontal"
           gap="condensed"
           align="center"
+          className={styles.rowActions}
           style={{ pointerEvents: 'auto' }}
           onClick={(e) => e.stopPropagation()}
           onKeyDown={(e) => e.stopPropagation()}
