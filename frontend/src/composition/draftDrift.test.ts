@@ -15,7 +15,7 @@ function node(id: string, nodeTypeID: string, config: Record<string, string> = {
 
 function baseWorkflow(overrides: Partial<Workflow>): Workflow {
   return {
-    ID: 'wf-1', Label: 'Test workflow', Description: '', Nodes: [], Edges: [], Attributes: [],
+    ID: 'wf-1', Label: 'Test workflow', Description: '', Nodes: [], Edges: [], Notes: [], Attributes: [],
     BuiltIn: false, Disabled: false, PublishedVersion: 0, Versions: [],
     CreatedAt: '2026-01-01T00:00:00Z', UpdatedAt: '2026-01-01T00:00:00Z',
     Seed: { SeedRevision: 0, Modified: false },
@@ -34,7 +34,7 @@ describe('hasDraftDrift', () => {
     const wf = baseWorkflow({
       PublishedVersion: 1,
       Nodes: nodes,
-      Versions: [{ Version: 1, SavedAt: '2026-01-01T00:00:00Z', Label: 'Test workflow', Description: '', Nodes: nodes, Edges: [], Attributes: [] }],
+      Versions: [{ Version: 1, SavedAt: '2026-01-01T00:00:00Z', Label: 'Test workflow', Description: '', Nodes: nodes, Edges: [], Notes: [], Attributes: [] }],
     })
     expect(hasDraftDrift(wf)).toBe(false)
   })
@@ -45,7 +45,7 @@ describe('hasDraftDrift', () => {
     const wf = baseWorkflow({
       PublishedVersion: 1,
       Nodes: draftNodes,
-      Versions: [{ Version: 1, SavedAt: '2026-01-01T00:00:00Z', Label: 'Test workflow', Description: '', Nodes: publishedNodes, Edges: [], Attributes: [] }],
+      Versions: [{ Version: 1, SavedAt: '2026-01-01T00:00:00Z', Label: 'Test workflow', Description: '', Nodes: publishedNodes, Edges: [], Notes: [], Attributes: [] }],
     })
     expect(hasDraftDrift(wf)).toBe(true)
   })
@@ -57,7 +57,7 @@ describe('hasDraftDrift', () => {
       Versions: [{
         Version: 1, SavedAt: '2026-01-01T00:00:00Z', Label: 'Test workflow', Description: '',
         Nodes: [{ ID: 'n1', Kind: NodeKind.KindTrigger, NodeTypeID: 'trigger-filesystem-watch', Config: { path: '/tmp', pattern: '*.md' }, Position: { X: 0, Y: 0 } }],
-        Edges: [], Attributes: [],
+        Edges: [], Notes: [], Attributes: [],
       }],
     })
     expect(hasDraftDrift(wf)).toBe(false)

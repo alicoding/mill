@@ -289,6 +289,68 @@ func TestRestoreWorkflow_TombstoneRoundTrip(t *testing.T) {
 	}
 }
 
+// scratchCaptureGoldenID is the one seeded workflow docs/goals/0055
+// extended with a Note (builtinworkflows_capturefloor.go) -- the seeded
+// proof every test below checks the note against.
+const scratchCaptureGoldenID = "example-scratch-capture-workflow"
+
+// TestFreshInstall_ScratchCaptureSeedCarriesNote: a fresh install seeds
+// the golden's own documenting Note alongside its Nodes/Edges -- "the
+// seed IS the proof" (testing.md) for docs/goals/0055.
+func TestFreshInstall_ScratchCaptureSeedCarriesNote(t *testing.T) {
+	c := NewCompositionService(servicetest.NewFakeStore())
+	for _, wf := range c.Workflows() {
+		if wf.ID != scratchCaptureGoldenID {
+			continue
+		}
+		if len(wf.Notes) != 1 || wf.Notes[0].Text == "" {
+			t.Fatalf("fresh-install %q.Notes = %+v, want one non-empty documenting note", scratchCaptureGoldenID, wf.Notes)
+		}
+		return
+	}
+	t.Fatalf("fresh-install workflows missing golden %q", scratchCaptureGoldenID)
+}
+
+// TestReconcileBuiltIns_UpgradeCarriesGoldenNote: an existing, unmodified
+// install at the PRE-0055 revision (no Note yet) reconciles up to the
+// current golden -- which now includes a Note -- and gains it, the same
+// upgrade path any other content change already takes.
+func TestReconcileBuiltIns_UpgradeCarriesGoldenNote(t *testing.T) {
+	store := servicetest.NewFakeStore()
+	golden := findGoldenByID(t, scratchCaptureGoldenID)
+
+	pre := golden
+	pre.Notes = nil
+	pre.Seed = seedorigin.Origin{SeedRevision: 1, Modified: false}
+	seedPreExistingStore(t, store, []composition.Workflow{pre})
+
+	c := NewCompositionService(store)
+	for _, wf := range c.Workflows() {
+		if wf.ID != scratchCaptureGoldenID {
+			continue
+		}
+		if len(wf.Notes) != 1 {
+			t.Fatalf("reconciled %q.Notes = %+v, want the golden's Note carried through the upgrade", scratchCaptureGoldenID, wf.Notes)
+		}
+		if wf.Seed.SeedRevision != golden.Seed.SeedRevision || wf.Seed.Modified {
+			t.Fatalf("reconciled Seed = %+v, want {%d false}", wf.Seed, golden.Seed.SeedRevision)
+		}
+		return
+	}
+	t.Fatalf("workflow %q missing after reconcile", scratchCaptureGoldenID)
+}
+
+// findGoldenByID returns a copy of the current golden with id, failing
+// the test if none exists.
+func findGoldenByID(t *testing.T, id string) composition.Workflow {
+	t.Helper()
+	golden, ok := findGoldenWorkflow(id)
+	if !ok {
+		t.Fatalf("no built-in workflow with id %q", id)
+	}
+	return golden
+}
+
 // seedPreExistingStore writes workflows directly to store under
 // workflowsKey, bypassing the constructor -- used to simulate data
 // that predates this feature (TestReconcileBuiltIns_MigratesPreGoal0037Entry).

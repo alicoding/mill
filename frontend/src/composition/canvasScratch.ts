@@ -1,7 +1,7 @@
 import type { Edge as RFEdge } from '@xyflow/react'
-import type { Node as CompNode, Edge as CompEdge } from '../../bindings/github.com/alicoding/mill/internal/domain/composition/models'
-import type { CanvasNode } from './canvasStore'
-import { toDraftEdges, toDraftNodes } from './draftPayload'
+import type { Node as CompNode, Edge as CompEdge, Note as CompNote } from '../../bindings/github.com/alicoding/mill/internal/domain/composition/models'
+import type { CanvasNode, CanvasNoteNode } from './canvasStore'
+import { toDraftEdges, toDraftNodes, toDraftNotes } from './draftPayload'
 
 // Hot-exit scratch for the canvas authoring surface (docs/goals/0012-
 // authoring-hot-exit.md): a debounced localStorage mirror of the
@@ -27,6 +27,7 @@ export interface ScratchDraft {
   description: string
   nodes: CompNode[]
   edges: CompEdge[]
+  notes: CompNote[]
 }
 
 const SCRATCH_PREFIX = 'mill-canvas-scratch:'
@@ -88,8 +89,8 @@ export function clearScratch(tabKey: string): void {
   }
 }
 
-export function buildScratchDraft(label: string, description: string, nodes: CanvasNode[], edges: RFEdge[]): ScratchDraft {
-  return { label, description, nodes: toDraftNodes(nodes), edges: toDraftEdges(edges) }
+export function buildScratchDraft(label: string, description: string, nodes: CanvasNode[], edges: RFEdge[], notes: CanvasNoteNode[] = []): ScratchDraft {
+  return { label, description, nodes: toDraftNodes(nodes), edges: toDraftEdges(edges), notes: toDraftNotes(notes) }
 }
 
 // ID-agnostic structural comparison. A fresh mount's starter node (and
@@ -105,6 +106,12 @@ export function buildScratchDraft(label: string, description: string, nodes: Can
 function normalize(draft: ScratchDraft) {
   const nodes = draft.nodes ?? []
   const edges = draft.edges ?? []
+  // Notes (docs/goals/0055) carry no ID-agnostic concern the comment
+  // above describes -- a brand-new workflow starts with zero notes (no
+  // default "starter note" the way it has a starter step), so an
+  // existing note's id is always the same stable backend id across
+  // mounts. Sorted by id only to keep the comparison order-independent.
+  const notes = [...(draft.notes ?? [])].sort((a, b) => a.ID.localeCompare(b.ID))
   const indexByID = new Map(nodes.map((n, i) => [n.ID, i]))
   return {
     label: draft.label,
@@ -115,6 +122,7 @@ function normalize(draft: ScratchDraft) {
       target: indexByID.get(e.Target),
       SourceHandle: e.SourceHandle,
     })),
+    notes: notes.map((n) => ({ ID: n.ID, Text: n.Text, Position: n.Position, Size: n.Size, Color: n.Color })),
   }
 }
 

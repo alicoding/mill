@@ -122,7 +122,17 @@ func scratchCaptureWorkflow() Workflow {
 			{ID: "example-scratchcapture-e0", Source: triggerID, Target: captureID},
 			{ID: "example-scratchcapture-e1", Source: captureID, Target: applyID},
 		},
+		// A canvas note (docs/goals/0055) documenting this seed's own two
+		// steps -- the seeded proof that a note isn't a step: it sits
+		// beside the chain, carries no edge, and running this workflow
+		// never touches it.
+		Notes: []Note{{
+			ID:       "example-scratchcapture-note",
+			Text:     "Capture: grabs the clipboard's HTML.\nApply: appends it to ~/Mill Scratch/scratch.md, timestamped.",
+			Position: Position{X: 260, Y: 0},
+			Color:    NoteColorYellow,
+		}},
 		BuiltIn: true,
-		Seed:    seedorigin.Stamp(1),
+		Seed:    seedorigin.Stamp(2),
 	}
 }

@@ -57,86 +57,86 @@
   },
   "workflow:clipboard-html-to-markdown-workflow": {
     "seedRevision": 1,
-    "fingerprint": "7a2c44dba4295f3d98f4e1b63d70d798e8c666edb156cc430dea368d21f76924"
+    "fingerprint": "acb12fc22f02f89de6038b85ace772147cb5f6e74b523b4f9f9ff7ffff350397"
   },
   "workflow:example-ai-classify-branch-workflow": {
     "seedRevision": 2,
-    "fingerprint": "a7e3b2f756ae7bf2bfca8dd49b9401818e8279bf0e583d552c5a00c2ddde88b3"
+    "fingerprint": "251cb4a6272e3e7303a61a2cad8c988dca8c44edb324bef908c063eca2cc926c"
   },
   "workflow:example-ai-summarize-workflow": {
     "seedRevision": 2,
-    "fingerprint": "aed20f62b1b4acf80847574b9ba1051a0d5ff7d94c6dad381b1edc7fe0449c12"
+    "fingerprint": "18645ae0dd50fb623432f102af0ac2e17d44007a9b19fbc71d34d52e0c7efe6e"
   },
   "workflow:example-branch-to-decision-workflow": {
     "seedRevision": 2,
-    "fingerprint": "09bab7b634ae29f7a3bd4fda37660c52761a1ee83e7352a2a6719ed336f0b493"
+    "fingerprint": "78cff39029c2a4d9bd7b25b8945055ce1f6c511ff535895c260d011baa84884e"
   },
   "workflow:example-child-echo-workflow": {
     "seedRevision": 2,
-    "fingerprint": "777f999155c03a50af1d5e59147fa0b3b69368d63fba9ed60776927ac30f683f"
+    "fingerprint": "a8e0f1f1296edc30b6568515f6852adfb9c5fdc27ebc43c64acb0aa08efccef8"
   },
   "workflow:example-clipboard-inspector-workflow": {
     "seedRevision": 2,
-    "fingerprint": "149b54390f718e1b0345d1142ffc29895de434cdb6e43501376e6fe7dfee69ba"
+    "fingerprint": "c1dd4b14828d9a8957b6a667633d8597742adc69f0d2e4e735671da7ad4ed287"
   },
   "workflow:example-codeexec-workflow": {
     "seedRevision": 2,
-    "fingerprint": "52e3a5639194d81238384faf10883d75f29a6f2fb40e5518dd911eb1f052d940"
+    "fingerprint": "885b37e75639c22e576436b7272754c86854bb0d896fffd677c43c61c1e13586"
   },
   "workflow:example-decision-with-review-workflow": {
     "seedRevision": 2,
-    "fingerprint": "a4b212381a388b265463bc4e7172d7cccf6f095f594e5791354259019cb42589"
+    "fingerprint": "6bdf81533f33a3493c46278ef219f91025144e4cebf68ff8850c956d28f71051"
   },
   "workflow:example-disabled-filesystem-watch-workflow": {
     "seedRevision": 2,
-    "fingerprint": "fa336e47f0dd6278620ec020c12949dae2ce12a2b5b27da2533780fa91cd54fe"
+    "fingerprint": "03ac020114b1559111e84abde9ec0d33718b2e24dbaab7f1b2072e41fd3e6017"
   },
   "workflow:example-disabled-schedule-workflow": {
     "seedRevision": 2,
-    "fingerprint": "6d04a7042568e946f48f107025f13f7547bc8b331d01fd5d98b5d22fd999ac4b"
+    "fingerprint": "f1d5e2d5143c8942eeb222b82c9a6978269f0749b2613c19fddeb441898c52da"
   },
   "workflow:example-forward-approvals-workflow": {
     "seedRevision": 2,
-    "fingerprint": "84cbcd2d55af0e6aefcf18db09d377cd4fc3fe57e53ed89c80c0ac6e0a87d0c5"
+    "fingerprint": "228b33ff965d175c2156ecce6c91a56ed0c3f3526e47fa818c310100777b981d"
   },
   "workflow:example-guarded-http-workflow": {
     "seedRevision": 2,
-    "fingerprint": "445c4695b56b6f36d1b9cea4171dfbb2ca4f46b8fe2f7e615b2a1a421f850dcc"
+    "fingerprint": "06ff189f9ff1362321c0187466a2336f34cb6a16217ee3c129900ab2da6e2b9f"
   },
   "workflow:example-list-lookup-workflow": {
     "seedRevision": 2,
-    "fingerprint": "9a7896090cdb91bd01c1fac552467d4d869ababf126455cac1b5b810cbc12dad"
+    "fingerprint": "54a45efb6cc7e822b8f2691ff8bda067e3fab2b99b50fc8a29dc3204aa244721"
   },
   "workflow:example-list-search-workflow": {
     "seedRevision": 2,
-    "fingerprint": "89036941c2ab2eb1433c9a071adf1b7111e73a052bea0d7e140361afef90fcf1"
+    "fingerprint": "3bf35389a51cfab25413236a03a273532bbe89e70062a3002c58d58ee244c105"
   },
   "workflow:example-mcp-echo-workflow": {
     "seedRevision": 2,
-    "fingerprint": "ebb6224128a4000420e9cc8d6b18ce1d92b627311c0645b555188b3929329a5d"
+    "fingerprint": "a24f6a0a19fa008c61e7f8baa641b1de67b9b80ad2a0cab642d9853af0de7666"
   },
   "workflow:example-parent-workflow": {
     "seedRevision": 2,
-    "fingerprint": "801f33259b6b2ca5a7b5d1d2477e8e51cfff552587a9d937893874875111b7bd"
+    "fingerprint": "0b531dd2a145e37acc71cdb1da26365800aef467a905aacd440d70b4720a07b2"
   },
   "workflow:example-review-workflow": {
     "seedRevision": 2,
-    "fingerprint": "8cd5dd6b18cd02c7c0dc0e4429c42a1449832c8e8541da949bb59d2af849d808"
+    "fingerprint": "57aa0cc6f06c52b8160163bd7ae6c94fb05ba6eb3bd5a94ff2f4982fb3375fe2"
   },
   "workflow:example-run-receipt-workflow": {
     "seedRevision": 1,
-    "fingerprint": "e921d28bd06f3623e9f5fe6ec73bbcf62b3c60de64584eb41c365a6a0dfc5205"
+    "fingerprint": "44312916e5911567eb2d1811a77418ae9bf9195b38cb0102bdbd3d36fe11afc6"
   },
   "workflow:example-saved-page-to-markdown-workflow": {
     "seedRevision": 2,
-    "fingerprint": "d2f4f984eeea9a607e3d9947baed642ca80e881a85e46ee4259a889738edc883"
+    "fingerprint": "3cd5e1bab8414c4d6ae353830b2a27cc9fa5f49747d8d540a752d955f1b162a8"
   },
   "workflow:example-scratch-capture-workflow": {
-    "seedRevision": 1,
-    "fingerprint": "d4744c5e857cb1f851e78559633a1963a271d6c2d79ad37557e49dfbe7dcb41d"
+    "seedRevision": 2,
+    "fingerprint": "58474919963eb4da78947e7f46802b2c75d2c0e51f4e685b5c7e94774d00550c"
   },
   "workflow:load-sample-html-workflow": {
     "seedRevision": 1,
-    "fingerprint": "0f3d7b07d5e264f79b04f0c2a4603f83d4cca2ff07819a803e8039f69d1d1140"
+    "fingerprint": "add39815b73d840c233f266f01043b9cbec60ed37d04cba12a8306e85ce23214"
   }
 }

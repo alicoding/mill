@@ -88,6 +88,34 @@
         "SystemManaged"
       ]
     },
+    "Note": {
+      "properties": {
+        "ID": {
+          "type": "string"
+        },
+        "Text": {
+          "type": "string"
+        },
+        "Position": {
+          "$ref": "#/$defs/Position"
+        },
+        "Size": {
+          "$ref": "#/$defs/Size"
+        },
+        "Color": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "ID",
+        "Text",
+        "Position",
+        "Size",
+        "Color"
+      ]
+    },
     "Position": {
       "properties": {
         "X": {
@@ -102,6 +130,22 @@
       "required": [
         "X",
         "Y"
+      ]
+    },
+    "Size": {
+      "properties": {
+        "Width": {
+          "type": "number"
+        },
+        "Height": {
+          "type": "number"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "Width",
+        "Height"
       ]
     },
     "Step": {
@@ -158,6 +202,12 @@
     "edges": {
       "items": {
         "$ref": "#/$defs/Edge"
+      },
+      "type": "array"
+    },
+    "notes": {
+      "items": {
+        "$ref": "#/$defs/Note"
       },
       "type": "array"
     },

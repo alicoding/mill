@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { Node as CompNode, Edge as CompEdge } from '../../bindings/github.com/alicoding/mill/internal/domain/composition/models'
+import type { Node as CompNode, Edge as CompEdge, Note as CompNote } from '../../bindings/github.com/alicoding/mill/internal/domain/composition/models'
 import { NodeKind } from '../../bindings/github.com/alicoding/mill/internal/domain/composition/models'
 import { draftsEqual, type ScratchDraft } from './canvasScratch'
 
@@ -20,8 +20,8 @@ function edge(id: string, source: string, target: string, sourceHandle = ''): Co
   return { ID: id, Source: source, SourceHandle: sourceHandle, Target: target }
 }
 
-function draft(label: string, description: string, nodes: CompNode[], edges: CompEdge[]): ScratchDraft {
-  return { label, description, nodes, edges }
+function draft(label: string, description: string, nodes: CompNode[], edges: CompEdge[], notes: CompNote[] = []): ScratchDraft {
+  return { label, description, nodes, edges, notes }
 }
 
 describe('draftsEqual', () => {
@@ -118,9 +118,12 @@ describe('draftsEqual', () => {
     expect(draftsEqual(a, b)).toBe(false)
   })
 
-  it('treats undefined nodes/edges the same as an explicitly empty array (a draft with only a label/description)', () => {
-    const a: ScratchDraft = { label: 'wf', description: '', nodes: undefined as unknown as CompNode[], edges: undefined as unknown as CompEdge[] }
-    const b: ScratchDraft = { label: 'wf', description: '', nodes: [], edges: [] }
+  it('treats undefined nodes/edges/notes the same as an explicitly empty array (a draft with only a label/description)', () => {
+    const a: ScratchDraft = {
+      label: 'wf', description: '',
+      nodes: undefined as unknown as CompNode[], edges: undefined as unknown as CompEdge[], notes: undefined as unknown as CompNote[],
+    }
+    const b: ScratchDraft = { label: 'wf', description: '', nodes: [], edges: [], notes: [] }
     expect(draftsEqual(a, b)).toBe(true)
   })
 
@@ -133,6 +136,33 @@ describe('draftsEqual', () => {
   it('treats a node with Config: null the same across two independently-built drafts', () => {
     const a = draft('wf', '', [node('t', 'trigger-manual', null)], [])
     const b = draft('wf', '', [node('t', 'trigger-manual', null)], [])
+    expect(draftsEqual(a, b)).toBe(true)
+  })
+
+  // docs/goals/0055: a note edit must mark the draft dirty exactly like
+  // a node edit -- the same hot-exit/dirty path, not a parallel one.
+  const note = (id: string, text: string): CompNote => ({
+    ID: id, Text: text, Position: { X: 0, Y: 0 }, Size: { Width: 220, Height: 140 }, Color: '' as CompNote['Color'],
+  })
+
+  it('detects a note added to an otherwise identical draft', () => {
+    const nodes = [node('t', 'trigger-manual')]
+    const a = draft('wf', '', nodes, [])
+    const b = draft('wf', '', nodes, [], [note('n1', 'hello')])
+    expect(draftsEqual(a, b)).toBe(false)
+  })
+
+  it('detects a note text edit on an otherwise identical draft', () => {
+    const nodes = [node('t', 'trigger-manual')]
+    const a = draft('wf', '', nodes, [], [note('n1', 'hello')])
+    const b = draft('wf', '', nodes, [], [note('n1', 'goodbye')])
+    expect(draftsEqual(a, b)).toBe(false)
+  })
+
+  it('treats two drafts with the same notes in different array order as equal', () => {
+    const nodes = [node('t', 'trigger-manual')]
+    const a = draft('wf', '', nodes, [], [note('n1', 'first'), note('n2', 'second')])
+    const b = draft('wf', '', nodes, [], [note('n2', 'second'), note('n1', 'first')])
     expect(draftsEqual(a, b)).toBe(true)
   })
 })

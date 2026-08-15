@@ -39,18 +39,39 @@ export interface CanvasNodeData extends Record<string, unknown> {
 
 export type CanvasNode = RFNode<CanvasNodeData>
 
+// A note (docs/goals/0055) is a distinct React Flow node TYPE, not a
+// step -- it renders through CanvasNoteView, never CanvasNodeView, has
+// no ports/Kind/nodeTypeID, and never appears in toDraftNodes' output
+// (draftPayload.ts only ever reads the `nodes` slice below, never
+// `notes`). Size lives in RFNode's own top-level width/height (not
+// inside `data`): NodeResizer's resize changes arrive as a 'dimensions'
+// NodeChange that applyNodeChanges (onNotesChange below) writes onto
+// those two fields directly, so no separate size-sync code is needed.
+export interface CanvasNoteData extends Record<string, unknown> {
+  text: string
+  color: string
+}
+
+export type CanvasNoteNode = RFNode<CanvasNoteData>
+
 export interface CanvasState {
   nodes: CanvasNode[]
   edges: RFEdge[]
+  notes: CanvasNoteNode[]
   onNodesChange: (changes: NodeChange<CanvasNode>[]) => void
   onEdgesChange: (changes: EdgeChange[]) => void
+  onNotesChange: (changes: NodeChange<CanvasNoteNode>[]) => void
   onConnect: (connection: Connection) => void
   addNode: (node: CanvasNode) => void
+  addNote: (note: CanvasNoteNode) => void
+  updateNoteText: (id: string, text: string) => void
+  updateNoteColor: (id: string, color: string) => void
   changeNodeType: (id: string, nodeTypeID: string, label: string, config: Record<string, string>, output?: string) => void
   updateNodeConfig: (id: string, key: string, value: string) => void
   updateEdgeCondition: (id: string, condition: string) => void
   removeSelected: () => void
   load: (nodes: CanvasNode[], edges: RFEdge[]) => void
+  loadNotes: (notes: CanvasNoteNode[]) => void
   setGuardrailVerdicts: (verdicts: Record<string, { effect: string; ruleLabel: string; source?: string }>) => void
   setValidationIssues: (issuesByNodeId: Record<string, { severity: string; message: string }[]>) => void
   clear: () => void
@@ -81,16 +102,23 @@ export interface CanvasState {
 // temporal middleware never records it onto the undo stack -- no
 // `.temporal.getState().clear()` needed afterward, unlike the old
 // `load()`-based mount effect this replaced.
-export function createCanvasStore(initialNodes: CanvasNode[] = [], initialEdges: RFEdge[] = []) {
+export function createCanvasStore(initialNodes: CanvasNode[] = [], initialEdges: RFEdge[] = [], initialNotes: CanvasNoteNode[] = []) {
   return create<CanvasState>()(
     temporal(
       (set, get) => ({
         nodes: initialNodes,
         edges: initialEdges,
+        notes: initialNotes,
         onNodesChange: (changes) => set({ nodes: applyNodeChanges(changes, get().nodes) }),
         onEdgesChange: (changes) => set({ edges: applyEdgeChanges(changes, get().edges) }),
+        onNotesChange: (changes) => set({ notes: applyNodeChanges(changes, get().notes) }),
         onConnect: (connection) => set({ edges: rfAddEdge(connection, get().edges) }),
         addNode: (node) => set({ nodes: [...get().nodes, node] }),
+        addNote: (note) => set({ notes: [...get().notes, note] }),
+        updateNoteText: (id, text) =>
+          set({ notes: get().notes.map((n) => (n.id === id ? { ...n, data: { ...n.data, text } } : n)) }),
+        updateNoteColor: (id, color) =>
+          set({ notes: get().notes.map((n) => (n.id === id ? { ...n, data: { ...n.data, color } } : n)) }),
         // Swaps an already-placed node to a different NodeType of the
         // *same* Kind, in place -- id/position/edges untouched, only
         // nodeTypeID/label/config change. This is what lets "I meant
@@ -129,9 +157,11 @@ export function createCanvasStore(initialNodes: CanvasNode[] = [], initialEdges:
             return {
               nodes: s.nodes.filter((n) => !n.selected),
               edges: s.edges.filter((e) => !e.selected && !removedIds.has(e.source) && !removedIds.has(e.target)),
+              notes: s.notes.filter((n) => !n.selected),
             }
           }),
         load: (nodes, edges) => set({ nodes, edges }),
+        loadNotes: (notes) => set({ notes }),
         setGuardrailVerdicts: (verdicts) =>
           set({
             nodes: get().nodes.map((n) => {
@@ -154,13 +184,14 @@ export function createCanvasStore(initialNodes: CanvasNode[] = [], initialEdges:
               return { ...n, data: { ...n.data, validationIssues: next } }
             }),
           }),
-        clear: () => set({ nodes: [], edges: [] }),
+        clear: () => set({ nodes: [], edges: [], notes: [] }),
       }),
       {
-        // Only {nodes, edges} are undo-worthy graph state -- nothing else
-        // lives in this store, but partialize is explicit anyway so a
-        // future field addition doesn't silently join the undo stack.
-        partialize: (state) => ({ nodes: state.nodes, edges: state.edges }),
+        // {nodes, edges, notes} are the undo-worthy canvas state -- a
+        // note drag/resize/edit undoes the same way a step edit does
+        // (docs/goals/0055: notes are authoring-space content, not a
+        // second-class citizen of the undo stack).
+        partialize: (state) => ({ nodes: state.nodes, edges: state.edges, notes: state.notes }),
         limit: 50,
       },
     ),

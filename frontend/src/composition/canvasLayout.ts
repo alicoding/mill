@@ -1,4 +1,3 @@
-import type { CanvasNode } from './canvasStore'
 import { CANVAS_NODE_WIDTH, CANVAS_NODE_HEIGHT } from './canvasConstants'
 
 const MARGIN = 16
@@ -19,7 +18,12 @@ function overlaps(a: { x: number; y: number }, b: { x: number; y: number }) {
 // drop case specifically: only the one newly-dropped node needs placing,
 // not a full pairwise resolve across every node on the canvas, so a
 // cheap outward spiral search is enough.
-export function findFreeDropPosition(desired: { x: number; y: number }, existing: CanvasNode[]) {
+// existing is typed structurally (only .position is read) rather than
+// CanvasNode[] specifically -- CompositionCanvas.tsx's note-placement
+// path (docs/goals/0055) needs to check a new note against BOTH steps
+// and other notes, two different React Flow node types that only share
+// this one shape.
+export function findFreeDropPosition(desired: { x: number; y: number }, existing: { position: { x: number; y: number } }[]) {
   if (!existing.some((n) => overlaps(desired, n.position))) return desired
   for (let i = 1; i <= MAX_ATTEMPTS; i++) {
     const angle = i * 2.4 // golden-angle-ish step so the spiral doesn't repeat a direction
