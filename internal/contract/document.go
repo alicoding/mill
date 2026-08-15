@@ -31,7 +31,7 @@ type ImportContract struct {
 }
 
 // Document is the root contract document's committed, static half:
-// every registered family's schema, the full node-type catalog, and
+// every registered family's schema, the full step-type catalog, and
 // the import contract. It deliberately OMITS the manifest (app
 // version/commit/mode) -- ADR-0036 decision 4 requires the manifest
 // stay a live sibling injected only at serve/export time
@@ -40,8 +40,13 @@ type ImportContract struct {
 // changed.
 type Document struct {
 	Schemas   map[string]json.RawMessage `json:"schemas"`
-	NodeTypes []composition.NodeType     `json:"nodeTypes"`
-	Import    ImportContract             `json:"import"`
+	StepTypes []composition.NodeType     `json:"stepTypes"`
+	// NodeTypes is the legacy alias of StepTypes, kept forever
+	// (ADR-0036's within-major rule is additive-only, a key is never
+	// removed) -- same slice, same bytes, so an existing consumer
+	// reading "nodeTypes" never breaks.
+	NodeTypes []composition.NodeType `json:"nodeTypes"`
+	Import    ImportContract         `json:"import"`
 }
 
 // ServedDocument is what mill://contract and the UI's Export contract
@@ -73,12 +78,13 @@ func buildImportContract() ImportContract {
 
 // GenerateDocument reflects the current registry (every family's
 // schema via GenerateAll, plus composition.NodeTypes() -- the exact
-// function list_node_types itself calls, so the document's catalog and
+// function list_step_types itself calls, so the document's catalog and
 // the live MCP tool's catalog can never carry two independent
 // implementations) into the committed document's bytes. Deterministic
 // for the same reason GenerateAll is: sorted family keys, a map with
 // string keys (encoding/json sorts those too), and NodeTypes()'s own
-// stable sort.
+// stable sort. StepTypes and NodeTypes are always the same slice, so
+// the alias can never drift from its primary.
 func GenerateDocument() ([]byte, error) {
 	schemas, err := GenerateAll()
 	if err != nil {
@@ -88,9 +94,11 @@ func GenerateDocument() ([]byte, error) {
 	for family, data := range schemas {
 		schemaMap[family] = json.RawMessage(data)
 	}
+	stepTypes := composition.NodeTypes()
 	doc := Document{
 		Schemas:   schemaMap,
-		NodeTypes: composition.NodeTypes(),
+		StepTypes: stepTypes,
+		NodeTypes: stepTypes,
 		Import:    buildImportContract(),
 	}
 	data, err := json.MarshalIndent(doc, "", "  ")

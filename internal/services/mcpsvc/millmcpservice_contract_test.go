@@ -136,8 +136,11 @@ func TestMCPContract_IsStaticDocumentPlusLiveManifest(t *testing.T) {
 	if served.Manifest.Version != wantVersion {
 		t.Errorf("Manifest.Version = %q, want %q", served.Manifest.Version, wantVersion)
 	}
+	if len(served.StepTypes) == 0 {
+		t.Error("served document has no stepTypes")
+	}
 	if len(served.NodeTypes) == 0 {
-		t.Error("served document has no nodeTypes")
+		t.Error("served document has no legacy nodeTypes alias")
 	}
 	if len(served.Schemas) != len(contract.Families()) {
 		t.Errorf("served document has %d schemas, want %d", len(served.Schemas), len(contract.Families()))

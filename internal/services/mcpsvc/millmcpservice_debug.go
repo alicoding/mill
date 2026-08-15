@@ -60,11 +60,11 @@ func (m *MillMCPService) debugPending(runID string) (nodeID string, err error) {
 func (m *MillMCPService) registerDebugTools() {
 	mcp.AddTool(m.server, &mcp.Tool{
 		Name: "run_workflow_stepped",
-		Description: "Start a workflow run in STEPPED debug mode (docs/adr/0031): it pauses before EVERY node, not just " +
+		Description: "Start a workflow run in STEPPED debug mode (docs/adr/0031): it pauses before EVERY step, not just " +
 			"external-effect ones, so each one's input/output can be inspected via get_run before deciding whether to " +
 			"continue. Drive the resulting paused run with step_run/resume_run/stop_run. Always a test run of the draft " +
 			"head, unconditionally -- unlike run_workflow, there is no test:false option here: a stepped session is " +
-			"inherently an inspection/debug surface (a human or agent watching each node one at a time), never a " +
+			"inherently an inspection/debug surface (a human or agent watching each step one at a time), never a " +
 			"production invocation, so it always stays out of Home's automation metrics by default (goal 0021 Phase 3; " +
 			"use run_workflow with test:false for a real production run). Requires the MCP-writes toggle.",
 	}, func(_ context.Context, _ *mcp.CallToolRequest, in runWorkflowSteppedArgs) (*mcp.CallToolResult, any, error) {
@@ -89,7 +89,7 @@ func (m *MillMCPService) registerDebugTools() {
 
 	mcp.AddTool(m.server, &mcp.Tool{
 		Name: "step_run",
-		Description: "Advance a paused debug run (breakpoint or stepped run) by exactly one node, then park again at the " +
+		Description: "Advance a paused debug run (breakpoint or stepped run) by exactly one step, then park again at the " +
 			"next one -- a stepped run keeps stepping; a plain breakpoint park just resumes once. Only operates on " +
 			"breakpoint/step-mode (debug) parks -- rejects a policy or human-review approval with a clear error. " +
 			"Requires the MCP-writes toggle; no per-write approval prompt (a per-step prompt would defeat stepping).",
@@ -111,7 +111,7 @@ func (m *MillMCPService) registerDebugTools() {
 	mcp.AddTool(m.server, &mcp.Tool{
 		Name: "resume_run",
 		Description: "Resume a paused debug run (breakpoint or stepped run) to completion -- for a stepped run this " +
-			"clears step mode so it runs straight through (any per-node breakpoints still hit independently). Only " +
+			"clears step mode so it runs straight through (any per-step breakpoints still hit independently). Only " +
 			"operates on breakpoint/step-mode (debug) parks. Requires the MCP-writes toggle; no per-write approval prompt.",
 	}, func(_ context.Context, _ *mcp.CallToolRequest, in runIDArgs) (*mcp.CallToolResult, any, error) {
 		if err := m.requireWriteEnabled(); err != nil {
