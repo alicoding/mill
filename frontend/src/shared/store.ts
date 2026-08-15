@@ -70,13 +70,11 @@ export type View =
   | { kind: 'activity' }
   | { kind: 'review' }
   | { kind: 'composition' }
-  // tab (goal 0015's remainder, QuickPanel's Configure-entity jump
-  // rows): which ConfigureView sub-tab to land on ('integration' /
-  // 'lists' / 'mcpservers' / ...), undefined = ConfigureView's own
-  // default. Optional so every existing `{ kind: 'configure' }` call
-  // site (sidebar nav, the ⌘K palette's view.configure command) stays
-  // valid unchanged -- landing on whichever tab was last open there.
+  // tab: which ConfigureView sub-tab to land on; undefined keeps every
+  // existing `{ kind: 'configure' }` call site on its own last tab.
   | { kind: 'configure'; tab?: string }
+  // cardID: a card-search jump opens that card's overlay directly.
+  | { kind: 'atlas'; cardID?: string }
   | { kind: 'settings' }
   | { kind: 'placeholder'; capabilityId: string }
 
@@ -95,6 +93,8 @@ export function viewFor(capability: Capability): View {
       return { kind: 'composition' }
     case ViewKind.ViewConfigure:
       return { kind: 'configure' }
+    case ViewKind.ViewAtlas:
+      return { kind: 'atlas' }
     default:
       return { kind: 'placeholder', capabilityId: capability.ID }
   }

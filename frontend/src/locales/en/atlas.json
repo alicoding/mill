@@ -1,0 +1,49 @@
+{
+  "loading": "Loading…",
+  "cancel": "Cancel",
+  "breadcrumbRoot": "All spaces",
+  "emptySpace": "Nothing here yet. Add a card to get started.",
+  "peekCount": "{{count}} inside",
+  "openCardDetailsAriaLabel": "Open details for {{title}}",
+  "lens": {
+    "openButton": "Lens",
+    "title": "Space lens",
+    "viewModeAriaLabel": "Layout",
+    "shelvesMode": "Shelves",
+    "canvasMode": "Canvas",
+    "depthAriaLabel": "Depth",
+    "depthLevel": "This level only",
+    "depthPeek": "Peek into children",
+    "kindsLabel": "Show kinds"
+  },
+  "create": {
+    "addButton": "Add",
+    "addBeside": "Add beside this card",
+    "addInside": "Add inside this card",
+    "kindLabel": "Kind",
+    "titleLabel": "Title",
+    "createButton": "Create"
+  },
+  "overlay": {
+    "title": "{{title}}",
+    "titleLabel": "Title",
+    "noteLabel": "Note",
+    "noFields": "This kind has no fields to fill in.",
+    "sourceLabel": "Source URL",
+    "mirrorPath": "Mirrors to {{path}}",
+    "lastSynced": "Last synced {{when}}",
+    "neverSynced": "Never synced",
+    "refreshWorkflowLabel": "Refresh workflow",
+    "receiptRunID": "Produced by run {{id}}",
+    "linksHeading": "Links",
+    "noLinks": "No links yet.",
+    "removeLinkAriaLabel": "Remove link to {{title}}",
+    "linkTargetLabel": "Card",
+    "linkKindLabel": "Link kind",
+    "selectCard": "Select a card…",
+    "selectLinkKind": "Select a link kind…",
+    "addLink": "Add link",
+    "save": "Save",
+    "delete": "Delete"
+  }
+}

@@ -1,6 +1,7 @@
 import {
   HomeIcon,
   PlugIcon,
+  ProjectIcon,
   PulseIcon,
   ShieldCheckIcon,
   WorkflowIcon,
@@ -19,5 +20,6 @@ export const CAPABILITY_ICON: Record<string, Icon> = {
   'activity-log': PulseIcon,
   'capability-composition': WorkflowIcon,
   'capability-configure': PlugIcon,
+  'capability-atlas': ProjectIcon,
   'capability-review': ShieldCheckIcon,
 }

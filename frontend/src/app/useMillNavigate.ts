@@ -15,7 +15,10 @@ import type { View } from '../shared/store'
 // remainder -- QuickPanel's Configure-entity jump rows land on the
 // specific tab the entity lives in, e.g. 'configure:integration' for
 // a connector, 'configure:lists' for a List, 'configure:mcpservers'
-// for an MCP Server). Empty string ('Open Mill') means "just show the
+// for an MCP Server), 'atlas:<cardID>' (docs/goals/0061 item 6 --
+// QuickPanel's card-search jump rows land on Atlas with that card's
+// overlay open, AtlasView.tsx's own initialCardID prop resolves it to
+// a viewed space). Empty string ('Open Mill') means "just show the
 // window," no navigation -- OpenMainWindow only emits when non-empty.
 export function useMillNavigate(setView: (view: View) => void): void {
   useEffect(() => {
@@ -24,6 +27,7 @@ export function useMillNavigate(setView: (view: View) => void): void {
       if (target === 'settings') setView({ kind: 'settings' })
       else if (target === 'review') setView({ kind: 'review' })
       else if (target.startsWith('configure:')) setView({ kind: 'configure', tab: target.slice('configure:'.length) })
+      else if (target.startsWith('atlas:')) setView({ kind: 'atlas', cardID: target.slice('atlas:'.length) })
     })
   }, [setView])
 }

@@ -14,6 +14,7 @@ export function pageLabelFor(view: View, capabilities: { ID: string; Label: stri
     case 'home': return t('pageMeta.home')
     case 'composition': return t('pageMeta.workflows')
     case 'configure': return t('pageMeta.configure')
+    case 'atlas': return t('pageMeta.atlas')
     case 'activity': return t('pageMeta.activity')
     case 'review': return t('pageMeta.review')
     case 'settings': return t('pageMeta.settings')
@@ -32,6 +33,7 @@ export function pageIconFor(view: View): ReactNode {
   const key = view.kind === 'home' ? 'capability-home'
     : view.kind === 'composition' ? 'capability-composition'
     : view.kind === 'configure' ? 'capability-configure'
+    : view.kind === 'atlas' ? 'capability-atlas'
     : view.kind === 'activity' ? 'activity-log'
     : view.kind === 'review' ? 'capability-review'
     : null

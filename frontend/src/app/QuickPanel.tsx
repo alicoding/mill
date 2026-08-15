@@ -9,6 +9,7 @@ import type { ClipboardApplyPreview } from '../shared/bindings'
 import { generateSamplePayload } from '../shared/configSchema'
 import { useAppStore, refreshWorkflows, refreshRequests, refreshKeybindings } from '../shared/store'
 import { useConfigureEntityStore, refreshLists, refreshMCPServers } from '../shared/configureEntityStore'
+import { useAtlasStore, refreshAtlasCards, refreshAtlasKinds } from '../atlas/atlasStore'
 import { findRootNode } from '../composition/triggerRowInfo'
 import { filterPaletteEntries } from './paletteFilter'
 import { sortWorkflowsByPinnedAndFrecency } from './workflowFrecency'
@@ -43,6 +44,7 @@ function groupMetadataFor(t: (key: string) => string) {
   return [
     { groupId: 'workflows' as const, header: { title: t('quickPanel.groups.workflows') } },
     { groupId: 'configure' as const, header: { title: t('quickPanel.groups.configure') } },
+    { groupId: 'atlas' as const, header: { title: t('quickPanel.groups.atlas') } },
     { groupId: 'actions' as const, header: { title: t('quickPanel.groups.actions') } },
   ]
 }
@@ -72,6 +74,8 @@ export function QuickPanel() {
   const requests = useAppStore((s) => s.requests)
   const lists = useConfigureEntityStore((s) => s.lists)
   const mcpServers = useConfigureEntityStore((s) => s.mcpServers)
+  const atlasCards = useAtlasStore((s) => s.cards)
+  const atlasKinds = useAtlasStore((s) => s.kinds)
   // Workflow pins/favorites (docs/goals/BACKLOG.md Standing #5): a
   // plain ordered workflow-ID list, store-owned/localStorage-tier --
   // see shared/store.ts's own declaration comment for the schema.
@@ -153,6 +157,8 @@ export function QuickPanel() {
       void refreshRequests()
       void refreshLists()
       void refreshMCPServers()
+      void refreshAtlasCards()
+      void refreshAtlasKinds()
       void refreshFrecency()
       void refreshHotkeyCombos()
       // This window is a separate Wails webview/JS context from the
@@ -204,6 +210,7 @@ export function QuickPanel() {
       if (entity === 'request') void refreshRequests()
       if (entity === 'list') void refreshLists()
       if (entity === 'mcpserver') void refreshMCPServers()
+      if (entity === 'atlas') { void refreshAtlasCards(); void refreshAtlasKinds() }
       if (entity === 'hotkey') refreshHotkeyCombos()
       if (entity === 'keybinding') void refreshKeybindings()
     })
@@ -254,6 +261,13 @@ export function QuickPanel() {
   // answers "where do I find/edit this."
   const jumpToConfigure = (tab: string) => {
     openMain(`configure:${tab}`)
+  }
+
+  // A card row's "run" is a jump, same shape as jumpToConfigure above --
+  // shows the main window on the Atlas surface, already drilled to the
+  // card's parent with its own overlay open (App.tsx's useMillNavigate).
+  const jumpToAtlasCard = (cardID: string) => {
+    openMain(`atlas:${cardID}`)
   }
 
   // Same RPC + RunKind CompositionView's own list-row Run button and
@@ -343,11 +357,11 @@ export function QuickPanel() {
     // which needs per-row pin/hotkey-chip state this shared builder
     // doesn't.
     entries.push(...buildConfigureAndActionEntries({
-      t, requests, lists, mcpServers, reviewPendingCount, jumpToConfigure, openMain, applyFromClipboard,
+      t, requests, lists, mcpServers, atlasCards, atlasKinds, reviewPendingCount, jumpToConfigure, jumpToAtlasCard, openMain, applyFromClipboard,
     }))
     return entries
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- runWorkflow/jumpToConfigure/openMain/applyFromClipboard/togglePinnedWorkflow close over state already listed or are stable
-  }, [workflows, mostUsedRank, hotkeyCombos, pinnedWorkflowIds, requests, lists, mcpServers, reviewPendingCount])
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- runWorkflow/jumpToConfigure/jumpToAtlasCard/openMain/applyFromClipboard/togglePinnedWorkflow close over state already listed or are stable
+  }, [workflows, mostUsedRank, hotkeyCombos, pinnedWorkflowIds, requests, lists, mcpServers, atlasCards, atlasKinds, reviewPendingCount])
 
   const filtered = filterPaletteEntries(allEntries, query)
 
