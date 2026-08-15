@@ -8,6 +8,7 @@ import { SettingsService } from '../shared/bindings'
 import { describeCombo, keyFromEventCode, modsFromEvent, reservedByMacOS } from '../shared/keybinding'
 import { isAccessibilityError, ACCESSIBILITY_SETTINGS_URL } from '../composition/hotkeyCapture'
 import KeyboardShortcutsSection from './KeyboardShortcutsSection'
+import DataStewardshipSection from './DataStewardshipSection'
 import styles from '../shared/ListCard.module.css'
 import PageContainer from '../shared/PageContainer'
 
@@ -345,6 +346,9 @@ function SettingsView() {
       <Text as="p" size="small" className={styles.muted}>
         {t('settings.notifications.alertPermissionNote')}
       </Text>
+
+      <Heading as="h2" variant="small" className={styles.sectionHeading}>{t('settings.sections.dataStewardship')}</Heading>
+      <DataStewardshipSection />
 
       <Heading as="h2" variant="small" className={styles.sectionHeading}>{t('settings.sections.updates')}</Heading>
       <Stack direction="horizontal" gap="condensed" align="center">

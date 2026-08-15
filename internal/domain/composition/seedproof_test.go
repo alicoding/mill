@@ -141,6 +141,12 @@ var workflowProofRegistry = map[string]seedProof{
 		"executionsvc.TestStepFailureBreakdown_CountsFailedStepsByNodeType",
 		"e2e: activity.spec.ts > step failures show up in Activity's breakdown by step type",
 	),
+	"backup-mill-data-workflow": proven(
+		"composition.TestApplyBackupSnapshot_CallsRegisteredRunnerWithDefaultKeepN",
+		"composition.TestApplyBackupSnapshot_CustomKeepNIsPassedThrough",
+		"backupsvc.TestBackupService_SnapshotSafeWhileASeededWorkflowRunConcurrentlyExecutes",
+		"e2e: settings.spec.ts > Back up now takes a snapshot and updates the last-backup time",
+	),
 }
 
 // httpRequestProofRegistry: every httprequest.BuiltIn() ID.

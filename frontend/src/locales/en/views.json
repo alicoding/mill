@@ -11,7 +11,8 @@
       "mcpAccess": "MCP access",
       "contract": "Contract",
       "notifications": "Notifications",
-      "updates": "Updates"
+      "updates": "Updates",
+      "dataStewardship": "Backups"
     },
     "appearance": {
       "themeLabel": "Color theme",
@@ -57,6 +58,23 @@
       "checking": "Checking…",
       "updateAvailable": "Update available: v{{version}}",
       "upToDate": "You're on the latest version."
+    },
+    "dataStewardship": {
+      "description": "Mill snapshots your workflow history and settings automatically, and can bundle everything into one file to move to another machine.",
+      "unavailable": "Backups aren't available -- this instance uses a custom execution database.",
+      "locationLabel": "Backup location",
+      "revealFolder": "Show in Finder",
+      "lastBackup": "Last backup: {{time}}",
+      "noBackupYet": "No backup yet.",
+      "backupNow": "Back up now",
+      "backingUp": "Backing up…",
+      "exportEverything": "Export everything",
+      "importEverything": "Import everything",
+      "syncedFolderWarning": "Keep backups in a synced folder. Keep the live data folder out of one.",
+      "importConfirmTitle": "Import this backup?",
+      "importConfirmButton": "Import",
+      "importConfirmEmpty": "This file has nothing new to import.",
+      "familyCount": "{{name}}: {{created}} new, {{updated}} updated"
     }
   },
   "keyboardShortcutsSection": {

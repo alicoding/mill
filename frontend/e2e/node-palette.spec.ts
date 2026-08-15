@@ -120,11 +120,11 @@ test('palette search matches both the shortened display name and the full underl
   await expect(panel.getByTestId('palette-item')).toHaveCount(0)
   await expect(panel.getByTestId('palette-no-matches')).toBeVisible()
 
-  // Clearing the query restores the full 32-item palette (31
+  // Clearing the query restores the full 33-item palette (32
   // RegisterNodeType call sites + the seeded "Check httpbin" declared
   // step type, goal 0054 slice A).
   await search.fill('')
-  await expect(panel.getByTestId('palette-item')).toHaveCount(32)
+  await expect(panel.getByTestId('palette-item')).toHaveCount(33)
 })
 
 // Progressive-disclosure "Show advanced steps" toggle (goal 0047): the
@@ -135,7 +135,7 @@ test('the palette shows every step by default, "Show advanced steps" checked', a
   await openPaletteOnNewWorkflow(page)
   const panel = activePanel(page)
   await expect(panel.getByTestId('palette-show-advanced')).toBeChecked()
-  await expect(panel.getByTestId('palette-item')).toHaveCount(32)
+  await expect(panel.getByTestId('palette-item')).toHaveCount(33)
 })
 
 test('unchecking "Show advanced steps" hides advanced steps, keeps basic ones, and persists across a reload', async ({ page }) => {

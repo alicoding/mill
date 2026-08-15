@@ -1,4 +1,5 @@
 import { test, expect } from './fixtures/server'
+import { existsSync, readdirSync } from 'node:fs'
 
 // Exercises docs/SPEC.md §3.7's two new global settings (launch at
 // login, global summon hotkey) over real Go bindings (Wails3 server
@@ -102,4 +103,71 @@ test('MCP write gate toggles from Settings and persists across a reload', async 
 
   await afterReload.click()
   await expect(afterReload).not.toBeChecked()
+})
+
+// docs/goals/0065: data-stewardship's own e2e proof -- Back up now (a
+// real VACUUM INTO snapshot lands under this worker's own isolated
+// backupDir, MILL_BACKUP_DIR-pointed per fixtures/server.ts), export-
+// everything produces a genuine archive, and importing it back shows
+// the preview/confirm bar before anything is applied.
+test('Back up now takes a snapshot and updates the last-backup time', async ({ page, workerServer }) => {
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Settings' }).click()
+
+  const button = page.getByTestId('backup-now')
+  await expect(button).toBeVisible()
+  await button.click()
+  await expect(button).toBeEnabled({ timeout: 15_000 })
+  await expect(page.getByText(/Last backup:/)).toBeVisible()
+
+  const entries = existsSync(workerServer.backupDir) ? readdirSync(workerServer.backupDir) : []
+  expect(entries.length).toBeGreaterThan(0)
+})
+
+test('Export everything downloads a genuine zip archive', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Settings' }).click()
+
+  const downloadPromise = page.waitForEvent('download')
+  await page.getByTestId('export-everything').click()
+  const download = await downloadPromise
+
+  const stream = await download.createReadStream()
+  const chunks: Buffer[] = []
+  for await (const chunk of stream) chunks.push(chunk as Buffer)
+  const data = Buffer.concat(chunks)
+
+  expect(data.length).toBeGreaterThan(0)
+  // A zip file's own local-file-header signature (PK\x03\x04) --
+  // confirms this is a real archive, not an error page or empty file.
+  expect(data.subarray(0, 2).toString('latin1')).toBe('PK')
+})
+
+test('Importing an export-everything archive shows a preview before applying', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Settings' }).click()
+
+  const downloadPromise = page.waitForEvent('download')
+  await page.getByTestId('export-everything').click()
+  const download = await downloadPromise
+  const stream = await download.createReadStream()
+  const chunks: Buffer[] = []
+  for await (const chunk of stream) chunks.push(chunk as Buffer)
+  const archiveBuffer = Buffer.concat(chunks)
+
+  await page.getByTestId('import-everything').click()
+  await page.getByTestId('import-everything-input').setInputFiles({
+    name: 'mill-backup.zip',
+    mimeType: 'application/zip',
+    buffer: archiveBuffer,
+  })
+
+  await expect(page.getByText('Import this backup?')).toBeVisible()
+  // Re-importing this instance's own just-taken export finds every
+  // bundled entity already present locally -- an all-Updated preview,
+  // never a Created one.
+  await expect(page.getByText(/updated/)).toBeVisible()
+
+  await page.getByRole('button', { name: 'Cancel' }).click()
+  await expect(page.getByText('Import this backup?')).not.toBeVisible()
 })

@@ -34,13 +34,14 @@ test('A composed workflow survives its own server process restarting against the
   const dir = mkdtempSync(path.join(tmpdir(), `mill-e2e-persist-${idx}-`))
   const settingsPath = path.join(dir, 'settings.json')
   const executionDbPath = path.join(dir, 'execution.db')
+  const backupDir = path.join(dir, 'backups')
   const port = PERSISTENCE_SERVER_BASE_PORT + idx
   const mcpPort = PERSISTENCE_MCP_BASE_PORT + idx
 
   let server: SpawnedServer | undefined
   const browser = await chromium.launch()
   try {
-    server = await spawnMillServer({ port, mcpPort, settingsPath, executionDbPath })
+    server = await spawnMillServer({ port, mcpPort, settingsPath, executionDbPath, backupDir })
     const label = 'E2E persistence-across-restart workflow'
 
     const page1 = await browser.newPage()
@@ -60,7 +61,7 @@ test('A composed workflow survives its own server process restarting against the
     // the workflow is only visible because the first process kept it in
     // memory, this second process would come up without it.
     await server.stop()
-    server = await spawnMillServer({ port, mcpPort, settingsPath, executionDbPath })
+    server = await spawnMillServer({ port, mcpPort, settingsPath, executionDbPath, backupDir })
 
     const page2 = await browser.newPage()
     await page2.goto(`${server.baseURL}/`)

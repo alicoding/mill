@@ -2156,6 +2156,33 @@
       "Complexity": "advanced"
     },
     {
+      "ID": "apply-backup-snapshot",
+      "Kind": "apply",
+      "Label": "Apply: back up Mill data",
+      "Description": "Takes a safe snapshot of your workflow history and settings, deleting older snapshots beyond how many you keep.",
+      "ConfigFields": [
+        {
+          "Key": "keepN",
+          "Label": "Snapshots to keep",
+          "Type": "number",
+          "Required": false,
+          "Default": "10",
+          "Description": "How many recent backups to keep -- older ones are deleted automatically.",
+          "Options": null,
+          "Suggestions": null,
+          "Secret": false,
+          "RefKind": "",
+          "Multiline": false,
+          "SystemManaged": false
+        }
+      ],
+      "Output": "the payload it received, unchanged",
+      "Effect": "local",
+      "Declared": false,
+      "PaletteGroup": "",
+      "Complexity": "basic"
+    },
+    {
       "ID": "apply-clipboard-write-html",
       "Kind": "apply",
       "Label": "Apply: write HTML to clipboard",
@@ -3300,6 +3327,33 @@
       "Declared": false,
       "PaletteGroup": "",
       "Complexity": "advanced"
+    },
+    {
+      "ID": "apply-backup-snapshot",
+      "Kind": "apply",
+      "Label": "Apply: back up Mill data",
+      "Description": "Takes a safe snapshot of your workflow history and settings, deleting older snapshots beyond how many you keep.",
+      "ConfigFields": [
+        {
+          "Key": "keepN",
+          "Label": "Snapshots to keep",
+          "Type": "number",
+          "Required": false,
+          "Default": "10",
+          "Description": "How many recent backups to keep -- older ones are deleted automatically.",
+          "Options": null,
+          "Suggestions": null,
+          "Secret": false,
+          "RefKind": "",
+          "Multiline": false,
+          "SystemManaged": false
+        }
+      ],
+      "Output": "the payload it received, unchanged",
+      "Effect": "local",
+      "Declared": false,
+      "PaletteGroup": "",
+      "Complexity": "basic"
     },
     {
       "ID": "apply-clipboard-write-html",
