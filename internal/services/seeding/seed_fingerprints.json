@@ -3,6 +3,54 @@
     "seedRevision": 1,
     "fingerprint": "75218e8e0727e6cbf04afd8ff25f8a461ccfea9c77fdccfb06ac824333fe4100"
   },
+  "atlascard:atlas-card-example-area": {
+    "seedRevision": 1,
+    "fingerprint": "f806976f64841d7f6a03c89fd6748d5d804f3bfe42c051c201b02fb60cce9bd0"
+  },
+  "atlascard:atlas-card-example-contact": {
+    "seedRevision": 1,
+    "fingerprint": "f8f6d83daad99a38a1e43ea1582c00249ee1c66275f3b20d36973bdae12b9529"
+  },
+  "atlascard:atlas-card-example-document": {
+    "seedRevision": 1,
+    "fingerprint": "a9ca56f6bf3ae0a25ea091c0a1960f2d01f704b74f1a89c72af0143a949a4576"
+  },
+  "atlascard:atlas-card-getting-started": {
+    "seedRevision": 1,
+    "fingerprint": "1891cecec6f637d53f4bca4033cba7f63384414ffce232ca6be0c78d8244184d"
+  },
+  "atlascard:atlas-card-my-space": {
+    "seedRevision": 1,
+    "fingerprint": "27a937a5eae5647887de6e25508d438140d94346647b072d46b47414d4c3b930"
+  },
+  "atlaskind:atlas-kind-contact": {
+    "seedRevision": 1,
+    "fingerprint": "403e451a7054b0b6d6f13071de03f6a9509b520e0e5f4ceb93a84379d2b0247a"
+  },
+  "atlaskind:atlas-kind-document": {
+    "seedRevision": 1,
+    "fingerprint": "da2607108344191281b03835e63a2ff7c277c6199a2cd4a3eda8298b8c2d16fb"
+  },
+  "atlaskind:atlas-kind-space": {
+    "seedRevision": 1,
+    "fingerprint": "05e9e4a1631c0da84d987f99db7c14fe18c04852b138e15d8a7cf3f7039dc735"
+  },
+  "atlaskind:atlas-kind-topic": {
+    "seedRevision": 1,
+    "fingerprint": "ffd6c5cdf618abcf8266908395d3f92d7d436e1a3de8d23946be4f99b09f8ae5"
+  },
+  "atlaslink:atlas-link-contact-to-document": {
+    "seedRevision": 1,
+    "fingerprint": "93fbc8aef570739859e999310dc4f6862d0141fc3899d8bafaa14ff219970dae"
+  },
+  "atlaslink:atlas-link-getting-to-contact": {
+    "seedRevision": 1,
+    "fingerprint": "1bb44b5b7395f6d37dab829e4a7657dc61b012b7c7169efc52c922193eb2889a"
+  },
+  "atlaslinkkind:atlas-linkkind-relates-to": {
+    "seedRevision": 1,
+    "fingerprint": "5efd2d4f46ceb01ae229e997102fe11191367b9ee46ac03939ffe278d4dec379"
+  },
   "decision:example-approve-decision": {
     "seedRevision": 1,
     "fingerprint": "b57c1ca6af05c2ecb257f657894a908759bd3de84bed6294b7ea35c958377924"

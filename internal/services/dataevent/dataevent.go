@@ -19,10 +19,14 @@ import "github.com/wailsapp/wails/v3/pkg/application"
 // Changed is the live-sync event payload: which kind of entity changed
 // (e.g. "workflow", "request", "list", "mcpserver", "decision",
 // "execenv", "aiprovider", "steptype", "guardrail-rule", "run",
-// "hotkey", "keybinding") and its ID -- "hotkey" carries the workflow
-// ID its combo binds to, "keybinding" carries the command ID its combo
-// overrides. "steptype" is a declared step type (docs/adr/0037, goal
-// 0054 slice A).
+// "hotkey", "keybinding", "atlas") and its ID -- "hotkey" carries the
+// workflow ID its combo binds to, "keybinding" carries the command ID
+// its combo overrides. "steptype" is a declared step type (docs/adr/
+// 0037, goal 0054 slice A). "atlas" covers every Atlas entity family
+// (Kind/LinkKind/Card/Link/lens, docs/adr/0038, docs/goals/0061) --
+// one shared entity string rather than one per family, since they all
+// persist as a single blob (atlassvc's own atlasStateKey) and a
+// change to any of them means the whole surface should refresh.
 type Changed struct {
 	Entity string `json:"entity"`
 	ID     string `json:"id"`

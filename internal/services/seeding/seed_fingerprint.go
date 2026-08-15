@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/alicoding/mill/internal/domain/aiprovider"
+	"github.com/alicoding/mill/internal/domain/atlas"
 	"github.com/alicoding/mill/internal/domain/composition"
 	"github.com/alicoding/mill/internal/domain/decision"
 	"github.com/alicoding/mill/internal/domain/execenv"
@@ -104,6 +105,30 @@ func AllSeedFingerprints() map[string]SeedFingerprint {
 		rev := p.Seed.SeedRevision
 		p.ID, p.CreatedAt, p.UpdatedAt, p.Seed = "", time.Time{}, time.Time{}, seedorigin.Origin{}
 		out[keyFor("aiprovider", id)] = SeedFingerprint{SeedRevision: rev, Fingerprint: fingerprintContent(p)}
+	}
+	for _, k := range atlas.BuiltInKinds() {
+		id := k.ID
+		rev := k.Seed.SeedRevision
+		k.ID, k.CreatedAt, k.UpdatedAt, k.Seed = "", time.Time{}, time.Time{}, seedorigin.Origin{}
+		out[keyFor("atlaskind", id)] = SeedFingerprint{SeedRevision: rev, Fingerprint: fingerprintContent(k)}
+	}
+	for _, lk := range atlas.BuiltInLinkKinds() {
+		id := lk.ID
+		rev := lk.Seed.SeedRevision
+		lk.ID, lk.CreatedAt, lk.UpdatedAt, lk.Seed = "", time.Time{}, time.Time{}, seedorigin.Origin{}
+		out[keyFor("atlaslinkkind", id)] = SeedFingerprint{SeedRevision: rev, Fingerprint: fingerprintContent(lk)}
+	}
+	for _, c := range atlas.BuiltInCards() {
+		id := c.ID
+		rev := c.Seed.SeedRevision
+		c.ID, c.CreatedAt, c.UpdatedAt, c.Seed = "", time.Time{}, time.Time{}, seedorigin.Origin{}
+		out[keyFor("atlascard", id)] = SeedFingerprint{SeedRevision: rev, Fingerprint: fingerprintContent(c)}
+	}
+	for _, l := range atlas.BuiltInLinks() {
+		id := l.ID
+		rev := l.Seed.SeedRevision
+		l.ID, l.CreatedAt, l.UpdatedAt, l.Seed = "", time.Time{}, time.Time{}, seedorigin.Origin{}
+		out[keyFor("atlaslink", id)] = SeedFingerprint{SeedRevision: rev, Fingerprint: fingerprintContent(l)}
 	}
 	return out
 }
