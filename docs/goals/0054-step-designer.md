@@ -24,6 +24,26 @@ code covers new computation or new OS/system access.**
 - Code remains the floor for: new computation, new protocol/OS
   capability, anything the existing engines cannot express.
 
+## Research verified 2026-08-14 (current primary sources; full report in the session record)
+
+The converged split held under verification, with sharper edges:
+n8n's own docs draw the declarative/programmatic line at trigger
+nodes, non-REST protocols, data transforms, and full versioning;
+Power Automate custom connectors are literally built by importing an
+OpenAPI 2.0 document, with code capped at one 5s/1MB C# file; Make
+declares apps as JSON with IML functions as the embedded escape
+hatch; Zapier's Platform UI declares endpoint-by-endpoint with NO
+OpenAPI intake (confirmed absent); Windmill/Retool are the all-code
+contrast case. Subflow-as-step with a typed I/O contract is
+first-class in n8n and (Solution-gated) Power Automate. The one line
+every platform drew differently — whether response reshaping is
+declaration or code — is resolved for Mill in ADR-0037: transforms
+are steps, never step-type declarations. Design decided:
+[ADR-0037](../adr/0037-declared-step-types.md) (the boundary rule,
+the data-backed registry entries delegating to existing engines with
+inherited effect classes, identity/versioning/contract semantics
+deferring to 0046 where they overlap).
+
 ## Mill's head start (verified in-repo, the designer largely
 assembles pieces that exist)
 
