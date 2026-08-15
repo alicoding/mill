@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Events } from '@wailsio/runtime'
-import { Button, Dialog, FormControl, Link as PrimerLink, Stack, Text, TextInput, Textarea } from '@primer/react'
-import { SyncIcon } from '@primer/octicons-react'
+import { Button, Checkbox, Dialog, FormControl, Link as PrimerLink, Stack, Text, TextInput, Textarea } from '@primer/react'
+import { CheckIcon, CopyIcon, FileDirectoryIcon, LinkIcon, SyncIcon } from '@primer/octicons-react'
 import type { Card, Kind, Link, LinkKind } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 import { AtlasService, ExecutionService } from '../shared/bindings'
 import { useAppStore } from '../shared/store'
@@ -13,6 +13,7 @@ import { StatusStamp } from '../shared/StatusStamp'
 import { AtlasKindChip } from './AtlasKindChip'
 import { AtlasFieldsForm } from './AtlasFieldsForm'
 import { AtlasCardOverlayLinks } from './AtlasCardOverlayLinks'
+import { atlasCardShareActions } from './atlasCardShare'
 import { useConfirmDelete } from '../shared/useConfirmDelete'
 import runbookStyles from '../shared/ListCard.module.css'
 
@@ -46,6 +47,17 @@ export function AtlasCardOverlay({ card, kind, allCards, links, linkKinds, onClo
   // refreshed on every "run" dataevent so a parked-then-resolved run's
   // status updates here without reopening the overlay.
   const [receiptStatus, setReceiptStatus] = useState<string | null>(null)
+  // The Share section's own with/without-attachments toggle (goal
+  // 0063): a persistent checkbox here, unlike the card chip's dual
+  // menu items, since this surface can actually hold the state.
+  const [includeAttachments, setIncludeAttachments] = useState(false)
+  const [copied, setCopied] = useState(false)
+  const shareActions = atlasCardShareActions(card, (message) => setError(message))
+  const copyContext = async () => {
+    await shareActions.copyAsContext(includeAttachments)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 1500)
+  }
 
   useEffect(() => {
     if (!card.ReceiptRunID) {
@@ -201,6 +213,51 @@ export function AtlasCardOverlay({ card, kind, allCards, links, linkKinds, onClo
         )}
 
         <AtlasCardOverlayLinks card={card} allCards={allCards} links={links} linkKinds={linkKinds} onAdd={addLink} onRemove={removeLink} />
+
+        <Stack direction="vertical" gap="condensed" data-testid="atlas-card-share-section">
+          <Text weight="semibold">{t('overlay.shareHeading')}</Text>
+          <FormControl>
+            <Checkbox
+              checked={includeAttachments}
+              data-testid="atlas-share-include-attachments"
+              onChange={(e) => setIncludeAttachments(e.target.checked)}
+            />
+            <FormControl.Label>{t('overlay.includeAttachments')}</FormControl.Label>
+          </FormControl>
+          <Stack direction="horizontal" gap="condensed">
+            <Button
+              leadingVisual={copied ? CheckIcon : CopyIcon}
+              size="small"
+              variant="invisible"
+              data-testid="atlas-overlay-copy-context"
+              onClick={() => void copyContext()}
+            >
+              {copied ? t('overlay.copied') : t('overlay.copyAsContext')}
+            </Button>
+            {card.Source && (
+              <Button
+                leadingVisual={LinkIcon}
+                size="small"
+                variant="invisible"
+                data-testid="atlas-overlay-copy-link"
+                onClick={() => void shareActions.copyCloudLink()}
+              >
+                {t('overlay.copyCloudLink')}
+              </Button>
+            )}
+            {card.MirrorPath && (
+              <Button
+                leadingVisual={FileDirectoryIcon}
+                size="small"
+                variant="invisible"
+                data-testid="atlas-overlay-reveal-file"
+                onClick={() => void shareActions.revealFile()}
+              >
+                {t('overlay.revealFile')}
+              </Button>
+            )}
+          </Stack>
+        </Stack>
 
         {error && <Text as="p" size="small" className={runbookStyles.error}>{error}</Text>}
         <Stack direction="horizontal" gap="condensed">

@@ -37,6 +37,10 @@ type exportedKind struct {
 	Description string             `json:"description,omitempty"`
 	Icon        string             `json:"icon,omitempty"`
 	Fields      []typedfield.Field `json:"fields,omitempty"`
+	// FieldTombstones round-trips this Kind's own deleted-Fields
+	// history (docs/adr/0040 decision 3) -- exportedDecision/
+	// exportedList's own identical field carries the same reasoning.
+	FieldTombstones []typedfield.FieldTombstone `json:"fieldTombstones,omitempty"`
 }
 
 type exportedLinkKind struct {
@@ -97,7 +101,10 @@ func (a *AtlasService) ExportAtlas() (string, error) {
 		Links:     make([]exportedLink, len(a.links)),
 	}
 	for i, k := range a.kinds {
-		out.Kinds[i] = exportedKind{ID: k.ID, Label: k.Label, Description: k.Description, Icon: k.Icon, Fields: k.Fields}
+		out.Kinds[i] = exportedKind{
+			ID: k.ID, Label: k.Label, Description: k.Description, Icon: k.Icon,
+			Fields: k.Fields, FieldTombstones: k.FieldTombstones,
+		}
 	}
 	for i, lk := range a.linkKinds {
 		out.LinkKinds[i] = exportedLinkKind{ID: lk.ID, Label: lk.Label, Description: lk.Description}
@@ -253,10 +260,10 @@ func (a *AtlasService) importKind(k exportedKind) (created bool, err error) {
 	exists := a.findKindLocked(k.ID) != -1
 	a.mu.RUnlock()
 	if exists {
-		_, err = a.UpdateKind(k.ID, k.Label, k.Description, k.Icon, k.Fields)
+		_, err = a.UpdateKind(k.ID, k.Label, k.Description, k.Icon, k.Fields, k.FieldTombstones)
 		return false, err
 	}
-	_, err = a.createKindWithID(k.ID, k.Label, k.Description, k.Icon, k.Fields)
+	_, err = a.createKindWithID(k.ID, k.Label, k.Description, k.Icon, k.Fields, k.FieldTombstones)
 	return true, err
 }
 

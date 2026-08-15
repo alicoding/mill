@@ -102,6 +102,16 @@ export interface Kind {
     "Fields": typedfield$0.Field[] | null;
 
     /**
+     * FieldTombstones records every Fields Key this Kind has ever
+     * deleted (docs/adr/0040 decision 3), the same evolution ledger
+     * decision.Decision.FieldTombstones/list.List.FieldTombstones
+     * already carry for their own schema-carrying field sets --
+     * typedfield.ValidateFieldEvolution's own doc comment has the full
+     * rule this enforces at the atlassvc.UpdateKind chokepoint.
+     */
+    "FieldTombstones": typedfield$0.FieldTombstone[] | null;
+
+    /**
      * CreatedAt/UpdatedAt are system-managed audit timestamps (the
      * reserved-column pattern list.List/decision.Decision already
      * follow), stamped server-side at every persisted mutation, never

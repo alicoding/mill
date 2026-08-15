@@ -67,6 +67,22 @@
         "SystemManaged"
       ]
     },
+    "FieldTombstone": {
+      "properties": {
+        "Key": {
+          "type": "string"
+        },
+        "Type": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "Key",
+        "Type"
+      ]
+    },
     "exportedCard": {
       "properties": {
         "id": {
@@ -124,6 +140,12 @@
         "fields": {
           "items": {
             "$ref": "#/$defs/Field"
+          },
+          "type": "array"
+        },
+        "fieldTombstones": {
+          "items": {
+            "$ref": "#/$defs/FieldTombstone"
           },
           "type": "array"
         }

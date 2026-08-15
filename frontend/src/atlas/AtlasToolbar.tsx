@@ -6,6 +6,7 @@ import type { Card, Kind, ViewMode } from '../../bindings/github.com/alicoding/m
 import { AtlasBreadcrumb } from './AtlasBreadcrumb'
 import { AtlasLensControl } from './AtlasLensControl'
 import { AtlasCreateMenu } from './AtlasCreateMenu'
+import { AtlasSpaceShareMenu } from './AtlasSpaceShareMenu'
 import styles from './AtlasView.module.css'
 
 // The toolbar row every viewed space shows: breadcrumb trail (left),
@@ -22,7 +23,7 @@ export function AtlasToolbar({
   cards, viewedID, onNavigate,
   kinds, presentKinds, hiddenKindIDs, onChangeHidden,
   peek, onChangePeek, viewMode, onChangeViewMode, showViewModeToggle,
-  canAddSibling, onCreate, onExport, onImportFile,
+  canAddSibling, onCreate, onExport, onImportFile, onShareError,
 }: {
   cards: Card[]
   viewedID: string
@@ -40,6 +41,7 @@ export function AtlasToolbar({
   onCreate: (containment: 'sibling' | 'child', kindID: string, title: string) => Promise<void>
   onExport: () => void
   onImportFile: (file: File) => void
+  onShareError: (message: string) => void
 }) {
   const { t } = useTranslation('atlas')
   const importInputRef = useRef<HTMLInputElement>(null)
@@ -68,6 +70,7 @@ export function AtlasToolbar({
         <Button leadingVisual={DownloadIcon} size="small" variant="invisible" data-testid="atlas-export" onClick={onExport}>
           {t('toolbar.export')}
         </Button>
+        <AtlasSpaceShareMenu spaceID={viewedID} onError={onShareError} />
         <AtlasLensControl
           presentKinds={presentKinds}
           hiddenKindIDs={hiddenKindIDs}
