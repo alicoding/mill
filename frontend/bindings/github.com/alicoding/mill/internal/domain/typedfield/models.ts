@@ -67,6 +67,30 @@ export interface Field {
      * Not consumed by Phase 1/2's converging types yet.
      */
     "SystemManaged": boolean;
+
+    /**
+     * Deprecated marks a field as soft-retired (docs/adr/0040 decision
+     * 2): still valid on every value already bound to it, rendered
+     * de-emphasized in an entity's own edit form, and excluded from a
+     * picker offering fields for a NEW binding. JSON-tagged with
+     * omitempty -- unlike every field above -- so an entity with no
+     * deprecated fields marshals byte-identical to before this field
+     * existed (every other Field member has no tag at all and is
+     * always emitted, even at its zero value; this one field must stay
+     * invisible at its zero value instead).
+     */
+    "deprecated"?: boolean;
+}
+
+/**
+ * FieldTombstone records one schema field a Configure entity has
+ * deleted (docs/adr/0040 decision 3): the Key stays reserved after
+ * deletion, so ValidateFieldEvolution can reject the same Key
+ * resurrecting under a different Type.
+ */
+export interface FieldTombstone {
+    "Key": string;
+    "Type": Type;
 }
 
 /**

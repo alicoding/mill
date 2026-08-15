@@ -80,6 +80,9 @@
             },
             "SystemManaged": {
               "type": "boolean"
+            },
+            "deprecated": {
+              "type": "boolean"
             }
           },
           "additionalProperties": false,
@@ -309,6 +312,9 @@
             },
             "SystemManaged": {
               "type": "boolean"
+            },
+            "deprecated": {
+              "type": "boolean"
             }
           },
           "additionalProperties": false,
@@ -326,6 +332,22 @@
             "RefKind",
             "Multiline",
             "SystemManaged"
+          ]
+        },
+        "FieldTombstone": {
+          "properties": {
+            "Key": {
+              "type": "string"
+            },
+            "Type": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false,
+          "type": "object",
+          "required": [
+            "Key",
+            "Type"
           ]
         }
       },
@@ -345,6 +367,12 @@
         "outputs": {
           "items": {
             "$ref": "#/$defs/Field"
+          },
+          "type": "array"
+        },
+        "fieldTombstones": {
+          "items": {
+            "$ref": "#/$defs/FieldTombstone"
           },
           "type": "array"
         }
@@ -445,6 +473,9 @@
             },
             "SystemManaged": {
               "type": "boolean"
+            },
+            "deprecated": {
+              "type": "boolean"
             }
           },
           "additionalProperties": false,
@@ -462,6 +493,22 @@
             "RefKind",
             "Multiline",
             "SystemManaged"
+          ]
+        },
+        "FieldTombstone": {
+          "properties": {
+            "Key": {
+              "type": "string"
+            },
+            "Type": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false,
+          "type": "object",
+          "required": [
+            "Key",
+            "Type"
           ]
         },
         "Row": {
@@ -528,6 +575,12 @@
             "type": "string"
           },
           "type": "object"
+        },
+        "fieldTombstones": {
+          "items": {
+            "$ref": "#/$defs/FieldTombstone"
+          },
+          "type": "array"
         }
       },
       "additionalProperties": false,
@@ -958,6 +1011,9 @@
               "type": "boolean"
             },
             "SystemManaged": {
+              "type": "boolean"
+            },
+            "deprecated": {
               "type": "boolean"
             }
           },

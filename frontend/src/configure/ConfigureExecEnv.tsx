@@ -172,7 +172,7 @@ export function ConfigureExecEnv() {
     ConfigureService.DeleteExecEnv(id).then(() => {
       refetch()
       refreshSeedLifecycle()
-    }).catch(console.error)
+    }).catch((err) => setImportError(String(err)))
   }
 
   // Reset-to-shipped-example / restore-deleted-example (docs/goals/0037

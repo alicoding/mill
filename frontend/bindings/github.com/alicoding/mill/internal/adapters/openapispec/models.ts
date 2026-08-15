@@ -83,6 +83,19 @@ export interface Field {
     "SystemManaged": boolean;
 
     /**
+     * Deprecated marks a field as soft-retired (docs/adr/0040 decision
+     * 2): still valid on every value already bound to it, rendered
+     * de-emphasized in an entity's own edit form, and excluded from a
+     * picker offering fields for a NEW binding. JSON-tagged with
+     * omitempty -- unlike every field above -- so an entity with no
+     * deprecated fields marshals byte-identical to before this field
+     * existed (every other Field member has no tag at all and is
+     * always emitted, even at its zero value; this one field must stay
+     * invisible at its zero value instead).
+     */
+    "deprecated"?: boolean;
+
+    /**
      * In is this field's HTTP placement: "path" | "query" | "header" |
      * "cookie" | "body".
      */

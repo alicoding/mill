@@ -220,6 +220,10 @@ func (c *ConfigureService) UpdateHTTPRequest(id, label, baseURL, method, body st
 // surfaced), so a deleted request never leaves an orphaned secret
 // behind in the OS keychain.
 func (c *ConfigureService) DeleteHTTPRequest(id string) error {
+	if err := c.refIntegrityError("request", "request", id); err != nil {
+		return err
+	}
+
 	c.mu.Lock()
 	idx := -1
 	for i, r := range c.requests {

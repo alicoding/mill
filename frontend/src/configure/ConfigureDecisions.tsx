@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Button, FormControl, Heading, IconButton, Label, Select, Stack, Text, TextInput, VisuallyHidden } from '@primer/react'
+import { Button, Checkbox, FormControl, Heading, IconButton, Label, Select, Stack, Text, TextInput, VisuallyHidden } from '@primer/react'
 import { CopyIcon, DownloadIcon, PencilIcon, PlusIcon, TrashIcon, UploadIcon } from '@primer/octicons-react'
 import { DataTable } from '@primer/react/experimental'
 import { ResizableTableContainer, TruncatedCell } from '../shared/ResizableTable'
@@ -8,6 +8,7 @@ import { ConfigureService } from '../shared/bindings'
 import type { Decision, OutputField } from '../../bindings/github.com/alicoding/mill/internal/domain/decision/models'
 import { Category } from '../../bindings/github.com/alicoding/mill/internal/domain/decision/models'
 import { Type as ConfigFieldType } from '../../bindings/github.com/alicoding/mill/internal/domain/typedfield/models'
+import type { FieldTombstone } from '../../bindings/github.com/alicoding/mill/internal/domain/typedfield/models'
 import { EntityRefField, decisionCategoryLabelFor } from './EntityRefField'
 import { downloadJSON } from '../shared/downloadJSON'
 import { refreshDecisions, useConfigureEntityStore } from '../shared/configureEntityStore'
@@ -20,6 +21,7 @@ import { useConfirmDelete } from '../shared/useConfirmDelete'
 import { useImportConfirm } from '../shared/useImportConfirm'
 import { describeSeedReset } from '../shared/seedLifecycle'
 import { RestoreExamplesButton } from '../shared/RestoreExamplesButton'
+import { ConfirmDialog } from '../shared/ConfirmDialog'
 import styles from '../shared/ListCard.module.css'
 import PageContainer from '../shared/PageContainer'
 
@@ -59,6 +61,14 @@ export function ConfigureDecisions() {
   const [label, setLabel] = useState('')
   const [category, setCategory] = useState<Category>(Category.CategoryUncategorized)
   const [outputs, setOutputs] = useState<OutputField[]>([])
+  // fieldTombstones/originalOutputKeys back docs/adr/0040 decision 3's
+  // field-delete: removing an already-saved output tombstones its
+  // Key+Type (confirmed first, see requestRemoveOutput below) rather
+  // than just vanishing from the array; a never-saved draft row (not
+  // in originalOutputKeys) still removes silently.
+  const [fieldTombstones, setFieldTombstones] = useState<FieldTombstone[]>([])
+  const [originalOutputKeys, setOriginalOutputKeys] = useState<Set<string>>(new Set())
+  const [pendingDeleteOutputIndex, setPendingDeleteOutputIndex] = useState<number | null>(null)
   const [webhookRequestID, setWebhookRequestID] = useState('')
   const [formOpen, setFormOpen] = useState(false)
   const [error, setError] = useState('')
@@ -110,6 +120,11 @@ export function ConfigureDecisions() {
     setLabel(prefill ? `${prefill.Label} (copy)` : '')
     setCategory(prefill?.Category ?? Category.CategoryUncategorized)
     setOutputs(prefill?.Outputs ?? [])
+    // A duplicate starts as an unsaved draft -- its fields aren't
+    // "already saved" from this form's own perspective even though the
+    // source Decision has them, so removing one here needs no confirm.
+    setFieldTombstones([])
+    setOriginalOutputKeys(new Set())
     setWebhookRequestID(prefill?.WebhookRequestID ?? '')
     setFormOpen(true)
     setError('')
@@ -120,6 +135,8 @@ export function ConfigureDecisions() {
     setLabel(d.Label)
     setCategory(d.Category)
     setOutputs(d.Outputs ?? [])
+    setFieldTombstones(d.FieldTombstones ?? [])
+    setOriginalOutputKeys(new Set((d.Outputs ?? []).map((o) => o.Key)))
     setWebhookRequestID(d.WebhookRequestID)
     setFormOpen(true)
     setError('')
@@ -129,7 +146,7 @@ export function ConfigureDecisions() {
     setError('')
     try {
       if (editingID) {
-        await ConfigureService.UpdateDecision(editingID, label, category, outputs, webhookRequestID)
+        await ConfigureService.UpdateDecision(editingID, label, category, outputs, fieldTombstones, webhookRequestID)
       } else {
         await ConfigureService.CreateDecision(label, category, outputs, webhookRequestID)
       }
@@ -144,7 +161,7 @@ export function ConfigureDecisions() {
     ConfigureService.DeleteDecision(id).then(() => {
       refetch()
       refreshSeedLifecycle()
-    }).catch(console.error)
+    }).catch((err) => setImportError(String(err)))
   }
 
   // Reset-to-shipped-example / restore-deleted-example (docs/goals/0037
@@ -180,6 +197,31 @@ export function ConfigureDecisions() {
       }
       return { ...o, [field]: value }
     }))
+  }
+
+  const toggleOutputDeprecated = (i: number, deprecated: boolean) => {
+    setOutputs((prev) => prev.map((o, idx) => (idx === i ? { ...o, deprecated } : o)))
+  }
+
+  // requestRemoveOutput is the field editor's remove action (docs/adr/
+  // 0040 decision 3): a never-saved draft row (added to this form but
+  // never yet reaching a real Save) just disappears; an already-saved
+  // output asks for confirmation first, since removing it tombstones
+  // the Key -- stored data and any workflow already bound to it keep
+  // working, but the Key can never come back under a different type.
+  const requestRemoveOutput = (i: number) => {
+    if (!originalOutputKeys.has(outputs[i].Key)) {
+      setOutputs((prev) => prev.filter((_, idx) => idx !== i))
+      return
+    }
+    setPendingDeleteOutputIndex(i)
+  }
+  const confirmRemoveOutput = () => {
+    if (pendingDeleteOutputIndex === null) return
+    const removed = outputs[pendingDeleteOutputIndex]
+    setFieldTombstones((prev) => [...prev, { Key: removed.Key, Type: removed.Type }])
+    setOutputs((prev) => prev.filter((_, idx) => idx !== pendingDeleteOutputIndex))
+    setPendingDeleteOutputIndex(null)
   }
 
   // Last-updated-first, applied once so both view modes render the
@@ -286,7 +328,7 @@ export function ConfigureDecisions() {
                 {t('configureDecisions.outputsDescription')}
               </Text>
               {outputs.map((o, i) => (
-                <Stack key={i} direction="horizontal" gap="condensed" align="center">
+                <Stack key={i} direction="horizontal" gap="condensed" align="center" className={o.deprecated ? styles.muted : undefined} data-testid="decision-output-row">
                   <TextInput placeholder={t('configureDecisions.keyPlaceholder')} value={o.Key} onChange={(e) => updateOutput(i, 'Key', e.target.value)} />
                   <TextInput placeholder={t('configureDecisions.labelPlaceholder')} value={o.Label} onChange={(e) => updateOutput(i, 'Label', e.target.value)} />
                   <Select value={o.Type} onChange={(e) => updateOutput(i, 'Type', e.target.value)}>
@@ -299,15 +341,33 @@ export function ConfigureDecisions() {
                     value={(o.Options ?? []).join(', ')}
                     onChange={(e) => updateOutput(i, 'Options', e.target.value)}
                   />
+                  <Stack direction="horizontal" gap="condensed" align="center">
+                    <Checkbox
+                      checked={o.deprecated ?? false}
+                      aria-label={t('configureDecisions.deprecatedCheckboxAriaLabel')}
+                      onChange={(e) => toggleOutputDeprecated(i, e.target.checked)}
+                    />
+                    <Text size="small" className={styles.muted}>{t('configureDecisions.deprecatedLabel')}</Text>
+                  </Stack>
                   <IconButton
                     icon={TrashIcon}
                     aria-label={t('configureDecisions.removeOutputAriaLabel')}
                     size="small"
                     variant="invisible"
-                    onClick={() => setOutputs((prev) => prev.filter((_, idx) => idx !== i))}
+                    onClick={() => requestRemoveOutput(i)}
                   />
                 </Stack>
               ))}
+              {pendingDeleteOutputIndex !== null && (
+                <ConfirmDialog
+                  title={t('configureDecisions.deleteFieldConfirmTitle')}
+                  body={t('configureDecisions.deleteFieldConfirmBody', { key: outputs[pendingDeleteOutputIndex].Key })}
+                  confirmLabel={t('delete')}
+                  cancelLabel={t('entityRefField.cancel')}
+                  onCancel={() => setPendingDeleteOutputIndex(null)}
+                  onConfirm={confirmRemoveOutput}
+                />
+              )}
               <Button size="small" variant="invisible" leadingVisual={PlusIcon} onClick={() => setOutputs((prev) => [...prev, emptyOutput()])}>
                 {t('configureDecisions.addOutput')}
               </Button>

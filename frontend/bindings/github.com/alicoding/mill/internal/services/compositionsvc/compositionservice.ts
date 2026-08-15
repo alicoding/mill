@@ -62,7 +62,11 @@ export function CreateWorkflow(label: string, description: string, nodes: compos
 
 /**
  * DeleteWorkflow removes a workflow -- seeded or user-composed, both
- * live in c.user (see Workflows' doc comment), no built-in special case.
+ * live in c.user (see Workflows' doc comment), no built-in special
+ * case. Blocked while any OTHER workflow's child-workflow node still
+ * references id (docs/adr/0040 decision 3, same reference-integrity
+ * rule ConfigureService's own Delete* methods apply to every other
+ * RefKind, via WorkflowsReferencing).
  */
 export function DeleteWorkflow(id: string): $CancellablePromise<void> {
     return $Call.ByID(4072179394, id);

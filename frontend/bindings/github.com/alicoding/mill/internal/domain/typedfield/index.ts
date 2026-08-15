@@ -6,5 +6,6 @@ export {
 } from "./models.js";
 
 export type {
-    Field
+    Field,
+    FieldTombstone
 } from "./models.js";

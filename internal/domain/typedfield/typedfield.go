@@ -110,6 +110,16 @@ type Field struct {
 	// lifecycle on a future typed List) rather than user-declarable.
 	// Not consumed by Phase 1/2's converging types yet.
 	SystemManaged bool
+	// Deprecated marks a field as soft-retired (docs/adr/0040 decision
+	// 2): still valid on every value already bound to it, rendered
+	// de-emphasized in an entity's own edit form, and excluded from a
+	// picker offering fields for a NEW binding. JSON-tagged with
+	// omitempty -- unlike every field above -- so an entity with no
+	// deprecated fields marshals byte-identical to before this field
+	// existed (every other Field member has no tag at all and is
+	// always emitted, even at its zero value; this one field must stay
+	// invisible at its zero value instead).
+	Deprecated bool `json:"deprecated,omitempty"`
 }
 
 // Validate checks a Field is well-formed -- same "never store an
@@ -124,4 +134,96 @@ func Validate(f Field) error {
 		return fmt.Errorf("field %q has an invalid type %q", f.Key, f.Type)
 	}
 	return nil
+}
+
+// FieldTombstone records one schema field a Configure entity has
+// deleted (docs/adr/0040 decision 3): the Key stays reserved after
+// deletion, so ValidateFieldEvolution can reject the same Key
+// resurrecting under a different Type.
+type FieldTombstone struct {
+	Key  string
+	Type Type
+}
+
+// ValidateFieldEvolution enforces ADR-0040 decisions 1-3 at a schema-
+// carrying entity's update chokepoint -- called from each entity's own
+// Update* path (never from Validate, which has no access to the
+// entity's previous state). oldFields/newFields are that field set's
+// state before and after the update; tombstones is the FULL tombstone
+// list this update will persist (the caller merges any newly declared
+// deletions into the entity's existing list first -- see
+// MergeTombstones -- so this stays a pure comparison).
+//
+// A Key present in oldFields must still be present in newFields with
+// the SAME Type (decision 1's identity freeze, decision 2's never-
+// retype-in-place rule) -- unless it's recorded in tombstones with a
+// matching Type, the one legal way for a Key to disappear: an explicit
+// delete declared in the same call, never a silent omission. A Key
+// entering newFields that's already in tombstones must match the
+// tombstoned Type -- the same Key with the same Type may resurrect, a
+// different Type may not.
+func ValidateFieldEvolution(oldFields, newFields []Field, tombstones []FieldTombstone) error {
+	tombstoned := make(map[string]Type, len(tombstones))
+	for _, t := range tombstones {
+		tombstoned[t.Key] = t.Type
+	}
+	current := make(map[string]Field, len(newFields))
+	for _, f := range newFields {
+		current[f.Key] = f
+	}
+
+	for _, old := range oldFields {
+		next, stillPresent := current[old.Key]
+		if !stillPresent {
+			tType, wasTombstoned := tombstoned[old.Key]
+			if !wasTombstoned {
+				return fmt.Errorf("field %q cannot be removed without deleting it -- its key stays reserved; use the field editor's delete action", old.Key)
+			}
+			if tType != old.Type {
+				return fmt.Errorf("field %q is tombstoned as type %q but is actually type %q -- schema and tombstone disagree", old.Key, tType, old.Type)
+			}
+			continue
+		}
+		if next.Type != old.Type {
+			return fmt.Errorf("field %q's type cannot change after creation (it is %q) -- add a new field and deprecate this one instead", old.Key, old.Type)
+		}
+	}
+
+	for _, f := range newFields {
+		tType, wasTombstoned := tombstoned[f.Key]
+		if wasTombstoned && f.Type != tType {
+			return fmt.Errorf("field %q was previously deleted as type %q -- it cannot be re-added as type %q", f.Key, tType, f.Type)
+		}
+	}
+	return nil
+}
+
+// MergeTombstones unions existing with additions, deduped by Key --
+// existing wins on a Key collision, since only the ORIGINAL delete's
+// Type is the historically accurate one. Order is deterministic
+// (existing first, then any genuinely new addition, both in their own
+// given order) so two calls with the same inputs always produce the
+// same persisted bytes. Callers pass the result to
+// ValidateFieldEvolution as the tombstone list this update will
+// persist going forward.
+func MergeTombstones(existing, additions []FieldTombstone) []FieldTombstone {
+	byKey := make(map[string]FieldTombstone, len(existing)+len(additions))
+	order := make([]string, 0, len(existing)+len(additions))
+	for _, t := range existing {
+		if _, ok := byKey[t.Key]; !ok {
+			order = append(order, t.Key)
+		}
+		byKey[t.Key] = t
+	}
+	for _, t := range additions {
+		if _, ok := byKey[t.Key]; !ok {
+			order = append(order, t.Key)
+			byKey[t.Key] = t
+		}
+	}
+	out := make([]FieldTombstone, 0, len(order))
+	for _, k := range order {
+		out = append(out, byKey[k])
+	}
+	return out
 }

@@ -205,14 +205,18 @@ export function UpdateLinkKind(id: string, label: string, description: string): 
 /**
  * UpdateNow runs cardID's RefreshWorkflowID through workflowRunner and
  * stamps ReceiptRunID as soon as a run id exists -- the "on run start"
- * half of ADR-0038 decision 4's stamping rule. LastSyncedAt is
- * deliberately NOT stamped here even when the run already finished
- * successfully by the time this call returns: NotifyRunCompleted
- * (this file, below) is the one place that stamps it, so a run gated
- * on guardrail approval (which may not finish for a long time after
- * this call returns) and a run that finishes synchronously both go
- * through the identical "on successful completion" path instead of two
- * slightly different ones.
+ * half of ADR-0038 decision 4's stamping rule. When workflowRunner
+ * ALSO already knows the run succeeded (the common, non-approval-gated
+ * case -- RunWorkflow blocks until completion, so this is true by the
+ * time the call returns), LastSyncedAt is stamped right here too,
+ * deliberately NOT left to NotifyRunCompleted alone: that hook fires
+ * from INSIDE the same blocking RunWorkflow call, before ReceiptRunID
+ * is set on this card, so its own id-match would find nothing for a
+ * synchronous run -- a real ordering bug, not a hypothetical one, found
+ * while writing this. NotifyRunCompleted (below) remains the only path
+ * for a run that PARKS on guardrail approval and resolves long after
+ * this call has already returned, since by then ReceiptRunID has been
+ * set and the match succeeds.
  */
 export function UpdateNow(cardID: string): $CancellablePromise<atlas$0.Card> {
     return $Call.ByID(2019874317, cardID);

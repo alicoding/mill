@@ -45,6 +45,9 @@
         },
         "SystemManaged": {
           "type": "boolean"
+        },
+        "deprecated": {
+          "type": "boolean"
         }
       },
       "additionalProperties": false,

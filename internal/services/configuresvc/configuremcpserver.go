@@ -131,6 +131,10 @@ func (c *ConfigureService) UpdateMCPServer(id, label, command string, args []str
 }
 
 func (c *ConfigureService) DeleteMCPServer(id string) error {
+	if err := c.refIntegrityError("mcpserver", "MCP server", id); err != nil {
+		return err
+	}
+
 	c.mu.Lock()
 	idx := -1
 	for i, s := range c.mcpServers {

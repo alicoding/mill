@@ -52,24 +52,24 @@
     "fingerprint": "5efd2d4f46ceb01ae229e997102fe11191367b9ee46ac03939ffe278d4dec379"
   },
   "decision:example-approve-decision": {
-    "seedRevision": 1,
-    "fingerprint": "b57c1ca6af05c2ecb257f657894a908759bd3de84bed6294b7ea35c958377924"
+    "seedRevision": 2,
+    "fingerprint": "d3c0af6942a85e03e14038ebe97db0dcb62593e62fa4c0db1398981cd332e95e"
   },
   "decision:example-deny-decision": {
-    "seedRevision": 1,
-    "fingerprint": "270acbd40d41b6f82bcd6e4fa92c1de8c9a6b8d80be72d9dd7d842b9eafe6608"
+    "seedRevision": 2,
+    "fingerprint": "2022f6071d4d2fac20e3c05cc6808ec11a506f2342aeb4886aeb658fb41adda0"
   },
   "decision:example-manual-review-decision": {
-    "seedRevision": 1,
-    "fingerprint": "1e3a73d9e169872ce5d509c99e5e538acb6bff763c13c70deb02cdebb0665196"
+    "seedRevision": 2,
+    "fingerprint": "d154222cfd41e1b78ef46ef8e485081d3053dae90a5db70b7ec61949e8dbdec9"
   },
   "execenv:example-safe-sandbox-execenv": {
     "seedRevision": 1,
     "fingerprint": "aa9a964c09faafbd8e7ebbeff3e75aa438878bdb9e1207c4dcd5c0bbba8de0bc"
   },
   "list:example-country-codes-list": {
-    "seedRevision": 2,
-    "fingerprint": "4be9d9a50b36434452fd689cbf8f7b9bad849517c9c3d0cb8d6648d1b340520a"
+    "seedRevision": 3,
+    "fingerprint": "7a388e2fcd52b7d95aeb52581258f299d78c309802775df7779e0c99aacfa040"
   },
   "mcpserver:example-reference-mcpserver": {
     "seedRevision": 1,

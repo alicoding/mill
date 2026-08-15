@@ -174,6 +174,10 @@ func (c *ConfigureService) UpdateAIProvider(id, label string, kind aiprovider.Ki
 // shaped error, not surfaced), same reasoning DeleteHTTPRequest's own
 // c.credentials.Delete call already documents.
 func (c *ConfigureService) DeleteAIProvider(id string) error {
+	if err := c.refIntegrityError("aiprovider", "AI provider", id); err != nil {
+		return err
+	}
+
 	c.mu.Lock()
 	idx := -1
 	for i, p := range c.aiProviders {

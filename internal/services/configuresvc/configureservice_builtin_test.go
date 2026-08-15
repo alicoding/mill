@@ -2,6 +2,7 @@ package configuresvc
 
 import (
 	"encoding/json"
+	"strings"
 	"testing"
 
 	"github.com/alicoding/mill/internal/adapters/credential"
@@ -107,8 +108,23 @@ func TestConfigureService_DeletingABuiltIn_DoesNotReturnOnRestart(t *testing.T) 
 	comp := compositionsvc.NewCompositionService(store)
 	cfg := NewConfigureService(store, comp, credential.New())
 
+	// docs/adr/0040 decision 3: two seeded workflows still reference
+	// this request, so the delete is blocked, naming both, until both
+	// references are gone.
+	err := cfg.DeleteHTTPRequest(httprequest.ExampleNoneID)
+	if err == nil {
+		t.Fatal("DeleteHTTPRequest on a still-referenced request returned nil error, want it blocked")
+	}
+	if !strings.Contains(err.Error(), "Example: Approval-gated HTTP call") || !strings.Contains(err.Error(), "Example: Forward pending approvals") {
+		t.Errorf("DeleteHTTPRequest blocked-error = %q, want it to name both referencing workflows", err.Error())
+	}
+	for _, wfID := range []string{"example-guarded-http-workflow", "example-forward-approvals-workflow"} {
+		if err := comp.DeleteWorkflow(wfID); err != nil {
+			t.Fatalf("DeleteWorkflow(%q) (unblocking the reference): %v", wfID, err)
+		}
+	}
 	if err := cfg.DeleteHTTPRequest(httprequest.ExampleNoneID); err != nil {
-		t.Fatalf("DeleteHTTPRequest(%q) returned error: %v", httprequest.ExampleNoneID, err)
+		t.Fatalf("DeleteHTTPRequest(%q) returned error after unblocking: %v", httprequest.ExampleNoneID, err)
 	}
 
 	restarted := NewConfigureService(store, comp, credential.New())
@@ -326,8 +342,23 @@ func TestConfigureService_DeletingABuiltInList_DoesNotReturnOnRestart(t *testing
 	comp := compositionsvc.NewCompositionService(store)
 	cfg := NewConfigureService(store, comp, credential.New())
 
+	// docs/adr/0040 decision 3: two seeded workflows still reference
+	// this list, so the delete is blocked, naming both, until both
+	// references are gone.
+	err := cfg.DeleteList(list.ExampleCountryCodesID)
+	if err == nil {
+		t.Fatal("DeleteList on a still-referenced list returned nil error, want it blocked")
+	}
+	if !strings.Contains(err.Error(), "Example: Country code lookup") || !strings.Contains(err.Error(), "Example: Country lookup (search)") {
+		t.Errorf("DeleteList blocked-error = %q, want it to name both referencing workflows", err.Error())
+	}
+	for _, wfID := range []string{"example-list-lookup-workflow", "example-list-search-workflow"} {
+		if err := comp.DeleteWorkflow(wfID); err != nil {
+			t.Fatalf("DeleteWorkflow(%q) (unblocking the reference): %v", wfID, err)
+		}
+	}
 	if err := cfg.DeleteList(list.ExampleCountryCodesID); err != nil {
-		t.Fatalf("DeleteList(%q) returned error: %v", list.ExampleCountryCodesID, err)
+		t.Fatalf("DeleteList(%q) returned error after unblocking: %v", list.ExampleCountryCodesID, err)
 	}
 
 	restarted := NewConfigureService(store, comp, credential.New())
@@ -364,8 +395,21 @@ func TestConfigureService_DeletingABuiltInMCPServer_DoesNotReturnOnRestart(t *te
 	comp := compositionsvc.NewCompositionService(store)
 	cfg := NewConfigureService(store, comp, credential.New())
 
+	// docs/adr/0040 decision 3: the seeded "Example: MCP echo call"
+	// workflow still references this server, so the delete is blocked,
+	// naming it, until that reference is gone.
+	err := cfg.DeleteMCPServer(mcpserver.ExampleReferenceServerID)
+	if err == nil {
+		t.Fatal("DeleteMCPServer on a still-referenced server returned nil error, want it blocked")
+	}
+	if !strings.Contains(err.Error(), "Example: MCP echo call") {
+		t.Errorf("DeleteMCPServer blocked-error = %q, want it to name the referencing workflow", err.Error())
+	}
+	if err := comp.DeleteWorkflow("example-mcp-echo-workflow"); err != nil {
+		t.Fatalf("DeleteWorkflow (unblocking the reference): %v", err)
+	}
 	if err := cfg.DeleteMCPServer(mcpserver.ExampleReferenceServerID); err != nil {
-		t.Fatalf("DeleteMCPServer(%q) returned error: %v", mcpserver.ExampleReferenceServerID, err)
+		t.Fatalf("DeleteMCPServer(%q) returned error after unblocking: %v", mcpserver.ExampleReferenceServerID, err)
 	}
 
 	restarted := NewConfigureService(store, comp, credential.New())

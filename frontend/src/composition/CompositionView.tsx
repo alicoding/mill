@@ -192,7 +192,7 @@ function CompositionView() {
     CompositionService.DeleteWorkflow(id).then(() => {
       void refreshWorkflows()
       refreshSeedLifecycle() // a deleted built-in becomes restorable
-    }).catch(console.error)
+    }).catch((err) => setImportError(String(err)))
   }
 
   // Reset-to-shipped-example (docs/goals/0037 item 4): non-destructive

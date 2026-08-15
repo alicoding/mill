@@ -159,7 +159,7 @@ func TestUpdateList_PreservesCreatedAt_AdvancesUpdatedAt(t *testing.T) {
 
 	time.Sleep(2 * time.Millisecond)
 
-	updated, err := cfg.UpdateList(l.ID, "Region codes (edited)", "edited", regionCodeColumns())
+	updated, err := cfg.UpdateList(l.ID, "Region codes (edited)", "edited", regionCodeColumns(), nil)
 	if err != nil {
 		t.Fatalf("UpdateList: %v", err)
 	}

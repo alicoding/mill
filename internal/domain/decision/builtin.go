@@ -31,15 +31,23 @@ func BuiltIn() []Decision {
 	return []Decision{
 		{
 			ID: ExampleApproveID, Label: "Approve (example)", Category: CategoryApprove,
-			Outputs: approveDenyOutputs, BuiltIn: true, Seed: seedorigin.Stamp(1),
+			Outputs: approveDenyOutputs, BuiltIn: true, Seed: seedorigin.Stamp(2),
 		},
 		{
 			ID: ExampleDenyID, Label: "Deny (example)", Category: CategoryDeny,
-			Outputs: approveDenyOutputs, BuiltIn: true, Seed: seedorigin.Stamp(1),
+			Outputs: approveDenyOutputs, BuiltIn: true, Seed: seedorigin.Stamp(2),
 		},
 		{
 			ID: ExampleManualReviewID, Label: "Manual review (example)", Category: CategoryManualReview,
-			Outputs: []OutputField{{Key: "reviewedBy", Label: "Reviewed by", Type: "text"}}, BuiltIn: true, Seed: seedorigin.Stamp(1),
+			// legacyPriority is the seeded proof for docs/adr/0040 decision
+			// 2: a Deprecated output field, still valid on any past run's
+			// bound value, de-emphasized in this Decision's own edit form
+			// and excluded from a decision-outcome node's new binding rows.
+			Outputs: []OutputField{
+				{Key: "reviewedBy", Label: "Reviewed by", Type: "text"},
+				{Key: "legacyPriority", Label: "Priority (legacy)", Type: "text", Deprecated: true},
+			},
+			BuiltIn: true, Seed: seedorigin.Stamp(2),
 		},
 	}
 }

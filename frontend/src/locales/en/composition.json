@@ -119,7 +119,8 @@
   },
   "decisionOutcomeBindingsEditor": {
     "heading": "Decision outputs",
-    "description": "{{label}} ({{category}}) -- values written into this Decision's typed result when reached."
+    "description": "{{label}} ({{category}}) -- values written into this Decision's typed result when reached.",
+    "deprecatedFieldName": "{{name}} (deprecated)"
   },
   "integrationBindingsEditor": {
     "inputBindings": "Input bindings",

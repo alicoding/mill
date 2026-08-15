@@ -150,7 +150,7 @@ export function ConfigureAIProviders() {
     ConfigureService.DeleteAIProvider(id).then(() => {
       refetch()
       refreshSeedLifecycle()
-    }).catch(console.error)
+    }).catch((err) => setImportError(String(err)))
   }
 
   const resetToSeed = (id: string) => {
