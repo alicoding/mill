@@ -95,12 +95,14 @@ accepted)**
    `NodeConfigFields.tsx` extracted so the sidebar and overlay share
    one config-rendering implementation, latest-run data via
    `useLatestRunStep.ts`. ARCHIVED
-9. [ ] [0059 — Empty states that stay useful](0059-empty-states-useful.md)
+9. [x] [0059 — Empty states that stay useful](archive/0059-empty-states-useful.md)
    — owner-raised 2026-08-14 from live screenshots (Activity's
    one-line void vs Review's half-working pattern): every empty
    state gets the kit's full Blankslate anatomy with a real
-   navigating action; copy pass rides along. UX-first tiebreak,
-   behind 0058
+   navigating action; copy pass rides along. DELIVERED 2026-08-14
+   same day raised (PR #128): nine surfaces inventoried, four gained
+   navigating actions, Review's no-action call reasoned, Activity
+   spec-aside reworded. ARCHIVED
 10. [ ] [0060 — Everyday value map](0060-everyday-value-map.md)
    — owner-raised 2026-08-14 ("I can't explain to my wife how it's
    useful"): research-only — the attended/desktop-automation field
