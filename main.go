@@ -12,6 +12,7 @@ import (
 
 	"github.com/alicoding/mill/internal/adapters/credential"
 	"github.com/alicoding/mill/internal/adapters/settings"
+	"github.com/alicoding/mill/internal/services/atlassvc"
 	"github.com/alicoding/mill/internal/services/capabilitysvc"
 	"github.com/alicoding/mill/internal/services/compositionsvc"
 	"github.com/alicoding/mill/internal/services/configuresvc"
@@ -105,6 +106,11 @@ func main() {
 	triggerService := triggersvc.NewTriggerService(compositionService, logger, settingsStore)
 	compositionService.SetSyncer(triggerService)
 	configureService := configuresvc.NewConfigureService(settingsStore, compositionService, credential.New())
+	// docs/adr/0038, docs/goals/0061 slice A: Atlas's own storage/CRUD
+	// layer -- no dependency on compositionService/configureService yet
+	// (slice A ships no cross-surface wiring: "Update now" running a
+	// card's referenced workflow is slice C's scope).
+	atlasService := atlassvc.NewAtlasService(settingsStore)
 
 	// Separate SQLite file from settings.json (own schema, own lifecycle
 	// -- durable-execution checkpoints, not app config) but the same
@@ -204,6 +210,7 @@ func main() {
 			application.NewService(compositionService),
 			application.NewService(triggerService),
 			application.NewService(configureService),
+			application.NewService(atlasService),
 			application.NewService(guardrailService),
 			application.NewService(executionService),
 			application.NewService(settingsService),

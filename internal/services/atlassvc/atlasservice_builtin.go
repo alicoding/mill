@@ -1,0 +1,185 @@
+package atlassvc
+
+import (
+	"log/slog"
+	"time"
+
+	"github.com/alicoding/mill/internal/domain/atlas"
+	"github.com/alicoding/mill/internal/domain/seedorigin"
+	"github.com/alicoding/mill/internal/services/seeding"
+)
+
+// reconcileBuiltIns runs the full insert/upgrade/leave-alone/skip-
+// tombstoned algorithm (docs/goals/0037) across all four Atlas entity
+// families in one pass, in dependency order (Kinds and LinkKinds
+// before Cards/Links, since a seeded Card/Link names them) -- then
+// persists once if anything changed, same "no phantom in-memory seed
+// a restart would silently drop" discipline every other reconcile in
+// this codebase already follows. Unlike ConfigureService's per-entity-
+// key reconcile functions, this one mutates the single shared state
+// this package persists as one blob (atlasStateKey), so all four
+// families share one changed flag and one final persist.
+func (a *AtlasService) reconcileBuiltIns() {
+	tombstones := seeding.LoadTombstones(a.store)
+	now := time.Now()
+	a.mu.Lock()
+	changed := false
+	changed = a.reconcileKindsLocked(tombstones, now) || changed
+	changed = a.reconcileLinkKindsLocked(tombstones, now) || changed
+	changed = a.reconcileCardsLocked(tombstones, now) || changed
+	changed = a.reconcileLinksLocked(tombstones, now) || changed
+	if changed {
+		if err := a.persistLocked(); err != nil {
+			slog.Error("failed to reconcile built-in Atlas entities", "error", err)
+		}
+	}
+	a.mu.Unlock()
+}
+
+func (a *AtlasService) reconcileKindsLocked(tombstones map[string]bool, now time.Time) bool {
+	byID := make(map[string]int, len(a.kinds))
+	for i, k := range a.kinds {
+		byID[k.ID] = i
+	}
+	changed := false
+	for _, golden := range atlas.BuiltInKinds() {
+		idx, present := byID[golden.ID]
+		if !present {
+			if tombstones[golden.ID] {
+				continue
+			}
+			golden.CreatedAt, golden.UpdatedAt = now, now
+			a.kinds = append(a.kinds, golden)
+			changed = true
+			continue
+		}
+		existing := a.kinds[idx]
+		if existing.Seed.SeedRevision == 0 {
+			existing.Seed = seedorigin.Origin{SeedRevision: golden.Seed.SeedRevision, Modified: true}
+			a.kinds[idx] = existing
+			changed = true
+			continue
+		}
+		if existing.Seed.Modified {
+			continue
+		}
+		if existing.Seed.SeedRevision < golden.Seed.SeedRevision {
+			golden.CreatedAt, golden.UpdatedAt = existing.CreatedAt, now
+			golden.Seed = seedorigin.Stamp(golden.Seed.SeedRevision)
+			a.kinds[idx] = golden
+			changed = true
+		}
+	}
+	return changed
+}
+
+func (a *AtlasService) reconcileLinkKindsLocked(tombstones map[string]bool, now time.Time) bool {
+	byID := make(map[string]int, len(a.linkKinds))
+	for i, lk := range a.linkKinds {
+		byID[lk.ID] = i
+	}
+	changed := false
+	for _, golden := range atlas.BuiltInLinkKinds() {
+		idx, present := byID[golden.ID]
+		if !present {
+			if tombstones[golden.ID] {
+				continue
+			}
+			golden.CreatedAt, golden.UpdatedAt = now, now
+			a.linkKinds = append(a.linkKinds, golden)
+			changed = true
+			continue
+		}
+		existing := a.linkKinds[idx]
+		if existing.Seed.SeedRevision == 0 {
+			existing.Seed = seedorigin.Origin{SeedRevision: golden.Seed.SeedRevision, Modified: true}
+			a.linkKinds[idx] = existing
+			changed = true
+			continue
+		}
+		if existing.Seed.Modified {
+			continue
+		}
+		if existing.Seed.SeedRevision < golden.Seed.SeedRevision {
+			golden.CreatedAt, golden.UpdatedAt = existing.CreatedAt, now
+			golden.Seed = seedorigin.Stamp(golden.Seed.SeedRevision)
+			a.linkKinds[idx] = golden
+			changed = true
+		}
+	}
+	return changed
+}
+
+func (a *AtlasService) reconcileCardsLocked(tombstones map[string]bool, now time.Time) bool {
+	byID := make(map[string]int, len(a.cards))
+	for i, c := range a.cards {
+		byID[c.ID] = i
+	}
+	changed := false
+	for _, golden := range atlas.BuiltInCards() {
+		idx, present := byID[golden.ID]
+		if !present {
+			if tombstones[golden.ID] {
+				continue
+			}
+			golden.CreatedAt, golden.UpdatedAt = now, now
+			a.cards = append(a.cards, golden)
+			changed = true
+			continue
+		}
+		existing := a.cards[idx]
+		if existing.Seed.SeedRevision == 0 {
+			existing.Seed = seedorigin.Origin{SeedRevision: golden.Seed.SeedRevision, Modified: true}
+			a.cards[idx] = existing
+			changed = true
+			continue
+		}
+		if existing.Seed.Modified {
+			continue
+		}
+		if existing.Seed.SeedRevision < golden.Seed.SeedRevision {
+			golden.CreatedAt, golden.UpdatedAt = existing.CreatedAt, now
+			golden.Seed = seedorigin.Stamp(golden.Seed.SeedRevision)
+			a.cards[idx] = golden
+			changed = true
+		}
+	}
+	return changed
+}
+
+func (a *AtlasService) reconcileLinksLocked(tombstones map[string]bool, now time.Time) bool {
+	byID := make(map[string]int, len(a.links))
+	for i, l := range a.links {
+		byID[l.ID] = i
+	}
+	changed := false
+	for _, golden := range atlas.BuiltInLinks() {
+		idx, present := byID[golden.ID]
+		if !present {
+			if tombstones[golden.ID] {
+				continue
+			}
+			golden.CreatedAt, golden.UpdatedAt = now, now
+			a.links = append(a.links, golden)
+			changed = true
+			continue
+		}
+		existing := a.links[idx]
+		if existing.Seed.SeedRevision == 0 {
+			existing.Seed = seedorigin.Origin{SeedRevision: golden.Seed.SeedRevision, Modified: true}
+			a.links[idx] = existing
+			changed = true
+			continue
+		}
+		if existing.Seed.Modified {
+			continue
+		}
+		if existing.Seed.SeedRevision < golden.Seed.SeedRevision {
+			golden.CreatedAt, golden.UpdatedAt = existing.CreatedAt, now
+			golden.Seed = seedorigin.Stamp(golden.Seed.SeedRevision)
+			a.links[idx] = golden
+			changed = true
+		}
+	}
+	return changed
+}

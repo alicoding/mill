@@ -9,10 +9,10 @@
 // own leaf domain package (no dependents besides the domain types that
 // embed it) rather than living inside internal/services/seeding: that
 // package already documents itself as "cross-package HELPERS," while
-// Origin is a plain persisted field on domain structs across five
+// Origin is a plain persisted field on domain structs across several
 // different domain packages (composition, httprequest, decision, list,
-// mcpserver, execenv) -- a domain package importing a services package
-// would invert .claude/rules/backend.md's layering.
+// mcpserver, execenv, atlas) -- a domain package importing a services
+// package would invert .claude/rules/backend.md's layering.
 package seedorigin
 
 // Origin records seed provenance on a built-in-origin artifact.
