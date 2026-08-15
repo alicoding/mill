@@ -110,6 +110,11 @@ func resolveDeclaredEntry(b DeclaredStepBinding) (nodeTypeEntry, bool) {
 		Effect:       engine.nodeType.Effect,
 		Declared:     true,
 		PaletteGroup: b.PaletteGroup,
+		// Basic by construction (NodeType.Complexity's own doc comment,
+		// docs/goals/0047): a declaration exists specifically to curate
+		// the underlying engine's complexity away behind a fixed binding,
+		// never to inherit it.
+		Complexity: ComplexityBasic,
 	}
 
 	exec := func(node Node, ctx ExecContext) (ExecContext, error) {

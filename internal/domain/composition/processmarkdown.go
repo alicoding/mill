@@ -10,6 +10,7 @@ func init() {
 	RegisterNodeType(NodeType{
 		ID: "process-html-to-markdown", Kind: KindProcess,
 		Label:       "Process: HTML → Markdown",
+		Complexity:  ComplexityBasic,
 		Output:      "Markdown text",
 		Description: "Converts HTML into Markdown, preserving structure (headings, bold, lists).",
 	}, func(_ Node, ctx ExecContext) (ExecContext, error) {

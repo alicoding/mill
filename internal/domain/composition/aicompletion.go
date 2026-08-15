@@ -30,9 +30,10 @@ func SetAICompleteFn(fn func(aiclient.Request) (aiclient.Result, error)) {
 func init() {
 	RegisterNodeType(NodeType{
 		ID: "process-ai-completion", Kind: KindProcess,
-		Effect: guardrail.ClassExternal, // dynamic downgrade for a loopback provider -- aiprovider.go's aiNodeEffectOverride, dispatched via EffectForNode
-		Output: "the AI completion text, replacing the payload",
-		Label:  "AI: Completion",
+		Effect:      guardrail.ClassExternal, // dynamic downgrade for a loopback provider -- aiprovider.go's aiNodeEffectOverride, dispatched via EffectForNode
+		Complexity:  ComplexityBasic,
+		Output:      "the AI completion text, replacing the payload",
+		Label:       "AI: Completion",
 		Description: "Sends a prompt (plus the running payload) to a Configure-authored AI provider -- local Ollama, or a BYO OpenAI-compatible/Anthropic endpoint -- and replaces the payload with its text completion. Composition (docs/goals/0031-ai-node-family.md): the system prompt is this step's own System prompt field; the user message is Prompt followed by the current payload (blank-line separated) when the payload is non-empty, else Prompt alone. One deterministic call per run -- never a loop or autonomous agent behavior (docs/SPEC.md §1.1's locked invariant). A local (localhost/127.0.0.1/::1) provider runs without an approval ask; any other endpoint asks by default, the same posture integration-http already has for outbound calls.",
 		ConfigFields: []ConfigField{
 			{

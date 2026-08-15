@@ -118,9 +118,10 @@ func applyExtractedFields(resultJSON []byte, fields []aiExtractOutputField, ctx 
 func init() {
 	RegisterNodeType(NodeType{
 		ID: "process-ai-extract-structured", Kind: KindProcess,
-		Effect: guardrail.ClassExternal, // dynamic downgrade for a loopback provider -- aiprovider.go's aiNodeEffectOverride
-		Output: "unchanged payload -- the extracted typed result is written into the named Attributes below",
-		Label:  "AI: Extract structured data",
+		Effect:      guardrail.ClassExternal, // dynamic downgrade for a loopback provider -- aiprovider.go's aiNodeEffectOverride
+		Complexity:  ComplexityAdvanced,      // authors a JSON-shaped output-field schema, not a plain value
+		Output:      "unchanged payload -- the extracted typed result is written into the named Attributes below",
+		Label:       "AI: Extract structured data",
 		Description: "Sends a prompt (plus the running payload) to a Configure-authored AI provider, requests a JSON-schema-constrained structured response, and writes each declared output field into this workflow's Attributes by the same key -- the step that composes with Branch for real decisioning (docs/goals/0031-ai-node-family.md). Composition matches process-ai-completion: user content = Prompt + payload. Every declared field is required in the requested schema; a field the provider's response omits still appears in Attributes, zero-valued for its type.",
 		ConfigFields: []ConfigField{
 			{

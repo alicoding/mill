@@ -22,7 +22,7 @@ AI API calls, single binary) rule out anything in those guidelines that
 assumes a hosted marketplace or a network-calling extension host —
 resolved item by item below, not silently dropped.
 
-## The 8-item checklist
+## The 9-item checklist
 
 | # | Requirement | Enforced by |
 |---|---|---|
@@ -34,6 +34,7 @@ resolved item by item below, not silently dropped.
 | 6 | Fail-safe error semantics: an unevaluable/ambiguous condition counts as the *restrictive* outcome, never silently passes (ruleset's "a rule that cannot evaluate counts as failed"; guardrail's own condition-eval-failure rule) | Reviewed per node at authoring time — see "Error-prefix convention" below for why this stays a review checklist, not a grep-test |
 | 7 | Seeded proof at the right layer (a built-in workflow/example exercising the node, or a unit/integration test for pure logic) — `.claude/rules/testing.md`'s layering | `TestBuiltInWorkflows_AllNodesFullyResolvedAndExecutable` + the node's own `*_test.go` |
 | 8 | Secrets only via an existing credential-backed entity, never a raw `ConfigField` | Reviewed per node — see "The credential rule" below |
+| 9 | Declared `Complexity` (`basic`/`advanced`), never the zero value — no allow-list exemption, unlike item 3 | `TestNodeTypes`, no exceptions — machine-checked, see "Complexity" below |
 
 Items 1/4/5/6/8 were already true of every node in this package before
 this standard was written down (`TestNodeTypes` already checked Key/
@@ -84,6 +85,27 @@ gate at all, or a node that provably touches only the in-memory
 explicitly in its `RegisterNodeType` call — `ruleset`/`human-review`'s
 `Effect: guardrail.ClassNone` written out is the house style, not
 `ClassNone`-by-omission.
+
+## Complexity (item 9) — the audience/progressive-disclosure facet
+
+`NodeType.Complexity` (`ComplexityBasic` | `ComplexityAdvanced`,
+`composition/types.go`) is the palette's progressive-disclosure facet
+(`docs/goals/0047-node-audience-facet.md`): required for every
+registered `NodeType`, with no `pureNodeTypes`-style exemption list —
+unlike `Effect`, there is no legitimate reason for a node to have no
+real classification. The rule: a node is `ComplexityAdvanced` iff
+configuring it correctly needs either an external system's own
+documentation (`integration-http`'s API contract, `mcp-tool-call`'s
+tool schema) or hand-writing code/JSON/expressions
+(`code-execution`'s script, `ruleset`'s rule conditions,
+`list-search`'s match-parameter JSON, `child-workflow`'s attribute
+bindings). Everything else — a plain value, a picker over an existing
+Configure entity, a natural-language prompt — is `ComplexityBasic`.
+Every declared step type (ADR-0037) is `ComplexityBasic` by
+construction (`resolveDeclaredEntry`, `declaredsteptype.go`): a
+declaration exists specifically to curate an advanced engine's
+complexity away behind a fixed binding, so it never inherits the
+underlying engine's own `Complexity`.
 
 ## Explicit rejections
 

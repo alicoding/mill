@@ -1187,7 +1187,8 @@
       "Output": "the caller's typed input",
       "Effect": "",
       "Declared": false,
-      "PaletteGroup": ""
+      "PaletteGroup": "",
+      "Complexity": "basic"
     },
     {
       "ID": "trigger-clipboard-watch",
@@ -1198,7 +1199,8 @@
       "Output": "the clipboard text that changed",
       "Effect": "",
       "Declared": false,
-      "PaletteGroup": ""
+      "PaletteGroup": "",
+      "Complexity": "basic"
     },
     {
       "ID": "trigger-filesystem-watch",
@@ -1238,7 +1240,8 @@
       "Output": "the changed file path",
       "Effect": "",
       "Declared": false,
-      "PaletteGroup": ""
+      "PaletteGroup": "",
+      "Complexity": "basic"
     },
     {
       "ID": "trigger-hotkey",
@@ -1249,7 +1252,8 @@
       "Output": "empty payload — the run starts here",
       "Effect": "",
       "Declared": false,
-      "PaletteGroup": ""
+      "PaletteGroup": "",
+      "Complexity": "basic"
     },
     {
       "ID": "trigger-manual",
@@ -1260,7 +1264,8 @@
       "Output": "empty payload — the run starts here",
       "Effect": "",
       "Declared": false,
-      "PaletteGroup": ""
+      "PaletteGroup": "",
+      "Complexity": "basic"
     },
     {
       "ID": "trigger-schedule",
@@ -1286,7 +1291,8 @@
       "Output": "empty payload — the run starts here",
       "Effect": "",
       "Declared": false,
-      "PaletteGroup": ""
+      "PaletteGroup": "",
+      "Complexity": "basic"
     },
     {
       "ID": "trigger-system-event",
@@ -1331,7 +1337,8 @@
       "Output": "JSON payload: {event, runId, workflowId, workflowLabel, nodeId?, timestamp} -- the run/decision that caused this event. nodeId is only set for decision-parked (the parked step's ID); empty for run-completed/run-failed/run-cancelled.",
       "Effect": "",
       "Declared": false,
-      "PaletteGroup": ""
+      "PaletteGroup": "",
+      "Complexity": "basic"
     },
     {
       "ID": "capture-attribute",
@@ -1357,7 +1364,8 @@
       "Output": "the attribute's value",
       "Effect": "",
       "Declared": false,
-      "PaletteGroup": ""
+      "PaletteGroup": "",
+      "Complexity": "basic"
     },
     {
       "ID": "capture-clipboard-html",
@@ -1368,7 +1376,8 @@
       "Output": "HTML from the clipboard",
       "Effect": "read",
       "Declared": false,
-      "PaletteGroup": ""
+      "PaletteGroup": "",
+      "Complexity": "basic"
     },
     {
       "ID": "capture-clipboard-info",
@@ -1379,7 +1388,8 @@
       "Output": "a summary of the clipboard's flavors",
       "Effect": "read",
       "Declared": false,
-      "PaletteGroup": ""
+      "PaletteGroup": "",
+      "Complexity": "basic"
     },
     {
       "ID": "capture-file",
@@ -1422,7 +1432,8 @@
       "Output": "the file's contents",
       "Effect": "read",
       "Declared": false,
-      "PaletteGroup": ""
+      "PaletteGroup": "",
+      "Complexity": "basic"
     },
     {
       "ID": "child-workflow",
@@ -1490,7 +1501,8 @@
       "Output": "the child workflow's result",
       "Effect": "none",
       "Declared": false,
-      "PaletteGroup": ""
+      "PaletteGroup": "",
+      "Complexity": "advanced"
     },
     {
       "ID": "code-execution",
@@ -1561,7 +1573,8 @@
       "Output": "combined stdout+stderr from the executed command",
       "Effect": "external",
       "Declared": false,
-      "PaletteGroup": ""
+      "PaletteGroup": "",
+      "Complexity": "advanced"
     },
     {
       "ID": "human-review",
@@ -1601,7 +1614,8 @@
       "Output": "payload unchanged, after approval",
       "Effect": "none",
       "Declared": false,
-      "PaletteGroup": ""
+      "PaletteGroup": "",
+      "Complexity": "basic"
     },
     {
       "ID": "integration-http",
@@ -1627,7 +1641,8 @@
       "Output": "HTTP response body",
       "Effect": "external",
       "Declared": false,
-      "PaletteGroup": ""
+      "PaletteGroup": "",
+      "Complexity": "advanced"
     },
     {
       "ID": "list-lookup",
@@ -1713,7 +1728,8 @@
       "Output": "payload unchanged; match → attribute",
       "Effect": "read",
       "Declared": false,
-      "PaletteGroup": ""
+      "PaletteGroup": "",
+      "Complexity": "basic"
     },
     {
       "ID": "list-search",
@@ -1795,7 +1811,8 @@
       "Output": "payload unchanged; matches -\u003e a typed Object attribute ({results, matched, first_match, match_count, list_id})",
       "Effect": "read",
       "Declared": false,
-      "PaletteGroup": ""
+      "PaletteGroup": "",
+      "Complexity": "advanced"
     },
     {
       "ID": "mcp-tool-call",
@@ -1849,7 +1866,8 @@
       "Output": "the tool's text result",
       "Effect": "external",
       "Declared": false,
-      "PaletteGroup": ""
+      "PaletteGroup": "",
+      "Complexity": "advanced"
     },
     {
       "ID": "process-ai-classify",
@@ -1917,7 +1935,8 @@
       "Output": "unchanged payload -- the chosen category is written into the named Attribute below",
       "Effect": "external",
       "Declared": false,
-      "PaletteGroup": ""
+      "PaletteGroup": "",
+      "Complexity": "basic"
     },
     {
       "ID": "process-ai-completion",
@@ -1971,7 +1990,8 @@
       "Output": "the AI completion text, replacing the payload",
       "Effect": "external",
       "Declared": false,
-      "PaletteGroup": ""
+      "PaletteGroup": "",
+      "Complexity": "basic"
     },
     {
       "ID": "process-ai-extract-structured",
@@ -2025,7 +2045,8 @@
       "Output": "unchanged payload -- the extracted typed result is written into the named Attributes below",
       "Effect": "external",
       "Declared": false,
-      "PaletteGroup": ""
+      "PaletteGroup": "",
+      "Complexity": "advanced"
     },
     {
       "ID": "process-extract-html",
@@ -2051,7 +2072,8 @@
       "Output": "the matched element's outer HTML",
       "Effect": "",
       "Declared": false,
-      "PaletteGroup": ""
+      "PaletteGroup": "",
+      "Complexity": "basic"
     },
     {
       "ID": "process-html-to-markdown",
@@ -2062,7 +2084,8 @@
       "Output": "Markdown text",
       "Effect": "",
       "Declared": false,
-      "PaletteGroup": ""
+      "PaletteGroup": "",
+      "Complexity": "basic"
     },
     {
       "ID": "process-inject-text",
@@ -2105,7 +2128,8 @@
       "Output": "payload with text injected",
       "Effect": "",
       "Declared": false,
-      "PaletteGroup": ""
+      "PaletteGroup": "",
+      "Complexity": "basic"
     },
     {
       "ID": "process-run-receipt",
@@ -2116,7 +2140,8 @@
       "Output": "a JSON receipt of this run's steps so far",
       "Effect": "read",
       "Declared": false,
-      "PaletteGroup": ""
+      "PaletteGroup": "",
+      "Complexity": "basic"
     },
     {
       "ID": "ruleset",
@@ -2127,7 +2152,8 @@
       "Output": "payload unchanged, if all rules pass",
       "Effect": "none",
       "Declared": false,
-      "PaletteGroup": ""
+      "PaletteGroup": "",
+      "Complexity": "advanced"
     },
     {
       "ID": "apply-clipboard-write-html",
@@ -2153,7 +2179,8 @@
       "Output": "the HTML it wrote",
       "Effect": "local",
       "Declared": false,
-      "PaletteGroup": ""
+      "PaletteGroup": "",
+      "Complexity": "basic"
     },
     {
       "ID": "apply-clipboard-write-text",
@@ -2164,7 +2191,8 @@
       "Output": "the text it wrote",
       "Effect": "local",
       "Declared": false,
-      "PaletteGroup": ""
+      "PaletteGroup": "",
+      "Complexity": "basic"
     },
     {
       "ID": "apply-file-write",
@@ -2238,7 +2266,8 @@
       "Output": "the payload it wrote, unchanged",
       "Effect": "local",
       "Declared": false,
-      "PaletteGroup": ""
+      "PaletteGroup": "",
+      "Complexity": "basic"
     },
     {
       "ID": "decision-route",
@@ -2249,7 +2278,8 @@
       "Output": "payload and Attributes unchanged; routes to the matching outgoing edge",
       "Effect": "",
       "Declared": false,
-      "PaletteGroup": ""
+      "PaletteGroup": "",
+      "Complexity": "basic"
     },
     {
       "ID": "decision-outcome",
@@ -2289,7 +2319,8 @@
       "Output": "the typed decision outcome",
       "Effect": "local",
       "Declared": false,
-      "PaletteGroup": ""
+      "PaletteGroup": "",
+      "Complexity": "basic"
     }
   ],
   "import": {

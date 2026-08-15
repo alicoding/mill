@@ -15,6 +15,7 @@ func init() {
 	RegisterNodeType(NodeType{
 		ID: "capture-file", Kind: KindCapture,
 		Effect:      guardrail.ClassRead,
+		Complexity:  ComplexityBasic,
 		Output:      "the file's contents",
 		Label:       "Capture: file",
 		Description: "Reads a local file into the payload. \"payload\" source treats the CURRENT payload as the file path (what a filesystem-watch trigger's changed-path output supplies, docs/SPEC.md §3.4); \"literal\" source reads a fixed path instead.",

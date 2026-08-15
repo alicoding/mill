@@ -193,6 +193,7 @@ func init() {
 	RegisterNodeType(NodeType{
 		ID: "code-execution", Kind: KindProcess,
 		Effect:      guardrail.ClassExternal,
+		Complexity:  ComplexityAdvanced,
 		Output:      "combined stdout+stderr from the executed command",
 		Label:       "Code: run command",
 		Description: "Runs one command locally, inside a Configure-authored ExecEnv (pinned shell/dir/env -- docs/SPEC.md §6, docs/adr/0026). External effect -- the ambient guardrail gate asks by default, same as integration-http/mcp-tool-call. Source \"payload\" runs the captured/upstream payload as the command (SPEC §2.1's paste-a-command loop); \"literal\" runs a fixed script instead. A running command can be stopped from this workflow's Runs tab (real process-group kill, not just marking the run failed) -- DBOS itself cannot interrupt an executing step (ADR-0026's Amendment), so Mill's own procexec supervises the live process directly.",

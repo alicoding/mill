@@ -126,3 +126,54 @@ test('palette search matches both the shortened display name and the full underl
   await search.fill('')
   await expect(panel.getByTestId('palette-item')).toHaveCount(32)
 })
+
+// Progressive-disclosure "Show advanced steps" toggle (goal 0047): the
+// palette defaults to showing every step (changing the default palette
+// contents would surprise existing users), a persisted per-browser
+// choice hides ComplexityAdvanced steps for a simpler scan.
+test('the palette shows every step by default, "Show advanced steps" checked', async ({ page }) => {
+  await openPaletteOnNewWorkflow(page)
+  const panel = activePanel(page)
+  await expect(panel.getByTestId('palette-show-advanced')).toBeChecked()
+  await expect(panel.getByTestId('palette-item')).toHaveCount(32)
+})
+
+test('unchecking "Show advanced steps" hides advanced steps, keeps basic ones, and persists across a reload', async ({ page }) => {
+  await openPaletteOnNewWorkflow(page)
+  let panel = activePanel(page)
+
+  await expect(panel.locator('[data-node-type-id="integration-http"]')).toBeVisible()
+  await expect(panel.locator('[data-node-type-id="human-review"]')).toBeVisible()
+
+  await panel.getByTestId('palette-show-advanced').uncheck()
+
+  // Every goal-0047 "advanced" step (needs the target's own
+  // documentation, or hand-written code/JSON/expressions) disappears...
+  const advancedIDs = [
+    'integration-http', 'mcp-tool-call', 'code-execution',
+    'ruleset', 'child-workflow', 'list-search', 'process-ai-extract-structured',
+  ]
+  for (const id of advancedIDs) {
+    await expect(panel.locator(`[data-node-type-id="${id}"]`)).toHaveCount(0)
+  }
+  // ...while a "basic" plain-value step stays visible, including a
+  // declared step type (always ComplexityBasic by construction,
+  // composition/declaredsteptype.go's resolveDeclaredEntry).
+  await expect(panel.locator('[data-node-type-id="human-review"]')).toBeVisible()
+  await expect(panel.locator('[data-node-type-id="decision-route"]')).toBeVisible()
+  await expect(panel.locator('[data-node-type-id="example-check-httpbin-step"]')).toBeVisible()
+
+  // Persists across a reload -- a fresh page load re-reads the same
+  // localStorage-backed choice, not an in-memory-only default.
+  await page.reload()
+  await activePanel(page).getByTestId('toggle-palette').click()
+  panel = activePanel(page)
+  await expect(panel.getByTestId('palette-show-advanced')).not.toBeChecked()
+  await expect(panel.locator('[data-node-type-id="integration-http"]')).toHaveCount(0)
+
+  // Restore the default -- within-file cleanup discipline (testing.md):
+  // this worker's browser context (and its localStorage) is shared with
+  // every other test in this file.
+  await panel.getByTestId('palette-show-advanced').check()
+  await expect(panel.locator('[data-node-type-id="integration-http"]')).toBeVisible()
+})
