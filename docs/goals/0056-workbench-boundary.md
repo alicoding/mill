@@ -63,6 +63,77 @@ entity families join the generated contract). Does not block the
 
 
 
+
+## Design inputs consolidated — 2026-08-14/15 live session (generic record; full-fidelity working artifacts live outside the repo)
+
+An extended live design session with the owner produced the richest
+input set any goal has opened with. The durable, generalized record:
+
+**Verified fit-gap conclusion (primary sources):** proprietary-store
+notes tools fail the portability knock-out (no open-format export);
+a lists product passes conditionally (schema-variant export only);
+the files+word-processor+assistant combo covers every Must except
+records-shape (bridged via templates + the lists product); adding
+Mill-as-pipe covers capture (M1), machine-landed writes (M8), and
+context assembly (M6). NOTHING earns a build except one candidate:
+**the projection layer** (below). The assistant platform's possible
+future workspace product joins the matrix as an all-unknowns column
+gated by the same portability bar.
+
+**The one build candidate — a glanceable board ("the projection
+layer"):** a spatial, zoomable map whose CARDS ARE REFERENCES
+(file/page/projection — content never re-homed) over the same
+user-owned files the AI is grounded on — one substrate, two readers,
+which extends §0's what-you-see-is-what-I-see thesis from workflows
+to knowledge. Design principles ratified live with the owner:
+
+- **Search is the door; the map is the review** — retrieval is one
+  keystroke with the next action surfaced; navigation/drilling is
+  always an explicit choice, never the price of reaching context.
+- **Egocentric root** — the map opens on the USER's space (their
+  programs, people, org as facets), never an imported taxonomy.
+  Contacts are just another user-declared card category —
+  independently re-derived the section-above insight that
+  notes/pages/contacts/links differ only in schema + routing.
+- **Cards**: body = one obvious action (drill for containers, open
+  for leaves; no dead cards — every container drills); small chips
+  for exceptions (attachments; an info panel holding description,
+  bullets, links, files, and user-declared custom fields — the
+  password-manager per-item model: arbitrary structured metadata
+  with zero schema ceremony); a create affordance that asks
+  SIBLING-OR-CHILD (containment is an explicit creation-time
+  choice, never inferred — the anti-auto-graph rule).
+- **Mirrored cards** carry source link, local mirror path, detected
+  residency badge, freshness + refresh policy — refresh IS a
+  scheduled/manual Mill workflow; "update now" runs it guarded.
+- **Typed ropes** (owner-authored relations, never auto-generated)
+  make three projections of one graph: the board, any traceability
+  matrix (requirement→design→schema→vendor chains), and ingestion
+  coverage ("known, not mapped" as a number). Existence questions
+  resolve with a next action on BOTH branches (have→open;
+  haven't→request, with the responsible contact roped in); the
+  "why do I care" provenance chain is stored at the reference.
+- **Density is a lens choice** — per-level category show/exclude
+  plus this-level-only vs peek-into-children; user configuration,
+  never a product default.
+- **The write loop needs nothing new**: assistant emits an update
+  envelope per an instruction block (the contract pattern's second
+  job), one hotkey, guardrail preview, file applied, board reflects
+  it — composable today with a fixed target set via Branch routing.
+
+**The seam question (the boundary decision this goal must make):**
+the board talks only to things that already exist — user files it
+projects, the generated contract/MCP for discovery, and Mill
+workflows for every action. The candidate shapes differ ONLY in
+packaging: (a) a Mill surface, (b) a sibling app in the monorepo,
+(c) a separate product on the contract. Forces on record
+(single-binary constraint, "never a 21st tool", refresh/guarding
+native to Mill) lean toward (a); the ADR decides.
+
+Still open for this goal's formal pass: the capability map, the
+boundary ADR, the SPEC §0 statement, and the owner's ratification of
+the build verdict.
+
 ## The sharpest owner articulation — 2026-08-14 (the M9 requirement)
 
 "I need to see it as a status page... if I can't see what the LLM is
