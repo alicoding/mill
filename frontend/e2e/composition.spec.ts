@@ -197,8 +197,10 @@ test('Composition page lists built-in workflows; node primitives live in a colla
   // process-ai-extract-structured, process-ai-classify (the AI node
   // family, docs/goals/0031-ai-node-family.md) + apply-file-write (the
   // write inverse of capture-file, goal 0044) + process-run-receipt
-  // (the evidence-receipt node, goal 0052 slice 3).
-  await expect(activePanel(page).getByTestId('palette-item')).toHaveCount(31)
+  // (the evidence-receipt node, goal 0052 slice 3) + the seeded
+  // "Check httpbin" declared step type (data-backed, not a
+  // RegisterNodeType call site -- goal 0054 slice A, ADR-0037).
+  await expect(activePanel(page).getByTestId('palette-item')).toHaveCount(32)
 })
 
 test('A new workflow starts with a starter node placed, not a blank canvas', async ({ page }) => {

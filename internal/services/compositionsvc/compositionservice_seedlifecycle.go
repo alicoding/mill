@@ -48,6 +48,25 @@ func (c *CompositionService) SeedRevisions() map[string]int {
 // entire feature would be exactly the silent-clobber failure mode the
 // design exists to avoid -- the reset affordance is that install's own
 // explicit path back to golden, if wanted.
+// ReconcileBuiltIns re-runs reconcileBuiltIns -- exported so
+// ConfigureService's constructor can call it a SECOND time, after
+// wiring composition.SetDeclaredNodeTypeLookup (goal 0054 slice A,
+// ADR-0037): CompositionService is constructed before ConfigureService
+// (main.go), so this package's own restore() call runs before any
+// declared step type is resolvable -- composition.BuiltInWorkflows'
+// declared-type-consuming entry is silently absent from that first
+// pass (builtinworkflows_declaredsteptype.go's own doc comment) and
+// only appears once this method re-evaluates the golden list with the
+// provider wired. Idempotent like reconcileBuiltIns itself: a no-op
+// once every golden is already present and unmodified.
+//
+// wails:ignore -- Go-internal wiring only, never a frontend RPC.
+//
+//wails:ignore
+func (c *CompositionService) ReconcileBuiltIns() {
+	c.reconcileBuiltIns()
+}
+
 func (c *CompositionService) reconcileBuiltIns() {
 	tombstones := seeding.LoadTombstones(c.store)
 	now := time.Now()

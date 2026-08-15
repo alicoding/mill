@@ -30,6 +30,11 @@ func NodeTypes() []NodeType {
 	for _, entry := range nodeTypeRegistry {
 		out = append(out, entry.nodeType)
 	}
+	// declaredNodeTypes() (declaredsteptype.go, ADR-0037) is the
+	// data-backed half of the catalog -- empty until ConfigureService
+	// wires SetDeclaredNodeTypeLookup, so every existing caller of
+	// NodeTypes() is unaffected until a declared type actually exists.
+	out = append(out, declaredNodeTypes()...)
 	sort.Slice(out, func(i, j int) bool {
 		if out[i].Kind != out[j].Kind {
 			return kindOrder[out[i].Kind] < kindOrder[out[j].Kind]
@@ -39,8 +44,13 @@ func NodeTypes() []NodeType {
 	return out
 }
 
+// nodeType looks up id through lookupNodeTypeEntry (declaredsteptype.go)
+// -- compile-time registrations first, a declared step type's
+// synthesized entry otherwise -- so every caller (ResolveNodeDefaults
+// below, graph.go's validateRequiredRefs) resolves a declared
+// NodeTypeID exactly like a built-in one.
 func nodeType(id string) (NodeType, bool) {
-	entry, ok := nodeTypeRegistry[id]
+	entry, ok := lookupNodeTypeEntry(id)
 	return entry.nodeType, ok
 }
 

@@ -144,6 +144,13 @@ type NodeType struct {
 	// deferred shadow evaluation was blocked on. The zero value means
 	// ClassNone -- only node types with real I/O declare one.
 	Effect guardrail.EffectClass
+	// Declared marks a data-backed step type synthesized from a
+	// Configure-authored declaration (ADR-0037, declaredsteptype.go)
+	// rather than a compile-time RegisterNodeType entry. False (the Go
+	// zero value) for every built-in, so every existing serialized
+	// catalog/contract document is unaffected until a declared type
+	// actually exists -- additive, per ADR-0036's schema-evolution rule.
+	Declared bool
 }
 
 // Position is a node's canvas coordinates. Ignored by execution entirely

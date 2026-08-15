@@ -603,6 +603,62 @@
         "openAPISpec"
       ]
     },
+    "steptype": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$id": "mill://schema/steptype/v1",
+      "properties": {
+        "schema": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "paletteGroup": {
+          "type": "string"
+        },
+        "engine": {
+          "type": "string"
+        },
+        "requestId": {
+          "type": "string"
+        },
+        "mcpServerId": {
+          "type": "string"
+        },
+        "toolName": {
+          "type": "string"
+        },
+        "workflowId": {
+          "type": "string"
+        },
+        "pinnedConfig": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "type": "object"
+        },
+        "hiddenFields": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "schema",
+        "label",
+        "paletteGroup",
+        "engine"
+      ]
+    },
     "workflow": {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "$id": "mill://schema/workflow/v1",
@@ -794,7 +850,8 @@
       "Description": "Fires only when invoked as a child by another workflow's Child Workflow step (docs/adr/0010) -- never by a real external event, no listener process. Modeled on n8n's own \"Execute Workflow Trigger\": a workflow rooted in this trigger declares itself a valid child target, decoupled from whatever its trigger would otherwise be. The child-workflow picker only lists workflows rooted here -- one rooted in a real-event trigger (filesystem-watch, clipboard-watch, ...) can't be invoked this way, since a parent has no way to synthesize that event.",
       "ConfigFields": null,
       "Output": "the caller's typed input",
-      "Effect": ""
+      "Effect": "",
+      "Declared": false
     },
     {
       "ID": "trigger-clipboard-watch",
@@ -803,7 +860,8 @@
       "Description": "Fires whenever the clipboard's content changes.",
       "ConfigFields": null,
       "Output": "the clipboard text that changed",
-      "Effect": ""
+      "Effect": "",
+      "Declared": false
     },
     {
       "ID": "trigger-filesystem-watch",
@@ -841,7 +899,8 @@
         }
       ],
       "Output": "the changed file path",
-      "Effect": ""
+      "Effect": "",
+      "Declared": false
     },
     {
       "ID": "trigger-hotkey",
@@ -850,7 +909,8 @@
       "Description": "Fires on a global keyboard shortcut, even when Mill isn't focused. Bound via TriggerService, not a config field here -- pressing the combo is better UX than typing it.",
       "ConfigFields": null,
       "Output": "empty payload — the run starts here",
-      "Effect": ""
+      "Effect": "",
+      "Declared": false
     },
     {
       "ID": "trigger-manual",
@@ -859,7 +919,8 @@
       "Description": "Fires on-demand when a user clicks Run/Test. No listener process.",
       "ConfigFields": null,
       "Output": "empty payload — the run starts here",
-      "Effect": ""
+      "Effect": "",
+      "Declared": false
     },
     {
       "ID": "trigger-schedule",
@@ -883,7 +944,8 @@
         }
       ],
       "Output": "empty payload — the run starts here",
-      "Effect": ""
+      "Effect": "",
+      "Declared": false
     },
     {
       "ID": "trigger-system-event",
@@ -926,7 +988,8 @@
         }
       ],
       "Output": "JSON payload: {event, runId, workflowId, workflowLabel, nodeId?, timestamp} -- the run/decision that caused this event. nodeId is only set for decision-parked (the parked step's ID); empty for run-completed/run-failed/run-cancelled.",
-      "Effect": ""
+      "Effect": "",
+      "Declared": false
     },
     {
       "ID": "capture-attribute",
@@ -950,7 +1013,8 @@
         }
       ],
       "Output": "the attribute's value",
-      "Effect": ""
+      "Effect": "",
+      "Declared": false
     },
     {
       "ID": "capture-clipboard-html",
@@ -959,7 +1023,8 @@
       "Description": "Reads the clipboard's HTML. If there's no HTML flavor (many apps only put plain text), falls back to the plain-text flavor rather than failing -- the capture fallback order docs/SPEC.md §5 names (try HTML, then plain text; DOM-read via the browser bridge is the third tier, not built yet).",
       "ConfigFields": null,
       "Output": "HTML from the clipboard",
-      "Effect": "read"
+      "Effect": "read",
+      "Declared": false
     },
     {
       "ID": "capture-clipboard-info",
@@ -968,7 +1033,8 @@
       "Description": "Reads macOS's own \"clipboard info\" report (which flavors -- HTML, plain text, images, ... -- are currently on the pasteboard, and their byte sizes) and summarizes whether HTML and plain text are present, followed by the raw report. A diagnostic for the Confluence-style clipboard ambiguity docs/SPEC.md §5 names: whether HTML was actually on the clipboard, made directly inspectable instead of inferred from a capture succeeding or failing.",
       "ConfigFields": null,
       "Output": "a summary of the clipboard's flavors",
-      "Effect": "read"
+      "Effect": "read",
+      "Declared": false
     },
     {
       "ID": "capture-file",
@@ -1009,7 +1075,8 @@
         }
       ],
       "Output": "the file's contents",
-      "Effect": "read"
+      "Effect": "read",
+      "Declared": false
     },
     {
       "ID": "child-workflow",
@@ -1075,7 +1142,8 @@
         }
       ],
       "Output": "the child workflow's result",
-      "Effect": "none"
+      "Effect": "none",
+      "Declared": false
     },
     {
       "ID": "code-execution",
@@ -1144,7 +1212,8 @@
         }
       ],
       "Output": "combined stdout+stderr from the executed command",
-      "Effect": "external"
+      "Effect": "external",
+      "Declared": false
     },
     {
       "ID": "human-review",
@@ -1182,7 +1251,8 @@
         }
       ],
       "Output": "payload unchanged, after approval",
-      "Effect": "none"
+      "Effect": "none",
+      "Declared": false
     },
     {
       "ID": "integration-http",
@@ -1206,7 +1276,8 @@
         }
       ],
       "Output": "HTTP response body",
-      "Effect": "external"
+      "Effect": "external",
+      "Declared": false
     },
     {
       "ID": "list-lookup",
@@ -1290,7 +1361,8 @@
         }
       ],
       "Output": "payload unchanged; match → attribute",
-      "Effect": "read"
+      "Effect": "read",
+      "Declared": false
     },
     {
       "ID": "list-search",
@@ -1370,7 +1442,8 @@
         }
       ],
       "Output": "payload unchanged; matches -\u003e a typed Object attribute ({results, matched, first_match, match_count, list_id})",
-      "Effect": "read"
+      "Effect": "read",
+      "Declared": false
     },
     {
       "ID": "mcp-tool-call",
@@ -1422,7 +1495,8 @@
         }
       ],
       "Output": "the tool's text result",
-      "Effect": "external"
+      "Effect": "external",
+      "Declared": false
     },
     {
       "ID": "process-ai-classify",
@@ -1488,7 +1562,8 @@
         }
       ],
       "Output": "unchanged payload -- the chosen category is written into the named Attribute below",
-      "Effect": "external"
+      "Effect": "external",
+      "Declared": false
     },
     {
       "ID": "process-ai-completion",
@@ -1540,7 +1615,8 @@
         }
       ],
       "Output": "the AI completion text, replacing the payload",
-      "Effect": "external"
+      "Effect": "external",
+      "Declared": false
     },
     {
       "ID": "process-ai-extract-structured",
@@ -1592,7 +1668,8 @@
         }
       ],
       "Output": "unchanged payload -- the extracted typed result is written into the named Attributes below",
-      "Effect": "external"
+      "Effect": "external",
+      "Declared": false
     },
     {
       "ID": "process-extract-html",
@@ -1616,7 +1693,8 @@
         }
       ],
       "Output": "the matched element's outer HTML",
-      "Effect": ""
+      "Effect": "",
+      "Declared": false
     },
     {
       "ID": "process-html-to-markdown",
@@ -1625,7 +1703,8 @@
       "Description": "Converts HTML into Markdown, preserving structure (headings, bold, lists).",
       "ConfigFields": null,
       "Output": "Markdown text",
-      "Effect": ""
+      "Effect": "",
+      "Declared": false
     },
     {
       "ID": "process-inject-text",
@@ -1666,7 +1745,8 @@
         }
       ],
       "Output": "payload with text injected",
-      "Effect": ""
+      "Effect": "",
+      "Declared": false
     },
     {
       "ID": "process-run-receipt",
@@ -1675,7 +1755,8 @@
       "Description": "Renders this run's own recorded evidence -- its steps so far, their guardrail verdicts, and which Mill build ran them -- as a JSON receipt, replacing the payload. Only covers steps that ran BEFORE this one, since the run is still in flight when this step executes. Compose it with an Apply step (clipboard/file write) to hand the receipt to an external agent -- there is no separate send path.",
       "ConfigFields": null,
       "Output": "a JSON receipt of this run's steps so far",
-      "Effect": "read"
+      "Effect": "read",
+      "Declared": false
     },
     {
       "ID": "ruleset",
@@ -1684,7 +1765,8 @@
       "Description": "Validates the data flowing through this step against a set of named rules (business/data validation -- e.g. \"amount below limit\", \"country allowed\"). Every rule must pass for the payload to continue unchanged; any failing rule fails the run, naming exactly which rules failed. A rule that cannot evaluate counts as failed (fail-safe). Distinct from Decision (which routes) and from guardrail rules (which govern whether a step may execute at all).",
       "ConfigFields": null,
       "Output": "payload unchanged, if all rules pass",
-      "Effect": "none"
+      "Effect": "none",
+      "Declared": false
     },
     {
       "ID": "apply-clipboard-write-html",
@@ -1708,7 +1790,8 @@
         }
       ],
       "Output": "the HTML it wrote",
-      "Effect": "local"
+      "Effect": "local",
+      "Declared": false
     },
     {
       "ID": "apply-clipboard-write-text",
@@ -1717,7 +1800,8 @@
       "Description": "Writes the workflow's current payload to the clipboard as plain text.",
       "ConfigFields": null,
       "Output": "the text it wrote",
-      "Effect": "local"
+      "Effect": "local",
+      "Declared": false
     },
     {
       "ID": "apply-file-write",
@@ -1789,7 +1873,8 @@
         }
       ],
       "Output": "the payload it wrote, unchanged",
-      "Effect": "local"
+      "Effect": "local",
+      "Declared": false
     },
     {
       "ID": "decision-route",
@@ -1798,7 +1883,8 @@
       "Description": "Routes to one of several next steps based on a rule evaluated against this workflow's Attributes. A pure routing point -- its conditions live on its outgoing edges (SPEC.md §3.5), not here.",
       "ConfigFields": null,
       "Output": "payload and Attributes unchanged; routes to the matching outgoing edge",
-      "Effect": ""
+      "Effect": "",
+      "Declared": false
     },
     {
       "ID": "decision-outcome",
@@ -1822,7 +1908,8 @@
         }
       ],
       "Output": "the typed decision outcome",
-      "Effect": "local"
+      "Effect": "local",
+      "Declared": false
     }
   ],
   "import": {
@@ -1838,6 +1925,7 @@
       "mill://schema/mcpserver/v1",
       "mill://schema/receipt/v1",
       "mill://schema/request/v1",
+      "mill://schema/steptype/v1",
       "mill://schema/workflow/v1"
     ]
   }
