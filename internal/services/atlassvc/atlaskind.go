@@ -13,9 +13,17 @@ import (
 // --- Kinds ---
 
 func (a *AtlasService) CreateKind(label, description, icon string, fields []typedfield.Field) (atlas.Kind, error) {
+	return a.createKindWithID(seeding.NewSlugID(label, "kind"), label, description, icon, fields)
+}
+
+// createKindWithID is CreateKind's own logic, parameterized on the new
+// Kind's id -- the seam ImportAtlas uses to preserve a caller-supplied
+// id (ADR-0036 decision 3), same shape as compositionsvc's
+// createWorkflowWithID/configuresvc's createListWithID.
+func (a *AtlasService) createKindWithID(id, label, description, icon string, fields []typedfield.Field) (atlas.Kind, error) {
 	now := time.Now()
 	k := atlas.Kind{
-		ID: seeding.NewSlugID(label, "kind"), Label: label, Description: description,
+		ID: id, Label: label, Description: description,
 		Icon: icon, Fields: fields, CreatedAt: now, UpdatedAt: now,
 	}
 	if err := atlas.ValidateKind(k); err != nil {
@@ -116,9 +124,16 @@ func insertKindAt(kinds []atlas.Kind, idx int, k atlas.Kind) []atlas.Kind {
 // --- Link kinds ---
 
 func (a *AtlasService) CreateLinkKind(label, description string) (atlas.LinkKind, error) {
+	return a.createLinkKindWithID(seeding.NewSlugID(label, "linkkind"), label, description)
+}
+
+// createLinkKindWithID is CreateLinkKind's own logic, parameterized on
+// the new LinkKind's id -- the seam ImportAtlas uses to preserve a
+// caller-supplied id (ADR-0036 decision 3).
+func (a *AtlasService) createLinkKindWithID(id, label, description string) (atlas.LinkKind, error) {
 	now := time.Now()
 	lk := atlas.LinkKind{
-		ID: seeding.NewSlugID(label, "linkkind"), Label: label, Description: description,
+		ID: id, Label: label, Description: description,
 		CreatedAt: now, UpdatedAt: now,
 	}
 	if err := atlas.ValidateLinkKind(lk); err != nil {

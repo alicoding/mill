@@ -18,6 +18,10 @@ import * as atlas$0 from "../../domain/atlas/models.js";
 // @ts-ignore: Unused imports
 import * as typedfield$0 from "../../domain/typedfield/models.js";
 
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: Unused imports
+import * as $models from "./models.js";
+
 export function Cards(): $CancellablePromise<atlas$0.Card[] | null> {
     return $Call.ByID(4038798409);
 }
@@ -77,15 +81,51 @@ export function DeleteLinkKind(id: string): $CancellablePromise<void> {
     return $Call.ByID(1735554023, id);
 }
 
+/**
+ * ExportAtlas serializes the whole Atlas graph as an indented, portable
+ * JSON string -- share it, commit it to git, or import it into another
+ * Mill instance. Read-only: never mutates a's state. Deterministic by
+ * construction (every field is already-stored data in stable slice
+ * order): exporting twice with no intervening change produces
+ * byte-identical bytes, the same guarantee every other exported* shape
+ * in this codebase carries.
+ */
+export function ExportAtlas(): $CancellablePromise<string> {
+    return $Call.ByID(1261911391);
+}
+
+/**
+ * ImportAtlas applies ADR-0036 decision 3's uniform import rule to
+ * EVERY entity inside jsonData's bundle independently: id absent ->
+ * create fresh; id present and known locally -> update in place; id
+ * present and unknown locally -> create preserving that id. Order is
+ * Kinds/LinkKinds first (Cards reference them by id), then Cards in two
+ * passes -- pass one creates/updates every card's own content with no
+ * containment yet (so a bundle can list a child before its parent),
+ * pass two applies ParentID/Position now that every bundled card exists
+ * locally, through the existing MoveCard/SetPosition chokepoints (their
+ * own cycle-rejection applies unchanged). A card whose bundle entry
+ * omits ParentID is left wherever it already is when updating an
+ * EXISTING card -- omitempty can't distinguish "explicitly root" from
+ * "field not declared" (the same nil-vs-empty ambiguity
+ * UpdateWorkflowFromExport's own doc comment already documents for
+ * Attributes/Notes), so import only ever ADDS/changes containment,
+ * never implicitly clears it. Links import last, once every card and
+ * LinkKind they reference exists.
+ */
+export function ImportAtlas(jsonData: string): $CancellablePromise<$models.AtlasImportSummary> {
+    return $Call.ByID(1577571942, jsonData);
+}
+
 export function Kinds(): $CancellablePromise<atlas$0.Kind[] | null> {
     return $Call.ByID(3099018285);
 }
 
 /**
- * Lens returns the hidden Kind IDs for containerID, or nil if no lens
- * is set.
+ * Lens returns the persisted lens setting for containerID -- the zero
+ * value (no hidden kinds, peek off) when none is set.
  */
-export function Lens(containerID: string): $CancellablePromise<string[] | null> {
+export function Lens(containerID: string): $CancellablePromise<atlas$0.LensSetting> {
     return $Call.ByID(1926175606, containerID);
 }
 
@@ -110,12 +150,14 @@ export function MoveCard(id: string, newParentID: string): $CancellablePromise<a
 /**
  * SetLens persists the per-space lens for containerID: which Kind IDs
  * stay hidden when viewing that container's children (ADR-0038's
- * density-is-a-lens-choice principle). An empty hiddenKindIDs clears
- * the lens for that container rather than storing an empty slice --
+ * density-is-a-lens-choice principle), and the depth/peek toggle (goal
+ * 0061 slice C -- absorbed here from its previous browser-localStorage
+ * home). A setting with nothing real in it (no hidden kinds, peek off)
+ * clears the container's entry rather than storing a no-op one --
  * keeps the persisted map from growing entries with no real content.
  */
-export function SetLens(containerID: string, hiddenKindIDs: string[] | null): $CancellablePromise<void> {
-    return $Call.ByID(1752890006, containerID, hiddenKindIDs);
+export function SetLens(containerID: string, hiddenKindIDs: string[] | null, peek: boolean): $CancellablePromise<void> {
+    return $Call.ByID(1752890006, containerID, hiddenKindIDs, peek);
 }
 
 /**
@@ -158,4 +200,20 @@ export function UpdateLink(id: string, label: string): $CancellablePromise<atlas
 
 export function UpdateLinkKind(id: string, label: string, description: string): $CancellablePromise<atlas$0.LinkKind> {
     return $Call.ByID(4253754605, id, label, description);
+}
+
+/**
+ * UpdateNow runs cardID's RefreshWorkflowID through workflowRunner and
+ * stamps ReceiptRunID as soon as a run id exists -- the "on run start"
+ * half of ADR-0038 decision 4's stamping rule. LastSyncedAt is
+ * deliberately NOT stamped here even when the run already finished
+ * successfully by the time this call returns: NotifyRunCompleted
+ * (this file, below) is the one place that stamps it, so a run gated
+ * on guardrail approval (which may not finish for a long time after
+ * this call returns) and a run that finishes synchronously both go
+ * through the identical "on successful completion" path instead of two
+ * slightly different ones.
+ */
+export function UpdateNow(cardID: string): $CancellablePromise<atlas$0.Card> {
+    return $Call.ByID(2019874317, cardID);
 }

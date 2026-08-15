@@ -123,7 +123,7 @@ func TestDataEvent_EveryMutatorEmits(t *testing.T) {
 	assertEmitted(t, *got, link.ID)
 
 	got = captureEmits(t)
-	if err := a.SetLens(c2.ID, []string{k.ID}); err != nil {
+	if err := a.SetLens(c2.ID, []string{k.ID}, false); err != nil {
 		t.Fatalf("SetLens: %v", err)
 	}
 	assertEmitted(t, *got, c2.ID)

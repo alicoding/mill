@@ -29,6 +29,14 @@ func (a *AtlasService) resolveKindLocked(id string) (atlas.Kind, error) {
 // reparenting an EXISTING card (which may have its own descendants)
 // needs one.
 func (a *AtlasService) CreateCard(kindID, title, note string, fields map[string]string, parentID string, position *atlas.Position, viewMode atlas.ViewMode, source, mirrorPath, refreshWorkflowID string) (atlas.Card, error) {
+	return a.createCardWithID(seeding.NewSlugID(title, "card"), kindID, title, note, fields, parentID, position, viewMode, source, mirrorPath, refreshWorkflowID)
+}
+
+// createCardWithID is CreateCard's own logic, parameterized on the new
+// card's id -- the seam ImportAtlas uses to preserve a caller-supplied
+// id (ADR-0036 decision 3), same shape as compositionsvc's
+// createWorkflowWithID/configuresvc's createListWithID.
+func (a *AtlasService) createCardWithID(id, kindID, title, note string, fields map[string]string, parentID string, position *atlas.Position, viewMode atlas.ViewMode, source, mirrorPath, refreshWorkflowID string) (atlas.Card, error) {
 	a.mu.Lock()
 	kind, err := a.resolveKindLocked(kindID)
 	if err != nil {
@@ -41,7 +49,7 @@ func (a *AtlasService) CreateCard(kindID, title, note string, fields map[string]
 	}
 	now := time.Now()
 	c := atlas.Card{
-		ID: seeding.NewSlugID(title, "card"), KindID: kindID, Title: title, Note: note,
+		ID: id, KindID: kindID, Title: title, Note: note,
 		Fields: fields, ParentID: parentID, Position: position, ViewMode: viewMode,
 		Source: source, MirrorPath: mirrorPath, RefreshWorkflowID: refreshWorkflowID,
 		CreatedAt: now, UpdatedAt: now,

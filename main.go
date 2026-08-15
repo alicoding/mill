@@ -158,6 +158,23 @@ func main() {
 	// goal 0052 slice 3: the version a run receipt's Build field stamps.
 	executionService.SetVersion(millVersion)
 
+	// docs/adr/0038 decision 4, goal 0061 slice C: "Update now" runs a
+	// card's referenced workflow through the normal guardrail-gated
+	// path -- same late-bound-setter shape as WireChildWorkflowRunner
+	// above, atlassvc never imports executionsvc directly. Kind is
+	// RunKindTriggered (production semantics: a disabled or
+	// never-published refresh workflow is rejected, same requirement
+	// child-workflow nodes already hold their callable target to).
+	atlassvc.SetWorkflowRunner(func(workflowID string) (string, bool, bool, error) {
+		summary, err := executionService.RunWorkflow(workflowID, executionsvc.RunKindTriggered, nil)
+		if err != nil {
+			return "", false, false, err
+		}
+		pending := summary.Pending != nil
+		return summary.RunID, !pending && summary.Status == "SUCCESS", pending, nil
+	})
+	executionService.SetRunCompletionSink(atlasService.NotifyRunCompleted)
+
 	settingsService := settingssvc.NewSettingsService(settingsStore, triggerService, settingsPath != defaultSettingsPath)
 	// Bidirectional hotkey-conflict check (docs/SPEC.md §3.7): a
 	// per-workflow hotkey can't silently collide with the app-level

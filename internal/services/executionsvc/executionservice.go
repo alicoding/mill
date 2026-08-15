@@ -194,6 +194,16 @@ type ExecutionService struct {
 	// exists; nil in every standalone test that builds ExecutionService
 	// directly, same as minutesSavedLookup above.
 	systemEventSink func(SystemEvent)
+	// runCompletionSink is goal 0061 slice C's run-completion seam
+	// (ADR-0038 decision 4) -- called from runWorkflow for EVERY run's
+	// completion, success or failure, so atlassvc's UpdateNow can stamp
+	// a card's LastSyncedAt whenever its "Update now" run actually
+	// succeeds, however long that takes (including a run that parked
+	// for guardrail approval and resolved long after the call that
+	// started it returned). Wired from main.go via
+	// SetRunCompletionSink; nil in every standalone test, same as
+	// systemEventSink above.
+	runCompletionSink func(runID string, succeeded bool)
 	// version is the app version string a run receipt's Build field
 	// stamps (executionservice_receipt.go) -- set via SetVersion once
 	// main.go's millVersion const is available; empty in every
@@ -290,10 +300,16 @@ func (e *ExecutionService) runWorkflow(ctx execution.Context, in runInput) (stri
 	switch {
 	case err == nil:
 		e.emitSystemEvent(SystemEventRunCompleted, runID, "")
+		if e.runCompletionSink != nil {
+			e.runCompletionSink(runID, true)
+		}
 	case strings.Contains(err.Error(), composition.CancelledByUserMessage):
 		// CancelRun already emitted run-cancelled for this runID.
 	default:
 		e.emitSystemEvent(SystemEventRunFailed, runID, "")
+		if e.runCompletionSink != nil {
+			e.runCompletionSink(runID, false)
+		}
 	}
 	// Live-sync counterpart of runWorkflowStart's start emit, placed
 	// here for the same reason as the system events above: every run

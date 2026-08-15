@@ -8,6 +8,15 @@ import (
 
 	"github.com/alicoding/mill/internal/adapters/buildinfo"
 	"github.com/alicoding/mill/internal/contract"
+	// Blank-imported purely for its contract.Register("atlas", ...) init()
+	// side effect -- TestMCPContract_IsStaticDocumentPlusLiveManifest below
+	// compares the committed, embedded contract.json (baked in at compile
+	// time, always carries every family) against the LIVE contract.Families()
+	// registry, which only reflects packages actually linked into this one
+	// test binary. mcpsvc itself never calls into atlassvc, so without this
+	// the comparison would drift the moment a family exists that no mcpsvc
+	// source file happens to import for an unrelated reason.
+	_ "github.com/alicoding/mill/internal/services/atlassvc"
 	"github.com/alicoding/mill/internal/services/compositionsvc"
 	"github.com/alicoding/mill/internal/services/configuresvc"
 	"github.com/alicoding/mill/internal/services/servicetest"

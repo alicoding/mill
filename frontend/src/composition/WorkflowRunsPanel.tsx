@@ -9,22 +9,13 @@ import { ExecutionService } from '../shared/bindings'
 import { RunKind, type RunDetail, type RunSummary } from '../shared/bindings'
 import type { AttributeDef } from '../../bindings/github.com/alicoding/mill/internal/domain/composition/models'
 import { ApprovalValuesForm, attrsForPending } from '../shared/ApprovalValuesForm'
-import { formatRunStartedAt } from '../shared/runTime'
+import { formatRunStartedAt, runStatusVariant } from '../shared/runTime'
 import { StalenessBadge } from '../shared/StalenessBadge'
 import { StatusStamp, type StatusStampVariant } from '../shared/StatusStamp'
 import { ENQUEUED_STALE_THRESHOLD_MS, isStuckEnqueued } from '../shared/enqueuedStale'
 import styles from '../shared/ListCard.module.css'
 import monoStyles from '../shared/monoText.module.css'
 import PageContainer from '../shared/PageContainer'
-
-const STATUS_VARIANT: Record<string, StatusStampVariant> = {
-  SUCCESS: 'success',
-  ERROR: 'danger',
-  PENDING: 'caution',
-  ENQUEUED: 'caution',
-  CANCELLED: 'neutral',
-  MAX_RECOVERY_ATTEMPTS_EXCEEDED: 'danger',
-}
 
 function kindLabelFor(t: (key: string) => string): Record<RunKind, string> {
   return {
@@ -250,7 +241,7 @@ function WorkflowRunsPanel({ workflowId, attrs, initialRunId, onInitialRunConsum
             {run.pending ? (
               <StatusStamp variant="caution" data-testid="run-awaiting-approval">{t('workflowRunsPanel.awaitingApproval')}</StatusStamp>
             ) : (
-              <StatusStamp variant={STATUS_VARIANT[run.status] ?? 'neutral'}>{run.status}</StatusStamp>
+              <StatusStamp variant={runStatusVariant(run.status)}>{run.status}</StatusStamp>
             )}
             {/* Stuck-ENQUEUED presentation (docs/goals/0026 item 8): a
                 run that queued forever without ever starting reads as
@@ -345,7 +336,7 @@ function WorkflowRunsPanel({ workflowId, attrs, initialRunId, onInitialRunConsum
         <div ref={detailRef} className={styles.card} data-testid="run-detail" style={{ marginTop: 'var(--base-size-16)' }}>
           <Stack direction="horizontal" justify="space-between" align="center">
             <Stack direction="horizontal" gap="condensed" align="center">
-              <StatusStamp variant={STATUS_VARIANT[detail.status] ?? 'neutral'}>{detail.status}</StatusStamp>
+              <StatusStamp variant={runStatusVariant(detail.status)}>{detail.status}</StatusStamp>
               {isStuckEnqueued(detail) && (
                 <StalenessBadge
                   createdAt={detail.startedAt}

@@ -24,6 +24,13 @@
     "titleLabel": "Title",
     "createButton": "Create"
   },
+  "toolbar": {
+    "export": "Export",
+    "import": "Import",
+    "importConfirmTitle": "This import will update existing items",
+    "importConfirmBody": "{{count}} kinds, cards, or links already exist here and will be updated in place.",
+    "importConfirmButton": "Import"
+  },
   "overlay": {
     "title": "{{title}}",
     "titleLabel": "Title",
@@ -34,7 +41,9 @@
     "lastSynced": "Last synced {{when}}",
     "neverSynced": "Never synced",
     "refreshWorkflowLabel": "Refresh workflow",
-    "receiptRunID": "Produced by run {{id}}",
+    "updateNow": "Update now",
+    "updating": "Updating…",
+    "receiptRunID": "Produced by run",
     "linksHeading": "Links",
     "noLinks": "No links yet.",
     "removeLinkAriaLabel": "Remove link to {{title}}",

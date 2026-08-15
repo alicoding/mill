@@ -1,0 +1,229 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "mill://schema/atlas/v1",
+  "$defs": {
+    "Field": {
+      "properties": {
+        "Key": {
+          "type": "string"
+        },
+        "Label": {
+          "type": "string"
+        },
+        "Type": {
+          "type": "string"
+        },
+        "Required": {
+          "type": "boolean"
+        },
+        "Default": {
+          "type": "string"
+        },
+        "Description": {
+          "type": "string"
+        },
+        "Options": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "Suggestions": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "Secret": {
+          "type": "boolean"
+        },
+        "RefKind": {
+          "type": "string"
+        },
+        "Multiline": {
+          "type": "boolean"
+        },
+        "SystemManaged": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "Key",
+        "Label",
+        "Type",
+        "Required",
+        "Default",
+        "Description",
+        "Options",
+        "Suggestions",
+        "Secret",
+        "RefKind",
+        "Multiline",
+        "SystemManaged"
+      ]
+    },
+    "exportedCard": {
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "kindID": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "note": {
+          "type": "string"
+        },
+        "fields": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "type": "object"
+        },
+        "parentID": {
+          "type": "string"
+        },
+        "position": {
+          "$ref": "#/$defs/exportedPosition"
+        },
+        "viewMode": {
+          "type": "string"
+        },
+        "source": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "kindID",
+        "title"
+      ]
+    },
+    "exportedKind": {
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "icon": {
+          "type": "string"
+        },
+        "fields": {
+          "items": {
+            "$ref": "#/$defs/Field"
+          },
+          "type": "array"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "label"
+      ]
+    },
+    "exportedLink": {
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "fromCardID": {
+          "type": "string"
+        },
+        "toCardID": {
+          "type": "string"
+        },
+        "linkKindID": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "fromCardID",
+        "toCardID",
+        "linkKindID"
+      ]
+    },
+    "exportedLinkKind": {
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "label"
+      ]
+    },
+    "exportedPosition": {
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "x",
+        "y"
+      ]
+    }
+  },
+  "properties": {
+    "schema": {
+      "type": "string"
+    },
+    "kinds": {
+      "items": {
+        "$ref": "#/$defs/exportedKind"
+      },
+      "type": "array"
+    },
+    "linkKinds": {
+      "items": {
+        "$ref": "#/$defs/exportedLinkKind"
+      },
+      "type": "array"
+    },
+    "cards": {
+      "items": {
+        "$ref": "#/$defs/exportedCard"
+      },
+      "type": "array"
+    },
+    "links": {
+      "items": {
+        "$ref": "#/$defs/exportedLink"
+      },
+      "type": "array"
+    }
+  },
+  "additionalProperties": false,
+  "type": "object",
+  "required": [
+    "schema"
+  ]
+}

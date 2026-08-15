@@ -8,6 +8,7 @@ export {
 export type {
     Card,
     Kind,
+    LensSetting,
     Link,
     LinkKind,
     Position

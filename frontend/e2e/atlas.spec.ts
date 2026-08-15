@@ -113,6 +113,122 @@ test('the lens hides a kind within a space', async ({ page }) => {
   await expect(contactCard).toBeVisible()
 })
 
+test('A sibling card created into a canvas-mode space lands clear of its siblings, not stacked at the origin', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Atlas' }).click()
+  await page.getByTestId('atlas-shelf-card').filter({ hasText: 'My space' }).click()
+  await expect(page.getByTestId('atlas-canvas')).toBeVisible()
+
+  // "Example area" (a seeded canvas-mode sibling) already sits at the
+  // desired starting position AtlasView.createCard tries first -- a
+  // sibling created here must land clear of it (findFreeDropPosition,
+  // frontend/src/shared/canvasLayout.ts), not stacked directly on top.
+  const exampleAreaCard = page.getByTestId('atlas-canvas-card').filter({ hasText: 'Example area' })
+  await expect(exampleAreaCard).toBeVisible()
+  await exampleAreaCard.click()
+  await expect(page.getByTestId('atlas-breadcrumb')).toContainText('Example area')
+
+  const title = 'ZzE2eAtlasSiblingCard'
+  await page.getByTestId('atlas-add-button').click()
+  await page.getByTestId('atlas-add-sibling').click()
+  await page.getByTestId('atlas-create-kind').selectOption({ label: '🧭 Topic' })
+  await page.getByTestId('atlas-create-title').fill(title)
+  await page.getByRole('button', { name: 'Create' }).click()
+
+  // The new card is a sibling of "Example area" (both live in "My
+  // space"), not a child of it -- navigate back up to see them both.
+  await page.getByTestId('atlas-breadcrumb').getByText('My space', { exact: true }).click()
+  await expect(page.getByTestId('atlas-breadcrumb')).toContainText('My space')
+  const newCard = page.getByTestId('atlas-canvas-card').filter({ hasText: title })
+  await expect(newCard).toBeVisible()
+
+  const [boxA, boxB] = await Promise.all([exampleAreaCard.boundingBox(), newCard.boundingBox()])
+  if (!boxA || !boxB) throw new Error('expected both card bounding boxes to be measurable')
+  const overlaps =
+    boxA.x < boxB.x + boxB.width && boxA.x + boxA.width > boxB.x && boxA.y < boxB.y + boxB.height && boxA.y + boxA.height > boxB.y
+  expect(overlaps).toBe(false)
+
+  // Cleanup (testing.md's within-file discipline).
+  await newCard.getByTestId('atlas-card-info').click()
+  await page.getByTestId('atlas-overlay-delete').click()
+  await page.getByRole('alertdialog').getByRole('button', { name: 'Delete' }).click()
+  await expect(newCard).not.toBeVisible()
+})
+
+test('Exporting the atlas graph downloads a portable JSON bundle with the seeded content', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Atlas' }).click()
+  await expect(atlasView(page)).toBeVisible()
+
+  const downloadPromise = page.waitForEvent('download')
+  await page.getByTestId('atlas-export').click()
+  const download = await downloadPromise
+  const stream = await download.createReadStream()
+  const chunks: Buffer[] = []
+  for await (const chunk of stream) chunks.push(chunk as Buffer)
+  const parsed = JSON.parse(Buffer.concat(chunks).toString('utf-8'))
+
+  expect(parsed.schema).toBe('mill://schema/atlas/v1')
+  expect(Array.isArray(parsed.cards)).toBe(true)
+  expect(parsed.cards.some((c: { title?: string }) => c.title === 'My space')).toBe(true)
+})
+
+test('Update now on the seeded mirror card runs its workflow through the normal gate and shows a synced receipt live', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Atlas' }).click()
+  await page.getByTestId('atlas-shelf-card').filter({ hasText: 'My space' }).click()
+  await page.getByTestId('atlas-canvas-card').filter({ hasText: 'Example area' }).click()
+  await expect(page.getByTestId('atlas-shelves')).toBeVisible()
+
+  const charterCard = page.getByTestId('atlas-shelf-card').filter({ hasText: 'Project charter' })
+  await expect(charterCard).toBeVisible()
+  await charterCard.getByTestId('atlas-card-info').click()
+  const overlay = page.locator('[data-component="atlas-card-overlay"]')
+  await expect(overlay).toBeVisible()
+  await expect(overlay.getByTestId('atlas-overlay-update-now')).toBeVisible()
+
+  await overlay.getByTestId('atlas-overlay-update-now').click()
+
+  // The card's seeded RefreshWorkflowID (example-child-echo-workflow)
+  // is deterministic, no clipboard/network -- it runs to SUCCESS
+  // synchronously, so both the receipt run id and its status, and the
+  // synced timestamp, appear live without a reload.
+  await expect(overlay.getByTestId('atlas-overlay-receipt-run')).toBeVisible()
+  await expect(overlay.getByTestId('atlas-overlay-receipt-status')).toContainText('SUCCESS')
+  await expect(overlay.getByText(/Last synced/)).toBeVisible()
+
+  await page.keyboard.press('Escape')
+  await expect(overlay).not.toBeVisible()
+})
+
+test('the lens depth toggle persists server-side across a reload', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Atlas' }).click()
+  await page.getByTestId('atlas-shelf-card').filter({ hasText: 'My space' }).click()
+  await page.getByTestId('atlas-canvas-card').filter({ hasText: 'Example area' }).click()
+  await expect(page.getByTestId('atlas-shelves')).toBeVisible()
+
+  await page.getByTestId('atlas-lens-open').click()
+  await expect(page.locator('[data-component="atlas-lens-dialog"]')).toBeVisible()
+  await page.getByRole('button', { name: 'Peek into children' }).click()
+  await page.keyboard.press('Escape')
+
+  await page.reload()
+  await expect(atlasView(page)).toBeVisible()
+  await page.getByTestId('atlas-shelf-card').filter({ hasText: 'My space' }).click()
+  await page.getByTestId('atlas-canvas-card').filter({ hasText: 'Example area' }).click()
+  await expect(page.getByTestId('atlas-shelves')).toBeVisible()
+  await page.getByTestId('atlas-lens-open').click()
+  await expect(page.getByRole('button', { name: 'Peek into children', pressed: true })).toBeVisible()
+  await page.keyboard.press('Escape')
+
+  // Restore: clear the peek toggle so it doesn't leak into a later test
+  // in this same file/worker (testing.md's within-file cleanup rule).
+  await page.getByTestId('atlas-lens-open').click()
+  await page.getByRole('button', { name: 'This level only' }).click()
+  await page.keyboard.press('Escape')
+})
+
 test('Quick Panel finds a seeded Atlas card by title', async ({ page }) => {
   const mainPage = await page.context().newPage()
   try {

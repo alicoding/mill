@@ -3,6 +3,7 @@ package atlas
 import (
 	"time"
 
+	"github.com/alicoding/mill/internal/domain/composition"
 	"github.com/alicoding/mill/internal/domain/seedorigin"
 	"github.com/alicoding/mill/internal/domain/typedfield"
 )
@@ -136,12 +137,18 @@ func BuiltInCards() []Card {
 			BuiltIn: true, Seed: seedorigin.Stamp(1),
 		},
 		{
+			// RefreshWorkflowID (goal 0061 slice C) proves "Update now"
+			// live from seeds alone: composition.ExampleChildWorkflowID
+			// is deterministic (no clipboard, no network) and already
+			// PUBLISHED, the same requirement RunKindTriggered holds
+			// every refresh workflow to.
 			ID: cardDocumentID, KindID: kindDocumentID, Title: "Project charter",
-			ParentID:  cardExampleAreaID,
-			Source:    "https://example.com/project-charter",
-			Fields:    map[string]string{"owner": "Ada Lovelace"},
-			CreatedAt: now, UpdatedAt: now,
-			BuiltIn: true, Seed: seedorigin.Stamp(1),
+			ParentID:          cardExampleAreaID,
+			Source:            "https://example.com/project-charter",
+			Fields:            map[string]string{"owner": "Ada Lovelace"},
+			RefreshWorkflowID: composition.ExampleChildWorkflowID,
+			CreatedAt:         now, UpdatedAt: now,
+			BuiltIn: true, Seed: seedorigin.Stamp(2),
 		},
 	}
 }

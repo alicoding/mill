@@ -125,6 +125,19 @@ export interface Kind {
 }
 
 /**
+ * LensSetting is one container card's per-space density filter (ADR-
+ * 0038's design principles): which Kind IDs stay hidden, and whether
+ * this level's children peek into THEIR own children too (docs/goals/
+ * 0061's "this level only vs peek into children" toggle, absorbed here
+ * from its previous browser-localStorage home so it round-trips across
+ * sessions/devices like every other Atlas preference).
+ */
+export interface LensSetting {
+    "HiddenKindIDs": string[] | null;
+    "Peek": boolean;
+}
+
+/**
  * Link is a typed, owner-authored relation between two cards -- binds
  * by card ID (a key), never by title (ADR-0038 Decision 3), so a card
  * rename can never silently break a relation.
