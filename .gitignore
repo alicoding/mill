@@ -23,3 +23,7 @@ build/android/gen/
 
 # agent worktrees (parallel builds) — never tracked
 .claude/worktrees/
+
+# Internal working docs live in the private mill-docs repo (nested at docs/,
+# its own git checkout) -- deliberately untracked here.
+/docs/
