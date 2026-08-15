@@ -110,7 +110,7 @@ accepted)**
    what non-developers actually automate; everyday-task inventory
    mapped to today/needs-step/out-of-boundary; the one-sentence
    explanation test. Feeds 0056 + 0047
-11. [ ] [0054 — Step designer + declare-vs-code boundary](0054-step-designer.md)
+11. [x] [0054 — Step designer + declare-vs-code boundary](archive/0054-step-designer.md)
    — owner-directed 2026-08-13: declare new step types in-product
    (v1 = promote HTTPRequest operations / MCP tools / child
    workflows into named palette types, stored as data) + the ADR
@@ -118,6 +118,11 @@ accepted)**
    declaration suffices (naming/mapping over existing engines).
    After 0052 — declared types must be first-class in the generated
    contract from day one; benefits from 0047's palette facet.
+   DELIVERED 2026-08-14/15 (ADR-0037 + PRs #132/#134): declare-vs-code
+   boundary recorded, data-backed registry with inherited effect
+   classes, Configure designer page, live palette, seeded proof.
+   ARCHIVED — second capability-goal archive stacked on the pending
+   v0.4.0 owner call (one release covers 0052+0054).
    **Slice A (backend: data-backed registry, Configure entity,
    contract family, seeded proof) shipped — see the goal file's own
    "Slice A status" section. Remaining: slice B, the designer UI.**
