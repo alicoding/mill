@@ -1,3 +1,10 @@
+// Package triggersvc is the Wails-facing layer over
+// internal/domain/trigger: registering and running the live listeners
+// (hotkey, schedule, clipboard/filesystem watch, system event) that
+// start a workflow, plus their settings-store persistence. Domain
+// validation stays in the domain package; this package owns the
+// runtime registry of active OS-level listeners and the call into
+// CompositionService/ExecutionService to actually run a workflow.
 package triggersvc
 
 import (

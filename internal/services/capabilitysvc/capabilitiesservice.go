@@ -1,3 +1,6 @@
+// Package capabilitysvc is the thin Wails binding over
+// internal/domain/capabilities -- Mill's own self-describing capability
+// registry, exposed to the frontend read-only with no logic of its own.
 package capabilitysvc
 
 import (

@@ -1,3 +1,11 @@
+// Package compositionsvc is the Wails-facing layer over
+// internal/domain/composition: persistence, ID/versioning, and
+// import/export for user-authored workflows (nodes, edges, attributes).
+// Domain validation and node-type execution semantics stay in the
+// domain package (.claude/rules/backend.md's purity rule); this
+// package owns only the state and settings-store persistence a
+// stateless domain package can't hold, plus the Syncer seam that tells
+// TriggerService when the workflow set changes.
 package compositionsvc
 
 import (

@@ -1,3 +1,9 @@
+// Package executionsvc is the Wails-facing layer that runs a workflow:
+// durable execution via DBOS (internal/adapters/execution), the
+// guardrail gate checked before every guarded step (guardrailsvc), run
+// history/receipts, and cancellation. It owns orchestration state a
+// stateless domain package can't hold; per-node-type execution
+// semantics live in internal/domain/composition.
 package executionsvc
 
 import (

@@ -1,3 +1,10 @@
+// Package mcpsvc exposes Mill's own workflows and Configure data as MCP
+// Resources/Tools over HTTP -- Mill acting as an MCP server for an
+// external agent host, not as an MCP client or LLM host itself
+// (docs/SPEC.md §3.1/§3.6). Write-shaped tools go through the
+// park-and-poll approval flow (millmcpservice_approval.go) rather than
+// executing unguarded; read Resources call the same Export* methods the
+// UI's own Export button uses, never a second read model.
 package mcpsvc
 
 import (

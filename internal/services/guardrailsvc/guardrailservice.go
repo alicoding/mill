@@ -1,3 +1,8 @@
+// Package guardrailsvc is the Wails-facing layer over
+// internal/domain/guardrail: rule storage/CRUD and the dry-run tester.
+// Rule evaluation itself stays in the domain package; this package owns
+// only persistence and the composition-aware lookups (resolving which
+// workflow/node a rule targets) a stateless domain package can't hold.
 package guardrailsvc
 
 import (

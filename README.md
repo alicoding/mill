@@ -42,10 +42,9 @@ ships runnable and fully editable.*
 ## Status
 
 Mill is under active development, pre-1.0. Several UX surfaces are
-explicitly prototype-quality (tracked as such in `docs/SPEC.md`) while the
-underlying capability is real and exercised end-to-end. Expect rough edges
-in presentation before you expect them in behavior — and expect both to
-keep changing release to release.
+explicitly prototype-quality while the underlying capability is real and
+exercised end-to-end. Expect rough edges in presentation before you expect
+them in behavior — and expect both to keep changing release to release.
 
 ## Install
 
@@ -74,9 +73,6 @@ build/dev commands (`task install:app`, `task build`, `task package`, ...).
 
 ## Documentation
 
-- [`docs/SPEC.md`](docs/SPEC.md) — the living architecture and positioning
-  doc (also rendered inside the app itself). Source of truth for what
-  Mill is, what's decided (`LOCKED`), and what's still open (`OPEN`).
 - [`CONTRIBUTING.md`](CONTRIBUTING.md) — how to propose a change.
 - [`SECURITY.md`](SECURITY.md) — how to report a vulnerability and what's
   in scope.

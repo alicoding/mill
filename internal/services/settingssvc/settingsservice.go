@@ -1,3 +1,8 @@
+// Package settingssvc is the Wails-facing layer over Mill's own
+// app-level settings -- config that applies to Mill itself (launch at
+// login, the summon hotkey, window geometry, build/update state)
+// independent of any specific workflow, distinct from both Configure
+// (node-kind authoring) and a Trigger's per-workflow config.
 package settingssvc
 
 import (
