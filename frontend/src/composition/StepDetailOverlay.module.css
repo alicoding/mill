@@ -1,0 +1,28 @@
+/* docs/goals/0058: the three-pane step-detail overlay's own layout --
+   everything else (typography, spacing, the payload/attribute blocks)
+   comes from Primer components and ListCard.module.css's shared
+   .result/.muted classes, matching frontend.md's CSS-Modules-for-
+   layout-only convention. */
+.grid {
+    display: grid;
+    grid-template-columns: 1fr 1.2fr 1fr;
+    gap: var(--base-size-16);
+    /* Each pane scrolls its own overflow (long payloads, many fields)
+       instead of the page/dialog growing past the viewport or forcing
+       horizontal scroll -- min-width:0 is required on a grid child for
+       its own overflow:auto to actually engage, since a grid item's
+       default min-width is auto (content-based), not 0. */
+    min-width: 0;
+}
+.pane {
+    min-width: 0;
+    overflow-x: hidden;
+}
+/* Below this width three columns of real content (a config form, JSON
+   payloads) get too cramped to read -- panes stack full-width instead,
+   each still independently scrollable. */
+@media (max-width: 900px) {
+    .grid {
+        grid-template-columns: 1fr;
+    }
+}

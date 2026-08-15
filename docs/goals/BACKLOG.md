@@ -84,13 +84,17 @@ accepted)**
    same day; ask the owner before cutting. Known remainder for a
    future sweep: node wording in MCP debug-tool descriptions + the
    root document's nodeTypes key (PR #123's flagged leftovers)**
-8. [ ] [0058 — Step inspector UX: config + I/O together](0058-step-inspector-ux.md)
+8. [x] [0058 — Step inspector UX: config + I/O together](archive/0058-step-inspector-ux.md)
    — owner-raised 2026-08-14 ("the tiny sidebar for everything seems
    to be a weird difficult pattern"): review-first goal — precedent
    research on step detail surfaces (the field converged on
    config-beside-data at working size, not narrow sidebars), verdict
    recorded, then implement over existing recorded step I/O + the
-   generic ConfigField inspector. Slotted by the UX-first tiebreak
+   generic ConfigField inspector. DELIVERED 2026-08-14: three-pane
+   `StepDetailOverlay.tsx` (Primer `Dialog` at a custom CSS width),
+   `NodeConfigFields.tsx` extracted so the sidebar and overlay share
+   one config-rendering implementation, latest-run data via
+   `useLatestRunStep.ts`. ARCHIVED
 9. [ ] [0059 — Empty states that stay useful](0059-empty-states-useful.md)
    — owner-raised 2026-08-14 from live screenshots (Activity's
    one-line void vs Review's half-working pattern): every empty
