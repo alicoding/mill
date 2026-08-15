@@ -89,30 +89,61 @@ async function connectNodes(page: import('@playwright/test').Page, sourceLabel: 
 // actionability check, not the browser's real hit-testing) catches
 // this). Tries a few candidate points around the card, verifying via
 // document.elementFromPoint that each one actually resolves inside
-// THIS node's own `.react-flow__node` wrapper (a per-node badge is a
-// valid hit too -- it's still a descendant, clicks on it still select
-// the node) before clicking there for real.
+// THIS node's own `.react-flow__node` wrapper -- matched by its stable
+// `data-id`, not just "some node", since a tightly packed Fit View can
+// render a target card overlapping a sibling's: a candidate landing on
+// the sibling must not count as a hit (traced from a real CI failure
+// where the click silently reselected the already-selected neighbor
+// instead of the intended node). If every candidate resolves to
+// something else (a sibling, or Controls/MiniMap chrome) the whole
+// layout is panned so this node's own last-known center lands on the
+// pane's center -- corner-anchored chrome never reaches the middle of
+// the pane, so this clears whichever corner the node was stuck under
+// -- before the outer retry re-samples with fresh coordinates. Bounded
+// by `toPass`'s own timeout, so a genuine selection regression still
+// fails loudly instead of spinning silently.
 async function clickCanvasNode(page: import('@playwright/test').Page, panel: import('@playwright/test').Locator, label: string) {
   const node = panel.locator('.react-flow__node').filter({ hasText: label })
-  const box = await node.boundingBox()
-  if (!box) throw new Error(`clickCanvasNode: node "${label}" has no bounding box`)
-  const candidates = [
-    { x: box.x + 10, y: box.y + 10 },
-    { x: box.x + box.width - 10, y: box.y + 10 },
-    { x: box.x + box.width / 2, y: box.y + box.height / 2 },
-    { x: box.x + 10, y: box.y + box.height - 10 },
-  ]
-  for (const point of candidates) {
-    const insideNode = await page.evaluate(({ x, y }) => {
-      const el = document.elementFromPoint(x, y)
-      return !!el?.closest('.react-flow__node')
-    }, point)
-    if (insideNode) {
-      await page.mouse.click(point.x, point.y)
-      return
+  const nodeID = await node.getAttribute('data-id')
+  if (!nodeID) throw new Error(`clickCanvasNode: node "${label}" has no data-id`)
+
+  await expect(async () => {
+    const box = await node.boundingBox()
+    if (!box) throw new Error(`clickCanvasNode: node "${label}" has no bounding box`)
+    const candidates = [
+      { x: box.x + 10, y: box.y + 10 },
+      { x: box.x + box.width - 10, y: box.y + 10 },
+      { x: box.x + box.width / 2, y: box.y + box.height / 2 },
+      { x: box.x + 10, y: box.y + box.height - 10 },
+    ]
+    let clicked = false
+    for (const point of candidates) {
+      const hitID = await page.evaluate(({ x, y }) => {
+        const el = document.elementFromPoint(x, y)
+        return el?.closest('.react-flow__node')?.getAttribute('data-id') ?? null
+      }, point)
+      if (hitID === nodeID) {
+        await page.mouse.click(point.x, point.y)
+        clicked = true
+        break
+      }
     }
-  }
-  throw new Error(`clickCanvasNode: no point for node "${label}" resolved inside its own card -- covered by other canvas chrome at every candidate`)
+    if (!clicked) {
+      const paneBox = await panel.locator('.react-flow__pane').boundingBox()
+      if (paneBox) {
+        const anchor = { x: paneBox.x + paneBox.width / 2, y: paneBox.y + 20 }
+        const nodeCenter = { x: box.x + box.width / 2, y: box.y + box.height / 2 }
+        const paneCenter = { x: paneBox.x + paneBox.width / 2, y: paneBox.y + paneBox.height / 2 }
+        const dx = paneCenter.x - nodeCenter.x
+        const dy = paneCenter.y - nodeCenter.y
+        await page.mouse.move(anchor.x, anchor.y)
+        await page.mouse.down()
+        await page.mouse.move(anchor.x + dx, anchor.y + dy, { steps: 5 })
+        await page.mouse.up()
+      }
+    }
+    await expect(panel.locator('.react-flow__node.selected')).toHaveAttribute('data-id', nodeID)
+  }).toPass({ timeout: 10_000, intervals: [200] })
 }
 
 // process-inject-text (SPEC.md §3.3) needs no bespoke Inspector UI of its
