@@ -53,6 +53,13 @@ type AtlasService struct {
 	cards     []atlas.Card
 	links     []atlas.Link
 	lenses    map[string]atlas.LensSetting
+	// mirrorsDir is the Mill-owned root directory a space's lazily-
+	// created mirror folder lives under (goal 0063's share model,
+	// atlasservice_share.go) -- set once from main.go via
+	// SetMirrorsDir, empty ("" -- share actions report a configuration
+	// error rather than writing beside the process) for any test that
+	// never calls it.
+	mirrorsDir string
 }
 
 // NewAtlasService restores any persisted state, then reconciles the

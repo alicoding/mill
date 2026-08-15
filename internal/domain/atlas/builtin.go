@@ -57,7 +57,10 @@ func BuiltInKinds() []Kind {
 			Description: "A container for organizing other cards.",
 			Fields:      nil,
 			CreatedAt:   now, UpdatedAt: now,
-			BuiltIn: true, Seed: seedorigin.Stamp(1),
+			// SeedRevision 2: atlas.Kind gained FieldTombstones (goal
+			// 0063's absorbed 0046 leftover) -- structural only, no
+			// change to Fields itself.
+			BuiltIn: true, Seed: seedorigin.Stamp(2),
 		},
 		{
 			ID: kindTopicID, Label: "Topic", Icon: "🧭",
@@ -68,7 +71,7 @@ func BuiltInKinds() []Kind {
 					Options: []string{"Open", "In progress", "Done"}, Default: "Open"},
 			},
 			CreatedAt: now, UpdatedAt: now,
-			BuiltIn: true, Seed: seedorigin.Stamp(1),
+			BuiltIn: true, Seed: seedorigin.Stamp(2), // FieldTombstones added, structural only
 		},
 		{
 			ID: kindContactID, Label: "Contact", Icon: "👤",
@@ -78,7 +81,7 @@ func BuiltInKinds() []Kind {
 				{Key: "role", Label: "Role", Type: typedfield.TypeText},
 			},
 			CreatedAt: now, UpdatedAt: now,
-			BuiltIn: true, Seed: seedorigin.Stamp(1),
+			BuiltIn: true, Seed: seedorigin.Stamp(2), // FieldTombstones added, structural only
 		},
 		{
 			ID: kindDocumentID, Label: "Document", Icon: "📄",
@@ -87,7 +90,7 @@ func BuiltInKinds() []Kind {
 				{Key: "owner", Label: "Owner", Type: typedfield.TypeText},
 			},
 			CreatedAt: now, UpdatedAt: now,
-			BuiltIn: true, Seed: seedorigin.Stamp(1),
+			BuiltIn: true, Seed: seedorigin.Stamp(2), // FieldTombstones added, structural only
 		},
 		{
 			ID: kindIntakeID, Label: "Intake", Icon: "📥",
@@ -98,7 +101,7 @@ func BuiltInKinds() []Kind {
 					Options: []string{"New", "Processed"}, Default: "New"},
 			},
 			CreatedAt: now, UpdatedAt: now,
-			BuiltIn: true, Seed: seedorigin.Stamp(1),
+			BuiltIn: true, Seed: seedorigin.Stamp(2), // FieldTombstones added, structural only
 		},
 	}
 }

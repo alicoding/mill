@@ -41,6 +41,10 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
   // in the one Lens record per container.
   const [peek, setPeek] = useState(false)
   const [importError, setImportError] = useState<string | null>(null)
+  // The space toolbar's own share actions (goal 0063) report failures
+  // here, separate from importError -- reveal/bundle/copy-links are
+  // unrelated to import/export's own error surface.
+  const [shareError, setShareError] = useState<string | null>(null)
   // Quick Panel's card-search jump (docs/goals/0061 item 6) supplies a
   // card ID once, at mount -- consumed exactly once (this ref guards
   // against re-applying it on every later data refresh, which would
@@ -162,9 +166,11 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
         onCreate={createCard}
         onExport={exportAtlas}
         onImportFile={importFile}
+        onShareError={setShareError}
       />
 
       {importError && <Text as="p" size="small" className={runbookStyles.error} data-testid="atlas-import-error">{importError}</Text>}
+      {shareError && <Text as="p" size="small" className={runbookStyles.error} data-testid="atlas-share-error">{shareError}</Text>}
 
       {childrenAll.length === 0 ? (
         <div className={styles.emptyState} data-testid="atlas-empty-space">

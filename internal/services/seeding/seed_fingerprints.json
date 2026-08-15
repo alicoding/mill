@@ -1,3 +1,4 @@
+
 {
   "aiprovider:example-local-ollama": {
     "seedRevision": 1,
@@ -24,24 +25,24 @@
     "fingerprint": "27a937a5eae5647887de6e25508d438140d94346647b072d46b47414d4c3b930"
   },
   "atlaskind:atlas-kind-contact": {
-    "seedRevision": 1,
-    "fingerprint": "403e451a7054b0b6d6f13071de03f6a9509b520e0e5f4ceb93a84379d2b0247a"
+    "seedRevision": 2,
+    "fingerprint": "b4a22502670484312692a4118167d8a4e7395a0d59b39f590683376288a3e732"
   },
   "atlaskind:atlas-kind-document": {
-    "seedRevision": 1,
-    "fingerprint": "da2607108344191281b03835e63a2ff7c277c6199a2cd4a3eda8298b8c2d16fb"
+    "seedRevision": 2,
+    "fingerprint": "61d42bc082711822ae67493bc63b25f4045a5881ee703c0ea342b78991c9b76a"
   },
   "atlaskind:atlas-kind-intake": {
-    "seedRevision": 1,
-    "fingerprint": "9cbf083ff0b46d7be72d24dc62474a7c594efc19510a9b61102f0db6c762356b"
+    "seedRevision": 2,
+    "fingerprint": "ec06f5c0e094665ffd4c3160a23288c8c2ff0a455f736c8c4f774b7e2cf524e5"
   },
   "atlaskind:atlas-kind-space": {
-    "seedRevision": 1,
-    "fingerprint": "05e9e4a1631c0da84d987f99db7c14fe18c04852b138e15d8a7cf3f7039dc735"
+    "seedRevision": 2,
+    "fingerprint": "c0b415c78e58b6ec4a38eb34fc74e32e92433f997dfd329b0c5d8fb1bbc30570"
   },
   "atlaskind:atlas-kind-topic": {
-    "seedRevision": 1,
-    "fingerprint": "ffd6c5cdf618abcf8266908395d3f92d7d436e1a3de8d23946be4f99b09f8ae5"
+    "seedRevision": 2,
+    "fingerprint": "325f0697cec657797baefab1f253e8e6203a71badbce734cf2f8b2580432a17e"
   },
   "atlaslink:atlas-link-contact-to-document": {
     "seedRevision": 1,

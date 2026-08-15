@@ -39,7 +39,7 @@ func TestCreateKind_RoundTrips(t *testing.T) {
 
 func TestUpdateKind_UnknownID_Errors(t *testing.T) {
 	a := newTestAtlasService(t)
-	if _, err := a.UpdateKind("does-not-exist", "x", "", "", nil); err == nil {
+	if _, err := a.UpdateKind("does-not-exist", "x", "", "", nil, nil); err == nil {
 		t.Error("UpdateKind() on an unknown id = nil error, want an error")
 	}
 }

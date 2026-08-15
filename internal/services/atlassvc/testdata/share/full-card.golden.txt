@@ -1,0 +1,11 @@
+Project charter
+Kind: Document
+Owner: Ada Lovelace
+Pages: 12
+
+Signed off in Q1.
+
+Links:
+- relates to ← Ada Lovelace
+
+Source: https://example.com/charter

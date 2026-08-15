@@ -49,7 +49,7 @@ func TestDataEvent_EveryMutatorEmits(t *testing.T) {
 	assertEmitted(t, *got, k.ID)
 
 	got = captureEmits(t)
-	k, err = a.UpdateKind(k.ID, "Widget v2", "", "", nil)
+	k, err = a.UpdateKind(k.ID, "Widget v2", "", "", nil, nil)
 	if err != nil {
 		t.Fatalf("UpdateKind: %v", err)
 	}

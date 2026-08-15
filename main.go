@@ -193,6 +193,10 @@ func main() {
 	backupService.SetAtlasBundle(backupsvc.WireAtlasBundle(atlasService))
 	backupsvc.WireCompositionRunner(backupService)
 
+	// docs/adr/0038, goal 0063: the share model's space<->folder root,
+	// same MILL_BACKUP_DIR-style override convention as backupDir above.
+	atlasService.SetMirrorsDir(atlassvc.DefaultMirrorsDir(os.Getenv("MILL_ATLAS_MIRRORS_DIR")))
+
 	settingsService := settingssvc.NewSettingsService(settingsStore, triggerService, settingsPath != defaultSettingsPath)
 	// Bidirectional hotkey-conflict check (docs/SPEC.md §3.7): a
 	// per-workflow hotkey can't silently collide with the app-level

@@ -3,6 +3,7 @@ import { IconButton, Text } from '@primer/react'
 import { InfoIcon } from '@primer/octicons-react'
 import type { Card, Kind } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 import { AtlasKindChip } from './AtlasKindChip'
+import { AtlasCardShareMenu } from './AtlasCardShareMenu'
 import styles from './AtlasCardBody.module.css'
 
 // The card content every renderer (shelves' ActionList.Item, the canvas
@@ -35,15 +36,17 @@ export function AtlasCardBody({ card, kind, childCount, peeking, onOpenOverlay }
         <Text weight="semibold" className={styles.title}>{card.Title}</Text>
         {card.Note && <Text size="small" className={styles.note}>{card.Note}</Text>}
       </div>
-      <IconButton
-        icon={InfoIcon}
-        aria-label={t('openCardDetailsAriaLabel', { title: card.Title })}
-        size="small"
-        variant="invisible"
-        data-testid="atlas-card-info"
-        className={`${styles.infoButton} nodrag nopan`}
-        onClick={(e) => { e.stopPropagation(); onOpenOverlay() }}
-      />
+      <div className={`${styles.actions} nodrag nopan`}>
+        <AtlasCardShareMenu card={card} />
+        <IconButton
+          icon={InfoIcon}
+          aria-label={t('openCardDetailsAriaLabel', { title: card.Title })}
+          size="small"
+          variant="invisible"
+          data-testid="atlas-card-info"
+          onClick={(e) => { e.stopPropagation(); onOpenOverlay() }}
+        />
+      </div>
     </div>
   )
 }

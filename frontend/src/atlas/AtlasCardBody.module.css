@@ -32,6 +32,8 @@
 .peekCount {
     color: var(--fgColor-muted);
 }
-.infoButton {
+.actions {
+    display: flex;
+    align-items: center;
     flex: 0 0 auto;
 }

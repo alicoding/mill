@@ -13,18 +13,23 @@ import (
 // --- Kinds ---
 
 func (a *AtlasService) CreateKind(label, description, icon string, fields []typedfield.Field) (atlas.Kind, error) {
-	return a.createKindWithID(seeding.NewSlugID(label, "kind"), label, description, icon, fields)
+	return a.createKindWithID(seeding.NewSlugID(label, "kind"), label, description, icon, fields, nil)
 }
 
 // createKindWithID is CreateKind's own logic, parameterized on the new
 // Kind's id -- the seam ImportAtlas uses to preserve a caller-supplied
 // id (ADR-0036 decision 3), same shape as compositionsvc's
 // createWorkflowWithID/configuresvc's createListWithID.
-func (a *AtlasService) createKindWithID(id, label, description, icon string, fields []typedfield.Field) (atlas.Kind, error) {
+// fieldTombstones lets an import carry a portable export's own
+// deletion history forward onto the fresh local entity (nil for every
+// ordinary CreateKind call, which starts with none) -- same
+// createDecisionWithID/createListWithID shape.
+func (a *AtlasService) createKindWithID(id, label, description, icon string, fields []typedfield.Field, fieldTombstones []typedfield.FieldTombstone) (atlas.Kind, error) {
 	now := time.Now()
 	k := atlas.Kind{
 		ID: id, Label: label, Description: description,
-		Icon: icon, Fields: fields, CreatedAt: now, UpdatedAt: now,
+		Icon: icon, Fields: fields, FieldTombstones: fieldTombstones,
+		CreatedAt: now, UpdatedAt: now,
 	}
 	if err := atlas.ValidateKind(k); err != nil {
 		return atlas.Kind{}, err
@@ -44,7 +49,13 @@ func (a *AtlasService) createKindWithID(id, label, description, icon string, fie
 	return k, nil
 }
 
-func (a *AtlasService) UpdateKind(id, label, description, icon string, fields []typedfield.Field) (atlas.Kind, error) {
+// UpdateKind enforces ADR-0040's field-evolution grammar on Fields --
+// the same chokepoint configuresvc.UpdateDecision/UpdateList already
+// apply to Outputs/Columns (typedfield.ValidateFieldEvolution's own
+// doc comment has the full rule). newFieldTombstones names any Key+
+// Type this call is deleting from Fields right now -- the explicit,
+// UI-declared half of the evolution check.
+func (a *AtlasService) UpdateKind(id, label, description, icon string, fields []typedfield.Field, newFieldTombstones []typedfield.FieldTombstone) (atlas.Kind, error) {
 	a.mu.Lock()
 	idx := a.findKindLocked(id)
 	if idx == -1 {
@@ -52,8 +63,22 @@ func (a *AtlasService) UpdateKind(id, label, description, icon string, fields []
 		return atlas.Kind{}, fmt.Errorf("no kind with id %q", id)
 	}
 	previous := a.kinds[idx]
+	a.mu.Unlock()
+
+	tombstones := typedfield.MergeTombstones(previous.FieldTombstones, newFieldTombstones)
+	if err := typedfield.ValidateFieldEvolution(previous.Fields, fields, tombstones); err != nil {
+		return atlas.Kind{}, err
+	}
+
+	a.mu.Lock()
+	idx = a.findKindLocked(id)
+	if idx == -1 {
+		a.mu.Unlock()
+		return atlas.Kind{}, fmt.Errorf("no kind with id %q", id)
+	}
+	previous = a.kinds[idx]
 	k := previous
-	k.Label, k.Description, k.Icon, k.Fields = label, description, icon, fields
+	k.Label, k.Description, k.Icon, k.Fields, k.FieldTombstones = label, description, icon, fields, tombstones
 	k.UpdatedAt = time.Now()
 	k.Seed = k.Seed.Touch()
 	if err := atlas.ValidateKind(k); err != nil {

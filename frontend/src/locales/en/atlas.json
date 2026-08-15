@@ -52,7 +52,25 @@
     "selectCard": "Select a card…",
     "selectLinkKind": "Select a link kind…",
     "addLink": "Add link",
+    "shareHeading": "Share",
+    "includeAttachments": "Include files",
+    "copyAsContext": "Copy as context",
+    "copied": "Copied",
+    "copyCloudLink": "Copy link",
+    "revealFile": "Show in Finder",
     "save": "Save",
     "delete": "Delete"
+  },
+  "share": {
+    "cardButtonAriaLabel": "Share {{title}}",
+    "copyContext": "Copy as context",
+    "copyContextWithAttachments": "Copy as context, with files",
+    "copyCloudLink": "Copy link",
+    "revealFile": "Show in Finder",
+    "spaceMenuButton": "Share",
+    "revealFolder": "Show in Finder",
+    "bundleContext": "Copy as context",
+    "bundleContextWithAttachments": "Copy as context, with files",
+    "copyLinks": "Copy links"
   }
 }

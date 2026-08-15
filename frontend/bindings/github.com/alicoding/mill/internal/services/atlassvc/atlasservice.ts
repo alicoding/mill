@@ -22,6 +22,15 @@ import * as typedfield$0 from "../../domain/typedfield/models.js";
 // @ts-ignore: Unused imports
 import * as $models from "./models.js";
 
+/**
+ * CardContextBlock renders cardID's fields/note/links as one stable,
+ * paste-ready text block (goal 0063's copy-as-context) -- the Card
+ * overlay/chip's "Copy as context" action copies exactly this string.
+ */
+export function CardContextBlock(cardID: string, withAttachments: boolean): $CancellablePromise<string> {
+    return $Call.ByID(4150547692, cardID, withAttachments);
+}
+
 export function Cards(): $CancellablePromise<atlas$0.Card[] | null> {
     return $Call.ByID(4038798409);
 }
@@ -156,6 +165,26 @@ export function MoveCard(id: string, newParentID: string): $CancellablePromise<a
 }
 
 /**
+ * RevealCardMirror opens cardID's own MirrorPath in the OS file
+ * manager -- the card overlay/chip's "Reveal file" action, only ever
+ * offered once a refresh has actually run and set MirrorPath.
+ */
+export function RevealCardMirror(cardID: string): $CancellablePromise<void> {
+    return $Call.ByID(2489476102, cardID);
+}
+
+/**
+ * RevealSpaceFolder lazily creates (if needed) and opens spaceID's own
+ * mirror folder in the OS file manager, returning its path -- the
+ * space toolbar's "Reveal folder" action, and the one operation that
+ * turns the folder into a STANDING reference: reveal once, then drag
+ * it into any AI assistant that grounds on a folder, permanently.
+ */
+export function RevealSpaceFolder(spaceID: string): $CancellablePromise<string> {
+    return $Call.ByID(560408095, spaceID);
+}
+
+/**
  * SetLens persists the per-space lens for containerID: which Kind IDs
  * stay hidden when viewing that container's children (ADR-0038's
  * density-is-a-lens-choice principle), and the depth/peek toggle (goal
@@ -190,6 +219,26 @@ export function SetViewMode(id: string, mode: atlas$0.ViewMode): $CancellablePro
 }
 
 /**
+ * SpaceBundleContext concatenates spaceID's own children's context
+ * blocks, each separated by a divider line -- the space toolbar's
+ * "Bundle as context" action, one paste covering everything currently
+ * in the viewed space (goal 0063). spaceID == "" names the true root
+ * (every card whose ParentID is "").
+ */
+export function SpaceBundleContext(spaceID: string, withAttachments: boolean): $CancellablePromise<string> {
+    return $Call.ByID(1197881783, spaceID, withAttachments);
+}
+
+/**
+ * SpaceLinksList lists every Source URL set on spaceID's own children,
+ * one per line, in a.cards' own stored order -- the space toolbar's
+ * "Copy links" action.
+ */
+export function SpaceLinksList(spaceID: string): $CancellablePromise<string> {
+    return $Call.ByID(979138081, spaceID);
+}
+
+/**
  * UpdateCard replaces a Card's editable content in place -- ParentID/
  * Position move through MoveCard/SetPosition instead, so a plain
  * content edit never has to re-run the cycle check. sourceRunID is
@@ -200,8 +249,16 @@ export function UpdateCard(id: string, title: string, note: string, fields: { [_
     return $Call.ByID(1443506165, id, title, note, fields, source, mirrorPath, refreshWorkflowID);
 }
 
-export function UpdateKind(id: string, label: string, description: string, icon: string, fields: typedfield$0.Field[] | null): $CancellablePromise<atlas$0.Kind> {
-    return $Call.ByID(3208528841, id, label, description, icon, fields);
+/**
+ * UpdateKind enforces ADR-0040's field-evolution grammar on Fields --
+ * the same chokepoint configuresvc.UpdateDecision/UpdateList already
+ * apply to Outputs/Columns (typedfield.ValidateFieldEvolution's own
+ * doc comment has the full rule). newFieldTombstones names any Key+
+ * Type this call is deleting from Fields right now -- the explicit,
+ * UI-declared half of the evolution check.
+ */
+export function UpdateKind(id: string, label: string, description: string, icon: string, fields: typedfield$0.Field[] | null, newFieldTombstones: typedfield$0.FieldTombstone[] | null): $CancellablePromise<atlas$0.Kind> {
+    return $Call.ByID(3208528841, id, label, description, icon, fields, newFieldTombstones);
 }
 
 export function UpdateLink(id: string, label: string): $CancellablePromise<atlas$0.Link> {
