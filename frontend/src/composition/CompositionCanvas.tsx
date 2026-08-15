@@ -9,13 +9,12 @@ import {
 import type { Connection, Edge as RFEdge } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 import { useStore } from 'zustand'
-import { useTranslation } from 'react-i18next'
-import { Text } from '@primer/react'
 import type { NodeType, Workflow, Issue } from '../../bindings/github.com/alicoding/mill/internal/domain/composition/models'
 import { createCanvasStore, type CanvasNode } from './canvasStore'
 import { rfNodeTypes } from './rfNodeTypes'
 import { CANVAS_NODE_WIDTH, CANVAS_NODE_HEIGHT } from './canvasConstants'
 import { findFreeDropPosition } from './canvasLayout'
+import { isValidCanvasConnection } from './canvasConnectionRules'
 import { computeInitialCanvas, useCanvasHotExit } from './useCanvasHotExit'
 import { useCanvasSave } from './useCanvasSave'
 import { useCanvasLiveSync } from './useCanvasLiveSync'
@@ -26,8 +25,8 @@ import { useDraftValidation, groupIssuesByNode } from './useDraftValidation'
 import { useGuardrailBadges } from './useGuardrailBadges'
 import { NodePalette } from './NodePalette'
 import { CanvasToolbar } from './CanvasToolbar'
-import { DecisionEdgeInspector } from './DecisionEdgeInspector'
-import { NodeInspector } from './NodeInspector'
+import { CanvasInspectorPanel } from './CanvasInspectorPanel'
+import { StepDetailOverlay } from './StepDetailOverlay'
 import { useHotkeyCapture } from './hotkeyCapture'
 import { RunStateContext, useLiveRun } from './liveRunState'
 import { BreakpointContext, useBreakpoints } from './breakpoints'
@@ -77,7 +76,6 @@ interface CompositionCanvasProps {
 // Inspector the moment it's selected, never a bare unconfigured
 // reference.
 function CanvasInner({ nodeTypes, workflow, tabKey, onBack, onSaved, readOnly, onSwitchToEdit }: CompositionCanvasProps) {
-  const { t } = useTranslation('composition')
   // Computed once, synchronously, at first render -- see
   // computeInitialCanvas's own doc comment for why this isn't a
   // useEffect. `initial.baseline` (docs/goals/0012) is what every later
@@ -175,6 +173,13 @@ function CanvasInner({ nodeTypes, workflow, tabKey, onBack, onSaved, readOnly, o
 
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null)
   const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null)
+  // The step-detail overlay (docs/goals/0058) is a boolean over the
+  // CURRENT selection, not a separate node id -- it only ever opens for
+  // whatever's already selected (a canvas double-click selects-then-
+  // opens; the sidebar's expand button only exists once a node is
+  // already selected), so there's no case where it should show a
+  // different node than the sidebar itself.
+  const [detailOpen, setDetailOpen] = useState(false)
   // A validation-panel row selects its offending node/edge, same target
   // onNodeClick/onEdgeClick below already write to.
   const selectIssue = (issue: Issue) => {
@@ -243,31 +248,24 @@ function CanvasInner({ nodeTypes, workflow, tabKey, onBack, onSaved, readOnly, o
   // has nothing for this Inspector branch to show.
   const selectedEdgeFromDecision = selectedEdge && nodes.find((n) => n.id === selectedEdge.source)?.data.kind === 'decision'
 
-  // Every node kind except Decision is max-out-degree-1 -- the backend's
-  // buildGraph (composition.go) enforces this same rule at save/run time
-  // ("a save-time error and a run-time error never disagree"), this is
-  // just the draw-time layer of it. A Decision node's whole purpose is
-  // multiple named outgoing branches (SPEC.md §3.5), so it's the one kind
-  // exempt from the single-outgoing-edge limit.
+  // Bound to the selected node once here rather than in each renderer --
+  // both the sidebar inspector and the step-detail overlay (docs/goals/0058)
+  // need the identical pair for the identical selection.
+  const handleChangeNodeType = (newType: NodeType) => {
+    if (!selectedNode) return
+    const config: Record<string, string> = {}
+    for (const field of newType.ConfigFields ?? []) config[field.Key] = field.Default
+    changeNodeType(selectedNode.id, newType.ID, newType.Label, config, newType.Output ?? '')
+  }
+  const handleNodeConfigChange = (key: string, value: string) => {
+    if (!selectedNode) return
+    updateNodeConfig(selectedNode.id, key, value)
+  }
+
+  // Pure rule extracted to canvasConnectionRules.ts (draw-time mirror
+  // of the backend's buildGraph out-degree/root rules).
   const isValidConnection = useCallback(
-    (connection: Connection | RFEdge) => {
-      const source = nodes.find((n) => n.id === connection.source)
-      // A terminal node (docs/adr/0027) may have NO outgoing edge at
-      // all -- checked before the out-degree-1 rule below, since "at
-      // most 1" would otherwise let exactly one edge out of a Decision
-      // through. Matches CanvasNodeView omitting its source handle
-      // entirely; this is the draw-time layer of the same rule,
-      // belt-and-suspenders with the missing handle.
-      if (source?.data.kind === 'terminal') return false
-      if (source?.data.kind !== 'decision' && edges.some((e) => e.source === connection.source)) return false
-      // Nothing connects into a trigger node -- it's the entry point, not
-      // a step something else feeds (matches CanvasNodeView omitting the
-      // target handle for trigger nodes; this is the draw-time layer of
-      // the same rule, belt-and-suspenders with the missing handle).
-      const target = nodes.find((n) => n.id === connection.target)
-      if (target?.data.kind === 'trigger') return false
-      return true
-    },
+    (connection: Connection | RFEdge) => isValidCanvasConnection(nodes, edges, connection),
     [edges, nodes],
   )
 
@@ -383,6 +381,18 @@ function CanvasInner({ nodeTypes, workflow, tabKey, onBack, onSaved, readOnly, o
               setSelectedNodeId(node.id)
               setSelectedEdgeId(null)
             }}
+            // The step-detail overlay's other open affordance
+            // (docs/goals/0058), alongside the sidebar's own expand button.
+            onNodeDoubleClick={(_, node) => {
+              setSelectedNodeId(node.id)
+              setSelectedEdgeId(null)
+              setDetailOpen(true)
+            }}
+            // React Flow's pane-level double-click-to-zoom (default true)
+            // binds a native dblclick handler that stops propagation
+            // before it can reach onNodeDoubleClick above -- off, since a
+            // node double-click opens the step-detail overlay instead.
+            zoomOnDoubleClick={false}
             onEdgeClick={(_, edge) => {
               setSelectedEdgeId(edge.id)
               setSelectedNodeId(null)
@@ -438,47 +448,39 @@ function CanvasInner({ nodeTypes, workflow, tabKey, onBack, onSaved, readOnly, o
           </ReactFlow>
         </div>
 
-        <div
-          className={`${styles.inspector} ${!selectedNode && !selectedEdge ? styles.inspectorCollapsed : ''}`}
-          data-testid="composition-inspector"
-        >
-          {!selectedNode && !selectedEdgeFromDecision && (
-            <Text className={styles.inspectorEmpty} size="small">
-              {selectedEdge ? t('compositionCanvas.onlyDecisionEdgesConfigurable') : t('compositionCanvas.selectNodeToConfigure')}
-            </Text>
-          )}
-          {selectedEdgeFromDecision && selectedEdge && (
-            <DecisionEdgeInspector
-              edgeId={selectedEdge.id}
-              condition={(selectedEdge.data as { condition?: string } | undefined)?.condition ?? ''}
-              attrs={workflow?.Attributes}
-              onApply={(condition) => updateEdgeCondition(selectedEdge.id, condition)}
-            />
-          )}
-          {selectedNode && (
-            <NodeInspector
-              key={selectedNode.id}
-              node={selectedNode}
-              workflowId={workflow?.ID ?? ''}
-              attrs={workflow?.Attributes ?? []}
-              nodeType={selectedNodeType}
-              sameKindNodeTypes={sameKindNodeTypes}
-              hasWorkflow={!!workflow}
-              hotkeyCapture={hotkeyCapture}
-              runStep={liveRunDetail?.steps?.find((s) => s.nodeID === selectedNode.id)}
-              readOnly={readOnly}
-              onChangeType={(newType) => {
-                const config: Record<string, string> = {}
-                for (const field of newType.ConfigFields ?? []) config[field.Key] = field.Default
-                changeNodeType(selectedNode.id, newType.ID, newType.Label, config, newType.Output ?? '')
-              }}
-              onConfigChange={(key, value) => updateNodeConfig(selectedNode.id, key, value)}
-            />
-          )}
-        </div>
+        <CanvasInspectorPanel
+          workflow={workflow}
+          selectedNode={selectedNode}
+          selectedEdge={selectedEdge}
+          selectedEdgeFromDecision={!!selectedEdgeFromDecision}
+          selectedNodeType={selectedNodeType}
+          sameKindNodeTypes={sameKindNodeTypes}
+          hotkeyCapture={hotkeyCapture}
+          readOnly={readOnly}
+          runStep={selectedNode ? liveRunDetail?.steps?.find((s) => s.nodeID === selectedNode.id) : undefined}
+          onOpenDetail={() => setDetailOpen(true)}
+          onChangeType={handleChangeNodeType}
+          onConfigChange={handleNodeConfigChange}
+          onEdgeConditionChange={(edgeId, condition) => updateEdgeCondition(edgeId, condition)}
+        />
       </div>
       </BreakpointContext.Provider>
       </RunStateContext.Provider>
+      {detailOpen && selectedNode && (
+        <StepDetailOverlay
+          node={selectedNode}
+          workflowId={workflow?.ID ?? ''}
+          attrs={workflow?.Attributes ?? []}
+          nodeType={selectedNodeType}
+          sameKindNodeTypes={sameKindNodeTypes}
+          hasWorkflow={!!workflow}
+          hotkeyCapture={hotkeyCapture}
+          readOnly={readOnly}
+          onChangeType={handleChangeNodeType}
+          onConfigChange={handleNodeConfigChange}
+          onClose={() => setDetailOpen(false)}
+        />
+      )}
     </div>
   )
 }

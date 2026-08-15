@@ -173,7 +173,18 @@
     "noConfiguration": "This step type takes no configuration.",
     "generateTestPayload": "Generate test payload",
     "hoverToPreviewChild": "Hover to preview the child — click Open to edit it",
-    "defaultOption": "(default)"
+    "defaultOption": "(default)",
+    "openStepDetail": "Open step detail"
+  },
+  "stepDetailOverlay": {
+    "title": "Step: {{label}}",
+    "input": "Input",
+    "output": "Output",
+    "emptyData": "Run this workflow to see real data here.",
+    "attributes": "Attributes",
+    "textView": "Text",
+    "jsonView": "JSON",
+    "viewToggleAriaLabel": "{{pane}} view"
   },
   "hotkeyCapture": {
     "reservedByMacOS": "{{combo}} is reserved by macOS ({{reason}}) — pick another combo",

@@ -74,15 +74,15 @@ per frontend.md.
 
 ## Acceptance (checkable)
 
-- [ ] Precedent review recorded here (per-tool, current versions,
+- [x] Precedent review recorded here (per-tool, current versions,
       primary sources) with an explicit verdict: the chosen surface,
       what it reuses, what it rejects and why.
-- [ ] The chosen surface implemented: a step's configuration AND its
+- [x] The chosen surface implemented: a step's configuration AND its
       latest recorded input/output visible together at a workable
       size, reachable from the canvas without leaving authoring
       context.
-- [ ] Existing patterns honored: generic ConfigField rendering
+- [x] Existing patterns honored: generic ConfigField rendering
       unchanged in kind; Runs tab remains the run-history home; no
       regression to canvas drag/connect interactions (e2e-pinned).
-- [ ] SPEC.md §3 updated (the authoring-surface section gains the
+- [x] SPEC.md §3 updated (the authoring-surface section gains the
       step-detail decision with status).
