@@ -1,8 +1,8 @@
 import { useEffect } from 'react'
 import type { Edge as RFEdge } from '@xyflow/react'
 import type { NodeType, Workflow } from '../../bindings/github.com/alicoding/mill/internal/domain/composition/models'
-import type { CanvasNode } from './canvasStore'
-import { toCanvasNodes, toRFEdges } from './canvasConversion'
+import type { CanvasNode, CanvasNoteNode } from './canvasStore'
+import { toCanvasNodes, toCanvasNotes, toRFEdges } from './canvasConversion'
 import { buildScratchDraft, clearScratch, draftsEqual, readScratch, scheduleScratchWrite, type ScratchDraft } from './canvasScratch'
 import { useAppStore } from '../shared/store'
 
@@ -17,6 +17,7 @@ import { useAppStore } from '../shared/store'
 export interface InitialCanvasState {
   nodes: CanvasNode[]
   edges: RFEdge[]
+  notes: CanvasNoteNode[]
   label: string
   description: string
   // True only when a pre-existing hot-exit scratch differed (content,
@@ -55,12 +56,14 @@ export interface InitialCanvasState {
 export function computeInitialCanvas(workflow: Workflow | null | undefined, nodeTypes: NodeType[], tabKey: string, readOnly: boolean): InitialCanvasState {
   let nodes: CanvasNode[]
   let edges: RFEdge[]
+  let notes: CanvasNoteNode[]
   const label = workflow?.Label ?? ''
   const description = workflow?.Description ?? ''
 
   if (workflow) {
     nodes = toCanvasNodes(workflow.Nodes, nodeTypes)
     edges = toRFEdges(workflow.Edges)
+    notes = toCanvasNotes(workflow.Notes)
   } else {
     // A brand-new workflow starts with one real node already placed
     // (SPEC.md §3), not a blank canvas.
@@ -76,24 +79,26 @@ export function computeInitialCanvas(workflow: Workflow | null | undefined, node
         ]
       : []
     edges = []
+    notes = []
   }
 
-  const baseline = buildScratchDraft(label, description, nodes, edges)
+  const baseline = buildScratchDraft(label, description, nodes, edges, notes)
   if (readOnly) {
-    return { nodes, edges, label, description, restoredFromScratch: false, baseline }
+    return { nodes, edges, notes, label, description, restoredFromScratch: false, baseline }
   }
   const scratch = readScratch(tabKey)
   if (scratch && !draftsEqual(scratch, baseline)) {
     return {
       nodes: toCanvasNodes(scratch.nodes, nodeTypes),
       edges: toRFEdges(scratch.edges),
+      notes: toCanvasNotes(scratch.notes),
       label: scratch.label,
       description: scratch.description,
       restoredFromScratch: true,
       baseline,
     }
   }
-  return { nodes, edges, label, description, restoredFromScratch: false, baseline }
+  return { nodes, edges, notes, label, description, restoredFromScratch: false, baseline }
 }
 
 // Surfaces the mount-time restore decision into the shared store (once)
@@ -119,6 +124,7 @@ export function useCanvasHotExit(
   baseline: ScratchDraft,
   nodes: CanvasNode[],
   edges: RFEdge[],
+  notes: CanvasNoteNode[],
   draftLabel: string,
   draftDescription: string,
   // docs/goals/0022: hot-exit scratch/dirty tracking applies to EDIT
@@ -145,7 +151,7 @@ export function useCanvasHotExit(
 
   useEffect(() => {
     if (readOnly) return
-    const current = buildScratchDraft(draftLabel, draftDescription, nodes, edges)
+    const current = buildScratchDraft(draftLabel, draftDescription, nodes, edges, notes)
     const dirty = !draftsEqual(current, baseline)
     setWorkTabDirty(tabKey, dirty)
     if (dirty) {
@@ -153,5 +159,5 @@ export function useCanvasHotExit(
     } else {
       clearScratch(tabKey)
     }
-  }, [nodes, edges, draftLabel, draftDescription, tabKey, baseline, setWorkTabDirty, readOnly])
+  }, [nodes, edges, notes, draftLabel, draftDescription, tabKey, baseline, setWorkTabDirty, readOnly])
 }

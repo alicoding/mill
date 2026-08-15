@@ -237,6 +237,42 @@ export interface NodeType {
 }
 
 /**
+ * Note is a free-floating authoring-space annotation on a workflow's
+ * canvas (docs/goals/0055, n8n's "sticky note" precedent) -- explicitly
+ * NOT a step: no Kind, no NodeTypeID, no ports, no outgoing/incoming
+ * Edge, never touched by ValidateGraph/ExecuteWorkflow/the guardrail
+ * gate (those only ever take Nodes/Edges as parameters, never Notes --
+ * see note_test.go). A workflow's Notes exist purely to document itself
+ * for whoever opens the canvas next.
+ */
+export interface Note {
+    "ID": string;
+    "Text": string;
+    "Position": Position;
+    "Size": Size;
+    "Color": NoteColor;
+}
+
+/**
+ * NoteColor is a note's optional background tint, drawn from a small
+ * fixed set -- n8n's own sticky-note precedent (docs/goals/0055's
+ * research: a small named palette, not an open-ended color picker, is
+ * what converged in practice). The empty value is the neutral default.
+ */
+export enum NoteColor {
+    /**
+     * The Go zero value for the underlying type of the enum.
+     */
+    $zero = "",
+
+    NoteColorDefault = "",
+    NoteColorYellow = "yellow",
+    NoteColorBlue = "blue",
+    NoteColorGreen = "green",
+    NoteColorPink = "pink",
+};
+
+/**
  * Position is a node's canvas coordinates. Ignored by execution entirely
  * -- it exists purely for the React Flow canvas to restore a workflow's
  * layout, matching React Flow's own node shape.
@@ -265,6 +301,15 @@ export enum Severity {
 };
 
 /**
+ * Size is a note's canvas dimensions. Zero value means "never
+ * resized" -- the canvas falls back to its own default box.
+ */
+export interface Size {
+    "Width": number;
+    "Height": number;
+}
+
+/**
  * Workflow is a node/edge graph. Branching exists now (Decision nodes,
  * see walk/nextNode) but is still constrained: every non-Decision node
  * keeps at most one outgoing edge, so "graph" in practice means "a chain
@@ -276,6 +321,13 @@ export interface Workflow {
     "Description": string;
     "Nodes": Node[] | null;
     "Edges": Edge[] | null;
+
+    /**
+     * Notes are free-floating authoring-space annotations -- NOT steps
+     * (see Note's own doc comment). Never read by ValidateGraph,
+     * ExecuteWorkflow, or anything execution-adjacent.
+     */
+    "Notes": Note[] | null;
 
     /**
      * Attributes is this workflow's declared structured-field schema --
@@ -339,5 +391,6 @@ export interface WorkflowVersion {
     "Description": string;
     "Nodes": Node[] | null;
     "Edges": Edge[] | null;
+    "Notes": Note[] | null;
     "Attributes": AttributeDef[] | null;
 }

@@ -1,7 +1,7 @@
 import { Panel } from '@xyflow/react'
 import { useTranslation } from 'react-i18next'
 import { IconButton, Stack, Text } from '@primer/react'
-import { ArrowLeftIcon, ColumnsIcon, RedoIcon, SidebarCollapseIcon, SidebarExpandIcon, TrashIcon, UndoIcon } from '@primer/octicons-react'
+import { ArrowLeftIcon, ColumnsIcon, CommentIcon, RedoIcon, SidebarCollapseIcon, SidebarExpandIcon, TrashIcon, UndoIcon } from '@primer/octicons-react'
 import type { Issue } from '../../bindings/github.com/alicoding/mill/internal/domain/composition/models'
 import { ValidationSurface } from './ValidationPanel'
 import styles from './CompositionCanvas.module.css'
@@ -26,6 +26,10 @@ interface CanvasToolbarProps {
   hasNodes: boolean
   onAutoLayout: () => void
   onDeleteSelected: () => void
+  // Adds a canvas note near the viewport's center (docs/goals/0055) --
+  // authoring-space annotation, not a step, so it lives on this
+  // toolbar rather than the step palette.
+  onAddNote: () => void
   validationIssues: Issue[]
   workflowLabel: string
   workflowId: string
@@ -39,7 +43,7 @@ interface CanvasToolbarProps {
 // established.
 export function CanvasToolbar({
   onBack, readOnly, paletteOpen, onTogglePalette, canUndo, onUndo, canRedo, onRedo,
-  layingOut, hasNodes, onAutoLayout, onDeleteSelected, validationIssues, workflowLabel, workflowId, onSelectIssue,
+  layingOut, hasNodes, onAutoLayout, onDeleteSelected, onAddNote, validationIssues, workflowLabel, workflowId, onSelectIssue,
 }: CanvasToolbarProps) {
   const { t } = useTranslation('composition')
   return (
@@ -59,6 +63,7 @@ export function CanvasToolbar({
             <IconButton icon={RedoIcon} aria-label={t('canvasToolbar.redoAriaLabel')} size="small" disabled={!canRedo} onClick={onRedo} />
             <IconButton icon={ColumnsIcon} aria-label={t('canvasToolbar.autoLayoutAriaLabel')} size="small" disabled={layingOut || !hasNodes} onClick={onAutoLayout} />
             <IconButton icon={TrashIcon} aria-label={t('canvasToolbar.deleteSelectedAriaLabel')} size="small" onClick={onDeleteSelected} />
+            <IconButton icon={CommentIcon} aria-label={t('canvasToolbar.addNoteAriaLabel')} size="small" onClick={onAddNote} data-testid="add-note" />
           </>
         )}
         <ValidationSurface issues={validationIssues} workflowLabel={workflowLabel} workflowId={workflowId} onSelectIssue={onSelectIssue} />

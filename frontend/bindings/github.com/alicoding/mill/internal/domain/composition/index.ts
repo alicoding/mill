@@ -4,6 +4,7 @@
 export {
     Approach,
     NodeKind,
+    NoteColor,
     Severity
 } from "./models.js";
 
@@ -15,7 +16,9 @@ export type {
     MapEntry,
     Node,
     NodeType,
+    Note,
     Position,
+    Size,
     Workflow,
     WorkflowVersion
 } from "./models.js";

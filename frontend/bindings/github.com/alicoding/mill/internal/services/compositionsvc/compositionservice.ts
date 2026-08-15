@@ -86,10 +86,10 @@ export function ExportWorkflow(id: string): $CancellablePromise<string> {
  * hand-composed workflow, no import-specific leniency); an id unknown
  * here -> create preserving that id; an id matching a local workflow ->
  * update through the same snapshot-then-replace chokepoint MCP's
- * update_workflow tool uses. Attributes apply as a second step through
- * UpdateAttributes on the create paths, matching the existing compose-
- * then-configure-attributes flow every hand-composed workflow already
- * goes through (Configure's Attributes tab).
+ * update_workflow tool uses. Attributes/Notes apply as a second step
+ * (applyImportedExtras) on the create paths, matching the existing
+ * compose-then-configure flow every hand-composed workflow already
+ * goes through (Configure's Attributes tab, the canvas's own notes).
  */
 export function ImportWorkflow(jsonData: string): $CancellablePromise<composition$0.Workflow> {
     return $Call.ByID(1581677120, jsonData);
@@ -215,6 +215,17 @@ export function UpdateAttributes(workflowID: string, attrs: composition$0.Attrib
 }
 
 /**
+ * UpdateNotes replaces a workflow's canvas Notes in place -- the same
+ * shape as UpdateAttributes above (a workflow-scoped collection saved
+ * independently of Nodes/Edges), since a note is authoring-space
+ * annotation, not a step (docs/goals/0055). No graph re-validation is
+ * needed: Notes carry no reference ValidateGraph could ever break.
+ */
+export function UpdateNotes(workflowID: string, notes: composition$0.Note[] | null): $CancellablePromise<composition$0.Workflow> {
+    return $Call.ByID(3223557182, workflowID, notes);
+}
+
+/**
  * UpdateWorkflow replaces an existing user-composed workflow's nodes/
  * edges (and label/description) in place, keeping its ID stable -- so
  * re-opening a saved workflow on the canvas and saving edits updates it
@@ -232,7 +243,10 @@ export function UpdateWorkflow(id: string, label: string, description: string, n
  * ExportWorkflow produces and ImportWorkflow consumes, reused as the
  * update protocol so there is exactly one document format
  * (docs/adr/0025). Validation is UpdateWorkflow's own (ValidateGraph,
- * ResolveNodeDefaults); attributes update alongside when present.
+ * ResolveNodeDefaults); attributes/notes update alongside when the
+ * field is explicitly present (nil means "the source document never
+ * declared this field," not "clear it" -- an older export with no
+ * "notes" key must never wipe an existing workflow's notes).
  */
 export function UpdateWorkflowFromExport(id: string, jsonData: string): $CancellablePromise<composition$0.Workflow> {
     return $Call.ByID(1077414218, id, jsonData);

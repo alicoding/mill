@@ -128,6 +128,7 @@ func upgradeWorkflowToGolden(existing, golden composition.Workflow, now time.Tim
 	existing.Description = golden.Description
 	existing.Nodes = golden.Nodes
 	existing.Edges = golden.Edges
+	existing.Notes = golden.Notes
 	existing.Attributes = golden.Attributes
 	existing = composition.PublishHead(existing, now)
 	existing.Seed = seedorigin.Stamp(golden.Seed.SeedRevision)

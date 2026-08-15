@@ -12,12 +12,14 @@ import { useStore } from 'zustand'
 import type { NodeType, Workflow, Issue } from '../../bindings/github.com/alicoding/mill/internal/domain/composition/models'
 import { createCanvasStore, type CanvasNode } from './canvasStore'
 import { rfNodeTypes } from './rfNodeTypes'
-import { CANVAS_NODE_WIDTH, CANVAS_NODE_HEIGHT } from './canvasConstants'
 import { findFreeDropPosition } from './canvasLayout'
 import { isValidCanvasConnection } from './canvasConnectionRules'
 import { computeInitialCanvas, useCanvasHotExit } from './useCanvasHotExit'
 import { useCanvasSave } from './useCanvasSave'
 import { useCanvasLiveSync } from './useCanvasLiveSync'
+import { useCanvasNotes } from './useCanvasNotes'
+import { useCanvasAutoLayout } from './useCanvasAutoLayout'
+import { NoteActionsContext } from './canvasNoteActions'
 import { ExternalChangeBanner } from './ExternalChangeBanner'
 import { CanvasMetaHeader } from './CanvasMetaHeader'
 import { ThemedMiniMap } from './ThemedMiniMap'
@@ -93,13 +95,13 @@ function CanvasInner({ nodeTypes, workflow, tabKey, onBack, onSaved, readOnly, o
   // (CompositionView.tsx) can have several of these mounted at once,
   // each needing independent nodes/edges/undo history rather than
   // sharing one global canvas.
-  const [useCanvasStore] = useState(() => createCanvasStore(initial.nodes, initial.edges))
+  const [useCanvasStore] = useState(() => createCanvasStore(initial.nodes, initial.edges, initial.notes))
 
   const [paletteOpen, setPaletteOpen] = useState(false)
 
   const nodes = useCanvasStore((s) => s.nodes)
   const edges = useCanvasStore((s) => s.edges)
-  const onNodesChange = useCanvasStore((s) => s.onNodesChange)
+  const notes = useCanvasStore((s) => s.notes)
   const onEdgesChange = useCanvasStore((s) => s.onEdgesChange)
   const onConnect = useCanvasStore((s) => s.onConnect)
   const addNode = useCanvasStore((s) => s.addNode)
@@ -109,6 +111,11 @@ function CanvasInner({ nodeTypes, workflow, tabKey, onBack, onSaved, readOnly, o
   const removeSelected = useCanvasStore((s) => s.removeSelected)
   const setGuardrailVerdicts = useCanvasStore((s) => s.setGuardrailVerdicts)
   const setValidationIssues = useCanvasStore((s) => s.setValidationIssues)
+
+  // Notes (docs/goals/0055) render as a second React Flow node TYPE on
+  // the same canvas -- see useCanvasNotes.ts's own header comment for
+  // why this is a dedicated hook rather than inlined here.
+  const { allNodes, handleNodesChange, addNoteNear, noteActions } = useCanvasNotes(useCanvasStore, nodes, notes, readOnly)
 
   const canUndo = useStore(useCanvasStore.temporal, (s) => s.pastStates.length > 0)
   const canRedo = useStore(useCanvasStore.temporal, (s) => s.futureStates.length > 0)
@@ -201,7 +208,7 @@ function CanvasInner({ nodeTypes, workflow, tabKey, onBack, onSaved, readOnly, o
   // it), only Description -- optional, used less -- is worth a
   // disclosure.
   const [descOpen, setDescOpen] = useState(!!workflow?.Description)
-  const [layingOut, setLayingOut] = useState(false)
+  const { layingOut, runAutoLayout } = useCanvasAutoLayout(useCanvasStore)
 
   // What every dirty check (hot exit, live sync) compares the live
   // draft against -- starts as the saved workflow's real content
@@ -217,7 +224,7 @@ function CanvasInner({ nodeTypes, workflow, tabKey, onBack, onSaved, readOnly, o
   // surface the mount-time restore decision and keep a debounced
   // scratch write + live dirty flag in sync afterward -- see
   // useCanvasHotExit.ts's own doc comment for the full reasoning.
-  useCanvasHotExit(tabKey, initial.restoredFromScratch, baseline, nodes, edges, draftLabel, draftDescription, readOnly)
+  useCanvasHotExit(tabKey, initial.restoredFromScratch, baseline, nodes, edges, notes, draftLabel, draftDescription, readOnly)
 
   // Live sync (GAP B): an external MCP write to THIS workflow while the
   // editor is open redraws the canvas immediately when clean, or offers
@@ -304,43 +311,7 @@ function CanvasInner({ nodeTypes, workflow, tabKey, onBack, onSaved, readOnly, o
     [nodeTypes, nodes, screenToFlowPosition, addNode, readOnly],
   )
 
-  // elkjs is a large (~1-2MB) synchronous bundle -- dynamically imported
-  // only when Auto-layout is actually clicked, not part of the main
-  // chunk embedded via //go:embed.
-  const runAutoLayout = useCallback(async () => {
-    setLayingOut(true)
-    try {
-      const { default: ELK } = await import('elkjs/lib/elk.bundled.js')
-      const elk = new ELK()
-      const { nodes: currentNodes, edges: currentEdges } = useCanvasStore.getState()
-      const graph = {
-        id: 'root',
-        // DOWN, not RIGHT -- matches the top/bottom handle positions
-        // above, so an auto-laid-out chain reads as one straight column
-        // with each edge centered under the node above it, not a
-        // diagonal left-to-right sprawl.
-        layoutOptions: {
-          'elk.algorithm': 'layered',
-          'elk.direction': 'DOWN',
-          'elk.spacing.nodeNode': '48',
-          'elk.layered.spacing.nodeNodeBetweenLayers': '64',
-        },
-        children: currentNodes.map((n) => ({ id: n.id, width: CANVAS_NODE_WIDTH, height: CANVAS_NODE_HEIGHT })),
-        edges: currentEdges.map((e) => ({ id: e.id, sources: [e.source], targets: [e.target] })),
-      }
-      const layouted = await elk.layout(graph)
-      const byId = new Map((layouted.children ?? []).map((c) => [c.id, c]))
-      const positioned = currentNodes.map((n) => {
-        const l = byId.get(n.id)
-        return l && l.x !== undefined && l.y !== undefined ? { ...n, position: { x: l.x, y: l.y } } : n
-      })
-      useCanvasStore.getState().load(positioned, currentEdges)
-    } finally {
-      setLayingOut(false)
-    }
-  }, [useCanvasStore])
-
-  const { save, saving, saveError } = useCanvasSave(workflow, tabKey, readOnly, draftLabel, draftDescription, nodes, edges, onSaved)
+  const { save, saving, saveError } = useCanvasSave(workflow, tabKey, readOnly, draftLabel, draftDescription, nodes, edges, notes, onSaved)
 
   useCanvasCommandDispatch(tabKey, save, runButtonRef)
 
@@ -366,13 +337,14 @@ function CanvasInner({ nodeTypes, workflow, tabKey, onBack, onSaved, readOnly, o
 
       <RunStateContext.Provider value={runStateContextValue}>
       <BreakpointContext.Provider value={breakpoints}>
+      <NoteActionsContext.Provider value={noteActions}>
       <div className={styles.canvasWrap}>
         {!readOnly && paletteOpen && <NodePalette nodeTypes={nodeTypes} hasTrigger={nodes.some((n) => n.data.kind === 'trigger')} />}
         <div className={styles.canvas} onDrop={onCanvasDrop} onDragOver={(e) => e.preventDefault()}>
           <ReactFlow
-            nodes={nodes}
+            nodes={allNodes}
             edges={edges}
-            onNodesChange={onNodesChange}
+            onNodesChange={handleNodesChange}
             onEdgesChange={onEdgesChange}
             onConnect={onConnect}
             isValidConnection={isValidConnection}
@@ -382,8 +354,13 @@ function CanvasInner({ nodeTypes, workflow, tabKey, onBack, onSaved, readOnly, o
               setSelectedEdgeId(null)
             }}
             // The step-detail overlay's other open affordance
-            // (docs/goals/0058), alongside the sidebar's own expand button.
+            // (docs/goals/0058), alongside the sidebar's own expand
+            // button -- skipped for a note (docs/goals/0055): a note
+            // isn't a step, it has no detail to show, and its own
+            // double-click already opens inline text editing
+            // (CanvasNoteView.tsx), a separate handler by design.
             onNodeDoubleClick={(_, node) => {
+              if (node.type === 'note') return
               setSelectedNodeId(node.id)
               setSelectedEdgeId(null)
               setDetailOpen(true)
@@ -439,6 +416,7 @@ function CanvasInner({ nodeTypes, workflow, tabKey, onBack, onSaved, readOnly, o
               hasNodes={nodes.length > 0}
               onAutoLayout={runAutoLayout}
               onDeleteSelected={removeSelected}
+              onAddNote={() => addNoteNear(screenToFlowPosition({ x: window.innerWidth / 2, y: window.innerHeight / 2 }))}
               validationIssues={validationIssues}
               workflowLabel={draftLabel}
               workflowId={workflow?.ID ?? ''}
@@ -464,6 +442,7 @@ function CanvasInner({ nodeTypes, workflow, tabKey, onBack, onSaved, readOnly, o
           onEdgeConditionChange={(edgeId, condition) => updateEdgeCondition(edgeId, condition)}
         />
       </div>
+      </NoteActionsContext.Provider>
       </BreakpointContext.Provider>
       </RunStateContext.Provider>
       {detailOpen && selectedNode && (

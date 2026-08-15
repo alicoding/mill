@@ -325,6 +325,72 @@ func TestImportWorkflow_InvalidGraphShape_Rejected(t *testing.T) {
 	}
 }
 
+// TestNotes_RoundTripThroughSaveExportImport pins the goal 0055
+// acceptance predicate directly: create -> save (UpdateNotes) -> export
+// -> import -> the imported workflow's Notes equal what was saved.
+func TestNotes_RoundTripThroughSaveExportImport(t *testing.T) {
+	comp := newTestCompositionService(t)
+	nodes, edges := triggerAndCaptureNodes()
+	created, err := comp.CreateWorkflow("Notes wf", "", nodes, edges)
+	if err != nil {
+		t.Fatalf("CreateWorkflow: %v", err)
+	}
+
+	notes := []composition.Note{{
+		ID:       "note-1",
+		Text:     "documents the trigger and capture above",
+		Position: composition.Position{X: 300, Y: 20},
+		Size:     composition.Size{Width: 240, Height: 120},
+		Color:    composition.NoteColorBlue,
+	}}
+	saved, err := comp.UpdateNotes(created.ID, notes)
+	if err != nil {
+		t.Fatalf("UpdateNotes: %v", err)
+	}
+	if len(saved.Notes) != 1 {
+		t.Fatalf("UpdateNotes returned %d notes, want 1", len(saved.Notes))
+	}
+
+	exported, err := comp.ExportWorkflow(created.ID)
+	if err != nil {
+		t.Fatalf("ExportWorkflow: %v", err)
+	}
+	if !strings.Contains(exported, `"notes"`) {
+		t.Fatalf("exported JSON has no \"notes\" field:\n%s", exported)
+	}
+
+	imported, err := comp.ImportWorkflow(exported)
+	if err != nil {
+		t.Fatalf("ImportWorkflow: %v", err)
+	}
+	if len(imported.Notes) != 1 {
+		t.Fatalf("imported.Notes has %d entries, want 1", len(imported.Notes))
+	}
+	if imported.Notes[0] != notes[0] {
+		t.Errorf("imported.Notes[0] = %+v, want %+v", imported.Notes[0], notes[0])
+	}
+}
+
+// TestExportWorkflow_NoNotes_OmitsNotesField pins ADR-0036 decision 2's
+// additive-optional rule: a workflow with no notes exports exactly as
+// it did before this field existed -- no visible "notes" key, so an
+// unrelated save never churns a git-committed export.
+func TestExportWorkflow_NoNotes_OmitsNotesField(t *testing.T) {
+	comp := newTestCompositionService(t)
+	nodes, edges := triggerAndCaptureNodes()
+	created, err := comp.CreateWorkflow("No notes wf", "", nodes, edges)
+	if err != nil {
+		t.Fatalf("CreateWorkflow: %v", err)
+	}
+	exported, err := comp.ExportWorkflow(created.ID)
+	if err != nil {
+		t.Fatalf("ExportWorkflow: %v", err)
+	}
+	if strings.Contains(exported, `"notes"`) {
+		t.Errorf("exported JSON carries a \"notes\" field for a workflow with none:\n%s", exported)
+	}
+}
+
 func TestImportWorkflow_AppliesAttributes(t *testing.T) {
 	comp := newTestCompositionService(t)
 	exported := `{
