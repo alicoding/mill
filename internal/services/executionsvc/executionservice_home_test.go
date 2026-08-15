@@ -118,6 +118,100 @@ func TestMostUsedFor_SortsByRunCountDescendingThenLabel(t *testing.T) {
 	}
 }
 
+// runDuration/avgDurationFor are goal 0051 item 1's pure aggregation --
+// table-driven per .claude/rules/testing.md's "pure logic across its
+// input range" layer.
+func TestRunDuration_ExcludesInFlightAndNonPositiveSpans(t *testing.T) {
+	start := time.Date(2026, 8, 1, 9, 0, 0, 0, time.UTC)
+	cases := []struct {
+		name string
+		run  RunSummary
+		want time.Duration
+		ok   bool
+	}{
+		{"completed", RunSummary{StartedAt: start, CompletedAt: start.Add(30 * time.Second)}, 30 * time.Second, true},
+		{"still in flight (zero CompletedAt)", RunSummary{StartedAt: start}, 0, false},
+		{"completed in the same instant (real, valid zero duration)", RunSummary{StartedAt: start, CompletedAt: start}, 0, true},
+		{"completed before started (clock skew)", RunSummary{StartedAt: start, CompletedAt: start.Add(-time.Second)}, 0, false},
+	}
+	for _, c := range cases {
+		got, ok := runDuration(c.run)
+		if ok != c.ok || (ok && got != c.want) {
+			t.Errorf("%s: runDuration = (%v, %v), want (%v, %v)", c.name, got, ok, c.want, c.ok)
+		}
+	}
+}
+
+func TestAvgDurationFor_ZeroRuns_SampleSizeZeroAvgNil(t *testing.T) {
+	got := avgDurationFor(nil)
+	if got.SampleSize != 0 || got.AvgSeconds != nil {
+		t.Fatalf("avgDurationFor(nil) = %+v, want SampleSize=0 AvgSeconds=nil", got)
+	}
+}
+
+func TestAvgDurationFor_OnlyInFlightRuns_SampleSizeZeroAvgNil(t *testing.T) {
+	start := time.Date(2026, 8, 1, 9, 0, 0, 0, time.UTC)
+	got := avgDurationFor([]RunSummary{{StartedAt: start}, {StartedAt: start}})
+	if got.SampleSize != 0 || got.AvgSeconds != nil {
+		t.Fatalf("avgDurationFor(all in-flight) = %+v, want SampleSize=0 AvgSeconds=nil -- never fake a duration for a run still running", got)
+	}
+}
+
+func TestAvgDurationFor_SingleRun_AveragesToItsOwnDuration(t *testing.T) {
+	start := time.Date(2026, 8, 1, 9, 0, 0, 0, time.UTC)
+	got := avgDurationFor([]RunSummary{{StartedAt: start, CompletedAt: start.Add(10 * time.Second)}})
+	if got.SampleSize != 1 || got.AvgSeconds == nil || *got.AvgSeconds != 10 {
+		t.Fatalf("avgDurationFor(single 10s run) = %+v, want SampleSize=1 AvgSeconds=10", got)
+	}
+}
+
+func TestAvgDurationFor_MixedRuns_ExcludesInFlightFromBothSumAndCount(t *testing.T) {
+	start := time.Date(2026, 8, 1, 9, 0, 0, 0, time.UTC)
+	runs := []RunSummary{
+		{StartedAt: start, CompletedAt: start.Add(10 * time.Second)},
+		{StartedAt: start, CompletedAt: start.Add(20 * time.Second)},
+		{StartedAt: start}, // still in flight -- must not drag the average toward 0
+	}
+	got := avgDurationFor(runs)
+	if got.SampleSize != 2 || got.AvgSeconds == nil || *got.AvgSeconds != 15 {
+		t.Fatalf("avgDurationFor(mixed) = %+v, want SampleSize=2 AvgSeconds=15 (in-flight run excluded from both sum and count)", got)
+	}
+}
+
+// mostUsedFor's own duration/recency columns (goal 0051 items 1/2).
+func TestMostUsedFor_PerWorkflowAvgDurationAndLastTriggeredAt(t *testing.T) {
+	start := time.Date(2026, 8, 1, 9, 0, 0, 0, time.UTC)
+	later := start.Add(time.Hour)
+	runs := []RunSummary{
+		{WorkflowID: "a", WorkflowLabel: "A", Kind: RunKindTriggered, StartedAt: start, CompletedAt: start.Add(10 * time.Second)},
+		{WorkflowID: "a", WorkflowLabel: "A", Kind: RunKindTest, StartedAt: later, CompletedAt: later.Add(20 * time.Second)},
+		{WorkflowID: "b", WorkflowLabel: "B", Kind: RunKindTest, StartedAt: start}, // never triggered, still in flight
+	}
+	got := mostUsedFor(runs)
+	byID := map[string]WorkflowUsage{}
+	for _, u := range got {
+		byID[u.WorkflowID] = u
+	}
+
+	a := byID["a"]
+	if a.AvgDurationSeconds == nil || *a.AvgDurationSeconds != 15 {
+		t.Errorf("workflow a AvgDurationSeconds = %v, want 15 (average of its 10s and 20s runs)", a.AvgDurationSeconds)
+	}
+	// The test-kind run started LATER but must not count toward
+	// LastTriggeredAt -- only ambient (non-test) runs do.
+	if a.LastTriggeredAt == nil || !a.LastTriggeredAt.Equal(start) {
+		t.Errorf("workflow a LastTriggeredAt = %v, want %v (its one triggered run, the later test run excluded)", a.LastTriggeredAt, start)
+	}
+
+	b := byID["b"]
+	if b.AvgDurationSeconds != nil {
+		t.Errorf("workflow b AvgDurationSeconds = %v, want nil (its only run is still in flight)", b.AvgDurationSeconds)
+	}
+	if b.LastTriggeredAt != nil {
+		t.Errorf("workflow b LastTriggeredAt = %v, want nil (its only run is test-kind, never ambient)", b.LastTriggeredAt)
+	}
+}
+
 func TestAmbientFor_ComputesTriggeredVsManualRatio(t *testing.T) {
 	runs := []RunSummary{
 		{Kind: RunKindTriggered}, {Kind: RunKindTriggered}, {Kind: RunKindTriggered},
@@ -257,6 +351,74 @@ func TestHomeMetrics_TimeSaved_CreditsOnlySuccessfulTriggeredRuns(t *testing.T) 
 	}
 	if len(metrics.MostUsed) != 2 {
 		t.Fatalf("MostUsed = %+v, want 2 workflows", metrics.MostUsed)
+	}
+}
+
+// The integration proof for goal 0051 items 1/2 against a real DBOS
+// runtime: AvgDuration/MostUsed's per-workflow AvgDurationSeconds and
+// LastTriggeredAt are wired all the way from real recorded
+// StartedAt/CompletedAt timestamps, not just their pure-function unit
+// coverage above. Exact duration values aren't asserted (real wall-
+// clock timing would make that flaky) -- only that a real sample was
+// counted and a real (non-nil) average came out of it.
+func TestHomeMetrics_AvgDurationAndLastTriggeredAt_WiredFromRealRuns(t *testing.T) {
+	comp, exec := newHomeHarness(t)
+	wf, err := comp.CreateWorkflow("Timed workflow", "", []composition.Node{
+		{ID: "t1", NodeTypeID: "trigger-manual", Position: composition.Position{X: 0, Y: 0}},
+		{ID: "n1", NodeTypeID: "process-inject-text", Position: composition.Position{X: 0, Y: 100},
+			Config: map[string]string{"text": "ok", "placement": "append"}},
+	}, []composition.Edge{{ID: "e0", Source: "t1", Target: "n1"}})
+	if err != nil {
+		t.Fatalf("CreateWorkflow: %v", err)
+	}
+	if _, err := comp.PublishWorkflow(wf.ID); err != nil {
+		t.Fatalf("PublishWorkflow: %v", err)
+	}
+
+	before := time.Now()
+	if _, err := exec.RunWorkflow(wf.ID, RunKindTriggered, nil); err != nil {
+		t.Fatalf("RunWorkflow(triggered): %v", err)
+	}
+	// A TEST run afterward -- must count toward AvgDuration (a real
+	// execution, timing-wise) but NOT toward LastTriggeredAt (goal
+	// 0051 item 2's own "ambient runs only" rule).
+	if _, err := exec.RunWorkflow(wf.ID, RunKindTest, nil); err != nil {
+		t.Fatalf("RunWorkflow(test): %v", err)
+	}
+	after := time.Now()
+
+	from := before.Add(-time.Minute).UTC().Format(time.RFC3339)
+	to := after.Add(time.Minute).UTC().Format(time.RFC3339)
+	metrics, err := exec.HomeMetrics(from, to, true)
+	if err != nil {
+		t.Fatalf("HomeMetrics: %v", err)
+	}
+
+	if metrics.AvgDuration.SampleSize != 2 {
+		t.Errorf("AvgDuration.SampleSize = %d, want 2 (both real runs completed)", metrics.AvgDuration.SampleSize)
+	}
+	if metrics.AvgDuration.AvgSeconds == nil || *metrics.AvgDuration.AvgSeconds < 0 {
+		t.Errorf("AvgDuration.AvgSeconds = %v, want a real non-negative value", metrics.AvgDuration.AvgSeconds)
+	}
+
+	if len(metrics.MostUsed) != 1 {
+		t.Fatalf("MostUsed = %+v, want exactly the one workflow", metrics.MostUsed)
+	}
+	row := metrics.MostUsed[0]
+	if row.AvgDurationSeconds == nil {
+		t.Error("MostUsed[0].AvgDurationSeconds is nil, want a real value from its two completed runs")
+	}
+	if row.LastTriggeredAt == nil {
+		t.Fatal("MostUsed[0].LastTriggeredAt is nil, want the triggered run's StartedAt")
+	}
+	// DBOS's own recorded StartedAt is millisecond-truncated (confirmed
+	// directly: a real run's StartedAt can read slightly EARLIER than
+	// an exact `before` captured with sub-millisecond precision, purely
+	// from flooring to the millisecond) -- the lower bound floors the
+	// same way so a genuinely-after-before event never spuriously fails.
+	lowerBound := before.Truncate(time.Millisecond)
+	if row.LastTriggeredAt.Before(lowerBound) || row.LastTriggeredAt.After(after) {
+		t.Errorf("MostUsed[0].LastTriggeredAt = %v, want between %v and %v", row.LastTriggeredAt, lowerBound, after)
 	}
 }
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatMinutes } from './homeFormat'
+import { formatDuration, formatMinutes } from './homeFormat'
 import views from '../locales/en/views.json'
 
 // A minimal stand-in for react-i18next's t() -- same pattern
@@ -28,5 +28,23 @@ describe('formatMinutes', () => {
   it('renders 10 hours or more with no decimal place', () => {
     expect(formatMinutes(t, 600)).toBe('10 hrs')
     expect(formatMinutes(t, 725)).toBe('12 hrs')
+  })
+})
+
+describe('formatDuration', () => {
+  it('renders under a minute as whole seconds', () => {
+    expect(formatDuration(t, 0)).toBe('0s')
+    expect(formatDuration(t, 0.4)).toBe('0s')
+    expect(formatDuration(t, 45)).toBe('45s')
+    expect(formatDuration(t, 59.6)).toBe('1m 0s') // rounds to a full minute, not "60s"
+  })
+
+  it('renders a minute or more as minutes + seconds', () => {
+    expect(formatDuration(t, 60)).toBe('1m 0s')
+    expect(formatDuration(t, 125)).toBe('2m 5s')
+  })
+
+  it('rounds once, up front, so a fractional remainder never carries seconds past 59', () => {
+    expect(formatDuration(t, 119.6)).toBe('2m 0s')
   })
 })

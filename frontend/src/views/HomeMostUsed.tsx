@@ -1,13 +1,14 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Text, TextInput } from '@primer/react'
+import { Stack, Text, TextInput } from '@primer/react'
 import { GraphIcon } from '@primer/octicons-react'
 import { InventoryList } from '../shared/InventoryList'
 import { ENTITY_ICON } from '../shared/entityIcons'
 import { SettingsService } from '../shared/bindings'
 import type { WorkflowUsage } from '../shared/bindings'
 import { useAppStore } from '../shared/store'
-import { formatMinutes } from './homeFormat'
+import { formatUpdated } from '../shared/inventorySort'
+import { formatDuration, formatMinutes } from './homeFormat'
 import listStyles from '../shared/ListCard.module.css'
 
 // The Layer-2 "usage mirror" (docs/goals/0014): every run in range
@@ -68,6 +69,31 @@ function MinutesSavedEditor({ workflowId, minutes, onSaved }: {
   )
 }
 
+// The per-workflow duration (goal 0051 item 1) and trigger-recency
+// (item 2) columns, extending this row the same "reference layer, not
+// a new page" way the minutes-saved editor already does. Recency is a
+// WORKFLOW-level proxy, not a real per-trigger fire log (no such
+// record exists yet) -- the copy says "ran automatically," never
+// "trigger fired," so it never claims more precision than
+// LastTriggeredAt (MAX(StartedAt) over ambient runs) actually has.
+function WorkflowUsageMeta({ usage }: { usage: WorkflowUsage }) {
+  const { t } = useTranslation('views')
+  return (
+    <Stack direction="vertical" gap="none" align="end" data-testid="workflow-usage-meta">
+      {usage.avgDurationSeconds != null && (
+        <Text size="small" className={listStyles.muted} data-testid="workflow-avg-duration">
+          {t('home.mostUsed.avgDurationLabel', { duration: formatDuration(t, usage.avgDurationSeconds) })}
+        </Text>
+      )}
+      <Text size="small" className={listStyles.muted} data-testid="workflow-last-triggered">
+        {usage.lastTriggeredAt != null
+          ? t('home.mostUsed.lastTriggeredLabel', { when: formatUpdated(usage.lastTriggeredAt) })
+          : t('home.mostUsed.neverTriggeredLabel')}
+      </Text>
+    </Stack>
+  )
+}
+
 export function HomeMostUsed({ usage, minutesByWorkflow, onMinutesChanged }: {
   usage: WorkflowUsage[]
   minutesByWorkflow: Record<string, number>
@@ -104,11 +130,14 @@ export function HomeMostUsed({ usage, minutesByWorkflow, onMinutesChanged }: {
           onOpen: () => requestOpenWorkflow(u.workflowID),
           menuActions: [],
           meta: (
-            <MinutesSavedEditor
-              workflowId={u.workflowID}
-              minutes={minutes}
-              onSaved={(m) => onMinutesChanged(u.workflowID, m)}
-            />
+            <Stack direction="horizontal" gap="condensed" align="center">
+              <WorkflowUsageMeta usage={u} />
+              <MinutesSavedEditor
+                workflowId={u.workflowID}
+                minutes={minutes}
+                onSaved={(m) => onMinutesChanged(u.workflowID, m)}
+              />
+            </Stack>
           ),
         }
       })}

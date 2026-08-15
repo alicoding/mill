@@ -12,6 +12,7 @@ export {
 
 export type {
     AmbientMetric,
+    AvgDurationMetric,
     DailyBucket,
     ErrorRateMetric,
     GuardrailPendingChanged,
@@ -20,6 +21,7 @@ export type {
     RunDetail,
     RunStep,
     RunSummary,
+    StepFailureCount,
     TimeSavedMetric,
     WorkflowTimeSaved,
     WorkflowUsage

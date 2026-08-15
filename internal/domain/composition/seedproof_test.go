@@ -137,6 +137,10 @@ var workflowProofRegistry = map[string]seedProof{
 		"composition.TestProcessRunReceipt_RendersEvidenceAsJSON",
 		"executionsvc.TestSeededRunReceiptExample_RunsEndToEndAndValidatesAgainstSchema",
 	),
+	"example-step-failure-workflow": proven(
+		"executionsvc.TestStepFailureBreakdown_CountsFailedStepsByNodeType",
+		"e2e: activity.spec.ts > step failures show up in Activity's breakdown by step type",
+	),
 }
 
 // httpRequestProofRegistry: every httprequest.BuiltIn() ID.

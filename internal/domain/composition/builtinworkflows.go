@@ -465,7 +465,11 @@ func BuiltInWorkflows() []Workflow {
 	// goal 0054 slice A, ADR-0037: the declared-step-type registry's own
 	// seeded proof -- see that function's own doc comment for why it
 	// can return nil on this function's very first call.
-	return append(workflows, builtInDeclaredStepTypeWorkflows()...)
+	workflows = append(workflows, builtInDeclaredStepTypeWorkflows()...)
+	// goal 0051 item 3: a deterministic failure Activity's step-type
+	// failure breakdown can render from a fresh install, same
+	// split-file reasoning.
+	return append(workflows, builtInStepFailureWorkflows()...)
 }
 
 // ExampleChildWorkflowID is exported so the parent seed above and any

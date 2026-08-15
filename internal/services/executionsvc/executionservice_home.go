@@ -60,14 +60,15 @@ func (e *ExecutionService) minutesSavedFor(workflowID string) int {
 // on purpose -- see each field's own doc comment for why toggling test
 // visibility would misstate what that specific number measures.
 type HomeMetrics struct {
-	From        string          `json:"from"`
-	To          string          `json:"to"`
-	IncludeTest bool            `json:"includeTest"`
-	TimeSaved   TimeSavedMetric `json:"timeSaved"`
-	ErrorRate   ErrorRateMetric `json:"errorRate"`
-	Series      []DailyBucket   `json:"series"`
-	MostUsed    []WorkflowUsage `json:"mostUsed"`
-	Ambient     AmbientMetric   `json:"ambient"`
+	From        string            `json:"from"`
+	To          string            `json:"to"`
+	IncludeTest bool              `json:"includeTest"`
+	TimeSaved   TimeSavedMetric   `json:"timeSaved"`
+	ErrorRate   ErrorRateMetric   `json:"errorRate"`
+	AvgDuration AvgDurationMetric `json:"avgDuration"`
+	Series      []DailyBucket     `json:"series"`
+	MostUsed    []WorkflowUsage   `json:"mostUsed"`
+	Ambient     AmbientMetric     `json:"ambient"`
 }
 
 // TimeSavedMetric is docs/goals/0014's Layer-1 value accounting: minutes
@@ -130,6 +131,19 @@ type DailyBucket struct {
 	RatePercent *float64 `json:"ratePercent,omitempty"`
 }
 
+// AvgDurationMetric is the average wall-clock duration (CompletedAt -
+// StartedAt) across terminal runs in range (goal 0051 item 1) --
+// n8n's own headline "how long do runs take" metric, Airflow
+// table-stakes. SampleSize is always populated so a caller never
+// renders a bare average without the runs it's built from;
+// AvgSeconds is nil only when SampleSize is 0 -- every run in range
+// is still in flight (zero CompletedAt) or has a non-positive
+// duration, never faked as zero.
+type AvgDurationMetric struct {
+	AvgSeconds *float64 `json:"avgSeconds,omitempty"`
+	SampleSize int      `json:"sampleSize"`
+}
+
 // WorkflowUsage is one row of the most-used-workflows list -- every run
 // in range counts, any Kind, any status (terminal or not) -- this
 // measures raw usage frequency ("what do I actually reach for"), not
@@ -138,6 +152,21 @@ type WorkflowUsage struct {
 	WorkflowID    string `json:"workflowID"`
 	WorkflowLabel string `json:"workflowLabel"`
 	RunCount      int    `json:"runCount"`
+	// AvgDurationSeconds is this workflow's own average run duration
+	// (goal 0051 item 1's per-workflow column) -- same "exclude
+	// in-flight/zero-CompletedAt runs, never fake" rule as
+	// AvgDurationMetric, computed over every run in range regardless
+	// of Kind/status (RunCount's own scope). Nil when this workflow has
+	// no run in range with a valid duration yet.
+	AvgDurationSeconds *float64 `json:"avgDurationSeconds,omitempty"`
+	// LastTriggeredAt is the most recent non-test-kind (ambient) run's
+	// StartedAt for this workflow WITHIN the requested range (goal
+	// 0051 item 2) -- a workflow-level proxy for "when did this last
+	// fire," not a true per-trigger fire log (no such record exists
+	// yet, docs/SPEC.md's own named data-model gap). Nil when this
+	// workflow had no ambient run in range -- the honest "hasn't fired
+	// in this window" signal, not absence of the field.
+	LastTriggeredAt *time.Time `json:"lastTriggeredAt,omitempty"`
 }
 
 // AmbientMetric is the ambient (triggered/MCP -- automation acting
@@ -202,6 +231,7 @@ func (e *ExecutionService) HomeMetrics(fromISO, toISO string, includeTest bool) 
 		IncludeTest: includeTest,
 		TimeSaved:   e.timeSavedFor(runs),
 		ErrorRate:   errorRateFor(scoped),
+		AvgDuration: avgDurationFor(scoped),
 		Series:      dailySeriesFor(scoped),
 		MostUsed:    mostUsedFor(runs),
 		Ambient:     ambientFor(runs),
@@ -270,10 +300,44 @@ func (e *ExecutionService) timeSavedFor(runs []RunSummary) TimeSavedMetric {
 	return out
 }
 
+// runDuration returns r's wall-clock duration and whether it's valid.
+// A still-in-flight run (zero CompletedAt) is excluded, never faked as
+// zero. CompletedAt exactly equal to StartedAt is a real, valid
+// zero-duration result -- confirmed against real DBOS timing (a purely
+// local, no-I/O step can genuinely complete within the same recorded
+// millisecond) -- only CompletedAt strictly BEFORE StartedAt (clock
+// skew, a checkpoint race) is treated as invalid.
+func runDuration(r RunSummary) (time.Duration, bool) {
+	if r.CompletedAt.IsZero() || r.CompletedAt.Before(r.StartedAt) {
+		return 0, false
+	}
+	return r.CompletedAt.Sub(r.StartedAt), true
+}
+
+func avgDurationFor(runs []RunSummary) AvgDurationMetric {
+	var total time.Duration
+	var n int
+	for _, r := range runs {
+		if d, ok := runDuration(r); ok {
+			total += d
+			n++
+		}
+	}
+	m := AvgDurationMetric{SampleSize: n}
+	if n > 0 {
+		avg := total.Seconds() / float64(n)
+		m.AvgSeconds = &avg
+	}
+	return m
+}
+
 func mostUsedFor(runs []RunSummary) []WorkflowUsage {
 	type acc struct {
-		label string
-		count int
+		label           string
+		count           int
+		totalDuration   time.Duration
+		durationSamples int
+		lastTriggeredAt time.Time
 	}
 	byWorkflow := map[string]*acc{}
 	var order []string
@@ -285,11 +349,27 @@ func mostUsedFor(runs []RunSummary) []WorkflowUsage {
 			order = append(order, r.WorkflowID)
 		}
 		a.count++
+		if d, ok := runDuration(r); ok {
+			a.totalDuration += d
+			a.durationSamples++
+		}
+		if !r.Kind.isTest() && r.StartedAt.After(a.lastTriggeredAt) {
+			a.lastTriggeredAt = r.StartedAt
+		}
 	}
 	out := make([]WorkflowUsage, 0, len(order))
 	for _, id := range order {
 		a := byWorkflow[id]
-		out = append(out, WorkflowUsage{WorkflowID: id, WorkflowLabel: a.label, RunCount: a.count})
+		u := WorkflowUsage{WorkflowID: id, WorkflowLabel: a.label, RunCount: a.count}
+		if a.durationSamples > 0 {
+			avg := a.totalDuration.Seconds() / float64(a.durationSamples)
+			u.AvgDurationSeconds = &avg
+		}
+		if !a.lastTriggeredAt.IsZero() {
+			lastTriggeredAt := a.lastTriggeredAt
+			u.LastTriggeredAt = &lastTriggeredAt
+		}
+		out = append(out, u)
 	}
 	sort.Slice(out, func(i, j int) bool {
 		if out[i].RunCount != out[j].RunCount {

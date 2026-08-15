@@ -9,7 +9,7 @@ import type { HomeMetrics } from '../shared/bindings'
 import { useAppStore } from '../shared/store'
 import PageContainer from '../shared/PageContainer'
 import { HomeMostUsed } from './HomeMostUsed'
-import { formatMinutes } from './homeFormat'
+import { formatDuration, formatMinutes } from './homeFormat'
 import listStyles from '../shared/ListCard.module.css'
 import styles from './HomeView.module.css'
 
@@ -140,6 +140,7 @@ export default function HomeView() {
           <div className={styles.kpiRow} data-testid="home-kpi-row">
             <TimeSavedCard timeSaved={metrics.timeSaved} />
             <ErrorRateCard errorRate={metrics.errorRate} includeTest={includeTest} onIncludeTestChange={setIncludeTest} />
+            <AvgDurationCard avgDuration={metrics.avgDuration} />
             <AmbientCard ambient={metrics.ambient} />
           </div>
 
@@ -219,6 +220,23 @@ function ErrorRateCard({ errorRate, includeTest, onIncludeTestChange }: {
         />
         <FormControl.Label>{t('home.includeManualTestRuns')}</FormControl.Label>
       </FormControl>
+    </div>
+  )
+}
+
+function AvgDurationCard({ avgDuration }: { avgDuration: HomeMetrics['avgDuration'] }) {
+  const { t } = useTranslation('views')
+  return (
+    <div className={`${listStyles.card} ${styles.kpiCard}`} data-testid="kpi-avg-duration">
+      <Text as="p" size="small" className={listStyles.muted}>{t('home.avgDuration')}</Text>
+      <Text as="p" className={styles.kpiValue}>
+        {avgDuration.avgSeconds == null ? '—' : formatDuration(t, avgDuration.avgSeconds)}
+      </Text>
+      <Text as="p" size="small" className={listStyles.muted}>
+        {avgDuration.sampleSize === 0
+          ? t('home.noTimedRuns')
+          : t('home.avgDurationSampleSize', { count: avgDuration.sampleSize, plural: avgDuration.sampleSize === 1 ? '' : 's' })}
+      </Text>
     </div>
   )
 }
