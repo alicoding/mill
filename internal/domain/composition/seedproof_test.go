@@ -141,6 +141,17 @@ var workflowProofRegistry = map[string]seedProof{
 		"executionsvc.TestStepFailureBreakdown_CountsFailedStepsByNodeType",
 		"e2e: activity.spec.ts > step failures show up in Activity's breakdown by step type",
 	),
+	"example-card-intake-workflow": proven(
+		"triggersvc.TestSeededCardIntakeExample_TriggerUpdatesOwnCardAndDoesNotLoop",
+		"triggersvc.TestSeededCardIntakeKindID_MatchesAtlasSeed",
+		"executionsvc.TestGuardrail_AtlasCardCreateParks_ApproveCreatesCard",
+		"e2e: seed-completeness.spec.ts > Example: Card intake workflow is present with the real trigger-atlas-card + Atlas: update card nodes on canvas",
+		"e2e: entity-ref-picker.spec.ts > Selecting the Atlas: update card node offers a live Kind picker and the Kind-driven field editor",
+	),
+	"example-card-create-link-workflow": proven(
+		"executionsvc.TestSeededCardCreateLinkExample_CreatesFindsAndLinksCards",
+		"e2e: seed-completeness.spec.ts > Example: Create and link Atlas cards runs end to end through the real live app",
+	),
 }
 
 // httpRequestProofRegistry: every httprequest.BuiltIn() ID.

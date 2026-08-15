@@ -31,6 +31,10 @@
     "seedRevision": 1,
     "fingerprint": "da2607108344191281b03835e63a2ff7c277c6199a2cd4a3eda8298b8c2d16fb"
   },
+  "atlaskind:atlas-kind-intake": {
+    "seedRevision": 1,
+    "fingerprint": "9cbf083ff0b46d7be72d24dc62474a7c594efc19510a9b61102f0db6c762356b"
+  },
   "atlaskind:atlas-kind-space": {
     "seedRevision": 1,
     "fingerprint": "05e9e4a1631c0da84d987f99db7c14fe18c04852b138e15d8a7cf3f7039dc735"
@@ -118,6 +122,14 @@
   "workflow:example-branch-to-decision-workflow": {
     "seedRevision": 3,
     "fingerprint": "a029c7c1d3ee9f7da229f81689b341d455a51a6dfe8efe488158c5ac137b2bc0"
+  },
+  "workflow:example-card-create-link-workflow": {
+    "seedRevision": 1,
+    "fingerprint": "7b2ad643f36f99b161876ddf497a868473cf13b709575b59f4e24ac1e005ef5a"
+  },
+  "workflow:example-card-intake-workflow": {
+    "seedRevision": 1,
+    "fingerprint": "73a0918515c0e87d051ca9d4d6f74c6f84547baa8aed005e326ff45d261fe004"
   },
   "workflow:example-child-echo-workflow": {
     "seedRevision": 2,

@@ -20,6 +20,13 @@ const (
 	kindTopicID    = "atlas-kind-topic"
 	kindContactID  = "atlas-kind-contact"
 	kindDocumentID = "atlas-kind-document"
+	// kindIntakeID (goal 0066, ADR-0035/0038's composed integration
+	// example) is a dedicated seeded example kind so the seeded
+	// "Example: Card intake" workflow (internal/domain/composition/
+	// builtinworkflows_atlascard.go) has a real card-type to watch
+	// without retrofitting automated behavior onto the unrelated Topic
+	// example above.
+	kindIntakeID = "atlas-kind-intake"
 
 	linkKindRelatesToID = "atlas-linkkind-relates-to"
 
@@ -78,6 +85,17 @@ func BuiltInKinds() []Kind {
 			Description: "A reference to written material, on this machine or elsewhere.",
 			Fields: []typedfield.Field{
 				{Key: "owner", Label: "Owner", Type: typedfield.TypeText},
+			},
+			CreatedAt: now, UpdatedAt: now,
+			BuiltIn: true, Seed: seedorigin.Stamp(1),
+		},
+		{
+			ID: kindIntakeID, Label: "Intake", Icon: "📥",
+			Description: "Something arriving to be triaged -- the seeded card-intake workflow " +
+				"example (docs/adr/0038, goal 0066) watches this kind and stamps its own status.",
+			Fields: []typedfield.Field{
+				{Key: "status", Label: "Status", Type: typedfield.TypeOptions,
+					Options: []string{"New", "Processed"}, Default: "New"},
 			},
 			CreatedAt: now, UpdatedAt: now,
 			BuiltIn: true, Seed: seedorigin.Stamp(1),

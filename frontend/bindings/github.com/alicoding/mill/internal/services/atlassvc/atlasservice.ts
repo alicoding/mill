@@ -27,6 +27,14 @@ export function Cards(): $CancellablePromise<atlas$0.Card[] | null> {
 }
 
 /**
+ * CardsByKind returns every card of kindID -- the apply-atlas-card-find
+ * step's own read (goal 0066), via composition.SetAtlasCardFinder.
+ */
+export function CardsByKind(kindID: string): $CancellablePromise<atlas$0.Card[] | null> {
+    return $Call.ByID(1757324970, kindID);
+}
+
+/**
  * CreateCard makes a new Card of kindID, optionally inside parentID
  * ("" for root-level). A non-empty parentID must name an existing
  * card; a fresh card can never itself be a cycle (it has no children
@@ -184,7 +192,9 @@ export function SetViewMode(id: string, mode: atlas$0.ViewMode): $CancellablePro
 /**
  * UpdateCard replaces a Card's editable content in place -- ParentID/
  * Position move through MoveCard/SetPosition instead, so a plain
- * content edit never has to re-run the cycle check.
+ * content edit never has to re-run the cycle check. sourceRunID is
+ * always "" here (a manual Atlas UI edit); MergeCardFields is the
+ * run-driven counterpart apply-atlas-card-update uses.
  */
 export function UpdateCard(id: string, title: string, note: string, fields: { [_ in string]?: string } | null, source: string, mirrorPath: string, refreshWorkflowID: string): $CancellablePromise<atlas$0.Card> {
     return $Call.ByID(1443506165, id, title, note, fields, source, mirrorPath, refreshWorkflowID);

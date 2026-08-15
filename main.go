@@ -177,7 +177,7 @@ func main() {
 		return summary.RunID, !pending && summary.Status == "SUCCESS", pending, nil
 	})
 	executionService.SetRunCompletionSink(atlasService.NotifyRunCompleted)
-
+	atlasService.WireCompositionSeams(triggerService.DispatchAtlasCardChange) // goal 0066
 	settingsService := settingssvc.NewSettingsService(settingsStore, triggerService, settingsPath != defaultSettingsPath)
 	// Bidirectional hotkey-conflict check (docs/SPEC.md §3.7): a
 	// per-workflow hotkey can't silently collide with the app-level

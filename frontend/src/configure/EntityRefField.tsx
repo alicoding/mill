@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Dialog, FormControl, Select, TextInput } from '@primer/react'
-import { CompositionService, ConfigureService } from '../shared/bindings'
+import { AtlasService, CompositionService, ConfigureService } from '../shared/bindings'
 import { AuthType } from '../../bindings/github.com/alicoding/mill/internal/domain/httprequest/models'
 import type { Workflow } from '../../bindings/github.com/alicoding/mill/internal/domain/composition/models'
 import { Category } from '../../bindings/github.com/alicoding/mill/internal/domain/decision/models'
@@ -55,6 +55,14 @@ async function fetchEntities(refKind: string): Promise<Entity[]> {
       return (await ConfigureService.ExecEnvs()) ?? []
     case 'aiprovider':
       return (await ConfigureService.AIProviders()) ?? []
+    // docs/goals/0066: atlas-card-* steps' Kind/Relation pickers -- a
+    // bindings-populated dropdown over Atlas's own user-declared Kinds/
+    // LinkKinds, the same "reuse the existing picker, parameterized by
+    // RefKind" shape every other entity reference here already uses.
+    case 'atlas-kind':
+      return (await AtlasService.Kinds()) ?? []
+    case 'atlas-linkkind':
+      return (await AtlasService.LinkKinds()) ?? []
     default:
       return []
   }
@@ -70,6 +78,8 @@ function kindNounFor(t: (key: string) => string): Record<string, string> {
     decision: t('entityRefField.kindNoun.decision'),
     execenv: t('entityRefField.kindNoun.execenv'),
     aiprovider: t('entityRefField.kindNoun.aiprovider'),
+    'atlas-kind': t('entityRefField.kindNoun.atlas-kind'),
+    'atlas-linkkind': t('entityRefField.kindNoun.atlas-linkkind'),
   }
 }
 

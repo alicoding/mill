@@ -291,7 +291,7 @@ func (a *AtlasService) importCardContent(c exportedCard) (string, bool, error) {
 		_, err := a.UpdateCard(c.ID, c.Title, c.Note, c.Fields, c.Source, "", "")
 		return c.ID, false, err
 	}
-	card, err := a.createCardWithID(c.ID, c.KindID, c.Title, c.Note, c.Fields, "", nil, c.ViewMode, c.Source, "", "")
+	card, err := a.createCardWithID(c.ID, c.KindID, c.Title, c.Note, c.Fields, "", nil, c.ViewMode, c.Source, "", "", "")
 	return card.ID, true, err
 }
 

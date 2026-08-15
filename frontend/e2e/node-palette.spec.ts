@@ -120,11 +120,11 @@ test('palette search matches both the shortened display name and the full underl
   await expect(panel.getByTestId('palette-item')).toHaveCount(0)
   await expect(panel.getByTestId('palette-no-matches')).toBeVisible()
 
-  // Clearing the query restores the full 32-item palette (31
+  // Clearing the query restores the full 37-item palette (36
   // RegisterNodeType call sites + the seeded "Check httpbin" declared
   // step type, goal 0054 slice A).
   await search.fill('')
-  await expect(panel.getByTestId('palette-item')).toHaveCount(32)
+  await expect(panel.getByTestId('palette-item')).toHaveCount(37)
 })
 
 // Progressive-disclosure "Show advanced steps" toggle (goal 0047): the
@@ -135,7 +135,7 @@ test('the palette shows every step by default, "Show advanced steps" checked', a
   await openPaletteOnNewWorkflow(page)
   const panel = activePanel(page)
   await expect(panel.getByTestId('palette-show-advanced')).toBeChecked()
-  await expect(panel.getByTestId('palette-item')).toHaveCount(32)
+  await expect(panel.getByTestId('palette-item')).toHaveCount(37)
 })
 
 test('unchecking "Show advanced steps" hides advanced steps, keeps basic ones, and persists across a reload', async ({ page }) => {
@@ -152,6 +152,9 @@ test('unchecking "Show advanced steps" hides advanced steps, keeps basic ones, a
   const advancedIDs = [
     'integration-http', 'mcp-tool-call', 'code-execution',
     'ruleset', 'child-workflow', 'list-search', 'process-ai-extract-structured',
+    // goal 0066: matchParams/fieldBindings are hand-authored JSON, the
+    // same reasoning list-search's own matchParams carries.
+    'process-atlas-card-find', 'apply-atlas-card-create', 'apply-atlas-card-update',
   ]
   for (const id of advancedIDs) {
     await expect(panel.locator(`[data-node-type-id="${id}"]`)).toHaveCount(0)
@@ -162,6 +165,10 @@ test('unchecking "Show advanced steps" hides advanced steps, keeps basic ones, a
   await expect(panel.locator('[data-node-type-id="human-review"]')).toBeVisible()
   await expect(panel.locator('[data-node-type-id="decision-route"]')).toBeVisible()
   await expect(panel.locator('[data-node-type-id="example-check-httpbin-step"]')).toBeVisible()
+  // goal 0066: apply-atlas-card-link's fields are all plain values, no
+  // JSON authoring -- stays basic.
+  await expect(panel.locator('[data-node-type-id="apply-atlas-card-link"]')).toBeVisible()
+  await expect(panel.locator('[data-node-type-id="trigger-atlas-card"]')).toBeVisible()
 
   // Persists across a reload -- a fresh page load re-reads the same
   // localStorage-backed choice, not an in-memory-only default.
