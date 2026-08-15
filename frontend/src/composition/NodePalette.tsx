@@ -1,8 +1,9 @@
 import { useMemo, useState, type DragEvent } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Text, TextInput, TreeView } from '@primer/react'
+import { Checkbox, FormControl, Text, TextInput, TreeView } from '@primer/react'
 import type { NodeType } from '../../bindings/github.com/alicoding/mill/internal/domain/composition/models'
 import { PALETTE_GROUP_ICON, PALETTE_GROUP_LABEL, PALETTE_GROUP_ORDER, paletteGroupFor, shortLabel, type PaletteGroupId } from '../shared/paletteGroups'
+import { filterByComplexity, useShowAdvancedSteps } from './nodeComplexity'
 import styles from './CompositionCanvas.module.css'
 
 interface NodePaletteProps {
@@ -48,6 +49,7 @@ function groupIcon(group: PaletteGroupId) {
 export function NodePalette({ nodeTypes, hasTrigger }: NodePaletteProps) {
   const { t } = useTranslation('composition')
   const [query, setQuery] = useState('')
+  const [showAdvanced, setShowAdvanced] = useShowAdvancedSteps()
 
   // Matches both the shortened palette label AND the full nt.Label
   // (task requirement -- "run" matches "Code: run command" even though
@@ -58,16 +60,18 @@ export function NodePalette({ nodeTypes, hasTrigger }: NodePaletteProps) {
     return nt.Label.toLowerCase().includes(normalizedQuery) || shortLabel(nt).toLowerCase().includes(normalizedQuery)
   }
 
+  const visibleNodeTypes = useMemo(() => filterByComplexity(nodeTypes, showAdvanced), [nodeTypes, showAdvanced])
+
   const byGroup = useMemo(() => {
     const map = new Map<string, NodeType[]>()
-    for (const nt of nodeTypes) {
+    for (const nt of visibleNodeTypes) {
       const group = paletteGroupFor(nt)
       const list = map.get(group) ?? []
       list.push(nt)
       map.set(group, list)
     }
     return map
-  }, [nodeTypes])
+  }, [visibleNodeTypes])
 
   const visibleGroups = PALETTE_GROUP_ORDER.filter((g) => (byGroup.get(g) ?? []).some(matches))
   const noMatches = normalizedQuery !== '' && visibleGroups.length === 0
@@ -85,6 +89,16 @@ export function NodePalette({ nodeTypes, hasTrigger }: NodePaletteProps) {
         data-testid="palette-search"
         className={styles.paletteSearch}
       />
+      <FormControl className={styles.paletteAdvancedToggle}>
+        <Checkbox
+          checked={showAdvanced}
+          onChange={(e) => setShowAdvanced(e.target.checked)}
+          data-testid="palette-show-advanced"
+        />
+        <FormControl.Label>
+          <Text size="small">{t('nodePalette.showAdvancedSteps')}</Text>
+        </FormControl.Label>
+      </FormControl>
       {noMatches && (
         <Text as="p" size="small" className={styles.paletteNoMatches} data-testid="palette-no-matches">
           {t('nodePalette.noMatches', { query })}

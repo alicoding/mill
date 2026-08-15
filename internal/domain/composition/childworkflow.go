@@ -42,7 +42,11 @@ func init() {
 		// docs/adr/0022: "Child workflows carry no class of their own
 		// (none): the child's own steps are gated inside the child's own
 		// run -- gating the invocation too would double-charge."
-		Effect:      guardrail.ClassNone,
+		Effect: guardrail.ClassNone,
+		// Advanced: binding the child's typed input (inputBindings) needs
+		// its declared Attributes schema, and idempotencyKey/bindings
+		// accept "attr:<name>" expressions, not just plain values.
+		Complexity:  ComplexityAdvanced,
 		Output:      "the child workflow's result",
 		Description: "Runs another of your workflows as a step and uses its result as this workflow's payload. The other workflow must start with the \"callable by another workflow\" trigger (docs/adr/0010) -- that's what marks it as safe to be invoked from here rather than by a hotkey or schedule of its own.",
 		ConfigFields: []ConfigField{

@@ -131,6 +131,38 @@ func TestNodeTypes(t *testing.T) {
 				"name what payload/Attributes state leaves this step, even if it's "+
 				"\"payload unchanged\" (see ruleset/decision-route)", nt.ID)
 		}
+
+		// (e) Complexity is one of the two declared values, for every
+		// NodeType, no exceptions -- docs/goals/0047-node-audience-facet.md.
+		// Unlike Effect (item b), there is no allow-list of legitimate
+		// omissions: every node type, however simple, has a real
+		// classification.
+		if !ValidComplexity(nt.Complexity) {
+			t.Errorf("node type %q has an invalid Complexity %q (standard item e): "+
+				"declare Complexity: ComplexityBasic or ComplexityAdvanced explicitly "+
+				"in its RegisterNodeType call", nt.ID, nt.Complexity)
+		}
+	}
+}
+
+// TestValidComplexity exercises ValidComplexity directly against every
+// legitimate value plus the invalid ones TestNodeTypes' item (e) check
+// relies on it to catch -- the zero value (a NodeType that omitted
+// Complexity entirely) and an arbitrary unrecognized string.
+func TestValidComplexity(t *testing.T) {
+	cases := []struct {
+		c    Complexity
+		want bool
+	}{
+		{ComplexityBasic, true},
+		{ComplexityAdvanced, true},
+		{"", false},
+		{"intermediate", false},
+	}
+	for _, tc := range cases {
+		if got := ValidComplexity(tc.c); got != tc.want {
+			t.Errorf("ValidComplexity(%q) = %v, want %v", tc.c, got, tc.want)
+		}
 	}
 }
 

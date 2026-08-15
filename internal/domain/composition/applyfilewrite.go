@@ -19,6 +19,7 @@ func init() {
 	RegisterNodeType(NodeType{
 		ID: "apply-file-write", Kind: KindApply,
 		Effect:      guardrail.ClassLocal,
+		Complexity:  ComplexityBasic,
 		Output:      "the payload it wrote, unchanged",
 		Label:       "Apply: write to file",
 		Description: "Writes the payload to a local file, appending to or overwriting its existing contents.",

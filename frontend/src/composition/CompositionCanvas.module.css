@@ -323,6 +323,9 @@
 .paletteSearch {
     margin-bottom: var(--base-size-8);
 }
+.paletteAdvancedToggle {
+    margin-bottom: var(--base-size-8);
+}
 .paletteNoMatches {
     color: var(--fgColor-muted);
     padding: var(--base-size-8) 0;

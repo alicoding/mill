@@ -53,6 +53,22 @@ export enum Approach {
 export type AttributeDef = typedfield$0.Field;
 
 /**
+ * Complexity is NodeType's audience/complexity facet -- see NodeType's
+ * own doc comment for the classification rule and
+ * docs/goals/0047-node-audience-facet.md for the researched precedent
+ * (progressive disclosure over an audience label, which ages badly).
+ */
+export enum Complexity {
+    /**
+     * The Go zero value for the underlying type of the enum.
+     */
+    $zero = "",
+
+    ComplexityBasic = "basic",
+    ComplexityAdvanced = "advanced",
+};
+
+/**
  * ConfigField declares one configurable parameter a node type's nodes
  * can set. A node type with no ConfigFields takes no parameters --
  * legitimately true for some nodes (capture/process here operate on
@@ -234,6 +250,24 @@ export interface NodeType {
      * (ADR-0037) into the palette at all.
      */
     "PaletteGroup": string;
+
+    /**
+     * Complexity is the node type's audience/complexity facet
+     * (docs/goals/0047): required for every registered NodeType
+     * (TestNodeTypes enforces it, the zero value is invalid, never a
+     * silent default). ComplexityBasic needs only plain values to
+     * configure correctly; ComplexityAdvanced needs either an external
+     * system's own documentation (integration-http's API contract,
+     * mcp-tool-call's tool schema) or writing code/JSON/expressions
+     * (code-execution's script, ruleset's rule conditions, list-search's
+     * match-parameter JSON, child-workflow's attribute bindings). Every
+     * declared step type is ComplexityBasic by construction
+     * (resolveDeclaredEntry, declaredsteptype.go) -- a declaration exists
+     * specifically to curate an advanced engine's complexity away behind
+     * a fixed binding, so its synthesized palette entry never inherits
+     * the underlying engine's own Complexity.
+     */
+    "Complexity": Complexity;
 }
 
 /**

@@ -160,6 +160,45 @@ type NodeType struct {
 	// author-chosen group from the Configure-authored DeclaredStepType
 	// (ADR-0037) into the palette at all.
 	PaletteGroup string
+	// Complexity is the node type's audience/complexity facet
+	// (docs/goals/0047): required for every registered NodeType
+	// (TestNodeTypes enforces it, the zero value is invalid, never a
+	// silent default). ComplexityBasic needs only plain values to
+	// configure correctly; ComplexityAdvanced needs either an external
+	// system's own documentation (integration-http's API contract,
+	// mcp-tool-call's tool schema) or writing code/JSON/expressions
+	// (code-execution's script, ruleset's rule conditions, list-search's
+	// match-parameter JSON, child-workflow's attribute bindings). Every
+	// declared step type is ComplexityBasic by construction
+	// (resolveDeclaredEntry, declaredsteptype.go) -- a declaration exists
+	// specifically to curate an advanced engine's complexity away behind
+	// a fixed binding, so its synthesized palette entry never inherits
+	// the underlying engine's own Complexity.
+	Complexity Complexity
+}
+
+// Complexity is NodeType's audience/complexity facet -- see NodeType's
+// own doc comment for the classification rule and
+// docs/goals/0047-node-audience-facet.md for the researched precedent
+// (progressive disclosure over an audience label, which ages badly).
+type Complexity string
+
+const (
+	ComplexityBasic    Complexity = "basic"
+	ComplexityAdvanced Complexity = "advanced"
+)
+
+// ValidComplexity reports whether c is one of the two declared
+// Complexity values -- the zero value ("") and any other string are
+// both invalid, exercised directly by nodetypes_test.go's own
+// TestValidComplexity and, for every registered NodeType, by
+// TestNodeTypes.
+func ValidComplexity(c Complexity) bool {
+	switch c {
+	case ComplexityBasic, ComplexityAdvanced:
+		return true
+	}
+	return false
 }
 
 // Position is a node's canvas coordinates. Ignored by execution entirely

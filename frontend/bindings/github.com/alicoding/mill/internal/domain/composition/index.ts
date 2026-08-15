@@ -3,6 +3,7 @@
 
 export {
     Approach,
+    Complexity,
     NodeKind,
     NoteColor,
     Severity

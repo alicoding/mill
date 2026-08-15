@@ -44,6 +44,7 @@ func init() {
 	RegisterNodeType(NodeType{
 		ID: "capture-clipboard-info", Kind: KindCapture,
 		Effect:      guardrail.ClassRead,
+		Complexity:  ComplexityBasic,
 		Output:      "a summary of the clipboard's flavors",
 		Label:       "Capture: clipboard info",
 		Description: "Reads macOS's own \"clipboard info\" report (which flavors -- HTML, plain text, images, ... -- are currently on the pasteboard, and their byte sizes) and summarizes whether HTML and plain text are present, followed by the raw report. A diagnostic for the Confluence-style clipboard ambiguity docs/SPEC.md §5 names: whether HTML was actually on the clipboard, made directly inspectable instead of inferred from a capture succeeding or failing.",

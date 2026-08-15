@@ -33,18 +33,21 @@ func init() {
 		Label:       "Trigger: manual",
 		Output:      "empty payload — the run starts here",
 		Description: "Fires on-demand when a user clicks Run/Test. No listener process.",
+		Complexity:  ComplexityBasic,
 	}, nil)
 	RegisterNodeType(NodeType{
 		ID: "trigger-hotkey", Kind: KindTrigger,
 		Label:       "Trigger: hotkey",
 		Output:      "empty payload — the run starts here",
 		Description: "Fires on a global keyboard shortcut, even when Mill isn't focused. Bound via TriggerService, not a config field here -- pressing the combo is better UX than typing it.",
+		Complexity:  ComplexityBasic,
 	}, nil)
 	RegisterNodeType(NodeType{
 		ID: "trigger-schedule", Kind: KindTrigger,
 		Label:       "Trigger: schedule",
 		Output:      "empty payload — the run starts here",
 		Description: "Fires on a cron schedule.",
+		Complexity:  ComplexityBasic,
 		ConfigFields: []ConfigField{
 			{
 				Key: "cron", Label: "Cron expression",
@@ -58,12 +61,14 @@ func init() {
 		Label:       "Trigger: clipboard change",
 		Output:      "the clipboard text that changed",
 		Description: "Fires whenever the clipboard's content changes.",
+		Complexity:  ComplexityBasic,
 	}, nil)
 	RegisterNodeType(NodeType{
 		ID: "trigger-filesystem-watch", Kind: KindTrigger,
 		Label:       "Trigger: filesystem change",
 		Output:      "the changed file path",
 		Description: "Fires when a file or folder under the configured path is added, changed, or deleted.",
+		Complexity:  ComplexityBasic,
 		ConfigFields: []ConfigField{
 			{
 				Key: "path", Label: "Path to watch",
@@ -82,10 +87,12 @@ func init() {
 		Label:       "Trigger: callable by another workflow",
 		Output:      "the caller's typed input",
 		Description: "Fires only when invoked as a child by another workflow's Child Workflow step (docs/adr/0010) -- never by a real external event, no listener process. Modeled on n8n's own \"Execute Workflow Trigger\": a workflow rooted in this trigger declares itself a valid child target, decoupled from whatever its trigger would otherwise be. The child-workflow picker only lists workflows rooted here -- one rooted in a real-event trigger (filesystem-watch, clipboard-watch, ...) can't be invoked this way, since a parent has no way to synthesize that event.",
+		Complexity:  ComplexityBasic,
 	}, nil)
 	RegisterNodeType(NodeType{
 		ID: "trigger-system-event", Kind: KindTrigger,
-		Label: "Trigger: system event",
+		Complexity: ComplexityBasic,
+		Label:      "Trigger: system event",
 		Output: "JSON payload: {event, runId, workflowId, workflowLabel, nodeId?, timestamp} -- " +
 			"the run/decision that caused this event. nodeId is only set for decision-parked (the " +
 			"parked step's ID); empty for run-completed/run-failed/run-cancelled.",

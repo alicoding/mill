@@ -44,6 +44,11 @@ func init() {
 		// Configure-authored List's persisted rows, not left at the zero
 		// value (docs/goals/0030-node-standard.md item b).
 		Effect: guardrail.ClassRead,
+		// Advanced: matchParams is a hand-authored JSON array of
+		// {column,value,matchType,threshold} criteria (this node's own
+		// ConfigField description below), not a plain value -- unlike
+		// list-lookup's single input/output key pair.
+		Complexity: ComplexityAdvanced,
 		Output: "payload unchanged; matches -> a typed Object attribute " +
 			"({results, matched, first_match, match_count, list_id})",
 		Description: "Searches a Configure-authored List's rows against one or more match parameters " +

@@ -14,6 +14,7 @@ func init() {
 	RegisterNodeType(NodeType{
 		ID: "capture-clipboard-html", Kind: KindCapture,
 		Effect:      guardrail.ClassRead,
+		Complexity:  ComplexityBasic,
 		Output:      "HTML from the clipboard",
 		Label:       "Capture: clipboard HTML",
 		Description: "Reads the clipboard's HTML. If there's no HTML flavor (many apps only put plain text), falls back to the plain-text flavor rather than failing -- the capture fallback order docs/SPEC.md §5 names (try HTML, then plain text; DOM-read via the browser bridge is the third tier, not built yet).",
