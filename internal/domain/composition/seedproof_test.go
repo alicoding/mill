@@ -152,6 +152,12 @@ var workflowProofRegistry = map[string]seedProof{
 		"executionsvc.TestSeededCardCreateLinkExample_CreatesFindsAndLinksCards",
 		"e2e: seed-completeness.spec.ts > Example: Create and link Atlas cards runs end to end through the real live app",
 	),
+	"backup-mill-data-workflow": proven(
+		"composition.TestApplyBackupSnapshot_CallsRegisteredRunnerWithDefaultKeepN",
+		"composition.TestApplyBackupSnapshot_CustomKeepNIsPassedThrough",
+		"backupsvc.TestBackupService_SnapshotSafeWhileASeededWorkflowRunConcurrentlyExecutes",
+		"e2e: settings.spec.ts > Back up now takes a snapshot and updates the last-backup time",
+	),
 }
 
 // httpRequestProofRegistry: every httprequest.BuiltIn() ID.

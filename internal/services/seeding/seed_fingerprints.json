@@ -107,6 +107,10 @@
     "seedRevision": 1,
     "fingerprint": "d9e35d3d3d3bcf5bbb3f11775b82255ca335462c3854b5f1dffa5012707a4f61"
   },
+  "workflow:backup-mill-data-workflow": {
+    "seedRevision": 1,
+    "fingerprint": "33182d6efa709f8e0e2ca012b2f1d90827afb85b1974a5e6b8af01b8827cab55"
+  },
   "workflow:clipboard-html-to-markdown-workflow": {
     "seedRevision": 1,
     "fingerprint": "acb12fc22f02f89de6038b85ace772147cb5f6e74b523b4f9f9ff7ffff350397"

@@ -65,6 +65,7 @@ export interface SpawnedServer {
   baseURL: string
   settingsPath: string
   executionDbPath: string
+  backupDir: string
   /** Kills exactly this process (SIGTERM, then SIGKILL if it doesn't exit) -- never anything else. */
   stop: () => Promise<void>
 }
@@ -74,6 +75,7 @@ export interface SpawnServerOptions {
   mcpPort: number
   settingsPath: string
   executionDbPath: string
+  backupDir: string
 }
 
 // Spawns exactly one mill-server process directly (no intermediate
@@ -91,6 +93,7 @@ export async function spawnMillServer(opts: SpawnServerOptions): Promise<Spawned
       MILL_MCP_ADDR: `127.0.0.1:${opts.mcpPort}`,
       MILL_SETTINGS_PATH: opts.settingsPath,
       MILL_EXECUTION_DB_PATH: opts.executionDbPath,
+      MILL_BACKUP_DIR: opts.backupDir,
     },
     stdio: ['ignore', 'pipe', 'pipe'],
   })
@@ -139,7 +142,7 @@ export async function spawnMillServer(opts: SpawnServerOptions): Promise<Spawned
     })
   }
 
-  return { baseURL, settingsPath: opts.settingsPath, executionDbPath: opts.executionDbPath, stop }
+  return { baseURL, settingsPath: opts.settingsPath, executionDbPath: opts.executionDbPath, backupDir: opts.backupDir, stop }
 }
 
 function mkWorkerTempDir(idx: number): string {
@@ -162,6 +165,7 @@ export const test = base.extend<Record<string, never>, WorkerFixtures>({
       mcpPort: MCP_BASE_PORT + idx,
       settingsPath: path.join(dir, 'settings.json'),
       executionDbPath: path.join(dir, 'execution.db'),
+      backupDir: path.join(dir, 'backups'),
     })
     await use(server)
     await server.stop()

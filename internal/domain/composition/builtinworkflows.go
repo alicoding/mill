@@ -464,6 +464,9 @@ func BuiltInWorkflows() []Workflow {
 	// docs/goals/0031-ai-node-family.md item 4: the AI node family's own
 	// seeded proof, same split-file reasoning.
 	workflows = append(workflows, builtInAIWorkflows()...)
+	// docs/goals/0065: the backup capability's own seeded proof, same
+	// split-file reasoning.
+	workflows = append(workflows, builtInBackupWorkflows()...)
 	// goal 0052 slice 3, ADR-0036: the evidence-receipt node's own
 	// seeded proof, same split-file reasoning.
 	workflows = append(workflows, builtInReceiptWorkflows()...)

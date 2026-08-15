@@ -16,6 +16,7 @@ import (
 	"github.com/alicoding/mill/internal/adapters/credential"
 	"github.com/alicoding/mill/internal/adapters/settings"
 	"github.com/alicoding/mill/internal/services/atlassvc"
+	"github.com/alicoding/mill/internal/services/backupsvc"
 	"github.com/alicoding/mill/internal/services/capabilitysvc"
 	"github.com/alicoding/mill/internal/services/compositionsvc"
 	"github.com/alicoding/mill/internal/services/configuresvc"
@@ -35,9 +36,7 @@ import (
 // releases against. Three places must agree on a release's version --
 // the git tag, build/config.yml's info.version, and this constant --
 // and release.yml's verify step fails the release when any pair
-// mismatches, so this can't silently drift behind a tag again (it
-// shipped as 0.1.0 while v0.2.0 was live, making the updater offer a
-// build its own version).
+// mismatches.
 const millVersion = "0.3.0"
 
 // Wails uses Go's `embed` package to embed the frontend files into the binary.
@@ -178,6 +177,22 @@ func main() {
 	})
 	executionService.SetRunCompletionSink(atlasService.NotifyRunCompleted)
 	atlasService.WireCompositionSeams(triggerService.DispatchAtlasCardChange) // goal 0066
+
+	// docs/goals/0065: Mill's own data-stewardship surface -- VACUUM
+	// INTO snapshots + the export-everything archive. SQLiteDBPath
+	// returns "" for a BYO-Postgres executionDatabaseURL, which
+	// disables backups cleanly rather than erroring at startup.
+	// MILL_BACKUP_DIR follows the same override convention as
+	// settingsPath/executionDatabaseURL above.
+	backupDir := os.Getenv("MILL_BACKUP_DIR")
+	if backupDir == "" {
+		backupDir = filepath.Join(application.Path(application.PathConfigHome), "mill", "backups")
+	}
+	backupService := backupsvc.New(backupsvc.SQLiteDBPath(executionDatabaseURL), settingsPath, backupDir, millVersion)
+	backupService.SetFamilies(backupsvc.BuildFamilies(compositionService, configureService))
+	backupService.SetAtlasBundle(backupsvc.WireAtlasBundle(atlasService))
+	backupsvc.WireCompositionRunner(backupService)
+
 	settingsService := settingssvc.NewSettingsService(settingsStore, triggerService, settingsPath != defaultSettingsPath)
 	// Bidirectional hotkey-conflict check (docs/SPEC.md §3.7): a
 	// per-workflow hotkey can't silently collide with the app-level
@@ -234,6 +249,7 @@ func main() {
 			application.NewService(guardrailService),
 			application.NewService(executionService),
 			application.NewService(settingsService),
+			application.NewService(backupService),
 		},
 		Assets: application.AssetOptions{
 			Handler: application.AssetFileServerFS(assets),
@@ -279,16 +295,10 @@ func main() {
 	}
 
 	// Global hotkey registration needs the native run loop already
-	// spinning (see docs/SPEC.md §2.2's note on this) -- doing this from
-	// ServiceStartup, which runs before the run loop starts, would risk
-	// the exact silent-registration-failure class already documented
-	// there. ApplicationStarted fires once the loop is actually live.
+	// spinning (docs/SPEC.md §2.2) -- ServiceStartup runs before the
+	// loop starts, so this waits for ApplicationStarted instead.
 	// TriggerService.Sync also registers the non-hotkey trigger types
-	// (schedule/clipboard-watch/filesystem-watch) from here, even though
-	// those don't need the run loop -- one uniform startup path is
-	// simpler than special-casing which trigger types can register
-	// earlier for a few hundred milliseconds' difference that matters to
-	// nothing.
+	// from here, for one uniform startup path.
 	app.Event.OnApplicationEvent(events.Common.ApplicationStarted, func(*application.ApplicationEvent) {
 		triggerService.Sync(compositionService.Workflows())
 		settingsService.RestoreSummonHotkey()
@@ -303,14 +313,8 @@ func main() {
 		// the native browser/dev reload).
 		settingsService.ReleaseMenuAccelerators()
 		// docs/adr/0032 §3: the away-user attention layer's OS-
-		// notification half (Approve/Deny actions on a pending MCP
-		// write, plain-click-to-focus on a guardrail park). Needs the
-		// native app to actually exist first, same reason
-		// RestoreSummonHotkey/ReleaseMenuAccelerators wait for this
-		// event rather than running from ServiceStartup. A failure here
-		// (a bare dev binary with no real bundle ID, or server mode) is
-		// logged and never fatal -- this is additive attention tooling,
-		// not something the rest of the app depends on.
+		// notification half. A failure here (a bare dev binary with no
+		// real bundle ID, or server mode) is logged, never fatal.
 		if err := settingsService.SetupAwayAttention(); err != nil {
 			logger.Warn("away-attention notifications setup", "error", err)
 		}
@@ -372,22 +376,15 @@ func main() {
 	settingsService.WatchWindowGeometry()
 
 	// The Quick Panel (docs/adr/0033): a second, always-alive floating
-	// window the summon hotkey toggles -- a Raycast/Alfred/1Password-
-	// style quick-invoke surface, not the main window itself. Created
-	// once at startup, Hidden, and shown/hidden for the rest of the
-	// app's life (never destroyed/recreated) -- the same "second window,
-	// same services/bindings" shape the beta.4 SDK's own examples/
-	// spotlight demonstrates. URL is a hash route, not a bare path:
-	// production asset serving has no SPA fallback, so a bare path
-	// second window would 404 in a real installed build.
-	//
-	// Deliberately NOT ActivationPolicyAccessory (unlike the SDK's own
-	// spotlight example) -- that's an app-wide policy that would pull
-	// Mill's dock icon too, conflicting with §3.7's locked dock+tray
-	// coexistence. Deliberately NOT attempting a non-activating NSPanel
-	// either -- unmerged upstream at beta.4 (ADR-0033's research);
-	// showing this window still activates Mill and steals focus, which
-	// SettingsService's yieldFocusIfMainHidden mitigates on dismiss.
+	// window the summon hotkey toggles. Created once, Hidden, shown/
+	// hidden for the app's life (never destroyed/recreated). URL is a
+	// hash route, not a bare path: production asset serving has no SPA
+	// fallback, so a bare path second window would 404 in a real
+	// installed build. Deliberately NOT ActivationPolicyAccessory (would
+	// pull Mill's dock icon too) and NOT a non-activating NSPanel
+	// (unmerged upstream at beta.4) -- showing this window still
+	// activates Mill and steals focus, which SettingsService's
+	// yieldFocusIfMainHidden mitigates on dismiss.
 	panelWindow := app.Window.NewWithOptions(application.WebviewWindowOptions{
 		Name:             "quickpanel",
 		Title:            "Mill Quick Panel",
@@ -446,18 +443,11 @@ func main() {
 	})
 	settingsService.SetApprovalPromptWindow(approvalPromptWindow)
 
-	// docs/SPEC.md §3.7 (task #8): a tray icon as a running-indicator --
-	// closes a real gap run-mill's own SKILL.md already names ("no
-	// automated path to verify a real desktop-only state"), and answers
-	// "is Mill running" the same way Raycast/Alfred/1Password do (§3.7's
-	// own research: a persistent menu-bar icon IS the running-indicator
-	// pattern, not a separate status API). Coexists with the dock icon
-	// deliberately -- the safer, reversible default named in this
-	// session's own goal condition, not a "menu-bar-only app" redesign;
-	// ApplicationShouldTerminateAfterLastWindowClosed stays true,
-	// unchanged. Clicking it reuses ShowWindow (SettingsService), the
-	// exact same show/restore/focus sequence the summon hotkey already
-	// uses -- one behavior, two triggers, not a second copy of it.
+	// docs/SPEC.md §3.7 (task #8): a persistent tray icon as Mill's own
+	// running-indicator, coexisting with the dock icon (Application
+	// ShouldTerminateAfterLastWindowClosed stays true). Clicking it
+	// reuses ShowWindow (SettingsService), the same show/restore/focus
+	// sequence the summon hotkey already uses.
 	trayIcon := app.SystemTray.New()
 	trayIcon.SetIcon(trayIconPNG)
 	trayIcon.SetTooltip("Mill")
@@ -486,6 +476,12 @@ func main() {
 	// rather than fatal.
 	if shutdownErr := executionService.Shutdown(5 * time.Second); shutdownErr != nil {
 		logger.Error("execution runtime shutdown", "error", shutdownErr)
+	}
+	// docs/goals/0065 item 4: one last snapshot on a clean shutdown,
+	// skipped if a recent one already ran -- best-effort, same posture
+	// as the checkpoint flush above.
+	if shutdownErr := backupService.BackupOnCleanShutdown(); shutdownErr != nil {
+		logger.Error("clean-shutdown backup", "error", shutdownErr)
 	}
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	if shutdownErr := millMCPService.Shutdown(shutdownCtx); shutdownErr != nil {
