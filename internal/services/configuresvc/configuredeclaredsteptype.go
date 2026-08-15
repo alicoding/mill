@@ -44,6 +44,7 @@ func (c *ConfigureService) declaredStepBindings() []composition.DeclaredStepBind
 		}
 		out = append(out, composition.DeclaredStepBinding{
 			ID: d.ID, Label: d.Label, Description: d.Description,
+			PaletteGroup:     string(d.PaletteGroup),
 			EngineNodeTypeID: d.EngineNodeTypeID(),
 			PinnedConfig:     pinned, HiddenFields: hidden,
 		})

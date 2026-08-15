@@ -84,6 +84,9 @@ for the declaration entity coordinates with 0046's evolution rules.
 
 ## Acceptance (checkable — refined when the goal opens)
 
+Every item below is now met (slice B). Left for the orchestrator to
+archive, per this repo's own goal-lifecycle convention.
+
 - [x] The declare-vs-code ADR is written, with the engine list
       enumerated and the boundary stated as a testable rule.
       ([ADR-0037](../adr/0037-declared-step-types.md), landed ahead of
@@ -94,26 +97,41 @@ for the declaration entity coordinates with 0046's evolution rules.
       capability map: every future declaration surface — HTTP,
       MCP, child-workflow — named with its current status before the
       schema below was designed.)
-- [~] Designer v1: a user can promote at least an HTTPRequest
+- [x] Designer v1: a user can promote at least an HTTPRequest
       operation and a child workflow into named palette step types
       without writing code; declared types appear in the generated
-      contract/catalog identically to built-ins. **Slice A (backend)
-      done; the "a user can" UI half is slice B.** The data-backed
-      registry supports all three ADR-0037 engines (HTTP, MCP,
-      child-workflow) uniformly — `internal/domain/declaredsteptype`,
+      contract/catalog identically to built-ins. Slice A shipped the
+      data-backed registry (all three ADR-0037 engines uniformly —
+      `internal/domain/declaredsteptype`,
       `composition.SetDeclaredNodeTypeLookup`/`resolveDeclaredEntry` —
-      and declared types appear in `list_step_types`/the generated
-      contract catalog with `NodeType.Declared: true`, additive,
-      verified by `TestRootContractDocument_MatchCommitted`. No
-      designer UI exists yet to let a user actually author one by
-      hand; slice B builds that form.
+      declared types in `list_step_types`/the generated contract
+      catalog with `NodeType.Declared: true`, additive, verified by
+      `TestRootContractDocument_MatchCommitted`). Slice B ships the "a
+      user can" UI half: `configure/ConfigureStepTypes.tsx` (Configure
+      → Step types), an engine-kind selector driving the existing
+      request/mcpserver/workflow pickers
+      (`configure/StepTypeEngineBindingFields.tsx`), and a per-field
+      pin toggle over the underlying engine's own `ConfigField`s
+      (`configure/StepTypePinnedFieldsEditor.tsx`). Verified live
+      (`e2e/configure-steptypes.spec.ts`): creating a type over the
+      seeded no-auth httpbin request reaches an already-open canvas
+      palette without a reload, in its own author-chosen palette group
+      (a real backend gap fixed in the same change —
+      `composition.NodeType.PaletteGroup`, since a runtime-authored
+      type has no compile-time `NODE_TYPE_GROUP` entry to fall back
+      on); the dropped node's config shows only its unpinned fields;
+      editing and deleting also reach the open palette live.
 - [x] A declared step type round-trips export/import like any
       entity (0052 symmetry rule). (`ExportDeclaredStepType`/
       `ImportDeclaredStepType`, the `steptype` contract family at
       `mill://schema/steptype/v1`, `TestExportImportDeclaredStepType_RoundTrips`.)
-- [ ] "Needs code" is a designed, explicit designer outcome with
-      honest copy, not a failure state. **Slice B** — no designer UI
-      exists yet in slice A to have an outcome at all.
+- [x] "Needs code" is a designed, explicit designer outcome with
+      honest copy, not a failure state. The binding-kind selector
+      carries a fourth, always-visible "Something else…" option
+      alongside the three real engines; picking it swaps the form for
+      an explanation of the declare-vs-code boundary in the user's own
+      vocabulary (what a declared type can and can't do), with Save
+      disabled — an honest stop, not a dead end or a swallowed error.
 - [x] Seeded example: at least one declared step type ships as a
       seed exercising the full path (seeds ARE the proof). "Check
       httpbin" (`declaredsteptype.ExampleCheckHTTPBinID`, over the
@@ -151,3 +169,37 @@ UI needs them). Reference-integrity on a deleted declared type a
 workflow still points at follows today's existing dangling-`RefKind`
 behavior, same as every other Configure entity — real reference-
 integrity handling is goal 0046's own scope, not duplicated here.
+
+## Slice B status (designer UI, this change)
+
+Shipped: `configure/ConfigureStepTypes.tsx` (the family page — inventory
+list, create/edit form, delete-with-confirm, export/import, a Blankslate
+empty state), `configure/StepTypeEngineBindingFields.tsx` (the binding
+kind's own request/mcpserver+tool/workflow pickers, reusing
+`EntityRefField` directly), `configure/StepTypePinnedFieldsEditor.tsx`
+(per-field pin toggle over the underlying engine's own `ConfigField`s),
+and the "Something else…" needs-code outcome. Palette liveness
+(`App.tsx`'s `mill-data-changed` handler, `entity === 'steptype'`)
+refreshes both the Configure inventory and `composition.NodeTypes()`
+(already merges declared types, goal 0054 slice A) — no new plumbing
+needed there beyond the one handler branch.
+
+A real backend gap was found and fixed in the same change: declared
+step types have carried a `PaletteGroup` field since slice A, but
+nothing ever threaded it onto the synthesized `NodeType` the frontend
+actually reads, and a runtime-authored declared type has no compile-time
+`NODE_TYPE_GROUP` entry to fall back on either (`composition/
+paletteGroups.ts`) — every declared type would have silently landed in
+its engine's Kind fallback group ('process' → 'actions') regardless of
+what its author picked. Fixed by adding `NodeType.PaletteGroup` and
+`DeclaredStepBinding.PaletteGroup` (additive, threaded through
+`resolveDeclaredEntry`/`declaredStepBindings`), and `paletteGroupFor`
+now checks it before the compile-time map. `paletteGroups.ts` itself
+moved from `composition/` to `shared/` in the same change — the step
+designer (`configure/`) needs the same group id/label/order, and
+`configure/` may not depend on `composition/`
+(`.claude/rules/frontend.md`'s dependency-cruiser boundary).
+
+Deliberately left out of scope: reset/restore-to-seed affordances for
+declared step types (unchanged from slice A's own deferral — still not
+required by this goal's acceptance criteria).

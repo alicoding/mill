@@ -83,6 +83,12 @@ func TestCreateDeclaredStepType_HTTPEngine_ThenAppearsInNodeTypesAsDeclared(t *t
 	if !found.Declared {
 		t.Errorf("synthesized NodeType %+v has Declared=false, want true", found)
 	}
+	// PaletteGroup is the only channel a declared type's author-chosen
+	// display group reaches the palette through -- it has no compile-time
+	// entry in the frontend's own NODE_TYPE_GROUP map to fall back on.
+	if found.PaletteGroup != string(declaredsteptype.GroupActions) {
+		t.Errorf("synthesized NodeType PaletteGroup = %q, want %q", found.PaletteGroup, declaredsteptype.GroupActions)
+	}
 	// requestId is the engine's own binding field -- always hidden
 	// (configuredeclaredsteptype.go's declaredStepBindings), so it must
 	// never appear as an author-editable ConfigField.

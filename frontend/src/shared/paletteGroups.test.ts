@@ -51,6 +51,27 @@ describe('paletteGroupFor', () => {
     expect(() => paletteGroupFor({ ID: 'mystery-node', Kind: 'mystery-kind' })).not.toThrow()
     warn.mockRestore()
   })
+
+  // A declared step type (goal 0054 slice B) has no compile-time
+  // NODE_TYPE_GROUP entry -- its own author-chosen PaletteGroup (set on
+  // the synthesized NodeType, composition.NodeType.PaletteGroup) is the
+  // only channel that group reaches the palette through. Without this,
+  // every declared type would silently land in its engine's Kind
+  // fallback ('process' -> 'actions') regardless of what the author
+  // picked.
+  it('honors a declared type\'s own PaletteGroup over the Kind fallback, without warning', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const group = paletteGroupFor({ ID: 'steptype-my-lookup', Kind: 'process', PaletteGroup: 'data' })
+    expect(group).toBe('data')
+    expect(warn).not.toHaveBeenCalled()
+    warn.mockRestore()
+  })
+
+  it('ignores an empty or unrecognized PaletteGroup and falls back normally', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    expect(paletteGroupFor({ ID: 'integration-http', Kind: 'process', PaletteGroup: '' })).toBe('actions')
+    warn.mockRestore()
+  })
 })
 
 describe('shortLabel', () => {
