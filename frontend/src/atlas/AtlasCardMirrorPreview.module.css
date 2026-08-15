@@ -1,0 +1,54 @@
+.markdownBody {
+    max-height: 480px;
+    overflow-y: auto;
+    padding: var(--base-size-8) var(--base-size-12);
+    border: 1px solid var(--borderColor-default);
+    border-radius: var(--borderRadius-medium);
+    color: var(--fgColor-default);
+    font-size: 14px;
+    line-height: 1.5;
+}
+.markdownBody :global(h1),
+.markdownBody :global(h2),
+.markdownBody :global(h3) {
+    border-bottom: 1px solid var(--borderColor-muted);
+    padding-bottom: var(--base-size-4);
+    margin-top: var(--base-size-16);
+    margin-bottom: var(--base-size-8);
+}
+.markdownBody :global(code) {
+    background-color: var(--bgColor-muted);
+    border-radius: var(--borderRadius-small);
+    padding: 0 var(--base-size-4);
+}
+.markdownBody :global(pre) {
+    background-color: var(--bgColor-muted);
+    border-radius: var(--borderRadius-medium);
+    padding: var(--base-size-8);
+    overflow-x: auto;
+}
+.markdownBody :global(table) {
+    border-collapse: collapse;
+}
+.markdownBody :global(th),
+.markdownBody :global(td) {
+    border: 1px solid var(--borderColor-default);
+    padding: var(--base-size-4) var(--base-size-8);
+}
+.textBody {
+    max-height: 480px;
+    overflow: auto;
+    padding: var(--base-size-8) var(--base-size-12);
+    border: 1px solid var(--borderColor-default);
+    border-radius: var(--borderRadius-medium);
+    background-color: var(--bgColor-muted);
+    font-size: 12px;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+.image {
+    max-width: 100%;
+    max-height: 480px;
+    border-radius: var(--borderRadius-medium);
+    border: 1px solid var(--borderColor-default);
+}

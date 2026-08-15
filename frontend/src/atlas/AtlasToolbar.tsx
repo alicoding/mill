@@ -1,7 +1,7 @@
 import { useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@primer/react'
-import { DownloadIcon, UploadIcon } from '@primer/octicons-react'
+import { ChecklistIcon, DownloadIcon, TableIcon, UploadIcon } from '@primer/octicons-react'
 import type { Card, Kind, ViewMode } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 import { AtlasBreadcrumb } from './AtlasBreadcrumb'
 import { AtlasLensControl } from './AtlasLensControl'
@@ -24,6 +24,7 @@ export function AtlasToolbar({
   kinds, presentKinds, hiddenKindIDs, onChangeHidden,
   peek, onChangePeek, viewMode, onChangeViewMode, showViewModeToggle,
   canAddSibling, onCreate, onExport, onImportFile, onShareError,
+  onOpenMatrix, onOpenCoverage,
 }: {
   cards: Card[]
   viewedID: string
@@ -42,6 +43,11 @@ export function AtlasToolbar({
   onExport: () => void
   onImportFile: (file: File) => void
   onShareError: (message: string) => void
+  // Traceability matrix / coverage (docs/goals/0064): both dialogs
+  // project over the viewed space's own children, so the toolbar just
+  // asks AtlasView to open them rather than owning that state itself.
+  onOpenMatrix: () => void
+  onOpenCoverage: () => void
 }) {
   const { t } = useTranslation('atlas')
   const importInputRef = useRef<HTMLInputElement>(null)
@@ -71,6 +77,12 @@ export function AtlasToolbar({
           {t('toolbar.export')}
         </Button>
         <AtlasSpaceShareMenu spaceID={viewedID} onError={onShareError} />
+        <Button leadingVisual={TableIcon} size="small" variant="invisible" data-testid="atlas-open-matrix" onClick={onOpenMatrix}>
+          {t('toolbar.matrix')}
+        </Button>
+        <Button leadingVisual={ChecklistIcon} size="small" variant="invisible" data-testid="atlas-open-coverage" onClick={onOpenCoverage}>
+          {t('toolbar.coverage')}
+        </Button>
         <AtlasLensControl
           presentKinds={presentKinds}
           hiddenKindIDs={hiddenKindIDs}
