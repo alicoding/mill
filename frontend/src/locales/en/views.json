@@ -80,6 +80,9 @@
     "minutes": "{{n}} min",
     "hours": "{{n}} hrs"
   },
+  "emptyStateActions": {
+    "runAWorkflow": "Run a workflow"
+  },
   "home": {
     "chart": {
       "runsAxisLabel": "Runs",
@@ -132,7 +135,9 @@
     "searchByOutput": "Search runs by output…",
     "searchAriaLabel": "Search runs",
     "loading": "Loading…",
-    "noRecordedRuns": "No recorded runs for this workflow yet — durable run history appears here after a Run or trigger fire.",
+    "noRecordedRuns": "No runs recorded yet",
+    "noRecordedRunsDescription": "Run this workflow to see its history here.",
+    "openWorkflow": "Open workflow",
     "noRunsMatchSearch": "No runs match this search.",
     "runsAriaLabel": "{{label}} runs"
   },
@@ -143,7 +148,7 @@
       "mcp-write": "MCP write"
     },
     "heading": "Activity",
-    "subtitle": "Every run this session, whether it fired headlessly (hotkey, schedule, clipboard or filesystem watch) or you clicked Run — the only place a headless trigger shows up, cleared when Mill restarts.",
+    "subtitle": "Every run this session — triggered automatically (hotkey, schedule, clipboard or file watch) or started by you. Clears when Mill restarts.",
     "inputSourceAriaLabel": "Input source",
     "allWorkflowsLiveFeed": "All workflows (live feed)",
     "filterBySourceAriaLabel": "Filter by source",
@@ -154,7 +159,8 @@
     "failed": "Failed",
     "searchPlaceholder": "Search what ran or its result…",
     "searchAriaLabel": "Search activity",
-    "noActivityYet": "No activity yet. Run a workflow, or wait for a trigger to fire, to see it appear here. Pick a workflow above to browse its full run history instead.",
+    "noActivityYet": "No activity yet",
+    "noActivityYetDescription": "Run a workflow to see it appear here, or pick one above to browse its history.",
     "noActivityMatchesFilter": "No activity matches this filter.",
     "previewAriaLabel": "Preview {{label}}",
     "closeAriaLabel": "Close",
@@ -180,6 +186,7 @@
     "filterByKindAriaLabel": "Filter by kind",
     "allKinds": "All kinds",
     "nothingWaiting": "Nothing waiting for you",
+    "nothingWaitingDescription": "Approvals land here when a workflow needs your review — a guardrail ask, a review checkpoint, or an MCP write request.",
     "mcpWriteRequest": "MCP write request",
     "awaitingApprovalLower": "awaiting approval",
     "approve": "Approve",

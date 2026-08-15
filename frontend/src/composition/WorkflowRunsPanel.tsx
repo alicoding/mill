@@ -73,6 +73,10 @@ interface WorkflowRunsPanelProps {
   // unrelated tab switch.
   initialRunId?: string
   onInitialRunConsumed?: () => void
+  // The empty state's own primary action: switches this same editor tab
+  // to its Canvas inner tab (WorkflowEditorTab owns that switch; Canvas
+  // is the one Run entrypoint, docs/adr/0008).
+  onSwitchToCanvas: () => void
 }
 
 // One workflow's own durable-run history + per-step detail + redrive --
@@ -87,7 +91,7 @@ interface WorkflowRunsPanelProps {
 // Activity (views/ActivityView.tsx) stays the lightweight, cross-
 // workflow, session-only "did anything run at all" feed -- unrelated
 // and unchanged by this.
-function WorkflowRunsPanel({ workflowId, attrs, initialRunId, onInitialRunConsumed }: WorkflowRunsPanelProps) {
+function WorkflowRunsPanel({ workflowId, attrs, initialRunId, onInitialRunConsumed, onSwitchToCanvas }: WorkflowRunsPanelProps) {
   const { t } = useTranslation('composition')
   const KIND_LABEL = kindLabelFor(t)
   const [runs, setRuns] = useState<RunSummary[] | null>(null)
@@ -309,6 +313,10 @@ function WorkflowRunsPanel({ workflowId, attrs, initialRunId, onInitialRunConsum
             <HistoryIcon size={32} />
           </Blankslate.Visual>
           <Blankslate.Heading>{t('workflowRunsPanel.noRunsYet')}</Blankslate.Heading>
+          <Blankslate.Description>{t('workflowRunsPanel.noRunsYetDescription')}</Blankslate.Description>
+          <Blankslate.PrimaryAction onClick={onSwitchToCanvas}>
+            {t('workflowRunsPanel.goToCanvas')}
+          </Blankslate.PrimaryAction>
         </Blankslate>
       )}
 

@@ -233,6 +233,7 @@ function ReviewView() {
             <InboxIcon size={32} />
           </Blankslate.Visual>
           <Blankslate.Heading>{t('reviewView.nothingWaiting')}</Blankslate.Heading>
+          <Blankslate.Description>{t('reviewView.nothingWaitingDescription')}</Blankslate.Description>
         </Blankslate>
       )}
 

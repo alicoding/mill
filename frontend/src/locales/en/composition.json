@@ -340,7 +340,9 @@
       "triggered": "triggered",
       "mcp": "mcp"
     },
-    "noRunsYet": "No runs yet — run this workflow from its Canvas tab.",
+    "noRunsYet": "No runs yet",
+    "noRunsYetDescription": "Run this workflow from Canvas to see its history here.",
+    "goToCanvas": "Go to Canvas",
     "columns": {
       "status": "Status",
       "kind": "Kind",

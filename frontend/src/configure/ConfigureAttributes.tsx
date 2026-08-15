@@ -47,6 +47,7 @@ export function ConfigureAttributes() {
   // refreshes it on mill-data-changed{entity:"workflow"} -- a second,
   // page-local copy could only ever drift from that).
   const workflows = useAppStore((s) => s.workflows)
+  const setView = useAppStore((s) => s.setView)
   const [selectedID, setSelectedID] = useState('')
   const [attrs, setAttrs] = useState<AttributeDef[]>([])
   const [saving, setSaving] = useState(false)
@@ -115,6 +116,7 @@ export function ConfigureAttributes() {
             icon: WorkflowIcon,
             heading: t('configureAttributes.emptyHeading'),
             description: t('configureAttributes.emptyDescription'),
+            action: <Button variant="primary" onClick={() => setView({ kind: 'composition' })}>{t('configureAttributes.goToWorkflows')}</Button>,
           }}
         />
       )}

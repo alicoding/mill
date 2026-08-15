@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Heading, IconButton, Label, type LabelProps, Select, Stack, Text, TextInput } from '@primer/react'
-import { DataTable, type Column } from '@primer/react/experimental'
-import { ChevronDownIcon, ChevronRightIcon, CheckCircleIcon, WorkflowIcon, XCircleIcon, XIcon } from '@primer/octicons-react'
+import { DataTable, type Column, Blankslate } from '@primer/react/experimental'
+import { ChevronDownIcon, ChevronRightIcon, CheckCircleIcon, PulseIcon, WorkflowIcon, XCircleIcon, XIcon } from '@primer/octicons-react'
 import { useAppStore, type ActivityEntry, type ActivitySource } from '../shared/store'
 import { WorkflowHoverPreview } from '../composition/WorkflowHoverPreview'
 import { ActivityRunsExplorer } from './ActivityRunsExplorer'
@@ -54,6 +54,7 @@ function ActivityView() {
   const { t } = useTranslation('views')
   const SOURCE_LABEL = sourceLabelFor(t)
   const activity = useAppStore((s) => s.activity)
+  const setView = useAppStore((s) => s.setView)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [sourceFilter, setSourceFilter] = useState<'all' | ActivitySource>(
     () => (localStorage.getItem(SOURCE_FILTER_STORAGE_KEY) as 'all' | ActivitySource | null) ?? 'all',
@@ -220,9 +221,16 @@ function ActivityView() {
       )}
 
       {!selectedWorkflow && activity.length === 0 && (
-        <div className={styles.empty}>
-          <Text as="p">{t('activityView.noActivityYet')}</Text>
-        </div>
+        <Blankslate data-testid="activity-empty">
+          <Blankslate.Visual>
+            <PulseIcon size={32} />
+          </Blankslate.Visual>
+          <Blankslate.Heading>{t('activityView.noActivityYet')}</Blankslate.Heading>
+          <Blankslate.Description>{t('activityView.noActivityYetDescription')}</Blankslate.Description>
+          <Blankslate.PrimaryAction onClick={() => setView({ kind: 'composition' })}>
+            {t('emptyStateActions.runAWorkflow')}
+          </Blankslate.PrimaryAction>
+        </Blankslate>
       )}
 
       {!selectedWorkflow && activity.length > 0 && filtered.length === 0 && (
