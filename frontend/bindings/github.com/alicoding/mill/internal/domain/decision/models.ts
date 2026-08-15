@@ -71,6 +71,17 @@ export interface Decision {
      * composition.Workflow.Seed's doc comment for the full reasoning.
      */
     "Seed": seedorigin$0.Origin;
+
+    /**
+     * FieldTombstones records every Outputs Key this Decision has ever
+     * deleted (docs/adr/0040 decision 3) -- typedfield.
+     * ValidateFieldEvolution reads this at every UpdateDecision call to
+     * tell an explicit, declared delete apart from a silently dropped
+     * field, and to reject the same Key resurrecting under a different
+     * Type. Empty for every Decision that has never had an output
+     * deleted, migration-free.
+     */
+    "FieldTombstones": typedfield$0.FieldTombstone[] | null;
 }
 
 /**

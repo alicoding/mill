@@ -132,16 +132,28 @@ test('The inventory search box filters rows by label', async ({ page }) => {
   await expect(page.locator('[data-testid="inventory-row"][data-entity="workflow"]').first()).toBeVisible()
 })
 
-// MCP Servers has no seeded built-ins (internal/domain/mcpserver has no
-// BuiltIn() -- unlike Decisions/Workflows/Requests, checked directly
-// before relying on it), and every other spec that creates one deletes
-// it (.claude/rules/testing.md) -- so this surface is the one that can
-// genuinely reach zero items. Drains whatever's there first (defensive
-// against a prior run leaving something behind) rather than assuming
-// it's already empty, so this test is self-contained regardless of
-// suite run order against the shared e2e settings file.
+// MCP Servers has no HAND-AUTHORED built-ins beyond the one seeded
+// reference example (internal/domain/mcpserver.BuiltIn()), and every
+// other spec that creates one deletes it (.claude/rules/testing.md) --
+// so this surface is the one that can genuinely reach zero items.
+// Drains whatever's there first (defensive against a prior run leaving
+// something behind) rather than assuming it's already empty, so this
+// test is self-contained regardless of suite run order against the
+// shared e2e settings file.
+//
+// docs/adr/0040 decision 3: the seeded server is referenced by the
+// seeded "Example: MCP echo call" workflow, so a genuine drain must
+// remove that reference first -- both are restored via their own
+// seed-lifecycle "Restore example…" menu afterward (docs/goals/0037
+// item 5), leaving nothing net-new, the same contract this test always
+// had.
 test('A genuinely empty inventory renders Blankslate, not a bare table/list', async ({ page }) => {
   await page.goto('/')
+  await page.getByRole('link', { name: 'Workflows' }).click()
+  const mcpEchoWorkflow = page.locator('[data-testid="inventory-row"][data-entity="workflow"]', { has: page.getByText('Example: MCP echo call', { exact: true }) })
+  await clickRowAction(page, mcpEchoWorkflow, 'Delete')
+  await expect(mcpEchoWorkflow).toHaveCount(0)
+
   await page.getByRole('link', { name: 'Configure' }).click()
   await page.getByRole('tab', { name: 'MCP Servers' }).click()
 
@@ -163,17 +175,15 @@ test('A genuinely empty inventory renders Blankslate, not a bare table/list', as
   await expect(mcpPanel.getByText(/A reusable stdio connection/)).toBeVisible()
   await expect(mcpPanel.getByTestId('inventory-search')).toHaveCount(0)
 
-  // Restore: create one back so this test doesn't permanently strip a
-  // fixture another spec (mcp-tool-editor.spec.ts) creates-and-deletes
-  // its own anyway -- harmless either way, but leaves nothing net-new.
-  await page.getByTestId('new-mcpserver').click()
-  await page.getByLabel('Label').fill('E2E blankslate restore')
-  await page.getByLabel('Command').fill('true')
-  await page.getByRole('button', { name: 'Save MCP server' }).click()
-  const restored = page.locator('[data-testid="inventory-row"][data-entity="mcpserver"]').filter({ has: page.getByText('E2E blankslate restore', { exact: true }) })
-  await expect(restored).toBeVisible()
-  await clickRowAction(page, restored, 'Delete')
-  await expect(restored).toHaveCount(0)
+  // Restore both deleted built-ins back to exactly their seeded state.
+  await mcpPanel.getByTestId('restore-examples-menu').click()
+  await page.getByRole('menuitem', { name: 'Example: Reference server (npx)' }).click()
+  await expect(rows).toHaveCount(1)
+
+  await page.getByRole('link', { name: 'Workflows' }).click()
+  await page.getByTestId('restore-examples-menu').click()
+  await page.getByRole('menuitem', { name: 'Example: MCP echo call' }).click()
+  await expect(mcpEchoWorkflow).toBeVisible()
 })
 
 test('Row delete asks for confirmation naming the entity -- Cancel keeps it, Delete removes it', async ({ page }) => {

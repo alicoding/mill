@@ -83,17 +83,20 @@ func (c *ConfigureService) revertListLocked(previous list.List) {
 }
 
 func (c *ConfigureService) CreateList(label, description string, columns []typedfield.Field) (list.List, error) {
-	return c.createListWithID(seeding.NewSlugID(label, "list"), label, description, columns)
+	return c.createListWithID(seeding.NewSlugID(label, "list"), label, description, columns, nil)
 }
 
 // createListWithID is CreateList's own logic, parameterized on the new
 // list's id -- the seam ImportList uses to preserve a caller-supplied
-// id (ADR-0036 decision 3).
-func (c *ConfigureService) createListWithID(id, label, description string, columns []typedfield.Field) (list.List, error) {
+// id (ADR-0036 decision 3). fieldTombstones lets an import carry a
+// portable export's own deletion history forward onto the fresh local
+// entity (nil for every ordinary CreateList call, which starts with
+// none).
+func (c *ConfigureService) createListWithID(id, label, description string, columns []typedfield.Field, fieldTombstones []typedfield.FieldTombstone) (list.List, error) {
 	now := time.Now()
 	l := list.List{
 		ID: id, Label: label, Description: description,
-		Columns: columns, CreatedAt: now, UpdatedAt: now,
+		Columns: columns, FieldTombstones: fieldTombstones, CreatedAt: now, UpdatedAt: now,
 	}
 	if err := list.Validate(l); err != nil {
 		return list.List{}, err
@@ -115,7 +118,11 @@ func (c *ConfigureService) createListWithID(id, label, description string, colum
 	return l, nil
 }
 
-func (c *ConfigureService) UpdateList(id, label, description string, columns []typedfield.Field) (list.List, error) {
+// newFieldTombstones names any Column Key+Type this call is deleting
+// right now -- the explicit, UI-declared half of docs/adr/0040
+// decision 3's evolution check (typedfield.ValidateFieldEvolution's
+// own doc comment has the full rule).
+func (c *ConfigureService) UpdateList(id, label, description string, columns []typedfield.Field, newFieldTombstones []typedfield.FieldTombstone) (list.List, error) {
 	c.mu.Lock()
 	idx := c.findListLocked(id)
 	if idx == -1 {
@@ -124,9 +131,14 @@ func (c *ConfigureService) UpdateList(id, label, description string, columns []t
 	}
 	previous := c.lists[idx]
 	l := previous
+	tombstones := typedfield.MergeTombstones(previous.FieldTombstones, newFieldTombstones)
+	if err := typedfield.ValidateFieldEvolution(previous.Columns, columns, tombstones); err != nil {
+		c.mu.Unlock()
+		return list.List{}, err
+	}
 	// CreatedAt is preserved from the stored entity, never trusted from
 	// the wire; UpdatedAt always advances on a real update.
-	l.Label, l.Description, l.Columns = label, description, columns
+	l.Label, l.Description, l.Columns, l.FieldTombstones = label, description, columns, tombstones
 	l.UpdatedAt = time.Now()
 	l.Seed = l.Seed.Touch() // docs/goals/0037 item 2
 	if err := list.Validate(l); err != nil {
@@ -273,6 +285,10 @@ func (c *ConfigureService) DeleteListRow(listID, rowID string) (list.List, error
 }
 
 func (c *ConfigureService) DeleteList(id string) error {
+	if err := c.refIntegrityError("list", "list", id); err != nil {
+		return err
+	}
+
 	c.mu.Lock()
 	idx := -1
 	for i, l := range c.lists {

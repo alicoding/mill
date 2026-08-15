@@ -7,6 +7,7 @@ import (
 
 	"github.com/alicoding/mill/internal/domain/composition"
 	"github.com/alicoding/mill/internal/domain/decision"
+	"github.com/alicoding/mill/internal/domain/typedfield"
 	"github.com/alicoding/mill/internal/services/dataevent"
 	"github.com/alicoding/mill/internal/services/seeding"
 )
@@ -59,17 +60,20 @@ func (c *ConfigureService) decisionExistsLocked(id string) bool {
 }
 
 func (c *ConfigureService) CreateDecision(label string, category decision.Category, outputs []decision.OutputField, webhookRequestID string) (decision.Decision, error) {
-	return c.createDecisionWithID(seeding.NewSlugID(label, "decision"), label, category, outputs, webhookRequestID)
+	return c.createDecisionWithID(seeding.NewSlugID(label, "decision"), label, category, outputs, nil, webhookRequestID)
 }
 
 // createDecisionWithID is CreateDecision's own logic, parameterized on
 // the new decision's id -- the seam ImportDecision uses to preserve a
-// caller-supplied id (ADR-0036 decision 3).
-func (c *ConfigureService) createDecisionWithID(id, label string, category decision.Category, outputs []decision.OutputField, webhookRequestID string) (decision.Decision, error) {
+// caller-supplied id (ADR-0036 decision 3). fieldTombstones lets an
+// import carry a portable export's own deletion history forward onto
+// the fresh local entity (nil for every ordinary CreateDecision call,
+// which starts with none).
+func (c *ConfigureService) createDecisionWithID(id, label string, category decision.Category, outputs []decision.OutputField, fieldTombstones []typedfield.FieldTombstone, webhookRequestID string) (decision.Decision, error) {
 	now := time.Now()
 	d := decision.Decision{
 		ID: id, Label: label, Category: category,
-		Outputs: outputs, WebhookRequestID: webhookRequestID,
+		Outputs: outputs, WebhookRequestID: webhookRequestID, FieldTombstones: fieldTombstones,
 		CreatedAt: now, UpdatedAt: now,
 	}
 	if err := decision.Validate(d); err != nil {
@@ -104,7 +108,11 @@ func (c *ConfigureService) createDecisionWithID(id, label string, category decis
 // value, but this check is the actual authority, not the disabled
 // control alone -- a save-time error and a run-time error never
 // disagree, same discipline ValidateGraph's own doc comment names.
-func (c *ConfigureService) UpdateDecision(id, label string, category decision.Category, outputs []decision.OutputField, webhookRequestID string) (decision.Decision, error) {
+// newFieldTombstones names any Key+Type this call is deleting from
+// Outputs/Columns right now -- the explicit, UI-declared half of
+// docs/adr/0040 decision 3's evolution check (typedfield.
+// ValidateFieldEvolution's own doc comment has the full rule).
+func (c *ConfigureService) UpdateDecision(id, label string, category decision.Category, outputs []decision.OutputField, newFieldTombstones []typedfield.FieldTombstone, webhookRequestID string) (decision.Decision, error) {
 	c.mu.Lock()
 	idx := -1
 	for i, existing := range c.decisions {
@@ -126,12 +134,18 @@ func (c *ConfigureService) UpdateDecision(id, label string, category decision.Ca
 			existing.Category)
 	}
 
+	tombstones := typedfield.MergeTombstones(existing.FieldTombstones, newFieldTombstones)
+	if err := typedfield.ValidateFieldEvolution(existing.Outputs, outputs, tombstones); err != nil {
+		return decision.Decision{}, err
+	}
+
 	d := decision.Decision{
 		ID: id, Label: label, Category: category, Outputs: outputs, WebhookRequestID: webhookRequestID, BuiltIn: existing.BuiltIn,
 		// CreatedAt is preserved from the stored entity, never trusted
 		// from the wire; UpdatedAt always advances on a real update.
-		CreatedAt: existing.CreatedAt,
-		UpdatedAt: time.Now(),
+		CreatedAt:       existing.CreatedAt,
+		UpdatedAt:       time.Now(),
+		FieldTombstones: tombstones,
 		// Modified latch (docs/goals/0037 item 2), same reasoning as
 		// httprequest's UpdateHTTPRequest.
 		Seed: existing.Seed.Touch(),
@@ -172,6 +186,10 @@ func (c *ConfigureService) UpdateDecision(id, label string, category decision.Ca
 }
 
 func (c *ConfigureService) DeleteDecision(id string) error {
+	if err := c.refIntegrityError("decision", "decision", id); err != nil {
+		return err
+	}
+
 	c.mu.Lock()
 	idx := -1
 	for i, d := range c.decisions {

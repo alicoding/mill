@@ -58,6 +58,14 @@ export interface List {
      * composition.Workflow.Seed's doc comment for the full reasoning.
      */
     "Seed": seedorigin$0.Origin;
+
+    /**
+     * FieldTombstones records every Columns Key this List has ever
+     * deleted (docs/adr/0040 decision 3) -- see decision.Decision's own
+     * FieldTombstones doc comment for the full reasoning, applied here
+     * to Columns instead of Outputs.
+     */
+    "FieldTombstones": typedfield$0.FieldTombstone[] | null;
 }
 
 /**

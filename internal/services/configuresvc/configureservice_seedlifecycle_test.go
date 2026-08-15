@@ -125,6 +125,14 @@ func TestRestoreHTTPRequest_TombstoneRoundTrip(t *testing.T) {
 	cfg, _ := newConfigureHarness(t)
 	id := httprequest.ExampleNoneID
 
+	// docs/adr/0040 decision 3: two seeded workflows still reference
+	// this request, so the delete is blocked until both references are
+	// gone first.
+	for _, wfID := range []string{"example-guarded-http-workflow", "example-forward-approvals-workflow"} {
+		if err := cfg.composition.DeleteWorkflow(wfID); err != nil {
+			t.Fatalf("DeleteWorkflow(%q) (unblocking the reference): %v", wfID, err)
+		}
+	}
 	if err := cfg.DeleteHTTPRequest(id); err != nil {
 		t.Fatalf("DeleteHTTPRequest: %v", err)
 	}
@@ -172,7 +180,7 @@ func TestResetListToSeed_ReplacesRowsWholesale(t *testing.T) {
 	if _, err := cfg.AddListRow(id, map[string]string{"code": "ZZ", "name": "User-added row"}); err != nil {
 		t.Fatalf("AddListRow: %v", err)
 	}
-	edited, err := cfg.UpdateList(id, "User's own edit", "edited", golden.Columns)
+	edited, err := cfg.UpdateList(id, "User's own edit", "edited", golden.Columns, nil)
 	if err != nil {
 		t.Fatalf("UpdateList: %v", err)
 	}
@@ -206,7 +214,7 @@ func TestUpdateDecision_SetsModifiedLatch(t *testing.T) {
 		t.Fatalf("no golden decision %q", id)
 	}
 
-	updated, err := cfg.UpdateDecision(id, "Edited label", golden.Category, golden.Outputs, golden.WebhookRequestID)
+	updated, err := cfg.UpdateDecision(id, "Edited label", golden.Category, golden.Outputs, nil, golden.WebhookRequestID)
 	if err != nil {
 		t.Fatalf("UpdateDecision: %v", err)
 	}

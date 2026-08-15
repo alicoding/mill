@@ -109,7 +109,7 @@ func TestCreateList_ValidatesAndPersists(t *testing.T) {
 
 func TestUpdateList_UnknownID_Rejected(t *testing.T) {
 	cfg, _ := newTestConfigureService(t)
-	if _, err := cfg.UpdateList("does-not-exist", "New label", "", nil); err == nil {
+	if _, err := cfg.UpdateList("does-not-exist", "New label", "", nil, nil); err == nil {
 		t.Fatal("UpdateList with an unknown id returned nil error, want an error")
 	}
 }

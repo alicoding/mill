@@ -53,6 +53,12 @@ export function ListSearchParamsEditor({
 
   const selectedList = lists?.find((l) => l.ID === listId)
   const columns = selectedList?.Columns ?? []
+  // docs/adr/0040 decision 2: a Deprecated column offers itself as a
+  // NEW match parameter's default only when it isn't deprecated;
+  // pickableColumns (below, per-row) still includes one already bound
+  // to an existing row, so an existing match parameter never loses its
+  // own column out from under it.
+  const newParamColumns = columns.filter((c) => !c.deprecated)
 
   const params = parseParams(matchParamsRaw)
   const writeParams = (next: MatchParam[]) => onChangeMatchParams(JSON.stringify(next))
@@ -60,7 +66,7 @@ export function ListSearchParamsEditor({
     writeParams(params.map((p, idx) => (idx === i ? { ...p, ...patch } : p)))
   const removeParam = (i: number) => writeParams(params.filter((_, idx) => idx !== i))
   const addParam = () =>
-    writeParams([...params, { column: columns[0]?.Key ?? '', value: '', matchType: 'exact' }])
+    writeParams([...params, { column: newParamColumns[0]?.Key ?? '', value: '', matchType: 'exact' }])
 
   return (
     <Stack direction="vertical" gap="condensed" data-testid="list-search-params-editor">
@@ -73,7 +79,14 @@ export function ListSearchParamsEditor({
           {t('listSearchParamsEditor.noColumnsYet')}
         </Text>
       )}
-      {params.map((p, i) => (
+      {params.map((p, i) => {
+        // A deprecated column that's already this row's own value must
+        // still render as a selectable option (never dropping existing
+        // data) even though it's excluded from newParamColumns above.
+        const pickableColumns = newParamColumns.some((c) => c.Key === p.column) || !p.column
+          ? newParamColumns
+          : [...newParamColumns, ...columns.filter((c) => c.Key === p.column)]
+        return (
         <Stack key={i} direction="vertical" gap="condensed" className={styles.card}>
           <Stack direction="horizontal" gap="condensed" align="center">
             <FormControl>
@@ -85,7 +98,7 @@ export function ListSearchParamsEditor({
                 onChange={(e) => updateParam(i, { column: e.target.value })}
               >
                 <Select.Option value="">{t('listSearchParamsEditor.pickColumn')}</Select.Option>
-                {columns.map((c) => (
+                {pickableColumns.map((c) => (
                   <Select.Option key={c.Key} value={c.Key}>{c.Label || c.Key}</Select.Option>
                 ))}
               </Select>
@@ -132,7 +145,8 @@ export function ListSearchParamsEditor({
             </FormControl>
           )}
         </Stack>
-      ))}
+        )
+      })}
       <Button size="small" variant="invisible" leadingVisual={PlusIcon} onClick={addParam} data-testid="add-list-search-param">
         {t('listSearchParamsEditor.addMatchParameter')}
       </Button>

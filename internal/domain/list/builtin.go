@@ -58,6 +58,12 @@ func BuiltIn() []List {
 			Columns: []typedfield.Field{
 				{Key: "code", Label: "Code", Type: typedfield.TypeText, Required: true},
 				{Key: "name", Label: "Name", Type: typedfield.TypeText, Required: true},
+				// legacyRegion is the seeded proof for docs/adr/0040
+				// decision 2: a Deprecated column, still valid on every
+				// row's own data, de-emphasized in this List's own edit
+				// form and excluded from a list-search node's new
+				// match-parameter picker.
+				{Key: "legacyRegion", Label: "Region (legacy)", Type: typedfield.TypeText, Deprecated: true},
 			},
 			Rows: []Row{
 				activeRow("row-us", "US", "United States"),
@@ -67,7 +73,7 @@ func BuiltIn() []List {
 				expiredRow("row-su", "SU", "Soviet Union"),
 			},
 			BuiltIn: true,
-			Seed:    seedorigin.Stamp(2),
+			Seed:    seedorigin.Stamp(3),
 		},
 	}
 }

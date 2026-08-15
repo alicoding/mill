@@ -72,3 +72,115 @@ func TestWireIdentical_CoreFourValues(t *testing.T) {
 		}
 	}
 }
+
+// --- ValidateFieldEvolution (docs/adr/0040 decisions 1-3) ---
+
+func TestValidateFieldEvolution_AllowsAddingANewKey(t *testing.T) {
+	old := []Field{{Key: "a", Type: TypeText}}
+	next := []Field{{Key: "a", Type: TypeText}, {Key: "b", Type: TypeNumber}}
+	if err := ValidateFieldEvolution(old, next, nil); err != nil {
+		t.Fatalf("adding a new key should be free: %v", err)
+	}
+}
+
+func TestValidateFieldEvolution_AllowsLabelOnlyChange(t *testing.T) {
+	old := []Field{{Key: "a", Type: TypeText, Label: "Old"}}
+	next := []Field{{Key: "a", Type: TypeText, Label: "New"}}
+	if err := ValidateFieldEvolution(old, next, nil); err != nil {
+		t.Fatalf("renaming a Label should be free: %v", err)
+	}
+}
+
+func TestValidateFieldEvolution_RejectsSilentDrop(t *testing.T) {
+	old := []Field{{Key: "a", Type: TypeText}}
+	err := ValidateFieldEvolution(old, nil, nil)
+	if err == nil {
+		t.Fatal("expected an error when a key disappears without a matching tombstone")
+	}
+}
+
+func TestValidateFieldEvolution_RejectsRekey(t *testing.T) {
+	// A rename is structurally "drop the old key, add a new one" -- the
+	// drop half must still be rejected even though a brand-new key
+	// legitimately appears in the same update.
+	old := []Field{{Key: "a", Type: TypeText}}
+	next := []Field{{Key: "b", Type: TypeText}}
+	if err := ValidateFieldEvolution(old, next, nil); err == nil {
+		t.Fatal("expected an error for a re-key (old key dropped, new key added, no tombstone)")
+	}
+}
+
+func TestValidateFieldEvolution_RejectsInPlaceRetype(t *testing.T) {
+	old := []Field{{Key: "a", Type: TypeText}}
+	next := []Field{{Key: "a", Type: TypeNumber}}
+	if err := ValidateFieldEvolution(old, next, nil); err == nil {
+		t.Fatal("expected an error for retyping an existing key in place")
+	}
+}
+
+func TestValidateFieldEvolution_AllowsTombstonedDelete(t *testing.T) {
+	old := []Field{{Key: "a", Type: TypeText}}
+	tombstones := []FieldTombstone{{Key: "a", Type: TypeText}}
+	if err := ValidateFieldEvolution(old, nil, tombstones); err != nil {
+		t.Fatalf("a delete declared via a matching tombstone should be legal: %v", err)
+	}
+}
+
+func TestValidateFieldEvolution_RejectsTombstoneTypeMismatchAgainstOld(t *testing.T) {
+	old := []Field{{Key: "a", Type: TypeText}}
+	tombstones := []FieldTombstone{{Key: "a", Type: TypeNumber}}
+	if err := ValidateFieldEvolution(old, nil, tombstones); err == nil {
+		t.Fatal("expected an error when the tombstone's type disagrees with the field actually being deleted")
+	}
+}
+
+func TestValidateFieldEvolution_AllowsResurrectSameType(t *testing.T) {
+	tombstones := []FieldTombstone{{Key: "a", Type: TypeText}}
+	next := []Field{{Key: "a", Type: TypeText}}
+	if err := ValidateFieldEvolution(nil, next, tombstones); err != nil {
+		t.Fatalf("resurrecting a tombstoned key at its original type should be legal: %v", err)
+	}
+}
+
+func TestValidateFieldEvolution_RejectsResurrectDifferentType(t *testing.T) {
+	tombstones := []FieldTombstone{{Key: "a", Type: TypeText}}
+	next := []Field{{Key: "a", Type: TypeNumber}}
+	if err := ValidateFieldEvolution(nil, next, tombstones); err == nil {
+		t.Fatal("expected an error resurrecting a tombstoned key under a different type")
+	}
+}
+
+// --- MergeTombstones ---
+
+func TestMergeTombstones_UnionsAndDedupesByKey(t *testing.T) {
+	existing := []FieldTombstone{{Key: "a", Type: TypeText}}
+	additions := []FieldTombstone{{Key: "b", Type: TypeNumber}}
+	got := MergeTombstones(existing, additions)
+	if len(got) != 2 {
+		t.Fatalf("expected 2 merged tombstones, got %d: %+v", len(got), got)
+	}
+}
+
+func TestMergeTombstones_ExistingWinsOnKeyCollision(t *testing.T) {
+	existing := []FieldTombstone{{Key: "a", Type: TypeText}}
+	additions := []FieldTombstone{{Key: "a", Type: TypeNumber}}
+	got := MergeTombstones(existing, additions)
+	if len(got) != 1 || got[0].Type != TypeText {
+		t.Fatalf("expected the existing tombstone's type to win, got %+v", got)
+	}
+}
+
+func TestMergeTombstones_DeterministicOrder(t *testing.T) {
+	existing := []FieldTombstone{{Key: "a", Type: TypeText}, {Key: "b", Type: TypeNumber}}
+	additions := []FieldTombstone{{Key: "c", Type: TypeBoolean}}
+	first := MergeTombstones(existing, additions)
+	second := MergeTombstones(existing, additions)
+	if len(first) != len(second) {
+		t.Fatalf("length mismatch across identical calls: %d vs %d", len(first), len(second))
+	}
+	for i := range first {
+		if first[i] != second[i] {
+			t.Fatalf("MergeTombstones is not deterministic at index %d: %+v vs %+v", i, first[i], second[i])
+		}
+	}
+}

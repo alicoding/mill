@@ -78,7 +78,7 @@ func TestDataEvent_ListMutations(t *testing.T) {
 	assertEmitted(t, *got, "list", l.ID)
 
 	got = captureEmits(t)
-	l, err = cfg.UpdateList(l.ID, "Emit test list (edited)", "", nil)
+	l, err = cfg.UpdateList(l.ID, "Emit test list (edited)", "", nil, nil)
 	if err != nil {
 		t.Fatalf("UpdateList: %v", err)
 	}
@@ -153,7 +153,7 @@ func TestDataEvent_DecisionMutations(t *testing.T) {
 	assertEmitted(t, *got, "decision", d.ID)
 
 	got = captureEmits(t)
-	d, err = cfg.UpdateDecision(d.ID, "Emit test decision (edited)", decision.CategoryApprove, nil, "")
+	d, err = cfg.UpdateDecision(d.ID, "Emit test decision (edited)", decision.CategoryApprove, nil, nil, "")
 	if err != nil {
 		t.Fatalf("UpdateDecision: %v", err)
 	}

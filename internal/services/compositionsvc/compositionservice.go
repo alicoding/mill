@@ -366,8 +366,16 @@ func (c *CompositionService) UpdateAttributes(workflowID string, attrs []composi
 }
 
 // DeleteWorkflow removes a workflow -- seeded or user-composed, both
-// live in c.user (see Workflows' doc comment), no built-in special case.
+// live in c.user (see Workflows' doc comment), no built-in special
+// case. Blocked while any OTHER workflow's child-workflow node still
+// references id (docs/adr/0040 decision 3, same reference-integrity
+// rule ConfigureService's own Delete* methods apply to every other
+// RefKind, via WorkflowsReferencing).
 func (c *CompositionService) DeleteWorkflow(id string) error {
+	if refs := c.WorkflowsReferencing("workflow", id); len(refs) > 0 {
+		return fmt.Errorf("workflow %q is still referenced by workflow(s) %s -- remove the reference before deleting it", id, strings.Join(refs, ", "))
+	}
+
 	c.mu.Lock()
 	idx := -1
 	for i, wf := range c.user {

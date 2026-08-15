@@ -44,8 +44,21 @@ func TestConfigureService_FreshInstall_SeedsBuiltInDecisions(t *testing.T) {
 // reconcileBuiltInRequests already has.
 func TestConfigureService_DeletedBuiltInDecision_NotResurrectedByTopUp(t *testing.T) {
 	cfg := newDecisionHarness(t)
+	// docs/adr/0040 decision 3: the seeded "Example: Branch to a
+	// decision" workflow still references this Decision, so the delete
+	// is blocked, naming it, until that reference is gone.
+	err := cfg.DeleteDecision(decision.ExampleApproveID)
+	if err == nil {
+		t.Fatal("DeleteDecision on a still-referenced decision returned nil error, want it blocked")
+	}
+	if !strings.Contains(err.Error(), "Example: Branch to a decision") {
+		t.Errorf("DeleteDecision blocked-error = %q, want it to name the referencing workflow", err.Error())
+	}
+	if err := cfg.composition.DeleteWorkflow("example-branch-to-decision-workflow"); err != nil {
+		t.Fatalf("DeleteWorkflow (unblocking the reference): %v", err)
+	}
 	if err := cfg.DeleteDecision(decision.ExampleApproveID); err != nil {
-		t.Fatalf("DeleteDecision: %v", err)
+		t.Fatalf("DeleteDecision after unblocking: %v", err)
 	}
 	cfg.reconcileBuiltInDecisions()
 	for _, d := range cfg.Decisions() {
@@ -86,7 +99,7 @@ func TestUpdateDecision_CategoryChange_Rejected(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CreateDecision: %v", err)
 	}
-	_, err = cfg.UpdateDecision(d.ID, "Mine renamed", decision.CategoryDeny, nil, "")
+	_, err = cfg.UpdateDecision(d.ID, "Mine renamed", decision.CategoryDeny, nil, nil, "")
 	if err == nil {
 		t.Fatal("UpdateDecision changing category returned nil error, want an error")
 	}
@@ -109,7 +122,7 @@ func TestUpdateDecision_SameCategory_Accepted(t *testing.T) {
 		t.Fatalf("CreateDecision: %v", err)
 	}
 	updated, err := cfg.UpdateDecision(d.ID, "Mine renamed", decision.CategoryApprove,
-		[]decision.OutputField{{Key: "x", Label: "X", Type: "text"}}, "")
+		[]decision.OutputField{{Key: "x", Label: "X", Type: "text"}}, nil, "")
 	if err != nil {
 		t.Fatalf("UpdateDecision with the same category: %v", err)
 	}

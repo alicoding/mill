@@ -571,9 +571,13 @@ export function UpdateAIProvider(id: string, label: string, kind: aiprovider$0.K
  * value, but this check is the actual authority, not the disabled
  * control alone -- a save-time error and a run-time error never
  * disagree, same discipline ValidateGraph's own doc comment names.
+ * newFieldTombstones names any Key+Type this call is deleting from
+ * Outputs/Columns right now -- the explicit, UI-declared half of
+ * docs/adr/0040 decision 3's evolution check (typedfield.
+ * ValidateFieldEvolution's own doc comment has the full rule).
  */
-export function UpdateDecision(id: string, label: string, category: decision$0.Category, outputs: decision$0.OutputField[] | null, webhookRequestID: string): $CancellablePromise<decision$0.Decision> {
-    return $Call.ByID(793782335, id, label, category, outputs, webhookRequestID);
+export function UpdateDecision(id: string, label: string, category: decision$0.Category, outputs: decision$0.OutputField[] | null, newFieldTombstones: typedfield$0.FieldTombstone[] | null, webhookRequestID: string): $CancellablePromise<decision$0.Decision> {
+    return $Call.ByID(793782335, id, label, category, outputs, newFieldTombstones, webhookRequestID);
 }
 
 export function UpdateDeclaredStepType(id: string, label: string, description: string, paletteGroup: declaredsteptype$0.PaletteGroup, engine: declaredsteptype$0.Engine, requestID: string, mcpServerID: string, toolName: string, workflowID: string, pinnedConfig: { [_ in string]?: string } | null, hiddenFields: string[] | null): $CancellablePromise<declaredsteptype$0.DeclaredStepType> {
@@ -588,8 +592,14 @@ export function UpdateHTTPRequest(id: string, label: string, baseURL: string, me
     return $Call.ByID(248664070, id, label, baseURL, method, body, authType, headers, openAPISpec, auth, jose, description);
 }
 
-export function UpdateList(id: string, label: string, description: string, columns: typedfield$0.Field[] | null): $CancellablePromise<list$0.List> {
-    return $Call.ByID(437956429, id, label, description, columns);
+/**
+ * newFieldTombstones names any Column Key+Type this call is deleting
+ * right now -- the explicit, UI-declared half of docs/adr/0040
+ * decision 3's evolution check (typedfield.ValidateFieldEvolution's
+ * own doc comment has the full rule).
+ */
+export function UpdateList(id: string, label: string, description: string, columns: typedfield$0.Field[] | null, newFieldTombstones: typedfield$0.FieldTombstone[] | null): $CancellablePromise<list$0.List> {
+    return $Call.ByID(437956429, id, label, description, columns, newFieldTombstones);
 }
 
 /**

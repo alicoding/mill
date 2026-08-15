@@ -153,6 +153,10 @@ func (c *ConfigureService) UpdateExecEnv(id, label string, shell execenv.Shell, 
 }
 
 func (c *ConfigureService) DeleteExecEnv(id string) error {
+	if err := c.refIntegrityError("execenv", "execution environment", id); err != nil {
+		return err
+	}
+
 	c.mu.Lock()
 	idx := -1
 	for i, e := range c.execEnvs {

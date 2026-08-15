@@ -45,10 +45,14 @@ export function DecisionOutcomeBindingsEditor({
   }, [decisionId])
 
   if (target === null || target === 'none') return null
-  const outputs = target.Outputs ?? []
+  const bindings = parseJSON(outputBindingsRaw)
+  // docs/adr/0040 decision 2: a Deprecated field stays offered here only
+  // while an existing binding already points at it (never dropping bound
+  // data); a fresh Decision (nothing bound yet) never offers it as a NEW
+  // binding target.
+  const outputs = (target.Outputs ?? []).filter((field) => !field.deprecated || bindings[field.Key])
   if (outputs.length === 0) return null
 
-  const bindings = parseJSON(outputBindingsRaw)
   const setBinding = (key: string, value: string) => {
     onChangeOutputBindings(JSON.stringify({ ...bindings, [key]: value }))
   }
@@ -62,7 +66,7 @@ export function DecisionOutcomeBindingsEditor({
       {outputs.map((field) => (
         <LiteralOrAttributeField
           key={field.Key}
-          name={field.Label || field.Key}
+          name={field.deprecated ? t('decisionOutcomeBindingsEditor.deprecatedFieldName', { name: field.Label || field.Key }) : (field.Label || field.Key)}
           badge={field.Type}
           value={bindings[field.Key] ?? ''}
           attrs={attrs}

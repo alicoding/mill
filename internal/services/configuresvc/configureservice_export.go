@@ -139,6 +139,11 @@ type exportedList struct {
 	Columns     []typedfield.Field `json:"columns,omitempty"`
 	Rows        []list.Row         `json:"rows,omitempty"`
 	Entries     map[string]string  `json:"entries,omitempty"`
+	// FieldTombstones round-trips this List's own deleted-Column
+	// history (docs/adr/0040 decision 3) so the same evolution
+	// semantics apply on import as on a live UI edit -- optional,
+	// absent for every export written before this field existed.
+	FieldTombstones []typedfield.FieldTombstone `json:"fieldTombstones,omitempty"`
 }
 
 func (c *ConfigureService) ExportList(id string) (string, error) {
@@ -160,6 +165,7 @@ func (c *ConfigureService) ExportList(id string) (string, error) {
 	data, err := json.MarshalIndent(exportedList{
 		Schema: contract.SchemaID("list"), ID: l.ID,
 		Label: l.Label, Description: l.Description, Columns: l.Columns, Rows: l.Rows,
+		FieldTombstones: l.FieldTombstones,
 	}, "", "  ")
 	if err != nil {
 		return "", fmt.Errorf("export list: %w", err)
@@ -192,9 +198,9 @@ func (c *ConfigureService) ImportList(jsonData string) (list.List, error) {
 		found := c.findListLocked(in.ID) != -1
 		c.mu.Unlock()
 		if found {
-			target, err = c.UpdateList(in.ID, in.Label, in.Description, columns)
+			target, err = c.UpdateList(in.ID, in.Label, in.Description, columns, in.FieldTombstones)
 		} else {
-			target, err = c.createListWithID(in.ID, in.Label, in.Description, columns)
+			target, err = c.createListWithID(in.ID, in.Label, in.Description, columns, in.FieldTombstones)
 		}
 	} else {
 		target, err = c.CreateList(in.Label, in.Description, columns)
@@ -297,11 +303,16 @@ func (c *ConfigureService) ImportMCPServer(jsonData string) (mcpserver.MCPServer
 // clone of local-only references). The webhook binding is re-authored
 // in Configure after import, same as a secret is re-Set after import.
 type exportedDecision struct {
-	Schema   string                  `json:"schema"`
-	ID       string                  `json:"id,omitempty"`
-	Label    string                  `json:"label"`
-	Category decision.Category       `json:"category"`
-	Outputs  []decision.OutputField  `json:"outputs"`
+	Schema   string                 `json:"schema"`
+	ID       string                 `json:"id,omitempty"`
+	Label    string                 `json:"label"`
+	Category decision.Category      `json:"category"`
+	Outputs  []decision.OutputField `json:"outputs"`
+	// FieldTombstones round-trips this Decision's own deleted-Output
+	// history (docs/adr/0040 decision 3) so the same evolution
+	// semantics apply on import as on a live UI edit -- optional,
+	// absent for every export written before this field existed.
+	FieldTombstones []typedfield.FieldTombstone `json:"fieldTombstones,omitempty"`
 }
 
 func (c *ConfigureService) ExportDecision(id string) (string, error) {
@@ -320,7 +331,10 @@ func (c *ConfigureService) ExportDecision(id string) (string, error) {
 		return "", fmt.Errorf("no decision with id %q", id)
 	}
 
-	data, err := json.MarshalIndent(exportedDecision{Schema: contract.SchemaID("decision"), ID: d.ID, Label: d.Label, Category: d.Category, Outputs: d.Outputs}, "", "  ")
+	data, err := json.MarshalIndent(exportedDecision{
+		Schema: contract.SchemaID("decision"), ID: d.ID, Label: d.Label, Category: d.Category,
+		Outputs: d.Outputs, FieldTombstones: d.FieldTombstones,
+	}, "", "  ")
 	if err != nil {
 		return "", fmt.Errorf("export decision: %w", err)
 	}
@@ -347,9 +361,9 @@ func (c *ConfigureService) ImportDecision(jsonData string) (decision.Decision, e
 		found := c.decisionExistsLocked(in.ID)
 		c.mu.Unlock()
 		if found {
-			return c.UpdateDecision(in.ID, in.Label, in.Category, in.Outputs, "")
+			return c.UpdateDecision(in.ID, in.Label, in.Category, in.Outputs, in.FieldTombstones, "")
 		}
-		return c.createDecisionWithID(in.ID, in.Label, in.Category, in.Outputs, "")
+		return c.createDecisionWithID(in.ID, in.Label, in.Category, in.Outputs, in.FieldTombstones, "")
 	}
 	return c.CreateDecision(in.Label, in.Category, in.Outputs, "")
 }

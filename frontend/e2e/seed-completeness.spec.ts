@@ -39,8 +39,10 @@ test('Seeded List "Example: Country codes" is present, built-in-badged, with its
   await expect(row.getByText('built-in', { exact: true })).toBeVisible()
   // docs/goals/0011-lists-maturation.md: the seed grew typed
   // code/name columns + 5 rows (4 Active + 1 deliberately Expired),
-  // replacing the old flat key/value "N entries" description.
-  await expect(row).toContainText('2 columns, 5 rows')
+  // replacing the old flat key/value "N entries" description. A third,
+  // Deprecated column (docs/adr/0040 decision 2's own seeded proof)
+  // brought the column count to 3.
+  await expect(row).toContainText('3 columns, 5 rows')
 })
 
 test('Seeded MCP Server "Example: Reference server (npx)" is present, built-in-badged, pointed at the real reference server', async ({ page }) => {
