@@ -17,6 +17,12 @@ pre-commit:
     - name: ui-copy
       glob: "frontend/src/locales/**/*.json"
       run: ./scripts/check-ui-copy.sh
+    - name: doc-paths
+      # docs/ is a private nested checkout (absent on public clones):
+      # skip silently when missing; mill-docs' own CI is the enforcing
+      # caller there. No glob -- the cited paths live outside docs/,
+      # so any commit can invalidate them.
+      run: 'test ! -f docs/scripts/check-doc-paths.sh || { bash docs/scripts/check-doc-paths.sh && bash docs/scripts/gen-adr-readme.sh --check; }'
     - name: rules-frontmatter
       # Lefthook's `**` requires 1+ directories deep (non-standard --
       # confirmed against its own docs, not gitignore-style zero-or-more),

@@ -1,9 +1,9 @@
 <div align="center">
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/banner-dark.svg">
-  <source media="(prefers-color-scheme: light)" srcset="docs/assets/banner-light.svg">
-  <img alt="Mill — guardrailed agentic workflows, on your desktop" src="docs/assets/banner-light.svg" width="720">
+  <source media="(prefers-color-scheme: dark)" srcset=".github/assets/banner-dark.svg">
+  <source media="(prefers-color-scheme: light)" srcset=".github/assets/banner-light.svg">
+  <img alt="Mill — guardrailed agentic workflows, on your desktop" src=".github/assets/banner-light.svg" width="720">
 </picture>
 
 [![CI](https://github.com/alicoding/mill/actions/workflows/ci.yml/badge.svg)](https://github.com/alicoding/mill/actions/workflows/ci.yml)
@@ -30,9 +30,9 @@ credential manager or a generic workflow-automation tool would, applied to
 agent-guarded local actions instead.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/screenshot-canvas-dark.png">
-  <source media="(prefers-color-scheme: light)" srcset="docs/assets/screenshot-canvas-light.png">
-  <img alt="A seeded example workflow open in Mill's read-only canvas view: a manual trigger captures a typed amount, a Branch node routes on amount > 100, and each path ends at a typed Decision terminal" src="docs/assets/screenshot-canvas-light.png">
+  <source media="(prefers-color-scheme: dark)" srcset=".github/assets/screenshot-canvas-dark.png">
+  <source media="(prefers-color-scheme: light)" srcset=".github/assets/screenshot-canvas-light.png">
+  <img alt="A seeded example workflow open in Mill's read-only canvas view: a manual trigger captures a typed amount, a Branch node routes on amount > 100, and each path ends at a typed Decision terminal" src=".github/assets/screenshot-canvas-light.png">
 </picture>
 
 *One of Mill's built-in seeded examples on the canvas: capture a typed
