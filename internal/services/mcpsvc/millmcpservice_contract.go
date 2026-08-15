@@ -23,7 +23,7 @@ func (m *MillMCPService) registerContractResources() {
 
 	m.server.AddResource(&mcp.Resource{
 		URI: "mill://contract", Name: "contract", MIMEType: "application/json",
-		Description: "The whole agent-facing contract in one document: every envelope schema, the node-type catalog, the import/update rule, and this instance's manifest -- the transport form for environments where MCP itself isn't reachable (goal 0052).",
+		Description: "The whole agent-facing contract in one document: every envelope schema, the step-type catalog, the import/update rule, and this instance's manifest -- the transport form for environments where MCP itself isn't reachable (goal 0052).",
 	}, m.readContract)
 }
 

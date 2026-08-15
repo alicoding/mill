@@ -127,6 +127,7 @@ func TestContractDocumentNodeCatalog_MatchesListNodeTypesTool(t *testing.T) {
 		t.Fatalf("contract.GenerateDocument: %v", err)
 	}
 	var doc struct {
+		StepTypes []composition.NodeType `json:"stepTypes"`
 		NodeTypes []composition.NodeType `json:"nodeTypes"`
 	}
 	if err := json.Unmarshal(docBytes, &doc); err != nil {
@@ -137,12 +138,19 @@ func TestContractDocumentNodeCatalog_MatchesListNodeTypesTool(t *testing.T) {
 	if err != nil {
 		t.Fatalf("marshal tool catalog: %v", err)
 	}
-	docJSON, err := json.Marshal(doc.NodeTypes)
+	stepDocJSON, err := json.Marshal(doc.StepTypes)
 	if err != nil {
-		t.Fatalf("marshal document catalog: %v", err)
+		t.Fatalf("marshal document stepTypes: %v", err)
 	}
-	if string(toolJSON) != string(docJSON) {
-		t.Errorf("contract document's node catalog diverges from list_node_types' own output:\ndocument: %s\ntool: %s", docJSON, toolJSON)
+	nodeDocJSON, err := json.Marshal(doc.NodeTypes)
+	if err != nil {
+		t.Fatalf("marshal document nodeTypes: %v", err)
+	}
+	if string(toolJSON) != string(stepDocJSON) {
+		t.Errorf("contract document's stepTypes diverges from list_node_types' own output:\ndocument: %s\ntool: %s", stepDocJSON, toolJSON)
+	}
+	if string(stepDocJSON) != string(nodeDocJSON) {
+		t.Errorf("contract document's stepTypes diverges from its legacy nodeTypes alias:\nstepTypes: %s\nnodeTypes: %s", stepDocJSON, nodeDocJSON)
 	}
 }
 

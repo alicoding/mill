@@ -2,6 +2,7 @@ package contract_test
 
 import (
 	"bytes"
+	"encoding/json"
 	"testing"
 
 	"github.com/alicoding/mill/internal/contract"
@@ -74,7 +75,38 @@ func TestServed_InjectsManifestOverCommittedDocument(t *testing.T) {
 	if !bytes.Contains(data, []byte(`"version": "9.9.9-test"`)) {
 		t.Errorf("Served output missing injected manifest version:\n%s", data)
 	}
+	if !bytes.Contains(data, []byte(`"stepTypes"`)) {
+		t.Errorf("Served output missing the static document's stepTypes:\n%s", data)
+	}
 	if !bytes.Contains(data, []byte(`"nodeTypes"`)) {
-		t.Errorf("Served output missing the static document's nodeTypes:\n%s", data)
+		t.Errorf("Served output missing the static document's legacy nodeTypes alias:\n%s", data)
+	}
+}
+
+// TestDocument_StepTypesAndNodeTypesStayIdentical pins the alias
+// contract: NodeTypes is StepTypes under its legacy key, so the two
+// must always carry byte-identical content, never drift apart.
+func TestDocument_StepTypesAndNodeTypesStayIdentical(t *testing.T) {
+	data, err := contract.GenerateDocument()
+	if err != nil {
+		t.Fatalf("GenerateDocument: %v", err)
+	}
+	var doc contract.Document
+	if err := json.Unmarshal(data, &doc); err != nil {
+		t.Fatalf("decode generated document: %v", err)
+	}
+	if len(doc.StepTypes) == 0 {
+		t.Fatal("generated document has no stepTypes")
+	}
+	stepJSON, err := json.Marshal(doc.StepTypes)
+	if err != nil {
+		t.Fatalf("marshal StepTypes: %v", err)
+	}
+	nodeJSON, err := json.Marshal(doc.NodeTypes)
+	if err != nil {
+		t.Fatalf("marshal NodeTypes: %v", err)
+	}
+	if string(stepJSON) != string(nodeJSON) {
+		t.Errorf("stepTypes diverges from its legacy nodeTypes alias:\nstepTypes: %s\nnodeTypes: %s", stepJSON, nodeJSON)
 	}
 }
