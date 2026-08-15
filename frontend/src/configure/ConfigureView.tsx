@@ -8,8 +8,9 @@ import { ConfigureMCPServers } from './ConfigureMCPServers'
 import { ConfigureDecisions } from './ConfigureDecisions'
 import { ConfigureExecEnv } from './ConfigureExecEnv'
 import { ConfigureAIProviders } from './ConfigureAIProviders'
+import { ConfigureStepTypes } from './ConfigureStepTypes'
 
-// The Configure surface (docs/SPEC.md §3.5): seven sections for
+// The Configure surface (docs/SPEC.md §3.5): eight sections for
 // Configure-authored data -- Integration (HTTPRequests, 1:many
 // reusable, renamed from Connector by ADR-0016), Lists (1:many
 // reusable), Attributes (1:1, workflow-scoped), MCP
@@ -18,10 +19,12 @@ import { ConfigureAIProviders } from './ConfigureAIProviders'
 // wired up here exposes as many usable mcp-tool-call steps as it has
 // tools), Decisions (1:many reusable, docs/adr/0027 -- a workflow's
 // TERMINAL outcome), Execution Environments (1:many reusable,
-// docs/adr/0026 -- a code-execution node's pinned shell/dir/env), and AI
+// docs/adr/0026 -- a code-execution node's pinned shell/dir/env), AI
 // Providers (1:many reusable, docs/goals/0031-ai-node-family.md -- a
 // local Ollama or BYO OpenAI-compatible/Anthropic endpoint an ai-*
-// node resolves by ID). Same
+// node resolves by ID), and Step types (1:many reusable, ADR-0037 --
+// a named palette step assembled from an already-configured HTTP
+// operation, MCP tool, or callable workflow, no code). Same
 // tabbed-panel pattern as CompositionView.tsx's Workflows/editor tabs
 // (Primer's headless Tabs + this app's own TabItem/TabList/TabPanel
 // wrappers, Tabs.tsx) -- every panel stays mounted (a `hidden`
@@ -46,6 +49,7 @@ function ConfigureView({ initialTab }: { initialTab?: string }) {
         <TabItem value="decisions">{t('configureView.decisions')}</TabItem>
         <TabItem value="execenvs">{t('configureView.execEnvs')}</TabItem>
         <TabItem value="aiproviders">{t('configureView.aiProviders')}</TabItem>
+        <TabItem value="steptypes">{t('configureView.stepTypes')}</TabItem>
       </TabList>
       <TabPanel value="integration"><ConfigureRequests /></TabPanel>
       <TabPanel value="lists"><ConfigureLists /></TabPanel>
@@ -54,6 +58,7 @@ function ConfigureView({ initialTab }: { initialTab?: string }) {
       <TabPanel value="decisions"><ConfigureDecisions /></TabPanel>
       <TabPanel value="execenvs"><ConfigureExecEnv /></TabPanel>
       <TabPanel value="aiproviders"><ConfigureAIProviders /></TabPanel>
+      <TabPanel value="steptypes"><ConfigureStepTypes /></TabPanel>
     </Tabs>
   )
 }

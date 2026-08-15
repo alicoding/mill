@@ -212,6 +212,28 @@ export interface NodeType {
      * ClassNone -- only node types with real I/O declare one.
      */
     "Effect": guardrail$0.EffectClass;
+
+    /**
+     * Declared marks a data-backed step type synthesized from a
+     * Configure-authored declaration (ADR-0037, declaredsteptype.go)
+     * rather than a compile-time RegisterNodeType entry. False (the Go
+     * zero value) for every built-in, so every existing serialized
+     * catalog/contract document is unaffected until a declared type
+     * actually exists -- additive, per ADR-0036's schema-evolution rule.
+     */
+    "Declared": boolean;
+
+    /**
+     * PaletteGroup is the frontend display-group id (composition/
+     * paletteGroups.ts's PaletteGroupId) a declared step type was
+     * authored under -- empty for every built-in, whose group instead
+     * comes from paletteGroups.ts's own compile-time NODE_TYPE_GROUP map.
+     * A declared type has no compile-time map entry (it doesn't exist
+     * until a user creates it), so this is the only channel carrying its
+     * author-chosen group from the Configure-authored DeclaredStepType
+     * (ADR-0037) into the palette at all.
+     */
+    "PaletteGroup": string;
 }
 
 /**

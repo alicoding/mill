@@ -2,7 +2,7 @@ import { useMemo, useState, type DragEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Text, TextInput, TreeView } from '@primer/react'
 import type { NodeType } from '../../bindings/github.com/alicoding/mill/internal/domain/composition/models'
-import { PALETTE_GROUP_ICON, PALETTE_GROUP_LABEL, PALETTE_GROUP_ORDER, paletteGroupFor, shortLabel, type PaletteGroupId } from './paletteGroups'
+import { PALETTE_GROUP_ICON, PALETTE_GROUP_LABEL, PALETTE_GROUP_ORDER, paletteGroupFor, shortLabel, type PaletteGroupId } from '../shared/paletteGroups'
 import styles from './CompositionCanvas.module.css'
 
 interface NodePaletteProps {

@@ -5,6 +5,7 @@ import type { Decision } from '../../bindings/github.com/alicoding/mill/internal
 import type { MCPServer } from '../../bindings/github.com/alicoding/mill/internal/domain/mcpserver/models'
 import type { ExecEnv } from '../../bindings/github.com/alicoding/mill/internal/domain/execenv/models'
 import type { AIProvider } from '../../bindings/github.com/alicoding/mill/internal/domain/aiprovider/models'
+import type { DeclaredStepType } from '../../bindings/github.com/alicoding/mill/internal/domain/declaredsteptype/models'
 
 // The other half of store.ts's "one fetch, many consumers" server-data
 // pattern (workflows/nodeTypes/requests) for Configure's remaining
@@ -26,11 +27,13 @@ interface ConfigureEntityState {
   mcpServers: MCPServer[] | null
   execEnvs: ExecEnv[] | null
   aiProviders: AIProvider[] | null
+  declaredStepTypes: DeclaredStepType[] | null
   setLists: (lists: List[]) => void
   setDecisions: (decisions: Decision[]) => void
   setMCPServers: (mcpServers: MCPServer[]) => void
   setExecEnvs: (execEnvs: ExecEnv[]) => void
   setAIProviders: (aiProviders: AIProvider[]) => void
+  setDeclaredStepTypes: (declaredStepTypes: DeclaredStepType[]) => void
 }
 
 export const useConfigureEntityStore = create<ConfigureEntityState>()((set) => ({
@@ -39,11 +42,13 @@ export const useConfigureEntityStore = create<ConfigureEntityState>()((set) => (
   mcpServers: null,
   execEnvs: null,
   aiProviders: null,
+  declaredStepTypes: null,
   setLists: (lists) => set({ lists }),
   setDecisions: (decisions) => set({ decisions }),
   setMCPServers: (mcpServers) => set({ mcpServers }),
   setExecEnvs: (execEnvs) => set({ execEnvs }),
   setAIProviders: (aiProviders) => set({ aiProviders }),
+  setDeclaredStepTypes: (declaredStepTypes) => set({ declaredStepTypes }),
 }))
 
 // refreshLists/refreshDecisions/refreshMCPServers/refreshExecEnvs mirror
@@ -78,5 +83,11 @@ export function refreshExecEnvs(): Promise<void> {
 export function refreshAIProviders(): Promise<void> {
   return ConfigureService.AIProviders()
     .then((list) => useConfigureEntityStore.getState().setAIProviders(list ?? []))
+    .catch(console.error)
+}
+
+export function refreshDeclaredStepTypes(): Promise<void> {
+  return ConfigureService.DeclaredStepTypes()
+    .then((list) => useConfigureEntityStore.getState().setDeclaredStepTypes(list ?? []))
     .catch(console.error)
 }

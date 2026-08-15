@@ -263,6 +263,45 @@
     "emptyHeading": "No AI providers yet",
     "emptyDescription": "A reusable connection to local Ollama, or a BYO OpenAI-compatible or Anthropic endpoint, that an AI workflow step resolves by ID."
   },
+  "configureStepTypes": {
+    "heading": "Step types",
+    "pageDescription": "Create your own step types from things you've already configured — no code, just a name and a binding.",
+    "newStepType": "New step type",
+    "label": "Label",
+    "description": "Description",
+    "paletteGroup": "Palette group",
+    "bindingKind": "Runs",
+    "engineCaption": "What this step actually calls when it runs.",
+    "engineHttp": "An HTTP request",
+    "engineMcp": "An MCP tool",
+    "engineWorkflow": "Another workflow",
+    "needsCodeOption": "Something else…",
+    "needsCodeExplanation": "This needs code, not a declared step type. A declared step type can only name and configure something already connected — a request, an MCP server, or another workflow. Build a new step in code, then it becomes available to declare here too.",
+    "httpOperation": "Request",
+    "mcpServer": "MCP server",
+    "mcpTool": "Tool",
+    "pickTool": "Pick a tool…",
+    "mcpToolFallbackCaption": "The server's tool list couldn't be reached -- type the exact tool name.",
+    "callableWorkflow": "Workflow",
+    "pinnedFieldsHeading": "Pinned fields",
+    "pinnedFieldsDescription": "Pin a value to lock it and hide it from anyone using this step -- leave a field unpinned to let them fill it in.",
+    "pinField": "Pin {{label}}",
+    "noPinnableFields": "Nothing to pin for this binding -- every field it needs is set above.",
+    "saveStepType": "Save step type",
+    "columns": {
+      "label": "Label",
+      "engine": "Runs",
+      "group": "Group"
+    },
+    "editAriaLabel": "Edit {{label}}",
+    "exportAriaLabel": "Export {{label}}",
+    "deleteAriaLabel": "Delete {{label}}",
+    "deleteConfirmTitle": "Delete step type?",
+    "deleteConfirmBody": "This permanently deletes \"{{label}}\". Workflows already using it keep their steps, but they'll stop resolving. This cannot be undone.",
+    "searchPlaceholder": "Search step types…",
+    "emptyHeading": "No step types yet",
+    "emptyDescription": "A named palette step assembled from a request, an MCP tool, or another workflow you've already configured."
+  },
   "entityRefField": {
     "kindNoun": {
       "request": "request",
@@ -476,6 +515,7 @@
     "mcpServers": "MCP Servers",
     "decisions": "Decisions",
     "execEnvs": "Execution Environments",
-    "aiProviders": "AI Providers"
+    "aiProviders": "AI Providers",
+    "stepTypes": "Step types"
   }
 }

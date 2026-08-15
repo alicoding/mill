@@ -13,7 +13,7 @@ import PlaceholderView from "../views/PlaceholderView";
 import { CapabilitiesService, ExecutionService, SettingsService } from '../shared/bindings'
 import type { BuildInfo } from '../shared/bindings'
 import { refreshKeybindings, refreshNodeTypes, refreshRequests, refreshWorkflows, useAppStore } from "../shared/store";
-import { refreshAIProviders, refreshDecisions, refreshExecEnvs, refreshLists, refreshMCPServers } from "../shared/configureEntityStore";
+import { refreshAIProviders, refreshDeclaredStepTypes, refreshDecisions, refreshExecEnvs, refreshLists, refreshMCPServers } from "../shared/configureEntityStore";
 import { dispatchCommandForEvent } from "../shared/commands";
 import { WorkTabShell } from "./WorkTabShell";
 import { AppSidebar } from "./AppSidebar";
@@ -238,11 +238,17 @@ function App() {
   // service now emits this, not just mcpsvc -- one refresher per
   // entity kind, each routed to its own store (shared/store.ts's
   // workflows/requests, shared/configureEntityStore.ts's lists/
-  // decisions/mcpServers/execEnvs/aiProviders). Was previously misrouted for
-  // 'list'/'mcpserver' (refreshRequests()+refreshWorkflows(), neither
-  // of which holds either); 'decision'/'execenv' are new entity
-  // strings. 'guardrail-rule' has no shared-store consumer here --
+  // decisions/mcpServers/execEnvs/aiProviders/declaredStepTypes). Was
+  // previously misrouted for 'list'/'mcpserver'
+  // (refreshRequests()+refreshWorkflows(), neither of which holds
+  // either); 'decision'/'execenv' are new entity strings.
+  // 'guardrail-rule' has no shared-store consumer here --
   // useGuardrailBadges/the Guardrails section subscribe to it directly.
+  // 'steptype' (ADR-0037, goal 0054) refreshes BOTH the Configure page's
+  // own inventory (refreshDeclaredStepTypes) and the canvas palette
+  // (refreshNodeTypes -- composition.NodeTypes() already merges declared
+  // types into the same catalog every built-in ships in), so creating/
+  // editing/deleting a step type reaches the palette without a reload.
   useEffect(() => {
     return Events.On('mill-data-changed', (evt) => {
       const entity = (evt.data as { entity?: string })?.entity
@@ -253,6 +259,7 @@ function App() {
       if (entity === 'decision') void refreshDecisions()
       if (entity === 'execenv') void refreshExecEnvs()
       if (entity === 'aiprovider') void refreshAIProviders()
+      if (entity === 'steptype') { void refreshDeclaredStepTypes(); void refreshNodeTypes() }
       if (entity === 'keybinding') void refreshKeybindings()
     })
   }, [])

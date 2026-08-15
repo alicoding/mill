@@ -37,6 +37,9 @@ import * as composition$0 from "../../domain/composition/models.js";
 import * as decision$0 from "../../domain/decision/models.js";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
+import * as declaredsteptype$0 from "../../domain/declaredsteptype/models.js";
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: Unused imports
 import * as execenv$0 from "../../domain/execenv/models.js";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
@@ -89,6 +92,10 @@ export function CreateDecision(label: string, category: decision$0.Category, out
     return $Call.ByID(2725151274, label, category, outputs, webhookRequestID);
 }
 
+export function CreateDeclaredStepType(label: string, description: string, paletteGroup: declaredsteptype$0.PaletteGroup, engine: declaredsteptype$0.Engine, requestID: string, mcpServerID: string, toolName: string, workflowID: string, pinnedConfig: { [_ in string]?: string } | null, hiddenFields: string[] | null): $CancellablePromise<declaredsteptype$0.DeclaredStepType> {
+    return $Call.ByID(2864826736, label, description, paletteGroup, engine, requestID, mcpServerID, toolName, workflowID, pinnedConfig, hiddenFields);
+}
+
 export function CreateExecEnv(label: string, shell: execenv$0.Shell, profileMode: execenv$0.ProfileMode, dir: string, env: string[] | null): $CancellablePromise<execenv$0.ExecEnv> {
     return $Call.ByID(2549731420, label, shell, profileMode, dir, env);
 }
@@ -117,6 +124,10 @@ export function Decisions(): $CancellablePromise<decision$0.Decision[] | null> {
     return $Call.ByID(3569228287);
 }
 
+export function DeclaredStepTypes(): $CancellablePromise<declaredsteptype$0.DeclaredStepType[] | null> {
+    return $Call.ByID(514404165);
+}
+
 /**
  * DeleteAIProvider also removes any keychain secret for id -- best-
  * effort (a delete on an id with no stored secret is a harmless no-op-
@@ -138,6 +149,10 @@ export function DeleteAIProviderSecret(id: string): $CancellablePromise<void> {
 
 export function DeleteDecision(id: string): $CancellablePromise<void> {
     return $Call.ByID(3396624017, id);
+}
+
+export function DeleteDeclaredStepType(id: string): $CancellablePromise<void> {
+    return $Call.ByID(3604894371, id);
 }
 
 export function DeleteExecEnv(id: string): $CancellablePromise<void> {
@@ -195,6 +210,10 @@ export function ExportDecision(id: string): $CancellablePromise<string> {
     return $Call.ByID(1497100540, id);
 }
 
+export function ExportDeclaredStepType(id: string): $CancellablePromise<string> {
+    return $Call.ByID(1679238510, id);
+}
+
 export function ExportExecEnv(id: string): $CancellablePromise<string> {
     return $Call.ByID(1292699062, id);
 }
@@ -247,6 +266,15 @@ export function ImportAIProvider(jsonData: string): $CancellablePromise<aiprovid
  */
 export function ImportDecision(jsonData: string): $CancellablePromise<decision$0.Decision> {
     return $Call.ByID(4077937019, jsonData);
+}
+
+/**
+ * ImportDeclaredStepType applies ADR-0036 decision 3's uniform import
+ * rule (configureservice_export.go's own header comment carries the
+ * full statement).
+ */
+export function ImportDeclaredStepType(jsonData: string): $CancellablePromise<declaredsteptype$0.DeclaredStepType> {
+    return $Call.ByID(4258139761, jsonData);
 }
 
 export function ImportExecEnv(jsonData: string): $CancellablePromise<execenv$0.ExecEnv> {
@@ -546,6 +574,10 @@ export function UpdateAIProvider(id: string, label: string, kind: aiprovider$0.K
  */
 export function UpdateDecision(id: string, label: string, category: decision$0.Category, outputs: decision$0.OutputField[] | null, webhookRequestID: string): $CancellablePromise<decision$0.Decision> {
     return $Call.ByID(793782335, id, label, category, outputs, webhookRequestID);
+}
+
+export function UpdateDeclaredStepType(id: string, label: string, description: string, paletteGroup: declaredsteptype$0.PaletteGroup, engine: declaredsteptype$0.Engine, requestID: string, mcpServerID: string, toolName: string, workflowID: string, pinnedConfig: { [_ in string]?: string } | null, hiddenFields: string[] | null): $CancellablePromise<declaredsteptype$0.DeclaredStepType> {
+    return $Call.ByID(2416169229, id, label, description, paletteGroup, engine, requestID, mcpServerID, toolName, workflowID, pinnedConfig, hiddenFields);
 }
 
 export function UpdateExecEnv(id: string, label: string, shell: execenv$0.Shell, profileMode: execenv$0.ProfileMode, dir: string, env: string[] | null): $CancellablePromise<execenv$0.ExecEnv> {
