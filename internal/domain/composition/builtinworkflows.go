@@ -461,7 +461,11 @@ func BuiltInWorkflows() []Workflow {
 	workflows = append(workflows, builtInAIWorkflows()...)
 	// goal 0052 slice 3, ADR-0036: the evidence-receipt node's own
 	// seeded proof, same split-file reasoning.
-	return append(workflows, builtInReceiptWorkflows()...)
+	workflows = append(workflows, builtInReceiptWorkflows()...)
+	// goal 0054 slice A, ADR-0037: the declared-step-type registry's own
+	// seeded proof -- see that function's own doc comment for why it
+	// can return nil on this function's very first call.
+	return append(workflows, builtInDeclaredStepTypeWorkflows()...)
 }
 
 // ExampleChildWorkflowID is exported so the parent seed above and any

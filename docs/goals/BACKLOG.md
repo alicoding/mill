@@ -117,7 +117,10 @@ accepted)**
    ratifying WHEN code is genuinely required (new engine) vs
    declaration suffices (naming/mapping over existing engines).
    After 0052 — declared types must be first-class in the generated
-   contract from day one; benefits from 0047's palette facet
+   contract from day one; benefits from 0047's palette facet.
+   **Slice A (backend: data-backed registry, Configure entity,
+   contract family, seeded proof) shipped — see the goal file's own
+   "Slice A status" section. Remaining: slice B, the designer UI.**
 12. [ ] [0055 — Canvas note block](0055-canvas-note-block.md)
    — owner-raised 2026-08-14 (n8n sticky-note precedent): annotation
    in the authoring space; not a step (no ports/execution); rides

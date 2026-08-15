@@ -118,6 +118,13 @@ const NODE_TYPE_GROUP: Record<string, PaletteGroupId> = {
   'apply-clipboard-write-html': 'apply',
   'apply-clipboard-write-text': 'apply',
   'apply-file-write': 'apply',
+  // Declared step types (ADR-0037, goal 0054 slice A): data-backed, not
+  // a RegisterNodeType call site, so not counted in this map's "31
+  // registered node types" total above -- the seeded "Check httpbin"
+  // example still needs its own group entry, same as any built-in, so
+  // it renders under its real group instead of paletteGroupFor's
+  // Kind-fallback path.
+  'example-check-httpbin-step': 'actions',
 }
 
 // Fallback for a NodeType ID this map hasn't been updated for yet

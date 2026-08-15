@@ -84,17 +84,70 @@ for the declaration entity coordinates with 0046's evolution rules.
 
 ## Acceptance (checkable — refined when the goal opens)
 
-- [ ] The declare-vs-code ADR is written, with the engine list
+- [x] The declare-vs-code ADR is written, with the engine list
       enumerated and the boundary stated as a testable rule.
-- [ ] Capability map for the declaration entity (CLAUDE.md Plan
-      rule) precedes the schema.
-- [ ] Designer v1: a user can promote at least an HTTPRequest
+      ([ADR-0037](../adr/0037-declared-step-types.md), landed ahead of
+      slice A.)
+- [x] Capability map for the declaration entity (CLAUDE.md Plan
+      rule) precedes the schema. (ADR-0037 Decision 2's engine list +
+      this file's own "Mill's head start" section serve as the
+      capability map: every future declaration surface — HTTP,
+      MCP, child-workflow — named with its current status before the
+      schema below was designed.)
+- [~] Designer v1: a user can promote at least an HTTPRequest
       operation and a child workflow into named palette step types
       without writing code; declared types appear in the generated
-      contract/catalog identically to built-ins.
-- [ ] A declared step type round-trips export/import like any
-      entity (0052 symmetry rule).
+      contract/catalog identically to built-ins. **Slice A (backend)
+      done; the "a user can" UI half is slice B.** The data-backed
+      registry supports all three ADR-0037 engines (HTTP, MCP,
+      child-workflow) uniformly — `internal/domain/declaredsteptype`,
+      `composition.SetDeclaredNodeTypeLookup`/`resolveDeclaredEntry` —
+      and declared types appear in `list_step_types`/the generated
+      contract catalog with `NodeType.Declared: true`, additive,
+      verified by `TestRootContractDocument_MatchCommitted`. No
+      designer UI exists yet to let a user actually author one by
+      hand; slice B builds that form.
+- [x] A declared step type round-trips export/import like any
+      entity (0052 symmetry rule). (`ExportDeclaredStepType`/
+      `ImportDeclaredStepType`, the `steptype` contract family at
+      `mill://schema/steptype/v1`, `TestExportImportDeclaredStepType_RoundTrips`.)
 - [ ] "Needs code" is a designed, explicit designer outcome with
-      honest copy, not a failure state.
-- [ ] Seeded example: at least one declared step type ships as a
-      seed exercising the full path (seeds ARE the proof).
+      honest copy, not a failure state. **Slice B** — no designer UI
+      exists yet in slice A to have an outcome at all.
+- [x] Seeded example: at least one declared step type ships as a
+      seed exercising the full path (seeds ARE the proof). "Check
+      httpbin" (`declaredsteptype.ExampleCheckHTTPBinID`, over the
+      seeded no-auth HTTPRequest example) + "Example: Declared step
+      type" (the workflow using it), proven end-to-end — real
+      guardrail park/approve, real HTTP round trip through the
+      synthesized exec — by
+      `executionsvc.TestSeededDeclaredStepTypeExample_ApproveFiresRealHTTPCallThroughTheDeclaredType`.
+
+## Slice A status (backend, this change)
+
+Shipped: the domain entity + CRUD/export/import/dataevent
+(`internal/domain/declaredsteptype`, `internal/services/configuresvc`
+`configuredeclaredsteptype*.go`), the `composition` package's
+data-backed `NodeType` resolution (`lookupNodeTypeEntry`, replacing
+every direct `nodeTypeRegistry` read in `execute.go`/`nodetypes.go`),
+the `steptype` contract family, the `NodeType.Declared` catalog
+marker, and the seeded proof described above. A real construction-
+order hazard was found and fixed in the same change: `main.go`
+constructs `CompositionService` (which seeds
+`composition.BuiltInWorkflows()`) before `ConfigureService` exists to
+wire the declared-type provider, so the seeded declared-type workflow
+is invisible on that first pass; `ConfigureService`'s constructor now
+calls the newly-exported `CompositionService.ReconcileBuiltIns()` a
+second time, after wiring the provider, to pick it up.
+
+Deliberately left to slice B: the designer UI itself (a form to
+create/edit a declared type by picking an engine binding — no forms
+were built this slice, per this goal's own scope split), the "needs
+code" designer outcome/copy, and reset/restore-to-seed affordances for
+declared step types (every sibling Configure entity has
+`Reset*ToSeed`/`Restore*` RPCs; declared step types don't yet — not
+required by this goal's acceptance criteria, added if/when slice B's
+UI needs them). Reference-integrity on a deleted declared type a
+workflow still points at follows today's existing dangling-`RefKind`
+behavior, same as every other Configure entity — real reference-
+integrity handling is goal 0046's own scope, not duplicated here.
