@@ -3887,6 +3887,9 @@ recorded as a real design input (`OPEN`), never silently dropped.
   goal-0007 dense-row invisible actions) are enforced in
   `.claude/rules/frontend.md`'s "Button semantics" section, not
   restated here.
+  **Update — full Blankslate anatomy (heading + description + a real
+  navigating primary action) is the standing convention for every
+  empty state, not just inventories, `LOCKED`, built (goal 0059).**
 - **User-facing "Composition" naming retired** — Activity's source
   chip says "Manual run" and its copy says "a direct Run click on a
   workflow"; the sidebar already said Workflows. Code-level

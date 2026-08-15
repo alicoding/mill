@@ -336,9 +336,13 @@ test('Review kind filter narrows pending rows by kind, and the Blankslate empty 
   if (result.isError) throw new Error(`import_workflow ultimately errored: ${JSON.stringify(result.content)}`)
 
   // Nothing pending: the kind Select disappears (fewer than 2 kinds
-  // present) and the calm Blankslate empty state shows.
+  // present) and the calm Blankslate empty state shows -- full anatomy
+  // (heading + description explaining where an approval would come
+  // from), not just a bare heading.
   await expect(page.getByTestId('review-kind-filter')).toHaveCount(0)
-  await expect(page.getByTestId('review-empty')).toBeVisible({ timeout: 10_000 })
+  const reviewEmpty = page.getByTestId('review-empty')
+  await expect(reviewEmpty).toBeVisible({ timeout: 10_000 })
+  await expect(reviewEmpty.getByText('Approvals land here when a workflow needs your review')).toBeVisible()
 
   // Cleanup: both minted workflows (import always mints a new ID), and
   // the MCP-write settings toggle.
