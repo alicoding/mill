@@ -17,6 +17,15 @@ import type { NodeType } from '../../bindings/github.com/alicoding/mill/internal
 // This file is a frontend DISPLAY map only -- domain Kinds
 // (nodeKind.ts) are UNTOUCHED, still what the backend/canvas-color
 // system reasons about; PaletteGroupId is presentation-only.
+//
+// Lives in shared/, not composition/, despite composition/NodePalette.tsx
+// being its original and still-primary consumer: the step designer
+// (configure/ConfigureStepTypes.tsx, goal 0054 slice B) needs the same
+// group id/label/order to offer as a step type's palette-group choice,
+// and configure/ may not depend on composition/
+// (.claude/rules/frontend.md's dependency-cruiser boundary) -- the
+// "used by 2+ bounded contexts" bar that rule sets for promoting a file
+// into shared/.
 export type PaletteGroupId =
   | 'triggers'
   | 'capture'
@@ -144,12 +153,22 @@ const KIND_FALLBACK_GROUP: Record<string, PaletteGroupId> = {
   terminal: 'guardrails',
 }
 
-// Structural (ID/Kind as plain strings), not `Pick<NodeType, ...>` --
-// this is a plain string-keyed lookup with no real dependency on
-// NodeKind's enum type, and staying structural lets the vitest suite
-// exercise the fallback path with an intentionally-unknown Kind
-// string without needing to import/cast the generated enum.
-export function paletteGroupFor(nt: { ID: string; Kind: string }): PaletteGroupId {
+// Structural (ID/Kind/PaletteGroup as plain strings), not
+// `Pick<NodeType, ...>` -- this is a plain string-keyed lookup with no
+// real dependency on NodeKind's enum type, and staying structural lets
+// the vitest suite exercise the fallback path with an
+// intentionally-unknown Kind string without needing to import/cast the
+// generated enum.
+export function paletteGroupFor(nt: { ID: string; Kind: string; PaletteGroup?: string }): PaletteGroupId {
+  // A declared step type (ADR-0037, goal 0054) is authored at runtime,
+  // so it can never have a compile-time NODE_TYPE_GROUP entry below --
+  // its own chosen group (composition.NodeType.PaletteGroup, empty for
+  // every built-in) is the only place its real group can come from.
+  // Checked first, no console.warn: this isn't a missing-mapping gap,
+  // it's the declared-type path working as designed.
+  if (nt.PaletteGroup && (PALETTE_GROUP_ORDER as string[]).includes(nt.PaletteGroup)) {
+    return nt.PaletteGroup as PaletteGroupId
+  }
   const known = NODE_TYPE_GROUP[nt.ID]
   if (known) return known
   console.warn(`[NodePalette] NodeType "${nt.ID}" (Kind "${nt.Kind}") has no palette display-group mapping -- add it to NODE_TYPE_GROUP in composition/paletteGroups.ts. Falling back to its Kind's nearest group.`)

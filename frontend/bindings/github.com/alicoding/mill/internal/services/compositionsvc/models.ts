@@ -18,7 +18,8 @@ export enum ClipboardApplyAction {
 /**
  * ClipboardApplyKind identifies the recognized payload shape --
  * "workflow" is the only one this goal implements (structure-sniffed by
- * the presence of both "nodes" and "edges"). Other Configure-entity
+ * the presence of "edges" plus either "steps" or the legacy "nodes"
+ * key). Other Configure-entity
  * export shapes (HTTPRequest/List/MCPServer/Decision,
  * configureservice_export.go) are a named, deliberate follow-up, not
  * silently dropped -- see the goal file.

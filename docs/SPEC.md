@@ -2162,6 +2162,7 @@ true and isn't what was asked for.
 | **Decision** (a reusable, typed **terminal outcome** — a genuinely new concept, not the routing node matured; the reference platform's own semantics: "rulesets route; Decisions terminate") | **Configure**, a Decisions tab — category (approve/deny/manual-review/action-needed/uncategorized, **immutable** after create, server-enforced with Duplicate as the migration path), typed output schema, optional webhook-by-HTTPRequest-reference | **1:many** — one configured Decision referenced by many workflows' terminal nodes via the ADR-0009 picker (`RefKind: "decision"`, quick-create included) | `LOCKED`, built end-to-end — [ADR-0027](adr/0027-decision-terminal-outcome.md) `accepted` 2026-08-10, three owner calls decided directly (Branch rename; webhook reuses the HTTPRequest capability by reference, never a second outbound-HTTP surface; manual-review parks into the existing Review queue). See §3.3's row for the build details |
 | **List** (a reusable, typed tabular dataset) | **Configure** | **1:many** — a shared dataset multiple workflows plausibly reference | `LOCKED` end-to-end, grown from key/value to typed by goal 0011 — `ConfigureView.tsx`'s Lists tab (`ConfigureLists.tsx`) authors a Column schema (a flat key/label/type editor, `ConfigureAttributes.tsx`'s own style) and Rows (a schema-generated, type-aware row editor), calling `ConfigureService`'s `Lists`/`CreateList`/`UpdateList`/`DeleteList`/`AddListRow`/`UpdateListRow`/`DeleteListRow`. See §3.3's List row for the full execution-side writeup |
 | **AI Provider** (goal 0031 — a connection to local Ollama or a BYO OpenAI-compatible/Anthropic endpoint) | **Configure** | **1:many** — one configured provider (endpoint, model, keychain secret) referenced by ID from any `process-ai-*` node | `LOCKED` end-to-end (entity + CRUD + UI) — `ConfigureView.tsx`'s AI Providers tab (`ConfigureAIProviders.tsx`) mirrors `ConfigureMCPServers.tsx`'s recipe exactly: `Kind`/`BaseURL`/`Model` fields, a write-only Secret field (`SetAIProviderSecret`, never pre-fills), `RefKind: "aiprovider"` on the canvas picker (ADR-0009) with quick-create, MCP read resource `mill://aiproviders`. See §3.3's AI node family row for the execution-side writeup |
+| **Declared step type** (goal 0054, [ADR-0037](adr/0037-declared-step-types.md) — a named palette step assembled from an already-configured HTTP operation, MCP tool, or callable workflow, no code) | **Configure** | **1:many** — one declared type appears in every workflow's palette identically to a built-in | `LOCKED` end-to-end (entity + CRUD + UI), `UX: PROTOTYPE` — `ConfigureView.tsx`'s Step types tab (`ConfigureStepTypes.tsx`) picks a binding kind (HTTP/MCP/workflow, reusing `EntityRefField`'s existing pickers) plus a "this needs code" honest outcome for anything none of the three engines cover, then lists the underlying engine's own `ConfigField`s with a per-field pin toggle (`StepTypePinnedFieldsEditor.tsx`) that locks and hides a value from every workflow author using the type. Creating/editing/deleting reaches an already-open canvas palette live (`mill-data-changed{entity:"steptype"}` refreshes both the Configure inventory and `composition.NodeTypes()`), including its own author-chosen palette group (`NodeType.PaletteGroup`, threaded from the declaration through `DeclaredStepBinding` — the only channel a runtime-authored type's group reaches the palette through, since it has no compile-time `NODE_TYPE_GROUP` entry). See §3.6's own row for the backend-registry writeup |
 
 **What Configure is *not*: a plugin system for user-defined node kinds.**
 Worth being explicit about, since "define a dedicated thing in Configure"
@@ -2423,8 +2424,8 @@ turns out to solve this without touching that dispute).
   | MCP-tool-shaped capability | Zero Go changes | Already zero-cost — Mill as MCP client, above |
 
 - **Declared step types — data-backed `NodeType` registry entries,
-  `LOCKED` (backend, goal 0054 slice A; UI: designer not yet built,
-  slice B). [ADR-0037](adr/0037-declared-step-types.md) adds a THIRD
+  `LOCKED` end-to-end (backend, goal 0054 slice A; designer UI, slice
+  B; `UX: PROTOTYPE`). [ADR-0037](adr/0037-declared-step-types.md) adds a THIRD
   way a `NodeType` can exist, one level past problem 1's compile-time
   self-registration above: a Configure-tier "Declared step type" entity
   (`internal/domain/declaredsteptype`) names a palette presentation
@@ -2454,10 +2455,10 @@ turns out to solve this without touching that dispute).
   before `ConfigureService` exists to wire the provider, so that first
   pass can't resolve a declared type yet; `ConfigureService`'s
   constructor re-runs `CompositionService.ReconcileBuiltIns()` once the
-  provider is live). The designer UI itself (create/edit a declared
-  type by picking an engine binding, no code) is slice B, not yet
-  built — this slice is the data-backed machinery it will sit on top
-  of.
+  provider is live). The designer UI (slice B — create/edit a declared
+  type by picking an engine binding, pin fields, and an explicit
+  "this needs code" outcome when none of the three engines fit) is
+  built — see §3.5's Declared step type row for the UI writeup.
 - **Registry duplicate-key behavior is inconsistent across the three
   registries this pattern produced, undocumented until found —
   `OPEN`.** `RegisterNodeType`/`RegisterTrigger` panic on a duplicate ID

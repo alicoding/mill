@@ -67,6 +67,27 @@ func TestDeclaredNodeType_SynthesizedView_SatisfiesNodeStandard(t *testing.T) {
 	}
 }
 
+// TestDeclaredNodeType_PaletteGroupCarriedThrough pins the one channel
+// (NodeType.PaletteGroup) that lets a declared type's author-chosen
+// display group reach the palette: since a declared type has no
+// compile-time entry in paletteGroups.ts's NODE_TYPE_GROUP map, the
+// frontend has no other way to place it outside its Kind's generic
+// fallback group.
+func TestDeclaredNodeType_PaletteGroupCarriedThrough(t *testing.T) {
+	withDeclaredNodeTypeLookup(t, DeclaredStepBinding{
+		ID: "declared-check-httpbin", Label: "Check httpbin", Description: "Calls the seeded httpbin integration.",
+		PaletteGroup:     "data",
+		EngineNodeTypeID: "integration-http",
+		PinnedConfig:     map[string]string{"requestId": "example-none-httpbin"},
+		HiddenFields:     []string{"requestId"},
+	})
+
+	nt := findNodeType(t, "declared-check-httpbin")
+	if nt.PaletteGroup != "data" {
+		t.Errorf("synthesized view PaletteGroup = %q, want %q", nt.PaletteGroup, "data")
+	}
+}
+
 // TestDeclaredNodeType_EffectInheritedVerbatim_NeverWeakensGating pins
 // ADR-0037's sharpest guarantee: "a declaration can never weaken
 // gating" -- a declared step type's Effect must equal its underlying

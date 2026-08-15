@@ -151,6 +151,15 @@ type NodeType struct {
 	// catalog/contract document is unaffected until a declared type
 	// actually exists -- additive, per ADR-0036's schema-evolution rule.
 	Declared bool
+	// PaletteGroup is the frontend display-group id (composition/
+	// paletteGroups.ts's PaletteGroupId) a declared step type was
+	// authored under -- empty for every built-in, whose group instead
+	// comes from paletteGroups.ts's own compile-time NODE_TYPE_GROUP map.
+	// A declared type has no compile-time map entry (it doesn't exist
+	// until a user creates it), so this is the only channel carrying its
+	// author-chosen group from the Configure-authored DeclaredStepType
+	// (ADR-0037) into the palette at all.
+	PaletteGroup string
 }
 
 // Position is a node's canvas coordinates. Ignored by execution entirely

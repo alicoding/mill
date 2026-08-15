@@ -851,7 +851,8 @@
       "ConfigFields": null,
       "Output": "the caller's typed input",
       "Effect": "",
-      "Declared": false
+      "Declared": false,
+      "PaletteGroup": ""
     },
     {
       "ID": "trigger-clipboard-watch",
@@ -861,7 +862,8 @@
       "ConfigFields": null,
       "Output": "the clipboard text that changed",
       "Effect": "",
-      "Declared": false
+      "Declared": false,
+      "PaletteGroup": ""
     },
     {
       "ID": "trigger-filesystem-watch",
@@ -900,7 +902,8 @@
       ],
       "Output": "the changed file path",
       "Effect": "",
-      "Declared": false
+      "Declared": false,
+      "PaletteGroup": ""
     },
     {
       "ID": "trigger-hotkey",
@@ -910,7 +913,8 @@
       "ConfigFields": null,
       "Output": "empty payload — the run starts here",
       "Effect": "",
-      "Declared": false
+      "Declared": false,
+      "PaletteGroup": ""
     },
     {
       "ID": "trigger-manual",
@@ -920,7 +924,8 @@
       "ConfigFields": null,
       "Output": "empty payload — the run starts here",
       "Effect": "",
-      "Declared": false
+      "Declared": false,
+      "PaletteGroup": ""
     },
     {
       "ID": "trigger-schedule",
@@ -945,7 +950,8 @@
       ],
       "Output": "empty payload — the run starts here",
       "Effect": "",
-      "Declared": false
+      "Declared": false,
+      "PaletteGroup": ""
     },
     {
       "ID": "trigger-system-event",
@@ -989,7 +995,8 @@
       ],
       "Output": "JSON payload: {event, runId, workflowId, workflowLabel, nodeId?, timestamp} -- the run/decision that caused this event. nodeId is only set for decision-parked (the parked step's ID); empty for run-completed/run-failed/run-cancelled.",
       "Effect": "",
-      "Declared": false
+      "Declared": false,
+      "PaletteGroup": ""
     },
     {
       "ID": "capture-attribute",
@@ -1014,7 +1021,8 @@
       ],
       "Output": "the attribute's value",
       "Effect": "",
-      "Declared": false
+      "Declared": false,
+      "PaletteGroup": ""
     },
     {
       "ID": "capture-clipboard-html",
@@ -1024,7 +1032,8 @@
       "ConfigFields": null,
       "Output": "HTML from the clipboard",
       "Effect": "read",
-      "Declared": false
+      "Declared": false,
+      "PaletteGroup": ""
     },
     {
       "ID": "capture-clipboard-info",
@@ -1034,7 +1043,8 @@
       "ConfigFields": null,
       "Output": "a summary of the clipboard's flavors",
       "Effect": "read",
-      "Declared": false
+      "Declared": false,
+      "PaletteGroup": ""
     },
     {
       "ID": "capture-file",
@@ -1076,7 +1086,8 @@
       ],
       "Output": "the file's contents",
       "Effect": "read",
-      "Declared": false
+      "Declared": false,
+      "PaletteGroup": ""
     },
     {
       "ID": "child-workflow",
@@ -1143,7 +1154,8 @@
       ],
       "Output": "the child workflow's result",
       "Effect": "none",
-      "Declared": false
+      "Declared": false,
+      "PaletteGroup": ""
     },
     {
       "ID": "code-execution",
@@ -1213,7 +1225,8 @@
       ],
       "Output": "combined stdout+stderr from the executed command",
       "Effect": "external",
-      "Declared": false
+      "Declared": false,
+      "PaletteGroup": ""
     },
     {
       "ID": "human-review",
@@ -1252,7 +1265,8 @@
       ],
       "Output": "payload unchanged, after approval",
       "Effect": "none",
-      "Declared": false
+      "Declared": false,
+      "PaletteGroup": ""
     },
     {
       "ID": "integration-http",
@@ -1277,7 +1291,8 @@
       ],
       "Output": "HTTP response body",
       "Effect": "external",
-      "Declared": false
+      "Declared": false,
+      "PaletteGroup": ""
     },
     {
       "ID": "list-lookup",
@@ -1362,7 +1377,8 @@
       ],
       "Output": "payload unchanged; match → attribute",
       "Effect": "read",
-      "Declared": false
+      "Declared": false,
+      "PaletteGroup": ""
     },
     {
       "ID": "list-search",
@@ -1443,7 +1459,8 @@
       ],
       "Output": "payload unchanged; matches -\u003e a typed Object attribute ({results, matched, first_match, match_count, list_id})",
       "Effect": "read",
-      "Declared": false
+      "Declared": false,
+      "PaletteGroup": ""
     },
     {
       "ID": "mcp-tool-call",
@@ -1496,7 +1513,8 @@
       ],
       "Output": "the tool's text result",
       "Effect": "external",
-      "Declared": false
+      "Declared": false,
+      "PaletteGroup": ""
     },
     {
       "ID": "process-ai-classify",
@@ -1563,7 +1581,8 @@
       ],
       "Output": "unchanged payload -- the chosen category is written into the named Attribute below",
       "Effect": "external",
-      "Declared": false
+      "Declared": false,
+      "PaletteGroup": ""
     },
     {
       "ID": "process-ai-completion",
@@ -1616,7 +1635,8 @@
       ],
       "Output": "the AI completion text, replacing the payload",
       "Effect": "external",
-      "Declared": false
+      "Declared": false,
+      "PaletteGroup": ""
     },
     {
       "ID": "process-ai-extract-structured",
@@ -1669,7 +1689,8 @@
       ],
       "Output": "unchanged payload -- the extracted typed result is written into the named Attributes below",
       "Effect": "external",
-      "Declared": false
+      "Declared": false,
+      "PaletteGroup": ""
     },
     {
       "ID": "process-extract-html",
@@ -1694,7 +1715,8 @@
       ],
       "Output": "the matched element's outer HTML",
       "Effect": "",
-      "Declared": false
+      "Declared": false,
+      "PaletteGroup": ""
     },
     {
       "ID": "process-html-to-markdown",
@@ -1704,7 +1726,8 @@
       "ConfigFields": null,
       "Output": "Markdown text",
       "Effect": "",
-      "Declared": false
+      "Declared": false,
+      "PaletteGroup": ""
     },
     {
       "ID": "process-inject-text",
@@ -1746,7 +1769,8 @@
       ],
       "Output": "payload with text injected",
       "Effect": "",
-      "Declared": false
+      "Declared": false,
+      "PaletteGroup": ""
     },
     {
       "ID": "process-run-receipt",
@@ -1756,7 +1780,8 @@
       "ConfigFields": null,
       "Output": "a JSON receipt of this run's steps so far",
       "Effect": "read",
-      "Declared": false
+      "Declared": false,
+      "PaletteGroup": ""
     },
     {
       "ID": "ruleset",
@@ -1766,7 +1791,8 @@
       "ConfigFields": null,
       "Output": "payload unchanged, if all rules pass",
       "Effect": "none",
-      "Declared": false
+      "Declared": false,
+      "PaletteGroup": ""
     },
     {
       "ID": "apply-clipboard-write-html",
@@ -1791,7 +1817,8 @@
       ],
       "Output": "the HTML it wrote",
       "Effect": "local",
-      "Declared": false
+      "Declared": false,
+      "PaletteGroup": ""
     },
     {
       "ID": "apply-clipboard-write-text",
@@ -1801,7 +1828,8 @@
       "ConfigFields": null,
       "Output": "the text it wrote",
       "Effect": "local",
-      "Declared": false
+      "Declared": false,
+      "PaletteGroup": ""
     },
     {
       "ID": "apply-file-write",
@@ -1874,7 +1902,8 @@
       ],
       "Output": "the payload it wrote, unchanged",
       "Effect": "local",
-      "Declared": false
+      "Declared": false,
+      "PaletteGroup": ""
     },
     {
       "ID": "decision-route",
@@ -1884,7 +1913,8 @@
       "ConfigFields": null,
       "Output": "payload and Attributes unchanged; routes to the matching outgoing edge",
       "Effect": "",
-      "Declared": false
+      "Declared": false,
+      "PaletteGroup": ""
     },
     {
       "ID": "decision-outcome",
@@ -1909,7 +1939,8 @@
       ],
       "Output": "the typed decision outcome",
       "Effect": "local",
-      "Declared": false
+      "Declared": false,
+      "PaletteGroup": ""
     }
   ],
   "import": {

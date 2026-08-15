@@ -10,6 +10,13 @@ type DeclaredStepBinding struct {
 	ID          string
 	Label       string
 	Description string
+	// PaletteGroup is the declaration's own display-group choice
+	// (declaredsteptype.PaletteGroup, one of the closed set frontend/
+	// src/composition/paletteGroups.ts's PaletteGroupId establishes) --
+	// carried straight through onto the synthesized NodeType's own
+	// PaletteGroup field below, unlike every other field here which
+	// feeds ConfigFields/exec instead.
+	PaletteGroup string
 	// EngineNodeTypeID names which already-registered NodeType this
 	// declaration delegates to (ADR-0037 Decision 1's "naming-and-
 	// binding over an engine that already exists") -- one of
@@ -102,6 +109,7 @@ func resolveDeclaredEntry(b DeclaredStepBinding) (nodeTypeEntry, bool) {
 		Output:       engine.nodeType.Output,
 		Effect:       engine.nodeType.Effect,
 		Declared:     true,
+		PaletteGroup: b.PaletteGroup,
 	}
 
 	exec := func(node Node, ctx ExecContext) (ExecContext, error) {
