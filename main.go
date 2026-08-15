@@ -1,3 +1,6 @@
+// Package main embeds the built frontend, sets up the window/tray, and
+// constructs + wires every bounded-context service. No domain logic
+// lives here (.claude/rules/backend.md).
 package main
 
 import (

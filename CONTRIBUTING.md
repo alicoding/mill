@@ -14,8 +14,8 @@ maintain in parallel with reality.
   bug with an obvious fix) can go straight to a PR. Anything that adds a
   capability, changes a schema, or touches more than a couple of files
   should start as an issue so the approach can be agreed before the work
-  is done — `docs/SPEC.md` is the source of truth for what Mill is and
-  why, and a PR that conflicts with it needs to resolve that first.
+  is done — the maintainers keep a living spec of what Mill is and why,
+  and a PR that conflicts with it needs to resolve that first.
 - **Run the local checks before opening a PR.** `task setup:hooks`
   installs Lefthook's pre-commit hooks, which mirror what CI runs
   (lint, vet, build, the file-length and root-layout checks). A PR

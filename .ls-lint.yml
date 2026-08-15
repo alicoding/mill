@@ -58,7 +58,12 @@ ls:
   # README below (checked, not new -- CODE_OF_CONDUCT deliberately stays
   # OUT per goal 0028's skip list until a second contributor exists, so
   # it's not pre-added here).
-  .*: regex:(README|SECURITY|CONTRIBUTING|CLAUDE|Taskfile|lefthook|go|\.golangci|\.ls-lint)
+  # AGENTS.md added goal 0049 (docs anti-rot, item 4): the cross-tool
+  # agent-instructions convention at agents.md -- a one-line pointer
+  # file to CLAUDE.md (not a symlink: Windows checkouts without
+  # Developer Mode/admin can't create real symlinks, so a clone would
+  # silently get a broken placeholder instead of Mill's actual context).
+  .*: regex:(README|SECURITY|CONTRIBUTING|CLAUDE|AGENTS|Taskfile|lefthook|go|\.golangci|\.ls-lint)
 
 ignore:
   - build

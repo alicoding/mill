@@ -46,11 +46,15 @@ linters:
         # Enforcing full Java/godoc-style coverage retroactively is
         # ceremony that fights the established house style, not a real
         # finding -- goal 0028's own explicit "tune revive if its
-        # defaults fight house style" guidance (e.g. package-comments).
+        # defaults fight house style" guidance.
         - name: exported
           disabled: true
+        # Not part of golangci-lint's revive default rule set (confirmed
+        # empirically: it doesn't fire until listed here explicitly) --
+        # goal 0049's anti-rot floor. Every package needs a real,
+        # one-time purpose/constraints comment; the rule holds that
+        # floor on every subsequent package forever after.
         - name: package-comments
-          disabled: true
 
 formatters:
   exclusions:

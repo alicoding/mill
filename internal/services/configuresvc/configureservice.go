@@ -1,3 +1,10 @@
+// Package configuresvc is the Wails-facing layer over Configure-authored
+// data: HTTPRequests, Lists, MCP servers, execution environments, AI
+// providers, and Decision/DeclaredStepType definitions -- the
+// integration-rules half of "business rules on canvas, integration
+// rules in Configure" (.claude/rules/architecture.md). Each entity type
+// owns its own persistence under one settings-store JSON blob per kind,
+// plus the seed/reconcile lifecycle shared with compositionsvc.
 package configuresvc
 
 import (
