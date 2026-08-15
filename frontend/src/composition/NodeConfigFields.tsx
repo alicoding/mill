@@ -15,6 +15,8 @@ import { ChildWorkflowBindingsEditor } from './ChildWorkflowBindingsEditor'
 import { DecisionOutcomeBindingsEditor } from './DecisionOutcomeBindingsEditor'
 import { MCPToolArgsEditor } from './MCPToolArgsEditor'
 import { ListSearchParamsEditor } from './ListSearchParamsEditor'
+import { AtlasFieldBindingsEditor } from './AtlasFieldBindingsEditor'
+import { AtlasCardMatchParamsEditor } from './AtlasCardMatchParamsEditor'
 import { WorkflowHoverPreview } from './WorkflowHoverPreview'
 import { NodeGuardrailSection } from './NodeGuardrailSection'
 import { RulesetEditor } from './RulesetEditor'
@@ -197,6 +199,12 @@ export function NodeConfigFields({ node, workflowId, attrs, nodeType, sameKindNo
         // picker and typed-argument fields, not a raw text box.
         .filter((field) => !(node.data.nodeTypeID === 'mcp-tool-call' && (field.Key === 'toolName' || field.Key === 'argumentsJSON')))
         .filter((field) => !(node.data.nodeTypeID === 'list-search' && field.Key === 'matchParams'))
+        // matchParams/fieldBindings are owned and rendered by
+        // AtlasCardMatchParamsEditor/AtlasFieldBindingsEditor below
+        // instead of this generic loop -- goal 0066, same reasoning as
+        // list-search's own matchParams field just above.
+        .filter((field) => !(node.data.nodeTypeID === 'process-atlas-card-find' && field.Key === 'matchParams'))
+        .filter((field) => !((node.data.nodeTypeID === 'apply-atlas-card-create' || node.data.nodeTypeID === 'apply-atlas-card-update') && field.Key === 'fieldBindings'))
         // outputFields is owned and rendered by AIExtractFieldsEditor below
         // instead of this generic loop -- a typed field-row editor, not a
         // raw JSON textarea (node-standard item 1).
@@ -362,6 +370,24 @@ export function NodeConfigFields({ node, workflowId, attrs, nodeType, sameKindNo
           matchParamsRaw={node.data.config.matchParams ?? ''}
           attrs={attrs}
           onChangeMatchParams={(raw) => onConfigChange('matchParams', raw)}
+        />
+      )}
+
+      {node.data.nodeTypeID === 'process-atlas-card-find' && (
+        <AtlasCardMatchParamsEditor
+          kindId={node.data.config.kindId ?? ''}
+          matchParamsRaw={node.data.config.matchParams ?? ''}
+          attrs={attrs}
+          onChangeMatchParams={(raw) => onConfigChange('matchParams', raw)}
+        />
+      )}
+
+      {(node.data.nodeTypeID === 'apply-atlas-card-create' || node.data.nodeTypeID === 'apply-atlas-card-update') && (
+        <AtlasFieldBindingsEditor
+          kindId={node.data.config.kindId ?? ''}
+          attrs={attrs}
+          fieldBindingsRaw={node.data.config.fieldBindings ?? ''}
+          onChangeFieldBindings={(raw) => onConfigChange('fieldBindings', raw)}
         />
       )}
 

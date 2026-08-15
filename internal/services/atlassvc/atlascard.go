@@ -29,14 +29,28 @@ func (a *AtlasService) resolveKindLocked(id string) (atlas.Kind, error) {
 // reparenting an EXISTING card (which may have its own descendants)
 // needs one.
 func (a *AtlasService) CreateCard(kindID, title, note string, fields map[string]string, parentID string, position *atlas.Position, viewMode atlas.ViewMode, source, mirrorPath, refreshWorkflowID string) (atlas.Card, error) {
-	return a.createCardWithID(seeding.NewSlugID(title, "card"), kindID, title, note, fields, parentID, position, viewMode, source, mirrorPath, refreshWorkflowID)
+	return a.createCardWithID(seeding.NewSlugID(title, "card"), kindID, title, note, fields, parentID, position, viewMode, source, mirrorPath, refreshWorkflowID, "")
+}
+
+// CreateCardForWorkflow is CreateCard's own logic for an
+// apply-atlas-card-create step (goal 0066) -- always root-level
+// (parentID ""), no canvas position/view-mode/mirror attributes, since
+// a workflow step creates a plain data card, not a space. sourceRunID
+// is the writing run's own id, threaded to notifyCardChangeLocked for
+// the trigger cycle guard. Not a frontend RPC: composition calls this
+// through composition.SetAtlasCardCreator, never Wails directly.
+//
+//wails:ignore
+func (a *AtlasService) CreateCardForWorkflow(kindID, title, note string, fields map[string]string, sourceRunID string) (atlas.Card, error) {
+	return a.createCardWithID(seeding.NewSlugID(title, "card"), kindID, title, note, fields, "", nil, "", "", "", "", sourceRunID)
 }
 
 // createCardWithID is CreateCard's own logic, parameterized on the new
 // card's id -- the seam ImportAtlas uses to preserve a caller-supplied
 // id (ADR-0036 decision 3), same shape as compositionsvc's
-// createWorkflowWithID/configuresvc's createListWithID.
-func (a *AtlasService) createCardWithID(id, kindID, title, note string, fields map[string]string, parentID string, position *atlas.Position, viewMode atlas.ViewMode, source, mirrorPath, refreshWorkflowID string) (atlas.Card, error) {
+// createWorkflowWithID/configuresvc's createListWithID. sourceRunID
+// (goal 0066) is "" for every caller except CreateCardForWorkflow.
+func (a *AtlasService) createCardWithID(id, kindID, title, note string, fields map[string]string, parentID string, position *atlas.Position, viewMode atlas.ViewMode, source, mirrorPath, refreshWorkflowID, sourceRunID string) (atlas.Card, error) {
 	a.mu.Lock()
 	kind, err := a.resolveKindLocked(kindID)
 	if err != nil {
@@ -68,12 +82,15 @@ func (a *AtlasService) createCardWithID(id, kindID, title, note string, fields m
 		return atlas.Card{}, fmt.Errorf("save card: %w", perr)
 	}
 	dataevent.Emit("atlas", c.ID)
+	a.notifyCardChange(c, "create", sourceRunID)
 	return c, nil
 }
 
 // UpdateCard replaces a Card's editable content in place -- ParentID/
 // Position move through MoveCard/SetPosition instead, so a plain
-// content edit never has to re-run the cycle check.
+// content edit never has to re-run the cycle check. sourceRunID is
+// always "" here (a manual Atlas UI edit); MergeCardFields is the
+// run-driven counterpart apply-atlas-card-update uses.
 func (a *AtlasService) UpdateCard(id, title, note string, fields map[string]string, source, mirrorPath, refreshWorkflowID string) (atlas.Card, error) {
 	a.mu.Lock()
 	idx := a.findCardLocked(id)
@@ -106,7 +123,73 @@ func (a *AtlasService) UpdateCard(id, title, note string, fields map[string]stri
 		return atlas.Card{}, fmt.Errorf("save card: %w", perr)
 	}
 	dataevent.Emit("atlas", c.ID)
+	a.notifyCardChange(c, "update", "")
 	return c, nil
+}
+
+// MergeCardFields writes fields onto an existing card's own Fields map,
+// leaving everything else (title, note, source, containment...)
+// untouched -- the apply-atlas-card-update step's own operation (goal
+// 0066), distinct from UpdateCard's wholesale replace: a workflow step
+// names only the fields it's actually changing. sourceRunID is the
+// writing run's own id, threaded to notifyCardChange for the trigger
+// cycle guard. Not a frontend RPC.
+//
+//wails:ignore
+func (a *AtlasService) MergeCardFields(id string, fields map[string]string, sourceRunID string) (atlas.Card, error) {
+	a.mu.Lock()
+	idx := a.findCardLocked(id)
+	if idx == -1 {
+		a.mu.Unlock()
+		return atlas.Card{}, fmt.Errorf("no card with id %q", id)
+	}
+	kind, err := a.resolveKindLocked(a.cards[idx].KindID)
+	if err != nil {
+		a.mu.Unlock()
+		return atlas.Card{}, err
+	}
+	previous := a.cards[idx]
+	c := previous
+	merged := make(map[string]string, len(c.Fields)+len(fields))
+	for k, v := range c.Fields {
+		merged[k] = v
+	}
+	for k, v := range fields {
+		merged[k] = v
+	}
+	c.Fields = merged
+	c.UpdatedAt = time.Now()
+	c.Seed = c.Seed.Touch()
+	if err := atlas.ValidateCard(c, kind); err != nil {
+		a.mu.Unlock()
+		return atlas.Card{}, err
+	}
+	a.cards[idx] = c
+	perr := a.persistLocked()
+	if perr != nil {
+		a.cards[idx] = previous
+	}
+	a.mu.Unlock()
+	if perr != nil {
+		return atlas.Card{}, fmt.Errorf("save card: %w", perr)
+	}
+	dataevent.Emit("atlas", c.ID)
+	a.notifyCardChange(c, "update", sourceRunID)
+	return c, nil
+}
+
+// CardsByKind returns every card of kindID -- the apply-atlas-card-find
+// step's own read (goal 0066), via composition.SetAtlasCardFinder.
+func (a *AtlasService) CardsByKind(kindID string) []atlas.Card {
+	a.mu.RLock()
+	defer a.mu.RUnlock()
+	var out []atlas.Card
+	for _, c := range a.cards {
+		if c.KindID == kindID {
+			out = append(out, c)
+		}
+	}
+	return out
 }
 
 // MoveCard reparents a card (sibling-vs-child move, ADR-0038's

@@ -91,6 +91,9 @@ type runInput struct {
 	// started before this field existed. Only RunWorkflowStepped sets
 	// it true.
 	Stepped bool
+	// AtlasSourceCardID names the card whose write fired trigger-atlas-card
+	// to start this run, "" otherwise (executionservice_atlascard.go).
+	AtlasSourceCardID string
 }
 
 // RunStep is one node's recorded execution within a run, for the
@@ -244,6 +247,7 @@ func NewExecutionService(databaseURL string, comp *compositionsvc.CompositionSer
 	// run's own recorded evidence-so-far through this seam
 	// (executionservice_receipt.go).
 	composition.SetRunEvidenceLookup(e.runEvidenceLookup)
+	composition.SetCurrentRunIDLookup(e.CurrentRunID) // goal 0066
 	return e, nil
 }
 
@@ -348,7 +352,7 @@ func (e *ExecutionService) runWorkflow(ctx execution.Context, in runInput) (stri
 // button, the MCP authoring loop's run_workflow tool) behaves exactly
 // as before this field existed.
 func (e *ExecutionService) RunWorkflow(workflowID string, kind RunKind, values map[string]string) (RunSummary, error) {
-	return e.runWorkflowStart(workflowID, kind, values, "", false)
+	return e.runWorkflowStart(workflowID, kind, values, "", false, "")
 }
 
 // RunWorkflowWithPayload is RunWorkflow plus a starting payload for the
@@ -358,7 +362,7 @@ func (e *ExecutionService) RunWorkflow(workflowID string, kind RunKind, values m
 // filesystem-watch trigger's changed file path) into the run instead of
 // starting from "".
 func (e *ExecutionService) RunWorkflowWithPayload(workflowID string, kind RunKind, values map[string]string, payload string) (RunSummary, error) {
-	return e.runWorkflowStart(workflowID, kind, values, payload, false)
+	return e.runWorkflowStart(workflowID, kind, values, payload, false, "")
 }
 
 // RunWorkflowStepped starts a workflow run in debug "step mode"
@@ -374,10 +378,10 @@ func (e *ExecutionService) RunWorkflowWithPayload(workflowID string, kind RunKin
 // trigger normally supplies the input (a filesystem-watch path) needs
 // the same substitute input a plain test run does.
 func (e *ExecutionService) RunWorkflowStepped(workflowID string, values map[string]string, payload string) (RunSummary, error) {
-	return e.runWorkflowStart(workflowID, RunKindTest, values, payload, true)
+	return e.runWorkflowStart(workflowID, RunKindTest, values, payload, true, "")
 }
 
-func (e *ExecutionService) runWorkflowStart(workflowID string, kind RunKind, values map[string]string, payload string, stepped bool) (RunSummary, error) {
+func (e *ExecutionService) runWorkflowStart(workflowID string, kind RunKind, values map[string]string, payload string, stepped bool, atlasSourceCardID string) (RunSummary, error) {
 	wf, ok := e.findWorkflow(workflowID)
 	if !ok {
 		return RunSummary{}, fmt.Errorf("unknown workflow: %s", workflowID)
@@ -394,15 +398,16 @@ func (e *ExecutionService) runWorkflowStart(workflowID string, kind RunKind, val
 
 	runID := uuid.NewString()
 	handle, err := execution.RunWorkflow(e.ctx, e.runWorkflow, runInput{
-		WorkflowID: wf.ID,
-		Nodes:      nodes,
-		Edges:      edges,
-		Attributes: attrs,
-		Kind:       kind,
-		Values:     values,
-		Version:    version,
-		Payload:    payload,
-		Stepped:    stepped,
+		WorkflowID:        wf.ID,
+		Nodes:             nodes,
+		Edges:             edges,
+		Attributes:        attrs,
+		Kind:              kind,
+		Values:            values,
+		Version:           version,
+		Payload:           payload,
+		Stepped:           stepped,
+		AtlasSourceCardID: atlasSourceCardID,
 	}, execution.WithWorkflowID(runID))
 	if err != nil {
 		return RunSummary{}, fmt.Errorf("start run: %w", err)

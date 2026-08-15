@@ -117,6 +117,20 @@
     "thresholdCaption": "0..1 similarity (Damerau-Levenshtein); defaults to 0.7 if left blank.",
     "addMatchParameter": "Add match parameter"
   },
+  "atlasCardMatchParamsEditor": {
+    "matchParameters": "Match parameters",
+    "pickKindFirst": "Pick a Kind above first.",
+    "title": "Title",
+    "column": "Column",
+    "matchType": "Match type",
+    "exact": "Exact",
+    "fuzzy": "Fuzzy",
+    "removeMatchParameterAriaLabel": "Remove match parameter",
+    "value": "Value",
+    "threshold": "Threshold",
+    "thresholdCaption": "0..1 similarity (Damerau-Levenshtein); defaults to 0.7 if left blank.",
+    "addMatchParameter": "Add match parameter"
+  },
   "decisionOutcomeBindingsEditor": {
     "heading": "Decision outputs",
     "description": "{{label}} ({{category}}) -- values written into this Decision's typed result when reached.",
@@ -137,6 +151,11 @@
   },
   "childWorkflowBindingsEditor": {
     "heading": "Child workflow input"
+  },
+  "atlasFieldBindingsEditor": {
+    "fieldValues": "Field values",
+    "pickKindFirst": "Pick a Kind above first.",
+    "noFieldsYet": "This kind has no fields to fill in."
   },
   "decisionEdgeInspector": {
     "heading": "Decision branch",
