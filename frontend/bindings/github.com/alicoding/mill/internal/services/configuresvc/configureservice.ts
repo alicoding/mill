@@ -349,6 +349,20 @@ export function MCPServers(): $CancellablePromise<mcpserver$0.MCPServer[] | null
 }
 
 /**
+ * PublishDecision snapshots id's current draft (Label/Category/
+ * Outputs/WebhookRequestID) as the next immutable DecisionVersion and
+ * advances PublishedVersion to it -- the audit-stamp reference point a
+ * run's "live@N" label reads (docs/adr/0040 decision 5). Unlike
+ * PublishWorkflow, this does NOT change what an unpinned decision-outcome
+ * node resolves (decision.ResolveOutcome always reads the live draft) --
+ * only what a NEW pin created after this call can pin to, and what an
+ * unpinned run's audit stamp names as "the last publish."
+ */
+export function PublishDecision(id: string): $CancellablePromise<decision$0.Decision> {
+    return $Call.ByID(4203628193, id);
+}
+
+/**
  * ResetAIProviderToSeed mirrors ResetMCPServerToSeed for AI providers.
  */
 export function ResetAIProviderToSeed(id: string): $CancellablePromise<aiprovider$0.AIProvider> {

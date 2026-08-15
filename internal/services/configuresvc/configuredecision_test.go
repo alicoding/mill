@@ -82,7 +82,7 @@ func TestCreateDecision_ThenResolveDecision_RoundTrips(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CreateDecision: %v", err)
 	}
-	rd, err := cfg.resolveDecision(d.ID)
+	rd, err := cfg.resolveDecision(d.ID, 0)
 	if err != nil {
 		t.Fatalf("resolveDecision: %v", err)
 	}
@@ -128,6 +128,36 @@ func TestUpdateDecision_SameCategory_Accepted(t *testing.T) {
 	}
 	if updated.Label != "Mine renamed" || len(updated.Outputs) != 1 {
 		t.Fatalf("UpdateDecision result = %+v, want label/outputs updated", updated)
+	}
+}
+
+// Regression: UpdateDecision built a fresh Decision{} literal without
+// carrying Versions/PublishedVersion forward, so any edit to a
+// published Decision silently erased its entire publish history --
+// docs/adr/0040 decision 4 requires editing the draft to leave
+// publish state untouched.
+func TestUpdateDecision_PreservesVersionsAndPublishedVersion(t *testing.T) {
+	cfg := newDecisionHarness(t)
+	d, err := cfg.CreateDecision("Mine", decision.CategoryApprove,
+		[]decision.OutputField{{Key: "x", Label: "X", Type: "text"}}, "")
+	if err != nil {
+		t.Fatalf("CreateDecision: %v", err)
+	}
+	published, err := cfg.PublishDecision(d.ID)
+	if err != nil {
+		t.Fatalf("PublishDecision: %v", err)
+	}
+	if published.PublishedVersion != 1 || len(published.Versions) != 1 {
+		t.Fatalf("PublishDecision result = %+v, want PublishedVersion 1 and one snapshot", published)
+	}
+
+	updated, err := cfg.UpdateDecision(d.ID, "Mine renamed", decision.CategoryApprove,
+		[]decision.OutputField{{Key: "x", Label: "X", Type: "text"}, {Key: "y", Label: "Y", Type: "text"}}, nil, "")
+	if err != nil {
+		t.Fatalf("UpdateDecision: %v", err)
+	}
+	if updated.PublishedVersion != 1 || len(updated.Versions) != 1 {
+		t.Fatalf("UpdateDecision result = %+v, want PublishedVersion/Versions preserved from before the edit", updated)
 	}
 }
 

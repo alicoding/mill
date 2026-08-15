@@ -159,6 +159,14 @@ func TestDataEvent_DecisionMutations(t *testing.T) {
 	}
 	assertEmitted(t, *got, "decision", d.ID)
 
+	// docs/adr/0040 decision 4: Publish is a new mutator, same emit
+	// discipline as Create/Update/Delete above.
+	got = captureEmits(t)
+	if _, err := cfg.PublishDecision(d.ID); err != nil {
+		t.Fatalf("PublishDecision: %v", err)
+	}
+	assertEmitted(t, *got, "decision", d.ID)
+
 	got = captureEmits(t)
 	if err := cfg.DeleteDecision(d.ID); err != nil {
 		t.Fatalf("DeleteDecision: %v", err)

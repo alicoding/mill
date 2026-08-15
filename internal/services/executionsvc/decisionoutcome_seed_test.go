@@ -272,3 +272,173 @@ func TestDecisionOutcome_NoWebhook_NeverAsks_WebhookPresent_AsksAndFiresOnApprov
 		t.Fatal("the webhook never fired after approval")
 	}
 }
+
+// The regression docs/goals/0046 itself demands (ADR-0040 decisions
+// 4-5): a version-pinned decision-outcome node keeps resolving the
+// PINNED snapshot after the live Decision's draft changes -- proven on
+// the exact seeded workflow that ships this pin (the Approve arm of
+// "Example: Branch to a decision"), through a real ExecutionService
+// run, not just the pure domain-layer unit test.
+func TestSeededBranchToDecisionExample_PinnedApproveArm_ResolvesFrozenV1AfterLiveEdit(t *testing.T) {
+	cfg, exec := newDecisionExecHarness(t)
+	wfID := findBuiltInWorkflowID(t, exec.comp, "Example: Branch to a decision")
+
+	var approve decision.Decision
+	for _, d := range cfg.Decisions() {
+		if d.ID == decision.ExampleApproveID {
+			approve = d
+		}
+	}
+	if approve.ID == "" {
+		t.Fatal("seeded Approve Decision not found")
+	}
+	if approve.PublishedVersion != 1 {
+		t.Fatalf("seeded Approve Decision PublishedVersion = %d, want 1", approve.PublishedVersion)
+	}
+
+	runApprove := func() decisionOutcomePayload {
+		t.Helper()
+		summary, err := exec.RunWorkflow(wfID, RunKindTest, map[string]string{"amount": "150"})
+		if err != nil {
+			t.Fatalf("RunWorkflow: %v", err)
+		}
+		if summary.Status != "SUCCESS" {
+			t.Fatalf("run status = %q (error: %q), want SUCCESS", summary.Status, summary.Error)
+		}
+		var out decisionOutcomePayload
+		if err := json.Unmarshal([]byte(summary.Output), &out); err != nil {
+			t.Fatalf("run output is not valid JSON: %v (%s)", err, summary.Output)
+		}
+		return out
+	}
+
+	before := runApprove()
+	if _, ok := before.Outputs["reviewNote"]; ok {
+		t.Fatalf("pinned v1 outcome carries the live-only 'reviewNote' field: %+v", before.Outputs)
+	}
+	if len(before.Outputs) != 2 {
+		t.Fatalf("pinned v1 outcome has %d output keys, want 2 (v1's own decision+score shape): %+v", len(before.Outputs), before.Outputs)
+	}
+
+	// Edit the LIVE Decision -- an additive field, allowed by ADR-0040
+	// decision 1's evolution rule -- after the workflow already ran
+	// once against the pin.
+	newOutputs := append(append([]decision.OutputField{}, approve.Outputs...),
+		decision.OutputField{Key: "postEditField", Label: "Added after the pinned run", Type: "text"})
+	if _, err := cfg.UpdateDecision(approve.ID, approve.Label, approve.Category, newOutputs, nil, approve.WebhookRequestID); err != nil {
+		t.Fatalf("UpdateDecision (live edit): %v", err)
+	}
+
+	after := runApprove()
+	if _, ok := after.Outputs["postEditField"]; ok {
+		t.Fatalf("pinned v1 outcome picked up a field added to the Decision AFTER publish: %+v", after.Outputs)
+	}
+	if len(after.Outputs) != 2 {
+		t.Fatalf("pinned v1 outcome has %d output keys after a live edit, want 2 (the pin must not drift): %+v", len(after.Outputs), after.Outputs)
+	}
+}
+
+// The audit-stamp half of the same regression (docs/adr/0040 decision
+// 5): the pinned arm's run stamps "v1"; the unpinned Deny arm (never
+// published) stamps "live@draft" -- both read from the run's own
+// recorded outcome JSON (StepDetail's Output pane), not re-derived.
+func TestSeededBranchToDecisionExample_RunStamp_PinnedVsLive(t *testing.T) {
+	_, exec := newDecisionExecHarness(t)
+	wfID := findBuiltInWorkflowID(t, exec.comp, "Example: Branch to a decision")
+
+	approveSummary, err := exec.RunWorkflow(wfID, RunKindTest, map[string]string{"amount": "150"})
+	if err != nil {
+		t.Fatalf("RunWorkflow (approve arm): %v", err)
+	}
+	var approveOut struct {
+		ResolvedVersion string `json:"resolvedVersion"`
+	}
+	if err := json.Unmarshal([]byte(approveSummary.Output), &approveOut); err != nil {
+		t.Fatalf("approve output is not valid JSON: %v (%s)", err, approveSummary.Output)
+	}
+	if approveOut.ResolvedVersion != "v1" {
+		t.Errorf("pinned approve arm resolvedVersion = %q, want v1", approveOut.ResolvedVersion)
+	}
+
+	denySummary, err := exec.RunWorkflow(wfID, RunKindTest, map[string]string{"amount": "50"})
+	if err != nil {
+		t.Fatalf("RunWorkflow (deny arm): %v", err)
+	}
+	var denyOut struct {
+		ResolvedVersion string `json:"resolvedVersion"`
+	}
+	if err := json.Unmarshal([]byte(denySummary.Output), &denyOut); err != nil {
+		t.Fatalf("deny output is not valid JSON: %v (%s)", err, denySummary.Output)
+	}
+	if denyOut.ResolvedVersion != "live@draft" {
+		t.Errorf("unpinned deny arm resolvedVersion = %q, want live@draft (the seeded Deny Decision has never been published)", denyOut.ResolvedVersion)
+	}
+}
+
+// PublishDecision freezes an immutable snapshot and advances
+// PublishedVersion, but an UNPINNED resolution keeps reading the live
+// draft -- unlike Workflow, Decision has no separate test/triggered
+// run kind to gate an unpinned resolution on (docs/adr/0040 decision
+// 4's own doc comment).
+func TestPublishDecision_FreezesSnapshot_UnpinnedResolutionStaysLive(t *testing.T) {
+	cfg, exec := newDecisionExecHarness(t)
+
+	d, err := cfg.CreateDecision("Publish test", decision.CategoryUncategorized,
+		[]decision.OutputField{{Key: "note", Label: "Note", Type: "text"}}, "")
+	if err != nil {
+		t.Fatalf("CreateDecision: %v", err)
+	}
+	published, err := cfg.PublishDecision(d.ID)
+	if err != nil {
+		t.Fatalf("PublishDecision: %v", err)
+	}
+	if published.PublishedVersion != 1 || len(published.Versions) != 1 {
+		t.Fatalf("PublishDecision = %+v, want PublishedVersion 1 and one snapshot", published)
+	}
+
+	// Mutate the live draft AFTER publish -- an additive field.
+	newOutputs := append(append([]decision.OutputField{}, d.Outputs...),
+		decision.OutputField{Key: "extra", Label: "Extra", Type: "text"})
+	if _, err := cfg.UpdateDecision(d.ID, d.Label, d.Category, newOutputs, nil, ""); err != nil {
+		t.Fatalf("UpdateDecision: %v", err)
+	}
+	// The frozen v1 snapshot must be untouched by the later edit.
+	for _, e := range cfg.Decisions() {
+		if e.ID != d.ID {
+			continue
+		}
+		if len(e.Versions) != 1 || len(e.Versions[0].Outputs) != 1 {
+			t.Fatalf("published snapshot mutated by a later live edit: %+v", e.Versions)
+		}
+	}
+
+	nodes, buildErr := composition.ResolveNodeDefaults([]composition.Node{
+		{ID: "t1", NodeTypeID: "trigger-manual"},
+		{ID: "d1", NodeTypeID: "decision-outcome", Config: map[string]string{"decisionId": d.ID}},
+	})
+	if buildErr != nil {
+		t.Fatalf("ResolveNodeDefaults: %v", buildErr)
+	}
+	wf, err := exec.comp.CreateWorkflow("Unpinned live-resolution test", "", nodes,
+		[]composition.Edge{{ID: "e1", Source: "t1", Target: "d1"}})
+	if err != nil {
+		t.Fatalf("CreateWorkflow: %v", err)
+	}
+	summary, err := exec.RunWorkflow(wf.ID, RunKindTest, nil)
+	if err != nil {
+		t.Fatalf("RunWorkflow: %v", err)
+	}
+	var out struct {
+		Outputs         map[string]any `json:"outputs"`
+		ResolvedVersion string         `json:"resolvedVersion"`
+	}
+	if err := json.Unmarshal([]byte(summary.Output), &out); err != nil {
+		t.Fatalf("run output is not valid JSON: %v (%s)", err, summary.Output)
+	}
+	if _, ok := out.Outputs["extra"]; !ok {
+		t.Errorf("unpinned run outputs = %+v, want the field added AFTER publish (live resolution never freezes)", out.Outputs)
+	}
+	if out.ResolvedVersion != "live@1" {
+		t.Errorf("unpinned run resolvedVersion = %q, want live@1 (published once, draft has since moved past it)", out.ResolvedVersion)
+	}
+}

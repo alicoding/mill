@@ -2270,6 +2270,20 @@
           "RefKind": "decision",
           "Multiline": false,
           "SystemManaged": false
+        },
+        {
+          "Key": "version",
+          "Label": "Pin to version (optional)",
+          "Type": "text",
+          "Required": false,
+          "Default": "",
+          "Description": "Leave empty to always resolve this Decision's current definition. Enter a version number to pin this step to that exact published snapshot, unaffected by later edits.",
+          "Options": null,
+          "Suggestions": null,
+          "Secret": false,
+          "RefKind": "",
+          "Multiline": false,
+          "SystemManaged": false
         }
       ],
       "Output": "the typed decision outcome",

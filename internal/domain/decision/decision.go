@@ -107,6 +107,20 @@ type Decision struct {
 	// Type. Empty for every Decision that has never had an output
 	// deleted, migration-free.
 	FieldTombstones []typedfield.FieldTombstone
+	// Versions/PublishedVersion give Decision the same draft/publish
+	// lifecycle Workflow already has (docs/adr/0021, applied to a
+	// second entity type by docs/adr/0040 decision 4): the fields above
+	// (Label/Category/Outputs/WebhookRequestID) are this Decision's own
+	// DRAFT, edited in place exactly as before this existed; Versions
+	// holds immutable snapshots frozen by Publish (versioning.go), and
+	// PublishedVersion (0 = never published) names which snapshot is
+	// the audit-stamp's "live@N" reference point -- unlike Workflow,
+	// unpinned resolution always reads the current draft, never the
+	// published pointer (see versioning.go's ResolveOutcome doc
+	// comment for why). Both zero-valued for every Decision persisted
+	// before this existed, migration-free.
+	Versions         []DecisionVersion
+	PublishedVersion int
 }
 
 // legacyOutputField mirrors the pre-ADR-0029 OutputField's own wire

@@ -82,6 +82,39 @@ export interface Decision {
      * deleted, migration-free.
      */
     "FieldTombstones": typedfield$0.FieldTombstone[] | null;
+
+    /**
+     * Versions/PublishedVersion give Decision the same draft/publish
+     * lifecycle Workflow already has (docs/adr/0021, applied to a
+     * second entity type by docs/adr/0040 decision 4): the fields above
+     * (Label/Category/Outputs/WebhookRequestID) are this Decision's own
+     * DRAFT, edited in place exactly as before this existed; Versions
+     * holds immutable snapshots frozen by Publish (versioning.go), and
+     * PublishedVersion (0 = never published) names which snapshot is
+     * the audit-stamp's "live@N" reference point -- unlike Workflow,
+     * unpinned resolution always reads the current draft, never the
+     * published pointer (see versioning.go's ResolveOutcome doc
+     * comment for why). Both zero-valued for every Decision persisted
+     * before this existed, migration-free.
+     */
+    "Versions": DecisionVersion[] | null;
+    "PublishedVersion": number;
+}
+
+/**
+ * DecisionVersion is one immutable snapshot of a Decision's
+ * schema-carrying definition (docs/adr/0040 decision 4) -- the same
+ * draft/publish shape composition.WorkflowVersion gives Workflow
+ * (ADR-0021), built on the shared internal/domain/versioning mechanism
+ * rather than a second hand-rolled copy of the numbering logic.
+ */
+export interface DecisionVersion {
+    "Version": number;
+    "SavedAt": string;
+    "Label": string;
+    "Category": Category;
+    "Outputs": OutputField[] | null;
+    "WebhookRequestID": string;
 }
 
 /**

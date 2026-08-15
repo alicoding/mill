@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/url"
+	"strconv"
 	"strings"
 
 	"github.com/alicoding/mill/internal/domain/decision"
@@ -25,22 +26,47 @@ type ResolvedDecision struct {
 	Category         string
 	Outputs          []decision.OutputField
 	WebhookRequestID string
+	// Version is the run-stamping label (docs/adr/0040 decision 5):
+	// "v<N>" for a pinned resolution, "live@<N>"/"live@draft" for an
+	// unpinned one -- decision.ResolvedOutcome.VersionStamp, carried
+	// across the lookup seam unchanged.
+	Version string
 }
 
 // lookupDecisionFn defaults to erroring so a decision-outcome node run
 // before ConfigureService exists (or before SetDecisionLookup wires it)
 // fails loudly instead of silently no-op'ing -- same pattern every
-// other lookup*Fn in this package already uses.
-var lookupDecisionFn = func(decisionID string) (ResolvedDecision, error) {
+// other lookup*Fn in this package already uses. pinnedVersion is 0 for
+// live resolution, or the version number a decision-outcome node's
+// optional "version" config pins to (docs/adr/0040 decision 4).
+var lookupDecisionFn = func(decisionID string, pinnedVersion int) (ResolvedDecision, error) {
 	return ResolvedDecision{}, fmt.Errorf("no decision lookup registered (yet) for id %q", decisionID)
 }
 
 // SetDecisionLookup wires the function decision-outcome nodes (and
 // EffectForNode's dynamic-effect hook below) use to resolve a
-// decisionId into its category/outputs/webhook. Called once from
-// main.go once ConfigureService exists.
-func SetDecisionLookup(fn func(decisionID string) (ResolvedDecision, error)) {
+// decisionId (optionally pinned to a published version) into its
+// category/outputs/webhook. Called once from main.go once
+// ConfigureService exists.
+func SetDecisionLookup(fn func(decisionID string, pinnedVersion int) (ResolvedDecision, error)) {
 	lookupDecisionFn = fn
+}
+
+// decisionPinnedVersion parses a decision-outcome node's optional
+// "version" config (docs/adr/0040 decision 4, same shape and
+// precedent as child-workflow's own version pin, childworkflow.go) --
+// the ONE parsing point every caller below shares, so a malformed
+// value is rejected identically everywhere it's read.
+func decisionPinnedVersion(node Node) (int, error) {
+	raw := strings.TrimSpace(node.Config["version"])
+	if raw == "" {
+		return 0, nil
+	}
+	n, err := strconv.Atoi(raw)
+	if err != nil || n < 1 {
+		return 0, fmt.Errorf("version %q is not a positive version number", raw)
+	}
+	return n, nil
 }
 
 // EffectForNode reports a node's ACTUAL guardrail effect class --
@@ -54,10 +80,13 @@ func SetDecisionLookup(fn func(decisionID string) (ResolvedDecision, error)) {
 // itself would get for the identical outbound call. Additive: every
 // other NodeType's effect is exactly NodeTypeEffect's static answer,
 // unchanged. The executionsvc guardrail gate calls this instead of
-// NodeTypeEffect directly (executionservice_guardrail.go).
+// NodeTypeEffect directly (executionservice_guardrail.go). A malformed
+// version pin resolves to the live (unpinned) answer here -- the exec
+// function is what actually rejects it at run time.
 func EffectForNode(node Node) guardrail.EffectClass {
 	if node.NodeTypeID == "decision-outcome" {
-		if rd, err := lookupDecisionFn(node.Config["decisionId"]); err == nil && rd.WebhookRequestID != "" {
+		pinned, _ := decisionPinnedVersion(node)
+		if rd, err := lookupDecisionFn(node.Config["decisionId"], pinned); err == nil && rd.WebhookRequestID != "" {
 			return guardrail.ClassExternal
 		}
 	}
@@ -88,7 +117,8 @@ func NodeAlwaysParks(node Node) bool {
 		return true
 	}
 	if node.NodeTypeID == "decision-outcome" {
-		if rd, err := lookupDecisionFn(node.Config["decisionId"]); err == nil {
+		pinned, _ := decisionPinnedVersion(node)
+		if rd, err := lookupDecisionFn(node.Config["decisionId"], pinned); err == nil {
 			return rd.Category == string(decision.CategoryManualReview)
 		}
 	}
@@ -160,9 +190,21 @@ func init() {
 				Description: "Which Configure-authored Decision this terminal step reaches.",
 				Default:     "", Type: FieldText, RefKind: "decision",
 			},
+			{
+				// docs/adr/0040 decision 4's version pin -- same shape and
+				// precedent as child-workflow's own "version" config
+				// (childworkflow.go).
+				Key: "version", Label: "Pin to version (optional)",
+				Description: "Leave empty to always resolve this Decision's current definition. Enter a version number to pin this step to that exact published snapshot, unaffected by later edits.",
+				Default:     "", Type: FieldText,
+			},
 		},
 	}, func(node Node, ctx ExecContext) (ExecContext, error) {
-		rd, err := lookupDecisionFn(node.Config["decisionId"])
+		pinned, err := decisionPinnedVersion(node)
+		if err != nil {
+			return ctx, fmt.Errorf("decision-outcome: %w", err)
+		}
+		rd, err := lookupDecisionFn(node.Config["decisionId"], pinned)
 		if err != nil {
 			return ctx, fmt.Errorf("decision-outcome: %w", err)
 		}
@@ -186,6 +228,13 @@ func init() {
 			"category": rd.Category,
 			"decision": rd.Label,
 			"outputs":  outputs,
+			// resolvedVersion is the run-stamping audit label
+			// (docs/adr/0040 decision 5) -- landing inside the step's own
+			// recorded Payload (RunStep.Output, decoded from this same
+			// JSON), the same "the run record IS the audit trail"
+			// precedent runInput.Version already established, rather than
+			// a new RunStep field.
+			"resolvedVersion": rd.Version,
 		}
 		payload, err := json.Marshal(outcome)
 		if err != nil {
