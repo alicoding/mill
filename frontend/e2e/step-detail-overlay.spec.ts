@@ -1,3 +1,4 @@
+import type { Locator, Page } from '@playwright/test'
 import { test, expect } from './fixtures/server'
 import { withClipboardLock } from './fixtures/clipboardLock'
 
@@ -7,7 +8,30 @@ import { withClipboardLock } from './fixtures/clipboardLock'
 // input/output, in place of splitting that same information across the
 // tiny sidebar and the separate Runs tab.
 
-function workflowRow(page: import('@playwright/test').Page, label: string) {
+// React Flow's Fit View/Zoom Out animate the `.react-flow__viewport`
+// element's own inline transform via d3-zoom's JS-driven interpolation
+// (not a CSS transition), so a fixed sleep after clicking either
+// control is a real flake risk under CPU contention -- it can resolve
+// before the pan/zoom settles, leaving pointInsideNode's bounding-box
+// read (and the double-click position derived from it) racing an
+// in-flight transform. Polling the transform string until it's
+// unchanged across two consecutive reads (same pattern
+// resizable-table.spec.ts's waitForStableBoundingBox uses for a drag
+// handle) waits on the actual condition instead of a guessed duration.
+async function waitForViewportStable(panel: Locator, timeout = 5_000) {
+  const viewport = panel.locator('.react-flow__viewport')
+  let previous: string | null = null
+  await expect
+    .poll(async () => {
+      const transform = await viewport.evaluate((el) => (el as HTMLElement).style.transform)
+      const stable = previous !== null && transform === previous
+      previous = transform
+      return stable
+    }, { timeout })
+    .toBe(true)
+}
+
+function workflowRow(page: Page, label: string) {
   return page.locator('[data-testid="inventory-row"][data-entity="workflow"]', { has: page.getByText(label, { exact: true }) })
 }
 
@@ -96,9 +120,9 @@ test('Double-clicking a step with a recorded run opens the overlay with real inp
     await row.click()
     const panel = activePanel(page)
     await panel.getByRole('button', { name: 'Fit View' }).click()
-    await page.waitForTimeout(300)
+    await waitForViewportStable(panel)
     await panel.getByRole('button', { name: 'Zoom Out' }).click()
-    await page.waitForTimeout(200)
+    await waitForViewportStable(panel)
 
     await dblClickCanvasNode(page, panel, 'Process: HTML → Markdown')
 
