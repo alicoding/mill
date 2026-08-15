@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "mill://schema/steptype/v1",
+  "properties": {
+    "schema": {
+      "type": "string"
+    },
+    "id": {
+      "type": "string"
+    },
+    "label": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "paletteGroup": {
+      "type": "string"
+    },
+    "engine": {
+      "type": "string"
+    },
+    "requestId": {
+      "type": "string"
+    },
+    "mcpServerId": {
+      "type": "string"
+    },
+    "toolName": {
+      "type": "string"
+    },
+    "workflowId": {
+      "type": "string"
+    },
+    "pinnedConfig": {
+      "additionalProperties": {
+        "type": "string"
+      },
+      "type": "object"
+    },
+    "hiddenFields": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    }
+  },
+  "additionalProperties": false,
+  "type": "object",
+  "required": [
+    "schema",
+    "label",
+    "paletteGroup",
+    "engine"
+  ]
+}

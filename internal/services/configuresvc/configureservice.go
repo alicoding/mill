@@ -13,6 +13,7 @@ import (
 	"github.com/alicoding/mill/internal/domain/aiprovider"
 	"github.com/alicoding/mill/internal/domain/composition"
 	"github.com/alicoding/mill/internal/domain/decision"
+	"github.com/alicoding/mill/internal/domain/declaredsteptype"
 	"github.com/alicoding/mill/internal/domain/execenv"
 	"github.com/alicoding/mill/internal/domain/httprequest"
 	"github.com/alicoding/mill/internal/domain/list"
@@ -65,16 +66,17 @@ const (
 // package directly, same reasoning as CompositionService's Syncer
 // interface for TriggerService.
 type ConfigureService struct {
-	mu          sync.Mutex
-	store       settings.Store
-	credentials credential.Store
-	requests    []httprequest.HTTPRequest
-	lists       []list.List
-	mcpServers  []mcpserver.MCPServer
-	decisions   []decision.Decision
-	execEnvs    []execenv.ExecEnv
-	aiProviders []aiprovider.AIProvider
-	composition *compositionsvc.CompositionService
+	mu                sync.Mutex
+	store             settings.Store
+	credentials       credential.Store
+	requests          []httprequest.HTTPRequest
+	lists             []list.List
+	mcpServers        []mcpserver.MCPServer
+	decisions         []decision.Decision
+	execEnvs          []execenv.ExecEnv
+	aiProviders       []aiprovider.AIProvider
+	declaredStepTypes []declaredsteptype.DeclaredStepType
+	composition       *compositionsvc.CompositionService
 }
 
 func NewConfigureService(store settings.Store, comp *compositionsvc.CompositionService, credentials credential.Store) *ConfigureService {
@@ -84,6 +86,7 @@ func NewConfigureService(store settings.Store, comp *compositionsvc.CompositionS
 	c.restoreDecisions()
 	c.restoreExecEnvs()
 	c.restoreAIProviders()
+	c.restoreDeclaredStepTypes()
 	// reconcileBuiltIn* (configureservice_builtin.go, docs/goals/0037)
 	// supersede the old insert-only topUpBuiltIn*: insert/upgrade/
 	// leave-alone/skip per golden, not just insert.
@@ -92,12 +95,20 @@ func NewConfigureService(store settings.Store, comp *compositionsvc.CompositionS
 	c.reconcileBuiltInMCPServers()
 	c.reconcileBuiltInExecEnvs()
 	c.reconcileBuiltInAIProviders()
+	c.reconcileBuiltInDeclaredStepTypes()
 	composition.SetHTTPRequestLookup(c.resolveHTTPRequest)
 	composition.SetListLookup(c.resolveList)
 	composition.SetMCPServerLookup(c.resolveMCPServer)
 	composition.SetDecisionLookup(c.resolveDecision)
 	composition.SetExecEnvLookup(c.resolveExecEnv)
 	composition.SetAIProviderLookup(c.resolveAIProvider)
+	composition.SetDeclaredNodeTypeLookup(c.declaredStepBindings)
+	// Must run AFTER the provider above is wired -- goal 0054 slice A's
+	// seeded workflow references a declared step type, only resolvable
+	// once SetDeclaredNodeTypeLookup is live (see
+	// reconcileDeclaredStepTypeSeedWorkflow's own doc comment for the
+	// full construction-order reasoning).
+	c.reconcileDeclaredStepTypeSeedWorkflow()
 	return c
 }
 

@@ -120,7 +120,9 @@ test('palette search matches both the shortened display name and the full underl
   await expect(panel.getByTestId('palette-item')).toHaveCount(0)
   await expect(panel.getByTestId('palette-no-matches')).toBeVisible()
 
-  // Clearing the query restores the full 31-item palette.
+  // Clearing the query restores the full 32-item palette (31
+  // RegisterNodeType call sites + the seeded "Check httpbin" declared
+  // step type, goal 0054 slice A).
   await search.fill('')
-  await expect(panel.getByTestId('palette-item')).toHaveCount(31)
+  await expect(panel.getByTestId('palette-item')).toHaveCount(32)
 })

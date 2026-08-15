@@ -2422,6 +2422,42 @@ turns out to solve this without touching that dispute).
   | Capabilities index entry | `capabilities.go`'s `List()` (1 line) | Already cheap, no change needed |
   | MCP-tool-shaped capability | Zero Go changes | Already zero-cost — Mill as MCP client, above |
 
+- **Declared step types — data-backed `NodeType` registry entries,
+  `LOCKED` (backend, goal 0054 slice A; UI: designer not yet built,
+  slice B). [ADR-0037](adr/0037-declared-step-types.md) adds a THIRD
+  way a `NodeType` can exist, one level past problem 1's compile-time
+  self-registration above: a Configure-tier "Declared step type" entity
+  (`internal/domain/declaredsteptype`) names a palette presentation
+  (label, description, palette group) and binds it to exactly one
+  already-registered engine's operation — `integration-http`
+  (`requestId`), `mcp-tool-call` (`mcpServerId`+`toolName`), or
+  `child-workflow` (`workflowId`) — plus optional pinned config values
+  and hidden fields. `composition.NodeTypes()` synthesizes each
+  declaration into a real `NodeType` on read (`ConfigFields` = the
+  engine's own fields minus hidden ones, pinned values applied as
+  defaults; `Effect` inherited from the engine verbatim, so a
+  declaration can never weaken gating; `exec` delegates to the engine's
+  own `exec` with pinned values winning over node-local ones) via an
+  injected `SetDeclaredNodeTypeLookup` seam (`ConfigureService` wires
+  it, same shape as `SetConnectorLookup`) — composition itself never
+  persists a declared type. Declared types appear in `list_step_types`,
+  the generated contract's catalog (`NodeType.Declared: true`,
+  additive), and the palette identically to built-ins; export/import
+  and the contract's `steptype` schema family
+  (`mill://schema/steptype/v1`) follow the same uniform id semantics
+  every other Configure entity already has. Seeded proof: "Check
+  httpbin" (a declared type over the seeded no-auth HTTPRequest
+  example) + "Example: Declared step type" (a workflow using it),
+  proven end-to-end (real guardrail park/approve, real HTTP round
+  trip) against the actual two-phase startup ordering this needed
+  (`CompositionService` constructs — and seeds `BuiltInWorkflows()` —
+  before `ConfigureService` exists to wire the provider, so that first
+  pass can't resolve a declared type yet; `ConfigureService`'s
+  constructor re-runs `CompositionService.ReconcileBuiltIns()` once the
+  provider is live). The designer UI itself (create/edit a declared
+  type by picking an engine binding, no code) is slice B, not yet
+  built — this slice is the data-backed machinery it will sit on top
+  of.
 - **Registry duplicate-key behavior is inconsistent across the three
   registries this pattern produced, undocumented until found —
   `OPEN`.** `RegisterNodeType`/`RegisterTrigger` panic on a duplicate ID

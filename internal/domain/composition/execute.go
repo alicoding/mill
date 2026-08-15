@@ -83,9 +83,11 @@ func SetGuardrailGate(g GuardrailGate) { guardrailGate = g }
 
 // NodeTypeEffect reports a node type's declared side-effect class
 // (docs/adr/0022's purity model); unknown IDs and undeclared types are
-// ClassNone.
+// ClassNone. Resolves through lookupNodeTypeEntry (declaredsteptype.go)
+// so a declared step type reports its underlying engine's Effect
+// verbatim -- ADR-0037: a declaration can never weaken gating.
 func NodeTypeEffect(nodeTypeID string) guardrail.EffectClass {
-	entry, ok := nodeTypeRegistry[nodeTypeID]
+	entry, ok := lookupNodeTypeEntry(nodeTypeID)
 	if !ok || entry.nodeType.Effect == "" {
 		return guardrail.ClassNone
 	}
@@ -165,7 +167,7 @@ func executeWorkflow(nodes []Node, edges []Edge, attrs []AttributeDef, run StepR
 		// below); both register with exec: nil by design (see each
 		// node type's own registration comment, e.g. decision.go).
 		if node.Kind != KindTrigger && node.Kind != KindDecision {
-			entry, ok := nodeTypeRegistry[node.NodeTypeID]
+			entry, ok := lookupNodeTypeEntry(node.NodeTypeID)
 			if !ok || entry.exec == nil {
 				return "", fmt.Errorf("unknown step type: %s", node.NodeTypeID)
 			}
