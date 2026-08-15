@@ -8,6 +8,7 @@ import ActivityView from "../views/ActivityView";
 import ReviewView from "../views/ReviewView";
 import CompositionView from "../composition/CompositionView";
 import ConfigureView from "../configure/ConfigureView";
+import { AtlasView } from "../atlas/AtlasView";
 import SettingsView from "../views/SettingsView";
 import PlaceholderView from "../views/PlaceholderView";
 import { CapabilitiesService, ExecutionService, SettingsService } from '../shared/bindings'
@@ -450,6 +451,8 @@ function App() {
             {view.kind === 'composition' && <CompositionView/>}
 
             {view.kind === 'configure' && <ConfigureView key={view.tab} initialTab={view.tab}/>}
+
+            {view.kind === 'atlas' && <AtlasView initialCardID={view.cardID}/>}
 
             {view.kind === 'settings' && <SettingsView/>}
 

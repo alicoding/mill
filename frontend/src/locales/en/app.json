@@ -19,6 +19,7 @@
     "groups": {
       "workflows": "Workflows",
       "configure": "Configure",
+      "atlas": "Atlas",
       "actions": "Mill"
     },
     "entries": {
@@ -26,6 +27,7 @@
       "jumpToIntegration": "Jump to Integration",
       "jumpToLists": "Jump to Lists",
       "jumpToMcpServers": "Jump to MCP Servers",
+      "jumpToAtlasCard": "{{kind}} in Atlas",
       "openMill": "Open Mill",
       "openSettings": "Open Settings",
       "review": "Review",
@@ -112,6 +114,7 @@
     "home": "Home",
     "workflows": "Workflows",
     "configure": "Configure",
+    "atlas": "Atlas",
     "activity": "Activity",
     "review": "Review",
     "settings": "Settings",

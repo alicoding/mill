@@ -2,6 +2,7 @@ import i18n from 'i18next'
 import { initReactI18next } from 'react-i18next'
 import common from '../locales/en/common.json'
 import app from '../locales/en/app.json'
+import atlas from '../locales/en/atlas.json'
 import composition from '../locales/en/composition.json'
 import configure from '../locales/en/configure.json'
 import views from '../locales/en/views.json'
@@ -31,12 +32,12 @@ import views from '../locales/en/views.json'
 // package).
 void i18n.use(initReactI18next).init({
   resources: {
-    en: { common, app, composition, configure, views },
+    en: { common, app, atlas, composition, configure, views },
   },
   lng: 'en',
   fallbackLng: 'en',
   defaultNS: 'common',
-  ns: ['common', 'app', 'composition', 'configure', 'views'],
+  ns: ['common', 'app', 'atlas', 'composition', 'configure', 'views'],
   interpolation: {
     // React already escapes interpolated values when rendering JSX --
     // i18next's own default (HTML-escaping) would double-escape them.

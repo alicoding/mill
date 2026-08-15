@@ -1,8 +1,8 @@
 import { useCallback, useMemo } from 'react'
 import type { NodeChange } from '@xyflow/react'
 import type { CanvasStore, CanvasNode, CanvasNoteNode } from './canvasStore'
-import { findFreeDropPosition } from './canvasLayout'
-import { CANVAS_NOTE_WIDTH, CANVAS_NOTE_HEIGHT } from './canvasConstants'
+import { findFreeDropPosition } from '../shared/canvasLayout'
+import { CANVAS_NODE_WIDTH, CANVAS_NODE_HEIGHT, CANVAS_NOTE_WIDTH, CANVAS_NOTE_HEIGHT } from './canvasConstants'
 import type { NoteActionsContextValue } from './canvasNoteActions'
 
 // Split out of CompositionCanvas.tsx at the 500-line limit (CLAUDE.md)
@@ -58,7 +58,7 @@ export function useCanvasNotes(
   // out from the same starting spot instead of stacking unreadably.
   const addNoteNear = useCallback(
     (desired: { x: number; y: number }) => {
-      const position = findFreeDropPosition(desired, [...nodes, ...notes])
+      const position = findFreeDropPosition(desired, [...nodes, ...notes], { width: CANVAS_NODE_WIDTH, height: CANVAS_NODE_HEIGHT })
       addNote({
         id: crypto.randomUUID(),
         type: 'note',

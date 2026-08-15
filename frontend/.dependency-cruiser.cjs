@@ -15,7 +15,7 @@ module.exports = {
       severity: 'error',
       comment: 'shared/ must not depend on any other bounded-context folder',
       from: { path: '^src/shared' },
-      to: { path: '^src/(app|views|composition|configure)' },
+      to: { path: '^src/(app|views|composition|configure|atlas)' },
     },
     {
       name: 'configure-must-not-depend-on-composition',
@@ -25,10 +25,31 @@ module.exports = {
       to: { path: '^src/composition' },
     },
     {
+      name: 'configure-must-not-depend-on-atlas',
+      severity: 'error',
+      comment: 'configure/ is a lower layer than atlas/ (ADR-0038: Atlas reuses configure/EntityRefField for its refresh-workflow picker), never the reverse',
+      from: { path: '^src/configure' },
+      to: { path: '^src/atlas' },
+    },
+    {
+      name: 'atlas-must-not-depend-on-composition',
+      severity: 'error',
+      comment: 'atlas/ (ADR-0038 spaces/cards) and composition/ (workflow canvas) are sibling domain surfaces over configure/ + shared/, neither reaches into the other',
+      from: { path: '^src/atlas' },
+      to: { path: '^src/composition' },
+    },
+    {
+      name: 'composition-must-not-depend-on-atlas',
+      severity: 'error',
+      comment: 'the reverse direction of atlas-must-not-depend-on-composition, kept as its own rule so either import direction is reported by name',
+      from: { path: '^src/composition' },
+      to: { path: '^src/atlas' },
+    },
+    {
       name: 'domain-folders-must-not-depend-on-views-or-app',
       severity: 'error',
-      comment: 'composition/ and configure/ are domain UI, not aware of top-level pages or the app shell',
-      from: { path: '^src/(composition|configure)' },
+      comment: 'composition/, configure/, and atlas/ are domain UI, not aware of top-level pages or the app shell',
+      from: { path: '^src/(composition|configure|atlas)' },
       to: { path: '^src/(views|app)' },
     },
     {

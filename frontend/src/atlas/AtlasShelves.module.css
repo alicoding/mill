@@ -1,0 +1,8 @@
+.shelves {
+    width: 100%;
+    overflow-y: auto;
+    flex: 1 1 auto;
+}
+.empty {
+    padding: var(--base-size-24) 0;
+}

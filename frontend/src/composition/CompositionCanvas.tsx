@@ -12,7 +12,8 @@ import { useStore } from 'zustand'
 import type { NodeType, Workflow, Issue } from '../../bindings/github.com/alicoding/mill/internal/domain/composition/models'
 import { createCanvasStore, type CanvasNode } from './canvasStore'
 import { rfNodeTypes } from './rfNodeTypes'
-import { findFreeDropPosition } from './canvasLayout'
+import { findFreeDropPosition } from '../shared/canvasLayout'
+import { CANVAS_NODE_WIDTH, CANVAS_NODE_HEIGHT } from './canvasConstants'
 import { isValidCanvasConnection } from './canvasConnectionRules'
 import { computeInitialCanvas, useCanvasHotExit } from './useCanvasHotExit'
 import { useCanvasSave } from './useCanvasSave'
@@ -297,7 +298,7 @@ function CanvasInner({ nodeTypes, workflow, tabKey, onBack, onSaved, readOnly, o
       // placed).
       if (nt.Kind === 'trigger' && nodes.some((n) => n.data.kind === 'trigger')) return
       const desired = screenToFlowPosition({ x: event.clientX, y: event.clientY })
-      const position = findFreeDropPosition(desired, nodes)
+      const position = findFreeDropPosition(desired, nodes, { width: CANVAS_NODE_WIDTH, height: CANVAS_NODE_HEIGHT })
       const config: Record<string, string> = {}
       for (const field of nt.ConfigFields ?? []) config[field.Key] = field.Default
       const node: CanvasNode = {

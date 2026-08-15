@@ -27,6 +27,7 @@ const (
 	ViewReview      ViewKind = "review"
 	ViewComposition ViewKind = "composition"
 	ViewConfigure   ViewKind = "configure"
+	ViewAtlas       ViewKind = "atlas"
 	ViewPlaceholder ViewKind = "placeholder"
 )
 
@@ -78,6 +79,13 @@ func List() []Capability {
 		{
 			ID: "capability-configure", Label: "Configure", SpecSection: "3.5",
 			Status: StatusOpen, View: ViewConfigure,
+		},
+		{
+			// The projection surface (docs/adr/0038): a zoomable space/card
+			// graph over user-owned files, sibling to Workflows/Configure --
+			// closes SPEC §0's workbench OPEN.
+			ID: "capability-atlas", Label: "Atlas", SpecSection: "0",
+			Status: StatusOpen, View: ViewAtlas,
 		},
 		{
 			ID: "activity-log", Label: "Activity / event log", NavLabel: "Activity", SpecSection: "2.2",

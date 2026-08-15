@@ -5,6 +5,7 @@
 // change here, not an every-consumer rewrite. Domain-model imports
 // (bindings/.../internal/domain/*, internal/adapters/*) are unaffected
 // by service moves and stay direct.
+export { AtlasService } from '../../bindings/github.com/alicoding/mill/internal/services/atlassvc'
 export { CapabilitiesService } from '../../bindings/github.com/alicoding/mill/internal/services/capabilitysvc'
 export { CompositionService } from '../../bindings/github.com/alicoding/mill/internal/services/compositionsvc'
 export {

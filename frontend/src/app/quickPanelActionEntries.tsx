@@ -1,6 +1,7 @@
 import type { ElementType, ReactNode } from 'react'
 import { CounterLabel } from '@primer/react'
 import { CopyIcon, GearIcon, HomeIcon } from '@primer/octicons-react'
+import type { Card, Kind } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 import type { HTTPRequest } from '../../bindings/github.com/alicoding/mill/internal/domain/httprequest/models'
 import type { List } from '../../bindings/github.com/alicoding/mill/internal/domain/list/models'
 import type { MCPServer } from '../../bindings/github.com/alicoding/mill/internal/domain/mcpserver/models'
@@ -16,7 +17,7 @@ import { HotkeyHint } from './HotkeyHint'
 // which are pure derivations from already-fetched entity lists and a
 // handful of stable callbacks -- no hook state of their own.
 
-export type PanelGroupId = 'workflows' | 'configure' | 'actions'
+export type PanelGroupId = 'workflows' | 'configure' | 'atlas' | 'actions'
 
 export interface PanelEntry extends PaletteSearchable {
   id: string
@@ -40,13 +41,17 @@ export function buildConfigureAndActionEntries(params: {
   requests: HTTPRequest[] | null | undefined
   lists: List[] | null | undefined
   mcpServers: MCPServer[] | null | undefined
+  atlasCards: Card[] | null | undefined
+  atlasKinds: Kind[] | null | undefined
   reviewPendingCount: number
   jumpToConfigure: (tab: string) => void
+  jumpToAtlasCard: (cardID: string) => void
   openMain: (view: string) => void
   applyFromClipboard: () => void
 }): PanelEntry[] {
-  const { t, requests, lists, mcpServers, reviewPendingCount, jumpToConfigure, openMain, applyFromClipboard } = params
+  const { t, requests, lists, mcpServers, atlasCards, atlasKinds, reviewPendingCount, jumpToConfigure, jumpToAtlasCard, openMain, applyFromClipboard } = params
   const entries: PanelEntry[] = []
+  const atlasKindByID = new Map((atlasKinds ?? []).map((k) => [k.ID, k]))
 
   for (const req of requests ?? []) {
     entries.push({
@@ -79,6 +84,23 @@ export function buildConfigureAndActionEntries(params: {
       searchText: server.Label.toLowerCase(),
       leadingVisual: ENTITY_ICON.mcpserver.Icon,
       run: () => jumpToConfigure('mcpservers'),
+    })
+  }
+
+  // Atlas card search (docs/goals/0061 item 6, ADR-0038): search is the
+  // door into a space -- selecting a row opens the main window on the
+  // Atlas surface already drilled to the card's parent, with the card's
+  // own overlay open (App.tsx's useMillNavigate parses 'atlas:<cardID>').
+  for (const card of atlasCards ?? []) {
+    const kind = atlasKindByID.get(card.KindID)
+    entries.push({
+      id: `atlas:${card.ID}`,
+      groupId: 'atlas',
+      text: card.Title,
+      description: kind ? t('quickPanel.entries.jumpToAtlasCard', { kind: kind.Label }) : undefined,
+      searchText: card.Title.toLowerCase(),
+      leadingVisual: CAPABILITY_ICON['capability-atlas'],
+      run: () => jumpToAtlasCard(card.ID),
     })
   }
 
