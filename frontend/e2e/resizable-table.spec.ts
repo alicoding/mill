@@ -82,44 +82,49 @@ test.describe('Resizable table', () => {
     const box = await waitForStableBoundingBox(handles.first())
     const x = box.x + box.width / 2
     const y = box.y + box.height / 2
-    await page.mouse.move(x, y)
-    await page.mouse.down()
-    // Discrete, individually-awaited move calls, not one
-    // page.mouse.move(..., { steps: N }) -- Playwright's own `steps`
-    // option dispatches every interpolated sub-move as fast as possible
-    // within a SINGLE CDP command, which is exactly the shape a
-    // browser's real pointermove-coalescing behavior (documented via
-    // the PointerEvent getCoalescedEvents() API, not Playwright-
-    // specific) can collapse down to just the final position -- under
-    // real load, that final dispatch can itself still be racing
-    // ResizableTable.tsx's synchronous onMove handler when the very
-    // next command (mouse.up()) fires. Awaiting each move individually
-    // gives the renderer a real yield point between them.
+    // Real OS-level page.mouse.move/down/up synthesizes actual
+    // mousemove/mouseup input via CDP, which under CPU contention (4
+    // parallel workers, each a full browser) can have individual
+    // pointermove dispatches genuinely lost in the browser's own input
+    // pipeline before the renderer's main thread gets to them -- not a
+    // delay a longer poll or an animation-frame yield can recover from,
+    // since a dropped event never arrives at all (confirmed: neither a
+    // per-step `expect.poll` nor a `requestAnimationFrame` round-trip
+    // between moves made this deterministic under load). Driving the
+    // drag via PointerEvents dispatched directly on the handle removes
+    // the OS/CDP input pipeline from the equation entirely -- it still
+    // exercises ResizableTable.tsx's real onPointerDown/onMove/onUp
+    // listeners (the actual code under test), just via synchronous
+    // in-page dispatch instead of hardware-level simulation, so no
+    // event can be silently coalesced away before it reaches them.
+    // pointerdown + every pointermove dispatch inside ONE evaluate call
+    // (one synchronous in-page execution, not N separate round-trips) --
+    // JS's single-threaded run-to-completion guarantee is what makes
+    // this deterministic: nothing else can interleave between two
+    // dispatchEvent calls in the same synchronous callback, unlike N
+    // separately-awaited Playwright commands each of which yields back
+    // to Node (and can be delayed there) between steps.
+    const pointerId = 1
     const dragSteps = 6
-    for (let i = 1; i <= dragSteps; i++) {
-      await page.mouse.move(x + (120 * i) / dragSteps, y)
-    }
-    // Wait for the drag's own effect to actually land in the DOM BEFORE
-    // releasing -- a second, distinct timing hazard from the bounding-box
-    // one waitForStableBoundingBox guards above: even with discrete moves
-    // above, `await page.mouse.move()` resolving doesn't itself guarantee
-    // the page's own onMove listener has finished running by the time the
-    // NEXT command dispatches. Polling for the expected width (not a
-    // fixed sleep) before releasing removes that race deterministically.
-    await expect.poll(() => firstTrack(), { timeout: 8_000 }).toBeGreaterThan(before + 100)
-    await page.mouse.up()
+    await handles.first().evaluate((el, { startX, startY, dx, steps, pointerId: pid }) => {
+      el.dispatchEvent(new PointerEvent('pointerdown', { pointerId: pid, clientX: startX, clientY: startY, bubbles: true, cancelable: true }))
+      for (let i = 1; i <= steps; i++) {
+        el.dispatchEvent(new PointerEvent('pointermove', { pointerId: pid, clientX: startX + (dx * i) / steps, clientY: startY, bubbles: true, cancelable: true }))
+      }
+    }, { startX: x, startY: y, dx: 120, steps: dragSteps, pointerId })
+    const midDrag = await firstTrack()
+    expect(midDrag).toBeGreaterThan(before + 100)
+    await handles.first().evaluate((el, pid) => {
+      el.dispatchEvent(new PointerEvent('pointerup', { pointerId: pid, bubbles: true, cancelable: true }))
+    }, pointerId)
     const after = await firstTrack()
     expect(after).toBeGreaterThan(before + 100)
 
     // pointerup's own onUp handler (ResizableTable.tsx) writes the width
-    // to localStorage via persist() -- a THIRD, distinct instance of the
-    // same "await page.mouse.up() resolving doesn't mean the page's own
-    // JS event listener has finished running" race the poll above just
-    // guarded for the visual width. Waiting for the actual localStorage
-    // write to land, not just assuming mouse.up()'s own resolution
-    // implies it already has, is what makes the reload-persistence
-    // assertion below deterministic instead of occasionally reloading
-    // one tick too early and reading back the pre-drag default.
+    // to localStorage via persist(), synchronously within the dispatched
+    // event above -- already landed by construction. Polled rather than
+    // asserted directly anyway, so a future async persist() path stays
+    // covered without silently going stale.
     await expect
       .poll(() => page.evaluate(() => localStorage.getItem('mill-cols-requests')), { timeout: 8_000 })
       .not.toBeNull()
