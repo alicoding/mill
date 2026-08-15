@@ -61,6 +61,36 @@ its output shapes any collection-building goals. Coordinates with
 entity families join the generated contract). Does not block the
 0044→0053→0052→0054 arc.
 
+
+## Working method — DECIDED 2026-08-14 (owner-directed): fit-gap analysis, constraints as knock-outs
+
+The boundary question is answered by the enterprise software-selection
+standard, not from taste: a requirements matrix read as fit-gap.
+Structure, in order:
+
+1. **Knock-out criteria first** (constraints are gates, never scored
+   columns — one X disqualifies): runs on the locked-down work
+   machine as-is; content never leaves machine/tenant; no new
+   accounts/purchases; the artifact stays hand-editable and portable
+   when any tool dies.
+2. **Requirements as testable one-liners, MoSCoW-ranked** (Musts from
+   the owner's own recorded needs: one-keystroke capture with zero
+   filing decisions; records-not-prose; stable addresses; one-paste
+   AI-context; update-in-place with history-on-demand; Should:
+   derivable status, stable-id cross-references; Could:
+   machinery-driven reformatting).
+3. **Candidates include COMBINATIONS as first-class columns** — the
+   M365 pieces singly, the files+Word+Copilot combo, that combo plus
+   Mill-as-pipe, and "Mill builds a collections capability" as the
+   LAST column, never the first.
+4. **Cells are three-state** (full / partial-with-workaround /
+   absent); the partials carry the real information.
+5. **Verdict is per residual gap, not per product**: the best
+   surviving combo's remaining gaps each get buy / bridge / build /
+   tolerate — and every "build" candidate faces ADR-0035's multi-use
+   test individually. This is how the notes question decomposes into
+   small honest calls instead of one identity decision.
+
 ## Acceptance (checkable)
 
 - [ ] Research findings + per-pattern adopt/reject recorded.
