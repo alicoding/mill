@@ -176,6 +176,8 @@ var httpRequestProofRegistry = map[string]seedProof{
 var decisionProofRegistry = map[string]seedProof{
 	decision.ExampleApproveID: proven(
 		"executionsvc.TestSeededBranchToDecisionExample_HighAmount_ApproveOutcome",
+		"executionsvc.TestSeededBranchToDecisionExample_PinnedApproveArm_ResolvesFrozenV1AfterLiveEdit",
+		"executionsvc.TestSeededBranchToDecisionExample_RunStamp_PinnedVsLive",
 	),
 	decision.ExampleDenyID: proven(
 		"executionsvc.TestSeededBranchToDecisionExample_LowAmount_DenyOutcome",

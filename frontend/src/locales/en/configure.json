@@ -207,7 +207,15 @@
     "outputsSummary": "Outputs: {{keys}}",
     "none": "none",
     "deleteConfirmTitle": "Delete decision?",
-    "deleteConfirmBody": "This permanently deletes \"{{label}}\". This cannot be undone."
+    "deleteConfirmBody": "This permanently deletes \"{{label}}\". This cannot be undone.",
+    "versions": {
+      "heading": "Versions",
+      "neverPublished": "Never published",
+      "publishedAt": "Published v{{version}}",
+      "publish": "Publish",
+      "live": "Live",
+      "versionPrefix": "v{{version}}"
+    }
   },
   "configureMCPServers": {
     "heading": "MCP Servers",

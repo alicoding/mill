@@ -178,8 +178,13 @@ func BuiltInWorkflows() []Workflow {
 		{ID: branchCaptureID, NodeTypeID: "capture-attribute", Position: Position{X: 0, Y: 100},
 			Config: map[string]string{"attribute": "amount"}},
 		{ID: branchRouteID, NodeTypeID: "decision-route", Position: Position{X: 0, Y: 200}},
+		// PINNED to the Approve Decision's v1 (docs/adr/0040 decisions 4-5):
+		// that Decision's live draft has since grown a "reviewNote" field
+		// the v1 snapshot never had -- running this proves the pin holds,
+		// same "the draft can drift, the pin doesn't" shape the parent/
+		// child example already proves for Workflow versioning.
 		{ID: branchApproveID, NodeTypeID: "decision-outcome", Position: Position{X: -120, Y: 300},
-			Config: map[string]string{"decisionId": decision.ExampleApproveID, "outputBindings": `{"score":"attr:amount"}`}},
+			Config: map[string]string{"decisionId": decision.ExampleApproveID, "version": "1", "outputBindings": `{"score":"attr:amount"}`}},
 		{ID: branchDenyID, NodeTypeID: "decision-outcome", Position: Position{X: 120, Y: 300},
 			Config: map[string]string{"decisionId": decision.ExampleDenyID, "outputBindings": `{"score":"attr:amount"}`}},
 	})
@@ -382,7 +387,7 @@ func BuiltInWorkflows() []Workflow {
 		{
 			ID:          "example-branch-to-decision-workflow",
 			Label:       "Example: Branch to a decision",
-			Description: "Captures a typed 'amount' Attribute, branches on it (amount > 100), and ends at one of two Configure-authored Decisions -- Approve or Deny -- each a real TERMINAL outcome, not just the end of the step chain. The branch's condition is a Branch step (renamed from routing-only \"Decision\" -- see Configure > Decisions for the terminal outcomes themselves); the captured amount flows typed into the reached Decision's own 'score' output via outputBindings, proving the outcome JSON carries real data, not a hardcoded literal.",
+			Description: "Captures a typed 'amount' Attribute, branches on it (amount > 100), and ends at one of two Configure-authored Decisions -- Approve or Deny -- each a real TERMINAL outcome, not just the end of the step chain. The branch's condition is a Branch step (renamed from routing-only \"Decision\" -- see Configure > Decisions for the terminal outcomes themselves); the captured amount flows typed into the reached Decision's own 'score' output via outputBindings, proving the outcome JSON carries real data, not a hardcoded literal. The Approve arm is PINNED to that Decision's published v1, unaffected by later edits to it -- the Deny arm stays live, always resolving that Decision's current definition; run history shows each arm's own \"v1\"/\"live@N\" stamp.",
 			Nodes:       branchNodes,
 			Attributes:  []AttributeDef{{Key: "amount", Label: "Amount", Type: FieldNumber}},
 			Edges: []Edge{
@@ -392,7 +397,7 @@ func BuiltInWorkflows() []Workflow {
 				{ID: "example-branch-e3", Source: branchRouteID, SourceHandle: otherwiseHandle, Target: branchDenyID},
 			},
 			BuiltIn: true,
-			Seed:    seedorigin.Stamp(2),
+			Seed:    seedorigin.Stamp(3),
 		},
 		{
 			ID:          "example-decision-with-review-workflow",
@@ -403,7 +408,7 @@ func BuiltInWorkflows() []Workflow {
 				{ID: "example-decision-review-e0", Source: decisionReviewTriggerID, Target: decisionReviewOutcomeID},
 			},
 			BuiltIn: true,
-			Seed:    seedorigin.Stamp(2),
+			Seed:    seedorigin.Stamp(3),
 		},
 		{
 			ID:          "example-mcp-echo-workflow",

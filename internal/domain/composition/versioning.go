@@ -3,6 +3,8 @@ package composition
 import (
 	"fmt"
 	"time"
+
+	"github.com/alicoding/mill/internal/domain/versioning"
 )
 
 // Workflow lifecycle & versioning (docs/adr/0021): the workflow's own
@@ -10,7 +12,10 @@ import (
 // Versions holds immutable published-or-publishable snapshots; the
 // PublishedVersion pointer is what triggers and child-workflow calls
 // execute. Pure domain logic only -- storage/persistence stays in
-// CompositionService per .claude/rules/backend.md.
+// CompositionService per .claude/rules/backend.md. The numbering/lookup
+// mechanics themselves live in internal/domain/versioning (docs/adr/0040
+// decision 4's generic seam) -- decision.DecisionVersion is the second
+// entity type built on the same mechanism.
 
 // WorkflowVersion is one immutable snapshot of a workflow's definition.
 type WorkflowVersion struct {
@@ -24,18 +29,14 @@ type WorkflowVersion struct {
 	Attributes  []AttributeDef
 }
 
+func (v WorkflowVersion) VersionNumber() int { return v.Version }
+
 // SnapshotHead captures wf's current draft head as the next version
 // number (monotonic: max existing + 1, so republishing old versions
 // never collides).
 func SnapshotHead(wf Workflow, now time.Time) WorkflowVersion {
-	next := 1
-	for _, v := range wf.Versions {
-		if v.Version >= next {
-			next = v.Version + 1
-		}
-	}
 	return WorkflowVersion{
-		Version:     next,
+		Version:     versioning.NextNumber(wf.Versions),
 		SavedAt:     now,
 		Label:       wf.Label,
 		Description: wf.Description,
@@ -58,12 +59,7 @@ func PublishHead(wf Workflow, now time.Time) Workflow {
 
 // VersionByNumber finds one snapshot.
 func VersionByNumber(wf Workflow, n int) (WorkflowVersion, bool) {
-	for _, v := range wf.Versions {
-		if v.Version == n {
-			return v, true
-		}
-	}
-	return WorkflowVersion{}, false
+	return versioning.ByNumber(wf.Versions, n)
 }
 
 // ResolveRunnable returns the definition a run should execute

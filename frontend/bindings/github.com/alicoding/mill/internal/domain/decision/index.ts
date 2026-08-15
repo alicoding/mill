@@ -7,5 +7,6 @@ export {
 
 export type {
     Decision,
+    DecisionVersion,
     OutputField
 } from "./models.js";

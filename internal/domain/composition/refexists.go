@@ -26,7 +26,12 @@ func RefExists(kind, id string) bool {
 		_, err := lookupMCPServerFn(id)
 		return err == nil
 	case "decision":
-		_, err := lookupDecisionFn(id)
+		// Existence check only -- pinnedVersion=0 (live) regardless of
+		// whatever version a real decision-outcome node's config might
+		// pin to, since a dangling ENTITY reference is what this
+		// function answers, not whether a particular pinned snapshot
+		// still exists.
+		_, err := lookupDecisionFn(id, 0)
 		return err == nil
 	case "execenv":
 		_, err := lookupExecEnvFn(id)

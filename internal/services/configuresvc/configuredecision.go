@@ -23,14 +23,23 @@ const decisionsKey = "configure-decisions"
 // resolveDecision implements composition.go's lookupDecisionFn seam
 // (decisionoutcome.go). Unexported, so Wails never binds it as a
 // callable frontend method -- Go-internal wiring only, same as
-// resolveHTTPRequest/resolveList/resolveMCPServer.
-func (c *ConfigureService) resolveDecision(id string) (composition.ResolvedDecision, error) {
+// resolveHTTPRequest/resolveList/resolveMCPServer. decision.ResolveOutcome
+// is the ONE seam that decides live-vs-pinned (docs/adr/0040 decisions
+// 4-5); this method's only job is finding the Decision and adapting its
+// result to composition's own ResolvedDecision shape.
+func (c *ConfigureService) resolveDecision(id string, pinnedVersion int) (composition.ResolvedDecision, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	for _, d := range c.decisions {
 		if d.ID == id {
+			resolved, err := decision.ResolveOutcome(d, pinnedVersion)
+			if err != nil {
+				return composition.ResolvedDecision{}, err
+			}
 			return composition.ResolvedDecision{
-				Label: d.Label, Category: string(d.Category), Outputs: d.Outputs, WebhookRequestID: d.WebhookRequestID,
+				Label: resolved.Label, Category: string(resolved.Category),
+				Outputs: resolved.Outputs, WebhookRequestID: resolved.WebhookRequestID,
+				Version: resolved.VersionStamp,
 			}, nil
 		}
 	}
@@ -146,6 +155,12 @@ func (c *ConfigureService) UpdateDecision(id, label string, category decision.Ca
 		CreatedAt:       existing.CreatedAt,
 		UpdatedAt:       time.Now(),
 		FieldTombstones: tombstones,
+		// Versions/PublishedVersion are preserved untouched (docs/adr/0040
+		// decision 4): editing the draft never mutates or drops publish
+		// history -- only PublishDecision (configuredecision_versioning.go)
+		// is allowed to change either of these.
+		Versions:         existing.Versions,
+		PublishedVersion: existing.PublishedVersion,
 		// Modified latch (docs/goals/0037 item 2), same reasoning as
 		// httprequest's UpdateHTTPRequest.
 		Seed: existing.Seed.Touch(),

@@ -120,7 +120,10 @@
   "decisionOutcomeBindingsEditor": {
     "heading": "Decision outputs",
     "description": "{{label}} ({{category}}) -- values written into this Decision's typed result when reached.",
-    "deprecatedFieldName": "{{name}} (deprecated)"
+    "deprecatedFieldName": "{{name}} (deprecated)",
+    "versionLabel": "Version",
+    "versionCaption": "Live always resolves the current definition. Pin to a published version to keep this step unaffected by later edits.",
+    "versionLive": "Live"
   },
   "integrationBindingsEditor": {
     "inputBindings": "Input bindings",

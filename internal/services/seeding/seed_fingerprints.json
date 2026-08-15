@@ -52,16 +52,16 @@
     "fingerprint": "5efd2d4f46ceb01ae229e997102fe11191367b9ee46ac03939ffe278d4dec379"
   },
   "decision:example-approve-decision": {
-    "seedRevision": 2,
-    "fingerprint": "d3c0af6942a85e03e14038ebe97db0dcb62593e62fa4c0db1398981cd332e95e"
+    "seedRevision": 3,
+    "fingerprint": "b29aebfd8e13eeb833999fac0c970922830f2c61b514441c1edfa410b92b1e34"
   },
   "decision:example-deny-decision": {
-    "seedRevision": 2,
-    "fingerprint": "2022f6071d4d2fac20e3c05cc6808ec11a506f2342aeb4886aeb658fb41adda0"
+    "seedRevision": 3,
+    "fingerprint": "aa54d1a9131fef88fa3276c604e24a845c9e3765e06dca979ecf4e5b3f24b604"
   },
   "decision:example-manual-review-decision": {
-    "seedRevision": 2,
-    "fingerprint": "d154222cfd41e1b78ef46ef8e485081d3053dae90a5db70b7ec61949e8dbdec9"
+    "seedRevision": 3,
+    "fingerprint": "3ecb2ea4b17b61db87e7ab8f636991f8ff47df30c41597837233f070f8d5ea37"
   },
   "execenv:example-safe-sandbox-execenv": {
     "seedRevision": 1,
@@ -116,8 +116,8 @@
     "fingerprint": "18645ae0dd50fb623432f102af0ac2e17d44007a9b19fbc71d34d52e0c7efe6e"
   },
   "workflow:example-branch-to-decision-workflow": {
-    "seedRevision": 2,
-    "fingerprint": "78cff39029c2a4d9bd7b25b8945055ce1f6c511ff535895c260d011baa84884e"
+    "seedRevision": 3,
+    "fingerprint": "a029c7c1d3ee9f7da229f81689b341d455a51a6dfe8efe488158c5ac137b2bc0"
   },
   "workflow:example-child-echo-workflow": {
     "seedRevision": 2,
@@ -132,8 +132,8 @@
     "fingerprint": "885b37e75639c22e576436b7272754c86854bb0d896fffd677c43c61c1e13586"
   },
   "workflow:example-decision-with-review-workflow": {
-    "seedRevision": 2,
-    "fingerprint": "6bdf81533f33a3493c46278ef219f91025144e4cebf68ff8850c956d28f71051"
+    "seedRevision": 3,
+    "fingerprint": "ae0b9f6b15aa9d44fe854cdf78393de1e4c179292d3b757eebfb23117fc4d07c"
   },
   "workflow:example-disabled-filesystem-watch-workflow": {
     "seedRevision": 2,

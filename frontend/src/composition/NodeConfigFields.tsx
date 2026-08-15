@@ -201,6 +201,12 @@ export function NodeConfigFields({ node, workflowId, attrs, nodeType, sameKindNo
         // instead of this generic loop -- a typed field-row editor, not a
         // raw JSON textarea (node-standard item 1).
         .filter((field) => !(node.data.nodeTypeID === 'process-ai-extract-structured' && field.Key === 'outputFields'))
+        // version is owned and rendered by DecisionOutcomeBindingsEditor
+        // below instead of this generic free-text loop -- a picker over
+        // the referenced Decision's own published versions (docs/adr/0040
+        // decisions 4-5), not a raw number field a user has to already
+        // know.
+        .filter((field) => !(node.data.nodeTypeID === 'decision-outcome' && field.Key === 'version'))
         .map((field) => (
         <FormControl key={`${field.Key}-${payloadNonce}`}>
           <FormControl.Label>{field.Label}</FormControl.Label>
@@ -365,6 +371,8 @@ export function NodeConfigFields({ node, workflowId, attrs, nodeType, sameKindNo
           attrs={attrs}
           outputBindingsRaw={node.data.config.outputBindings ?? ''}
           onChangeOutputBindings={(raw) => onConfigChange('outputBindings', raw)}
+          version={node.data.config.version ?? ''}
+          onChangeVersion={(v) => onConfigChange('version', v)}
         />
       )}
 

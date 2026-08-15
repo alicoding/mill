@@ -361,7 +361,7 @@ func TestExecuteWorkflow_TerminalNode_OutgoingEdge_Rejected(t *testing.T) {
 }
 
 func TestValidateGraph_TerminalNode_NoOutgoingEdge_Accepted(t *testing.T) {
-	withDecisionLookup(t, func(string) (ResolvedDecision, error) {
+	withDecisionLookup(t, func(string, int) (ResolvedDecision, error) {
 		return approveDecision(), nil
 	})
 	nodes, edges := terminalGraph(false)

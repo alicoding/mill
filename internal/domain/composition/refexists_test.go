@@ -75,7 +75,7 @@ func TestRefExists_Decision(t *testing.T) {
 	prev := lookupDecisionFn
 	t.Cleanup(func() { lookupDecisionFn = prev })
 
-	lookupDecisionFn = func(id string) (ResolvedDecision, error) {
+	lookupDecisionFn = func(id string, _ int) (ResolvedDecision, error) {
 		if id == "known" {
 			return ResolvedDecision{}, nil
 		}

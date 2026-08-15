@@ -23,6 +23,13 @@ var approveDenyOutputs = []OutputField{
 	{Key: "score", Label: "Score", Type: "number"},
 }
 
+// approveV1Outputs is a defensive copy of approveDenyOutputs frozen
+// into ExampleApproveID's published v1 (below) -- copied rather than
+// shared so a future edit to approveDenyOutputs (Deny's own live
+// shape) can never accidentally reach back and mutate an already-
+// "published" snapshot through a shared backing array.
+var approveV1Outputs = append([]OutputField{}, approveDenyOutputs...)
+
 // BuiltIn returns the seeded example Decisions -- pure config, no
 // persistence (mirrors httprequest.BuiltIn's shape: this package stays
 // free of the settings-store concern, per CLAUDE.md's backend rule --
@@ -31,11 +38,25 @@ func BuiltIn() []Decision {
 	return []Decision{
 		{
 			ID: ExampleApproveID, Label: "Approve (example)", Category: CategoryApprove,
-			Outputs: approveDenyOutputs, BuiltIn: true, Seed: seedorigin.Stamp(2),
+			// The live draft carries an ADDITIONAL field ("reviewNote") past
+			// what v1 (below) published (docs/adr/0040 decisions 4-5's seeded
+			// proof): the seeded parent-branch workflow's PINNED outcome node
+			// (composition.BuiltInWorkflows) resolves v1's two-field shape
+			// regardless of this drift; its unpinned sibling resolves this
+			// three-field live shape -- proving both resolution paths on one
+			// entity, not just declared.
+			Outputs: append(append([]OutputField{}, approveDenyOutputs...),
+				OutputField{Key: "reviewNote", Label: "Review note (live only)", Type: "text"}),
+			BuiltIn: true, Seed: seedorigin.Stamp(3),
+			PublishedVersion: 1,
+			Versions: []DecisionVersion{{
+				Version: 1, Label: "Approve (example)", Category: CategoryApprove,
+				Outputs: approveV1Outputs,
+			}},
 		},
 		{
 			ID: ExampleDenyID, Label: "Deny (example)", Category: CategoryDeny,
-			Outputs: approveDenyOutputs, BuiltIn: true, Seed: seedorigin.Stamp(2),
+			Outputs: approveDenyOutputs, BuiltIn: true, Seed: seedorigin.Stamp(3),
 		},
 		{
 			ID: ExampleManualReviewID, Label: "Manual review (example)", Category: CategoryManualReview,
@@ -47,7 +68,7 @@ func BuiltIn() []Decision {
 				{Key: "reviewedBy", Label: "Reviewed by", Type: "text"},
 				{Key: "legacyPriority", Label: "Priority (legacy)", Type: "text", Deprecated: true},
 			},
-			BuiltIn: true, Seed: seedorigin.Stamp(2),
+			BuiltIn: true, Seed: seedorigin.Stamp(3),
 		},
 	}
 }

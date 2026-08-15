@@ -60,6 +60,135 @@ test('Configure > Decisions: create shows the immutability caption, edit disable
   await expect(decisionRow(page, label)).toHaveCount(0)
 })
 
+// docs/adr/0040 decisions 4-5, driven end to end: Publish freezes an
+// immutable numbered version, shown in the edit form's own Versions
+// section.
+test('Configure > Decisions: Publish freezes a version, shown in the version list', async ({ page }) => {
+  await page.goto('/')
+  await openDecisionsTab(page)
+
+  await page.getByTestId('new-decision').click()
+  await page.getByLabel('Label').fill('E2E publish decision')
+  await page.getByTestId('decision-category').selectOption('deny')
+  await page.getByTestId('save-decision').click()
+
+  const row = decisionRow(page, 'E2E publish decision')
+  await expect(row).toBeVisible()
+  await row.click()
+
+  await expect(page.getByTestId('decision-published-badge')).toContainText('Never published')
+  await expect(page.getByTestId('decision-versions-list')).toHaveCount(0)
+
+  await page.getByTestId('publish-decision').click()
+  await expect(page.getByTestId('decision-published-badge')).toContainText('Published v1')
+  await expect(page.getByTestId('decision-versions-list')).toContainText('v1')
+
+  await page.getByRole('button', { name: 'Cancel' }).click()
+  await clickRowAction(page, row, 'Delete')
+  await expect(decisionRow(page, 'E2E publish decision')).toHaveCount(0)
+})
+
+function stepDetailOverlay(page: import('@playwright/test').Page) {
+  return page.locator('[data-component="step-detail-overlay"]')
+}
+
+async function runBranch(page: import('@playwright/test').Page, panel: import('@playwright/test').Locator, amount: string) {
+  await panel.getByTestId('canvas-run').click()
+  const dialog = page.getByRole('dialog')
+  await dialog.getByLabel('Amount').fill(amount)
+  await dialog.getByRole('button', { name: 'Run' }).click()
+  await expect(panel.getByTestId('current-step-bar')).toContainText('SUCCESS', { timeout: 15_000 })
+}
+
+// Double-clicks the reached terminal (DONE) card at a point proven
+// (via elementFromPoint) to land inside the node's own card -- see
+// step-detail-overlay.spec.ts's identical helper for the full
+// reasoning: React Flow's fixed-position MiniMap/Controls chrome can
+// sit on top of a node's naive center point depending on the graph's
+// current pan/zoom, which a plain locator.dblclick() doesn't account
+// for.
+async function dblClickReachedTerminal(page: import('@playwright/test').Page, panel: import('@playwright/test').Locator) {
+  const node = panel.locator('.react-flow__node').filter({ hasText: 'Decision' }).filter({ hasText: 'DONE' }).first()
+  await expect(node).toBeVisible({ timeout: 10_000 })
+  const box = await node.boundingBox()
+  if (!box) throw new Error('dblClickReachedTerminal: reached terminal card has no bounding box')
+  const candidates = [
+    { x: box.x + 10, y: box.y + 10 },
+    { x: box.x + box.width - 10, y: box.y + 10 },
+    { x: box.x + box.width / 2, y: box.y + box.height / 2 },
+    { x: box.x + 10, y: box.y + box.height - 10 },
+  ]
+  for (const point of candidates) {
+    const insideNode = await page.evaluate(({ x, y }) => {
+      const el = document.elementFromPoint(x, y)
+      return !!el?.closest('.react-flow__node')
+    }, point)
+    if (insideNode) {
+      await node.dblclick({ position: { x: point.x - box.x, y: point.y - box.y } })
+      return
+    }
+  }
+  throw new Error('dblClickReachedTerminal: no point resolved inside the reached terminal card')
+}
+
+// The regression docs/goals/0046 itself demands, driven through the
+// live app: pinning a decision-outcome node to a published version
+// keeps resolving that frozen definition after the live Decision
+// changes, and the run's own recorded output stamps which definition
+// it used (docs/adr/0040 decisions 4-5).
+test('Branch to a decision: the pinned approve arm ignores a later live edit; run output stamps pinned vs live', async ({ page }) => {
+  await page.goto('/')
+  await openDecisionsTab(page)
+
+  // Edit the live "Approve (example)" Decision -- an additive output
+  // field, allowed in place (docs/adr/0040 decision 1). The seeded
+  // workflow's approve arm is pinned to v1, published before this edit.
+  const approveRow = decisionRow(page, 'Approve (example)')
+  await expect(approveRow).toBeVisible()
+  await approveRow.click()
+  await expect(page.getByTestId('decision-published-badge')).toContainText('Published v1')
+  await page.getByRole('button', { name: 'Add output' }).click()
+  const newOutputRow = page.locator('[data-testid="decision-output-row"]').last()
+  await newOutputRow.getByPlaceholder('key').fill('e2eLiveField')
+  await newOutputRow.getByPlaceholder('label').fill('E2E live field')
+  await page.getByTestId('save-decision').click()
+
+  await page.getByRole('link', { name: 'Workflows' }).click()
+  const wfRow = workflowRow(page, 'Example: Branch to a decision')
+  await expect(wfRow).toBeVisible()
+  await wfRow.click()
+  const panel = activePanel(page)
+  await expect(panel.locator('.react-flow__node').first()).toBeVisible()
+
+  // PINNED arm (amount > 100): the run must reflect v1's frozen shape,
+  // never the field just added to the live draft.
+  await runBranch(page, panel, '150')
+  await dblClickReachedTerminal(page, panel)
+  const overlay = stepDetailOverlay(page)
+  await expect(overlay).toBeVisible()
+  const output = overlay.getByTestId('step-detail-output-payload')
+  await expect(output).toContainText('"resolvedVersion":"v1"')
+  await expect(output).not.toContainText('e2eLiveField')
+  await page.keyboard.press('Escape')
+  await expect(overlay).toHaveCount(0)
+
+  // LIVE arm (amount <= 100, the Deny Decision, never published): the
+  // run's stamp names it honestly as an unpinned draft resolution.
+  await runBranch(page, panel, '50')
+  await dblClickReachedTerminal(page, panel)
+  await expect(overlay).toBeVisible()
+  await expect(overlay.getByTestId('step-detail-output-payload')).toContainText('"resolvedVersion":"live@draft"')
+  await page.keyboard.press('Escape')
+  await expect(overlay).toHaveCount(0)
+
+  // Restore the shared seeded fixture (testing.md's within-worker
+  // cleanup discipline) so later tests in this file/worker see the
+  // Approve Decision exactly as shipped.
+  await openDecisionsTab(page)
+  const approveRowAgain = decisionRow(page, 'Approve (example)')
+  await clickRowAction(page, approveRowAgain, /Reset to shipped example/)
+})
+
 test('Branch to a decision: the approve path terminalizes with a typed outcome, and the terminal card has no source handle', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Workflows' }).click()

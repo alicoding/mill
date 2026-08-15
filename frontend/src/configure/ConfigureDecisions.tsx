@@ -10,6 +10,7 @@ import { Category } from '../../bindings/github.com/alicoding/mill/internal/doma
 import { Type as ConfigFieldType } from '../../bindings/github.com/alicoding/mill/internal/domain/typedfield/models'
 import type { FieldTombstone } from '../../bindings/github.com/alicoding/mill/internal/domain/typedfield/models'
 import { EntityRefField, decisionCategoryLabelFor } from './EntityRefField'
+import { DecisionVersionsSection } from './DecisionVersionsSection'
 import { downloadJSON } from '../shared/downloadJSON'
 import { refreshDecisions, useConfigureEntityStore } from '../shared/configureEntityStore'
 import { ViewModeToggle } from '../shared/ViewModeToggle'
@@ -227,6 +228,11 @@ export function ConfigureDecisions() {
   // Last-updated-first, applied once so both view modes render the
   // same order (docs/SPEC.md §3.8's InventoryList entry).
   const sortedDecisions = useMemo(() => sortByUpdatedDesc(decisions ?? [], (d) => d.UpdatedAt), [decisions])
+  // The Versions section (docs/adr/0040 decision 4) reads the STORE's
+  // own copy, not local form state -- Publish is a real mutation this
+  // form doesn't otherwise track, and re-deriving from the store keeps
+  // it live-synced the same way every other read here already is.
+  const editingDecision = editingID ? (decisions ?? []).find((d) => d.ID === editingID) : undefined
 
   const decisionItems: InventoryItem[] = sortedDecisions.map((d) => {
     const seedReset = describeSeedReset(d.Seed, seedRevisions[d.ID] ?? d.Seed.SeedRevision)
@@ -377,6 +383,10 @@ export function ConfigureDecisions() {
                 {t('configureDecisions.webhookDescription')}
               </Text>
               <EntityRefField refKind="request" value={webhookRequestID} onChange={setWebhookRequestID} />
+
+              {editingID && editingDecision && (
+                <DecisionVersionsSection decision={editingDecision} onPublished={refetch} />
+              )}
 
               {error && <Text as="p" size="small" className={styles.error}>{error}</Text>}
               <Stack direction="horizontal" gap="condensed">
