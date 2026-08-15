@@ -180,3 +180,11 @@ export function RunWorkflowStepped(workflowID: string, values: { [_ in string]?:
 export function RunWorkflowWithPayload(workflowID: string, kind: $models.RunKind, values: { [_ in string]?: string } | null, payload: string): $CancellablePromise<$models.RunSummary> {
     return $Call.ByID(3815683294, workflowID, kind, values, payload);
 }
+
+/**
+ * StepFailureBreakdown returns every step type that failed at least
+ * once across the most recent runs, most failures first.
+ */
+export function StepFailureBreakdown(): $CancellablePromise<$models.StepFailureCount[] | null> {
+    return $Call.ByID(3427322667);
+}

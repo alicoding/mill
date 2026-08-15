@@ -26,6 +26,7 @@ export {
 } from '../../bindings/github.com/alicoding/mill/internal/services/executionsvc'
 export type {
   AmbientMetric,
+  AvgDurationMetric,
   DailyBucket,
   ErrorRateMetric,
   GuardrailPendingChanged,
@@ -34,6 +35,7 @@ export type {
   RunDetail,
   RunStep,
   RunSummary,
+  StepFailureCount,
   TimeSavedMetric,
   WorkflowTimeSaved,
   WorkflowUsage,

@@ -135,6 +135,10 @@
     "seedRevision": 2,
     "fingerprint": "58474919963eb4da78947e7f46802b2c75d2c0e51f4e685b5c7e94774d00550c"
   },
+  "workflow:example-step-failure-workflow": {
+    "seedRevision": 1,
+    "fingerprint": "5dc531d9a86f8eec27daa29d3430e628a109b326f119e33ea1f857fe6bcbe275"
+  },
   "workflow:load-sample-html-workflow": {
     "seedRevision": 1,
     "fingerprint": "add39815b73d840c233f266f01043b9cbec60ed37d04cba12a8306e85ce23214"

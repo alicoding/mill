@@ -19,8 +19,13 @@ import { withClipboardLock } from './fixtures/clipboardLock'
 // composition.spec.ts's canvas tests for the analogous "testid moved
 // with the interactive element" pattern).
 
+// Scoped to the live-feed table specifically (data-testid="activity-feed",
+// ActivityView.tsx): the step-failure breakdown section below it
+// (goal 0051 item 3) renders its own <table> from the same durable
+// run history once any worker test has produced a step failure, so a
+// bare `table tbody tr` selector would double-count once that happens.
 function dataRows(page: import('@playwright/test').Page) {
-  return page.locator('table tbody tr')
+  return page.locator('[data-testid="activity-feed"] table tbody tr')
 }
 
 // Runs both built-in workflows deterministically -- "Load sample HTML"
@@ -145,4 +150,25 @@ test('Activity empty state\'s primary action navigates to Workflows', async ({ p
 
   await page.getByTestId('activity-empty').getByRole('button', { name: 'Run a workflow' }).click()
   await expect(page.getByTestId('composition-view')).toBeVisible()
+})
+
+// Goal 0051 item 3: the seeded "Example: Step failure" workflow
+// (builtinworkflows_stepfailure.go) fails on purpose every time it
+// runs, giving this a real, durable failure to assert the breakdown
+// against -- the seed IS the proof (testing.md).
+test('step failures show up in Activity\'s breakdown by step type', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Workflows' }).click()
+
+  const runButton = page.getByRole('button', { name: /Run Example: Step failure/ })
+  await runButton.click()
+  await expect(page.getByTestId('workflow-run-result').filter({ has: page.getByText('Example: Step failure', { exact: true }) })).toBeVisible()
+
+  await page.getByRole('link', { name: 'Activity' }).click()
+  const section = page.getByTestId('activity-step-failures')
+  await expect(section).toBeVisible()
+  const row = section.locator('table tbody tr').filter({ hasText: 'List: lookup' })
+  await expect(row).toBeVisible()
+  const failureCount = await row.locator('td').last().innerText()
+  expect(Number(failureCount)).toBeGreaterThanOrEqual(1)
 })

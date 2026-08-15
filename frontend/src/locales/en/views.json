@@ -78,7 +78,9 @@
   },
   "homeFormat": {
     "minutes": "{{n}} min",
-    "hours": "{{n}} hrs"
+    "hours": "{{n}} hrs",
+    "seconds": "{{n}}s",
+    "minutesSeconds": "{{m}}m {{s}}s"
   },
   "emptyStateActions": {
     "runAWorkflow": "Run a workflow"
@@ -97,7 +99,10 @@
       "searchPlaceholder": "Search workflows…",
       "nothingRanYet": "Nothing ran yet",
       "runOrTriggerHint": "Run or trigger a workflow to see it here.",
-      "usageDescription": "{{count}} run{{plural}} · ≈ {{total}} at {{minutes}} min/run"
+      "usageDescription": "{{count}} run{{plural}} · ≈ {{total}} at {{minutes}} min/run",
+      "avgDurationLabel": "avg {{duration}}",
+      "lastTriggeredLabel": "last ran automatically {{when}}",
+      "neverTriggeredLabel": "hasn't run automatically in this range"
     },
     "heading": "Home",
     "subtitle": "Time saved, what ran, and what to learn from it, all from local run history that never leaves this machine.",
@@ -117,6 +122,9 @@
     "noFinishedRuns": "No finished runs yet in this range.",
     "errorRateVolume": "{{errorCount}} of {{total}} finished runs failed. A retry that eventually succeeded doesn’t count as a failure, and parked or cancelled runs are excluded.",
     "includeManualTestRuns": "Include manual test runs",
+    "avgDuration": "Average duration",
+    "noTimedRuns": "No finished runs yet in this range.",
+    "avgDurationSampleSize": "Across {{count}} finished run{{plural}}.",
     "ambientVsManual": "Ambient vs. manual",
     "noRunsInRangeShort": "No runs yet in this range.",
     "ambientBreakdown": "{{triggered}} ran on their own (hotkey, schedule, watch) · {{manual}} you ran by hand."
@@ -170,6 +178,16 @@
       "source": "Source",
       "action": "Action",
       "outcome": "Outcome"
+    },
+    "stepFailures": {
+      "heading": "Failures by step type",
+      "description": "Which kind of step fails most often, across recent runs of every workflow.",
+      "noFailuresHeading": "No step failures recorded",
+      "noFailuresDescription": "Failures will show up here, grouped by step type, once a run fails.",
+      "columns": {
+        "stepType": "Step type",
+        "failureCount": "Failures"
+      }
     }
   },
   "reviewView": {

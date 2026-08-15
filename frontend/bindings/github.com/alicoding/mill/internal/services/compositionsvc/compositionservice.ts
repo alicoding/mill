@@ -216,10 +216,14 @@ export function UpdateAttributes(workflowID: string, attrs: composition$0.Attrib
 
 /**
  * UpdateNotes replaces a workflow's canvas Notes in place -- the same
- * shape as UpdateAttributes above (a workflow-scoped collection saved
- * independently of Nodes/Edges), since a note is authoring-space
- * annotation, not a step (docs/goals/0055). No graph re-validation is
- * needed: Notes carry no reference ValidateGraph could ever break.
+ * shape as UpdateAttributes (compositionservice.go) already established
+ * for a workflow-scoped collection saved independently of Nodes/Edges,
+ * since a note is authoring-space annotation, not a step (docs/goals/0055).
+ * No graph re-validation is needed: Notes carry no reference
+ * ValidateGraph could ever break. Split into its own file per the
+ * 500-line convention (.claude/rules/architecture.md), the same
+ * per-concern split compositionservice_versioning.go/
+ * compositionservice_export.go already follow.
  */
 export function UpdateNotes(workflowID: string, notes: composition$0.Note[] | null): $CancellablePromise<composition$0.Workflow> {
     return $Call.ByID(3223557182, workflowID, notes);

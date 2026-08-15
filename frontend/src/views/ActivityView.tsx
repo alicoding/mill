@@ -6,6 +6,7 @@ import { ChevronDownIcon, ChevronRightIcon, CheckCircleIcon, PulseIcon, Workflow
 import { useAppStore, type ActivityEntry, type ActivitySource } from '../shared/store'
 import { WorkflowHoverPreview } from '../composition/WorkflowHoverPreview'
 import { ActivityRunsExplorer } from './ActivityRunsExplorer'
+import { ActivityStepFailures } from './ActivityStepFailures'
 import styles from '../shared/ListCard.module.css'
 import PageContainer from '../shared/PageContainer'
 
@@ -240,7 +241,14 @@ function ActivityView() {
       )}
 
       {!selectedWorkflow && filtered.length > 0 && (
-        <DataTable data={filtered} columns={columns} cellPadding="condensed" getRowId={(entry) => entry.id} />
+        // Scoping wrapper (not decorative): ActivityStepFailures below
+        // renders its own <table> from the same durable run history --
+        // a bare `table tbody tr` selector would match both once that
+        // section has data, so tests need a way to address this feed's
+        // rows specifically.
+        <div data-testid="activity-feed">
+          <DataTable data={filtered} columns={columns} cellPadding="condensed" getRowId={(entry) => entry.id} />
+        </div>
       )}
 
       {!selectedWorkflow && selectedEntries.map((entry) => (
@@ -258,6 +266,12 @@ function ActivityView() {
           {t('activityView.showingCount', { shown: filtered.length, total: activity.length })}
         </Text>
       )}
+
+      {/* Durable, cross-workflow run history (goal 0051 item 3) --
+          unlike the session-only feed above, this survives a restart
+          and stays scoped to "all workflows" rather than one selected
+          workflow's own explorer. */}
+      {!selectedWorkflow && <ActivityStepFailures />}
     </PageContainer>
   )
 }

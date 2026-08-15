@@ -21,6 +21,21 @@ export interface AmbientMetric {
 }
 
 /**
+ * AvgDurationMetric is the average wall-clock duration (CompletedAt -
+ * StartedAt) across terminal runs in range (goal 0051 item 1) --
+ * n8n's own headline "how long do runs take" metric, Airflow
+ * table-stakes. SampleSize is always populated so a caller never
+ * renders a bare average without the runs it's built from;
+ * AvgSeconds is nil only when SampleSize is 0 -- every run in range
+ * is still in flight (zero CompletedAt) or has a non-positive
+ * duration, never faked as zero.
+ */
+export interface AvgDurationMetric {
+    "avgSeconds"?: number | null;
+    "sampleSize": number;
+}
+
+/**
  * DailyBucket is one local-timezone calendar day's run volume + error
  * rate (goal 0014: daily buckets default, machine-local timezone
  * unconditionally -- a single-viewer desktop app has no UTC/display
@@ -89,6 +104,7 @@ export interface HomeMetrics {
     "includeTest": boolean;
     "timeSaved": TimeSavedMetric;
     "errorRate": ErrorRateMetric;
+    "avgDuration": AvgDurationMetric;
     "series": DailyBucket[] | null;
     "mostUsed": WorkflowUsage[] | null;
     "ambient": AmbientMetric;
@@ -315,6 +331,23 @@ export interface RunSummary {
 }
 
 /**
+ * StepFailureCount is one step-type's failure tally across the most
+ * recently recorded runs -- derived by walking every failed run's
+ * checkpointed steps (via GetRun, reusing its own guardrail/cancelled-
+ * aware status classification rather than re-deriving it here) and
+ * joining each failed step's NodeID back to its current NodeTypeID/
+ * NodeTypeLabel. Falls back to the raw NodeID/StepName when the
+ * workflow's current definition no longer has that node (edited or
+ * deleted since the run), same "never blank out a row over missing
+ * display metadata" fallback GetRun itself already uses.
+ */
+export interface StepFailureCount {
+    "nodeTypeID": string;
+    "nodeTypeLabel": string;
+    "failureCount": number;
+}
+
+/**
  * TimeSavedMetric is docs/goals/0014's Layer-1 value accounting: minutes
  * saved = Σ over Success + non-test-kind runs (RunKindTriggered or
  * RunKindMCP, goal 0021 Phase 3 -- an MCP client running a workflow
@@ -358,4 +391,25 @@ export interface WorkflowUsage {
     "workflowID": string;
     "workflowLabel": string;
     "runCount": number;
+
+    /**
+     * AvgDurationSeconds is this workflow's own average run duration
+     * (goal 0051 item 1's per-workflow column) -- same "exclude
+     * in-flight/zero-CompletedAt runs, never fake" rule as
+     * AvgDurationMetric, computed over every run in range regardless
+     * of Kind/status (RunCount's own scope). Nil when this workflow has
+     * no run in range with a valid duration yet.
+     */
+    "avgDurationSeconds"?: number | null;
+
+    /**
+     * LastTriggeredAt is the most recent non-test-kind (ambient) run's
+     * StartedAt for this workflow WITHIN the requested range (goal
+     * 0051 item 2) -- a workflow-level proxy for "when did this last
+     * fire," not a true per-trigger fire log (no such record exists
+     * yet, docs/SPEC.md's own named data-model gap). Nil when this
+     * workflow had no ambient run in range -- the honest "hasn't fired
+     * in this window" signal, not absence of the field.
+     */
+    "lastTriggeredAt"?: string | null;
 }
