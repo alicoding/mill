@@ -200,8 +200,11 @@ test('Composition page lists built-in workflows; node primitives live in a colla
   // (the evidence-receipt node, goal 0052 slice 3) + the seeded
   // "Check httpbin" declared step type (data-backed, not a
   // RegisterNodeType call site -- goal 0054 slice A, ADR-0037) +
-  // apply-backup-snapshot (goal 0065's data-stewardship backup step).
-  await expect(activePanel(page).getByTestId('palette-item')).toHaveCount(33)
+  // trigger-atlas-card, process-atlas-card-find, apply-atlas-card-create,
+  // apply-atlas-card-update, apply-atlas-card-link (the Atlas<->Workflows
+  // integration, goal 0066, ADR-0035/0038) + apply-backup-snapshot
+  // (goal 0065's data-stewardship backup step).
+  await expect(activePanel(page).getByTestId('palette-item')).toHaveCount(38)
 })
 
 test('A new workflow starts with a starter node placed, not a blank canvas', async ({ page }) => {

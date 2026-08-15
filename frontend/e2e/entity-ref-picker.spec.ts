@@ -152,3 +152,29 @@ test('Selecting an Integration node offers a live request picker with inline qui
   await clickRowAction(page, requestRow(page, 'E2E picker request'), 'Delete')
   await expect(requestRow(page, 'E2E picker request')).toHaveCount(0)
 })
+
+// docs/goals/0066: RefKind "atlas-kind" reuses this exact picker
+// mechanism (EntityRefField's fetchEntities switch, .../configure/
+// EntityRefField.tsx), pointed at AtlasService.Kinds() -- no quick-
+// create for v1 (Atlas already has its own Kind-authoring flow, ADR-
+// 0038), unlike the request picker above. Selecting the seeded
+// "Example: Card intake" workflow's real apply-atlas-card-update node
+// proves both the picker AND the Kind-driven field editor
+// (AtlasFieldBindingsEditor) render from the real seeded Intake Kind.
+test('Selecting the Atlas: update card node offers a live Kind picker and the Kind-driven field editor', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Workflows' }).click()
+  await workflowRow(page, 'Example: Card intake').click()
+
+  await clickCanvasNode(page, activePanel(page), 'Atlas: update card')
+  const inspector = activePanel(page).getByTestId('composition-inspector')
+  await expect(inspector).toContainText('Atlas: update card')
+
+  const picker = inspector.getByTestId('entity-ref-field')
+  await expect(picker).toBeVisible()
+  await expect(picker.locator('option:checked')).toHaveText('Intake')
+
+  const editor = inspector.getByTestId('atlas-field-bindings-editor')
+  await expect(editor).toBeVisible()
+  await expect(editor).toContainText('Status')
+})

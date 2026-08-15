@@ -31,6 +31,7 @@ var pureNodeTypes = map[string]string{
 	"trigger-filesystem-watch": "exec=nil entry point, never reaches the guardrail gate",
 	"trigger-callable":         "exec=nil entry point, never reaches the guardrail gate",
 	"trigger-system-event":     "exec=nil entry point, never reaches the guardrail gate",
+	"trigger-atlas-card":       "exec=nil entry point, never reaches the guardrail gate",
 	"decision-route":           "exec=nil, pure routing -- conditions live on its outgoing edges",
 	// Genuine no-I/O transforms/reads: operate only on the in-memory
 	// ExecContext (Payload/Attributes) already threaded through, no

@@ -26,7 +26,26 @@ const REPO_ROOT = path.resolve(fileURLToPath(new URL('.', import.meta.url)), '..
 // failures; a dev app losing its own .app bundle). A dedicated,
 // gitignored path removes the shared-artifact contention structurally
 // instead of trying to sequence the two loops.
+//
+// Rebuilds the frontend bundle immediately before the Go binary that
+// embeds it (go:embed all:frontend/dist, main.go), every run -- goal
+// 0062's stale-build-badge flake class. Go's own VCS stamping
+// (runtime/debug.ReadBuildInfo, read at `go build` time) and Vite's
+// __MILL_REPO_HEAD__ define (vite.config.ts's repoHead(), read at
+// `vite build` time) are two INDEPENDENT `git rev-parse HEAD` reads;
+// whenever they were taken at different moments -- e.g. `npm run
+// build:dev` run once at a session's start, then this file's `go
+// build` re-run minutes or commits later across a long session's many
+// playwright invocations -- any commit landing in that window makes
+// them disagree, and BuildIdentityBadge.tsx correctly (and
+// misleadingly, in this harness-only case) reports a stale build. The
+// two reads only ever agree by construction when they're taken back to
+// back, so both builds now happen in the same globalSetup invocation.
 export default function globalSetup(): void {
+  execFileSync('npm', ['run', 'build:dev'], {
+    cwd: path.join(REPO_ROOT, 'frontend'),
+    stdio: 'inherit',
+  })
   execFileSync('go', ['build', '-tags', 'server', '-o', 'frontend/e2e/.build/mill-server', '.'], {
     cwd: REPO_ROOT,
     stdio: 'inherit',

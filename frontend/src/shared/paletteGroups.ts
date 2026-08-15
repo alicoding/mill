@@ -82,12 +82,12 @@ export const PALETTE_GROUP_ICON: Record<PaletteGroupId, Icon> = {
 
 // Every registered NodeType ID as of this change (internal/domain/
 // composition/*.go's RegisterNodeType call sites, checked directly
-// against the Go registry, not guessed) -- 31 total, every one
+// against the Go registry, not guessed) -- 36 total, every one
 // accounted for. vitest (paletteGroups.test.ts) asserts every ID
 // NodeTypes() actually returns has an entry here, so this map can't
 // silently drift from the backend registry.
 const NODE_TYPE_GROUP: Record<string, PaletteGroupId> = {
-  // Triggers (7)
+  // Triggers (8)
   'trigger-manual': 'triggers',
   'trigger-hotkey': 'triggers',
   'trigger-schedule': 'triggers',
@@ -95,6 +95,7 @@ const NODE_TYPE_GROUP: Record<string, PaletteGroupId> = {
   'trigger-filesystem-watch': 'triggers',
   'trigger-callable': 'triggers',
   'trigger-system-event': 'triggers',
+  'trigger-atlas-card': 'triggers',
   // Capture (4)
   'capture-clipboard-html': 'capture',
   'capture-clipboard-info': 'capture',
@@ -108,10 +109,11 @@ const NODE_TYPE_GROUP: Record<string, PaletteGroupId> = {
   'process-ai-classify': 'ai',
   'process-ai-completion': 'ai',
   'process-ai-extract-structured': 'ai',
-  // Data (3)
+  // Data (4)
   'list-lookup': 'data',
   'list-search': 'data',
   'process-run-receipt': 'data',
+  'process-atlas-card-find': 'data',
   // Actions (3)
   'integration-http': 'actions',
   'mcp-tool-call': 'actions',
@@ -123,10 +125,13 @@ const NODE_TYPE_GROUP: Record<string, PaletteGroupId> = {
   'human-review': 'guardrails',
   'ruleset': 'guardrails',
   'decision-outcome': 'guardrails',
-  // Apply (3)
+  // Apply (6)
   'apply-clipboard-write-html': 'apply',
   'apply-clipboard-write-text': 'apply',
   'apply-file-write': 'apply',
+  'apply-atlas-card-create': 'apply',
+  'apply-atlas-card-update': 'apply',
+  'apply-atlas-card-link': 'apply',
   // Declared step types (ADR-0037, goal 0054 slice A): data-backed, not
   // a RegisterNodeType call site, so not counted in this map's "31
   // registered node types" total above -- the seeded "Check httpbin"

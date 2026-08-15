@@ -11,20 +11,21 @@ import { PALETTE_GROUP_ORDER, paletteGroupFor, shortLabel } from './paletteGroup
 // visible instead of silent).
 const ALL_REGISTERED_NODE_TYPE_IDS = [
   'trigger-manual', 'trigger-hotkey', 'trigger-schedule', 'trigger-clipboard-watch',
-  'trigger-filesystem-watch', 'trigger-callable', 'trigger-system-event',
+  'trigger-filesystem-watch', 'trigger-callable', 'trigger-system-event', 'trigger-atlas-card',
   'capture-clipboard-html', 'capture-clipboard-info', 'capture-file', 'capture-attribute',
   'process-extract-html', 'process-html-to-markdown', 'process-inject-text',
   'process-ai-classify', 'process-ai-completion', 'process-ai-extract-structured',
-  'list-lookup', 'list-search', 'process-run-receipt',
+  'list-lookup', 'list-search', 'process-run-receipt', 'process-atlas-card-find',
   'integration-http', 'mcp-tool-call', 'code-execution',
   'child-workflow', 'decision-route',
   'human-review', 'ruleset', 'decision-outcome',
   'apply-clipboard-write-html', 'apply-clipboard-write-text', 'apply-file-write',
+  'apply-atlas-card-create', 'apply-atlas-card-update', 'apply-atlas-card-link',
 ]
 
 describe('paletteGroupFor', () => {
-  it('has exactly 31 registered node types accounted for', () => {
-    expect(ALL_REGISTERED_NODE_TYPE_IDS).toHaveLength(31)
+  it('has exactly 36 registered node types accounted for', () => {
+    expect(ALL_REGISTERED_NODE_TYPE_IDS).toHaveLength(36)
   })
 
   it('maps every registered NodeType ID to one of the 9 display groups, without warning', () => {

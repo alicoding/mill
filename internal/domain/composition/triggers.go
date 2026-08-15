@@ -111,4 +111,20 @@ func init() {
 			},
 		},
 	}, nil)
+	RegisterNodeType(NodeType{
+		ID: "trigger-atlas-card", Kind: KindTrigger,
+		Complexity: ComplexityBasic,
+		Label:      "Trigger: Atlas card change",
+		Output: "the changed card's id -- also seeds cardId/kindId/cardTitle/changeType as typed " +
+			"Attributes when this workflow declares them",
+		Description: "Fires when a card of the chosen kind is created or updated in Atlas (docs/adr/0038). " +
+			"Cycle guard: a run this trigger started never re-fires itself from a write it makes to its " +
+			"own source card, so a workflow that both reacts to and updates the same card can't loop.",
+		ConfigFields: []ConfigField{
+			{
+				Key: "kindId", Label: "Kind", Type: FieldText, RefKind: "atlas-kind",
+				Description: "Which Atlas card kind to watch. Fires only for cards of this kind.",
+			},
+		},
+	}, nil)
 }

@@ -63,6 +63,10 @@ type activeListener struct {
 	// the other three, there's no external OS resource to release, only
 	// this in-process registry entry to remove.
 	sysEventStop func()
+	// atlasCardStop unregisters a trigger-atlas-card listener from
+	// TriggerService's own atlasCardTriggers map (triggeratlascard.go,
+	// goal 0066) -- same in-process-registry-only shape as sysEventStop.
+	atlasCardStop func()
 }
 
 func (l *activeListener) stop() {
@@ -83,6 +87,9 @@ func (l *activeListener) stop() {
 	}
 	if l.sysEventStop != nil {
 		l.sysEventStop()
+	}
+	if l.atlasCardStop != nil {
+		l.atlasCardStop()
 	}
 }
 
@@ -118,6 +125,11 @@ type TriggerService struct {
 	// keep this file from needing to import executionsvc just for a map
 	// key type.
 	sysEvents map[string][]systemEventBinding
+	// atlasCardTriggers indexes every armed trigger-atlas-card listener
+	// by watched Kind id (goal 0066) -- populated/depopulated by Sync via
+	// each entry's start/stop (triggeratlascard.go), mutated only while
+	// s.mu is held, same shape as sysEvents above.
+	atlasCardTriggers map[string][]string
 }
 
 // SetExecutionService wires the durable-execution runtime a headless fire
@@ -134,12 +146,13 @@ func (s *TriggerService) SetExecutionService(e *executionsvc.ExecutionService) {
 
 func NewTriggerService(comp *compositionsvc.CompositionService, logger *slog.Logger, store settings.Store) *TriggerService {
 	s := &TriggerService{
-		active:    make(map[string]*activeListener),
-		hkRaw:     make(map[string]PersistedHotkey),
-		comp:      comp,
-		logger:    logger,
-		store:     store,
-		sysEvents: make(map[string][]systemEventBinding),
+		active:            make(map[string]*activeListener),
+		hkRaw:             make(map[string]PersistedHotkey),
+		comp:              comp,
+		logger:            logger,
+		store:             store,
+		sysEvents:         make(map[string][]systemEventBinding),
+		atlasCardTriggers: make(map[string][]string),
 	}
 	s.loadPersistedHotkeys()
 	return s
@@ -242,6 +255,13 @@ func (s *TriggerService) fire(workflowID, binding, payload string) {
 	// input to offer -- it runs with the workflow's own declared
 	// defaults, same as before docs/adr/0008's test-input form existed.
 	summary, err := s.exec.RunWorkflowWithPayload(workflowID, executionsvc.RunKindTriggered, nil, payload)
+	s.reportFireOutcome(workflowID, binding, summary, err)
+}
+
+// reportFireOutcome logs and emits a fired run's outcome -- shared by
+// fire (above) and fireAtlasCard (triggeratlascard.go, goal 0066), which
+// differ only in how they start the run.
+func (s *TriggerService) reportFireOutcome(workflowID, binding string, summary executionsvc.RunSummary, err error) {
 	if err != nil {
 		// A call-level failure (unknown workflow, run couldn't start) --
 		// distinct from a failed *run*, handled below via summary.Error.

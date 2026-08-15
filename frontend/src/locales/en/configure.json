@@ -327,7 +327,9 @@
       "workflow-scope": "workflow",
       "decision": "decision",
       "execenv": "execution environment",
-      "aiprovider": "AI provider"
+      "aiprovider": "AI provider",
+      "atlas-kind": "Atlas card kind",
+      "atlas-linkkind": "Atlas relation"
     },
     "unknownEntity": "Unknown {{noun}} ({{value}})",
     "allWorkflows": "All workflows",

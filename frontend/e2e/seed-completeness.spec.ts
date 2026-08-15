@@ -234,3 +234,43 @@ test('Example: AI classify -> branch workflow is present with the real process-a
   await expect(nodes).toHaveCount(6)
   await expect(nodes.filter({ hasText: 'AI: Classify' })).toBeVisible()
 })
+
+// docs/goals/0066, ADR-0035/0038: the Atlas<->Workflows integration's
+// own e2e proof. Ships unpublished (never auto-arms, same safe-by-
+// default posture "Example: Disabled filesystem watch" gives a real-
+// event trigger) -- presence/config only, same reasoning as every
+// other real-event-driven seed above; the trigger's own fire + cycle
+// guard are proven end to end at the Go layer
+// (triggersvc.TestSeededCardIntakeExample_TriggerUpdatesOwnCardAndDoesNotLoop).
+test('Example: Card intake workflow is present with the real trigger-atlas-card + Atlas: update card nodes on canvas', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Workflows' }).click()
+
+  const row = workflowRow(page, 'Example: Card intake')
+  await expect(row).toBeVisible()
+  await row.click()
+
+  const nodes = activePanel(page).locator('.react-flow__node')
+  await expect(nodes).toHaveCount(2)
+  await expect(nodes.filter({ hasText: 'Trigger: Atlas card change' })).toBeVisible()
+  await expect(nodes.filter({ hasText: 'Atlas: update card' })).toBeVisible()
+})
+
+// Manual-triggered and purely local (no clipboard, no network) --
+// unlike the clipboard/AI/MCP seeds above, this one is safe to actually
+// run here: proves the create -> find -> link chain through the real
+// live app, not just presence.
+test('Example: Create and link Atlas cards runs end to end through the real live app', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Workflows' }).click()
+
+  const row = workflowRow(page, 'Example: Create and link Atlas cards')
+  await expect(row).toBeVisible()
+  await row.click()
+  await expect(activePanel(page).locator('.react-flow__node').first()).toBeVisible()
+
+  await activePanel(page).getByTestId('canvas-run').click()
+
+  const bar = activePanel(page).getByTestId('current-step-bar')
+  await expect(bar).toContainText('SUCCESS', { timeout: 15_000 })
+})

@@ -176,6 +176,7 @@ func main() {
 		return summary.RunID, !pending && summary.Status == "SUCCESS", pending, nil
 	})
 	executionService.SetRunCompletionSink(atlasService.NotifyRunCompleted)
+	atlasService.WireCompositionSeams(triggerService.DispatchAtlasCardChange) // goal 0066
 
 	// docs/goals/0065: Mill's own data-stewardship surface -- VACUUM
 	// INTO snapshots + the export-everything archive. SQLiteDBPath
