@@ -3,12 +3,28 @@
   "cancel": "Cancel",
   "breadcrumbRoot": "All spaces",
   "emptySpace": "Nothing here yet. Add a card to get started.",
-  "peekCount": "{{count}} inside",
-  "openCardDetailsAriaLabel": "Open details for {{title}}",
   "viewMode": {
     "ariaLabel": "View mode",
-    "shelves": "Shelves",
-    "canvas": "Canvas"
+    "shelves": "Auto-arrange",
+    "canvas": "Free"
+  },
+  "board": {
+    "flipCardAriaLabel": "Flip {{title}}",
+    "zoomIntoAriaLabel": "Zoom into {{title}}",
+    "cardsCount": "{{count}} cards",
+    "leafChip": "leaf",
+    "linksChip": "{{count}} links",
+    "freshChip": "{{count}} fresh",
+    "staleChip": "{{count}} stale",
+    "zoomChip": "Zoom ⤢",
+    "flipSideEyebrow": "{{kind}} · flip side",
+    "sourceRow": "source: {{host}}",
+    "mirrorRow": "mirror: {{name}} · {{status}}",
+    "mirrorStatusFresh": "fresh",
+    "mirrorStatusStale": "stale {{days}}d",
+    "linkRow": "{{kind}} → {{title}}",
+    "moreLinks": "+{{count}} more",
+    "open": "Open"
   },
   "lens": {
     "openButton": "Lens",

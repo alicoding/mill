@@ -363,22 +363,24 @@ func (a *AtlasService) ImportFolderSuggestions(req ImportFolderSuggestionsReques
 }
 
 // importGridPosition places the nth root-level imported card in a
-// simple left-to-right, wrapping grid -- spacing matches the frontend
-// canvas's own card footprint (atlasCanvasConstants.ts's
-// ATLAS_CARD_WIDTH/HEIGHT) plus a gap, so a freshly imported batch
-// never overlaps itself. Not collision-checked against pre-existing
+// simple left-to-right, wrapping grid -- spacing matches the
+// frontend board's own note-card footprint (atlasBoardLayout.ts's
+// NOTE_WIDTH/NOTE_HEIGHT/BOARD_GAP) so a freshly imported batch never
+// overlaps itself. Not collision-checked against pre-existing
 // siblings (createCard's own findFreeDropPosition is the single-card,
 // frontend-side version of that) -- a bulk import landing near other
 // cards is expected to be dragged into place afterward, same as any
-// other multi-card layout.
+// other multi-card layout. startY clears the seeded root space's own
+// typical content (a region frame at the canvas origin) rather than
+// starting the grid directly on top of it.
 func importGridPosition(index int) *atlas.Position {
 	const (
-		cardWidth  = 240
-		cardHeight = 96
-		gap        = 40
+		cardWidth  = 190
+		cardHeight = 128
+		gap        = 24
 		columns    = 4
 		startX     = 80
-		startY     = 80
+		startY     = 260
 	)
 	col := index % columns
 	row := index / columns

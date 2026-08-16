@@ -15,6 +15,18 @@ async function openDrawerAndNavigate(page: import('@playwright/test').Page, link
   await page.getByRole('link', { name: linkName }).click()
 }
 
+// Precise per-card matching (goal 0072 slice A): a plain hasText
+// substring filter is unreliable since a card's own BACK face can
+// legitimately contain another card's title (its own "<kind> -> <other
+// title>" link row) -- aria-label carries the exact title instead.
+function noteCard(page: import('@playwright/test').Page, title: string) {
+  return page.locator(`[data-testid="atlas-note-card"][aria-label="Flip ${title}"]`)
+}
+
+function groupCard(page: import('@playwright/test').Page, title: string) {
+  return page.locator('[data-testid="atlas-group-card"]').filter({ has: page.locator(`[aria-label="Zoom into ${title}"]`) })
+}
+
 test('Mobile nav drawer: hidden by default, opens full-screen, closes on navigation', async ({ page }) => {
   await page.goto('/')
   // The desktop sidebar's own nav (rendered, just hidden off-canvas at
@@ -76,27 +88,43 @@ test('Mobile job 3 -- Home glances without horizontal overflow', async ({ page }
   expect(overflow).toBeLessThanOrEqual(1)
 })
 
-test('Mobile job 4 -- Atlas shelves glance and card overlay open/close', async ({ page }) => {
+test('Mobile job 4 -- Atlas board glance, drill via a region frame header, and card overlay open/close', async ({ page }) => {
   await page.goto('/')
   await openDrawerAndNavigate(page, 'Atlas')
   await expect(page.getByTestId('atlas-view')).toBeVisible()
-  // The single seeded root auto-enters "My space" (canvas); the
-  // shelves glance lives one drill down, in "Example area".
-  await expect(page.getByTestId('atlas-canvas')).toBeVisible()
-  await page.getByTestId('atlas-canvas-card').filter({ hasText: 'Example area' }).click()
-  await expect(page.getByTestId('atlas-shelves')).toBeVisible()
+  // The single seeded root auto-enters "My space" (Free mode); the
+  // group-frame glance lives one drill down, in "Example area".
+  await expect(page.getByTestId('atlas-board')).toBeVisible()
+  await groupCard(page, 'Example area').getByTestId('atlas-group-header').click()
+  await expect(page.getByTestId('atlas-board')).toBeVisible()
 
-  const card = page.getByTestId('atlas-shelf-card').filter({ hasText: 'Ada Lovelace' })
+  // "Example area" holds two cards side by side (404px) wider than
+  // this viewport (390px) -- the board never auto-shrinks a card below
+  // its own real CSS pixel size (minZoom=1, AtlasBoard.tsx), so a real
+  // phone user pans to reach the far one, same as any pannable-canvas
+  // app. Mirror that here rather than relying on fitView to have
+  // already centered the target card.
+  const pane = page.locator('.react-flow__pane')
+  const paneBox = await pane.boundingBox()
+  if (paneBox) {
+    await page.mouse.move(paneBox.x + paneBox.width / 2, paneBox.y + paneBox.height / 2)
+    await page.mouse.down()
+    await page.mouse.move(paneBox.x + paneBox.width / 2 + 150, paneBox.y + paneBox.height / 2, { steps: 5 })
+    await page.mouse.up()
+  }
+
+  const card = noteCard(page, 'Ada Lovelace')
   const cardBox = await card.boundingBox()
   expect(cardBox?.height ?? 0).toBeGreaterThanOrEqual(44)
 
-  // The ⓘ affordance opens the full-screen overlay -- the row itself
-  // drills instead (AtlasCardBody.tsx), so the overlay's own touch
-  // target is what this job actually taps.
-  const info = card.getByTestId('atlas-card-info')
-  const infoBox = await info.boundingBox()
-  expect(infoBox?.height ?? 0).toBeGreaterThanOrEqual(44)
-  await info.click()
+  // Click flips the card in place -- the back's Open affordance is the
+  // one-map model's own touch target for the full-screen overlay.
+  await card.click()
+  await expect(card).toHaveAttribute('data-flipped', 'true')
+  const openButton = card.getByTestId('atlas-note-open')
+  const openBox = await openButton.boundingBox()
+  expect(openBox?.height ?? 0).toBeGreaterThanOrEqual(44)
+  await openButton.click()
 
   const overlay = page.getByRole('dialog')
   await expect(overlay).toBeVisible()
@@ -104,27 +132,30 @@ test('Mobile job 4 -- Atlas shelves glance and card overlay open/close', async (
   await expect(overlay).toBeHidden()
 })
 
-test('Mobile job 4 -- Atlas canvas space is pan/zoom only, no card drag', async ({ page }) => {
+test('Mobile job 4 -- Atlas board is pan/zoom only, no card drag', async ({ page }) => {
   await page.goto('/')
   await openDrawerAndNavigate(page, 'Atlas')
   // The single seeded root auto-enters "My space" (seeded
-  // ViewModeCanvas) -- the React Flow canvas IS the landing.
-  await expect(page.getByTestId('atlas-canvas')).toBeVisible()
+  // ViewModeCanvas) -- the React Flow board IS the landing.
+  await expect(page.getByTestId('atlas-board')).toBeVisible()
 
-  const exampleAreaCard = page.getByTestId('atlas-canvas-card').filter({ hasText: 'Example area' })
+  const exampleAreaCard = groupCard(page, 'Example area')
   await expect(exampleAreaCard).toBeVisible()
   const node = page.locator('.react-flow__node').filter({ has: exampleAreaCard })
   const before = await node.evaluate((el) => el.style.transform)
 
-  // A drag gesture that would reposition the card in desktop/canvas
-  // mode (composition-canvas-interactions.spec.ts's own pattern) must
-  // be a no-op here -- canvas read-only fallback (goal 0068), touch
-  // pan/zoom stays live via nodesDraggable={false} alone.
+  // A drag gesture that would reposition the card in desktop/Free mode
+  // (composition-canvas-interactions.spec.ts's own pattern) must be a
+  // no-op here -- canvas read-only fallback (goal 0068), touch pan/zoom
+  // stays live via nodesDraggable={false} alone. Targets the frame
+  // body below its header strip -- the header is a click/drill target,
+  // not the surface this gesture means to test.
   const box = await exampleAreaCard.boundingBox()
   if (box) {
-    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2)
+    const startY = box.y + box.height * 0.75
+    await page.mouse.move(box.x + box.width / 2, startY)
     await page.mouse.down()
-    await page.mouse.move(box.x + box.width / 2 + 120, box.y + box.height / 2 + 120, { steps: 5 })
+    await page.mouse.move(box.x + box.width / 2 + 120, startY + 120, { steps: 5 })
     await page.mouse.up()
   }
   const after = await node.evaluate((el) => el.style.transform)

@@ -28,6 +28,11 @@ func (a *AtlasService) reconcileBuiltIns() {
 	changed = a.reconcileLinkKindsLocked(tombstones, now) || changed
 	changed = a.reconcileCardsLocked(tombstones, now) || changed
 	changed = a.reconcileLinksLocked(tombstones, now) || changed
+	// Retirement runs LAST, after cards have already been re-kinded off
+	// a retired Kind by the upgrade path above -- reference integrity
+	// (no Card may still name a Kind being removed) is checked against
+	// that already-updated card set, never the pre-reconcile one.
+	changed = a.retireGoneKindsLocked() || changed
 	if changed {
 		if err := a.persistLocked(); err != nil {
 			slog.Error("failed to reconcile built-in Atlas entities", "error", err)
@@ -143,6 +148,48 @@ func (a *AtlasService) reconcileCardsLocked(tombstones map[string]bool, now time
 			a.cards[idx] = golden
 			changed = true
 		}
+	}
+	return changed
+}
+
+// retireGoneKindsLocked removes/tombstones every Kind named by
+// atlas.RetiredBuiltInKindIDs that's still sitting in a.kinds, EXACTLY
+// when no Card references it anymore -- the same reference-integrity
+// guard DeleteKind enforces for a user-initiated delete, applied here
+// automatically during reconcile. A Kind still referenced (e.g. a
+// user-Modified card the upgrade path above skipped re-kinding) is
+// left in place rather than forced: reconcile never orphans a Card's
+// KindID, it just leaves the retirement pending until that reference
+// clears some other way.
+func (a *AtlasService) retireGoneKindsLocked() bool {
+	changed := false
+	for _, id := range atlas.RetiredBuiltInKindIDs() {
+		idx := -1
+		for i, k := range a.kinds {
+			if k.ID == id {
+				idx = i
+				break
+			}
+		}
+		if idx == -1 {
+			continue
+		}
+		stillReferenced := false
+		for _, c := range a.cards {
+			if c.KindID == id {
+				stillReferenced = true
+				break
+			}
+		}
+		if stillReferenced {
+			continue
+		}
+		if err := seeding.RecordTombstone(a.store, id); err != nil {
+			slog.Error("failed to tombstone retired built-in Atlas kind", "id", id, "error", err)
+			continue
+		}
+		a.kinds = append(a.kinds[:idx], a.kinds[idx+1:]...)
+		changed = true
 	}
 	return changed
 }

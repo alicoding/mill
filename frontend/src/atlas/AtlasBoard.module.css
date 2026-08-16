@@ -1,0 +1,26 @@
+.board {
+    width: 100%;
+    height: 100%;
+    flex: 1 1 auto;
+    min-height: 480px;
+}
+
+/* Link labels (goal 0072 slice A): shown on hover/selection only, or
+   always when the board carries 3 edges or fewer -- edges themselves
+   stay decorative (a 1.6px stroke), never intercepting a click meant
+   for a card underneath. */
+.board :global(.react-flow__edge-text),
+.board :global(.react-flow__edge-textbg) {
+    opacity: 0;
+    transition: opacity 0.12s;
+}
+.board :global(.react-flow__edge:hover) :global(.react-flow__edge-text),
+.board :global(.react-flow__edge:hover) :global(.react-flow__edge-textbg),
+.board :global(.react-flow__edge.selected) :global(.react-flow__edge-text),
+.board :global(.react-flow__edge.selected) :global(.react-flow__edge-textbg) {
+    opacity: 1;
+}
+.board.alwaysShowLabels :global(.react-flow__edge-text),
+.board.alwaysShowLabels :global(.react-flow__edge-textbg) {
+    opacity: 1;
+}

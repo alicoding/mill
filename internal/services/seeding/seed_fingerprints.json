@@ -1,12 +1,11 @@
-
 {
   "aiprovider:example-local-ollama": {
     "seedRevision": 1,
     "fingerprint": "75218e8e0727e6cbf04afd8ff25f8a461ccfea9c77fdccfb06ac824333fe4100"
   },
   "atlascard:atlas-card-example-area": {
-    "seedRevision": 1,
-    "fingerprint": "f806976f64841d7f6a03c89fd6748d5d804f3bfe42c051c201b02fb60cce9bd0"
+    "seedRevision": 2,
+    "fingerprint": "eb5317e44821557f175bc14616d42ae6e2b770f9b331705146cc5e0d5d820858"
   },
   "atlascard:atlas-card-example-contact": {
     "seedRevision": 1,
@@ -17,12 +16,16 @@
     "fingerprint": "3faa1d21061e5903b7d5e07d1d23f2d030c7e1b6fd6a5b5eaf08c0ab080897c3"
   },
   "atlascard:atlas-card-getting-started": {
-    "seedRevision": 1,
-    "fingerprint": "1891cecec6f637d53f4bca4033cba7f63384414ffce232ca6be0c78d8244184d"
+    "seedRevision": 2,
+    "fingerprint": "9dfe9bf1edd27af1f3eff419307bd23cdf615d66f5af4f3d1a5a0c6a26c24ecc"
   },
   "atlascard:atlas-card-my-space": {
+    "seedRevision": 2,
+    "fingerprint": "5e8bb72e2cc03ed6a45d4179b4da38f6eb85ba9e8eadc76e271957b92984061c"
+  },
+  "atlascard:atlas-card-scratchpad": {
     "seedRevision": 1,
-    "fingerprint": "27a937a5eae5647887de6e25508d438140d94346647b072d46b47414d4c3b930"
+    "fingerprint": "9c4dc9e41f161539cfaf3fea3f9cec56cb3ef7c08699128a9ee8044466c279e5"
   },
   "atlaskind:atlas-kind-contact": {
     "seedRevision": 2,
@@ -35,10 +38,6 @@
   "atlaskind:atlas-kind-intake": {
     "seedRevision": 2,
     "fingerprint": "ec06f5c0e094665ffd4c3160a23288c8c2ff0a455f736c8c4f774b7e2cf524e5"
-  },
-  "atlaskind:atlas-kind-space": {
-    "seedRevision": 2,
-    "fingerprint": "c0b415c78e58b6ec4a38eb34fc74e32e92433f997dfd329b0c5d8fb1bbc30570"
   },
   "atlaskind:atlas-kind-topic": {
     "seedRevision": 2,

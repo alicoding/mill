@@ -10,12 +10,11 @@ import { refreshAtlas, useAtlasStore } from './atlasStore'
 import { applyLens, childrenOf, groupByKind, singleRootCard } from './atlasGrouping'
 import { useAtlasImportConfirm } from './useAtlasImportConfirm'
 import { AtlasToolbar } from './AtlasToolbar'
-import { AtlasShelves } from './AtlasShelves'
-import { AtlasCanvasSpace } from './AtlasCanvasSpace'
+import { AtlasBoard } from './AtlasBoard'
 import { AtlasCardOverlay } from './AtlasCardOverlay'
 import { AtlasMatrixView } from './AtlasMatrixView'
 import { AtlasCoverageView } from './AtlasCoverageView'
-import { ATLAS_CARD_HEIGHT, ATLAS_CARD_WIDTH } from './atlasCanvasConstants'
+import { NOTE_HEIGHT, NOTE_WIDTH, computeGroupFrameLayout, isGroupCard } from './atlasBoardLayout'
 import { findFreeDropPosition } from '../shared/canvasLayout'
 import runbookStyles from '../shared/ListCard.module.css'
 import styles from './AtlasView.module.css'
@@ -169,7 +168,19 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
     let position: Position | null = null
     if (targetMode === ViewMode.ViewModeCanvas) {
       const siblings = childrenOf(allCards, parentID).filter((c) => c.Position)
-      const desired = findFreeDropPosition({ x: 80, y: 80 }, siblings.map((c) => ({ position: { x: c.Position?.X ?? 0, y: c.Position?.Y ?? 0 } })), { width: ATLAS_CARD_WIDTH, height: ATLAS_CARD_HEIGHT })
+      const desired = findFreeDropPosition(
+        { x: 80, y: 80 },
+        siblings.map((c) => ({
+          position: { x: c.Position?.X ?? 0, y: c.Position?.Y ?? 0 },
+          // A sibling that itself holds children renders as a region
+          // frame, far larger than a leaf note's own footprint --
+          // collision-avoidance must clear its REAL rendered size, not
+          // a uniform note-sized box (regression: a new card once
+          // landed physically underneath an existing region frame).
+          dims: isGroupCard(allCards, c) ? computeGroupFrameLayout(allCards, c.ID).size : { width: NOTE_WIDTH, height: NOTE_HEIGHT },
+        })),
+        { width: NOTE_WIDTH, height: NOTE_HEIGHT },
+      )
       position = { X: desired.x, Y: desired.y }
     }
     await AtlasService.CreateCard(kindID, title, '', {}, parentID, position, ViewMode.$zero, '', '', '')
@@ -211,21 +222,14 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
         <div className={styles.emptyState} data-testid="atlas-empty-space">
           <Text as="p" className={runbookStyles.muted}>{t('emptySpace')}</Text>
         </div>
-      ) : effectiveViewMode === ViewMode.ViewModeCanvas ? (
-        <AtlasCanvasSpace
-          cards={visibleChildren}
-          allCards={allCards}
-          kinds={allKinds}
-          peeking={peek}
-          onDrill={drill}
-          onOpenOverlay={openOverlay}
-        />
       ) : (
-        <AtlasShelves
+        <AtlasBoard
           cards={visibleChildren}
           allCards={allCards}
           kinds={allKinds}
-          peeking={peek}
+          links={allLinks}
+          linkKinds={allLinkKinds}
+          mode={effectiveViewMode}
           onDrill={drill}
           onOpenOverlay={openOverlay}
         />

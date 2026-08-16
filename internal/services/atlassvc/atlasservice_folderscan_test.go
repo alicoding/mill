@@ -159,7 +159,7 @@ func TestImportFolderSuggestions_CreatesCardsWithContainmentAndMirrorPath(t *tes
 
 	fileKind := firstKindWithLabel(t, a, "Document")
 	imageKind := firstKindWithLabel(t, a, "Document") // v1 groups images under the same user-chosen doc-like kind by default in this test
-	containerKind := firstKindWithLabel(t, a, "Space")
+	containerKind := firstKindWithLabel(t, a, "Topic")
 
 	accepted := make([]string, 0, len(scanned.Entries))
 	for _, e := range scanned.Entries {
@@ -218,8 +218,8 @@ func TestImportFolderSuggestions_CreatesCardsWithContainmentAndMirrorPath(t *tes
 func TestImportFolderSuggestions_GridsRootLevelCardsUnderACanvasTarget(t *testing.T) {
 	a := newTestAtlasService(t)
 	root := buildFixtureFolder(t)
-	spaceKind := firstKindWithLabel(t, a, "Space")
-	target, err := a.CreateCard(spaceKind, "Canvas target", "", nil, "", nil, atlas.ViewModeCanvas, "", "", "")
+	containerKind := firstKindWithLabel(t, a, "Topic")
+	target, err := a.CreateCard(containerKind, "Canvas target", "", nil, "", nil, atlas.ViewModeCanvas, "", "", "")
 	if err != nil {
 		t.Fatalf("CreateCard: %v", err)
 	}
@@ -229,9 +229,9 @@ func TestImportFolderSuggestions_GridsRootLevelCardsUnderACanvasTarget(t *testin
 		TargetParentID:   target.ID,
 		AcceptedRelPaths: []string{"Meeting Notes.md", "logo.png", "Reports", "Reports/Q1 Summary.md"},
 		CategoryKindIDs: map[string]string{
-			string(atlas.ScanCategoryFile):      spaceKind,
-			string(atlas.ScanCategoryImage):     spaceKind,
-			string(atlas.ScanCategoryContainer): spaceKind,
+			string(atlas.ScanCategoryFile):      containerKind,
+			string(atlas.ScanCategoryImage):     containerKind,
+			string(atlas.ScanCategoryContainer): containerKind,
 		},
 	}); err != nil {
 		t.Fatalf("ImportFolderSuggestions: %v", err)

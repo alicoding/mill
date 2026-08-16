@@ -26,3 +26,30 @@ export function kindLabelColor(kindID: string): AtlasKindColor {
   }
   return LABEL_COLORS[hash % LABEL_COLORS.length]
 }
+
+// The board's own glyph square/region-frame border+fill need the
+// underlying CSS custom property NAMES behind each kindLabelColor
+// bucket (Primer's Label variant already only accepts a variant name,
+// never a paintable value) -- "secondary" has no dedicated Primer
+// semantic scale of its own, so it maps onto the neutral scale, same
+// substitution Primer's own Label component makes internally.
+export interface KindColorTokens {
+  emphasis: string
+  muted: string
+  borderMuted: string
+  fg: string
+}
+
+const TOKENS_BY_COLOR: Record<AtlasKindColor, KindColorTokens> = {
+  accent: { emphasis: '--bgColor-accent-emphasis', muted: '--bgColor-accent-muted', borderMuted: '--borderColor-accent-muted', fg: '--fgColor-accent' },
+  success: { emphasis: '--bgColor-success-emphasis', muted: '--bgColor-success-muted', borderMuted: '--borderColor-success-muted', fg: '--fgColor-success' },
+  attention: { emphasis: '--bgColor-attention-emphasis', muted: '--bgColor-attention-muted', borderMuted: '--borderColor-attention-muted', fg: '--fgColor-attention' },
+  severe: { emphasis: '--bgColor-severe-emphasis', muted: '--bgColor-severe-muted', borderMuted: '--borderColor-severe-muted', fg: '--fgColor-severe' },
+  done: { emphasis: '--bgColor-done-emphasis', muted: '--bgColor-done-muted', borderMuted: '--borderColor-done-muted', fg: '--fgColor-done' },
+  sponsors: { emphasis: '--bgColor-sponsors-emphasis', muted: '--bgColor-sponsors-muted', borderMuted: '--borderColor-sponsors-muted', fg: '--fgColor-sponsors' },
+  secondary: { emphasis: '--bgColor-neutral-emphasis', muted: '--bgColor-neutral-muted', borderMuted: '--borderColor-neutral-muted', fg: '--fgColor-neutral' },
+}
+
+export function kindColorTokens(kindID: string): KindColorTokens {
+  return TOKENS_BY_COLOR[kindLabelColor(kindID)]
+}

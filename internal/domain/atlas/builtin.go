@@ -16,6 +16,13 @@ import (
 // package and internal/services/atlassvc, this file excluded, for
 // these exact strings.
 const (
+	// kindSpaceID no longer appears in BuiltInKinds() -- containment is
+	// a role every card already carries (ADR-0038 Decision 3), so a
+	// dedicated container Kind added nothing a Kind-agnostic card with
+	// children didn't already have. The constant stays so
+	// RetiredBuiltInKindIDs can still name it for reconcile's retirement
+	// pass, and so any still-existing installs' stored KindID references
+	// remain a recognizable, if orphaned, string during that pass.
 	kindSpaceID    = "atlas-kind-space"
 	kindTopicID    = "atlas-kind-topic"
 	kindContactID  = "atlas-kind-contact"
@@ -35,6 +42,7 @@ const (
 	cardGettingID     = "atlas-card-getting-started"
 	cardContactID     = "atlas-card-example-contact"
 	cardDocumentID    = "atlas-card-example-document"
+	cardScratchpadID  = "atlas-card-scratchpad"
 
 	linkGettingToContactID  = "atlas-link-getting-to-contact"
 	linkContactToDocumentID = "atlas-link-contact-to-document"
@@ -43,25 +51,14 @@ const (
 // BuiltInKinds returns the seeded example card types -- pure config,
 // no persistence (mirrors list.BuiltIn/decision.BuiltIn's shape:
 // atlassvc owns seeding/top-up, this package stays free of the
-// settings-store concern). "Space" is a generic container kind (every
-// card can already contain per ADR-0038 Decision 3; Space just gives
-// a purely-organizational card something to call itself) -- Topic/
-// Contact/Document are the worked examples ADR-0038's Decision 2
-// requires: ordinary, fully-editable seeded data, never a built-in
-// concept.
+// settings-store concern). Every card can already contain (ADR-0038
+// Decision 3), so containment needs no dedicated container Kind of its
+// own -- Topic/Contact/Document are the worked examples ADR-0038's
+// Decision 2 requires: ordinary, fully-editable seeded data, never a
+// built-in concept.
 func BuiltInKinds() []Kind {
 	now := time.Now()
 	return []Kind{
-		{
-			ID: kindSpaceID, Label: "Space", Icon: "🗂️",
-			Description: "A container for organizing other cards.",
-			Fields:      nil,
-			CreatedAt:   now, UpdatedAt: now,
-			// SeedRevision 2: atlas.Kind gained FieldTombstones (goal
-			// 0063's absorbed 0046 leftover) -- structural only, no
-			// change to Fields itself.
-			BuiltIn: true, Seed: seedorigin.Stamp(2),
-		},
 		{
 			ID: kindTopicID, Label: "Topic", Icon: "🧭",
 			Description: "Something being tracked or worked through.",
@@ -119,34 +116,51 @@ func BuiltInLinkKinds() []LinkKind {
 	}
 }
 
-// BuiltInCards returns the seeded example space: a root container
-// ("My space", canvas mode) holding one Topic card and one nested
-// container ("Example area", shelves mode) which in turn holds a
-// Contact and a mirrored Document -- the proof that containment,
-// per-container view mode, and the mirror attributes (Source set,
-// MirrorPath empty until a refresh runs) all work end to end.
+// BuiltInCards returns the seeded example space: a root card ("My
+// space", canvas mode) holding a Topic card, a Scratchpad, and one
+// nested Topic-kind card ("Example area", shelves mode) which in turn
+// holds a Contact and a mirrored Document -- the proof that
+// containment, per-container view mode, and the mirror attributes
+// (Source set, MirrorPath empty until a refresh runs) all work end to
+// end. "My space" and "Example area" render as region frames purely
+// because they hold children (ADR-0038 Decision 3's containment role),
+// not because of any Kind of their own -- both are ordinary Topic
+// cards, proving that decoupling by construction.
 func BuiltInCards() []Card {
 	now := time.Now()
 	return []Card{
 		{
-			ID: cardMySpaceID, KindID: kindSpaceID, Title: "My space",
+			ID: cardMySpaceID, KindID: kindTopicID, Title: "My space",
 			ParentID: "", ViewMode: ViewModeCanvas,
 			CreatedAt: now, UpdatedAt: now,
-			BuiltIn: true, Seed: seedorigin.Stamp(1),
+			BuiltIn: true, Seed: seedorigin.Stamp(2),
 		},
 		{
-			ID: cardExampleAreaID, KindID: kindSpaceID, Title: "Example area",
+			ID: cardExampleAreaID, KindID: kindTopicID, Title: "Example area",
 			ParentID: cardMySpaceID, ViewMode: ViewModeShelves,
 			Position:  &Position{X: 80, Y: 80},
 			CreatedAt: now, UpdatedAt: now,
-			BuiltIn: true, Seed: seedorigin.Stamp(1),
+			BuiltIn: true, Seed: seedorigin.Stamp(2),
 		},
 		{
+			// Position clears "Example area"'s own region-frame footprint
+			// (goal 0072 slice A: a card holding cards now renders as a
+			// frame sized to fit its children inline, wider than a bare
+			// note card) -- 532 keeps this card from landing underneath
+			// that frame in Free/canvas mode.
 			ID: cardGettingID, KindID: kindTopicID, Title: "Getting started",
 			Note:      "Declare a Kind, drop a card, link it to something.",
 			ParentID:  cardMySpaceID,
-			Position:  &Position{X: 320, Y: 80},
+			Position:  &Position{X: 532, Y: 80},
 			Fields:    map[string]string{"summary": "How this space is organized.", "status": "Open"},
+			CreatedAt: now, UpdatedAt: now,
+			BuiltIn: true, Seed: seedorigin.Stamp(2),
+		},
+		{
+			ID: cardScratchpadID, KindID: kindTopicID, Title: "Scratchpad",
+			Note:      "One keystroke in. File it later by dragging.",
+			ParentID:  cardMySpaceID,
+			Position:  &Position{X: 746, Y: 80},
 			CreatedAt: now, UpdatedAt: now,
 			BuiltIn: true, Seed: seedorigin.Stamp(1),
 		},
@@ -192,4 +206,14 @@ func BuiltInLinks() []Link {
 			BuiltIn: true, Seed: seedorigin.Stamp(1),
 		},
 	}
+}
+
+// RetiredBuiltInKindIDs names a built-in Kind ID that once shipped in
+// BuiltInKinds() and no longer does -- atlassvc's reconcile pass uses
+// this to remove/tombstone a leftover copy from an existing install,
+// once nothing references it anymore, mirroring the same insert/
+// upgrade/leave-alone-once-Modified discipline BuiltInKinds' own
+// callers already apply, just in the opposite direction.
+func RetiredBuiltInKindIDs() []string {
+	return []string{kindSpaceID}
 }
