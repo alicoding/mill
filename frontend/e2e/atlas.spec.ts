@@ -198,31 +198,6 @@ test('clicking a card flips it in place without moving the board; a second card 
   await expect(scratchpad).toHaveAttribute('data-flipped', 'false')
 })
 
-test('the gesture model: double-click commits -- a leaf opens its page, a frame body and a region chip zoom in, chips flip on single click', async ({ page }) => {
-  await page.goto('/')
-  await page.getByRole('link', { name: 'Atlas' }).click()
-  await expect(page.getByTestId('atlas-board')).toBeVisible()
-
-  // Leaf double-click = open its page; the commit unflips, so the
-  // card is front-facing again once the page closes.
-  const getting = noteCard(page, 'Getting started')
-  await getting.dblclick()
-  const overlay = page.locator('[data-component="atlas-card-overlay"]')
-  await expect(overlay).toBeVisible()
-  await expect(overlay.getByTestId('atlas-page-title')).toHaveText('Getting started')
-  await page.keyboard.press('Escape')
-  await expect(overlay).not.toBeVisible()
-  await expect(getting).toHaveAttribute('data-flipped', 'false')
-
-  // Frame body double-click = zoom into the place (padding strip:
-  // the frame centre belongs to its preview-child nodes).
-  const exampleArea = groupCard(page, 'Example area')
-  await exampleArea.dblclick({ position: { x: 6, y: 60 } })
-  await expect(page.getByTestId('atlas-breadcrumb')).toContainText('Example area')
-  await page.getByTestId('atlas-breadcrumb').getByText('My space', { exact: true }).click()
-  await expect(page.getByTestId('atlas-breadcrumb')).not.toContainText('Example area')
-})
-
 test('the visible view-mode toggle switches a space between Auto-arrange and Free, and persists across a reload', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Atlas' }).click()

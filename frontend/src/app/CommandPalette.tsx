@@ -52,7 +52,7 @@ import styles from './CommandPalette.module.css'
 // still just renders off the store's paletteOpen flag regardless of
 // which bound combo flipped it.
 
-type PaletteGroupId = 'commands' | 'workflows' | 'tabs'
+type PaletteGroupId = 'surface' | 'commands' | 'workflows' | 'tabs'
 
 interface PaletteEntry extends PaletteSearchable {
   id: string
@@ -66,6 +66,7 @@ interface PaletteEntry extends PaletteSearchable {
 
 function groupMetadataFor(t: (key: string) => string) {
   return [
+    { groupId: 'surface' as const, header: { title: t('commandPalette.groups.surface') } },
     { groupId: 'commands' as const, header: { title: t('commandPalette.groups.commands') } },
     { groupId: 'workflows' as const, header: { title: t('commandPalette.groups.workflows') } },
     { groupId: 'tabs' as const, header: { title: t('commandPalette.groups.tabs') } },
@@ -116,6 +117,7 @@ export function CommandPalette() {
   const nodeTypes = useAppStore((s) => s.nodeTypes)
   const requests = useAppStore((s) => s.requests)
   const workTabs = useAppStore((s) => s.workTabs)
+  const viewKind = useAppStore((s) => s.view.kind)
   const openWorkTab = useAppStore((s) => s.openWorkTab)
   const activateWorkTab = useAppStore((s) => s.activateWorkTab)
   const closeWorkTab = useAppStore((s) => s.closeWorkTab)
@@ -209,9 +211,13 @@ export function CommandPalette() {
     closeWorkTab(tab.key)
   }
 
+  // Surface-scoped commands (goal 0071): the active surface's own
+  // commands seat FIRST in their own group -- rank, not hide; the
+  // global set stays right below. Commands scoped to a DIFFERENT
+  // surface are omitted (they cannot run here).
   const commandEntry = (command: (typeof COMMANDS)[number]): PaletteEntry => ({
     id: `cmd:${command.id}`,
-    groupId: 'commands',
+    groupId: command.surface ? 'surface' : 'commands',
     text: command.label,
     searchText: `${command.label} ${command.id}`.toLowerCase(),
     leadingVisual: CommandPaletteIcon,
@@ -299,17 +305,18 @@ export function CommandPalette() {
 
   const allEntries = useMemo<PaletteEntry[]>(() => {
     if (restState) {
+      const surfaceCommands = COMMANDS.filter((c) => c.surface?.includes(viewKind)).map(commandEntry)
       const navCommands = COMMANDS.filter((c) => isNavCommandId(c.id)).map(commandEntry)
       const topWorkflows = sortWorkflowsByPinnedAndFrecency(workflows ?? [], mostUsedRank, pinnedWorkflowIds).slice(0, REST_STATE_WORKFLOW_LIMIT)
-      return [...navCommands, ...topWorkflows.flatMap(workflowEntries), ...workTabs.flatMap(tabEntries)]
+      return [...surfaceCommands, ...navCommands, ...topWorkflows.flatMap(workflowEntries), ...workTabs.flatMap(tabEntries)]
     }
     return [
-      ...COMMANDS.map(commandEntry),
+      ...COMMANDS.filter((c) => !c.surface || c.surface.includes(viewKind)).map(commandEntry),
       ...sortWorkflowsByPinnedAndFrecency(workflows ?? [], mostUsedRank, pinnedWorkflowIds).flatMap(workflowEntries),
       ...workTabs.flatMap(tabEntries),
     ]
     // eslint-disable-next-line react-hooks/exhaustive-deps -- commandEntry/workflowEntries/tabEntries close over workflows/nodeTypes/requests/workTabs/mostUsedRank/hotkeyCombos/pinnedWorkflowIds/togglePinnedWorkflow/t, already listed
-  }, [restState, workflows, nodeTypes, requests, workTabs, mostUsedRank, hotkeyCombos, pinnedWorkflowIds, t])
+  }, [restState, workflows, nodeTypes, requests, workTabs, mostUsedRank, hotkeyCombos, pinnedWorkflowIds, viewKind, t])
 
   const filtered = restState ? allEntries : filterPaletteEntries(allEntries, query)
 

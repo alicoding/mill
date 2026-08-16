@@ -5,6 +5,7 @@ import { Text } from '@primer/react'
 import { ViewMode } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 import type { Card, Position } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 import { AtlasService } from '../shared/bindings'
+import { useAppStore } from '../shared/store'
 import { downloadJSON } from '../shared/downloadJSON'
 import { refreshAtlas, useAtlasStore } from './atlasStore'
 import { applyLens, childrenOf, groupByKind, singleRootCard } from './atlasGrouping'
@@ -128,6 +129,22 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
   const visibleChildren = childrenAll.filter((c) => lensed.includes(c) || isGroupCard(allCards, c))
   const overlayCard = overlayCardID ? allCards.find((c) => c.ID === overlayCardID) ?? null : null
   const overlayKind = overlayCard ? allKinds.find((k) => k.ID === overlayCard.KindID) : undefined
+
+  // atlas.up (⌘↑, shared/commands.ts): one step up the depth ladder.
+  // At the auto-entered single root there is no "up" (the All spaces
+  // meta level only exists with 2+ roots) -- the press is a no-op,
+  // never a broken empty board.
+  const atlasUpRequest = useAppStore((s) => s.atlasUpRequest)
+  const lastUpRequest = useRef(atlasUpRequest)
+  useEffect(() => {
+    if (atlasUpRequest === lastUpRequest.current) return
+    lastUpRequest.current = atlasUpRequest
+    if (!viewedID) return
+    const parent = allCards.find((c) => c.ID === viewedID)?.ParentID ?? ''
+    if (parent === '' && singleRootCard(allCards)) return
+    setViewedID(parent)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- keyed on the signal tick alone; viewedID/allCards are read at fire time
+  }, [atlasUpRequest])
 
   const navigate = (id: string) => setViewedID(id)
   const drill = (id: string) => setViewedID(id)

@@ -61,7 +61,13 @@ export const AtlasNoteCardNode = memo(function AtlasNoteCardNode({ data }: NodeP
       role="button"
       tabIndex={0}
       aria-label={t('board.flipCardAriaLabel', { title: card.Title })}
-      onClick={() => onToggleFlip(card.ID)}
+      // ⌘-click is the pointer twin of ⌘↵ (goal 0074): open the page
+      // immediately, no flip step -- the same modifier meaning the
+      // jump already carries.
+      onClick={(e) => {
+        if (e.metaKey || e.ctrlKey) onCommit(card.ID)
+        else onToggleFlip(card.ID)
+      }}
       // The gesture model (goal 0074): click glances, double-click
       // commits -- for a leaf, the commit is its page. The commit
       // supersedes the glance, so the double-click's own two single

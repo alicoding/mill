@@ -63,6 +63,12 @@ export const AtlasGroupNode = memo(function AtlasGroupNode({ data }: NodeProps<A
     onDrill(card.ID)
   }
   const toggleFlip = () => onToggleFlip(card.ID)
+  // ⌘-click opens the place's own page directly (the pointer twin of
+  // ⌘↵, goal 0074) -- plain click keeps flipping.
+  const bodyClick = (e: { metaKey: boolean; ctrlKey: boolean }) => {
+    if (e.metaKey || e.ctrlKey) onOpenOverlay(card.ID)
+    else toggleFlip()
+  }
 
   return (
     <div
@@ -74,7 +80,7 @@ export const AtlasGroupNode = memo(function AtlasGroupNode({ data }: NodeProps<A
       tabIndex={0}
       aria-label={t('board.flipCardAriaLabel', { title: card.Title })}
       style={{ borderColor: `var(${tokens.fg})`, background: `var(${tokens.muted})` }}
-      onClick={toggleFlip}
+      onClick={bodyClick}
       // Gesture model (goal 0074): a double-click on the frame BODY
       // commits -- a place's commit is zooming in (handleDrill itself
       // unflips first). The header's own single-click drill stays as
