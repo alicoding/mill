@@ -98,9 +98,18 @@ function AtlasBoardInner({ cards, allCards, kinds, links, linkKinds, mode, viewe
   // into the frame's rendered bounds first, then re-root exactly once
   // when that transition resolves -- never before.
   const handleDrill = useCallback((groupID: string) => {
+    // A commit supersedes a glance (goal 0074): entering a place
+    // clears whatever was flipped before the camera moves.
+    setFlippedID(null)
     const bounds = getNodesBounds([groupID])
     void fitBounds(bounds, { duration: reduceMotion ? 0 : 450, padding: 0.25 }).then(() => onDrill(groupID))
   }, [getNodesBounds, fitBounds, reduceMotion, onDrill])
+
+  // A leaf's double-click commit (goal 0074): unflip, open its page.
+  const handleLeafCommit = useCallback((cardID: string) => {
+    setFlippedID(null)
+    onOpenOverlay(cardID)
+  }, [onOpenOverlay])
 
   // Which card ids ACTUALLY render on THIS board: top-level children
   // plus each frame's capped preview -- excluding a flipped frame's
@@ -149,6 +158,7 @@ function AtlasBoardInner({ cards, allCards, kinds, links, linkKinds, mode, viewe
       hinted: hintedID === card.ID,
       onToggleFlip: toggleFlip,
       onOpenOverlay,
+      onCommit: handleLeafCommit,
     })
 
     for (const card of cards) {
@@ -210,6 +220,9 @@ function AtlasBoardInner({ cards, allCards, kinds, links, linkKinds, mode, viewe
                   kind: kindByID.get(child.card.KindID),
                   childCount: childrenOf(allCards, child.card.ID).length,
                   pulsed: pulsedID === child.card.ID,
+                  flipped: flippedID === child.card.ID,
+                  onToggleFlip: toggleFlip,
+                  onOpenOverlay,
                   onDrill: handleDrill,
                 },
               })
@@ -241,7 +254,7 @@ function AtlasBoardInner({ cards, allCards, kinds, links, linkKinds, mode, viewe
       }
     }
     return nodes
-  }, [cards, allCards, kinds, links, linkKinds, isFree, readOnly, flippedID, pulsedID, hintedID, onOpenOverlay, handleDrill])
+  }, [cards, allCards, kinds, links, linkKinds, isFree, readOnly, flippedID, pulsedID, hintedID, onOpenOverlay, handleDrill, handleLeafCommit])
 
   const [hoveredEdgeID, setHoveredEdgeID] = useState<string | null>(null)
   const edges = useMemo(() => {
