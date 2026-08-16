@@ -75,3 +75,29 @@ export function orderContentLinks(
 export function personInitial(title: string): string {
   return (title.trim().charAt(0) || '?').toUpperCase()
 }
+
+// The page's own semantic zoom (goal 0073 slice B): a page with
+// hundreds of entries must stay bounded the same way a board frame
+// already is (atlasBoardLayout.ts's preview cap), with an honest,
+// explicit expander rather than a silent truncation -- capPageEntries
+// always reserves one slot for its own "Show N more" row instead of
+// showing exactly `limit` entries and hiding the row that would let a
+// user reach the rest. Mirror previews are the other real cost at
+// scale (a Contents column rendering 100 fetched-and-rendered previews
+// at once): eagerPreviewIDs bounds how many render immediately,
+// leaving the remainder behind an on-demand button.
+export interface CappedEntries<T> {
+  visible: T[]
+  hiddenCount: number
+}
+
+export function capPageEntries<T>(entries: T[], limit = 12): CappedEntries<T> {
+  if (entries.length <= limit) return { visible: entries, hiddenCount: 0 }
+  const visible = entries.slice(0, limit - 1)
+  return { visible, hiddenCount: entries.length - visible.length }
+}
+
+export function eagerPreviewIDs(children: Card[], limit = 3): Set<string> {
+  const mirrored = children.filter((c) => c.MirrorPath)
+  return new Set(mirrored.slice(0, limit).map((c) => c.ID))
+}

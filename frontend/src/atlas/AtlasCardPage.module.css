@@ -157,6 +157,21 @@
     font-size: 12.5px;
 }
 
+.showMoreRow {
+    font-family: var(--mill-mono);
+    font-size: 11px;
+    color: var(--fgColor-muted);
+    border-top: 1px dashed var(--borderColor-muted);
+    padding-top: 8px;
+    width: 100%;
+    justify-content: center;
+}
+
+.loadPreviewButton {
+    color: var(--fgColor-muted);
+    margin-top: 8px;
+}
+
 /* The page is a stable sheet, not a grow-to-content popover: a long
    edit form must scroll INSIDE the kit dialog's own body region, never
    push Save/Delete below the viewport over the board's controls. The

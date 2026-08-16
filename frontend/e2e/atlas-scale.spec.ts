@@ -16,6 +16,34 @@ import {
 // own disjoint port range) because the MILL_TEST_DENSE_ATLAS env gate
 // must not leak a second board's worth of cards into the standard
 // workers' seeded assertions.
+// A region frame's own body has one reliably blank strip regardless of
+// child count, row layout, or the board's own current zoom: the left
+// GROUP_PADDING gutter (atlasBoardLayout.ts), a narrow column between
+// the frame's own left edge and its first column of children, running
+// the full height below the header. A FIXED pixel offset isn't
+// zoom-invariant -- at this dense board's own more-zoomed-out fitView,
+// the same screen-pixel y lands past the header inset into a preview
+// child's own rendered node -- so this samples a FRACTION of the
+// element's current box instead (atlas-page.spec.ts's own established
+// technique for the same gutter, on the same "resolved at click time,
+// not a stale snapshot" reasoning).
+async function clickFrameBody(frame: import('@playwright/test').Locator) {
+  const box = await frame.boundingBox()
+  if (!box) throw new Error('expected the frame to be measurable')
+  await frame.click({ position: { x: box.width * 0.01, y: box.height * 0.5 } })
+}
+
+// A page's own child-entry count: exactly the "atlas-page-child"/
+// "atlas-page-child-group" rows, never a prefix-matched selector --
+// a mirrored leaf's own inline preview wrapper carries the sibling
+// testid "atlas-page-child-mirror", which a `^=` prefix selector would
+// double-count alongside its parent entry.
+async function pageChildCount(overlay: import('@playwright/test').Locator): Promise<number> {
+  const leaves = await overlay.getByTestId('atlas-page-child').count()
+  const groups = await overlay.getByTestId('atlas-page-child-group').count()
+  return leaves + groups
+}
+
 // eslint-disable-next-line no-empty-pattern -- this test needs `testInfo` (the second arg), not any fixture.
 test('a dense area previews bounded: capped tiles, region chips, a truthful ghost tile, and reattached links', async ({}, testInfo) => {
   const idx = testInfo.parallelIndex
@@ -143,6 +171,56 @@ test('a dense area previews bounded: capped tiles, region chips, a truthful ghos
     const gsBox = await gs.boundingBox()
     if (!eaBox || !gsBox) throw new Error('auto-arrange assertion cards missing bounding boxes')
     expect(gsBox.x).toBeGreaterThan(eaBox.x + eaBox.width - 3)
+
+    // Card-page-at-scale (goal 0073 slice B): Velocity's own page --
+    // reached the same body-click-flip-then-Open way any region
+    // frame's page is -- caps its entries with an honest expander once
+    // density crosses the limit, the same deep counts the header row
+    // and frame preview already summarize but never list in full.
+    // Velocity holds exactly 12 direct children and 0 own links: the
+    // page's own entry cap (12) passes every entry through untouched
+    // at the exact limit -- no expander. Already viewing "My space"
+    // (the auto-arrange assertions above never navigated away).
+    await clickFrameBody(velocity)
+    await expect(velocity).toHaveAttribute('data-flipped', 'true')
+    await velocity.getByTestId('atlas-group-open').click()
+    const overlay = page.locator('[data-component="atlas-card-overlay"]')
+    await expect(overlay).toBeVisible()
+    await expect.poll(() => pageChildCount(overlay)).toBe(12)
+    await expect(overlay.getByTestId('atlas-page-show-more')).toHaveCount(0)
+    await page.keyboard.press('Escape')
+    await expect(overlay).not.toBeVisible()
+
+    // Drill into Velocity and import 4 more DIRECT children (Reports,
+    // Meeting Notes, Project Plan, Logo) -- the nested "Q1 Summary"
+    // entry is rejected so every accepted entry lands directly under
+    // Velocity rather than one level deeper under Reports, landing 16
+    // direct children total, past the cap.
+    await velocity.getByTestId('atlas-group-header').click()
+    await expect(page.getByTestId('atlas-breadcrumb')).toContainText('Velocity')
+    await page.getByTestId('atlas-add-from-folder').click()
+    const importDialog = page.locator('[data-component="atlas-folder-import-dialog"]')
+    await expect(importDialog).toBeVisible()
+    await importDialog.getByRole('checkbox', { name: 'Q1 Summary' }).uncheck()
+    await importDialog.getByRole('button', { name: 'Add 4 cards' }).click()
+    await expect(importDialog).not.toBeVisible()
+    await page.getByTestId('atlas-breadcrumb').getByText('My space', { exact: true }).click()
+    await expect(page.getByTestId('atlas-breadcrumb')).not.toContainText('Velocity')
+
+    // Past the cap: 11 visible (limit-1) plus an honest "Show 5 more"
+    // -- clicking it renders all 16, the expander gone.
+    await clickFrameBody(velocity)
+    await expect(velocity).toHaveAttribute('data-flipped', 'true')
+    await velocity.getByTestId('atlas-group-open').click()
+    await expect(overlay).toBeVisible()
+    await expect.poll(() => pageChildCount(overlay)).toBe(11)
+    const showMore = overlay.getByTestId('atlas-page-show-more')
+    await expect(showMore).toHaveText('Show 5 more')
+    await showMore.click()
+    await expect.poll(() => pageChildCount(overlay)).toBe(16)
+    await expect(overlay.getByTestId('atlas-page-show-more')).toHaveCount(0)
+    await page.keyboard.press('Escape')
+    await expect(overlay).not.toBeVisible()
 
     await page.close()
   } finally {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Card, Link, LinkKind } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
-import { isPersonKind, orderContentChildren, orderContentLinks, personInitial } from './atlasCardPageContent'
+import { capPageEntries, eagerPreviewIDs, isPersonKind, orderContentChildren, orderContentLinks, personInitial } from './atlasCardPageContent'
 
 function card(id: string, title: string, parentID: string, kindID = 'kind-topic'): Card {
   return { ID: id, KindID: kindID, Title: title, ParentID: parentID } as Card
@@ -67,5 +67,48 @@ describe('personInitial', () => {
 
   it('falls back to a placeholder for an empty title', () => {
     expect(personInitial('   ')).toBe('?')
+  })
+})
+
+describe('capPageEntries', () => {
+  it('passes every entry through untouched when under the limit', () => {
+    const entries = [1, 2, 3]
+    expect(capPageEntries(entries, 12)).toEqual({ visible: [1, 2, 3], hiddenCount: 0 })
+  })
+
+  it('passes every entry through untouched at exactly the limit -- no expander', () => {
+    const entries = Array.from({ length: 12 }, (_, i) => i)
+    expect(capPageEntries(entries, 12)).toEqual({ visible: entries, hiddenCount: 0 })
+  })
+
+  it('caps to limit-1 visible plus an honest hiddenCount when over the limit', () => {
+    const entries = Array.from({ length: 16 }, (_, i) => i)
+    const result = capPageEntries(entries, 12)
+    expect(result.visible).toEqual(entries.slice(0, 11))
+    expect(result.hiddenCount).toBe(5)
+  })
+})
+
+describe('eagerPreviewIDs', () => {
+  function mirroredCard(id: string, mirrorPath: string): Card {
+    return { ID: id, KindID: 'kind-doc', Title: id, ParentID: 'p', MirrorPath: mirrorPath } as Card
+  }
+  function noMirrorCard(id: string): Card {
+    return { ID: id, KindID: 'kind-doc', Title: id, ParentID: 'p' } as Card
+  }
+
+  it('takes the first N mirrored children in order', () => {
+    const children = [mirroredCard('a', '/a.md'), mirroredCard('b', '/b.md'), mirroredCard('c', '/c.md'), mirroredCard('d', '/d.md')]
+    expect(eagerPreviewIDs(children, 3)).toEqual(new Set(['a', 'b', 'c']))
+  })
+
+  it('skips non-mirrored children when counting toward the limit', () => {
+    const children = [noMirrorCard('x'), mirroredCard('a', '/a.md'), noMirrorCard('y'), mirroredCard('b', '/b.md')]
+    expect(eagerPreviewIDs(children, 3)).toEqual(new Set(['a', 'b']))
+  })
+
+  it('passes every mirrored child through when under the limit', () => {
+    const children = [mirroredCard('a', '/a.md'), mirroredCard('b', '/b.md')]
+    expect(eagerPreviewIDs(children, 3)).toEqual(new Set(['a', 'b']))
   })
 })

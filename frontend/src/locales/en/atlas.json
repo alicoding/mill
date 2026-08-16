@@ -140,7 +140,9 @@
     "metaFreshness": "freshness",
     "metaShare": "share",
     "metaReceipt": "receipt",
-    "openGroupPage": "Open ↗"
+    "openGroupPage": "Open ↗",
+    "showMore": "Show {{count}} more",
+    "loadPreview": "Show preview"
   },
   "share": {
     "cardButtonAriaLabel": "Share {{title}}",
