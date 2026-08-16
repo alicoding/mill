@@ -16,6 +16,18 @@ export function childrenOf(cards: Card[], parentID: string): Card[] {
   return cards.filter((c) => c.ParentID === parentID)
 }
 
+// The one root card (ParentID === "") when exactly one exists, else
+// null -- the egocentric-root predicate (ADR-0038's egocentric-root
+// principle): AtlasView's auto-entry effect drills straight into this
+// card on load instead of landing on the virtual "All spaces" meta
+// level, and AtlasBreadcrumb suppresses that meta level's own crumb
+// under the same condition. Neither reads true (auto-entry, crumb
+// suppression) when a second root card exists or none does.
+export function singleRootCard(cards: Card[]): Card | null {
+  const roots = cards.filter((c) => c.ParentID === '')
+  return roots.length === 1 ? roots[0] : null
+}
+
 // Cards grouped into one shelf per Kind that actually has a card among
 // `cards`, ordered by `kinds`' own declared order (a user's own
 // Kind-list order, not alphabetical) -- shelves mode's "one labeled

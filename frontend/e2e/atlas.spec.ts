@@ -1,59 +1,142 @@
 import { test, expect } from './fixtures/server'
-import { withClipboardLock } from './fixtures/clipboardLock'
 
-// Exercises the Atlas surface (docs/adr/0038, docs/goals/0061 slice B)
-// over real Go bindings (Wails3 server mode): the seeded root/My space/
-// Example area space proves drill/back, the full-screen overlay, the
-// explicit sibling-vs-child create flow, the per-space lens, and Quick
-// Panel's card search -- the same seeded-example-is-the-proof pattern
-// every other e2e spec in this suite follows. Seeded names ("My space",
+// Exercises the Atlas surface (docs/adr/0038, docs/goals/0061 slice B,
+// docs/goals/0069's egocentric-root fix) over real Go bindings (Wails3
+// server mode): the seeded root/My space/Example area space proves
+// auto-entry, drill/back, the full-screen overlay, the explicit
+// sibling-vs-child create flow, the per-space lens, and Quick Panel's
+// card search -- the same seeded-example-is-the-proof pattern every
+// other e2e spec in this suite follows. Seeded names ("My space",
 // "Example area", "Getting started", "Contact", "Ada Lovelace") are
 // used here to assert against the real seed (.claude/rules/testing.md:
-// fine in e2e specs, never in frontend/src).
+// fine in e2e specs, never in frontend/src). With exactly one seeded
+// root card, the surface auto-enters it -- every test below already
+// lands on "My space" without needing to click it, and the "All
+// spaces" meta-level crumb is absent unless a test explicitly creates
+// a second root card. The share (goal 0063) and projection (goal
+// 0064) test groups live in sibling files, atlas-share.spec.ts and
+// atlas-projections.spec.ts -- split out to stay under architecture.
+// md's 500-line convention, same pattern composition.spec.ts/
+// composition-canvas-interactions.spec.ts already established.
 
 function atlasView(page: import('@playwright/test').Page) {
   return page.getByTestId('atlas-view')
 }
 
-test('seeded root renders, drill/back via breadcrumb works across both view modes', async ({ page }) => {
+test('the seeded single root auto-enters "My space"; drill/back via breadcrumb works across both view modes', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Atlas' }).click()
   await expect(atlasView(page)).toBeVisible()
 
-  // Root (the virtual top) always renders shelves -- "My space" is the
-  // one seeded root-level card, grouped under its own Kind's shelf.
-  await expect(page.getByTestId('atlas-breadcrumb')).toContainText('All spaces')
-  const rootCard = page.getByTestId('atlas-shelf-card').filter({ hasText: 'My space' })
-  await expect(rootCard).toBeVisible()
-
-  // Drilling into "My space" (ViewModeCanvas) switches to the React
-  // Flow canvas renderer -- its two seeded children ("Example area",
-  // "Getting started") render as canvas cards, not shelf rows.
-  await rootCard.click()
+  // Auto-entry (ADR-0038's egocentric-root principle): with exactly one
+  // root card, the surface opens already drilled into it -- "My space"
+  // IS the top, so the breadcrumb starts there with no synthetic
+  // "All spaces" crumb, and its content ("Example area", "Getting
+  // started") is visible immediately, with no click required.
   await expect(page.getByTestId('atlas-breadcrumb')).toContainText('My space')
+  await expect(page.getByTestId('atlas-breadcrumb')).not.toContainText('All spaces')
   await expect(page.getByTestId('atlas-canvas')).toBeVisible()
   const exampleAreaCard = page.getByTestId('atlas-canvas-card').filter({ hasText: 'Example area' })
   await expect(exampleAreaCard).toBeVisible()
+  await expect(page.getByTestId('atlas-canvas-card').filter({ hasText: 'Getting started' })).toBeVisible()
 
-  // Drilling into "Example area" (ViewModeShelves) switches back to
-  // shelves -- its seeded children group under their own Kind shelves.
+  // Drilling into "Example area" (ViewModeShelves) switches to shelves
+  // -- its seeded children group under their own Kind shelves.
   await exampleAreaCard.click()
   await expect(page.getByTestId('atlas-breadcrumb')).toContainText('Example area')
+  await expect(page.getByTestId('atlas-breadcrumb')).toContainText('My space')
   await expect(page.getByTestId('atlas-shelves')).toBeVisible()
   await expect(page.getByTestId('atlas-shelf-card').filter({ hasText: 'Ada Lovelace' })).toBeVisible()
   await expect(page.getByTestId('atlas-shelf-card').filter({ hasText: 'Project charter' })).toBeVisible()
 
-  // Explicit back: every ancestor crumb is clickable, all the way to root.
+  // Explicit back: the "My space" crumb (there is no "All spaces" one
+  // to fall back to further) returns to the auto-entered root.
+  await page.getByTestId('atlas-breadcrumb').getByText('My space', { exact: true }).click()
+  await expect(page.getByTestId('atlas-breadcrumb')).not.toContainText('Example area')
+  await expect(exampleAreaCard).toBeVisible()
+})
+
+test('creating a sibling of the auto-entered root surfaces the "All spaces" meta level, reachable via breadcrumb', async ({ page }) => {
+  const title = 'ZzE2eAtlasSecondRoot'
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Atlas' }).click()
+  await expect(atlasView(page)).toBeVisible()
+  await expect(page.getByTestId('atlas-breadcrumb')).not.toContainText('All spaces')
+
+  // "Add beside" from the auto-entered root creates a SECOND root card
+  // (a sibling of "My space", ParentID "") -- the only path a second
+  // root card can be created through, and the one that must surface
+  // the meta level once it exists.
+  await page.getByTestId('atlas-add-button').click()
+  await page.getByTestId('atlas-add-sibling').click()
+  await page.getByTestId('atlas-create-kind').selectOption({ label: '🧭 Topic' })
+  await page.getByTestId('atlas-create-title').fill(title)
+  await page.getByRole('button', { name: 'Create' }).click()
+
+  await expect(page.getByTestId('atlas-breadcrumb')).toContainText('All spaces')
   await page.getByTestId('atlas-breadcrumb').getByText('All spaces', { exact: true }).click()
-  await expect(page.getByTestId('atlas-breadcrumb')).not.toContainText('My space')
-  await expect(rootCard).toBeVisible()
+  await expect(page.getByTestId('atlas-shelves')).toBeVisible()
+  await expect(page.getByTestId('atlas-shelf-card').filter({ hasText: 'My space' })).toBeVisible()
+  const newRootCard = page.getByTestId('atlas-shelf-card').filter({ hasText: title })
+  await expect(newRootCard).toBeVisible()
+
+  // Cleanup: delete the second root card so it doesn't leak the meta
+  // level into every later test in this file/worker (testing.md's
+  // within-file cleanup discipline) -- back down to one root card, the
+  // meta level (and its crumb) stop existing again.
+  await newRootCard.getByTestId('atlas-card-info').click()
+  await page.getByTestId('atlas-overlay-delete').click()
+  await page.getByRole('alertdialog').getByRole('button', { name: 'Delete' }).click()
+  await expect(newRootCard).not.toBeVisible()
+  await expect(page.getByTestId('atlas-breadcrumb')).not.toContainText('All spaces')
+})
+
+test('a card\'s kind chip is dropped under its own shelf heading, but stays visible on a canvas card', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Atlas' }).click()
+  await expect(atlasView(page)).toBeVisible()
+
+  // Canvas mode ("My space", auto-entered): no shelf headings exist, so
+  // the chip is a card's only kind indicator and stays.
+  const exampleAreaCard = page.getByTestId('atlas-canvas-card').filter({ hasText: 'Example area' })
+  await expect(exampleAreaCard.getByTestId('atlas-kind-chip')).toBeVisible()
+
+  // Shelves mode ("Example area"): every shelf's own heading already
+  // names its cards' shared kind, so the redundant per-card chip drops.
+  await exampleAreaCard.click()
+  await expect(page.getByTestId('atlas-shelves')).toBeVisible()
+  const contactCard = page.getByTestId('atlas-shelf-card').filter({ hasText: 'Ada Lovelace' })
+  await expect(contactCard).toBeVisible()
+  await expect(contactCard.getByTestId('atlas-kind-chip')).toHaveCount(0)
+})
+
+test('the visible view-mode toggle switches a space between shelves and canvas, and persists across a reload', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Atlas' }).click()
+  await page.getByTestId('atlas-canvas-card').filter({ hasText: 'Example area' }).click()
+  await expect(page.getByTestId('atlas-shelves')).toBeVisible()
+
+  const toggle = page.getByTestId('atlas-view-mode-toggle')
+  await expect(toggle.getByRole('button', { name: 'Shelves', pressed: true })).toBeVisible()
+  await toggle.getByRole('button', { name: 'Canvas' }).click()
+  await expect(page.getByTestId('atlas-canvas')).toBeVisible()
+
+  await page.reload()
+  await expect(atlasView(page)).toBeVisible()
+  await page.getByTestId('atlas-canvas-card').filter({ hasText: 'Example area' }).click()
+  await expect(page.getByTestId('atlas-canvas')).toBeVisible()
+  await expect(page.getByTestId('atlas-view-mode-toggle').getByRole('button', { name: 'Canvas', pressed: true })).toBeVisible()
+
+  // Restore: switch back to shelves so it doesn't leak into a later
+  // test in this same file/worker (testing.md's within-file cleanup rule).
+  await page.getByTestId('atlas-view-mode-toggle').getByRole('button', { name: 'Shelves' }).click()
+  await expect(page.getByTestId('atlas-shelves')).toBeVisible()
 })
 
 test('create a child card, edit + persist it via the overlay, then delete it', async ({ page }) => {
   const title = 'ZzE2eAtlasChildCard'
   await page.goto('/')
   await page.getByRole('link', { name: 'Atlas' }).click()
-  await page.getByTestId('atlas-shelf-card').filter({ hasText: 'My space' }).click()
   await expect(page.getByTestId('atlas-canvas')).toBeVisible()
 
   // Sibling-vs-child is always an explicit choice -- "Add inside this
@@ -92,7 +175,6 @@ test('create a child card, edit + persist it via the overlay, then delete it', a
 test('the lens hides a kind within a space', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Atlas' }).click()
-  await page.getByTestId('atlas-shelf-card').filter({ hasText: 'My space' }).click()
   await page.getByTestId('atlas-canvas-card').filter({ hasText: 'Example area' }).click()
   await expect(page.getByTestId('atlas-shelves')).toBeVisible()
 
@@ -117,7 +199,6 @@ test('the lens hides a kind within a space', async ({ page }) => {
 test('A sibling card created into a canvas-mode space lands clear of its siblings, not stacked at the origin', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Atlas' }).click()
-  await page.getByTestId('atlas-shelf-card').filter({ hasText: 'My space' }).click()
   await expect(page.getByTestId('atlas-canvas')).toBeVisible()
 
   // "Example area" (a seeded canvas-mode sibling) already sits at the
@@ -177,7 +258,6 @@ test('Exporting the atlas graph downloads a portable JSON bundle with the seeded
 test('Update now on the seeded mirror card runs its workflow through the normal gate and shows a synced receipt live', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Atlas' }).click()
-  await page.getByTestId('atlas-shelf-card').filter({ hasText: 'My space' }).click()
   await page.getByTestId('atlas-canvas-card').filter({ hasText: 'Example area' }).click()
   await expect(page.getByTestId('atlas-shelves')).toBeVisible()
 
@@ -205,7 +285,6 @@ test('Update now on the seeded mirror card runs its workflow through the normal 
 test('the lens depth toggle persists server-side across a reload', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Atlas' }).click()
-  await page.getByTestId('atlas-shelf-card').filter({ hasText: 'My space' }).click()
   await page.getByTestId('atlas-canvas-card').filter({ hasText: 'Example area' }).click()
   await expect(page.getByTestId('atlas-shelves')).toBeVisible()
 
@@ -216,7 +295,6 @@ test('the lens depth toggle persists server-side across a reload', async ({ page
 
   await page.reload()
   await expect(atlasView(page)).toBeVisible()
-  await page.getByTestId('atlas-shelf-card').filter({ hasText: 'My space' }).click()
   await page.getByTestId('atlas-canvas-card').filter({ hasText: 'Example area' }).click()
   await expect(page.getByTestId('atlas-shelves')).toBeVisible()
   await page.getByTestId('atlas-lens-open').click()
@@ -247,211 +325,4 @@ test('Quick Panel finds a seeded Atlas card by title', async ({ page }) => {
   } finally {
     await mainPage.close()
   }
-})
-
-// goal 0063's share model -- card overlay/chip + space toolbar share
-// actions, proven against the seeded "Project charter" card (has a
-// Source URL, a Contact field, and an incoming "relates to" link from
-// "Ada Lovelace" -- builtin.go's own worked example) and its parent
-// "Example area" space. Real browser clipboard I/O (Playwright's
-// clipboard-read/clipboard-write permissions), so every clipboard-
-// touching section runs inside withClipboardLock -- same discipline
-// quick-panel-clipboard-apply.spec.ts already established for
-// navigator.clipboard, not just the Go osascript/pbcopy adapter.
-// Deliberately never clicks a reveal-in-Finder action here: it shells
-// out to the real OS file manager (BackupService.RevealBackupFolder's
-// own mechanism, reused by RevealSpaceFolder/RevealCardMirror), the
-// same reason goal 0065's own "Show in Finder" button has no e2e click
-// coverage either -- Go-level tests (atlasservice_share_test.go) cover
-// that behavior instead; e2e only asserts the action's presence.
-async function readClipboardText(page: import('@playwright/test').Page): Promise<string> {
-  return page.evaluate(() => navigator.clipboard.readText())
-}
-
-// A share action's clipboard write happens after an async AtlasService
-// round trip (fire-and-forget from the click handler's own point of
-// view), so the clipboard's new content can lag a few ticks behind the
-// click that requested it -- poll rather than read once immediately.
-async function expectClipboardToContain(page: import('@playwright/test').Page, want: string): Promise<void> {
-  await expect.poll(() => readClipboardText(page)).toContain(want)
-}
-
-test('the card overlay Share section copies context and the cloud link to the clipboard', async ({ page }) => {
-  await withClipboardLock(async () => {
-    await page.goto('/')
-    await page.context().grantPermissions(['clipboard-read', 'clipboard-write'])
-    await page.getByRole('link', { name: 'Atlas' }).click()
-    await page.getByTestId('atlas-shelf-card').filter({ hasText: 'My space' }).click()
-    await page.getByTestId('atlas-canvas-card').filter({ hasText: 'Example area' }).click()
-    await expect(page.getByTestId('atlas-shelves')).toBeVisible()
-
-    const charterCard = page.getByTestId('atlas-shelf-card').filter({ hasText: 'Project charter' })
-    await charterCard.getByTestId('atlas-card-info').click()
-    const overlay = page.locator('[data-component="atlas-card-overlay"]')
-    await expect(overlay).toBeVisible()
-
-    await overlay.getByTestId('atlas-overlay-copy-context').click()
-    await expectClipboardToContain(page, 'Project charter')
-    const contextText = await readClipboardText(page)
-    expect(contextText).toContain('Kind: Document')
-    expect(contextText).toContain('Owner: Ada Lovelace')
-    expect(contextText).toContain('Source: https://example.com/project-charter')
-
-    await overlay.getByTestId('atlas-overlay-copy-link').click()
-    await expect.poll(() => readClipboardText(page)).toBe('https://example.com/project-charter')
-
-    await page.keyboard.press('Escape')
-    await expect(overlay).not.toBeVisible()
-  })
-})
-
-test('the card chip Share menu copies as context directly from the space view', async ({ page }) => {
-  await withClipboardLock(async () => {
-    await page.goto('/')
-    await page.context().grantPermissions(['clipboard-read', 'clipboard-write'])
-    await page.getByRole('link', { name: 'Atlas' }).click()
-    await page.getByTestId('atlas-shelf-card').filter({ hasText: 'My space' }).click()
-    await page.getByTestId('atlas-canvas-card').filter({ hasText: 'Example area' }).click()
-    await expect(page.getByTestId('atlas-shelves')).toBeVisible()
-
-    const charterCard = page.getByTestId('atlas-shelf-card').filter({ hasText: 'Project charter' })
-    await charterCard.getByTestId('atlas-card-share').click()
-    await expect(page.getByTestId('atlas-share-copy-context')).toBeVisible()
-    await expect(page.getByTestId('atlas-share-copy-context-attachments')).toBeVisible()
-    await expect(page.getByTestId('atlas-share-copy-link')).toBeVisible()
-
-    await page.getByTestId('atlas-share-copy-context').click()
-    await expectClipboardToContain(page, 'Project charter')
-  })
-})
-
-test('the space toolbar Share menu bundles the space as context and copies its links', async ({ page }) => {
-  await withClipboardLock(async () => {
-    await page.goto('/')
-    await page.context().grantPermissions(['clipboard-read', 'clipboard-write'])
-    await page.getByRole('link', { name: 'Atlas' }).click()
-    await page.getByTestId('atlas-shelf-card').filter({ hasText: 'My space' }).click()
-    await page.getByTestId('atlas-canvas-card').filter({ hasText: 'Example area' }).click()
-    await expect(page.getByTestId('atlas-shelves')).toBeVisible()
-
-    await page.getByTestId('atlas-space-share').click()
-    await expect(page.getByTestId('atlas-share-reveal-folder')).toBeVisible()
-    await page.getByTestId('atlas-share-bundle-context').click()
-    await expectClipboardToContain(page, 'Project charter')
-    const bundleText = await readClipboardText(page)
-    expect(bundleText).toContain('Ada Lovelace')
-    expect(bundleText).toContain('---')
-
-    await page.getByTestId('atlas-space-share').click()
-    await page.getByTestId('atlas-share-copy-links').click()
-    await expect.poll(() => readClipboardText(page)).toBe('https://example.com/project-charter')
-  })
-})
-
-// Atlas projections (docs/goals/0064, ADR-0038): mirror-content
-// rendering, the traceability matrix, and coverage -- each proven
-// against the real seed, the same pattern every test above follows.
-
-test('a card with a Mirror path pointing at a markdown file renders its content read-only in the overlay', async ({ page }) => {
-  const fs = await import('node:fs')
-  const os = await import('node:os')
-  const path = await import('node:path')
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'mill-e2e-atlas-mirror-'))
-  const file = path.join(dir, 'notes.md')
-  fs.writeFileSync(file, '# Field notes\n\nSome **captured** text.')
-
-  const title = 'ZzE2eAtlasMirrorCard'
-  await page.goto('/')
-  await page.getByRole('link', { name: 'Atlas' }).click()
-  await page.getByTestId('atlas-shelf-card').filter({ hasText: 'My space' }).click()
-  await expect(page.getByTestId('atlas-canvas')).toBeVisible()
-
-  await page.getByTestId('atlas-add-button').click()
-  await page.getByTestId('atlas-add-child').click()
-  await page.getByTestId('atlas-create-kind').selectOption({ label: '📄 Document' })
-  await page.getByTestId('atlas-create-title').fill(title)
-  await page.getByRole('button', { name: 'Create' }).click()
-
-  const newCard = page.getByTestId('atlas-canvas-card').filter({ hasText: title })
-  await expect(newCard).toBeVisible()
-  await newCard.getByTestId('atlas-card-info').click()
-  const overlay = page.locator('[data-component="atlas-card-overlay"]')
-  await expect(overlay).toBeVisible()
-
-  await overlay.getByTestId('atlas-overlay-mirror-path').fill(file)
-  await overlay.getByTestId('atlas-overlay-save').click()
-  await expect(overlay).not.toBeVisible()
-
-  await newCard.getByTestId('atlas-card-info').click()
-  await expect(overlay).toBeVisible()
-  await expect(overlay.getByTestId('atlas-mirror-markdown')).toBeVisible()
-  await expect(overlay.getByTestId('atlas-mirror-markdown')).toContainText('Field notes')
-  await expect(overlay.getByTestId('atlas-mirror-markdown').locator('strong')).toContainText('captured')
-
-  // Cleanup (testing.md's within-file cleanup discipline).
-  await overlay.getByTestId('atlas-overlay-delete').click()
-  await page.getByRole('alertdialog').getByRole('button', { name: 'Delete' }).click()
-  await expect(newCard).not.toBeVisible()
-})
-
-test('the traceability matrix pivots a space\'s cards by kind against link kinds, with an absent cell shown explicitly', async ({ page }) => {
-  await page.goto('/')
-  await page.getByRole('link', { name: 'Atlas' }).click()
-  await page.getByTestId('atlas-shelf-card').filter({ hasText: 'My space' }).click()
-  await page.getByTestId('atlas-canvas-card').filter({ hasText: 'Example area' }).click()
-  await expect(page.getByTestId('atlas-shelves')).toBeVisible()
-
-  await page.getByTestId('atlas-open-matrix').click()
-  const dialog = page.locator('[data-component="atlas-matrix-dialog"]')
-  await expect(dialog).toBeVisible()
-
-  // Row kind "Contact" -- the seeded "Ada Lovelace" card has an
-  // outgoing "relates to" link to "Project charter", so its cell names
-  // that target.
-  await dialog.getByTestId('atlas-matrix-row-kind').selectOption({ label: '👤 Contact' })
-  await expect(dialog.getByTestId('atlas-matrix-target').filter({ hasText: 'Project charter' })).toBeVisible()
-
-  // Row kind "Document" -- the seeded "Project charter" card has no
-  // OUTGOING links of its own (only an incoming one), so its cell is
-  // explicitly absent, never an ambiguous blank.
-  await dialog.getByTestId('atlas-matrix-row-kind').selectOption({ label: '📄 Document' })
-  await expect(dialog.getByTestId('atlas-matrix-absent-cell')).toBeVisible()
-  await expect(dialog.getByTestId('atlas-matrix-absent-cell')).toHaveText('None')
-
-  await page.keyboard.press('Escape')
-  await expect(dialog).not.toBeVisible()
-})
-
-test('coverage counts a space\'s cards missing a link and missing a mirror, with the missing list navigating to a card', async ({ page }) => {
-  await page.goto('/')
-  await page.getByRole('link', { name: 'Atlas' }).click()
-  await page.getByTestId('atlas-shelf-card').filter({ hasText: 'My space' }).click()
-  await expect(page.getByTestId('atlas-canvas')).toBeVisible()
-
-  // "My space" itself has exactly two seeded children: "Getting
-  // started" (has an outgoing "relates to" link to "Ada Lovelace") and
-  // "Example area" (the container card itself has no link of its own)
-  // -- a hand-countable 1/2 linked. Neither child carries a mirror at
-  // THIS level (the seeded mirror lives one level deeper, on "Project
-  // charter") -- a hand-countable 0/2 mirrored.
-  await page.getByTestId('atlas-open-coverage').click()
-  const dialog = page.locator('[data-component="atlas-coverage-dialog"]')
-  await expect(dialog).toBeVisible()
-
-  await expect(dialog.getByTestId('atlas-coverage-link-value')).toHaveText('1/2 linked')
-  await expect(dialog.getByTestId('atlas-coverage-mirror-value')).toHaveText('0/2 mirrored')
-
-  await dialog.getByTestId('atlas-coverage-link-toggle').click()
-  await expect(dialog.getByTestId('atlas-coverage-missing-item').filter({ hasText: 'Example area' })).toBeVisible()
-
-  await dialog.getByTestId('atlas-coverage-mirror-toggle').click()
-  const missingItem = dialog.getByTestId('atlas-coverage-missing-item').filter({ hasText: 'Getting started' })
-  await expect(missingItem).toBeVisible()
-  await missingItem.click()
-
-  await expect(dialog).not.toBeVisible()
-  const overlay = page.locator('[data-component="atlas-card-overlay"]')
-  await expect(overlay).toBeVisible()
-  await expect(overlay.getByTestId('atlas-overlay-title')).toHaveValue('Getting started')
-  await page.keyboard.press('Escape')
 })

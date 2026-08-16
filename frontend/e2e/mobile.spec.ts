@@ -80,9 +80,13 @@ test('Mobile job 4 -- Atlas shelves glance and card overlay open/close', async (
   await page.goto('/')
   await openDrawerAndNavigate(page, 'Atlas')
   await expect(page.getByTestId('atlas-view')).toBeVisible()
+  // The single seeded root auto-enters "My space" (canvas); the
+  // shelves glance lives one drill down, in "Example area".
+  await expect(page.getByTestId('atlas-canvas')).toBeVisible()
+  await page.getByTestId('atlas-canvas-card').filter({ hasText: 'Example area' }).click()
   await expect(page.getByTestId('atlas-shelves')).toBeVisible()
 
-  const card = page.getByTestId('atlas-shelf-card').filter({ hasText: 'My space' })
+  const card = page.getByTestId('atlas-shelf-card').filter({ hasText: 'Ada Lovelace' })
   const cardBox = await card.boundingBox()
   expect(cardBox?.height ?? 0).toBeGreaterThanOrEqual(44)
 
@@ -103,10 +107,8 @@ test('Mobile job 4 -- Atlas shelves glance and card overlay open/close', async (
 test('Mobile job 4 -- Atlas canvas space is pan/zoom only, no card drag', async ({ page }) => {
   await page.goto('/')
   await openDrawerAndNavigate(page, 'Atlas')
-  // "My space" (seeded ViewModeCanvas) drills into the React Flow
-  // canvas renderer -- same seeded space the desktop atlas.spec.ts
-  // suite already drives.
-  await page.getByTestId('atlas-shelf-card').filter({ hasText: 'My space' }).click()
+  // The single seeded root auto-enters "My space" (seeded
+  // ViewModeCanvas) -- the React Flow canvas IS the landing.
   await expect(page.getByTestId('atlas-canvas')).toBeVisible()
 
   const exampleAreaCard = page.getByTestId('atlas-canvas-card').filter({ hasText: 'Example area' })

@@ -14,19 +14,25 @@ import styles from './AtlasCardBody.module.css'
 // handling stay with each renderer's own outer wrapper, since a
 // draggable React Flow node and an ActionList row need different outer
 // elements for the same inner content.
-export function AtlasCardBody({ card, kind, childCount, peeking, onOpenOverlay }: {
+export function AtlasCardBody({ card, kind, childCount, peeking, onOpenOverlay, showKindChip = true }: {
   card: Card
   kind: Kind | undefined
   childCount: number
   peeking: boolean
   onOpenOverlay: () => void
+  // Shelves mode groups every card under a heading that already names
+  // its own Kind (atlasGrouping.ts's groupByKind), so the chip on the
+  // card itself would repeat exactly what the shelf heading just said --
+  // AtlasShelves passes false. Canvas mode has no shelf headings, so the
+  // chip stays the card's only kind indicator there (default true).
+  showKindChip?: boolean
 }) {
   const { t } = useTranslation('atlas')
   return (
     <div className={styles.body}>
       <div className={styles.main}>
         <div className={styles.headerRow}>
-          <AtlasKindChip kind={kind} />
+          {showKindChip && <AtlasKindChip kind={kind} />}
           {peeking && childCount > 0 && (
             <Text size="small" className={styles.peekCount} data-testid="atlas-peek-count">
               {t('peekCount', { count: childCount })}

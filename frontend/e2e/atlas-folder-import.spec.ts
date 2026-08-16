@@ -15,7 +15,7 @@ import { test, expect } from './fixtures/server'
 test('add from folder: scan, partial accept, containment, and mirror rendering all work end to end', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Atlas' }).click()
-  await page.getByTestId('atlas-shelf-card').filter({ hasText: 'My space' }).click()
+  // The single seeded root auto-enters "My space" (canvas) directly.
   await expect(page.getByTestId('atlas-canvas')).toBeVisible()
 
   await page.getByTestId('atlas-add-from-folder').click()
@@ -89,7 +89,8 @@ test('add from folder: scan, partial accept, containment, and mirror rendering a
 test('add from folder: canceling the picker leaves the space untouched', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Atlas' }).click()
-  await page.getByTestId('atlas-shelf-card').filter({ hasText: 'My space' }).click()
+  // The single seeded root auto-enters "My space" directly.
+  await expect(page.getByTestId('atlas-canvas')).toBeVisible()
 
   // The fixture picker path always "succeeds" (it's the env bypass,
   // not a real dialog a user could cancel) -- this proves the OTHER

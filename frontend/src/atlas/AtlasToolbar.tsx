@@ -1,8 +1,9 @@
 import { useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Button } from '@primer/react'
+import { Button, SegmentedControl } from '@primer/react'
 import { ChecklistIcon, DownloadIcon, TableIcon, UploadIcon } from '@primer/octicons-react'
-import type { Card, Kind, ViewMode } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
+import { ViewMode } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
+import type { Card, Kind } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 import { AtlasBreadcrumb } from './AtlasBreadcrumb'
 import { AtlasLensControl } from './AtlasLensControl'
 import { AtlasCreateMenu } from './AtlasCreateMenu'
@@ -63,6 +64,17 @@ export function AtlasToolbar({
     <div className={styles.toolbar} data-testid="atlas-toolbar">
       <AtlasBreadcrumb cards={cards} viewedID={viewedID} onNavigate={onNavigate} />
       <div className={styles.toolbarActions}>
+        {showViewModeToggle && (
+          <SegmentedControl
+            aria-label={t('viewMode.ariaLabel')}
+            size="small"
+            data-testid="atlas-view-mode-toggle"
+            onChange={(i) => onChangeViewMode(i === 0 ? ViewMode.ViewModeShelves : ViewMode.ViewModeCanvas)}
+          >
+            <SegmentedControl.Button selected={viewMode !== ViewMode.ViewModeCanvas}>{t('viewMode.shelves')}</SegmentedControl.Button>
+            <SegmentedControl.Button selected={viewMode === ViewMode.ViewModeCanvas}>{t('viewMode.canvas')}</SegmentedControl.Button>
+          </SegmentedControl>
+        )}
         <input
           ref={importInputRef}
           type="file"
@@ -91,9 +103,6 @@ export function AtlasToolbar({
           onChangeHidden={onChangeHidden}
           peek={peek}
           onChangePeek={onChangePeek}
-          viewMode={viewMode}
-          onChangeViewMode={onChangeViewMode}
-          showViewModeToggle={showViewModeToggle}
         />
         <AtlasCreateMenu kinds={kinds} canAddSibling={canAddSibling} onCreate={onCreate} />
       </div>
