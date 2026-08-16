@@ -143,6 +143,7 @@ function AtlasBoardInner({ cards, allCards, kinds, links, linkKinds, mode, viewe
       if (isGroupCard(allCards, card)) {
         const frame = computeGroupFrameLayout(allCards, card.ID)
         const size = isFree ? frame.size : { width: box?.width ?? frame.size.width, height: box?.height ?? frame.size.height }
+        const groupFlipped = flippedID === card.ID
         nodes.push({
           id: card.ID,
           type: 'atlas-group',
@@ -153,25 +154,41 @@ function AtlasBoardInner({ cards, allCards, kinds, links, linkKinds, mode, viewe
           data: {
             card,
             kind: kindByID.get(card.KindID),
+            allCards,
+            links,
+            linkKinds,
             childCount: childrenOf(allCards, card.ID).length,
             freshness: computeFreshnessRollup(frame.children.map((c) => c.card)),
             pulsed: pulsedID === card.ID,
             hinted: hintedID === card.ID,
+            flipped: groupFlipped,
             onDrill: handleDrill,
+            onToggleFlip: toggleFlip,
+            onOpenOverlay,
           },
         })
-        for (const child of frame.children) {
-          nodes.push({
-            id: child.card.ID,
-            type: 'atlas-note',
-            position: child.position,
-            width: NOTE_WIDTH,
-            height: NOTE_HEIGHT,
-            parentId: card.ID,
-            extent: 'parent',
-            draggable: false,
-            data: noteData(child.card),
-          })
+        // A flipped frame's own back face must visually and
+        // interactively cover its own preview children -- React Flow
+        // always renders a parentId child at parentZ+1 minimum
+        // (@xyflow/system's own calculateChildXYZ), so a parent node
+        // can never out-z-index its own children; omitting the
+        // children entirely while flipped is what actually achieves
+        // "z above the children," not a z-index that RF's own child
+        // stacking invariant would silently defeat.
+        if (!groupFlipped) {
+          for (const child of frame.children) {
+            nodes.push({
+              id: child.card.ID,
+              type: 'atlas-note',
+              position: child.position,
+              width: NOTE_WIDTH,
+              height: NOTE_HEIGHT,
+              parentId: card.ID,
+              extent: 'parent',
+              draggable: false,
+              data: noteData(child.card),
+            })
+          }
         }
       } else {
         nodes.push({

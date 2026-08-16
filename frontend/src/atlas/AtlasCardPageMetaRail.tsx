@@ -1,0 +1,121 @@
+import { useTranslation } from 'react-i18next'
+import { Button, Checkbox, FormControl, Link as PrimerLink, Stack } from '@primer/react'
+import { CheckIcon, CopyIcon, FileDirectoryIcon, LinkIcon, SyncIcon } from '@primer/octicons-react'
+import type { Card } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
+import { formatUpdated } from '../shared/inventorySort'
+import { runStatusVariant } from '../shared/runTime'
+import { StatusStamp } from '../shared/StatusStamp'
+import { basenameOf, hostnameOf } from './atlasCardPresentation'
+import styles from './AtlasCardPage.module.css'
+
+// The page's own meta rail (goal 0072 slice C): stacked mono rows,
+// each omitted entirely when it has no value to show rather than
+// rendered empty. Every action here is an EXISTING overlay capability
+// relocated -- Update now, the receipt-run link, and the share actions
+// keep their original test ids/copy so the specs that already assert
+// against them (atlas.spec.ts, atlas-share.spec.ts) need no change.
+export function AtlasCardPageMetaRail({
+  card, updating, onUpdateNow, receiptStatus, onOpenRun,
+  includeAttachments, onIncludeAttachmentsChange, copied, onCopyContext, onCopyLink, onRevealFile,
+}: {
+  card: Card
+  updating: boolean
+  onUpdateNow: () => void
+  receiptStatus: string | null
+  onOpenRun: () => void
+  includeAttachments: boolean
+  onIncludeAttachmentsChange: (checked: boolean) => void
+  copied: boolean
+  onCopyContext: () => void
+  onCopyLink: () => void
+  onRevealFile: () => void
+}) {
+  const { t } = useTranslation('atlas')
+  const showFreshness = Boolean(card.RefreshWorkflowID || card.MirrorPath)
+
+  return (
+    <div className={styles.metaCol} data-testid="atlas-page-meta-rail">
+      {card.Source && (
+        <div className={styles.metaRow} data-testid="atlas-page-meta-source">
+          <span className={styles.metaLabel}>{t('page.metaSource')}</span>
+          <a href={card.Source} data-wml-openURL={card.Source} data-testid="atlas-overlay-source-link" className={styles.metaValue}>
+            {hostnameOf(card.Source)}
+          </a>
+        </div>
+      )}
+
+      {card.MirrorPath && (
+        <div className={styles.metaRow} data-testid="atlas-page-meta-mirror">
+          <span className={styles.metaLabel}>{t('page.metaMirror')}</span>
+          <span className={styles.metaValue}>{basenameOf(card.MirrorPath)}</span>
+        </div>
+      )}
+
+      {showFreshness && (
+        <div className={styles.metaRow} data-testid="atlas-page-meta-freshness">
+          <span className={styles.metaLabel}>{t('page.metaFreshness')}</span>
+          <span className={styles.metaValue}>
+            {card.LastSyncedAt && formatUpdated(card.LastSyncedAt) ? t('overlay.lastSynced', { when: formatUpdated(card.LastSyncedAt) }) : t('overlay.neverSynced')}
+          </span>
+          {card.RefreshWorkflowID && (
+            <Button
+              leadingVisual={SyncIcon}
+              size="small"
+              variant="invisible"
+              data-testid="atlas-overlay-update-now"
+              disabled={updating}
+              onClick={onUpdateNow}
+            >
+              {updating ? t('overlay.updating') : t('overlay.updateNow')}
+            </Button>
+          )}
+        </div>
+      )}
+
+      <div className={styles.metaRow} data-testid="atlas-page-meta-share">
+        <span className={styles.metaLabel}>{t('page.metaShare')}</span>
+        <FormControl>
+          <Checkbox
+            checked={includeAttachments}
+            data-testid="atlas-share-include-attachments"
+            onChange={(e) => onIncludeAttachmentsChange(e.target.checked)}
+          />
+          <FormControl.Label>{t('overlay.includeAttachments')}</FormControl.Label>
+        </FormControl>
+        <Stack direction="horizontal" gap="condensed" className={styles.metaShareRow}>
+          <PrimerLink as="button" type="button" data-testid="atlas-overlay-copy-context" onClick={onCopyContext}>
+            {copied ? <CheckIcon size={12} /> : <CopyIcon size={12} />} {copied ? t('overlay.copied') : t('overlay.copyAsContext')}
+          </PrimerLink>
+          {card.Source && (
+            <PrimerLink as="button" type="button" data-testid="atlas-overlay-copy-link" onClick={onCopyLink}>
+              <LinkIcon size={12} /> {t('overlay.copyCloudLink')}
+            </PrimerLink>
+          )}
+          {card.MirrorPath && (
+            <PrimerLink as="button" type="button" data-testid="atlas-overlay-reveal-file" onClick={onRevealFile}>
+              <FileDirectoryIcon size={12} /> {t('overlay.revealFile')}
+            </PrimerLink>
+          )}
+        </Stack>
+      </div>
+
+      {card.ReceiptRunID && (
+        <div className={styles.metaRow} data-testid="atlas-page-meta-receipt">
+          <span className={styles.metaLabel}>{t('page.metaReceipt')}</span>
+          <span className={styles.metaValue}>
+            {t('overlay.receiptRunID')}{' '}
+            <PrimerLink as="button" type="button" data-testid="atlas-overlay-receipt-run" onClick={onOpenRun}>
+              {card.ReceiptRunID}
+            </PrimerLink>
+            {receiptStatus && (
+              <>
+                {' '}
+                <StatusStamp variant={runStatusVariant(receiptStatus)} data-testid="atlas-overlay-receipt-status">{receiptStatus}</StatusStamp>
+              </>
+            )}
+          </span>
+        </div>
+      )}
+    </div>
+  )
+}

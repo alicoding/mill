@@ -123,6 +123,21 @@
     "save": "Save",
     "delete": "Delete"
   },
+  "page": {
+    "close": "Close ⨯",
+    "insideEyebrow": "Inside · {{kind}}",
+    "linkEyebrow": "Link · {{kind}}",
+    "cardsChip": "▸ {{count}} cards",
+    "openGroupAriaLabel": "Open {{title}}",
+    "emptyContents": "Nothing inside yet",
+    "editHeading": "Edit",
+    "metaSource": "source",
+    "metaMirror": "mirror",
+    "metaFreshness": "freshness",
+    "metaShare": "share",
+    "metaReceipt": "receipt",
+    "openGroupPage": "Open ↗"
+  },
   "share": {
     "cardButtonAriaLabel": "Share {{title}}",
     "copyContext": "Copy as context",

@@ -1,0 +1,204 @@
+/* The card page's own anatomy (goal 0072 slice C): header row, a
+   two-column body grid (contents ~2fr, meta rail ~240px, stacking to
+   one column under a narrow viewport), and the Contents/meta-rail rows
+   themselves. Shared by AtlasCardPageHeader/Contents/MetaRail rather
+   than split three ways -- none of them approaches architecture.md's
+   500-line cap on its own. */
+
+.header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 0 0 14px;
+    border-bottom: 1px solid var(--borderColor-default);
+}
+.glyph {
+    width: 24px;
+    height: 24px;
+    border-radius: 6px;
+    color: #fff;
+    font-size: 12px;
+    font-weight: 650;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+}
+.glyphCircle {
+    border-radius: 50%;
+}
+.title {
+    font-size: 16px;
+    font-weight: 700;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.fileTag {
+    font-family: var(--mill-mono);
+    font-size: 9px;
+    font-weight: 700;
+    border-radius: 4px;
+    padding: 1px 5px;
+    flex: 0 0 auto;
+}
+.fileTag-success {
+    color: var(--fgColor-success);
+    background: var(--bgColor-success-muted);
+}
+.fileTag-attention {
+    color: var(--fgColor-attention);
+    background: var(--bgColor-attention-muted);
+}
+.fileTag-danger {
+    color: var(--fgColor-danger);
+    background: var(--bgColor-danger-muted);
+}
+.closeButton {
+    margin-left: auto;
+    flex: 0 0 auto;
+}
+
+.body {
+    display: grid;
+    grid-template-columns: minmax(0, 2fr) minmax(220px, 240px);
+    gap: 24px;
+    padding-top: 16px;
+}
+@media (max-width: 767px) {
+    .body {
+        grid-template-columns: 1fr;
+    }
+}
+
+.contentsCol {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+.ownNote {
+    font-size: 13px;
+    line-height: 1.4;
+    white-space: pre-wrap;
+}
+
+.entry {
+    border: 1px solid var(--borderColor-muted);
+    border-radius: 6px;
+    padding: 8px 10px;
+}
+.entryEyebrow {
+    font-family: var(--mill-mono);
+    font-size: 9.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--fgColor-muted);
+}
+.entryTitle {
+    font-size: 13px;
+    font-weight: 650;
+    margin-top: 2px;
+}
+.entryNoteLine {
+    font-size: 11.5px;
+    color: var(--fgColor-muted);
+    margin-top: 2px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.entryMirror {
+    margin-top: 8px;
+    max-height: 220px;
+    overflow-y: auto;
+}
+
+.groupEntry {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    cursor: pointer;
+}
+.groupEntry:hover {
+    border-color: var(--borderColor-emphasis);
+}
+.groupEntryChip {
+    font-family: var(--mill-mono);
+    font-size: 10.5px;
+    color: var(--fgColor-muted);
+    flex: 0 0 auto;
+}
+
+.personRow {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 4px;
+}
+.personAvatar {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    color: #fff;
+    font-size: 11px;
+    font-weight: 650;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+}
+
+.emptyContents {
+    color: var(--fgColor-muted);
+    font-size: 12.5px;
+}
+
+.editSection {
+    margin-top: 8px;
+    padding-top: 14px;
+    border-top: 1px solid var(--borderColor-muted);
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+.editHeading {
+    font-family: var(--mill-mono);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--fgColor-muted);
+}
+
+.metaCol {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+.metaRow {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+.metaLabel {
+    font-family: var(--mill-mono);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--fgColor-muted);
+}
+.metaValue {
+    font-family: var(--mill-mono);
+    font-size: 12px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.metaShareRow {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px 10px;
+}
