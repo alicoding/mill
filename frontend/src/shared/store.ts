@@ -74,7 +74,9 @@ export type View =
   | { kind: 'configure'; tab?: string }
   // cardID: a card-search jump opens that card's overlay directly.
   | { kind: 'atlas'; cardID?: string }
-  | { kind: 'settings' }
+  // section: a palette "Open Settings -> <Title>" deep-link
+  // (shared/settingsSections.ts) lands directly on that section.
+  | { kind: 'settings'; section?: string }
   | { kind: 'placeholder'; capabilityId: string }
 
 // Single mapping from a capability's Go-declared View to the frontend's

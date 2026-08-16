@@ -450,7 +450,7 @@ function App() {
 
             {view.kind === 'atlas' && <AtlasView initialCardID={view.cardID}/>}
 
-            {view.kind === 'settings' && <SettingsView/>}
+            {view.kind === 'settings' && <SettingsView initialSection={view.section}/>}
 
             {view.kind === 'placeholder' && <PlaceholderView capabilityId={view.capabilityId}/>}
           </WorkTabShell>
