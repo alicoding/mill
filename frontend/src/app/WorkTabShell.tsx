@@ -244,7 +244,7 @@ export function WorkTabShell({ pageLabel, pageIcon, titlebarSlot, children }: { 
   return (
     <Tabs value={activeWorkTabKey ?? PAGE_TAB} onValueChange={({ value }) => activateWorkTab(value === PAGE_TAB ? null : value)}>
       {titlebarSlot && createPortal(stripContent, titlebarSlot)}
-      <TabPanel value={PAGE_TAB}>{children}</TabPanel>
+      <TabPanel value={PAGE_TAB} className={styles.pagePanel}>{children}</TabPanel>
       {workTabs.map((tab) => (
         <TabPanel key={tab.key} value={tab.key} className={isCanvasTab(tab) ? editorStyles.editorPanel : undefined}>
           {/* Hot-exit "restored" banner (docs/goals/0012) -- shown only

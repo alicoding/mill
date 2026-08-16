@@ -155,20 +155,38 @@
     font-size: 12.5px;
 }
 
+/* The page is a stable sheet, not a grow-to-content popover: a long
+   edit form must scroll INSIDE the kit dialog's own body region, never
+   push Save/Delete below the viewport over the board's controls.
+   Dialog's height prop only offers presets, so the footprint rides the
+   data-component hook it forwards. */
+:global([data-component='atlas-card-overlay']) {
+    height: calc(100vh - 96px);
+    max-height: calc(100vh - 96px);
+}
+
 .editSection {
     margin-top: 8px;
-    padding-top: 14px;
+    padding-top: 4px;
     border-top: 1px solid var(--borderColor-muted);
+}
+.editSummary {
+    cursor: pointer;
+    padding: 8px 0;
+    font-size: 12.5px;
+    font-weight: 650;
+    color: var(--fgColor-muted);
+    user-select: none;
+}
+.editSummary:hover {
+    color: var(--fgColor-default);
+}
+.editFields {
     display: flex;
     flex-direction: column;
     gap: 12px;
-}
-.editHeading {
-    font-family: var(--mill-mono);
-    font-size: 10px;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    color: var(--fgColor-muted);
+    padding-top: 6px;
+    max-width: 560px;
 }
 
 .metaCol {

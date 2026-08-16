@@ -217,3 +217,15 @@ func BuiltInLinks() []Link {
 func RetiredBuiltInKindIDs() []string {
 	return []string{kindSpaceID}
 }
+
+// RetiredKindReplacementID names the built-in Kind that cards of a
+// retired built-in Kind are migrated to during reconcile. Retirement
+// must never orphan or delete a user's cards -- they carry over to the
+// replacement so the retired Kind can actually reach zero references
+// and be tombstoned.
+func RetiredKindReplacementID(retiredID string) (string, bool) {
+	if retiredID == kindSpaceID {
+		return kindTopicID, true
+	}
+	return "", false
+}

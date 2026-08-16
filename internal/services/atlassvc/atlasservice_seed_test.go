@@ -95,3 +95,49 @@ func leafCard(t *testing.T, cards []atlas.Card) atlas.Card {
 	t.Fatal("every seeded card is a parent -- test fixture needs a leaf")
 	return atlas.Card{}
 }
+
+// TestReconcileBuiltIns_RetiredKindMigratesUserCards proves retiring a
+// built-in Kind never strands or deletes a user's cards: a card the
+// user created with the retired Kind is re-kinded to the replacement
+// during reconcile, after which the retired Kind reaches zero
+// references and is tombstoned -- on an EXISTING instance, not just a
+// fresh install.
+func TestReconcileBuiltIns_RetiredKindMigratesUserCards(t *testing.T) {
+	store := servicetest.NewFakeStore()
+	a := NewAtlasService(store)
+
+	// Simulate the pre-retirement world: the retired Kind still exists
+	// in the instance, with a user-created card referencing it.
+	retiredID := atlas.RetiredBuiltInKindIDs()[0]
+	replacementID, ok := atlas.RetiredKindReplacementID(retiredID)
+	if !ok {
+		t.Fatalf("RetiredKindReplacementID(%q) has no replacement", retiredID)
+	}
+	a.mu.Lock()
+	a.kinds = append(a.kinds, atlas.Kind{ID: retiredID, Label: "Space"})
+	a.cards = append(a.cards, atlas.Card{ID: "user-card-on-retired-kind", KindID: retiredID, Title: "Test"})
+	if err := a.persistLocked(); err != nil {
+		t.Fatalf("persistLocked: %v", err)
+	}
+	a.mu.Unlock()
+
+	// A restart's reconcile pass must migrate the card and remove the Kind.
+	b := NewAtlasService(store)
+	for _, k := range b.Kinds() {
+		if k.ID == retiredID {
+			t.Fatalf("retired kind %q survived reconcile despite a migratable reference", retiredID)
+		}
+	}
+	found := false
+	for _, c := range b.Cards() {
+		if c.ID == "user-card-on-retired-kind" {
+			found = true
+			if c.KindID != replacementID {
+				t.Errorf("user card KindID = %q, want replacement %q", c.KindID, replacementID)
+			}
+		}
+	}
+	if !found {
+		t.Fatal("user card was deleted by kind retirement; migration must preserve it")
+	}
+}

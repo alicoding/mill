@@ -1,4 +1,5 @@
 import { test, expect } from './fixtures/server'
+import { openCardPageEdit } from './fixtures/atlasPage'
 
 // Exercises the card PAGE's own ratified anatomy (goal 0072 slice C,
 // docs/adr/0038): the header row (kind glyph/circle, title, file tag,
@@ -137,6 +138,7 @@ test('a child\'s mirror preview renders inline in the parent page; the card\'s o
   const overlay = page.locator('[data-component="atlas-card-overlay"]')
   await openViaFlip(charterCard)
   await expect(overlay).toBeVisible()
+  await openCardPageEdit(page)
   await overlay.getByTestId('atlas-overlay-mirror-path').fill(file)
   await overlay.getByTestId('atlas-overlay-save').click()
   await expect(overlay).not.toBeVisible()
@@ -172,6 +174,7 @@ test('a child\'s mirror preview renders inline in the parent page; the card\'s o
   // within-file cleanup discipline).
   await groupCard(page, 'Example area').getByTestId('atlas-group-header').click()
   await openViaFlip(charterCard)
+  await openCardPageEdit(page)
   await overlay.getByTestId('atlas-overlay-mirror-path').fill('')
   await overlay.getByTestId('atlas-overlay-save').click()
   await expect(overlay).not.toBeVisible()
@@ -265,6 +268,7 @@ test('a group entry inside a page re-roots the board to a deeper card, and the b
   // is exactly where cleanup needs to start.
   async function deleteViaFlip(card: import('@playwright/test').Locator) {
     await openViaFlip(card)
+    await openCardPageEdit(page)
     await overlay.getByTestId('atlas-overlay-delete').click()
     await page.getByRole('alertdialog').getByRole('button', { name: 'Delete' }).click()
     await expect(overlay).not.toBeVisible()

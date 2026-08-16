@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ReactFlow, ReactFlowProvider, Background, Controls, useNodesState, useReactFlow } from '@xyflow/react'
-import type { NodeTypes as RFNodeTypes } from '@xyflow/react'
+import type { EdgeTypes as RFEdgeTypes, NodeTypes as RFNodeTypes } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 import { ViewMode } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 import type { Card, Kind, Link, LinkKind } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
@@ -12,9 +12,11 @@ import { computeAutoArrangeLayout, computeGroupFrameLayout, isGroupCard, NOTE_HE
 import { computeFreshnessRollup } from './atlasCardPresentation'
 import { AtlasNoteCardNode, type AtlasNoteCardRFNode } from './AtlasNoteCardNode'
 import { AtlasGroupNode, type AtlasGroupRFNode } from './AtlasGroupNode'
+import { AtlasLinkEdge, type AtlasLinkRFEdge } from './AtlasLinkEdge'
 import styles from './AtlasBoard.module.css'
 
 const rfNodeTypes: RFNodeTypes = { 'atlas-note': AtlasNoteCardNode, 'atlas-group': AtlasGroupNode }
+const rfEdgeTypes: RFEdgeTypes = { 'atlas-link': AtlasLinkEdge }
 
 type BoardRFNode = AtlasNoteCardRFNode | AtlasGroupRFNode
 
@@ -205,20 +207,21 @@ function AtlasBoardInner({ cards, allCards, kinds, links, linkKinds, mode, viewe
     return nodes
   }, [cards, allCards, kinds, links, linkKinds, isFree, readOnly, flippedID, pulsedID, hintedID, onOpenOverlay, handleDrill])
 
+  const [hoveredEdgeID, setHoveredEdgeID] = useState<string | null>(null)
   const edges = useMemo(() => {
     const visible = links.filter((l) => renderedIDs.has(l.FromCardID) && renderedIDs.has(l.ToCardID))
     const linkKindByID = new Map(linkKinds.map((lk) => [lk.ID, lk]))
-    return visible.map((l) => ({
+    return visible.map((l): AtlasLinkRFEdge => ({
       id: l.ID,
       source: l.FromCardID,
       target: l.ToCardID,
-      type: 'default',
+      type: 'atlas-link',
       label: linkKindByID.get(l.LinkKindID)?.Label ?? '',
       style: { stroke: 'var(--fgColor-accent)', strokeWidth: 1.6, opacity: 0.75 },
-      labelStyle: { fontFamily: 'var(--mill-mono)', fontSize: 9 },
       interactionWidth: 8,
+      data: { hovered: hoveredEdgeID === l.ID },
     }))
-  }, [links, linkKinds, renderedIDs])
+  }, [links, linkKinds, renderedIDs, hoveredEdgeID])
 
   const [nodes, setNodes, onNodesChange] = useNodesState(builtNodes)
   useEffect(() => {
@@ -335,6 +338,9 @@ function AtlasBoardInner({ cards, allCards, kinds, links, linkKinds, mode, viewe
         onNodesChange={onNodesChange}
         edges={edges}
         nodeTypes={rfNodeTypes}
+        edgeTypes={rfEdgeTypes}
+        onEdgeMouseEnter={(_, edge) => setHoveredEdgeID(edge.id)}
+        onEdgeMouseLeave={() => setHoveredEdgeID(null)}
         nodesConnectable={false}
         nodesDraggable={isFree && !readOnly}
         zoomOnDoubleClick={false}

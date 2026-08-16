@@ -8,19 +8,31 @@
 /* Link labels (goal 0072 slice A): shown on hover/selection only, or
    always when the board carries 3 edges or fewer -- edges themselves
    stay decorative (a 1.6px stroke), never intercepting a click meant
-   for a card underneath. */
-.board :global(.react-flow__edge-text),
-.board :global(.react-flow__edge-textbg) {
+   for a card underneath. AtlasLinkEdge renders the label as its own
+   SVG <text> (floating straight edges replaced the default bezier),
+   so the type styling that used to ride labelStyle lives here, with a
+   canvas-colored stroke halo keeping it readable across the line. */
+.board :global(.atlas-link-dot) {
+    fill: var(--fgColor-accent);
+    opacity: 0.75;
+}
+.board :global(.atlas-link-label) {
+    position: absolute;
+    /* Above the node layer -- a label between two close cards must
+       never be swallowed by the cards the way edge-layer SVG text was. */
+    z-index: 1000;
+    pointer-events: none;
+    font-family: var(--mill-mono);
+    font-size: 9px;
+    color: var(--fgColor-muted);
+    background: var(--bgColor-default);
+    border: 1px solid var(--borderColor-muted);
+    border-radius: 4px;
+    padding: 1px 5px;
     opacity: 0;
     transition: opacity 0.12s;
 }
-.board :global(.react-flow__edge:hover) :global(.react-flow__edge-text),
-.board :global(.react-flow__edge:hover) :global(.react-flow__edge-textbg),
-.board :global(.react-flow__edge.selected) :global(.react-flow__edge-text),
-.board :global(.react-flow__edge.selected) :global(.react-flow__edge-textbg) {
-    opacity: 1;
-}
-.board.alwaysShowLabels :global(.react-flow__edge-text),
-.board.alwaysShowLabels :global(.react-flow__edge-textbg) {
+.board :global(.atlas-link-label[data-hovered='true']),
+.board.alwaysShowLabels :global(.atlas-link-label) {
     opacity: 1;
 }
