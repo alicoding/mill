@@ -76,6 +76,8 @@
     "wordmark": "Mill",
     "collapseNavigation": "Collapse navigation",
     "expandNavigation": "Expand navigation",
+    "openNavigation": "Open navigation",
+    "closeNavigation": "Close navigation",
     "settingsAriaLabel": "Settings",
     "settingsLabel": "Settings"
   },

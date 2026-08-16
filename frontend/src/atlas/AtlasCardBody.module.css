@@ -37,3 +37,13 @@
     align-items: center;
     flex: 0 0 auto;
 }
+
+/* Touch-target floor for the ⓘ overlay opener (goal 0068's Atlas glance
+   job) -- a no-op above 767px, where Primer's own small-button sizing
+   is unchanged. */
+@media (max-width: 767px) {
+    .actions :global(button) {
+        min-height: 44px;
+        min-width: 44px;
+    }
+}

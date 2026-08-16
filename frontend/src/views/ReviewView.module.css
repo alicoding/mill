@@ -1,0 +1,13 @@
+/* Touch-target sizing for the approve/deny pair -- the phone's single
+   highest-value job (goal 0068). Scoped to this view's own testids only
+   (not shared/ListCard.module.css's broadly-reused .card), so every
+   other .card consumer stays pixel-unchanged; a no-op above 767px. */
+@media (max-width: 767px) {
+    .approvalActions {
+        gap: var(--base-size-12);
+    }
+    .approvalActions :global(button) {
+        min-height: 44px;
+        flex: 1 1 0;
+    }
+}

@@ -371,6 +371,11 @@ function CanvasInner({ nodeTypes, workflow, tabKey, onBack, onSaved, readOnly, o
             // before it can reach onNodeDoubleClick above -- off, since a
             // node double-click opens the step-detail overlay instead.
             zoomOnDoubleClick={false}
+            // React Flow's default minZoom (0.5) caps Fit View: a graph
+            // wider than 2x the pane can never be fully brought into
+            // view, leaving nodes unreachable on small windows. 0.1
+            // lets Fit View always fit the whole workflow.
+            minZoom={0.1}
             onEdgeClick={(_, edge) => {
               setSelectedEdgeId(edge.id)
               setSelectedNodeId(null)

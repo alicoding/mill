@@ -5,6 +5,17 @@
     <link rel="icon" type="image/svg+xml" href="/mill.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>Mill</title>
+    <!-- Installable-companion metadata (goal 0068) -- only load-bearing
+         in server mode over the user's own tailnet; inert in the native
+         Wails webview, which never reads a manifest or registers a
+         service worker. -->
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="/icons/icon-192.png" />
+    <meta name="theme-color" content="#0d1117" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="Mill" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   </head>
   <body>
     <div id="root"></div>

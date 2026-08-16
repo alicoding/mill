@@ -6,3 +6,12 @@
 .empty {
     padding: var(--base-size-24) 0;
 }
+
+/* Touch-target floor for shelf rows (goal 0068's Atlas glance job) --
+   Primer's own ActionList row height (32px) is below the 44px
+   guideline; a no-op above 767px. */
+@media (max-width: 767px) {
+    .shelves :global([data-testid='atlas-shelf-card']) {
+        min-height: 44px;
+    }
+}

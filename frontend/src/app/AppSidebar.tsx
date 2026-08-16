@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import { CounterLabel, IconButton, NavList, PageLayout, Text } from '@primer/react'
-import { DotFillIcon, GearIcon, SidebarCollapseIcon, SidebarExpandIcon } from '@primer/octicons-react'
+import { DotFillIcon, GearIcon, SidebarCollapseIcon, SidebarExpandIcon, XIcon } from '@primer/octicons-react'
 import { viewFor, viewsEqual, statusDotColor } from '../shared/store'
 import type { View } from '../shared/store'
 import type { Capability } from '../../bindings/github.com/alicoding/mill/internal/domain/capabilities/models'
@@ -13,23 +13,48 @@ import styles from './App.module.css'
 // sidebar), capability nav, and the settings footer. Extracted from
 // App.tsx along this seam when the identity-anchor work pushed it over
 // the 500-line limit (.claude/rules/architecture.md).
-export function AppSidebar({ sidebarOpen, setSidebarOpen, view, setView, capabilities, reviewPendingCount }: {
+export function AppSidebar({ sidebarOpen, setSidebarOpen, mobileNavOpen, setMobileNavOpen, view, setView, capabilities, reviewPendingCount }: {
   sidebarOpen: boolean
   setSidebarOpen: (open: boolean) => void
+  // The narrow-viewport drawer's own open/closed flag (goal 0068) --
+  // orthogonal to sidebarOpen (the desktop rail-collapse width), only
+  // consulted by responsiveVariant="fullscreen"'s hidden={{narrow}}
+  // below, a Primer no-op at regular/wide widths.
+  mobileNavOpen: boolean
+  setMobileNavOpen: (open: boolean) => void
   view: View
   setView: (v: View) => void
   capabilities: Capability[]
   reviewPendingCount: number
 }) {
   const { t } = useTranslation('app')
+  // Closes the mobile drawer on any nav action -- a no-op at regular/
+  // wide widths where the sidebar is never hidden by mobileNavOpen.
+  const navigateAndClose = (target: View) => { setView(target); setMobileNavOpen(false) }
   return (
         <PageLayout.Sidebar
           className={styles.sidebar}
           width="small"
-          responsiveVariant="default"
+          responsiveVariant="fullscreen"
+          hidden={{ narrow: !mobileNavOpen }}
           divider="line"
           padding="condensed"
         >
+          {/* Mobile-only drawer header (App.module.css hides this above
+              767px): the wordmark plus an explicit close control, since
+              the drawer covers the titlebar band's own MobileNavToggle
+              once open. */}
+          <div className={styles.mobileDrawerHeader} data-testid="mobile-nav-drawer-header">
+            <Text className={styles.sidebarWordmark}>{t('appSidebar.wordmark')}</Text>
+            <IconButton
+              icon={XIcon}
+              aria-label={t('appSidebar.closeNavigation')}
+              size="small"
+              variant="invisible"
+              onClick={() => setMobileNavOpen(false)}
+              data-testid="mobile-nav-close"
+            />
+          </div>
           {/* The wordmark + collapse toggle that used to render here (a
               .sidebarHeader row) moved up into the titlebar band's own
               left segment above -- the fix for the reported flaw (they
@@ -90,7 +115,7 @@ export function AppSidebar({ sidebarOpen, setSidebarOpen, view, setView, capabil
                     aria-current={viewsEqual(view, target) ? 'page' : undefined}
                     aria-label={sidebarOpen ? undefined : label}
                     title={sidebarOpen ? undefined : label}
-                    onClick={(e) => { e.preventDefault(); setView(target) }}
+                    onClick={(e) => { e.preventDefault(); navigateAndClose(target) }}
                   >
                     {NavIcon && <NavList.LeadingVisual><NavIcon/></NavList.LeadingVisual>}
                     {sidebarOpen && label}
@@ -137,7 +162,7 @@ export function AppSidebar({ sidebarOpen, setSidebarOpen, view, setView, capabil
                 aria-current={view.kind === 'settings' ? 'page' : undefined}
                 aria-label={sidebarOpen ? undefined : t('appSidebar.settingsAriaLabel')}
                 title={sidebarOpen ? undefined : t('appSidebar.settingsAriaLabel')}
-                onClick={(e) => { e.preventDefault(); setView({ kind: 'settings' }) }}
+                onClick={(e) => { e.preventDefault(); navigateAndClose({ kind: 'settings' }) }}
               >
                 <NavList.LeadingVisual><GearIcon /></NavList.LeadingVisual>
                 {sidebarOpen && t('appSidebar.settingsLabel')}
