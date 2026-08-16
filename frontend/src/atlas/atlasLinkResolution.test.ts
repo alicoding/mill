@@ -11,45 +11,47 @@ function link(id: string, from: string, to: string, kind = 'lk-relates'): Link {
 
 const cards = [
   card('root', ''),
-  card('frame', 'root'),
-  card('deep', 'frame'),
-  card('deeper', 'deep'),
+  card('areaA', 'root'),
+  card('areaB', 'root'),
+  card('deepA', 'areaA'),
+  card('deeperA', 'deepA'),
+  card('deepB', 'areaB'),
   card('leaf', 'root'),
 ]
+const topLevel = new Set(['areaA', 'areaB', 'leaf'])
 
 describe('resolveBoardEdges', () => {
-  it('keeps a link whose endpoints are both rendered', () => {
-    const edges = resolveBoardEdges([link('l1', 'frame', 'leaf')], new Set(['frame', 'leaf']), cards)
-    expect(edges).toEqual([{ id: 'l1', source: 'frame', target: 'leaf', linkKindID: 'lk-relates' }])
+  it('keeps a link between two top-level cards', () => {
+    const edges = resolveBoardEdges([link('l1', 'areaA', 'leaf')], topLevel, cards)
+    expect(edges).toEqual([{ id: 'l1', source: 'areaA', target: 'leaf', linkKindIDs: ['lk-relates'], count: 1 }])
   })
 
-  it('reattaches a hidden endpoint to its deepest visible ancestor', () => {
-    const edges = resolveBoardEdges([link('l1', 'deeper', 'leaf')], new Set(['frame', 'leaf']), cards)
-    expect(edges).toEqual([{ id: 'l1', source: 'frame', target: 'leaf', linkKindID: 'lk-relates' }])
+  it('lifts a deep endpoint to its top-level area', () => {
+    const edges = resolveBoardEdges([link('l1', 'deeperA', 'leaf')], topLevel, cards)
+    expect(edges).toEqual([{ id: 'l1', source: 'areaA', target: 'leaf', linkKindIDs: ['lk-relates'], count: 1 }])
   })
 
-  it('drops a link fully contained in one place (both resolve to the same node)', () => {
-    const edges = resolveBoardEdges([link('l1', 'deep', 'deeper')], new Set(['frame', 'leaf']), cards)
-    expect(edges).toEqual([])
+  it('draws nothing for a link fully inside one area -- internal detail belongs to the zoomed-in board', () => {
+    expect(resolveBoardEdges([link('l1', 'deepA', 'deeperA')], topLevel, cards)).toEqual([])
   })
 
-  it('drops a link with no visible ancestor', () => {
-    const edges = resolveBoardEdges([link('l1', 'deep', 'leaf')], new Set(['leaf']), cards)
-    expect(edges).toEqual([])
-  })
-
-  it('dedupes links collapsing onto the same resolved pair and kind, first ID wins', () => {
+  it('aggregates cross-area links into one undirected artery with a count', () => {
     const edges = resolveBoardEdges(
-      [link('l1', 'deep', 'leaf'), link('l2', 'deeper', 'leaf'), link('l3', 'deep', 'leaf', 'lk-other')],
-      new Set(['frame', 'leaf']),
+      [link('l1', 'deepA', 'deepB'), link('l2', 'deepB', 'deeperA', 'lk-other'), link('l3', 'deeperA', 'deepB')],
+      topLevel,
       cards,
     )
-    expect(edges.map((e) => e.id)).toEqual(['l1', 'l3'])
+    expect(edges).toHaveLength(1)
+    expect(edges[0]).toEqual({ id: 'l1', source: 'areaA', target: 'areaB', linkKindIDs: ['lk-relates', 'lk-other'], count: 3 })
+  })
+
+  it('drops a link with no top-level ancestor on this board', () => {
+    const edges = resolveBoardEdges([link('l1', 'deepA', 'leaf')], new Set(['leaf']), cards)
+    expect(edges).toEqual([])
   })
 
   it('survives a parent cycle in the data without hanging', () => {
     const cyclic = [card('a', 'b'), card('b', 'a')]
-    const edges = resolveBoardEdges([link('l1', 'a', 'b')], new Set<string>(), cyclic)
-    expect(edges).toEqual([])
+    expect(resolveBoardEdges([link('l1', 'a', 'b')], new Set<string>(), cyclic)).toEqual([])
   })
 })

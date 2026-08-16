@@ -4,44 +4,60 @@ export interface ResolvedBoardEdge {
   id: string
   source: string
   target: string
-  linkKindID: string
+  // Every LinkKindID aggregated onto this artery, in input order --
+  // one entry means the line carries that kind's own label; more mean
+  // it labels as a count.
+  linkKindIDs: string[]
+  count: number
 }
 
-// Where a link's line attaches on the current board (goal 0073): the
-// endpoint card itself when it's rendered, otherwise the deepest
-// VISIBLE ancestor -- the line points at the place holding the thing,
-// so no link silently disappears just because its endpoint sits behind
-// a frame's "+ K more" cap or deeper than the one-level preview. Edges
-// whose endpoints resolve to the same node (both inside one place, or
-// one inside the other) are dropped -- a self-loop says nothing at
-// this zoom level; the count chips carry it. Multiple links collapsing
-// onto the same resolved pair + kind dedupe to one line (they would
-// draw pixel-identical anyway); the first link's ID wins, keeping the
-// output stable for a stable input order.
-export function resolveBoardEdges(links: Link[], renderedIDs: Set<string>, allCards: Card[]): ResolvedBoardEdge[] {
+// Semantic zoom for LINES (goal 0073): at any board, an edge endpoint
+// resolves to the TOP-LEVEL card holding it -- the direct child of
+// the focused board -- never to a preview node inside a frame, so a
+// line never threads through a frame's own contents. Consequences,
+// each deliberate:
+// - A link between cards in two different areas draws as ONE
+//   area-to-area artery (aggregated with a count), attached at the
+//   frame boundaries.
+// - A link fully inside one area draws NOTHING at this level -- it's
+//   that area's internal detail, visible as a real line once you zoom
+//   in (the cards' own link-count chips still carry the truth from
+//   outside).
+// - Aggregation is undirected: an artery states "these places are
+//   related N ways," not a direction; per-link direction lives on the
+//   card page.
+// A recorded fallback if straight arteries still cross top-level
+// items in real use: an obstacle-avoiding connector router
+// (libavoid's family). Not adopted while boards carry only a handful
+// of aggregate lines.
+export function resolveBoardEdges(links: Link[], topLevelIDs: Set<string>, allCards: Card[]): ResolvedBoardEdge[] {
   const parentByID = new Map(allCards.map((c) => [c.ID, c.ParentID]))
 
   const resolve = (cardID: string): string | null => {
     let cur: string | undefined = cardID
     const seen = new Set<string>()
     while (cur && !seen.has(cur)) {
-      if (renderedIDs.has(cur)) return cur
+      if (topLevelIDs.has(cur)) return cur
       seen.add(cur)
       cur = parentByID.get(cur)
     }
     return null
   }
 
-  const out: ResolvedBoardEdge[] = []
-  const dedupe = new Set<string>()
+  const byPair = new Map<string, ResolvedBoardEdge>()
   for (const l of links) {
-    const source = resolve(l.FromCardID)
-    const target = resolve(l.ToCardID)
-    if (!source || !target || source === target) continue
-    const key = `${source}|${target}|${l.LinkKindID}`
-    if (dedupe.has(key)) continue
-    dedupe.add(key)
-    out.push({ id: l.ID, source, target, linkKindID: l.LinkKindID })
+    const a = resolve(l.FromCardID)
+    const b = resolve(l.ToCardID)
+    if (!a || !b || a === b) continue
+    const [source, target] = a < b ? [a, b] : [b, a]
+    const key = `${source}|${target}`
+    const existing = byPair.get(key)
+    if (existing) {
+      existing.count += 1
+      if (!existing.linkKindIDs.includes(l.LinkKindID)) existing.linkKindIDs.push(l.LinkKindID)
+    } else {
+      byPair.set(key, { id: l.ID, source, target, linkKindIDs: [l.LinkKindID], count: 1 })
+    }
   }
-  return out
+  return [...byPair.values()]
 }

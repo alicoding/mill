@@ -55,14 +55,14 @@ test('a dense area previews bounded: capped tiles, region chips, a truthful ghos
     // The header count states the deep truth regardless of the cap.
     await expect(velocity.getByTestId('atlas-group-header')).toContainText('12 cards')
 
-    // Link reattachment: no line vanishes with a hidden endpoint --
-    // each resolves to its deepest VISIBLE ancestor. Exact census on
-    // this board: 2 seed links (both endpoints previewed inside
-    // Example area / top level) + the fixture's 24 deep cross-area
-    // links resolving up to the 4 rendered area CHIPS and deduping to
-    // 4 chip-to-chip lines + 1 deep outbound link reattaching as
-    // Platform-chip -> Getting started = 7.
-    await expect(page.locator('.react-flow__edge')).toHaveCount(7)
+    // Semantic zoom for lines: endpoints lift to TOP-LEVEL cards, so
+    // arteries attach at frame boundaries and intra-area links draw
+    // nothing at this level. Exact census on this board: the seeded
+    // Getting started <-> Ada link lifts to Example area <-> Getting
+    // started (1), the fixture's deep outbound link lifts to
+    // Velocity <-> Getting started (1); Ada <-> Project charter and
+    // all 24 cross-area links are internal to one area each = 2.
+    await expect(page.locator('.react-flow__edge')).toHaveCount(2)
 
     // Overlap resolution (goal 0073, growth class): the seeded
     // "Example area" frame GREW past its hand-placed footprint (a
@@ -92,6 +92,15 @@ test('a dense area previews bounded: capped tiles, region chips, a truthful ghos
         expect(overlapX <= 0 || overlapY <= 0, `top-level cards ${i} and ${j} overlap`).toBe(true)
       }
     }
+
+    // One zoom level down, the internal detail becomes real lines:
+    // Velocity's board draws the 4 aggregated area-to-area arteries
+    // (6 links each) the parent level deliberately withheld.
+    await velocity.getByTestId('atlas-group-header').click()
+    await expect(page.getByTestId('atlas-breadcrumb')).toContainText('Velocity')
+    await expect(page.locator('.react-flow__edge')).toHaveCount(4)
+    await page.getByTestId('atlas-breadcrumb').getByText('My space', { exact: true }).click()
+    await expect(page.getByTestId('atlas-breadcrumb')).not.toContainText('Velocity')
 
     // Gesture model (goal 0074): a chip answers a single click like
     // every other card -- it flips to its minimal back -- and
