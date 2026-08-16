@@ -2,8 +2,10 @@ import type { KeyCombo } from './keybinding'
 import { comboFromEvent, comboKey } from './keybinding'
 import { useAppStore } from './store'
 import type { View } from './store'
-import { SettingsService } from './bindings'
+import { useUISignalStore } from './uiSignalStore'
+import { BackupService, SettingsService } from './bindings'
 import { SETTINGS_SECTIONS, resolveSectionTitle } from './settingsSections'
+import { CONFIGURE_CREATE_COMMANDS } from './configureCreateCommands'
 
 // The command registry (docs/goals/0016-keymap-system.md): named
 // commands with a default binding, dispatched by one window keydown
@@ -210,11 +212,22 @@ export const COMMANDS: Command[] = [
     // every other command's defaultBinding above and RESERVED_COMBOS
     // (shared/keybinding.ts): neither uses the '/' key on macOS, no
     // collision.
-    extraBindings: [
-      { mods: ['cmd'], key: '/' },
-      { mods: ['cmd', 'shift'], key: '/' },
-    ],
+    // ⌘⇧/ (the ⌘? glyph) moved off this command onto help.shortcuts
+    // below (goal 0071) -- ⌘/ stays the palette's own alias.
+    extraBindings: [{ mods: ['cmd'], key: '/' }],
     run: () => useAppStore.getState().togglePalette(),
+  },
+  {
+    // The shortcuts-help overlay (goal 0071): bare `?` is handled by a
+    // dedicated window listener in app/App.tsx (comboFromEvent requires
+    // Cmd/Ctrl by design, so it can never dispatch a bare key) --
+    // ⌘⇧/ is this command's own registry-dispatched alias, the same
+    // macOS Help-menu convention `?` itself follows.
+    id: 'help.shortcuts',
+    label: 'Keyboard shortcuts help',
+    defaultBinding: null,
+    extraBindings: [{ mods: ['cmd', 'shift'], key: '/' }],
+    run: () => useUISignalStore.getState().openHelp(),
   },
   {
     id: 'view.home',
@@ -244,6 +257,34 @@ export const COMMANDS: Command[] = [
     defaultBinding: { mods: ['cmd'], key: 'ArrowUp' },
     surface: ['atlas'],
     run: () => useAppStore.getState().requestAtlasUp(),
+  },
+  {
+    // ⌘K reconciliation (goal 0071): atlas.jump and palette.open now
+    // share the SAME default combo, legal because dispatchCommandForEvent's
+    // two-pass surface precedence (below) always tries every
+    // atlas-surfaced command before any surface-less global -- ⌘K opens
+    // the jump dialog while on Atlas, the palette everywhere else.
+    // AtlasJumpDialog itself is now purely controlled off this signal
+    // (its own former capture-phase window listener is retired).
+    id: 'atlas.jump',
+    label: 'Jump to a card',
+    defaultBinding: { mods: ['cmd'], key: 'K' },
+    surface: ['atlas'],
+    run: () => useUISignalStore.getState().requestAtlasJump(),
+  },
+  {
+    id: 'atlas.matrix',
+    label: 'Open traceability matrix',
+    defaultBinding: null,
+    surface: ['atlas'],
+    run: () => useUISignalStore.getState().requestAtlasMatrixOpen(),
+  },
+  {
+    id: 'atlas.coverage',
+    label: 'Open coverage',
+    defaultBinding: null,
+    surface: ['atlas'],
+    run: () => useUISignalStore.getState().requestAtlasCoverageOpen(),
   },
   {
     // ⌘0..⌘5 mirror the sidebar's own top-to-bottom order -- Atlas
@@ -287,6 +328,32 @@ export const COMMANDS: Command[] = [
     defaultBinding: null,
     run: () => { void SettingsService.ShowPanel() },
   },
+  {
+    id: 'backup.now',
+    label: 'Back up now',
+    defaultBinding: null,
+    // BackupService.BackupNow(0) matches the Settings Data stewardship
+    // section's own call (views/DataStewardshipSection.tsx) -- 0 keeps
+    // whatever retention count is already configured there, never
+    // resets it.
+    run: () => { BackupService.BackupNow(0).catch(console.error) },
+  },
+  {
+    id: 'backup.export',
+    label: 'Export everything',
+    // Deep-links to Settings rather than calling
+    // BackupService.ExportEverything() directly -- the export flow has
+    // its own confirm/download UI there (views/DataStewardshipSection.tsx),
+    // the same "the flow needs its own dialog" reasoning every other
+    // settings.open.* deep-link command below already follows.
+    defaultBinding: null,
+    run: () => setView({ kind: 'settings', section: 'backups' }),
+  },
+  // Per-Configure-tab create commands (goal 0071 G6) -- split out to
+  // shared/configureCreateCommands.ts (CLAUDE.md's 500-line convention);
+  // see that file's own header for what each one does and why
+  // Attributes has none.
+  ...CONFIGURE_CREATE_COMMANDS,
   // One palette-only deep-link command per registered Settings section
   // (goal 0077, shared/settingsSections.ts) -- always unbound
   // (defaultBinding: null), discoverable only by searching the palette,
@@ -312,6 +379,19 @@ export function effectiveBinding(command: Command, overrides: Record<string, Key
   return overrides[command.id] ?? command.defaultBinding
 }
 
+// Whether two commands' surface scopes could ever collide (goal 0071's
+// Settings rebind conflict rule): surface-less counts as intersecting
+// EVERY surface, since a global command dispatches on every view,
+// including whichever specific one(s) the other command is scoped to.
+// Two commands scoped to different, disjoint surfaces never collide --
+// they can never both be the active view at once, so sharing a combo
+// between them is legal (dispatchCommandForEvent's own two-pass surface
+// precedence below is what makes that legal at dispatch time too).
+export function surfacesIntersect(a: View['kind'][] | undefined, b: View['kind'][] | undefined): boolean {
+  if (!a || !b) return true
+  return a.some((kind) => b.includes(kind))
+}
+
 // dispatchCommandForEvent resolves a keydown against every command's
 // current effective binding (its primary, override-aware) PLUS every
 // extraBindings entry (docs/goals/BACKLOG.md Standing #6 -- always-on,
@@ -323,19 +403,36 @@ export function effectiveBinding(command: Command, overrides: Record<string, Key
 // actually ran, so the caller knows whether to preventDefault (never
 // swallow an unbound combo -- native editing shortcuts, browser
 // devtools, etc. must keep working).
+//
+// Two passes, not one array scan (goal 0071's registry surface-
+// precedence): every command scoped to the ACTIVE surface is tried
+// first, then every surface-less global. This is what makes the same
+// combo legal on two different commands as long as at most one of them
+// is surface-less (surfacesIntersect's own rule) -- atlas.jump and
+// palette.open both default to ⌘K, and the surface pass always wins on
+// Atlas, the global pass everywhere else, regardless of which order
+// they happen to appear in COMMANDS. A command scoped to a DIFFERENT
+// surface than the active one is skipped in both passes -- it cannot
+// run there.
 export function dispatchCommandForEvent(e: KeyboardEvent, overrides: Record<string, KeyCombo>): boolean {
   const pressed = comboFromEvent(e)
   if (!pressed) return false
   const want = comboKey(pressed.mods, pressed.key)
   const activeKind = useAppStore.getState().view.kind
-  for (const command of COMMANDS) {
-    if (command.surface && !command.surface.includes(activeKind)) continue
+
+  const tryRun = (command: Command): boolean => {
     const binding = effectiveBinding(command, overrides)
     const bindings = binding ? [binding, ...(command.extraBindings ?? [])] : (command.extraBindings ?? [])
-    if (bindings.some((b) => comboKey(b.mods, b.key) === want)) {
-      command.run()
-      return true
-    }
+    if (!bindings.some((b) => comboKey(b.mods, b.key) === want)) return false
+    command.run()
+    return true
+  }
+
+  for (const command of COMMANDS) {
+    if (command.surface?.includes(activeKind) && tryRun(command)) return true
+  }
+  for (const command of COMMANDS) {
+    if (!command.surface && tryRun(command)) return true
   }
   return false
 }

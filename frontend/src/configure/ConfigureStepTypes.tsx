@@ -21,6 +21,7 @@ import { PALETTE_GROUP_LABEL, PALETTE_GROUP_ORDER } from '../shared/paletteGroup
 import { bindingComplete, bindingFieldKeysFor, engineNodeTypeIdFor } from './declaredStepTypeEngine'
 import { StepTypeEngineBindingFields, type EngineBinding } from './StepTypeEngineBindingFields'
 import { StepTypePinnedFieldsEditor, type PinnedFieldsState } from './StepTypePinnedFieldsEditor'
+import { useUISignalStore } from '../shared/uiSignalStore'
 import styles from '../shared/ListCard.module.css'
 import PageContainer from '../shared/PageContainer'
 
@@ -97,6 +98,18 @@ export function ConfigureStepTypes() {
     setFormOpen(true)
     setError('')
   }
+
+  // configure.new.steptypes (shared/configureCreateCommands.ts, goal
+  // 0071 G6) -- same signal-consumption shape as ConfigureLists.tsx's
+  // own configureCreateRequest effect.
+  const configureCreateRequest = useUISignalStore((s) => s.configureCreateRequest)
+  const consumeConfigureCreate = useUISignalStore((s) => s.consumeConfigureCreate)
+  useEffect(() => {
+    if (configureCreateRequest !== 'steptypes') return
+    startCreate()
+    consumeConfigureCreate()
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- startCreate/consumeConfigureCreate deliberately excluded, same reasoning useCanvasCommandDispatch.ts's own identical effect documents
+  }, [configureCreateRequest])
 
   const startEdit = (d: DeclaredStepType) => {
     setEditingID(d.ID)

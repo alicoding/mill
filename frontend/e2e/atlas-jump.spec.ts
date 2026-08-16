@@ -10,10 +10,14 @@ import { test, expect } from './fixtures/server'
 //
 // Meta+k is a real, in-window keydown here, not a stand-in for an
 // OS-level hotkey (same reasoning command-palette.spec.ts's own header
-// comment states for the app-wide palette) -- and AtlasJumpDialog
-// intercepts it in the capture phase specifically so it wins over that
-// same app-wide ⌘K while Atlas is mounted; the first test below proves
-// that interception actually happens, not just that this dialog CAN
+// comment states for the app-wide palette). atlas.jump and palette.open
+// share the same ⌘K default (shared/commands.ts, goal 0071) -- legal
+// because dispatchCommandForEvent tries every command scoped to the
+// ACTIVE surface before any surface-less global, so ⌘K resolves to the
+// jump dialog while Atlas is mounted and to the palette everywhere
+// else. AtlasJumpDialog itself is purely controlled (no capture-phase
+// window listener of its own); the first test below proves the
+// registry dispatch actually lands here, not just that this dialog CAN
 // open some other way.
 
 function jumpDialog(page: import('@playwright/test').Page) {
@@ -28,7 +32,7 @@ function groupCard(page: import('@playwright/test').Page, title: string) {
   return page.locator('[data-testid="atlas-group-card"]').filter({ has: page.locator(`[aria-label="Zoom into ${title}"]`) })
 }
 
-test('Meta+K opens the jump dialog over the app-wide command palette while Atlas is mounted', async ({ page }) => {
+test('Meta+K opens the jump dialog (registry path) over the app-wide command palette while Atlas is mounted, and opens the palette on other surfaces', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Atlas' }).click()
   await expect(page.getByTestId('atlas-view')).toBeVisible()
@@ -39,6 +43,14 @@ test('Meta+K opens the jump dialog over the app-wide command palette while Atlas
 
   await page.keyboard.press('Escape')
   await expect(jumpDialog(page)).toHaveCount(0)
+
+  // Same ⌘K default, a different surface: dispatchCommandForEvent's own
+  // two-pass surface precedence resolves it to the palette instead.
+  await page.getByRole('link', { name: 'Workflows' }).click()
+  await page.keyboard.press('Meta+k')
+  await expect(page.getByRole('dialog', { name: 'Command palette' })).toBeVisible()
+  await expect(jumpDialog(page)).toHaveCount(0)
+  await page.keyboard.press('Escape')
 })
 
 test('typing filters the result list to the matching seeded card', async ({ page }) => {

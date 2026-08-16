@@ -10,19 +10,15 @@ import styles from './AtlasJumpDialog.module.css'
 // The ⌘K jump-to-a-card dialog (goal 0072 slice B): a global "go
 // anywhere" entry point over every card, regardless of the currently
 // viewed space -- distinct from AtlasLensControl's own space-scoped
-// Dialog. Registers its own OPEN listener in the CAPTURE phase on
-// window (not the bubble phase App.tsx's keymap dispatcher uses,
-// shared/commands.ts's `palette.open`) so a ⌘K press while Atlas is
-// mounted reaches this dialog first and never also opens the app-wide
-// command palette -- see AtlasView.tsx's own comment on this surface
-// for the tradeoff that scoping accepts.
-function isEditableTarget(target: EventTarget | null): boolean {
-  if (!(target instanceof HTMLElement)) return false
-  const tag = target.tagName
-  return tag === 'INPUT' || tag === 'TEXTAREA' || target.isContentEditable
-}
-
-export function AtlasJumpDialog({ cards, kinds, onJump }: {
+// Dialog. Purely controlled (goal 0071's registry surface-precedence
+// reconciliation): `open` comes from AtlasView, which opens it off the
+// atlas.jump command's own store signal (shared/uiSignalStore.ts) --
+// this component no longer runs its own capture-phase window listener
+// to win the ⌘K race against the app-wide command palette; dispatch
+// order (shared/commands.ts's dispatchCommandForEvent) does that now.
+export function AtlasJumpDialog({ open, onClose, cards, kinds, onJump }: {
+  open: boolean
+  onClose: () => void
   cards: Card[]
   kinds: Kind[]
   // Consumed by AtlasView: re-roots when needed, then hands the target
@@ -30,36 +26,27 @@ export function AtlasJumpDialog({ cards, kinds, onJump }: {
   onJump: (card: Card, openImmediately: boolean) => void
 }) {
   const { t } = useTranslation('atlas')
-  const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
   const [activeIndex, setActiveIndex] = useState(0)
   const inputRef = useRef<HTMLInputElement>(null)
 
+  // Reset the search/selection each time the dialog is (re)opened --
+  // the same fresh-session reasoning the old capture-listener's own
+  // setOpen(true) call used to bundle in.
   useEffect(() => {
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (open) return
-      if (e.key.toLowerCase() !== 'k' || !(e.metaKey || e.ctrlKey)) return
-      if (isEditableTarget(e.target)) return
-      e.preventDefault()
-      e.stopPropagation()
-      setQuery('')
-      setActiveIndex(0)
-      setOpen(true)
-    }
-    window.addEventListener('keydown', onKeyDown, true)
-    return () => window.removeEventListener('keydown', onKeyDown, true)
+    if (!open) return
+    setQuery('')
+    setActiveIndex(0)
   }, [open])
 
   const results = useMemo(() => filterJumpCards(cards, kinds, query), [cards, kinds, query])
 
-  const close = () => setOpen(false)
-
   const go = (card: Card) => {
-    close()
+    onClose()
     onJump(card, false)
   }
   const goOpen = (card: Card) => {
-    close()
+    onClose()
     onJump(card, true)
   }
 
@@ -84,7 +71,7 @@ export function AtlasJumpDialog({ cards, kinds, onJump }: {
   return (
     <Dialog
       title={t('jump.placeholder')}
-      onClose={close}
+      onClose={onClose}
       width="480px"
       initialFocusRef={inputRef}
       data-component="atlas-jump-dialog"

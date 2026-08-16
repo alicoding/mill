@@ -36,6 +36,17 @@ export function keyFromEventCode(code: string): string | null {
   return null
 }
 
+// True for an input/textarea/contenteditable target -- the shared
+// "don't intercept normal typing" guard for any window-level keydown
+// listener that reacts to a BARE, unmodified key (the `?` shortcuts-
+// help overlay, App.tsx; previously AtlasJumpDialog's own capture-phase
+// ⌘K listener, retired by goal 0071's registry-precedence dispatch).
+export function isEditableTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false
+  const tag = target.tagName
+  return tag === 'INPUT' || tag === 'TEXTAREA' || target.isContentEditable
+}
+
 export function modsFromEvent(e: KeyboardEvent): string[] {
   const mods: string[] = []
   if (e.metaKey) mods.push('cmd')

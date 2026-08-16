@@ -27,6 +27,10 @@
       "jumpToIntegration": "Jump to Integration",
       "jumpToLists": "Jump to Lists",
       "jumpToMcpServers": "Jump to MCP Servers",
+      "jumpToDecisions": "Jump to Decisions",
+      "jumpToExecEnvs": "Jump to Execution Environments",
+      "jumpToAiProviders": "Jump to AI Providers",
+      "jumpToStepTypes": "Jump to Step types",
       "jumpToAtlasCard": "{{kind}} in Atlas",
       "openMill": "Open Mill",
       "openSettings": "Open Settings",
@@ -52,6 +56,12 @@
     "searchPlaceholder": "Search workflows or jump into Mill…",
     "searchAriaLabel": "Quick Panel search",
     "noWorkflowsYet": "No workflows yet."
+  },
+  "shortcutsHelp": {
+    "title": "Keyboard shortcuts",
+    "onThisPage": "On this page",
+    "everywhere": "Everywhere",
+    "rebindInSettings": "Rebind in Settings"
   },
   "quickPanelClipboardApply": {
     "unrecognizedTitle": "Couldn't read that as a Mill export",
