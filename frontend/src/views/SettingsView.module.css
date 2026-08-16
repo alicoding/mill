@@ -1,0 +1,53 @@
+/* Two-column layout on wide viewports (goal 0077): a 184px TOC rail
+   (SettingsToc.module.css) beside the content column. Narrow viewports
+   render .content alone, no grid -- SettingsView only mounts
+   SettingsToc when useIsNarrowViewport() is false. */
+.layout {
+    display: grid;
+    grid-template-columns: 184px 1fr;
+    gap: var(--s-4);
+    align-items: start;
+}
+
+/* padding-bottom is real, not cosmetic: without trailing space below
+   the last section (Updates), a section near the bottom of the page
+   (Backups, second-to-last) has nowhere left to scroll TO -- the
+   scrolling container's own max scrollTop caps out before
+   scrollIntoView({block:'start'}) can bring it flush with the top,
+   regardless of scroll-margin. VS Code's own settings page carries the
+   same trailing padding for the identical reason. */
+.content {
+    min-width: 0;
+    padding-bottom: 60vh;
+}
+
+/* Sticky filter box at the top of the content column. Rendered height
+   (padding 8+16 around a ~32px default TextInput = ~56px) is the
+   number SettingsToc.module.css's own .rail top-offset is coupled to --
+   the two must change together. background covers section content
+   scrolling underneath once stuck. */
+.filterRow {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background: var(--bgColor-default);
+    padding: var(--base-size-8) 0 var(--base-size-16);
+}
+
+/* Every section root carries this, independent of filtered state:
+   scroll-margin-top (not the container's scroll-padding, since
+   .view-pane -- the real overflow:auto ancestor, app/index.css -- is a
+   shared class every other page also scrolls through) is what keeps a
+   TOC click or deep-link's scrollIntoView({block:'start'}) from
+   landing a section's heading directly underneath the sticky
+   .filterRow above -- same 56px .filterRow/.rail are coupled to. */
+.sectionAnchor {
+    scroll-margin-top: 64px;
+}
+
+/* A filtered-out section keeps its heading visible (so the user can
+   see what got excluded) at reduced opacity, with every control below
+   it unmounted -- not just hidden -- per the design contract. */
+.sectionFilteredOut {
+    opacity: 0.45;
+}

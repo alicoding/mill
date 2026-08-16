@@ -16,7 +16,11 @@ test('Settings page shows Launch at login and Global hotkey sections', async ({ 
   await page.getByRole('link', { name: 'Settings' }).click()
   await expect(page.getByTestId('settings-view')).toBeVisible()
   await expect(page.getByText('Launch Mill at login')).toBeVisible()
-  await expect(page.getByText('Global hotkey')).toBeVisible()
+  // Exact + heading role: goal 0077 added a TOC item and a palette
+  // deep-link command that both also contain the substring "Global
+  // hotkey" (getByText's default partial match), so a plain
+  // getByText('Global hotkey') is no longer unique on this page.
+  await expect(page.getByRole('heading', { name: 'Global hotkey', exact: true })).toBeVisible()
 })
 
 // docs/adr/0035: the forward-refactor proof's Settings half --
@@ -170,4 +174,70 @@ test('Importing an export-everything archive shows a preview before applying', a
 
   await page.getByRole('button', { name: 'Cancel' }).click()
   await expect(page.getByText('Import this backup?')).not.toBeVisible()
+})
+
+// goal 0077: the settings-organization TOC/filter/deep-link contract.
+// Default Playwright viewport (1280x720) is well above the narrow
+// breakpoint (useNarrowViewport.ts's own 767px), so the TOC renders
+// with no extra viewport setup.
+
+test('Settings TOC navigates to a section and marks it active', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Settings' }).click()
+
+  const toc = page.getByTestId('settings-toc')
+  await expect(toc).toBeVisible()
+
+  const backupsItem = page.getByTestId('settings-toc-item-backups')
+  await backupsItem.click()
+
+  const backupsHeading = page.getByTestId('settings-section-backups')
+  await expect(backupsHeading).toBeVisible()
+  await expect(async () => {
+    const box = await backupsHeading.boundingBox()
+    expect(box?.y).toBeLessThan(250)
+  }).toPass({ timeout: 5_000 })
+  await expect(backupsItem).toHaveAttribute('aria-current', 'location')
+})
+
+test('Settings filter narrows to matching sections and restores on clear', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Settings' }).click()
+
+  const filter = page.getByTestId('settings-filter')
+  const backupsSection = page.getByTestId('settings-section-backups')
+  const appearanceSection = page.getByTestId('settings-section-appearance')
+
+  await filter.fill('backup')
+  await expect(backupsSection).not.toHaveAttribute('data-filtered-out', 'true')
+  await expect(page.getByTestId('backup-now')).toBeVisible()
+  await expect(appearanceSection).toHaveAttribute('data-filtered-out', 'true')
+  await expect(appearanceSection.getByRole('button', { name: 'Light theme' })).toHaveCount(0)
+
+  await filter.fill('')
+  await expect(appearanceSection).not.toHaveAttribute('data-filtered-out', 'true')
+  await expect(appearanceSection.getByRole('button', { name: 'Light theme' })).toBeVisible()
+})
+
+test('Palette "Open Settings -> Backups" deep-links straight to the section', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Workflows' }).click()
+
+  await page.keyboard.press('Meta+k')
+  const dialog = page.getByRole('dialog', { name: 'Command palette' })
+  await expect(dialog).toBeVisible()
+  await dialog.getByRole('combobox').fill('Backups')
+
+  const option = dialog.getByRole('option', { name: /Open Settings → Backups/ })
+  await expect(option).toBeVisible()
+  await option.click()
+  await expect(dialog).toHaveCount(0)
+
+  await expect(page.getByTestId('settings-view')).toBeVisible()
+  const backupsHeading = page.getByTestId('settings-section-backups')
+  await expect(backupsHeading).toBeVisible()
+  await expect(async () => {
+    const box = await backupsHeading.boundingBox()
+    expect(box?.y).toBeLessThan(250)
+  }).toPass({ timeout: 5_000 })
 })

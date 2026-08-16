@@ -1,0 +1,27 @@
+/* The 184px sticky left rail (goal 0077). top's 56px is coupled to
+   SettingsView.module.css's own .filterRow rendered height -- the two
+   move together, since this is what keeps the rail's items level with
+   the section headings below the filter box rather than floating
+   beside it. */
+.rail {
+    position: sticky;
+    top: 56px;
+    align-self: start;
+    width: 184px;
+    font-size: 13px;
+    flex-shrink: 0;
+}
+
+/* !important on font-weight only: ActionList's own item-label styling
+   (NavList.Item renders through it) carries a more specific rule this
+   className alone doesn't outrank. border-left is a property that
+   styling never sets, so it applies cleanly without needing the same
+   override. */
+.itemActive {
+    font-weight: 650 !important;
+    border-left: 2px solid var(--fgColor-accent);
+}
+
+.itemFilteredOut {
+    opacity: 0.45;
+}

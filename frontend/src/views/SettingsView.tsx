@@ -1,18 +1,53 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Browser } from '@wailsio/runtime'
 import { Button, Checkbox, FormControl, Heading, SegmentedControl, Stack, Text, TextInput, useTheme } from '@primer/react'
-import { SunIcon, MoonIcon, DeviceDesktopIcon, KeyIcon } from '@primer/octicons-react'
+import { SunIcon, MoonIcon, DeviceDesktopIcon, KeyIcon, SearchIcon } from '@primer/octicons-react'
 import { KeyComboChip } from '../shared/KeyComboChip'
 import { SettingsService } from '../shared/bindings'
 import { describeCombo, keyFromEventCode, modsFromEvent, reservedByMacOS } from '../shared/keybinding'
 import { isAccessibilityError, ACCESSIBILITY_SETTINGS_URL } from '../composition/hotkeyCapture'
+import { useIsNarrowViewport } from '../shared/useNarrowViewport'
+import { usePrefersReducedMotion } from '../shared/usePrefersReducedMotion'
+import { SETTINGS_SECTIONS, sectionMatchesQuery } from '../shared/settingsSections'
 import KeyboardShortcutsSection from './KeyboardShortcutsSection'
 import DataStewardshipSection from './DataStewardshipSection'
+import SettingsToc from './SettingsToc'
+import { useSettingsSectionSync } from './useSettingsSectionSync'
 import styles from '../shared/ListCard.module.css'
+import settingsStyles from './SettingsView.module.css'
 import PageContainer from '../shared/PageContainer'
 
 const COLOR_MODES = ['light', 'dark', 'auto'] as const
+const SECTION_IDS = SETTINGS_SECTIONS.map((s) => s.id)
+
+// One page, a synced TOC, search-first (goal 0077): every section
+// below is a registered entry in shared/settingsSections.ts, rendered
+// here in that registry's order via SECTION_IDS/the SECTION_CONTENT map
+// built inside the component -- the TOC (SettingsToc.tsx) and the
+// filter box read the SAME registry, so a new section only needs
+// adding in one place.
+function SettingsSectionBlock({ id, filtered, registerRef, heading, children }: {
+  id: string
+  filtered: boolean
+  registerRef: (el: HTMLElement | null) => void
+  heading: ReactNode
+  children: ReactNode
+}) {
+  return (
+    <div
+      id={`settings-${id}`}
+      data-testid={`settings-section-${id}`}
+      data-filtered-out={filtered ? 'true' : undefined}
+      className={filtered ? `${settingsStyles.sectionAnchor} ${settingsStyles.sectionFilteredOut}` : settingsStyles.sectionAnchor}
+      ref={registerRef}
+    >
+      {heading}
+      {!filtered && children}
+    </div>
+  )
+}
 
 // A dedicated Settings page, reached via the sidebar's own bottom-
 // anchored footer icon (App.tsx) rather than a NavList entry alongside
@@ -35,12 +70,19 @@ const COLOR_MODES = ['light', 'dark', 'auto'] as const
 // SettingsService (settingsservice.go) since they're real OS-level
 // state (a login item, a global hotkey registration), not something the
 // browser layer can hold on its own.
-function SettingsView() {
+//
+// initialSection lands a palette "Open Settings -> <Title>" deep-link
+// (shared/commands.ts) directly on that section -- same
+// App.tsx-passes-the-deep-link-field-down shape AtlasView's own
+// initialCardID already uses.
+function SettingsView({ initialSection }: { initialSection?: string } = {}) {
   // 'views' is the default namespace (settings.* keys); 'common:'
   // prefix reaches the shared common.json namespace explicitly
   // (docs/goals/archive/0032-copy-management.md's proof-of-pattern slice).
   const { t } = useTranslation('views')
   const { colorMode, setColorMode } = useTheme()
+  const isNarrowViewport = useIsNarrowViewport()
+  const reducedMotion = usePrefersReducedMotion()
 
   const [launchAtLogin, setLaunchAtLoginState] = useState<boolean | null>(null)
   const [launchAtLoginError, setLaunchAtLoginError] = useState('')
@@ -73,6 +115,19 @@ function SettingsView() {
   // fail for the same reason (the backend didn't answer), and a build
   // this small doesn't need per-control diagnosis.
   const [settingsLoadError, setSettingsLoadError] = useState(false)
+
+  const [filterQuery, setFilterQuery] = useState('')
+  const { activeId, registerSection, scrollToSection } = useSettingsSectionSync(SECTION_IDS, initialSection, reducedMotion)
+
+  // Registry-based, deterministic filter (design contract item 3):
+  // matches the resolved title + keywords, never DOM scraping.
+  const filteredOutIds = useMemo(() => {
+    const out = new Set<string>()
+    for (const section of SETTINGS_SECTIONS) {
+      if (!sectionMatchesQuery(section, t(section.titleKey), filterQuery)) out.add(section.id)
+    }
+    return out
+  }, [filterQuery, t])
 
   useEffect(() => {
     SettingsService.AppVersion().then(setAppVersion).catch(console.error)
@@ -202,6 +257,168 @@ function SettingsView() {
       .finally(() => setUpdateChecking(false))
   }
 
+  const SECTION_CONTENT: Record<string, ReactNode> = {
+    appearance: (
+      <SegmentedControl aria-label={t('settings.appearance.themeLabel')} onChange={(i) => setColorMode(COLOR_MODES[i])}>
+        <SegmentedControl.IconButton icon={SunIcon} aria-label={t('settings.appearance.lightLabel')} selected={colorMode === 'light'} />
+        <SegmentedControl.IconButton icon={MoonIcon} aria-label={t('settings.appearance.darkLabel')} selected={colorMode === 'dark'} />
+        <SegmentedControl.IconButton icon={DeviceDesktopIcon} aria-label={t('settings.appearance.systemLabel')} selected={!colorMode || colorMode === 'auto'} />
+      </SegmentedControl>
+    ),
+    general: (
+      <>
+        <FormControl>
+          <Checkbox
+            checked={launchAtLogin ?? false}
+            disabled={launchAtLogin === null}
+            onChange={(e) => toggleLaunchAtLogin(e.target.checked)}
+            data-testid="launch-at-login-checkbox"
+          />
+          <FormControl.Label>{t('settings.general.launchAtLoginLabel')}</FormControl.Label>
+          <FormControl.Caption>{t('settings.general.launchAtLoginCaption')}</FormControl.Caption>
+        </FormControl>
+        {launchAtLoginError && (
+          <Text as="p" size="small" className={styles.error}>
+            {launchAtLoginError.includes('dev binary')
+              ? t('settings.general.errorDevBinary')
+              : launchAtLoginError.includes('server mode')
+                ? t('settings.general.errorServerMode')
+                : launchAtLoginError}
+          </Text>
+        )}
+      </>
+    ),
+    'keyboard-shortcuts': (
+      <>
+        <Text as="p" size="small" className={styles.muted}>
+          {t('settings.keyboardShortcuts.description')}
+        </Text>
+        <KeyboardShortcutsSection />
+      </>
+    ),
+    'global-hotkey': (
+      <>
+        <Text as="p" size="small" className={styles.muted}>
+          {t('settings.globalHotkey.description')}
+        </Text>
+        <Stack direction="horizontal" gap="condensed" align="center" style={{ marginTop: 'var(--base-size-8)' }}>
+          {summonRecording ? (
+            <Text size="small" className={styles.recording}>{t('settings.globalHotkey.recording')}</Text>
+          ) : summonBinding ? (
+            <>
+              <KeyIcon size={12} />
+              <KeyComboChip label={summonBinding} />
+              <Button size="small" variant="invisible" onClick={() => setSummonRecording(true)}>{t('common:actions.change')}</Button>
+              <Button size="small" variant="invisible" onClick={clearSummonHotkey}>{t('common:actions.clear')}</Button>
+            </>
+          ) : (
+            <Button size="small" variant="invisible" onClick={() => setSummonRecording(true)} data-testid="set-summon-hotkey">
+              {t('settings.globalHotkey.setShortcut')}
+            </Button>
+          )}
+        </Stack>
+        {summonError && (
+          <Stack direction="vertical" gap="condensed" style={{ marginTop: 'var(--base-size-8)' }}>
+            <Text as="p" size="small" className={styles.error}>{summonError}</Text>
+            {isAccessibilityError(summonError) && (
+              <Button size="small" onClick={() => Browser.OpenURL(ACCESSIBILITY_SETTINGS_URL)}>
+                {t('settings.globalHotkey.openAccessibilitySettings')}
+              </Button>
+            )}
+          </Stack>
+        )}
+      </>
+    ),
+    'mcp-access': (
+      <>
+        <FormControl>
+          <Checkbox
+            checked={mcpWriteEnabled ?? false}
+            disabled={mcpWriteEnabled === null}
+            onChange={(e) => {
+              const enabled = e.target.checked
+              SettingsService.SetMCPWriteEnabled(enabled).then(() => setMCPWriteEnabledState(enabled)).catch(console.error)
+            }}
+            data-testid="mcp-write-enabled-checkbox"
+          />
+          <FormControl.Label>{t('settings.mcp.allowImportLabel')}</FormControl.Label>
+          <FormControl.Caption>
+            {t('settings.mcp.allowImportCaption')}
+          </FormControl.Caption>
+        </FormControl>
+        {mcpWriteEnabled && (
+          <FormControl>
+            <Checkbox
+              checked={mcpApprovalRequired ?? true}
+              disabled={mcpApprovalRequired === null}
+              onChange={(e) => {
+                const required = e.target.checked
+                SettingsService.SetMCPWriteApprovalRequired(required).then(() => setMCPApprovalRequiredState(required)).catch(console.error)
+              }}
+              data-testid="mcp-write-approval-checkbox"
+            />
+            <FormControl.Label>{t('settings.mcp.askBeforeImportLabel')}</FormControl.Label>
+            <FormControl.Caption>
+              {t('settings.mcp.askBeforeImportCaption')}
+            </FormControl.Caption>
+          </FormControl>
+        )}
+      </>
+    ),
+    contract: (
+      <>
+        <Text as="p" size="small" className={styles.muted}>
+          {t('settings.contract.description')}
+        </Text>
+        <Stack direction="horizontal" gap="condensed" align="center" style={{ marginTop: 'var(--base-size-8)' }}>
+          <Button size="small" onClick={exportContract} data-testid="export-contract">
+            {t('settings.contract.exportButton')}
+          </Button>
+        </Stack>
+        {contractExportError && (
+          <Text as="p" size="small" className={styles.error}>{contractExportError}</Text>
+        )}
+      </>
+    ),
+    notifications: (
+      <>
+        <Text as="p" size="small" className={styles.muted}>
+          {t('settings.notifications.description')}
+        </Text>
+        <FormControl>
+          <FormControl.Label>{t('settings.notifications.awayAfterLabel')}</FormControl.Label>
+          <TextInput
+            className={styles.themedNumberInput}
+            type="number"
+            min={1}
+            defaultValue={idleThreshold ?? undefined}
+            key={idleThreshold ?? 'loading'}
+            onBlur={(e) => commitIdleThreshold(e.target.value)}
+            disabled={idleThreshold === null}
+            data-testid="attention-idle-threshold-input"
+            size="small"
+          />
+          <FormControl.Caption>
+            {t('settings.notifications.awayAfterCaption')}
+          </FormControl.Caption>
+        </FormControl>
+        <Text as="p" size="small" className={styles.muted}>
+          {t('settings.notifications.alertPermissionNote')}
+        </Text>
+      </>
+    ),
+    backups: <DataStewardshipSection />,
+    updates: (
+      <Stack direction="horizontal" gap="condensed" align="center">
+        <Button size="small" onClick={checkForUpdates} disabled={updateChecking} data-testid="check-for-updates">
+          {updateChecking ? t('settings.updates.checking') : t('settings.updates.checkButton')}
+        </Button>
+        {appVersion && <Text size="small" className={styles.muted} data-testid="current-app-version">{t('settings.updates.currentVersion', { version: appVersion })}</Text>}
+        {updateStatus && <Text size="small" className={styles.muted}>{updateStatus}</Text>}
+      </Stack>
+    ),
+  }
+
   return (
     <PageContainer variant="narrow" data-testid="settings-view">
       {/* Design-wave-1 fix #6: the sidebar footer row already says
@@ -215,154 +432,40 @@ function SettingsView() {
         </Text>
       )}
 
-      <Heading as="h2" variant="small" className={styles.sectionHeading}>{t('settings.sections.appearance')}</Heading>
-      <SegmentedControl aria-label={t('settings.appearance.themeLabel')} onChange={(i) => setColorMode(COLOR_MODES[i])}>
-        <SegmentedControl.IconButton icon={SunIcon} aria-label={t('settings.appearance.lightLabel')} selected={colorMode === 'light'} />
-        <SegmentedControl.IconButton icon={MoonIcon} aria-label={t('settings.appearance.darkLabel')} selected={colorMode === 'dark'} />
-        <SegmentedControl.IconButton icon={DeviceDesktopIcon} aria-label={t('settings.appearance.systemLabel')} selected={!colorMode || colorMode === 'auto'} />
-      </SegmentedControl>
-
-      <Heading as="h2" variant="small" className={styles.sectionHeading}>{t('settings.sections.general')}</Heading>
-      <FormControl>
-        <Checkbox
-          checked={launchAtLogin ?? false}
-          disabled={launchAtLogin === null}
-          onChange={(e) => toggleLaunchAtLogin(e.target.checked)}
-          data-testid="launch-at-login-checkbox"
-        />
-        <FormControl.Label>{t('settings.general.launchAtLoginLabel')}</FormControl.Label>
-        <FormControl.Caption>{t('settings.general.launchAtLoginCaption')}</FormControl.Caption>
-      </FormControl>
-      {launchAtLoginError && (
-        <Text as="p" size="small" className={styles.error}>
-          {launchAtLoginError.includes('dev binary')
-            ? t('settings.general.errorDevBinary')
-            : launchAtLoginError.includes('server mode')
-              ? t('settings.general.errorServerMode')
-              : launchAtLoginError}
-        </Text>
-      )}
-
-      <Heading as="h2" variant="small" className={styles.sectionHeading}>{t('settings.sections.keyboardShortcuts')}</Heading>
-      <Text as="p" size="small" className={styles.muted}>
-        {t('settings.keyboardShortcuts.description')}
-      </Text>
-      <KeyboardShortcutsSection />
-
-      <Heading as="h2" variant="small" className={styles.sectionHeading}>{t('settings.sections.globalHotkey')}</Heading>
-      <Text as="p" size="small" className={styles.muted}>
-        {t('settings.globalHotkey.description')}
-      </Text>
-      <Stack direction="horizontal" gap="condensed" align="center" style={{ marginTop: 'var(--base-size-8)' }}>
-        {summonRecording ? (
-          <Text size="small" className={styles.recording}>{t('settings.globalHotkey.recording')}</Text>
-        ) : summonBinding ? (
-          <>
-            <KeyIcon size={12} />
-            <KeyComboChip label={summonBinding} />
-            <Button size="small" variant="invisible" onClick={() => setSummonRecording(true)}>{t('common:actions.change')}</Button>
-            <Button size="small" variant="invisible" onClick={clearSummonHotkey}>{t('common:actions.clear')}</Button>
-          </>
-        ) : (
-          <Button size="small" variant="invisible" onClick={() => setSummonRecording(true)} data-testid="set-summon-hotkey">
-            {t('settings.globalHotkey.setShortcut')}
-          </Button>
-        )}
-      </Stack>
-      {summonError && (
-        <Stack direction="vertical" gap="condensed" style={{ marginTop: 'var(--base-size-8)' }}>
-          <Text as="p" size="small" className={styles.error}>{summonError}</Text>
-          {isAccessibilityError(summonError) && (
-            <Button size="small" onClick={() => Browser.OpenURL(ACCESSIBILITY_SETTINGS_URL)}>
-              {t('settings.globalHotkey.openAccessibilitySettings')}
-            </Button>
-          )}
-        </Stack>
-      )}
-
-      <Heading as="h2" variant="small" className={styles.sectionHeading}>{t('settings.sections.mcpAccess')}</Heading>
-      <FormControl>
-        <Checkbox
-          checked={mcpWriteEnabled ?? false}
-          disabled={mcpWriteEnabled === null}
-          onChange={(e) => {
-            const enabled = e.target.checked
-            SettingsService.SetMCPWriteEnabled(enabled).then(() => setMCPWriteEnabledState(enabled)).catch(console.error)
-          }}
-          data-testid="mcp-write-enabled-checkbox"
-        />
-        <FormControl.Label>{t('settings.mcp.allowImportLabel')}</FormControl.Label>
-        <FormControl.Caption>
-          {t('settings.mcp.allowImportCaption')}
-        </FormControl.Caption>
-      </FormControl>
-      {mcpWriteEnabled && (
-        <FormControl>
-          <Checkbox
-            checked={mcpApprovalRequired ?? true}
-            disabled={mcpApprovalRequired === null}
-            onChange={(e) => {
-              const required = e.target.checked
-              SettingsService.SetMCPWriteApprovalRequired(required).then(() => setMCPApprovalRequiredState(required)).catch(console.error)
-            }}
-            data-testid="mcp-write-approval-checkbox"
+      <div className={isNarrowViewport ? undefined : settingsStyles.layout}>
+        {!isNarrowViewport && (
+          <SettingsToc
+            sections={SETTINGS_SECTIONS}
+            activeId={activeId}
+            filteredOutIds={filteredOutIds}
+            onSelect={scrollToSection}
           />
-          <FormControl.Label>{t('settings.mcp.askBeforeImportLabel')}</FormControl.Label>
-          <FormControl.Caption>
-            {t('settings.mcp.askBeforeImportCaption')}
-          </FormControl.Caption>
-        </FormControl>
-      )}
-
-      <Heading as="h2" variant="small" className={styles.sectionHeading}>{t('settings.sections.contract')}</Heading>
-      <Text as="p" size="small" className={styles.muted}>
-        {t('settings.contract.description')}
-      </Text>
-      <Stack direction="horizontal" gap="condensed" align="center" style={{ marginTop: 'var(--base-size-8)' }}>
-        <Button size="small" onClick={exportContract} data-testid="export-contract">
-          {t('settings.contract.exportButton')}
-        </Button>
-      </Stack>
-      {contractExportError && (
-        <Text as="p" size="small" className={styles.error}>{contractExportError}</Text>
-      )}
-
-      <Heading as="h2" variant="small" className={styles.sectionHeading}>{t('settings.sections.notifications')}</Heading>
-      <Text as="p" size="small" className={styles.muted}>
-        {t('settings.notifications.description')}
-      </Text>
-      <FormControl>
-        <FormControl.Label>{t('settings.notifications.awayAfterLabel')}</FormControl.Label>
-        <TextInput
-          className={styles.themedNumberInput}
-          type="number"
-          min={1}
-          defaultValue={idleThreshold ?? undefined}
-          key={idleThreshold ?? 'loading'}
-          onBlur={(e) => commitIdleThreshold(e.target.value)}
-          disabled={idleThreshold === null}
-          data-testid="attention-idle-threshold-input"
-          size="small"
-        />
-        <FormControl.Caption>
-          {t('settings.notifications.awayAfterCaption')}
-        </FormControl.Caption>
-      </FormControl>
-      <Text as="p" size="small" className={styles.muted}>
-        {t('settings.notifications.alertPermissionNote')}
-      </Text>
-
-      <Heading as="h2" variant="small" className={styles.sectionHeading}>{t('settings.sections.dataStewardship')}</Heading>
-      <DataStewardshipSection />
-
-      <Heading as="h2" variant="small" className={styles.sectionHeading}>{t('settings.sections.updates')}</Heading>
-      <Stack direction="horizontal" gap="condensed" align="center">
-        <Button size="small" onClick={checkForUpdates} disabled={updateChecking} data-testid="check-for-updates">
-          {updateChecking ? t('settings.updates.checking') : t('settings.updates.checkButton')}
-        </Button>
-        {appVersion && <Text size="small" className={styles.muted} data-testid="current-app-version">{t('settings.updates.currentVersion', { version: appVersion })}</Text>}
-        {updateStatus && <Text size="small" className={styles.muted}>{updateStatus}</Text>}
-      </Stack>
+        )}
+        <div className={settingsStyles.content}>
+          <div className={settingsStyles.filterRow}>
+            <TextInput
+              leadingVisual={SearchIcon}
+              placeholder={t('settings.filterPlaceholder')}
+              value={filterQuery}
+              onChange={(e) => setFilterQuery(e.target.value)}
+              aria-label={t('settings.filterPlaceholder')}
+              data-testid="settings-filter"
+              block
+            />
+          </div>
+          {SETTINGS_SECTIONS.map((section) => (
+            <SettingsSectionBlock
+              key={section.id}
+              id={section.id}
+              filtered={filteredOutIds.has(section.id)}
+              registerRef={registerSection(section.id)}
+              heading={<Heading as="h2" variant="small" className={styles.sectionHeading}>{t(section.titleKey)}</Heading>}
+            >
+              {SECTION_CONTENT[section.id]}
+            </SettingsSectionBlock>
+          ))}
+        </div>
+      </div>
     </PageContainer>
   )
 }

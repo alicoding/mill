@@ -3,6 +3,7 @@
     "title": "Settings",
     "subtitle": "App-level preferences, stored locally on this machine — not workflow or Configure data.",
     "loadError": "Couldn't load some settings -- the app may need a restart.",
+    "filterPlaceholder": "Search settings",
     "sections": {
       "appearance": "Appearance",
       "general": "General",

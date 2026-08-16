@@ -3,6 +3,7 @@ import { comboFromEvent, comboKey } from './keybinding'
 import { useAppStore } from './store'
 import type { View } from './store'
 import { SettingsService } from './bindings'
+import { SETTINGS_SECTIONS, resolveSectionTitle } from './settingsSections'
 
 // The command registry (docs/goals/0016-keymap-system.md): named
 // commands with a default binding, dispatched by one window keydown
@@ -286,6 +287,17 @@ export const COMMANDS: Command[] = [
     defaultBinding: null,
     run: () => { void SettingsService.ShowPanel() },
   },
+  // One palette-only deep-link command per registered Settings section
+  // (goal 0077, shared/settingsSections.ts) -- always unbound
+  // (defaultBinding: null), discoverable only by searching the palette,
+  // same "reserve the id without a combo" shape panel.applyClipboard
+  // above already uses.
+  ...SETTINGS_SECTIONS.map((section): Command => ({
+    id: `settings.open.${section.id}`,
+    label: `Open Settings → ${resolveSectionTitle(section)}`,
+    defaultBinding: null,
+    run: () => setView({ kind: 'settings', section: section.id }),
+  })),
 ]
 
 export function findCommand(id: string): Command | undefined {
