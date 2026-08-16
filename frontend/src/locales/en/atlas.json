@@ -33,6 +33,19 @@
     "matrix": "Matrix",
     "coverage": "Coverage"
   },
+  "folderImport": {
+    "addButton": "Add from folder…",
+    "title": "Add cards from a folder",
+    "truncatedNotice": "Showing the first {{count}} items found in this folder. Pick a smaller folder to see everything.",
+    "categoryFile": "Files",
+    "categoryImage": "Images",
+    "categoryContainer": "Folders",
+    "kindLabel": "Add as",
+    "selectAll": "Select all",
+    "selectNone": "Select none",
+    "confirmButton": "Add {{count}} cards",
+    "empty": "This folder has nothing to add."
+  },
   "matrix": {
     "title": "Traceability matrix",
     "cardColumn": "Card",

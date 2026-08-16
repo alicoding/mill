@@ -243,6 +243,43 @@ export interface Position {
 }
 
 /**
+ * ScanCategory is the heuristic bucket a synced-folder scan's own
+ * suggestion preview groups an entry under (docs/goals/0067) -- a
+ * presentation grouping only, never a Kind: which real Kind each
+ * bucket's accepted entries become is a choice the user makes in the
+ * preview (ADR-0038 Decision 2 -- nothing may assume a specific seeded
+ * Kind exists, since every Kind is user-owned, editable, deletable
+ * data).
+ */
+export enum ScanCategory {
+    /**
+     * The Go zero value for the underlying type of the enum.
+     */
+    $zero = "",
+
+    /**
+     * ScanCategoryContainer is a directory -- becomes a container card
+     * (ViewMode shelves) holding whatever of its own contents were
+     * accepted.
+     */
+    ScanCategoryContainer = "container",
+
+    /**
+     * ScanCategoryImage is a file whose extension is a common image
+     * format.
+     */
+    ScanCategoryImage = "image",
+
+    /**
+     * ScanCategoryFile is every other file -- text/markdown/office/PDF
+     * documents and anything unrecognized alike, since an unfamiliar
+     * extension is still worth suggesting as a plain reference rather
+     * than silently excluded.
+     */
+    ScanCategoryFile = "file",
+};
+
+/**
  * ViewMode governs how a container card's CHILDREN render, not the
  * card itself -- ADR-0038 Decision 3's "space view mode is per-
  * container" call, resolved as a field ON Card rather than a separate

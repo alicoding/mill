@@ -19,6 +19,13 @@ import { fileURLToPath } from 'node:url'
 const REPO_ROOT = path.resolve(fileURLToPath(new URL('.', import.meta.url)), '../../..')
 const MILL_SERVER_BIN = path.join(REPO_ROOT, 'frontend', 'e2e', '.build', 'mill-server')
 
+// Server-mode Playwright has no display a real native folder-picker
+// panel could render into (goal 0067) -- every spawned server carries
+// this fixture path so AtlasService.PickFolder's own env bypass
+// (MILL_TEST_FOLDER_PICK_PATH) returns it instead of opening the real
+// OS dialog. Harmless for every test that never calls PickFolder.
+const FOLDER_PICK_FIXTURE = path.join(REPO_ROOT, 'frontend', 'e2e', 'fixtures', 'synced-folder')
+
 // Port ranges deliberately clear of both Wails' own server-mode default
 // (8080) and Mill's own default MCP bind address (127.0.0.1:8090) --
 // confirmed live, not assumed: a real LaunchAgent-run mill-server on
@@ -94,6 +101,7 @@ export async function spawnMillServer(opts: SpawnServerOptions): Promise<Spawned
       MILL_SETTINGS_PATH: opts.settingsPath,
       MILL_EXECUTION_DB_PATH: opts.executionDbPath,
       MILL_BACKUP_DIR: opts.backupDir,
+      MILL_TEST_FOLDER_PICK_PATH: FOLDER_PICK_FIXTURE,
     },
     stdio: ['ignore', 'pipe', 'pipe'],
   })

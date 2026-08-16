@@ -6,6 +6,7 @@ import type { Card, Kind, ViewMode } from '../../bindings/github.com/alicoding/m
 import { AtlasBreadcrumb } from './AtlasBreadcrumb'
 import { AtlasLensControl } from './AtlasLensControl'
 import { AtlasCreateMenu } from './AtlasCreateMenu'
+import { AtlasFolderImport } from './AtlasFolderImport'
 import { AtlasSpaceShareMenu } from './AtlasSpaceShareMenu'
 import styles from './AtlasView.module.css'
 
@@ -76,6 +77,7 @@ export function AtlasToolbar({
         <Button leadingVisual={DownloadIcon} size="small" variant="invisible" data-testid="atlas-export" onClick={onExport}>
           {t('toolbar.export')}
         </Button>
+        <AtlasFolderImport viewedID={viewedID} kinds={kinds} />
         <AtlasSpaceShareMenu spaceID={viewedID} onError={onShareError} />
         <Button leadingVisual={TableIcon} size="small" variant="invisible" data-testid="atlas-open-matrix" onClick={onOpenMatrix}>
           {t('toolbar.matrix')}

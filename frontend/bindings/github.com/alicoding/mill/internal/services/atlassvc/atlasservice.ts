@@ -99,6 +99,21 @@ export function DeleteLinkKind(id: string): $CancellablePromise<void> {
 }
 
 /**
+ * DetectSyncRoots reports which well-known cloud-sync folders
+ * (OneDrive/Dropbox/iCloud Drive) exist on disk, most-likely-first --
+ * an os.Stat existence check only, never a listing or a read (goal
+ * 0067's "detection is fine, action is not"). The frontend uses the
+ * first hit to pre-fill PickFolder's own starting location; only the
+ * user's own explicit choice in that dialog authorizes anything to be
+ * scanned. A method (rather than a plain function) purely so the Wails
+ * binding generator exposes it as a frontend RPC -- it reads no
+ * AtlasService state.
+ */
+export function DetectSyncRoots(): $CancellablePromise<string[] | null> {
+    return $Call.ByID(2360667167);
+}
+
+/**
  * ExportAtlas serializes the whole Atlas graph as an indented, portable
  * JSON string -- share it, commit it to git, or import it into another
  * Mill instance. Read-only: never mutates a's state. Deterministic by
@@ -132,6 +147,25 @@ export function ExportAtlas(): $CancellablePromise<string> {
  */
 export function ImportAtlas(jsonData: string): $CancellablePromise<$models.AtlasImportSummary> {
     return $Call.ByID(1577571942, jsonData);
+}
+
+/**
+ * ImportFolderSuggestions is the only place a folder-scan suggestion
+ * becomes a real card -- goal 0067's preview/confirm boundary. It
+ * RE-SCANS root itself (bounded, same caps ScanFolder uses) rather
+ * than trusting the frontend's own copy of the tree back: a stale
+ * preview (the folder changed between scan and confirm) then fails
+ * closed on whatever no longer matches AcceptedRelPaths, instead of
+ * importing something the user never actually saw. Containers are
+ * created before their own children (ordered by path depth) so
+ * containment always resolves to a real card id; an accepted entry
+ * whose own parent directory was NOT accepted attaches directly under
+ * TargetParentID instead of being dropped. Every card is created
+ * through the normal CreateCard path (validation, dataevent, seed
+ * bookkeeping) -- no separate write primitive.
+ */
+export function ImportFolderSuggestions(req: $models.ImportFolderSuggestionsRequest): $CancellablePromise<$models.FolderImportSummary> {
+    return $Call.ByID(2984363720, req);
 }
 
 export function Kinds(): $CancellablePromise<atlas$0.Kind[] | null> {
@@ -177,6 +211,18 @@ export function MoveCard(id: string, newParentID: string): $CancellablePromise<a
 }
 
 /**
+ * PickFolder opens the native folder picker -- goal 0067's consent
+ * gate: zero filesystem reads happen before this returns a path the
+ * user actually chose. startDir optionally pre-fills the dialog's
+ * starting location; passing a DetectSyncRoots hit here is
+ * presentation only, never itself a read. Returns "" (no error) when
+ * the user cancels.
+ */
+export function PickFolder(startDir: string): $CancellablePromise<string> {
+    return $Call.ByID(3623587391, startDir);
+}
+
+/**
  * RevealCardMirror opens cardID's own MirrorPath in the OS file
  * manager -- the card overlay/chip's "Reveal file" action, only ever
  * offered once a refresh has actually run and set MirrorPath.
@@ -194,6 +240,19 @@ export function RevealCardMirror(cardID: string): $CancellablePromise<void> {
  */
 export function RevealSpaceFolder(spaceID: string): $CancellablePromise<string> {
     return $Call.ByID(560408095, spaceID);
+}
+
+/**
+ * ScanFolder performs the bounded, heuristic scan goal 0067 describes:
+ * depth/count-capped, hidden entries and symlinks skipped
+ * (fileread.Scan), each entry classified into a suggestion category by
+ * extension (atlas.ClassifyScanExtension) with a humanized suggested
+ * title (atlas.HumanizeFilename). Read-only: nothing is written to
+ * Atlas by this call. root must not hold (or be held by) Mill's own
+ * data (SetGuardedDataPaths).
+ */
+export function ScanFolder(root: string): $CancellablePromise<$models.FolderScanResult> {
+    return $Call.ByID(130483307, root);
 }
 
 /**

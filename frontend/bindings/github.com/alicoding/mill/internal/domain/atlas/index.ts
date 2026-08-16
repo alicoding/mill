@@ -3,6 +3,7 @@
 
 export {
     MirrorKind,
+    ScanCategory,
     ViewMode
 } from "./models.js";
 

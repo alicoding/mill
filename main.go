@@ -193,9 +193,9 @@ func main() {
 	backupService.SetAtlasBundle(backupsvc.WireAtlasBundle(atlasService))
 	backupsvc.WireCompositionRunner(backupService)
 
-	// docs/adr/0038, goal 0063: the share model's space<->folder root,
-	// same MILL_BACKUP_DIR-style override convention as backupDir above.
+	// docs/adr/0038, goal 0063/0067: the share model's mirror root, and the folder-picker's own guard against Mill's own live data.
 	atlasService.SetMirrorsDir(atlassvc.DefaultMirrorsDir(os.Getenv("MILL_ATLAS_MIRRORS_DIR")))
+	atlasService.SetGuardedDataPaths(settingsPath, backupsvc.SQLiteDBPath(executionDatabaseURL), backupDir)
 
 	settingsService := settingssvc.NewSettingsService(settingsStore, triggerService, settingsPath != defaultSettingsPath)
 	// Bidirectional hotkey-conflict check (docs/SPEC.md §3.7): a
