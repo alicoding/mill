@@ -1,0 +1,37 @@
+/* The ⌘K jump dialog (goal 0072 slice B): a dense, search-first result
+   row -- a smaller glyph than AtlasNoteCardNode's own (14px vs 20px)
+   since up to 8 rows share the list at once, title truncated to make
+   room for the right-aligned ancestor path. */
+.glyph {
+    flex: 0 0 auto;
+    width: 14px;
+    height: 14px;
+    border-radius: 4px;
+    color: #fff;
+    font-size: 9px;
+    font-weight: 650;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.title {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 13px;
+    font-weight: 600;
+}
+.path {
+    font-size: 10.5px;
+    color: var(--fgColor-muted);
+    white-space: nowrap;
+}
+.footer {
+    display: flex;
+    justify-content: flex-end;
+    padding: 6px 12px;
+    margin: 8px -16px -16px;
+    border-top: 1px solid var(--borderColor-default);
+    font-size: 10px;
+    color: var(--fgColor-muted);
+}

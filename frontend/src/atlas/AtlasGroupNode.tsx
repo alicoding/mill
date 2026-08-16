@@ -12,6 +12,10 @@ export interface AtlasGroupData extends Record<string, unknown> {
   kind: Kind | undefined
   childCount: number
   freshness: FreshnessRollup
+  // A ⌘K jump landing on this frame (goal 0072 slice B) -- same
+  // meaning as AtlasNoteCardData's own pulsed/hinted.
+  pulsed: boolean
+  hinted: boolean
   onDrill: (id: string) => void
 }
 
@@ -27,7 +31,7 @@ export type AtlasGroupRFNode = RFNode<AtlasGroupData>
 // that on the header alone.
 export const AtlasGroupNode = memo(function AtlasGroupNode({ data }: NodeProps<AtlasGroupRFNode>) {
   const { t } = useTranslation('atlas')
-  const { card, childCount, freshness, onDrill } = data
+  const { card, childCount, freshness, pulsed, hinted, onDrill } = data
   const tokens = kindColorTokens(card.KindID)
 
   const drill = () => onDrill(card.ID)
@@ -36,6 +40,7 @@ export const AtlasGroupNode = memo(function AtlasGroupNode({ data }: NodeProps<A
     <div
       className={styles.frame}
       data-testid="atlas-group-card"
+      data-pulse={pulsed}
       style={{ borderColor: `var(${tokens.fg})`, background: `var(${tokens.muted})` }}
     >
       {/* Invisible connection points, same reasoning as AtlasNoteCardNode's
@@ -71,6 +76,9 @@ export const AtlasGroupNode = memo(function AtlasGroupNode({ data }: NodeProps<A
         )}
         <span className={styles.zoomChip}>{t('board.zoomChip')}</span>
       </div>
+      {hinted && (
+        <div className={styles.hintChip} data-testid="atlas-jump-hint" aria-hidden="true">{t('board.jumpHint')}</div>
+      )}
     </div>
   )
 })

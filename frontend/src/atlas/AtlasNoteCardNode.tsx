@@ -16,6 +16,12 @@ export interface AtlasNoteCardData extends Record<string, unknown> {
   links: Link[]
   linkKinds: LinkKind[]
   flipped: boolean
+  // A ⌘K jump landing on this card (goal 0072 slice B): pulsed drives
+  // the accent ring, hinted shows the transient "press Enter to open"
+  // chip -- both timed and cleared by AtlasBoard, this component only
+  // renders their current on/off state.
+  pulsed: boolean
+  hinted: boolean
   onToggleFlip: (id: string) => void
   onOpenOverlay: (id: string) => void
 }
@@ -30,7 +36,7 @@ export type AtlasNoteCardRFNode = RFNode<AtlasNoteCardData>
 // preview -- the same face content either way.
 export const AtlasNoteCardNode = memo(function AtlasNoteCardNode({ data }: NodeProps<AtlasNoteCardRFNode>) {
   const { t } = useTranslation('atlas')
-  const { card, kind, allCards, links, linkKinds, flipped, onToggleFlip, onOpenOverlay } = data
+  const { card, kind, allCards, links, linkKinds, flipped, pulsed, hinted, onToggleFlip, onOpenOverlay } = data
   const tokens = kindColorTokens(card.KindID)
   const fileTag = deriveFileTag(card)
   const dot = freshnessDotColor(card)
@@ -47,6 +53,7 @@ export const AtlasNoteCardNode = memo(function AtlasNoteCardNode({ data }: NodeP
       className={styles.flipScene}
       data-testid="atlas-note-card"
       data-flipped={flipped}
+      data-pulse={pulsed}
       role="button"
       tabIndex={0}
       aria-label={t('board.flipCardAriaLabel', { title: card.Title })}
@@ -129,6 +136,12 @@ export const AtlasNoteCardNode = memo(function AtlasNoteCardNode({ data }: NodeP
           </button>
         </div>
       </div>
+      {hinted && (
+        // A sibling of .flipInner, not a child -- the flip's own 3D
+        // rotateY transform must never carry this chip along with it,
+        // whichever face is currently showing.
+        <div className={styles.hintChip} data-testid="atlas-jump-hint" aria-hidden="true">{t('board.jumpHint')}</div>
+      )}
     </div>
   )
 })
