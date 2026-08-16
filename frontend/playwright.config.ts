@@ -42,7 +42,13 @@ export default defineConfig({
   // genuine timing flake, not a resize bug (it passes isolated and on
   // retry). A real regression still fails both attempts, so this masks
   // flakes without hiding breakage.
-  retries: 1,
+  // CI gets 2 (the official recipe paired with trace-on-first-retry
+  // below: the retry is what triggers diagnostics capture); local
+  // keeps 1 -- the resizable-table pointermove-coalescing flake this
+  // originally masked still reproduces only under local parallel
+  // load, and a zero-retry local run would re-surface it on every
+  // commit gate without adding signal (goal 0080's recorded call).
+  retries: process.env.CI ? 2 : 1,
   // Default (30s) is too tight now that a dozen or so tests across
   // several files contend for the one real-clipboard lock
   // (./e2e/fixtures/clipboardLock.ts) -- under parallel workers, a test
@@ -64,6 +70,12 @@ export default defineConfig({
   reporter: [['html', { open: 'never' }], ['list']],
   globalSetup: './e2e/global-setup.ts',
   use: {
+    // Diagnostics exist exactly when needed (goal 0080, the official
+    // recipe): a retry captures a full trace, a failure captures a
+    // screenshot; passing runs pay nothing. CI uploads the report
+    // dir on failure, so trace.zip rides the existing artifact.
+    trace: "on-first-retry",
+    screenshot: "only-on-failure",
     // No static baseURL here -- ./e2e/fixtures/server.ts overrides the
     // `baseURL` fixture per worker, pointed at that worker's own
     // freshly-spawned server. Every spec imports `test`/`expect` from

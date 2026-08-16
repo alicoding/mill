@@ -162,3 +162,55 @@ From the UX point of view the seed layer stays privileged — it's the
 one a human can SEE working — but correctness under change belongs to
 the other layers, and every bug-repro still becomes a committed test
 at whichever layer fits (the rule at the top of this file).
+
+## Testing maturity: gates, thresholds, flake protocol (goal 0080)
+
+Owner-mandated after the audit found zero coverage signal, all
+Playwright diagnostics off, and a ~16-test flake list living as
+folklore in agent-brief prose. The standing rules:
+
+- **Coverage is measured and ratcheted, never aspirational.** Vitest
+  runs `--coverage` everywhere (`npm run test`), scoped to
+  hand-written `src/` (bindings exempt, same reasoning as
+  check-loc); thresholds live in vite.config.ts with
+  `autoUpdate: true`, so the floor equals the best coverage ever
+  committed and only climbs. Go: every gate run produces a
+  coverprofile checked by `scripts/check-go-coverage.sh` (floor
+  committed in the script; raise it in the same commit that raises
+  real coverage — the script nags when you're >1pt above). The unit
+  floors measure the UNIT layer only: components are deliberately
+  proven in e2e (the layering above), so ~13% TS statements at
+  adoption is honest, not alarming — judge the ratchet's slope, not
+  the absolute number against industry 80%-lore.
+- **Diagnostics exist exactly when needed**: `trace:
+  'on-first-retry'`, `screenshot: 'only-on-failure'`; CI retries 2 /
+  local 1 (the local 1 masks one documented pointer-coalescing
+  class; a real regression still fails both attempts). A flake's
+  first CI recurrence therefore ships a trace.zip in the failure
+  artifact — read it before theorizing.
+- **The flake protocol** (replaces every "known flakes" prose list):
+  a test observed flaking twice either gets FIXED or enters
+  `frontend/e2e/QUARANTINE.md` with class, entered/review dates, and
+  notes. Entries leave by fix or by review-date decision;
+  retry-passing is never a fix. Agent briefs cite the register, not
+  a pasted list.
+- **Interaction helpers live in `e2e/fixtures/`, not per-spec.** A
+  helper used by 2+ spec files MUST be promoted (the shared/-folder
+  rule, applied to tests) — the audit found `workflowRow` copied 39
+  times and the one animation-settle helper marooned in a single
+  file while 23 files carried the race it fixes. Standing helpers:
+  the per-worker server, `withClipboardLock`, `clickCanvasNode`,
+  `atlasCards`/`atlasPage`, and (post burn-down)
+  `waitForViewportStable` + percentage-position clicks.
+- **Assertion style**: web-first `expect(...)` retrying assertions
+  over one-shot `boundingBox()` sampling after anything animated —
+  poll geometry (`expect.poll`) or wait for transform stability
+  first. New `waitForTimeout` calls need a same-line comment
+  justifying why no observable condition exists.
+- **Considered and rejected, with revisit triggers**:
+  @testing-library component layer (the pure-function + real-
+  bindings-e2e layering keeps catching real bugs; revisit if e2e
+  wall time forces shard growth past CI's 15-minute cap); Playwright
+  code-coverage collection (heavy, low signal over per-test
+  assertions); octocov-style coverage actions (a 15-line floor
+  script suffices; no new CI dependency).

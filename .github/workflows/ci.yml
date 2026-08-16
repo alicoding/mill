@@ -306,7 +306,7 @@ jobs:
       # //go:embed all:frontend/dist makes the root package fail to
       # compile without it, even for tests that never touch the embedded
       # assets themselves.
-      - run: go test . ./internal/... -race -cover
+      - run: go test . ./internal/... -race -coverprofile=cover.out && bash scripts/check-go-coverage.sh cover.out
 
   e2e:
     needs: [changes, frontend]
