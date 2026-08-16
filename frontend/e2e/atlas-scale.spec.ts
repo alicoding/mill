@@ -64,8 +64,14 @@ test('a dense area previews bounded: capped tiles, region chips, a truthful ghos
     // Platform-chip -> Getting started = 7.
     await expect(page.locator('.react-flow__edge')).toHaveCount(7)
 
-    // A region chip is a place: clicking zooms straight into it.
-    await page.locator('[data-testid="atlas-region-chip"]').filter({ hasText: 'Platform' }).click()
+    // Gesture model (goal 0074): a chip answers a single click like
+    // every other card -- it flips to its minimal back -- and
+    // double-click commits, zooming into the place.
+    const platform = page.locator('[data-testid="atlas-region-chip"]').filter({ hasText: 'Platform' })
+    await platform.click()
+    await expect(platform).toHaveAttribute('data-flipped', 'true')
+    await expect(platform.getByTestId('atlas-region-chip-back')).toContainText('flip side')
+    await platform.dblclick()
     await expect(page.getByTestId('atlas-breadcrumb')).toContainText('Platform')
     await expect(page.getByTestId('atlas-breadcrumb')).toContainText('Velocity')
 

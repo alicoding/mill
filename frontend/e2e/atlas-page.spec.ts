@@ -330,7 +330,7 @@ test('a group entry inside a page re-roots the board to a deeper card, and the b
   // level deep, so "Q1 Summary" would match twice (L2's own child and
   // L3's preview grandchild) rather than the single card this step
   // means to flip.
-  await l3Chip.click()
+  await l3Chip.dblclick()
   await expect(breadcrumbReports).toHaveCount(3)
   await deleteViaFlip(noteCard(page, 'Q1 Summary'))
   await page.getByTestId('atlas-breadcrumb').getByText('Reports').nth(1).click()

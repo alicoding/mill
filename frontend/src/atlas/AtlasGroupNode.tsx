@@ -75,6 +75,14 @@ export const AtlasGroupNode = memo(function AtlasGroupNode({ data }: NodeProps<A
       aria-label={t('board.flipCardAriaLabel', { title: card.Title })}
       style={{ borderColor: `var(${tokens.fg})`, background: `var(${tokens.muted})` }}
       onClick={toggleFlip}
+      // Gesture model (goal 0074): a double-click on the frame BODY
+      // commits -- a place's commit is zooming in (handleDrill itself
+      // unflips first). The header's own single-click drill stays as
+      // the visible affordance.
+      onDoubleClick={(e) => {
+        e.stopPropagation()
+        onDrill(card.ID)
+      }}
       onKeyDown={(e) => {
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault()

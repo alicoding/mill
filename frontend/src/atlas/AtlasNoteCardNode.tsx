@@ -24,6 +24,10 @@ export interface AtlasNoteCardData extends Record<string, unknown> {
   hinted: boolean
   onToggleFlip: (id: string) => void
   onOpenOverlay: (id: string) => void
+  // Double-click's commit (goal 0074): unflips, then opens this
+  // leaf's page -- wired by AtlasBoard so the unflip and the open
+  // share one state owner.
+  onCommit: (id: string) => void
 }
 
 export type AtlasNoteCardRFNode = RFNode<AtlasNoteCardData>
@@ -36,7 +40,7 @@ export type AtlasNoteCardRFNode = RFNode<AtlasNoteCardData>
 // preview -- the same face content either way.
 export const AtlasNoteCardNode = memo(function AtlasNoteCardNode({ data }: NodeProps<AtlasNoteCardRFNode>) {
   const { t } = useTranslation('atlas')
-  const { card, kind, allCards, links, linkKinds, flipped, pulsed, hinted, onToggleFlip, onOpenOverlay } = data
+  const { card, kind, allCards, links, linkKinds, flipped, pulsed, hinted, onToggleFlip, onOpenOverlay, onCommit } = data
   const tokens = kindColorTokens(card.KindID)
   const fileTag = deriveFileTag(card)
   const dot = freshnessDotColor(card)
@@ -58,6 +62,15 @@ export const AtlasNoteCardNode = memo(function AtlasNoteCardNode({ data }: NodeP
       tabIndex={0}
       aria-label={t('board.flipCardAriaLabel', { title: card.Title })}
       onClick={() => onToggleFlip(card.ID)}
+      // The gesture model (goal 0074): click glances, double-click
+      // commits -- for a leaf, the commit is its page. The commit
+      // supersedes the glance, so the double-click's own two single
+      // clicks having toggled the flip doesn't matter: onCommit
+      // unflips before opening.
+      onDoubleClick={(e) => {
+        e.stopPropagation()
+        onCommit(card.ID)
+      }}
       onKeyDown={(e) => {
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault()
