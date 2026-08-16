@@ -25,6 +25,14 @@ import { findFreeDropPosition } from '../shared/canvasLayout'
 import runbookStyles from '../shared/ListCard.module.css'
 import styles from './AtlasView.module.css'
 
+const ARTERY_MENU_TITLE_MAX = 28
+
+// An artery's own right-click labels ("Open <title>") stay one line
+// regardless of how long the connected card's title is.
+function truncateTitle(title: string): string {
+  return title.length > ARTERY_MENU_TITLE_MAX ? `${title.slice(0, ARTERY_MENU_TITLE_MAX - 1)}…` : title
+}
+
 // The Atlas surface's top-level page (docs/adr/0038, docs/goals/0061):
 // space rendering (canvas/shelves per the viewed card's
 // EffectiveViewMode), drill + explicit breadcrumb-back, the full-screen
@@ -184,6 +192,42 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
     })
   }
 
+  // The empty-board right-click (goal 0075's audit G3): one item,
+  // opening the SAME "Add inside this card" dialog the toolbar's own
+  // + button opens -- addChildRequest is a one-shot counter
+  // AtlasCreateMenu (mounted inside AtlasToolbar) watches to trigger
+  // its own openForm('child'), so the dialog itself lives in exactly
+  // one place regardless of which affordance opened it.
+  const [addChildRequest, setAddChildRequest] = useState(0)
+  const openPaneMenu = (pos: { x: number; y: number }) => {
+    setMenu({
+      x: pos.x,
+      y: pos.y,
+      items: [
+        { id: 'add-card', label: t('contextMenu.addCard'), run: () => setAddChildRequest((n) => n + 1) },
+      ],
+    })
+  }
+
+  // The artery right-click (goal 0075's audit G4): the two top-level
+  // cards it connects, each opening straight to its own page --
+  // per-link detail (which LinkKind, which real pair underneath an
+  // aggregated count) lives one zoom level down, on the cards
+  // themselves, not on this menu.
+  const openArteryMenu = (sourceID: string, targetID: string, pos: { x: number; y: number }) => {
+    const source = allCards.find((c) => c.ID === sourceID)
+    const target = allCards.find((c) => c.ID === targetID)
+    if (!source || !target) return
+    setMenu({
+      x: pos.x,
+      y: pos.y,
+      items: [
+        { id: 'open-source', label: t('contextMenu.openCard', { title: truncateTitle(source.Title) }), run: () => setOverlayCardID(source.ID) },
+        { id: 'open-target', label: t('contextMenu.openCard', { title: truncateTitle(target.Title) }), run: () => setOverlayCardID(target.ID) },
+      ],
+    })
+  }
+
   const navigate = (id: string) => setViewedID(id)
   const drill = (id: string) => setViewedID(id)
   const openOverlay = (id: string) => setOverlayCardID(id)
@@ -305,6 +349,7 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
         onShareError={setShareError}
         onOpenMatrix={() => setMatrixOpen(true)}
         onOpenCoverage={() => setCoverageOpen(true)}
+        addChildRequest={addChildRequest}
       />
 
       {importError && <Text as="p" size="small" className={runbookStyles.error} data-testid="atlas-import-error">{importError}</Text>}
@@ -327,6 +372,8 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
           onDrill={drill}
           onOpenOverlay={openOverlay}
           onCardContextMenu={openCardMenu}
+          onPaneContextMenu={openPaneMenu}
+          onArteryContextMenu={openArteryMenu}
           onFocusHandled={() => setFocusRequest(null)}
         />
       )}

@@ -4,6 +4,7 @@ import { ActionList, ActionMenu, IconButton, Stack, Text, TextInput } from '@pri
 import { Blankslate } from '@primer/react/experimental'
 import { KebabHorizontalIcon, SearchIcon, type Icon } from '@primer/octicons-react'
 import { ConfirmDialog } from './ConfirmDialog'
+import { ContextMenu, type ContextMenuItem, type ContextMenuState } from './ContextMenu'
 import styles from './InventoryList.module.css'
 
 // The shared inventory-row component (docs/goals/0007-resource-
@@ -77,6 +78,25 @@ export interface InventoryEmptyState {
   action?: ReactNode
 }
 
+// The kebab/right-click convergence (goal 0075's audit G1): a row's
+// action list is authored once (InventoryMenuAction[]) and rendered
+// through two openers -- the kebab's ActionMenu and a right-click
+// ContextMenu -- via this single run path, so a confirm-guarded action
+// always shows ConfirmDialog regardless of which opener fired it.
+function runMenuAction(action: InventoryMenuAction, requestConfirm: (a: InventoryMenuAction) => void) {
+  if (action.confirm) requestConfirm(action)
+  else action.onClick()
+}
+
+function menuActionsToContextMenuItems(actions: InventoryMenuAction[], requestConfirm: (a: InventoryMenuAction) => void): ContextMenuItem[] {
+  return actions.map((action, i) => ({
+    id: `${action.label}-${i}`,
+    label: action.label,
+    danger: action.danger,
+    run: () => runMenuAction(action, requestConfirm),
+  }))
+}
+
 export function InventoryList({ items, emptyState, searchPlaceholder }: {
   items: InventoryItem[]
   emptyState: InventoryEmptyState
@@ -84,6 +104,10 @@ export function InventoryList({ items, emptyState, searchPlaceholder }: {
 }) {
   const { t } = useTranslation('common')
   const [query, setQuery] = useState('')
+  // One right-click menu for the whole list (goal 0075's audit G1):
+  // opening another row's closes whichever was open, since this is a
+  // single piece of state shared by every row rather than one per row.
+  const [rowMenu, setRowMenu] = useState<ContextMenuState | null>(null)
 
   // A truly empty inventory (nothing to search) gets the full
   // Blankslate treatment, not a search box over zero rows.
@@ -112,20 +136,30 @@ export function InventoryList({ items, emptyState, searchPlaceholder }: {
       ) : (
         <ActionList role="list" showDividers>
           {filtered.map((item) => (
-            <InventoryRow key={item.id} item={item} />
+            <InventoryRow key={item.id} item={item} onOpenMenu={setRowMenu} />
           ))}
         </ActionList>
       )}
+      <ContextMenu state={rowMenu} onClose={() => setRowMenu(null)} />
     </Stack>
   )
 }
 
-function InventoryRow({ item }: { item: InventoryItem }) {
+function InventoryRow({ item, onOpenMenu }: { item: InventoryItem; onOpenMenu: (state: ContextMenuState) => void }) {
   const { t } = useTranslation('common')
   const [pendingConfirm, setPendingConfirm] = useState<InventoryMenuAction | null>(null)
   return (
     <>
-    <ActionList.Item onSelect={item.onOpen} data-testid="inventory-row" data-entity={item.entity}>
+    <ActionList.Item
+      onSelect={item.onOpen}
+      data-testid="inventory-row"
+      data-entity={item.entity}
+      onContextMenu={(e) => {
+        if (item.menuActions.length === 0) return
+        e.preventDefault()
+        onOpenMenu({ x: e.clientX, y: e.clientY, items: menuActionsToContextMenuItems(item.menuActions, setPendingConfirm) })
+      }}
+    >
       <ActionList.LeadingVisual>
         <span className={styles.icon} style={{ background: item.icon.bg }}>
           <item.icon.Icon size={16} fill={item.icon.fg} />
@@ -197,7 +231,7 @@ function InventoryRow({ item }: { item: InventoryItem }) {
                     <ActionList.Item
                       key={action.label}
                       variant={action.danger ? 'danger' : 'default'}
-                      onSelect={() => (action.confirm ? setPendingConfirm(action) : action.onClick())}
+                      onSelect={() => runMenuAction(action, setPendingConfirm)}
                     >
                       {action.label}
                     </ActionList.Item>

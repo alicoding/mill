@@ -56,7 +56,7 @@ export interface AtlasFocusRequest {
 // media-query gate AtlasNoteCardNode.module.css's own flip already
 // uses, read here in JS via usePrefersReducedMotion since React Flow's
 // own transition durations are JS options, not CSS.
-function AtlasBoardInner({ cards, allCards, kinds, links, linkKinds, mode, viewedID, focusRequest, onDrill, onOpenOverlay, onFocusHandled, onCardContextMenu }: {
+function AtlasBoardInner({ cards, allCards, kinds, links, linkKinds, mode, viewedID, focusRequest, onDrill, onOpenOverlay, onFocusHandled, onCardContextMenu, onPaneContextMenu, onArteryContextMenu }: {
   cards: Card[]
   allCards: Card[]
   kinds: Kind[]
@@ -72,6 +72,12 @@ function AtlasBoardInner({ cards, allCards, kinds, links, linkKinds, mode, viewe
   // and ON WHAT -- AtlasView owns the menu items (it holds the
   // card/share/delete context this component deliberately doesn't).
   onCardContextMenu: (cardID: string, pos: { x: number; y: number }) => void
+  // Right-click on empty board (goal 0075's audit G3): same
+  // where-only contract as the card opener above.
+  onPaneContextMenu: (pos: { x: number; y: number }) => void
+  // Right-click on an artery (goal 0075's audit G4): reports the two
+  // top-level cards it connects -- AtlasView resolves their titles.
+  onArteryContextMenu: (sourceID: string, targetID: string, pos: { x: number; y: number }) => void
 }) {
   const { t } = useTranslation('atlas')
   const readOnly = useIsNarrowViewport()
@@ -376,10 +382,14 @@ function AtlasBoardInner({ cards, allCards, kinds, links, linkKinds, mode, viewe
           e.preventDefault()
           onCardContextMenu(node.id, { x: e.clientX, y: e.clientY })
         }}
-        // No pane items yet (goal 0075 records the pane as a later
-        // wiring) -- but the browser's own menu is never the answer
-        // on a board.
-        onPaneContextMenu={(e) => e.preventDefault()}
+        onEdgeContextMenu={(e, edge) => {
+          e.preventDefault()
+          onArteryContextMenu(edge.source, edge.target, { x: e.clientX, y: e.clientY })
+        }}
+        onPaneContextMenu={(e) => {
+          e.preventDefault()
+          onPaneContextMenu({ x: e.clientX, y: e.clientY })
+        }}
         // Narrow viewports never zoom out past 100% -- a board wider
         // than the screen pans instead of auto-shrinking every card
         // below its own real CSS pixel size (a touch target,

@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { createPortal } from 'react-dom'
@@ -16,6 +16,7 @@ import editorStyles from '../composition/CompositionView.module.css'
 import { tabLabel } from './workTabLabel'
 import { HotkeyHint } from '../shared/HotkeyHint'
 import { useWorkTabCloseGuard } from './useWorkTabCloseGuard'
+import { ContextMenu, type ContextMenuState } from '../shared/ContextMenu'
 import styles from './WorkTabShell.module.css'
 
 // The ONE app-wide work-tab strip (docs/SPEC.md §3.8, direct user
@@ -85,6 +86,26 @@ export function WorkTabShell({ pageLabel, pageIcon, titlebarSlot, children }: { 
   // scratch is cleared in exactly one place regardless of which path
   // fired it.
   const { requestClose, dialog: closeGuardDialog } = useWorkTabCloseGuard()
+
+  // Right-click on a strip item (goal 0075's audit G2): the same three
+  // close paths the overflow menu already exposes, targeted at
+  // whichever tab was clicked rather than the active one -- every path
+  // still funnels through requestClose, so a dirty tab is prompted the
+  // same way a ✕/overflow close already is. The pinned page tab never
+  // opens this (it isn't closable, per its own TabItem below carrying
+  // no onContextMenu).
+  const [tabMenu, setTabMenu] = useState<ContextMenuState | null>(null)
+  const openTabMenu = (tab: WorkTab, pos: { x: number; y: number }) => {
+    setTabMenu({
+      x: pos.x,
+      y: pos.y,
+      items: [
+        { id: 'close', label: t('commandPalette.closeTab'), run: () => requestClose({ kind: 'one', key: tab.key }) },
+        { id: 'close-others', label: t('workTabShell.closeOtherTabs'), run: () => requestClose({ kind: 'others', keepKey: tab.key }) },
+        { id: 'close-all', label: t('workTabShell.closeAllTabs'), danger: true, run: () => requestClose({ kind: 'all' }) },
+      ],
+    })
+  }
 
   // Drop restored tabs whose entity was deleted while the app was
   // closed -- once, when both lists are actually in (never against a
@@ -171,7 +192,13 @@ export function WorkTabShell({ pageLabel, pageIcon, titlebarSlot, children }: { 
       <TabList aria-label={t('workTabShell.openWorkAriaLabel')}>
         <TabItem value={PAGE_TAB} leadingVisual={pageIcon}>{pageLabel}</TabItem>
         {workTabs.map((tab) => (
-          <TabItem key={tab.key} value={tab.key} leadingVisual={tabEntityVisual(tab)} onClose={() => requestClose({ kind: 'one', key: tab.key })}>
+          <TabItem
+            key={tab.key}
+            value={tab.key}
+            leadingVisual={tabEntityVisual(tab)}
+            onClose={() => requestClose({ kind: 'one', key: tab.key })}
+            onContextMenu={(e) => { e.preventDefault(); openTabMenu(tab, { x: e.clientX, y: e.clientY }) }}
+          >
             {tabLabel(tab, workflowLabel, requestLabel, t)}
             {/* Hot-exit dirty dot (docs/goals/0012) -- this tab's
                 canvas currently differs from what's saved. */}
@@ -266,6 +293,7 @@ export function WorkTabShell({ pageLabel, pageIcon, titlebarSlot, children }: { 
         </TabPanel>
       ))}
       {closeGuardDialog}
+      <ContextMenu state={tabMenu} onClose={() => setTabMenu(null)} />
     </Tabs>
   )
 }

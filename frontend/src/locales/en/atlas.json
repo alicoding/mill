@@ -158,6 +158,8 @@
   },
   "contextMenu": {
     "open": "Open",
-    "zoomIn": "Zoom in"
+    "zoomIn": "Zoom in",
+    "addCard": "Add card…",
+    "openCard": "Open {{title}}"
   }
 }

@@ -401,7 +401,10 @@
   "canvas": {
     "contextMenu": {
       "openDetails": "Open details",
-      "deleteStep": "Delete step"
+      "deleteStep": "Delete step",
+      "addStep": "Add step…",
+      "selectConnection": "Select connection",
+      "deleteConnection": "Delete connection"
     }
   }
 }
