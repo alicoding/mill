@@ -29,6 +29,22 @@ context holds. If a task can't be specified tightly enough for Sonnet
 to execute against objective checks, that's a sign it's still
 design work — do it in the main session, don't delegate it.
 
+**Design/UX/spec contracts are the orchestrator's own work-product —
+never delegated (owner-directed 2026-08-15, after a day of live UX
+churn proved the failure mode).** A brief that names capabilities and
+leaves look-and-feel to the subagent ("a lens control", "an overlay
+like X's shape") makes the agent infer visual/interaction design
+without the orchestrator's reasoning — the resulting drift (duplicate
+labels, invisible state changes, wrong landing levels) costs a
+correction cycle per miss. Before dispatching ANY user-facing
+surface, the orchestrator writes the design contract INTO the brief:
+what renders where and in what hierarchy, what each click/keystroke
+does, what every label and empty state says (copy included), and what
+changes visibly on each state transition. The agent's discretion is
+implementation (code structure, test mechanics) — never what the
+user sees. If a design question surfaces mid-build, the agent reports
+it back rather than deciding it.
+
 ## Goal backlog: `docs/goals/BACKLOG.md` is the delivery queue
 
 Requirements live in `docs/SPEC.md`; the committed, hand-reorderable
