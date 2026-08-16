@@ -150,14 +150,16 @@ function AtlasBoardInner({ cards, allCards, kinds, links, linkKinds, mode, onDri
         nodesConnectable={false}
         nodesDraggable={isFree && !readOnly}
         zoomOnDoubleClick={false}
-        // Never zoom out past 100% -- a board wider than a narrow
-        // viewport pans instead of auto-shrinking every card below its
-        // own real CSS pixel size (a touch target, kind-glyph text)
-        // into an illegible/untappable miniature. minZoom lives here
-        // (a hard board-wide bound), separate from fitViewOptions'
-        // maxZoom below (which only caps fitView's own one-time
-        // zoom-IN on a sparse board).
-        minZoom={1}
+        // Narrow viewports never zoom out past 100% -- a board wider
+        // than the screen pans instead of auto-shrinking every card
+        // below its own real CSS pixel size (a touch target,
+        // kind-glyph text) into an untappable miniature. Wide
+        // viewports keep deep zoom-out (0.1): seeing the whole board
+        // at once is the surface's core navigation model, and a
+        // higher floor caps fitView on large boards. Separate from
+        // fitViewOptions' maxZoom below (which only caps fitView's
+        // own one-time zoom-IN on a sparse board).
+        minZoom={readOnly ? 1 : 0.1}
         onNodeDragStop={
           isFree && !readOnly
             ? (_, node) => {
