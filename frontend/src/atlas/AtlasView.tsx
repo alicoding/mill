@@ -138,6 +138,18 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
     setFocusRequest({ cardID: card.ID, openImmediately })
   }
 
+  // A group entry inside a card's page (goal 0072 slice C item 2):
+  // closes the page and reuses the SAME re-root-then-pulse focus
+  // plumbing a ⌘K jump uses (jumpToCard above) -- the page itself may
+  // be open for a card that isn't the currently viewed board at all
+  // (reached via a flip's own Open, or a region frame's new back-face
+  // Open, neither of which re-roots), so the target's own parent chain
+  // decides whether a re-root is actually needed, exactly like a jump.
+  const openGroupEntry = (target: Card) => {
+    setOverlayCardID(null)
+    jumpToCard(target, false)
+  }
+
   // The matrix/coverage dialogs' own "click a target/missing card"
   // action -- closes whichever projection dialog is open first, so the
   // overlay never renders stacked behind it.
@@ -262,11 +274,13 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
         <AtlasCardOverlay
           card={overlayCard}
           kind={overlayKind}
+          kinds={allKinds}
           allCards={allCards}
           links={allLinks}
           linkKinds={allLinkKinds}
           onClose={() => setOverlayCardID(null)}
           onSaved={() => void refreshAtlas()}
+          onOpenGroupEntry={openGroupEntry}
         />
       )}
       {importConfirm.dialog}

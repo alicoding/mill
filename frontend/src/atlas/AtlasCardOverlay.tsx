@@ -1,37 +1,39 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Events } from '@wailsio/runtime'
-import { Button, Checkbox, Dialog, FormControl, Link as PrimerLink, Stack, Text, TextInput, Textarea } from '@primer/react'
-import { CheckIcon, CopyIcon, FileDirectoryIcon, LinkIcon, SyncIcon } from '@primer/octicons-react'
+import { Dialog } from '@primer/react'
 import type { Card, Kind, Link, LinkKind } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 import { AtlasService, ExecutionService } from '../shared/bindings'
 import { useAppStore } from '../shared/store'
-import { EntityRefField } from '../configure/EntityRefField'
-import { formatUpdated } from '../shared/inventorySort'
-import { runStatusVariant } from '../shared/runTime'
-import { StatusStamp } from '../shared/StatusStamp'
-import { AtlasKindChip } from './AtlasKindChip'
-import { AtlasFieldsForm } from './AtlasFieldsForm'
-import { AtlasCardOverlayLinks } from './AtlasCardOverlayLinks'
-import { AtlasCardMirrorPreview } from './AtlasCardMirrorPreview'
 import { atlasCardShareActions } from './atlasCardShare'
 import { useConfirmDelete } from '../shared/useConfirmDelete'
-import runbookStyles from '../shared/ListCard.module.css'
+import { AtlasCardPageHeader } from './AtlasCardPageHeader'
+import { AtlasCardPageContents } from './AtlasCardPageContents'
+import { AtlasCardPageEditSection } from './AtlasCardPageEditSection'
+import { AtlasCardPageMetaRail } from './AtlasCardPageMetaRail'
+import styles from './AtlasCardPage.module.css'
 
-// The "about" surface (docs/goals/0061): a FULL-SCREEN overlay per card,
-// mirroring StepDetailOverlay.tsx's Dialog sizing (owner-specified) --
-// title/kind/note/fields/source/mirror/last-synced/refresh-workflow/
-// receipt-run-id, plus the links list. Save persists via UpdateCard;
-// ParentID/Position/ViewMode never change here (MoveCard/SetPosition/
-// SetViewMode own those, driven by drag/drill actions elsewhere).
-export function AtlasCardOverlay({ card, kind, allCards, links, linkKinds, onClose, onSaved }: {
+// The "page" surface (docs/goals/0072 slice C, evolving goal 0061's
+// full-screen overlay): the one deliberate off-board step in the
+// one-map model -- close puts the board back exactly as it was, camera
+// untouched. Built on Primer's own Dialog (Esc/backdrop-click/focus-
+// trap stay the kit's behavior, per frontend.md) with a custom header/
+// body via renderHeader/renderBody rather than Dialog's own default
+// title bar, so the ratified page anatomy (kind glyph, file tag, a
+// two-column Contents/meta-rail grid) can render exactly as specified.
+// Save persists via UpdateCard; ParentID/Position/ViewMode never
+// change here (MoveCard/SetPosition/SetViewMode own those, driven by
+// drag/drill actions elsewhere).
+export function AtlasCardOverlay({ card, kind, kinds, allCards, links, linkKinds, onClose, onSaved, onOpenGroupEntry }: {
   card: Card
   kind: Kind | undefined
+  kinds: Kind[]
   allCards: Card[]
   links: Link[]
   linkKinds: LinkKind[]
   onClose: () => void
   onSaved: () => void
+  onOpenGroupEntry: (target: Card) => void
 }) {
   const { t } = useTranslation('atlas')
   const requestOpenWorkflow = useAppStore((s) => s.requestOpenWorkflow)
@@ -47,11 +49,10 @@ export function AtlasCardOverlay({ card, kind, allCards, links, linkKinds, onClo
   // Receipt provenance (goal 0061 slice C, ADR-0038 decision 4): the
   // run's live status, fetched whenever card.ReceiptRunID changes and
   // refreshed on every "run" dataevent so a parked-then-resolved run's
-  // status updates here without reopening the overlay.
+  // status updates here without reopening the page.
   const [receiptStatus, setReceiptStatus] = useState<string | null>(null)
-  // The Share section's own with/without-attachments toggle (goal
-  // 0063): a persistent checkbox here, unlike the card chip's dual
-  // menu items, since this surface can actually hold the state.
+  // The meta rail's share row keeps its own with/without-attachments
+  // toggle (goal 0063).
   const [includeAttachments, setIncludeAttachments] = useState(false)
   const [copied, setCopied] = useState(false)
   const shareActions = atlasCardShareActions(card, (message) => setError(message))
@@ -75,17 +76,13 @@ export function AtlasCardOverlay({ card, kind, allCards, links, linkKinds, onClo
     })
   }, [card.ReceiptRunID])
 
-  const updateNow = async () => {
+  const updateNow = () => {
     setUpdating(true)
     setError('')
-    try {
-      await AtlasService.UpdateNow(card.ID)
-      onSaved()
-    } catch (err) {
-      setError(String(err))
-    } finally {
-      setUpdating(false)
-    }
+    AtlasService.UpdateNow(card.ID)
+      .then(onSaved)
+      .catch((err) => setError(String(err)))
+      .finally(() => setUpdating(false))
   }
 
   // Navigates by the card's PERSISTED RefreshWorkflowID, not the
@@ -131,155 +128,69 @@ export function AtlasCardOverlay({ card, kind, allCards, links, linkKinds, onClo
   })
 
   return (
-    // Primer's Dialog only ever forwards its own special-cased
-    // "data-component" prop onto the rendered element -- it destructures
-    // every other prop by name with no rest-spread, so a plain
-    // data-testid is silently dropped (StepDetailOverlay.tsx's own
-    // data-component usage is this same constraint, not a stylistic
-    // choice).
+    <>
+    {/* Primer's Dialog only ever forwards its own special-cased
+        "data-component" prop onto the rendered element -- it
+        destructures every other prop by name with no rest-spread, so a
+        plain data-testid is silently dropped (StepDetailOverlay.tsx's
+        own data-component usage is this same constraint, not a
+        stylistic choice). */}
     <Dialog
       title={t('overlay.title', { title: card.Title })}
       onClose={onClose}
       width="min(1200px, calc(100vw - 64px))"
       height="auto"
       data-component="atlas-card-overlay"
-    >
-      <Stack direction="vertical" gap="normal">
-        <AtlasKindChip kind={kind} size="large" />
-
-        <FormControl>
-          <FormControl.Label>{t('overlay.titleLabel')}</FormControl.Label>
-          <TextInput value={title} data-testid="atlas-overlay-title" onChange={(e) => setTitle(e.target.value)} block />
-        </FormControl>
-
-        <FormControl>
-          <FormControl.Label>{t('overlay.noteLabel')}</FormControl.Label>
-          <Textarea value={note} data-testid="atlas-overlay-note" rows={3} block onChange={(e) => setNote(e.target.value)} />
-        </FormControl>
-
-        {kind && (kind.Fields ?? []).length > 0 ? (
-          <AtlasFieldsForm fields={kind.Fields ?? []} values={fields} onChange={(key, value) => setFields((prev) => ({ ...prev, [key]: value }))} />
-        ) : (
-          <Text as="p" size="small" className={runbookStyles.muted}>{t('overlay.noFields')}</Text>
-        )}
-
-        <FormControl>
-          <FormControl.Label>{t('overlay.sourceLabel')}</FormControl.Label>
-          <TextInput value={source} data-testid="atlas-overlay-source" onChange={(e) => setSource(e.target.value)} block />
-          {source && (
-            <FormControl.Caption>
-              <a href={source} data-wml-openURL={source} data-testid="atlas-overlay-source-link">{source}</a>
-            </FormControl.Caption>
-          )}
-        </FormControl>
-
-        <FormControl>
-          <FormControl.Label>{t('overlay.mirrorPathLabel')}</FormControl.Label>
-          <TextInput value={mirrorPath} data-testid="atlas-overlay-mirror-path" onChange={(e) => setMirrorPath(e.target.value)} block />
-        </FormControl>
-        <Text as="p" size="small" className={runbookStyles.muted}>
-          {card.LastSyncedAt && formatUpdated(card.LastSyncedAt) ? t('overlay.lastSynced', { when: formatUpdated(card.LastSyncedAt) }) : t('overlay.neverSynced')}
-        </Text>
-
-        {card.MirrorPath && (
-          <Stack direction="vertical" gap="condensed" data-testid="atlas-card-mirror-content">
-            <Text weight="semibold">{t('overlay.mirrorContentHeading')}</Text>
-            <AtlasCardMirrorPreview cardID={card.ID} mirrorPath={card.MirrorPath} />
-          </Stack>
-        )}
-
-        <FormControl>
-          <FormControl.Label>{t('overlay.refreshWorkflowLabel')}</FormControl.Label>
-          <Stack direction="horizontal" gap="condensed" align="center">
-            <EntityRefField refKind="workflow" value={refreshWorkflowID} onChange={setRefreshWorkflowID} />
-            {card.RefreshWorkflowID && (
-              <Button
-                leadingVisual={SyncIcon}
-                size="small"
-                variant="invisible"
-                data-testid="atlas-overlay-update-now"
-                disabled={updating}
-                onClick={() => void updateNow()}
-              >
-                {updating ? t('overlay.updating') : t('overlay.updateNow')}
-              </Button>
-            )}
-          </Stack>
-        </FormControl>
-
-        {card.ReceiptRunID && (
-          <Text as="p" size="small" className={runbookStyles.muted}>
-            {t('overlay.receiptRunID')}{' '}
-            <PrimerLink as="button" type="button" data-testid="atlas-overlay-receipt-run" onClick={openRun}>
-              {card.ReceiptRunID}
-            </PrimerLink>
-            {receiptStatus && (
-              <>
-                {' '}
-                <StatusStamp variant={runStatusVariant(receiptStatus)} data-testid="atlas-overlay-receipt-status">{receiptStatus}</StatusStamp>
-              </>
-            )}
-          </Text>
-        )}
-
-        <AtlasCardOverlayLinks card={card} allCards={allCards} links={links} linkKinds={linkKinds} onAdd={addLink} onRemove={removeLink} />
-
-        <Stack direction="vertical" gap="condensed" data-testid="atlas-card-share-section">
-          <Text weight="semibold">{t('overlay.shareHeading')}</Text>
-          <FormControl>
-            <Checkbox
-              checked={includeAttachments}
-              data-testid="atlas-share-include-attachments"
-              onChange={(e) => setIncludeAttachments(e.target.checked)}
+      renderHeader={({ dialogLabelId }) => (
+        <AtlasCardPageHeader card={card} kind={kind} dialogLabelId={dialogLabelId} onClose={onClose} />
+      )}
+      renderBody={() => (
+        <div className={styles.body}>
+          <div>
+            <AtlasCardPageContents card={card} allCards={allCards} kinds={kinds} links={links} linkKinds={linkKinds} onOpenGroupEntry={onOpenGroupEntry} />
+            <AtlasCardPageEditSection
+              card={card}
+              kind={kind}
+              allCards={allCards}
+              links={links}
+              linkKinds={linkKinds}
+              title={title}
+              note={note}
+              fields={fields}
+              source={source}
+              mirrorPath={mirrorPath}
+              refreshWorkflowID={refreshWorkflowID}
+              onTitleChange={setTitle}
+              onNoteChange={setNote}
+              onFieldsChange={(key, value) => setFields((prev) => ({ ...prev, [key]: value }))}
+              onSourceChange={setSource}
+              onMirrorPathChange={setMirrorPath}
+              onRefreshWorkflowChange={setRefreshWorkflowID}
+              onAddLink={addLink}
+              onRemoveLink={removeLink}
+              saving={saving}
+              error={error}
+              onSave={() => void save()}
+              onDelete={() => requestDelete(card)}
             />
-            <FormControl.Label>{t('overlay.includeAttachments')}</FormControl.Label>
-          </FormControl>
-          <Stack direction="horizontal" gap="condensed">
-            <Button
-              leadingVisual={copied ? CheckIcon : CopyIcon}
-              size="small"
-              variant="invisible"
-              data-testid="atlas-overlay-copy-context"
-              onClick={() => void copyContext()}
-            >
-              {copied ? t('overlay.copied') : t('overlay.copyAsContext')}
-            </Button>
-            {card.Source && (
-              <Button
-                leadingVisual={LinkIcon}
-                size="small"
-                variant="invisible"
-                data-testid="atlas-overlay-copy-link"
-                onClick={() => void shareActions.copyCloudLink()}
-              >
-                {t('overlay.copyCloudLink')}
-              </Button>
-            )}
-            {card.MirrorPath && (
-              <Button
-                leadingVisual={FileDirectoryIcon}
-                size="small"
-                variant="invisible"
-                data-testid="atlas-overlay-reveal-file"
-                onClick={() => void shareActions.revealFile()}
-              >
-                {t('overlay.revealFile')}
-              </Button>
-            )}
-          </Stack>
-        </Stack>
-
-        {error && <Text as="p" size="small" className={runbookStyles.error}>{error}</Text>}
-        <Stack direction="horizontal" gap="condensed">
-          <Button variant="primary" size="small" data-testid="atlas-overlay-save" disabled={saving || !title.trim()} onClick={() => void save()}>
-            {t('overlay.save')}
-          </Button>
-          <Button variant="danger" size="small" data-testid="atlas-overlay-delete" onClick={() => requestDelete(card)}>
-            {t('overlay.delete')}
-          </Button>
-        </Stack>
-      </Stack>
-      {confirmDialog}
-    </Dialog>
+          </div>
+          <AtlasCardPageMetaRail
+            card={card}
+            updating={updating}
+            onUpdateNow={updateNow}
+            receiptStatus={receiptStatus}
+            onOpenRun={openRun}
+            includeAttachments={includeAttachments}
+            onIncludeAttachmentsChange={setIncludeAttachments}
+            copied={copied}
+            onCopyContext={() => void copyContext()}
+            onCopyLink={() => void shareActions.copyCloudLink()}
+            onRevealFile={() => void shareActions.revealFile()}
+          />
+        </div>
+      )}
+    />
+    {confirmDialog}
+    </>
   )
 }
