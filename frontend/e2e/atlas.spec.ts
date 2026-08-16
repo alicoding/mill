@@ -1,29 +1,58 @@
 import { test, expect } from './fixtures/server'
 
-// Exercises the Atlas surface (docs/adr/0038, docs/goals/0061 slice B,
-// docs/goals/0069's egocentric-root fix) over real Go bindings (Wails3
-// server mode): the seeded root/My space/Example area space proves
-// auto-entry, drill/back, the full-screen overlay, the explicit
-// sibling-vs-child create flow, the per-space lens, and Quick Panel's
-// card search -- the same seeded-example-is-the-proof pattern every
-// other e2e spec in this suite follows. Seeded names ("My space",
-// "Example area", "Getting started", "Contact", "Ada Lovelace") are
-// used here to assert against the real seed (.claude/rules/testing.md:
-// fine in e2e specs, never in frontend/src). With exactly one seeded
-// root card, the surface auto-enters it -- every test below already
-// lands on "My space" without needing to click it, and the "All
-// spaces" meta-level crumb is absent unless a test explicitly creates
-// a second root card. The share (goal 0063) and projection (goal
-// 0064) test groups live in sibling files, atlas-share.spec.ts and
-// atlas-projections.spec.ts -- split out to stay under architecture.
-// md's 500-line convention, same pattern composition.spec.ts/
-// composition-canvas-interactions.spec.ts already established.
+// Exercises the Atlas surface's one-map board (docs/adr/0038,
+// goal 0072 slice A: AtlasShelves retired, every level renders through
+// AtlasBoard) over real Go bindings (Wails3 server mode): the seeded
+// root/My space space (Example area, Getting started, Scratchpad)
+// proves auto-entry, drill via a region frame's own header, the flip-
+// in-place engagement (front glance -> back working context -> Open),
+// the explicit sibling-vs-child create flow, the per-space lens, and
+// Quick Panel's card search -- the same seeded-example-is-the-proof
+// pattern every other e2e spec in this suite follows. Seeded names
+// ("My space", "Example area", "Getting started", "Scratchpad",
+// "Contact", "Ada Lovelace") are used here to assert against the real
+// seed (.claude/rules/testing.md: fine in e2e specs, never in
+// frontend/src). With exactly one seeded root card, the surface
+// auto-enters it -- every test below already lands on "My space"
+// without needing to click it, and the "All spaces" meta-level crumb
+// is absent unless a test explicitly creates a second root card. The
+// share (goal 0063) and projection (goal 0064) test groups live in
+// sibling files, atlas-share.spec.ts and atlas-projections.spec.ts --
+// split out to stay under architecture.md's 500-line convention, same
+// pattern composition.spec.ts/composition-canvas-interactions.spec.ts
+// already established.
 
 function atlasView(page: import('@playwright/test').Page) {
   return page.getByTestId('atlas-view')
 }
 
-test('the seeded single root auto-enters "My space"; drill/back via breadcrumb works across both view modes', async ({ page }) => {
+// Precise per-card matching: a plain hasText substring filter is
+// unreliable here since a card's own BACK face can legitimately
+// contain another card's title (its own "<kind> -> <other title>"
+// link row) -- aria-label carries the exact title instead.
+function noteCard(page: import('@playwright/test').Page, title: string) {
+  return page.locator(`[data-testid="atlas-note-card"][aria-label="Flip ${title}"]`)
+}
+
+function groupCard(page: import('@playwright/test').Page, title: string) {
+  return page.locator('[data-testid="atlas-group-card"]').filter({ has: page.locator(`[aria-label="Zoom into ${title}"]`) })
+}
+
+// Flips a note card in place then clicks its back face's Open button --
+// the one path to the card overlay in the one-map model (the retired
+// ⓘ icon's replacement). Click TOGGLES the flip, so this only clicks
+// when the card is currently front-facing -- reopening an already-
+// flipped card (e.g. to re-check a saved value) must not click it back
+// to front first.
+async function openViaFlip(card: import('@playwright/test').Locator) {
+  if ((await card.getAttribute('data-flipped')) !== 'true') {
+    await card.click()
+    await expect(card).toHaveAttribute('data-flipped', 'true')
+  }
+  await card.getByTestId('atlas-note-open').click()
+}
+
+test('the seeded single root auto-enters "My space"; drilling into a region frame via its header works across both board modes', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Atlas' }).click()
   await expect(atlasView(page)).toBeVisible()
@@ -31,29 +60,35 @@ test('the seeded single root auto-enters "My space"; drill/back via breadcrumb w
   // Auto-entry (ADR-0038's egocentric-root principle): with exactly one
   // root card, the surface opens already drilled into it -- "My space"
   // IS the top, so the breadcrumb starts there with no synthetic
-  // "All spaces" crumb, and its content ("Example area", "Getting
-  // started") is visible immediately, with no click required.
+  // "All spaces" crumb, and its content is visible immediately, with
+  // no click required.
   await expect(page.getByTestId('atlas-breadcrumb')).toContainText('My space')
   await expect(page.getByTestId('atlas-breadcrumb')).not.toContainText('All spaces')
-  await expect(page.getByTestId('atlas-canvas')).toBeVisible()
-  const exampleAreaCard = page.getByTestId('atlas-canvas-card').filter({ hasText: 'Example area' })
-  await expect(exampleAreaCard).toBeVisible()
-  await expect(page.getByTestId('atlas-canvas-card').filter({ hasText: 'Getting started' })).toBeVisible()
+  await expect(page.getByTestId('atlas-board')).toBeVisible()
 
-  // Drilling into "Example area" (ViewModeShelves) switches to shelves
-  // -- its seeded children group under their own Kind shelves.
-  await exampleAreaCard.click()
+  // "Example area" holds children -- it renders as a region frame, not
+  // a flippable leaf note. Its own preview children are separate React
+  // Flow nodes anchored inside its frame (parentId + extent:'parent'),
+  // not DOM descendants of the frame's own element.
+  const exampleArea = groupCard(page, 'Example area')
+  await expect(exampleArea).toBeVisible()
+  await expect(noteCard(page, 'Ada Lovelace')).toBeVisible()
+  await expect(noteCard(page, 'Getting started')).toBeVisible()
+  await expect(noteCard(page, 'Scratchpad')).toBeVisible()
+
+  // The header is the only drill affordance on a region frame -- its
+  // own body never flips.
+  await exampleArea.getByTestId('atlas-group-header').click()
   await expect(page.getByTestId('atlas-breadcrumb')).toContainText('Example area')
   await expect(page.getByTestId('atlas-breadcrumb')).toContainText('My space')
-  await expect(page.getByTestId('atlas-shelves')).toBeVisible()
-  await expect(page.getByTestId('atlas-shelf-card').filter({ hasText: 'Ada Lovelace' })).toBeVisible()
-  await expect(page.getByTestId('atlas-shelf-card').filter({ hasText: 'Project charter' })).toBeVisible()
+  await expect(noteCard(page, 'Ada Lovelace')).toBeVisible()
+  await expect(noteCard(page, 'Project charter')).toBeVisible()
 
   // Explicit back: the "My space" crumb (there is no "All spaces" one
   // to fall back to further) returns to the auto-entered root.
   await page.getByTestId('atlas-breadcrumb').getByText('My space', { exact: true }).click()
   await expect(page.getByTestId('atlas-breadcrumb')).not.toContainText('Example area')
-  await expect(exampleAreaCard).toBeVisible()
+  await expect(exampleArea).toBeVisible()
 })
 
 test('creating a sibling of the auto-entered root surfaces the "All spaces" meta level, reachable via breadcrumb', async ({ page }) => {
@@ -75,69 +110,100 @@ test('creating a sibling of the auto-entered root surfaces the "All spaces" meta
 
   await expect(page.getByTestId('atlas-breadcrumb')).toContainText('All spaces')
   await page.getByTestId('atlas-breadcrumb').getByText('All spaces', { exact: true }).click()
-  await expect(page.getByTestId('atlas-shelves')).toBeVisible()
-  await expect(page.getByTestId('atlas-shelf-card').filter({ hasText: 'My space' })).toBeVisible()
-  const newRootCard = page.getByTestId('atlas-shelf-card').filter({ hasText: title })
+  const myRoot = groupCard(page, 'My space')
+  await expect(myRoot).toBeVisible()
+  const newRootCard = groupCard(page, title).or(noteCard(page, title))
   await expect(newRootCard).toBeVisible()
 
   // Cleanup: delete the second root card so it doesn't leak the meta
   // level into every later test in this file/worker (testing.md's
   // within-file cleanup discipline) -- back down to one root card, the
-  // meta level (and its crumb) stop existing again.
-  await newRootCard.getByTestId('atlas-card-info').click()
+  // meta level (and its crumb) stop existing again. A childless new
+  // root renders as a plain note card.
+  await openViaFlip(noteCard(page, title))
   await page.getByTestId('atlas-overlay-delete').click()
   await page.getByRole('alertdialog').getByRole('button', { name: 'Delete' }).click()
   await expect(newRootCard).not.toBeVisible()
   await expect(page.getByTestId('atlas-breadcrumb')).not.toContainText('All spaces')
 })
 
-test('a card\'s kind chip is dropped under its own shelf heading, but stays visible on a canvas card', async ({ page }) => {
+test('the note card front shows kind/title/note/file-tag/presence chips; the back shows source/link/Open', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Atlas' }).click()
-  await expect(atlasView(page)).toBeVisible()
+  await groupCard(page, 'Example area').getByTestId('atlas-group-header').click()
+  await expect(page.getByTestId('atlas-breadcrumb')).toContainText('Example area')
 
-  // Canvas mode ("My space", auto-entered): no shelf headings exist, so
-  // the chip is a card's only kind indicator and stays.
-  const exampleAreaCard = page.getByTestId('atlas-canvas-card').filter({ hasText: 'Example area' })
-  await expect(exampleAreaCard.getByTestId('atlas-kind-chip')).toBeVisible()
+  const charter = noteCard(page, 'Project charter')
+  await expect(charter).toBeVisible()
+  await expect(charter.getByTestId('atlas-note-file-tag')).toHaveText('URL')
+  await expect(charter.getByTestId('atlas-note-links-chip')).toBeVisible()
 
-  // Shelves mode ("Example area"): every shelf's own heading already
-  // names its cards' shared kind, so the redundant per-card chip drops.
-  await exampleAreaCard.click()
-  await expect(page.getByTestId('atlas-shelves')).toBeVisible()
-  const contactCard = page.getByTestId('atlas-shelf-card').filter({ hasText: 'Ada Lovelace' })
-  await expect(contactCard).toBeVisible()
-  await expect(contactCard.getByTestId('atlas-kind-chip')).toHaveCount(0)
+  const ada = noteCard(page, 'Ada Lovelace')
+  await expect(ada.getByTestId('atlas-note-leaf-chip')).toBeVisible()
+  await expect(ada.getByTestId('atlas-note-links-chip')).toHaveText('2 links')
+
+  await charter.click()
+  await expect(charter).toHaveAttribute('data-flipped', 'true')
+  await expect(charter.getByTestId('atlas-note-card-back')).toContainText('source: example.com')
+  await expect(charter.getByTestId('atlas-note-open')).toBeVisible()
+  await page.keyboard.press('Escape')
+  await expect(charter).toHaveAttribute('data-flipped', 'false')
 })
 
-test('the visible view-mode toggle switches a space between shelves and canvas, and persists across a reload', async ({ page }) => {
+test('clicking a card flips it in place without moving the board; a second card unflips the first; Escape unflips', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Atlas' }).click()
-  await page.getByTestId('atlas-canvas-card').filter({ hasText: 'Example area' }).click()
-  await expect(page.getByTestId('atlas-shelves')).toBeVisible()
+  await expect(page.getByTestId('atlas-board')).toBeVisible()
+
+  const getting = noteCard(page, 'Getting started')
+  const scratchpad = noteCard(page, 'Scratchpad')
+  const boardBefore = await page.getByTestId('atlas-board').boundingBox()
+
+  await getting.click()
+  await expect(getting).toHaveAttribute('data-flipped', 'true')
+  await expect(getting.getByTestId('atlas-note-card-back')).toContainText('flip side')
+
+  // Flipping a second card unflips the first -- exactly one card
+  // flipped at a time.
+  await scratchpad.click()
+  await expect(scratchpad).toHaveAttribute('data-flipped', 'true')
+  await expect(getting).toHaveAttribute('data-flipped', 'false')
+
+  const boardAfter = await page.getByTestId('atlas-board').boundingBox()
+  expect(boardAfter).toEqual(boardBefore)
+
+  await page.keyboard.press('Escape')
+  await expect(scratchpad).toHaveAttribute('data-flipped', 'false')
+})
+
+test('the visible view-mode toggle switches a space between Auto-arrange and Free, and persists across a reload', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Atlas' }).click()
+  await groupCard(page, 'Example area').getByTestId('atlas-group-header').click()
+  await expect(page.getByTestId('atlas-breadcrumb')).toContainText('Example area')
 
   const toggle = page.getByTestId('atlas-view-mode-toggle')
-  await expect(toggle.getByRole('button', { name: 'Shelves', pressed: true })).toBeVisible()
-  await toggle.getByRole('button', { name: 'Canvas' }).click()
-  await expect(page.getByTestId('atlas-canvas')).toBeVisible()
+  await expect(toggle.getByRole('button', { name: 'Auto-arrange', pressed: true })).toBeVisible()
+  await toggle.getByRole('button', { name: 'Free' }).click()
+  await expect(toggle.getByRole('button', { name: 'Free', pressed: true })).toBeVisible()
 
   await page.reload()
   await expect(atlasView(page)).toBeVisible()
-  await page.getByTestId('atlas-canvas-card').filter({ hasText: 'Example area' }).click()
-  await expect(page.getByTestId('atlas-canvas')).toBeVisible()
-  await expect(page.getByTestId('atlas-view-mode-toggle').getByRole('button', { name: 'Canvas', pressed: true })).toBeVisible()
+  await groupCard(page, 'Example area').getByTestId('atlas-group-header').click()
+  await expect(page.getByTestId('atlas-view-mode-toggle').getByRole('button', { name: 'Free', pressed: true })).toBeVisible()
 
-  // Restore: switch back to shelves so it doesn't leak into a later
-  // test in this same file/worker (testing.md's within-file cleanup rule).
-  await page.getByTestId('atlas-view-mode-toggle').getByRole('button', { name: 'Shelves' }).click()
-  await expect(page.getByTestId('atlas-shelves')).toBeVisible()
+  // Restore: switch back to Auto-arrange so it doesn't leak into a
+  // later test in this same file/worker (testing.md's within-file
+  // cleanup rule).
+  await page.getByTestId('atlas-view-mode-toggle').getByRole('button', { name: 'Auto-arrange' }).click()
+  await expect(page.getByTestId('atlas-view-mode-toggle').getByRole('button', { name: 'Auto-arrange', pressed: true })).toBeVisible()
 })
 
-test('create a child card, edit + persist it via the overlay, then delete it', async ({ page }) => {
+test('create a child card, edit + persist it via the flip-then-Open overlay, then delete it', async ({ page }) => {
   const title = 'ZzE2eAtlasChildCard'
   await page.goto('/')
   await page.getByRole('link', { name: 'Atlas' }).click()
-  await expect(page.getByTestId('atlas-canvas')).toBeVisible()
+  await expect(page.getByTestId('atlas-board')).toBeVisible()
 
   // Sibling-vs-child is always an explicit choice -- "Add inside this
   // card" lands the new card as a CHILD of the currently viewed space.
@@ -147,22 +213,17 @@ test('create a child card, edit + persist it via the overlay, then delete it', a
   await page.getByTestId('atlas-create-title').fill(title)
   await page.getByRole('button', { name: 'Create' }).click()
 
-  const newCard = page.getByTestId('atlas-canvas-card').filter({ hasText: title })
+  const newCard = noteCard(page, title)
   await expect(newCard).toBeVisible()
 
-  // The ⓘ affordance opens the full-screen overlay; editing the note
-  // and saving persists it (UpdateCard) -- reopening shows it stuck.
-  await newCard.getByTestId('atlas-card-info').click()
-  // data-component, not data-testid: Primer's Dialog only forwards its
-  // own special-cased "data-component" prop (AtlasCardOverlay.tsx's own
-  // comment has the full reasoning).
+  await openViaFlip(newCard)
   const overlay = page.locator('[data-component="atlas-card-overlay"]')
   await expect(overlay).toBeVisible()
   await overlay.getByTestId('atlas-overlay-note').fill('A note written by the e2e suite.')
   await overlay.getByTestId('atlas-overlay-save').click()
   await expect(overlay).not.toBeVisible()
 
-  await newCard.getByTestId('atlas-card-info').click()
+  await openViaFlip(newCard)
   await expect(page.getByTestId('atlas-overlay-note')).toHaveValue('A note written by the e2e suite.')
 
   // Cleanup: delete the card this test created (testing.md's
@@ -175,10 +236,10 @@ test('create a child card, edit + persist it via the overlay, then delete it', a
 test('the lens hides a kind within a space', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Atlas' }).click()
-  await page.getByTestId('atlas-canvas-card').filter({ hasText: 'Example area' }).click()
-  await expect(page.getByTestId('atlas-shelves')).toBeVisible()
+  await groupCard(page, 'Example area').getByTestId('atlas-group-header').click()
+  await expect(page.getByTestId('atlas-breadcrumb')).toContainText('Example area')
 
-  const contactCard = page.getByTestId('atlas-shelf-card').filter({ hasText: 'Ada Lovelace' })
+  const contactCard = noteCard(page, 'Ada Lovelace')
   await expect(contactCard).toBeVisible()
 
   await page.getByTestId('atlas-lens-open').click()
@@ -196,18 +257,19 @@ test('the lens hides a kind within a space', async ({ page }) => {
   await expect(contactCard).toBeVisible()
 })
 
-test('A sibling card created into a canvas-mode space lands clear of its siblings, not stacked at the origin', async ({ page }) => {
+test('a sibling card created into a Free-mode space lands clear of both leaf notes and region frames', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Atlas' }).click()
-  await expect(page.getByTestId('atlas-canvas')).toBeVisible()
+  await expect(page.getByTestId('atlas-board')).toBeVisible()
 
-  // "Example area" (a seeded canvas-mode sibling) already sits at the
-  // desired starting position AtlasView.createCard tries first -- a
-  // sibling created here must land clear of it (findFreeDropPosition,
-  // frontend/src/shared/canvasLayout.ts), not stacked directly on top.
-  const exampleAreaCard = page.getByTestId('atlas-canvas-card').filter({ hasText: 'Example area' })
-  await expect(exampleAreaCard).toBeVisible()
-  await exampleAreaCard.click()
+  // "Add beside" is relative to the CURRENTLY VIEWED card -- drill into
+  // "Example area" first so the new card lands as ITS sibling (a child
+  // of "My space", alongside "Getting started"/"Scratchpad"), not as a
+  // second ROOT card (a sibling of "My space" itself, invisible on this
+  // board).
+  const exampleArea = groupCard(page, 'Example area')
+  await expect(exampleArea).toBeVisible()
+  await exampleArea.getByTestId('atlas-group-header').click()
   await expect(page.getByTestId('atlas-breadcrumb')).toContainText('Example area')
 
   const title = 'ZzE2eAtlasSiblingCard'
@@ -217,27 +279,45 @@ test('A sibling card created into a canvas-mode space lands clear of its sibling
   await page.getByTestId('atlas-create-title').fill(title)
   await page.getByRole('button', { name: 'Create' }).click()
 
-  // The new card is a sibling of "Example area" (both live in "My
-  // space"), not a child of it -- navigate back up to see them both.
   await page.getByTestId('atlas-breadcrumb').getByText('My space', { exact: true }).click()
-  await expect(page.getByTestId('atlas-breadcrumb')).toContainText('My space')
-  const newCard = page.getByTestId('atlas-canvas-card').filter({ hasText: title })
+  const newCard = noteCard(page, title)
   await expect(newCard).toBeVisible()
 
-  const [boxA, boxB] = await Promise.all([exampleAreaCard.boundingBox(), newCard.boundingBox()])
-  if (!boxA || !boxB) throw new Error('expected both card bounding boxes to be measurable')
-  const overlaps =
-    boxA.x < boxB.x + boxB.width && boxA.x + boxA.width > boxB.x && boxA.y < boxB.y + boxB.height && boxA.y + boxA.height > boxB.y
-  expect(overlaps).toBe(false)
+  // The new card must clear every existing sibling's actual rendered
+  // footprint -- a region frame's own box is far larger than a bare
+  // note card's, exactly the geometry findFreeDropPosition/
+  // computeGroupFrameLayout must account for together (regression:
+  // the seeded "Getting started"/"Scratchpad" Free-mode positions
+  // once landed underneath "Example area"'s own expanded frame).
+  const siblings = [exampleArea, noteCard(page, 'Getting started'), noteCard(page, 'Scratchpad')]
+  for (const sibling of siblings) {
+    const [boxA, boxB] = await Promise.all([sibling.boundingBox(), newCard.boundingBox()])
+    if (!boxA || !boxB) throw new Error('expected both bounding boxes to be measurable')
+    const overlaps =
+      boxA.x < boxB.x + boxB.width && boxA.x + boxA.width > boxB.x && boxA.y < boxB.y + boxB.height && boxA.y + boxA.height > boxB.y
+    expect(overlaps).toBe(false)
+  }
 
   // Cleanup (testing.md's within-file discipline).
-  await newCard.getByTestId('atlas-card-info').click()
+  await openViaFlip(newCard)
   await page.getByTestId('atlas-overlay-delete').click()
   await page.getByRole('alertdialog').getByRole('button', { name: 'Delete' }).click()
   await expect(newCard).not.toBeVisible()
 })
 
-test('Exporting the atlas graph downloads a portable JSON bundle with the seeded content', async ({ page }) => {
+test('a seeded link between a top-level card and a region frame\'s own child renders as a drawn edge', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Atlas' }).click()
+  await expect(page.getByTestId('atlas-board')).toBeVisible()
+
+  // "Getting started" (top-level) links to "Ada Lovelace" (rendered
+  // inside "Example area"'s own frame, one nesting level deep) --
+  // both endpoints are on this board, so the edge must draw across
+  // the frame boundary.
+  await expect(page.locator('.react-flow__edge')).not.toHaveCount(0)
+})
+
+test('exporting the atlas graph downloads a portable JSON bundle with the seeded content', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Atlas' }).click()
   await expect(atlasView(page)).toBeVisible()
@@ -258,12 +338,12 @@ test('Exporting the atlas graph downloads a portable JSON bundle with the seeded
 test('Update now on the seeded mirror card runs its workflow through the normal gate and shows a synced receipt live', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Atlas' }).click()
-  await page.getByTestId('atlas-canvas-card').filter({ hasText: 'Example area' }).click()
-  await expect(page.getByTestId('atlas-shelves')).toBeVisible()
+  await groupCard(page, 'Example area').getByTestId('atlas-group-header').click()
+  await expect(page.getByTestId('atlas-breadcrumb')).toContainText('Example area')
 
-  const charterCard = page.getByTestId('atlas-shelf-card').filter({ hasText: 'Project charter' })
+  const charterCard = noteCard(page, 'Project charter')
   await expect(charterCard).toBeVisible()
-  await charterCard.getByTestId('atlas-card-info').click()
+  await openViaFlip(charterCard)
   const overlay = page.locator('[data-component="atlas-card-overlay"]')
   await expect(overlay).toBeVisible()
   await expect(overlay.getByTestId('atlas-overlay-update-now')).toBeVisible()
@@ -285,8 +365,8 @@ test('Update now on the seeded mirror card runs its workflow through the normal 
 test('the lens depth toggle persists server-side across a reload', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Atlas' }).click()
-  await page.getByTestId('atlas-canvas-card').filter({ hasText: 'Example area' }).click()
-  await expect(page.getByTestId('atlas-shelves')).toBeVisible()
+  await groupCard(page, 'Example area').getByTestId('atlas-group-header').click()
+  await expect(page.getByTestId('atlas-breadcrumb')).toContainText('Example area')
 
   await page.getByTestId('atlas-lens-open').click()
   await expect(page.locator('[data-component="atlas-lens-dialog"]')).toBeVisible()
@@ -295,8 +375,7 @@ test('the lens depth toggle persists server-side across a reload', async ({ page
 
   await page.reload()
   await expect(atlasView(page)).toBeVisible()
-  await page.getByTestId('atlas-canvas-card').filter({ hasText: 'Example area' }).click()
-  await expect(page.getByTestId('atlas-shelves')).toBeVisible()
+  await groupCard(page, 'Example area').getByTestId('atlas-group-header').click()
   await page.getByTestId('atlas-lens-open').click()
   await expect(page.getByRole('button', { name: 'Peek into children', pressed: true })).toBeVisible()
   await page.keyboard.press('Escape')

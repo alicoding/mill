@@ -3,10 +3,10 @@ import { AtlasService } from '../shared/bindings'
 
 // The card-level share actions (goal 0063, ADR-0038): copy-as-context
 // (with an explicit with/without-attachments toggle), copy-cloud-link,
-// reveal-file. One place both AtlasCardShareMenu (the card chip's
-// quick actions) and AtlasCardOverlay (the full-screen surface's own
-// Share section) call into, so the two never drift on what each
-// action actually does. Rendering itself stays server-side
+// reveal-file. AtlasCardOverlay's own Share section (reached from a
+// card's flipped back face) calls into this, so a future second
+// caller never drifts on what each action actually does. Rendering
+// itself stays server-side
 // (AtlasService.CardContextBlock) -- this is just the clipboard/reveal
 // plumbing around it, same navigator.clipboard.writeText idiom
 // ValidationPanel/RequestTestPanel already use for a copy action.

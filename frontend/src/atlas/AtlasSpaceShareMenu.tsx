@@ -7,8 +7,8 @@ import { AtlasService } from '../shared/bindings'
 // viewed space's mirror folder (reveal turns it into a STANDING
 // reference any AI assistant can ground on, once shared), plus
 // bundle-as-context (every child card's own context block,
-// concatenated) and a links list -- the space-level counterpart to
-// AtlasCardShareMenu's card-level actions. Owns its own AtlasService
+// concatenated) and a links list -- the space-level counterpart to a
+// card's own overlay Share section. Owns its own AtlasService
 // calls directly (no data mutation here needing AtlasView's own
 // refreshAtlas -- reveal/bundle/copy are all read-only or OS-level
 // side effects), the same posture AtlasCardOverlay already takes for
