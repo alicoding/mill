@@ -15,6 +15,7 @@ import { AtlasGroupNode, type AtlasGroupRFNode } from './AtlasGroupNode'
 import { AtlasRegionChipNode, type AtlasRegionChipRFNode } from './AtlasRegionChipNode'
 import { AtlasLinkEdge, type AtlasLinkRFEdge } from './AtlasLinkEdge'
 import { resolveBoardEdges } from './atlasLinkResolution'
+import { resolveFreeOverlaps } from './atlasOverlapResolution'
 import styles from './AtlasBoard.module.css'
 
 const rfNodeTypes: RFNodeTypes = { 'atlas-note': AtlasNoteCardNode, 'atlas-group': AtlasGroupNode, 'atlas-region-chip': AtlasRegionChipNode }
@@ -142,9 +143,39 @@ function AtlasBoardInner({ cards, allCards, kinds, links, linkKinds, mode, viewe
     if (focusRequest) setFlippedID(null)
   }, [focusRequest])
 
+  // Free-mode overlap resolution (goal 0073, the growth class): a
+  // frame's size is DERIVED from its children, so a clear layout can
+  // start overlapping with nobody having moved a card. Resolved with
+  // a deterministic minimal-displacement separation
+  // (atlasOverlapResolution) and PERSISTED below, so the nudge is
+  // stable across reloads. Leaf-on-leaf overlaps are hand placement
+  // and never touched.
+  const freeMoves = useMemo(() => {
+    if (isFree !== true) return []
+    return resolveFreeOverlaps(cards.map((card) => {
+      const frame = isGroupCard(allCards, card)
+      const size = frame ? computeGroupFrameLayout(allCards, card.ID).size : { width: NOTE_WIDTH, height: NOTE_HEIGHT }
+      return {
+        id: card.ID,
+        x: card.Position?.X ?? 0,
+        y: card.Position?.Y ?? 0,
+        width: size.width,
+        height: size.height,
+        isFrame: frame,
+      }
+    }))
+  }, [cards, allCards, isFree])
+
+  useEffect(() => {
+    for (const m of freeMoves) {
+      void AtlasService.SetPosition(m.id, { X: m.x, Y: m.y }).catch(console.error)
+    }
+  }, [freeMoves])
+
   const builtNodes = useMemo(() => {
     const kindByID = new Map(kinds.map((k) => [k.ID, k]))
     const autoLayout = !isFree ? computeAutoArrangeLayout(cards, allCards) : null
+    const moveByID = new Map(freeMoves.map((m) => [m.id, m]))
     const nodes: BoardRFNode[] = []
 
     const noteData = (card: Card) => ({
@@ -163,7 +194,10 @@ function AtlasBoardInner({ cards, allCards, kinds, links, linkKinds, mode, viewe
 
     for (const card of cards) {
       const box = autoLayout?.boxes.get(card.ID)
-      const position = isFree ? { x: card.Position?.X ?? 0, y: card.Position?.Y ?? 0 } : { x: box?.x ?? 0, y: box?.y ?? 0 }
+      const move = moveByID.get(card.ID)
+      const position = isFree
+        ? { x: move?.x ?? card.Position?.X ?? 0, y: move?.y ?? card.Position?.Y ?? 0 }
+        : { x: box?.x ?? 0, y: box?.y ?? 0 }
 
       if (isGroupCard(allCards, card)) {
         const frame = computeGroupFrameLayout(allCards, card.ID)
@@ -254,7 +288,7 @@ function AtlasBoardInner({ cards, allCards, kinds, links, linkKinds, mode, viewe
       }
     }
     return nodes
-  }, [cards, allCards, kinds, links, linkKinds, isFree, readOnly, flippedID, pulsedID, hintedID, onOpenOverlay, handleDrill, handleLeafCommit])
+  }, [cards, allCards, kinds, links, linkKinds, isFree, readOnly, flippedID, pulsedID, hintedID, onOpenOverlay, handleDrill, handleLeafCommit, freeMoves])
 
   const [hoveredEdgeID, setHoveredEdgeID] = useState<string | null>(null)
   const edges = useMemo(() => {

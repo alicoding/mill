@@ -26,6 +26,10 @@ func DenseFixture(parentID string, now time.Time) ([]Card, []Link) {
 	}
 
 	add("velocity", kindTopicID, "Velocity", parentID, "The dense stress space.")
+	// Arrivals never create overlap (goal 0073): the fixture roots its
+	// frame clear of the seeded row (which ends ~y 290 at its tallest
+	// derived size), not at the position-less default of the origin.
+	cards[len(cards)-1].Position = &Position{X: 80, Y: 420}
 
 	areas := []string{"Platform", "Payments", "Onboarding", "Risk"}
 	kindCycle := []string{kindDocumentID, kindContactID, kindTopicID}
