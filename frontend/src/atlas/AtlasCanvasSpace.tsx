@@ -1,5 +1,5 @@
-import { useMemo } from 'react'
-import { ReactFlow, ReactFlowProvider, Background, Controls } from '@xyflow/react'
+import { useEffect, useMemo } from 'react'
+import { ReactFlow, ReactFlowProvider, Background, Controls, useNodesState } from '@xyflow/react'
 import type { NodeTypes as RFNodeTypes } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 import type { Card, Kind } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
@@ -27,7 +27,7 @@ function AtlasCanvasInner({ cards, allCards, kinds, peeking, onDrill, onOpenOver
   onDrill: (id: string) => void
   onOpenOverlay: (id: string) => void
 }) {
-  const nodes: AtlasCanvasRFNode[] = useMemo(() => {
+  const builtNodes: AtlasCanvasRFNode[] = useMemo(() => {
     const kindByID = new Map(kinds.map((k) => [k.ID, k]))
     return cards.map((card) => ({
       id: card.ID,
@@ -46,10 +46,22 @@ function AtlasCanvasInner({ cards, allCards, kinds, peeking, onDrill, onOpenOver
     }))
   }, [cards, allCards, kinds, peeking, onDrill, onOpenOverlay])
 
+  // React Flow must own node state during interaction: a static
+  // `nodes` prop with no onNodesChange makes every drag frame
+  // reconcile against the frozen prop -- the canvas visibly fights
+  // the pointer. useNodesState + onNodesChange is the same idiom
+  // CompositionCanvas already uses; data-driven rebuilds re-sync via
+  // the effect below.
+  const [nodes, setNodes, onNodesChange] = useNodesState(builtNodes)
+  useEffect(() => {
+    setNodes(builtNodes)
+  }, [builtNodes, setNodes])
+
   return (
     <div className={styles.canvas} data-testid="atlas-canvas">
       <ReactFlow
         nodes={nodes}
+        onNodesChange={onNodesChange}
         edges={[]}
         nodeTypes={rfNodeTypes}
         nodesConnectable={false}
