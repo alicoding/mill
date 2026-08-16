@@ -14,7 +14,7 @@ import { RequestForm } from '../configure/RequestForm'
 import { RequestSummary } from '../configure/RequestSummary'
 import editorStyles from '../composition/CompositionView.module.css'
 import { tabLabel } from './workTabLabel'
-import { HotkeyHint } from './HotkeyHint'
+import { HotkeyHint } from '../shared/HotkeyHint'
 import { useWorkTabCloseGuard } from './useWorkTabCloseGuard'
 import styles from './WorkTabShell.module.css'
 

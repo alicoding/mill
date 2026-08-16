@@ -17,6 +17,7 @@ import { AtlasRegionChipNode, type AtlasRegionChipRFNode } from './AtlasRegionCh
 import { AtlasLinkEdge, type AtlasLinkRFEdge } from './AtlasLinkEdge'
 import { resolveBoardEdges } from './atlasLinkResolution'
 import { resolveFreeOverlaps } from './atlasOverlapResolution'
+import { useBoardFocus } from './useBoardFocus'
 import styles from './AtlasBoard.module.css'
 
 const rfNodeTypes: RFNodeTypes = { 'atlas-note': AtlasNoteCardNode, 'atlas-group': AtlasGroupNode, 'atlas-region-chip': AtlasRegionChipNode }
@@ -35,14 +36,6 @@ export interface AtlasFocusRequest {
   cardID: string
   openImmediately: boolean
 }
-
-// The pulse ring's own lifetime (goal 0072 slice B): two 600ms
-// iterations of AtlasNoteCardNode/AtlasGroupNode's own pulse animation,
-// or the reduced-motion static-outline's flat 1.5s -- kept here so the
-// JS-side state clear and the CSS animation duration can't drift apart.
-const PULSE_MS = 1200
-const PULSE_MS_REDUCED = 1500
-const HINT_LIFETIME_MS = 3000
 
 // The one board every level renders through (goal 0072 slice A,
 // retiring the old canvas/shelves split): Auto-arrange positions
@@ -63,7 +56,7 @@ const HINT_LIFETIME_MS = 3000
 // media-query gate AtlasNoteCardNode.module.css's own flip already
 // uses, read here in JS via usePrefersReducedMotion since React Flow's
 // own transition durations are JS options, not CSS.
-function AtlasBoardInner({ cards, allCards, kinds, links, linkKinds, mode, viewedID, focusRequest, onDrill, onOpenOverlay, onFocusHandled }: {
+function AtlasBoardInner({ cards, allCards, kinds, links, linkKinds, mode, viewedID, focusRequest, onDrill, onOpenOverlay, onFocusHandled, onCardContextMenu }: {
   cards: Card[]
   allCards: Card[]
   kinds: Kind[]
@@ -75,6 +68,10 @@ function AtlasBoardInner({ cards, allCards, kinds, links, linkKinds, mode, viewe
   onDrill: (id: string) => void
   onOpenOverlay: (id: string) => void
   onFocusHandled: () => void
+  // Right-click on a card (goal 0075): the board only reports WHERE
+  // and ON WHAT -- AtlasView owns the menu items (it holds the
+  // card/share/delete context this component deliberately doesn't).
+  onCardContextMenu: (cardID: string, pos: { x: number; y: number }) => void
 }) {
   const { t } = useTranslation('atlas')
   const readOnly = useIsNarrowViewport()
@@ -359,89 +356,8 @@ function AtlasBoardInner({ cards, allCards, kinds, links, linkKinds, mode, viewe
     // eslint-disable-next-line react-hooks/exhaustive-deps -- deliberately keyed on viewedID (a new space to fit), not on every node/fitView identity change
   }, [viewedID])
 
-  // AtlasView redefines onFocusHandled/onOpenOverlay inline on every one
-  // of ITS OWN renders (unrelated to this board's pulse/hint state) --
-  // latest-refs so the effect below reads the current callback without
-  // taking a dependency on its identity, which would otherwise re-run
-  // the effect (and its cleanup, dismissing an in-progress hint) on any
-  // unrelated AtlasView re-render during the fly/pulse/hint window.
-  const onFocusHandledRef = useRef(onFocusHandled)
-  const onOpenOverlayRef = useRef(onOpenOverlay)
-  useEffect(() => {
-    onFocusHandledRef.current = onFocusHandled
-    onOpenOverlayRef.current = onOpenOverlay
-  }, [onFocusHandled, onOpenOverlay])
 
-  // The ⌘K jump's fly (or immediate overlay open for ⌘↵): waits for
-  // the target to actually be present in this board's rendered nodes
-  // (a re-root AtlasView triggered first needs its own render pass
-  // before the target exists here), then flies the camera to it at
-  // ~zoom 1 by fitting a viewport-sized box centered on the node
-  // rather than the node's own tiny bounds (fitBounds always clamps to
-  // this pane's own maxZoom, which a 190x128 note card would otherwise
-  // hit long before reaching "roughly full-size"). Clearing
-  // focusRequest (onFocusHandled) deliberately happens here, once the
-  // fly resolves -- setting pulsedID/hintedID is the ONLY other thing
-  // this effect does; their own dismiss lifecycle lives in the
-  // separate hint effect below, keyed on hintedID alone, specifically
-  // so clearing focusRequest here (which re-runs THIS effect's own
-  // cleanup on the next render) can never tear down a hint it just set.
-  useEffect(() => {
-    if (!focusRequest || !renderedIDs.has(focusRequest.cardID)) return
-    let cancelled = false
-    const nodeRect = getNodesBounds([focusRequest.cardID])
-    const container = wrapperRef.current?.getBoundingClientRect()
-    const w = container?.width ?? 800
-    const h = container?.height ?? 600
-    const cx = nodeRect.x + nodeRect.width / 2
-    const cy = nodeRect.y + nodeRect.height / 2
-    const bounds = { x: cx - w / 2, y: cy - h / 2, width: w, height: h }
-
-    void fitBounds(bounds, { duration: reduceMotion ? 0 : 500, padding: 0 }).then(() => {
-      if (cancelled) return
-      onFocusHandledRef.current()
-      if (focusRequest.openImmediately) {
-        onOpenOverlayRef.current(focusRequest.cardID)
-        return
-      }
-      const cardID = focusRequest.cardID
-      setPulsedID(cardID)
-      setHintedID(cardID)
-      window.setTimeout(() => setPulsedID((cur) => (cur === cardID ? null : cur)), reduceMotion ? PULSE_MS_REDUCED : PULSE_MS)
-    })
-
-    return () => {
-      cancelled = true
-    }
-  }, [focusRequest, renderedIDs, reduceMotion, fitBounds, getNodesBounds])
-
-  // The hint chip's own lifecycle -- deliberately a separate effect
-  // keyed only on hintedID (not on focusRequest, pulsedID, or any
-  // callback identity), so its listeners/timer live and die exactly
-  // with the hint itself: lives 3s, or until any keydown/pointerdown
-  // (Enter opens the overlay first; any other key/click just dismisses).
-  useEffect(() => {
-    if (!hintedID) return
-    const cardID = hintedID
-    const dismiss = () => setHintedID((cur) => (cur === cardID ? null : cur))
-    const onKeyDown = (e: KeyboardEvent) => {
-      // Deferred one macrotask, not called inline: opening the overlay
-      // (mounting Dialog's own focus trap) synchronously inside this
-      // native keydown handler raced with that same trap's initial
-      // focus-in, and the trap's focus-in on the still-live keydown
-      // dispatch immediately closed the dialog it had just opened.
-      if (e.key === 'Enter') window.setTimeout(() => onOpenOverlayRef.current(cardID), 0)
-      dismiss()
-    }
-    window.addEventListener('keydown', onKeyDown)
-    window.addEventListener('pointerdown', dismiss)
-    const timer = window.setTimeout(dismiss, HINT_LIFETIME_MS)
-    return () => {
-      window.removeEventListener('keydown', onKeyDown)
-      window.removeEventListener('pointerdown', dismiss)
-      window.clearTimeout(timer)
-    }
-  }, [hintedID])
+  useBoardFocus({ focusRequest, renderedIDs, reduceMotion, fitBounds, getNodesBounds, wrapperRef, onFocusHandled, onOpenOverlay, setPulsedID, setHintedID, hintedID })
 
   return (
     <div ref={wrapperRef} className={`${styles.board} ${edges.length <= 3 ? styles.alwaysShowLabels : ''}`} data-testid="atlas-board" data-view-mode={mode}>
@@ -456,6 +372,14 @@ function AtlasBoardInner({ cards, allCards, kinds, links, linkKinds, mode, viewe
         nodesConnectable={false}
         nodesDraggable={isFree && !readOnly}
         zoomOnDoubleClick={false}
+        onNodeContextMenu={(e, node) => {
+          e.preventDefault()
+          onCardContextMenu(node.id, { x: e.clientX, y: e.clientY })
+        }}
+        // No pane items yet (goal 0075 records the pane as a later
+        // wiring) -- but the browser's own menu is never the answer
+        // on a board.
+        onPaneContextMenu={(e) => e.preventDefault()}
         // Narrow viewports never zoom out past 100% -- a board wider
         // than the screen pans instead of auto-shrinking every card
         // below its own real CSS pixel size (a touch target,

@@ -70,6 +70,9 @@ export interface CanvasState {
   updateNodeConfig: (id: string, key: string, value: string) => void
   updateEdgeCondition: (id: string, condition: string) => void
   removeSelected: () => void
+  // One node by id (goal 0075's context-menu Delete) -- same edge/
+  // cleanup contract as removeSelected, without touching selection.
+  removeNode: (id: string) => void
   load: (nodes: CanvasNode[], edges: RFEdge[]) => void
   loadNotes: (notes: CanvasNoteNode[]) => void
   setGuardrailVerdicts: (verdicts: Record<string, { effect: string; ruleLabel: string; source?: string }>) => void
@@ -160,6 +163,11 @@ export function createCanvasStore(initialNodes: CanvasNode[] = [], initialEdges:
               notes: s.notes.filter((n) => !n.selected),
             }
           }),
+        removeNode: (id) =>
+          set((s) => ({
+            nodes: s.nodes.filter((n) => n.id !== id),
+            edges: s.edges.filter((e) => e.source !== id && e.target !== id),
+          })),
         load: (nodes, edges) => set({ nodes, edges }),
         loadNotes: (notes) => set({ notes }),
         setGuardrailVerdicts: (verdicts) =>

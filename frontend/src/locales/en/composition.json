@@ -397,5 +397,11 @@
     "breakpointBadge": "breakpoint",
     "guardrailLabel": "Guardrail: {{effect}}{{ruleSuffix}}",
     "retryFromThisStep": "Retry from this step"
+  },
+  "canvas": {
+    "contextMenu": {
+      "openDetails": "Open details",
+      "deleteStep": "Delete step"
+    }
   }
 }
