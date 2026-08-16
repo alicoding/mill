@@ -36,3 +36,13 @@
     align-items: center;
     gap: var(--base-size-4, 4px);
 }
+
+/* Touch-target floor for the row's primary action (Workflows' Run,
+   goal 0068's mobile launcher job) and its kebab menu -- a no-op above
+   767px, where Primer's own small-button sizing is unchanged. */
+@media (max-width: 767px) {
+    .rowActions button {
+        min-height: 44px;
+        min-width: 44px;
+    }
+}

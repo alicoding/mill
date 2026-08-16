@@ -325,6 +325,52 @@
     .time svg { width: 13px; height: 13px; }
 }
 
+/* Mobile nav drawer (goal 0068): hidden/shown at Primer's OWN
+   PageLayout.Sidebar breakpoint (767px, not the 640px footer breakpoint
+   above), so the drawer opener/closer flip in lockstep with the
+   responsiveVariant="fullscreen" behavior they control. At regular/wide
+   widths both rules are no-ops -- .mobileNavToggle stays display:none,
+   .mobileDrawerHeader stays display:none, and the desktop titlebarLeft/
+   sidebar-top-row markup renders exactly as before. */
+.mobileNavToggle { display: none; }
+.mobileDrawerHeader { display: none; }
+@media (max-width: 767px) {
+    /* The titlebar's whole sidebar-width segment collapses to a single
+       44px touch target holding only the drawer opener -- the wordmark/
+       rail-collapse toggle it otherwise holds belong to the desktop
+       rail, which the fullscreen drawer replaces below this width. */
+    .titlebarLeft {
+        flex-basis: 44px;
+        padding: 0;
+        justify-content: center;
+    }
+    .titlebarLeft > *:not(.mobileNavToggle) { display: none; }
+    .mobileNavToggle {
+        display: inline-flex;
+        min-width: 44px;
+        min-height: 44px;
+    }
+    .mobileDrawerHeader {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: var(--base-size-8) var(--base-size-16);
+        border-bottom: 1px solid var(--borderColor-default);
+    }
+    .mobileDrawerHeader button {
+        min-width: 44px;
+        min-height: 44px;
+    }
+    /* Touch-target floor for the capability/settings nav rows inside
+       the drawer -- Primer's own ActionList/NavList row height
+       (--control-medium-size, 32px) is below the 44px guideline every
+       other job surface in this goal targets. */
+    .sidebarNav :global(a),
+    .sidebarFooter :global(a) {
+        min-height: 44px;
+    }
+}
+
 /* Dev-mode ribbon: only rendered when import.meta.env.DEV is true (App.tsx),
    so this rule is inert/unused in any real build. */
 /* The badge is a real flex participant in the titlebar band's right

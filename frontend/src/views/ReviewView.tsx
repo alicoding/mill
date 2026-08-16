@@ -14,6 +14,7 @@ import { StalenessBadge } from '../shared/StalenessBadge'
 import { formatLastChecked } from '../shared/staleness'
 import styles from '../shared/ListCard.module.css'
 import monoStyles from '../shared/monoText.module.css'
+import mobileStyles from './ReviewView.module.css'
 import PageContainer from '../shared/PageContainer'
 
 // The four kinds a Review row can be (goal 0002 item 4) -- discriminated
@@ -263,7 +264,7 @@ function ReviewView() {
                 {lastChecked && (
                   <Text size="small" className={styles.muted} data-testid="review-mcp-write-last-checked">{lastChecked}</Text>
                 )}
-                <Stack direction="horizontal" gap="condensed">
+                <Stack direction="horizontal" gap="condensed" className={mobileStyles.approvalActions}>
                   <Button size="small" variant="primary" data-testid="review-mcp-write-approve" onClick={() => resolveWrite(w.id, true)}>
                     {t('reviewView.approve')}
                   </Button>
@@ -310,7 +311,7 @@ function ReviewView() {
                 onChange={(key, value) => setInputs((prev) => ({ ...prev, [run.runID]: { ...prev[run.runID], [key]: value } }))}
               />
 
-              <Stack direction="horizontal" gap="condensed" onClick={(e) => e.stopPropagation()}>
+              <Stack direction="horizontal" gap="condensed" className={mobileStyles.approvalActions} onClick={(e) => e.stopPropagation()}>
                 <Button size="small" variant="primary" data-testid="review-approve" onClick={() => resolve(run, true)}>
                   {isDebugPark(run) ? t('reviewView.resume') : t('reviewView.approveAndResume')}
                 </Button>

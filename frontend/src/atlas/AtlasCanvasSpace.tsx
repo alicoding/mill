@@ -4,6 +4,7 @@ import type { NodeTypes as RFNodeTypes } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 import type { Card, Kind } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 import { AtlasService } from '../shared/bindings'
+import { useIsNarrowViewport } from '../shared/useNarrowViewport'
 import { childrenOf } from './atlasGrouping'
 import { AtlasCanvasCardNode, type AtlasCanvasRFNode } from './AtlasCanvasCardNode'
 import { ATLAS_CARD_HEIGHT, ATLAS_CARD_WIDTH } from './atlasCanvasConstants'
@@ -27,6 +28,11 @@ function AtlasCanvasInner({ cards, allCards, kinds, peeking, onDrill, onOpenOver
   onDrill: (id: string) => void
   onOpenOverlay: (id: string) => void
 }) {
+  // Canvas mode never gets touch editing (goal 0068's companion-not-
+  // second-instance framing: authoring stays desktop-only) -- a narrow
+  // viewport gets pan/zoom (React Flow's own pinch/drag gestures stay
+  // on) but no card dragging and no position writes.
+  const readOnly = useIsNarrowViewport()
   const nodes: AtlasCanvasRFNode[] = useMemo(() => {
     const kindByID = new Map(kinds.map((k) => [k.ID, k]))
     return cards.map((card) => ({
@@ -53,8 +59,9 @@ function AtlasCanvasInner({ cards, allCards, kinds, peeking, onDrill, onOpenOver
         edges={[]}
         nodeTypes={rfNodeTypes}
         nodesConnectable={false}
+        nodesDraggable={!readOnly}
         zoomOnDoubleClick={false}
-        onNodeDragStop={(_, node) => {
+        onNodeDragStop={readOnly ? undefined : (_, node) => {
           void AtlasService.SetPosition(node.id, { X: node.position.x, Y: node.position.y }).catch(console.error)
         }}
         fitView
