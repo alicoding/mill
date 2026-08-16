@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { ReactFlow, ReactFlowProvider, Background, Controls, useNodesState, useReactFlow } from '@xyflow/react'
 import type { EdgeTypes as RFEdgeTypes, NodeTypes as RFNodeTypes } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
@@ -75,6 +76,7 @@ function AtlasBoardInner({ cards, allCards, kinds, links, linkKinds, mode, viewe
   onOpenOverlay: (id: string) => void
   onFocusHandled: () => void
 }) {
+  const { t } = useTranslation('atlas')
   const readOnly = useIsNarrowViewport()
   const reduceMotion = usePrefersReducedMotion()
   const isFree = mode === ViewMode.ViewModeCanvas
@@ -293,17 +295,21 @@ function AtlasBoardInner({ cards, allCards, kinds, links, linkKinds, mode, viewe
   const [hoveredEdgeID, setHoveredEdgeID] = useState<string | null>(null)
   const edges = useMemo(() => {
     const linkKindByID = new Map(linkKinds.map((lk) => [lk.ID, lk]))
-    return resolveBoardEdges(links, renderedIDs, allCards).map((r): AtlasLinkRFEdge => ({
+    const topLevelIDs = new Set(cards.map((c) => c.ID))
+    return resolveBoardEdges(links, topLevelIDs, allCards).map((r): AtlasLinkRFEdge => ({
       id: r.id,
       source: r.source,
       target: r.target,
       type: 'atlas-link',
-      label: linkKindByID.get(r.linkKindID)?.Label ?? '',
-      style: { stroke: 'var(--fgColor-accent)', strokeWidth: 1.6, opacity: 0.75 },
+      // A single link carries its kind's own label; an aggregated
+      // artery labels as its count -- the per-link detail lives one
+      // zoom level down and on the card page.
+      label: r.count === 1 ? (linkKindByID.get(r.linkKindIDs[0])?.Label ?? '') : t('board.linksChip', { count: r.count }),
+      style: { stroke: 'var(--fgColor-accent)', strokeWidth: r.count === 1 ? 1.6 : 2.2, opacity: 0.75 },
       interactionWidth: 8,
       data: { hovered: hoveredEdgeID === r.id },
     }))
-  }, [links, linkKinds, renderedIDs, allCards, hoveredEdgeID])
+  }, [links, linkKinds, cards, allCards, hoveredEdgeID, t])
 
   const [nodes, setNodes, onNodesChange] = useNodesState(builtNodes)
   useEffect(() => {
