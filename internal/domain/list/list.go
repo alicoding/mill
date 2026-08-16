@@ -108,6 +108,18 @@ type List struct {
 	// FieldTombstones doc comment for the full reasoning, applied here
 	// to Columns instead of Outputs.
 	FieldTombstones []typedfield.FieldTombstone
+	// Versions/PublishedVersion give List the same draft/publish
+	// lifecycle Decision already has (docs/adr/0040 decision 4,
+	// extended to a second entity by goal 0070's demonstrated need --
+	// audit-replay against a List a workflow has since edited): Columns/
+	// Rows above are this List's own DRAFT, edited in place exactly as
+	// before this existed; Versions holds immutable snapshots frozen by
+	// Publish (versioning.go), and PublishedVersion (0 = never
+	// published) names which snapshot list-lookup/list-search's
+	// unpinned "live@N" audit stamp reads. Both zero-valued for every
+	// List persisted before this existed, migration-free.
+	Versions         []ListVersion
+	PublishedVersion int
 }
 
 // Validate checks a List is well-formed before it's persisted -- same

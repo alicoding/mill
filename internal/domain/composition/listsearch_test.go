@@ -14,14 +14,14 @@ import (
 // Entries map.
 func withTestList(t *testing.T, rows []list.Row) {
 	t.Helper()
-	SetListLookup(func(string) (ResolvedList, error) {
+	SetListLookup(func(string, int) (ResolvedList, error) {
 		return ResolvedList{
 			Columns: nil,
 			Rows:    rows,
 		}, nil
 	})
 	t.Cleanup(func() {
-		SetListLookup(func(id string) (ResolvedList, error) {
+		SetListLookup(func(id string, _ int) (ResolvedList, error) {
 			return ResolvedList{}, nil
 		})
 	})

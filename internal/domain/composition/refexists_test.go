@@ -39,7 +39,7 @@ func TestRefExists_List(t *testing.T) {
 	prev := lookupListFn
 	t.Cleanup(func() { lookupListFn = prev })
 
-	lookupListFn = func(id string) (ResolvedList, error) {
+	lookupListFn = func(id string, _ int) (ResolvedList, error) {
 		if id == "known" {
 			return ResolvedList{}, nil
 		}

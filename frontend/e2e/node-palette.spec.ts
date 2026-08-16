@@ -93,11 +93,11 @@ test('palette search matches both the shortened display name and the full underl
   await expect(panel.getByTestId('palette-item')).toHaveCount(0)
   await expect(panel.getByTestId('palette-no-matches')).toBeVisible()
 
-  // Clearing the query restores the full 38-item palette (37
+  // Clearing the query restores the full 39-item palette (38
   // RegisterNodeType call sites + the seeded "Check httpbin" declared
   // step type, goal 0054 slice A).
   await search.fill('')
-  await expect(panel.getByTestId('palette-item')).toHaveCount(38)
+  await expect(panel.getByTestId('palette-item')).toHaveCount(39)
 })
 
 // Progressive-disclosure "Show advanced steps" toggle (goal 0047): the
@@ -108,7 +108,7 @@ test('the palette shows every step by default, "Show advanced steps" checked', a
   await openPaletteOnNewWorkflow(page)
   const panel = activePanel(page)
   await expect(panel.getByTestId('palette-show-advanced')).toBeChecked()
-  await expect(panel.getByTestId('palette-item')).toHaveCount(38)
+  await expect(panel.getByTestId('palette-item')).toHaveCount(39)
 })
 
 test('unchecking "Show advanced steps" hides advanced steps, keeps basic ones, and persists across a reload', async ({ page }) => {
@@ -128,6 +128,8 @@ test('unchecking "Show advanced steps" hides advanced steps, keeps basic ones, a
     // goal 0066: matchParams/fieldBindings are hand-authored JSON, the
     // same reasoning list-search's own matchParams carries.
     'process-atlas-card-find', 'apply-atlas-card-create', 'apply-atlas-card-update',
+    // goal 0070: fieldBindings is the same hand-authored JSON shape.
+    'apply-list-row',
   ]
   for (const id of advancedIDs) {
     await expect(panel.locator(`[data-node-type-id="${id}"]`)).toHaveCount(0)

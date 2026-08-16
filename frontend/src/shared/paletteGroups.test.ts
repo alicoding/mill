@@ -21,11 +21,12 @@ const ALL_REGISTERED_NODE_TYPE_IDS = [
   'human-review', 'ruleset', 'decision-outcome',
   'apply-clipboard-write-html', 'apply-clipboard-write-text', 'apply-file-write',
   'apply-atlas-card-create', 'apply-atlas-card-update', 'apply-atlas-card-link',
+  'apply-list-row',
 ]
 
 describe('paletteGroupFor', () => {
-  it('has exactly 36 registered node types accounted for', () => {
-    expect(ALL_REGISTERED_NODE_TYPE_IDS).toHaveLength(36)
+  it('has exactly 37 registered node types accounted for', () => {
+    expect(ALL_REGISTERED_NODE_TYPE_IDS).toHaveLength(37)
   })
 
   it('maps every registered NodeType ID to one of the 9 display groups, without warning', () => {

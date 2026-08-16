@@ -72,8 +72,12 @@
     "fingerprint": "aa9a964c09faafbd8e7ebbeff3e75aa438878bdb9e1207c4dcd5c0bbba8de0bc"
   },
   "list:example-country-codes-list": {
-    "seedRevision": 3,
-    "fingerprint": "7a388e2fcd52b7d95aeb52581258f299d78c309802775df7779e0c99aacfa040"
+    "seedRevision": 4,
+    "fingerprint": "e5f0f240a11b3186184fc845f0a5b43e0a866f354c90c6cb22286a3ca4a4b755"
+  },
+  "list:example-task-tracker-list": {
+    "seedRevision": 1,
+    "fingerprint": "7dce628bee6d21080ce535a42affe766655281db28fa08eb7f24845bd25f8cb3"
   },
   "mcpserver:example-reference-mcpserver": {
     "seedRevision": 1,
@@ -169,11 +173,19 @@
   },
   "workflow:example-list-lookup-workflow": {
     "seedRevision": 2,
-    "fingerprint": "54a45efb6cc7e822b8f2691ff8bda067e3fab2b99b50fc8a29dc3204aa244721"
+    "fingerprint": "bf671926b7026069f6dd72158696f2d3f6ed8328984859878581beb56fede134"
+  },
+  "workflow:example-list-pinned-workflow": {
+    "seedRevision": 1,
+    "fingerprint": "3a54d24a83030bc221bf639791434b9cf7ec0c1386ad2fb877bcc0c9858fc708"
   },
   "workflow:example-list-search-workflow": {
     "seedRevision": 2,
-    "fingerprint": "3bf35389a51cfab25413236a03a273532bbe89e70062a3002c58d58ee244c105"
+    "fingerprint": "d37857488ba5f230401d5fa5033b3c7837dcc59473b5ef1ac70c94a97536bdc1"
+  },
+  "workflow:example-list-write-workflow": {
+    "seedRevision": 1,
+    "fingerprint": "4ed20ba60b7602a75b0bb7490f3a2780faab1be1c7906618f1c578408be174d3"
   },
   "workflow:example-mcp-echo-workflow": {
     "seedRevision": 2,
@@ -201,7 +213,7 @@
   },
   "workflow:example-step-failure-workflow": {
     "seedRevision": 1,
-    "fingerprint": "5dc531d9a86f8eec27daa29d3430e628a109b326f119e33ea1f857fe6bcbe275"
+    "fingerprint": "c4c6feedce67ba803cd59737c0ca5836cbca536dd79d591e94601c05a19aafdf"
   },
   "workflow:load-sample-html-workflow": {
     "seedRevision": 1,

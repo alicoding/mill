@@ -11,6 +11,8 @@ import { RowStatus } from '../../bindings/github.com/alicoding/mill/internal/dom
 import type { Field, FieldTombstone } from '../../bindings/github.com/alicoding/mill/internal/domain/typedfield/models'
 import { Type as ConfigFieldType } from '../../bindings/github.com/alicoding/mill/internal/domain/typedfield/models'
 import { ListRowEditor } from './ListRowEditor'
+import { ListRowImport } from './ListRowImport'
+import { ListVersionsSection } from './ListVersionsSection'
 import { downloadJSON } from '../shared/downloadJSON'
 import { refreshLists, useConfigureEntityStore } from '../shared/configureEntityStore'
 import { useUISignalStore } from '../shared/uiSignalStore'
@@ -412,9 +414,20 @@ export function ConfigureLists() {
           </div>
 
           {editingID && editingList && (
+            <div className={styles.card}>
+              <ListVersionsSection list={editingList} onPublished={refetch} />
+            </div>
+          )}
+
+          {editingID && editingList && (
             <div className={styles.card} data-testid="list-rows-editor">
               <Stack direction="vertical" gap="condensed">
-                <Text size="small" weight="semibold">{t('configureLists.rows')}</Text>
+                <Stack direction="horizontal" justify="space-between" align="center">
+                  <Text size="small" weight="semibold">{t('configureLists.rows')}</Text>
+                  {(editingList.Columns ?? []).length > 0 && (
+                    <ListRowImport listId={editingID} columns={editingList.Columns ?? []} onImported={refetch} />
+                  )}
+                </Stack>
                 {(editingList.Columns ?? []).length === 0 ? (
                   <Text as="p" size="small" className={styles.muted}>{t('configureLists.addColumnFirst')}</Text>
                 ) : (

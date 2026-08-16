@@ -152,6 +152,13 @@ var workflowProofRegistry = map[string]seedProof{
 		"executionsvc.TestSeededCardCreateLinkExample_CreatesFindsAndLinksCards",
 		"e2e: seed-completeness.spec.ts > Example: Create and link Atlas cards runs end to end through the real live app",
 	),
+	"example-list-write-workflow": proven(
+		"executionsvc.TestGuardrail_ApplyListRowParks_ApproveWritesRow",
+		"executionsvc.TestSeededTaskTrackerExample_PinnedSearch_ResolvesFrozenV1AfterLiveWrite (via the write-path half of the same test)",
+	),
+	"example-list-pinned-workflow": proven(
+		"executionsvc.TestSeededTaskTrackerExample_PinnedSearch_ResolvesFrozenV1AfterLiveWrite",
+	),
 	"backup-mill-data-workflow": proven(
 		"composition.TestApplyBackupSnapshot_CallsRegisteredRunnerWithDefaultKeepN",
 		"composition.TestApplyBackupSnapshot_CustomKeepNIsPassedThrough",
@@ -211,6 +218,11 @@ var listProofRegistry = map[string]seedProof{
 		"executionsvc.TestSeededCountryLookupExample_Match_WritesCountryAttribute",
 		"executionsvc.TestSeededCountryLookupExample_NoMatch_FailsClosed",
 		"configuresvc.TestConfigureService_FreshInstall_SeedsBuiltInLists",
+	),
+	list.ExampleTaskTrackerID: proven(
+		"executionsvc.TestGuardrail_ApplyListRowParks_ApproveWritesRow",
+		"executionsvc.TestSeededTaskTrackerExample_PinnedSearch_ResolvesFrozenV1AfterLiveWrite",
+		"configuresvc.TestApplyListRow_CreatesThenUpdatesByKeyColumn",
 	),
 }
 

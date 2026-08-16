@@ -86,6 +86,17 @@ func AllSeedFingerprints() map[string]SeedFingerprint {
 		for i := range l.Rows {
 			l.Rows[i].CreatedAt, l.Rows[i].UpdatedAt = time.Time{}, time.Time{}
 		}
+		// Versions[].SavedAt (docs/goals/0070's List versioning) is
+		// stamped from time.Now() at BuiltIn() call time same as
+		// Rows[].CreatedAt/UpdatedAt above -- zeroed for the identical
+		// reason: an unstamped golden's fingerprint must be deterministic
+		// across runs, not drift with wall-clock time.
+		for i := range l.Versions {
+			l.Versions[i].SavedAt = time.Time{}
+			for j := range l.Versions[i].Rows {
+				l.Versions[i].Rows[j].CreatedAt, l.Versions[i].Rows[j].UpdatedAt = time.Time{}, time.Time{}
+			}
+		}
 		out[keyFor("list", id)] = SeedFingerprint{SeedRevision: rev, Fingerprint: fingerprintContent(l)}
 	}
 	for _, s := range mcpserver.BuiltIn() {

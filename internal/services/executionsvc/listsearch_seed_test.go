@@ -33,16 +33,25 @@ func newListSearchSeedHarness(t *testing.T) (*ExecutionService, string) {
 	}
 	t.Cleanup(func() { _ = exec.Shutdown(2 * time.Second) })
 
-	composition.SetListLookup(func(id string) (composition.ResolvedList, error) {
+	composition.SetListLookup(func(id string, pinnedVersion int) (composition.ResolvedList, error) {
 		for _, l := range list.BuiltIn() {
 			if l.ID == id {
-				return composition.ResolvedList{Entries: list.DeriveEntries(l), Columns: l.Columns, Rows: l.Rows}, nil
+				resolved, err := list.Resolve(l, pinnedVersion)
+				if err != nil {
+					return composition.ResolvedList{}, err
+				}
+				withResolved := l
+				withResolved.Columns, withResolved.Rows = resolved.Columns, resolved.Rows
+				return composition.ResolvedList{
+					Entries: list.DeriveEntries(withResolved), Columns: resolved.Columns, Rows: resolved.Rows,
+					VersionStamp: resolved.VersionStamp,
+				}, nil
 			}
 		}
 		return composition.ResolvedList{}, fmt.Errorf("no list with id %q", id)
 	})
 	t.Cleanup(func() {
-		composition.SetListLookup(func(listID string) (composition.ResolvedList, error) {
+		composition.SetListLookup(func(listID string, _ int) (composition.ResolvedList, error) {
 			return composition.ResolvedList{}, fmt.Errorf("no list lookup registered (yet) for id %q", listID)
 		})
 	})

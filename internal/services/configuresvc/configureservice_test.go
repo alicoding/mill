@@ -184,7 +184,7 @@ func TestResolveList_ReturnsEntries(t *testing.T) {
 	if _, err := cfg.AddListRow(l.ID, map[string]string{"code": "US", "name": "United States"}); err != nil {
 		t.Fatalf("AddListRow returned error: %v", err)
 	}
-	rl, err := cfg.resolveList(l.ID)
+	rl, err := cfg.resolveList(l.ID, 0)
 	if err != nil {
 		t.Fatalf("resolveList returned error: %v", err)
 	}
@@ -228,7 +228,7 @@ func TestAddListRow_UpdateListRow_DeleteListRow(t *testing.T) {
 
 func TestResolveList_UnknownID_Rejected(t *testing.T) {
 	cfg, _ := newTestConfigureService(t)
-	if _, err := cfg.resolveList("does-not-exist"); err == nil {
+	if _, err := cfg.resolveList("does-not-exist", 0); err == nil {
 		t.Fatal("resolveList with an unknown id returned nil error, want an error")
 	}
 }

@@ -2,6 +2,8 @@ package composition
 
 import (
 	"fmt"
+	"strconv"
+	"strings"
 
 	"github.com/alicoding/mill/internal/domain/guardrail"
 	"github.com/alicoding/mill/internal/domain/list"
@@ -24,20 +26,44 @@ type ResolvedList struct {
 	Entries map[string]string
 	Columns []typedfield.Field
 	Rows    []list.Row
+	// VersionStamp is "v<N>" for a pinned resolution, "live@<N>"/
+	// "live@draft" for an unpinned one (docs/adr/0040 decisions 4-5,
+	// applied to List by goal 0070) -- list.ResolvedSnapshot.VersionStamp,
+	// carried across the lookup seam unchanged.
+	VersionStamp string
 }
 
-// lookupListFn defaults to erroring so a list-lookup node run before
-// ConfigureService exists (or before SetListLookup wires it) fails
-// loudly instead of silently no-op'ing.
-var lookupListFn = func(listID string) (ResolvedList, error) {
+// lookupListFn defaults to erroring so a list-lookup/list-search node
+// run before ConfigureService exists (or before SetListLookup wires it)
+// fails loudly instead of silently no-op'ing. pinnedVersion is 0 for
+// live resolution, or the version number a list-lookup/list-search
+// node's optional "version" config pins to.
+var lookupListFn = func(listID string, pinnedVersion int) (ResolvedList, error) {
 	return ResolvedList{}, fmt.Errorf("no list lookup registered (yet) for id %q", listID)
 }
 
-// SetListLookup wires the function list-lookup nodes use to resolve a
-// listId into its entries. Called once from main.go once ConfigureService
+// SetListLookup wires the function list-lookup/list-search nodes use to
+// resolve a listId (optionally pinned to a published version) into its
+// entries/columns/rows. Called once from main.go once ConfigureService
 // exists.
-func SetListLookup(fn func(listID string) (ResolvedList, error)) {
+func SetListLookup(fn func(listID string, pinnedVersion int) (ResolvedList, error)) {
 	lookupListFn = fn
+}
+
+// listPinnedVersion parses list-lookup/list-search's shared optional
+// "version" config (docs/adr/0040 decision 4, goal 0070) -- same shape
+// and precedent as decision-outcome's own version pin
+// (decisionPinnedVersion, decisionoutcome.go).
+func listPinnedVersion(node Node) (int, error) {
+	raw := strings.TrimSpace(node.Config["version"])
+	if raw == "" {
+		return 0, nil
+	}
+	n, err := strconv.Atoi(raw)
+	if err != nil || n < 1 {
+		return 0, fmt.Errorf("version %q is not a positive version number", raw)
+	}
+	return n, nil
 }
 
 func init() {
@@ -84,11 +110,32 @@ func init() {
 				Description: "Written to the output attribute when there's no match and \"If no match\" is \"default\".",
 				Default:     "", Type: FieldText,
 			},
+			{
+				// docs/adr/0040 decision 4's version pin, applied to List
+				// by goal 0070 -- same shape and precedent as
+				// decision-outcome's own "version" config.
+				Key: "version", Label: "Pin to version (optional)",
+				Description: "Leave empty to always resolve this List's current rows. Enter a version number to pin this step to that exact published snapshot, unaffected by later row edits.",
+				Default:     "", Type: FieldText,
+			},
 		},
 	}, func(node Node, ctx ExecContext) (ExecContext, error) {
-		rl, err := lookupListFn(node.Config["listId"])
+		pinned, err := listPinnedVersion(node)
 		if err != nil {
 			return ctx, fmt.Errorf("list-lookup: %w", err)
+		}
+		rl, err := lookupListFn(node.Config["listId"], pinned)
+		if err != nil {
+			return ctx, fmt.Errorf("list-lookup: %w", err)
+		}
+
+		// The resolved version stamp is recorded alongside the matched
+		// value under a key derived from outputKey (never a fixed key --
+		// two list-lookup nodes in one workflow could otherwise collide
+		// on the same Attributes entry), the same run-stamping audit
+		// trail decision-outcome's own resolvedVersion establishes.
+		if outKey := node.Config["outputKey"]; outKey != "" {
+			ctx.Attributes[outKey+"_version"] = rl.VersionStamp
 		}
 
 		inputVal := fmt.Sprintf("%v", ctx.Attributes[node.Config["inputKey"]])

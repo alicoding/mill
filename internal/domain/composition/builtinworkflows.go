@@ -480,7 +480,10 @@ func BuiltInWorkflows() []Workflow {
 	workflows = append(workflows, builtInStepFailureWorkflows()...)
 	// goal 0066, ADR-0035/0038: the Atlas<->Workflows integration's own
 	// seeded proof, same split-file reasoning.
-	return append(workflows, builtInAtlasCardWorkflows()...)
+	workflows = append(workflows, builtInAtlasCardWorkflows()...)
+	// goal 0070: apply-list-row's own seeded proof, same split-file
+	// reasoning.
+	return append(workflows, builtInListWriteWorkflows()...)
 }
 
 // ExampleChildWorkflowID is exported so the parent seed above and any
