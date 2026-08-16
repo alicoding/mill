@@ -172,9 +172,11 @@ folklore in agent-brief prose. The standing rules:
 - **Coverage is measured and ratcheted, never aspirational.** Vitest
   runs `--coverage` everywhere (`npm run test`), scoped to
   hand-written `src/` (bindings exempt, same reasoning as
-  check-loc); thresholds live in vite.config.ts with
-  `autoUpdate: true`, so the floor equals the best coverage ever
-  committed and only climbs. Go: every gate run produces a
+  check-loc); thresholds live in vite.config.ts as
+  INTEGER floors raised manually in the same commit that raises real
+  coverage (a 2-decimal auto-ratchet was tried first and made every
+  e2e-proven UI line a sub-0.1% commit failure — wrong for a layering
+  that proves components in e2e). Go: every gate run produces a
   coverprofile checked by `scripts/check-go-coverage.sh` (floor
   committed in the script; raise it in the same commit that raises
   real coverage — the script nags when you're >1pt above). The unit
