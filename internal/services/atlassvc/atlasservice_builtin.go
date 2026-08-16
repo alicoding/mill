@@ -2,6 +2,7 @@ package atlassvc
 
 import (
 	"log/slog"
+	"os"
 	"time"
 
 	"github.com/alicoding/mill/internal/domain/atlas"
@@ -19,6 +20,29 @@ import (
 // key reconcile functions, this one mutates the single shared state
 // this package persists as one blob (atlasStateKey), so all four
 // families share one changed flag and one final persist.
+// populateDenseFixture inserts the deterministic stress space (goal
+// 0073) exactly once per instance, only when MILL_TEST_DENSE_ATLAS is
+// set -- the scale layer of the test pyramid, never a seed: no
+// SeedRevision, no fingerprint, invisible to reconcile.
+func (a *AtlasService) populateDenseFixture() {
+	if os.Getenv("MILL_TEST_DENSE_ATLAS") == "" {
+		return
+	}
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	for _, c := range a.cards {
+		if c.ID == "atlas-dense-velocity" {
+			return
+		}
+	}
+	cards, links := atlas.DenseFixture(atlas.DenseFixtureParentID(), time.Now())
+	a.cards = append(a.cards, cards...)
+	a.links = append(a.links, links...)
+	if err := a.persistLocked(); err != nil {
+		slog.Error("failed to persist dense Atlas fixture", "error", err)
+	}
+}
+
 func (a *AtlasService) reconcileBuiltIns() {
 	tombstones := seeding.LoadTombstones(a.store)
 	now := time.Now()

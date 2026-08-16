@@ -229,15 +229,24 @@ export const COMMANDS: Command[] = [
     run: () => setView({ kind: 'configure' }),
   },
   {
+    // ⌘0..⌘5 mirror the sidebar's own top-to-bottom order -- Atlas
+    // sits between Configure and Activity there, so it takes ⌘3 and
+    // the two below shift down one.
+    id: 'view.atlas',
+    label: 'Go to Atlas',
+    defaultBinding: { mods: ['cmd'], key: '3' },
+    run: () => setView({ kind: 'atlas' }),
+  },
+  {
     id: 'view.activity',
     label: 'Go to Activity',
-    defaultBinding: { mods: ['cmd'], key: '3' },
+    defaultBinding: { mods: ['cmd'], key: '4' },
     run: () => setView({ kind: 'activity' }),
   },
   {
     id: 'view.review',
     label: 'Go to Review',
-    defaultBinding: { mods: ['cmd'], key: '4' },
+    defaultBinding: { mods: ['cmd'], key: '5' },
     run: () => setView({ kind: 'review' }),
   },
   {

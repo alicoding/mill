@@ -79,6 +79,7 @@ func NewAtlasService(store settings.Store) *AtlasService {
 	a := &AtlasService{store: store, lenses: map[string]atlas.LensSetting{}}
 	a.restore()
 	a.reconcileBuiltIns()
+	a.populateDenseFixture()
 	return a
 }
 

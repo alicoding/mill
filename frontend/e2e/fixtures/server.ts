@@ -49,6 +49,11 @@ export const MCP_BASE_PORT = 9500
 // though both may be alive on the same worker at once.
 export const PERSISTENCE_SERVER_BASE_PORT = 9600
 export const PERSISTENCE_MCP_BASE_PORT = 9650
+// The scale spec's own disjoint range (goal 0073) -- same
+// own-server-own-ports reasoning as persistence, since its dense
+// fixture env var must never leak into the standard workers' seeds.
+export const SCALE_SERVER_BASE_PORT = 9680
+export const SCALE_MCP_BASE_PORT = 9730
 
 async function waitForHealth(url: string, proc: ChildProcessWithoutNullStreams, timeoutMs: number): Promise<void> {
   const deadline = Date.now() + timeoutMs
@@ -83,6 +88,10 @@ export interface SpawnServerOptions {
   settingsPath: string
   executionDbPath: string
   backupDir: string
+  // Extra env for the spawned process (e.g. the scale spec's
+  // MILL_TEST_DENSE_ATLAS gate) -- never overrides the isolation vars
+  // above, which are spread after it.
+  extraEnv?: Record<string, string>
 }
 
 // Spawns exactly one mill-server process directly (no intermediate
@@ -96,6 +105,7 @@ export async function spawnMillServer(opts: SpawnServerOptions): Promise<Spawned
     cwd: REPO_ROOT,
     env: {
       ...process.env,
+      ...opts.extraEnv,
       WAILS_SERVER_PORT: String(opts.port),
       MILL_MCP_ADDR: `127.0.0.1:${opts.mcpPort}`,
       MILL_SETTINGS_PATH: opts.settingsPath,

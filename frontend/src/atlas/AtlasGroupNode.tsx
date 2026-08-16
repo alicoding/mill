@@ -5,6 +5,7 @@ import type { NodeProps, Node as RFNode } from '@xyflow/react'
 import { ArrowUpRightIcon } from '@primer/octicons-react'
 import type { Card, Kind, Link, LinkKind } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 import { kindColorTokens } from './atlasKindColor'
+import { NOTE_HEIGHT, NOTE_WIDTH } from './atlasBoardLayout'
 import type { FreshnessRollup } from './atlasCardPresentation'
 import styles from './AtlasGroupNode.module.css'
 
@@ -26,6 +27,10 @@ export interface AtlasGroupData extends Record<string, unknown> {
   // cards, so opening a frame's back unflips whichever note card (or
   // other frame) was flipped before it.
   flipped: boolean
+  // Semantic zoom (goal 0073): set when the preview cap truncated this
+  // frame's children -- where the "+ K more" ghost tile renders, in
+  // the frame's own coordinate space.
+  overflow: { count: number; position: { x: number; y: number } } | null
   onDrill: (id: string) => void
   onToggleFlip: (id: string) => void
   onOpenOverlay: (id: string) => void
@@ -44,7 +49,7 @@ export type AtlasGroupRFNode = RFNode<AtlasGroupData>
 // propagation so drilling and flipping never both fire from one click.
 export const AtlasGroupNode = memo(function AtlasGroupNode({ data }: NodeProps<AtlasGroupRFNode>) {
   const { t } = useTranslation('atlas')
-  const { card, kind, allCards, links, linkKinds, childCount, freshness, pulsed, hinted, flipped, onDrill, onToggleFlip, onOpenOverlay } = data
+  const { card, kind, allCards, links, linkKinds, childCount, freshness, pulsed, hinted, flipped, overflow, onDrill, onToggleFlip, onOpenOverlay } = data
   const tokens = kindColorTokens(card.KindID)
   const cardLinks = links.filter((l) => l.FromCardID === card.ID || l.ToCardID === card.ID)
   const cardByID = new Map(allCards.map((c) => [c.ID, c]))
@@ -120,6 +125,21 @@ export const AtlasGroupNode = memo(function AtlasGroupNode({ data }: NodeProps<A
             )}
             <span className={styles.zoomChip}>{t('board.zoomChip')}</span>
           </div>
+          {/* The "+ K more" ghost tile (goal 0073): the preview cap's
+              honest remainder, occupying the note-sized slot the layout
+              reserved for it. Clicking it is the same act as the header
+              -- zoom into the place to see everything. */}
+          {overflow && (
+            <button
+              type="button"
+              className={`${styles.overflowTile} nodrag nopan`}
+              data-testid="atlas-group-overflow"
+              style={{ left: overflow.position.x, top: overflow.position.y, width: NOTE_WIDTH, height: NOTE_HEIGHT }}
+              onClick={drill}
+            >
+              {t('board.moreTile', { count: overflow.count })}
+            </button>
+          )}
         </div>
 
         <div className={styles.backFace} data-testid="atlas-group-card-back">

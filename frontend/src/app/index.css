@@ -173,3 +173,14 @@ body {
     display: flex;
     flex-direction: column;
 }
+
+/* Primer portals every Dialog/overlay into #__primerPortalRoot__
+   (its own stable id), whose wrappers each carry inline z-index:1 --
+   without a z on the ROOT, app chrome (titlebar, toolbar, the
+   boards' controls and edge labels at z 1000) paints straight over
+   any open dialog. One z here lifts the whole overlay layer above
+   chrome while dialogs keep their natural DOM-order stacking among
+   themselves (a confirm opened from a page stays above that page). */
+#__primerPortalRoot__ {
+    z-index: 1200;
+}

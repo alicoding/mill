@@ -74,6 +74,41 @@ test('the page header shows a kind glyph, title, file tag, and Close; the seeded
   await page.keyboard.press('Escape')
 })
 
+test('the open page is the top layer: app chrome never paints over it and its backdrop covers the toolbar', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Atlas' }).click()
+  await expect(page.getByTestId('atlas-board')).toBeVisible()
+
+  await openViaFlip(noteCard(page, 'Getting started'))
+  const overlay = page.locator('[data-component="atlas-card-overlay"]')
+  await expect(overlay).toBeVisible()
+
+  // Regression: the kit portals dialogs into a wrapper stuck at an
+  // inline z-index:1, so the titlebar/toolbar/board-controls painted
+  // OVER the sheet (the Close button sat half-hidden behind the
+  // toolbar). Assert by hit-testing, the same way a user's click
+  // resolves: the Close button's own centre must belong to the
+  // dialog, and a point over the toolbar row must hit the backdrop,
+  // never a toolbar button.
+  const hits = await page.evaluate(() => {
+    const dlg = document.querySelector('[data-component="atlas-card-overlay"]')
+    if (!dlg) return null
+    const close = dlg.querySelector('[data-testid="atlas-page-close"]')
+    if (!close) return null
+    const c = close.getBoundingClientRect()
+    const closeHit = document.elementFromPoint(c.x + c.width / 2, c.y + c.height / 2)
+    const toolbarHit = document.elementFromPoint(window.innerWidth - 60, 95)
+    return {
+      closeIsDialogs: !!closeHit?.closest('[data-component="atlas-card-overlay"]'),
+      toolbarCovered: !toolbarHit?.closest('button') || !!toolbarHit?.closest('[data-component="atlas-card-overlay"]'),
+    }
+  })
+  expect(hits?.closeIsDialogs).toBe(true)
+  expect(hits?.toolbarCovered).toBe(true)
+  await page.keyboard.press('Escape')
+  await expect(overlay).not.toBeVisible()
+})
+
 test('a linked Contact card renders as an avatar person row inside the parent page\'s Contents', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Atlas' }).click()
@@ -235,37 +270,46 @@ test('a group entry inside a page re-roots the board to a deeper card, and the b
   const l3 = groupCard(page, 'Reports')
   await expect(l3).toBeVisible()
 
-  // Back to "My space": L1 is a top-level frame, L2 is rendered as a
-  // ONE-level-deep preview note inside it (AtlasBoard's own
-  // renderedIDs) -- flipping it opens L2's own page WITHOUT re-rooting
-  // (the flip+Open path never touches viewedID).
+  // Back to "My space": L1 is a top-level frame, and L2 -- itself a
+  // group -- previews inside it as a REGION CHIP (goal 0073), a place
+  // with no flip face. The path to L2's page is therefore the place
+  // path: drill into L1 so L2 becomes a top-level frame, flip its
+  // body, Open.
   await page.getByTestId('atlas-breadcrumb').getByText('My space', { exact: true }).click()
   const breadcrumb = page.getByTestId('atlas-breadcrumb')
   await expect(breadcrumb).not.toContainText('Reports')
+  await expect(page.getByTestId('atlas-region-chip').filter({ hasText: 'Reports' })).toBeVisible()
 
-  const l2Preview = noteCard(page, 'Reports')
-  await openViaFlip(l2Preview)
+  await l1.getByTestId('atlas-group-header').click()
+  await expect(breadcrumbReports).toHaveCount(1)
+  const l2Frame = groupCard(page, 'Reports')
+  // The frame's centre is covered by its own preview-child nodes
+  // (separate React Flow nodes on top) -- click the frame's own left
+  // padding strip, below the header inset, where only the frame is.
+  await l2Frame.click({ position: { x: 6, y: 60 } })
+  await expect(l2Frame).toHaveAttribute('data-flipped', 'true')
+  await l2Frame.getByTestId('atlas-group-open').click()
   const overlay = page.locator('[data-component="atlas-card-overlay"]')
   await expect(overlay).toBeVisible()
 
   // L3 -- L2's own nested group -- is a clickable group entry inside
-  // L2's page. L3 is NOT part of "My space"'s own rendered
-  // neighborhood (it's two levels below L1's own preview), so this
-  // click must re-root the board to L3's parent (L2) rather than just
-  // pulsing it in place.
+  // L2's page. On L1's board L3 IS already visible (as L2's preview
+  // region chip, goal 0073), so the entry click lands attention in
+  // place: overlay closes, no re-root (the crumb count stays 1), and
+  // the CHIP pulses -- the same "fly, don't commit" semantics ⌘K's
+  // plain Enter carries.
   const l3Entry = overlay.getByTestId('atlas-page-child-group').filter({ hasText: 'Reports' })
   await expect(l3Entry).toBeVisible()
   await l3Entry.click()
 
   await expect(overlay).not.toBeVisible()
-  await expect(breadcrumb).toContainText('Reports')
-  const rerootedL3 = groupCard(page, 'Reports')
-  await expect(rerootedL3).toHaveAttribute('data-pulse', 'true')
+  await expect(breadcrumbReports).toHaveCount(1)
+  const l3Chip = page.getByTestId('atlas-region-chip').filter({ hasText: 'Reports' })
+  await expect(l3Chip).toHaveAttribute('data-pulse', 'true')
 
   // Cleanup (testing.md's within-file discipline): delete bottom-up,
   // since atlassvc.DeleteCard is blocked while a card still has
-  // children. The board is currently re-rooted to L2 (viewedID), which
-  // is exactly where cleanup needs to start.
+  // children. A chip is a place: clicking it drills straight to L3.
   async function deleteViaFlip(card: import('@playwright/test').Locator) {
     await openViaFlip(card)
     await openCardPageEdit(page)
@@ -274,7 +318,7 @@ test('a group entry inside a page re-roots the board to a deeper card, and the b
     await expect(overlay).not.toBeVisible()
   }
 
-  // Inside L3 (top-level here, since viewedID is now L2): delete its
+  // Inside L3 (the chip click drills straight there): delete its
   // own nested Q1 Summary first (DeleteCard blocks while children
   // exist), then go back up to L2 -- L3 is childless now, so it
   // renders as a plain leaf note there -- and delete L3 itself. Waits
@@ -286,7 +330,7 @@ test('a group entry inside a page re-roots the board to a deeper card, and the b
   // level deep, so "Q1 Summary" would match twice (L2's own child and
   // L3's preview grandchild) rather than the single card this step
   // means to flip.
-  await rerootedL3.getByTestId('atlas-group-header').click()
+  await l3Chip.click()
   await expect(breadcrumbReports).toHaveCount(3)
   await deleteViaFlip(noteCard(page, 'Q1 Summary'))
   await page.getByTestId('atlas-breadcrumb').getByText('Reports').nth(1).click()

@@ -141,3 +141,35 @@ func TestReconcileBuiltIns_RetiredKindMigratesUserCards(t *testing.T) {
 		t.Fatal("user card was deleted by kind retirement; migration must preserve it")
 	}
 }
+
+// TestDenseFixture_EnvGatedAndIdempotent proves the stress space only
+// appears when explicitly requested and never duplicates across
+// restarts of the same instance.
+func TestDenseFixture_EnvGatedAndIdempotent(t *testing.T) {
+	countDense := func(a *AtlasService) int {
+		n := 0
+		for _, c := range a.Cards() {
+			if len(c.ID) > 11 && c.ID[:11] == "atlas-dense" {
+				n++
+			}
+		}
+		return n
+	}
+
+	off := NewAtlasService(servicetest.NewFakeStore())
+	if got := countDense(off); got != 0 {
+		t.Fatalf("dense cards present without the env gate: %d", got)
+	}
+
+	t.Setenv("MILL_TEST_DENSE_ATLAS", "1")
+	store := servicetest.NewFakeStore()
+	a := NewAtlasService(store)
+	first := countDense(a)
+	if first == 0 {
+		t.Fatal("env gate set but no dense cards populated")
+	}
+	b := NewAtlasService(store)
+	if got := countDense(b); got != first {
+		t.Fatalf("dense fixture duplicated across restart: %d then %d", first, got)
+	}
+}
