@@ -282,6 +282,33 @@ test('the lens hides a kind within a space', async ({ page }) => {
   await expect(contactCard).toBeVisible()
 })
 
+test('lens-hiding a kind never removes a region frame of that kind -- containment is a role, not a type', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Atlas' }).click()
+  const exampleArea = groupCard(page, 'Example area')
+  await expect(exampleArea).toBeVisible()
+  const gettingStarted = noteCard(page, 'Getting started')
+  await expect(gettingStarted).toBeVisible()
+
+  // "Example area" is itself a Topic-kind card. Hiding Topic must hide
+  // the Topic LEAVES (Getting started, Scratchpad) but keep the area
+  // frame -- a place holding cards stays on the board regardless of
+  // its own kind.
+  await page.getByTestId('atlas-lens-open').click()
+  await page.getByRole('checkbox', { name: /Topic/ }).uncheck()
+  await page.keyboard.press('Escape')
+
+  await expect(gettingStarted).not.toBeVisible()
+  await expect(noteCard(page, 'Scratchpad')).not.toBeVisible()
+  await expect(exampleArea).toBeVisible()
+
+  // Restore for later tests in this worker.
+  await page.getByTestId('atlas-lens-open').click()
+  await page.getByRole('checkbox', { name: /Topic/ }).check()
+  await page.keyboard.press('Escape')
+  await expect(gettingStarted).toBeVisible()
+})
+
 test('a sibling card created into a Free-mode space lands clear of both leaf notes and region frames', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Atlas' }).click()

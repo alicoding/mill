@@ -5,11 +5,13 @@
    than split three ways -- none of them approaches architecture.md's
    500-line cap on its own. */
 
+/* renderHeader/renderBody replace the kit dialog's default regions --
+   and their padding with them -- so the page's own gutters live here. */
 .header {
     display: flex;
     align-items: center;
     gap: 10px;
-    padding: 0 0 14px;
+    padding: 16px 20px 14px;
     border-bottom: 1px solid var(--borderColor-default);
 }
 .glyph {
@@ -63,7 +65,7 @@
     display: grid;
     grid-template-columns: minmax(0, 2fr) minmax(220px, 240px);
     gap: 24px;
-    padding-top: 16px;
+    padding: 16px 20px 20px;
 }
 @media (max-width: 767px) {
     .body {
