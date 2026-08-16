@@ -37,7 +37,7 @@ import (
 // the git tag, build/config.yml's info.version, and this constant --
 // and release.yml's verify step fails the release when any pair
 // mismatches.
-const millVersion = "0.3.0"
+const millVersion = "0.4.0"
 
 // Wails uses Go's `embed` package to embed the frontend files into the binary.
 // Any files in the frontend/dist folder will be embedded into the binary and
