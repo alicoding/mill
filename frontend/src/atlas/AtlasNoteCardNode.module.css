@@ -205,3 +205,48 @@
         flex-shrink: 0;
     }
 }
+
+/* A ⌘K jump landing on this card (goal 0072 slice B): the pulse ring
+   sits on .flipScene (not .face) so it stays flat regardless of which
+   face .flipInner's rotateY currently shows. Reduced motion swaps the
+   animated ring for a static outline held for the same total window
+   (AtlasBoard.tsx's PULSE_MS_REDUCED) instead of animating. */
+@keyframes atlasPulseRing {
+    from {
+        box-shadow: 0 0 0 0 var(--fgColor-accent);
+    }
+    to {
+        box-shadow: 0 0 0 10px transparent;
+    }
+}
+.flipScene[data-pulse='true'] {
+    border-radius: var(--borderRadius-medium);
+    animation: atlasPulseRing 0.6s ease-out 2;
+}
+@media (prefers-reduced-motion: reduce) {
+    .flipScene[data-pulse='true'] {
+        animation: none;
+        outline: 2px solid var(--fgColor-accent);
+        outline-offset: 2px;
+    }
+}
+
+/* The transient "press Enter to open" hint (goal 0072 slice B):
+   positioned above the card, centered -- a sibling of .flipInner so
+   the flip transform never carries it along. */
+.hintChip {
+    position: absolute;
+    top: -26px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-family: var(--mill-mono);
+    font-size: 10px;
+    white-space: nowrap;
+    color: var(--fgColor-accent);
+    background: var(--bgColor-default);
+    border: 1px solid var(--fgColor-accent);
+    border-radius: 4px;
+    padding: 2px 6px;
+    pointer-events: none;
+    z-index: 10;
+}

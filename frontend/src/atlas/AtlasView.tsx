@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { Events } from '@wailsio/runtime'
 import { Text } from '@primer/react'
 import { ViewMode } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
-import type { Position } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
+import type { Card, Position } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 import { AtlasService } from '../shared/bindings'
 import { downloadJSON } from '../shared/downloadJSON'
 import { refreshAtlas, useAtlasStore } from './atlasStore'
@@ -11,6 +11,8 @@ import { applyLens, childrenOf, groupByKind, singleRootCard } from './atlasGroup
 import { useAtlasImportConfirm } from './useAtlasImportConfirm'
 import { AtlasToolbar } from './AtlasToolbar'
 import { AtlasBoard } from './AtlasBoard'
+import type { AtlasFocusRequest } from './AtlasBoard'
+import { AtlasJumpDialog } from './AtlasJumpDialog'
 import { AtlasCardOverlay } from './AtlasCardOverlay'
 import { AtlasMatrixView } from './AtlasMatrixView'
 import { AtlasCoverageView } from './AtlasCoverageView'
@@ -34,6 +36,10 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
 
   const [viewedID, setViewedID] = useState('')
   const [overlayCardID, setOverlayCardID] = useState<string | null>(null)
+  // A ⌘K jump's one-shot request into whichever board is currently
+  // mounted (goal 0072 slice B) -- AtlasBoard clears it via
+  // onFocusHandled once its own fly-to-card animation resolves.
+  const [focusRequest, setFocusRequest] = useState<AtlasFocusRequest | null>(null)
   // Traceability matrix / coverage (docs/goals/0064): both are viewed-
   // space-scoped dialogs, so a single boolean each is enough state --
   // no card/kind selection needs to survive a close/reopen.
@@ -119,6 +125,18 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
   const navigate = (id: string) => setViewedID(id)
   const drill = (id: string) => setViewedID(id)
   const openOverlay = (id: string) => setOverlayCardID(id)
+
+  // ⌘K's GO/OPEN (goal 0072 slice B): a target is already rendered on
+  // the current board either as one of its direct children, or --
+  // AtlasBoard's own one-nesting-level-deep group preview -- as a
+  // grandchild whose parent is itself a rendered child. Anything else
+  // needs a re-root to the target's own parent before AtlasBoard can
+  // fly to it.
+  const jumpToCard = (card: Card, openImmediately: boolean) => {
+    const parentIsRenderedChild = allCards.find((c) => c.ID === card.ParentID)?.ParentID === viewedID
+    if (card.ParentID !== viewedID && !parentIsRenderedChild) setViewedID(card.ParentID)
+    setFocusRequest({ cardID: card.ID, openImmediately })
+  }
 
   // The matrix/coverage dialogs' own "click a target/missing card"
   // action -- closes whichever projection dialog is open first, so the
@@ -230,10 +248,15 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
           links={allLinks}
           linkKinds={allLinkKinds}
           mode={effectiveViewMode}
+          viewedID={viewedID}
+          focusRequest={focusRequest}
           onDrill={drill}
           onOpenOverlay={openOverlay}
+          onFocusHandled={() => setFocusRequest(null)}
         />
       )}
+
+      <AtlasJumpDialog cards={allCards} kinds={allKinds} onJump={jumpToCard} />
 
       {overlayCard && (
         <AtlasCardOverlay
