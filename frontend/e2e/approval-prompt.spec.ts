@@ -1,4 +1,3 @@
-import type { Page } from '@playwright/test'
 import type { Client } from '@modelcontextprotocol/sdk/client/index.js'
 import { test, expect } from './fixtures/server'
 import { clickRowAction } from './inventoryRow'
@@ -6,6 +5,7 @@ import {
   connectMCPClient, exportWorkflowViaMCP, findWorkflowIdByLabel, stripExportedID,
   enableMCPWritesWithApprovalRequired, restoreMCPWriteDefaults,
 } from './mcpTestClient'
+import { workflowRow } from './fixtures/canvas'
 
 // Exercises the floating approval prompt's frontend at its hash route
 // (/#/approvalprompt, docs/goals/0023-attention-escalation.md item 1,
@@ -19,10 +19,6 @@ import {
 // belong in the manual-only registry (.claude/skills/run-mill/SKILL.md)
 // per .claude/rules/testing.md's own "manual-only registry... never
 // silently absent" requirement.
-
-function workflowRow(page: Page, label: string) {
-  return page.locator('[data-testid="inventory-row"][data-entity="workflow"]', { has: page.getByText(label, { exact: true }) })
-}
 
 test('the approval prompt route renders standalone and shows nothing pending', async ({ page }) => {
   await page.goto('/#/approvalprompt')

@@ -1,5 +1,7 @@
 import { test, expect } from './fixtures/server'
 import { clickRowAction } from './inventoryRow'
+import { workflowRow, activePanel, dragPaletteItemToCanvas } from './fixtures/canvas'
+import { waitForViewportStable } from './fixtures/animation'
 
 // Live run state on the authoring canvas (docs/SPEC.md §3.8's recorded
 // prototype element #2): DONE/ACTIVE/PENDING per node card, a CURRENT
@@ -7,39 +9,6 @@ import { clickRowAction } from './inventoryRow'
 // Both scenarios here are fully deterministic: no clipboard, no network,
 // no real external call ever actually fires (the guardrail checkpoint
 // node parks unconditionally, before anything downstream of it runs).
-
-function workflowRow(page: import('@playwright/test').Page, label: string) {
-  return page.locator('[data-testid="inventory-row"][data-entity="workflow"]', { has: page.getByText(label, { exact: true }) })
-}
-
-// See composition.spec.ts's own copy of this helper for the full
-// reasoning (Primer's TabPanel keeps every open tab mounted, toggling
-// `hidden` rather than unmounting; .last() resolves to the innermost
-// Canvas/Runs tabpanel once a saved workflow nests one).
-function activePanel(page: import('@playwright/test').Page) {
-  return page.locator('[role="tabpanel"]:not([hidden])').last()
-}
-
-// See composition.spec.ts's own copy of this helper for the full
-// reasoning (Locator.dragTo() doesn't fire real HTML5 DnD events).
-async function dragPaletteItemToCanvas(page: import('@playwright/test').Page, nodeTypeID: string) {
-  await page.evaluate((id) => {
-    const panel = document.querySelector('[role="tabpanel"]:not([hidden])')
-    if (!panel) throw new Error('no active tabpanel')
-    const palette = panel.querySelector(`[data-node-type-id="${id}"]`)
-    const canvas = panel.querySelector('.react-flow__pane')
-    if (!palette || !canvas) {
-      throw new Error(`drag setup failed: palette found=${!!palette} canvas found=${!!canvas}`)
-    }
-    const dataTransfer = new DataTransfer()
-    const rect = canvas.getBoundingClientRect()
-    const clientX = rect.x + rect.width / 2
-    const clientY = rect.y + rect.height / 2
-    palette.dispatchEvent(new DragEvent('dragstart', { bubbles: true, cancelable: true, dataTransfer }))
-    canvas.dispatchEvent(new DragEvent('dragover', { bubbles: true, cancelable: true, dataTransfer, clientX, clientY }))
-    canvas.dispatchEvent(new DragEvent('drop', { bubbles: true, cancelable: true, dataTransfer, clientX, clientY }))
-  }, nodeTypeID)
-}
 
 // Fits the graph, then adds one Zoom Out for clearance -- confirmed by
 // direct diagnosis (a real timeout naming the exact culprit: "<toolbar
@@ -54,9 +23,9 @@ async function dragPaletteItemToCanvas(page: import('@playwright/test').Page, no
 async function fitAndSpaceOut(page: import('@playwright/test').Page) {
   const panel = activePanel(page)
   await panel.getByRole('button', { name: 'Fit View' }).click()
-  await page.waitForTimeout(300)
+  await waitForViewportStable(panel)
   await panel.getByRole('button', { name: 'Zoom Out' }).click()
-  await page.waitForTimeout(200)
+  await waitForViewportStable(panel)
 }
 
 // Draws a real edge between two already-dropped nodes, found by the
@@ -73,9 +42,19 @@ async function fitAndSpaceOut(page: import('@playwright/test').Page) {
 // off a 12x12 handle by the time the browser actually processes it.
 // Connecting off the starter Trigger node specifically (not exercised by
 // any existing canvas e2e spec, which always deletes the starter first)
-// is what surfaced this.
+// is what surfaced this. Kept local, not the fixtures/canvas.ts
+// connectNodes: fitAndSpaceOut above already does this spec's own Fit
+// View/Zoom Out sequencing, so the shared version's baked-in Fit View
+// click would undo the Zoom Out's clearance; the .hover()-based drag
+// is this copy's own divergence too.
 async function connectNodes(page: import('@playwright/test').Page, sourceLabel: string, targetLabel: string) {
   const panel = activePanel(page)
+  // The interaction-race fix (goal 0080's burn-down, QUARANTINE.md):
+  // fitAndSpaceOut's own Zoom Out is still animating the viewport
+  // transform when a caller chains straight into connectNodes, so the
+  // hover-then-mousedown below could target a handle's pre-zoom
+  // position -- wait for the transform to settle first.
+  await waitForViewportStable(panel)
   const sourceHandle = panel.locator('.react-flow__node').filter({ hasText: sourceLabel }).locator('.react-flow__handle.source')
   const targetHandle = panel.locator('.react-flow__node').filter({ hasText: targetLabel }).locator('.react-flow__handle.target')
   await sourceHandle.hover()

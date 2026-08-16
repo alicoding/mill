@@ -1,4 +1,5 @@
 import { test, expect } from './fixtures/server'
+import { workflowRow, activePanel } from './fixtures/canvas'
 
 // Workflow breakpoints end to end in the live app (docs/adr/0031, goal
 // 0020, moved onto the node card by goal 0022 -- docs/goals/
@@ -14,14 +15,6 @@ import { test, expect } from './fixtures/server'
 
 const SEED = 'Example: Branch to a decision'
 const CAPTURE_NODE = 'example-branch-capture'
-
-function workflowRow(page: import('@playwright/test').Page, label: string) {
-  return page.locator('[data-testid="inventory-row"][data-entity="workflow"]').filter({ has: page.getByText(label, { exact: true }) })
-}
-
-function activePanel(page: import('@playwright/test').Page) {
-  return page.locator('[role="tabpanel"]:not([hidden])').last()
-}
 
 function captureNode(page: import('@playwright/test').Page) {
   return activePanel(page).locator(`[data-id="${CAPTURE_NODE}"]`)

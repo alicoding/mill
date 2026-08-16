@@ -1,5 +1,6 @@
 import { test, expect } from './fixtures/server'
 import { clickRowAction } from './inventoryRow'
+import { workflowRow } from './fixtures/canvas'
 
 // docs/SPEC.md §3.2's source-first analytics pattern on Activity
 // (asked for directly): pick the input source (a workflow) and see its
@@ -8,10 +9,6 @@ import { clickRowAction } from './inventoryRow'
 // seeded parent→child pair: running the parent produces a child run
 // invoked with a typed 'message' value, which then appears as a real
 // column cell (and search hit) under the child's own history.
-
-function workflowRow(page: import('@playwright/test').Page, label: string) {
-  return page.locator('[data-testid="inventory-row"][data-entity="workflow"]', { has: page.getByText(label, { exact: true }) })
-}
 
 test('Selecting a source workflow shows its durable runs with attribute columns and attribute search', async ({ page }) => {
   await page.goto('/')

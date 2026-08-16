@@ -1,4 +1,5 @@
 import { test, expect } from './fixtures/server'
+import { activePanel, dragPaletteItemToCanvas } from './fixtures/canvas'
 
 // The integration-http node asks ONLY for which integration to call --
 // no path/method/body fields at the workflow level (direct user
@@ -8,29 +9,6 @@ import { test, expect } from './fixtures/server'
 // request-form-intake.spec.ts; legacy nodes persisted with their own
 // path/method config still execute (Go-side regression tests cover
 // that precedence).
-
-function activePanel(page: import('@playwright/test').Page) {
-  return page.locator('[role="tabpanel"]:not([hidden])').last()
-}
-
-async function dragPaletteItemToCanvas(page: import('@playwright/test').Page, nodeTypeID: string) {
-  await page.evaluate((id) => {
-    const panel = document.querySelector('[role="tabpanel"]:not([hidden])')
-    if (!panel) throw new Error('no active tabpanel')
-    const palette = panel.querySelector(`[data-node-type-id="${id}"]`)
-    const canvas = panel.querySelector('.react-flow__pane')
-    if (!palette || !canvas) {
-      throw new Error(`drag setup failed: palette found=${!!palette} canvas found=${!!canvas}`)
-    }
-    const dataTransfer = new DataTransfer()
-    const rect = canvas.getBoundingClientRect()
-    const clientX = rect.x + rect.width / 2
-    const clientY = rect.y + rect.height / 2
-    palette.dispatchEvent(new DragEvent('dragstart', { bubbles: true, cancelable: true, dataTransfer }))
-    canvas.dispatchEvent(new DragEvent('dragover', { bubbles: true, cancelable: true, dataTransfer, clientX, clientY }))
-    canvas.dispatchEvent(new DragEvent('drop', { bubbles: true, cancelable: true, dataTransfer, clientX, clientY }))
-  }, nodeTypeID)
-}
 
 async function deleteStarterNode(page: import('@playwright/test').Page) {
   await activePanel(page).locator('.react-flow__node').click()

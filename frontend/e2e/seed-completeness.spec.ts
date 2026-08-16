@@ -1,4 +1,5 @@
 import { test, expect } from './fixtures/server'
+import { workflowRow, activePanel } from './fixtures/canvas'
 
 // docs/goals/0010: proves the new seeded artifacts (a List, an MCP
 // Server, and their workflows) are actually reachable and correct
@@ -20,14 +21,6 @@ import { test, expect } from './fixtures/server'
 // permanent seed, not a per-test fixture, so there's nothing to clean
 // up (same reasoning request-builtin-examples.spec.ts's own header
 // comment already gives).
-
-function workflowRow(page: import('@playwright/test').Page, label: string) {
-  return page.locator('[data-testid="inventory-row"][data-entity="workflow"]').filter({ has: page.getByText(label, { exact: true }) })
-}
-
-function activePanel(page: import('@playwright/test').Page) {
-  return page.locator('[role="tabpanel"]:not([hidden])').last()
-}
 
 test('Seeded List "Example: Country codes" is present, built-in-badged, with its real entries', async ({ page }) => {
   await page.goto('/')

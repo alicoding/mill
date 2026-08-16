@@ -1,5 +1,7 @@
 import { test, expect } from './fixtures/server'
 import { clickRowAction } from './inventoryRow'
+import { activePanel, dragPaletteItemToCanvas, connectNodes } from './fixtures/canvas'
+import { clickCanvasNode } from './fixtures/canvasNode'
 
 // docs/adr/0040 slice 1 (goal 0046): the live-app proof for the three
 // decisions this slice ships -- Field.Key immutability (server-side,
@@ -17,49 +19,6 @@ import { clickRowAction } from './inventoryRow'
 // seed; the block test asserts the block itself and never proceeds to
 // an actual delete, so the seed stays intact for every other spec
 // sharing this worker's server.
-
-function activePanel(page: import('@playwright/test').Page) {
-  return page.locator('[role="tabpanel"]:not([hidden])').last()
-}
-
-async function dragPaletteItemToCanvas(page: import('@playwright/test').Page, nodeTypeID: string) {
-  await page.evaluate((id) => {
-    const panel = document.querySelector('[role="tabpanel"]:not([hidden])')
-    if (!panel) throw new Error('no active tabpanel')
-    const palette = panel.querySelector(`[data-node-type-id="${id}"]`)
-    const canvas = panel.querySelector('.react-flow__pane')
-    if (!palette || !canvas) throw new Error(`drag setup failed: palette found=${!!palette} canvas found=${!!canvas}`)
-    const dataTransfer = new DataTransfer()
-    const rect = canvas.getBoundingClientRect()
-    const clientX = rect.x + rect.width / 2
-    const clientY = rect.y + rect.height / 2
-    palette.dispatchEvent(new DragEvent('dragstart', { bubbles: true, cancelable: true, dataTransfer }))
-    canvas.dispatchEvent(new DragEvent('dragover', { bubbles: true, cancelable: true, dataTransfer, clientX, clientY }))
-    canvas.dispatchEvent(new DragEvent('drop', { bubbles: true, cancelable: true, dataTransfer, clientX, clientY }))
-  }, nodeTypeID)
-}
-
-async function connectNodes(page: import('@playwright/test').Page, sourceLabel: string, targetLabel: string) {
-  const panel = activePanel(page)
-  await panel.getByRole('button', { name: 'Fit View' }).click()
-  await page.waitForTimeout(300)
-  const sourceHandle = panel.locator('.react-flow__node').filter({ hasText: sourceLabel }).locator('.react-flow__handle.source')
-  const targetHandle = panel.locator('.react-flow__node').filter({ hasText: targetLabel }).locator('.react-flow__handle.target')
-  const sourceBox = await sourceHandle.boundingBox()
-  const targetBox = await targetHandle.boundingBox()
-  if (!sourceBox || !targetBox) throw new Error('connectNodes: handle bounding box not found')
-  await page.mouse.move(sourceBox.x + sourceBox.width / 2, sourceBox.y + sourceBox.height / 2)
-  await page.mouse.down()
-  await page.mouse.move(targetBox.x + targetBox.width / 2, targetBox.y + targetBox.height / 2, { steps: 10 })
-  await page.mouse.up()
-}
-
-async function clickCanvasNode(page: import('@playwright/test').Page, panel: import('@playwright/test').Locator, label: string) {
-  const node = panel.locator('.react-flow__node').filter({ hasText: label })
-  const box = await node.boundingBox()
-  if (!box) throw new Error(`clickCanvasNode: node "${label}" has no bounding box`)
-  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2)
-}
 
 test('Deprecated column: de-emphasized in the List editor and excluded from a new list-search match parameter', async ({ page }) => {
   await page.goto('/')

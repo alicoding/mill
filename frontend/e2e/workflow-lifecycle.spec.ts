@@ -1,13 +1,10 @@
 import { test, expect } from './fixtures/server'
 import { clickRowAction } from './inventoryRow'
+import { workflowRow } from './fixtures/canvas'
 
 // docs/adr/0021 end to end over real Go bindings: a new workflow is a
 // draft until published; Publish/Make-live/Disable all happen on the
 // editor's Versions tab; the list badges reflect lifecycle state.
-
-function workflowRow(page: import('@playwright/test').Page, label: string) {
-  return page.locator('[data-testid="inventory-row"][data-entity="workflow"]', { has: page.getByText(label, { exact: true }) })
-}
 
 test('A workflow is a draft until published; publish, disable, and re-enable all round-trip', async ({ page }) => {
   await page.goto('/')

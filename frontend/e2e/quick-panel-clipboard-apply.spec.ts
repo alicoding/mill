@@ -2,6 +2,8 @@ import { test, expect } from './fixtures/server'
 import { withClipboardLock } from './fixtures/clipboardLock'
 import { clickRowAction } from './inventoryRow'
 import { connectMCPClient, exportWorkflowViaMCP, findWorkflowIdByLabel } from './mcpTestClient'
+import { workflowRow } from './fixtures/canvas'
+import { waitForViewportStable } from './fixtures/animation'
 
 // docs/goals/0039: "Apply from clipboard..." in the Quick Panel
 // (app/QuickPanel.tsx, app/QuickPanelClipboardApply.tsx) -- paste the
@@ -21,10 +23,6 @@ import { connectMCPClient, exportWorkflowViaMCP, findWorkflowIdByLabel } from '.
 // park-and-poll model is for a possibly-away MCP caller; this action's
 // own invocation is the human being present) -- proving that gap is
 // itself part of what this suite covers.
-
-function workflowRow(page: import('@playwright/test').Page, label: string) {
-  return page.locator('[data-testid="inventory-row"][data-entity="workflow"]', { has: page.getByText(label, { exact: true }) })
-}
 
 async function deleteWorkflowIfPresent(page: import('@playwright/test').Page, label: string) {
   await page.goto('/')
@@ -66,9 +64,9 @@ async function createSimpleWorkflow(page: import('@playwright/test').Page, label
   })
   await expect(panel.locator('.react-flow__node')).toHaveCount(2)
   await panel.getByRole('button', { name: 'Fit View' }).click()
-  await page.waitForTimeout(300)
+  await waitForViewportStable(panel)
   await panel.getByRole('button', { name: 'Zoom Out' }).click()
-  await page.waitForTimeout(200)
+  await waitForViewportStable(panel)
   const sourceHandle = panel.locator('.react-flow__node').filter({ hasText: 'Trigger: manual' }).locator('.react-flow__handle.source')
   const targetHandle = panel.locator('.react-flow__node').filter({ hasText: 'Process: Inject text' }).locator('.react-flow__handle.target')
   await sourceHandle.hover()

@@ -6,6 +6,8 @@ import {
   findWorkflowIdByLabel, restoreMCPWriteDefaults, stripExportedID,
 } from './mcpTestClient'
 import { assignDebugWorkflowHotkey } from './hotkeyDebugKnob'
+import { workflowRow, activePanel, dragPaletteItemToCanvas } from './fixtures/canvas'
+import { waitForViewportStable } from './fixtures/animation'
 
 // Exercises the Quick Panel's frontend (docs/adr/0033-quick-panel-
 // second-window.md, app/QuickPanel.tsx) at its hash route
@@ -24,21 +26,21 @@ import { assignDebugWorkflowHotkey } from './hotkeyDebugKnob'
 // per .claude/rules/testing.md's own "manual-only registry... never
 // silently absent" requirement.
 
-function activePanel(page: import('@playwright/test').Page) {
-  return page.locator('[role="tabpanel"]:not([hidden])').last()
-}
-
 // Same helpers as command-palette.spec.ts's own local copies (see that
 // file's comments for the full reasoning on each) -- duplicated rather
 // than shared, matching this suite's existing per-spec-file convention.
 async function fitAndSpaceOut(page: import('@playwright/test').Page) {
   const panel = activePanel(page)
   await panel.getByRole('button', { name: 'Fit View' }).click()
-  await page.waitForTimeout(300)
+  await waitForViewportStable(panel)
   await panel.getByRole('button', { name: 'Zoom Out' }).click()
-  await page.waitForTimeout(200)
+  await waitForViewportStable(panel)
 }
 
+// Kept local, not the fixtures/canvas.ts connectNodes -- same
+// divergence as command-palette.spec.ts's own copy (fitAndSpaceOut's
+// Fit View already ran; the shared version's baked-in one would undo
+// the Zoom Out clearance).
 async function connectNodes(page: import('@playwright/test').Page, sourceLabel: string, targetLabel: string) {
   const panel = activePanel(page)
   const sourceHandle = panel.locator('.react-flow__node').filter({ hasText: sourceLabel }).locator('.react-flow__handle.source')
@@ -47,29 +49,6 @@ async function connectNodes(page: import('@playwright/test').Page, sourceLabel: 
   await page.mouse.down()
   await targetHandle.hover()
   await page.mouse.up()
-}
-
-async function dragPaletteItemToCanvas(page: import('@playwright/test').Page, nodeTypeID: string) {
-  await page.evaluate((id) => {
-    const panel = document.querySelector('[role="tabpanel"]:not([hidden])')
-    if (!panel) throw new Error('no active tabpanel')
-    const palette = panel.querySelector(`[data-node-type-id="${id}"]`)
-    const canvas = panel.querySelector('.react-flow__pane')
-    if (!palette || !canvas) {
-      throw new Error(`drag setup failed: palette found=${!!palette} canvas found=${!!canvas}`)
-    }
-    const dataTransfer = new DataTransfer()
-    const rect = canvas.getBoundingClientRect()
-    const clientX = rect.x + rect.width / 2
-    const clientY = rect.y + rect.height / 2
-    palette.dispatchEvent(new DragEvent('dragstart', { bubbles: true, cancelable: true, dataTransfer }))
-    canvas.dispatchEvent(new DragEvent('dragover', { bubbles: true, cancelable: true, dataTransfer, clientX, clientY }))
-    canvas.dispatchEvent(new DragEvent('drop', { bubbles: true, cancelable: true, dataTransfer, clientX, clientY }))
-  }, nodeTypeID)
-}
-
-function workflowRow(page: import('@playwright/test').Page, label: string) {
-  return page.locator('[data-testid="inventory-row"][data-entity="workflow"]', { has: page.getByText(label, { exact: true }) })
 }
 
 // A deliberately clipboard-free workflow (trigger-manual -> a plain

@@ -1,4 +1,5 @@
 import { test, expect } from './fixtures/server'
+import { activePanel, dragPaletteItemToCanvas } from './fixtures/canvas'
 
 // Design wave 3 (goal 0001, audit §5): the palette's regrouping into 9
 // frontend display groups (composition/paletteGroups.ts) instead of
@@ -8,39 +9,11 @@ import { test, expect } from './fixtures/server'
 // a matching NODE_TYPE_GROUP entry would show up here as a stray
 // fallback-mapped item, not silently pass.
 
-function activePanel(page: import('@playwright/test').Page) {
-  return page.locator('[role="tabpanel"]:not([hidden])').last()
-}
-
 async function openPaletteOnNewWorkflow(page: import('@playwright/test').Page) {
   await page.goto('/')
   await page.getByRole('link', { name: 'Workflows' }).click()
   await page.getByTestId('new-workflow').click()
   await activePanel(page).getByTestId('toggle-palette').click()
-}
-
-// Native HTML5 drag events (dragstart/dragover/drop), not a raw mouse
-// down/move/up sequence -- CompositionCanvas's onCanvasDrop and
-// NodePalette's onPaletteDragStart are wired to the real HTML5 Drag
-// and Drop API, which mouse events alone don't trigger. Same pattern
-// e2e/ai-extract-fields-editor.spec.ts's own dragPaletteItemToCanvas
-// already established; duplicated here rather than shared since each
-// spec file already keeps its own small helper set.
-async function dragPaletteItemToCanvas(page: import('@playwright/test').Page, nodeTypeID: string) {
-  await page.evaluate((id) => {
-    const panel = document.querySelector('[role="tabpanel"]:not([hidden])')
-    if (!panel) throw new Error('no active tabpanel')
-    const palette = panel.querySelector(`[data-node-type-id="${id}"]`)
-    const canvas = panel.querySelector('.react-flow__pane')
-    if (!palette || !canvas) throw new Error(`drag setup failed: palette found=${!!palette} canvas found=${!!canvas}`)
-    const dataTransfer = new DataTransfer()
-    const rect = canvas.getBoundingClientRect()
-    const clientX = rect.x + rect.width / 2
-    const clientY = rect.y + rect.height / 2
-    palette.dispatchEvent(new DragEvent('dragstart', { bubbles: true, cancelable: true, dataTransfer }))
-    canvas.dispatchEvent(new DragEvent('dragover', { bubbles: true, cancelable: true, dataTransfer, clientX, clientY }))
-    canvas.dispatchEvent(new DragEvent('drop', { bubbles: true, cancelable: true, dataTransfer, clientX, clientY }))
-  }, nodeTypeID)
 }
 
 test('the palette renders 9 groups with the expected membership', async ({ page }) => {

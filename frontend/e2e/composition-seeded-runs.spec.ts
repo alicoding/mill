@@ -1,5 +1,6 @@
 import { test, expect } from './fixtures/server'
 import { withClipboardLock } from './fixtures/clipboardLock'
+import { workflowRow } from './fixtures/canvas'
 
 // Split out of composition.spec.ts once it crossed the 500-line limit
 // (CLAUDE.md), same "split along a real seam" discipline that already
@@ -18,10 +19,6 @@ import { withClipboardLock } from './fixtures/clipboardLock'
 // these assert that a run produced SOME visible result (success or
 // error), or check a specific step's own recorded output instead of
 // the workflow's clipboard-dependent terminal result.
-
-function workflowRow(page: import('@playwright/test').Page, label: string) {
-  return page.locator('[data-testid="inventory-row"][data-entity="workflow"]', { has: page.getByText(label, { exact: true }) })
-}
 
 // A run's result renders below the InventoryList (docs/goals/0007's
 // dense-row anatomy has no room for a result preview) -- scoped by the

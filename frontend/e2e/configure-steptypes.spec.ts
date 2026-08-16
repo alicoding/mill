@@ -1,6 +1,8 @@
 import type { Page } from '@playwright/test'
 import { test, expect } from './fixtures/server'
 import { clickRowAction } from './inventoryRow'
+import { activePanel } from './fixtures/canvas'
+import { clickCanvasNode } from './fixtures/canvasNode'
 
 // The step designer's real task sentence (.claude/rules/testing.md):
 // can a user create a named step type from a configured integration and
@@ -18,10 +20,6 @@ import { clickRowAction } from './inventoryRow'
 // (within-file discipline, testing.md) -- this worker's palette-count
 // assertions elsewhere (node-palette.spec.ts, composition.spec.ts) stay
 // pinned to the 32 built-in+seeded total for the rest of the run.
-
-function activePanel(page: Page) {
-  return page.locator('[role="tabpanel"]:not([hidden])').last()
-}
 
 function exactText(label: string): RegExp {
   return new RegExp(`^${label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`)
@@ -41,13 +39,6 @@ async function dragPaletteItemByLabelToCanvas(page: Page, label: string) {
     canvas.dispatchEvent(new DragEvent('dragover', { bubbles: true, cancelable: true, dataTransfer, clientX, clientY }))
     canvas.dispatchEvent(new DragEvent('drop', { bubbles: true, cancelable: true, dataTransfer, clientX, clientY }))
   })
-}
-
-async function clickCanvasNode(page: Page, panel: import('@playwright/test').Locator, label: string) {
-  const node = panel.locator('.react-flow__node').filter({ hasText: label })
-  const box = await node.boundingBox()
-  if (!box) throw new Error(`clickCanvasNode: node "${label}" has no bounding box`)
-  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2)
 }
 
 async function openStepTypesTab(page: Page) {

@@ -1,46 +1,13 @@
-import type { Locator, Page } from '@playwright/test'
 import { test, expect } from './fixtures/server'
 import { withClipboardLock } from './fixtures/clipboardLock'
+import { workflowRow, activePanel } from './fixtures/canvas'
+import { waitForViewportStable } from './fixtures/animation'
 
 // The three-pane step-detail overlay (docs/goals/0058): a canvas
 // double-click or the sidebar's own expand button opens a large
 // overlay showing a step's configuration beside its latest recorded
 // input/output, in place of splitting that same information across the
 // tiny sidebar and the separate Runs tab.
-
-// React Flow's Fit View/Zoom Out animate the `.react-flow__viewport`
-// element's own inline transform via d3-zoom's JS-driven interpolation
-// (not a CSS transition), so a fixed sleep after clicking either
-// control is a real flake risk under CPU contention -- it can resolve
-// before the pan/zoom settles, leaving pointInsideNode's bounding-box
-// read (and the double-click position derived from it) racing an
-// in-flight transform. Polling the transform string until it's
-// unchanged across two consecutive reads (same pattern
-// resizable-table.spec.ts's waitForStableBoundingBox uses for a drag
-// handle) waits on the actual condition instead of a guessed duration.
-async function waitForViewportStable(panel: Locator, timeout = 5_000) {
-  const viewport = panel.locator('.react-flow__viewport')
-  let previous: string | null = null
-  await expect
-    .poll(async () => {
-      const transform = await viewport.evaluate((el) => (el as HTMLElement).style.transform)
-      const stable = previous !== null && transform === previous
-      previous = transform
-      return stable
-    }, { timeout })
-    .toBe(true)
-}
-
-function workflowRow(page: Page, label: string) {
-  return page.locator('[data-testid="inventory-row"][data-entity="workflow"]', { has: page.getByText(label, { exact: true }) })
-}
-
-// See composition.spec.ts's own copy of this helper for the full
-// reasoning (Primer's TabPanel keeps every open tab mounted, toggling
-// `hidden` rather than unmounting).
-function activePanel(page: import('@playwright/test').Page) {
-  return page.locator('[role="tabpanel"]:not([hidden])').last()
-}
 
 function stepDetailOverlay(page: import('@playwright/test').Page) {
   return page.locator('[data-component="step-detail-overlay"]')

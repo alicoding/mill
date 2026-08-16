@@ -1,5 +1,6 @@
 import { test, expect } from './fixtures/server'
 import { clickRowAction } from './inventoryRow'
+import { workflowRow } from './fixtures/canvas'
 
 // Real Go bindings over HTTP (Wails3 server mode), not mocks -- same
 // setup as composition.spec.ts, split into its own file once that file
@@ -7,10 +8,6 @@ import { clickRowAction } from './inventoryRow'
 // export/import (compositionservice_export.go): ExportWorkflow's own
 // id/schema envelope contract and ImportWorkflow's uniform create-vs-
 // update rule (ADR-0036 decision 3).
-
-function workflowRow(page: import('@playwright/test').Page, label: string) {
-  return page.locator('[data-testid="inventory-row"][data-entity="workflow"]', { has: page.getByText(label, { exact: true }) })
-}
 
 test('Exporting a workflow downloads a portable JSON file with its real definition', async ({ page }) => {
   await page.goto('/')

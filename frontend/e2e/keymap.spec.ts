@@ -1,5 +1,6 @@
 import { test, expect } from './fixtures/server'
 import { clickRowAction } from './inventoryRow'
+import { workflowRow, activePanel } from './fixtures/canvas'
 
 // Exercises docs/goals/0016-keymap-system.md's command registry +
 // in-window keybinding dispatch (shared/commands.ts, App.tsx's one
@@ -11,14 +12,6 @@ import { clickRowAction } from './inventoryRow'
 // the JS-level command dispatch ⌘W now reaches (tab.close): a real
 // desktop-app press is verified manually (.claude/skills/run-mill),
 // never faked here.
-
-function workflowRow(page: import('@playwright/test').Page, label: string) {
-  return page.locator('[data-testid="inventory-row"][data-entity="workflow"]', { has: page.getByText(label, { exact: true }) })
-}
-
-function activePanel(page: import('@playwright/test').Page) {
-  return page.locator('[role="tabpanel"]:not([hidden])').last()
-}
 
 test('Cmd+S in a workflow editor tab saves', async ({ page }) => {
   await page.goto('/')

@@ -2,81 +2,14 @@ import { test, expect } from './fixtures/server'
 import { withClipboardLock } from './fixtures/clipboardLock'
 import { clickCanvasNode } from './fixtures/canvasNode'
 import { clickRowAction } from './inventoryRow'
+import { workflowRow, activePanel, dragPaletteItemToCanvas, connectNodes } from './fixtures/canvas'
+import { waitForViewportStable } from './fixtures/animation'
 
 // Canvas-mechanics edge cases for the same React Flow canvas
 // composition.spec.ts's header comment describes (SPEC.md §3/ADR-0005) --
 // drop collisions, node-type swap, the declared-Attributes test-input
 // dialog, and process-inject-text's multi-node composition -- split out
 // once composition.spec.ts crossed the 500-line limit (CLAUDE.md).
-
-function workflowRow(page: import('@playwright/test').Page, label: string) {
-  return page.locator('[data-testid="inventory-row"][data-entity="workflow"]', { has: page.getByText(label, { exact: true }) })
-}
-
-// See composition.spec.ts's own copy of this helper for the full
-// reasoning (Primer's TabPanel keeps every open tab mounted, toggling
-// `hidden` rather than unmounting).
-// .last(), not a bare match: a saved workflow's editor tab now nests a
-// second Canvas/Runs tab bar inside the outer per-workflow tab
-// (docs/SPEC.md §7's Update), so up to two [role="tabpanel"]:not([hidden])
-// elements can be visible at once (the outer workflow tab, the inner
-// Canvas/Runs one) -- document order always puts the outer one first,
-// so .last() reliably resolves to the innermost, most specific panel
-// regardless of whether a workflow has an inner tab bar or not.
-function activePanel(page: import('@playwright/test').Page) {
-  return page.locator('[role="tabpanel"]:not([hidden])').last()
-}
-
-// See composition.spec.ts's own copy of this helper for the full
-// reasoning (Locator.dragTo() doesn't fire real HTML5 DnD events, so the
-// palette's onDragStart/onDrop handlers need manually-dispatched
-// DragEvents instead).
-async function dragPaletteItemToCanvas(page: import('@playwright/test').Page, nodeTypeID: string) {
-  await page.evaluate((id) => {
-    const panel = document.querySelector('[role="tabpanel"]:not([hidden])')
-    if (!panel) throw new Error('no active tabpanel')
-    const palette = panel.querySelector(`[data-node-type-id="${id}"]`)
-    const canvas = panel.querySelector('.react-flow__pane')
-    if (!palette || !canvas) {
-      throw new Error(`drag setup failed: palette found=${!!palette} canvas found=${!!canvas}`)
-    }
-    const dataTransfer = new DataTransfer()
-    const rect = canvas.getBoundingClientRect()
-    const clientX = rect.x + rect.width / 2
-    const clientY = rect.y + rect.height / 2
-    palette.dispatchEvent(new DragEvent('dragstart', { bubbles: true, cancelable: true, dataTransfer }))
-    canvas.dispatchEvent(new DragEvent('dragover', { bubbles: true, cancelable: true, dataTransfer, clientX, clientY }))
-    canvas.dispatchEvent(new DragEvent('drop', { bubbles: true, cancelable: true, dataTransfer, clientX, clientY }))
-  }, nodeTypeID)
-}
-
-// Draws a real edge between two already-dropped nodes, found by the
-// (distinct) label text on their card -- CanvasNodeView.tsx's Handle
-// components (@xyflow/react) drive connection-dragging off native mouse
-// events, unlike the palette's own HTML5 Drag-and-Drop drop target
-// above, so Playwright's ordinary synthetic mouse sequence (down/move/up)
-// is the real interaction here, not a workaround. "Fit View" first is
-// load-bearing, not cosmetic: findFreeDropPosition's spiral can land a
-// node's handle directly under the MiniMap's fixed bottom-right overlay
-// (confirmed directly via document.elementFromPoint at the computed
-// handle center -- it resolved to the MiniMap's own SVG rect, not the
-// handle div, so the mousedown never reached React Flow's connection
-// logic at all), and the brief wait lets its pan/zoom transition settle
-// before bounding boxes are read.
-async function connectNodes(page: import('@playwright/test').Page, sourceLabel: string, targetLabel: string) {
-  const panel = activePanel(page)
-  await panel.getByRole('button', { name: 'Fit View' }).click()
-  await page.waitForTimeout(300)
-  const sourceHandle = panel.locator('.react-flow__node').filter({ hasText: sourceLabel }).locator('.react-flow__handle.source')
-  const targetHandle = panel.locator('.react-flow__node').filter({ hasText: targetLabel }).locator('.react-flow__handle.target')
-  const sourceBox = await sourceHandle.boundingBox()
-  const targetBox = await targetHandle.boundingBox()
-  if (!sourceBox || !targetBox) throw new Error('connectNodes: handle bounding box not found')
-  await page.mouse.move(sourceBox.x + sourceBox.width / 2, sourceBox.y + sourceBox.height / 2)
-  await page.mouse.down()
-  await page.mouse.move(targetBox.x + targetBox.width / 2, targetBox.y + targetBox.height / 2, { steps: 10 })
-  await page.mouse.up()
-}
 
 // process-inject-text (SPEC.md §3.3) needs no bespoke Inspector UI of its
 // own -- its "text" (FieldText) and "placement" (FieldOptions) fields
@@ -163,9 +96,9 @@ test('process-inject-text composes with an upstream node via the generic Inspect
   // View alone can still leave one edge-case node overlapping it.
   const panel = activePanel(page)
   await panel.getByRole('button', { name: 'Fit View' }).click()
-  await page.waitForTimeout(300)
+  await waitForViewportStable(panel)
   await panel.getByRole('button', { name: 'Zoom Out' }).click()
-  await page.waitForTimeout(200)
+  await waitForViewportStable(panel)
   await clickCanvasNode(page, activePanel(page), 'Apply: write HTML to clipboard')
   await expect(activePanel(page).getByTestId('canvas-config-field')).toHaveValue('e2e base payload')
   await clickCanvasNode(page, activePanel(page), 'Process: Inject text')

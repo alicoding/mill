@@ -1,4 +1,5 @@
 import { test, expect } from './fixtures/server'
+import { workflowRow, activePanel } from './fixtures/canvas'
 
 // Design-wave-1 fix #3: three dark-mode bugs caught in the full-app
 // design audit (screenshots: canvas-*-dark.png showed a light-hardcoded
@@ -8,14 +9,6 @@ import { test, expect } from './fixtures/server'
 // prefers-color-scheme -- Primer's ThemeProvider colorMode is driven by
 // that control (via useTheme()/App.tsx's data-color-mode mirroring),
 // so clicking it is the same real path a user takes, not a stand-in.
-
-function activePanel(page: import('@playwright/test').Page) {
-  return page.locator('[role="tabpanel"]:not([hidden])').last()
-}
-
-function workflowRow(page: import('@playwright/test').Page, label: string) {
-  return page.locator('[data-testid="inventory-row"][data-entity="workflow"]', { has: page.getByText(label, { exact: true }) })
-}
 
 async function switchToDarkTheme(page: import('@playwright/test').Page) {
   await page.getByRole('link', { name: 'Settings' }).click()

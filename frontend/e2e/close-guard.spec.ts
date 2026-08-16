@@ -1,5 +1,6 @@
 import { test, expect } from './fixtures/server'
 import { clickRowAction } from './inventoryRow'
+import { workflowRow, activePanel } from './fixtures/canvas'
 
 // The unsaved-changes close guard (docs/goals/0048-unsaved-close-
 // guard.md): every close path (mouse ✕/Back/overflow, keyboard
@@ -17,17 +18,6 @@ import { clickRowAction } from './inventoryRow'
 // Deliberately avoids every clipboard-touching node, same reasoning as
 // hot-exit.spec.ts's own header comment -- nothing here needs
 // withClipboardLock.
-
-function workflowRow(page: import('@playwright/test').Page, label: string) {
-  return page.locator('[data-testid="inventory-row"][data-entity="workflow"]', { has: page.getByText(label, { exact: true }) })
-}
-
-// See composition.spec.ts's own copy of this helper for the full
-// reasoning (Primer's TabPanel keeps every open tab mounted, toggling
-// `hidden` rather than unmounting).
-function activePanel(page: import('@playwright/test').Page) {
-  return page.locator('[role="tabpanel"]:not([hidden])').last()
-}
 
 // Polls localStorage for the debounced hot-exit scratch write
 // (canvasScratch.ts, ~500ms) to actually contain `marker`, same

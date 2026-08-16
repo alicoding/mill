@@ -1,6 +1,7 @@
 import { test, expect } from './fixtures/server'
 import { withClipboardLock } from './fixtures/clipboardLock'
 import { clickRowAction } from './inventoryRow'
+import { workflowRow, activePanel } from './fixtures/canvas'
 
 // Exercises the single execution path end-to-end (docs/adr/0004,
 // docs/adr/0008) through its current UI home: a workflow's own Runs tab
@@ -15,18 +16,6 @@ import { clickRowAction } from './inventoryRow'
 // hedged for osascript failing on a headless runner with no GUI
 // pasteboard session (SPEC.md §1.3), same as every other
 // clipboard-touching e2e test in this repo.
-
-function workflowRow(page: import('@playwright/test').Page, label: string) {
-  return page.locator('[data-testid="inventory-row"][data-entity="workflow"]', { has: page.getByText(label, { exact: true }) })
-}
-
-// .last(), same reasoning as composition.spec.ts's own activePanel(): a
-// saved workflow's editor tab nests a Canvas/Runs tablist inside the
-// outer per-workflow tab, so document order (outer panel opens first)
-// makes .last() resolve to the innermost, currently-visible one.
-function activePanel(page: import('@playwright/test').Page) {
-  return page.locator('[role="tabpanel"]:not([hidden])').last()
-}
 
 // Scoped by the workflow's own label, not activePanel()/unscoped --
 // docs/SPEC.md §3.7's state-persistence feature restores previously-

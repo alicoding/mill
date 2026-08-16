@@ -1,5 +1,6 @@
 import { test, expect } from './fixtures/server'
 import { clickRowAction } from './inventoryRow'
+import { workflowRow } from './fixtures/canvas'
 
 // docs/goals/0037's minimal e2e coverage: the reset-to-shipped-example
 // affordance (item 4) and the restore-deleted-example affordance (item
@@ -17,10 +18,6 @@ import { clickRowAction } from './inventoryRow'
 // ("Load sample HTML" et al.) stay pristine regardless of worker
 // scheduling order (testing.md's within-file/within-worker cleanup
 // discipline).
-
-function workflowRow(page: import('@playwright/test').Page, label: string) {
-  return page.locator('[data-testid="inventory-row"][data-entity="workflow"]', { has: page.getByText(label, { exact: true }) })
-}
 
 test('Reset-to-shipped-example: hidden until modified, then restores the golden content', async ({ page }) => {
   await page.goto('/')

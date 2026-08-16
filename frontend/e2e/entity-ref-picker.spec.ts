@@ -1,5 +1,7 @@
 import { test, expect } from './fixtures/server'
 import { clickRowAction } from './inventoryRow'
+import { workflowRow, activePanel, dragPaletteItemToCanvas, connectNodes } from './fixtures/canvas'
+import { clickCanvasNode } from './fixtures/canvasNode'
 
 // Exercises ADR-0009's live picker + inline quick-create: integration-
 // http's requestId field (RefKind: "request") renders as a Select
@@ -12,100 +14,8 @@ import { clickRowAction } from './inventoryRow'
 // own header comment already documents), not something workflow
 // deletion cleans up on its own.
 
-function workflowRow(page: import('@playwright/test').Page, label: string) {
-  return page.locator('[data-testid="inventory-row"][data-entity="workflow"]', { has: page.getByText(label, { exact: true }) })
-}
-
-// .last(), not a bare match: a saved workflow's editor tab now nests a
-// second Canvas/Runs tab bar inside the outer per-workflow tab
-// (docs/SPEC.md §7's Update), so up to two [role="tabpanel"]:not([hidden])
-// elements can be visible at once (the outer workflow tab, the inner
-// Canvas/Runs one) -- document order always puts the outer one first,
-// so .last() reliably resolves to the innermost, most specific panel
-// regardless of whether a workflow has an inner tab bar or not.
-function activePanel(page: import('@playwright/test').Page) {
-  return page.locator('[role="tabpanel"]:not([hidden])').last()
-}
-
-async function dragPaletteItemToCanvas(page: import('@playwright/test').Page, nodeTypeID: string) {
-  await page.evaluate((id) => {
-    const panel = document.querySelector('[role="tabpanel"]:not([hidden])')
-    if (!panel) throw new Error('no active tabpanel')
-    const palette = panel.querySelector(`[data-node-type-id="${id}"]`)
-    const canvas = panel.querySelector('.react-flow__pane')
-    if (!palette || !canvas) {
-      throw new Error(`drag setup failed: palette found=${!!palette} canvas found=${!!canvas}`)
-    }
-    const dataTransfer = new DataTransfer()
-    const rect = canvas.getBoundingClientRect()
-    const clientX = rect.x + rect.width / 2
-    const clientY = rect.y + rect.height / 2
-    palette.dispatchEvent(new DragEvent('dragstart', { bubbles: true, cancelable: true, dataTransfer }))
-    canvas.dispatchEvent(new DragEvent('dragover', { bubbles: true, cancelable: true, dataTransfer, clientX, clientY }))
-    canvas.dispatchEvent(new DragEvent('drop', { bubbles: true, cancelable: true, dataTransfer, clientX, clientY }))
-  }, nodeTypeID)
-}
-
 function requestRow(page: import('@playwright/test').Page, label: string) {
   return page.locator('[data-testid="inventory-row"][data-entity="request"]').filter({ has: page.getByText(label, { exact: true }) })
-}
-
-// See composition-canvas-interactions.spec.ts's own copy of these two
-// helpers for the full reasoning (Fit View first avoids the MiniMap-
-// overlap hazard a spiral-placed node's handle can land under; a raw
-// mouse click at a node's own top-left avoids the same hazard for
-// selection).
-async function connectNodes(page: import('@playwright/test').Page, sourceLabel: string, targetLabel: string) {
-  const panel = activePanel(page)
-  await panel.getByRole('button', { name: 'Fit View' }).click()
-  await page.waitForTimeout(300)
-  const sourceHandle = panel.locator('.react-flow__node').filter({ hasText: sourceLabel }).locator('.react-flow__handle.source')
-  const targetHandle = panel.locator('.react-flow__node').filter({ hasText: targetLabel }).locator('.react-flow__handle.target')
-  const sourceBox = await sourceHandle.boundingBox()
-  const targetBox = await targetHandle.boundingBox()
-  if (!sourceBox || !targetBox) throw new Error('connectNodes: handle bounding box not found')
-  await page.mouse.move(sourceBox.x + sourceBox.width / 2, sourceBox.y + sourceBox.height / 2)
-  await page.mouse.down()
-  await page.mouse.move(targetBox.x + targetBox.width / 2, targetBox.y + targetBox.height / 2, { steps: 10 })
-  await page.mouse.up()
-}
-
-// Selects a canvas node by clicking a point PROVEN to land inside its
-// own card, not a fixed offset -- React Flow's own Controls (bottom-
-// left: zoom/lock/Fit View) and MiniMap (bottom-right) are real, drawn
-// UI chrome that Fit View's own layout can place any node underneath
-// depending on node count/viewport (confirmed directly: the exact same
-// top-left-corner offset that worked for a two-node graph lands on the
-// Controls panel's own IconButton once a third node shifts the layout,
-// silently selecting nothing -- neither a plain `.click()` (targets
-// the center) nor `.click({ force: true })` (skips Playwright's
-// actionability check, not the browser's real hit-testing) catches
-// this). Tries a few candidate points around the card, verifying via
-// document.elementFromPoint that each one actually resolves inside
-// THIS node's own `.react-flow__node` wrapper (a per-node badge is a
-// valid hit too -- it's still a descendant, clicks on it still select
-// the node) before clicking there for real.
-async function clickCanvasNode(page: import('@playwright/test').Page, panel: import('@playwright/test').Locator, label: string) {
-  const node = panel.locator('.react-flow__node').filter({ hasText: label })
-  const box = await node.boundingBox()
-  if (!box) throw new Error(`clickCanvasNode: node "${label}" has no bounding box`)
-  const candidates = [
-    { x: box.x + 10, y: box.y + 10 },
-    { x: box.x + box.width - 10, y: box.y + 10 },
-    { x: box.x + box.width / 2, y: box.y + box.height / 2 },
-    { x: box.x + 10, y: box.y + box.height - 10 },
-  ]
-  for (const point of candidates) {
-    const insideNode = await page.evaluate(({ x, y }) => {
-      const el = document.elementFromPoint(x, y)
-      return !!el?.closest('.react-flow__node')
-    }, point)
-    if (insideNode) {
-      await page.mouse.click(point.x, point.y)
-      return
-    }
-  }
-  throw new Error(`clickCanvasNode: no point for node "${label}" resolved inside its own card -- covered by other canvas chrome at every candidate`)
 }
 
 test('Selecting an Integration node offers a live request picker with inline quick-create', async ({ page }) => {

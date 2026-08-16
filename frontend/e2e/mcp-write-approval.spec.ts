@@ -1,4 +1,3 @@
-import type { Page } from '@playwright/test'
 import type { Client } from '@modelcontextprotocol/sdk/client/index.js'
 import { test, expect } from './fixtures/server'
 import { clickRowAction } from './inventoryRow'
@@ -6,6 +5,7 @@ import {
   connectMCPClient, exportWorkflowViaMCP, findWorkflowIdByLabel, stripExportedID,
   enableMCPWritesWithApprovalRequired, restoreMCPWriteDefaults,
 } from './mcpTestClient'
+import { workflowRow } from './fixtures/canvas'
 
 // The park-and-poll MCP write approval lifecycle end to end
 // (docs/adr/0032): with writes enabled AND per-write approval left
@@ -16,10 +16,6 @@ import {
 // queue (ReviewView.tsx's pendingWrites section) -- the same durable
 // store the MCPWriteApprovals.tsx banner reads -- and approving it
 // there must execute the write, minting the new workflow.
-
-function workflowRow(page: Page, label: string) {
-  return page.locator('[data-testid="inventory-row"][data-entity="workflow"]', { has: page.getByText(label, { exact: true }) })
-}
 
 test('a parked MCP write appears as a Review row and approving it there executes the write', async ({ page }, testInfo) => {
   await enableMCPWritesWithApprovalRequired(page)

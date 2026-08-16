@@ -1,5 +1,6 @@
 import { test, expect } from './fixtures/server'
 import { withClipboardLock } from './fixtures/clipboardLock'
+import { workflowRow } from './fixtures/canvas'
 
 // docs/goals/0014-home-dashboard.md, docs/SPEC.md §3.2.3. Real Go
 // bindings over HTTP (Wails3 server mode), not mocks -- same setup as
@@ -18,10 +19,6 @@ import { withClipboardLock } from './fixtures/clipboardLock'
 // around -- Most-used and the chart (once "include test runs" is
 // checked) don't have that restriction, and are what these runs
 // actually prove out.
-
-function workflowRow(page: import('@playwright/test').Page, label: string) {
-  return page.locator('[data-testid="inventory-row"][data-entity="workflow"]', { has: page.getByText(label, { exact: true }) })
-}
 
 test('Home shows a time-saved figure with its formula, a rendered chart, and a live minutes-saved edit on the most-used list', async ({ page }) => {
   await withClipboardLock(async () => {

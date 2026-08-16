@@ -1,5 +1,6 @@
 import { test, expect } from './fixtures/server'
 import { clickRowAction } from './inventoryRow'
+import { workflowRow, activePanel } from './fixtures/canvas'
 
 // docs/SPEC.md §3.8's InventoryList entry: every resource inventory
 // default-sorts last-updated-first, not creation order or alphabetical
@@ -16,14 +17,6 @@ import { clickRowAction } from './inventoryRow'
 // (inventorySort.test.ts); this is the one end-to-end proof that the
 // real create/edit -> save -> re-render path actually reorders a real
 // page, not a second copy of the sort's own edge cases.
-
-function workflowRow(page: import('@playwright/test').Page, label: string) {
-  return page.locator('[data-testid="inventory-row"][data-entity="workflow"]', { has: page.getByText(label, { exact: true }) })
-}
-
-function activePanel(page: import('@playwright/test').Page) {
-  return page.locator('[role="tabpanel"]:not([hidden])').last()
-}
 
 // Proven against two workflows this test itself creates (never the
 // seeded built-ins, so no other spec's assumptions about seed data/
