@@ -88,5 +88,23 @@ export default defineConfig({
     // not Vitest unit tests -- exclude them here or Vitest tries to run
     // them under its own runner and fails on @playwright/test's APIs.
     exclude: [...configDefaults.exclude, "e2e/**"],
+    coverage: {
+      provider: "v8",
+      // Hand-written source only -- generated Wails bindings are
+      // exempt for the same we-don't-own-their-shape reason
+      // scripts/check-loc.sh exempts them.
+      include: ["src/**"],
+      exclude: ["src/**/*.test.*", "src/locales/**"],
+      // Floors are the MEASURED baseline at adoption (goal 0080),
+      // never aspirational -- autoUpdate ratchets them upward
+      // whenever real coverage improves, so the floor only climbs.
+      thresholds: {
+        statements: 13.05,
+        branches: 13.22,
+        functions: 8.26,
+        lines: 12.68,
+        autoUpdate: true,
+      },
+    },
   },
 });

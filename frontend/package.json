@@ -10,7 +10,7 @@
     "build": "tsc && vite build --mode production",
     "preview": "vite preview",
     "lint": "eslint .",
-    "test": "vitest run",
+    "test": "vitest run --coverage",
     "boundaries": "depcruise -c .dependency-cruiser.cjs src"
   },
   "dependencies": {
@@ -46,6 +46,7 @@
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.4",
     "@vitejs/plugin-react": "^6.0.0",
+    "@vitest/coverage-v8": "^4.1.10",
     "dependency-cruiser": "^18.1.1",
     "eslint": "^10.8.1",
     "eslint-plugin-i18next": "^6.1.5",
