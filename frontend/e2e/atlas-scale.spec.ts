@@ -128,10 +128,20 @@ test('a dense area previews bounded: capped tiles, region chips, a truthful ghos
     const ea = page.locator('[data-testid="atlas-group-card"]').filter({ has: page.locator('[aria-label="Zoom into Example area"]') })
     const gs = page.locator('[aria-label="Flip Getting started"]')
     await expect(ea).toBeVisible()
+    // Poll: the toggle's re-layout lands a paint or two after the
+    // click -- a one-shot sample raced it on CI and measured the
+    // FREE-mode positions instead.
+    await expect
+      .poll(async () => {
+        const eaBox = await ea.boundingBox()
+        const gsBox = await gs.boundingBox()
+        if (!eaBox || !gsBox) return Number.NaN
+        return Math.abs(gsBox.y - eaBox.y)
+      })
+      .toBeLessThan(3)
     const eaBox = await ea.boundingBox()
     const gsBox = await gs.boundingBox()
     if (!eaBox || !gsBox) throw new Error('auto-arrange assertion cards missing bounding boxes')
-    expect(Math.abs(gsBox.y - eaBox.y)).toBeLessThan(3)
     expect(gsBox.x).toBeGreaterThan(eaBox.x + eaBox.width - 3)
 
     await page.close()
