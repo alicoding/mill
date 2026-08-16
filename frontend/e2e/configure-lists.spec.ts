@@ -1,4 +1,5 @@
 import { test, expect } from './fixtures/server'
+import { clickCanvasNode } from './fixtures/canvasNode'
 import { clickRowAction } from './inventoryRow'
 
 // docs/goals/0011-lists-maturation.md: exercises the typed List
@@ -50,29 +51,6 @@ async function connectNodes(page: import('@playwright/test').Page, sourceLabel: 
   await page.mouse.down()
   await page.mouse.move(targetBox.x + targetBox.width / 2, targetBox.y + targetBox.height / 2, { steps: 10 })
   await page.mouse.up()
-}
-
-async function clickCanvasNode(page: import('@playwright/test').Page, panel: import('@playwright/test').Locator, label: string) {
-  const node = panel.locator('.react-flow__node').filter({ hasText: label })
-  const box = await node.boundingBox()
-  if (!box) throw new Error(`clickCanvasNode: node "${label}" has no bounding box`)
-  const candidates = [
-    { x: box.x + 10, y: box.y + 10 },
-    { x: box.x + box.width - 10, y: box.y + 10 },
-    { x: box.x + box.width / 2, y: box.y + box.height / 2 },
-    { x: box.x + 10, y: box.y + box.height - 10 },
-  ]
-  for (const point of candidates) {
-    const insideNode = await page.evaluate(({ x, y }) => {
-      const el = document.elementFromPoint(x, y)
-      return !!el?.closest('.react-flow__node')
-    }, point)
-    if (insideNode) {
-      await page.mouse.click(point.x, point.y)
-      return
-    }
-  }
-  throw new Error(`clickCanvasNode: no point for node "${label}" resolved inside its own card`)
 }
 
 test('Configuring a typed List: add a column, add a row, both persist', async ({ page }) => {
