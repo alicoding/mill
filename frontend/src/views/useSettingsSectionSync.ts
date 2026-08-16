@@ -20,27 +20,50 @@ export function useSettingsSectionSync(sectionIds: string[], initialSection: str
     sectionEls.current.get(id)?.scrollIntoView({ behavior: reducedMotion ? 'auto' : 'smooth', block: 'start' })
   }
 
-  // Scroll-sync: biased to the top third of the viewport (rootMargin
-  // shrinks the bottom 66%) so a section is marked active as soon as its
-  // heading crosses into the upper part of the pane, not only once it's
-  // fully in view -- matches the design contract's VS Code-style bias.
+  // Scroll-sync: active = the nearest section heading ABOVE the
+  // reading line (just under the sticky filter -- a deeper line lets
+  // two short sections sit above it at page top and marks the wrong
+  // one), recomputed from a full
+  // DOM snapshot on every scroll tick. Deliberately NOT an
+  // IntersectionObserver: IO callbacks only carry entries whose state
+  // CHANGED, so scrolling back up delivered only the departing
+  // section (not-intersecting) and the stale active id stuck. A
+  // rAF-throttled capture-phase
+  // scroll listener sees the settings pane's own scroll (element
+  // scroll doesn't bubble, capture does) and nine getBoundingClientRect
+  // calls per tick are cheap.
   useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const visible = entries.filter((e) => e.isIntersecting)
-        if (visible.length === 0) return
-        const topmost = visible.reduce((a, b) => (a.boundingClientRect.top <= b.boundingClientRect.top ? a : b))
-        for (const [id, el] of sectionEls.current) {
-          if (el === topmost.target) { setActiveId(id); break }
-        }
-      },
-      { rootMargin: '0px 0px -66% 0px', threshold: 0 },
-    )
-    for (const id of sectionIds) {
-      const el = sectionEls.current.get(id)
-      if (el) observer.observe(el)
+    let raf = 0
+    const computeActive = () => {
+      raf = 0
+      const bandLine = 120
+      let candidate = sectionIds[0]
+      for (const id of sectionIds) {
+        const el = sectionEls.current.get(id)
+        if (!el) continue
+        if (el.getBoundingClientRect().top <= bandLine) candidate = id
+        else break
+      }
+      // A short final section can never climb above the reading line
+      // -- when the scroll container rests at its bottom, the last
+      // section is what the reader is looking at.
+      const first = sectionEls.current.get(sectionIds[0])
+      let scroller: HTMLElement | null = first?.parentElement ?? null
+      while (scroller && scroller.scrollHeight <= scroller.clientHeight) scroller = scroller.parentElement
+      if (scroller && scroller.scrollTop + scroller.clientHeight >= scroller.scrollHeight - 2) {
+        candidate = sectionIds[sectionIds.length - 1]
+      }
+      setActiveId((cur) => (cur === candidate ? cur : candidate))
     }
-    return () => observer.disconnect()
+    const onScroll = () => {
+      if (raf === 0) raf = requestAnimationFrame(computeActive)
+    }
+    window.addEventListener('scroll', onScroll, true)
+    computeActive()
+    return () => {
+      window.removeEventListener('scroll', onScroll, true)
+      if (raf) cancelAnimationFrame(raf)
+    }
   }, [sectionIds])
 
   // Deep-link landing: consumed once per distinct incoming section id

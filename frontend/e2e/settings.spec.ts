@@ -198,6 +198,23 @@ test('Settings TOC navigates to a section and marks it active', async ({ page })
     expect(box?.y).toBeLessThan(250)
   }).toPass({ timeout: 5_000 })
   await expect(backupsItem).toHaveAttribute('aria-current', 'location')
+
+  // Regression: scrolling back up must re-activate the section at the
+  // top -- the old IntersectionObserver sync only saw state CHANGES,
+  // so the departing section's exit delivered an empty visible set and
+  // the stale active id stuck.
+  await page.getByTestId('settings-section-appearance').evaluate((el) => el.scrollIntoView({ block: 'start' }))
+  await expect(page.getByTestId('settings-toc-item-appearance')).toHaveAttribute('aria-current', 'location')
+  await expect(backupsItem).not.toHaveAttribute('aria-current', 'location')
+
+  // Regression: a short final section can never cross the reading
+  // line, so resting at the scroll bottom must activate it anyway.
+  await page.getByTestId('settings-section-updates').evaluate((el) => {
+    let scroller = el.parentElement
+    while (scroller && scroller.scrollHeight <= scroller.clientHeight) scroller = scroller.parentElement
+    if (scroller) scroller.scrollTop = scroller.scrollHeight
+  })
+  await expect(page.getByTestId('settings-toc-item-updates')).toHaveAttribute('aria-current', 'location')
 })
 
 test('Settings filter narrows to matching sections and restores on clear', async ({ page }) => {
