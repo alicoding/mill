@@ -1,6 +1,5 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import type { StatusStampVariant } from './StatusStamp'
 import { CompositionService, ConfigureService, SettingsService } from './bindings'
 import type { NodeType, Workflow } from '../../bindings/github.com/alicoding/mill/internal/domain/composition/models'
 import type { HTTPRequest } from '../../bindings/github.com/alicoding/mill/internal/domain/httprequest/models'
@@ -106,32 +105,6 @@ export function viewsEqual(a: View, b: View): boolean {
   return true
 }
 
-// Shared by PlaceholderView and the sidebar nav's status dot -- DRYed
-// up here rather than left as separate copies.
-const STATUS_VARIANT: Record<string, StatusStampVariant> = {
-  LOCKED: 'success',
-  OPEN: 'caution',
-  PARKED: 'neutral',
-}
-
-export function statusVariant(status: string): StatusStampVariant {
-  return STATUS_VARIANT[status] ?? 'neutral'
-}
-
-// Same three-way status mapping as statusVariant, expressed as a
-// fgColor token instead of a Label variant -- for the sidebar's dot
-// indicator (RunsView.tsx's STEP_ICON already colors an Octicon this
-// same way via a direct `fill` prop, the established pattern here).
-const STATUS_DOT_COLOR: Record<string, string> = {
-  LOCKED: 'var(--fgColor-success)',
-  OPEN: 'var(--fgColor-attention)',
-  PARKED: 'var(--fgColor-muted)',
-}
-
-export function statusDotColor(status: string): string {
-  return STATUS_DOT_COLOR[status] ?? 'var(--fgColor-muted)'
-}
-
 const MAX_ACTIVITY_ENTRIES = 50
 
 interface AppState {
@@ -230,6 +203,12 @@ interface AppState {
   // callback-chain shape as openWorkflowRequest above.
   canvasCommandRequest: 'save' | 'run' | null
   requestCanvasCommand: (command: 'save' | 'run') => void
+  // atlas.up (shared/commands.ts) can't reach AtlasView's own
+  // viewedID -- a monotonic counter signal the mounted AtlasView
+  // consumes, same store-field-beats-a-callback-chain shape as
+  // canvasCommandRequest above.
+  atlasUpRequest: number
+  requestAtlasUp: () => void
   consumeCanvasCommandRequest: () => void
   // Every close path (docs/goals/0048) sets this instead of calling a
   // closer directly -- app/useWorkTabCloseGuard.ts is the one place
@@ -436,6 +415,8 @@ export const useAppStore = create<AppState>()(
       setKeybindingOverrides: (overrides) => set({ keybindingOverrides: overrides }),
       canvasCommandRequest: null,
       requestCanvasCommand: (command) => set({ canvasCommandRequest: command }),
+      atlasUpRequest: 0,
+      requestAtlasUp: () => set((s) => ({ atlasUpRequest: s.atlasUpRequest + 1 })),
       consumeCanvasCommandRequest: () => set({ canvasCommandRequest: null }),
       workTabCloseRequest: null,
       requestWorkTabClose: (request) => set({ workTabCloseRequest: request }),

@@ -47,7 +47,10 @@ function AtlasRegionChipNodeInner({ data }: NodeProps<AtlasRegionChipRFNode>) {
       data-testid="atlas-region-chip"
       data-pulse={data.pulsed}
       data-flipped={data.flipped}
-      onClick={() => data.onToggleFlip(data.card.ID)}
+      onClick={(e) => {
+        if (e.metaKey || e.ctrlKey) data.onOpenOverlay(data.card.ID)
+        else data.onToggleFlip(data.card.ID)
+      }}
       onDoubleClick={(e) => {
         e.stopPropagation()
         data.onDrill(data.card.ID)

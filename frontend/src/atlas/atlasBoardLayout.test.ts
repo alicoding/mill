@@ -94,12 +94,43 @@ describe('computeAutoArrangeLayout', () => {
     const layout = computeAutoArrangeLayout(topLevel, all)
     const byY = [...layout.boxes.entries()].sort((a, b) => a[1].y - b[1].y || a[1].x - b[1].x)
     const order = byY.map(([id]) => id)
-    // Groups (group-a before group-b, both CreatedAt-ordered) occupy
-    // the first row; leaves (leaf-a before leaf-b) start a fresh row
-    // below them.
+    // With no adjacency, frames flow first (CreatedAt-ordered) then
+    // leaves (CreatedAt-ordered) in one continuous wrap.
     expect(order.indexOf('group-a')).toBeLessThan(order.indexOf('group-b'))
     expect(order.indexOf('leaf-a')).toBeLessThan(order.indexOf('leaf-b'))
     expect(order.indexOf('group-b')).toBeLessThan(order.indexOf('leaf-a'))
+  })
+
+  it('link adjacency seats a linked leaf immediately after its frame instead of exiling it to the end', () => {
+    const topLevel = [
+      card('frame-a', '', '2026-01-01'),
+      card('frame-b', '', '2026-01-02'),
+      card('lonely-leaf', '', '2026-01-01'),
+      card('linked-leaf', '', '2026-01-02'),
+    ]
+    const all = [
+      ...topLevel,
+      card('child-a', 'frame-a', '1'),
+      card('child-b', 'frame-b', '1'),
+    ]
+    const adjacency = new Map([
+      ['frame-a', ['linked-leaf']],
+      ['linked-leaf', ['frame-a']],
+    ])
+    const layout = computeAutoArrangeLayout(topLevel, all, adjacency)
+    const placementOrder = [...layout.boxes.keys()]
+    // linked-leaf rides right behind frame-a -- ahead of frame-b and
+    // the unlinked leaf despite its later CreatedAt.
+    expect(placementOrder).toEqual(['frame-a', 'linked-leaf', 'frame-b', 'lonely-leaf'])
+  })
+
+  it('a wider row cap keeps more cards on one row; the constant stays the floor', () => {
+    const all = Array.from({ length: 6 }, (_, i) => card(`leaf-${i}`, '', String(i)))
+    const wide = computeAutoArrangeLayout(all, all, new Map(), 6 * NOTE_WIDTH + 5 * BOARD_GAP)
+    expect(new Set([...wide.boxes.values()].map((b) => b.y)).size).toBe(1)
+    // A cap below the four-note constant is floored, not honored.
+    const floored = computeAutoArrangeLayout(all, all, new Map(), 100)
+    expect(new Set([...floored.boxes.values()].map((b) => b.y)).size).toBe(2)
   })
 
   it('wraps a row once it would exceed the max row width', () => {

@@ -44,6 +44,11 @@ export interface Command {
   // item's scope covers, named as a future extension rather than half-
   // built here.
   extraBindings?: KeyCombo[]
+  // Surface-scoped commands (goal 0071's recorded shape): when set,
+  // the command only dispatches while the active view's kind is
+  // listed, and the palette seats it in its "On this page" section
+  // instead of the global Commands group. Globals simply omit it.
+  surface?: View['kind'][]
   run: () => void
 }
 
@@ -229,6 +234,17 @@ export const COMMANDS: Command[] = [
     run: () => setView({ kind: 'configure' }),
   },
   {
+    // Finder's own "Enclosing folder" convention (⌘↑) applied to the
+    // Atlas depth ladder: one step up from the focused place. The
+    // navigation itself lives in AtlasView (it owns viewedID) --
+    // same store-signal seam canvasCommandRequest documents above.
+    id: 'atlas.up',
+    label: 'Go up one level',
+    defaultBinding: { mods: ['cmd'], key: 'ArrowUp' },
+    surface: ['atlas'],
+    run: () => useAppStore.getState().requestAtlasUp(),
+  },
+  {
     // ⌘0..⌘5 mirror the sidebar's own top-to-bottom order -- Atlas
     // sits between Configure and Activity there, so it takes ⌘3 and
     // the two below shift down one.
@@ -299,7 +315,9 @@ export function dispatchCommandForEvent(e: KeyboardEvent, overrides: Record<stri
   const pressed = comboFromEvent(e)
   if (!pressed) return false
   const want = comboKey(pressed.mods, pressed.key)
+  const activeKind = useAppStore.getState().view.kind
   for (const command of COMMANDS) {
+    if (command.surface && !command.surface.includes(activeKind)) continue
     const binding = effectiveBinding(command, overrides)
     const bindings = binding ? [binding, ...(command.extraBindings ?? [])] : (command.extraBindings ?? [])
     if (bindings.some((b) => comboKey(b.mods, b.key) === want)) {

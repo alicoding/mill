@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next'
 import { Heading, Text, Button } from '@primer/react'
-import { useAppStore, statusVariant } from '../shared/store'
+import { useAppStore } from '../shared/store'
+import { statusVariant } from '../shared/statusPresentation'
 import { StatusStamp } from '../shared/StatusStamp'
 import styles from '../shared/ListCard.module.css'
 import PageContainer from '../shared/PageContainer'

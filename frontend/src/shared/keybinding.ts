@@ -30,6 +30,9 @@ export function keyFromEventCode(code: string): string | null {
   // the same physical keys, distinguished only by the Shift mod.
   if (code === 'BracketLeft') return '['
   if (code === 'BracketRight') return ']'
+  // Arrow keys exist for atlas.up's ⌘↑ default (goal 0071 slice --
+  // Finder's own "Enclosing folder" convention for going up a level).
+  if (code === 'ArrowUp' || code === 'ArrowDown' || code === 'ArrowLeft' || code === 'ArrowRight') return code
   return null
 }
 
@@ -145,7 +148,7 @@ const MOD_SYMBOL: Record<string, string> = { cmd: '⌘', ctrl: '⌃', shift: '�
 // checked against Apple's own usage before picking ↩, not invented.
 // Only Enter needs this today; Tab/Space stay spelled out (TAB/SPACE),
 // unchanged, since nothing has asked for those as glyphs.
-const KEY_SYMBOL: Record<string, string> = { Enter: '↩' }
+const KEY_SYMBOL: Record<string, string> = { Enter: '↩', ArrowUp: '↑', ArrowDown: '↓', ArrowLeft: '←', ArrowRight: '→' }
 
 // formatCombo renders a KeyCombo as a compact symbol string (e.g.
 // "⌘⇧S"), mirroring triggersvc.FormatBinding (Go) exactly for mods --

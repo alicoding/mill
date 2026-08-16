@@ -94,7 +94,8 @@
     "groups": {
       "commands": "Commands",
       "workflows": "Workflows",
-      "tabs": "Open tabs"
+      "tabs": "Open tabs",
+      "surface": "On this page"
     },
     "testRun": "Test run",
     "runLabel": "Run: {{label}}",

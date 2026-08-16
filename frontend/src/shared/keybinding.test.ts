@@ -68,7 +68,7 @@ describe('comboFromEvent', () => {
   })
 
   it('returns null for an unsupported key even with a modifier held', () => {
-    expect(comboFromEvent(event({ code: 'ArrowLeft', metaKey: true }))).toBeNull()
+    expect(comboFromEvent(event({ code: 'F5', metaKey: true }))).toBeNull()
   })
 
   it('captures Ctrl+Tab, the keymap default for tab.next', () => {

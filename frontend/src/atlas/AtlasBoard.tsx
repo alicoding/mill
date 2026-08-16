@@ -174,9 +174,34 @@ function AtlasBoardInner({ cards, allCards, kinds, links, linkKinds, mode, viewe
     }
   }, [freeMoves])
 
+  // The board's arteries, resolved once and shared: the edges memo
+  // below renders them; Auto-arrange consumes them as the adjacency
+  // that seats linked things beside each other.
+  const arteries = useMemo(() => resolveBoardEdges(links, new Set(cards.map((c) => c.ID)), allCards), [links, cards, allCards])
+
+  // Auto-arrange rows wrap at the board's real width (a fixed cap
+  // left a dead right-hand column); the pure-layout constant stays
+  // the floor so a narrow pane still wraps.
+  const [boardWidth, setBoardWidth] = useState(0)
+  useEffect(() => {
+    const el = wrapperRef.current
+    if (!el) return
+    const observer = new ResizeObserver((entries) => {
+      const w = entries[0]?.contentRect.width
+      if (w) setBoardWidth(w)
+    })
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [])
+
   const builtNodes = useMemo(() => {
     const kindByID = new Map(kinds.map((k) => [k.ID, k]))
-    const autoLayout = !isFree ? computeAutoArrangeLayout(cards, allCards) : null
+    const adjacency = new Map<string, string[]>()
+    for (const a of arteries) {
+      adjacency.set(a.source, [...(adjacency.get(a.source) ?? []), a.target])
+      adjacency.set(a.target, [...(adjacency.get(a.target) ?? []), a.source])
+    }
+    const autoLayout = !isFree ? computeAutoArrangeLayout(cards, allCards, adjacency, boardWidth > 0 ? boardWidth - 48 : undefined) : null
     const moveByID = new Map(freeMoves.map((m) => [m.id, m]))
     const nodes: BoardRFNode[] = []
 
@@ -290,13 +315,12 @@ function AtlasBoardInner({ cards, allCards, kinds, links, linkKinds, mode, viewe
       }
     }
     return nodes
-  }, [cards, allCards, kinds, links, linkKinds, isFree, readOnly, flippedID, pulsedID, hintedID, onOpenOverlay, handleDrill, handleLeafCommit, freeMoves])
+  }, [cards, allCards, kinds, links, linkKinds, isFree, readOnly, flippedID, pulsedID, hintedID, onOpenOverlay, handleDrill, handleLeafCommit, freeMoves, arteries, boardWidth])
 
   const [hoveredEdgeID, setHoveredEdgeID] = useState<string | null>(null)
   const edges = useMemo(() => {
     const linkKindByID = new Map(linkKinds.map((lk) => [lk.ID, lk]))
-    const topLevelIDs = new Set(cards.map((c) => c.ID))
-    return resolveBoardEdges(links, topLevelIDs, allCards).map((r): AtlasLinkRFEdge => ({
+    return arteries.map((r): AtlasLinkRFEdge => ({
       id: r.id,
       source: r.source,
       target: r.target,
@@ -309,7 +333,7 @@ function AtlasBoardInner({ cards, allCards, kinds, links, linkKinds, mode, viewe
       interactionWidth: 8,
       data: { hovered: hoveredEdgeID === r.id },
     }))
-  }, [links, linkKinds, cards, allCards, hoveredEdgeID, t])
+  }, [arteries, linkKinds, hoveredEdgeID, t])
 
   const [nodes, setNodes, onNodesChange] = useNodesState(builtNodes)
   useEffect(() => {
