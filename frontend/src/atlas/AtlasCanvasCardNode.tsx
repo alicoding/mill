@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import type { NodeProps, Node as RFNode } from '@xyflow/react'
 import type { Card, Kind } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 import { AtlasCardBody } from './AtlasCardBody'
@@ -20,7 +21,9 @@ export type AtlasCanvasRFNode = RFNode<AtlasCanvasNodeData>
 // separate "select then inspect" step the way a workflow step does),
 // the info button (inside AtlasCardBody, `nodrag nopan`) opens the
 // overlay without starting a drag or triggering the drill.
-export function AtlasCanvasCardNode({ data }: NodeProps<AtlasCanvasRFNode>) {
+// memo per React Flow's own custom-node requirement: without it every
+// viewport/drag frame re-renders every card component.
+export const AtlasCanvasCardNode = memo(function AtlasCanvasCardNode({ data }: NodeProps<AtlasCanvasRFNode>) {
   return (
     <div
       className={styles.cardNode}
@@ -36,4 +39,4 @@ export function AtlasCanvasCardNode({ data }: NodeProps<AtlasCanvasRFNode>) {
       />
     </div>
   )
-}
+})
