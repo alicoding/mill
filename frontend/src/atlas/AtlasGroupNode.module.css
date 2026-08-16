@@ -190,3 +190,25 @@
     padding: 3px 7px;
     cursor: pointer;
 }
+
+/* The "+ K more" ghost tile (goal 0073): a note-sized slot with a
+   dashed outline -- deliberately quieter than a real card, it promises
+   content without pretending to be it. */
+.overflowTile {
+    position: absolute;
+    box-sizing: border-box;
+    border: 1.5px dashed var(--borderColor-default);
+    border-radius: 10px;
+    background: transparent;
+    color: var(--fgColor-muted);
+    font-family: var(--mill-mono);
+    font-size: 11px;
+    cursor: zoom-in;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.overflowTile:hover {
+    border-color: var(--borderColor-emphasis);
+    color: var(--fgColor-default);
+}

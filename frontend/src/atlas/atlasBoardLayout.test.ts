@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { Card } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 import {
   BOARD_GAP,
+  GROUP_PREVIEW_SLOTS,
   NOTE_HEIGHT,
   NOTE_WIDTH,
   computeAutoArrangeLayout,
@@ -22,7 +23,7 @@ describe('isGroupCard', () => {
 })
 
 describe('computeGroupFrameLayout', () => {
-  it('positions every direct child inside the frame, one nesting level deep', () => {
+  it('previews direct children one level deep: nested areas first as chips, then leaf notes', () => {
     const all = [
       card('group', '', '1'),
       card('a', 'group', '2'),
@@ -30,8 +31,28 @@ describe('computeGroupFrameLayout', () => {
       card('grandchild', 'a', '1'),
     ]
     const layout = computeGroupFrameLayout(all, 'group')
-    expect(layout.children.map((c) => c.card.ID)).toEqual(['b', 'a'])
+    expect(layout.children.map((c) => c.card.ID)).toEqual(['a', 'b'])
+    expect(layout.children.map((c) => c.variant)).toEqual(['chip', 'note'])
     expect(layout.children.every((c) => c.card.ID !== 'grandchild')).toBe(true)
+    expect(layout.overflow).toBeNull()
+  })
+
+  it('caps the preview at GROUP_PREVIEW_SLOTS with a truthful overflow remainder', () => {
+    const kids = Array.from({ length: 12 }, (_, i) => card(`k${String(i).padStart(2, '0')}`, 'group', '1'))
+    const all = [card('group', '', '1'), ...kids]
+    const layout = computeGroupFrameLayout(all, 'group')
+    expect(layout.children).toHaveLength(GROUP_PREVIEW_SLOTS - 1)
+    expect(layout.overflow?.count).toBe(12 - (GROUP_PREVIEW_SLOTS - 1))
+    // Bounded: the frame never grows past the capped grid's rows.
+    expect(layout.size.height).toBeLessThan(500)
+  })
+
+  it('renders exactly at the cap without a pointless "+ 1 more" ghost', () => {
+    const kids = Array.from({ length: GROUP_PREVIEW_SLOTS }, (_, i) => card(`k${i}`, 'group', '1'))
+    const all = [card('group', '', '1'), ...kids]
+    const layout = computeGroupFrameLayout(all, 'group')
+    expect(layout.children).toHaveLength(GROUP_PREVIEW_SLOTS)
+    expect(layout.overflow).toBeNull()
   })
 
   it('sizes the frame to fit its own children in a wrapping grid', () => {

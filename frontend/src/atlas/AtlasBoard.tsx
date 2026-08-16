@@ -12,13 +12,15 @@ import { computeAutoArrangeLayout, computeGroupFrameLayout, isGroupCard, NOTE_HE
 import { computeFreshnessRollup } from './atlasCardPresentation'
 import { AtlasNoteCardNode, type AtlasNoteCardRFNode } from './AtlasNoteCardNode'
 import { AtlasGroupNode, type AtlasGroupRFNode } from './AtlasGroupNode'
+import { AtlasRegionChipNode, type AtlasRegionChipRFNode } from './AtlasRegionChipNode'
 import { AtlasLinkEdge, type AtlasLinkRFEdge } from './AtlasLinkEdge'
+import { resolveBoardEdges } from './atlasLinkResolution'
 import styles from './AtlasBoard.module.css'
 
-const rfNodeTypes: RFNodeTypes = { 'atlas-note': AtlasNoteCardNode, 'atlas-group': AtlasGroupNode }
+const rfNodeTypes: RFNodeTypes = { 'atlas-note': AtlasNoteCardNode, 'atlas-group': AtlasGroupNode, 'atlas-region-chip': AtlasRegionChipNode }
 const rfEdgeTypes: RFEdgeTypes = { 'atlas-link': AtlasLinkEdge }
 
-type BoardRFNode = AtlasNoteCardRFNode | AtlasGroupRFNode
+type BoardRFNode = AtlasNoteCardRFNode | AtlasGroupRFNode | AtlasRegionChipRFNode
 
 // A ⌘K jump's one-shot request into the board it lands on (goal 0072
 // slice B): AtlasView decides WHETHER a re-root is needed (the target
@@ -100,25 +102,36 @@ function AtlasBoardInner({ cards, allCards, kinds, links, linkKinds, mode, viewe
     void fitBounds(bounds, { duration: reduceMotion ? 0 : 450, padding: 0.25 }).then(() => onDrill(groupID))
   }, [getNodesBounds, fitBounds, reduceMotion, onDrill])
 
-  // Which card ids render on THIS board (top-level children plus one
-  // level of group-preview grandchildren) -- kept in its own memo,
-  // deliberately independent of flippedID/pulsedID/hintedID, since the
-  // ⌘K focus effect below keys off this Set's IDENTITY to know when a
-  // re-root has produced a fresh node set to fly against. Bundling it
-  // with the visual-state-dependent builtNodes memo would hand it a
-  // new identity on every pulse/hint/flip change too, re-triggering
-  // that effect (and its cleanup) mid-animation -- the exact bug a
-  // pulse being dismissed by its own state-set was rooted in.
+  // Which card ids ACTUALLY render on THIS board: top-level children
+  // plus each frame's capped preview -- excluding a flipped frame's
+  // children, which builtNodes omits while its back face covers them.
+  // Honesty here is load-bearing twice over: the ⌘K/entry focus
+  // effect below trusts this Set before flying (flying to an omitted
+  // node meant a pulse on nothing), and resolveBoardEdges reattaches
+  // links to a flipped frame instead of drawing to its missing
+  // children. Kept independent of pulsedID/hintedID so a pulse's own
+  // state-set never re-triggers the focus effect mid-animation;
+  // flippedID IS a dependency now, deliberately -- an unflip must
+  // re-fire that effect so a pending jump can land on the children it
+  // just revealed.
   const renderedIDs = useMemo(() => {
     const ids = new Set<string>()
     for (const card of cards) {
       ids.add(card.ID)
-      if (isGroupCard(allCards, card)) {
+      if (isGroupCard(allCards, card) && flippedID !== card.ID) {
         for (const child of computeGroupFrameLayout(allCards, card.ID).children) ids.add(child.card.ID)
       }
     }
     return ids
-  }, [cards, allCards])
+  }, [cards, allCards, flippedID])
+
+  // Attention supersedes a glance: an incoming jump/entry focus
+  // unflips whatever is flipped, so a target hidden behind a frame's
+  // back face becomes real before the fly effect (re-fired by the
+  // renderedIDs change above) goes looking for it.
+  useEffect(() => {
+    if (focusRequest) setFlippedID(null)
+  }, [focusRequest])
 
   const builtNodes = useMemo(() => {
     const kindByID = new Map(kinds.map((k) => [k.ID, k]))
@@ -160,7 +173,10 @@ function AtlasBoardInner({ cards, allCards, kinds, links, linkKinds, mode, viewe
             links,
             linkKinds,
             childCount: childrenOf(allCards, card.ID).length,
-            freshness: computeFreshnessRollup(frame.children.map((c) => c.card)),
+            // Roll-up covers EVERY direct child, drawn or capped -- the
+            // pills stay the deep truth regardless of the preview.
+            freshness: computeFreshnessRollup(childrenOf(allCards, card.ID)),
+            overflow: frame.overflow,
             pulsed: pulsedID === card.ID,
             hinted: hintedID === card.ID,
             flipped: groupFlipped,
@@ -179,17 +195,37 @@ function AtlasBoardInner({ cards, allCards, kinds, links, linkKinds, mode, viewe
         // stacking invariant would silently defeat.
         if (!groupFlipped) {
           for (const child of frame.children) {
-            nodes.push({
-              id: child.card.ID,
-              type: 'atlas-note',
-              position: child.position,
-              width: NOTE_WIDTH,
-              height: NOTE_HEIGHT,
-              parentId: card.ID,
-              extent: 'parent',
-              draggable: false,
-              data: noteData(child.card),
-            })
+            if (child.variant === 'chip') {
+              nodes.push({
+                id: child.card.ID,
+                type: 'atlas-region-chip',
+                position: child.position,
+                width: child.size.width,
+                height: child.size.height,
+                parentId: card.ID,
+                extent: 'parent',
+                draggable: false,
+                data: {
+                  card: child.card,
+                  kind: kindByID.get(child.card.KindID),
+                  childCount: childrenOf(allCards, child.card.ID).length,
+                  pulsed: pulsedID === child.card.ID,
+                  onDrill: handleDrill,
+                },
+              })
+            } else {
+              nodes.push({
+                id: child.card.ID,
+                type: 'atlas-note',
+                position: child.position,
+                width: child.size.width,
+                height: child.size.height,
+                parentId: card.ID,
+                extent: 'parent',
+                draggable: false,
+                data: noteData(child.card),
+              })
+            }
           }
         }
       } else {
@@ -209,19 +245,18 @@ function AtlasBoardInner({ cards, allCards, kinds, links, linkKinds, mode, viewe
 
   const [hoveredEdgeID, setHoveredEdgeID] = useState<string | null>(null)
   const edges = useMemo(() => {
-    const visible = links.filter((l) => renderedIDs.has(l.FromCardID) && renderedIDs.has(l.ToCardID))
     const linkKindByID = new Map(linkKinds.map((lk) => [lk.ID, lk]))
-    return visible.map((l): AtlasLinkRFEdge => ({
-      id: l.ID,
-      source: l.FromCardID,
-      target: l.ToCardID,
+    return resolveBoardEdges(links, renderedIDs, allCards).map((r): AtlasLinkRFEdge => ({
+      id: r.id,
+      source: r.source,
+      target: r.target,
       type: 'atlas-link',
-      label: linkKindByID.get(l.LinkKindID)?.Label ?? '',
+      label: linkKindByID.get(r.linkKindID)?.Label ?? '',
       style: { stroke: 'var(--fgColor-accent)', strokeWidth: 1.6, opacity: 0.75 },
       interactionWidth: 8,
-      data: { hovered: hoveredEdgeID === l.ID },
+      data: { hovered: hoveredEdgeID === r.id },
     }))
-  }, [links, linkKinds, renderedIDs, hoveredEdgeID])
+  }, [links, linkKinds, renderedIDs, allCards, hoveredEdgeID])
 
   const [nodes, setNodes, onNodesChange] = useNodesState(builtNodes)
   useEffect(() => {

@@ -35,7 +35,11 @@ func nonSeedGoFiles(t *testing.T, dir string) []string {
 		if strings.HasSuffix(name, "_test.go") {
 			continue
 		}
-		if name == "builtin.go" || strings.Contains(name, "_builtin") || strings.Contains(name, "_seed") {
+		// densefixture.go is the scale-testing counterpart of builtin.go
+		// (goal 0073): its whole job is composing test data FROM the
+		// seeded kinds' stable IDs, the same sanctioned coupling
+		// builtin.go itself carries.
+		if name == "builtin.go" || name == "densefixture.go" || strings.Contains(name, "_builtin") || strings.Contains(name, "_seed") {
 			continue
 		}
 		out = append(out, filepath.Join(dir, name))

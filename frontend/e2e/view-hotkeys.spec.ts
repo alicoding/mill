@@ -19,11 +19,11 @@ import { test, expect } from './fixtures/server'
 // (docs/goals/0014-home-dashboard.md), so every test below that used to
 // assume "start on Workflows" now jumps there via its own Cmd+1 first.
 
-test('Cmd+1 through Cmd+4 jump to their view from anywhere else in the app', async ({ page }) => {
+test('Cmd+1 through Cmd+5 jump to their view from anywhere else in the app', async ({ page }) => {
   await page.goto('/')
 
   // Home is the default landing view now -- confirm it, then jump to
-  // Workflows via its own hotkey before exercising Cmd+2 through Cmd+4,
+  // Workflows via its own hotkey before exercising Cmd+2 through Cmd+5,
   // so a false positive (already being on the target view) can't hide a
   // broken hotkey.
   await expect(page.getByTestId('home-view')).toBeVisible()
@@ -35,9 +35,12 @@ test('Cmd+1 through Cmd+4 jump to their view from anywhere else in the app', asy
   await expect(page.getByRole('tablist', { name: 'Configure' })).toBeVisible()
 
   await page.keyboard.press('Meta+3')
-  await expect(page.getByTestId('activity-view')).toBeVisible()
+  await expect(page.getByTestId('atlas-view')).toBeVisible()
 
   await page.keyboard.press('Meta+4')
+  await expect(page.getByTestId('activity-view')).toBeVisible()
+
+  await page.keyboard.press('Meta+5')
   await expect(page.getByTestId('review-view')).toBeVisible()
 
   await page.keyboard.press('Meta+1')
@@ -64,7 +67,7 @@ test('A view hotkey works while a text field has focus, matching browser tab-swi
   await page.getByLabel('Label').click()
 
   await page.keyboard.press('Meta+3')
-  await expect(page.getByTestId('activity-view')).toBeVisible()
+  await expect(page.getByTestId('atlas-view')).toBeVisible()
 })
 
 test('Plain digit keys without Cmd do not navigate', async ({ page }) => {

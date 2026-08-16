@@ -27,7 +27,8 @@
     "open": "Open",
     "jumpHint": "↵ open",
     "linksChip_one": "{{count}} link",
-    "linksChip_other": "{{count}} links"
+    "linksChip_other": "{{count}} links",
+    "moreTile": "+ {{count}} more"
   },
   "jump": {
     "placeholder": "Jump to a card",

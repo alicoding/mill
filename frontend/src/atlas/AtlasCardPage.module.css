@@ -157,13 +157,16 @@
 
 /* The page is a stable sheet, not a grow-to-content popover: a long
    edit form must scroll INSIDE the kit dialog's own body region, never
-   push Save/Delete below the viewport over the board's controls.
-   Dialog's height prop only offers presets, so the footprint rides the
-   data-component hook it forwards. */
+   push Save/Delete below the viewport over the board's controls. The
+   kit writes its width/height props as inline styles, so out-styling
+   them takes !important on the data-component hook it forwards --
+   contained here to exactly this dialog. */
 :global([data-component='atlas-card-overlay']) {
-    height: calc(100vh - 96px);
-    max-height: calc(100vh - 96px);
+    width: min(1200px, calc(100vw - 96px)) !important;
+    height: calc(100vh - 120px) !important;
+    max-height: calc(100vh - 120px) !important;
 }
+
 
 .editSection {
     margin-top: 8px;
