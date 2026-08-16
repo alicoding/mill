@@ -21,6 +21,42 @@ owner-mandated: "DoR should be industry standard").
   negotiates shared *team* capacity, which a solo-owner +
   agent-execution loop doesn't have.
 
+## Definition of Ready, part 2 — the integration-surfaces triage
+
+Owner-mandated (2026-08-16, after a day of live retrofits proved the
+gap: ⌘↑, ⌘-click, context menus, and palette scoping all arrived as
+catches on shipped features rather than with them). Before a
+capability's goal starts, answer EVERY line below explicitly in the
+goal file — "wired", "deliberately not, because …", or "follow-up
+goal NNNN" — never silence:
+
+1. **Configure** — does it introduce a "which external thing" value
+   (credential/endpoint/model/list)? → Configure entity + RefKind
+   (architecture.md's business-vs-integration test).
+2. **Workflows** — is it composition-shaped (ADR-0035: node/trigger/
+   connector)? → arrives as composition with a seeded example.
+3. **Atlas** — does it produce or reference knowledge a card should
+   point at (a new artifact type, a mirrorable output)?
+4. **Settings** — does it need an app-level preference? (Kernel
+   config only — a Settings toggle never implements a side effect.)
+5. **Keyboard shortcut** — is there a repeated action deserving a
+   command-registry entry (surface-scoped via `surface` when it
+   isn't global)?
+6. **Quick access** — palette entry (via the same command) and, for
+   away-from-app entry points, a Quick Panel row.
+7. **Context menu** — does it render as a right-clickable object? →
+   ContextMenuItem items, sharing commandIds so menu/palette/
+   keyboard stay one source.
+8. **Contract/MCP** — does an agent need to see or drive it?
+9. **Mobile posture** — usable (or deliberately read-only) at the
+   companion breakpoints and 44px targets?
+10. **Data stewardship** — does it write user data? → covered by
+    export/backup/import paths.
+
+The triage is a DoR gate, not a build mandate: most answers are one
+honest sentence. Retroactive coverage of already-shipped
+capabilities is goal 0076's audit, not ad-hoc.
+
 ## Definition of Done — before the checkbox flips and the file moves to archive/
 - Local lefthook suite green, never bypassed.
 - CI's `ci-gate` required check green on the **merged** PR (ADR-0034).
