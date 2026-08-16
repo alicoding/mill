@@ -5,12 +5,14 @@
   "emptySpace": "Nothing here yet. Add a card to get started.",
   "peekCount": "{{count}} inside",
   "openCardDetailsAriaLabel": "Open details for {{title}}",
+  "viewMode": {
+    "ariaLabel": "View mode",
+    "shelves": "Shelves",
+    "canvas": "Canvas"
+  },
   "lens": {
     "openButton": "Lens",
     "title": "Space lens",
-    "viewModeAriaLabel": "Layout",
-    "shelvesMode": "Shelves",
-    "canvasMode": "Canvas",
     "depthAriaLabel": "Depth",
     "depthLevel": "This level only",
     "depthPeek": "Peek into children",

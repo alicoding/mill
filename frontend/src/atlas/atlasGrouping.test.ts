@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Card, Kind } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
-import { applyLens, buildBreadcrumbPath, childrenOf, groupByKind } from './atlasGrouping'
+import { applyLens, buildBreadcrumbPath, childrenOf, groupByKind, singleRootCard } from './atlasGrouping'
 
 function card(id: string, kindID: string, parentID: string): Card {
   return { ID: id, KindID: kindID, Title: id, ParentID: parentID } as Card
@@ -57,6 +57,22 @@ describe('buildBreadcrumbPath', () => {
     const cards = [card('parent', 'k1', 'ghost-ancestor'), card('child', 'k1', 'parent')]
     const path = buildBreadcrumbPath(cards, 'child')
     expect(path.map((c) => c.ID)).toEqual(['parent', 'child'])
+  })
+})
+
+describe('singleRootCard', () => {
+  it('returns the one root card when exactly one exists', () => {
+    const cards = [card('a', 'k1', ''), card('b', 'k1', 'a')]
+    expect(singleRootCard(cards)?.ID).toBe('a')
+  })
+
+  it('returns null when no root card exists', () => {
+    expect(singleRootCard([card('a', 'k1', 'x')])).toBeNull()
+  })
+
+  it('returns null when 2+ root cards exist', () => {
+    const cards = [card('a', 'k1', ''), card('b', 'k1', '')]
+    expect(singleRootCard(cards)).toBeNull()
   })
 })
 

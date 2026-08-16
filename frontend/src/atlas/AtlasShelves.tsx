@@ -49,6 +49,7 @@ export function AtlasShelves({ cards, allCards, kinds, peeking, onDrill, onOpenO
                   childCount={childrenOf(allCards, card.ID).length}
                   peeking={peeking}
                   onOpenOverlay={() => onOpenOverlay(card.ID)}
+                  showKindChip={false}
                 />
               </ActionList.Item>
             ))}

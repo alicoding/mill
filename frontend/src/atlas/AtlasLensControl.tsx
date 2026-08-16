@@ -2,28 +2,21 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button, Checkbox, CheckboxGroup, Dialog, FormControl, SegmentedControl } from '@primer/react'
 import { FilterIcon } from '@primer/octicons-react'
-import { ViewMode } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 import type { Kind } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 
 // The per-space lens (docs/goals/0061): which Kinds stay visible among
-// the viewed space's children, the depth toggle (this level only vs
-// peek into children), and the view-mode switch for THIS space's own
-// children (canvas/shelves, atlas.Card.ViewMode) -- one small Dialog
-// rather than a popover, matching EntityRefField's own QuickCreateDialog
-// shape for a compact settings form.
-export function AtlasLensControl({ presentKinds, hiddenKindIDs, onChangeHidden, peek, onChangePeek, viewMode, onChangeViewMode, showViewModeToggle }: {
+// the viewed space's children, and the depth toggle (this level only vs
+// peek into children) -- one small Dialog rather than a popover,
+// matching EntityRefField's own QuickCreateDialog shape for a compact
+// settings form. The canvas/shelves view-mode switch moved out to
+// AtlasToolbar (goal 0069): it's the current space's primary,
+// always-visible affordance, not a setting buried behind this Dialog.
+export function AtlasLensControl({ presentKinds, hiddenKindIDs, onChangeHidden, peek, onChangePeek }: {
   presentKinds: Kind[]
   hiddenKindIDs: string[]
   onChangeHidden: (hidden: string[]) => void
   peek: boolean
   onChangePeek: (peek: boolean) => void
-  viewMode: ViewMode
-  onChangeViewMode: (mode: ViewMode) => void
-  // Root (docs/goals/0061: "the virtual top") has no backing Card, so
-  // there is no ViewMode field to persist a canvas/shelves choice for
-  // it -- root always renders shelves, and this toggle is hidden rather
-  // than shown-disabled-and-silently-ignored.
-  showViewModeToggle: boolean
 }) {
   const { t } = useTranslation('atlas')
   const [open, setOpen] = useState(false)
@@ -39,13 +32,6 @@ export function AtlasLensControl({ presentKinds, hiddenKindIDs, onChangeHidden, 
         // its own special-cased "data-component" prop onto the rendered
         // element (see AtlasCardOverlay.tsx's identical note).
         <Dialog title={t('lens.title')} onClose={() => setOpen(false)} data-component="atlas-lens-dialog">
-          {showViewModeToggle && (
-            <SegmentedControl aria-label={t('lens.viewModeAriaLabel')} onChange={(i) => onChangeViewMode(i === 0 ? ViewMode.ViewModeShelves : ViewMode.ViewModeCanvas)}>
-              <SegmentedControl.Button selected={viewMode !== ViewMode.ViewModeCanvas}>{t('lens.shelvesMode')}</SegmentedControl.Button>
-              <SegmentedControl.Button selected={viewMode === ViewMode.ViewModeCanvas}>{t('lens.canvasMode')}</SegmentedControl.Button>
-            </SegmentedControl>
-          )}
-
           <SegmentedControl aria-label={t('lens.depthAriaLabel')} onChange={(i) => onChangePeek(i === 1)}>
             <SegmentedControl.Button selected={!peek}>{t('lens.depthLevel')}</SegmentedControl.Button>
             <SegmentedControl.Button selected={peek}>{t('lens.depthPeek')}</SegmentedControl.Button>

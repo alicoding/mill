@@ -7,7 +7,7 @@ import type { Position } from '../../bindings/github.com/alicoding/mill/internal
 import { AtlasService } from '../shared/bindings'
 import { downloadJSON } from '../shared/downloadJSON'
 import { refreshAtlas, useAtlasStore } from './atlasStore'
-import { applyLens, childrenOf, groupByKind } from './atlasGrouping'
+import { applyLens, childrenOf, groupByKind, singleRootCard } from './atlasGrouping'
 import { useAtlasImportConfirm } from './useAtlasImportConfirm'
 import { AtlasToolbar } from './AtlasToolbar'
 import { AtlasShelves } from './AtlasShelves'
@@ -74,6 +74,23 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
     setViewedID(target.ParentID)
     setOverlayCardID(target.ID)
   }, [initialCardID, cards])
+
+  // The egocentric-root auto-entry (ADR-0038): with
+  // exactly one root card (ParentID==="") the meta "All spaces" level
+  // never exists (AtlasBreadcrumb's own singleRootCard check hides its
+  // crumb) -- so viewedID=="" is never a real resting state in that
+  // world, only a transient one (before the first fetch resolves, or
+  // right after a second root card is deleted back down to one).
+  // Always resolving it rather than a one-shot effect keeps both cases
+  // correct without special-casing which one is happening. Skipped
+  // entirely once a deep link has claimed the initial navigation --
+  // that flow's own viewedID=="" (a root-level target's own space) is
+  // a deliberate destination, not a state to redirect away from.
+  useEffect(() => {
+    if (initialCardID || !cards || viewedID !== '') return
+    const root = singleRootCard(cards)
+    if (root) setViewedID(root.ID)
+  }, [cards, initialCardID, viewedID])
 
   useEffect(() => {
     AtlasService.Lens(viewedID)
