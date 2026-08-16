@@ -117,6 +117,23 @@ test('a dense area previews bounded: capped tiles, region chips, a truthful ghos
     // you are IN the place; the board shows everything.
     await expect(page.getByTestId('atlas-note-card')).toHaveCount(12)
 
+    // Link-adjacent Auto-arrange (goal 0073, the relationship-blind
+    // layout complaint): switching My space to Auto-arrange must seat
+    // "Getting started" in the SAME ROW as "Example area" (they share
+    // an artery) instead of exiling it to a leaves-band below --
+    // adjacency is what keeps arteries out of frame bodies.
+    await page.getByTestId('atlas-breadcrumb').getByText('My space', { exact: true }).click()
+    await expect(page.getByTestId('atlas-breadcrumb')).not.toContainText('Platform')
+    await page.getByTestId('atlas-view-mode-toggle').getByRole('button', { name: 'Auto-arrange' }).click()
+    const ea = page.locator('[data-testid="atlas-group-card"]').filter({ has: page.locator('[aria-label="Zoom into Example area"]') })
+    const gs = page.locator('[aria-label="Flip Getting started"]')
+    await expect(ea).toBeVisible()
+    const eaBox = await ea.boundingBox()
+    const gsBox = await gs.boundingBox()
+    if (!eaBox || !gsBox) throw new Error('auto-arrange assertion cards missing bounding boxes')
+    expect(Math.abs(gsBox.y - eaBox.y)).toBeLessThan(3)
+    expect(gsBox.x).toBeGreaterThan(eaBox.x + eaBox.width - 3)
+
     await page.close()
   } finally {
     await browser.close()

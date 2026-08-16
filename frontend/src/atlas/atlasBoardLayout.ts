@@ -143,22 +143,56 @@ export function isGroupCard(allCards: Card[], card: Card): boolean {
   return childrenOf(allCards, card.ID).length > 0
 }
 
-// computeAutoArrangeLayout is Auto-arrange mode's own deterministic
-// placement (goal 0072 slice A): region frames first, left to right
-// then wrapping, then leaf notes in rows below -- both buckets ordered
-// by CreatedAt then ID so the same input always produces the same
-// layout. Nothing here is persisted; the caller never calls
-// SetPosition off these boxes.
-export function computeAutoArrangeLayout(cards: Card[], allCards: Card[]): BoardLayout {
-  const groups = stableSort(cards.filter((c) => isGroupCard(allCards, c)))
+// linkAdjacentOrder is Auto-arrange's ordering pass (goal 0073, the
+// owner's "auto arrange sucks" board): a layout blind to
+// relationships strands a card in a leaves-band while its arteries
+// point at frames a row away, forcing lines through frame bodies.
+// Ordering instead walks the board's own link adjacency: anchors
+// (frames first, then most-linked) each pull their not-yet-placed
+// neighbors in right behind them, so related things sit beside each
+// other and arteries land in the gaps. Deterministic: stable sort
+// everywhere, adjacency from the caller's already-resolved edges.
+function linkAdjacentOrder(cards: Card[], allCards: Card[], adjacency: Map<string, string[]>): Card[] {
+  const frames = stableSort(cards.filter((c) => isGroupCard(allCards, c)))
   const leaves = stableSort(cards.filter((c) => !isGroupCard(allCards, c)))
+  const byID = new Map(cards.map((c) => [c.ID, c]))
+  const out: Card[] = []
+  const placed = new Set<string>()
+
+  const emit = (card: Card | undefined) => {
+    if (!card || placed.has(card.ID)) return
+    placed.add(card.ID)
+    out.push(card)
+    for (const nID of adjacency.get(card.ID) ?? []) emit(byID.get(nID))
+  }
+
+  for (const f of frames) emit(f)
+  for (const l of leaves) emit(l)
+  return out
+}
+
+// computeAutoArrangeLayout is Auto-arrange mode's own deterministic
+// placement: link-adjacent order (above) flowed into wrapping rows of
+// mixed sizes. The row cap follows the real board width when the
+// caller knows it (dead right-hand columns read as broken), floored
+// at the four-note constant so a narrow pane still wraps sanely.
+// Nothing here is persisted; the caller never calls SetPosition off
+// these boxes.
+export function computeAutoArrangeLayout(
+  cards: Card[],
+  allCards: Card[],
+  adjacency: Map<string, string[]> = new Map(),
+  maxRowWidth: number = BOARD_MAX_ROW_WIDTH,
+): BoardLayout {
+  const rowCap = Math.max(BOARD_MAX_ROW_WIDTH, maxRowWidth)
+  const ordered = linkAdjacentOrder(cards, allCards, adjacency)
   const boxes = new Map<string, BoardBox>()
 
   let cursorX = 0
   let cursorY = 0
   let rowHeight = 0
   const place = (id: string, width: number, height: number) => {
-    if (cursorX > 0 && cursorX + width > BOARD_MAX_ROW_WIDTH) {
+    if (cursorX > 0 && cursorX + width > rowCap) {
       cursorX = 0
       cursorY += rowHeight + BOARD_GAP
       rowHeight = 0
@@ -168,17 +202,13 @@ export function computeAutoArrangeLayout(cards: Card[], allCards: Card[]): Board
     rowHeight = Math.max(rowHeight, height)
   }
 
-  for (const g of groups) {
-    const { size } = computeGroupFrameLayout(allCards, g.ID)
-    place(g.ID, size.width, size.height)
-  }
-  if (groups.length > 0 && leaves.length > 0) {
-    cursorX = 0
-    cursorY += rowHeight + BOARD_GAP
-    rowHeight = 0
-  }
-  for (const l of leaves) {
-    place(l.ID, NOTE_WIDTH, NOTE_HEIGHT)
+  for (const card of ordered) {
+    if (isGroupCard(allCards, card)) {
+      const { size } = computeGroupFrameLayout(allCards, card.ID)
+      place(card.ID, size.width, size.height)
+    } else {
+      place(card.ID, NOTE_WIDTH, NOTE_HEIGHT)
+    }
   }
 
   return { boxes }
