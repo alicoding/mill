@@ -66,11 +66,25 @@ export async function clickCanvasNode(page: Page, panel: Locator, label: string)
         // the pane's own horizontal center, so a top-anchored drag can
         // itself start on top of it -- bottom-center clears the
         // toolbar (top) and both Controls/MiniMap (corners) alike.
+        // Chunked: a single drag to (anchor + d) can exceed the window
+        // bounds for a far-off node, and mouse events outside the
+        // window are lost -- the pan silently truncates and the node
+        // stays unreachable. Cap each drag well inside the pane and
+        // repeat.
         const anchor = { x: paneBox.x + paneBox.width / 2, y: paneBox.y + paneBox.height - 20 }
-        await page.mouse.move(anchor.x, anchor.y)
-        await page.mouse.down()
-        await page.mouse.move(anchor.x + dx, anchor.y + dy, { steps: 5 })
-        await page.mouse.up()
+        const maxChunk = Math.min(paneBox.width, paneBox.height) / 3
+        let rx = dx
+        let ry = dy
+        for (let i = 0; i < 8 && (Math.abs(rx) > 1 || Math.abs(ry) > 1); i++) {
+          const cx = Math.max(-maxChunk, Math.min(maxChunk, rx))
+          const cy = Math.max(-maxChunk, Math.min(maxChunk, ry))
+          await page.mouse.move(anchor.x, anchor.y)
+          await page.mouse.down()
+          await page.mouse.move(anchor.x + cx, anchor.y + cy, { steps: 5 })
+          await page.mouse.up()
+          rx -= cx
+          ry -= cy
+        }
         await waitForStableTransform()
       }
     }
