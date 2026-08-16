@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ActionList, ActionMenu, Dialog, FormControl, Select, TextInput } from '@primer/react'
 import { PlusIcon } from '@primer/octicons-react'
@@ -12,10 +12,15 @@ type Containment = 'sibling' | 'child'
 // choice, a small Dialog for the kind+title form that follows (same
 // shape EntityRefField's own QuickCreateDialog uses for a minimal
 // create form).
-export function AtlasCreateMenu({ kinds, canAddSibling, onCreate }: {
+export function AtlasCreateMenu({ kinds, canAddSibling, onCreate, openChildRequest }: {
   kinds: Kind[]
   canAddSibling: boolean
   onCreate: (containment: Containment, kindID: string, title: string) => Promise<void>
+  // The board pane's right-click "Add card…" (goal 0075's audit G3):
+  // AtlasView bumps this one-shot counter, this component opens the
+  // SAME child-create form the toolbar's own "Add inside this card"
+  // opens -- the dialog itself stays exactly as below, untouched.
+  openChildRequest?: number
 }) {
   const { t } = useTranslation('atlas')
   const [pending, setPending] = useState<Containment | null>(null)
@@ -30,6 +35,14 @@ export function AtlasCreateMenu({ kinds, canAddSibling, onCreate }: {
     setTitle('')
     setError('')
   }
+
+  const lastOpenChildRequest = useRef(openChildRequest)
+  useEffect(() => {
+    if (openChildRequest === undefined || openChildRequest === lastOpenChildRequest.current) return
+    lastOpenChildRequest.current = openChildRequest
+    openForm('child')
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- keyed on the request tick alone, mirroring AtlasView's own atlasUpRequest signal
+  }, [openChildRequest])
 
   const submit = async () => {
     if (!pending) return

@@ -32,7 +32,7 @@ import { CanvasInspectorPanel } from './CanvasInspectorPanel'
 import { useTranslation } from 'react-i18next'
 import { StepDetailOverlay } from './StepDetailOverlay'
 import { ContextMenu, type ContextMenuState } from '../shared/ContextMenu'
-import { buildStepContextMenuItems } from './stepContextMenu'
+import { useCanvasContextMenuHandlers } from './useCanvasContextMenuHandlers'
 import { useHotkeyCapture } from './hotkeyCapture'
 import { RunStateContext, useLiveRun } from './liveRunState'
 import { BreakpointContext, useBreakpoints } from './breakpoints'
@@ -115,6 +115,7 @@ function CanvasInner({ nodeTypes, workflow, tabKey, onBack, onSaved, readOnly, o
   const updateEdgeCondition = useCanvasStore((s) => s.updateEdgeCondition)
   const removeSelected = useCanvasStore((s) => s.removeSelected)
   const removeNode = useCanvasStore((s) => s.removeNode)
+  const removeEdge = useCanvasStore((s) => s.removeEdge)
   const setGuardrailVerdicts = useCanvasStore((s) => s.setGuardrailVerdicts)
   const setValidationIssues = useCanvasStore((s) => s.setValidationIssues)
 
@@ -193,10 +194,8 @@ function CanvasInner({ nodeTypes, workflow, tabKey, onBack, onSaved, readOnly, o
   // already selected), so there's no case where it should show a
   // different node than the sidebar itself.
   const [detailOpen, setDetailOpen] = useState(false)
-  // The step's right-click menu (goal 0075): Open details mirrors
-  // double-click; Delete step is edit-mode only (disabled, visible --
-  // the same honesty the toolbar's own disabled state shows in view
-  // mode). Notes keep their own inline-edit model, no menu.
+  // The canvas's right-click menu (goal 0075) -- one state shared by
+  // step/edge/pane openers, see useCanvasContextMenuHandlers.ts.
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null)
   // A validation-panel row selects its offending node/edge, same target
   // onNodeClick/onEdgeClick below already write to.
@@ -326,6 +325,11 @@ function CanvasInner({ nodeTypes, workflow, tabKey, onBack, onSaved, readOnly, o
 
   useCanvasCommandDispatch(tabKey, save, runButtonRef)
 
+  const { onNodeContextMenu, onEdgeContextMenu, onPaneContextMenu } = useCanvasContextMenuHandlers({
+    t, readOnly, removeNode, removeEdge, screenToFlowPosition, addNoteNear, setPaletteOpen,
+    setSelectedNodeId, setSelectedEdgeId, setDetailOpen, setContextMenu,
+  })
+
   return (
     <div className={styles.canvasSection} data-testid="composition-canvas">
       {pendingExternalChange && <ExternalChangeBanner onReload={reloadFromExternal} onKeep={keepDraft} />}
@@ -376,14 +380,9 @@ function CanvasInner({ nodeTypes, workflow, tabKey, onBack, onSaved, readOnly, o
               setSelectedEdgeId(null)
               setDetailOpen(true)
             }}
-            onNodeContextMenu={(e, node) => {
-              e.preventDefault()
-              if (node.type === 'note') return
-              setSelectedNodeId(node.id)
-              setSelectedEdgeId(null)
-              setContextMenu({ x: e.clientX, y: e.clientY, items: buildStepContextMenuItems(t, readOnly, node.id, { openDetails: () => setDetailOpen(true), removeNode }) })
-            }}
-            onPaneContextMenu={(e) => e.preventDefault()}
+            onNodeContextMenu={onNodeContextMenu}
+            onEdgeContextMenu={onEdgeContextMenu}
+            onPaneContextMenu={onPaneContextMenu}
             // React Flow's pane-level double-click-to-zoom (default true)
             // binds a native dblclick handler that stops propagation
             // before it can reach onNodeDoubleClick above -- off, since a

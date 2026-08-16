@@ -26,7 +26,7 @@ export function AtlasToolbar({
   kinds, presentKinds, hiddenKindIDs, onChangeHidden,
   peek, onChangePeek, viewMode, onChangeViewMode, showViewModeToggle,
   canAddSibling, onCreate, onExport, onImportFile, onShareError,
-  onOpenMatrix, onOpenCoverage,
+  onOpenMatrix, onOpenCoverage, addChildRequest,
 }: {
   cards: Card[]
   viewedID: string
@@ -50,6 +50,9 @@ export function AtlasToolbar({
   // asks AtlasView to open them rather than owning that state itself.
   onOpenMatrix: () => void
   onOpenCoverage: () => void
+  // The board pane's right-click "Add card…" (goal 0075's audit G3) --
+  // forwarded straight through to AtlasCreateMenu, which owns the form.
+  addChildRequest?: number
 }) {
   const { t } = useTranslation('atlas')
   const importInputRef = useRef<HTMLInputElement>(null)
@@ -104,7 +107,7 @@ export function AtlasToolbar({
           peek={peek}
           onChangePeek={onChangePeek}
         />
-        <AtlasCreateMenu kinds={kinds} canAddSibling={canAddSibling} onCreate={onCreate} />
+        <AtlasCreateMenu kinds={kinds} canAddSibling={canAddSibling} onCreate={onCreate} openChildRequest={addChildRequest} />
       </div>
     </div>
   )

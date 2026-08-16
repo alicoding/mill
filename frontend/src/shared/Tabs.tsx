@@ -1,4 +1,4 @@
-import type { KeyboardEvent, ReactNode, Ref } from 'react'
+import type { KeyboardEvent, MouseEvent, ReactNode, Ref } from 'react'
 import { useTab, useTabList, useTabPanel } from '@primer/react/experimental'
 import { XIcon } from '@primer/octicons-react'
 import styles from './Tabs.module.css'
@@ -36,10 +36,10 @@ export function TabList({ 'aria-label': ariaLabel, children }: { 'aria-label': s
 // <button role="tab">, not a nested <button> -- interactive elements
 // can't validly nest inside a <button>, which would also make a click
 // on Close ambiguously also select the tab.
-export function TabItem({ value, children, kicker, leadingVisual, onClose }: { value: string; children: ReactNode; kicker?: string; leadingVisual?: ReactNode; onClose?: () => void }) {
+export function TabItem({ value, children, kicker, leadingVisual, onClose, onContextMenu }: { value: string; children: ReactNode; kicker?: string; leadingVisual?: ReactNode; onClose?: () => void; onContextMenu?: (e: MouseEvent) => void }) {
   const { tabProps } = useTab<HTMLButtonElement>({ value })
   return (
-    <div className={styles.tabItem}>
+    <div className={styles.tabItem} onContextMenu={onContextMenu}>
       <button {...tabProps} type="button" className={styles.tab}>
         {/* The two-line work-tab pattern (reference-platform precedent,
             deliberately adopted): a small uppercase KIND line above the name,
