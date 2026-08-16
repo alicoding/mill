@@ -73,6 +73,23 @@ export function AddListRow(listID: string, values: { [_ in string]?: string } | 
 }
 
 /**
+ * ApplyListRow implements composition.go's applyListRowFn seam
+ * (docs/goals/0070's write path): creates a new Active row when no
+ * existing row's keyColumn value matches the resolved key, otherwise
+ * merges values into the first matching row -- unbound columns stay
+ * untouched, the same "only the named fields change" precedent
+ * apply-atlas-card-update's own AtlasCard merge documents. Typed-column
+ * validation happens here (not composition), since Columns is this
+ * service's own domain knowledge: an invalid value is rejected before
+ * anything is persisted, never silently coerced. Always writes the
+ * LIVE list -- never a published/pinned snapshot (list.Resolve's own
+ * doc comment: a write always targets the draft).
+ */
+export function ApplyListRow(listID: string, keyColumn: string, values: { [_ in string]?: string } | null): $CancellablePromise<list$0.Row> {
+    return $Call.ByID(3108720728, listID, keyColumn, values);
+}
+
+/**
  * CaptureShellPath returns the user's real login-shell $PATH -- the
  * ExecEnv form's "Capture from my shell" affordance (ADR-0026's
  * Amendment: determinism through materialization; the captured value
@@ -360,6 +377,16 @@ export function MCPServers(): $CancellablePromise<mcpserver$0.MCPServer[] | null
  */
 export function PublishDecision(id: string): $CancellablePromise<decision$0.Decision> {
     return $Call.ByID(4203628193, id);
+}
+
+/**
+ * PublishList snapshots id's current draft (Columns+Rows) as the next
+ * immutable ListVersion and advances PublishedVersion to it -- the
+ * audit-stamp reference point a pinned/unpinned list-lookup/list-search
+ * run's "v<N>"/"live@<N>" label reads (docs/adr/0040 decision 5).
+ */
+export function PublishList(id: string): $CancellablePromise<list$0.List> {
+    return $Call.ByID(3818004691, id);
 }
 
 /**

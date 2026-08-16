@@ -7,5 +7,6 @@ export {
 
 export type {
     List,
+    ListVersion,
     Row
 } from "./models.js";

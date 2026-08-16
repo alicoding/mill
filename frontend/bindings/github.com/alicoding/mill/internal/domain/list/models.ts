@@ -66,6 +66,35 @@ export interface List {
      * to Columns instead of Outputs.
      */
     "FieldTombstones": typedfield$0.FieldTombstone[] | null;
+
+    /**
+     * Versions/PublishedVersion give List the same draft/publish
+     * lifecycle Decision already has (docs/adr/0040 decision 4,
+     * extended to a second entity by goal 0070's demonstrated need --
+     * audit-replay against a List a workflow has since edited): Columns/
+     * Rows above are this List's own DRAFT, edited in place exactly as
+     * before this existed; Versions holds immutable snapshots frozen by
+     * Publish (versioning.go), and PublishedVersion (0 = never
+     * published) names which snapshot list-lookup/list-search's
+     * unpinned "live@N" audit stamp reads. Both zero-valued for every
+     * List persisted before this existed, migration-free.
+     */
+    "Versions": ListVersion[] | null;
+    "PublishedVersion": number;
+}
+
+/**
+ * ListVersion is one immutable snapshot of a List's schema+data
+ * (docs/adr/0040 decision 4, goal 0070) -- the same draft/publish shape
+ * decision.DecisionVersion gives Decision, built on the shared
+ * internal/domain/versioning mechanism rather than a second hand-rolled
+ * copy of the numbering/lookup logic.
+ */
+export interface ListVersion {
+    "Version": number;
+    "SavedAt": string;
+    "Columns": typedfield$0.Field[] | null;
+    "Rows": Row[] | null;
 }
 
 /**

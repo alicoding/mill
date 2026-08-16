@@ -125,13 +125,14 @@ const NODE_TYPE_GROUP: Record<string, PaletteGroupId> = {
   'human-review': 'guardrails',
   'ruleset': 'guardrails',
   'decision-outcome': 'guardrails',
-  // Apply (6)
+  // Apply (7)
   'apply-clipboard-write-html': 'apply',
   'apply-clipboard-write-text': 'apply',
   'apply-file-write': 'apply',
   'apply-atlas-card-create': 'apply',
   'apply-atlas-card-update': 'apply',
   'apply-atlas-card-link': 'apply',
+  'apply-list-row': 'apply',
   // Declared step types (ADR-0037, goal 0054 slice A): data-backed, not
   // a RegisterNodeType call site, so not counted in this map's "31
   // registered node types" total above -- the seeded "Check httpbin"

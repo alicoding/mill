@@ -105,6 +105,7 @@ func NewConfigureService(store settings.Store, comp *compositionsvc.CompositionS
 	c.reconcileBuiltInDeclaredStepTypes()
 	composition.SetHTTPRequestLookup(c.resolveHTTPRequest)
 	composition.SetListLookup(c.resolveList)
+	composition.SetApplyListRow(c.ApplyListRow)
 	composition.SetMCPServerLookup(c.resolveMCPServer)
 	composition.SetDecisionLookup(c.resolveDecision)
 	composition.SetExecEnvLookup(c.resolveExecEnv)

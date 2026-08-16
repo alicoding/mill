@@ -26,6 +26,8 @@ package typedfield
 
 import (
 	"fmt"
+	"slices"
+	"strconv"
 	"strings"
 )
 
@@ -132,6 +134,45 @@ func Validate(f Field) error {
 	}
 	if !validType(f.Type) {
 		return fmt.Errorf("field %q has an invalid type %q", f.Key, f.Type)
+	}
+	return nil
+}
+
+// ValidateValue checks raw (a wire-format value string, the same
+// plain-string convention every Node.Config/Row.Values/etc. already
+// uses) against f's declared Type -- the "typed-column validation
+// errors surface honestly, never silent coercion" rule
+// docs/goals/0070 introduced for List row writes, written here (not
+// List-specific) since no other Field-typed value writer validates
+// against Type today either and a second copy would be exactly the
+// kind of near-duplicate ADR-0029 exists to avoid. An empty raw always
+// passes -- an unset/cleared value is not a type error. TypeOptions
+// with an empty Options list accepts any value (no options declared
+// yet means nothing to check against); every other Type not
+// explicitly handled below (TypeObject/TypeArray/TypeMap/TypeDate/
+// TypeDatetime -- ADR-0029's declared-but-not-yet-consumed superset)
+// passes unchecked, same as TypeText.
+func ValidateValue(f Field, raw string) error {
+	if raw == "" {
+		return nil
+	}
+	switch f.Type {
+	case TypeNumber:
+		if _, err := strconv.ParseFloat(raw, 64); err != nil {
+			return fmt.Errorf("field %q expects a number, got %q", f.Key, raw)
+		}
+	case TypeInteger:
+		if _, err := strconv.ParseInt(raw, 10, 64); err != nil {
+			return fmt.Errorf("field %q expects an integer, got %q", f.Key, raw)
+		}
+	case TypeBoolean:
+		if raw != "true" && raw != "false" {
+			return fmt.Errorf("field %q expects true or false, got %q", f.Key, raw)
+		}
+	case TypeOptions:
+		if len(f.Options) > 0 && !slices.Contains(f.Options, raw) {
+			return fmt.Errorf("field %q must be one of %v, got %q", f.Key, f.Options, raw)
+		}
 	}
 	return nil
 }

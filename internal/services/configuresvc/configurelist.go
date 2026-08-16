@@ -20,20 +20,31 @@ import (
 // configureexecenv.go's own header comments already established --
 // Lists was the one entity type still living in the main file.
 
-// resolveList implements composition.go's lookupListFn seam. Entries
+// resolveList implements composition.go's lookupListFn seam.
+// pinnedVersion routes through list.Resolve (docs/adr/0040 decisions
+// 4-5, applied to List by goal 0070) -- the ONE seam that decides
+// live-vs-pinned; this method's only job is finding the List and
+// adapting its result to composition's own ResolvedList shape. Entries
 // is list.DeriveEntries's own computed key/value view (goal 0011) --
 // list-lookup keeps reading a flat map with zero changes to its own
 // execution logic; Columns/Rows are the typed additions list-search
 // reads.
-func (c *ConfigureService) resolveList(id string) (composition.ResolvedList, error) {
+func (c *ConfigureService) resolveList(id string, pinnedVersion int) (composition.ResolvedList, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	for _, l := range c.lists {
 		if l.ID == id {
+			resolved, err := list.Resolve(l, pinnedVersion)
+			if err != nil {
+				return composition.ResolvedList{}, err
+			}
+			entriesView := l
+			entriesView.Columns, entriesView.Rows = resolved.Columns, resolved.Rows
 			return composition.ResolvedList{
-				Entries: list.DeriveEntries(l),
-				Columns: l.Columns,
-				Rows:    l.Rows,
+				Entries:      list.DeriveEntries(entriesView),
+				Columns:      resolved.Columns,
+				Rows:         resolved.Rows,
+				VersionStamp: resolved.VersionStamp,
 			}, nil
 		}
 	}

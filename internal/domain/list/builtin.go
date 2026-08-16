@@ -15,6 +15,12 @@ import (
 // establish.
 const ExampleCountryCodesID = "example-country-codes-list"
 
+// ExampleTaskTrackerID is the seeded example List goal 0070's
+// apply-list-row write-path example targets -- exported for the same
+// reason ExampleCountryCodesID is (composition's seeded workflow
+// references it without a string literal that could drift).
+const ExampleTaskTrackerID = "example-task-tracker-list"
+
 // BuiltIn returns the seeded example List -- pure config, no
 // persistence (mirrors httprequest.BuiltIn/decision.BuiltIn's shape:
 // this package stays free of the settings-store concern, per
@@ -46,6 +52,15 @@ func BuiltIn() []List {
 		r.Status = RowExpired
 		return r
 	}
+	taskRow := func(id, task, status string) Row {
+		return Row{
+			ID:        id,
+			Values:    map[string]string{"task": task, "status": status},
+			CreatedAt: now,
+			UpdatedAt: now,
+			Status:    RowActive,
+		}
+	}
 
 	return []List{
 		{
@@ -73,7 +88,36 @@ func BuiltIn() []List {
 				expiredRow("row-su", "SU", "Soviet Union"),
 			},
 			BuiltIn: true,
-			Seed:    seedorigin.Stamp(3),
+			Seed:    seedorigin.Stamp(4),
+		},
+		{
+			ID:    ExampleTaskTrackerID,
+			Label: "Example: Task tracker",
+			Description: "A tracker a workflow updates on every run: \"Example: Track in a list\" adds a row " +
+				"here by its \"task\" value, then updates that same row's status instead of duplicating it. " +
+				"Published at v1, so a step pinned to that version keeps seeing this list's original row even " +
+				"after later runs add more.",
+			Columns: []typedfield.Field{
+				{Key: "task", Label: "Task", Type: typedfield.TypeText, Required: true},
+				{Key: "status", Label: "Status", Type: typedfield.TypeText},
+			},
+			Rows: []Row{
+				taskRow("row-tracker-setup", "Set up Mill", "Done"),
+			},
+			BuiltIn:          true,
+			Seed:             seedorigin.Stamp(1),
+			PublishedVersion: 1,
+			Versions: []ListVersion{
+				{
+					Version: 1,
+					SavedAt: now,
+					Columns: []typedfield.Field{
+						{Key: "task", Label: "Task", Type: typedfield.TypeText, Required: true},
+						{Key: "status", Label: "Status", Type: typedfield.TypeText},
+					},
+					Rows: []Row{taskRow("row-tracker-setup", "Set up Mill", "Done")},
+				},
+			},
 		},
 	}
 }

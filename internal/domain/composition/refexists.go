@@ -20,7 +20,10 @@ func RefExists(kind, id string) bool {
 		_, err := lookupHTTPRequestFn(id)
 		return err == nil
 	case "list":
-		_, err := lookupListFn(id)
+		// Existence check only -- pinnedVersion=0 (live) regardless of
+		// whatever version a real list-lookup/list-search node's config
+		// might pin to, same reasoning the "decision" case below applies.
+		_, err := lookupListFn(id, 0)
 		return err == nil
 	case "mcpserver":
 		_, err := lookupMCPServerFn(id)

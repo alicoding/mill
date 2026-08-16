@@ -119,7 +119,33 @@
     "active": "Active",
     "expired": "Expired",
     "save": "Save",
-    "deleteRowAriaLabel": "Delete row"
+    "deleteRowAriaLabel": "Delete row",
+    "versions": {
+      "heading": "Versions",
+      "neverPublished": "Never published",
+      "publishedAt": "Published v{{version}}",
+      "publish": "Publish",
+      "live": "Live",
+      "versionPrefix": "v{{version}}"
+    },
+    "import": {
+      "button": "Import rows…",
+      "dialogTitle": "Import rows",
+      "count_one": "{{count}} row ready to import",
+      "count_other": "{{count}} rows ready to import",
+      "countWithSkips_one": "{{count}} row ready to import, {{skipped}} skipped",
+      "countWithSkips_other": "{{count}} rows ready to import, {{skipped}} skipped",
+      "mappingHeading": "Match each file column to a list column",
+      "mapToAriaLabel": "Column to import \"{{column}}\" into",
+      "dontImport": "Don't import",
+      "previewHeading": "Preview (first {{n}})",
+      "skippedHeading": "Skipped rows",
+      "skipReason": "Row {{row}}: {{reason}}",
+      "confirmButton_one": "Import {{count}} row",
+      "confirmButton_other": "Import {{count}} rows",
+      "resultSummary_one": "Imported {{count}} row.",
+      "resultSummary_other": "Imported {{count}} rows."
+    }
   },
   "configureExecEnv": {
     "shellLabel": {

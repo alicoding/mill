@@ -41,21 +41,30 @@ func newListLookupSeedHarness(t *testing.T) (*ExecutionService, string) {
 	}
 	t.Cleanup(func() { _ = exec.Shutdown(2 * time.Second) })
 
-	composition.SetListLookup(func(id string) (composition.ResolvedList, error) {
+	composition.SetListLookup(func(id string, pinnedVersion int) (composition.ResolvedList, error) {
 		for _, l := range list.BuiltIn() {
 			if l.ID == id {
+				resolved, err := list.Resolve(l, pinnedVersion)
+				if err != nil {
+					return composition.ResolvedList{}, err
+				}
 				// list.DeriveEntries (goal 0011): the seeded List is
 				// now typed (code/name columns), same derived
 				// first-two-columns view ConfigureService.resolveList
 				// uses in production -- list-lookup's own execution
 				// logic needed zero changes.
-				return composition.ResolvedList{Entries: list.DeriveEntries(l), Columns: l.Columns, Rows: l.Rows}, nil
+				withResolved := l
+				withResolved.Columns, withResolved.Rows = resolved.Columns, resolved.Rows
+				return composition.ResolvedList{
+					Entries: list.DeriveEntries(withResolved), Columns: resolved.Columns, Rows: resolved.Rows,
+					VersionStamp: resolved.VersionStamp,
+				}, nil
 			}
 		}
 		return composition.ResolvedList{}, fmt.Errorf("no list with id %q", id)
 	})
 	t.Cleanup(func() {
-		composition.SetListLookup(func(listID string) (composition.ResolvedList, error) {
+		composition.SetListLookup(func(listID string, _ int) (composition.ResolvedList, error) {
 			return composition.ResolvedList{}, fmt.Errorf("no list lookup registered (yet) for id %q", listID)
 		})
 	})

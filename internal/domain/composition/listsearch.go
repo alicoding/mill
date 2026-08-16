@@ -84,13 +84,25 @@ func init() {
 				Key: "outputAttribute", Label: "Output attribute", Type: FieldText,
 				Description: "Which Attributes field receives the typed search-result object.",
 			},
+			{
+				// docs/adr/0040 decision 4's version pin, applied to List
+				// by goal 0070 -- same shape and precedent as
+				// decision-outcome's own "version" config.
+				Key: "version", Label: "Pin to version (optional)",
+				Description: "Leave empty to always resolve this List's current rows. Enter a version number to pin this step to that exact published snapshot, unaffected by later row edits.",
+				Default:     "", Type: FieldText,
+			},
 		},
 	}, execListSearch)
 }
 
 func execListSearch(node Node, ctx ExecContext) (ExecContext, error) {
 	listID := node.Config["listId"]
-	rl, err := lookupListFn(listID)
+	pinned, err := listPinnedVersion(node)
+	if err != nil {
+		return ctx, fmt.Errorf("list-search: %w", err)
+	}
+	rl, err := lookupListFn(listID, pinned)
 	if err != nil {
 		return ctx, fmt.Errorf("list-search: %w", err)
 	}
@@ -149,6 +161,12 @@ func execListSearch(node Node, ctx ExecContext) (ExecContext, error) {
 		// here for a single node type would be a bigger, separate
 		// decision than this goal's own "at minimum" bar asks for.
 		"list_id": listID,
+		// resolved_version is the run-stamping audit label (docs/adr/0040
+		// decision 5, applied to List by goal 0070) -- "v<N>" for a
+		// pinned resolution, "live@<N>"/"live@draft" for an unpinned
+		// one, recorded inline with the result it produced (the same
+		// convention list_id above already establishes).
+		"resolved_version": rl.VersionStamp,
 	}
 	return ctx, nil
 }

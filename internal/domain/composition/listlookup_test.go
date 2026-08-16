@@ -9,11 +9,11 @@ import (
 // (default, preserves legacy), continue (proceed unchanged), default
 // (write a fallback). Backed by an injected list.
 func TestListLookup_MissBehavior(t *testing.T) {
-	SetListLookup(func(string) (ResolvedList, error) {
+	SetListLookup(func(string, int) (ResolvedList, error) {
 		return ResolvedList{Entries: map[string]string{"US": "United States"}}, nil
 	})
 	t.Cleanup(func() {
-		SetListLookup(func(id string) (ResolvedList, error) {
+		SetListLookup(func(id string, _ int) (ResolvedList, error) {
 			return ResolvedList{}, nil
 		})
 	})

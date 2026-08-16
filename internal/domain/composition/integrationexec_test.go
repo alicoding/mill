@@ -169,7 +169,7 @@ func TestExecuteWorkflow_IntegrationHTTP_NonOKStatus_Rejected(t *testing.T) {
 // lookupListFn seam, looks up ctx.Attributes[inputKey], and writes the
 // matched entry into ctx.Attributes[outputKey]. ---
 
-func withListLookup(t *testing.T, fn func(id string) (ResolvedList, error)) {
+func withListLookup(t *testing.T, fn func(id string, pinnedVersion int) (ResolvedList, error)) {
 	t.Helper()
 	orig := lookupListFn
 	lookupListFn = fn
@@ -177,7 +177,7 @@ func withListLookup(t *testing.T, fn func(id string) (ResolvedList, error)) {
 }
 
 func TestListLookupExec_MatchWritesOutputAttribute(t *testing.T) {
-	withListLookup(t, func(id string) (ResolvedList, error) {
+	withListLookup(t, func(id string, _ int) (ResolvedList, error) {
 		if id != "list-1" {
 			t.Errorf("lookupListFn called with id %q, want %q", id, "list-1")
 		}
@@ -198,7 +198,7 @@ func TestListLookupExec_MatchWritesOutputAttribute(t *testing.T) {
 }
 
 func TestListLookupExec_NoMatch_Rejected(t *testing.T) {
-	withListLookup(t, func(string) (ResolvedList, error) {
+	withListLookup(t, func(string, int) (ResolvedList, error) {
 		return ResolvedList{Entries: map[string]string{"US": "United States"}}, nil
 	})
 
@@ -212,7 +212,7 @@ func TestListLookupExec_NoMatch_Rejected(t *testing.T) {
 }
 
 func TestExecuteWorkflow_ListLookup_UnknownList_Rejected(t *testing.T) {
-	withListLookup(t, func(id string) (ResolvedList, error) {
+	withListLookup(t, func(id string, _ int) (ResolvedList, error) {
 		return ResolvedList{}, errors.New("no such list")
 	})
 
@@ -233,7 +233,7 @@ func TestExecuteWorkflow_ListLookup_EndToEnd(t *testing.T) {
 	// nodeExec dispatch), not just the exec function directly -- "code"
 	// is a FieldText Attribute, seeded to its zero value ("") by
 	// attributesEnv, matched here against a list entry keyed "".
-	withListLookup(t, func(string) (ResolvedList, error) {
+	withListLookup(t, func(string, int) (ResolvedList, error) {
 		return ResolvedList{Entries: map[string]string{"": "Worldwide"}}, nil
 	})
 
