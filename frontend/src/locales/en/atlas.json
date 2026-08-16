@@ -153,5 +153,9 @@
     "bundleContext": "Copy as context",
     "bundleContextWithAttachments": "Copy as context, with files",
     "copyLinks": "Copy links"
+  },
+  "contextMenu": {
+    "open": "Open",
+    "zoomIn": "Zoom in"
   }
 }

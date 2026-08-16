@@ -15,6 +15,9 @@ import { AtlasBoard } from './AtlasBoard'
 import type { AtlasFocusRequest } from './AtlasBoard'
 import { AtlasJumpDialog } from './AtlasJumpDialog'
 import { AtlasCardOverlay } from './AtlasCardOverlay'
+import { ContextMenu, type ContextMenuState } from '../shared/ContextMenu'
+import { useConfirmDelete } from '../shared/useConfirmDelete'
+import { atlasCardShareActions } from './atlasCardShare'
 import { AtlasMatrixView } from './AtlasMatrixView'
 import { AtlasCoverageView } from './AtlasCoverageView'
 import { NOTE_HEIGHT, NOTE_WIDTH, computeGroupFrameLayout, isGroupCard } from './atlasBoardLayout'
@@ -145,6 +148,41 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
     setViewedID(parent)
     // eslint-disable-next-line react-hooks/exhaustive-deps -- keyed on the signal tick alone; viewedID/allCards are read at fire time
   }, [atlasUpRequest])
+
+  // The card's right-click menu (goal 0075): Open / Zoom in mirror
+  // the gesture model's commits; the share trio mirrors the page's
+  // meta rail; Delete goes through the same ConfirmDialog contract as
+  // every destructive action (frontend.md). Flip is deliberately
+  // absent -- a single click IS the flip; a menu item for it would be
+  // a longer path to the same glance.
+  const [menu, setMenu] = useState<ContextMenuState | null>(null)
+  const { requestDelete, dialog: menuDeleteDialog } = useConfirmDelete<Card>({
+    entityType: 'card',
+    labelOf: (c) => c.Title,
+    onConfirm: (c) => {
+      AtlasService.DeleteCard(c.ID).then(() => void refreshAtlas()).catch((err) => setShareError(String(err)))
+    },
+  })
+  const openCardMenu = (cardID: string, pos: { x: number; y: number }) => {
+    const card = allCards.find((c) => c.ID === cardID)
+    if (!card) return
+    const share = atlasCardShareActions(card, (message) => setShareError(message))
+    const place = isGroupCard(allCards, card)
+    setMenu({
+      x: pos.x,
+      y: pos.y,
+      items: [
+        ...(place ? [{ id: 'zoom', label: t('contextMenu.zoomIn'), run: () => drill(card.ID) }] : []),
+        { id: 'open', label: t('contextMenu.open'), run: () => setOverlayCardID(card.ID) },
+        { id: 'd1', divider: true },
+        { id: 'copy-context', label: t('share.copyContext'), run: () => void share.copyAsContext(false) },
+        { id: 'copy-link', label: t('share.copyCloudLink'), run: () => void share.copyCloudLink() },
+        ...(card.MirrorPath ? [{ id: 'reveal', label: t('share.revealFile'), run: () => void share.revealFile() }] : []),
+        { id: 'd2', divider: true },
+        { id: 'delete', label: t('overlay.delete'), danger: true, run: () => requestDelete(card) },
+      ],
+    })
+  }
 
   const navigate = (id: string) => setViewedID(id)
   const drill = (id: string) => setViewedID(id)
@@ -288,6 +326,7 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
           focusRequest={focusRequest}
           onDrill={drill}
           onOpenOverlay={openOverlay}
+          onCardContextMenu={openCardMenu}
           onFocusHandled={() => setFocusRequest(null)}
         />
       )}
@@ -308,6 +347,8 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
         />
       )}
       {importConfirm.dialog}
+      <ContextMenu state={menu} onClose={() => setMenu(null)} />
+      {menuDeleteDialog}
 
       <AtlasMatrixView
         open={matrixOpen}

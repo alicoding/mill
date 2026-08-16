@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { resolveHotkeyLabel } from './HotkeyHint'
-import type { KeyCombo } from '../shared/keybinding'
+import type { KeyCombo } from './keybinding'
 
 // docs/goals/0015-summon-quick-invoke.md's inline-hotkey-hint
 // remainder: the resolution step every inline hint (WorkTabShell's

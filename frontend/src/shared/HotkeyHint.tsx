@@ -1,8 +1,8 @@
-import { findCommand, effectiveBinding } from '../shared/commands'
-import type { KeyCombo } from '../shared/keybinding'
-import { formatCombo } from '../shared/keybinding'
-import { useAppStore } from '../shared/store'
-import { KeyComboChip } from '../shared/KeyComboChip'
+import { findCommand, effectiveBinding } from './commands'
+import type { KeyCombo } from './keybinding'
+import { formatCombo } from './keybinding'
+import { useAppStore } from './store'
+import { KeyComboChip } from './KeyComboChip'
 
 // The single O(1) read every inline hotkey hint in the app goes
 // through (docs/goals/0015-summon-quick-invoke.md's single-source-of-

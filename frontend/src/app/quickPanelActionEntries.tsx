@@ -8,7 +8,7 @@ import type { MCPServer } from '../../bindings/github.com/alicoding/mill/interna
 import { ENTITY_ICON } from '../shared/entityIcons'
 import type { PaletteSearchable } from './paletteFilter'
 import { CAPABILITY_ICON } from './navIcon'
-import { HotkeyHint } from './HotkeyHint'
+import { HotkeyHint } from '../shared/HotkeyHint'
 
 // Split out of QuickPanel.tsx (architecture.md's 500-line convention)
 // along the real seam between the two entry kinds the panel renders:

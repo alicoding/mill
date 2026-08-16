@@ -16,7 +16,7 @@ import { clearScratch } from '../composition/canvasScratch'
 import { filterPaletteEntries } from './paletteFilter'
 import type { PaletteSearchable } from './paletteFilter'
 import { sortWorkflowsByPinnedAndFrecency } from './workflowFrecency'
-import { HotkeyHint } from './HotkeyHint'
+import { HotkeyHint } from '../shared/HotkeyHint'
 import { WorkflowRowTrailingVisual } from './WorkflowRowTrailingVisual'
 import styles from './CommandPalette.module.css'
 
