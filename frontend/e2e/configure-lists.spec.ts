@@ -1,4 +1,5 @@
 import { test, expect } from './fixtures/server'
+import { clickCanvasNode } from './fixtures/canvasNode'
 import { clickRowAction } from './inventoryRow'
 
 // docs/goals/0011-lists-maturation.md: exercises the typed List
@@ -50,58 +51,6 @@ async function connectNodes(page: import('@playwright/test').Page, sourceLabel: 
   await page.mouse.down()
   await page.mouse.move(targetBox.x + targetBox.width / 2, targetBox.y + targetBox.height / 2, { steps: 10 })
   await page.mouse.up()
-}
-
-// See composition-canvas-interactions.spec.ts's own copy of this
-// helper for the full reasoning -- a tightly packed Fit View can
-// render a target card overlapping a sibling's or React Flow's own
-// fixed Controls/MiniMap chrome, so a candidate point is only a real
-// hit when it resolves to THIS node's own `data-id`; if none do, the
-// layout is panned so the node's last-known center lands on the
-// pane's own center (clear of corner-anchored chrome) before the
-// outer retry re-samples.
-async function clickCanvasNode(page: import('@playwright/test').Page, panel: import('@playwright/test').Locator, label: string) {
-  const node = panel.locator('.react-flow__node').filter({ hasText: label })
-  const nodeID = await node.getAttribute('data-id')
-  if (!nodeID) throw new Error(`clickCanvasNode: node "${label}" has no data-id`)
-
-  await expect(async () => {
-    const box = await node.boundingBox()
-    if (!box) throw new Error(`clickCanvasNode: node "${label}" has no bounding box`)
-    const candidates = [
-      { x: box.x + 10, y: box.y + 10 },
-      { x: box.x + box.width - 10, y: box.y + 10 },
-      { x: box.x + box.width / 2, y: box.y + box.height / 2 },
-      { x: box.x + 10, y: box.y + box.height - 10 },
-    ]
-    let clicked = false
-    for (const point of candidates) {
-      const hitID = await page.evaluate(({ x, y }) => {
-        const el = document.elementFromPoint(x, y)
-        return el?.closest('.react-flow__node')?.getAttribute('data-id') ?? null
-      }, point)
-      if (hitID === nodeID) {
-        await page.mouse.click(point.x, point.y)
-        clicked = true
-        break
-      }
-    }
-    if (!clicked) {
-      const paneBox = await panel.locator('.react-flow__pane').boundingBox()
-      if (paneBox) {
-        const anchor = { x: paneBox.x + paneBox.width / 2, y: paneBox.y + 20 }
-        const nodeCenter = { x: box.x + box.width / 2, y: box.y + box.height / 2 }
-        const paneCenter = { x: paneBox.x + paneBox.width / 2, y: paneBox.y + paneBox.height / 2 }
-        const dx = paneCenter.x - nodeCenter.x
-        const dy = paneCenter.y - nodeCenter.y
-        await page.mouse.move(anchor.x, anchor.y)
-        await page.mouse.down()
-        await page.mouse.move(anchor.x + dx, anchor.y + dy, { steps: 5 })
-        await page.mouse.up()
-      }
-    }
-    await expect(panel.locator('.react-flow__node.selected')).toHaveAttribute('data-id', nodeID)
-  }).toPass({ timeout: 10_000, intervals: [200] })
 }
 
 test('Configuring a typed List: add a column, add a row, both persist', async ({ page }) => {
