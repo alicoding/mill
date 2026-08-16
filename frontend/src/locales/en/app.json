@@ -12,7 +12,7 @@
     "buildModifiedTooltip": "Built with uncommitted changes",
     "buildRevisionTooltip": "Commit this build was built from",
     "testDataBadge": "TEST DATA",
-    "docsLinkAriaLabel": "Wails documentation",
+    "docsLinkAriaLabel": "Mill on GitHub",
     "docsLinkText": "Docs"
   },
   "quickPanel": {

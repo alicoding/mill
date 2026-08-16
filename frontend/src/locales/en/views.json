@@ -57,7 +57,8 @@
       "checkButton": "Check for updates",
       "checking": "Checking…",
       "updateAvailable": "Update available: v{{version}}",
-      "upToDate": "You're on the latest version."
+      "upToDate": "You're on the latest version.",
+      "currentVersion": "You have Mill v{{version}}"
     },
     "dataStewardship": {
       "description": "Mill snapshots your workflow history and settings automatically, and can bundle everything into one file to move to another machine.",

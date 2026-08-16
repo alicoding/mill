@@ -6,7 +6,6 @@
 package settingssvc
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"log/slog"
@@ -78,6 +77,7 @@ type SettingsService struct {
 	summon         *hotkey.Binding
 	summonHK       triggersvc.PersistedHotkey // zero value (nil Mods) means unassigned
 	updater        *updater.Updater
+	appVersion     string
 	isolatedData   bool
 	mcpService     *mcpsvc.MillMCPService
 
@@ -317,48 +317,6 @@ func (s *SettingsService) SetLaunchAtLogin(enabled bool) error {
 	return launchatlogin.Disable(exe)
 }
 
-// SetUpdater wires Wails3's own app.Updater singleton (constructed by
-// application.New() itself, already Init'd by main.go with a GitHub
-// Releases provider) -- set after app construction, same "wire the
-// rest after construction" shape as SetWindow. docs/SPEC.md §3.7's
-// research confirmed this needs no new dependency: v3/pkg/updater is
-// Wails3's own first-party package.
-//
-//wails:ignore
-func (s *SettingsService) SetUpdater(u *updater.Updater) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.updater = u
-}
-
-// UpdateCheckResult is CheckForUpdates' Wails-bound result shape.
-type UpdateCheckResult struct {
-	UpdateAvailable bool   `json:"updateAvailable"`
-	Version         string `json:"version"`
-	Notes           string `json:"notes"`
-}
-
-// CheckForUpdates asks the configured provider (GitHub Releases,
-// alicoding/mill) whether a newer version exists. Inert until Mill has
-// a real tagged-release process -- see docs/SPEC.md §3.7's own note on
-// this; wired now so the mechanism exists, not claiming a working
-// update pipeline exists yet.
-func (s *SettingsService) CheckForUpdates() (UpdateCheckResult, error) {
-	s.mu.Lock()
-	u := s.updater
-	s.mu.Unlock()
-	if u == nil {
-		return UpdateCheckResult{}, fmt.Errorf("updater not configured")
-	}
-	rel, err := u.Check(context.Background())
-	if err != nil {
-		return UpdateCheckResult{}, err
-	}
-	if rel == nil {
-		return UpdateCheckResult{UpdateAvailable: false}, nil
-	}
-	return UpdateCheckResult{UpdateAvailable: true, Version: rel.Version, Notes: rel.Notes}, nil
-}
 
 // GetMCPWriteEnabled/SetMCPWriteEnabled own the default-off gate for
 // Mill's MCP import tools (millmcpservice_tools.go, ADR-0017's

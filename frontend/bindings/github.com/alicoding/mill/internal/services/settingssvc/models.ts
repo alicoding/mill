@@ -63,5 +63,6 @@ export interface BuildInfo {
 export interface UpdateCheckResult {
     "updateAvailable": boolean;
     "version": string;
+    "currentVersion": string;
     "notes": string;
 }

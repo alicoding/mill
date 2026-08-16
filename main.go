@@ -153,9 +153,8 @@ func main() {
 	// invocation, wired the same late-bound way for the same reason.
 	executionService.WireChildWorkflowRunner()
 	// docs/adr/0035: the trigger-system-event dispatch seam --
-	// ExecutionService (the producer) never imports triggersvc (the
-	// consumer); this wires them together, same late-bound-setter shape
-	// as every other injected-function seam here.
+	// ExecutionService (producer) never imports triggersvc (consumer);
+	// same late-bound-setter shape as every injected seam here.
 	executionService.SetSystemEventSink(triggerService.DispatchSystemEvent)
 	// goal 0052 slice 3: the version a run receipt's Build field stamps.
 	executionService.SetVersion(millVersion)
@@ -198,6 +197,7 @@ func main() {
 	atlasService.SetMirrorsDir(atlassvc.DefaultMirrorsDir(os.Getenv("MILL_ATLAS_MIRRORS_DIR")))
 
 	settingsService := settingssvc.NewSettingsService(settingsStore, triggerService, settingsPath != defaultSettingsPath)
+	settingsService.SetAppVersion(millVersion)
 	// Bidirectional hotkey-conflict check (docs/SPEC.md §3.7): a
 	// per-workflow hotkey can't silently collide with the app-level
 	// summon hotkey, and vice versa -- SettingsService.AssignSummonHotkey
