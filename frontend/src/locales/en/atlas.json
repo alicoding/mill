@@ -11,9 +11,9 @@
   "board": {
     "flipCardAriaLabel": "Flip {{title}}",
     "zoomIntoAriaLabel": "Zoom into {{title}}",
-    "cardsCount": "{{count}} cards",
+    "cardsCount_one": "{{count}} card",
+    "cardsCount_other": "{{count}} cards",
     "leafChip": "leaf",
-    "linksChip": "{{count}} links",
     "freshChip": "{{count}} fresh",
     "staleChip": "{{count}} stale",
     "zoomChip": "Zoom ⤢",
@@ -25,7 +25,9 @@
     "linkRow": "{{kind}} → {{title}}",
     "moreLinks": "+{{count}} more",
     "open": "Open",
-    "jumpHint": "↵ open"
+    "jumpHint": "↵ open",
+    "linksChip_one": "{{count}} link",
+    "linksChip_other": "{{count}} links"
   },
   "jump": {
     "placeholder": "Jump to a card",
@@ -127,7 +129,8 @@
     "close": "Close ⨯",
     "insideEyebrow": "Inside · {{kind}}",
     "linkEyebrow": "Link · {{kind}}",
-    "cardsChip": "▸ {{count}} cards",
+    "cardsChip_one": "▸ {{count}} card",
+    "cardsChip_other": "▸ {{count}} cards",
     "openGroupAriaLabel": "Open {{title}}",
     "emptyContents": "Nothing inside yet",
     "editHeading": "Edit",
