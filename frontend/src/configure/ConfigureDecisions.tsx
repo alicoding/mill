@@ -23,6 +23,7 @@ import { useImportConfirm } from '../shared/useImportConfirm'
 import { describeSeedReset } from '../shared/seedLifecycle'
 import { RestoreExamplesButton } from '../shared/RestoreExamplesButton'
 import { ConfirmDialog } from '../shared/ConfirmDialog'
+import { useUISignalStore } from '../shared/uiSignalStore'
 import styles from '../shared/ListCard.module.css'
 import PageContainer from '../shared/PageContainer'
 
@@ -130,6 +131,20 @@ export function ConfigureDecisions() {
     setFormOpen(true)
     setError('')
   }
+
+  // configure.new.decisions (shared/configureCreateCommands.ts, goal
+  // 0071 G6) -- same signal-consumption shape as ConfigureLists.tsx's
+  // own configureCreateRequest effect. Always the bare create form
+  // (startCreate()'s optional `prefill` is only ever passed by the
+  // row-level Duplicate action, not this signal).
+  const configureCreateRequest = useUISignalStore((s) => s.configureCreateRequest)
+  const consumeConfigureCreate = useUISignalStore((s) => s.consumeConfigureCreate)
+  useEffect(() => {
+    if (configureCreateRequest !== 'decisions') return
+    startCreate()
+    consumeConfigureCreate()
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- startCreate/consumeConfigureCreate deliberately excluded, same reasoning useCanvasCommandDispatch.ts's own identical effect documents
+  }, [configureCreateRequest])
 
   const startEdit = (d: Decision) => {
     setEditingID(d.ID)

@@ -4,7 +4,7 @@ import { Events } from '@wailsio/runtime'
 import { SettingsService, TriggerService } from '../shared/bindings'
 import { comboKey, describeCombo, formatCombo, keyFromEventCode, modsFromEvent, reservedByMacOS } from '../shared/keybinding'
 import { refreshKeybindings, useAppStore } from '../shared/store'
-import { COMMANDS, effectiveBinding } from '../shared/commands'
+import { COMMANDS, effectiveBinding, findCommand, surfacesIntersect } from '../shared/commands'
 
 // SPEC.md §2.2's "Permissions UX pattern" -- deep-link straight into the
 // exact System Settings pane instead of telling the user to go find it
@@ -206,10 +206,20 @@ export function useCommandKeybindingCapture(commandId: string | null, onChanged?
       // already overridden), before the RPC is ever called -- an
       // override-vs-override or override-vs-workflow-hotkey clash still
       // gets caught server-side either way.
+      //
+      // Surface-scoped (goal 0071): a same-combo pair is only a real
+      // conflict if their surface sets intersect (surfacesIntersect,
+      // shared/commands.ts) -- two commands scoped to disjoint surfaces
+      // (e.g. Atlas vs. Workflows) can never both be the active view at
+      // once, so sharing a combo between them is legal, same as
+      // dispatchCommandForEvent's own two-pass surface precedence
+      // already treats it.
       const overrides = useAppStore.getState().keybindingOverrides
       const want = comboKey(mods, key)
+      const target = findCommand(commandId ?? '')
       const clash = COMMANDS.find((c) => {
         if (c.id === commandId) return false
+        if (!surfacesIntersect(target?.surface, c.surface)) return false
         const binding = effectiveBinding(c, overrides)
         return binding !== null && comboKey(binding.mods, binding.key) === want
       })

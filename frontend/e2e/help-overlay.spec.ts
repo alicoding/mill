@@ -1,0 +1,101 @@
+import { test, expect } from './fixtures/server'
+
+// The bare-?/⌘? shortcuts-help overlay (goal 0071, app/ShortcutsHelpDialog.tsx):
+// context-first ("On this page" bindings ahead of "Everywhere"),
+// generated from the command registry (shared/commands.ts). `?` is a
+// real, in-window keydown here (app/useKeymapDispatch.ts's own second
+// listener), same reasoning every other keyboard spec in this suite
+// already documents for why a real keypress is the right level to test
+// at, not a stand-in.
+
+function helpDialog(page: import('@playwright/test').Page) {
+  return page.locator('[data-component="shortcuts-help"]')
+}
+
+test('bare ? on Atlas opens the overlay context-first, Esc closes it', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Atlas' }).click()
+  await expect(page.getByTestId('atlas-view')).toBeVisible()
+
+  await page.keyboard.press('?')
+  await expect(helpDialog(page)).toBeVisible()
+  await expect(helpDialog(page).getByText('On this page')).toBeVisible()
+  await expect(helpDialog(page).getByText('Go up one level')).toBeVisible()
+  await expect(helpDialog(page).getByText('Jump to a card')).toBeVisible()
+  await expect(helpDialog(page).getByText('Everywhere')).toBeVisible()
+
+  await page.keyboard.press('Escape')
+  await expect(helpDialog(page)).toHaveCount(0)
+})
+
+test('typing ? inside the atlas jump dialog\'s own search input does not also open the help overlay', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Atlas' }).click()
+  await expect(page.getByTestId('atlas-board')).toBeVisible()
+
+  await page.keyboard.press('Meta+k')
+  const jumpInput = page.getByTestId('atlas-jump-input')
+  await expect(jumpInput).toBeFocused()
+  await jumpInput.press('?')
+
+  await expect(helpDialog(page)).toHaveCount(0)
+  await expect(page.locator('[data-component="atlas-jump-dialog"]')).toBeVisible()
+  await page.keyboard.press('Escape')
+})
+
+test('Cmd+Shift+/ (⌘?) opens the help overlay, not the palette; Cmd+/ still opens the palette', async ({ page }) => {
+  await page.goto('/')
+  const paletteDialog = page.getByRole('dialog', { name: 'Command palette' })
+
+  await page.keyboard.press('Meta+Shift+/')
+  await expect(helpDialog(page)).toBeVisible()
+  await expect(paletteDialog).toHaveCount(0)
+  await page.keyboard.press('Escape')
+  await expect(helpDialog(page)).toHaveCount(0)
+
+  await page.keyboard.press('Meta+/')
+  await expect(paletteDialog).toBeVisible()
+  await expect(helpDialog(page)).toHaveCount(0)
+  await page.keyboard.press('Escape')
+})
+
+test('the command palette on Atlas lists "Jump to a card" with its ⌘K chip under "On this page"', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Atlas' }).click()
+  await expect(page.getByTestId('atlas-board')).toBeVisible()
+
+  await page.keyboard.press('Meta+/')
+  const palette = page.getByRole('dialog', { name: 'Command palette' })
+  await expect(palette).toBeVisible()
+  await expect(palette.getByText('On this page')).toBeVisible()
+  const jumpOption = palette.getByRole('option', { name: /Jump to a card/ })
+  await expect(jumpOption).toBeVisible()
+  await expect(jumpOption).toContainText('⌘K')
+  await page.keyboard.press('Escape')
+})
+
+test('"Open coverage" from the palette on Atlas opens the coverage dialog', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Atlas' }).click()
+  await expect(page.getByTestId('atlas-board')).toBeVisible()
+
+  await page.keyboard.press('Meta+/')
+  const palette = page.getByRole('dialog', { name: 'Command palette' })
+  await palette.getByRole('combobox').fill('Open coverage')
+  const option = page.getByRole('option', { name: 'Open coverage' })
+  await expect(option).toBeVisible()
+  await option.click()
+
+  await expect(page.locator('[data-component="atlas-coverage-dialog"]')).toBeVisible()
+})
+
+test('"Rebind in Settings" in the overlay footer navigates to Settings and closes the overlay', async ({ page }) => {
+  await page.goto('/')
+  await page.keyboard.press('?')
+  await expect(helpDialog(page)).toBeVisible()
+
+  await page.getByTestId('shortcuts-help-rebind').click()
+  await expect(helpDialog(page)).toHaveCount(0)
+  await expect(page.getByTestId('settings-view')).toBeVisible()
+  await expect(page.locator('[data-testid="keymap-list"]')).toBeVisible()
+})

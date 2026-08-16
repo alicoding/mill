@@ -8,7 +8,9 @@ import { CompositionService, ExecutionService, RunKind, SettingsService, Trigger
 import type { ClipboardApplyPreview } from '../shared/bindings'
 import { generateSamplePayload } from '../shared/configSchema'
 import { useAppStore, refreshWorkflows, refreshRequests, refreshKeybindings } from '../shared/store'
-import { useConfigureEntityStore, refreshLists, refreshMCPServers } from '../shared/configureEntityStore'
+import {
+  useConfigureEntityStore, refreshLists, refreshMCPServers, refreshDecisions, refreshExecEnvs, refreshAIProviders, refreshDeclaredStepTypes,
+} from '../shared/configureEntityStore'
 import { useAtlasStore, refreshAtlasCards, refreshAtlasKinds } from '../atlas/atlasStore'
 import { findRootNode } from '../composition/triggerRowInfo'
 import { filterPaletteEntries } from './paletteFilter'
@@ -74,6 +76,12 @@ export function QuickPanel() {
   const requests = useAppStore((s) => s.requests)
   const lists = useConfigureEntityStore((s) => s.lists)
   const mcpServers = useConfigureEntityStore((s) => s.mcpServers)
+  // Quick-access parity sweep (goal 0071 G5): the same jump-row
+  // pattern's remaining four Configure entity kinds.
+  const decisions = useConfigureEntityStore((s) => s.decisions)
+  const execEnvs = useConfigureEntityStore((s) => s.execEnvs)
+  const aiProviders = useConfigureEntityStore((s) => s.aiProviders)
+  const declaredStepTypes = useConfigureEntityStore((s) => s.declaredStepTypes)
   const atlasCards = useAtlasStore((s) => s.cards)
   const atlasKinds = useAtlasStore((s) => s.kinds)
   // Workflow pins/favorites (docs/goals/BACKLOG.md Standing #5): a
@@ -157,6 +165,10 @@ export function QuickPanel() {
       void refreshRequests()
       void refreshLists()
       void refreshMCPServers()
+      void refreshDecisions()
+      void refreshExecEnvs()
+      void refreshAIProviders()
+      void refreshDeclaredStepTypes()
       void refreshAtlasCards()
       void refreshAtlasKinds()
       void refreshFrecency()
@@ -210,6 +222,10 @@ export function QuickPanel() {
       if (entity === 'request') void refreshRequests()
       if (entity === 'list') void refreshLists()
       if (entity === 'mcpserver') void refreshMCPServers()
+      if (entity === 'decision') void refreshDecisions()
+      if (entity === 'execenv') void refreshExecEnvs()
+      if (entity === 'aiprovider') void refreshAIProviders()
+      if (entity === 'steptype') void refreshDeclaredStepTypes()
       if (entity === 'atlas') { void refreshAtlasCards(); void refreshAtlasKinds() }
       if (entity === 'hotkey') refreshHotkeyCombos()
       if (entity === 'keybinding') void refreshKeybindings()
@@ -357,11 +373,15 @@ export function QuickPanel() {
     // which needs per-row pin/hotkey-chip state this shared builder
     // doesn't.
     entries.push(...buildConfigureAndActionEntries({
-      t, requests, lists, mcpServers, atlasCards, atlasKinds, reviewPendingCount, jumpToConfigure, jumpToAtlasCard, openMain, applyFromClipboard,
+      t, requests, lists, mcpServers, decisions, execEnvs, aiProviders, declaredStepTypes,
+      atlasCards, atlasKinds, reviewPendingCount, jumpToConfigure, jumpToAtlasCard, openMain, applyFromClipboard,
     }))
     return entries
     // eslint-disable-next-line react-hooks/exhaustive-deps -- runWorkflow/jumpToConfigure/jumpToAtlasCard/openMain/applyFromClipboard/togglePinnedWorkflow close over state already listed or are stable
-  }, [workflows, mostUsedRank, hotkeyCombos, pinnedWorkflowIds, requests, lists, mcpServers, atlasCards, atlasKinds, reviewPendingCount])
+  }, [
+    workflows, mostUsedRank, hotkeyCombos, pinnedWorkflowIds, requests, lists, mcpServers,
+    decisions, execEnvs, aiProviders, declaredStepTypes, atlasCards, atlasKinds, reviewPendingCount,
+  ])
 
   const filtered = filterPaletteEntries(allEntries, query)
 

@@ -202,21 +202,17 @@ test('Settings: rebinding a command persists, the new combo works, and a conflic
   await expect(saveRowAgain.getByTestId('keymap-row-combo')).toHaveText('⌘S')
 })
 
-// docs/goals/BACKLOG.md Standing #6 -- ⌘?/⌘/ multi-binding aliases on
-// palette.open. commands.test.ts already covers dispatchCommandForEvent
+// docs/goals/BACKLOG.md Standing #6 -- ⌘/ as palette.open's own extra
+// binding. commands.test.ts already covers dispatchCommandForEvent
 // matching an extraBinding in isolation; this proves the live wiring
-// (App.tsx's real keydown listener, the real Dialog toggling) for both
-// aliases, not just Cmd+K.
-test('Cmd+/ and Cmd+Shift+/ (the extra palette.open bindings) both open the command palette, same as Cmd+K', async ({ page }) => {
+// (App.tsx's real keydown listener, the real Dialog toggling). ⌘⇧/
+// moved off palette.open onto help.shortcuts (goal 0071) -- covered by
+// e2e/help-overlay.spec.ts instead.
+test('Cmd+/ (palette.open\'s extra binding) opens the command palette, same as Cmd+K', async ({ page }) => {
   await page.goto('/')
   const paletteDialog = page.getByRole('dialog', { name: 'Command palette' })
 
   await page.keyboard.press('Meta+/')
-  await expect(paletteDialog).toBeVisible()
-  await page.keyboard.press('Escape')
-  await expect(paletteDialog).toHaveCount(0)
-
-  await page.keyboard.press('Meta+Shift+/')
   await expect(paletteDialog).toBeVisible()
   await page.keyboard.press('Escape')
   await expect(paletteDialog).toHaveCount(0)
@@ -226,7 +222,7 @@ test('Cmd+/ and Cmd+Shift+/ (the extra palette.open bindings) both open the comm
 // secondary chips (views/KeyboardShortcutsSection.tsx) -- distinct from
 // the primary combo button above it, which stays the only
 // click-to-rebind target.
-test('Settings shows palette.open\'s extra bindings as read-only secondary chips', async ({ page }) => {
+test('Settings shows palette.open\'s extra binding as a read-only secondary chip', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Settings' }).click()
 
@@ -234,9 +230,8 @@ test('Settings shows palette.open\'s extra bindings as read-only secondary chips
   await expect(paletteRow.getByTestId('keymap-row-combo')).toHaveText('⌘K')
 
   const extraChips = paletteRow.getByTestId('keymap-row-extra-binding')
-  await expect(extraChips).toHaveCount(2)
+  await expect(extraChips).toHaveCount(1)
   await expect(extraChips.nth(0)).toHaveText('⌘/')
-  await expect(extraChips.nth(1)).toHaveText('⌘⇧/')
 
   // A command with no extraBindings (e.g. workflow.save) renders none.
   const saveRow = page.locator('[data-testid="keymap-row"][data-command-id="workflow.save"]')

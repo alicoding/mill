@@ -194,6 +194,54 @@ test('typing a few chars and picking a Configure entity jumps the main window to
   }
 })
 
+// Quick-access parity sweep (goal 0071 G5): the same jump-row pattern
+// extended to Decisions and AI Providers -- two of the four Configure
+// entity kinds added alongside the original three (Integration/Lists/
+// MCP Servers). Reuses seeded builtins (internal/domain/decision/
+// builtin.go's "Approve (example)", internal/domain/aiprovider/
+// builtin.go's "Local Ollama") rather than creating throwaway entities.
+test('Quick Panel jump rows exist for Decisions and AI Providers (goal 0071 parity sweep)', async ({ page }) => {
+  const mainPage = await page.context().newPage()
+  try {
+    await mainPage.goto('/')
+
+    await page.goto('/#/quickpanel')
+    const search = page.getByRole('combobox', { name: 'Quick Panel search' })
+    await expect(search).toBeFocused()
+
+    await search.fill('Approve')
+    await expect(page.getByRole('option', { name: 'Approve (example)' })).toBeVisible()
+    await page.getByRole('option', { name: 'Approve (example)' }).click()
+    await expect(mainPage.getByTestId('configure-decisions')).toBeVisible({ timeout: 10_000 })
+
+    await search.fill('')
+    await search.fill('Ollama')
+    await expect(page.getByRole('option', { name: /Local Ollama/ })).toBeVisible()
+    await page.getByRole('option', { name: /Local Ollama/ }).click()
+    await expect(mainPage.getByTestId('configure-aiproviders')).toBeVisible({ timeout: 10_000 })
+  } finally {
+    await mainPage.close()
+  }
+})
+
+// G6: a per-Configure-tab create command drives the tab's own in-page
+// create flow, not just a jump to the tab. "New list" proves the
+// signal-consumption pattern shared/configureCreateRequest -> each
+// tab's startCreate() (configure/ConfigureLists.tsx and five siblings
+// share the exact same wiring).
+test('Running "New list" from the palette opens Configure -> Lists with the create form already open', async ({ page }) => {
+  await page.goto('/')
+  await page.keyboard.press('Meta+k')
+  const palette = page.getByRole('dialog', { name: 'Command palette' })
+  await expect(palette).toBeVisible()
+  await palette.getByRole('combobox').fill('New list')
+  await expect(page.getByRole('option', { name: 'New list' })).toBeVisible()
+  await page.getByRole('option', { name: 'New list' }).click()
+
+  await expect(page.getByTestId('configure-lists')).toBeVisible()
+  await expect(page.getByTestId('save-list')).toBeVisible()
+})
+
 // docs/goals/0015-summon-quick-invoke.md's remainder, item 1: frecency
 // sort. workflowFrecency.test.ts already covers the pure ranking
 // function in isolation; this proves the live wiring end to end

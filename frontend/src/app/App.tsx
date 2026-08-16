@@ -15,16 +15,17 @@ import { CapabilitiesService, ExecutionService, SettingsService } from '../share
 import type { BuildInfo } from '../shared/bindings'
 import { refreshKeybindings, refreshNodeTypes, refreshRequests, refreshWorkflows, useAppStore } from "../shared/store";
 import { refreshAIProviders, refreshDeclaredStepTypes, refreshDecisions, refreshExecEnvs, refreshLists, refreshMCPServers } from "../shared/configureEntityStore";
-import { dispatchCommandForEvent } from "../shared/commands";
 import { WorkTabShell } from "./WorkTabShell";
 import { AppSidebar } from "./AppSidebar";
 import { MobileNavToggle } from "./MobileNavToggle";
 import { MCPWriteApprovals } from "./MCPWriteApprovals";
 import { CommandPalette } from "./CommandPalette";
+import { ShortcutsHelpDialog } from "./ShortcutsHelpDialog";
 import { BuildIdentityBadge } from "./BuildIdentityBadge";
 import { COLOR_MODE_STORAGE_KEY, SIDEBAR_OPEN_STORAGE_KEY } from "./theme";
 import { pageIconFor, pageLabelFor } from './pageMeta'
 import { useMillNavigate } from './useMillNavigate'
+import { useKeymapDispatch } from './useKeymapDispatch'
 import styles from "./App.module.css";
 
 
@@ -96,34 +97,12 @@ function App() {
   // module, leaving stray listeners firing on unrelated updates. Not
   // worth chasing further for a dev-convenience ribbon -- see SPEC.md.
 
-  // The keymap system's one window keydown listener (docs/goals/0016-
-  // keymap-system.md): resolves a pressed combo against every
-  // command's current EFFECTIVE binding (shared/commands.ts's
-  // dispatchCommandForEvent -- default, or this store's own
-  // keybindingOverrides if the user rebound it in Settings) and runs
-  // the first match. This is the direct successor to the old, hardcoded
-  // Cmd+1-4/Cmd+, VIEW_HOTKEYS handler -- those four are now just
-  // ordinary commands (view.composition/configure/activity/review,
-  // settings.open) in COMMANDS, dispatched the exact same way, not a
-  // second parallel handler. Deliberately in-window-only, not a global
-  // OS-level hotkey, same reasoning the old handler already had: plain
-  // browser keydown handling is the reversible/safer default, distinct
-  // from TriggerService's real OS-level golang.design/x/hotkey
-  // registration (§3.4) that per-workflow and summon hotkeys use.
-  // Active regardless of which element has focus (comboFromEvent
-  // itself requires Cmd or Ctrl, never a bare key a text field would
-  // otherwise consume) -- matches browsers'/Slack's own Cmd+1-9
-  // tab-switching precedent.
-  const keybindingOverrides = useAppStore((s) => s.keybindingOverrides);
-  useEffect(() => {
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (dispatchCommandForEvent(e, keybindingOverrides)) {
-        e.preventDefault();
-      }
-    };
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
-  }, [keybindingOverrides]);
+  // The app's window-level keydown handling (docs/goals/0016-keymap-
+  // system.md's command dispatcher + goal 0071's bare-`?` shortcuts-
+  // help overlay) -- split into its own hook (CLAUDE.md's 500-line
+  // convention); see useKeymapDispatch.ts's own header for both
+  // listeners' full reasoning.
+  useKeymapDispatch();
 
   // Icon-rail collapse (narrow persistent strip, not full hide/show) is a
   // well-established pattern -- but Primer genuinely ships none of its
@@ -422,6 +401,10 @@ function App() {
           active, same "app-level chrome, mounted once" pattern as
           MCPWriteApprovals below. */}
       <CommandPalette />
+      {/* The bare-?/⌘? shortcuts-help overlay (goal 0071): same
+          app-level-chrome-mounted-once shape as CommandPalette above,
+          renders off the store's helpOpen flag. */}
+      <ShortcutsHelpDialog />
 
       {/* Every capability gets a nav entry, built or not (docs/SPEC.md
           §2.2) -- driven by CapabilitiesService's own data so the sidebar

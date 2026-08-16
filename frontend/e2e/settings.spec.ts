@@ -128,6 +128,47 @@ test('Back up now takes a snapshot and updates the last-backup time', async ({ p
   expect(entries.length).toBeGreaterThan(0)
 })
 
+// Goal 0071 G18: the palette's "Back up now" command performs a real
+// backup through the exact same BackupService.BackupNow RPC the
+// Settings button above already proves against a real snapshot file --
+// this proves the command reaches it too, live-updating an ALREADY-OPEN
+// Settings page via the same mill-data-changed{entity:"backup"} event
+// the button's own click already relies on (DataStewardshipSection.tsx),
+// without ever touching that button.
+test('Back up now from the command palette takes a real snapshot, live-updating an open Settings page', async ({ page, workerServer }) => {
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Settings' }).click()
+  await expect(page.getByTestId('backup-now')).toBeVisible()
+
+  const before = existsSync(workerServer.backupDir) ? readdirSync(workerServer.backupDir).length : 0
+
+  await page.keyboard.press('Meta+k')
+  const palette = page.getByRole('dialog', { name: 'Command palette' })
+  await palette.getByRole('combobox').fill('Back up now')
+  await expect(page.getByRole('option', { name: 'Back up now' })).toBeVisible()
+  await page.getByRole('option', { name: 'Back up now' }).click()
+
+  await expect(page.getByText(/Last backup:/)).toBeVisible({ timeout: 15_000 })
+  const after = existsSync(workerServer.backupDir) ? readdirSync(workerServer.backupDir).length : 0
+  expect(after).toBeGreaterThan(before)
+})
+
+// "Export everything" deep-links to Settings rather than downloading
+// directly -- the flow needs its own confirm/download UI there
+// (DataStewardshipSection.tsx), same reasoning every settings.open.*
+// deep-link command already follows.
+test('Export everything from the command palette lands on the Backups settings section', async ({ page }) => {
+  await page.goto('/')
+  await page.keyboard.press('Meta+k')
+  const palette = page.getByRole('dialog', { name: 'Command palette' })
+  await palette.getByRole('combobox').fill('Export everything')
+  await expect(page.getByRole('option', { name: 'Export everything' })).toBeVisible()
+  await page.getByRole('option', { name: 'Export everything' }).click()
+
+  await expect(page.getByTestId('settings-view')).toBeVisible()
+  await expect(page.getByTestId('export-everything')).toBeVisible()
+})
+
 test('Export everything downloads a genuine zip archive', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Settings' }).click()

@@ -5,6 +5,10 @@ import type { Card, Kind } from '../../bindings/github.com/alicoding/mill/intern
 import type { HTTPRequest } from '../../bindings/github.com/alicoding/mill/internal/domain/httprequest/models'
 import type { List } from '../../bindings/github.com/alicoding/mill/internal/domain/list/models'
 import type { MCPServer } from '../../bindings/github.com/alicoding/mill/internal/domain/mcpserver/models'
+import type { Decision } from '../../bindings/github.com/alicoding/mill/internal/domain/decision/models'
+import type { ExecEnv } from '../../bindings/github.com/alicoding/mill/internal/domain/execenv/models'
+import type { AIProvider } from '../../bindings/github.com/alicoding/mill/internal/domain/aiprovider/models'
+import type { DeclaredStepType } from '../../bindings/github.com/alicoding/mill/internal/domain/declaredsteptype/models'
 import { ENTITY_ICON } from '../shared/entityIcons'
 import type { PaletteSearchable } from './paletteFilter'
 import { CAPABILITY_ICON } from './navIcon'
@@ -41,6 +45,10 @@ export function buildConfigureAndActionEntries(params: {
   requests: HTTPRequest[] | null | undefined
   lists: List[] | null | undefined
   mcpServers: MCPServer[] | null | undefined
+  decisions: Decision[] | null | undefined
+  execEnvs: ExecEnv[] | null | undefined
+  aiProviders: AIProvider[] | null | undefined
+  declaredStepTypes: DeclaredStepType[] | null | undefined
   atlasCards: Card[] | null | undefined
   atlasKinds: Kind[] | null | undefined
   reviewPendingCount: number
@@ -49,7 +57,10 @@ export function buildConfigureAndActionEntries(params: {
   openMain: (view: string) => void
   applyFromClipboard: () => void
 }): PanelEntry[] {
-  const { t, requests, lists, mcpServers, atlasCards, atlasKinds, reviewPendingCount, jumpToConfigure, jumpToAtlasCard, openMain, applyFromClipboard } = params
+  const {
+    t, requests, lists, mcpServers, decisions, execEnvs, aiProviders, declaredStepTypes,
+    atlasCards, atlasKinds, reviewPendingCount, jumpToConfigure, jumpToAtlasCard, openMain, applyFromClipboard,
+  } = params
   const entries: PanelEntry[] = []
   const atlasKindByID = new Map((atlasKinds ?? []).map((k) => [k.ID, k]))
 
@@ -84,6 +95,58 @@ export function buildConfigureAndActionEntries(params: {
       searchText: server.Label.toLowerCase(),
       leadingVisual: ENTITY_ICON.mcpserver.Icon,
       run: () => jumpToConfigure('mcpservers'),
+    })
+  }
+  // Quick-access parity sweep (goal 0071 G5): the same jump-row pattern
+  // extended to Configure's remaining reusable entity kinds. Attributes
+  // is deliberately excluded -- its rows ARE existing workflows
+  // (ConfigureAttributes.tsx's own doc comment), already searchable/
+  // runnable as their own 'workflows' group rows above; jumpToConfigure
+  // only lands on the TAB (never a selected row), so a per-workflow
+  // "jump to Attributes" row would just be N identical-outcome
+  // duplicates of information already in this panel.
+  for (const decision of decisions ?? []) {
+    entries.push({
+      id: `configure:decisions:${decision.ID}`,
+      groupId: 'configure',
+      text: decision.Label,
+      description: t('quickPanel.entries.jumpToDecisions'),
+      searchText: decision.Label.toLowerCase(),
+      leadingVisual: ENTITY_ICON.decision.Icon,
+      run: () => jumpToConfigure('decisions'),
+    })
+  }
+  for (const env of execEnvs ?? []) {
+    entries.push({
+      id: `configure:execenvs:${env.ID}`,
+      groupId: 'configure',
+      text: env.Label,
+      description: t('quickPanel.entries.jumpToExecEnvs'),
+      searchText: env.Label.toLowerCase(),
+      leadingVisual: ENTITY_ICON.execenv.Icon,
+      run: () => jumpToConfigure('execenvs'),
+    })
+  }
+  for (const provider of aiProviders ?? []) {
+    entries.push({
+      id: `configure:aiproviders:${provider.ID}`,
+      groupId: 'configure',
+      text: provider.Label,
+      description: t('quickPanel.entries.jumpToAiProviders'),
+      searchText: provider.Label.toLowerCase(),
+      leadingVisual: ENTITY_ICON.aiprovider.Icon,
+      run: () => jumpToConfigure('aiproviders'),
+    })
+  }
+  for (const stepType of declaredStepTypes ?? []) {
+    entries.push({
+      id: `configure:steptypes:${stepType.ID}`,
+      groupId: 'configure',
+      text: stepType.Label,
+      description: t('quickPanel.entries.jumpToStepTypes'),
+      searchText: stepType.Label.toLowerCase(),
+      leadingVisual: ENTITY_ICON.steptype.Icon,
+      run: () => jumpToConfigure('steptypes'),
     })
   }
 

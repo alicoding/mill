@@ -6,6 +6,7 @@ import { ViewMode } from '../../bindings/github.com/alicoding/mill/internal/doma
 import type { Card, Position } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 import { AtlasService } from '../shared/bindings'
 import { useAppStore } from '../shared/store'
+import { useUISignalStore } from '../shared/uiSignalStore'
 import { downloadJSON } from '../shared/downloadJSON'
 import { refreshAtlas, useAtlasStore } from './atlasStore'
 import { applyLens, childrenOf, groupByKind, singleRootCard } from './atlasGrouping'
@@ -148,6 +149,38 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
     setViewedID(parent)
     // eslint-disable-next-line react-hooks/exhaustive-deps -- keyed on the signal tick alone; viewedID/allCards are read at fire time
   }, [atlasUpRequest])
+
+  // atlas.jump (⌘K, shared/commands.ts): opens AtlasJumpDialog, now
+  // purely controlled off this signal (goal 0071's registry
+  // surface-precedence reconciliation retired its own capture-phase
+  // window listener). Same ref-compared-counter shape as atlasUpRequest
+  // above.
+  const atlasJumpRequest = useUISignalStore((s) => s.atlasJumpRequest)
+  const [jumpOpen, setJumpOpen] = useState(false)
+  const lastJumpRequest = useRef(atlasJumpRequest)
+  useEffect(() => {
+    if (atlasJumpRequest === lastJumpRequest.current) return
+    lastJumpRequest.current = atlasJumpRequest
+    setJumpOpen(true)
+  }, [atlasJumpRequest])
+
+  // atlas.matrix / atlas.coverage (goal 0071 G17): same signal shape,
+  // opening the two projection dialogs already owned locally below.
+  const atlasMatrixRequest = useUISignalStore((s) => s.atlasMatrixRequest)
+  const lastMatrixRequest = useRef(atlasMatrixRequest)
+  useEffect(() => {
+    if (atlasMatrixRequest === lastMatrixRequest.current) return
+    lastMatrixRequest.current = atlasMatrixRequest
+    setMatrixOpen(true)
+  }, [atlasMatrixRequest])
+
+  const atlasCoverageRequest = useUISignalStore((s) => s.atlasCoverageRequest)
+  const lastCoverageRequest = useRef(atlasCoverageRequest)
+  useEffect(() => {
+    if (atlasCoverageRequest === lastCoverageRequest.current) return
+    lastCoverageRequest.current = atlasCoverageRequest
+    setCoverageOpen(true)
+  }, [atlasCoverageRequest])
 
   // The card's right-click menu (goal 0075): Open / Zoom in mirror
   // the gesture model's commits; the share trio mirrors the page's
@@ -331,7 +364,7 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
         />
       )}
 
-      <AtlasJumpDialog cards={allCards} kinds={allKinds} onJump={jumpToCard} />
+      <AtlasJumpDialog open={jumpOpen} onClose={() => setJumpOpen(false)} cards={allCards} kinds={allKinds} onJump={jumpToCard} />
 
       {overlayCard && (
         <AtlasCardOverlay

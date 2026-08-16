@@ -13,6 +13,7 @@ import { Type as ConfigFieldType } from '../../bindings/github.com/alicoding/mil
 import { ListRowEditor } from './ListRowEditor'
 import { downloadJSON } from '../shared/downloadJSON'
 import { refreshLists, useConfigureEntityStore } from '../shared/configureEntityStore'
+import { useUISignalStore } from '../shared/uiSignalStore'
 import { ViewModeToggle } from '../shared/ViewModeToggle'
 import { useViewMode } from '../shared/viewMode'
 import { InventoryList, type InventoryItem } from '../shared/InventoryList'
@@ -132,6 +133,21 @@ export function ConfigureLists() {
     setError('')
     setRowError('')
   }
+
+  // configure.new.lists (shared/configureCreateCommands.ts, goal 0071
+  // G6): the palette's "New list" command sets this tab's own
+  // configureCreateRequest signal, consumed here the same set-then-
+  // consume shape composition/useCanvasCommandDispatch.ts's own
+  // canvasCommandRequest already uses (shared/uiSignalStore.ts's own
+  // header covers why this can't be atlasUpRequest's counter shape).
+  const configureCreateRequest = useUISignalStore((s) => s.configureCreateRequest)
+  const consumeConfigureCreate = useUISignalStore((s) => s.consumeConfigureCreate)
+  useEffect(() => {
+    if (configureCreateRequest !== 'lists') return
+    startCreate()
+    consumeConfigureCreate()
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- startCreate/consumeConfigureCreate deliberately excluded, same reasoning useCanvasCommandDispatch.ts's own identical effect documents
+  }, [configureCreateRequest])
 
   const startEdit = (l: List) => {
     setEditingID(l.ID)

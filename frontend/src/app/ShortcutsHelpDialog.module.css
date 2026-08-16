@@ -1,0 +1,9 @@
+/* The shortcuts-help overlay's footer (goal 0071) -- same divider-strip
+   pattern atlas/AtlasJumpDialog.module.css's own .footer already uses. */
+.footer {
+    display: flex;
+    justify-content: flex-end;
+    padding: 8px 12px;
+    margin: 8px -16px -16px;
+    border-top: 1px solid var(--borderColor-default);
+}
