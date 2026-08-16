@@ -1,4 +1,5 @@
 import { test, expect } from './fixtures/server'
+import { openCardPageEdit } from './fixtures/atlasPage'
 
 // Synced-folder onboarding (docs/goals/0067) over real Go bindings
 // (Wails3 server mode): AtlasService.PickFolder's own MILL_TEST_
@@ -98,6 +99,7 @@ test('add from folder: scan, partial accept, containment, and mirror rendering a
   await openViaFlip(summaryCard)
   const overlay = page.locator('[data-component="atlas-card-overlay"]')
   await expect(overlay).toBeVisible()
+  await openCardPageEdit(page)
   await expect(overlay.getByTestId('atlas-overlay-mirror-path')).toHaveValue(/Reports\/Q1 Summary\.md$/)
   await expect(overlay.getByTestId('atlas-mirror-markdown')).toContainText('Numbers looked good across the board.')
 
@@ -105,6 +107,7 @@ test('add from folder: scan, partial accept, containment, and mirror rendering a
   // child card must go before its own container can be deleted. Once
   // "Reports" holds no children, it renders as a plain note card,
   // deleted the same flip-then-Open way as every other leaf below.
+  await openCardPageEdit(page)
   await overlay.getByTestId('atlas-overlay-delete').click()
   await page.getByRole('alertdialog').getByRole('button', { name: 'Delete' }).click()
   await expect(summaryCard).not.toBeVisible()
@@ -113,6 +116,7 @@ test('add from folder: scan, partial accept, containment, and mirror rendering a
   for (const card of [noteCard(page, 'Reports'), notesCard, logoCard]) {
     await openViaFlip(card)
     await expect(overlay).toBeVisible()
+    await openCardPageEdit(page)
     await overlay.getByTestId('atlas-overlay-delete').click()
     await page.getByRole('alertdialog').getByRole('button', { name: 'Delete' }).click()
     await expect(overlay).not.toBeVisible()

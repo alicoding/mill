@@ -1,4 +1,5 @@
 import { test, expect } from './fixtures/server'
+import { openCardPageEdit } from './fixtures/atlasPage'
 
 // Atlas projections (docs/goals/0064, ADR-0038): mirror-content
 // rendering, the traceability matrix, and coverage -- each proven
@@ -59,6 +60,7 @@ test('a card with a Mirror path pointing at a markdown file renders its content 
   const overlay = page.locator('[data-component="atlas-card-overlay"]')
   await expect(overlay).toBeVisible()
 
+  await openCardPageEdit(page)
   await overlay.getByTestId('atlas-overlay-mirror-path').fill(file)
   await overlay.getByTestId('atlas-overlay-save').click()
   await expect(overlay).not.toBeVisible()
@@ -70,6 +72,7 @@ test('a card with a Mirror path pointing at a markdown file renders its content 
   await expect(overlay.getByTestId('atlas-mirror-markdown').locator('strong')).toContainText('captured')
 
   // Cleanup (testing.md's within-file cleanup discipline).
+  await openCardPageEdit(page)
   await overlay.getByTestId('atlas-overlay-delete').click()
   await page.getByRole('alertdialog').getByRole('button', { name: 'Delete' }).click()
   await expect(newCard).not.toBeVisible()
@@ -132,6 +135,7 @@ test('coverage counts a space\'s cards missing a link and missing a mirror, with
   await expect(dialog).not.toBeVisible()
   const overlay = page.locator('[data-component="atlas-card-overlay"]')
   await expect(overlay).toBeVisible()
+  await openCardPageEdit(page)
   await expect(overlay.getByTestId('atlas-overlay-title')).toHaveValue('Getting started')
   await page.keyboard.press('Escape')
 })

@@ -174,12 +174,25 @@ func (a *AtlasService) retireGoneKindsLocked() bool {
 		if idx == -1 {
 			continue
 		}
+		// Retirement must never strand a user's cards on a Kind that's
+		// going away: every remaining reference (seeded or user-created)
+		// migrates to the retired Kind's designated replacement first,
+		// so the tombstone below always operates on zero references. A
+		// retired Kind with no replacement mapping stays put -- refusing
+		// beats deleting data out from under its cards.
+		replacementID, hasReplacement := atlas.RetiredKindReplacementID(id)
 		stillReferenced := false
-		for _, c := range a.cards {
-			if c.KindID == id {
+		for i := range a.cards {
+			if a.cards[i].KindID != id {
+				continue
+			}
+			if !hasReplacement {
 				stillReferenced = true
 				break
 			}
+			a.cards[i].KindID = replacementID
+			a.cards[i].UpdatedAt = time.Now()
+			changed = true
 		}
 		if stillReferenced {
 			continue

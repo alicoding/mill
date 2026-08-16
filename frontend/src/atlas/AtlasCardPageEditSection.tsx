@@ -44,9 +44,14 @@ export function AtlasCardPageEditSection({
 }) {
   const { t } = useTranslation('atlas')
 
+  // A native <details> disclosure, collapsed by default: the page
+  // reads first (the mock's fullview shows no form at all) and edits
+  // on demand -- an always-open field dump was drowning the Contents
+  // the page exists to present.
   return (
-    <div className={styles.editSection} data-testid="atlas-page-edit-section">
-      <Text as="p" className={styles.editHeading}>{t('page.editHeading')}</Text>
+    <details className={styles.editSection} data-testid="atlas-page-edit-section">
+      <summary className={styles.editSummary} data-testid="atlas-page-edit-toggle">{t('page.editHeading')}</summary>
+      <div className={styles.editFields}>
 
       <FormControl>
         <FormControl.Label>{t('overlay.titleLabel')}</FormControl.Label>
@@ -90,6 +95,7 @@ export function AtlasCardPageEditSection({
           {t('overlay.delete')}
         </Button>
       </Stack>
-    </div>
+      </div>
+    </details>
   )
 }

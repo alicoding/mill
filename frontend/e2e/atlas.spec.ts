@@ -1,4 +1,5 @@
 import { test, expect } from './fixtures/server'
+import { openCardPageEdit } from './fixtures/atlasPage'
 
 // Exercises the Atlas surface's one-map board (docs/adr/0038,
 // goal 0072 slice A: AtlasShelves retired, every level renders through
@@ -51,6 +52,26 @@ async function openViaFlip(card: import('@playwright/test').Locator) {
   }
   await card.getByTestId('atlas-note-open').click()
 }
+
+test('the board fills the view pane height instead of collapsing to its min-height floor', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Atlas' }).click()
+  const board = page.getByTestId('atlas-board')
+  await expect(board).toBeVisible()
+
+  // Regression: the page tab's panel div carried no height rule, so
+  // the board's height:100% resolved against auto and collapsed to
+  // its 480px min-height floor, leaving the lower half of the window
+  // as dead whitespace. The board's bottom edge must reach (near)
+  // the bottom of the viewport -- the ~100px allowance covers the
+  // footer band + page padding, not a second collapse (the collapsed
+  // board bottomed out ~150px higher still).
+  const viewport = page.viewportSize()
+  if (!viewport) throw new Error('viewport size unavailable')
+  const box = await board.boundingBox()
+  if (!box) throw new Error('board bounding box unavailable')
+  expect(box.y + box.height).toBeGreaterThan(viewport.height - 100)
+})
 
 test('the seeded single root auto-enters "My space"; drilling into a region frame via its header works across both board modes', async ({ page }) => {
   await page.goto('/')
@@ -121,6 +142,7 @@ test('creating a sibling of the auto-entered root surfaces the "All spaces" meta
   // meta level (and its crumb) stop existing again. A childless new
   // root renders as a plain note card.
   await openViaFlip(noteCard(page, title))
+  await openCardPageEdit(page)
   await page.getByTestId('atlas-overlay-delete').click()
   await page.getByRole('alertdialog').getByRole('button', { name: 'Delete' }).click()
   await expect(newRootCard).not.toBeVisible()
@@ -219,15 +241,18 @@ test('create a child card, edit + persist it via the flip-then-Open overlay, the
   await openViaFlip(newCard)
   const overlay = page.locator('[data-component="atlas-card-overlay"]')
   await expect(overlay).toBeVisible()
+  await openCardPageEdit(page)
   await overlay.getByTestId('atlas-overlay-note').fill('A note written by the e2e suite.')
   await overlay.getByTestId('atlas-overlay-save').click()
   await expect(overlay).not.toBeVisible()
 
   await openViaFlip(newCard)
+  await openCardPageEdit(page)
   await expect(page.getByTestId('atlas-overlay-note')).toHaveValue('A note written by the e2e suite.')
 
   // Cleanup: delete the card this test created (testing.md's
   // within-file cleanup discipline).
+  await openCardPageEdit(page)
   await page.getByTestId('atlas-overlay-delete').click()
   await page.getByRole('alertdialog').getByRole('button', { name: 'Delete' }).click()
   await expect(newCard).not.toBeVisible()
@@ -300,6 +325,7 @@ test('a sibling card created into a Free-mode space lands clear of both leaf not
 
   // Cleanup (testing.md's within-file discipline).
   await openViaFlip(newCard)
+  await openCardPageEdit(page)
   await page.getByTestId('atlas-overlay-delete').click()
   await page.getByRole('alertdialog').getByRole('button', { name: 'Delete' }).click()
   await expect(newCard).not.toBeVisible()
