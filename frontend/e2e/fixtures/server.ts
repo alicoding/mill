@@ -54,6 +54,12 @@ export const PERSISTENCE_MCP_BASE_PORT = 9650
 // fixture env var must never leak into the standard workers' seeds.
 export const SCALE_SERVER_BASE_PORT = 9680
 export const SCALE_MCP_BASE_PORT = 9730
+// The card-page-at-scale spec's own disjoint range (goal 0073 slice
+// B) -- same own-server-own-ports reasoning as SCALE_*, since its
+// mirror-dense folder-pick override must never leak into the standard
+// workers' seeds either.
+export const MIRROR_SERVER_BASE_PORT = 9690
+export const MIRROR_MCP_BASE_PORT = 9740
 
 async function waitForHealth(url: string, proc: ChildProcessWithoutNullStreams, timeoutMs: number): Promise<void> {
   const deadline = Date.now() + timeoutMs
@@ -111,7 +117,10 @@ export async function spawnMillServer(opts: SpawnServerOptions): Promise<Spawned
       MILL_SETTINGS_PATH: opts.settingsPath,
       MILL_EXECUTION_DB_PATH: opts.executionDbPath,
       MILL_BACKUP_DIR: opts.backupDir,
-      MILL_TEST_FOLDER_PICK_PATH: FOLDER_PICK_FIXTURE,
+      // extraEnv is spread BEFORE this block, so a caller-supplied
+      // override (e.g. the mirror-dense spec's own folder-pick
+      // fixture) would otherwise always lose to this default.
+      MILL_TEST_FOLDER_PICK_PATH: opts.extraEnv?.MILL_TEST_FOLDER_PICK_PATH ?? FOLDER_PICK_FIXTURE,
     },
     stdio: ['ignore', 'pipe', 'pipe'],
   })

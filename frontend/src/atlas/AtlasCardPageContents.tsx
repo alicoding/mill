@@ -1,13 +1,30 @@
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Stack, Text } from '@primer/react'
+import { Button, Stack, Text } from '@primer/react'
 import type { Card, Kind, Link, LinkKind } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 import { childrenOf } from './atlasGrouping'
 import { isGroupCard } from './atlasBoardLayout'
-import { isPersonKind, orderContentChildren, orderContentLinks, personInitial } from './atlasCardPageContent'
+import {
+  capPageEntries,
+  eagerPreviewIDs,
+  isPersonKind,
+  orderContentChildren,
+  orderContentLinks,
+  personInitial,
+  type ContentLink,
+} from './atlasCardPageContent'
 import { kindColorTokens } from './atlasKindColor'
 import { AtlasCardMirrorPreview } from './AtlasCardMirrorPreview'
 import runbookStyles from '../shared/ListCard.module.css'
 import styles from './AtlasCardPage.module.css'
+
+// A page entry is either an "Inside" child or a "Link" -- merged into
+// one ordered list (children first, then links, matching the order
+// each used to render in separately) so the entry cap (goal 0073
+// slice B) counts and truncates across BOTH uniformly, rather than
+// capping each column independently and still growing unbounded
+// together.
+type PageEntry = { kind: 'child'; child: Card } | { kind: 'link'; entry: ContentLink }
 
 // The page's own Contents column (goal 0072 slice C): the card's own
 // note/mirror content first, then its children ("Inside"), then its
@@ -31,6 +48,27 @@ export function AtlasCardPageContents({ card, allCards, kinds, links, linkKinds,
   const linkEntries = orderContentLinks(links, card.ID, cardByID, linkKindByID)
   const isEmpty = !card.Note && !card.MirrorPath && childEntries.length === 0 && linkEntries.length === 0
 
+  const merged: PageEntry[] = [
+    ...childEntries.map((child): PageEntry => ({ kind: 'child', child })),
+    ...linkEntries.map((entry): PageEntry => ({ kind: 'link', entry })),
+  ]
+  // Not persisted -- unmounted with the overlay on close, so a
+  // reopened page always starts collapsed again rather than carrying
+  // an expand/load state that no longer matches what's actually
+  // scrolled into view.
+  const [expanded, setExpanded] = useState(false)
+  const [loadedPreviewIDs, setLoadedPreviewIDs] = useState<Set<string>>(new Set())
+  const { visible, hiddenCount } = capPageEntries(merged, 12)
+  const rendered = expanded ? merged : visible
+  // Derived from the FULL, uncapped child list -- which children
+  // preview eagerly must stay stable whether or not "Show more" has
+  // been clicked, not shift as more entries scroll into view.
+  const eagerIDs = eagerPreviewIDs(childEntries, 3)
+
+  const loadPreview = (childID: string) => {
+    setLoadedPreviewIDs((prev) => new Set(prev).add(childID))
+  }
+
   return (
     <div className={styles.contentsCol} data-testid="atlas-page-contents">
       {card.Note && <Text as="p" className={styles.ownNote} data-testid="atlas-page-note">{card.Note}</Text>}
@@ -42,46 +80,61 @@ export function AtlasCardPageContents({ card, allCards, kinds, links, linkKinds,
         </Stack>
       )}
 
-      {childEntries.map((child) => {
-        const kind = kindByID.get(child.KindID)
-        const isGroup = isGroupCard(allCards, child)
-        if (isGroup) {
-          const count = childrenOf(allCards, child.ID).length
-          return (
-            <div
-              key={child.ID}
-              className={`${styles.entry} ${styles.groupEntry}`}
-              data-testid="atlas-page-child-group"
-              role="button"
-              tabIndex={0}
-              aria-label={t('page.openGroupAriaLabel', { title: child.Title })}
-              onClick={() => onOpenGroupEntry(child)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') onOpenGroupEntry(child)
-              }}
-            >
-              <div>
-                <div className={styles.entryEyebrow}>{t('page.insideEyebrow', { kind: kind?.Label ?? '' })}</div>
-                <div className={styles.entryTitle}>{child.Title}</div>
+      {rendered.map((item) => {
+        if (item.kind === 'child') {
+          const child = item.child
+          const kind = kindByID.get(child.KindID)
+          const isGroup = isGroupCard(allCards, child)
+          if (isGroup) {
+            const count = childrenOf(allCards, child.ID).length
+            return (
+              <div
+                key={child.ID}
+                className={`${styles.entry} ${styles.groupEntry}`}
+                data-testid="atlas-page-child-group"
+                role="button"
+                tabIndex={0}
+                aria-label={t('page.openGroupAriaLabel', { title: child.Title })}
+                onClick={() => onOpenGroupEntry(child)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') onOpenGroupEntry(child)
+                }}
+              >
+                <div>
+                  <div className={styles.entryEyebrow}>{t('page.insideEyebrow', { kind: kind?.Label ?? '' })}</div>
+                  <div className={styles.entryTitle}>{child.Title}</div>
+                </div>
+                <span className={styles.groupEntryChip}>{t('page.cardsChip', { count })}</span>
               </div>
-              <span className={styles.groupEntryChip}>{t('page.cardsChip', { count })}</span>
+            )
+          }
+          const showPreview = child.MirrorPath && (eagerIDs.has(child.ID) || loadedPreviewIDs.has(child.ID))
+          return (
+            <div key={child.ID} className={styles.entry} data-testid="atlas-page-child">
+              <div className={styles.entryEyebrow}>{t('page.insideEyebrow', { kind: kind?.Label ?? '' })}</div>
+              <div className={styles.entryTitle}>{child.Title}</div>
+              {child.MirrorPath && (
+                showPreview ? (
+                  <div className={styles.entryMirror} data-testid="atlas-page-child-mirror">
+                    <AtlasCardMirrorPreview cardID={child.ID} mirrorPath={child.MirrorPath} />
+                  </div>
+                ) : (
+                  <Button
+                    variant="invisible"
+                    size="small"
+                    className={styles.loadPreviewButton}
+                    data-testid="atlas-page-load-preview"
+                    onClick={() => loadPreview(child.ID)}
+                  >
+                    {t('page.loadPreview')}
+                  </Button>
+                )
+              )}
             </div>
           )
         }
-        return (
-          <div key={child.ID} className={styles.entry} data-testid="atlas-page-child">
-            <div className={styles.entryEyebrow}>{t('page.insideEyebrow', { kind: kind?.Label ?? '' })}</div>
-            <div className={styles.entryTitle}>{child.Title}</div>
-            {child.MirrorPath && (
-              <div className={styles.entryMirror} data-testid="atlas-page-child-mirror">
-                <AtlasCardMirrorPreview cardID={child.ID} mirrorPath={child.MirrorPath} />
-              </div>
-            )}
-          </div>
-        )
-      })}
 
-      {linkEntries.map(({ link, other, linkKind }) => {
+        const { link, other, linkKind } = item.entry
         const contact = other ? isPersonKind(other.KindID) : false
         const tokens = other ? kindColorTokens(other.KindID) : undefined
         return (
@@ -103,6 +156,18 @@ export function AtlasCardPageContents({ card, allCards, kinds, links, linkKinds,
           </div>
         )
       })}
+
+      {!expanded && hiddenCount > 0 && (
+        <Button
+          variant="invisible"
+          block
+          className={styles.showMoreRow}
+          data-testid="atlas-page-show-more"
+          onClick={() => setExpanded(true)}
+        >
+          {t('page.showMore', { count: hiddenCount })}
+        </Button>
+      )}
 
       {isEmpty && <Text as="p" className={`${runbookStyles.muted} ${styles.emptyContents}`} data-testid="atlas-page-empty-contents">{t('page.emptyContents')}</Text>}
     </div>
