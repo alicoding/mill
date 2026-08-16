@@ -7,5 +7,9 @@ export {
 };
 
 export type {
-    AtlasImportSummary
+    AtlasImportSummary,
+    FolderImportSummary,
+    FolderScanEntry,
+    FolderScanResult,
+    ImportFolderSuggestionsRequest
 } from "./models.js";

@@ -6,6 +6,12 @@
 // (bindings/.../internal/domain/*, internal/adapters/*) are unaffected
 // by service moves and stay direct.
 export { AtlasService } from '../../bindings/github.com/alicoding/mill/internal/services/atlassvc'
+export type {
+  FolderImportSummary,
+  FolderScanEntry,
+  FolderScanResult,
+  ImportFolderSuggestionsRequest,
+} from '../../bindings/github.com/alicoding/mill/internal/services/atlassvc'
 export { BackupService } from '../../bindings/github.com/alicoding/mill/internal/services/backupsvc'
 export type {
   BackupStatus,
