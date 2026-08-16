@@ -8,6 +8,7 @@ import {
   spawnMillServer,
   type SpawnedServer,
 } from './fixtures/server'
+import { clickAtFraction, waitForViewportStable } from './fixtures/animation'
 
 // Atlas at real-world density (goal 0073): the one-map board against
 // the deterministic dense fixture (61 cards, 25 links, nested areas)
@@ -16,23 +17,6 @@ import {
 // own disjoint port range) because the MILL_TEST_DENSE_ATLAS env gate
 // must not leak a second board's worth of cards into the standard
 // workers' seeded assertions.
-// A region frame's own body has one reliably blank strip regardless of
-// child count, row layout, or the board's own current zoom: the left
-// GROUP_PADDING gutter (atlasBoardLayout.ts), a narrow column between
-// the frame's own left edge and its first column of children, running
-// the full height below the header. A FIXED pixel offset isn't
-// zoom-invariant -- at this dense board's own more-zoomed-out fitView,
-// the same screen-pixel y lands past the header inset into a preview
-// child's own rendered node -- so this samples a FRACTION of the
-// element's current box instead (atlas-page.spec.ts's own established
-// technique for the same gutter, on the same "resolved at click time,
-// not a stale snapshot" reasoning).
-async function clickFrameBody(frame: import('@playwright/test').Locator) {
-  const box = await frame.boundingBox()
-  if (!box) throw new Error('expected the frame to be measurable')
-  await frame.click({ position: { x: box.width * 0.01, y: box.height * 0.5 } })
-}
-
 // A page's own child-entry count: exactly the "atlas-page-child"/
 // "atlas-page-child-group" rows, never a prefix-matched selector --
 // a mirrored leaf's own inline preview wrapper carries the sibling
@@ -62,7 +46,13 @@ test('a dense area previews bounded: capped tiles, region chips, a truthful ghos
     const page = await browser.newPage()
     await page.goto(`${server.baseURL}/`)
     await page.getByRole('link', { name: 'Atlas' }).click()
-    await expect(page.getByTestId('atlas-board')).toBeVisible()
+    const board = page.getByTestId('atlas-board')
+    await expect(board).toBeVisible()
+    // This dense fixture's initial fitView is still animating the
+    // board's own `.react-flow__viewport` transform right after it
+    // becomes visible -- a boundingBox() read here can race it (the
+    // interaction-race class this spec's own retry-passes trace to).
+    await waitForViewportStable(board)
 
     // Velocity holds 12 direct children (4 areas + 8 notes) -- the
     // frame previews the capped slots and stays bounded instead of
@@ -158,17 +148,21 @@ test('a dense area previews bounded: capped tiles, region chips, a truthful ghos
     await expect(ea).toBeVisible()
     // Poll: the toggle's re-layout lands a paint or two after the
     // click -- a one-shot sample raced it on CI and measured the
-    // FREE-mode positions instead.
+    // FREE-mode positions instead. Captures the two boxes the poll
+    // itself last read, rather than re-reading fresh ones for the
+    // assertions below -- a re-read after the poll resolves is its own
+    // boundingBox-after-animation race if the layout is still settling
+    // horizontally even once the Y-alignment check above passes.
+    let eaBox: { x: number; y: number; width: number; height: number } | null = null
+    let gsBox: { x: number; y: number; width: number; height: number } | null = null
     await expect
       .poll(async () => {
-        const eaBox = await ea.boundingBox()
-        const gsBox = await gs.boundingBox()
+        eaBox = await ea.boundingBox()
+        gsBox = await gs.boundingBox()
         if (!eaBox || !gsBox) return Number.NaN
         return Math.abs(gsBox.y - eaBox.y)
       })
       .toBeLessThan(3)
-    const eaBox = await ea.boundingBox()
-    const gsBox = await gs.boundingBox()
     if (!eaBox || !gsBox) throw new Error('auto-arrange assertion cards missing bounding boxes')
     expect(gsBox.x).toBeGreaterThan(eaBox.x + eaBox.width - 3)
 
@@ -180,8 +174,14 @@ test('a dense area previews bounded: capped tiles, region chips, a truthful ghos
     // Velocity holds exactly 12 direct children and 0 own links: the
     // page's own entry cap (12) passes every entry through untouched
     // at the exact limit -- no expander. Already viewing "My space"
-    // (the auto-arrange assertions above never navigated away).
-    await clickFrameBody(velocity)
+    // (the auto-arrange assertions above never navigated away). A
+    // FIXED pixel offset isn't zoom-invariant -- at this dense board's
+    // own more-zoomed-out fitView, the same screen-pixel y lands past
+    // the header inset into a preview child's own rendered node -- so
+    // clickAtFraction samples the frame's GROUP_PADDING gutter as a
+    // fraction of its current box instead.
+    await waitForViewportStable(board)
+    await clickAtFraction(velocity, 0.01, 0.5)
     await expect(velocity).toHaveAttribute('data-flipped', 'true')
     await velocity.getByTestId('atlas-group-open').click()
     const overlay = page.locator('[data-component="atlas-card-overlay"]')
@@ -209,7 +209,8 @@ test('a dense area previews bounded: capped tiles, region chips, a truthful ghos
 
     // Past the cap: 11 visible (limit-1) plus an honest "Show 5 more"
     // -- clicking it renders all 16, the expander gone.
-    await clickFrameBody(velocity)
+    await waitForViewportStable(board)
+    await clickAtFraction(velocity, 0.01, 0.5)
     await expect(velocity).toHaveAttribute('data-flipped', 'true')
     await velocity.getByTestId('atlas-group-open').click()
     await expect(overlay).toBeVisible()

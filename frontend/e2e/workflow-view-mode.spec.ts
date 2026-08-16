@@ -1,45 +1,11 @@
 import { test, expect } from './fixtures/server'
+import { workflowRow, activePanel } from './fixtures/canvas'
+import { clickCanvasNode } from './fixtures/canvasNode'
 
 // docs/goals/0022-workflow-view-mode.md end to end: a workflow row
 // click opens VIEW mode (read-only canvas, Run/Runs/Versions/breakpoints
 // all still live), and Edit is the one explicit gesture that switches
 // the SAME tab into the full editor in place.
-
-function workflowRow(page: import('@playwright/test').Page, label: string) {
-  return page.locator('[data-testid="inventory-row"][data-entity="workflow"]', { has: page.getByText(label, { exact: true }) })
-}
-
-function activePanel(page: import('@playwright/test').Page) {
-  return page.locator('[role="tabpanel"]:not([hidden])').last()
-}
-
-// Same targeting technique as composition-canvas-interactions.spec.ts's
-// own clickCanvasNode -- React Flow's own Controls panel can sit over a
-// node's corner depending on layout, so this tries a few points inside
-// the node's bounding box and only clicks one confirmed (via
-// elementFromPoint) to actually resolve inside the node's own card.
-async function clickCanvasNode(page: import('@playwright/test').Page, panel: import('@playwright/test').Locator, label: string) {
-  const node = panel.locator('.react-flow__node').filter({ hasText: label })
-  const box = await node.boundingBox()
-  if (!box) throw new Error(`clickCanvasNode: node "${label}" has no bounding box`)
-  const candidates = [
-    { x: box.x + 10, y: box.y + 10 },
-    { x: box.x + box.width - 10, y: box.y + 10 },
-    { x: box.x + box.width / 2, y: box.y + box.height / 2 },
-    { x: box.x + 10, y: box.y + box.height - 10 },
-  ]
-  for (const point of candidates) {
-    const insideNode = await page.evaluate(({ x, y }) => {
-      const el = document.elementFromPoint(x, y)
-      return !!el?.closest('.react-flow__node')
-    }, point)
-    if (insideNode) {
-      await page.mouse.click(point.x, point.y)
-      return
-    }
-  }
-  throw new Error(`clickCanvasNode: no point for node "${label}" resolved inside its own card`)
-}
 
 test('Row click opens VIEW mode: no palette toggle, a drag attempt does not move the node, Runs/Versions stay reachable', async ({ page }) => {
   await page.goto('/')

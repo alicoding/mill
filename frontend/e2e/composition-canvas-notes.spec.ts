@@ -1,5 +1,6 @@
 import { test, expect } from './fixtures/server'
 import { clickRowAction } from './inventoryRow'
+import { workflowRow, activePanel } from './fixtures/canvas'
 
 // Canvas note block (docs/goals/0055): a free-floating authoring-space
 // annotation, deliberately NOT a step -- no ports, excluded from the
@@ -7,16 +8,6 @@ import { clickRowAction } from './inventoryRow'
 // than composition-canvas-interactions.spec.ts (already near the
 // 500-line limit, CLAUDE.md), same "split along a real seam" discipline
 // this suite already follows.
-
-function workflowRow(page: import('@playwright/test').Page, label: string) {
-  return page.locator('[data-testid="inventory-row"][data-entity="workflow"]', { has: page.getByText(label, { exact: true }) })
-}
-
-// See composition.spec.ts's own copy of this helper for the full
-// reasoning (Primer's TabPanel keeps every open tab mounted).
-function activePanel(page: import('@playwright/test').Page) {
-  return page.locator('[role="tabpanel"]:not([hidden])').last()
-}
 
 test('canvas note: add, edit, persist across reload, drag, delete -- never a step, never in the palette, never affects Run', async ({ page }) => {
   await page.goto('/')

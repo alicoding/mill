@@ -21,9 +21,6 @@ trace (now auto-captured on retry).
 | decision-outcome.spec.ts:192 | live-run | 2026-08-16 | 2026-09-16 | SUCCESS-status polling |
 | mcp-write-staleness.spec.ts:21 | live-run | 2026-08-16 | 2026-09-16 | real MCP round-trip |
 | guardrail.spec.ts:238 | live-run | 2026-08-16 | 2026-09-16 | approve/deny resolve polling |
-| live-run-state.spec.ts:87 | interaction-race | 2026-08-16 | 2026-09-01 | synthetic pointer drag — fix in the 0080 burn-down |
-| atlas-scale.spec.ts (first attempt) | interaction-race | 2026-08-16 | 2026-09-01 | boundingBox-after-animation — fix via settle helper in the burn-down |
-| step-detail-overlay.spec.ts:99 | interaction-race | 2026-08-16 | 2026-09-01 | settle helper exists in-file; promote + apply |
 | state-persistence.spec.ts:74 | unclear | 2026-08-16 | 2026-09-16 | reload/IPC timing; await first trace |
 | configure-lists.spec.ts:105 | unclear | 2026-08-16 | 2026-09-16 | await first trace |
 | quick-panel.spec.ts:132 | unclear | 2026-08-16 | 2026-09-16 | cross-document nav; await first trace |
@@ -31,4 +28,16 @@ trace (now auto-captured on retry).
 | workflow-lifecycle.spec.ts:52 | unclear | 2026-08-16 | 2026-09-16 | await first trace |
 | workflow-runs-panel.spec.ts:116 | unclear | 2026-08-16 | 2026-09-16 | await first trace |
 | layout.spec.ts:163 | unclear (contention-only) | 2026-08-16 | 2026-09-16 | fails only under parallel local load |
-| composition-canvas-interactions.spec.ts:92 | CI-only skip | 2026-08-15 | goal 0069's revisit clause | the one honest skip; four fix layers recorded |
+| composition-canvas-interactions.spec.ts:92 | CI-only skip | 2026-08-15 | goal 0069's revisit clause | the one honest skip; four fix layers recorded. Reproduced LOCALLY too as of 2026-08-16 (2/2 attempts, on both the pre- and post-0080-burn-down code -- not a burn-down regression), contradicting the in-file comment's "every local mode... passes 10/10"; that comment needs a re-check, not yet done here |
+
+## Fixed (pattern applied)
+
+Entries below left the active register on this date, fixed by applying
+`waitForViewportStable` (`frontend/e2e/fixtures/animation.ts`, goal
+0080's burn-down) at the interaction-race site, not by a retry pass.
+
+| Spec:line | Class | Fixed | Notes |
+|---|---|---|---|
+| live-run-state.spec.ts:87 | interaction-race | 2026-08-16 | connectNodes now waits for the viewport transform to settle before the hover-based drag |
+| atlas-scale.spec.ts (first attempt) | interaction-race | 2026-08-16 | boundingBox-then-act sequences after the initial fitView and both drills now wait for viewport stability first |
+| step-detail-overlay.spec.ts:99 | interaction-race | 2026-08-16 | the in-file settle helper promoted into fixtures/animation.ts; the double-click path already called it |

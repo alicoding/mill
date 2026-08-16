@@ -1,14 +1,11 @@
 import { test, expect } from './fixtures/server'
+import { workflowRow } from './fixtures/canvas'
 
 // docs/SPEC.md §3.8's hover-preview pattern (n8n), over real Go
 // bindings: hovering a workflow reference shows that workflow's actual
 // layout in a small read-only canvas, and Open jumps straight into its
 // editor tab. Exercised on the seeded parent→child pair -- the seed IS
 // the proof (standing seeded-examples principle).
-
-function workflowRow(page: import('@playwright/test').Page, label: string) {
-  return page.locator('[data-testid="inventory-row"][data-entity="workflow"]', { has: page.getByText(label, { exact: true }) })
-}
 
 test('Hovering the child-workflow NODE previews the child without blanking the parent canvas; Open jumps to its editor', async ({ page }) => {
   await page.goto('/')

@@ -3,6 +3,7 @@ import { Client } from '@modelcontextprotocol/sdk/client/index.js'
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js'
 import { MCP_BASE_PORT, test, expect } from './fixtures/server'
 import { clickRowAction } from './inventoryRow'
+import { workflowRow, activePanel } from './fixtures/canvas'
 
 // Live canvas sync for external (MCP) activity (docs/SPEC.md §1's
 // realtime lock, applied to authoring): an open workflow editor must
@@ -19,19 +20,6 @@ import { clickRowAction } from './inventoryRow'
 // (e2e/fixtures/server.ts's workerServer fixture) -- MCP_BASE_PORT is
 // exported from there specifically so this spec can compute the same
 // worker's own MCP port without spawning a second listener.
-
-function workflowRow(page: Page, label: string) {
-  return page.locator('[data-testid="inventory-row"][data-entity="workflow"]', { has: page.getByText(label, { exact: true }) })
-}
-
-// A saved workflow's editor tab nests a second Canvas/Runs tab bar
-// inside the outer per-workflow tab (docs/SPEC.md §7's Update) -- see
-// mcp-tool-editor.spec.ts's own copy of this helper for the full
-// reasoning. `.last()` always resolves to the innermost, most specific
-// panel.
-function activePanel(page: Page) {
-  return page.locator('[role="tabpanel"]:not([hidden])').last()
-}
 
 async function connectMCPClient(workerIndex: number): Promise<Client> {
   const client = new Client({ name: 'canvas-live-sync-e2e', version: '0.0.0' })

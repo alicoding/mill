@@ -5,6 +5,7 @@ import {
   connectMCPClient, exportWorkflowViaMCP, findWorkflowIdByLabel,
   enableMCPWritesWithApprovalRequired, restoreMCPWriteDefaults,
 } from './mcpTestClient'
+import { workflowRow } from './fixtures/canvas'
 
 // docs/goals/0026 items 1 and 5: the requester's own withdrawal of a
 // pending MCP write (cancel_write, a distinct outcome from denied), and
@@ -17,10 +18,6 @@ import {
 // elapses (or a decision lands first), which would make id-extraction
 // itself race the window; the row appears immediately on park,
 // independent of the courtesy window.
-
-function workflowRow(page: Page, label: string) {
-  return page.locator('[data-testid="inventory-row"][data-entity="workflow"]', { has: page.getByText(label, { exact: true }) })
-}
 
 async function createSourceWorkflow(page: Page, label: string) {
   await page.getByRole('link', { name: 'Workflows' }).click()

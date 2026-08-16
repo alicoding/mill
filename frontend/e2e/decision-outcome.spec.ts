@@ -1,5 +1,6 @@
 import { test, expect } from './fixtures/server'
 import { clickRowAction } from './inventoryRow'
+import { workflowRow, activePanel } from './fixtures/canvas'
 
 // Decision as a reusable, typed TERMINAL outcome (docs/adr/0027),
 // driven through the live app: Configure > Decisions CRUD (including
@@ -12,14 +13,6 @@ import { clickRowAction } from './inventoryRow'
 
 function decisionRow(page: import('@playwright/test').Page, label: string) {
   return page.locator('[data-testid="inventory-row"][data-entity="decision"]').filter({ has: page.getByText(label, { exact: true }) })
-}
-
-function workflowRow(page: import('@playwright/test').Page, label: string) {
-  return page.locator('[data-testid="inventory-row"][data-entity="workflow"]').filter({ has: page.getByText(label, { exact: true }) })
-}
-
-function activePanel(page: import('@playwright/test').Page) {
-  return page.locator('[role="tabpanel"]:not([hidden])').last()
 }
 
 async function openDecisionsTab(page: import('@playwright/test').Page) {

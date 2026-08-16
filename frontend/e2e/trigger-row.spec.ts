@@ -1,5 +1,6 @@
 import { test, expect } from './fixtures/server'
 import { clickRowAction } from './inventoryRow'
+import { workflowRow, activePanel } from './fixtures/canvas'
 
 // Exercises docs/goals/0006-trigger-aware-workflows-list.md: each
 // Workflows-list row derives its label + affordance from its trigger
@@ -10,14 +11,6 @@ import { clickRowAction } from './inventoryRow'
 // comment), so the hotkey coverage here only asserts the deterministic,
 // environment-independent path: the inline capture UI appearing and
 // Escape cancelling it -- never a real OS-level bind.
-
-function workflowRow(page: import('@playwright/test').Page, label: string) {
-  return page.locator('[data-testid="inventory-row"][data-entity="workflow"]', { has: page.getByText(label, { exact: true }) })
-}
-
-function activePanel(page: import('@playwright/test').Page) {
-  return page.locator('[role="tabpanel"]:not([hidden])').last()
-}
 
 test('A manual-trigger row shows "Manual" and an honest test-run tooltip', async ({ page }) => {
   await page.goto('/')

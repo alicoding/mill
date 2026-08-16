@@ -2,6 +2,8 @@ import { test, expect } from './fixtures/server'
 import { clickRowAction } from './inventoryRow'
 import { connectMCPClient, findWorkflowIdByLabel } from './mcpTestClient'
 import { assignDebugWorkflowHotkey } from './hotkeyDebugKnob'
+import { workflowRow, activePanel, dragPaletteItemToCanvas } from './fixtures/canvas'
+import { waitForViewportStable } from './fixtures/animation'
 
 // Exercises the ⌘K command palette (docs/goals/0015-summon-quick-invoke.md,
 // app/CommandPalette.tsx) over real Go bindings (Wails3 server mode),
@@ -11,14 +13,6 @@ import { assignDebugWorkflowHotkey } from './hotkeyDebugKnob'
 // listener (shared/commands.ts's dispatchCommandForEvent, App.tsx's one
 // window listener), same shape Meta+S/Meta+N already get real coverage
 // through in keymap.spec.ts -- so Meta+k here is real, not a stand-in.
-
-function workflowRow(page: import('@playwright/test').Page, label: string) {
-  return page.locator('[data-testid="inventory-row"][data-entity="workflow"]', { has: page.getByText(label, { exact: true }) })
-}
-
-function activePanel(page: import('@playwright/test').Page) {
-  return page.locator('[role="tabpanel"]:not([hidden])').last()
-}
 
 function paletteDialog(page: import('@playwright/test').Page) {
   return page.getByRole('dialog', { name: 'Command palette' })
@@ -33,11 +27,16 @@ function paletteDialog(page: import('@playwright/test').Page) {
 async function fitAndSpaceOut(page: import('@playwright/test').Page) {
   const panel = activePanel(page)
   await panel.getByRole('button', { name: 'Fit View' }).click()
-  await page.waitForTimeout(300)
+  await waitForViewportStable(panel)
   await panel.getByRole('button', { name: 'Zoom Out' }).click()
-  await page.waitForTimeout(200)
+  await waitForViewportStable(panel)
 }
 
+// Kept local, not the fixtures/canvas.ts connectNodes: this one's own
+// Fit View/Zoom Out sequencing already happened via fitAndSpaceOut
+// above, so the shared version's own baked-in Fit View click would
+// undo the Zoom Out's clearance; the .hover()-based drag (vs.
+// boundingBox()+mouse.move) is this copy's own divergence too.
 async function connectNodes(page: import('@playwright/test').Page, sourceLabel: string, targetLabel: string) {
   const panel = activePanel(page)
   const sourceHandle = panel.locator('.react-flow__node').filter({ hasText: sourceLabel }).locator('.react-flow__handle.source')
@@ -46,28 +45,6 @@ async function connectNodes(page: import('@playwright/test').Page, sourceLabel: 
   await page.mouse.down()
   await targetHandle.hover()
   await page.mouse.up()
-}
-
-// Same drag mechanism every canvas spec uses (Locator.dragTo() doesn't
-// fire real HTML5 DnD events -- see composition.spec.ts's own copy of
-// this helper for the full reasoning).
-async function dragPaletteItemToCanvas(page: import('@playwright/test').Page, nodeTypeID: string) {
-  await page.evaluate((id) => {
-    const panel = document.querySelector('[role="tabpanel"]:not([hidden])')
-    if (!panel) throw new Error('no active tabpanel')
-    const palette = panel.querySelector(`[data-node-type-id="${id}"]`)
-    const canvas = panel.querySelector('.react-flow__pane')
-    if (!palette || !canvas) {
-      throw new Error(`drag setup failed: palette found=${!!palette} canvas found=${!!canvas}`)
-    }
-    const dataTransfer = new DataTransfer()
-    const rect = canvas.getBoundingClientRect()
-    const clientX = rect.x + rect.width / 2
-    const clientY = rect.y + rect.height / 2
-    palette.dispatchEvent(new DragEvent('dragstart', { bubbles: true, cancelable: true, dataTransfer }))
-    canvas.dispatchEvent(new DragEvent('dragover', { bubbles: true, cancelable: true, dataTransfer, clientX, clientY }))
-    canvas.dispatchEvent(new DragEvent('drop', { bubbles: true, cancelable: true, dataTransfer, clientX, clientY }))
-  }, nodeTypeID)
 }
 
 // A deliberately clipboard-free workflow (trigger-manual -> a plain

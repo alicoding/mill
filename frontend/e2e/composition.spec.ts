@@ -1,6 +1,9 @@
 import { test, expect } from './fixtures/server'
 import { withClipboardLock } from './fixtures/clipboardLock'
 import { clickRowAction } from './inventoryRow'
+import { workflowRow, activePanel, dragPaletteItemToCanvas, connectNodes } from './fixtures/canvas'
+import { clickCanvasNode } from './fixtures/canvasNode'
+import { waitForViewportStable } from './fixtures/animation'
 
 // Real Go bindings over HTTP (Wails3 server mode), not mocks -- same
 // setup/limitations as runbook.spec.ts (see its header comment):
@@ -21,62 +24,6 @@ import { clickRowAction } from './inventoryRow'
 // export/import coverage is composition-export-import.spec.ts, split
 // out the same way earlier.
 
-function workflowRow(page: import('@playwright/test').Page, label: string) {
-  return page.locator('[data-testid="inventory-row"][data-entity="workflow"]', { has: page.getByText(label, { exact: true }) })
-}
-
-// The active tab's content -- Primer's TabPanel keeps every open tab
-// mounted and toggles a `hidden` attribute rather than unmounting
-// (that's what preserves each tab's in-progress canvas edits), so once
-// more than one tab is open, un-scoped queries can match elements in
-// tabs that merely aren't visible right now. Every test that opens more
-// than one tab scopes through this.
-// .last(), not a bare match: a saved workflow's editor tab now nests a
-// second Canvas/Runs tab bar inside the outer per-workflow tab
-// (docs/SPEC.md §7's Update), so up to two [role="tabpanel"]:not([hidden])
-// elements can be visible at once (the outer workflow tab, the inner
-// Canvas/Runs one) -- document order always puts the outer one first,
-// so .last() reliably resolves to the innermost, most specific panel
-// regardless of whether a workflow has an inner tab bar or not.
-function activePanel(page: import('@playwright/test').Page) {
-  return page.locator('[role="tabpanel"]:not([hidden])').last()
-}
-
-// Playwright's Locator.dragTo() simulates mouse events (mousedown/move/
-// up), not the browser's native HTML5 Drag and Drop API -- confirmed
-// directly, not assumed: it does not fire real dragstart/dragover/drop
-// DOM events with a DataTransfer, so CompositionCanvas.tsx's
-// onDragStart/onDrop handlers (which read event.dataTransfer) never see
-// it. Dispatching the real DragEvents manually, as a real user's OS-
-// level drag gesture would, is the only way to exercise this path.
-// Scoped to the active (visible) tabpanel, same reasoning as
-// activePanel() above -- palette items exist in the DOM for every open
-// tab, not just the visible one.
-//
-// Selects by NodePalette.tsx's data-node-type-id (a NodeType.ID, e.g.
-// "apply-clipboard-write-html"), not visible text -- the palette
-// intentionally shows a shortened label now that TreeView groups by Kind
-// (docs/SPEC.md §3), so matching on display text would be coupled to
-// wording that's expected to keep changing.
-async function dragPaletteItemToCanvas(page: import('@playwright/test').Page, nodeTypeID: string) {
-  await page.evaluate((id) => {
-    const panel = document.querySelector('[role="tabpanel"]:not([hidden])')
-    if (!panel) throw new Error('no active tabpanel')
-    const palette = panel.querySelector(`[data-node-type-id="${id}"]`)
-    const canvas = panel.querySelector('.react-flow__pane')
-    if (!palette || !canvas) {
-      throw new Error(`drag setup failed: palette found=${!!palette} canvas found=${!!canvas}`)
-    }
-    const dataTransfer = new DataTransfer()
-    const rect = canvas.getBoundingClientRect()
-    const clientX = rect.x + rect.width / 2
-    const clientY = rect.y + rect.height / 2
-    palette.dispatchEvent(new DragEvent('dragstart', { bubbles: true, cancelable: true, dataTransfer }))
-    canvas.dispatchEvent(new DragEvent('dragover', { bubbles: true, cancelable: true, dataTransfer, clientX, clientY }))
-    canvas.dispatchEvent(new DragEvent('drop', { bubbles: true, cancelable: true, dataTransfer, clientX, clientY }))
-  }, nodeTypeID)
-}
-
 // See live-run-state.spec.ts's own copy of this helper for the full
 // reasoning: Fit View alone can still leave a node's own card
 // overlapping React Flow's fixed-position Controls/MiniMap chrome
@@ -88,69 +35,9 @@ async function dragPaletteItemToCanvas(page: import('@playwright/test').Page, no
 async function fitAndSpaceOut(page: import('@playwright/test').Page) {
   const panel = activePanel(page)
   await panel.getByRole('button', { name: 'Fit View' }).click()
-  await page.waitForTimeout(300)
+  await waitForViewportStable(panel)
   await panel.getByRole('button', { name: 'Zoom Out' }).click()
-  await page.waitForTimeout(200)
-}
-
-// See composition-canvas-interactions.spec.ts's own copy of these two
-// helpers for the full reasoning (Fit View first avoids the MiniMap-
-// overlap hazard a spiral-placed node's handle can land under; a raw
-// mouse click at a node's own top-left avoids the same hazard for
-// selection). Both tests below keep the starter trigger-manual node
-// now (docs/adr/0028 requires a Trigger root), connecting it to the
-// dropped Apply node instead of deleting the starter first.
-async function connectNodes(page: import('@playwright/test').Page, sourceLabel: string, targetLabel: string) {
-  const panel = activePanel(page)
-  await panel.getByRole('button', { name: 'Fit View' }).click()
-  await page.waitForTimeout(300)
-  const sourceHandle = panel.locator('.react-flow__node').filter({ hasText: sourceLabel }).locator('.react-flow__handle.source')
-  const targetHandle = panel.locator('.react-flow__node').filter({ hasText: targetLabel }).locator('.react-flow__handle.target')
-  const sourceBox = await sourceHandle.boundingBox()
-  const targetBox = await targetHandle.boundingBox()
-  if (!sourceBox || !targetBox) throw new Error('connectNodes: handle bounding box not found')
-  await page.mouse.move(sourceBox.x + sourceBox.width / 2, sourceBox.y + sourceBox.height / 2)
-  await page.mouse.down()
-  await page.mouse.move(targetBox.x + targetBox.width / 2, targetBox.y + targetBox.height / 2, { steps: 10 })
-  await page.mouse.up()
-}
-
-// Selects a canvas node by clicking a point PROVEN to land inside its
-// own card, not a fixed offset -- React Flow's own Controls (bottom-
-// left: zoom/lock/Fit View) and MiniMap (bottom-right) are real, drawn
-// UI chrome that Fit View's own layout can place any node underneath
-// depending on node count/viewport (confirmed directly: the exact same
-// top-left-corner offset that worked for a two-node graph lands on the
-// Controls panel's own IconButton once a third node shifts the layout,
-// silently selecting nothing -- neither a plain `.click()` (targets
-// the center) nor `.click({ force: true })` (skips Playwright's
-// actionability check, not the browser's real hit-testing) catches
-// this). Tries a few candidate points around the card, verifying via
-// document.elementFromPoint that each one actually resolves inside
-// THIS node's own `.react-flow__node` wrapper (a per-node badge is a
-// valid hit too -- it's still a descendant, clicks on it still select
-// the node) before clicking there for real.
-async function clickCanvasNode(page: import('@playwright/test').Page, panel: import('@playwright/test').Locator, label: string) {
-  const node = panel.locator('.react-flow__node').filter({ hasText: label })
-  const box = await node.boundingBox()
-  if (!box) throw new Error(`clickCanvasNode: node "${label}" has no bounding box`)
-  const candidates = [
-    { x: box.x + 10, y: box.y + 10 },
-    { x: box.x + box.width - 10, y: box.y + 10 },
-    { x: box.x + box.width / 2, y: box.y + box.height / 2 },
-    { x: box.x + 10, y: box.y + box.height - 10 },
-  ]
-  for (const point of candidates) {
-    const insideNode = await page.evaluate(({ x, y }) => {
-      const el = document.elementFromPoint(x, y)
-      return !!el?.closest('.react-flow__node')
-    }, point)
-    if (insideNode) {
-      await page.mouse.click(point.x, point.y)
-      return
-    }
-  }
-  throw new Error(`clickCanvasNode: no point for node "${label}" resolved inside its own card -- covered by other canvas chrome at every candidate`)
+  await waitForViewportStable(panel)
 }
 
 test('Composition page lists built-in workflows; node primitives live in a collapsible canvas panel, not the list', async ({ page }) => {

@@ -1,6 +1,7 @@
 import { test, expect } from './fixtures/server'
 import { groupCard, noteCard } from './fixtures/atlasCards'
 import { clickRowAction } from './inventoryRow'
+import { workflowRow, activePanel } from './fixtures/canvas'
 
 // The right-click context menu (goal 0075): one shared Primer-native
 // menu, surfaces own their items. Proof surfaces per the goal's
@@ -10,14 +11,6 @@ import { clickRowAction } from './inventoryRow'
 
 function contextMenu(page: import('@playwright/test').Page) {
   return page.getByTestId('context-menu')
-}
-
-function activePanel(page: import('@playwright/test').Page) {
-  return page.locator('[role="tabpanel"]:not([hidden])').last()
-}
-
-function workflowRow(page: import('@playwright/test').Page, label: string) {
-  return page.locator('[data-testid="inventory-row"][data-entity="workflow"]', { has: page.getByText(label, { exact: true }) })
 }
 
 // Right-clicks a point inside `locator`'s own bounding box that's

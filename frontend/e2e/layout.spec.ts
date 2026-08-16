@@ -49,10 +49,20 @@ test('the titlebar band\'s left segment tracks the sidebar column: it resizes an
 
   await toggle.click()
   await expect(page.getByRole('button', { name: 'Expand navigation' })).toBeVisible()
-  // Let the 0.15s width/flex-basis transition (App.module.css) settle
-  // before reading geometry -- same idiom every other transition-
-  // sensitive spec in this suite uses.
-  await page.waitForTimeout(300)
+  // Poll until the 0.15s width/flex-basis transition (App.module.css)
+  // actually settles -- two consecutive equal reads, not merely
+  // "narrower than before", since the band is still narrowing
+  // partway through the transition too and a one-shot threshold check
+  // can resolve before it reaches its final width.
+  let previousWidth: number | null = null
+  await expect
+    .poll(async () => {
+      const width = (await titlebarLeft.boundingBox())?.width ?? null
+      const stable = previousWidth !== null && width === previousWidth
+      previousWidth = width
+      return stable
+    }, { timeout: 2_000 })
+    .toBe(true)
 
   const collapsedLeftBox = await titlebarLeft.boundingBox()
   const collapsedTabBox = await firstTab.boundingBox()

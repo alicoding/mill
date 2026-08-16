@@ -1,5 +1,6 @@
 import { test, expect } from './fixtures/server'
 import { openCardPageEdit } from './fixtures/atlasPage'
+import { clickAtFraction } from './fixtures/animation'
 
 // Exercises the card PAGE's own ratified anatomy (goal 0072 slice C,
 // docs/adr/0038): the header row (kind glyph/circle, title, file tag,
@@ -26,21 +27,6 @@ async function openViaFlip(card: import('@playwright/test').Locator) {
   await card.getByTestId('atlas-note-open').click()
 }
 
-// A region frame's own body has one reliably blank strip regardless
-// of child count or row layout: the left GROUP_PADDING gutter
-// (atlasBoardLayout.ts), a narrow column between the frame's own left
-// edge and its first column of children, running the full height
-// below the header. Locator.click's own `position` is resolved
-// against the element's CURRENT box at the moment of the click (with
-// its usual actionability wait), not a one-off boundingBox() snapshot
-// that could go stale if the board's own initial fitView animation is
-// still settling -- a 1% fraction of width stays inside that gutter
-// whatever the board's current zoom level scales it to.
-async function clickFrameBody(frame: import('@playwright/test').Locator) {
-  const box = await frame.boundingBox()
-  if (!box) throw new Error('expected the frame to be measurable')
-  await frame.click({ position: { x: box.width * 0.01, y: box.height * 0.5 } })
-}
 
 test('the page header shows a kind glyph, title, file tag, and Close; the seeded Contact card gets a circular glyph', async ({ page }) => {
   await page.goto('/')
@@ -136,7 +122,13 @@ test('a region frame\'s body click flips it in place; Esc unflips; Open on the b
   const exampleArea = groupCard(page, 'Example area')
   await expect(exampleArea).toBeVisible()
 
-  await clickFrameBody(exampleArea)
+  // A region frame's own body has one reliably blank strip regardless
+  // of child count or row layout: the left GROUP_PADDING gutter
+  // (atlasBoardLayout.ts), a narrow column between the frame's own left
+  // edge and its first column of children, running the full height
+  // below the header -- a 1% fraction of width stays inside that gutter
+  // whatever the board's current zoom level scales it to.
+  await clickAtFraction(exampleArea, 0.01, 0.5)
   await expect(exampleArea).toHaveAttribute('data-flipped', 'true')
   const back = exampleArea.getByTestId('atlas-group-card-back')
   await expect(back).toBeVisible()
@@ -145,7 +137,7 @@ test('a region frame\'s body click flips it in place; Esc unflips; Open on the b
   await page.keyboard.press('Escape')
   await expect(exampleArea).toHaveAttribute('data-flipped', 'false')
 
-  await clickFrameBody(exampleArea)
+  await clickAtFraction(exampleArea, 0.01, 0.5)
   await expect(exampleArea).toHaveAttribute('data-flipped', 'true')
   await exampleArea.getByTestId('atlas-group-open').click()
 
@@ -193,7 +185,7 @@ test('a child\'s mirror preview renders inline in the parent page; the card\'s o
   // entry with its mirror content rendered inline.
   await page.getByTestId('atlas-breadcrumb').getByText('My space', { exact: true }).click()
   const exampleAreaFrame = groupCard(page, 'Example area')
-  await clickFrameBody(exampleAreaFrame)
+  await clickAtFraction(exampleAreaFrame, 0.01, 0.5)
   await expect(exampleAreaFrame.getByTestId('atlas-group-card-back')).toBeVisible()
   await exampleAreaFrame.getByTestId('atlas-group-open').click()
   await expect(overlay).toBeVisible()

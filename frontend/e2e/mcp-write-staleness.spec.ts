@@ -1,10 +1,10 @@
-import type { Page } from '@playwright/test'
 import { test, expect } from './fixtures/server'
 import { clickRowAction } from './inventoryRow'
 import {
   backdatePendingMCPWrite, connectMCPClient, exportWorkflowViaMCP, findWorkflowIdByLabel,
   enableMCPWritesWithApprovalRequired, restoreMCPWriteDefaults,
 } from './mcpTestClient'
+import { workflowRow } from './fixtures/canvas'
 
 // docs/goals/0026 item 2: a stale pending item must visibly communicate
 // its age -- fresh (<15m) renders as-is, older gets emphasis + "expires
@@ -13,10 +13,6 @@ import {
 // millmcpservice_approval_query.go's own doc comment explains why an
 // external settings-file edit can't do this against a LIVE server)
 // rather than sleeping 20 real minutes.
-
-function workflowRow(page: Page, label: string) {
-  return page.locator('[data-testid="inventory-row"][data-entity="workflow"]', { has: page.getByText(label, { exact: true }) })
-}
 
 test('a backdated pending MCP write renders age emphasis + expiry text in Review, the banner, and the approval prompt', async ({ page }, testInfo) => {
   const label = 'E2E MCP write staleness source'
