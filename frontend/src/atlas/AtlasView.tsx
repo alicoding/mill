@@ -118,7 +118,14 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
   const effectiveViewMode = viewedCard?.ViewMode === ViewMode.ViewModeCanvas ? ViewMode.ViewModeCanvas : ViewMode.ViewModeShelves
   const childrenAll = childrenOf(allCards, viewedID)
   const presentKinds = groupByKind(childrenAll, allKinds).map((shelf) => shelf.kind)
-  const visibleChildren = applyLens(childrenAll, hiddenKindIDs)
+  // The lens filters cards by KIND, but containment is a ROLE
+  // orthogonal to kind (ADR-0038 Decision 3): a card currently
+  // holding children renders as a region frame and stays on the board
+  // even when its own kind is lens-hidden -- hiding a kind to
+  // declutter notes must never remove a whole area and everything
+  // previewed inside it.
+  const lensed = applyLens(childrenAll, hiddenKindIDs)
+  const visibleChildren = childrenAll.filter((c) => lensed.includes(c) || isGroupCard(allCards, c))
   const overlayCard = overlayCardID ? allCards.find((c) => c.ID === overlayCardID) ?? null : null
   const overlayKind = overlayCard ? allKinds.find((k) => k.ID === overlayCard.KindID) : undefined
 
