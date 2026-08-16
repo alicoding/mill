@@ -31,6 +31,13 @@ import * as triggersvc$0 from "../triggersvc/models.js";
 import * as $models from "./models.js";
 
 /**
+ * AppVersion returns Mill's own release version (empty until wired).
+ */
+export function AppVersion(): $CancellablePromise<string> {
+    return $Call.ByID(4094754965);
+}
+
+/**
  * AssignSummonHotkey binds mods+key as the app-level summon hotkey,
  * replacing any previous one. Rejects a combo already claimed by a
  * per-workflow trigger (TriggerService.ClaimedCombos) -- the reverse
@@ -41,13 +48,6 @@ export function AssignSummonHotkey(mods: string[] | null, key: string): $Cancell
     return $Call.ByID(2482329424, mods, key);
 }
 
-/**
- * CheckForUpdates asks the configured provider (GitHub Releases,
- * alicoding/mill) whether a newer version exists. Inert until Mill has
- * a real tagged-release process -- see docs/SPEC.md §3.7's own note on
- * this; wired now so the mechanism exists, not claiming a working
- * update pipeline exists yet.
- */
 export function CheckForUpdates(): $CancellablePromise<$models.UpdateCheckResult> {
     return $Call.ByID(3825907183);
 }

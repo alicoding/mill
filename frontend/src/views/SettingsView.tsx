@@ -51,6 +51,7 @@ function SettingsView() {
 
   const [updateStatus, setUpdateStatus] = useState('')
   const [updateChecking, setUpdateChecking] = useState(false)
+  const [appVersion, setAppVersion] = useState('')
 
   const [contractExportError, setContractExportError] = useState('')
 
@@ -72,6 +73,10 @@ function SettingsView() {
   // fail for the same reason (the backend didn't answer), and a build
   // this small doesn't need per-control diagnosis.
   const [settingsLoadError, setSettingsLoadError] = useState(false)
+
+  useEffect(() => {
+    SettingsService.AppVersion().then(setAppVersion).catch(console.error)
+  }, [])
 
   useEffect(() => {
     SettingsService.GetLaunchAtLogin()
@@ -355,6 +360,7 @@ function SettingsView() {
         <Button size="small" onClick={checkForUpdates} disabled={updateChecking} data-testid="check-for-updates">
           {updateChecking ? t('settings.updates.checking') : t('settings.updates.checkButton')}
         </Button>
+        {appVersion && <Text size="small" className={styles.muted} data-testid="current-app-version">{t('settings.updates.currentVersion', { version: appVersion })}</Text>}
         {updateStatus && <Text size="small" className={styles.muted}>{updateStatus}</Text>}
       </Stack>
     </PageContainer>

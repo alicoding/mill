@@ -27,8 +27,6 @@ import { pageIconFor, pageLabelFor } from './pageMeta'
 import { useMillNavigate } from './useMillNavigate'
 import styles from "./App.module.css";
 
-// Show the actual Wails version this project was generated against.
-const wailsVersion = "v3.0.0-beta.4";
 
 // True only inside the Wails native webview (the runtime injects
 // window._wails there; a plain browser tab on the server-mode HTTP
@@ -62,13 +60,15 @@ function App() {
   // has the full reasoning).
   const [isIsolatedData, setIsIsolatedData] = useState(false);
   // Which commit this specific running instance was actually built
-  // from -- distinct from wailsVersion (which Wails SDK the project was
-  // generated against, a constant). Real gap this closes: a desktop app
+  // from. Real gap this closes: a desktop app
   // process silently stayed running across an entire session's worth of
   // commits with nothing anywhere flagging it stale (isDevBuild's own
   // ribbon only fires for a live `vite serve`, never for any `go build`
   // output, dev or not).
   const [buildInfo, setBuildInfo] = useState<BuildInfo | null>(null);
+  // Mill's own release version (main.go's millVersion), shown in the
+  // footer so the running product names itself, not its framework.
+  const [appVersion, setAppVersion] = useState('');
   // See the detection comment above App(): Go's build tag, not a
   // window-global sniff; null (not yet fetched) renders the browser
   // shape.
@@ -228,6 +228,7 @@ function App() {
 
   useEffect(() => {
     SettingsService.GetBuildInfo().then(setBuildInfo).catch(console.error);
+    SettingsService.AppVersion().then(setAppVersion).catch(console.error);
   }, []);
 
   // Subscribed here, not inside ActivityView/CompositionView, so a
@@ -459,7 +460,7 @@ function App() {
       <hr className={styles.divider}/>
       <footer className={styles.footer}>
         <span className={styles.version}>
-          <span>{wailsVersion}</span>
+          <span>{appVersion ? `Mill v${appVersion}` : 'Mill'}</span>
           {buildInfo?.Revision && (
             <span title={buildInfo.Modified ? t('shell.buildModifiedTooltip') : t('shell.buildRevisionTooltip')}>
               · {buildInfo.Revision.slice(0, 7)}{buildInfo.Modified && '*'}
@@ -482,7 +483,7 @@ function App() {
           <span>{time}</span>
         </span>
         <span className={styles.rightControls}>
-          <a className={styles.docs} data-wml-openURL="https://v3.wails.io" aria-label={t('shell.docsLinkAriaLabel')}>{t('shell.docsLinkText')}
+          <a className={styles.docs} data-wml-openURL="https://github.com/alicoding/mill" aria-label={t('shell.docsLinkAriaLabel')}>{t('shell.docsLinkText')}
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg>
           </a>
         </span>
