@@ -64,6 +64,35 @@ test('a dense area previews bounded: capped tiles, region chips, a truthful ghos
     // Platform-chip -> Getting started = 7.
     await expect(page.locator('.react-flow__edge')).toHaveCount(7)
 
+    // Overlap resolution (goal 0073, growth class): the seeded
+    // "Example area" frame GREW past its hand-placed footprint (a
+    // third child migrated in) and the fixture's Velocity frame
+    // arrived programmatically -- no top-level card/frame on this
+    // board may overlap any other. Leaf-leaf overlaps would be user
+    // placement; everything here is frame-involved, so all must be
+    // disjoint.
+    const topLevel = [
+      velocity,
+      page.locator('[data-testid="atlas-group-card"]').filter({ has: page.locator('[aria-label="Zoom into Example area"]') }),
+      page.locator('[aria-label="Flip Getting started"]'),
+      page.locator('[aria-label="Flip Scratchpad"]'),
+    ]
+    const rects = []
+    for (const loc of topLevel) {
+      const r = await loc.boundingBox()
+      if (!r) throw new Error('top-level card missing bounding box')
+      rects.push(r)
+    }
+    for (let i = 0; i < rects.length; i++) {
+      for (let j = i + 1; j < rects.length; j++) {
+        const a = rects[i]
+        const b = rects[j]
+        const overlapX = Math.min(a.x + a.width, b.x + b.width) - Math.max(a.x, b.x)
+        const overlapY = Math.min(a.y + a.height, b.y + b.height) - Math.max(a.y, b.y)
+        expect(overlapX <= 0 || overlapY <= 0, `top-level cards ${i} and ${j} overlap`).toBe(true)
+      }
+    }
+
     // Gesture model (goal 0074): a chip answers a single click like
     // every other card -- it flips to its minimal back -- and
     // double-click commits, zooming into the place.
