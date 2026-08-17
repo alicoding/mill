@@ -20,9 +20,21 @@
     align-items: center;
     gap: var(--base-size-8);
 }
-.emptyState {
+/* A zero-card zero-note space (goal 0081 slice A2 rider a) still
+   renders the board underneath -- creation can't be absent where
+   creation starts. The wrapper is the flex slot the board used to own
+   outright; the text sits above it, non-interactive, so the tray and
+   the pane's own right-click menu stay reachable through it. */
+.boardWrapper {
     flex: 1 1 auto;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    min-height: 0;
+    position: relative;
+}
+.emptyState {
+    position: absolute;
+    top: var(--base-size-24);
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 3;
+    pointer-events: none;
 }

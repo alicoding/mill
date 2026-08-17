@@ -26,8 +26,11 @@ test('right-click on an Atlas card offers Open, the share trio, and a confirmed 
   await page.keyboard.press('Escape')
   await expect(menu).not.toBeVisible()
 
-  // A region frame is a place first: Zoom in leads.
-  await groupCard(page, 'Example area').click({ button: 'right', position: { x: 6, y: 60 } })
+  // A region frame is a place first: Zoom in leads. Right-clicking the
+  // frame's own header/border (goal 0081 slice A2's context-aware
+  // menus) is what surfaces the full frame menu -- its interior empty
+  // space carries a different, add-only menu instead.
+  await groupCard(page, 'Example area').getByTestId('atlas-group-header').click({ button: 'right' })
   await expect(menu).toBeVisible()
   await expect(menu.getByText('Zoom in')).toBeVisible()
   await page.keyboard.press('Escape')
@@ -126,7 +129,7 @@ test('right-click on a work tab offers Close tab/others/all; a dirty tab still g
   await expect(page.getByRole('tab')).toHaveCount(1)
 })
 
-test('right-click on the Atlas board pane offers Add card…, opening the same child-create dialog', async ({ page }) => {
+test('right-click on the Atlas board pane offers direct-placement Add card/Add note, not the old dialog', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Atlas' }).click()
   await expect(page.getByTestId('atlas-board')).toBeVisible()
@@ -135,8 +138,22 @@ test('right-click on the Atlas board pane offers Add card…, opening the same c
   await rightClickEmptyArea(pane)
   const menu = contextMenu(page)
   await expect(menu).toBeVisible()
-  await menu.getByText('Add card…', { exact: true }).click()
+  await expect(menu.getByText('Add card', { exact: true })).toBeVisible()
+  await expect(menu.getByText('Add note', { exact: true })).toBeVisible()
+  // Superseded by direct placement (goal 0081 slice A2 rider b) --
+  // this dialog-based item never reappears in the pane menu.
+  await expect(menu.getByText('Add card…', { exact: true })).toHaveCount(0)
+  await page.keyboard.press('Escape')
+  await expect(menu).not.toBeVisible()
+})
 
+test('the Atlas toolbar\'s "+ Add" button still reaches the child-create dialog', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Atlas' }).click()
+  await expect(page.getByTestId('atlas-board')).toBeVisible()
+
+  await page.getByTestId('atlas-add-button').click()
+  await page.getByTestId('atlas-add-child').click()
   const dialog = page.getByRole('dialog')
   await expect(dialog).toBeVisible()
   await expect(dialog).toContainText('Add inside this card')

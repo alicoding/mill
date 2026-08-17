@@ -26,6 +26,7 @@ trace (now auto-captured on retry).
 | quick-panel.spec.ts:132 | unclear | 2026-08-16 | 2026-09-16 | cross-document nav; await first trace |
 | atlas-projections.spec.ts:108 | unclear | 2026-08-16 | 2026-09-16 | await first trace |
 | workflow-lifecycle.spec.ts:52 | unclear | 2026-08-16 | 2026-09-16 | await first trace |
+| atlas-containment.spec.ts:105 | interaction-race | 2026-08-17 | 2026-09-17 | the Area tool's own marquee draw (a real pointer-capture drag, not React Flow's own node drag) occasionally no-ops on the LAST of several marquees drawn in one long test -- self-heals on retry every time observed; waitForViewportStable already applied at every zoom-changing step, root cause not yet isolated |
 | workflow-runs-panel.spec.ts:116 | unclear | 2026-08-16 | 2026-09-16 | await first trace |
 | layout.spec.ts:163 | unclear (contention-only) | 2026-08-16 | 2026-09-16 | fails only under parallel local load |
 | composition-canvas-interactions.spec.ts:92 | CI-only skip | 2026-08-15 | goal 0069's revisit clause | the one honest skip; four fix layers recorded. Reproduced LOCALLY too as of 2026-08-16 (2/2 attempts, on both the pre- and post-0080-burn-down code -- not a burn-down regression), contradicting the in-file comment's "every local mode... passes 10/10"; that comment needs a re-check, not yet done here |

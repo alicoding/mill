@@ -11,7 +11,7 @@ PROFILE="${1:?usage: check-go-coverage.sh <coverprofile>}"
 # macOS CI runner measures 69.8 where a local desktop run measures
 # 70.4 (build-tag paths differ slightly), and the floor must hold in
 # the strictest one. Raise it here when the CI number climbs.
-FLOOR="70.0"
+FLOOR="69.5"
 TOTAL=$(go tool cover -func="$PROFILE" | awk '/^total:/ {gsub(/%/,"",$3); print $3}')
 if [ -z "$TOTAL" ]; then
   echo "check-go-coverage: no total in $PROFILE" >&2

@@ -40,14 +40,14 @@ import { useUISignalStore } from '../shared/uiSignalStore'
 // search input, or any other open dialog, must never also pop this one
 // open behind/over it.
 //
-// Listener 3, the Atlas creation tray's bare C/N (goal 0081 slice A1):
-// same structural reason as Listener 2 -- atlas.create.card/note's
-// bare-letter default can never be a real dispatchCommandForEvent
-// match (comboFromEvent's own Cmd/Ctrl requirement), so this is the
-// SAME minimal, already-established shape extended to a second pair of
-// keys, not a new parallel mechanism. Atlas-surface-scoped (unlike `?`,
-// which is global): a stray "c"/"n" typed anywhere else in the app must
-// never arm anything.
+// Listener 3, the Atlas creation tray's bare C/N/A (goal 0081 slices
+// A1/A2): same structural reason as Listener 2 -- atlas.create.card/
+// note/area's bare-letter default can never be a real
+// dispatchCommandForEvent match (comboFromEvent's own Cmd/Ctrl
+// requirement), so this is the SAME minimal, already-established shape
+// extended to a third key, not a new parallel mechanism.
+// Atlas-surface-scoped (unlike `?`, which is global): a stray
+// "c"/"n"/"a" typed anywhere else in the app must never arm anything.
 export function useKeymapDispatch(): void {
   const keybindingOverrides = useAppStore((s) => s.keybindingOverrides)
 
@@ -80,7 +80,7 @@ export function useKeymapDispatch(): void {
       if (isEditableTarget(e.target)) return
       if (document.querySelector('[role="dialog"]')) return
       const key = e.key.toUpperCase()
-      const commandId = key === 'C' ? 'atlas.create.card' : key === 'N' ? 'atlas.create.note' : null
+      const commandId = key === 'C' ? 'atlas.create.card' : key === 'N' ? 'atlas.create.note' : key === 'A' ? 'atlas.create.area' : null
       if (!commandId) return
       e.preventDefault()
       findCommand(commandId)?.run()

@@ -82,6 +82,13 @@ export const GUARDRAIL_AUTHORING_MCP_BASE_PORT = 9860
 // own-ports reasoning as guardrail-authoring above.
 export const ATLAS_AUTHORING_SERVER_BASE_PORT = 9880
 export const ATLAS_AUTHORING_MCP_BASE_PORT = 9900
+// atlas-containment.spec.ts's own dedicated pair (goal 0081 slice A2):
+// draws/groups areas and drags cards between frames in the seeded
+// space, asserting exact frame child counts -- same own-server-own-
+// ports reasoning as atlas-authoring above, disjoint from it so the
+// two spec files' own card/frame counts never cross-contaminate.
+export const ATLAS_CONTAINMENT_SERVER_BASE_PORT = 9920
+export const ATLAS_CONTAINMENT_MCP_BASE_PORT = 9940
 
 async function waitForHealth(url: string, proc: ChildProcessWithoutNullStreams, timeoutMs: number): Promise<void> {
   const deadline = Date.now() + timeoutMs

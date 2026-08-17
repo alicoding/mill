@@ -53,16 +53,17 @@ interface UISignalState {
   // above.
   reviewRulesRequest: number
   requestReviewRules: () => void
-  // atlas.create.card / atlas.create.note (goal 0081 slice A1): the
-  // bare C/N keys can't dispatch through the normal command registry
-  // (comboFromEvent requires Cmd/Ctrl by design, shared/keybinding.ts) --
-  // a dedicated bare-key listener (app/useKeymapDispatch.ts, the same
-  // shape its own bare-`?` listener already uses) calls each command's
-  // run(), which sets this signal. Token-carrying (not a bare counter)
-  // since AtlasBoard's own watcher needs to know WHICH tool to arm, not
-  // just that a change happened.
-  atlasArmToolRequest: { tool: 'card' | 'note'; token: number } | null
-  requestAtlasArmTool: (tool: 'card' | 'note') => void
+  // atlas.create.card / atlas.create.note / atlas.create.area (goal
+  // 0081 slices A1/A2): the bare C/N/A keys can't dispatch through the
+  // normal command registry (comboFromEvent requires Cmd/Ctrl by
+  // design, shared/keybinding.ts) -- a dedicated bare-key listener
+  // (app/useKeymapDispatch.ts, the same shape its own bare-`?`
+  // listener already uses) calls each command's run(), which sets this
+  // signal. Token-carrying (not a bare counter) since AtlasBoard's own
+  // watcher needs to know WHICH tool to arm, not just that a change
+  // happened.
+  atlasArmToolRequest: { tool: 'card' | 'note' | 'area'; token: number } | null
+  requestAtlasArmTool: (tool: 'card' | 'note' | 'area') => void
 }
 
 export const useUISignalStore = create<UISignalState>()((set) => ({

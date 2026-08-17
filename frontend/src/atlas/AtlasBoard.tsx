@@ -9,18 +9,19 @@ import type { Card, Kind, Link, LinkKind, Note } from '../../bindings/github.com
 import { AtlasService } from '../shared/bindings'
 import { useIsNarrowViewport } from '../shared/useNarrowViewport'
 import { usePrefersReducedMotion } from '../shared/usePrefersReducedMotion'
-import { childrenOf } from './atlasGrouping'
-import { computeAutoArrangeLayout, computeGroupFrameLayout, isGroupCard, NOTE_HEIGHT, NOTE_WIDTH } from './atlasBoardLayout'
-import { computeFreshnessRollup } from './atlasCardPresentation'
-import { AtlasNoteCardNode, type AtlasNoteCardRFNode } from './AtlasNoteCardNode'
-import { AtlasGroupNode, type AtlasGroupRFNode } from './AtlasGroupNode'
-import { AtlasRegionChipNode, type AtlasRegionChipRFNode } from './AtlasRegionChipNode'
-import { AtlasStickyNode, type AtlasStickyRFNode } from './AtlasStickyNode'
+import { computeGroupFrameLayout, isGroupCard, NOTE_HEIGHT, NOTE_WIDTH, STICKY_HEIGHT, STICKY_WIDTH } from './atlasBoardLayout'
+import { AtlasNoteCardNode } from './AtlasNoteCardNode'
+import { AtlasGroupNode } from './AtlasGroupNode'
+import { AtlasRegionChipNode } from './AtlasRegionChipNode'
+import { AtlasStickyNode } from './AtlasStickyNode'
 import { AtlasLinkEdge, type AtlasLinkRFEdge } from './AtlasLinkEdge'
 import { resolveBoardEdges } from './atlasLinkResolution'
 import { resolveFreeOverlaps } from './atlasOverlapResolution'
 import { useBoardFocus } from './useBoardFocus'
-import { useAtlasCreation, type AtlasPlacementRequest, type AtlasPromoteRequest } from './useAtlasCreation'
+import { useAtlasCreation, type AtlasGroupRequest, type AtlasPlacementRequest, type AtlasPromoteRequest } from './useAtlasCreation'
+import { useAtlasAreaDraw } from './useAtlasAreaDraw'
+import { useAtlasDragFiling, type FrameBox } from './useAtlasDragFiling'
+import { buildBoardCardNodes } from './atlasBuildBoardNodes'
 import { buildStickyNodes } from './atlasStickyNodes'
 import { AtlasCreationTray, ATLAS_TOOL_DRAG_MIME, type AtlasCreationTool } from './AtlasCreationTray'
 import { AtlasPlacementPopover } from './AtlasPlacementPopover'
@@ -28,8 +29,6 @@ import styles from './AtlasBoard.module.css'
 
 const rfNodeTypes: RFNodeTypes = { 'atlas-note': AtlasNoteCardNode, 'atlas-group': AtlasGroupNode, 'atlas-region-chip': AtlasRegionChipNode, 'atlas-sticky': AtlasStickyNode }
 const rfEdgeTypes: RFEdgeTypes = { 'atlas-link': AtlasLinkEdge }
-
-type BoardRFNode = AtlasNoteCardRFNode | AtlasGroupRFNode | AtlasRegionChipRFNode | AtlasStickyRFNode
 
 // A ⌘K jump's one-shot request into the board it lands on (goal 0072
 // slice B): AtlasView decides WHETHER a re-root is needed (the target
@@ -62,7 +61,7 @@ export interface AtlasFocusRequest {
 // media-query gate AtlasNoteCardNode.module.css's own flip already
 // uses, read here in JS via usePrefersReducedMotion since React Flow's
 // own transition durations are JS options, not CSS.
-function AtlasBoardInner({ cards, allCards, kinds, links, linkKinds, notes, parentID, mode, viewedID, focusRequest, onDrill, onOpenOverlay, onFocusHandled, onCardContextMenu, onPaneContextMenu, onArteryContextMenu, onNoteContextMenu, placementRequest, promoteRequest }: {
+function AtlasBoardInner({ cards, allCards, kinds, links, linkKinds, notes, parentID, mode, viewedID, focusRequest, onDrill, onOpenOverlay, onFocusHandled, onCardContextMenu, onPaneContextMenu, onArteryContextMenu, onNoteContextMenu, onFrameContextMenu, onFrameInteriorContextMenu, onMultiSelectContextMenu, placementRequest, promoteRequest, groupRequest }: {
   cards: Card[]
   allCards: Card[]
   kinds: Kind[]
@@ -93,11 +92,25 @@ function AtlasBoardInner({ cards, allCards, kinds, links, linkKinds, notes, pare
   // Right-click on a note (goal 0081 slice A1): same where/what-only
   // contract as onCardContextMenu -- AtlasView owns Promote/Delete.
   onNoteContextMenu: (noteID: string, pos: { x: number; y: number }) => void
+  // Right-click on a frame's own header/border (goal 0081 slice A2,
+  // LOCKED design §6d): reports the frame's own card id -- AtlasView
+  // builds Add-inside/Zoom/Dissolve/Delete.
+  onFrameContextMenu: (frameID: string, pos: { x: number; y: number }) => void
+  // Right-click on a frame's own interior empty space (not on a
+  // child): reports the frame's own card id -- AtlasView builds the
+  // frame-scoped Add card/Add note pair.
+  onFrameInteriorContextMenu: (frameID: string, pos: { x: number; y: number }) => void
+  // Right-click on a member of a 2+ multi-selection: reports the
+  // selection's own card/note ids split apart -- AtlasView builds
+  // Group into new area (cards.length >= 2) / Delete.
+  onMultiSelectContextMenu: (cardIDs: string[], noteIDs: string[], pos: { x: number; y: number }) => void
   // AtlasView's own downward creation requests (the pane menu's "Add
-  // card"/"Add note"/"Promote to card…" items) -- see
+  // card"/"Add note"/"Promote to card…" items, extended by slice A2's
+  // frame-scoped placements and "Group into new area") -- see
   // useAtlasCreation.ts's own header comment for the shape.
   placementRequest?: AtlasPlacementRequest | null
   promoteRequest?: AtlasPromoteRequest | null
+  groupRequest?: AtlasGroupRequest | null
 }) {
   const { t } = useTranslation('atlas')
   const readOnly = useIsNarrowViewport()
@@ -108,7 +121,8 @@ function AtlasBoardInner({ cards, allCards, kinds, links, linkKinds, notes, pare
   const [hintedID, setHintedID] = useState<string | null>(null)
   const wrapperRef = useRef<HTMLDivElement>(null)
   const { fitBounds, fitView, getNodesBounds, screenToFlowPosition } = useReactFlow()
-  const creation = useAtlasCreation({ parentID, notes, readOnly, screenToFlowPosition, placementRequest, promoteRequest })
+  const creation = useAtlasCreation({ parentID, allCards, notes, readOnly, screenToFlowPosition, placementRequest, promoteRequest, groupRequest })
+  const [selectedIDs, setSelectedIDs] = useState<string[]>([])
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -118,7 +132,7 @@ function AtlasBoardInner({ cards, allCards, kinds, links, linkKinds, notes, pare
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [])
 
-  const toggleFlip = (id: string) => setFlippedID((cur) => (cur === id ? null : id))
+  const toggleFlip = useCallback((id: string) => setFlippedID((cur) => (cur === id ? null : id)), [])
 
   // Zoom chip / group-header click / Enter on a region frame (routed
   // here through AtlasGroupNode's own data.onDrill) all fly the camera
@@ -198,6 +212,47 @@ function AtlasBoardInner({ cards, allCards, kinds, links, linkKinds, notes, pare
     }
   }, [freeMoves])
 
+  // Every top-level card's own rendered flow-space box (goal 0081
+  // slice A2): shared by the marker-box's own enclosure test, drag
+  // filing's frame-intersection test, and the "you'd file into me"
+  // highlight -- Free mode only (a card's Position, and therefore this
+  // box, is meaningless in Auto-arrange). Deliberately its own small
+  // memo rather than threading through builtNodes below: that memo
+  // mixes in region-chip/preview-grid concerns this one doesn't need.
+  const topLevelBoxes: FrameBox[] = useMemo(() => {
+    if (!isFree) return []
+    const moveByID = new Map(freeMoves.map((m) => [m.id, m]))
+    return cards.map((card) => {
+      const move = moveByID.get(card.ID)
+      const frame = isGroupCard(allCards, card)
+      const size = frame ? computeGroupFrameLayout(allCards, card.ID).size : { width: NOTE_WIDTH, height: NOTE_HEIGHT }
+      return {
+        id: card.ID,
+        x: move?.x ?? card.Position?.X ?? 0,
+        y: move?.y ?? card.Position?.Y ?? 0,
+        width: size.width,
+        height: size.height,
+        isFrame: frame,
+      }
+    })
+  }, [cards, allCards, freeMoves, isFree])
+
+  const noteBoxes = useMemo(() => (
+    isFree ? notes.map((n) => ({ id: n.ID, x: n.Position.X, y: n.Position.Y, width: STICKY_WIDTH, height: STICKY_HEIGHT })) : []
+  ), [notes, isFree])
+
+  const dragFiling = useAtlasDragFiling({ allCards, parentID, topLevelBoxes, wrapperRef })
+
+  const areaDraw = useAtlasAreaDraw({
+    armed: isFree && !readOnly && creation.armedTool === 'area',
+    screenToFlowPosition,
+    cardBoxes: topLevelBoxes,
+    noteBoxes,
+    disarm: creation.disarm,
+    onComplete: creation.openAreaPopover,
+    wrapperRef,
+  })
+
   // The board's arteries, resolved once and shared: the edges memo
   // below renders them; Auto-arrange consumes them as the adjacency
   // that seats linked things beside each other.
@@ -218,128 +273,11 @@ function AtlasBoardInner({ cards, allCards, kinds, links, linkKinds, notes, pare
     return () => observer.disconnect()
   }, [])
 
-  const builtNodes = useMemo(() => {
-    const kindByID = new Map(kinds.map((k) => [k.ID, k]))
-    const adjacency = new Map<string, string[]>()
-    for (const a of arteries) {
-      adjacency.set(a.source, [...(adjacency.get(a.source) ?? []), a.target])
-      adjacency.set(a.target, [...(adjacency.get(a.target) ?? []), a.source])
-    }
-    const autoLayout = !isFree ? computeAutoArrangeLayout(cards, allCards, adjacency, boardWidth > 0 ? boardWidth - 48 : undefined) : null
-    const moveByID = new Map(freeMoves.map((m) => [m.id, m]))
-    const nodes: BoardRFNode[] = []
-
-    const noteData = (card: Card) => ({
-      card,
-      kind: kindByID.get(card.KindID),
-      allCards,
-      links,
-      linkKinds,
-      flipped: flippedID === card.ID,
-      pulsed: pulsedID === card.ID,
-      hinted: hintedID === card.ID,
-      onToggleFlip: toggleFlip,
-      onOpenOverlay,
-      onCommit: handleLeafCommit,
-    })
-
-    for (const card of cards) {
-      const box = autoLayout?.boxes.get(card.ID)
-      const move = moveByID.get(card.ID)
-      const position = isFree
-        ? { x: move?.x ?? card.Position?.X ?? 0, y: move?.y ?? card.Position?.Y ?? 0 }
-        : { x: box?.x ?? 0, y: box?.y ?? 0 }
-
-      if (isGroupCard(allCards, card)) {
-        const frame = computeGroupFrameLayout(allCards, card.ID)
-        const size = isFree ? frame.size : { width: box?.width ?? frame.size.width, height: box?.height ?? frame.size.height }
-        const groupFlipped = flippedID === card.ID
-        nodes.push({
-          id: card.ID,
-          type: 'atlas-group',
-          position,
-          width: size.width,
-          height: size.height,
-          draggable: isFree && !readOnly,
-          data: {
-            card,
-            kind: kindByID.get(card.KindID),
-            allCards,
-            links,
-            linkKinds,
-            childCount: childrenOf(allCards, card.ID).length,
-            // Roll-up covers EVERY direct child, drawn or capped -- the
-            // pills stay the deep truth regardless of the preview.
-            freshness: computeFreshnessRollup(childrenOf(allCards, card.ID)),
-            overflow: frame.overflow,
-            pulsed: pulsedID === card.ID,
-            hinted: hintedID === card.ID,
-            flipped: groupFlipped,
-            onDrill: handleDrill,
-            onToggleFlip: toggleFlip,
-            onOpenOverlay,
-          },
-        })
-        // A flipped frame's own back face must visually and
-        // interactively cover its own preview children -- React Flow
-        // always renders a parentId child at parentZ+1 minimum
-        // (@xyflow/system's own calculateChildXYZ), so a parent node
-        // can never out-z-index its own children; omitting the
-        // children entirely while flipped is what actually achieves
-        // "z above the children," not a z-index that RF's own child
-        // stacking invariant would silently defeat.
-        if (!groupFlipped) {
-          for (const child of frame.children) {
-            if (child.variant === 'chip') {
-              nodes.push({
-                id: child.card.ID,
-                type: 'atlas-region-chip',
-                position: child.position,
-                width: child.size.width,
-                height: child.size.height,
-                parentId: card.ID,
-                extent: 'parent',
-                draggable: false,
-                data: {
-                  card: child.card,
-                  kind: kindByID.get(child.card.KindID),
-                  childCount: childrenOf(allCards, child.card.ID).length,
-                  pulsed: pulsedID === child.card.ID,
-                  flipped: flippedID === child.card.ID,
-                  onToggleFlip: toggleFlip,
-                  onOpenOverlay,
-                  onDrill: handleDrill,
-                },
-              })
-            } else {
-              nodes.push({
-                id: child.card.ID,
-                type: 'atlas-note',
-                position: child.position,
-                width: child.size.width,
-                height: child.size.height,
-                parentId: card.ID,
-                extent: 'parent',
-                draggable: false,
-                data: noteData(child.card),
-              })
-            }
-          }
-        }
-      } else {
-        nodes.push({
-          id: card.ID,
-          type: 'atlas-note',
-          position,
-          width: NOTE_WIDTH,
-          height: NOTE_HEIGHT,
-          draggable: isFree && !readOnly,
-          data: noteData(card),
-        })
-      }
-    }
-    return nodes
-  }, [cards, allCards, kinds, links, linkKinds, isFree, readOnly, flippedID, pulsedID, hintedID, onOpenOverlay, handleDrill, handleLeafCommit, freeMoves, arteries, boardWidth])
+  const builtNodes = useMemo(() => buildBoardCardNodes({
+    cards, allCards, kinds, links, linkKinds, isFree, readOnly, boardWidth, freeMoves, arteries,
+    flippedID, pulsedID, hintedID, hoveredFrameID: dragFiling.hoveredFrameID,
+    toggleFlip, onOpenOverlay, handleDrill, handleLeafCommit,
+  }), [cards, allCards, kinds, links, linkKinds, isFree, readOnly, flippedID, pulsedID, hintedID, onOpenOverlay, handleDrill, handleLeafCommit, freeMoves, arteries, boardWidth, dragFiling.hoveredFrameID, toggleFlip])
 
   const [hoveredEdgeID, setHoveredEdgeID] = useState<string | null>(null)
   const edges = useMemo(() => {
@@ -408,6 +346,17 @@ function AtlasBoardInner({ cards, allCards, kinds, links, linkKinds, notes, pare
     creation.placeAt({ x: e.clientX, y: e.clientY }, tool)
   }
 
+  // Area drawing's own armed state (goal 0081 slice A2) disables React
+  // Flow's own pane panning so the mousedown/mousemove/mouseup trio
+  // below can own the drag instead -- shift-drag box-select (the
+  // select-then-group door) is unaffected, since RF's own
+  // selectionKeyCode handling is independent of panOnDrag.
+  const areaArmed = isFree && !readOnly && creation.armedTool === 'area'
+
+  const marqueeStyle = areaDraw.dragLocalRect
+    ? { left: areaDraw.dragLocalRect.x, top: areaDraw.dragLocalRect.y, width: areaDraw.dragLocalRect.width, height: areaDraw.dragLocalRect.height }
+    : null
+
   return (
     <div
       ref={wrapperRef}
@@ -419,6 +368,9 @@ function AtlasBoardInner({ cards, allCards, kinds, links, linkKinds, notes, pare
         if (e.dataTransfer.types.includes(ATLAS_TOOL_DRAG_MIME)) e.preventDefault()
       }}
       onDrop={onCanvasDrop}
+      onPointerDownCapture={areaArmed ? areaDraw.onPointerDown : undefined}
+      onPointerMoveCapture={areaArmed ? areaDraw.onPointerMove : undefined}
+      onPointerUpCapture={areaArmed ? areaDraw.onPointerUp : undefined}
     >
       <ReactFlow
         nodes={nodes}
@@ -431,10 +383,55 @@ function AtlasBoardInner({ cards, allCards, kinds, links, linkKinds, notes, pare
         nodesConnectable={false}
         nodesDraggable={isFree && !readOnly}
         zoomOnDoubleClick={false}
+        panOnDrag={!areaArmed}
+        // Un-filing (goal 0081 slice A2) means dragging a card TOWARD
+        // and past the board's own visible edge, on purpose -- React
+        // Flow's own default auto-pan-while-dragging would fight that
+        // gesture, sliding the content back under the cursor instead
+        // of ever letting it cross the edge.
+        autoPanOnNodeDrag={false}
+        onSelectionChange={({ nodes: selected }) => {
+          // React Flow reports a selection "change" whenever the nodes
+          // array's own reference changes, not only on a real selection
+          // change -- since builtNodes/allNodes recompute on every data
+          // refresh, an unguarded setState here re-renders on every
+          // refresh, which recreates AnchoredOverlay's own inline ref
+          // (a Primer AnchoredOverlay.js implementation detail) fast
+          // enough to blow React's update-depth ceiling (confirmed
+          // live: React error #185). Comparing the actual id SET keeps
+          // this a no-op unless the selection genuinely changed.
+          const ids = selected.map((n) => n.id)
+          const sameSet = (a: string[], b: string[]) => a.length === b.length && new Set(a).size === new Set([...a, ...b]).size
+          setSelectedIDs((prev) => (sameSet(prev, ids) ? prev : ids))
+        }}
         onNodeContextMenu={(e, node) => {
           e.preventDefault()
-          if (node.type === 'atlas-sticky') onNoteContextMenu(node.id, { x: e.clientX, y: e.clientY })
-          else onCardContextMenu(node.id, { x: e.clientX, y: e.clientY })
+          // A right-click on a member of a live 2+ multi-selection
+          // (goal 0081 slice A2, LOCKED design §6d) takes precedence
+          // over every other per-node menu -- cards/notes split apart
+          // so AtlasView can gate "Group into new area" on card count.
+          if (selectedIDs.length >= 2 && selectedIDs.includes(node.id)) {
+            const cardIDs = selectedIDs.filter((id) => cards.some((c) => c.ID === id))
+            const noteIDs = selectedIDs.filter((id) => notes.some((n) => n.ID === id))
+            onMultiSelectContextMenu(cardIDs, noteIDs, { x: e.clientX, y: e.clientY })
+            return
+          }
+          if (node.type === 'atlas-sticky') {
+            onNoteContextMenu(node.id, { x: e.clientX, y: e.clientY })
+            return
+          }
+          if (node.type === 'atlas-group') {
+            // The header is the ONLY part of a frame's chrome that
+            // isn't "interior empty space" -- everywhere else on the
+            // frame's own DOM (its background, never a child node,
+            // which captures its own right-click first) routes to the
+            // frame-interior door instead of the full frame menu.
+            const onHeader = !!(e.target as HTMLElement).closest('[data-testid="atlas-group-header"]')
+            if (onHeader) onFrameContextMenu(node.id, { x: e.clientX, y: e.clientY })
+            else onFrameInteriorContextMenu(node.id, { x: e.clientX, y: e.clientY })
+            return
+          }
+          onCardContextMenu(node.id, { x: e.clientX, y: e.clientY })
         }}
         onEdgeContextMenu={(e, edge) => {
           e.preventDefault()
@@ -446,7 +443,8 @@ function AtlasBoardInner({ cards, allCards, kinds, links, linkKinds, notes, pare
         }}
         // The armed tray tool's own placement click (goal 0081 slice
         // A1) -- a no-op when nothing is armed (creation.placeAt's own
-        // guard).
+        // guard, which also no-ops for the Area tool: its own
+        // placement is the drag-drawn rect above, not a click).
         onPaneClick={(e) => creation.placeAt({ x: e.clientX, y: e.clientY })}
         // Narrow viewports never zoom out past 100% -- a board wider
         // than the screen pans instead of auto-shrinking every card
@@ -456,24 +454,15 @@ function AtlasBoardInner({ cards, allCards, kinds, links, linkKinds, notes, pare
         // at once is the surface's core navigation model, and a
         // higher floor caps fitView on large boards.
         minZoom={readOnly ? 1 : 0.1}
-        onNodeDragStop={
-          isFree && !readOnly
-            ? (_, node) => {
-                if (node.parentId) return
-                if (node.type === 'atlas-sticky') {
-                  void AtlasService.SetNotePosition(node.id, { X: node.position.x, Y: node.position.y }).catch(console.error)
-                } else {
-                  void AtlasService.SetPosition(node.id, { X: node.position.x, Y: node.position.y }).catch(console.error)
-                }
-              }
-            : undefined
-        }
+        onNodeDrag={isFree && !readOnly ? dragFiling.onNodeDrag : undefined}
+        onNodeDragStop={isFree && !readOnly ? dragFiling.onNodeDragStop : undefined}
         fitView
         fitViewOptions={{ maxZoom: 1, padding: 0.25, duration: reduceMotion ? 0 : 250 }}
       >
         <Background />
         <Controls />
       </ReactFlow>
+      {marqueeStyle && <div className={styles.marquee} data-testid="atlas-area-marquee" style={marqueeStyle} />}
       {!readOnly && <AtlasCreationTray armedTool={creation.armedTool} onToggle={creation.toggleArm} />}
       {creation.popover && (
         <AtlasPlacementPopover
@@ -481,6 +470,7 @@ function AtlasBoardInner({ cards, allCards, kinds, links, linkKinds, notes, pare
           anchorPos={creation.popover.anchorPos}
           kinds={kinds}
           initialTitle={creation.popover.initialTitle}
+          enclosedCount={(creation.popover.enclosedCardIDs?.length ?? 0) + (creation.popover.enclosedNoteIDs?.length ?? 0)}
           onSubmit={creation.submitPopover}
           onCancel={creation.cancelPopover}
         />

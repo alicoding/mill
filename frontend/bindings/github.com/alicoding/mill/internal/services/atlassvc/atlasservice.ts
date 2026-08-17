@@ -76,10 +76,15 @@ export function CreateNote(text: string, pos: atlas$0.Position, parentID: string
 }
 
 /**
- * DeleteCard removes a card, blocked while it still has children --
- * no orphaning, explicit per docs/goals/0061 (goal 0046 will refine
- * this further, not duplicated here). Deleting a card removes every
- * link touching it.
+ * DeleteCard removes a card. Containment removal never cascades or
+ * orphans (goal 0081 A2's dissolve rule, superseding docs/goals/0061's
+ * original block-while-children-exist guard): every direct child --
+ * card or note -- promotes to the deleted card's own parent, in the
+ * same locked section as the delete itself, so a dissolve/delete never
+ * leaves a half-promoted tree behind. "Dissolve area" and a plain
+ * Delete on a frame are the same server-side operation; only the
+ * caller's own confirm copy differs. Deleting a card also removes
+ * every link touching it.
  */
 export function DeleteCard(id: string): $CancellablePromise<void> {
     return $Call.ByID(3764094639, id);
@@ -225,6 +230,16 @@ export function MirrorContent(cardID: string): $CancellablePromise<atlas$0.Mirro
  */
 export function MoveCard(id: string, newParentID: string): $CancellablePromise<atlas$0.Card> {
     return $Call.ByID(3045746849, id, newParentID);
+}
+
+/**
+ * MoveNote reparents a note (drag filing into/out of an area frame,
+ * goal 0081 A2) -- same containment-existence check CreateNote runs.
+ * A note can never contain anything, so no cycle check is needed the
+ * way MoveCard's atlas.WouldCycle is.
+ */
+export function MoveNote(id: string, newParentID: string): $CancellablePromise<atlas$0.Note> {
+    return $Call.ByID(82527447, id, newParentID);
 }
 
 /**

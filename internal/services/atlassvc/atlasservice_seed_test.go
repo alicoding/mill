@@ -76,9 +76,9 @@ func TestReconcileBuiltIns_RespectsTombstone(t *testing.T) {
 	}
 }
 
-// leafCard returns a seeded card that is not itself a parent -- safe
-// for DeleteCard's own no-orphaning rule (blocked while it still has
-// children).
+// leafCard returns a seeded card that is not itself a parent, so
+// deleting it in a test never also promotes children this test isn't
+// asserting about.
 func leafCard(t *testing.T, cards []atlas.Card) atlas.Card {
 	t.Helper()
 	hasChild := make(map[string]bool, len(cards))

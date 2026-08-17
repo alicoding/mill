@@ -9,6 +9,8 @@ import {
   type SpawnedServer,
 } from './fixtures/server'
 import { contextMenu, rightClickEmptyArea } from './fixtures/contextMenu'
+import { ATLAS_KIND_CONTACT, ATLAS_KIND_TOPIC, selectKind } from './fixtures/kindPicker'
+import { clickCorner, groupCard, noteCard, zoomAllTheWayOut } from './fixtures/atlasBoard'
 
 // Atlas creation core (goal 0081 slice A1): the tray, its placement
 // popover, right-click create, sticky notes, and the note promotion
@@ -19,41 +21,6 @@ import { contextMenu, rightClickEmptyArea } from './fixtures/contextMenu'
 // ATLAS_AUTHORING_* ports), not the standard per-worker pool: this
 // spec asserts EXACT coverage counts at "My space", which must never
 // be contaminated by another spec file sharing a worker's server.
-
-function noteCard(page: import('@playwright/test').Page, title: string) {
-  return page.locator(`[data-testid="atlas-note-card"][aria-label="Flip ${title}"]`)
-}
-function groupCard(page: import('@playwright/test').Page, title: string) {
-  return page.locator('[data-testid="atlas-group-card"]').filter({ has: page.locator(`[aria-label="Zoom into ${title}"]`) })
-}
-
-// Zooms the CURRENT board's viewport all the way out -- every existing
-// card/note shrinks toward the board's center, leaving a wide empty
-// margin at every corner regardless of how much seeded or test-created
-// content the board already carries. Clicking a corner AFTER this is
-// what makes clickEmptyCorner below reliable: a fixed screen pixel
-// stays empty because content moved away from it, not because its
-// flow-space position was ever guessed.
-async function zoomAllTheWayOut(page: import('@playwright/test').Page) {
-  const zoomOut = page.locator('.react-flow__controls-zoomout')
-  for (let i = 0; i < 8; i++) await zoomOut.click()
-}
-
-// Each of the four corners below stays empty across this whole test
-// (seeded content shrunk to the center by zoomAllTheWayOut, React
-// Flow's own Controls only occupies the bottom-left, the creation tray
-// only the bottom-center) and each is used for AT MOST ONE placement,
-// so a screen pixel's fixed flow-space mapping never collides with
-// something this test itself just created there.
-async function clickCorner(board: import('@playwright/test').Locator, corner: 'top-left' | 'top-right' | 'bottom-right') {
-  const box = await board.boundingBox()
-  if (!box) throw new Error('board has no bounding box')
-  const position =
-    corner === 'top-left' ? { x: 12, y: 12 }
-      : corner === 'top-right' ? { x: box.width - 12, y: 12 }
-        : { x: box.width - 12, y: box.height - 12 }
-  await board.click({ position })
-}
 
 // eslint-disable-next-line no-empty-pattern -- this test needs `testInfo` (the second arg), not any fixture.
 test('atlas creation core: tray, placement popover, right-click create, sticky notes, promotion', async ({}, testInfo) => {
@@ -138,7 +105,10 @@ test('atlas creation core: tray, placement popover, right-click create, sticky n
     await expect(menu).toBeVisible()
     await expect(menu.getByText('Add card', { exact: true })).toBeVisible()
     await expect(menu.getByText('Add note', { exact: true })).toBeVisible()
-    await expect(menu.getByText('Add card…', { exact: true })).toBeVisible()
+    // Regression: the old dialog-based "Add card…" item is superseded
+    // by direct placement (goal 0081 slice A2 rider b) and must never
+    // reappear in the pane menu.
+    await expect(menu.getByText('Add card…', { exact: true })).toHaveCount(0)
     await page.keyboard.press('Escape')
     await expect(menu).not.toBeVisible()
 
@@ -150,7 +120,7 @@ test('atlas creation core: tray, placement popover, right-click create, sticky n
     await menu.getByText('Promote to card…', { exact: true }).click()
     await expect(popover).toBeVisible()
     await expect(popover.getByTestId('atlas-placement-title')).toHaveValue('ZzE2eStickyNoteText')
-    await popover.getByTestId('atlas-placement-kind').selectOption({ label: '🧭 Topic' })
+    await selectKind(popover, ATLAS_KIND_TOPIC)
     await popover.getByTestId('atlas-placement-submit').click()
     await expect(popover).not.toBeVisible()
     await expect(noteCard(page, 'ZzE2eStickyNoteText')).toBeVisible()
@@ -164,7 +134,7 @@ test('atlas creation core: tray, placement popover, right-click create, sticky n
     await clickCorner(board, 'top-right')
     await expect(cardTool).toHaveAttribute('data-armed', 'false')
     await expect(popover).toBeVisible()
-    await popover.getByTestId('atlas-placement-kind').selectOption({ label: '🧭 Topic' })
+    await selectKind(popover, ATLAS_KIND_TOPIC)
     await popover.getByTestId('atlas-placement-title').fill('ZzE2eRootCard')
     await popover.getByTestId('atlas-placement-submit').click()
     await expect(popover).not.toBeVisible()
@@ -186,7 +156,7 @@ test('atlas creation core: tray, placement popover, right-click create, sticky n
     await page.keyboard.press('c')
     await clickCorner(board, 'top-left')
     await expect(popover).toBeVisible()
-    await popover.getByTestId('atlas-placement-kind').selectOption({ label: '👤 Contact' })
+    await selectKind(popover, ATLAS_KIND_CONTACT)
     await popover.getByTestId('atlas-placement-title').fill('ZzE2eAreaCard')
     await popover.getByTestId('atlas-placement-submit').click()
     await expect(popover).not.toBeVisible()
