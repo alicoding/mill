@@ -443,6 +443,7 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
           onFrameInteriorContextMenu={containmentMenus.openFrameInteriorMenu}
           onMultiSelectContextMenu={containmentMenus.openMultiSelectMenu}
           onDeleteSelection={containmentMenus.deleteSelection}
+          onGroupSelection={(cardIDs, noteIDs, pos) => creationRequests.requestGroup(cardIDs, noteIDs, pos)}
           placementRequest={creationRequests.placementRequest}
           promoteRequest={creationRequests.promoteRequest}
           groupRequest={creationRequests.groupRequest}

@@ -14,6 +14,16 @@
     perspective: 1000px;
 }
 
+/* Multi-selection outline (owner-caught follow-up to goal 0092): same
+   box-shadow ring AtlasNoteCardNode.module.css uses, keyed off React
+   Flow's own .selected on the node's outer wrapper -- never the
+   frame's own border-width, so a selected frame's size never shifts. */
+:global(.react-flow__node.selected) .frame {
+    box-shadow:
+        0 0 0 2px var(--borderColor-accent-emphasis),
+        0 0 0 5px var(--bgColor-accent-muted);
+}
+
 /* The frame's own flip (goal 0072 slice C item 4) -- same rotateY
    transition AtlasNoteCardNode.module.css's own .flipInner uses. */
 .flipInner {

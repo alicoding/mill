@@ -1,4 +1,4 @@
-import { useCallback, useRef } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import type { OnSelectionChangeFunc } from '@xyflow/react'
 import type { Card, Note } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 
@@ -29,9 +29,30 @@ export function useAtlasSelection({ cards, notes, onMultiSelectContextMenu }: {
 }) {
   const selectedIDsRef = useRef<string[]>([])
   const contextSelectionRef = useRef<string[]>([])
+  // Reactive split (owner-caught follow-up to goal 0092): the
+  // selection tray and every node type's outline need to re-render on
+  // a selection change, unlike the ref-only menu logic above (which
+  // deliberately avoids re-rendering -- see this file's own header
+  // comment on React error #185). A second, independent state mirror
+  // of the same ref, split into card/note ids the way openMultiMenu
+  // already splits them below.
+  const [selectedCards, setSelectedCards] = useState<string[]>([])
+  const [selectedNotes, setSelectedNotes] = useState<string[]>([])
 
   const onSelectionChange: OnSelectionChangeFunc = useCallback(({ nodes: selected }) => {
-    selectedIDsRef.current = selected.map((n) => n.id)
+    const ids = selected.map((n) => n.id)
+    selectedIDsRef.current = ids
+    setSelectedCards(ids.filter((id) => cards.some((c) => c.ID === id)))
+    setSelectedNotes(ids.filter((id) => notes.some((n) => n.ID === id)))
+  }, [cards, notes])
+
+  // The selection tray's own clear (Escape, or the tray's clear
+  // affordance): resets both halves so a stale ref can't reopen a
+  // menu against members that no longer read as selected.
+  const clearSelection = useCallback(() => {
+    selectedIDsRef.current = []
+    setSelectedCards([])
+    setSelectedNotes([])
   }, [])
 
   // Snapshot the selection BEFORE React Flow's own handlers re-select
@@ -66,5 +87,5 @@ export function useAtlasSelection({ cards, notes, onMultiSelectContextMenu }: {
     return openMultiMenu(sel, pos)
   }, [openMultiMenu])
 
-  return { selectedIDsRef, onSelectionChange, snapshotSelection, onSelectionContextMenu, tryNodeMultiMenu }
+  return { selectedIDsRef, selectedCards, selectedNotes, onSelectionChange, snapshotSelection, onSelectionContextMenu, tryNodeMultiMenu, clearSelection }
 }

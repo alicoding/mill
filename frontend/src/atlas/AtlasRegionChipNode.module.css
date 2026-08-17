@@ -11,6 +11,15 @@
     outline: 2px solid var(--focus-outlineColor);
     outline-offset: 1px;
 }
+
+/* Multi-selection outline (owner-caught follow-up to goal 0092): same
+   box-shadow ring AtlasNoteCardNode.module.css uses, keyed off React
+   Flow's own .selected on the node's outer wrapper. */
+:global(.react-flow__node.selected) .chip {
+    box-shadow:
+        0 0 0 2px var(--borderColor-accent-emphasis),
+        0 0 0 5px var(--bgColor-accent-muted);
+}
 .flipInner {
     position: relative;
     width: 100%;

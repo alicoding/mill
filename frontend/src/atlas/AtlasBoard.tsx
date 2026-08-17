@@ -22,11 +22,13 @@ import { useAtlasCreation, type AtlasGroupRequest, type AtlasPlacementRequest, t
 import { useAtlasAreaDraw } from './useAtlasAreaDraw'
 import { useAtlasDragFiling, type FrameBox } from './useAtlasDragFiling'
 import { useAtlasSelection } from './useAtlasSelection'
+import { useAtlasSelectionTray } from './useAtlasSelectionTray'
 import { useAtlasSlotDrag } from './useAtlasSlotDrag'
 import { AtlasSlotDragLine } from './AtlasSlotDragLine'
 import { buildBoardCardNodes } from './atlasBuildBoardNodes'
 import { buildStickyNodes } from './atlasStickyNodes'
 import { AtlasCreationTray, ATLAS_TOOL_DRAG_MIME, type AtlasCreationTool } from './AtlasCreationTray'
+import { AtlasSelectionTray } from './AtlasSelectionTray'
 import { AtlasPlacementPopover } from './AtlasPlacementPopover'
 import { useAtlasNativeFileDrop } from './useAtlasNativeFileDrop'
 import { useAtlasPaste } from './useAtlasPaste'
@@ -68,7 +70,7 @@ export interface AtlasFocusRequest {
 // media-query gate AtlasNoteCardNode.module.css's own flip already
 // uses, read here in JS via usePrefersReducedMotion since React Flow's
 // own transition durations are JS options, not CSS.
-function AtlasBoardInner({ cards, allCards, kinds, links, linkKinds, notes, parentID, arrangeRequest, viewedID, focusRequest, onDrill, onOpenOverlay, onFocusHandled, onCardContextMenu, onPaneContextMenu, onArteryContextMenu, onNoteContextMenu, onFrameContextMenu, onFrameInteriorContextMenu, onMultiSelectContextMenu, onDeleteSelection, placementRequest, promoteRequest, groupRequest, onJumpToChip }: {
+function AtlasBoardInner({ cards, allCards, kinds, links, linkKinds, notes, parentID, arrangeRequest, viewedID, focusRequest, onDrill, onOpenOverlay, onFocusHandled, onCardContextMenu, onPaneContextMenu, onArteryContextMenu, onNoteContextMenu, onFrameContextMenu, onFrameInteriorContextMenu, onMultiSelectContextMenu, onDeleteSelection, onGroupSelection, placementRequest, promoteRequest, groupRequest, onJumpToChip }: {
   cards: Card[]
   allCards: Card[]
   kinds: Kind[]
@@ -117,6 +119,8 @@ function AtlasBoardInner({ cards, allCards, kinds, links, linkKinds, notes, pare
   // React Flow's own deleteKeyCode stays disabled -- a local node
   // removal would just resurrect on the next data refresh.
   onDeleteSelection: (cardIDs: string[], noteIDs: string[]) => void
+  // The selection tray's own "Group into new area" -- the multi-select context menu's own dispatcher, reused.
+  onGroupSelection: (cardIDs: string[], noteIDs: string[], pos: { x: number; y: number }) => void
   // AtlasView's own downward creation requests (the pane menu's "Add
   // card"/"Add note"/"Promote to card…" items, extended by slice A2's
   // frame-scoped placements and "Group into new area") -- see
@@ -159,14 +163,6 @@ function AtlasBoardInner({ cards, allCards, kinds, links, linkKinds, notes, pare
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [cards, notes, onDeleteSelection, selection.selectedIDsRef])
-
-  useEffect(() => {
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setFlippedID(null)
-    }
-    window.addEventListener('keydown', onKeyDown)
-    return () => window.removeEventListener('keydown', onKeyDown)
-  }, [])
 
   const toggleFlip = useCallback((id: string) => setFlippedID((cur) => (cur === id ? null : id)), [])
 
@@ -333,6 +329,8 @@ function AtlasBoardInner({ cards, allCards, kinds, links, linkKinds, notes, pare
     setNodes(sel.length > 0 ? allNodes.map((n) => (sel.includes(n.id) ? { ...n, selected: true } : n)) : allNodes)
   }, [allNodes, setNodes, selection.selectedIDsRef])
 
+  const { trayRef, hasSelection: haveSelection, onGroup: onTrayGroup, onDelete: onTrayDelete } = useAtlasSelectionTray({ selectedCards: selection.selectedCards, selectedNotes: selection.selectedNotes, clearSelection: selection.clearSelection, setNodes, onDeleteSelection, onGroupSelection, onUnflip: () => setFlippedID(null) })
+
   // Every re-root (drill in, breadcrumb out, jump) settles the new
   // board with an animated fitView rather than an instant snap. The
   // very first paint stays on ReactFlow's own `fitView` prop below
@@ -475,7 +473,9 @@ function AtlasBoardInner({ cards, allCards, kinds, links, linkKinds, notes, pare
       {marqueeStyle && <div className={styles.marquee} data-testid="atlas-area-marquee" style={marqueeStyle} />}
       {slotDrag.dragLine && <AtlasSlotDragLine line={slotDrag.dragLine} />}
       {fileDrop.dropError && <div className={`${styles.dropError} ${runbookStyles.error}`} data-testid="atlas-file-drop-error">{fileDrop.dropError}</div>}
-      {!readOnly && <AtlasCreationTray armedTool={creation.armedTool} onToggle={creation.toggleArm} />}
+      {!readOnly && (haveSelection
+        ? <AtlasSelectionTray ref={trayRef} selectedCardCount={selection.selectedCards.length} selectedNoteCount={selection.selectedNotes.length} onGroup={onTrayGroup} onDelete={onTrayDelete} />
+        : <AtlasCreationTray armedTool={creation.armedTool} onToggle={creation.toggleArm} />)}
       {creation.popover && (
         <AtlasPlacementPopover
           mode={creation.popover.mode}
