@@ -90,6 +90,7 @@ func marshalArgs(in any) (string, error) {
 func (m *MillMCPService) registerTools() {
 	m.registerAuthoringTools()
 	m.registerDebugTools()
+	m.registerAtlasTools()
 
 	mcp.AddTool(m.server, &mcp.Tool{
 		Name:        "export_workflow",

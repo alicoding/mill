@@ -19,6 +19,7 @@ import (
 
 	"github.com/alicoding/mill/internal/adapters/mcpserving"
 	"github.com/alicoding/mill/internal/adapters/settings"
+	"github.com/alicoding/mill/internal/services/atlassvc"
 	"github.com/alicoding/mill/internal/services/compositionsvc"
 	"github.com/alicoding/mill/internal/services/configuresvc"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
@@ -69,6 +70,10 @@ type MillMCPService struct {
 	// exec backs the authoring tier's list_runs/get_run/run_workflow
 	// (millmcpservice_authoring.go); late-bound from main.go.
 	exec *executionsvc.ExecutionService
+	// atlas backs the atlas_* tools/resource (millmcpservice_atlas.go,
+	// millmcpservice_atlas_write.go, goal 0083); late-bound from main.go
+	// via SetAtlasService, same construction-order reason as exec above.
+	atlas *atlassvc.AtlasService
 }
 
 // NewMillMCPService builds the MCP server and registers every
@@ -84,6 +89,7 @@ func NewMillMCPService(version string, comp *compositionsvc.CompositionService, 
 	m.server = mcpserving.New("mill", version)
 	m.registerTools()
 	m.registerContractResources()
+	m.registerAtlasResources()
 	// Restart-survival (docs/adr/0032 §1): reload any pending/recently-
 	// resolved write record left over from a previous process. Must run
 	// after registerTools (so a loaded record's ToolName resolves
