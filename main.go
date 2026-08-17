@@ -236,6 +236,7 @@ func main() {
 	millMCPService := mcpsvc.NewMillMCPService(millVersion, compositionService, configureService, settingsStore)
 	settingsService.SetMCPService(millMCPService)
 	millMCPService.SetExecutionService(executionService)
+	millMCPService.SetAtlasService(atlasService)
 	if err := millMCPService.Start(millMCPAddr); err != nil {
 		logger.Error("mill MCP server", "error", err)
 	} else {
