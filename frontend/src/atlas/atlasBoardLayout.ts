@@ -11,6 +11,14 @@ export const NOTE_WIDTH = 190
 export const NOTE_HEIGHT = 128
 export const BOARD_GAP = 24
 
+// A sticky note's own footprint (goal 0081 slice A1) -- deliberately
+// smaller than a card's NOTE_WIDTH/NOTE_HEIGHT above (the LOCKED
+// design's "slightly smaller than cards" render rule), and never fed
+// into the shelves auto-arrange layout below: a note always renders at
+// its own saved Position, in either board mode.
+export const STICKY_WIDTH = 160
+export const STICKY_HEIGHT = 110
+
 // A region frame's own chrome: vertical space reserved above its
 // preview grid for the header row, and the padding around the grid on
 // every other side.

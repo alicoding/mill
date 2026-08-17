@@ -76,6 +76,13 @@ export const UPDATES_RELEASE_MCP_BASE_PORT = 9810
 export const GUARDRAIL_AUTHORING_SERVER_BASE_PORT = 9840
 export const GUARDRAIL_AUTHORING_MCP_BASE_PORT = 9860
 
+// atlas-authoring.spec.ts's own dedicated pair (goal 0081 slice A1):
+// creates/deletes cards and notes in the seeded space and asserts
+// exact card/note presence and projection counts, same own-server-
+// own-ports reasoning as guardrail-authoring above.
+export const ATLAS_AUTHORING_SERVER_BASE_PORT = 9880
+export const ATLAS_AUTHORING_MCP_BASE_PORT = 9900
+
 async function waitForHealth(url: string, proc: ChildProcessWithoutNullStreams, timeoutMs: number): Promise<void> {
   const deadline = Date.now() + timeoutMs
   let lastErr: unknown

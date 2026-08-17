@@ -1,0 +1,57 @@
+/* Floating tray, bottom-center of the map (goal 0081 slice A1's LOCKED
+   design, section 2) -- absolute within the board wrapper, above the
+   canvas, below any Dialog/AnchoredOverlay (z-index kept well under
+   React Flow's own Panel/Controls layer ceiling and any Primer
+   overlay). */
+.tray {
+    position: absolute;
+    left: 50%;
+    bottom: 24px;
+    transform: translateX(-50%);
+    z-index: 5;
+    display: inline-flex;
+    gap: 4px;
+    padding: 6px;
+    background: var(--bgColor-default);
+    border: 1px solid var(--borderColor-default);
+    border-radius: var(--borderRadius-large);
+    box-shadow: var(--shadow-floating-large, 0 4px 16px rgba(0, 0, 0, 0.12));
+}
+
+.tool {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border: 1px solid transparent;
+    border-radius: var(--borderRadius-medium);
+    background: transparent;
+    color: var(--fgColor-default);
+    font-size: 13px;
+    cursor: pointer;
+}
+.tool:hover {
+    background: var(--bgColor-neutral-muted);
+}
+.tool[data-armed='true'] {
+    background: var(--bgColor-accent-muted);
+    border-color: var(--borderColor-accent-emphasis);
+    color: var(--fgColor-accent);
+}
+
+.label {
+    font-weight: 500;
+}
+
+.kbd {
+    font-family: var(--mill-mono);
+    font-size: 10px;
+    color: var(--fgColor-muted);
+    border: 1px solid var(--borderColor-muted);
+    border-radius: 3px;
+    padding: 0 4px;
+}
+.tool[data-armed='true'] .kbd {
+    color: var(--fgColor-accent);
+    border-color: var(--borderColor-accent-emphasis);
+}

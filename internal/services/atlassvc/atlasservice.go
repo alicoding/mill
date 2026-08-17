@@ -35,6 +35,11 @@ type persistedState struct {
 	LinkKinds []atlas.LinkKind
 	Cards     []atlas.Card
 	Links     []atlas.Link
+	// Notes holds every quick-capture annotation (goal 0081 slice A1) --
+	// its own family in the same atomic blob, never seeded/reconciled
+	// (Note carries no BuiltIn/Seed provenance, deliberately: a scratch
+	// annotation has none to protect).
+	Notes []atlas.Note
 	// Lenses maps a container card's ID to its per-space density filter
 	// (which Kind IDs stay hidden, and the depth/peek toggle) --
 	// persisted server-side so it round-trips across sessions like
@@ -52,6 +57,7 @@ type AtlasService struct {
 	linkKinds []atlas.LinkKind
 	cards     []atlas.Card
 	links     []atlas.Link
+	notes     []atlas.Note
 	lenses    map[string]atlas.LensSetting
 	// mirrorsDir is the Mill-owned root directory a space's lazily-
 	// created mirror folder lives under (goal 0063's share model,
@@ -96,6 +102,7 @@ func (a *AtlasService) restore() {
 	a.linkKinds = state.LinkKinds
 	a.cards = state.Cards
 	a.links = state.Links
+	a.notes = state.Notes
 	if state.Lenses != nil {
 		a.lenses = state.Lenses
 	}
@@ -108,7 +115,7 @@ func (a *AtlasService) restore() {
 func (a *AtlasService) persistLocked() error {
 	state := persistedState{
 		Kinds: a.kinds, LinkKinds: a.linkKinds,
-		Cards: a.cards, Links: a.links, Lenses: a.lenses,
+		Cards: a.cards, Links: a.links, Notes: a.notes, Lenses: a.lenses,
 	}
 	data, err := json.Marshal(state)
 	if err != nil {
@@ -154,6 +161,16 @@ func (a *AtlasService) Links() []atlas.Link {
 	return out
 }
 
+// Notes returns every quick-capture annotation (goal 0081 slice A1) --
+// its own family, deliberately never mixed into Cards().
+func (a *AtlasService) Notes() []atlas.Note {
+	a.mu.RLock()
+	defer a.mu.RUnlock()
+	out := make([]atlas.Note, len(a.notes))
+	copy(out, a.notes)
+	return out
+}
+
 // findKindLocked/findLinkKindLocked/findCardLocked/findLinkLocked
 // return the index of the entity with id, or -1 -- callers must hold
 // a.mu.
@@ -188,6 +205,15 @@ func (a *AtlasService) findCardLocked(id string) int {
 func (a *AtlasService) findLinkLocked(id string) int {
 	for i, l := range a.links {
 		if l.ID == id {
+			return i
+		}
+	}
+	return -1
+}
+
+func (a *AtlasService) findNoteLocked(id string) int {
+	for i, n := range a.notes {
+		if n.ID == id {
 			return i
 		}
 	}

@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { AtlasService } from '../shared/bindings'
-import type { Card, Kind, Link, LinkKind } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
+import type { Card, Kind, Link, LinkKind, Note } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 
 // The Atlas surface's own "one fetch, many consumers" store (mirrors
 // shared/configureEntityStore.ts's shape) -- kept inside atlas/ rather
@@ -12,10 +12,16 @@ interface AtlasState {
   linkKinds: LinkKind[] | null
   cards: Card[] | null
   links: Link[] | null
+  // Notes (goal 0081 slice A1): its own family, deliberately never
+  // merged into cards -- structural exclusion from every semantic
+  // consumer (projections/matrix/coverage/jump) starts with them never
+  // sharing a collection.
+  notes: Note[] | null
   setKinds: (kinds: Kind[]) => void
   setLinkKinds: (linkKinds: LinkKind[]) => void
   setCards: (cards: Card[]) => void
   setLinks: (links: Link[]) => void
+  setNotes: (notes: Note[]) => void
 }
 
 export const useAtlasStore = create<AtlasState>()((set) => ({
@@ -23,10 +29,12 @@ export const useAtlasStore = create<AtlasState>()((set) => ({
   linkKinds: null,
   cards: null,
   links: null,
+  notes: null,
   setKinds: (kinds) => set({ kinds }),
   setLinkKinds: (linkKinds) => set({ linkKinds }),
   setCards: (cards) => set({ cards }),
   setLinks: (links) => set({ links }),
+  setNotes: (notes) => set({ notes }),
 }))
 
 export function refreshAtlasKinds(): Promise<void> {
@@ -53,12 +61,18 @@ export function refreshAtlasLinks(): Promise<void> {
     .catch(console.error)
 }
 
+export function refreshAtlasNotes(): Promise<void> {
+  return AtlasService.Notes()
+    .then((list) => useAtlasStore.getState().setNotes(list ?? []))
+    .catch(console.error)
+}
+
 // The one call site every mounter of the Atlas surface (AtlasView on
 // mount, App.tsx/QuickPanel.tsx's mill-data-changed 'atlas' handler)
-// uses -- refetches all four entity families together since they're one
+// uses -- refetches all five entity families together since they're one
 // storage blob server-side (atlassvc's atlasStateKey) and a single
 // dataevent.Emit("atlas", ...) never says which family actually
 // changed.
 export function refreshAtlas(): Promise<void> {
-  return Promise.all([refreshAtlasKinds(), refreshAtlasLinkKinds(), refreshAtlasCards(), refreshAtlasLinks()]).then(() => undefined)
+  return Promise.all([refreshAtlasKinds(), refreshAtlasLinkKinds(), refreshAtlasCards(), refreshAtlasLinks(), refreshAtlasNotes()]).then(() => undefined)
 }

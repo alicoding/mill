@@ -232,6 +232,32 @@ export enum MirrorKind {
 };
 
 /**
+ * Note is a quick-capture annotation on the Atlas board (goal 0081
+ * slice A1's LOCKED design): structurally excluded from every semantic
+ * mechanism a Card participates in -- no KindID, no Fields, no links.
+ * It is its own collection, never registered in projections, the
+ * traceability matrix, coverage, or jump results, so nothing jotted
+ * here can accidentally become data. PromoteNote (atlassvc) is the
+ * only path from a Note to a Card -- one-way, never a soft/reversible
+ * conversion.
+ */
+export interface Note {
+    "ID": string;
+    "Text": string;
+    "Position": Position;
+
+    /**
+     * ParentID is the containment primitive a Note shares with Card
+     * (spatial filing only -- a note in an area carries no semantic
+     * weight from that placement, per the LOCKED design's "containment
+     * is location, not meaning").
+     */
+    "ParentID": string;
+    "CreatedAt": string;
+    "UpdatedAt": string;
+}
+
+/**
  * Position is a card's location within its PARENT's canvas -- only
  * meaningful when the parent's EffectiveViewMode is ViewModeCanvas;
  * nil for a card whose parent renders as shelves (or for a root card,

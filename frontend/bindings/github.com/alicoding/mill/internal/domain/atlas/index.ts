@@ -14,5 +14,6 @@ export type {
     Link,
     LinkKind,
     MirrorContent,
+    Note,
     Position
 } from "./models.js";

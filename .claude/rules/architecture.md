@@ -20,6 +20,8 @@ behind a clean interface at the domain boundary (ports/adapters) so
 swapping the underlying library later never means rewriting domain
 logic.
 
+**Research → Adopt → Compose — the standing order for any new capability (owner-restated 2026-08-17: "we never reinvent the wheel").** First research what already exists — an actual search of registries/docs/the platforms this repo already vets, never an assumption. Then adopt the proven commodity behind a ports/adapters boundary. Then compose the remainder from Mill's own primitives (nodes, triggers, Configure entities — ADR-0035) rather than building parallel machinery. Hand-rolling is the last resort, justified only when research shows nothing satisfies the hard constraints (§1.1). The paragraphs below are this rule's detail.
+
 **Default to adopting an existing library/platform over hand-rolling,
 even when hand-rolling would be smaller or have fewer dependencies.**
 The deciding question is "who owns and maintains this six months from

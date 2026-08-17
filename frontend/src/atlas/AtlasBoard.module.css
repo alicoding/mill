@@ -3,6 +3,14 @@
     height: 100%;
     flex: 1 1 auto;
     min-height: 480px;
+    position: relative;
+}
+
+/* An armed creation tool (goal 0081 slice A1) swaps the canvas cursor
+   to crosshair -- React Flow's own pane sets its cursor via a class,
+   not an inline style, so overriding it needs :global. */
+.board[data-armed='true'] :global(.react-flow__pane) {
+    cursor: crosshair;
 }
 
 /* Link labels (goal 0072 slice A): shown on hover/selection only, or

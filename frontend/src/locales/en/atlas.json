@@ -43,6 +43,25 @@
     "depthPeek": "Peek into children",
     "kindsLabel": "Show kinds"
   },
+  "creationTray": {
+    "ariaLabel": "Creation tools",
+    "cardLabel": "Card",
+    "noteLabel": "Note",
+    "cardTooltip": "Add a card (C)",
+    "noteTooltip": "Add a note (N)"
+  },
+  "placement": {
+    "title": "Add card",
+    "promoteTitle": "Promote to card",
+    "kindLabel": "Kind",
+    "titleLabel": "Title",
+    "add": "Add",
+    "promote": "Promote"
+  },
+  "sticky": {
+    "placeholder": "Type a note…",
+    "ariaLabel": "Note"
+  },
   "create": {
     "addButton": "Add",
     "addBeside": "Add beside this card",
@@ -160,6 +179,10 @@
     "open": "Open",
     "zoomIn": "Zoom in",
     "addCard": "Add card…",
+    "addCardHere": "Add card",
+    "addNoteHere": "Add note",
+    "promoteToCard": "Promote to card…",
+    "deleteNote": "Delete note",
     "openCard": "Open {{title}}"
   }
 }
