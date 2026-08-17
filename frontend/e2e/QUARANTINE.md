@@ -44,19 +44,24 @@ Entries below left the active register on this date, fixed by applying
 | atlas-scale.spec.ts (first attempt) | interaction-race | 2026-08-16 | boundingBox-then-act sequences after the initial fitView and both drills now wait for viewport stability first |
 | step-detail-overlay.spec.ts:99 | interaction-race | 2026-08-16 | the in-file settle helper promoted into fixtures/animation.ts; the double-click path already called it |
 
-## atlas-select-group.spec.ts (whole spec)
-- **Class**: pointer-coalescing under parallel-worker machine load
-  (the config header's documented class) — the shift-drag box-select
-  and the retried group gesture silently no-op when CPU-starved, so
-  the retry loop consumes any budget without a step ever failing.
+## atlas-select-group.spec.ts (whole spec — test.fixme)
+- **Class**: pointer-coalescing on synthesized drags (the config
+  header's documented class) — the shift-drag box select is the
+  app's ONLY multi-select door (plain click glances, meta-click
+  opens per the locked gesture map), and React Flow samples deltas
+  between real pointermove events, so synthesized moves coalesce
+  into a rectangle it never registers. Coin-flip even solo; fails
+  CI shards 3/3.
 - **Entered**: 2026-08-17. **Review**: 2026-08-31.
-- **Notes**: deterministic-green standalone (multiple confirmations,
-  including instrumented probes proving the full app flow:
-  overlay-menu → Group into new area → New-area popover). Fails only
-  when other gesture-heavy specs run concurrently on a loaded
-  machine. Investigated and ruled out: menu-animation race (full-
-  gesture retry added anyway), same-port server race (disjoint range
-  10060/10080 kept), test budget (180s also consumed). The app-side
-  behavior this spec proves (selection surviving rebuilds + the
-  selection-overlay context menu) is additionally covered by probes
-  and the containment spec's selection assertions.
+- **Status**: test.fixme (runs nowhere) — NOT retry-tolerated,
+  because it fails both CI retries when it fails.
+- **Coverage ledger**: the selection-overlay context-menu fix this
+  spec was written for is probe-proven live (menu opens, "Group
+  into new area" present, New-area popover completes) and the
+  selection-preservation half is covered by the containment spec.
+  The full gesture chain's check is the manual-only registry entry
+  in .claude/rules/testing.md (box-select → right-click → group).
+- **Investigated and ruled out**: menu-animation race, same-port
+  server race, test budget (180s also consumed), file-worker
+  interference, deterministic click-selection (impossible — the
+  gesture map assigns click/meta-click elsewhere).

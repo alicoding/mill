@@ -167,6 +167,15 @@ layer per capability," never "a seed per thing":
   verify after the next tagged release by clicking Check for
   updates → Update now → Restart Mill on a release-installed copy
   and confirming the new version string.
+- **Multi-select box-drag → group** (goal 0081, `useAtlasSelection` +
+  the selection-overlay context menu) — the shift-drag box select is
+  the app's only multi-select gesture and its synthesis is
+  CI-invisible (React Flow's pointermove delta sampling coalesces
+  synthesized moves; QUARANTINE.md's atlas-select-group entry has
+  the full trail). The overlay-menu fix is probe-proven and
+  selection persistence is e2e-covered; the full chain stays a
+  desktop-mode manual check: shift-drag around 2+ cards, right-click
+  a member, "Group into new area" must appear and complete.
 - **Native file-drop delivery** (goal 0081 A3, `EnableFileDrop` +
   `WindowFilesDropped`) — the landing/derivation logic is Go-tested
   and the flow is e2e-proven at the service level, but a real OS
