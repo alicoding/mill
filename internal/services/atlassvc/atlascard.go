@@ -65,8 +65,14 @@ func (a *AtlasService) createCardWithID(id, kindID, title, note string, fields m
 	c := atlas.Card{
 		ID: id, KindID: kindID, Title: title, Note: note,
 		Fields: fields, ParentID: parentID, Position: position, ViewMode: viewMode,
-		Source: source, MirrorPath: mirrorPath, RefreshWorkflowID: refreshWorkflowID,
+		Source: source, MirrorPath: mirrorPath,
 		CreatedAt: now, UpdatedAt: now,
+	}
+	// Legacy compat (goal 0084): the refreshWorkflowID parameter seeds
+	// the first attached ACTION -- the field it used to fill is
+	// migrated away and no longer written.
+	if refreshWorkflowID != "" {
+		c.ActionWorkflowIDs = []string{refreshWorkflowID}
 	}
 	if err := atlas.ValidateCard(c, kind); err != nil {
 		a.mu.Unlock()

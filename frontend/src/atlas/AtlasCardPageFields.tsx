@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { FormControl, Text, TextInput, Textarea } from '@primer/react'
 import type { Kind } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
-import { EntityRefField } from '../configure/EntityRefField'
+import { AtlasCardActions } from './AtlasCardActions'
 import { AtlasFieldsForm } from './AtlasFieldsForm'
 import { isMirrorKind } from './atlasCardPageContent'
 import runbookStyles from '../shared/ListCard.module.css'
@@ -22,7 +22,7 @@ export function AtlasCardPageFields({
   fields, fieldErrors, onFieldsChange, onFieldsCommit,
   source, sourceError, onSourceChange, onSourceCommit,
   mirrorPath, mirrorPathError, onMirrorPathChange, onMirrorPathCommit,
-  refreshWorkflowID, onRefreshWorkflowChange,
+  cardID, actionWorkflowIDs, onActionsChanged,
 }: {
   kind: Kind | undefined
   note: string
@@ -41,8 +41,9 @@ export function AtlasCardPageFields({
   mirrorPathError: string
   onMirrorPathChange: (value: string) => void
   onMirrorPathCommit: () => void
-  refreshWorkflowID: string
-  onRefreshWorkflowChange: (value: string) => void
+  cardID: string
+  actionWorkflowIDs: string[]
+  onActionsChanged: (next: string[]) => void
 }) {
   const { t } = useTranslation('atlas')
   const noteRef = useRef<HTMLTextAreaElement | null>(null)
@@ -99,10 +100,7 @@ export function AtlasCardPageFields({
         </>
       )}
 
-      <FormControl>
-        <FormControl.Label>{t('overlay.refreshWorkflowLabel')}</FormControl.Label>
-        <EntityRefField refKind="workflow" value={refreshWorkflowID} onChange={onRefreshWorkflowChange} />
-      </FormControl>
+      <AtlasCardActions cardID={cardID} actionWorkflowIDs={actionWorkflowIDs} onActionsChanged={onActionsChanged} />
     </div>
   )
 }

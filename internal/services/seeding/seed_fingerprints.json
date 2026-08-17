@@ -4,28 +4,28 @@
     "fingerprint": "75218e8e0727e6cbf04afd8ff25f8a461ccfea9c77fdccfb06ac824333fe4100"
   },
   "atlascard:atlas-card-example-area": {
-    "seedRevision": 2,
-    "fingerprint": "eb5317e44821557f175bc14616d42ae6e2b770f9b331705146cc5e0d5d820858"
+    "seedRevision": 3,
+    "fingerprint": "91133f15eefae066cde2b497e9ab4e9dad46f388dd48d552d4172d49c6d49837"
   },
   "atlascard:atlas-card-example-contact": {
-    "seedRevision": 1,
-    "fingerprint": "f8f6d83daad99a38a1e43ea1582c00249ee1c66275f3b20d36973bdae12b9529"
+    "seedRevision": 2,
+    "fingerprint": "c45835f837043c56631780096d373387489bc418d0ddc12a9c0aa4151e08f49e"
   },
   "atlascard:atlas-card-example-document": {
-    "seedRevision": 2,
-    "fingerprint": "3faa1d21061e5903b7d5e07d1d23f2d030c7e1b6fd6a5b5eaf08c0ab080897c3"
+    "seedRevision": 3,
+    "fingerprint": "15e906f65590c6d7cb68b3a03dca39d3ff00762e2430b22c75e9261e3c6fedaf"
   },
   "atlascard:atlas-card-getting-started": {
-    "seedRevision": 2,
-    "fingerprint": "9dfe9bf1edd27af1f3eff419307bd23cdf615d66f5af4f3d1a5a0c6a26c24ecc"
+    "seedRevision": 3,
+    "fingerprint": "5244b798a139b15cfd70024f2ca3b3adc2e73a2253152452227a5efa47c6681e"
   },
   "atlascard:atlas-card-my-space": {
-    "seedRevision": 2,
-    "fingerprint": "5e8bb72e2cc03ed6a45d4179b4da38f6eb85ba9e8eadc76e271957b92984061c"
+    "seedRevision": 3,
+    "fingerprint": "86306efb75f2daa439256f59530a01effd2ec9c1488e53b53472df1b6332252a"
   },
   "atlascard:atlas-card-scratchpad": {
-    "seedRevision": 2,
-    "fingerprint": "c65746971f2718c786af471f9b57402741912663b597572a59a8dd06396130ac"
+    "seedRevision": 3,
+    "fingerprint": "6cecb9e7918bdda8ea5518793a9e6334e77d1e04c3ec9b130c2b39fdb2e86ecb"
   },
   "atlaskind:atlas-kind-contact": {
     "seedRevision": 2,

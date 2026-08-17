@@ -392,6 +392,17 @@ export function RevealSpaceFolder(spaceID: string): $CancellablePromise<string> 
 }
 
 /**
+ * RunCardAction fires one of the card's ATTACHED actions -- membership
+ * is validated here so the bound surface can never run an arbitrary
+ * workflow against a card it was never attached to. The payload/values
+ * convention mirrors trigger-atlas-card's fire exactly (cardId/kindId/
+ * cardTitle into declared Attributes), with changeType "action".
+ */
+export function RunCardAction(cardID: string, workflowID: string): $CancellablePromise<void> {
+    return $Call.ByID(3407735559, cardID, workflowID);
+}
+
+/**
  * ScanFolder performs the bounded, heuristic scan goal 0067 describes:
  * depth/count-capped, hidden entries and symlinks skipped
  * (fileread.Scan), each entry classified into a suggestion category by
@@ -402,6 +413,14 @@ export function RevealSpaceFolder(spaceID: string): $CancellablePromise<string> 
  */
 export function ScanFolder(root: string): $CancellablePromise<$models.FolderScanResult> {
     return $Call.ByID(130483307, root);
+}
+
+/**
+ * SetCardActions replaces a card's attached actions (goal 0084) --
+ * deduplicated, empties dropped; order is the page's display order.
+ */
+export function SetCardActions(id: string, workflowIDs: string[] | null): $CancellablePromise<atlas$0.Card> {
+    return $Call.ByID(2051564971, id, workflowIDs);
 }
 
 /**

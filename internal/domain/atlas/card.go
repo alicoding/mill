@@ -73,8 +73,15 @@ type Card struct {
 	// guardrail gate (ADR-0038 Decision 4); resolution/existence of the
 	// referenced workflow is a service-layer concern, not checked here.
 	RefreshWorkflowID string
-	// LastSyncedAt is when RefreshWorkflowID last completed a refresh
-	// for this card -- zero value means never synced.
+	// ActionWorkflowIDs are the card's attached actions (goal 0084):
+	// callable workflows a user runs against this card from its page
+	// or menu, each receiving the card's identity through the same
+	// declared-Attributes convention trigger-atlas-card fires with.
+	// Supersedes the single RefreshWorkflowID (migrated on restore;
+	// the old field stays on the wire for import compatibility).
+	ActionWorkflowIDs []string
+	// LastSyncedAt is when a refresh action last completed for this
+	// card -- zero value means never synced.
 	LastSyncedAt time.Time
 	// ReceiptRunID optionally names the run whose receipt produced this
 	// card's current mirrored content -- provenance for a machine-made

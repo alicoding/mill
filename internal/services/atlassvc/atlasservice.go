@@ -11,6 +11,7 @@
 package atlassvc
 
 import (
+	"slices"
 	"encoding/json"
 	"fmt"
 	"sync"
@@ -103,6 +104,17 @@ func (a *AtlasService) restore() {
 	a.cards = state.Cards
 	a.links = state.Links
 	a.notes = state.Notes
+	// One-time in-place migration (the MigrateLegacyEntries posture):
+	// the single RefreshWorkflowID becomes the first attached action
+	// (goal 0084) -- persisted lazily by whichever mutation runs next.
+	for i := range a.cards {
+		if rw := a.cards[i].RefreshWorkflowID; rw != "" {
+			if !slices.Contains(a.cards[i].ActionWorkflowIDs, rw) {
+				a.cards[i].ActionWorkflowIDs = append(a.cards[i].ActionWorkflowIDs, rw)
+			}
+			a.cards[i].RefreshWorkflowID = ""
+		}
+	}
 	if state.Lenses != nil {
 		a.lenses = state.Lenses
 	}

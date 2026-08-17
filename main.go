@@ -74,9 +74,8 @@ func init() {
 	application.RegisterEvent[string]("mill-navigate")
 }
 
-// main function serves as the application's entry point. It initializes the application, creates a window,
-// and starts a goroutine that emits a time-based event every second. It subsequently runs the application and
-// logs any error that might occur.
+// main initializes the application, creates the window, and wires every
+// bounded-context service together.
 func main() {
 
 	// Create a new Wails application by providing the necessary options.
@@ -115,10 +114,8 @@ func main() {
 	triggerService := triggersvc.NewTriggerService(compositionService, logger, settingsStore)
 	compositionService.SetSyncer(triggerService)
 	configureService := configuresvc.NewConfigureService(settingsStore, compositionService, credential.New())
-	// docs/adr/0038, docs/goals/0061 slice A: Atlas's own storage/CRUD
-	// layer -- no dependency on compositionService/configureService yet
-	// (slice A ships no cross-surface wiring: "Update now" running a
-	// card's referenced workflow is slice C's scope).
+	// docs/adr/0038: Atlas's storage/CRUD layer (cross-surface wiring
+	// arrives below via injected seams, never direct imports).
 	atlasService := atlassvc.NewAtlasService(settingsStore)
 
 	// Separate SQLite file from settings.json (own schema, own lifecycle
@@ -180,6 +177,11 @@ func main() {
 		}
 		pending := summary.Pending != nil
 		return summary.RunID, !pending && summary.Status == "SUCCESS", pending, nil
+	})
+	// Card actions (goal 0084): source-card-recording entry, so the cycle guard covers action runs.
+	atlassvc.SetCardActionRunner(func(workflowID, sourceCardID string, values map[string]string, payload string) error {
+		_, err := executionService.RunWorkflowForAtlasCard(workflowID, sourceCardID, values, payload)
+		return err
 	})
 	executionService.SetRunCompletionSink(atlasService.NotifyRunCompleted)
 	atlasService.WireCompositionSeams(triggerService.DispatchAtlasCardChange) // goal 0066
