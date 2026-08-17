@@ -355,6 +355,12 @@ func main() {
 		},
 		BackgroundColour: application.NewRGB(6, 7, 15),
 		URL:              "/",
+		// EnableFileDrop turns on Wails3's own native OS drag-and-drop:
+		// real absolute paths, delivered only to elements carrying
+		// data-file-drop-target (AtlasBoard.tsx, AtlasCardOverlay.tsx).
+		// In-app HTML5 drag (the creation tray, React Flow node drag) is
+		// unaffected -- the runtime only intercepts a 'Files' MIME type.
+		EnableFileDrop: true,
 	}
 	if hasPosition {
 		windowOptions.X = windowX
@@ -368,6 +374,7 @@ func main() {
 	mainWindow = app.Window.NewWithOptions(windowOptions)
 	settingsService.SetWindow(mainWindow)
 	settingsService.WatchWindowGeometry()
+	atlasService.WireFileDropWindow(mainWindow)
 
 	// The Quick Panel (docs/adr/0033): a second, always-alive floating
 	// window the summon hotkey toggles. Created once, Hidden, shown/

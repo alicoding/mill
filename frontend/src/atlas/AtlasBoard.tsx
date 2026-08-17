@@ -25,6 +25,10 @@ import { buildBoardCardNodes } from './atlasBuildBoardNodes'
 import { buildStickyNodes } from './atlasStickyNodes'
 import { AtlasCreationTray, ATLAS_TOOL_DRAG_MIME, type AtlasCreationTool } from './AtlasCreationTray'
 import { AtlasPlacementPopover } from './AtlasPlacementPopover'
+import { useAtlasNativeFileDrop } from './useAtlasNativeFileDrop'
+import { useAtlasPaste } from './useAtlasPaste'
+import { FILE_DROP_CONTEXT_BOARD } from './atlasFileDropShared'
+import runbookStyles from '../shared/ListCard.module.css'
 import styles from './AtlasBoard.module.css'
 
 const rfNodeTypes: RFNodeTypes = { 'atlas-note': AtlasNoteCardNode, 'atlas-group': AtlasGroupNode, 'atlas-region-chip': AtlasRegionChipNode, 'atlas-sticky': AtlasStickyNode }
@@ -253,6 +257,10 @@ function AtlasBoardInner({ cards, allCards, kinds, links, linkKinds, notes, pare
     wrapperRef,
   })
 
+  // The capture doors (goal 0081 slice A3): own hook files, 500-line cap.
+  const fileDrop = useAtlasNativeFileDrop({ parentID, topLevelBoxes, screenToFlowPosition, setPulsedID, reduceMotion })
+  useAtlasPaste({ topLevelBoxes, screenToFlowPosition, onPasteText: creation.openPasteText })
+
   // The board's arteries, resolved once and shared: the edges memo
   // below renders them; Auto-arrange consumes them as the adjacency
   // that seats linked things beside each other.
@@ -364,6 +372,8 @@ function AtlasBoardInner({ cards, allCards, kinds, links, linkKinds, notes, pare
       data-testid="atlas-board"
       data-view-mode={mode}
       data-armed={creation.armedTool !== null}
+      data-file-drop-target
+      data-file-drop-context={FILE_DROP_CONTEXT_BOARD}
       onDragOver={(e) => {
         if (e.dataTransfer.types.includes(ATLAS_TOOL_DRAG_MIME)) e.preventDefault()
       }}
@@ -463,6 +473,7 @@ function AtlasBoardInner({ cards, allCards, kinds, links, linkKinds, notes, pare
         <Controls />
       </ReactFlow>
       {marqueeStyle && <div className={styles.marquee} data-testid="atlas-area-marquee" style={marqueeStyle} />}
+      {fileDrop.dropError && <div className={`${styles.dropError} ${runbookStyles.error}`} data-testid="atlas-file-drop-error">{fileDrop.dropError}</div>}
       {!readOnly && <AtlasCreationTray armedTool={creation.armedTool} onToggle={creation.toggleArm} />}
       {creation.popover && (
         <AtlasPlacementPopover

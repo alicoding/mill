@@ -8,6 +8,7 @@ export {
 
 export type {
     AtlasImportSummary,
+    FileDropRoute,
     FolderImportSummary,
     FolderScanEntry,
     FolderScanResult,

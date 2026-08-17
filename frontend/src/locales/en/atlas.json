@@ -67,6 +67,9 @@
     "placeholder": "Type a note…",
     "ariaLabel": "Note"
   },
+  "capture": {
+    "dropError": "Couldn't read the dropped file."
+  },
   "create": {
     "addButton": "Add",
     "addBeside": "Add beside this card",

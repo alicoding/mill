@@ -142,6 +142,62 @@ func TestReconcileBuiltIns_RetiredKindMigratesUserCards(t *testing.T) {
 	}
 }
 
+// TestReconcileBuiltIns_ScratchpadNoteUpgradesInPlace proves the goal
+// 0081 slice A3 Scratchpad seed rework (Topic-card-with-instructional-
+// text -> container-card-with-inbox-guidance) reaches an EXISTING
+// instance, not just a fresh install: simulating a pre-upgrade
+// instance still holding the old Note text at SeedRevision 1, a later
+// reconcile pass must upgrade that card's Note in place to the current
+// golden's text/revision, same as any other bumped built-in.
+func TestReconcileBuiltIns_ScratchpadNoteUpgradesInPlace(t *testing.T) {
+	store := servicetest.NewFakeStore()
+	a := NewAtlasService(store)
+
+	var scratchpadID string
+	for _, c := range a.Cards() {
+		if c.Title == "Scratchpad" {
+			scratchpadID = c.ID
+		}
+	}
+	if scratchpadID == "" {
+		t.Fatal("no seeded Scratchpad card found")
+	}
+
+	// Roll the persisted copy back to the pre-upgrade shape a real
+	// existing instance would still be carrying.
+	a.mu.Lock()
+	for i, c := range a.cards {
+		if c.ID == scratchpadID {
+			c.Note = "One keystroke in. File it later by dragging."
+			c.Seed.SeedRevision = 1
+			a.cards[i] = c
+		}
+	}
+	if err := a.persistLocked(); err != nil {
+		t.Fatalf("persistLocked: %v", err)
+	}
+	a.mu.Unlock()
+
+	upgraded := NewAtlasService(store)
+	var got atlas.Card
+	found := false
+	for _, c := range upgraded.Cards() {
+		if c.ID == scratchpadID {
+			got, found = c, true
+		}
+	}
+	if !found {
+		t.Fatal("Scratchpad card disappeared after reconcile")
+	}
+	want := "Quick captures land here. Drag notes out to file them, or promote them into cards."
+	if got.Note != want {
+		t.Errorf("Scratchpad Note = %q, want %q", got.Note, want)
+	}
+	if got.Seed.SeedRevision != 2 {
+		t.Errorf("Scratchpad SeedRevision = %d, want 2", got.Seed.SeedRevision)
+	}
+}
+
 // TestDenseFixture_EnvGatedAndIdempotent proves the stress space only
 // appears when explicitly requested and never duplicates across
 // restarts of the same instance.
