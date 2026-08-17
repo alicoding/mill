@@ -197,7 +197,12 @@
     "removeIt": "remove it",
     "addOne": "add one",
     "breakpointBadge": "Breakpoint",
-    "breakpointDescription": "A run pauses here to let you inspect and edit its data before it continues -- a debugging aid, not policy."
+    "breakpointDescription": "A run pauses here to let you inspect and edit its data before it continues -- a debugging aid, not policy.",
+    "rulesForStepHeading": "Rules for this step",
+    "noRulesApply": "No rules apply to this step. Its defaults decide.",
+    "editMenuItem": "Edit…",
+    "removeMenuItem": "Remove",
+    "kebabAriaLabel": "Actions for {{label}}"
   },
   "nodeInspector": {
     "nodeType": "Step type",

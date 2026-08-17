@@ -54,6 +54,22 @@ export function Rules(): $CancellablePromise<guardrail$0.Rule[] | null> {
 }
 
 /**
+ * RulesForStep returns every stored POLICY rule (Source != SourceDebug)
+ * whose non-empty scope fields all match the given workflow step --
+ * door 2's "Rules for this step" list (NodeGuardrailSection) and door
+ * 1's rule-from-park scope prefill both need this without duplicating
+ * guardrail's own scope-match logic in the frontend (goal 0078). An
+ * unknown workflow/node returns nil rather than an error -- callers
+ * treat "no rules apply" and "no such step" the same way (an empty
+ * list), matching TestRules' node-resolution but without its
+ * error-on-unknown-step behavior, since this is a passive list, not a
+ * dry-run request naming a specific step.
+ */
+export function RulesForStep(workflowID: string, nodeID: string): $CancellablePromise<guardrail$0.Rule[] | null> {
+    return $Call.ByID(930742602, workflowID, nodeID);
+}
+
+/**
  * TestRules dry-runs the current rule set against one real workflow
  * step -- §8's locked testability requirement: see what would happen
  * before trusting a rule live. Uses the node's stored config and the

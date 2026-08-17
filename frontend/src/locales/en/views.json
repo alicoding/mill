@@ -247,6 +247,59 @@
     "resume": "Resume",
     "approveAndResume": "Approve and resume",
     "stop": "Stop",
-    "recentlyResolved": "Recently resolved"
+    "recentlyResolved": "Recently resolved",
+    "tabs": {
+      "queue": "Queue",
+      "rules": "Rules"
+    },
+    "alwaysButton": "Always…",
+    "alwaysAllowMenuItem": "Always allow…",
+    "alwaysDenyMenuItem": "Always deny…",
+    "alwaysAllowTitle": "Always allow",
+    "alwaysDenyTitle": "Always deny",
+    "alwaysContextLine": "{{nodeType}} in {{workflow}} asked to run.",
+    "alwaysAppliesToLabel": "Applies to",
+    "alwaysRuleNameLabel": "Rule name",
+    "alwaysSaveAndApprove": "Save rule and approve",
+    "alwaysSaveAndDeny": "Save rule and deny",
+    "alwaysCancel": "Cancel",
+    "alwaysScopeStep": "Only this step — {{nodeType}} in {{workflow}}",
+    "alwaysScopeWorkflow": "Any step in {{workflow}}",
+    "alwaysScopeNodeType": "Every {{nodeType}} step, in any workflow",
+    "alwaysScopeRequest": "Any step calling {{request}}"
+  },
+  "guardrailRulesPanel": {
+    "countLabel": "{{count}} rule{{plural}}",
+    "newRuleButton": "New rule",
+    "emptyHeading": "No rules yet.",
+    "emptyDescription": "Each step's defaults decide: external steps ask before running, everything else runs.",
+    "groupEverywhere": "Everywhere",
+    "groupStepType": "By step type",
+    "groupRequest": "By connector request",
+    "editMenuItem": "Edit…",
+    "removeMenuItem": "Remove",
+    "kebabAriaLabel": "Actions for {{label}}"
+  },
+  "guardrailRuleDialog": {
+    "editTitle": "Edit rule",
+    "newTitle": "New rule",
+    "nameLabel": "Rule name",
+    "effectLabel": "Effect",
+    "effectOptions": {
+      "allow": "Allow",
+      "ask": "Ask",
+      "deny": "Deny"
+    },
+    "appliesToLabel": "Applies to",
+    "scopeOptions": {
+      "everywhere": "Everywhere",
+      "workflow": "A workflow",
+      "nodeType": "A step type",
+      "request": "A connector request"
+    },
+    "conditionSummary": "Condition (advanced)",
+    "conditionCaption": "An expression over the step's payload, attributes, and config. Leave empty to always apply.",
+    "save": "Save rule",
+    "cancel": "Cancel"
   }
 }

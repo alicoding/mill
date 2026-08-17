@@ -87,8 +87,14 @@ export interface Rule {
      * canvas Inspector, but a breakpoint borrows the same Rule/park
      * plumbing without being policy itself). The canvas Inspector's
      * "Breakpoint" toggle may only ever create/delete a SourceDebug
-     * rule; Configure > Guardrails (when it returns) governs policy
-     * rules exclusively.
+     * rule; policy rules are authored through the three-door model
+     * instead (goal 0078): rule-from-park (a parked run's "Always
+     * allow/deny…"), edit-in-context (a step's own matching rules,
+     * listed and editable but never created from the step editor), and
+     * the Review "Rules" audit view (create/edit/delete for
+     * completeness) -- one rule store (GuardrailService's CRUD) under
+     * all three doors, never a Configure entity (no other data
+     * references a rule by ID).
      */
     "Source": string;
 }

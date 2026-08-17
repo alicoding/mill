@@ -1,0 +1,17 @@
+.conditionSection {
+    margin-top: 4px;
+}
+.conditionSummary {
+    cursor: pointer;
+    padding: 4px 0;
+    font-size: 12.5px;
+    font-weight: 650;
+    color: var(--fgColor-muted);
+    user-select: none;
+}
+.conditionSummary:hover {
+    color: var(--fgColor-default);
+}
+.scopeSelect {
+    margin: 4px 0 8px 28px;
+}

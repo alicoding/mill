@@ -55,8 +55,14 @@ type Rule struct {
 	// canvas Inspector, but a breakpoint borrows the same Rule/park
 	// plumbing without being policy itself). The canvas Inspector's
 	// "Breakpoint" toggle may only ever create/delete a SourceDebug
-	// rule; Configure > Guardrails (when it returns) governs policy
-	// rules exclusively.
+	// rule; policy rules are authored through the three-door model
+	// instead (goal 0078): rule-from-park (a parked run's "Always
+	// allow/deny…"), edit-in-context (a step's own matching rules,
+	// listed and editable but never created from the step editor), and
+	// the Review "Rules" audit view (create/edit/delete for
+	// completeness) -- one rule store (GuardrailService's CRUD) under
+	// all three doors, never a Configure entity (no other data
+	// references a rule by ID).
 	Source string
 }
 
@@ -199,7 +205,7 @@ func Evaluate(rules []Rule, step Step, class EffectClass) Verdict {
 func MayAsk(rules []Rule, step Step, class EffectClass) bool {
 	unconditionalAllow := false
 	for _, r := range rules {
-		if !scopeMatches(r, step) {
+		if !ScopeMatches(r, step) {
 			continue
 		}
 		if r.Effect == EffectAsk {
@@ -212,7 +218,13 @@ func MayAsk(rules []Rule, step Step, class EffectClass) bool {
 	return DefaultEffect(class) == EffectAsk && !unconditionalAllow
 }
 
-func scopeMatches(r Rule, step Step) bool {
+// ScopeMatches reports whether every one of a rule's non-empty scope
+// fields (NodeTypeID/RequestID/WorkflowID/NodeID) matches the step,
+// ignoring Condition entirely -- the "could this rule ever apply to
+// this step" test shared by MayAsk's conservative pre-scan and the
+// authoring surfaces (RulesForStep) that list a step's applicable
+// rules regardless of whether a condition would pass at runtime.
+func ScopeMatches(r Rule, step Step) bool {
 	return (r.NodeTypeID == "" || r.NodeTypeID == step.NodeTypeID) &&
 		(r.RequestID == "" || r.RequestID == step.RequestID) &&
 		(r.WorkflowID == "" || r.WorkflowID == step.WorkflowID) &&
@@ -220,16 +232,7 @@ func scopeMatches(r Rule, step Step) bool {
 }
 
 func matches(r Rule, step Step) bool {
-	if r.NodeTypeID != "" && r.NodeTypeID != step.NodeTypeID {
-		return false
-	}
-	if r.RequestID != "" && r.RequestID != step.RequestID {
-		return false
-	}
-	if r.WorkflowID != "" && r.WorkflowID != step.WorkflowID {
-		return false
-	}
-	if r.NodeID != "" && r.NodeID != step.NodeID {
+	if !ScopeMatches(r, step) {
 		return false
 	}
 	if r.Condition == "" {

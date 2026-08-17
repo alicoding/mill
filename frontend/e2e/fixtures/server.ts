@@ -67,6 +67,14 @@ export const UPDATES_SOURCE_SERVER_BASE_PORT = 9760
 export const UPDATES_SOURCE_MCP_BASE_PORT = 9780
 export const UPDATES_RELEASE_SERVER_BASE_PORT = 9790
 export const UPDATES_RELEASE_MCP_BASE_PORT = 9810
+// guardrail-authoring.spec.ts's own dedicated pair (goal 0078): the
+// full rule-from-park -> unstick -> audit-edit -> policy-removed loop
+// asserts exact rule counts/groupings in the Rules audit view, which
+// the standard per-worker pool can't guarantee stays uncontaminated by
+// another spec file sharing that worker's one server -- same
+// own-server-own-ports reasoning as persistence/scale/mirror above.
+export const GUARDRAIL_AUTHORING_SERVER_BASE_PORT = 9840
+export const GUARDRAIL_AUTHORING_MCP_BASE_PORT = 9860
 
 async function waitForHealth(url: string, proc: ChildProcessWithoutNullStreams, timeoutMs: number): Promise<void> {
   const deadline = Date.now() + timeoutMs
