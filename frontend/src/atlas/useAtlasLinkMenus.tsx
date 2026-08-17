@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { TFunction } from 'i18next'
-import type { Card, Link, LinkKind } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
+import type { Card, Link, LinkKind, Note } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 import { AtlasService } from '../shared/bindings'
 import { isGroupCard } from './atlasBoardLayout'
 import { atlasCardShareActions } from './atlasCardShare'
@@ -26,11 +26,12 @@ function truncateTitle(title: string): string {
 // (count === 1), since acting on one specific link within a count>1
 // aggregated artery has no per-link picker in this slice.
 export function useAtlasLinkMenus({
-  t, allCards, allLinks, linkKinds, setMenu, drill, onOpenCard, onError, requestLinkedCard,
+  t, allCards, allLinks, allNotes, linkKinds, setMenu, drill, onOpenCard, onError, requestLinkedCard,
 }: {
   t: TFunction<'atlas'>
   allCards: Card[]
   allLinks: Link[]
+  allNotes: Note[]
   linkKinds: LinkKind[]
   setMenu: (state: ContextMenuState | null) => void
   drill: (id: string) => void
@@ -52,7 +53,12 @@ export function useAtlasLinkMenus({
     const card = allCards.find((c) => c.ID === cardID)
     if (!card) return
     const share = atlasCardShareActions(card, onError)
-    const place = isGroupCard(allCards, card)
+    // isGroupCard only counts Card children -- a card holding ONLY
+    // Notes (the seeded Scratchpad inbox, docs/goals/0090) still needs
+    // its own Zoom-in door, since a Note's containment is otherwise
+    // unreachable from the board (visibleNotes only renders once
+    // viewedID equals the note's own ParentID).
+    const place = isGroupCard(allCards, card) || allNotes.some((n) => n.ParentID === card.ID)
     const mirrorItems: ContextMenuItem[] = card.MirrorPath
       ? [
           { id: 'open-file', label: t('contextMenu.openFile'), run: () => void AtlasService.OpenCardMirror(card.ID).catch((err) => onError(String(err))) },
