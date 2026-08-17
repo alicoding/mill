@@ -22,6 +22,7 @@ import { useBoardFocus } from './useBoardFocus'
 import { useAtlasCreation, type AtlasGroupRequest, type AtlasPlacementRequest, type AtlasPromoteRequest } from './useAtlasCreation'
 import { useAtlasAreaDraw } from './useAtlasAreaDraw'
 import { useAtlasDragFiling, type FrameBox } from './useAtlasDragFiling'
+import { useAtlasSelection } from './useAtlasSelection'
 import { useAtlasSlotDrag } from './useAtlasSlotDrag'
 import { AtlasSlotDragLine } from './AtlasSlotDragLine'
 import { buildBoardCardNodes } from './atlasBuildBoardNodes'
@@ -130,7 +131,7 @@ function AtlasBoardInner({ cards, allCards, kinds, links, linkKinds, notes, pare
   const wrapperRef = useRef<HTMLDivElement>(null)
   const { fitBounds, fitView, getNodesBounds, screenToFlowPosition } = useReactFlow()
   const creation = useAtlasCreation({ parentID, allCards, notes, readOnly, screenToFlowPosition, placementRequest, promoteRequest, groupRequest })
-  const [selectedIDs, setSelectedIDs] = useState<string[]>([])
+  const selection = useAtlasSelection({ cards, notes, onMultiSelectContextMenu })
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -317,8 +318,13 @@ function AtlasBoardInner({ cards, allCards, kinds, links, linkKinds, notes, pare
   const allNodes = useMemo(() => [...builtNodes, ...stickyNodes], [builtNodes, stickyNodes])
   const [nodes, setNodes, onNodesChange] = useNodesState(allNodes)
   useEffect(() => {
-    setNodes(allNodes)
-  }, [allNodes, setNodes])
+    // Rebuilt node objects don't carry selected:true, so an unadorned
+    // setNodes silently dissolves a live multi-selection on every data
+    // refresh -- re-apply it from the ref so a selection survives
+    // rebuilds (and the context menu that follows one).
+    const sel = selection.selectedIDsRef.current
+    setNodes(sel.length > 0 ? allNodes.map((n) => (sel.includes(n.id) ? { ...n, selected: true } : n)) : allNodes)
+  }, [allNodes, setNodes, selection.selectedIDsRef])
 
   // Every re-root (drill in, breadcrumb out, jump) settles the new
   // board with an animated fitView rather than an instant snap. The
@@ -377,7 +383,10 @@ function AtlasBoardInner({ cards, allCards, kinds, links, linkKinds, notes, pare
         if (e.dataTransfer.types.includes(ATLAS_TOOL_DRAG_MIME)) e.preventDefault()
       }}
       onDrop={onCanvasDrop}
-      onPointerDownCapture={areaArmed ? areaDraw.onPointerDown : undefined}
+      onPointerDownCapture={(e) => {
+        selection.snapshotSelection()
+        if (areaArmed) areaDraw.onPointerDown(e)
+      }}
       onPointerMoveCapture={areaArmed ? areaDraw.onPointerMove : undefined}
       onPointerUpCapture={areaArmed ? areaDraw.onPointerUp : undefined}
     >
@@ -399,32 +408,14 @@ function AtlasBoardInner({ cards, allCards, kinds, links, linkKinds, notes, pare
         // gesture, sliding the content back under the cursor instead
         // of ever letting it cross the edge.
         autoPanOnNodeDrag={false}
-        onSelectionChange={({ nodes: selected }) => {
-          // React Flow reports a selection "change" whenever the nodes
-          // array's own reference changes, not only on a real selection
-          // change -- since builtNodes/allNodes recompute on every data
-          // refresh, an unguarded setState here re-renders on every
-          // refresh, which recreates AnchoredOverlay's own inline ref
-          // (a Primer AnchoredOverlay.js implementation detail) fast
-          // enough to blow React's update-depth ceiling (confirmed
-          // live: React error #185). Comparing the actual id SET keeps
-          // this a no-op unless the selection genuinely changed.
-          const ids = selected.map((n) => n.id)
-          const sameSet = (a: string[], b: string[]) => a.length === b.length && new Set(a).size === new Set([...a, ...b]).size
-          setSelectedIDs((prev) => (sameSet(prev, ids) ? prev : ids))
-        }}
+        onSelectionChange={selection.onSelectionChange}
+        onSelectionContextMenu={selection.onSelectionContextMenu}
         onNodeContextMenu={(e, node) => {
           e.preventDefault()
           // A right-click on a member of a live 2+ multi-selection
-          // (goal 0081 slice A2, LOCKED design §6d) takes precedence
-          // over every other per-node menu -- cards/notes split apart
-          // so AtlasView can gate "Group into new area" on card count.
-          if (selectedIDs.length >= 2 && selectedIDs.includes(node.id)) {
-            const cardIDs = selectedIDs.filter((id) => cards.some((c) => c.ID === id))
-            const noteIDs = selectedIDs.filter((id) => notes.some((n) => n.ID === id))
-            onMultiSelectContextMenu(cardIDs, noteIDs, { x: e.clientX, y: e.clientY })
-            return
-          }
+          // opens the group menu (goal 0081 slice A2, LOCKED design 6d);
+          // the hook reads its pre-clear snapshot, never live state.
+          if (selection.tryNodeMultiMenu(node.id, { x: e.clientX, y: e.clientY })) return
           if (node.type === 'atlas-sticky') {
             onNoteContextMenu(node.id, { x: e.clientX, y: e.clientY })
             return
