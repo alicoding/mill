@@ -206,6 +206,46 @@ test('atlas shift-click select: toggle membership, group via member right-click,
     await cardB.click({ modifiers: ['Shift'] })
     await expect(selected).toHaveCount(2)
 
+    // Visible selection state (goal 0092 follow-up): both member nodes
+    // carry a real, non-empty outline/ring, not just React Flow's own
+    // unstyled .selected class.
+    await expect.poll(() => cardA.evaluate((el) => getComputedStyle(el).boxShadow)).not.toBe('none')
+    await expect.poll(() => cardB.evaluate((el) => getComputedStyle(el).boxShadow)).not.toBe('none')
+
+    // The selection tray replaces the creation tray while 2+ cards are
+    // selected: count label, Group (2+ cards only), Delete, both with
+    // their kbd chips.
+    const selectionTray = page.getByTestId('atlas-selection-tray')
+    await expect(selectionTray).toBeVisible()
+    await expect(page.getByTestId('atlas-creation-tray')).toHaveCount(0)
+    await expect(page.getByTestId('atlas-selection-count')).toHaveText('2 selected')
+    const trayGroup = page.getByTestId('atlas-selection-group')
+    await expect(trayGroup).toContainText('Group')
+    await expect(trayGroup).toContainText('G')
+    const trayDelete = page.getByTestId('atlas-selection-delete')
+    await expect(trayDelete).toContainText('Delete')
+    await expect(trayDelete).toContainText('⌫')
+
+    // Escape clears the selection (takes precedence over the board's
+    // own unflip duty) -- the creation tray comes back.
+    await page.keyboard.press('Escape')
+    await expect(selected).toHaveCount(0)
+    await expect(selectionTray).toHaveCount(0)
+    await expect(page.getByTestId('atlas-creation-tray')).toBeVisible()
+
+    // Re-select, then bare G opens the SAME group popover a member
+    // right-click's own menu item does -- closed here without
+    // submitting so the flow below (member right-click -> Group) is
+    // the one that actually creates the area.
+    await cardA.click({ modifiers: ['Shift'] })
+    await cardB.click({ modifiers: ['Shift'] })
+    await expect(selected).toHaveCount(2)
+    await page.keyboard.press('g')
+    await expect(popover).toBeVisible()
+    await expect(page.getByTestId('atlas-placement-context')).toContainText('2 cards')
+    await popover.getByTestId('atlas-placement-cancel').click()
+    await expect(popover).not.toBeVisible()
+
     // Member right-click reaches the multi menu -> Group into new area
     // (same full-gesture retry as above: Primer's menu overlay animates
     // in, and a too-early item click lands outside and closes it).

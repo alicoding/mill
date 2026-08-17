@@ -1,0 +1,71 @@
+/* Same floating position/container the creation tray occupies
+   (AtlasCreationTray.module.css .tray) -- AtlasBoard renders exactly
+   one of the two, so the two never need to share a class. */
+.tray {
+    position: absolute;
+    left: 50%;
+    bottom: 24px;
+    transform: translateX(-50%);
+    z-index: 5;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 6px;
+    background: var(--bgColor-default);
+    border: 1px solid var(--borderColor-accent-emphasis);
+    border-radius: var(--borderRadius-large);
+    box-shadow: var(--shadow-floating-large, 0 4px 16px rgba(0, 0, 0, 0.12));
+}
+
+.count {
+    padding: 0 8px;
+    font-size: 13px;
+    font-weight: 650;
+    color: var(--fgColor-accent);
+    white-space: nowrap;
+}
+
+.divider {
+    width: 1px;
+    align-self: stretch;
+    background: var(--borderColor-muted);
+}
+
+.action {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border: 1px solid transparent;
+    border-radius: var(--borderRadius-medium);
+    background: transparent;
+    color: var(--fgColor-default);
+    font-size: 13px;
+    cursor: pointer;
+}
+.action:hover {
+    background: var(--bgColor-neutral-muted);
+}
+
+.label {
+    font-weight: 500;
+}
+
+.kbd {
+    font-family: var(--mill-mono);
+    font-size: 10px;
+    color: var(--fgColor-muted);
+    border: 1px solid var(--borderColor-muted);
+    border-radius: 3px;
+    padding: 0 4px;
+}
+
+.hint {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 0 8px 0 4px;
+    font-size: 11px;
+    color: var(--fgColor-muted);
+    white-space: nowrap;
+}

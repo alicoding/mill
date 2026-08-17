@@ -31,7 +31,13 @@
     "linksChip_other": "{{count}} links",
     "moreTile": "+ {{count}} more",
     "slotDragToAdd": "drag to add",
-    "slotMoreKinds": "+{{count}} more kinds"
+    "slotMoreKinds": "+{{count}} more kinds",
+    "selectionTrayAriaLabel": "Selection actions",
+    "selectionCount_one": "{{count}} selected",
+    "selectionCount_other": "{{count}} selected",
+    "selectionGroup": "Group",
+    "selectionDelete": "Delete",
+    "selectionClearHint": "clear"
   },
   "jump": {
     "placeholder": "Jump to a card",

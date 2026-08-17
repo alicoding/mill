@@ -17,6 +17,15 @@
     cursor: text;
 }
 
+/* Multi-selection outline (owner-caught follow-up to goal 0092): same
+   box-shadow ring AtlasNoteCardNode.module.css uses, keyed off React
+   Flow's own .selected on the node's outer wrapper. */
+:global(.react-flow__node.selected) .sticky {
+    box-shadow:
+        0 0 0 2px var(--borderColor-accent-emphasis),
+        0 0 0 5px var(--bgColor-accent-muted);
+}
+
 .text {
     font-size: 12px;
     line-height: 1.35;

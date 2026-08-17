@@ -11,6 +11,17 @@
     cursor: pointer;
 }
 
+/* Multi-selection outline (owner-caught follow-up to goal 0092): keyed
+   off React Flow's own .selected class on the node's outer wrapper --
+   box-shadow, not border-width, so it never shifts this card's fixed
+   190x128 footprint or its own hit-testing box. */
+:global(.react-flow__node.selected) .flipScene {
+    border-radius: var(--borderRadius-medium);
+    box-shadow:
+        0 0 0 2px var(--borderColor-accent-emphasis),
+        0 0 0 5px var(--bgColor-accent-muted);
+}
+
 /* Present only so React Flow can measure a real connection point for
    a link edge -- never visible, never a click/drag target of its own
    (nodesConnectable={false} on the board already disables interactive
