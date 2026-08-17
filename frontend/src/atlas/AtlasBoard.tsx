@@ -68,7 +68,7 @@ export interface AtlasFocusRequest {
 // media-query gate AtlasNoteCardNode.module.css's own flip already
 // uses, read here in JS via usePrefersReducedMotion since React Flow's
 // own transition durations are JS options, not CSS.
-function AtlasBoardInner({ cards, allCards, kinds, links, linkKinds, notes, parentID, arrangeRequest, viewedID, focusRequest, onDrill, onOpenOverlay, onFocusHandled, onCardContextMenu, onPaneContextMenu, onArteryContextMenu, onNoteContextMenu, onFrameContextMenu, onFrameInteriorContextMenu, onMultiSelectContextMenu, placementRequest, promoteRequest, groupRequest, onJumpToChip }: {
+function AtlasBoardInner({ cards, allCards, kinds, links, linkKinds, notes, parentID, arrangeRequest, viewedID, focusRequest, onDrill, onOpenOverlay, onFocusHandled, onCardContextMenu, onPaneContextMenu, onArteryContextMenu, onNoteContextMenu, onFrameContextMenu, onFrameInteriorContextMenu, onMultiSelectContextMenu, onDeleteSelection, placementRequest, promoteRequest, groupRequest, onJumpToChip }: {
   cards: Card[]
   allCards: Card[]
   kinds: Kind[]
@@ -112,6 +112,11 @@ function AtlasBoardInner({ cards, allCards, kinds, links, linkKinds, notes, pare
   // selection's own card/note ids split apart -- AtlasView builds
   // Group into new area (cards.length >= 2) / Delete.
   onMultiSelectContextMenu: (cardIDs: string[], noteIDs: string[], pos: { x: number; y: number }) => void
+  // Keyboard Delete/Backspace over the live selection (goal 0089
+  // rider): routed through the same confirm dialog as the menu item;
+  // React Flow's own deleteKeyCode stays disabled -- a local node
+  // removal would just resurrect on the next data refresh.
+  onDeleteSelection: (cardIDs: string[], noteIDs: string[]) => void
   // AtlasView's own downward creation requests (the pane menu's "Add
   // card"/"Add note"/"Promote to card…" items, extended by slice A2's
   // frame-scoped placements and "Group into new area") -- see
@@ -136,6 +141,24 @@ function AtlasBoardInner({ cards, allCards, kinds, links, linkKinds, notes, pare
   const { fitBounds, fitView, getNodesBounds, screenToFlowPosition } = useReactFlow()
   const creation = useAtlasCreation({ parentID, allCards, notes, readOnly, screenToFlowPosition, placementRequest, promoteRequest, groupRequest })
   const selection = useAtlasSelection({ cards, notes, onMultiSelectContextMenu })
+
+  // Delete/Backspace over a live selection -> the shared confirm
+  // (never fires from editable elements; single or multi).
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== 'Delete' && e.key !== 'Backspace') return
+      const el = document.activeElement
+      if (el instanceof HTMLElement && (el.isContentEditable || el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT')) return
+      const sel = selection.selectedIDsRef.current
+      if (sel.length === 0) return
+      e.preventDefault()
+      const cardIDs = sel.filter((id) => cards.some((c) => c.ID === id))
+      const noteIDs = sel.filter((id) => notes.some((n) => n.ID === id))
+      if (cardIDs.length + noteIDs.length > 0) onDeleteSelection(cardIDs, noteIDs)
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [cards, notes, onDeleteSelection, selection.selectedIDsRef])
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -382,6 +405,7 @@ function AtlasBoardInner({ cards, allCards, kinds, links, linkKinds, notes, pare
         onEdgeMouseEnter={(_, edge) => setHoveredEdgeID(edge.id)}
         onEdgeMouseLeave={() => setHoveredEdgeID(null)}
         nodesConnectable={false}
+        deleteKeyCode={null}
         nodesDraggable={isFree && !readOnly}
         zoomOnDoubleClick={false}
         panOnDrag={!areaArmed}

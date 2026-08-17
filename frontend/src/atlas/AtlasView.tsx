@@ -396,6 +396,7 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
           onFrameContextMenu={containmentMenus.openFrameMenu}
           onFrameInteriorContextMenu={containmentMenus.openFrameInteriorMenu}
           onMultiSelectContextMenu={containmentMenus.openMultiSelectMenu}
+          onDeleteSelection={containmentMenus.deleteSelection}
           placementRequest={creationRequests.placementRequest}
           promoteRequest={creationRequests.promoteRequest}
           groupRequest={creationRequests.groupRequest}
