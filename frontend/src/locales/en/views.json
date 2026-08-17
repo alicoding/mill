@@ -292,7 +292,6 @@
     },
     "appliesToLabel": "Applies to",
     "scopeOptions": {
-      "everywhere": "Everywhere",
       "workflow": "A workflow",
       "nodeType": "A step type",
       "request": "A connector request"

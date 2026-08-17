@@ -8,7 +8,7 @@ import { resolveScopeChoice, ruleScopeSentence, RULE_SCOPE_EVERYWHERE_SENTENCE }
 import styles from './GuardrailRuleDialog.module.css'
 import listStyles from './ListCard.module.css'
 
-type NewScopeKind = 'everywhere' | 'workflow' | 'nodeType' | 'request'
+type NewScopeKind = 'workflow' | 'nodeType' | 'request'
 type EffectValue = 'allow' | 'ask' | 'deny'
 
 // The shared New/Edit rule form (door 2's "Rules for this step" Edit…
@@ -49,8 +49,7 @@ export function GuardrailRuleDialog({ rule, onClose, onSaved }: {
       } else {
         const scopeFields = scopeKind === 'workflow' ? { WorkflowID: workflowId }
           : scopeKind === 'nodeType' ? { NodeTypeID: nodeTypeId }
-          : scopeKind === 'request' ? { RequestID: requestId }
-          : {}
+          : { RequestID: requestId }
         await GuardrailService.CreateRule({
           ID: '', Label: label, Effect: effect as GuardrailEffect, Condition: condition, Source: '',
           NodeTypeID: '', RequestID: '', WorkflowID: '', NodeID: '',
@@ -97,10 +96,12 @@ export function GuardrailRuleDialog({ rule, onClose, onSaved }: {
       ) : (
         <RadioGroup name="guardrail-rule-scope-kind" onChange={(v) => v && setScopeKind(v as NewScopeKind)}>
           <RadioGroup.Label>{t('guardrailRuleDialog.appliesToLabel')}</RadioGroup.Label>
-          <FormControl>
-            <Radio value="everywhere" checked={scopeKind === 'everywhere'} data-testid="guardrail-rule-scope-everywhere" />
-            <FormControl.Label>{t('guardrailRuleDialog.scopeOptions.everywhere')}</FormControl.Label>
-          </FormControl>
+          {/* No "Everywhere" option: guardrail.Rule.Validate() requires at
+              least one scope field, so a scope-less rule can never save --
+              an option that always errors must not render (goal 0078
+              review). The audit view's defensive "Applies everywhere."
+              sentence/group stay, covering a rule saved before that
+              validation existed. */}
           <FormControl>
             <Radio value="workflow" checked={scopeKind === 'workflow'} data-testid="guardrail-rule-scope-workflow" />
             <FormControl.Label>{t('guardrailRuleDialog.scopeOptions.workflow')}</FormControl.Label>
