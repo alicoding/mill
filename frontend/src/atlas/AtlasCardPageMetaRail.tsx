@@ -33,7 +33,8 @@ export function AtlasCardPageMetaRail({
   onCopyLink: () => void
 }) {
   const { t } = useTranslation('atlas')
-  const showFreshness = Boolean(card.RefreshWorkflowID || card.MirrorPath)
+  const hasAction = (card.ActionWorkflowIDs?.length ?? 0) > 0
+  const showFreshness = Boolean(hasAction || card.MirrorPath)
 
   return (
     <div className={styles.metaCol} data-testid="atlas-page-meta-rail">
@@ -59,7 +60,7 @@ export function AtlasCardPageMetaRail({
           <span className={styles.metaValue}>
             {card.LastSyncedAt && formatUpdated(card.LastSyncedAt) ? t('overlay.lastSynced', { when: formatUpdated(card.LastSyncedAt) }) : t('overlay.neverSynced')}
           </span>
-          {card.RefreshWorkflowID && (
+          {hasAction && (
             <Button
               leadingVisual={SyncIcon}
               size="small"

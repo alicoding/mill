@@ -54,10 +54,16 @@ func (a *AtlasService) UpdateNow(cardID string) (atlas.Card, error) {
 		a.mu.RUnlock()
 		return atlas.Card{}, fmt.Errorf("no card with id %q", cardID)
 	}
-	workflowID := a.cards[idx].RefreshWorkflowID
+	// The FIRST attached action is the card's refresh (goal 0084:
+	// actions generalized the single RefreshWorkflowID; migration
+	// seats the legacy value at index 0, preserving this semantic).
+	var workflowID string
+	if len(a.cards[idx].ActionWorkflowIDs) > 0 {
+		workflowID = a.cards[idx].ActionWorkflowIDs[0]
+	}
 	a.mu.RUnlock()
 	if workflowID == "" {
-		return atlas.Card{}, fmt.Errorf("card %q has no refresh workflow", cardID)
+		return atlas.Card{}, fmt.Errorf("card %q has no attached action to run", cardID)
 	}
 	if workflowRunner == nil {
 		return atlas.Card{}, fmt.Errorf("update now: no workflow runner is wired")

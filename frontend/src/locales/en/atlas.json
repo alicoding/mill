@@ -135,7 +135,6 @@
     "mirrorUnsupported": "This file is {{size}}. Open it to view its content.",
     "lastSynced": "Last synced {{when}}",
     "neverSynced": "Never synced",
-    "refreshWorkflowLabel": "Refresh workflow",
     "updateNow": "Update now",
     "updating": "Updating…",
     "receiptRunID": "Produced by run",
@@ -148,7 +147,14 @@
     "copyAsContext": "Copy as context",
     "copied": "Copied",
     "copyCloudLink": "Copy link",
-    "delete": "Delete"
+    "delete": "Delete",
+    "actionsLabel": "Actions",
+    "addAction": "Add action",
+    "runAction": "Run",
+    "runStarted": "Started",
+    "actionRunError": "Couldn't start the action. Try again.",
+    "removeAction": "Remove action",
+    "actionsHint": "Each action receives this card's id, kind, and title."
   },
   "page": {
     "close": "Close ⨯",

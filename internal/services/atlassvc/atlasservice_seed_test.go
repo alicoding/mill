@@ -193,8 +193,8 @@ func TestReconcileBuiltIns_ScratchpadNoteUpgradesInPlace(t *testing.T) {
 	if got.Note != want {
 		t.Errorf("Scratchpad Note = %q, want %q", got.Note, want)
 	}
-	if got.Seed.SeedRevision != 2 {
-		t.Errorf("Scratchpad SeedRevision = %d, want 2", got.Seed.SeedRevision)
+	if got.Seed.SeedRevision != 3 {
+		t.Errorf("Scratchpad SeedRevision = %d, want 3", got.Seed.SeedRevision)
 	}
 }
 

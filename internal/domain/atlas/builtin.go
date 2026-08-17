@@ -145,14 +145,14 @@ func BuiltInCards() []Card {
 			ID: cardMySpaceID, KindID: kindTopicID, Title: "My space",
 			ParentID: "", ViewMode: ViewModeCanvas,
 			CreatedAt: now, UpdatedAt: now,
-			BuiltIn: true, Seed: seedorigin.Stamp(2),
+			BuiltIn: true, Seed: seedorigin.Stamp(3), // Card gained ActionWorkflowIDs (goal 0084) -- shape shift, content-equal except the document card
 		},
 		{
 			ID: cardExampleAreaID, KindID: kindTopicID, Title: "Example area",
 			ParentID: cardMySpaceID, ViewMode: ViewModeShelves,
 			Position:  &Position{X: 80, Y: 80},
 			CreatedAt: now, UpdatedAt: now,
-			BuiltIn: true, Seed: seedorigin.Stamp(2),
+			BuiltIn: true, Seed: seedorigin.Stamp(3), // Card gained ActionWorkflowIDs (goal 0084) -- shape shift, content-equal except the document card
 		},
 		{
 			// Position clears "Example area"'s own region-frame footprint
@@ -166,7 +166,7 @@ func BuiltInCards() []Card {
 			Position:  &Position{X: 532, Y: 80},
 			Fields:    map[string]string{"summary": "How this space is organized.", "status": "Open"},
 			CreatedAt: now, UpdatedAt: now,
-			BuiltIn: true, Seed: seedorigin.Stamp(2),
+			BuiltIn: true, Seed: seedorigin.Stamp(3), // Card gained ActionWorkflowIDs (goal 0084) -- shape shift, content-equal except the document card
 		},
 		{
 			// The Scratchpad seed (goal 0081 slice A3): a CONTAINER card,
@@ -181,17 +181,17 @@ func BuiltInCards() []Card {
 			ParentID:  cardMySpaceID,
 			Position:  &Position{X: 746, Y: 80},
 			CreatedAt: now, UpdatedAt: now,
-			BuiltIn: true, Seed: seedorigin.Stamp(2),
+			BuiltIn: true, Seed: seedorigin.Stamp(3), // Card gained ActionWorkflowIDs (goal 0084) -- shape shift, content-equal except the document card
 		},
 		{
 			ID: cardContactID, KindID: kindContactID, Title: "Ada Lovelace",
 			ParentID:  cardExampleAreaID,
 			Fields:    map[string]string{"email": "ada@example.com", "role": "Point of contact"},
 			CreatedAt: now, UpdatedAt: now,
-			BuiltIn: true, Seed: seedorigin.Stamp(1),
+			BuiltIn: true, Seed: seedorigin.Stamp(2), // Card gained ActionWorkflowIDs (goal 0084) -- shape shift, content-equal except the document card
 		},
 		{
-			// RefreshWorkflowID (goal 0061 slice C) proves "Update now"
+			// The seeded action (goal 0061 slice C, generalized by 0084) proves "Update now"
 			// live from seeds alone: composition.ExampleChildWorkflowID
 			// is deterministic (no clipboard, no network) and already
 			// PUBLISHED, the same requirement RunKindTriggered holds
@@ -200,9 +200,9 @@ func BuiltInCards() []Card {
 			ParentID:          cardExampleAreaID,
 			Source:            "https://example.com/project-charter",
 			Fields:            map[string]string{"owner": "Ada Lovelace"},
-			RefreshWorkflowID: composition.ExampleChildWorkflowID,
+			ActionWorkflowIDs: []string{composition.ExampleChildWorkflowID},
 			CreatedAt:         now, UpdatedAt: now,
-			BuiltIn: true, Seed: seedorigin.Stamp(2),
+			BuiltIn: true, Seed: seedorigin.Stamp(3), // Card gained ActionWorkflowIDs (goal 0084) -- shape shift, content-equal except the document card
 		},
 	}
 }

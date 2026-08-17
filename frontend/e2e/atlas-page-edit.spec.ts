@@ -172,6 +172,29 @@ test('atlas card page: read-is-edit fields, kind-gated mirror controls, page lin
     await groupCard(page, 'Example area').getByTestId('atlas-group-header').click()
     await openViaFlip(noteCard(page, 'Project charter'))
     await expect(overlay).toBeVisible()
+
+    // --- Actions block (goal 0084): the seeded action row renders
+    // with its workflow's label, Run reports Started (the callable
+    // echo is deterministic/local), remove + re-add round-trips
+    // through the page and persists across reopen. ---
+    const actions = overlay.getByTestId('atlas-page-actions')
+    await expect(actions).toBeVisible()
+    const actionRow = actions.getByTestId('atlas-page-action-row')
+    await expect(actionRow).toHaveCount(1)
+    await expect(actionRow).toContainText('Example: Echo message (callable child)')
+    await actions.getByTestId('atlas-page-run-action').click()
+    await expect(actions.getByTestId('atlas-page-action-started')).toBeVisible()
+    await actionRow.getByRole('button', { name: 'Remove action' }).click()
+    await expect(actionRow).toHaveCount(0)
+    await actions.getByTestId('atlas-page-add-action').click()
+    await actions.getByRole('combobox').selectOption({ label: 'Example: Echo message (callable child)' })
+    await expect(actionRow).toHaveCount(1)
+    await page.keyboard.press('Escape')
+    await expect(overlay).not.toBeVisible()
+    await openViaFlip(noteCard(page, 'Project charter'))
+    await expect(overlay).toBeVisible()
+    await expect(actions.getByTestId('atlas-page-action-row')).toHaveCount(1)
+
     await expect(overlay.getByTestId('atlas-page-source')).toBeVisible()
     await expect(overlay.getByTestId('atlas-page-mirror-path')).toBeVisible()
     await expect(overlay.getByTestId('atlas-overlay-reveal-file')).toHaveCount(0)

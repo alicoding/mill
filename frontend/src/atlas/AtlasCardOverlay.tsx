@@ -24,7 +24,6 @@ type CardFieldPatch = Partial<{
   fields: Record<string, string>
   source: string
   mirrorPath: string
-  refreshWorkflowID: string
 }>
 
 // The "page" surface (docs/goals/0072 slice C, evolving goal 0061's
@@ -76,7 +75,7 @@ export function AtlasCardOverlay({ card, kinds, allCards, links, linkKinds, onCl
   const [fields, setFields] = useState<Record<string, string>>((displayedCard.Fields ?? {}) as Record<string, string>)
   const [source, setSource] = useState(displayedCard.Source)
   const [mirrorPath, setMirrorPath] = useState(displayedCard.MirrorPath)
-  const [refreshWorkflowID, setRefreshWorkflowID] = useState(displayedCard.RefreshWorkflowID)
+  const [actionWorkflowIDs, setActionWorkflowIDs] = useState<string[]>(displayedCard.ActionWorkflowIDs ?? [])
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [savedTick, setSavedTick] = useState(false)
   const savedTickTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -103,7 +102,7 @@ export function AtlasCardOverlay({ card, kinds, allCards, links, linkKinds, onCl
     setFields((displayedCard.Fields ?? {}) as Record<string, string>)
     setSource(displayedCard.Source)
     setMirrorPath(displayedCard.MirrorPath)
-    setRefreshWorkflowID(displayedCard.RefreshWorkflowID)
+    setActionWorkflowIDs(displayedCard.ActionWorkflowIDs ?? [])
     setErrors({})
     // eslint-disable-next-line react-hooks/exhaustive-deps -- keyed on the card identity alone, deliberately
   }, [displayedCard.ID])
@@ -160,7 +159,7 @@ export function AtlasCardOverlay({ card, kinds, allCards, links, linkKinds, onCl
         patch.fields ?? fields,
         patch.source ?? source,
         patch.mirrorPath ?? mirrorPath,
-        patch.refreshWorkflowID ?? refreshWorkflowID,
+        '',
       )
       setErrors((prev) => {
         if (!(errorKey in prev)) return prev
@@ -184,9 +183,14 @@ export function AtlasCardOverlay({ card, kinds, allCards, links, linkKinds, onCl
     setFields(nextFields)
     void persist({ fields: nextFields }, `field:${key}`)
   }
-  const commitRefreshWorkflow = (value: string) => {
-    setRefreshWorkflowID(value)
-    void persist({ refreshWorkflowID: value }, 'refreshWorkflowID')
+  // Actions persist through their own bound method (not UpdateCard) --
+  // computed into a local and passed directly, per testing.md's
+  // stale-setState rule.
+  const commitActions = (next: string[]) => {
+    setActionWorkflowIDs(next)
+    AtlasService.SetCardActions(displayedCard.ID, next)
+      .then(() => { showSavedTick(); onSaved() })
+      .catch(() => setErrors((prev) => ({ ...prev, actions: t('page.saveError') })))
   }
 
   const fieldErrors: Record<string, string> = {}
@@ -260,7 +264,8 @@ export function AtlasCardOverlay({ card, kinds, allCards, links, linkKinds, onCl
               onFieldsCommit={commitField}
               source={source} sourceError={errors.source ?? ''} onSourceChange={setSource} onSourceCommit={commitSource}
               mirrorPath={mirrorPath} mirrorPathError={errors.mirrorPath ?? ''} onMirrorPathChange={setMirrorPath} onMirrorPathCommit={commitMirrorPath}
-              refreshWorkflowID={refreshWorkflowID} onRefreshWorkflowChange={commitRefreshWorkflow}
+              cardID={displayedCard.ID} actionWorkflowIDs={actionWorkflowIDs}
+              onActionsChanged={commitActions}
             />
             <AtlasSlotRows
               card={displayedCard}

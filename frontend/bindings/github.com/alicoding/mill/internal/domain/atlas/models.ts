@@ -68,8 +68,18 @@ export interface Card {
     "RefreshWorkflowID": string;
 
     /**
-     * LastSyncedAt is when RefreshWorkflowID last completed a refresh
-     * for this card -- zero value means never synced.
+     * ActionWorkflowIDs are the card's attached actions (goal 0084):
+     * callable workflows a user runs against this card from its page
+     * or menu, each receiving the card's identity through the same
+     * declared-Attributes convention trigger-atlas-card fires with.
+     * Supersedes the single RefreshWorkflowID (migrated on restore;
+     * the old field stays on the wire for import compatibility).
+     */
+    "ActionWorkflowIDs": string[] | null;
+
+    /**
+     * LastSyncedAt is when a refresh action last completed for this
+     * card -- zero value means never synced.
      */
     "LastSyncedAt": string;
 
