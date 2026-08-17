@@ -1,6 +1,6 @@
 import { chromium, expect, test as base } from '@playwright/test'
 import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process'
-import { mkdtempSync, rmSync } from 'node:fs'
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -224,7 +224,45 @@ interface WorkerFixtures {
   workerServer: SpawnedServer
 }
 
-export const test = base.extend<Record<string, never>, WorkerFixtures>({
+// The Atlas session (goal 0091) persists the viewed level + open card
+// server-side and restores it on every fresh page mount -- exactly the
+// feature, but on a worker's SHARED server it makes each test (and each
+// retry) inherit wherever the previous one stood. Reset it to the zero
+// state before every test so mounts land deterministically; the
+// dedicated restore test builds its own state mid-test (reload within
+// one test), which a before-test reset never touches. The wire call is
+// Wails' own runtime transport (POST /wails/runtime, result in the
+// response body); the method ID is read from the generated binding at
+// require-time so a bindings regen can never silently strand a stale
+// hardcoded ID here.
+const ATLAS_BINDING_PATH = path.join(
+  REPO_ROOT, 'frontend', 'bindings', 'github.com', 'alicoding', 'mill',
+  'internal', 'services', 'atlassvc', 'atlasservice.ts',
+)
+function setAtlasSessionMethodID(): number {
+  const src = readFileSync(ATLAS_BINDING_PATH, 'utf8')
+  const m = /export function SetAtlasSession[\s\S]{0,200}?ByID\((\d+)/.exec(src)
+  if (!m) throw new Error('SetAtlasSession method ID not found in generated bindings -- did the binding move?')
+  return Number(m[1])
+}
+export async function resetAtlasSession(baseURL: string): Promise<void> {
+  const res = await fetch(`${baseURL}/wails/runtime`, {
+    method: 'POST',
+    headers: { 'x-wails-client-id': 'e2e-session-reset', 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      object: 0, // objectNames.Call
+      method: 0, // CallBinding
+      args: {
+        'call-id': `e2e-session-reset-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+        methodID: setAtlasSessionMethodID(),
+        args: [{ viewedID: '', openCardID: '' }],
+      },
+    }),
+  })
+  if (!res.ok) throw new Error(`atlas session reset failed: ${res.status} ${await res.text()}`)
+}
+
+export const test = base.extend<{ resetAtlasSessionAuto: void }, WorkerFixtures>({
   // Playwright's own fixture signature requires this first ({})
   // parameter regardless of whether any test-scoped fixtures are consumed.
   // eslint-disable-next-line no-empty-pattern
@@ -250,6 +288,15 @@ export const test = base.extend<Record<string, never>, WorkerFixtures>({
     // eslint-disable-next-line react-hooks/rules-of-hooks
     await use(workerServer.baseURL)
   },
+
+  // Deterministic Atlas landing per test attempt (see resetAtlasSession
+  // above). Auto: every spec on the shared worker server gets it
+  // without opting in; specs that spawn their own dedicated server per
+  // attempt are fresh by construction and call it themselves if needed.
+  resetAtlasSessionAuto: [async ({ workerServer }, use) => {
+    await resetAtlasSession(workerServer.baseURL)
+    await use(undefined)
+  }, { auto: true }],
 })
 
 export { expect }

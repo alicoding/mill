@@ -111,33 +111,36 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
   // deleted open card -> dropped), so what arrives here is always
   // renderable. Saves below stay gated until this resolves, so the
   // mount's own transient '' never clobbers the persisted state.
-  const sessionRestoreRef = useRef<'pending' | 'claimed' | 'done'>('pending')
+  // Resolution must be STATE, not only a ref: the single-root landing
+  // below waits for it, and a ref flip alone would never re-run that
+  // effect -- the view would sit at "All spaces" until some unrelated
+  // cards refresh finally re-fired it (mid-interaction jump).
+  const sessionRestoreClaimed = useRef(false)
+  const [sessionRestored, setSessionRestored] = useState(false)
   useEffect(() => {
-    if (sessionRestoreRef.current !== 'pending') return
+    if (sessionRestoreClaimed.current) return
+    sessionRestoreClaimed.current = true
     // A deep link owns the landing -- restore yields entirely (but
     // saves still arm, so the deep-linked position persists next).
-    if (initialCardID) { sessionRestoreRef.current = 'done'; return }
-    sessionRestoreRef.current = 'claimed'
+    if (initialCardID) { setSessionRestored(true); return }
     AtlasService.AtlasSession()
       .then((session) => {
         if (session?.viewedID) setViewedID(session.viewedID)
         if (session?.openCardID) setOverlayCardID(session.openCardID)
-        sessionRestoreRef.current = session?.viewedID || session?.openCardID ? 'done' : 'pending'
-        if (sessionRestoreRef.current === 'pending') sessionRestoreRef.current = 'done'
       })
-      .catch(() => { sessionRestoreRef.current = 'done' })
+      .finally(() => setSessionRestored(true))
     // eslint-disable-next-line react-hooks/exhaustive-deps -- one-shot mount landing, same as the deep-link claim
   }, [])
   useEffect(() => {
-    if (sessionRestoreRef.current !== 'done') return
+    if (!sessionRestored) return
     void AtlasService.SetAtlasSession({ viewedID, openCardID: overlayCardID ?? '' }).catch(() => {})
-  }, [viewedID, overlayCardID])
+  }, [sessionRestored, viewedID, overlayCardID])
 
   useEffect(() => {
-    if (initialCardID || !cards || viewedID !== '' || sessionRestoreRef.current !== 'done') return
+    if (initialCardID || !cards || viewedID !== '' || !sessionRestored) return
     const root = singleRootCard(cards)
     if (root) setViewedID(root.ID)
-  }, [cards, initialCardID, viewedID])
+  }, [cards, initialCardID, viewedID, sessionRestored])
 
   useEffect(() => {
     AtlasService.Lens(viewedID)
