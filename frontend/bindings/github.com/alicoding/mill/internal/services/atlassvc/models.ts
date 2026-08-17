@@ -37,6 +37,19 @@ export interface AtlasSessionState {
 }
 
 /**
+ * FileDropCreateResult is CreateCardFromFileDrop's own response --
+ * wraps the newly created card with an additive duplicate-detection
+ * verdict (goal 0088): DuplicateOfCardID/DuplicateOfTitle are empty
+ * when path's checksum matched no existing mirrored card. The card is
+ * always created either way -- this door flags, never blocks.
+ */
+export interface FileDropCreateResult {
+    "Card": atlas$0.Card;
+    "DuplicateOfCardID": string;
+    "DuplicateOfTitle": string;
+}
+
+/**
  * FileDropRoute is ResolveFileDropRoute's own verdict.
  */
 export interface FileDropRoute {
@@ -88,6 +101,16 @@ export interface FolderScanEntry {
      * import like any other card).
      */
     "SuggestedTitle": string;
+
+    /**
+     * DuplicateOfCardID/DuplicateOfTitle (goal 0088) name the existing
+     * mirrored card whose content checksum matches this entry's own
+     * file -- both empty when no match was found. A duplicate is flagged,
+     * never excluded here: whether to import it anyway is the preview's
+     * own accept/reject decision.
+     */
+    "DuplicateOfCardID": string;
+    "DuplicateOfTitle": string;
 }
 
 /**

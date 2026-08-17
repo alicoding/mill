@@ -149,6 +149,47 @@ func TestScanFolder_ClassifiesAndHumanizesTitlesAndSkipsHidden(t *testing.T) {
 	}
 }
 
+// TestScanFolder_FlagsEntryMatchingAnAlreadyMirroredCardsChecksum
+// proves goal 0088's preview-time flag: an entry whose content already
+// matches an existing mirrored card names that card, while a
+// non-matching entry in the same scan is left unflagged.
+func TestScanFolder_FlagsEntryMatchingAnAlreadyMirroredCardsChecksum(t *testing.T) {
+	a := newTestAtlasService(t)
+	root := buildFixtureFolder(t)
+
+	fileKind := firstKindWithLabel(t, a, "Document")
+	existing, err := a.CreateCard(fileKind, "Already here", "", nil, "", nil, "", "",
+		filepath.Join(root, "Meeting Notes.md"), "")
+	if err != nil {
+		t.Fatalf("CreateCard: %v", err)
+	}
+	a.backfillMirrorChecksums()
+
+	result, err := a.ScanFolder(root)
+	if err != nil {
+		t.Fatalf("ScanFolder: %v", err)
+	}
+
+	var notes, logo FolderScanEntry
+	for _, e := range result.Entries {
+		switch e.Name {
+		case "Meeting Notes.md":
+			notes = e
+		case "logo.png":
+			logo = e
+		}
+	}
+	if notes.DuplicateOfCardID != existing.ID {
+		t.Errorf("Meeting Notes.md DuplicateOfCardID = %q, want %q", notes.DuplicateOfCardID, existing.ID)
+	}
+	if notes.DuplicateOfTitle != "Already here" {
+		t.Errorf("Meeting Notes.md DuplicateOfTitle = %q, want %q", notes.DuplicateOfTitle, "Already here")
+	}
+	if logo.DuplicateOfCardID != "" {
+		t.Errorf("logo.png DuplicateOfCardID = %q, want none (distinct content)", logo.DuplicateOfCardID)
+	}
+}
+
 func TestImportFolderSuggestions_CreatesCardsWithContainmentAndMirrorPath(t *testing.T) {
 	a := newTestAtlasService(t)
 	root := buildFixtureFolder(t)
@@ -206,6 +247,13 @@ func TestImportFolderSuggestions_CreatesCardsWithContainmentAndMirrorPath(t *tes
 	}
 	if notesCard.MirrorPath != filepath.Join(root, "Meeting Notes.md") {
 		t.Errorf("Meeting Notes MirrorPath = %q, want the real absolute file path", notesCard.MirrorPath)
+	}
+	wantSum, err := fileChecksum(notesCard.MirrorPath)
+	if err != nil {
+		t.Fatalf("fileChecksum: %v", err)
+	}
+	if notesCard.MirrorChecksum != wantSum {
+		t.Errorf("Meeting Notes MirrorChecksum = %q, want %q (goal 0088: stored at import time)", notesCard.MirrorChecksum, wantSum)
 	}
 }
 

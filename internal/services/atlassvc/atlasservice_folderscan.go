@@ -9,6 +9,7 @@ import (
 
 	"github.com/alicoding/mill/internal/adapters/fileread"
 	"github.com/alicoding/mill/internal/domain/atlas"
+	"github.com/alicoding/mill/internal/services/seeding"
 	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
@@ -181,6 +182,13 @@ type FolderScanEntry struct {
 	// v1's preview (the accepted card's own title can be edited after
 	// import like any other card).
 	SuggestedTitle string
+	// DuplicateOfCardID/DuplicateOfTitle (goal 0088) name the existing
+	// mirrored card whose content checksum matches this entry's own
+	// file -- both empty when no match was found. A duplicate is flagged,
+	// never excluded here: whether to import it anyway is the preview's
+	// own accept/reject decision.
+	DuplicateOfCardID string
+	DuplicateOfTitle  string
 }
 
 // FolderScanResult is ScanFolder's own preview payload -- a read-only
@@ -199,9 +207,12 @@ type FolderScanResult struct {
 // depth/count-capped, hidden entries and symlinks skipped
 // (fileread.Scan), each entry classified into a suggestion category by
 // extension (atlas.ClassifyScanExtension) with a humanized suggested
-// title (atlas.HumanizeFilename). Read-only: nothing is written to
-// Atlas by this call. root must not hold (or be held by) Mill's own
-// data (SetGuardedDataPaths).
+// title (atlas.HumanizeFilename), and (goal 0088) flagged when its own
+// content checksum matches an already-mirrored card. Read-only against
+// Atlas's own cards (the opportunistic checksum backfill below is the
+// one write this read-only-looking call makes, and it's additive
+// metadata only, never a content change). root must not hold (or be
+// held by) Mill's own data (SetGuardedDataPaths).
 func (a *AtlasService) ScanFolder(root string) (FolderScanResult, error) {
 	a.mu.RLock()
 	guardErr := a.guardSyncedFolderLocked(root)
@@ -210,10 +221,20 @@ func (a *AtlasService) ScanFolder(root string) (FolderScanResult, error) {
 		return FolderScanResult{}, guardErr
 	}
 
+	// Backfill FIRST so a folder full of pre-goal-0088 mirrors gets
+	// dedupe coverage on the very first scan that touches them, not
+	// just ones captured after this field existed.
+	a.backfillMirrorChecksums()
+
 	scanned, err := fileread.Scan(root, DefaultScanMaxDepth, DefaultScanMaxEntries)
 	if err != nil {
 		return FolderScanResult{}, fmt.Errorf("scan folder: %w", err)
 	}
+
+	a.mu.RLock()
+	checksumIndex := a.checksumIndexLocked()
+	titles := a.titlesByIDLocked()
+	a.mu.RUnlock()
 
 	entries := make([]FolderScanEntry, len(scanned.Entries))
 	for i, e := range scanned.Entries {
@@ -221,10 +242,19 @@ func (a *AtlasService) ScanFolder(root string) (FolderScanResult, error) {
 		if !e.IsDir {
 			category = atlas.ClassifyScanExtension(e.Ext)
 		}
-		entries[i] = FolderScanEntry{
+		entry := FolderScanEntry{
 			RelPath: e.RelPath, ParentRelPath: e.ParentRelPath, Name: e.Name, IsDir: e.IsDir,
 			Category: category, SuggestedTitle: atlas.HumanizeFilename(e.Name),
 		}
+		if !e.IsDir {
+			if sum, csErr := fileChecksum(filepath.Join(root, filepath.FromSlash(e.RelPath))); csErr == nil {
+				if dupID, ok := checksumIndex[sum]; ok {
+					entry.DuplicateOfCardID = dupID
+					entry.DuplicateOfTitle = titles[dupID]
+				}
+			}
+		}
+		entries[i] = entry
 	}
 	return FolderScanResult{
 		Root: root, Entries: entries, Truncated: scanned.Truncated,
@@ -348,7 +378,17 @@ func (a *AtlasService) ImportFolderSuggestions(req ImportFolderSuggestionsReques
 			position = importGridPosition(rootLevelIndex)
 			rootLevelIndex++
 		}
-		card, err := a.CreateCard(kindID, e.SuggestedTitle, "", nil, parentCardID, position, viewMode, "", mirrorPath, "")
+		// Checksum is computed here (goal 0088), not looked up from the
+		// preceding preview scan -- this re-scans root itself (see this
+		// function's own doc comment), so a mirrorPath resolved just
+		// above is guaranteed readable at the same moment it's hashed.
+		checksum := ""
+		if !e.IsDir {
+			if sum, csErr := fileChecksum(mirrorPath); csErr == nil {
+				checksum = sum
+			}
+		}
+		card, err := a.createCardWithID(seeding.NewSlugID(e.SuggestedTitle, "card"), kindID, e.SuggestedTitle, "", nil, parentCardID, position, viewMode, "", mirrorPath, checksum, "", "")
 		if err != nil {
 			return summary, fmt.Errorf("create card for %q: %w", e.RelPath, err)
 		}

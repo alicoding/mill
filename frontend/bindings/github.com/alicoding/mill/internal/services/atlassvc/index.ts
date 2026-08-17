@@ -9,6 +9,7 @@ export {
 export type {
     AtlasImportSummary,
     AtlasSessionState,
+    FileDropCreateResult,
     FileDropRoute,
     FolderImportSummary,
     FolderScanEntry,

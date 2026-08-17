@@ -15,22 +15,22 @@ func TestCreateCardFromFileDrop_ResolvesKindByExtension(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CreateCardFromFileDrop(prose): %v", err)
 	}
-	if prose.KindID != fileDropProseKindID {
-		t.Errorf("prose file KindID = %q, want %q", prose.KindID, fileDropProseKindID)
+	if prose.Card.KindID != fileDropProseKindID {
+		t.Errorf("prose file KindID = %q, want %q", prose.Card.KindID, fileDropProseKindID)
 	}
-	if prose.MirrorPath != "/tmp/notes.md" {
-		t.Errorf("MirrorPath = %q, want the dropped path (mirror-only)", prose.MirrorPath)
+	if prose.Card.MirrorPath != "/tmp/notes.md" {
+		t.Errorf("MirrorPath = %q, want the dropped path (mirror-only)", prose.Card.MirrorPath)
 	}
-	if prose.Title != "notes" {
-		t.Errorf("Title = %q, want the caller-supplied title", prose.Title)
+	if prose.Card.Title != "notes" {
+		t.Errorf("Title = %q, want the caller-supplied title", prose.Card.Title)
 	}
 
 	other, err := a.CreateCardFromFileDrop("/tmp/archive.zip", "archive", "", nil)
 	if err != nil {
 		t.Fatalf("CreateCardFromFileDrop(other): %v", err)
 	}
-	if other.KindID != fileDropReferenceKindID {
-		t.Errorf("non-prose file KindID = %q, want %q", other.KindID, fileDropReferenceKindID)
+	if other.Card.KindID != fileDropReferenceKindID {
+		t.Errorf("non-prose file KindID = %q, want %q", other.Card.KindID, fileDropReferenceKindID)
 	}
 }
 
@@ -45,11 +45,11 @@ func TestCreateCardFromFileDrop_ParentAndPosition(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CreateCardFromFileDrop: %v", err)
 	}
-	if card.ParentID != parent.ParentID {
-		t.Errorf("ParentID = %q, want %q", card.ParentID, parent.ParentID)
+	if card.Card.ParentID != parent.ParentID {
+		t.Errorf("ParentID = %q, want %q", card.Card.ParentID, parent.ParentID)
 	}
-	if card.Position == nil || card.Position.X != 12 || card.Position.Y != 34 {
-		t.Errorf("Position = %+v, want {12 34}", card.Position)
+	if card.Card.Position == nil || card.Card.Position.X != 12 || card.Card.Position.Y != 34 {
+		t.Errorf("Position = %+v, want {12 34}", card.Card.Position)
 	}
 }
 
@@ -68,8 +68,8 @@ func TestCreateCardFromFileDrop_KindDeleted_FallsBackGracefully(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CreateCardFromFileDrop with the seeded Kind gone: %v", err)
 	}
-	if card.KindID != kept.ID {
-		t.Errorf("KindID = %q, want the one remaining Kind %q", card.KindID, kept.ID)
+	if card.Card.KindID != kept.ID {
+		t.Errorf("KindID = %q, want the one remaining Kind %q", card.Card.KindID, kept.ID)
 	}
 }
 
@@ -164,6 +164,73 @@ func TestResolveFileDropRoute(t *testing.T) {
 	}
 	if _, err := a.ResolveFileDropRoute([]string{filepath.Join(dir, "nope.md")}); err == nil {
 		t.Error("expected an error for a path that does not exist")
+	}
+}
+
+// TestCreateCardFromFileDrop_ChecksumStoredAndDuplicateFlagged proves
+// goal 0088's non-blocking dedupe door: a second drop of a file whose
+// content already matches a mirrored card's own MirrorChecksum still
+// creates the card, but its response names the existing duplicate.
+func TestCreateCardFromFileDrop_ChecksumStoredAndDuplicateFlagged(t *testing.T) {
+	a := newTestAtlasService(t)
+	dir := t.TempDir()
+	first := filepath.Join(dir, "first.md")
+	mustWriteFile(t, first, "same content")
+
+	firstResult, err := a.CreateCardFromFileDrop(first, "First", "", nil)
+	if err != nil {
+		t.Fatalf("CreateCardFromFileDrop(first): %v", err)
+	}
+	if firstResult.Card.MirrorChecksum == "" {
+		t.Error("MirrorChecksum was never stored on the created card")
+	}
+	if firstResult.DuplicateOfCardID != "" {
+		t.Errorf("first drop reported a duplicate = %q, want none", firstResult.DuplicateOfCardID)
+	}
+
+	second := filepath.Join(dir, "second.md")
+	mustWriteFile(t, second, "same content")
+	secondResult, err := a.CreateCardFromFileDrop(second, "Second", "", nil)
+	if err != nil {
+		t.Fatalf("CreateCardFromFileDrop(second): %v", err)
+	}
+	if secondResult.DuplicateOfCardID != firstResult.Card.ID {
+		t.Errorf("DuplicateOfCardID = %q, want the first card's own id %q", secondResult.DuplicateOfCardID, firstResult.Card.ID)
+	}
+	if secondResult.DuplicateOfTitle != "First" {
+		t.Errorf("DuplicateOfTitle = %q, want %q", secondResult.DuplicateOfTitle, "First")
+	}
+	// Non-blocking: the second card is created regardless of the flag.
+	found := false
+	for _, c := range a.Cards() {
+		if c.ID == secondResult.Card.ID {
+			found = true
+		}
+	}
+	if !found {
+		t.Error("a flagged duplicate drop must still create its own card")
+	}
+}
+
+// TestCreateCardFromFileDrop_DifferentContentNeverFlagged proves two
+// mirrored files with distinct content never cross-flag each other.
+func TestCreateCardFromFileDrop_DifferentContentNeverFlagged(t *testing.T) {
+	a := newTestAtlasService(t)
+	dir := t.TempDir()
+	first := filepath.Join(dir, "a.md")
+	mustWriteFile(t, first, "content A")
+	second := filepath.Join(dir, "b.md")
+	mustWriteFile(t, second, "content B")
+
+	if _, err := a.CreateCardFromFileDrop(first, "A", "", nil); err != nil {
+		t.Fatalf("CreateCardFromFileDrop(first): %v", err)
+	}
+	result, err := a.CreateCardFromFileDrop(second, "B", "", nil)
+	if err != nil {
+		t.Fatalf("CreateCardFromFileDrop(second): %v", err)
+	}
+	if result.DuplicateOfCardID != "" {
+		t.Errorf("DuplicateOfCardID = %q, want none for distinct content", result.DuplicateOfCardID)
 	}
 }
 

@@ -162,6 +162,17 @@ func (a *AtlasService) resolveRelatesToLinkKindLocked() string {
 	return ""
 }
 
+// FileDropCreateResult is CreateCardFromFileDrop's own response --
+// wraps the newly created card with an additive duplicate-detection
+// verdict (goal 0088): DuplicateOfCardID/DuplicateOfTitle are empty
+// when path's checksum matched no existing mirrored card. The card is
+// always created either way -- this door flags, never blocks.
+type FileDropCreateResult struct {
+	Card              atlas.Card
+	DuplicateOfCardID string
+	DuplicateOfTitle  string
+}
+
 // CreateCardFromFileDrop is the instant single-file landing door
 // (LOCKED design §3b): kind derived from path's extension, MirrorPath
 // set to path itself (mirror-only, decision 4 -- the map never copies
@@ -170,15 +181,32 @@ func (a *AtlasService) resolveRelatesToLinkKindLocked() string {
 // filename, parent from the drop context's frame/zoomed area, position
 // from the drop point) -- this method only resolves the one piece of
 // seeded-concept knowledge (which Kind) that must never live in
-// frontend source (atlasNoHardcode.test.ts).
-func (a *AtlasService) CreateCardFromFileDrop(path, title, parentID string, position *atlas.Position) (atlas.Card, error) {
+// frontend source (atlasNoHardcode.test.ts). A duplicate is looked up
+// against path's own checksum BEFORE the card is created, but never
+// blocks creation -- an unreadable path just skips the checksum/
+// duplicate check silently, same fail-open posture the folder-scan
+// backfill takes.
+func (a *AtlasService) CreateCardFromFileDrop(path, title, parentID string, position *atlas.Position) (FileDropCreateResult, error) {
+	checksum, checksumErr := fileChecksum(path)
+
 	a.mu.Lock()
 	kindID := a.resolveDropKindLocked(path)
+	var dupID, dupTitle string
+	if checksumErr == nil && checksum != "" {
+		if id, ok := a.checksumIndexLocked()[checksum]; ok {
+			dupID = id
+			dupTitle = a.titlesByIDLocked()[id]
+		}
+	}
 	a.mu.Unlock()
 	if kindID == "" {
-		return atlas.Card{}, fmt.Errorf("no kind declared to land a dropped file as")
+		return FileDropCreateResult{}, fmt.Errorf("no kind declared to land a dropped file as")
 	}
-	return a.createCardWithID(seeding.NewSlugID(title, "card"), kindID, title, "", nil, parentID, position, "", "", path, "", "")
+	card, err := a.createCardWithID(seeding.NewSlugID(title, "card"), kindID, title, "", nil, parentID, position, "", "", path, checksum, "", "")
+	if err != nil {
+		return FileDropCreateResult{}, err
+	}
+	return FileDropCreateResult{Card: card, DuplicateOfCardID: dupID, DuplicateOfTitle: dupTitle}, nil
 }
 
 // CreateLinkedFileCard is card-foremost file drop (D5, LOCKED design):

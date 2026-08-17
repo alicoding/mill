@@ -68,6 +68,9 @@ type Card struct {
 	// MirrorPath is an optional local file path this card's content is
 	// synced to -- empty until a refresh has actually run once.
 	MirrorPath string
+	// MirrorChecksum is the SHA-256 (lowercase hex) of MirrorPath's
+	// content at capture/refresh time -- empty until first computed.
+	MirrorChecksum string
 	// RefreshWorkflowID optionally names the workflow that refreshes
 	// this card's mirror -- "Update now" runs it through the normal
 	// guardrail gate (ADR-0038 Decision 4); resolution/existence of the
