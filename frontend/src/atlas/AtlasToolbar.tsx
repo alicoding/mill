@@ -1,8 +1,7 @@
 import { useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Button, SegmentedControl } from '@primer/react'
+import { Button } from '@primer/react'
 import { ChecklistIcon, DownloadIcon, TableIcon, UploadIcon } from '@primer/octicons-react'
-import { ViewMode } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 import type { Card, Kind } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 import { AtlasBreadcrumb } from './AtlasBreadcrumb'
 import { AtlasLensControl } from './AtlasLensControl'
@@ -24,7 +23,7 @@ import styles from './AtlasView.module.css'
 export function AtlasToolbar({
   cards, viewedID, onNavigate,
   kinds, presentKinds, hiddenKindIDs, onChangeHidden,
-  peek, onChangePeek, viewMode, onChangeViewMode, showViewModeToggle,
+  peek, onChangePeek, onAutoArrange,
   canAddSibling, onCreate, onExport, onImportFile, onShareError,
   onOpenMatrix, onOpenCoverage, addChildRequest,
 }: {
@@ -37,9 +36,9 @@ export function AtlasToolbar({
   onChangeHidden: (hidden: string[]) => void
   peek: boolean
   onChangePeek: (peek: boolean) => void
-  viewMode: ViewMode
-  onChangeViewMode: (mode: ViewMode) => void
-  showViewModeToggle: boolean
+  // Arrange is an action, not a mode (goal 0089): one-shot packer run
+  // over the current level, persisting the resulting positions.
+  onAutoArrange: () => void
   canAddSibling: boolean
   onCreate: (containment: 'sibling' | 'child', kindID: string, title: string) => Promise<void>
   onExport: () => void
@@ -67,17 +66,13 @@ export function AtlasToolbar({
     <div className={styles.toolbar} data-testid="atlas-toolbar">
       <AtlasBreadcrumb cards={cards} viewedID={viewedID} onNavigate={onNavigate} />
       <div className={styles.toolbarActions}>
-        {showViewModeToggle && (
-          <SegmentedControl
-            aria-label={t('viewMode.ariaLabel')}
-            size="small"
-            data-testid="atlas-view-mode-toggle"
-            onChange={(i) => onChangeViewMode(i === 0 ? ViewMode.ViewModeShelves : ViewMode.ViewModeCanvas)}
-          >
-            <SegmentedControl.Button selected={viewMode !== ViewMode.ViewModeCanvas}>{t('viewMode.shelves')}</SegmentedControl.Button>
-            <SegmentedControl.Button selected={viewMode === ViewMode.ViewModeCanvas}>{t('viewMode.canvas')}</SegmentedControl.Button>
-          </SegmentedControl>
-        )}
+        <Button
+          size="small"
+          data-testid="atlas-auto-arrange"
+          onClick={onAutoArrange}
+        >
+          {t('viewMode.arrangeAction')}
+        </Button>
         <input
           ref={importInputRef}
           type="file"
