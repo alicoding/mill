@@ -76,6 +76,10 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
   // against re-applying it on every later data refresh, which would
   // otherwise re-open the overlay even after the user closed it).
   const consumedInitialCardID = useRef(false)
+  // Mirrors the ref as state for the landing gate below -- a ref must
+  // not be read during render, and the gate needs re-render when the
+  // deep link resolves.
+  const [deepLinkConsumed, setDeepLinkConsumed] = useState(false)
 
   useEffect(() => {
     void refreshAtlas()
@@ -90,6 +94,7 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
     const target = cards.find((c) => c.ID === initialCardID)
     if (!target) return
     consumedInitialCardID.current = true
+    setDeepLinkConsumed(true)
     setViewedID(target.ParentID)
     setOverlayCardID(target.ID)
   }, [initialCardID, cards])
@@ -159,6 +164,16 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
   const allLinkKinds = linkKinds ?? []
   const allLinks = links ?? []
   const allNotes = notes ?? []
+
+  // Never render an interactive board while the mount landing is
+  // still pending (session restore in flight, a deep link not yet
+  // consumed, or the single-root auto-entry not yet applied): the
+  // transient root board LOOKS real, and anything the user -- or a
+  // test -- does to it (an Auto-arrange click, a card flip) is
+  // consumed by a board that's about to be replaced.
+  const landingPending =
+    !sessionRestored || !cards ||
+    (viewedID === '' && (initialCardID ? !deepLinkConsumed : !!singleRootCard(allCards)))
 
   const viewedCard = allCards.find((c) => c.ID === viewedID) ?? null
   const childrenAll = childrenOf(allCards, viewedID)
@@ -369,7 +384,7 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
     await refreshAtlas()
   }
 
-  if (kinds === null || cards === null) {
+  if (kinds === null || cards === null || landingPending) {
     return <Text as="p" className={runbookStyles.muted}>{t('loading')}</Text>
   }
 
