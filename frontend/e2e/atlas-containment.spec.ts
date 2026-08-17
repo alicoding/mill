@@ -317,3 +317,88 @@ test('atlas containment: area drawing, marker-box grouping, drag filing, dissolv
     rmSync(dir, { recursive: true, force: true })
   }
 })
+
+// eslint-disable-next-line no-empty-pattern -- this test needs `testInfo` (the second arg), not any fixture.
+test('atlas containment: shift-drag box select marks 2 cards selected (goal 0081 slice A5 rider (b))', async ({}, testInfo) => {
+  const idx = testInfo.parallelIndex
+  const dir = mkdtempSync(path.join(tmpdir(), `mill-e2e-atlas-containment-select-${idx}-`))
+  const settingsPath = path.join(dir, 'settings.json')
+  const executionDbPath = path.join(dir, 'execution.db')
+  const backupDir = path.join(dir, 'backups')
+  const port = ATLAS_CONTAINMENT_SERVER_BASE_PORT + idx
+  const mcpPort = ATLAS_CONTAINMENT_MCP_BASE_PORT + idx
+
+  let server: SpawnedServer | undefined
+  const browser = await chromium.launch()
+  try {
+    server = await spawnMillServer({ port, mcpPort, settingsPath, executionDbPath, backupDir })
+    const page = await browser.newPage()
+    await page.goto(`${server.baseURL}/`)
+    await page.getByRole('link', { name: 'Atlas' }).click()
+    const board = page.getByTestId('atlas-board')
+    await expect(board).toBeVisible()
+    await zoomOutLight(page)
+
+    const popover = page.getByTestId('atlas-placement-popover')
+    const menu = contextMenu(page)
+
+    await armAndPlaceCard(page, board, popover, 0.25, 0.05, 'ZzC2eSelectA')
+    await armAndPlaceCard(page, board, popover, 0.55, 0.05, 'ZzC2eSelectB')
+
+    // React Flow's own box-select gesture (independent of the Area
+    // tool's marquee, per this file's own onSelectionChange comment
+    // above): holding Shift while dragging on empty canvas selects
+    // every node the box touches, rather than panning. The pointer
+    // must already be AT the start point before Shift goes down and
+    // the button presses -- pressing Shift first (then moving into
+    // position) was observed to make React Flow compute a selection
+    // rectangle anchored somewhere other than the actual mousedown
+    // point, silently selecting nothing. Wrapped in the same
+    // expect(...).toPass() retry idiom fixtures/canvasNode.ts's
+    // clickCanvasNode already established for React Flow interaction
+    // races -- boxes are re-measured on every attempt, not read once
+    // and reused, in case an early attempt's own settle time shifted
+    // them.
+    const cardA = noteCard(page, 'ZzC2eSelectA')
+    const cardB = noteCard(page, 'ZzC2eSelectB')
+    await expect(async () => {
+      const boxA = await cardA.boundingBox()
+      const boxB = await cardB.boundingBox()
+      if (!boxA || !boxB) throw new Error('missing bounding box before shift-drag select')
+      const dragFrom = { x: boxA.x - 15, y: boxA.y - 15 }
+      const dragTo = { x: boxB.x + boxB.width + 15, y: boxB.y + boxB.height + 15 }
+      await page.mouse.move(dragFrom.x, dragFrom.y)
+      await page.keyboard.down('Shift')
+      await page.mouse.down()
+      await page.waitForTimeout(100)
+      const steps = 15
+      for (let i = 1; i <= steps; i++) {
+        await page.mouse.move(dragFrom.x + ((dragTo.x - dragFrom.x) * i) / steps, dragFrom.y + ((dragTo.y - dragFrom.y) * i) / steps)
+      }
+      await page.waitForTimeout(100)
+      await page.mouse.up()
+      await page.keyboard.up('Shift')
+      await expect(page.locator('.react-flow__node.selected')).toHaveCount(2, { timeout: 1_000 })
+    }).toPass({ timeout: 15_000, intervals: [500] })
+
+    // NOTE (reported, not silently patched -- outside this slice's own
+    // scope): right-clicking a member of this now-confirmed 2-node
+    // selection was found to clear React Flow's own selection state
+    // before AtlasBoard's onNodeContextMenu handler reads it --
+    // selectedIDs reads back empty and the single-card menu opens
+    // instead of "Group into new area", reproduced directly (selected
+    // count 5 -> 0 across a right-click, isolated from this test's own
+    // 2-card case too). That's a pre-existing AtlasBoard/React Flow
+    // selection-vs-context-menu interaction (goal 0081 slice A2's own
+    // code, not A5's), so the select-then-group flow itself is not
+    // exercised further here; the drag-select mechanism this test
+    // covers is the part slice A5 was asked to add coverage for.
+
+    // Cleanup (testing.md's within-file discipline).
+    await deleteCard(page, menu, 'ZzC2eSelectA')
+    await deleteCard(page, menu, 'ZzC2eSelectB')
+  } finally {
+    await server?.stop()
+    rmSync(dir, { recursive: true, force: true })
+  }
+})

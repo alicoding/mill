@@ -1,12 +1,18 @@
-import type { Page } from '@playwright/test'
+import type { Locator, Page } from '@playwright/test'
 
-// The card page's edit affordances live behind a collapsed <details>
-// disclosure (the page reads first, edits on demand) -- any test
-// reaching an atlas-overlay-* edit field or Save/Delete opens it
-// first. Idempotent: clicking only when actually closed, so tests
-// that open the page twice can call this unconditionally.
-export async function openCardPageEdit(page: Page): Promise<void> {
-  const details = page.getByTestId('atlas-page-edit-section')
-  const isOpen = await details.evaluate((el) => (el as HTMLDetailsElement).open)
-  if (!isOpen) await page.getByTestId('atlas-page-edit-toggle').click()
+// Read is edit (goal 0081 slice A5): the card page lost its collapsed
+// "Edit card" disclosure -- every field is always visible and directly
+// editable, so there is no more open-the-edit-section step before a
+// test can reach a field. Delete moved behind the header's own kebab
+// menu (rider (a)): this drives that flow (open menu -> Delete ->
+// confirm) the same way every spec used to click the old edit
+// section's bare Delete button. The kebab's own ActionMenu.Overlay
+// portals its items outside the dialog's DOM subtree (the same reason
+// atlas.spec.ts already queries atlas-add-sibling/atlas-add-child via
+// the page, not a scoped container), so the menu item is queried off
+// `page`, not `overlay`.
+export async function deleteViaPageMenu(page: Page, overlay: Locator): Promise<void> {
+  await overlay.getByTestId('atlas-page-menu').click()
+  await page.getByTestId('atlas-page-menu-delete').click()
+  await page.getByRole('alertdialog').getByRole('button', { name: 'Delete' }).click()
 }

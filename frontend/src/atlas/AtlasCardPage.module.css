@@ -29,11 +29,44 @@
 .glyphCircle {
     border-radius: 50%;
 }
-.title {
+.backButton {
+    flex: 0 0 auto;
+    color: var(--fgColor-muted);
+    max-width: 180px;
+}
+
+/* The title, read-is-edit (goal 0081 slice A5): a single-line input
+   styled to read as the page heading itself, not a form field bolted
+   beside one -- transparent chrome at rest, the kit's own focus ring
+   on interaction, so nothing about the header LOOKS editable until a
+   reader actually clicks in. */
+.titleField {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+.titleInput {
+    width: 100%;
+}
+.titleInput input {
     font-size: 16px;
     font-weight: 700;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    border-color: transparent;
+    background: transparent;
+    padding-left: 4px;
+}
+.titleInput input:hover,
+.titleInput input:focus {
+    border-color: var(--borderColor-default);
+    background: var(--bgColor-default);
+}
+
+.savedTick {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    flex: 0 0 auto;
+    font-size: 11px;
+    color: var(--fgColor-success);
     white-space: nowrap;
 }
 .fileTag {
@@ -78,17 +111,31 @@
     display: flex;
     flex-direction: column;
     gap: 14px;
-}
-.ownNote {
-    font-size: 13px;
-    line-height: 1.4;
-    white-space: pre-wrap;
+    margin-top: 16px;
 }
 
+/* The read-is-edit fields column (goal 0081 slice A5): Note, kind
+   Fields, Source/Mirror path (kind-gated), Refresh workflow -- always
+   rendered, nothing to expand. Replaces the old collapsed
+   .editSection/.editFields disclosure. */
+.fieldsCol {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    max-width: 560px;
+}
+
+/* Every "Inside" entry navigates on click (a leaf child row and a
+   group child row alike, goal 0081 slice A5's live extension) -- the
+   same hover/cursor affordance a slot-row chip's own button carries. */
 .entry {
     border: 1px solid var(--borderColor-muted);
     border-radius: 6px;
     padding: 8px 10px;
+    cursor: pointer;
+}
+.entry:hover {
+    border-color: var(--borderColor-emphasis);
 }
 .entryEyebrow {
     font-family: var(--mill-mono);
@@ -121,34 +168,11 @@
     align-items: center;
     justify-content: space-between;
     gap: 8px;
-    cursor: pointer;
-}
-.groupEntry:hover {
-    border-color: var(--borderColor-emphasis);
 }
 .groupEntryChip {
     font-family: var(--mill-mono);
     font-size: 10.5px;
     color: var(--fgColor-muted);
-    flex: 0 0 auto;
-}
-
-.personRow {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-top: 4px;
-}
-.personAvatar {
-    width: 22px;
-    height: 22px;
-    border-radius: 50%;
-    color: #fff;
-    font-size: 11px;
-    font-weight: 650;
-    display: flex;
-    align-items: center;
-    justify-content: center;
     flex: 0 0 auto;
 }
 
@@ -182,31 +206,6 @@
     width: min(1200px, calc(100vw - 96px)) !important;
     height: calc(100vh - 120px) !important;
     max-height: calc(100vh - 120px) !important;
-}
-
-
-.editSection {
-    margin-top: 8px;
-    padding-top: 4px;
-    border-top: 1px solid var(--borderColor-muted);
-}
-.editSummary {
-    cursor: pointer;
-    padding: 8px 0;
-    font-size: 12.5px;
-    font-weight: 650;
-    color: var(--fgColor-muted);
-    user-select: none;
-}
-.editSummary:hover {
-    color: var(--fgColor-default);
-}
-.editFields {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    padding-top: 6px;
-    max-width: 560px;
 }
 
 .metaCol {

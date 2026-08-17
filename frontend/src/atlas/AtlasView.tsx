@@ -141,7 +141,6 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
   // ParentID names the viewed space renders here, unfiltered.
   const visibleNotes = allNotes.filter((n) => n.ParentID === viewedID)
   const overlayCard = overlayCardID ? allCards.find((c) => c.ID === overlayCardID) ?? null : null
-  const overlayKind = overlayCard ? allKinds.find((k) => k.ID === overlayCard.KindID) : undefined
 
   // atlas.up (⌘↑, shared/commands.ts): one step up the depth ladder.
   // At the auto-entered single root there is no "up" (the All spaces
@@ -418,7 +417,6 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
       {overlayCard && (
         <AtlasCardOverlay
           card={overlayCard}
-          kind={overlayKind}
           kinds={allKinds}
           allCards={allCards}
           links={allLinks}

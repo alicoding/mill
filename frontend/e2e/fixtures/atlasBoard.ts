@@ -1,3 +1,4 @@
+import { expect } from '@playwright/test'
 import type { Locator, Page } from '@playwright/test'
 
 // Promoted out of atlas-authoring.spec.ts (goal 0081 slice A2,
@@ -39,4 +40,29 @@ export async function clickCorner(board: Locator, corner: 'top-left' | 'top-righ
       : corner === 'top-right' ? { x: box.width - 12, y: 12 }
         : { x: box.width - 12, y: box.height - 12 }
   await board.click({ position })
+}
+
+// Flips a note card in place then clicks its back face's Open button --
+// the one path to the card page in the one-map model. Click TOGGLES the
+// flip, so this only clicks when the card is currently front-facing --
+// reopening an already-flipped card must not click it back to front
+// first.
+//
+// The flip click is wrapped in a retry (the same expect(...).toPass
+// idiom fixtures/canvasNode.ts's clickCanvasNode already established
+// for this exact React Flow class): a card's own React Flow node is
+// draggable in free/canvas-mode boards, so an occasional native
+// click's mousedown/mouseup pair lands close enough together to read
+// as a zero-distance micro-drag instead of a click, silently
+// swallowing the onClick that would have toggled data-flipped --
+// reproduced directly (not just in a full-suite run) via a throwaway
+// repeat-click script, independent of any card-page editing.
+export async function openViaFlip(card: Locator): Promise<void> {
+  await expect(async () => {
+    if ((await card.getAttribute('data-flipped')) !== 'true') {
+      await card.click()
+      await expect(card).toHaveAttribute('data-flipped', 'true', { timeout: 1_000 })
+    }
+  }).toPass({ timeout: 10_000, intervals: [300] })
+  await card.getByTestId('atlas-note-open').click()
 }

@@ -97,6 +97,14 @@ export const ATLAS_CONTAINMENT_MCP_BASE_PORT = 9940
 export const ATLAS_SLOTS_SERVER_BASE_PORT = 9960
 export const ATLAS_SLOTS_MCP_BASE_PORT = 9980
 
+// atlas-page-edit.spec.ts's own dedicated pair (goal 0081 slice A5):
+// edits fields in place, adds/removes links via the page's own slot
+// rows, and asserts exact link/chip counts and nav-stack state --
+// same own-server-own-ports reasoning as atlas-slots above, disjoint
+// from it.
+export const ATLAS_PAGE_EDIT_SERVER_BASE_PORT = 10000
+export const ATLAS_PAGE_EDIT_MCP_BASE_PORT = 10020
+
 async function waitForHealth(url: string, proc: ChildProcessWithoutNullStreams, timeoutMs: number): Promise<void> {
   const deadline = Date.now() + timeoutMs
   let lastErr: unknown

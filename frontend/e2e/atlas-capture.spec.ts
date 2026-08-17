@@ -1,7 +1,7 @@
 import { test, expect } from './fixtures/server'
 import type { Page } from '@playwright/test'
 import { clickCorner, zoomAllTheWayOut } from './fixtures/atlasBoard'
-import { openCardPageEdit } from './fixtures/atlasPage'
+import { deleteViaPageMenu } from './fixtures/atlasPage'
 
 // Atlas capture doors (goal 0081 slice A3, LOCKED design §2b/§3b):
 // paste (text/HTML into the placement popover) and the Scratchpad
@@ -70,9 +70,7 @@ test('paste text opens the placement popover prefilled with title and note', asy
   await card.getByTestId('atlas-note-open').click()
   const overlay = page.locator('[data-component="atlas-card-overlay"]')
   await expect(overlay).toBeVisible()
-  await openCardPageEdit(page)
-  await overlay.getByTestId('atlas-overlay-delete').click()
-  await page.getByRole('alertdialog').getByRole('button', { name: 'Delete' }).click()
+  await deleteViaPageMenu(page, overlay)
   await expect(overlay).not.toBeVisible()
 })
 
@@ -102,9 +100,7 @@ test('paste HTML converts to Markdown before prefilling the popover', async ({ p
   await card.getByTestId('atlas-note-open').click()
   const overlay = page.locator('[data-component="atlas-card-overlay"]')
   await expect(overlay).toBeVisible()
-  await openCardPageEdit(page)
-  await overlay.getByTestId('atlas-overlay-delete').click()
-  await page.getByRole('alertdialog').getByRole('button', { name: 'Delete' }).click()
+  await deleteViaPageMenu(page, overlay)
   await expect(overlay).not.toBeVisible()
 })
 

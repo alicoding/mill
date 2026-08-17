@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ActionList, ActionMenu, Dialog, FormControl, Select, TextInput } from '@primer/react'
+import { ActionList, ActionMenu, Dialog, FormControl, TextInput } from '@primer/react'
 import { PlusIcon } from '@primer/octicons-react'
 import type { Kind } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
+import { KindPicker } from './KindPicker'
 
 type Containment = 'sibling' | 'child'
 
@@ -86,11 +87,7 @@ export function AtlasCreateMenu({ kinds, canAddSibling, onCreate, openChildReque
         >
           <FormControl>
             <FormControl.Label>{t('create.kindLabel')}</FormControl.Label>
-            <Select value={kindID} data-testid="atlas-create-kind" onChange={(e) => setKindID(e.target.value)}>
-              {kinds.map((k) => (
-                <Select.Option key={k.ID} value={k.ID}>{k.Icon ? `${k.Icon} ${k.Label}` : k.Label}</Select.Option>
-              ))}
-            </Select>
+            <KindPicker kinds={kinds} value={kindID} onChange={setKindID} ariaLabel={t('create.kindLabel')} testId="atlas-create-kind" />
           </FormControl>
           <FormControl>
             <FormControl.Label>{t('create.titleLabel')}</FormControl.Label>
