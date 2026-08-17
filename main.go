@@ -28,9 +28,16 @@ import (
 	"github.com/alicoding/mill/internal/services/triggersvc"
 	"github.com/wailsapp/wails/v3/pkg/application"
 	"github.com/wailsapp/wails/v3/pkg/events"
-	"github.com/wailsapp/wails/v3/pkg/updater"
-	updaterGithub "github.com/wailsapp/wails/v3/pkg/updater/providers/github"
 )
+
+// millChannel names how this binary was distributed -- "source" (the
+// default: `git clone` + local build) unless release.yml's macOS build
+// step overrides it to "release" via `-X main.millChannel=release`
+// (build/darwin/Taskfile.yml's build:native reads MILL_CHANNEL from the
+// shell environment into that ldflags value; see release.yml's package
+// step). A var, not a const, so ldflags can overwrite it -- gates the
+// install-and-restart path in settingssvc.
+var millChannel = "source"
 
 // millVersion is the version CurrentVersion the updater compares
 // releases against. Three places must agree on a release's version --
@@ -198,6 +205,7 @@ func main() {
 
 	settingsService := settingssvc.NewSettingsService(settingsStore, triggerService, settingsPath != defaultSettingsPath)
 	settingsService.SetAppVersion(millVersion)
+	settingsService.SetUpdateChannel(millChannel)
 	// Bidirectional hotkey-conflict check (docs/SPEC.md §3.7): a
 	// per-workflow hotkey can't silently collide with the app-level
 	// summon hotkey, and vice versa -- SettingsService.AssignSummonHotkey
@@ -270,32 +278,14 @@ func main() {
 		SingleInstance: singleInstanceOptions(func() *application.WebviewWindow { return mainWindow }),
 	})
 
-	// Wails3's own first-party self-updater (v3/pkg/updater, confirmed
-	// via docs/SPEC.md §3.7's research: no separate Sparkle integration
-	// needed, this ships in the framework already). app.Updater is
-	// constructed by application.New() itself; Init just needs a
-	// provider. A GitHub-Releases-provider construction failure here
-	// would only happen from a malformed static Config, not a network
-	// call (New doesn't hit the network) -- logged, not fatal, since a
-	// broken updater must never block the app from starting.
-	// AssetMatcher: the default matcher requires the literal GOOS in the
-	// asset name; Mill's assets say "macos", not "darwin" (see
-	// settingssvc.UpdaterAssetMatcher). ChecksumAsset: release.yml
-	// publishes SHA256SUMS next to the zip -- naming it makes the
-	// provider verify the download against it.
-	if ghProvider, err := updaterGithub.New(updaterGithub.Config{
-		Repository:    "alicoding/mill",
-		AssetMatcher:  settingssvc.UpdaterAssetMatcher,
-		ChecksumAsset: "SHA256SUMS",
-	}); err != nil {
-		logger.Error("updater provider init", "error", err)
-	} else if err := app.Updater.Init(updater.Config{
-		CurrentVersion: millVersion,
-		Providers:      []updater.Provider{ghProvider},
-	}); err != nil {
+	// Wails3's own first-party self-updater (v3/pkg/updater) -- app.Updater
+	// is constructed by application.New() itself; the provider/Init
+	// wiring is extracted to settingssvc.InitUpdater (keeps this file
+	// under its own line-count convention). A construction failure here
+	// is logged, not fatal -- a broken updater must never block the app
+	// from starting.
+	if err := settingssvc.InitUpdater(app.Updater, "alicoding/mill", millVersion, settingsService); err != nil {
 		logger.Error("updater init", "error", err)
-	} else {
-		settingsService.SetUpdater(app.Updater)
 	}
 
 	// Global hotkey registration needs the native run loop already

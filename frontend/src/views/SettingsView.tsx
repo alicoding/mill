@@ -13,6 +13,7 @@ import { usePrefersReducedMotion } from '../shared/usePrefersReducedMotion'
 import { SETTINGS_SECTIONS, sectionMatchesQuery } from '../shared/settingsSections'
 import KeyboardShortcutsSection from './KeyboardShortcutsSection'
 import DataStewardshipSection from './DataStewardshipSection'
+import UpdatesSection from './UpdatesSection'
 import SettingsToc from './SettingsToc'
 import { useSettingsSectionSync } from './useSettingsSectionSync'
 import styles from '../shared/ListCard.module.css'
@@ -91,10 +92,6 @@ function SettingsView({ initialSection }: { initialSection?: string } = {}) {
   const [summonRecording, setSummonRecording] = useState(false)
   const [summonError, setSummonError] = useState('')
 
-  const [updateStatus, setUpdateStatus] = useState('')
-  const [updateChecking, setUpdateChecking] = useState(false)
-  const [appVersion, setAppVersion] = useState('')
-
   const [contractExportError, setContractExportError] = useState('')
 
   const [mcpWriteEnabled, setMCPWriteEnabledState] = useState<boolean | null>(null)
@@ -128,10 +125,6 @@ function SettingsView({ initialSection }: { initialSection?: string } = {}) {
     }
     return out
   }, [filterQuery, t])
-
-  useEffect(() => {
-    SettingsService.AppVersion().then(setAppVersion).catch(console.error)
-  }, [])
 
   useEffect(() => {
     SettingsService.GetLaunchAtLogin()
@@ -244,17 +237,6 @@ function SettingsView({ initialSection }: { initialSection?: string } = {}) {
         URL.revokeObjectURL(url)
       })
       .catch(() => setContractExportError(t('settings.contract.exportError')))
-  }
-
-  const checkForUpdates = () => {
-    setUpdateChecking(true)
-    setUpdateStatus('')
-    SettingsService.CheckForUpdates()
-      .then((result) => {
-        setUpdateStatus(result.updateAvailable ? t('settings.updates.updateAvailable', { version: result.version }) : t('settings.updates.upToDate'))
-      })
-      .catch((err) => setUpdateStatus(String(err)))
-      .finally(() => setUpdateChecking(false))
   }
 
   const SECTION_CONTENT: Record<string, ReactNode> = {
@@ -408,15 +390,7 @@ function SettingsView({ initialSection }: { initialSection?: string } = {}) {
       </>
     ),
     backups: <DataStewardshipSection />,
-    updates: (
-      <Stack direction="horizontal" gap="condensed" align="center">
-        <Button size="small" onClick={checkForUpdates} disabled={updateChecking} data-testid="check-for-updates">
-          {updateChecking ? t('settings.updates.checking') : t('settings.updates.checkButton')}
-        </Button>
-        {appVersion && <Text size="small" className={styles.muted} data-testid="current-app-version">{t('settings.updates.currentVersion', { version: appVersion })}</Text>}
-        {updateStatus && <Text size="small" className={styles.muted}>{updateStatus}</Text>}
-      </Stack>
-    ),
+    updates: <UpdatesSection />,
   }
 
   return (

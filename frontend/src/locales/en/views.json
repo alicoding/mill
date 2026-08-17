@@ -59,7 +59,17 @@
       "checking": "Checking…",
       "updateAvailable": "Update available: v{{version}}",
       "upToDate": "You're on the latest version.",
-      "currentVersion": "You have Mill v{{version}}"
+      "currentVersion": "You have Mill v{{version}}",
+      "channelRelease": "installed from a release",
+      "channelSource": "built from source",
+      "whatsNew": "What's new",
+      "updateNow": "Update now",
+      "downloading": "Downloading update…",
+      "restartButton": "Restart Mill",
+      "installedRestart": "Update installed. Restart to finish.",
+      "installFailed": "Couldn't install the update: {{error}}",
+      "sourceUpdateHint": "This copy was built from source. Pull the latest code and rebuild to update.",
+      "sourceUpdateCommand": "git pull, then task install:app"
     },
     "dataStewardship": {
       "description": "Mill snapshots your workflow history and settings automatically, and can bundle everything into one file to move to another machine.",
