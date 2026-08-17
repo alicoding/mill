@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { resolveDefaultKindID, titleFromNoteText } from './atlasCreateHelpers'
+import { resolveDefaultKindID, titleFromFilename, titleFromNoteText } from './atlasCreateHelpers'
 import type { Kind } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 
 function kind(id: string): Kind {
@@ -42,5 +42,39 @@ describe('titleFromNoteText', () => {
     expect(got).toHaveLength(80)
     expect(got.endsWith('…')).toBe(true)
     expect(got.startsWith('x'.repeat(79))).toBe(true)
+  })
+
+  // The same function doubles as the paste door's own first-line-title
+  // derivation (goal 0081 slice A3) -- these cases exercise it against
+  // realistic pasted-text shapes rather than a note's own body.
+  it('takes only the first line of pasted multi-paragraph text', () => {
+    const pasted = 'Q3 migration checklist\n\n- item one\n- item two'
+    expect(titleFromNoteText(pasted)).toBe('Q3 migration checklist')
+  })
+
+  it('trims leading/trailing whitespace on a pasted single line', () => {
+    expect(titleFromNoteText('   pasted from a chat app   ')).toBe('pasted from a chat app')
+  })
+})
+
+describe('titleFromFilename', () => {
+  it('strips the extension', () => {
+    expect(titleFromFilename('meeting_notes-v2.md')).toBe('meeting_notes-v2')
+  })
+
+  it('strips the directory and the extension', () => {
+    expect(titleFromFilename('/Users/me/Downloads/Project Plan.docx')).toBe('Project Plan')
+  })
+
+  it('handles a Windows-style path separator', () => {
+    expect(titleFromFilename('C:\\Users\\me\\notes.txt')).toBe('notes')
+  })
+
+  it('leaves a filename with no extension unchanged', () => {
+    expect(titleFromFilename('README')).toBe('README')
+  })
+
+  it('never treats a leading dot as an extension separator', () => {
+    expect(titleFromFilename('.gitignore')).toBe('.gitignore')
   })
 })

@@ -28,6 +28,23 @@
     border-radius: 4px;
 }
 
+/* The capture doors' own transient error (goal 0081 slice A3): a
+   dropped/pasted file that couldn't be read -- floats just above the
+   creation tray, same bottom-center anchoring, auto-dismissed by its
+   own hook rather than needing a close control. */
+.dropError {
+    position: absolute;
+    left: 50%;
+    bottom: 68px;
+    transform: translateX(-50%);
+    z-index: 5;
+    padding: 6px 12px;
+    background: var(--bgColor-default);
+    border: 1px solid var(--borderColor-default);
+    border-radius: var(--borderRadius-medium);
+    box-shadow: var(--shadow-floating-large, 0 4px 16px rgba(0, 0, 0, 0.12));
+}
+
 /* Link labels (goal 0072 slice A): shown on hover/selection only, or
    always when the board carries 3 edges or fewer -- edges themselves
    stay decorative (a 1.6px stroke), never intercepting a click meant

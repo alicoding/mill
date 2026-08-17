@@ -25,6 +25,28 @@ export interface AtlasImportSummary {
 }
 
 /**
+ * FileDropRoute is ResolveFileDropRoute's own verdict.
+ */
+export interface FileDropRoute {
+    /**
+     * Kind is "instant" (a single, non-directory file -- land it now,
+     * no popover) or "import" (2+ paths, or a single directory -- route
+     * into the existing folder-import preview, LOCKED design §3b).
+     */
+    "Kind": string;
+
+    /**
+     * Path is, for "instant", the one file path (== paths[0]); for
+     * "import", the scan root ImportFolderSuggestions' own preview
+     * should open against -- the dropped directory itself for a single
+     * directory drop, or the deepest common ancestor of every dropped
+     * path for a multi-file drop (dropping several files from the same
+     * Finder window is the common case this covers).
+     */
+    "Path": string;
+}
+
+/**
  * FolderImportSummary counts what ImportFolderSuggestions actually
  * created.
  */

@@ -24,8 +24,8 @@
     "fingerprint": "5e8bb72e2cc03ed6a45d4179b4da38f6eb85ba9e8eadc76e271957b92984061c"
   },
   "atlascard:atlas-card-scratchpad": {
-    "seedRevision": 1,
-    "fingerprint": "9c4dc9e41f161539cfaf3fea3f9cec56cb3ef7c08699128a9ee8044466c279e5"
+    "seedRevision": 2,
+    "fingerprint": "c65746971f2718c786af471f9b57402741912663b597572a59a8dd06396130ac"
   },
   "atlaskind:atlas-kind-contact": {
     "seedRevision": 2,
@@ -38,6 +38,10 @@
   "atlaskind:atlas-kind-intake": {
     "seedRevision": 2,
     "fingerprint": "ec06f5c0e094665ffd4c3160a23288c8c2ff0a455f736c8c4f774b7e2cf524e5"
+  },
+  "atlaskind:atlas-kind-reference": {
+    "seedRevision": 1,
+    "fingerprint": "8ddd7806e05137eda5b4ed3bb52af907a2679e1184e069ad21eeacf52104cc89"
   },
   "atlaskind:atlas-kind-topic": {
     "seedRevision": 2,

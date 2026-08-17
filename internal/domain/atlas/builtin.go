@@ -34,6 +34,12 @@ const (
 	// without retrofitting automated behavior onto the unrelated Topic
 	// example above.
 	kindIntakeID = "atlas-kind-intake"
+	// kindReferenceID (goal 0081 slice A3) is the instant single-file-
+	// drop door's own fallback Kind: a dropped file whose extension
+	// isn't in the document family still lands as a typed card, never
+	// refused (LOCKED design §3b -- "a file card is a link path to
+	// somewhere in the filesystem anyway").
+	kindReferenceID = "atlas-kind-reference"
 
 	linkKindRelatesToID = "atlas-linkkind-relates-to"
 
@@ -100,6 +106,12 @@ func BuiltInKinds() []Kind {
 			CreatedAt: now, UpdatedAt: now,
 			BuiltIn: true, Seed: seedorigin.Stamp(2), // FieldTombstones added, structural only
 		},
+		{
+			ID: kindReferenceID, Label: "Reference", Icon: "🔗",
+			Description: "Something linked in, not further categorized.",
+			CreatedAt:   now, UpdatedAt: now,
+			BuiltIn: true, Seed: seedorigin.Stamp(1),
+		},
 	}
 }
 
@@ -157,12 +169,19 @@ func BuiltInCards() []Card {
 			BuiltIn: true, Seed: seedorigin.Stamp(2),
 		},
 		{
+			// The Scratchpad seed (goal 0081 slice A3): a CONTAINER card,
+			// not a structured Topic instance in its own right -- notes
+			// (outside the Card/seed system entirely, atlasnote.go) arrive
+			// here at runtime, never seeded, so this card carries no fields
+			// of its own and holds no children on install. Kind stays
+			// Topic (containment is a role every card already carries,
+			// ADR-0038 Decision 3 -- there is no dedicated container Kind).
 			ID: cardScratchpadID, KindID: kindTopicID, Title: "Scratchpad",
-			Note:      "One keystroke in. File it later by dragging.",
+			Note:      "Quick captures land here. Drag notes out to file them, or promote them into cards.",
 			ParentID:  cardMySpaceID,
 			Position:  &Position{X: 746, Y: 80},
 			CreatedAt: now, UpdatedAt: now,
-			BuiltIn: true, Seed: seedorigin.Stamp(1),
+			BuiltIn: true, Seed: seedorigin.Stamp(2),
 		},
 		{
 			ID: cardContactID, KindID: kindContactID, Title: "Ada Lovelace",

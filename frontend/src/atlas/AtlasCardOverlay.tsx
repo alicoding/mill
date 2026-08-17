@@ -11,6 +11,8 @@ import { AtlasCardPageHeader } from './AtlasCardPageHeader'
 import { AtlasCardPageContents } from './AtlasCardPageContents'
 import { AtlasCardPageEditSection } from './AtlasCardPageEditSection'
 import { AtlasCardPageMetaRail } from './AtlasCardPageMetaRail'
+import { useAtlasCardPageFileDrop } from './useAtlasCardPageFileDrop'
+import { FILE_DROP_CONTEXT_CARD_PAGE } from './atlasFileDropShared'
 import styles from './AtlasCardPage.module.css'
 
 // The "page" surface (docs/goals/0072 slice C, evolving goal 0061's
@@ -56,6 +58,10 @@ export function AtlasCardOverlay({ card, kind, kinds, allCards, links, linkKinds
   const [includeAttachments, setIncludeAttachments] = useState(false)
   const [copied, setCopied] = useState(false)
   const shareActions = atlasCardShareActions(card, (message) => setError(message))
+  // D5 (goal 0081 slice A3): a file dropped while this page is open
+  // becomes a linked sibling, never mutating this card -- see the
+  // hook's own header comment.
+  useAtlasCardPageFileDrop({ card, allCards, onSaved, onError: setError })
   const copyContext = async () => {
     await shareActions.copyAsContext(includeAttachments)
     setCopied(true)
@@ -145,7 +151,7 @@ export function AtlasCardOverlay({ card, kind, kinds, allCards, links, linkKinds
         <AtlasCardPageHeader card={card} kind={kind} dialogLabelId={dialogLabelId} onClose={onClose} />
       )}
       renderBody={() => (
-        <div className={styles.body}>
+        <div className={styles.body} data-file-drop-target data-file-drop-context={FILE_DROP_CONTEXT_CARD_PAGE}>
           <div>
             <AtlasCardPageContents card={card} allCards={allCards} kinds={kinds} links={links} linkKinds={linkKinds} onOpenGroupEntry={onOpenGroupEntry} />
             <AtlasCardPageEditSection

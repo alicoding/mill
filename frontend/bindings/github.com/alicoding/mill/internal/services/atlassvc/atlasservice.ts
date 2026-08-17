@@ -44,6 +44,17 @@ export function CardsByKind(kindID: string): $CancellablePromise<atlas$0.Card[] 
 }
 
 /**
+ * ConvertHTMLToMarkdown is the paste door's own HTML branch (LOCKED
+ * design §2b/§3b): clipboard HTML converts to Markdown through the
+ * exact same domain function process-html-to-markdown's workflow node
+ * already runs (internal/adapters/markdown.ToMarkdown) before the
+ * placement popover ever opens -- never a second, JS-side converter.
+ */
+export function ConvertHTMLToMarkdown(html: string): $CancellablePromise<string> {
+    return $Call.ByID(989919804, html);
+}
+
+/**
  * CreateCard makes a new Card of kindID, optionally inside parentID
  * ("" for root-level). A non-empty parentID must name an existing
  * card; a fresh card can never itself be a cycle (it has no children
@@ -53,6 +64,21 @@ export function CardsByKind(kindID: string): $CancellablePromise<atlas$0.Card[] 
  */
 export function CreateCard(kindID: string, title: string, note: string, fields: { [_ in string]?: string } | null, parentID: string, position: atlas$0.Position | null, viewMode: atlas$0.ViewMode, source: string, mirrorPath: string, refreshWorkflowID: string): $CancellablePromise<atlas$0.Card> {
     return $Call.ByID(3093996908, kindID, title, note, fields, parentID, position, viewMode, source, mirrorPath, refreshWorkflowID);
+}
+
+/**
+ * CreateCardFromFileDrop is the instant single-file landing door
+ * (LOCKED design §3b): kind derived from path's extension, MirrorPath
+ * set to path itself (mirror-only, decision 4 -- the map never copies
+ * file content into its own ownership), no popover. title/parentID/
+ * position are the frontend's own resolved values (title from the
+ * filename, parent from the drop context's frame/zoomed area, position
+ * from the drop point) -- this method only resolves the one piece of
+ * seeded-concept knowledge (which Kind) that must never live in
+ * frontend source (atlasNoHardcode.test.ts).
+ */
+export function CreateCardFromFileDrop(path: string, title: string, parentID: string, position: atlas$0.Position | null): $CancellablePromise<atlas$0.Card> {
+    return $Call.ByID(1912608055, path, title, parentID, position);
 }
 
 export function CreateKind(label: string, description: string, icon: string, fields: typedfield$0.Field[] | null): $CancellablePromise<atlas$0.Kind> {
@@ -65,6 +91,19 @@ export function CreateLink(fromCardID: string, toCardID: string, linkKindID: str
 
 export function CreateLinkKind(label: string, description: string): $CancellablePromise<atlas$0.LinkKind> {
     return $Call.ByID(2065966488, label, description);
+}
+
+/**
+ * CreateLinkedFileCard is card-foremost file drop (D5, LOCKED design):
+ * while a card's page is open, a dropped file becomes a LINKED SIBLING
+ * -- same parent as the open card, plus the generic association link
+ * kind (resolveRelatesToLinkKindLocked) from the open card to the new
+ * one -- atomically: the card and the link either both persist or
+ * neither does, so the open card's own links section is never observed
+ * in a half-written state. The open card itself is never mutated.
+ */
+export function CreateLinkedFileCard(openCardID: string, path: string, title: string, position: atlas$0.Position | null): $CancellablePromise<atlas$0.Card> {
+    return $Call.ByID(3955305419, openCardID, path, title, position);
 }
 
 /**
@@ -274,6 +313,16 @@ export function PickFolder(startDir: string): $CancellablePromise<string> {
  */
 export function PromoteNote(noteID: string, kindID: string, title: string): $CancellablePromise<atlas$0.Card> {
     return $Call.ByID(881716522, noteID, kindID, title);
+}
+
+/**
+ * ResolveFileDropRoute decides what a drop/paste of paths means --
+ * stats them (never lists a directory's contents; that's ScanFolder's
+ * own job once the caller acts on an "import" route) so the frontend
+ * never has to guess file-vs-directory itself. paths must be non-empty.
+ */
+export function ResolveFileDropRoute(paths: string[] | null): $CancellablePromise<$models.FileDropRoute> {
+    return $Call.ByID(1104308202, paths);
 }
 
 /**

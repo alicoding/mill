@@ -28,8 +28,24 @@ export function rememberLastUsedKind(kindID: string): void {
 
 // titleFromNoteText derives the promote popover's own prefilled title:
 // the note's first line, trimmed, capped at PROMOTE_TITLE_MAX chars
-// with an ellipsis -- never the whole multi-line body.
+// with an ellipsis -- never the whole multi-line body. Reused as-is for
+// the paste door's own title (goal 0081 slice A3, LOCKED design §2b):
+// "first line, trimmed" is the same rule for a pasted note and a pasted
+// block of clipboard text, so this stays the one function rather than
+// a duplicate spelled "paste".
 export function titleFromNoteText(text: string): string {
   const firstLine = (text.split('\n')[0] ?? '').trim()
   return firstLine.length > PROMOTE_TITLE_MAX ? `${firstLine.slice(0, PROMOTE_TITLE_MAX - 1)}…` : firstLine
+}
+
+// titleFromFilename derives the instant file-landing door's own title
+// (goal 0081 slice A3, LOCKED design §3b): the filename without its
+// extension or directory -- the path IS the record, so nothing here
+// humanizes separators the way atlasFolderScanGrouping's own suggested
+// titles do; a dropped file's title should read exactly as it's named
+// on disk.
+export function titleFromFilename(path: string): string {
+  const base = path.split(/[/\\]/).pop() ?? path
+  const dot = base.lastIndexOf('.')
+  return dot > 0 ? base.slice(0, dot) : base
 }

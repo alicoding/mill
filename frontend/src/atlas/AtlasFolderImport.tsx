@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button, Checkbox, Dialog, FormControl, Select, Text } from '@primer/react'
 import { FileDirectoryIcon } from '@primer/octicons-react'
@@ -8,6 +8,7 @@ import { AtlasService } from '../shared/bindings'
 import type { FolderScanEntry, FolderScanResult } from '../shared/bindings'
 import { refreshAtlas } from './atlasStore'
 import { folderScanEntryDepth, groupFolderScanEntries, type FolderScanGroup } from './atlasFolderScanGrouping'
+import { useAtlasFolderImportRequestStore } from './atlasFolderImportRequest'
 import runbookStyles from '../shared/ListCard.module.css'
 import styles from './AtlasFolderImport.module.css'
 
@@ -18,12 +19,18 @@ import styles from './AtlasFolderImport.module.css'
 // location, never scans anything itself); ScanFolder's result is a
 // preview only, mirroring the ImportAtlas confirm-bar precedent
 // (useAtlasImportConfirm.tsx) -- nothing is written to Atlas until
-// ImportFolderSuggestions actually confirms.
+// ImportFolderSuggestions actually confirms. Also the landing spot for
+// a multi-file/directory native OS drop's own prescoped preview (goal
+// 0081 slice A3, LOCKED design §3b) -- atlasFolderImportRequest.ts's
+// store lets AtlasBoard/AtlasCardOverlay request a scan here without
+// going through PickFolder, with the drop's own parent as the target
+// instead of always the currently viewed space.
 export function AtlasFolderImport({ viewedID, kinds }: { viewedID: string; kinds: Kind[] }) {
   const { t } = useTranslation('atlas')
   const [scan, setScan] = useState<FolderScanResult | null>(null)
   const [accepted, setAccepted] = useState<Set<string>>(new Set())
   const [categoryKindIDs, setCategoryKindIDs] = useState<Record<string, string>>({})
+  const [targetParentID, setTargetParentID] = useState(viewedID)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
 
@@ -36,14 +43,12 @@ export function AtlasFolderImport({ viewedID, kinds }: { viewedID: string; kinds
     setError('')
   }
 
-  const startPick = async () => {
+  const scanRoot = async (root: string, parentID: string) => {
+    setTargetParentID(parentID)
     setError('')
     setBusy(true)
     try {
-      const roots = await AtlasService.DetectSyncRoots()
-      const path = await AtlasService.PickFolder(roots?.[0] ?? '')
-      if (!path) return // the user canceled the picker -- no error, nothing scanned
-      const result = await AtlasService.ScanFolder(path)
+      const result = await AtlasService.ScanFolder(root)
       const entries = result.Entries ?? []
       setScan(result)
       setAccepted(new Set(entries.map((e) => e.RelPath)))
@@ -58,6 +63,33 @@ export function AtlasFolderImport({ viewedID, kinds }: { viewedID: string; kinds
       setBusy(false)
     }
   }
+
+  const startPick = async () => {
+    setError('')
+    setBusy(true)
+    try {
+      const roots = await AtlasService.DetectSyncRoots()
+      const path = await AtlasService.PickFolder(roots?.[0] ?? '')
+      if (!path) { setBusy(false); return } // the user canceled the picker -- no error, nothing scanned
+      await scanRoot(path, viewedID)
+    } catch (err) {
+      setError(String(err))
+      setBusy(false)
+    }
+  }
+
+  // The prescoped-import request (goal 0081 slice A3): a fresh token
+  // opens the SAME preview against the drop's own root/parent, bypassing
+  // PickFolder entirely -- same token-diffing shape useAtlasCreation.ts's
+  // one-shot signals already use.
+  const folderImportRequest = useAtlasFolderImportRequestStore((s) => s.request)
+  const lastRequestToken = useRef(folderImportRequest?.token)
+  useEffect(() => {
+    if (!folderImportRequest || folderImportRequest.token === lastRequestToken.current) return
+    lastRequestToken.current = folderImportRequest.token
+    void scanRoot(folderImportRequest.root, folderImportRequest.parentID)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- keyed on the request's own token, scanRoot reads current kinds/viewedID via closure at fire time same as every other request-token effect in atlas/
+  }, [folderImportRequest])
 
   const toggleEntry = (relPath: string, checked: boolean) => {
     setAccepted((prev) => {
@@ -86,7 +118,7 @@ export function AtlasFolderImport({ viewedID, kinds }: { viewedID: string; kinds
     try {
       await AtlasService.ImportFolderSuggestions({
         Root: scan.Root,
-        TargetParentID: viewedID,
+        TargetParentID: targetParentID,
         AcceptedRelPaths: [...accepted],
         CategoryKindIDs: categoryKindIDs,
       })
