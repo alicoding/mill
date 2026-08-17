@@ -102,6 +102,38 @@ func (a *AtlasService) SetNotePosition(id string, pos atlas.Position) (atlas.Not
 	return n, nil
 }
 
+// MoveNote reparents a note (drag filing into/out of an area frame,
+// goal 0081 A2) -- same containment-existence check CreateNote runs.
+// A note can never contain anything, so no cycle check is needed the
+// way MoveCard's atlas.WouldCycle is.
+func (a *AtlasService) MoveNote(id, newParentID string) (atlas.Note, error) {
+	a.mu.Lock()
+	idx := a.findNoteLocked(id)
+	if idx == -1 {
+		a.mu.Unlock()
+		return atlas.Note{}, fmt.Errorf("no note with id %q", id)
+	}
+	if newParentID != "" && a.findCardLocked(newParentID) == -1 {
+		a.mu.Unlock()
+		return atlas.Note{}, fmt.Errorf("no card with id %q to contain this note", newParentID)
+	}
+	previous := a.notes[idx]
+	n := previous
+	n.ParentID = newParentID
+	n.UpdatedAt = time.Now()
+	a.notes[idx] = n
+	perr := a.persistLocked()
+	if perr != nil {
+		a.notes[idx] = previous
+	}
+	a.mu.Unlock()
+	if perr != nil {
+		return atlas.Note{}, fmt.Errorf("save note move: %w", perr)
+	}
+	dataevent.Emit("atlas", n.ID)
+	return n, nil
+}
+
 // DeleteNote removes a note outright -- no tombstone (notes carry no
 // seed provenance), no children to block on (a note can never contain
 // anything).

@@ -47,12 +47,17 @@
     "ariaLabel": "Creation tools",
     "cardLabel": "Card",
     "noteLabel": "Note",
+    "areaLabel": "Area",
     "cardTooltip": "Add a card (C)",
-    "noteTooltip": "Add a note (N)"
+    "noteTooltip": "Add a note (N)",
+    "areaTooltip": "Draw an area (A)"
   },
   "placement": {
     "title": "Add card",
     "promoteTitle": "Promote to card",
+    "areaTitle": "New area",
+    "areaContextLine_one": "{{count}} card moves into this area",
+    "areaContextLine_other": "{{count}} cards move into this area",
     "kindLabel": "Kind",
     "titleLabel": "Title",
     "add": "Add",
@@ -178,11 +183,24 @@
   "contextMenu": {
     "open": "Open",
     "zoomIn": "Zoom in",
-    "addCard": "Add card…",
     "addCardHere": "Add card",
     "addNoteHere": "Add note",
+    "addCardTo": "Add card to {{title}}",
+    "addNoteInside": "Add note here",
     "promoteToCard": "Promote to card…",
     "deleteNote": "Delete note",
-    "openCard": "Open {{title}}"
+    "openCard": "Open {{title}}",
+    "groupIntoArea": "Group into new area",
+    "dissolveArea": "Dissolve area",
+    "delete": "Delete"
+  },
+  "confirm": {
+    "dissolveTitle": "Dissolve {{title}}?",
+    "dissolveBody_one": "Its {{count}} card moves up a level.",
+    "dissolveBody_other": "Its {{count}} cards move up a level.",
+    "dissolveConfirm": "Dissolve",
+    "deleteFrameTitle": "Delete {{title}}?",
+    "deleteFrameBody_one": "Its {{count}} card moves up a level.",
+    "deleteFrameBody_other": "Its {{count}} cards move up a level."
   }
 }

@@ -296,6 +296,15 @@ export const COMMANDS: Command[] = [
     run: () => useUISignalStore.getState().requestAtlasArmTool('note'),
   },
   {
+    // Bare A (goal 0081 slice A2) -- same shape as atlas.create.card/
+    // note above.
+    id: 'atlas.create.area',
+    label: 'Draw an area',
+    defaultBinding: null,
+    surface: ['atlas'],
+    run: () => useUISignalStore.getState().requestAtlasArmTool('area'),
+  },
+  {
     id: 'atlas.matrix',
     label: 'Open traceability matrix',
     defaultBinding: null,

@@ -88,6 +88,16 @@
     flex: 0 0 auto;
 }
 
+/* Drag filing's own live release-target affordance (goal 0081 slice
+   A2): a dragged card's center currently sitting over this frame,
+   token-tinted both themes -- the ONLY feedback the drop needs (LOCKED
+   design section 4: "instant and undoable by dragging back"). */
+.frame[data-drag-highlight='true'] {
+    border-width: 2px;
+    border-color: var(--fgColor-accent);
+    background: var(--bgColor-accent-muted);
+}
+
 /* Present only so React Flow can measure a real connection point for
    a link edge -- never visible, never a click/drag target of its own. */
 .handle {

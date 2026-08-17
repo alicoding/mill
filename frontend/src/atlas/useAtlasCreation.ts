@@ -1,18 +1,31 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { ViewMode } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
-import type { Note } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
+import type { Card, Note } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 import { AtlasService } from '../shared/bindings'
 import { useUISignalStore } from '../shared/uiSignalStore'
 import { refreshAtlas } from './atlasStore'
 import { titleFromNoteText } from './atlasCreateHelpers'
+import { freeChildPosition } from './atlasContainmentPlacement'
 import type { AtlasCreationTool } from './AtlasCreationTray'
 
 export interface AtlasPlacementPopoverState {
-  mode: 'create' | 'promote'
+  mode: 'create' | 'promote' | 'area'
   anchorPos: { x: number; y: number }
   flowPos?: { x: number; y: number }
   noteID?: string
   initialTitle?: string
+  // Frame-scoped placement (goal 0081 slice A2's "Add card to X" doors,
+  // both frame-interior and frame-chrome): the target frame's own id,
+  // overriding the board's own container as the new card's parent.
+  // freeChildPosition -- never flowPos -- supplies the real position
+  // once this is set, since flowPos is only ever meaningful on the
+  // board the click actually happened on.
+  parentIDOverride?: string
+  // Area mode's own enclosed membership (marker-box / select-then-
+  // group, goal 0081 slice A2): every top-level card/note id the
+  // gesture is about to reparent into the new container card.
+  enclosedCardIDs?: string[]
+  enclosedNoteIDs?: string[]
 }
 
 // AtlasView's own downward creation requests -- the pane right-click
@@ -22,30 +35,49 @@ export interface AtlasPlacementPopoverState {
 // shared/uiSignalStore.ts's atlasArmToolRequest, one level down (this
 // one is AtlasView-local state, not a cross-bounded-context signal,
 // since the pane ContextMenu's own item.run() closures are defined
-// right there in AtlasView already).
-export interface AtlasPlacementRequest { tool: AtlasCreationTool; pos: { x: number; y: number }; token: number }
+// right there in AtlasView already). parentIDOverride (slice A2)
+// carries a frame-menu's own "Add card to X"/"Add note here" target.
+export interface AtlasPlacementRequest { tool: AtlasCreationTool; pos: { x: number; y: number }; parentIDOverride?: string; token: number }
 export interface AtlasPromoteRequest { noteID: string; pos: { x: number; y: number }; token: number }
+// Select-then-group (goal 0081 slice A2, LOCKED design §2): a
+// multi-selection's own "Group into new area" menu item, requesting
+// the SAME area-mode popover the marker-box drag opens.
+export interface AtlasGroupRequest { cardIDs: string[]; noteIDs: string[]; pos: { x: number; y: number }; token: number }
 
 // The full arm -> place -> confirm state machine behind the creation
-// tray, right-click create, sticky notes, and note promotion (goal
-// 0081 slice A1's LOCKED design) -- split out of AtlasBoard.tsx
-// (architecture.md's 500-line convention) since this is the bulk of
-// the new interaction surface. parentID is the board's OWN current
-// container (AtlasView's viewedID, threaded down unchanged) -- the
-// LOCKED design's "parent = where you are" rule for every canvas-
-// foremost creation door.
-export function useAtlasCreation({ parentID, notes, readOnly, screenToFlowPosition, placementRequest, promoteRequest }: {
+// tray, right-click create, sticky notes, note promotion (goal 0081
+// slice A1), and area creation (slice A2: draw-empty, marker-box, and
+// select-then-group all funnel into the SAME 'area'-mode popover here)
+// -- split out of AtlasBoard.tsx (architecture.md's 500-line
+// convention) since this is the bulk of the new interaction surface.
+// parentID is the board's OWN current container (AtlasView's viewedID,
+// threaded down unchanged) -- the LOCKED design's "parent = where you
+// are" rule for every canvas-foremost creation door.
+export function useAtlasCreation({ parentID, allCards, notes, readOnly, screenToFlowPosition, placementRequest, promoteRequest, groupRequest }: {
   parentID: string
+  allCards: Card[]
   notes: Note[]
   readOnly: boolean
   screenToFlowPosition: (p: { x: number; y: number }) => { x: number; y: number }
   placementRequest?: AtlasPlacementRequest | null
   promoteRequest?: AtlasPromoteRequest | null
+  groupRequest?: AtlasGroupRequest | null
 }) {
   const [armedTool, setArmedTool] = useState<AtlasCreationTool | null>(null)
   const [popover, setPopover] = useState<AtlasPlacementPopoverState | null>(null)
   const [draftNoteFlowPos, setDraftNoteFlowPos] = useState<{ x: number; y: number } | null>(null)
+  const [draftNoteParentOverride, setDraftNoteParentOverride] = useState<string | null>(null)
   const [editingNoteID, setEditingNoteID] = useState<string | null>(null)
+  // Read at commit/submit time only, never a useCallback dependency --
+  // allCards is a fresh array reference on every store refresh, and
+  // this hook's callbacks feed a builtNodes-adjacent useMemo elsewhere
+  // (AtlasBoard.tsx's own header comment on the React #185 infinite-
+  // loop regression this file already fixed once). Synced via effect,
+  // not during render (useBoardFocus.ts's own latest-ref convention).
+  const allCardsRef = useRef(allCards)
+  useEffect(() => {
+    allCardsRef.current = allCards
+  }, [allCards])
 
   // Every function below is useCallback-wrapped and returned to the
   // caller, which feeds several of them (commitDraftNote,
@@ -72,15 +104,19 @@ export function useAtlasCreation({ parentID, notes, readOnly, screenToFlowPositi
   // (one placement per arming, the LOCKED design's own rule) --
   // explicitTool lets the right-click "Add card"/"Add note" pane menu
   // items place directly without going through the armed state at all.
-  const placeAt = useCallback((screenPos: { x: number; y: number }, explicitTool?: AtlasCreationTool) => {
+  // Area has no click-based placement (its own drag-drawn rect is
+  // handled entirely by useAtlasAreaDraw, which calls openAreaPopover
+  // + disarm directly instead of going through here).
+  const placeAt = useCallback((screenPos: { x: number; y: number }, explicitTool?: AtlasCreationTool, parentIDOverride?: string) => {
     const tool = explicitTool ?? armedTool
-    if (!tool || readOnly) return
+    if (!tool || tool === 'area' || readOnly) return
     setArmedTool(null)
     const flowPos = screenToFlowPosition(screenPos)
     if (tool === 'card') {
-      setPopover({ mode: 'create', anchorPos: screenPos, flowPos })
+      setPopover({ mode: 'create', anchorPos: screenPos, flowPos, parentIDOverride })
     } else {
       setDraftNoteFlowPos(flowPos)
+      setDraftNoteParentOverride(parentIDOverride ?? null)
     }
   }, [armedTool, readOnly, screenToFlowPosition])
 
@@ -90,17 +126,44 @@ export function useAtlasCreation({ parentID, notes, readOnly, screenToFlowPositi
     setPopover({ mode: 'promote', anchorPos: screenPos, noteID, initialTitle: titleFromNoteText(note.Text) })
   }, [notes])
 
+  // The marker-box/select-group door (goal 0081 slice A2): opens the
+  // SAME popover in 'area' mode, anchored at screenPos, with the
+  // enclosed membership already resolved by the caller (useAtlasAreaDraw's
+  // own enclosure test, or AtlasView's multi-selection).
+  const openAreaPopover = useCallback((screenPos: { x: number; y: number }, flowPos: { x: number; y: number }, enclosedCardIDs: string[], enclosedNoteIDs: string[]) => {
+    setPopover({ mode: 'area', anchorPos: screenPos, flowPos, enclosedCardIDs, enclosedNoteIDs })
+  }, [])
+
   const cancelPopover = useCallback(() => setPopover(null), [])
 
   const submitPopover = useCallback((kindID: string, title: string) => {
     setPopover((pending) => {
       if (!pending) return null
-      if (pending.mode === 'create' && pending.flowPos) {
-        void AtlasService.CreateCard(kindID, title, '', {}, parentID, { X: pending.flowPos.x, Y: pending.flowPos.y }, ViewMode.$zero, '', '', '')
+      if (pending.mode === 'create') {
+        const targetParentID = pending.parentIDOverride ?? parentID
+        const position = pending.parentIDOverride
+          ? freeChildPosition(allCardsRef.current, pending.parentIDOverride)
+          : (pending.flowPos ? { X: pending.flowPos.x, Y: pending.flowPos.y } : null)
+        void AtlasService.CreateCard(kindID, title, '', {}, targetParentID, position, ViewMode.$zero, '', '', '')
           .then(() => refreshAtlas())
           .catch(console.error)
       } else if (pending.mode === 'promote' && pending.noteID) {
         void AtlasService.PromoteNote(pending.noteID, kindID, title)
+          .then(() => refreshAtlas())
+          .catch(console.error)
+      } else if (pending.mode === 'area') {
+        const position = pending.flowPos ? { X: pending.flowPos.x, Y: pending.flowPos.y } : null
+        // An area drawn/grouped via a spatial gesture defaults its OWN
+        // children to Canvas mode -- drag filing (and the Area tool
+        // itself) is a Free-mode-only interaction, so an area that
+        // opened into Shelves by default would make its own creator
+        // immediately unable to keep filing cards into it after
+        // drilling in.
+        void AtlasService.CreateCard(kindID, title, '', {}, parentID, position, ViewMode.ViewModeCanvas, '', '', '')
+          .then((created) => Promise.all([
+            ...(pending.enclosedCardIDs ?? []).map((id) => AtlasService.MoveCard(id, created.ID)),
+            ...(pending.enclosedNoteIDs ?? []).map((id) => AtlasService.MoveNote(id, created.ID)),
+          ]))
           .then(() => refreshAtlas())
           .catch(console.error)
       }
@@ -112,14 +175,21 @@ export function useAtlasCreation({ parentID, notes, readOnly, screenToFlowPositi
     setDraftNoteFlowPos((pos) => {
       const trimmed = text.trim()
       if (pos && trimmed) {
-        void AtlasService.CreateNote(trimmed, { X: pos.x, Y: pos.y }, parentID)
+        const override = draftNoteParentOverride
+        const targetParentID = override ?? parentID
+        const position = override ? freeChildPosition(allCardsRef.current, override) : { X: pos.x, Y: pos.y }
+        void AtlasService.CreateNote(trimmed, position, targetParentID)
           .then(() => refreshAtlas())
           .catch(console.error)
       }
       return null
     })
-  }, [parentID])
-  const cancelDraftNote = useCallback(() => setDraftNoteFlowPos(null), [])
+    setDraftNoteParentOverride(null)
+  }, [parentID, draftNoteParentOverride])
+  const cancelDraftNote = useCallback(() => {
+    setDraftNoteFlowPos(null)
+    setDraftNoteParentOverride(null)
+  }, [])
 
   const enterNoteEdit = useCallback((noteID: string) => {
     if (!readOnly) setEditingNoteID(noteID)
@@ -138,13 +208,14 @@ export function useAtlasCreation({ parentID, notes, readOnly, screenToFlowPositi
   }, [])
 
   // Esc's own single entry point (AtlasBoard's window listener calls
-  // this) -- cancels whichever of the four transient states is
-  // currently open. All four setters are no-ops when already null/false,
-  // so calling every one unconditionally is safe.
+  // this) -- cancels whichever transient state is currently open. Every
+  // setter is a no-op when already null/false, so calling all of them
+  // unconditionally is safe.
   const cancelAll = useCallback(() => {
     setArmedTool(null)
     setPopover(null)
     setDraftNoteFlowPos(null)
+    setDraftNoteParentOverride(null)
     setEditingNoteID(null)
   }, [])
 
@@ -156,10 +227,11 @@ export function useAtlasCreation({ parentID, notes, readOnly, screenToFlowPositi
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [cancelAll])
 
-  // atlas.create.card/note's own bare C/N keypress (shared/commands.ts,
-  // app/useKeymapDispatch.ts) -- always ARMS (never toggles), matching
-  // the tray's own click-to-arm, distinct from clicking an
-  // already-armed tool (which does toggle, AtlasCreationTray.tsx).
+  // atlas.create.card/note/area's own bare C/N/A keypress
+  // (shared/commands.ts, app/useKeymapDispatch.ts) -- always ARMS
+  // (never toggles), matching the tray's own click-to-arm, distinct
+  // from clicking an already-armed tool (which does toggle,
+  // AtlasCreationTray.tsx).
   const armToolRequest = useUISignalStore((s) => s.atlasArmToolRequest)
   const lastArmToolToken = useRef(armToolRequest?.token)
   useEffect(() => {
@@ -173,7 +245,7 @@ export function useAtlasCreation({ parentID, notes, readOnly, screenToFlowPositi
   useEffect(() => {
     if (!placementRequest || placementRequest.token === lastPlacementToken.current) return
     lastPlacementToken.current = placementRequest.token
-    placeAt(placementRequest.pos, placementRequest.tool)
+    placeAt(placementRequest.pos, placementRequest.tool, placementRequest.parentIDOverride)
     // eslint-disable-next-line react-hooks/exhaustive-deps -- keyed on the request's own token, same shape as every other one-shot signal in this file
   }, [placementRequest])
 
@@ -185,9 +257,20 @@ export function useAtlasCreation({ parentID, notes, readOnly, screenToFlowPositi
     // eslint-disable-next-line react-hooks/exhaustive-deps -- keyed on the request's own token
   }, [promoteRequest])
 
+  // Select-then-group (goal 0081 slice A2): reuses screenToFlowPosition
+  // to place the new container at the right-click point, same as any
+  // other canvas-foremost creation door.
+  const lastGroupToken = useRef(groupRequest?.token)
+  useEffect(() => {
+    if (!groupRequest || groupRequest.token === lastGroupToken.current) return
+    lastGroupToken.current = groupRequest.token
+    openAreaPopover(groupRequest.pos, screenToFlowPosition(groupRequest.pos), groupRequest.cardIDs, groupRequest.noteIDs)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- keyed on the request's own token
+  }, [groupRequest])
+
   return {
     armedTool, toggleArm, armTool, disarm, placeAt,
-    popover, cancelPopover, submitPopover, openPromote,
+    popover, cancelPopover, submitPopover, openPromote, openAreaPopover,
     draftNoteFlowPos, commitDraftNote, cancelDraftNote,
     editingNoteID, enterNoteEdit, cancelNoteEdit, commitNoteEdit,
     cancelAll,

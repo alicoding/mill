@@ -22,8 +22,9 @@ import { useConfirmDelete } from '../shared/useConfirmDelete'
 import { atlasCardShareActions } from './atlasCardShare'
 import { AtlasMatrixView } from './AtlasMatrixView'
 import { AtlasCoverageView } from './AtlasCoverageView'
-import { NOTE_HEIGHT, NOTE_WIDTH, computeGroupFrameLayout, isGroupCard } from './atlasBoardLayout'
-import { findFreeDropPosition } from '../shared/canvasLayout'
+import { isGroupCard } from './atlasBoardLayout'
+import { freeChildPosition } from './atlasContainmentPlacement'
+import { useAtlasContainmentMenus } from './useAtlasContainmentMenus'
 import runbookStyles from '../shared/ListCard.module.css'
 import styles from './AtlasView.module.css'
 
@@ -233,25 +234,19 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
     })
   }
 
-  // The empty-board right-click (goal 0075's audit G3): one item,
-  // opening the SAME "Add inside this card" dialog the toolbar's own
-  // + button opens -- addChildRequest is a one-shot counter
-  // AtlasCreateMenu (mounted inside AtlasToolbar) watches to trigger
-  // its own openForm('child'), so the dialog itself lives in exactly
-  // one place regardless of which affordance opened it.
-  const [addChildRequest, setAddChildRequest] = useState(0)
+  // The empty-board right-click (goal 0075's audit G3, superseded by
+  // goal 0081 slice A2's rider b): direct-placement doors only -- the
+  // dialog-based "Add card…" item is gone (the toolbar's own "+ Add"
+  // button still reaches that dialog through its own menu, unrelated
+  // to this one). Nothing else fired the old openChildRequest counter
+  // this menu item used to bump, so it's gone with it.
   const openPaneMenu = (pos: { x: number; y: number }) => {
     setMenu({
       x: pos.x,
       y: pos.y,
       items: [
-        // Direct-placement doors (goal 0081 slice A1): place right at
-        // the click point via the tray's own popover/inline-sticky
-        // flow -- distinct from the dialog-based sibling/child "Add
-        // card…" below, which stays for its own beside/inside choice.
         { id: 'add-card-here', label: t('contextMenu.addCardHere'), commandId: 'atlas.create.card', run: () => creationRequests.requestPlacement('card', pos) },
         { id: 'add-note-here', label: t('contextMenu.addNoteHere'), commandId: 'atlas.create.note', run: () => creationRequests.requestPlacement('note', pos) },
-        { id: 'add-card', label: t('contextMenu.addCard'), run: () => setAddChildRequest((n) => n + 1) },
       ],
     })
   }
@@ -302,6 +297,17 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
   const navigate = (id: string) => setViewedID(id)
   const drill = (id: string) => setViewedID(id)
   const openOverlay = (id: string) => setOverlayCardID(id)
+
+  // Frame/multi-select context menus + their dissolve/delete-with-
+  // promotion confirm dialogs (goal 0081 slice A2) -- split into its
+  // own hook (architecture.md's 500-line convention); see its own
+  // header comment for why the area-draw/drag-filing half stays in
+  // AtlasBoard.tsx instead.
+  const containmentMenus = useAtlasContainmentMenus({
+    t, allCards, notes: allNotes, setMenu, drill, onError: setShareError,
+    requestPlacementInside: (tool, pos, parentID) => creationRequests.requestPlacement(tool, pos, parentID),
+    requestGroup: (cardIDs, noteIDs, pos) => creationRequests.requestGroup(cardIDs, noteIDs, pos),
+  })
 
   // ⌘K's GO/OPEN (goal 0072 slice B): a target is already rendered on
   // the current board either as one of its direct children, or --
@@ -372,24 +378,12 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
     const targetMode = containment === 'child'
       ? effectiveViewMode
       : (allCards.find((c) => c.ID === parentID)?.ViewMode === ViewMode.ViewModeCanvas ? ViewMode.ViewModeCanvas : ViewMode.ViewModeShelves)
-    let position: Position | null = null
-    if (targetMode === ViewMode.ViewModeCanvas) {
-      const siblings = childrenOf(allCards, parentID).filter((c) => c.Position)
-      const desired = findFreeDropPosition(
-        { x: 80, y: 80 },
-        siblings.map((c) => ({
-          position: { x: c.Position?.X ?? 0, y: c.Position?.Y ?? 0 },
-          // A sibling that itself holds children renders as a region
-          // frame, far larger than a leaf note's own footprint --
-          // collision-avoidance must clear its REAL rendered size, not
-          // a uniform note-sized box (regression: a new card once
-          // landed physically underneath an existing region frame).
-          dims: isGroupCard(allCards, c) ? computeGroupFrameLayout(allCards, c.ID).size : { width: NOTE_WIDTH, height: NOTE_HEIGHT },
-        })),
-        { width: NOTE_WIDTH, height: NOTE_HEIGHT },
-      )
-      position = { X: desired.x, Y: desired.y }
-    }
+    // A sibling/child that itself holds children renders as a region
+    // frame, far larger than a leaf note's own footprint --
+    // freeChildPosition's own collision-avoidance clears its REAL
+    // rendered size, not a uniform note-sized box (regression: a new
+    // card once landed physically underneath an existing region frame).
+    const position: Position | null = targetMode === ViewMode.ViewModeCanvas ? freeChildPosition(allCards, parentID) : null
     await AtlasService.CreateCard(kindID, title, '', {}, parentID, position, ViewMode.$zero, '', '', '')
     await refreshAtlas()
   }
@@ -420,17 +414,20 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
         onShareError={setShareError}
         onOpenMatrix={() => setMatrixOpen(true)}
         onOpenCoverage={() => setCoverageOpen(true)}
-        addChildRequest={addChildRequest}
       />
 
       {importError && <Text as="p" size="small" className={runbookStyles.error} data-testid="atlas-import-error">{importError}</Text>}
       {shareError && <Text as="p" size="small" className={runbookStyles.error} data-testid="atlas-share-error">{shareError}</Text>}
 
-      {childrenAll.length === 0 && visibleNotes.length === 0 ? (
-        <div className={styles.emptyState} data-testid="atlas-empty-space">
-          <Text as="p" className={runbookStyles.muted}>{t('emptySpace')}</Text>
-        </div>
-      ) : (
+      {/* A zero-card zero-note space still renders the board (goal
+          0081 slice A2 rider a) -- the empty-state text overlays it,
+          non-interactive, so the tray and pane menu stay reachable. */}
+      <div className={styles.boardWrapper}>
+        {childrenAll.length === 0 && visibleNotes.length === 0 && (
+          <div className={styles.emptyState} data-testid="atlas-empty-space">
+            <Text as="p" className={runbookStyles.muted}>{t('emptySpace')}</Text>
+          </div>
+        )}
         <AtlasBoard
           cards={visibleChildren}
           allCards={allCards}
@@ -448,11 +445,15 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
           onPaneContextMenu={openPaneMenu}
           onArteryContextMenu={openArteryMenu}
           onNoteContextMenu={openNoteMenu}
+          onFrameContextMenu={containmentMenus.openFrameMenu}
+          onFrameInteriorContextMenu={containmentMenus.openFrameInteriorMenu}
+          onMultiSelectContextMenu={containmentMenus.openMultiSelectMenu}
           placementRequest={creationRequests.placementRequest}
           promoteRequest={creationRequests.promoteRequest}
+          groupRequest={creationRequests.groupRequest}
           onFocusHandled={() => setFocusRequest(null)}
         />
-      )}
+      </div>
 
       <AtlasJumpDialog open={jumpOpen} onClose={() => setJumpOpen(false)} cards={allCards} kinds={allKinds} onJump={jumpToCard} />
 
@@ -473,6 +474,9 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
       <ContextMenu state={menu} onClose={() => setMenu(null)} />
       {menuDeleteDialog}
       {noteDeleteDialog}
+      {containmentMenus.dissolveDialog}
+      {containmentMenus.deleteFrameDialog}
+      {containmentMenus.deleteSelectionDialog}
 
       <AtlasMatrixView
         open={matrixOpen}

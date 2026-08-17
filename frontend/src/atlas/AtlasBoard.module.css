@@ -13,6 +13,21 @@
     cursor: crosshair;
 }
 
+/* The Area tool's own live drag-drawn rectangle (goal 0081 slice A2,
+   LOCKED design section 1): 1.5px dashed border, token-tinted fill at
+   low opacity, positioned in wrapper-local pixels (useAtlasAreaDraw.ts
+   tracks raw screen coordinates; AtlasBoard.tsx subtracts the
+   wrapper's own bounding rect for this style). */
+.marquee {
+    position: absolute;
+    z-index: 4;
+    pointer-events: none;
+    border: 1.5px dashed var(--fgColor-accent);
+    background: var(--bgColor-accent-muted);
+    opacity: 0.85;
+    border-radius: 4px;
+}
+
 /* Link labels (goal 0072 slice A): shown on hover/selection only, or
    always when the board carries 3 edges or fewer -- edges themselves
    stay decorative (a 1.6px stroke), never intercepting a click meant

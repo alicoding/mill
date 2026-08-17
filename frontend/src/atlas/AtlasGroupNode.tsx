@@ -31,6 +31,10 @@ export interface AtlasGroupData extends Record<string, unknown> {
   // frame's children -- where the "+ K more" ghost tile renders, in
   // the frame's own coordinate space.
   overflow: { count: number; position: { x: number; y: number } } | null
+  // Drag filing (goal 0081 slice A2): true while a dragged card's
+  // center is currently over this frame -- the release target's own
+  // live "you'd file into me" affordance.
+  dragHighlighted: boolean
   onDrill: (id: string) => void
   onToggleFlip: (id: string) => void
   onOpenOverlay: (id: string) => void
@@ -49,7 +53,7 @@ export type AtlasGroupRFNode = RFNode<AtlasGroupData>
 // propagation so drilling and flipping never both fire from one click.
 export const AtlasGroupNode = memo(function AtlasGroupNode({ data }: NodeProps<AtlasGroupRFNode>) {
   const { t } = useTranslation('atlas')
-  const { card, kind, allCards, links, linkKinds, childCount, freshness, pulsed, hinted, flipped, overflow, onDrill, onToggleFlip, onOpenOverlay } = data
+  const { card, kind, allCards, links, linkKinds, childCount, freshness, pulsed, hinted, flipped, overflow, dragHighlighted, onDrill, onToggleFlip, onOpenOverlay } = data
   const tokens = kindColorTokens(card.KindID)
   const cardLinks = links.filter((l) => l.FromCardID === card.ID || l.ToCardID === card.ID)
   const cardByID = new Map(allCards.map((c) => [c.ID, c]))
@@ -76,6 +80,7 @@ export const AtlasGroupNode = memo(function AtlasGroupNode({ data }: NodeProps<A
       data-testid="atlas-group-card"
       data-pulse={pulsed}
       data-flipped={flipped}
+      data-drag-highlight={dragHighlighted}
       role="button"
       tabIndex={0}
       aria-label={t('board.flipCardAriaLabel', { title: card.Title })}

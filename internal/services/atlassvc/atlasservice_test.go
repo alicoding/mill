@@ -227,21 +227,100 @@ func TestSetViewMode_RoundTrips(t *testing.T) {
 	}
 }
 
-func TestDeleteCard_BlockedWhileChildrenExist(t *testing.T) {
+// TestDeleteCard_PromotesChildrenToGrandparent pins goal 0081 A2's
+// dissolve rule: deleting a containing card never cascades or blocks
+// -- every direct child (card and note) promotes to the deleted
+// card's own parent, atomically with the delete.
+func TestDeleteCard_PromotesChildrenToGrandparent(t *testing.T) {
 	a := newTestAtlasService(t)
 	k, err := a.CreateKind("Widget", "", "", nil)
 	if err != nil {
 		t.Fatalf("CreateKind: %v", err)
 	}
-	parent, err := a.CreateCard(k.ID, "Parent", "", nil, "", nil, "", "", "", "")
+	grandparent, err := a.CreateCard(k.ID, "Grandparent", "", nil, "", nil, "", "", "", "")
 	if err != nil {
-		t.Fatalf("CreateCard: %v", err)
+		t.Fatalf("CreateCard(grandparent): %v", err)
 	}
-	if _, err := a.CreateCard(k.ID, "Child", "", nil, parent.ID, nil, "", "", "", ""); err != nil {
-		t.Fatalf("CreateCard: %v", err)
+	parent, err := a.CreateCard(k.ID, "Parent", "", nil, grandparent.ID, nil, "", "", "", "")
+	if err != nil {
+		t.Fatalf("CreateCard(parent): %v", err)
 	}
-	if err := a.DeleteCard(parent.ID); err == nil {
-		t.Error("DeleteCard() while it still has children = nil error, want an error (no orphaning)")
+	child, err := a.CreateCard(k.ID, "Child", "", nil, parent.ID, nil, "", "", "", "")
+	if err != nil {
+		t.Fatalf("CreateCard(child): %v", err)
+	}
+	note, err := a.CreateNote("a jotted note", atlas.Position{}, parent.ID)
+	if err != nil {
+		t.Fatalf("CreateNote: %v", err)
+	}
+	if err := a.DeleteCard(parent.ID); err != nil {
+		t.Fatalf("DeleteCard(parent) = %v, want nil (children must promote, never block)", err)
+	}
+	for _, c := range a.Cards() {
+		if c.ID == parent.ID {
+			t.Error("DeleteCard() left the deleted card behind")
+		}
+	}
+	gotChild, ok := findCardTestByID(a.Cards(), child.ID)
+	if !ok {
+		t.Fatalf("child card %q vanished after DeleteCard(parent)", child.ID)
+	}
+	if gotChild.ParentID != grandparent.ID {
+		t.Errorf("child.ParentID = %q, want promoted to grandparent %q", gotChild.ParentID, grandparent.ID)
+	}
+	gotNote, ok := findNoteTestByID(a.Notes(), note.ID)
+	if !ok {
+		t.Fatalf("note %q vanished after DeleteCard(parent)", note.ID)
+	}
+	if gotNote.ParentID != grandparent.ID {
+		t.Errorf("note.ParentID = %q, want promoted to grandparent %q", gotNote.ParentID, grandparent.ID)
+	}
+}
+
+func findCardTestByID(cards []atlas.Card, id string) (atlas.Card, bool) {
+	for _, c := range cards {
+		if c.ID == id {
+			return c, true
+		}
+	}
+	return atlas.Card{}, false
+}
+
+func findNoteTestByID(notes []atlas.Note, id string) (atlas.Note, bool) {
+	for _, n := range notes {
+		if n.ID == id {
+			return n, true
+		}
+	}
+	return atlas.Note{}, false
+}
+
+// TestDeleteCard_PromotesChildrenToRoot covers the same rule at the
+// top level -- a root card's own ParentID is "", so its children
+// promote to root-level rather than staying orphaned or blocked.
+func TestDeleteCard_PromotesChildrenToRoot(t *testing.T) {
+	a := newTestAtlasService(t)
+	k, err := a.CreateKind("Widget", "", "", nil)
+	if err != nil {
+		t.Fatalf("CreateKind: %v", err)
+	}
+	area, err := a.CreateCard(k.ID, "Area", "", nil, "", nil, "", "", "", "")
+	if err != nil {
+		t.Fatalf("CreateCard(area): %v", err)
+	}
+	child, err := a.CreateCard(k.ID, "Child", "", nil, area.ID, nil, "", "", "", "")
+	if err != nil {
+		t.Fatalf("CreateCard(child): %v", err)
+	}
+	if err := a.DeleteCard(area.ID); err != nil {
+		t.Fatalf("DeleteCard(area) = %v, want nil", err)
+	}
+	gotChild, ok := findCardTestByID(a.Cards(), child.ID)
+	if !ok {
+		t.Fatalf("child card %q vanished after DeleteCard(area)", child.ID)
+	}
+	if gotChild.ParentID != "" {
+		t.Errorf("child.ParentID = %q, want promoted to root \"\"", gotChild.ParentID)
 	}
 }
 
