@@ -38,7 +38,9 @@
     "selectionGroup": "Group",
     "selectionDelete": "Delete",
     "selectionClearHint": "clear",
-    "dropDuplicateNotice": "Already on the map as “{{title}}” — added again."
+    "dropDuplicateNotice": "Already on the map as “{{title}}” — added again.",
+    "deletedToast": "Deleted {{count}}",
+    "undo": "Undo"
   },
   "jump": {
     "placeholder": "Jump to a card",
@@ -220,9 +222,6 @@
     "dissolveTitle": "Dissolve {{title}}?",
     "dissolveBody_one": "Its {{count}} card moves up a level.",
     "dissolveBody_other": "Its {{count}} cards move up a level.",
-    "dissolveConfirm": "Dissolve",
-    "deleteFrameTitle": "Delete {{title}}?",
-    "deleteFrameBody_one": "Its {{count}} card moves up a level.",
-    "deleteFrameBody_other": "Its {{count}} cards move up a level."
+    "dissolveConfirm": "Dissolve"
   }
 }

@@ -174,19 +174,18 @@ test('atlas creation core: tray, placement popover, right-click create, sticky n
     await expect(page.getByTestId('atlas-breadcrumb')).not.toContainText('Example area')
     await expect(exampleArea.getByTestId('atlas-group-header')).toContainText('3 cards')
 
-    // --- Within-file cleanup: delete every card created above ---
+    // --- Within-file cleanup: delete every card created above (goal
+    // 0093: instant, no confirm) ---
     for (const title of ['ZzE2eStickyNoteText', 'ZzE2eRootCard']) {
       await noteCard(page, title).click({ button: 'right' })
       await expect(menu).toBeVisible()
       await menu.getByText('Delete', { exact: true }).click()
-      await page.getByRole('button', { name: 'Delete' }).click()
       await expect(noteCard(page, title)).toHaveCount(0)
     }
     await groupCard(page, 'Example area').getByTestId('atlas-group-header').click()
     await noteCard(page, 'ZzE2eAreaCard').click({ button: 'right' })
     await expect(menu).toBeVisible()
     await menu.getByText('Delete', { exact: true }).click()
-    await page.getByRole('button', { name: 'Delete' }).click()
     await expect(noteCard(page, 'ZzE2eAreaCard')).toHaveCount(0)
   } finally {
     await server?.stop()

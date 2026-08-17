@@ -1,0 +1,25 @@
+/* Same floating position/container the selection/creation tray
+   occupies (AtlasSelectionTray.module.css .tray), offset higher so
+   the two never overlap when a delete fires while the tray is still
+   showing (a selection that just got deleted clears itself). */
+.toast {
+    position: absolute;
+    left: 50%;
+    bottom: 76px;
+    transform: translateX(-50%);
+    z-index: 6;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 6px 6px 16px;
+    background: var(--bgColor-default);
+    border: 1px solid var(--borderColor-accent-emphasis);
+    border-radius: var(--borderRadius-large);
+    box-shadow: var(--shadow-floating-large, 0 4px 16px rgba(0, 0, 0, 0.12));
+}
+
+.message {
+    font-size: 13px;
+    color: var(--fgColor-default);
+    white-space: nowrap;
+}

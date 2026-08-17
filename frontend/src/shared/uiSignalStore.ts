@@ -64,6 +64,20 @@ interface UISignalState {
   // happened.
   atlasArmToolRequest: { tool: 'card' | 'note' | 'area'; token: number } | null
   requestAtlasArmTool: (tool: 'card' | 'note' | 'area') => void
+  // atlas.undoDelete (⌘Z while the quick-delete undo toast lives, goal
+  // 0093): the real keydown handling is a dedicated
+  // app/useKeymapDispatch.ts listener (⌘Z is the native text-undo
+  // combo too, so the generic dispatchCommandForEvent's unconditional
+  // preventDefault-on-match can't gate it) -- that listener checks
+  // atlasUndoDeletePending itself before bumping this counter, which
+  // AtlasView's own toast hook watches the same ref-compared way
+  // atlasJumpRequest is watched above. atlasUndoDeletePending is kept
+  // in sync by that same hook so the listener never has to reach into
+  // atlas/ view state directly.
+  atlasUndoDeletePending: boolean
+  setAtlasUndoDeletePending: (pending: boolean) => void
+  atlasUndoDeleteRequest: number
+  requestAtlasUndoDelete: () => void
 }
 
 export const useUISignalStore = create<UISignalState>()((set) => ({
@@ -83,4 +97,8 @@ export const useUISignalStore = create<UISignalState>()((set) => ({
   requestReviewRules: () => set((s) => ({ reviewRulesRequest: s.reviewRulesRequest + 1 })),
   atlasArmToolRequest: null,
   requestAtlasArmTool: (tool) => set((s) => ({ atlasArmToolRequest: { tool, token: (s.atlasArmToolRequest?.token ?? 0) + 1 } })),
+  atlasUndoDeletePending: false,
+  setAtlasUndoDeletePending: (pending) => set({ atlasUndoDeletePending: pending }),
+  atlasUndoDeleteRequest: 0,
+  requestAtlasUndoDelete: () => set((s) => ({ atlasUndoDeleteRequest: s.atlasUndoDeleteRequest + 1 })),
 }))

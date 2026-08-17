@@ -252,12 +252,11 @@ test('atlas typed link slots: flip-face rows, slot-drag linking, chip removal, q
     // seeded space has no nested area to reach one through without
     // constructing extra fixture state this spec doesn't otherwise need.
 
-    // --- Within-file cleanup ---
+    // --- Within-file cleanup (goal 0093: instant, no confirm) ---
     for (const title of ['ZzE2eSlotA', 'ZzE2eSlotB', 'ZzE2eSlotGuided', 'ZzE2eSlotAddLinked']) {
       await noteCard(page, title).click({ button: 'right' })
       await expect(menu).toBeVisible()
       await menu.getByText('Delete', { exact: true }).click()
-      await page.getByRole('button', { name: 'Delete' }).click()
       await expect(noteCard(page, title)).toHaveCount(0)
     }
   } finally {

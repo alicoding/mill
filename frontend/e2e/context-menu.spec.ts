@@ -10,7 +10,7 @@ import { workflowRow, activePanel } from './fixtures/canvas'
 // here to the remaining surfaces -- inventory rows, work tabs, panes,
 // and edges (goal 0075's completion).
 
-test('right-click on an Atlas card offers Open, the share trio, and a confirmed Delete; a frame leads with Zoom in', async ({ page }) => {
+test('right-click on an Atlas card offers Open, the share trio, and Delete; a frame leads with Zoom in', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Atlas' }).click()
   await expect(page.getByTestId('atlas-board')).toBeVisible()

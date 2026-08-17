@@ -164,7 +164,7 @@ test.fixme('atlas multi-select: the selection-overlay context menu reaches Group
 // fully CI-synthesizable, so this test carries the automated coverage
 // for the select -> group / select -> delete chains.
 // eslint-disable-next-line no-empty-pattern -- this test needs `testInfo` (the second arg), not any fixture.
-test('atlas shift-click select: toggle membership, group via member right-click, Delete over the selection (goal 0092)', async ({}, testInfo) => {
+test('atlas shift-click select: toggle membership, group via member right-click, quick delete + undo over the selection (goals 0092, 0093)', async ({}, testInfo) => {
   const idx = testInfo.parallelIndex
   const dir = mkdtempSync(path.join(tmpdir(), `mill-e2e-atlas-click-select-${idx}-`))
   const settingsPath = path.join(dir, 'settings.json')
@@ -281,14 +281,48 @@ test('atlas shift-click select: toggle membership, group via member right-click,
     await page.locator('.react-flow__pane').click({ position: { x: 500, y: 450 } })
     await expect(selected).toHaveCount(0)
 
+    // Quick delete + undo (goal 0093): Del deletes instantly, no
+    // confirm dialog -- the toast names the count, and clicking Undo
+    // restores both cards.
     await cardA.click({ modifiers: ['Shift'] })
     await cardB.click({ modifiers: ['Shift'] })
     await expect(selected).toHaveCount(2)
     await page.keyboard.press('Delete')
-    const confirmDialog = page.getByRole('alertdialog')
-    await expect(confirmDialog).toBeVisible()
-    await expect(confirmDialog).toContainText('2 cards')
-    await confirmDialog.getByRole('button', { name: 'Delete' }).click()
+    await expect(page.getByRole('alertdialog')).toHaveCount(0)
+    await expect(cardA).toHaveCount(0)
+    await expect(cardB).toHaveCount(0)
+    const undoToast = page.getByTestId('atlas-undo-toast')
+    await expect(undoToast).toBeVisible()
+    await expect(undoToast).toContainText('Deleted 2')
+    await undoToast.getByTestId('atlas-undo-toast-button').click()
+    await expect(undoToast).toHaveCount(0)
+    await expect(cardA).toBeVisible()
+    await expect(cardB).toBeVisible()
+
+    // Second pass: Del, then ⌘Z restores while the toast still lives.
+    await cardA.click({ modifiers: ['Shift'] })
+    await cardB.click({ modifiers: ['Shift'] })
+    await expect(selected).toHaveCount(2)
+    await page.keyboard.press('Delete')
+    await expect(cardA).toHaveCount(0)
+    await expect(undoToast).toBeVisible()
+    await page.keyboard.press('Meta+z')
+    await expect(undoToast).toHaveCount(0)
+    await expect(cardA).toBeVisible()
+    await expect(cardB).toBeVisible()
+
+    // Toast expiry commits the delete -- clock-controlled, no real 10s
+    // wait (testing.md's waitForTimeout rule). This is also the test's
+    // own cleanup: once the toast auto-hides the delete stands and
+    // both cards stay gone.
+    await page.clock.install()
+    await cardA.click({ modifiers: ['Shift'] })
+    await cardB.click({ modifiers: ['Shift'] })
+    await expect(selected).toHaveCount(2)
+    await page.keyboard.press('Delete')
+    await expect(undoToast).toBeVisible()
+    await page.clock.fastForward('00:11')
+    await expect(undoToast).toHaveCount(0)
     await expect(cardA).toHaveCount(0)
     await expect(cardB).toHaveCount(0)
   } finally {

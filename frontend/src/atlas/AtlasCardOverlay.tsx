@@ -3,10 +3,10 @@ import { useTranslation } from 'react-i18next'
 import { Events } from '@wailsio/runtime'
 import { Dialog, Text } from '@primer/react'
 import type { Card, Kind, Link, LinkKind } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
+import type { TombstoneResult } from '../../bindings/github.com/alicoding/mill/internal/services/atlassvc/models'
 import { AtlasService, ExecutionService } from '../shared/bindings'
 import { useAppStore } from '../shared/store'
 import { atlasCardShareActions } from './atlasCardShare'
-import { useConfirmDelete } from '../shared/useConfirmDelete'
 import { useCardPageNav } from './atlasCardPageNav'
 import { AtlasCardPageHeader } from './AtlasCardPageHeader'
 import { AtlasCardPageFields } from './AtlasCardPageFields'
@@ -52,7 +52,7 @@ type CardFieldPatch = Partial<{
 // handler (testing.md's stale-setState trap). ParentID/Position/
 // ViewMode never change here (MoveCard/SetPosition/SetViewMode own
 // those, driven by drag/drill actions elsewhere).
-export function AtlasCardOverlay({ card, kinds, allCards, links, linkKinds, onClose, onSaved, onOpenGroupEntry }: {
+export function AtlasCardOverlay({ card, kinds, allCards, links, linkKinds, onClose, onSaved, onDeleted, onOpenGroupEntry }: {
   card: Card
   kinds: Kind[]
   allCards: Card[]
@@ -60,6 +60,7 @@ export function AtlasCardOverlay({ card, kinds, allCards, links, linkKinds, onCl
   linkKinds: LinkKind[]
   onClose: () => void
   onSaved: () => void
+  onDeleted: (result: TombstoneResult) => void
   onOpenGroupEntry: (target: Card) => void
 }) {
   const { t } = useTranslation('atlas')
@@ -208,26 +209,22 @@ export function AtlasCardOverlay({ card, kinds, allCards, links, linkKinds, onCl
   }
 
   // Delete now lives ONLY behind the header's kebab menu (rider (a),
-  // superseding the old edit-section's bare Delete button) -- blocked
-  // server-side (atlassvc.DeleteCard) while the card still has
-  // children, surfacing through the same shareError slot a failed
-  // share/update-now action uses.
-  const { requestDelete, dialog: confirmDialog } = useConfirmDelete<Card>({
-    entityType: 'card',
-    labelOf: (c) => c.Title,
-    onConfirm: (c) => {
-      AtlasService.DeleteCard(c.ID).then(() => { onSaved(); onClose() }).catch((err) => setShareError(String(err)))
-    },
-  })
+  // superseding the old edit-section's bare Delete button), instant --
+  // no confirm (goal 0093's quick-delete-with-undo guard). onDeleted
+  // reports the TombstoneResult up to AtlasView's shared undo toast.
+  const deleteCard = () => {
+    AtlasService.DeleteCard(displayedCard.ID)
+      .then((result) => { onDeleted(result); onSaved(); onClose() })
+      .catch((err) => setShareError(String(err)))
+  }
 
   return (
-    <>
-    {/* Primer's Dialog only ever forwards its own special-cased
-        "data-component" prop onto the rendered element -- it
-        destructures every other prop by name with no rest-spread, so a
-        plain data-testid is silently dropped (StepDetailOverlay.tsx's
-        own data-component usage is this same constraint, not a
-        stylistic choice). */}
+    // Primer's Dialog only ever forwards its own special-cased
+    // "data-component" prop onto the rendered element -- it
+    // destructures every other prop by name with no rest-spread, so a
+    // plain data-testid is silently dropped (StepDetailOverlay.tsx's
+    // own data-component usage is this same constraint, not a
+    // stylistic choice).
     <Dialog
       title={t('overlay.title', { title: displayedCard.Title })}
       onClose={onClose}
@@ -250,7 +247,7 @@ export function AtlasCardOverlay({ card, kinds, allCards, links, linkKinds, onCl
           showMirrorMenuItems={Boolean(displayedCard.MirrorPath)}
           onOpenFile={() => void AtlasService.OpenCardMirror(displayedCard.ID).catch((err) => setShareError(String(err)))}
           onRevealFile={() => void shareActions.revealFile()}
-          onDelete={() => requestDelete(displayedCard)}
+          onDelete={deleteCard}
         />
       )}
       renderBody={() => (
@@ -295,7 +292,5 @@ export function AtlasCardOverlay({ card, kinds, allCards, links, linkKinds, onCl
         </div>
       )}
     />
-    {confirmDialog}
-    </>
   )
 }

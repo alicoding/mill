@@ -1,10 +1,11 @@
 import { useState } from 'react'
 import type { TFunction } from 'i18next'
 import type { Card, Link, LinkKind, Note } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
+import type { TombstoneResult } from '../../bindings/github.com/alicoding/mill/internal/services/atlassvc/models'
 import { AtlasService } from '../shared/bindings'
+import { refreshAtlas } from './atlasStore'
 import { isGroupCard } from './atlasBoardLayout'
 import { atlasCardShareActions } from './atlasCardShare'
-import { useConfirmDelete } from '../shared/useConfirmDelete'
 import type { ContextMenuItem, ContextMenuState } from '../shared/ContextMenu'
 import { AtlasEdgeLabelPopover } from './AtlasEdgeLabelPopover'
 
@@ -26,7 +27,7 @@ function truncateTitle(title: string): string {
 // (count === 1), since acting on one specific link within a count>1
 // aggregated artery has no per-link picker in this slice.
 export function useAtlasLinkMenus({
-  t, allCards, allLinks, allNotes, linkKinds, setMenu, drill, onOpenCard, onError, requestLinkedCard,
+  t, allCards, allLinks, allNotes, linkKinds, setMenu, drill, onOpenCard, onError, onDeleted, requestLinkedCard,
 }: {
   t: TFunction<'atlas'>
   allCards: Card[]
@@ -37,17 +38,19 @@ export function useAtlasLinkMenus({
   drill: (id: string) => void
   onOpenCard: (id: string) => void
   onError: (message: string) => void
+  onDeleted: (result: TombstoneResult) => void
   requestLinkedCard: (fromCardID: string, pos: { x: number; y: number }) => void
 }) {
   const [labelTarget, setLabelTarget] = useState<{ linkID: string; pos: { x: number; y: number }; initialLabel: string } | null>(null)
 
-  const { requestDelete, dialog: menuDeleteDialog } = useConfirmDelete<Card>({
-    entityType: 'card',
-    labelOf: (c) => c.Title,
-    onConfirm: (c) => {
-      AtlasService.DeleteCard(c.ID).catch((err) => onError(String(err)))
-    },
-  })
+  // Instant, no confirm (goal 0093's quick-delete-with-undo guard) --
+  // onDeleted reports the TombstoneResult to AtlasView's shared undo
+  // toast.
+  const deleteCard = (id: string) => {
+    AtlasService.DeleteCard(id)
+      .then((result) => { onDeleted(result); void refreshAtlas() })
+      .catch((err) => onError(String(err)))
+  }
 
   const openCardMenu = (cardID: string, pos: { x: number; y: number }) => {
     const card = allCards.find((c) => c.ID === cardID)
@@ -80,7 +83,7 @@ export function useAtlasLinkMenus({
         { id: 'copy-link', label: t('share.copyCloudLink'), run: () => void share.copyCloudLink() },
         ...(card.MirrorPath ? [{ id: 'reveal', label: t('share.revealFile'), run: () => void share.revealFile() }] : []),
         { id: 'd2', divider: true },
-        { id: 'delete', label: t('overlay.delete'), danger: true, run: () => requestDelete(card) },
+        { id: 'delete', label: t('overlay.delete'), danger: true, run: () => deleteCard(card.ID) },
       ],
     })
   }
@@ -130,5 +133,5 @@ export function useAtlasLinkMenus({
     />
   )
 
-  return { openCardMenu, openArteryMenu, menuDeleteDialog, labelPopover }
+  return { openCardMenu, openArteryMenu, labelPopover }
 }

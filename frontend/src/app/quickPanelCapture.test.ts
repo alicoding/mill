@@ -12,12 +12,12 @@ function makeCard(id: string, parentID = ''): Card {
     ID: id, KindID: 'atlas-kind-topic', Title: id, Note: '', Fields: null,
     ParentID: parentID, Position: null, ViewMode: ViewMode.$zero, Source: '', MirrorPath: '',
     RefreshWorkflowID: '', ActionWorkflowIDs: null, MirrorChecksum: '', LastSyncedAt: '', ReceiptRunID: '',
-    CreatedAt: '', UpdatedAt: '', BuiltIn: false, Seed: { SeedRevision: 0, Modified: false },
+    CreatedAt: '', UpdatedAt: '', DeletedAt: '', BuiltIn: false, Seed: { SeedRevision: 0, Modified: false },
   }
 }
 
 function makeNote(id: string, parentID: string): Note {
-  return { ID: id, Text: id, Position: { X: 0, Y: 0 }, ParentID: parentID, CreatedAt: '', UpdatedAt: '' }
+  return { ID: id, Text: id, Position: { X: 0, Y: 0 }, ParentID: parentID, CreatedAt: '', UpdatedAt: '', DeletedAt: '' }
 }
 
 describe('resolveNoteParentID', () => {
