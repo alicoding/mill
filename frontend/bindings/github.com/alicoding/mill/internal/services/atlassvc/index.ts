@@ -14,5 +14,6 @@ export type {
     FolderImportSummary,
     FolderScanEntry,
     FolderScanResult,
-    ImportFolderSuggestionsRequest
+    ImportFolderSuggestionsRequest,
+    TombstoneResult
 } from "./models.js";

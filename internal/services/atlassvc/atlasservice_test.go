@@ -253,7 +253,7 @@ func TestDeleteCard_PromotesChildrenToGrandparent(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CreateNote: %v", err)
 	}
-	if err := a.DeleteCard(parent.ID); err != nil {
+	if _, err := a.DeleteCard(parent.ID); err != nil {
 		t.Fatalf("DeleteCard(parent) = %v, want nil (children must promote, never block)", err)
 	}
 	for _, c := range a.Cards() {
@@ -312,7 +312,7 @@ func TestDeleteCard_PromotesChildrenToRoot(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CreateCard(child): %v", err)
 	}
-	if err := a.DeleteCard(area.ID); err != nil {
+	if _, err := a.DeleteCard(area.ID); err != nil {
 		t.Fatalf("DeleteCard(area) = %v, want nil", err)
 	}
 	gotChild, ok := findCardTestByID(a.Cards(), child.ID)
@@ -346,7 +346,7 @@ func TestDeleteCard_RemovesTouchingLinks(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CreateLink: %v", err)
 	}
-	if err := a.DeleteCard(c1.ID); err != nil {
+	if _, err := a.DeleteCard(c1.ID); err != nil {
 		t.Fatalf("DeleteCard: %v", err)
 	}
 	for _, l := range a.Links() {

@@ -92,8 +92,14 @@ type Card struct {
 	ReceiptRunID string
 	CreatedAt    time.Time
 	UpdatedAt    time.Time
-	BuiltIn      bool
-	Seed         seedorigin.Origin
+	// DeletedAt marks this card soft-deleted (goal 0093's quick-
+	// delete-with-undo guard) -- zero value means live. A tombstoned
+	// card stays in storage, excluded from every read surface, until
+	// either UndoDelete clears the stamp or the boot-time purge
+	// (48h grace window) removes it for good.
+	DeletedAt time.Time
+	BuiltIn   bool
+	Seed      seedorigin.Origin
 }
 
 // EffectiveViewMode returns c's declared ViewMode, defaulting to

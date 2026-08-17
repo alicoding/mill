@@ -14,7 +14,9 @@ import (
 	"slices"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"sync"
+	"time"
 
 	"github.com/alicoding/mill/internal/adapters/settings"
 	"github.com/alicoding/mill/internal/domain/atlas"
@@ -123,6 +125,15 @@ func (a *AtlasService) restore() {
 		a.lenses = state.Lenses
 	}
 	a.session = state.Session
+
+	// Boot-time tombstone purge (goal 0093): unlocked here is safe --
+	// restore only ever runs once, during construction, before the
+	// service is shared across goroutines.
+	if a.purgeTombstonesLocked(time.Now()) {
+		if err := a.persistLocked(); err != nil {
+			slog.Error("failed to persist atlas tombstone purge", "error", err)
+		}
+	}
 }
 
 // persistLocked marshals and saves the full state -- caller must hold
@@ -163,30 +174,30 @@ func (a *AtlasService) LinkKinds() []atlas.LinkKind {
 	return out
 }
 
+// Cards returns every LIVE card (goal 0093: a tombstoned card is
+// excluded, and a live child of a tombstoned container carries its
+// resolved effective ParentID -- see liveCardsLocked).
 func (a *AtlasService) Cards() []atlas.Card {
 	a.mu.RLock()
 	defer a.mu.RUnlock()
-	out := make([]atlas.Card, len(a.cards))
-	copy(out, a.cards)
-	return out
+	return a.liveCardsLocked()
 }
 
+// Links returns every link whose endpoints are both LIVE cards (goal
+// 0093: a link touching a tombstoned card is hidden, never removed).
 func (a *AtlasService) Links() []atlas.Link {
 	a.mu.RLock()
 	defer a.mu.RUnlock()
-	out := make([]atlas.Link, len(a.links))
-	copy(out, a.links)
-	return out
+	return a.liveLinksLocked()
 }
 
-// Notes returns every quick-capture annotation (goal 0081 slice A1) --
-// its own family, deliberately never mixed into Cards().
+// Notes returns every LIVE quick-capture annotation (goal 0081 slice
+// A1) -- its own family, deliberately never mixed into Cards(); goal
+// 0093's tombstone exclusion applies the same way liveCardsLocked does.
 func (a *AtlasService) Notes() []atlas.Note {
 	a.mu.RLock()
 	defer a.mu.RUnlock()
-	out := make([]atlas.Note, len(a.notes))
-	copy(out, a.notes)
-	return out
+	return a.liveNotesLocked()
 }
 
 // findKindLocked/findLinkKindLocked/findCardLocked/findLinkLocked

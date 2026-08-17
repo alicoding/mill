@@ -3,6 +3,8 @@ package atlassvc
 import (
 	"fmt"
 	"os"
+
+	"github.com/alicoding/mill/internal/domain/atlas"
 )
 
 // Restore kill-switch for shared-server e2e (same MILL_TEST_* seam
@@ -41,8 +43,12 @@ func (a *AtlasService) SetAtlasSession(state AtlasSessionState) error {
 }
 
 // AtlasSession returns the persisted state, DEGRADED to what still
-// exists: a deleted viewed card falls back to its nearest surviving
-// ancestor (root ultimately); a deleted open card is dropped. The
+// exists: a fully-gone viewed card falls back to root; a tombstoned
+// one (goal 0093) resolves to its own effective parent -- the same
+// virtual-promotion walk every other read surface applies
+// (atlas.EffectiveParentID) -- so a session parked inside a container
+// deleted just before restart lands one level up, not all the way to
+// root. A deleted (gone or tombstoned) open card is dropped. The
 // caller never has to handle a stale id.
 func (a *AtlasService) AtlasSession() AtlasSessionState {
 	if os.Getenv(testAtlasSessionOffEnv) != "" {
@@ -51,20 +57,18 @@ func (a *AtlasService) AtlasSession() AtlasSessionState {
 	a.mu.RLock()
 	defer a.mu.RUnlock()
 	out := a.session
-	for out.ViewedID != "" {
-		idx := a.findCardLocked(out.ViewedID)
-		if idx >= 0 {
-			break
+	byID := a.cardsByIDLocked()
+	if out.ViewedID != "" {
+		if c, ok := byID[out.ViewedID]; !ok {
+			out.ViewedID = ""
+		} else if !c.DeletedAt.IsZero() {
+			out.ViewedID = atlas.EffectiveParentID(byID, c.ParentID)
 		}
-		out.ViewedID = a.parentOfMissingLocked(out.ViewedID)
 	}
-	if out.OpenCardID != "" && a.findCardLocked(out.OpenCardID) == -1 {
-		out.OpenCardID = ""
+	if out.OpenCardID != "" {
+		if c, ok := byID[out.OpenCardID]; !ok || !c.DeletedAt.IsZero() {
+			out.OpenCardID = ""
+		}
 	}
 	return out
 }
-
-// parentOfMissingLocked can't know a deleted card's parent -- degrade
-// straight to root. Kept as its own hook so a future tombstone record
-// could do better without touching AtlasSession's contract.
-func (a *AtlasService) parentOfMissingLocked(string) string { return "" }

@@ -161,3 +161,14 @@ export interface ImportFolderSuggestionsRequest {
      */
     "CategoryKindIDs": { [_ in string]?: string } | null;
 }
+
+/**
+ * TombstoneResult names exactly which ids one DeleteCard/DeleteNote
+ * call soft-deleted -- DeleteCard populates only CardIDs, DeleteNote
+ * only NoteIDs, so the frontend's undo toast can pass this straight
+ * back to UndoDelete without re-deriving what it touched.
+ */
+export interface TombstoneResult {
+    "CardIDs": string[] | null;
+    "NoteIDs": string[] | null;
+}

@@ -137,13 +137,13 @@ func TestDataEvent_EveryMutatorEmits(t *testing.T) {
 	got = captureEmits(t)
 	// c1 was moved under c2 above, so delete it first (children-block
 	// deletion) before c2 can be deleted.
-	if err := a.DeleteCard(c1.ID); err != nil {
+	if _, err := a.DeleteCard(c1.ID); err != nil {
 		t.Fatalf("DeleteCard: %v", err)
 	}
 	assertEmitted(t, *got, c1.ID)
 
 	got = captureEmits(t)
-	if err := a.DeleteCard(c2.ID); err != nil {
+	if _, err := a.DeleteCard(c2.ID); err != nil {
 		t.Fatalf("DeleteCard: %v", err)
 	}
 	assertEmitted(t, *got, c2.ID)

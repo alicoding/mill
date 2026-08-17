@@ -97,6 +97,15 @@ export interface Card {
     "ReceiptRunID": string;
     "CreatedAt": string;
     "UpdatedAt": string;
+
+    /**
+     * DeletedAt marks this card soft-deleted (goal 0093's quick-
+     * delete-with-undo guard) -- zero value means live. A tombstoned
+     * card stays in storage, excluded from every read surface, until
+     * either UndoDelete clears the stamp or the boot-time purge
+     * (48h grace window) removes it for good.
+     */
+    "DeletedAt": string;
     "BuiltIn": boolean;
     "Seed": seedorigin$0.Origin;
 }
@@ -271,6 +280,12 @@ export interface Note {
     "ParentID": string;
     "CreatedAt": string;
     "UpdatedAt": string;
+
+    /**
+     * DeletedAt marks this note soft-deleted (goal 0093), same
+     * tombstone contract as Card.DeletedAt -- zero value means live.
+     */
+    "DeletedAt": string;
 }
 
 /**

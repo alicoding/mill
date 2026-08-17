@@ -108,7 +108,10 @@ func (a *AtlasService) DeleteKind(id string) error {
 		a.mu.Unlock()
 		return fmt.Errorf("no kind with id %q", id)
 	}
-	for _, c := range a.cards {
+	// A tombstoned card (goal 0093) never blocks Kind deletion -- it's
+	// already invisible to the user and its own reference disappears
+	// for real at purge.
+	for _, c := range a.liveCardsLocked() {
 		if c.KindID == id {
 			a.mu.Unlock()
 			return fmt.Errorf("kind %q is still used by card %q -- delete or re-kind that card first", id, c.ID)
@@ -217,7 +220,9 @@ func (a *AtlasService) DeleteLinkKind(id string) error {
 		a.mu.Unlock()
 		return fmt.Errorf("no link kind with id %q", id)
 	}
-	for _, l := range a.links {
+	// A link touching a tombstoned card (goal 0093) never blocks
+	// LinkKind deletion -- liveLinksLocked already hides it.
+	for _, l := range a.liveLinksLocked() {
 		if l.LinkKindID == id {
 			a.mu.Unlock()
 			return fmt.Errorf("link kind %q is still used by a link -- delete it first", id)

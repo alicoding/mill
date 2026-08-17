@@ -64,7 +64,7 @@ func TestReconcileBuiltIns_RespectsTombstone(t *testing.T) {
 	first := NewAtlasService(store)
 
 	deletable := leafCard(t, first.Cards())
-	if err := first.DeleteCard(deletable.ID); err != nil {
+	if _, err := first.DeleteCard(deletable.ID); err != nil {
 		t.Fatalf("DeleteCard: %v", err)
 	}
 

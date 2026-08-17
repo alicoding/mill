@@ -134,29 +134,9 @@ func (a *AtlasService) MoveNote(id, newParentID string) (atlas.Note, error) {
 	return n, nil
 }
 
-// DeleteNote removes a note outright -- no tombstone (notes carry no
-// seed provenance), no children to block on (a note can never contain
-// anything).
-func (a *AtlasService) DeleteNote(id string) error {
-	a.mu.Lock()
-	idx := a.findNoteLocked(id)
-	if idx == -1 {
-		a.mu.Unlock()
-		return fmt.Errorf("no note with id %q", id)
-	}
-	removed := a.notes[idx]
-	a.notes = append(a.notes[:idx], a.notes[idx+1:]...)
-	perr := a.persistLocked()
-	if perr != nil {
-		a.notes = insertNoteAt(a.notes, idx, removed)
-	}
-	a.mu.Unlock()
-	if perr != nil {
-		return fmt.Errorf("save note deletion: %w", perr)
-	}
-	dataevent.Emit("atlas", id)
-	return nil
-}
+// DeleteNote lives in atlasservice_tombstone.go (goal 0093's soft-
+// delete guard) -- a note can never contain anything, so no promotion
+// concern applies the way it does for DeleteCard.
 
 // PromoteNote is the note's one-way lifecycle event (the LOCKED
 // design's "promotion ritual"): it becomes a typed Card in place --

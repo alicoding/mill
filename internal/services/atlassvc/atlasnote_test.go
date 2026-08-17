@@ -79,7 +79,7 @@ func TestDeleteNote_RemovesIt(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CreateNote: %v", err)
 	}
-	if err := a.DeleteNote(n.ID); err != nil {
+	if _, err := a.DeleteNote(n.ID); err != nil {
 		t.Fatalf("DeleteNote: %v", err)
 	}
 	for _, got := range a.Notes() {
@@ -91,7 +91,7 @@ func TestDeleteNote_RemovesIt(t *testing.T) {
 
 func TestDeleteNote_UnknownID_Errors(t *testing.T) {
 	a := newTestAtlasService(t)
-	if err := a.DeleteNote("does-not-exist"); err == nil {
+	if _, err := a.DeleteNote("does-not-exist"); err == nil {
 		t.Error("DeleteNote() on an unknown id = nil error, want an error")
 	}
 }

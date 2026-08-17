@@ -294,81 +294,8 @@ func (a *AtlasService) SetViewMode(id string, mode atlas.ViewMode) (atlas.Card, 
 	return c, nil
 }
 
-// DeleteCard removes a card. Containment removal never cascades or
-// orphans (goal 0081 A2's dissolve rule, superseding docs/goals/0061's
-// original block-while-children-exist guard): every direct child --
-// card or note -- promotes to the deleted card's own parent, in the
-// same locked section as the delete itself, so a dissolve/delete never
-// leaves a half-promoted tree behind. "Dissolve area" and a plain
-// Delete on a frame are the same server-side operation; only the
-// caller's own confirm copy differs. Deleting a card also removes
-// every link touching it.
-func (a *AtlasService) DeleteCard(id string) error {
-	a.mu.Lock()
-	idx := a.findCardLocked(id)
-	if idx == -1 {
-		a.mu.Unlock()
-		return fmt.Errorf("no card with id %q", id)
-	}
-	removedCard := a.cards[idx]
-	wasBuiltIn := removedCard.BuiltIn
-	newParentID := removedCard.ParentID
-	now := time.Now()
-
-	previousCards := make([]atlas.Card, len(a.cards))
-	copy(previousCards, a.cards)
-	for i := range a.cards {
-		if a.cards[i].ID != id && a.cards[i].ParentID == id {
-			a.cards[i].ParentID = newParentID
-			a.cards[i].UpdatedAt = now
-			a.cards[i].Seed = a.cards[i].Seed.Touch()
-		}
-	}
-	a.cards = append(a.cards[:idx], a.cards[idx+1:]...)
-
-	previousNotes := make([]atlas.Note, len(a.notes))
-	copy(previousNotes, a.notes)
-	for i := range a.notes {
-		if a.notes[i].ParentID == id {
-			a.notes[i].ParentID = newParentID
-			a.notes[i].UpdatedAt = now
-		}
-	}
-
-	remainingLinks := make([]atlas.Link, 0, len(a.links))
-	removedLinks := make([]atlas.Link, 0)
-	for _, l := range a.links {
-		if l.FromCardID == id || l.ToCardID == id {
-			removedLinks = append(removedLinks, l)
-			continue
-		}
-		remainingLinks = append(remainingLinks, l)
-	}
-	previousLinks := a.links
-	a.links = remainingLinks
-
-	if wasBuiltIn {
-		if err := seeding.RecordTombstone(a.store, id); err != nil {
-			a.cards = previousCards
-			a.notes = previousNotes
-			a.links = previousLinks
-			a.mu.Unlock()
-			return fmt.Errorf("tombstone deleted card %q: %w", id, err)
-		}
-	}
-	perr := a.persistLocked()
-	if perr != nil {
-		a.cards = previousCards
-		a.notes = previousNotes
-		a.links = previousLinks
-	}
-	a.mu.Unlock()
-	if perr != nil {
-		return fmt.Errorf("save card deletion: %w", perr)
-	}
-	dataevent.Emit("atlas", id)
-	for _, l := range removedLinks {
-		dataevent.Emit("atlas", l.ID)
-	}
-	return nil
-}
+// DeleteCard lives in atlasservice_tombstone.go (goal 0093's soft-
+// delete guard) -- containment promotion is now VIRTUAL (a live
+// child's effective parent is resolved at read time, past any
+// tombstoned ancestor) rather than a data rewrite at delete time; the
+// real re-parent only happens at purge.

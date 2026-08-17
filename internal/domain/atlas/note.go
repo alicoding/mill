@@ -25,6 +25,9 @@ type Note struct {
 	ParentID  string
 	CreatedAt time.Time
 	UpdatedAt time.Time
+	// DeletedAt marks this note soft-deleted (goal 0093), same
+	// tombstone contract as Card.DeletedAt -- zero value means live.
+	DeletedAt time.Time
 }
 
 // ValidateNote checks a Note is well-formed: non-empty text. Whether
