@@ -483,7 +483,10 @@ func BuiltInWorkflows() []Workflow {
 	workflows = append(workflows, builtInAtlasCardWorkflows()...)
 	// goal 0070: apply-list-row's own seeded proof, same split-file
 	// reasoning.
-	return append(workflows, builtInListWriteWorkflows()...)
+	workflows = append(workflows, builtInListWriteWorkflows()...)
+	// goal 0087: apply-file-move's own seeded proof, same split-file
+	// reasoning.
+	return append(workflows, builtInFileMoveWorkflows()...)
 }
 
 // ExampleChildWorkflowID is exported so the parent seed above and any

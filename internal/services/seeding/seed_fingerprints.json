@@ -167,6 +167,10 @@
     "seedRevision": 2,
     "fingerprint": "f1d5e2d5143c8942eeb222b82c9a6978269f0749b2613c19fddeb441898c52da"
   },
+  "workflow:example-filemove-workflow": {
+    "seedRevision": 1,
+    "fingerprint": "d835c0706e34b5eb10e1e35363856a861bb3c2652066cac30e88ae25af3dff06"
+  },
   "workflow:example-forward-approvals-workflow": {
     "seedRevision": 2,
     "fingerprint": "228b33ff965d175c2156ecce6c91a56ed0c3f3526e47fa818c310100777b981d"
