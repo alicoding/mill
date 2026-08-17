@@ -58,6 +58,16 @@ list is working memory, never the record; the backlog must always
 carry the true priority order (owner-directed 2026-08-11, after
 session-born work drifted out of the queue).
 
+**Mirror the active queue into the session task list
+(owner-directed 2026-08-17: "I am going blind with you").** Whenever
+a session runs a ratified queue or multi-goal arc, TaskCreate one
+task per in-flight/queued backlog item (blocker-chained in queue
+order), TaskUpdate to in_progress the moment its work starts and to
+completed when it ships — the terminal's task panel is the owner's
+live window into an autonomous session; scrollback is not
+visibility. The task list is visibility, never the record:
+`docs/goals/BACKLOG.md` stays the truth per the rule above.
+
 **Before starting an ad-hoc request that isn't the queue's current top
 item, name in one sentence where it lands against
 `docs/goals/BACKLOG.md`**: it supersedes/reorders the queue, merges
@@ -89,7 +99,10 @@ Every non-trivial change follows this order, no exceptions:
 
 1. **Research** — before writing code for a new capability, check whether
    something already solves it: an existing library, a standard protocol, a
-   pattern already named in `docs/SPEC.md`. A claim of "nothing exists for
+   pattern already named in `docs/SPEC.md`. The standing order is
+   **Research → Adopt → Compose** (`.claude/rules/architecture.md` carries
+   the full statement; owner-restated 2026-08-17: "we never reinvent the
+   wheel"). A claim of "nothing exists for
    X" must be backed by an actual search (WebSearch, package registry, docs),
    not an assumption. This project has already been burned once by NIH and
    inner-platform drift (see `docs/SPEC.md` §0) — do not repeat that failure.
