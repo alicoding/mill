@@ -179,9 +179,19 @@ export function useAtlasCreation({ parentID, allCards, notes, readOnly, screenTo
 
   const cancelPopover = useCallback(() => setPopover(null), [])
 
+  // The service calls below live OUTSIDE any setState updater on
+  // purpose: updater functions must be pure -- React StrictMode
+  // double-invokes them, which turned every confirm into TWO created
+  // cards/notes (regression: duplicate creation under the dev build).
+  // Reading `popover` from the closure is safe here; this callback's
+  // identity changing when the popover opens/closes is bounded and
+  // never feeds the sticky-node data path that caused the React #185
+  // loop this file's other comments describe.
   const submitPopover = useCallback((kindID: string, title: string) => {
-    setPopover((pending) => {
-      if (!pending) return null
+    const pending = popover
+    if (!pending) return
+    setPopover(null)
+    {
       if (pending.mode === 'create' && pending.slotLinkFromCardID && pending.slotLinkKindID) {
         // Slot-drag guided-create (goal 0081 slice A4, D1=B): atomic,
         // so the map never shows a card with a missing link or a link
@@ -226,25 +236,25 @@ export function useAtlasCreation({ parentID, allCards, notes, readOnly, screenTo
           .then(() => refreshAtlas())
           .catch(console.error)
       }
-      return null
-    })
-  }, [parentID])
+    }
+  }, [popover, parentID])
 
   const commitDraftNote = useCallback((text: string) => {
-    setDraftNoteFlowPos((pos) => {
+    const pos = draftNoteFlowPos
+    const override = draftNoteParentOverride
+    setDraftNoteFlowPos(null)
+    setDraftNoteParentOverride(null)
+    {
       const trimmed = text.trim()
       if (pos && trimmed) {
-        const override = draftNoteParentOverride
         const targetParentID = override ?? parentID
         const position = override ? freeChildPosition(allCardsRef.current, override) : { X: pos.x, Y: pos.y }
         void AtlasService.CreateNote(trimmed, position, targetParentID)
           .then(() => refreshAtlas())
           .catch(console.error)
       }
-      return null
-    })
-    setDraftNoteParentOverride(null)
-  }, [parentID, draftNoteParentOverride])
+    }
+  }, [parentID, draftNoteFlowPos, draftNoteParentOverride])
   const cancelDraftNote = useCallback(() => {
     setDraftNoteFlowPos(null)
     setDraftNoteParentOverride(null)

@@ -64,6 +64,9 @@ test('atlas creation core: tray, placement popover, right-click create, sticky n
     await expect(draftTextarea).toHaveCount(0)
     const sticky = page.getByTestId('atlas-sticky-note').filter({ hasText: 'ZzE2eStickyNoteText' })
     await expect(sticky).toBeVisible()
+    // Regression: one blur commits exactly ONE note (the same
+    // StrictMode updater-side-effect class as the card popover).
+    await expect(sticky).toHaveCount(1)
     // No kind chip (a card's own front face always renders one) and a
     // distinct node type from a card.
     await expect(sticky.locator('[data-testid="atlas-note-file-tag"]')).toHaveCount(0)
@@ -139,6 +142,11 @@ test('atlas creation core: tray, placement popover, right-click create, sticky n
     await popover.getByTestId('atlas-placement-submit').click()
     await expect(popover).not.toBeVisible()
     await expect(noteCard(page, 'ZzE2eRootCard')).toBeVisible()
+    // Regression: one confirm creates exactly ONE card. StrictMode
+    // double-invokes setState updater functions, so a service call
+    // living inside one fires twice -- every C-flow confirm produced
+    // duplicate cards until the call moved out of the updater.
+    await expect(noteCard(page, 'ZzE2eRootCard')).toHaveCount(1)
 
     // --- After zooming into an area, repeat -> the new card's parent
     // IS that area, not root: "Example area" seeds exactly 2 children
