@@ -13,8 +13,9 @@ import type { resolveBoardEdges } from './atlasLinkResolution'
 // returns moves for overlapping boxes only (leaf-on-leaf deliberately
 // untouched), so returning it alone silently dropped every seat and
 // stacked all position-less cards at the zero value. Seats offset by
-// 24 when nothing is positioned so no card ever lands exactly on the
-// ambiguous zero-value Position. Exported pure for its unit test.
+// 24 when nothing is positioned so a seat is never the ambiguous
+// zero value (a drag persisting a card AT a seat must read as
+// positioned). Exported pure for its unit test.
 export function computeFreeMoves(
   cards: Card[],
   allCards: Card[],
@@ -55,9 +56,9 @@ export function computeFreeMoves(
 
 // Positions-sovereign layout + the one-shot Auto-arrange action
 // (goal 0089, split from AtlasBoard.tsx at the 500-line seam): every
-// level renders Free; position-less cards get packer seats
-// (persisted by the same effect that persists overlap nudges);
-// an arrangeRequest bump re-packs the whole level and persists it.
+// level renders Free; position-less cards get in-memory packer seats
+// (assistance until the user takes control -- nothing persists from
+// rendering); an arrangeRequest bump re-packs the level and persists.
 export function useAtlasArrange({ cards, allCards, arteries, boardWidth, arrangeRequest }: {
   cards: Card[]
   allCards: Card[]
@@ -76,16 +77,15 @@ export function useAtlasArrange({ cards, allCards, arteries, boardWidth, arrange
     return adjacency
   }, [arteries])
 
+  // In-memory ONLY -- rendering never writes positions. A render-path
+  // persist raced the Auto-arrange button's own SetPosition batch
+  // (stale seats computed from pre-arrange cards clobbered arranged
+  // ones, last-writer-wins); persistence belongs to user actions
+  // alone: a drag, or the arrange button below.
   const freeMoves = useMemo(
     () => computeFreeMoves(cards, allCards, arrangeAdjacency, boardWidth),
     [cards, allCards, arrangeAdjacency, boardWidth],
   )
-
-  useEffect(() => {
-    for (const m of freeMoves) {
-      void AtlasService.SetPosition(m.id, { X: m.x, Y: m.y }).catch(console.error)
-    }
-  }, [freeMoves])
 
   // The Auto-arrange BUTTON (goal 0089): one-shot packer over this
   // level, persisting every seat -- then control returns to the user.
