@@ -25,6 +25,18 @@ export interface AtlasImportSummary {
 }
 
 /**
+ * AtlasSessionState is the map's where-you-were (goal 0091): the
+ * viewed level and the open card page, persisted per-device beside
+ * the lens settings so a restart lands where you stood. The nav
+ * stack behind the open page stays session-local (recorded residual
+ * in the goal file).
+ */
+export interface AtlasSessionState {
+    "viewedID": string;
+    "openCardID": string;
+}
+
+/**
  * FileDropRoute is ResolveFileDropRoute's own verdict.
  */
 export interface FileDropRoute {

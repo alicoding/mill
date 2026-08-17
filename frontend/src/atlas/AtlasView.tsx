@@ -76,6 +76,10 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
   // against re-applying it on every later data refresh, which would
   // otherwise re-open the overlay even after the user closed it).
   const consumedInitialCardID = useRef(false)
+  // Mirrors the ref as state for the landing gate below -- a ref must
+  // not be read during render, and the gate needs re-render when the
+  // deep link resolves.
+  const [deepLinkConsumed, setDeepLinkConsumed] = useState(false)
 
   useEffect(() => {
     void refreshAtlas()
@@ -90,6 +94,7 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
     const target = cards.find((c) => c.ID === initialCardID)
     if (!target) return
     consumedInitialCardID.current = true
+    setDeepLinkConsumed(true)
     setViewedID(target.ParentID)
     setOverlayCardID(target.ID)
   }, [initialCardID, cards])
@@ -105,11 +110,42 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
   // entirely once a deep link has claimed the initial navigation --
   // that flow's own viewedID=="" (a root-level target's own space) is
   // a deliberate destination, not a state to redirect away from.
+  // Session restore (goal 0091): land where you stood -- one-shot on
+  // mount, before the single-root redirect can claim the landing. The
+  // service already degrades stale ids (deleted viewed card -> root,
+  // deleted open card -> dropped), so what arrives here is always
+  // renderable. Saves below stay gated until this resolves, so the
+  // mount's own transient '' never clobbers the persisted state.
+  // Resolution must be STATE, not only a ref: the single-root landing
+  // below waits for it, and a ref flip alone would never re-run that
+  // effect -- the view would sit at "All spaces" until some unrelated
+  // cards refresh finally re-fired it (mid-interaction jump).
+  const sessionRestoreClaimed = useRef(false)
+  const [sessionRestored, setSessionRestored] = useState(false)
   useEffect(() => {
-    if (initialCardID || !cards || viewedID !== '') return
+    if (sessionRestoreClaimed.current) return
+    sessionRestoreClaimed.current = true
+    // A deep link owns the landing -- restore yields entirely (but
+    // saves still arm, so the deep-linked position persists next).
+    if (initialCardID) { setSessionRestored(true); return }
+    AtlasService.AtlasSession()
+      .then((session) => {
+        if (session?.viewedID) setViewedID(session.viewedID)
+        if (session?.openCardID) setOverlayCardID(session.openCardID)
+      })
+      .finally(() => setSessionRestored(true))
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- one-shot mount landing, same as the deep-link claim
+  }, [])
+  useEffect(() => {
+    if (!sessionRestored) return
+    void AtlasService.SetAtlasSession({ viewedID, openCardID: overlayCardID ?? '' }).catch(() => {})
+  }, [sessionRestored, viewedID, overlayCardID])
+
+  useEffect(() => {
+    if (initialCardID || !cards || viewedID !== '' || !sessionRestored) return
     const root = singleRootCard(cards)
     if (root) setViewedID(root.ID)
-  }, [cards, initialCardID, viewedID])
+  }, [cards, initialCardID, viewedID, sessionRestored])
 
   useEffect(() => {
     AtlasService.Lens(viewedID)
@@ -128,6 +164,16 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
   const allLinkKinds = linkKinds ?? []
   const allLinks = links ?? []
   const allNotes = notes ?? []
+
+  // Never render an interactive board while the mount landing is
+  // still pending (session restore in flight, a deep link not yet
+  // consumed, or the single-root auto-entry not yet applied): the
+  // transient root board LOOKS real, and anything the user -- or a
+  // test -- does to it (an Auto-arrange click, a card flip) is
+  // consumed by a board that's about to be replaced.
+  const landingPending =
+    !sessionRestored || !cards ||
+    (viewedID === '' && (initialCardID ? !deepLinkConsumed : !!singleRootCard(allCards)))
 
   const viewedCard = allCards.find((c) => c.ID === viewedID) ?? null
   const childrenAll = childrenOf(allCards, viewedID)
@@ -338,7 +384,7 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
     await refreshAtlas()
   }
 
-  if (kinds === null || cards === null) {
+  if (kinds === null || cards === null || landingPending) {
     return <Text as="p" className={runbookStyles.muted}>{t('loading')}</Text>
   }
 

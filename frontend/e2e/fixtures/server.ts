@@ -237,6 +237,13 @@ export const test = base.extend<Record<string, never>, WorkerFixtures>({
       settingsPath: path.join(dir, 'settings.json'),
       executionDbPath: path.join(dir, 'execution.db'),
       backupDir: path.join(dir, 'backups'),
+      // Session restore off (goal 0091): on a SHARED server every
+      // fresh page's mount would land wherever the previous test
+      // stood -- and a client-side pre-test reset cannot win the race
+      // against a closing page's trailing save. The dedicated
+      // atlas-session-restore spec proves the feature on its own
+      // server, without this.
+      extraEnv: { MILL_TEST_ATLAS_SESSION_OFF: '1' },
     })
     await use(server)
     await server.stop()
@@ -259,3 +266,10 @@ export { expect }
 // red sharing a worker with the containment spec's heavy gestures.
 export const ATLAS_SELECT_GROUP_SERVER_BASE_PORT = 10060
 export const ATLAS_SELECT_GROUP_MCP_BASE_PORT = 10080
+
+// atlas-session-restore.spec.ts's own dedicated pair (goal 0091): the
+// one spec that needs restore-on-mount LIVE (the worker pool suppresses
+// it via MILL_TEST_ATLAS_SESSION_OFF above), reload-based within one
+// test -- same own-server-own-ports reasoning as persistence.
+export const ATLAS_SESSION_SERVER_BASE_PORT = 10100
+export const ATLAS_SESSION_MCP_BASE_PORT = 10120

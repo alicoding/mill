@@ -4,6 +4,7 @@ import { Button, FormControl, IconButton, Text } from '@primer/react'
 import { XIcon } from '@primer/octicons-react'
 import { AtlasService, CompositionService } from '../shared/bindings'
 import { EntityRefField } from '../configure/EntityRefField'
+import { nextActionsOnAdd, nextActionsOnRemove } from './atlasCardActionOps'
 import runbookStyles from '../shared/ListCard.module.css'
 import styles from './AtlasCardActions.module.css'
 
@@ -38,14 +39,14 @@ export function AtlasCardActions({ cardID, actionWorkflowIDs, onActionsChanged }
   }
 
   const remove = (workflowID: string) => {
-    onActionsChanged(actionWorkflowIDs.filter((id) => id !== workflowID))
+    const next = nextActionsOnRemove(actionWorkflowIDs, workflowID)
+    if (next !== actionWorkflowIDs) onActionsChanged(next)
   }
 
   const add = (workflowID: string) => {
     setAdding(false)
-    if (workflowID && !actionWorkflowIDs.includes(workflowID)) {
-      onActionsChanged([...actionWorkflowIDs, workflowID])
-    }
+    const next = nextActionsOnAdd(actionWorkflowIDs, workflowID)
+    if (next !== actionWorkflowIDs) onActionsChanged(next)
   }
 
   return (
