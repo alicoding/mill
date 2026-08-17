@@ -14,7 +14,7 @@ describe('computeFreeMoves', () => {
   // every packer seat -- two position-less seeded leaves rendered
   // exactly stacked at the zero value, and the buried card's click
   // never became actionable.
-  it('seats every position-less card at a distinct, non-zero position', () => {
+  it('seats every position-less card at a distinct position', () => {
     const a = mk('a')
     const b = mk('b')
     const moves = computeFreeMoves([a, b], [a, b], new Map(), 0)
@@ -23,10 +23,17 @@ describe('computeFreeMoves', () => {
     const seatA = byID.get('a')!
     const seatB = byID.get('b')!
     expect(seatA.x !== seatB.x || seatA.y !== seatB.y).toBe(true)
-    // Never exactly the zero value -- that reads as "position-less"
-    // on the next load and the seat would re-derive forever.
-    expect(seatA.x !== 0 || seatA.y !== 0).toBe(true)
-    expect(seatB.x !== 0 || seatB.y !== 0).toBe(true)
+  })
+
+  // Regression: a stored (0,0) is a REAL position (the arrange
+  // button's own first packed seat persists there), never
+  // "position-less" -- conflating nil with the zero value re-exiled
+  // every arranged origin card below the whole board on the next
+  // refresh.
+  it('treats a stored (0,0) as positioned, not as a card to re-seat', () => {
+    const origin = mk('origin', { x: 0, y: 0 })
+    const other = mk('other', { x: 600, y: 0 })
+    expect(computeFreeMoves([origin, other], [origin, other], new Map(), 0)).toEqual([])
   })
 
   it('leaves already-positioned, non-overlapping cards out of the moves', () => {
