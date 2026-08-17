@@ -98,21 +98,10 @@ test('Mobile job 4 -- Atlas board glance, drill via a region frame header, and c
   await groupCard(page, 'Example area').getByTestId('atlas-group-header').click()
   await expect(page.getByTestId('atlas-board')).toBeVisible()
 
-  // "Example area" holds two cards side by side (404px) wider than
-  // this viewport (390px) -- the board never auto-shrinks a card below
-  // its own real CSS pixel size (minZoom=1, AtlasBoard.tsx), so a real
-  // phone user pans to reach the far one, same as any pannable-canvas
-  // app. Mirror that here rather than relying on fitView to have
-  // already centered the target card.
-  const pane = page.locator('.react-flow__pane')
-  const paneBox = await pane.boundingBox()
-  if (paneBox) {
-    await page.mouse.move(paneBox.x + paneBox.width / 2, paneBox.y + paneBox.height / 2)
-    await page.mouse.down()
-    await page.mouse.move(paneBox.x + paneBox.width / 2 + 150, paneBox.y + paneBox.height / 2, { steps: 5 })
-    await page.mouse.up()
-  }
-
+  // No manual pan: the level's packer seats are deterministic and the
+  // drill's own fitView already frames them -- the old center-drag
+  // "pan to reach the far card" could land on whichever CARD sat
+  // under the pane's center and drag it (not the pane) out of view.
   const card = noteCard(page, 'Ada Lovelace')
   const cardBox = await card.boundingBox()
   // The 44px CSS floor measured through the board's zoom transform can
@@ -125,6 +114,22 @@ test('Mobile job 4 -- Atlas board glance, drill via a region frame header, and c
   await card.click()
   await expect(card).toHaveAttribute('data-flipped', 'true')
   const openButton = card.getByTestId('atlas-note-open')
+  // The flip is a real CSS rotation: a click launched mid-transition
+  // trips the actionability check into a scroll-retry loop against
+  // the transformed board (near-edge cards especially) that never
+  // re-stabilizes -- poll the button's own box to rest first, the
+  // same settle-before-acting rule waitForViewportStable applies to
+  // camera moves.
+  let prevBox = ''
+  await expect
+    .poll(async () => {
+      const b = await openButton.boundingBox()
+      const cur = JSON.stringify(b)
+      const settled = cur !== '' && cur === prevBox
+      prevBox = cur
+      return settled
+    })
+    .toBe(true)
   const openBox = await openButton.boundingBox()
   expect(openBox?.height ?? 0).toBeGreaterThanOrEqual(43.5)
   await openButton.click()
