@@ -29,7 +29,7 @@ func (a *AtlasService) resolveKindLocked(id string) (atlas.Kind, error) {
 // reparenting an EXISTING card (which may have its own descendants)
 // needs one.
 func (a *AtlasService) CreateCard(kindID, title, note string, fields map[string]string, parentID string, position *atlas.Position, viewMode atlas.ViewMode, source, mirrorPath, refreshWorkflowID string) (atlas.Card, error) {
-	return a.createCardWithID(seeding.NewSlugID(title, "card"), kindID, title, note, fields, parentID, position, viewMode, source, mirrorPath, refreshWorkflowID, "")
+	return a.createCardWithID(seeding.NewSlugID(title, "card"), kindID, title, note, fields, parentID, position, viewMode, source, mirrorPath, "", refreshWorkflowID, "")
 }
 
 // CreateCardForWorkflow is CreateCard's own logic for an
@@ -42,7 +42,7 @@ func (a *AtlasService) CreateCard(kindID, title, note string, fields map[string]
 //
 //wails:ignore
 func (a *AtlasService) CreateCardForWorkflow(kindID, title, note string, fields map[string]string, sourceRunID string) (atlas.Card, error) {
-	return a.createCardWithID(seeding.NewSlugID(title, "card"), kindID, title, note, fields, "", nil, "", "", "", "", sourceRunID)
+	return a.createCardWithID(seeding.NewSlugID(title, "card"), kindID, title, note, fields, "", nil, "", "", "", "", "", sourceRunID)
 }
 
 // createCardWithID is CreateCard's own logic, parameterized on the new
@@ -50,7 +50,7 @@ func (a *AtlasService) CreateCardForWorkflow(kindID, title, note string, fields 
 // id (ADR-0036 decision 3), same shape as compositionsvc's
 // createWorkflowWithID/configuresvc's createListWithID. sourceRunID
 // (goal 0066) is "" for every caller except CreateCardForWorkflow.
-func (a *AtlasService) createCardWithID(id, kindID, title, note string, fields map[string]string, parentID string, position *atlas.Position, viewMode atlas.ViewMode, source, mirrorPath, refreshWorkflowID, sourceRunID string) (atlas.Card, error) {
+func (a *AtlasService) createCardWithID(id, kindID, title, note string, fields map[string]string, parentID string, position *atlas.Position, viewMode atlas.ViewMode, source, mirrorPath, mirrorChecksum, refreshWorkflowID, sourceRunID string) (atlas.Card, error) {
 	a.mu.Lock()
 	kind, err := a.resolveKindLocked(kindID)
 	if err != nil {
@@ -65,7 +65,7 @@ func (a *AtlasService) createCardWithID(id, kindID, title, note string, fields m
 	c := atlas.Card{
 		ID: id, KindID: kindID, Title: title, Note: note,
 		Fields: fields, ParentID: parentID, Position: position, ViewMode: viewMode,
-		Source: source, MirrorPath: mirrorPath,
+		Source: source, MirrorPath: mirrorPath, MirrorChecksum: mirrorChecksum,
 		CreatedAt: now, UpdatedAt: now,
 	}
 	// Legacy compat (goal 0084): the refreshWorkflowID parameter seeds
