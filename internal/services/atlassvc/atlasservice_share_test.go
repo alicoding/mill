@@ -346,3 +346,49 @@ func TestRevealCardMirror_UnknownCard_Errors(t *testing.T) {
 		t.Error("RevealCardMirror(unknown id) = nil error, want an error")
 	}
 }
+
+// RevealCardMirror/OpenCardMirror are distinct actions (goal 0081
+// slice A4): the first selects the mirrored file in the file manager,
+// the second launches it -- both share the same referential-existence
+// guard, proven once each below; the headless no-op path (no live
+// desktop app) is what lets both run under `go test` without actually
+// shelling out.
+func TestOpenCardMirror_NoMirrorPath_Errors(t *testing.T) {
+	a := newBlankAtlasService(t)
+	kind, err := a.CreateKind("Document", "", "", nil)
+	if err != nil {
+		t.Fatalf("CreateKind: %v", err)
+	}
+	card, err := a.CreateCard(kind.ID, "No mirror", "", nil, "", nil, "", "", "", "")
+	if err != nil {
+		t.Fatalf("CreateCard: %v", err)
+	}
+	if err := a.OpenCardMirror(card.ID); err == nil {
+		t.Error("OpenCardMirror on a card with no MirrorPath = nil error, want an error")
+	}
+}
+
+func TestOpenCardMirror_UnknownCard_Errors(t *testing.T) {
+	a := newBlankAtlasService(t)
+	if err := a.OpenCardMirror("does-not-exist"); err == nil {
+		t.Error("OpenCardMirror(unknown id) = nil error, want an error")
+	}
+}
+
+func TestOpenCardMirror_HeadlessNoLiveApp_NoOp(t *testing.T) {
+	a := newBlankAtlasService(t)
+	kind, err := a.CreateKind("Document", "", "", nil)
+	if err != nil {
+		t.Fatalf("CreateKind: %v", err)
+	}
+	card, err := a.CreateCard(kind.ID, "Mirrored", "", nil, "", nil, "", "", "/tmp/example.md", "")
+	if err != nil {
+		t.Fatalf("CreateCard: %v", err)
+	}
+	if err := a.OpenCardMirror(card.ID); err != nil {
+		t.Errorf("OpenCardMirror with no live app = %v, want nil (headless no-op)", err)
+	}
+	if err := a.RevealCardMirror(card.ID); err != nil {
+		t.Errorf("RevealCardMirror with no live app = %v, want nil (headless no-op)", err)
+	}
+}

@@ -45,13 +45,15 @@
     box-shadow: var(--shadow-floating-large, 0 4px 16px rgba(0, 0, 0, 0.12));
 }
 
-/* Link labels (goal 0072 slice A): shown on hover/selection only, or
-   always when the board carries 3 edges or fewer -- edges themselves
-   stay decorative (a 1.6px stroke), never intercepting a click meant
-   for a card underneath. AtlasLinkEdge renders the label as its own
-   SVG <text> (floating straight edges replaced the default bezier),
-   so the type styling that used to ride labelStyle lives here, with a
-   canvas-colored stroke halo keeping it readable across the line. */
+/* Link labels (goal 0072 slice A, tightened by goal 0081 slice A4's
+   quiet edges): shown ONLY on hover or when either endpoint card is
+   selected/flipped -- never unconditionally, so provenance lives on
+   the cards' own slot rows and the line stays decorative (a 1.6px
+   stroke), never intercepting a click meant for a card underneath.
+   AtlasLinkEdge renders the label as its own SVG <text> (floating
+   straight edges replaced the default bezier), so the type styling
+   that used to ride labelStyle lives here, with a canvas-colored
+   stroke halo keeping it readable across the line. */
 .board :global(.atlas-link-dot) {
     fill: var(--fgColor-accent);
     opacity: 0.75;
@@ -72,7 +74,6 @@
     opacity: 0;
     transition: opacity 0.12s;
 }
-.board :global(.atlas-link-label[data-hovered='true']),
-.board.alwaysShowLabels :global(.atlas-link-label) {
+.board :global(.atlas-link-label[data-hovered='true']) {
     opacity: 1;
 }

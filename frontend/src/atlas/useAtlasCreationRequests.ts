@@ -20,6 +20,15 @@ export function useAtlasCreationRequests() {
     counter.current += 1
     setPlacementRequest({ tool, pos, parentIDOverride, token: counter.current })
   }
+  // "Add linked card…" (goal 0081 slice A4): the card menu's own
+  // downward request, carrying the linking card's id instead of a
+  // parent override -- useAtlasCreation.placeAt resolves the actual
+  // parent/position from it server-relative (freeChildPosition against
+  // the source card's own parent).
+  const requestLinkedCard = (fromCardID: string, pos: { x: number; y: number }) => {
+    counter.current += 1
+    setPlacementRequest({ tool: 'card', pos, linkFromCardID: fromCardID, token: counter.current })
+  }
   const requestPromote = (noteID: string, pos: { x: number; y: number }) => {
     counter.current += 1
     setPromoteRequest({ noteID, pos, token: counter.current })
@@ -32,5 +41,5 @@ export function useAtlasCreationRequests() {
     setGroupRequest({ cardIDs, noteIDs, pos, token: counter.current })
   }
 
-  return { placementRequest, requestPlacement, promoteRequest, requestPromote, groupRequest, requestGroup }
+  return { placementRequest, requestPlacement, requestLinkedCard, promoteRequest, requestPromote, groupRequest, requestGroup }
 }

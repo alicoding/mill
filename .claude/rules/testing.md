@@ -167,6 +167,12 @@ layer per capability," never "a seed per thing":
   verify after the next tagged release by clicking Check for
   updates → Update now → Restart Mill on a release-installed copy
   and confirming the new version string.
+- **Native file-drop delivery** (goal 0081 A3, `EnableFileDrop` +
+  `WindowFilesDropped`) — the landing/derivation logic is Go-tested
+  and the flow is e2e-proven at the service level, but a real OS
+  drag from Finder onto the window only exists desktop-mode: verify
+  by dragging a `.md` file onto the running app and confirming the
+  card lands with the file's real path.
 
 From the UX point of view the seed layer stays privileged — it's the
 one a human can SEE working — but correctness under change belongs to

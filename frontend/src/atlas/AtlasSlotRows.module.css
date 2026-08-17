@@ -1,0 +1,109 @@
+/* The flip back face's typed link slots (goal 0081 slice A4) -- packed
+   tight, the card's own fixed 190x128 footprint (AtlasNoteCardNode's
+   own NOTE_WIDTH/NOTE_HEIGHT) leaves very little room once the
+   eyebrow/note/Open button above and below it are accounted for. */
+.block {
+    margin-top: 3px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-height: 0;
+    overflow: hidden;
+}
+.row {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    min-height: 0;
+}
+.kindLabel {
+    flex: 0 0 auto;
+    max-width: 46px;
+    font-family: var(--mill-mono);
+    font-size: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: var(--fgColor-muted);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.chips {
+    flex: 1 1 auto;
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    overflow: hidden;
+    white-space: nowrap;
+}
+.dragHint {
+    font-size: 9px;
+    color: var(--fgColor-muted);
+    font-style: italic;
+}
+.chip {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    max-width: 84px;
+    border: 1px solid var(--borderColor-muted);
+    border-radius: 3px;
+    background: var(--bgColor-muted, var(--bgColor-default));
+}
+.chipLabel {
+    appearance: none;
+    background: transparent;
+    border: none;
+    padding: 0 3px;
+    font-size: 9px;
+    color: var(--fgColor-default);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    cursor: pointer;
+}
+.chipRemove {
+    appearance: none;
+    background: transparent;
+    border: none;
+    border-left: 1px solid var(--borderColor-muted);
+    padding: 0 3px;
+    font-size: 9px;
+    line-height: 1;
+    color: var(--fgColor-muted);
+    cursor: pointer;
+    opacity: 0;
+}
+.chip:hover .chipRemove {
+    opacity: 1;
+}
+
+/* The drag anchor (LOCKED design §3): a small filled, accent-colored
+   circle at the row's own right edge -- the ONLY thing on this card
+   that starts a slot-drag (useAtlasSlotDrag's own onPointerDown). */
+.anchor {
+    flex: 0 0 auto;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--fgColor-accent);
+    cursor: grab;
+}
+.anchor:active {
+    cursor: grabbing;
+}
+
+.overflow {
+    font-family: var(--mill-mono);
+    font-size: 8px;
+    color: var(--fgColor-muted);
+}
+
+/* Slot-drag's own live release-target affordance (goal 0081 slice A4):
+   every OTHER top-level card lifts with a static accent ring while a
+   slot-drag is in progress -- the all-answer highlight slice A's
+   generic link kinds use (compatibility filtering is slice B). */
+.slotTargetHighlight {
+    outline: 2px solid var(--fgColor-accent);
+    outline-offset: 2px;
+}

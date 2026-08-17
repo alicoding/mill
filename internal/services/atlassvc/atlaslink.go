@@ -90,6 +90,40 @@ func (a *AtlasService) UpdateLink(id, label string) (atlas.Link, error) {
 	return l, nil
 }
 
+// SetLinkKind reassigns an existing link to a different LinkKind --
+// the edge menu's own "Change link kind" action (goal 0081 slice A4),
+// distinct from UpdateLink above (which only ever touches Label):
+// re-typing a drawn link is a different edit than re-wording it, so it
+// gets its own referential-existence check against the new kind.
+func (a *AtlasService) SetLinkKind(id, linkKindID string) (atlas.Link, error) {
+	a.mu.Lock()
+	idx := a.findLinkLocked(id)
+	if idx == -1 {
+		a.mu.Unlock()
+		return atlas.Link{}, fmt.Errorf("no link with id %q", id)
+	}
+	if a.findLinkKindLocked(linkKindID) == -1 {
+		a.mu.Unlock()
+		return atlas.Link{}, fmt.Errorf("no link kind with id %q", linkKindID)
+	}
+	previous := a.links[idx]
+	l := previous
+	l.LinkKindID = linkKindID
+	l.UpdatedAt = time.Now()
+	l.Seed = l.Seed.Touch()
+	a.links[idx] = l
+	perr := a.persistLocked()
+	if perr != nil {
+		a.links[idx] = previous
+	}
+	a.mu.Unlock()
+	if perr != nil {
+		return atlas.Link{}, fmt.Errorf("save link: %w", perr)
+	}
+	dataevent.Emit("atlas", l.ID)
+	return l, nil
+}
+
 func (a *AtlasService) DeleteLink(id string) error {
 	a.mu.Lock()
 	idx := a.findLinkLocked(id)
