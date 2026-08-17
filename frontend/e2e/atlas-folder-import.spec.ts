@@ -1,5 +1,6 @@
 import { test, expect } from './fixtures/server'
-import { openCardPageEdit } from './fixtures/atlasPage'
+import { deleteViaPageMenu } from './fixtures/atlasPage'
+import { openViaFlip } from './fixtures/atlasBoard'
 
 // Synced-folder onboarding (docs/goals/0067) over real Go bindings
 // (Wails3 server mode): AtlasService.PickFolder's own MILL_TEST_
@@ -28,17 +29,6 @@ function noteCard(page: import('@playwright/test').Page, title: string) {
 
 function groupCard(page: import('@playwright/test').Page, title: string) {
   return page.locator('[data-testid="atlas-group-card"]').filter({ has: page.locator(`[aria-label="Zoom into ${title}"]`) })
-}
-
-// Click TOGGLES the flip, so this only clicks when the card is
-// currently front-facing -- reopening an already-flipped card must not
-// click it back to front first.
-async function openViaFlip(card: import('@playwright/test').Locator) {
-  if ((await card.getAttribute('data-flipped')) !== 'true') {
-    await card.click()
-    await expect(card).toHaveAttribute('data-flipped', 'true')
-  }
-  await card.getByTestId('atlas-note-open').click()
 }
 
 test('add from folder: scan, partial accept, containment, and mirror rendering all work end to end', async ({ page }) => {
@@ -99,26 +89,21 @@ test('add from folder: scan, partial accept, containment, and mirror rendering a
   await openViaFlip(summaryCard)
   const overlay = page.locator('[data-component="atlas-card-overlay"]')
   await expect(overlay).toBeVisible()
-  await openCardPageEdit(page)
-  await expect(overlay.getByTestId('atlas-overlay-mirror-path')).toHaveValue(/Reports\/Q1 Summary\.md$/)
+  await expect(overlay.getByTestId('atlas-page-mirror-path')).toHaveValue(/Reports\/Q1 Summary\.md$/)
   await expect(overlay.getByTestId('atlas-mirror-markdown')).toContainText('Numbers looked good across the board.')
 
   // Cleanup (testing.md's within-file/within-worker discipline): the
   // child card must go before its own container can be deleted. Once
   // "Reports" holds no children, it renders as a plain note card,
   // deleted the same flip-then-Open way as every other leaf below.
-  await openCardPageEdit(page)
-  await overlay.getByTestId('atlas-overlay-delete').click()
-  await page.getByRole('alertdialog').getByRole('button', { name: 'Delete' }).click()
+  await deleteViaPageMenu(page, overlay)
   await expect(summaryCard).not.toBeVisible()
 
   await page.getByTestId('atlas-breadcrumb').getByText('My space', { exact: true }).click()
   for (const card of [noteCard(page, 'Reports'), notesCard, logoCard]) {
     await openViaFlip(card)
     await expect(overlay).toBeVisible()
-    await openCardPageEdit(page)
-    await overlay.getByTestId('atlas-overlay-delete').click()
-    await page.getByRole('alertdialog').getByRole('button', { name: 'Delete' }).click()
+    await deleteViaPageMenu(page, overlay)
     await expect(overlay).not.toBeVisible()
   }
 })

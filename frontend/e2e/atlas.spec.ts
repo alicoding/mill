@@ -1,5 +1,7 @@
 import { test, expect } from './fixtures/server'
-import { openCardPageEdit } from './fixtures/atlasPage'
+import { deleteViaPageMenu } from './fixtures/atlasPage'
+import { ATLAS_KIND_TOPIC, selectKind } from './fixtures/kindPicker'
+import { openViaFlip } from './fixtures/atlasBoard'
 
 // Exercises the Atlas surface's one-map board (docs/adr/0038,
 // goal 0072 slice A: AtlasShelves retired, every level renders through
@@ -39,19 +41,6 @@ function groupCard(page: import('@playwright/test').Page, title: string) {
   return page.locator('[data-testid="atlas-group-card"]').filter({ has: page.locator(`[aria-label="Zoom into ${title}"]`) })
 }
 
-// Flips a note card in place then clicks its back face's Open button --
-// the one path to the card overlay in the one-map model (the retired
-// ⓘ icon's replacement). Click TOGGLES the flip, so this only clicks
-// when the card is currently front-facing -- reopening an already-
-// flipped card (e.g. to re-check a saved value) must not click it back
-// to front first.
-async function openViaFlip(card: import('@playwright/test').Locator) {
-  if ((await card.getAttribute('data-flipped')) !== 'true') {
-    await card.click()
-    await expect(card).toHaveAttribute('data-flipped', 'true')
-  }
-  await card.getByTestId('atlas-note-open').click()
-}
 
 test('the board fills the view pane height instead of collapsing to its min-height floor', async ({ page }) => {
   await page.goto('/')
@@ -125,7 +114,7 @@ test('creating a sibling of the auto-entered root surfaces the "All spaces" meta
   // the meta level once it exists.
   await page.getByTestId('atlas-add-button').click()
   await page.getByTestId('atlas-add-sibling').click()
-  await page.getByTestId('atlas-create-kind').selectOption({ label: '🧭 Topic' })
+  await selectKind(page, ATLAS_KIND_TOPIC, 'atlas-create-kind')
   await page.getByTestId('atlas-create-title').fill(title)
   await page.getByRole('button', { name: 'Create' }).click()
 
@@ -142,9 +131,8 @@ test('creating a sibling of the auto-entered root surfaces the "All spaces" meta
   // meta level (and its crumb) stop existing again. A childless new
   // root renders as a plain note card.
   await openViaFlip(noteCard(page, title))
-  await openCardPageEdit(page)
-  await page.getByTestId('atlas-overlay-delete').click()
-  await page.getByRole('alertdialog').getByRole('button', { name: 'Delete' }).click()
+  const rootOverlay = page.locator('[data-component="atlas-card-overlay"]')
+  await deleteViaPageMenu(page, rootOverlay)
   await expect(newRootCard).not.toBeVisible()
   await expect(page.getByTestId('atlas-breadcrumb')).not.toContainText('All spaces')
 })
@@ -231,7 +219,7 @@ test('create a child card, edit + persist it via the flip-then-Open overlay, the
   // card" lands the new card as a CHILD of the currently viewed space.
   await page.getByTestId('atlas-add-button').click()
   await page.getByTestId('atlas-add-child').click()
-  await page.getByTestId('atlas-create-kind').selectOption({ label: '🧭 Topic' })
+  await selectKind(page, ATLAS_KIND_TOPIC, 'atlas-create-kind')
   await page.getByTestId('atlas-create-title').fill(title)
   await page.getByRole('button', { name: 'Create' }).click()
 
@@ -241,20 +229,18 @@ test('create a child card, edit + persist it via the flip-then-Open overlay, the
   await openViaFlip(newCard)
   const overlay = page.locator('[data-component="atlas-card-overlay"]')
   await expect(overlay).toBeVisible()
-  await openCardPageEdit(page)
-  await overlay.getByTestId('atlas-overlay-note').fill('A note written by the e2e suite.')
-  await overlay.getByTestId('atlas-overlay-save').click()
+  await overlay.getByTestId('atlas-page-note').fill('A note written by the e2e suite.')
+  await overlay.getByTestId('atlas-page-note').blur()
+  await expect(overlay.getByTestId('atlas-page-saved-tick')).toBeVisible()
+  await page.keyboard.press('Escape')
   await expect(overlay).not.toBeVisible()
 
   await openViaFlip(newCard)
-  await openCardPageEdit(page)
-  await expect(page.getByTestId('atlas-overlay-note')).toHaveValue('A note written by the e2e suite.')
+  await expect(page.getByTestId('atlas-page-note')).toHaveValue('A note written by the e2e suite.')
 
   // Cleanup: delete the card this test created (testing.md's
   // within-file cleanup discipline).
-  await openCardPageEdit(page)
-  await page.getByTestId('atlas-overlay-delete').click()
-  await page.getByRole('alertdialog').getByRole('button', { name: 'Delete' }).click()
+  await deleteViaPageMenu(page, overlay)
   await expect(newCard).not.toBeVisible()
 })
 
@@ -327,7 +313,7 @@ test('a sibling card created into a Free-mode space lands clear of both leaf not
   const title = 'ZzE2eAtlasSiblingCard'
   await page.getByTestId('atlas-add-button').click()
   await page.getByTestId('atlas-add-sibling').click()
-  await page.getByTestId('atlas-create-kind').selectOption({ label: '🧭 Topic' })
+  await selectKind(page, ATLAS_KIND_TOPIC, 'atlas-create-kind')
   await page.getByTestId('atlas-create-title').fill(title)
   await page.getByRole('button', { name: 'Create' }).click()
 
@@ -352,9 +338,8 @@ test('a sibling card created into a Free-mode space lands clear of both leaf not
 
   // Cleanup (testing.md's within-file discipline).
   await openViaFlip(newCard)
-  await openCardPageEdit(page)
-  await page.getByTestId('atlas-overlay-delete').click()
-  await page.getByRole('alertdialog').getByRole('button', { name: 'Delete' }).click()
+  const siblingOverlay = page.locator('[data-component="atlas-card-overlay"]')
+  await deleteViaPageMenu(page, siblingOverlay)
   await expect(newCard).not.toBeVisible()
 })
 

@@ -99,6 +99,50 @@
     color: var(--fgColor-muted);
 }
 
+/* The page variant (goal 0081 slice A5) has a full-width column to
+   work with, not the flip back face's tiny 190x128 footprint -- every
+   cramped canvas dimension above is sized for that card, so the page
+   variant gets its own roomier readable sizing rather than inheriting
+   8-9px text and a 46px label column. */
+.block[data-variant='page'] {
+    gap: 8px;
+    overflow: visible;
+}
+.block[data-variant='page'] .row {
+    flex-wrap: wrap;
+    padding: 6px 0;
+    border-bottom: 1px solid var(--borderColor-muted);
+}
+.block[data-variant='page'] .kindLabel {
+    max-width: none;
+    font-size: 10.5px;
+    flex: 0 0 96px;
+}
+.block[data-variant='page'] .chips {
+    flex-wrap: wrap;
+    white-space: normal;
+}
+.block[data-variant='page'] .chip {
+    max-width: none;
+}
+.block[data-variant='page'] .chipLabel,
+.block[data-variant='page'] .chipRemove {
+    font-size: 11px;
+}
+.block[data-variant='page'] .chipRemove {
+    opacity: 1;
+}
+.pageAdd {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex: 1 1 220px;
+    min-width: 200px;
+}
+.pageAdd > span {
+    flex: 1 1 auto;
+}
+
 /* Slot-drag's own live release-target affordance (goal 0081 slice A4):
    every OTHER top-level card lifts with a static accent ring while a
    slot-drag is in progress -- the all-answer highlight slice A's

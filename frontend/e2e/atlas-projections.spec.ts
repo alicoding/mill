@@ -1,5 +1,7 @@
 import { test, expect } from './fixtures/server'
-import { openCardPageEdit } from './fixtures/atlasPage'
+import { deleteViaPageMenu } from './fixtures/atlasPage'
+import { ATLAS_KIND_DOCUMENT, selectKind } from './fixtures/kindPicker'
+import { openViaFlip } from './fixtures/atlasBoard'
 
 // Atlas projections (docs/goals/0064, ADR-0038): mirror-content
 // rendering, the traceability matrix, and coverage -- each proven
@@ -24,17 +26,6 @@ function groupCard(page: import('@playwright/test').Page, title: string) {
   return page.locator('[data-testid="atlas-group-card"]').filter({ has: page.locator(`[aria-label="Zoom into ${title}"]`) })
 }
 
-// Click TOGGLES the flip, so this only clicks when the card is
-// currently front-facing -- reopening an already-flipped card (e.g. to
-// re-check a saved value) must not click it back to front first.
-async function openViaFlip(card: import('@playwright/test').Locator) {
-  if ((await card.getAttribute('data-flipped')) !== 'true') {
-    await card.click()
-    await expect(card).toHaveAttribute('data-flipped', 'true')
-  }
-  await card.getByTestId('atlas-note-open').click()
-}
-
 test('a card with a Mirror path pointing at a markdown file renders its content read-only in the overlay', async ({ page }) => {
   const fs = await import('node:fs')
   const os = await import('node:os')
@@ -50,7 +41,7 @@ test('a card with a Mirror path pointing at a markdown file renders its content 
 
   await page.getByTestId('atlas-add-button').click()
   await page.getByTestId('atlas-add-child').click()
-  await page.getByTestId('atlas-create-kind').selectOption({ label: '📄 Document' })
+  await selectKind(page, ATLAS_KIND_DOCUMENT, 'atlas-create-kind')
   await page.getByTestId('atlas-create-title').fill(title)
   await page.getByRole('button', { name: 'Create' }).click()
 
@@ -60,11 +51,11 @@ test('a card with a Mirror path pointing at a markdown file renders its content 
   const overlay = page.locator('[data-component="atlas-card-overlay"]')
   await expect(overlay).toBeVisible()
 
-  await openCardPageEdit(page)
-  await overlay.getByTestId('atlas-overlay-mirror-path').fill(file)
-  await overlay.getByTestId('atlas-overlay-save').click()
-  await expect(overlay).not.toBeVisible()
+  await overlay.getByTestId('atlas-page-mirror-path').fill(file)
+  await overlay.getByTestId('atlas-page-mirror-path').blur()
+  await expect(overlay.getByTestId('atlas-page-saved-tick')).toBeVisible()
 
+  await page.keyboard.press('Escape')
   await openViaFlip(newCard)
   await expect(overlay).toBeVisible()
   await expect(overlay.getByTestId('atlas-mirror-markdown')).toBeVisible()
@@ -72,9 +63,7 @@ test('a card with a Mirror path pointing at a markdown file renders its content 
   await expect(overlay.getByTestId('atlas-mirror-markdown').locator('strong')).toContainText('captured')
 
   // Cleanup (testing.md's within-file cleanup discipline).
-  await openCardPageEdit(page)
-  await overlay.getByTestId('atlas-overlay-delete').click()
-  await page.getByRole('alertdialog').getByRole('button', { name: 'Delete' }).click()
+  await deleteViaPageMenu(page, overlay)
   await expect(newCard).not.toBeVisible()
 })
 
@@ -135,7 +124,6 @@ test('coverage counts a space\'s cards missing a link and missing a mirror, with
   await expect(dialog).not.toBeVisible()
   const overlay = page.locator('[data-component="atlas-card-overlay"]')
   await expect(overlay).toBeVisible()
-  await openCardPageEdit(page)
-  await expect(overlay.getByTestId('atlas-overlay-title')).toHaveValue('Getting started')
+  await expect(overlay.getByTestId('atlas-page-title')).toHaveValue('Getting started')
   await page.keyboard.press('Escape')
 })

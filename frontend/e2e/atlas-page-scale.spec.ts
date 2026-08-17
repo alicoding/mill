@@ -89,7 +89,7 @@ test('a card page at scale caps its entries with an honest expander and lazy-loa
 
     const overlay = page.locator('[data-component="atlas-card-overlay"]')
     await expect(overlay).toBeVisible()
-    await expect(overlay.getByTestId('atlas-page-title')).toHaveText('Mirror Stack')
+    await expect(overlay.getByTestId('atlas-page-title')).toHaveValue('Mirror Stack')
 
     // Eager preview cap (goal 0073 slice B): the first 3 mirrored
     // children in title order (Alpha/Bravo/Charlie) render their

@@ -18,7 +18,7 @@ test('the gesture model: double-click commits -- a leaf opens its page, a frame 
   await getting.dblclick()
   const overlay = page.locator('[data-component="atlas-card-overlay"]')
   await expect(overlay).toBeVisible()
-  await expect(overlay.getByTestId('atlas-page-title')).toHaveText('Getting started')
+  await expect(overlay.getByTestId('atlas-page-title')).toHaveValue('Getting started')
   await page.keyboard.press('Escape')
   await expect(overlay).not.toBeVisible()
   await expect(getting).toHaveAttribute('data-flipped', 'false')
@@ -40,7 +40,7 @@ test('the gesture model: double-click commits -- a leaf opens its page, a frame 
   // flip step, and the card is front-facing behind it.
   await getting.click({ modifiers: ['Meta'] })
   await expect(overlay).toBeVisible()
-  await expect(overlay.getByTestId('atlas-page-title')).toHaveText('Getting started')
+  await expect(overlay.getByTestId('atlas-page-title')).toHaveValue('Getting started')
   await page.keyboard.press('Escape')
   await expect(overlay).not.toBeVisible()
   await expect(getting).toHaveAttribute('data-flipped', 'false')

@@ -1,6 +1,7 @@
 import { test, expect } from './fixtures/server'
-import { openCardPageEdit } from './fixtures/atlasPage'
+import { deleteViaPageMenu } from './fixtures/atlasPage'
 import { clickAtFraction } from './fixtures/animation'
+import { openViaFlip } from './fixtures/atlasBoard'
 
 // Exercises the card PAGE's own ratified anatomy (goal 0072 slice C,
 // docs/adr/0038): the header row (kind glyph/circle, title, file tag,
@@ -19,15 +20,6 @@ function groupCard(page: import('@playwright/test').Page, title: string) {
   return page.locator('[data-testid="atlas-group-card"]').filter({ has: page.locator(`[aria-label="Zoom into ${title}"]`) })
 }
 
-async function openViaFlip(card: import('@playwright/test').Locator) {
-  if ((await card.getAttribute('data-flipped')) !== 'true') {
-    await card.click()
-    await expect(card).toHaveAttribute('data-flipped', 'true')
-  }
-  await card.getByTestId('atlas-note-open').click()
-}
-
-
 test('the page header shows a kind glyph, title, file tag, and Close; the seeded Contact card gets a circular glyph', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Atlas' }).click()
@@ -36,7 +28,7 @@ test('the page header shows a kind glyph, title, file tag, and Close; the seeded
 
   await openViaFlip(noteCard(page, 'Getting started'))
   await expect(overlay).toBeVisible()
-  await expect(overlay.getByTestId('atlas-page-title')).toHaveText('Getting started')
+  await expect(overlay.getByTestId('atlas-page-title')).toHaveValue('Getting started')
   const topicGlyph = overlay.getByTestId('atlas-page-glyph')
   await expect(topicGlyph).toHaveText('T')
   expect(await topicGlyph.evaluate((el) => getComputedStyle(el).borderRadius)).toBe('6px')
@@ -95,7 +87,7 @@ test('the open page is the top layer: app chrome never paints over it and its ba
   await expect(overlay).not.toBeVisible()
 })
 
-test('a linked Contact card renders as an avatar person row inside the parent page\'s Contents', async ({ page }) => {
+test('the page\'s links render as slot rows (goal 0081 slice A5), not a second read-only copy of the Contents column', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Atlas' }).click()
   await expect(page.getByTestId('atlas-board')).toBeVisible()
@@ -104,12 +96,14 @@ test('a linked Contact card renders as an avatar person row inside the parent pa
   const overlay = page.locator('[data-component="atlas-card-overlay"]')
   await expect(overlay).toBeVisible()
 
-  const linkEntry = overlay.getByTestId('atlas-page-link').filter({ hasText: 'Ada Lovelace' })
-  await expect(linkEntry).toBeVisible()
-  await expect(linkEntry).toHaveAttribute('data-contact', 'true')
-  const personRow = linkEntry.getByTestId('atlas-page-link-person')
-  await expect(personRow).toBeVisible()
-  await expect(personRow).toContainText('Ada Lovelace')
+  // "Getting started" carries the seeded outgoing "relates to" link to
+  // "Ada Lovelace" -- it renders as a chip on the slot row, and the
+  // Contents column no longer duplicates it as a separate read-only
+  // entry (Note/Links both moved to their own in-place editable
+  // controls, LOCKED design §5b "no edit mode").
+  const slotChip = overlay.getByTestId('atlas-slot-chip').filter({ hasText: 'Ada Lovelace' })
+  await expect(slotChip).toBeVisible()
+  await expect(overlay.getByTestId('atlas-page-link')).toHaveCount(0)
 
   await page.keyboard.press('Escape')
 })
@@ -143,7 +137,7 @@ test('a region frame\'s body click flips it in place; Esc unflips; Open on the b
 
   const overlay = page.locator('[data-component="atlas-card-overlay"]')
   await expect(overlay).toBeVisible()
-  await expect(overlay.getByTestId('atlas-page-title')).toHaveText('Example area')
+  await expect(overlay.getByTestId('atlas-page-title')).toHaveValue('Example area')
   await page.keyboard.press('Escape')
   await expect(overlay).not.toBeVisible()
 })
@@ -165,14 +159,14 @@ test('a child\'s mirror preview renders inline in the parent page; the card\'s o
   const overlay = page.locator('[data-component="atlas-card-overlay"]')
   await openViaFlip(charterCard)
   await expect(overlay).toBeVisible()
-  await openCardPageEdit(page)
-  await overlay.getByTestId('atlas-overlay-mirror-path').fill(file)
-  await overlay.getByTestId('atlas-overlay-save').click()
+  await overlay.getByTestId('atlas-page-mirror-path').fill(file)
+  await overlay.getByTestId('atlas-page-mirror-path').blur()
+  await expect(overlay.getByTestId('atlas-page-saved-tick')).toBeVisible()
+  await page.keyboard.press('Escape')
   await expect(overlay).not.toBeVisible()
 
   // The card's own page: meta rail source/mirror/freshness, each a
-  // read-only summary of a field the edit section below Contents still
-  // owns.
+  // read-only summary of a field the fields column above still owns.
   await openViaFlip(charterCard)
   await expect(overlay).toBeVisible()
   await expect(overlay.getByTestId('atlas-page-meta-source')).toContainText('example.com')
@@ -189,7 +183,7 @@ test('a child\'s mirror preview renders inline in the parent page; the card\'s o
   await expect(exampleAreaFrame.getByTestId('atlas-group-card-back')).toBeVisible()
   await exampleAreaFrame.getByTestId('atlas-group-open').click()
   await expect(overlay).toBeVisible()
-  await expect(overlay.getByTestId('atlas-page-title')).toHaveText('Example area')
+  await expect(overlay.getByTestId('atlas-page-title')).toHaveValue('Example area')
   const charterEntry = overlay.getByTestId('atlas-page-child').filter({ hasText: 'Project charter' })
   await expect(charterEntry).toBeVisible()
   await expect(charterEntry.getByTestId('atlas-mirror-markdown')).toContainText('Charter notes')
@@ -201,9 +195,10 @@ test('a child\'s mirror preview renders inline in the parent page; the card\'s o
   // within-file cleanup discipline).
   await groupCard(page, 'Example area').getByTestId('atlas-group-header').click()
   await openViaFlip(charterCard)
-  await openCardPageEdit(page)
-  await overlay.getByTestId('atlas-overlay-mirror-path').fill('')
-  await overlay.getByTestId('atlas-overlay-save').click()
+  await overlay.getByTestId('atlas-page-mirror-path').fill('')
+  await overlay.getByTestId('atlas-page-mirror-path').blur()
+  await expect(overlay.getByTestId('atlas-page-saved-tick')).toBeVisible()
+  await page.keyboard.press('Escape')
   await expect(overlay).not.toBeVisible()
 })
 
@@ -304,9 +299,7 @@ test('a group entry inside a page re-roots the board to a deeper card, and the b
   // children. A chip is a place: clicking it drills straight to L3.
   async function deleteViaFlip(card: import('@playwright/test').Locator) {
     await openViaFlip(card)
-    await openCardPageEdit(page)
-    await overlay.getByTestId('atlas-overlay-delete').click()
-    await page.getByRole('alertdialog').getByRole('button', { name: 'Delete' }).click()
+    await deleteViaPageMenu(page, overlay)
     await expect(overlay).not.toBeVisible()
   }
 

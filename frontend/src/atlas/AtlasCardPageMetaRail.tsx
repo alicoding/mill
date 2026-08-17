@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import { Button, Checkbox, FormControl, Link as PrimerLink, Stack } from '@primer/react'
-import { CheckIcon, CopyIcon, FileDirectoryIcon, LinkIcon, SyncIcon } from '@primer/octicons-react'
+import { CheckIcon, CopyIcon, LinkIcon, SyncIcon } from '@primer/octicons-react'
 import type { Card } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 import { formatUpdated } from '../shared/inventorySort'
 import { runStatusVariant } from '../shared/runTime'
@@ -14,9 +14,12 @@ import styles from './AtlasCardPage.module.css'
 // relocated -- Update now, the receipt-run link, and the share actions
 // keep their original test ids/copy so the specs that already assert
 // against them (atlas.spec.ts, atlas-share.spec.ts) need no change.
+// Reveal-file is deliberately NOT here (goal 0081 slice A5 rider (a)):
+// the header's kebab menu is the one source for Open file/Reveal now,
+// matching the canvas card menu -- this row used to duplicate it.
 export function AtlasCardPageMetaRail({
   card, updating, onUpdateNow, receiptStatus, onOpenRun,
-  includeAttachments, onIncludeAttachmentsChange, copied, onCopyContext, onCopyLink, onRevealFile,
+  includeAttachments, onIncludeAttachmentsChange, copied, onCopyContext, onCopyLink,
 }: {
   card: Card
   updating: boolean
@@ -28,7 +31,6 @@ export function AtlasCardPageMetaRail({
   copied: boolean
   onCopyContext: () => void
   onCopyLink: () => void
-  onRevealFile: () => void
 }) {
   const { t } = useTranslation('atlas')
   const showFreshness = Boolean(card.RefreshWorkflowID || card.MirrorPath)
@@ -89,11 +91,6 @@ export function AtlasCardPageMetaRail({
           {card.Source && (
             <PrimerLink as="button" type="button" data-testid="atlas-overlay-copy-link" onClick={onCopyLink}>
               <LinkIcon size={12} /> {t('overlay.copyCloudLink')}
-            </PrimerLink>
-          )}
-          {card.MirrorPath && (
-            <PrimerLink as="button" type="button" data-testid="atlas-overlay-reveal-file" onClick={onRevealFile}>
-              <FileDirectoryIcon size={12} /> {t('overlay.revealFile')}
             </PrimerLink>
           )}
         </Stack>
