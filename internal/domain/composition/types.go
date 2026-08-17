@@ -370,4 +370,14 @@ type ExecContext struct {
 	// from scratch) -- only the guardrail gate itself ever flips it back
 	// to false, on an explicit Continue.
 	Stepped bool
+	// WorkflowID is opts.WorkflowID, carried onto the root ExecContext the
+	// same way RunContext/Stepped are (docs/goals/0087): a node's own exec
+	// function needs it to name itself in cross-service bookkeeping keyed
+	// by workflow (the file-move/file-write structural cycle guard,
+	// composition.SetFileWriteRecorder) without composition importing the
+	// service that owns that bookkeeping. Empty for any caller that
+	// supplies no WorkflowID (every existing unit test, ExecuteWorkflow's
+	// own test-only primitive use) -- the guard simply never matches an
+	// empty workflow id.
+	WorkflowID string
 }
