@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { Events } from '@wailsio/runtime'
 import { Text } from '@primer/react'
 import { ViewMode } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
-import type { Card, Note, Position } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
+import type { Card, Position } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 import { useAtlasCreationRequests } from './useAtlasCreationRequests'
 import { AtlasService } from '../shared/bindings'
 import { useAppStore } from '../shared/store'
@@ -18,13 +18,15 @@ import type { AtlasFocusRequest } from './AtlasBoard'
 import { AtlasJumpDialog } from './AtlasJumpDialog'
 import { AtlasCardOverlay } from './AtlasCardOverlay'
 import { ContextMenu, type ContextMenuState } from '../shared/ContextMenu'
-import { useConfirmDelete } from '../shared/useConfirmDelete'
 import { AtlasMatrixView } from './AtlasMatrixView'
 import { AtlasCoverageView } from './AtlasCoverageView'
 import { isGroupCard } from './atlasBoardLayout'
 import { freeChildPosition } from './atlasContainmentPlacement'
 import { useAtlasContainmentMenus } from './useAtlasContainmentMenus'
 import { useAtlasLinkMenus } from './useAtlasLinkMenus'
+import { useAtlasNoteMenu } from './useAtlasNoteMenu'
+import { useAtlasUndoToast } from './useAtlasUndoToast'
+import { AtlasUndoToast } from './AtlasUndoToast'
 import runbookStyles from '../shared/ListCard.module.css'
 import styles from './AtlasView.module.css'
 
@@ -253,10 +255,17 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
   // Remove link) lives in the SAME hook -- split out of this file
   // entirely (architecture.md's 500-line convention).
   const [menu, setMenu] = useState<ContextMenuState | null>(null)
+  // The quick-delete undo toast (goal 0093): one shared instance,
+  // fed by every Atlas delete door below -- selection Del/Backspace +
+  // tray Delete, card/note context-menu Delete, frame-header Delete,
+  // and the card page's own kebab Delete.
+  const undoToast = useAtlasUndoToast()
+
   const linkMenus = useAtlasLinkMenus({
     t, allCards, allLinks, allNotes, linkKinds: allLinkKinds, setMenu, drill,
     onOpenCard: (id) => setOverlayCardID(id),
     onError: setShareError,
+    onDeleted: undoToast.registerDelete,
     requestLinkedCard: creationRequests.requestLinkedCard,
   })
 
@@ -277,29 +286,10 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
     })
   }
 
-  // A note's own right-click menu (goal 0081 slice A1): Promote opens
-  // the placement popover in promote mode (useAtlasCreation.ts, inside
-  // AtlasBoard -- it owns the popover's anchoring); Delete goes through
-  // the same shared confirm pattern every other destructive action uses.
-  const { requestDelete: requestDeleteNote, dialog: noteDeleteDialog } = useConfirmDelete<Note>({
-    entityType: 'note',
-    labelOf: (n) => n.Text,
-    onConfirm: (n) => {
-      AtlasService.DeleteNote(n.ID).then(() => void refreshAtlas()).catch((err) => setShareError(String(err)))
-    },
+  const noteMenu = useAtlasNoteMenu({
+    t, allNotes, setMenu, onDeleted: undoToast.registerDelete, onError: setShareError,
+    requestPromote: creationRequests.requestPromote,
   })
-  const openNoteMenu = (noteID: string, pos: { x: number; y: number }) => {
-    const note = allNotes.find((n) => n.ID === noteID)
-    if (!note) return
-    setMenu({
-      x: pos.x,
-      y: pos.y,
-      items: [
-        { id: 'promote', label: t('contextMenu.promoteToCard'), run: () => creationRequests.requestPromote(note.ID, pos) },
-        { id: 'delete-note', label: t('contextMenu.deleteNote'), danger: true, run: () => requestDeleteNote(note) },
-      ],
-    })
-  }
 
   // Frame/multi-select context menus + their dissolve/delete-with-
   // promotion confirm dialogs (goal 0081 slice A2) -- split into its
@@ -308,6 +298,7 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
   // AtlasBoard.tsx instead.
   const containmentMenus = useAtlasContainmentMenus({
     t, allCards, notes: allNotes, setMenu, drill, onError: setShareError,
+    onDeleted: undoToast.registerDelete,
     requestPlacementInside: (tool, pos, parentID) => creationRequests.requestPlacement(tool, pos, parentID),
     requestGroup: (cardIDs, noteIDs, pos) => creationRequests.requestGroup(cardIDs, noteIDs, pos),
   })
@@ -438,7 +429,7 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
           onCardContextMenu={linkMenus.openCardMenu}
           onPaneContextMenu={openPaneMenu}
           onArteryContextMenu={linkMenus.openArteryMenu}
-          onNoteContextMenu={openNoteMenu}
+          onNoteContextMenu={noteMenu.openNoteMenu}
           onFrameContextMenu={containmentMenus.openFrameMenu}
           onFrameInteriorContextMenu={containmentMenus.openFrameInteriorMenu}
           onMultiSelectContextMenu={containmentMenus.openMultiSelectMenu}
@@ -453,6 +444,9 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
             if (target) jumpToCard(target, false)
           }}
         />
+        {undoToast.pending && (
+          <AtlasUndoToast count={undoToast.pending.count} onUndo={undoToast.undo} />
+        )}
       </div>
 
       <AtlasJumpDialog open={jumpOpen} onClose={() => setJumpOpen(false)} cards={allCards} kinds={allKinds} onJump={jumpToCard} />
@@ -466,17 +460,14 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
           linkKinds={allLinkKinds}
           onClose={() => setOverlayCardID(null)}
           onSaved={() => void refreshAtlas()}
+          onDeleted={undoToast.registerDelete}
           onOpenGroupEntry={openGroupEntry}
         />
       )}
       {importConfirm.dialog}
       <ContextMenu state={menu} onClose={() => setMenu(null)} />
-      {linkMenus.menuDeleteDialog}
       {linkMenus.labelPopover}
-      {noteDeleteDialog}
       {containmentMenus.dissolveDialog}
-      {containmentMenus.deleteFrameDialog}
-      {containmentMenus.deleteSelectionDialog}
 
       <AtlasMatrixView
         open={matrixOpen}

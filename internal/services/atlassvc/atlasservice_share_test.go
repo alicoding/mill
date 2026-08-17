@@ -184,7 +184,8 @@ func deleteCardTree(a *AtlasService, id string) error {
 			}
 		}
 	}
-	return a.DeleteCard(id)
+	_, err := a.DeleteCard(id)
+	return err
 }
 
 func TestSpaceBundleContext_ConcatenatesChildrenInStableOrder(t *testing.T) {

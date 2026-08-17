@@ -39,8 +39,12 @@ export function AddLinkedCard(fromCardID: string, kindID: string, title: string,
 
 /**
  * AtlasSession returns the persisted state, DEGRADED to what still
- * exists: a deleted viewed card falls back to its nearest surviving
- * ancestor (root ultimately); a deleted open card is dropped. The
+ * exists: a fully-gone viewed card falls back to root; a tombstoned
+ * one (goal 0093) resolves to its own effective parent -- the same
+ * virtual-promotion walk every other read surface applies
+ * (atlas.EffectiveParentID) -- so a session parked inside a container
+ * deleted just before restart lands one level up, not all the way to
+ * root. A deleted (gone or tombstoned) open card is dropped. The
  * caller never has to handle a stale id.
  */
 export function AtlasSession(): $CancellablePromise<$models.AtlasSessionState> {
@@ -56,6 +60,11 @@ export function CardContextBlock(cardID: string, withAttachments: boolean): $Can
     return $Call.ByID(4150547692, cardID, withAttachments);
 }
 
+/**
+ * Cards returns every LIVE card (goal 0093: a tombstoned card is
+ * excluded, and a live child of a tombstoned container carries its
+ * resolved effective ParentID -- see liveCardsLocked).
+ */
 export function Cards(): $CancellablePromise<atlas$0.Card[] | null> {
     return $Call.ByID(4038798409);
 }
@@ -162,17 +171,17 @@ export function CreateNote(text: string, pos: atlas$0.Position, parentID: string
 }
 
 /**
- * DeleteCard removes a card. Containment removal never cascades or
- * orphans (goal 0081 A2's dissolve rule, superseding docs/goals/0061's
- * original block-while-children-exist guard): every direct child --
- * card or note -- promotes to the deleted card's own parent, in the
- * same locked section as the delete itself, so a dissolve/delete never
- * leaves a half-promoted tree behind. "Dissolve area" and a plain
- * Delete on a frame are the same server-side operation; only the
- * caller's own confirm copy differs. Deleting a card also removes
- * every link touching it.
+ * DeleteCard soft-deletes a card (goal 0093's quick-delete-with-undo
+ * guard): stamps DeletedAt and leaves ParentID/children untouched --
+ * no data rewrite happens until the boot-time purge; every live child
+ * simply resolves its effective parent (atlas.EffectiveParentID) past
+ * this tombstone in the meantime, so undo needs nothing more than
+ * clearing the stamp back. A built-in card's seed tombstone is
+ * recorded immediately, same timing the previous hard-delete already
+ * used, since a deleted built-in must not be topped up by reconcile
+ * while it's hidden.
  */
-export function DeleteCard(id: string): $CancellablePromise<void> {
+export function DeleteCard(id: string): $CancellablePromise<$models.TombstoneResult> {
     return $Call.ByID(3764094639, id);
 }
 
@@ -198,11 +207,11 @@ export function DeleteLinkKind(id: string): $CancellablePromise<void> {
 }
 
 /**
- * DeleteNote removes a note outright -- no tombstone (notes carry no
- * seed provenance), no children to block on (a note can never contain
- * anything).
+ * DeleteNote soft-deletes a note -- same tombstone contract as
+ * DeleteCard, minus the seed-tombstone bookkeeping (notes carry no
+ * seed provenance).
  */
-export function DeleteNote(id: string): $CancellablePromise<void> {
+export function DeleteNote(id: string): $CancellablePromise<$models.TombstoneResult> {
     return $Call.ByID(3922503309, id);
 }
 
@@ -292,6 +301,10 @@ export function LinkKinds(): $CancellablePromise<atlas$0.LinkKind[] | null> {
     return $Call.ByID(1481666021);
 }
 
+/**
+ * Links returns every link whose endpoints are both LIVE cards (goal
+ * 0093: a link touching a tombstoned card is hidden, never removed).
+ */
 export function Links(): $CancellablePromise<atlas$0.Link[] | null> {
     return $Call.ByID(1082434947);
 }
@@ -329,8 +342,9 @@ export function MoveNote(id: string, newParentID: string): $CancellablePromise<a
 }
 
 /**
- * Notes returns every quick-capture annotation (goal 0081 slice A1) --
- * its own family, deliberately never mixed into Cards().
+ * Notes returns every LIVE quick-capture annotation (goal 0081 slice
+ * A1) -- its own family, deliberately never mixed into Cards(); goal
+ * 0093's tombstone exclusion applies the same way liveCardsLocked does.
  */
 export function Notes(): $CancellablePromise<atlas$0.Note[] | null> {
     return $Call.ByID(1683919391);
@@ -521,6 +535,18 @@ export function SpaceBundleContext(spaceID: string, withAttachments: boolean): $
  */
 export function SpaceLinksList(spaceID: string): $CancellablePromise<string> {
     return $Call.ByID(979138081, spaceID);
+}
+
+/**
+ * UndoDelete reverses one or more DeleteCard/DeleteNote calls: clears
+ * DeletedAt on exactly the ids named (a no-op for any id that's no
+ * longer tombstoned, e.g. already purged) and clears a built-in
+ * card's seed tombstone too, so top-up seeding can reach it again.
+ * cardIDs/noteIDs are the exact TombstoneResult(s) the original
+ * delete call(s) returned.
+ */
+export function UndoDelete(cardIDs: string[] | null, noteIDs: string[] | null): $CancellablePromise<void> {
+    return $Call.ByID(4101274755, cardIDs, noteIDs);
 }
 
 /**

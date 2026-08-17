@@ -1,32 +1,36 @@
 import { useState } from 'react'
 import type { TFunction } from 'i18next'
 import type { Card, Note } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
+import type { TombstoneResult } from '../../bindings/github.com/alicoding/mill/internal/services/atlassvc/models'
 import { AtlasService } from '../shared/bindings'
 import { refreshAtlas } from './atlasStore'
 import { childrenOf } from './atlasGrouping'
 import { ConfirmDialog } from '../shared/ConfirmDialog'
-import { useConfirmDelete } from '../shared/useConfirmDelete'
 import type { ContextMenuItem, ContextMenuState } from '../shared/ContextMenu'
 import type { AtlasCreationTool } from './AtlasCreationTray'
 
-// AtlasView's own frame/multi-select context menus and their dissolve/
-// delete-with-promotion confirm dialogs (goal 0081 slice A2, LOCKED
-// design §6d + item 4's dissolve rule) -- split out of AtlasView.tsx
-// (architecture.md's 500-line convention) since the goal's own
-// context-aware-menu inventory is a self-contained chunk of menu-
-// building + confirm-dialog logic that doesn't need React Flow's own
+// AtlasView's own frame/multi-select context menus (goal 0081 slice
+// A2, LOCKED design §6d + item 4's dissolve rule) -- split out of
+// AtlasView.tsx (architecture.md's 500-line convention) since the
+// goal's own context-aware-menu inventory is a self-contained chunk of
+// menu-building logic that doesn't need React Flow's own
 // screenToFlowPosition (AtlasBoard.tsx keeps that half: the area-draw/
 // drag-filing/multi-select-tracking interaction, and the "Group into
 // new area"/"Add card"/"Add note" popovers this hook only REQUESTS via
 // the same downward-request-token contract useAtlasCreationRequests.ts
 // already established).
 //
-// DeleteCard now promotes children server-side unconditionally
-// (atlassvc's own dissolve rule) -- "Dissolve area" and a plain Delete
-// on a frame call the exact same AtlasService.DeleteCard; only the
-// confirm dialog's own copy differs, naming the act the user chose.
+// Delete goes instant everywhere in this file (goal 0093's quick-
+// delete-with-undo guard, superseding the ConfirmDialog every Atlas
+// delete used to show) -- onDeleted reports each call's TombstoneResult
+// to AtlasView's shared undo toast. Dissolve area keeps its confirm
+// (a structure rewrite, not a delete): DeleteCard promotes a frame's
+// children VIRTUALLY on delete regardless of which door triggered it,
+// so "Dissolve area" and a plain Delete on a frame still call the
+// exact same AtlasService.DeleteCard -- only Dissolve's own confirm
+// copy names the act deliberately, the other doors skip it.
 export function useAtlasContainmentMenus({
-  t, allCards, notes, setMenu, drill, onError, requestPlacementInside, requestGroup,
+  t, allCards, notes, setMenu, drill, onError, onDeleted, requestPlacementInside, requestGroup,
 }: {
   t: TFunction<'atlas'>
   allCards: Card[]
@@ -34,15 +38,21 @@ export function useAtlasContainmentMenus({
   setMenu: (state: ContextMenuState | null) => void
   drill: (id: string) => void
   onError: (message: string) => void
+  onDeleted: (result: TombstoneResult) => void
   requestPlacementInside: (tool: AtlasCreationTool, pos: { x: number; y: number }, parentID: string) => void
   requestGroup: (cardIDs: string[], noteIDs: string[], pos: { x: number; y: number }) => void
 }) {
   const [dissolveTarget, setDissolveTarget] = useState<Card | null>(null)
-  const [deleteFrameTarget, setDeleteFrameTarget] = useState<Card | null>(null)
 
-  // Every direct child (card + note) a dissolve/delete is about to
+  // Every direct child (card + note) a dissolve is about to virtually
   // promote -- the confirm dialog's own "N cards move up a level" fact.
   const promotedCount = (frameID: string) => childrenOf(allCards, frameID).length + notes.filter((n) => n.ParentID === frameID).length
+
+  const deleteCard = (id: string) => {
+    AtlasService.DeleteCard(id)
+      .then((result) => { onDeleted(result); void refreshAtlas() })
+      .catch((err) => onError(String(err)))
+  }
 
   const dissolveDialog = dissolveTarget && (
     <ConfirmDialog
@@ -53,39 +63,25 @@ export function useAtlasContainmentMenus({
       onConfirm={() => {
         const id = dissolveTarget.ID
         setDissolveTarget(null)
-        AtlasService.DeleteCard(id).then(() => refreshAtlas()).catch((err) => onError(String(err)))
+        deleteCard(id)
       }}
     />
   )
 
-  const deleteFrameDialog = deleteFrameTarget && (
-    <ConfirmDialog
-      title={t('confirm.deleteFrameTitle', { title: deleteFrameTarget.Title })}
-      body={t('confirm.deleteFrameBody', { count: promotedCount(deleteFrameTarget.ID) })}
-      onCancel={() => setDeleteFrameTarget(null)}
-      onConfirm={() => {
-        const id = deleteFrameTarget.ID
-        setDeleteFrameTarget(null)
-        AtlasService.DeleteCard(id).then(() => refreshAtlas()).catch((err) => onError(String(err)))
-      }}
-    />
-  )
-
-  const { requestDelete: requestDeleteSelection, dialog: deleteSelectionDialog } = useConfirmDelete<{ cardIDs: string[]; noteIDs: string[] }>({
-    entityType: 'cards',
-    labelOf: (sel) => {
-      const parts: string[] = []
-      if (sel.cardIDs.length > 0) parts.push(`${sel.cardIDs.length} card${sel.cardIDs.length === 1 ? '' : 's'}`)
-      if (sel.noteIDs.length > 0) parts.push(`${sel.noteIDs.length} note${sel.noteIDs.length === 1 ? '' : 's'}`)
-      return parts.join(' and ')
-    },
-    onConfirm: (sel) => {
-      Promise.all([
-        ...sel.cardIDs.map((id) => AtlasService.DeleteCard(id)),
-        ...sel.noteIDs.map((id) => AtlasService.DeleteNote(id)),
-      ]).then(() => refreshAtlas()).catch((err) => onError(String(err)))
-    },
-  })
+  const deleteSelection = (cardIDs: string[], noteIDs: string[]) => {
+    Promise.all([
+      ...cardIDs.map((id) => AtlasService.DeleteCard(id)),
+      ...noteIDs.map((id) => AtlasService.DeleteNote(id)),
+    ])
+      .then((results) => {
+        onDeleted({
+          CardIDs: results.flatMap((r) => r.CardIDs ?? []),
+          NoteIDs: results.flatMap((r) => r.NoteIDs ?? []),
+        })
+        void refreshAtlas()
+      })
+      .catch((err) => onError(String(err)))
+  }
 
   // Frame interior empty space (LOCKED design §6d): the click point's
   // own frame is the parent, always named in the item -- never a bare
@@ -116,7 +112,7 @@ export function useAtlasContainmentMenus({
         { id: 'zoom', label: t('contextMenu.zoomIn'), run: () => drill(frameID) },
         { id: 'd1', divider: true },
         { id: 'dissolve', label: t('contextMenu.dissolveArea'), run: () => setDissolveTarget(frame) },
-        { id: 'delete', label: t('contextMenu.delete'), danger: true, run: () => setDeleteFrameTarget(frame) },
+        { id: 'delete', label: t('contextMenu.delete'), danger: true, run: () => deleteCard(frameID) },
       ],
     })
   }
@@ -124,19 +120,15 @@ export function useAtlasContainmentMenus({
   // A multi-selection (LOCKED design §6d): "Group into new area" only
   // once 2+ CARDS are selected (a notes-only selection gets no group
   // item -- notes simply ride along when cards ARE present); Delete
-  // covers every selected card + note together.
+  // covers every selected card + note together, instantly.
   const openMultiSelectMenu = (cardIDs: string[], noteIDs: string[], pos: { x: number; y: number }) => {
     const items: ContextMenuItem[] = []
     if (cardIDs.length >= 2) {
       items.push({ id: 'group', label: t('contextMenu.groupIntoArea'), run: () => requestGroup(cardIDs, noteIDs, pos) })
     }
-    items.push({ id: 'delete-selection', label: t('contextMenu.delete'), danger: true, run: () => requestDeleteSelection({ cardIDs, noteIDs }) })
+    items.push({ id: 'delete-selection', label: t('contextMenu.delete'), danger: true, run: () => deleteSelection(cardIDs, noteIDs) })
     setMenu({ x: pos.x, y: pos.y, items })
   }
 
-  // Keyboard Delete on a live selection (goal 0089 rider): same
-  // confirm + delete path as the multi-select menu's own item.
-  const deleteSelection = (cardIDs: string[], noteIDs: string[]) => requestDeleteSelection({ cardIDs, noteIDs })
-
-  return { openFrameMenu, openFrameInteriorMenu, openMultiSelectMenu, deleteSelection, dissolveDialog, deleteFrameDialog, deleteSelectionDialog }
+  return { openFrameMenu, openFrameInteriorMenu, openMultiSelectMenu, deleteSelection, dissolveDialog }
 }

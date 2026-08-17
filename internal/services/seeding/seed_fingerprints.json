@@ -4,28 +4,28 @@
     "seedRevision": 1
   },
   "atlascard:atlas-card-example-area": {
-    "fingerprint": "b92b37aeede16993206c32880cd7ffd6cc54f5f890fcbca1224c8f8c1be2dcb1",
-    "seedRevision": 4
+    "fingerprint": "a6eb22e7ae842f08fcd0b6004d10a7dd33cd298f63790dd35cfd2b7608ced2e4",
+    "seedRevision": 5
   },
   "atlascard:atlas-card-example-contact": {
-    "fingerprint": "0d289ad5a5611cd1ae166b7c4c7a043ca0f8d15a0962edca6148b1ea6012ae67",
-    "seedRevision": 3
+    "fingerprint": "315a9a9df7d4670eaab81dffb8273ab6e31842d81963fc5cb9a67786f76a598f",
+    "seedRevision": 4
   },
   "atlascard:atlas-card-example-document": {
-    "fingerprint": "158eee92f300948872ef04fd490d04562657cd59d64c8589bcca5ce85bd0c156",
-    "seedRevision": 4
+    "fingerprint": "4dfe77f81c4c3d72f669047c444fb9683cc03982e08dde9f4fbaa6ed9c4e10c5",
+    "seedRevision": 5
   },
   "atlascard:atlas-card-getting-started": {
-    "fingerprint": "f575dc7a488e1de8d8e18740552ed2ce718cca9aa0072ee076962a32d59b2d83",
-    "seedRevision": 4
+    "fingerprint": "013b4878544094f8f8630cb1ff84a52acc2833a42a9b5bf14e0a142bb478c5cd",
+    "seedRevision": 5
   },
   "atlascard:atlas-card-my-space": {
-    "fingerprint": "f3f774511528aab987d478efdd61554c234889317b98b558d58d1cd6d2660118",
-    "seedRevision": 4
+    "fingerprint": "b29d4770ec62fe881f0205380f5e684c181bdffd4b93dd220850184ed94117e7",
+    "seedRevision": 5
   },
   "atlascard:atlas-card-scratchpad": {
-    "fingerprint": "4c0b05c78b6827de0c99adb22143873a08f0ece032c6a6a65498d862f549be42",
-    "seedRevision": 4
+    "fingerprint": "b0330a8234b5f5ccd7768520bfbe70e72e0561795dc024ea29a89feea1e093a1",
+    "seedRevision": 5
   },
   "atlaskind:atlas-kind-contact": {
     "fingerprint": "b4a22502670484312692a4118167d8a4e7395a0d59b39f590683376288a3e732",
@@ -168,8 +168,8 @@
     "seedRevision": 2
   },
   "workflow:example-filemove-workflow": {
-    "seedRevision": 1,
-    "fingerprint": "d835c0706e34b5eb10e1e35363856a861bb3c2652066cac30e88ae25af3dff06"
+    "fingerprint": "d835c0706e34b5eb10e1e35363856a861bb3c2652066cac30e88ae25af3dff06",
+    "seedRevision": 1
   },
   "workflow:example-forward-approvals-workflow": {
     "fingerprint": "228b33ff965d175c2156ecce6c91a56ed0c3f3526e47fa818c310100777b981d",

@@ -46,12 +46,11 @@ test('typing text with no matches renders only the auto-highlighted Save-as-note
     await expect(sticky).toBeVisible()
 
     // Cleanup via the note's own existing "Delete note" context menu
-    // item (testing.md's within-file/within-worker discipline).
+    // item -- instant, no confirm (goal 0093), testing.md's within-
+    // file/within-worker discipline.
     await sticky.click({ button: 'right' })
     await expect(menu).toBeVisible()
     await menu.getByText('Delete note', { exact: true }).click()
-    await expect(mainPage.getByRole('heading', { name: 'Delete note?' })).toBeVisible()
-    await mainPage.getByRole('button', { name: 'Delete' }).click()
     await expect(sticky).toHaveCount(0)
   } finally {
     await mainPage.close()

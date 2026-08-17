@@ -68,10 +68,10 @@ func (a *AtlasService) cardLinksLocked(cardID string) (outgoing, incoming []card
 		linkKindByID[lk.ID] = lk.Label
 	}
 	cardTitleByID := make(map[string]string, len(a.cards))
-	for _, c := range a.cards {
+	for _, c := range a.liveCardsLocked() {
 		cardTitleByID[c.ID] = c.Title
 	}
-	for _, l := range a.links {
+	for _, l := range a.liveLinksLocked() {
 		if l.FromCardID == cardID {
 			outgoing = append(outgoing, cardLinkRef{linkKindLabel: linkKindByID[l.LinkKindID], otherTitle: cardTitleByID[l.ToCardID]})
 		}
@@ -179,7 +179,7 @@ func (a *AtlasService) SpaceBundleContext(spaceID string, withAttachments bool) 
 		return "", fmt.Errorf("no card with id %q", spaceID)
 	}
 	var blocks []string
-	for _, c := range a.cards {
+	for _, c := range a.liveCardsLocked() {
 		if c.ParentID != spaceID {
 			continue
 		}
@@ -202,7 +202,7 @@ func (a *AtlasService) SpaceLinksList(spaceID string) (string, error) {
 		return "", fmt.Errorf("no card with id %q", spaceID)
 	}
 	var urls []string
-	for _, c := range a.cards {
+	for _, c := range a.liveCardsLocked() {
 		if c.ParentID != spaceID || c.Source == "" {
 			continue
 		}

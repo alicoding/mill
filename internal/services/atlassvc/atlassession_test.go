@@ -25,7 +25,7 @@ func TestAtlasSession_RoundTripsAndDegrades(t *testing.T) {
 
 	// Degrade: the viewed/open card is deleted -> root + no open card,
 	// never a stale id.
-	if err := b.DeleteCard(card.ID); err != nil {
+	if _, err := b.DeleteCard(card.ID); err != nil {
 		t.Fatal(err)
 	}
 	got = b.AtlasSession()

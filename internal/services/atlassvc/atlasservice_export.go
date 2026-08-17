@@ -93,11 +93,15 @@ type exportedAtlas struct {
 // in this codebase carries.
 func (a *AtlasService) ExportAtlas() (string, error) {
 	a.mu.RLock()
+	// A tombstoned card (goal 0093) must not resurrect via export ->
+	// import on another instance -- liveCardsLocked already excludes
+	// it and resolves a live child's effective ParentID.
+	liveCards := a.liveCardsLocked()
 	out := exportedAtlas{
 		Schema:    contract.SchemaID("atlas"),
 		Kinds:     make([]exportedKind, len(a.kinds)),
 		LinkKinds: make([]exportedLinkKind, len(a.linkKinds)),
-		Cards:     make([]exportedCard, len(a.cards)),
+		Cards:     make([]exportedCard, len(liveCards)),
 		Links:     make([]exportedLink, len(a.links)),
 	}
 	for i, k := range a.kinds {
@@ -109,7 +113,7 @@ func (a *AtlasService) ExportAtlas() (string, error) {
 	for i, lk := range a.linkKinds {
 		out.LinkKinds[i] = exportedLinkKind{ID: lk.ID, Label: lk.Label, Description: lk.Description}
 	}
-	for i, c := range a.cards {
+	for i, c := range liveCards {
 		var pos *exportedPosition
 		if c.Position != nil {
 			pos = &exportedPosition{X: c.Position.X, Y: c.Position.Y}
@@ -119,8 +123,18 @@ func (a *AtlasService) ExportAtlas() (string, error) {
 			ParentID: c.ParentID, Position: pos, ViewMode: c.ViewMode, Source: c.Source,
 		}
 	}
-	for i, l := range a.links {
-		out.Links[i] = exportedLink{ID: l.ID, FromCardID: l.FromCardID, ToCardID: l.ToCardID, LinkKindID: l.LinkKindID, Label: l.Label}
+	liveCardIDs := make(map[string]bool, len(liveCards))
+	for _, c := range liveCards {
+		liveCardIDs[c.ID] = true
+	}
+	out.Links = out.Links[:0]
+	for _, l := range a.links {
+		// A link touching a tombstoned card (goal 0093) is never
+		// exported -- the other end wouldn't exist locally on import.
+		if !liveCardIDs[l.FromCardID] || !liveCardIDs[l.ToCardID] {
+			continue
+		}
+		out.Links = append(out.Links, exportedLink{ID: l.ID, FromCardID: l.FromCardID, ToCardID: l.ToCardID, LinkKindID: l.LinkKindID, Label: l.Label})
 	}
 	a.mu.RUnlock()
 

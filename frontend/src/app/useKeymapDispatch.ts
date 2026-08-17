@@ -88,4 +88,28 @@ export function useKeymapDispatch(): void {
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [])
+
+  // Listener 4, the quick-delete undo toast's own ⌘Z (goal 0093):
+  // deliberately its own dedicated listener rather than a normal
+  // dispatchCommandForEvent match -- ⌘Z is ALSO the native text-undo
+  // combo, and dispatchCommandForEvent's tryRun preventDefaults
+  // unconditionally on any binding match, which would swallow native
+  // undo inside a title/note/field input the moment atlas.undoDelete
+  // had a real default binding. Only intercepts (and only
+  // preventDefaults) while a toast is actually pending, on the atlas
+  // surface, and the target isn't editable -- every other ⌘Z falls
+  // through untouched, same as if this listener didn't exist.
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (!e.metaKey || e.ctrlKey || e.altKey || e.shiftKey) return
+      if (e.key.toUpperCase() !== 'Z') return
+      if (useAppStore.getState().view.kind !== 'atlas') return
+      if (!useUISignalStore.getState().atlasUndoDeletePending) return
+      if (isEditableTarget(e.target)) return
+      e.preventDefault()
+      findCommand('atlas.undoDelete')?.run()
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [])
 }

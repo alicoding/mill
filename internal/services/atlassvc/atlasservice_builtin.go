@@ -157,6 +157,13 @@ func (a *AtlasService) reconcileCardsLocked(tombstones map[string]bool, now time
 			continue
 		}
 		existing := a.cards[idx]
+		// A currently-tombstoned card (goal 0093) is left untouched --
+		// top-up seeding must never resurrect/upgrade it in place while
+		// it's soft-deleted; UndoDelete or the boot-time purge are the
+		// only paths that change it from here.
+		if !existing.DeletedAt.IsZero() {
+			continue
+		}
 		if existing.Seed.SeedRevision == 0 {
 			existing.Seed = seedorigin.Origin{SeedRevision: golden.Seed.SeedRevision, Modified: true}
 			a.cards[idx] = existing

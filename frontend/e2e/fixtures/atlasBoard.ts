@@ -83,10 +83,11 @@ export async function armAndPlaceTopicCard(page: Page, board: Locator, popover: 
   await expect(noteCard(page, title)).toBeVisible()
 }
 
+// Instant, no confirm (goal 0093's quick-delete-with-undo guard) --
+// the card vanishes as soon as the menu item is clicked.
 export async function deleteCardViaMenu(page: Page, menu: Locator, title: string): Promise<void> {
   await noteCard(page, title).click({ button: 'right' })
   await expect(menu).toBeVisible()
   await menu.getByText('Delete', { exact: true }).click()
-  await page.getByRole('button', { name: 'Delete' }).click()
   await expect(noteCard(page, title)).toHaveCount(0)
 }
