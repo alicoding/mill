@@ -8,7 +8,8 @@ import type { Card, Kind, Link, LinkKind, Note } from '../../bindings/github.com
 import { AtlasService } from '../shared/bindings'
 import { useIsNarrowViewport } from '../shared/useNarrowViewport'
 import { usePrefersReducedMotion } from '../shared/usePrefersReducedMotion'
-import { computeGroupFrameLayout, isGroupCard, NOTE_HEIGHT, NOTE_WIDTH, STICKY_HEIGHT, STICKY_WIDTH } from './atlasBoardLayout'
+import { computeGroupFrameLayout, isGroupCard } from './atlasBoardLayout'
+import { computeNoteBoxes, computeTopLevelBoxes } from './atlasBoardBoxes'
 import { AtlasNoteCardNode } from './AtlasNoteCardNode'
 import { AtlasGroupNode } from './AtlasGroupNode'
 import { AtlasRegionChipNode } from './AtlasRegionChipNode'
@@ -244,34 +245,13 @@ function AtlasBoardInner({ cards, allCards, kinds, links, linkKinds, notes, pare
 
   const { freeMoves } = useAtlasArrange({ cards, allCards, arteries, boardWidth, arrangeRequest })
 
-  // Every top-level card's own rendered flow-space box (goal 0081
-  // slice A2): shared by the marker-box's own enclosure test, drag
-  // filing's frame-intersection test, and the "you'd file into me"
-  // highlight -- Free mode only (a card's Position, and therefore this
-  // box, is meaningless in Auto-arrange). Deliberately its own small
-  // memo rather than threading through builtNodes below: that memo
-  // mixes in region-chip/preview-grid concerns this one doesn't need.
-  const topLevelBoxes: FrameBox[] = useMemo(() => {
-    if (!isFree) return []
-    const moveByID = new Map(freeMoves.map((m) => [m.id, m]))
-    return cards.map((card) => {
-      const move = moveByID.get(card.ID)
-      const frame = isGroupCard(allCards, card)
-      const size = frame ? computeGroupFrameLayout(allCards, card.ID).size : { width: NOTE_WIDTH, height: NOTE_HEIGHT }
-      return {
-        id: card.ID,
-        x: move?.x ?? card.Position?.X ?? 0,
-        y: move?.y ?? card.Position?.Y ?? 0,
-        width: size.width,
-        height: size.height,
-        isFrame: frame,
-      }
-    })
-  }, [cards, allCards, freeMoves, isFree])
-
-  const noteBoxes = useMemo(() => (
-    isFree ? notes.map((n) => ({ id: n.ID, x: n.Position.X, y: n.Position.Y, width: STICKY_WIDTH, height: STICKY_HEIGHT })) : []
-  ), [notes, isFree])
+  // Rendered flow-space boxes (atlasBoardBoxes.ts, split at the
+  // 500-line seam) -- Free mode only.
+  const topLevelBoxes: FrameBox[] = useMemo(
+    () => (isFree ? computeTopLevelBoxes(cards, allCards, freeMoves) : []),
+    [cards, allCards, freeMoves, isFree],
+  )
+  const noteBoxes = useMemo(() => (isFree ? computeNoteBoxes(notes) : []), [notes, isFree])
 
   const dragFiling = useAtlasDragFiling({ allCards, parentID, topLevelBoxes, wrapperRef })
 

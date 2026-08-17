@@ -223,6 +223,16 @@ test('a group entry inside a page re-roots the board to a deeper card, and the b
     await page.getByTestId('atlas-add-from-folder').click()
     const dialog = page.locator('[data-component="atlas-folder-import-dialog"]')
     await expect(dialog).toBeVisible()
+    // Dedupe (goal 0088) default-unchecks rows whose content an
+    // earlier import in this worker already mirrored -- make the
+    // intended set explicit: check everything, then drop the three
+    // this setup never wants, so the count below is deterministic
+    // regardless of test order.
+    const boxes = dialog.getByRole('checkbox')
+    for (let i = 0; i < await boxes.count(); i++) {
+      const box = boxes.nth(i)
+      if (!(await box.isChecked())) await box.check()
+    }
     await dialog.getByRole('checkbox', { name: 'Meeting Notes' }).uncheck()
     await dialog.getByRole('checkbox', { name: 'Project Plan' }).uncheck()
     await dialog.getByRole('checkbox', { name: 'Logo' }).uncheck()
