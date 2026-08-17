@@ -11,7 +11,7 @@ function makeCard(id: string, parentID = ''): Card {
   return {
     ID: id, KindID: 'atlas-kind-topic', Title: id, Note: '', Fields: null,
     ParentID: parentID, Position: null, ViewMode: ViewMode.$zero, Source: '', MirrorPath: '',
-    RefreshWorkflowID: '', ActionWorkflowIDs: null, LastSyncedAt: '', ReceiptRunID: '',
+    RefreshWorkflowID: '', ActionWorkflowIDs: null, MirrorChecksum: '', LastSyncedAt: '', ReceiptRunID: '',
     CreatedAt: '', UpdatedAt: '', BuiltIn: false, Seed: { SeedRevision: 0, Modified: false },
   }
 }
