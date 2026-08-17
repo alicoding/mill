@@ -48,6 +48,10 @@ export function AssignSummonHotkey(mods: string[] | null, key: string): $Cancell
     return $Call.ByID(2482329424, mods, key);
 }
 
+/**
+ * CheckForUpdates asks the configured provider (GitHub Releases,
+ * alicoding/mill) whether a newer version exists.
+ */
 export function CheckForUpdates(): $CancellablePromise<$models.UpdateCheckResult> {
     return $Call.ByID(3825907183);
 }
@@ -109,6 +113,19 @@ export function DismissApprovalPrompt(): $CancellablePromise<void> {
  */
 export function DismissPanel(): $CancellablePromise<void> {
     return $Call.ByID(3877156882);
+}
+
+/**
+ * DownloadAndInstallUpdate downloads the newest release asset,
+ * verifies it against the published SHA256SUMS digest (wails/v3's own
+ * fail-closed verification -- a mismatch is refused, nothing
+ * installed), and stages it over the running app bundle.
+ * Channel-gated server-side, not just by the UI: a source-channel
+ * build must never binary-swap itself, since "source" means the
+ * running copy IS the update mechanism (pull + rebuild).
+ */
+export function DownloadAndInstallUpdate(): $CancellablePromise<void> {
+    return $Call.ByID(174385789);
 }
 
 /**
@@ -300,6 +317,14 @@ export function ResolvedMCPWrites(): $CancellablePromise<mcpsvc$0.MCPWriteResolv
 }
 
 /**
+ * RestartApp relaunches into the update DownloadAndInstallUpdate just
+ * staged.
+ */
+export function RestartApp(): $CancellablePromise<void> {
+    return $Call.ByID(176124350);
+}
+
+/**
  * RestoreMenuAccelerators reverses SuspendMenuAccelerators -- see its
  * doc comment for the full reasoning. Safe to call more times than
  * Suspend was called (e.g. an unmount cleanup running after a recording
@@ -485,4 +510,15 @@ export function SuspendMenuAccelerators(): $CancellablePromise<void> {
  */
 export function UnassignSummonHotkey(): $CancellablePromise<void> {
     return $Call.ByID(2578647287);
+}
+
+/**
+ * UpdateChannel reports the resolved distribution channel ("source" or
+ * "release") -- the Settings > Updates surface's gate between "Update
+ * now" and the pull-and-rebuild instructions, and
+ * DownloadAndInstallUpdate's own server-side enforcement of the same
+ * gate.
+ */
+export function UpdateChannel(): $CancellablePromise<string> {
+    return $Call.ByID(1676930456);
 }

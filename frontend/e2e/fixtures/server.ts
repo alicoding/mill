@@ -60,6 +60,13 @@ export const SCALE_MCP_BASE_PORT = 9730
 // workers' seeds either.
 export const MIRROR_SERVER_BASE_PORT = 9690
 export const MIRROR_MCP_BASE_PORT = 9740
+// updates.spec.ts's own two disjoint pairs (goal 0082) -- one server
+// per channel, since MILL_TEST_UPDATE_CHANNEL is fixed for a process's
+// whole lifetime and both channels' UI need proving in the same run.
+export const UPDATES_SOURCE_SERVER_BASE_PORT = 9760
+export const UPDATES_SOURCE_MCP_BASE_PORT = 9780
+export const UPDATES_RELEASE_SERVER_BASE_PORT = 9790
+export const UPDATES_RELEASE_MCP_BASE_PORT = 9810
 
 async function waitForHealth(url: string, proc: ChildProcessWithoutNullStreams, timeoutMs: number): Promise<void> {
   const deadline = Date.now() + timeoutMs

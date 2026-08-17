@@ -157,6 +157,16 @@ layer per capability," never "a seed per thing":
   wedged watcher flipping the badge amber in a real window — stays a
   manual desktop-mode check (`.claude/skills/run-mill`), named here
   rather than silently absent.
+- **Release-channel self-update** (goal 0082, `UpdatesSection` +
+  `SettingsService.DownloadAndInstallUpdate`) — the refusal paths
+  (source-channel guard, digest-mismatch fail-closed verification)
+  are Go-tested, and both channels' UI renders under the
+  `MILL_TEST_UPDATE_*` seams in e2e; the real download → SHA256SUMS
+  verify → bundle swap → restart can only run against a genuine
+  newer GitHub release from an installed release-channel build —
+  verify after the next tagged release by clicking Check for
+  updates → Update now → Restart Mill on a release-installed copy
+  and confirming the new version string.
 
 From the UX point of view the seed layer stays privileged — it's the
 one a human can SEE working — but correctness under change belongs to

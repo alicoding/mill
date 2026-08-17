@@ -101,9 +101,16 @@ jobs:
       # hit Finder's "no application set to open" dialog. The .app
       # bundle zipped with ditto (preserves bundle metadata/resource
       # forks the way plain zip may not) is what a person downloads.
+      # MILL_CHANNEL: stamps main.millChannel=release into the binary
+      # (build/darwin/Taskfile.yml's build:native reads it via shell
+      # parameter expansion straight into -ldflags) -- every other build
+      # of Mill (task dev, a local `task package`, `task install:app`)
+      # leaves it unset and keeps the "source" default, since only this
+      # published GitHub Releases asset may ever binary-swap itself.
       - run: task package
         env:
           MILL_SKIP_BINDINGS: "1"
+          MILL_CHANNEL: release
       - name: Zip app bundle with platform/arch/version suffix
         run: |
           VERSION="${GITHUB_REF_NAME#v}"

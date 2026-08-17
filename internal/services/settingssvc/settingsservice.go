@@ -78,6 +78,7 @@ type SettingsService struct {
 	summonHK       triggersvc.PersistedHotkey // zero value (nil Mods) means unassigned
 	updater        *updater.Updater
 	appVersion     string
+	updateChannel  string
 	isolatedData   bool
 	mcpService     *mcpsvc.MillMCPService
 
