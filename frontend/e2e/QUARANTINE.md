@@ -44,7 +44,7 @@ Entries below left the active register on this date, fixed by applying
 | atlas-scale.spec.ts (first attempt) | interaction-race | 2026-08-16 | boundingBox-then-act sequences after the initial fitView and both drills now wait for viewport stability first |
 | step-detail-overlay.spec.ts:99 | interaction-race | 2026-08-16 | the in-file settle helper promoted into fixtures/animation.ts; the double-click path already called it |
 
-## atlas-select-group.spec.ts (whole spec — test.fixme)
+## atlas-select-group.spec.ts (box-drag test only — test.fixme)
 - **Class**: pointer-coalescing on synthesized drags (the config
   header's documented class) — the shift-drag box select is the
   app's ONLY multi-select door (plain click glances, meta-click
@@ -63,5 +63,11 @@ Entries below left the active register on this date, fixed by applying
   in .claude/rules/testing.md (box-select → right-click → group).
 - **Investigated and ruled out**: menu-animation race, same-port
   server race, test budget (180s also consumed), file-worker
-  interference, deterministic click-selection (impossible — the
-  gesture map assigns click/meta-click elsewhere).
+  interference, deterministic click-selection (impossible at entry
+  time — the gesture map assigned click/meta-click elsewhere).
+- **Update (goal 0092)**: shift-CLICK toggle joined the gesture map
+  (multiSelectionKeyCode), which IS deterministically synthesizable
+  — the same spec file's shift-click test now CI-proves the full
+  select → member-right-click → Group chain and Delete-over-
+  selection. Only the box-drag SYNTHESIS remains quarantined; its
+  live check stays in testing.md's manual registry.

@@ -71,6 +71,9 @@ export const AtlasNoteCardNode = memo(function AtlasNoteCardNode({ data }: NodeP
       // immediately, no flip step -- the same modifier meaning the
       // jump already carries.
       onClick={(e) => {
+        // Shift-click is selection (goal 0092, React Flow's
+        // multiSelectionKeyCode) -- never also a glance-flip.
+        if (e.shiftKey) return
         if (e.metaKey || e.ctrlKey) onCommit(card.ID)
         else onToggleFlip(card.ID)
       }}

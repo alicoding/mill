@@ -157,3 +157,102 @@ test.fixme('atlas multi-select: the selection-overlay context menu reaches Group
     rmSync(dir, { recursive: true, force: true })
   }
 })
+
+// Shift-CLICK select (goal 0092): the click-based door to the same
+// multi-select the box-drag opens -- and, unlike box-drag pointer
+// synthesis (the quarantined test above), a plain modifier click is
+// fully CI-synthesizable, so this test carries the automated coverage
+// for the select -> group / select -> delete chains.
+// eslint-disable-next-line no-empty-pattern -- this test needs `testInfo` (the second arg), not any fixture.
+test('atlas shift-click select: toggle membership, group via member right-click, Delete over the selection (goal 0092)', async ({}, testInfo) => {
+  const idx = testInfo.parallelIndex
+  const dir = mkdtempSync(path.join(tmpdir(), `mill-e2e-atlas-click-select-${idx}-`))
+  const settingsPath = path.join(dir, 'settings.json')
+  const executionDbPath = path.join(dir, 'execution.db')
+  const backupDir = path.join(dir, 'backups')
+  const port = ATLAS_SELECT_GROUP_SERVER_BASE_PORT + idx
+  const mcpPort = ATLAS_SELECT_GROUP_MCP_BASE_PORT + idx
+
+  let server: SpawnedServer | undefined
+  const browser = await chromium.launch()
+  try {
+    server = await spawnMillServer({ port, mcpPort, settingsPath, executionDbPath, backupDir })
+    const page = await browser.newPage()
+    await page.goto(`${server.baseURL}/`)
+    await page.getByRole('link', { name: 'Atlas' }).click()
+    const board = page.getByTestId('atlas-board')
+    await expect(board).toBeVisible()
+    await zoomOutLight(page)
+
+    const popover = page.getByTestId('atlas-placement-popover')
+    const menu = contextMenu(page)
+
+    await armAndPlaceTopicCard(page, board, popover, 0.25, 0.05, 'ZzK2eClickA')
+    await armAndPlaceTopicCard(page, board, popover, 0.55, 0.05, 'ZzK2eClickB')
+
+    const cardA = noteCard(page, 'ZzK2eClickA')
+    const cardB = noteCard(page, 'ZzK2eClickB')
+    const selected = page.locator('.react-flow__node.selected')
+
+    // Toggle in, toggle out, toggle back in -- and no glance-flip on
+    // any of it (the shift guard on the card's own click handler).
+    await cardA.click({ modifiers: ['Shift'] })
+    await expect(selected).toHaveCount(1)
+    await cardB.click({ modifiers: ['Shift'] })
+    await expect(selected).toHaveCount(2)
+    await expect(page.locator('[data-testid="atlas-note-card"][data-flipped="true"]')).toHaveCount(0)
+    await cardB.click({ modifiers: ['Shift'] })
+    await expect(selected).toHaveCount(1)
+    await cardB.click({ modifiers: ['Shift'] })
+    await expect(selected).toHaveCount(2)
+
+    // Member right-click reaches the multi menu -> Group into new area
+    // (same full-gesture retry as above: Primer's menu overlay animates
+    // in, and a too-early item click lands outside and closes it).
+    await expect(async () => {
+      if (await popover.isVisible()) return
+      await cardA.click({ button: 'right' })
+      await expect(menu).toBeVisible({ timeout: 2_000 })
+      await menu.getByText('Group into new area', { exact: true }).click({ timeout: 2_000 })
+      await expect(popover).toBeVisible({ timeout: 2_000 })
+    }).toPass({ timeout: 25_000, intervals: [500] })
+    await expect(page.getByTestId('atlas-placement-context')).toContainText('2 cards')
+    await selectKind(popover, ATLAS_KIND_TOPIC)
+    await popover.getByTestId('atlas-placement-title').fill('ZzK2eClickArea')
+    await popover.getByTestId('atlas-placement-submit').click()
+    await expect(popover).not.toBeVisible()
+    const groupedArea = groupCard(page, 'ZzK2eClickArea')
+    await expect(groupedArea).toBeVisible()
+    await expect(groupedArea.getByTestId('atlas-group-header')).toContainText('2 cards')
+
+    // Dissolve back to loose cards, then Delete over a re-made
+    // shift-click selection: the confirm names the count, and
+    // confirming deletes both -- which is also this test's cleanup
+    // (testing.md's within-file discipline).
+    await groupedArea.getByTestId('atlas-group-header').click({ button: 'right' })
+    await expect(menu).toBeVisible()
+    await menu.getByText('Dissolve area', { exact: true }).click()
+    await expect(page.getByRole('button', { name: 'Dissolve' })).toBeVisible()
+    await page.getByRole('button', { name: 'Dissolve' }).click()
+    await expect(groupedArea).toHaveCount(0)
+    // Deselect on the pane itself, low-right where nothing renders --
+    // absolute page coords near the left edge can land on the
+    // creation tray, which never reaches React Flow's pane handler.
+    await page.locator('.react-flow__pane').click({ position: { x: 500, y: 450 } })
+    await expect(selected).toHaveCount(0)
+
+    await cardA.click({ modifiers: ['Shift'] })
+    await cardB.click({ modifiers: ['Shift'] })
+    await expect(selected).toHaveCount(2)
+    await page.keyboard.press('Delete')
+    const confirmDialog = page.getByRole('alertdialog')
+    await expect(confirmDialog).toBeVisible()
+    await expect(confirmDialog).toContainText('2 cards')
+    await confirmDialog.getByRole('button', { name: 'Delete' }).click()
+    await expect(cardA).toHaveCount(0)
+    await expect(cardB).toHaveCount(0)
+  } finally {
+    await server?.stop()
+    rmSync(dir, { recursive: true, force: true })
+  }
+})
