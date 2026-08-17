@@ -159,6 +159,14 @@ var workflowProofRegistry = map[string]seedProof{
 	"example-list-pinned-workflow": proven(
 		"executionsvc.TestSeededTaskTrackerExample_PinnedSearch_ResolvesFrozenV1AfterLiveWrite",
 	),
+	"example-filemove-workflow": proven(
+		"composition.TestExpandPathTemplate_Filename",
+		"composition.TestApplyFileMove_HappyPath_MovesFile",
+		"composition.TestApplyFileMove_OnConflictSuffix_CollidesTwice_UsesThirdCandidate",
+		"triggersvc.TestSeededFileMoveExample_MovesRealFileIntoTemplatedDestination",
+		"triggersvc.TestFileWatchCycleGuard_MoveIntoOwnWatchedFolder_DoesNotReFire",
+		"triggersvc.TestFileWatchCycleGuard_DifferentWorkflowWatchingSameFolder_StillFires",
+	),
 	"backup-mill-data-workflow": proven(
 		"composition.TestApplyBackupSnapshot_CallsRegisteredRunnerWithDefaultKeepN",
 		"composition.TestApplyBackupSnapshot_CustomKeepNIsPassedThrough",

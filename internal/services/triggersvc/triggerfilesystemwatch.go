@@ -10,7 +10,17 @@ func init() {
 		if path == "" {
 			return nil, nil
 		}
-		b, err := filewatch.Watch(path, config["pattern"], func(changed string) { s.fire(workflowID, changed, changed) })
+		b, err := filewatch.Watch(path, config["pattern"], func(changed string) {
+			// The structural cycle guard (docs/goals/0087,
+			// filewriteguard.go): skip a fire this exact workflow's own
+			// last apply-file-move/apply-file-write step just produced,
+			// while a different workflow watching the same path still
+			// fires normally.
+			if s.shouldSkipFileWatchFire(changed, workflowID) {
+				return
+			}
+			s.fire(workflowID, changed, changed)
+		})
 		if err != nil {
 			return nil, err
 		}

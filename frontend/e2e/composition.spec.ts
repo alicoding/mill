@@ -91,8 +91,9 @@ test('Composition page lists built-in workflows; node primitives live in a colla
   // apply-atlas-card-update, apply-atlas-card-link (the Atlas<->Workflows
   // integration, goal 0066, ADR-0035/0038) + apply-backup-snapshot
   // (goal 0065's data-stewardship backup step) + apply-list-row (the
-  // Lists write path, goal 0070).
-  await expect(activePanel(page).getByTestId('palette-item')).toHaveCount(39)
+  // Lists write path, goal 0070) + apply-file-move (file verbs, goal
+  // 0087).
+  await expect(activePanel(page).getByTestId('palette-item')).toHaveCount(40)
 })
 
 test('A new workflow starts with a starter node placed, not a blank canvas', async ({ page }) => {

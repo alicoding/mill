@@ -63,10 +63,24 @@ func execApplyFileWrite(node Node, ctx ExecContext) (ExecContext, error) {
 		}
 	}
 
+	// Append mode's own no-op-on-empty-payload rule (applyFileWriteAppend
+	// below) means no file content actually changed -- the cycle guard
+	// (docs/goals/0087) only needs to record a REAL write, so it's only
+	// called on the branch that actually touched the file.
 	if node.Config["mode"] == "overwrite" {
-		return ctx, applyFileWriteOverwrite(path, ctx.Payload)
+		if err := applyFileWriteOverwrite(path, ctx.Payload); err != nil {
+			return ctx, err
+		}
+		recordFileWriteFn(ctx.WorkflowID, path)
+		return ctx, nil
 	}
-	return ctx, applyFileWriteAppend(path, ctx.Payload, node.Config["timestamp"] == "datetime")
+	if err := applyFileWriteAppend(path, ctx.Payload, node.Config["timestamp"] == "datetime"); err != nil {
+		return ctx, err
+	}
+	if ctx.Payload != "" {
+		recordFileWriteFn(ctx.WorkflowID, path)
+	}
+	return ctx, nil
 }
 
 // applyFileWriteOverwrite replaces path's entire contents with payload

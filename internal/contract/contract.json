@@ -2575,6 +2575,78 @@
       "Complexity": "basic"
     },
     {
+      "ID": "apply-file-move",
+      "Kind": "apply",
+      "Label": "Apply: move file",
+      "Description": "Moves or renames a local file to a new location.",
+      "ConfigFields": [
+        {
+          "Key": "sourcePath",
+          "Label": "Source file",
+          "Type": "text",
+          "Required": false,
+          "Default": "",
+          "Description": "File to move. Leave empty to use the incoming payload, or set a path or attr: value.",
+          "Options": null,
+          "Suggestions": null,
+          "Secret": false,
+          "RefKind": "",
+          "Multiline": false,
+          "SystemManaged": false
+        },
+        {
+          "Key": "destination",
+          "Label": "Destination",
+          "Type": "text",
+          "Required": false,
+          "Default": "",
+          "Description": "Where the file goes. Tokens: {filename} {name} {ext} {date:2006-01-02} {attr:key}. End with / to keep the file's name.",
+          "Options": null,
+          "Suggestions": null,
+          "Secret": false,
+          "RefKind": "",
+          "Multiline": false,
+          "SystemManaged": false
+        },
+        {
+          "Key": "createDirs",
+          "Label": "Create missing folders",
+          "Type": "boolean",
+          "Required": false,
+          "Default": "true",
+          "Description": "Creates the destination's parent folders if they don't exist yet. Off fails the step instead when a folder is missing.",
+          "Options": null,
+          "Suggestions": null,
+          "Secret": false,
+          "RefKind": "",
+          "Multiline": false,
+          "SystemManaged": false
+        },
+        {
+          "Key": "onConflict",
+          "Label": "If the destination exists",
+          "Type": "options",
+          "Required": false,
+          "Default": "fail",
+          "Description": "Fail stops the step. Suffix adds \" (2)\", \" (3)\", and so on to the file name.",
+          "Options": [
+            "fail",
+            "suffix"
+          ],
+          "Suggestions": null,
+          "Secret": false,
+          "RefKind": "",
+          "Multiline": false,
+          "SystemManaged": false
+        }
+      ],
+      "Output": "the file's new path",
+      "Effect": "local",
+      "Declared": false,
+      "PaletteGroup": "",
+      "Complexity": "basic"
+    },
+    {
       "ID": "apply-file-write",
       "Kind": "apply",
       "Label": "Apply: write to file",
@@ -4142,6 +4214,78 @@
       "Description": "Writes the workflow's current payload to the clipboard as plain text.",
       "ConfigFields": null,
       "Output": "the text it wrote",
+      "Effect": "local",
+      "Declared": false,
+      "PaletteGroup": "",
+      "Complexity": "basic"
+    },
+    {
+      "ID": "apply-file-move",
+      "Kind": "apply",
+      "Label": "Apply: move file",
+      "Description": "Moves or renames a local file to a new location.",
+      "ConfigFields": [
+        {
+          "Key": "sourcePath",
+          "Label": "Source file",
+          "Type": "text",
+          "Required": false,
+          "Default": "",
+          "Description": "File to move. Leave empty to use the incoming payload, or set a path or attr: value.",
+          "Options": null,
+          "Suggestions": null,
+          "Secret": false,
+          "RefKind": "",
+          "Multiline": false,
+          "SystemManaged": false
+        },
+        {
+          "Key": "destination",
+          "Label": "Destination",
+          "Type": "text",
+          "Required": false,
+          "Default": "",
+          "Description": "Where the file goes. Tokens: {filename} {name} {ext} {date:2006-01-02} {attr:key}. End with / to keep the file's name.",
+          "Options": null,
+          "Suggestions": null,
+          "Secret": false,
+          "RefKind": "",
+          "Multiline": false,
+          "SystemManaged": false
+        },
+        {
+          "Key": "createDirs",
+          "Label": "Create missing folders",
+          "Type": "boolean",
+          "Required": false,
+          "Default": "true",
+          "Description": "Creates the destination's parent folders if they don't exist yet. Off fails the step instead when a folder is missing.",
+          "Options": null,
+          "Suggestions": null,
+          "Secret": false,
+          "RefKind": "",
+          "Multiline": false,
+          "SystemManaged": false
+        },
+        {
+          "Key": "onConflict",
+          "Label": "If the destination exists",
+          "Type": "options",
+          "Required": false,
+          "Default": "fail",
+          "Description": "Fail stops the step. Suffix adds \" (2)\", \" (3)\", and so on to the file name.",
+          "Options": [
+            "fail",
+            "suffix"
+          ],
+          "Suggestions": null,
+          "Secret": false,
+          "RefKind": "",
+          "Multiline": false,
+          "SystemManaged": false
+        }
+      ],
+      "Output": "the file's new path",
       "Effect": "local",
       "Declared": false,
       "PaletteGroup": "",

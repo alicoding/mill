@@ -130,6 +130,13 @@ type TriggerService struct {
 	// each entry's start/stop (triggeratlascard.go), mutated only while
 	// s.mu is held, same shape as sysEvents above.
 	atlasCardTriggers map[string][]string
+	// fwMu/fileWrites back the filesystem-watch structural cycle guard
+	// (docs/goals/0087, filewriteguard.go) -- its own mutex rather than
+	// reusing s.mu, since a recorder call arrives from a running node
+	// execution (composition.recordFileWriteFn) which must never block
+	// on Sync's listener-rebuild lock.
+	fwMu       sync.Mutex
+	fileWrites map[string]fileWriteRecord
 }
 
 // SetExecutionService wires the durable-execution runtime a headless fire
@@ -153,8 +160,14 @@ func NewTriggerService(comp *compositionsvc.CompositionService, logger *slog.Log
 		store:             store,
 		sysEvents:         make(map[string][]systemEventBinding),
 		atlasCardTriggers: make(map[string][]string),
+		fileWrites:        make(map[string]fileWriteRecord),
 	}
 	s.loadPersistedHotkeys()
+	// triggersvc already imports composition, never the reverse -- wiring
+	// the seam here (rather than main.go) mirrors
+	// executionsvc.NewExecutionService's identical
+	// composition.SetCurrentRunIDLookup call.
+	composition.SetFileWriteRecorder(s.RecordRunFileWrite)
 	return s
 }
 
