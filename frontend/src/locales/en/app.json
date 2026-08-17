@@ -80,6 +80,7 @@
   "approvalPrompt": {
     "moreWaiting": "+{{count}} more waiting",
     "openInMill": "Open in Mill",
+    "setRule": "Set a rule…",
     "empty": "No pending approvals."
   },
   "appSidebar": {

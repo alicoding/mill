@@ -45,6 +45,14 @@ interface UISignalState {
   configureCreateRequest: string | null
   requestConfigureCreate: (tab: string) => void
   consumeConfigureCreate: () => void
+  // review.rules (goal 0078): a monotonic counter, same shape as
+  // atlasJumpRequest -- legal because the command is surface-scoped to
+  // 'review' (shared/commands.ts), so ReviewView is always already
+  // mounted by the time this fires and its own ref-compared effect
+  // catches every tick, unlike configureCreateRequest's remount case
+  // above.
+  reviewRulesRequest: number
+  requestReviewRules: () => void
 }
 
 export const useUISignalStore = create<UISignalState>()((set) => ({
@@ -60,4 +68,6 @@ export const useUISignalStore = create<UISignalState>()((set) => ({
   configureCreateRequest: null,
   requestConfigureCreate: (tab) => set({ configureCreateRequest: tab }),
   consumeConfigureCreate: () => set({ configureCreateRequest: null }),
+  reviewRulesRequest: 0,
+  requestReviewRules: () => set((s) => ({ reviewRulesRequest: s.reviewRulesRequest + 1 })),
 }))

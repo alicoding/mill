@@ -55,6 +55,8 @@ export type {
 } from '../../bindings/github.com/alicoding/mill/internal/services/executionsvc'
 export { GuardrailService } from '../../bindings/github.com/alicoding/mill/internal/services/guardrailsvc'
 export type { RuleTestResult } from '../../bindings/github.com/alicoding/mill/internal/services/guardrailsvc'
+export { Effect as GuardrailEffect } from '../../bindings/github.com/alicoding/mill/internal/domain/guardrail/models'
+export type { Rule as GuardrailRule } from '../../bindings/github.com/alicoding/mill/internal/domain/guardrail/models'
 export type { MCPWriteActivity, MCPWriteRequest, MCPWriteResolved } from '../../bindings/github.com/alicoding/mill/internal/services/mcpsvc'
 export { SettingsService } from '../../bindings/github.com/alicoding/mill/internal/services/settingssvc'
 export type {

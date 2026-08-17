@@ -259,6 +259,94 @@ func TestDeleteRule_PersistFailure_ReturnsErrorAndRestoresIt(t *testing.T) {
 	}
 }
 
+// --- RulesForStep ---
+
+func TestRulesForStep_UnknownStep_ReturnsNil(t *testing.T) {
+	g, _ := newTestGuardrailService(t)
+	if got := g.RulesForStep("does-not-exist", "also-not"); got != nil {
+		t.Errorf("RulesForStep() for an unknown step = %+v, want nil", got)
+	}
+}
+
+// TestRulesForStep_MatchesPerScopeField proves every one of the four
+// scope fields is checked independently: a rule scoped by NodeTypeID,
+// WorkflowID, WorkflowID+NodeID, or RequestID each match the step that
+// carries it, while a rule scoped to something the step DOESN'T carry
+// (a different node type, a different workflow, a different request)
+// is excluded.
+func TestRulesForStep_MatchesPerScopeField(t *testing.T) {
+	g, comp := newTestGuardrailService(t)
+	wf := verdictWorkflow(t, comp)
+
+	byNodeType, err := g.CreateRule(guardrail.Rule{Label: "By node type", Effect: guardrail.EffectAllow, NodeTypeID: "integration-http"})
+	if err != nil {
+		t.Fatalf("CreateRule (node type): %v", err)
+	}
+	byWorkflow, err := g.CreateRule(guardrail.Rule{Label: "By workflow", Effect: guardrail.EffectAsk, WorkflowID: wf.ID})
+	if err != nil {
+		t.Fatalf("CreateRule (workflow): %v", err)
+	}
+	byStep, err := g.CreateRule(guardrail.Rule{Label: "By exact step", Effect: guardrail.EffectDeny, WorkflowID: wf.ID, NodeID: "http"})
+	if err != nil {
+		t.Fatalf("CreateRule (step): %v", err)
+	}
+	byRequest, err := g.CreateRule(guardrail.Rule{Label: "By request", Effect: guardrail.EffectAllow, RequestID: "example-none-httpbin"})
+	if err != nil {
+		t.Fatalf("CreateRule (request): %v", err)
+	}
+	if _, err := g.CreateRule(guardrail.Rule{Label: "Different node type", Effect: guardrail.EffectDeny, NodeTypeID: "mcp-tool-call"}); err != nil {
+		t.Fatalf("CreateRule (non-matching node type): %v", err)
+	}
+	if _, err := g.CreateRule(guardrail.Rule{Label: "Different workflow", Effect: guardrail.EffectDeny, WorkflowID: "some-other-workflow"}); err != nil {
+		t.Fatalf("CreateRule (non-matching workflow): %v", err)
+	}
+	if _, err := g.CreateRule(guardrail.Rule{Label: "Different step in the same workflow", Effect: guardrail.EffectDeny, WorkflowID: wf.ID, NodeID: "cap"}); err != nil {
+		t.Fatalf("CreateRule (non-matching step): %v", err)
+	}
+	if _, err := g.CreateRule(guardrail.Rule{Label: "Different request", Effect: guardrail.EffectDeny, RequestID: "some-other-request"}); err != nil {
+		t.Fatalf("CreateRule (non-matching request): %v", err)
+	}
+
+	got := g.RulesForStep(wf.ID, "http")
+	gotIDs := make(map[string]bool)
+	for _, r := range got {
+		gotIDs[r.ID] = true
+	}
+	for _, want := range []guardrail.Rule{byNodeType, byWorkflow, byStep, byRequest} {
+		if !gotIDs[want.ID] {
+			t.Errorf("RulesForStep(%q, %q) missing matching rule %q (%+v)", wf.ID, "http", want.Label, got)
+		}
+	}
+	if len(got) != 4 {
+		t.Errorf("RulesForStep(%q, %q) = %d rules, want exactly the 4 matching ones, got %+v", wf.ID, "http", len(got), got)
+	}
+}
+
+// TestRulesForStep_ExcludesDebugSource proves a breakpoint (Source:
+// SourceDebug) never appears in the policy-rule list door 2/3 render --
+// SourceDebug rules are the canvas's own step-mode plumbing, not
+// authored policy, and must never look editable/removable as one.
+func TestRulesForStep_ExcludesDebugSource(t *testing.T) {
+	g, comp := newTestGuardrailService(t)
+	wf := verdictWorkflow(t, comp)
+
+	if _, err := g.CreateRule(guardrail.Rule{
+		Label: "Breakpoint", Effect: guardrail.EffectAsk, WorkflowID: wf.ID, NodeID: "http", Source: guardrail.SourceDebug,
+	}); err != nil {
+		t.Fatalf("CreateRule (debug): %v", err)
+	}
+	if _, err := g.CreateRule(guardrail.Rule{
+		Label: "Policy rule", Effect: guardrail.EffectAllow, WorkflowID: wf.ID, NodeID: "http",
+	}); err != nil {
+		t.Fatalf("CreateRule (policy): %v", err)
+	}
+
+	got := g.RulesForStep(wf.ID, "http")
+	if len(got) != 1 || got[0].Label != "Policy rule" {
+		t.Errorf("RulesForStep() = %+v, want only the policy rule, debug rule excluded", got)
+	}
+}
+
 func TestUpdateRule_InvalidRule_RejectedBeforeAnyStoreChange(t *testing.T) {
 	g, _ := newTestGuardrailService(t)
 	created, err := g.CreateRule(guardrail.Rule{Label: "Original", Effect: guardrail.EffectAllow, NodeTypeID: "integration-http"})

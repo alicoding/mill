@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Button, Heading, Select, Spinner, Stack, Text } from '@primer/react'
+import { ActionList, ActionMenu, Button, Heading, SegmentedControl, Select, Spinner, Stack, Text } from '@primer/react'
 import { StatusStamp } from '../shared/StatusStamp'
 import { Blankslate } from '@primer/react/experimental'
 import { BugIcon, InboxIcon, PersonIcon, PlugIcon, ShieldIcon } from '@primer/octicons-react'
@@ -9,13 +9,21 @@ import { ExecutionService, SettingsService } from '../shared/bindings'
 import type { MCPWriteRequest, MCPWriteResolved, RunSummary } from '../shared/bindings'
 import { ApprovalValuesForm, attrsForPending } from '../shared/ApprovalValuesForm'
 import { useAppStore } from '../shared/store'
+import { useUISignalStore } from '../shared/uiSignalStore'
 import { formatRunStartedAt } from '../shared/runTime'
 import { StalenessBadge } from '../shared/StalenessBadge'
 import { formatLastChecked } from '../shared/staleness'
+import { ReviewAlwaysRuleDialog } from './ReviewAlwaysRuleDialog'
+import { GuardrailRulesPanel } from './GuardrailRulesPanel'
 import styles from '../shared/ListCard.module.css'
 import monoStyles from '../shared/monoText.module.css'
 import mobileStyles from './ReviewView.module.css'
 import PageContainer from '../shared/PageContainer'
+
+type ReviewTab = 'queue' | 'rules'
+// The parked run + effect a door-1 "Always…" click is currently
+// authoring a rule for -- null means no ReviewAlwaysRuleDialog is open.
+interface AlwaysRuleRequest { run: RunSummary; effect: 'allow' | 'deny' }
 
 // The four kinds a Review row can be (goal 0002 item 4) -- discriminated
 // off the SAME fields the row's own icon/badge already key on
@@ -79,6 +87,24 @@ function ReviewView() {
   const [workflowFilter, setWorkflowFilter] = useState('')
   const [kindFilter, setKindFilter] = useState<KindFilterValue>('')
   const [error, setError] = useState('')
+  // The Queue|Rules split (goal 0078, door 3): Queue is every field
+  // above, unchanged; Rules renders GuardrailRulesPanel instead.
+  const [tab, setTab] = useState<ReviewTab>('queue')
+  // Door 1's "Always…" menu -- which parked run + effect (allow/deny)
+  // the ReviewAlwaysRuleDialog below is currently open for.
+  const [alwaysRule, setAlwaysRule] = useState<AlwaysRuleRequest | null>(null)
+
+  // review.rules (shared/commands.ts): surface-scoped to Review, so
+  // this component is always already mounted when it fires -- the same
+  // monotonic-counter/ref-compare shape AtlasView's own atlasJumpRequest
+  // watcher uses.
+  const reviewRulesRequest = useUISignalStore((s) => s.reviewRulesRequest)
+  const lastReviewRulesRequest = useRef(reviewRulesRequest)
+  useEffect(() => {
+    if (reviewRulesRequest === lastReviewRulesRequest.current) return
+    lastReviewRulesRequest.current = reviewRulesRequest
+    setTab('rules')
+  }, [reviewRulesRequest])
 
   const refresh = () => {
     ExecutionService.ListRuns()
@@ -202,6 +228,16 @@ function ReviewView() {
       </Heading>
       {error && <Text as="p" size="small" className={styles.error}>{error}</Text>}
 
+      {/* Queue|Rules split (goal 0078, door 3) -- Queue is every field
+          below, unchanged; Rules renders the audit view instead. */}
+      <SegmentedControl aria-label={t('reviewView.subtitle')} onChange={(i) => setTab(i === 1 ? 'rules' : 'queue')}>
+        <SegmentedControl.Button selected={tab === 'queue'} data-testid="review-tab-queue">{t('reviewView.tabs.queue')}</SegmentedControl.Button>
+        <SegmentedControl.Button selected={tab === 'rules'} data-testid="review-tab-rules">{t('reviewView.tabs.rules')}</SegmentedControl.Button>
+      </SegmentedControl>
+
+      {tab === 'rules' && <GuardrailRulesPanel />}
+
+      {tab === 'queue' && (<>
       {(pending.length > 0 || resolved.length > 0) && (
         <Stack direction="horizontal" gap="condensed" align="center">
           <Select value={workflowFilter} onChange={(e) => setWorkflowFilter(e.target.value)} aria-label={t('reviewView.filterByWorkflowAriaLabel')}>
@@ -318,6 +354,28 @@ function ReviewView() {
                 <Button size="small" variant="danger" data-testid="review-deny" onClick={() => resolve(run, false)}>
                   {isDebugPark(run) ? t('reviewView.stop') : t('reviewView.deny')}
                 </Button>
+                {/* Door 1, primary authoring door (goal 0078): only a
+                    guardrail policy ask carries a scope a rule can name --
+                    a Human review checkpoint always parks by construction
+                    (no rule vouches it away) and a debug park is step-mode
+                    plumbing, not policy, so neither offers this. */}
+                {pendingKind(run) === 'ask' && (
+                  <ActionMenu>
+                    <ActionMenu.Button size="small" variant="invisible" data-testid="review-always-menu">
+                      {t('reviewView.alwaysButton')}
+                    </ActionMenu.Button>
+                    <ActionMenu.Overlay>
+                      <ActionList>
+                        <ActionList.Item onSelect={() => setAlwaysRule({ run, effect: 'allow' })} data-testid="review-always-allow">
+                          {t('reviewView.alwaysAllowMenuItem')}
+                        </ActionList.Item>
+                        <ActionList.Item onSelect={() => setAlwaysRule({ run, effect: 'deny' })} data-testid="review-always-deny">
+                          {t('reviewView.alwaysDenyMenuItem')}
+                        </ActionList.Item>
+                      </ActionList>
+                    </ActionMenu.Overlay>
+                  </ActionMenu>
+                )}
               </Stack>
             </Stack>
           </div>
@@ -386,6 +444,16 @@ function ReviewView() {
             ))}
           </Stack>
         </>
+      )}
+      </>)}
+
+      {alwaysRule && (
+        <ReviewAlwaysRuleDialog
+          run={alwaysRule.run}
+          effect={alwaysRule.effect}
+          onClose={() => setAlwaysRule(null)}
+          onResolved={() => { setAlwaysRule(null); setTimeout(refresh, 300) }}
+        />
       )}
     </PageContainer>
   )

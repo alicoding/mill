@@ -134,9 +134,20 @@ export function ApprovalPrompt() {
               </Button>
             </Stack>
           ) : (
-            <Button size="small" variant="primary" onClick={openInMill} data-testid="approval-prompt-open">
-              {t('approvalPrompt.openInMill')}
-            </Button>
+            <Stack direction="horizontal" gap="condensed">
+              <Button size="small" variant="primary" onClick={openInMill} data-testid="approval-prompt-open">
+                {t('approvalPrompt.openInMill')}
+              </Button>
+              {/* Same navigation as "Open in Mill" -- Review's Queue tab
+                  (door 1's landing spot) already shows this exact card
+                  with its own "Always…" action once there. A distinct
+                  button exists purely so the rule-authoring path is
+                  discoverable straight from the toast, not buried behind
+                  a generic "open the run" label. */}
+              <Button size="small" variant="invisible" onClick={openInMill} data-testid="approval-prompt-set-rule">
+                {t('approvalPrompt.setRule')}
+              </Button>
+            </Stack>
           )}
           {error && <Text size="small" className={styles.error}>{error}</Text>}
         </Stack>

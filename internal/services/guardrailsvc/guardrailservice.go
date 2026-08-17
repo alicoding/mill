@@ -207,6 +207,44 @@ func (g *GuardrailService) TestRules(workflowID, nodeID string) (RuleTestResult,
 	}, nil
 }
 
+// RulesForStep returns every stored POLICY rule (Source != SourceDebug)
+// whose non-empty scope fields all match the given workflow step --
+// door 2's "Rules for this step" list (NodeGuardrailSection) and door
+// 1's rule-from-park scope prefill both need this without duplicating
+// guardrail's own scope-match logic in the frontend (goal 0078). An
+// unknown workflow/node returns nil rather than an error -- callers
+// treat "no rules apply" and "no such step" the same way (an empty
+// list), matching TestRules' node-resolution but without its
+// error-on-unknown-step behavior, since this is a passive list, not a
+// dry-run request naming a specific step.
+func (g *GuardrailService) RulesForStep(workflowID, nodeID string) []guardrail.Rule {
+	var target *composition.Node
+	for _, w := range g.comp.Workflows() {
+		if w.ID != workflowID {
+			continue
+		}
+		for i := range w.Nodes {
+			if w.Nodes[i].ID == nodeID {
+				target = &w.Nodes[i]
+			}
+		}
+	}
+	if target == nil {
+		return nil
+	}
+	step := GuardrailStep(workflowID, *target, composition.ExecContext{})
+	var out []guardrail.Rule
+	for _, r := range g.Rules() {
+		if r.Source == guardrail.SourceDebug {
+			continue
+		}
+		if guardrail.ScopeMatches(r, step) {
+			out = append(out, r)
+		}
+	}
+	return out
+}
+
 // GuardrailStep converts one about-to-execute node into the domain
 // evaluator's Step shape -- shared by the live gate
 // (executionsvc) and the dry-run tester above, so a
