@@ -406,6 +406,8 @@ function AtlasBoardInner({ cards, allCards, kinds, links, linkKinds, notes, pare
         onEdgeMouseLeave={() => setHoveredEdgeID(null)}
         nodesConnectable={false}
         deleteKeyCode={null}
+        // Goal 0092: NOT default Meta -- that made ⌘-click also toggle.
+        multiSelectionKeyCode="Shift"
         nodesDraggable={isFree && !readOnly}
         zoomOnDoubleClick={false}
         panOnDrag={!areaArmed}

@@ -69,7 +69,9 @@ export const AtlasGroupNode = memo(function AtlasGroupNode({ data }: NodeProps<A
   const toggleFlip = () => onToggleFlip(card.ID)
   // ⌘-click opens the place's own page directly (the pointer twin of
   // ⌘↵, goal 0074) -- plain click keeps flipping.
-  const bodyClick = (e: { metaKey: boolean; ctrlKey: boolean }) => {
+  const bodyClick = (e: { metaKey: boolean; ctrlKey: boolean; shiftKey: boolean }) => {
+    // Shift-click is selection (goal 0092) -- never also a flip.
+    if (e.shiftKey) return
     if (e.metaKey || e.ctrlKey) onOpenOverlay(card.ID)
     else toggleFlip()
   }

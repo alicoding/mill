@@ -48,6 +48,8 @@ function AtlasRegionChipNodeInner({ data }: NodeProps<AtlasRegionChipRFNode>) {
       data-pulse={data.pulsed}
       data-flipped={data.flipped}
       onClick={(e) => {
+        // Shift-click is selection (goal 0092) -- never also a flip.
+        if (e.shiftKey) return
         if (e.metaKey || e.ctrlKey) data.onOpenOverlay(data.card.ID)
         else data.onToggleFlip(data.card.ID)
       }}
