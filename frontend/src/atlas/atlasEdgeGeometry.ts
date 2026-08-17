@@ -12,34 +12,39 @@ export interface EdgeEndpoints {
   ty: number
 }
 
-// Where a straight link line meets each card's boundary, aimed
-// center-to-center (React Flow's own floating-edges pattern): the
-// segment from one rect's center toward the other's, clipped to the
-// axis-aligned boundary by scaling the direction vector so its larger
-// normalized component reaches the half-extent exactly. Keeps a link
-// attached to whichever face of the card actually points at its
-// partner, instead of the fixed handle points whose default bezier
-// loops made links unreadable.
+// Deterministic SIDE anchors (goal 0089, the draw-tool convention):
+// each endpoint snaps to the midpoint of one of the rect's four
+// sides, the side chosen by quantizing the center-to-center angle to
+// a quadrant. A continuous boundary intersection slid along the card
+// edge on every unrelated re-render ("jumpy"); a quantized side flips
+// only when the partner actually crosses a quadrant boundary, so
+// lines hold still and the arrange action operates on stable
+// endpoints.
 export function floatingEdgeEndpoints(source: Rect, target: Rect): EdgeEndpoints {
   const s = rectCenter(source)
   const t = rectCenter(target)
-  const start = boundaryPoint(source, s, t)
-  const end = boundaryPoint(target, t, s)
+  const start = sideAnchor(source, s, t)
+  const end = sideAnchor(target, t, s)
   return { sx: start.x, sy: start.y, tx: end.x, ty: end.y }
+}
+
+// The quadrant test normalizes by the rect's aspect so wide cards
+// prefer their left/right faces exactly when the partner is beside
+// them rather than above/below -- the same visual rule a person
+// drawing the line by hand applies.
+export function sideAnchor(rect: Rect, from: { x: number; y: number }, toward: { x: number; y: number }): { x: number; y: number } {
+  const dx = toward.x - from.x
+  const dy = toward.y - from.y
+  const hw = rect.width / 2
+  const hh = rect.height / 2
+  if ((dx === 0 && dy === 0) || hw === 0 || hh === 0) return from
+  if (Math.abs(dx) / hw >= Math.abs(dy) / hh) {
+    return { x: from.x + (dx > 0 ? hw : -hw), y: from.y }
+  }
+  return { x: from.x, y: from.y + (dy > 0 ? hh : -hh) }
 }
 
 function rectCenter(r: Rect): { x: number; y: number } {
   return { x: r.x + r.width / 2, y: r.y + r.height / 2 }
 }
 
-function boundaryPoint(rect: Rect, from: { x: number; y: number }, toward: { x: number; y: number }): { x: number; y: number } {
-  const dx = toward.x - from.x
-  const dy = toward.y - from.y
-  const hw = rect.width / 2
-  const hh = rect.height / 2
-  // Coincident centers (fully overlapping cards) have no direction to
-  // aim along -- degrade to the center itself rather than dividing by 0.
-  const scale = Math.max(Math.abs(dx) / hw, Math.abs(dy) / hh)
-  if (scale === 0 || !Number.isFinite(scale)) return from
-  return { x: from.x + dx / scale, y: from.y + dy / scale }
-}

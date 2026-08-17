@@ -6,7 +6,8 @@
   "viewMode": {
     "ariaLabel": "View mode",
     "shelves": "Auto-arrange",
-    "canvas": "Free"
+    "canvas": "Free",
+    "arrangeAction": "Auto-arrange"
   },
   "board": {
     "flipCardAriaLabel": "Flip {{title}}",

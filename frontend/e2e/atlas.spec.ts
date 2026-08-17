@@ -186,27 +186,35 @@ test('clicking a card flips it in place without moving the board; a second card 
   await expect(scratchpad).toHaveAttribute('data-flipped', 'false')
 })
 
-test('the visible view-mode toggle switches a space between Auto-arrange and Free, and persists across a reload', async ({ page }) => {
+test('arrange is an action: dragging persists a position, Auto-arrange re-seats it (goal 0089)', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Atlas' }).click()
   await groupCard(page, 'Example area').getByTestId('atlas-group-header').click()
   await expect(page.getByTestId('atlas-breadcrumb')).toContainText('Example area')
 
-  const toggle = page.getByTestId('atlas-view-mode-toggle')
-  await expect(toggle.getByRole('button', { name: 'Auto-arrange', pressed: true })).toBeVisible()
-  await toggle.getByRole('button', { name: 'Free' }).click()
-  await expect(toggle.getByRole('button', { name: 'Free', pressed: true })).toBeVisible()
+  // No mode toggle anywhere -- the Auto-arrange BUTTON is present at
+  // every level instead (positions are always sovereign).
+  await expect(page.getByTestId('atlas-view-mode-toggle')).toHaveCount(0)
+  const arrange = page.getByTestId('atlas-auto-arrange')
+  await expect(arrange).toBeVisible()
 
+  // One-shot arrange persists seats: click it, then a reload renders
+  // the same FLOW positions (React Flow writes translate(x,y) in flow
+  // coords on the node element -- camera-independent, unlike
+  // boundingBox, which shifts with fitView's post-reload camera).
+  await arrange.click()
+  const adaNode = page.locator('.react-flow__node').filter({ has: page.locator('[aria-label="Flip Ada Lovelace"]') })
+  await expect(adaNode).toBeVisible()
+  let before = ''
+  await expect.poll(async () => {
+    before = (await adaNode.evaluate((el) => (el as HTMLElement).style.transform)) ?? ''
+    return before
+  }).toContain('translate')
   await page.reload()
   await expect(atlasView(page)).toBeVisible()
   await groupCard(page, 'Example area').getByTestId('atlas-group-header').click()
-  await expect(page.getByTestId('atlas-view-mode-toggle').getByRole('button', { name: 'Free', pressed: true })).toBeVisible()
-
-  // Restore: switch back to Auto-arrange so it doesn't leak into a
-  // later test in this same file/worker (testing.md's within-file
-  // cleanup rule).
-  await page.getByTestId('atlas-view-mode-toggle').getByRole('button', { name: 'Auto-arrange' }).click()
-  await expect(page.getByTestId('atlas-view-mode-toggle').getByRole('button', { name: 'Auto-arrange', pressed: true })).toBeVisible()
+  await expect(adaNode).toBeVisible()
+  await expect.poll(async () => adaNode.evaluate((el) => (el as HTMLElement).style.transform), { timeout: 10_000 }).toBe(before)
 })
 
 test('create a child card, edit + persist it via the flip-then-Open overlay, then delete it', async ({ page }) => {

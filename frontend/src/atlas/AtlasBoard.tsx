@@ -4,7 +4,6 @@ import { useTranslation } from 'react-i18next'
 import { ReactFlow, ReactFlowProvider, Background, Controls, useNodesState, useReactFlow } from '@xyflow/react'
 import type { EdgeTypes as RFEdgeTypes, NodeTypes as RFNodeTypes } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
-import { ViewMode } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 import type { Card, Kind, Link, LinkKind, Note } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 import { AtlasService } from '../shared/bindings'
 import { useIsNarrowViewport } from '../shared/useNarrowViewport'
@@ -16,8 +15,8 @@ import { AtlasRegionChipNode } from './AtlasRegionChipNode'
 import { AtlasStickyNode } from './AtlasStickyNode'
 import { AtlasLinkEdge } from './AtlasLinkEdge'
 import { resolveBoardEdges } from './atlasLinkResolution'
+import { useAtlasArrange } from './useAtlasArrange'
 import { buildBoardEdges } from './atlasBuildBoardEdges'
-import { resolveFreeOverlaps } from './atlasOverlapResolution'
 import { useBoardFocus } from './useBoardFocus'
 import { useAtlasCreation, type AtlasGroupRequest, type AtlasPlacementRequest, type AtlasPromoteRequest } from './useAtlasCreation'
 import { useAtlasAreaDraw } from './useAtlasAreaDraw'
@@ -69,7 +68,7 @@ export interface AtlasFocusRequest {
 // media-query gate AtlasNoteCardNode.module.css's own flip already
 // uses, read here in JS via usePrefersReducedMotion since React Flow's
 // own transition durations are JS options, not CSS.
-function AtlasBoardInner({ cards, allCards, kinds, links, linkKinds, notes, parentID, mode, viewedID, focusRequest, onDrill, onOpenOverlay, onFocusHandled, onCardContextMenu, onPaneContextMenu, onArteryContextMenu, onNoteContextMenu, onFrameContextMenu, onFrameInteriorContextMenu, onMultiSelectContextMenu, placementRequest, promoteRequest, groupRequest, onJumpToChip }: {
+function AtlasBoardInner({ cards, allCards, kinds, links, linkKinds, notes, parentID, arrangeRequest, viewedID, focusRequest, onDrill, onOpenOverlay, onFocusHandled, onCardContextMenu, onPaneContextMenu, onArteryContextMenu, onNoteContextMenu, onFrameContextMenu, onFrameInteriorContextMenu, onMultiSelectContextMenu, onDeleteSelection, placementRequest, promoteRequest, groupRequest, onJumpToChip }: {
   cards: Card[]
   allCards: Card[]
   kinds: Kind[]
@@ -80,7 +79,9 @@ function AtlasBoardInner({ cards, allCards, kinds, links, linkKinds, notes, pare
   // parentID is the board's CURRENT container (AtlasView's viewedID).
   notes: Note[]
   parentID: string
-  mode: ViewMode
+  // Arrange-is-an-action (goal 0089): a one-shot token; each bump
+  // runs the packer over this level and PERSISTS the result.
+  arrangeRequest?: number
   viewedID: string
   focusRequest: AtlasFocusRequest | null
   onDrill: (id: string) => void
@@ -111,6 +112,11 @@ function AtlasBoardInner({ cards, allCards, kinds, links, linkKinds, notes, pare
   // selection's own card/note ids split apart -- AtlasView builds
   // Group into new area (cards.length >= 2) / Delete.
   onMultiSelectContextMenu: (cardIDs: string[], noteIDs: string[], pos: { x: number; y: number }) => void
+  // Keyboard Delete/Backspace over the live selection (goal 0089
+  // rider): routed through the same confirm dialog as the menu item;
+  // React Flow's own deleteKeyCode stays disabled -- a local node
+  // removal would just resurrect on the next data refresh.
+  onDeleteSelection: (cardIDs: string[], noteIDs: string[]) => void
   // AtlasView's own downward creation requests (the pane menu's "Add
   // card"/"Add note"/"Promote to card…" items, extended by slice A2's
   // frame-scoped placements and "Group into new area") -- see
@@ -124,7 +130,10 @@ function AtlasBoardInner({ cards, allCards, kinds, links, linkKinds, notes, pare
   const { t } = useTranslation('atlas')
   const readOnly = useIsNarrowViewport()
   const reduceMotion = usePrefersReducedMotion()
-  const isFree = mode === ViewMode.ViewModeCanvas
+  // Arrange is an action, not a mode (goal 0089): every level renders
+  // positions-sovereign; the packer runs only on demand (below) or
+  // in-memory for cards that have no position yet.
+  const isFree = true
   const [flippedID, setFlippedID] = useState<string | null>(null)
   const [pulsedID, setPulsedID] = useState<string | null>(null)
   const [hintedID, setHintedID] = useState<string | null>(null)
@@ -132,6 +141,24 @@ function AtlasBoardInner({ cards, allCards, kinds, links, linkKinds, notes, pare
   const { fitBounds, fitView, getNodesBounds, screenToFlowPosition } = useReactFlow()
   const creation = useAtlasCreation({ parentID, allCards, notes, readOnly, screenToFlowPosition, placementRequest, promoteRequest, groupRequest })
   const selection = useAtlasSelection({ cards, notes, onMultiSelectContextMenu })
+
+  // Delete/Backspace over a live selection -> the shared confirm
+  // (never fires from editable elements; single or multi).
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== 'Delete' && e.key !== 'Backspace') return
+      const el = document.activeElement
+      if (el instanceof HTMLElement && (el.isContentEditable || el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT')) return
+      const sel = selection.selectedIDsRef.current
+      if (sel.length === 0) return
+      e.preventDefault()
+      const cardIDs = sel.filter((id) => cards.some((c) => c.ID === id))
+      const noteIDs = sel.filter((id) => notes.some((n) => n.ID === id))
+      if (cardIDs.length + noteIDs.length > 0) onDeleteSelection(cardIDs, noteIDs)
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [cards, notes, onDeleteSelection, selection.selectedIDsRef])
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -199,27 +226,27 @@ function AtlasBoardInner({ cards, allCards, kinds, links, linkKinds, notes, pare
   // (atlasOverlapResolution) and PERSISTED below, so the nudge is
   // stable across reloads. Leaf-on-leaf overlaps are hand placement
   // and never touched.
-  const freeMoves = useMemo(() => {
-    if (isFree !== true) return []
-    return resolveFreeOverlaps(cards.map((card) => {
-      const frame = isGroupCard(allCards, card)
-      const size = frame ? computeGroupFrameLayout(allCards, card.ID).size : { width: NOTE_WIDTH, height: NOTE_HEIGHT }
-      return {
-        id: card.ID,
-        x: card.Position?.X ?? 0,
-        y: card.Position?.Y ?? 0,
-        width: size.width,
-        height: size.height,
-        isFrame: frame,
-      }
-    }))
-  }, [cards, allCards, isFree])
-
+  // Auto-arrange rows wrap at the board's real width (a fixed cap
+  // left a dead right-hand column); the pure-layout constant stays
+  // the floor so a narrow pane still wraps.
+  const [boardWidth, setBoardWidth] = useState(0)
   useEffect(() => {
-    for (const m of freeMoves) {
-      void AtlasService.SetPosition(m.id, { X: m.x, Y: m.y }).catch(console.error)
-    }
-  }, [freeMoves])
+    const el = wrapperRef.current
+    if (!el) return
+    const observer = new ResizeObserver((entries) => {
+      const w = entries[0]?.contentRect.width
+      if (w) setBoardWidth(w)
+    })
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [])
+
+  // The board's arteries, resolved once and shared: the edges memo
+  // below renders them; Auto-arrange consumes them as the adjacency
+  // that seats linked things beside each other.
+  const arteries = useMemo(() => resolveBoardEdges(links, new Set(cards.map((c) => c.ID)), allCards), [links, cards, allCards])
+
+  const { freeMoves } = useAtlasArrange({ cards, allCards, arteries, boardWidth, arrangeRequest })
 
   // Every top-level card's own rendered flow-space box (goal 0081
   // slice A2): shared by the marker-box's own enclosure test, drag
@@ -273,26 +300,6 @@ function AtlasBoardInner({ cards, allCards, kinds, links, linkKinds, notes, pare
   // The capture doors (goal 0081 slice A3): own hook files, 500-line cap.
   const fileDrop = useAtlasNativeFileDrop({ parentID, topLevelBoxes, screenToFlowPosition, setPulsedID, reduceMotion })
   useAtlasPaste({ topLevelBoxes, screenToFlowPosition, onPasteText: creation.openPasteText })
-
-  // The board's arteries, resolved once and shared: the edges memo
-  // below renders them; Auto-arrange consumes them as the adjacency
-  // that seats linked things beside each other.
-  const arteries = useMemo(() => resolveBoardEdges(links, new Set(cards.map((c) => c.ID)), allCards), [links, cards, allCards])
-
-  // Auto-arrange rows wrap at the board's real width (a fixed cap
-  // left a dead right-hand column); the pure-layout constant stays
-  // the floor so a narrow pane still wraps.
-  const [boardWidth, setBoardWidth] = useState(0)
-  useEffect(() => {
-    const el = wrapperRef.current
-    if (!el) return
-    const observer = new ResizeObserver((entries) => {
-      const w = entries[0]?.contentRect.width
-      if (w) setBoardWidth(w)
-    })
-    observer.observe(el)
-    return () => observer.disconnect()
-  }, [])
 
   const builtNodes = useMemo(() => buildBoardCardNodes({
     cards, allCards, kinds, links, linkKinds, isFree, readOnly, boardWidth, freeMoves, arteries,
@@ -375,7 +382,6 @@ function AtlasBoardInner({ cards, allCards, kinds, links, linkKinds, notes, pare
       ref={wrapperRef}
       className={styles.board}
       data-testid="atlas-board"
-      data-view-mode={mode}
       data-armed={creation.armedTool !== null}
       data-file-drop-target
       data-file-drop-context={FILE_DROP_CONTEXT_BOARD}
@@ -399,6 +405,7 @@ function AtlasBoardInner({ cards, allCards, kinds, links, linkKinds, notes, pare
         onEdgeMouseEnter={(_, edge) => setHoveredEdgeID(edge.id)}
         onEdgeMouseLeave={() => setHoveredEdgeID(null)}
         nodesConnectable={false}
+        deleteKeyCode={null}
         nodesDraggable={isFree && !readOnly}
         zoomOnDoubleClick={false}
         panOnDrag={!areaArmed}

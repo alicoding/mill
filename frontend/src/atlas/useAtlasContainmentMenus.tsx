@@ -73,7 +73,12 @@ export function useAtlasContainmentMenus({
 
   const { requestDelete: requestDeleteSelection, dialog: deleteSelectionDialog } = useConfirmDelete<{ cardIDs: string[]; noteIDs: string[] }>({
     entityType: 'cards',
-    labelOf: (sel) => `${sel.cardIDs.length + sel.noteIDs.length} cards`,
+    labelOf: (sel) => {
+      const parts: string[] = []
+      if (sel.cardIDs.length > 0) parts.push(`${sel.cardIDs.length} card${sel.cardIDs.length === 1 ? '' : 's'}`)
+      if (sel.noteIDs.length > 0) parts.push(`${sel.noteIDs.length} note${sel.noteIDs.length === 1 ? '' : 's'}`)
+      return parts.join(' and ')
+    },
     onConfirm: (sel) => {
       Promise.all([
         ...sel.cardIDs.map((id) => AtlasService.DeleteCard(id)),
@@ -129,5 +134,9 @@ export function useAtlasContainmentMenus({
     setMenu({ x: pos.x, y: pos.y, items })
   }
 
-  return { openFrameMenu, openFrameInteriorMenu, openMultiSelectMenu, dissolveDialog, deleteFrameDialog, deleteSelectionDialog }
+  // Keyboard Delete on a live selection (goal 0089 rider): same
+  // confirm + delete path as the multi-select menu's own item.
+  const deleteSelection = (cardIDs: string[], noteIDs: string[]) => requestDeleteSelection({ cardIDs, noteIDs })
+
+  return { openFrameMenu, openFrameInteriorMenu, openMultiSelectMenu, deleteSelection, dissolveDialog, deleteFrameDialog, deleteSelectionDialog }
 }

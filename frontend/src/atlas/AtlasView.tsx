@@ -49,6 +49,11 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
   // mounted (goal 0072 slice B) -- AtlasBoard clears it via
   // onFocusHandled once its own fly-to-card animation resolves.
   const [focusRequest, setFocusRequest] = useState<AtlasFocusRequest | null>(null)
+  // Arrange-is-an-action (goal 0089): a one-shot request token the
+  // board consumes -- the board owns the packer + width, the view owns
+  // the toolbar button.
+  const [arrangeRequest, setArrangeRequest] = useState(0)
+  const requestAutoArrange = () => setArrangeRequest((n) => n + 1)
   // Traceability matrix / coverage (docs/goals/0064): both are viewed-
   // space-scoped dialogs, so a single boolean each is enough state --
   // no card/kind selection needs to survive a close/reopen.
@@ -125,7 +130,6 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
   const allNotes = notes ?? []
 
   const viewedCard = allCards.find((c) => c.ID === viewedID) ?? null
-  const effectiveViewMode = viewedCard?.ViewMode === ViewMode.ViewModeCanvas ? ViewMode.ViewModeCanvas : ViewMode.ViewModeShelves
   const childrenAll = childrenOf(allCards, viewedID)
   const presentKinds = groupByKind(childrenAll, allKinds).map((shelf) => shelf.kind)
   // The lens filters cards by KIND, but containment is a ROLE
@@ -321,22 +325,15 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
     file.text().then(importConfirm.requestImport).catch((err) => setImportError(String(err)))
   }
 
-  const changeViewMode = (mode: ViewMode) => {
-    if (!viewedID) return
-    void AtlasService.SetViewMode(viewedID, mode).then(() => refreshAtlas()).catch(console.error)
-  }
 
   const createCard = async (containment: 'sibling' | 'child', kindID: string, title: string) => {
     const parentID = containment === 'child' ? viewedID : (viewedCard?.ParentID ?? '')
-    const targetMode = containment === 'child'
-      ? effectiveViewMode
-      : (allCards.find((c) => c.ID === parentID)?.ViewMode === ViewMode.ViewModeCanvas ? ViewMode.ViewModeCanvas : ViewMode.ViewModeShelves)
     // A sibling/child that itself holds children renders as a region
     // frame, far larger than a leaf note's own footprint --
     // freeChildPosition's own collision-avoidance clears its REAL
     // rendered size, not a uniform note-sized box (regression: a new
     // card once landed physically underneath an existing region frame).
-    const position: Position | null = targetMode === ViewMode.ViewModeCanvas ? freeChildPosition(allCards, parentID) : null
+    const position: Position | null = freeChildPosition(allCards, parentID)
     await AtlasService.CreateCard(kindID, title, '', {}, parentID, position, ViewMode.$zero, '', '', '')
     await refreshAtlas()
   }
@@ -357,9 +354,7 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
         onChangeHidden={changeHidden}
         peek={peek}
         onChangePeek={changePeek}
-        viewMode={effectiveViewMode}
-        onChangeViewMode={changeViewMode}
-        showViewModeToggle={viewedID !== ''}
+        onAutoArrange={requestAutoArrange}
         canAddSibling={viewedID !== ''}
         onCreate={createCard}
         onExport={exportAtlas}
@@ -389,7 +384,7 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
           linkKinds={allLinkKinds}
           notes={visibleNotes}
           parentID={viewedID}
-          mode={effectiveViewMode}
+          arrangeRequest={arrangeRequest}
           viewedID={viewedID}
           focusRequest={focusRequest}
           onDrill={drill}
@@ -401,6 +396,7 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
           onFrameContextMenu={containmentMenus.openFrameMenu}
           onFrameInteriorContextMenu={containmentMenus.openFrameInteriorMenu}
           onMultiSelectContextMenu={containmentMenus.openMultiSelectMenu}
+          onDeleteSelection={containmentMenus.deleteSelection}
           placementRequest={creationRequests.placementRequest}
           promoteRequest={creationRequests.promoteRequest}
           groupRequest={creationRequests.groupRequest}
