@@ -3,21 +3,22 @@ import { useTranslation } from 'react-i18next'
 import { Events } from '@wailsio/runtime'
 import { Text } from '@primer/react'
 import { FilteredActionList } from '@primer/react/experimental'
-import { PlayIcon } from '@primer/octicons-react'
-import { CompositionService, ExecutionService, RunKind, SettingsService, TriggerService } from '../shared/bindings'
+import { NoteIcon, PlayIcon } from '@primer/octicons-react'
+import { AtlasService, CompositionService, ExecutionService, RunKind, SettingsService, TriggerService } from '../shared/bindings'
 import type { ClipboardApplyPreview } from '../shared/bindings'
 import { generateSamplePayload } from '../shared/configSchema'
 import { useAppStore, refreshWorkflows, refreshRequests, refreshKeybindings } from '../shared/store'
 import {
   useConfigureEntityStore, refreshLists, refreshMCPServers, refreshDecisions, refreshExecEnvs, refreshAIProviders, refreshDeclaredStepTypes,
 } from '../shared/configureEntityStore'
-import { useAtlasStore, refreshAtlasCards, refreshAtlasKinds } from '../atlas/atlasStore'
+import { useAtlasStore, refreshAtlasCards, refreshAtlasKinds, refreshAtlasNotes } from '../atlas/atlasStore'
 import { findRootNode } from '../composition/triggerRowInfo'
 import { filterPaletteEntries } from './paletteFilter'
 import { sortWorkflowsByPinnedAndFrecency } from './workflowFrecency'
 import { WorkflowRowTrailingVisual } from './WorkflowRowTrailingVisual'
 import { buildConfigureAndActionEntries } from './quickPanelActionEntries'
 import type { PanelEntry } from './quickPanelActionEntries'
+import { cascadeNotePosition, resolveNoteParentID } from './quickPanelCapture'
 import { QuickPanelClipboardApply } from './QuickPanelClipboardApply'
 import styles from './QuickPanel.module.css'
 
@@ -84,6 +85,11 @@ export function QuickPanel() {
   const declaredStepTypes = useConfigureEntityStore((s) => s.declaredStepTypes)
   const atlasCards = useAtlasStore((s) => s.cards)
   const atlasKinds = useAtlasStore((s) => s.kinds)
+  // The away-capture door's own cascade math (docs/goals/0090) needs
+  // the current note count per parent -- fetched alongside cards/kinds
+  // below, never rendered as its own row (notes stay excluded from
+  // search, same as the main Atlas surface).
+  const atlasNotes = useAtlasStore((s) => s.notes)
   // Workflow pins/favorites (docs/goals/BACKLOG.md Standing #5): a
   // plain ordered workflow-ID list, store-owned/localStorage-tier --
   // see shared/store.ts's own declaration comment for the schema.
@@ -171,6 +177,7 @@ export function QuickPanel() {
       void refreshDeclaredStepTypes()
       void refreshAtlasCards()
       void refreshAtlasKinds()
+      void refreshAtlasNotes()
       void refreshFrecency()
       void refreshHotkeyCombos()
       // This window is a separate Wails webview/JS context from the
@@ -226,7 +233,7 @@ export function QuickPanel() {
       if (entity === 'execenv') void refreshExecEnvs()
       if (entity === 'aiprovider') void refreshAIProviders()
       if (entity === 'steptype') void refreshDeclaredStepTypes()
-      if (entity === 'atlas') { void refreshAtlasCards(); void refreshAtlasKinds() }
+      if (entity === 'atlas') { void refreshAtlasCards(); void refreshAtlasKinds(); void refreshAtlasNotes() }
       if (entity === 'hotkey') refreshHotkeyCombos()
       if (entity === 'keybinding') void refreshKeybindings()
     })
@@ -337,6 +344,26 @@ export function QuickPanel() {
       })
   }
 
+  // The away-capture door (docs/goals/0090): a typed query with no
+  // intent to search becomes a Note instead, filed into the Scratchpad
+  // inbox (root, if the seed was deleted) at a cascaded position so
+  // repeated captures never land exactly stacked. Success clears the
+  // query and dismisses through the SAME focus-yield path the other
+  // rows use, silently -- no confirmation to read before the window
+  // goes away, matching capture-first's own "no app focus change"
+  // intent. A failure never dismisses, so the query stays typed and
+  // the panel's own status line carries the error.
+  const createNoteFromQuery = (text: string) => {
+    const parentID = resolveNoteParentID(atlasCards)
+    const position = cascadeNotePosition(atlasNotes, parentID)
+    AtlasService.CreateNote(text, position, parentID)
+      .then(() => {
+        setQuery('')
+        void SettingsService.DismissPanel().catch(() => {})
+      })
+      .catch(() => setStatus(t('quickPanel.saveNoteError')))
+  }
+
   const allEntries = useMemo<PanelEntry[]>(() => {
     const entries: PanelEntry[] = []
     // Pinned-then-frecency-sorted (docs/goals/BACKLOG.md Standing #5 +
@@ -385,7 +412,28 @@ export function QuickPanel() {
 
   const filtered = filterPaletteEntries(allEntries, query)
 
-  const items = filtered.map((entry) => ({
+  // The save-note row (docs/goals/0090) never goes through
+  // filterPaletteEntries -- it isn't a match against the typed text,
+  // it's an action ON the typed text, so it's appended after
+  // filtering rather than searched. Pushed onto the 'actions' group
+  // (GROUP_METADATA's own last group) AFTER every other action row,
+  // which keeps it the last-rendered entry overall: FilteredActionList
+  // buckets items by groupId while preserving each bucket's original
+  // push order.
+  const trimmedQuery = query.trim()
+  const withCapture: PanelEntry[] = trimmedQuery
+    ? [...filtered, {
+      id: 'save-note',
+      groupId: 'actions',
+      text: t('quickPanel.saveNote'),
+      description: t('quickPanel.saveNoteHint'),
+      searchText: '',
+      leadingVisual: NoteIcon,
+      run: () => createNoteFromQuery(trimmedQuery),
+    }]
+    : filtered
+
+  const items = withCapture.map((entry) => ({
     key: entry.id,
     id: entry.id,
     groupId: entry.groupId,

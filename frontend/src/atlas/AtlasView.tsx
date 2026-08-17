@@ -254,7 +254,7 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
   // entirely (architecture.md's 500-line convention).
   const [menu, setMenu] = useState<ContextMenuState | null>(null)
   const linkMenus = useAtlasLinkMenus({
-    t, allCards, allLinks, linkKinds: allLinkKinds, setMenu, drill,
+    t, allCards, allLinks, allNotes, linkKinds: allLinkKinds, setMenu, drill,
     onOpenCard: (id) => setOverlayCardID(id),
     onError: setShareError,
     requestLinkedCard: creationRequests.requestLinkedCard,

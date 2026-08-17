@@ -42,6 +42,9 @@
       "pinWorkflow": "Pin \"{{label}}\"",
       "unpinWorkflow": "Unpin \"{{label}}\""
     },
+    "saveNote": "Save as note",
+    "saveNoteHint": "Lands in Scratchpad — organize later.",
+    "saveNoteError": "Couldn't save the note.",
     "status": {
       "running": "Running \"{{label}}\"…",
       "failed": "\"{{label}}\" failed: {{error}}",
