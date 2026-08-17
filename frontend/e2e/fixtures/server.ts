@@ -253,3 +253,9 @@ export const test = base.extend<Record<string, never>, WorkerFixtures>({
 })
 
 export { expect }
+
+// atlas-select-group.spec.ts: its own file (and therefore worker) --
+// the select-then-group flow proved green in single-worker runs and
+// red sharing a worker with the containment spec's heavy gestures.
+export const ATLAS_SELECT_GROUP_SERVER_BASE_PORT = 10060
+export const ATLAS_SELECT_GROUP_MCP_BASE_PORT = 10080

@@ -1,5 +1,6 @@
 import { expect } from '@playwright/test'
 import type { Locator, Page } from '@playwright/test'
+import { ATLAS_KIND_TOPIC, selectKind } from './kindPicker'
 
 // Promoted out of atlas-authoring.spec.ts (goal 0081 slice A2,
 // testing.md's "a helper used by 2+ spec files MUST be promoted" rule)
@@ -65,4 +66,27 @@ export async function openViaFlip(card: Locator): Promise<void> {
     }
   }).toPass({ timeout: 10_000, intervals: [300] })
   await card.getByTestId('atlas-note-open').click()
+}
+
+// Promoted from atlas-containment.spec.ts when atlas-select-group.spec.ts
+// became a second consumer (testing.md's helpers-live-in-fixtures rule).
+export async function armAndPlaceTopicCard(page: Page, board: Locator, popover: Locator, fx: number, fy: number, title: string): Promise<void> {
+  await page.keyboard.press('c')
+  const box = await board.boundingBox()
+  if (!box) throw new Error('board has no bounding box')
+  await board.click({ position: { x: box.width * fx, y: box.height * fy } })
+  await expect(popover).toBeVisible()
+  await selectKind(popover, ATLAS_KIND_TOPIC)
+  await popover.getByTestId('atlas-placement-title').fill(title)
+  await popover.getByTestId('atlas-placement-submit').click()
+  await expect(popover).not.toBeVisible()
+  await expect(noteCard(page, title)).toBeVisible()
+}
+
+export async function deleteCardViaMenu(page: Page, menu: Locator, title: string): Promise<void> {
+  await noteCard(page, title).click({ button: 'right' })
+  await expect(menu).toBeVisible()
+  await menu.getByText('Delete', { exact: true }).click()
+  await page.getByRole('button', { name: 'Delete' }).click()
+  await expect(noteCard(page, title)).toHaveCount(0)
 }

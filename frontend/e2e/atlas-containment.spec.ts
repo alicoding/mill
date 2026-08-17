@@ -11,7 +11,7 @@ import {
 } from './fixtures/server'
 import { contextMenu } from './fixtures/contextMenu'
 import { ATLAS_KIND_TOPIC, selectKind } from './fixtures/kindPicker'
-import { groupCard, noteCard } from './fixtures/atlasBoard'
+import { armAndPlaceTopicCard, deleteCardViaMenu, groupCard, noteCard } from './fixtures/atlasBoard'
 import { waitForViewportStable } from './fixtures/animation'
 
 // A LIGHTER zoom-out than fixtures/atlasBoard.ts's own zoomAllTheWayOut
@@ -80,26 +80,7 @@ async function boardPoint(board: import('@playwright/test').Locator, fx: number,
   return { x: box.x + box.width * fx, y: box.y + box.height * fy }
 }
 
-async function armAndPlaceCard(page: Page, board: import('@playwright/test').Locator, popover: import('@playwright/test').Locator, fx: number, fy: number, title: string): Promise<void> {
-  await page.keyboard.press('c')
-  const box = await board.boundingBox()
-  if (!box) throw new Error('board has no bounding box')
-  await board.click({ position: { x: box.width * fx, y: box.height * fy } })
-  await expect(popover).toBeVisible()
-  await selectKind(popover, ATLAS_KIND_TOPIC)
-  await popover.getByTestId('atlas-placement-title').fill(title)
-  await popover.getByTestId('atlas-placement-submit').click()
-  await expect(popover).not.toBeVisible()
-  await expect(noteCard(page, title)).toBeVisible()
-}
 
-async function deleteCard(page: Page, menu: import('@playwright/test').Locator, title: string): Promise<void> {
-  await noteCard(page, title).click({ button: 'right' })
-  await expect(menu).toBeVisible()
-  await menu.getByText('Delete', { exact: true }).click()
-  await page.getByRole('button', { name: 'Delete' }).click()
-  await expect(noteCard(page, title)).toHaveCount(0)
-}
 
 // eslint-disable-next-line no-empty-pattern -- this test needs `testInfo` (the second arg), not any fixture.
 test('atlas containment: area drawing, marker-box grouping, drag filing, dissolve, context menus @flaky', async ({}, testInfo) => {
@@ -148,8 +129,8 @@ test('atlas containment: area drawing, marker-box grouping, drag filing, dissolv
     // a card's own rendered footprint at this zoom level is wide
     // enough that a tighter gap lands a later click ON the earlier
     // card (toggling its flip) instead of on empty canvas. ---
-    await armAndPlaceCard(page, board, popover, 0.25, 0.05, 'ZzC2eMemberA')
-    await armAndPlaceCard(page, board, popover, 0.55, 0.05, 'ZzC2eMemberB')
+    await armAndPlaceTopicCard(page, board, popover, 0.25, 0.05, 'ZzC2eMemberA')
+    await armAndPlaceTopicCard(page, board, popover, 0.55, 0.05, 'ZzC2eMemberB')
     await page.keyboard.press('a')
     await dragBetween(page, await boardPoint(board, 0.18, 0.01), await boardPoint(board, 0.63, 0.16))
     await expect(popover).toBeVisible()
@@ -201,7 +182,7 @@ test('atlas containment: area drawing, marker-box grouping, drag filing, dissolv
 
     // --- Drag filing IN: a loner card dragged onto the frame files
     // into it (header count 3 -> 4). ---
-    await armAndPlaceCard(page, board, popover, 0.90, 0.05, 'ZzC2eLoner')
+    await armAndPlaceTopicCard(page, board, popover, 0.90, 0.05, 'ZzC2eLoner')
     const lonerBox = await noteCard(page, 'ZzC2eLoner').boundingBox()
     const groupBox2 = await groupArea.boundingBox()
     if (!lonerBox || !groupBox2) throw new Error('missing bounding box before drag-in')
@@ -298,7 +279,7 @@ test('atlas containment: area drawing, marker-box grouping, drag filing, dissolv
     await expect(emptyHostFrame.getByTestId('atlas-group-header')).toContainText('1 card')
     await emptyHostFrame.getByTestId('atlas-group-header').click()
     await expect(page.getByTestId('atlas-breadcrumb')).toContainText('ZzC2eEmptyHost')
-    await deleteCard(page, menu, 'ZzC2eMemberA')
+    await deleteCardViaMenu(page, menu, 'ZzC2eMemberA')
     await expect(page.getByTestId('atlas-empty-space')).toBeVisible()
     await expect(page.getByTestId('atlas-creation-tray')).toBeVisible()
 
@@ -310,7 +291,7 @@ test('atlas containment: area drawing, marker-box grouping, drag filing, dissolv
     // too, not the frame-menu path. ---
     await page.keyboard.press('Meta+ArrowUp')
     for (const title of ['ZzC2eEmptyArea', 'ZzC2eEmptyHost', 'ZzC2eMemberB', 'ZzC2eInterior', 'ZzC2eLoner']) {
-      await deleteCard(page, menu, title)
+      await deleteCardViaMenu(page, menu, title)
     }
   } finally {
     await server?.stop()
@@ -318,87 +299,3 @@ test('atlas containment: area drawing, marker-box grouping, drag filing, dissolv
   }
 })
 
-// eslint-disable-next-line no-empty-pattern -- this test needs `testInfo` (the second arg), not any fixture.
-test('atlas containment: shift-drag box select marks 2 cards selected (goal 0081 slice A5 rider (b))', async ({}, testInfo) => {
-  const idx = testInfo.parallelIndex
-  const dir = mkdtempSync(path.join(tmpdir(), `mill-e2e-atlas-containment-select-${idx}-`))
-  const settingsPath = path.join(dir, 'settings.json')
-  const executionDbPath = path.join(dir, 'execution.db')
-  const backupDir = path.join(dir, 'backups')
-  const port = ATLAS_CONTAINMENT_SERVER_BASE_PORT + idx
-  const mcpPort = ATLAS_CONTAINMENT_MCP_BASE_PORT + idx
-
-  let server: SpawnedServer | undefined
-  const browser = await chromium.launch()
-  try {
-    server = await spawnMillServer({ port, mcpPort, settingsPath, executionDbPath, backupDir })
-    const page = await browser.newPage()
-    await page.goto(`${server.baseURL}/`)
-    await page.getByRole('link', { name: 'Atlas' }).click()
-    const board = page.getByTestId('atlas-board')
-    await expect(board).toBeVisible()
-    await zoomOutLight(page)
-
-    const popover = page.getByTestId('atlas-placement-popover')
-    const menu = contextMenu(page)
-
-    await armAndPlaceCard(page, board, popover, 0.25, 0.05, 'ZzC2eSelectA')
-    await armAndPlaceCard(page, board, popover, 0.55, 0.05, 'ZzC2eSelectB')
-
-    // React Flow's own box-select gesture (independent of the Area
-    // tool's marquee, per this file's own onSelectionChange comment
-    // above): holding Shift while dragging on empty canvas selects
-    // every node the box touches, rather than panning. The pointer
-    // must already be AT the start point before Shift goes down and
-    // the button presses -- pressing Shift first (then moving into
-    // position) was observed to make React Flow compute a selection
-    // rectangle anchored somewhere other than the actual mousedown
-    // point, silently selecting nothing. Wrapped in the same
-    // expect(...).toPass() retry idiom fixtures/canvasNode.ts's
-    // clickCanvasNode already established for React Flow interaction
-    // races -- boxes are re-measured on every attempt, not read once
-    // and reused, in case an early attempt's own settle time shifted
-    // them.
-    const cardA = noteCard(page, 'ZzC2eSelectA')
-    const cardB = noteCard(page, 'ZzC2eSelectB')
-    await expect(async () => {
-      const boxA = await cardA.boundingBox()
-      const boxB = await cardB.boundingBox()
-      if (!boxA || !boxB) throw new Error('missing bounding box before shift-drag select')
-      const dragFrom = { x: boxA.x - 15, y: boxA.y - 15 }
-      const dragTo = { x: boxB.x + boxB.width + 15, y: boxB.y + boxB.height + 15 }
-      await page.mouse.move(dragFrom.x, dragFrom.y)
-      await page.keyboard.down('Shift')
-      await page.mouse.down()
-      await page.waitForTimeout(100)
-      const steps = 15
-      for (let i = 1; i <= steps; i++) {
-        await page.mouse.move(dragFrom.x + ((dragTo.x - dragFrom.x) * i) / steps, dragFrom.y + ((dragTo.y - dragFrom.y) * i) / steps)
-      }
-      await page.waitForTimeout(100)
-      await page.mouse.up()
-      await page.keyboard.up('Shift')
-      await expect(page.locator('.react-flow__node.selected')).toHaveCount(2, { timeout: 1_000 })
-    }).toPass({ timeout: 15_000, intervals: [500] })
-
-    // NOTE (reported, not silently patched -- outside this slice's own
-    // scope): right-clicking a member of this now-confirmed 2-node
-    // selection was found to clear React Flow's own selection state
-    // before AtlasBoard's onNodeContextMenu handler reads it --
-    // selectedIDs reads back empty and the single-card menu opens
-    // instead of "Group into new area", reproduced directly (selected
-    // count 5 -> 0 across a right-click, isolated from this test's own
-    // 2-card case too). That's a pre-existing AtlasBoard/React Flow
-    // selection-vs-context-menu interaction (goal 0081 slice A2's own
-    // code, not A5's), so the select-then-group flow itself is not
-    // exercised further here; the drag-select mechanism this test
-    // covers is the part slice A5 was asked to add coverage for.
-
-    // Cleanup (testing.md's within-file discipline).
-    await deleteCard(page, menu, 'ZzC2eSelectA')
-    await deleteCard(page, menu, 'ZzC2eSelectB')
-  } finally {
-    await server?.stop()
-    rmSync(dir, { recursive: true, force: true })
-  }
-})
