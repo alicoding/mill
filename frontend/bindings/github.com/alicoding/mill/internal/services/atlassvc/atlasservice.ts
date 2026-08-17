@@ -68,6 +68,14 @@ export function CreateLinkKind(label: string, description: string): $Cancellable
 }
 
 /**
+ * CreateNote makes a new Note, optionally inside parentID ("" for
+ * root-level) -- same containment-existence check CreateCard runs.
+ */
+export function CreateNote(text: string, pos: atlas$0.Position, parentID: string): $CancellablePromise<atlas$0.Note> {
+    return $Call.ByID(1216295546, text, pos, parentID);
+}
+
+/**
  * DeleteCard removes a card, blocked while it still has children --
  * no orphaning, explicit per docs/goals/0061 (goal 0046 will refine
  * this further, not duplicated here). Deleting a card removes every
@@ -96,6 +104,15 @@ export function DeleteLink(id: string): $CancellablePromise<void> {
  */
 export function DeleteLinkKind(id: string): $CancellablePromise<void> {
     return $Call.ByID(1735554023, id);
+}
+
+/**
+ * DeleteNote removes a note outright -- no tombstone (notes carry no
+ * seed provenance), no children to block on (a note can never contain
+ * anything).
+ */
+export function DeleteNote(id: string): $CancellablePromise<void> {
+    return $Call.ByID(3922503309, id);
 }
 
 /**
@@ -211,6 +228,14 @@ export function MoveCard(id: string, newParentID: string): $CancellablePromise<a
 }
 
 /**
+ * Notes returns every quick-capture annotation (goal 0081 slice A1) --
+ * its own family, deliberately never mixed into Cards().
+ */
+export function Notes(): $CancellablePromise<atlas$0.Note[] | null> {
+    return $Call.ByID(1683919391);
+}
+
+/**
  * PickFolder opens the native folder picker -- goal 0067's consent
  * gate: zero filesystem reads happen before this returns a path the
  * user actually chose. startDir optionally pre-fills the dialog's
@@ -220,6 +245,20 @@ export function MoveCard(id: string, newParentID: string): $CancellablePromise<a
  */
 export function PickFolder(startDir: string): $CancellablePromise<string> {
     return $Call.ByID(3623587391, startDir);
+}
+
+/**
+ * PromoteNote is the note's one-way lifecycle event (the LOCKED
+ * design's "promotion ritual"): it becomes a typed Card in place --
+ * same position, same parent, title and kind supplied by the caller
+ * (the placement-popover form in promote mode), the note's own text
+ * carried onto the new card's Note field. Atomic under a.mu: the kind
+ * is resolved and the card validated BEFORE the note is touched, so a
+ * bad kindID (or any other validation failure) leaves the note
+ * completely untouched -- no half-promoted state ever exists.
+ */
+export function PromoteNote(noteID: string, kindID: string, title: string): $CancellablePromise<atlas$0.Card> {
+    return $Call.ByID(881716522, noteID, kindID, title);
 }
 
 /**
@@ -266,6 +305,14 @@ export function ScanFolder(root: string): $CancellablePromise<$models.FolderScan
  */
 export function SetLens(containerID: string, hiddenKindIDs: string[] | null, peek: boolean): $CancellablePromise<void> {
     return $Call.ByID(1752890006, containerID, hiddenKindIDs, peek);
+}
+
+/**
+ * SetNotePosition updates a note's placement within its parent's canvas
+ * -- the same drag-persistence call cards go through via SetPosition.
+ */
+export function SetNotePosition(id: string, pos: atlas$0.Position): $CancellablePromise<atlas$0.Note> {
+    return $Call.ByID(1696067681, id, pos);
 }
 
 /**
@@ -338,6 +385,13 @@ export function UpdateLink(id: string, label: string): $CancellablePromise<atlas
 
 export function UpdateLinkKind(id: string, label: string, description: string): $CancellablePromise<atlas$0.LinkKind> {
     return $Call.ByID(4253754605, id, label, description);
+}
+
+/**
+ * UpdateNoteText replaces a Note's own text in place.
+ */
+export function UpdateNoteText(id: string, text: string): $CancellablePromise<atlas$0.Note> {
+    return $Call.ByID(2597186212, id, text);
 }
 
 /**

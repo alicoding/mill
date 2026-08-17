@@ -1,5 +1,6 @@
 import { test, expect } from './fixtures/server'
 import { groupCard, noteCard } from './fixtures/atlasCards'
+import { contextMenu, rightClickEmptyArea } from './fixtures/contextMenu'
 import { clickRowAction } from './inventoryRow'
 import { workflowRow, activePanel } from './fixtures/canvas'
 
@@ -8,21 +9,6 @@ import { workflowRow, activePanel } from './fixtures/canvas'
 // acceptance: an Atlas card and a composition canvas step, extended
 // here to the remaining surfaces -- inventory rows, work tabs, panes,
 // and edges (goal 0075's completion).
-
-function contextMenu(page: import('@playwright/test').Page) {
-  return page.getByTestId('context-menu')
-}
-
-// Right-clicks a point inside `locator`'s own bounding box that's
-// empty background -- every board/canvas this spec right-clicks for a
-// pane menu lays its cards/nodes out in a single row near vertical
-// center after fitView's padding, so the bottom-left corner is always
-// clear of any node.
-async function rightClickEmptyArea(locator: import('@playwright/test').Locator) {
-  const box = await locator.boundingBox()
-  if (!box) throw new Error('empty-area target has no bounding box')
-  await locator.click({ button: 'right', position: { x: 12, y: box.height - 12 } })
-}
 
 test('right-click on an Atlas card offers Open, the share trio, and a confirmed Delete; a frame leads with Zoom in', async ({ page }) => {
   await page.goto('/')

@@ -3,7 +3,8 @@ import { useTranslation } from 'react-i18next'
 import { Events } from '@wailsio/runtime'
 import { Text } from '@primer/react'
 import { ViewMode } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
-import type { Card, Position } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
+import type { Card, Note, Position } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
+import { useAtlasCreationRequests } from './useAtlasCreationRequests'
 import { AtlasService } from '../shared/bindings'
 import { useAppStore } from '../shared/store'
 import { useUISignalStore } from '../shared/uiSignalStore'
@@ -46,6 +47,8 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
   const kinds = useAtlasStore((s) => s.kinds)
   const linkKinds = useAtlasStore((s) => s.linkKinds)
   const links = useAtlasStore((s) => s.links)
+  const notes = useAtlasStore((s) => s.notes)
+  const creationRequests = useAtlasCreationRequests()
 
   const [viewedID, setViewedID] = useState('')
   const [overlayCardID, setOverlayCardID] = useState<string | null>(null)
@@ -126,6 +129,7 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
   const allKinds = kinds ?? []
   const allLinkKinds = linkKinds ?? []
   const allLinks = links ?? []
+  const allNotes = notes ?? []
 
   const viewedCard = allCards.find((c) => c.ID === viewedID) ?? null
   const effectiveViewMode = viewedCard?.ViewMode === ViewMode.ViewModeCanvas ? ViewMode.ViewModeCanvas : ViewMode.ViewModeShelves
@@ -139,6 +143,10 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
   // previewed inside it.
   const lensed = applyLens(childrenAll, hiddenKindIDs)
   const visibleChildren = childrenAll.filter((c) => lensed.includes(c) || isGroupCard(allCards, c))
+  // A note's own containment is spatial-only, orthogonal to the lens
+  // (which filters by Kind -- a note has none): every note whose
+  // ParentID names the viewed space renders here, unfiltered.
+  const visibleNotes = allNotes.filter((n) => n.ParentID === viewedID)
   const overlayCard = overlayCardID ? allCards.find((c) => c.ID === overlayCardID) ?? null : null
   const overlayKind = overlayCard ? allKinds.find((k) => k.ID === overlayCard.KindID) : undefined
 
@@ -237,6 +245,12 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
       x: pos.x,
       y: pos.y,
       items: [
+        // Direct-placement doors (goal 0081 slice A1): place right at
+        // the click point via the tray's own popover/inline-sticky
+        // flow -- distinct from the dialog-based sibling/child "Add
+        // card…" below, which stays for its own beside/inside choice.
+        { id: 'add-card-here', label: t('contextMenu.addCardHere'), commandId: 'atlas.create.card', run: () => creationRequests.requestPlacement('card', pos) },
+        { id: 'add-note-here', label: t('contextMenu.addNoteHere'), commandId: 'atlas.create.note', run: () => creationRequests.requestPlacement('note', pos) },
         { id: 'add-card', label: t('contextMenu.addCard'), run: () => setAddChildRequest((n) => n + 1) },
       ],
     })
@@ -257,6 +271,30 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
       items: [
         { id: 'open-source', label: t('contextMenu.openCard', { title: truncateTitle(source.Title) }), run: () => setOverlayCardID(source.ID) },
         { id: 'open-target', label: t('contextMenu.openCard', { title: truncateTitle(target.Title) }), run: () => setOverlayCardID(target.ID) },
+      ],
+    })
+  }
+
+  // A note's own right-click menu (goal 0081 slice A1): Promote opens
+  // the placement popover in promote mode (useAtlasCreation.ts, inside
+  // AtlasBoard -- it owns the popover's anchoring); Delete goes through
+  // the same shared confirm pattern every other destructive action uses.
+  const { requestDelete: requestDeleteNote, dialog: noteDeleteDialog } = useConfirmDelete<Note>({
+    entityType: 'note',
+    labelOf: (n) => n.Text,
+    onConfirm: (n) => {
+      AtlasService.DeleteNote(n.ID).then(() => void refreshAtlas()).catch((err) => setShareError(String(err)))
+    },
+  })
+  const openNoteMenu = (noteID: string, pos: { x: number; y: number }) => {
+    const note = allNotes.find((n) => n.ID === noteID)
+    if (!note) return
+    setMenu({
+      x: pos.x,
+      y: pos.y,
+      items: [
+        { id: 'promote', label: t('contextMenu.promoteToCard'), run: () => creationRequests.requestPromote(note.ID, pos) },
+        { id: 'delete-note', label: t('contextMenu.deleteNote'), danger: true, run: () => requestDeleteNote(note) },
       ],
     })
   }
@@ -388,7 +426,7 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
       {importError && <Text as="p" size="small" className={runbookStyles.error} data-testid="atlas-import-error">{importError}</Text>}
       {shareError && <Text as="p" size="small" className={runbookStyles.error} data-testid="atlas-share-error">{shareError}</Text>}
 
-      {childrenAll.length === 0 ? (
+      {childrenAll.length === 0 && visibleNotes.length === 0 ? (
         <div className={styles.emptyState} data-testid="atlas-empty-space">
           <Text as="p" className={runbookStyles.muted}>{t('emptySpace')}</Text>
         </div>
@@ -399,6 +437,8 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
           kinds={allKinds}
           links={allLinks}
           linkKinds={allLinkKinds}
+          notes={visibleNotes}
+          parentID={viewedID}
           mode={effectiveViewMode}
           viewedID={viewedID}
           focusRequest={focusRequest}
@@ -407,6 +447,9 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
           onCardContextMenu={openCardMenu}
           onPaneContextMenu={openPaneMenu}
           onArteryContextMenu={openArteryMenu}
+          onNoteContextMenu={openNoteMenu}
+          placementRequest={creationRequests.placementRequest}
+          promoteRequest={creationRequests.promoteRequest}
           onFocusHandled={() => setFocusRequest(null)}
         />
       )}
@@ -429,6 +472,7 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
       {importConfirm.dialog}
       <ContextMenu state={menu} onClose={() => setMenu(null)} />
       {menuDeleteDialog}
+      {noteDeleteDialog}
 
       <AtlasMatrixView
         open={matrixOpen}

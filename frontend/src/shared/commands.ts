@@ -273,6 +273,29 @@ export const COMMANDS: Command[] = [
     run: () => useUISignalStore.getState().requestAtlasJump(),
   },
   {
+    // Bare C/N (goal 0081 slice A1): comboFromEvent requires Cmd/Ctrl by
+    // design (every other keymap default needs one of the two -- see
+    // its own doc comment, shared/keybinding.ts), so a bare letter can
+    // never be this command's REAL dispatched binding -- defaultBinding
+    // stays null, same shape help.shortcuts above already takes for its
+    // own bare `?`. The actual keypress is a dedicated listener
+    // (app/useKeymapDispatch.ts) that calls run() directly; the tray
+    // itself (AtlasCreationTray.tsx) renders the "C" kbd hint as plain
+    // copy, not derived from this binding.
+    id: 'atlas.create.card',
+    label: 'Add a card',
+    defaultBinding: null,
+    surface: ['atlas'],
+    run: () => useUISignalStore.getState().requestAtlasArmTool('card'),
+  },
+  {
+    id: 'atlas.create.note',
+    label: 'Add a note',
+    defaultBinding: null,
+    surface: ['atlas'],
+    run: () => useUISignalStore.getState().requestAtlasArmTool('note'),
+  },
+  {
     id: 'atlas.matrix',
     label: 'Open traceability matrix',
     defaultBinding: null,
