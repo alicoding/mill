@@ -217,6 +217,29 @@ test('arrange is an action: dragging persists a position, Auto-arrange re-seats 
   await expect.poll(async () => adaNode.evaluate((el) => (el as HTMLElement).style.transform), { timeout: 10_000 }).toBe(before)
 })
 
+// atlas.arrange (shared/atlasBoardCommands.ts): the palette path runs
+// the SAME arrange action the toolbar button above does -- proven by
+// the same transform-changes-to-a-translate assertion, not a second
+// reload-persistence check (already covered above).
+test('Auto-arrange from the command palette runs the same action as the toolbar button', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Atlas' }).click()
+  await groupCard(page, 'Example area').getByTestId('atlas-group-header').click()
+  await expect(page.getByTestId('atlas-breadcrumb')).toContainText('Example area')
+
+  const adaNode = page.locator('.react-flow__node').filter({ has: page.locator('[aria-label="Flip Ada Lovelace"]') })
+  await expect(adaNode).toBeVisible()
+
+  await page.keyboard.press('Meta+/')
+  const palette = page.getByRole('dialog', { name: 'Command palette' })
+  await expect(palette).toBeVisible()
+  await palette.getByRole('combobox').fill('Auto-arrange')
+  await palette.getByRole('option', { name: 'Auto-arrange' }).click()
+  await expect(palette).toHaveCount(0)
+
+  await expect.poll(async () => (await adaNode.evaluate((el) => (el as HTMLElement).style.transform)) ?? '').toContain('translate')
+})
+
 test('create a child card, edit + persist it via the flip-then-Open overlay, then delete it', async ({ page }) => {
   const title = 'ZzE2eAtlasChildCard'
   await page.goto('/')

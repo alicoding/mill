@@ -99,3 +99,31 @@ test('"Rebind in Settings" in the overlay footer navigates to Settings and close
   await expect(page.getByTestId('settings-view')).toBeVisible()
   await expect(page.locator('[data-testid="keymap-list"]')).toBeVisible()
 })
+
+// shared/atlasBoardCommands.ts's new Atlas commands: hintOnly ones
+// still render their own real hint chip here (atlas.selectAll's ⌘A,
+// atlas.delete.selection's ⌫, atlas.group.selection's G); palette-only
+// commands with no default binding (atlas.arrange, atlas.import) are
+// deliberately absent -- same "unbound stays out of the overlay"
+// behavior atlas.matrix/atlas.coverage already have.
+test('the overlay shows hint chips for the new Atlas commands, and omits unbound palette-only ones', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Atlas' }).click()
+  await expect(page.getByTestId('atlas-view')).toBeVisible()
+
+  await page.keyboard.press('?')
+  const dialog = helpDialog(page)
+  await expect(dialog).toBeVisible()
+
+  const selectAllRow = dialog.locator('[data-command-id="atlas.selectAll"]')
+  await expect(selectAllRow).toContainText('Select all')
+  await expect(selectAllRow).toContainText('⌘A')
+
+  await expect(dialog.locator('[data-command-id="atlas.delete.selection"]')).toContainText('⌫')
+  await expect(dialog.locator('[data-command-id="atlas.group.selection"]')).toContainText('G')
+
+  await expect(dialog.locator('[data-command-id="atlas.arrange"]')).toHaveCount(0)
+  await expect(dialog.locator('[data-command-id="atlas.import"]')).toHaveCount(0)
+
+  await page.keyboard.press('Escape')
+})

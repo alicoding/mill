@@ -9,6 +9,7 @@ import type { FolderScanEntry, FolderScanResult } from '../shared/bindings'
 import { refreshAtlas } from './atlasStore'
 import { folderScanEntryDepth, groupFolderScanEntries, type FolderScanGroup } from './atlasFolderScanGrouping'
 import { useAtlasFolderImportRequestStore } from './atlasFolderImportRequest'
+import { useUISignalStore } from '../shared/uiSignalStore'
 import runbookStyles from '../shared/ListCard.module.css'
 import styles from './AtlasFolderImport.module.css'
 
@@ -93,6 +94,18 @@ export function AtlasFolderImport({ viewedID, kinds }: { viewedID: string; kinds
     void scanRoot(folderImportRequest.root, folderImportRequest.parentID)
     // eslint-disable-next-line react-hooks/exhaustive-deps -- keyed on the request's own token, scanRoot reads current kinds/viewedID via closure at fire time same as every other request-token effect in atlas/
   }, [folderImportRequest])
+
+  // atlas.addFromFolder's own signal (shared/atlasBoardCommands.ts): a
+  // palette/keyboard invocation runs the SAME PickFolder flow the
+  // toolbar's own "Add cards from a folder" button does.
+  const addFromFolderRequest = useUISignalStore((s) => s.atlasAddFromFolderRequest)
+  const lastAddFromFolderRequest = useRef(addFromFolderRequest)
+  useEffect(() => {
+    if (addFromFolderRequest === lastAddFromFolderRequest.current) return
+    lastAddFromFolderRequest.current = addFromFolderRequest
+    void startPick()
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- keyed on the signal tick alone, startPick reads current viewedID via closure at fire time same as every other request-token effect in atlas/
+  }, [addFromFolderRequest])
 
   const toggleEntry = (relPath: string, checked: boolean) => {
     setAccepted((prev) => {

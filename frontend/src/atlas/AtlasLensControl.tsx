@@ -1,8 +1,9 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button, Checkbox, CheckboxGroup, Dialog, FormControl, SegmentedControl } from '@primer/react'
 import { FilterIcon } from '@primer/octicons-react'
 import type { Kind } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
+import { useUISignalStore } from '../shared/uiSignalStore'
 
 // The per-space lens (docs/goals/0061): which Kinds stay visible among
 // the viewed space's children, and the depth toggle (this level only vs
@@ -21,6 +22,17 @@ export function AtlasLensControl({ presentKinds, hiddenKindIDs, onChangeHidden, 
   const { t } = useTranslation('atlas')
   const [open, setOpen] = useState(false)
   const visibleIDs = presentKinds.map((k) => k.ID).filter((id) => !hiddenKindIDs.includes(id))
+
+  // atlas.lens's own signal (shared/atlasBoardCommands.ts): a palette/
+  // keyboard invocation opens the SAME dialog the toolbar's own lens
+  // button does.
+  const lensOpenRequest = useUISignalStore((s) => s.atlasLensOpenRequest)
+  const lastLensOpenRequest = useRef(lensOpenRequest)
+  useEffect(() => {
+    if (lensOpenRequest === lastLensOpenRequest.current) return
+    lastLensOpenRequest.current = lensOpenRequest
+    setOpen(true)
+  }, [lensOpenRequest])
 
   return (
     <>

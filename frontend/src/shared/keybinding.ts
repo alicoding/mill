@@ -159,7 +159,11 @@ const MOD_SYMBOL: Record<string, string> = { cmd: '⌘', ctrl: '⌃', shift: '�
 // checked against Apple's own usage before picking ↩, not invented.
 // Only Enter needs this today; Tab/Space stay spelled out (TAB/SPACE),
 // unchanged, since nothing has asked for those as glyphs.
-const KEY_SYMBOL: Record<string, string> = { Enter: '↩', ArrowUp: '↑', ArrowDown: '↓', ArrowLeft: '←', ArrowRight: '→' }
+// Delete is display-only -- keyFromEventCode never produces 'Delete',
+// so this can never collide with a real dispatch match; it exists
+// purely so atlas.delete.selection's hint renders as '⌫' here and in
+// HotkeyHint.
+const KEY_SYMBOL: Record<string, string> = { Enter: '↩', ArrowUp: '↑', ArrowDown: '↓', ArrowLeft: '←', ArrowRight: '→', Delete: '⌫' }
 
 // formatCombo renders a KeyCombo as a compact symbol string (e.g.
 // "⌘⇧S"), mirroring triggersvc.FormatBinding (Go) exactly for mods --

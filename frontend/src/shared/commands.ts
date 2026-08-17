@@ -3,9 +3,9 @@ import { comboFromEvent, comboKey } from './keybinding'
 import { useAppStore } from './store'
 import type { View } from './store'
 import { useUISignalStore } from './uiSignalStore'
-import { BackupService, SettingsService } from './bindings'
-import { SETTINGS_SECTIONS, resolveSectionTitle } from './settingsSections'
 import { CONFIGURE_CREATE_COMMANDS } from './configureCreateCommands'
+import { ATLAS_BOARD_COMMANDS } from './atlasBoardCommands'
+import { SETTINGS_COMMANDS } from './settingsCommands'
 
 // The command registry (docs/goals/0016-keymap-system.md): named
 // commands with a default binding, dispatched by one window keydown
@@ -52,6 +52,19 @@ export interface Command {
   // listed, and the palette seats it in its "On this page" section
   // instead of the global Commands group. Globals simply omit it.
   surface?: View['kind'][]
+  // Display-only binding: real keydown handling lives in a dedicated
+  // listener elsewhere -- either a live selection this registry can't
+  // see (Delete/G over the atlas selection tray), or a native browser
+  // shortcut the same combo also means inside an editable field
+  // (Cmd+A). defaultBinding/extraBindings still drive HotkeyHint/the
+  // Shortcuts Help overlay; dispatchCommandForEvent below skips it, and
+  // KeyboardShortcutsSection excludes it from the rebind list.
+  hintOnly?: boolean
+  // Excludes this command from the palette (app/CommandPalette.tsx) --
+  // for an action needing a live, on-screen selection/target the
+  // palette has no way to supply. Still reachable via HotkeyHint,
+  // ContextMenu items, and the Shortcuts Help overlay.
+  paletteHidden?: boolean
   run: () => void
 }
 
@@ -332,6 +345,9 @@ export const COMMANDS: Command[] = [
     surface: ['atlas'],
     run: () => useUISignalStore.getState().requestAtlasCoverageOpen(),
   },
+  // The rest of the Atlas toolbar/board's own commands -- split out to
+  // shared/atlasBoardCommands.ts (CLAUDE.md's 500-line convention).
+  ...ATLAS_BOARD_COMMANDS,
   {
     // ⌘0..⌘5 mirror the sidebar's own top-to-bottom order -- Atlas
     // sits between Configure and Activity there, so it takes ⌘3 and
@@ -371,58 +387,15 @@ export const COMMANDS: Command[] = [
     defaultBinding: { mods: ['cmd'], key: ',' },
     run: () => setView({ kind: 'settings' }),
   },
-  {
-    id: 'panel.applyClipboard',
-    label: 'Apply from clipboard',
-    // docs/goals/0039: no default binding, same "reserve the id ahead
-    // of the binding" precedent palette.open set before goal 0015 built
-    // the palette -- bindable via Settings like every other command.
-    // run() opens the Quick Panel (SettingsService.ShowPanel) rather
-    // than performing the read-clipboard-and-preview flow here: that
-    // flow needs a preview UI to render into, and the Quick Panel's own
-    // "Apply from clipboard..." row (QuickPanel.tsx) is that UI -- this
-    // command exists so the action is discoverable/rebindable/
-    // HotkeyHint-shown, not to duplicate the flow in the main window.
-    defaultBinding: null,
-    run: () => { void SettingsService.ShowPanel() },
-  },
-  {
-    id: 'backup.now',
-    label: 'Back up now',
-    defaultBinding: null,
-    // BackupService.BackupNow(0) matches the Settings Data stewardship
-    // section's own call (views/DataStewardshipSection.tsx) -- 0 keeps
-    // whatever retention count is already configured there, never
-    // resets it.
-    run: () => { BackupService.BackupNow(0).catch(console.error) },
-  },
-  {
-    id: 'backup.export',
-    label: 'Export everything',
-    // Deep-links to Settings rather than calling
-    // BackupService.ExportEverything() directly -- the export flow has
-    // its own confirm/download UI there (views/DataStewardshipSection.tsx),
-    // the same "the flow needs its own dialog" reasoning every other
-    // settings.open.* deep-link command below already follows.
-    defaultBinding: null,
-    run: () => setView({ kind: 'settings', section: 'backups' }),
-  },
   // Per-Configure-tab create commands (goal 0071 G6) -- split out to
   // shared/configureCreateCommands.ts (CLAUDE.md's 500-line convention);
   // see that file's own header for what each one does and why
   // Attributes has none.
   ...CONFIGURE_CREATE_COMMANDS,
-  // One palette-only deep-link command per registered Settings section
-  // (goal 0077, shared/settingsSections.ts) -- always unbound
-  // (defaultBinding: null), discoverable only by searching the palette,
-  // same "reserve the id without a combo" shape panel.applyClipboard
-  // above already uses.
-  ...SETTINGS_SECTIONS.map((section): Command => ({
-    id: `settings.open.${section.id}`,
-    label: `Open Settings → ${resolveSectionTitle(section)}`,
-    defaultBinding: null,
-    run: () => setView({ kind: 'settings', section: section.id }),
-  })),
+  // panel.applyClipboard, backup.now/export, and the per-Settings-
+  // section deep links -- split out to shared/settingsCommands.ts
+  // (CLAUDE.md's 500-line convention).
+  ...SETTINGS_COMMANDS,
 ]
 
 export function findCommand(id: string): Command | undefined {
@@ -479,6 +452,7 @@ export function dispatchCommandForEvent(e: KeyboardEvent, overrides: Record<stri
   const activeKind = useAppStore.getState().view.kind
 
   const tryRun = (command: Command): boolean => {
+    if (command.hintOnly) return false
     const binding = effectiveBinding(command, overrides)
     const bindings = binding ? [binding, ...(command.extraBindings ?? [])] : (command.extraBindings ?? [])
     if (!bindings.some((b) => comboKey(b.mods, b.key) === want)) return false

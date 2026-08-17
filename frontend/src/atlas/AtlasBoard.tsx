@@ -23,6 +23,7 @@ import { useAtlasCreation, type AtlasGroupRequest, type AtlasPlacementRequest, t
 import { useAtlasAreaDraw } from './useAtlasAreaDraw'
 import { useAtlasDragFiling, type FrameBox } from './useAtlasDragFiling'
 import { useAtlasSelection } from './useAtlasSelection'
+import { useAtlasSelectAll } from './useAtlasSelectAll'
 import { useAtlasSelectionTray } from './useAtlasSelectionTray'
 import { useAtlasSlotDrag } from './useAtlasSlotDrag'
 import { AtlasSlotDragLine } from './AtlasSlotDragLine'
@@ -308,6 +309,8 @@ function AtlasBoardInner({ cards, allCards, kinds, links, linkKinds, notes, pare
     const sel = selection.selectedIDsRef.current
     setNodes(sel.length > 0 ? allNodes.map((n) => (sel.includes(n.id) ? { ...n, selected: true } : n)) : allNodes)
   }, [allNodes, setNodes, selection.selectedIDsRef])
+
+  useAtlasSelectAll({ cards, notes, setNodes })
 
   const { trayRef, hasSelection: haveSelection, onGroup: onTrayGroup, onDelete: onTrayDelete } = useAtlasSelectionTray({ selectedCards: selection.selectedCards, selectedNotes: selection.selectedNotes, clearSelection: selection.clearSelection, setNodes, onDeleteSelection, onGroupSelection, onUnflip: () => setFlippedID(null) })
 

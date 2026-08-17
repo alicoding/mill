@@ -124,9 +124,9 @@ export function useAtlasContainmentMenus({
   const openMultiSelectMenu = (cardIDs: string[], noteIDs: string[], pos: { x: number; y: number }) => {
     const items: ContextMenuItem[] = []
     if (cardIDs.length >= 2) {
-      items.push({ id: 'group', label: t('contextMenu.groupIntoArea'), run: () => requestGroup(cardIDs, noteIDs, pos) })
+      items.push({ id: 'group', label: t('contextMenu.groupIntoArea'), commandId: 'atlas.group.selection', run: () => requestGroup(cardIDs, noteIDs, pos) })
     }
-    items.push({ id: 'delete-selection', label: t('contextMenu.delete'), danger: true, run: () => deleteSelection(cardIDs, noteIDs) })
+    items.push({ id: 'delete-selection', label: t('contextMenu.delete'), commandId: 'atlas.delete.selection', danger: true, run: () => deleteSelection(cardIDs, noteIDs) })
     setMenu({ x: pos.x, y: pos.y, items })
   }
 

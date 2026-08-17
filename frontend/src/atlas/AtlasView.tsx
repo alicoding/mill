@@ -23,6 +23,7 @@ import { AtlasCoverageView } from './AtlasCoverageView'
 import { isGroupCard } from './atlasBoardLayout'
 import { freeChildPosition } from './atlasContainmentPlacement'
 import { useAtlasContainmentMenus } from './useAtlasContainmentMenus'
+import { useAtlasCommandSignals } from './useAtlasCommandSignals'
 import { useAtlasLinkMenus } from './useAtlasLinkMenus'
 import { useAtlasNoteMenu } from './useAtlasNoteMenu'
 import { useAtlasUndoToast } from './useAtlasUndoToast'
@@ -374,6 +375,8 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
     await AtlasService.CreateCard(kindID, title, '', {}, parentID, position, ViewMode.$zero, '', '', '')
     await refreshAtlas()
   }
+
+  useAtlasCommandSignals({ viewedID, onArrange: requestAutoArrange, onExport: exportAtlas, onError: setShareError })
 
   if (kinds === null || cards === null || landingPending) {
     return <Text as="p" className={runbookStyles.muted}>{t('loading')}</Text>

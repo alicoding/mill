@@ -115,6 +115,12 @@ describe('formatCombo', () => {
   it('renders Enter as the ↩ glyph, not the spelled-out key name', () => {
     expect(formatCombo(['cmd'], 'Enter')).toBe('⌘↩')
   })
+
+  // atlas.delete.selection's own display-only 'Delete' key (shared/
+  // atlasBoardCommands.ts) -- never dispatched, but rendered as ⌫.
+  it('renders Delete as the ⌫ glyph', () => {
+    expect(formatCombo([], 'Delete')).toBe('⌫')
+  })
 })
 
 describe('modsFromEvent', () => {
