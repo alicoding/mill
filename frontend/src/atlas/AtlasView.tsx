@@ -105,8 +105,36 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
   // entirely once a deep link has claimed the initial navigation --
   // that flow's own viewedID=="" (a root-level target's own space) is
   // a deliberate destination, not a state to redirect away from.
+  // Session restore (goal 0091): land where you stood -- one-shot on
+  // mount, before the single-root redirect can claim the landing. The
+  // service already degrades stale ids (deleted viewed card -> root,
+  // deleted open card -> dropped), so what arrives here is always
+  // renderable. Saves below stay gated until this resolves, so the
+  // mount's own transient '' never clobbers the persisted state.
+  const sessionRestoreRef = useRef<'pending' | 'claimed' | 'done'>('pending')
   useEffect(() => {
-    if (initialCardID || !cards || viewedID !== '') return
+    if (sessionRestoreRef.current !== 'pending') return
+    // A deep link owns the landing -- restore yields entirely (but
+    // saves still arm, so the deep-linked position persists next).
+    if (initialCardID) { sessionRestoreRef.current = 'done'; return }
+    sessionRestoreRef.current = 'claimed'
+    AtlasService.AtlasSession()
+      .then((session) => {
+        if (session?.viewedID) setViewedID(session.viewedID)
+        if (session?.openCardID) setOverlayCardID(session.openCardID)
+        sessionRestoreRef.current = session?.viewedID || session?.openCardID ? 'done' : 'pending'
+        if (sessionRestoreRef.current === 'pending') sessionRestoreRef.current = 'done'
+      })
+      .catch(() => { sessionRestoreRef.current = 'done' })
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- one-shot mount landing, same as the deep-link claim
+  }, [])
+  useEffect(() => {
+    if (sessionRestoreRef.current !== 'done') return
+    void AtlasService.SetAtlasSession({ viewedID, openCardID: overlayCardID ?? '' }).catch(() => {})
+  }, [viewedID, overlayCardID])
+
+  useEffect(() => {
+    if (initialCardID || !cards || viewedID !== '' || sessionRestoreRef.current !== 'done') return
     const root = singleRootCard(cards)
     if (root) setViewedID(root.ID)
   }, [cards, initialCardID, viewedID])

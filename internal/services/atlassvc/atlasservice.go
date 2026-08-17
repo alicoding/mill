@@ -47,6 +47,9 @@ type persistedState struct {
 	// everything else here. atlas.LensSetting's own UnmarshalJSON keeps
 	// a pre-goal-0061-slice-C bare-array entry loading correctly.
 	Lenses map[string]atlas.LensSetting
+	// Session is the map's where-you-were (goal 0091) -- one entry,
+	// not per-container.
+	Session AtlasSessionState
 }
 
 // AtlasService holds Atlas's full in-memory state behind one mutex,
@@ -74,6 +77,7 @@ type AtlasService struct {
 	// synced-folder hazard to this picker. Empty for any test that
 	// never calls the setter, same posture mirrorsDir takes.
 	guardedDataPaths []string
+	session          AtlasSessionState
 }
 
 // NewAtlasService restores any persisted state, then reconciles the
@@ -118,6 +122,7 @@ func (a *AtlasService) restore() {
 	if state.Lenses != nil {
 		a.lenses = state.Lenses
 	}
+	a.session = state.Session
 }
 
 // persistLocked marshals and saves the full state -- caller must hold
@@ -128,6 +133,7 @@ func (a *AtlasService) persistLocked() error {
 	state := persistedState{
 		Kinds: a.kinds, LinkKinds: a.linkKinds,
 		Cards: a.cards, Links: a.links, Notes: a.notes, Lenses: a.lenses,
+		Session: a.session,
 	}
 	data, err := json.Marshal(state)
 	if err != nil {

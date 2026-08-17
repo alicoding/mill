@@ -451,3 +451,32 @@ test('Quick Panel finds a seeded Atlas card by title', async ({ page }) => {
     await mainPage.close()
   }
 })
+
+test('session restore: the viewed level and open card survive a reload (goal 0091)', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Atlas' }).click()
+  // Deterministic start: an earlier test's persisted session may land
+  // this page anywhere -- close any restored page and return to root
+  // before exercising the restore round-trip itself.
+  await page.keyboard.press('Escape')
+  const crumbRoot = page.getByTestId('atlas-breadcrumb').getByText('All spaces')
+  if (await crumbRoot.isVisible().catch(() => false)) await crumbRoot.click()
+  await groupCard(page, 'Example area').getByTestId('atlas-group-header').click()
+  await expect(page.getByTestId('atlas-breadcrumb')).toContainText('Example area')
+  await openViaFlip(noteCard(page, 'Ada Lovelace'))
+  const overlay = page.locator('[data-component="atlas-card-overlay"]')
+  await expect(overlay).toBeVisible()
+
+  await page.reload()
+  await expect(atlasView(page)).toBeVisible()
+  // Landed back inside Example area with Ada's page re-opened.
+  await expect(page.getByTestId('atlas-breadcrumb')).toContainText('Example area')
+  await expect(overlay).toBeVisible()
+  await expect(overlay).toContainText('Ada Lovelace')
+
+  // Cleanup: close the page and return to root so later tests in
+  // this worker start from the default landing.
+  await page.keyboard.press('Escape')
+  await expect(overlay).not.toBeVisible()
+  await page.getByTestId('atlas-breadcrumb').getByText('All spaces').click()
+})

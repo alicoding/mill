@@ -38,6 +38,16 @@ export function AddLinkedCard(fromCardID: string, kindID: string, title: string,
 }
 
 /**
+ * AtlasSession returns the persisted state, DEGRADED to what still
+ * exists: a deleted viewed card falls back to its nearest surviving
+ * ancestor (root ultimately); a deleted open card is dropped. The
+ * caller never has to handle a stale id.
+ */
+export function AtlasSession(): $CancellablePromise<$models.AtlasSessionState> {
+    return $Call.ByID(3581313171);
+}
+
+/**
  * CardContextBlock renders cardID's fields/note/links as one stable,
  * paste-ready text block (goal 0063's copy-as-context) -- the Card
  * overlay/chip's "Copy as context" action copies exactly this string.
@@ -413,6 +423,16 @@ export function RunCardAction(cardID: string, workflowID: string): $CancellableP
  */
 export function ScanFolder(root: string): $CancellablePromise<$models.FolderScanResult> {
     return $Call.ByID(130483307, root);
+}
+
+/**
+ * SetAtlasSession persists the current session state -- a zero state
+ * clears the entry (same no-op-avoidance posture SetLens takes). No
+ * dataevent: nothing else renders off this, and emitting would
+ * refresh the very view mid-navigation.
+ */
+export function SetAtlasSession(state: $models.AtlasSessionState): $CancellablePromise<void> {
+    return $Call.ByID(1784937459, state);
 }
 
 /**
