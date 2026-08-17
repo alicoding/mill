@@ -19,14 +19,14 @@ const ALL_REGISTERED_NODE_TYPE_IDS = [
   'integration-http', 'mcp-tool-call', 'code-execution',
   'child-workflow', 'decision-route',
   'human-review', 'ruleset', 'decision-outcome',
-  'apply-clipboard-write-html', 'apply-clipboard-write-text', 'apply-file-write',
+  'apply-clipboard-write-html', 'apply-clipboard-write-text', 'apply-file-write', 'apply-file-move',
   'apply-atlas-card-create', 'apply-atlas-card-update', 'apply-atlas-card-link',
   'apply-list-row',
 ]
 
 describe('paletteGroupFor', () => {
-  it('has exactly 37 registered node types accounted for', () => {
-    expect(ALL_REGISTERED_NODE_TYPE_IDS).toHaveLength(37)
+  it('has exactly 38 registered node types accounted for', () => {
+    expect(ALL_REGISTERED_NODE_TYPE_IDS).toHaveLength(38)
   })
 
   it('maps every registered NodeType ID to one of the 9 display groups, without warning', () => {
