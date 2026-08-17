@@ -31,6 +31,7 @@ export function useAtlasNativeFileDrop({ parentID, topLevelBoxes, screenToFlowPo
 }) {
   const { t } = useTranslation('atlas')
   const [dropError, setDropError] = useState<string | null>(null)
+  const [dropDuplicateNotice, setDropDuplicateNotice] = useState<string | null>(null)
   const requestFolderImport = useAtlasFolderImportRequestStore((s) => s.requestFolderImport)
 
   // Latest-refs (useBoardFocus.ts's own convention): the Events.On
@@ -57,9 +58,12 @@ export function useAtlasNativeFileDrop({ parentID, topLevelBoxes, screenToFlowPo
           }
           const path = route.Path
           return AtlasService.CreateCardFromFileDrop(path, titleFromFilename(path), targetParentID, { X: point.x, Y: point.y })
-            .then((card) => refreshAtlas().then(() => {
-              pulse(card.ID)
+            .then((result) => refreshAtlas().then(() => {
+              pulse(result.Card.ID)
               window.setTimeout(() => pulse(null), reduced ? PULSE_MS_REDUCED : PULSE_MS)
+              if (result.DuplicateOfTitle) {
+                setDropDuplicateNotice(t('board.dropDuplicateNotice', { title: result.DuplicateOfTitle }))
+              }
             }))
         })
         .catch(() => setDropError(t('capture.dropError')))
@@ -72,5 +76,11 @@ export function useAtlasNativeFileDrop({ parentID, topLevelBoxes, screenToFlowPo
     return () => window.clearTimeout(timer)
   }, [dropError])
 
-  return { dropError }
+  useEffect(() => {
+    if (!dropDuplicateNotice) return
+    const timer = window.setTimeout(() => setDropDuplicateNotice(null), DROP_ERROR_MS)
+    return () => window.clearTimeout(timer)
+  }, [dropDuplicateNotice])
+
+  return { dropError, dropDuplicateNotice }
 }

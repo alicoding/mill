@@ -45,6 +45,23 @@
     box-shadow: var(--shadow-floating-large, 0 4px 16px rgba(0, 0, 0, 0.12));
 }
 
+/* The single-file drop door's own duplicate notice (goal 0088) -- same
+   placement/timing as .dropError above, muted rather than danger-
+   colored since a flagged duplicate still imported successfully. */
+.dropNotice {
+    position: absolute;
+    left: 50%;
+    bottom: 68px;
+    transform: translateX(-50%);
+    z-index: 5;
+    padding: 6px 12px;
+    background: var(--bgColor-default);
+    border: 1px solid var(--borderColor-default);
+    border-radius: var(--borderRadius-medium);
+    box-shadow: var(--shadow-floating-large, 0 4px 16px rgba(0, 0, 0, 0.12));
+    color: var(--fgColor-muted);
+}
+
 /* Link labels (goal 0072 slice A, tightened by goal 0081 slice A4's
    quiet edges): shown ONLY on hover or when either endpoint card is
    selected/flipped -- never unconditionally, so provenance lives on

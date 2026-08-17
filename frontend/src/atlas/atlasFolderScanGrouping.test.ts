@@ -7,6 +7,7 @@ function entry(overrides: Partial<FolderScanEntry>): FolderScanEntry {
   return {
     RelPath: 'x', ParentRelPath: '', Name: 'x', IsDir: false,
     Category: ScanCategory.ScanCategoryFile, SuggestedTitle: 'X',
+    DuplicateOfCardID: '', DuplicateOfTitle: '',
     ...overrides,
   }
 }

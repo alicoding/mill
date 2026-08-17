@@ -108,6 +108,77 @@ test('add from folder: scan, partial accept, containment, and mirror rendering a
   }
 })
 
+// The shared fixture folder is committed state (testing.md): rather
+// than adding a duplicate-content fixture file, this scenario imports
+// one real fixture file, then re-opens the SAME folder's preview --
+// its own checksum now matches the card just created, proving goal
+// 0088's flag end to end without mutating the fixture tree.
+test('add from folder: an already-imported file stays flagged and default-unchecked, but importing it anyway still creates a card', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Atlas' }).click()
+  await expect(page.getByTestId('atlas-board')).toBeVisible()
+
+  await page.getByTestId('atlas-add-from-folder').click()
+  const dialog = page.locator('[data-component="atlas-folder-import-dialog"]')
+  await expect(dialog).toBeVisible()
+
+  // First pass: import only Meeting Notes.md, to keep this scenario's
+  // footprint to the one file the duplicate check below needs.
+  await dialog.getByRole('checkbox', { name: 'Project Plan' }).uncheck()
+  await dialog.getByRole('checkbox', { name: 'Logo' }).uncheck()
+  await dialog.getByRole('checkbox', { name: 'Reports' }).uncheck()
+  await dialog.getByRole('checkbox', { name: 'Q1 Summary' }).uncheck()
+  await dialog.getByRole('button', { name: 'Add 1 cards' }).click()
+  await expect(dialog).not.toBeVisible()
+  await expect(noteCard(page, 'Meeting Notes')).toBeVisible()
+
+  // Drill into "Example area" (shelves mode, auto-arranged -- no fixed
+  // grid slot to collide with "My space"'s own first import) before the
+  // second pass, so cross-space duplicate matching is what's proven,
+  // and the two same-titled cards never land on top of each other.
+  await groupCard(page, 'Example area').getByTestId('atlas-group-header').click()
+  await expect(page.getByTestId('atlas-breadcrumb')).toContainText('Example area')
+
+  // Second pass, same folder, different target space: Meeting Notes.md's
+  // own content still matches the card created under "My space" -- its
+  // row must be flagged and default-unchecked, while an unrelated row
+  // stays checked.
+  await page.getByTestId('atlas-add-from-folder').click()
+  await expect(dialog).toBeVisible()
+  await expect(dialog.getByTestId('atlas-folder-import-duplicate')).toHaveText('Already on the map as “Meeting Notes”')
+  await expect(dialog.getByRole('checkbox', { name: 'Meeting Notes' })).not.toBeChecked()
+  await expect(dialog.getByRole('checkbox', { name: 'Project Plan' })).toBeChecked()
+
+  // Including the flagged row anyway must still create its card -- a
+  // duplicate is flagged, never blocked.
+  await dialog.getByRole('checkbox', { name: 'Meeting Notes' }).check()
+  await dialog.getByRole('checkbox', { name: 'Project Plan' }).uncheck()
+  await dialog.getByRole('checkbox', { name: 'Logo' }).uncheck()
+  await dialog.getByRole('checkbox', { name: 'Reports' }).uncheck()
+  await dialog.getByRole('checkbox', { name: 'Q1 Summary' }).uncheck()
+  await dialog.getByRole('button', { name: 'Add 1 cards' }).click()
+  await expect(dialog).not.toBeVisible()
+
+  const secondNotesCard = noteCard(page, 'Meeting Notes')
+  await expect(secondNotesCard).toBeVisible()
+
+  // Cleanup (testing.md's within-file discipline): delete both cards
+  // this scenario created -- the one just made here, then the first
+  // one back under "My space".
+  const overlay = page.locator('[data-component="atlas-card-overlay"]')
+  await openViaFlip(secondNotesCard)
+  await expect(overlay).toBeVisible()
+  await deleteViaPageMenu(page, overlay)
+  await expect(overlay).not.toBeVisible()
+
+  await page.getByTestId('atlas-breadcrumb').getByText('My space', { exact: true }).click()
+  const firstNotesCard = noteCard(page, 'Meeting Notes')
+  await openViaFlip(firstNotesCard)
+  await expect(overlay).toBeVisible()
+  await deleteViaPageMenu(page, overlay)
+  await expect(overlay).not.toBeVisible()
+})
+
 test('add from folder: canceling the picker leaves the space untouched', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Atlas' }).click()

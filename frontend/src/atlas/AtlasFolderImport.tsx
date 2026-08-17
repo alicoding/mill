@@ -51,7 +51,10 @@ export function AtlasFolderImport({ viewedID, kinds }: { viewedID: string; kinds
       const result = await AtlasService.ScanFolder(root)
       const entries = result.Entries ?? []
       setScan(result)
-      setAccepted(new Set(entries.map((e) => e.RelPath)))
+      // A row flagged as already-on-the-map (goal 0088) starts
+      // unchecked -- importing it anyway is an explicit opt-in, not
+      // the default.
+      setAccepted(new Set(entries.filter((e) => !e.DuplicateOfCardID).map((e) => e.RelPath)))
       const nextKindIDs: Record<string, string> = {}
       for (const group of groupFolderScanEntries(entries)) {
         nextKindIDs[group.category] = kinds[0]?.ID ?? ''
@@ -210,6 +213,19 @@ export function AtlasFolderImport({ viewedID, kinds }: { viewedID: string; kinds
                         onChange={(e) => toggleEntry(entry.RelPath, e.target.checked)}
                       />
                       <FormControl.Label>{entry.SuggestedTitle || entry.Name}</FormControl.Label>
+                      {entry.DuplicateOfCardID && (
+                        // FormControl.Caption destructures its own prop
+                        // list with no rest-spread, so a plain
+                        // data-testid on it is silently dropped
+                        // (AtlasCardOverlay.tsx's Dialog comment
+                        // documents the same Primer constraint) -- an
+                        // inner span carries the testid instead.
+                        <FormControl.Caption>
+                          <span data-testid="atlas-folder-import-duplicate">
+                            {t('folderImport.duplicateOf', { title: entry.DuplicateOfTitle })}
+                          </span>
+                        </FormControl.Caption>
+                      )}
                     </FormControl>
                   ))}
                 </div>

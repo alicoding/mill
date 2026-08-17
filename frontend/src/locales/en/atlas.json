@@ -37,7 +37,8 @@
     "selectionCount_other": "{{count}} selected",
     "selectionGroup": "Group",
     "selectionDelete": "Delete",
-    "selectionClearHint": "clear"
+    "selectionClearHint": "clear",
+    "dropDuplicateNotice": "Already on the map as “{{title}}” — added again."
   },
   "jump": {
     "placeholder": "Jump to a card",
@@ -107,7 +108,8 @@
     "selectAll": "Select all",
     "selectNone": "Select none",
     "confirmButton": "Add {{count}} cards",
-    "empty": "This folder has nothing to add."
+    "empty": "This folder has nothing to add.",
+    "duplicateOf": "Already on the map as “{{title}}”"
   },
   "matrix": {
     "title": "Traceability matrix",
