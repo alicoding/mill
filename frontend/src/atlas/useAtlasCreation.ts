@@ -31,6 +31,18 @@ export interface AtlasPlacementPopoverState {
   // gesture is about to reparent into the new container card.
   enclosedCardIDs?: string[]
   enclosedNoteIDs?: string[]
+  // Slot-drag's own guided-create door (goal 0081 slice A4, LOCKED
+  // design decision D1=B): a link-slot drag released on empty canvas
+  // -- the kind is already fixed by the row that was dragged, so
+  // submitPopover routes through the atomic CreateCardLinkedFrom
+  // instead of a plain CreateCard.
+  slotLinkFromCardID?: string
+  slotLinkKindID?: string
+  // "Add linked card…" card-menu door (goal 0081 slice A4): the
+  // generic-kind counterpart -- AddLinkedCard resolves the relates-to
+  // link kind AND the new card's parent server-side, so only the
+  // source card's own id is carried here.
+  addLinkedFromCardID?: string
 }
 
 // AtlasView's own downward creation requests -- the pane right-click
@@ -42,7 +54,7 @@ export interface AtlasPlacementPopoverState {
 // since the pane ContextMenu's own item.run() closures are defined
 // right there in AtlasView already). parentIDOverride (slice A2)
 // carries a frame-menu's own "Add card to X"/"Add note here" target.
-export interface AtlasPlacementRequest { tool: AtlasCreationTool; pos: { x: number; y: number }; parentIDOverride?: string; token: number }
+export interface AtlasPlacementRequest { tool: AtlasCreationTool; pos: { x: number; y: number }; parentIDOverride?: string; linkFromCardID?: string; token: number }
 export interface AtlasPromoteRequest { noteID: string; pos: { x: number; y: number }; token: number }
 // Select-then-group (goal 0081 slice A2, LOCKED design §2): a
 // multi-selection's own "Group into new area" menu item, requesting
@@ -112,10 +124,19 @@ export function useAtlasCreation({ parentID, allCards, notes, readOnly, screenTo
   // Area has no click-based placement (its own drag-drawn rect is
   // handled entirely by useAtlasAreaDraw, which calls openAreaPopover
   // + disarm directly instead of going through here).
-  const placeAt = useCallback((screenPos: { x: number; y: number }, explicitTool?: AtlasCreationTool, parentIDOverride?: string) => {
+  const placeAt = useCallback((screenPos: { x: number; y: number }, explicitTool?: AtlasCreationTool, parentIDOverride?: string, linkFromCardID?: string) => {
     const tool = explicitTool ?? armedTool
     if (!tool || tool === 'area' || readOnly) return
     setArmedTool(null)
+    // "Add linked card…" (goal 0081 slice A4) lands beside the linking
+    // card, at a free spot in ITS parent -- never at the menu's own
+    // click point, which is only where the popover visually anchors.
+    if (tool === 'card' && linkFromCardID) {
+      const source = allCardsRef.current.find((c) => c.ID === linkFromCardID)
+      const position = freeChildPosition(allCardsRef.current, source?.ParentID ?? parentID)
+      setPopover({ mode: 'create', anchorPos: screenPos, flowPos: { x: position.X, y: position.Y }, addLinkedFromCardID: linkFromCardID })
+      return
+    }
     const flowPos = screenToFlowPosition(screenPos)
     if (tool === 'card') {
       setPopover({ mode: 'create', anchorPos: screenPos, flowPos, parentIDOverride })
@@ -123,7 +144,14 @@ export function useAtlasCreation({ parentID, allCards, notes, readOnly, screenTo
       setDraftNoteFlowPos(flowPos)
       setDraftNoteParentOverride(parentIDOverride ?? null)
     }
-  }, [armedTool, readOnly, screenToFlowPosition])
+  }, [armedTool, readOnly, screenToFlowPosition, parentID])
+
+  // Slot-drag's own guided-create door (goal 0081 slice A4, LOCKED
+  // design §3): opens the SAME 'create' popover at the release point,
+  // carrying the dragged row's own kind through to submitPopover.
+  const openSlotLinkedCreate = useCallback((fromCardID: string, linkKindID: string, screenPos: { x: number; y: number }, flowPos: { x: number; y: number }) => {
+    setPopover({ mode: 'create', anchorPos: screenPos, flowPos, slotLinkFromCardID: fromCardID, slotLinkKindID: linkKindID })
+  }, [])
 
   const openPromote = useCallback((noteID: string, screenPos: { x: number; y: number }) => {
     const note = notes.find((n) => n.ID === noteID)
@@ -154,7 +182,23 @@ export function useAtlasCreation({ parentID, allCards, notes, readOnly, screenTo
   const submitPopover = useCallback((kindID: string, title: string) => {
     setPopover((pending) => {
       if (!pending) return null
-      if (pending.mode === 'create') {
+      if (pending.mode === 'create' && pending.slotLinkFromCardID && pending.slotLinkKindID) {
+        // Slot-drag guided-create (goal 0081 slice A4, D1=B): atomic,
+        // so the map never shows a card with a missing link or a link
+        // to nothing.
+        const position = pending.flowPos ? { X: pending.flowPos.x, Y: pending.flowPos.y } : null
+        void AtlasService.CreateCardLinkedFrom(pending.slotLinkFromCardID, pending.slotLinkKindID, kindID, title, parentID, position)
+          .then(() => refreshAtlas())
+          .catch(console.error)
+      } else if (pending.mode === 'create' && pending.addLinkedFromCardID) {
+        // "Add linked card…" (goal 0081 slice A4): AddLinkedCard
+        // resolves the generic relates-to kind and the new card's own
+        // parent server-side.
+        const position = pending.flowPos ? { X: pending.flowPos.x, Y: pending.flowPos.y } : null
+        void AtlasService.AddLinkedCard(pending.addLinkedFromCardID, kindID, title, position)
+          .then(() => refreshAtlas())
+          .catch(console.error)
+      } else if (pending.mode === 'create') {
         const targetParentID = pending.parentIDOverride ?? parentID
         const position = pending.parentIDOverride
           ? freeChildPosition(allCardsRef.current, pending.parentIDOverride)
@@ -260,7 +304,7 @@ export function useAtlasCreation({ parentID, allCards, notes, readOnly, screenTo
   useEffect(() => {
     if (!placementRequest || placementRequest.token === lastPlacementToken.current) return
     lastPlacementToken.current = placementRequest.token
-    placeAt(placementRequest.pos, placementRequest.tool, placementRequest.parentIDOverride)
+    placeAt(placementRequest.pos, placementRequest.tool, placementRequest.parentIDOverride, placementRequest.linkFromCardID)
     // eslint-disable-next-line react-hooks/exhaustive-deps -- keyed on the request's own token, same shape as every other one-shot signal in this file
   }, [placementRequest])
 
@@ -285,7 +329,7 @@ export function useAtlasCreation({ parentID, allCards, notes, readOnly, screenTo
 
   return {
     armedTool, toggleArm, armTool, disarm, placeAt,
-    popover, cancelPopover, submitPopover, openPromote, openPasteText, openAreaPopover,
+    popover, cancelPopover, submitPopover, openPromote, openPasteText, openAreaPopover, openSlotLinkedCreate,
     draftNoteFlowPos, commitDraftNote, cancelDraftNote,
     editingNoteID, enterNoteEdit, cancelNoteEdit, commitNoteEdit,
     cancelAll,

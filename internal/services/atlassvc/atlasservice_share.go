@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/alicoding/mill/internal/adapters/osopen"
 	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
@@ -298,20 +299,66 @@ func (a *AtlasService) RevealSpaceFolder(spaceID string) (string, error) {
 	return dir, nil
 }
 
-// RevealCardMirror opens cardID's own MirrorPath in the OS file
-// manager -- the card overlay/chip's "Reveal file" action, only ever
-// offered once a refresh has actually run and set MirrorPath.
-func (a *AtlasService) RevealCardMirror(cardID string) error {
-	a.mu.RLock()
+// cardMirrorPathLocked resolves cardID's own MirrorPath, or an error
+// naming which of "unknown card"/"nothing mirrored yet" applies --
+// the shared lookup RevealCardMirror and OpenCardMirror both start
+// from.
+func (a *AtlasService) cardMirrorPathLocked(cardID string) (string, error) {
 	idx := a.findCardLocked(cardID)
 	if idx == -1 {
-		a.mu.RUnlock()
-		return fmt.Errorf("no card with id %q", cardID)
+		return "", fmt.Errorf("no card with id %q", cardID)
 	}
 	path := a.cards[idx].MirrorPath
-	a.mu.RUnlock()
 	if path == "" {
-		return fmt.Errorf("card %q has no mirrored file to reveal", cardID)
+		return "", fmt.Errorf("card %q has no mirrored file", cardID)
 	}
-	return revealPath(path)
+	return path, nil
+}
+
+// RevealCardMirror selects cardID's own MirrorPath in the OS file
+// manager, WITHOUT opening it -- the card menu/overlay's "Reveal in
+// file manager" action (goal 0081 slice A4, macOS `open -R`), only
+// ever offered once a refresh has actually run and set MirrorPath.
+// Distinct from OpenCardMirror below, which launches the file instead
+// of selecting it.
+func (a *AtlasService) RevealCardMirror(cardID string) error {
+	a.mu.RLock()
+	path, err := a.cardMirrorPathLocked(cardID)
+	a.mu.RUnlock()
+	if err != nil {
+		return err
+	}
+	return revealMirrorFile(path)
+}
+
+// OpenCardMirror launches cardID's own MirrorPath with the OS default
+// application for its file type (goal 0081 slice A4's "Open file"
+// card-menu item, macOS `open`) -- distinct from RevealCardMirror,
+// which selects the file in the file manager instead of launching it.
+func (a *AtlasService) OpenCardMirror(cardID string) error {
+	a.mu.RLock()
+	path, err := a.cardMirrorPathLocked(cardID)
+	a.mu.RUnlock()
+	if err != nil {
+		return err
+	}
+	return openMirrorFile(path)
+}
+
+// revealMirrorFile/openMirrorFile wrap internal/adapters/osopen with
+// the same "no live desktop app, no-op" guard revealPath above already
+// establishes -- a headless `go test` run (or server mode without a
+// window) must never actually shell out to the real OS file manager.
+func revealMirrorFile(path string) error {
+	if application.Get() == nil {
+		return nil
+	}
+	return osopen.Reveal(path)
+}
+
+func openMirrorFile(path string) error {
+	if application.Get() == nil {
+		return nil
+	}
+	return osopen.Open(path)
 }

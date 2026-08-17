@@ -23,6 +23,21 @@ import * as typedfield$0 from "../../domain/typedfield/models.js";
 import * as $models from "./models.js";
 
 /**
+ * AddLinkedCard is CreateCardLinkedFrom's own "generic kind" door: the
+ * card menu's "Add linked card…" item (goal 0081 slice A4), which
+ * links through the built-in relates-to kind rather than naming one --
+ * same graceful-fallback resolution CreateLinkedFileCard's own
+ * resolveRelatesToLinkKindLocked already establishes, and the same
+ * "parent = the linking card's own parent" rule the LOCKED design's
+ * card-foremost creation door (§2b) requires: a linked sibling lands
+ * beside the card that named it, never wherever the board happens to
+ * be scrolled.
+ */
+export function AddLinkedCard(fromCardID: string, kindID: string, title: string, position: atlas$0.Position | null): $CancellablePromise<atlas$0.Card> {
+    return $Call.ByID(1483030434, fromCardID, kindID, title, position);
+}
+
+/**
  * CardContextBlock renders cardID's fields/note/links as one stable,
  * paste-ready text block (goal 0063's copy-as-context) -- the Card
  * overlay/chip's "Copy as context" action copies exactly this string.
@@ -79,6 +94,24 @@ export function CreateCard(kindID: string, title: string, note: string, fields: 
  */
 export function CreateCardFromFileDrop(path: string, title: string, parentID: string, position: atlas$0.Position | null): $CancellablePromise<atlas$0.Card> {
     return $Call.ByID(1912608055, path, title, parentID, position);
+}
+
+/**
+ * CreateCardLinkedFrom atomically creates a new card AND links it from
+ * fromCardID via linkKindID, in one locked critical section (same
+ * single-persist/single-rollback shape PromoteNote and
+ * CreateLinkedFileCard already establish) -- the slot-drag guided-
+ * create door (goal 0081 slice A4, LOCKED design decision D1=B):
+ * releasing a link-slot drag on empty canvas names a thing and its
+ * relation in one motion, with no partial state -- a card with no
+ * link, or a link to nothing -- ever left behind on failure.
+ * linkKindID is caller-supplied (the dragged row already named its own
+ * kind); parentID/position are the frontend's own resolved "where you
+ * are" values, same convention every other canvas-foremost creation
+ * door already follows.
+ */
+export function CreateCardLinkedFrom(fromCardID: string, linkKindID: string, kindID: string, title: string, parentID: string, position: atlas$0.Position | null): $CancellablePromise<atlas$0.Card> {
+    return $Call.ByID(2183741437, fromCardID, linkKindID, kindID, title, parentID, position);
 }
 
 export function CreateKind(label: string, description: string, icon: string, fields: typedfield$0.Field[] | null): $CancellablePromise<atlas$0.Kind> {
@@ -290,6 +323,16 @@ export function Notes(): $CancellablePromise<atlas$0.Note[] | null> {
 }
 
 /**
+ * OpenCardMirror launches cardID's own MirrorPath with the OS default
+ * application for its file type (goal 0081 slice A4's "Open file"
+ * card-menu item, macOS `open`) -- distinct from RevealCardMirror,
+ * which selects the file in the file manager instead of launching it.
+ */
+export function OpenCardMirror(cardID: string): $CancellablePromise<void> {
+    return $Call.ByID(3356986203, cardID);
+}
+
+/**
  * PickFolder opens the native folder picker -- goal 0067's consent
  * gate: zero filesystem reads happen before this returns a path the
  * user actually chose. startDir optionally pre-fills the dialog's
@@ -326,9 +369,12 @@ export function ResolveFileDropRoute(paths: string[] | null): $CancellablePromis
 }
 
 /**
- * RevealCardMirror opens cardID's own MirrorPath in the OS file
- * manager -- the card overlay/chip's "Reveal file" action, only ever
- * offered once a refresh has actually run and set MirrorPath.
+ * RevealCardMirror selects cardID's own MirrorPath in the OS file
+ * manager, WITHOUT opening it -- the card menu/overlay's "Reveal in
+ * file manager" action (goal 0081 slice A4, macOS `open -R`), only
+ * ever offered once a refresh has actually run and set MirrorPath.
+ * Distinct from OpenCardMirror below, which launches the file instead
+ * of selecting it.
  */
 export function RevealCardMirror(cardID: string): $CancellablePromise<void> {
     return $Call.ByID(2489476102, cardID);
@@ -369,6 +415,17 @@ export function ScanFolder(root: string): $CancellablePromise<$models.FolderScan
  */
 export function SetLens(containerID: string, hiddenKindIDs: string[] | null, peek: boolean): $CancellablePromise<void> {
     return $Call.ByID(1752890006, containerID, hiddenKindIDs, peek);
+}
+
+/**
+ * SetLinkKind reassigns an existing link to a different LinkKind --
+ * the edge menu's own "Change link kind" action (goal 0081 slice A4),
+ * distinct from UpdateLink above (which only ever touches Label):
+ * re-typing a drawn link is a different edit than re-wording it, so it
+ * gets its own referential-existence check against the new kind.
+ */
+export function SetLinkKind(id: string, linkKindID: string): $CancellablePromise<atlas$0.Link> {
+    return $Call.ByID(3745757492, id, linkKindID);
 }
 
 /**

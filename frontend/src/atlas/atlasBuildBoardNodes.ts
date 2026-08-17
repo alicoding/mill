@@ -1,3 +1,4 @@
+import type { PointerEvent as ReactPointerEvent } from 'react'
 import type { Card, Kind, Link, LinkKind } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 import { childrenOf } from './atlasGrouping'
 import { computeAutoArrangeLayout, computeGroupFrameLayout, isGroupCard, NOTE_HEIGHT, NOTE_WIDTH } from './atlasBoardLayout'
@@ -22,6 +23,7 @@ export type BoardCardRFNode = AtlasNoteCardRFNode | AtlasGroupRFNode | AtlasRegi
 export function buildBoardCardNodes({
   cards, allCards, kinds, links, linkKinds, isFree, readOnly, boardWidth, freeMoves, arteries,
   flippedID, pulsedID, hintedID, hoveredFrameID, toggleFlip, onOpenOverlay, handleDrill, handleLeafCommit,
+  slotDragSourceID, onSlotAnchorPointerDown, onJumpToChip, onRemoveLink,
 }: {
   cards: Card[]
   allCards: Card[]
@@ -43,6 +45,13 @@ export function buildBoardCardNodes({
   onOpenOverlay: (id: string) => void
   handleDrill: (id: string) => void
   handleLeafCommit: (id: string) => void
+  // Slot-drag's own live release-target affordance (goal 0081 A4): the
+  // card a slot-drag started FROM, if any -- every OTHER top-level
+  // card highlights while it's non-null (slice A's all-answer rule).
+  slotDragSourceID: string | null
+  onSlotAnchorPointerDown: (cardID: string, linkKindID: string, e: ReactPointerEvent) => void
+  onJumpToChip: (cardID: string) => void
+  onRemoveLink: (linkID: string) => void
 }): BoardCardRFNode[] {
   const kindByID = new Map(kinds.map((k) => [k.ID, k]))
   const adjacency = new Map<string, string[]>()
@@ -54,6 +63,10 @@ export function buildBoardCardNodes({
   const moveByID = new Map(freeMoves.map((m) => [m.id, m]))
   const nodes: BoardCardRFNode[] = []
 
+  // A slot-drag started FROM this card never highlights ITSELF (LOCKED
+  // design §3: "every OTHER top-level card lifts").
+  const slotDragHighlight = (id: string) => slotDragSourceID !== null && slotDragSourceID !== id
+
   const noteData = (card: Card) => ({
     card,
     kind: kindByID.get(card.KindID),
@@ -63,9 +76,13 @@ export function buildBoardCardNodes({
     flipped: flippedID === card.ID,
     pulsed: pulsedID === card.ID,
     hinted: hintedID === card.ID,
+    slotDragHighlight: slotDragHighlight(card.ID),
     onToggleFlip: toggleFlip,
     onOpenOverlay,
     onCommit: handleLeafCommit,
+    onSlotAnchorPointerDown: (linkKindID: string, e: ReactPointerEvent) => onSlotAnchorPointerDown(card.ID, linkKindID, e),
+    onJumpToChip,
+    onRemoveLink,
   })
 
   for (const card of cards) {

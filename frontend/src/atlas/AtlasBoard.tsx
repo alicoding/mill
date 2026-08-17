@@ -14,13 +14,16 @@ import { AtlasNoteCardNode } from './AtlasNoteCardNode'
 import { AtlasGroupNode } from './AtlasGroupNode'
 import { AtlasRegionChipNode } from './AtlasRegionChipNode'
 import { AtlasStickyNode } from './AtlasStickyNode'
-import { AtlasLinkEdge, type AtlasLinkRFEdge } from './AtlasLinkEdge'
+import { AtlasLinkEdge } from './AtlasLinkEdge'
 import { resolveBoardEdges } from './atlasLinkResolution'
+import { buildBoardEdges } from './atlasBuildBoardEdges'
 import { resolveFreeOverlaps } from './atlasOverlapResolution'
 import { useBoardFocus } from './useBoardFocus'
 import { useAtlasCreation, type AtlasGroupRequest, type AtlasPlacementRequest, type AtlasPromoteRequest } from './useAtlasCreation'
 import { useAtlasAreaDraw } from './useAtlasAreaDraw'
 import { useAtlasDragFiling, type FrameBox } from './useAtlasDragFiling'
+import { useAtlasSlotDrag } from './useAtlasSlotDrag'
+import { AtlasSlotDragLine } from './AtlasSlotDragLine'
 import { buildBoardCardNodes } from './atlasBuildBoardNodes'
 import { buildStickyNodes } from './atlasStickyNodes'
 import { AtlasCreationTray, ATLAS_TOOL_DRAG_MIME, type AtlasCreationTool } from './AtlasCreationTray'
@@ -65,7 +68,7 @@ export interface AtlasFocusRequest {
 // media-query gate AtlasNoteCardNode.module.css's own flip already
 // uses, read here in JS via usePrefersReducedMotion since React Flow's
 // own transition durations are JS options, not CSS.
-function AtlasBoardInner({ cards, allCards, kinds, links, linkKinds, notes, parentID, mode, viewedID, focusRequest, onDrill, onOpenOverlay, onFocusHandled, onCardContextMenu, onPaneContextMenu, onArteryContextMenu, onNoteContextMenu, onFrameContextMenu, onFrameInteriorContextMenu, onMultiSelectContextMenu, placementRequest, promoteRequest, groupRequest }: {
+function AtlasBoardInner({ cards, allCards, kinds, links, linkKinds, notes, parentID, mode, viewedID, focusRequest, onDrill, onOpenOverlay, onFocusHandled, onCardContextMenu, onPaneContextMenu, onArteryContextMenu, onNoteContextMenu, onFrameContextMenu, onFrameInteriorContextMenu, onMultiSelectContextMenu, placementRequest, promoteRequest, groupRequest, onJumpToChip }: {
   cards: Card[]
   allCards: Card[]
   kinds: Kind[]
@@ -73,8 +76,7 @@ function AtlasBoardInner({ cards, allCards, kinds, links, linkKinds, notes, pare
   linkKinds: LinkKind[]
   // Notes (goal 0081 slice A1) -- this board's own container's notes
   // only, same "already scoped by the caller" contract `cards` uses.
-  // parentID is the board's CURRENT container (AtlasView's viewedID):
-  // every canvas-foremost creation door's own parent.
+  // parentID is the board's CURRENT container (AtlasView's viewedID).
   notes: Note[]
   parentID: string
   mode: ViewMode
@@ -90,9 +92,9 @@ function AtlasBoardInner({ cards, allCards, kinds, links, linkKinds, notes, pare
   // Right-click on empty board (goal 0075's audit G3): same
   // where-only contract as the card opener above.
   onPaneContextMenu: (pos: { x: number; y: number }) => void
-  // Right-click on an artery (goal 0075's audit G4): reports the two
-  // top-level cards it connects -- AtlasView resolves their titles.
-  onArteryContextMenu: (sourceID: string, targetID: string, pos: { x: number; y: number }) => void
+  // Right-click on an artery (goal 0075 G4, goal 0081 A4's edge menu):
+  // endpoints + its representative link id/count -- count gates the kind/label/remove items to 1.
+  onArteryContextMenu: (sourceID: string, targetID: string, linkID: string, count: number, pos: { x: number; y: number }) => void
   // Right-click on a note (goal 0081 slice A1): same where/what-only
   // contract as onCardContextMenu -- AtlasView owns Promote/Delete.
   onNoteContextMenu: (noteID: string, pos: { x: number; y: number }) => void
@@ -115,6 +117,8 @@ function AtlasBoardInner({ cards, allCards, kinds, links, linkKinds, notes, pare
   placementRequest?: AtlasPlacementRequest | null
   promoteRequest?: AtlasPromoteRequest | null
   groupRequest?: AtlasGroupRequest | null
+  // A slot-row chip's own click (goal 0081 A4): reuses ⌘K's own focus/jump plumbing.
+  onJumpToChip: (cardID: string) => void
 }) {
   const { t } = useTranslation('atlas')
   const readOnly = useIsNarrowViewport()
@@ -247,6 +251,14 @@ function AtlasBoardInner({ cards, allCards, kinds, links, linkKinds, notes, pare
 
   const dragFiling = useAtlasDragFiling({ allCards, parentID, topLevelBoxes, wrapperRef })
 
+  // Slot-drag = instant typed link (goal 0081 A4): see useAtlasSlotDrag.ts.
+  const slotDrag = useAtlasSlotDrag({
+    topLevelBoxes, noteBoxes, screenToFlowPosition,
+    onLink: (fromCardID, toCardID, linkKindID) => void AtlasService.CreateLink(fromCardID, toCardID, linkKindID, '').catch(console.error),
+    onGuidedCreate: creation.openSlotLinkedCreate,
+  })
+  const removeLink = useCallback((linkID: string) => void AtlasService.DeleteLink(linkID).catch(console.error), [])
+
   const areaDraw = useAtlasAreaDraw({
     armed: isFree && !readOnly && creation.armedTool === 'area',
     screenToFlowPosition,
@@ -285,25 +297,12 @@ function AtlasBoardInner({ cards, allCards, kinds, links, linkKinds, notes, pare
     cards, allCards, kinds, links, linkKinds, isFree, readOnly, boardWidth, freeMoves, arteries,
     flippedID, pulsedID, hintedID, hoveredFrameID: dragFiling.hoveredFrameID,
     toggleFlip, onOpenOverlay, handleDrill, handleLeafCommit,
-  }), [cards, allCards, kinds, links, linkKinds, isFree, readOnly, flippedID, pulsedID, hintedID, onOpenOverlay, handleDrill, handleLeafCommit, freeMoves, arteries, boardWidth, dragFiling.hoveredFrameID, toggleFlip])
+    slotDragSourceID: slotDrag.dragSourceID, onSlotAnchorPointerDown: slotDrag.startDrag, onJumpToChip, onRemoveLink: removeLink,
+  }), [cards, allCards, kinds, links, linkKinds, isFree, readOnly, flippedID, pulsedID, hintedID, onOpenOverlay, handleDrill, handleLeafCommit, freeMoves, arteries, boardWidth, dragFiling.hoveredFrameID, toggleFlip, slotDrag.dragSourceID, slotDrag.startDrag, onJumpToChip, removeLink])
 
   const [hoveredEdgeID, setHoveredEdgeID] = useState<string | null>(null)
-  const edges = useMemo(() => {
-    const linkKindByID = new Map(linkKinds.map((lk) => [lk.ID, lk]))
-    return arteries.map((r): AtlasLinkRFEdge => ({
-      id: r.id,
-      source: r.source,
-      target: r.target,
-      type: 'atlas-link',
-      // A single link carries its kind's own label; an aggregated
-      // artery labels as its count -- the per-link detail lives one
-      // zoom level down and on the card page.
-      label: r.count === 1 ? (linkKindByID.get(r.linkKindIDs[0])?.Label ?? '') : t('board.linksChip', { count: r.count }),
-      style: { stroke: 'var(--fgColor-accent)', strokeWidth: r.count === 1 ? 1.6 : 2.2, opacity: 0.75 },
-      interactionWidth: 8,
-      data: { hovered: hoveredEdgeID === r.id },
-    }))
-  }, [arteries, linkKinds, hoveredEdgeID, t])
+  // Quiet edges (goal 0081 A4): see atlasBuildBoardEdges.ts.
+  const edges = useMemo(() => buildBoardEdges(arteries, linkKinds, hoveredEdgeID, flippedID, t), [arteries, linkKinds, hoveredEdgeID, flippedID, t])
 
   // Sticky notes (goal 0081 slice A1): built separately from
   // builtNodes above (its own file, atlasStickyNodes.ts) since a note
@@ -368,7 +367,7 @@ function AtlasBoardInner({ cards, allCards, kinds, links, linkKinds, notes, pare
   return (
     <div
       ref={wrapperRef}
-      className={`${styles.board} ${edges.length <= 3 ? styles.alwaysShowLabels : ''}`}
+      className={styles.board}
       data-testid="atlas-board"
       data-view-mode={mode}
       data-armed={creation.armedTool !== null}
@@ -445,7 +444,8 @@ function AtlasBoardInner({ cards, allCards, kinds, links, linkKinds, notes, pare
         }}
         onEdgeContextMenu={(e, edge) => {
           e.preventDefault()
-          onArteryContextMenu(edge.source, edge.target, { x: e.clientX, y: e.clientY })
+          const artery = arteries.find((a) => a.id === edge.id)
+          onArteryContextMenu(edge.source, edge.target, edge.id, artery?.count ?? 1, { x: e.clientX, y: e.clientY })
         }}
         onPaneContextMenu={(e) => {
           e.preventDefault()
@@ -473,6 +473,7 @@ function AtlasBoardInner({ cards, allCards, kinds, links, linkKinds, notes, pare
         <Controls />
       </ReactFlow>
       {marqueeStyle && <div className={styles.marquee} data-testid="atlas-area-marquee" style={marqueeStyle} />}
+      {slotDrag.dragLine && <AtlasSlotDragLine line={slotDrag.dragLine} />}
       {fileDrop.dropError && <div className={`${styles.dropError} ${runbookStyles.error}`} data-testid="atlas-file-drop-error">{fileDrop.dropError}</div>}
       {!readOnly && <AtlasCreationTray armedTool={creation.armedTool} onToggle={creation.toggleArm} />}
       {creation.popover && (

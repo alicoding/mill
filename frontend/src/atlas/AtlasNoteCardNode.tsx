@@ -1,4 +1,5 @@
 import { memo } from 'react'
+import type { PointerEvent as ReactPointerEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Handle, Position as RFPosition } from '@xyflow/react'
 import type { NodeProps, Node as RFNode } from '@xyflow/react'
@@ -7,6 +8,8 @@ import type { Card, Kind, Link, LinkKind } from '../../bindings/github.com/alico
 import { kindColorTokens } from './atlasKindColor'
 import { basenameOf, daysSinceSync, deriveFileTag, freshnessDotColor, hostnameOf } from './atlasCardPresentation'
 import { childrenOf } from './atlasGrouping'
+import { AtlasSlotRows } from './AtlasSlotRows'
+import slotStyles from './AtlasSlotRows.module.css'
 import styles from './AtlasNoteCardNode.module.css'
 
 export interface AtlasNoteCardData extends Record<string, unknown> {
@@ -28,6 +31,14 @@ export interface AtlasNoteCardData extends Record<string, unknown> {
   // leaf's page -- wired by AtlasBoard so the unflip and the open
   // share one state owner.
   onCommit: (id: string) => void
+  // Typed link slots (goal 0081 slice A4, LOCKED design §3): a
+  // slot-drag started FROM elsewhere on the board highlights every
+  // OTHER top-level card -- this one only ever renders true/false, the
+  // drag state itself lives in useAtlasSlotDrag (AtlasBoard).
+  slotDragHighlight: boolean
+  onSlotAnchorPointerDown: (linkKindID: string, e: ReactPointerEvent) => void
+  onJumpToChip: (cardID: string) => void
+  onRemoveLink: (linkID: string) => void
 }
 
 export type AtlasNoteCardRFNode = RFNode<AtlasNoteCardData>
@@ -40,24 +51,19 @@ export type AtlasNoteCardRFNode = RFNode<AtlasNoteCardData>
 // preview -- the same face content either way.
 export const AtlasNoteCardNode = memo(function AtlasNoteCardNode({ data }: NodeProps<AtlasNoteCardRFNode>) {
   const { t } = useTranslation('atlas')
-  const { card, kind, allCards, links, linkKinds, flipped, pulsed, hinted, onToggleFlip, onOpenOverlay, onCommit } = data
+  const { card, kind, allCards, links, linkKinds, flipped, pulsed, hinted, onToggleFlip, onOpenOverlay, onCommit, slotDragHighlight, onSlotAnchorPointerDown, onJumpToChip, onRemoveLink } = data
   const tokens = kindColorTokens(card.KindID)
   const fileTag = deriveFileTag(card)
   const dot = freshnessDotColor(card)
   const childCount = childrenOf(allCards, card.ID).length
   const cardLinks = links.filter((l) => l.FromCardID === card.ID || l.ToCardID === card.ID)
-  const cardByID = new Map(allCards.map((c) => [c.ID, c]))
-  const linkKindByID = new Map(linkKinds.map((lk) => [lk.ID, lk]))
-  const firstLink = cardLinks[0]
-  const firstLinkOther = firstLink ? cardByID.get(firstLink.FromCardID === card.ID ? firstLink.ToCardID : firstLink.FromCardID) : undefined
-  const firstLinkKind = firstLink ? linkKindByID.get(firstLink.LinkKindID) : undefined
-
   return (
     <div
-      className={styles.flipScene}
+      className={`${styles.flipScene}${slotDragHighlight ? ` ${slotStyles.slotTargetHighlight}` : ''}`}
       data-testid="atlas-note-card"
       data-flipped={flipped}
       data-pulse={pulsed}
+      data-slot-target={slotDragHighlight}
       role="button"
       tabIndex={0}
       aria-label={t('board.flipCardAriaLabel', { title: card.Title })}
@@ -135,12 +141,15 @@ export const AtlasNoteCardNode = memo(function AtlasNoteCardNode({ data }: NodeP
               })}
             </div>
           )}
-          {firstLink && (
-            <div className={styles.backRow}>
-              {t('board.linkRow', { kind: firstLinkKind?.Label ?? firstLink.LinkKindID, title: firstLinkOther?.Title ?? '' })}
-              {cardLinks.length > 1 && ` ${t('board.moreLinks', { count: cardLinks.length - 1 })}`}
-            </div>
-          )}
+          <AtlasSlotRows
+            card={card}
+            allCards={allCards}
+            links={links}
+            linkKinds={linkKinds}
+            onChipClick={onJumpToChip}
+            onRemoveLink={onRemoveLink}
+            onAnchorPointerDown={onSlotAnchorPointerDown}
+          />
           <button
             type="button"
             className={`${styles.openButton} nodrag nopan`}

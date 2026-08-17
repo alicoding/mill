@@ -28,7 +28,9 @@
     "jumpHint": "↵ open",
     "linksChip_one": "{{count}} link",
     "linksChip_other": "{{count}} links",
-    "moreTile": "+ {{count}} more"
+    "moreTile": "+ {{count}} more",
+    "slotDragToAdd": "drag to add",
+    "slotMoreKinds": "+{{count}} more kinds"
   },
   "jump": {
     "placeholder": "Jump to a card",
@@ -195,7 +197,13 @@
     "openCard": "Open {{title}}",
     "groupIntoArea": "Group into new area",
     "dissolveArea": "Dissolve area",
-    "delete": "Delete"
+    "delete": "Delete",
+    "openFile": "Open file",
+    "revealInFileManager": "Reveal in file manager",
+    "addLinkedCard": "Add linked card…",
+    "changeLinkKind": "Change link kind",
+    "editLabel": "Edit label…",
+    "removeLink": "Remove link"
   },
   "confirm": {
     "dissolveTitle": "Dissolve {{title}}?",

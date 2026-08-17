@@ -90,6 +90,13 @@ export const ATLAS_AUTHORING_MCP_BASE_PORT = 9900
 export const ATLAS_CONTAINMENT_SERVER_BASE_PORT = 9920
 export const ATLAS_CONTAINMENT_MCP_BASE_PORT = 9940
 
+// atlas-slots.spec.ts's own dedicated pair (goal 0081 slice A4): drags
+// slot anchors, creates/removes links, and asserts exact link counts
+// per card -- same own-server-own-ports reasoning as atlas-authoring/
+// atlas-containment above, disjoint from both.
+export const ATLAS_SLOTS_SERVER_BASE_PORT = 9960
+export const ATLAS_SLOTS_MCP_BASE_PORT = 9980
+
 async function waitForHealth(url: string, proc: ChildProcessWithoutNullStreams, timeoutMs: number): Promise<void> {
   const deadline = Date.now() + timeoutMs
   let lastErr: unknown

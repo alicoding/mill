@@ -19,22 +19,14 @@ import { AtlasJumpDialog } from './AtlasJumpDialog'
 import { AtlasCardOverlay } from './AtlasCardOverlay'
 import { ContextMenu, type ContextMenuState } from '../shared/ContextMenu'
 import { useConfirmDelete } from '../shared/useConfirmDelete'
-import { atlasCardShareActions } from './atlasCardShare'
 import { AtlasMatrixView } from './AtlasMatrixView'
 import { AtlasCoverageView } from './AtlasCoverageView'
 import { isGroupCard } from './atlasBoardLayout'
 import { freeChildPosition } from './atlasContainmentPlacement'
 import { useAtlasContainmentMenus } from './useAtlasContainmentMenus'
+import { useAtlasLinkMenus } from './useAtlasLinkMenus'
 import runbookStyles from '../shared/ListCard.module.css'
 import styles from './AtlasView.module.css'
-
-const ARTERY_MENU_TITLE_MAX = 28
-
-// An artery's own right-click labels ("Open <title>") stay one line
-// regardless of how long the connected card's title is.
-function truncateTitle(title: string): string {
-  return title.length > ARTERY_MENU_TITLE_MAX ? `${title.slice(0, ARTERY_MENU_TITLE_MAX - 1)}…` : title
-}
 
 // The Atlas surface's top-level page (docs/adr/0038, docs/goals/0061):
 // space rendering (canvas/shelves per the viewed card's
@@ -199,40 +191,25 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
     setCoverageOpen(true)
   }, [atlasCoverageRequest])
 
-  // The card's right-click menu (goal 0075): Open / Zoom in mirror
-  // the gesture model's commits; the share trio mirrors the page's
-  // meta rail; Delete goes through the same ConfirmDialog contract as
-  // every destructive action (frontend.md). Flip is deliberately
-  // absent -- a single click IS the flip; a menu item for it would be
-  // a longer path to the same glance.
+  const navigate = (id: string) => setViewedID(id)
+  const drill = (id: string) => setViewedID(id)
+  const openOverlay = (id: string) => setOverlayCardID(id)
+
+  // The card's right-click menu (goal 0075, kind-aware-extended by
+  // goal 0081 slice A4): Open / Zoom in mirror the gesture model's
+  // commits; the share trio mirrors the page's meta rail; Delete goes
+  // through the same ConfirmDialog contract as every destructive
+  // action (frontend.md). Flip is deliberately absent -- a single
+  // click IS the flip. The edge menu (Change link kind/Edit label/
+  // Remove link) lives in the SAME hook -- split out of this file
+  // entirely (architecture.md's 500-line convention).
   const [menu, setMenu] = useState<ContextMenuState | null>(null)
-  const { requestDelete, dialog: menuDeleteDialog } = useConfirmDelete<Card>({
-    entityType: 'card',
-    labelOf: (c) => c.Title,
-    onConfirm: (c) => {
-      AtlasService.DeleteCard(c.ID).then(() => void refreshAtlas()).catch((err) => setShareError(String(err)))
-    },
+  const linkMenus = useAtlasLinkMenus({
+    t, allCards, allLinks, linkKinds: allLinkKinds, setMenu, drill,
+    onOpenCard: (id) => setOverlayCardID(id),
+    onError: setShareError,
+    requestLinkedCard: creationRequests.requestLinkedCard,
   })
-  const openCardMenu = (cardID: string, pos: { x: number; y: number }) => {
-    const card = allCards.find((c) => c.ID === cardID)
-    if (!card) return
-    const share = atlasCardShareActions(card, (message) => setShareError(message))
-    const place = isGroupCard(allCards, card)
-    setMenu({
-      x: pos.x,
-      y: pos.y,
-      items: [
-        ...(place ? [{ id: 'zoom', label: t('contextMenu.zoomIn'), run: () => drill(card.ID) }] : []),
-        { id: 'open', label: t('contextMenu.open'), run: () => setOverlayCardID(card.ID) },
-        { id: 'd1', divider: true },
-        { id: 'copy-context', label: t('share.copyContext'), run: () => void share.copyAsContext(false) },
-        { id: 'copy-link', label: t('share.copyCloudLink'), run: () => void share.copyCloudLink() },
-        ...(card.MirrorPath ? [{ id: 'reveal', label: t('share.revealFile'), run: () => void share.revealFile() }] : []),
-        { id: 'd2', divider: true },
-        { id: 'delete', label: t('overlay.delete'), danger: true, run: () => requestDelete(card) },
-      ],
-    })
-  }
 
   // The empty-board right-click (goal 0075's audit G3, superseded by
   // goal 0081 slice A2's rider b): direct-placement doors only -- the
@@ -247,25 +224,6 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
       items: [
         { id: 'add-card-here', label: t('contextMenu.addCardHere'), commandId: 'atlas.create.card', run: () => creationRequests.requestPlacement('card', pos) },
         { id: 'add-note-here', label: t('contextMenu.addNoteHere'), commandId: 'atlas.create.note', run: () => creationRequests.requestPlacement('note', pos) },
-      ],
-    })
-  }
-
-  // The artery right-click (goal 0075's audit G4): the two top-level
-  // cards it connects, each opening straight to its own page --
-  // per-link detail (which LinkKind, which real pair underneath an
-  // aggregated count) lives one zoom level down, on the cards
-  // themselves, not on this menu.
-  const openArteryMenu = (sourceID: string, targetID: string, pos: { x: number; y: number }) => {
-    const source = allCards.find((c) => c.ID === sourceID)
-    const target = allCards.find((c) => c.ID === targetID)
-    if (!source || !target) return
-    setMenu({
-      x: pos.x,
-      y: pos.y,
-      items: [
-        { id: 'open-source', label: t('contextMenu.openCard', { title: truncateTitle(source.Title) }), run: () => setOverlayCardID(source.ID) },
-        { id: 'open-target', label: t('contextMenu.openCard', { title: truncateTitle(target.Title) }), run: () => setOverlayCardID(target.ID) },
       ],
     })
   }
@@ -293,10 +251,6 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
       ],
     })
   }
-
-  const navigate = (id: string) => setViewedID(id)
-  const drill = (id: string) => setViewedID(id)
-  const openOverlay = (id: string) => setOverlayCardID(id)
 
   // Frame/multi-select context menus + their dissolve/delete-with-
   // promotion confirm dialogs (goal 0081 slice A2) -- split into its
@@ -441,9 +395,9 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
           focusRequest={focusRequest}
           onDrill={drill}
           onOpenOverlay={openOverlay}
-          onCardContextMenu={openCardMenu}
+          onCardContextMenu={linkMenus.openCardMenu}
           onPaneContextMenu={openPaneMenu}
-          onArteryContextMenu={openArteryMenu}
+          onArteryContextMenu={linkMenus.openArteryMenu}
           onNoteContextMenu={openNoteMenu}
           onFrameContextMenu={containmentMenus.openFrameMenu}
           onFrameInteriorContextMenu={containmentMenus.openFrameInteriorMenu}
@@ -452,6 +406,10 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
           promoteRequest={creationRequests.promoteRequest}
           groupRequest={creationRequests.groupRequest}
           onFocusHandled={() => setFocusRequest(null)}
+          onJumpToChip={(cardID) => {
+            const target = allCards.find((c) => c.ID === cardID)
+            if (target) jumpToCard(target, false)
+          }}
         />
       </div>
 
@@ -472,7 +430,8 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
       )}
       {importConfirm.dialog}
       <ContextMenu state={menu} onClose={() => setMenu(null)} />
-      {menuDeleteDialog}
+      {linkMenus.menuDeleteDialog}
+      {linkMenus.labelPopover}
       {noteDeleteDialog}
       {containmentMenus.dissolveDialog}
       {containmentMenus.deleteFrameDialog}
