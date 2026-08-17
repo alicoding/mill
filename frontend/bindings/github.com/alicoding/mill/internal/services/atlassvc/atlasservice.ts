@@ -100,9 +100,13 @@ export function CreateCard(kindID: string, title: string, note: string, fields: 
  * filename, parent from the drop context's frame/zoomed area, position
  * from the drop point) -- this method only resolves the one piece of
  * seeded-concept knowledge (which Kind) that must never live in
- * frontend source (atlasNoHardcode.test.ts).
+ * frontend source (atlasNoHardcode.test.ts). A duplicate is looked up
+ * against path's own checksum BEFORE the card is created, but never
+ * blocks creation -- an unreadable path just skips the checksum/
+ * duplicate check silently, same fail-open posture the folder-scan
+ * backfill takes.
  */
-export function CreateCardFromFileDrop(path: string, title: string, parentID: string, position: atlas$0.Position | null): $CancellablePromise<atlas$0.Card> {
+export function CreateCardFromFileDrop(path: string, title: string, parentID: string, position: atlas$0.Position | null): $CancellablePromise<$models.FileDropCreateResult> {
     return $Call.ByID(1912608055, path, title, parentID, position);
 }
 
@@ -417,9 +421,12 @@ export function RunCardAction(cardID: string, workflowID: string): $CancellableP
  * depth/count-capped, hidden entries and symlinks skipped
  * (fileread.Scan), each entry classified into a suggestion category by
  * extension (atlas.ClassifyScanExtension) with a humanized suggested
- * title (atlas.HumanizeFilename). Read-only: nothing is written to
- * Atlas by this call. root must not hold (or be held by) Mill's own
- * data (SetGuardedDataPaths).
+ * title (atlas.HumanizeFilename), and (goal 0088) flagged when its own
+ * content checksum matches an already-mirrored card. Read-only against
+ * Atlas's own cards (the opportunistic checksum backfill below is the
+ * one write this read-only-looking call makes, and it's additive
+ * metadata only, never a content change). root must not hold (or be
+ * held by) Mill's own data (SetGuardedDataPaths).
  */
 export function ScanFolder(root: string): $CancellablePromise<$models.FolderScanResult> {
     return $Call.ByID(130483307, root);
