@@ -112,4 +112,24 @@ export function useKeymapDispatch(): void {
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [])
+
+  // Listener 5, atlas.selectAll's own ⌘A (shared/atlasBoardCommands.ts):
+  // same reasoning as Listener 4 above -- ⌘A is ALSO the native
+  // select-all-text combo, so a generic dispatchCommandForEvent match
+  // (which preventDefaults unconditionally) would break it inside any
+  // Atlas input. Gated the same way Listener 3 gates bare C/N/A: atlas
+  // surface only, no open dialog, never an editable target.
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (!e.metaKey || e.ctrlKey || e.altKey || e.shiftKey) return
+      if (e.key.toUpperCase() !== 'A') return
+      if (useAppStore.getState().view.kind !== 'atlas') return
+      if (isEditableTarget(e.target)) return
+      if (document.querySelector('[role="dialog"]')) return
+      e.preventDefault()
+      findCommand('atlas.selectAll')?.run()
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [])
 }

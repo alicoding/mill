@@ -33,10 +33,14 @@ export default function KeyboardShortcutsSection() {
   const [query, setQuery] = useState('')
   const keybindingOverrides = useAppStore((s) => s.keybindingOverrides)
 
+  // hintOnly commands dispatch through a dedicated listener elsewhere,
+  // never this recorder -- rebinding one here would silently do
+  // nothing, so they're excluded from the list entirely.
+  const rebindable = COMMANDS.filter((c) => !c.hintOnly)
   const q = query.trim().toLowerCase()
   const filtered = q === ''
-    ? COMMANDS
-    : COMMANDS.filter((c) => c.label.toLowerCase().includes(q) || c.id.toLowerCase().includes(q))
+    ? rebindable
+    : rebindable.filter((c) => c.label.toLowerCase().includes(q) || c.id.toLowerCase().includes(q))
 
   return (
     <Stack direction="vertical" gap="condensed">

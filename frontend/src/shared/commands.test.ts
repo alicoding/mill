@@ -133,3 +133,34 @@ describe('surfacesIntersect', () => {
     expect(surfacesIntersect(['atlas', 'composition'], ['composition', 'configure'])).toBe(true)
   })
 })
+
+// shared/atlasBoardCommands.ts's hintOnly/paletteHidden commands: their
+// real dispatch lives in dedicated listeners elsewhere, never the
+// generic dispatcher below (Command.hintOnly's own doc comment).
+describe('hintOnly / paletteHidden commands', () => {
+  const event = (init: Partial<KeyboardEvent>) => init as KeyboardEvent
+
+  it('atlas.selectAll is hintOnly with its own ⌘A default binding', () => {
+    const command = findCommand('atlas.selectAll')
+    expect(command?.hintOnly).toBe(true)
+    expect(command?.defaultBinding).toEqual({ mods: ['cmd'], key: 'A' })
+  })
+
+  it('atlas.selectAll does not carry paletteHidden', () => {
+    expect(findCommand('atlas.selectAll')?.paletteHidden).toBeFalsy()
+  })
+
+  it('generic dispatch never runs atlas.selectAll, even on the atlas surface', () => {
+    useAppStore.getState().setView({ kind: 'atlas' })
+    const ran = dispatchCommandForEvent(event({ code: 'KeyA', metaKey: true }), {})
+    expect(ran).toBe(false)
+  })
+
+  it('atlas.delete.selection and atlas.group.selection are both hintOnly and paletteHidden', () => {
+    for (const id of ['atlas.delete.selection', 'atlas.group.selection']) {
+      const command = findCommand(id)
+      expect(command?.hintOnly).toBe(true)
+      expect(command?.paletteHidden).toBe(true)
+    }
+  })
+})

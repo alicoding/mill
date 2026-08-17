@@ -223,3 +223,50 @@ test('a workflow row shows its own hotkey-trigger combo inline; a non-hotkey tri
   await clickRowAction(page, workflowRow(page, manualLabel), 'Delete')
   await expect(workflowRow(page, manualLabel)).toHaveCount(0)
 })
+
+// shared/atlasBoardCommands.ts's new Atlas commands: every palette-
+// visible one is actually reachable by searching its exact label.
+test('every new Atlas command is reachable from the palette by its label', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Atlas' }).click()
+  await expect(page.getByTestId('atlas-board')).toBeVisible()
+
+  const labels = [
+    'Select all',
+    'Auto-arrange',
+    'Open lens',
+    'Import atlas',
+    'Export atlas',
+    'Add cards from a folder',
+    'Copy space as context',
+    'Copy space links',
+  ]
+  for (const label of labels) {
+    await page.keyboard.press('Meta+/')
+    await expect(paletteDialog(page)).toBeVisible()
+    await paletteDialog(page).getByRole('combobox').fill(label)
+    await expect(paletteDialog(page).getByRole('option', { name: label })).toBeVisible()
+    await page.keyboard.press('Escape')
+  }
+})
+
+// atlas.delete.selection/atlas.group.selection are paletteHidden --
+// they need a live, on-screen selection the palette can't supply, so
+// they're excluded here even though the Shortcuts Help overlay still
+// lists their hint chips (help-overlay.spec.ts).
+test('Delete selection and Group into a new area are excluded from the palette (paletteHidden)', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Atlas' }).click()
+  await expect(page.getByTestId('atlas-board')).toBeVisible()
+
+  await page.keyboard.press('Meta+/')
+  await expect(paletteDialog(page)).toBeVisible()
+
+  await paletteDialog(page).getByRole('combobox').fill('Delete selection')
+  await expect(paletteDialog(page).getByRole('option', { name: 'Delete selection' })).toHaveCount(0)
+
+  await paletteDialog(page).getByRole('combobox').fill('Group into a new area')
+  await expect(paletteDialog(page).getByRole('option', { name: 'Group into a new area' })).toHaveCount(0)
+
+  await page.keyboard.press('Escape')
+})

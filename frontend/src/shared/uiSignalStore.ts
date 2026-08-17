@@ -78,6 +78,28 @@ interface UISignalState {
   setAtlasUndoDeletePending: (pending: boolean) => void
   atlasUndoDeleteRequest: number
   requestAtlasUndoDelete: () => void
+  // The Atlas toolbar/board actions promoted into the command registry
+  // (shared/atlasBoardCommands.ts): same monotonic-counter shape as
+  // atlasMatrixRequest above -- each consuming component watches its
+  // own field via a ref-compared effect and runs the action a click
+  // already runs, so a command dispatched from the palette/keyboard
+  // does exactly what the toolbar button does.
+  atlasArrangeRequest: number
+  requestAtlasArrange: () => void
+  atlasImportRequest: number
+  requestAtlasImport: () => void
+  atlasExportRequest: number
+  requestAtlasExport: () => void
+  atlasAddFromFolderRequest: number
+  requestAtlasAddFromFolder: () => void
+  atlasShareCopyContextRequest: number
+  requestAtlasShareCopyContext: () => void
+  atlasShareCopyLinksRequest: number
+  requestAtlasShareCopyLinks: () => void
+  atlasLensOpenRequest: number
+  requestAtlasLensOpen: () => void
+  atlasSelectAllRequest: number
+  requestAtlasSelectAll: () => void
 }
 
 export const useUISignalStore = create<UISignalState>()((set) => ({
@@ -101,4 +123,20 @@ export const useUISignalStore = create<UISignalState>()((set) => ({
   setAtlasUndoDeletePending: (pending) => set({ atlasUndoDeletePending: pending }),
   atlasUndoDeleteRequest: 0,
   requestAtlasUndoDelete: () => set((s) => ({ atlasUndoDeleteRequest: s.atlasUndoDeleteRequest + 1 })),
+  atlasArrangeRequest: 0,
+  requestAtlasArrange: () => set((s) => ({ atlasArrangeRequest: s.atlasArrangeRequest + 1 })),
+  atlasImportRequest: 0,
+  requestAtlasImport: () => set((s) => ({ atlasImportRequest: s.atlasImportRequest + 1 })),
+  atlasExportRequest: 0,
+  requestAtlasExport: () => set((s) => ({ atlasExportRequest: s.atlasExportRequest + 1 })),
+  atlasAddFromFolderRequest: 0,
+  requestAtlasAddFromFolder: () => set((s) => ({ atlasAddFromFolderRequest: s.atlasAddFromFolderRequest + 1 })),
+  atlasShareCopyContextRequest: 0,
+  requestAtlasShareCopyContext: () => set((s) => ({ atlasShareCopyContextRequest: s.atlasShareCopyContextRequest + 1 })),
+  atlasShareCopyLinksRequest: 0,
+  requestAtlasShareCopyLinks: () => set((s) => ({ atlasShareCopyLinksRequest: s.atlasShareCopyLinksRequest + 1 })),
+  atlasLensOpenRequest: 0,
+  requestAtlasLensOpen: () => set((s) => ({ atlasLensOpenRequest: s.atlasLensOpenRequest + 1 })),
+  atlasSelectAllRequest: 0,
+  requestAtlasSelectAll: () => set((s) => ({ atlasSelectAllRequest: s.atlasSelectAllRequest + 1 })),
 }))

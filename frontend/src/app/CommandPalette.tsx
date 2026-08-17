@@ -305,13 +305,13 @@ export function CommandPalette() {
 
   const allEntries = useMemo<PaletteEntry[]>(() => {
     if (restState) {
-      const surfaceCommands = COMMANDS.filter((c) => c.surface?.includes(viewKind)).map(commandEntry)
+      const surfaceCommands = COMMANDS.filter((c) => c.surface?.includes(viewKind) && !c.paletteHidden).map(commandEntry)
       const navCommands = COMMANDS.filter((c) => isNavCommandId(c.id)).map(commandEntry)
       const topWorkflows = sortWorkflowsByPinnedAndFrecency(workflows ?? [], mostUsedRank, pinnedWorkflowIds).slice(0, REST_STATE_WORKFLOW_LIMIT)
       return [...surfaceCommands, ...navCommands, ...topWorkflows.flatMap(workflowEntries), ...workTabs.flatMap(tabEntries)]
     }
     return [
-      ...COMMANDS.filter((c) => !c.surface || c.surface.includes(viewKind)).map(commandEntry),
+      ...COMMANDS.filter((c) => (!c.surface || c.surface.includes(viewKind)) && !c.paletteHidden).map(commandEntry),
       ...sortWorkflowsByPinnedAndFrecency(workflows ?? [], mostUsedRank, pinnedWorkflowIds).flatMap(workflowEntries),
       ...workTabs.flatMap(tabEntries),
     ]

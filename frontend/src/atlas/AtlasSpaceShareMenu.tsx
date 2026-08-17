@@ -1,7 +1,7 @@
 import { useTranslation } from 'react-i18next'
 import { ActionList, ActionMenu } from '@primer/react'
 import { ShareIcon } from '@primer/octicons-react'
-import { AtlasService } from '../shared/bindings'
+import { atlasSpaceShareActions } from './atlasSpaceShareActions'
 
 // The space toolbar's own share affordance (goal 0063, ADR-0038): the
 // viewed space's mirror folder (reveal turns it into a STANDING
@@ -19,20 +19,7 @@ export function AtlasSpaceShareMenu({ spaceID, onError }: {
   onError: (message: string) => void
 }) {
   const { t } = useTranslation('atlas')
-
-  const revealFolder = () => {
-    AtlasService.RevealSpaceFolder(spaceID).catch((err) => onError(String(err)))
-  }
-  const bundleContext = (withAttachments: boolean) => {
-    AtlasService.SpaceBundleContext(spaceID, withAttachments)
-      .then((text) => navigator.clipboard.writeText(text))
-      .catch((err) => onError(String(err)))
-  }
-  const copyLinks = () => {
-    AtlasService.SpaceLinksList(spaceID)
-      .then((text) => navigator.clipboard.writeText(text))
-      .catch((err) => onError(String(err)))
-  }
+  const { revealFolder, bundleContext, copyLinks } = atlasSpaceShareActions(spaceID, onError)
 
   return (
     <ActionMenu>

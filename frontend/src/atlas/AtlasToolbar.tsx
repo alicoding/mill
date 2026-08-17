@@ -1,8 +1,9 @@
-import { useRef } from 'react'
+import { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@primer/react'
 import { ChecklistIcon, DownloadIcon, TableIcon, UploadIcon } from '@primer/octicons-react'
 import type { Card, Kind } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
+import { useUISignalStore } from '../shared/uiSignalStore'
 import { AtlasBreadcrumb } from './AtlasBreadcrumb'
 import { AtlasLensControl } from './AtlasLensControl'
 import { AtlasCreateMenu } from './AtlasCreateMenu'
@@ -55,6 +56,17 @@ export function AtlasToolbar({
 }) {
   const { t } = useTranslation('atlas')
   const importInputRef = useRef<HTMLInputElement>(null)
+
+  // atlas.import's own signal (shared/atlasBoardCommands.ts): a click
+  // from the palette/keyboard opens the SAME native file picker the
+  // toolbar's own Import button does.
+  const atlasImportRequest = useUISignalStore((s) => s.atlasImportRequest)
+  const lastImportRequest = useRef(atlasImportRequest)
+  useEffect(() => {
+    if (atlasImportRequest === lastImportRequest.current) return
+    lastImportRequest.current = atlasImportRequest
+    importInputRef.current?.click()
+  }, [atlasImportRequest])
 
   const handleImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]

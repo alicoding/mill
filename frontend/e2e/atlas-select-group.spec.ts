@@ -330,3 +330,71 @@ test('atlas shift-click select: toggle membership, group via member right-click,
     rmSync(dir, { recursive: true, force: true })
   }
 })
+
+// atlas.selectAll's own ⌘A (shared/atlasBoardCommands.ts, app/useKeymapDispatch.ts's
+// Listener 5): a dedicated, editable-target-guarded listener, not the
+// generic dispatcher -- proves both halves in one flow, native
+// select-all-text inside the jump dialog's own input stays untouched,
+// and a real board-level press selects every card.
+// eslint-disable-next-line no-empty-pattern -- this test needs `testInfo` (the second arg), not any fixture.
+test('atlas select-all (Cmd+A): guarded inside an editable field, selects every card on the board otherwise', async ({}, testInfo) => {
+  const idx = testInfo.parallelIndex
+  const dir = mkdtempSync(path.join(tmpdir(), `mill-e2e-atlas-select-all-${idx}-`))
+  const settingsPath = path.join(dir, 'settings.json')
+  const executionDbPath = path.join(dir, 'execution.db')
+  const backupDir = path.join(dir, 'backups')
+  const port = ATLAS_SELECT_GROUP_SERVER_BASE_PORT + idx
+  const mcpPort = ATLAS_SELECT_GROUP_MCP_BASE_PORT + idx
+
+  let server: SpawnedServer | undefined
+  const browser = await chromium.launch()
+  try {
+    server = await spawnMillServer({ port, mcpPort, settingsPath, executionDbPath, backupDir })
+    const page = await browser.newPage()
+    await page.goto(`${server.baseURL}/`)
+    await page.getByRole('link', { name: 'Atlas' }).click()
+    const board = page.getByTestId('atlas-board')
+    await expect(board).toBeVisible()
+    await zoomOutLight(page)
+
+    const popover = page.getByTestId('atlas-placement-popover')
+    await armAndPlaceTopicCard(page, board, popover, 0.25, 0.05, 'ZzA2eSelAllA')
+    await armAndPlaceTopicCard(page, board, popover, 0.55, 0.05, 'ZzA2eSelAllB')
+
+    const selected = page.locator('.react-flow__node.selected')
+
+    // Editable-target guard: Cmd+A inside the jump dialog's own search
+    // input is native browser select-all-text, never board select-all.
+    await page.keyboard.press('Meta+k')
+    const jumpInput = page.getByTestId('atlas-jump-input')
+    await expect(jumpInput).toBeFocused()
+    await jumpInput.press('Meta+a')
+    await expect(selected).toHaveCount(0)
+    await page.keyboard.press('Escape')
+
+    // Real dispatch: Cmd+A on the board selects EVERY top-level card at
+    // this level -- the seeded root ("My space") already carries 3
+    // (Example area, Getting started, Scratchpad; internal/domain/atlas/builtin.go),
+    // plus the 2 just placed.
+    await page.keyboard.press('Meta+a')
+    await expect(selected).toHaveCount(5)
+    const selectionTray = page.getByTestId('atlas-selection-tray')
+    await expect(selectionTray).toBeVisible()
+    await expect(page.getByTestId('atlas-selection-count')).toHaveText('5 selected')
+
+    // Cleanup (testing.md's within-file discipline): quick delete +
+    // clock-controlled toast expiry, same pattern this file's other
+    // test already uses.
+    await page.clock.install()
+    await page.keyboard.press('Delete')
+    await expect(noteCard(page, 'ZzA2eSelAllA')).toHaveCount(0)
+    await expect(noteCard(page, 'ZzA2eSelAllB')).toHaveCount(0)
+    const undoToast = page.getByTestId('atlas-undo-toast')
+    await expect(undoToast).toBeVisible()
+    await page.clock.fastForward('00:11')
+    await expect(undoToast).toHaveCount(0)
+  } finally {
+    await server?.stop()
+    rmSync(dir, { recursive: true, force: true })
+  }
+})
