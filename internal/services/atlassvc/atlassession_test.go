@@ -33,3 +33,17 @@ func TestAtlasSession_RoundTripsAndDegrades(t *testing.T) {
 		t.Fatalf("degraded session = %+v, want zero", got)
 	}
 }
+
+// The MILL_TEST_ATLAS_SESSION_OFF seam suppresses the read-back only:
+// writes persist, but a shared-server e2e page must always mount from
+// the zero state.
+func TestAtlasSession_EnvOffSuppressesReadBack(t *testing.T) {
+	svc := NewAtlasService(servicetest.NewFakeStore())
+	if err := svc.SetAtlasSession(AtlasSessionState{ViewedID: "anything"}); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("MILL_TEST_ATLAS_SESSION_OFF", "1")
+	if got := svc.AtlasSession(); got.ViewedID != "" || got.OpenCardID != "" {
+		t.Fatalf("session with kill-switch = %+v, want zero", got)
+	}
+}

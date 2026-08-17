@@ -1,6 +1,18 @@
 package atlassvc
 
-import "fmt"
+import (
+	"fmt"
+	"os"
+)
+
+// Restore kill-switch for shared-server e2e (same MILL_TEST_* seam
+// family as the folder-pick and dense-atlas overrides): with many
+// tests sharing one worker server, restore-on-mount hands each fresh
+// page wherever the previous test stood, and a client-side reset
+// cannot win the race against a closing page's trailing save. Saves
+// still persist normally; only the read-back is suppressed. The
+// dedicated session-restore spec runs its own server without this.
+const testAtlasSessionOffEnv = "MILL_TEST_ATLAS_SESSION_OFF"
 
 // AtlasSessionState is the map's where-you-were (goal 0091): the
 // viewed level and the open card page, persisted per-device beside
@@ -33,6 +45,9 @@ func (a *AtlasService) SetAtlasSession(state AtlasSessionState) error {
 // ancestor (root ultimately); a deleted open card is dropped. The
 // caller never has to handle a stale id.
 func (a *AtlasService) AtlasSession() AtlasSessionState {
+	if os.Getenv(testAtlasSessionOffEnv) != "" {
+		return AtlasSessionState{}
+	}
 	a.mu.RLock()
 	defer a.mu.RUnlock()
 	out := a.session
