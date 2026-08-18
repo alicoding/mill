@@ -103,18 +103,42 @@ func TestCheckIsolatedDataBadge(t *testing.T) {
 	})
 
 	t.Run("badge missing", func(t *testing.T) {
+		prev := badgePollTimeout
+		badgePollTimeout = 50 * time.Millisecond
+		defer func() { badgePollTimeout = prev }()
 		f := newFakeCaller()
 		f.onJSON("js_eval", false)
 		if _, err := checkIsolatedDataBadge(f); err == nil {
 			t.Fatal("expected an error when the badge is missing")
 		}
 	})
+
+	t.Run("scopes the query to the main window", func(t *testing.T) {
+		f := newFakeCaller()
+		f.onJSON("js_eval", true)
+		if _, err := checkIsolatedDataBadge(f); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if got := f.calls[0].args["window"]; got != mainWindowName {
+			t.Errorf("js_eval window arg = %v, want %q", got, mainWindowName)
+		}
+	})
+}
+
+// realWindows is the app's true three-window shape (ADR-0033) as
+// app_info reports it.
+func realWindows() []map[string]any {
+	return []map[string]any{
+		{"name": "main", "visible": true},
+		{"name": "quickpanel", "visible": false},
+		{"name": "approvalprompt", "visible": false},
+	}
 }
 
 func TestCheckAppInfo(t *testing.T) {
-	t.Run("darwin, one window", func(t *testing.T) {
+	t.Run("darwin, real three-window shape", func(t *testing.T) {
 		f := newFakeCaller()
-		f.onJSON("app_info", map[string]any{"os": "darwin", "windows": []map[string]any{{"name": "mill"}}})
+		f.onJSON("app_info", map[string]any{"os": "darwin", "windows": realWindows()})
 		detail, err := checkAppInfo(f)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
@@ -126,17 +150,35 @@ func TestCheckAppInfo(t *testing.T) {
 
 	t.Run("wrong os", func(t *testing.T) {
 		f := newFakeCaller()
-		f.onJSON("app_info", map[string]any{"os": "linux", "windows": []map[string]any{{"name": "mill"}}})
+		f.onJSON("app_info", map[string]any{"os": "linux", "windows": realWindows()})
 		if _, err := checkAppInfo(f); err == nil {
 			t.Fatal("expected an error for a non-darwin os")
 		}
 	})
 
-	t.Run("wrong window count", func(t *testing.T) {
+	t.Run("missing expected window", func(t *testing.T) {
 		f := newFakeCaller()
-		f.onJSON("app_info", map[string]any{"os": "darwin", "windows": []map[string]any{}})
+		f.onJSON("app_info", map[string]any{"os": "darwin", "windows": realWindows()[:2]})
 		if _, err := checkAppInfo(f); err == nil {
-			t.Fatal("expected an error for zero windows")
+			t.Fatal("expected an error when approvalprompt is missing")
+		}
+	})
+
+	t.Run("unexpected extra window", func(t *testing.T) {
+		f := newFakeCaller()
+		f.onJSON("app_info", map[string]any{"os": "darwin", "windows": append(realWindows(), map[string]any{"name": "mystery", "visible": true})})
+		if _, err := checkAppInfo(f); err == nil {
+			t.Fatal("expected an error for an unexpected window name")
+		}
+	})
+
+	t.Run("main window hidden", func(t *testing.T) {
+		f := newFakeCaller()
+		windows := realWindows()
+		windows[0]["visible"] = false
+		f.onJSON("app_info", map[string]any{"os": "darwin", "windows": windows})
+		if _, err := checkAppInfo(f); err == nil {
+			t.Fatal("expected an error when the main window is not visible")
 		}
 	})
 }
@@ -286,7 +328,9 @@ func TestCheckStickyBorderColorFlip(t *testing.T) {
 	t.Run("border-color and ring both flip on selection", func(t *testing.T) {
 		f := newFakeCaller()
 		f.onJSON("call_bound_method", seedCards)
+		f.on("js_eval", func(map[string]any) (string, error) { return "chained", nil }) // repairAppDispatch after Cards
 		f.onJSON("call_bound_method", map[string]any{"ID": "note-1"})
+		f.on("js_eval", func(map[string]any) (string, error) { return "intact", nil }) // repairAppDispatch after CreateNote
 		f.onJSON("js_eval", true) // pollJSEval: sticky rendered
 		f.onJSON("js_eval", stickySnapshot{BorderColor: "rgb(1,1,1)", BoxShadow: "none"})
 		f.on("mouse_click", func(map[string]any) (string, error) { return "ok", nil })

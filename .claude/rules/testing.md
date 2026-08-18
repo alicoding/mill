@@ -154,17 +154,29 @@ layer per capability," never "a seed per thing":
   poll. The earlier headless-windowing lead was never actually
   tested — the harness failed before the app could boot. With
   `syscall.Signal(0)` the local run connects and drives the real
-  registry (the click-model and selection-ring checks have passed
-  against the real WKWebView). What remains before the job means
-  anything: the CHECK REGISTRY was written blind against a
-  single-window assumption — Mill's desktop build opens multiple
-  windows (main + the Quick Panel's second window), so
-  `app-info-window-sane` and the bridge's window-ambiguous clicks
-  and badge locator need calibrating against the app's real window
-  shape (tracked as its own goal). Until that lands, the OPERATIVE
-  parity gate remains the LOCAL run, read with the registry's
-  current miscalibration in mind; the CI job stays wired,
-  non-required.
+  registry. **Calibrated (goal 0107): all six checks green, three
+  consecutive local runs.** The registry now asserts the app's real
+  three-window shape by NAME (main + quickpanel + approvalprompt;
+  the main window carries an explicit `Name: "main"` in main.go for
+  exactly this addressing), and every page-directed bridge call is
+  window-scoped via `withWindow` — the bridge's `window` parameter
+  defaults to "focused or first window", which with three windows
+  was the root of every flip-flopping check and the missed badge.
+  Second root cause, harness-repaired and upstream-worthy: the
+  bridge's `call_bound_method` tool imports a SECOND runtime
+  instance into the page (`await import('/wails/runtime.js')` in
+  its own implementation), which re-registers
+  `window._wails.dispatchWailsEvent` and permanently orphans the
+  app bundle's event listeners — all live-sync (and the footer
+  clock) dies at the first bound call. Every bound call in the
+  harness therefore goes through `callBoundJSON`, which re-chains
+  the captured app dispatcher (`captureAppDispatch` /
+  `repairAppDispatch`, checks.go). This defect is bridge-client
+  triggered only — a desktop build nobody drives over MCP never
+  imports the second instance — but any future agent-drives-the-
+  desktop-app work must reuse the same repair. CI job: stays wired,
+  non-required, promote after a green track record on the
+  calibrated registry.
 - **Manual-only registry** — OS-bound checks (hotkey delivery, real
   clipboard, tray) listed explicitly with reasons, never silently
   absent (see goal 0010's enforcement). Non-seed instance: the
