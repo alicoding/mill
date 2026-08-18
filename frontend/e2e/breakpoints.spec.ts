@@ -85,7 +85,7 @@ test('A breakpoint pauses a run with edit-and-resume; Resume continues it with t
 
   const bar = activePanel(page).getByTestId('current-step-bar')
   await expect(bar).toContainText('Paused at breakpoint', { timeout: 15_000 })
-  await expect(bar).toContainText('Capture')
+  await expect(bar).toContainText('Read attribute')
 
   // Edit-and-resume (item 4): override amount to a HIGH value before
   // resuming -- the Branch node reads it fresh, after this park.
@@ -114,7 +114,7 @@ test('Step mode pauses before every node; Step advances one, Continue finishes t
   // step mode, proving the gate is consulted for every node regardless
   // of its effect class (the ADR's own flagged open question).
   await expect(bar).toContainText('Paused — step mode', { timeout: 15_000 })
-  await expect(bar).toContainText('Capture')
+  await expect(bar).toContainText('Read attribute')
   await expect(bar.getByTestId('canvas-step')).toBeVisible()
 
   await bar.getByTestId('canvas-step').click()
