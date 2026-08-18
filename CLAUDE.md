@@ -43,7 +43,17 @@ does, what every label and empty state says (copy included), and what
 changes visibly on each state transition. The agent's discretion is
 implementation (code structure, test mechanics) — never what the
 user sees. If a design question surfaces mid-build, the agent reports
-it back rather than deciding it.
+it back rather than deciding it. **The discretion list is closed-world
+(owner-restated 2026-08-17: a subagent "doesn't reason the same way
+as you — if you let them decide, you are the one failing to
+conduct"):** a brief ENUMERATES what is implementation discretion;
+everything outside that enumeration — scope-outs, exclusions,
+thresholds, binding/gesture changes, anything "forced by a test
+failure" — is a STOP-and-report, never a resolved-with-reasoning
+deviation. A test failure justifies stopping, not deciding. An agent
+report containing decisions it "resolved rather than stopping on" is
+a brief-authoring defect to fix in the next brief, even when the
+calls happen to be right.
 
 ## Goal backlog: `docs/goals/BACKLOG.md` is the delivery queue
 
