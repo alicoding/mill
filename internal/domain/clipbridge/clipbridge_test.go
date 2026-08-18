@@ -189,3 +189,27 @@ func TestEnvelopeAndReplyStayDistinguishable(t *testing.T) {
 		t.Fatal("a context envelope must not validate as a reply")
 	}
 }
+
+// Regression (CodeQL: unsafe quoting class): a kind label carrying
+// quotes/JSON metacharacters must land as an inert enum VALUE -- it can
+// never alter the schema document's structure, because the schema is
+// built structurally, not by string formatting.
+func TestReplySchema_HostileLabelsStayInert(t *testing.T) {
+	hostile := `x"],"$ref":"https://evil.example/schema"}//`
+	raw, err := ReplySchema([]string{hostile, "Topic"}, V1Actions())
+	if err != nil {
+		t.Fatalf("ReplySchema: %v", err)
+	}
+	var doc map[string]any
+	if err := json.Unmarshal(raw, &doc); err != nil {
+		t.Fatalf("schema no longer parses: %v", err)
+	}
+	defs := doc["$defs"].(map[string]any)["item"].(map[string]any)
+	kindEnum := defs["properties"].(map[string]any)["kind"].(map[string]any)["enum"].([]any)
+	if len(kindEnum) != 2 || kindEnum[0] != hostile {
+		t.Fatalf("hostile label mangled or lost: %v", kindEnum)
+	}
+	if strings.Contains(string(raw), "evil.example\"}") {
+		t.Fatal("label content escaped its enum string")
+	}
+}
