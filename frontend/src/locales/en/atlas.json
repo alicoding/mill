@@ -169,7 +169,8 @@
     "runStarted": "Started",
     "actionRunError": "Couldn't start the action. Try again.",
     "removeAction": "Remove action",
-    "actionsHint": "Each action receives this card's id, kind, and title."
+    "actionsHint": "Each action receives this card's id, kind, and title.",
+    "copyForAI": "Copy for AI"
   },
   "page": {
     "close": "Close ⨯",

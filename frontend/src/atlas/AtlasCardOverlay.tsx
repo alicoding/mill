@@ -86,6 +86,7 @@ export function AtlasCardOverlay({ card, kinds, allCards, links, linkKinds, onCl
   const [receiptStatus, setReceiptStatus] = useState<string | null>(null)
   const [includeAttachments, setIncludeAttachments] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [copiedAI, setCopiedAI] = useState(false)
   const [shareError, setShareError] = useState('')
   const shareActions = atlasCardShareActions(displayedCard, (message) => setShareError(message))
   // D5 (goal 0081 slice A3): a file dropped while this page is open
@@ -113,6 +114,12 @@ export function AtlasCardOverlay({ card, kinds, allCards, links, linkKinds, onCl
     await shareActions.copyAsContext(includeAttachments)
     setCopied(true)
     setTimeout(() => setCopied(false), 1500)
+  }
+
+  const copyForAI = async () => {
+    await shareActions.copyForAI()
+    setCopiedAI(true)
+    setTimeout(() => setCopiedAI(false), 1500)
   }
 
   useEffect(() => {
@@ -295,6 +302,8 @@ export function AtlasCardOverlay({ card, kinds, allCards, links, linkKinds, onCl
             onIncludeAttachmentsChange={setIncludeAttachments}
             copied={copied}
             onCopyContext={() => void copyContext()}
+            copiedAI={copiedAI}
+            onCopyForAI={() => void copyForAI()}
             onCopyLink={() => void shareActions.copyCloudLink()}
           />
         </div>

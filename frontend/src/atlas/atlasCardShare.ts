@@ -20,6 +20,15 @@ export function atlasCardShareActions(card: Card, onError: (message: string) => 
     }
   }
 
+  const copyForAI = async (): Promise<void> => {
+    try {
+      const envelope = await AtlasService.CardContextEnvelope(card.ID)
+      await navigator.clipboard.writeText(envelope)
+    } catch (err) {
+      onError(String(err))
+    }
+  }
+
   const copyCloudLink = async (): Promise<void> => {
     try {
       await navigator.clipboard.writeText(card.Source)
@@ -36,5 +45,5 @@ export function atlasCardShareActions(card: Card, onError: (message: string) => 
     }
   }
 
-  return { copyAsContext, copyCloudLink, revealFile }
+  return { copyAsContext, copyForAI, copyCloudLink, revealFile }
 }

@@ -19,7 +19,7 @@ import styles from './AtlasCardPage.module.css'
 // matching the canvas card menu -- this row used to duplicate it.
 export function AtlasCardPageMetaRail({
   card, updating, onUpdateNow, receiptStatus, onOpenRun,
-  includeAttachments, onIncludeAttachmentsChange, copied, onCopyContext, onCopyLink,
+  includeAttachments, onIncludeAttachmentsChange, copied, onCopyContext, copiedAI, onCopyForAI, onCopyLink,
 }: {
   card: Card
   updating: boolean
@@ -30,6 +30,8 @@ export function AtlasCardPageMetaRail({
   onIncludeAttachmentsChange: (checked: boolean) => void
   copied: boolean
   onCopyContext: () => void
+  copiedAI: boolean
+  onCopyForAI: () => void
   onCopyLink: () => void
 }) {
   const { t } = useTranslation('atlas')
@@ -88,6 +90,9 @@ export function AtlasCardPageMetaRail({
         <Stack direction="horizontal" gap="condensed" className={styles.metaShareRow}>
           <PrimerLink as="button" type="button" data-testid="atlas-overlay-copy-context" onClick={onCopyContext}>
             {copied ? <CheckIcon size={12} /> : <CopyIcon size={12} />} {copied ? t('overlay.copied') : t('overlay.copyAsContext')}
+          </PrimerLink>
+          <PrimerLink as="button" type="button" data-testid="atlas-overlay-copy-for-ai" onClick={onCopyForAI}>
+            {copiedAI ? <CheckIcon size={12} /> : <CopyIcon size={12} />} {copiedAI ? t('overlay.copied') : t('overlay.copyForAI')}
           </PrimerLink>
           {card.Source && (
             <PrimerLink as="button" type="button" data-testid="atlas-overlay-copy-link" onClick={onCopyLink}>

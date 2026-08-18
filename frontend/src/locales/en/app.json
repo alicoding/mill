@@ -61,7 +61,8 @@
       "failed": "\"{{label}}\" failed: {{error}}",
       "started": "Started \"{{label}}\"",
       "appliedUpdated": "Updated \"{{label}}\"",
-      "appliedCreated": "Created \"{{label}}\""
+      "appliedCreated": "Created \"{{label}}\"",
+      "replyApplied": "Done — {{label}}"
     },
     "clipboard": {
       "emptyError": "Clipboard is empty -- copy a workflow export first",
@@ -183,5 +184,19 @@
     "body": "{{count}} tab{{plural}} {{has}} unsaved changes.",
     "confirm": "Close tabs",
     "cancel": "Cancel"
+  },
+  "quickPanelReplyReview": {
+    "title": "Review this reply before anything is created",
+    "invalidTitle": "This reply doesn't match what Mill asked for",
+    "invalidFallback": "The reply could not be validated.",
+    "copyCorrection": "Copy corrected context",
+    "correctionCopied": "Copied — paste it back to the AI",
+    "collision": "Already exists as {{kind}} — unchecked so nothing is overwritten",
+    "collisionGenericKind": "a card",
+    "confirmCards": "Create {{count}} cards",
+    "confirmCards_one": "Create 1 card",
+    "confirmNote": "Save to Scratchpad",
+    "errorTitle": "That didn't work",
+    "runFailed": "The workflow run ended with status {{status}}."
   }
 }
