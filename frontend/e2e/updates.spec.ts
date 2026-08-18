@@ -7,6 +7,8 @@ import {
   type SpawnedServer,
   UPDATES_BETA_MCP_BASE_PORT,
   UPDATES_BETA_SERVER_BASE_PORT,
+  UPDATES_CHANNEL_PREF_MCP_BASE_PORT,
+  UPDATES_CHANNEL_PREF_SERVER_BASE_PORT,
   UPDATES_RELEASE_MCP_BASE_PORT,
   UPDATES_RELEASE_SERVER_BASE_PORT,
   UPDATES_SOURCE_MCP_BASE_PORT,
@@ -142,6 +144,41 @@ test('Beta-channel build shows the primary Update now button and the beta channe
     await expect(card.getByTestId('update-now')).toBeVisible()
     await expect(card.getByTestId('update-now')).toHaveText('Update now')
     await expect(card).not.toContainText('This copy was built from source')
+
+    await page.close()
+  } finally {
+    await server?.stop()
+    if (dir) rmSync(dir, { recursive: true, force: true })
+    await browser.close()
+  }
+})
+
+// The channel opt-in (goal 0100 follow-up slice): a
+// source-built copy can point the updater at the beta feed. The
+// preference persists to the settings store and applies on the next
+// boot (the provider's feed is fixed at Init), so the UI must say so
+// -- this pins the select, the saved-note, and persistence across a
+// reload.
+// eslint-disable-next-line no-empty-pattern -- this test needs `testInfo` (the second arg), not any fixture.
+test('Update-channel preference saves, explains the restart, and survives a reload', async ({}, testInfo) => {
+  const idx = testInfo.parallelIndex
+  let server: SpawnedServer | undefined
+  let dir: string | undefined
+  const browser = await chromium.launch()
+  try {
+    ;({ server, dir } = await spawnUpdatesServer(idx, UPDATES_CHANNEL_PREF_SERVER_BASE_PORT, UPDATES_CHANNEL_PREF_MCP_BASE_PORT, {}))
+    const page = await browser.newPage()
+    await page.goto(`${server.baseURL}/`)
+    await page.getByRole('link', { name: 'Settings' }).click()
+
+    const select = page.getByTestId('update-channel-select')
+    await expect(select).toHaveValue('')
+    await select.selectOption('beta')
+    await expect(page.getByTestId('update-channel-saved')).toContainText('Restart Mill')
+
+    await page.reload()
+    await page.getByRole('link', { name: 'Settings' }).click()
+    await expect(page.getByTestId('update-channel-select')).toHaveValue('beta')
 
     await page.close()
   } finally {

@@ -212,3 +212,57 @@ func TestRestartApp_RefusesWithoutConfiguredUpdater(t *testing.T) {
 		t.Fatal("RestartApp() with no updater configured: want an error, got nil")
 	}
 }
+
+func TestUpdateChannelPreference_PersistsAndValidates(t *testing.T) {
+	set := newTestSettingsService(t)
+	if got := set.UpdateChannelPreference(); got != "" {
+		t.Errorf("UpdateChannelPreference() with nothing stored = %q, want empty", got)
+	}
+	if err := set.SetUpdateChannelPreference("beta"); err != nil {
+		t.Fatalf("SetUpdateChannelPreference(beta): %v", err)
+	}
+	if got := set.UpdateChannelPreference(); got != "beta" {
+		t.Errorf("UpdateChannelPreference() = %q, want beta", got)
+	}
+	if err := set.SetUpdateChannelPreference("nightly"); err == nil {
+		t.Error("SetUpdateChannelPreference(nightly) must reject an unknown channel")
+	}
+	if err := set.SetUpdateChannelPreference(""); err != nil {
+		t.Fatalf("SetUpdateChannelPreference(\"\") must clear the override: %v", err)
+	}
+	if got := set.UpdateChannelPreference(); got != "" {
+		t.Errorf("UpdateChannelPreference() after clear = %q, want empty", got)
+	}
+}
+
+// The opt-in a source-built copy uses to follow the beta feed: the
+// persisted preference wins over the build stamp; no preference means
+// the stamp passes through untouched.
+func TestResolveUpdateChannel_PreferenceWinsOverBuildStamp(t *testing.T) {
+	set := newTestSettingsService(t)
+	if got := set.ResolveUpdateChannel("source"); got != "source" {
+		t.Errorf("ResolveUpdateChannel(source) with no preference = %q, want source", got)
+	}
+	if err := set.SetUpdateChannelPreference("beta"); err != nil {
+		t.Fatalf("SetUpdateChannelPreference: %v", err)
+	}
+	if got := set.ResolveUpdateChannel("source"); got != "beta" {
+		t.Errorf("ResolveUpdateChannel(source) with beta preference = %q, want beta", got)
+	}
+}
+
+// The install guard follows the RESOLVED channel: a source build whose
+// user opted into the beta feed passes the channel gate (and then hits
+// the updater-nil check in this headless test, same shape as the
+// existing beta-channel case above).
+func TestDownloadAndInstallUpdate_SourceBuildWithBetaPreferencePassesGate(t *testing.T) {
+	set := newTestSettingsService(t)
+	if err := set.SetUpdateChannelPreference("beta"); err != nil {
+		t.Fatalf("SetUpdateChannelPreference: %v", err)
+	}
+	set.SetUpdateChannel(set.ResolveUpdateChannel("source"))
+	err := set.DownloadAndInstallUpdate()
+	if err == nil || strings.Contains(err.Error(), "built from source") {
+		t.Errorf("DownloadAndInstallUpdate() = %v, want it past the channel refusal", err)
+	}
+}

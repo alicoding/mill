@@ -70,6 +70,10 @@ export const UPDATES_RELEASE_SERVER_BASE_PORT = 9790
 export const UPDATES_RELEASE_MCP_BASE_PORT = 9810
 export const UPDATES_BETA_SERVER_BASE_PORT = 9815
 export const UPDATES_BETA_MCP_BASE_PORT = 9825
+// The channel-preference opt-in test: persists a store value and
+// reloads, so it needs its own server like the other updates cases.
+export const UPDATES_CHANNEL_PREF_SERVER_BASE_PORT = 10360
+export const UPDATES_CHANNEL_PREF_MCP_BASE_PORT = 10380
 // guardrail-authoring.spec.ts's own dedicated pair (goal 0078): the
 // full rule-from-park -> unstick -> audit-edit -> policy-removed loop
 // asserts exact rule counts/groupings in the Rules audit view, which

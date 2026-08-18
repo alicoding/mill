@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Button, Stack, Text } from '@primer/react'
+import { Button, FormControl, Select, Stack, Text } from '@primer/react'
 import { SettingsService } from '../shared/bindings'
 import styles from '../shared/ListCard.module.css'
 import monoStyles from '../shared/monoText.module.css'
@@ -29,11 +29,22 @@ function UpdatesSection() {
   const [updateResult, setUpdateResult] = useState<UpdateResult | null>(null)
   const [installState, setInstallState] = useState<InstallState>('idle')
   const [installError, setInstallError] = useState('')
+  const [channelPref, setChannelPref] = useState('')
+  const [channelSaved, setChannelSaved] = useState(false)
 
   useEffect(() => {
     SettingsService.AppVersion().then(setAppVersion).catch(console.error)
     SettingsService.UpdateChannel().then((c) => setChannel(c as Channel)).catch(console.error)
+    SettingsService.UpdateChannelPreference().then(setChannelPref).catch(console.error)
   }, [])
+
+  const saveChannelPref = (pref: string) => {
+    setChannelPref(pref)
+    setChannelSaved(false)
+    SettingsService.SetUpdateChannelPreference(pref)
+      .then(() => setChannelSaved(true))
+      .catch((err) => setStatus(String(err)))
+  }
 
   const checkForUpdates = () => {
     setChecking(true)
@@ -82,6 +93,25 @@ function UpdatesSection() {
       <Text size="small" className={styles.muted} data-testid="current-app-version">
         {t('settings.updates.currentVersion', { version: appVersion })} · {channelLabel}
       </Text>
+
+      <FormControl>
+        <FormControl.Label>{t('settings.updates.channelPickerLabel')}</FormControl.Label>
+        <Select
+          size="small"
+          value={channelPref}
+          onChange={(e) => saveChannelPref(e.target.value)}
+          data-testid="update-channel-select"
+        >
+          <Select.Option value="">{t('settings.updates.channelDefault')}</Select.Option>
+          <Select.Option value="beta">{t('settings.updates.channelOptionBeta')}</Select.Option>
+          <Select.Option value="release">{t('settings.updates.channelOptionRelease')}</Select.Option>
+        </Select>
+      </FormControl>
+      {channelSaved && (
+        <Text size="small" className={styles.muted} data-testid="update-channel-saved">
+          {t('settings.updates.channelSaved')}
+        </Text>
+      )}
 
       <Stack direction="horizontal" gap="condensed" align="center">
         <Button size="small" onClick={checkForUpdates} disabled={checking} data-testid="check-for-updates">
