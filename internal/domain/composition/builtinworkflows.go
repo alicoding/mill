@@ -489,7 +489,8 @@ func BuiltInWorkflows() []Workflow {
 	workflows = append(workflows, builtInFileMoveWorkflows()...)
 	// goal 0099: the clipboard bridge's two seeded routes, same
 	// split-file reasoning.
-	return append(workflows, builtInClipbridgeWorkflows()...)
+	workflows = append(workflows, builtInClipbridgeWorkflows()...)
+	return append(workflows, builtInDocsSyncWorkflows()...)
 }
 
 // ExampleChildWorkflowID is exported so the parent seed above and any

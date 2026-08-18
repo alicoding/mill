@@ -2552,6 +2552,75 @@
       "Complexity": "advanced"
     },
     {
+      "ID": "apply-atlas-docs-sync",
+      "Kind": "apply",
+      "Label": "Atlas: sync docs folder",
+      "Description": "Mirrors every markdown file in a folder as a card under one parent: a file already mirrored keeps its card (checksum refreshed), a new file becomes a new card, so re-running stays safe. The parent card is found by title, or created when missing.",
+      "ConfigFields": [
+        {
+          "Key": "folderPath",
+          "Label": "Folder path",
+          "Type": "text",
+          "Required": false,
+          "Default": "",
+          "Description": "Folder whose markdown files become mirror cards.",
+          "Options": null,
+          "Suggestions": null,
+          "Secret": false,
+          "RefKind": "",
+          "Multiline": false,
+          "SystemManaged": false
+        },
+        {
+          "Key": "parentTitle",
+          "Label": "Parent card title",
+          "Type": "text",
+          "Required": false,
+          "Default": "",
+          "Description": "Cards land under the card with this title, created if missing. Empty uses the space root.",
+          "Options": null,
+          "Suggestions": null,
+          "Secret": false,
+          "RefKind": "",
+          "Multiline": false,
+          "SystemManaged": false
+        },
+        {
+          "Key": "kindLabel",
+          "Label": "Kind",
+          "Type": "text",
+          "Required": false,
+          "Default": "",
+          "Description": "Kind label for created cards. Empty uses your first kind.",
+          "Options": null,
+          "Suggestions": null,
+          "Secret": false,
+          "RefKind": "",
+          "Multiline": false,
+          "SystemManaged": false
+        },
+        {
+          "Key": "outputAttribute",
+          "Label": "Output attribute (optional)",
+          "Type": "text",
+          "Required": false,
+          "Default": "",
+          "Description": "Which Attributes field receives a summary of what changed.",
+          "Options": null,
+          "Suggestions": null,
+          "Secret": false,
+          "RefKind": "",
+          "Multiline": false,
+          "SystemManaged": false
+        }
+      ],
+      "Output": "payload unchanged; a sync-summary JSON -\u003e the output attribute, if named",
+      "Effect": "local",
+      "Declared": false,
+      "PaletteGroup": "",
+      "Complexity": "basic"
+    },
+    {
       "ID": "apply-atlas-from-reply",
       "Kind": "apply",
       "Label": "Atlas: create from reply items",
@@ -4236,6 +4305,75 @@
       "Declared": false,
       "PaletteGroup": "",
       "Complexity": "advanced"
+    },
+    {
+      "ID": "apply-atlas-docs-sync",
+      "Kind": "apply",
+      "Label": "Atlas: sync docs folder",
+      "Description": "Mirrors every markdown file in a folder as a card under one parent: a file already mirrored keeps its card (checksum refreshed), a new file becomes a new card, so re-running stays safe. The parent card is found by title, or created when missing.",
+      "ConfigFields": [
+        {
+          "Key": "folderPath",
+          "Label": "Folder path",
+          "Type": "text",
+          "Required": false,
+          "Default": "",
+          "Description": "Folder whose markdown files become mirror cards.",
+          "Options": null,
+          "Suggestions": null,
+          "Secret": false,
+          "RefKind": "",
+          "Multiline": false,
+          "SystemManaged": false
+        },
+        {
+          "Key": "parentTitle",
+          "Label": "Parent card title",
+          "Type": "text",
+          "Required": false,
+          "Default": "",
+          "Description": "Cards land under the card with this title, created if missing. Empty uses the space root.",
+          "Options": null,
+          "Suggestions": null,
+          "Secret": false,
+          "RefKind": "",
+          "Multiline": false,
+          "SystemManaged": false
+        },
+        {
+          "Key": "kindLabel",
+          "Label": "Kind",
+          "Type": "text",
+          "Required": false,
+          "Default": "",
+          "Description": "Kind label for created cards. Empty uses your first kind.",
+          "Options": null,
+          "Suggestions": null,
+          "Secret": false,
+          "RefKind": "",
+          "Multiline": false,
+          "SystemManaged": false
+        },
+        {
+          "Key": "outputAttribute",
+          "Label": "Output attribute (optional)",
+          "Type": "text",
+          "Required": false,
+          "Default": "",
+          "Description": "Which Attributes field receives a summary of what changed.",
+          "Options": null,
+          "Suggestions": null,
+          "Secret": false,
+          "RefKind": "",
+          "Multiline": false,
+          "SystemManaged": false
+        }
+      ],
+      "Output": "payload unchanged; a sync-summary JSON -\u003e the output attribute, if named",
+      "Effect": "local",
+      "Declared": false,
+      "PaletteGroup": "",
+      "Complexity": "basic"
     },
     {
       "ID": "apply-atlas-from-reply",

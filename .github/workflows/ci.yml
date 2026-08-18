@@ -228,7 +228,7 @@ jobs:
       # job for the full reasoning). Reuses the binary the action above
       # already installed onto PATH. Requires the full-history checkout
       # this job's own fetch-depth: 0 provides (merge-base needs it).
-      - run: golangci-lint run . ./internal/... --build-tags=server --enable-only gocognit --new-from-merge-base=origin/main
+      - run: golangci-lint run . ./internal/... --build-tags=server --enable-only gocognit --new-from-merge-base=origin/main --tests=false
 
   build-go:
     needs: [changes, frontend]

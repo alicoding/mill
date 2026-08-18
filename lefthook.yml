@@ -63,8 +63,10 @@ pre-commit:
       # over the threshold (burn-down in the goal file), so the gate
       # scopes to the merge-base diff instead of failing every build
       # or inflating the threshold into meaninglessness. Threshold
-      # lives in .golangci.yml's gocognit settings.
-      run: golangci-lint run . ./internal/... --build-tags=server --enable-only gocognit --new-from-merge-base=origin/main
+      # lives in .golangci.yml's gocognit settings; --tests=false is
+      # the goal file's own recorded verdict (seeded-example tests
+      # dominate the noise; production code is the gate's subject).
+      run: golangci-lint run . ./internal/... --build-tags=server --enable-only gocognit --new-from-merge-base=origin/main --tests=false
     - name: go-test
       glob: "*.go"
       # Root package (`.`) included alongside ./internal/... -- the
