@@ -8,7 +8,8 @@ import {
   spawnMillServer,
   type SpawnedServer,
 } from './fixtures/server'
-import { clickAtFraction, waitForViewportStable } from './fixtures/animation'
+import { waitForViewportStable } from './fixtures/animation'
+import { clickFrameGutter } from './fixtures/atlasBoard'
 
 // Atlas at real-world density (goal 0073): the one-map board against
 // the deterministic dense fixture (61 cards, 25 links, nested areas)
@@ -181,7 +182,7 @@ test('a dense area previews bounded: capped tiles, region chips, a truthful ghos
     // clickAtFraction samples the frame's GROUP_PADDING gutter as a
     // fraction of its current box instead.
     await waitForViewportStable(board)
-    await clickAtFraction(velocity, 0.01, 0.5, { modifiers: ['Meta'] })
+    await clickFrameGutter(velocity, { modifiers: ['Meta'] })
     const overlay = page.locator('[data-component="atlas-card-overlay"]')
     await expect(overlay).toBeVisible()
     await expect.poll(() => pageChildCount(overlay)).toBe(12)
@@ -208,7 +209,7 @@ test('a dense area previews bounded: capped tiles, region chips, a truthful ghos
     // Past the cap: 11 visible (limit-1) plus an honest "Show 5 more"
     // -- clicking it renders all 16, the expander gone.
     await waitForViewportStable(board)
-    await clickAtFraction(velocity, 0.01, 0.5, { modifiers: ['Meta'] })
+    await clickFrameGutter(velocity, { modifiers: ['Meta'] })
     await expect(overlay).toBeVisible()
     await expect.poll(() => pageChildCount(overlay)).toBe(11)
     const showMore = overlay.getByTestId('atlas-page-show-more')

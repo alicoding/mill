@@ -10,8 +10,7 @@ import {
 } from './fixtures/server'
 import { deleteViaPageMenu } from './fixtures/atlasPage'
 import { ATLAS_KIND_TOPIC, selectKind } from './fixtures/kindPicker'
-import { groupCard, noteCard, openCard } from './fixtures/atlasBoard'
-import { clickAtFraction } from './fixtures/animation'
+import { groupCard, noteCard, openCard, clickFrameGutter } from './fixtures/atlasBoard'
 
 // Atlas card page read-is-edit + chip navigation (goal 0081 slice A5,
 // LOCKED design §5b): every field editable in place with a per-save
@@ -147,7 +146,7 @@ test('atlas card page: read-is-edit fields, kind-gated mirror controls, page lin
     // edge, unclickable at a fixed fraction of its own bounding box. ---
     await page.getByRole('button', { name: 'Fit View' }).click()
     const exampleAreaFrame = groupCard(page, 'Example area')
-    await clickAtFraction(exampleAreaFrame, 0.01, 0.5, { modifiers: ['Meta'] })
+    await clickFrameGutter(exampleAreaFrame, { modifiers: ['Meta'] })
     await expect(overlay).toBeVisible()
     const childRow = overlay.getByTestId('atlas-page-child').filter({ hasText: 'Ada Lovelace' })
     await expect(childRow).toBeVisible()

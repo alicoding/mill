@@ -1,8 +1,8 @@
 import { test, expect } from './fixtures/server'
 import { groupCard, noteCard } from './fixtures/atlasCards'
-import { clickCorner, zoomAllTheWayOut } from './fixtures/atlasBoard'
+import { clickCorner, zoomAllTheWayOut, clickFrameGutter } from './fixtures/atlasBoard'
 import { contextMenu } from './fixtures/contextMenu'
-import { clickAtFraction, waitForViewportStable } from './fixtures/animation'
+import { waitForViewportStable } from './fixtures/animation'
 
 // The click model (goal 0102's gesture table) + surface-scoped
 // shortcuts (goal 0071 slice): plain click selects/replaces, a second
@@ -124,7 +124,7 @@ test('a real double-click reproduces the same select-then-commit outcome as two 
   // stays inside the gutter regardless of the board's own zoom scale,
   // which shifts with the seeded card count (goal 0095 slice 3).
   const exampleArea = groupCard(page, 'Example area')
-  await clickAtFraction(exampleArea, 0.01, 0.5, { clickCount: 2 })
+  await clickFrameGutter(exampleArea, { clickCount: 2 })
   await expect(page.getByTestId('atlas-breadcrumb')).toContainText('Example area')
 
   // ⌘↑ = one step up the depth ladder (atlas.up, Finder's enclosing-
