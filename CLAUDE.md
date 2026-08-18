@@ -28,6 +28,17 @@ subagents start cold and can't make the judgment calls the orchestrator
 context holds. If a task can't be specified tightly enough for Sonnet
 to execute against objective checks, that's a sign it's still
 design work — do it in the main session, don't delegate it.
+**The inverse threshold also holds (owner-stated 2026-08-17): when
+the platform's composability makes a feature small enough that the
+brief would cost as much as the diff, delegation is pure overhead —
+Fable builds it directly.** Delegation exists for BULK, not for
+ceremony; as more features become thin compositions over adopted
+commodities, expect the delegated share to shrink from both ends
+(trivial → direct; bulky-mechanical stays delegated). The measure of
+platform maturity is the brief-to-diff ratio trending toward 1 on
+feature work — and the orchestrator's irreplaceable share
+concentrating in the kernel and the seams between compositions,
+which is where it belongs.
 
 **Design/UX/spec contracts are the orchestrator's own work-product —
 never delegated (owner-directed 2026-08-15, after a day of live UX
