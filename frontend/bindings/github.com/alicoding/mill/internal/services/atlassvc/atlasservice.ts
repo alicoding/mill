@@ -261,6 +261,19 @@ export function DetectSyncRoots(): $CancellablePromise<string[] | null> {
 }
 
 /**
+ * DiffPerspectives computes what changed moving from fromID's own
+ * membership to toID's (goal 0095 slice 3's Compare view): a thin
+ * bound wrapper over the pure atlas.DiffPerspectives helper, the same
+ * "expose the domain package's own pure function through a read-only
+ * accessor" shape Perspectives() itself already takes. Re-parenting is
+ * deliberately never expressed here -- ADR-0041's own invariant, since
+ * a card carries exactly one ParentID shared by every perspective.
+ */
+export function DiffPerspectives(fromID: string, toID: string): $CancellablePromise<atlas$0.PerspectiveDiff> {
+    return $Call.ByID(3383492038, fromID, toID);
+}
+
+/**
  * ExportAtlas serializes the whole Atlas graph as an indented, portable
  * JSON string -- share it, commit it to git, or import it into another
  * Mill instance. Read-only: never mutates a's state. Deterministic by

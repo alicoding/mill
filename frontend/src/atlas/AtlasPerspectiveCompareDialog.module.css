@@ -1,0 +1,15 @@
+/* Same glyph shape as AtlasJumpDialog.module.css's own -- a small
+   kind-colored initial badge identifying a diff row's card at a
+   glance. */
+.glyph {
+    flex: 0 0 auto;
+    width: 14px;
+    height: 14px;
+    border-radius: 4px;
+    color: #fff;
+    font-size: 9px;
+    font-weight: 650;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}

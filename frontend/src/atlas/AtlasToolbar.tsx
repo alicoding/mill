@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@primer/react'
 import { ChecklistIcon, DownloadIcon, TableIcon, UploadIcon } from '@primer/octicons-react'
-import type { Card, Kind, Perspective } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
+import type { Card, Kind, Link, LinkKind, Perspective } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 import { useUISignalStore } from '../shared/uiSignalStore'
 import { AtlasBreadcrumb } from './AtlasBreadcrumb'
 import { AtlasPerspectiveSwitcher } from './AtlasPerspectiveSwitcher'
@@ -26,6 +26,7 @@ export function AtlasToolbar({
   kinds, presentKinds, hiddenKindIDs, onChangeHidden,
   onAutoArrange,
   perspectives, activePerspectiveID, onSwitchPerspective, onCreatePerspective, onRenamePerspective, onDeletePerspective, onPerspectiveToast,
+  links, linkKinds,
   canAddSibling, onCreate, onExport, onImportFile, onShareError,
   onOpenMatrix, onOpenCoverage, addChildRequest,
 }: {
@@ -48,6 +49,11 @@ export function AtlasToolbar({
   onRenamePerspective: (id: string, name: string) => Promise<void>
   onDeletePerspective: (id: string) => Promise<void>
   onPerspectiveToast: (message: string) => void
+  // The Compare view's own full-graph data (goal 0095 slice 3),
+  // forwarded straight through to AtlasPerspectiveSwitcher -- `cards`/
+  // `kinds` above already carry the full (unfiltered) sets.
+  links: Link[]
+  linkKinds: LinkKind[]
   canAddSibling: boolean
   onCreate: (containment: 'sibling' | 'child', kindID: string, title: string) => Promise<void>
   onExport: () => void
@@ -129,6 +135,10 @@ export function AtlasToolbar({
           presentKinds={presentKinds}
           hiddenKindIDs={hiddenKindIDs}
           onChangeHidden={onChangeHidden}
+          cards={cards}
+          links={links}
+          kinds={kinds}
+          linkKinds={linkKinds}
         />
         <AtlasCreateMenu kinds={kinds} canAddSibling={canAddSibling} onCreate={onCreate} openChildRequest={addChildRequest} />
       </div>

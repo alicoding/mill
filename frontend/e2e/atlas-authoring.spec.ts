@@ -81,11 +81,15 @@ test('atlas creation core: tray, placement popover, right-click create, sticky n
     await expect(page.getByTestId('atlas-jump-no-matches')).toBeVisible()
     await page.keyboard.press('Escape')
 
+    // "My space" seeds four children (goal 0095 slice 3 added "System
+    // landscape" alongside Getting started/Example area/Scratchpad) --
+    // a hand-countable 1/4 linked, 0/4 mirrored (same census
+    // atlas-projections.spec.ts's own coverage test pins).
     await page.getByTestId('atlas-open-coverage').click()
     const coverageDialog = page.locator('[data-component="atlas-coverage-dialog"]')
     await expect(coverageDialog).toBeVisible()
-    await expect(coverageDialog.getByTestId('atlas-coverage-link-value')).toHaveText('1/3 linked')
-    await expect(coverageDialog.getByTestId('atlas-coverage-mirror-value')).toHaveText('0/3 mirrored')
+    await expect(coverageDialog.getByTestId('atlas-coverage-link-value')).toHaveText('1/4 linked')
+    await expect(coverageDialog.getByTestId('atlas-coverage-mirror-value')).toHaveText('0/4 mirrored')
     await page.keyboard.press('Escape')
     await expect(coverageDialog).not.toBeVisible()
 

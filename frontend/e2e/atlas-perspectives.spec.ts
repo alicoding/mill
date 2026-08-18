@@ -13,21 +13,24 @@ import { groupCard, noteCard, openCard } from './fixtures/atlasBoard'
 import { deleteViaPageMenu } from './fixtures/atlasPage'
 import { ATLAS_KIND_TOPIC, selectKind } from './fixtures/kindPicker'
 
-// Perspectives (ADR-0041, goal 0095 slice 2): the switcher (which
-// absorbed the old Lens popover), board membership filtering incl. the
-// ancestry-closure and link rules, arrange-disabled-while-active,
-// authoring-adds-to-active, and membership editing from both the
-// board's context menu and the card page. The active perspective is
-// GLOBAL Atlas session state (AtlasSessionState.activePerspectiveID)
-// and every perspective record is read by every board render -- its
-// own dedicated server pair (fixtures/server.ts's ATLAS_PERSPECTIVES_*
-// ports), never the shared worker pool (testing.md's shared-vs-
-// dedicated rule).
+// Perspectives (ADR-0041, goal 0095): the switcher (which absorbed the
+// old Lens popover), board membership filtering incl. the ancestry-
+// closure and link rules, arrange-disabled-while-active, authoring-
+// adds-to-active, membership editing from both the board's context
+// menu and the card page (slice 2), and the Compare diff view over the
+// seeded reference-architecture example (slice 3). The active
+// perspective is GLOBAL Atlas session state
+// (AtlasSessionState.activePerspectiveID) and every perspective record
+// is read by every board render -- its own dedicated server pair
+// (fixtures/server.ts's ATLAS_PERSPECTIVES_* ports), never the shared
+// worker pool (testing.md's shared-vs-dedicated rule).
 //
 // Runs against the seeded "My space" tree (internal/domain/atlas/
-// builtin.go): My space (root) holds Getting started, Scratchpad, and
-// Example area (which holds Ada Lovelace and Project charter); a
-// seeded link connects Getting started -> Ada Lovelace.
+// builtin.go): My space (root) holds Getting started, Scratchpad,
+// Example area (which holds Ada Lovelace and Project charter), and
+// System landscape (which holds Web app/Data store/Sync service, the
+// seeded Current/Interim/Target perspectives' own scope); a seeded
+// link connects Getting started -> Ada Lovelace.
 
 async function withServer(testInfo: { parallelIndex: number }, run: (page: Awaited<ReturnType<import('@playwright/test').Browser['newPage']>>) => Promise<void>): Promise<void> {
   const idx = testInfo.parallelIndex
@@ -68,7 +71,11 @@ async function createPerspective(page: import('@playwright/test').Page, name: st
 // eslint-disable-next-line no-empty-pattern -- this test needs `testInfo` (the second arg), not any fixture.
 test('create, switch, and rename a perspective via the switcher', async ({}, testInfo) => {
   await withServer(testInfo, async (page) => {
-    await createPerspective(page, 'Current')
+    // "Draft", never "Current" -- the seeded reference-architecture
+    // example (goal 0095 slice 3) already seeds a perspective named
+    // "Current", and this test's own creation must not collide with
+    // it in the same popover.
+    await createPerspective(page, 'Draft')
 
     // Switch back to All cards: the switcher label reverts and the
     // popover's own "All cards" row reads selected.
@@ -78,12 +85,12 @@ test('create, switch, and rename a perspective via the switcher', async ({}, tes
 
     // Switch back to the created perspective by name.
     await switcherButton(page).click()
-    await switcherPopover(page).getByText('Current', { exact: true }).click()
-    await expect(switcherButton(page)).toHaveText('Current')
+    await switcherPopover(page).getByText('Draft', { exact: true }).click()
+    await expect(switcherButton(page)).toHaveText('Draft')
 
     // Rename inline via the row's own right-click menu.
     await switcherButton(page).click()
-    await switcherPopover(page).getByText('Current', { exact: true }).click({ button: 'right' })
+    await switcherPopover(page).getByText('Draft', { exact: true }).click({ button: 'right' })
     await expect(contextMenu(page)).toBeVisible()
     await contextMenu(page).getByText('Rename', { exact: true }).click()
     const renameInput = page.getByTestId('atlas-perspective-rename-input')
@@ -234,5 +241,64 @@ test('membership removes via the board context menu, and deleting a perspective 
     await page.getByRole('button', { name: 'Delete', exact: true }).click()
     await expect(switcherButton(page)).toHaveText('All cards')
     await expect(noteCard(page, 'Scratchpad')).toBeVisible()
+  })
+})
+
+// The seeded reference-architecture example (goal 0095 slice 3,
+// internal/domain/atlas/builtin.go's BuiltInPerspectives): a "System
+// landscape" card (a direct child of "My space", never disturbing the
+// pre-existing top-level census other specs pin -- e.g.
+// atlas-projections.spec.ts's coverage stat) holding "Web app"/"Data
+// store"/"Sync service", with three seeded perspectives -- "Current"
+// (app + data store, wired directly), "Interim" (adds the sync
+// service alongside the old link), "Target" (the old direct link is
+// gone, only the new shape remains).
+// eslint-disable-next-line no-empty-pattern -- this test needs `testInfo` (the second arg), not any fixture.
+test('the seeded reference-architecture example renders with no regression to the default view, and Compare shows the Current -> Target diff', async ({}, testInfo) => {
+  await withServer(testInfo, async (page) => {
+    // No regression: every pre-existing seeded card still renders
+    // alongside the new "System landscape" card.
+    await expect(noteCard(page, 'Getting started')).toBeVisible()
+    await expect(noteCard(page, 'Scratchpad')).toBeVisible()
+    await expect(groupCard(page, 'Example area')).toBeVisible()
+    const landscape = groupCard(page, 'System landscape')
+    await expect(landscape).toBeVisible()
+
+    // The seeded perspectives are scoped to "System landscape" -- drill
+    // in, then switch to "Interim": all three landscape cards render.
+    await landscape.getByTestId('atlas-group-header').click()
+    await expect(page.getByTestId('atlas-breadcrumb')).toContainText('System landscape')
+
+    await switcherButton(page).click()
+    await switcherPopover(page).getByText('Interim', { exact: true }).click()
+    await expect(switcherButton(page)).toHaveText('Interim')
+    await expect(noteCard(page, 'Web app')).toBeVisible()
+    await expect(noteCard(page, 'Data store')).toBeVisible()
+    await expect(noteCard(page, 'Sync service')).toBeVisible()
+
+    // Compare Current -> Target: Sync service is the only added card,
+    // the old direct link is the only removed link, and the new
+    // shape's two links are added.
+    await switcherButton(page).click()
+    await switcherPopover(page).getByText('Compare perspectives', { exact: false }).click()
+    const dialog = page.locator('[data-component="atlas-perspective-compare-dialog"]')
+    await expect(dialog).toBeVisible()
+    await dialog.getByTestId('atlas-compare-from').selectOption({ label: 'Current' })
+    await dialog.getByTestId('atlas-compare-to').selectOption({ label: 'Target' })
+
+    const results = dialog.getByTestId('atlas-compare-results')
+    await expect(results.getByText('Added cards (1)', { exact: true })).toBeVisible()
+    await expect(results.getByTestId('atlas-compare-card-row').filter({ hasText: 'Sync service' })).toBeVisible()
+    await expect(results.getByText('Added links (2)', { exact: true })).toBeVisible()
+    await expect(results.getByText('Removed links (1)', { exact: true })).toBeVisible()
+    await expect(
+      results.getByTestId('atlas-compare-link-row').filter({ hasText: 'Web app → Data store (relates to)' }),
+    ).toBeVisible()
+    // "Removed cards" stays empty (every Current card is also a Target
+    // member) -- an empty group is omitted entirely, never rendered.
+    await expect(dialog.getByText('Removed cards', { exact: false })).toHaveCount(0)
+
+    await page.keyboard.press('Escape')
+    await expect(dialog).not.toBeVisible()
   })
 })

@@ -56,7 +56,19 @@
     "addedToast": "Added to {{name}}",
     "removedToast": "Removed from {{name}}",
     "membershipLabel": "In:",
-    "addChip": "Add to perspective"
+    "addChip": "Add to perspective",
+    "comparePerspectives": "Compare perspectives…"
+  },
+  "compare": {
+    "title": "Compare perspectives",
+    "fromLabel": "From",
+    "toLabel": "To",
+    "addedCardsHeading": "Added cards ({{count}})",
+    "removedCardsHeading": "Removed cards ({{count}})",
+    "addedLinksHeading": "Added links ({{count}})",
+    "removedLinksHeading": "Removed links ({{count}})",
+    "noChanges": "No changes between these perspectives.",
+    "linkRow": "{{from}} → {{to}} ({{kind}})"
   },
   "creationTray": {
     "ariaLabel": "Creation tools",

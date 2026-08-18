@@ -42,6 +42,25 @@ func (m *MillMCPService) requireAtlas() error {
 	return nil
 }
 
+// resolvePerspective looks up nameOrID against m.atlas.Perspectives(),
+// by id first (exact) then by Name (case-insensitive) -- the same
+// either-works contract atlas_search_cards/atlas_read_card's own
+// `perspective` param documents (goal 0095 slice 3).
+func (m *MillMCPService) resolvePerspective(nameOrID string) (atlas.Perspective, error) {
+	all := m.atlas.Perspectives()
+	for _, p := range all {
+		if p.ID == nameOrID {
+			return p, nil
+		}
+	}
+	for _, p := range all {
+		if strings.EqualFold(p.Name, nameOrID) {
+			return p, nil
+		}
+	}
+	return atlas.Perspective{}, fmt.Errorf("no perspective named or with id %q", nameOrID)
+}
+
 // --- wire shapes (goal 0083's locked read contract) ---
 
 type atlasKindFieldOut struct {
@@ -79,6 +98,9 @@ type atlasSearchCardsArgs struct {
 	Query    string `json:"query" jsonschema:"the search text -- case-insensitive substring match over the card's title, note, and every field value"`
 	KindID   string `json:"kindId,omitempty" jsonschema:"optional: only cards of this Kind (see atlas_list_kinds for IDs)"`
 	ParentID string `json:"parentId,omitempty" jsonschema:"optional: only direct children of this card"`
+	// Perspective (goal 0095 slice 3, ADR-0041) is additive: omitted,
+	// search covers every card exactly as before.
+	Perspective string `json:"perspective,omitempty" jsonschema:"optional: a perspective's name or id -- only cards that perspective shows are searched"`
 }
 
 type atlasSearchCardsResult struct {
@@ -122,6 +144,9 @@ type atlasCardOut struct {
 
 type atlasReadCardArgs struct {
 	CardID string `json:"cardId" jsonschema:"the card's ID (from atlas_search_cards, or the mill://atlas/cards resource)"`
+	// Perspective (goal 0095 slice 3, ADR-0041) is additive: omitted,
+	// Children/Links cover every card/link exactly as before.
+	Perspective string `json:"perspective,omitempty" jsonschema:"optional: a perspective's name or id -- scopes the returned Children and Links to only what that perspective shows; the card must itself be one of its members"`
 }
 
 // registerAtlasResources wires mill://atlas/cards -- one read-only
@@ -174,23 +199,39 @@ func (m *MillMCPService) registerAtlasTools() {
 
 	mcp.AddTool(m.server, &mcp.Tool{
 		Name:        "atlas_search_cards",
-		Description: "Search Atlas cards by a case-insensitive substring match over title, note, and every field value (the same matching a human's own Atlas jump search uses). Optionally scope to one Kind or one parent card. Read-only.",
+		Description: "Search Atlas cards by a case-insensitive substring match over title, note, and every field value (the same matching a human's own Atlas jump search uses). Optionally scope to one Kind, one parent card, or one perspective's own members. Read-only.",
 	}, func(_ context.Context, _ *mcp.CallToolRequest, in atlasSearchCardsArgs) (*mcp.CallToolResult, any, error) {
 		if err := m.requireAtlas(); err != nil {
 			return nil, nil, err
 		}
-		res, err := jsonResult(m.searchAtlasCards(in))
+		var persp *atlas.Perspective
+		if in.Perspective != "" {
+			p, err := m.resolvePerspective(in.Perspective)
+			if err != nil {
+				return nil, nil, err
+			}
+			persp = &p
+		}
+		res, err := jsonResult(m.searchAtlasCards(in, persp))
 		return res, nil, err
 	})
 
 	mcp.AddTool(m.server, &mcp.Tool{
 		Name:        "atlas_read_card",
-		Description: "One card's full content: title, note, summary/status (when its Kind declares those fields), every field value, source URL, mirror path, its containment chain (parent then grandparent... root-ward), its direct children, and every link touching it in both directions (with the other card's ID/title). Read-only.",
+		Description: "One card's full content: title, note, summary/status (when its Kind declares those fields), every field value, source URL, mirror path, its containment chain (parent then grandparent... root-ward), its direct children, and every link touching it in both directions (with the other card's ID/title); optionally scoped to one perspective's own members. Read-only.",
 	}, func(_ context.Context, _ *mcp.CallToolRequest, in atlasReadCardArgs) (*mcp.CallToolResult, any, error) {
 		if err := m.requireAtlas(); err != nil {
 			return nil, nil, err
 		}
-		out, err := m.readAtlasCard(in.CardID)
+		var persp *atlas.Perspective
+		if in.Perspective != "" {
+			p, err := m.resolvePerspective(in.Perspective)
+			if err != nil {
+				return nil, nil, err
+			}
+			persp = &p
+		}
+		out, err := m.readAtlasCard(in.CardID, persp)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -269,13 +310,17 @@ func atlasNoteSnippet(note, q string) string {
 // inside a card's Fields map -- there is no separate Card.Summary/
 // Card.Status column (internal/domain/atlas/card.go), so matching every
 // field value is what makes summary/status searchable at all.
-func (m *MillMCPService) searchAtlasCards(in atlasSearchCardsArgs) atlasSearchCardsResult {
+func (m *MillMCPService) searchAtlasCards(in atlasSearchCardsArgs, persp *atlas.Perspective) atlasSearchCardsResult {
 	q := strings.ToLower(strings.TrimSpace(in.Query))
 	result := atlasSearchCardsResult{Matches: []atlasSearchMatch{}}
 	if q == "" {
 		return result
 	}
-	for _, c := range m.atlas.Cards() {
+	cards := m.atlas.Cards()
+	if persp != nil {
+		cards, _ = atlas.FilterByPerspective(cards, nil, *persp)
+	}
+	for _, c := range cards {
 		if in.KindID != "" && c.KindID != in.KindID {
 			continue
 		}
@@ -314,8 +359,9 @@ func (m *MillMCPService) searchAtlasCards(in atlasSearchCardsArgs) atlasSearchCa
 // own overlay/context-block renderer (atlasservice_share.go) draws
 // from, just reshaped for an MCP client instead of a paste-ready text
 // block.
-func (m *MillMCPService) readAtlasCard(cardID string) (atlasCardOut, error) {
+func (m *MillMCPService) readAtlasCard(cardID string, persp *atlas.Perspective) (atlasCardOut, error) {
 	cards := m.atlas.Cards()
+	links := m.atlas.Links()
 	byID := make(map[string]atlas.Card, len(cards))
 	for _, c := range cards {
 		byID[c.ID] = c
@@ -323,6 +369,25 @@ func (m *MillMCPService) readAtlasCard(cardID string) (atlasCardOut, error) {
 	card, ok := byID[cardID]
 	if !ok {
 		return atlasCardOut{}, fmt.Errorf("no card with id %q", cardID)
+	}
+
+	// Perspective scoping (goal 0095 slice 3): Children/Links narrow to
+	// what persp shows; ParentChain stays the full ancestry regardless
+	// (a member's ancestors are already members too, ADR-0041's
+	// ancestry-closure invariant, so this is never a real divergence).
+	visibleCards, visibleLinks := cards, links
+	if persp != nil {
+		visibleCards, visibleLinks = atlas.FilterByPerspective(cards, links, *persp)
+		member := false
+		for _, c := range visibleCards {
+			if c.ID == cardID {
+				member = true
+				break
+			}
+		}
+		if !member {
+			return atlasCardOut{}, fmt.Errorf("card %q is not a member of perspective %q", cardID, persp.Name)
+		}
 	}
 
 	out := atlasCardOut{
@@ -356,13 +421,13 @@ func (m *MillMCPService) readAtlasCard(cardID string) (atlasCardOut, error) {
 		out.ParentChain = chain
 	}
 
-	for _, c := range cards {
+	for _, c := range visibleCards {
 		if c.ParentID == cardID {
 			out.Children = append(out.Children, atlasChildEntry{ID: c.ID, Title: c.Title, KindID: c.KindID})
 		}
 	}
 
-	for _, l := range m.atlas.Links() {
+	for _, l := range visibleLinks {
 		switch cardID {
 		case l.FromCardID:
 			out.Links = append(out.Links, atlasLinkEntry{
