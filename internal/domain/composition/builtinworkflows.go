@@ -486,7 +486,10 @@ func BuiltInWorkflows() []Workflow {
 	workflows = append(workflows, builtInListWriteWorkflows()...)
 	// goal 0087: apply-file-move's own seeded proof, same split-file
 	// reasoning.
-	return append(workflows, builtInFileMoveWorkflows()...)
+	workflows = append(workflows, builtInFileMoveWorkflows()...)
+	// goal 0099: the clipboard bridge's two seeded routes, same
+	// split-file reasoning.
+	return append(workflows, builtInClipbridgeWorkflows()...)
 }
 
 // ExampleChildWorkflowID is exported so the parent seed above and any

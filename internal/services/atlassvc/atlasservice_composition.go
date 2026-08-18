@@ -24,6 +24,7 @@ func (a *AtlasService) WireCompositionSeams(cardChangeSink func(cardID, kindID, 
 	composition.SetAtlasCardCreator(a.createCardForComposition)
 	composition.SetAtlasCardUpdater(a.updateCardForComposition)
 	composition.SetAtlasCardLinker(a.linkCardsForComposition)
+	composition.SetAtlasReplyMaterializer(a.materializeReplyItems)
 	SetCardChangeSink(cardChangeSink)
 }
 

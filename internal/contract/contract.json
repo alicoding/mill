@@ -2552,6 +2552,47 @@
       "Complexity": "advanced"
     },
     {
+      "ID": "apply-atlas-from-reply",
+      "Kind": "apply",
+      "Label": "Atlas: create from reply items",
+      "Description": "Creates Atlas records from an accepted clipboard reply's items: an item with a \"title\" becomes a card of its named kind, an item with \"text\" becomes a Scratchpad note. \"Items\" binds the attribute holding the accepted items as a JSON array.",
+      "ConfigFields": [
+        {
+          "Key": "itemsAttribute",
+          "Label": "Items attribute",
+          "Type": "text",
+          "Required": false,
+          "Default": "",
+          "Description": "Which Attributes field carries the accepted reply items (a JSON array).",
+          "Options": null,
+          "Suggestions": null,
+          "Secret": false,
+          "RefKind": "",
+          "Multiline": false,
+          "SystemManaged": false
+        },
+        {
+          "Key": "outputAttribute",
+          "Label": "Output attribute (optional)",
+          "Type": "text",
+          "Required": false,
+          "Default": "",
+          "Description": "Which Attributes field receives a summary of what was created.",
+          "Options": null,
+          "Suggestions": null,
+          "Secret": false,
+          "RefKind": "",
+          "Multiline": false,
+          "SystemManaged": false
+        }
+      ],
+      "Output": "payload unchanged; a created-summary JSON -\u003e the output attribute, if named",
+      "Effect": "local",
+      "Declared": false,
+      "PaletteGroup": "",
+      "Complexity": "advanced"
+    },
+    {
       "ID": "apply-backup-snapshot",
       "Kind": "apply",
       "Label": "Apply: back up Mill data",
@@ -4191,6 +4232,47 @@
         }
       ],
       "Output": "payload unchanged; the updated card's id -\u003e the output attribute, if named",
+      "Effect": "local",
+      "Declared": false,
+      "PaletteGroup": "",
+      "Complexity": "advanced"
+    },
+    {
+      "ID": "apply-atlas-from-reply",
+      "Kind": "apply",
+      "Label": "Atlas: create from reply items",
+      "Description": "Creates Atlas records from an accepted clipboard reply's items: an item with a \"title\" becomes a card of its named kind, an item with \"text\" becomes a Scratchpad note. \"Items\" binds the attribute holding the accepted items as a JSON array.",
+      "ConfigFields": [
+        {
+          "Key": "itemsAttribute",
+          "Label": "Items attribute",
+          "Type": "text",
+          "Required": false,
+          "Default": "",
+          "Description": "Which Attributes field carries the accepted reply items (a JSON array).",
+          "Options": null,
+          "Suggestions": null,
+          "Secret": false,
+          "RefKind": "",
+          "Multiline": false,
+          "SystemManaged": false
+        },
+        {
+          "Key": "outputAttribute",
+          "Label": "Output attribute (optional)",
+          "Type": "text",
+          "Required": false,
+          "Default": "",
+          "Description": "Which Attributes field receives a summary of what was created.",
+          "Options": null,
+          "Suggestions": null,
+          "Secret": false,
+          "RefKind": "",
+          "Multiline": false,
+          "SystemManaged": false
+        }
+      ],
+      "Output": "payload unchanged; a created-summary JSON -\u003e the output attribute, if named",
       "Effect": "local",
       "Declared": false,
       "PaletteGroup": "",

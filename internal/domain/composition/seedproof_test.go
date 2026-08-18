@@ -152,6 +152,13 @@ var workflowProofRegistry = map[string]seedProof{
 		"executionsvc.TestSeededCardCreateLinkExample_CreatesFindsAndLinksCards",
 		"e2e: seed-completeness.spec.ts > Example: Create and link Atlas cards runs end to end through the real live app",
 	),
+	"clipbridge-reply-cards-workflow": proven(
+		"executionsvc.TestSeededClipbridgeCardsRoute_CreatesAcceptedCards",
+		"executionsvc.TestClipbridgePreviewToRouteLoop (the preview-to-route loop over the same seed)",
+	),
+	"clipbridge-reply-note-workflow": proven(
+		"executionsvc.TestSeededClipbridgeNoteRoute_LandsInScratchpad",
+	),
 	"example-list-write-workflow": proven(
 		"executionsvc.TestGuardrail_ApplyListRowParks_ApproveWritesRow",
 		"executionsvc.TestSeededTaskTrackerExample_PinnedSearch_ResolvesFrozenV1AfterLiveWrite (via the write-path half of the same test)",
