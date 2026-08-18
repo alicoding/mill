@@ -1,3 +1,4 @@
+import { newLocalID } from './localId'
 // The app-wide work-tab strip's own types + pure helpers (docs/SPEC.md
 // §3.8, docs/goals/0022-workflow-view-mode.md) -- split out of store.ts
 // once view mode pushed that file over the 500-line limit (CLAUDE.md),
@@ -96,11 +97,11 @@ export function migrateLegacyWorkTabs(): WorkTab[] {
       // keyed by WorkTab.key -- a freshly minted key here can never
       // have a matching scratch entry, so there's nothing to check;
       // 'view' is simply the safer default (ADR-0014).
-      out.push({ key: crypto.randomUUID(), kind: 'workflow-edit', workflowId: id, mode: 'view' })
+      out.push({ key: newLocalID(), kind: 'workflow-edit', workflowId: id, mode: 'view' })
     }
     const req = JSON.parse(localStorage.getItem('mill-configure-request-tabs') ?? 'null') as { ids?: string[] } | null
     for (const id of req?.ids ?? []) {
-      out.push({ key: crypto.randomUUID(), kind: 'request-view', requestId: id })
+      out.push({ key: newLocalID(), kind: 'request-view', requestId: id })
     }
     return out
   } catch {

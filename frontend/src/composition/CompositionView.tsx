@@ -26,6 +26,7 @@ import { WorkflowsTable } from './WorkflowsTable'
 import { TriggerRowLabel } from './TriggerRowLabel'
 import { findRootNode } from './triggerRowInfo'
 import { hasDraftDrift } from './draftDrift'
+import { newLocalID } from '../shared/localId'
 
 // The Workflows list page (SPEC.md §3 / ADR-0005). Editor tabs no
 // longer live here: opening/editing a workflow goes through the store's
@@ -144,7 +145,7 @@ function CompositionView() {
         if (summary.error) {
           setErrors((prev) => ({ ...prev, [id]: summary.error }))
           pushActivity({
-            id: crypto.randomUUID(), time: new Date().toLocaleTimeString(), timestamp: Date.now(),
+            id: newLocalID(), time: new Date().toLocaleTimeString(), timestamp: Date.now(),
             source: 'composition', workflowID: id, label,
             // result carries the ERROR on failure (not '') so the row
             // stays expandable and the full error is inspectable, same
@@ -157,7 +158,7 @@ function CompositionView() {
         }
         setResults((prev) => ({ ...prev, [id]: summary.output }))
         pushActivity({
-          id: crypto.randomUUID(), time: new Date().toLocaleTimeString(), timestamp: Date.now(),
+          id: newLocalID(), time: new Date().toLocaleTimeString(), timestamp: Date.now(),
           source: 'composition', workflowID: id, label,
           success: true, detail: `completed (${summary.output.length} bytes)`, result: summary.output,
         })
@@ -165,7 +166,7 @@ function CompositionView() {
       .catch((err) => {
         setErrors((prev) => ({ ...prev, [id]: String(err) }))
         pushActivity({
-          id: crypto.randomUUID(), time: new Date().toLocaleTimeString(), timestamp: Date.now(),
+          id: newLocalID(), time: new Date().toLocaleTimeString(), timestamp: Date.now(),
           source: 'composition', workflowID: id, label,
           success: false, detail: String(err), result: String(err),
         })

@@ -94,7 +94,7 @@ export function buildScratchDraft(label: string, description: string, nodes: Can
 }
 
 // ID-agnostic structural comparison. A fresh mount's starter node (and
-// any node dropped since) gets a brand-new crypto.randomUUID() every
+// any node dropped since) gets a brand-new local id every
 // time the canvas is built from scratch, so comparing by literal
 // node/edge id would flag an entirely unedited new-workflow canvas as
 // "dirty" purely because two independent mounts produced different

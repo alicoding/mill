@@ -39,6 +39,7 @@ import { BreakpointContext, useBreakpoints } from './breakpoints'
 import { CurrentStepBar, type RunButtonHandle } from './LiveRunControls'
 import { useCanvasCommandDispatch } from './useCanvasCommandDispatch'
 import styles from './CompositionCanvas.module.css'
+import { newLocalID } from '../shared/localId'
 
 interface CompositionCanvasProps {
   nodeTypes: NodeType[]
@@ -311,7 +312,7 @@ function CanvasInner({ nodeTypes, workflow, tabKey, onBack, onSaved, readOnly, o
       const config: Record<string, string> = {}
       for (const field of nt.ConfigFields ?? []) config[field.Key] = field.Default
       const node: CanvasNode = {
-        id: crypto.randomUUID(),
+        id: newLocalID(),
         type: nt.Kind,
         position,
         data: { nodeTypeID: nt.ID, kind: nt.Kind, label: nt.Label, output: nt.Output ?? '', config },

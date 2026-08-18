@@ -22,6 +22,7 @@ import { matchFacetSuggestions, parseFacetQuery } from '../shared/facetQuery'
 import type { FacetVocabEntry } from '../shared/facetQuery'
 import { FacetChipRow } from '../shared/FacetChipRow'
 import styles from './CommandPalette.module.css'
+import { newLocalID } from '../shared/localId'
 
 // The ⌘K command palette (docs/goals/0015-summon-quick-invoke.md): the
 // "what can I do, and what's the shortcut for it next time" surface --
@@ -209,7 +210,7 @@ export function CommandPalette() {
     ExecutionService.RunWorkflow(id, RunKind.RunKindTest, values)
       .then((summary) => {
         pushActivity({
-          id: crypto.randomUUID(), time: new Date().toLocaleTimeString(), timestamp: Date.now(),
+          id: newLocalID(), time: new Date().toLocaleTimeString(), timestamp: Date.now(),
           source: 'composition', workflowID: id, label,
           success: !summary.error,
           detail: summary.error ? summary.error : `completed (${summary.output.length} bytes)`,
@@ -218,7 +219,7 @@ export function CommandPalette() {
       })
       .catch((err) => {
         pushActivity({
-          id: crypto.randomUUID(), time: new Date().toLocaleTimeString(), timestamp: Date.now(),
+          id: newLocalID(), time: new Date().toLocaleTimeString(), timestamp: Date.now(),
           source: 'composition', workflowID: id, label,
           success: false, detail: String(err), result: '',
         })

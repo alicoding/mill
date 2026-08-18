@@ -28,6 +28,7 @@ import { pageIconFor, pageLabelFor } from './pageMeta'
 import { useMillNavigate } from './useMillNavigate'
 import { useKeymapDispatch } from './useKeymapDispatch'
 import styles from "./App.module.css";
+import { newLocalID } from '../shared/localId'
 
 
 // True only inside the Wails native webview (the runtime injects
@@ -265,7 +266,7 @@ function App() {
   useEffect(() => {
     return Events.On('hotkey-activity', (evt) => {
       pushActivity({
-        id: crypto.randomUUID(),
+        id: newLocalID(),
         time: new Date().toLocaleTimeString(),
         timestamp: Date.now(),
         source: 'trigger',
@@ -293,7 +294,7 @@ function App() {
   useEffect(() => {
     return Events.On('mcp-write-activity', (evt) => {
       pushActivity({
-        id: crypto.randomUUID(),
+        id: newLocalID(),
         time: new Date().toLocaleTimeString(),
         timestamp: Date.now(),
         source: 'mcp-write',

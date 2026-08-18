@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/wailsapp/wails/v3/pkg/updater"
 	updaterGithub "github.com/wailsapp/wails/v3/pkg/updater/providers/github"
@@ -182,6 +183,23 @@ func (s *SettingsService) ResolveUpdateChannel(buildChannel string) string {
 		return pref
 	}
 	return buildChannel
+}
+
+// ResolveUpdateCurrentVersion returns what the updater should compare
+// the feed against. A source build stamps the bare release version
+// ("0.4.0"), and SemVer puts every prerelease BELOW its release --
+// so a source build opted into the beta channel could never see any
+// 0.4.0-beta.N as newer and always read "latest". When the
+// effective channel is beta and the
+// stamped version carries no prerelease, floor it at "-beta.0": every
+// real beta.N then registers as newer, and a future plain release
+// still wins over any beta. Every other combination passes through
+// untouched.
+func ResolveUpdateCurrentVersion(effectiveChannel, updateVersion string) string {
+	if effectiveChannel == "beta" && !strings.Contains(updateVersion, "-") {
+		return updateVersion + "-beta.0"
+	}
+	return updateVersion
 }
 
 // CheckForUpdates asks the configured provider (GitHub Releases,

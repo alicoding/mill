@@ -131,3 +131,18 @@ primary-looking Run there is misleading, not just redundant); per-row
 Edit/Export/Duplicate actions in the goal-0007 dense-row pattern are
 `variant="invisible"` by design, matching (d) rather than departing
 from it.
+
+## Secure-context-only APIs never get called directly
+
+`navigator.clipboard` and `crypto.randomUUID` exist only in secure
+contexts (https or localhost). A Mill server reached over plain http
+from another device — the remote-instance posture the product
+explicitly supports — has NEITHER, and both classes shipped real
+breakage before this rule existed (every copy action silently no-oped;
+the workflow editor crashed outright). The rule: any API that MDN
+marks "secure context only" is reached through a shared fallback
+helper, never called inline — `shared/clipboardWrite.ts` for clipboard
+writes, `shared/localId.ts` for local ids. Adding a new
+secure-context-dependent capability means adding the next such helper
+with an insecure-context fallback (or an honest error the user sees),
+plus a unit test pinning the fallback path.
