@@ -217,6 +217,28 @@ func checkAtlasBoardRenders(c mcpCaller) (string, error) {
 	return "atlas-board rendered after nav click", nil
 }
 
+var stableSeq int
+
+// waitForNodeStable polls until selector's bounding rect stops moving
+// across two consecutive samples -- the board's fitView animation
+// after navigation invalidates any position measured mid-flight, the
+// same stale-coordinate class the Playwright suite's own
+// clickFrameGutter helper exists for. A click dispatched before this
+// settles lands where the card WAS and selects nothing.
+func waitForNodeStable(c mcpCaller, selector string) error {
+	// Fresh slot per invocation: a leftover key from an earlier check
+	// could otherwise satisfy the very first sample.
+	stableSeq++
+	slot := fmt.Sprintf("__millStablePos%d", stableSeq)
+	return pollJSEval(c, fmt.Sprintf(`const el = document.querySelector(%q);
+		if (!el) return false;
+		const r = el.getBoundingClientRect();
+		const key = Math.round(r.x) + ':' + Math.round(r.y);
+		if (window[%q] === key) { return true; }
+		window[%q] = key;
+		return false;`, selector, slot, slot), 10*time.Second)
+}
+
 // checkNoteCardCommit drives the goal 0102 click model end to end:
 // plain click selects (React Flow needs the full pointer sequence, so
 // mouse_click, never a js_eval .click()), a second click on the
@@ -225,6 +247,9 @@ func checkAtlasBoardRenders(c mcpCaller) (string, error) {
 // so the ring check that follows starts from an unselected board.
 func checkNoteCardCommit(c mcpCaller) (string, error) {
 	selector := `[data-testid="atlas-note-card"]`
+	if err := waitForNodeStable(c, selector); err != nil {
+		return "", fmt.Errorf("board never settled before the select click: %w", err)
+	}
 	if _, err := c.call("mouse_click", withWindow(map[string]any{"selector": selector})); err != nil {
 		return "", fmt.Errorf("select click: %w", err)
 	}
@@ -274,6 +299,9 @@ func readRing(c mcpCaller, selector string) (ringSnapshot, error) {
 
 func checkNoteCardSelectionRing(c mcpCaller) (string, error) {
 	selector := `[data-testid="atlas-note-card"]`
+	if err := waitForNodeStable(c, selector); err != nil {
+		return "", fmt.Errorf("board never settled before the ring check: %w", err)
+	}
 	before, err := readRing(c, selector)
 	if err != nil {
 		return "", err
