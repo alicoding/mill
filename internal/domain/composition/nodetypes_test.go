@@ -143,7 +143,37 @@ func TestNodeTypes(t *testing.T) {
 				"declare Complexity: ComplexityBasic or ComplexityAdvanced explicitly "+
 				"in its RegisterNodeType call", nt.ID, nt.Complexity)
 		}
+
+		// (f) The step I/O contract (ADR-0042, node-standard item 10):
+		// every NodeType declares Consumes and Produces explicitly --
+		// no allow-list, like Complexity. A step that reads nothing
+		// says []PayloadKind{PayloadNone}; a passthrough says
+		// PayloadProduce{Passthrough: true}; the zero values never pass.
+		if len(nt.Consumes) == 0 {
+			t.Errorf("node type %q declares no Consumes (ADR-0042, standard item f): "+
+				"declare what payload kinds it reads -- []PayloadKind{PayloadNone} if it reads none", nt.ID)
+		}
+		for _, c := range nt.Consumes {
+			if !validPayloadKind(c) {
+				t.Errorf("node type %q Consumes contains invalid kind %q", nt.ID, c)
+			}
+		}
+		if !nt.Produces.Passthrough && !validPayloadKind(nt.Produces.Kind) {
+			t.Errorf("node type %q declares no Produces (ADR-0042, standard item f): "+
+				"declare the kind it emits, PayloadProduce{Passthrough: true}, or Kind: PayloadNone", nt.ID)
+		}
+		if nt.Produces.Passthrough && nt.Produces.Kind != "" {
+			t.Errorf("node type %q declares both Passthrough and a produce Kind %q -- pick one", nt.ID, nt.Produces.Kind)
+		}
 	}
+}
+
+func validPayloadKind(k PayloadKind) bool {
+	switch k {
+	case PayloadAny, PayloadText, PayloadHTML, PayloadMarkdown, PayloadJSON, PayloadNone:
+		return true
+	}
+	return false
 }
 
 // TestValidComplexity exercises ValidComplexity directly against every

@@ -300,6 +300,12 @@ func ValidateGraph(nodes []Node, edges []Edge, attrs []AttributeDef) []Issue {
 	issues = append(issues, validateOutputBindingSecrets(nodes)...)
 	issues = append(issues, validateLeaves(nodes, outgoingEdges)...)
 	issues = append(issues, validateRequiredRefs(nodes)...)
+	// The step I/O contract (ADR-0042, payloadkind.go): every edge's
+	// upstream effective produce kind must satisfy the downstream's
+	// Consumes declaration -- the server-side mirror of the canvas's
+	// draw-time refusal, so a save-time error and a draw-time error
+	// never disagree.
+	issues = append(issues, payloadKindIssues(byID, edges)...)
 
 	return issues
 }

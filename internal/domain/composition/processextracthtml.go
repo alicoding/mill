@@ -14,6 +14,8 @@ func init() {
 		ID: "process-extract-html", Kind: KindProcess,
 		Label:       "Extract HTML section",
 		Complexity:  ComplexityBasic,
+		Consumes:    []PayloadKind{PayloadHTML},
+		Produces:    PayloadProduce{Kind: PayloadHTML},
 		Output:      "the matched element's outer HTML",
 		Description: "Extracts one element (by CSS selector) out of the payload's HTML, dropping everything else -- e.g. a saved page's main-content region, stripping nav/header/footer chrome before converting to Markdown. Fails the step if nothing matches (fail-safe: never silently passes the whole, unfiltered document through).",
 		ConfigFields: []ConfigField{

@@ -14,6 +14,8 @@ func init() {
 		ID: "apply-clipboard-write-text", Kind: KindApply,
 		Effect:      guardrail.ClassLocal,
 		Complexity:  ComplexityBasic,
+		Consumes:    []PayloadKind{PayloadText},
+		Produces:    PayloadProduce{Passthrough: true},
 		Output:      "the text it wrote",
 		Label:       "Write text to clipboard",
 		Description: "Writes the workflow's current payload to the clipboard as plain text.",

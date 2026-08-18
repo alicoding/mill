@@ -221,6 +221,17 @@ export interface NodeType {
     "Output": string;
 
     /**
+     * Consumes/Produces are the step I/O contract (ADR-0042): the
+     * coarse payload kinds this step reads and emits, machine-checked
+     * by TestNodeTypes (node-standard item 10 -- no registration may
+     * leave them at the zero value) and enforced as edge-compatibility
+     * issues by ValidateGraph (payloadkind.go). Output above stays the
+     * human display copy; these fields are the contract.
+     */
+    "Consumes": PayloadKind[] | null;
+    "Produces": PayloadProduce;
+
+    /**
      * Effect is the node type's side-effect classification
      * (docs/adr/0022's purity model): what the guardrail gate uses to
      * pick a default verdict when no rule matches, and what ADR-0021's
@@ -305,6 +316,60 @@ export enum NoteColor {
     NoteColorGreen = "green",
     NoteColorPink = "pink",
 };
+
+/**
+ * PayloadKind is the coarse media kind of the payload a step consumes
+ * or produces -- the step I/O contract (ADR-0042). A closed lattice,
+ * not an open string: any ⊃ text ⊃ {html, markdown, json}; none means
+ * no payload flows. Deliberately coarse -- the researched convergence
+ * is "refuse on coarse kind at draw time, validate deeper shape at run
+ * time, if at all"; a per-field schema layer is ADR-0042's named
+ * future extension, not this type.
+ */
+export enum PayloadKind {
+    /**
+     * The Go zero value for the underlying type of the enum.
+     */
+    $zero = "",
+
+    /**
+     * PayloadAny accepts everything as a consume declaration and
+     * promises nothing as a produce declaration (a script's stdout, an
+     * MCP tool's result).
+     */
+    PayloadAny = "any",
+
+    /**
+     * PayloadText is the family root: every concrete kind IS text
+     * (the payload stays a string -- the contract is typed, the
+     * ExecContext is not restructured).
+     */
+    PayloadText = "text",
+    PayloadHTML = "html",
+    PayloadMarkdown = "markdown",
+    PayloadJSON = "json",
+
+    /**
+     * PayloadNone: no payload. As a produce declaration -- entry
+     * points that start with an empty payload, terminals that end the
+     * flow. In a Consumes list: alone, "this step reads no payload"
+     * (compatible with every upstream, it ignores the payload);
+     * alongside other kinds, "the payload is optional" (an empty
+     * upstream is acceptable too).
+     */
+    PayloadNone = "none",
+};
+
+/**
+ * PayloadProduce declares what leaves a step. Passthrough means the
+ * payload is forwarded unchanged (guardrail gates, notifications,
+ * attribute-writing lookups) -- the effective kind at such a step is
+ * its upstream's, resolved by EffectivePayloadKind.
+ */
+export interface PayloadProduce {
+    "kind"?: PayloadKind;
+    "passthrough"?: boolean;
+}
 
 /**
  * Position is a node's canvas coordinates. Ignored by execution entirely

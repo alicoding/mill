@@ -35,6 +35,7 @@ resolved item by item below, not silently dropped.
 | 7 | Seeded proof at the right layer (a built-in workflow/example exercising the node, or a unit/integration test for pure logic) — `.claude/rules/testing.md`'s layering | `TestBuiltInWorkflows_AllNodesFullyResolvedAndExecutable` + the node's own `*_test.go` |
 | 8 | Secrets only via an existing credential-backed entity, never a raw `ConfigField` | Reviewed per node — see "The credential rule" below |
 | 9 | Declared `Complexity` (`basic`/`advanced`), never the zero value — no allow-list exemption, unlike item 3 | `TestNodeTypes`, no exceptions — machine-checked, see "Complexity" below |
+| 10 | The step I/O contract (ADR-0042): explicit `Consumes []PayloadKind` + `Produces PayloadProduce`, never the zero values — `[]PayloadKind{PayloadNone}` says "reads nothing" on purpose; `Passthrough: true` says the payload is forwarded unchanged | `TestNodeTypes`, no exceptions — machine-checked; `ValidateGraph` enforces edge compatibility (payloadkind.go) |
 
 Items 1/4/5/6/8 were already true of every node in this package before
 this standard was written down (`TestNodeTypes` already checked Key/

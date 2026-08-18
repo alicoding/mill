@@ -14,8 +14,13 @@ var readFile = fileread.Read
 func init() {
 	RegisterNodeType(NodeType{
 		ID: "capture-file", Kind: KindCapture,
-		Effect:      guardrail.ClassRead,
-		Complexity:  ComplexityBasic,
+		Effect:     guardrail.ClassRead,
+		Complexity: ComplexityBasic,
+		Consumes:   []PayloadKind{PayloadText, PayloadNone},
+		// The file's content kind is unknowable statically (the
+		// saved-page seed reads .html files through this step) -- any,
+		// honestly.
+		Produces:    PayloadProduce{Kind: PayloadAny},
 		Output:      "the file's contents",
 		Label:       "Read file",
 		Description: "Reads a local file into the payload. \"payload\" source treats the CURRENT payload as the file path (what a filesystem-watch trigger's changed-path output supplies, docs/SPEC.md §3.4); \"literal\" source reads a fixed path instead.",

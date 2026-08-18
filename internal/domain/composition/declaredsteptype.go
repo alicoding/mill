@@ -108,6 +108,10 @@ func resolveDeclaredEntry(b DeclaredStepBinding) (nodeTypeEntry, bool) {
 		ConfigFields: fields,
 		Output:       engine.nodeType.Output,
 		Effect:       engine.nodeType.Effect,
+		// The I/O contract is the ENGINE's (ADR-0042): a declaration
+		// curates config away, it never changes what flows through.
+		Consumes:     engine.nodeType.Consumes,
+		Produces:     engine.nodeType.Produces,
 		Declared:     true,
 		PaletteGroup: b.PaletteGroup,
 		// Basic by construction (NodeType.Complexity's own doc comment,

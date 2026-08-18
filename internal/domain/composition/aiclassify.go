@@ -52,6 +52,8 @@ func init() {
 		ID: "process-ai-classify", Kind: KindProcess,
 		Effect:      guardrail.ClassExternal, // dynamic downgrade for a loopback provider -- aiprovider.go's aiNodeEffectOverride
 		Complexity:  ComplexityBasic,
+		Consumes:    []PayloadKind{PayloadText},
+		Produces:    PayloadProduce{Passthrough: true},
 		Output:      "unchanged payload -- the chosen category is written into the named Attribute below",
 		Label:       "Classify with AI",
 		Description: "Sends the running payload (plus an optional instruction) to a Configure-authored AI provider and asks it to pick exactly one of this step's own declared categories, writing the choice into a named Attribute -- a dedicated classification step (Dify's own precedent researched in docs/goals/0031-ai-node-family.md), not composed from extract-structured, since \"pick one of these labels\" is common enough across real workflows to deserve its own shape. Pairs with Branch: route on the written Attribute to act on the classification. The category list is this workflow's own business decision (step-local, not Configure-authored) -- two workflows classifying into different category sets is normal, not drift.",

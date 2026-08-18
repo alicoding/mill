@@ -1265,6 +1265,12 @@
         }
       ],
       "Output": "the changed card's id -- also seeds cardId/kindId/cardTitle/changeType as typed Attributes when this workflow declares them",
+      "Consumes": [
+        "none"
+      ],
+      "Produces": {
+        "kind": "text"
+      },
       "Effect": "",
       "Declared": false,
       "PaletteGroup": "",
@@ -1277,6 +1283,12 @@
       "Description": "Fires only when invoked as a child by another workflow's Child Workflow step (docs/adr/0010) -- never by a real external event, no listener process. Modeled on n8n's own \"Execute Workflow Trigger\": a workflow rooted in this trigger declares itself a valid child target, decoupled from whatever its trigger would otherwise be. The child-workflow picker only lists workflows rooted here -- one rooted in a real-event trigger (filesystem-watch, clipboard-watch, ...) can't be invoked this way, since a parent has no way to synthesize that event.",
       "ConfigFields": null,
       "Output": "the caller's typed input",
+      "Consumes": [
+        "none"
+      ],
+      "Produces": {
+        "kind": "any"
+      },
       "Effect": "",
       "Declared": false,
       "PaletteGroup": "",
@@ -1289,6 +1301,12 @@
       "Description": "Fires whenever the clipboard's content changes.",
       "ConfigFields": null,
       "Output": "the clipboard text that changed",
+      "Consumes": [
+        "none"
+      ],
+      "Produces": {
+        "kind": "text"
+      },
       "Effect": "",
       "Declared": false,
       "PaletteGroup": "",
@@ -1330,6 +1348,12 @@
         }
       ],
       "Output": "the changed file path",
+      "Consumes": [
+        "none"
+      ],
+      "Produces": {
+        "kind": "text"
+      },
       "Effect": "",
       "Declared": false,
       "PaletteGroup": "",
@@ -1342,6 +1366,12 @@
       "Description": "Fires on a global keyboard shortcut, even when Mill isn't focused. Bound via TriggerService, not a config field here -- pressing the combo is better UX than typing it.",
       "ConfigFields": null,
       "Output": "empty payload — the run starts here",
+      "Consumes": [
+        "none"
+      ],
+      "Produces": {
+        "kind": "none"
+      },
       "Effect": "",
       "Declared": false,
       "PaletteGroup": "",
@@ -1354,6 +1384,12 @@
       "Description": "Fires on-demand when a user clicks Run/Test. No listener process.",
       "ConfigFields": null,
       "Output": "empty payload — the run starts here",
+      "Consumes": [
+        "none"
+      ],
+      "Produces": {
+        "kind": "none"
+      },
       "Effect": "",
       "Declared": false,
       "PaletteGroup": "",
@@ -1381,6 +1417,12 @@
         }
       ],
       "Output": "empty payload — the run starts here",
+      "Consumes": [
+        "none"
+      ],
+      "Produces": {
+        "kind": "none"
+      },
       "Effect": "",
       "Declared": false,
       "PaletteGroup": "",
@@ -1427,6 +1469,12 @@
         }
       ],
       "Output": "JSON payload: {event, runId, workflowId, workflowLabel, nodeId?, timestamp} -- the run/decision that caused this event. nodeId is only set for decision-parked (the parked step's ID); empty for run-completed/run-failed/run-cancelled.",
+      "Consumes": [
+        "none"
+      ],
+      "Produces": {
+        "kind": "json"
+      },
       "Effect": "",
       "Declared": false,
       "PaletteGroup": "",
@@ -1454,6 +1502,12 @@
         }
       ],
       "Output": "the attribute's value",
+      "Consumes": [
+        "none"
+      ],
+      "Produces": {
+        "kind": "text"
+      },
       "Effect": "",
       "Declared": false,
       "PaletteGroup": "",
@@ -1466,6 +1520,12 @@
       "Description": "Reads the clipboard's HTML. If there's no HTML flavor (many apps only put plain text), falls back to the plain-text flavor rather than failing -- the capture fallback order docs/SPEC.md §5 names (try HTML, then plain text; DOM-read via the browser bridge is the third tier, not built yet).",
       "ConfigFields": null,
       "Output": "HTML from the clipboard",
+      "Consumes": [
+        "none"
+      ],
+      "Produces": {
+        "kind": "html"
+      },
       "Effect": "read",
       "Declared": false,
       "PaletteGroup": "",
@@ -1478,6 +1538,12 @@
       "Description": "Reads macOS's own \"clipboard info\" report (which flavors -- HTML, plain text, images, ... -- are currently on the pasteboard, and their byte sizes) and summarizes whether HTML and plain text are present, followed by the raw report. A diagnostic for the Confluence-style clipboard ambiguity docs/SPEC.md §5 names: whether HTML was actually on the clipboard, made directly inspectable instead of inferred from a capture succeeding or failing.",
       "ConfigFields": null,
       "Output": "a summary of the clipboard's flavors",
+      "Consumes": [
+        "none"
+      ],
+      "Produces": {
+        "kind": "text"
+      },
       "Effect": "read",
       "Declared": false,
       "PaletteGroup": "",
@@ -1522,6 +1588,13 @@
         }
       ],
       "Output": "the file's contents",
+      "Consumes": [
+        "text",
+        "none"
+      ],
+      "Produces": {
+        "kind": "any"
+      },
       "Effect": "read",
       "Declared": false,
       "PaletteGroup": "",
@@ -1591,6 +1664,12 @@
         }
       ],
       "Output": "the child workflow's result",
+      "Consumes": [
+        "any"
+      ],
+      "Produces": {
+        "kind": "any"
+      },
       "Effect": "none",
       "Declared": false,
       "PaletteGroup": "",
@@ -1663,6 +1742,13 @@
         }
       ],
       "Output": "combined stdout+stderr from the executed command",
+      "Consumes": [
+        "text",
+        "none"
+      ],
+      "Produces": {
+        "kind": "text"
+      },
       "Effect": "external",
       "Declared": false,
       "PaletteGroup": "",
@@ -1704,6 +1790,12 @@
         }
       ],
       "Output": "payload unchanged, after approval",
+      "Consumes": [
+        "any"
+      ],
+      "Produces": {
+        "passthrough": true
+      },
       "Effect": "none",
       "Declared": false,
       "PaletteGroup": "",
@@ -1731,6 +1823,12 @@
         }
       ],
       "Output": "HTTP response body",
+      "Consumes": [
+        "any"
+      ],
+      "Produces": {
+        "kind": "any"
+      },
       "Effect": "external",
       "Declared": false,
       "PaletteGroup": "",
@@ -1832,6 +1930,12 @@
         }
       ],
       "Output": "payload unchanged; match → attribute",
+      "Consumes": [
+        "none"
+      ],
+      "Produces": {
+        "passthrough": true
+      },
       "Effect": "read",
       "Declared": false,
       "PaletteGroup": "",
@@ -1929,6 +2033,12 @@
         }
       ],
       "Output": "payload unchanged; matches -\u003e a typed Object attribute ({results, matched, first_match, match_count, list_id})",
+      "Consumes": [
+        "none"
+      ],
+      "Produces": {
+        "passthrough": true
+      },
       "Effect": "read",
       "Declared": false,
       "PaletteGroup": "",
@@ -1984,6 +2094,12 @@
         }
       ],
       "Output": "the tool's text result",
+      "Consumes": [
+        "any"
+      ],
+      "Produces": {
+        "kind": "any"
+      },
       "Effect": "external",
       "Declared": false,
       "PaletteGroup": "",
@@ -2053,6 +2169,12 @@
         }
       ],
       "Output": "unchanged payload -- the chosen category is written into the named Attribute below",
+      "Consumes": [
+        "text"
+      ],
+      "Produces": {
+        "passthrough": true
+      },
       "Effect": "external",
       "Declared": false,
       "PaletteGroup": "",
@@ -2108,6 +2230,13 @@
         }
       ],
       "Output": "the AI completion text, replacing the payload",
+      "Consumes": [
+        "text",
+        "none"
+      ],
+      "Produces": {
+        "kind": "text"
+      },
       "Effect": "external",
       "Declared": false,
       "PaletteGroup": "",
@@ -2163,6 +2292,12 @@
         }
       ],
       "Output": "unchanged payload -- the extracted typed result is written into the named Attributes below",
+      "Consumes": [
+        "text"
+      ],
+      "Produces": {
+        "passthrough": true
+      },
       "Effect": "external",
       "Declared": false,
       "PaletteGroup": "",
@@ -2232,6 +2367,12 @@
         }
       ],
       "Output": "payload unchanged; matches -\u003e a typed Object attribute ({results, matched, first_match, match_count})",
+      "Consumes": [
+        "none"
+      ],
+      "Produces": {
+        "passthrough": true
+      },
       "Effect": "read",
       "Declared": false,
       "PaletteGroup": "",
@@ -2259,6 +2400,12 @@
         }
       ],
       "Output": "the matched element's outer HTML",
+      "Consumes": [
+        "html"
+      ],
+      "Produces": {
+        "kind": "html"
+      },
       "Effect": "",
       "Declared": false,
       "PaletteGroup": "",
@@ -2271,6 +2418,12 @@
       "Description": "Converts HTML into Markdown, preserving structure (headings, bold, lists).",
       "ConfigFields": null,
       "Output": "Markdown text",
+      "Consumes": [
+        "html"
+      ],
+      "Produces": {
+        "kind": "markdown"
+      },
       "Effect": "",
       "Declared": false,
       "PaletteGroup": "",
@@ -2315,6 +2468,13 @@
         }
       ],
       "Output": "payload with text injected",
+      "Consumes": [
+        "text",
+        "none"
+      ],
+      "Produces": {
+        "kind": "text"
+      },
       "Effect": "",
       "Declared": false,
       "PaletteGroup": "",
@@ -2327,6 +2487,12 @@
       "Description": "Renders this run's own recorded evidence -- its steps so far, their guardrail verdicts, and which Mill build ran them -- as a JSON receipt, replacing the payload. Only covers steps that ran BEFORE this one, since the run is still in flight when this step executes. Compose it with an Apply step (clipboard/file write) to hand the receipt to an external agent -- there is no separate send path.",
       "ConfigFields": null,
       "Output": "a JSON receipt of this run's steps so far",
+      "Consumes": [
+        "none"
+      ],
+      "Produces": {
+        "kind": "json"
+      },
       "Effect": "read",
       "Declared": false,
       "PaletteGroup": "",
@@ -2339,6 +2505,12 @@
       "Description": "Validates the data flowing through this step against a set of named rules (business/data validation -- e.g. \"amount below limit\", \"country allowed\"). Every rule must pass for the payload to continue unchanged; any failing rule fails the run, naming exactly which rules failed. A rule that cannot evaluate counts as failed (fail-safe). Distinct from Decision (which routes) and from guardrail rules (which govern whether a step may execute at all).",
       "ConfigFields": null,
       "Output": "payload unchanged, if all rules pass",
+      "Consumes": [
+        "any"
+      ],
+      "Produces": {
+        "passthrough": true
+      },
       "Effect": "none",
       "Declared": false,
       "PaletteGroup": "",
@@ -2408,6 +2580,12 @@
         }
       ],
       "Output": "payload unchanged; the new card's id -\u003e the output attribute, if named",
+      "Consumes": [
+        "none"
+      ],
+      "Produces": {
+        "passthrough": true
+      },
       "Effect": "local",
       "Declared": false,
       "PaletteGroup": "",
@@ -2477,6 +2655,12 @@
         }
       ],
       "Output": "payload unchanged",
+      "Consumes": [
+        "none"
+      ],
+      "Produces": {
+        "passthrough": true
+      },
       "Effect": "local",
       "Declared": false,
       "PaletteGroup": "",
@@ -2546,6 +2730,12 @@
         }
       ],
       "Output": "payload unchanged; the updated card's id -\u003e the output attribute, if named",
+      "Consumes": [
+        "none"
+      ],
+      "Produces": {
+        "passthrough": true
+      },
       "Effect": "local",
       "Declared": false,
       "PaletteGroup": "",
@@ -2615,6 +2805,12 @@
         }
       ],
       "Output": "payload unchanged; a sync-summary JSON -\u003e the output attribute, if named",
+      "Consumes": [
+        "none"
+      ],
+      "Produces": {
+        "passthrough": true
+      },
       "Effect": "local",
       "Declared": false,
       "PaletteGroup": "",
@@ -2656,6 +2852,12 @@
         }
       ],
       "Output": "payload unchanged; a created-summary JSON -\u003e the output attribute, if named",
+      "Consumes": [
+        "none"
+      ],
+      "Produces": {
+        "passthrough": true
+      },
       "Effect": "local",
       "Declared": false,
       "PaletteGroup": "",
@@ -2683,6 +2885,12 @@
         }
       ],
       "Output": "the payload it received, unchanged",
+      "Consumes": [
+        "any"
+      ],
+      "Produces": {
+        "passthrough": true
+      },
       "Effect": "local",
       "Declared": false,
       "PaletteGroup": "",
@@ -2710,6 +2918,12 @@
         }
       ],
       "Output": "the HTML it wrote",
+      "Consumes": [
+        "none"
+      ],
+      "Produces": {
+        "kind": "html"
+      },
       "Effect": "local",
       "Declared": false,
       "PaletteGroup": "",
@@ -2722,6 +2936,12 @@
       "Description": "Writes the workflow's current payload to the clipboard as plain text.",
       "ConfigFields": null,
       "Output": "the text it wrote",
+      "Consumes": [
+        "text"
+      ],
+      "Produces": {
+        "passthrough": true
+      },
       "Effect": "local",
       "Declared": false,
       "PaletteGroup": "",
@@ -2794,6 +3014,13 @@
         }
       ],
       "Output": "the file's new path",
+      "Consumes": [
+        "text",
+        "none"
+      ],
+      "Produces": {
+        "kind": "text"
+      },
       "Effect": "local",
       "Declared": false,
       "PaletteGroup": "",
@@ -2869,6 +3096,12 @@
         }
       ],
       "Output": "the payload it wrote, unchanged",
+      "Consumes": [
+        "text"
+      ],
+      "Produces": {
+        "passthrough": true
+      },
       "Effect": "local",
       "Declared": false,
       "PaletteGroup": "",
@@ -2938,6 +3171,12 @@
         }
       ],
       "Output": "payload unchanged; the row's id -\u003e the output attribute, if named",
+      "Consumes": [
+        "none"
+      ],
+      "Produces": {
+        "passthrough": true
+      },
       "Effect": "local",
       "Declared": false,
       "PaletteGroup": "",
@@ -2993,6 +3232,12 @@
         }
       ],
       "Output": "payload unchanged; a notification appears on this machine",
+      "Consumes": [
+        "none"
+      ],
+      "Produces": {
+        "passthrough": true
+      },
       "Effect": "local",
       "Declared": false,
       "PaletteGroup": "",
@@ -3005,6 +3250,12 @@
       "Description": "Routes to one of several next steps based on a rule evaluated against this workflow's Attributes. A pure routing point -- its conditions live on its outgoing edges (SPEC.md §3.5), not here.",
       "ConfigFields": null,
       "Output": "payload and Attributes unchanged; routes to the matching outgoing edge",
+      "Consumes": [
+        "any"
+      ],
+      "Produces": {
+        "passthrough": true
+      },
       "Effect": "",
       "Declared": false,
       "PaletteGroup": "",
@@ -3046,6 +3297,12 @@
         }
       ],
       "Output": "the typed decision outcome",
+      "Consumes": [
+        "any"
+      ],
+      "Produces": {
+        "kind": "none"
+      },
       "Effect": "local",
       "Declared": false,
       "PaletteGroup": "",
@@ -3075,6 +3332,12 @@
         }
       ],
       "Output": "the changed card's id -- also seeds cardId/kindId/cardTitle/changeType as typed Attributes when this workflow declares them",
+      "Consumes": [
+        "none"
+      ],
+      "Produces": {
+        "kind": "text"
+      },
       "Effect": "",
       "Declared": false,
       "PaletteGroup": "",
@@ -3087,6 +3350,12 @@
       "Description": "Fires only when invoked as a child by another workflow's Child Workflow step (docs/adr/0010) -- never by a real external event, no listener process. Modeled on n8n's own \"Execute Workflow Trigger\": a workflow rooted in this trigger declares itself a valid child target, decoupled from whatever its trigger would otherwise be. The child-workflow picker only lists workflows rooted here -- one rooted in a real-event trigger (filesystem-watch, clipboard-watch, ...) can't be invoked this way, since a parent has no way to synthesize that event.",
       "ConfigFields": null,
       "Output": "the caller's typed input",
+      "Consumes": [
+        "none"
+      ],
+      "Produces": {
+        "kind": "any"
+      },
       "Effect": "",
       "Declared": false,
       "PaletteGroup": "",
@@ -3099,6 +3368,12 @@
       "Description": "Fires whenever the clipboard's content changes.",
       "ConfigFields": null,
       "Output": "the clipboard text that changed",
+      "Consumes": [
+        "none"
+      ],
+      "Produces": {
+        "kind": "text"
+      },
       "Effect": "",
       "Declared": false,
       "PaletteGroup": "",
@@ -3140,6 +3415,12 @@
         }
       ],
       "Output": "the changed file path",
+      "Consumes": [
+        "none"
+      ],
+      "Produces": {
+        "kind": "text"
+      },
       "Effect": "",
       "Declared": false,
       "PaletteGroup": "",
@@ -3152,6 +3433,12 @@
       "Description": "Fires on a global keyboard shortcut, even when Mill isn't focused. Bound via TriggerService, not a config field here -- pressing the combo is better UX than typing it.",
       "ConfigFields": null,
       "Output": "empty payload — the run starts here",
+      "Consumes": [
+        "none"
+      ],
+      "Produces": {
+        "kind": "none"
+      },
       "Effect": "",
       "Declared": false,
       "PaletteGroup": "",
@@ -3164,6 +3451,12 @@
       "Description": "Fires on-demand when a user clicks Run/Test. No listener process.",
       "ConfigFields": null,
       "Output": "empty payload — the run starts here",
+      "Consumes": [
+        "none"
+      ],
+      "Produces": {
+        "kind": "none"
+      },
       "Effect": "",
       "Declared": false,
       "PaletteGroup": "",
@@ -3191,6 +3484,12 @@
         }
       ],
       "Output": "empty payload — the run starts here",
+      "Consumes": [
+        "none"
+      ],
+      "Produces": {
+        "kind": "none"
+      },
       "Effect": "",
       "Declared": false,
       "PaletteGroup": "",
@@ -3237,6 +3536,12 @@
         }
       ],
       "Output": "JSON payload: {event, runId, workflowId, workflowLabel, nodeId?, timestamp} -- the run/decision that caused this event. nodeId is only set for decision-parked (the parked step's ID); empty for run-completed/run-failed/run-cancelled.",
+      "Consumes": [
+        "none"
+      ],
+      "Produces": {
+        "kind": "json"
+      },
       "Effect": "",
       "Declared": false,
       "PaletteGroup": "",
@@ -3264,6 +3569,12 @@
         }
       ],
       "Output": "the attribute's value",
+      "Consumes": [
+        "none"
+      ],
+      "Produces": {
+        "kind": "text"
+      },
       "Effect": "",
       "Declared": false,
       "PaletteGroup": "",
@@ -3276,6 +3587,12 @@
       "Description": "Reads the clipboard's HTML. If there's no HTML flavor (many apps only put plain text), falls back to the plain-text flavor rather than failing -- the capture fallback order docs/SPEC.md §5 names (try HTML, then plain text; DOM-read via the browser bridge is the third tier, not built yet).",
       "ConfigFields": null,
       "Output": "HTML from the clipboard",
+      "Consumes": [
+        "none"
+      ],
+      "Produces": {
+        "kind": "html"
+      },
       "Effect": "read",
       "Declared": false,
       "PaletteGroup": "",
@@ -3288,6 +3605,12 @@
       "Description": "Reads macOS's own \"clipboard info\" report (which flavors -- HTML, plain text, images, ... -- are currently on the pasteboard, and their byte sizes) and summarizes whether HTML and plain text are present, followed by the raw report. A diagnostic for the Confluence-style clipboard ambiguity docs/SPEC.md §5 names: whether HTML was actually on the clipboard, made directly inspectable instead of inferred from a capture succeeding or failing.",
       "ConfigFields": null,
       "Output": "a summary of the clipboard's flavors",
+      "Consumes": [
+        "none"
+      ],
+      "Produces": {
+        "kind": "text"
+      },
       "Effect": "read",
       "Declared": false,
       "PaletteGroup": "",
@@ -3332,6 +3655,13 @@
         }
       ],
       "Output": "the file's contents",
+      "Consumes": [
+        "text",
+        "none"
+      ],
+      "Produces": {
+        "kind": "any"
+      },
       "Effect": "read",
       "Declared": false,
       "PaletteGroup": "",
@@ -3401,6 +3731,12 @@
         }
       ],
       "Output": "the child workflow's result",
+      "Consumes": [
+        "any"
+      ],
+      "Produces": {
+        "kind": "any"
+      },
       "Effect": "none",
       "Declared": false,
       "PaletteGroup": "",
@@ -3473,6 +3809,13 @@
         }
       ],
       "Output": "combined stdout+stderr from the executed command",
+      "Consumes": [
+        "text",
+        "none"
+      ],
+      "Produces": {
+        "kind": "text"
+      },
       "Effect": "external",
       "Declared": false,
       "PaletteGroup": "",
@@ -3514,6 +3857,12 @@
         }
       ],
       "Output": "payload unchanged, after approval",
+      "Consumes": [
+        "any"
+      ],
+      "Produces": {
+        "passthrough": true
+      },
       "Effect": "none",
       "Declared": false,
       "PaletteGroup": "",
@@ -3541,6 +3890,12 @@
         }
       ],
       "Output": "HTTP response body",
+      "Consumes": [
+        "any"
+      ],
+      "Produces": {
+        "kind": "any"
+      },
       "Effect": "external",
       "Declared": false,
       "PaletteGroup": "",
@@ -3642,6 +3997,12 @@
         }
       ],
       "Output": "payload unchanged; match → attribute",
+      "Consumes": [
+        "none"
+      ],
+      "Produces": {
+        "passthrough": true
+      },
       "Effect": "read",
       "Declared": false,
       "PaletteGroup": "",
@@ -3739,6 +4100,12 @@
         }
       ],
       "Output": "payload unchanged; matches -\u003e a typed Object attribute ({results, matched, first_match, match_count, list_id})",
+      "Consumes": [
+        "none"
+      ],
+      "Produces": {
+        "passthrough": true
+      },
       "Effect": "read",
       "Declared": false,
       "PaletteGroup": "",
@@ -3794,6 +4161,12 @@
         }
       ],
       "Output": "the tool's text result",
+      "Consumes": [
+        "any"
+      ],
+      "Produces": {
+        "kind": "any"
+      },
       "Effect": "external",
       "Declared": false,
       "PaletteGroup": "",
@@ -3863,6 +4236,12 @@
         }
       ],
       "Output": "unchanged payload -- the chosen category is written into the named Attribute below",
+      "Consumes": [
+        "text"
+      ],
+      "Produces": {
+        "passthrough": true
+      },
       "Effect": "external",
       "Declared": false,
       "PaletteGroup": "",
@@ -3918,6 +4297,13 @@
         }
       ],
       "Output": "the AI completion text, replacing the payload",
+      "Consumes": [
+        "text",
+        "none"
+      ],
+      "Produces": {
+        "kind": "text"
+      },
       "Effect": "external",
       "Declared": false,
       "PaletteGroup": "",
@@ -3973,6 +4359,12 @@
         }
       ],
       "Output": "unchanged payload -- the extracted typed result is written into the named Attributes below",
+      "Consumes": [
+        "text"
+      ],
+      "Produces": {
+        "passthrough": true
+      },
       "Effect": "external",
       "Declared": false,
       "PaletteGroup": "",
@@ -4042,6 +4434,12 @@
         }
       ],
       "Output": "payload unchanged; matches -\u003e a typed Object attribute ({results, matched, first_match, match_count})",
+      "Consumes": [
+        "none"
+      ],
+      "Produces": {
+        "passthrough": true
+      },
       "Effect": "read",
       "Declared": false,
       "PaletteGroup": "",
@@ -4069,6 +4467,12 @@
         }
       ],
       "Output": "the matched element's outer HTML",
+      "Consumes": [
+        "html"
+      ],
+      "Produces": {
+        "kind": "html"
+      },
       "Effect": "",
       "Declared": false,
       "PaletteGroup": "",
@@ -4081,6 +4485,12 @@
       "Description": "Converts HTML into Markdown, preserving structure (headings, bold, lists).",
       "ConfigFields": null,
       "Output": "Markdown text",
+      "Consumes": [
+        "html"
+      ],
+      "Produces": {
+        "kind": "markdown"
+      },
       "Effect": "",
       "Declared": false,
       "PaletteGroup": "",
@@ -4125,6 +4535,13 @@
         }
       ],
       "Output": "payload with text injected",
+      "Consumes": [
+        "text",
+        "none"
+      ],
+      "Produces": {
+        "kind": "text"
+      },
       "Effect": "",
       "Declared": false,
       "PaletteGroup": "",
@@ -4137,6 +4554,12 @@
       "Description": "Renders this run's own recorded evidence -- its steps so far, their guardrail verdicts, and which Mill build ran them -- as a JSON receipt, replacing the payload. Only covers steps that ran BEFORE this one, since the run is still in flight when this step executes. Compose it with an Apply step (clipboard/file write) to hand the receipt to an external agent -- there is no separate send path.",
       "ConfigFields": null,
       "Output": "a JSON receipt of this run's steps so far",
+      "Consumes": [
+        "none"
+      ],
+      "Produces": {
+        "kind": "json"
+      },
       "Effect": "read",
       "Declared": false,
       "PaletteGroup": "",
@@ -4149,6 +4572,12 @@
       "Description": "Validates the data flowing through this step against a set of named rules (business/data validation -- e.g. \"amount below limit\", \"country allowed\"). Every rule must pass for the payload to continue unchanged; any failing rule fails the run, naming exactly which rules failed. A rule that cannot evaluate counts as failed (fail-safe). Distinct from Decision (which routes) and from guardrail rules (which govern whether a step may execute at all).",
       "ConfigFields": null,
       "Output": "payload unchanged, if all rules pass",
+      "Consumes": [
+        "any"
+      ],
+      "Produces": {
+        "passthrough": true
+      },
       "Effect": "none",
       "Declared": false,
       "PaletteGroup": "",
@@ -4218,6 +4647,12 @@
         }
       ],
       "Output": "payload unchanged; the new card's id -\u003e the output attribute, if named",
+      "Consumes": [
+        "none"
+      ],
+      "Produces": {
+        "passthrough": true
+      },
       "Effect": "local",
       "Declared": false,
       "PaletteGroup": "",
@@ -4287,6 +4722,12 @@
         }
       ],
       "Output": "payload unchanged",
+      "Consumes": [
+        "none"
+      ],
+      "Produces": {
+        "passthrough": true
+      },
       "Effect": "local",
       "Declared": false,
       "PaletteGroup": "",
@@ -4356,6 +4797,12 @@
         }
       ],
       "Output": "payload unchanged; the updated card's id -\u003e the output attribute, if named",
+      "Consumes": [
+        "none"
+      ],
+      "Produces": {
+        "passthrough": true
+      },
       "Effect": "local",
       "Declared": false,
       "PaletteGroup": "",
@@ -4425,6 +4872,12 @@
         }
       ],
       "Output": "payload unchanged; a sync-summary JSON -\u003e the output attribute, if named",
+      "Consumes": [
+        "none"
+      ],
+      "Produces": {
+        "passthrough": true
+      },
       "Effect": "local",
       "Declared": false,
       "PaletteGroup": "",
@@ -4466,6 +4919,12 @@
         }
       ],
       "Output": "payload unchanged; a created-summary JSON -\u003e the output attribute, if named",
+      "Consumes": [
+        "none"
+      ],
+      "Produces": {
+        "passthrough": true
+      },
       "Effect": "local",
       "Declared": false,
       "PaletteGroup": "",
@@ -4493,6 +4952,12 @@
         }
       ],
       "Output": "the payload it received, unchanged",
+      "Consumes": [
+        "any"
+      ],
+      "Produces": {
+        "passthrough": true
+      },
       "Effect": "local",
       "Declared": false,
       "PaletteGroup": "",
@@ -4520,6 +4985,12 @@
         }
       ],
       "Output": "the HTML it wrote",
+      "Consumes": [
+        "none"
+      ],
+      "Produces": {
+        "kind": "html"
+      },
       "Effect": "local",
       "Declared": false,
       "PaletteGroup": "",
@@ -4532,6 +5003,12 @@
       "Description": "Writes the workflow's current payload to the clipboard as plain text.",
       "ConfigFields": null,
       "Output": "the text it wrote",
+      "Consumes": [
+        "text"
+      ],
+      "Produces": {
+        "passthrough": true
+      },
       "Effect": "local",
       "Declared": false,
       "PaletteGroup": "",
@@ -4604,6 +5081,13 @@
         }
       ],
       "Output": "the file's new path",
+      "Consumes": [
+        "text",
+        "none"
+      ],
+      "Produces": {
+        "kind": "text"
+      },
       "Effect": "local",
       "Declared": false,
       "PaletteGroup": "",
@@ -4679,6 +5163,12 @@
         }
       ],
       "Output": "the payload it wrote, unchanged",
+      "Consumes": [
+        "text"
+      ],
+      "Produces": {
+        "passthrough": true
+      },
       "Effect": "local",
       "Declared": false,
       "PaletteGroup": "",
@@ -4748,6 +5238,12 @@
         }
       ],
       "Output": "payload unchanged; the row's id -\u003e the output attribute, if named",
+      "Consumes": [
+        "none"
+      ],
+      "Produces": {
+        "passthrough": true
+      },
       "Effect": "local",
       "Declared": false,
       "PaletteGroup": "",
@@ -4803,6 +5299,12 @@
         }
       ],
       "Output": "payload unchanged; a notification appears on this machine",
+      "Consumes": [
+        "none"
+      ],
+      "Produces": {
+        "passthrough": true
+      },
       "Effect": "local",
       "Declared": false,
       "PaletteGroup": "",
@@ -4815,6 +5317,12 @@
       "Description": "Routes to one of several next steps based on a rule evaluated against this workflow's Attributes. A pure routing point -- its conditions live on its outgoing edges (SPEC.md §3.5), not here.",
       "ConfigFields": null,
       "Output": "payload and Attributes unchanged; routes to the matching outgoing edge",
+      "Consumes": [
+        "any"
+      ],
+      "Produces": {
+        "passthrough": true
+      },
       "Effect": "",
       "Declared": false,
       "PaletteGroup": "",
@@ -4856,6 +5364,12 @@
         }
       ],
       "Output": "the typed decision outcome",
+      "Consumes": [
+        "any"
+      ],
+      "Produces": {
+        "kind": "none"
+      },
       "Effect": "local",
       "Declared": false,
       "PaletteGroup": "",

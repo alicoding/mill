@@ -11,6 +11,8 @@ func init() {
 		ID: "process-html-to-markdown", Kind: KindProcess,
 		Label:       "Convert HTML to Markdown",
 		Complexity:  ComplexityBasic,
+		Consumes:    []PayloadKind{PayloadHTML},
+		Produces:    PayloadProduce{Kind: PayloadMarkdown},
 		Output:      "Markdown text",
 		Description: "Converts HTML into Markdown, preserving structure (headings, bold, lists).",
 	}, func(_ Node, ctx ExecContext) (ExecContext, error) {

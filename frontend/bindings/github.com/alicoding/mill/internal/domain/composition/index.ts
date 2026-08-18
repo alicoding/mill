@@ -6,6 +6,7 @@ export {
     Complexity,
     NodeKind,
     NoteColor,
+    PayloadKind,
     Severity
 } from "./models.js";
 
@@ -18,6 +19,7 @@ export type {
     Node,
     NodeType,
     Note,
+    PayloadProduce,
     Position,
     Size,
     Workflow,

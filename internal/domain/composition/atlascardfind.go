@@ -60,6 +60,8 @@ func init() {
 		// Advanced: matchParams is hand-authored JSON, same reasoning as
 		// list-search's own identical field.
 		Complexity: ComplexityAdvanced,
+		Consumes:   []PayloadKind{PayloadNone},
+		Produces:   PayloadProduce{Passthrough: true},
 		Output: "payload unchanged; matches -> a typed Object attribute " +
 			"({results, matched, first_match, match_count})",
 		Description: "Searches a Kind's cards in Atlas against one or more match parameters (exact or fuzzy, " +

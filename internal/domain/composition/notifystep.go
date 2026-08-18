@@ -29,6 +29,8 @@ func init() {
 		// same class as the clipboard writes.
 		Effect:     guardrail.ClassLocal,
 		Complexity: ComplexityBasic,
+		Consumes:   []PayloadKind{PayloadNone},
+		Produces:   PayloadProduce{Passthrough: true},
 		Output:     "payload unchanged; a notification appears on this machine",
 		Description: "Shows a notification when the workflow reaches this step -- the way a " +
 			"hotkey-triggered workflow tells you it finished while you're in another app. " +

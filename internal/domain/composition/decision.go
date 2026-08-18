@@ -15,6 +15,8 @@ func init() {
 		ID: "decision-route", Kind: KindDecision,
 		Label:       "Branch",
 		Complexity:  ComplexityBasic,
+		Consumes:    []PayloadKind{PayloadAny},
+		Produces:    PayloadProduce{Passthrough: true},
 		Output:      "payload and Attributes unchanged; routes to the matching outgoing edge",
 		Description: "Routes to one of several next steps based on a rule evaluated against this workflow's Attributes. A pure routing point -- its conditions live on its outgoing edges (SPEC.md §3.5), not here.",
 	}, nil)
