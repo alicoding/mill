@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Text } from '@primer/react'
 import { MirrorKind } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
@@ -6,6 +6,7 @@ import type { MirrorContent } from '../../bindings/github.com/alicoding/mill/int
 import { AtlasService } from '../shared/bindings'
 import runbookStyles from '../shared/ListCard.module.css'
 import styles from './AtlasCardMirrorPreview.module.css'
+import { useMermaidRendering } from './useMermaidRendering'
 
 // 1000-based (KB/MB, not KiB/MiB) -- matches how a file's size is
 // quoted everywhere else a user sees one (Finder, most OS file
@@ -30,6 +31,9 @@ export function AtlasCardMirrorPreview({ cardID, mirrorPath }: { cardID: string;
   const { t } = useTranslation('atlas')
   const [content, setContent] = useState<MirrorContent | null>(null)
   const [error, setError] = useState('')
+  const markdownRef = useRef<HTMLDivElement | null>(null)
+  const isMarkdown = content?.Kind === MirrorKind.MirrorKindMarkdown
+  useMermaidRendering(markdownRef, isMarkdown ? content.Content : null)
 
   useEffect(() => {
     setContent(null)
@@ -59,6 +63,7 @@ export function AtlasCardMirrorPreview({ cardID, mirrorPath }: { cardID: string;
   if (content.Kind === MirrorKind.MirrorKindMarkdown) {
     return (
       <div
+        ref={markdownRef}
         className={styles.markdownBody}
         data-testid="atlas-mirror-markdown"
         // Safe: goldmark's default (non-unsafe) render mode never passes

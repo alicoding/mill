@@ -31,13 +31,15 @@ func fileChecksum(path string) (string, error) {
 	return hex.EncodeToString(h.Sum(nil)), nil
 }
 
-// checksumIndexLocked maps every card's own MirrorChecksum to its ID --
-// cards with no checksum computed yet are absent. Caller must hold a.mu
-// (a read lock suffices).
+// checksumIndexLocked maps every LIVE card's own MirrorChecksum to its
+// ID -- cards with no checksum computed yet are absent, and so are
+// soft-deleted ones: a duplicate flag pointing at a card the user
+// already deleted would mark a re-import as "already imported" against
+// nothing they can see. Caller must hold a.mu (a read lock suffices).
 func (a *AtlasService) checksumIndexLocked() map[string]string {
 	index := make(map[string]string)
 	for _, c := range a.cards {
-		if c.MirrorChecksum == "" {
+		if c.MirrorChecksum == "" || !c.DeletedAt.IsZero() {
 			continue
 		}
 		index[c.MirrorChecksum] = c.ID

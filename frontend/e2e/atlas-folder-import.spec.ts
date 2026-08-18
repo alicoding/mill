@@ -89,6 +89,15 @@ test('add from folder: scan, partial accept, containment, and mirror rendering a
   await expect(overlay.getByTestId('atlas-page-mirror-path')).toHaveValue(/Reports\/Q1 Summary\.md$/)
   await expect(overlay.getByTestId('atlas-mirror-markdown')).toContainText('Numbers looked good across the board.')
 
+  // Mermaid fences render as inline SVG diagrams (goal 0108); a fence
+  // that fails to parse keeps its original code block -- the fixture
+  // carries one of each, so exactly one diagram and one surviving
+  // fence prove both the render and the honest fallback.
+  const diagram = overlay.getByTestId('atlas-mermaid-diagram')
+  await expect(diagram).toHaveCount(1)
+  await expect(diagram.locator('svg')).toBeVisible()
+  await expect(overlay.getByTestId('atlas-mirror-markdown').locator('code.language-mermaid')).toHaveCount(1)
+
   // Cleanup (testing.md's within-file/within-worker discipline): the
   // child card must go before its own container can be deleted. Once
   // "Reports" holds no children, it renders as a plain note card,
