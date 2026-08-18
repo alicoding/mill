@@ -17,6 +17,78 @@ type check struct {
 	run    func(c mcpCaller) (string, error)
 }
 
+// mainWindowName matches main.go's explicit window name. Every
+// page-directed bridge tool (js_eval, mouse_click, keyboard_press)
+// defaults to "the focused window, or the first window" -- with three
+// live windows (main + quickpanel + approvalprompt, ADR-0033) that
+// default is ambiguous, so every call scopes itself here explicitly.
+const mainWindowName = "main"
+
+// withWindow returns args with the main-window scope added -- checks
+// never mutate a shared map, each call site builds its own.
+func withWindow(args map[string]any) map[string]any {
+	args["window"] = mainWindowName
+	return args
+}
+
+// badgePollTimeout is a var so the negative-path unit test can shrink
+// it instead of waiting out the real deadline.
+var badgePollTimeout = 10 * time.Second
+
+// The bridge's call_bound_method tool runs
+// `await import('/wails/runtime.js')` inside the target window (its
+// own implementation, mcp_tools_enabled.go). That import executes a
+// SECOND runtime instance which re-registers
+// window._wails.dispatchWailsEvent, permanently orphaning the app
+// bundle's own event listeners -- from that moment every Go-emitted
+// event (mill-data-changed live-sync, the footer clock's time tick)
+// silently stops reaching the app. Reproduced deterministically: the
+// clock freezes at the exact second of the first call_bound_method.
+// Until fixed upstream, the harness repairs it: capture the app's
+// dispatcher before any bound call, and after each bound call chain
+// the stolen slot back so BOTH instances receive every event.
+
+// captureAppDispatch stashes the app bundle's live dispatcher. Must
+// run before the first call_bound_method in the window.
+func captureAppDispatch(c mcpCaller) error {
+	return pollJSEval(c, `window.__millAppDispatch = window.__millAppDispatch || (window._wails && window._wails.dispatchWailsEvent);
+		return !!window.__millAppDispatch;`, 10*time.Second)
+}
+
+// repairAppDispatch re-chains the app's captured dispatcher behind
+// whatever call_bound_method's runtime import installed. Idempotent.
+func repairAppDispatch(c mcpCaller) error {
+	// c.call, not callJSON: the bridge returns a bare string result
+	// unquoted, which is not valid JSON.
+	status, err := c.call("js_eval", withWindow(map[string]any{
+		"js": `const w = window._wails;
+			if (!window.__millAppDispatch) return "no-capture";
+			if (w.dispatchWailsEvent !== window.__millAppDispatch && !w.__millChained) {
+				const stolen = w.dispatchWailsEvent;
+				w.dispatchWailsEvent = function (e) { try { stolen(e) } catch (err) { /* second instance only */ } window.__millAppDispatch(e); };
+				w.__millChained = true;
+				return "chained";
+			}
+			return "intact";`,
+	}))
+	if err != nil {
+		return err
+	}
+	if status == "no-capture" {
+		return fmt.Errorf("repairAppDispatch ran without a prior captureAppDispatch -- the app's event bus may be dead")
+	}
+	return nil
+}
+
+// callBoundJSON wraps call_bound_method with the dispatcher repair
+// above -- every bound call in this package must go through it.
+func callBoundJSON(c mcpCaller, name string, args []any, out any) error {
+	if err := c.callJSON("call_bound_method", map[string]any{"name": name, "args": args}, out); err != nil {
+		return err
+	}
+	return repairAppDispatch(c)
+}
+
 var registry = []check{
 	{
 		name:   "isolated-data-badge",
@@ -25,7 +97,7 @@ var registry = []check{
 	},
 	{
 		name:   "app-info-window-sane",
-		reason: "the real Wails process reports exactly one live window on darwin -- proves a genuine desktop process booted, not just that a binary exists.",
+		reason: "the real Wails process reports the app's true three-window shape on darwin (main + quickpanel + approvalprompt, ADR-0033) -- proves a genuine desktop process booted with its real window set, not just that a binary exists.",
 		run:    checkAppInfo,
 	},
 	{
@@ -51,14 +123,11 @@ var registry = []check{
 }
 
 func checkIsolatedDataBadge(c mcpCaller) (string, error) {
-	var found bool
-	if err := c.callJSON("js_eval", map[string]any{
-		"js": `return !!document.querySelector('[data-testid="isolated-data-badge"]');`,
-	}, &found); err != nil {
-		return "", err
-	}
-	if !found {
-		return "", fmt.Errorf("isolated-data-badge not present -- refusing to trust this window's data isolation")
+	// Polled, not one-shot: the badge renders only after the frontend's
+	// async IsIsolatedData RPC resolves, which races the bridge
+	// becoming reachable.
+	if err := pollJSEval(c, `return !!document.querySelector('[data-testid="isolated-data-badge"]');`, badgePollTimeout); err != nil {
+		return "", fmt.Errorf("isolated-data-badge not present -- refusing to trust this window's data isolation: %w", err)
 	}
 	return "badge visible", nil
 }
@@ -67,7 +136,8 @@ func checkAppInfo(c mcpCaller) (string, error) {
 	var info struct {
 		OS      string `json:"os"`
 		Windows []struct {
-			Name string `json:"name"`
+			Name    string `json:"name"`
+			Visible bool   `json:"visible"`
 		} `json:"windows"`
 	}
 	if err := c.callJSON("app_info", map[string]any{}, &info); err != nil {
@@ -76,10 +146,33 @@ func checkAppInfo(c mcpCaller) (string, error) {
 	if info.OS != "darwin" {
 		return "", fmt.Errorf("expected os darwin, got %q", info.OS)
 	}
-	if len(info.Windows) != 1 {
-		return "", fmt.Errorf("expected exactly 1 window, got %d", len(info.Windows))
+	// The app's real window set (ADR-0033): the named main window plus
+	// the two auxiliary windows. Asserted by name, not count, so a
+	// missing or unexpected window is named in the failure.
+	want := map[string]bool{mainWindowName: false, "quickpanel": false, "approvalprompt": false}
+	mainVisible := false
+	for _, w := range info.Windows {
+		seen, expected := want[w.Name]
+		if !expected {
+			return "", fmt.Errorf("unexpected window %q -- the registry's window model is stale", w.Name)
+		}
+		if seen {
+			return "", fmt.Errorf("duplicate window %q", w.Name)
+		}
+		want[w.Name] = true
+		if w.Name == mainWindowName {
+			mainVisible = w.Visible
+		}
 	}
-	return fmt.Sprintf("os=%s window=%q", info.OS, info.Windows[0].Name), nil
+	for name, seen := range want {
+		if !seen {
+			return "", fmt.Errorf("expected window %q not reported", name)
+		}
+	}
+	if !mainVisible {
+		return "", fmt.Errorf("main window reported not visible")
+	}
+	return fmt.Sprintf("os=%s windows=main+quickpanel+approvalprompt, main visible", info.OS), nil
 }
 
 // pollJSEval retries a boolean-returning js_eval snippet until it's
@@ -91,7 +184,7 @@ func pollJSEval(c mcpCaller, js string, timeout time.Duration) error {
 	var lastErr error
 	for time.Now().Before(deadline) {
 		var ok bool
-		if err := c.callJSON("js_eval", map[string]any{"js": js}, &ok); err != nil {
+		if err := c.callJSON("js_eval", withWindow(map[string]any{"js": js}), &ok); err != nil {
 			lastErr = err
 		} else if ok {
 			return nil
@@ -109,13 +202,13 @@ func checkAtlasBoardRenders(c mcpCaller) (string, error) {
 		Clicked bool   `json:"clicked"`
 		Tag     string `json:"tag"`
 	}
-	if err := c.callJSON("js_eval", map[string]any{
+	if err := c.callJSON("js_eval", withWindow(map[string]any{
 		"js": `const candidates = [...document.querySelectorAll('a,button,[role="link"],[role="button"]')];
 			const link = candidates.find(el => (el.textContent||'').trim() === 'Atlas' || el.getAttribute('aria-label') === 'Atlas');
 			if (!link) throw new Error('Atlas nav entry not found among ' + candidates.length + ' candidates');
 			link.click();
 			return { clicked: true, tag: link.tagName };`,
-	}, &nav); err != nil {
+	}), &nav); err != nil {
 		return "", err
 	}
 	if err := pollJSEval(c, `return !!document.querySelector('[data-testid="atlas-board"]');`, 10*time.Second); err != nil {
@@ -132,21 +225,21 @@ func checkAtlasBoardRenders(c mcpCaller) (string, error) {
 // so the ring check that follows starts from an unselected board.
 func checkNoteCardCommit(c mcpCaller) (string, error) {
 	selector := `[data-testid="atlas-note-card"]`
-	if _, err := c.call("mouse_click", map[string]any{"selector": selector}); err != nil {
+	if _, err := c.call("mouse_click", withWindow(map[string]any{"selector": selector})); err != nil {
 		return "", fmt.Errorf("select click: %w", err)
 	}
 	if err := pollJSEval(c, `const card = document.querySelector('[data-testid="atlas-note-card"]');
 		return !!card && !!card.closest('.react-flow__node.selected');`, 5*time.Second); err != nil {
 		return "", fmt.Errorf("first click never selected the card: %w", err)
 	}
-	if _, err := c.call("mouse_click", map[string]any{"selector": selector}); err != nil {
+	if _, err := c.call("mouse_click", withWindow(map[string]any{"selector": selector})); err != nil {
 		return "", fmt.Errorf("commit click: %w", err)
 	}
 	if err := pollJSEval(c, `return !!document.querySelector('[data-testid="atlas-page-header"]');`, 5*time.Second); err != nil {
 		return "", fmt.Errorf("second click on the selected card never opened its page: %w", err)
 	}
 	for i := 0; i < 2; i++ {
-		if _, err := c.call("keyboard_press", map[string]any{"key": "Escape"}); err != nil {
+		if _, err := c.call("keyboard_press", withWindow(map[string]any{"key": "Escape"})); err != nil {
 			return "", fmt.Errorf("escape %d: %w", i+1, err)
 		}
 	}
@@ -168,14 +261,14 @@ type ringSnapshot struct {
 // on the just-clicked, focused node) can never zero it.
 func readRing(c mcpCaller, selector string) (ringSnapshot, error) {
 	var snap ringSnapshot
-	err := c.callJSON("js_eval", map[string]any{
+	err := c.callJSON("js_eval", withWindow(map[string]any{
 		"js": fmt.Sprintf(`const el = document.querySelectorAll(%q)[0];
 			if (!el) throw new Error('element not found: %s');
 			const wrapper = el.closest('.react-flow__node');
 			if (!wrapper) throw new Error('no react-flow node wrapper above: %s');
 			const style = getComputedStyle(wrapper);
 			return { boxShadow: style.boxShadow, selected: wrapper.classList.contains('selected') };`, selector, selector, selector),
-	}, &snap)
+	}), &snap)
 	return snap, err
 }
 
@@ -192,10 +285,10 @@ func checkNoteCardSelectionRing(c mcpCaller) (string, error) {
 	// sequence (per the tool's own description) -- unlike a js_eval
 	// .click(), this is what React Flow's own selection handling
 	// (goal 0092's shift-click toggle, tied to real pointerdown) needs.
-	if _, err := c.call("mouse_click", map[string]any{
+	if _, err := c.call("mouse_click", withWindow(map[string]any{
 		"selector":  selector,
 		"modifiers": []string{"shift"},
-	}); err != nil {
+	})); err != nil {
 		return "", err
 	}
 	after, err := readRing(c, selector)
@@ -226,10 +319,7 @@ type atlasCard struct {
 
 func checkStickyBorderColorFlip(c mcpCaller) (string, error) {
 	var cards []atlasCard
-	if err := c.callJSON("call_bound_method", map[string]any{
-		"name": "github.com/alicoding/mill/internal/services/atlassvc.AtlasService.Cards",
-		"args": []any{},
-	}, &cards); err != nil {
+	if err := callBoundJSON(c, "github.com/alicoding/mill/internal/services/atlassvc.AtlasService.Cards", []any{}, &cards); err != nil {
 		return "", err
 	}
 	var parentID string
@@ -246,10 +336,8 @@ func checkStickyBorderColorFlip(c mcpCaller) (string, error) {
 	var note struct {
 		ID string `json:"ID"`
 	}
-	if err := c.callJSON("call_bound_method", map[string]any{
-		"name": "github.com/alicoding/mill/internal/services/atlassvc.AtlasService.CreateNote",
-		"args": []any{"webview-bridge-smoke check", map[string]any{"X": 340, "Y": 340}, parentID},
-	}, &note); err != nil {
+	if err := callBoundJSON(c, "github.com/alicoding/mill/internal/services/atlassvc.AtlasService.CreateNote",
+		[]any{"webview-bridge-smoke check", map[string]any{"X": 340, "Y": 340}, parentID}, &note); err != nil {
 		return "", err
 	}
 
@@ -262,10 +350,10 @@ func checkStickyBorderColorFlip(c mcpCaller) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	if _, err := c.call("mouse_click", map[string]any{
+	if _, err := c.call("mouse_click", withWindow(map[string]any{
 		"selector":  selector,
 		"modifiers": []string{"shift"},
-	}); err != nil {
+	})); err != nil {
 		return "", err
 	}
 	after, err := readStickyStyle(c, selector)
@@ -291,12 +379,12 @@ type stickySnapshot struct {
 // readRing above.
 func readStickyStyle(c mcpCaller, selector string) (stickySnapshot, error) {
 	var snap stickySnapshot
-	err := c.callJSON("js_eval", map[string]any{
+	err := c.callJSON("js_eval", withWindow(map[string]any{
 		"js": fmt.Sprintf(`const el = document.querySelector(%q);
 			if (!el) throw new Error('element not found: %s');
 			const wrapper = el.closest('.react-flow__node');
 			if (!wrapper) throw new Error('no react-flow node wrapper above: %s');
 			return { borderColor: getComputedStyle(el).borderColor, boxShadow: getComputedStyle(wrapper).boxShadow };`, selector, selector, selector),
-	}, &snap)
+	}), &snap)
 	return snap, err
 }
