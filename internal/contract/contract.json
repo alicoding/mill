@@ -1246,7 +1246,7 @@
     {
       "ID": "trigger-atlas-card",
       "Kind": "trigger",
-      "Label": "Trigger: Atlas card change",
+      "Label": "Atlas card changed",
       "Description": "Fires when a card of the chosen kind is created or updated in Atlas (docs/adr/0038). Cycle guard: a run this trigger started never re-fires itself from a write it makes to its own source card, so a workflow that both reacts to and updates the same card can't loop.",
       "ConfigFields": [
         {
@@ -1273,7 +1273,7 @@
     {
       "ID": "trigger-callable",
       "Kind": "trigger",
-      "Label": "Trigger: callable by another workflow",
+      "Label": "Called by another workflow",
       "Description": "Fires only when invoked as a child by another workflow's Child Workflow step (docs/adr/0010) -- never by a real external event, no listener process. Modeled on n8n's own \"Execute Workflow Trigger\": a workflow rooted in this trigger declares itself a valid child target, decoupled from whatever its trigger would otherwise be. The child-workflow picker only lists workflows rooted here -- one rooted in a real-event trigger (filesystem-watch, clipboard-watch, ...) can't be invoked this way, since a parent has no way to synthesize that event.",
       "ConfigFields": null,
       "Output": "the caller's typed input",
@@ -1285,7 +1285,7 @@
     {
       "ID": "trigger-clipboard-watch",
       "Kind": "trigger",
-      "Label": "Trigger: clipboard change",
+      "Label": "Clipboard changed",
       "Description": "Fires whenever the clipboard's content changes.",
       "ConfigFields": null,
       "Output": "the clipboard text that changed",
@@ -1297,7 +1297,7 @@
     {
       "ID": "trigger-filesystem-watch",
       "Kind": "trigger",
-      "Label": "Trigger: filesystem change",
+      "Label": "File changed",
       "Description": "Fires when a file or folder under the configured path is added, changed, or deleted.",
       "ConfigFields": [
         {
@@ -1338,7 +1338,7 @@
     {
       "ID": "trigger-hotkey",
       "Kind": "trigger",
-      "Label": "Trigger: hotkey",
+      "Label": "Hotkey pressed",
       "Description": "Fires on a global keyboard shortcut, even when Mill isn't focused. Bound via TriggerService, not a config field here -- pressing the combo is better UX than typing it.",
       "ConfigFields": null,
       "Output": "empty payload — the run starts here",
@@ -1350,7 +1350,7 @@
     {
       "ID": "trigger-manual",
       "Kind": "trigger",
-      "Label": "Trigger: manual",
+      "Label": "Manual run",
       "Description": "Fires on-demand when a user clicks Run/Test. No listener process.",
       "ConfigFields": null,
       "Output": "empty payload — the run starts here",
@@ -1362,7 +1362,7 @@
     {
       "ID": "trigger-schedule",
       "Kind": "trigger",
-      "Label": "Trigger: schedule",
+      "Label": "On a schedule",
       "Description": "Fires on a cron schedule.",
       "ConfigFields": [
         {
@@ -1389,7 +1389,7 @@
     {
       "ID": "trigger-system-event",
       "Kind": "trigger",
-      "Label": "Trigger: system event",
+      "Label": "System event",
       "Description": "Fires when Mill's own execution engine emits an internal event -- docs/adr/0035, SPEC.md §3.4's Group D unparked. Mill dogfoods its own trigger/composition surface for platform-internal behavior (the forward-pending-approvals example workflow is the first real user) instead of a bespoke Go code path per event. Loop rule (docs/adr/0035 item 4, n8n's Error-Trigger precedent): a run whose OWN root trigger is trigger-system-event never emits a system event of its own, regardless of kind -- a chain always bottoms out after one hop, so this trigger can never fire itself into a cycle.",
       "ConfigFields": [
         {
@@ -1435,7 +1435,7 @@
     {
       "ID": "capture-attribute",
       "Kind": "capture",
-      "Label": "Capture: attribute value",
+      "Label": "Read attribute",
       "Description": "Replaces the payload with the value of one of this workflow's declared Attributes -- e.g. a callable workflow's typed input, or a value a Decision already routed on.",
       "ConfigFields": [
         {
@@ -1462,7 +1462,7 @@
     {
       "ID": "capture-clipboard-html",
       "Kind": "capture",
-      "Label": "Capture: clipboard HTML",
+      "Label": "Read clipboard",
       "Description": "Reads the clipboard's HTML. If there's no HTML flavor (many apps only put plain text), falls back to the plain-text flavor rather than failing -- the capture fallback order docs/SPEC.md §5 names (try HTML, then plain text; DOM-read via the browser bridge is the third tier, not built yet).",
       "ConfigFields": null,
       "Output": "HTML from the clipboard",
@@ -1474,7 +1474,7 @@
     {
       "ID": "capture-clipboard-info",
       "Kind": "capture",
-      "Label": "Capture: clipboard info",
+      "Label": "Inspect clipboard",
       "Description": "Reads macOS's own \"clipboard info\" report (which flavors -- HTML, plain text, images, ... -- are currently on the pasteboard, and their byte sizes) and summarizes whether HTML and plain text are present, followed by the raw report. A diagnostic for the Confluence-style clipboard ambiguity docs/SPEC.md §5 names: whether HTML was actually on the clipboard, made directly inspectable instead of inferred from a capture succeeding or failing.",
       "ConfigFields": null,
       "Output": "a summary of the clipboard's flavors",
@@ -1486,7 +1486,7 @@
     {
       "ID": "capture-file",
       "Kind": "capture",
-      "Label": "Capture: file",
+      "Label": "Read file",
       "Description": "Reads a local file into the payload. \"payload\" source treats the CURRENT payload as the file path (what a filesystem-watch trigger's changed-path output supplies, docs/SPEC.md §3.4); \"literal\" source reads a fixed path instead.",
       "ConfigFields": [
         {
@@ -1599,7 +1599,7 @@
     {
       "ID": "code-execution",
       "Kind": "process",
-      "Label": "Code: run command",
+      "Label": "Run a command",
       "Description": "Runs one command locally, inside a Configure-authored ExecEnv (pinned shell/dir/env -- docs/SPEC.md §6, docs/adr/0026). External effect -- the ambient guardrail gate asks by default, same as integration-http/mcp-tool-call. Source \"payload\" runs the captured/upstream payload as the command (SPEC §2.1's paste-a-command loop); \"literal\" runs a fixed script instead. A running command can be stopped from this workflow's Runs tab (real process-group kill, not just marking the run failed) -- DBOS itself cannot interrupt an executing step (ADR-0026's Amendment), so Mill's own procexec supervises the live process directly.",
       "ConfigFields": [
         {
@@ -1671,7 +1671,7 @@
     {
       "ID": "human-review",
       "Kind": "process",
-      "Label": "Human review",
+      "Label": "Ask for review",
       "Description": "Pauses the run for a person: the item lands in the Review queue (and this workflow's Runs tab), where a reviewer can approve, deny, and fill in values for this workflow's declared Attributes -- their input flows into the resumed run. Denying (or 24 hours of silence) stops the run. A deliberate, visible checkpoint you drew into the flow -- the ambient guardrail rules (Configure \u003e Guardrails) never skip it.",
       "ConfigFields": [
         {
@@ -1712,7 +1712,7 @@
     {
       "ID": "integration-http",
       "Kind": "process",
-      "Label": "Integration: HTTP call",
+      "Label": "Call an API",
       "Description": "Calls a Configure-authored integration's API and replaces the payload with the response body. The step only picks WHICH integration and binds data -- method, endpoint path, and body all live on the integration itself (Configure \u003e Integration): transport configuration belongs on the integration, not the workflow step. Legacy steps saved with their own path/method/bodyTemplate config keep working (those keys still win when present); they're just no longer authorable here.",
       "ConfigFields": [
         {
@@ -1739,7 +1739,7 @@
     {
       "ID": "list-lookup",
       "Kind": "process",
-      "Label": "List: lookup",
+      "Label": "Look up list row",
       "Description": "Looks up an Attributes value in a Configure-authored List and writes the matched entry back into Attributes. listId is FieldText for the same reason integration-http's requestId is above -- Lists are runtime, Configure-authored data (the Inspector renders a live picker for it, RefKind, docs/adr/0009).",
       "ConfigFields": [
         {
@@ -1840,7 +1840,7 @@
     {
       "ID": "list-search",
       "Kind": "process",
-      "Label": "List: search",
+      "Label": "Search list rows",
       "Description": "Searches a Configure-authored List's rows against one or more match parameters (exact or fuzzy, per-column, AND'd together) and writes the result into Attributes. Supersedes list-lookup for anything beyond a single exact key match -- list-lookup keeps working unchanged for existing workflows. Expired rows are excluded by default (docs/goals/0011-lists-maturation.md's own researched default, uniform across exact and fuzzy matching); \"Include expired rows\" opts in.",
       "ConfigFields": [
         {
@@ -1937,7 +1937,7 @@
     {
       "ID": "mcp-tool-call",
       "Kind": "process",
-      "Label": "MCP: tool call",
+      "Label": "Call an MCP tool",
       "Description": "Calls one tool on a Configure-authored MCP server and replaces the payload with its text result (docs/SPEC.md §3.6). mcpServerId is FieldText for the same reason integration-http's requestId is -- runtime, Configure-authored data (the Inspector renders a live picker for it, RefKind, docs/adr/0009); toolName is picked from the server's live tool list in the canvas Inspector (MCPToolArgsEditor.tsx), falling back to typing the exact name when the server can't be reached.",
       "ConfigFields": [
         {
@@ -1992,7 +1992,7 @@
     {
       "ID": "process-ai-classify",
       "Kind": "process",
-      "Label": "AI: Classify",
+      "Label": "Classify with AI",
       "Description": "Sends the running payload (plus an optional instruction) to a Configure-authored AI provider and asks it to pick exactly one of this step's own declared categories, writing the choice into a named Attribute -- a dedicated classification step (Dify's own precedent researched in docs/goals/0031-ai-node-family.md), not composed from extract-structured, since \"pick one of these labels\" is common enough across real workflows to deserve its own shape. Pairs with Branch: route on the written Attribute to act on the classification. The category list is this workflow's own business decision (step-local, not Configure-authored) -- two workflows classifying into different category sets is normal, not drift.",
       "ConfigFields": [
         {
@@ -2061,7 +2061,7 @@
     {
       "ID": "process-ai-completion",
       "Kind": "process",
-      "Label": "AI: Completion",
+      "Label": "Generate with AI",
       "Description": "Sends a prompt (plus the running payload) to a Configure-authored AI provider -- local Ollama, or a BYO OpenAI-compatible/Anthropic endpoint -- and replaces the payload with its text completion. Composition (docs/goals/0031-ai-node-family.md): the system prompt is this step's own System prompt field; the user message is Prompt followed by the current payload (blank-line separated) when the payload is non-empty, else Prompt alone. One deterministic call per run -- never a loop or autonomous agent behavior (docs/SPEC.md §1.1's locked invariant). A local (localhost/127.0.0.1/::1) provider runs without an approval ask; any other endpoint asks by default, the same posture integration-http already has for outbound calls.",
       "ConfigFields": [
         {
@@ -2116,7 +2116,7 @@
     {
       "ID": "process-ai-extract-structured",
       "Kind": "process",
-      "Label": "AI: Extract structured data",
+      "Label": "Extract fields with AI",
       "Description": "Sends a prompt (plus the running payload) to a Configure-authored AI provider, requests a JSON-schema-constrained structured response, and writes each declared output field into this workflow's Attributes by the same key -- the step that composes with Branch for real decisioning (docs/goals/0031-ai-node-family.md). Composition matches process-ai-completion: user content = Prompt + payload. Every declared field is required in the requested schema; a field the provider's response omits still appears in Attributes, zero-valued for its type.",
       "ConfigFields": [
         {
@@ -2171,7 +2171,7 @@
     {
       "ID": "process-atlas-card-find",
       "Kind": "process",
-      "Label": "Atlas: find cards",
+      "Label": "Find Atlas cards",
       "Description": "Searches a Kind's cards in Atlas against one or more match parameters (exact or fuzzy, AND'd together) and writes the result into Attributes. Match against \"title\" or any of the Kind's own field keys.",
       "ConfigFields": [
         {
@@ -2240,7 +2240,7 @@
     {
       "ID": "process-extract-html",
       "Kind": "process",
-      "Label": "Process: extract HTML subtree",
+      "Label": "Extract HTML section",
       "Description": "Extracts one element (by CSS selector) out of the payload's HTML, dropping everything else -- e.g. a saved page's main-content region, stripping nav/header/footer chrome before converting to Markdown. Fails the step if nothing matches (fail-safe: never silently passes the whole, unfiltered document through).",
       "ConfigFields": [
         {
@@ -2267,7 +2267,7 @@
     {
       "ID": "process-html-to-markdown",
       "Kind": "process",
-      "Label": "Process: HTML → Markdown",
+      "Label": "Convert HTML to Markdown",
       "Description": "Converts HTML into Markdown, preserving structure (headings, bold, lists).",
       "ConfigFields": null,
       "Output": "Markdown text",
@@ -2279,7 +2279,7 @@
     {
       "ID": "process-inject-text",
       "Kind": "process",
-      "Label": "Process: Inject text",
+      "Label": "Add text",
       "Description": "Prepends or appends configured static text to the payload -- e.g. a fixed hint or instruction pasted alongside a workflow's real output.",
       "ConfigFields": [
         {
@@ -2323,7 +2323,7 @@
     {
       "ID": "process-run-receipt",
       "Kind": "process",
-      "Label": "Process: Run receipt",
+      "Label": "Create run receipt",
       "Description": "Renders this run's own recorded evidence -- its steps so far, their guardrail verdicts, and which Mill build ran them -- as a JSON receipt, replacing the payload. Only covers steps that ran BEFORE this one, since the run is still in flight when this step executes. Compose it with an Apply step (clipboard/file write) to hand the receipt to an external agent -- there is no separate send path.",
       "ConfigFields": null,
       "Output": "a JSON receipt of this run's steps so far",
@@ -2335,7 +2335,7 @@
     {
       "ID": "ruleset",
       "Kind": "process",
-      "Label": "Ruleset validation",
+      "Label": "Validate with rules",
       "Description": "Validates the data flowing through this step against a set of named rules (business/data validation -- e.g. \"amount below limit\", \"country allowed\"). Every rule must pass for the payload to continue unchanged; any failing rule fails the run, naming exactly which rules failed. A rule that cannot evaluate counts as failed (fail-safe). Distinct from Decision (which routes) and from guardrail rules (which govern whether a step may execute at all).",
       "ConfigFields": null,
       "Output": "payload unchanged, if all rules pass",
@@ -2347,7 +2347,7 @@
     {
       "ID": "apply-atlas-card-create",
       "Kind": "apply",
-      "Label": "Atlas: create card",
+      "Label": "Create Atlas card",
       "Description": "Creates a new card in Atlas of the chosen Kind. \"Field values\" binds the Kind's own declared fields, each a literal or attr:\u003cname\u003e.",
       "ConfigFields": [
         {
@@ -2416,7 +2416,7 @@
     {
       "ID": "apply-atlas-card-link",
       "Kind": "apply",
-      "Label": "Atlas: link cards",
+      "Label": "Link Atlas cards",
       "Description": "Creates a typed relation between two existing Atlas cards. \"From\"/\"To\" are each a literal card id or attr:\u003cname\u003e.",
       "ConfigFields": [
         {
@@ -2485,7 +2485,7 @@
     {
       "ID": "apply-atlas-card-update",
       "Kind": "apply",
-      "Label": "Atlas: update card",
+      "Label": "Update Atlas card",
       "Description": "Writes field values onto an existing Atlas card, resolved by \"Card\" (a literal card id or attr:\u003cname\u003e -- e.g. attr:cardId from a trigger-atlas-card event, or an earlier Atlas: find cards result). Only the fields named in \"Field values\" change; everything else on the card is untouched.",
       "ConfigFields": [
         {
@@ -2554,7 +2554,7 @@
     {
       "ID": "apply-atlas-docs-sync",
       "Kind": "apply",
-      "Label": "Atlas: sync docs folder",
+      "Label": "Mirror docs folder into Atlas",
       "Description": "Mirrors every markdown file in a folder as a card under one parent: a file already mirrored keeps its card (checksum refreshed), a new file becomes a new card, so re-running stays safe. The parent card is found by title, or created when missing.",
       "ConfigFields": [
         {
@@ -2623,7 +2623,7 @@
     {
       "ID": "apply-atlas-from-reply",
       "Kind": "apply",
-      "Label": "Atlas: create from reply items",
+      "Label": "Create Atlas cards from reply",
       "Description": "Creates Atlas records from an accepted clipboard reply's items: an item with a \"title\" becomes a card of its named kind, an item with \"text\" becomes a Scratchpad note. \"Items\" binds the attribute holding the accepted items as a JSON array.",
       "ConfigFields": [
         {
@@ -2664,7 +2664,7 @@
     {
       "ID": "apply-backup-snapshot",
       "Kind": "apply",
-      "Label": "Apply: back up Mill data",
+      "Label": "Back up Mill data",
       "Description": "Takes a safe snapshot of your workflow history and settings, deleting older snapshots beyond how many you keep.",
       "ConfigFields": [
         {
@@ -2691,7 +2691,7 @@
     {
       "ID": "apply-clipboard-write-html",
       "Kind": "apply",
-      "Label": "Apply: write HTML to clipboard",
+      "Label": "Write HTML to clipboard",
       "Description": "Writes configured HTML to the clipboard.",
       "ConfigFields": [
         {
@@ -2718,7 +2718,7 @@
     {
       "ID": "apply-clipboard-write-text",
       "Kind": "apply",
-      "Label": "Apply: write plain text to clipboard",
+      "Label": "Write text to clipboard",
       "Description": "Writes the workflow's current payload to the clipboard as plain text.",
       "ConfigFields": null,
       "Output": "the text it wrote",
@@ -2730,7 +2730,7 @@
     {
       "ID": "apply-file-move",
       "Kind": "apply",
-      "Label": "Apply: move file",
+      "Label": "Move file",
       "Description": "Moves or renames a local file to a new location.",
       "ConfigFields": [
         {
@@ -2802,7 +2802,7 @@
     {
       "ID": "apply-file-write",
       "Kind": "apply",
-      "Label": "Apply: write to file",
+      "Label": "Write file",
       "Description": "Writes the payload to a local file, appending to or overwriting its existing contents.",
       "ConfigFields": [
         {
@@ -2877,7 +2877,7 @@
     {
       "ID": "apply-list-row",
       "Kind": "apply",
-      "Label": "List: apply row",
+      "Label": "Save list row",
       "Description": "Creates or updates a row in a Configure-authored List: if an existing row's \"Key column\" value matches, only the fields named in \"Field values\" change (everything else on that row is untouched); otherwise a new row is appended. \"Field values\" binds the List's own declared column keys, each a literal or attr:\u003cname\u003e -- the same shape apply-atlas-card-create/update use.",
       "ConfigFields": [
         {
@@ -3001,7 +3001,7 @@
     {
       "ID": "decision-route",
       "Kind": "decision",
-      "Label": "Branch: route",
+      "Label": "Branch",
       "Description": "Routes to one of several next steps based on a rule evaluated against this workflow's Attributes. A pure routing point -- its conditions live on its outgoing edges (SPEC.md §3.5), not here.",
       "ConfigFields": null,
       "Output": "payload and Attributes unchanged; routes to the matching outgoing edge",
@@ -3013,7 +3013,7 @@
     {
       "ID": "decision-outcome",
       "Kind": "terminal",
-      "Label": "Decision",
+      "Label": "Record decision",
       "Description": "Ends the workflow with a Configure-authored, typed terminal outcome (docs/adr/0027): an outcome category (approve/deny/manual-review/action-needed/uncategorized) plus this Decision's own typed result fields. A manual-review Decision parks the run in the Review queue first -- approve continues to the outcome, deny/timeout fails closed, same mechanism the human-review step uses. A Decision with a configured webhook fires it (the same HTTPRequest execution path integration-http uses, with the outcome's typed outputs as the body) once the outcome is computed, and -- unlike a plain Decision -- asks for approval by default, exactly like integration-http does for the identical kind of outbound call.",
       "ConfigFields": [
         {
@@ -3056,7 +3056,7 @@
     {
       "ID": "trigger-atlas-card",
       "Kind": "trigger",
-      "Label": "Trigger: Atlas card change",
+      "Label": "Atlas card changed",
       "Description": "Fires when a card of the chosen kind is created or updated in Atlas (docs/adr/0038). Cycle guard: a run this trigger started never re-fires itself from a write it makes to its own source card, so a workflow that both reacts to and updates the same card can't loop.",
       "ConfigFields": [
         {
@@ -3083,7 +3083,7 @@
     {
       "ID": "trigger-callable",
       "Kind": "trigger",
-      "Label": "Trigger: callable by another workflow",
+      "Label": "Called by another workflow",
       "Description": "Fires only when invoked as a child by another workflow's Child Workflow step (docs/adr/0010) -- never by a real external event, no listener process. Modeled on n8n's own \"Execute Workflow Trigger\": a workflow rooted in this trigger declares itself a valid child target, decoupled from whatever its trigger would otherwise be. The child-workflow picker only lists workflows rooted here -- one rooted in a real-event trigger (filesystem-watch, clipboard-watch, ...) can't be invoked this way, since a parent has no way to synthesize that event.",
       "ConfigFields": null,
       "Output": "the caller's typed input",
@@ -3095,7 +3095,7 @@
     {
       "ID": "trigger-clipboard-watch",
       "Kind": "trigger",
-      "Label": "Trigger: clipboard change",
+      "Label": "Clipboard changed",
       "Description": "Fires whenever the clipboard's content changes.",
       "ConfigFields": null,
       "Output": "the clipboard text that changed",
@@ -3107,7 +3107,7 @@
     {
       "ID": "trigger-filesystem-watch",
       "Kind": "trigger",
-      "Label": "Trigger: filesystem change",
+      "Label": "File changed",
       "Description": "Fires when a file or folder under the configured path is added, changed, or deleted.",
       "ConfigFields": [
         {
@@ -3148,7 +3148,7 @@
     {
       "ID": "trigger-hotkey",
       "Kind": "trigger",
-      "Label": "Trigger: hotkey",
+      "Label": "Hotkey pressed",
       "Description": "Fires on a global keyboard shortcut, even when Mill isn't focused. Bound via TriggerService, not a config field here -- pressing the combo is better UX than typing it.",
       "ConfigFields": null,
       "Output": "empty payload — the run starts here",
@@ -3160,7 +3160,7 @@
     {
       "ID": "trigger-manual",
       "Kind": "trigger",
-      "Label": "Trigger: manual",
+      "Label": "Manual run",
       "Description": "Fires on-demand when a user clicks Run/Test. No listener process.",
       "ConfigFields": null,
       "Output": "empty payload — the run starts here",
@@ -3172,7 +3172,7 @@
     {
       "ID": "trigger-schedule",
       "Kind": "trigger",
-      "Label": "Trigger: schedule",
+      "Label": "On a schedule",
       "Description": "Fires on a cron schedule.",
       "ConfigFields": [
         {
@@ -3199,7 +3199,7 @@
     {
       "ID": "trigger-system-event",
       "Kind": "trigger",
-      "Label": "Trigger: system event",
+      "Label": "System event",
       "Description": "Fires when Mill's own execution engine emits an internal event -- docs/adr/0035, SPEC.md §3.4's Group D unparked. Mill dogfoods its own trigger/composition surface for platform-internal behavior (the forward-pending-approvals example workflow is the first real user) instead of a bespoke Go code path per event. Loop rule (docs/adr/0035 item 4, n8n's Error-Trigger precedent): a run whose OWN root trigger is trigger-system-event never emits a system event of its own, regardless of kind -- a chain always bottoms out after one hop, so this trigger can never fire itself into a cycle.",
       "ConfigFields": [
         {
@@ -3245,7 +3245,7 @@
     {
       "ID": "capture-attribute",
       "Kind": "capture",
-      "Label": "Capture: attribute value",
+      "Label": "Read attribute",
       "Description": "Replaces the payload with the value of one of this workflow's declared Attributes -- e.g. a callable workflow's typed input, or a value a Decision already routed on.",
       "ConfigFields": [
         {
@@ -3272,7 +3272,7 @@
     {
       "ID": "capture-clipboard-html",
       "Kind": "capture",
-      "Label": "Capture: clipboard HTML",
+      "Label": "Read clipboard",
       "Description": "Reads the clipboard's HTML. If there's no HTML flavor (many apps only put plain text), falls back to the plain-text flavor rather than failing -- the capture fallback order docs/SPEC.md §5 names (try HTML, then plain text; DOM-read via the browser bridge is the third tier, not built yet).",
       "ConfigFields": null,
       "Output": "HTML from the clipboard",
@@ -3284,7 +3284,7 @@
     {
       "ID": "capture-clipboard-info",
       "Kind": "capture",
-      "Label": "Capture: clipboard info",
+      "Label": "Inspect clipboard",
       "Description": "Reads macOS's own \"clipboard info\" report (which flavors -- HTML, plain text, images, ... -- are currently on the pasteboard, and their byte sizes) and summarizes whether HTML and plain text are present, followed by the raw report. A diagnostic for the Confluence-style clipboard ambiguity docs/SPEC.md §5 names: whether HTML was actually on the clipboard, made directly inspectable instead of inferred from a capture succeeding or failing.",
       "ConfigFields": null,
       "Output": "a summary of the clipboard's flavors",
@@ -3296,7 +3296,7 @@
     {
       "ID": "capture-file",
       "Kind": "capture",
-      "Label": "Capture: file",
+      "Label": "Read file",
       "Description": "Reads a local file into the payload. \"payload\" source treats the CURRENT payload as the file path (what a filesystem-watch trigger's changed-path output supplies, docs/SPEC.md §3.4); \"literal\" source reads a fixed path instead.",
       "ConfigFields": [
         {
@@ -3409,7 +3409,7 @@
     {
       "ID": "code-execution",
       "Kind": "process",
-      "Label": "Code: run command",
+      "Label": "Run a command",
       "Description": "Runs one command locally, inside a Configure-authored ExecEnv (pinned shell/dir/env -- docs/SPEC.md §6, docs/adr/0026). External effect -- the ambient guardrail gate asks by default, same as integration-http/mcp-tool-call. Source \"payload\" runs the captured/upstream payload as the command (SPEC §2.1's paste-a-command loop); \"literal\" runs a fixed script instead. A running command can be stopped from this workflow's Runs tab (real process-group kill, not just marking the run failed) -- DBOS itself cannot interrupt an executing step (ADR-0026's Amendment), so Mill's own procexec supervises the live process directly.",
       "ConfigFields": [
         {
@@ -3481,7 +3481,7 @@
     {
       "ID": "human-review",
       "Kind": "process",
-      "Label": "Human review",
+      "Label": "Ask for review",
       "Description": "Pauses the run for a person: the item lands in the Review queue (and this workflow's Runs tab), where a reviewer can approve, deny, and fill in values for this workflow's declared Attributes -- their input flows into the resumed run. Denying (or 24 hours of silence) stops the run. A deliberate, visible checkpoint you drew into the flow -- the ambient guardrail rules (Configure \u003e Guardrails) never skip it.",
       "ConfigFields": [
         {
@@ -3522,7 +3522,7 @@
     {
       "ID": "integration-http",
       "Kind": "process",
-      "Label": "Integration: HTTP call",
+      "Label": "Call an API",
       "Description": "Calls a Configure-authored integration's API and replaces the payload with the response body. The step only picks WHICH integration and binds data -- method, endpoint path, and body all live on the integration itself (Configure \u003e Integration): transport configuration belongs on the integration, not the workflow step. Legacy steps saved with their own path/method/bodyTemplate config keep working (those keys still win when present); they're just no longer authorable here.",
       "ConfigFields": [
         {
@@ -3549,7 +3549,7 @@
     {
       "ID": "list-lookup",
       "Kind": "process",
-      "Label": "List: lookup",
+      "Label": "Look up list row",
       "Description": "Looks up an Attributes value in a Configure-authored List and writes the matched entry back into Attributes. listId is FieldText for the same reason integration-http's requestId is above -- Lists are runtime, Configure-authored data (the Inspector renders a live picker for it, RefKind, docs/adr/0009).",
       "ConfigFields": [
         {
@@ -3650,7 +3650,7 @@
     {
       "ID": "list-search",
       "Kind": "process",
-      "Label": "List: search",
+      "Label": "Search list rows",
       "Description": "Searches a Configure-authored List's rows against one or more match parameters (exact or fuzzy, per-column, AND'd together) and writes the result into Attributes. Supersedes list-lookup for anything beyond a single exact key match -- list-lookup keeps working unchanged for existing workflows. Expired rows are excluded by default (docs/goals/0011-lists-maturation.md's own researched default, uniform across exact and fuzzy matching); \"Include expired rows\" opts in.",
       "ConfigFields": [
         {
@@ -3747,7 +3747,7 @@
     {
       "ID": "mcp-tool-call",
       "Kind": "process",
-      "Label": "MCP: tool call",
+      "Label": "Call an MCP tool",
       "Description": "Calls one tool on a Configure-authored MCP server and replaces the payload with its text result (docs/SPEC.md §3.6). mcpServerId is FieldText for the same reason integration-http's requestId is -- runtime, Configure-authored data (the Inspector renders a live picker for it, RefKind, docs/adr/0009); toolName is picked from the server's live tool list in the canvas Inspector (MCPToolArgsEditor.tsx), falling back to typing the exact name when the server can't be reached.",
       "ConfigFields": [
         {
@@ -3802,7 +3802,7 @@
     {
       "ID": "process-ai-classify",
       "Kind": "process",
-      "Label": "AI: Classify",
+      "Label": "Classify with AI",
       "Description": "Sends the running payload (plus an optional instruction) to a Configure-authored AI provider and asks it to pick exactly one of this step's own declared categories, writing the choice into a named Attribute -- a dedicated classification step (Dify's own precedent researched in docs/goals/0031-ai-node-family.md), not composed from extract-structured, since \"pick one of these labels\" is common enough across real workflows to deserve its own shape. Pairs with Branch: route on the written Attribute to act on the classification. The category list is this workflow's own business decision (step-local, not Configure-authored) -- two workflows classifying into different category sets is normal, not drift.",
       "ConfigFields": [
         {
@@ -3871,7 +3871,7 @@
     {
       "ID": "process-ai-completion",
       "Kind": "process",
-      "Label": "AI: Completion",
+      "Label": "Generate with AI",
       "Description": "Sends a prompt (plus the running payload) to a Configure-authored AI provider -- local Ollama, or a BYO OpenAI-compatible/Anthropic endpoint -- and replaces the payload with its text completion. Composition (docs/goals/0031-ai-node-family.md): the system prompt is this step's own System prompt field; the user message is Prompt followed by the current payload (blank-line separated) when the payload is non-empty, else Prompt alone. One deterministic call per run -- never a loop or autonomous agent behavior (docs/SPEC.md §1.1's locked invariant). A local (localhost/127.0.0.1/::1) provider runs without an approval ask; any other endpoint asks by default, the same posture integration-http already has for outbound calls.",
       "ConfigFields": [
         {
@@ -3926,7 +3926,7 @@
     {
       "ID": "process-ai-extract-structured",
       "Kind": "process",
-      "Label": "AI: Extract structured data",
+      "Label": "Extract fields with AI",
       "Description": "Sends a prompt (plus the running payload) to a Configure-authored AI provider, requests a JSON-schema-constrained structured response, and writes each declared output field into this workflow's Attributes by the same key -- the step that composes with Branch for real decisioning (docs/goals/0031-ai-node-family.md). Composition matches process-ai-completion: user content = Prompt + payload. Every declared field is required in the requested schema; a field the provider's response omits still appears in Attributes, zero-valued for its type.",
       "ConfigFields": [
         {
@@ -3981,7 +3981,7 @@
     {
       "ID": "process-atlas-card-find",
       "Kind": "process",
-      "Label": "Atlas: find cards",
+      "Label": "Find Atlas cards",
       "Description": "Searches a Kind's cards in Atlas against one or more match parameters (exact or fuzzy, AND'd together) and writes the result into Attributes. Match against \"title\" or any of the Kind's own field keys.",
       "ConfigFields": [
         {
@@ -4050,7 +4050,7 @@
     {
       "ID": "process-extract-html",
       "Kind": "process",
-      "Label": "Process: extract HTML subtree",
+      "Label": "Extract HTML section",
       "Description": "Extracts one element (by CSS selector) out of the payload's HTML, dropping everything else -- e.g. a saved page's main-content region, stripping nav/header/footer chrome before converting to Markdown. Fails the step if nothing matches (fail-safe: never silently passes the whole, unfiltered document through).",
       "ConfigFields": [
         {
@@ -4077,7 +4077,7 @@
     {
       "ID": "process-html-to-markdown",
       "Kind": "process",
-      "Label": "Process: HTML → Markdown",
+      "Label": "Convert HTML to Markdown",
       "Description": "Converts HTML into Markdown, preserving structure (headings, bold, lists).",
       "ConfigFields": null,
       "Output": "Markdown text",
@@ -4089,7 +4089,7 @@
     {
       "ID": "process-inject-text",
       "Kind": "process",
-      "Label": "Process: Inject text",
+      "Label": "Add text",
       "Description": "Prepends or appends configured static text to the payload -- e.g. a fixed hint or instruction pasted alongside a workflow's real output.",
       "ConfigFields": [
         {
@@ -4133,7 +4133,7 @@
     {
       "ID": "process-run-receipt",
       "Kind": "process",
-      "Label": "Process: Run receipt",
+      "Label": "Create run receipt",
       "Description": "Renders this run's own recorded evidence -- its steps so far, their guardrail verdicts, and which Mill build ran them -- as a JSON receipt, replacing the payload. Only covers steps that ran BEFORE this one, since the run is still in flight when this step executes. Compose it with an Apply step (clipboard/file write) to hand the receipt to an external agent -- there is no separate send path.",
       "ConfigFields": null,
       "Output": "a JSON receipt of this run's steps so far",
@@ -4145,7 +4145,7 @@
     {
       "ID": "ruleset",
       "Kind": "process",
-      "Label": "Ruleset validation",
+      "Label": "Validate with rules",
       "Description": "Validates the data flowing through this step against a set of named rules (business/data validation -- e.g. \"amount below limit\", \"country allowed\"). Every rule must pass for the payload to continue unchanged; any failing rule fails the run, naming exactly which rules failed. A rule that cannot evaluate counts as failed (fail-safe). Distinct from Decision (which routes) and from guardrail rules (which govern whether a step may execute at all).",
       "ConfigFields": null,
       "Output": "payload unchanged, if all rules pass",
@@ -4157,7 +4157,7 @@
     {
       "ID": "apply-atlas-card-create",
       "Kind": "apply",
-      "Label": "Atlas: create card",
+      "Label": "Create Atlas card",
       "Description": "Creates a new card in Atlas of the chosen Kind. \"Field values\" binds the Kind's own declared fields, each a literal or attr:\u003cname\u003e.",
       "ConfigFields": [
         {
@@ -4226,7 +4226,7 @@
     {
       "ID": "apply-atlas-card-link",
       "Kind": "apply",
-      "Label": "Atlas: link cards",
+      "Label": "Link Atlas cards",
       "Description": "Creates a typed relation between two existing Atlas cards. \"From\"/\"To\" are each a literal card id or attr:\u003cname\u003e.",
       "ConfigFields": [
         {
@@ -4295,7 +4295,7 @@
     {
       "ID": "apply-atlas-card-update",
       "Kind": "apply",
-      "Label": "Atlas: update card",
+      "Label": "Update Atlas card",
       "Description": "Writes field values onto an existing Atlas card, resolved by \"Card\" (a literal card id or attr:\u003cname\u003e -- e.g. attr:cardId from a trigger-atlas-card event, or an earlier Atlas: find cards result). Only the fields named in \"Field values\" change; everything else on the card is untouched.",
       "ConfigFields": [
         {
@@ -4364,7 +4364,7 @@
     {
       "ID": "apply-atlas-docs-sync",
       "Kind": "apply",
-      "Label": "Atlas: sync docs folder",
+      "Label": "Mirror docs folder into Atlas",
       "Description": "Mirrors every markdown file in a folder as a card under one parent: a file already mirrored keeps its card (checksum refreshed), a new file becomes a new card, so re-running stays safe. The parent card is found by title, or created when missing.",
       "ConfigFields": [
         {
@@ -4433,7 +4433,7 @@
     {
       "ID": "apply-atlas-from-reply",
       "Kind": "apply",
-      "Label": "Atlas: create from reply items",
+      "Label": "Create Atlas cards from reply",
       "Description": "Creates Atlas records from an accepted clipboard reply's items: an item with a \"title\" becomes a card of its named kind, an item with \"text\" becomes a Scratchpad note. \"Items\" binds the attribute holding the accepted items as a JSON array.",
       "ConfigFields": [
         {
@@ -4474,7 +4474,7 @@
     {
       "ID": "apply-backup-snapshot",
       "Kind": "apply",
-      "Label": "Apply: back up Mill data",
+      "Label": "Back up Mill data",
       "Description": "Takes a safe snapshot of your workflow history and settings, deleting older snapshots beyond how many you keep.",
       "ConfigFields": [
         {
@@ -4501,7 +4501,7 @@
     {
       "ID": "apply-clipboard-write-html",
       "Kind": "apply",
-      "Label": "Apply: write HTML to clipboard",
+      "Label": "Write HTML to clipboard",
       "Description": "Writes configured HTML to the clipboard.",
       "ConfigFields": [
         {
@@ -4528,7 +4528,7 @@
     {
       "ID": "apply-clipboard-write-text",
       "Kind": "apply",
-      "Label": "Apply: write plain text to clipboard",
+      "Label": "Write text to clipboard",
       "Description": "Writes the workflow's current payload to the clipboard as plain text.",
       "ConfigFields": null,
       "Output": "the text it wrote",
@@ -4540,7 +4540,7 @@
     {
       "ID": "apply-file-move",
       "Kind": "apply",
-      "Label": "Apply: move file",
+      "Label": "Move file",
       "Description": "Moves or renames a local file to a new location.",
       "ConfigFields": [
         {
@@ -4612,7 +4612,7 @@
     {
       "ID": "apply-file-write",
       "Kind": "apply",
-      "Label": "Apply: write to file",
+      "Label": "Write file",
       "Description": "Writes the payload to a local file, appending to or overwriting its existing contents.",
       "ConfigFields": [
         {
@@ -4687,7 +4687,7 @@
     {
       "ID": "apply-list-row",
       "Kind": "apply",
-      "Label": "List: apply row",
+      "Label": "Save list row",
       "Description": "Creates or updates a row in a Configure-authored List: if an existing row's \"Key column\" value matches, only the fields named in \"Field values\" change (everything else on that row is untouched); otherwise a new row is appended. \"Field values\" binds the List's own declared column keys, each a literal or attr:\u003cname\u003e -- the same shape apply-atlas-card-create/update use.",
       "ConfigFields": [
         {
@@ -4811,7 +4811,7 @@
     {
       "ID": "decision-route",
       "Kind": "decision",
-      "Label": "Branch: route",
+      "Label": "Branch",
       "Description": "Routes to one of several next steps based on a rule evaluated against this workflow's Attributes. A pure routing point -- its conditions live on its outgoing edges (SPEC.md §3.5), not here.",
       "ConfigFields": null,
       "Output": "payload and Attributes unchanged; routes to the matching outgoing edge",
@@ -4823,7 +4823,7 @@
     {
       "ID": "decision-outcome",
       "Kind": "terminal",
-      "Label": "Decision",
+      "Label": "Record decision",
       "Description": "Ends the workflow with a Configure-authored, typed terminal outcome (docs/adr/0027): an outcome category (approve/deny/manual-review/action-needed/uncategorized) plus this Decision's own typed result fields. A manual-review Decision parks the run in the Review queue first -- approve continues to the outcome, deny/timeout fails closed, same mechanism the human-review step uses. A Decision with a configured webhook fires it (the same HTTPRequest execution path integration-http uses, with the outcome's typed outputs as the body) once the outcome is computed, and -- unlike a plain Decision -- asks for approval by default, exactly like integration-http does for the identical kind of outbound call.",
       "ConfigFields": [
         {

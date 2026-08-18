@@ -59,8 +59,8 @@ test('Matching an Integration node to a declared operation shows a binding edito
   // Trigger root, so Integration alone can no longer be the whole graph.
   await dragPaletteItemToCanvas(page, 'integration-http')
   await expect(activePanel(page).locator('.react-flow__node')).toHaveCount(2)
-  await connectNodes(page, 'Trigger: manual', 'Integration: HTTP call')
-  await clickCanvasNode(page, activePanel(page), 'Integration: HTTP call')
+  await connectNodes(page, 'Manual run', 'Call an API')
+  await clickCanvasNode(page, activePanel(page), 'Call an API')
 
   const inspector = activePanel(page).getByTestId('composition-inspector')
   await inspector.getByTestId('entity-ref-field').selectOption({ label: 'E2E bindings request' })

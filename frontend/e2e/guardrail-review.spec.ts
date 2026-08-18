@@ -375,8 +375,8 @@ test('Review kind filter narrows pending rows by kind, and the Blankslate empty 
     await expect(page.getByTestId('review-item').filter({ hasText: reviewSeed })).toHaveCount(0)
     await expect(page.getByTestId('review-mcp-write-item')).toHaveCount(0)
 
-    // "Human review" narrows to just the checkpoint.
-    await kindSelect.selectOption({ label: 'Human review' })
+    // "Ask for review" narrows to just the checkpoint.
+    await kindSelect.selectOption({ label: 'Ask for review' })
     await expect(page.getByTestId('review-item').filter({ hasText: reviewSeed })).toBeVisible()
     await expect(page.getByTestId('review-item').filter({ hasText: GUARDED })).toHaveCount(0)
     await expect(page.getByTestId('review-mcp-write-item')).toHaveCount(0)

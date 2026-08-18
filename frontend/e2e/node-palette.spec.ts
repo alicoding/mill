@@ -44,45 +44,43 @@ test('the palette renders 9 groups with the expected membership', async ({ page 
   }
 })
 
-test('palette labels are shortened under their group (no repeated prefix)', async ({ page }) => {
+test('built-in labels are verb-first with no prefix, and pass through the palette unshortened', async ({ page }) => {
   await openPaletteOnNewWorkflow(page)
   const panel = activePanel(page)
 
-  // "AI: Classify" -> "Classify" under the AI group; the palette item's
-  // own text is the short form, never the full "<Group>: " prefix.
+  // Goal 0113: built-in NodeType labels dropped the "<Group>: " colon
+  // prefix -- shortLabel is a no-op for them, so the palette item's own
+  // text is the full label, unchanged from what a canvas card shows.
   const classifyItem = panel.locator('[data-node-type-id="process-ai-classify"]')
-  await expect(classifyItem).toHaveText('Classify')
+  await expect(classifyItem).toHaveText('Classify with AI')
 
-  const httpItem = panel.locator('[data-node-type-id="integration-http"]')
-  await expect(httpItem).toHaveText('HTTP call')
+  const readFileItem = panel.locator('[data-node-type-id="capture-file"]')
+  await expect(readFileItem).toHaveText('Read file')
 
-  // Already-clean labels (no colon prefix) pass through unchanged.
   const childItem = panel.locator('[data-node-type-id="child-workflow"]')
-  await expect(childItem).toHaveText('Run another workflow')
+  await expect(childItem).toContainText('Run another workflow')
 })
 
 test('canvas node cards keep their full, self-contained label after being dropped from the palette', async ({ page }) => {
   await openPaletteOnNewWorkflow(page)
   await dragPaletteItemToCanvas(page, 'process-ai-classify')
 
-  // A card on canvas has no surrounding group context, so it keeps the
-  // full "AI: Classify" label -- only the palette display shortens.
-  await expect(activePanel(page).locator('.react-flow__node').filter({ hasText: 'AI: Classify' })).toBeVisible()
+  await expect(activePanel(page).locator('.react-flow__node').filter({ hasText: 'Classify with AI' })).toBeVisible()
 })
 
-test('palette search matches both the shortened display name and the full underlying label', async ({ page }) => {
+test('palette search matches the step label, case-insensitively', async ({ page }) => {
   await openPaletteOnNewWorkflow(page)
   const panel = activePanel(page)
   const search = panel.getByTestId('palette-search')
 
-  // "classify" matches the SHORT displayed text ("Classify").
+  // "classify" matches only the one step whose label contains it.
   await search.fill('classify')
   await expect(panel.locator('[data-node-type-id="process-ai-classify"]')).toBeVisible()
   await expect(panel.getByTestId('palette-item')).toHaveCount(1)
 
-  // "AI:" only appears in the FULL underlying label ("AI: Classify"),
-  // never in the shortened display text ("Classify") -- still matches.
-  await search.fill('AI:')
+  // "AI" (no colon) matches every step whose label mentions it --
+  // "Classify with AI", "Generate with AI", "Extract fields with AI".
+  await search.fill('AI')
   await expect(panel.locator('[data-node-type-id="process-ai-classify"]')).toBeVisible()
   await expect(panel.locator('[data-node-type-id="process-ai-completion"]')).toBeVisible()
   await expect(panel.locator('[data-node-type-id="process-ai-extract-structured"]')).toBeVisible()
@@ -97,6 +95,48 @@ test('palette search matches both the shortened display name and the full underl
   // RegisterNodeType call sites, latest apply-notify (goal 0114),
   // + the seeded "Check httpbin" declared step type).
   await search.fill('')
+  await expect(panel.getByTestId('palette-item')).toHaveCount(43)
+})
+
+// Goal 0113 slice 1: typing an intent-shaped query (not a step name)
+// surfaces matching seeded workflows as a distinct "Examples" section
+// below the step tree, so a user asking "how do I do X" finds a
+// working example instead of hand-building from scratch.
+test('palette search surfaces a matching seeded workflow under Examples, and opens it on click', async ({ page }) => {
+  await openPaletteOnNewWorkflow(page)
+  const panel = activePanel(page)
+  const search = panel.getByTestId('palette-search')
+
+  await search.fill('markdown')
+  const exampleRow = panel.getByTestId('palette-example').filter({ hasText: 'Clipboard → Markdown' })
+  await expect(exampleRow).toBeVisible()
+
+  await exampleRow.click()
+  await expect(activePanel(page).getByLabel('Label')).toHaveValue('Clipboard → Markdown')
+})
+
+// Goal 0113 slice 1: the "Show advanced steps" checkbox states its own
+// count, and every advanced item carries a visible "Advanced" badge --
+// honesty about which steps need code/JSON/external docs, not a silent
+// split the user has to discover by trial.
+test('the advanced toggle states its count, and the badge count matches while checked', async ({ page }) => {
+  await openPaletteOnNewWorkflow(page)
+  const panel = activePanel(page)
+
+  const checkboxLabel = await panel.getByText(/^Show advanced steps \(\d+\)$/).textContent()
+  const badgeCountWhileChecked = await panel.getByTestId('palette-advanced-badge').count()
+  expect(checkboxLabel).toBe(`Show advanced steps (${badgeCountWhileChecked})`)
+  expect(badgeCountWhileChecked).toBeGreaterThan(0)
+
+  await panel.getByTestId('palette-show-advanced').uncheck()
+  await expect(panel.getByTestId('palette-advanced-badge')).toHaveCount(0)
+  const itemCountUnchecked = await panel.getByTestId('palette-item').count()
+  expect(itemCountUnchecked).toBeLessThan(43)
+
+  // Restore the default -- within-file cleanup discipline (testing.md):
+  // this worker's browser context (and its localStorage) is shared with
+  // every other test in this file.
+  await panel.getByTestId('palette-show-advanced').check()
   await expect(panel.getByTestId('palette-item')).toHaveCount(43)
 })
 

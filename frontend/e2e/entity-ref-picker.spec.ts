@@ -28,9 +28,9 @@ test('Selecting an Integration node offers a live request picker with inline qui
   // Trigger root, so Integration alone can no longer be the whole graph.
   await dragPaletteItemToCanvas(page, 'integration-http')
   await expect(activePanel(page).locator('.react-flow__node')).toHaveCount(2)
-  await connectNodes(page, 'Trigger: manual', 'Integration: HTTP call')
+  await connectNodes(page, 'Manual run', 'Call an API')
 
-  await clickCanvasNode(page, activePanel(page), 'Integration: HTTP call')
+  await clickCanvasNode(page, activePanel(page), 'Call an API')
   const inspector = activePanel(page).getByTestId('composition-inspector')
   await expect(inspector).toContainText('Integration')
 
@@ -71,14 +71,14 @@ test('Selecting an Integration node offers a live request picker with inline qui
 // "Example: Card intake" workflow's real apply-atlas-card-update node
 // proves both the picker AND the Kind-driven field editor
 // (AtlasFieldBindingsEditor) render from the real seeded Intake Kind.
-test('Selecting the Atlas: update card node offers a live Kind picker and the Kind-driven field editor', async ({ page }) => {
+test('Selecting the Update Atlas card node offers a live Kind picker and the Kind-driven field editor', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Workflows' }).click()
   await workflowRow(page, 'Example: Card intake').click()
 
-  await clickCanvasNode(page, activePanel(page), 'Atlas: update card')
+  await clickCanvasNode(page, activePanel(page), 'Update Atlas card')
   const inspector = activePanel(page).getByTestId('composition-inspector')
-  await expect(inspector).toContainText('Atlas: update card')
+  await expect(inspector).toContainText('Update Atlas card')
 
   const picker = inspector.getByTestId('entity-ref-field')
   await expect(picker).toBeVisible()

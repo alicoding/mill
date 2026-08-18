@@ -45,14 +45,14 @@ test('process-inject-text composes with an upstream node via the generic Inspect
   await dragPaletteItemToCanvas(page, 'process-inject-text')
   await expect(activePanel(page).locator('.react-flow__node')).toHaveCount(3)
 
-  await connectNodes(page, 'Trigger: manual', 'Apply: write HTML to clipboard')
-  await connectNodes(page, 'Apply: write HTML to clipboard', 'Process: Inject text')
+  await connectNodes(page, 'Manual run', 'Write HTML to clipboard')
+  await connectNodes(page, 'Write HTML to clipboard', 'Add text')
   await expect(activePanel(page).locator('.react-flow__edge')).toHaveCount(2)
 
   // Configure the upstream node's payload -- plain text (not real HTML)
   // so the base-payload marker is trivially substring-matchable in the
   // final result.
-  await clickCanvasNode(page, activePanel(page), 'Apply: write HTML to clipboard')
+  await clickCanvasNode(page, activePanel(page), 'Write HTML to clipboard')
   const htmlField = activePanel(page).locator('textarea[data-testid="canvas-config-field"]')
   await htmlField.fill('e2e base payload')
   await htmlField.blur()
@@ -60,9 +60,9 @@ test('process-inject-text composes with an upstream node via the generic Inspect
   // Configure the inject node -- exercises both the plain-text field
   // (Textarea) and the FieldOptions field (a real Select, not a bespoke
   // control) in the same generic Inspector.
-  await clickCanvasNode(page, activePanel(page), 'Process: Inject text')
+  await clickCanvasNode(page, activePanel(page), 'Add text')
   const inspector = activePanel(page).getByTestId('composition-inspector')
-  await expect(inspector).toContainText('Process: Inject text')
+  await expect(inspector).toContainText('Add text')
   const textField = activePanel(page).locator('textarea[data-testid="canvas-config-field"]')
   await textField.fill('e2e injected hint')
   await textField.blur()
@@ -99,9 +99,9 @@ test('process-inject-text composes with an upstream node via the generic Inspect
   await waitForViewportStable(panel)
   await panel.getByRole('button', { name: 'Zoom Out' }).click()
   await waitForViewportStable(panel)
-  await clickCanvasNode(page, activePanel(page), 'Apply: write HTML to clipboard')
+  await clickCanvasNode(page, activePanel(page), 'Write HTML to clipboard')
   await expect(activePanel(page).getByTestId('canvas-config-field')).toHaveValue('e2e base payload')
-  await clickCanvasNode(page, activePanel(page), 'Process: Inject text')
+  await clickCanvasNode(page, activePanel(page), 'Add text')
   await expect(activePanel(page).locator('textarea[data-testid="canvas-config-field"]')).toHaveValue('e2e injected hint')
   await expect(activePanel(page).locator('select[data-testid="canvas-config-field"]')).toHaveValue('append')
   await page.getByRole('link', { name: 'Workflows' }).click()
@@ -208,7 +208,7 @@ test('Selecting the starter Trigger node and changing its type swaps it in place
   // Same node, not a second one -- the whole point of swapping in place
   // instead of the old delete-and-redrag dead end.
   await expect(nodes).toHaveCount(1)
-  await expect(nodes.first()).toContainText('Trigger: hotkey')
+  await expect(nodes.first()).toContainText('Hotkey pressed')
   // The trigger-hotkey-specific Inspector branch should already be live
   // immediately after the swap, not require a re-select.
   await expect(activePanel(page).getByText('Save this workflow before assigning a hotkey.')).toBeVisible()

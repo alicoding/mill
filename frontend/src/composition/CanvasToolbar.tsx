@@ -1,7 +1,7 @@
 import { Panel } from '@xyflow/react'
 import { useTranslation } from 'react-i18next'
-import { IconButton, Stack, Text } from '@primer/react'
-import { ArrowLeftIcon, ColumnsIcon, CommentIcon, RedoIcon, SidebarCollapseIcon, SidebarExpandIcon, TrashIcon, UndoIcon } from '@primer/octicons-react'
+import { Button, IconButton, Stack, Text } from '@primer/react'
+import { ArrowLeftIcon, ColumnsIcon, CommentIcon, PlusIcon, RedoIcon, TrashIcon, UndoIcon } from '@primer/octicons-react'
 import type { Issue } from '../../bindings/github.com/alicoding/mill/internal/domain/composition/models'
 import { ValidationSurface } from './ValidationPanel'
 import styles from './CompositionCanvas.module.css'
@@ -52,13 +52,15 @@ export function CanvasToolbar({
         <IconButton icon={ArrowLeftIcon} aria-label={t('canvasToolbar.backAriaLabel')} size="small" onClick={onBack} />
         {!readOnly && (
           <>
-            <IconButton
-              icon={paletteOpen ? SidebarCollapseIcon : SidebarExpandIcon}
-              aria-label={paletteOpen ? t('canvasToolbar.hideAddStepsAriaLabel') : t('canvasToolbar.addStepsAriaLabel')}
+            <Button
               size="small"
+              leadingVisual={PlusIcon}
+              aria-expanded={paletteOpen}
               onClick={onTogglePalette}
               data-testid="toggle-palette"
-            />
+            >
+              {t('canvasToolbar.addStep')}
+            </Button>
             <IconButton icon={UndoIcon} aria-label={t('canvasToolbar.undoAriaLabel')} size="small" disabled={!canUndo} onClick={onUndo} />
             <IconButton icon={RedoIcon} aria-label={t('canvasToolbar.redoAriaLabel')} size="small" disabled={!canRedo} onClick={onRedo} />
             <IconButton icon={ColumnsIcon} aria-label={t('canvasToolbar.autoLayoutAriaLabel')} size="small" disabled={layingOut || !hasNodes} onClick={onAutoLayout} />
@@ -68,7 +70,7 @@ export function CanvasToolbar({
         )}
         <ValidationSurface issues={validationIssues} workflowLabel={workflowLabel} workflowId={workflowId} onSelectIssue={onSelectIssue} />
         {!readOnly && (
-          <Text size="small" className={runbookStyles.muted}>
+          <Text size="small" className={`${runbookStyles.muted} ${styles.canvasToolbarHint}`} title={t('canvasToolbar.addStepsHint')}>
             {t('canvasToolbar.addStepsHint')}
           </Text>
         )}

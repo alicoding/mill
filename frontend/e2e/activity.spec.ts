@@ -167,7 +167,7 @@ test('step failures show up in Activity\'s breakdown by step type', async ({ pag
   await page.getByRole('link', { name: 'Activity' }).click()
   const section = page.getByTestId('activity-step-failures')
   await expect(section).toBeVisible()
-  const row = section.locator('table tbody tr').filter({ hasText: 'List: lookup' })
+  const row = section.locator('table tbody tr').filter({ hasText: 'Look up list row' })
   await expect(row).toBeVisible()
   const failureCount = await row.locator('td').last().innerText()
   expect(Number(failureCount)).toBeGreaterThanOrEqual(1)

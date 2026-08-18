@@ -38,7 +38,7 @@ func init() {
 		Effect:      guardrail.ClassLocal,
 		Complexity:  ComplexityBasic,
 		Output:      "the payload it received, unchanged",
-		Label:       "Apply: back up Mill data",
+		Label:       "Back up Mill data",
 		Description: "Takes a safe snapshot of your workflow history and settings, deleting older snapshots beyond how many you keep.",
 		ConfigFields: []ConfigField{
 			{

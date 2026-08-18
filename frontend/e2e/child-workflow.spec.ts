@@ -49,7 +49,7 @@ test('Child Workflow picker only lists workflows rooted in trigger-callable', as
   await page.getByTestId('new-workflow').click()
   await activePanel(page).getByTestId('toggle-palette').click()
   await dragPaletteItemToCanvas(page, 'child-workflow')
-  await connectNodes(page, 'Trigger: manual', 'Run another workflow')
+  await connectNodes(page, 'Manual run', 'Run another workflow')
   await clickCanvasNode(page, activePanel(page), 'Run another workflow')
 
   const inspector = activePanel(page).getByTestId('composition-inspector')

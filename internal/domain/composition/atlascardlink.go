@@ -26,7 +26,7 @@ func SetAtlasCardLinker(fn func(fromCardID, toCardID, linkKindID, label string) 
 func init() {
 	RegisterNodeType(NodeType{
 		ID: "apply-atlas-card-link", Kind: KindApply,
-		Label:      "Atlas: link cards",
+		Label:      "Link Atlas cards",
 		Effect:     guardrail.ClassLocal,
 		Complexity: ComplexityBasic,
 		Output:     "payload unchanged",

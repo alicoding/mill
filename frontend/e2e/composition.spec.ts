@@ -108,7 +108,7 @@ test('A new workflow starts with a starter node placed, not a blank canvas', asy
   // supplied yet (hotkey/schedule/watch all do).
   const nodes = activePanel(page).locator('.react-flow__node')
   await expect(nodes).toHaveCount(1)
-  await expect(nodes.first()).toContainText('Trigger: manual')
+  await expect(nodes.first()).toContainText('Manual run')
 
   // It's already a valid, savable one-node workflow as-is -- zero edges
   // is correct for exactly one node (both linearOrder in Go and the
@@ -148,15 +148,15 @@ test('Dragging a node onto the canvas configures it as it is added, then saves, 
   // Trigger root, so Apply alone can no longer be the whole graph.
   await dragPaletteItemToCanvas(page, 'apply-clipboard-write-html')
   await expect(activePanel(page).locator('.react-flow__node')).toHaveCount(2)
-  await connectNodes(page, 'Trigger: manual', 'Apply: write HTML to clipboard')
+  await connectNodes(page, 'Manual run', 'Write HTML to clipboard')
 
   // Clicking the dropped node surfaces its config fields immediately in
   // the Inspector -- composing and configuring happen together, not as
   // separate passes (docs/SPEC.md §3), just moved from inline-in-a-list-
   // row (the old form) to inline-on-select (the canvas).
-  await clickCanvasNode(page, activePanel(page), 'Apply: write HTML to clipboard')
+  await clickCanvasNode(page, activePanel(page), 'Write HTML to clipboard')
   const inspector = activePanel(page).getByTestId('composition-inspector')
-  await expect(inspector).toContainText('Apply: write HTML to clipboard')
+  await expect(inspector).toContainText('Write HTML to clipboard')
 
   const customHTML = '<p>e2e configured value</p>'
   const configField = activePanel(page).getByTestId('canvas-config-field')
@@ -183,7 +183,7 @@ test('Dragging a node onto the canvas configures it as it is added, then saves, 
   // successful-write result string isn't environment-independent.
   await row.click()
   await fitAndSpaceOut(page)
-  await clickCanvasNode(page, activePanel(page), 'Apply: write HTML to clipboard')
+  await clickCanvasNode(page, activePanel(page), 'Write HTML to clipboard')
   await expect(activePanel(page).getByTestId('canvas-config-field')).toHaveValue(customHTML)
   await page.getByRole('link', { name: 'Workflows' }).click()
 
@@ -242,7 +242,7 @@ test('Editing an existing workflow updates it in place, not as a duplicate', asy
   await page.getByTestId('new-workflow').click()
   await activePanel(page).getByTestId('toggle-palette').click()
   await dragPaletteItemToCanvas(page, 'apply-clipboard-write-html')
-  await connectNodes(page, 'Trigger: manual', 'Apply: write HTML to clipboard')
+  await connectNodes(page, 'Manual run', 'Write HTML to clipboard')
   await activePanel(page).getByLabel('Label').fill('E2E editable workflow')
   await activePanel(page).getByTestId('save-workflow').click()
 
@@ -261,7 +261,7 @@ test('Editing an existing workflow updates it in place, not as a duplicate', asy
   await expect(activePanel(page).getByTestId('save-workflow')).toHaveText('Save changes')
   await expect(activePanel(page).getByLabel('Label')).toHaveValue('E2E editable workflow')
 
-  await clickCanvasNode(page, activePanel(page), 'Apply: write HTML to clipboard')
+  await clickCanvasNode(page, activePanel(page), 'Write HTML to clipboard')
   const configField = activePanel(page).getByTestId('canvas-config-field')
   await configField.fill('<p>edited value</p>')
   await configField.blur()
@@ -285,7 +285,7 @@ test('Editing an existing workflow updates it in place, not as a duplicate', asy
 
   await updated.click()
   await fitAndSpaceOut(page)
-  await clickCanvasNode(page, activePanel(page), 'Apply: write HTML to clipboard')
+  await clickCanvasNode(page, activePanel(page), 'Write HTML to clipboard')
   await expect(activePanel(page).getByTestId('canvas-config-field')).toHaveValue('<p>edited value</p>')
   await page.getByRole('link', { name: 'Workflows' }).click()
 

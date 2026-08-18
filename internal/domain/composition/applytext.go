@@ -15,7 +15,7 @@ func init() {
 		Effect:      guardrail.ClassLocal,
 		Complexity:  ComplexityBasic,
 		Output:      "the text it wrote",
-		Label:       "Apply: write plain text to clipboard",
+		Label:       "Write text to clipboard",
 		Description: "Writes the workflow's current payload to the clipboard as plain text.",
 	}, func(_ Node, ctx ExecContext) (ExecContext, error) {
 		if err := writeClipboardText(ctx.Payload); err != nil {

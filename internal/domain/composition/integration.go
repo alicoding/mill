@@ -149,7 +149,7 @@ func init() {
 		Effect:      guardrail.ClassExternal,
 		Complexity:  ComplexityAdvanced, // binding path/query/header/body values needs the integration's own API contract
 		Output:      "HTTP response body",
-		Label:       "Integration: HTTP call",
+		Label:       "Call an API",
 		Description: "Calls a Configure-authored integration's API and replaces the payload with the response body. The step only picks WHICH integration and binds data -- method, endpoint path, and body all live on the integration itself (Configure > Integration): transport configuration belongs on the integration, not the workflow step. Legacy steps saved with their own path/method/bodyTemplate config keep working (those keys still win when present); they're just no longer authorable here.",
 		ConfigFields: []ConfigField{
 			{

@@ -39,7 +39,7 @@ const defaultFuzzyThreshold = 0.7
 func init() {
 	RegisterNodeType(NodeType{
 		ID: "list-search", Kind: KindProcess,
-		Label: "List: search",
+		Label: "Search list rows",
 		// ClassRead: same classification as list-lookup above -- reads a
 		// Configure-authored List's persisted rows, not left at the zero
 		// value (docs/goals/0030-node-standard.md item b).

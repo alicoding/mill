@@ -96,7 +96,7 @@ test('Viewing a run on its workflow Runs tab shows the per-step breakdown', asyn
   // html) -- its one step's own NodeType label must appear in the
   // breakdown regardless of whether the underlying clipboard write
   // itself succeeded.
-  await expect(detail.getByText('Apply: write HTML to clipboard')).toBeVisible()
+  await expect(detail.getByText('Write HTML to clipboard')).toBeVisible()
 
   await closeEditorTab(page, 'Load sample HTML')
   })

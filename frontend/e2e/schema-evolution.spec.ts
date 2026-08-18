@@ -53,9 +53,9 @@ test('Deprecated column: de-emphasized in the List editor and excluded from a ne
   await panel.getByTestId('toggle-palette').click()
   await dragPaletteItemToCanvas(page, 'list-search')
   await expect(panel.locator('.react-flow__node')).toHaveCount(2)
-  await connectNodes(page, 'Trigger: manual', 'List: search')
+  await connectNodes(page, 'Manual run', 'Search list rows')
 
-  await clickCanvasNode(page, panel, 'List: search')
+  await clickCanvasNode(page, panel, 'Search list rows')
   const inspector = panel.getByTestId('composition-inspector')
   await inspector.getByTestId('entity-ref-field').selectOption({ label: 'Example: Country codes' })
 

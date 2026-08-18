@@ -111,7 +111,7 @@ test('Example: MCP echo call workflow is present with the real mcp-tool-call nod
   // live npx subprocess).
   const nodes = activePanel(page).locator('.react-flow__node')
   await expect(nodes).toHaveCount(2)
-  await expect(nodes.filter({ hasText: 'MCP: tool call' })).toBeVisible()
+  await expect(nodes.filter({ hasText: 'Call an MCP tool' })).toBeVisible()
 })
 
 test('Example: Disabled filesystem watch workflow is present and ships disabled', async ({ page }) => {
@@ -153,7 +153,7 @@ test('Example: Summarize with local AI workflow is present with the real process
 
   const nodes = activePanel(page).locator('.react-flow__node')
   await expect(nodes).toHaveCount(3)
-  await expect(nodes.filter({ hasText: 'AI: Completion' })).toBeVisible()
+  await expect(nodes.filter({ hasText: 'Generate with AI' })).toBeVisible()
 })
 
 // docs/SPEC.md §5/§8 (save-page capture floor + clipboard inspector):
@@ -174,7 +174,7 @@ test('Example: Clipboard inspector workflow is present with the real capture-cli
 
   const nodes = activePanel(page).locator('.react-flow__node')
   await expect(nodes).toHaveCount(2)
-  await expect(nodes.filter({ hasText: 'Capture: clipboard info' })).toBeVisible()
+  await expect(nodes.filter({ hasText: 'Inspect clipboard' })).toBeVisible()
 })
 
 test('Example: Saved page to Markdown workflow is present and ships disabled', async ({ page }) => {
@@ -204,13 +204,13 @@ test('Example: Forward pending approvals workflow is present, disabled, with the
 
   const nodes = activePanel(page).locator('.react-flow__node')
   await expect(nodes).toHaveCount(2)
-  await expect(nodes.filter({ hasText: 'Trigger: system event' })).toBeVisible()
+  await expect(nodes.filter({ hasText: 'System event' })).toBeVisible()
 })
 
 // docs/goals/0031-ai-node-family.md: THE decisioning composition --
-// AI: Classify writes a category Attribute, Branch routes on it. Never
+// Classify with AI writes a category Attribute, Branch routes on it. Never
 // clicks Run here for the same "no real Ollama in CI" reasoning the
-// AI: Completion seed test above documents; the Go proof
+// Generate with AI seed test above documents; the Go proof
 // (executionsvc.TestSeededAIClassifyBranchExample_UrgentRoutesToUrgentBranch/
 // _NormalRoutesToNormalBranch) runs both branch outcomes end to end
 // against an httptest fixture.
@@ -225,7 +225,7 @@ test('Example: AI classify -> branch workflow is present with the real process-a
 
   const nodes = activePanel(page).locator('.react-flow__node')
   await expect(nodes).toHaveCount(6)
-  await expect(nodes.filter({ hasText: 'AI: Classify' })).toBeVisible()
+  await expect(nodes.filter({ hasText: 'Classify with AI' })).toBeVisible()
 })
 
 // docs/goals/0066, ADR-0035/0038: the Atlas<->Workflows integration's
@@ -235,7 +235,7 @@ test('Example: AI classify -> branch workflow is present with the real process-a
 // other real-event-driven seed above; the trigger's own fire + cycle
 // guard are proven end to end at the Go layer
 // (triggersvc.TestSeededCardIntakeExample_TriggerUpdatesOwnCardAndDoesNotLoop).
-test('Example: Card intake workflow is present with the real trigger-atlas-card + Atlas: update card nodes on canvas', async ({ page }) => {
+test('Example: Card intake workflow is present with the real trigger-atlas-card + Update Atlas card nodes on canvas', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Workflows' }).click()
 
@@ -245,8 +245,8 @@ test('Example: Card intake workflow is present with the real trigger-atlas-card 
 
   const nodes = activePanel(page).locator('.react-flow__node')
   await expect(nodes).toHaveCount(2)
-  await expect(nodes.filter({ hasText: 'Trigger: Atlas card change' })).toBeVisible()
-  await expect(nodes.filter({ hasText: 'Atlas: update card' })).toBeVisible()
+  await expect(nodes.filter({ hasText: 'Atlas card changed' })).toBeVisible()
+  await expect(nodes.filter({ hasText: 'Update Atlas card' })).toBeVisible()
 })
 
 // Manual-triggered and purely local (no clipboard, no network) --

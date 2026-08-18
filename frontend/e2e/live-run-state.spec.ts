@@ -76,10 +76,10 @@ test('Happy path: node cards reach done, the bar shows the finished run, and dis
   await dragPaletteItemToCanvas(page, 'process-inject-text')
   await expect(activePanel(page).locator('.react-flow__node')).toHaveCount(2)
   await fitAndSpaceOut(page)
-  await connectNodes(page, 'Trigger: manual', 'Process: Inject text')
+  await connectNodes(page, 'Manual run', 'Add text')
   await expect(activePanel(page).locator('.react-flow__edge')).toHaveCount(1)
 
-  await activePanel(page).locator('.react-flow__node').filter({ hasText: 'Process: Inject text' }).click()
+  await activePanel(page).locator('.react-flow__node').filter({ hasText: 'Add text' }).click()
   const textField = activePanel(page).locator('textarea[data-testid="canvas-config-field"]')
   await textField.fill('e2e live run state text')
   await textField.blur()
@@ -99,8 +99,8 @@ test('Happy path: node cards reach done, the bar shows the finished run, and dis
 
   await activePanel(page).getByTestId('canvas-run').click()
 
-  const triggerStatus = activePanel(page).locator('.react-flow__node').filter({ hasText: 'Trigger: manual' }).getByTestId('node-run-status')
-  const injectStatus = activePanel(page).locator('.react-flow__node').filter({ hasText: 'Process: Inject text' }).getByTestId('node-run-status')
+  const triggerStatus = activePanel(page).locator('.react-flow__node').filter({ hasText: 'Manual run' }).getByTestId('node-run-status')
+  const injectStatus = activePanel(page).locator('.react-flow__node').filter({ hasText: 'Add text' }).getByTestId('node-run-status')
   await expect(injectStatus).toHaveAttribute('data-status', 'done', { timeout: 10_000 })
   await expect(triggerStatus).toHaveAttribute('data-status', 'done', { timeout: 10_000 })
 
@@ -130,8 +130,8 @@ test('Park then deny: the checkpoint node shows awaiting-approval, the bar offer
   await dragPaletteItemToCanvas(page, 'process-inject-text')
   await expect(activePanel(page).locator('.react-flow__node')).toHaveCount(3)
   await fitAndSpaceOut(page)
-  await connectNodes(page, 'Trigger: manual', 'Human review')
-  await connectNodes(page, 'Human review', 'Process: Inject text')
+  await connectNodes(page, 'Manual run', 'Ask for review')
+  await connectNodes(page, 'Ask for review', 'Add text')
   await expect(activePanel(page).locator('.react-flow__edge')).toHaveCount(2)
 
   const label = 'E2E live-run-state park-deny'
@@ -145,7 +145,7 @@ test('Park then deny: the checkpoint node shows awaiting-approval, the bar offer
 
   await activePanel(page).getByTestId('canvas-run').click()
 
-  const reviewStatus = activePanel(page).locator('.react-flow__node').filter({ hasText: 'Human review' }).getByTestId('node-run-status')
+  const reviewStatus = activePanel(page).locator('.react-flow__node').filter({ hasText: 'Ask for review' }).getByTestId('node-run-status')
   await expect(reviewStatus).toHaveAttribute('data-status', 'awaiting-approval', { timeout: 10_000 })
 
   const bar = activePanel(page).getByTestId('current-step-bar')

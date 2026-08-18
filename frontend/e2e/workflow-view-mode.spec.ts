@@ -35,7 +35,7 @@ test('Row click opens VIEW mode: no palette toggle, a drag attempt does not move
   // Trigger) -- the breakpoint toggle below is excluded from Trigger
   // nodes (NodeGuardrailSection.tsx's own exclusion, carried over to
   // the card by breakpoints.ts).
-  const node = panel.locator('.react-flow__node').filter({ hasText: 'Apply: write HTML to clipboard' })
+  const node = panel.locator('.react-flow__node').filter({ hasText: 'Write HTML to clipboard' })
   const box = await node.boundingBox()
   if (!box) throw new Error('node has no bounding box')
   const transformBefore = await node.getAttribute('style')
@@ -162,13 +162,13 @@ test('View mode: inspector fields render visibly muted, not just functionally bl
   await workflowRow(page, 'Load sample HTML').click()
 
   const panel = activePanel(page)
-  await clickCanvasNode(page, panel, 'Apply: write HTML to clipboard')
+  await clickCanvasNode(page, panel, 'Write HTML to clipboard')
   const fieldset = panel.getByTestId('inspector-fieldset')
   await expect(fieldset).toHaveCSS('opacity', '0.6')
   await expect(fieldset).toHaveCSS('cursor', 'not-allowed')
 
   await page.getByTestId('edit-workflow').click()
-  await clickCanvasNode(page, panel, 'Apply: write HTML to clipboard')
+  await clickCanvasNode(page, panel, 'Write HTML to clipboard')
   await expect(panel.getByTestId('inspector-fieldset')).toHaveCSS('opacity', '1')
 
   await page.getByRole('button', { name: 'Close tab' }).last().click()

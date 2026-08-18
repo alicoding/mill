@@ -1,7 +1,9 @@
 import { useMemo, useState, type DragEvent } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Checkbox, FormControl, Text, TextInput, TreeView } from '@primer/react'
-import type { NodeType } from '../../bindings/github.com/alicoding/mill/internal/domain/composition/models'
+import { Button, Checkbox, FormControl, Label, Text, TextInput, TreeView } from '@primer/react'
+import { WorkflowIcon } from '@primer/octicons-react'
+import { Complexity, type NodeType, type Workflow } from '../../bindings/github.com/alicoding/mill/internal/domain/composition/models'
+import { useAppStore } from '../shared/store'
 import { PALETTE_GROUP_ICON, PALETTE_GROUP_LABEL, PALETTE_GROUP_ORDER, paletteGroupFor, shortLabel, type PaletteGroupId } from '../shared/paletteGroups'
 import { filterByComplexity, useShowAdvancedSteps } from './nodeComplexity'
 import styles from './CompositionCanvas.module.css'
@@ -12,6 +14,13 @@ interface NodePaletteProps {
   // Trigger-kind entry gets disabled while true (see the component doc
   // comment below for why this has to be caught here, not just at Save).
   hasTrigger: boolean
+}
+
+function exampleMatches(workflows: Workflow[] | null, normalizedQuery: string): Workflow[] {
+  if (!workflows || !normalizedQuery) return []
+  return workflows
+    .filter((w) => (w.Label + ' ' + w.Description).toLowerCase().includes(normalizedQuery))
+    .slice(0, 3)
 }
 
 function onPaletteDragStart(event: DragEvent<HTMLLIElement>, nt: NodeType) {
@@ -50,15 +59,21 @@ export function NodePalette({ nodeTypes, hasTrigger }: NodePaletteProps) {
   const { t } = useTranslation('composition')
   const [query, setQuery] = useState('')
   const [showAdvanced, setShowAdvanced] = useShowAdvancedSteps()
+  const workflows = useAppStore((s) => s.workflows)
+  const openWorkTab = useAppStore((s) => s.openWorkTab)
 
   // Matches both the shortened palette label AND the full nt.Label
-  // (task requirement -- "run" matches "Code: run command" even though
-  // the palette itself only shows "Run command"), case-insensitive.
+  // (task requirement -- a query can match a declared/legacy step's
+  // colon-style label even though the palette itself only shows the
+  // shortened form), case-insensitive.
   const normalizedQuery = query.trim().toLowerCase()
   const matches = (nt: NodeType) => {
     if (!normalizedQuery) return true
     return nt.Label.toLowerCase().includes(normalizedQuery) || shortLabel(nt).toLowerCase().includes(normalizedQuery)
   }
+
+  const advancedCount = nodeTypes.filter((nt) => nt.Complexity === Complexity.ComplexityAdvanced).length
+  const matchingExamples = useMemo(() => exampleMatches(workflows, query.trim().toLowerCase()), [workflows, query])
 
   const visibleNodeTypes = useMemo(() => filterByComplexity(nodeTypes, showAdvanced), [nodeTypes, showAdvanced])
 
@@ -74,7 +89,7 @@ export function NodePalette({ nodeTypes, hasTrigger }: NodePaletteProps) {
   }, [visibleNodeTypes])
 
   const visibleGroups = PALETTE_GROUP_ORDER.filter((g) => (byGroup.get(g) ?? []).some(matches))
-  const noMatches = normalizedQuery !== '' && visibleGroups.length === 0
+  const noMatches = normalizedQuery !== '' && visibleGroups.length === 0 && matchingExamples.length === 0
 
   return (
     <div className={styles.palette} data-testid="palette-panel">
@@ -96,8 +111,9 @@ export function NodePalette({ nodeTypes, hasTrigger }: NodePaletteProps) {
           data-testid="palette-show-advanced"
         />
         <FormControl.Label>
-          <Text size="small">{t('nodePalette.showAdvancedSteps')}</Text>
+          <Text size="small">{t('nodePalette.showAdvancedSteps', { count: advancedCount })}</Text>
         </FormControl.Label>
+        <FormControl.Caption>{t('nodePalette.advancedCaption')}</FormControl.Caption>
       </FormControl>
       {noMatches && (
         <Text as="p" size="small" className={styles.paletteNoMatches} data-testid="palette-no-matches">
@@ -129,6 +145,11 @@ export function NodePalette({ nodeTypes, hasTrigger }: NodePaletteProps) {
                     data-node-type-id={nt.ID}
                   >
                     {shortLabel(nt)}
+                    {nt.Complexity === Complexity.ComplexityAdvanced && (
+                      <TreeView.TrailingVisual>
+                        <Label size="small" data-testid="palette-advanced-badge">{t('nodePalette.advancedBadge')}</Label>
+                      </TreeView.TrailingVisual>
+                    )}
                   </TreeView.Item>
                 )
               })}
@@ -136,6 +157,26 @@ export function NodePalette({ nodeTypes, hasTrigger }: NodePaletteProps) {
           </TreeView.Item>
         ))}
       </TreeView>
+      {matchingExamples.length > 0 && (
+        <>
+          <Text size="small" weight="semibold" className={styles.paletteHeading}>{t('nodePalette.examplesHeading')}</Text>
+          {matchingExamples.map((w) => (
+            <Button
+              key={w.ID}
+              variant="invisible"
+              size="small"
+              block
+              leadingVisual={WorkflowIcon}
+              title={w.Description}
+              data-testid="palette-example"
+              data-workflow-id={w.ID}
+              onClick={() => openWorkTab({ kind: 'workflow-edit', workflowId: w.ID, mode: 'view' })}
+            >
+              {w.Label}
+            </Button>
+          ))}
+        </>
+      )}
     </div>
   )
 }

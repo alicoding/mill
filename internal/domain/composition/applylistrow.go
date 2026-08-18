@@ -30,7 +30,7 @@ func SetApplyListRow(fn func(listID, keyColumn string, values map[string]string)
 func init() {
 	RegisterNodeType(NodeType{
 		ID: "apply-list-row", Kind: KindApply,
-		Label: "List: apply row",
+		Label: "Save list row",
 		// ClassLocal: writes to a List's own persisted store, the same
 		// local-write classification apply-atlas-card-create/update carry
 		// (docs/goals/0066) -- guardrail-parkable via an explicit rule,

@@ -67,9 +67,9 @@ test('list-search node: configuring a real match parameter through the Inspector
   await panel.getByTestId('toggle-palette').click()
   await dragPaletteItemToCanvas(page, 'list-search')
   await expect(panel.locator('.react-flow__node')).toHaveCount(2)
-  await connectNodes(page, 'Trigger: manual', 'List: search')
+  await connectNodes(page, 'Manual run', 'Search list rows')
 
-  await clickCanvasNode(page, panel, 'List: search')
+  await clickCanvasNode(page, panel, 'Search list rows')
   const inspector = panel.getByTestId('composition-inspector')
 
   // Pick the seeded typed List via the live entity picker (ADR-0009).

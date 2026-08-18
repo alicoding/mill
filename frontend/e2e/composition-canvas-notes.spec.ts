@@ -69,7 +69,7 @@ test('canvas note: add, edit, persist across reload, drag, delete -- never a ste
   // a completed run produces exactly one run-status badge (the trigger),
   // and the note's own card gets none at all.
   await reopened.getByTestId('canvas-run').click()
-  const triggerStatus = reopened.locator('.react-flow__node').filter({ hasText: 'Trigger: manual' }).getByTestId('node-run-status')
+  const triggerStatus = reopened.locator('.react-flow__node').filter({ hasText: 'Manual run' }).getByTestId('node-run-status')
   await expect(triggerStatus).toHaveAttribute('data-status', 'done', { timeout: 10_000 })
   await expect(reopened.getByTestId('node-run-status')).toHaveCount(1)
   await expect(reopenedNote.getByTestId('node-run-status')).toHaveCount(0)

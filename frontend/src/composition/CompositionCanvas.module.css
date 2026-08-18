@@ -56,6 +56,19 @@
     background: var(--bgColor-default);
     border-bottom: 1px solid var(--borderColor-default);
 }
+/* Standard flex-item truncation recipe (canvasNodeLabel below uses the
+   same three declarations): without min-width: 0, a flex child can't
+   shrink past its content's widest unbreakable word, so under
+   pressure from the toolbar's other buttons this text wrapped
+   vertically into an unreadably narrow column instead of eliding --
+   nowrap forces a single line, min-width: 0 lets it actually shrink. */
+.canvasToolbarHint {
+    flex: 1 1 auto;
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
 .canvasWrap {
     width: 100%;
     flex: 1 1 auto;

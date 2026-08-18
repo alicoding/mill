@@ -46,7 +46,7 @@ test('Run copied code: approving the code-execution step runs the real command',
     await page.getByTestId('runs-table').locator('tbody tr').first().click()
     const banner = page.getByTestId('approval-banner')
     await expect(banner).toBeVisible()
-    await expect(banner).toContainText('Code: run command')
+    await expect(banner).toContainText('Run a command')
 
     // A running/parked run shows the Stop control (docs/adr/0026's
     // cancellation surfacing) -- present here even though this test

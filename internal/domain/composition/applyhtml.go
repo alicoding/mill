@@ -25,7 +25,7 @@ func init() {
 		Effect:      guardrail.ClassLocal,
 		Complexity:  ComplexityBasic,
 		Output:      "the HTML it wrote",
-		Label:       "Apply: write HTML to clipboard",
+		Label:       "Write HTML to clipboard",
 		Description: "Writes configured HTML to the clipboard.",
 		ConfigFields: []ConfigField{
 			{

@@ -17,7 +17,7 @@ func init() {
 		Effect:      guardrail.ClassLocal,
 		Complexity:  ComplexityBasic,
 		Output:      "the file's new path",
-		Label:       "Apply: move file",
+		Label:       "Move file",
 		Description: "Moves or renames a local file to a new location.",
 		ConfigFields: []ConfigField{
 			{
