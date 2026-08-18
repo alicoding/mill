@@ -5,6 +5,7 @@ import type { CanvasNode, CanvasNoteNode } from './canvasStore'
 import { toCanvasNodes, toCanvasNotes, toRFEdges } from './canvasConversion'
 import { buildScratchDraft, clearScratch, draftsEqual, readScratch, scheduleScratchWrite, type ScratchDraft } from './canvasScratch'
 import { useAppStore } from '../shared/store'
+import { newLocalID } from '../shared/localId'
 
 // Split out of CompositionCanvas.tsx at the 500-line limit (CLAUDE.md)
 // -- both halves of hot exit's own client-side logic
@@ -71,7 +72,7 @@ export function computeInitialCanvas(workflow: Workflow | null | undefined, node
     nodes = starterType
       ? [
           {
-            id: crypto.randomUUID(),
+            id: newLocalID(),
             type: starterType.Kind,
             position: { x: 80, y: 80 },
             data: { nodeTypeID: starterType.ID, kind: starterType.Kind, label: starterType.Label, output: starterType.Output ?? '', config: {} },

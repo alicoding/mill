@@ -266,3 +266,20 @@ func TestDownloadAndInstallUpdate_SourceBuildWithBetaPreferencePassesGate(t *tes
 		t.Errorf("DownloadAndInstallUpdate() = %v, want it past the channel refusal", err)
 	}
 }
+
+// Regression, found on the first opted-in source build: SemVer puts
+// every prerelease below its release, so CurrentVersion "0.4.0" on
+// the beta feed always read "latest" against 0.4.0-beta.N tags.
+func TestResolveUpdateCurrentVersion_FloorsSourceBuildOnBetaChannel(t *testing.T) {
+	cases := []struct{ channel, in, want string }{
+		{"beta", "0.4.0", "0.4.0-beta.0"},
+		{"beta", "0.4.0-beta.517", "0.4.0-beta.517"},
+		{"release", "0.4.0", "0.4.0"},
+		{"source", "0.4.0", "0.4.0"},
+	}
+	for _, c := range cases {
+		if got := ResolveUpdateCurrentVersion(c.channel, c.in); got != c.want {
+			t.Errorf("ResolveUpdateCurrentVersion(%q, %q) = %q, want %q", c.channel, c.in, got, c.want)
+		}
+	}
+}

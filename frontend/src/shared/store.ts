@@ -6,6 +6,7 @@ import type { HTTPRequest } from '../../bindings/github.com/alicoding/mill/inter
 import { ViewKind } from '../../bindings/github.com/alicoding/mill/internal/domain/capabilities/models'
 import type { Capability } from '../../bindings/github.com/alicoding/mill/internal/domain/capabilities/models'
 import type { KeyCombo } from './keybinding'
+import { newLocalID } from './localId'
 import {
   activeKeyIfPresent,
   isRestorable,
@@ -342,7 +343,7 @@ export const useAppStore = create<AppState>()(
             }
             return { activeWorkTabKey: existing.key }
           }
-          const created: WorkTab = { ...tab, key: crypto.randomUUID() }
+          const created: WorkTab = { ...tab, key: newLocalID() }
           return { workTabs: [...state.workTabs, created], activeWorkTabKey: created.key }
         }),
       closeWorkTab: (key) =>
@@ -390,7 +391,7 @@ export const useAppStore = create<AppState>()(
           const pendingRunFocus = runId ? { workflowId: id, runId } : null
           const existing = state.workTabs.find((t) => t.kind === 'workflow-edit' && t.workflowId === id)
           if (existing) return { activeWorkTabKey: existing.key, pendingRunFocus }
-          const created: WorkTab = { key: crypto.randomUUID(), kind: 'workflow-edit', workflowId: id, mode: 'view' }
+          const created: WorkTab = { key: newLocalID(), kind: 'workflow-edit', workflowId: id, mode: 'view' }
           return { workTabs: [...state.workTabs, created], activeWorkTabKey: created.key, pendingRunFocus }
         }),
       consumePendingRunFocus: () => set({ pendingRunFocus: null }),

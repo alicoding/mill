@@ -4,6 +4,7 @@ import type { CanvasStore, CanvasNode, CanvasNoteNode } from './canvasStore'
 import { findFreeDropPosition } from '../shared/canvasLayout'
 import { CANVAS_NODE_WIDTH, CANVAS_NODE_HEIGHT, CANVAS_NOTE_WIDTH, CANVAS_NOTE_HEIGHT } from './canvasConstants'
 import type { NoteActionsContextValue } from './canvasNoteActions'
+import { newLocalID } from '../shared/localId'
 
 // Split out of CompositionCanvas.tsx at the 500-line limit (CLAUDE.md)
 // -- the note-specific wiring docs/goals/0055 needs on top of the
@@ -60,7 +61,7 @@ export function useCanvasNotes(
     (desired: { x: number; y: number }) => {
       const position = findFreeDropPosition(desired, [...nodes, ...notes], { width: CANVAS_NODE_WIDTH, height: CANVAS_NODE_HEIGHT })
       addNote({
-        id: crypto.randomUUID(),
+        id: newLocalID(),
         type: 'note',
         position,
         width: CANVAS_NOTE_WIDTH,
