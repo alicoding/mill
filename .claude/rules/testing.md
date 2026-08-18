@@ -242,3 +242,30 @@ folklore in agent-brief prose. The standing rules:
   code-coverage collection (heavy, low signal over per-test
   assertions); octocov-style coverage actions (a 15-line floor
   script suffices; no new CI dependency).
+
+## Shared-pool vs dedicated e2e servers — declare it up front
+
+A spec whose assertions read GLOBAL app state that other tests can
+write — queue/filter contents, review history, session state, exact
+counts over seeded collections — runs on a DEDICATED server pair
+(the guardrail-authoring/guardrail-review pattern: per-test spawn,
+own port constants in fixtures/server.ts with a reasoning comment).
+The shared worker pool is for specs whose assertions are scoped to
+entities they create and delete themselves. This is decided when the
+spec is WRITTEN, named in its header comment — not discovered as a
+CI-only cohabitation flake later (the class that bit twice on
+2026-08-17: atlas session bleed, then guardrail's filter dropdown
+depending on file-order history). Corollary: no test may depend on
+state left by an EARLIER test, same file included — a test that
+needs history seeds it inline.
+
+## UI changes ship with a reviewed screenshot
+
+Every UI-touching change gets a screenshot of the changed state
+(the builder takes it; server-mode + Playwright is enough) reviewed
+against the design contract BEFORE the PR opens — assertions prove
+elements exist, the screenshot is where "green but visually wrong"
+gets caught (the selection-invisibility and sticky-ring classes:
+both pipeline-green, both caught by eyes). This extends the
+existing "restate the task, not the elements" rule with a concrete
+artifact; it replaces nothing.
