@@ -56,6 +56,15 @@ pre-commit:
       # so a local pass here was checking something CI doesn't and a
       # local fail could block a commit CI's real gate would accept.
       run: golangci-lint run . ./internal/... --build-tags=server
+    - name: gocognit-new
+      glob: "*.go"
+      # Cognitive complexity gates NEW/CHANGED code only (goal 0109,
+      # Sonar's clean-as-you-code posture): 25 legacy functions sit
+      # over the threshold (burn-down in the goal file), so the gate
+      # scopes to the merge-base diff instead of failing every build
+      # or inflating the threshold into meaninglessness. Threshold
+      # lives in .golangci.yml's gocognit settings.
+      run: golangci-lint run . ./internal/... --build-tags=server --enable-only gocognit --new-from-merge-base=origin/main
     - name: go-test
       glob: "*.go"
       # Root package (`.`) included alongside ./internal/... -- the

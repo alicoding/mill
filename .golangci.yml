@@ -26,6 +26,13 @@ linters:
     - prealloc
     - contextcheck
     - sqlclosecheck
+    # Third pass (goal 0109, the SonarQube-class duplication gate):
+    # threshold and exclusions tuned from a full measurement run over
+    # the tree (28 pairs found, every one either the deliberate
+    # per-entity seed-reconcile shape or a test twin -- hit lists in
+    # the goal file), so the gate lands green and catches NEW
+    # duplication anywhere outside the named, deliberate families.
+    - dupl
   exclusions:
     paths:
       - frontend
@@ -33,8 +40,34 @@ linters:
       - third_party$
       - builtin$
       - examples$
+    rules:
+      # Test twins (a Go test asserting the same shape twice) are the
+      # documented-noise class Sonar's own defaults also exempt.
+      - path: _test\.go
+        linters: [dupl]
+      # The per-entity-kind seed/CRUD shape: each Configure entity
+      # repeats the same reconcile/upgrade body deliberately (goal
+      # 0109's measurement found every cluster here); collapsing them
+      # behind generics was considered and rejected -- the repetition
+      # is per-entity clarity, not an accident.
+      - path: internal/services/configuresvc/
+        linters: [dupl]
+      - path: internal/services/atlassvc/atlasservice_builtin\.go
+        linters: [dupl]
 
   settings:
+    dupl:
+      threshold: 150
+    # gocognit is deliberately NOT in `enable:` above -- 25 legacy
+    # production functions sit over its threshold (max 65; burn-down
+    # list in docs/goals/0109), so a repo-wide gate would either fail
+    # every build or need a threshold too high to mean anything.
+    # Instead it gates NEW/CHANGED code only (Sonar's own
+    # clean-as-you-code posture), via a dedicated
+    # `--enable-only gocognit --new-from-merge-base` invocation in
+    # lefthook and CI, which reads this threshold.
+    gocognit:
+      min-complexity: 15
     revive:
       rules:
         # This repo has never doc-commented every exported symbol --

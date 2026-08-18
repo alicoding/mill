@@ -206,6 +206,11 @@ jobs:
       CGO_ENABLED: '0'
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Full history: the gocognit new-code gate below diffs against
+          # the merge-base with origin/main, which a depth-1 clone
+          # cannot compute.
+          fetch-depth: 0
       - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: frontend-dist
@@ -218,6 +223,12 @@ jobs:
         with:
           version: v2.12
           args: --build-tags=server
+      # Cognitive-complexity gate on NEW/CHANGED code only (goal 0109,
+      # the clean-as-you-code posture -- see lefthook.yml's gocognit-new
+      # job for the full reasoning). Reuses the binary the action above
+      # already installed onto PATH. Requires the full-history checkout
+      # this job's own fetch-depth: 0 provides (merge-base needs it).
+      - run: golangci-lint run . ./internal/... --build-tags=server --enable-only gocognit --new-from-merge-base=origin/main
 
   build-go:
     needs: [changes, frontend]
@@ -357,7 +368,29 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
       - run: npm ci
         working-directory: frontend
-      - run: npx playwright install --with-deps chromium
+      # Browser binaries cached by Playwright version: the uncached
+      # `install --with-deps` path stalls in its apt phase on flaky
+      # ubuntu mirrors (three 15-minute shard hangs observed in one
+      # day), and the runner image already carries Chromium's system
+      # deps -- so a cache hit skips the whole install, and only a
+      # real Playwright version bump pays the download again (the
+      # upstream-documented CI caching pattern).
+      - name: Resolve Playwright version
+        id: pw-version
+        working-directory: frontend
+        run: echo "version=$(node -p "require('@playwright/test/package.json').version")" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        id: pw-cache
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-chromium-${{ runner.os }}-${{ steps.pw-version.outputs.version }}
+      # No --with-deps: the ubuntu runner image already ships
+      # Chromium's system libraries, and the apt phase behind
+      # --with-deps is the exact stall (archive.ubuntu.com hanging
+      # until the job's 15-minute cap) this caching exists to kill --
+      # observed persisting even on cache-miss runs.
+      - if: steps.pw-cache.outputs.cache-hit != 'true'
+        run: npx playwright install chromium
         working-directory: frontend
       # 3-shard matrix + playwright.config.ts's workers: CI ? 1 : 4 (goal
       # 0024): the prior single-job, workers:2-in-CI shape was the actual
