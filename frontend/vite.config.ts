@@ -90,6 +90,10 @@ export default defineConfig({
     exclude: [...configDefaults.exclude, "e2e/**"],
     coverage: {
       provider: "v8",
+      // lcov alongside the default text output: the changed-lines
+      // coverage gate (goal 0109, diff-cover in CI) consumes
+      // coverage/lcov.info; text stays for humans.
+      reporter: ["text", "lcov"],
       // Hand-written source only -- generated Wails bindings are
       // exempt for the same we-don't-own-their-shape reason
       // scripts/check-loc.sh exempts them.

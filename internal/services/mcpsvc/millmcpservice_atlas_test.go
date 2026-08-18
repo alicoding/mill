@@ -124,6 +124,7 @@ func TestAtlasMCP_ListKinds_IncludesSeededTopicWithDeclaredFields(t *testing.T) 
 	}
 	if topic == nil {
 		t.Fatalf("seeded Topic kind not found in atlas_list_kinds: %+v", out.Kinds)
+		return // staticcheck SA5011: t.Fatalf's noreturn fact is lost under CI's build config
 	}
 	fieldKeys := map[string]bool{}
 	for _, f := range topic.Fields {
@@ -186,6 +187,7 @@ func TestAtlasMCP_SearchCards_MatchesTitleAndReportsParent(t *testing.T) {
 	}
 	if titleMatch == nil {
 		t.Fatalf("atlas_search_cards(Ada) = %+v, want a match on Ada Lovelace's own title", out.Matches)
+		return // staticcheck SA5011: t.Fatalf's noreturn fact is lost under CI's build config
 	}
 	if titleMatch.ParentID != exampleArea.ID {
 		t.Errorf("match.ParentID = %q, want %q", titleMatch.ParentID, exampleArea.ID)

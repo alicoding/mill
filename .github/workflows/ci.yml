@@ -318,6 +318,56 @@ jobs:
       # compile without it, even for tests that never touch the embedded
       # assets themselves.
       - run: go test . ./internal/... -race -coverprofile=cover.out && bash scripts/check-go-coverage.sh cover.out
+      # Consumed by diff-coverage below -- reuse the profile this job
+      # already produced instead of paying a second full -race run.
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: go-coverprofile
+          path: cover.out
+
+  # Changed-lines coverage (goal 0109 phase 2, the clean-as-you-code
+  # counterpart to the gocognit gate): diff-cover reports how much of
+  # THIS PR's changed lines the unit layers cover, from the Go
+  # coverprofile (via gcov2lcov) + Vitest's lcov. INFORMATIONAL for
+  # now -- continue-on-error and outside ci-gate's needs -- because
+  # this repo's layering deliberately proves components in e2e, not
+  # unit tests, so an industry-default fail-under would fail honest UI
+  # PRs; the floor gets set from a track record of real PR numbers,
+  # the same measure-then-promote shape as webview-bridge-smoke.
+  diff-coverage:
+    needs: [changes, frontend, test-go]
+    if: success() && github.event_name == 'pull_request' && needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: go-coverprofile
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: '1.25'
+          cache: true
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+        working-directory: frontend
+      - run: npm run test
+        working-directory: frontend
+      - run: go install github.com/jandelgado/gcov2lcov@v1.1.1
+      - run: gcov2lcov -infile cover.out -outfile go-lcov.info
+      - run: pipx install diff-cover
+      - name: Changed-lines coverage report
+        run: |
+          diff-cover go-lcov.info frontend/coverage/lcov.info \
+            --compare-branch "origin/${{ github.base_ref }}" \
+            --show-uncovered
 
   e2e:
     needs: [changes, frontend]
