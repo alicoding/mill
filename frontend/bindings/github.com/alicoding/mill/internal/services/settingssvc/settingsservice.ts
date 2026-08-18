@@ -123,6 +123,12 @@ export function DismissPanel(): $CancellablePromise<void> {
  * Channel-gated server-side, not just by the UI: a source-channel
  * build must never binary-swap itself, since "source" means the
  * running copy IS the update mechanism (pull + rebuild).
+ * 
+ * goal 0100: a beta install swaps its running app over real, primary
+ * data, so the swap never proceeds without a fresh restore point. The
+ * backupRunner seam is called first and its error aborts the update
+ * outright -- no download, no swap -- same fail-closed posture as the
+ * digest check below it.
  */
 export function DownloadAndInstallUpdate(): $CancellablePromise<void> {
     return $Call.ByID(174385789);
@@ -553,9 +559,9 @@ export function UnassignSummonHotkey(): $CancellablePromise<void> {
 }
 
 /**
- * UpdateChannel reports the resolved distribution channel ("source" or
- * "release") -- the Settings > Updates surface's gate between "Update
- * now" and the pull-and-rebuild instructions, and
+ * UpdateChannel reports the resolved distribution channel ("source",
+ * "release", or "beta") -- the Settings > Updates surface's gate
+ * between "Update now" and the pull-and-rebuild instructions, and
  * DownloadAndInstallUpdate's own server-side enforcement of the same
  * gate.
  */

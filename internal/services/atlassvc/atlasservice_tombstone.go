@@ -20,10 +20,59 @@ const tombstoneGraceWindow = 48 * time.Hour
 // TombstoneResult names exactly which ids one DeleteCard/DeleteNote
 // call soft-deleted -- DeleteCard populates only CardIDs, DeleteNote
 // only NoteIDs, so the frontend's undo toast can pass this straight
-// back to UndoDelete without re-deriving what it touched.
+// back to UndoDelete without re-deriving what it touched. LinksRemoved
+// and ChildrenPromoted are the delete's blast radius, counted against
+// the state immediately BEFORE this call's own tombstone lands: links
+// that were visible and now touch a tombstoned endpoint, and direct
+// live children (cards + notes) whose effective parent is about to
+// shift past this card. Both stay zero for DeleteNote -- a note can
+// carry neither a link endpoint nor a child.
 type TombstoneResult struct {
-	CardIDs []string
-	NoteIDs []string
+	CardIDs          []string
+	NoteIDs          []string
+	LinksRemoved     int
+	ChildrenPromoted int
+}
+
+// liveLinkTouchCountLocked counts currently-live links (both endpoints
+// live) that touch cardID -- the number of links about to become
+// hidden if cardID is tombstoned next. Caller must hold a.mu.
+func (a *AtlasService) liveLinkTouchCountLocked(cardID string) int {
+	tombstoned := make(map[string]bool)
+	for _, c := range a.cards {
+		if !c.DeletedAt.IsZero() {
+			tombstoned[c.ID] = true
+		}
+	}
+	n := 0
+	for _, l := range a.links {
+		if tombstoned[l.FromCardID] || tombstoned[l.ToCardID] {
+			continue
+		}
+		if l.FromCardID == cardID || l.ToCardID == cardID {
+			n++
+		}
+	}
+	return n
+}
+
+// directLiveChildCountLocked counts live cards and notes whose stored
+// ParentID is exactly cardID -- the direct children about to be
+// virtually promoted to cardID's own effective parent. Caller must
+// hold a.mu.
+func (a *AtlasService) directLiveChildCountLocked(cardID string) int {
+	n := 0
+	for _, c := range a.cards {
+		if c.ParentID == cardID && c.DeletedAt.IsZero() {
+			n++
+		}
+	}
+	for _, nt := range a.notes {
+		if nt.ParentID == cardID && nt.DeletedAt.IsZero() {
+			n++
+		}
+	}
+	return n
 }
 
 // liveCardsLocked returns every non-tombstoned card, each carrying its
@@ -106,6 +155,8 @@ func (a *AtlasService) DeleteCard(id string) (TombstoneResult, error) {
 	}
 	previous := a.cards[idx]
 	wasBuiltIn := previous.BuiltIn
+	linksRemoved := a.liveLinkTouchCountLocked(id)
+	childrenPromoted := a.directLiveChildCountLocked(id)
 	now := time.Now()
 	a.cards[idx].DeletedAt = now
 	a.cards[idx].UpdatedAt = now
@@ -139,7 +190,7 @@ func (a *AtlasService) DeleteCard(id string) (TombstoneResult, error) {
 		return TombstoneResult{}, fmt.Errorf("save card deletion: %w", perr)
 	}
 	dataevent.Emit("atlas", id)
-	return TombstoneResult{CardIDs: []string{id}}, nil
+	return TombstoneResult{CardIDs: []string{id}, LinksRemoved: linksRemoved, ChildrenPromoted: childrenPromoted}, nil
 }
 
 // DeleteNote soft-deletes a note -- same tombstone contract as
