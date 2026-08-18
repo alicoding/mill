@@ -58,6 +58,7 @@ func (a *AtlasService) reconcileBuiltIns() {
 	// (no Card may still name a Kind being removed) is checked against
 	// that already-updated card set, never the pre-reconcile one.
 	changed = a.retireGoneKindsLocked() || changed
+	changed = a.retireGoneSeedsLocked() || changed
 	if changed {
 		if err := a.persistLocked(); err != nil {
 			slog.Error("failed to reconcile built-in Atlas entities", "error", err)
@@ -313,6 +314,89 @@ func (a *AtlasService) reconcilePerspectivesLocked(tombstones map[string]bool, n
 			golden.Seed = seedorigin.Stamp(golden.Seed.SeedRevision)
 			a.perspectives[idx] = golden
 			changed = true
+		}
+	}
+	return changed
+}
+
+
+// retireGoneSeedsLocked removes retired built-in cards, links, and
+// perspectives (the de-seeded reference-architecture landscape) from an
+// existing install -- exactly when the record is still an untouched
+// golden (seed origin present, Modified false). A user-edited copy is
+// the user's data and stays; either way a tombstone is recorded so
+// reconcile can never re-add the retired golden. Links whose retired
+// endpoints leave first are removed by the card pass's own link sweep,
+// so ordering inside this function is links, then child cards, then
+// their container, then perspectives.
+func (a *AtlasService) retireGoneSeedsLocked() bool {
+	changed := false
+	retire := func(id string) {
+		if err := seeding.RecordTombstone(a.store, id); err != nil {
+			slog.Error("failed to tombstone retired built-in Atlas seed", "id", id, "error", err)
+		}
+	}
+	for _, id := range atlas.RetiredBuiltInLinkIDs() {
+		for i, l := range a.links {
+			if l.ID != id {
+				continue
+			}
+			if l.Seed.IsSeeded() && !l.Seed.Modified {
+				a.links = append(a.links[:i], a.links[i+1:]...)
+				retire(id)
+				changed = true
+			}
+			break
+		}
+	}
+	for _, id := range atlas.RetiredBuiltInCardIDs() {
+		for i, c := range a.cards {
+			if c.ID != id {
+				continue
+			}
+			if !c.Seed.IsSeeded() || c.Seed.Modified || !c.DeletedAt.IsZero() {
+				break
+			}
+			// Never orphan: anything still inside the retiring card
+			// (a user's own note or card filed there) promotes to the
+			// retiring card's own parent first.
+			for j := range a.cards {
+				if a.cards[j].ParentID == id {
+					a.cards[j].ParentID = c.ParentID
+					a.cards[j].UpdatedAt = time.Now()
+				}
+			}
+			for j := range a.notes {
+				if a.notes[j].ParentID == id {
+					a.notes[j].ParentID = c.ParentID
+					a.notes[j].UpdatedAt = time.Now()
+				}
+			}
+			// Any remaining link touching the card goes with it.
+			kept := a.links[:0]
+			for _, l := range a.links {
+				if l.FromCardID != id && l.ToCardID != id {
+					kept = append(kept, l)
+				}
+			}
+			a.links = kept
+			a.cards = append(a.cards[:i], a.cards[i+1:]...)
+			retire(id)
+			changed = true
+			break
+		}
+	}
+	for _, id := range atlas.RetiredBuiltInPerspectiveIDs() {
+		for i, p := range a.perspectives {
+			if p.ID != id {
+				continue
+			}
+			if p.Seed.IsSeeded() && !p.Seed.Modified {
+				a.perspectives = append(a.perspectives[:i], a.perspectives[i+1:]...)
+				retire(id)
+				changed = true
+			}
+			break
 		}
 	}
 	return changed

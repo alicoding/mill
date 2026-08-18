@@ -238,46 +238,6 @@ func BuiltInCards() []Card {
 			CreatedAt:         now, UpdatedAt: now,
 			BuiltIn: true, Seed: seedorigin.Stamp(5), // Card gained MirrorChecksum (goal 0088) then DeletedAt (goal 0093) -- shape shifts
 		},
-		{
-			// The seeded perspectives example's own container (goal 0095
-			// slice 3): a direct child of "My space" (keeps the single-
-			// root-card navigation intact) holding the three landscape
-			// cards below, so their own internal links stay invisible one
-			// level up (resolveBoardEdges.ts skips an edge whose endpoints
-			// resolve to the same top-level card) -- the pre-existing
-			// "My space" child census (atlas-projections.spec.ts's
-			// coverage stat, atlas-scale.spec.ts's dense-fixture edge
-			// count) only grows by this one new card, never by three.
-			ID: cardSystemLandscapeID, KindID: kindComponentID, Title: "System landscape",
-			Note:      "Switch perspectives above to see this move from Current to Target.",
-			ParentID:  cardMySpaceID, ViewMode: ViewModeShelves,
-			// 960 sits right after the seeded row's rightmost card
-			// (Scratchpad at 746) -- close enough that this card barely
-			// widens the fit-to-view bounding box other e2e specs'
-			// zoom-then-click-by-fraction helpers depend on; a much
-			// farther placement measurably shifts those fractions.
-			Position: &Position{X: 960, Y: 80},
-			CreatedAt: now, UpdatedAt: now,
-			BuiltIn: true, Seed: seedorigin.Stamp(1),
-		},
-		{
-			ID: cardWebAppID, KindID: kindComponentID, Title: "Web app",
-			ParentID:  cardSystemLandscapeID,
-			CreatedAt: now, UpdatedAt: now,
-			BuiltIn: true, Seed: seedorigin.Stamp(1),
-		},
-		{
-			ID: cardDataStoreID, KindID: kindComponentID, Title: "Data store",
-			ParentID:  cardSystemLandscapeID,
-			CreatedAt: now, UpdatedAt: now,
-			BuiltIn: true, Seed: seedorigin.Stamp(1),
-		},
-		{
-			ID: cardSyncServiceID, KindID: kindComponentID, Title: "Sync service",
-			ParentID:  cardSystemLandscapeID,
-			CreatedAt: now, UpdatedAt: now,
-			BuiltIn: true, Seed: seedorigin.Stamp(1),
-		},
 	}
 }
 
@@ -298,74 +258,20 @@ func BuiltInLinks() []Link {
 			CreatedAt:  now, UpdatedAt: now,
 			BuiltIn: true, Seed: seedorigin.Stamp(1),
 		},
-		{
-			// Current's own link: the web app talks to the data store
-			// directly.
-			ID: linkWebToStoreID, FromCardID: cardWebAppID, ToCardID: cardDataStoreID,
-			LinkKindID: linkKindRelatesToID,
-			CreatedAt:  now, UpdatedAt: now,
-			BuiltIn: true, Seed: seedorigin.Stamp(1),
-		},
-		{
-			// Interim/Target's new shape, half one: the web app talks to
-			// the sync service.
-			ID: linkWebToSyncID, FromCardID: cardWebAppID, ToCardID: cardSyncServiceID,
-			LinkKindID: linkKindRelatesToID,
-			CreatedAt:  now, UpdatedAt: now,
-			BuiltIn: true, Seed: seedorigin.Stamp(1),
-		},
-		{
-			// Interim/Target's new shape, half two: the sync service
-			// relays to the data store.
-			ID: linkSyncToStoreID, FromCardID: cardSyncServiceID, ToCardID: cardDataStoreID,
-			LinkKindID: linkKindRelatesToID,
-			CreatedAt:  now, UpdatedAt: now,
-			BuiltIn: true, Seed: seedorigin.Stamp(1),
-		},
 	}
 }
 
-// BuiltInPerspectives returns the seeded three-perspective reference-
-// architecture example (ADR-0041, goal 0095 slice 3): "Current",
-// "Interim", "Target" over "System landscape"'s own three Component
-// cards, membership telling a migration story -- Current is the web
-// app wired straight to the data store; Interim adds the sync service
-// alongside that old connection; Target drops the old direct link and
-// keeps only the new shape. Every card is a member of every
-// perspective (the story is entirely which LINKS are visible); only
-// MemberLinkIDs differs.
+// BuiltInPerspectives seeds NO perspectives. Perspectives are a
+// platform capability; a named set like "Current/Interim/Target" is a
+// modeling concept the USER authors -- shipping one made it read as a
+// native option in the switcher on every install (the inner-platform
+// smell SPEC section 0 exists to prevent). The capability's proof
+// lives at the test layer (dedicated-server e2e + Go integration
+// tests build their own perspectives) and in the docs, never as
+// always-present named objects in user data. The retired IDs below
+// remove the previously-shipped set from existing installs.
 func BuiltInPerspectives() []Perspective {
-	now := time.Now()
-	allThree := []string{cardWebAppID, cardDataStoreID, cardSyncServiceID}
-	return []Perspective{
-		{
-			ID: perspectiveCurrentID, SpaceID: cardSystemLandscapeID, Name: "Current",
-			Description:   "The web app talks straight to the data store.",
-			Order:         0,
-			MemberCardIDs: []string{cardWebAppID, cardDataStoreID},
-			MemberLinkIDs: []string{linkWebToStoreID},
-			CreatedAt:     now, UpdatedAt: now,
-			BuiltIn: true, Seed: seedorigin.Stamp(1),
-		},
-		{
-			ID: perspectiveInterimID, SpaceID: cardSystemLandscapeID, Name: "Interim",
-			Description:   "The sync service comes online alongside the old connection.",
-			Order:         1,
-			MemberCardIDs: allThree,
-			MemberLinkIDs: []string{linkWebToStoreID, linkWebToSyncID, linkSyncToStoreID},
-			CreatedAt:     now, UpdatedAt: now,
-			BuiltIn: true, Seed: seedorigin.Stamp(1),
-		},
-		{
-			ID: perspectiveTargetID, SpaceID: cardSystemLandscapeID, Name: "Target",
-			Description:   "The old direct connection is gone; the sync service is the only path.",
-			Order:         2,
-			MemberCardIDs: allThree,
-			MemberLinkIDs: []string{linkWebToSyncID, linkSyncToStoreID},
-			CreatedAt:     now, UpdatedAt: now,
-			BuiltIn: true, Seed: seedorigin.Stamp(1),
-		},
-	}
+	return nil
 }
 
 // RetiredBuiltInKindIDs names a built-in Kind ID that once shipped in
@@ -388,4 +294,25 @@ func RetiredKindReplacementID(retiredID string) (string, bool) {
 		return kindTopicID, true
 	}
 	return "", false
+}
+
+// RetiredBuiltInCardIDs names built-in cards that once shipped and no
+// longer do -- the reference-architecture landscape (its concept now
+// user-authored, never seeded). Reconcile removes an install's copy
+// exactly when it is still an untouched golden (Seed.Modified false);
+// an edited copy belongs to the user and stays.
+func RetiredBuiltInCardIDs() []string {
+	return []string{cardWebAppID, cardDataStoreID, cardSyncServiceID, cardSystemLandscapeID}
+}
+
+// RetiredBuiltInLinkIDs names the retired landscape's own links, same
+// contract as RetiredBuiltInCardIDs.
+func RetiredBuiltInLinkIDs() []string {
+	return []string{linkWebToStoreID, linkWebToSyncID, linkSyncToStoreID}
+}
+
+// RetiredBuiltInPerspectiveIDs names the previously-seeded perspective
+// set, same contract as RetiredBuiltInCardIDs.
+func RetiredBuiltInPerspectiveIDs() []string {
+	return []string{perspectiveCurrentID, perspectiveInterimID, perspectiveTargetID}
 }

@@ -28,8 +28,8 @@ import { ATLAS_KIND_TOPIC, selectKind } from './fixtures/kindPicker'
 // Runs against the seeded "My space" tree (internal/domain/atlas/
 // builtin.go): My space (root) holds Getting started, Scratchpad,
 // Example area (which holds Ada Lovelace and Project charter), and
-// System landscape (which holds Web app/Data store/Sync service, the
-// seeded Current/Interim/Target perspectives' own scope); a seeded
+// perspectives are user-authored (none ship seeded); each test
+// builds what it asserts.
 // link connects Getting started -> Ada Lovelace.
 
 async function withServer(testInfo: { parallelIndex: number }, run: (page: Awaited<ReturnType<import('@playwright/test').Browser['newPage']>>) => Promise<void>): Promise<void> {
@@ -244,61 +244,76 @@ test('membership removes via the board context menu, and deleting a perspective 
   })
 })
 
-// The seeded reference-architecture example (goal 0095 slice 3,
-// internal/domain/atlas/builtin.go's BuiltInPerspectives): a "System
-// landscape" card (a direct child of "My space", never disturbing the
-// pre-existing top-level census other specs pin -- e.g.
-// atlas-projections.spec.ts's coverage stat) holding "Web app"/"Data
-// store"/"Sync service", with three seeded perspectives -- "Current"
-// (app + data store, wired directly), "Interim" (adds the sync
-// service alongside the old link), "Target" (the old direct link is
-// gone, only the new shape remains).
+// Compare is proven over a USER-authored pair of perspectives -- no
+// perspective ships seeded (concepts are the user's; only the
+// capability ships). Link-level diff semantics stay proven at the Go
+// layer (DiffPerspectives' own tests); this flow pins the UI: author,
+// diff, and the empty-group omission.
 // eslint-disable-next-line no-empty-pattern -- this test needs `testInfo` (the second arg), not any fixture.
-test('the seeded reference-architecture example renders with no regression to the default view, and Compare shows the Current -> Target diff', async ({}, testInfo) => {
+test('Compare shows the diff between two user-authored perspectives', async ({}, testInfo) => {
   await withServer(testInfo, async (page) => {
-    // No regression: every pre-existing seeded card still renders
-    // alongside the new "System landscape" card.
-    await expect(noteCard(page, 'Getting started')).toBeVisible()
-    await expect(noteCard(page, 'Scratchpad')).toBeVisible()
-    await expect(groupCard(page, 'Example area')).toBeVisible()
-    const landscape = groupCard(page, 'System landscape')
-    await expect(landscape).toBeVisible()
-
-    // The seeded perspectives are scoped to "System landscape" -- drill
-    // in, then switch to "Interim": all three landscape cards render.
-    await landscape.getByTestId('atlas-group-header').click()
-    await expect(page.getByTestId('atlas-breadcrumb')).toContainText('System landscape')
-
+    // No perspectives ship: the switcher opens with only "All cards"
+    // and the create affordance.
     await switcherButton(page).click()
-    await switcherPopover(page).getByText('Interim', { exact: true }).click()
-    await expect(switcherButton(page)).toHaveText('Interim')
-    await expect(noteCard(page, 'Web app')).toBeVisible()
-    await expect(noteCard(page, 'Data store')).toBeVisible()
-    await expect(noteCard(page, 'Sync service')).toBeVisible()
+    await expect(switcherPopover(page).getByText('All cards', { exact: true })).toBeVisible()
+    await expect(switcherPopover(page).getByText('Compare perspectives', { exact: false })).toHaveCount(0)
+    await page.keyboard.press('Escape')
 
-    // Compare Current -> Target: Sync service is the only added card,
-    // the old direct link is the only removed link, and the new
-    // shape's two links are added.
+    await createPerspective(page, 'Before')
+    await createPerspective(page, 'After')
+
+    // "After" is active (creation activates): authoring joins it.
+    const oldTitle = 'ZzE2eCompareOld'
+    const newTitle = 'ZzE2eCompareNew'
+    for (const title of [oldTitle, newTitle]) {
+      await page.getByTestId('atlas-add-button').click()
+      await page.getByTestId('atlas-add-child').click()
+      await selectKind(page, ATLAS_KIND_TOPIC, 'atlas-create-kind')
+      await page.getByTestId('atlas-create-title').fill(title)
+      await page.getByRole('button', { name: 'Create' }).click()
+      await expect(noteCard(page, title)).toBeVisible()
+    }
+
+    // The old card also joins "Before" via the context menu.
+    await switcherButton(page).click()
+    await switcherPopover(page).getByText('All cards', { exact: true }).click()
+    await noteCard(page, oldTitle).click({ button: 'right' })
+    await expect(contextMenu(page)).toBeVisible()
+    await contextMenu(page).getByText('Add to perspective', { exact: false }).click()
+    await expect(contextMenu(page)).toBeVisible()
+    await contextMenu(page).getByText('Before', { exact: true }).click()
+    await expect(page.getByTestId('atlas-quiet-toast')).toContainText('Added to Before')
+
+    // Compare Before -> After: the new card is the one addition; no
+    // removed groups render (empty groups are omitted).
     await switcherButton(page).click()
     await switcherPopover(page).getByText('Compare perspectives', { exact: false }).click()
     const dialog = page.locator('[data-component="atlas-perspective-compare-dialog"]')
     await expect(dialog).toBeVisible()
-    await dialog.getByTestId('atlas-compare-from').selectOption({ label: 'Current' })
-    await dialog.getByTestId('atlas-compare-to').selectOption({ label: 'Target' })
+    await dialog.getByTestId('atlas-compare-from').selectOption({ label: 'Before' })
+    await dialog.getByTestId('atlas-compare-to').selectOption({ label: 'After' })
 
     const results = dialog.getByTestId('atlas-compare-results')
     await expect(results.getByText('Added cards (1)', { exact: true })).toBeVisible()
-    await expect(results.getByTestId('atlas-compare-card-row').filter({ hasText: 'Sync service' })).toBeVisible()
-    await expect(results.getByText('Added links (2)', { exact: true })).toBeVisible()
-    await expect(results.getByText('Removed links (1)', { exact: true })).toBeVisible()
-    await expect(
-      results.getByTestId('atlas-compare-link-row').filter({ hasText: 'Web app → Data store (relates to)' }),
-    ).toBeVisible()
-    // "Removed cards" stays empty (every Current card is also a Target
-    // member) -- an empty group is omitted entirely, never rendered.
+    await expect(results.getByTestId('atlas-compare-card-row').filter({ hasText: newTitle })).toBeVisible()
     await expect(dialog.getByText('Removed cards', { exact: false })).toHaveCount(0)
-
     await page.keyboard.press('Escape')
     await expect(dialog).not.toBeVisible()
+
+    // Cleanup (within-file discipline): cards, then perspectives.
+    for (const title of [oldTitle, newTitle]) {
+      await openCard(page, noteCard(page, title))
+      await deleteViaPageMenu(page, page.locator('[data-component="atlas-card-overlay"]'))
+    }
+    for (const name of ['Before', 'After']) {
+      await switcherButton(page).click()
+      const row = switcherPopover(page).getByText(name, { exact: true })
+      await row.click({ button: 'right' })
+      await contextMenu(page).getByText('Delete', { exact: true }).click()
+      await expect(page.getByRole('heading', { name: `Delete ${name}?` })).toBeVisible()
+      await page.getByRole('button', { name: 'Delete', exact: true }).click()
+      await expect(page.getByRole('heading', { name: `Delete ${name}?` })).toHaveCount(0)
+      if (await switcherPopover(page).isVisible()) await page.keyboard.press('Escape')
+    }
   })
 })
