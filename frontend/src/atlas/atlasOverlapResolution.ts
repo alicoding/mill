@@ -32,6 +32,7 @@ const MAX_PASSES = 24
 // yesterday-clear layout can overlap today with nobody having moved a
 // card -- those collisions auto-resolve. A leaf-on-leaf overlap is
 // hand placement and is left exactly where the user put it.
+// eslint-disable-next-line sonarjs/cognitive-complexity -- legacy complexity grandfathered at gate adoption; pay down when touched (goal 0109 burn-down)
 export function resolveFreeOverlaps(boxes: OverlapBox[]): OverlapMove[] {
   const work = boxes.map((b) => ({ ...b }))
   // Stable processing order: by id, so the same board always nudges

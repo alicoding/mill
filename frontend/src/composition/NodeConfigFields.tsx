@@ -215,6 +215,7 @@ export function NodeConfigFields({ node, workflowId, attrs, nodeType, sameKindNo
         // decisions 4-5), not a raw number field a user has to already
         // know.
         .filter((field) => !(node.data.nodeTypeID === 'decision-outcome' && field.Key === 'version'))
+        // eslint-disable-next-line sonarjs/cognitive-complexity -- legacy complexity grandfathered at gate adoption; pay down when touched (goal 0109 burn-down)
         .map((field) => (
         <FormControl key={`${field.Key}-${payloadNonce}`}>
           <FormControl.Label>{field.Label}</FormControl.Label>

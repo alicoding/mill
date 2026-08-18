@@ -35,6 +35,7 @@ interface TriggerRowLabelProps {
 // node's real type and config instead of a second, independent guess at
 // the same thing. Shared by WorkflowsTable.tsx and CompositionView.tsx's
 // InventoryList rows (docs/goals/0007, the former WorkflowsCards.tsx).
+// eslint-disable-next-line sonarjs/cognitive-complexity -- legacy complexity grandfathered at gate adoption; pay down when touched (goal 0109 burn-down)
 export function TriggerRowLabel({ workflow, armed, publishing, onPublish, onHotkeyChanged }: TriggerRowLabelProps) {
   const { t } = useTranslation('composition')
   const rootNode = findRootNode(workflow.Nodes, workflow.Edges)

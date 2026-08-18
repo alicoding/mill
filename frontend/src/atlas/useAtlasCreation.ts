@@ -194,6 +194,7 @@ export function useAtlasCreation({ parentID, allCards, notes, readOnly, screenTo
   // identity changing when the popover opens/closes is bounded and
   // never feeds the sticky-node data path that caused the React #185
   // loop this file's other comments describe.
+  // eslint-disable-next-line sonarjs/cognitive-complexity -- legacy complexity grandfathered at gate adoption; pay down when touched (goal 0109 burn-down)
   const submitPopover = useCallback((kindID: string, title: string) => {
     const pending = popover
     if (!pending) return

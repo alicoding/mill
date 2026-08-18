@@ -122,6 +122,7 @@ export function WorkTabShell({ pageLabel, pageIcon, titlebarSlot, children }: { 
   const workflowLabel = (id: string) => workflows?.find((w) => w.ID === id)?.Label
   const requestLabel = (id: string) => requests?.find((r) => r.ID === id)?.Label
 
+  // eslint-disable-next-line sonarjs/cognitive-complexity -- legacy complexity grandfathered at gate adoption; pay down when touched (goal 0109 burn-down)
   const renderTab = (tab: WorkTab) => {
     switch (tab.kind) {
       case 'workflow-edit':

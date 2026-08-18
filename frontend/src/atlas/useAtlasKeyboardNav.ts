@@ -77,6 +77,7 @@ export function useAtlasKeyboardNav<TNode extends RFNode>({
       if (e.key in ARROW_KEYS && pendingNudgeRef.current.size > 0) flushNudge()
     }
 
+    // eslint-disable-next-line sonarjs/cognitive-complexity -- legacy complexity grandfathered at gate adoption; pay down when touched (goal 0109 burn-down)
     const onKeyDown = (e: KeyboardEvent) => {
       if (isEditableTarget(e.target)) return
       if (!isFocusInsideBoard(wrapperRef)) return

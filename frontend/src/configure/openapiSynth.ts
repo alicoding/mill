@@ -239,6 +239,7 @@ function fieldFromSchema(name: string, schema: JSONSchemaLike, placement: Manual
 // non-JSON media types are silently skipped rather than guessed at.
 // JSON only (no YAML) -- this runs in the browser with no YAML parser
 // adopted for it; paste JSON, or keep editing via the raw-text mode.
+// eslint-disable-next-line sonarjs/cognitive-complexity -- legacy complexity grandfathered at gate adoption; pay down when touched (goal 0109 burn-down)
 export function parseOpenAPIToOperations(t: (key: string, opts?: Record<string, unknown>) => string, specText: string): { operations: ManualOperation[]; errors: string[] } {
   let doc: { paths?: Record<string, Record<string, unknown>> }
   try {

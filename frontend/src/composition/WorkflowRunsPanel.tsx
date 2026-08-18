@@ -366,6 +366,7 @@ function WorkflowRunsPanel({ workflowId, attrs, initialRunId, onInitialRunConsum
           </Stack>
           {detail.error && <Text as="p" className={styles.error}>{detail.error}</Text>}
 
+          {/* eslint-disable-next-line sonarjs/cognitive-complexity -- legacy complexity grandfathered at gate adoption; pay down when touched (goal 0109 burn-down) */}
           {detail.pending && (() => {
             // A breakpoint or step-mode park is a DEBUG park
             // (docs/adr/0031) -- distinct icon/wording/controls, never
