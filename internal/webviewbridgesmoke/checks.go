@@ -14,7 +14,7 @@ import (
 type check struct {
 	name   string
 	reason string
-	run    func(c *mcpClient) (string, error)
+	run    func(c mcpCaller) (string, error)
 }
 
 var registry = []check{
@@ -50,7 +50,7 @@ var registry = []check{
 	},
 }
 
-func checkIsolatedDataBadge(c *mcpClient) (string, error) {
+func checkIsolatedDataBadge(c mcpCaller) (string, error) {
 	var found bool
 	if err := c.callJSON("js_eval", map[string]any{
 		"js": `return !!document.querySelector('[data-testid="isolated-data-badge"]');`,
@@ -63,7 +63,7 @@ func checkIsolatedDataBadge(c *mcpClient) (string, error) {
 	return "badge visible", nil
 }
 
-func checkAppInfo(c *mcpClient) (string, error) {
+func checkAppInfo(c mcpCaller) (string, error) {
 	var info struct {
 		OS      string `json:"os"`
 		Windows []struct {
@@ -86,7 +86,7 @@ func checkAppInfo(c *mcpClient) (string, error) {
 // true or the deadline passes -- the real webview's page load and
 // React's own render pass are both async relative to the MCP HTTP
 // server becoming reachable.
-func pollJSEval(c *mcpClient, js string, timeout time.Duration) error {
+func pollJSEval(c mcpCaller, js string, timeout time.Duration) error {
 	deadline := time.Now().Add(timeout)
 	var lastErr error
 	for time.Now().Before(deadline) {
@@ -104,7 +104,7 @@ func pollJSEval(c *mcpClient, js string, timeout time.Duration) error {
 	return fmt.Errorf("timed out polling (condition never became true)")
 }
 
-func checkAtlasBoardRenders(c *mcpClient) (string, error) {
+func checkAtlasBoardRenders(c mcpCaller) (string, error) {
 	var nav struct {
 		Clicked bool   `json:"clicked"`
 		Tag     string `json:"tag"`
@@ -124,7 +124,7 @@ func checkAtlasBoardRenders(c *mcpClient) (string, error) {
 	return "atlas-board rendered after nav click", nil
 }
 
-func checkNoteCardFlip(c *mcpClient) (string, error) {
+func checkNoteCardFlip(c mcpCaller) (string, error) {
 	var result struct {
 		Before string `json:"before"`
 		After  string `json:"after"`
@@ -153,7 +153,7 @@ type ringSnapshot struct {
 	Selected  bool   `json:"selected"`
 }
 
-func readRing(c *mcpClient, selector string) (ringSnapshot, error) {
+func readRing(c mcpCaller, selector string) (ringSnapshot, error) {
 	var snap ringSnapshot
 	err := c.callJSON("js_eval", map[string]any{
 		"js": fmt.Sprintf(`const el = document.querySelectorAll(%q)[0];
@@ -165,7 +165,7 @@ func readRing(c *mcpClient, selector string) (ringSnapshot, error) {
 	return snap, err
 }
 
-func checkNoteCardSelectionRing(c *mcpClient) (string, error) {
+func checkNoteCardSelectionRing(c mcpCaller) (string, error) {
 	selector := `[data-testid="atlas-note-card"]`
 	before, err := readRing(c, selector)
 	if err != nil {
@@ -210,7 +210,7 @@ type atlasCard struct {
 	ParentID string `json:"ParentID"`
 }
 
-func checkStickyBorderColorFlip(c *mcpClient) (string, error) {
+func checkStickyBorderColorFlip(c mcpCaller) (string, error) {
 	var cards []atlasCard
 	if err := c.callJSON("call_bound_method", map[string]any{
 		"name": "github.com/alicoding/mill/internal/services/atlassvc.AtlasService.Cards",
@@ -272,7 +272,7 @@ type stickySnapshot struct {
 	BoxShadow   string `json:"boxShadow"`
 }
 
-func readStickyStyle(c *mcpClient, selector string) (stickySnapshot, error) {
+func readStickyStyle(c mcpCaller, selector string) (stickySnapshot, error) {
 	var snap stickySnapshot
 	err := c.callJSON("js_eval", map[string]any{
 		"js": fmt.Sprintf(`const el = document.querySelector(%q);

@@ -141,11 +141,28 @@ layer per capability," never "a seed per thing":
   at all — the OSS convergence for real parity is driving the actual
   embedded webview via an app bridge, which is what this layer does.
   Playwright's `webkit` browser stays installed as a local debugging
-  probe only, never CI-badged as parity. Non-required CI job
-  (`webview-bridge-smoke` in `ci.yml`) until it has a track record;
-  local pre-release gate in the meantime. Revisit trigger: grow the
+  probe only, never CI-badged as parity. Revisit trigger: grow the
   check registry when a WebKit-only bug escapes it, same discipline as
   the manual-only registry below.
+  **CI status: non-required/informational, first live attempt
+  failed.** The `webview-bridge-smoke` job in `ci.yml` ran on a real
+  `macos-latest` GitHub-hosted runner and failed launching the app:
+  `app process exited before the MCP bridge became reachable: dial
+  tcp 127.0.0.1:9099: connect: connection refused`, with an EMPTY
+  captured stderr tail — the go/npm builds both succeeded, but the
+  spawned app process produced no diagnostic output at all before
+  exiting. First investigation lead: a silent, near-instant exit with
+  zero stderr is consistent with an early native-windowing failure
+  (no real console/WindowServer session available the way the
+  precedent research assumed from Electron's own hosted-runner CI —
+  Electron's windowing stack may not need the same session a genuine
+  Wails/Cocoa `NSWindow` does), though the log alone doesn't prove
+  that specific cause; config-dir/signing weren't ruled in or out
+  either. Not iterated further pending a dedicated investigation
+  pass. Until resolved, the OPERATIVE parity gate is the LOCAL
+  pre-release run (`scripts/webview-bridge-smoke.sh`, run by hand
+  before a release) — the CI job stays wired and green-or-red
+  visible, but nothing depends on it passing yet.
 - **Manual-only registry** — OS-bound checks (hotkey delivery, real
   clipboard, tray) listed explicitly with reasons, never silently
   absent (see goal 0010's enforcement). Non-seed instance: the

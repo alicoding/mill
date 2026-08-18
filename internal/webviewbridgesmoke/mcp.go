@@ -10,6 +10,15 @@ import (
 	"time"
 )
 
+// mcpCaller is the seam checks.go's registry depends on instead of the
+// concrete *mcpClient -- lets checks_test.go exercise every check's
+// assertion logic against a scripted fake, with no real HTTP server or
+// desktop app involved.
+type mcpCaller interface {
+	call(tool string, args map[string]any) (string, error)
+	callJSON(tool string, args map[string]any, out any) error
+}
+
 // mcpClient is a minimal JSON-RPC 2.0 client for the Wails MCP bridge
 // (-tags mcp, WAILS_MCP_HOST/WAILS_MCP_PORT -- see
 // .claude/skills/run-mill/SKILL.md's spike notes and

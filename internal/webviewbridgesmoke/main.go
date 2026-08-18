@@ -70,13 +70,18 @@ func run() error {
 		return fmt.Errorf("%w\napp stderr tail:\n%s", err, stderrTail())
 	}
 
-	return runRegistry(client)
+	return runRegistry(client, registry)
 }
 
-func runRegistry(client *mcpClient) error {
+// runRegistry runs each check in order and reports PASS/FAIL, stopping
+// immediately (never substituting a different tool) the moment a check
+// hits a genuine bridge API gap rather than a mere assertion failure --
+// caller and checks are parameters, not the package globals, so the
+// aggregation logic here is exercisable against a scripted fake.
+func runRegistry(caller mcpCaller, checks []check) error {
 	var failed int
-	for _, chk := range registry {
-		detail, err := chk.run(client)
+	for _, chk := range checks {
+		detail, err := chk.run(caller)
 		if err != nil {
 			failed++
 			fmt.Printf("FAIL  %-28s %v\n", chk.name, err)
@@ -89,9 +94,9 @@ func runRegistry(client *mcpClient) error {
 		fmt.Printf("PASS  %-28s %s\n", chk.name, detail)
 	}
 	if failed > 0 {
-		return fmt.Errorf("%d/%d checks failed", failed, len(registry))
+		return fmt.Errorf("%d/%d checks failed", failed, len(checks))
 	}
-	fmt.Printf("all %d checks passed\n", len(registry))
+	fmt.Printf("all %d checks passed\n", len(checks))
 	return nil
 }
 
@@ -108,14 +113,21 @@ func repoRootFromWD() (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("getwd: %w", err)
 	}
-	dir := wd
+	return repoRootFrom(wd)
+}
+
+// repoRootFrom walks up from startDir looking for go.mod -- split out of
+// repoRootFromWD so the walk itself is testable against a real temp
+// directory tree without needing to chdir the test process.
+func repoRootFrom(startDir string) (string, error) {
+	dir := startDir
 	for {
 		if _, err := os.Stat(filepath.Join(dir, "go.mod")); err == nil {
 			return dir, nil
 		}
 		parent := filepath.Dir(dir)
 		if parent == dir {
-			return "", fmt.Errorf("no go.mod found above %s -- run from inside the mill repo", wd)
+			return "", fmt.Errorf("no go.mod found above %s -- run from inside the mill repo", startDir)
 		}
 		dir = parent
 	}
