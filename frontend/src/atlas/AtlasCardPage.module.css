@@ -131,7 +131,11 @@
 .entry {
     border: 1px solid var(--borderColor-muted);
     border-radius: 6px;
-    padding: 8px 10px;
+    /* Display density (docs/goals/0096): only the vertical component
+       reads the density var -- see shared/ListCard.module.css's .card
+       for the same split and its own reasoning. */
+    padding-block: var(--mill-density-row-pad-y, 8px);
+    padding-inline: 10px;
     cursor: pointer;
 }
 .entry:hover {

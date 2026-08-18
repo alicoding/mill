@@ -14,6 +14,22 @@
 }
 .muted { color: var(--fgColor-muted); }
 
+/* Display density (docs/goals/0096): overrides Primer's own
+   ActionList.Item row-padding token, scoped to just this list (not
+   globally -- --control-medium-paddingBlock also drives Button
+   padding elsewhere in the app, which density must never touch). A
+   directly-set value on the row's own element would shadow an
+   inherited one (confirmed against the installed @primer/react's
+   compiled ActionList CSS -- DataTable's cellPadding preset works the
+   same way, which is why table cell padding stays out of density's
+   reach), but ActionList never sets this token on itself, only reads
+   it, so setting it here on an ancestor reaches every row underneath
+   uncontested. Undefined var(--mill-density-row-pad-y) at Comfortable
+   falls through to Primer's own unchanged default. */
+.list {
+    --control-medium-paddingBlock: var(--mill-density-row-pad-y);
+}
+
 /* Single-line label discipline (goal 0007's dense-row pattern): the
    label ellipsizes against whatever width ActionList's content slot
    grants it; badges hold the line and never wrap underneath. min-width

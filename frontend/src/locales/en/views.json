@@ -19,7 +19,10 @@
       "themeLabel": "Color theme",
       "lightLabel": "Light theme",
       "darkLabel": "Dark theme",
-      "systemLabel": "Match system theme"
+      "systemLabel": "Match system theme",
+      "densityLabel": "Density",
+      "comfortableOption": "Comfortable",
+      "compactOption": "Compact"
     },
     "general": {
       "launchAtLoginLabel": "Launch Mill at login",

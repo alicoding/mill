@@ -11,6 +11,14 @@
   background: var(--bgColor-default);
   color: var(--fgColor-default);
   overflow: hidden;
+  /* Display density (docs/goals/0096) -- same ActionList row-padding
+     override as shared/InventoryList.module.css's own .list rule (see
+     its comment); scoped here rather than on the FilteredActionList
+     element itself since QuickPanel.tsx is at architecture.md's
+     500-line cap and can't take a className-prop edit -- .panel is
+     already its ancestor, so the override reaches the same rows either
+     way. */
+  --control-medium-paddingBlock: var(--mill-density-row-pad-y);
 }
 
 .status {

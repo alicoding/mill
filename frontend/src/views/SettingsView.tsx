@@ -11,6 +11,8 @@ import { isAccessibilityError, ACCESSIBILITY_SETTINGS_URL } from '../composition
 import { useIsNarrowViewport } from '../shared/useNarrowViewport'
 import { usePrefersReducedMotion } from '../shared/usePrefersReducedMotion'
 import { SETTINGS_SECTIONS, sectionMatchesQuery } from '../shared/settingsSections'
+import { applyDensity } from '../shared/density'
+import type { DisplayDensity } from '../shared/density'
 import KeyboardShortcutsSection from './KeyboardShortcutsSection'
 import DataStewardshipSection from './DataStewardshipSection'
 import UpdatesSection from './UpdatesSection'
@@ -21,6 +23,7 @@ import settingsStyles from './SettingsView.module.css'
 import PageContainer from '../shared/PageContainer'
 
 const COLOR_MODES = ['light', 'dark', 'auto'] as const
+const DENSITIES = ['comfortable', 'compact'] as const
 const SECTION_IDS = SETTINGS_SECTIONS.map((s) => s.id)
 
 // One page, a synced TOC, search-first (goal 0077): every section
@@ -95,6 +98,13 @@ function SettingsView({ initialSection }: { initialSection?: string } = {}) {
   const [contractExportError, setContractExportError] = useState('')
 
   const [mcpWriteEnabled, setMCPWriteEnabledState] = useState<boolean | null>(null)
+
+  // Display density (docs/goals/0096): null until the mount fetch
+  // resolves, same "disabled until loaded" shape as launchAtLogin/
+  // mcpWriteEnabled below -- the SegmentedControl has no real "unset"
+  // rendering, so this stays null only for the one render before the
+  // fetch below resolves.
+  const [density, setDensityState] = useState<DisplayDensity | null>(null)
   const [mcpApprovalRequired, setMCPApprovalRequiredState] = useState<boolean | null>(null)
 
   // Attention/notifications (docs/goals/0023-attention-escalation.md item
@@ -141,6 +151,9 @@ function SettingsView({ initialSection }: { initialSection?: string } = {}) {
       .catch((err) => { console.error(err); setSettingsLoadError(true) })
     SettingsService.GetAttentionIdleThreshold()
       .then(setIdleThresholdState)
+      .catch((err) => { console.error(err); setSettingsLoadError(true) })
+    SettingsService.GetDisplayDensity()
+      .then((d) => setDensityState(d === 'compact' ? 'compact' : 'comfortable'))
       .catch((err) => { console.error(err); setSettingsLoadError(true) })
   }, [])
 
@@ -204,6 +217,18 @@ function SettingsView({ initialSection }: { initialSection?: string } = {}) {
       .catch((err) => setLaunchAtLoginError(String(err)))
   }
 
+  // Applies to the DOM immediately (ahead of the persist RPC resolving,
+  // docs/goals/0096's "applies live, no reload" acceptance bar) --
+  // never reverted on a failed SetDisplayDensity, matching this file's
+  // other optimistic toggles (toggleLaunchAtLogin is the one exception,
+  // reverting on error since a failed launch-at-login write has a real
+  // OS-level consequence a silently-wrong checkbox would hide).
+  const setDensity = (value: DisplayDensity) => {
+    applyDensity(value)
+    setDensityState(value)
+    SettingsService.SetDisplayDensity(value).catch(console.error)
+  }
+
   const clearSummonHotkey = () => {
     setSummonError('')
     SettingsService.UnassignSummonHotkey().then(() => setSummonBinding(null)).catch(console.error)
@@ -241,11 +266,28 @@ function SettingsView({ initialSection }: { initialSection?: string } = {}) {
 
   const SECTION_CONTENT: Record<string, ReactNode> = {
     appearance: (
-      <SegmentedControl aria-label={t('settings.appearance.themeLabel')} onChange={(i) => setColorMode(COLOR_MODES[i])}>
-        <SegmentedControl.IconButton icon={SunIcon} aria-label={t('settings.appearance.lightLabel')} selected={colorMode === 'light'} />
-        <SegmentedControl.IconButton icon={MoonIcon} aria-label={t('settings.appearance.darkLabel')} selected={colorMode === 'dark'} />
-        <SegmentedControl.IconButton icon={DeviceDesktopIcon} aria-label={t('settings.appearance.systemLabel')} selected={!colorMode || colorMode === 'auto'} />
-      </SegmentedControl>
+      <>
+        <SegmentedControl aria-label={t('settings.appearance.themeLabel')} onChange={(i) => setColorMode(COLOR_MODES[i])}>
+          <SegmentedControl.IconButton icon={SunIcon} aria-label={t('settings.appearance.lightLabel')} selected={colorMode === 'light'} />
+          <SegmentedControl.IconButton icon={MoonIcon} aria-label={t('settings.appearance.darkLabel')} selected={colorMode === 'dark'} />
+          <SegmentedControl.IconButton icon={DeviceDesktopIcon} aria-label={t('settings.appearance.systemLabel')} selected={!colorMode || colorMode === 'auto'} />
+        </SegmentedControl>
+        <Stack direction="vertical" gap="condensed" style={{ marginTop: 'var(--base-size-16)' }}>
+          <Text as="p" size="small" weight="semibold">{t('settings.appearance.densityLabel')}</Text>
+          <SegmentedControl
+            aria-label={t('settings.appearance.densityLabel')}
+            onChange={(i) => setDensity(DENSITIES[i])}
+            data-testid="density-control"
+          >
+            <SegmentedControl.Button selected={(density ?? 'comfortable') === 'comfortable'}>
+              {t('settings.appearance.comfortableOption')}
+            </SegmentedControl.Button>
+            <SegmentedControl.Button selected={density === 'compact'}>
+              {t('settings.appearance.compactOption')}
+            </SegmentedControl.Button>
+          </SegmentedControl>
+        </Stack>
+      </>
     ),
     general: (
       <>
