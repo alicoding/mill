@@ -47,3 +47,14 @@
     z-index: 3;
     pointer-events: none;
 }
+
+/* The perspective-filtered empty state carries a real action (exit to
+   All cards), so unlike .emptyState its content accepts clicks; the
+   wrapper itself stays click-through for the pane underneath. */
+.emptyStateAction {
+    pointer-events: auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--base-size-8);
+}

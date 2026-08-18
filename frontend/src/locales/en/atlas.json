@@ -284,5 +284,7 @@
     "deleteKindBody": "Only a kind no card uses can be deleted.",
     "deleteLinkKindBody": "Only a link kind no link uses can be deleted.",
     "deleteConfirm": "Delete"
-  }
+  },
+  "perspectiveEmpty": "Nothing from {{name}} here.",
+  "perspectiveEmptyShowAll": "Show all cards"
 }

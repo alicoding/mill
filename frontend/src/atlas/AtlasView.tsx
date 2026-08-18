@@ -21,6 +21,7 @@ import { ContextMenu, type ContextMenuState } from '../shared/ContextMenu'
 import { AtlasMatrixView } from './AtlasMatrixView'
 import { AtlasCoverageView } from './AtlasCoverageView'
 import { AtlasKindManager } from './AtlasKindManager'
+import { AtlasBoardEmptyState } from './AtlasBoardEmptyState'
 import { isGroupCard } from './atlasBoardLayout'
 import { freeChildPosition } from './atlasContainmentPlacement'
 import { useAtlasContainmentMenus } from './useAtlasContainmentMenus'
@@ -406,9 +407,11 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
           non-interactive, so the tray and pane menu stay reachable. */}
       <div className={styles.boardWrapper}>
         {childrenAll.length === 0 && visibleNotes.length === 0 && (
-          <div className={styles.emptyState} data-testid="atlas-empty-space">
-            <Text as="p" className={runbookStyles.muted}>{t('emptySpace')}</Text>
-          </div>
+          <AtlasBoardEmptyState
+            filteredByPerspective={activePerspectiveID !== '' && childrenOf(allCards, viewedID).length > 0}
+            perspectiveName={allPerspectives.find((pp) => pp.ID === activePerspectiveID)?.Name ?? ''}
+            onShowAll={() => switchPerspective('')}
+          />
         )}
         <AtlasBoard
           cards={visibleChildren}
