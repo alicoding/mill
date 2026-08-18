@@ -200,6 +200,30 @@ test('atlas shift-click select: toggle membership, group via member right-click,
     await expect(selected).toHaveCount(1)
     await cardB.click({ modifiers: ['Shift'] })
     await expect(selected).toHaveCount(2)
+
+    // Regression: a selected STICKY's ring must survive its yellow
+    // ground -- the border flips to the accent on selection (the 2px
+    // card ring alone was invisible over the attention tint).
+    await page.keyboard.press('n')
+    const noteBB = await board.boundingBox()
+    if (!noteBB) throw new Error('board box missing for note placement')
+    await page.mouse.click(noteBB.x + noteBB.width - 60, noteBB.y + noteBB.height - 80)
+    const noteTA = page.getByTestId('atlas-sticky-textarea')
+    await noteTA.fill('ZzK2eStickySel')
+    await noteTA.blur()
+    const stickyNote = page.locator('[data-testid="atlas-sticky-note"]')
+    const restingBorder = await stickyNote.evaluate((el) => getComputedStyle(el).borderColor)
+    await stickyNote.click({ modifiers: ['Shift'] })
+    await expect(selected).toHaveCount(3)
+    const selectedBorder = await stickyNote.evaluate((el) => getComputedStyle(el).borderColor)
+    expect(selectedBorder).not.toBe(restingBorder)
+    // Deselect + delete the note so the rest of the flow sees its
+    // original two-card selection world.
+    await stickyNote.click({ modifiers: ['Shift'] })
+    await expect(selected).toHaveCount(2)
+    await stickyNote.click({ button: 'right' })
+    await menu.getByText('Delete note', { exact: true }).click()
+    await expect(stickyNote).toHaveCount(0)
     await expect(page.locator('[data-testid="atlas-note-card"][data-flipped="true"]')).toHaveCount(0)
     await cardB.click({ modifiers: ['Shift'] })
     await expect(selected).toHaveCount(1)
