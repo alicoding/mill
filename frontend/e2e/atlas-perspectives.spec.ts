@@ -317,3 +317,34 @@ test('Compare shows the diff between two user-authored perspectives', async ({},
     }
   })
 })
+
+// goal 0112: a perspective that filters the current level to zero
+// cards must say so and offer the exit -- a blank board with no
+// explanation is the narrowing-compounds-invisibly class the
+// interaction laws forbid. A genuinely empty level keeps the plain
+// empty state.
+// eslint-disable-next-line no-empty-pattern -- this test needs `testInfo` (the second arg), not any fixture.
+test('a perspective with no members here names itself and offers Show all cards', async ({}, testInfo) => {
+  await withServer(testInfo, async (page) => {
+    await createPerspective(page, 'ZzE2eEmptyLens')
+    // Active + memberless at a level full of seeded cards.
+    await expect(page.getByTestId('atlas-perspective-empty')).toBeVisible()
+    await expect(page.getByTestId('atlas-perspective-empty')).toContainText('ZzE2eEmptyLens')
+    await expect(page.getByTestId('atlas-empty-space')).toHaveCount(0)
+
+    await page.getByTestId('atlas-perspective-empty-show-all').click()
+    await expect(switcherButton(page)).toHaveText('All cards')
+    await expect(page.getByTestId('atlas-perspective-empty')).toHaveCount(0)
+    await expect(page.locator('.react-flow__node').first()).toBeVisible()
+
+    // Cleanup (within-file discipline).
+    await switcherButton(page).click()
+    const row = switcherPopover(page).getByText('ZzE2eEmptyLens', { exact: true })
+    await row.click({ button: 'right' })
+    await contextMenu(page).getByText('Delete', { exact: true }).click()
+    await expect(page.getByRole('heading', { name: 'Delete ZzE2eEmptyLens?' })).toBeVisible()
+    await page.getByRole('button', { name: 'Delete', exact: true }).click()
+    await expect(page.getByRole('heading', { name: 'Delete ZzE2eEmptyLens?' })).toHaveCount(0)
+    if (await switcherPopover(page).isVisible()) await page.keyboard.press('Escape')
+  })
+})
