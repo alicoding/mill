@@ -270,3 +270,62 @@ test('Delete selection and Group into a new area are excluded from the palette (
 
   await page.keyboard.press('Escape')
 })
+
+// Faceted search (goal 0086, shared/facetQuery.ts): the `<label>: <text>`
+// grammar. "echo" is deliberately absent from any seeded command's own
+// label/id, so a leaked non-workflow match would be a real regression,
+// not a coincidental substring hit.
+test('typing "workflow: <text>" scopes results to workflows only', async ({ page }) => {
+  const label = 'ZzE2eFacetEchoWorkflow'
+  await page.goto('/')
+  await createSimpleWorkflow(page, label)
+
+  await page.keyboard.press('Meta+k')
+  await expect(paletteDialog(page)).toBeVisible()
+  await paletteDialog(page).getByRole('combobox').fill(`workflow: ${label}`)
+
+  await expect(paletteDialog(page).getByRole('option', { name: new RegExp(`Run: ${label}`) })).toBeVisible()
+  await expect(paletteDialog(page).getByRole('option', { name: 'Open Settings' })).toHaveCount(0)
+
+  await page.keyboard.press('Escape')
+
+  // Cleanup.
+  await page.getByRole('link', { name: 'Workflows' }).click()
+  await clickRowAction(page, workflowRow(page, label), 'Delete')
+  await expect(workflowRow(page, label)).toHaveCount(0)
+})
+
+test('typing "work" offers a Workflow suggestion chip; clicking it scopes the search, and backspacing the token unscopes it', async ({ page }) => {
+  const label = 'ZzE2eFacetChipTarget'
+  await page.goto('/')
+  await createSimpleWorkflow(page, label)
+
+  await page.keyboard.press('Meta+k')
+  await expect(paletteDialog(page)).toBeVisible()
+  const input = paletteDialog(page).getByRole('combobox')
+  await input.fill('work')
+
+  const chip = paletteDialog(page).getByTestId('facet-chip-row').getByRole('button', { name: 'Workflow', exact: true })
+  await expect(chip).toBeVisible()
+  await chip.click()
+
+  await expect(input).toHaveValue('Workflow: ')
+  await expect(paletteDialog(page).getByRole('option', { name: new RegExp(`Run: ${label}`) })).toBeVisible()
+  // The chip row is a completion aid only -- once a scope is active,
+  // there's nothing left to suggest.
+  await expect(paletteDialog(page).getByTestId('facet-chip-row')).toHaveCount(0)
+
+  // Ordinary backspace over the token is the removal path (no special
+  // key handling) -- clearing it back to empty returns the palette to
+  // its bare rest state.
+  for (let i = 0; i < 'Workflow: '.length; i++) await input.press('Backspace')
+  await expect(input).toHaveValue('')
+  await expect(paletteDialog(page).getByRole('option', { name: 'Open Settings' })).toBeVisible()
+
+  await page.keyboard.press('Escape')
+
+  // Cleanup.
+  await page.getByRole('link', { name: 'Workflows' }).click()
+  await clickRowAction(page, workflowRow(page, label), 'Delete')
+  await expect(workflowRow(page, label)).toHaveCount(0)
+})

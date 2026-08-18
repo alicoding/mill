@@ -151,3 +151,51 @@ test('no matches shows the empty-result row instead of an empty list', async ({ 
 
   await page.keyboard.press('Escape')
 })
+
+// Faceted search (goal 0086, shared/facetQuery.ts): vocabulary is every
+// Kind's own Label + "area". "My space"/"Example area"/"Getting
+// started"/"Scratchpad" are all Topic-kind (builtin.go's own seed
+// comment: containment is a role, not a Kind); "Ada Lovelace" is
+// Contact and "Project charter" is Document -- scoping to "Topic:"
+// with empty text must list exactly the four, excluding both others.
+test('"Topic: " lists every Topic-kind card, excluding other kinds', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Atlas' }).click()
+  await expect(page.getByTestId('atlas-board')).toBeVisible()
+  await page.keyboard.press('Meta+k')
+  await expect(jumpDialog(page)).toBeVisible()
+
+  await page.getByTestId('atlas-jump-input').fill('Topic: ')
+
+  const results = jumpDialog(page).getByTestId('atlas-jump-result')
+  await expect(results).toHaveCount(4)
+  // Title-ascending, same order filterJumpCards' stableSortResults produces.
+  await expect(results).toContainText(['Example area', 'Getting started', 'My space', 'Scratchpad'])
+  await expect(jumpDialog(page)).not.toContainText('Ada Lovelace')
+  await expect(jumpDialog(page)).not.toContainText('Project charter')
+
+  await page.keyboard.press('Escape')
+})
+
+test('typing a Kind-label prefix offers a kind-glyph-colored suggestion chip; clicking it scopes the search', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Atlas' }).click()
+  await expect(page.getByTestId('atlas-board')).toBeVisible()
+  await page.keyboard.press('Meta+k')
+  await expect(jumpDialog(page)).toBeVisible()
+
+  const input = page.getByTestId('atlas-jump-input')
+  await input.fill('to')
+
+  const chip = jumpDialog(page).getByRole('button', { name: 'Topic' })
+  await expect(chip).toBeVisible()
+  await expect(chip.getByTestId('facet-chip-dot')).toBeVisible()
+
+  await chip.click()
+  await expect(input).toHaveValue('Topic: ')
+  await expect(jumpDialog(page).getByTestId('atlas-jump-result')).toHaveCount(4)
+  // The chip row is a completion aid only -- gone once a scope is active.
+  await expect(jumpDialog(page).getByRole('button', { name: 'Topic' })).toHaveCount(0)
+
+  await page.keyboard.press('Escape')
+})

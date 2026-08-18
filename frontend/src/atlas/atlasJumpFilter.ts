@@ -1,5 +1,6 @@
 import type { Card, Kind } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 import { buildBreadcrumbPath, singleRootCard } from './atlasGrouping'
+import { isGroupCard } from './atlasBoardLayout'
 
 // The ⌘K jump dialog's pure filter/rank (goal 0072 slice B) -- kept
 // dependency-free like atlasGrouping.ts's own helpers so it's
@@ -7,6 +8,12 @@ import { buildBreadcrumbPath, singleRootCard } from './atlasGrouping'
 // AtlasJumpDialog component stays a thin renderer over this.
 
 const MAX_RESULTS = 8
+
+// The jump dialog's "area" facet scope (goal 0086) -- a role, not a
+// Kind, so it needs a sentinel distinct from any real Kind ID (Kind
+// IDs are user-declared, ADR-0038 Decision 2, so this stays a
+// two-underscore form no real slug is likely to collide with).
+export const AREA_FACET_KEY = '__area__'
 
 export interface AtlasJumpResult {
   card: Card
@@ -38,15 +45,31 @@ function stableSortResults(results: AtlasJumpResult[]): AtlasJumpResult[] {
 
 // filterJumpCards: case-insensitive substring match, title first (rank
 // 0) then note (rank 1), title-ascending within a rank, capped at the
-// dialog's own max visible rows. An empty query returns no results --
-// the dialog has nothing useful to show until the user types.
-export function filterJumpCards(cards: Card[], kinds: Kind[], query: string): AtlasJumpResult[] {
+// dialog's own max visible rows. An empty, unscoped query returns no
+// results -- the dialog has nothing useful to show until the user
+// types or picks a facet. `scopeKey` narrows the candidate set FIRST
+// (goal 0086's faceted search: a Kind's ID, or AREA_FACET_KEY for
+// group-card "areas") -- once scoped, an empty query still lists every
+// candidate of that scope (title-ascending), since the facet itself is
+// already a specific enough ask.
+export function filterJumpCards(cards: Card[], kinds: Kind[], query: string, scopeKey?: string): AtlasJumpResult[] {
   const q = query.trim().toLowerCase()
-  if (!q) return []
+  if (!q && !scopeKey) return []
+
   const kindByID = new Map(kinds.map((k) => [k.ID, k]))
+  const candidates = scopeKey === AREA_FACET_KEY
+    ? cards.filter((c) => isGroupCard(cards, c))
+    : scopeKey
+      ? cards.filter((c) => c.KindID === scopeKey)
+      : cards
+
+  if (!q) {
+    const wrapped = candidates.map((card) => ({ card, kind: kindByID.get(card.KindID), path: ancestorPathLabel(cards, card) }))
+    return stableSortResults(wrapped).slice(0, MAX_RESULTS)
+  }
 
   const byRank: AtlasJumpResult[][] = [[], []]
-  for (const card of cards) {
+  for (const card of candidates) {
     const rank = card.Title.toLowerCase().includes(q) ? 0 : (card.Note ?? '').toLowerCase().includes(q) ? 1 : null
     if (rank === null) continue
     byRank[rank].push({ card, kind: kindByID.get(card.KindID), path: ancestorPathLabel(cards, card) })

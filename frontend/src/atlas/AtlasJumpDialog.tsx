@@ -3,7 +3,10 @@ import { useTranslation } from 'react-i18next'
 import { ActionList, Dialog, TextInput } from '@primer/react'
 import type { Card, Kind } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 import { kindColorTokens } from './atlasKindColor'
-import { filterJumpCards } from './atlasJumpFilter'
+import { AREA_FACET_KEY, filterJumpCards } from './atlasJumpFilter'
+import { matchFacetSuggestions, parseFacetQuery } from '../shared/facetQuery'
+import type { FacetVocabEntry } from '../shared/facetQuery'
+import { FacetChipRow } from '../shared/FacetChipRow'
 import monoStyles from '../shared/monoText.module.css'
 import styles from './AtlasJumpDialog.module.css'
 
@@ -39,7 +42,28 @@ export function AtlasJumpDialog({ open, onClose, cards, kinds, onJump }: {
     setActiveIndex(0)
   }, [open])
 
-  const results = useMemo(() => filterJumpCards(cards, kinds, query), [cards, kinds, query])
+  // Faceted search (goal 0086): vocabulary is every Kind's own Label
+  // plus the "area" role (group cards, orthogonal to Kind -- ADR-0038
+  // Decision 3). parseFacetQuery/matchFacetSuggestions are the same
+  // shared grammar the command palette and Quick Panel use.
+  const vocabulary = useMemo<FacetVocabEntry[]>(
+    () => [...kinds.map((k) => ({ key: k.ID, label: k.Label })), { key: AREA_FACET_KEY, label: t('jump.areaFacetLabel') }],
+    [kinds, t],
+  )
+  const parsed = useMemo(() => parseFacetQuery(query, vocabulary), [query, vocabulary])
+  const results = useMemo(() => filterJumpCards(cards, kinds, parsed.text, parsed.scopeKey), [cards, kinds, parsed])
+  const chipSuggestions = useMemo(
+    () => (parsed.scopeKey || !query.trim() ? [] : matchFacetSuggestions(query, vocabulary)),
+    [parsed.scopeKey, query, vocabulary],
+  )
+
+  const selectChip = (key: string) => {
+    const entry = vocabulary.find((v) => v.key === key)
+    if (!entry) return
+    setQuery(`${entry.label}: `)
+    setActiveIndex(0)
+    inputRef.current?.focus()
+  }
 
   const go = (card: Card) => {
     onClose()
@@ -85,6 +109,15 @@ export function AtlasJumpDialog({ open, onClose, cards, kinds, onJump }: {
         onChange={(e) => { setQuery(e.target.value); setActiveIndex(0) }}
         onKeyDown={onInputKeyDown}
         data-testid="atlas-jump-input"
+      />
+      <FacetChipRow
+        items={chipSuggestions.map((entry) => ({
+          key: entry.key,
+          label: entry.label,
+          dotColorToken: entry.key === AREA_FACET_KEY ? undefined : kindColorTokens(entry.key).emphasis,
+        }))}
+        onSelect={selectChip}
+        ariaLabel={t('jump.suggestionsAriaLabel')}
       />
       <ActionList selectionVariant="single" data-testid="atlas-jump-results">
         {results.map((r, i) => {
