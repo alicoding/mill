@@ -258,17 +258,71 @@ test('atlas shift-click select: toggle membership, group via member right-click,
     await expect(page.getByTestId('atlas-creation-tray')).toBeVisible()
 
     // Re-select, then bare G opens the SAME group popover a member
-    // right-click's own menu item does -- closed here without
-    // submitting so the flow below (member right-click -> Group) is
-    // the one that actually creates the area.
+    // right-click's own menu item does -- anchored at the selection
+    // tray's own on-screen rect (bottom-center; the same anchor the
+    // tray's Group button uses), nowhere near where the members
+    // actually render. Completed here (not just opened) so the new
+    // area's Position can be checked against this anchor specifically.
     await cardA.click({ modifiers: ['Shift'] })
     await cardB.click({ modifiers: ['Shift'] })
     await expect(selected).toHaveCount(2)
+    const boxAPreBareG = await cardA.boundingBox()
+    const boxBPreBareG = await cardB.boundingBox()
+    if (!boxAPreBareG || !boxBPreBareG) throw new Error('missing bounding box before group')
+    const preBareGTop = Math.min(boxAPreBareG.y, boxBPreBareG.y)
+    const preBareGLeft = Math.min(boxAPreBareG.x, boxBPreBareG.x)
     await page.keyboard.press('g')
     await expect(popover).toBeVisible()
     await expect(page.getByTestId('atlas-placement-context')).toContainText('2 cards')
-    await popover.getByTestId('atlas-placement-cancel').click()
+    await selectKind(popover, ATLAS_KIND_TOPIC)
+    await popover.getByTestId('atlas-placement-title').fill('ZzK2eBareGArea')
+    await popover.getByTestId('atlas-placement-submit').click()
     await expect(popover).not.toBeVisible()
+    const bareGArea = groupCard(page, 'ZzK2eBareGArea')
+    await expect(bareGArea).toBeVisible()
+
+    // Regression: the new area's own Position previously came from the
+    // triggering anchor point (the selection tray's own rect for bare
+    // G / its Group button), not the grouped members' own rendered
+    // spot -- the tray floats bottom-center, so this door landed the
+    // new area far below the members regardless of where they visibly
+    // were. The camera never moves for a group action, so screen-space
+    // bounding boxes before and after are directly comparable.
+    const bareGAreaBox = await bareGArea.boundingBox()
+    if (!bareGAreaBox) throw new Error('missing bounding box for grouped area')
+    const boardBoxAfterBareG = await board.boundingBox()
+    if (!boardBoxAfterBareG) throw new Error('missing bounding box for board')
+    expect(Math.abs(bareGAreaBox.y - preBareGTop)).toBeLessThan(250)
+    expect(Math.abs(bareGAreaBox.x - preBareGLeft)).toBeLessThan(250)
+    expect(bareGAreaBox.y).toBeLessThan(boardBoxAfterBareG.y + boardBoxAfterBareG.height - 250)
+
+    // Dissolve back to loose cards, deselect (group+dissolve preserves
+    // the multi-selection), then re-select for the context-menu door
+    // exercised next.
+    await bareGArea.getByTestId('atlas-group-header').click({ button: 'right' })
+    await expect(menu).toBeVisible()
+    await menu.getByText('Dissolve area', { exact: true }).click()
+    await expect(page.getByRole('button', { name: 'Dissolve' })).toBeVisible()
+    await page.getByRole('button', { name: 'Dissolve' }).click()
+    await expect(bareGArea).toHaveCount(0)
+    // Low-right pane coords, matching this file's own later deselect --
+    // absolute page coords near the left edge can land on a tray/menu
+    // instead of React Flow's own pane handler.
+    await page.locator('.react-flow__pane').click({ position: { x: 500, y: 450 } })
+    await expect(selected).toHaveCount(0)
+    await cardA.click({ modifiers: ['Shift'] })
+    await cardB.click({ modifiers: ['Shift'] })
+    await expect(selected).toHaveCount(2)
+
+    // Regression fixture: the new area's own Position must land at the
+    // members' CURRENT rendered spot, not the triggering right-click
+    // point -- captured before the group gesture so it survives the
+    // popover interaction.
+    const boxAPreGroup = await cardA.boundingBox()
+    const boxBPreGroup = await cardB.boundingBox()
+    if (!boxAPreGroup || !boxBPreGroup) throw new Error('missing bounding box before group')
+    const preGroupTop = Math.min(boxAPreGroup.y, boxBPreGroup.y)
+    const preGroupLeft = Math.min(boxAPreGroup.x, boxBPreGroup.x)
 
     // Member right-click reaches the multi menu -> Group into new area
     // (same full-gesture retry as above: Primer's menu overlay animates
@@ -288,6 +342,19 @@ test('atlas shift-click select: toggle membership, group via member right-click,
     const groupedArea = groupCard(page, 'ZzK2eClickArea')
     await expect(groupedArea).toBeVisible()
     await expect(groupedArea.getByTestId('atlas-group-header')).toContainText('2 cards')
+
+    // Regression: the new area's Position previously came from the
+    // triggering right-click/button point, not the grouped members' own
+    // spot -- landing far from where the members visibly were. The
+    // camera never moves for a group action, so screen-space bounding
+    // boxes before and after are directly comparable.
+    const groupedAreaBox = await groupedArea.boundingBox()
+    if (!groupedAreaBox) throw new Error('missing bounding box for grouped area')
+    const boardBoxAfterGroup = await board.boundingBox()
+    if (!boardBoxAfterGroup) throw new Error('missing bounding box for board')
+    expect(Math.abs(groupedAreaBox.y - preGroupTop)).toBeLessThan(250)
+    expect(Math.abs(groupedAreaBox.x - preGroupLeft)).toBeLessThan(250)
+    expect(groupedAreaBox.y).toBeLessThan(boardBoxAfterGroup.y + boardBoxAfterGroup.height - 250)
 
     // Dissolve back to loose cards, then Delete over a re-made
     // shift-click selection: the confirm names the count, and

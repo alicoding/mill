@@ -145,7 +145,47 @@ function AtlasBoardInner({ cards, allCards, kinds, links, linkKinds, notes, pare
   const [hintedID, setHintedID] = useState<string | null>(null)
   const wrapperRef = useRef<HTMLDivElement>(null)
   const { fitBounds, fitView, getNodesBounds, screenToFlowPosition } = useReactFlow()
-  const creation = useAtlasCreation({ parentID, allCards, notes, readOnly, screenToFlowPosition, placementRequest, promoteRequest, groupRequest })
+
+  // Free-mode overlap resolution (goal 0073, the growth class): a
+  // frame's size is DERIVED from its children, so a clear layout can
+  // start overlapping with nobody having moved a card. Resolved with
+  // a deterministic minimal-displacement separation
+  // (atlasOverlapResolution) and PERSISTED below, so the nudge is
+  // stable across reloads. Leaf-on-leaf overlaps are hand placement
+  // and never touched.
+  // Auto-arrange rows wrap at the board's real width (a fixed cap
+  // left a dead right-hand column); the pure-layout constant stays
+  // the floor so a narrow pane still wraps.
+  const [boardWidth, setBoardWidth] = useState(0)
+  useEffect(() => {
+    const el = wrapperRef.current
+    if (!el) return
+    const observer = new ResizeObserver((entries) => {
+      const w = entries[0]?.contentRect.width
+      if (w) setBoardWidth(w)
+    })
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [])
+
+  // The board's arteries, resolved once and shared: the edges memo
+  // below renders them; Auto-arrange consumes them as the adjacency
+  // that seats linked things beside each other.
+  const arteries = useMemo(() => resolveBoardEdges(links, new Set(cards.map((c) => c.ID)), allCards), [links, cards, allCards])
+
+  const { freeMoves } = useAtlasArrange({ cards, allCards, arteries, boardWidth, arrangeRequest })
+
+  // Rendered flow-space boxes (atlasBoardBoxes.ts, split at the
+  // 500-line seam) -- Free mode only. Computed BEFORE useAtlasCreation
+  // (below) so select-then-group can anchor the new container at its
+  // members' own current box, not the triggering click point.
+  const topLevelBoxes: FrameBox[] = useMemo(
+    () => (isFree ? computeTopLevelBoxes(cards, allCards, freeMoves) : []),
+    [cards, allCards, freeMoves, isFree],
+  )
+  const noteBoxes = useMemo(() => (isFree ? computeNoteBoxes(notes) : []), [notes, isFree])
+
+  const creation = useAtlasCreation({ parentID, allCards, notes, readOnly, screenToFlowPosition, placementRequest, promoteRequest, groupRequest, cardBoxes: topLevelBoxes, noteBoxes })
   const selection = useAtlasSelection({ cards, notes, onMultiSelectContextMenu })
 
   // Delete/Backspace over a live selection -> the shared confirm
@@ -216,43 +256,6 @@ function AtlasBoardInner({ cards, allCards, kinds, links, linkKinds, notes, pare
   useEffect(() => {
     if (focusRequest) setFlippedID(null)
   }, [focusRequest])
-
-  // Free-mode overlap resolution (goal 0073, the growth class): a
-  // frame's size is DERIVED from its children, so a clear layout can
-  // start overlapping with nobody having moved a card. Resolved with
-  // a deterministic minimal-displacement separation
-  // (atlasOverlapResolution) and PERSISTED below, so the nudge is
-  // stable across reloads. Leaf-on-leaf overlaps are hand placement
-  // and never touched.
-  // Auto-arrange rows wrap at the board's real width (a fixed cap
-  // left a dead right-hand column); the pure-layout constant stays
-  // the floor so a narrow pane still wraps.
-  const [boardWidth, setBoardWidth] = useState(0)
-  useEffect(() => {
-    const el = wrapperRef.current
-    if (!el) return
-    const observer = new ResizeObserver((entries) => {
-      const w = entries[0]?.contentRect.width
-      if (w) setBoardWidth(w)
-    })
-    observer.observe(el)
-    return () => observer.disconnect()
-  }, [])
-
-  // The board's arteries, resolved once and shared: the edges memo
-  // below renders them; Auto-arrange consumes them as the adjacency
-  // that seats linked things beside each other.
-  const arteries = useMemo(() => resolveBoardEdges(links, new Set(cards.map((c) => c.ID)), allCards), [links, cards, allCards])
-
-  const { freeMoves } = useAtlasArrange({ cards, allCards, arteries, boardWidth, arrangeRequest })
-
-  // Rendered flow-space boxes (atlasBoardBoxes.ts, split at the
-  // 500-line seam) -- Free mode only.
-  const topLevelBoxes: FrameBox[] = useMemo(
-    () => (isFree ? computeTopLevelBoxes(cards, allCards, freeMoves) : []),
-    [cards, allCards, freeMoves, isFree],
-  )
-  const noteBoxes = useMemo(() => (isFree ? computeNoteBoxes(notes) : []), [notes, isFree])
 
   const dragFiling = useAtlasDragFiling({ allCards, parentID, topLevelBoxes, wrapperRef })
 
