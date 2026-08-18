@@ -177,9 +177,17 @@ export interface ImportFolderSuggestionsRequest {
  * TombstoneResult names exactly which ids one DeleteCard/DeleteNote
  * call soft-deleted -- DeleteCard populates only CardIDs, DeleteNote
  * only NoteIDs, so the frontend's undo toast can pass this straight
- * back to UndoDelete without re-deriving what it touched.
+ * back to UndoDelete without re-deriving what it touched. LinksRemoved
+ * and ChildrenPromoted are the delete's blast radius, counted against
+ * the state immediately BEFORE this call's own tombstone lands: links
+ * that were visible and now touch a tombstoned endpoint, and direct
+ * live children (cards + notes) whose effective parent is about to
+ * shift past this card. Both stay zero for DeleteNote -- a note can
+ * carry neither a link endpoint nor a child.
  */
 export interface TombstoneResult {
     "CardIDs": string[] | null;
     "NoteIDs": string[] | null;
+    "LinksRemoved": number;
+    "ChildrenPromoted": number;
 }

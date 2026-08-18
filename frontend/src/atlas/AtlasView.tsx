@@ -450,7 +450,12 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
           }}
         />
         {undoToast.pending && (
-          <AtlasUndoToast count={undoToast.pending.count} onUndo={undoToast.undo} />
+          <AtlasUndoToast
+            count={undoToast.pending.count}
+            linksRemoved={undoToast.pending.linksRemoved}
+            childrenPromoted={undoToast.pending.childrenPromoted}
+            onUndo={undoToast.undo}
+          />
         )}
       </div>
 

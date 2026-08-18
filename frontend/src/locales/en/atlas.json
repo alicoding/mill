@@ -40,6 +40,9 @@
     "selectionClearHint": "clear",
     "dropDuplicateNotice": "Already on the map as “{{title}}” — added again.",
     "deletedToast": "Deleted {{count}}",
+    "linksHiddenToast_one": "· {{count}} link hidden",
+    "linksHiddenToast_other": "· {{count}} links hidden",
+    "childrenMovedToast": "· {{count}} moved up",
     "undo": "Undo"
   },
   "jump": {

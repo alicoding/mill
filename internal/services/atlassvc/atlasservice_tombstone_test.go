@@ -77,6 +77,146 @@ func TestDeleteCard_SoftDeleteRoundTripsWithUndo(t *testing.T) {
 	}
 }
 
+// TestDeleteCard_TombstoneResultCounts_LeafWithLinks pins goal 0103's
+// blast-radius counts for the simplest case: a leaf card with one live
+// link and no children.
+func TestDeleteCard_TombstoneResultCounts_LeafWithLinks(t *testing.T) {
+	a := newTestAtlasService(t)
+	k, err := a.CreateKind("Widget", "", "", nil)
+	if err != nil {
+		t.Fatalf("CreateKind: %v", err)
+	}
+	c1, err := a.CreateCard(k.ID, "A", "", nil, "", nil, "", "", "", "")
+	if err != nil {
+		t.Fatalf("CreateCard: %v", err)
+	}
+	c2, err := a.CreateCard(k.ID, "B", "", nil, "", nil, "", "", "", "")
+	if err != nil {
+		t.Fatalf("CreateCard: %v", err)
+	}
+	lk, err := a.CreateLinkKind("connects to", "")
+	if err != nil {
+		t.Fatalf("CreateLinkKind: %v", err)
+	}
+	if _, err := a.CreateLink(c1.ID, c2.ID, lk.ID, ""); err != nil {
+		t.Fatalf("CreateLink: %v", err)
+	}
+
+	result, err := a.DeleteCard(c1.ID)
+	if err != nil {
+		t.Fatalf("DeleteCard: %v", err)
+	}
+	if result.LinksRemoved != 1 {
+		t.Errorf("LinksRemoved = %d, want 1", result.LinksRemoved)
+	}
+	if result.ChildrenPromoted != 0 {
+		t.Errorf("ChildrenPromoted = %d, want 0", result.ChildrenPromoted)
+	}
+}
+
+// TestDeleteCard_TombstoneResultCounts_ContainerWithChildrenAndLinks
+// pins the container case: deleting a card with two direct live
+// children (one card, one note) and one live link reports both counts
+// together.
+func TestDeleteCard_TombstoneResultCounts_ContainerWithChildrenAndLinks(t *testing.T) {
+	a := newTestAtlasService(t)
+	k, err := a.CreateKind("Widget", "", "", nil)
+	if err != nil {
+		t.Fatalf("CreateKind: %v", err)
+	}
+	container, err := a.CreateCard(k.ID, "Container", "", nil, "", nil, "", "", "", "")
+	if err != nil {
+		t.Fatalf("CreateCard(container): %v", err)
+	}
+	child, err := a.CreateCard(k.ID, "Child", "", nil, container.ID, nil, "", "", "", "")
+	if err != nil {
+		t.Fatalf("CreateCard(child): %v", err)
+	}
+	if _, err := a.CreateNote("filed under container", atlas.Position{}, container.ID); err != nil {
+		t.Fatalf("CreateNote: %v", err)
+	}
+	other, err := a.CreateCard(k.ID, "Other", "", nil, "", nil, "", "", "", "")
+	if err != nil {
+		t.Fatalf("CreateCard(other): %v", err)
+	}
+	lk, err := a.CreateLinkKind("connects to", "")
+	if err != nil {
+		t.Fatalf("CreateLinkKind: %v", err)
+	}
+	if _, err := a.CreateLink(container.ID, other.ID, lk.ID, ""); err != nil {
+		t.Fatalf("CreateLink: %v", err)
+	}
+
+	result, err := a.DeleteCard(container.ID)
+	if err != nil {
+		t.Fatalf("DeleteCard: %v", err)
+	}
+	if result.LinksRemoved != 1 {
+		t.Errorf("LinksRemoved = %d, want 1", result.LinksRemoved)
+	}
+	if result.ChildrenPromoted != 2 {
+		t.Errorf("ChildrenPromoted = %d, want 2 (one card + one note)", result.ChildrenPromoted)
+	}
+
+	gotChild, ok := findCardTestByID(a.Cards(), child.ID)
+	if !ok || gotChild.ParentID != "" {
+		t.Errorf("child not virtually promoted to top level, got %+v ok=%v", gotChild, ok)
+	}
+}
+
+// TestDeleteCard_TombstoneResultCounts_MixedSelection pins the
+// multi-delete case the frontend's own selection-delete flow drives:
+// two independent DeleteCard calls in one batch (a leaf-with-a-link
+// and a container-with-children), each reporting its own counts so
+// the caller can sum them across the whole selection.
+func TestDeleteCard_TombstoneResultCounts_MixedSelection(t *testing.T) {
+	a := newTestAtlasService(t)
+	k, err := a.CreateKind("Widget", "", "", nil)
+	if err != nil {
+		t.Fatalf("CreateKind: %v", err)
+	}
+	leaf, err := a.CreateCard(k.ID, "Leaf", "", nil, "", nil, "", "", "", "")
+	if err != nil {
+		t.Fatalf("CreateCard(leaf): %v", err)
+	}
+	leafFriend, err := a.CreateCard(k.ID, "LeafFriend", "", nil, "", nil, "", "", "", "")
+	if err != nil {
+		t.Fatalf("CreateCard(leafFriend): %v", err)
+	}
+	lk, err := a.CreateLinkKind("connects to", "")
+	if err != nil {
+		t.Fatalf("CreateLinkKind: %v", err)
+	}
+	if _, err := a.CreateLink(leaf.ID, leafFriend.ID, lk.ID, ""); err != nil {
+		t.Fatalf("CreateLink: %v", err)
+	}
+	container, err := a.CreateCard(k.ID, "Container", "", nil, "", nil, "", "", "", "")
+	if err != nil {
+		t.Fatalf("CreateCard(container): %v", err)
+	}
+	if _, err := a.CreateCard(k.ID, "ContainerChild", "", nil, container.ID, nil, "", "", "", ""); err != nil {
+		t.Fatalf("CreateCard(containerChild): %v", err)
+	}
+
+	leafResult, err := a.DeleteCard(leaf.ID)
+	if err != nil {
+		t.Fatalf("DeleteCard(leaf): %v", err)
+	}
+	containerResult, err := a.DeleteCard(container.ID)
+	if err != nil {
+		t.Fatalf("DeleteCard(container): %v", err)
+	}
+
+	totalLinksRemoved := leafResult.LinksRemoved + containerResult.LinksRemoved
+	totalChildrenPromoted := leafResult.ChildrenPromoted + containerResult.ChildrenPromoted
+	if totalLinksRemoved != 1 {
+		t.Errorf("summed LinksRemoved = %d, want 1", totalLinksRemoved)
+	}
+	if totalChildrenPromoted != 1 {
+		t.Errorf("summed ChildrenPromoted = %d, want 1", totalChildrenPromoted)
+	}
+}
+
 // TestDeleteNote_SoftDeleteRoundTripsWithUndo is the same contract for
 // notes.
 func TestDeleteNote_SoftDeleteRoundTripsWithUndo(t *testing.T) {

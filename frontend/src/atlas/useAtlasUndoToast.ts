@@ -10,6 +10,8 @@ export interface PendingUndo {
   cardIDs: string[]
   noteIDs: string[]
   count: number
+  linksRemoved: number
+  childrenPromoted: number
 }
 
 // Owns the quick-delete undo toast's whole lifecycle (goal 0093): one
@@ -37,7 +39,13 @@ export function useAtlasUndoToast() {
     clearTimer()
     const cardIDs = result.CardIDs ?? []
     const noteIDs = result.NoteIDs ?? []
-    setPending({ cardIDs, noteIDs, count: cardIDs.length + noteIDs.length })
+    setPending({
+      cardIDs,
+      noteIDs,
+      count: cardIDs.length + noteIDs.length,
+      linksRemoved: result.LinksRemoved ?? 0,
+      childrenPromoted: result.ChildrenPromoted ?? 0,
+    })
     timerRef.current = setTimeout(() => setPending(null), TOAST_DURATION_MS)
   }
 

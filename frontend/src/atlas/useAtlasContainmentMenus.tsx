@@ -77,6 +77,8 @@ export function useAtlasContainmentMenus({
         onDeleted({
           CardIDs: results.flatMap((r) => r.CardIDs ?? []),
           NoteIDs: results.flatMap((r) => r.NoteIDs ?? []),
+          LinksRemoved: results.reduce((sum, r) => sum + (r.LinksRemoved ?? 0), 0),
+          ChildrenPromoted: results.reduce((sum, r) => sum + (r.ChildrenPromoted ?? 0), 0),
         })
         void refreshAtlas()
       })
