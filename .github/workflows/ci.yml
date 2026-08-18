@@ -662,6 +662,17 @@ jobs:
           MILL_SKIP_BINDINGS: "1"
           MILL_CHANNEL: beta
           MILL_UPDATE_VERSION: ${{ env.BETA_VERSION }}
+      # Guard: the beta version stamp must actually be IN the binary.
+      # The ldflags -X value embeds the literal string, so a plain
+      # binary grep proves the build consumed MILL_UPDATE_VERSION --
+      # this is the check that would have caught the stamp silently
+      # never being wired into build/darwin/Taskfile.yml's ldflags
+      # (every beta reported the bare release version and offered its
+      # own release as an update).
+      - name: Verify beta version stamp reached the binary
+        run: |
+          BIN="bin/mill.app/Contents/MacOS/mill"
+          grep -aqF "$BETA_VERSION" "$BIN" || { echo "::error::binary at $BIN does not contain $BETA_VERSION -- MILL_UPDATE_VERSION was not stamped"; exit 1; }
       # scripts/package-macos-zip.sh: the same asset-naming contract
       # release.yml's build-macos job uses -- one definition, so a beta
       # and a real release can never drift in asset naming. Staged into

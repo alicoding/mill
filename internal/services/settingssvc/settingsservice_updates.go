@@ -3,12 +3,41 @@ package settingssvc
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/wailsapp/wails/v3/pkg/updater"
 	updaterGithub "github.com/wailsapp/wails/v3/pkg/updater/providers/github"
 )
+
+// updaterUserAgentTransport stamps a descriptive User-Agent on every
+// updater request. The provider's default client sends Go's anonymous
+// "Go-http-client", which managed-network proxies commonly filter;
+// identifying as Mill's own updater names the traffic honestly in
+// proxy logs either way. Clones the request per the RoundTripper
+// contract (a RoundTrip must not mutate its argument).
+type updaterUserAgentTransport struct {
+	agent string
+	base  http.RoundTripper
+}
+
+func (t updaterUserAgentTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	clone := req.Clone(req.Context())
+	clone.Header.Set("User-Agent", t.agent)
+	return t.base.RoundTrip(clone)
+}
+
+func newUpdaterHTTPClient(currentVersion string) *http.Client {
+	return &http.Client{
+		Timeout: 30 * time.Second,
+		Transport: updaterUserAgentTransport{
+			agent: "Mill-Updater/" + currentVersion,
+			base:  http.DefaultTransport,
+		},
+	}
+}
 
 // InitUpdater constructs the GitHub Releases provider and initializes
 // Wails3's own app.Updater singleton (u, already constructed by
@@ -37,6 +66,7 @@ func InitUpdater(u *updater.Updater, repo, currentVersion, channel string, s *Se
 		AssetMatcher:  UpdaterAssetMatcher,
 		ChecksumAsset: "SHA256SUMS",
 		Prerelease:    channel == "beta",
+		HTTPClient:    newUpdaterHTTPClient(currentVersion),
 	})
 	if err != nil {
 		return fmt.Errorf("updater provider init: %w", err)

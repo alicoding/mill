@@ -1,7 +1,15 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { Browser } from '@wailsio/runtime'
 import { Button, FormControl, Select, Stack, Text } from '@primer/react'
 import { SettingsService } from '../shared/bindings'
+
+// The browser-download escape hatch for when the in-app download is
+// blocked (managed networks answer the asset fetch with 403 while the
+// same URL works in a browser tab -- observed live on a corporate
+// proxy). The releases page is the same distribution the updater
+// itself reads.
+const RELEASES_URL = 'https://github.com/alicoding/mill/releases'
 import styles from '../shared/ListCard.module.css'
 import monoStyles from '../shared/monoText.module.css'
 
@@ -164,9 +172,19 @@ function UpdatesSection() {
                   </>
                 )}
                 {installState === 'failed' && (
-                  <Text size="small" className={styles.error}>
-                    {t('settings.updates.installFailed', { error: installError })}
-                  </Text>
+                  <>
+                    <Text size="small" className={styles.error}>
+                      {t('settings.updates.installFailed', { error: installError })}
+                    </Text>
+                    <Stack direction="horizontal" gap="condensed" align="center">
+                      <Text size="small" className={styles.muted}>
+                        {t('settings.updates.installFallbackHint')}
+                      </Text>
+                      <Button size="small" onClick={() => Browser.OpenURL(RELEASES_URL)} data-testid="open-releases-page">
+                        {t('settings.updates.openReleasesButton')}
+                      </Button>
+                    </Stack>
+                  </>
                 )}
               </>
             ) : (
