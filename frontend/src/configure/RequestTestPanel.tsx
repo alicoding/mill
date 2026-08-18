@@ -4,6 +4,7 @@ import { Button, FormControl, IconButton, Label, Select, SegmentedControl, Stack
 import { StatusStamp } from '../shared/StatusStamp'
 import { CopyIcon, PlayIcon, SyncIcon } from '@primer/octicons-react'
 import { ConfigureService } from '../shared/bindings'
+import { writeClipboardText } from '../shared/clipboardWrite'
 import type { AuthConfig, AuthType, JOSEConfig } from '../../bindings/github.com/alicoding/mill/internal/domain/httprequest/models'
 import type { TestHTTPRequestResult } from '../shared/bindings'
 import type { ManualOperation } from './openapiSynth'
@@ -249,7 +250,7 @@ export function RequestTestPanel({
                   aria-label={t('requestTestPanel.copyAriaLabel')}
                   size="small"
                   variant="invisible"
-                  onClick={() => { void navigator.clipboard.writeText(entry.Error || entry.Body) }}
+                  onClick={() => { void writeClipboardText(entry.Error || entry.Body) }}
                   data-testid="copy-log-entry"
                 />
               </Stack>
