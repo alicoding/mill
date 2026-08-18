@@ -48,6 +48,9 @@ test('a card with a Mirror path pointing at a markdown file renders its content 
   const overlay = page.locator('[data-component="atlas-card-overlay"]')
   await expect(overlay).toBeVisible()
 
+  // The calm page renders an empty mirror path as a quiet-add line;
+  // the input only mounts (focused) after expanding it.
+  await overlay.getByTestId('atlas-page-add-mirror-path').click()
   await overlay.getByTestId('atlas-page-mirror-path').fill(file)
   await overlay.getByTestId('atlas-page-mirror-path').blur()
   await expect(overlay.getByTestId('atlas-page-saved-tick')).toBeVisible()
