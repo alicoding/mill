@@ -243,6 +243,7 @@ func TestCheckAtlasBoardRenders(t *testing.T) {
 func TestCheckNoteCardCommit(t *testing.T) {
 	t.Run("select click, commit click, escape ladder", func(t *testing.T) {
 		f := newFakeCaller()
+		f.onJSON("js_eval", true) // poll: node position stable
 		f.onJSON("js_eval", true) // poll: wrapper selected
 		f.onJSON("js_eval", true) // poll: page header visible
 		f.onJSON("js_eval", true) // poll: board unselected again
@@ -261,6 +262,7 @@ func TestCheckNoteCardCommit(t *testing.T) {
 
 	t.Run("select click failing propagates", func(t *testing.T) {
 		f := newFakeCaller()
+		f.onJSON("js_eval", true) // poll: node position stable
 		f.onError("mouse_click", errors.New("no such element"))
 		if _, err := checkNoteCardCommit(f); err == nil {
 			t.Fatal("expected the select click's error to propagate")
@@ -281,6 +283,7 @@ func TestCheckNoteCardCommit(t *testing.T) {
 func TestCheckNoteCardSelectionRing(t *testing.T) {
 	t.Run("box-shadow none -> non-none on shift-click select", func(t *testing.T) {
 		f := newFakeCaller()
+		f.onJSON("js_eval", true) // poll: node position stable
 		f.onJSON("js_eval", ringSnapshot{BoxShadow: "none", Selected: false})
 		f.on("mouse_click", func(map[string]any) (string, error) { return "ok", nil })
 		f.onJSON("js_eval", ringSnapshot{BoxShadow: "0 0 0 2px accent", Selected: true})
@@ -295,6 +298,7 @@ func TestCheckNoteCardSelectionRing(t *testing.T) {
 
 	t.Run("already selected before the check ran is an error", func(t *testing.T) {
 		f := newFakeCaller()
+		f.onJSON("js_eval", true) // poll: node position stable
 		f.onJSON("js_eval", ringSnapshot{BoxShadow: "none", Selected: true})
 		if _, err := checkNoteCardSelectionRing(f); err == nil {
 			t.Fatal("expected an error for a pre-selected card")
@@ -303,6 +307,7 @@ func TestCheckNoteCardSelectionRing(t *testing.T) {
 
 	t.Run("shift-click that fails to select is an error", func(t *testing.T) {
 		f := newFakeCaller()
+		f.onJSON("js_eval", true) // poll: node position stable
 		f.onJSON("js_eval", ringSnapshot{BoxShadow: "none", Selected: false})
 		f.on("mouse_click", func(map[string]any) (string, error) { return "ok", nil })
 		f.onJSON("js_eval", ringSnapshot{BoxShadow: "none", Selected: false})
@@ -313,6 +318,7 @@ func TestCheckNoteCardSelectionRing(t *testing.T) {
 
 	t.Run("ring never renders after selection is an error", func(t *testing.T) {
 		f := newFakeCaller()
+		f.onJSON("js_eval", true) // poll: node position stable
 		f.onJSON("js_eval", ringSnapshot{BoxShadow: "none", Selected: false})
 		f.on("mouse_click", func(map[string]any) (string, error) { return "ok", nil })
 		f.onJSON("js_eval", ringSnapshot{BoxShadow: "none", Selected: true})
