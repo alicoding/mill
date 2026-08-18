@@ -36,6 +36,8 @@ func init() {
 		ID: "human-review", Kind: KindProcess,
 		Label:       "Ask for review",
 		Complexity:  ComplexityBasic,
+		Consumes:    []PayloadKind{PayloadAny},
+		Produces:    PayloadProduce{Passthrough: true},
 		Output:      "payload unchanged, after approval",
 		Description: "Pauses the run for a person: the item lands in the Review queue (and this workflow's Runs tab), where a reviewer can approve, deny, and fill in values for this workflow's declared Attributes -- their input flows into the resumed run. Denying (or 24 hours of silence) stops the run. A deliberate, visible checkpoint you drew into the flow -- the ambient guardrail rules (Configure > Guardrails) never skip it.",
 		Effect:      guardrail.ClassNone,

@@ -24,6 +24,8 @@ func init() {
 		ID: "apply-clipboard-write-html", Kind: KindApply,
 		Effect:      guardrail.ClassLocal,
 		Complexity:  ComplexityBasic,
+		Consumes:    []PayloadKind{PayloadNone},
+		Produces:    PayloadProduce{Kind: PayloadHTML},
 		Output:      "the HTML it wrote",
 		Label:       "Write HTML to clipboard",
 		Description: "Writes configured HTML to the clipboard.",

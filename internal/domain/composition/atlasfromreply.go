@@ -38,6 +38,8 @@ func init() {
 		// reply.
 		Effect:     guardrail.ClassLocal,
 		Complexity: ComplexityAdvanced,
+		Consumes:   []PayloadKind{PayloadNone},
+		Produces:   PayloadProduce{Passthrough: true},
 		Output:     "payload unchanged; a created-summary JSON -> the output attribute, if named",
 		Description: "Creates Atlas records from an accepted clipboard reply's items: an item with a " +
 			"\"title\" becomes a card of its named kind, an item with \"text\" becomes a Scratchpad note. " +

@@ -60,6 +60,8 @@ func init() {
 		ID: "mcp-tool-call", Kind: KindProcess,
 		Effect:      guardrail.ClassExternal,
 		Complexity:  ComplexityAdvanced, // argumentsJSON needs the target tool's own input schema
+		Consumes:    []PayloadKind{PayloadAny},
+		Produces:    PayloadProduce{Kind: PayloadAny},
 		Output:      "the tool's text result",
 		Label:       "Call an MCP tool",
 		Description: "Calls one tool on a Configure-authored MCP server and replaces the payload with its text result (docs/SPEC.md §3.6). mcpServerId is FieldText for the same reason integration-http's requestId is -- runtime, Configure-authored data (the Inspector renders a live picker for it, RefKind, docs/adr/0009); toolName is picked from the server's live tool list in the canvas Inspector (MCPToolArgsEditor.tsx), falling back to typing the exact name when the server can't be reached.",

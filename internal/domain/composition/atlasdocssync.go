@@ -31,6 +31,8 @@ func init() {
 		// classification as the other apply-atlas-* nodes.
 		Effect:     guardrail.ClassLocal,
 		Complexity: ComplexityBasic,
+		Consumes:   []PayloadKind{PayloadNone},
+		Produces:   PayloadProduce{Passthrough: true},
 		Output:     "payload unchanged; a sync-summary JSON -> the output attribute, if named",
 		Description: "Mirrors every markdown file in a folder as a card under one parent: a file already " +
 			"mirrored keeps its card (checksum refreshed), a new file becomes a new card, so re-running " +

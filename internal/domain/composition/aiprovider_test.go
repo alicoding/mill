@@ -9,23 +9,23 @@ import (
 
 func TestIsLocalAIHost(t *testing.T) {
 	cases := map[string]bool{
-		"http://localhost:11434":     true,
-		"http://localhost":           true,
-		"https://LOCALHOST:11434":    true, // case-insensitive host
-		"http://127.0.0.1:11434":     true,
-		"http://127.0.0.1":           true,
-		"http://[::1]:11434":         true, // IPv6 brackets + port
-		"http://[::1]":               true,
-		"localhost:11434":            true, // bare host:port, no scheme
-		"127.0.0.1":                  true,
-		"http://api.openai.com":      false,
-		"https://api.anthropic.com":  false,
-		"http://127.0.0.2":           false, // narrow allow-list, not a /8 CIDR (goal's own literal wording)
-		"http://0.0.0.0:11434":       false,
-		"http://my-localhost.local":  false, // substring, not the exact host
+		"http://localhost:11434":       true,
+		"http://localhost":             true,
+		"https://LOCALHOST:11434":      true, // case-insensitive host
+		"http://127.0.0.1:11434":       true,
+		"http://127.0.0.1":             true,
+		"http://[::1]:11434":           true, // IPv6 brackets + port
+		"http://[::1]":                 true,
+		"localhost:11434":              true, // bare host:port, no scheme
+		"127.0.0.1":                    true,
+		"http://api.openai.com":        false,
+		"https://api.anthropic.com":    false,
+		"http://127.0.0.2":             false, // narrow allow-list, not a /8 CIDR (goal's own literal wording)
+		"http://0.0.0.0:11434":         false,
+		"http://my-localhost.local":    false, // substring, not the exact host
 		"http://internal-ollama:11434": false,
-		"":                           false,
-		"not a url at all ://":       false,
+		"":                             false,
+		"not a url at all ://":         false,
 	}
 	for baseURL, want := range cases {
 		if got := isLocalAIHost(baseURL); got != want {

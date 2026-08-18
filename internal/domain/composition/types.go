@@ -138,6 +138,14 @@ type NodeType struct {
 	// reference prototype's own `Output TypedPayload<...>` card line).
 	// Empty for entry points that only start the run.
 	Output string
+	// Consumes/Produces are the step I/O contract (ADR-0042): the
+	// coarse payload kinds this step reads and emits, machine-checked
+	// by TestNodeTypes (node-standard item 10 -- no registration may
+	// leave them at the zero value) and enforced as edge-compatibility
+	// issues by ValidateGraph (payloadkind.go). Output above stays the
+	// human display copy; these fields are the contract.
+	Consumes []PayloadKind
+	Produces PayloadProduce
 	// Effect is the node type's side-effect classification
 	// (docs/adr/0022's purity model): what the guardrail gate uses to
 	// pick a default verdict when no rule matches, and what ADR-0021's

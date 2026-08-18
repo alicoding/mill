@@ -37,6 +37,8 @@ func init() {
 		ID: "apply-backup-snapshot", Kind: KindApply,
 		Effect:      guardrail.ClassLocal,
 		Complexity:  ComplexityBasic,
+		Consumes:    []PayloadKind{PayloadAny},
+		Produces:    PayloadProduce{Passthrough: true},
 		Output:      "the payload it received, unchanged",
 		Label:       "Back up Mill data",
 		Description: "Takes a safe snapshot of your workflow history and settings, deleting older snapshots beyond how many you keep.",

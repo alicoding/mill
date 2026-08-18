@@ -28,6 +28,8 @@ func init() {
 		Label:      "Update Atlas card",
 		Effect:     guardrail.ClassLocal,
 		Complexity: ComplexityAdvanced,
+		Consumes:   []PayloadKind{PayloadNone},
+		Produces:   PayloadProduce{Passthrough: true},
 		Output:     "payload unchanged; the updated card's id -> the output attribute, if named",
 		Description: "Writes field values onto an existing Atlas card, resolved by \"Card\" (a literal card " +
 			"id or attr:<name> -- e.g. attr:cardId from a trigger-atlas-card event, or an earlier " +

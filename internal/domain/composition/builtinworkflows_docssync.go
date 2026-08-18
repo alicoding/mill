@@ -37,8 +37,8 @@ func builtInDocsSyncWorkflows() []Workflow {
 			Edges: []Edge{
 				{ID: "example-docssync-e0", Source: docsSyncTriggerID, Target: docsSyncApplyID},
 			},
-			BuiltIn:     true,
-			Seed:        seedorigin.Stamp(1),
+			BuiltIn: true,
+			Seed:    seedorigin.Stamp(1),
 		},
 	}
 }

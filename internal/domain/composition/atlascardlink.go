@@ -29,6 +29,8 @@ func init() {
 		Label:      "Link Atlas cards",
 		Effect:     guardrail.ClassLocal,
 		Complexity: ComplexityBasic,
+		Consumes:   []PayloadKind{PayloadNone},
+		Produces:   PayloadProduce{Passthrough: true},
 		Output:     "payload unchanged",
 		Description: "Creates a typed relation between two existing Atlas cards. \"From\"/\"To\" are each a " +
 			"literal card id or attr:<name>.",

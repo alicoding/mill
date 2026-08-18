@@ -38,6 +38,8 @@ func init() {
 		// target Kind's own schema, same reasoning child-workflow's
 		// inputBindings carries.
 		Complexity: ComplexityAdvanced,
+		Consumes:   []PayloadKind{PayloadNone},
+		Produces:   PayloadProduce{Passthrough: true},
 		Output:     "payload unchanged; the new card's id -> the output attribute, if named",
 		Description: "Creates a new card in Atlas of the chosen Kind. \"Field values\" binds the Kind's own " +
 			"declared fields, each a literal or attr:<name>.",

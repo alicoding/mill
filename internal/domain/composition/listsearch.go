@@ -49,6 +49,8 @@ func init() {
 		// ConfigField description below), not a plain value -- unlike
 		// list-lookup's single input/output key pair.
 		Complexity: ComplexityAdvanced,
+		Consumes:   []PayloadKind{PayloadNone},
+		Produces:   PayloadProduce{Passthrough: true},
 		Output: "payload unchanged; matches -> a typed Object attribute " +
 			"({results, matched, first_match, match_count, list_id})",
 		Description: "Searches a Configure-authored List's rows against one or more match parameters " +

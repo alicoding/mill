@@ -20,6 +20,8 @@ func init() {
 		ID: "apply-file-write", Kind: KindApply,
 		Effect:      guardrail.ClassLocal,
 		Complexity:  ComplexityBasic,
+		Consumes:    []PayloadKind{PayloadText},
+		Produces:    PayloadProduce{Passthrough: true},
 		Output:      "the payload it wrote, unchanged",
 		Label:       "Write file",
 		Description: "Writes the payload to a local file, appending to or overwriting its existing contents.",

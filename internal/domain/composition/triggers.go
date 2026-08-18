@@ -34,6 +34,8 @@ func init() {
 		Output:      "empty payload — the run starts here",
 		Description: "Fires on-demand when a user clicks Run/Test. No listener process.",
 		Complexity:  ComplexityBasic,
+		Consumes:    []PayloadKind{PayloadNone},
+		Produces:    PayloadProduce{Kind: PayloadNone},
 	}, nil)
 	RegisterNodeType(NodeType{
 		ID: "trigger-hotkey", Kind: KindTrigger,
@@ -41,6 +43,8 @@ func init() {
 		Output:      "empty payload — the run starts here",
 		Description: "Fires on a global keyboard shortcut, even when Mill isn't focused. Bound via TriggerService, not a config field here -- pressing the combo is better UX than typing it.",
 		Complexity:  ComplexityBasic,
+		Consumes:    []PayloadKind{PayloadNone},
+		Produces:    PayloadProduce{Kind: PayloadNone},
 	}, nil)
 	RegisterNodeType(NodeType{
 		ID: "trigger-schedule", Kind: KindTrigger,
@@ -48,6 +52,8 @@ func init() {
 		Output:      "empty payload — the run starts here",
 		Description: "Fires on a cron schedule.",
 		Complexity:  ComplexityBasic,
+		Consumes:    []PayloadKind{PayloadNone},
+		Produces:    PayloadProduce{Kind: PayloadNone},
 		ConfigFields: []ConfigField{
 			{
 				Key: "cron", Label: "Cron expression",
@@ -62,6 +68,8 @@ func init() {
 		Output:      "the clipboard text that changed",
 		Description: "Fires whenever the clipboard's content changes.",
 		Complexity:  ComplexityBasic,
+		Consumes:    []PayloadKind{PayloadNone},
+		Produces:    PayloadProduce{Kind: PayloadText},
 	}, nil)
 	RegisterNodeType(NodeType{
 		ID: "trigger-filesystem-watch", Kind: KindTrigger,
@@ -69,6 +77,8 @@ func init() {
 		Output:      "the changed file path",
 		Description: "Fires when a file or folder under the configured path is added, changed, or deleted.",
 		Complexity:  ComplexityBasic,
+		Consumes:    []PayloadKind{PayloadNone},
+		Produces:    PayloadProduce{Kind: PayloadText},
 		ConfigFields: []ConfigField{
 			{
 				Key: "path", Label: "Path to watch",
@@ -88,10 +98,14 @@ func init() {
 		Output:      "the caller's typed input",
 		Description: "Fires only when invoked as a child by another workflow's Child Workflow step (docs/adr/0010) -- never by a real external event, no listener process. Modeled on n8n's own \"Execute Workflow Trigger\": a workflow rooted in this trigger declares itself a valid child target, decoupled from whatever its trigger would otherwise be. The child-workflow picker only lists workflows rooted here -- one rooted in a real-event trigger (filesystem-watch, clipboard-watch, ...) can't be invoked this way, since a parent has no way to synthesize that event.",
 		Complexity:  ComplexityBasic,
+		Consumes:    []PayloadKind{PayloadNone},
+		Produces:    PayloadProduce{Kind: PayloadAny},
 	}, nil)
 	RegisterNodeType(NodeType{
 		ID: "trigger-system-event", Kind: KindTrigger,
 		Complexity: ComplexityBasic,
+		Consumes:   []PayloadKind{PayloadNone},
+		Produces:   PayloadProduce{Kind: PayloadJSON},
 		Label:      "System event",
 		Output: "JSON payload: {event, runId, workflowId, workflowLabel, nodeId?, timestamp} -- " +
 			"the run/decision that caused this event. nodeId is only set for decision-parked (the " +
@@ -114,6 +128,8 @@ func init() {
 	RegisterNodeType(NodeType{
 		ID: "trigger-atlas-card", Kind: KindTrigger,
 		Complexity: ComplexityBasic,
+		Consumes:   []PayloadKind{PayloadNone},
+		Produces:   PayloadProduce{Kind: PayloadText},
 		Label:      "Atlas card changed",
 		Output: "the changed card's id -- also seeds cardId/kindId/cardTitle/changeType as typed " +
 			"Attributes when this workflow declares them",

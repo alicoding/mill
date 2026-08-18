@@ -37,6 +37,8 @@ func init() {
 		// allowed by default like any other local write.
 		Effect:     guardrail.ClassLocal,
 		Complexity: ComplexityAdvanced,
+		Consumes:   []PayloadKind{PayloadNone},
+		Produces:   PayloadProduce{Passthrough: true},
 		Output:     "payload unchanged; the row's id -> the output attribute, if named",
 		Description: "Creates or updates a row in a Configure-authored List: if an existing row's \"Key " +
 			"column\" value matches, only the fields named in \"Field values\" change (everything else on " +
