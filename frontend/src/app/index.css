@@ -38,6 +38,34 @@
    (deliberately, not here) -- see that file's header comment for why
    this needed a real separate file rather than living in this one. */
 
+/* Display density (docs/goals/0096): one row-vertical-padding lever,
+   read by every in-scope surface's own CSS module (InventoryList,
+   CommandPalette, QuickPanel, ReviewView's ListCard .card, Atlas's
+   card-page .entry rows) via var(--mill-density-row-pad-y, <that
+   surface's own current value>) -- undefined here at rest, so
+   Comfortable (the attribute absent) falls through to each surface's
+   own unchanged fallback with zero diff. Scoped to [data-density] on
+   the document root, not .app-shell: the Quick Panel is a second,
+   separate Wails window/document with no .app-shell element of its own
+   (docs/adr/0033), and this rule must reach both. 4px is Primer's own
+   --base-size-4 step, ~67% of ActionList's 6px default row padding --
+   the dominant lever among the in-scope surfaces' current values. */
+:root[data-density="compact"] {
+    --mill-density-row-pad-y: var(--base-size-4, 4px);
+}
+/* Touch-target floor (docs/goals/0096's DoR: "floor wins over
+   density"): at the companion breakpoint, compact's row padding
+   restores to whatever keeps a single-line ActionList row's total
+   height at or above the 44px minimum target (20px label line-height +
+   2*12px), overriding the desktop compact value above rather than
+   compounding with it. Comfortable is untouched at any width -- this
+   query only ever fires under [data-density="compact"]. */
+@media (max-width: 767px) {
+    :root[data-density="compact"] {
+        --mill-density-row-pad-y: var(--base-size-12, 12px);
+    }
+}
+
 * { box-sizing: border-box; }
 
 html {

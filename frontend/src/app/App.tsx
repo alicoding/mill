@@ -23,6 +23,7 @@ import { CommandPalette } from "./CommandPalette";
 import { ShortcutsHelpDialog } from "./ShortcutsHelpDialog";
 import { BuildIdentityBadge } from "./BuildIdentityBadge";
 import { COLOR_MODE_STORAGE_KEY, SIDEBAR_OPEN_STORAGE_KEY } from "./theme";
+import { applyDensity } from "../shared/density";
 import { pageIconFor, pageLabelFor } from './pageMeta'
 import { useMillNavigate } from './useMillNavigate'
 import { useKeymapDispatch } from './useKeymapDispatch'
@@ -203,6 +204,15 @@ function App() {
 
   useEffect(() => {
     SettingsService.IsIsolatedData().then(setIsIsolatedData).catch(console.error);
+  }, []);
+
+  // Display density (docs/goals/0096): applied once here, on mount, so
+  // a Compact preference holds from first paint even when Settings is
+  // never opened -- SettingsView applies its own change instantly
+  // (ahead of this fetch) when the control is used, this covers every
+  // other launch.
+  useEffect(() => {
+    SettingsService.GetDisplayDensity().then((d) => applyDensity(d === 'compact' ? 'compact' : 'comfortable')).catch(console.error);
   }, []);
 
   useEffect(() => {

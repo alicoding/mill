@@ -24,6 +24,11 @@
    here). */
 .list {
   max-height: min(60vh, 480px);
+  /* Display density (docs/goals/0096) -- same ActionList row-padding
+     override as shared/InventoryList.module.css's own .list rule; see
+     its comment for why this is safe to scope here rather than
+     globally. */
+  --control-medium-paddingBlock: var(--mill-density-row-pad-y);
 }
 
 /* Workflow pin toggle (docs/goals/BACKLOG.md Standing #5) -- same pair

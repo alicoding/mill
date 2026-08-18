@@ -161,6 +161,17 @@ export function GetBuildInfo(): $CancellablePromise<$models.BuildInfo> {
 }
 
 /**
+ * GetDisplayDensity returns the persisted preference, defaulting to
+ * Comfortable when unset or set to anything other than the one
+ * recognized override -- Comfortable is required to match today's
+ * unset behavior exactly (docs/goals/0096's "zero visual diff when
+ * unset" acceptance bar).
+ */
+export function GetDisplayDensity(): $CancellablePromise<string> {
+    return $Call.ByID(3640093526);
+}
+
+/**
  * GetLaunchAtLogin queries the real OS state (System Events' login
  * items list) rather than a persisted preference -- authoritative even
  * if the user removed Mill from Login Items via System Settings
@@ -355,6 +366,15 @@ export function RestoreSummonHotkey(): $CancellablePromise<void> {
  */
 export function SetAttentionIdleThreshold(seconds: number): $CancellablePromise<void> {
     return $Call.ByID(454955395, seconds);
+}
+
+/**
+ * SetDisplayDensity persists the preference. Rejects any value besides
+ * the two locked tiers so a typo'd/future caller can't wedge the
+ * preference into a state no CSS selector matches.
+ */
+export function SetDisplayDensity(density: string): $CancellablePromise<void> {
+    return $Call.ByID(1473451146, density);
 }
 
 /**

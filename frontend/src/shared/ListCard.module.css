@@ -20,7 +20,12 @@
     background: var(--bgColor-muted);
     border: 1px solid var(--borderColor-default);
     border-radius: var(--borderRadius-medium);
-    padding: var(--base-size-12) var(--base-size-16);
+    /* Display density (docs/goals/0096): only the vertical component
+       reads the density var (Comfortable's base-size-12 fallback keeps
+       this byte-identical when the var is unset); horizontal padding
+       is untouched by density in every surface this goal covers. */
+    padding-block: var(--mill-density-row-pad-y, var(--base-size-12));
+    padding-inline: var(--base-size-16);
 }
 .icon {
     display: inline-flex;

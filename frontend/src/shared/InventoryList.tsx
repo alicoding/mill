@@ -134,7 +134,7 @@ export function InventoryList({ items, emptyState, searchPlaceholder }: {
       {filtered.length === 0 ? (
         <Text as="p" size="small" className={styles.muted}>{t('inventoryList.noMatchesFor', { query })}</Text>
       ) : (
-        <ActionList role="list" showDividers>
+        <ActionList role="list" showDividers className={styles.list}>
           {filtered.map((item) => (
             <InventoryRow key={item.id} item={item} onOpenMenu={setRowMenu} />
           ))}
