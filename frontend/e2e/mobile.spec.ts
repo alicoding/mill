@@ -95,6 +95,17 @@ test('Mobile job 4 -- Atlas board glance, drill via a region frame header, and c
   // The single seeded root auto-enters "My space" (Free mode); the
   // group-frame glance lives one drill down, in "Example area".
   await expect(page.getByTestId('atlas-board')).toBeVisible()
+  // At this viewport the seeded board is wider than min-zoom can fit,
+  // so "Example area" can sit off-screen and Playwright's
+  // scroll-into-view fights React Flow's transform (element never
+  // stable). The jump dialog is the app's own door for exactly this --
+  // Enter flies the camera to the match -- so land attention first,
+  // then drill.
+  await page.keyboard.press('Meta+k')
+  await page.getByTestId('atlas-jump-input').fill('Example area')
+  await expect(page.locator('[data-component="atlas-jump-dialog"]').getByTestId('atlas-jump-result').first()).toBeVisible()
+  await page.keyboard.press('Enter')
+  await expect(page.locator('[data-component="atlas-jump-dialog"]')).toHaveCount(0)
   await groupCard(page, 'Example area').getByTestId('atlas-group-header').click()
   await expect(page.getByTestId('atlas-board')).toBeVisible()
 

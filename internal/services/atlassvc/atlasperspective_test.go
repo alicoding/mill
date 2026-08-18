@@ -263,6 +263,94 @@ func TestAtlasSession_ActivePerspective_Degrades(t *testing.T) {
 	}
 }
 
+// --- Diff (goal 0095 slice 3) ---
+
+func TestDiffPerspectives_ReportsAddedAndRemovedMembers(t *testing.T) {
+	a := newBlankAtlasService(t)
+	k, err := a.CreateKind("Widget", "", "", nil)
+	if err != nil {
+		t.Fatalf("CreateKind: %v", err)
+	}
+	lk, err := a.CreateLinkKind("relates to", "")
+	if err != nil {
+		t.Fatalf("CreateLinkKind: %v", err)
+	}
+	root, err := a.CreateCard(k.ID, "Root", "", nil, "", nil, "", "", "", "")
+	if err != nil {
+		t.Fatalf("CreateCard(root): %v", err)
+	}
+	x, err := a.CreateCard(k.ID, "X", "", nil, root.ID, nil, "", "", "", "")
+	if err != nil {
+		t.Fatalf("CreateCard(x): %v", err)
+	}
+	y, err := a.CreateCard(k.ID, "Y", "", nil, root.ID, nil, "", "", "", "")
+	if err != nil {
+		t.Fatalf("CreateCard(y): %v", err)
+	}
+
+	from, err := a.CreatePerspective(root.ID, "From", "")
+	if err != nil {
+		t.Fatalf("CreatePerspective(from): %v", err)
+	}
+	if _, err := a.AddToPerspective(from.ID, x.ID); err != nil {
+		t.Fatalf("AddToPerspective: %v", err)
+	}
+	to, err := a.CreatePerspective(root.ID, "To", "")
+	if err != nil {
+		t.Fatalf("CreatePerspective(to): %v", err)
+	}
+	if _, err := a.AddToPerspective(to.ID, y.ID); err != nil {
+		t.Fatalf("AddToPerspective: %v", err)
+	}
+	if _, err := a.AddToPerspective(to.ID, x.ID); err != nil {
+		t.Fatalf("AddToPerspective: %v", err)
+	}
+
+	// Authoring-while-active is the only path that joins a LINK to a
+	// perspective in this slice -- activate "to" so creating the link
+	// here auto-joins it there, never "from".
+	if err := a.SetAtlasSession(AtlasSessionState{ActivePerspectiveID: to.ID}); err != nil {
+		t.Fatalf("SetAtlasSession: %v", err)
+	}
+	link, err := a.CreateLink(x.ID, y.ID, lk.ID, "")
+	if err != nil {
+		t.Fatalf("CreateLink: %v", err)
+	}
+
+	diff, err := a.DiffPerspectives(from.ID, to.ID)
+	if err != nil {
+		t.Fatalf("DiffPerspectives: %v", err)
+	}
+	if !containsID(diff.AddedCardIDs, y.ID) || containsID(diff.AddedCardIDs, x.ID) {
+		t.Errorf("AddedCardIDs = %v, want exactly %q", diff.AddedCardIDs, y.ID)
+	}
+	if len(diff.RemovedCardIDs) != 0 {
+		t.Errorf("RemovedCardIDs = %v, want none (x stays a member of both)", diff.RemovedCardIDs)
+	}
+	// The link touches y, which only becomes a member of "to" -- so it
+	// only starts rendering there, an added link, never removed.
+	if !containsID(diff.AddedLinkIDs, link.ID) {
+		t.Errorf("AddedLinkIDs = %v, want %q", diff.AddedLinkIDs, link.ID)
+	}
+	if len(diff.RemovedLinkIDs) != 0 {
+		t.Errorf("RemovedLinkIDs = %v, want none", diff.RemovedLinkIDs)
+	}
+}
+
+func TestDiffPerspectives_UnknownID_Errors(t *testing.T) {
+	a := newBlankAtlasService(t)
+	p, err := a.CreatePerspective("", "Current", "")
+	if err != nil {
+		t.Fatalf("CreatePerspective: %v", err)
+	}
+	if _, err := a.DiffPerspectives("does-not-exist", p.ID); err == nil {
+		t.Error("DiffPerspectives() with an unknown 'from' id = nil error, want an error")
+	}
+	if _, err := a.DiffPerspectives(p.ID, "does-not-exist"); err == nil {
+		t.Error("DiffPerspectives() with an unknown 'to' id = nil error, want an error")
+	}
+}
+
 func containsID(ids []string, id string) bool {
 	for _, got := range ids {
 		if got == id {

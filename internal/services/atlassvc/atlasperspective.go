@@ -236,6 +236,27 @@ func (a *AtlasService) DeletePerspective(id string) error {
 	return nil
 }
 
+// DiffPerspectives computes what changed moving from fromID's own
+// membership to toID's (goal 0095 slice 3's Compare view): a thin
+// bound wrapper over the pure atlas.DiffPerspectives helper, the same
+// "expose the domain package's own pure function through a read-only
+// accessor" shape Perspectives() itself already takes. Re-parenting is
+// deliberately never expressed here -- ADR-0041's own invariant, since
+// a card carries exactly one ParentID shared by every perspective.
+func (a *AtlasService) DiffPerspectives(fromID, toID string) (atlas.PerspectiveDiff, error) {
+	a.mu.RLock()
+	defer a.mu.RUnlock()
+	fromIdx := a.findPerspectiveLocked(fromID)
+	if fromIdx == -1 {
+		return atlas.PerspectiveDiff{}, fmt.Errorf("no perspective with id %q", fromID)
+	}
+	toIdx := a.findPerspectiveLocked(toID)
+	if toIdx == -1 {
+		return atlas.PerspectiveDiff{}, fmt.Errorf("no perspective with id %q", toID)
+	}
+	return atlas.DiffPerspectives(a.perspectives[fromIdx], a.perspectives[toIdx]), nil
+}
+
 func insertPerspectiveAt(perspectives []atlas.Perspective, idx int, p atlas.Perspective) []atlas.Perspective {
 	if idx < 0 || idx > len(perspectives) {
 		idx = len(perspectives)

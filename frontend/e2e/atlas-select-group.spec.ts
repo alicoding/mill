@@ -311,10 +311,11 @@ test('atlas shift-click select: toggle membership, group via member right-click,
     await expect(page.getByRole('button', { name: 'Dissolve' })).toBeVisible()
     await page.getByRole('button', { name: 'Dissolve' }).click()
     await expect(bareGArea).toHaveCount(0)
-    // Low-right pane coords, matching this file's own later deselect --
-    // absolute page coords near the left edge can land on a tray/menu
-    // instead of React Flow's own pane handler.
-    await page.locator('.react-flow__pane').click({ position: { x: 500, y: 450 } })
+    // Escape clears the selection (proven earlier in this same test) --
+    // a fixed board-content-independent deselect, unlike an absolute
+    // pane coordinate, which a seeded card landing under that exact
+    // pixel can turn into a re-select instead of a deselect.
+    await page.keyboard.press('Escape')
     await expect(selected).toHaveCount(0)
     await cardA.click({ modifiers: ['Shift'] })
     await cardB.click({ modifiers: ['Shift'] })
@@ -372,10 +373,9 @@ test('atlas shift-click select: toggle membership, group via member right-click,
     await expect(page.getByRole('button', { name: 'Dissolve' })).toBeVisible()
     await page.getByRole('button', { name: 'Dissolve' }).click()
     await expect(groupedArea).toHaveCount(0)
-    // Deselect on the pane itself, low-right where nothing renders --
-    // absolute page coords near the left edge can land on the
-    // creation tray, which never reaches React Flow's pane handler.
-    await page.locator('.react-flow__pane').click({ position: { x: 500, y: 450 } })
+    // Escape clears the selection -- same fixed, content-position-
+    // independent deselect as this file's earlier bare-G dissolve.
+    await page.keyboard.press('Escape')
     await expect(selected).toHaveCount(0)
 
     // Quick delete + undo (goal 0093): Del deletes instantly, no
@@ -470,14 +470,15 @@ test('atlas select-all (Cmd+A): guarded inside an editable field, selects every 
     await page.keyboard.press('Escape')
 
     // Real dispatch: Cmd+A on the board selects EVERY top-level card at
-    // this level -- the seeded root ("My space") already carries 3
-    // (Example area, Getting started, Scratchpad; internal/domain/atlas/builtin.go),
-    // plus the 2 just placed.
+    // this level -- the seeded root ("My space") already carries 4
+    // (Example area, Getting started, Scratchpad, System landscape --
+    // goal 0095 slice 3; internal/domain/atlas/builtin.go), plus the 2
+    // just placed.
     await page.keyboard.press('Meta+a')
-    await expect(selected).toHaveCount(5)
+    await expect(selected).toHaveCount(6)
     const selectionTray = page.getByTestId('atlas-selection-tray')
     await expect(selectionTray).toBeVisible()
-    await expect(page.getByTestId('atlas-selection-count')).toHaveText('5 selected')
+    await expect(page.getByTestId('atlas-selection-count')).toHaveText('6 selected')
 
     // Cleanup (testing.md's within-file discipline): quick delete +
     // clock-controlled toast expiry, same pattern this file's other

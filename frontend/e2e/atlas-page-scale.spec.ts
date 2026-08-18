@@ -9,6 +9,7 @@ import {
   spawnMillServer,
   type SpawnedServer,
 } from './fixtures/server'
+import { clickFrameGutter } from './fixtures/atlasBoard'
 
 // The card PAGE at scale (goal 0073 slice B): a card holding many
 // children must cap its own Contents column the same way a board
@@ -76,14 +77,12 @@ test('a card page at scale caps its entries with an honest expander and lazy-loa
     const mirrorStack = groupCard(page, 'Mirror Stack')
     await expect(mirrorStack).toBeVisible()
 
-    // Open the page: ⌘-click on the frame's own body opens its page
-    // directly (goal 0102's gesture table's instant-commit path,
-    // atlas-page.spec.ts's own established pattern for reaching a
-    // group's page). x:6 sits inside the frame's left GROUP_PADDING
-    // gutter, a blank strip running the frame's full height below its
-    // header -- safe regardless of how many rows the 5 previewed
-    // children wrap into.
-    await mirrorStack.click({ position: { x: 6, y: 60 }, modifiers: ['Meta'] })
+    // Open the page: ⌘-click on the frame's own gutter opens its page
+    // directly (goal 0102's instant-commit path). clickFrameGutter
+    // measures a SETTLED box and a border-safe offset -- a fixed
+    // pixel position lands outside the frame once fitView zooms the
+    // denser board out further.
+    await clickFrameGutter(mirrorStack, { modifiers: ['Meta'] })
 
     const overlay = page.locator('[data-component="atlas-card-overlay"]')
     await expect(overlay).toBeVisible()
@@ -108,6 +107,9 @@ test('a card page at scale caps its entries with an honest expander and lazy-loa
   } finally {
     await browser.close()
     server?.stop()
-    rmSync(dir, { recursive: true, force: true })
+    // maxRetries: the just-stopped server can still be flushing its
+    // settings/db files when cleanup runs -- a bare rmSync races it
+    // to ENOTEMPTY.
+    rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 })
   }
 })

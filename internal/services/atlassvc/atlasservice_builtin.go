@@ -278,10 +278,9 @@ func (a *AtlasService) reconcileLinksLocked(tombstones map[string]bool, now time
 
 // reconcilePerspectivesLocked mirrors reconcileLinksLocked's insert/
 // upgrade/leave-alone-once-Modified/skip-tombstoned algorithm for
-// Perspectives (goal 0095) -- a no-op today since
-// atlas.BuiltInPerspectives() ships empty (slice 3 adds the seeded
-// example), but runs every startup so a future addition top-ups an
-// existing install exactly like every other family already does.
+// Perspectives (goal 0095): tops up the seeded three-perspective
+// reference-architecture example onto an existing install exactly
+// like every other family already does.
 func (a *AtlasService) reconcilePerspectivesLocked(tombstones map[string]bool, now time.Time) bool {
 	byID := make(map[string]int, len(a.perspectives))
 	for i, p := range a.perspectives {

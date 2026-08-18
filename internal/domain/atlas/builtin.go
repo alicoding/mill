@@ -40,6 +40,12 @@ const (
 	// refused (LOCKED design §3b -- "a file card is a link path to
 	// somewhere in the filesystem anyway").
 	kindReferenceID = "atlas-kind-reference"
+	// kindComponentID (goal 0095 slice 3) is the seeded perspectives
+	// example's own Kind, dedicated rather than reusing Topic so the
+	// three landscape cards below never join Topic's own seeded count
+	// (atlas-jump.spec.ts's "Topic: " scope asserts an exact census of
+	// the four pre-existing Topic cards).
+	kindComponentID = "atlas-kind-component"
 
 	linkKindRelatesToID = "atlas-linkkind-relates-to"
 
@@ -49,9 +55,26 @@ const (
 	cardContactID     = "atlas-card-example-contact"
 	cardDocumentID    = "atlas-card-example-document"
 	cardScratchpadID  = "atlas-card-scratchpad"
+	// The seeded perspectives example (goal 0095 slice 3, ADR-0041): a
+	// tiny reference-architecture landscape nested under its own
+	// container (never a direct child of "My space" -- every existing
+	// top-level census, e.g. atlas-projections.spec.ts's coverage
+	// stat and atlas-scale.spec.ts's dense-fixture edge count, is
+	// pinned to the pre-existing shape one level up).
+	cardSystemLandscapeID = "atlas-card-system-landscape"
+	cardWebAppID          = "atlas-card-web-app"
+	cardDataStoreID       = "atlas-card-data-store"
+	cardSyncServiceID     = "atlas-card-sync-service"
 
 	linkGettingToContactID  = "atlas-link-getting-to-contact"
 	linkContactToDocumentID = "atlas-link-contact-to-document"
+	linkWebToStoreID        = "atlas-link-web-to-store"
+	linkWebToSyncID         = "atlas-link-web-to-sync"
+	linkSyncToStoreID       = "atlas-link-sync-to-store"
+
+	perspectiveCurrentID = "atlas-perspective-current"
+	perspectiveInterimID = "atlas-perspective-interim"
+	perspectiveTargetID  = "atlas-perspective-target"
 )
 
 // BuiltInKinds returns the seeded example card types -- pure config,
@@ -109,6 +132,12 @@ func BuiltInKinds() []Kind {
 		{
 			ID: kindReferenceID, Label: "Reference", Icon: "🔗",
 			Description: "Something linked in, not further categorized.",
+			CreatedAt:   now, UpdatedAt: now,
+			BuiltIn: true, Seed: seedorigin.Stamp(1),
+		},
+		{
+			ID: kindComponentID, Label: "Component", Icon: "🧩",
+			Description: "A system or service in an architecture.",
 			CreatedAt:   now, UpdatedAt: now,
 			BuiltIn: true, Seed: seedorigin.Stamp(1),
 		},
@@ -204,6 +233,46 @@ func BuiltInCards() []Card {
 			CreatedAt:         now, UpdatedAt: now,
 			BuiltIn: true, Seed: seedorigin.Stamp(5), // Card gained MirrorChecksum (goal 0088) then DeletedAt (goal 0093) -- shape shifts
 		},
+		{
+			// The seeded perspectives example's own container (goal 0095
+			// slice 3): a direct child of "My space" (keeps the single-
+			// root-card navigation intact) holding the three landscape
+			// cards below, so their own internal links stay invisible one
+			// level up (resolveBoardEdges.ts skips an edge whose endpoints
+			// resolve to the same top-level card) -- the pre-existing
+			// "My space" child census (atlas-projections.spec.ts's
+			// coverage stat, atlas-scale.spec.ts's dense-fixture edge
+			// count) only grows by this one new card, never by three.
+			ID: cardSystemLandscapeID, KindID: kindComponentID, Title: "System landscape",
+			Note:      "Switch perspectives above to see this move from Current to Target.",
+			ParentID:  cardMySpaceID, ViewMode: ViewModeShelves,
+			// 960 sits right after the seeded row's rightmost card
+			// (Scratchpad at 746) -- close enough that this card barely
+			// widens the fit-to-view bounding box other e2e specs'
+			// zoom-then-click-by-fraction helpers depend on; a much
+			// farther placement measurably shifts those fractions.
+			Position: &Position{X: 960, Y: 80},
+			CreatedAt: now, UpdatedAt: now,
+			BuiltIn: true, Seed: seedorigin.Stamp(1),
+		},
+		{
+			ID: cardWebAppID, KindID: kindComponentID, Title: "Web app",
+			ParentID:  cardSystemLandscapeID,
+			CreatedAt: now, UpdatedAt: now,
+			BuiltIn: true, Seed: seedorigin.Stamp(1),
+		},
+		{
+			ID: cardDataStoreID, KindID: kindComponentID, Title: "Data store",
+			ParentID:  cardSystemLandscapeID,
+			CreatedAt: now, UpdatedAt: now,
+			BuiltIn: true, Seed: seedorigin.Stamp(1),
+		},
+		{
+			ID: cardSyncServiceID, KindID: kindComponentID, Title: "Sync service",
+			ParentID:  cardSystemLandscapeID,
+			CreatedAt: now, UpdatedAt: now,
+			BuiltIn: true, Seed: seedorigin.Stamp(1),
+		},
 	}
 }
 
@@ -224,19 +293,74 @@ func BuiltInLinks() []Link {
 			CreatedAt:  now, UpdatedAt: now,
 			BuiltIn: true, Seed: seedorigin.Stamp(1),
 		},
+		{
+			// Current's own link: the web app talks to the data store
+			// directly.
+			ID: linkWebToStoreID, FromCardID: cardWebAppID, ToCardID: cardDataStoreID,
+			LinkKindID: linkKindRelatesToID,
+			CreatedAt:  now, UpdatedAt: now,
+			BuiltIn: true, Seed: seedorigin.Stamp(1),
+		},
+		{
+			// Interim/Target's new shape, half one: the web app talks to
+			// the sync service.
+			ID: linkWebToSyncID, FromCardID: cardWebAppID, ToCardID: cardSyncServiceID,
+			LinkKindID: linkKindRelatesToID,
+			CreatedAt:  now, UpdatedAt: now,
+			BuiltIn: true, Seed: seedorigin.Stamp(1),
+		},
+		{
+			// Interim/Target's new shape, half two: the sync service
+			// relays to the data store.
+			ID: linkSyncToStoreID, FromCardID: cardSyncServiceID, ToCardID: cardDataStoreID,
+			LinkKindID: linkKindRelatesToID,
+			CreatedAt:  now, UpdatedAt: now,
+			BuiltIn: true, Seed: seedorigin.Stamp(1),
+		},
 	}
 }
 
-// BuiltInPerspectives returns the seeded example perspectives (ADR-
-// 0041, goal 0095) -- deliberately EMPTY in this slice (the seeded
-// three-perspective reference-architecture example is goal 0095's
-// slice 3): the reconcile/fingerprint plumbing exists and runs on
-// every startup like every other family's, it just has nothing to
-// insert yet. Zero Perspectives is also the product default itself
-// (the "everything" view is the absence of a record), so an empty
-// slice here changes nothing observable.
+// BuiltInPerspectives returns the seeded three-perspective reference-
+// architecture example (ADR-0041, goal 0095 slice 3): "Current",
+// "Interim", "Target" over "System landscape"'s own three Component
+// cards, membership telling a migration story -- Current is the web
+// app wired straight to the data store; Interim adds the sync service
+// alongside that old connection; Target drops the old direct link and
+// keeps only the new shape. Every card is a member of every
+// perspective (the story is entirely which LINKS are visible); only
+// MemberLinkIDs differs.
 func BuiltInPerspectives() []Perspective {
-	return nil
+	now := time.Now()
+	allThree := []string{cardWebAppID, cardDataStoreID, cardSyncServiceID}
+	return []Perspective{
+		{
+			ID: perspectiveCurrentID, SpaceID: cardSystemLandscapeID, Name: "Current",
+			Description:   "The web app talks straight to the data store.",
+			Order:         0,
+			MemberCardIDs: []string{cardWebAppID, cardDataStoreID},
+			MemberLinkIDs: []string{linkWebToStoreID},
+			CreatedAt:     now, UpdatedAt: now,
+			BuiltIn: true, Seed: seedorigin.Stamp(1),
+		},
+		{
+			ID: perspectiveInterimID, SpaceID: cardSystemLandscapeID, Name: "Interim",
+			Description:   "The sync service comes online alongside the old connection.",
+			Order:         1,
+			MemberCardIDs: allThree,
+			MemberLinkIDs: []string{linkWebToStoreID, linkWebToSyncID, linkSyncToStoreID},
+			CreatedAt:     now, UpdatedAt: now,
+			BuiltIn: true, Seed: seedorigin.Stamp(1),
+		},
+		{
+			ID: perspectiveTargetID, SpaceID: cardSystemLandscapeID, Name: "Target",
+			Description:   "The old direct connection is gone; the sync service is the only path.",
+			Order:         2,
+			MemberCardIDs: allThree,
+			MemberLinkIDs: []string{linkWebToSyncID, linkSyncToStoreID},
+			CreatedAt:     now, UpdatedAt: now,
+			BuiltIn: true, Seed: seedorigin.Stamp(1),
+		},
+	}
 }
 
 // RetiredBuiltInKindIDs names a built-in Kind ID that once shipped in

@@ -2,10 +2,11 @@ import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ActionList, ActionMenu, Checkbox, FormControl, IconButton, TextInput } from '@primer/react'
 import { CheckIcon, EyeIcon, KebabHorizontalIcon } from '@primer/octicons-react'
-import type { Kind, Perspective } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
+import type { Card, Kind, Link, LinkKind, Perspective } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 import { useUISignalStore } from '../shared/uiSignalStore'
 import { ConfirmDialog } from '../shared/ConfirmDialog'
 import { ContextMenu, type ContextMenuState } from '../shared/ContextMenu'
+import { AtlasPerspectiveCompareDialog } from './AtlasPerspectiveCompareDialog'
 import styles from './AtlasPerspectiveSwitcher.module.css'
 
 // The board toolbar's primary view control (ADR-0041, goal 0095 slice
@@ -21,6 +22,7 @@ import styles from './AtlasPerspectiveSwitcher.module.css'
 export function AtlasPerspectiveSwitcher({
   perspectives, activePerspectiveID, onSwitch, onCreate, onRename, onDelete, onToast,
   presentKinds, hiddenKindIDs, onChangeHidden,
+  cards, links, kinds, linkKinds,
 }: {
   perspectives: Perspective[]
   activePerspectiveID: string
@@ -32,6 +34,14 @@ export function AtlasPerspectiveSwitcher({
   presentKinds: Kind[]
   hiddenKindIDs: string[]
   onChangeHidden: (hidden: string[]) => void
+  // The Compare view's own full-graph data (goal 0095 slice 3) --
+  // deliberately the UNFILTERED sets (never boardAllCards/presentKinds,
+  // both scoped to the currently viewed space), since a diff's added/
+  // removed members can live anywhere in the tree.
+  cards: Card[]
+  links: Link[]
+  kinds: Kind[]
+  linkKinds: LinkKind[]
 }) {
   const { t } = useTranslation('atlas')
   const [open, setOpen] = useState(false)
@@ -40,6 +50,7 @@ export function AtlasPerspectiveSwitcher({
   const [renameDraft, setRenameDraft] = useState('')
   const [rowMenu, setRowMenu] = useState<ContextMenuState | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<Perspective | null>(null)
+  const [compareOpen, setCompareOpen] = useState(false)
   const visibleIDs = presentKinds.map((k) => k.ID).filter((id) => !hiddenKindIDs.includes(id))
 
   const active = perspectives.find((p) => p.ID === activePerspectiveID) ?? null
@@ -172,6 +183,14 @@ export function AtlasPerspectiveSwitcher({
                 }}
               />
             </div>
+            {perspectives.length >= 2 && (
+              <ActionList.Item
+                data-testid="atlas-perspective-compare-open"
+                onSelect={() => { setOpen(false); setCompareOpen(true) }}
+              >
+                {t('perspective.comparePerspectives')}
+              </ActionList.Item>
+            )}
             {presentKinds.length > 0 && (
               <>
                 <ActionList.Divider />
@@ -199,6 +218,16 @@ export function AtlasPerspectiveSwitcher({
         </ActionMenu.Overlay>
       </ActionMenu>
       <ContextMenu state={rowMenu} onClose={closeRowMenu} />
+      <AtlasPerspectiveCompareDialog
+        open={compareOpen}
+        onClose={() => setCompareOpen(false)}
+        perspectives={perspectives}
+        cards={cards}
+        links={links}
+        kinds={kinds}
+        linkKinds={linkKinds}
+        onError={onToast}
+      />
       {deleteTarget && (
         <ConfirmDialog
           title={t('perspective.deleteConfirmTitle', { name: deleteTarget.Name })}

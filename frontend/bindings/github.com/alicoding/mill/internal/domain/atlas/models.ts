@@ -332,6 +332,23 @@ export interface Perspective {
 }
 
 /**
+ * PerspectiveDiff is the computable diff between two perspectives
+ * sharing the same live card set (ADR-0041's O(1) reference-
+ * architecture property, docs/goals/0095): pure set difference over
+ * stored membership, nothing derived or stored on disk. Re-parenting
+ * is deliberately never expressed here -- a card carries exactly one
+ * ParentID shared by every perspective, so containment itself can
+ * never differ per view (ADR-0041's own invariant; a revisit needs its
+ * own ADR).
+ */
+export interface PerspectiveDiff {
+    "AddedCardIDs": string[] | null;
+    "RemovedCardIDs": string[] | null;
+    "AddedLinkIDs": string[] | null;
+    "RemovedLinkIDs": string[] | null;
+}
+
+/**
  * Position is a card's location within its PARENT's canvas -- only
  * meaningful when the parent's EffectiveViewMode is ViewModeCanvas;
  * nil for a card whose parent renders as shelves (or for a root card,
