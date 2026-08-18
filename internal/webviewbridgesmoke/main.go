@@ -22,6 +22,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strconv"
+	"syscall"
 	"time"
 )
 
@@ -206,10 +207,15 @@ func waitForBridge(client *mcpClient, proc *os.Process, timeout time.Duration) e
 }
 
 func procExited(proc *os.Process) bool {
-	// A nil signal probes liveness without affecting the process --
+	// Signal 0 probes liveness without affecting the process --
 	// documented Unix kill(2) behaviour, exec.Process exposes no
-	// higher-level equivalent.
-	return proc.Signal(nil) != nil
+	// higher-level equivalent. It must be syscall.Signal(0), never a
+	// nil os.Signal: Signal's Unix implementation type-asserts its
+	// argument to syscall.Signal, and a nil interface fails that
+	// assertion, so Signal(nil) errors for a perfectly alive process
+	// and this probe would declare every launch dead on its first
+	// poll.
+	return proc.Signal(syscall.Signal(0)) != nil
 }
 
 // stopProcess quits exactly the PID this script itself launched --

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"testing"
 )
@@ -134,4 +135,30 @@ func TestPortInUse(t *testing.T) {
 			t.Error("expected portInUse to report false for a closed port")
 		}
 	})
+}
+
+// Regression: the liveness probe must report a LIVE process as alive.
+// Signal(nil) fails the Unix implementation's syscall.Signal type
+// assertion and errors for any process, which made waitForBridge
+// declare every app launch dead on its first poll.
+func TestProcExited(t *testing.T) {
+	cmd := exec.CommandContext(context.Background(), "sleep", "30")
+	if err := cmd.Start(); err != nil {
+		t.Fatalf("start sleep: %v", err)
+	}
+	defer func() { _ = cmd.Process.Kill(); _, _ = cmd.Process.Wait() }()
+
+	if procExited(cmd.Process) {
+		t.Fatal("procExited reported a live process as exited")
+	}
+
+	if err := cmd.Process.Kill(); err != nil {
+		t.Fatalf("kill: %v", err)
+	}
+	if _, err := cmd.Process.Wait(); err != nil {
+		t.Fatalf("wait: %v", err)
+	}
+	if !procExited(cmd.Process) {
+		t.Fatal("procExited reported a reaped process as alive")
+	}
 }
