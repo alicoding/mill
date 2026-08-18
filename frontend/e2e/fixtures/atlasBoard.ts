@@ -125,6 +125,39 @@ export async function deleteCardViaMenu(page: Page, menu: Locator, title: string
   await expect(noteCard(page, title)).toHaveCount(0)
 }
 
+// Clicks a region frame's blank left gutter -- the GROUP_PADDING strip
+// between the frame's left edge and its first child column, the one
+// reliably blank band a frame has at every child count. Two traps this
+// helper exists to close, both hit by the fraction-click idiom it
+// replaces:
+// 1. The position must be computed from a SETTLED bounding box.
+//    fitView animates node geometry after board load; a box measured
+//    mid-animation yields a click offset (notably y = staleHeight/2)
+//    that lands outside the settled frame -- on the pane -- and stays
+//    wrong forever, because Playwright re-resolves the element but
+//    never the caller-supplied position.
+// 2. The x offset must clear the frame's border without overshooting
+//    the gutter: on a zoomed-out board the whole gutter is ~5px, so a
+//    width-proportional offset drifts onto the first child card while
+//    a too-small one hits the border. A fixed 3-4px sits inside the
+//    gutter at every zoom the suite produces.
+export async function clickFrameGutter(frame: Locator, opts?: Parameters<Locator['click']>[0]): Promise<void> {
+  let previous = ''
+  await expect
+    .poll(async () => {
+      const box = await frame.boundingBox()
+      const key = box ? [box.x, box.y, box.width, box.height].map(v => Math.round(v)).join(',') : 'none'
+      const stable = previous === key && key !== 'none'
+      previous = key
+      return stable
+    }, { timeout: 10_000 })
+    .toBe(true)
+  const box = await frame.boundingBox()
+  if (!box) throw new Error('clickFrameGutter: expected the frame to be measurable')
+  const x = Math.max(3, Math.min(4, box.width * 0.02))
+  await frame.click({ ...opts, position: { x, y: box.height * 0.5 } })
+}
+
 // A breadcrumb segment now opens a SIBLING dropdown on click (goal
 // 0106 slice B contract item 5) rather than navigating directly -- the
 // segment's own place is always present in that dropdown, marked

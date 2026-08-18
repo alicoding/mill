@@ -3,6 +3,10 @@
     "seedRevision": 1,
     "fingerprint": "75218e8e0727e6cbf04afd8ff25f8a461ccfea9c77fdccfb06ac824333fe4100"
   },
+  "atlascard:atlas-card-data-store": {
+    "seedRevision": 1,
+    "fingerprint": "35bf876e76601acf2f0b9216a43b0270dbe764170e040b2d6f7c8ed57aa4db7d"
+  },
   "atlascard:atlas-card-example-area": {
     "seedRevision": 5,
     "fingerprint": "a6eb22e7ae842f08fcd0b6004d10a7dd33cd298f63790dd35cfd2b7608ced2e4"
@@ -26,6 +30,22 @@
   "atlascard:atlas-card-scratchpad": {
     "seedRevision": 5,
     "fingerprint": "b0330a8234b5f5ccd7768520bfbe70e72e0561795dc024ea29a89feea1e093a1"
+  },
+  "atlascard:atlas-card-sync-service": {
+    "seedRevision": 1,
+    "fingerprint": "0c5d5c30133975d03290d7522dc3d71146968e3f6fdf3e158493c81c2921a9a7"
+  },
+  "atlascard:atlas-card-system-landscape": {
+    "seedRevision": 1,
+    "fingerprint": "b0779404a5d92a2b5591e367dad464f4d0020cae88f8de3924bb0b15185f0f68"
+  },
+  "atlascard:atlas-card-web-app": {
+    "seedRevision": 1,
+    "fingerprint": "7c70a8d7935ba5a15f199c9d10a8f11faf2998746b26e488ca47cc5a2c29ddb7"
+  },
+  "atlaskind:atlas-kind-component": {
+    "seedRevision": 1,
+    "fingerprint": "c0717ac09c75dcef29c2a06c08d0d4a6e60832bb9385db4eb327f0fb069205c1"
   },
   "atlaskind:atlas-kind-contact": {
     "seedRevision": 2,
@@ -55,9 +75,33 @@
     "seedRevision": 1,
     "fingerprint": "1bb44b5b7395f6d37dab829e4a7657dc61b012b7c7169efc52c922193eb2889a"
   },
+  "atlaslink:atlas-link-sync-to-store": {
+    "seedRevision": 1,
+    "fingerprint": "8b1293286837f7b9c6528bf0f25279b3a4acc021f34281478cac10703c66f231"
+  },
+  "atlaslink:atlas-link-web-to-store": {
+    "seedRevision": 1,
+    "fingerprint": "5fb2388428d5a7436480d3811fe8cec1dd1126a5fac3e8ea95f1057933088b12"
+  },
+  "atlaslink:atlas-link-web-to-sync": {
+    "seedRevision": 1,
+    "fingerprint": "c7e6f53b5fcf4d61cdb4594ae30f443b972641cb92e63bb5c979a9ebd5da897a"
+  },
   "atlaslinkkind:atlas-linkkind-relates-to": {
     "seedRevision": 1,
     "fingerprint": "5efd2d4f46ceb01ae229e997102fe11191367b9ee46ac03939ffe278d4dec379"
+  },
+  "atlasperspective:atlas-perspective-current": {
+    "seedRevision": 1,
+    "fingerprint": "0da2062c14d7435ce318021dbd16fa829114d0d668df03d7f02bf6a235861b80"
+  },
+  "atlasperspective:atlas-perspective-interim": {
+    "seedRevision": 1,
+    "fingerprint": "40781bca500aa24304fb503d00c619de84b9dcda9413c55e30c922d029521674"
+  },
+  "atlasperspective:atlas-perspective-target": {
+    "seedRevision": 1,
+    "fingerprint": "0accb341af068cb4b92d7ae8246235015aa86a09392a0e2a804638500fbc7dc6"
   },
   "decision:example-approve-decision": {
     "seedRevision": 3,

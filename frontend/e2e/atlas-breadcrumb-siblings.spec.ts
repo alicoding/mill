@@ -17,8 +17,9 @@ test('a breadcrumb segment opens a dropdown of its level\'s siblings, current on
 
   // "My space" is the seeded space's own root -- its siblings are
   // every other root-level card, which at the single-root default is
-  // only itself (3 top-level children: Example area, Getting started,
-  // Scratchpad).
+  // only itself. The child count is asserted as a pattern, not an
+  // exact number: seeds evolve (goal 0095 added a whole seeded area)
+  // and this test pins the dropdown's SHAPE, not the seed catalogue.
   const mySpaceCrumb = page.getByTestId('atlas-breadcrumb').getByTestId('atlas-breadcrumb-item').filter({ hasText: 'My space' })
   await mySpaceCrumb.click()
 
@@ -26,7 +27,7 @@ test('a breadcrumb segment opens a dropdown of its level\'s siblings, current on
   await expect(dropdown).toBeVisible()
   const mySpaceRow = dropdown.getByTestId('atlas-breadcrumb-sibling').filter({ hasText: 'My space' })
   await expect(mySpaceRow).toBeVisible()
-  await expect(mySpaceRow).toContainText('3 cards')
+  await expect(mySpaceRow).toContainText(/\d+ cards/)
 
   // Clicking the current place navigates to it (reproducing the old
   // direct-navigate behavior) -- the crumb collapses back to "My

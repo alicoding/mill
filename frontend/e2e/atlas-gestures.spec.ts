@@ -1,7 +1,8 @@
 import { test, expect } from './fixtures/server'
 import { groupCard, noteCard } from './fixtures/atlasCards'
-import { clickCorner, zoomAllTheWayOut } from './fixtures/atlasBoard'
+import { clickCorner, zoomAllTheWayOut, clickFrameGutter } from './fixtures/atlasBoard'
 import { contextMenu } from './fixtures/contextMenu'
+import { waitForViewportStable } from './fixtures/animation'
 
 // The click model (goal 0102's gesture table) + surface-scoped
 // shortcuts (goal 0071 slice): plain click selects/replaces, a second
@@ -87,9 +88,28 @@ test('a plain click leaves the selection ring visibly showing on the clicked car
 test('a real double-click reproduces the same select-then-commit outcome as two plain clicks, for both a leaf and a frame body', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Atlas' }).click()
-  await expect(page.getByTestId('atlas-board')).toBeVisible()
-
+  const board = page.getByTestId('atlas-board')
+  await expect(board).toBeVisible()
+  // The board's own initial fitView animates into place, and
+  // individual note cards carry their own entrance transition
+  // independent of the viewport's own pan/zoom transform -- a
+  // dblclick fired before BOTH settle can land on a still-moving
+  // neighbor instead of the intended card (regression: "Ada
+  // Lovelace"'s node intercepted a dblclick meant for "Getting
+  // started" while its own entrance animation was still running).
+  await waitForViewportStable(board)
   const getting = noteCard(page, 'Getting started')
+  let previousBox: string | null = null
+  await expect
+    .poll(async () => {
+      const box = await getting.boundingBox()
+      const current = box ? `${box.x},${box.y}` : null
+      const stable = previousBox !== null && current === previousBox
+      previousBox = current
+      return stable
+    })
+    .toBe(true)
+
   await getting.dblclick()
   const overlay = page.locator('[data-component="atlas-card-overlay"]')
   await expect(overlay).toBeVisible()
@@ -98,9 +118,13 @@ test('a real double-click reproduces the same select-then-commit outcome as two 
   await expect(overlay).not.toBeVisible()
 
   // Frame body double-click = zoom into the place (padding strip:
-  // the frame centre belongs to its preview-child nodes).
+  // the frame centre belongs to its preview-child nodes). A FRACTION
+  // of the frame's own rendered box (not a fixed pixel offset, same
+  // idiom atlas-page.spec.ts's identical gutter click already uses)
+  // stays inside the gutter regardless of the board's own zoom scale,
+  // which shifts with the seeded card count (goal 0095 slice 3).
   const exampleArea = groupCard(page, 'Example area')
-  await exampleArea.dblclick({ position: { x: 6, y: 60 } })
+  await clickFrameGutter(exampleArea, { clickCount: 2 })
   await expect(page.getByTestId('atlas-breadcrumb')).toContainText('Example area')
 
   // ⌘↑ = one step up the depth ladder (atlas.up, Finder's enclosing-

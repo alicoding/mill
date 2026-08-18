@@ -99,18 +99,20 @@ test('coverage counts a space\'s cards missing a link and missing a mirror, with
   await page.getByRole('link', { name: 'Atlas' }).click()
   await expect(page.getByTestId('atlas-board')).toBeVisible()
 
-  // "My space" has three seeded children: "Getting started" (an
-  // outgoing "relates to" link to "Ada Lovelace"), "Example area" and
-  // "Scratchpad" (neither carries a link of its own) -- a hand-
-  // countable 1/3 linked. None of the three carries a mirror directly
-  // at THIS level (the seeded mirror lives one level deeper, on
-  // "Project charter") -- a hand-countable 0/3 mirrored.
+  // "My space" has four seeded children: "Getting started" (an
+  // outgoing "relates to" link to "Ada Lovelace"), "Example area",
+  // "Scratchpad", and "System landscape" (goal 0095 slice 3's seeded
+  // perspectives example -- none of the three carries a link of its
+  // own AT THIS level) -- a hand-countable 1/4 linked. None of the
+  // four carries a mirror directly at THIS level (the seeded mirror
+  // lives one level deeper, on "Project charter") -- a hand-countable
+  // 0/4 mirrored.
   await page.getByTestId('atlas-open-coverage').click()
   const dialog = page.locator('[data-component="atlas-coverage-dialog"]')
   await expect(dialog).toBeVisible()
 
-  await expect(dialog.getByTestId('atlas-coverage-link-value')).toHaveText('1/3 linked')
-  await expect(dialog.getByTestId('atlas-coverage-mirror-value')).toHaveText('0/3 mirrored')
+  await expect(dialog.getByTestId('atlas-coverage-link-value')).toHaveText('1/4 linked')
+  await expect(dialog.getByTestId('atlas-coverage-mirror-value')).toHaveText('0/4 mirrored')
 
   await dialog.getByTestId('atlas-coverage-link-toggle').click()
   await expect(dialog.getByTestId('atlas-coverage-missing-item').filter({ hasText: 'Example area' })).toBeVisible()

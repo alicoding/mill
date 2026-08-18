@@ -1,7 +1,6 @@
 import { test, expect } from './fixtures/server'
 import { deleteViaPageMenu } from './fixtures/atlasPage'
-import { clickAtFraction } from './fixtures/animation'
-import { armAndPlaceTopicCard, clickBreadcrumbSegment, openCard } from './fixtures/atlasBoard'
+import { armAndPlaceTopicCard, clickBreadcrumbSegment, clickFrameGutter, openCard } from './fixtures/atlasBoard'
 
 // Exercises the card PAGE's own ratified anatomy (goal 0072 slice C,
 // docs/adr/0038): the header row (kind glyph/circle, title, file tag,
@@ -189,7 +188,7 @@ test('a region frame\'s body click selects it (never drills); ⌘-click opens th
   // edge and its first column of children, running the full height
   // below the header -- a 1% fraction of width stays inside that gutter
   // whatever the board's current zoom level scales it to.
-  await clickAtFraction(exampleArea, 0.01, 0.5)
+  await clickFrameGutter(exampleArea)
   await expect(exampleAreaWrapper).toHaveCount(1)
   // The board never re-roots off a plain body click -- the header
   // remains the only unconditional drill affordance.
@@ -201,7 +200,7 @@ test('a region frame\'s body click selects it (never drills); ⌘-click opens th
   // ⌘-click opens the frame's own page directly (goal 0102's gesture
   // table: ⌘-click = instant commit, the pointer twin of ⌘↵) --
   // reached with no prior selection needed.
-  await clickAtFraction(exampleArea, 0.01, 0.5, { modifiers: ['Meta'] })
+  await clickFrameGutter(exampleArea, { modifiers: ['Meta'] })
   const overlay = page.locator('[data-component="atlas-card-overlay"]')
   await expect(overlay).toBeVisible()
   await expect(overlay.getByTestId('atlas-page-title')).toHaveValue('Example area')
@@ -252,7 +251,7 @@ test('a child\'s mirror preview renders inline in the parent page; the card\'s o
   // table's instant-commit path).
   await clickBreadcrumbSegment(page, page.getByTestId('atlas-breadcrumb').getByText('My space', { exact: true }), 'My space')
   const exampleAreaFrame = groupCard(page, 'Example area')
-  await clickAtFraction(exampleAreaFrame, 0.01, 0.5, { modifiers: ['Meta'] })
+  await clickFrameGutter(exampleAreaFrame, { modifiers: ['Meta'] })
   await expect(overlay).toBeVisible()
   await expect(overlay.getByTestId('atlas-page-title')).toHaveValue('Example area')
   const charterEntry = overlay.getByTestId('atlas-page-child').filter({ hasText: 'Project charter' })

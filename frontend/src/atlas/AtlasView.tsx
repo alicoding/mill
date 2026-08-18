@@ -384,6 +384,8 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
         onRenamePerspective={renamePerspective}
         onDeletePerspective={deletePerspective}
         onPerspectiveToast={quietToast.show}
+        links={allLinks}
+        linkKinds={allLinkKinds}
         canAddSibling={viewedID !== ''}
         onCreate={createCard}
         onExport={exportAtlas}

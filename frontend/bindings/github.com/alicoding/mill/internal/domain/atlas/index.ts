@@ -16,5 +16,6 @@ export type {
     MirrorContent,
     Note,
     Perspective,
+    PerspectiveDiff,
     Position
 } from "./models.js";

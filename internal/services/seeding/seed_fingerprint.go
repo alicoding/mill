@@ -141,10 +141,6 @@ func AllSeedFingerprints() map[string]SeedFingerprint {
 		l.ID, l.CreatedAt, l.UpdatedAt, l.Seed = "", time.Time{}, time.Time{}, seedorigin.Origin{}
 		out[keyFor("atlaslink", id)] = SeedFingerprint{SeedRevision: rev, Fingerprint: fingerprintContent(l)}
 	}
-	// atlas.BuiltInPerspectives() ships empty this slice (goal 0095's
-	// seeded example is slice 3) -- the loop still runs so a future
-	// addition is caught by this same committed-record discipline from
-	// day one, not bolted on later.
 	for _, p := range atlas.BuiltInPerspectives() {
 		id := p.ID
 		rev := p.Seed.SeedRevision
