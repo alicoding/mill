@@ -6,7 +6,6 @@ import { childrenOf } from './atlasGrouping'
 import { isGroupCard } from './atlasBoardLayout'
 import { capPageEntries, eagerPreviewIDs, orderContentChildren } from './atlasCardPageContent'
 import { AtlasCardMirrorPreview } from './AtlasCardMirrorPreview'
-import runbookStyles from '../shared/ListCard.module.css'
 import styles from './AtlasCardPage.module.css'
 
 // The page's own Contents column (goal 0072 slice C, narrowed by goal
@@ -55,6 +54,16 @@ export function AtlasCardPageContents({ card, allCards, kinds, onOpenGroupEntry,
   const loadPreview = (childID: string) => {
     setLoadedPreviewIDs((prev) => new Set(prev).add(childID))
   }
+
+  // The calm page renders this whole column ONLY when there's
+  // something to show (goal 0106 slice B contract item 3): no "Nothing
+  // inside yet" fallback -- a childless, unmirrored card's page simply
+  // never mounts this section, matching the acceptance bar's "no
+  // empty sections." Placed after every hook above so a card that
+  // gains/loses its last child while this page stays open (a live
+  // refreshAtlas() update, not a remount) never changes this
+  // component's own hook-call order between renders.
+  if (isEmpty) return null
 
   return (
     <div className={styles.contentsCol} data-testid="atlas-page-contents">
@@ -142,8 +151,6 @@ export function AtlasCardPageContents({ card, allCards, kinds, onOpenGroupEntry,
           {t('page.showMore', { count: hiddenCount })}
         </Button>
       )}
-
-      {isEmpty && <Text as="p" className={`${runbookStyles.muted} ${styles.emptyContents}`} data-testid="atlas-page-empty-contents">{t('page.emptyContents')}</Text>}
     </div>
   )
 }

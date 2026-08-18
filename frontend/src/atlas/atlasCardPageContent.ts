@@ -1,4 +1,6 @@
-import type { Card } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
+import type { Card, Kind } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
+import { Type as ConfigFieldType } from '../../bindings/github.com/alicoding/mill/internal/domain/typedfield/models'
+import type { Field } from '../../bindings/github.com/alicoding/mill/internal/domain/typedfield/models'
 import { childrenOf } from './atlasGrouping'
 import { isGroupCard } from './atlasBoardLayout'
 
@@ -38,6 +40,24 @@ const MIRROR_BEARING_KIND_IDS = new Set(['atlas-kind-document', 'atlas-kind-refe
 
 export function isMirrorKind(kindID: string): boolean {
   return MIRROR_BEARING_KIND_IDS.has(kindID)
+}
+
+// The calm page's own "existing status control" (goal 0106 slice B
+// contract item 3's property-strip chip): a convention-matched field,
+// not a dedicated Card.Status column -- Card carries no such field
+// (ADR-0038 Decision 2, structure not concept), so "status" is
+// whatever ordinary typedfield.Field a Kind chooses to declare with
+// this exact key, same "match a known field shape, not a Kind
+// identity" precedent isPersonKind/isMirrorKind above already
+// establish one level up (by Kind.ID rather than Field.Key). More than
+// one built-in Kind declares exactly this shape (internal/domain/
+// atlas/builtin.go); a user-declared Kind gets the same chip treatment
+// for free by declaring its own Options field keyed "status". Gated to
+// TypeOptions specifically -- a differently-typed field a user happens
+// to key "status" has no Options list to render as a chip's control,
+// so it stays an ordinary field in the fields column instead.
+export function statusFieldOf(kind: Kind | undefined): Field | undefined {
+  return kind?.Fields?.find((f) => f.Key === 'status' && f.Type === ConfigFieldType.TypeOptions)
 }
 
 function byTitleThenID(a: Card, b: Card): number {

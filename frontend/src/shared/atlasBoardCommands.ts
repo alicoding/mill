@@ -100,4 +100,75 @@ export const ATLAS_BOARD_COMMANDS: Command[] = [
     surface: ['atlas'],
     run: () => {},
   },
+  {
+    id: 'atlas.minimap.toggle',
+    label: 'Toggle minimap',
+    defaultBinding: null,
+    surface: ['atlas'],
+    run: () => useUISignalStore.getState().requestAtlasMinimapToggle(),
+  },
+  // The six entries below (goal 0106 slice B) advertise useAtlasKeyboardNav.ts's
+  // own key table (goal 0104) in the Shortcuts Help overlay -- every
+  // one is unreachable by construction, same shape as
+  // atlas.delete.selection/atlas.group.selection above: comboFromEvent
+  // requires Cmd/Ctrl by design (shared/keybinding.ts), so none of
+  // these bare/Option/Shift combos can ever be a REAL dispatched
+  // binding, and each acts on live board focus/selection state the
+  // palette has no way to supply -- paletteHidden keeps a dead click
+  // out of it. The real handling stays entirely in
+  // useAtlasKeyboardNav.ts's own window keydown listener.
+  {
+    id: 'atlas.focusNext',
+    label: 'Focus next card',
+    defaultBinding: { mods: [], key: 'Tab' },
+    hintOnly: true,
+    paletteHidden: true,
+    surface: ['atlas'],
+    run: () => {},
+  },
+  {
+    id: 'atlas.focusPrevious',
+    label: 'Focus previous card',
+    defaultBinding: { mods: ['shift'], key: 'Tab' },
+    hintOnly: true,
+    paletteHidden: true,
+    surface: ['atlas'],
+    run: () => {},
+  },
+  {
+    id: 'atlas.focusDirection',
+    label: 'Focus the nearest card in a direction',
+    defaultBinding: { mods: ['option'], key: 'ArrowRight' },
+    hintOnly: true,
+    paletteHidden: true,
+    surface: ['atlas'],
+    run: () => {},
+  },
+  {
+    id: 'atlas.openFocused',
+    label: 'Open or zoom the focused card',
+    defaultBinding: { mods: [], key: 'Enter' },
+    hintOnly: true,
+    paletteHidden: true,
+    surface: ['atlas'],
+    run: () => {},
+  },
+  {
+    id: 'atlas.nudgeSelection',
+    label: 'Move the selected card',
+    defaultBinding: { mods: [], key: 'ArrowRight' },
+    hintOnly: true,
+    paletteHidden: true,
+    surface: ['atlas'],
+    run: () => {},
+  },
+  {
+    id: 'atlas.escapeLadder',
+    label: 'Clear selection or go up a level',
+    defaultBinding: { mods: [], key: 'Escape' },
+    hintOnly: true,
+    paletteHidden: true,
+    surface: ['atlas'],
+    run: () => {},
+  },
 ]

@@ -207,7 +207,10 @@ test('atlas shift-click select: toggle membership, group via member right-click,
     await page.keyboard.press('n')
     const noteBB = await board.boundingBox()
     if (!noteBB) throw new Error('board box missing for note placement')
-    await page.mouse.click(noteBB.x + noteBB.width - 60, noteBB.y + noteBB.height - 80)
+    // Bottom-LEFT, not bottom-right: the board's own minimap (goal
+    // 0106 slice B) now occupies the bottom-right corner, offset off
+    // the true left edge to clear React Flow's own Controls strip there.
+    await page.mouse.click(noteBB.x + 80, noteBB.y + noteBB.height - 80)
     const noteTA = page.getByTestId('atlas-sticky-textarea')
     await noteTA.fill('ZzK2eStickySel')
     await noteTA.blur()

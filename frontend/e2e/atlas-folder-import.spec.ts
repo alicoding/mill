@@ -1,6 +1,6 @@
 import { test, expect } from './fixtures/server'
 import { deleteViaPageMenu } from './fixtures/atlasPage'
-import { openCard } from './fixtures/atlasBoard'
+import { clickBreadcrumbSegment, openCard } from './fixtures/atlasBoard'
 
 // Synced-folder onboarding (docs/goals/0067) over real Go bindings
 // (Wails3 server mode): AtlasService.PickFolder's own MILL_TEST_
@@ -96,7 +96,7 @@ test('add from folder: scan, partial accept, containment, and mirror rendering a
   await deleteViaPageMenu(page, overlay)
   await expect(summaryCard).not.toBeVisible()
 
-  await page.getByTestId('atlas-breadcrumb').getByText('My space', { exact: true }).click()
+  await clickBreadcrumbSegment(page, page.getByTestId('atlas-breadcrumb').getByText('My space', { exact: true }), 'My space')
   for (const card of [noteCard(page, 'Reports'), notesCard, logoCard]) {
     await openCard(page, card)
     await expect(overlay).toBeVisible()
@@ -168,7 +168,7 @@ test('add from folder: an already-imported file stays flagged and default-unchec
   await deleteViaPageMenu(page, overlay)
   await expect(overlay).not.toBeVisible()
 
-  await page.getByTestId('atlas-breadcrumb').getByText('My space', { exact: true }).click()
+  await clickBreadcrumbSegment(page, page.getByTestId('atlas-breadcrumb').getByText('My space', { exact: true }), 'My space')
   const firstNotesCard = noteCard(page, 'Meeting Notes')
   await openCard(page, firstNotesCard)
   await expect(overlay).toBeVisible()

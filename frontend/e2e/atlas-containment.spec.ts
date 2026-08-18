@@ -11,7 +11,7 @@ import {
 } from './fixtures/server'
 import { contextMenu } from './fixtures/contextMenu'
 import { ATLAS_KIND_TOPIC, selectKind } from './fixtures/kindPicker'
-import { armAndPlaceTopicCard, deleteCardViaMenu, groupCard, noteCard } from './fixtures/atlasBoard'
+import { armAndPlaceTopicCard, cancelCreatePopover, deleteCardViaMenu, groupCard, noteCard, submitCreatePopover } from './fixtures/atlasBoard'
 import { waitForViewportStable } from './fixtures/animation'
 
 // A LIGHTER zoom-out than fixtures/atlasBoard.ts's own zoomAllTheWayOut
@@ -174,7 +174,7 @@ test('atlas containment: area drawing, marker-box grouping, drag filing, dissolv
     await expect(popover).toBeVisible()
     await selectKind(popover, ATLAS_KIND_TOPIC)
     await popover.getByTestId('atlas-placement-title').fill('ZzC2eInterior')
-    await popover.getByTestId('atlas-placement-submit').click()
+    await submitCreatePopover(popover)
     await expect(popover).not.toBeVisible()
     await page.mouse.wheel(0, 300)
     await waitForViewportStable(board)
@@ -239,16 +239,20 @@ test('atlas containment: area drawing, marker-box grouping, drag filing, dissolv
     // board point (not the shared clickCorner helper) -- several zoom
     // changes have accumulated by now, so a FRACTION of the board's
     // current bounds stays reliably empty regardless of the exact
-    // zoom level, the way a fixed named corner no longer does. ---
+    // zoom level, the way a fixed named corner no longer does. y=0.3
+    // (not a bottom corner): the board's own minimap/Controls/creation
+    // tray chrome (goal 0106 slice B) all live in the bottom band, so
+    // the vertical middle is the one fraction guaranteed clear of all
+    // three regardless of which corner a bottom-anchored point picks. ---
     await page.keyboard.press('c')
     const kindCheckBox = await board.boundingBox()
     if (!kindCheckBox) throw new Error('board has no bounding box')
-    await board.click({ position: { x: kindCheckBox.width * 0.95, y: kindCheckBox.height * 0.95 } })
+    await board.click({ position: { x: kindCheckBox.width * 0.95, y: kindCheckBox.height * 0.3 } })
     await expect(popover).toBeVisible()
     await popover.getByTestId('atlas-placement-kind').click()
     await expect(popover.getByTestId(`atlas-placement-kind-option-${ATLAS_KIND_TOPIC}`)).toContainText('Something being tracked or worked through.')
     await popover.getByTestId(`atlas-placement-kind-option-${ATLAS_KIND_TOPIC}`).click()
-    await popover.getByTestId('atlas-placement-cancel').click()
+    await cancelCreatePopover(popover)
     await expect(popover).not.toBeVisible()
 
     // --- Rider (a): a zoomed-into space with zero cards and zero

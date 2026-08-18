@@ -33,13 +33,14 @@ export async function zoomAllTheWayOut(page: Page): Promise<void> {
 // bottom-center) -- use each corner for AT MOST ONE placement per
 // test file so a fixed screen pixel's flow-space mapping never
 // collides with something the test itself just created there.
-export async function clickCorner(board: Locator, corner: 'top-left' | 'top-right' | 'bottom-right'): Promise<void> {
+// Deliberately no 'bottom-right' option: the board's own minimap
+// (goal 0106 slice B) now occupies that corner, so it's never a
+// reliably-empty click target -- callers needing a bottom-right-ish
+// point compute their own, clear of the minimap's footprint.
+export async function clickCorner(board: Locator, corner: 'top-left' | 'top-right'): Promise<void> {
   const box = await board.boundingBox()
   if (!box) throw new Error('board has no bounding box')
-  const position =
-    corner === 'top-left' ? { x: 12, y: 12 }
-      : corner === 'top-right' ? { x: box.width - 12, y: 12 }
-        : { x: box.width - 12, y: box.height - 12 }
+  const position = corner === 'top-left' ? { x: 12, y: 12 } : { x: box.width - 12, y: 12 }
   await board.click({ position })
 }
 
@@ -94,9 +95,25 @@ export async function armAndPlaceTopicCard(page: Page, board: Locator, popover: 
   await expect(popover).toBeVisible()
   await selectKind(popover, ATLAS_KIND_TOPIC)
   await popover.getByTestId('atlas-placement-title').fill(title)
-  await popover.getByTestId('atlas-placement-submit').click()
+  await submitCreatePopover(popover)
   await expect(popover).not.toBeVisible()
   await expect(noteCard(page, title)).toBeVisible()
+}
+
+// The placement popover's own 'create' mode carries no visible Submit/
+// Cancel row (goal 0106 slice B contract item 4: Enter/Escape are the
+// only commit/cancel paths, matching the C -> click -> title -> Enter
+// loop itself) -- every test driving 'create' mode (the tray/right-
+// click/paste/slot-guided doors) confirms this way now. 'promote'/
+// 'area' mode keep their own labeled form + button row untouched, so
+// tests in those modes keep clicking atlas-placement-submit/-cancel
+// directly rather than using these two helpers.
+export async function submitCreatePopover(popover: Locator): Promise<void> {
+  await popover.getByTestId('atlas-placement-title').press('Enter')
+}
+
+export async function cancelCreatePopover(popover: Locator): Promise<void> {
+  await popover.getByTestId('atlas-placement-title').press('Escape')
 }
 
 // Instant, no confirm (goal 0093's quick-delete-with-undo guard) --
@@ -139,4 +156,20 @@ export async function clickFrameGutter(frame: Locator, opts?: Parameters<Locator
   if (!box) throw new Error('clickFrameGutter: expected the frame to be measurable')
   const x = Math.max(3, Math.min(4, box.width * 0.02))
   await frame.click({ ...opts, position: { x, y: box.height * 0.5 } })
+}
+
+// A breadcrumb segment now opens a SIBLING dropdown on click (goal
+// 0106 slice B contract item 5) rather than navigating directly -- the
+// segment's own place is always present in that dropdown, marked
+// selected, so clicking IT there reproduces the crumb's old direct-
+// navigate-on-click behavior. `segment` is whatever Locator the caller
+// already built (its own `.nth()`/`.first()`/`{ exact }` disambiguation
+// among same-titled crumbs stays exactly as before); `label` is that
+// same segment's own title, used to find its entry inside the freshly-
+// opened, scoped dropdown -- unambiguous there regardless of how many
+// OTHER crumbs in the trail share that title, since only ONE level's
+// siblings are ever listed at a time.
+export async function clickBreadcrumbSegment(page: Page, segment: Locator, label: string): Promise<void> {
+  await segment.click()
+  await page.getByTestId('atlas-breadcrumb-siblings').getByText(label, { exact: true }).click()
 }

@@ -9,7 +9,7 @@ import {
   type SpawnedServer,
 } from './fixtures/server'
 import { contextMenu } from './fixtures/contextMenu'
-import { groupCard, noteCard, openCard } from './fixtures/atlasBoard'
+import { clickBreadcrumbSegment, groupCard, noteCard, openCard } from './fixtures/atlasBoard'
 import { deleteViaPageMenu } from './fixtures/atlasPage'
 import { ATLAS_KIND_TOPIC, selectKind } from './fixtures/kindPicker'
 
@@ -145,7 +145,7 @@ test('a perspective filters the board to its members closed under ancestry, and 
     await expect(overlay.getByTestId('atlas-page-perspective-membership')).toContainText('Filtered')
     await page.keyboard.press('Escape')
     await expect(overlay).not.toBeVisible()
-    await page.getByTestId('atlas-breadcrumb').getByText('My space', { exact: true }).click()
+    await clickBreadcrumbSegment(page, page.getByTestId('atlas-breadcrumb').getByText('My space', { exact: true }), 'My space')
 
     // Switch to Filtered: Getting started (direct add) AND Example area
     // (ancestry closure from Ada's own add) both render; Project

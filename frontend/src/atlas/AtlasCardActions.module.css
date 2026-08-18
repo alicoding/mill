@@ -21,3 +21,12 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+/* The bare "+ Add action" invitation (goal 0106 slice B contract item
+   3): quiet, muted text -- never competing with real content, matching
+   AtlasCardPage.module.css's own .quietAdd for the fields column. */
+.quietAdd {
+  color: var(--fgColor-muted);
+  align-self: flex-start;
+  padding-left: 0;
+}

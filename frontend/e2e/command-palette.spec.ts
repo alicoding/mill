@@ -240,6 +240,7 @@ test('every new Atlas command is reachable from the palette by its label', async
     'Add cards from a folder',
     'Copy space as context',
     'Copy space links',
+    'Toggle minimap',
   ]
   for (const label of labels) {
     await page.keyboard.press('Meta+/')

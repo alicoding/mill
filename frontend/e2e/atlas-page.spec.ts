@@ -1,6 +1,6 @@
 import { test, expect } from './fixtures/server'
 import { deleteViaPageMenu } from './fixtures/atlasPage'
-import { openCard, clickFrameGutter } from './fixtures/atlasBoard'
+import { armAndPlaceTopicCard, clickBreadcrumbSegment, clickFrameGutter, openCard } from './fixtures/atlasBoard'
 
 // Exercises the card PAGE's own ratified anatomy (goal 0072 slice C,
 // docs/adr/0038): the header row (kind glyph/circle, title, file tag,
@@ -18,6 +18,72 @@ function noteCard(page: import('@playwright/test').Page, title: string) {
 function groupCard(page: import('@playwright/test').Page, title: string) {
   return page.locator('[data-testid="atlas-group-card"]').filter({ has: page.locator(`[aria-label="Zoom into ${title}"]`) })
 }
+
+test('a title-only card\'s page renders calm: title + property strip + write-invitation, nothing else (goal 0106 slice B contract item 3)', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Atlas' }).click()
+  const board = page.getByTestId('atlas-board')
+  await expect(board).toBeVisible()
+  const popover = page.getByTestId('atlas-placement-popover')
+
+  const title = 'ZzE2eCalmPageOnly'
+  await armAndPlaceTopicCard(page, board, popover, 0.05, 0.9, title)
+  await openCard(page, noteCard(page, title))
+  const overlay = page.locator('[data-component="atlas-card-overlay"]')
+  await expect(overlay).toBeVisible()
+  await expect(overlay.getByTestId('atlas-page-title')).toHaveValue(title)
+
+  // Property strip: kind label + the Topic kind's own "status" field
+  // as a chip (its declared Default, since a fresh card carries no
+  // explicit Fields value yet) -- no freshness dot on an unmirrored
+  // card.
+  const strip = overlay.getByTestId('atlas-page-property-strip')
+  await expect(strip).toBeVisible()
+  await expect(strip.getByTestId('atlas-page-kind-label')).toHaveText('Topic')
+  await expect(strip.getByTestId('atlas-page-status-chip')).toHaveText('Open')
+  await expect(strip.getByTestId('atlas-page-freshness-dot')).toHaveCount(0)
+
+  // Borderless write-invitation: empty, placeholder only.
+  const note = overlay.getByTestId('atlas-page-note')
+  await expect(note).toHaveValue('')
+  await expect(note).toHaveAttribute('placeholder', 'Write anything…')
+  expect(await note.evaluate((el) => getComputedStyle(el).borderStyle)).toBe('none')
+
+  // The Topic kind's OTHER declared field (Summary) collapses to its
+  // own one-line invitation -- status itself never appears here, since
+  // it's already the strip's own chip above.
+  await expect(overlay.getByTestId('atlas-page-add-field')).toHaveText('+ Add Summary')
+
+  // Kind-gated Source/Mirror path never render at all for a non-mirror
+  // kind, filled OR collapsed.
+  await expect(overlay.getByTestId('atlas-page-source')).toHaveCount(0)
+  await expect(overlay.getByTestId('atlas-page-add-source')).toHaveCount(0)
+  await expect(overlay.getByTestId('atlas-page-mirror-path')).toHaveCount(0)
+  await expect(overlay.getByTestId('atlas-page-add-mirror-path')).toHaveCount(0)
+
+  // Actions: bare add row only -- no "Actions" heading, no hint text.
+  const actions = overlay.getByTestId('atlas-page-actions')
+  await expect(actions.getByTestId('atlas-page-add-action')).toBeVisible()
+  await expect(actions.getByTestId('atlas-page-action-row')).toHaveCount(0)
+  await expect(actions).not.toContainText('Actions')
+  await expect(actions).not.toContainText("Each action receives")
+
+  // Links: the seeded space's one link kind starts collapsed too --
+  // no chips, no inline select/Add control visible yet.
+  const slotRows = overlay.getByTestId('atlas-slot-rows')
+  await expect(slotRows.locator('[data-testid^="atlas-slot-add-row-"]')).toHaveCount(1)
+  await expect(slotRows.locator('[data-testid^="atlas-slot-add-select-"]')).toHaveCount(0)
+  await expect(slotRows.locator('[data-testid^="atlas-slot-chip"]')).toHaveCount(0)
+
+  // Contents: never mounted at all for a childless, unmirrored card --
+  // no "Nothing inside yet" fallback (deleted by this same goal).
+  await expect(overlay.getByTestId('atlas-page-contents')).toHaveCount(0)
+  await expect(overlay.getByText('Nothing inside yet')).toHaveCount(0)
+
+  // Cleanup (testing.md's within-file discipline).
+  await deleteViaPageMenu(page, overlay)
+  await expect(overlay).not.toBeVisible()
+})
 
 test('the page header shows a kind glyph, title, file tag, and Close; the seeded Contact card gets a circular glyph', async ({ page }) => {
   await page.goto('/')
@@ -159,6 +225,10 @@ test('a child\'s mirror preview renders inline in the parent page; the card\'s o
   const overlay = page.locator('[data-component="atlas-card-overlay"]')
   await openCard(page, charterCard)
   await expect(overlay).toBeVisible()
+  // Mirror path starts empty, collapsed behind its own "+ Add"
+  // invitation (goal 0106 slice B contract item 3) -- click it to
+  // reveal the real control.
+  await overlay.getByTestId('atlas-page-add-mirror-path').click()
   await overlay.getByTestId('atlas-page-mirror-path').fill(file)
   await overlay.getByTestId('atlas-page-mirror-path').blur()
   await expect(overlay.getByTestId('atlas-page-saved-tick')).toBeVisible()
@@ -179,7 +249,7 @@ test('a child\'s mirror preview renders inline in the parent page; the card\'s o
   // entry with its mirror content rendered inline. ⌘-click on the
   // frame's own body opens its page directly (goal 0102's gesture
   // table's instant-commit path).
-  await page.getByTestId('atlas-breadcrumb').getByText('My space', { exact: true }).click()
+  await clickBreadcrumbSegment(page, page.getByTestId('atlas-breadcrumb').getByText('My space', { exact: true }), 'My space')
   const exampleAreaFrame = groupCard(page, 'Example area')
   await clickFrameGutter(exampleAreaFrame, { modifiers: ['Meta'] })
   await expect(overlay).toBeVisible()
@@ -272,7 +342,7 @@ test('a group entry inside a page re-roots the board to a deeper card, and the b
   // to L2's page is therefore the place path: drill into L1 so L2
   // becomes a top-level frame, ⌘-click its body to open its own page
   // directly (goal 0102's gesture table's instant-commit path).
-  await page.getByTestId('atlas-breadcrumb').getByText('My space', { exact: true }).click()
+  await clickBreadcrumbSegment(page, page.getByTestId('atlas-breadcrumb').getByText('My space', { exact: true }), 'My space')
   const breadcrumb = page.getByTestId('atlas-breadcrumb')
   await expect(breadcrumb).not.toContainText('Reports')
   await expect(page.getByTestId('atlas-region-chip').filter({ hasText: 'Reports' })).toBeVisible()
@@ -326,19 +396,19 @@ test('a group entry inside a page re-roots the board to a deeper card, and the b
   await l3Chip.dblclick()
   await expect(breadcrumbReports).toHaveCount(3)
   await deleteViaCommit(noteCard(page, 'Q1 Summary'))
-  await page.getByTestId('atlas-breadcrumb').getByText('Reports').nth(1).click()
+  await clickBreadcrumbSegment(page, page.getByTestId('atlas-breadcrumb').getByText('Reports').nth(1), 'Reports')
   await deleteViaCommit(noteCard(page, 'Reports'))
 
   // L2's other child (its own Q1 Summary).
   await deleteViaCommit(noteCard(page, 'Q1 Summary'))
 
   // Up to L1: delete L2 (now childless) and L1's own Q1 Summary.
-  await page.getByTestId('atlas-breadcrumb').getByText('Reports').first().click()
+  await clickBreadcrumbSegment(page, page.getByTestId('atlas-breadcrumb').getByText('Reports').first(), 'Reports')
   await deleteViaCommit(noteCard(page, 'Reports'))
   await deleteViaCommit(noteCard(page, 'Q1 Summary'))
 
   // Back to "My space": delete L1.
-  await page.getByTestId('atlas-breadcrumb').getByText('My space', { exact: true }).click()
+  await clickBreadcrumbSegment(page, page.getByTestId('atlas-breadcrumb').getByText('My space', { exact: true }), 'My space')
   await deleteViaCommit(noteCard(page, 'Reports'))
   await expect(breadcrumb).not.toContainText('Reports')
 })

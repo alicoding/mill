@@ -9,7 +9,7 @@ import {
   type SpawnedServer,
 } from './fixtures/server'
 import { waitForViewportStable } from './fixtures/animation'
-import { clickFrameGutter } from './fixtures/atlasBoard'
+import { clickBreadcrumbSegment, clickFrameGutter } from './fixtures/atlasBoard'
 
 // Atlas at real-world density (goal 0073): the one-map board against
 // the deterministic dense fixture (61 cards, 25 links, nested areas)
@@ -118,7 +118,7 @@ test('a dense area previews bounded: capped tiles, region chips, a truthful ghos
     await velocity.getByTestId('atlas-group-header').click()
     await expect(page.getByTestId('atlas-breadcrumb')).toContainText('Velocity')
     await expect(page.locator('.react-flow__edge')).toHaveCount(4)
-    await page.getByTestId('atlas-breadcrumb').getByText('My space', { exact: true }).click()
+    await clickBreadcrumbSegment(page, page.getByTestId('atlas-breadcrumb').getByText('My space', { exact: true }), 'My space')
     await expect(page.getByTestId('atlas-breadcrumb')).not.toContainText('Velocity')
 
     // The click model (goal 0102): a chip answers a single click like
@@ -141,7 +141,7 @@ test('a dense area previews bounded: capped tiles, region chips, a truthful ghos
     // "Getting started" in the SAME ROW as "Example area" (they share
     // an artery) instead of exiling it to a leaves-band below --
     // adjacency is what keeps arteries out of frame bodies.
-    await page.getByTestId('atlas-breadcrumb').getByText('My space', { exact: true }).click()
+    await clickBreadcrumbSegment(page, page.getByTestId('atlas-breadcrumb').getByText('My space', { exact: true }), 'My space')
     await expect(page.getByTestId('atlas-breadcrumb')).not.toContainText('Platform')
     await page.getByTestId('atlas-auto-arrange').click()
     const ea = page.locator('[data-testid="atlas-group-card"]').filter({ has: page.locator('[aria-label="Zoom into Example area"]') })
@@ -203,7 +203,7 @@ test('a dense area previews bounded: capped tiles, region chips, a truthful ghos
     await importDialog.getByRole('checkbox', { name: 'Q1 Summary' }).uncheck()
     await importDialog.getByRole('button', { name: 'Add 4 cards' }).click()
     await expect(importDialog).not.toBeVisible()
-    await page.getByTestId('atlas-breadcrumb').getByText('My space', { exact: true }).click()
+    await clickBreadcrumbSegment(page, page.getByTestId('atlas-breadcrumb').getByText('My space', { exact: true }), 'My space')
     await expect(page.getByTestId('atlas-breadcrumb')).not.toContainText('Velocity')
 
     // Past the cap: 11 visible (limit-1) plus an honest "Show 5 more"

@@ -211,3 +211,103 @@ test('atlas.up is surface-scoped: listed under "On this page" in the palette on 
   await expect(page.getByTestId('composition-view')).toBeVisible()
 })
 
+// The two 0104 residual e2e cases goal 0106 slice B absorbs (useAtlasKeyboardNav.ts's
+// key table), plus a verify-only case for arrows-pan-with-no-selection
+// (already implemented in slice A -- reported, not built here).
+
+test('Tab cycles focus and selection across top-level cards in reading order', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Atlas' }).click()
+  await expect(page.getByTestId('atlas-board')).toBeVisible()
+
+  const exampleArea = groupCard(page, 'Example area')
+  const getting = noteCard(page, 'Getting started')
+
+  // Focus lands inside the board wrapper (a click), then Escape's
+  // first rung clears the live selection while DOM focus stays on the
+  // clicked card -- the same mechanism the Escape-ladder test above
+  // already proves -- so the FIRST Tab below starts from "nothing
+  // selected", not from this card as an anchor.
+  await getting.click()
+  await page.keyboard.press('Escape')
+  await expect(selectedWrapper(page, getting)).toHaveCount(0)
+
+  // Reading order is left-to-right (atlasKeyboardNavGeometry.ts): the
+  // seed's own X positions put Example area (80) before Getting
+  // started (532), both on the same row (internal/domain/atlas/
+  // builtin.go).
+  await page.keyboard.press('Tab')
+  await expect(selectedWrapper(page, exampleArea)).toHaveCount(1)
+
+  await page.keyboard.press('Tab')
+  await expect(selectedWrapper(page, exampleArea)).toHaveCount(0)
+  await expect(selectedWrapper(page, getting)).toHaveCount(1)
+
+  await page.keyboard.press('Shift+Tab')
+  await expect(selectedWrapper(page, getting)).toHaveCount(0)
+  await expect(selectedWrapper(page, exampleArea)).toHaveCount(1)
+})
+
+test('arrow-nudge persists the selected card\'s position', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Atlas' }).click()
+  await expect(page.getByTestId('atlas-board')).toBeVisible()
+
+  const getting = noteCard(page, 'Getting started')
+  const gettingNode = page.locator('.react-flow__node').filter({ has: getting })
+  await getting.click()
+  await expect(selectedWrapper(page, getting)).toHaveCount(1)
+
+  // React Flow writes translate(x,y) in flow coords directly onto the
+  // node element's own style -- camera-independent, unlike
+  // boundingBox() (same technique atlas.spec.ts's own arrange-persists
+  // test already established).
+  const before = (await gettingNode.evaluate((el) => (el as HTMLElement).style.transform)) ?? ''
+  for (let i = 0; i < 5; i++) await page.keyboard.press('ArrowRight')
+
+  let after = before
+  await expect.poll(async () => {
+    after = (await gettingNode.evaluate((el) => (el as HTMLElement).style.transform)) ?? ''
+    return after
+  }).not.toBe(before)
+
+  // The Go-side SetPosition write is batched to keyup, not per-pixel --
+  // a reload renders the SAME persisted position, proving the nudge
+  // actually round-tripped through the backend, not just the live DOM.
+  await page.reload()
+  await expect(page.getByTestId('atlas-view')).toBeVisible()
+  await expect(gettingNode).toBeVisible()
+  await expect.poll(async () => gettingNode.evaluate((el) => (el as HTMLElement).style.transform), { timeout: 10_000 }).toBe(after)
+
+  // Cleanup: nudge back to the seeded position (testing.md's
+  // within-file discipline -- no later test in this file depends on
+  // it, but leaving drift around is still unnecessary).
+  await getting.click()
+  await expect(selectedWrapper(page, getting)).toHaveCount(1)
+  for (let i = 0; i < 5; i++) await page.keyboard.press('ArrowLeft')
+  await expect.poll(async () => gettingNode.evaluate((el) => (el as HTMLElement).style.transform)).toBe(before)
+})
+
+// Verify-only (goal 0106 slice B's residual audit): arrows with NO
+// selection pan the camera instead of nudging -- already implemented
+// in slice A (useAtlasKeyboardNav.ts), not new work here.
+test('arrows with no selection pan the camera instead of nudging', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Atlas' }).click()
+  const board = page.getByTestId('atlas-board')
+  await expect(board).toBeVisible()
+
+  const getting = noteCard(page, 'Getting started')
+  await getting.click()
+  await page.keyboard.press('Escape')
+  await expect(selectedWrapper(page, getting)).toHaveCount(0)
+
+  const viewport = board.locator('.react-flow__viewport')
+  const before = await viewport.evaluate((el) => (el as HTMLElement).style.transform)
+  await page.keyboard.press('ArrowRight')
+  await expect.poll(async () => viewport.evaluate((el) => (el as HTMLElement).style.transform)).not.toBe(before)
+
+  // Cleanup: pan back so this test leaves the camera where it found it.
+  await page.keyboard.press('ArrowLeft')
+})
+

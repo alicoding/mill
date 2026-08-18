@@ -143,6 +143,15 @@
     flex: 1 1 auto;
 }
 
+/* A row with no chips yet collapses to this quiet invitation (goal
+   0106 slice B contract item 3) -- same muted, no-chrome treatment
+   AtlasCardPage.module.css's own .quietAdd uses for every other
+   optional field. */
+.quietAdd {
+    color: var(--fgColor-muted);
+    padding-left: 0;
+}
+
 /* Slot-drag's own live release-target affordance (goal 0081 slice A4):
    every OTHER top-level card lifts with a static accent ring while a
    slot-drag is in progress -- the all-answer highlight slice A's

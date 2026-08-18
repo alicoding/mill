@@ -100,6 +100,68 @@
     gap: 24px;
     padding: 16px 20px 20px;
 }
+
+/* The calm page's own property strip (goal 0106 slice B contract item
+   3): one small-type row directly under the title, no boxes. */
+.propertyStrip {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+    font-size: 11.5px;
+    color: var(--fgColor-muted);
+}
+.propertyKind {
+    font-weight: 600;
+}
+.statusChip {
+    font: inherit;
+    font-size: 11px;
+    color: var(--fgColor-default);
+    background: var(--bgColor-neutral-muted);
+    border: 1px solid var(--borderColor-muted);
+    border-radius: 12px;
+    padding: 1px 8px;
+    cursor: pointer;
+}
+.statusChip:hover {
+    border-color: var(--borderColor-emphasis);
+}
+.propertyDot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    flex: 0 0 auto;
+}
+.propertyDot-fresh {
+    background: var(--fgColor-success);
+}
+.propertyDot-stale {
+    background: var(--fgColor-attention);
+}
+
+/* Borderless type-to-write note (goal 0106 slice B contract item 3):
+   no box at rest -- a placeholder line is the only invitation to
+   type, never a labeled field. box-shadow is deliberately left alone
+   (not suppressed): Primer's own focus-visible ring still needs to
+   show for keyboard focus, the same accessibility floor every other
+   interactive element on this page keeps. */
+.noteArea {
+    border: none !important;
+    background: transparent !important;
+    padding: 0 !important;
+    font-size: 13px;
+}
+
+/* The quiet "+ Add {field}" invitation every empty, optional field
+   collapses behind (goal 0106 slice B contract item 3) -- muted text,
+   no button chrome, so an absent field reads as a one-line prompt
+   rather than an empty box demanding completion. */
+.quietAdd {
+    color: var(--fgColor-muted);
+    align-self: flex-start;
+    padding-left: 0;
+}
 @media (max-width: 767px) {
     .body {
         grid-template-columns: 1fr;
@@ -178,11 +240,6 @@
     font-size: 10.5px;
     color: var(--fgColor-muted);
     flex: 0 0 auto;
-}
-
-.emptyContents {
-    color: var(--fgColor-muted);
-    font-size: 12.5px;
 }
 
 .showMoreRow {

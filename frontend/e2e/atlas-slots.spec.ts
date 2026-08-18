@@ -11,7 +11,7 @@ import {
 } from './fixtures/server'
 import { contextMenu } from './fixtures/contextMenu'
 import { ATLAS_KIND_TOPIC, selectKind } from './fixtures/kindPicker'
-import { clickCorner, closeCard, noteCard, openCard, zoomAllTheWayOut } from './fixtures/atlasBoard'
+import { clickCorner, closeCard, noteCard, openCard, submitCreatePopover, zoomAllTheWayOut } from './fixtures/atlasBoard'
 
 // Atlas typed link slots (goal 0081 slice A4, relocated by goal 0106
 // contract item 1): the card page's own slot-row block, slot-drag from
@@ -111,7 +111,7 @@ test('atlas typed link slots: page slot rows, hover-handle slot-drag linking, ch
       await expect(popover).toBeVisible()
       await selectKind(popover, ATLAS_KIND_TOPIC)
       await popover.getByTestId('atlas-placement-title').fill(title)
-      await popover.getByTestId('atlas-placement-submit').click()
+      await submitCreatePopover(popover)
       await expect(popover).not.toBeVisible()
       await expect(noteCard(page, title)).toBeVisible()
     }
@@ -215,15 +215,18 @@ test('atlas typed link slots: page slot rows, hover-handle slot-drag linking, ch
     // 0.5/0.85 (bottom-center) sits under the creation tray's own
     // chrome, which silently swallowed this card's later right-click
     // (reproduced: cleanup hung waiting on a context menu that never
-    // opened) -- bottom-right instead, clear of both the tray and the
-    // top corners clickCorner already claimed for cards A/B.
+    // opened); bottom-right also collides now (the board's own
+    // minimap, goal 0106 slice B, occupies that corner) -- bottom-left
+    // instead, offset off the true edge to clear React Flow's own
+    // Controls strip there, clear of the tray and the top corners
+    // clickCorner already claimed for cards A/B.
     await dragBetween(page,
       { x: anchorBox.x + anchorBox.width / 2, y: anchorBox.y + anchorBox.height / 2 },
-      { x: boardBox.x + boardBox.width * 0.85, y: boardBox.y + boardBox.height * 0.85 })
+      { x: boardBox.x + boardBox.width * 0.15, y: boardBox.y + boardBox.height * 0.85 })
     await expect(popover).toBeVisible()
     await selectKind(popover, ATLAS_KIND_TOPIC)
     await popover.getByTestId('atlas-placement-title').fill('ZzE2eSlotGuided')
-    await popover.getByTestId('atlas-placement-submit').click()
+    await submitCreatePopover(popover)
     await expect(popover).not.toBeVisible()
     await expect(noteCard(page, 'ZzE2eSlotGuided')).toBeVisible()
     await openCard(page, cardA)
@@ -249,7 +252,7 @@ test('atlas typed link slots: page slot rows, hover-handle slot-drag linking, ch
     await expect(popover).toBeVisible()
     await selectKind(popover, ATLAS_KIND_TOPIC)
     await popover.getByTestId('atlas-placement-title').fill('ZzE2eSlotAddLinked')
-    await popover.getByTestId('atlas-placement-submit').click()
+    await submitCreatePopover(popover)
     await expect(popover).not.toBeVisible()
     await expect(noteCard(page, 'ZzE2eSlotAddLinked')).toBeVisible()
     await openCard(page, cardB)
