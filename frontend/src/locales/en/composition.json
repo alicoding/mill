@@ -268,7 +268,10 @@
     "searchPlaceholder": "Search steps…",
     "searchAriaLabel": "Search steps",
     "noMatches": "No steps match \"{{query}}\"",
-    "showAdvancedSteps": "Show advanced steps"
+    "showAdvancedSteps": "Show advanced steps ({{count}})",
+    "advancedCaption": "Advanced steps need code, JSON, or an external system's own docs.",
+    "advancedBadge": "Advanced",
+    "examplesHeading": "Examples"
   },
   "externalChangeBanner": {
     "title": "This workflow was changed outside this editor",
@@ -290,14 +293,13 @@
   },
   "canvasToolbar": {
     "backAriaLabel": "Back to workflows",
-    "hideAddStepsAriaLabel": "Hide add steps panel",
-    "addStepsAriaLabel": "Add steps",
+    "addStep": "Add step",
     "undoAriaLabel": "Undo",
     "redoAriaLabel": "Redo",
     "autoLayoutAriaLabel": "Auto-layout",
     "deleteSelectedAriaLabel": "Delete selected",
     "addNoteAriaLabel": "Add note",
-    "addStepsHint": "Add steps to drag a step type onto the canvas, connect them, click a step to configure it."
+    "addStepsHint": "Drag a step onto the canvas, connect it, then click it to configure."
   },
   "compositionCanvas": {
     "onlyDecisionEdgesConfigurable": "Only a Decision step’s outgoing edges are configurable.",

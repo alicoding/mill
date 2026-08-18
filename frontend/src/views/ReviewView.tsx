@@ -40,7 +40,7 @@ const KIND_ORDER: Array<Exclude<KindFilterValue, ''>> = ['ask', 'human-review', 
 
 // Wording reused verbatim from what the row itself already renders
 // (isDebugPark's Label text, the pendingWrites card's "MCP write
-// request" heading, the nodeTypeLabel "Human review" the Step line
+// request" heading, the nodeTypeLabel "Ask for review" the Step line
 // already shows) -- the filter must never invent new prose the row
 // doesn't already carry. Debug park has two row variants (breakpoint /
 // step mode); "Paused at breakpoint" is the base-case wording, since one

@@ -182,19 +182,21 @@ export function paletteGroupFor(nt: { ID: string; Kind: string; PaletteGroup?: s
   return KIND_FALLBACK_GROUP[nt.Kind] ?? 'actions'
 }
 
-// The node-type Label strings are "<Word(s)>: <specifics>" (e.g. "AI:
-// Classify", "List: lookup") -- necessary when they stood alone in a
-// flat/Kind-grouped list, redundant once a display GROUP header
-// already supplies that context ("AI" > "Classify", not "AI" >
-// "AI: Classify"). A generic strip-up-to-first-colon, not a Kind- or
-// Group-keyed prefix lookup (wave 1's original version computed the
-// prefix from KIND_LABEL[nt.Kind], which silently failed to strip
-// most labels here -- e.g. Kind `process`'s "Process: " prefix never
-// matched "AI: Classify" or "List: lookup", which use their own,
-// richer, non-Kind prefixes). nt.Label itself (canvas node cards, the
-// saved-workflow step chips -- both need the full self-contained name
-// since a card has no surrounding group context) is untouched; this
-// is a display-only transform for the palette specifically.
+// Built-in NodeType labels are now verb-first with no prefix (goal
+// 0113 -- "Classify with AI", "Look up list row"), so shortLabel is a
+// no-op for them; a declared/legacy step type may still author the
+// older "<Word(s)>: <specifics>" colon style, and this strip keeps
+// that case from showing its redundant group prefix once a display
+// GROUP header already supplies that context. A generic
+// strip-up-to-first-colon, not a Kind- or Group-keyed prefix lookup
+// (wave 1's original version computed the prefix from
+// KIND_LABEL[nt.Kind], which silently failed to strip most labels
+// here -- e.g. Kind `process`'s "Process: " prefix never matched
+// richer, non-Kind prefixes some labels used). nt.Label itself (canvas
+// node cards, the saved-workflow step chips -- both need the full
+// self-contained name since a card has no surrounding group context)
+// is untouched; this is a display-only transform for the palette
+// specifically.
 export function shortLabel(nt: Pick<NodeType, 'Label'>): string {
   const short = nt.Label.replace(/^[^:]+:\s*/, '')
   return short.charAt(0).toUpperCase() + short.slice(1)

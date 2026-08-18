@@ -14,7 +14,7 @@ const injectSeparator = "\n\n"
 func init() {
 	RegisterNodeType(NodeType{
 		ID: "process-inject-text", Kind: KindProcess,
-		Label:       "Process: Inject text",
+		Label:       "Add text",
 		Complexity:  ComplexityBasic,
 		Output:      "payload with text injected",
 		Description: "Prepends or appends configured static text to the payload -- e.g. a fixed hint or instruction pasted alongside a workflow's real output.",

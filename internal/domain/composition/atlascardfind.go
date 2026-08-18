@@ -52,7 +52,7 @@ func SetAtlasCardFinder(fn func(kindID string) ([]AtlasCard, error)) {
 func init() {
 	RegisterNodeType(NodeType{
 		ID: "process-atlas-card-find", Kind: KindProcess,
-		Label: "Atlas: find cards",
+		Label: "Find Atlas cards",
 		// ClassRead: reads Atlas's persisted cards, mutates nothing --
 		// same classification list-search's own identical Configure-data
 		// read carries.

@@ -63,7 +63,7 @@ test('Running the guarded seed parks awaiting approval; deny fails it closed', a
     await expect(page.getByTestId('run-detail-identity')).toContainText('Run ·')
     const banner = page.getByTestId('approval-banner')
     await expect(banner).toBeVisible()
-    await expect(banner).toContainText('Integration: HTTP call')
+    await expect(banner).toContainText('Call an API')
 
     // Deny: the run fails closed with the reason, and no approval banner
     // remains.

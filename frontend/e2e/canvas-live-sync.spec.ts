@@ -156,7 +156,7 @@ test('clean canvas: an external MCP update_workflow redraws the open editor live
       // purely from the `mill-data-changed` event this canvas subscribed
       // to (useCanvasLiveSync.ts).
       await expect(activePanel(page).locator('.react-flow__node')).toHaveCount(2, { timeout: 10_000 })
-      await expect(activePanel(page).locator('.react-flow__node').filter({ hasText: 'Process: Inject text' })).toBeVisible()
+      await expect(activePanel(page).locator('.react-flow__node').filter({ hasText: 'Add text' })).toBeVisible()
       await expect(page.getByTestId('external-change-banner')).toHaveCount(0)
     } finally {
       await client.close()
@@ -208,7 +208,7 @@ test('dirty canvas: external MCP edit shows a banner, keeps the local edit, and 
       // definition.
       await expect(banner).toHaveCount(0)
       await expect(activePanel(page).locator('.react-flow__node')).toHaveCount(2)
-      await expect(activePanel(page).locator('.react-flow__node').filter({ hasText: 'Process: Inject text' })).toBeVisible()
+      await expect(activePanel(page).locator('.react-flow__node').filter({ hasText: 'Add text' })).toBeVisible()
       await expect(activePanel(page).getByLabel('Description')).toHaveValue('')
     } finally {
       await client.close()

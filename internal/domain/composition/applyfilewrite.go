@@ -21,7 +21,7 @@ func init() {
 		Effect:      guardrail.ClassLocal,
 		Complexity:  ComplexityBasic,
 		Output:      "the payload it wrote, unchanged",
-		Label:       "Apply: write to file",
+		Label:       "Write file",
 		Description: "Writes the payload to a local file, appending to or overwriting its existing contents.",
 		ConfigFields: []ConfigField{
 			{

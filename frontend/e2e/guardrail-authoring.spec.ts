@@ -68,11 +68,11 @@ test('Rule-from-park unsticks the workflow, edit-in-context and the audit view s
 
       const alwaysDialog = page.getByRole('dialog', { name: 'Always allow' })
       await expect(alwaysDialog).toBeVisible()
-      await expect(alwaysDialog.getByTestId('review-always-context')).toContainText('Code: run command in Example: Run copied code')
+      await expect(alwaysDialog.getByTestId('review-always-context')).toContainText('Run a command in Example: Run copied code')
       // Least-privilege default: "Only this step" starts selected.
       await expect(alwaysDialog.getByTestId('review-always-scope-step')).toBeChecked()
       const ruleNameInput = alwaysDialog.getByTestId('review-always-rule-name')
-      await expect(ruleNameInput).toHaveValue('Allow Code: run command in Example: Run copied code')
+      await expect(ruleNameInput).toHaveValue('Allow Run a command in Example: Run copied code')
 
       await alwaysDialog.getByRole('button', { name: 'Save rule and approve' }).click()
       await expect(alwaysDialog).toBeHidden()
@@ -94,7 +94,7 @@ test('Rule-from-park unsticks the workflow, edit-in-context and the audit view s
       // control, including the rule kebab below, until Edit is clicked.
       await page.getByTestId('edit-workflow').click()
       await page.locator('[data-id="example-codeexec-step"]').click()
-      const stepRuleRow = page.getByTestId('node-guardrail-rule-row').filter({ hasText: 'Allow Code: run command in Example: Run copied code' })
+      const stepRuleRow = page.getByTestId('node-guardrail-rule-row').filter({ hasText: 'Allow Run a command in Example: Run copied code' })
       await expect(stepRuleRow).toBeVisible()
       await expect(stepRuleRow).toContainText('allow')
 
@@ -116,7 +116,7 @@ test('Rule-from-park unsticks the workflow, edit-in-context and the audit view s
       await expect(group).toBeVisible()
       const rulesRow = group.getByTestId('guardrail-rule-row').filter({ hasText: 'Allow the sandboxed echo step' })
       await expect(rulesRow).toBeVisible()
-      await expect(rulesRow.getByTestId('guardrail-rule-sentence')).toHaveText('Only this step — Code: run command in Example: Run copied code')
+      await expect(rulesRow.getByTestId('guardrail-rule-sentence')).toHaveText('Only this step — Run a command in Example: Run copied code')
 
       // Remove it from the audit view -- the policy-removal half of the proof.
       await rulesRow.getByTestId('guardrail-rule-menu').click()

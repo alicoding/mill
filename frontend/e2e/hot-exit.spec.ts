@@ -58,8 +58,8 @@ async function composeUnsavedInjectTextWorkflow(page: import('@playwright/test')
   await page.getByTestId('new-workflow').click()
   await activePanel(page).getByTestId('toggle-palette').click()
   await dragPaletteItemToCanvas(page, 'process-inject-text')
-  await connectNodes(page, 'Trigger: manual', 'Process: Inject text')
-  await clickCanvasNode(page, activePanel(page), 'Process: Inject text')
+  await connectNodes(page, 'Manual run', 'Add text')
+  await clickCanvasNode(page, activePanel(page), 'Add text')
   const textField = activePanel(page).locator('textarea[data-testid="canvas-config-field"]')
   await textField.fill(marker)
   await textField.blur()
@@ -90,8 +90,8 @@ test('editing an existing saved workflow: unsaved edits survive a reload, with a
   await activePanel(page).getByTestId('edit-workflow').click()
   await activePanel(page).getByTestId('toggle-palette').click()
   await dragPaletteItemToCanvas(page, 'process-inject-text')
-  await connectNodes(page, 'Trigger: manual', 'Process: Inject text')
-  await clickCanvasNode(page, activePanel(page), 'Process: Inject text')
+  await connectNodes(page, 'Manual run', 'Add text')
+  await clickCanvasNode(page, activePanel(page), 'Add text')
   const textField = activePanel(page).locator('textarea[data-testid="canvas-config-field"]')
   await textField.fill('e2e edit-target marker')
   await textField.blur()
@@ -111,7 +111,7 @@ test('editing an existing saved workflow: unsaved edits survive a reload, with a
   // reasoning as connectNodes' own doc comment).
   await activePanel(page).getByRole('button', { name: 'Fit View' }).click()
   await waitForViewportStable(activePanel(page))
-  await clickCanvasNode(page, activePanel(page), 'Process: Inject text')
+  await clickCanvasNode(page, activePanel(page), 'Add text')
   await expect(activePanel(page).locator('textarea[data-testid="canvas-config-field"]')).toHaveValue('e2e edit-target marker')
 
   // Deliberate close on a dirty tab now prompts (docs/goals/0048-
@@ -198,7 +198,7 @@ test('a new-workflow tab (never saved) also survives a reload, edits intact', as
   // page load, same reasoning as the edit-target test above.
   await activePanel(page).getByRole('button', { name: 'Fit View' }).click()
   await waitForViewportStable(activePanel(page))
-  await clickCanvasNode(page, activePanel(page), 'Process: Inject text')
+  await clickCanvasNode(page, activePanel(page), 'Add text')
   await expect(activePanel(page).locator('textarea[data-testid="canvas-config-field"]')).toHaveValue('e2e new-workflow marker')
 
   // Never saved -- no server-side entity to clean up, just the tab.

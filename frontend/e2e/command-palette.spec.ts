@@ -62,7 +62,7 @@ async function createSimpleWorkflow(page: import('@playwright/test').Page, label
   await dragPaletteItemToCanvas(page, 'process-inject-text')
   await expect(activePanel(page).locator('.react-flow__node')).toHaveCount(2)
   await fitAndSpaceOut(page)
-  await connectNodes(page, 'Trigger: manual', 'Process: Inject text')
+  await connectNodes(page, 'Manual run', 'Add text')
   await expect(activePanel(page).locator('.react-flow__edge')).toHaveCount(1)
   await activePanel(page).getByLabel('Label').fill(label)
   await activePanel(page).getByTestId('save-workflow').click()

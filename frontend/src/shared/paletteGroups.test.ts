@@ -78,17 +78,16 @@ describe('paletteGroupFor', () => {
 
 describe('shortLabel', () => {
   it.each([
-    ['AI: Classify', 'Classify'],
-    ['Code: run command', 'Run command'],
-    ['List: lookup', 'Lookup'],
-    ['List: search', 'Search'],
-    ['Integration: HTTP call', 'HTTP call'],
-    ['MCP: tool call', 'Tool call'],
+    // Built-in NodeType labels are verb-first with no prefix (goal
+    // 0113) -- these cases exercise a declared/legacy step type still
+    // authoring the older "Group: specifics" colon style.
+    ['Legacy: lookup', 'Lookup'],
+    ['Custom: run script', 'Run script'],
     ['Run another workflow', 'Run another workflow'],
-    ['Human review', 'Human review'],
-    ['Ruleset validation', 'Ruleset validation'],
-    ['Trigger: manual', 'Manual'],
-    ['Branch: route', 'Route'],
+    ['Ask for review', 'Ask for review'],
+    ['Validate with rules', 'Validate with rules'],
+    ['Manual run', 'Manual run'],
+    ['Branch', 'Branch'],
   ])('strips %j to %j', (input, expected) => {
     expect(shortLabel({ Label: input })).toBe(expected)
   })

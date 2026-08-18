@@ -102,7 +102,7 @@ test('Saved-page seed: a manual test run substitutes the trigger payload via the
     // -- that the Initial-payload field threads through to capture-file,
     // and extraction keeps the main content while dropping nav chrome --
     // is independent of that clipboard step, so it's checked at the
-    // per-step level (the "Process: HTML → Markdown" step's own
+    // per-step level (the "Convert HTML to Markdown" step's own
     // recorded output, via the workflow's Runs tab) instead of the
     // terminal result.
     await expect(page.getByTestId('workflow-run-result')).toBeVisible({ timeout: 15_000 })
@@ -110,7 +110,7 @@ test('Saved-page seed: a manual test run substitutes the trigger payload via the
     await row.click()
     await page.getByRole('tab', { name: 'Runs' }).click()
     await page.getByTestId('runs-table').locator('tbody tr').first().click()
-    const markdownStep = page.getByTestId('run-detail').getByTestId('run-step').filter({ has: page.getByText('Process: HTML → Markdown', { exact: true }) })
+    const markdownStep = page.getByTestId('run-detail').getByTestId('run-step').filter({ has: page.getByText('Convert HTML to Markdown', { exact: true }) })
     await expect(markdownStep).toContainText('Captured Title', { timeout: 15_000 })
     await expect(markdownStep).not.toContainText('chrome nav')
   })

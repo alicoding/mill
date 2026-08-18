@@ -74,7 +74,7 @@ func TestRunWorkflow_SummaryHasRealWorkflowLabelAndStepOutput(t *testing.T) {
 	if step.Output == "" {
 		t.Error("step.Output is empty, want the node's real HTML payload (decodeAny should have decoded StepInfo.Output)")
 	}
-	if step.NodeTypeLabel != "Apply: write HTML to clipboard" {
+	if step.NodeTypeLabel != "Write HTML to clipboard" {
 		t.Errorf("step.NodeTypeLabel = %q, want the real NodeType label, not a blank/ID fallback", step.NodeTypeLabel)
 	}
 }

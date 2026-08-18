@@ -29,7 +29,7 @@ func SetAtlasReplyMaterializer(fn func(itemsJSON string, sourceRunID string) (st
 func init() {
 	RegisterNodeType(NodeType{
 		ID: "apply-atlas-from-reply", Kind: KindApply,
-		Label: "Atlas: create from reply items",
+		Label: "Create Atlas cards from reply",
 		// ClassLocal: writes to Atlas's own persisted store, same
 		// classification as apply-atlas-card-create. The clipboard
 		// bridge's own taxonomy (clipbridge.MayAutoRun) already forces a

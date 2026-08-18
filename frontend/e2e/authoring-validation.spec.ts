@@ -108,7 +108,7 @@ test('A Trigger -> Process-leaf workflow saves with a warning; the toolbar and n
   // something, delivered it nowhere" warning shape (docs/adr/0028).
   await dragPaletteItemToCanvas(page, 'process-inject-text')
   await expect(activePanel(page).locator('.react-flow__node')).toHaveCount(2)
-  await connectNodes(page, 'Trigger: manual', 'Process: Inject text')
+  await connectNodes(page, 'Manual run', 'Add text')
   await expect(activePanel(page).locator('.react-flow__edge')).toHaveCount(1)
 
   const badge = activePanel(page).getByTestId('validation-badge')
@@ -130,7 +130,7 @@ test('A Trigger -> Process-leaf workflow saves with a warning; the toolbar and n
   // Clicking the issue selects its node -- proven by the Inspector now
   // showing that node's own type, not "select a node to configure it."
   await leafIssue.click()
-  await expect(activePanel(page).getByTestId('composition-inspector')).toContainText('Process: Inject text')
+  await expect(activePanel(page).getByTestId('composition-inspector')).toContainText('Add text')
 
   // Legal to save despite the warning (errors block, warnings never do).
   await activePanel(page).getByLabel('Label').fill('E2E process-leaf workflow')

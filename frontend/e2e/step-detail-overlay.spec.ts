@@ -91,11 +91,11 @@ test('Double-clicking a step with a recorded run opens the overlay with real inp
     await panel.getByRole('button', { name: 'Zoom Out' }).click()
     await waitForViewportStable(panel)
 
-    await dblClickCanvasNode(page, panel, 'Process: HTML → Markdown')
+    await dblClickCanvasNode(page, panel, 'Convert HTML to Markdown')
 
     const overlay = stepDetailOverlay(page)
     await expect(overlay).toBeVisible()
-    await expect(overlay).toContainText('Process: HTML → Markdown')
+    await expect(overlay).toContainText('Convert HTML to Markdown')
     // CONFIG pane: process-html-to-markdown takes no configuration --
     // the same generic Inspector copy the sidebar renders.
     await expect(overlay).toContainText('This step type takes no configuration.')

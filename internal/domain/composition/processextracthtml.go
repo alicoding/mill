@@ -12,7 +12,7 @@ const defaultExtractSelector = "#main-content, main, article"
 func init() {
 	RegisterNodeType(NodeType{
 		ID: "process-extract-html", Kind: KindProcess,
-		Label:       "Process: extract HTML subtree",
+		Label:       "Extract HTML section",
 		Complexity:  ComplexityBasic,
 		Output:      "the matched element's outer HTML",
 		Description: "Extracts one element (by CSS selector) out of the payload's HTML, dropping everything else -- e.g. a saved page's main-content region, stripping nav/header/footer chrome before converting to Markdown. Fails the step if nothing matches (fail-safe: never silently passes the whole, unfiltered document through).",

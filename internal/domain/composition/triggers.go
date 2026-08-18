@@ -30,21 +30,21 @@ package composition
 func init() {
 	RegisterNodeType(NodeType{
 		ID: "trigger-manual", Kind: KindTrigger,
-		Label:       "Trigger: manual",
+		Label:       "Manual run",
 		Output:      "empty payload — the run starts here",
 		Description: "Fires on-demand when a user clicks Run/Test. No listener process.",
 		Complexity:  ComplexityBasic,
 	}, nil)
 	RegisterNodeType(NodeType{
 		ID: "trigger-hotkey", Kind: KindTrigger,
-		Label:       "Trigger: hotkey",
+		Label:       "Hotkey pressed",
 		Output:      "empty payload — the run starts here",
 		Description: "Fires on a global keyboard shortcut, even when Mill isn't focused. Bound via TriggerService, not a config field here -- pressing the combo is better UX than typing it.",
 		Complexity:  ComplexityBasic,
 	}, nil)
 	RegisterNodeType(NodeType{
 		ID: "trigger-schedule", Kind: KindTrigger,
-		Label:       "Trigger: schedule",
+		Label:       "On a schedule",
 		Output:      "empty payload — the run starts here",
 		Description: "Fires on a cron schedule.",
 		Complexity:  ComplexityBasic,
@@ -58,14 +58,14 @@ func init() {
 	}, nil)
 	RegisterNodeType(NodeType{
 		ID: "trigger-clipboard-watch", Kind: KindTrigger,
-		Label:       "Trigger: clipboard change",
+		Label:       "Clipboard changed",
 		Output:      "the clipboard text that changed",
 		Description: "Fires whenever the clipboard's content changes.",
 		Complexity:  ComplexityBasic,
 	}, nil)
 	RegisterNodeType(NodeType{
 		ID: "trigger-filesystem-watch", Kind: KindTrigger,
-		Label:       "Trigger: filesystem change",
+		Label:       "File changed",
 		Output:      "the changed file path",
 		Description: "Fires when a file or folder under the configured path is added, changed, or deleted.",
 		Complexity:  ComplexityBasic,
@@ -84,7 +84,7 @@ func init() {
 	}, nil)
 	RegisterNodeType(NodeType{
 		ID: "trigger-callable", Kind: KindTrigger,
-		Label:       "Trigger: callable by another workflow",
+		Label:       "Called by another workflow",
 		Output:      "the caller's typed input",
 		Description: "Fires only when invoked as a child by another workflow's Child Workflow step (docs/adr/0010) -- never by a real external event, no listener process. Modeled on n8n's own \"Execute Workflow Trigger\": a workflow rooted in this trigger declares itself a valid child target, decoupled from whatever its trigger would otherwise be. The child-workflow picker only lists workflows rooted here -- one rooted in a real-event trigger (filesystem-watch, clipboard-watch, ...) can't be invoked this way, since a parent has no way to synthesize that event.",
 		Complexity:  ComplexityBasic,
@@ -92,7 +92,7 @@ func init() {
 	RegisterNodeType(NodeType{
 		ID: "trigger-system-event", Kind: KindTrigger,
 		Complexity: ComplexityBasic,
-		Label:      "Trigger: system event",
+		Label:      "System event",
 		Output: "JSON payload: {event, runId, workflowId, workflowLabel, nodeId?, timestamp} -- " +
 			"the run/decision that caused this event. nodeId is only set for decision-parked (the " +
 			"parked step's ID); empty for run-completed/run-failed/run-cancelled.",
@@ -114,7 +114,7 @@ func init() {
 	RegisterNodeType(NodeType{
 		ID: "trigger-atlas-card", Kind: KindTrigger,
 		Complexity: ComplexityBasic,
-		Label:      "Trigger: Atlas card change",
+		Label:      "Atlas card changed",
 		Output: "the changed card's id -- also seeds cardId/kindId/cardTitle/changeType as typed " +
 			"Attributes when this workflow declares them",
 		Description: "Fires when a card of the chosen kind is created or updated in Atlas (docs/adr/0038). " +

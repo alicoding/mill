@@ -67,6 +67,22 @@ execution time; `composition` itself never reads a secret out of
 have no "API key" field of their own — the credential lives one layer
 down, behind the picker.
 
+## The operation-merge test (new families)
+
+> A new capability family arrives as ONE `NodeType` carrying an
+> operation `ConfigField` when its operations share all three of:
+> the user's mental model, one guardrail effect class, and one
+> result cardinality. It splits into separate `NodeType`s at any of
+> those three lines — mental model (the AI trio's recorded
+> precedent, docs/goals/0031), effect class (the guardrail gate
+> reads `Effect` per NodeType, ADR-0022), cardinality (one result
+> vs many — the Action/Search split the adopted platforms
+> formalize). Adopted from goal 0113's research pass; the
+> Jira/Confluence family (goal 0111) is the first consumer.
+> Existing families are NOT retroactively merged — goal 0113's
+> design pass records why (migration machinery absent; see the
+> NodeType-versioning entry below).
+
 ## Effect (item 3) — the priority machine check
 
 `NodeType.Effect`'s Go zero value (`""`) is silently indistinguishable

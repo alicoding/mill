@@ -25,7 +25,7 @@ func SetAtlasCardUpdater(fn func(cardID string, fields map[string]string, source
 func init() {
 	RegisterNodeType(NodeType{
 		ID: "apply-atlas-card-update", Kind: KindApply,
-		Label:      "Atlas: update card",
+		Label:      "Update Atlas card",
 		Effect:     guardrail.ClassLocal,
 		Complexity: ComplexityAdvanced,
 		Output:     "payload unchanged; the updated card's id -> the output attribute, if named",

@@ -45,8 +45,8 @@ test('mcp-tool-call node: schema-driven typed argument fields once a real tool i
   // graph on its own.
   await dragPaletteItemToCanvas(page, 'mcp-tool-call')
   await expect(activePanel(page).locator('.react-flow__node')).toHaveCount(2)
-  await connectNodes(page, 'Trigger: manual', 'MCP: tool call')
-  await clickCanvasNode(page, activePanel(page), 'MCP: tool call')
+  await connectNodes(page, 'Manual run', 'Call an MCP tool')
+  await clickCanvasNode(page, activePanel(page), 'Call an MCP tool')
 
   const inspector = activePanel(page).getByTestId('composition-inspector')
   const editor = inspector.getByTestId('mcp-tool-args-editor')
