@@ -206,6 +206,11 @@ jobs:
       CGO_ENABLED: '0'
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Full history: the gocognit new-code gate below diffs against
+          # the merge-base with origin/main, which a depth-1 clone
+          # cannot compute.
+          fetch-depth: 0
       - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: frontend-dist
@@ -218,6 +223,12 @@ jobs:
         with:
           version: v2.12
           args: --build-tags=server
+      # Cognitive-complexity gate on NEW/CHANGED code only (goal 0109,
+      # the clean-as-you-code posture -- see lefthook.yml's gocognit-new
+      # job for the full reasoning). Reuses the binary the action above
+      # already installed onto PATH. Requires the full-history checkout
+      # this job's own fetch-depth: 0 provides (merge-base needs it).
+      - run: golangci-lint run . ./internal/... --build-tags=server --enable-only gocognit --new-from-merge-base=origin/main
 
   build-go:
     needs: [changes, frontend]

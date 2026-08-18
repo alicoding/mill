@@ -294,6 +294,32 @@ folklore in agent-brief prose. The standing rules:
   assertions); octocov-style coverage actions (a 15-line floor
   script suffices; no new CI dependency).
 
+## Quality gates: duplication + cognitive complexity (goal 0109)
+
+The SonarQube-class gates, wired measurement-first (a full read-only
+run over the tree BEFORE thresholds were committed — hit lists in the
+goal file), never aspiration-first:
+
+- **Duplication (`dupl` @ 150, repo-wide)**: lands green because the
+  only existing clusters are deliberate and excluded BY NAME — test
+  twins (`_test.go`), the per-entity seed/CRUD shape in
+  `configuresvc/`, and `atlasservice_builtin.go`. New duplication
+  anywhere else fails the build. Anti-gaming: exclusions are named
+  files/families with recorded reasons, never a threshold raise.
+- **Cognitive complexity (`gocognit` @ 15, NEW/CHANGED code only)**:
+  25 legacy production functions sit over the threshold (max 65 —
+  burn-down list in the goal file), so the gate runs Sonar's own
+  clean-as-you-code posture via `--enable-only gocognit
+  --new-from-merge-base=origin/main` (lefthook `gocognit-new` + a CI
+  step; the lint job's checkout carries `fetch-depth: 0` for the
+  merge-base). Legacy refuses to rot further without failing today's
+  build; touching a legacy offender means paying its complexity down
+  or consciously splitting the change.
+- **Deferred to the npm-deps landing** (lockfile-conflict avoidance,
+  recorded in the goal file): eslint-plugin-sonarjs (TS cognitive
+  complexity + duplicate-branch rules) and the diff-cover
+  changed-lines coverage gate.
+
 ## Shared-pool vs dedicated e2e servers — declare it up front
 
 A spec whose assertions read GLOBAL app state that other tests can
