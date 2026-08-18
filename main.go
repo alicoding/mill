@@ -205,7 +205,12 @@ func main() {
 
 	settingsService := settingssvc.NewSettingsService(settingsStore, triggerService, settingsPath != defaultSettingsPath)
 	settingsService.SetAppVersion(millUpdateVersion)
-	settingsService.SetUpdateChannel(millChannel)
+	// The user's persisted channel opt-in wins over the build stamp --
+	// a source-built copy can deliberately follow the beta feed
+	// (Settings > Updates). Resolved once here so the guard, label,
+	// and provider feed below all agree for this run.
+	effectiveChannel := settingsService.ResolveUpdateChannel(millChannel)
+	settingsService.SetUpdateChannel(effectiveChannel)
 	// goal 0100: DownloadAndInstallUpdate's pre-swap snapshot seam.
 	settingsService.SetBackupRunner(backupService.BackupRunner())
 	// Bidirectional hotkey-conflict check (docs/SPEC.md §3.7): a
@@ -287,7 +292,7 @@ func main() {
 	// under its own line-count convention). A construction failure here
 	// is logged, not fatal -- a broken updater must never block the app
 	// from starting.
-	if err := settingssvc.InitUpdater(app.Updater, "alicoding/mill", millUpdateVersion, millChannel, settingsService); err != nil {
+	if err := settingssvc.InitUpdater(app.Updater, "alicoding/mill", millUpdateVersion, effectiveChannel, settingsService); err != nil {
 		logger.Error("updater init", "error", err)
 	}
 

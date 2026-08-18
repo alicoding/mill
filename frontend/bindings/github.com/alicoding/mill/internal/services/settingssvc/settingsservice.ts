@@ -325,6 +325,16 @@ export function ResolveMCPWrite(id: string, approve: boolean): $CancellablePromi
 }
 
 /**
+ * ResolveUpdateChannel returns the effective channel for this run: the
+ * persisted preference when set, else the build's ldflags stamp.
+ * main.go calls this once before SetUpdateChannel/InitUpdater so the
+ * guard, the UI label, and the provider's feed all agree.
+ */
+export function ResolveUpdateChannel(buildChannel: string): $CancellablePromise<string> {
+    return $Call.ByID(1332358316, buildChannel);
+}
+
+/**
  * ResolvedMCPWrites lists every already-resolved MCP write still in its
  * 24h retention window (docs/goals/0026 item 6) -- Review's
  * Recently-resolved section reads this alongside its own resolved runs.
@@ -461,6 +471,17 @@ export function SetPendingBadge(count: number): $CancellablePromise<void> {
 }
 
 /**
+ * SetUpdateChannelPreference persists the channel override. The
+ * preference resolves at BOOT (ResolveUpdateChannel below): the update
+ * provider's feed selection is fixed at Init, so a change applies
+ * after the next restart -- the UI says so rather than pretending a
+ * live switch happened.
+ */
+export function SetUpdateChannelPreference(pref: string): $CancellablePromise<void> {
+    return $Call.ByID(218736037, pref);
+}
+
+/**
  * SetWorkflowMinutesSaved overrides workflowID's estimate. minutes must
  * be positive -- Home's own formula (RunCount × MinutesPerRun) always
  * multiplies by this value, and crediting zero or negative time saved
@@ -567,4 +588,12 @@ export function UnassignSummonHotkey(): $CancellablePromise<void> {
  */
 export function UpdateChannel(): $CancellablePromise<string> {
     return $Call.ByID(1676930456);
+}
+
+/**
+ * UpdateChannelPreference returns the persisted channel override:
+ * "" (follow the build's own channel), "beta", or "release".
+ */
+export function UpdateChannelPreference(): $CancellablePromise<string> {
+    return $Call.ByID(2624864437);
 }

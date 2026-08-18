@@ -145,6 +145,45 @@ func (s *SettingsService) UpdateChannel() string {
 	return s.updateChannel
 }
 
+// updateChannelPreferenceKey persists the user's channel opt-in. A
+// source-built copy following the beta feed is a deliberate, explicit
+// choice (docs/goals/archive/0100-beta-channel.md's follow-up slice)
+// -- source-never-installs survives as the DEFAULT, not a wall.
+const updateChannelPreferenceKey = "updateChannelPreference"
+
+// UpdateChannelPreference returns the persisted channel override:
+// "" (follow the build's own channel), "beta", or "release".
+func (s *SettingsService) UpdateChannelPreference() string {
+	v, _ := s.store.Get(updateChannelPreferenceKey).(string)
+	if v != "beta" && v != "release" {
+		return ""
+	}
+	return v
+}
+
+// SetUpdateChannelPreference persists the channel override. The
+// preference resolves at BOOT (ResolveUpdateChannel below): the update
+// provider's feed selection is fixed at Init, so a change applies
+// after the next restart -- the UI says so rather than pretending a
+// live switch happened.
+func (s *SettingsService) SetUpdateChannelPreference(pref string) error {
+	if pref != "" && pref != "beta" && pref != "release" {
+		return fmt.Errorf("unknown update channel %q", pref)
+	}
+	return s.store.Set(updateChannelPreferenceKey, pref)
+}
+
+// ResolveUpdateChannel returns the effective channel for this run: the
+// persisted preference when set, else the build's ldflags stamp.
+// main.go calls this once before SetUpdateChannel/InitUpdater so the
+// guard, the UI label, and the provider's feed all agree.
+func (s *SettingsService) ResolveUpdateChannel(buildChannel string) string {
+	if pref := s.UpdateChannelPreference(); pref != "" {
+		return pref
+	}
+	return buildChannel
+}
+
 // CheckForUpdates asks the configured provider (GitHub Releases,
 // alicoding/mill) whether a newer version exists.
 func (s *SettingsService) CheckForUpdates() (UpdateCheckResult, error) {
