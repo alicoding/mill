@@ -1,6 +1,7 @@
 import { test, expect } from './fixtures/server'
 import { groupCard, noteCard } from './fixtures/atlasCards'
 import { clickCorner, zoomAllTheWayOut } from './fixtures/atlasBoard'
+import { contextMenu } from './fixtures/contextMenu'
 
 // The click model (goal 0102's gesture table) + surface-scoped
 // shortcuts (goal 0071 slice): plain click selects/replaces, a second
@@ -40,6 +41,47 @@ test('plain click selects (replacing any prior selection); a second click on the
   await expect(overlay.getByTestId('atlas-page-title')).toHaveValue('Scratchpad')
   await page.keyboard.press('Escape')
   await expect(overlay).not.toBeVisible()
+})
+
+test('a plain click leaves the selection ring visibly showing on the clicked card while it still holds DOM focus, for a note card and a sticky', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Atlas' }).click()
+  await expect(page.getByTestId('atlas-board')).toBeVisible()
+
+  // Regression: Primer's own [role="button"]:focus:not(:focus-visible)
+  // reset zeroes any box-shadow scoped to that inner role="button"
+  // element -- exactly the state a plain mouse click leaves the
+  // clicked card in (focused, but never :focus-visible from a pointer
+  // gesture), which made a single-card selection invisible. The ring
+  // must show on the wrapper, immune to that reset, while the card is
+  // still focused -- not just once focus moves elsewhere.
+  const getting = noteCard(page, 'Getting started')
+  await getting.click()
+  expect(await page.evaluate(() => document.activeElement?.getAttribute('data-testid'))).toBe('atlas-note-card')
+  const cardWrapper = selectedWrapper(page, getting)
+  await expect(cardWrapper).toHaveCount(1)
+  await expect.poll(() => cardWrapper.evaluate((el) => getComputedStyle(el).boxShadow)).not.toBe('none')
+
+  // A sticky note's own, separately-declared (heavier) ring rule.
+  const board = page.getByTestId('atlas-board')
+  await zoomAllTheWayOut(page)
+  await page.keyboard.press('n')
+  await clickCorner(board, 'top-right')
+  const noteTA = page.getByTestId('atlas-sticky-textarea')
+  await noteTA.fill('ZzE2eStickyRing')
+  await noteTA.blur()
+  const sticky = page.locator('[data-testid="atlas-sticky-note"]')
+  await sticky.click()
+  expect(await page.evaluate(() => document.activeElement?.getAttribute('data-testid'))).toBe('atlas-sticky-note')
+  const stickyWrapper = page.locator('.react-flow__node.selected').filter({ has: sticky })
+  await expect(stickyWrapper).toHaveCount(1)
+  await expect.poll(() => stickyWrapper.evaluate((el) => getComputedStyle(el).boxShadow)).not.toBe('none')
+
+  // Cleanup (testing.md's within-file discipline).
+  const menu = contextMenu(page)
+  await sticky.click({ button: 'right' })
+  await menu.getByText('Delete note', { exact: true }).click()
+  await expect(sticky).toHaveCount(0)
 })
 
 test('a real double-click reproduces the same select-then-commit outcome as two plain clicks, for both a leaf and a frame body', async ({ page }) => {

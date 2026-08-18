@@ -17,16 +17,23 @@
     cursor: text;
 }
 
-/* Multi-selection outline (owner-caught follow-up to goal 0092),
-   heavier than the card ring on purpose: the sticky's attention-tinted
-   ground swallows the 2px accent line cards get away with on white --
-   a wider ring plus the border flipping to the accent keeps a selected
-   note legible at board zoom. */
-:global(.react-flow__node.selected) .sticky {
-    border-color: var(--borderColor-accent-emphasis);
+/* Selection ring: heavier than the card ring on purpose -- the
+   sticky's attention-tinted ground swallows the 2px accent line cards
+   get away with on white. The ring lives on the React Flow node
+   WRAPPER (the type-scoped class React Flow stamps per nodeTypes
+   key), never an inner element -- see AtlasNoteCardNode.module.css's
+   own header comment for why (Primer's [role="button"] focus reset
+   would otherwise zero it right after every mouse click). The border
+   color flip stays on the inner element: Primer's reset only touches
+   box-shadow, so this half already survives there. */
+:global(.react-flow__node-atlas-sticky.selected) {
+    border-radius: var(--borderRadius-medium);
     box-shadow:
         0 0 0 3px var(--borderColor-accent-emphasis),
         0 0 0 7px var(--bgColor-accent-muted);
+}
+:global(.react-flow__node.selected) .sticky {
+    border-color: var(--borderColor-accent-emphasis);
 }
 
 /* A pointer click must not flash the webview's OS focus halo (the

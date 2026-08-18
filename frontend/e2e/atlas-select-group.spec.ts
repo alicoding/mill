@@ -231,9 +231,13 @@ test('atlas shift-click select: toggle membership, group via member right-click,
 
     // Visible selection state (goal 0092 follow-up): both member nodes
     // carry a real, non-empty outline/ring, not just React Flow's own
-    // unstyled .selected class.
-    await expect.poll(() => cardA.evaluate((el) => getComputedStyle(el).boxShadow)).not.toBe('none')
-    await expect.poll(() => cardB.evaluate((el) => getComputedStyle(el).boxShadow)).not.toBe('none')
+    // unstyled .selected class. Measured on the wrapper (the ring's
+    // own carrier), not the inner card -- Primer's [role="button"]
+    // focus reset can zero a box-shadow scoped to the inner element.
+    const cardAWrapper = selected.filter({ has: cardA })
+    const cardBWrapper = selected.filter({ has: cardB })
+    await expect.poll(() => cardAWrapper.evaluate((el) => getComputedStyle(el).boxShadow)).not.toBe('none')
+    await expect.poll(() => cardBWrapper.evaluate((el) => getComputedStyle(el).boxShadow)).not.toBe('none')
 
     // The selection tray replaces the creation tray while 2+ cards are
     // selected: count label, Group (2+ cards only), Delete, both with

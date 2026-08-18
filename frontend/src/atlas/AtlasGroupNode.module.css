@@ -14,11 +14,14 @@
     cursor: pointer;
 }
 
-/* Multi-selection outline (owner-caught follow-up to goal 0092): same
-   box-shadow ring AtlasNoteCardNode.module.css uses, keyed off React
-   Flow's own .selected on the node's outer wrapper -- never the
-   frame's own border-width, so a selected frame's size never shifts. */
-:global(.react-flow__node.selected) .frame {
+/* Selection ring: on the React Flow node WRAPPER (the type-scoped
+   class React Flow stamps per nodeTypes key), never an inner element
+   -- see AtlasNoteCardNode.module.css's own header comment for why
+   (Primer's [role="button"] focus reset would otherwise zero it right
+   after every mouse click). Never the frame's own border-width
+   either, so a selected frame's size never shifts. */
+:global(.react-flow__node-atlas-group.selected) {
+    border-radius: 14px;
     box-shadow:
         0 0 0 2px var(--borderColor-accent-emphasis),
         0 0 0 5px var(--bgColor-accent-muted);

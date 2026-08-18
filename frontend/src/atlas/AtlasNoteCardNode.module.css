@@ -18,11 +18,16 @@
     border-color: var(--borderColor-emphasis);
 }
 
-/* Multi-selection outline (owner-caught follow-up to goal 0092): keyed
-   off React Flow's own .selected class on the node's outer wrapper --
-   box-shadow, not border-width, so it never shifts this card's fixed
-   190x128 footprint or its own hit-testing box. */
-:global(.react-flow__node.selected) .card {
+/* Selection ring: on the React Flow node WRAPPER (the type-scoped
+   class React Flow stamps per nodeTypes key), never an inner element.
+   Primer's own [role="button"]:focus:not(:focus-visible) reset zeroes
+   any box-shadow on an inner role="button" element the instant a
+   plain click leaves it :focus without :focus-visible -- the normal
+   state right after every mouse click, which is exactly when this
+   ring needs to show. The wrapper carries no role, so that reset can
+   never reach it. box-shadow, not border-width, so it never shifts
+   this card's fixed 190x128 footprint or its own hit-testing box. */
+:global(.react-flow__node-atlas-note.selected) {
     border-radius: var(--borderRadius-medium);
     box-shadow:
         0 0 0 2px var(--borderColor-accent-emphasis),

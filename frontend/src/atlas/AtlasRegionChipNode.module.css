@@ -15,10 +15,13 @@
     outline-offset: 1px;
 }
 
-/* Multi-selection outline (owner-caught follow-up to goal 0092): same
-   box-shadow ring AtlasNoteCardNode.module.css uses, keyed off React
-   Flow's own .selected on the node's outer wrapper. */
-:global(.react-flow__node.selected) .chip {
+/* Selection ring: on the React Flow node WRAPPER (the type-scoped
+   class React Flow stamps per nodeTypes key), never an inner element
+   -- see AtlasNoteCardNode.module.css's own header comment for why
+   (Primer's [role="button"] focus reset would otherwise zero it right
+   after every mouse click). */
+:global(.react-flow__node-atlas-region-chip.selected) {
+    border-radius: 10px;
     box-shadow:
         0 0 0 2px var(--borderColor-accent-emphasis),
         0 0 0 5px var(--bgColor-accent-muted);
