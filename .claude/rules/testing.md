@@ -24,6 +24,17 @@ Concretely:
   check asserted (a computed style, an element count, a text value) —
   not a screenshot diff unless the bug is fundamentally about layout/
   visual appearance rather than a checkable property.
+
+**"Identical code" is a claim about logic, never about engines.**
+The Go/React code being the same in server mode and the desktop app
+covers bindings, state, and flow — it does NOT cover engine-layer
+behavior (focus rings, gesture handling, rendering): the app ships
+in the system WebKit webview while the suite's default engine is
+Chromium, and a real WebKit-only visual defect escaped the full
+green pipeline through exactly that gap. Engine-parity coverage is
+goal 0097's smoke layer; anything needing the true native window
+stays in the manual-only registry or the `-tags mcp` real-webview
+driving the run-mill skill records.
 - A Go bug → a `_test.go` case in the same package, same principle.
 
 This isn't "add tests for everything" — it's specifically about not
@@ -75,7 +86,7 @@ asked "can a user actually finish defining a connector's schema
 without writing raw OpenAPI by hand," which was the real, larger gap
 the user found by using the live app. Server-mode Playwright
 (`run-mill`) and the real desktop app run identical Go/React code —
-this was never a platform-parity bug — the miss was scope: assertions
+that incident was never a platform-parity bug — the miss was scope: assertions
 proved the pieces existed, not that the feature did its job. Before
 calling a UI change done, restate the underlying task in one sentence
 ("can someone define an operation's input/output fields without

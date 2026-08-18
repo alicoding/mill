@@ -52,6 +52,14 @@ goal NNNN" — never silence:
    companion breakpoints and 44px targets?
 10. **Data stewardship** — does it write user data? → covered by
     export/backup/import paths.
+11. **Runtime parity** — is this capability's verification running
+    on the runtime the user runs (the WebKit webview / the
+    installed app), or is the divergence named with its layer?
+    "Identical code" does not mean identical engine behavior —
+    focus rings, gesture handling, and rendering diverge per
+    engine. An inherited default (a test tool's bundled engine, a
+    library's default backend) counts as an unframed decision:
+    frame it here.
 
 The triage is a DoR gate, not a build mandate: most answers are one
 honest sentence. Retroactive coverage of already-shipped
