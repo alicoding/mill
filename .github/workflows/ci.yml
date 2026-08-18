@@ -471,3 +471,106 @@ jobs:
             exit 1
           fi
           echo "All required jobs passed or were correctly skipped."
+
+  # goal 0100: a rolling beta prerelease for every green merge to main,
+  # so the owner can dogfood a build without a local rebuild. Gated on
+  # `needs.ci-gate.result` (the SAME ci-gate this push-triggered run
+  # already computed above -- ci.yml's own `on:` already runs the whole
+  # gate on push-to-main, not just pull_request, per ADR-0034's
+  # post-merge-verification concurrency-group comment), never a second
+  # workflow_run indirection. macOS-only + contents:write, same reasons
+  # release.yml's build-macos/release jobs already carry.
+  beta-release:
+    needs: ci-gate
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.ci-gate.result == 'success'
+    runs-on: macos-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write
+    # Newest merge wins -- an in-flight beta-release run for an older
+    # commit is redundant the moment a newer merge lands, so it's
+    # cancelled rather than left to publish a stale rolling beta after
+    # the newer one.
+    concurrency:
+      group: beta-release
+      cancel-in-progress: true
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: '1.25'
+          cache: true
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install Task and wails3 CLI
+        run: |
+          go install github.com/go-task/task/v3/cmd/task@v3.52.0
+          go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0-beta.6
+      # BETA_VERSION must be valid, monotonically increasing SemVer --
+      # not just a bare "beta" tag -- because main.go's millUpdateVersion
+      # doc comment explains why: wails3/pkg/updater's GitHub provider
+      # compares release TagName via SemVer precedence, where a
+      # prerelease always ranks below its corresponding release, so a
+      # non-SemVer or non-increasing tag would never register as an
+      # available update. GITHUB_RUN_NUMBER is ci.yml's own
+      # monotonically increasing counter (never resets), reused here
+      # rather than a timestamp or SHA for exactly that guarantee.
+      - name: Compute beta version
+        run: |
+          BASE_VERSION=$(grep -m1 'const millVersion' main.go | sed -E 's/.*"([0-9][0-9A-Za-z.+-]*)".*/\1/')
+          echo "BETA_VERSION=${BASE_VERSION}-beta.${GITHUB_RUN_NUMBER}" >> "$GITHUB_ENV"
+      # task package already ad-hoc codesigns (build/darwin/Taskfile.yml's
+      # create:app:bundle -> codesign:adhoc) -- goal 0100's own DoR
+      # research confirmed ad-hoc signing + a documented first-run
+      # `xattr -dr com.apple.quarantine` step is the converged practice
+      # for distributing unsigned CI-built macOS apps, same as
+      # release.yml's own unsigned/ad-hoc posture (no paid Developer ID
+      # cert exists; notarization stays out of scope for either channel).
+      - run: task package
+        env:
+          MILL_SKIP_BINDINGS: "1"
+          MILL_CHANNEL: beta
+          MILL_UPDATE_VERSION: ${{ env.BETA_VERSION }}
+      # scripts/package-macos-zip.sh: the same asset-naming contract
+      # release.yml's build-macos job uses -- one definition, so a beta
+      # and a real release can never drift in asset naming. Staged into
+      # a clean dist/ dir so the checksum step below is a literal,
+      # byte-identical copy of release.yml's own "Generate checksums"
+      # step (goal 0100 addendum: one pinned payload contract,
+      # channel-independent).
+      - run: scripts/package-macos-zip.sh "$BETA_VERSION" bin/mill.app dist
+      - name: Generate checksums
+        working-directory: dist
+        run: sha256sum -- * > SHA256SUMS
+      # Rolling channel, not a rolling tag: each beta release gets its
+      # own SemVer tag (required for update detection, see "Compute
+      # beta version" above), so "rolling" means at most one beta
+      # prerelease exists at a time -- delete every older one first.
+      # isPrerelease filters real tagged releases out categorically;
+      # real releases are never touched by this job.
+      - name: Delete previous beta prereleases
+        run: |
+          gh release list --repo "${GITHUB_REPOSITORY}" --json tagName,isPrerelease \
+            -q '.[] | select(.isPrerelease) | .tagName' | while read -r tag; do
+            gh release delete "$tag" --repo "${GITHUB_REPOSITORY}" --yes --cleanup-tag
+          done
+      - name: Create beta prerelease
+        run: |
+          {
+            echo "## Beta build"
+            echo ""
+            echo "Automated build from commit ${GITHUB_SHA} -- not a tagged release."
+            echo "Download the \`.zip\`, unzip, and drag \`mill.app\` to Applications. The app is not Apple-notarized: first launch is blocked with \"Apple could not verify…\" -- click Done (not Move to Trash), then System Settings → Privacy & Security → scroll to the mill message → Open Anyway (one time only). Terminal alternative: \`xattr -dr com.apple.quarantine /Applications/mill.app\`."
+            echo "Every later merge to main updates in-app via Settings → Updates → Update now -- no rebuild, no repeat of this step."
+          } > /tmp/beta-notes.md
+          gh release create "v${BETA_VERSION}" \
+            --repo "${GITHUB_REPOSITORY}" \
+            --title "Beta v${BETA_VERSION}" \
+            --prerelease \
+            --notes-file /tmp/beta-notes.md \
+            dist/*

@@ -17,16 +17,25 @@ import (
 // GOOS in the asset name; Mill's assets say "macos", not "darwin" (see
 // UpdaterAssetMatcher). ChecksumAsset: release.yml publishes
 // SHA256SUMS next to the zip -- naming it makes the provider verify
-// the download against it. A construction failure here would only
-// happen from a malformed static Config, not a network call (New
-// doesn't hit the network) -- returned for the caller to log, never
-// fatal, since a broken updater must never block the app from
-// starting.
-func InitUpdater(u *updater.Updater, repo, currentVersion string, s *SettingsService) error {
+// the download against it. Prerelease is set only for channel=="beta":
+// the GitHub provider's Check walks /releases/latest (excludes
+// prereleases) unless Prerelease is true, in which case it walks
+// /releases and returns the newest published non-draft entry --
+// exactly the "update to a newer beta OR a newer real release,
+// whichever shipped last" behavior goal 0100 wants, with zero extra
+// code (confirmed directly against the vendored provider source). A
+// release-channel build's Prerelease stays false, so it can never see
+// the beta feed -- unaffected, byte-identical to before. A
+// construction failure here would only happen from a malformed static
+// Config, not a network call (New doesn't hit the network) -- returned
+// for the caller to log, never fatal, since a broken updater must
+// never block the app from starting.
+func InitUpdater(u *updater.Updater, repo, currentVersion, channel string, s *SettingsService) error {
 	ghProvider, err := updaterGithub.New(updaterGithub.Config{
 		Repository:    repo,
 		AssetMatcher:  UpdaterAssetMatcher,
 		ChecksumAsset: "SHA256SUMS",
+		Prerelease:    channel == "beta",
 	})
 	if err != nil {
 		return fmt.Errorf("updater provider init: %w", err)
@@ -68,6 +77,20 @@ func (s *SettingsService) SetUpdater(u *updater.Updater) {
 	s.updater = u
 }
 
+// SetBackupRunner wires the pre-update-snapshot seam
+// DownloadAndInstallUpdate calls before any bundle swap (goal 0100's
+// data-safety mandate) -- set from main.go via
+// backupService.BackupRunner(), the exact same injected-closure shape
+// composition.SetBackupRunner already uses for apply-backup-snapshot
+// nodes.
+//
+//wails:ignore
+func (s *SettingsService) SetBackupRunner(fn func(keepN int) (string, error)) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.backupRunner = fn
+}
+
 // UpdateCheckResult is CheckForUpdates' Wails-bound result shape.
 type UpdateCheckResult struct {
 	UpdateAvailable bool   `json:"updateAvailable"`
@@ -76,8 +99,9 @@ type UpdateCheckResult struct {
 	Notes           string `json:"notes"`
 }
 
-// SetAppVersion records Mill's own release version for display; wired
-// from main.go's millVersion const.
+// SetAppVersion records Mill's own running version for display; wired
+// from main.go's millUpdateVersion (millVersion for release/source,
+// a per-build beta identifier for the beta channel).
 //
 //wails:ignore
 func (s *SettingsService) SetAppVersion(v string) {
@@ -110,9 +134,9 @@ func (s *SettingsService) SetUpdateChannel(channel string) {
 	s.mu.Unlock()
 }
 
-// UpdateChannel reports the resolved distribution channel ("source" or
-// "release") -- the Settings > Updates surface's gate between "Update
-// now" and the pull-and-rebuild instructions, and
+// UpdateChannel reports the resolved distribution channel ("source",
+// "release", or "beta") -- the Settings > Updates surface's gate
+// between "Update now" and the pull-and-rebuild instructions, and
 // DownloadAndInstallUpdate's own server-side enforcement of the same
 // gate.
 func (s *SettingsService) UpdateChannel() string {
@@ -155,16 +179,32 @@ func (s *SettingsService) CheckForUpdates() (UpdateCheckResult, error) {
 // Channel-gated server-side, not just by the UI: a source-channel
 // build must never binary-swap itself, since "source" means the
 // running copy IS the update mechanism (pull + rebuild).
+//
+// goal 0100: a beta install swaps its running app over real, primary
+// data, so the swap never proceeds without a fresh restore point. The
+// backupRunner seam is called first and its error aborts the update
+// outright -- no download, no swap -- same fail-closed posture as the
+// digest check below it.
 func (s *SettingsService) DownloadAndInstallUpdate() error {
-	if s.UpdateChannel() != "release" {
-		return fmt.Errorf("updates only install on the release channel -- this copy was built from source")
+	channel := s.UpdateChannel()
+	if channel != "release" && channel != "beta" {
+		return fmt.Errorf("updates only install on the release or beta channel -- this copy was built from source")
 	}
 	if fake := os.Getenv(testUpdateFakeVersionEnv); fake != "" {
 		return fmt.Errorf("no release asset in test mode")
 	}
 	s.mu.Lock()
+	backupRunner := s.backupRunner
 	u := s.updater
 	s.mu.Unlock()
+
+	if backupRunner == nil {
+		return fmt.Errorf("update aborted: no pre-update backup available")
+	}
+	if _, err := backupRunner(0); err != nil {
+		return fmt.Errorf("update aborted: pre-update backup failed: %w", err)
+	}
+
 	if u == nil {
 		return fmt.Errorf("updater not configured")
 	}

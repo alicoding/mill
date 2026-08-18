@@ -60,13 +60,16 @@ export const SCALE_MCP_BASE_PORT = 9730
 // workers' seeds either.
 export const MIRROR_SERVER_BASE_PORT = 9690
 export const MIRROR_MCP_BASE_PORT = 9740
-// updates.spec.ts's own two disjoint pairs (goal 0082) -- one server
-// per channel, since MILL_TEST_UPDATE_CHANNEL is fixed for a process's
-// whole lifetime and both channels' UI need proving in the same run.
+// updates.spec.ts's own disjoint pairs (goal 0082, beta pair added
+// goal 0100) -- one server per channel, since MILL_TEST_UPDATE_CHANNEL
+// is fixed for a process's whole lifetime and every channel's UI needs
+// proving in the same run.
 export const UPDATES_SOURCE_SERVER_BASE_PORT = 9760
 export const UPDATES_SOURCE_MCP_BASE_PORT = 9780
 export const UPDATES_RELEASE_SERVER_BASE_PORT = 9790
 export const UPDATES_RELEASE_MCP_BASE_PORT = 9810
+export const UPDATES_BETA_SERVER_BASE_PORT = 9815
+export const UPDATES_BETA_MCP_BASE_PORT = 9825
 // guardrail-authoring.spec.ts's own dedicated pair (goal 0078): the
 // full rule-from-park -> unstick -> audit-edit -> policy-removed loop
 // asserts exact rule counts/groupings in the Rules audit view, which

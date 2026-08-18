@@ -26,6 +26,19 @@ func SQLiteDBPath(databaseURL string) string {
 	return strings.TrimPrefix(databaseURL, sqliteURLPrefix)
 }
 
+// Wire constructs a BackupService and wires every cross-service seam
+// main.go otherwise assembled inline (New, SetFamilies, SetAtlasBundle,
+// WireCompositionRunner) -- extracted to keep main.go's own wiring
+// terse (the same keep-main.go-under-its-line-count reasoning
+// InitUpdater's own extraction already documents).
+func Wire(dbPath, settingsPath, dir, millVersion string, comp *compositionsvc.CompositionService, cfg *configuresvc.ConfigureService, atlasSvc *atlassvc.AtlasService) *BackupService {
+	b := New(dbPath, settingsPath, dir, millVersion)
+	b.SetFamilies(BuildFamilies(comp, cfg))
+	b.SetAtlasBundle(WireAtlasBundle(atlasSvc))
+	WireCompositionRunner(b)
+	return b
+}
+
 // WireCompositionRunner registers b's own snapshot primitive as the
 // func apply-backup-snapshot nodes call (composition.SetBackupRunner)
 // -- called once from main.go, after b exists.
