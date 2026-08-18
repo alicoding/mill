@@ -6,6 +6,7 @@ import { useUISignalStore } from '../shared/uiSignalStore'
 import { refreshAtlas } from './atlasStore'
 import { titleFromNoteText } from './atlasCreateHelpers'
 import { freeChildPosition } from './atlasContainmentPlacement'
+import { computeEnclosedBoundingBoxOrigin } from './atlasBoardBoxes'
 import type { AtlasCreationTool } from './AtlasCreationTray'
 
 export interface AtlasPlacementPopoverState {
@@ -70,7 +71,7 @@ export interface AtlasGroupRequest { cardIDs: string[]; noteIDs: string[]; pos: 
 // parentID is the board's OWN current container (AtlasView's viewedID,
 // threaded down unchanged) -- the LOCKED design's "parent = where you
 // are" rule for every canvas-foremost creation door.
-export function useAtlasCreation({ parentID, allCards, notes, readOnly, screenToFlowPosition, placementRequest, promoteRequest, groupRequest }: {
+export function useAtlasCreation({ parentID, allCards, notes, readOnly, screenToFlowPosition, placementRequest, promoteRequest, groupRequest, cardBoxes, noteBoxes }: {
   parentID: string
   allCards: Card[]
   notes: Note[]
@@ -79,6 +80,12 @@ export function useAtlasCreation({ parentID, allCards, notes, readOnly, screenTo
   placementRequest?: AtlasPlacementRequest | null
   promoteRequest?: AtlasPromoteRequest | null
   groupRequest?: AtlasGroupRequest | null
+  // Every top-level card/note's own rendered flow-space box (freeMoves-
+  // aware -- AtlasBoard.tsx's topLevelBoxes/noteBoxes), used ONLY to
+  // anchor select-then-group's new container at its members' own
+  // current position instead of the triggering click point.
+  cardBoxes?: { id: string; x: number; y: number }[]
+  noteBoxes?: { id: string; x: number; y: number }[]
 }) {
   const [armedTool, setArmedTool] = useState<AtlasCreationTool | null>(null)
   const [popover, setPopover] = useState<AtlasPlacementPopoverState | null>(null)
@@ -326,14 +333,20 @@ export function useAtlasCreation({ parentID, allCards, notes, readOnly, screenTo
     // eslint-disable-next-line react-hooks/exhaustive-deps -- keyed on the request's own token
   }, [promoteRequest])
 
-  // Select-then-group (goal 0081 slice A2): reuses screenToFlowPosition
-  // to place the new container at the right-click point, same as any
-  // other canvas-foremost creation door.
+  // Select-then-group (goal 0081 slice A2): the new container lands at
+  // the grouped members' own current bounding-box top-left, not the
+  // triggering click point -- a member right-click or the selection
+  // tray's bottom-center Group button both click far from where the
+  // members actually render (regression: the tray path always landed
+  // the new area at the bottom of the board). Falls back to the click
+  // point only when no member box resolves (shouldn't happen for a
+  // real 2+ selection, but keeps this door from silently no-op'ing).
   const lastGroupToken = useRef(groupRequest?.token)
   useEffect(() => {
     if (!groupRequest || groupRequest.token === lastGroupToken.current) return
     lastGroupToken.current = groupRequest.token
-    openAreaPopover(groupRequest.pos, screenToFlowPosition(groupRequest.pos), groupRequest.cardIDs, groupRequest.noteIDs)
+    const anchor = computeEnclosedBoundingBoxOrigin(groupRequest.cardIDs, groupRequest.noteIDs, cardBoxes ?? [], noteBoxes ?? [])
+    openAreaPopover(groupRequest.pos, anchor ?? screenToFlowPosition(groupRequest.pos), groupRequest.cardIDs, groupRequest.noteIDs)
     // eslint-disable-next-line react-hooks/exhaustive-deps -- keyed on the request's own token
   }, [groupRequest])
 
