@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"sort"
+	"strings"
 )
 
 // EnvelopeVersion is the "mill" marker value; a reply carrying a
@@ -80,5 +81,33 @@ func BuildContextEnvelope(cards []ContextCard, kindLabels []string, actions []st
 		Schema:         schema,
 		AllowedActions: sorted,
 		Items:          items,
+	}, nil
+}
+
+// BuildCorrectionEnvelope re-emits the reply contract after a failed or
+// partially-declined reply -- the correction loop is re-ask-the-source,
+// never edit-in-place, so the envelope itself carries what went wrong
+// and what the user declined, and the schema remains the instruction.
+func BuildCorrectionEnvelope(problems []string, declinedTitles []string, kindLabels []string, actions []string) (Envelope, error) {
+	schema, err := ReplySchema(kindLabels, actions)
+	if err != nil {
+		return Envelope{}, err
+	}
+	instructions := replyInstructions
+	if len(problems) > 0 {
+		instructions = "Your previous reply did not validate: " + strings.Join(problems, "; ") + ". " + replyInstructions
+	}
+	if len(declinedTitles) > 0 {
+		instructions += " Do not propose these declined items again: " + strings.Join(declinedTitles, ", ") + "."
+	}
+	sorted := append([]string(nil), actions...)
+	sort.Strings(sorted)
+	return Envelope{
+		Mill:           EnvelopeVersion,
+		Kind:           KindContext,
+		Instructions:   instructions,
+		Schema:         schema,
+		AllowedActions: sorted,
+		Items:          []json.RawMessage{},
 	}, nil
 }

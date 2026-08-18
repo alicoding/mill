@@ -4,6 +4,9 @@
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
 import * as atlas$0 from "../../domain/atlas/models.js";
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: Unused imports
+import * as clipbridge$0 from "../../domain/clipbridge/models.js";
 
 /**
  * AtlasImportSummary counts what ImportAtlas did, per family -- the
@@ -45,6 +48,34 @@ export interface AtlasSessionState {
      * resolves back to "".
      */
     "activePerspectiveID": string;
+}
+
+/**
+ * ClipbridgeCardOffer is one to-be-created card row on the review
+ * surface: the parsed draft plus its collision flag (the dedupe
+ * convention -- colliding rows default unchecked).
+ */
+export interface ClipbridgeCardOffer {
+    "Draft": clipbridge$0.CardDraft;
+    "CollidesWithID": string;
+    "CollidesWithKind": string;
+}
+
+/**
+ * ClipbridgeReplyPreview is what the Quick Panel renders when the
+ * clipboard carries a mill reply: the domain preview plus the
+ * Atlas-side collision annotations and the route workflow to run on
+ * accept.
+ */
+export interface ClipbridgeReplyPreview {
+    "Recognized": boolean;
+    "Valid": boolean;
+    "Action": string;
+    "Errors": string[] | null;
+    "Cards": ClipbridgeCardOffer[] | null;
+    "NoteTexts": string[] | null;
+    "RouteWorkflowID": string;
+    "RouteLabel": string;
 }
 
 /**

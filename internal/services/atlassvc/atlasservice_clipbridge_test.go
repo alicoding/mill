@@ -154,3 +154,21 @@ func TestMaterializeReplyItems(t *testing.T) {
 		}
 	})
 }
+
+func TestCorrectionEnvelope(t *testing.T) {
+	a := NewAtlasService(servicetest.NewFakeStore())
+	raw, err := a.CorrectionEnvelope([]string{"item 1: a card needs a non-empty \"title\""}, []string{"Getting started"})
+	if err != nil {
+		t.Fatalf("CorrectionEnvelope: %v", err)
+	}
+	if !strings.Contains(raw, "did not validate") || !strings.Contains(raw, "Getting started") {
+		t.Fatalf("instructions incomplete: %s", raw[:200])
+	}
+	var env map[string]any
+	if err := json.Unmarshal([]byte(raw), &env); err != nil {
+		t.Fatalf("not JSON: %v", err)
+	}
+	if _, ok := env["schema"].(map[string]any); !ok {
+		t.Fatal("schema missing")
+	}
+}

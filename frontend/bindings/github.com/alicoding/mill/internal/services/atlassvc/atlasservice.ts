@@ -72,6 +72,16 @@ export function CardContextBlock(cardID: string, withAttachments: boolean): $Can
 }
 
 /**
+ * CardContextEnvelope renders a card as the OUT envelope (goal 0099):
+ * its data as items, the reply contract inline. The plain-text
+ * CardContextBlock stays for human destinations; this is the
+ * machine-readable twin an external AI answers against.
+ */
+export function CardContextEnvelope(cardID: string): $CancellablePromise<string> {
+    return $Call.ByID(1724710751, cardID);
+}
+
+/**
  * Cards returns every LIVE card (goal 0093: a tombstoned card is
  * excluded, and a live child of a tombstoned container carries its
  * resolved effective ParentID -- see liveCardsLocked).
@@ -97,6 +107,15 @@ export function CardsByKind(kindID: string): $CancellablePromise<atlas$0.Card[] 
  */
 export function ConvertHTMLToMarkdown(html: string): $CancellablePromise<string> {
     return $Call.ByID(989919804, html);
+}
+
+/**
+ * CorrectionEnvelope re-emits the reply contract for the
+ * re-ask-the-source loop: validation problems and declined titles ride
+ * the instruction line, the schema stays the instruction.
+ */
+export function CorrectionEnvelope(problems: string[] | null, declinedTitles: string[] | null): $CancellablePromise<string> {
+    return $Call.ByID(4009289398, problems, declinedTitles);
 }
 
 /**
@@ -410,6 +429,16 @@ export function Perspectives(): $CancellablePromise<atlas$0.Perspective[] | null
  */
 export function PickFolder(startDir: string): $CancellablePromise<string> {
     return $Call.ByID(3623587391, startDir);
+}
+
+/**
+ * PreviewClipbridgeReply validates a raw clipboard string against the
+ * reply contract (schema-first, then per-action requirements) and
+ * annotates it with collision state. Malformed input renders inline --
+ * this returns a Go error only for internal faults.
+ */
+export function PreviewClipbridgeReply(raw: string): $CancellablePromise<$models.ClipbridgeReplyPreview> {
+    return $Call.ByID(3851574839, raw);
 }
 
 /**

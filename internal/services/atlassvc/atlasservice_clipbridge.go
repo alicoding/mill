@@ -226,3 +226,24 @@ func kindDeclaresField(k atlas.Kind, key string) bool {
 	}
 	return false
 }
+
+// CorrectionEnvelope re-emits the reply contract for the
+// re-ask-the-source loop: validation problems and declined titles ride
+// the instruction line, the schema stays the instruction.
+func (a *AtlasService) CorrectionEnvelope(problems []string, declinedTitles []string) (string, error) {
+	kinds := a.Kinds()
+	labels := make([]string, 0, len(kinds))
+	for _, k := range kinds {
+		labels = append(labels, k.Label)
+	}
+	sort.Strings(labels)
+	env, err := clipbridge.BuildCorrectionEnvelope(problems, declinedTitles, labels, clipbridge.V1Actions())
+	if err != nil {
+		return "", err
+	}
+	raw, err := json.MarshalIndent(env, "", "  ")
+	if err != nil {
+		return "", err
+	}
+	return string(raw), nil
+}
