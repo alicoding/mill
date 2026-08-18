@@ -198,24 +198,40 @@ func TestCheckAtlasBoardRenders(t *testing.T) {
 	})
 }
 
-func TestCheckNoteCardFlip(t *testing.T) {
-	t.Run("flips false to true", func(t *testing.T) {
+func TestCheckNoteCardCommit(t *testing.T) {
+	t.Run("select click, commit click, escape ladder", func(t *testing.T) {
 		f := newFakeCaller()
-		f.onJSON("js_eval", map[string]any{"before": "false", "after": "true", "label": "Getting started"})
-		detail, err := checkNoteCardFlip(f)
+		f.onJSON("js_eval", true) // poll: wrapper selected
+		f.onJSON("js_eval", true) // poll: page header visible
+		f.onJSON("js_eval", true) // poll: board unselected again
+		f.on("mouse_click", func(map[string]any) (string, error) { return "ok", nil })
+		f.on("mouse_click", func(map[string]any) (string, error) { return "ok", nil })
+		f.on("keyboard_press", func(map[string]any) (string, error) { return "ok", nil })
+		f.on("keyboard_press", func(map[string]any) (string, error) { return "ok", nil })
+		detail, err := checkNoteCardCommit(f)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		if !strings.Contains(detail, "Getting started") {
+		if !strings.Contains(detail, "click-commit") {
 			t.Errorf("got %q", detail)
 		}
 	})
 
-	t.Run("never flipped is an error", func(t *testing.T) {
+	t.Run("select click failing propagates", func(t *testing.T) {
 		f := newFakeCaller()
-		f.onJSON("js_eval", map[string]any{"before": "false", "after": "false", "label": "x"})
-		if _, err := checkNoteCardFlip(f); err == nil {
-			t.Fatal("expected an error when the card never flipped")
+		f.onError("mouse_click", errors.New("no such element"))
+		if _, err := checkNoteCardCommit(f); err == nil {
+			t.Fatal("expected the select click's error to propagate")
+		}
+	})
+
+	t.Run("commit click failing propagates", func(t *testing.T) {
+		f := newFakeCaller()
+		f.on("mouse_click", func(map[string]any) (string, error) { return "ok", nil })
+		f.onJSON("js_eval", true) // poll: wrapper selected
+		f.onError("mouse_click", errors.New("gone"))
+		if _, err := checkNoteCardCommit(f); err == nil {
+			t.Fatal("expected the commit click's error to propagate")
 		}
 	})
 }

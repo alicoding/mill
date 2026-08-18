@@ -34,13 +34,13 @@ var registry = []check{
 		run:    checkAtlasBoardRenders,
 	},
 	{
-		name:   "note-card-flip-interaction",
-		reason: "a real WKWebView pointer event round-trips into React state (js_eval per the coordinator's own brief for this check) -- the flip is Atlas's most basic interaction, gates everything after it.",
-		run:    checkNoteCardFlip,
+		name:   "note-card-commit-interaction",
+		reason: "a real WKWebView pointer event round-trips into React state -- click-select then click-commit (the goal 0102 model: two plain clicks open a leaf's page) is Atlas's most basic interaction, gates everything after it.",
+		run:    checkNoteCardCommit,
 	},
 	{
 		name:   "note-card-selection-ring",
-		reason: "the burned class of bug this goal exists for: the selected note-card's box-shadow ring (AtlasNoteCardNode.module.css's :global(.react-flow__node.selected) rule) rendered none in real WebKit while Chromium rendered it fine.",
+		reason: "the burned class of bug this goal exists for: the selected note-card's box-shadow ring (on the React Flow node WRAPPER -- .react-flow__node-atlas-note.selected -- where PR #227 moved it out of Primer's [role=button] focus-reset reach) rendered none in real WebKit while Chromium rendered it fine.",
 		run:    checkNoteCardSelectionRing,
 	},
 	{
@@ -124,28 +124,37 @@ func checkAtlasBoardRenders(c mcpCaller) (string, error) {
 	return "atlas-board rendered after nav click", nil
 }
 
-func checkNoteCardFlip(c mcpCaller) (string, error) {
-	var result struct {
-		Before string `json:"before"`
-		After  string `json:"after"`
-		Label  string `json:"label"`
+// checkNoteCardCommit drives the goal 0102 click model end to end:
+// plain click selects (React Flow needs the full pointer sequence, so
+// mouse_click, never a js_eval .click()), a second click on the
+// now-sole-selected card commits it (a leaf opens its page). Cleanup
+// walks the Escape ladder twice -- close page, then clear selection --
+// so the ring check that follows starts from an unselected board.
+func checkNoteCardCommit(c mcpCaller) (string, error) {
+	selector := `[data-testid="atlas-note-card"]`
+	if _, err := c.call("mouse_click", map[string]any{"selector": selector}); err != nil {
+		return "", fmt.Errorf("select click: %w", err)
 	}
-	if err := c.callJSON("js_eval", map[string]any{
-		"js": `const card = document.querySelector('[data-testid="atlas-note-card"]');
-			if (!card) throw new Error('no seeded note card found to click');
-			const before = card.dataset.flipped;
-			const label = card.getAttribute('aria-label') || '';
-			card.click();
-			await new Promise(r => setTimeout(r, 200));
-			const after = document.querySelector('[data-testid="atlas-note-card"]').dataset.flipped;
-			return { before, after, label };`,
-	}, &result); err != nil {
-		return "", err
+	if err := pollJSEval(c, `const card = document.querySelector('[data-testid="atlas-note-card"]');
+		return !!card && !!card.closest('.react-flow__node.selected');`, 5*time.Second); err != nil {
+		return "", fmt.Errorf("first click never selected the card: %w", err)
 	}
-	if result.Before != "false" || result.After != "true" {
-		return "", fmt.Errorf("expected flipped false->true, got %s->%s (card: %s)", result.Before, result.After, result.Label)
+	if _, err := c.call("mouse_click", map[string]any{"selector": selector}); err != nil {
+		return "", fmt.Errorf("commit click: %w", err)
 	}
-	return fmt.Sprintf("flipped false->true (%s)", result.Label), nil
+	if err := pollJSEval(c, `return !!document.querySelector('[data-testid="atlas-page-header"]');`, 5*time.Second); err != nil {
+		return "", fmt.Errorf("second click on the selected card never opened its page: %w", err)
+	}
+	for i := 0; i < 2; i++ {
+		if _, err := c.call("keyboard_press", map[string]any{"key": "Escape"}); err != nil {
+			return "", fmt.Errorf("escape %d: %w", i+1, err)
+		}
+	}
+	if err := pollJSEval(c, `return !document.querySelector('[data-testid="atlas-page-header"]')
+		&& !document.querySelector('.react-flow__node.selected');`, 5*time.Second); err != nil {
+		return "", fmt.Errorf("escape ladder never returned to an unselected board: %w", err)
+	}
+	return "click-select then click-commit opened the page; Escape ladder restored the board", nil
 }
 
 type ringSnapshot struct {
@@ -153,14 +162,19 @@ type ringSnapshot struct {
 	Selected  bool   `json:"selected"`
 }
 
+// The ring is measured on the React Flow node WRAPPER, not the inner
+// element: PR #227 moved every selection ring there so Primer's
+// [role="button"] focus reset (which outranks any inner-element rule
+// on the just-clicked, focused node) can never zero it.
 func readRing(c mcpCaller, selector string) (ringSnapshot, error) {
 	var snap ringSnapshot
 	err := c.callJSON("js_eval", map[string]any{
 		"js": fmt.Sprintf(`const el = document.querySelectorAll(%q)[0];
 			if (!el) throw new Error('element not found: %s');
 			const wrapper = el.closest('.react-flow__node');
-			const style = getComputedStyle(el);
-			return { boxShadow: style.boxShadow, selected: wrapper ? wrapper.classList.contains('selected') : false };`, selector, selector),
+			if (!wrapper) throw new Error('no react-flow node wrapper above: %s');
+			const style = getComputedStyle(wrapper);
+			return { boxShadow: style.boxShadow, selected: wrapper.classList.contains('selected') };`, selector, selector, selector),
 	}, &snap)
 	return snap, err
 }
@@ -262,7 +276,7 @@ func checkStickyBorderColorFlip(c mcpCaller) (string, error) {
 		return "", fmt.Errorf("border-color did not flip on selection: stayed %q", before.BorderColor)
 	}
 	if after.BoxShadow == "none" {
-		return "", fmt.Errorf("sticky selection ring did not render: box-shadow is none after shift-click select")
+		return "", fmt.Errorf("sticky selection ring did not render: wrapper box-shadow is none after shift-click select")
 	}
 	return fmt.Sprintf("border-color %s -> %s, box-shadow none -> %s", before.BorderColor, after.BorderColor, after.BoxShadow), nil
 }
@@ -272,13 +286,17 @@ type stickySnapshot struct {
 	BoxShadow   string `json:"boxShadow"`
 }
 
+// Border-color reads from the inner sticky element (the accent flip
+// stayed there); box-shadow reads from the wrapper, same reasoning as
+// readRing above.
 func readStickyStyle(c mcpCaller, selector string) (stickySnapshot, error) {
 	var snap stickySnapshot
 	err := c.callJSON("js_eval", map[string]any{
 		"js": fmt.Sprintf(`const el = document.querySelector(%q);
 			if (!el) throw new Error('element not found: %s');
-			const style = getComputedStyle(el);
-			return { borderColor: style.borderColor, boxShadow: style.boxShadow };`, selector, selector),
+			const wrapper = el.closest('.react-flow__node');
+			if (!wrapper) throw new Error('no react-flow node wrapper above: %s');
+			return { borderColor: getComputedStyle(el).borderColor, boxShadow: getComputedStyle(wrapper).boxShadow };`, selector, selector, selector),
 	}, &snap)
 	return snap, err
 }
