@@ -94,7 +94,8 @@
   },
   "sticky": {
     "placeholder": "Type a note…",
-    "ariaLabel": "Note"
+    "ariaLabel": "Note",
+    "empty": "Empty note"
   },
   "capture": {
     "dropError": "Couldn't read the dropped file."

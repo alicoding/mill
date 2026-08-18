@@ -95,7 +95,9 @@ export const AtlasStickyNode = memo(function AtlasStickyNode({ data }: NodeProps
         }
       }}
     >
-      <div className={styles.text}>{note?.Text}</div>
+      <div className={note?.Text ? styles.text : `${styles.text} ${styles.emptyText}`}>
+        {note?.Text || t('sticky.empty')}
+      </div>
     </div>
   )
 })
