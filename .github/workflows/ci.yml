@@ -482,7 +482,13 @@ jobs:
   # release.yml's build-macos/release jobs already carry.
   beta-release:
     needs: ci-gate
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.ci-gate.result == 'success'
+    # !cancelled() replaces the implicit success() status function --
+    # without it, any legitimately-skipped job in the TRANSITIVE needs
+    # chain (dependency-review is PR-only, changes-filtered jobs skip
+    # on docs-only pushes) auto-skips this job even when ci-gate itself
+    # succeeded; observed on the first green push run after the job
+    # landed (skipped, 0 steps, green gate).
+    if: ${{ !cancelled() && github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.ci-gate.result == 'success' }}
     runs-on: macos-latest
     timeout-minutes: 30
     permissions:
