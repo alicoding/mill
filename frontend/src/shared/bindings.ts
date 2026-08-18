@@ -7,6 +7,10 @@
 // by service moves and stay direct.
 export { AtlasService } from '../../bindings/github.com/alicoding/mill/internal/services/atlassvc'
 export type {
+  ClipbridgeCardOffer,
+  ClipbridgeReplyPreview,
+} from '../../bindings/github.com/alicoding/mill/internal/services/atlassvc'
+export type {
   FolderImportSummary,
   FolderScanEntry,
   FolderScanResult,

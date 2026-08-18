@@ -4,8 +4,7 @@ import { Events } from '@wailsio/runtime'
 import { Text } from '@primer/react'
 import { FilteredActionList } from '@primer/react/experimental'
 import { NoteIcon, PlayIcon } from '@primer/octicons-react'
-import { AtlasService, CompositionService, ExecutionService, RunKind, SettingsService, TriggerService } from '../shared/bindings'
-import type { ClipboardApplyPreview } from '../shared/bindings'
+import { AtlasService, ExecutionService, RunKind, SettingsService, TriggerService } from '../shared/bindings'
 import { generateSamplePayload } from '../shared/configSchema'
 import { useAppStore, refreshWorkflows, refreshRequests, refreshKeybindings } from '../shared/store'
 import {
@@ -19,6 +18,8 @@ import { buildConfigureAndActionEntries } from './quickPanelActionEntries'
 import type { PanelEntry } from './quickPanelActionEntries'
 import { cascadeNotePosition, resolveNoteParentID } from './quickPanelCapture'
 import { QuickPanelClipboardApply } from './QuickPanelClipboardApply'
+import { QuickPanelReplyReview } from './QuickPanelReplyReview'
+import { useQuickPanelClipboardDoor } from './useQuickPanelClipboardDoor'
 import { FacetChipRow } from '../shared/FacetChipRow'
 import { useQuickPanelFacetSearch } from './quickPanelFacets'
 import styles from './QuickPanel.module.css'
@@ -125,14 +126,6 @@ export function QuickPanel() {
   // those; duplicating them per-window would double-fire OS
   // notifications for the same pending item).
   const [reviewPendingCount, setReviewPendingCount] = useState(0)
-  // docs/goals/0039: non-null swaps the panel body from the search list
-  // into QuickPanelClipboardApply's preview-confirm view. json is the
-  // exact clipboard text the preview was computed from -- re-sent to
-  // ConfirmClipboardApply on confirm rather than re-read from the
-  // clipboard a second time (the user's gesture already captured it
-  // once; a second OS-level read has no reason to differ and would
-  // just be a second permission prompt).
-  const [clipboardApply, setClipboardApply] = useState<{ json: string; preview: ClipboardApplyPreview } | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
   // Declared before the effects that reference them (react-hooks/
@@ -318,32 +311,9 @@ export function QuickPanel() {
       })
   }
 
-  // docs/goals/0039: reads the clipboard on the row's own click/Enter
-  // (the user gesture the Clipboard API requires) and hands the raw
-  // text to PreviewClipboardApply -- checked what exists first: the
-  // clipboard adapter (internal/adapters/clipboard) is wired for
-  // workflow-EXECUTION-side capture/apply nodes, not exposed as a
-  // general read-text RPC, and this window is an ordinary Wails webview
-  // where navigator.clipboard.readText() already works. Never throws
-  // through to the caller -- every failure path (permission denied,
-  // empty clipboard, malformed/unrecognized payload) becomes a
-  // Recognized=false preview so QuickPanelClipboardApply's own error
-  // view renders it, same as a genuinely bad payload would.
-  const applyFromClipboard = () => {
-    navigator.clipboard.readText()
-      .then((text) => {
-        if (!text.trim()) {
-          setClipboardApply({ json: text, preview: { recognized: false, error: t('quickPanel.clipboard.emptyError') } })
-          return
-        }
-        CompositionService.PreviewClipboardApply(text)
-          .then((preview) => setClipboardApply({ json: text, preview }))
-          .catch((err) => setClipboardApply({ json: text, preview: { recognized: false, error: String(err) } }))
-      })
-      .catch((err) => {
-        setClipboardApply({ json: '', preview: { recognized: false, error: t('quickPanel.clipboard.readError', { error: String(err) }) } })
-      })
-  }
+  // The clipboard door (goals 0039 + 0099) lives in its own hook --
+  // one row recognizes both a workflow export and a mill reply.
+  const { clipboardApply, setClipboardApply, replyReview, setReplyReview, applyFromClipboard } = useQuickPanelClipboardDoor(t)
 
   // The away-capture door (docs/goals/0090): a typed query with no
   // intent to search becomes a Note instead, filed into the Scratchpad
@@ -452,6 +422,22 @@ export function QuickPanel() {
   // (ADR-0033) has no room for a second, nested surface, so this is a
   // full replacement, not an overlay. Cancel/Applied both clear the
   // state, returning to the ordinary search list.
+  if (replyReview) {
+    return (
+      <div className={styles.panel} data-testid="quick-panel">
+        <QuickPanelReplyReview
+          preview={replyReview}
+          onCancel={() => setReplyReview(null)}
+          onApplied={(label) => {
+            setReplyReview(null)
+            setStatus(t('quickPanel.status.replyApplied', { label }))
+            window.setTimeout(() => { void SettingsService.DismissPanel().catch(() => {}) }, 600)
+          }}
+        />
+      </div>
+    )
+  }
+
   if (clipboardApply) {
     return (
       <div className={styles.panel} data-testid="quick-panel">

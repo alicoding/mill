@@ -9,6 +9,8 @@ export {
 export type {
     AtlasImportSummary,
     AtlasSessionState,
+    ClipbridgeCardOffer,
+    ClipbridgeReplyPreview,
     FileDropCreateResult,
     FileDropRoute,
     FolderImportSummary,

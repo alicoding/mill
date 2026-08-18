@@ -66,6 +66,11 @@ const (
 	cardDataStoreID       = "atlas-card-data-store"
 	cardSyncServiceID     = "atlas-card-sync-service"
 
+	// BuiltInScratchpadCardID is the seeded Scratchpad inbox area --
+	// exported because the clipboard bridge's note route (goal 0099)
+	// lands notes there from the service layer.
+	BuiltInScratchpadCardID = cardScratchpadID
+
 	linkGettingToContactID  = "atlas-link-getting-to-contact"
 	linkContactToDocumentID = "atlas-link-contact-to-document"
 	linkWebToStoreID        = "atlas-link-web-to-store"
