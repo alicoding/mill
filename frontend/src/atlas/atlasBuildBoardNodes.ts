@@ -20,6 +20,7 @@ export type BoardCardRFNode = AtlasNoteCardRFNode | AtlasGroupRFNode | AtlasRegi
 // non-draggable preview nodes anchored inside it (parentId +
 // extent:'parent') -- one nesting level deep, regardless of board
 // mode; a childless card renders as a flippable note (AtlasNoteCardNode).
+// eslint-disable-next-line sonarjs/cognitive-complexity -- legacy complexity grandfathered at gate adoption; pay down when touched (goal 0109 burn-down)
 export function buildBoardCardNodes({
   cards, allCards, kinds, links, linkKinds, isFree, readOnly, boardWidth, freeMoves, arteries,
   pulsedID, hintedID, hoveredFrameID, isSoleSelected, onOpenOverlay, handleDrill,

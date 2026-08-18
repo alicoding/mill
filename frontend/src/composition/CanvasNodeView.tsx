@@ -44,6 +44,7 @@ function runStatusLabelFor(t: (key: string) => string): Record<NodeRunStatus, st
 // icon/color/kind text is Mill's own (KIND_ICON/KIND_ICON_BG/KIND_LABEL,
 // nodeKind.ts) since Mill's node kinds are Capture/Process/Apply, not
 // that reference's fuller Input/Decision/Ruleset/... taxonomy.
+// eslint-disable-next-line sonarjs/cognitive-complexity -- legacy complexity grandfathered at gate adoption; pay down when touched (goal 0109 burn-down)
 export function CanvasNodeView({ id, data, selected }: NodeProps<CanvasNode>) {
   const { t } = useTranslation('composition')
   const RUN_STATUS_LABEL = runStatusLabelFor(t)

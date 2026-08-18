@@ -29,6 +29,7 @@ export function pageLabelFor(view: View, capabilities: { ID: string; Label: stri
 // that section (CAPABILITY_ICON), so the band's first tab matches the
 // selected nav item's silhouette. Settings/placeholder views have no
 // capability icon; the tab simply shows no glyph there.
+// eslint-disable-next-line sonarjs/cognitive-complexity -- legacy complexity grandfathered at gate adoption; pay down when touched (goal 0109 burn-down)
 export function pageIconFor(view: View): ReactNode {
   const key = view.kind === 'home' ? 'capability-home'
     : view.kind === 'composition' ? 'capability-composition'

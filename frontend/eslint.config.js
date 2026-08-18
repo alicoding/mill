@@ -3,6 +3,7 @@ import globals from 'globals'
 import reactHooks from 'eslint-plugin-react-hooks'
 import reactRefresh from 'eslint-plugin-react-refresh'
 import i18next from 'eslint-plugin-i18next'
+import sonarjs from 'eslint-plugin-sonarjs'
 import tseslint from 'typescript-eslint'
 
 export default tseslint.config(
@@ -17,9 +18,19 @@ export default tseslint.config(
     plugins: {
       'react-hooks': reactHooks,
       'react-refresh': reactRefresh,
+      sonarjs,
     },
     rules: {
       ...reactHooks.configs.recommended.rules,
+      // Sonar-class quality gates (goal 0109 phase 2b), the TS
+      // counterparts of .golangci.yml's dupl/gocognit: thresholds and
+      // enables set from a full measurement run over src/, never
+      // aspiration (hit lists in the goal file). no-duplicate-string
+      // stays OFF -- Sonar's own default posture; i18n keys and
+      // testids are the documented noise class.
+      'sonarjs/cognitive-complexity': ['error', 15],
+      'sonarjs/no-duplicated-branches': 'error',
+      'sonarjs/no-identical-functions': 'error',
       // eslint-plugin-react-hooks 6.x/7.x folded the React Compiler's
       // lint rules into `recommended` (goal: dependency majors sweep,
       // eslint 10 + react-hooks 7.1.1). `set-state-in-effect` flags
