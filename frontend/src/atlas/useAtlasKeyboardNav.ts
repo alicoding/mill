@@ -4,7 +4,7 @@ import type { Node as RFNode, Viewport } from '@xyflow/react'
 import type { Card } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 import { isEditableTarget } from '../shared/keybinding'
 import { AtlasService } from '../shared/bindings'
-import { isFocusInsideBoard } from './atlasFocusContainment'
+import { isFocusInsideBoard, readSelectedNodeIDs } from './atlasFocusContainment'
 import { nearestInDirection, readingOrder } from './atlasKeyboardNavGeometry'
 import type { NavBox, NavDirection } from './atlasKeyboardNavGeometry'
 
@@ -37,7 +37,7 @@ const ARROW_DELTA: Record<NavDirection, { dx: number; dy: number }> = {
 export function useAtlasKeyboardNav<TNode extends RFNode>({
   cards, readOnly, wrapperRef,
   cardBoxes, noteBoxes,
-  selectedIDsRef, setNodes,
+  setNodes,
   isGroupCardFn, onOpenOverlay, onDrill,
   getViewport, setViewport,
 }: {
@@ -46,7 +46,6 @@ export function useAtlasKeyboardNav<TNode extends RFNode>({
   wrapperRef: RefObject<HTMLDivElement | null>
   cardBoxes: NavBox[]
   noteBoxes: NavBox[]
-  selectedIDsRef: RefObject<string[]>
   setNodes: (updater: (nodes: TNode[]) => TNode[]) => void
   isGroupCardFn: (card: Card) => boolean
   onOpenOverlay: (id: string) => void
@@ -82,7 +81,10 @@ export function useAtlasKeyboardNav<TNode extends RFNode>({
       if (isEditableTarget(e.target)) return
       if (!isFocusInsideBoard(wrapperRef)) return
       const { cards: c, readOnly: ro, cardBoxes: cb, noteBoxes: nb, isGroupCardFn: isGroup, onOpenOverlay: openOverlay, onDrill: drill, getViewport: getVp, setViewport: setVp } = latest.current
-      const sel = selectedIDsRef.current
+      // Read the DOM directly, not a selection-state mirror -- see
+      // readSelectedNodeIDs' own header comment for the render-order
+      // gap a fresh click's own next keypress can otherwise hit.
+      const sel = readSelectedNodeIDs(wrapperRef)
 
       if (e.key === 'Tab') {
         e.preventDefault()
@@ -147,5 +149,5 @@ export function useAtlasKeyboardNav<TNode extends RFNode>({
       window.removeEventListener('keydown', onKeyDown)
       window.removeEventListener('keyup', onKeyUp)
     }
-  }, [selectedIDsRef, setNodes, wrapperRef])
+  }, [setNodes, wrapperRef])
 }

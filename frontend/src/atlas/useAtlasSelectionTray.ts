@@ -3,7 +3,7 @@ import type { RefObject } from 'react'
 import type { Node } from '@xyflow/react'
 import { isEditableTarget } from '../shared/keybinding'
 import { useAppStore } from '../shared/store'
-import { isFocusInsideBoard } from './atlasFocusContainment'
+import { isFocusInsideBoard, readSelectedNodeIDs } from './atlasFocusContainment'
 
 // The selection tray's own state glue + keyboard doors (owner-caught
 // follow-up to goal 0092: a multi-selection had no visible state and
@@ -46,14 +46,14 @@ export function useAtlasSelectionTray<TNode extends Node>({
   // click now genuinely selects a single card (goal 0102), and
   // flashing the Group/Delete tray for every ordinary single-select
   // would be noisier than the "+ Add" creation tray it replaces.
-  // Escape's own clear-selection rung below uses a separate >=1 test
-  // -- it clears ANY live selection, not only a 2+ one.
+  // Escape's own clear-selection rung below reads the DOM directly
+  // instead (readSelectedNodeIDs) -- it clears ANY live selection, not
+  // only a 2+ one, and can't wait on this state mirror's own timing.
   const hasSelection = selectedCards.length + selectedNotes.length >= 2
-  const anySelected = selectedCards.length + selectedNotes.length >= 1
 
-  const latest = useRef({ selectedCards, selectedNotes, hasSelection, anySelected, clearSelection, setNodes, onDeleteSelection, onGroupSelection })
+  const latest = useRef({ selectedCards, selectedNotes, hasSelection, clearSelection, setNodes, onDeleteSelection, onGroupSelection })
   useEffect(() => {
-    latest.current = { selectedCards, selectedNotes, hasSelection, anySelected, clearSelection, setNodes, onDeleteSelection, onGroupSelection }
+    latest.current = { selectedCards, selectedNotes, hasSelection, clearSelection, setNodes, onDeleteSelection, onGroupSelection }
   })
 
   // Clears BOTH halves: React Flow's own node.selected flags (so the
@@ -82,7 +82,11 @@ export function useAtlasSelectionTray<TNode extends Node>({
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         if (isEditableTarget(e.target) || !isFocusInsideBoard(wrapperRef)) return
-        if (latest.current.anySelected) clearAll()
+        // Read the DOM directly, not the selectedCards/selectedNotes
+        // state mirror -- see readSelectedNodeIDs' own header comment
+        // for the render-order gap a fresh click's own Escape can hit.
+        const ids = readSelectedNodeIDs(wrapperRef)
+        if (ids.length > 0) clearAll()
         else useAppStore.getState().requestAtlasUp()
         return
       }

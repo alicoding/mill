@@ -294,7 +294,7 @@ function AtlasBoardInner({ cards, allCards, kinds, links, linkKinds, notes, pare
   useAtlasKeyboardNav({
     cards, readOnly, wrapperRef,
     cardBoxes: topLevelBoxes, noteBoxes,
-    selectedIDsRef: selection.selectedIDsRef, setNodes,
+    setNodes,
     isGroupCardFn: (card) => isGroupCard(allCards, card),
     onOpenOverlay, onDrill: handleDrill,
     getViewport, setViewport,
@@ -373,6 +373,20 @@ function AtlasBoardInner({ cards, allCards, kinds, links, linkKinds, notes, pare
         onEdgeMouseLeave={() => setHoveredEdgeID(null)}
         nodesConnectable={false}
         deleteKeyCode={null}
+        // React Flow's own per-node keyboard accessibility (Escape
+        // unselects the FOCUSED node only, Enter/Space toggles it,
+        // arrow keys nudge it) is a second, uncoordinated keyboard
+        // system layered on top of this board's own (useAtlasKeyboardNav,
+        // useAtlasSelectionTray's Escape ladder, each card's own
+        // onKeyDown) -- both attached to the same DOM node, both firing
+        // on the same keydown. Regression: Escape on a focused,
+        // selected card raced RF's own unselect-then-blur ahead of this
+        // board's own Escape ladder, so a single press both cleared the
+        // selection AND climbed a level, since the ladder's own "was
+        // anything selected" read always found RF had already cleared
+        // it. Disabled outright -- this board's own hooks are the sole
+        // keyboard authority.
+        disableKeyboardA11y
         // Goal 0092: NOT default Meta -- that made ⌘-click also toggle.
         multiSelectionKeyCode="Shift"
         nodesDraggable={isFree && !readOnly}

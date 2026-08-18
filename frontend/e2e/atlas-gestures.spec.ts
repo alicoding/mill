@@ -96,6 +96,31 @@ test('⌘-click commits instantly with no prior selection needed; a plain click 
   await expect(selectedWrapper(page, getting)).toHaveCount(0)
 })
 
+test('the Escape ladder: clears a live selection first, then -- with nothing selected -- goes up one level', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Atlas' }).click()
+  await expect(page.getByTestId('atlas-board')).toBeVisible()
+
+  await groupCard(page, 'Example area').getByTestId('atlas-group-header').click()
+  await expect(page.getByTestId('atlas-breadcrumb')).toContainText('Example area')
+
+  const charter = noteCard(page, 'Project charter')
+  await charter.click()
+  await expect(selectedWrapper(page, charter)).toHaveCount(1)
+
+  // First rung: a live selection exists, so Escape clears it and stays
+  // at this level.
+  await page.keyboard.press('Escape')
+  await expect(selectedWrapper(page, charter)).toHaveCount(0)
+  await expect(page.getByTestId('atlas-breadcrumb')).toContainText('Example area')
+
+  // Second rung: nothing selected, so the SAME key now climbs the
+  // depth ladder one step -- the same signal ⌘↑ bumps.
+  await page.keyboard.press('Escape')
+  await expect(page.getByTestId('atlas-breadcrumb')).not.toContainText('Example area')
+  await expect(page.getByTestId('atlas-breadcrumb')).toContainText('My space')
+})
+
 test('atlas.up is surface-scoped: listed under "On this page" in the palette on Atlas, absent and inert elsewhere', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Atlas' }).click()
