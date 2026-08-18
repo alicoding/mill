@@ -8,7 +8,7 @@ import {
   spawnMillServer,
   type SpawnedServer,
 } from './fixtures/server'
-import { groupCard, noteCard, openCard } from './fixtures/atlasBoard'
+import { clickBreadcrumbSegment, groupCard, noteCard, openCard } from './fixtures/atlasBoard'
 
 // Session restore (goal 0091): the viewed level and open card persist
 // server-side and come back on the next mount. Its OWN server
@@ -55,7 +55,7 @@ test('session restore: the viewed level and open card survive a reload (goal 009
     // restore that only ever re-adds state would ghost the page back.
     await page.keyboard.press('Escape')
     await expect(overlay).not.toBeVisible()
-    await page.getByTestId('atlas-breadcrumb').getByText('My space').click()
+    await clickBreadcrumbSegment(page, page.getByTestId('atlas-breadcrumb').getByText('My space'), 'My space')
     await expect(page.getByTestId('atlas-breadcrumb')).not.toContainText('Example area')
     await page.reload()
     await expect(page.getByTestId('atlas-board')).toBeVisible()

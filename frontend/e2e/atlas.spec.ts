@@ -1,7 +1,7 @@
 import { test, expect } from './fixtures/server'
 import { deleteViaPageMenu } from './fixtures/atlasPage'
 import { ATLAS_KIND_TOPIC, selectKind } from './fixtures/kindPicker'
-import { openCard } from './fixtures/atlasBoard'
+import { clickBreadcrumbSegment, openCard } from './fixtures/atlasBoard'
 
 // Exercises the Atlas surface's one-map board (docs/adr/0038,
 // goal 0072 slice A: AtlasShelves retired, every level renders through
@@ -92,7 +92,7 @@ test('the seeded single root auto-enters "My space"; drilling into a region fram
 
   // Explicit back: the "My space" crumb (there is no "All spaces" one
   // to fall back to further) returns to the auto-entered root.
-  await page.getByTestId('atlas-breadcrumb').getByText('My space', { exact: true }).click()
+  await clickBreadcrumbSegment(page, page.getByTestId('atlas-breadcrumb').getByText('My space', { exact: true }), 'My space')
   await expect(page.getByTestId('atlas-breadcrumb')).not.toContainText('Example area')
   await expect(exampleArea).toBeVisible()
 })
@@ -348,7 +348,7 @@ test('a sibling card created into a Free-mode space lands clear of both leaf not
   await page.getByTestId('atlas-create-title').fill(title)
   await page.getByRole('button', { name: 'Create' }).click()
 
-  await page.getByTestId('atlas-breadcrumb').getByText('My space', { exact: true }).click()
+  await clickBreadcrumbSegment(page, page.getByTestId('atlas-breadcrumb').getByText('My space', { exact: true }), 'My space')
   const newCard = noteCard(page, title)
   await expect(newCard).toBeVisible()
 

@@ -127,3 +127,32 @@ test('the overlay shows hint chips for the new Atlas commands, and omits unbound
 
   await page.keyboard.press('Escape')
 })
+
+test('the board keyboard-nav key table (goal 0104) is fully advertised here, each unreachable via the palette', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Atlas' }).click()
+  await expect(page.getByTestId('atlas-view')).toBeVisible()
+
+  await page.keyboard.press('?')
+  const dialog = helpDialog(page)
+  await expect(dialog).toBeVisible()
+
+  await expect(dialog.locator('[data-command-id="atlas.focusNext"]')).toContainText('TAB')
+  await expect(dialog.locator('[data-command-id="atlas.focusPrevious"]')).toContainText('TAB')
+  await expect(dialog.locator('[data-command-id="atlas.focusDirection"]')).toContainText('⌥→')
+  await expect(dialog.locator('[data-command-id="atlas.openFocused"]')).toContainText('↩')
+  await expect(dialog.locator('[data-command-id="atlas.nudgeSelection"]')).toContainText('→')
+  await expect(dialog.locator('[data-command-id="atlas.escapeLadder"]')).toBeVisible()
+
+  await page.keyboard.press('Escape')
+
+  // paletteHidden (real handling stays in useAtlasKeyboardNav.ts's own
+  // window listener; a palette click would be a dead click since none
+  // of these have a live board target the palette can supply).
+  await page.keyboard.press('Meta+/')
+  const palette = page.getByRole('dialog', { name: 'Command palette' })
+  await expect(palette).toBeVisible()
+  await palette.getByRole('combobox').fill('Focus next card')
+  await expect(palette.getByRole('option', { name: 'Focus next card' })).toHaveCount(0)
+  await page.keyboard.press('Escape')
+})

@@ -26,6 +26,9 @@ import { useAtlasSelection } from './useAtlasSelection'
 import { useAtlasSelectAll } from './useAtlasSelectAll'
 import { useAtlasSelectionTray } from './useAtlasSelectionTray'
 import { useAtlasKeyboardNav } from './useAtlasKeyboardNav'
+import { useAtlasMinimapToggle } from './useAtlasMinimapToggle'
+import { AtlasBoardMinimapButton } from './AtlasBoardMinimapButton'
+import { ThemedMiniMap } from '../shared/ThemedMiniMap'
 import { useAtlasSlotDrag } from './useAtlasSlotDrag'
 import { AtlasSlotDragLine } from './AtlasSlotDragLine'
 import { buildBoardCardNodes } from './atlasBuildBoardNodes'
@@ -291,6 +294,8 @@ function AtlasBoardInner({ cards, allCards, kinds, links, linkKinds, notes, pare
 
   const { trayRef, hasSelection: haveSelection, onGroup: onTrayGroup, onDelete: onTrayDelete } = useAtlasSelectionTray({ selectedCards: selection.selectedCards, selectedNotes: selection.selectedNotes, clearSelection: selection.clearSelection, setNodes, onDeleteSelection, onGroupSelection, wrapperRef })
 
+  const minimap = useAtlasMinimapToggle()
+
   useAtlasKeyboardNav({
     cards, readOnly, wrapperRef,
     cardBoxes: topLevelBoxes, noteBoxes,
@@ -451,7 +456,10 @@ function AtlasBoardInner({ cards, allCards, kinds, links, linkKinds, notes, pare
         fitViewOptions={{ maxZoom: 1, padding: 0.25, duration: reduceMotion ? 0 : 250 }}
       >
         <Background />
-        <Controls />
+        <Controls>
+          <AtlasBoardMinimapButton visible={minimap.visible} onToggle={minimap.toggle} ariaLabel={t('board.minimapToggleAriaLabel')} />
+        </Controls>
+        {minimap.visible && <ThemedMiniMap />}
       </ReactFlow>
       {marqueeStyle && <div className={styles.marquee} data-testid="atlas-area-marquee" style={marqueeStyle} />}
       {slotDrag.dragLine && <AtlasSlotDragLine line={slotDrag.dragLine} />}

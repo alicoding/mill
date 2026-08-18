@@ -1,6 +1,6 @@
 import { test, expect } from './fixtures/server'
 import type { Page } from '@playwright/test'
-import { clickCorner, openCard, zoomAllTheWayOut } from './fixtures/atlasBoard'
+import { clickCorner, openCard, submitCreatePopover, zoomAllTheWayOut } from './fixtures/atlasBoard'
 import { deleteViaPageMenu } from './fixtures/atlasPage'
 
 // Atlas capture doors (goal 0081 slice A3, LOCKED design §2b/§3b):
@@ -55,7 +55,7 @@ test('paste text opens the placement popover prefilled with title and note', asy
   await expect(popover).toBeVisible()
   await expect(popover.getByTestId('atlas-placement-title')).toHaveValue('Q3 migration checklist')
 
-  await popover.getByTestId('atlas-placement-submit').click()
+  await submitCreatePopover(popover)
   await expect(popover).not.toBeVisible()
 
   const card = page.locator('[data-testid="atlas-note-card"]').filter({ hasText: 'Q3 migration checklist' })
@@ -86,7 +86,7 @@ test('paste HTML converts to Markdown before prefilling the popover', async ({ p
   // by the same first-line rule paste-as-plain-text uses.
   await expect(popover.getByTestId('atlas-placement-title')).toHaveValue(/Vendor policy/)
 
-  await popover.getByTestId('atlas-placement-submit').click()
+  await submitCreatePopover(popover)
   await expect(popover).not.toBeVisible()
 
   const card = page.locator('[data-testid="atlas-note-card"]').filter({ hasText: 'Vendor policy' })

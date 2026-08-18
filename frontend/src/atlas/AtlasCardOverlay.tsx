@@ -9,6 +9,7 @@ import { useAppStore } from '../shared/store'
 import { atlasCardShareActions } from './atlasCardShare'
 import { useCardPageNav } from './atlasCardPageNav'
 import { AtlasCardPageHeader } from './AtlasCardPageHeader'
+import { AtlasCardPropertyStrip } from './AtlasCardPropertyStrip'
 import { AtlasCardPageFields } from './AtlasCardPageFields'
 import { AtlasCardPageContents } from './AtlasCardPageContents'
 import { AtlasCardPageMetaRail } from './AtlasCardPageMetaRail'
@@ -254,7 +255,15 @@ export function AtlasCardOverlay({ card, kinds, allCards, links, linkKinds, onCl
       renderBody={() => (
         <div className={styles.body} data-file-drop-target data-file-drop-context={FILE_DROP_CONTEXT_CARD_PAGE}>
           <div>
+            <AtlasCardPropertyStrip
+              card={displayedCard}
+              kind={kind}
+              fields={fields}
+              onFieldsChange={(key, value) => setFields((prev) => ({ ...prev, [key]: value }))}
+              onFieldsCommit={commitField}
+            />
             <AtlasCardPageFields
+              key={displayedCard.ID}
               kind={kind}
               note={note} noteError={errors.note ?? ''} onNoteChange={setNote} onNoteCommit={commitNote}
               fields={fields} fieldErrors={fieldErrors}
