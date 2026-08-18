@@ -166,6 +166,7 @@ export function NodePalette({ nodeTypes, hasTrigger }: NodePaletteProps) {
               variant="invisible"
               size="small"
               block
+              className={styles.paletteExampleRow}
               leadingVisual={WorkflowIcon}
               title={w.Description}
               data-testid="palette-example"

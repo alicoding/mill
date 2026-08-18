@@ -580,3 +580,15 @@
 .canvasNodeValidation[data-severity='error'] {
     background: var(--bgColor-danger-emphasis);
 }
+
+/* Examples rows read as a left-aligned list, not centered chips --
+   Primer Button centers its content grid by default, so both the
+   button box and its internal content grid need the left alignment. */
+.paletteExampleRow {
+  justify-content: flex-start;
+  text-align: left;
+}
+.paletteExampleRow [data-component="buttonContent"] {
+  flex: 1 1 auto;
+  justify-content: flex-start;
+}
