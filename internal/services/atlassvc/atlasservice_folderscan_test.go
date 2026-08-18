@@ -190,6 +190,35 @@ func TestScanFolder_FlagsEntryMatchingAnAlreadyMirroredCardsChecksum(t *testing.
 	}
 }
 
+// Regression: a soft-deleted card's checksum kept flagging its file as
+// "already imported", so a delete-then-reimport arrived default-
+// unchecked against a card the user could no longer see.
+func TestScanFolder_DeletedCardNoLongerFlagsItsFileAsDuplicate(t *testing.T) {
+	a := newTestAtlasService(t)
+	root := buildFixtureFolder(t)
+
+	fileKind := firstKindWithLabel(t, a, "Document")
+	existing, err := a.CreateCard(fileKind, "Already here", "", nil, "", nil, "", "",
+		filepath.Join(root, "Meeting Notes.md"), "")
+	if err != nil {
+		t.Fatalf("CreateCard: %v", err)
+	}
+	a.backfillMirrorChecksums()
+	if _, err := a.DeleteCard(existing.ID); err != nil {
+		t.Fatalf("DeleteCard: %v", err)
+	}
+
+	result, err := a.ScanFolder(root)
+	if err != nil {
+		t.Fatalf("ScanFolder: %v", err)
+	}
+	for _, e := range result.Entries {
+		if e.Name == "Meeting Notes.md" && e.DuplicateOfCardID != "" {
+			t.Errorf("Meeting Notes.md DuplicateOfCardID = %q, want none after the matching card was deleted", e.DuplicateOfCardID)
+		}
+	}
+}
+
 func TestImportFolderSuggestions_CreatesCardsWithContainmentAndMirrorPath(t *testing.T) {
 	a := newTestAtlasService(t)
 	root := buildFixtureFolder(t)

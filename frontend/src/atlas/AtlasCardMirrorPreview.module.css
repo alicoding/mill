@@ -52,3 +52,17 @@
     border-radius: var(--borderRadius-medium);
     border: 1px solid var(--borderColor-default);
 }
+
+/* Rendered mermaid fences (useMermaidRendering): the SVG scales to the
+   preview width; the class is global-scoped because the wrapper is
+   created imperatively outside JSX. */
+.markdownBody :global(.atlas-mermaid-diagram) {
+  display: flex;
+  justify-content: center;
+  margin: var(--stack-gap-normal, 16px) 0;
+  overflow-x: auto;
+}
+.markdownBody :global(.atlas-mermaid-diagram svg) {
+  max-width: 100%;
+  height: auto;
+}
