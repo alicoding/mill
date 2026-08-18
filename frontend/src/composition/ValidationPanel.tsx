@@ -5,6 +5,7 @@ import { AlertFillIcon, CheckIcon, CopyIcon, XCircleFillIcon } from '@primer/oct
 import type { Issue } from '../../bindings/github.com/alicoding/mill/internal/domain/composition/models'
 import { formatIssuesForCopy } from './validationCopy'
 import styles from './CompositionCanvas.module.css'
+import { writeClipboardText } from '../shared/clipboardWrite'
 
 // The editor's own authoring-validation surface (docs/adr/0028): a
 // toolbar badge naming how many errors/warnings the current draft
@@ -34,7 +35,7 @@ export function ValidationSurface({ issues, workflowLabel, workflowId, onSelectI
   // without hand-transcribing panel rows. Same navigator.clipboard
   // precedent as RequestTestPanel's Copy-error button.
   const copyIssues = () => {
-    void navigator.clipboard.writeText(formatIssuesForCopy(t, workflowLabel, workflowId, issues)).then(() => {
+    void writeClipboardText(formatIssuesForCopy(t, workflowLabel, workflowId, issues)).then(() => {
       setCopied(true)
       setTimeout(() => setCopied(false), 1500)
     })

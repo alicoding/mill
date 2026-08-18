@@ -205,7 +205,12 @@ func main() {
 
 	settingsService := settingssvc.NewSettingsService(settingsStore, triggerService, settingsPath != defaultSettingsPath)
 	settingsService.SetAppVersion(millUpdateVersion)
-	settingsService.SetUpdateChannel(millChannel)
+	// The user's persisted channel opt-in wins over the build stamp --
+	// a source-built copy can deliberately follow the beta feed
+	// (Settings > Updates). Resolved once here so the guard, label,
+	// and provider feed below all agree for this run.
+	effectiveChannel := settingsService.ResolveUpdateChannel(millChannel)
+	settingsService.SetUpdateChannel(effectiveChannel)
 	// goal 0100: DownloadAndInstallUpdate's pre-swap snapshot seam.
 	settingsService.SetBackupRunner(backupService.BackupRunner())
 	// Bidirectional hotkey-conflict check (docs/SPEC.md §3.7): a
@@ -287,7 +292,7 @@ func main() {
 	// under its own line-count convention). A construction failure here
 	// is logged, not fatal -- a broken updater must never block the app
 	// from starting.
-	if err := settingssvc.InitUpdater(app.Updater, "alicoding/mill", millUpdateVersion, millChannel, settingsService); err != nil {
+	if err := settingssvc.InitUpdater(app.Updater, "alicoding/mill", millUpdateVersion, effectiveChannel, settingsService); err != nil {
 		logger.Error("updater init", "error", err)
 	}
 
@@ -340,6 +345,11 @@ func main() {
 		}
 	}
 	windowOptions := application.WebviewWindowOptions{
+		// Explicit name so tooling addressing windows by name (the MCP
+		// bridge's `window` parameter, internal/webviewbridgesmoke) can
+		// target the main window deterministically instead of relying on
+		// Wails's auto-generated "window-N" fallback.
+		Name:   "main",
 		Title:  "Mill",
 		Width:  windowWidth,
 		Height: windowHeight,
@@ -379,73 +389,9 @@ func main() {
 	settingsService.WatchWindowGeometry()
 	atlasService.WireFileDropWindow(mainWindow)
 
-	// The Quick Panel (docs/adr/0033): a second, always-alive floating
-	// window the summon hotkey toggles. Created once, Hidden, shown/
-	// hidden for the app's life (never destroyed/recreated). URL is a
-	// hash route, not a bare path: production asset serving has no SPA
-	// fallback, so a bare path second window would 404 in a real
-	// installed build. Deliberately NOT ActivationPolicyAccessory (would
-	// pull Mill's dock icon too) and NOT a non-activating NSPanel
-	// (unmerged upstream at beta.4) -- showing this window still
-	// activates Mill and steals focus, which SettingsService's
-	// yieldFocusIfMainHidden mitigates on dismiss.
-	panelWindow := app.Window.NewWithOptions(application.WebviewWindowOptions{
-		Name:             "quickpanel",
-		Title:            "Mill Quick Panel",
-		Width:            560,
-		Height:           400,
-		Hidden:           true,
-		Frameless:        true,
-		DisableResize:    true,
-		InitialPosition:  application.WindowCentered,
-		HideOnFocusLost:  true,
-		HideOnEscape:     true,
-		BackgroundColour: application.NewRGB(6, 7, 15),
-		Mac: application.MacWindow{
-			Backdrop:           application.MacBackdropTranslucent,
-			WindowLevel:        application.MacWindowLevelFloating,
-			CollectionBehavior: application.MacWindowCollectionBehaviorCanJoinAllSpaces | application.MacWindowCollectionBehaviorFullScreenAuxiliary,
-			TitleBar: application.MacTitleBar{
-				AppearsTransparent: true,
-				Hide:               true,
-			},
-		},
-		URL: "/#/quickpanel",
-	})
-	settingsService.SetPanelWindow(panelWindow)
-
-	// The floating approval prompt (docs/goals/0023-attention-escalation.md
-	// item 1): the incoming-call/askpass pattern, ADR-0033's second-
-	// window mechanism reused rather than re-derived -- always-alive,
-	// Hidden, floating above every Space/full-screen app, hash-routed.
-	// Shown by the BACKEND itself (SettingsService.NotifyPendingApproval's
-	// away verdict), never by a hotkey. Deliberately NOT HideOnFocusLost
-	// (unlike the Quick Panel above): a decision prompt must not vanish
-	// just because focus wandered -- Escape (HideOnEscape) is its one
-	// explicit, native dismiss path.
-	approvalPromptWindow := app.Window.NewWithOptions(application.WebviewWindowOptions{
-		Name:             "approvalprompt",
-		Title:            "Mill Approval",
-		Width:            520,
-		Height:           200,
-		Hidden:           true,
-		Frameless:        true,
-		DisableResize:    true,
-		InitialPosition:  application.WindowCentered,
-		HideOnEscape:     true,
-		BackgroundColour: application.NewRGB(6, 7, 15),
-		Mac: application.MacWindow{
-			Backdrop:           application.MacBackdropTranslucent,
-			WindowLevel:        application.MacWindowLevelFloating,
-			CollectionBehavior: application.MacWindowCollectionBehaviorCanJoinAllSpaces | application.MacWindowCollectionBehaviorFullScreenAuxiliary,
-			TitleBar: application.MacTitleBar{
-				AppearsTransparent: true,
-				Hide:               true,
-			},
-		},
-		URL: "/#/approvalprompt",
-	})
-	settingsService.SetApprovalPromptWindow(approvalPromptWindow)
+	// ADR-0033 second-window family, built in auxwindows.go.
+	settingsService.SetPanelWindow(newQuickPanelWindow(app))
+	settingsService.SetApprovalPromptWindow(newApprovalPromptWindow(app))
 
 	// docs/SPEC.md §3.7 (task #8): a persistent tray icon as Mill's own
 	// running-indicator, coexisting with the dock icon (Application

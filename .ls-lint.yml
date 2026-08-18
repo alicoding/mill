@@ -52,7 +52,11 @@
 #     added here -- that's the point, not a bug: root additions are
 #     layout decisions, never accidents.
 ls:
-  .go: regex:(main|singleinstance_(production|dev))
+  # auxwindows: the ADR-0033 second-window constructors (Quick Panel +
+  # approval prompt), split from main.go along that family seam when it
+  # crossed the 500-line convention -- `package main` (they wire into
+  # main.go's app object) so they cannot move under internal/.
+  .go: regex:(main|auxwindows|singleinstance_(production|dev))
   # SECURITY/CONTRIBUTING added goal 0028 (public-repo hygiene): both are
   # standard GitHub community-profile root files, same allowlist family as
   # README below (checked, not new -- CODE_OF_CONDUCT deliberately stays

@@ -1,5 +1,6 @@
 import type { Card } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 import { AtlasService } from '../shared/bindings'
+import { writeClipboardText } from '../shared/clipboardWrite'
 
 // The card-level share actions (goal 0063, ADR-0038): copy-as-context
 // (with an explicit with/without-attachments toggle), copy-cloud-link,
@@ -14,7 +15,7 @@ export function atlasCardShareActions(card: Card, onError: (message: string) => 
   const copyAsContext = async (withAttachments: boolean): Promise<void> => {
     try {
       const block = await AtlasService.CardContextBlock(card.ID, withAttachments)
-      await navigator.clipboard.writeText(block)
+      await writeClipboardText(block)
     } catch (err) {
       onError(String(err))
     }
@@ -23,7 +24,7 @@ export function atlasCardShareActions(card: Card, onError: (message: string) => 
   const copyForAI = async (): Promise<void> => {
     try {
       const envelope = await AtlasService.CardContextEnvelope(card.ID)
-      await navigator.clipboard.writeText(envelope)
+      await writeClipboardText(envelope)
     } catch (err) {
       onError(String(err))
     }
@@ -31,7 +32,7 @@ export function atlasCardShareActions(card: Card, onError: (message: string) => 
 
   const copyCloudLink = async (): Promise<void> => {
     try {
-      await navigator.clipboard.writeText(card.Source)
+      await writeClipboardText(card.Source)
     } catch (err) {
       onError(String(err))
     }
