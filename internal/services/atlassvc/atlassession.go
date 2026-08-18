@@ -24,6 +24,12 @@ const testAtlasSessionOffEnv = "MILL_TEST_ATLAS_SESSION_OFF"
 type AtlasSessionState struct {
 	ViewedID   string `json:"viewedID"`
 	OpenCardID string `json:"openCardID"`
+	// ActivePerspectiveID names the currently-switched-to Perspective
+	// (ADR-0041, goal 0095) -- "" is the default "everything" view (the
+	// absence of a Perspective, never an empty one). Degraded on read
+	// like its siblings: a perspective deleted since this was set
+	// resolves back to "".
+	ActivePerspectiveID string `json:"activePerspectiveID"`
 }
 
 // SetAtlasSession persists the current session state -- a zero state
@@ -69,6 +75,9 @@ func (a *AtlasService) AtlasSession() AtlasSessionState {
 		if c, ok := byID[out.OpenCardID]; !ok || !c.DeletedAt.IsZero() {
 			out.OpenCardID = ""
 		}
+	}
+	if out.ActivePerspectiveID != "" && a.findPerspectiveLocked(out.ActivePerspectiveID) == -1 {
+		out.ActivePerspectiveID = ""
 	}
 	return out
 }

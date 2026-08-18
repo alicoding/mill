@@ -74,14 +74,32 @@ type exportedLink struct {
 	Label      string `json:"label,omitempty"`
 }
 
+// exportedPerspective mirrors atlas.Perspective (ADR-0041, goal 0095).
+// MemberCardIDs/MemberLinkIDs are filtered to locally-known ids on
+// BOTH sides of the round trip: ExportAtlas drops any member that's
+// tombstoned/gone at export time (the same "must not resurrect via
+// export -> import" guard the rest of this file applies), and
+// ImportAtlas drops any member the target instance doesn't actually
+// have after Kinds/Cards/Links have all been imported.
+type exportedPerspective struct {
+	ID            string   `json:"id,omitempty"`
+	SpaceID       string   `json:"spaceID,omitempty"`
+	Name          string   `json:"name"`
+	Description   string   `json:"description,omitempty"`
+	Order         int      `json:"order"`
+	MemberCardIDs []string `json:"memberCardIDs,omitempty"`
+	MemberLinkIDs []string `json:"memberLinkIDs,omitempty"`
+}
+
 // exportedAtlas is the one envelope (mill://schema/atlas/v1, ADR-0036
 // decision 2) carrying the whole graph.
 type exportedAtlas struct {
-	Schema    string             `json:"schema"`
-	Kinds     []exportedKind     `json:"kinds,omitempty"`
-	LinkKinds []exportedLinkKind `json:"linkKinds,omitempty"`
-	Cards     []exportedCard     `json:"cards,omitempty"`
-	Links     []exportedLink     `json:"links,omitempty"`
+	Schema       string                `json:"schema"`
+	Kinds        []exportedKind        `json:"kinds,omitempty"`
+	LinkKinds    []exportedLinkKind    `json:"linkKinds,omitempty"`
+	Cards        []exportedCard        `json:"cards,omitempty"`
+	Links        []exportedLink        `json:"links,omitempty"`
+	Perspectives []exportedPerspective `json:"perspectives,omitempty"`
 }
 
 // ExportAtlas serializes the whole Atlas graph as an indented, portable
@@ -136,6 +154,24 @@ func (a *AtlasService) ExportAtlas() (string, error) {
 		}
 		out.Links = append(out.Links, exportedLink{ID: l.ID, FromCardID: l.FromCardID, ToCardID: l.ToCardID, LinkKindID: l.LinkKindID, Label: l.Label})
 	}
+	liveLinkIDs := make(map[string]bool, len(out.Links))
+	for _, l := range out.Links {
+		liveLinkIDs[l.ID] = true
+	}
+	out.Perspectives = make([]exportedPerspective, 0, len(a.perspectives))
+	for _, p := range a.perspectives {
+		// A perspective scoped to a tombstoned/gone space is skipped
+		// entirely -- same "must not resurrect via export -> import"
+		// guard applied to its own card members below.
+		if p.SpaceID != "" && !liveCardIDs[p.SpaceID] {
+			continue
+		}
+		out.Perspectives = append(out.Perspectives, exportedPerspective{
+			ID: p.ID, SpaceID: p.SpaceID, Name: p.Name, Description: p.Description, Order: p.Order,
+			MemberCardIDs: filterKnownIDs(p.MemberCardIDs, liveCardIDs),
+			MemberLinkIDs: filterKnownIDs(p.MemberLinkIDs, liveLinkIDs),
+		})
+	}
 	a.mu.RUnlock()
 
 	data, err := json.MarshalIndent(out, "", "  ")
@@ -152,14 +188,16 @@ func (a *AtlasService) ExportAtlas() (string, error) {
 // informational for a post-import confirmation, not load-bearing for
 // the uniform-semantics preview itself.
 type AtlasImportSummary struct {
-	KindsCreated     int
-	KindsUpdated     int
-	LinkKindsCreated int
-	LinkKindsUpdated int
-	CardsCreated     int
-	CardsUpdated     int
-	LinksCreated     int
-	LinksUpdated     int
+	KindsCreated        int
+	KindsUpdated        int
+	LinkKindsCreated    int
+	LinkKindsUpdated    int
+	CardsCreated        int
+	CardsUpdated        int
+	LinksCreated        int
+	LinksUpdated        int
+	PerspectivesCreated int
+	PerspectivesUpdated int
 }
 
 // ImportAtlas applies ADR-0036 decision 3's uniform import rule to
@@ -262,6 +300,22 @@ func (a *AtlasService) ImportAtlas(jsonData string) (AtlasImportSummary, error) 
 		}
 	}
 
+	// Perspectives import LAST -- every card and link they might
+	// reference must already exist locally so membership can be
+	// filtered to what's actually known (ImportAtlas's own doc
+	// comment's ordering rule, applied one family further).
+	for _, p := range in.Perspectives {
+		created, err := a.importPerspective(p)
+		if err != nil {
+			return summary, fmt.Errorf("import atlas: perspective %q: %w", p.Name, err)
+		}
+		if created {
+			summary.PerspectivesCreated++
+		} else {
+			summary.PerspectivesUpdated++
+		}
+	}
+
 	return summary, nil
 }
 
@@ -329,5 +383,55 @@ func (a *AtlasService) importLink(l exportedLink) (created bool, err error) {
 		return false, err
 	}
 	_, err = a.createLinkWithID(l.ID, l.FromCardID, l.ToCardID, l.LinkKindID, l.Label)
+	return true, err
+}
+
+// filterKnownIDs returns every id in ids that's present in known,
+// preserving order -- ExportAtlas's own guard against a stale member
+// id leaking out, and ImportAtlas's own guard against a bundled member
+// id the target instance never actually created.
+func filterKnownIDs(ids []string, known map[string]bool) []string {
+	if len(ids) == 0 {
+		return nil
+	}
+	out := make([]string, 0, len(ids))
+	for _, id := range ids {
+		if known[id] {
+			out = append(out, id)
+		}
+	}
+	return out
+}
+
+// importPerspective applies exported Perspective p, filtering its
+// membership to cards/links that actually exist LOCALLY at this point
+// in the import (every Kind/Card/Link has already been imported by the
+// time ImportAtlas reaches this loop).
+func (a *AtlasService) importPerspective(p exportedPerspective) (created bool, err error) {
+	a.mu.RLock()
+	knownCards := make(map[string]bool, len(a.cards))
+	for _, c := range a.cards {
+		knownCards[c.ID] = true
+	}
+	knownLinks := make(map[string]bool, len(a.links))
+	for _, l := range a.links {
+		knownLinks[l.ID] = true
+	}
+	a.mu.RUnlock()
+	memberCards := filterKnownIDs(p.MemberCardIDs, knownCards)
+	memberLinks := filterKnownIDs(p.MemberLinkIDs, knownLinks)
+
+	if p.ID == "" {
+		_, err = a.createPerspectiveWithID("", p.SpaceID, p.Name, p.Description, p.Order, memberCards, memberLinks)
+		return true, err
+	}
+	a.mu.RLock()
+	exists := a.findPerspectiveLocked(p.ID) != -1
+	a.mu.RUnlock()
+	if exists {
+		err = a.updatePerspectiveFromImport(p.ID, p.SpaceID, p.Name, p.Description, p.Order, memberCards, memberLinks)
+		return false, err
+	}
+	_, err = a.createPerspectiveWithID(p.ID, p.SpaceID, p.Name, p.Description, p.Order, memberCards, memberLinks)
 	return true, err
 }

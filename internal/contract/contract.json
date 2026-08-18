@@ -235,6 +235,43 @@
             "label"
           ]
         },
+        "exportedPerspective": {
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "spaceID": {
+              "type": "string"
+            },
+            "name": {
+              "type": "string"
+            },
+            "description": {
+              "type": "string"
+            },
+            "order": {
+              "type": "integer"
+            },
+            "memberCardIDs": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "memberLinkIDs": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            }
+          },
+          "additionalProperties": false,
+          "type": "object",
+          "required": [
+            "name",
+            "order"
+          ]
+        },
         "exportedPosition": {
           "properties": {
             "x": {
@@ -277,6 +314,12 @@
         "links": {
           "items": {
             "$ref": "#/$defs/exportedLink"
+          },
+          "type": "array"
+        },
+        "perspectives": {
+          "items": {
+            "$ref": "#/$defs/exportedPerspective"
           },
           "type": "array"
         }

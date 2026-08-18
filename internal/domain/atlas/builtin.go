@@ -227,6 +227,18 @@ func BuiltInLinks() []Link {
 	}
 }
 
+// BuiltInPerspectives returns the seeded example perspectives (ADR-
+// 0041, goal 0095) -- deliberately EMPTY in this slice (the seeded
+// three-perspective reference-architecture example is goal 0095's
+// slice 3): the reconcile/fingerprint plumbing exists and runs on
+// every startup like every other family's, it just has nothing to
+// insert yet. Zero Perspectives is also the product default itself
+// (the "everything" view is the absence of a record), so an empty
+// slice here changes nothing observable.
+func BuiltInPerspectives() []Perspective {
+	return nil
+}
+
 // RetiredBuiltInKindIDs names a built-in Kind ID that once shipped in
 // BuiltInKinds() and no longer does -- atlassvc's reconcile pass uses
 // this to remove/tombstone a leftover copy from an existing install,

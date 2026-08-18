@@ -79,9 +79,15 @@ func (a *AtlasService) createCardWithID(id, kindID, title, note string, fields m
 		return atlas.Card{}, err
 	}
 	a.cards = append(a.cards, c)
+	// Authoring-while-active (ADR-0041): a card created while a
+	// perspective is active joins it, ancestry closed. Snapshot first --
+	// a persist failure below must roll this back too.
+	previousPerspectives := append([]atlas.Perspective(nil), a.perspectives...)
+	a.joinActivePerspectiveWithCardLocked(c.ID)
 	perr := a.persistLocked()
 	if perr != nil {
 		a.cards = a.cards[:len(a.cards)-1]
+		a.perspectives = previousPerspectives
 	}
 	a.mu.Unlock()
 	if perr != nil {

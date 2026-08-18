@@ -38,6 +38,17 @@ export function AddLinkedCard(fromCardID: string, kindID: string, title: string,
 }
 
 /**
+ * AddToPerspective adds cardID to perspectiveID, closed under ancestry
+ * (ADR-0041): every container between cardID and the perspective's own
+ * SpaceID joins with it, so a deeply nested card never appears in a
+ * filtered view floating with no visible container. Rejects a cardID
+ * that does not actually live inside the perspective's space.
+ */
+export function AddToPerspective(perspectiveID: string, cardID: string): $CancellablePromise<atlas$0.Perspective> {
+    return $Call.ByID(420793018, perspectiveID, cardID);
+}
+
+/**
  * AtlasSession returns the persisted state, DEGRADED to what still
  * exists: a fully-gone viewed card falls back to root; a tombstoned
  * one (goal 0093) resolves to its own effective parent -- the same
@@ -171,6 +182,14 @@ export function CreateNote(text: string, pos: atlas$0.Position, parentID: string
 }
 
 /**
+ * CreatePerspective makes a new Perspective over spaceID ("" for the
+ * true root), appended at the end of that space's own ordered set.
+ */
+export function CreatePerspective(spaceID: string, name: string, description: string): $CancellablePromise<atlas$0.Perspective> {
+    return $Call.ByID(3910340284, spaceID, name, description);
+}
+
+/**
  * DeleteCard soft-deletes a card (goal 0093's quick-delete-with-undo
  * guard): stamps DeletedAt and leaves ParentID/children untouched --
  * no data rewrite happens until the boot-time purge; every live child
@@ -213,6 +232,17 @@ export function DeleteLinkKind(id: string): $CancellablePromise<void> {
  */
 export function DeleteNote(id: string): $CancellablePromise<$models.TombstoneResult> {
     return $Call.ByID(3922503309, id);
+}
+
+/**
+ * DeletePerspective removes a perspective immediately -- no tombstone/
+ * undo lifecycle (ADR-0041): cheap to recreate. A session parked on
+ * this perspective degrades to the everything view the next time
+ * AtlasSession is read; nothing else references a Perspective's id, so
+ * there is no further referential cleanup to do here.
+ */
+export function DeletePerspective(id: string): $CancellablePromise<void> {
+    return $Call.ByID(2541135077, id);
 }
 
 /**
@@ -361,6 +391,16 @@ export function OpenCardMirror(cardID: string): $CancellablePromise<void> {
 }
 
 /**
+ * Perspectives returns every perspective across every space -- the
+ * frontend/caller scopes by SpaceID (goal 0095's slice-1 read model
+ * mirrors Kinds()/LinkKinds()'s own "return everything, caller
+ * filters" shape).
+ */
+export function Perspectives(): $CancellablePromise<atlas$0.Perspective[] | null> {
+    return $Call.ByID(1253153793);
+}
+
+/**
  * PickFolder opens the native folder picker -- goal 0067's consent
  * gate: zero filesystem reads happen before this returns a path the
  * user actually chose. startDir optionally pre-fills the dialog's
@@ -384,6 +424,36 @@ export function PickFolder(startDir: string): $CancellablePromise<string> {
  */
 export function PromoteNote(noteID: string, kindID: string, title: string): $CancellablePromise<atlas$0.Card> {
     return $Call.ByID(881716522, noteID, kindID, title);
+}
+
+/**
+ * RemoveFromPerspective removes cardID from perspectiveID, cascaded to
+ * every member descendant cardID currently contains (ADR-0041): a
+ * member left behind after its own container drops out of a view would
+ * render with no visible parent context.
+ */
+export function RemoveFromPerspective(perspectiveID: string, cardID: string): $CancellablePromise<atlas$0.Perspective> {
+    return $Call.ByID(2634584680, perspectiveID, cardID);
+}
+
+/**
+ * RenamePerspective replaces a perspective's Name/Description in
+ * place -- membership/SpaceID/Order move through their own dedicated
+ * calls (AddToPerspective/RemoveFromPerspective/ReorderPerspective),
+ * same "one concern per mutator" shape UpdateCard vs. MoveCard takes.
+ */
+export function RenamePerspective(id: string, name: string, description: string): $CancellablePromise<atlas$0.Perspective> {
+    return $Call.ByID(994641070, id, name, description);
+}
+
+/**
+ * ReorderPerspective assigns Order = index within orderedIDs to every
+ * perspective named -- orderedIDs must name EXACTLY the perspectives
+ * currently scoped to spaceID, once each (the same "whole ordered set,
+ * not a partial move" shape a drag-reorder list naturally produces).
+ */
+export function ReorderPerspective(spaceID: string, orderedIDs: string[] | null): $CancellablePromise<void> {
+    return $Call.ByID(538428937, spaceID, orderedIDs);
 }
 
 /**

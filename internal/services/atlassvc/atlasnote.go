@@ -171,10 +171,16 @@ func (a *AtlasService) PromoteNote(noteID, kindID, title string) (atlas.Card, er
 	}
 	a.notes = append(a.notes[:noteIdx], a.notes[noteIdx+1:]...)
 	a.cards = append(a.cards, c)
+	// Authoring-while-active (ADR-0041): the promoted card joins the
+	// active perspective, same as any other freshly created card.
+	// Snapshot first -- a persist failure below must roll this back too.
+	previousPerspectives := append([]atlas.Perspective(nil), a.perspectives...)
+	a.joinActivePerspectiveWithCardLocked(c.ID)
 	perr := a.persistLocked()
 	if perr != nil {
 		a.notes = insertNoteAt(a.notes, noteIdx, note)
 		a.cards = a.cards[:len(a.cards)-1]
+		a.perspectives = previousPerspectives
 	}
 	a.mu.Unlock()
 	if perr != nil {

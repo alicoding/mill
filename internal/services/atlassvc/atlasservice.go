@@ -11,10 +11,10 @@
 package atlassvc
 
 import (
-	"slices"
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"slices"
 	"sync"
 	"time"
 
@@ -52,6 +52,11 @@ type persistedState struct {
 	// Session is the map's where-you-were (goal 0091) -- one entry,
 	// not per-container.
 	Session AtlasSessionState
+	// Perspectives holds every named, ordered view over a space's live
+	// card set (ADR-0041, goal 0095) -- zero entries means zero
+	// behavior change: the default "everything" view is the ABSENCE of
+	// a Perspective record, never an empty one.
+	Perspectives []atlas.Perspective
 }
 
 // AtlasService holds Atlas's full in-memory state behind one mutex,
@@ -80,6 +85,7 @@ type AtlasService struct {
 	// never calls the setter, same posture mirrorsDir takes.
 	guardedDataPaths []string
 	session          AtlasSessionState
+	perspectives     []atlas.Perspective
 }
 
 // NewAtlasService restores any persisted state, then reconciles the
@@ -125,6 +131,7 @@ func (a *AtlasService) restore() {
 		a.lenses = state.Lenses
 	}
 	a.session = state.Session
+	a.perspectives = state.Perspectives
 
 	// Boot-time tombstone purge (goal 0093): unlocked here is safe --
 	// restore only ever runs once, during construction, before the
@@ -144,7 +151,7 @@ func (a *AtlasService) persistLocked() error {
 	state := persistedState{
 		Kinds: a.kinds, LinkKinds: a.linkKinds,
 		Cards: a.cards, Links: a.links, Notes: a.notes, Lenses: a.lenses,
-		Session: a.session,
+		Session: a.session, Perspectives: a.perspectives,
 	}
 	data, err := json.Marshal(state)
 	if err != nil {
@@ -243,6 +250,15 @@ func (a *AtlasService) findLinkLocked(id string) int {
 func (a *AtlasService) findNoteLocked(id string) int {
 	for i, n := range a.notes {
 		if n.ID == id {
+			return i
+		}
+	}
+	return -1
+}
+
+func (a *AtlasService) findPerspectiveLocked(id string) int {
+	for i, p := range a.perspectives {
+		if p.ID == id {
 			return i
 		}
 	}

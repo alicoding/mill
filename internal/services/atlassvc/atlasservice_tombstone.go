@@ -117,9 +117,22 @@ func (a *AtlasService) DeleteCard(id string) (TombstoneResult, error) {
 			return TombstoneResult{}, fmt.Errorf("tombstone deleted card %q: %w", id, err)
 		}
 	}
+	// A perspective SCOPED to this card (its own "space") is deleted
+	// outright (ADR-0041's no-tombstone posture) even though the card
+	// itself only soft-deletes: a view over a space that no longer
+	// exists has nothing left to be a view of.
+	previousPerspectives := append([]atlas.Perspective(nil), a.perspectives...)
+	kept := a.perspectives[:0]
+	for _, p := range a.perspectives {
+		if p.SpaceID != id {
+			kept = append(kept, p)
+		}
+	}
+	a.perspectives = kept
 	perr := a.persistLocked()
 	if perr != nil {
 		a.cards[idx] = previous
+		a.perspectives = previousPerspectives
 	}
 	a.mu.Unlock()
 	if perr != nil {
@@ -283,13 +296,21 @@ func (a *AtlasService) purgeTombstonesLocked(now time.Time) bool {
 	a.notes = keptNotes
 
 	if len(purgeCards) > 0 {
+		purgedLinkIDs := make(map[string]bool)
 		keptLinks := a.links[:0]
 		for _, l := range a.links {
-			if !purgeCards[l.FromCardID] && !purgeCards[l.ToCardID] {
-				keptLinks = append(keptLinks, l)
+			if purgeCards[l.FromCardID] || purgeCards[l.ToCardID] {
+				purgedLinkIDs[l.ID] = true
+				continue
 			}
+			keptLinks = append(keptLinks, l)
 		}
 		a.links = keptLinks
+		// A hard-purged card/link must never linger as a dangling
+		// perspective member (goal 0095) -- membership keeps raw ids
+		// while a card is only soft-deleted, but a permanent purge is
+		// this pass's one chance to strip them for good.
+		a.purgePerspectiveMembersLocked(purgeCards, purgedLinkIDs)
 	}
 	return true
 }
