@@ -87,5 +87,16 @@ export function useAtlasSelection({ cards, notes, onMultiSelectContextMenu }: {
     return openMultiMenu(sel, pos)
   }, [openMultiMenu])
 
-  return { selectedIDsRef, selectedCards, selectedNotes, onSelectionChange, snapshotSelection, onSelectionContextMenu, tryNodeMultiMenu, clearSelection }
+  // The click model's own commit test (goal 0102's gesture table,
+  // "click an already-selected card"): true when this node was the
+  // SOLE selected node the instant this click gesture began -- the
+  // same pre-select snapshot onNodeContextMenu reads above, reused so
+  // two rapid plain clicks (select, then commit) and a real
+  // double-click land on the identical outcome.
+  const isSoleSelected = useCallback((id: string): boolean => {
+    const sel = contextSelectionRef.current
+    return sel.length === 1 && sel[0] === id
+  }, [])
+
+  return { selectedIDsRef, selectedCards, selectedNotes, onSelectionChange, snapshotSelection, onSelectionContextMenu, tryNodeMultiMenu, isSoleSelected, clearSelection }
 }

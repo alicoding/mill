@@ -269,7 +269,6 @@ export function AtlasCardOverlay({ card, kinds, allCards, links, linkKinds, onCl
               allCards={allCards}
               links={links}
               linkKinds={linkKinds}
-              variant="page"
               onChipClick={nav.navigate}
               onRemoveLink={(linkID) => void removeLink(linkID)}
               onAddLink={(linkKindID, toCardID) => void addLink(linkKindID, toCardID)}

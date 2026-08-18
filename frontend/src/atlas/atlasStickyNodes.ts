@@ -9,12 +9,15 @@ import type { AtlasStickyRFNode } from './AtlasStickyNode'
 // own builtNodes memo stays a thin composition of card + sticky nodes
 // (architecture.md's 500-line convention).
 export function buildStickyNodes({
-  notes, draftNotePos, editingNoteID, readOnly, onCommitDraft, onCancelDraft, onEnterEdit, onCancelEdit, onCommitEdit,
+  notes, draftNotePos, editingNoteID, readOnly, isSoleSelected, onCommitDraft, onCancelDraft, onEnterEdit, onCancelEdit, onCommitEdit,
 }: {
   notes: Note[]
   draftNotePos: { x: number; y: number } | null
   editingNoteID: string | null
   readOnly: boolean
+  // The click model's own commit test (goal 0102's gesture table) --
+  // see useAtlasSelection.ts's own header comment.
+  isSoleSelected: (id: string) => boolean
   onCommitDraft: (text: string) => void
   onCancelDraft: () => void
   onEnterEdit: (id: string) => void
@@ -31,6 +34,7 @@ export function buildStickyNodes({
     data: {
       note,
       editing: editingNoteID === note.ID,
+      isSoleSelected,
       onCommit: (text: string) => onCommitEdit(note.ID, text),
       onCancelEdit,
       onEnterEdit: () => onEnterEdit(note.ID),
@@ -47,6 +51,7 @@ export function buildStickyNodes({
       data: {
         note: null,
         editing: true,
+        isSoleSelected,
         onCommit: onCommitDraft,
         onCancelEdit: onCancelDraft,
         onEnterEdit: () => {},

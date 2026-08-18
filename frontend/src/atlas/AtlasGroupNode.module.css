@@ -1,7 +1,8 @@
-/* A region frame (goal 0072 slice A): a card holding cards, drawn as a
-   bordered/tinted container with its own children rendered as
-   separate React Flow nodes on top -- this file styles only the
-   frame's own chrome (background/border/header row). */
+/* A region frame (goal 0072 slice A, re-cut by goal 0106's flip
+   retirement): a card holding cards, drawn as a bordered/tinted
+   container with its own children rendered as separate React Flow
+   nodes on top -- this file styles only the frame's own chrome
+   (background/border/header row). */
 .frame {
     position: relative;
     width: 100%;
@@ -11,7 +12,6 @@
     border-width: 1.5px;
     border-style: solid;
     cursor: pointer;
-    perspective: 1000px;
 }
 
 /* Multi-selection outline (owner-caught follow-up to goal 0092): same
@@ -24,28 +24,6 @@
         0 0 0 5px var(--bgColor-accent-muted);
 }
 
-/* The frame's own flip (goal 0072 slice C item 4) -- same rotateY
-   transition AtlasNoteCardNode.module.css's own .flipInner uses. */
-.flipInner {
-    position: relative;
-    width: 100%;
-    height: 100%;
-    transition: transform 0.5s cubic-bezier(0.4, 0.1, 0.2, 1);
-    transform-style: preserve-3d;
-}
-.flipInner[data-flipped='true'] {
-    transform: rotateY(180deg);
-}
-@media (prefers-reduced-motion: reduce) {
-    .flipInner {
-        transition: none;
-    }
-}
-.frontFace {
-    position: absolute;
-    inset: 0;
-    backface-visibility: hidden;
-}
 .header {
     position: absolute;
     top: 0;
@@ -117,8 +95,7 @@
 
 /* A ⌘K jump landing on this frame (goal 0072 slice B) -- same
    animation/timing as AtlasNoteCardNode.module.css's own pulse ring
-   and hint chip, applied to the frame's own border instead of a flip
-   scene. */
+   and hint chip. */
 @keyframes atlasGroupPulseRing {
     from {
         box-shadow: 0 0 0 0 var(--fgColor-accent);
@@ -152,63 +129,6 @@
     padding: 2px 6px;
     pointer-events: none;
     z-index: 10;
-}
-
-/* The frame's own back face (goal 0072 slice C item 4): covers the
-   entire frame at its own size, same style family as
-   AtlasNoteCardNode.module.css's own back face -- scaled up (more
-   padding, a slightly larger note clamp) since a region frame is
-   usually far larger than a single note card. */
-.backFace {
-    position: absolute;
-    inset: 0;
-    box-sizing: border-box;
-    border-radius: 14px;
-    background: var(--bgColor-default);
-    border: 1.5px solid var(--borderColor-emphasis);
-    padding: 12px 14px;
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    backface-visibility: hidden;
-    transform: rotateY(180deg);
-}
-.backEyebrow {
-    font-family: var(--mill-mono);
-    font-size: 9.5px;
-    text-transform: uppercase;
-    color: var(--fgColor-muted);
-}
-.backNote {
-    font-size: 12px;
-    line-height: 1.35;
-    overflow: hidden;
-    display: -webkit-box;
-    -webkit-line-clamp: 4;
-    -webkit-box-orient: vertical;
-}
-.backRow {
-    font-family: var(--mill-mono);
-    font-size: 10px;
-    color: var(--fgColor-muted);
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-.openButton {
-    margin-top: auto;
-    align-self: flex-start;
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    font-size: 10.5px;
-    font-weight: 650;
-    color: var(--fgColor-accent);
-    background: transparent;
-    border: 1px solid var(--fgColor-accent);
-    border-radius: 4px;
-    padding: 3px 7px;
-    cursor: pointer;
 }
 
 /* The "+ K more" ghost tile (goal 0073): a note-sized slot with a

@@ -22,8 +22,8 @@ export type BoardCardRFNode = AtlasNoteCardRFNode | AtlasGroupRFNode | AtlasRegi
 // mode; a childless card renders as a flippable note (AtlasNoteCardNode).
 export function buildBoardCardNodes({
   cards, allCards, kinds, links, linkKinds, isFree, readOnly, boardWidth, freeMoves, arteries,
-  flippedID, pulsedID, hintedID, hoveredFrameID, toggleFlip, onOpenOverlay, handleDrill, handleLeafCommit,
-  slotDragSourceID, onSlotAnchorPointerDown, onJumpToChip, onRemoveLink,
+  pulsedID, hintedID, hoveredFrameID, isSoleSelected, onOpenOverlay, handleDrill,
+  slotDragSourceID, onSlotAnchorPointerDown,
 }: {
   cards: Card[]
   allCards: Card[]
@@ -35,23 +35,23 @@ export function buildBoardCardNodes({
   boardWidth: number
   freeMoves: { id: string; x: number; y: number }[]
   arteries: { source: string; target: string }[]
-  flippedID: string | null
   pulsedID: string | null
   hintedID: string | null
   // Drag filing's own live release-target affordance (goal 0081 A2):
   // the frame currently under a dragged card's center, if any.
   hoveredFrameID: string | null
-  toggleFlip: (id: string) => void
+  // The click model's own commit test (goal 0102's gesture table):
+  // whether a given node id was the SOLE selected node when the
+  // current click gesture began -- see useAtlasSelection.ts's own
+  // header comment.
+  isSoleSelected: (id: string) => boolean
   onOpenOverlay: (id: string) => void
   handleDrill: (id: string) => void
-  handleLeafCommit: (id: string) => void
   // Slot-drag's own live release-target affordance (goal 0081 A4): the
   // card a slot-drag started FROM, if any -- every OTHER top-level
   // card highlights while it's non-null (slice A's all-answer rule).
   slotDragSourceID: string | null
   onSlotAnchorPointerDown: (cardID: string, linkKindID: string, e: ReactPointerEvent) => void
-  onJumpToChip: (cardID: string) => void
-  onRemoveLink: (linkID: string) => void
 }): BoardCardRFNode[] {
   const kindByID = new Map(kinds.map((k) => [k.ID, k]))
   const adjacency = new Map<string, string[]>()
@@ -73,16 +73,12 @@ export function buildBoardCardNodes({
     allCards,
     links,
     linkKinds,
-    flipped: flippedID === card.ID,
     pulsed: pulsedID === card.ID,
     hinted: hintedID === card.ID,
+    isSoleSelected,
     slotDragHighlight: slotDragHighlight(card.ID),
-    onToggleFlip: toggleFlip,
-    onOpenOverlay,
-    onCommit: handleLeafCommit,
+    onCommit: onOpenOverlay,
     onSlotAnchorPointerDown: (linkKindID: string, e: ReactPointerEvent) => onSlotAnchorPointerDown(card.ID, linkKindID, e),
-    onJumpToChip,
-    onRemoveLink,
   })
 
   for (const card of cards) {
@@ -95,7 +91,6 @@ export function buildBoardCardNodes({
     if (isGroupCard(allCards, card)) {
       const frame = computeGroupFrameLayout(allCards, card.ID)
       const size = isFree ? frame.size : { width: box?.width ?? frame.size.width, height: box?.height ?? frame.size.height }
-      const groupFlipped = flippedID === card.ID
       nodes.push({
         id: card.ID,
         type: 'atlas-group',
@@ -105,10 +100,6 @@ export function buildBoardCardNodes({
         draggable: isFree && !readOnly,
         data: {
           card,
-          kind: kindByID.get(card.KindID),
-          allCards,
-          links,
-          linkKinds,
           childCount: childrenOf(allCards, card.ID).length,
           // Roll-up covers EVERY direct child, drawn or capped -- the
           // pills stay the deep truth regardless of the preview.
@@ -116,57 +107,45 @@ export function buildBoardCardNodes({
           overflow: frame.overflow,
           pulsed: pulsedID === card.ID,
           hinted: hintedID === card.ID,
-          flipped: groupFlipped,
+          isSoleSelected,
           dragHighlighted: hoveredFrameID === card.ID,
           onDrill: handleDrill,
-          onToggleFlip: toggleFlip,
           onOpenOverlay,
         },
       })
-      // A flipped frame's own back face must visually and
-      // interactively cover its own preview children -- React Flow
-      // always renders a parentId child at parentZ+1 minimum
-      // (@xyflow/system's own calculateChildXYZ), so a parent node
-      // can never out-z-index its own children; omitting the
-      // children entirely while flipped is what actually achieves
-      // "z above the children," not a z-index that RF's own child
-      // stacking invariant would silently defeat.
-      if (!groupFlipped) {
-        for (const child of frame.children) {
-          if (child.variant === 'chip') {
-            nodes.push({
-              id: child.card.ID,
-              type: 'atlas-region-chip',
-              position: child.position,
-              width: child.size.width,
-              height: child.size.height,
-              parentId: card.ID,
-              extent: 'parent',
-              draggable: false,
-              data: {
-                card: child.card,
-                kind: kindByID.get(child.card.KindID),
-                childCount: childrenOf(allCards, child.card.ID).length,
-                pulsed: pulsedID === child.card.ID,
-                flipped: flippedID === child.card.ID,
-                onToggleFlip: toggleFlip,
-                onOpenOverlay,
-                onDrill: handleDrill,
-              },
-            })
-          } else {
-            nodes.push({
-              id: child.card.ID,
-              type: 'atlas-note',
-              position: child.position,
-              width: child.size.width,
-              height: child.size.height,
-              parentId: card.ID,
-              extent: 'parent',
-              draggable: false,
-              data: noteData(child.card),
-            })
-          }
+      for (const child of frame.children) {
+        if (child.variant === 'chip') {
+          nodes.push({
+            id: child.card.ID,
+            type: 'atlas-region-chip',
+            position: child.position,
+            width: child.size.width,
+            height: child.size.height,
+            parentId: card.ID,
+            extent: 'parent',
+            draggable: false,
+            data: {
+              card: child.card,
+              kind: kindByID.get(child.card.KindID),
+              childCount: childrenOf(allCards, child.card.ID).length,
+              pulsed: pulsedID === child.card.ID,
+              isSoleSelected,
+              onOpenOverlay,
+              onDrill: handleDrill,
+            },
+          })
+        } else {
+          nodes.push({
+            id: child.card.ID,
+            type: 'atlas-note',
+            position: child.position,
+            width: child.size.width,
+            height: child.size.height,
+            parentId: card.ID,
+            extent: 'parent',
+            draggable: false,
+            data: noteData(child.card),
+          })
         }
       }
     } else {
