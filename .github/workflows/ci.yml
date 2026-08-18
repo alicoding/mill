@@ -328,8 +328,12 @@ jobs:
       # states for its own fail-fast: false, applied here too.
       fail-fast: false
       matrix:
-        shardIndex: [1, 2, 3]
-        shardTotal: [3]
+        # 4-way since the guardrail specs moved to per-test dedicated
+        # servers: the added boot time pushed two 3-way shards past
+        # the 15-minute job cap with zero failing tests -- the exact
+        # revisit trigger testing.md records for shard growth.
+        shardIndex: [1, 2, 3, 4]
+        shardTotal: [4]
     env:
       # Required for the same reason as build-go's ubuntu-latest entry:
       # playwright.config.ts's webServer builds the real server-mode

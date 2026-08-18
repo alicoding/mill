@@ -273,3 +273,28 @@ export const ATLAS_SELECT_GROUP_MCP_BASE_PORT = 10080
 // test -- same own-server-own-ports reasoning as persistence.
 export const ATLAS_SESSION_SERVER_BASE_PORT = 10100
 export const ATLAS_SESSION_MCP_BASE_PORT = 10120
+
+// guardrail.spec.ts's own dedicated pair: its Review-queue assertions
+// (exact pending/resolved rows, kind-filter narrowing, the sidebar
+// pending-count badge) must never be contaminated by another spec
+// cohabiting the standard per-worker pool's one shared server (e.g.
+// mcp-write-cancel.spec.ts parking its own MCP approval on the same
+// worker) -- same own-server-own-ports reasoning as guardrail-
+// authoring above, one class of bug applied to this file's own
+// Review-queue state.
+export const GUARDRAIL_SPEC_SERVER_BASE_PORT = 10140
+export const GUARDRAIL_SPEC_MCP_BASE_PORT = 10160
+
+// guardrail-review.spec.ts's own dedicated pair -- guardrail.spec.ts's
+// Review-queue tests split into this second file once the converted
+// file crossed the 500-line hand-written-file limit
+// (.claude/rules/architecture.md); its own port pair rather than
+// reusing GUARDRAIL_SPEC_* above, so the two files' worker-time
+// lifetimes can never overlap on the same ports even though same-file/
+// same-worker serialization no longer makes that a correctness risk.
+export const GUARDRAIL_REVIEW_SERVER_BASE_PORT = 10180
+// Kept well clear of the server range above: 8 tests x up to 10-per-
+// test offsets x up to 4 workers pushes the server range itself past
+// 10250, so the MCP base must start beyond that or a computed server
+// port can land on another test's MCP listener.
+export const GUARDRAIL_REVIEW_MCP_BASE_PORT = 10300
