@@ -1,7 +1,10 @@
 package settingssvc
 
 import (
+	"context"
 	"errors"
+	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 )
@@ -281,5 +284,28 @@ func TestResolveUpdateCurrentVersion_FloorsSourceBuildOnBetaChannel(t *testing.T
 		if got := ResolveUpdateCurrentVersion(c.channel, c.in); got != c.want {
 			t.Errorf("ResolveUpdateCurrentVersion(%q, %q) = %q, want %q", c.channel, c.in, got, c.want)
 		}
+	}
+}
+
+func TestUpdaterUserAgentTransport_StampsMillAgent(t *testing.T) {
+	var got string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		got = r.Header.Get("User-Agent")
+	}))
+	defer srv.Close()
+
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, srv.URL, nil)
+	if err != nil {
+		t.Fatalf("build request: %v", err)
+	}
+	resp, err := newUpdaterHTTPClient("0.4.0-beta.7").Do(req)
+	if err != nil {
+		t.Fatalf("request through updater client: %v", err)
+	}
+	if err := resp.Body.Close(); err != nil {
+		t.Fatalf("close response body: %v", err)
+	}
+	if got != "Mill-Updater/0.4.0-beta.7" {
+		t.Errorf("User-Agent = %q, want the Mill-Updater identity", got)
 	}
 }

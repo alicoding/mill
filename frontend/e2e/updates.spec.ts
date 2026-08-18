@@ -112,6 +112,14 @@ test('Release-channel build shows the primary Update now button and no source hi
     await expect(card.getByTestId('update-now')).toHaveText('Update now')
     await expect(card).not.toContainText('This copy was built from source')
 
+    // A failed install surfaces the browser-download escape hatch, not
+    // just the raw error (fake mode's DownloadAndInstallUpdate always
+    // refuses, standing in for the real blocked-network 403 class).
+    await card.getByTestId('update-now').click()
+    await expect(card).toContainText("Couldn't install the update")
+    await expect(card).toContainText('Get the update with your browser instead')
+    await expect(card.getByTestId('open-releases-page')).toBeVisible()
+
     await page.close()
   } finally {
     await server?.stop()
