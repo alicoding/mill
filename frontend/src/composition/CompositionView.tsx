@@ -12,6 +12,7 @@ import { InventoryList, type InventoryItem } from '../shared/InventoryList'
 import { ENTITY_ICON } from '../shared/entityIcons'
 import { formatUpdated, sortByUpdatedDesc } from '../shared/inventorySort'
 import { describeSeedReset } from '../shared/seedLifecycle'
+import { downloadJSON } from '../shared/downloadJSON'
 import { RestoreExamplesButton } from '../shared/RestoreExamplesButton'
 import { useImportConfirm } from '../shared/useImportConfirm'
 import type { Workflow } from '../../bindings/github.com/alicoding/mill/internal/domain/composition/models'
@@ -216,19 +217,11 @@ function CompositionView() {
 
   // Downloads id's current definition as a portable .json file --
   // ExportWorkflow's own doc comment covers why the output is
-  // deterministic. A Blob + synthetic anchor click is the standard
-  // browser download mechanism, identical inside the Wails webview.
+  // deterministic; downloadJSON routes the actual save through the
+  // right mechanism for the current runtime.
   const exportWorkflow = (id: string, label: string) => {
     CompositionService.ExportWorkflow(id)
-      .then((json) => {
-        const blob = new Blob([json], { type: 'application/json' })
-        const url = URL.createObjectURL(blob)
-        const a = document.createElement('a')
-        a.href = url
-        a.download = `${label.trim() || 'workflow'}.json`
-        a.click()
-        URL.revokeObjectURL(url)
-      })
+      .then((json) => downloadJSON(`${label.trim() || 'workflow'}.json`, json))
       .catch((err) => setImportError(String(err)))
   }
 
