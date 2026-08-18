@@ -27,10 +27,12 @@ export async function waitForViewportStable(panel: Locator, timeout = 5_000): Pr
 // Clicks a locator at a fractional position within its own bounding box
 // (fx/fy in [0, 1] -- 0.5/0.5 is dead center) rather than Playwright's
 // default center click, for elements where the center point resolves to
-// a different nested element (a card that flips to show its back face,
-// say) -- generalized from atlas-page.spec.ts's own clickFrameBody.
-export async function clickAtFraction(locator: Locator, fx: number, fy: number): Promise<void> {
+// a different nested element (a region frame's own preview children
+// covering its body, say) -- generalized from atlas-page.spec.ts's own
+// clickFrameBody. `opts` passes through to Locator.click (e.g.
+// `{ modifiers: ['Meta'] }` for the click model's instant-commit path).
+export async function clickAtFraction(locator: Locator, fx: number, fy: number, opts?: Parameters<Locator['click']>[0]): Promise<void> {
   const box = await locator.boundingBox()
   if (!box) throw new Error('clickAtFraction: expected the element to be measurable')
-  await locator.click({ position: { x: box.width * fx, y: box.height * fy } })
+  await locator.click({ ...opts, position: { x: box.width * fx, y: box.height * fy } })
 }

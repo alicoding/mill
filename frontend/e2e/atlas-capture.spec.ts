@@ -1,6 +1,6 @@
 import { test, expect } from './fixtures/server'
 import type { Page } from '@playwright/test'
-import { clickCorner, zoomAllTheWayOut } from './fixtures/atlasBoard'
+import { clickCorner, openCard, zoomAllTheWayOut } from './fixtures/atlasBoard'
 import { deleteViaPageMenu } from './fixtures/atlasPage'
 
 // Atlas capture doors (goal 0081 slice A3, LOCKED design §2b/§3b):
@@ -65,9 +65,7 @@ test('paste text opens the placement popover prefilled with title and note', asy
   await expect(card).toContainText('Finish the vendor review before rollout.')
 
   // Cleanup (testing.md's within-file/within-worker discipline).
-  await card.click()
-  await expect(card).toHaveAttribute('data-flipped', 'true')
-  await card.getByTestId('atlas-note-open').click()
+  await openCard(page, card)
   const overlay = page.locator('[data-component="atlas-card-overlay"]')
   await expect(overlay).toBeVisible()
   await deleteViaPageMenu(page, overlay)
@@ -95,9 +93,7 @@ test('paste HTML converts to Markdown before prefilling the popover', async ({ p
   await expect(card).toBeVisible()
   await expect(card).toContainText('Prod credentials never stay with the requester.')
 
-  await card.click()
-  await expect(card).toHaveAttribute('data-flipped', 'true')
-  await card.getByTestId('atlas-note-open').click()
+  await openCard(page, card)
   const overlay = page.locator('[data-component="atlas-card-overlay"]')
   await expect(overlay).toBeVisible()
   await deleteViaPageMenu(page, overlay)
@@ -132,7 +128,7 @@ test('Scratchpad seed is a container card with the inbox guidance note', async (
   await page.getByRole('link', { name: 'Atlas' }).click()
   await expect(page.getByTestId('atlas-board')).toBeVisible()
 
-  const scratchpad = page.locator('[data-testid="atlas-note-card"][aria-label="Flip Scratchpad"]')
+  const scratchpad = page.locator('[data-testid="atlas-note-card"][aria-label="Open Scratchpad"]')
   await expect(scratchpad).toBeVisible()
   await expect(scratchpad).toContainText('Quick captures land here. Drag notes out to file them, or promote them into cards.')
   // Still an ordinary Topic card structurally (containment is a role

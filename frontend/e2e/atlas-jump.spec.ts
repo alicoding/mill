@@ -25,7 +25,7 @@ function jumpDialog(page: import('@playwright/test').Page) {
 }
 
 function noteCard(page: import('@playwright/test').Page, title: string) {
-  return page.locator(`[data-testid="atlas-note-card"][aria-label="Flip ${title}"]`)
+  return page.locator(`[data-testid="atlas-note-card"][aria-label="Open ${title}"]`)
 }
 
 function groupCard(page: import('@playwright/test').Page, title: string) {

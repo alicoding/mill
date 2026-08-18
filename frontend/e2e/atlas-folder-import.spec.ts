@@ -1,6 +1,6 @@
 import { test, expect } from './fixtures/server'
 import { deleteViaPageMenu } from './fixtures/atlasPage'
-import { openViaFlip } from './fixtures/atlasBoard'
+import { openCard } from './fixtures/atlasBoard'
 
 // Synced-folder onboarding (docs/goals/0067) over real Go bindings
 // (Wails3 server mode): AtlasService.PickFolder's own MILL_TEST_
@@ -19,12 +19,9 @@ import { openViaFlip } from './fixtures/atlasBoard'
 // container category below assigns the ordinary seeded "Topic" Kind,
 // not a dedicated container concept.
 
-// Precise per-card matching: a plain hasText substring filter is
-// unreliable here since a card's own BACK face can legitimately
-// contain another card's title (its own "<kind> -> <other title>"
-// link row) -- aria-label carries the exact title instead.
+// Precise per-card matching: aria-label carries the exact title.
 function noteCard(page: import('@playwright/test').Page, title: string) {
-  return page.locator(`[data-testid="atlas-note-card"][aria-label="Flip ${title}"]`)
+  return page.locator(`[data-testid="atlas-note-card"][aria-label="Open ${title}"]`)
 }
 
 function groupCard(page: import('@playwright/test').Page, title: string) {
@@ -69,7 +66,7 @@ test('add from folder: scan, partial accept, containment, and mirror rendering a
   // The rejected entry never becomes a card; every accepted root-level
   // entry does, under "My space" -- containment for the nested entry
   // is checked separately below. "Reports" now holds its own imported
-  // child, so it renders as a region frame, not a flippable leaf note.
+  // child, so it renders as a region frame, not a plain leaf note.
   await expect(page.getByTestId('atlas-note-card').filter({ hasText: 'Project Plan' })).toHaveCount(0)
   const notesCard = noteCard(page, 'Meeting Notes')
   const logoCard = noteCard(page, 'Logo')
@@ -86,7 +83,7 @@ test('add from folder: scan, partial accept, containment, and mirror rendering a
   await expect(page.getByTestId('atlas-breadcrumb')).toContainText('Reports')
   const summaryCard = noteCard(page, 'Q1 Summary')
   await expect(summaryCard).toBeVisible()
-  await openViaFlip(summaryCard)
+  await openCard(page, summaryCard)
   const overlay = page.locator('[data-component="atlas-card-overlay"]')
   await expect(overlay).toBeVisible()
   await expect(overlay.getByTestId('atlas-page-mirror-path')).toHaveValue(/Reports\/Q1 Summary\.md$/)
@@ -95,13 +92,13 @@ test('add from folder: scan, partial accept, containment, and mirror rendering a
   // Cleanup (testing.md's within-file/within-worker discipline): the
   // child card must go before its own container can be deleted. Once
   // "Reports" holds no children, it renders as a plain note card,
-  // deleted the same flip-then-Open way as every other leaf below.
+  // deleted the same select-then-commit way as every other leaf below.
   await deleteViaPageMenu(page, overlay)
   await expect(summaryCard).not.toBeVisible()
 
   await page.getByTestId('atlas-breadcrumb').getByText('My space', { exact: true }).click()
   for (const card of [noteCard(page, 'Reports'), notesCard, logoCard]) {
-    await openViaFlip(card)
+    await openCard(page, card)
     await expect(overlay).toBeVisible()
     await deleteViaPageMenu(page, overlay)
     await expect(overlay).not.toBeVisible()
@@ -166,14 +163,14 @@ test('add from folder: an already-imported file stays flagged and default-unchec
   // this scenario created -- the one just made here, then the first
   // one back under "My space".
   const overlay = page.locator('[data-component="atlas-card-overlay"]')
-  await openViaFlip(secondNotesCard)
+  await openCard(page, secondNotesCard)
   await expect(overlay).toBeVisible()
   await deleteViaPageMenu(page, overlay)
   await expect(overlay).not.toBeVisible()
 
   await page.getByTestId('atlas-breadcrumb').getByText('My space', { exact: true }).click()
   const firstNotesCard = noteCard(page, 'Meeting Notes')
-  await openViaFlip(firstNotesCard)
+  await openCard(page, firstNotesCard)
   await expect(overlay).toBeVisible()
   await deleteViaPageMenu(page, overlay)
   await expect(overlay).not.toBeVisible()

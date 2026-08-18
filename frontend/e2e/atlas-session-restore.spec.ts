@@ -8,7 +8,7 @@ import {
   spawnMillServer,
   type SpawnedServer,
 } from './fixtures/server'
-import { groupCard, noteCard, openViaFlip } from './fixtures/atlasBoard'
+import { groupCard, noteCard, openCard } from './fixtures/atlasBoard'
 
 // Session restore (goal 0091): the viewed level and open card persist
 // server-side and come back on the next mount. Its OWN server
@@ -39,7 +39,7 @@ test('session restore: the viewed level and open card survive a reload (goal 009
 
     await groupCard(page, 'Example area').getByTestId('atlas-group-header').click()
     await expect(page.getByTestId('atlas-breadcrumb')).toContainText('Example area')
-    await openViaFlip(noteCard(page, 'Ada Lovelace'))
+    await openCard(page, noteCard(page, 'Ada Lovelace'))
     const overlay = page.locator('[data-component="atlas-card-overlay"]')
     await expect(overlay).toBeVisible()
 

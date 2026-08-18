@@ -10,7 +10,7 @@ import {
 } from './fixtures/server'
 import { deleteViaPageMenu } from './fixtures/atlasPage'
 import { ATLAS_KIND_TOPIC, selectKind } from './fixtures/kindPicker'
-import { groupCard, noteCard, openViaFlip } from './fixtures/atlasBoard'
+import { groupCard, noteCard, openCard } from './fixtures/atlasBoard'
 import { clickAtFraction } from './fixtures/animation'
 
 // Atlas card page read-is-edit + chip navigation (goal 0081 slice A5,
@@ -46,12 +46,12 @@ test('atlas card page: read-is-edit fields, kind-gated mirror controls, page lin
     const overlay = page.locator('[data-component="atlas-card-overlay"]')
 
     // --- Fresh open starts with an empty nav stack: no back button,
-    // whether reached via the ordinary flip-then-Open door or (the
-    // same code path) a deep link -- AtlasView never points a NEW
-    // overlayCardID at an already-open page without unmounting it
+    // whether reached via the ordinary click-select-then-commit door
+    // or (the same code path) a deep link -- AtlasView never points a
+    // NEW overlayCardID at an already-open page without unmounting it
     // first, so every open is "fresh" from the page's own point of
     // view. ---
-    await openViaFlip(noteCard(page, 'Getting started'))
+    await openCard(page, noteCard(page, 'Getting started'))
     await expect(overlay).toBeVisible()
     await expect(overlay.getByTestId('atlas-page-back')).toHaveCount(0)
 
@@ -65,7 +65,7 @@ test('atlas card page: read-is-edit fields, kind-gated mirror controls, page lin
     await page.keyboard.press('Escape')
     await expect(overlay).not.toBeVisible()
 
-    await openViaFlip(noteCard(page, 'Getting started (edited)'))
+    await openCard(page, noteCard(page, 'Getting started (edited)'))
     await expect(overlay).toBeVisible()
     await expect(overlay.getByTestId('atlas-page-title')).toHaveValue('Getting started (edited)')
 
@@ -81,7 +81,7 @@ test('atlas card page: read-is-edit fields, kind-gated mirror controls, page lin
     await noteField.blur()
     await expect(overlay.getByTestId('atlas-page-saved-tick')).toBeVisible()
     await page.keyboard.press('Escape')
-    await openViaFlip(noteCard(page, 'Getting started'))
+    await openCard(page, noteCard(page, 'Getting started'))
     await expect(overlay.getByTestId('atlas-page-note')).toHaveValue('Edited by the e2e suite.')
 
     // --- Kind-gated Source/Mirror path (LOCKED design §5b): "Getting
@@ -95,7 +95,7 @@ test('atlas card page: read-is-edit fields, kind-gated mirror controls, page lin
     // select, Add, and the chip appears; the card's own front-face
     // links chip (the map's rendering of the same field) goes from
     // absent to "1 link". ---
-    await openViaFlip(noteCard(page, 'Scratchpad'))
+    await openCard(page, noteCard(page, 'Scratchpad'))
     await expect(overlay).toBeVisible()
     const addSelect = overlay.locator('[data-testid^="atlas-slot-add-select-"]').first()
     const addButton = overlay.locator('[data-testid^="atlas-slot-add-button-"]').first()
@@ -108,7 +108,7 @@ test('atlas card page: read-is-edit fields, kind-gated mirror controls, page lin
 
     // Cleanup: remove the link this test added via the same chip's ×
     // (testing.md's within-file cleanup discipline).
-    await openViaFlip(noteCard(page, 'Scratchpad'))
+    await openCard(page, noteCard(page, 'Scratchpad'))
     await overlay.getByTestId('atlas-slot-chip').filter({ hasText: 'Getting started' }).getByRole('button', { name: /Remove link/ }).click()
     await expect(overlay.getByTestId('atlas-slot-chip').filter({ hasText: 'Getting started' })).toHaveCount(0)
     await page.keyboard.press('Escape')
@@ -120,7 +120,7 @@ test('atlas card page: read-is-edit fields, kind-gated mirror controls, page lin
     // card in place; a back button shows the previous card's title;
     // clicking it returns; Esc closes the whole page to the map
     // regardless of stack depth. ---
-    await openViaFlip(noteCard(page, 'Getting started'))
+    await openCard(page, noteCard(page, 'Getting started'))
     await expect(overlay).toBeVisible()
     await overlay.getByTestId('atlas-slot-chip').filter({ hasText: 'Ada Lovelace' }).getByRole('button', { name: 'Ada Lovelace', exact: true }).click()
     await expect(overlay.getByTestId('atlas-page-title')).toHaveValue('Ada Lovelace')
@@ -139,17 +139,15 @@ test('atlas card page: read-is-edit fields, kind-gated mirror controls, page lin
     // nav.navigate function (not a second copy) -- opening a
     // container's page, clicking a leaf child row, swaps to that
     // card's page with a back button naming the container. "Example
-    // area" is a region frame (a group card, not a leaf note), so it
-    // opens via its own flip-the-frame-body door, not openViaFlip.
-    // Re-centered via Fit View first: this many open/close round trips
-    // drift the board's own camera enough that a card can end up
-    // clipped past the viewport edge, unclickable at a fixed fraction
-    // of its own bounding box. ---
+    // area" is a region frame (a group card, not a leaf note), so its
+    // own page opens via a ⌘-click on the frame body (goal 0102's
+    // instant-commit path), not openCard. Re-centered via Fit View
+    // first: this many open/close round trips drift the board's own
+    // camera enough that a card can end up clipped past the viewport
+    // edge, unclickable at a fixed fraction of its own bounding box. ---
     await page.getByRole('button', { name: 'Fit View' }).click()
     const exampleAreaFrame = groupCard(page, 'Example area')
-    await clickAtFraction(exampleAreaFrame, 0.01, 0.5)
-    await expect(exampleAreaFrame).toHaveAttribute('data-flipped', 'true')
-    await exampleAreaFrame.getByTestId('atlas-group-open').click()
+    await clickAtFraction(exampleAreaFrame, 0.01, 0.5, { modifiers: ['Meta'] })
     await expect(overlay).toBeVisible()
     const childRow = overlay.getByTestId('atlas-page-child').filter({ hasText: 'Ada Lovelace' })
     await expect(childRow).toBeVisible()
@@ -170,7 +168,7 @@ test('atlas card page: read-is-edit fields, kind-gated mirror controls, page lin
     // charter" (Document kind, mirror-bearing) starts with a Source
     // but no MirrorPath. ---
     await groupCard(page, 'Example area').getByTestId('atlas-group-header').click()
-    await openViaFlip(noteCard(page, 'Project charter'))
+    await openCard(page, noteCard(page, 'Project charter'))
     await expect(overlay).toBeVisible()
 
     // --- Actions block (goal 0084): the seeded action row renders
@@ -191,7 +189,7 @@ test('atlas card page: read-is-edit fields, kind-gated mirror controls, page lin
     await expect(actionRow).toHaveCount(1)
     await page.keyboard.press('Escape')
     await expect(overlay).not.toBeVisible()
-    await openViaFlip(noteCard(page, 'Project charter'))
+    await openCard(page, noteCard(page, 'Project charter'))
     await expect(overlay).toBeVisible()
     await expect(actions.getByTestId('atlas-page-action-row')).toHaveCount(1)
 
@@ -244,7 +242,7 @@ test('atlas card page: read-is-edit fields, kind-gated mirror controls, page lin
     await page.getByRole('button', { name: 'Create' }).click()
     const throwaway = noteCard(page, title)
     await expect(throwaway).toBeVisible()
-    await openViaFlip(throwaway)
+    await openCard(page, throwaway)
     await expect(overlay).toBeVisible()
     await deleteViaPageMenu(page, overlay)
     await expect(overlay).not.toBeVisible()

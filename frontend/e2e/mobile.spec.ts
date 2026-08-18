@@ -20,7 +20,7 @@ async function openDrawerAndNavigate(page: import('@playwright/test').Page, link
 // legitimately contain another card's title (its own "<kind> -> <other
 // title>" link row) -- aria-label carries the exact title instead.
 function noteCard(page: import('@playwright/test').Page, title: string) {
-  return page.locator(`[data-testid="atlas-note-card"][aria-label="Flip ${title}"]`)
+  return page.locator(`[data-testid="atlas-note-card"][aria-label="Open ${title}"]`)
 }
 
 function groupCard(page: import('@playwright/test').Page, title: string) {
@@ -109,30 +109,14 @@ test('Mobile job 4 -- Atlas board glance, drill via a region frame header, and c
   // scale rounding without accepting a genuinely shrunken target.
   expect(cardBox?.height ?? 0).toBeGreaterThanOrEqual(43.5)
 
-  // Click flips the card in place -- the back's Open affordance is the
-  // one-map model's own touch target for the full-screen overlay.
+  // The click model (goal 0102): the first tap selects, the second tap
+  // on the now-selected card commits -- opening the full-screen
+  // overlay is the one-map model's own touch target, the card itself
+  // (already checked >=44px above), never a separate face/button.
   await card.click()
-  await expect(card).toHaveAttribute('data-flipped', 'true')
-  const openButton = card.getByTestId('atlas-note-open')
-  // The flip is a real CSS rotation: a click launched mid-transition
-  // trips the actionability check into a scroll-retry loop against
-  // the transformed board (near-edge cards especially) that never
-  // re-stabilizes -- poll the button's own box to rest first, the
-  // same settle-before-acting rule waitForViewportStable applies to
-  // camera moves.
-  let prevBox = ''
-  await expect
-    .poll(async () => {
-      const b = await openButton.boundingBox()
-      const cur = JSON.stringify(b)
-      const settled = cur !== '' && cur === prevBox
-      prevBox = cur
-      return settled
-    })
-    .toBe(true)
-  const openBox = await openButton.boundingBox()
-  expect(openBox?.height ?? 0).toBeGreaterThanOrEqual(43.5)
-  await openButton.click()
+  const selectedWrapper = page.locator('.react-flow__node.selected').filter({ has: card })
+  await expect(selectedWrapper).toHaveCount(1)
+  await card.click()
 
   const overlay = page.getByRole('dialog')
   await expect(overlay).toBeVisible()

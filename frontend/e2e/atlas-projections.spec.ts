@@ -1,7 +1,7 @@
 import { test, expect } from './fixtures/server'
 import { deleteViaPageMenu } from './fixtures/atlasPage'
 import { ATLAS_KIND_DOCUMENT, selectKind } from './fixtures/kindPicker'
-import { openViaFlip } from './fixtures/atlasBoard'
+import { openCard } from './fixtures/atlasBoard'
 
 // Atlas projections (docs/goals/0064, ADR-0038): mirror-content
 // rendering, the traceability matrix, and coverage -- each proven
@@ -10,16 +10,13 @@ import { openViaFlip } from './fixtures/atlasBoard'
 // egocentric-root auto-entry behavior every test below relies on (the
 // board is already "My space"'s content on landing, no "My space"
 // click needed). One-map board (goal 0072 slice A): a card overlay
-// opens by flipping a note card then clicking its back's Open button;
-// a card holding cards ("Example area") drills via its own region-
-// frame header, not a card-body click.
+// opens via the click model's select-then-commit (goal 0102); a card
+// holding cards ("Example area") drills via its own region-frame
+// header, not a card-body click.
 
-// Precise per-card matching: a plain hasText substring filter is
-// unreliable here since a card's own BACK face can legitimately
-// contain another card's title (its own "<kind> -> <other title>"
-// link row) -- aria-label carries the exact title instead.
+// Precise per-card matching: aria-label carries the exact title.
 function noteCard(page: import('@playwright/test').Page, title: string) {
-  return page.locator(`[data-testid="atlas-note-card"][aria-label="Flip ${title}"]`)
+  return page.locator(`[data-testid="atlas-note-card"][aria-label="Open ${title}"]`)
 }
 
 function groupCard(page: import('@playwright/test').Page, title: string) {
@@ -47,7 +44,7 @@ test('a card with a Mirror path pointing at a markdown file renders its content 
 
   const newCard = noteCard(page, title)
   await expect(newCard).toBeVisible()
-  await openViaFlip(newCard)
+  await openCard(page, newCard)
   const overlay = page.locator('[data-component="atlas-card-overlay"]')
   await expect(overlay).toBeVisible()
 
@@ -56,7 +53,7 @@ test('a card with a Mirror path pointing at a markdown file renders its content 
   await expect(overlay.getByTestId('atlas-page-saved-tick')).toBeVisible()
 
   await page.keyboard.press('Escape')
-  await openViaFlip(newCard)
+  await openCard(page, newCard)
   await expect(overlay).toBeVisible()
   await expect(overlay.getByTestId('atlas-mirror-markdown')).toBeVisible()
   await expect(overlay.getByTestId('atlas-mirror-markdown')).toContainText('Field notes')

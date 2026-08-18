@@ -128,7 +128,7 @@ test('atlas containment: area drawing, marker-box grouping, drag filing, dissolv
     // children. Placements stay >= 0.3 board-width fractions apart --
     // a card's own rendered footprint at this zoom level is wide
     // enough that a tighter gap lands a later click ON the earlier
-    // card (toggling its flip) instead of on empty canvas. ---
+    // card (selecting it) instead of on empty canvas. ---
     await armAndPlaceTopicCard(page, board, popover, 0.25, 0.05, 'ZzC2eMemberA')
     await armAndPlaceTopicCard(page, board, popover, 0.55, 0.05, 'ZzC2eMemberB')
     await page.keyboard.press('a')
