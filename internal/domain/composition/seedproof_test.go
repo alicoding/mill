@@ -159,6 +159,9 @@ var workflowProofRegistry = map[string]seedProof{
 	"clipbridge-reply-note-workflow": proven(
 		"executionsvc.TestSeededClipbridgeNoteRoute_LandsInScratchpad",
 	),
+	"example-docssync-workflow": proven(
+		"executionsvc.TestSeededDocsSyncExample_MirrorsFolderIdempotently",
+	),
 	"example-list-write-workflow": proven(
 		"executionsvc.TestGuardrail_ApplyListRowParks_ApproveWritesRow",
 		"executionsvc.TestSeededTaskTrackerExample_PinnedSearch_ResolvesFrozenV1AfterLiveWrite (via the write-path half of the same test)",
