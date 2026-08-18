@@ -368,7 +368,24 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
       - run: npm ci
         working-directory: frontend
-      - run: npx playwright install --with-deps chromium
+      # Browser binaries cached by Playwright version: the uncached
+      # `install --with-deps` path stalls in its apt phase on flaky
+      # ubuntu mirrors (three 15-minute shard hangs observed in one
+      # day), and the runner image already carries Chromium's system
+      # deps -- so a cache hit skips the whole install, and only a
+      # real Playwright version bump pays the download again (the
+      # upstream-documented CI caching pattern).
+      - name: Resolve Playwright version
+        id: pw-version
+        working-directory: frontend
+        run: echo "version=$(node -p "require('@playwright/test/package.json').version")" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        id: pw-cache
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-chromium-${{ runner.os }}-${{ steps.pw-version.outputs.version }}
+      - if: steps.pw-cache.outputs.cache-hit != 'true'
+        run: npx playwright install --with-deps chromium
         working-directory: frontend
       # 3-shard matrix + playwright.config.ts's workers: CI ? 1 : 4 (goal
       # 0024): the prior single-job, workers:2-in-CI shape was the actual
