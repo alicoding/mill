@@ -8,7 +8,7 @@ import { ATLAS_KIND_TOPIC, selectKind } from './kindPicker'
 // plumbing.
 
 export function noteCard(page: Page, title: string): Locator {
-  return page.locator(`[data-testid="atlas-note-card"][aria-label="Flip ${title}"]`)
+  return page.locator(`[data-testid="atlas-note-card"][aria-label="Open ${title}"]`)
 }
 
 export function groupCard(page: Page, title: string): Locator {
@@ -43,29 +43,45 @@ export async function clickCorner(board: Locator, corner: 'top-left' | 'top-righ
   await board.click({ position })
 }
 
-// Flips a note card in place then clicks its back face's Open button --
-// the one path to the card page in the one-map model. Click TOGGLES the
-// flip, so this only clicks when the card is currently front-facing --
-// reopening an already-flipped card must not click it back to front
-// first.
-//
-// The flip click is wrapped in a retry (the same expect(...).toPass
-// idiom fixtures/canvasNode.ts's clickCanvasNode already established
-// for this exact React Flow class): a card's own React Flow node is
-// draggable in free/canvas-mode boards, so an occasional native
+// Opens a card's own page: the click model (goal 0102) makes a plain
+// click SELECT, and a second plain click on the now-selected card
+// COMMIT (open) -- this helper plays both clicks, wrapped in the same
+// expect(...).toPass retry fixtures/canvasNode.ts's clickCanvasNode
+// already established for this exact React Flow class (a card's own
+// node is draggable in free-mode boards, so an occasional native
 // click's mousedown/mouseup pair lands close enough together to read
 // as a zero-distance micro-drag instead of a click, silently
-// swallowing the onClick that would have toggled data-flipped --
-// reproduced directly (not just in a full-suite run) via a throwaway
-// repeat-click script, independent of any card-page editing.
-export async function openViaFlip(card: Locator): Promise<void> {
-  await expect(async () => {
-    if ((await card.getAttribute('data-flipped')) !== 'true') {
+// swallowing the selection the second click depends on).
+export async function openCard(page: Page, card: Locator): Promise<void> {
+  const selectedWrapper = page.locator('.react-flow__node.selected').filter({ has: card })
+  // A card left selected from an earlier interaction commits on the
+  // very first click (goal 0102's gesture table) -- only click twice
+  // when it's starting unselected.
+  if (await selectedWrapper.count() === 0) {
+    await expect(async () => {
       await card.click()
-      await expect(card).toHaveAttribute('data-flipped', 'true', { timeout: 1_000 })
-    }
-  }).toPass({ timeout: 10_000, intervals: [300] })
-  await card.getByTestId('atlas-note-open').click()
+      await expect(selectedWrapper).toHaveCount(1, { timeout: 1_000 })
+    }).toPass({ timeout: 10_000, intervals: [300] })
+  }
+  await card.click()
+  await expect(page.getByTestId('atlas-page-header')).toBeVisible()
+}
+
+// Closes a card's own page (Escape) and waits for it to be REALLY
+// gone, not just its own content -- Primer's Dialog animates its
+// backdrop out asynchronously, and a tight open/close/interact cycle
+// (this spec's own repeated openCard calls) can outrun that animation,
+// leaving a stray backdrop element still covering the board and
+// swallowing the very next click as a hit-test miss (reproduced live:
+// a right-click immediately after a close landed on
+// `.prc-Dialog-Backdrop-*` instead of the card underneath it). Any
+// test that closes a card page and immediately does another POINTER
+// interaction with the board should use this instead of a bare
+// Escape press.
+export async function closeCard(page: Page, overlay: Locator): Promise<void> {
+  await page.keyboard.press('Escape')
+  await expect(overlay).not.toBeVisible()
+  await expect(page.locator('[class*="Backdrop"]')).toHaveCount(0)
 }
 
 // Promoted from atlas-containment.spec.ts when atlas-select-group.spec.ts

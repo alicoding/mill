@@ -11,18 +11,19 @@ import {
 } from './fixtures/server'
 import { contextMenu } from './fixtures/contextMenu'
 import { ATLAS_KIND_TOPIC, selectKind } from './fixtures/kindPicker'
-import { clickCorner, noteCard, zoomAllTheWayOut } from './fixtures/atlasBoard'
+import { clickCorner, closeCard, noteCard, openCard, zoomAllTheWayOut } from './fixtures/atlasBoard'
 
-// Atlas typed link slots (goal 0081 slice A4): the flip back face's
-// slot-row block, slot-drag = instant link (release on a card) / no-op
-// (release on the same card or a note) / guided-create (release on
-// empty canvas), chip removal, quiet edges' hover-only label, and the
-// edge/card context menus -- driven end to end against its own
-// dedicated server (fixtures/server.ts's ATLAS_SLOTS_* ports), same
-// own-server-own-ports reasoning as atlas-authoring/atlas-containment:
-// this spec asserts exact edge/chip counts, which the standard
-// per-worker pool can't guarantee stays uncontaminated by another spec
-// file sharing that worker's server.
+// Atlas typed link slots (goal 0081 slice A4, relocated by goal 0106
+// contract item 1): the card page's own slot-row block, slot-drag from
+// the card's hover link-handle = instant link of the board's default
+// kind (release on a card) / no-op (release on the same card or a
+// note) / guided-create (release on empty canvas), chip removal, quiet
+// edges' hover-only label, and the edge/card context menus -- driven
+// end to end against its own dedicated server (fixtures/server.ts's
+// ATLAS_SLOTS_* ports), same own-server-own-ports reasoning as
+// atlas-authoring/atlas-containment: this spec asserts exact edge/chip
+// counts, which the standard per-worker pool can't guarantee stays
+// uncontaminated by another spec file sharing that worker's server.
 //
 // A real MirrorPath-bearing card cannot be produced through the UI in
 // this environment (no seeded card carries one, and setting it needs
@@ -53,19 +54,26 @@ async function dragBetween(page: Page, from: { x: number; y: number }, to: { x: 
 }
 
 // The seeded space carries only one link kind (relates-to,
-// builtin.go), so a card's own slot-row/anchor block always has
+// builtin.go), so a card's own slot-row block on its page always has
 // exactly one row -- selected by its wildcard testid rather than the
 // kind's own id, which this frontend package never hardcodes
-// (ADR-0038 Decision 2).
-function slotAnchor(card: Locator): Locator {
-  return card.locator('[data-testid^="atlas-slot-anchor-"]').first()
+// (ADR-0038 Decision 2). Slot rows only ever render on the card PAGE
+// now (goal 0106 contract item 1 retired the canvas back face) --
+// `within` is the overlay a card's page renders into.
+function slotRow(within: Locator): Locator {
+  return within.locator('[data-testid^="atlas-slot-row-"]').first()
 }
-function slotRow(card: Locator): Locator {
-  return card.locator('[data-testid^="atlas-slot-row-"]').first()
+// The typed-link slot-drag's own relocated origin: a hover-visible
+// handle on the card's right edge (goal 0106 contract item 1) --
+// hover first so it's actually revealed, matching a real drag's own
+// entry point, though the raw pointer sequence below would still hit
+// it at opacity 0 (CSS-only, not display:none).
+function linkHandle(card: Locator): Locator {
+  return card.getByTestId('atlas-note-link-handle')
 }
 
 // eslint-disable-next-line no-empty-pattern -- this test needs `testInfo` (the second arg), not any fixture.
-test('atlas typed link slots: flip-face rows, slot-drag linking, chip removal, quiet edges, menus', async ({}, testInfo) => {
+test('atlas typed link slots: page slot rows, hover-handle slot-drag linking, chip removal, quiet edges, menus', async ({}, testInfo) => {
   const idx = testInfo.parallelIndex
   const dir = mkdtempSync(path.join(tmpdir(), `mill-e2e-atlas-slots-${idx}-`))
   const settingsPath = path.join(dir, 'settings.json')
@@ -109,21 +117,19 @@ test('atlas typed link slots: flip-face rows, slot-drag linking, chip removal, q
     }
     const cardA = noteCard(page, 'ZzE2eSlotA')
     const cardB = noteCard(page, 'ZzE2eSlotB')
+    const overlay = page.locator('[data-component="atlas-card-overlay"]')
 
-    // --- Flip A: the slot rows block renders with a drag-to-add hint ---
-    await cardA.click()
-    await expect(cardA).toHaveAttribute('data-flipped', 'true')
-    await expect(cardA.getByTestId('atlas-slot-rows')).toBeVisible()
-    await expect(slotRow(cardA)).toContainText('drag to add')
+    // --- Hovering the card reveals its own link handle (goal 0106
+    // contract item 1: the flip's slot-drag origin relocated onto the
+    // card's own right edge) ---
+    const handle = linkHandle(cardA)
+    await expect(handle).toHaveCSS('opacity', '0')
+    await cardA.hover()
+    await expect.poll(() => handle.evaluate((el) => getComputedStyle(el).opacity)).not.toBe('0')
 
-    // --- Slot-drag onto another card = instant link, no popover ---
-    // boundingBox() (unlike click()) never waits for CSS stability --
-    // the flip's own 0.5s rotateY transition (AtlasNoteCardNode.module.
-    // css) must settle before the anchor's on-screen coordinates are
-    // real, and there's no DOM-observable transitionend signal
-    // Playwright's own waiters can poll here.
-    await page.waitForTimeout(600)
-    const anchorBox = await slotAnchor(cardA).boundingBox()
+    // --- Slot-drag from the handle onto another card = instant link
+    // of the board's default kind, no popover ---
+    const anchorBox = await handle.boundingBox()
     const targetBox = await cardB.boundingBox()
     if (!anchorBox || !targetBox) throw new Error('missing bounding box')
     await dragBetween(page,
@@ -131,13 +137,17 @@ test('atlas typed link slots: flip-face rows, slot-drag linking, chip removal, q
       { x: targetBox.x + targetBox.width / 2, y: targetBox.y + targetBox.height / 2 })
     await expect(popover).not.toBeVisible()
     await expect(page.locator('.react-flow__edge')).toHaveCount(seededEdgeCount + 1)
-    await expect(slotRow(cardA)).toContainText('ZzE2eSlotB')
 
-    // --- The chip shows on the OTHER end too, prefixed as incoming ---
-    await cardB.click()
-    await expect(cardB).toHaveAttribute('data-flipped', 'true')
-    await expect(slotRow(cardB)).toContainText('← ZzE2eSlotA')
-    await cardB.click() // unflip
+    // --- The chip renders on the card's own page, on both ends --
+    // A's own row shows the outgoing link, B's shows it prefixed as
+    // incoming (relocated off the retired flip back face). ---
+    await openCard(page, cardA)
+    await expect(slotRow(overlay)).toContainText('ZzE2eSlotB')
+    await closeCard(page, overlay)
+
+    await openCard(page, cardB)
+    await expect(slotRow(overlay)).toContainText('← ZzE2eSlotA')
+    await closeCard(page, overlay)
 
     // --- Quiet edges: label hidden by default, shown on hover ---
     // Scoped by data-hovered rather than a bare .atlas-link-label
@@ -184,21 +194,20 @@ test('atlas typed link slots: flip-face rows, slot-drag linking, chip removal, q
     await expect(menu).toBeVisible()
     await menu.getByText('Remove link', { exact: true }).click()
     await expect(page.locator('.react-flow__edge')).toHaveCount(seededEdgeCount)
-    // B's own earlier flip (to check its incoming chip) unflipped A --
-    // only one card is ever flipped at a time.
-    await cardA.click()
-    await expect(cardA).toHaveAttribute('data-flipped', 'true')
-    await expect(slotRow(cardA)).toContainText('drag to add')
-    await page.waitForTimeout(600) // flip transition settle, see the comment above anchorBox's own first read
+    await openCard(page, cardA)
+    await expect(slotRow(overlay).getByTestId('atlas-slot-chip')).toHaveCount(0)
+    await closeCard(page, overlay)
 
     // --- Chip's own × removal (re-create the link first) ---
     await dragBetween(page,
       { x: anchorBox.x + anchorBox.width / 2, y: anchorBox.y + anchorBox.height / 2 },
       { x: targetBox.x + targetBox.width / 2, y: targetBox.y + targetBox.height / 2 })
     await expect(page.locator('.react-flow__edge')).toHaveCount(seededEdgeCount + 1)
-    await slotRow(cardA).getByTestId('atlas-slot-chip').locator('button').last().click()
+    await openCard(page, cardA)
+    await slotRow(overlay).getByTestId('atlas-slot-chip').locator('button').last().click()
     await expect(page.locator('.react-flow__edge')).toHaveCount(seededEdgeCount)
-    await expect(slotRow(cardA)).toContainText('drag to add')
+    await expect(slotRow(overlay).getByTestId('atlas-slot-chip')).toHaveCount(0)
+    await closeCard(page, overlay)
 
     // --- Release on empty canvas: guided create, card born already linked ---
     const boardBox = await board.boundingBox()
@@ -217,7 +226,9 @@ test('atlas typed link slots: flip-face rows, slot-drag linking, chip removal, q
     await popover.getByTestId('atlas-placement-submit').click()
     await expect(popover).not.toBeVisible()
     await expect(noteCard(page, 'ZzE2eSlotGuided')).toBeVisible()
-    await expect(slotRow(cardA)).toContainText('ZzE2eSlotGuided')
+    await openCard(page, cardA)
+    await expect(slotRow(overlay)).toContainText('ZzE2eSlotGuided')
+    await closeCard(page, overlay)
 
     // --- Release on the same card / a note = no-op ---
     const sameCardBox = await cardA.boundingBox()
@@ -226,10 +237,10 @@ test('atlas typed link slots: flip-face rows, slot-drag linking, chip removal, q
       { x: anchorBox.x + anchorBox.width / 2, y: anchorBox.y + anchorBox.height / 2 },
       { x: sameCardBox.x + sameCardBox.width / 2, y: sameCardBox.y + sameCardBox.height / 2 })
     await expect(popover).not.toBeVisible()
+    await expect(overlay).not.toBeVisible()
     await expect(page.locator('.react-flow__edge')).toHaveCount(seededEdgeCount + 1) // only the guided-create link from above
 
     // --- Card menu: kind-aware ordering + "Add linked card…" ---
-    await cardA.click() // unflip
     await cardB.click({ button: 'right' })
     await expect(menu).toBeVisible()
     await expect(menu.getByText('Open file', { exact: true })).toHaveCount(0)
@@ -241,16 +252,16 @@ test('atlas typed link slots: flip-face rows, slot-drag linking, chip removal, q
     await popover.getByTestId('atlas-placement-submit').click()
     await expect(popover).not.toBeVisible()
     await expect(noteCard(page, 'ZzE2eSlotAddLinked')).toBeVisible()
-    await cardB.click()
-    await expect(cardB).toHaveAttribute('data-flipped', 'true')
-    await expect(slotRow(cardB)).toContainText('ZzE2eSlotAddLinked')
-    await cardB.click()
+    await openCard(page, cardB)
+    await expect(slotRow(overlay)).toContainText('ZzE2eSlotAddLinked')
+    await closeCard(page, overlay)
 
-    // Region chips (AtlasRegionChipNode) never render AtlasSlotRows at
-    // all -- verified by source inspection (it's a different node
-    // component that never imports it), not re-asserted here: the
-    // seeded space has no nested area to reach one through without
-    // constructing extra fixture state this spec doesn't otherwise need.
+    // Region frames/chips never render the hover link-handle at all --
+    // verified by source inspection (AtlasGroupNode/AtlasRegionChipNode
+    // never import AtlasSlotRows or render the handle), not re-asserted
+    // here: the seeded space has no nested area to reach one through
+    // without constructing extra fixture state this spec doesn't
+    // otherwise need.
 
     // --- Within-file cleanup (goal 0093: instant, no confirm) ---
     for (const title of ['ZzE2eSlotA', 'ZzE2eSlotB', 'ZzE2eSlotGuided', 'ZzE2eSlotAddLinked']) {

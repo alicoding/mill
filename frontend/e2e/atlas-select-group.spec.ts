@@ -194,8 +194,8 @@ test('atlas shift-click select: toggle membership, group via member right-click,
     const cardB = noteCard(page, 'ZzK2eClickB')
     const selected = page.locator('.react-flow__node.selected')
 
-    // Toggle in, toggle out, toggle back in -- and no glance-flip on
-    // any of it (the shift guard on the card's own click handler).
+    // Toggle in, toggle out, toggle back in -- and no commit on any of
+    // it (the shift guard on the card's own click handler).
     await cardA.click({ modifiers: ['Shift'] })
     await expect(selected).toHaveCount(1)
     await cardB.click({ modifiers: ['Shift'] })
@@ -224,7 +224,6 @@ test('atlas shift-click select: toggle membership, group via member right-click,
     await stickyNote.click({ button: 'right' })
     await menu.getByText('Delete note', { exact: true }).click()
     await expect(stickyNote).toHaveCount(0)
-    await expect(page.locator('[data-testid="atlas-note-card"][data-flipped="true"]')).toHaveCount(0)
     await cardB.click({ modifiers: ['Shift'] })
     await expect(selected).toHaveCount(1)
     await cardB.click({ modifiers: ['Shift'] })
@@ -232,9 +231,13 @@ test('atlas shift-click select: toggle membership, group via member right-click,
 
     // Visible selection state (goal 0092 follow-up): both member nodes
     // carry a real, non-empty outline/ring, not just React Flow's own
-    // unstyled .selected class.
-    await expect.poll(() => cardA.evaluate((el) => getComputedStyle(el).boxShadow)).not.toBe('none')
-    await expect.poll(() => cardB.evaluate((el) => getComputedStyle(el).boxShadow)).not.toBe('none')
+    // unstyled .selected class. Measured on the wrapper (the ring's
+    // own carrier), not the inner card -- Primer's [role="button"]
+    // focus reset can zero a box-shadow scoped to the inner element.
+    const cardAWrapper = selected.filter({ has: cardA })
+    const cardBWrapper = selected.filter({ has: cardB })
+    await expect.poll(() => cardAWrapper.evaluate((el) => getComputedStyle(el).boxShadow)).not.toBe('none')
+    await expect.poll(() => cardBWrapper.evaluate((el) => getComputedStyle(el).boxShadow)).not.toBe('none')
 
     // The selection tray replaces the creation tray while 2+ cards are
     // selected: count label, Group (2+ cards only), Delete, both with
@@ -250,8 +253,8 @@ test('atlas shift-click select: toggle membership, group via member right-click,
     await expect(trayDelete).toContainText('Delete')
     await expect(trayDelete).toContainText('⌫')
 
-    // Escape clears the selection (takes precedence over the board's
-    // own unflip duty) -- the creation tray comes back.
+    // Escape clears the selection (the ladder's own first rung with a
+    // live selection, goal 0102) -- the creation tray comes back.
     await page.keyboard.press('Escape')
     await expect(selected).toHaveCount(0)
     await expect(selectionTray).toHaveCount(0)

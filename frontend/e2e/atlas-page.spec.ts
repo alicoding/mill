@@ -1,19 +1,19 @@
 import { test, expect } from './fixtures/server'
 import { deleteViaPageMenu } from './fixtures/atlasPage'
 import { clickAtFraction } from './fixtures/animation'
-import { openViaFlip } from './fixtures/atlasBoard'
+import { openCard } from './fixtures/atlasBoard'
 
 // Exercises the card PAGE's own ratified anatomy (goal 0072 slice C,
 // docs/adr/0038): the header row (kind glyph/circle, title, file tag,
 // Close), the two-column Contents/meta-rail body, and a region frame's
-// own body-click flip -- split out of atlas.spec.ts (architecture.md's
+// own click model -- split out of atlas.spec.ts (architecture.md's
 // 500-line convention), same family split atlas-share.spec.ts/
 // atlas-jump.spec.ts/atlas-projections.spec.ts already established.
 // That file's own header covers the shared egocentric-root auto-entry
 // behavior every test below relies on.
 
 function noteCard(page: import('@playwright/test').Page, title: string) {
-  return page.locator(`[data-testid="atlas-note-card"][aria-label="Flip ${title}"]`)
+  return page.locator(`[data-testid="atlas-note-card"][aria-label="Open ${title}"]`)
 }
 
 function groupCard(page: import('@playwright/test').Page, title: string) {
@@ -26,7 +26,7 @@ test('the page header shows a kind glyph, title, file tag, and Close; the seeded
   await expect(page.getByTestId('atlas-board')).toBeVisible()
   const overlay = page.locator('[data-component="atlas-card-overlay"]')
 
-  await openViaFlip(noteCard(page, 'Getting started'))
+  await openCard(page, noteCard(page, 'Getting started'))
   await expect(overlay).toBeVisible()
   await expect(overlay.getByTestId('atlas-page-title')).toHaveValue('Getting started')
   const topicGlyph = overlay.getByTestId('atlas-page-glyph')
@@ -39,13 +39,13 @@ test('the page header shows a kind glyph, title, file tag, and Close; the seeded
   await groupCard(page, 'Example area').getByTestId('atlas-group-header').click()
   await expect(page.getByTestId('atlas-breadcrumb')).toContainText('Example area')
 
-  await openViaFlip(noteCard(page, 'Project charter'))
+  await openCard(page, noteCard(page, 'Project charter'))
   await expect(overlay).toBeVisible()
   await expect(overlay.getByTestId('atlas-page-file-tag')).toHaveText('URL')
   await page.keyboard.press('Escape')
   await expect(overlay).not.toBeVisible()
 
-  await openViaFlip(noteCard(page, 'Ada Lovelace'))
+  await openCard(page, noteCard(page, 'Ada Lovelace'))
   await expect(overlay).toBeVisible()
   const contactGlyph = overlay.getByTestId('atlas-page-glyph')
   expect(await contactGlyph.evaluate((el) => getComputedStyle(el).borderRadius)).toBe('50%')
@@ -57,7 +57,7 @@ test('the open page is the top layer: app chrome never paints over it and its ba
   await page.getByRole('link', { name: 'Atlas' }).click()
   await expect(page.getByTestId('atlas-board')).toBeVisible()
 
-  await openViaFlip(noteCard(page, 'Getting started'))
+  await openCard(page, noteCard(page, 'Getting started'))
   const overlay = page.locator('[data-component="atlas-card-overlay"]')
   await expect(overlay).toBeVisible()
 
@@ -92,7 +92,7 @@ test('the page\'s links render as slot rows (goal 0081 slice A5), not a second r
   await page.getByRole('link', { name: 'Atlas' }).click()
   await expect(page.getByTestId('atlas-board')).toBeVisible()
 
-  await openViaFlip(noteCard(page, 'Getting started'))
+  await openCard(page, noteCard(page, 'Getting started'))
   const overlay = page.locator('[data-component="atlas-card-overlay"]')
   await expect(overlay).toBeVisible()
 
@@ -108,13 +108,14 @@ test('the page\'s links render as slot rows (goal 0081 slice A5), not a second r
   await page.keyboard.press('Escape')
 })
 
-test('a region frame\'s body click flips it in place; Esc unflips; Open on the back opens the group\'s own page', async ({ page }) => {
+test('a region frame\'s body click selects it (never drills); ⌘-click opens the group\'s own page directly; Esc clears the selection', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Atlas' }).click()
   await expect(page.getByTestId('atlas-board')).toBeVisible()
 
   const exampleArea = groupCard(page, 'Example area')
   await expect(exampleArea).toBeVisible()
+  const exampleAreaWrapper = page.locator('.react-flow__node.selected').filter({ has: exampleArea })
 
   // A region frame's own body has one reliably blank strip regardless
   // of child count or row layout: the left GROUP_PADDING gutter
@@ -123,18 +124,18 @@ test('a region frame\'s body click flips it in place; Esc unflips; Open on the b
   // below the header -- a 1% fraction of width stays inside that gutter
   // whatever the board's current zoom level scales it to.
   await clickAtFraction(exampleArea, 0.01, 0.5)
-  await expect(exampleArea).toHaveAttribute('data-flipped', 'true')
-  const back = exampleArea.getByTestId('atlas-group-card-back')
-  await expect(back).toBeVisible()
-  await expect(back).toContainText('2 cards')
+  await expect(exampleAreaWrapper).toHaveCount(1)
+  // The board never re-roots off a plain body click -- the header
+  // remains the only unconditional drill affordance.
+  await expect(page.getByTestId('atlas-breadcrumb')).not.toContainText('Example area')
 
   await page.keyboard.press('Escape')
-  await expect(exampleArea).toHaveAttribute('data-flipped', 'false')
+  await expect(exampleAreaWrapper).toHaveCount(0)
 
-  await clickAtFraction(exampleArea, 0.01, 0.5)
-  await expect(exampleArea).toHaveAttribute('data-flipped', 'true')
-  await exampleArea.getByTestId('atlas-group-open').click()
-
+  // ⌘-click opens the frame's own page directly (goal 0102's gesture
+  // table: ⌘-click = instant commit, the pointer twin of ⌘↵) --
+  // reached with no prior selection needed.
+  await clickAtFraction(exampleArea, 0.01, 0.5, { modifiers: ['Meta'] })
   const overlay = page.locator('[data-component="atlas-card-overlay"]')
   await expect(overlay).toBeVisible()
   await expect(overlay.getByTestId('atlas-page-title')).toHaveValue('Example area')
@@ -157,7 +158,7 @@ test('a child\'s mirror preview renders inline in the parent page; the card\'s o
 
   const charterCard = noteCard(page, 'Project charter')
   const overlay = page.locator('[data-component="atlas-card-overlay"]')
-  await openViaFlip(charterCard)
+  await openCard(page, charterCard)
   await expect(overlay).toBeVisible()
   await overlay.getByTestId('atlas-page-mirror-path').fill(file)
   await overlay.getByTestId('atlas-page-mirror-path').blur()
@@ -167,7 +168,7 @@ test('a child\'s mirror preview renders inline in the parent page; the card\'s o
 
   // The card's own page: meta rail source/mirror/freshness, each a
   // read-only summary of a field the fields column above still owns.
-  await openViaFlip(charterCard)
+  await openCard(page, charterCard)
   await expect(overlay).toBeVisible()
   await expect(overlay.getByTestId('atlas-page-meta-source')).toContainText('example.com')
   await expect(overlay.getByTestId('atlas-page-meta-mirror')).toContainText('notes.md')
@@ -176,12 +177,12 @@ test('a child\'s mirror preview renders inline in the parent page; the card\'s o
   await expect(overlay).not.toBeVisible()
 
   // "Example area"'s own page: "Project charter" appears as a child
-  // entry with its mirror content rendered inline.
+  // entry with its mirror content rendered inline. ⌘-click on the
+  // frame's own body opens its page directly (goal 0102's gesture
+  // table's instant-commit path).
   await page.getByTestId('atlas-breadcrumb').getByText('My space', { exact: true }).click()
   const exampleAreaFrame = groupCard(page, 'Example area')
-  await clickAtFraction(exampleAreaFrame, 0.01, 0.5)
-  await expect(exampleAreaFrame.getByTestId('atlas-group-card-back')).toBeVisible()
-  await exampleAreaFrame.getByTestId('atlas-group-open').click()
+  await clickAtFraction(exampleAreaFrame, 0.01, 0.5, { modifiers: ['Meta'] })
   await expect(overlay).toBeVisible()
   await expect(overlay.getByTestId('atlas-page-title')).toHaveValue('Example area')
   const charterEntry = overlay.getByTestId('atlas-page-child').filter({ hasText: 'Project charter' })
@@ -194,7 +195,7 @@ test('a child\'s mirror preview renders inline in the parent page; the card\'s o
   // into a later test in this same file/worker (testing.md's
   // within-file cleanup discipline).
   await groupCard(page, 'Example area').getByTestId('atlas-group-header').click()
-  await openViaFlip(charterCard)
+  await openCard(page, charterCard)
   await overlay.getByTestId('atlas-page-mirror-path').fill('')
   await overlay.getByTestId('atlas-page-mirror-path').blur()
   await expect(overlay.getByTestId('atlas-page-saved-tick')).toBeVisible()
@@ -268,10 +269,10 @@ test('a group entry inside a page re-roots the board to a deeper card, and the b
   await expect(l3).toBeVisible()
 
   // Back to "My space": L1 is a top-level frame, and L2 -- itself a
-  // group -- previews inside it as a REGION CHIP (goal 0073), a place
-  // with no flip face. The path to L2's page is therefore the place
-  // path: drill into L1 so L2 becomes a top-level frame, flip its
-  // body, Open.
+  // group -- previews inside it as a REGION CHIP (goal 0073). The path
+  // to L2's page is therefore the place path: drill into L1 so L2
+  // becomes a top-level frame, ⌘-click its body to open its own page
+  // directly (goal 0102's gesture table's instant-commit path).
   await page.getByTestId('atlas-breadcrumb').getByText('My space', { exact: true }).click()
   const breadcrumb = page.getByTestId('atlas-breadcrumb')
   await expect(breadcrumb).not.toContainText('Reports')
@@ -283,9 +284,7 @@ test('a group entry inside a page re-roots the board to a deeper card, and the b
   // The frame's centre is covered by its own preview-child nodes
   // (separate React Flow nodes on top) -- click the frame's own left
   // padding strip, below the header inset, where only the frame is.
-  await l2Frame.click({ position: { x: 6, y: 60 } })
-  await expect(l2Frame).toHaveAttribute('data-flipped', 'true')
-  await l2Frame.getByTestId('atlas-group-open').click()
+  await l2Frame.click({ position: { x: 6, y: 60 }, modifiers: ['Meta'] })
   const overlay = page.locator('[data-component="atlas-card-overlay"]')
   await expect(overlay).toBeVisible()
 
@@ -307,8 +306,8 @@ test('a group entry inside a page re-roots the board to a deeper card, and the b
   // Cleanup (testing.md's within-file discipline): delete bottom-up,
   // since atlassvc.DeleteCard is blocked while a card still has
   // children. A chip is a place: clicking it drills straight to L3.
-  async function deleteViaFlip(card: import('@playwright/test').Locator) {
-    await openViaFlip(card)
+  async function deleteViaCommit(card: import('@playwright/test').Locator) {
+    await openCard(page, card)
     await deleteViaPageMenu(page, overlay)
     await expect(overlay).not.toBeVisible()
   }
@@ -324,23 +323,23 @@ test('a group entry inside a page re-roots the board to a deeper card, and the b
   // into) renders as a frame with its own child ALSO previewed one
   // level deep, so "Q1 Summary" would match twice (L2's own child and
   // L3's preview grandchild) rather than the single card this step
-  // means to flip.
+  // means to open.
   await l3Chip.dblclick()
   await expect(breadcrumbReports).toHaveCount(3)
-  await deleteViaFlip(noteCard(page, 'Q1 Summary'))
+  await deleteViaCommit(noteCard(page, 'Q1 Summary'))
   await page.getByTestId('atlas-breadcrumb').getByText('Reports').nth(1).click()
-  await deleteViaFlip(noteCard(page, 'Reports'))
+  await deleteViaCommit(noteCard(page, 'Reports'))
 
   // L2's other child (its own Q1 Summary).
-  await deleteViaFlip(noteCard(page, 'Q1 Summary'))
+  await deleteViaCommit(noteCard(page, 'Q1 Summary'))
 
   // Up to L1: delete L2 (now childless) and L1's own Q1 Summary.
   await page.getByTestId('atlas-breadcrumb').getByText('Reports').first().click()
-  await deleteViaFlip(noteCard(page, 'Reports'))
-  await deleteViaFlip(noteCard(page, 'Q1 Summary'))
+  await deleteViaCommit(noteCard(page, 'Reports'))
+  await deleteViaCommit(noteCard(page, 'Q1 Summary'))
 
   // Back to "My space": delete L1.
   await page.getByTestId('atlas-breadcrumb').getByText('My space', { exact: true }).click()
-  await deleteViaFlip(noteCard(page, 'Reports'))
+  await deleteViaCommit(noteCard(page, 'Reports'))
   await expect(breadcrumb).not.toContainText('Reports')
 })

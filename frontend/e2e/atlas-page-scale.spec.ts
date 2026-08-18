@@ -28,7 +28,7 @@ import {
 // children, ordered by path depth), rather than a manual empty-card
 // creation followed by a board-level drill: the board has no
 // affordance to descend into a card before it holds at least one real
-// child (a childless card always renders as a flippable note, never a
+// child (a childless card always renders as a plain note, never a
 // region frame), so the ONLY way to land 5 real children under one
 // freshly-named container is a single import that creates both in the
 // same call. HumanizeFilename title-cases every word of a scanned
@@ -76,16 +76,14 @@ test('a card page at scale caps its entries with an honest expander and lazy-loa
     const mirrorStack = groupCard(page, 'Mirror Stack')
     await expect(mirrorStack).toBeVisible()
 
-    // Open the page: a region frame's own body click flips it in
-    // place, then its back face's Open leads to the same full-page
-    // overlay a leaf's own flip does (atlas-page.spec.ts's own
-    // established pattern for reaching a group's page). x:6 sits
-    // inside the frame's left GROUP_PADDING gutter, a blank strip
-    // running the frame's full height below its header -- safe
-    // regardless of how many rows the 5 previewed children wrap into.
-    await mirrorStack.click({ position: { x: 6, y: 60 } })
-    await expect(mirrorStack).toHaveAttribute('data-flipped', 'true')
-    await mirrorStack.getByTestId('atlas-group-open').click()
+    // Open the page: ⌘-click on the frame's own body opens its page
+    // directly (goal 0102's gesture table's instant-commit path,
+    // atlas-page.spec.ts's own established pattern for reaching a
+    // group's page). x:6 sits inside the frame's left GROUP_PADDING
+    // gutter, a blank strip running the frame's full height below its
+    // header -- safe regardless of how many rows the 5 previewed
+    // children wrap into.
+    await mirrorStack.click({ position: { x: 6, y: 60 }, modifiers: ['Meta'] })
 
     const overlay = page.locator('[data-component="atlas-card-overlay"]')
     await expect(overlay).toBeVisible()

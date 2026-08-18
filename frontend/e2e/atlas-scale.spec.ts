@@ -92,8 +92,8 @@ test('a dense area previews bounded: capped tiles, region chips, a truthful ghos
     const topLevel = [
       velocity,
       page.locator('[data-testid="atlas-group-card"]').filter({ has: page.locator('[aria-label="Zoom into Example area"]') }),
-      page.locator('[aria-label="Flip Getting started"]'),
-      page.locator('[aria-label="Flip Scratchpad"]'),
+      page.locator('[aria-label="Open Getting started"]'),
+      page.locator('[aria-label="Open Scratchpad"]'),
     ]
     const rects = []
     for (const loc of topLevel) {
@@ -120,13 +120,13 @@ test('a dense area previews bounded: capped tiles, region chips, a truthful ghos
     await page.getByTestId('atlas-breadcrumb').getByText('My space', { exact: true }).click()
     await expect(page.getByTestId('atlas-breadcrumb')).not.toContainText('Velocity')
 
-    // Gesture model (goal 0074): a chip answers a single click like
-    // every other card -- it flips to its minimal back -- and
-    // double-click commits, zooming into the place.
+    // The click model (goal 0102): a chip answers a single click like
+    // every other node -- it selects, replacing any prior selection --
+    // and a real double-click commits, zooming into the place (the
+    // same outcome two plain clicks in a row produce).
     const platform = page.locator('[data-testid="atlas-region-chip"]').filter({ hasText: 'Platform' })
     await platform.click()
-    await expect(platform).toHaveAttribute('data-flipped', 'true')
-    await expect(platform.getByTestId('atlas-region-chip-back')).toContainText('flip side')
+    await expect(page.locator('.react-flow__node.selected').filter({ has: platform })).toHaveCount(1)
     await platform.dblclick()
     await expect(page.getByTestId('atlas-breadcrumb')).toContainText('Platform')
     await expect(page.getByTestId('atlas-breadcrumb')).toContainText('Velocity')
@@ -144,7 +144,7 @@ test('a dense area previews bounded: capped tiles, region chips, a truthful ghos
     await expect(page.getByTestId('atlas-breadcrumb')).not.toContainText('Platform')
     await page.getByTestId('atlas-auto-arrange').click()
     const ea = page.locator('[data-testid="atlas-group-card"]').filter({ has: page.locator('[aria-label="Zoom into Example area"]') })
-    const gs = page.locator('[aria-label="Flip Getting started"]')
+    const gs = page.locator('[aria-label="Open Getting started"]')
     await expect(ea).toBeVisible()
     // Poll: the toggle's re-layout lands a paint or two after the
     // click -- a one-shot sample raced it on CI and measured the
@@ -167,8 +167,8 @@ test('a dense area previews bounded: capped tiles, region chips, a truthful ghos
     expect(gsBox.x).toBeGreaterThan(eaBox.x + eaBox.width - 3)
 
     // Card-page-at-scale (goal 0073 slice B): Velocity's own page --
-    // reached the same body-click-flip-then-Open way any region
-    // frame's page is -- caps its entries with an honest expander once
+    // reached with a ⌘-click on the frame body (goal 0102's instant-
+    // commit path) -- caps its entries with an honest expander once
     // density crosses the limit, the same deep counts the header row
     // and frame preview already summarize but never list in full.
     // Velocity holds exactly 12 direct children and 0 own links: the
@@ -181,9 +181,7 @@ test('a dense area previews bounded: capped tiles, region chips, a truthful ghos
     // clickAtFraction samples the frame's GROUP_PADDING gutter as a
     // fraction of its current box instead.
     await waitForViewportStable(board)
-    await clickAtFraction(velocity, 0.01, 0.5)
-    await expect(velocity).toHaveAttribute('data-flipped', 'true')
-    await velocity.getByTestId('atlas-group-open').click()
+    await clickAtFraction(velocity, 0.01, 0.5, { modifiers: ['Meta'] })
     const overlay = page.locator('[data-component="atlas-card-overlay"]')
     await expect(overlay).toBeVisible()
     await expect.poll(() => pageChildCount(overlay)).toBe(12)
@@ -210,9 +208,7 @@ test('a dense area previews bounded: capped tiles, region chips, a truthful ghos
     // Past the cap: 11 visible (limit-1) plus an honest "Show 5 more"
     // -- clicking it renders all 16, the expander gone.
     await waitForViewportStable(board)
-    await clickAtFraction(velocity, 0.01, 0.5)
-    await expect(velocity).toHaveAttribute('data-flipped', 'true')
-    await velocity.getByTestId('atlas-group-open').click()
+    await clickAtFraction(velocity, 0.01, 0.5, { modifiers: ['Meta'] })
     await expect(overlay).toBeVisible()
     await expect.poll(() => pageChildCount(overlay)).toBe(11)
     const showMore = overlay.getByTestId('atlas-page-show-more')

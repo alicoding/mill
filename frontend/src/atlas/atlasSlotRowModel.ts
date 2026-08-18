@@ -18,7 +18,7 @@ export interface AtlasSlotRow {
   chips: AtlasSlotChip[]
 }
 
-// buildSlotRows is the flip back face's own slot-row model (goal 0081
+// buildSlotRows is the card page's own slot-row model (goal 0081
 // slice A4, LOCKED design §3): one row per declared link kind, chips
 // resolved in EITHER direction, ordered links-first so a card with
 // real relations never buries them under empty rows. Ties (same

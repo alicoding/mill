@@ -7,13 +7,18 @@ import styles from './AtlasStickyNode.module.css'
 export interface AtlasStickyData extends Record<string, unknown> {
   // null for a draft sticky -- not yet persisted; created only once its
   // text commits non-blank (the LOCKED design's own "empty text on
-  // blur = cancel, nothing created"). A note NEVER carries a kind chip,
-  // flip face, or link handle -- structurally annotation, not data.
+  // blur = cancel, nothing created"). A note NEVER carries a kind chip
+  // or link handle -- structurally annotation, not data.
   note: Note | null
   editing: boolean
   onCommit: (text: string) => void
   onCancelEdit: () => void
   onEnterEdit: () => void
+  // The click model's own commit test (goal 0102's gesture table,
+  // uniform across every node type): true when this note was the sole
+  // selected node before the current click gesture began -- see
+  // useAtlasSelection.ts's own header comment.
+  isSoleSelected: (id: string) => boolean
 }
 
 export type AtlasStickyRFNode = RFNode<AtlasStickyData>
@@ -27,7 +32,7 @@ export type AtlasStickyRFNode = RFNode<AtlasStickyData>
 // creates or updates.
 export const AtlasStickyNode = memo(function AtlasStickyNode({ data }: NodeProps<AtlasStickyRFNode>) {
   const { t } = useTranslation('atlas')
-  const { note, editing, onCommit, onCancelEdit, onEnterEdit } = data
+  const { note, editing, onCommit, onCancelEdit, onEnterEdit, isSoleSelected } = data
   const [draftText, setDraftText] = useState(note?.Text ?? '')
   // Guards against a double-fire: Escape (which unmounts this editing
   // view) must never also let a trailing blur re-commit the same text.
@@ -73,12 +78,18 @@ export const AtlasStickyNode = memo(function AtlasStickyNode({ data }: NodeProps
       role="button"
       tabIndex={0}
       aria-label={t('sticky.ariaLabel')}
-      onDoubleClick={(e) => {
-        e.stopPropagation()
-        onEnterEdit()
+      // The click model (goal 0102's gesture table, uniform across
+      // every node type): a note's own commit is entering edit --
+      // reached by ⌘-click (instant) or a plain click on the
+      // already-selected note, so two ordinary clicks in a row
+      // reproduce a double-click's outcome with no separate handler.
+      onClick={(e) => {
+        if (e.shiftKey) return
+        if (e.metaKey || e.ctrlKey) { onEnterEdit(); return }
+        if (note && isSoleSelected(note.ID)) onEnterEdit()
       }}
       onKeyDown={(e) => {
-        if (e.key === 'Enter') {
+        if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault()
           onEnterEdit()
         }

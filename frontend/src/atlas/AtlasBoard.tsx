@@ -25,6 +25,7 @@ import { useAtlasDragFiling, type FrameBox } from './useAtlasDragFiling'
 import { useAtlasSelection } from './useAtlasSelection'
 import { useAtlasSelectAll } from './useAtlasSelectAll'
 import { useAtlasSelectionTray } from './useAtlasSelectionTray'
+import { useAtlasKeyboardNav } from './useAtlasKeyboardNav'
 import { useAtlasSlotDrag } from './useAtlasSlotDrag'
 import { AtlasSlotDragLine } from './AtlasSlotDragLine'
 import { buildBoardCardNodes } from './atlasBuildBoardNodes'
@@ -72,7 +73,7 @@ export interface AtlasFocusRequest {
 // media-query gate AtlasNoteCardNode.module.css's own flip already
 // uses, read here in JS via usePrefersReducedMotion since React Flow's
 // own transition durations are JS options, not CSS.
-function AtlasBoardInner({ cards, allCards, kinds, links, linkKinds, notes, parentID, arrangeRequest, viewedID, focusRequest, onDrill, onOpenOverlay, onFocusHandled, onCardContextMenu, onPaneContextMenu, onArteryContextMenu, onNoteContextMenu, onFrameContextMenu, onFrameInteriorContextMenu, onMultiSelectContextMenu, onDeleteSelection, onGroupSelection, placementRequest, promoteRequest, groupRequest, onJumpToChip }: {
+function AtlasBoardInner({ cards, allCards, kinds, links, linkKinds, notes, parentID, arrangeRequest, viewedID, focusRequest, onDrill, onOpenOverlay, onFocusHandled, onCardContextMenu, onPaneContextMenu, onArteryContextMenu, onNoteContextMenu, onFrameContextMenu, onFrameInteriorContextMenu, onMultiSelectContextMenu, onDeleteSelection, onGroupSelection, placementRequest, promoteRequest, groupRequest }: {
   cards: Card[]
   allCards: Card[]
   kinds: Kind[]
@@ -130,8 +131,6 @@ function AtlasBoardInner({ cards, allCards, kinds, links, linkKinds, notes, pare
   placementRequest?: AtlasPlacementRequest | null
   promoteRequest?: AtlasPromoteRequest | null
   groupRequest?: AtlasGroupRequest | null
-  // A slot-row chip's own click (goal 0081 A4): reuses ⌘K's own focus/jump plumbing.
-  onJumpToChip: (cardID: string) => void
 }) {
   const { t } = useTranslation('atlas')
   const readOnly = useIsNarrowViewport()
@@ -140,11 +139,10 @@ function AtlasBoardInner({ cards, allCards, kinds, links, linkKinds, notes, pare
   // positions-sovereign; the packer runs only on demand (below) or
   // in-memory for cards that have no position yet.
   const isFree = true
-  const [flippedID, setFlippedID] = useState<string | null>(null)
   const [pulsedID, setPulsedID] = useState<string | null>(null)
   const [hintedID, setHintedID] = useState<string | null>(null)
   const wrapperRef = useRef<HTMLDivElement>(null)
-  const { fitBounds, fitView, getNodesBounds, screenToFlowPosition } = useReactFlow()
+  const { fitBounds, fitView, getNodesBounds, getViewport, setViewport, screenToFlowPosition } = useReactFlow()
 
   // Free-mode overlap resolution (goal 0073, the growth class): a
   // frame's size is DERIVED from its children, so a clear layout can
@@ -206,56 +204,32 @@ function AtlasBoardInner({ cards, allCards, kinds, links, linkKinds, notes, pare
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [cards, notes, onDeleteSelection, selection.selectedIDsRef])
 
-  const toggleFlip = useCallback((id: string) => setFlippedID((cur) => (cur === id ? null : id)), [])
-
   // Zoom chip / group-header click / Enter on a region frame (routed
   // here through AtlasGroupNode's own data.onDrill) all fly the camera
   // into the frame's rendered bounds first, then re-root exactly once
   // when that transition resolves -- never before.
   const handleDrill = useCallback((groupID: string) => {
-    // A commit supersedes a glance (goal 0074): entering a place
-    // clears whatever was flipped before the camera moves.
-    setFlippedID(null)
     const bounds = getNodesBounds([groupID])
     void fitBounds(bounds, { duration: reduceMotion ? 0 : 450, padding: 0.25 }).then(() => onDrill(groupID))
   }, [getNodesBounds, fitBounds, reduceMotion, onDrill])
 
-  // A leaf's double-click commit (goal 0074): unflip, open its page.
-  const handleLeafCommit = useCallback((cardID: string) => {
-    setFlippedID(null)
-    onOpenOverlay(cardID)
-  }, [onOpenOverlay])
-
   // Which card ids ACTUALLY render on THIS board: top-level children
-  // plus each frame's capped preview -- excluding a flipped frame's
-  // children, which builtNodes omits while its back face covers them.
-  // Honesty here is load-bearing twice over: the ⌘K/entry focus
-  // effect below trusts this Set before flying (flying to an omitted
-  // node meant a pulse on nothing), and resolveBoardEdges reattaches
-  // links to a flipped frame instead of drawing to its missing
-  // children. Kept independent of pulsedID/hintedID so a pulse's own
-  // state-set never re-triggers the focus effect mid-animation;
-  // flippedID IS a dependency now, deliberately -- an unflip must
-  // re-fire that effect so a pending jump can land on the children it
-  // just revealed.
+  // plus each frame's capped preview. Honesty here is load-bearing for
+  // the ⌘K/entry focus effect below, which trusts this Set before
+  // flying, and for resolveBoardEdges, which reattaches links to a
+  // frame's own children by the same set. Kept independent of
+  // pulsedID/hintedID so a pulse's own state-set never re-triggers the
+  // focus effect mid-animation.
   const renderedIDs = useMemo(() => {
     const ids = new Set<string>()
     for (const card of cards) {
       ids.add(card.ID)
-      if (isGroupCard(allCards, card) && flippedID !== card.ID) {
+      if (isGroupCard(allCards, card)) {
         for (const child of computeGroupFrameLayout(allCards, card.ID).children) ids.add(child.card.ID)
       }
     }
     return ids
-  }, [cards, allCards, flippedID])
-
-  // Attention supersedes a glance: an incoming jump/entry focus
-  // unflips whatever is flipped, so a target hidden behind a frame's
-  // back face becomes real before the fly effect (re-fired by the
-  // renderedIDs change above) goes looking for it.
-  useEffect(() => {
-    if (focusRequest) setFlippedID(null)
-  }, [focusRequest])
+  }, [cards, allCards])
 
   const dragFiling = useAtlasDragFiling({ allCards, parentID, topLevelBoxes, wrapperRef })
 
@@ -265,7 +239,6 @@ function AtlasBoardInner({ cards, allCards, kinds, links, linkKinds, notes, pare
     onLink: (fromCardID, toCardID, linkKindID) => void AtlasService.CreateLink(fromCardID, toCardID, linkKindID, '').catch(console.error),
     onGuidedCreate: creation.openSlotLinkedCreate,
   })
-  const removeLink = useCallback((linkID: string) => void AtlasService.DeleteLink(linkID).catch(console.error), [])
 
   const areaDraw = useAtlasAreaDraw({
     armed: isFree && !readOnly && creation.armedTool === 'area',
@@ -283,14 +256,14 @@ function AtlasBoardInner({ cards, allCards, kinds, links, linkKinds, notes, pare
 
   const builtNodes = useMemo(() => buildBoardCardNodes({
     cards, allCards, kinds, links, linkKinds, isFree, readOnly, boardWidth, freeMoves, arteries,
-    flippedID, pulsedID, hintedID, hoveredFrameID: dragFiling.hoveredFrameID,
-    toggleFlip, onOpenOverlay, handleDrill, handleLeafCommit,
-    slotDragSourceID: slotDrag.dragSourceID, onSlotAnchorPointerDown: slotDrag.startDrag, onJumpToChip, onRemoveLink: removeLink,
-  }), [cards, allCards, kinds, links, linkKinds, isFree, readOnly, flippedID, pulsedID, hintedID, onOpenOverlay, handleDrill, handleLeafCommit, freeMoves, arteries, boardWidth, dragFiling.hoveredFrameID, toggleFlip, slotDrag.dragSourceID, slotDrag.startDrag, onJumpToChip, removeLink])
+    pulsedID, hintedID, hoveredFrameID: dragFiling.hoveredFrameID,
+    isSoleSelected: selection.isSoleSelected, onOpenOverlay, handleDrill,
+    slotDragSourceID: slotDrag.dragSourceID, onSlotAnchorPointerDown: slotDrag.startDrag,
+  }), [cards, allCards, kinds, links, linkKinds, isFree, readOnly, pulsedID, hintedID, onOpenOverlay, handleDrill, freeMoves, arteries, boardWidth, dragFiling.hoveredFrameID, selection.isSoleSelected, slotDrag.dragSourceID, slotDrag.startDrag])
 
   const [hoveredEdgeID, setHoveredEdgeID] = useState<string | null>(null)
   // Quiet edges (goal 0081 A4): see atlasBuildBoardEdges.ts.
-  const edges = useMemo(() => buildBoardEdges(arteries, linkKinds, hoveredEdgeID, flippedID, t), [arteries, linkKinds, hoveredEdgeID, flippedID, t])
+  const edges = useMemo(() => buildBoardEdges(arteries, linkKinds, hoveredEdgeID, t), [arteries, linkKinds, hoveredEdgeID, t])
 
   // Sticky notes (goal 0081 slice A1): built separately from
   // builtNodes above (its own file, atlasStickyNodes.ts) since a note
@@ -298,9 +271,10 @@ function AtlasBoardInner({ cards, allCards, kinds, links, linkKinds, notes, pare
   // frame layout that dominates that memo.
   const stickyNodes = useMemo(() => buildStickyNodes({
     notes, draftNotePos: creation.draftNoteFlowPos, editingNoteID: creation.editingNoteID, readOnly: readOnly || !isFree,
+    isSoleSelected: selection.isSoleSelected,
     onCommitDraft: creation.commitDraftNote, onCancelDraft: creation.cancelDraftNote,
     onEnterEdit: creation.enterNoteEdit, onCancelEdit: creation.cancelNoteEdit, onCommitEdit: creation.commitNoteEdit,
-  }), [notes, creation.draftNoteFlowPos, creation.editingNoteID, readOnly, isFree, creation.commitDraftNote, creation.cancelDraftNote, creation.enterNoteEdit, creation.cancelNoteEdit, creation.commitNoteEdit])
+  }), [notes, creation.draftNoteFlowPos, creation.editingNoteID, readOnly, isFree, selection.isSoleSelected, creation.commitDraftNote, creation.cancelDraftNote, creation.enterNoteEdit, creation.cancelNoteEdit, creation.commitNoteEdit])
 
   const allNodes = useMemo(() => [...builtNodes, ...stickyNodes], [builtNodes, stickyNodes])
   const [nodes, setNodes, onNodesChange] = useNodesState(allNodes)
@@ -315,7 +289,16 @@ function AtlasBoardInner({ cards, allCards, kinds, links, linkKinds, notes, pare
 
   useAtlasSelectAll({ cards, notes, setNodes })
 
-  const { trayRef, hasSelection: haveSelection, onGroup: onTrayGroup, onDelete: onTrayDelete } = useAtlasSelectionTray({ selectedCards: selection.selectedCards, selectedNotes: selection.selectedNotes, clearSelection: selection.clearSelection, setNodes, onDeleteSelection, onGroupSelection, onUnflip: () => setFlippedID(null) })
+  const { trayRef, hasSelection: haveSelection, onGroup: onTrayGroup, onDelete: onTrayDelete } = useAtlasSelectionTray({ selectedCards: selection.selectedCards, selectedNotes: selection.selectedNotes, clearSelection: selection.clearSelection, setNodes, onDeleteSelection, onGroupSelection, wrapperRef })
+
+  useAtlasKeyboardNav({
+    cards, readOnly, wrapperRef,
+    cardBoxes: topLevelBoxes, noteBoxes,
+    setNodes,
+    isGroupCardFn: (card) => isGroupCard(allCards, card),
+    onOpenOverlay, onDrill: handleDrill,
+    getViewport, setViewport,
+  })
 
   // Every re-root (drill in, breadcrumb out, jump) settles the new
   // board with an animated fitView rather than an instant snap. The
@@ -390,6 +373,20 @@ function AtlasBoardInner({ cards, allCards, kinds, links, linkKinds, notes, pare
         onEdgeMouseLeave={() => setHoveredEdgeID(null)}
         nodesConnectable={false}
         deleteKeyCode={null}
+        // React Flow's own per-node keyboard accessibility (Escape
+        // unselects the FOCUSED node only, Enter/Space toggles it,
+        // arrow keys nudge it) is a second, uncoordinated keyboard
+        // system layered on top of this board's own (useAtlasKeyboardNav,
+        // useAtlasSelectionTray's Escape ladder, each card's own
+        // onKeyDown) -- both attached to the same DOM node, both firing
+        // on the same keydown. Regression: Escape on a focused,
+        // selected card raced RF's own unselect-then-blur ahead of this
+        // board's own Escape ladder, so a single press both cleared the
+        // selection AND climbed a level, since the ladder's own "was
+        // anything selected" read always found RF had already cleared
+        // it. Disabled outright -- this board's own hooks are the sole
+        // keyboard authority.
+        disableKeyboardA11y
         // Goal 0092: NOT default Meta -- that made ⌘-click also toggle.
         multiSelectionKeyCode="Shift"
         nodesDraggable={isFree && !readOnly}

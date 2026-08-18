@@ -74,6 +74,17 @@ export function useAtlasSlotDrag({
       const release = { x: e.clientX, y: e.clientY }
       setDrag((d) => {
         if (!d) return null
+        // A browser synthesizes a "click" on the nearest common ancestor
+        // of the mousedown and mouseup targets -- releasing back onto
+        // the SAME card (the handle's own parent) makes that ancestor
+        // the card itself, so its own onClick would otherwise see a
+        // spurious click right after this drag resolves (goal 0102's
+        // click model: on an already-selected card, that would wrongly
+        // COMMIT). A one-shot capture-phase listener swallows exactly
+        // that one following click, for every release target, not just
+        // the same-card case -- harmless when no click was going to
+        // follow anyway.
+        window.addEventListener('click', (ce) => ce.stopPropagation(), { capture: true, once: true })
         const flowPos = screenToFlowRef.current(release)
         if (hitTest(flowPos, noteBoxesRef.current)) return null // a note is a no-op release target
         const target = hitTest(flowPos, topLevelBoxesRef.current)

@@ -1,5 +1,6 @@
 import { test, expect } from './fixtures/server'
 import { withClipboardLock } from './fixtures/clipboardLock'
+import { openCard } from './fixtures/atlasBoard'
 
 // goal 0063's share model -- card overlay + space toolbar share
 // actions, proven against the seeded "Project charter" card (has a
@@ -9,28 +10,24 @@ import { withClipboardLock } from './fixtures/clipboardLock'
 // 500-line convention) -- that file's own header covers the shared
 // egocentric-root auto-entry behavior every test below relies on. The
 // one-map board (goal 0072 slice A) retired the card chip's own quick-
-// share menu (no slot in the ratified note-card front/back anatomy) --
-// share now lives only in the card overlay's own Share section,
-// reached by flipping the card then clicking its back's Open button,
-// and in the space toolbar's Share menu (both proven below). Real
-// browser clipboard I/O (Playwright's clipboard-read/clipboard-write
-// permissions), so every clipboard-touching section runs inside
-// withClipboardLock -- same discipline quick-panel-clipboard-apply.
-// spec.ts already established for navigator.clipboard, not just the Go
-// osascript/pbcopy adapter. Deliberately never clicks a reveal-in-
-// Finder action here: it shells out to the real OS file manager
-// (BackupService.RevealBackupFolder's own mechanism, reused by
-// RevealSpaceFolder/RevealCardMirror), the same reason goal 0065's own
-// "Show in Finder" button has no e2e click coverage either -- Go-level
-// tests (atlasservice_share_test.go) cover that behavior instead; e2e
-// only asserts the action's presence.
+// share menu (no slot in the ratified note-card anatomy) -- share now
+// lives only in the card overlay's own Share section, reached by the
+// click model's select-then-commit (goal 0102), and in the space
+// toolbar's Share menu (both proven below). Real browser clipboard I/O
+// (Playwright's clipboard-read/clipboard-write permissions), so every
+// clipboard-touching section runs inside withClipboardLock -- same
+// discipline quick-panel-clipboard-apply.spec.ts already established
+// for navigator.clipboard, not just the Go osascript/pbcopy adapter.
+// Deliberately never clicks a reveal-in-Finder action here: it shells
+// out to the real OS file manager (BackupService.RevealBackupFolder's
+// own mechanism, reused by RevealSpaceFolder/RevealCardMirror), the
+// same reason goal 0065's own "Show in Finder" button has no e2e click
+// coverage either -- Go-level tests (atlasservice_share_test.go) cover
+// that behavior instead; e2e only asserts the action's presence.
 
-// Precise per-card matching: a plain hasText substring filter is
-// unreliable here since a card's own BACK face can legitimately
-// contain another card's title (its own "<kind> -> <other title>"
-// link row) -- aria-label carries the exact title instead.
+// Precise per-card matching: aria-label carries the exact title.
 function noteCard(page: import('@playwright/test').Page, title: string) {
-  return page.locator(`[data-testid="atlas-note-card"][aria-label="Flip ${title}"]`)
+  return page.locator(`[data-testid="atlas-note-card"][aria-label="Open ${title}"]`)
 }
 
 function groupCard(page: import('@playwright/test').Page, title: string) {
@@ -58,9 +55,7 @@ test('the card overlay Share section copies context and the cloud link to the cl
     await expect(page.getByTestId('atlas-breadcrumb')).toContainText('Example area')
 
     const charterCard = noteCard(page, 'Project charter')
-    await charterCard.click()
-    await expect(charterCard).toHaveAttribute('data-flipped', 'true')
-    await charterCard.getByTestId('atlas-note-open').click()
+    await openCard(page, charterCard)
     const overlay = page.locator('[data-component="atlas-card-overlay"]')
     await expect(overlay).toBeVisible()
 

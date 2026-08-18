@@ -443,10 +443,6 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
           promoteRequest={creationRequests.promoteRequest}
           groupRequest={creationRequests.groupRequest}
           onFocusHandled={() => setFocusRequest(null)}
-          onJumpToChip={(cardID) => {
-            const target = allCards.find((c) => c.ID === cardID)
-            if (target) jumpToCard(target, false)
-          }}
         />
         {undoToast.pending && (
           <AtlasUndoToast

@@ -5,49 +5,26 @@
     border: 1.5px solid;
     border-radius: 10px;
     cursor: pointer;
-    perspective: 600px;
+    padding: 8px 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
 }
 .chip:focus-visible {
     outline: 2px solid var(--focus-outlineColor);
     outline-offset: 1px;
 }
 
-/* Multi-selection outline (owner-caught follow-up to goal 0092): same
-   box-shadow ring AtlasNoteCardNode.module.css uses, keyed off React
-   Flow's own .selected on the node's outer wrapper. */
-:global(.react-flow__node.selected) .chip {
+/* Selection ring: on the React Flow node WRAPPER (the type-scoped
+   class React Flow stamps per nodeTypes key), never an inner element
+   -- see AtlasNoteCardNode.module.css's own header comment for why
+   (Primer's [role="button"] focus reset would otherwise zero it right
+   after every mouse click). */
+:global(.react-flow__node-atlas-region-chip.selected) {
+    border-radius: 10px;
     box-shadow:
         0 0 0 2px var(--borderColor-accent-emphasis),
         0 0 0 5px var(--bgColor-accent-muted);
-}
-.flipInner {
-    position: relative;
-    width: 100%;
-    height: 100%;
-    transition: transform 0.5s cubic-bezier(0.4, 0.1, 0.2, 1);
-    transform-style: preserve-3d;
-}
-.flipInner[data-flipped='true'] {
-    transform: rotateY(180deg);
-}
-@media (prefers-reduced-motion: reduce) {
-    .flipInner {
-        transition: none;
-    }
-}
-.face {
-    position: absolute;
-    inset: 0;
-    box-sizing: border-box;
-    padding: 8px 10px;
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-    backface-visibility: hidden;
-}
-.backFace {
-    transform: rotateY(180deg);
-    gap: 2px;
 }
 .title {
     font-size: 12px;
@@ -63,30 +40,6 @@
     font-family: var(--mill-mono);
     font-size: 10px;
     color: var(--fgColor-muted);
-}
-.backEyebrow {
-    font-family: var(--mill-mono);
-    font-size: 8.5px;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    color: var(--fgColor-muted);
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-.openButton {
-    align-self: flex-start;
-    display: inline-flex;
-    align-items: center;
-    gap: 3px;
-    border: 1px solid var(--fgColor-accent);
-    border-radius: 5px;
-    background: transparent;
-    color: var(--fgColor-accent);
-    font-size: 9.5px;
-    font-weight: 650;
-    padding: 1px 6px;
-    cursor: pointer;
 }
 .hiddenHandle {
     opacity: 0;
