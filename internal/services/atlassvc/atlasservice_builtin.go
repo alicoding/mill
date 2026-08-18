@@ -52,6 +52,7 @@ func (a *AtlasService) reconcileBuiltIns() {
 	changed = a.reconcileLinkKindsLocked(tombstones, now) || changed
 	changed = a.reconcileCardsLocked(tombstones, now) || changed
 	changed = a.reconcileLinksLocked(tombstones, now) || changed
+	changed = a.reconcilePerspectivesLocked(tombstones, now) || changed
 	// Retirement runs LAST, after cards have already been re-kinded off
 	// a retired Kind by the upgrade path above -- reference integrity
 	// (no Card may still name a Kind being removed) is checked against
@@ -269,6 +270,49 @@ func (a *AtlasService) reconcileLinksLocked(tombstones map[string]bool, now time
 			golden.CreatedAt, golden.UpdatedAt = existing.CreatedAt, now
 			golden.Seed = seedorigin.Stamp(golden.Seed.SeedRevision)
 			a.links[idx] = golden
+			changed = true
+		}
+	}
+	return changed
+}
+
+// reconcilePerspectivesLocked mirrors reconcileLinksLocked's insert/
+// upgrade/leave-alone-once-Modified/skip-tombstoned algorithm for
+// Perspectives (goal 0095) -- a no-op today since
+// atlas.BuiltInPerspectives() ships empty (slice 3 adds the seeded
+// example), but runs every startup so a future addition top-ups an
+// existing install exactly like every other family already does.
+func (a *AtlasService) reconcilePerspectivesLocked(tombstones map[string]bool, now time.Time) bool {
+	byID := make(map[string]int, len(a.perspectives))
+	for i, p := range a.perspectives {
+		byID[p.ID] = i
+	}
+	changed := false
+	for _, golden := range atlas.BuiltInPerspectives() {
+		idx, present := byID[golden.ID]
+		if !present {
+			if tombstones[golden.ID] {
+				continue
+			}
+			golden.CreatedAt, golden.UpdatedAt = now, now
+			a.perspectives = append(a.perspectives, golden)
+			changed = true
+			continue
+		}
+		existing := a.perspectives[idx]
+		if existing.Seed.SeedRevision == 0 {
+			existing.Seed = seedorigin.Origin{SeedRevision: golden.Seed.SeedRevision, Modified: true}
+			a.perspectives[idx] = existing
+			changed = true
+			continue
+		}
+		if existing.Seed.Modified {
+			continue
+		}
+		if existing.Seed.SeedRevision < golden.Seed.SeedRevision {
+			golden.CreatedAt, golden.UpdatedAt = existing.CreatedAt, now
+			golden.Seed = seedorigin.Stamp(golden.Seed.SeedRevision)
+			a.perspectives[idx] = golden
 			changed = true
 		}
 	}

@@ -53,9 +53,15 @@ func (a *AtlasService) createLinkWithID(id, fromCardID, toCardID, linkKindID, la
 	now := time.Now()
 	l.CreatedAt, l.UpdatedAt = now, now
 	a.links = append(a.links, l)
+	// Authoring-while-active (ADR-0041): a link created while a
+	// perspective is active joins it. Snapshot first -- a persist
+	// failure below must roll this back too.
+	previousPerspectives := append([]atlas.Perspective(nil), a.perspectives...)
+	a.joinActivePerspectiveWithLinkLocked(l.ID)
 	perr := a.persistLocked()
 	if perr != nil {
 		a.links = a.links[:len(a.links)-1]
+		a.perspectives = previousPerspectives
 	}
 	a.mu.Unlock()
 	if perr != nil {
