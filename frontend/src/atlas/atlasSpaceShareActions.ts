@@ -1,4 +1,5 @@
 import { AtlasService } from '../shared/bindings'
+import { writeClipboardText } from '../shared/clipboardWrite'
 
 // The space-level share actions (goal 0063, ADR-0038), the space
 // counterpart to atlasCardShare.ts's own card-level twin -- both
@@ -9,7 +10,7 @@ export function atlasSpaceShareActions(spaceID: string, onError: (message: strin
   const bundleContext = async (withAttachments: boolean): Promise<void> => {
     try {
       const text = await AtlasService.SpaceBundleContext(spaceID, withAttachments)
-      await navigator.clipboard.writeText(text)
+      await writeClipboardText(text)
     } catch (err) {
       onError(String(err))
     }
@@ -18,7 +19,7 @@ export function atlasSpaceShareActions(spaceID: string, onError: (message: strin
   const copyLinks = async (): Promise<void> => {
     try {
       const text = await AtlasService.SpaceLinksList(spaceID)
-      await navigator.clipboard.writeText(text)
+      await writeClipboardText(text)
     } catch (err) {
       onError(String(err))
     }

@@ -4,6 +4,7 @@ import { Banner, Button, Checkbox, FormControl, Stack, Text } from '@primer/reac
 import { ArrowLeftIcon, CopyIcon } from '@primer/octicons-react'
 import { AtlasService, ExecutionService, RunKind } from '../shared/bindings'
 import type { ClipbridgeReplyPreview } from '../shared/bindings'
+import { writeClipboardText } from '../shared/clipboardWrite'
 import styles from './QuickPanelClipboardApply.module.css'
 
 // The clipboard bridge's review surface (goal 0099) -- the fourth
@@ -39,7 +40,7 @@ export function QuickPanelReplyReview({ preview, onCancel, onApplied }: Props) {
 
   const copyCorrection = (problems: string[], declined: string[]) => {
     AtlasService.CorrectionEnvelope(problems, declined)
-      .then((envelope) => navigator.clipboard.writeText(envelope))
+      .then((envelope) => writeClipboardText(envelope))
       .then(() => setCopied(true))
       .catch((err) => setConfirmError(String(err)))
   }
