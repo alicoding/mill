@@ -114,6 +114,22 @@ completes it. Adopted as a pattern, not a tool — researched
 (spec-kit/task-master/OpenSpec/BMAD all rejected with reasons recorded
 in BACKLOG.md's own header).
 
+## Session boot: `docs/architecture/` is the orchestrator's memory
+
+The architecture views (goal 0098: C4 + sequence diagrams as
+Mermaid) exist so that knowing the current state is the CHEAPEST
+operation in any session — the orchestrator boots from them instead
+of re-deriving flows from code (owner-ratified 2026-08-17: "the goal
+for you is to always know the current state… so re-discovery is the
+cheapest one for you"). Consequences, both directions: a session
+starting design work reads the relevant view FIRST and treats it as
+current; and any change to a diagrammed flow updates its view in the
+SAME change (mechanical-only changes exempt, same posture as the
+SPEC rule) — a stale view is the orchestrator's memory being wrong,
+a correctness defect, not docs rot. Views are authored by the
+orchestrator from explorer-traced evidence (file:line), never from
+recall — choosing what a diagram omits is design work.
+
 ## Working method: Research → Plan → Implement
 
 Every non-trivial change follows this order, no exceptions:
