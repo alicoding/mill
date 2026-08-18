@@ -102,6 +102,13 @@ interface UISignalState {
   requestAtlasPerspectiveSwitcherOpen: () => void
   atlasSelectAllRequest: number
   requestAtlasSelectAll: () => void
+  // atlas.minimap.toggle (goal 0106 slice B): same monotonic-counter
+  // shape as atlasLensOpenRequest -- the board's own
+  // useAtlasMinimapToggle hook watches it via a ref-compared effect and
+  // flips the SAME localStorage-backed toggle its control-strip button
+  // flips directly.
+  atlasMinimapToggleRequest: number
+  requestAtlasMinimapToggle: () => void
 }
 
 export const useUISignalStore = create<UISignalState>()((set) => ({
@@ -141,4 +148,6 @@ export const useUISignalStore = create<UISignalState>()((set) => ({
   requestAtlasPerspectiveSwitcherOpen: () => set((s) => ({ atlasPerspectiveSwitcherOpenRequest: s.atlasPerspectiveSwitcherOpenRequest + 1 })),
   atlasSelectAllRequest: 0,
   requestAtlasSelectAll: () => set((s) => ({ atlasSelectAllRequest: s.atlasSelectAllRequest + 1 })),
+  atlasMinimapToggleRequest: 0,
+  requestAtlasMinimapToggle: () => set((s) => ({ atlasMinimapToggleRequest: s.atlasMinimapToggleRequest + 1 })),
 }))

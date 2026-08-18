@@ -10,7 +10,7 @@ import {
 } from './fixtures/server'
 import { deleteViaPageMenu } from './fixtures/atlasPage'
 import { ATLAS_KIND_TOPIC, selectKind } from './fixtures/kindPicker'
-import { groupCard, noteCard, openCard } from './fixtures/atlasBoard'
+import { clickBreadcrumbSegment, groupCard, noteCard, openCard } from './fixtures/atlasBoard'
 import { clickAtFraction } from './fixtures/animation'
 
 // Atlas card page read-is-edit + chip navigation (goal 0081 slice A5,
@@ -91,12 +91,15 @@ test('atlas card page: read-is-edit fields, kind-gated mirror controls, page lin
     await page.keyboard.press('Escape')
 
     // --- Links via the page's own slot-row Add control: "Scratchpad"
-    // carries no links yet -- pick "Getting started" from the row's
-    // select, Add, and the chip appears; the card's own front-face
-    // links chip (the map's rendering of the same field) goes from
-    // absent to "1 link". ---
+    // carries no links yet, so its one link-kind row starts collapsed
+    // behind its own "+ Add" invitation (goal 0106 slice B contract
+    // item 3) -- click it to reveal the select+Add control, pick
+    // "Getting started", Add, and the chip appears; the card's own
+    // front-face links chip (the map's rendering of the same field)
+    // goes from absent to "1 link". ---
     await openCard(page, noteCard(page, 'Scratchpad'))
     await expect(overlay).toBeVisible()
+    await overlay.locator('[data-testid^="atlas-slot-add-row-"]').first().click()
     const addSelect = overlay.locator('[data-testid^="atlas-slot-add-select-"]').first()
     const addButton = overlay.locator('[data-testid^="atlas-slot-add-button-"]').first()
     await addSelect.selectOption({ label: 'Getting started' })
@@ -193,7 +196,13 @@ test('atlas card page: read-is-edit fields, kind-gated mirror controls, page lin
     await expect(overlay).toBeVisible()
     await expect(actions.getByTestId('atlas-page-action-row')).toHaveCount(1)
 
+    // Source is pre-seeded (already filled, so it renders directly);
+    // Mirror path starts empty and collapsed behind its own "+ Add"
+    // invitation (goal 0106 slice B contract item 3) -- clicking it
+    // expands the real control the fill below needs.
     await expect(overlay.getByTestId('atlas-page-source')).toBeVisible()
+    await expect(overlay.getByTestId('atlas-page-add-mirror-path')).toBeVisible()
+    await overlay.getByTestId('atlas-page-add-mirror-path').click()
     await expect(overlay.getByTestId('atlas-page-mirror-path')).toBeVisible()
     await expect(overlay.getByTestId('atlas-overlay-reveal-file')).toHaveCount(0)
 
@@ -233,7 +242,7 @@ test('atlas card page: read-is-edit fields, kind-gated mirror controls, page lin
     // --- Delete via the kebab menu + confirm (rider (a) supersedes
     // the old edit-section's bare Delete button): create a throwaway
     // card, delete it, confirm it's gone. ---
-    await page.getByTestId('atlas-breadcrumb').getByText('My space', { exact: true }).click()
+    await clickBreadcrumbSegment(page, page.getByTestId('atlas-breadcrumb').getByText('My space', { exact: true }), 'My space')
     const title = 'ZzE2eAtlasPageEditDelete'
     await page.getByTestId('atlas-add-button').click()
     await page.getByTestId('atlas-add-child').click()

@@ -42,6 +42,7 @@ export function AtlasFieldsForm({ fields, values, onChange, onCommit, errors, re
             <Checkbox
               checked={values[field.Key] === 'true'}
               data-testid="atlas-field"
+              data-field-key={field.Key}
               onChange={(e) => {
                 const next = String(e.target.checked)
                 onChange(field.Key, next)
@@ -52,6 +53,7 @@ export function AtlasFieldsForm({ fields, values, onChange, onCommit, errors, re
             <Select
               value={values[field.Key] ?? ''}
               data-testid="atlas-field"
+              data-field-key={field.Key}
               onChange={(e) => {
                 const next = e.target.value
                 onChange(field.Key, next)
@@ -68,6 +70,7 @@ export function AtlasFieldsForm({ fields, values, onChange, onCommit, errors, re
               value={values[field.Key] ?? ''}
               block
               data-testid="atlas-field"
+              data-field-key={field.Key}
               onChange={(e) => onChange(field.Key, e.target.value)}
               onBlur={() => onCommit?.(field.Key, values[field.Key] ?? '')}
             />
@@ -77,6 +80,7 @@ export function AtlasFieldsForm({ fields, values, onChange, onCommit, errors, re
               rows={4}
               block
               data-testid="atlas-field"
+              data-field-key={field.Key}
               onChange={(e) => onChange(field.Key, e.target.value)}
               onBlur={() => onCommit?.(field.Key, values[field.Key] ?? '')}
             />
@@ -85,6 +89,7 @@ export function AtlasFieldsForm({ fields, values, onChange, onCommit, errors, re
               value={values[field.Key] ?? ''}
               block
               data-testid="atlas-field"
+              data-field-key={field.Key}
               onChange={(e) => onChange(field.Key, e.target.value)}
               onBlur={() => onCommit?.(field.Key, values[field.Key] ?? '')}
             />

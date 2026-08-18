@@ -10,7 +10,7 @@ import {
 } from './fixtures/server'
 import { contextMenu, rightClickEmptyArea } from './fixtures/contextMenu'
 import { ATLAS_KIND_CONTACT, ATLAS_KIND_TOPIC, selectKind } from './fixtures/kindPicker'
-import { clickCorner, groupCard, noteCard, zoomAllTheWayOut } from './fixtures/atlasBoard'
+import { clickCorner, groupCard, noteCard, submitCreatePopover, zoomAllTheWayOut } from './fixtures/atlasBoard'
 
 // Atlas creation core (goal 0081 slice A1): the tray, its placement
 // popover, right-click create, sticky notes, and the note promotion
@@ -137,9 +137,21 @@ test('atlas creation core: tray, placement popover, right-click create, sticky n
     await clickCorner(board, 'top-right')
     await expect(cardTool).toHaveAttribute('data-armed', 'false')
     await expect(popover).toBeVisible()
+
+    // The create loop (goal 0106 slice B contract item 4: C -> click ->
+    // title -> Enter -> board) audited: the popover's own resting chrome
+    // is the kind chip + title input ONLY -- no "Kind"/"Title" labels,
+    // no visible Submit/Cancel row (Enter/Escape are the only commit/
+    // cancel paths). The title input is already focused.
+    await expect(popover.getByText('Kind', { exact: true })).toHaveCount(0)
+    await expect(popover.getByText('Title', { exact: true })).toHaveCount(0)
+    await expect(popover.getByTestId('atlas-placement-submit')).toHaveCount(0)
+    await expect(popover.getByTestId('atlas-placement-cancel')).toHaveCount(0)
+    await expect(popover.getByTestId('atlas-placement-title')).toBeFocused()
+
     await selectKind(popover, ATLAS_KIND_TOPIC)
     await popover.getByTestId('atlas-placement-title').fill('ZzE2eRootCard')
-    await popover.getByTestId('atlas-placement-submit').click()
+    await submitCreatePopover(popover)
     await expect(popover).not.toBeVisible()
     await expect(noteCard(page, 'ZzE2eRootCard')).toBeVisible()
     // Regression: one confirm creates exactly ONE card. StrictMode
@@ -166,7 +178,7 @@ test('atlas creation core: tray, placement popover, right-click create, sticky n
     await expect(popover).toBeVisible()
     await selectKind(popover, ATLAS_KIND_CONTACT)
     await popover.getByTestId('atlas-placement-title').fill('ZzE2eAreaCard')
-    await popover.getByTestId('atlas-placement-submit').click()
+    await submitCreatePopover(popover)
     await expect(popover).not.toBeVisible()
     await expect(noteCard(page, 'ZzE2eAreaCard')).toBeVisible()
 

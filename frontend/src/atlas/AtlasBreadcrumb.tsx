@@ -1,7 +1,8 @@
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Breadcrumbs } from '@primer/react'
+import { ActionList, AnchoredOverlay, Breadcrumbs } from '@primer/react'
 import type { Card } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
-import { buildBreadcrumbPath, singleRootCard } from './atlasGrouping'
+import { buildBreadcrumbPath, childrenOf, singleRootCard } from './atlasGrouping'
 
 // root -> ... -> current, every ancestor clickable (docs/goals/0061):
 // Primer's own Breadcrumbs (frontend.md: adopt a kit component over a
@@ -10,7 +11,9 @@ import { buildBreadcrumbPath, singleRootCard } from './atlasGrouping'
 // its own "All spaces" crumb when 2+ root cards actually exist to
 // choose between (egocentric-root auto-entry, goal 0069) -- with
 // exactly one root card, that card IS the top and the path already
-// starts there.
+// starts there. The meta crumb stays a plain navigate-on-click link
+// (goal 0106 slice B): it names no single real place with siblings of
+// its own, unlike every other segment below.
 export function AtlasBreadcrumb({ cards, viewedID, onNavigate }: {
   cards: Card[]
   viewedID: string
@@ -38,16 +41,62 @@ export function AtlasBreadcrumb({ cards, viewedID, onNavigate }: {
           </Breadcrumbs.Item>
         )}
         {path.map((card) => (
-          <Breadcrumbs.Item
-            key={card.ID}
-            href="#"
-            selected={card.ID === viewedID}
-            onClick={(e) => { e.preventDefault(); onNavigate(card.ID) }}
-          >
-            {card.Title}
-          </Breadcrumbs.Item>
+          <AtlasBreadcrumbSegment key={card.ID} card={card} cards={cards} selected={card.ID === viewedID} onNavigate={onNavigate} />
         ))}
       </Breadcrumbs>
     </div>
+  )
+}
+
+// Each real segment is a dropdown trigger (goal 0106 slice B contract
+// item 5, "structural context" lateral moves): its own place is always
+// among the siblings it lists, marked selected -- clicking IT there
+// reproduces the crumb's own former direct-navigate-on-click behavior,
+// so the menu interposes lateral choice without removing the original
+// capability. Siblings share this segment's ParentID -- the same set
+// AtlasView's own childrenOf(allCards, viewedID) already computes for
+// the board itself, applied one level up the chain here.
+function AtlasBreadcrumbSegment({ card, cards, selected, onNavigate }: {
+  card: Card
+  cards: Card[]
+  selected: boolean
+  onNavigate: (id: string) => void
+}) {
+  const { t } = useTranslation('atlas')
+  const [open, setOpen] = useState(false)
+  const siblings = childrenOf(cards, card.ParentID)
+
+  return (
+    <AnchoredOverlay
+      open={open}
+      onOpen={() => setOpen(true)}
+      onClose={() => setOpen(false)}
+      renderAnchor={(anchorProps) => (
+        <Breadcrumbs.Item
+          {...anchorProps}
+          href="#"
+          selected={selected}
+          data-testid="atlas-breadcrumb-item"
+          onClick={(e) => { anchorProps.onClick?.(e); e.preventDefault() }}
+        >
+          {card.Title}
+        </Breadcrumbs.Item>
+      )}
+      overlayProps={{ 'aria-label': t('breadcrumbSiblingsAriaLabel'), 'data-testid': 'atlas-breadcrumb-siblings' } as never}
+    >
+      <ActionList selectionVariant="single">
+        {siblings.map((sibling) => (
+          <ActionList.Item
+            key={sibling.ID}
+            selected={sibling.ID === card.ID}
+            data-testid="atlas-breadcrumb-sibling"
+            onSelect={() => { setOpen(false); onNavigate(sibling.ID) }}
+          >
+            {sibling.Title}
+            <ActionList.TrailingVisual>{t('board.cardsCount', { count: childrenOf(cards, sibling.ID).length })}</ActionList.TrailingVisual>
+          </ActionList.Item>
+        ))}
+      </ActionList>
+    </AnchoredOverlay>
   )
 }
