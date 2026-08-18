@@ -6,6 +6,7 @@ package main
 import (
 	"context"
 	"embed"
+	"errors"
 
 	"log"
 	"log/slog"
@@ -14,7 +15,9 @@ import (
 	"time"
 
 	"github.com/alicoding/mill/internal/adapters/credential"
+	"github.com/alicoding/mill/internal/adapters/notify"
 	"github.com/alicoding/mill/internal/adapters/settings"
+	"github.com/alicoding/mill/internal/domain/composition"
 	"github.com/alicoding/mill/internal/services/atlassvc"
 	"github.com/alicoding/mill/internal/services/backupsvc"
 	"github.com/alicoding/mill/internal/services/capabilitysvc"
@@ -196,6 +199,18 @@ func main() {
 	})
 	executionService.SetRunCompletionSink(atlasService.NotifyRunCompleted)
 	atlasService.WireCompositionSeams(triggerService.DispatchAtlasCardChange) // goal 0066
+	// apply-notify's door to the OS notification adapter (goal 0114).
+	// Server mode's adapter refuses by design (ErrUnsupportedInServerMode)
+	// -- that maps to success here: the notification is best-effort
+	// delivery, and "unsupported on this build" must not fail a workflow
+	// whose real work already succeeded. Every other error propagates.
+	composition.SetNotifier(func(title, body string) error {
+		err := notify.SendPlain("mill-workflow-notify", title, body)
+		if errors.Is(err, notify.ErrUnsupportedInServerMode) {
+			return nil
+		}
+		return err
+	})
 
 	backupService := backupsvc.Wire(backupsvc.SQLiteDBPath(executionDatabaseURL), settingsPath, backupDir, millVersion, compositionService, configureService, atlasService)
 

@@ -17,31 +17,6 @@ import (
 // (.claude/rules/architecture.md) -- see that file's own doc comment
 // for the seam this split follows.
 func BuiltInWorkflows() []Workflow {
-	const loadSampleTriggerID = "load-sample-html-trigger"
-	loadSample, err := ResolveNodeDefaults([]Node{
-		{ID: loadSampleTriggerID, NodeTypeID: "trigger-manual", Position: Position{X: 0, Y: 0}},
-		{ID: "load-sample-html", NodeTypeID: "apply-clipboard-write-html", Position: Position{X: 0, Y: 100}},
-	})
-	if err != nil {
-		panic("built-in workflow references an unknown node type: " + err.Error())
-	}
-
-	const (
-		triggerID = "clipboard-to-markdown-trigger"
-		captureID = "clipboard-to-markdown-capture"
-		processID = "clipboard-to-markdown-process"
-		applyID   = "clipboard-to-markdown-apply"
-	)
-	clipboardToMarkdown, err := ResolveNodeDefaults([]Node{
-		{ID: triggerID, NodeTypeID: "trigger-manual", Position: Position{X: 0, Y: 0}},
-		{ID: captureID, NodeTypeID: "capture-clipboard-html", Position: Position{X: 0, Y: 100}},
-		{ID: processID, NodeTypeID: "process-html-to-markdown", Position: Position{X: 0, Y: 200}},
-		{ID: applyID, NodeTypeID: "apply-clipboard-write-text", Position: Position{X: 0, Y: 300}},
-	})
-	if err != nil {
-		panic("built-in workflow references an unknown node type: " + err.Error())
-	}
-
 	// The guardrail proof (docs/adr/0022, and the standing seeded-
 	// examples principle): an external-effect step whose run parks
 	// awaiting approval by default. References the seeded no-auth
@@ -285,31 +260,8 @@ func BuiltInWorkflows() []Workflow {
 		panic("built-in workflow references an unknown node type: " + err.Error())
 	}
 
-	workflows := []Workflow{
-		{
-			ID:          "load-sample-html-workflow",
-			Label:       "Load sample HTML",
-			Description: "A single-step workflow: puts real HTML on the clipboard.",
-			Nodes:       loadSample,
-			Edges: []Edge{
-				{ID: "load-sample-html-e1", Source: loadSampleTriggerID, Target: "load-sample-html"},
-			},
-			BuiltIn: true,
-			Seed:    seedorigin.Stamp(1),
-		},
-		{
-			ID:          "clipboard-html-to-markdown-workflow",
-			Label:       "Clipboard → Markdown",
-			Description: "Capture the clipboard's HTML, convert it to Markdown, write it back.",
-			Nodes:       clipboardToMarkdown,
-			Edges: []Edge{
-				{ID: "clipboard-to-markdown-e0", Source: triggerID, Target: captureID},
-				{ID: "clipboard-to-markdown-e1", Source: captureID, Target: processID},
-				{ID: "clipboard-to-markdown-e2", Source: processID, Target: applyID},
-			},
-			BuiltIn: true,
-			Seed:    seedorigin.Stamp(1),
-		},
+	workflows := clipboardBuiltInWorkflows()
+	workflows = append(workflows, []Workflow{
 		{
 			ID:          ExampleChildWorkflowID,
 			Label:       "Example: Echo message (callable child)",
@@ -448,7 +400,7 @@ func BuiltInWorkflows() []Workflow {
 			Seed:     seedorigin.Stamp(2),
 			Disabled: true,
 		},
-	}
+	}...)
 
 	// List lookup + List search (docs/goals/0010 item 4, docs/goals/
 	// 0011-lists-maturation.md item 4): split into their own file

@@ -228,6 +228,15 @@ layer per capability," never "a seed per thing":
   test in the same spec file — what stays manual is only the
   box-drag gesture itself: shift-drag around 2+ cards desktop-mode
   and confirm the selection forms.
+- **apply-notify's real banner** (goal 0114) — the step's config
+  plumbing, attribute override, and error paths are unit-tested, and
+  the seeded Clipboard → Markdown graph executes in tests via the
+  server-mode best-effort mapping (unsupported ≠ failed) — but an
+  actual notification banner appearing is OS-bound
+  (UNUserNotificationCenter, signed-bundle handshake, same class as
+  the dock bounce above): verify desktop-mode by running the seeded
+  workflow via its hotkey while another app is focused and confirming
+  the "Markdown is on your clipboard" banner.
 - **Native file-drop delivery** (goal 0081 A3, `EnableFileDrop` +
   `WindowFilesDropped`) — the landing/derivation logic is Go-tested
   and the flow is e2e-proven at the service level, but a real OS

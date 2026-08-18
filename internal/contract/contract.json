@@ -2944,6 +2944,61 @@
       "Complexity": "advanced"
     },
     {
+      "ID": "apply-notify",
+      "Kind": "apply",
+      "Label": "Notify me",
+      "Description": "Shows a notification when the workflow reaches this step -- the way a hotkey-triggered workflow tells you it finished while you're in another app. \"Body attribute\" swaps the fixed message for an Attributes value.",
+      "ConfigFields": [
+        {
+          "Key": "title",
+          "Label": "Title",
+          "Type": "text",
+          "Required": false,
+          "Default": "",
+          "Description": "The notification's first line.",
+          "Options": null,
+          "Suggestions": null,
+          "Secret": false,
+          "RefKind": "",
+          "Multiline": false,
+          "SystemManaged": false
+        },
+        {
+          "Key": "body",
+          "Label": "Message",
+          "Type": "text",
+          "Required": false,
+          "Default": "",
+          "Description": "What the notification says.",
+          "Options": null,
+          "Suggestions": null,
+          "Secret": false,
+          "RefKind": "",
+          "Multiline": false,
+          "SystemManaged": false
+        },
+        {
+          "Key": "bodyAttribute",
+          "Label": "Body attribute (optional)",
+          "Type": "text",
+          "Required": false,
+          "Default": "",
+          "Description": "Which Attributes field replaces the fixed message, when set.",
+          "Options": null,
+          "Suggestions": null,
+          "Secret": false,
+          "RefKind": "",
+          "Multiline": false,
+          "SystemManaged": false
+        }
+      ],
+      "Output": "payload unchanged; a notification appears on this machine",
+      "Effect": "local",
+      "Declared": false,
+      "PaletteGroup": "",
+      "Complexity": "basic"
+    },
+    {
       "ID": "decision-route",
       "Kind": "decision",
       "Label": "Branch: route",
@@ -4697,6 +4752,61 @@
       "Declared": false,
       "PaletteGroup": "",
       "Complexity": "advanced"
+    },
+    {
+      "ID": "apply-notify",
+      "Kind": "apply",
+      "Label": "Notify me",
+      "Description": "Shows a notification when the workflow reaches this step -- the way a hotkey-triggered workflow tells you it finished while you're in another app. \"Body attribute\" swaps the fixed message for an Attributes value.",
+      "ConfigFields": [
+        {
+          "Key": "title",
+          "Label": "Title",
+          "Type": "text",
+          "Required": false,
+          "Default": "",
+          "Description": "The notification's first line.",
+          "Options": null,
+          "Suggestions": null,
+          "Secret": false,
+          "RefKind": "",
+          "Multiline": false,
+          "SystemManaged": false
+        },
+        {
+          "Key": "body",
+          "Label": "Message",
+          "Type": "text",
+          "Required": false,
+          "Default": "",
+          "Description": "What the notification says.",
+          "Options": null,
+          "Suggestions": null,
+          "Secret": false,
+          "RefKind": "",
+          "Multiline": false,
+          "SystemManaged": false
+        },
+        {
+          "Key": "bodyAttribute",
+          "Label": "Body attribute (optional)",
+          "Type": "text",
+          "Required": false,
+          "Default": "",
+          "Description": "Which Attributes field replaces the fixed message, when set.",
+          "Options": null,
+          "Suggestions": null,
+          "Secret": false,
+          "RefKind": "",
+          "Multiline": false,
+          "SystemManaged": false
+        }
+      ],
+      "Output": "payload unchanged; a notification appears on this machine",
+      "Effect": "local",
+      "Declared": false,
+      "PaletteGroup": "",
+      "Complexity": "basic"
     },
     {
       "ID": "decision-route",
