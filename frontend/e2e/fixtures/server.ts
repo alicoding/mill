@@ -301,3 +301,12 @@ export const GUARDRAIL_REVIEW_SERVER_BASE_PORT = 10180
 // 10250, so the MCP base must start beyond that or a computed server
 // port can land on another test's MCP listener.
 export const GUARDRAIL_REVIEW_MCP_BASE_PORT = 10300
+
+// atlas-perspectives.spec.ts's own dedicated pair (goal 0095 slice 2,
+// ADR-0041): the active perspective is GLOBAL Atlas session state
+// (AtlasSessionState.activePerspectiveID), and its own perspective/
+// membership records are read by every other Atlas spec's board --
+// same shared-global-state reasoning as guardrail-authoring/
+// atlas-session-restore above, applied to this feature's own writes.
+export const ATLAS_PERSPECTIVES_SERVER_BASE_PORT = 10320
+export const ATLAS_PERSPECTIVES_MCP_BASE_PORT = 10340

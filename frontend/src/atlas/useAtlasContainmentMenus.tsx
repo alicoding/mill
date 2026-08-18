@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { TFunction } from 'i18next'
-import type { Card, Note } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
+import type { Card, Note, Perspective } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 import type { TombstoneResult } from '../../bindings/github.com/alicoding/mill/internal/services/atlassvc/models'
 import { AtlasService } from '../shared/bindings'
 import { refreshAtlas } from './atlasStore'
@@ -8,6 +8,7 @@ import { childrenOf } from './atlasGrouping'
 import { ConfirmDialog } from '../shared/ConfirmDialog'
 import type { ContextMenuItem, ContextMenuState } from '../shared/ContextMenu'
 import type { AtlasCreationTool } from './AtlasCreationTray'
+import { perspectiveMembershipMenuItems } from './atlasPerspectiveMenuItems'
 
 // AtlasView's own frame/multi-select context menus (goal 0081 slice
 // A2, LOCKED design §6d + item 4's dissolve rule) -- split out of
@@ -30,15 +31,17 @@ import type { AtlasCreationTool } from './AtlasCreationTray'
 // exact same AtlasService.DeleteCard -- only Dissolve's own confirm
 // copy names the act deliberately, the other doors skip it.
 export function useAtlasContainmentMenus({
-  t, allCards, notes, setMenu, drill, onError, onDeleted, requestPlacementInside, requestGroup,
+  t, allCards, notes, perspectives, setMenu, drill, onError, onDeleted, onPerspectiveToast, requestPlacementInside, requestGroup,
 }: {
   t: TFunction<'atlas'>
   allCards: Card[]
   notes: Note[]
+  perspectives: Perspective[]
   setMenu: (state: ContextMenuState | null) => void
   drill: (id: string) => void
   onError: (message: string) => void
   onDeleted: (result: TombstoneResult) => void
+  onPerspectiveToast: (message: string) => void
   requestPlacementInside: (tool: AtlasCreationTool, pos: { x: number; y: number }, parentID: string) => void
   requestGroup: (cardIDs: string[], noteIDs: string[], pos: { x: number; y: number }) => void
 }) {
@@ -127,6 +130,14 @@ export function useAtlasContainmentMenus({
     const items: ContextMenuItem[] = []
     if (cardIDs.length >= 2) {
       items.push({ id: 'group', label: t('contextMenu.groupIntoArea'), commandId: 'atlas.group.selection', run: () => requestGroup(cardIDs, noteIDs, pos) })
+    }
+    // Notes never join a perspective (ADR-0041's MemberCardIDs is cards
+    // only) -- only the selection's card ids are offered.
+    const perspectiveItems = perspectiveMembershipMenuItems({ t, perspectives, cardIDs, pos, setMenu, onToast: onPerspectiveToast })
+    if (perspectiveItems.length > 0) {
+      if (items.length > 0) items.push({ id: 'd1', divider: true })
+      items.push(...perspectiveItems)
+      items.push({ id: 'd2', divider: true })
     }
     items.push({ id: 'delete-selection', label: t('contextMenu.delete'), commandId: 'atlas.delete.selection', danger: true, run: () => deleteSelection(cardIDs, noteIDs) })
     setMenu({ x: pos.x, y: pos.y, items })

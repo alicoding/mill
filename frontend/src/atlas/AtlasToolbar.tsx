@@ -2,10 +2,10 @@ import { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@primer/react'
 import { ChecklistIcon, DownloadIcon, TableIcon, UploadIcon } from '@primer/octicons-react'
-import type { Card, Kind } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
+import type { Card, Kind, Perspective } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 import { useUISignalStore } from '../shared/uiSignalStore'
 import { AtlasBreadcrumb } from './AtlasBreadcrumb'
-import { AtlasLensControl } from './AtlasLensControl'
+import { AtlasPerspectiveSwitcher } from './AtlasPerspectiveSwitcher'
 import { AtlasCreateMenu } from './AtlasCreateMenu'
 import { AtlasFolderImport } from './AtlasFolderImport'
 import { AtlasSpaceShareMenu } from './AtlasSpaceShareMenu'
@@ -24,7 +24,8 @@ import styles from './AtlasView.module.css'
 export function AtlasToolbar({
   cards, viewedID, onNavigate,
   kinds, presentKinds, hiddenKindIDs, onChangeHidden,
-  peek, onChangePeek, onAutoArrange,
+  onAutoArrange,
+  perspectives, activePerspectiveID, onSwitchPerspective, onCreatePerspective, onRenamePerspective, onDeletePerspective, onPerspectiveToast,
   canAddSibling, onCreate, onExport, onImportFile, onShareError,
   onOpenMatrix, onOpenCoverage, addChildRequest,
 }: {
@@ -35,11 +36,18 @@ export function AtlasToolbar({
   presentKinds: Kind[]
   hiddenKindIDs: string[]
   onChangeHidden: (hidden: string[]) => void
-  peek: boolean
-  onChangePeek: (peek: boolean) => void
   // Arrange is an action, not a mode (goal 0089): one-shot packer run
-  // over the current level, persisting the resulting positions.
+  // over the current level, persisting the resulting positions. Disabled
+  // while a perspective is active (ADR-0041): a global repack while
+  // filtered would scramble sibling views.
   onAutoArrange: () => void
+  perspectives: Perspective[]
+  activePerspectiveID: string
+  onSwitchPerspective: (id: string) => void
+  onCreatePerspective: (name: string) => Promise<void>
+  onRenamePerspective: (id: string, name: string) => Promise<void>
+  onDeletePerspective: (id: string) => Promise<void>
+  onPerspectiveToast: (message: string) => void
   canAddSibling: boolean
   onCreate: (containment: 'sibling' | 'child', kindID: string, title: string) => Promise<void>
   onExport: () => void
@@ -81,7 +89,10 @@ export function AtlasToolbar({
         <Button
           size="small"
           data-testid="atlas-auto-arrange"
-          onClick={onAutoArrange}
+          aria-disabled={activePerspectiveID !== ''}
+          title={activePerspectiveID !== '' ? t('viewMode.arrangeDisabledTooltip') : undefined}
+          className={activePerspectiveID !== '' ? styles.arrangeDisabled : undefined}
+          onClick={() => { if (activePerspectiveID === '') onAutoArrange() }}
         >
           {t('viewMode.arrangeAction')}
         </Button>
@@ -107,12 +118,17 @@ export function AtlasToolbar({
         <Button leadingVisual={ChecklistIcon} size="small" variant="invisible" data-testid="atlas-open-coverage" onClick={onOpenCoverage}>
           {t('toolbar.coverage')}
         </Button>
-        <AtlasLensControl
+        <AtlasPerspectiveSwitcher
+          perspectives={perspectives}
+          activePerspectiveID={activePerspectiveID}
+          onSwitch={onSwitchPerspective}
+          onCreate={onCreatePerspective}
+          onRename={onRenamePerspective}
+          onDelete={onDeletePerspective}
+          onToast={onPerspectiveToast}
           presentKinds={presentKinds}
           hiddenKindIDs={hiddenKindIDs}
           onChangeHidden={onChangeHidden}
-          peek={peek}
-          onChangePeek={onChangePeek}
         />
         <AtlasCreateMenu kinds={kinds} canAddSibling={canAddSibling} onCreate={onCreate} openChildRequest={addChildRequest} />
       </div>

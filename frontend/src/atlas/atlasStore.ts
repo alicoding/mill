@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { AtlasService } from '../shared/bindings'
-import type { Card, Kind, Link, LinkKind, Note } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
+import type { Card, Kind, Link, LinkKind, Note, Perspective } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 
 // The Atlas surface's own "one fetch, many consumers" store (mirrors
 // shared/configureEntityStore.ts's shape) -- kept inside atlas/ rather
@@ -17,11 +17,17 @@ interface AtlasState {
   // consumer (projections/matrix/coverage/jump) starts with them never
   // sharing a collection.
   notes: Note[] | null
+  // Perspectives (ADR-0041, goal 0095 slice 2): every perspective across
+  // every space -- the switcher/board/membership surfaces scope by
+  // SpaceID themselves, the same "return everything, caller filters"
+  // contract Perspectives() itself documents.
+  perspectives: Perspective[] | null
   setKinds: (kinds: Kind[]) => void
   setLinkKinds: (linkKinds: LinkKind[]) => void
   setCards: (cards: Card[]) => void
   setLinks: (links: Link[]) => void
   setNotes: (notes: Note[]) => void
+  setPerspectives: (perspectives: Perspective[]) => void
 }
 
 export const useAtlasStore = create<AtlasState>()((set) => ({
@@ -30,11 +36,13 @@ export const useAtlasStore = create<AtlasState>()((set) => ({
   cards: null,
   links: null,
   notes: null,
+  perspectives: null,
   setKinds: (kinds) => set({ kinds }),
   setLinkKinds: (linkKinds) => set({ linkKinds }),
   setCards: (cards) => set({ cards }),
   setLinks: (links) => set({ links }),
   setNotes: (notes) => set({ notes }),
+  setPerspectives: (perspectives) => set({ perspectives }),
 }))
 
 export function refreshAtlasKinds(): Promise<void> {
@@ -67,12 +75,18 @@ export function refreshAtlasNotes(): Promise<void> {
     .catch(console.error)
 }
 
+export function refreshAtlasPerspectives(): Promise<void> {
+  return AtlasService.Perspectives()
+    .then((list) => useAtlasStore.getState().setPerspectives(list ?? []))
+    .catch(console.error)
+}
+
 // The one call site every mounter of the Atlas surface (AtlasView on
 // mount, App.tsx/QuickPanel.tsx's mill-data-changed 'atlas' handler)
-// uses -- refetches all five entity families together since they're one
+// uses -- refetches all six entity families together since they're one
 // storage blob server-side (atlassvc's atlasStateKey) and a single
 // dataevent.Emit("atlas", ...) never says which family actually
 // changed.
 export function refreshAtlas(): Promise<void> {
-  return Promise.all([refreshAtlasKinds(), refreshAtlasLinkKinds(), refreshAtlasCards(), refreshAtlasLinks(), refreshAtlasNotes()]).then(() => undefined)
+  return Promise.all([refreshAtlasKinds(), refreshAtlasLinkKinds(), refreshAtlasCards(), refreshAtlasLinks(), refreshAtlasNotes(), refreshAtlasPerspectives()]).then(() => undefined)
 }

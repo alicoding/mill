@@ -1,0 +1,5 @@
+/* Offset higher than AtlasUndoToast.module.css's own bottom: 76px so
+   the two never overlap on the rare occasion both fire close together. */
+.toast {
+    bottom: 132px;
+}

@@ -12,6 +12,7 @@ import { AtlasCardPageHeader } from './AtlasCardPageHeader'
 import { AtlasCardPageFields } from './AtlasCardPageFields'
 import { AtlasCardPageContents } from './AtlasCardPageContents'
 import { AtlasCardPageMetaRail } from './AtlasCardPageMetaRail'
+import { AtlasPerspectiveMembership } from './AtlasPerspectiveMembership'
 import { AtlasSlotRows } from './AtlasSlotRows'
 import { useAtlasCardPageFileDrop } from './useAtlasCardPageFileDrop'
 import { FILE_DROP_CONTEXT_CARD_PAGE } from './atlasFileDropShared'
@@ -264,6 +265,7 @@ export function AtlasCardOverlay({ card, kinds, allCards, links, linkKinds, onCl
               cardID={displayedCard.ID} actionWorkflowIDs={actionWorkflowIDs}
               onActionsChanged={commitActions}
             />
+            <AtlasPerspectiveMembership cardID={displayedCard.ID} />
             <AtlasSlotRows
               card={displayedCard}
               allCards={allCards}

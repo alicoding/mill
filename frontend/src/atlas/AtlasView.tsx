@@ -6,11 +6,11 @@ import { ViewMode } from '../../bindings/github.com/alicoding/mill/internal/doma
 import type { Card, Position } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 import { useAtlasCreationRequests } from './useAtlasCreationRequests'
 import { AtlasService } from '../shared/bindings'
-import { useAppStore } from '../shared/store'
-import { useUISignalStore } from '../shared/uiSignalStore'
 import { downloadJSON } from '../shared/downloadJSON'
 import { refreshAtlas, useAtlasStore } from './atlasStore'
 import { applyLens, childrenOf, groupByKind, singleRootCard } from './atlasGrouping'
+import { useAtlasPerspectives } from './useAtlasPerspectives'
+import { useAtlasNavSignals } from './useAtlasNavSignals'
 import { useAtlasImportConfirm } from './useAtlasImportConfirm'
 import { AtlasToolbar } from './AtlasToolbar'
 import { AtlasBoard } from './AtlasBoard'
@@ -28,6 +28,8 @@ import { useAtlasLinkMenus } from './useAtlasLinkMenus'
 import { useAtlasNoteMenu } from './useAtlasNoteMenu'
 import { useAtlasUndoToast } from './useAtlasUndoToast'
 import { AtlasUndoToast } from './AtlasUndoToast'
+import { useAtlasQuietToast } from './useAtlasQuietToast'
+import { AtlasQuietToast } from './AtlasQuietToast'
 import runbookStyles from '../shared/ListCard.module.css'
 import styles from './AtlasView.module.css'
 
@@ -44,10 +46,30 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
   const linkKinds = useAtlasStore((s) => s.linkKinds)
   const links = useAtlasStore((s) => s.links)
   const notes = useAtlasStore((s) => s.notes)
+  const perspectives = useAtlasStore((s) => s.perspectives)
   const creationRequests = useAtlasCreationRequests()
 
   const [viewedID, setViewedID] = useState('')
   const [overlayCardID, setOverlayCardID] = useState<string | null>(null)
+
+  const allCards = cards ?? []
+  const allKinds = kinds ?? []
+  const allLinkKinds = linkKinds ?? []
+  const allLinks = links ?? []
+  const allNotes = notes ?? []
+  const allPerspectives = perspectives ?? []
+  // Board-scoped perspective state + membership filtering (ADR-0041,
+  // goal 0095 slice 2) -- see useAtlasPerspectives.ts's own header
+  // comment. Declared early (ahead of the session-restore effects
+  // below, which need setActivePerspectiveID) rather than grouped with
+  // the other `allX` derivations further down. The breadcrumb
+  // (AtlasToolbar's own `cards` prop below) stays on the UNFILTERED
+  // allCards -- ancestry text is never perspective-narrowed.
+  const {
+    activePerspectiveID, setActivePerspectiveID, boardAllCards, boardLinks,
+    switchPerspective, createPerspective, renamePerspective, deletePerspective,
+  } = useAtlasPerspectives({ viewedID, allCards, allLinks, allPerspectives })
+
   // A ⌘K jump's one-shot request into whichever board is currently
   // mounted (goal 0072 slice B) -- AtlasBoard clears it via
   // onFocusHandled once its own fly-to-card animation resolves.
@@ -56,7 +78,16 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
   // board consumes -- the board owns the packer + width, the view owns
   // the toolbar button.
   const [arrangeRequest, setArrangeRequest] = useState(0)
-  const requestAutoArrange = () => setArrangeRequest((n) => n + 1)
+  // Arrange-disabled-while-active (ADR-0041): a global repack while
+  // filtered to a perspective's own member set would scramble every
+  // OTHER perspective's shared positions. Gated at this single choke
+  // point so neither the toolbar button nor the atlas.arrange
+  // palette/keyboard command (useAtlasCommandSignals below) can bypass
+  // the disabled button.
+  const requestAutoArrange = () => {
+    if (activePerspectiveID) return
+    setArrangeRequest((n) => n + 1)
+  }
   // Traceability matrix / coverage (docs/goals/0064): both are viewed-
   // space-scoped dialogs, so a single boolean each is enough state --
   // no card/kind selection needs to survive a close/reopen.
@@ -134,16 +165,15 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
       .then((session) => {
         if (session?.viewedID) setViewedID(session.viewedID)
         if (session?.openCardID) setOverlayCardID(session.openCardID)
+        if (session?.activePerspectiveID) setActivePerspectiveID(session.activePerspectiveID)
       })
       .finally(() => setSessionRestored(true))
     // eslint-disable-next-line react-hooks/exhaustive-deps -- one-shot mount landing, same as the deep-link claim
   }, [])
   useEffect(() => {
     if (!sessionRestored) return
-    // activePerspectiveID: the switcher UI lands in a later slice (goal
-    // 0095) -- always '' (the everything view) here for now.
-    void AtlasService.SetAtlasSession({ viewedID, openCardID: overlayCardID ?? '', activePerspectiveID: '' }).catch(() => {})
-  }, [sessionRestored, viewedID, overlayCardID])
+    void AtlasService.SetAtlasSession({ viewedID, openCardID: overlayCardID ?? '', activePerspectiveID }).catch(() => {})
+  }, [sessionRestored, viewedID, overlayCardID, activePerspectiveID])
 
   useEffect(() => {
     if (initialCardID || !cards || viewedID !== '' || !sessionRestored) return
@@ -163,12 +193,6 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
       })
   }, [viewedID])
 
-  const allCards = cards ?? []
-  const allKinds = kinds ?? []
-  const allLinkKinds = linkKinds ?? []
-  const allLinks = links ?? []
-  const allNotes = notes ?? []
-
   // Never render an interactive board while the mount landing is
   // still pending (session restore in flight, a deep link not yet
   // consumed, or the single-root auto-entry not yet applied): the
@@ -180,7 +204,7 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
     (viewedID === '' && (initialCardID ? !deepLinkConsumed : !!singleRootCard(allCards)))
 
   const viewedCard = allCards.find((c) => c.ID === viewedID) ?? null
-  const childrenAll = childrenOf(allCards, viewedID)
+  const childrenAll = childrenOf(boardAllCards, viewedID)
   const presentKinds = groupByKind(childrenAll, allKinds).map((shelf) => shelf.kind)
   // The lens filters cards by KIND, but containment is a ROLE
   // orthogonal to kind (ADR-0038 Decision 3): a card currently
@@ -189,60 +213,14 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
   // declutter notes must never remove a whole area and everything
   // previewed inside it.
   const lensed = applyLens(childrenAll, hiddenKindIDs)
-  const visibleChildren = childrenAll.filter((c) => lensed.includes(c) || isGroupCard(allCards, c))
+  const visibleChildren = childrenAll.filter((c) => lensed.includes(c) || isGroupCard(boardAllCards, c))
   // A note's own containment is spatial-only, orthogonal to the lens
   // (which filters by Kind -- a note has none): every note whose
   // ParentID names the viewed space renders here, unfiltered.
   const visibleNotes = allNotes.filter((n) => n.ParentID === viewedID)
   const overlayCard = overlayCardID ? allCards.find((c) => c.ID === overlayCardID) ?? null : null
 
-  // atlas.up (⌘↑, shared/commands.ts): one step up the depth ladder.
-  // At the auto-entered single root there is no "up" (the All spaces
-  // meta level only exists with 2+ roots) -- the press is a no-op,
-  // never a broken empty board.
-  const atlasUpRequest = useAppStore((s) => s.atlasUpRequest)
-  const lastUpRequest = useRef(atlasUpRequest)
-  useEffect(() => {
-    if (atlasUpRequest === lastUpRequest.current) return
-    lastUpRequest.current = atlasUpRequest
-    if (!viewedID) return
-    const parent = allCards.find((c) => c.ID === viewedID)?.ParentID ?? ''
-    if (parent === '' && singleRootCard(allCards)) return
-    setViewedID(parent)
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- keyed on the signal tick alone; viewedID/allCards are read at fire time
-  }, [atlasUpRequest])
-
-  // atlas.jump (⌘K, shared/commands.ts): opens AtlasJumpDialog, now
-  // purely controlled off this signal (goal 0071's registry
-  // surface-precedence reconciliation retired its own capture-phase
-  // window listener). Same ref-compared-counter shape as atlasUpRequest
-  // above.
-  const atlasJumpRequest = useUISignalStore((s) => s.atlasJumpRequest)
-  const [jumpOpen, setJumpOpen] = useState(false)
-  const lastJumpRequest = useRef(atlasJumpRequest)
-  useEffect(() => {
-    if (atlasJumpRequest === lastJumpRequest.current) return
-    lastJumpRequest.current = atlasJumpRequest
-    setJumpOpen(true)
-  }, [atlasJumpRequest])
-
-  // atlas.matrix / atlas.coverage (goal 0071 G17): same signal shape,
-  // opening the two projection dialogs already owned locally below.
-  const atlasMatrixRequest = useUISignalStore((s) => s.atlasMatrixRequest)
-  const lastMatrixRequest = useRef(atlasMatrixRequest)
-  useEffect(() => {
-    if (atlasMatrixRequest === lastMatrixRequest.current) return
-    lastMatrixRequest.current = atlasMatrixRequest
-    setMatrixOpen(true)
-  }, [atlasMatrixRequest])
-
-  const atlasCoverageRequest = useUISignalStore((s) => s.atlasCoverageRequest)
-  const lastCoverageRequest = useRef(atlasCoverageRequest)
-  useEffect(() => {
-    if (atlasCoverageRequest === lastCoverageRequest.current) return
-    lastCoverageRequest.current = atlasCoverageRequest
-    setCoverageOpen(true)
-  }, [atlasCoverageRequest])
+  const { jumpOpen, setJumpOpen } = useAtlasNavSignals({ viewedID, allCards, setViewedID, setMatrixOpen, setCoverageOpen })
 
   const navigate = (id: string) => setViewedID(id)
   const drill = (id: string) => setViewedID(id)
@@ -262,12 +240,17 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
   // tray Delete, card/note context-menu Delete, frame-header Delete,
   // and the card page's own kebab Delete.
   const undoToast = useAtlasUndoToast()
+  // A quiet, no-undo toast for membership add/remove and a perspective-
+  // service refusal (ADR-0041) -- switching itself shows no toast, only
+  // a membership WRITE does.
+  const quietToast = useAtlasQuietToast()
 
   const linkMenus = useAtlasLinkMenus({
-    t, allCards, allLinks, allNotes, linkKinds: allLinkKinds, setMenu, drill,
+    t, allCards, allLinks, allNotes, linkKinds: allLinkKinds, perspectives: allPerspectives, setMenu, drill,
     onOpenCard: (id) => setOverlayCardID(id),
     onError: setShareError,
     onDeleted: undoToast.registerDelete,
+    onPerspectiveToast: quietToast.show,
     requestLinkedCard: creationRequests.requestLinkedCard,
   })
 
@@ -299,8 +282,9 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
   // header comment for why the area-draw/drag-filing half stays in
   // AtlasBoard.tsx instead.
   const containmentMenus = useAtlasContainmentMenus({
-    t, allCards, notes: allNotes, setMenu, drill, onError: setShareError,
+    t, allCards, notes: allNotes, perspectives: allPerspectives, setMenu, drill, onError: setShareError,
     onDeleted: undoToast.registerDelete,
+    onPerspectiveToast: quietToast.show,
     requestPlacementInside: (tool, pos, parentID) => creationRequests.requestPlacement(tool, pos, parentID),
     requestGroup: (cardIDs, noteIDs, pos) => creationRequests.requestGroup(cardIDs, noteIDs, pos),
   })
@@ -340,12 +324,11 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
 
   const changeHidden = (hidden: string[]) => {
     setHiddenKindIDs(hidden)
+    // peek carries forward whatever the space already had -- its own
+    // toggle UI retired with the old Lens popover (consumed by nothing,
+    // per docs/SPEC.md's own recorded seam); this is the value's only
+    // remaining writer, and it never changes it.
     void AtlasService.SetLens(viewedID, hidden, peek).catch(console.error)
-  }
-
-  const changePeek = (nextPeek: boolean) => {
-    setPeek(nextPeek)
-    void AtlasService.SetLens(viewedID, hiddenKindIDs, nextPeek).catch(console.error)
   }
 
   const exportAtlas = () => {
@@ -393,9 +376,14 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
         presentKinds={presentKinds}
         hiddenKindIDs={hiddenKindIDs}
         onChangeHidden={changeHidden}
-        peek={peek}
-        onChangePeek={changePeek}
         onAutoArrange={requestAutoArrange}
+        perspectives={allPerspectives}
+        activePerspectiveID={activePerspectiveID}
+        onSwitchPerspective={switchPerspective}
+        onCreatePerspective={createPerspective}
+        onRenamePerspective={renamePerspective}
+        onDeletePerspective={deletePerspective}
+        onPerspectiveToast={quietToast.show}
         canAddSibling={viewedID !== ''}
         onCreate={createCard}
         onExport={exportAtlas}
@@ -419,9 +407,9 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
         )}
         <AtlasBoard
           cards={visibleChildren}
-          allCards={allCards}
+          allCards={boardAllCards}
           kinds={allKinds}
-          links={allLinks}
+          links={boardLinks}
           linkKinds={allLinkKinds}
           notes={visibleNotes}
           parentID={viewedID}
@@ -452,6 +440,7 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
             onUndo={undoToast.undo}
           />
         )}
+        {quietToast.message && <AtlasQuietToast message={quietToast.message} />}
       </div>
 
       <AtlasJumpDialog open={jumpOpen} onClose={() => setJumpOpen(false)} cards={allCards} kinds={allKinds} onJump={jumpToCard} />

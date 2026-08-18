@@ -1,0 +1,66 @@
+import { useEffect, useRef, useState } from 'react'
+import type { Card } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
+import { useAppStore } from '../shared/store'
+import { useUISignalStore } from '../shared/uiSignalStore'
+import { singleRootCard } from './atlasGrouping'
+
+// AtlasView's own one-shot navigation/dialog-opening signals (goal
+// 0071 G17, goal 0072 slice B) -- split out of AtlasView.tsx
+// (architecture.md's 500-line convention): atlas.up/atlas.jump/
+// atlas.matrix/atlas.coverage each bump a shared store counter a
+// palette/keyboard invocation fires, consumed here with the same
+// ref-compared-counter shape every other Atlas signal in this
+// codebase uses.
+export function useAtlasNavSignals({ viewedID, allCards, setViewedID, setMatrixOpen, setCoverageOpen }: {
+  viewedID: string
+  allCards: Card[]
+  setViewedID: (id: string) => void
+  setMatrixOpen: (open: boolean) => void
+  setCoverageOpen: (open: boolean) => void
+}) {
+  // atlas.up (⌘↑): one step up the depth ladder. At the auto-entered
+  // single root there is no "up" (the All spaces meta level only
+  // exists with 2+ roots) -- the press is a no-op, never a broken
+  // empty board.
+  const atlasUpRequest = useAppStore((s) => s.atlasUpRequest)
+  const lastUpRequest = useRef(atlasUpRequest)
+  useEffect(() => {
+    if (atlasUpRequest === lastUpRequest.current) return
+    lastUpRequest.current = atlasUpRequest
+    if (!viewedID) return
+    const parent = allCards.find((c) => c.ID === viewedID)?.ParentID ?? ''
+    if (parent === '' && singleRootCard(allCards)) return
+    setViewedID(parent)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- keyed on the signal tick alone; viewedID/allCards are read at fire time
+  }, [atlasUpRequest])
+
+  // atlas.jump (⌘K): opens AtlasJumpDialog, purely controlled off this signal.
+  const atlasJumpRequest = useUISignalStore((s) => s.atlasJumpRequest)
+  const [jumpOpen, setJumpOpen] = useState(false)
+  const lastJumpRequest = useRef(atlasJumpRequest)
+  useEffect(() => {
+    if (atlasJumpRequest === lastJumpRequest.current) return
+    lastJumpRequest.current = atlasJumpRequest
+    setJumpOpen(true)
+  }, [atlasJumpRequest])
+
+  // atlas.matrix / atlas.coverage: same signal shape, opening the two
+  // projection dialogs AtlasView itself owns.
+  const atlasMatrixRequest = useUISignalStore((s) => s.atlasMatrixRequest)
+  const lastMatrixRequest = useRef(atlasMatrixRequest)
+  useEffect(() => {
+    if (atlasMatrixRequest === lastMatrixRequest.current) return
+    lastMatrixRequest.current = atlasMatrixRequest
+    setMatrixOpen(true)
+  }, [atlasMatrixRequest])
+
+  const atlasCoverageRequest = useUISignalStore((s) => s.atlasCoverageRequest)
+  const lastCoverageRequest = useRef(atlasCoverageRequest)
+  useEffect(() => {
+    if (atlasCoverageRequest === lastCoverageRequest.current) return
+    lastCoverageRequest.current = atlasCoverageRequest
+    setCoverageOpen(true)
+  }, [atlasCoverageRequest])
+
+  return { jumpOpen, setJumpOpen }
+}

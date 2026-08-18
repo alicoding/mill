@@ -1,0 +1,6 @@
+.newRow {
+    padding: var(--base-size-4) var(--base-size-8);
+}
+.kindRow {
+    padding: var(--base-size-4) var(--base-size-8);
+}

@@ -20,6 +20,15 @@
     align-items: center;
     gap: var(--base-size-8);
 }
+/* Auto-arrange while a perspective is active (ADR-0041): kept hoverable
+   (not pointer-events: none) so the title tooltip explaining why still
+   fires -- overriding the hover token instead is frontend.md's own
+   documented pattern for a disabled-but-hoverable control. */
+.arrangeDisabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+    --control-transparent-bgColor-hover: transparent;
+}
 /* A zero-card zero-note space (goal 0081 slice A2 rider a) still
    renders the board underneath -- creation can't be absent where
    creation starts. The wrapper is the flex slot the board used to own
