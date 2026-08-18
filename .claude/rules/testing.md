@@ -144,25 +144,27 @@ layer per capability," never "a seed per thing":
   probe only, never CI-badged as parity. Revisit trigger: grow the
   check registry when a WebKit-only bug escapes it, same discipline as
   the manual-only registry below.
-  **CI status: non-required/informational, first live attempt
-  failed.** The `webview-bridge-smoke` job in `ci.yml` ran on a real
-  `macos-latest` GitHub-hosted runner and failed launching the app:
-  `app process exited before the MCP bridge became reachable: dial
-  tcp 127.0.0.1:9099: connect: connection refused`, with an EMPTY
-  captured stderr tail — the go/npm builds both succeeded, but the
-  spawned app process produced no diagnostic output at all before
-  exiting. First investigation lead: a silent, near-instant exit with
-  zero stderr is consistent with an early native-windowing failure
-  (no real console/WindowServer session available the way the
-  precedent research assumed from Electron's own hosted-runner CI —
-  Electron's windowing stack may not need the same session a genuine
-  Wails/Cocoa `NSWindow` does), though the log alone doesn't prove
-  that specific cause; config-dir/signing weren't ruled in or out
-  either. Not iterated further pending a dedicated investigation
-  pass. Until resolved, the OPERATIVE parity gate is the LOCAL
-  pre-release run (`scripts/webview-bridge-smoke.sh`, run by hand
-  before a release) — the CI job stays wired and green-or-red
-  visible, but nothing depends on it passing yet.
+  **CI status: non-required/informational; the launch failure was
+  the harness's own liveness probe, now fixed.** Every "app process
+  exited before the MCP bridge became reachable" failure (CI and
+  local alike) traced to `procExited` calling `Process.Signal(nil)`:
+  the Unix implementation type-asserts its argument to
+  `syscall.Signal`, a nil interface fails that assertion, and the
+  probe declared every perfectly-alive launch dead on its first
+  poll. The earlier headless-windowing lead was never actually
+  tested — the harness failed before the app could boot. With
+  `syscall.Signal(0)` the local run connects and drives the real
+  registry (the click-model and selection-ring checks have passed
+  against the real WKWebView). What remains before the job means
+  anything: the CHECK REGISTRY was written blind against a
+  single-window assumption — Mill's desktop build opens multiple
+  windows (main + the Quick Panel's second window), so
+  `app-info-window-sane` and the bridge's window-ambiguous clicks
+  and badge locator need calibrating against the app's real window
+  shape (tracked as its own goal). Until that lands, the OPERATIVE
+  parity gate remains the LOCAL run, read with the registry's
+  current miscalibration in mind; the CI job stays wired,
+  non-required.
 - **Manual-only registry** — OS-bound checks (hotkey delivery, real
   clipboard, tray) listed explicitly with reasons, never silently
   absent (see goal 0010's enforcement). Non-seed instance: the
