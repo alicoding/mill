@@ -362,6 +362,7 @@ func TestCheckStickyBorderColorFlip(t *testing.T) {
 		}
 		if createCall == nil {
 			t.Fatal("CreateNote was never called")
+			return // staticcheck SA5011: t.Fatal's noreturn fact is lost under CI's build config
 		}
 		args, _ := createCall.args["args"].([]any)
 		if len(args) != 3 || args[2] != "space-1" {
