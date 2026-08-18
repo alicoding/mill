@@ -32,7 +32,10 @@ test('Compact visibly tightens a workflow row, persists across reload, and Comfo
 
   await setDensity(page, 'Compact')
   const compactRow = await firstWorkflowRow(page)
-  await expect.poll(async () => (await compactRow.boundingBox())?.height ?? 0).toBeLessThan(comfortableHeight)
+  // Perceptibility floor: a density mode the eye can't catch fails its
+  // one job -- compact must reclaim at least 6px per row, not merely
+  // measure smaller.
+  await expect.poll(async () => (await compactRow.boundingBox())?.height ?? 0).toBeLessThanOrEqual(comfortableHeight - 6)
 
   await page.reload()
   const afterReloadRow = await firstWorkflowRow(page)

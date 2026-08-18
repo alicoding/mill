@@ -49,9 +49,12 @@
    separate Wails window/document with no .app-shell element of its own
    (docs/adr/0033), and this rule must reach both. 4px is Primer's own
    --base-size-4 step, ~67% of ActionList's 6px default row padding --
-   the dominant lever among the in-scope surfaces' current values. */
+   the dominant lever among the in-scope surfaces' current values.
+   2px, not a timid step down: a density mode a user cannot SEE at a
+   glance fails its one job (the 6px->2px cut reads clearly across any
+   multi-row list; the 44px mobile floor below still wins). */
 :root[data-density="compact"] {
-    --mill-density-row-pad-y: var(--base-size-4, 4px);
+    --mill-density-row-pad-y: var(--base-size-2, 2px);
 }
 /* Touch-target floor (docs/goals/0096's DoR: "floor wins over
    density"): at the companion breakpoint, compact's row padding
