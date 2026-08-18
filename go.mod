@@ -19,7 +19,7 @@ require (
 	github.com/modelcontextprotocol/go-sdk v1.7.0
 	github.com/netresearch/go-cron v0.15.1
 	github.com/santhosh-tekuri/jsonschema/v6 v6.0.3
-	github.com/wailsapp/wails/v3 v3.0.0-beta.6
+	github.com/wailsapp/wails/v3 v3.0.0-beta.8
 	github.com/yuin/goldmark v1.8.5
 	github.com/zalando/go-keyring v0.2.8
 	golang.design/x/hotkey v0.6.1
