@@ -94,7 +94,7 @@ test('Composition page lists built-in workflows; node primitives live in a colla
   // Lists write path, goal 0070) + apply-file-move (file verbs, goal
   // 0087) + apply-atlas-from-reply (the clipboard bridge's accepted-
   // reply materializer, goal 0099).
-  await expect(activePanel(page).getByTestId('palette-item')).toHaveCount(42)
+  await expect(activePanel(page).getByTestId('palette-item')).toHaveCount(43)
 })
 
 test('A new workflow starts with a starter node placed, not a blank canvas', async ({ page }) => {

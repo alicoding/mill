@@ -12,6 +12,8 @@
 // platform (docs/SPEC.md §1.3).
 package notify
 
+import "errors"
+
 // Action IDs for the MCP-write actionable category (docs/adr/0032 §3).
 const (
 	ApproveActionID = "approve"
@@ -35,3 +37,10 @@ type Response struct {
 	ID               string
 	ActionIdentifier string
 }
+
+// ErrUnsupportedInServerMode marks the server-mode stubs' refusal --
+// declared here (both build tags) so callers can errors.Is against it
+// from any build, e.g. composition's notifier seam treating
+// "unsupported on this build" as best-effort success rather than a
+// workflow failure.
+var ErrUnsupportedInServerMode = errors.New("OS notifications are not available in server mode")
