@@ -53,11 +53,11 @@ export const ATLAS_BOARD_COMMANDS: Command[] = [
     run: () => useUISignalStore.getState().requestAtlasShareCopyLinks(),
   },
   {
-    id: 'atlas.lens',
-    label: 'Open lens',
+    id: 'atlas.perspective',
+    label: 'Open perspective switcher',
     defaultBinding: null,
     surface: ['atlas'],
-    run: () => useUISignalStore.getState().requestAtlasLensOpen(),
+    run: () => useUISignalStore.getState().requestAtlasPerspectiveSwitcherOpen(),
   },
   {
     // ⌘A select-all: the real keydown is a dedicated, editable-target-

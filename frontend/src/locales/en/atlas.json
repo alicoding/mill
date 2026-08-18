@@ -7,7 +7,8 @@
     "ariaLabel": "View mode",
     "shelves": "Auto-arrange",
     "canvas": "Free",
-    "arrangeAction": "Auto-arrange"
+    "arrangeAction": "Auto-arrange",
+    "arrangeDisabledTooltip": "Arranging works on all cards. Switch to All cards first."
   },
   "board": {
     "cardAriaLabel": "Open {{title}}",
@@ -43,13 +44,19 @@
     "areaFacetLabel": "Area",
     "suggestionsAriaLabel": "Search type suggestions"
   },
-  "lens": {
-    "openButton": "Lens",
-    "title": "Space lens",
-    "depthAriaLabel": "Depth",
-    "depthLevel": "This level only",
-    "depthPeek": "Peek into children",
-    "kindsLabel": "Show kinds"
+  "perspective": {
+    "allCards": "All cards",
+    "newPerspectivePlaceholder": "New perspective…",
+    "hideKindsLabel": "Hide kinds",
+    "rename": "Rename",
+    "delete": "Delete",
+    "rowMenuAriaLabel": "{{name}} actions",
+    "deleteConfirmTitle": "Delete {{name}}?",
+    "deleteConfirmBody": "Cards and links stay exactly as they are everywhere else.",
+    "addedToast": "Added to {{name}}",
+    "removedToast": "Removed from {{name}}",
+    "membershipLabel": "In:",
+    "addChip": "Add to perspective"
   },
   "creationTray": {
     "ariaLabel": "Creation tools",
@@ -212,7 +219,9 @@
     "addLinkedCard": "Add linked card…",
     "changeLinkKind": "Change link kind",
     "editLabel": "Edit label…",
-    "removeLink": "Remove link"
+    "removeLink": "Remove link",
+    "addToPerspective": "Add to perspective ▸",
+    "removeFromPerspective": "Remove from perspective ▸"
   },
   "confirm": {
     "dissolveTitle": "Dissolve {{title}}?",

@@ -12,9 +12,9 @@ import styles from './AtlasJumpDialog.module.css'
 
 // The ⌘K jump-to-a-card dialog (goal 0072 slice B): a global "go
 // anywhere" entry point over every card, regardless of the currently
-// viewed space -- distinct from AtlasLensControl's own space-scoped
-// Dialog. Purely controlled (goal 0071's registry surface-precedence
-// reconciliation): `open` comes from AtlasView, which opens it off the
+// viewed space -- distinct from AtlasPerspectiveSwitcher's own
+// space-scoped popover. Purely controlled (goal 0071's registry
+// surface-precedence reconciliation): `open` comes from AtlasView, which opens it off the
 // atlas.jump command's own store signal (shared/uiSignalStore.ts) --
 // this component no longer runs its own capture-phase window listener
 // to win the ⌘K race against the app-wide command palette; dispatch

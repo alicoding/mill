@@ -1,0 +1,7 @@
+.row {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--base-size-4);
+    margin-block: var(--base-size-8);
+}

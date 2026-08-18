@@ -234,7 +234,7 @@ test('every new Atlas command is reachable from the palette by its label', async
   const labels = [
     'Select all',
     'Auto-arrange',
-    'Open lens',
+    'Open perspective switcher',
     'Import atlas',
     'Export atlas',
     'Add cards from a folder',

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { TFunction } from 'i18next'
-import type { Card, Link, LinkKind, Note } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
+import type { Card, Link, LinkKind, Note, Perspective } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 import type { TombstoneResult } from '../../bindings/github.com/alicoding/mill/internal/services/atlassvc/models'
 import { AtlasService } from '../shared/bindings'
 import { refreshAtlas } from './atlasStore'
@@ -8,6 +8,7 @@ import { isGroupCard } from './atlasBoardLayout'
 import { atlasCardShareActions } from './atlasCardShare'
 import type { ContextMenuItem, ContextMenuState } from '../shared/ContextMenu'
 import { AtlasEdgeLabelPopover } from './AtlasEdgeLabelPopover'
+import { perspectiveMembershipMenuItems } from './atlasPerspectiveMenuItems'
 
 const ARTERY_MENU_TITLE_MAX = 28
 
@@ -27,18 +28,20 @@ function truncateTitle(title: string): string {
 // (count === 1), since acting on one specific link within a count>1
 // aggregated artery has no per-link picker in this slice.
 export function useAtlasLinkMenus({
-  t, allCards, allLinks, allNotes, linkKinds, setMenu, drill, onOpenCard, onError, onDeleted, requestLinkedCard,
+  t, allCards, allLinks, allNotes, linkKinds, perspectives, setMenu, drill, onOpenCard, onError, onDeleted, onPerspectiveToast, requestLinkedCard,
 }: {
   t: TFunction<'atlas'>
   allCards: Card[]
   allLinks: Link[]
   allNotes: Note[]
   linkKinds: LinkKind[]
+  perspectives: Perspective[]
   setMenu: (state: ContextMenuState | null) => void
   drill: (id: string) => void
   onOpenCard: (id: string) => void
   onError: (message: string) => void
   onDeleted: (result: TombstoneResult) => void
+  onPerspectiveToast: (message: string) => void
   requestLinkedCard: (fromCardID: string, pos: { x: number; y: number }) => void
 }) {
   const [labelTarget, setLabelTarget] = useState<{ linkID: string; pos: { x: number; y: number }; initialLabel: string } | null>(null)
@@ -62,6 +65,7 @@ export function useAtlasLinkMenus({
     // unreachable from the board (visibleNotes only renders once
     // viewedID equals the note's own ParentID).
     const place = isGroupCard(allCards, card) || allNotes.some((n) => n.ParentID === card.ID)
+    const perspectiveItems = perspectiveMembershipMenuItems({ t, perspectives, cardIDs: [card.ID], pos, setMenu, onToast: onPerspectiveToast })
     const mirrorItems: ContextMenuItem[] = card.MirrorPath
       ? [
           { id: 'open-file', label: t('contextMenu.openFile'), run: () => void AtlasService.OpenCardMirror(card.ID).catch((err) => onError(String(err))) },
@@ -82,6 +86,7 @@ export function useAtlasLinkMenus({
         { id: 'copy-context', label: t('share.copyContext'), run: () => void share.copyAsContext(false) },
         { id: 'copy-link', label: t('share.copyCloudLink'), run: () => void share.copyCloudLink() },
         ...(card.MirrorPath ? [{ id: 'reveal', label: t('share.revealFile'), run: () => void share.revealFile() }] : []),
+        ...(perspectiveItems.length > 0 ? [{ id: 'd1b', divider: true } as ContextMenuItem, ...perspectiveItems] : []),
         { id: 'd2', divider: true },
         { id: 'delete', label: t('overlay.delete'), danger: true, run: () => deleteCard(card.ID) },
       ],

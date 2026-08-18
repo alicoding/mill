@@ -275,7 +275,7 @@ test('create a child card, edit + persist it via the card page, then delete it',
   await expect(newCard).not.toBeVisible()
 })
 
-test('the lens hides a kind within a space', async ({ page }) => {
+test('the perspective switcher\'s Hide kinds section hides a kind within a space', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Atlas' }).click()
   await groupCard(page, 'Example area').getByTestId('atlas-group-header').click()
@@ -284,8 +284,8 @@ test('the lens hides a kind within a space', async ({ page }) => {
   const contactCard = noteCard(page, 'Ada Lovelace')
   await expect(contactCard).toBeVisible()
 
-  await page.getByTestId('atlas-lens-open').click()
-  await expect(page.locator('[data-component="atlas-lens-dialog"]')).toBeVisible()
+  await page.getByTestId('atlas-perspective-switcher-open').click()
+  await expect(page.getByTestId('atlas-perspective-switcher-popover')).toBeVisible()
   await page.getByRole('checkbox', { name: /Contact/ }).uncheck()
   await page.keyboard.press('Escape')
 
@@ -293,13 +293,13 @@ test('the lens hides a kind within a space', async ({ page }) => {
 
   // Restore: re-show the kind so the space's lens doesn't leak into a
   // later test in this same file/worker.
-  await page.getByTestId('atlas-lens-open').click()
+  await page.getByTestId('atlas-perspective-switcher-open').click()
   await page.getByRole('checkbox', { name: /Contact/ }).check()
   await page.keyboard.press('Escape')
   await expect(contactCard).toBeVisible()
 })
 
-test('lens-hiding a kind never removes a region frame of that kind -- containment is a role, not a type', async ({ page }) => {
+test('hiding a kind never removes a region frame of that kind -- containment is a role, not a type', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Atlas' }).click()
   const exampleArea = groupCard(page, 'Example area')
@@ -311,7 +311,7 @@ test('lens-hiding a kind never removes a region frame of that kind -- containmen
   // the Topic LEAVES (Getting started, Scratchpad) but keep the area
   // frame -- a place holding cards stays on the board regardless of
   // its own kind.
-  await page.getByTestId('atlas-lens-open').click()
+  await page.getByTestId('atlas-perspective-switcher-open').click()
   await page.getByRole('checkbox', { name: /Topic/ }).uncheck()
   await page.keyboard.press('Escape')
 
@@ -320,7 +320,7 @@ test('lens-hiding a kind never removes a region frame of that kind -- containmen
   await expect(exampleArea).toBeVisible()
 
   // Restore for later tests in this worker.
-  await page.getByTestId('atlas-lens-open').click()
+  await page.getByTestId('atlas-perspective-switcher-open').click()
   await page.getByRole('checkbox', { name: /Topic/ }).check()
   await page.keyboard.press('Escape')
   await expect(gettingStarted).toBeVisible()
@@ -429,31 +429,6 @@ test('Update now on the seeded mirror card runs its workflow through the normal 
 
   await page.keyboard.press('Escape')
   await expect(overlay).not.toBeVisible()
-})
-
-test('the lens depth toggle persists server-side across a reload', async ({ page }) => {
-  await page.goto('/')
-  await page.getByRole('link', { name: 'Atlas' }).click()
-  await groupCard(page, 'Example area').getByTestId('atlas-group-header').click()
-  await expect(page.getByTestId('atlas-breadcrumb')).toContainText('Example area')
-
-  await page.getByTestId('atlas-lens-open').click()
-  await expect(page.locator('[data-component="atlas-lens-dialog"]')).toBeVisible()
-  await page.getByRole('button', { name: 'Peek into children' }).click()
-  await page.keyboard.press('Escape')
-
-  await page.reload()
-  await expect(atlasView(page)).toBeVisible()
-  await groupCard(page, 'Example area').getByTestId('atlas-group-header').click()
-  await page.getByTestId('atlas-lens-open').click()
-  await expect(page.getByRole('button', { name: 'Peek into children', pressed: true })).toBeVisible()
-  await page.keyboard.press('Escape')
-
-  // Restore: clear the peek toggle so it doesn't leak into a later test
-  // in this same file/worker (testing.md's within-file cleanup rule).
-  await page.getByTestId('atlas-lens-open').click()
-  await page.getByRole('button', { name: 'This level only' }).click()
-  await page.keyboard.press('Escape')
 })
 
 test('Quick Panel finds a seeded Atlas card by title', async ({ page }) => {

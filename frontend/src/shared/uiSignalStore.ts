@@ -96,8 +96,10 @@ interface UISignalState {
   requestAtlasShareCopyContext: () => void
   atlasShareCopyLinksRequest: number
   requestAtlasShareCopyLinks: () => void
-  atlasLensOpenRequest: number
-  requestAtlasLensOpen: () => void
+  // The switcher absorbs Lens (ADR-0041): same signal shape, renamed to
+  // match the toolbar control it now opens.
+  atlasPerspectiveSwitcherOpenRequest: number
+  requestAtlasPerspectiveSwitcherOpen: () => void
   atlasSelectAllRequest: number
   requestAtlasSelectAll: () => void
 }
@@ -135,8 +137,8 @@ export const useUISignalStore = create<UISignalState>()((set) => ({
   requestAtlasShareCopyContext: () => set((s) => ({ atlasShareCopyContextRequest: s.atlasShareCopyContextRequest + 1 })),
   atlasShareCopyLinksRequest: 0,
   requestAtlasShareCopyLinks: () => set((s) => ({ atlasShareCopyLinksRequest: s.atlasShareCopyLinksRequest + 1 })),
-  atlasLensOpenRequest: 0,
-  requestAtlasLensOpen: () => set((s) => ({ atlasLensOpenRequest: s.atlasLensOpenRequest + 1 })),
+  atlasPerspectiveSwitcherOpenRequest: 0,
+  requestAtlasPerspectiveSwitcherOpen: () => set((s) => ({ atlasPerspectiveSwitcherOpenRequest: s.atlasPerspectiveSwitcherOpenRequest + 1 })),
   atlasSelectAllRequest: 0,
   requestAtlasSelectAll: () => set((s) => ({ atlasSelectAllRequest: s.atlasSelectAllRequest + 1 })),
 }))
