@@ -36,10 +36,16 @@ func TestCreateNote_UnknownParent_Errors(t *testing.T) {
 	}
 }
 
-func TestCreateNote_BlankText_Errors(t *testing.T) {
+// Regression: empty notes are legal (placement is the capture; the
+// place-then-type flow must not be refused).
+func TestCreateNote_BlankText_Creates(t *testing.T) {
 	a := newTestAtlasService(t)
-	if _, err := a.CreateNote("   ", atlas.Position{}, ""); err == nil {
-		t.Error("CreateNote() with blank text = nil error, want an error")
+	n, err := a.CreateNote("", atlas.Position{}, "")
+	if err != nil {
+		t.Fatalf("CreateNote() with empty text = %v, want nil", err)
+	}
+	if n.ID == "" {
+		t.Error("empty note did not persist")
 	}
 }
 

@@ -70,3 +70,8 @@
     color: var(--fgColor-default);
     outline: none;
 }
+
+.emptyText {
+    color: var(--fgColor-muted);
+    font-style: italic;
+}

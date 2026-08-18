@@ -204,3 +204,55 @@ test('atlas creation core: tray, placement popover, right-click create, sticky n
     rmSync(dir, { recursive: true, force: true })
   }
 })
+
+// Regression: an empty note is creatable -- placement itself is the
+// capture (the place-then-type flow), and the empty sticky renders a
+// muted placeholder until typed into.
+// eslint-disable-next-line no-empty-pattern -- this test needs `testInfo` (the second arg), not any fixture.
+test('an empty note places, renders its placeholder, and takes text later', async ({}, testInfo) => {
+  const idx = testInfo.parallelIndex
+  const dir = mkdtempSync(path.join(tmpdir(), `mill-e2e-atlas-emptynote-${idx}-`))
+  const port = ATLAS_AUTHORING_SERVER_BASE_PORT + 40 + idx
+  const mcpPort = ATLAS_AUTHORING_MCP_BASE_PORT + 40 + idx
+  let server: SpawnedServer | undefined
+  const browser = await chromium.launch()
+  try {
+    server = await spawnMillServer({
+      port, mcpPort,
+      settingsPath: path.join(dir, 'settings.json'),
+      executionDbPath: path.join(dir, 'execution.db'),
+      backupDir: path.join(dir, 'backups'),
+    })
+    const page = await browser.newPage()
+    await page.goto(`${server.baseURL}/`)
+    await page.getByRole('link', { name: 'Atlas' }).click()
+    const board = page.getByTestId('atlas-board')
+    await expect(board).toBeVisible()
+    await zoomAllTheWayOut(page)
+
+    await page.keyboard.press('n')
+    await clickCorner(board, 'top-left')
+    const draftTextarea = page.getByTestId('atlas-sticky-textarea')
+    await expect(draftTextarea).toBeVisible()
+    await draftTextarea.blur()
+    await expect(draftTextarea).toHaveCount(0)
+
+    const sticky = page.getByTestId('atlas-sticky-note')
+    await expect(sticky).toHaveCount(1)
+    await expect(sticky).toContainText('Empty note')
+
+    // Click-select then click-commit enters edit; typed text persists
+    // and the placeholder leaves.
+    await sticky.click()
+    await sticky.click()
+    const editTextarea = page.getByTestId('atlas-sticky-textarea')
+    await expect(editTextarea).toBeVisible()
+    await editTextarea.fill('ZzE2eTypedLater')
+    await editTextarea.blur()
+    await expect(sticky).toContainText('ZzE2eTypedLater')
+    await expect(sticky).not.toContainText('Empty note')
+  } finally {
+    await server?.stop()
+    rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 })
+  }
+})

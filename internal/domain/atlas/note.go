@@ -1,10 +1,6 @@
 package atlas
 
-import (
-	"fmt"
-	"strings"
-	"time"
-)
+import "time"
 
 // Note is a quick-capture annotation on the Atlas board (goal 0081
 // slice A1's LOCKED design): structurally excluded from every semantic
@@ -30,13 +26,12 @@ type Note struct {
 	DeletedAt time.Time
 }
 
-// ValidateNote checks a Note is well-formed: non-empty text. Whether
-// ParentID names an existing card is referential-existence checking,
-// left to the service layer like every other domain type in this
-// package.
+// ValidateNote checks a Note is well-formed. Empty text is LEGAL: a
+// note's placement is itself the captured meaning (a spatial
+// placeholder typed into later), so deletion is the only removal and
+// no text requirement exists. Whether ParentID names an existing card
+// is referential-existence checking, left to the service layer like
+// every other domain type in this package.
 func ValidateNote(n Note) error {
-	if strings.TrimSpace(n.Text) == "" {
-		return fmt.Errorf("a note needs text")
-	}
 	return nil
 }

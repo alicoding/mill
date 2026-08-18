@@ -252,11 +252,12 @@ export function useAtlasCreation({ parentID, allCards, notes, readOnly, screenTo
     setDraftNoteFlowPos(null)
     setDraftNoteParentOverride(null)
     {
-      const trimmed = text.trim()
-      if (pos && trimmed) {
+      // Empty text still creates: the placement itself is the capture
+      // (a spatial placeholder typed into later); Escape is the cancel.
+      if (pos) {
         const targetParentID = override ?? parentID
         const position = override ? freeChildPosition(allCardsRef.current, override) : { X: pos.x, Y: pos.y }
-        void AtlasService.CreateNote(trimmed, position, targetParentID)
+        void AtlasService.CreateNote(text.trim(), position, targetParentID)
           .then(() => refreshAtlas())
           .catch(console.error)
       }
