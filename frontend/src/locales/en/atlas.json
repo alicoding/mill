@@ -115,7 +115,8 @@
     "importConfirmBody": "{{count}} kinds, cards, or links already exist here and will be updated in place.",
     "importConfirmButton": "Import",
     "matrix": "Matrix",
-    "coverage": "Coverage"
+    "coverage": "Coverage",
+    "kinds": "Kinds"
   },
   "folderImport": {
     "addButton": "Add from folder…",
@@ -247,5 +248,41 @@
     "dissolveBody_one": "Its {{count}} card moves up a level.",
     "dissolveBody_other": "Its {{count}} cards move up a level.",
     "dissolveConfirm": "Dissolve"
+  },
+  "kinds": {
+    "dialogTitle": "Kinds",
+    "cardKindsHeading": "Card kinds",
+    "linkKindsHeading": "Link kinds",
+    "cardKindsEmpty": "No card kinds yet.",
+    "linkKindsEmpty": "No link kinds yet.",
+    "fieldCount_one": "{{count}} field",
+    "fieldCount_other": "{{count}} fields",
+    "newCardKind": "+ New card kind",
+    "newLinkKind": "+ New link kind",
+    "iconLabel": "Icon",
+    "labelLabel": "Label",
+    "descriptionLabel": "Description",
+    "fieldsHeading": "Fields",
+    "fieldsEmpty": "No fields yet. Fields show on every card of this kind.",
+    "fieldKey": "Key",
+    "fieldLabel": "Label",
+    "fieldType": "Type",
+    "fieldOptions": "Options (comma-separated)",
+    "fieldTypeText": "Text",
+    "fieldTypeNumber": "Number",
+    "fieldTypeBoolean": "Yes/no",
+    "fieldTypeOptions": "Choice",
+    "addField": "+ Add field",
+    "removeFieldAriaLabel": "Remove field {{key}}",
+    "removeFieldTitle": "Remove field {{key}}?",
+    "removeFieldBody": "Cards keep any saved value, but the field no longer shows or accepts edits.",
+    "removeFieldConfirm": "Remove",
+    "save": "Save",
+    "cancel": "Cancel",
+    "deleteAriaLabel": "Delete {{label}}",
+    "deleteTitle": "Delete {{label}}?",
+    "deleteKindBody": "Only a kind no card uses can be deleted.",
+    "deleteLinkKindBody": "Only a link kind no link uses can be deleted.",
+    "deleteConfirm": "Delete"
   }
 }

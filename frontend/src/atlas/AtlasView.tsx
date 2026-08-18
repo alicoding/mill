@@ -20,6 +20,7 @@ import { AtlasCardOverlay } from './AtlasCardOverlay'
 import { ContextMenu, type ContextMenuState } from '../shared/ContextMenu'
 import { AtlasMatrixView } from './AtlasMatrixView'
 import { AtlasCoverageView } from './AtlasCoverageView'
+import { AtlasKindManager } from './AtlasKindManager'
 import { isGroupCard } from './atlasBoardLayout'
 import { freeChildPosition } from './atlasContainmentPlacement'
 import { useAtlasContainmentMenus } from './useAtlasContainmentMenus'
@@ -93,6 +94,7 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
   // no card/kind selection needs to survive a close/reopen.
   const [matrixOpen, setMatrixOpen] = useState(false)
   const [coverageOpen, setCoverageOpen] = useState(false)
+  const [kindsOpen, setKindsOpen] = useState(false)
   const [hiddenKindIDs, setHiddenKindIDs] = useState<string[]>([])
   // The depth/peek toggle (goal 0061 slice C): server-side now, part of
   // the same per-space Lens AtlasService.SetLens/Lens already persists
@@ -393,6 +395,7 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
         onShareError={setShareError}
         onOpenMatrix={() => setMatrixOpen(true)}
         onOpenCoverage={() => setCoverageOpen(true)}
+        onOpenKinds={() => setKindsOpen(true)}
       />
 
       {importError && <Text as="p" size="small" className={runbookStyles.error} data-testid="atlas-import-error">{importError}</Text>}
@@ -481,6 +484,12 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
         links={allLinks}
         linkKinds={allLinkKinds}
         onOpenCard={openCardFromProjection}
+      />
+      <AtlasKindManager
+        open={kindsOpen}
+        onClose={() => setKindsOpen(false)}
+        kinds={allKinds}
+        linkKinds={allLinkKinds}
       />
     </div>
   )

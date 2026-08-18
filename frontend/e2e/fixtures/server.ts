@@ -74,6 +74,12 @@ export const UPDATES_BETA_MCP_BASE_PORT = 9825
 // reloads, so it needs its own server like the other updates cases.
 export const UPDATES_CHANNEL_PREF_SERVER_BASE_PORT = 10360
 export const UPDATES_CHANNEL_PREF_MCP_BASE_PORT = 10380
+// atlas-kind-authoring.spec.ts's own dedicated pair (goal 0079):
+// kinds/link kinds are GLOBAL Atlas vocabulary every board render and
+// picker reads -- the shared worker pool can't isolate that
+// (testing.md's shared-vs-dedicated rule).
+export const ATLAS_KIND_AUTHORING_SERVER_BASE_PORT = 10400
+export const ATLAS_KIND_AUTHORING_MCP_BASE_PORT = 10420
 // guardrail-authoring.spec.ts's own dedicated pair (goal 0078): the
 // full rule-from-park -> unstick -> audit-edit -> policy-removed loop
 // asserts exact rule counts/groupings in the Rules audit view, which
@@ -199,7 +205,27 @@ export async function spawnMillServer(opts: SpawnServerOptions): Promise<Spawned
   const browser = await chromium.launch()
   try {
     const page = await browser.newPage()
-    await page.goto(`${baseURL}/`)
+    // The very first Chromium request after a fresh bind intermittently
+    // gets ERR_EMPTY_RESPONSE even though /health already answered and
+    // every later request (curl and browser alike) serves fine --
+    // observed repeatedly on brand-new dedicated port pairs. Retry the
+    // guard navigation a few times before declaring the server bad; a
+    // genuinely broken server still fails every attempt, with its own
+    // stderr included below.
+    let lastGotoErr: unknown
+    for (let attempt = 0; attempt < 4; attempt++) {
+      try {
+        await page.goto(`${baseURL}/`)
+        lastGotoErr = undefined
+        break
+      } catch (err) {
+        lastGotoErr = err
+        await new Promise((resolve) => setTimeout(resolve, 500))
+      }
+    }
+    if (lastGotoErr !== undefined) {
+      throw new Error(`guard navigation to ${baseURL} failed after retries: ${String(lastGotoErr)}\nmill-server stderr:\n${stderrTail.join('')}`, { cause: lastGotoErr })
+    }
     await expect(
       page.getByTestId('isolated-data-badge'),
       `Server at ${baseURL} is NOT running on isolated MILL_* data -- refusing to trust it`,

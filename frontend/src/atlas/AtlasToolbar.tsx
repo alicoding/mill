@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Button } from '@primer/react'
-import { ChecklistIcon, DownloadIcon, TableIcon, UploadIcon } from '@primer/octicons-react'
+import { Button, IconButton } from '@primer/react'
+import { ChecklistIcon, DownloadIcon, TableIcon, UploadIcon, TagIcon } from '@primer/octicons-react'
 import type { Card, Kind, Link, LinkKind, Perspective } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 import { useUISignalStore } from '../shared/uiSignalStore'
 import { AtlasBreadcrumb } from './AtlasBreadcrumb'
@@ -28,7 +28,7 @@ export function AtlasToolbar({
   perspectives, activePerspectiveID, onSwitchPerspective, onCreatePerspective, onRenamePerspective, onDeletePerspective, onPerspectiveToast,
   links, linkKinds,
   canAddSibling, onCreate, onExport, onImportFile, onShareError,
-  onOpenMatrix, onOpenCoverage, addChildRequest,
+  onOpenMatrix, onOpenCoverage, onOpenKinds, addChildRequest,
 }: {
   cards: Card[]
   viewedID: string
@@ -64,6 +64,7 @@ export function AtlasToolbar({
   // asks AtlasView to open them rather than owning that state itself.
   onOpenMatrix: () => void
   onOpenCoverage: () => void
+  onOpenKinds: () => void
   // The board pane's right-click "Add card…" (goal 0075's audit G3) --
   // forwarded straight through to AtlasCreateMenu, which owns the form.
   addChildRequest?: number
@@ -124,6 +125,13 @@ export function AtlasToolbar({
         <Button leadingVisual={ChecklistIcon} size="small" variant="invisible" data-testid="atlas-open-coverage" onClick={onOpenCoverage}>
           {t('toolbar.coverage')}
         </Button>
+        {/* Icon-only, deliberately: the actions row sits ~30px from
+            overflowing its panel at the default window width, and an
+            overflowing row horizontally scroll-shifts the whole board
+            on card focus. The next toolbar addition must adopt an
+            overflow strategy instead (Primer's ActionBar is the
+            researched candidate -- goal 0079's debt note). */}
+        <IconButton icon={TagIcon} size="small" variant="invisible" aria-label={t('toolbar.kinds')} data-testid="atlas-open-kinds" onClick={onOpenKinds} />
         <AtlasPerspectiveSwitcher
           perspectives={perspectives}
           activePerspectiveID={activePerspectiveID}
