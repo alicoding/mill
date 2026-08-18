@@ -71,6 +71,30 @@ capabilities is goal 0076's audit, not ad-hoc.
   SHIPPED, not what was planned.
 - Nothing secret-shaped staged; a real commit message.
 
+## Session conduct (adopted from primary-sourced practice, 2026-08-17 research pass)
+- **Reviewer findings get triaged, not chased**: a reviewer prompted
+  to find gaps will report some even when the work is sound —
+  act only on findings that affect correctness or stated
+  requirements; the rest is recorded or dropped, never
+  auto-implemented (over-engineering via review is a named failure
+  mode in the tool's own docs).
+- **Post-merge worktree verification is a CHECKED step**: after an
+  agent branch merges, confirm the worktree is actually removed
+  (`git worktree list`) and HEAD sits on the intended branch — the
+  tool's worktree cleanup has a confirmed upstream defect class
+  (stale worktrees survive sessions; a leftover checkout makes a
+  later merge silently no-op "Already up to date" against the wrong
+  ref). Silent by design; verify, don't assume.
+- **Two named session failure patterns** (tool-docs-primary): the
+  kitchen-sink session (unrelated tasks sharing one context — split
+  them) and correcting the same thing twice (the third attempt is a
+  restart-with-a-better-brief, not another correction).
+- **Long arcs write state to files, not context**: compaction is
+  lossy by the tool's own docs — in-session progress that must
+  survive belongs in the goal file / a plan file at every
+  significant checkpoint, so a compaction or restart resumes from
+  disk, not from what the summary preserved.
+
 ## Build-health visibility
 The ruleset (ADR-0034) already makes main unmergeable-red; confirm,
 don't re-enforce:
