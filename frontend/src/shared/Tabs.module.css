@@ -24,6 +24,12 @@
        and stops the column growth. */
     flex: 0 1 auto;
     min-width: 0;
+    /* The shrink factor above serves WIDTH inside the titlebar's flex
+       row; inside a flex COLUMN the same factor let a tall panel crush
+       this bar's HEIGHT to 1px (Configure's Attributes tab, DOM-probed
+       h=1 with the tabs clipped invisible). max-content pins the
+       vertical floor without re-enabling row-width growth. */
+    min-height: max-content;
     flex-wrap: nowrap;
     overflow-x: auto;
     scrollbar-width: none;

@@ -133,3 +133,15 @@ test('Importing invalid JSON into an MCP Server shows an error', async ({ page }
 
   await expect(page.getByTestId('import-mcpserver-error')).toBeVisible()
 })
+
+// Regression: the Configure tab strip collapsed to 1px on the
+// Attributes tab (a tall panel crushed the flex column's tab bar) --
+// the strip must stay a real, visible row on every tab.
+test('the Configure tab strip stays visible on the Attributes tab', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Configure' }).click()
+  await page.getByRole('tab', { name: 'Attributes' }).click()
+  await expect(page.getByRole('tab', { name: 'Lists' })).toBeVisible()
+  const box = await page.getByRole('tab', { name: 'Attributes' }).boundingBox()
+  expect(box && box.height).toBeGreaterThan(20)
+})
