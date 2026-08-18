@@ -7,11 +7,12 @@ import monoStyles from '../shared/monoText.module.css'
 
 // Extracted from SettingsView.tsx (same reason DataStewardshipSection
 // already is: keeps that file's own line count from crowding the
-// 500-line convention). Two channel behaviors sharing one surface: a
-// release-channel build can install and restart itself; a
+// 500-line convention). Two install behaviors sharing one surface:
+// release and beta builds can install and restart themselves; a
 // source-channel build only ever notifies and points at a rebuild.
 
-type Channel = '' | 'source' | 'release'
+type Channel = '' | 'source' | 'release' | 'beta'
+const installableChannels: Channel[] = ['release', 'beta']
 type InstallState = 'idle' | 'installing' | 'installed' | 'failed'
 
 interface UpdateResult {
@@ -67,7 +68,13 @@ function UpdatesSection() {
     SettingsService.RestartApp().catch((err) => setInstallError(String(err)))
   }
 
-  const channelLabel = channel === 'release' ? t('settings.updates.channelRelease') : t('settings.updates.channelSource')
+  const channelLabel =
+    channel === 'release'
+      ? t('settings.updates.channelRelease')
+      : channel === 'beta'
+        ? t('settings.updates.channelBeta')
+        : t('settings.updates.channelSource')
+  const canInstall = installableChannels.includes(channel)
   const statusText = checking ? t('settings.updates.checking') : status
 
   return (
@@ -106,7 +113,7 @@ function UpdatesSection() {
               </details>
             )}
 
-            {channel === 'release' ? (
+            {canInstall ? (
               <>
                 {installState !== 'installed' ? (
                   <Button

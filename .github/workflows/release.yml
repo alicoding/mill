@@ -111,10 +111,14 @@ jobs:
         env:
           MILL_SKIP_BINDINGS: "1"
           MILL_CHANNEL: release
+      # scripts/package-macos-zip.sh: the shared asset-naming contract
+      # goal 0100's beta-release job (ci.yml) also calls -- one
+      # definition, so a beta and a real release can never drift in
+      # asset naming.
       - name: Zip app bundle with platform/arch/version suffix
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
-          ditto -c -k --keepParent bin/mill.app "bin/mill-${VERSION}-macos-$(uname -m).zip"
+          scripts/package-macos-zip.sh "$VERSION" bin/mill.app bin
       - uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
         with:
           subject-path: bin/mill-*.zip

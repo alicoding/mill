@@ -30,21 +30,23 @@ import (
 	"github.com/wailsapp/wails/v3/pkg/events"
 )
 
-// millChannel names how this binary was distributed -- "source" (the
-// default: `git clone` + local build) unless release.yml's macOS build
-// step overrides it to "release" via `-X main.millChannel=release`
-// (build/darwin/Taskfile.yml's build:native reads MILL_CHANNEL from the
-// shell environment into that ldflags value; see release.yml's package
-// step). A var, not a const, so ldflags can overwrite it -- gates the
-// install-and-restart path in settingssvc.
+// millChannel/millVersion/millUpdateVersion are the build-stamp trio
+// release.yml (channel=release) and ci.yml's beta job (channel=beta)
+// override via ldflags -X; every other build keeps the defaults below.
+// millChannel gates settingssvc's install-and-restart path. millVersion
+// feeds run receipts/the backup manifest/the release updater's
+// CurrentVersion, and must agree with the git tag and build/config.yml
+// (release.yml's verify step enforces this) -- a beta build never
+// touches it. millUpdateVersion is what the updater compares the beta
+// feed's rolling tag against and AppVersion shows in Settings: a SemVer
+// prerelease compares strictly below its release, so a beta tag against
+// the bare "0.4.0" would never register as newer -- a beta build stamps
+// a per-build identifier here instead (`-X main.millUpdateVersion=0.4.0-beta.<run>`).
 var millChannel = "source"
 
-// millVersion is the version CurrentVersion the updater compares
-// releases against. Three places must agree on a release's version --
-// the git tag, build/config.yml's info.version, and this constant --
-// and release.yml's verify step fails the release when any pair
-// mismatches.
 const millVersion = "0.4.0"
+
+var millUpdateVersion = millVersion
 
 // Wails uses Go's `embed` package to embed the frontend files into the binary.
 // Any files in the frontend/dist folder will be embedded into the binary and
@@ -139,6 +141,15 @@ func main() {
 		}
 		executionDatabaseURL = "sqlite:" + executionDBPath
 	}
+
+	// MILL_BACKUP_DIR follows the same override convention as above;
+	// docs/goals/0065's backupService construction reuses this value.
+	backupDir := os.Getenv("MILL_BACKUP_DIR")
+	if backupDir == "" {
+		backupDir = filepath.Join(application.Path(application.PathConfigHome), "mill", "backups")
+	}
+	backupsvc.GuardVersionChange(logger, settingsStore, backupsvc.SQLiteDBPath(executionDatabaseURL), settingsPath, backupDir, millVersion)
+
 	guardrailService := guardrailsvc.NewGuardrailService(settingsStore, compositionService)
 	executionService, err := executionsvc.NewExecutionService(executionDatabaseURL, compositionService, guardrailService)
 	if err != nil {
@@ -186,28 +197,17 @@ func main() {
 	executionService.SetRunCompletionSink(atlasService.NotifyRunCompleted)
 	atlasService.WireCompositionSeams(triggerService.DispatchAtlasCardChange) // goal 0066
 
-	// docs/goals/0065: Mill's own data-stewardship surface -- VACUUM
-	// INTO snapshots + the export-everything archive. SQLiteDBPath
-	// returns "" for a BYO-Postgres executionDatabaseURL, which
-	// disables backups cleanly rather than erroring at startup.
-	// MILL_BACKUP_DIR follows the same override convention as
-	// settingsPath/executionDatabaseURL above.
-	backupDir := os.Getenv("MILL_BACKUP_DIR")
-	if backupDir == "" {
-		backupDir = filepath.Join(application.Path(application.PathConfigHome), "mill", "backups")
-	}
-	backupService := backupsvc.New(backupsvc.SQLiteDBPath(executionDatabaseURL), settingsPath, backupDir, millVersion)
-	backupService.SetFamilies(backupsvc.BuildFamilies(compositionService, configureService))
-	backupService.SetAtlasBundle(backupsvc.WireAtlasBundle(atlasService))
-	backupsvc.WireCompositionRunner(backupService)
+	backupService := backupsvc.Wire(backupsvc.SQLiteDBPath(executionDatabaseURL), settingsPath, backupDir, millVersion, compositionService, configureService, atlasService)
 
 	// docs/adr/0038, goal 0063/0067: the share model's mirror root, and the folder-picker's own guard against Mill's own live data.
 	atlasService.SetMirrorsDir(atlassvc.DefaultMirrorsDir(os.Getenv("MILL_ATLAS_MIRRORS_DIR")))
 	atlasService.SetGuardedDataPaths(settingsPath, backupsvc.SQLiteDBPath(executionDatabaseURL), backupDir)
 
 	settingsService := settingssvc.NewSettingsService(settingsStore, triggerService, settingsPath != defaultSettingsPath)
-	settingsService.SetAppVersion(millVersion)
+	settingsService.SetAppVersion(millUpdateVersion)
 	settingsService.SetUpdateChannel(millChannel)
+	// goal 0100: DownloadAndInstallUpdate's pre-swap snapshot seam.
+	settingsService.SetBackupRunner(backupService.BackupRunner())
 	// Bidirectional hotkey-conflict check (docs/SPEC.md §3.7): a
 	// per-workflow hotkey can't silently collide with the app-level
 	// summon hotkey, and vice versa -- SettingsService.AssignSummonHotkey
@@ -287,7 +287,7 @@ func main() {
 	// under its own line-count convention). A construction failure here
 	// is logged, not fatal -- a broken updater must never block the app
 	// from starting.
-	if err := settingssvc.InitUpdater(app.Updater, "alicoding/mill", millVersion, settingsService); err != nil {
+	if err := settingssvc.InitUpdater(app.Updater, "alicoding/mill", millUpdateVersion, millChannel, settingsService); err != nil {
 		logger.Error("updater init", "error", err)
 	}
 

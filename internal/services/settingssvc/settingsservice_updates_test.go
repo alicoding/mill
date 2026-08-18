@@ -1,6 +1,8 @@
 package settingssvc
 
 import (
+	"errors"
+	"strings"
 	"testing"
 )
 
@@ -51,14 +53,90 @@ func TestDownloadAndInstallUpdate_RefusesOnSourceChannel(t *testing.T) {
 // A release-channel build with no configured updater (SetUpdater never
 // called, same as any headless/test construction) must also refuse --
 // distinct error from the channel refusal, but still no attempt at a
-// nil-pointer network call.
+// nil-pointer network call. A stub backup runner isolates this test to
+// the updater-nil failure specifically (see the backup-gating tests
+// below for the pre-swap-snapshot failures on their own).
 func TestDownloadAndInstallUpdate_RefusesWithoutConfiguredUpdater(t *testing.T) {
+	set := newTestSettingsService(t)
+	set.SetUpdateChannel("release")
+	set.SetBackupRunner(func(int) (string, error) { return "/backups/ok", nil })
+
+	err := set.DownloadAndInstallUpdate()
+	if err == nil {
+		t.Fatal("DownloadAndInstallUpdate() with no updater configured: want an error, got nil")
+	}
+	if !strings.Contains(err.Error(), "updater") {
+		t.Errorf("DownloadAndInstallUpdate() error = %q, want it to name the missing updater (not an earlier backup failure)", err)
+	}
+}
+
+// Beta installs run on real, unbacked-up-by-anyone-else data (goal
+// 0100) -- DownloadAndInstallUpdate must accept the channel exactly
+// like release, not just refuse it like source.
+func TestDownloadAndInstallUpdate_AcceptsBetaChannel(t *testing.T) {
+	set := newTestSettingsService(t)
+	set.SetUpdateChannel("beta")
+	set.SetBackupRunner(func(int) (string, error) { return "/backups/ok", nil })
+
+	err := set.DownloadAndInstallUpdate()
+	if err == nil || !strings.Contains(err.Error(), "updater") {
+		t.Errorf("DownloadAndInstallUpdate() on beta channel = %v, want it to reach the updater-nil check (not the channel refusal)", err)
+	}
+}
+
+// goal 0100's data-safety mandate: the update must never proceed
+// without a fresh restore point. No backup runner configured at all
+// (e.g. a headless/test construction that never wired one) aborts
+// before ever reaching the updater.
+func TestDownloadAndInstallUpdate_AbortsWhenNoBackupRunnerConfigured(t *testing.T) {
 	set := newTestSettingsService(t)
 	set.SetUpdateChannel("release")
 
 	err := set.DownloadAndInstallUpdate()
 	if err == nil {
-		t.Fatal("DownloadAndInstallUpdate() with no updater configured: want an error, got nil")
+		t.Fatal("DownloadAndInstallUpdate() with no backup runner configured: want an error, got nil")
+	}
+	if strings.Contains(err.Error(), "updater not configured") {
+		t.Errorf("DownloadAndInstallUpdate() error = %q, want the backup-abort error, not the (later) updater-nil check", err)
+	}
+}
+
+// A configured backup runner that fails must abort the update outright
+// -- never swap without a restore point.
+func TestDownloadAndInstallUpdate_AbortsWhenBackupFails(t *testing.T) {
+	set := newTestSettingsService(t)
+	set.SetUpdateChannel("release")
+	set.SetBackupRunner(func(int) (string, error) { return "", errors.New("disk full") })
+
+	err := set.DownloadAndInstallUpdate()
+	if err == nil {
+		t.Fatal("DownloadAndInstallUpdate() with a failing backup runner: want an error, got nil")
+	}
+	if !strings.Contains(err.Error(), "backup") {
+		t.Errorf("DownloadAndInstallUpdate() error = %q, want it to name the aborted backup", err)
+	}
+	if strings.Contains(err.Error(), "updater not configured") {
+		t.Errorf("DownloadAndInstallUpdate() error = %q, the updater must never be reached after a failed backup", err)
+	}
+}
+
+// A successful backup must not itself block the update -- the flow
+// proceeds past it to the (here, nil) updater check.
+func TestDownloadAndInstallUpdate_ProceedsPastASuccessfulBackup(t *testing.T) {
+	set := newTestSettingsService(t)
+	set.SetUpdateChannel("release")
+	var called bool
+	set.SetBackupRunner(func(keepN int) (string, error) {
+		called = true
+		return "/backups/ok", nil
+	})
+
+	err := set.DownloadAndInstallUpdate()
+	if !called {
+		t.Error("DownloadAndInstallUpdate() never called the configured backup runner")
+	}
+	if err == nil || !strings.Contains(err.Error(), "updater") {
+		t.Errorf("DownloadAndInstallUpdate() after a successful backup = %v, want it to reach the updater-nil check", err)
 	}
 }
 
@@ -99,6 +177,25 @@ func TestDownloadAndInstallUpdate_FakeModeNeverHitsNetwork(t *testing.T) {
 	err := set.DownloadAndInstallUpdate()
 	if err == nil {
 		t.Fatal("DownloadAndInstallUpdate() in fake mode: want an error, got nil")
+	}
+}
+
+// Fake mode's own short-circuit runs before the backup-abort gate too
+// -- it must never touch the backup runner, matching its "never
+// reaches the network" contract.
+func TestDownloadAndInstallUpdate_FakeModeNeverCallsBackupRunner(t *testing.T) {
+	t.Setenv(testUpdateFakeVersionEnv, "9.9.9")
+	set := newTestSettingsService(t)
+	set.SetUpdateChannel("release")
+	var called bool
+	set.SetBackupRunner(func(int) (string, error) {
+		called = true
+		return "/backups/ok", nil
+	})
+
+	_ = set.DownloadAndInstallUpdate()
+	if called {
+		t.Error("DownloadAndInstallUpdate() in fake mode called the backup runner, want it short-circuited first")
 	}
 }
 

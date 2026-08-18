@@ -77,6 +77,12 @@ type SettingsService struct {
 	summon         *hotkey.Binding
 	summonHK       triggersvc.PersistedHotkey // zero value (nil Mods) means unassigned
 	updater        *updater.Updater
+	// backupRunner is the pre-update-snapshot seam DownloadAndInstallUpdate
+	// calls before any bundle swap (goal 0100) -- an injected closure,
+	// never a direct backupsvc import (backend.md), same shape as
+	// composition.SetBackupRunner. keepN <= 0 means "use the runner's
+	// own default retention."
+	backupRunner func(keepN int) (string, error)
 	appVersion     string
 	updateChannel  string
 	isolatedData   bool
