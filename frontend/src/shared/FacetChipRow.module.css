@@ -1,0 +1,42 @@
+/* Faceted-search suggestion chips (goal 0086) -- a token-chip look
+   consistent with shared/KeyComboChip.module.css's own idiom (Primer
+   tokens, bordered pill), but interactive: hover/focus states since
+   these are real completion buttons, not static hints. */
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--base-size-4, 4px);
+  padding: var(--base-size-8, 8px) var(--base-size-8, 8px) 0;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--base-size-4, 4px);
+  height: 24px;
+  padding: 0 var(--base-size-8, 8px);
+  border: 1px solid var(--borderColor-default);
+  border-radius: var(--borderRadius-full, 999px);
+  background: var(--bgColor-muted);
+  color: var(--fgColor-default);
+  font-size: var(--text-body-size-small);
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.chip:hover {
+  background: var(--bgColor-neutral-muted);
+  border-color: var(--borderColor-emphasis);
+}
+
+.chip:focus-visible {
+  outline: 2px solid var(--fgColor-accent);
+  outline-offset: 1px;
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}

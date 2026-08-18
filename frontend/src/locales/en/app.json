@@ -22,6 +22,17 @@
       "atlas": "Atlas",
       "actions": "Mill"
     },
+    "facets": {
+      "workflow": "Workflow",
+      "integration": "Integration",
+      "list": "List",
+      "mcpServer": "MCP server",
+      "decision": "Decision",
+      "execEnv": "Execution environment",
+      "aiProvider": "AI provider",
+      "stepType": "Step type",
+      "suggestionsAriaLabel": "Search type suggestions"
+    },
     "entries": {
       "enterToRun": "Enter to run",
       "jumpToIntegration": "Jump to Integration",
@@ -110,6 +121,13 @@
       "workflows": "Workflows",
       "tabs": "Open tabs",
       "surface": "On this page"
+    },
+    "facets": {
+      "command": "Command",
+      "workflow": "Workflow",
+      "tab": "Tab",
+      "setting": "Setting",
+      "suggestionsAriaLabel": "Search type suggestions"
     },
     "testRun": "Test run",
     "runLabel": "Run: {{label}}",

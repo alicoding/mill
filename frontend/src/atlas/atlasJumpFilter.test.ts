@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import type { Card, Kind } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
-import { ancestorPathLabel, filterJumpCards } from './atlasJumpFilter'
+import { AREA_FACET_KEY, ancestorPathLabel, filterJumpCards } from './atlasJumpFilter'
 
-function card(id: string, title: string, parentID: string, note = ''): Card {
-  return { ID: id, KindID: 'k1', Title: title, Note: note, ParentID: parentID } as Card
+function card(id: string, title: string, parentID: string, note = '', kindID = 'k1'): Card {
+  return { ID: id, KindID: kindID, Title: title, Note: note, ParentID: parentID } as Card
 }
 
 function kind(id: string): Kind {
@@ -52,6 +52,53 @@ describe('filterJumpCards', () => {
     const cards = [card('a', 'Alpha', '')]
     const results = filterJumpCards(cards, [kind('k1')], 'alpha')
     expect(results[0].kind?.ID).toBe('k1')
+  })
+
+  it('scopes to a single Kind, excluding cards of other kinds even when the text matches', () => {
+    const cards = [
+      card('a', 'Topic Alpha', '', '', 'topic'),
+      card('b', 'Document Alpha', '', '', 'document'),
+    ]
+    const results = filterJumpCards(cards, [], 'alpha', 'topic')
+    expect(results.map((r) => r.card.ID)).toEqual(['a'])
+  })
+
+  it('scoped + empty text lists every card of that Kind, title-ascending, capped at 8', () => {
+    const cards = [
+      ...Array.from({ length: 10 }, (_, i) => card(`t${i}`, `Topic ${i}`, '', '', 'topic')),
+      card('doc', 'Document one', '', '', 'document'),
+    ]
+    const results = filterJumpCards(cards, [], '', 'topic')
+    expect(results).toHaveLength(8)
+    expect(results.every((r) => r.card.KindID === 'topic')).toBe(true)
+    expect(results.map((r) => r.card.Title)).toEqual([...results.map((r) => r.card.Title)].sort())
+  })
+
+  it('scopes to areas (group cards) via AREA_FACET_KEY, excluding leaf cards', () => {
+    // "Root" itself has a child (Example area), so it's a group card
+    // too -- isGroupCard is purely structural (does a card have
+    // children), independent of any parent/child depth.
+    const root = card('root', 'Root', '')
+    const area = card('area', 'Example area', 'root')
+    const leaf = card('leaf', 'A leaf', 'area')
+    const cards = [root, area, leaf]
+    const results = filterJumpCards(cards, [], '', AREA_FACET_KEY)
+    expect(results.map((r) => r.card.ID)).toEqual(['area', 'root'])
+  })
+
+  it('scoped area + text still substring-matches within the area candidates', () => {
+    const root = card('root', 'Root', '')
+    const area1 = card('area1', 'Example area', 'root')
+    const area2 = card('area2', 'Another zone', 'root')
+    const leaf = card('leaf', 'Example leaf', 'area1')
+    const cards = [root, area1, area2, leaf]
+    const results = filterJumpCards(cards, [], 'example', AREA_FACET_KEY)
+    expect(results.map((r) => r.card.ID)).toEqual(['area1'])
+  })
+
+  it('an unscoped empty query still returns no results (unchanged from before faceting)', () => {
+    const cards = [card('a', 'Alpha', '')]
+    expect(filterJumpCards(cards, [], '')).toEqual([])
   })
 })
 

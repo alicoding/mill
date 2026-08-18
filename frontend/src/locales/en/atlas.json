@@ -45,7 +45,9 @@
   "jump": {
     "placeholder": "Jump to a card",
     "noMatches": "No cards match",
-    "footerHint": "↵ go · ⌘↵ open"
+    "footerHint": "↵ go · ⌘↵ open",
+    "areaFacetLabel": "Area",
+    "suggestionsAriaLabel": "Search type suggestions"
   },
   "lens": {
     "openButton": "Lens",

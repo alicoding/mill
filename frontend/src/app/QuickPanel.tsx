@@ -13,13 +13,14 @@ import {
 } from '../shared/configureEntityStore'
 import { useAtlasStore, refreshAtlasCards, refreshAtlasKinds, refreshAtlasNotes } from '../atlas/atlasStore'
 import { findRootNode } from '../composition/triggerRowInfo'
-import { filterPaletteEntries } from './paletteFilter'
 import { sortWorkflowsByPinnedAndFrecency } from './workflowFrecency'
 import { WorkflowRowTrailingVisual } from './WorkflowRowTrailingVisual'
 import { buildConfigureAndActionEntries } from './quickPanelActionEntries'
 import type { PanelEntry } from './quickPanelActionEntries'
 import { cascadeNotePosition, resolveNoteParentID } from './quickPanelCapture'
 import { QuickPanelClipboardApply } from './QuickPanelClipboardApply'
+import { FacetChipRow } from '../shared/FacetChipRow'
+import { useQuickPanelFacetSearch } from './quickPanelFacets'
 import styles from './QuickPanel.module.css'
 
 // docs/adr/0033-quick-panel-second-window.md: the search+run surface
@@ -410,7 +411,9 @@ export function QuickPanel() {
     decisions, execEnvs, aiProviders, declaredStepTypes, atlasCards, atlasKinds, reviewPendingCount,
   ])
 
-  const filtered = filterPaletteEntries(allEntries, query)
+  // Faceted search (goal 0086) -- quickPanelFacets.ts's own hook, same
+  // scope-then-rank shape app/CommandPalette.tsx runs inline.
+  const { filtered, chipSuggestions, selectChip } = useQuickPanelFacetSearch({ t, allEntries, query, setQuery, inputRef })
 
   // The save-note row (docs/goals/0090) never goes through
   // filterPaletteEntries -- it isn't a match against the typed text,
@@ -468,6 +471,11 @@ export function QuickPanel() {
 
   return (
     <div className={styles.panel} data-testid="quick-panel">
+      <FacetChipRow
+        items={chipSuggestions.map((entry) => ({ key: entry.key, label: entry.label }))}
+        onSelect={selectChip}
+        ariaLabel={t('quickPanel.facets.suggestionsAriaLabel')}
+      />
       <FilteredActionList
         items={items}
         groupMetadata={GROUP_METADATA}

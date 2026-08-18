@@ -18,6 +18,9 @@ import type { PaletteSearchable } from './paletteFilter'
 import { sortWorkflowsByPinnedAndFrecency } from './workflowFrecency'
 import { HotkeyHint } from '../shared/HotkeyHint'
 import { WorkflowRowTrailingVisual } from './WorkflowRowTrailingVisual'
+import { matchFacetSuggestions, parseFacetQuery } from '../shared/facetQuery'
+import type { FacetVocabEntry } from '../shared/facetQuery'
+import { FacetChipRow } from '../shared/FacetChipRow'
 import styles from './CommandPalette.module.css'
 
 // The ⌘K command palette (docs/goals/0015-summon-quick-invoke.md): the
@@ -71,6 +74,31 @@ function groupMetadataFor(t: (key: string) => string) {
     { groupId: 'workflows' as const, header: { title: t('commandPalette.groups.workflows') } },
     { groupId: 'tabs' as const, header: { title: t('commandPalette.groups.tabs') } },
   ]
+}
+
+// Faceted search (goal 0086): vocabulary drawn straight from the
+// palette's own groups/types -- "command" covers both the 'commands'
+// and 'surface' groupIds (a surface-scoped command is still a
+// command, just ranked first), "setting" narrows further still, to
+// the per-section deep-link commands shared/settingsCommands.ts
+// registers (id `settings.open.<section>`) -- a strict subset of
+// "command". Quick Panel's own configure-entity-type facets don't
+// apply here: this surface has no Configure jump rows at all.
+function facetVocabularyFor(t: (key: string) => string): FacetVocabEntry[] {
+  return [
+    { key: 'command', label: t('commandPalette.facets.command') },
+    { key: 'workflow', label: t('commandPalette.facets.workflow') },
+    { key: 'tab', label: t('commandPalette.facets.tab') },
+    { key: 'setting', label: t('commandPalette.facets.setting') },
+  ]
+}
+
+function matchesPaletteFacet(scopeKey: string, entry: PaletteEntry): boolean {
+  if (scopeKey === 'command') return entry.groupId === 'commands' || entry.groupId === 'surface'
+  if (scopeKey === 'workflow') return entry.groupId === 'workflows'
+  if (scopeKey === 'tab') return entry.groupId === 'tabs'
+  if (scopeKey === 'setting') return entry.id === 'cmd:settings.open' || entry.id.startsWith('cmd:settings.open.')
+  return true
 }
 
 // Rest-state bound (design-wave-1 fix #2, Spotlight/Raycast/VS Code
@@ -318,7 +346,29 @@ export function CommandPalette() {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- commandEntry/workflowEntries/tabEntries close over workflows/nodeTypes/requests/workTabs/mostUsedRank/hotkeyCombos/pinnedWorkflowIds/togglePinnedWorkflow/t, already listed
   }, [restState, workflows, nodeTypes, requests, workTabs, mostUsedRank, hotkeyCombos, pinnedWorkflowIds, viewKind, t])
 
-  const filtered = restState ? allEntries : filterPaletteEntries(allEntries, query)
+  // Faceted search (goal 0086): the scope narrows allEntries FIRST,
+  // then filterPaletteEntries ranks the remainder against the
+  // post-token text -- an empty text (just "workflow: ") already lists
+  // every entry in that scope, since filterPaletteEntries returns its
+  // input unranked for a blank query.
+  const facetVocab = useMemo(() => facetVocabularyFor(t), [t])
+  const parsed = useMemo(() => parseFacetQuery(query, facetVocab), [query, facetVocab])
+  const chipSuggestions = useMemo(
+    () => (parsed.scopeKey || !query.trim() ? [] : matchFacetSuggestions(query, facetVocab)),
+    [parsed.scopeKey, query, facetVocab],
+  )
+  const scopedEntries = useMemo(
+    () => (parsed.scopeKey ? allEntries.filter((e) => matchesPaletteFacet(parsed.scopeKey!, e)) : allEntries),
+    [allEntries, parsed.scopeKey],
+  )
+  const filtered = restState ? allEntries : filterPaletteEntries(scopedEntries, parsed.text)
+
+  const selectChip = (key: string) => {
+    const entry = facetVocab.find((v) => v.key === key)
+    if (!entry) return
+    setQuery(`${entry.label}: `)
+    inputRef.current?.focus()
+  }
 
   const items = filtered.map((entry) => ({
     key: entry.id,
@@ -345,6 +395,11 @@ export function CommandPalette() {
       height="auto"
       initialFocusRef={inputRef}
     >
+      <FacetChipRow
+        items={chipSuggestions.map((entry) => ({ key: entry.key, label: entry.label }))}
+        onSelect={selectChip}
+        ariaLabel={t('commandPalette.facets.suggestionsAriaLabel')}
+      />
       <FilteredActionList
         className={styles.list}
         items={items}
