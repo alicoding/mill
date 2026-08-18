@@ -79,9 +79,8 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
   // against re-applying it on every later data refresh, which would
   // otherwise re-open the overlay even after the user closed it).
   const consumedInitialCardID = useRef(false)
-  // Mirrors the ref as state for the landing gate below -- a ref must
-  // not be read during render, and the gate needs re-render when the
-  // deep link resolves.
+  // State mirror of the ref: the landing gate renders off it, and a
+  // ref must not be read during render.
   const [deepLinkConsumed, setDeepLinkConsumed] = useState(false)
 
   useEffect(() => {
