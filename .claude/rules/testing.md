@@ -126,6 +126,43 @@ layer per capability," never "a seed per thing":
   express (hover, drag, truncation, pointer-events regressions).
 - **Smoke/liveness** — app-level boot + advisory external liveness
   (the seeded integrations' endpoints), non-blocking.
+- **Real-webview engine parity** (`scripts/webview-bridge-smoke.sh`,
+  `internal/webviewbridgesmoke`, goal 0097) — a scripted, named check
+  registry driven over Wails3's own `-tags mcp` control bridge against
+  the REAL desktop window, catching engine-behavior divergence
+  (focus/selection/rendering classes) between macOS's real WKWebView
+  and every other layer above, which all run Chromium. Exists because
+  a real WebKit-only defect (a selection ring / focus-halo difference)
+  shipped invisible to the whole Chromium-based suite. **Researched
+  and rejected**: a Playwright `webkit`-project was the original
+  premise, but primary sources showed Playwright's `webkit` build is
+  patched WebKit-main that never attaches to an app's own embedded
+  webview, and no macOS WebDriver exists for a third-party WKWebView
+  at all — the OSS convergence for real parity is driving the actual
+  embedded webview via an app bridge, which is what this layer does.
+  Playwright's `webkit` browser stays installed as a local debugging
+  probe only, never CI-badged as parity. Revisit trigger: grow the
+  check registry when a WebKit-only bug escapes it, same discipline as
+  the manual-only registry below.
+  **CI status: non-required/informational, first live attempt
+  failed.** The `webview-bridge-smoke` job in `ci.yml` ran on a real
+  `macos-latest` GitHub-hosted runner and failed launching the app:
+  `app process exited before the MCP bridge became reachable: dial
+  tcp 127.0.0.1:9099: connect: connection refused`, with an EMPTY
+  captured stderr tail — the go/npm builds both succeeded, but the
+  spawned app process produced no diagnostic output at all before
+  exiting. First investigation lead: a silent, near-instant exit with
+  zero stderr is consistent with an early native-windowing failure
+  (no real console/WindowServer session available the way the
+  precedent research assumed from Electron's own hosted-runner CI —
+  Electron's windowing stack may not need the same session a genuine
+  Wails/Cocoa `NSWindow` does), though the log alone doesn't prove
+  that specific cause; config-dir/signing weren't ruled in or out
+  either. Not iterated further pending a dedicated investigation
+  pass. Until resolved, the OPERATIVE parity gate is the LOCAL
+  pre-release run (`scripts/webview-bridge-smoke.sh`, run by hand
+  before a release) — the CI job stays wired and green-or-red
+  visible, but nothing depends on it passing yet.
 - **Manual-only registry** — OS-bound checks (hotkey delivery, real
   clipboard, tray) listed explicitly with reasons, never silently
   absent (see goal 0010's enforcement). Non-seed instance: the
