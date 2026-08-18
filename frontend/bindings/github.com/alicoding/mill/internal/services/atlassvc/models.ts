@@ -22,6 +22,8 @@ export interface AtlasImportSummary {
     "CardsUpdated": number;
     "LinksCreated": number;
     "LinksUpdated": number;
+    "PerspectivesCreated": number;
+    "PerspectivesUpdated": number;
 }
 
 /**
@@ -34,6 +36,15 @@ export interface AtlasImportSummary {
 export interface AtlasSessionState {
     "viewedID": string;
     "openCardID": string;
+
+    /**
+     * ActivePerspectiveID names the currently-switched-to Perspective
+     * (ADR-0041, goal 0095) -- "" is the default "everything" view (the
+     * absence of a Perspective, never an empty one). Degraded on read
+     * like its siblings: a perspective deleted since this was set
+     * resolves back to "".
+     */
+    "activePerspectiveID": string;
 }
 
 /**

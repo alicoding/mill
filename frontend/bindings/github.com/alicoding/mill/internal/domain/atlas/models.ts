@@ -289,6 +289,49 @@ export interface Note {
 }
 
 /**
+ * Perspective is a named, ordered view over one container's (SpaceID's)
+ * live card set (ADR-0041, goal 0095): membership is explicit and
+ * stored -- both which cards (MemberCardIDs) and which links
+ * (MemberLinkIDs) render in this view -- never derived from a query,
+ * so a target-state connection between two currently-existing systems
+ * can never leak into a view it wasn't deliberately added to. The
+ * default "everything" view is the ABSENCE of a Perspective record:
+ * zero Perspectives over a space means zero behavior change. Order
+ * places this perspective within its SpaceID's own ordered set (e.g.
+ * "Current", "Interim", "Target"); it is meaningless compared across
+ * different SpaceID values. Deliberately carries NO DeletedAt --
+ * unlike Card/Note (goal 0093's soft-delete-with-undo), a Perspective
+ * delete is immediate: cheap to recreate, so no tombstone/undo
+ * lifecycle exists for it in v1.
+ */
+export interface Perspective {
+    "ID": string;
+    "SpaceID": string;
+    "Name": string;
+    "Description": string;
+    "Order": number;
+
+    /**
+     * MemberCardIDs is the stored set of cards this perspective shows.
+     * Closed under ancestry by the service layer's AddToPerspective (a
+     * member's containing chain up to SpaceID joins with it), never by
+     * this package -- membership mutation is a service concern.
+     */
+    "MemberCardIDs": string[] | null;
+
+    /**
+     * MemberLinkIDs is the stored set of links this perspective shows.
+     * A link still only actually RENDERS when both its endpoints are
+     * ALSO members -- see FilterByPerspective.
+     */
+    "MemberLinkIDs": string[] | null;
+    "CreatedAt": string;
+    "UpdatedAt": string;
+    "BuiltIn": boolean;
+    "Seed": seedorigin$0.Origin;
+}
+
+/**
  * Position is a card's location within its PARENT's canvas -- only
  * meaningful when the parent's EffectiveViewMode is ViewModeCanvas;
  * nil for a card whose parent renders as shelves (or for a root card,

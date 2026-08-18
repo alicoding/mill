@@ -141,7 +141,9 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
   }, [])
   useEffect(() => {
     if (!sessionRestored) return
-    void AtlasService.SetAtlasSession({ viewedID, openCardID: overlayCardID ?? '' }).catch(() => {})
+    // activePerspectiveID: the switcher UI lands in a later slice (goal
+    // 0095) -- always '' (the everything view) here for now.
+    void AtlasService.SetAtlasSession({ viewedID, openCardID: overlayCardID ?? '', activePerspectiveID: '' }).catch(() => {})
   }, [sessionRestored, viewedID, overlayCardID])
 
   useEffect(() => {
