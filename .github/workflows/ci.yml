@@ -671,7 +671,7 @@ jobs:
       # own release as an update).
       - name: Verify beta version stamp reached the binary
         run: |
-          BIN="bin/mill.app/Contents/MacOS/$(ls bin/mill.app/Contents/MacOS | head -1)"
+          BIN="bin/mill.app/Contents/MacOS/mill"
           grep -aqF "$BETA_VERSION" "$BIN" || { echo "::error::binary at $BIN does not contain $BETA_VERSION -- MILL_UPDATE_VERSION was not stamped"; exit 1; }
       # scripts/package-macos-zip.sh: the same asset-naming contract
       # release.yml's build-macos job uses -- one definition, so a beta
