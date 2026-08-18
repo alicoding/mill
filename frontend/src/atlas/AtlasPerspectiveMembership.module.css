@@ -1,7 +1,9 @@
+/* Inline within the calm page's own property strip (goal 0106 slice
+   B, AtlasCardPropertyStrip.tsx) -- no standalone-row margin, it's one
+   more flex item in that row, not its own line. */
 .row {
     display: flex;
     align-items: center;
     flex-wrap: wrap;
     gap: var(--base-size-4);
-    margin-block: var(--base-size-8);
 }

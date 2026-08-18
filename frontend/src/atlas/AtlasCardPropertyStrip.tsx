@@ -5,11 +5,16 @@ import type { Card, Kind } from '../../bindings/github.com/alicoding/mill/intern
 import { freshnessDotColor } from './atlasCardPresentation'
 import { statusFieldOf } from './atlasCardPageContent'
 import { formatUpdated } from '../shared/inventorySort'
+import { AtlasPerspectiveMembership } from './AtlasPerspectiveMembership'
 import styles from './AtlasCardPage.module.css'
 
 // The calm page's own compact property strip (goal 0106 slice B
-// contract item 3): kind label · status as a chip · freshness dot, one
-// row, small type, no boxes -- directly under the title.
+// contract item 3): kind label · status as a chip · freshness dot ·
+// perspective membership (ADR-0041, goal 0095 slice 2), one row, small
+// type, no boxes -- directly under the title. Perspective membership
+// renders nothing of its own when the space has adopted none (its own
+// early return), so it never adds a section to a title-only card's
+// otherwise-empty page.
 //
 // Status is a chip only when the displayed card's Kind declares the
 // "existing status control" (statusFieldOf, atlasCardPageContent.ts) --
@@ -85,6 +90,8 @@ export function AtlasCardPropertyStrip({ card, kind, fields, onFieldsChange, onF
           aria-label={freshnessLabel}
         />
       )}
+
+      <AtlasPerspectiveMembership cardID={card.ID} />
     </div>
   )
 }
