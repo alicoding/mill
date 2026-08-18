@@ -70,7 +70,13 @@ func TestStart_EchoCapture(t *testing.T) {
 	if h.PGID() != startedPGID {
 		t.Fatalf("PGID() = %d, want %d (same as OnStarted)", h.PGID(), startedPGID)
 	}
-	if h.LastOutputAt().Before(before) {
+	// Slew tolerance: the writer stamps wall-clock time (UnixNano
+	// strips the monotonic reading), and NTP slew on a busy runner can
+	// step the wall clock backwards by microseconds between `before`
+	// and the stamp -- a 64us regression failed this exact assertion
+	// in CI once. The property is "stamped at output time", not
+	// nanosecond ordering.
+	if h.LastOutputAt().Before(before.Add(-100 * time.Millisecond)) {
 		t.Fatalf("LastOutputAt() = %v, want at/after %v", h.LastOutputAt(), before)
 	}
 }
