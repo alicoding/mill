@@ -185,9 +185,14 @@ test('Update-channel preference saves, explains the restart, and survives a relo
     await page.goto(`${server.baseURL}/`)
     await page.getByRole('link', { name: 'Settings' }).click()
 
-    // Outbound proxy (goal 0123): invalid URL surfaces the validation
-    // error; a valid one saves with the restart note and survives a
-    // reload alongside the channel preference.
+    // Outbound proxy (goal 0123): Auto is the default with no URL
+    // field; Manual reveals it (invalid URL surfaces the validation
+    // error, a valid one saves with the restart note); the choice
+    // survives a reload alongside the channel preference.
+    const modeSelect = page.getByTestId('proxy-mode-select')
+    await expect(modeSelect).toHaveValue('auto')
+    await expect(page.getByTestId('proxy-url-input')).toHaveCount(0)
+    await modeSelect.selectOption('manual')
     const proxyInput = page.getByTestId('proxy-url-input')
     await proxyInput.fill('not a url')
     await page.getByTestId('proxy-url-save').click()
@@ -204,6 +209,8 @@ test('Update-channel preference saves, explains the restart, and survives a relo
     await page.reload()
     await page.getByRole('link', { name: 'Settings' }).click()
     await expect(page.getByTestId('update-channel-select')).toHaveValue('beta')
+    await expect(page.getByTestId('proxy-mode-select')).toHaveValue('manual')
+    await expect(page.getByTestId('proxy-url-input')).toHaveValue('http://proxy.example.com:8080')
 
     await page.close()
   } finally {

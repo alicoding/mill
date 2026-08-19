@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	gproxy "github.com/rapid7/go-get-proxied/proxy"
 	"github.com/wailsapp/wails/v3/pkg/updater"
 	updaterGithub "github.com/wailsapp/wails/v3/pkg/updater/providers/github"
 )
@@ -201,7 +202,7 @@ func (s *SettingsService) OutboundProxyURL() string {
 // SetOutboundProxyURL validates and persists the proxy URL; "" clears.
 func (s *SettingsService) SetOutboundProxyURL(raw string) error {
 	raw = strings.TrimSpace(raw)
-	if raw != "" {
+	if raw != "" && raw != proxyModeOff {
 		u, err := url.Parse(raw)
 		if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
 			return fmt.Errorf("the proxy must be an http or https URL, like http://proxy.example.com:8080")
@@ -210,14 +211,30 @@ func (s *SettingsService) SetOutboundProxyURL(raw string) error {
 	return s.store.Set(outboundProxyKey, raw)
 }
 
-// updaterProxyFunc picks the transport proxy: the persisted URL when
-// set, else Go's environment resolution -- so an explicit setting
-// always wins and nothing changes for installs that never set one.
-func updaterProxyFunc(proxyURL string) func(*http.Request) (*url.URL, error) {
-	if proxyURL == "" {
-		return http.ProxyFromEnvironment
+// proxyModeOff is the persisted sentinel for "always connect
+// directly" -- distinct from "" (Auto), which detects the system
+// proxy. Stored in the same key as a manual URL; never a valid URL.
+const proxyModeOff = "off"
+
+// updaterProxyFunc picks the transport proxy by mode (goal 0123):
+// a manual URL always wins; "off" forces direct; "" (Auto, the
+// default) asks the OS for its configured proxy per request via
+// go-get-proxied (macOS scutil/env; PAC-only setups aren't resolved
+// -- the named gap -- and fall through to environment resolution).
+func updaterProxyFunc(pref string) func(*http.Request) (*url.URL, error) {
+	switch pref {
+	case proxyModeOff:
+		return func(*http.Request) (*url.URL, error) { return nil, nil }
+	case "":
+		provider := gproxy.NewProvider("")
+		return func(req *http.Request) (*url.URL, error) {
+			if p := provider.GetProxy(req.URL.Scheme, req.URL.String()); p != nil {
+				return p.URL(), nil
+			}
+			return http.ProxyFromEnvironment(req)
+		}
 	}
-	fixed, err := url.Parse(proxyURL)
+	fixed, err := url.Parse(pref)
 	if err != nil {
 		return http.ProxyFromEnvironment
 	}
@@ -384,15 +401,18 @@ func trimReleaseNotesForApp(body string) string {
 // and host only -- a proxy URL may carry credentials, which must
 // never enter a paste buffer.
 func (s *SettingsService) UpdateDiagnostics() string {
-	proxy := "none (direct)"
-	if raw := s.OutboundProxyURL(); raw != "" {
+	proxy := "auto (system)"
+	switch raw := s.OutboundProxyURL(); {
+	case raw == proxyModeOff:
+		proxy = "off (direct)"
+	case raw != "":
 		if u, err := url.Parse(raw); err == nil {
 			proxy = "manual: " + u.Host
 		} else {
 			proxy = "manual (unparseable)"
 		}
-	} else if os.Getenv("HTTPS_PROXY") != "" || os.Getenv("https_proxy") != "" {
-		proxy = "environment"
+	case os.Getenv("HTTPS_PROXY") != "" || os.Getenv("https_proxy") != "":
+		proxy = "auto (environment)"
 	}
 	return fmt.Sprintf("Mill %s · channel %s · proxy %s · %s/%s",
 		s.AppVersion(), s.UpdateChannel(), proxy, runtime.GOOS, runtime.GOARCH)
