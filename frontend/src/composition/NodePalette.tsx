@@ -6,6 +6,7 @@ import { Complexity, type NodeType, type Workflow } from '../../bindings/github.
 import { useAppStore } from '../shared/store'
 import { PALETTE_GROUP_ICON, PALETTE_GROUP_LABEL, PALETTE_GROUP_ORDER, paletteGroupFor, shortLabel, type PaletteGroupId } from '../shared/paletteGroups'
 import { filterByComplexity, useShowAdvancedSteps } from './nodeComplexity'
+import { contractLine } from './payloadKinds'
 import styles from './CompositionCanvas.module.css'
 
 interface NodePaletteProps {
@@ -139,7 +140,7 @@ export function NodePalette({ nodeTypes, hasTrigger }: NodePaletteProps) {
                     title={
                       disabled
                         ? t('nodePalette.onlyOneTriggerTitle')
-                        : nt.Label
+                        : `${nt.Label} — ${contractLine(nt)}`
                     }
                     data-testid="palette-item"
                     data-node-type-id={nt.ID}

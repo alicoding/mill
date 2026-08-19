@@ -1,12 +1,29 @@
 import { useTranslation } from 'react-i18next'
-import { IconButton, Stack } from '@primer/react'
+import { IconButton, Stack, Text } from '@primer/react'
 import { ScreenFullIcon } from '@primer/octicons-react'
+import type { TFunction } from 'i18next'
 import type { AttributeDef, NodeType } from '../../bindings/github.com/alicoding/mill/internal/domain/composition/models'
 import type { RunStep } from '../shared/bindings'
 import type { CanvasNode } from './canvasStore'
 import { useHotkeyCapture } from './hotkeyCapture'
 import { NodeExecutionSection } from './NodeExecutionSection'
 import { NodeConfigFields } from './NodeConfigFields'
+import { describeConsumes, describeKind } from './payloadKinds'
+
+// The "Takes: ... -- Produces: ..." sentence's two halves (ADR-0042
+// §4): consumes ["none"] alone reads as "nothing" (describeConsumes's
+// own single-entry branch), a passthrough produce reads as its own
+// fixed phrase, and "none" alongside other consumed kinds gets the
+// "(optional)" suffix -- the payload is accepted but not required.
+function ioContractParts(nt: NodeType, t: TFunction<'composition'>): { consumes: string; produced: string } {
+  const consumes = nt.Consumes ?? []
+  let consumesDesc = describeConsumes(consumes)
+  if (consumes.length > 1 && consumes.some((k) => k === 'none')) {
+    consumesDesc = `${consumesDesc} ${t('nodeInspector.ioContractOptionalSuffix')}`
+  }
+  const produced = nt.Produces.passthrough ? t('nodeInspector.ioContractPassthrough') : describeKind(nt.Produces.kind || 'none')
+  return { consumes: consumesDesc, produced }
+}
 
 interface NodeInspectorProps {
   node: CanvasNode
@@ -51,6 +68,11 @@ export function NodeInspector({ node, workflowId, attrs, nodeType, sameKindNodeT
           onClick={onOpenDetail}
         />
       </Stack>
+      {nodeType && (
+        <Text size="small" data-testid="inspector-io-contract">
+          {t('nodeInspector.ioContract', ioContractParts(nodeType, t))}
+        </Text>
+      )}
       <NodeExecutionSection step={runStep} />
       <NodeConfigFields
         node={node}

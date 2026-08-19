@@ -2,6 +2,7 @@ import type { Edge as RFEdge } from '@xyflow/react'
 import type { NodeType, Node as CompNode, Edge as CompEdge, Note as CompNote } from '../../bindings/github.com/alicoding/mill/internal/domain/composition/models'
 import type { CanvasNode, CanvasNoteNode } from './canvasStore'
 import { CANVAS_NOTE_WIDTH, CANVAS_NOTE_HEIGHT } from './canvasConstants'
+import { contractLine } from './payloadKinds'
 
 // Converts a persisted Workflow's Nodes/Edges (Wails' PascalCase wire
 // shape) into React Flow's own node/edge shape, for loading an existing
@@ -19,7 +20,7 @@ export function toCanvasNodes(nodes: CompNode[] | null, nodeTypes: NodeType[]): 
       id: n.ID,
       type: n.Kind,
       position: { x: n.Position?.X ?? 0, y: n.Position?.Y ?? 0 },
-      data: { nodeTypeID: n.NodeTypeID, kind: n.Kind, label: nt?.Label ?? n.NodeTypeID, output: nt?.Output ?? '', config },
+      data: { nodeTypeID: n.NodeTypeID, kind: n.Kind, label: nt?.Label ?? n.NodeTypeID, output: nt?.Output ?? '', contractLine: nt ? contractLine(nt) : '', config },
     }
   })
 }
