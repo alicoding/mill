@@ -1,0 +1,53 @@
+/* Token-only styling, no Primer component dependency -- the boundary
+   must render when the themed tree itself is what crashed. The token
+   custom properties come from plain CSS imports (main.tsx), which
+   survive any React crash. */
+.shell {
+  max-width: 44rem;
+  margin: 10vh auto 0;
+  padding: 0 1.5rem;
+  color: var(--fgColor-default, #1f2328);
+  background: var(--bgColor-default, #ffffff);
+}
+
+.heading {
+  font-size: 1.25rem;
+  margin: 0 0 0.5rem;
+}
+
+.body {
+  margin: 0 0 1rem;
+  color: var(--fgColor-muted, #59636e);
+}
+
+.details {
+  max-height: 40vh;
+  overflow: auto;
+  padding: 0.75rem;
+  border: 1px solid var(--borderColor-default, #d1d9e0);
+  border-radius: 6px;
+  background: var(--bgColor-muted, #f6f8fa);
+  font-size: 0.75rem;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.button {
+  padding: 0.35rem 0.9rem;
+  border: 1px solid var(--borderColor-default, #d1d9e0);
+  border-radius: 6px;
+  background: var(--bgColor-muted, #f6f8fa);
+  color: var(--fgColor-default, #1f2328);
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.button:hover {
+  background: var(--bgColor-neutral-muted, #eff2f5);
+}

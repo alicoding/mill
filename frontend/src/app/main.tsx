@@ -13,6 +13,7 @@ import '@primer/primitives/dist/css/functional/themes/dark.css'
 import './mill-tokens.css'
 import { ThemeProvider, BaseStyles } from '@primer/react'
 import App from './App'
+import { AppErrorBoundary, CrashProbe } from './AppErrorBoundary'
 import { QuickPanelApp } from './QuickPanelApp'
 import { ApprovalPromptApp } from './ApprovalPromptApp'
 import { COLOR_MODE_STORAGE_KEY } from './theme'
@@ -45,6 +46,9 @@ const initialColorMode = (localStorage.getItem(COLOR_MODE_STORAGE_KEY) as 'light
 // small-floating-second-window surface" consequence, applied.
 const isQuickPanel = window.location.hash === '#/quickpanel'
 const isApprovalPrompt = window.location.hash === '#/approvalprompt'
+// The boundary's own e2e seam (AppErrorBoundary.tsx) -- a deliberate
+// render crash at its own hash route, never reachable from normal UI.
+const isCrashProbe = window.location.hash === '#/millcrashprobe'
 
 // PWA installability (goal 0068): Chrome's install-prompt criteria
 // require a registered service worker with a fetch handler (see
@@ -63,16 +67,20 @@ if (import.meta.env.PROD && 'serviceWorker' in navigator) {
 
 ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
   <React.StrictMode>
-    {isQuickPanel ? (
-      <QuickPanelApp />
-    ) : isApprovalPrompt ? (
-      <ApprovalPromptApp />
-    ) : (
-      <ThemeProvider colorMode={initialColorMode}>
-        <BaseStyles>
-          <App />
-        </BaseStyles>
-      </ThemeProvider>
-    )}
+    <AppErrorBoundary>
+      {isCrashProbe ? (
+        <CrashProbe />
+      ) : isQuickPanel ? (
+        <QuickPanelApp />
+      ) : isApprovalPrompt ? (
+        <ApprovalPromptApp />
+      ) : (
+        <ThemeProvider colorMode={initialColorMode}>
+          <BaseStyles>
+            <App />
+          </BaseStyles>
+        </ThemeProvider>
+      )}
+    </AppErrorBoundary>
   </React.StrictMode>,
 )

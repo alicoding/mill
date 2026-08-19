@@ -65,6 +65,23 @@ Configure recipe, the MCP plane) that composition never reaches into;
 changes there need an ADR, same bar this file's other architecture
 decisions already carry.
 
+**Build the multi-purpose surface, not the hardcoded use case
+(owner-mandated 2026-08-18; the UI-chrome generalization of
+ADR-0035's composition rule).** When a new user-facing affordance is
+needed — a notification, a banner, a pill, a panel, an inline hint —
+ask whether a SECOND consumer is plausible before building. If yes,
+the affordance arrives as a named, reusable surface whose triggering
+use case is merely its first consumer — never a one-off hardcoded to
+that use case, which the next need then overlaps and duplicates. The
+owner's own framing: "always strive for something that can enable us
+to do more things rather than hardcode a use case now." First
+recorded instance: the in-app notice surface (goal 0122 — the
+update-ready relaunch pill and update-available badge are consumers
+of one generic notice channel, not two bespoke update widgets). The
+test mirrors the ADR-0035 one: if a user or future feature could
+plausibly say "I want that, but for a different event/message," it's
+surface-shaped — build the surface.
+
 **Configure entity vs. node-local config — the owner's own framing:
 "business rules on canvas, integration rules in Configure."** A
 `ConfigField`'s value is a Configure-entity reference (`RefKind`,

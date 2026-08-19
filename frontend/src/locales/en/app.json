@@ -198,5 +198,11 @@
     "confirmNote": "Save to Scratchpad",
     "errorTitle": "That didn't work",
     "runFailed": "The workflow run ended with status {{status}}."
+  },
+  "errorBoundary": {
+    "heading": "Mill's interface hit an error",
+    "body": "The app couldn’t draw this screen. Copy the details and share them, then reload.",
+    "copyDetails": "Copy details",
+    "reload": "Reload"
   }
 }
