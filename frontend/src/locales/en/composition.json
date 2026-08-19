@@ -222,6 +222,7 @@
     "ioContractOptionalSuffix": "(optional)",
     "tryItHeading": "Try it",
     "tryItCaption": "Paste page HTML and see the exact Markdown this step would produce.",
+    "tryItEngineNote": "Converted by Mill's built-in converter — the same one every run of this step uses, with no settings to drift.",
     "tryItPlaceholder": "Paste HTML here",
     "tryItConvert": "Convert",
     "tryItError": "Couldn't convert: {{message}}",

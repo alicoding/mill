@@ -52,12 +52,19 @@ export function TryConversionSection({ nodeType }: { nodeType: NodeType | undefi
         {t('nodeInspector.tryItConvert')}
       </Button>
       {result !== null && (
-        <CodeEditor
-          value={result}
-          language="markdown"
-          ariaLabel={t('nodeInspector.tryItResultAriaLabel')}
-          testId="try-markdown-output"
-        />
+        <>
+          <CodeEditor
+            value={result}
+            language="markdown"
+            ariaLabel={t('nodeInspector.tryItResultAriaLabel')}
+            testId="try-markdown-output"
+          />
+          {/* Goal 0115 slice 2, the trust line: what converted this --
+              behavior, not library internals (ux-writing.md). */}
+          <Text size="small" className={styles.muted} data-testid="try-engine-note">
+            {t('nodeInspector.tryItEngineNote')}
+          </Text>
+        </>
       )}
       {error !== null && (
         <Text as="p" size="small" className={styles.error} data-testid="try-convert-error">

@@ -107,6 +107,8 @@ test('the converter step\'s Inspector offers a Try it preview; other steps do no
   await expect(output).toBeVisible()
   await expect(output).toContainText('# Hi')
   await expect(output).toContainText('- a')
+  // Goal 0115 slice 2: the result names what converted it.
+  await expect(panel.getByTestId('try-engine-note')).toContainText('built-in converter')
 
   // The starter trigger node (dropped first, so index 0) has nothing
   // to try -- the section must not render for it.
