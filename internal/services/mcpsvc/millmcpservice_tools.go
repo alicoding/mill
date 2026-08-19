@@ -35,8 +35,11 @@ func (m *MillMCPService) writeEnabled() bool {
 
 func (m *MillMCPService) requireWriteEnabled() error {
 	if !m.writeEnabled() {
+		// Agent-facing copy, same bar as any user copy: never an
+		// internal citation. Writes are default-off by design
+		// (docs/adr/0017 -- the citation lives here, not in the string).
 		return fmt.Errorf("MCP write tools are disabled on this Mill instance -- a human must enable " +
-			"\"Allow MCP clients to import data\" in Mill's own Settings page first (default-off by design, docs/adr/0017)")
+			"\"Allow MCP clients to import data\" in Mill's Settings page first; writes are off by default")
 	}
 	return nil
 }
