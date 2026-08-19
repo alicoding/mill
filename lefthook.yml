@@ -55,7 +55,12 @@ pre-commit:
       # (`!server`-tagged files CI's own -tags=server run never sees),
       # so a local pass here was checking something CI doesn't and a
       # local fail could block a commit CI's real gate would accept.
-      run: golangci-lint run . ./internal/... --build-tags=server
+      # --allow-parallel-runners: this job and gocognit-new run
+      # concurrently under lefthook's parallel executor and share
+      # golangci-lint's lock file -- without the flag whichever starts
+      # second dies with "parallel golangci-lint is running" (hit
+      # repeatedly; previously worked around by re-running the commit).
+      run: golangci-lint run . ./internal/... --build-tags=server --allow-parallel-runners
     - name: gocognit-new
       glob: "*.go"
       # Cognitive complexity gates NEW/CHANGED code only (goal 0109,
@@ -66,7 +71,7 @@ pre-commit:
       # lives in .golangci.yml's gocognit settings; --tests=false is
       # the goal file's own recorded verdict (seeded-example tests
       # dominate the noise; production code is the gate's subject).
-      run: golangci-lint run . ./internal/... --build-tags=server --enable-only gocognit --new-from-merge-base=origin/main --tests=false
+      run: golangci-lint run . ./internal/... --build-tags=server --enable-only gocognit --new-from-merge-base=origin/main --tests=false --allow-parallel-runners
     - name: go-test
       glob: "*.go"
       # Root package (`.`) included alongside ./internal/... -- the
