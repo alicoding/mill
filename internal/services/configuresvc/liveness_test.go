@@ -32,6 +32,9 @@ func TestSeededHTTPRequests_LiveEndpointsRespond(t *testing.T) {
 			if r.ID == httprequest.ExampleOAuth2ID {
 				t.Skip("ships with no Client ID/Secret by design (httprequest.BuiltIn's own doc comment) -- OAuth 2.0 fundamentally can't be demonstrated without a registered app, so this isn't independently live-checkable")
 			}
+			if r.ID == httprequest.ExampleConfluencePageReadID || r.ID == httprequest.ExampleJiraSearchID {
+				t.Skip("ships with the RFC 2606 reserved, guaranteed-non-resolving example.invalid host by design (bring-your-own on-prem host) -- no single public host exists to check liveness against")
+			}
 
 			doc, err := openapispec.Parse([]byte(r.OpenAPISpec))
 			if err != nil {

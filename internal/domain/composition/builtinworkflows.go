@@ -442,7 +442,10 @@ func BuiltInWorkflows() []Workflow {
 	// goal 0099: the clipboard bridge's two seeded routes, same
 	// split-file reasoning.
 	workflows = append(workflows, builtInClipbridgeWorkflows()...)
-	return append(workflows, builtInDocsSyncWorkflows()...)
+	workflows = append(workflows, builtInDocsSyncWorkflows()...)
+	// goal 0111: the Atlassian PAT family's own seeded proof, same
+	// split-file reasoning.
+	return append(workflows, builtInAtlassianWorkflows()...)
 }
 
 // ExampleChildWorkflowID is exported so the parent seed above and any
