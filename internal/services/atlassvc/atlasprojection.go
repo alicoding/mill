@@ -21,6 +21,16 @@ type ProjectionColumn struct {
 	Label string
 }
 
+// ProjectionRow is one List row with the identity in-place editing
+// commits against (UpdateListRow needs the row id, and the current
+// Status must round-trip -- a cell edit must never flip an Expired
+// row back to Active).
+type ProjectionRow struct {
+	ID     string
+	Status string
+	Values map[string]string
+}
+
 // ListProjection is the render-ready view of a projected List.
 type ListProjection struct {
 	ListID string
@@ -29,7 +39,7 @@ type ListProjection struct {
 	// renders the honest missing state instead of erroring the page.
 	Missing bool
 	Columns []ProjectionColumn
-	Rows    []map[string]string
+	Rows    []ProjectionRow
 }
 
 type listProjectionFn func(listID string) (ListProjection, bool)

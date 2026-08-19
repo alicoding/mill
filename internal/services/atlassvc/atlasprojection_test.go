@@ -10,7 +10,7 @@ func wireFakeProjection(a *AtlasService) {
 		return ListProjection{
 			ListID: "list-vendors", Label: "Vendor tracker",
 			Columns: []ProjectionColumn{{Key: "vendor", Label: "Vendor"}, {Key: "status", Label: "Status"}},
-			Rows:    []map[string]string{{"vendor": "Acme", "status": "healthy"}},
+			Rows:    []ProjectionRow{{ID: "row-1", Status: "active", Values: map[string]string{"vendor": "Acme", "status": "healthy"}}},
 		}, true
 	})
 }
@@ -45,8 +45,8 @@ func TestListProjectionCard_CreateValidatesAndReadsLive(t *testing.T) {
 	if proj.Label != "Vendor tracker" || len(proj.Columns) != 2 || len(proj.Rows) != 1 {
 		t.Errorf("projection = %+v, want the wired List view", proj)
 	}
-	if proj.Rows[0]["status"] != "healthy" {
-		t.Errorf("row value = %q, want healthy", proj.Rows[0]["status"])
+	if proj.Rows[0].Values["status"] != "healthy" || proj.Rows[0].ID != "row-1" {
+		t.Errorf("row = %+v, want healthy with its id", proj.Rows[0])
 	}
 }
 

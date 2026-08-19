@@ -73,6 +73,16 @@ export function AddListRow(listID: string, values: { [_ in string]?: string } | 
 }
 
 /**
+ * AddListRowAt inserts the new row at index (goal 0105 part 2: the
+ * boundary-insert affordance -- a row lands exactly where the user
+ * pointed, not only at the end). Any out-of-range index appends,
+ * which is also AddListRow's own behavior.
+ */
+export function AddListRowAt(listID: string, values: { [_ in string]?: string } | null, index: number): $CancellablePromise<list$0.List> {
+    return $Call.ByID(2366446572, listID, values, index);
+}
+
+/**
  * ApplyListRow implements composition.go's applyListRowFn seam
  * (docs/goals/0070's write path): creates a new Active row when no
  * existing row's keyColumn value matches the resolved key, otherwise
