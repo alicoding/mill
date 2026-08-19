@@ -7,6 +7,7 @@ import { kindColorTokens } from './atlasKindColor'
 import { NOTE_HEIGHT, NOTE_WIDTH } from './atlasBoardLayout'
 import type { FreshnessRollup } from './atlasCardPresentation'
 import styles from './AtlasGroupNode.module.css'
+import slotStyles from './AtlasSlotRows.module.css'
 
 export interface AtlasGroupData extends Record<string, unknown> {
   card: Card
@@ -29,6 +30,10 @@ export interface AtlasGroupData extends Record<string, unknown> {
   // center is currently over this frame -- the release target's own
   // live "you'd file into me" affordance.
   dragHighlighted: boolean
+  // A slot-drag is live and this frame is a legal drop target too
+  // (goal 0124 slice 2) -- an area IS a card, and can hold a link the
+  // same way a leaf card can.
+  slotDragHighlight: boolean
   onDrill: (id: string) => void
   onOpenOverlay: (id: string) => void
 }
@@ -46,7 +51,7 @@ export type AtlasGroupRFNode = RFNode<AtlasGroupData>
 // frame's body commits too (the same zoom the header always offers).
 export const AtlasGroupNode = memo(function AtlasGroupNode({ data }: NodeProps<AtlasGroupRFNode>) {
   const { t } = useTranslation('atlas')
-  const { card, childCount, freshness, pulsed, hinted, isSoleSelected, overflow, dragHighlighted, onDrill, onOpenOverlay } = data
+  const { card, childCount, freshness, pulsed, hinted, isSoleSelected, overflow, dragHighlighted, slotDragHighlight, onDrill, onOpenOverlay } = data
   const tokens = kindColorTokens(card.KindID)
 
   const drill = (e: { stopPropagation: () => void }) => {
@@ -67,10 +72,11 @@ export const AtlasGroupNode = memo(function AtlasGroupNode({ data }: NodeProps<A
 
   return (
     <div
-      className={styles.frame}
+      className={`${styles.frame}${slotDragHighlight ? ` ${slotStyles.slotTargetHighlight}` : ''}`}
       data-testid="atlas-group-card"
       data-pulse={pulsed}
       data-drag-highlight={dragHighlighted}
+      data-slot-target={slotDragHighlight}
       role="button"
       tabIndex={0}
       aria-label={t('board.zoomIntoAriaLabel', { title: card.Title })}

@@ -24,7 +24,7 @@ export type BoardCardRFNode = AtlasNoteCardRFNode | AtlasGroupRFNode | AtlasRegi
 export function buildBoardCardNodes({
   cards, allCards, kinds, links, linkKinds, isFree, readOnly, boardWidth, freeMoves, arteries,
   pulsedID, hintedID, hoveredFrameID, isSoleSelected, onOpenOverlay, handleDrill,
-  slotDragSourceID, onSlotAnchorPointerDown,
+  slotDragSourceID, onSlotAnchorPointerDown, hasLegalTargets,
 }: {
   cards: Card[]
   allCards: Card[]
@@ -53,6 +53,11 @@ export function buildBoardCardNodes({
   // card highlights while it's non-null (slice A's all-answer rule).
   slotDragSourceID: string | null
   onSlotAnchorPointerDown: (cardID: string, linkKindID: string, e: ReactPointerEvent) => void
+  // Handle honesty (goal 0124 slice 2): whether at least one other
+  // linkable card exists anywhere on this board -- false disables
+  // every card's own link handle rather than offering a drag that can
+  // never connect.
+  hasLegalTargets: boolean
 }): BoardCardRFNode[] {
   const kindByID = new Map(kinds.map((k) => [k.ID, k]))
   const adjacency = new Map<string, string[]>()
@@ -78,6 +83,7 @@ export function buildBoardCardNodes({
     hinted: hintedID === card.ID,
     isSoleSelected,
     slotDragHighlight: slotDragHighlight(card.ID),
+    hasLegalTargets,
     onCommit: onOpenOverlay,
     onSlotAnchorPointerDown: (linkKindID: string, e: ReactPointerEvent) => onSlotAnchorPointerDown(card.ID, linkKindID, e),
   })
@@ -110,6 +116,11 @@ export function buildBoardCardNodes({
           hinted: hintedID === card.ID,
           isSoleSelected,
           dragHighlighted: hoveredFrameID === card.ID,
+          // A region frame is a legal link target too (goal 0124
+          // slice 2) -- highlight it the same way a leaf card
+          // highlights, so "drop anywhere on a highlighted card"
+          // stays true for areas as well as components.
+          slotDragHighlight: slotDragHighlight(card.ID),
           onDrill: handleDrill,
           onOpenOverlay,
         },

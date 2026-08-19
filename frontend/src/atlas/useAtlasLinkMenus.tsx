@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
 import type { TFunction } from 'i18next'
 import type { Card, Link, LinkKind, Note, Perspective } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 import type { TombstoneResult } from '../../bindings/github.com/alicoding/mill/internal/services/atlassvc/models'
@@ -93,7 +93,17 @@ export function useAtlasLinkMenus({
     })
   }
 
-  const openChangeKindMenu = (linkID: string, pos: { x: number; y: number }) => {
+  // Reused by both the right-click artery menu's Remove link item AND
+  // the edge hover chip's own Delete button (goal 0124 slice 2) --
+  // single source of truth for the action rather than two copies.
+  // useCallback-stable: AtlasBoard's own edges memo takes this as a
+  // dependency, and an unstable reference here rebuilt the whole
+  // edges array on every unrelated AtlasView render.
+  const removeLink = useCallback((linkID: string) => {
+    void AtlasService.DeleteLink(linkID).catch((err) => onError(String(err)))
+  }, [onError])
+
+  const openChangeKindMenu = useCallback((linkID: string, pos: { x: number; y: number }) => {
     setMenu({
       x: pos.x,
       y: pos.y,
@@ -103,7 +113,7 @@ export function useAtlasLinkMenus({
         run: () => void AtlasService.SetLinkKind(linkID, lk.ID).catch((err) => onError(String(err))),
       })),
     })
-  }
+  }, [linkKinds, setMenu, onError])
 
   const openArteryMenu = (sourceID: string, targetID: string, linkID: string, count: number, pos: { x: number; y: number }) => {
     const source = allCards.find((c) => c.ID === sourceID)
@@ -119,7 +129,7 @@ export function useAtlasLinkMenus({
         { id: 'd1', divider: true },
         { id: 'change-kind', label: t('contextMenu.changeLinkKind'), run: () => openChangeKindMenu(linkID, pos) },
         { id: 'edit-label', label: t('contextMenu.editLabel'), run: () => setLabelTarget({ linkID, pos, initialLabel: link?.Label ?? '' }) },
-        { id: 'remove-link', label: t('contextMenu.removeLink'), danger: true, run: () => void AtlasService.DeleteLink(linkID).catch((err) => onError(String(err))) },
+        { id: 'remove-link', label: t('contextMenu.removeLink'), danger: true, run: () => removeLink(linkID) },
       )
     }
     setMenu({ x: pos.x, y: pos.y, items })
@@ -138,5 +148,5 @@ export function useAtlasLinkMenus({
     />
   )
 
-  return { openCardMenu, openArteryMenu, labelPopover }
+  return { openCardMenu, openArteryMenu, labelPopover, removeLink, openChangeKindMenu }
 }

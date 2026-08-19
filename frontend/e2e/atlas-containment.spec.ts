@@ -250,8 +250,10 @@ test('atlas containment: area drawing, marker-box grouping, drag filing, dissolv
     await board.click({ position: { x: kindCheckBox.width * 0.95, y: kindCheckBox.height * 0.3 } })
     await expect(popover).toBeVisible()
     await popover.getByTestId('atlas-placement-kind').click()
-    await expect(popover.getByTestId(`atlas-placement-kind-option-${ATLAS_KIND_TOPIC}`)).toContainText('Something being tracked or worked through.')
-    await popover.getByTestId(`atlas-placement-kind-option-${ATLAS_KIND_TOPIC}`).click()
+    // The kind dropdown portals out of the popover (Primer Overlay,
+    // goal 0124) -- options resolve at page scope now.
+    await expect(page.getByTestId(`atlas-placement-kind-option-${ATLAS_KIND_TOPIC}`)).toContainText('Something being tracked or worked through.')
+    await page.getByTestId(`atlas-placement-kind-option-${ATLAS_KIND_TOPIC}`).click()
     await cancelCreatePopover(popover)
     await expect(popover).not.toBeVisible()
 

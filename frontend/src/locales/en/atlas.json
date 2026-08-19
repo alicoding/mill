@@ -25,6 +25,8 @@
     "linksChip_other": "{{count}} links",
     "moreTile": "+ {{count}} more",
     "slotDragToAdd": "drag to add",
+    "slotDragDisabledTitle": "No cards here can accept a link from this one.",
+    "linkRefusalHint": "Not linked — {{sourceKindLabel}} and {{targetKindLabel}} can't be linked here.",
     "selectionTrayAriaLabel": "Selection actions",
     "selectionCount_one": "{{count}} selected",
     "selectionCount_other": "{{count}} selected",

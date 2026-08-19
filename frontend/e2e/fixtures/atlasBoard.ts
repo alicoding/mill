@@ -11,6 +11,23 @@ export function noteCard(page: Page, title: string): Locator {
   return page.locator(`[data-testid="atlas-note-card"][aria-label="Open ${title}"]`)
 }
 
+// Raw pointer drag (mousedown -> intermediate moves -> mouseup) --
+// useAtlasSlotDrag.ts listens on window pointermove/pointerup, not
+// React Flow's own node-drag or native HTML5 drag-and-drop, so this
+// is what actually exercises it. Promoted out of atlas-slots.spec.ts
+// (testing.md's "a helper used by 2+ spec files MUST be promoted"
+// rule) once atlas-linking.spec.ts needed the same sequence.
+export async function dragBetween(page: Page, from: { x: number; y: number }, to: { x: number; y: number }): Promise<void> {
+  const steps = 12
+  await page.mouse.move(from.x, from.y)
+  await page.mouse.down()
+  await page.waitForTimeout(50)
+  for (let i = 1; i <= steps; i++) {
+    await page.mouse.move(from.x + ((to.x - from.x) * i) / steps, from.y + ((to.y - from.y) * i) / steps)
+  }
+  await page.mouse.up()
+}
+
 export function groupCard(page: Page, title: string): Locator {
   return page.locator('[data-testid="atlas-group-card"]').filter({ has: page.locator(`[aria-label="Zoom into ${title}"]`) })
 }

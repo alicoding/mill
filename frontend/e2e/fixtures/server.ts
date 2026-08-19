@@ -340,3 +340,9 @@ export const GUARDRAIL_REVIEW_MCP_BASE_PORT = 10300
 // atlas-session-restore above, applied to this feature's own writes.
 export const ATLAS_PERSPECTIVES_SERVER_BASE_PORT = 10320
 export const ATLAS_PERSPECTIVES_MCP_BASE_PORT = 10340
+
+// atlas-linking.spec.ts's own dedicated pair (goal 0124 slice 2):
+// drags links between cards and asserts exact edge counts, same
+// own-server-own-ports reasoning as atlas-slots above.
+export const ATLAS_LINKING_SERVER_BASE_PORT = 10440
+export const ATLAS_LINKING_MCP_BASE_PORT = 10460

@@ -1,8 +1,23 @@
+import { useTranslation } from 'react-i18next'
 import { BaseEdge, EdgeLabelRenderer, getStraightPath, useInternalNode } from '@xyflow/react'
 import type { Edge, EdgeProps } from '@xyflow/react'
+import { IconButton } from '@primer/react'
+import { ArrowSwitchIcon, TrashIcon } from '@primer/octicons-react'
 import { floatingEdgeEndpoints } from './atlasEdgeGeometry'
 
-export type AtlasLinkRFEdge = Edge<{ hovered: boolean }, 'atlas-link'>
+export interface AtlasLinkEdgeData extends Record<string, unknown> {
+  hovered: boolean
+  // A non-aggregated (count === 1) edge names one real Link -- only
+  // then does the hover chip's Delete/Change-kind pair make sense (an
+  // aggregated artery has no per-link picker in this slice, same gate
+  // the right-click artery menu already applies).
+  count: number
+  selected: boolean
+  onDelete: () => void
+  onChangeKind: (pos: { x: number; y: number }) => void
+}
+
+export type AtlasLinkRFEdge = Edge<AtlasLinkEdgeData, 'atlas-link'>
 
 // A link drawn as a straight boundary-to-boundary line (React Flow's
 // floating-edges pattern): each end attaches wherever its card
@@ -16,6 +31,7 @@ export type AtlasLinkRFEdge = Edge<{ hovered: boolean }, 'atlas-link'>
 // cross those layers in CSS, so AtlasBoard feeds it in as data.hovered
 // from its own onEdgeMouseEnter/Leave.
 export function AtlasLinkEdge({ id, source, target, style, label, interactionWidth, data }: EdgeProps<AtlasLinkRFEdge>) {
+  const { t } = useTranslation('atlas')
   const sourceNode = useInternalNode(source)
   const targetNode = useInternalNode(target)
   if (!sourceNode || !targetNode) return null
@@ -36,6 +52,10 @@ export function AtlasLinkEdge({ id, source, target, style, label, interactionWid
   )
 
   const [path, labelX, labelY] = getStraightPath({ sourceX: sx, sourceY: sy, targetX: tx, targetY: ty })
+  // The chip only ever names one real Link (see AtlasLinkEdgeData's
+  // own comment) and only while hovered or selected -- never
+  // unconditionally, matching the label's own quiet-by-default rule.
+  const chipVisible = (data?.count ?? 1) === 1 && (data?.hovered || data?.selected)
 
   return (
     <>
@@ -50,6 +70,32 @@ export function AtlasLinkEdge({ id, source, target, style, label, interactionWid
             style={{ transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY}px)` }}
           >
             {label}
+          </div>
+        </EdgeLabelRenderer>
+      )}
+      {data && (
+        <EdgeLabelRenderer>
+          <div
+            className="atlas-link-chip"
+            data-visible={chipVisible ? 'true' : 'false'}
+            style={{ transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY + 18}px)` }}
+          >
+            <IconButton
+              icon={TrashIcon}
+              size="small"
+              variant="invisible"
+              aria-label={t('contextMenu.removeLink')}
+              data-testid="edge-delete"
+              onClick={() => data.onDelete()}
+            />
+            <IconButton
+              icon={ArrowSwitchIcon}
+              size="small"
+              variant="invisible"
+              aria-label={t('contextMenu.changeLinkKind')}
+              data-testid="edge-change-kind"
+              onClick={(e) => data.onChangeKind({ x: e.clientX, y: e.clientY })}
+            />
           </div>
         </EdgeLabelRenderer>
       )}
