@@ -50,6 +50,18 @@ func (a *AtlasService) createLinkWithID(id, fromCardID, toCardID, linkKindID, la
 		a.mu.Unlock()
 		return atlas.Link{}, err
 	}
+	// One relationship per (from, to, kind) -- goal 0124: repeated
+	// link-drags between the same pair inflated the count without
+	// bound. Idempotent, not an error: the drag UX re-fires freely, so
+	// a duplicate returns the existing link unchanged. Reverse
+	// direction stays a distinct link deliberately (directional link
+	// kinds are legitimate).
+	for _, existing := range a.links {
+		if existing.FromCardID == fromCardID && existing.ToCardID == toCardID && existing.LinkKindID == linkKindID {
+			a.mu.Unlock()
+			return existing, nil
+		}
+	}
 	now := time.Now()
 	l.CreatedAt, l.UpdatedAt = now, now
 	a.links = append(a.links, l)
@@ -211,5 +223,22 @@ func (a *AtlasService) Lens(containerID string) atlas.LensSetting {
 	setting := a.lenses[containerID]
 	out := atlas.LensSetting{HiddenKindIDs: make([]string, len(setting.HiddenKindIDs)), Peek: setting.Peek}
 	copy(out.HiddenKindIDs, setting.HiddenKindIDs)
+	return out
+}
+
+// dedupeLinks keeps the first link per (from, to, kind) -- the load-
+// time self-heal for data inflated before creation enforced
+// uniqueness (goal 0124).
+func dedupeLinks(links []atlas.Link) []atlas.Link {
+	seen := make(map[string]bool, len(links))
+	out := links[:0]
+	for _, l := range links {
+		key := l.FromCardID + "\x00" + l.ToCardID + "\x00" + l.LinkKindID
+		if seen[key] {
+			continue
+		}
+		seen[key] = true
+		out = append(out, l)
+	}
 	return out
 }

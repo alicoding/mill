@@ -114,7 +114,11 @@ func (a *AtlasService) restore() {
 	a.kinds = state.Kinds
 	a.linkKinds = state.LinkKinds
 	a.cards = state.Cards
-	a.links = state.Links
+	// Self-heal duplicate links (goal 0124's inflated counts): the
+	// same (from, to, kind) keeps only its first row, same one-time
+	// in-place-migration posture as the RefreshWorkflowID block below
+	// -- persisted lazily by whichever mutation runs next.
+	a.links = dedupeLinks(state.Links)
 	a.notes = state.Notes
 	// One-time in-place migration (the MigrateLegacyEntries posture):
 	// the single RefreshWorkflowID becomes the first attached action

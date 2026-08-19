@@ -132,6 +132,26 @@ Edit/Export/Duplicate actions in the goal-0007 dense-row pattern are
 `variant="invisible"` by design, matching (d) rather than departing
 from it.
 
+## Overlay and interaction primitives come from the adopted machinery
+
+Owner-mandated (goal 0124's dropdown regression is the recorded
+instance, same session as architecture.md's multi-purpose-surface
+rule): anything that floats, anchors, or positions relative to a
+trigger — dropdowns, popovers, menus, tooltips, anchored panels —
+is built on the adopted kit's overlay machinery (Primer's
+ActionMenu/SelectPanel/AnchoredOverlay family, or the canvas
+library's own positioning where the element lives on a canvas),
+NEVER a hand-positioned floating div. Positioning math, collision
+flipping, focus trapping, and dismiss-on-outside-click are
+commodity concerns with a mature owner; hand-rolled lookalikes are
+exactly the class that regresses silently (a detached, mispositioned
+dropdown ships and no assertion catches it). Same test as the
+UI-collection rule above, one level down: before positioning
+anything yourself, check what the kit's overlay family already
+owns. A genuinely canvas-anchored affordance (a handle, an edge
+chip) uses the canvas library's coordinate system — still never
+ad-hoc `position: fixed` guesses.
+
 ## Secure-context-only APIs never get called directly
 
 `navigator.clipboard` and `crypto.randomUUID` exist only in secure
