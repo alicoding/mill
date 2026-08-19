@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Browser } from '@wailsio/runtime'
-import { Button, FormControl, Select, Stack, Text } from '@primer/react'
+import { Button, FormControl, Select, Stack, Text, TextInput } from '@primer/react'
 import { SettingsService } from '../shared/bindings'
 
 // The browser-download escape hatch for when the in-app download is
@@ -36,6 +36,10 @@ function UpdatesSection() {
   const [status, setStatus] = useState('')
   const [updateResult, setUpdateResult] = useState<UpdateResult | null>(null)
   const [installState, setInstallState] = useState<InstallState>('idle')
+  const [proxyUrl, setProxyUrl] = useState('')
+  // 'saved' | an error message | '' -- one slot, the two success/error
+  // renders split on the literal.
+  const [proxyNote, setProxyNote] = useState('')
   const [installError, setInstallError] = useState('')
   const [channelPref, setChannelPref] = useState('')
   const [channelSaved, setChannelSaved] = useState(false)
@@ -44,6 +48,7 @@ function UpdatesSection() {
     SettingsService.AppVersion().then(setAppVersion).catch(console.error)
     SettingsService.UpdateChannel().then((c) => setChannel(c as Channel)).catch(console.error)
     SettingsService.UpdateChannelPreference().then(setChannelPref).catch(console.error)
+    SettingsService.OutboundProxyURL().then(setProxyUrl).catch(console.error)
   }, [])
 
   const saveChannelPref = (pref: string) => {
@@ -70,6 +75,13 @@ function UpdatesSection() {
       })
       .catch((err) => setStatus(String(err)))
       .finally(() => setChecking(false))
+  }
+
+  const saveProxy = () => {
+    const value = proxyUrl.trim()
+    SettingsService.SetOutboundProxyURL(value)
+      .then(() => setProxyNote('saved'))
+      .catch((err) => setProxyNote(String(err)))
   }
 
   const installUpdate = () => {
@@ -118,6 +130,33 @@ function UpdatesSection() {
       {channelSaved && (
         <Text size="small" className={styles.muted} data-testid="update-channel-saved">
           {t('settings.updates.channelSaved')}
+        </Text>
+      )}
+
+      <FormControl>
+        <FormControl.Label>{t('settings.updates.proxyLabel')}</FormControl.Label>
+        <Stack direction="horizontal" gap="condensed" align="center">
+          <TextInput
+            size="small"
+            value={proxyUrl}
+            onChange={(e) => setProxyUrl(e.target.value)}
+            placeholder={t('settings.updates.proxyPlaceholder')}
+            aria-label={t('settings.updates.proxyLabel')}
+            data-testid="proxy-url-input"
+          />
+          <Button size="small" onClick={saveProxy} data-testid="proxy-url-save">
+            {t('settings.updates.proxySave')}
+          </Button>
+        </Stack>
+        <FormControl.Caption>{t('settings.updates.proxyCaption')}</FormControl.Caption>
+      </FormControl>
+      {proxyNote && (
+        <Text
+          size="small"
+          className={proxyNote === 'saved' ? styles.muted : styles.error}
+          data-testid={proxyNote === 'saved' ? 'proxy-saved-note' : 'proxy-error'}
+        >
+          {proxyNote === 'saved' ? t('settings.updates.proxySaved') : proxyNote}
         </Text>
       )}
 

@@ -296,6 +296,13 @@ export function OpenMainWindow(view: string): $CancellablePromise<void> {
 }
 
 /**
+ * OutboundProxyURL returns the persisted proxy URL ("" = none).
+ */
+export function OutboundProxyURL(): $CancellablePromise<string> {
+    return $Call.ByID(2531635901);
+}
+
+/**
  * PendingMCPWrites lists MCP writes currently awaiting a human
  * decision (millmcpservice_approval.go, docs/adr/0032).
  */
@@ -455,6 +462,13 @@ export function SetMCPWriteApprovalRequired(required: boolean): $CancellableProm
  */
 export function SetMCPWriteEnabled(enabled: boolean): $CancellablePromise<void> {
     return $Call.ByID(213255560, enabled);
+}
+
+/**
+ * SetOutboundProxyURL validates and persists the proxy URL; "" clears.
+ */
+export function SetOutboundProxyURL(raw: string): $CancellablePromise<void> {
+    return $Call.ByID(3212807981, raw);
 }
 
 /**
