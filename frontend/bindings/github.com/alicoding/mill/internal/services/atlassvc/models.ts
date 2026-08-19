@@ -216,10 +216,34 @@ export interface ImportFolderSuggestionsRequest {
 }
 
 /**
+ * ListProjection is the render-ready view of a projected List.
+ */
+export interface ListProjection {
+    "ListID": string;
+    "Label": string;
+
+    /**
+     * Missing reports an id that no longer resolves -- the card
+     * renders the honest missing state instead of erroring the page.
+     */
+    "Missing": boolean;
+    "Columns": ProjectionColumn[] | null;
+    "Rows": ({ [_ in string]?: string } | null)[] | null;
+}
+
+/**
  * OfferedAction is one workflow declared for the matched Integration.
  */
 export interface OfferedAction {
     "WorkflowID": string;
+    "Label": string;
+}
+
+/**
+ * ProjectionColumn is one List column's identity for rendering.
+ */
+export interface ProjectionColumn {
+    "Key": string;
     "Label": string;
 }
 

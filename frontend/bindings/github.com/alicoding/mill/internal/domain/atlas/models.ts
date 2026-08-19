@@ -54,6 +54,16 @@ export interface Card {
     "Source": string;
 
     /**
+     * ProjectionListID makes this card a live, read-only TABLE
+     * projection of a Configure List (goal 0105): the board unit is a
+     * view of the entity, never a data copy -- edits flow only through
+     * the List's own guarded write paths. omitempty: a non-projection
+     * card's JSON stays byte-identical to pre-field data (persisted
+     * stores and seed fingerprints untouched).
+     */
+    "ProjectionListID"?: string;
+
+    /**
      * MirrorPath is an optional local file path this card's content is
      * synced to -- empty until a refresh has actually run once.
      */

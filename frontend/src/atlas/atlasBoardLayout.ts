@@ -214,6 +214,10 @@ export function computeAutoArrangeLayout(
     if (isGroupCard(allCards, card)) {
       const { size } = computeGroupFrameLayout(allCards, card.ID)
       place(card.ID, size.width, size.height)
+    } else if (card.ProjectionListID) {
+      // A table projection packs at its real rendered footprint --
+      // note-sized packing would overlap its neighbors (goal 0105).
+      place(card.ID, TABLE_WIDTH, TABLE_HEIGHT)
     } else {
       place(card.ID, NOTE_WIDTH, NOTE_HEIGHT)
     }
@@ -221,3 +225,9 @@ export function computeAutoArrangeLayout(
 
   return { boxes }
 }
+
+// The List → table projection's Free-mode footprint (goal 0105): wide
+// enough for a few real columns, tall enough for ~6 rows before the
+// inner scroll takes over.
+export const TABLE_WIDTH = 360
+export const TABLE_HEIGHT = 240

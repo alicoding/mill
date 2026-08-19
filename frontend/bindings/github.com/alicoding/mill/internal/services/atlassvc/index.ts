@@ -18,6 +18,8 @@ export type {
     FolderScanEntry,
     FolderScanResult,
     ImportFolderSuggestionsRequest,
+    ListProjection,
     OfferedAction,
+    ProjectionColumn,
     TombstoneResult
 } from "./models.js";

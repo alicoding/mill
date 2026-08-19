@@ -22,6 +22,12 @@ into.
   run them from the card. Workflows can also read and write cards as
   steps (create, update, find, link), and a trigger can fire on card
   changes — the board and the automation layer are one system.
+- **Tables are projections.** "Table from a List" (the board's + Add
+  menu) drops a card that shows a Configure List live, read-only —
+  the List stays the single source of truth, so the table is never
+  stale and edits go through the List's own guarded paths (a
+  workflow's write step, or Configure). One List can appear on any
+  number of boards.
 - **Recognized sources.** A card whose Source URL matches one of your
   configured integrations shows that integration's name beside the
   link, and any workflow declaring "Offer on cards from" that

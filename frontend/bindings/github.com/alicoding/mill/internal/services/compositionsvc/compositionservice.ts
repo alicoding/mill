@@ -209,8 +209,9 @@ export function SetWorkflowDisabled(id: string, disabled: boolean): $Cancellable
  * Integration whose recognized cards offer this workflow as an action
  * (goal 0126, Workflow.OfferOnRequestID's own doc comment). A
  * dedicated setter rather than a wider UpdateWorkflow signature: the
- * offer is workflow metadata edited independently of the graph, same
- * shape as UpdateNotes/UpdateAttributes.
+ * offer is workflow metadata edited independently of the graph, routed
+ * through the mutateWorkflow choke point (UpdatedAt/Seed.Touch/
+ * persist/emit all inherited).
  */
 export function SetWorkflowOffer(workflowID: string, requestID: string): $CancellablePromise<composition$0.Workflow> {
     return $Call.ByID(3085845381, workflowID, requestID);

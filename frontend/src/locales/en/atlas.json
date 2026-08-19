@@ -103,6 +103,9 @@
     "dropError": "Couldn't read the dropped file."
   },
   "create": {
+    "addTable": "Table from a List",
+    "listLabel": "List",
+    "listCaption": "The card shows this List live, read-only — edits go through its own guarded paths.",
     "addButton": "Add",
     "addBeside": "Add beside this card",
     "addInside": "Add inside this card",
@@ -191,6 +194,14 @@
   "offers": {
     "heading": "From this card's source — {{label}}",
     "hint": "Running one attaches it to this card."
+  },
+  "projection": {
+    "tableTag": "table",
+    "noRows": "No rows yet.",
+    "missingList": "The projected List no longer exists — pick another in Configure, or remove this card.",
+    "pageHeading": "Table",
+    "pageCaption": "This table mirrors a List — edits go through workflows or Configure.",
+    "openInConfigure": "Open Lists in Configure"
   },
   "page": {
     "sourceRecognizedTitle": "Matches your integration {{label}}",

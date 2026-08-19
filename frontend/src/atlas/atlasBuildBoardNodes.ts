@@ -1,7 +1,7 @@
 import type { PointerEvent as ReactPointerEvent } from 'react'
 import type { Card, Kind, Link, LinkKind } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 import { childrenOf } from './atlasGrouping'
-import { computeAutoArrangeLayout, computeGroupFrameLayout, isGroupCard, NOTE_HEIGHT, NOTE_WIDTH } from './atlasBoardLayout'
+import { computeAutoArrangeLayout, computeGroupFrameLayout, isGroupCard, NOTE_HEIGHT, NOTE_WIDTH, TABLE_HEIGHT, TABLE_WIDTH } from './atlasBoardLayout'
 import { computeFreshnessRollup } from './atlasCardPresentation'
 import type { AtlasNoteCardRFNode } from './AtlasNoteCardNode'
 import type { AtlasGroupRFNode } from './AtlasGroupNode'
@@ -160,6 +160,21 @@ export function buildBoardCardNodes({
           })
         }
       }
+    } else if (card.ProjectionListID) {
+      // A List projection's full table face (goal 0105); the arrange
+      // packer places it at this same real footprint
+      // (computeAutoArrangeLayout's own projection branch). Inside a
+      // region frame's preview it still renders as a note face with
+      // the table chip -- the frame's child boxes are uniform.
+      nodes.push({
+        id: card.ID,
+        type: 'atlas-table',
+        position,
+        width: TABLE_WIDTH,
+        height: TABLE_HEIGHT,
+        draggable: isFree && !readOnly,
+        data: noteData(card),
+      })
     } else {
       nodes.push({
         id: card.ID,

@@ -82,6 +82,16 @@ export function CardContextEnvelope(cardID: string): $CancellablePromise<string>
 }
 
 /**
+ * CardListProjection resolves a projection card's render data. A
+ * card without a projection returns the zero value (ListID "");
+ * a projection whose List was deleted returns Missing=true with the
+ * stored id, never an error -- the card face owns the honest copy.
+ */
+export function CardListProjection(cardID: string): $CancellablePromise<$models.ListProjection> {
+    return $Call.ByID(390246853, cardID);
+}
+
+/**
  * CardSourceOffer resolves a card's recognition state: whether its
  * Source URL host matches a configured Integration, and which
  * workflows declare that Integration as their offer target.
@@ -199,6 +209,16 @@ export function CreateLinkKind(label: string, description: string): $Cancellable
  */
 export function CreateLinkedFileCard(openCardID: string, path: string, title: string, position: atlas$0.Position | null): $CancellablePromise<atlas$0.Card> {
     return $Call.ByID(3955305419, openCardID, path, title, position);
+}
+
+/**
+ * CreateListProjectionCard lands a new card projecting listID, kinded
+ * and titled like any other card (the projection is a facet, not a
+ * kind). Validates the List resolves at creation -- a projection born
+ * pointing at nothing is an authoring mistake, refused with the fix.
+ */
+export function CreateListProjectionCard(kindID: string, title: string, parentID: string, position: atlas$0.Position | null, listID: string): $CancellablePromise<atlas$0.Card> {
+    return $Call.ByID(3315563497, kindID, title, parentID, position, listID);
 }
 
 /**

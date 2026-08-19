@@ -1,0 +1,49 @@
+/* Token-only styling per the board's conventions. The scroll container
+   owns overflow in BOTH axes so a wide List never widens its card. */
+.scroll {
+  overflow: auto;
+  min-height: 0;
+  flex: 1;
+  border: 1px solid var(--borderColor-default);
+  border-radius: var(--borderRadius-small);
+  background: var(--bgColor-default);
+}
+
+.table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.table th {
+  position: sticky;
+  top: 0;
+  background: var(--bgColor-muted);
+  color: var(--fgColor-muted);
+  text-align: left;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-bottom: 1px solid var(--borderColor-default);
+  white-space: nowrap;
+}
+
+.table td {
+  padding: 3px 8px;
+  border-bottom: 1px solid var(--borderColor-muted);
+  color: var(--fgColor-default);
+  white-space: nowrap;
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.empty,
+.missing {
+  padding: var(--base-size-8);
+  color: var(--fgColor-muted);
+}
+
+.missing {
+  color: var(--fgColor-danger);
+}
