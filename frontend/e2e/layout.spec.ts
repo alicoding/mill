@@ -157,7 +157,9 @@ test('the footer names Mill and its own version, never the framework', async ({ 
   // Regression: the footer showed the Wails SDK version and linked to
   // the Wails docs -- the product must name itself.
   await expect(page.locator('footer')).toContainText(/Mill v\d+\.\d+\.\d+/)
-  await expect(page.locator('footer a[data-wml-openURL]')).toHaveAttribute('data-wml-openURL', 'https://github.com/alicoding/mill')
+  // The Docs link now opens the in-app Docs surface (goal 0125 phase
+  // 1) instead of leaving the app -- still the product naming itself.
+  await expect(page.getByTestId('footer-docs-link')).toBeVisible()
 })
 
 test.describe('tab strip vs build badge', () => {
