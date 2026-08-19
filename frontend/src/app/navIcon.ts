@@ -1,4 +1,5 @@
 import {
+  BookIcon,
   HomeIcon,
   PlugIcon,
   ProjectIcon,
@@ -22,4 +23,5 @@ export const CAPABILITY_ICON: Record<string, Icon> = {
   'capability-configure': PlugIcon,
   'capability-atlas': ProjectIcon,
   'capability-review': ShieldCheckIcon,
+  'capability-docs': BookIcon,
 }

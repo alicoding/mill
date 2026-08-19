@@ -140,13 +140,16 @@ func describeEffect(effect string) string {
 	}
 }
 
-// docPage is one entry in the llms.txt index, in reading order.
-type docPage struct {
-	rel, title, note string
+// DocPage is one entry in the docs index, in reading order -- shared
+// by the llms.txt generator and the in-app Docs surface (docssvc), so
+// nav order and the AI index can never drift apart.
+type DocPage struct {
+	Rel, Title, Note string
 }
 
-func docPages(root string) ([]docPage, error) {
-	order := []docPage{
+// PageIndex is the canonical reading order.
+func PageIndex() []DocPage {
+	return []DocPage{
 		{"start-here/what-is-mill.md", "What is Mill", "the product in three ideas"},
 		{"start-here/install.md", "Install", "release install, source build, where data lives"},
 		{"start-here/first-workflow.md", "Your first workflow", "run the seeded example, then rebuild it"},
@@ -159,8 +162,12 @@ func docPages(root string) ([]docPage, error) {
 		{"agents/connect-mcp.md", "Automate with agents", "connecting over MCP and what agents can do"},
 		{"trust/data-and-safety.md", "Trust, data, and safety", "no phone-home, local data, honest limits"},
 	}
+}
+
+func docPages(root string) ([]DocPage, error) {
+	order := PageIndex()
 	for _, p := range order {
-		if _, err := os.Stat(filepath.Join(root, p.rel)); err != nil {
+		if _, err := os.Stat(filepath.Join(root, p.Rel)); err != nil {
 			return nil, fmt.Errorf("llms index names a missing page: %w", err)
 		}
 	}
@@ -179,7 +186,7 @@ func GenerateLLMSTxt(root string) (string, error) {
 	b.WriteString("> Mill is a desktop app for guardrailed automation: workflows composed from typed steps, run by hotkey/schedule/watcher, with every external effect gated for approval — and a full MCP surface so AI agents can drive it under the same guardrails. Single binary, local data, no phone-home.\n\n")
 	b.WriteString("## Docs\n\n")
 	for _, p := range pages {
-		fmt.Fprintf(&b, "- [%s](%s): %s\n", p.title, p.rel, p.note)
+		fmt.Fprintf(&b, "- [%s](%s): %s\n", p.Title, p.Rel, p.Note)
 	}
 	return b.String(), nil
 }
@@ -194,7 +201,7 @@ func GenerateLLMSFullTxt(root string) (string, error) {
 	var b strings.Builder
 	b.WriteString("# Mill — full documentation\n")
 	for _, p := range pages {
-		raw, err := os.ReadFile(filepath.Join(root, p.rel)) // #nosec G304 -- p.rel comes from the fixed docPages list above, never input
+		raw, err := os.ReadFile(filepath.Join(root, p.Rel)) // #nosec G304 -- p.rel comes from the fixed docPages list above, never input
 		if err != nil {
 			return "", err
 		}

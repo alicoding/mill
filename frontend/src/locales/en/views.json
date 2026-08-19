@@ -322,5 +322,8 @@
     "conditionCaption": "An expression over the step's payload, attributes, and config. Leave empty to always apply.",
     "save": "Save rule",
     "cancel": "Cancel"
+  },
+  "docs": {
+    "navAriaLabel": "Documentation pages"
   }
 }

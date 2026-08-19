@@ -24,6 +24,7 @@ import (
 	"github.com/alicoding/mill/internal/services/compositionsvc"
 	"github.com/alicoding/mill/internal/services/configuresvc"
 	"github.com/alicoding/mill/internal/services/dataevent"
+	"github.com/alicoding/mill/internal/services/docssvc"
 	"github.com/alicoding/mill/internal/services/executionsvc"
 	"github.com/alicoding/mill/internal/services/guardrailsvc"
 	"github.com/alicoding/mill/internal/services/mcpsvc"
@@ -58,6 +59,13 @@ var millUpdateVersion = millVersion
 
 //go:embed all:frontend/dist
 var assets embed.FS
+
+// The in-app Docs surface's content (goal 0125 phase 1): the same
+// userdocs tree the repository publishes and llms.txt indexes,
+// embedded so docs ship inside the binary like the frontend does.
+//
+//go:embed all:userdocs
+var userdocsFS embed.FS
 
 //go:embed build/appicon.png
 var trayIconPNG []byte
@@ -285,6 +293,7 @@ func main() {
 			application.NewService(executionService),
 			application.NewService(settingsService),
 			application.NewService(backupService),
+			application.NewService(docssvc.New(userdocsFS)),
 		},
 		Assets: application.AssetOptions{
 			Handler: application.AssetFileServerFS(assets),

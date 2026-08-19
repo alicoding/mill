@@ -154,7 +154,8 @@
     "activity": "Activity",
     "review": "Review",
     "settings": "Settings",
-    "overview": "Overview"
+    "overview": "Overview",
+    "docs": "Docs"
   },
   "workTabLabel": {
     "workflow": "Workflow",

@@ -23,6 +23,7 @@ import { CommandPalette } from "./CommandPalette";
 import { ShortcutsHelpDialog } from "./ShortcutsHelpDialog";
 import { BuildIdentityBadge } from "./BuildIdentityBadge";
 import { NoticePill } from "./NoticePill";
+import DocsView from "../views/DocsView";
 import { COLOR_MODE_STORAGE_KEY, SIDEBAR_OPEN_STORAGE_KEY } from "./theme";
 import { applyDensity } from "../shared/density";
 import { pageIconFor, pageLabelFor } from './pageMeta'
@@ -444,6 +445,7 @@ function App() {
             {view.kind === 'configure' && <ConfigureView key={view.tab} initialTab={view.tab}/>}
 
             {view.kind === 'atlas' && <AtlasView initialCardID={view.cardID}/>}
+            {view.kind === 'docs' && <DocsView initialPage={view.page}/>}
 
             {view.kind === 'settings' && <SettingsView initialSection={view.section}/>}
 
@@ -479,7 +481,7 @@ function App() {
         </span>
         <span className={styles.rightControls}>
           <NoticePill onOpenUpdates={() => setView({ kind: 'settings', section: 'updates' })} />
-          <a className={styles.docs} data-wml-openURL="https://github.com/alicoding/mill" aria-label={t('shell.docsLinkAriaLabel')}>{t('shell.docsLinkText')}
+          <a className={styles.docs} href="#" onClick={(e) => { e.preventDefault(); setView({ kind: 'docs' }) }} aria-label={t('shell.docsLinkAriaLabel')} data-testid="footer-docs-link">{t('shell.docsLinkText')}
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg>
           </a>
         </span>
