@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from 'react'
-import { ActionList, Button } from '@primer/react'
+import { useRef, useState } from 'react'
+import { ActionList, Button, Overlay } from '@primer/react'
 import { TriangleDownIcon } from '@primer/octicons-react'
 import type { Kind } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 import { kindColorTokens } from './atlasKindColor'
@@ -12,21 +12,25 @@ import styles from './KindPicker.module.css'
 // + its declared one-line Description (muted, truncated), replacing
 // the native <select> everywhere a Kind is chosen.
 //
-// A plain local-state disclosure, deliberately NOT Primer's
-// ActionMenu (which wraps its own AnchoredOverlay): every caller of
-// this component already renders it inside AtlasPlacementPopover's
-// own AnchoredOverlay (a detached-anchor popover), and nesting a
-// SECOND AnchoredOverlay-based component inside the first one crashes
-// on mount -- confirmed live (React error #185, "Maximum update depth
-// exceeded") in AnchoredOverlay's own anchor-ref-to-state sync
-// (`if (anchorRef.current !== anchorElement) setAnchorElement(...)`,
-// @primer/react's AnchoredOverlay.js), which never converges once a
-// second instance of the same pattern sits inside the first one's
-// portal. ActionList/ActionList.Item/LeadingVisual/Description --
-// none of which carry their own overlay -- are still the right list
-// primitive (frontend.md's "check the list family before hand-
-// rolling"); only the disclosure chrome around them is hand-rolled
-// here, and only for this reason.
+// Built on Primer's Overlay (frontend.md's overlay-machinery rule) --
+// goal 0124 slice 2 replaced a hand-rolled position:absolute dropdown
+// here after it clipped itself: rendered inside AtlasPlacementPopover's
+// own AnchoredOverlay, that outer overlay sizes ITSELF to its
+// non-absolute content (the kind chip + title field) and clips/scrolls
+// anything absolutely positioned past that box -- confirmed live, the
+// dropdown's own list was cut to a sliver. Overlay (not the higher-level
+// AnchoredOverlay/ActionMenu, both of which wrap it with their own
+// anchor-ref-to-state sync effect) is deliberate: ActionMenu was tried
+// first and reproduced a confirmed React error #185 infinite-update
+// loop live, every time it opened while nested inside
+// AtlasPlacementPopover's own AnchoredOverlay -- two instances of that
+// same anchor-tracking effect never converge nested in the same tree.
+// Overlay carries none of that tracking: it portals to document.body
+// (escaping the clipping ancestor) and renders at an explicit
+// top/left this component computes itself from its own trigger's
+// rect, still through the adopted kit's real floating-surface
+// machinery (portal, focus trap, dismiss-on-outside-click, Escape)
+// rather than a hand-positioned div.
 export function KindPicker({ kinds, value, onChange, ariaLabel, testId }: {
   kinds: Kind[]
   value: string
@@ -35,28 +39,20 @@ export function KindPicker({ kinds, value, onChange, ariaLabel, testId }: {
   testId?: string
 }) {
   const [open, setOpen] = useState(false)
-  const containerRef = useRef<HTMLDivElement>(null)
+  const [anchorRect, setAnchorRect] = useState<{ top: number; left: number; width: number } | null>(null)
+  const triggerRef = useRef<HTMLButtonElement>(null)
   const selected = kinds.find((k) => k.ID === value)
 
-  useEffect(() => {
-    if (!open) return
-    const onOutside = (e: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) setOpen(false)
-    }
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setOpen(false)
-    }
-    document.addEventListener('mousedown', onOutside)
-    document.addEventListener('keydown', onKeyDown)
-    return () => {
-      document.removeEventListener('mousedown', onOutside)
-      document.removeEventListener('keydown', onKeyDown)
-    }
-  }, [open])
+  const openMenu = () => {
+    const rect = triggerRef.current?.getBoundingClientRect()
+    if (rect) setAnchorRect({ top: rect.bottom + 4, left: rect.left, width: rect.width })
+    setOpen(true)
+  }
 
   return (
-    <div ref={containerRef} className={styles.container}>
+    <>
       <Button
+        ref={triggerRef}
         block
         trailingVisual={TriangleDownIcon}
         aria-label={ariaLabel}
@@ -64,7 +60,7 @@ export function KindPicker({ kinds, value, onChange, ariaLabel, testId }: {
         aria-expanded={open}
         data-testid={testId}
         className={styles.button}
-        onClick={() => setOpen((o) => !o)}
+        onClick={() => (open ? setOpen(false) : openMenu())}
       >
         {selected ? (
           <span className={styles.selectedLabel}>
@@ -73,8 +69,18 @@ export function KindPicker({ kinds, value, onChange, ariaLabel, testId }: {
           </span>
         ) : ariaLabel}
       </Button>
-      {open && (
-        <div className={styles.menu} role="listbox">
+      {open && anchorRect && (
+        <Overlay
+          role="listbox"
+          top={anchorRect.top}
+          left={anchorRect.left}
+          width="medium"
+          maxHeight="small"
+          returnFocusRef={triggerRef}
+          onEscape={() => setOpen(false)}
+          onClickOutside={() => setOpen(false)}
+          ignoreClickRefs={[triggerRef]}
+        >
           <ActionList selectionVariant="single">
             {kinds.map((k) => (
               <ActionList.Item
@@ -96,8 +102,8 @@ export function KindPicker({ kinds, value, onChange, ariaLabel, testId }: {
               </ActionList.Item>
             ))}
           </ActionList>
-        </div>
+        </Overlay>
       )}
-    </div>
+    </>
   )
 }

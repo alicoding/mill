@@ -94,3 +94,51 @@
 .board :global(.atlas-link-label[data-hovered='true']) {
     opacity: 1;
 }
+
+/* The drop-refusal explanation's own styling (goal 0124 slice 2) --
+   identical values to composition's connectionRefusalHint, kept as a
+   separate rule since the two canvases share no CSS module. */
+.linkRefusalHint {
+    margin-top: 56px;
+    max-width: 320px;
+    padding: var(--base-size-8) var(--base-size-12);
+    background: var(--bgColor-default);
+    border: 1px solid var(--borderColor-danger-emphasis);
+    border-radius: var(--borderRadius-medium);
+    box-shadow: var(--shadow-floating-small, 0 2px 8px rgba(0, 0, 0, 0.12));
+    color: var(--fgColor-danger);
+}
+
+/* The link edge's own hover/selection action chip (goal 0124 slice 2,
+   the draw.io convention): two icon buttons at the edge midpoint,
+   offset below the kind label so the two never overlap. Hidden by
+   default/pointer-events none (matching .atlas-link-label's own
+   swallow-nothing default) so it never intercepts a click meant for
+   whatever's underneath; re-enabled only while visible. */
+.board :global(.atlas-link-chip) {
+    position: absolute;
+    z-index: 1000;
+    /* Always none, even while visible -- the edge's own hover/click
+       hit region (BaseEdge's interactionWidth) runs directly under
+       this chip's own padding, and an auto value here (even just on
+       the container, buttons excluded) silently ate every pointer
+       event meant for the edge underneath, including its own hover
+       that would otherwise clear this chip. Only the two buttons
+       opt back in below. */
+    pointer-events: none;
+    display: flex;
+    gap: 2px;
+    padding: 2px;
+    background: var(--bgColor-default);
+    border: 1px solid var(--borderColor-default);
+    border-radius: var(--borderRadius-medium);
+    box-shadow: var(--shadow-floating-small, 0 2px 8px rgba(0, 0, 0, 0.12));
+    opacity: 0;
+    transition: opacity 0.12s;
+}
+.board :global(.atlas-link-chip[data-visible='true']) {
+    opacity: 1;
+}
+.board :global(.atlas-link-chip[data-visible='true'] button) {
+    pointer-events: auto;
+}

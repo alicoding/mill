@@ -4,15 +4,19 @@ import type { Locator, Page } from '@playwright/test'
 // legibility" rider, frontend/src/atlas/KindPicker.tsx) replaced every
 // bare native <select> a Kind was chosen through -- including
 // AtlasCreateMenu.tsx's own (slice A5 rider (c)) -- with a rich
-// local-state disclosure. This opens the picker button and clicks the
-// option by its stable seeded kind id (KindPicker's own
-// `${testId}-option-${kindID}` testid), scoped within `container`
-// since the option list renders in place, not through a portal.
+// disclosure. This opens the picker button and clicks the option by
+// its stable seeded kind id (KindPicker's own
+// `${testId}-option-${kindID}` testid). The trigger click stays scoped
+// to `container`; the option click is resolved against the whole page
+// (goal 0124 slice 2 rebuilt the option list on Primer's Overlay,
+// which portals to document.body -- outside `container`'s own DOM
+// subtree whenever container is a popover/dialog, not the page root).
 // testId defaults to the placement popover's own instance (the most
 // common caller); AtlasCreateMenu's instance passes 'atlas-create-kind'.
 export async function selectKind(container: Locator | Page, kindID: string, testId = 'atlas-placement-kind'): Promise<void> {
   await container.getByTestId(testId).click()
-  await container.getByTestId(`${testId}-option-${kindID}`).click()
+  const page = typeof (container as Locator).page === 'function' ? (container as Locator).page() : (container as Page)
+  await page.getByTestId(`${testId}-option-${kindID}`).click()
 }
 
 // internal/domain/atlas/builtin.go's own stable seeded kind ids.

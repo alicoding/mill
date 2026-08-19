@@ -1,5 +1,5 @@
 import { chromium, expect, test } from '@playwright/test'
-import type { Locator, Page } from '@playwright/test'
+import type { Locator } from '@playwright/test'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
@@ -11,7 +11,7 @@ import {
 } from './fixtures/server'
 import { contextMenu } from './fixtures/contextMenu'
 import { ATLAS_KIND_TOPIC, selectKind } from './fixtures/kindPicker'
-import { clickCorner, closeCard, noteCard, openCard, submitCreatePopover, zoomAllTheWayOut } from './fixtures/atlasBoard'
+import { clickCorner, closeCard, dragBetween, noteCard, openCard, submitCreatePopover, zoomAllTheWayOut } from './fixtures/atlasBoard'
 
 // Atlas typed link slots (goal 0081 slice A4, relocated by goal 0106
 // contract item 1): the card page's own slot-row block, slot-drag from
@@ -35,23 +35,6 @@ import { clickCorner, closeCard, noteCard, openCard, submitCreatePopover, zoomAl
 // (atlasservice_share_test.go) plus a manual desktop-mode check,
 // same layering testing.md's manual-only registry already documents
 // for other native-OS-only paths.
-
-// Raw pointer drag (mousedown -> intermediate moves -> mouseup) --
-// useAtlasSlotDrag.ts listens on window pointermove/pointerup, not
-// React Flow's own node-drag or native HTML5 drag-and-drop, so
-// Playwright's page.mouse sequence (the same technique atlas-
-// containment.spec.ts's own dragBetween established for the Area
-// tool's marquee) is what actually exercises it.
-async function dragBetween(page: Page, from: { x: number; y: number }, to: { x: number; y: number }): Promise<void> {
-  const steps = 12
-  await page.mouse.move(from.x, from.y)
-  await page.mouse.down()
-  await page.waitForTimeout(50)
-  for (let i = 1; i <= steps; i++) {
-    await page.mouse.move(from.x + ((to.x - from.x) * i) / steps, from.y + ((to.y - from.y) * i) / steps)
-  }
-  await page.mouse.up()
-}
 
 // The seeded space carries only one link kind (relates-to,
 // builtin.go), so a card's own slot-row block on its page always has

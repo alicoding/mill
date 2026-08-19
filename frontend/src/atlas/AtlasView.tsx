@@ -350,7 +350,6 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
     file.text().then(importConfirm.requestImport).catch((err) => setImportError(String(err)))
   }
 
-
   const createCard = async (containment: 'sibling' | 'child', kindID: string, title: string) => {
     const parentID = containment === 'child' ? viewedID : (viewedCard?.ParentID ?? '')
     // A sibling/child that itself holds children renders as a region
@@ -429,6 +428,8 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
           onCardContextMenu={linkMenus.openCardMenu}
           onPaneContextMenu={openPaneMenu}
           onArteryContextMenu={linkMenus.openArteryMenu}
+          onEdgeDeleteLink={linkMenus.removeLink}
+          onEdgeChangeKind={linkMenus.openChangeKindMenu}
           onNoteContextMenu={noteMenu.openNoteMenu}
           onFrameContextMenu={containmentMenus.openFrameMenu}
           onFrameInteriorContextMenu={containmentMenus.openFrameInteriorMenu}

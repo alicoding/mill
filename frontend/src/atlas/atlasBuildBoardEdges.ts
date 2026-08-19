@@ -17,7 +17,10 @@ export function buildBoardEdges(
   arteries: ResolvedBoardEdge[],
   linkKinds: LinkKind[],
   hoveredEdgeID: string | null,
+  selectedEdgeID: string | null,
   t: TFunction<'atlas'>,
+  onDelete: (linkID: string) => void,
+  onChangeKind: (linkID: string, pos: { x: number; y: number }) => void,
 ): AtlasLinkRFEdge[] {
   const linkKindByID = new Map(linkKinds.map((lk) => [lk.ID, lk]))
   return arteries.map((r): AtlasLinkRFEdge => {
@@ -33,7 +36,13 @@ export function buildBoardEdges(
       label: r.count === 1 ? (linkKindByID.get(r.linkKindIDs[0])?.Label ?? '') : t('board.linksChip', { count: r.count }),
       style: { stroke: `var(${tintToken})`, strokeWidth: r.count === 1 ? 1.6 : 2.2, opacity: 0.75 },
       interactionWidth: 8,
-      data: { hovered: hoveredEdgeID === r.id },
+      data: {
+        hovered: hoveredEdgeID === r.id,
+        selected: selectedEdgeID === r.id,
+        count: r.count,
+        onDelete: () => onDelete(r.id),
+        onChangeKind: (pos) => onChangeKind(r.id, pos),
+      },
     }
   })
 }

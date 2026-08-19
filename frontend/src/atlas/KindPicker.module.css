@@ -24,23 +24,3 @@
     white-space: nowrap;
 }
 
-.container {
-    position: relative;
-}
-
-/* The option list's own disclosure chrome (see KindPicker.tsx's own
-   header comment for why this is a plain positioned div rather than
-   an AnchoredOverlay). */
-.menu {
-    position: absolute;
-    top: calc(100% + 4px);
-    left: 0;
-    right: 0;
-    z-index: 10;
-    max-height: 260px;
-    overflow-y: auto;
-    background: var(--bgColor-default);
-    border: 1px solid var(--borderColor-default);
-    border-radius: var(--borderRadius-medium);
-    box-shadow: var(--shadow-floating-large, 0 4px 16px rgba(0, 0, 0, 0.12));
-}

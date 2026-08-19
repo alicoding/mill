@@ -33,6 +33,34 @@ export function computeNoteBoxes(notes: Note[]): { id: string; x: number; y: num
   return notes.map((n) => ({ id: n.ID, x: n.Position.X, y: n.Position.Y, width: STICKY_WIDTH, height: STICKY_HEIGHT }))
 }
 
+// Every card nested ONE level inside a top-level region frame, in the
+// SAME absolute flow-space coordinates topLevelBoxes already uses
+// (goal 0124 slice 2): computeGroupFrameLayout's own child positions
+// are relative to their frame (React Flow's parentId/extent:'parent'
+// convention), so a release point landing visually on a nested card
+// must be translated back to absolute space before it can be told
+// apart from its enclosing frame. Without this, a link-drag release
+// over a nested card's own preview tile resolved to the FRAME's card
+// instead -- the release point fell inside the frame's box (the only
+// box on offer) and never matched the smaller nested tile beneath it.
+export function computeNestedCardBoxes(topLevelBoxes: FrameBox[], allCards: Card[]): FrameBox[] {
+  const boxes: FrameBox[] = []
+  for (const frame of topLevelBoxes) {
+    if (!frame.isFrame) continue
+    for (const child of computeGroupFrameLayout(allCards, frame.id).children) {
+      boxes.push({
+        id: child.card.ID,
+        x: frame.x + child.position.x,
+        y: frame.y + child.position.y,
+        width: child.size.width,
+        height: child.size.height,
+        isFrame: child.variant === 'chip',
+      })
+    }
+  }
+  return boxes
+}
+
 // Select-then-group's own anchor (the multi-select context menu item
 // and the selection tray's Group button/bare-G): the new container's
 // Position is the enclosed members' own CURRENT rendered top-left, not

@@ -162,6 +162,22 @@
     opacity: 1;
 }
 
+/* Handle honesty (goal 0124 slice 2): a board with nothing else to
+   link to keeps the handle in the DOM (recognition) but visibly
+   inert -- reduced opacity even on hover/focus, a not-allowed cursor.
+   Stays hoverable (never pointer-events: none) so its own title
+   tooltip explaining why still fires. */
+.card:hover .linkHandle[data-disabled='true'],
+.card:focus-visible .linkHandle[data-disabled='true'] {
+    opacity: 0.35;
+}
+.linkHandle[data-disabled='true'] {
+    cursor: not-allowed;
+}
+.linkHandle[data-disabled='true']:hover {
+    opacity: 0.35;
+}
+
 /* A ⌘K jump landing on this card (goal 0072 slice B): reduced motion
    swaps the animated ring for a static outline held for the same
    total window (AtlasBoard.tsx's PULSE_MS_REDUCED) instead of

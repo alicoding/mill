@@ -17,7 +17,7 @@ import { AtlasStickyNode } from './AtlasStickyNode'
 import { AtlasLinkEdge } from './AtlasLinkEdge'
 import { resolveBoardEdges } from './atlasLinkResolution'
 import { useAtlasArrange } from './useAtlasArrange'
-import { buildBoardEdges } from './atlasBuildBoardEdges'
+import { useAtlasEdgeInteraction } from './useAtlasEdgeInteraction'
 import { useBoardFocus } from './useBoardFocus'
 import { useAtlasCreation, type AtlasGroupRequest, type AtlasPlacementRequest, type AtlasPromoteRequest } from './useAtlasCreation'
 import { useAtlasAreaDraw } from './useAtlasAreaDraw'
@@ -31,6 +31,7 @@ import { AtlasBoardMinimapButton } from './AtlasBoardMinimapButton'
 import { ThemedMiniMap } from '../shared/ThemedMiniMap'
 import { useAtlasSlotDrag } from './useAtlasSlotDrag'
 import { AtlasSlotDragLine } from './AtlasSlotDragLine'
+import { AtlasLinkRefusalHint } from './AtlasLinkRefusalHint'
 import { buildBoardCardNodes } from './atlasBuildBoardNodes'
 import { buildStickyNodes } from './atlasStickyNodes'
 import { AtlasCreationTray, ATLAS_TOOL_DRAG_MIME, type AtlasCreationTool } from './AtlasCreationTray'
@@ -76,7 +77,7 @@ export interface AtlasFocusRequest {
 // media-query gate AtlasNoteCardNode.module.css's own flip already
 // uses, read here in JS via usePrefersReducedMotion since React Flow's
 // own transition durations are JS options, not CSS.
-function AtlasBoardInner({ cards, allCards, kinds, links, linkKinds, notes, parentID, arrangeRequest, viewedID, focusRequest, onDrill, onOpenOverlay, onFocusHandled, onCardContextMenu, onPaneContextMenu, onArteryContextMenu, onNoteContextMenu, onFrameContextMenu, onFrameInteriorContextMenu, onMultiSelectContextMenu, onDeleteSelection, onGroupSelection, placementRequest, promoteRequest, groupRequest }: {
+function AtlasBoardInner({ cards, allCards, kinds, links, linkKinds, notes, parentID, arrangeRequest, viewedID, focusRequest, onDrill, onOpenOverlay, onFocusHandled, onCardContextMenu, onPaneContextMenu, onArteryContextMenu, onEdgeDeleteLink, onEdgeChangeKind, onNoteContextMenu, onFrameContextMenu, onFrameInteriorContextMenu, onMultiSelectContextMenu, onDeleteSelection, onGroupSelection, placementRequest, promoteRequest, groupRequest }: {
   cards: Card[]
   allCards: Card[]
   kinds: Kind[]
@@ -105,6 +106,9 @@ function AtlasBoardInner({ cards, allCards, kinds, links, linkKinds, notes, pare
   // Right-click on an artery (goal 0075 G4, goal 0081 A4's edge menu):
   // endpoints + its representative link id/count -- count gates the kind/label/remove items to 1.
   onArteryContextMenu: (sourceID: string, targetID: string, linkID: string, count: number, pos: { x: number; y: number }) => void
+  // The edge hover chip's own two actions -- the SAME handlers the right-click artery menu's own items call.
+  onEdgeDeleteLink: (linkID: string) => void
+  onEdgeChangeKind: (linkID: string, pos: { x: number; y: number }) => void
   // Right-click on a note (goal 0081 slice A1): same where/what-only
   // contract as onCardContextMenu -- AtlasView owns Promote/Delete.
   onNoteContextMenu: (noteID: string, pos: { x: number; y: number }) => void
@@ -238,7 +242,7 @@ function AtlasBoardInner({ cards, allCards, kinds, links, linkKinds, notes, pare
 
   // Slot-drag = instant typed link (goal 0081 A4): see useAtlasSlotDrag.ts.
   const slotDrag = useAtlasSlotDrag({
-    topLevelBoxes, noteBoxes, screenToFlowPosition,
+    topLevelBoxes, noteBoxes, allCards, kinds, screenToFlowPosition,
     onLink: (fromCardID, toCardID, linkKindID) => void AtlasService.CreateLink(fromCardID, toCardID, linkKindID, '').catch(console.error),
     onGuidedCreate: creation.openSlotLinkedCreate,
   })
@@ -257,16 +261,20 @@ function AtlasBoardInner({ cards, allCards, kinds, links, linkKinds, notes, pare
   const fileDrop = useAtlasNativeFileDrop({ parentID, topLevelBoxes, screenToFlowPosition, setPulsedID, reduceMotion })
   useAtlasPaste({ topLevelBoxes, screenToFlowPosition, onPasteText: creation.openPasteText })
 
+  // Handle honesty: no kind restricts linking, so zero legal targets means a board with nothing else on it.
+  const hasLegalTargets = renderedIDs.size > 1
+
   const builtNodes = useMemo(() => buildBoardCardNodes({
     cards, allCards, kinds, links, linkKinds, isFree, readOnly, boardWidth, freeMoves, arteries,
     pulsedID, hintedID, hoveredFrameID: dragFiling.hoveredFrameID,
     isSoleSelected: selection.isSoleSelected, onOpenOverlay, handleDrill,
-    slotDragSourceID: slotDrag.dragSourceID, onSlotAnchorPointerDown: slotDrag.startDrag,
-  }), [cards, allCards, kinds, links, linkKinds, isFree, readOnly, pulsedID, hintedID, onOpenOverlay, handleDrill, freeMoves, arteries, boardWidth, dragFiling.hoveredFrameID, selection.isSoleSelected, slotDrag.dragSourceID, slotDrag.startDrag])
+    slotDragSourceID: slotDrag.dragSourceID, onSlotAnchorPointerDown: slotDrag.startDrag, hasLegalTargets,
+  }), [cards, allCards, kinds, links, linkKinds, isFree, readOnly, pulsedID, hintedID, onOpenOverlay, handleDrill, freeMoves, arteries, boardWidth, dragFiling.hoveredFrameID, selection.isSoleSelected, slotDrag.dragSourceID, slotDrag.startDrag, hasLegalTargets])
 
-  const [hoveredEdgeID, setHoveredEdgeID] = useState<string | null>(null)
-  // Quiet edges (goal 0081 A4): see atlasBuildBoardEdges.ts.
-  const edges = useMemo(() => buildBoardEdges(arteries, linkKinds, hoveredEdgeID, t), [arteries, linkKinds, hoveredEdgeID, t])
+  // Edge hover/selection + the edges it drives: useAtlasEdgeInteraction.ts.
+  const { edges, setHoveredEdgeID, onSelectionChange } = useAtlasEdgeInteraction({
+    arteries, linkKinds, t, onEdgeDeleteLink, onEdgeChangeKind, onNodeSelectionChange: selection.onSelectionChange,
+  })
 
   // Sticky notes (goal 0081 slice A1): built separately from
   // builtNodes above (its own file, atlasStickyNodes.ts) since a note
@@ -323,7 +331,6 @@ function AtlasBoardInner({ cards, allCards, kinds, links, linkKinds, notes, pare
     void fitView({ maxZoom: 1, padding: 0.25, duration: reduceMotion ? 0 : 250 })
     // eslint-disable-next-line react-hooks/exhaustive-deps -- deliberately keyed on viewedID (a new space to fit), not on every node/fitView identity change
   }, [viewedID])
-
 
   useBoardFocus({ focusRequest, renderedIDs, reduceMotion, fitBounds, getNodesBounds, wrapperRef, onFocusHandled, onOpenOverlay, setPulsedID, setHintedID, hintedID })
 
@@ -403,7 +410,7 @@ function AtlasBoardInner({ cards, allCards, kinds, links, linkKinds, notes, pare
         // gesture, sliding the content back under the cursor instead
         // of ever letting it cross the edge.
         autoPanOnNodeDrag={false}
-        onSelectionChange={selection.onSelectionChange}
+        onSelectionChange={onSelectionChange}
         onSelectionContextMenu={selection.onSelectionContextMenu}
         onNodeContextMenu={(e, node) => {
           e.preventDefault()
@@ -460,6 +467,7 @@ function AtlasBoardInner({ cards, allCards, kinds, links, linkKinds, notes, pare
           <AtlasBoardMinimapButton visible={minimap.visible} onToggle={minimap.toggle} ariaLabel={t('board.minimapToggleAriaLabel')} />
         </Controls>
         {minimap.visible && <ThemedMiniMap />}
+        <AtlasLinkRefusalHint hint={slotDrag.refusalHint} />
       </ReactFlow>
       {marqueeStyle && <div className={styles.marquee} data-testid="atlas-area-marquee" style={marqueeStyle} />}
       {slotDrag.dragLine && <AtlasSlotDragLine line={slotDrag.dragLine} />}

@@ -39,6 +39,11 @@ export interface AtlasNoteCardData extends Record<string, unknown> {
   // component only reports where it started.
   slotDragHighlight: boolean
   onSlotAnchorPointerDown: (linkKindID: string, e: ReactPointerEvent) => void
+  // Handle honesty (goal 0124 slice 2): false when this board has no
+  // other card the handle could ever connect to -- the handle stays
+  // in the DOM (recognition: never remove it outright) but renders
+  // disabled rather than inviting a drag that can only ever no-op.
+  hasLegalTargets: boolean
 }
 
 export type AtlasNoteCardRFNode = RFNode<AtlasNoteCardData>
@@ -49,7 +54,7 @@ export type AtlasNoteCardRFNode = RFNode<AtlasNoteCardData>
 // one-level-deep children preview -- the same content either way.
 export const AtlasNoteCardNode = memo(function AtlasNoteCardNode({ data }: NodeProps<AtlasNoteCardRFNode>) {
   const { t } = useTranslation('atlas')
-  const { card, kind, allCards, links, linkKinds, pulsed, hinted, isSoleSelected, onCommit, slotDragHighlight, onSlotAnchorPointerDown } = data
+  const { card, kind, allCards, links, linkKinds, pulsed, hinted, isSoleSelected, onCommit, slotDragHighlight, onSlotAnchorPointerDown, hasLegalTargets } = data
   const tokens = kindColorTokens(card.KindID)
   const fileTag = deriveFileTag(card)
   const dot = freshnessDotColor(card)
@@ -122,11 +127,15 @@ export const AtlasNoteCardNode = memo(function AtlasNoteCardNode({ data }: NodeP
         <span
           className={`${styles.linkHandle} nodrag nopan`}
           data-testid="atlas-note-link-handle"
+          data-disabled={!hasLegalTargets}
           role="button"
           tabIndex={-1}
           aria-label={t('board.slotDragToAdd')}
+          aria-disabled={!hasLegalTargets}
+          title={hasLegalTargets ? undefined : t('board.slotDragDisabledTitle')}
           onPointerDown={(e) => {
             e.stopPropagation()
+            if (!hasLegalTargets) return
             onSlotAnchorPointerDown(defaultLinkKindID, e)
           }}
         />
