@@ -204,5 +204,10 @@
     "body": "The app couldn’t draw this screen. Copy the details and share them, then reload.",
     "copyDetails": "Copy details",
     "reload": "Reload"
+  },
+  "noticePill": {
+    "updateReady": "Update ready — Relaunch",
+    "updateAvailable": "Update available",
+    "dismissAriaLabel": "Dismiss this update notice"
   }
 }

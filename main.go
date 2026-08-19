@@ -310,6 +310,10 @@ func main() {
 	if err := settingssvc.InitUpdater(app.Updater, "alicoding/mill", settingssvc.ResolveUpdateCurrentVersion(effectiveChannel, millUpdateVersion), effectiveChannel, settingsService); err != nil {
 		logger.Error("updater init", "error", err)
 	}
+	// Opt-in daily background check (goal 0122) -- a no-op unless the
+	// user enabled it in Settings; applies at boot like the channel
+	// preference.
+	settingsService.StartAutoUpdateChecks()
 
 	// Global hotkey registration needs the native run loop already
 	// spinning (docs/SPEC.md §2.2) -- ServiceStartup runs before the

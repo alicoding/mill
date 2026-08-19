@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Browser } from '@wailsio/runtime'
 import { writeClipboardText } from '../shared/clipboardWrite'
-import { Button, FormControl, Select, Stack, Text, TextInput } from '@primer/react'
+import { Button, Checkbox, FormControl, Select, Stack, Text, TextInput } from '@primer/react'
 import { SettingsService } from '../shared/bindings'
 
 // The browser-download escape hatch for when the in-app download is
@@ -46,11 +46,13 @@ function UpdatesSection() {
   const [installError, setInstallError] = useState('')
   const [channelPref, setChannelPref] = useState('')
   const [channelSaved, setChannelSaved] = useState(false)
+  const [autoCheck, setAutoCheck] = useState(false)
 
   useEffect(() => {
     SettingsService.AppVersion().then(setAppVersion).catch(console.error)
     SettingsService.UpdateChannel().then((c) => setChannel(c as Channel)).catch(console.error)
     SettingsService.UpdateChannelPreference().then(setChannelPref).catch(console.error)
+    SettingsService.AutoUpdateCheck().then(setAutoCheck).catch(console.error)
     SettingsService.OutboundProxyURL()
       .then((v) => {
         if (v === 'off') setProxyMode('off')
@@ -190,6 +192,20 @@ function UpdatesSection() {
           {proxyNote === 'saved' ? t('settings.updates.proxySaved') : proxyNote}
         </Text>
       )}
+
+      <FormControl>
+        <Checkbox
+          checked={autoCheck}
+          onChange={(e) => {
+            const on = e.target.checked
+            setAutoCheck(on)
+            SettingsService.SetAutoUpdateCheck(on).catch(console.error)
+          }}
+          data-testid="auto-update-check"
+        />
+        <FormControl.Label>{t('settings.updates.autoCheckLabel')}</FormControl.Label>
+        <FormControl.Caption>{t('settings.updates.autoCheckCaption')}</FormControl.Caption>
+      </FormControl>
 
       <Stack direction="horizontal" gap="condensed" align="center">
         <Button size="small" onClick={checkForUpdates} disabled={checking} data-testid="check-for-updates">

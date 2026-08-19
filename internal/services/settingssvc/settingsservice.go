@@ -85,8 +85,15 @@ type SettingsService struct {
 	backupRunner  func(keepN int) (string, error)
 	appVersion    string
 	updateChannel string
-	isolatedData  bool
-	mcpService    *mcpsvc.MillMCPService
+	// The notice pill's state (goal 0122): set by CheckForUpdates when
+	// a newer version is found (respecting the persisted per-version
+	// dismissal) and by a successful DownloadAndInstallUpdate; read by
+	// UpdateNoticeState. In-memory -- both facts are re-derived by the
+	// next check/install after a restart.
+	availableUpdate string
+	updateReady     bool
+	isolatedData    bool
+	mcpService      *mcpsvc.MillMCPService
 
 	// keymap holds command-keybinding OVERRIDES only (goal 0016 --
 	// docs/goals/0016-keymap-system.md), keyed by command id

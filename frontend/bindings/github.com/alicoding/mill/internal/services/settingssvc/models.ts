@@ -66,3 +66,12 @@ export interface UpdateCheckResult {
     "currentVersion": string;
     "notes": string;
 }
+
+/**
+ * UpdateNotice is the pill's whole contract: at most one of the two
+ * states is meaningful, ready winning.
+ */
+export interface UpdateNotice {
+    "ready": boolean;
+    "availableVersion": string;
+}

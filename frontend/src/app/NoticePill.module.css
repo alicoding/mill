@@ -1,0 +1,50 @@
+/* Token-only styling per the footer's existing conventions. */
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  border-radius: 999px;
+  font-size: 11px;
+  line-height: 1;
+}
+
+.ready {
+  border: none;
+  background: var(--bgColor-accent-emphasis);
+  color: var(--fgColor-onEmphasis);
+  padding: 4px 10px;
+  cursor: pointer;
+}
+
+.ready:hover {
+  filter: brightness(1.08);
+}
+
+.available {
+  border: 1px solid var(--borderColor-default);
+  background: var(--bgColor-muted);
+  color: var(--fgColor-default);
+  padding: 2px 4px 2px 10px;
+}
+
+.pillAction {
+  border: none;
+  background: none;
+  color: inherit;
+  font-size: inherit;
+  padding: 2px 0;
+  cursor: pointer;
+}
+
+.dismiss {
+  border: none;
+  background: none;
+  color: var(--fgColor-muted);
+  font-size: 12px;
+  padding: 2px 6px;
+  cursor: pointer;
+}
+
+.dismiss:hover {
+  color: var(--fgColor-default);
+}

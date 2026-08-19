@@ -7,6 +7,8 @@ import {
   type SpawnedServer,
   UPDATES_BETA_MCP_BASE_PORT,
   UPDATES_BETA_SERVER_BASE_PORT,
+  UPDATES_READY_MCP_BASE_PORT,
+  UPDATES_READY_SERVER_BASE_PORT,
   UPDATES_CHANNEL_PREF_MCP_BASE_PORT,
   UPDATES_CHANNEL_PREF_SERVER_BASE_PORT,
   UPDATES_RELEASE_MCP_BASE_PORT,
@@ -159,6 +161,49 @@ test('Beta-channel build shows the primary Update now button and the beta channe
     await expect(card.getByTestId('update-now')).toHaveText('Update now')
     await expect(card).not.toContainText('This copy was built from source')
 
+    // goal 0122: the check also lights the footer notice pill; dismiss
+    // hides it for THIS version and survives a reload.
+    await expect(page.getByTestId('notice-update-available')).toBeVisible()
+    await page.getByTestId('notice-dismiss').click()
+    await expect(page.getByTestId('notice-update-available')).toHaveCount(0)
+    await page.reload()
+    await page.getByRole('link', { name: 'Settings' }).click()
+    await page.getByTestId('check-for-updates').click()
+    await expect(page.getByTestId('update-available-card')).toBeVisible()
+    await expect(page.getByTestId('notice-update-available')).toHaveCount(0)
+
+    // Auto-check opt-in persists (default off).
+    const auto = page.getByTestId('auto-update-check')
+    await expect(auto).not.toBeChecked()
+    await auto.check()
+    await page.reload()
+    await page.getByRole('link', { name: 'Settings' }).click()
+    await expect(page.getByTestId('auto-update-check')).toBeChecked()
+
+    await page.close()
+  } finally {
+    await server?.stop()
+    if (dir) rmSync(dir, { recursive: true, force: true })
+    await browser.close()
+  }
+})
+
+// goal 0122: the ready state renders the accent relaunch pill --
+// forced via the MILL_TEST_UPDATE_READY seam (a real install can't run
+// in e2e; the manual-only registry covers the live swap).
+// eslint-disable-next-line no-empty-pattern -- this test needs `testInfo` (the second arg), not any fixture.
+test('An installed update shows the relaunch pill in the footer', async ({}, testInfo) => {
+  const idx = testInfo.parallelIndex
+  let server: SpawnedServer | undefined
+  let dir: string | undefined
+  const browser = await chromium.launch()
+  try {
+    ;({ server, dir } = await spawnUpdatesServer(idx, UPDATES_READY_SERVER_BASE_PORT, UPDATES_READY_MCP_BASE_PORT, {
+      MILL_TEST_UPDATE_READY: '1',
+    }))
+    const page = await browser.newPage()
+    await page.goto(`${server.baseURL}/`)
+    await expect(page.getByTestId('notice-update-ready')).toContainText('Relaunch')
     await page.close()
   } finally {
     await server?.stop()
