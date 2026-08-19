@@ -614,10 +614,18 @@
 }
 
 /* The offer declaration's view-mode disable wrapper -- a bare fieldset
-   adds browser chrome (border/margin) the header row doesn't want. */
+   adds browser chrome (border/margin) the header row doesn't want.
+   Fixed width beside the growing description; the caption wraps
+   inside it rather than widening the row. */
 .metaOfferFieldset {
   border: none;
   margin: 0;
   padding: 0;
+  width: 320px;
+  flex-shrink: 0;
+}
+
+.metaDescription {
+  flex: 1;
   min-width: 0;
 }

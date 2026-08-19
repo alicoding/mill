@@ -297,7 +297,7 @@
     "hideDetails": "Hide details",
     "addDetails": "Add details",
     "offerLabel": "Offer on cards from",
-    "offerCaption": "Atlas cards whose Source matches this integration list this workflow as a ready action.",
+    "offerCaption": "Cards with a Source on this integration offer this workflow as an action.",
     "viewing": "Viewing",
     "edit": "Edit",
     "saving": "Saving…",

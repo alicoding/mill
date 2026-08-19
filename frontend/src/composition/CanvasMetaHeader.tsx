@@ -118,22 +118,28 @@ export function CanvasMetaHeader({
       </Stack>
       {saveError && <Text as="p" size="small" className={runbookStyles.error}>{saveError}</Text>}
       {descOpen && (
-        <FormControl className={styles.metaDescription}>
-          <FormControl.Label>{t('canvasMetaHeader.description')}</FormControl.Label>
-          <Textarea value={draftDescription} onChange={(e) => onDescriptionChange(e.target.value)} rows={2} block disabled={readOnly} />
-        </FormControl>
-      )}
-      {descOpen && workflow && (
-        // fieldset-disabled in view mode, the inspector's own idiom --
-        // EntityRefField has no disabled prop of its own.
-        <fieldset disabled={readOnly} className={styles.metaOfferFieldset} data-testid="workflow-offer-field">
+        // One horizontal row, not stacked blocks: the collapsible's
+        // height must not grow with the offer field -- the canvas
+        // below loses that height, and canvas interactions are
+        // geometry-sensitive (nodes pushed outside the viewport).
+        <Stack direction="horizontal" gap="normal" align="start">
           <FormControl className={styles.metaDescription}>
-            <FormControl.Label>{t('canvasMetaHeader.offerLabel')}</FormControl.Label>
-            <EntityRefField refKind="request" value={offerValue} onChange={commitOffer} />
-            <FormControl.Caption>{t('canvasMetaHeader.offerCaption')}</FormControl.Caption>
+            <FormControl.Label>{t('canvasMetaHeader.description')}</FormControl.Label>
+            <Textarea value={draftDescription} onChange={(e) => onDescriptionChange(e.target.value)} rows={2} block disabled={readOnly} />
           </FormControl>
-          {offerError && <Text as="p" size="small" className={runbookStyles.error}>{offerError}</Text>}
-        </fieldset>
+          {workflow && (
+            // fieldset-disabled in view mode, the inspector's own
+            // idiom -- EntityRefField has no disabled prop of its own.
+            <fieldset disabled={readOnly} className={styles.metaOfferFieldset} data-testid="workflow-offer-field">
+              <FormControl>
+                <FormControl.Label>{t('canvasMetaHeader.offerLabel')}</FormControl.Label>
+                <EntityRefField refKind="request" value={offerValue} onChange={commitOffer} />
+                <FormControl.Caption>{t('canvasMetaHeader.offerCaption')}</FormControl.Caption>
+              </FormControl>
+              {offerError && <Text as="p" size="small" className={runbookStyles.error}>{offerError}</Text>}
+            </fieldset>
+          )}
+        </Stack>
       )}
     </div>
   )
