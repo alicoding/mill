@@ -85,7 +85,8 @@
       "proxyPlaceholder": "http://proxy.example.com:8080",
       "proxyCaption": "Optional. Update checks and downloads go through this proxy.",
       "proxySave": "Save",
-      "proxySaved": "Saved. Restart Mill to start using this proxy."
+      "proxySaved": "Saved. Restart Mill to start using this proxy.",
+      "copyErrorDetails": "Copy details"
     },
     "dataStewardship": {
       "description": "Mill snapshots your workflow history and settings automatically, and can bundle everything into one file to move to another machine.",
