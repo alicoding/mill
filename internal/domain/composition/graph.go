@@ -39,10 +39,10 @@ func buildGraph(nodes []Node, edges []Edge) (byID map[string]Node, outgoingEdges
 
 	for _, n := range nodes {
 		if n.Kind == KindTerminal && len(outgoingEdges[n.ID]) > 0 {
-			return nil, nil, nil, fmt.Errorf("step %s: a terminal step may not have an outgoing edge", n.ID)
+			return nil, nil, nil, fmt.Errorf("step %s: a terminal step may not have an outgoing edge", stepName(n))
 		}
 		if n.Kind != KindDecision && len(outgoingEdges[n.ID]) > 1 {
-			return nil, nil, nil, fmt.Errorf("step %s: only a Decision step may have more than one outgoing edge", n.ID)
+			return nil, nil, nil, fmt.Errorf("step %s: only a Decision step may have more than one outgoing edge", stepName(n))
 		}
 	}
 
@@ -196,14 +196,33 @@ type Issue struct {
 	NodeID   string
 	EdgeID   string
 	Message  string
+	// WillFail marks a warning-severity issue that is nonetheless
+	// certain to fail the moment the step executes (an unset required
+	// reference): legal to save as a draft, but a run pre-flight
+	// refuses to start on it (executionsvc's runWorkflowStart).
+	WillFail bool
 }
 
 func errorIssue(nodeID, edgeID, msg string) Issue {
 	return Issue{Severity: SeverityError, NodeID: nodeID, EdgeID: edgeID, Message: msg}
 }
 
+// stepName names a node in a user-facing message by its type's label
+// (quoted), never the raw node id -- an id means nothing to a reader,
+// and Issue.NodeID already carries it for programmatic use.
+func stepName(n Node) string {
+	if nt, ok := nodeType(n.NodeTypeID); ok {
+		return fmt.Sprintf("%q", nt.Label)
+	}
+	return n.ID
+}
+
 func warningIssue(nodeID, edgeID, msg string) Issue {
 	return Issue{Severity: SeverityWarning, NodeID: nodeID, EdgeID: edgeID, Message: msg}
+}
+
+func willFailIssue(nodeID, msg string) Issue {
+	return Issue{Severity: SeverityWarning, NodeID: nodeID, Message: msg, WillFail: true}
 }
 
 // ValidateGraph is the save-time half of "a save-time error and a
@@ -253,7 +272,7 @@ func ValidateGraph(nodes []Node, edges []Edge, attrs []AttributeDef) []Issue {
 		// input, one concept (SPEC.md §3.4), not something any other
 		// node kind can stand in for as the entry point.
 		if n, ok := byID[root]; ok && n.Kind != KindTrigger {
-			issues = append(issues, errorIssue(root, "", fmt.Sprintf("step %s: a workflow must start with a Trigger step", root)))
+			issues = append(issues, errorIssue(root, "", fmt.Sprintf("step %s: a workflow must start with a Trigger step", stepName(n))))
 		}
 
 		reachable := map[string]bool{root: true}
@@ -270,7 +289,7 @@ func ValidateGraph(nodes []Node, edges []Edge, attrs []AttributeDef) []Issue {
 		}
 		for _, n := range nodes {
 			if !reachable[n.ID] {
-				issues = append(issues, errorIssue(n.ID, "", fmt.Sprintf("step %s is unreachable from the workflow's starting step", n.ID)))
+				issues = append(issues, errorIssue(n.ID, "", fmt.Sprintf("step %s is unreachable from the workflow's starting step", stepName(n))))
 			}
 		}
 	}
@@ -352,7 +371,7 @@ func validateLeaves(nodes []Node, outgoingEdges map[string][]Edge) []Issue {
 			continue
 		}
 		issues = append(issues, warningIssue(n.ID, "",
-			fmt.Sprintf("step %s: this step's result isn't delivered anywhere -- fine for a test run; add an Apply or Decision step to act on it", n.ID)))
+			fmt.Sprintf("step %s: this step's result isn't delivered anywhere -- fine for a test run; add an Apply or Decision step to act on it", stepName(n))))
 	}
 	return issues
 }
@@ -366,6 +385,13 @@ func validateLeaves(nodes []Node, outgoingEdges map[string][]Edge) []Issue {
 func validateRequiredRefs(nodes []Node) []Issue {
 	var issues []Issue
 	for _, n := range nodes {
+		// A Trigger never executes as a step (it's the entry point; its
+		// exec is nil), so an empty ref on it cannot fail at run time --
+		// system-event's workflow scope is legitimately empty ("all
+		// workflows").
+		if n.Kind == KindTrigger {
+			continue
+		}
 		nt, ok := nodeType(n.NodeTypeID)
 		if !ok {
 			continue
@@ -377,8 +403,8 @@ func validateRequiredRefs(nodes []Node) []Issue {
 			if strings.TrimSpace(n.Config[field.Key]) != "" {
 				continue
 			}
-			issues = append(issues, warningIssue(n.ID, "",
-				fmt.Sprintf("step %s: %s isn't set -- this step isn't configured yet and will fail at run time", n.ID, field.Label)))
+			issues = append(issues, willFailIssue(n.ID,
+				fmt.Sprintf("step %s: %s isn't set -- this step isn't configured yet and will fail at run time", stepName(n), field.Label)))
 		}
 	}
 	return issues
@@ -425,7 +451,7 @@ func validateOutputBindingSecrets(nodes []Node) []Issue {
 		}
 		for fieldName, attrName := range bindings {
 			if secretFields[fieldName] {
-				issues = append(issues, errorIssue(n.ID, "", fmt.Sprintf("step %s: field %q is a secret field and cannot be written to Attribute %q", n.ID, fieldName, attrName)))
+				issues = append(issues, errorIssue(n.ID, "", fmt.Sprintf("step %s: field %q is a secret field and cannot be written to Attribute %q", stepName(n), fieldName, attrName)))
 			}
 		}
 	}

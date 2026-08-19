@@ -150,7 +150,7 @@ func payloadKindIssues(byID map[string]Node, edges []Edge) []Issue {
 		}
 		issues = append(issues, errorIssue(e.Target, e.ID, fmt.Sprintf(
 			"step %s needs %s but its previous step produces %s",
-			e.Target, describeConsumes(nt.Consumes), describeKind(produced))))
+			stepName(target), describeConsumes(nt.Consumes), describeKind(produced))))
 	}
 	return issues
 }

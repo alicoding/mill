@@ -1,6 +1,7 @@
 package configuresvc
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/alicoding/mill/internal/adapters/credential"
@@ -427,5 +428,35 @@ func TestDeleteHTTPRequest_AlsoRemovesJOSEPrivateKey(t *testing.T) {
 	}
 	if err := cfg.SetHTTPRequestJOSEPrivateKey(req.ID, "anything"); err == nil {
 		t.Fatal("SetHTTPRequestJOSEPrivateKey on a deleted request returned nil error, want an error (request no longer exists)")
+	}
+}
+
+// notFoundCredentialStore simulates a device whose keychain has no
+// entry for any request -- the expected first-run state after an
+// import or seed, since secrets never travel with either.
+type notFoundCredentialStore struct{}
+
+func (notFoundCredentialStore) Set(string, string) error    { return nil }
+func (notFoundCredentialStore) Get(string) (string, error)  { return "", credential.ErrNotFound }
+func (notFoundCredentialStore) Delete(string) error         { return nil }
+
+// Regression: a missing keychain entry surfaced as `secret not found in
+// keyring` -- system internals. The error must name the integration by
+// label and say where to fix it.
+func TestResolveHTTPRequest_MissingCredential_ExplainsWhatToFix(t *testing.T) {
+	store := servicetest.NewFakeStore()
+	comp := compositionsvc.NewCompositionService(store)
+	cfg := NewConfigureService(store, comp, notFoundCredentialStore{})
+
+	_, err := cfg.resolveHTTPRequest(httprequest.ExampleConfluencePageReadID)
+	if err == nil {
+		t.Fatal("expected an error for a request whose credential is missing")
+	}
+	msg := err.Error()
+	if !strings.Contains(msg, "no credential saved on this device") || !strings.Contains(msg, "Configure") {
+		t.Errorf("error must be user copy pointing at Configure: %v", err)
+	}
+	if strings.Contains(msg, "keyring") {
+		t.Errorf("error must not leak keychain internals: %v", err)
 	}
 }

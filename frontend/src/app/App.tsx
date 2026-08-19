@@ -481,9 +481,9 @@ function App() {
         </span>
         <span className={styles.rightControls}>
           <NoticePill onOpenUpdates={() => setView({ kind: 'settings', section: 'updates' })} />
-          <a className={styles.docs} href="#" onClick={(e) => { e.preventDefault(); setView({ kind: 'docs' }) }} aria-label={t('shell.docsLinkAriaLabel')} data-testid="footer-docs-link">{t('shell.docsLinkText')}
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg>
-          </a>
+          {/* No external-link arrow: this opens the in-app Docs view,
+              and the arrow glyph promised leaving the app. */}
+          <a className={styles.docs} href="#" onClick={(e) => { e.preventDefault(); setView({ kind: 'docs' }) }} aria-label={t('shell.docsLinkAriaLabel')} data-testid="footer-docs-link">{t('shell.docsLinkText')}</a>
         </span>
       </footer>
     </div>

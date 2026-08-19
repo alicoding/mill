@@ -399,3 +399,31 @@ func TestValidateGraph_MultipleTerminalNodes_Accepted(t *testing.T) {
 		t.Fatalf("ValidateGraph with two terminal nodes returned error: %v", err)
 	}
 }
+
+// Regression: validation issues named steps by raw node id -- an id
+// means nothing to a reader; the message must carry the step's type
+// label (Issue.NodeID keeps the id for programmatic use). Also pins the
+// Trigger exemption: a trigger never executes as a step, so its empty
+// optional ref (system-event's workflow scope) must not warn at all.
+func TestValidateGraph_RequiredRefWarning_NamesStepByLabelAndSkipsTriggers(t *testing.T) {
+	nodes := []Node{
+		{ID: "t1", Kind: KindTrigger, NodeTypeID: "trigger-system-event", Config: map[string]string{}},
+		{ID: "d1", Kind: KindTerminal, NodeTypeID: "decision-outcome", Config: map[string]string{}},
+	}
+	edges := []Edge{{ID: "e1", Source: "t1", Target: "d1"}}
+	var willFail []Issue
+	for _, is := range ValidateGraph(nodes, edges, nil) {
+		if is.WillFail {
+			willFail = append(willFail, is)
+		}
+	}
+	if len(willFail) != 1 {
+		t.Fatalf("WillFail issues = %d, want exactly 1 (the unset Decision ref; the trigger's empty scope must not warn): %v", len(willFail), willFail)
+	}
+	if willFail[0].NodeID != "d1" {
+		t.Errorf("issue NodeID = %q, want d1", willFail[0].NodeID)
+	}
+	if !strings.Contains(willFail[0].Message, `"Record decision"`) || strings.Contains(willFail[0].Message, "d1") {
+		t.Errorf("message must name the step by label, never id: %q", willFail[0].Message)
+	}
+}

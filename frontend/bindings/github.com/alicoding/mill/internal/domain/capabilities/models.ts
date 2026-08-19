@@ -24,6 +24,14 @@ export interface Capability {
      * tab (e.g. "Activity / event log" -> "Activity").
      */
     "NavLabel": string;
+
+    /**
+     * HiddenFromNav keeps a capability out of the sidebar while it stays
+     * a real, navigable view (command palette, footer links, in-app
+     * cross-links). For help-shaped surfaces: reachable when wanted,
+     * never a standing tab competing with the work surfaces.
+     */
+    "HiddenFromNav": boolean;
 }
 
 /**

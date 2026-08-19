@@ -187,7 +187,8 @@
       "kind": "Kind",
       "version": "Version",
       "status": "Status",
-      "output": "Output"
+      "output": "Output",
+      "workflow": "Workflow"
     },
     "draft": "draft",
     "stop": "Stop",
@@ -197,9 +198,11 @@
     "loading": "Loading…",
     "noRecordedRuns": "No runs recorded yet",
     "noRecordedRunsDescription": "Run this workflow to see its history here.",
+    "noRecordedRunsAllDescription": "Run any workflow and every run — including failures — shows up here.",
     "openWorkflow": "Open workflow",
     "noRunsMatchSearch": "No runs match this search.",
-    "runsAriaLabel": "{{label}} runs"
+    "runsAriaLabel": "{{label}} runs",
+    "allRunsAriaLabel": "Recent runs across all workflows"
   },
   "activityView": {
     "sourceLabel": {
@@ -208,9 +211,11 @@
       "mcp-write": "MCP write"
     },
     "heading": "Activity",
-    "subtitle": "Every run this session — triggered automatically (hotkey, schedule, clipboard or file watch) or started by you. Clears when Mill restarts.",
+    "subtitle": "Every recorded run across your workflows — started by you or fired automatically, successes and failures alike.",
+    "sessionEventsHeading": "This session",
+    "sessionEventsDescription": "Hotkey fires and agent write attempts from this session. Clears when Mill restarts.",
     "inputSourceAriaLabel": "Input source",
-    "allWorkflowsLiveFeed": "All workflows (live feed)",
+    "allWorkflowsLiveFeed": "All workflows",
     "filterBySourceAriaLabel": "Filter by source",
     "allSources": "All sources",
     "filterByOutcomeAriaLabel": "Filter by outcome",
@@ -219,8 +224,6 @@
     "failed": "Failed",
     "searchPlaceholder": "Search what ran or its result…",
     "searchAriaLabel": "Search activity",
-    "noActivityYet": "No activity yet",
-    "noActivityYetDescription": "Run a workflow to see it appear here, or pick one above to browse its history.",
     "noActivityMatchesFilter": "No activity matches this filter.",
     "previewAriaLabel": "Preview {{label}}",
     "closeAriaLabel": "Close",
