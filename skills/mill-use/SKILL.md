@@ -38,6 +38,10 @@ enable agent access there.
 
 ## The working loop
 
+0. Tool arguments use the EXPORTED-WORKFLOW JSON envelope: workflow
+   tools take a `json` string in the same shape `export_workflow`
+   returns (steps/edges arrays with `nodeTypeId`), not an inline
+   object — export a seeded workflow once and mirror its shape.
 1. List step types / read the registry resource; check each step's
    Takes/Produces before wiring.
 2. Author or update the workflow (IDs are stable; labels are yours).
