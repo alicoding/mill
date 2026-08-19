@@ -14,7 +14,17 @@
     "boundaries": "depcruise -c .dependency-cruiser.cjs src"
   },
   "dependencies": {
+    "@codemirror/autocomplete": "^6.20.3",
+    "@codemirror/commands": "^6.11.0",
+    "@codemirror/lang-html": "^6.4.12",
+    "@codemirror/lang-json": "^6.0.2",
+    "@codemirror/lang-markdown": "^6.5.2",
+    "@codemirror/language": "^6.12.4",
+    "@codemirror/legacy-modes": "^6.5.3",
+    "@codemirror/state": "^6.7.1",
+    "@codemirror/view": "^6.43.9",
     "@faker-js/faker": "^10.6.0",
+    "@lezer/highlight": "^1.2.3",
     "@primer/octicons-react": "^19.33.0",
     "@primer/primitives": "^11.10.0",
     "@primer/react": "^38.35.1",

@@ -1,0 +1,30 @@
+/* shared/CodeEditor.tsx's own wrapper -- the CodeMirror instance styles
+   itself entirely via codeEditorCore.ts's EditorView.theme (Primer
+   tokens), so this file only carries the loading-state textarea
+   fallback and the mount point's box model. */
+.wrapper {
+    display: block;
+    width: 100%;
+}
+
+.mount {
+    width: 100%;
+}
+
+.fallback {
+    box-sizing: border-box;
+    width: 100%;
+    padding: 6px 8px;
+    font-family: var(--mill-mono);
+    font-size: 12px;
+    background-color: var(--bgColor-default);
+    color: var(--fgColor-default);
+    border: 1px solid var(--borderColor-default);
+    border-radius: 6px;
+    resize: vertical;
+}
+
+.fallback:focus {
+    outline: none;
+    border-color: var(--borderColor-accent-emphasis);
+}

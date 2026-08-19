@@ -7,6 +7,7 @@ import { QueryBuilder } from 'react-querybuilder'
 import 'react-querybuilder/dist/query-builder.css'
 import type { AttributeDef } from '../../bindings/github.com/alicoding/mill/internal/domain/composition/models'
 import { translateToExpr, fieldsFromAttributes } from './ruleTranslate'
+import { CodeConfigField } from './CodeConfigField'
 import styles from '../shared/ListCard.module.css'
 
 // The ruleset node's rules editor (docs/adr/0023). Each rule's
@@ -45,14 +46,33 @@ export function RulesetEditor({ rulesRaw, attrs, onChange }: {
   // One in-progress visual query per rule index (local; the committed
   // value is the translated string stored in each rule's condition).
   const [queries, setQueries] = useState<Record<number, RuleGroupType>>({})
+  // The visual builder above stays the primary editing surface; this is
+  // the power-user JSON fallback for the whole rules array, the same
+  // raw-expression escape hatch already offered per-rule below, applied
+  // once to the array as a whole.
+  const [jsonOpen, setJsonOpen] = useState(false)
   const write = (next: RulesetRule[]) => onChange(JSON.stringify(next))
 
   return (
     <Stack direction="vertical" gap="condensed" data-testid="ruleset-editor">
-      <Heading as="h3" variant="small">{t('rulesetEditor.heading')}</Heading>
+      <Stack direction="horizontal" justify="space-between" align="center">
+        <Heading as="h3" variant="small">{t('rulesetEditor.heading')}</Heading>
+        <Button size="small" variant="invisible" data-testid="ruleset-toggle-json" onClick={() => setJsonOpen((v) => !v)}>
+          {jsonOpen ? t('rulesetEditor.hideJsonEditor') : t('rulesetEditor.editAsJson')}
+        </Button>
+      </Stack>
       <Text size="small" className={styles.muted}>
         {t('rulesetEditor.description')}
       </Text>
+      {jsonOpen && (
+        <CodeConfigField
+          value={rulesRaw}
+          language="json"
+          ariaLabel={t('rulesetEditor.rulesJsonAriaLabel')}
+          testId="ruleset-json-editor"
+          onCommit={onChange}
+        />
+      )}
       {rules.map((r, i) => (
         <Stack key={i} direction="vertical" gap="condensed" className={styles.card}>
           <Stack direction="horizontal" justify="space-between" align="center">

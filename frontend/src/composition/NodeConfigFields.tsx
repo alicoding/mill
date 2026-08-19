@@ -21,6 +21,7 @@ import { WorkflowHoverPreview } from './WorkflowHoverPreview'
 import { NodeGuardrailSection } from './NodeGuardrailSection'
 import { RulesetEditor } from './RulesetEditor'
 import { AIExtractFieldsEditor } from './AIExtractFieldsEditor'
+import { CodeConfigField } from './CodeConfigField'
 import { SchedulePreview } from './SchedulePreview'
 import styles from './CompositionCanvas.module.css'
 import runbookStyles from '../shared/ListCard.module.css'
@@ -294,6 +295,19 @@ export function NodeConfigFields({ node, workflowId, attrs, nodeType, sameKindNo
                 ]
               })()}
             </Select>
+          ) : node.data.nodeTypeID === 'code-execution' && field.Key === 'script' ? (
+            // The literal script CodeMirror can highlight as shell
+            // syntax -- a dedicated field editor hooked in here the
+            // same way AIExtractFieldsEditor/RulesetEditor special-case
+            // their own node type below, kept inline since this is a
+            // single field rather than a multi-field editor.
+            <CodeConfigField
+              value={node.data.config[field.Key] ?? ''}
+              language="shell"
+              ariaLabel={field.Label}
+              testId="code-execution-script"
+              onCommit={(v) => onConfigChange(field.Key, v)}
+            />
           ) : field.Multiline ? (
             <Textarea
               defaultValue={node.data.config[field.Key] ?? ''}

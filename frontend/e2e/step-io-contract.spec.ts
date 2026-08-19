@@ -3,6 +3,7 @@ import { test, expect } from './fixtures/server'
 import { clickCanvasNode } from './fixtures/canvasNode'
 import { activePanel, dragPaletteItemToCanvas } from './fixtures/canvas'
 import { waitForViewportStable } from './fixtures/animation'
+import { fillCodeEditor } from './fixtures/codeEditor'
 
 // Shared worker pool: every test here opens its own fresh, never-saved
 // "New workflow" tab and only reads/asserts on nodes/edges it just
@@ -100,7 +101,7 @@ test('the converter step\'s Inspector offers a Try it preview; other steps do no
   await clickCanvasNode(page, panel, 'Convert HTML to Markdown')
   await expect(panel.getByTestId('try-conversion-section')).toBeVisible()
 
-  await panel.getByTestId('try-html-input').fill('<h1>Hi</h1><ul><li>a</li></ul>')
+  await fillCodeEditor(page, 'try-html-input', '<h1>Hi</h1><ul><li>a</li></ul>')
   await panel.getByTestId('try-convert').click()
   const output = panel.getByTestId('try-markdown-output')
   await expect(output).toBeVisible()
