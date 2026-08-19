@@ -28,6 +28,12 @@
           },
           "type": "array"
         },
+        "OptionColors": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
         "Suggestions": {
           "items": {
             "type": "string"

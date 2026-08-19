@@ -41,7 +41,7 @@ func WireAtlasProjections(atlas *atlassvc.AtlasService, cfg *configuresvc.Config
 		}
 		proj := atlassvc.ListProjection{ListID: listID, Label: label}
 		for _, c := range cols {
-			proj.Columns = append(proj.Columns, atlassvc.ProjectionColumn{Key: c.Key, Label: c.Label})
+			proj.Columns = append(proj.Columns, atlassvc.ProjectionColumn{Key: c.Key, Label: c.Label, Options: c.Options, OptionColors: c.OptionColors})
 		}
 		for _, r := range rows {
 			proj.Rows = append(proj.Rows, atlassvc.ProjectionRow{ID: r.ID, Status: r.Status, Values: r.Values})

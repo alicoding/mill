@@ -210,7 +210,9 @@
     "renameColumnTitle": "Rename column",
     "renameColumnAriaLabel": "Column name",
     "insertColumnAriaLabel": "Insert column here",
-    "insertRowAriaLabel": "Insert row here"
+    "insertRowAriaLabel": "Insert row here",
+    "pillsTag": "pills",
+    "densityToggleTitle": "Switch between grid and status-pill views"
   },
   "page": {
     "sourceRecognizedTitle": "Matches your integration {{label}}",

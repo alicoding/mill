@@ -3,6 +3,12 @@ import { deleteViaPageMenu } from './fixtures/atlasPage'
 import { ATLAS_KIND_DOCUMENT, selectKind } from './fixtures/kindPicker'
 import { openCard } from './fixtures/atlasBoard'
 import { clickRowAction } from './inventoryRow'
+import type { Locator } from '@playwright/test'
+
+// A table card's grid deliberately swallows clicks (cell edits must
+// never commit the card open) -- opening the page goes through the
+// card's title, exactly what a user clicks.
+const tableTitle = (card: Locator) => card.locator('[class*="title"]').first()
 
 // List → table projection (goal 0105 minimal slice): "Table from a
 // List" lands a card that renders the seeded List live and read-only,
@@ -30,7 +36,7 @@ test('a table card projects a List live on the board and its page', async ({ pag
   await expect(tableCard.getByTestId('atlas-projection-table')).toContainText('US')
 
   // The page renders the same table plus the write-path caption.
-  await openCard(page, tableCard)
+  await openCard(page, tableTitle(tableCard))
   const overlay = page.locator('[data-component="atlas-card-overlay"]')
   await expect(overlay).toBeVisible()
   const projection = overlay.getByTestId('atlas-page-projection')
@@ -63,7 +69,7 @@ test('auto-arrange keeps the table face at its real footprint', async ({ page })
   await expect(tableCard.getByTestId('atlas-projection-table')).toContainText('Code')
 
   // Cleanup.
-  await openCard(page, tableCard)
+  await openCard(page, tableTitle(tableCard))
   const overlay = page.locator('[data-component="atlas-card-overlay"]')
   await expect(overlay).toBeVisible()
   await deleteViaPageMenu(page, overlay)
@@ -91,7 +97,7 @@ test('boundary inserts, cell edits, and column rename all work in place on the c
   await page.getByRole('button', { name: 'Create' }).click()
 
   const tableCard = page.getByTestId('atlas-table-card').filter({ hasText: 'ZzE2eProjectionEditList' })
-  await openCard(page, tableCard)
+  await openCard(page, tableTitle(tableCard))
   const overlay = page.locator('[data-component="atlas-card-overlay"]')
   const table = overlay.getByTestId('atlas-projection-table')
   await expect(table).toBeVisible()
@@ -139,4 +145,51 @@ test('boundary inserts, cell edits, and column rename all work in place on the c
   const listRow = page.locator('[data-testid="inventory-row"][data-entity="list"]', { has: page.getByText('ZzE2eProjectionEditList', { exact: true }) })
   await clickRowAction(page, listRow, 'Delete')
   await expect(listRow).toHaveCount(0)
+})
+
+// Status pills (goal 0105 part 3): the seeded tracker's Status column
+// is a typed Options column -- its cell renders as a colored pill, an
+// options cell edits as a select over the declared values, and the
+// pills density tints the row by its status color.
+test('an options column renders pills, edits as a select, and the pills density tints rows', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Atlas' }).click()
+  await page.getByTestId('atlas-add-button').click()
+  await page.getByTestId('atlas-add-table').click()
+  await page.getByTestId('entity-ref-field').selectOption({ label: 'Example: Task tracker' })
+  await selectKind(page, ATLAS_KIND_DOCUMENT, 'atlas-create-kind')
+  await page.getByTestId('atlas-create-title').fill('ZzE2ePillsCard')
+  await page.getByRole('button', { name: 'Create' }).click()
+
+  const tableCard = page.getByTestId('atlas-table-card').filter({ hasText: 'ZzE2ePillsCard' })
+  await expect(tableCard).toBeVisible()
+  // The seeded "Done" value renders as a success pill.
+  const pill = tableCard.getByTestId('atlas-projection-pill').filter({ hasText: 'Done' })
+  await expect(pill).toBeVisible()
+
+  // An options cell edits as a select over the declared values.
+  await pill.click()
+  const select = tableCard.getByTestId('atlas-projection-cell-select')
+  await expect(select).toBeVisible()
+  await select.selectOption('Blocked')
+  await expect(tableCard.getByTestId('atlas-projection-pill').filter({ hasText: 'Blocked' })).toBeVisible()
+
+  // Restore the seeded row's value BEFORE the density toggle -- the
+  // toggle rebuilds the node, and a cell click racing that remount
+  // is its own known roughness, not this test's subject.
+  await tableCard.getByTestId('atlas-projection-pill').filter({ hasText: 'Blocked' }).click()
+  await tableCard.getByTestId('atlas-projection-cell-select').selectOption('Done')
+  await expect(tableCard.getByTestId('atlas-projection-pill').filter({ hasText: 'Done' })).toBeVisible()
+
+  // The density toggle flips to pills and the row picks up its
+  // status tint (a real computed background, not transparent).
+  await tableCard.getByTestId('atlas-table-density-toggle').click()
+  await expect(tableCard.getByTestId('atlas-table-density-toggle')).toContainText('pills')
+  const row = tableCard.getByTestId('atlas-projection-row').first()
+  await expect.poll(async () => row.evaluate((el) => getComputedStyle(el).backgroundColor)).not.toBe('rgba(0, 0, 0, 0)')
+
+  await openCard(page, tableTitle(tableCard))
+  const overlay = page.locator('[data-component="atlas-card-overlay"]')
+  await expect(overlay).toBeVisible()
+  await deleteViaPageMenu(page, overlay)
 })

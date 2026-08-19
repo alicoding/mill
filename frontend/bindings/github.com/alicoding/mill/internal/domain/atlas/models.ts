@@ -64,6 +64,14 @@ export interface Card {
     "ProjectionListID"?: string;
 
     /**
+     * ProjectionDensity picks the projection's render mode: ""/"grid"
+     * is the full grid; "pills" tints each row by its first Options
+     * column's value color (goal 0105 part 3). Same omitempty
+     * discipline as ProjectionListID.
+     */
+    "ProjectionDensity"?: string;
+
+    /**
      * MirrorPath is an optional local file path this card's content is
      * synced to -- empty until a refresh has actually run once.
      */

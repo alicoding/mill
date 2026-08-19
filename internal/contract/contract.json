@@ -63,6 +63,12 @@
               },
               "type": "array"
             },
+            "OptionColors": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
             "Suggestions": {
               "items": {
                 "type": "string"
@@ -360,6 +366,12 @@
               },
               "type": "array"
             },
+            "OptionColors": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
             "Suggestions": {
               "items": {
                 "type": "string"
@@ -516,6 +528,12 @@
               "type": "string"
             },
             "Options": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "OptionColors": {
               "items": {
                 "type": "string"
               },
@@ -1055,6 +1073,12 @@
               "type": "string"
             },
             "Options": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "OptionColors": {
               "items": {
                 "type": "string"
               },

@@ -241,10 +241,15 @@ export interface OfferedAction {
 
 /**
  * ProjectionColumn is one List column's identity for rendering.
+ * Options/OptionColors ride along so an options column renders as a
+ * colored pill (goal 0105 part 3) -- color resolution (explicit else
+ * palette-by-index) is the frontend's one pure function.
  */
 export interface ProjectionColumn {
     "Key": string;
     "Label": string;
+    "Options": string[] | null;
+    "OptionColors": string[] | null;
 }
 
 /**

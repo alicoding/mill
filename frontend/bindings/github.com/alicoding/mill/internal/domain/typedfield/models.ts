@@ -29,6 +29,18 @@ export interface Field {
     "Options": string[] | null;
 
     /**
+     * OptionColors optionally pairs Options by index with a semantic
+     * color name (goal 0105: the select-option-color convergence --
+     * a color belongs to the option's definition). Empty/short slices
+     * are legal: any option without an explicit color auto-assigns
+     * deterministically from the standard palette by index, so the
+     * same field renders identically on every surface. omitempty
+     * keeps color-less fields' JSON byte-identical to pre-field data
+     * (persisted stores and seed fingerprints untouched).
+     */
+    "OptionColors"?: string[] | null;
+
+    /**
      * Suggestions offers non-restrictive autocomplete hints (an HTML5
      * datalist on the frontend) -- unlike Options, any value is still
      * accepted. Only meaningful for TypeText fields today (ADR-0016).

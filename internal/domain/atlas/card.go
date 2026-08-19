@@ -72,6 +72,11 @@ type Card struct {
 	// card's JSON stays byte-identical to pre-field data (persisted
 	// stores and seed fingerprints untouched).
 	ProjectionListID string `json:"ProjectionListID,omitempty"`
+	// ProjectionDensity picks the projection's render mode: ""/"grid"
+	// is the full grid; "pills" tints each row by its first Options
+	// column's value color (goal 0105 part 3). Same omitempty
+	// discipline as ProjectionListID.
+	ProjectionDensity string `json:"ProjectionDensity,omitempty"`
 	// MirrorPath is an optional local file path this card's content is
 	// synced to -- empty until a refresh has actually run once.
 	MirrorPath string
