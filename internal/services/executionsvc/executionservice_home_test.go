@@ -48,10 +48,10 @@ func TestErrorRateFor_ExcludesCancelledAndParkedFromBothCounts(t *testing.T) {
 		{Status: "SUCCESS"},
 		{Status: "SUCCESS"},
 		{Status: "ERROR"},
-		{Status: "CANCELLED"},  // excluded from both, per goal 0014
-		{Status: "PENDING"},    // parked/waiting, excluded until resolved
-		{Status: "ENQUEUED"},   // same
-		{Status: "DELAYED"},    // same
+		{Status: "CANCELLED"}, // excluded from both, per goal 0014
+		{Status: "PENDING"},   // parked/waiting, excluded until resolved
+		{Status: "ENQUEUED"},  // same
+		{Status: "DELAYED"},   // same
 	}
 	got := errorRateFor(runs)
 	if got.SuccessCount != 2 || got.ErrorCount != 1 || got.TotalTerminal != 3 {
@@ -386,6 +386,32 @@ func TestHomeMetrics_AvgDurationAndLastTriggeredAt_WiredFromRealRuns(t *testing.
 		t.Fatalf("RunWorkflow(test): %v", err)
 	}
 	after := time.Now()
+
+	// The flake this pins down (BACKLOG debt 0a): RunWorkflow returns
+	// before the run's completion record is necessarily queryable, so
+	// HomeMetrics sometimes sampled one completed run instead of two.
+	// Wait deterministically for both records to reach a terminal
+	// state before querying.
+	deadline := time.Now().Add(10 * time.Second)
+	for {
+		runs, err := exec.ListRunsForWorkflow(wf.ID)
+		if err != nil {
+			t.Fatalf("ListRunsForWorkflow: %v", err)
+		}
+		completed := 0
+		for _, r := range runs {
+			if !r.CompletedAt.IsZero() {
+				completed++
+			}
+		}
+		if completed >= 2 {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("only %d of 2 runs completed within the wait window", completed)
+		}
+		time.Sleep(50 * time.Millisecond)
+	}
 
 	from := before.Add(-time.Minute).UTC().Format(time.RFC3339)
 	to := after.Add(time.Minute).UTC().Format(time.RFC3339)
