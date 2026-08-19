@@ -1,10 +1,10 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Button, Stack, Text, Textarea } from '@primer/react'
+import { Button, Stack, Text } from '@primer/react'
 import type { NodeType } from '../../bindings/github.com/alicoding/mill/internal/domain/composition/models'
 import { CompositionService } from '../shared/bindings'
+import { CodeEditor } from '../shared/CodeEditor'
 import styles from '../shared/ListCard.module.css'
-import monoStyles from '../shared/monoText.module.css'
 
 // The trust-gap "Try it" preview (docs/goals/0115 slice 1): paste HTML,
 // see the exact Markdown process-html-to-markdown's node execution
@@ -40,21 +40,24 @@ export function TryConversionSection({ nodeType }: { nodeType: NodeType | undefi
     <Stack direction="vertical" gap="condensed" data-testid="try-conversion-section">
       <Text size="small" weight="semibold">{t('nodeInspector.tryItHeading')}</Text>
       <Text size="small" className={styles.muted}>{t('nodeInspector.tryItCaption')}</Text>
-      <Textarea
-        aria-label={t('nodeInspector.tryItPlaceholder')}
-        placeholder={t('nodeInspector.tryItPlaceholder')}
+      <CodeEditor
         value={html}
-        onChange={(e) => setHtml(e.target.value)}
-        rows={6}
-        block
-        className={monoStyles.mono}
-        data-testid="try-html-input"
+        onChange={setHtml}
+        language="html"
+        ariaLabel={t('nodeInspector.tryItPlaceholder')}
+        placeholder={t('nodeInspector.tryItPlaceholder')}
+        testId="try-html-input"
       />
       <Button size="small" onClick={() => { void convert() }} disabled={!html || loading} data-testid="try-convert">
         {t('nodeInspector.tryItConvert')}
       </Button>
       {result !== null && (
-        <pre className={styles.result} data-testid="try-markdown-output">{result}</pre>
+        <CodeEditor
+          value={result}
+          language="markdown"
+          ariaLabel={t('nodeInspector.tryItResultAriaLabel')}
+          testId="try-markdown-output"
+        />
       )}
       {error !== null && (
         <Text as="p" size="small" className={styles.error} data-testid="try-convert-error">

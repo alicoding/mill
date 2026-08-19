@@ -86,7 +86,10 @@
     "namePlaceholder": "e.g. amount below limit",
     "condition": "Condition",
     "conditionPlaceholder": "e.g. Attributes[\"amount\"] < 100",
-    "addRule": "Add rule"
+    "addRule": "Add rule",
+    "editAsJson": "Edit as JSON",
+    "hideJsonEditor": "Hide JSON",
+    "rulesJsonAriaLabel": "Rules as JSON"
   },
   "mcpToolArgsEditor": {
     "tool": "Tool",
@@ -221,7 +224,8 @@
     "tryItCaption": "Paste page HTML and see the exact Markdown this step would produce.",
     "tryItPlaceholder": "Paste HTML here",
     "tryItConvert": "Convert",
-    "tryItError": "Couldn't convert: {{message}}"
+    "tryItError": "Couldn't convert: {{message}}",
+    "tryItResultAriaLabel": "Converted Markdown"
   },
   "stepDetailOverlay": {
     "title": "Step: {{label}}",
