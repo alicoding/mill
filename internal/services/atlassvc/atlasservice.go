@@ -77,6 +77,11 @@ type AtlasService struct {
 	// error rather than writing beside the process) for any test that
 	// never calls it.
 	mirrorsDir string
+	// Recognition seams (goal 0126, atlasrecognition.go) -- injected
+	// via WireSourceRecognition; nil (recognition simply off) for any
+	// test that never wires them.
+	integrationHosts integrationHostsFn
+	offeredWorkflows offeredWorkflowsFn
 	// guardedDataPaths are Mill's own settings/execution-db/backup
 	// locations (main.go's own SetGuardedDataPaths call, goal 0067) --
 	// ScanFolder/ImportFolderSuggestions refuse a picked folder that

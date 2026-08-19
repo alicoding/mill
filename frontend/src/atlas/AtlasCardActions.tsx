@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { Events } from '@wailsio/runtime'
 import { Button, IconButton, Text } from '@primer/react'
 import { XIcon } from '@primer/octicons-react'
 import { AtlasService, CompositionService } from '../shared/bindings'
+import type { CardSourceOffer } from '../../bindings/github.com/alicoding/mill/internal/services/atlassvc/models'
 import { EntityRefField } from '../configure/EntityRefField'
 import { nextActionsOnAdd, nextActionsOnRemove } from './atlasCardActionOps'
 import runbookStyles from '../shared/ListCard.module.css'
@@ -34,12 +36,27 @@ export function AtlasCardActions({ cardID, actionWorkflowIDs, onActionsChanged }
   const [labels, setLabels] = useState<Map<string, string>>(new Map())
   const [adding, setAdding] = useState(false)
   const [runState, setRunState] = useState<Record<string, 'started' | 'error'>>({})
+  // Recognized-source offers (goal 0126): workflows declaring this
+  // card's matched Integration, runnable here without prior attachment.
+  const [offer, setOffer] = useState<CardSourceOffer | null>(null)
 
   useEffect(() => {
     void CompositionService.Workflows().then((ws) => {
       setLabels(new Map((ws ?? []).map((w) => [w.ID, w.Label])))
     }).catch(() => setLabels(new Map()))
   }, [])
+
+  // Fetched on mount and re-fetched on every persisted atlas change --
+  // the draft source value is NOT a valid trigger (a refetch keyed on
+  // typing races the commit and reads the pre-save card); the
+  // mill-data-changed emit fires only after persistence.
+  useEffect(() => {
+    const refetch = () => void AtlasService.CardSourceOffer(cardID).then(setOffer).catch(() => setOffer(null))
+    refetch()
+    return Events.On('mill-data-changed', (evt) => {
+      if ((evt.data as { entity?: string })?.entity === 'atlas') refetch()
+    })
+  }, [cardID])
 
   const run = (workflowID: string) => {
     setRunState((prev) => ({ ...prev, [workflowID]: undefined as never }))
@@ -60,6 +77,14 @@ export function AtlasCardActions({ cardID, actionWorkflowIDs, onActionsChanged }
   }
 
   const hasActions = actionWorkflowIDs.length > 0
+  // Already-attached workflows never render twice; running an offered
+  // one attaches it (its row moves up into the attached list, run
+  // status intact since runState is keyed by workflow id).
+  const offered = (offer?.Workflows ?? []).filter((w) => !actionWorkflowIDs.includes(w.WorkflowID))
+  const runOffered = (workflowID: string) => {
+    run(workflowID)
+    onActionsChanged(nextActionsOnAdd(actionWorkflowIDs, workflowID))
+  }
 
   return (
     <div className={styles.block} data-testid="atlas-page-actions">
@@ -75,6 +100,20 @@ export function AtlasCardActions({ cardID, actionWorkflowIDs, onActionsChanged }
           <IconButton size="small" variant="invisible" icon={XIcon} aria-label={t('overlay.removeAction')} onClick={() => remove(id)} />
         </div>
       ))}
+      {offer?.Recognized && offered.length > 0 && (
+        <div data-testid="atlas-page-offers">
+          <Text as="p" weight="semibold" size="small">{t('offers.heading', { label: offer.Label })}</Text>
+          {offered.map((w) => (
+            <div key={w.WorkflowID} className={styles.row} data-testid="atlas-page-offer-row">
+              <Text className={styles.rowLabel}>{w.Label}</Text>
+              <Button size="small" data-testid="atlas-page-run-offer" onClick={() => runOffered(w.WorkflowID)}>
+                {t('overlay.runAction')}
+              </Button>
+            </div>
+          ))}
+          <Text as="p" size="small" className={runbookStyles.muted}>{t('offers.hint')}</Text>
+        </div>
+      )}
       {adding ? (
         <EntityRefField refKind="workflow" value="" onChange={add} />
       ) : (

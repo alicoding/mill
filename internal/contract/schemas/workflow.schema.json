@@ -219,6 +219,9 @@
         "$ref": "#/$defs/Field"
       },
       "type": "array"
+    },
+    "offerOnRequestId": {
+      "type": "string"
     }
   },
   "additionalProperties": false,

@@ -347,6 +347,18 @@ type Workflow struct {
 	// CompositionService's reconcile/reset/mutation-choke-point logic,
 	// never accepted from the wire.
 	Seed seedorigin.Origin
+	// OfferOnRequestID declares this workflow as an offered action on
+	// Atlas cards whose Source URL host matches the named Integration
+	// (HTTPRequest) entity's base-URL host (goal 0126: recognition is
+	// a host match against configuration the user already did, never a
+	// separate pattern registry). Empty = not offered anywhere.
+	// Explicit and inspectable by design -- a workflow is offered only
+	// because its author declared it, never inferred from its steps.
+	// omitempty: an offer-less workflow's JSON stays byte-identical to
+	// pre-field data, so persisted stores and the committed seed
+	// fingerprints (seeding/seed_fingerprints.json) are untouched by
+	// the field's existence.
+	OfferOnRequestID string `json:"OfferOnRequestID,omitempty"`
 }
 
 // ExecContext threads through a workflow's execution. Payload is the

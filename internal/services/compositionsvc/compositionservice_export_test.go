@@ -408,3 +408,65 @@ func TestImportWorkflow_AppliesAttributes(t *testing.T) {
 		t.Errorf("imported.Attributes = %+v, want one AttributeDef with Key=count", imported.Attributes)
 	}
 }
+
+// The offer declaration (goal 0126) survives export -> import, and an
+// offer-less export carries no offer key at all (additive-optional,
+// same discipline as Notes).
+func TestExportWorkflow_OfferDeclarationRoundTrips(t *testing.T) {
+	comp := newTestCompositionService(t)
+	nodes, edges := triggerAndCaptureNodes()
+	created, err := comp.CreateWorkflow("Offered workflow", "", nodes, edges)
+	if err != nil {
+		t.Fatalf("CreateWorkflow: %v", err)
+	}
+	if _, err := comp.SetWorkflowOffer(created.ID, "example-confluence-page-read"); err != nil {
+		t.Fatalf("SetWorkflowOffer: %v", err)
+	}
+
+	exported, err := comp.ExportWorkflow(created.ID)
+	if err != nil {
+		t.Fatalf("ExportWorkflow: %v", err)
+	}
+	if !strings.Contains(exported, `"offerOnRequestId": "example-confluence-page-read"`) {
+		t.Errorf("export missing the offer declaration:\n%s", exported)
+	}
+
+	// The export carries the ID, so import updates the same workflow in
+	// place -- the offer must survive that full rebuild path (it is
+	// carried forward by UpdateWorkflow and re-applied by the present
+	// offer key).
+	imported, err := comp.ImportWorkflow(exported)
+	if err != nil {
+		t.Fatalf("ImportWorkflow: %v", err)
+	}
+	if imported.OfferOnRequestID != "example-confluence-page-read" {
+		t.Errorf("imported offer = %q, want the declared request id", imported.OfferOnRequestID)
+	}
+
+	offers := comp.WorkflowsOfferingRequest("example-confluence-page-read")
+	if len(offers) != 1 {
+		t.Errorf("offering workflows = %d, want exactly the one updated in place", len(offers))
+	}
+
+	// A plain draft save must never wipe the declaration.
+	nodes2, edges2 := triggerAndCaptureNodes()
+	saved, err := comp.UpdateWorkflow(created.ID, "Offered workflow renamed", "", nodes2, edges2)
+	if err != nil {
+		t.Fatalf("UpdateWorkflow: %v", err)
+	}
+	if saved.OfferOnRequestID != "example-confluence-page-read" {
+		t.Errorf("draft save wiped the offer: %q", saved.OfferOnRequestID)
+	}
+
+	plain, err := comp.CreateWorkflow("Plain workflow", "", nodes, edges)
+	if err != nil {
+		t.Fatalf("CreateWorkflow(plain): %v", err)
+	}
+	plainExport, err := comp.ExportWorkflow(plain.ID)
+	if err != nil {
+		t.Fatalf("ExportWorkflow(plain): %v", err)
+	}
+	if strings.Contains(plainExport, "offerOnRequestId") {
+		t.Errorf("offer-less export must omit the key entirely:\n%s", plainExport)
+	}
+}

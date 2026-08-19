@@ -288,6 +288,10 @@ func (c *CompositionService) UpdateWorkflow(id, label, description string, nodes
 		// the MCP update_workflow path, via UpdateWorkflowFromExport)
 		// permanently protects it from reconcile's upgrade path.
 		Seed: c.user[idx].Seed.Touch(),
+		// Carried forward like Disabled/Versions: a draft save edits
+		// the graph, never the offer declaration (SetWorkflowOffer is
+		// its one mutation path besides import).
+		OfferOnRequestID: c.user[idx].OfferOnRequestID,
 	}
 	previous := c.user[idx]
 	c.user[idx] = wf

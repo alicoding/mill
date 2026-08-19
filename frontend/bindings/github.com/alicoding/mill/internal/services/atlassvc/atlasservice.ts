@@ -82,6 +82,15 @@ export function CardContextEnvelope(cardID: string): $CancellablePromise<string>
 }
 
 /**
+ * CardSourceOffer resolves a card's recognition state: whether its
+ * Source URL host matches a configured Integration, and which
+ * workflows declare that Integration as their offer target.
+ */
+export function CardSourceOffer(cardID: string): $CancellablePromise<$models.CardSourceOffer> {
+    return $Call.ByID(217270429, cardID);
+}
+
+/**
  * Cards returns every LIVE card (goal 0093: a tombstoned card is
  * excluded, and a live child of a tombstoned container carries its
  * resolved effective ParentID -- see liveCardsLocked).
@@ -532,11 +541,15 @@ export function RevealSpaceFolder(spaceID: string): $CancellablePromise<string> 
 }
 
 /**
- * RunCardAction fires one of the card's ATTACHED actions -- membership
- * is validated here so the bound surface can never run an arbitrary
- * workflow against a card it was never attached to. The payload/values
- * convention mirrors trigger-atlas-card's fire exactly (cardId/kindId/
- * cardTitle into declared Attributes), with changeType "action".
+ * RunCardAction fires one of the card's ATTACHED or OFFERED actions --
+ * membership is validated here so the bound surface can never run an
+ * arbitrary workflow against a card it was never attached to. Offered
+ * = the workflow declares this card's recognized Integration as its
+ * offer target (goal 0126, atlasrecognition.go) -- exactly as
+ * deliberate an authorization as attaching, just declared on the
+ * workflow's side. The payload/values convention mirrors
+ * trigger-atlas-card's fire exactly (cardId/kindId/cardTitle into
+ * declared Attributes), with changeType "action".
  */
 export function RunCardAction(cardID: string, workflowID: string): $CancellablePromise<void> {
     return $Call.ByID(3407735559, cardID, workflowID);

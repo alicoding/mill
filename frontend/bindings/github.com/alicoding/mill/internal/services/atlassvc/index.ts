@@ -9,6 +9,7 @@ export {
 export type {
     AtlasImportSummary,
     AtlasSessionState,
+    CardSourceOffer,
     ClipbridgeCardOffer,
     ClipbridgeReplyPreview,
     FileDropCreateResult,
@@ -17,5 +18,6 @@ export type {
     FolderScanEntry,
     FolderScanResult,
     ImportFolderSuggestionsRequest,
+    OfferedAction,
     TombstoneResult
 } from "./models.js";

@@ -62,9 +62,14 @@ func builtInAtlassianWorkflows() []Workflow {
 				{ID: "atlassian-confluence-e1", Source: confluenceHTTPID, Target: confluenceMarkdownID},
 				{ID: "atlassian-confluence-e2", Source: confluenceMarkdownID, Target: confluenceApplyID},
 			},
-			BuiltIn:  true,
-			Seed:     seedorigin.Stamp(1),
-			Disabled: true,
+			BuiltIn: true,
+			// SeedRevision 2: OfferOnRequestID added (goal 0126) --
+			// this workflow appears as an offered action on any card
+			// whose Source host matches the configured Confluence
+			// integration, the seeded recognition proof.
+			Seed:             seedorigin.Stamp(2),
+			Disabled:         true,
+			OfferOnRequestID: httprequest.ExampleConfluencePageReadID,
 		},
 		{
 			ID:    "example-jira-search-workflow",

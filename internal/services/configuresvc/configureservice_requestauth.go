@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/url"
 	"strings"
 	"time"
 
@@ -448,4 +449,32 @@ func (c *ConfigureService) persistHTTPRequests() error {
 		return fmt.Errorf("persist requests: %w", err)
 	}
 	return nil
+}
+
+// IntegrationHost is one configured HTTPRequest's host identity -- the
+// Configure-side half of Atlas source recognition (goal 0126,
+// atlassvc/atlasrecognition.go). Host is the lowercase hostname parsed
+// from BaseURL; "" (unparseable/host-less) never matches anything.
+type IntegrationHost struct {
+	ID    string
+	Label string
+	Host  string
+}
+
+// IntegrationHosts lists every request's host identity. Exported for
+// main.go wiring only, never a frontend RPC.
+//
+//wails:ignore
+func (c *ConfigureService) IntegrationHosts() []IntegrationHost {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	out := make([]IntegrationHost, 0, len(c.requests))
+	for _, r := range c.requests {
+		host := ""
+		if u, err := url.Parse(r.BaseURL); err == nil {
+			host = strings.ToLower(u.Hostname())
+		}
+		out = append(out, IntegrationHost{ID: r.ID, Label: r.Label, Host: host})
+	}
+	return out
 }
