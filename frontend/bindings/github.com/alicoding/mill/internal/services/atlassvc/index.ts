@@ -21,5 +21,6 @@ export type {
     ListProjection,
     OfferedAction,
     ProjectionColumn,
+    ProjectionRow,
     TombstoneResult
 } from "./models.js";

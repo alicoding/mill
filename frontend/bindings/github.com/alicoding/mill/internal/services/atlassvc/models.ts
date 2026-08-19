@@ -228,7 +228,7 @@ export interface ListProjection {
      */
     "Missing": boolean;
     "Columns": ProjectionColumn[] | null;
-    "Rows": ({ [_ in string]?: string } | null)[] | null;
+    "Rows": ProjectionRow[] | null;
 }
 
 /**
@@ -245,6 +245,18 @@ export interface OfferedAction {
 export interface ProjectionColumn {
     "Key": string;
     "Label": string;
+}
+
+/**
+ * ProjectionRow is one List row with the identity in-place editing
+ * commits against (UpdateListRow needs the row id, and the current
+ * Status must round-trip -- a cell edit must never flip an Expired
+ * row back to Active).
+ */
+export interface ProjectionRow {
+    "ID": string;
+    "Status": string;
+    "Values": { [_ in string]?: string } | null;
 }
 
 /**

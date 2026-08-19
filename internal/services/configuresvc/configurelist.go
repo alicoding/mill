@@ -174,6 +174,14 @@ func (c *ConfigureService) UpdateList(id, label, description string, columns []t
 // themselves via seeding.NewSlugID -- internal/domain/list stays pure
 // per .claude/rules/backend.md).
 func (c *ConfigureService) AddListRow(listID string, values map[string]string) (list.List, error) {
+	return c.AddListRowAt(listID, values, -1)
+}
+
+// AddListRowAt inserts the new row at index (goal 0105 part 2: the
+// boundary-insert affordance -- a row lands exactly where the user
+// pointed, not only at the end). Any out-of-range index appends,
+// which is also AddListRow's own behavior.
+func (c *ConfigureService) AddListRowAt(listID string, values map[string]string, index int) (list.List, error) {
 	c.mu.Lock()
 	idx := c.findListLocked(listID)
 	if idx == -1 {
@@ -187,7 +195,12 @@ func (c *ConfigureService) AddListRow(listID string, values map[string]string) (
 		CreatedAt: now, UpdatedAt: now, Status: list.RowActive,
 	}
 	l := previous
-	l.Rows = append(append([]list.Row{}, l.Rows...), row)
+	rows := append([]list.Row{}, l.Rows...)
+	if index < 0 || index > len(rows) {
+		index = len(rows)
+	}
+	rows = append(rows[:index], append([]list.Row{row}, rows[index:]...)...)
+	l.Rows = rows
 	l.UpdatedAt = now
 	l.Seed = l.Seed.Touch() // docs/goals/0037 item 2
 	if err := list.Validate(l); err != nil {
@@ -412,7 +425,7 @@ func (c *ConfigureService) migrateLegacyLists() {
 // state, not an error.
 //
 //wails:ignore
-func (c *ConfigureService) ListProjectionData(listID string) (label string, columns []typedfield.Field, rows []map[string]string, ok bool) {
+func (c *ConfigureService) ListProjectionData(listID string) (label string, columns []typedfield.Field, rows []ProjectionRowData, ok bool) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	for _, l := range c.lists {
@@ -425,9 +438,18 @@ func (c *ConfigureService) ListProjectionData(listID string) (label string, colu
 			for k, v := range r.Values {
 				vals[k] = v
 			}
-			rows = append(rows, vals)
+			rows = append(rows, ProjectionRowData{ID: r.ID, Status: string(r.Status), Values: vals})
 		}
 		return l.Label, columns, rows, true
 	}
 	return "", nil, nil, false
+}
+
+// ProjectionRowData is ListProjectionData's per-row shape -- id and
+// status ride along so in-place edits commit against the right row
+// without flipping its lifecycle state.
+type ProjectionRowData struct {
+	ID     string
+	Status string
+	Values map[string]string
 }

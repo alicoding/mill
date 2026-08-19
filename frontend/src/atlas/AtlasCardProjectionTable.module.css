@@ -1,5 +1,13 @@
 /* Token-only styling per the board's conventions. The scroll container
    owns overflow in BOTH axes so a wide List never widens its card. */
+.wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-height: 0;
+  flex: 1;
+}
+
 .scroll {
   overflow: auto;
   min-height: 0;
@@ -7,6 +15,13 @@
   border: 1px solid var(--borderColor-default);
   border-radius: var(--borderRadius-small);
   background: var(--bgColor-default);
+}
+
+.actionsRow {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  flex: 0 0 auto;
 }
 
 .table {
@@ -29,6 +44,7 @@
 }
 
 .table td {
+  position: relative;
   padding: 3px 8px;
   border-bottom: 1px solid var(--borderColor-muted);
   color: var(--fgColor-default);
@@ -36,6 +52,54 @@
   max-width: 180px;
   overflow: hidden;
   text-overflow: ellipsis;
+  cursor: text;
+}
+
+/* The header IS the rename affordance -- a bare button styled as the
+   header text, so clicking what you want to change changes it. */
+.headerButton {
+  border: none;
+  background: none;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+/* Boundary-insert dots (the Confluence/eraser pattern): a small ⊕
+   pinned to the exact boundary the insert lands at, visible only
+   while hovering the header/row that owns it. */
+.insertDot {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: none;
+  background: var(--bgColor-accent-emphasis);
+  color: var(--fgColor-onEmphasis);
+  font-size: 11px;
+  line-height: 14px;
+  padding: 0;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 80ms linear;
+  z-index: 2;
+}
+
+.insertDotColumn {
+  top: 50%;
+  right: -7px;
+  transform: translateY(-50%);
+}
+
+.insertDotRow {
+  bottom: -7px;
+  left: -2px;
+}
+
+.table th:hover .insertDotColumn,
+.table tr:hover .insertDotRow {
+  opacity: 1;
 }
 
 .empty,
