@@ -83,10 +83,13 @@
       "openReleasesButton": "Open releases page",
       "proxyLabel": "Outbound proxy",
       "proxyPlaceholder": "http://proxy.example.com:8080",
-      "proxyCaption": "Optional. Update checks and downloads go through this proxy.",
+      "proxyCaption": "Update checks and downloads use this connection.",
       "proxySave": "Save",
       "proxySaved": "Saved. Restart Mill to start using this proxy.",
-      "copyErrorDetails": "Copy details"
+      "copyErrorDetails": "Copy details",
+      "proxyModeAuto": "Auto — use this Mac's proxy settings",
+      "proxyModeManual": "Manual proxy URL",
+      "proxyModeOff": "Off — always connect directly"
     },
     "dataStewardship": {
       "description": "Mill snapshots your workflow history and settings automatically, and can bundle everything into one file to move to another machine.",

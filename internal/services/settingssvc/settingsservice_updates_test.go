@@ -381,3 +381,25 @@ func TestUpdateDiagnostics_NamesProxyModeNeverCredentials(t *testing.T) {
 		t.Errorf("diagnostics missing version/channel: %q", d)
 	}
 }
+
+func TestUpdaterProxyFunc_ModeOffAlwaysDirect(t *testing.T) {
+	t.Setenv("HTTPS_PROXY", "http://env-proxy.local:9999")
+	req, _ := http.NewRequestWithContext(context.Background(), http.MethodGet, "https://example.org/x", nil)
+	u, err := updaterProxyFunc(proxyModeOff)(req)
+	if err != nil || u != nil {
+		t.Errorf("off mode: url=%v err=%v, want direct", u, err)
+	}
+}
+
+func TestSetOutboundProxyURL_AcceptsOffSentinel(t *testing.T) {
+	set := newTestSettingsService(t)
+	if err := set.SetOutboundProxyURL("off"); err != nil {
+		t.Fatalf("off sentinel rejected: %v", err)
+	}
+	if got := set.OutboundProxyURL(); got != "off" {
+		t.Errorf("stored %q", got)
+	}
+	if d := set.UpdateDiagnostics(); !strings.Contains(d, "off (direct)") {
+		t.Errorf("diagnostics %q", d)
+	}
+}

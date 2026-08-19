@@ -38,6 +38,8 @@ function UpdatesSection() {
   const [updateResult, setUpdateResult] = useState<UpdateResult | null>(null)
   const [installState, setInstallState] = useState<InstallState>('idle')
   const [proxyUrl, setProxyUrl] = useState('')
+  // '' = Auto (system), 'off' = direct, 'manual' = the URL field.
+  const [proxyMode, setProxyMode] = useState<'auto' | 'manual' | 'off'>('auto')
   // 'saved' | an error message | '' -- one slot, the two success/error
   // renders split on the literal.
   const [proxyNote, setProxyNote] = useState('')
@@ -49,7 +51,15 @@ function UpdatesSection() {
     SettingsService.AppVersion().then(setAppVersion).catch(console.error)
     SettingsService.UpdateChannel().then((c) => setChannel(c as Channel)).catch(console.error)
     SettingsService.UpdateChannelPreference().then(setChannelPref).catch(console.error)
-    SettingsService.OutboundProxyURL().then(setProxyUrl).catch(console.error)
+    SettingsService.OutboundProxyURL()
+      .then((v) => {
+        if (v === 'off') setProxyMode('off')
+        else if (v !== '') {
+          setProxyMode('manual')
+          setProxyUrl(v)
+        }
+      })
+      .catch(console.error)
   }, [])
 
   const saveChannelPref = (pref: string) => {
@@ -78,11 +88,19 @@ function UpdatesSection() {
       .finally(() => setChecking(false))
   }
 
-  const saveProxy = () => {
-    const value = proxyUrl.trim()
+  const persistProxy = (value: string) => {
     SettingsService.SetOutboundProxyURL(value)
       .then(() => setProxyNote('saved'))
       .catch((err) => setProxyNote(String(err)))
+  }
+
+  const changeProxyMode = (mode: 'auto' | 'manual' | 'off') => {
+    setProxyMode(mode)
+    setProxyNote('')
+    // Auto and Off persist immediately; Manual persists on Save so a
+    // half-typed URL never lands in the store.
+    if (mode === 'auto') persistProxy('')
+    if (mode === 'off') persistProxy('off')
   }
 
   const installUpdate = () => {
@@ -136,6 +154,19 @@ function UpdatesSection() {
 
       <FormControl>
         <FormControl.Label>{t('settings.updates.proxyLabel')}</FormControl.Label>
+        <Select
+          size="small"
+          value={proxyMode}
+          onChange={(e) => changeProxyMode(e.target.value as 'auto' | 'manual' | 'off')}
+          data-testid="proxy-mode-select"
+        >
+          <Select.Option value="auto">{t('settings.updates.proxyModeAuto')}</Select.Option>
+          <Select.Option value="manual">{t('settings.updates.proxyModeManual')}</Select.Option>
+          <Select.Option value="off">{t('settings.updates.proxyModeOff')}</Select.Option>
+        </Select>
+        <FormControl.Caption>{t('settings.updates.proxyCaption')}</FormControl.Caption>
+      </FormControl>
+      {proxyMode === 'manual' && (
         <Stack direction="horizontal" gap="condensed" align="center">
           <TextInput
             size="small"
@@ -145,12 +176,11 @@ function UpdatesSection() {
             aria-label={t('settings.updates.proxyLabel')}
             data-testid="proxy-url-input"
           />
-          <Button size="small" onClick={saveProxy} data-testid="proxy-url-save">
+          <Button size="small" onClick={() => persistProxy(proxyUrl.trim())} data-testid="proxy-url-save">
             {t('settings.updates.proxySave')}
           </Button>
         </Stack>
-        <FormControl.Caption>{t('settings.updates.proxyCaption')}</FormControl.Caption>
-      </FormControl>
+      )}
       {proxyNote && (
         <Text
           size="small"
