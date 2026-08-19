@@ -351,3 +351,33 @@ func TestUpdaterProxyFunc_ExplicitURLWinsOverEnvironment(t *testing.T) {
 		t.Errorf("environment fallback errored: %v", err)
 	}
 }
+
+func TestTrimReleaseNotesForApp(t *testing.T) {
+	body := "## What's new\n\n- Real change\n\n" + inAppNotesEndMarker + "\n## Manual install\nxattr slop"
+	got := trimReleaseNotesForApp(body)
+	if got != "- Real change" {
+		t.Errorf("trimmed = %q, want just the change line", got)
+	}
+	if legacy := trimReleaseNotesForApp("plain old body"); legacy != "plain old body" {
+		t.Errorf("marker-less body changed: %q", legacy)
+	}
+}
+
+func TestUpdateDiagnostics_NamesProxyModeNeverCredentials(t *testing.T) {
+	set := newTestSettingsService(t)
+	set.SetAppVersion("0.4.0-beta.9")
+	set.SetUpdateChannel("beta")
+	if err := set.SetOutboundProxyURL("http://user:secret@proxy.corp:8080"); err != nil {
+		t.Fatalf("SetOutboundProxyURL: %v", err)
+	}
+	d := set.UpdateDiagnostics()
+	if !strings.Contains(d, "proxy manual: proxy.corp:8080") {
+		t.Errorf("diagnostics missing proxy host: %q", d)
+	}
+	if strings.Contains(d, "secret") || strings.Contains(d, "user:") {
+		t.Errorf("diagnostics leaked credentials: %q", d)
+	}
+	if !strings.Contains(d, "0.4.0-beta.9") || !strings.Contains(d, "beta") {
+		t.Errorf("diagnostics missing version/channel: %q", d)
+	}
+}

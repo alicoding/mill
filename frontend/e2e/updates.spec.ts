@@ -74,6 +74,10 @@ test('Source-channel build never shows Update now, and shows the pull-and-rebuil
 
     await card.getByText("What's new").click()
     await expect(page.getByTestId('update-notes')).toContainText('Fake note one')
+    // goal 0127: the in-app card never shows the releases page's
+    // manual-install section (trimmed at the in-app-notes-end marker).
+    await expect(page.getByTestId('update-notes')).not.toContainText('xattr')
+    await expect(page.getByTestId('update-notes')).not.toContainText('Manual install')
 
     await expect(card).toContainText('This copy was built from source')
     await expect(card).toContainText('git pull, then task install:app')
@@ -119,6 +123,8 @@ test('Release-channel build shows the primary Update now button and no source hi
     await expect(card).toContainText("Couldn't install the update")
     await expect(card).toContainText('Get the update with your browser instead')
     await expect(card.getByTestId('open-releases-page')).toBeVisible()
+    // goal 0127: the failure carries a copyable diagnosis.
+    await expect(card.getByTestId('update-error-copy')).toBeVisible()
 
     await page.close()
   } finally {

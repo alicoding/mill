@@ -697,9 +697,21 @@ jobs:
             gh release delete "$tag" --repo "${GITHUB_REPOSITORY}" --yes --cleanup-tag
           done
       - name: Create beta prerelease
+        # Two audiences, one file (goal 0127): the section ABOVE the
+        # in-app-notes-end marker is what the in-app update card shows
+        # (trimReleaseNotesForApp, settingsservice_updates.go) -- the
+        # merged change's own title, real what's-new. Everything below
+        # is the GitHub releases page's manual-install path, which is
+        # nonsense inside an app about to update itself.
         run: |
+          MERGE_TITLE="$(git log -1 --pretty=%s)"
           {
-            echo "## Beta build"
+            echo "## What's new"
+            echo ""
+            echo "- ${MERGE_TITLE}"
+            echo ""
+            echo "<!-- in-app-notes-end -->"
+            echo "## Manual install"
             echo ""
             echo "Automated build from commit ${GITHUB_SHA} -- not a tagged release."
             echo "Download the \`.zip\`, unzip, and drag \`mill.app\` to Applications. The app is not Apple-notarized: first launch is blocked with \"Apple could not verify…\" -- click Done (not Move to Trash), then System Settings → Privacy & Security → scroll to the mill message → Open Anyway (one time only). Terminal alternative: \`xattr -dr com.apple.quarantine /Applications/mill.app\`."

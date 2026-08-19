@@ -611,3 +611,13 @@ export function UpdateChannel(): $CancellablePromise<string> {
 export function UpdateChannelPreference(): $CancellablePromise<string> {
     return $Call.ByID(2624864437);
 }
+
+/**
+ * UpdateDiagnostics is the copyable root-cause context for update
+ * failures (goal 0127: a paste replaces a photo). Proxy reports MODE
+ * and host only -- a proxy URL may carry credentials, which must
+ * never enter a paste buffer.
+ */
+export function UpdateDiagnostics(): $CancellablePromise<string> {
+    return $Call.ByID(795731779);
+}

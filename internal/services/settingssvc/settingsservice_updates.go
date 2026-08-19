@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"runtime"
 	"strings"
 	"time"
 
@@ -287,7 +288,9 @@ func (s *SettingsService) CheckForUpdates() (UpdateCheckResult, error) {
 			UpdateAvailable: true,
 			Version:         fake,
 			CurrentVersion:  s.AppVersion(),
-			Notes:           "- Fake note one\n- Fake note two",
+			// Carries the marker + below-the-fold text so e2e proves the
+			// trim through the real render path.
+			Notes: trimReleaseNotesForApp("## What's new\n\n- Fake note one\n- Fake note two\n\n" + inAppNotesEndMarker + "\n## Manual install\nxattr slop that must never render in-app"),
 		}, nil
 	}
 	s.mu.Lock()
@@ -303,7 +306,7 @@ func (s *SettingsService) CheckForUpdates() (UpdateCheckResult, error) {
 	if rel == nil {
 		return UpdateCheckResult{UpdateAvailable: false, CurrentVersion: s.AppVersion()}, nil
 	}
-	return UpdateCheckResult{UpdateAvailable: true, Version: rel.Version, CurrentVersion: s.AppVersion(), Notes: rel.Notes}, nil
+	return UpdateCheckResult{UpdateAvailable: true, Version: rel.Version, CurrentVersion: s.AppVersion(), Notes: trimReleaseNotesForApp(rel.Notes)}, nil
 }
 
 // DownloadAndInstallUpdate downloads the newest release asset,
@@ -355,4 +358,42 @@ func (s *SettingsService) RestartApp() error {
 		return fmt.Errorf("updater not configured")
 	}
 	return u.Restart(context.Background())
+}
+
+// inAppNotesEndMarker splits a release body's two audiences (goal
+// 0127): what the in-app update card shows ends here; the GitHub
+// releases page's manual-install instructions live below it --
+// nonsense inside an app about to update itself.
+const inAppNotesEndMarker = "<!-- in-app-notes-end -->"
+
+// trimReleaseNotesForApp returns only the in-app-facing portion of a
+// release body. Bodies without the marker (older releases) pass
+// through unchanged; the leading "## What's new" heading is dropped
+// since the card supplies its own.
+func trimReleaseNotesForApp(body string) string {
+	if i := strings.Index(body, inAppNotesEndMarker); i >= 0 {
+		body = body[:i]
+	}
+	body = strings.TrimSpace(body)
+	body = strings.TrimPrefix(body, "## What's new")
+	return strings.TrimSpace(body)
+}
+
+// UpdateDiagnostics is the copyable root-cause context for update
+// failures (goal 0127: a paste replaces a photo). Proxy reports MODE
+// and host only -- a proxy URL may carry credentials, which must
+// never enter a paste buffer.
+func (s *SettingsService) UpdateDiagnostics() string {
+	proxy := "none (direct)"
+	if raw := s.OutboundProxyURL(); raw != "" {
+		if u, err := url.Parse(raw); err == nil {
+			proxy = "manual: " + u.Host
+		} else {
+			proxy = "manual (unparseable)"
+		}
+	} else if os.Getenv("HTTPS_PROXY") != "" || os.Getenv("https_proxy") != "" {
+		proxy = "environment"
+	}
+	return fmt.Sprintf("Mill %s · channel %s · proxy %s · %s/%s",
+		s.AppVersion(), s.UpdateChannel(), proxy, runtime.GOOS, runtime.GOARCH)
 }
