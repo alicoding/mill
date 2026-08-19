@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/alicoding/mill/internal/domain/decision"
@@ -294,5 +295,25 @@ func TestExecuteWorkflow_DecisionOutcome_InvalidVersionConfig_Rejected(t *testin
 	}
 	if _, err := ExecuteWorkflow(nodes, []Edge{{ID: "e1", Source: "t1", Target: "n1"}}, nil); err == nil {
 		t.Error("ExecuteWorkflow with a non-numeric version config returned nil error, want an error")
+	}
+}
+
+// Regression: an unset Decision ref executed into the lookup and
+// surfaced `no decision with id ""` -- machine-speak quoting an empty
+// string. The step must fail with copy that says what to fix.
+func TestExecuteWorkflow_DecisionOutcome_EmptyDecisionRef_ExplainsWhatToFix(t *testing.T) {
+	nodes, err := ResolveNodeDefaults([]Node{
+		{ID: "t1", NodeTypeID: "trigger-manual"},
+		{ID: "n1", NodeTypeID: "decision-outcome", Config: map[string]string{}},
+	})
+	if err != nil {
+		t.Fatalf("ResolveNodeDefaults: %v", err)
+	}
+	_, err = ExecuteWorkflow(nodes, []Edge{{ID: "e1", Source: "t1", Target: "n1"}}, nil)
+	if err == nil {
+		t.Fatal("expected an error for an unset Decision ref")
+	}
+	if !strings.Contains(err.Error(), "choose which Decision") || strings.Contains(err.Error(), `""`) {
+		t.Errorf("error must be user copy, never a quoted empty id: %v", err)
 	}
 }

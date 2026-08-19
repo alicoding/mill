@@ -49,6 +49,11 @@ type Capability struct {
 	// entries; only set this when Label is too long/descriptive for a
 	// tab (e.g. "Activity / event log" -> "Activity").
 	NavLabel string
+	// HiddenFromNav keeps a capability out of the sidebar while it stays
+	// a real, navigable view (command palette, footer links, in-app
+	// cross-links). For help-shaped surfaces: reachable when wanted,
+	// never a standing tab competing with the work surfaces.
+	HiddenFromNav bool
 }
 
 // List is a best-effort seed, not a claim of precision -- correcting an
@@ -103,7 +108,7 @@ func List() []Capability {
 		},
 		{
 			ID: "capability-docs", Label: "Docs", SpecSection: "9",
-			Status: StatusOpen, View: ViewDocs,
+			Status: StatusOpen, View: ViewDocs, HiddenFromNav: true,
 		},
 	}
 }

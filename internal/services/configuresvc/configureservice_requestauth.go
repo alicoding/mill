@@ -2,10 +2,12 @@ package configuresvc
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
 
+	"github.com/alicoding/mill/internal/adapters/credential"
 	"github.com/alicoding/mill/internal/adapters/openapispec"
 	"github.com/alicoding/mill/internal/domain/composition"
 	"github.com/alicoding/mill/internal/domain/httprequest"
@@ -60,6 +62,14 @@ func (c *ConfigureService) resolveHTTPRequest(id string) (composition.ResolvedHT
 	if req.AuthType != httprequest.AuthNone {
 		s, err := c.credentials.Get(id)
 		if err != nil {
+			// A missing keychain entry is a fix-it-in-Configure state,
+			// not a system fault -- say so in the user's vocabulary
+			// (secrets never travel with an exported/seeded request, so
+			// this is the expected first-run state on a new device).
+			if errors.Is(err, credential.ErrNotFound) {
+				return composition.ResolvedHTTPRequest{}, fmt.Errorf(
+					"the integration %q has no credential saved on this device -- open it in Configure and enter its token or secret", req.Label)
+			}
 			return composition.ResolvedHTTPRequest{}, fmt.Errorf("request %q: %w", id, err)
 		}
 		secret = s
@@ -69,6 +79,10 @@ func (c *ConfigureService) resolveHTTPRequest(id string) (composition.ResolvedHT
 	if req.JOSE != nil && req.JOSE.DecryptResponse {
 		s, err := c.credentials.Get(joseKeychainID(id))
 		if err != nil {
+			if errors.Is(err, credential.ErrNotFound) {
+				return composition.ResolvedHTTPRequest{}, fmt.Errorf(
+					"the integration %q has no response-decryption key saved on this device -- open it in Configure and enter its private key", req.Label)
+			}
 			return composition.ResolvedHTTPRequest{}, fmt.Errorf("request %q: JOSE private key: %w", id, err)
 		}
 		josePrivateKey = s

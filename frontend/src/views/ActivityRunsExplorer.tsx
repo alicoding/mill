@@ -19,23 +19,29 @@ import monoStyles from '../shared/monoText.module.css'
 // The source-first half of the reference analytics pattern
 // (docs/SPEC.md §3.2, asked for directly: "select the input source
 // then you see the list of activity for it ... columns ... search
-// based on the attributes available for the input itself"): once a
-// specific workflow is selected on Activity, this replaces the
-// session-only feed with that workflow's DURABLE run history
-// (ExecutionService.ListRunsForWorkflow -- DBOS-backed, survives
-// restarts), with one column per attribute the workflow declares
-// (values from what each run was invoked with) and search across
-// attribute values and output.
-export function ActivityRunsExplorer({ workflow }: { workflow: Workflow }) {
+// based on the attributes available for the input itself"): Activity's
+// DURABLE run history (DBOS-backed, survives restarts). With a
+// selected workflow, that workflow's own runs plus one column per
+// attribute it declares; with workflow null, every workflow's recent
+// runs (ExecutionService.ListRuns) with a workflow column instead --
+// the surface where a failed run is always findable, however it was
+// started.
+export function ActivityRunsExplorer({ workflow }: { workflow: Workflow | null }) {
   const { t } = useTranslation('views')
   const requestOpenWorkflow = useAppStore((s) => s.requestOpenWorkflow)
+  const setView = useAppStore((s) => s.setView)
+  const workflows = useAppStore((s) => s.workflows)
   const [runs, setRuns] = useState<RunSummary[] | null>(null)
   const [error, setError] = useState('')
   const [search, setSearch] = useState('')
   const [cancellingID, setCancellingID] = useState('')
 
+  // A null workflow is the cross-workflow mode: every recorded run,
+  // durable across restarts -- the surface a failed canvas run lands
+  // on even when no specific workflow is selected.
   const refresh = () => {
-    ExecutionService.ListRunsForWorkflow(workflow.ID)
+    const call = workflow ? ExecutionService.ListRunsForWorkflow(workflow.ID) : ExecutionService.ListRuns()
+    call
       .then((list) => setRuns(list ?? []))
       .catch((err) => setError(String(err)))
   }
@@ -43,9 +49,12 @@ export function ActivityRunsExplorer({ workflow }: { workflow: Workflow }) {
   useEffect(() => {
     setRuns(null)
     setError('')
+    // The query belongs to the scope it was typed in -- carrying it
+    // across a workflow switch silently empties the new table.
+    setSearch('')
     refresh()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [workflow.ID])
+  }, [workflow?.ID])
 
   // goal 0017 P1-4: this explorer's durable run history used to update
   // only on mount/workflow-switch -- scoped to the selected workflow,
@@ -56,7 +65,7 @@ export function ActivityRunsExplorer({ workflow }: { workflow: Workflow }) {
       if (entity === 'run') refresh()
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [workflow.ID])
+  }, [workflow?.ID])
 
   // Stuck-ENQUEUED runs get a Stop affordance right in this table
   // (docs/goals/0026 item 8) -- this view has no per-row detail/click-
@@ -72,12 +81,14 @@ export function ActivityRunsExplorer({ workflow }: { workflow: Workflow }) {
       .finally(() => setCancellingID(''))
   }
 
-  const attrs = workflow.Attributes ?? []
+  const attrs = workflow?.Attributes ?? []
   const query = search.trim().toLowerCase()
   const filtered = (runs ?? []).filter((run) => {
     if (query === '') return true
     const values = Object.values(run.values ?? {}).map((v) => String(v ?? '').toLowerCase())
-    return values.some((v) => v.includes(query)) || (run.output ?? '').toLowerCase().includes(query)
+    return values.some((v) => v.includes(query))
+      || (run.output ?? '').toLowerCase().includes(query)
+      || (run.error ?? '').toLowerCase().includes(query)
   })
 
   const columns: Column<RunSummary & { id: string }>[] = [
@@ -85,6 +96,16 @@ export function ActivityRunsExplorer({ workflow }: { workflow: Workflow }) {
       id: 'started', header: t('activityRunsExplorer.columns.started'), width: 'auto',
       renderCell: (run) => <Text size="small" className={`${styles.muted} ${monoStyles.mono}`}>{formatRunStartedAt(run.startedAt as unknown as string)}</Text>,
     },
+    // Cross-workflow mode names which workflow each run belongs to;
+    // the label doubles as the jump into that workflow.
+    ...(workflow ? [] : [{
+      id: 'workflow', header: t('activityRunsExplorer.columns.workflow'), width: 'auto',
+      renderCell: (run) => (
+        <Button size="small" variant="invisible" data-testid="activity-run-workflow" onClick={() => requestOpenWorkflow(run.workflowID)}>
+          {(workflows ?? []).find((w) => w.ID === run.workflowID)?.Label ?? run.workflowID}
+        </Button>
+      ),
+    } satisfies Column<RunSummary & { id: string }>]),
     {
       id: 'kind', header: t('activityRunsExplorer.columns.kind'), width: 'auto',
       // Both neutral -- categorization (how the run started), not a
@@ -138,7 +159,9 @@ export function ActivityRunsExplorer({ workflow }: { workflow: Workflow }) {
     })),
     {
       id: 'output', header: t('activityRunsExplorer.columns.output'), width: 'growCollapse', minWidth: '160px',
-      renderCell: (run) => <TruncatedCell text={run.output ?? ''} />,
+      // A failed run's most useful output is its error -- an ERROR row
+      // must never render an empty cell.
+      renderCell: (run) => <TruncatedCell text={run.error || (run.output ?? '')} />,
     },
   ]
 
@@ -167,9 +190,11 @@ export function ActivityRunsExplorer({ workflow }: { workflow: Workflow }) {
               <HistoryIcon size={32} />
             </Blankslate.Visual>
             <Blankslate.Heading>{t('activityRunsExplorer.noRecordedRuns')}</Blankslate.Heading>
-            <Blankslate.Description>{t('activityRunsExplorer.noRecordedRunsDescription')}</Blankslate.Description>
-            <Blankslate.PrimaryAction onClick={() => requestOpenWorkflow(workflow.ID)}>
-              {t('activityRunsExplorer.openWorkflow')}
+            <Blankslate.Description>
+              {workflow ? t('activityRunsExplorer.noRecordedRunsDescription') : t('activityRunsExplorer.noRecordedRunsAllDescription')}
+            </Blankslate.Description>
+            <Blankslate.PrimaryAction onClick={() => workflow ? requestOpenWorkflow(workflow.ID) : setView({ kind: 'composition' })}>
+              {workflow ? t('activityRunsExplorer.openWorkflow') : t('emptyStateActions.runAWorkflow')}
             </Blankslate.PrimaryAction>
           </Blankslate>
         ) : (
@@ -177,9 +202,9 @@ export function ActivityRunsExplorer({ workflow }: { workflow: Workflow }) {
         )
       )}
       {filtered.length > 0 && (
-        <ResizableTableContainer storageKey="mill-cols-activity-runs">
+        <ResizableTableContainer storageKey={workflow ? 'mill-cols-activity-runs' : 'mill-cols-activity-runs-all'}>
           <DataTable
-            aria-label={t('activityRunsExplorer.runsAriaLabel', { label: workflow.Label })}
+            aria-label={workflow ? t('activityRunsExplorer.runsAriaLabel', { label: workflow.Label }) : t('activityRunsExplorer.allRunsAriaLabel')}
             data={filtered.map((r) => ({ ...r, id: r.runID }))}
             columns={columns}
           />

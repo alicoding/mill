@@ -105,7 +105,7 @@ export function AppSidebar({ sidebarOpen, setSidebarOpen, mobileNavOpen, setMobi
           </div>
           <div className={styles.sidebarNav} data-testid="sidebar-nav">
             <NavList>
-              {capabilities.map((c) => {
+              {capabilities.filter((c) => !c.HiddenFromNav).map((c) => {
                 const target = viewFor(c);
                 const label = c.NavLabel || c.Label;
                 const NavIcon = CAPABILITY_ICON[c.ID];

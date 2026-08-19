@@ -2,6 +2,7 @@ package composition
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/url"
 	"strconv"
@@ -203,6 +204,9 @@ func init() {
 			},
 		},
 	}, func(node Node, ctx ExecContext) (ExecContext, error) {
+		if strings.TrimSpace(node.Config["decisionId"]) == "" {
+			return ctx, errors.New("decision-outcome: choose which Decision this step records -- its Decision field is empty")
+		}
 		pinned, err := decisionPinnedVersion(node)
 		if err != nil {
 			return ctx, fmt.Errorf("decision-outcome: %w", err)

@@ -370,6 +370,15 @@ export const COMMANDS: Command[] = [
     run: () => setView({ kind: 'review' }),
   },
   {
+    // Docs is deliberately absent from the sidebar (a help surface is
+    // reachable on demand, never a standing tab) -- the palette and the
+    // footer link are its entry points.
+    id: 'view.docs',
+    label: 'Open docs',
+    defaultBinding: null,
+    run: () => setView({ kind: 'docs' }),
+  },
+  {
     // Deep-link reuse (goal 0078): unbound by default, discoverable via
     // the palette while already on Review -- surface-scoped like
     // atlas.jump, so it only ever fires with ReviewView already

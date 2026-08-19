@@ -46,9 +46,13 @@ test('Selecting a source workflow shows its durable runs with attribute columns 
   await explorer.getByTestId('runs-explorer-search').fill('zzz-no-such-value')
   await expect(explorer.getByText('No runs match this search.')).toBeVisible()
 
-  // Back to the live feed.
+  // Back to all workflows: the explorer stays (it's the page's primary
+  // durable history in both modes) and swaps the attribute columns for
+  // a workflow column.
   await page.getByTestId('activity-source-workflow').selectOption('all')
-  await expect(explorer).toHaveCount(0)
+  await expect(explorer).toBeVisible()
+  await expect(explorer.getByRole('columnheader', { name: 'Workflow' })).toBeVisible()
+  await expect(explorer.getByRole('columnheader', { name: 'Message' })).toHaveCount(0)
 })
 
 // Design-wave-1 fix #7: a workflow with zero durable run history shows

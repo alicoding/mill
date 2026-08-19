@@ -141,6 +141,14 @@ export interface Issue {
     "NodeID": string;
     "EdgeID": string;
     "Message": string;
+
+    /**
+     * WillFail marks a warning-severity issue that is nonetheless
+     * certain to fail the moment the step executes (an unset required
+     * reference): legal to save as a draft, but a run pre-flight
+     * refuses to start on it (executionsvc's runWorkflowStart).
+     */
+    "WillFail": boolean;
 }
 
 /**

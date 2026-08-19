@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { Browser } from '@wailsio/runtime'
 import { NavList, Text } from '@primer/react'
 import { DocsService } from '../shared/bindings'
 import { useAppStore } from '../shared/store'
+import { resolveDocLink } from './docLinks'
 import mirrorStyles from '../atlas/AtlasCardMirrorPreview.module.css'
 import styles from './DocsView.module.css'
 
@@ -69,10 +71,25 @@ function DocsView({ initialPage }: { initialPage?: string }) {
         {!error && (
           // Same trusted-render reasoning as the Atlas mirror preview:
           // the HTML comes from Mill's own markdown renderer over
-          // repository-authored content embedded in the binary.
+          // repository-authored content embedded in the binary. Anchor
+          // clicks are intercepted (docLinks.ts): a raw click would
+          // navigate the app's own webview away from Mill -- external
+          // URLs go to the system browser, .md cross-links stay in-app.
           <article
             className={mirrorStyles.markdownBody}
             data-testid="docs-content"
+            onClick={(ev) => {
+              const anchor = (ev.target as HTMLElement).closest('a')
+              const href = anchor?.getAttribute('href')
+              if (!href) return
+              ev.preventDefault()
+              const link = resolveDocLink(page, href)
+              if (link.kind === 'external') void Browser.OpenURL(link.url)
+              if (link.kind === 'page' && index.some((e) => e.rel === link.rel)) {
+                setPage(link.rel)
+                setView({ kind: 'docs', page: link.rel })
+              }
+            }}
             dangerouslySetInnerHTML={{ __html: html }}
           />
         )}

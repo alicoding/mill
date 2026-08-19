@@ -136,20 +136,40 @@ test('Clicking an action opens its result, and multiple entries can be expanded 
   await expect(page.getByTestId('activity-detail')).toHaveCount(1)
 })
 
-test('Activity page shows an empty state before anything has run', async ({ page }) => {
+// Regression, the "can't even view these failed records" class: a
+// failed run must be findable in Activity's DURABLE cross-workflow
+// history with its error text visible -- the old page only showed a
+// session-scoped feed the canvas Run path never pushed into, so a
+// failed run could leave no visible record at all. (No empty-state
+// test here: the durable history is server-global, and this file runs
+// on the shared worker pool where other tests create runs; the
+// explorer's empty state is covered per-workflow in
+// activity-source-first.spec.ts, same component path.)
+test('a failed run is visible in the durable cross-workflow history, error included', async ({ page }) => {
   await page.goto('/')
-  await page.getByRole('link', { name: 'Activity' }).click()
-  await expect(page.getByText('No activity yet')).toBeVisible()
-  await expect(dataRows(page)).toHaveCount(0)
-})
+  await page.getByRole('link', { name: 'Workflows' }).click()
 
-test('Activity empty state\'s primary action navigates to Workflows', async ({ page }) => {
-  await page.goto('/')
-  await page.getByRole('link', { name: 'Activity' }).click()
-  await expect(page.getByTestId('activity-empty')).toBeVisible()
+  // The seeded "Example: Step failure" workflow fails on purpose every
+  // time it runs (builtinworkflows_stepfailure.go).
+  const runButton = page.getByRole('button', { name: /Run Example: Step failure/ })
+  await runButton.click()
+  await expect(page.getByTestId('workflow-run-result').filter({ has: page.getByText('Example: Step failure', { exact: true }) })).toBeVisible()
 
-  await page.getByTestId('activity-empty').getByRole('button', { name: 'Run a workflow' }).click()
-  await expect(page.getByTestId('composition-view')).toBeVisible()
+  await page.getByRole('link', { name: 'Activity' }).click()
+  const explorer = page.getByTestId('activity-runs-explorer')
+  await expect(explorer).toBeVisible()
+  const failedRow = explorer.locator('table tbody tr')
+    .filter({ hasText: 'Example: Step failure' })
+    .filter({ hasText: 'ERROR' })
+    .first()
+  await expect(failedRow).toBeVisible()
+  // The output column carries the run's error, so the failure is
+  // inspectable right here, not an empty cell.
+  await expect(failedRow).toContainText('list-lookup')
+
+  // The workflow cell is the jump into the workflow's own editor tab.
+  await failedRow.getByTestId('activity-run-workflow').click()
+  await expect(page.getByRole('tab', { name: 'Example: Step failure' })).toBeVisible()
 })
 
 // Goal 0051 item 3: the seeded "Example: Step failure" workflow

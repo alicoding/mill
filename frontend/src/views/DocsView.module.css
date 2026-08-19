@@ -19,8 +19,19 @@
   padding: 24px 32px;
 }
 
+/* Centered reading measure: the readable-line-length cap without a
+   boxed-into-the-corner look on wide windows. The shared markdownBody
+   class is a bounded PREVIEW box (480px cap, border, inner scroll) --
+   here it's a full reading page, so those constraints are lifted and
+   the page's own .content scroll is the one scrollbar. */
 .content article {
-  max-width: 72ch;
+  max-width: 80ch;
+  margin-inline: auto;
+  max-height: none;
+  overflow-y: visible;
+  border: none;
+  padding: 0;
+  font-size: 15px;
 }
 
 .error {

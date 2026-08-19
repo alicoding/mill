@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Heading, IconButton, Label, type LabelProps, Select, Stack, Text, TextInput } from '@primer/react'
-import { DataTable, type Column, Blankslate } from '@primer/react/experimental'
-import { ChevronDownIcon, ChevronRightIcon, CheckCircleIcon, PulseIcon, WorkflowIcon, XCircleIcon, XIcon } from '@primer/octicons-react'
+import { DataTable, type Column } from '@primer/react/experimental'
+import { ChevronDownIcon, ChevronRightIcon, CheckCircleIcon, WorkflowIcon, XCircleIcon, XIcon } from '@primer/octicons-react'
 import { useAppStore, type ActivityEntry, type ActivitySource } from '../shared/store'
 import { WorkflowHoverPreview } from '../composition/WorkflowHoverPreview'
 import { ActivityRunsExplorer } from './ActivityRunsExplorer'
@@ -32,16 +32,15 @@ type OutcomeFilter = 'all' | 'success' | 'failed'
 const SOURCE_FILTER_STORAGE_KEY = 'mill-activity-source-filter'
 const OUTCOME_FILTER_STORAGE_KEY = 'mill-activity-outcome-filter'
 
-// A dedicated, always-visible page: a headless trigger (hotkey, schedule,
-// clipboard-watch, filesystem-watch -- docs/SPEC.md §3.4) fires with no
-// other UI surface, so this is the only way to see whether anything
-// fired at all — nested inside another page, it was indistinguishable
-// from "the feed doesn't work" when nothing had fired yet. Subscribed
-// once at App.tsx (not here) so it keeps collecting even while this tab
-// isn't the active view. Not trigger-only: every run pushes here
-// regardless of how it was triggered (a headless fire, or a direct Run
-// click on a workflow) — one shared feed for "did anything run," not
-// two separate ones.
+// A dedicated, always-visible page for "did anything run." The primary
+// surface is the DURABLE run history (ActivityRunsExplorer -- every
+// workflow's runs, or one selected workflow's), so a failed run is
+// always findable regardless of how it started or whether Mill
+// restarted since. Below it, a session-scoped event feed carries what
+// isn't a run record: hotkey fires with their binding, and gated agent
+// (MCP) write attempts. That feed is subscribed once at App.tsx (not
+// here) so it keeps collecting even while this tab isn't the active
+// view.
 //
 // Renders as Primer's DataTable (@primer/react/experimental) rather than
 // the hand-rolled expand-list this used to be — DataTable has no generic
@@ -55,7 +54,6 @@ function ActivityView() {
   const { t } = useTranslation('views')
   const SOURCE_LABEL = sourceLabelFor(t)
   const activity = useAppStore((s) => s.activity)
-  const setView = useAppStore((s) => s.setView)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [sourceFilter, setSourceFilter] = useState<'all' | ActivitySource>(
     () => (localStorage.getItem(SOURCE_FILTER_STORAGE_KEY) as 'all' | ActivitySource | null) ?? 'all',
@@ -196,7 +194,22 @@ function ActivityView() {
         </Select>
       </Stack>
 
-      {selectedWorkflow && <ActivityRunsExplorer workflow={selectedWorkflow} />}
+      {/* The durable run history is the page's primary surface in both
+          modes -- a failed run must be findable here even after a
+          restart, no matter how it was started (canvas Run included,
+          which never passes through the session feed below). */}
+      <ActivityRunsExplorer workflow={selectedWorkflow} />
+
+      {!selectedWorkflow && activity.length > 0 && (
+        <>
+          <Heading as="h2" variant="small" className={styles.subtitle} data-testid="activity-session-heading">
+            {t('activityView.sessionEventsHeading')}
+          </Heading>
+          <Text as="p" size="small" className={styles.muted}>
+            {t('activityView.sessionEventsDescription')}
+          </Text>
+        </>
+      )}
 
       {!selectedWorkflow && activity.length > 0 && (
         <Stack direction="horizontal" gap="condensed" className={styles.filterRow}>
@@ -219,19 +232,6 @@ function ActivityView() {
             data-testid="activity-search"
           />
         </Stack>
-      )}
-
-      {!selectedWorkflow && activity.length === 0 && (
-        <Blankslate data-testid="activity-empty">
-          <Blankslate.Visual>
-            <PulseIcon size={32} />
-          </Blankslate.Visual>
-          <Blankslate.Heading>{t('activityView.noActivityYet')}</Blankslate.Heading>
-          <Blankslate.Description>{t('activityView.noActivityYetDescription')}</Blankslate.Description>
-          <Blankslate.PrimaryAction onClick={() => setView({ kind: 'composition' })}>
-            {t('emptyStateActions.runAWorkflow')}
-          </Blankslate.PrimaryAction>
-        </Blankslate>
       )}
 
       {!selectedWorkflow && activity.length > 0 && filtered.length === 0 && (

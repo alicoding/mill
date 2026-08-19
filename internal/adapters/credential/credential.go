@@ -17,6 +17,12 @@ import "github.com/zalando/go-keyring"
 // under one recognizable entry, not scattered under ad hoc names.
 const service = "mill-connector"
 
+// ErrNotFound is go-keyring's own not-found sentinel, re-exported so
+// callers can errors.Is against it without importing the underlying
+// library themselves (the ports/adapters boundary this package exists
+// for).
+var ErrNotFound = keyring.ErrNotFound
+
 // Store is Mill's own secret-storage interface -- the same
 // callers-depend-on-the-interface-not-the-concrete-type shape
 // internal/adapters/settings.Store already established. Unlike that
