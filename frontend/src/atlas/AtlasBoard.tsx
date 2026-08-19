@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent } from 'react'
 import { useRenderStormGuard } from '../shared/renderStormGuard'
 import { useTranslation } from 'react-i18next'
-import { ReactFlow, ReactFlowProvider, Background, Controls, useNodesState, useReactFlow, type EdgeTypes as RFEdgeTypes, type NodeTypes as RFNodeTypes } from '@xyflow/react'
+import { ReactFlow, ReactFlowProvider, Background, Controls, useNodesState, useReactFlow } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 import type { Card, Kind, Link, LinkKind, Note } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 import { AtlasService } from '../shared/bindings'
@@ -9,11 +9,7 @@ import { useIsNarrowViewport } from '../shared/useNarrowViewport'
 import { usePrefersReducedMotion } from '../shared/usePrefersReducedMotion'
 import { computeGroupFrameLayout, isGroupCard } from './atlasBoardLayout'
 import { computeNoteBoxes, computeTopLevelBoxes } from './atlasBoardBoxes'
-import { AtlasNoteCardNode } from './AtlasNoteCardNode'
-import { AtlasGroupNode } from './AtlasGroupNode'
-import { AtlasRegionChipNode } from './AtlasRegionChipNode'
-import { AtlasStickyNode } from './AtlasStickyNode'
-import { AtlasLinkEdge } from './AtlasLinkEdge'
+import { rfEdgeTypes, rfNodeTypes } from './atlasBoardNodeTypes'
 import { resolveBoardEdges } from './atlasLinkResolution'
 import { useAtlasArrange } from './useAtlasArrange'
 import { useAtlasEdgeInteraction } from './useAtlasEdgeInteraction'
@@ -41,9 +37,6 @@ import { useAtlasPaste } from './useAtlasPaste'
 import { FILE_DROP_CONTEXT_BOARD } from './atlasFileDropShared'
 import runbookStyles from '../shared/ListCard.module.css'
 import styles from './AtlasBoard.module.css'
-
-const rfNodeTypes: RFNodeTypes = { 'atlas-note': AtlasNoteCardNode, 'atlas-group': AtlasGroupNode, 'atlas-region-chip': AtlasRegionChipNode, 'atlas-sticky': AtlasStickyNode }
-const rfEdgeTypes: RFEdgeTypes = { 'atlas-link': AtlasLinkEdge }
 
 // A ⌘K jump's one-shot request into the board it lands on (goal 0072
 // slice B): AtlasView decides WHETHER a re-root is needed (the target

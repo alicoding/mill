@@ -217,8 +217,8 @@ export function CreateLinkedFileCard(openCardID: string, path: string, title: st
  * kind). Validates the List resolves at creation -- a projection born
  * pointing at nothing is an authoring mistake, refused with the fix.
  */
-export function CreateListProjectionCard(kindID: string, title: string, parentID: string, listID: string): $CancellablePromise<atlas$0.Card> {
-    return $Call.ByID(3315563497, kindID, title, parentID, listID);
+export function CreateListProjectionCard(kindID: string, title: string, parentID: string, position: atlas$0.Position | null, listID: string): $CancellablePromise<atlas$0.Card> {
+    return $Call.ByID(3315563497, kindID, title, parentID, position, listID);
 }
 
 /**

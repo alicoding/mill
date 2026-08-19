@@ -1,0 +1,32 @@
+/* The table projection's wider board footprint -- fills the node box
+   atlasBuildBoardNodes sizes (TABLE_WIDTH/TABLE_HEIGHT), the inner
+   table scrolling within it. */
+.card {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: var(--base-size-8);
+  box-sizing: border-box;
+  background: var(--bgColor-default);
+  border: 1px solid var(--borderColor-default);
+  border-radius: var(--borderRadius-medium);
+  box-shadow: var(--shadow-resting-small, 0 1px 3px rgba(0, 0, 0, 0.08));
+}
+
+.card[data-pulse='true'] {
+  outline: 2px solid var(--borderColor-accent-emphasis);
+}
+
+.tableTag {
+  margin-left: auto;
+  font-size: 9px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--fgColor-muted);
+  border: 1px solid var(--borderColor-default);
+  border-radius: 999px;
+  padding: 0 6px;
+}

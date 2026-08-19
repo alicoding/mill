@@ -117,6 +117,11 @@ export const AtlasNoteCardNode = memo(function AtlasNoteCardNode({ data }: NodeP
         {cardLinks.length > 0 && (
           <span className={styles.chip} data-testid="atlas-note-links-chip">{t('board.linksChip', { count: cardLinks.length })}</span>
         )}
+        {/* A projection card keeps its table identity even on the
+            note face (auto-arrange mode renders it this way). */}
+        {card.ProjectionListID && (
+          <span className={styles.chip} data-testid="atlas-note-table-chip">{'▦'} {t('projection.tableTag')}</span>
+        )}
         {childCount > 0 ? (
           <span className={styles.chip} data-testid="atlas-note-child-chip">{'▸'} {childCount}</span>
         ) : (

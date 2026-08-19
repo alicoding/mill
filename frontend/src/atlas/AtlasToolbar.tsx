@@ -27,7 +27,7 @@ export function AtlasToolbar({
   onAutoArrange,
   perspectives, activePerspectiveID, onSwitchPerspective, onCreatePerspective, onRenamePerspective, onDeletePerspective, onPerspectiveToast,
   links, linkKinds,
-  canAddSibling, onCreate, onExport, onImportFile, onShareError,
+  canAddSibling, onCreate, onCreateTable, onExport, onImportFile, onShareError,
   onOpenMatrix, onOpenCoverage, onOpenKinds, addChildRequest,
 }: {
   cards: Card[]
@@ -56,6 +56,7 @@ export function AtlasToolbar({
   linkKinds: LinkKind[]
   canAddSibling: boolean
   onCreate: (containment: 'sibling' | 'child', kindID: string, title: string) => Promise<void>
+  onCreateTable: (kindID: string, title: string, listID: string) => Promise<void>
   onExport: () => void
   onImportFile: (file: File) => void
   onShareError: (message: string) => void
@@ -148,7 +149,7 @@ export function AtlasToolbar({
           kinds={kinds}
           linkKinds={linkKinds}
         />
-        <AtlasCreateMenu kinds={kinds} canAddSibling={canAddSibling} onCreate={onCreate} openChildRequest={addChildRequest} />
+        <AtlasCreateMenu kinds={kinds} canAddSibling={canAddSibling} onCreate={onCreate} onCreateTable={onCreateTable} openChildRequest={addChildRequest} />
       </div>
     </div>
   )

@@ -46,7 +46,7 @@ func (a *AtlasService) WireListProjection(fn listProjectionFn) {
 // and titled like any other card (the projection is a facet, not a
 // kind). Validates the List resolves at creation -- a projection born
 // pointing at nothing is an authoring mistake, refused with the fix.
-func (a *AtlasService) CreateListProjectionCard(kindID, title, parentID, listID string) (atlas.Card, error) {
+func (a *AtlasService) CreateListProjectionCard(kindID, title, parentID string, position *atlas.Position, listID string) (atlas.Card, error) {
 	if strings.TrimSpace(listID) == "" {
 		return atlas.Card{}, fmt.Errorf("pick the List this table should mirror")
 	}
@@ -56,7 +56,7 @@ func (a *AtlasService) CreateListProjectionCard(kindID, title, parentID, listID 
 	if _, ok := a.listProjection(listID); !ok {
 		return atlas.Card{}, fmt.Errorf("that List no longer exists -- pick another")
 	}
-	card, err := a.CreateCard(kindID, title, "", nil, parentID, nil, "", "", "", "")
+	card, err := a.CreateCard(kindID, title, "", nil, parentID, position, "", "", "", "")
 	if err != nil {
 		return atlas.Card{}, err
 	}

@@ -1,6 +1,6 @@
 import type { Card } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 import { childrenOf } from './atlasGrouping'
-import { computeGroupFrameLayout, isGroupCard, NOTE_HEIGHT, NOTE_WIDTH } from './atlasBoardLayout'
+import { computeGroupFrameLayout, isGroupCard, NOTE_HEIGHT, NOTE_WIDTH, TABLE_HEIGHT, TABLE_WIDTH } from './atlasBoardLayout'
 import { findFreeDropPosition } from '../shared/canvasLayout'
 
 // A fresh, collision-avoidant Position for a card or note about to be
@@ -15,15 +15,21 @@ import { findFreeDropPosition } from '../shared/canvasLayout'
 // among the target parent's own existing children instead. Same
 // findFreeDropPosition spiral AtlasView's own sibling/child creation
 // path already uses -- factored out here so both share it.
-export function freeChildPosition(allCards: Card[], parentID: string): { X: number; Y: number } {
+export function freeChildPosition(allCards: Card[], parentID: string, newSize?: { width: number; height: number }): { X: number; Y: number } {
   const siblings = childrenOf(allCards, parentID).filter((c) => c.Position)
   const desired = findFreeDropPosition(
     { x: 80, y: 80 },
     siblings.map((c) => ({
       position: { x: c.Position?.X ?? 0, y: c.Position?.Y ?? 0 },
-      dims: isGroupCard(allCards, c) ? computeGroupFrameLayout(allCards, c.ID).size : { width: NOTE_WIDTH, height: NOTE_HEIGHT },
+      // Every sibling clears its REAL rendered footprint: a region
+      // frame's computed size, a table projection's TABLE box, a
+      // leaf's note box (goal 0105 -- note-sized clearance landed a
+      // table card overlapping the frame beside it).
+      dims: isGroupCard(allCards, c) ? computeGroupFrameLayout(allCards, c.ID).size
+        : c.ProjectionListID ? { width: TABLE_WIDTH, height: TABLE_HEIGHT }
+          : { width: NOTE_WIDTH, height: NOTE_HEIGHT },
     })),
-    { width: NOTE_WIDTH, height: NOTE_HEIGHT },
+    newSize ?? { width: NOTE_WIDTH, height: NOTE_HEIGHT },
   )
   return { X: desired.x, Y: desired.y }
 }

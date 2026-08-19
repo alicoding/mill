@@ -3,7 +3,7 @@ import { useRenderStormGuard } from '../shared/renderStormGuard'
 import { useTranslation } from 'react-i18next'
 import { Events } from '@wailsio/runtime'
 import { Text } from '@primer/react'
-import { ViewMode, type Card, type Position } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
+import { type Card } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 import { useAtlasCreationRequests } from './useAtlasCreationRequests'
 import { AtlasService } from '../shared/bindings'
 import { downloadJSON } from '../shared/downloadJSON'
@@ -22,7 +22,7 @@ import { AtlasCoverageView } from './AtlasCoverageView'
 import { AtlasKindManager } from './AtlasKindManager'
 import { AtlasBoardEmptyState } from './AtlasBoardEmptyState'
 import { isGroupCard } from './atlasBoardLayout'
-import { freeChildPosition } from './atlasContainmentPlacement'
+import { useAtlasCardCreate } from './useAtlasCardCreate'
 import { useAtlasContainmentMenus } from './useAtlasContainmentMenus'
 import { useAtlasCommandSignals } from './useAtlasCommandSignals'
 import { useAtlasLinkMenus } from './useAtlasLinkMenus'
@@ -350,17 +350,7 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
     file.text().then(importConfirm.requestImport).catch((err) => setImportError(String(err)))
   }
 
-  const createCard = async (containment: 'sibling' | 'child', kindID: string, title: string) => {
-    const parentID = containment === 'child' ? viewedID : (viewedCard?.ParentID ?? '')
-    // A sibling/child that itself holds children renders as a region
-    // frame, far larger than a leaf note's own footprint --
-    // freeChildPosition's own collision-avoidance clears its REAL
-    // rendered size, not a uniform note-sized box (regression: a new
-    // card once landed physically underneath an existing region frame).
-    const position: Position | null = freeChildPosition(allCards, parentID)
-    await AtlasService.CreateCard(kindID, title, '', {}, parentID, position, ViewMode.$zero, '', '', '')
-    await refreshAtlas()
-  }
+  const { createCard, createTableCard } = useAtlasCardCreate({ allCards, viewedID, viewedCard })
 
   useAtlasCommandSignals({ viewedID, onArrange: requestAutoArrange, onExport: exportAtlas, onError: setShareError })
 
@@ -390,6 +380,7 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
         linkKinds={allLinkKinds}
         canAddSibling={viewedID !== ''}
         onCreate={createCard}
+        onCreateTable={createTableCard}
         onExport={exportAtlas}
         onImportFile={importFile}
         onShareError={setShareError}

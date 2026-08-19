@@ -23,14 +23,14 @@ func TestListProjectionCard_CreateValidatesAndReadsLive(t *testing.T) {
 	wireFakeProjection(a)
 	kind := firstKindWithLabel(t, a, "Document")
 
-	if _, err := a.CreateListProjectionCard(kind, "Vendors", "", "no-such-list"); err == nil {
+	if _, err := a.CreateListProjectionCard(kind, "Vendors", "", nil, "no-such-list"); err == nil {
 		t.Fatal("creation against a missing List must refuse")
 	}
-	if _, err := a.CreateListProjectionCard(kind, "Vendors", "", " "); err == nil {
+	if _, err := a.CreateListProjectionCard(kind, "Vendors", "", nil, " "); err == nil {
 		t.Fatal("creation without a List must refuse with the fix")
 	}
 
-	card, err := a.CreateListProjectionCard(kind, "Vendors", "", "list-vendors")
+	card, err := a.CreateListProjectionCard(kind, "Vendors", "", nil, "list-vendors")
 	if err != nil {
 		t.Fatalf("CreateListProjectionCard: %v", err)
 	}
@@ -55,7 +55,7 @@ func TestCardListProjection_MissingListAndPlainCards(t *testing.T) {
 	wireFakeProjection(a)
 	kind := firstKindWithLabel(t, a, "Document")
 
-	card, err := a.CreateListProjectionCard(kind, "Vendors", "", "list-vendors")
+	card, err := a.CreateListProjectionCard(kind, "Vendors", "", nil, "list-vendors")
 	if err != nil {
 		t.Fatalf("CreateListProjectionCard: %v", err)
 	}
