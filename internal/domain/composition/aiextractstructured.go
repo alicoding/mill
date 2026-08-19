@@ -124,7 +124,7 @@ func init() {
 		Produces:    PayloadProduce{Passthrough: true},
 		Output:      "unchanged payload -- the extracted typed result is written into the named Attributes below",
 		Label:       "Extract fields with AI",
-		Description: "Sends a prompt (plus the running payload) to a Configure-authored AI provider, requests a JSON-schema-constrained structured response, and writes each declared output field into this workflow's Attributes by the same key -- the step that composes with Branch for real decisioning (docs/goals/0031-ai-node-family.md). Composition matches process-ai-completion: user content = Prompt + payload. Every declared field is required in the requested schema; a field the provider's response omits still appears in Attributes, zero-valued for its type.",
+		Description: "Sends a prompt plus the payload to a configured AI provider, requests a structured response, and writes each declared output field into this workflow's Attributes by the same key. Every declared field is required; one the provider omits is written empty rather than dropped.",
 		ConfigFields: []ConfigField{
 			{
 				Key: aiProviderIDConfigKey, Label: "AI provider",

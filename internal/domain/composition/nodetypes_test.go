@@ -165,7 +165,28 @@ func TestNodeTypes(t *testing.T) {
 		if nt.Produces.Passthrough && nt.Produces.Kind != "" {
 			t.Errorf("node type %q declares both Passthrough and a produce Kind %q -- pick one", nt.ID, nt.Produces.Kind)
 		}
+
+		// (g) Descriptions are USER COPY (they render in the palette,
+		// the inspector, and the generated step reference) -- never
+		// spec narrative: no internal doc citations. The reasoning a
+		// citation carried belongs in a code comment beside the
+		// registration, where the next maintainer reads it.
+		for _, text := range append([]string{nt.Description}, configFieldDescriptions(nt)...) {
+			for _, leak := range []string{"docs/", "ADR-", "adr/", "goal 0", "SPEC"} {
+				if strings.Contains(text, leak) {
+					t.Errorf("node type %q description leaks internal citation %q (standard item g): %q", nt.ID, leak, text)
+				}
+			}
+		}
 	}
+}
+
+func configFieldDescriptions(nt NodeType) []string {
+	out := make([]string, 0, len(nt.ConfigFields))
+	for _, f := range nt.ConfigFields {
+		out = append(out, f.Description)
+	}
+	return out
 }
 
 func validPayloadKind(k PayloadKind) bool {

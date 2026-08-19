@@ -23,7 +23,7 @@ func init() {
 		Produces:    PayloadProduce{Kind: PayloadAny},
 		Output:      "the file's contents",
 		Label:       "Read file",
-		Description: "Reads a local file into the payload. \"payload\" source treats the CURRENT payload as the file path (what a filesystem-watch trigger's changed-path output supplies, docs/SPEC.md §3.4); \"literal\" source reads a fixed path instead.",
+		Description: "Reads a local file into the payload. \"payload\" source treats the current payload as the file path -- what a File changed trigger supplies; \"literal\" reads a fixed path instead.",
 		ConfigFields: []ConfigField{
 			{
 				Key: "source", Label: "Path source", Type: FieldOptions,

@@ -64,7 +64,7 @@ func init() {
 		Produces:    PayloadProduce{Kind: PayloadAny},
 		Output:      "the tool's text result",
 		Label:       "Call an MCP tool",
-		Description: "Calls one tool on a Configure-authored MCP server and replaces the payload with its text result (docs/SPEC.md §3.6). mcpServerId is FieldText for the same reason integration-http's requestId is -- runtime, Configure-authored data (the Inspector renders a live picker for it, RefKind, docs/adr/0009); toolName is picked from the server's live tool list in the canvas Inspector (MCPToolArgsEditor.tsx), falling back to typing the exact name when the server can't be reached.",
+		Description: "Calls one tool on a configured MCP server and replaces the payload with its text result. The tool is picked from the server's live tool list, with typed-name fallback when the server can't be reached.",
 		ConfigFields: []ConfigField{
 			{
 				Key: "mcpServerId", Label: "MCP Server ID",
