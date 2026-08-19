@@ -67,6 +67,11 @@ capabilities is goal 0076's audit, not ad-hoc.
   (testing.md).
 - SPEC.md updated in the same change, for anything that shifts what it
   describes (mechanical-only changes exempted).
+- User-visible capability or behavior change ⇒ the matching
+  `userdocs/` section updated in the same change (goal 0125's docs
+  DoD — same teeth as the SPEC line above); registry-derived pages
+  regenerate via `go generate ./internal/docsgen` (CI-enforced
+  freshness).
 - The goal file's own Acceptance criteria checked against what
   SHIPPED, not what was planned.
 - Nothing secret-shaped staged; a real commit message.
