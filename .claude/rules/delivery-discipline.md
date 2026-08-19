@@ -112,3 +112,15 @@ deployable, already forbidden (SPEC §1.1).
 A BACKLOG.md entry with the same DoR/DoD as any goal — never a second
 register, never a bare TODO as the record (a comment may point at a
 goal/ADR id, never stand alone).
+
+## Deferrals need a home (goal 0128)
+A deferral is only legal when the SAME sentence names its tracking
+home: a goal number, a BACKLOG line, a SPEC `OPEN` item, or an
+explicit revisit trigger ("revisit when X"). "Out of scope" / "not
+built" / "future work" standing alone is a forgotten request in the
+making — the 2026-08-19 audit found 133 of them. Review-checked like
+comments.md's provenance rule, not grep-gated (deferral phrasing is
+unbounded). Goal files carry a "Deferred from this goal" section when
+anything in-scope was narrowed — the home exists by construction, and
+the register (docs/goals/0128-deferred-register.md, then BACKLOG
+entries it spawns) is part of RELEASING.md's docs review.
