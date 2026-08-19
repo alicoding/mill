@@ -296,6 +296,8 @@
     "labelPlaceholder": "My workflow",
     "hideDetails": "Hide details",
     "addDetails": "Add details",
+    "offerLabel": "Offer on cards from",
+    "offerCaption": "Atlas cards whose Source matches this integration list this workflow as a ready action.",
     "viewing": "Viewing",
     "edit": "Edit",
     "saving": "Saving…",

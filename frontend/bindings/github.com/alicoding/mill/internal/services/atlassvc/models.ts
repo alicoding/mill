@@ -51,6 +51,17 @@ export interface AtlasSessionState {
 }
 
 /**
+ * CardSourceOffer is what the card page renders: the recognition chip
+ * (integration label) plus the offered-action rows.
+ */
+export interface CardSourceOffer {
+    "Recognized": boolean;
+    "RequestID": string;
+    "Label": string;
+    "Workflows": OfferedAction[] | null;
+}
+
+/**
  * ClipbridgeCardOffer is one to-be-created card row on the review
  * surface: the parsed draft plus its collision flag (the dedupe
  * convention -- colliding rows default unchecked).
@@ -202,6 +213,14 @@ export interface ImportFolderSuggestionsRequest {
      * AcceptedRelPaths.
      */
     "CategoryKindIDs": { [_ in string]?: string } | null;
+}
+
+/**
+ * OfferedAction is one workflow declared for the matched Integration.
+ */
+export interface OfferedAction {
+    "WorkflowID": string;
+    "Label": string;
 }
 
 /**

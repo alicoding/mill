@@ -22,6 +22,12 @@ into.
   run them from the card. Workflows can also read and write cards as
   steps (create, update, find, link), and a trigger can fire on card
   changes — the board and the automation layer are one system.
+- **Recognized sources.** A card whose Source URL matches one of your
+  configured integrations shows that integration's name beside the
+  link, and any workflow declaring "Offer on cards from" that
+  integration appears on the card as a ready action — running it
+  attaches it. Every action run receives the card's Source URL and
+  field values, so a "refresh this page" workflow knows its target.
 
 Matrix and Coverage views project the same data as grids when a board
 is the wrong shape for the question.

@@ -612,3 +612,12 @@
   flex: 1 1 auto;
   justify-content: flex-start;
 }
+
+/* The offer declaration's view-mode disable wrapper -- a bare fieldset
+   adds browser chrome (border/margin) the header row doesn't want. */
+.metaOfferFieldset {
+  border: none;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+}

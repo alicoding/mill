@@ -80,6 +80,15 @@ type exportedWorkflow struct {
 	Edges       []composition.Edge         `json:"edges"`
 	Notes       []composition.Note         `json:"notes,omitempty"`
 	Attributes  []composition.AttributeDef `json:"attributes"`
+	// OfferOnRequestID (goal 0126) is additive-optional like Notes:
+	// omitempty keeps offer-less exports byte-identical, absent
+	// imports unmarshal to the zero value. offerKeyPresent records
+	// whether the source document carried the key at all -- the same
+	// nil-vs-absent distinction Notes gets for free from its slice
+	// type, needed so an older export can never wipe an existing
+	// workflow's offer on the update-in-place path.
+	OfferOnRequestID string `json:"offerOnRequestId,omitempty"`
+	offerKeyPresent  bool
 }
 
 // UnmarshalJSON accepts the current "steps" key and, forever, the
@@ -89,15 +98,16 @@ type exportedWorkflow struct {
 // document somehow carries both.
 func (w *exportedWorkflow) UnmarshalJSON(data []byte) error {
 	var raw struct {
-		Schema      string                     `json:"schema"`
-		ID          string                     `json:"id,omitempty"`
-		Label       string                     `json:"label"`
-		Description string                     `json:"description"`
-		Steps       []Step                     `json:"steps"`
-		LegacyNodes []Step                     `json:"nodes"`
-		Edges       []composition.Edge         `json:"edges"`
-		Notes       []composition.Note         `json:"notes,omitempty"`
-		Attributes  []composition.AttributeDef `json:"attributes"`
+		Schema           string                     `json:"schema"`
+		ID               string                     `json:"id,omitempty"`
+		Label            string                     `json:"label"`
+		Description      string                     `json:"description"`
+		Steps            []Step                     `json:"steps"`
+		LegacyNodes      []Step                     `json:"nodes"`
+		Edges            []composition.Edge         `json:"edges"`
+		Notes            []composition.Note         `json:"notes,omitempty"`
+		Attributes       []composition.AttributeDef `json:"attributes"`
+		OfferOnRequestID *string                    `json:"offerOnRequestId"`
 	}
 	if err := json.Unmarshal(data, &raw); err != nil {
 		return err
@@ -109,6 +119,10 @@ func (w *exportedWorkflow) UnmarshalJSON(data []byte) error {
 	*w = exportedWorkflow{
 		Schema: raw.Schema, ID: raw.ID, Label: raw.Label, Description: raw.Description,
 		Steps: steps, Edges: raw.Edges, Notes: raw.Notes, Attributes: raw.Attributes,
+	}
+	if raw.OfferOnRequestID != nil {
+		w.OfferOnRequestID = *raw.OfferOnRequestID
+		w.offerKeyPresent = true
 	}
 	return nil
 }
@@ -206,14 +220,15 @@ func (c *CompositionService) ExportWorkflow(id string) (string, error) {
 	}
 
 	out := exportedWorkflow{
-		Schema:      contract.SchemaID("workflow"),
-		ID:          wf.ID,
-		Label:       wf.Label,
-		Description: wf.Description,
-		Steps:       stepsFromNodes(wf.Nodes),
-		Edges:       wf.Edges,
-		Notes:       wf.Notes,
-		Attributes:  wf.Attributes,
+		Schema:           contract.SchemaID("workflow"),
+		ID:               wf.ID,
+		Label:            wf.Label,
+		Description:      wf.Description,
+		Steps:            stepsFromNodes(wf.Nodes),
+		Edges:            wf.Edges,
+		Notes:            wf.Notes,
+		Attributes:       wf.Attributes,
+		OfferOnRequestID: wf.OfferOnRequestID,
 	}
 	data, err := json.MarshalIndent(out, "", "  ")
 	if err != nil {
@@ -235,6 +250,11 @@ func (c *CompositionService) applyImportedExtras(wf composition.Workflow, in exp
 	}
 	if len(in.Notes) > 0 {
 		if wf, err = c.UpdateNotes(wf.ID, in.Notes); err != nil {
+			return composition.Workflow{}, err
+		}
+	}
+	if in.offerKeyPresent {
+		if wf, err = c.SetWorkflowOffer(wf.ID, in.OfferOnRequestID); err != nil {
 			return composition.Workflow{}, err
 		}
 	}
@@ -322,6 +342,14 @@ func (c *CompositionService) UpdateWorkflowFromExport(id, jsonData string) (comp
 	}
 	if in.Notes != nil {
 		if wf, err = c.UpdateNotes(id, in.Notes); err != nil {
+			return composition.Workflow{}, err
+		}
+	}
+	// Same present-key semantics as attributes/notes: an older export
+	// with no offer key never wipes an existing declaration; a document
+	// that carries the key (empty included) sets it.
+	if in.offerKeyPresent {
+		if wf, err = c.SetWorkflowOffer(id, in.OfferOnRequestID); err != nil {
 			return composition.Workflow{}, err
 		}
 	}

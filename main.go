@@ -207,6 +207,27 @@ func main() {
 	})
 	executionService.SetRunCompletionSink(atlasService.NotifyRunCompleted)
 	atlasService.WireCompositionSeams(triggerService.DispatchAtlasCardChange) // goal 0066
+	// Source recognition (goal 0126): Configure's host index +
+	// composition's offer declarations, adapted at the boundary so
+	// neither service imports the other.
+	atlasService.WireSourceRecognition(
+		func() []atlassvc.RecognizedIntegration {
+			hosts := configureService.IntegrationHosts()
+			out := make([]atlassvc.RecognizedIntegration, 0, len(hosts))
+			for _, h := range hosts {
+				out = append(out, atlassvc.RecognizedIntegration{RequestID: h.ID, Label: h.Label, Host: h.Host})
+			}
+			return out
+		},
+		func(requestID string) []atlassvc.OfferedAction {
+			offers := compositionService.WorkflowsOfferingRequest(requestID)
+			out := make([]atlassvc.OfferedAction, 0, len(offers))
+			for _, o := range offers {
+				out = append(out, atlassvc.OfferedAction{WorkflowID: o.ID, Label: o.Label})
+			}
+			return out
+		},
+	)
 	// apply-notify's door to the OS notification adapter (goal 0114).
 	// Server mode's adapter refuses by design (ErrUnsupportedInServerMode)
 	// -- that maps to success here: the notification is best-effort

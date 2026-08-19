@@ -188,7 +188,12 @@
     "actionsHint": "Each action receives this card's id, kind, and title.",
     "copyForAI": "Copy for AI"
   },
+  "offers": {
+    "heading": "From this card's source — {{label}}",
+    "hint": "Running one attaches it to this card."
+  },
   "page": {
+    "sourceRecognizedTitle": "Matches your integration {{label}}",
     "close": "Close ⨯",
     "insideEyebrow": "Inside · {{kind}}",
     "cardsChip_one": "▸ {{count}} card",

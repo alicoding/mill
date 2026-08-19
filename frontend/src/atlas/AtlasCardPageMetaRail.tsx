@@ -1,5 +1,7 @@
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Button, Checkbox, FormControl, Link as PrimerLink, Stack } from '@primer/react'
+import { Button, Checkbox, FormControl, Label, Link as PrimerLink, Stack } from '@primer/react'
+import { AtlasService } from '../shared/bindings'
 import { CheckIcon, CopyIcon, LinkIcon, SyncIcon } from '@primer/octicons-react'
 import type { Card } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 import { formatUpdated } from '../shared/inventorySort'
@@ -37,6 +39,18 @@ export function AtlasCardPageMetaRail({
   const { t } = useTranslation('atlas')
   const hasAction = (card.ActionWorkflowIDs?.length ?? 0) > 0
   const showFreshness = Boolean(hasAction || card.MirrorPath)
+  // Recognition chip (goal 0126): a Source whose host matches a
+  // configured Integration is named right beside the link.
+  const [recognizedLabel, setRecognizedLabel] = useState('')
+  useEffect(() => {
+    if (!card.Source) {
+      setRecognizedLabel('')
+      return
+    }
+    void AtlasService.CardSourceOffer(card.ID)
+      .then((offer) => setRecognizedLabel(offer.Recognized ? offer.Label : ''))
+      .catch(() => setRecognizedLabel(''))
+  }, [card.ID, card.Source])
 
   return (
     <div className={styles.metaCol} data-testid="atlas-page-meta-rail">
@@ -46,6 +60,11 @@ export function AtlasCardPageMetaRail({
           <a href={card.Source} data-wml-openURL={card.Source} data-testid="atlas-overlay-source-link" className={styles.metaValue}>
             {hostnameOf(card.Source)}
           </a>
+          {recognizedLabel && (
+            <Label size="small" variant="secondary" title={t('page.sourceRecognizedTitle', { label: recognizedLabel })} data-testid="atlas-source-recognized">
+              {recognizedLabel}
+            </Label>
+          )}
         </div>
       )}
 
