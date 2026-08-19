@@ -56,9 +56,8 @@ func init() {
 		Description: "Searches a Configure-authored List's rows against one or more match parameters " +
 			"(exact or fuzzy, per-column, AND'd together) and writes the result into Attributes. " +
 			"Supersedes list-lookup for anything beyond a single exact key match -- list-lookup keeps " +
-			"working unchanged for existing workflows. Expired rows are excluded by default " +
-			"(docs/goals/0011-lists-maturation.md's own researched default, uniform across exact and " +
-			"fuzzy matching); \"Include expired rows\" opts in.",
+			"working unchanged for existing workflows. Expired rows are excluded by default; " +
+			"\"Include expired rows\" opts in.",
 		ConfigFields: []ConfigField{
 			{
 				Key: "listId", Label: "List", Type: FieldText, RefKind: "list",
@@ -70,7 +69,7 @@ func init() {
 					`[{"column":"code","value":"attr:code","matchType":"exact"},` +
 					`{"column":"name","value":"Untied States","matchType":"fuzzy","threshold":0.7}]. ` +
 					`value is a literal or "attr:<name>". Authored via the Inspector's match-parameter ` +
-					`rows; this raw field stays the LLM-authoring vocabulary (docs/adr/0025).`,
+					`rows; the raw JSON stays available for agent authoring.`,
 			},
 			{
 				Key: "includeExpired", Label: "Include expired rows", Type: FieldBoolean, Default: "false",

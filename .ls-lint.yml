@@ -67,9 +67,16 @@ ls:
   # file to CLAUDE.md (not a symlink: Windows checkouts without
   # Developer Mode/admin can't create real symlinks, so a clone would
   # silently get a broken placeholder instead of Mill's actual context).
-  .*: regex:(README|SECURITY|CONTRIBUTING|CLAUDE|AGENTS|Taskfile|lefthook|go|\.golangci|\.ls-lint)
+  .*: regex:(README|SECURITY|CONTRIBUTING|CLAUDE|AGENTS|RELEASING|Taskfile|lefthook|go|\.golangci|\.ls-lint)
 
 ignore:
+  # userdocs/ + skills/ (goal 0125, ADR-0001 extension): user-facing
+  # docs and agent skills ship in the PUBLIC repo -- docs must embed
+  # into the binary and stay licensable with the code; skills are the
+  # packaged AI-surface (SKILL.md convention). Ordinary markdown
+  # naming inside, not the root rule.
+  - userdocs
+  - skills
   - build
   - frontend
   - bin

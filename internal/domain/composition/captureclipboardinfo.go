@@ -49,7 +49,7 @@ func init() {
 		Produces:    PayloadProduce{Kind: PayloadText},
 		Output:      "a summary of the clipboard's flavors",
 		Label:       "Inspect clipboard",
-		Description: "Reads macOS's own \"clipboard info\" report (which flavors -- HTML, plain text, images, ... -- are currently on the pasteboard, and their byte sizes) and summarizes whether HTML and plain text are present, followed by the raw report. A diagnostic for the Confluence-style clipboard ambiguity docs/SPEC.md §5 names: whether HTML was actually on the clipboard, made directly inspectable instead of inferred from a capture succeeding or failing.",
+		Description: "Reads the clipboard's own format report -- which flavors (HTML, plain text, images) are present and their sizes -- and summarizes whether HTML and plain text are available, followed by the raw report. A diagnostic for pastes that look right but convert wrong: see directly whether HTML was actually on the clipboard.",
 	}, func(_ Node, ctx ExecContext) (ExecContext, error) {
 		raw, err := clipboardInfoFn()
 		if err != nil {
