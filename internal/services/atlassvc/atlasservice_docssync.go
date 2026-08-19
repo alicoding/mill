@@ -8,8 +8,8 @@ import (
 
 	"github.com/alicoding/mill/internal/adapters/fileread"
 	"github.com/alicoding/mill/internal/domain/atlas"
-	"github.com/alicoding/mill/internal/services/seeding"
 	"github.com/alicoding/mill/internal/services/dataevent"
+	"github.com/alicoding/mill/internal/services/seeding"
 )
 
 // SyncDocsFolder regenerates one parent card's mirror children from a

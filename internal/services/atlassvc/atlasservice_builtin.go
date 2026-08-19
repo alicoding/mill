@@ -319,7 +319,6 @@ func (a *AtlasService) reconcilePerspectivesLocked(tombstones map[string]bool, n
 	return changed
 }
 
-
 // retireGoneSeedsLocked removes retired built-in cards, links, and
 // perspectives (the de-seeded reference-architecture landscape) from an
 // existing install -- exactly when the record is still an untouched
