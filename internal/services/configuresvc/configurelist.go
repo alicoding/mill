@@ -404,3 +404,30 @@ func (c *ConfigureService) migrateLegacyLists() {
 		}
 	}
 }
+
+// ListProjectionData is the render-ready view Atlas's table
+// projection consumes (goal 0105, atlassvc/atlasprojection.go).
+// Exported for main.go wiring only, never a frontend RPC. ok is false
+// when no List carries the id -- the projection's honest missing
+// state, not an error.
+//
+//wails:ignore
+func (c *ConfigureService) ListProjectionData(listID string) (label string, columns []typedfield.Field, rows []map[string]string, ok bool) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	for _, l := range c.lists {
+		if l.ID != listID {
+			continue
+		}
+		columns = append(columns, l.Columns...)
+		for _, r := range l.Rows {
+			vals := make(map[string]string, len(r.Values))
+			for k, v := range r.Values {
+				vals[k] = v
+			}
+			rows = append(rows, vals)
+		}
+		return l.Label, columns, rows, true
+	}
+	return "", nil, nil, false
+}

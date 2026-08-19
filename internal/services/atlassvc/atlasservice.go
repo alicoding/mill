@@ -82,6 +82,9 @@ type AtlasService struct {
 	// test that never wires them.
 	integrationHosts integrationHostsFn
 	offeredWorkflows offeredWorkflowsFn
+	// List-projection seam (goal 0105, atlasprojection.go) -- injected
+	// via WireListProjection, same nil-means-off discipline.
+	listProjection listProjectionFn
 	// guardedDataPaths are Mill's own settings/execution-db/backup
 	// locations (main.go's own SetGuardedDataPaths call, goal 0067) --
 	// ScanFolder/ImportFolderSuggestions refuse a picked folder that
