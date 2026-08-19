@@ -74,7 +74,7 @@ export function AtlasCardPageContents({ card, allCards, kinds, onOpenGroupEntry,
       {card.ProjectionListID && (
         <Stack direction="vertical" gap="condensed" data-testid="atlas-page-projection">
           <Text weight="semibold">{t('projection.pageHeading')}</Text>
-          <AtlasCardProjectionTable cardID={card.ID} />
+          <AtlasCardProjectionTable cardID={card.ID} density={card.ProjectionDensity} />
           <Text size="small" className={runbookStyles.muted}>
             {t('projection.pageCaption')}{' '}
             <PrimerLink as="button" type="button" data-testid="atlas-projection-open-configure" onClick={() => setView({ kind: 'configure', tab: 'lists' })}>

@@ -610,6 +610,15 @@ export function SetCardActions(id: string, workflowIDs: string[] | null): $Cance
 }
 
 /**
+ * SetCardProjectionDensity persists the projection's render mode
+ * ("", "grid", "pills") -- validated against the closed set so a bad
+ * wire value can't persist.
+ */
+export function SetCardProjectionDensity(cardID: string, density: string): $CancellablePromise<atlas$0.Card> {
+    return $Call.ByID(3542799747, cardID, density);
+}
+
+/**
  * SetLens persists the per-space lens for containerID: which Kind IDs
  * stay hidden when viewing that container's children (ADR-0038's
  * density-is-a-lens-choice principle), and the depth/peek toggle (goal

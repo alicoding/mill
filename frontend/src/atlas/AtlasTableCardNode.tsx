@@ -2,6 +2,7 @@ import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Handle, Position as RFPosition } from '@xyflow/react'
 import type { NodeProps } from '@xyflow/react'
+import { AtlasService } from '../shared/bindings'
 import { kindColorTokens } from './atlasKindColor'
 import { AtlasCardProjectionTable } from './AtlasCardProjectionTable'
 import type { AtlasNoteCardRFNode } from './AtlasNoteCardNode'
@@ -46,10 +47,23 @@ export const AtlasTableCardNode = memo(function AtlasTableCardNode({ data }: Nod
           {(kind?.Label ?? '?').charAt(0).toUpperCase()}
         </span>
         <span className={noteStyles.kindLabel}>{kind?.Label ?? ''}</span>
-        <span className={styles.tableTag}>{t('projection.tableTag')}</span>
+        {/* The tag doubles as the density toggle (goal 0105 part 3):
+            grid <-> pills, persisted per card. */}
+        <button
+          type="button"
+          className={`${styles.tableTag} nodrag`}
+          data-testid="atlas-table-density-toggle"
+          title={t('projection.densityToggleTitle')}
+          onClick={(e) => {
+            e.stopPropagation()
+            void AtlasService.SetCardProjectionDensity(card.ID, card.ProjectionDensity === 'pills' ? 'grid' : 'pills')
+          }}
+        >
+          {card.ProjectionDensity === 'pills' ? t('projection.pillsTag') : t('projection.tableTag')}
+        </button>
       </div>
       <div className={noteStyles.title}>{card.Title}</div>
-      <AtlasCardProjectionTable cardID={card.ID} />
+      <AtlasCardProjectionTable cardID={card.ID} density={card.ProjectionDensity} />
     </div>
   )
 })

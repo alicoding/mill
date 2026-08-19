@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Events } from '@wailsio/runtime'
-import { Button, Text, TextInput } from '@primer/react'
+import { Button, Label, Select, Text, TextInput } from '@primer/react'
 import { AtlasService, ConfigureService } from '../shared/bindings'
 import type { ListProjection } from '../../bindings/github.com/alicoding/mill/internal/services/atlassvc/models'
 import { type Field, Type as FieldType } from '../../bindings/github.com/alicoding/mill/internal/domain/typedfield/models'
 import { RowStatus } from '../../bindings/github.com/alicoding/mill/internal/domain/list/models'
 import { nextColumnKey } from './projectionColumns'
+import { optionColor } from './projectionColors'
 import styles from './AtlasCardProjectionTable.module.css'
 
 // The projected List rendered as a table (goal 0105): used by the
@@ -22,7 +23,28 @@ import styles from './AtlasCardProjectionTable.module.css'
 // Configure's editor uses (the guardrail gate governs workflow/agent
 // side effects, never the user's own direct edits) -- and every other
 // projection of the List updates through the same data event.
-export function AtlasCardProjectionTable({ cardID }: { cardID: string }) {
+
+// cellContent renders an options value as its colored pill; anything
+// else (plain text, or a value outside the declared options) stays
+// text.
+function cellContent(c: { Options: string[] | null; OptionColors: string[] | null; Label: string; Key: string }, value: string) {
+  if (!value || (c.Options?.length ?? 0) === 0) return value
+  const color = optionColor(c.Options, c.OptionColors, value)
+  if (!color) return value
+  return <Label size="small" variant={color} data-testid="atlas-projection-pill">{value}</Label>
+}
+
+// The pills density tints each row by its FIRST options column's
+// value color (the status-board reading: a row IS its state).
+function rowTintStyle(columns: { Options: string[] | null; OptionColors: string[] | null; Key: string }[], values: { [key: string]: string | undefined }) {
+  const statusCol = columns.find((c) => (c.Options?.length ?? 0) > 0)
+  if (!statusCol) return undefined
+  const color = optionColor(statusCol.Options, statusCol.OptionColors, values[statusCol.Key] ?? '')
+  if (!color) return undefined
+  return { background: `var(--bgColor-${color}-muted)` }
+}
+
+export function AtlasCardProjectionTable({ cardID, density }: { cardID: string; density?: string }) {
   const { t } = useTranslation('atlas')
   const [proj, setProj] = useState<ListProjection | null>(null)
   const [editing, setEditing] = useState<{ rowID: string; key: string; value: string } | null>(null)
@@ -110,7 +132,16 @@ export function AtlasCardProjectionTable({ cardID }: { cardID: string }) {
     // nowheel/nodrag: the table scrolls and its inputs receive clicks
     // without zooming or dragging the canvas underneath (React Flow's
     // own utility classes; nodrag on the container covers children).
-    <div className={`${styles.wrap} nowheel nodrag`} data-testid="atlas-projection-table">
+    // stopPropagation: a cell click must never reach the card node's
+    // own click model -- a second click inside the table otherwise
+    // reads as "commit the selected card" and opens the page over the
+    // edit (the spreadsheet-node convention: the frame moves/opens the
+    // card, the grid edits the grid).
+    <div
+      className={`${styles.wrap} nowheel nodrag`}
+      data-testid="atlas-projection-table"
+      onClick={(e) => e.stopPropagation()}
+    >
       <div className={styles.scroll}>
         {columns.length === 0 ? (
           <Text as="p" size="small" className={styles.empty}>{t('projection.noColumns')}</Text>
@@ -158,7 +189,11 @@ export function AtlasCardProjectionTable({ cardID }: { cardID: string }) {
             </thead>
             <tbody>
               {rows.map((row, rowIdx) => row && (
-                <tr key={row.ID} data-testid="atlas-projection-row">
+                <tr
+                  key={row.ID}
+                  data-testid="atlas-projection-row"
+                  style={density === 'pills' ? rowTintStyle(columns, row.Values ?? {}) : undefined}
+                >
                   {columns.map((c, colIdx) => (
                     <td
                       key={c.Key}
@@ -166,19 +201,35 @@ export function AtlasCardProjectionTable({ cardID }: { cardID: string }) {
                       onClick={() => setEditing({ rowID: row.ID, key: c.Key, value: row.Values?.[c.Key] ?? '' })}
                     >
                       {editing && editing.rowID === row.ID && editing.key === c.Key ? (
-                        <TextInput
-                          autoFocus size="small" value={editing.value}
-                          aria-label={c.Label || c.Key}
-                          data-testid="atlas-projection-cell-input"
-                          onChange={(e) => setEditing({ ...editing, value: e.target.value })}
-                          onBlur={commitCell}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') commitCell()
-                            if (e.key === 'Escape') setEditing(null)
-                          }}
-                        />
+                        (c.Options?.length ?? 0) > 0 ? (
+                          // An options column edits as a select over its
+                          // own declared values -- committed immediately
+                          // on pick (there is nothing to type).
+                          <Select
+                            autoFocus size="small" value={editing.value}
+                            aria-label={c.Label || c.Key}
+                            data-testid="atlas-projection-cell-select"
+                            onChange={(e) => { editing.value = e.target.value; commitCell() }}
+                            onBlur={commitCell}
+                          >
+                            <Select.Option value="">{'—'}</Select.Option>
+                            {(c.Options ?? []).map((opt) => <Select.Option key={opt} value={opt}>{opt}</Select.Option>)}
+                          </Select>
+                        ) : (
+                          <TextInput
+                            autoFocus size="small" value={editing.value}
+                            aria-label={c.Label || c.Key}
+                            data-testid="atlas-projection-cell-input"
+                            onChange={(e) => setEditing({ ...editing, value: e.target.value })}
+                            onBlur={commitCell}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') commitCell()
+                              if (e.key === 'Escape') setEditing(null)
+                            }}
+                          />
+                        )
                       ) : (
-                        row.Values?.[c.Key] ?? ''
+                        cellContent(c, row.Values?.[c.Key] ?? '')
                       )}
                       {colIdx === 0 && (
                         <button

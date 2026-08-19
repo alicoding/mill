@@ -16,9 +16,14 @@ import (
 // that never wire it.
 
 // ProjectionColumn is one List column's identity for rendering.
+// Options/OptionColors ride along so an options column renders as a
+// colored pill (goal 0105 part 3) -- color resolution (explicit else
+// palette-by-index) is the frontend's one pure function.
 type ProjectionColumn struct {
-	Key   string
-	Label string
+	Key          string
+	Label        string
+	Options      []string
+	OptionColors []string
 }
 
 // ProjectionRow is one List row with the identity in-place editing
@@ -77,6 +82,30 @@ func (a *AtlasService) CreateListProjectionCard(kindID, title, parentID string, 
 		return atlas.Card{}, fmt.Errorf("no card with id %q", card.ID)
 	}
 	a.cards[idx].ProjectionListID = listID
+	if err := a.persistLocked(); err != nil {
+		a.mu.Unlock()
+		return atlas.Card{}, err
+	}
+	out := a.cards[idx]
+	a.mu.Unlock()
+	dataevent.Emit("atlas", out.ID)
+	return out, nil
+}
+
+// SetCardProjectionDensity persists the projection's render mode
+// ("", "grid", "pills") -- validated against the closed set so a bad
+// wire value can't persist.
+func (a *AtlasService) SetCardProjectionDensity(cardID, density string) (atlas.Card, error) {
+	if density != "" && density != "grid" && density != "pills" {
+		return atlas.Card{}, fmt.Errorf("unknown table density %q", density)
+	}
+	a.mu.Lock()
+	idx := a.findCardLocked(cardID)
+	if idx == -1 {
+		a.mu.Unlock()
+		return atlas.Card{}, fmt.Errorf("no card with id %q", cardID)
+	}
+	a.cards[idx].ProjectionDensity = density
 	if err := a.persistLocked(); err != nil {
 		a.mu.Unlock()
 		return atlas.Card{}, err
