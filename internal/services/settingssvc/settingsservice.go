@@ -82,11 +82,11 @@ type SettingsService struct {
 	// never a direct backupsvc import (backend.md), same shape as
 	// composition.SetBackupRunner. keepN <= 0 means "use the runner's
 	// own default retention."
-	backupRunner func(keepN int) (string, error)
-	appVersion     string
-	updateChannel  string
-	isolatedData   bool
-	mcpService     *mcpsvc.MillMCPService
+	backupRunner  func(keepN int) (string, error)
+	appVersion    string
+	updateChannel string
+	isolatedData  bool
+	mcpService    *mcpsvc.MillMCPService
 
 	// keymap holds command-keybinding OVERRIDES only (goal 0016 --
 	// docs/goals/0016-keymap-system.md), keyed by command id
@@ -323,7 +323,6 @@ func (s *SettingsService) SetLaunchAtLogin(enabled bool) error {
 	}
 	return launchatlogin.Disable(exe)
 }
-
 
 // GetMCPWriteEnabled/SetMCPWriteEnabled own the default-off gate for
 // Mill's MCP import tools (millmcpservice_tools.go, ADR-0017's

@@ -179,6 +179,17 @@ test('Update-channel preference saves, explains the restart, and survives a relo
     await page.goto(`${server.baseURL}/`)
     await page.getByRole('link', { name: 'Settings' }).click()
 
+    // Outbound proxy (goal 0123): invalid URL surfaces the validation
+    // error; a valid one saves with the restart note and survives a
+    // reload alongside the channel preference.
+    const proxyInput = page.getByTestId('proxy-url-input')
+    await proxyInput.fill('not a url')
+    await page.getByTestId('proxy-url-save').click()
+    await expect(page.getByTestId('proxy-error')).toContainText('http or https URL')
+    await proxyInput.fill('http://proxy.example.com:8080')
+    await page.getByTestId('proxy-url-save').click()
+    await expect(page.getByTestId('proxy-saved-note')).toContainText('Restart Mill')
+
     const select = page.getByTestId('update-channel-select')
     await expect(select).toHaveValue('')
     await select.selectOption('beta')

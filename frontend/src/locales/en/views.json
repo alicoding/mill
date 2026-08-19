@@ -80,7 +80,12 @@
       "channelOptionRelease": "Release — stable versions",
       "channelSaved": "Saved. Restart Mill to start using this channel.",
       "installFallbackHint": "Get the update with your browser instead — some networks block app downloads.",
-      "openReleasesButton": "Open releases page"
+      "openReleasesButton": "Open releases page",
+      "proxyLabel": "Outbound proxy",
+      "proxyPlaceholder": "http://proxy.example.com:8080",
+      "proxyCaption": "Optional. Update checks and downloads go through this proxy.",
+      "proxySave": "Save",
+      "proxySaved": "Saved. Restart Mill to start using this proxy."
     },
     "dataStewardship": {
       "description": "Mill snapshots your workflow history and settings automatically, and can bundle everything into one file to move to another machine.",

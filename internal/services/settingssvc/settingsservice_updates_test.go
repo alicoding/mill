@@ -298,7 +298,7 @@ func TestUpdaterUserAgentTransport_StampsMillAgent(t *testing.T) {
 	if err != nil {
 		t.Fatalf("build request: %v", err)
 	}
-	resp, err := newUpdaterHTTPClient("0.4.0-beta.7").Do(req)
+	resp, err := newUpdaterHTTPClient("0.4.0-beta.7", "").Do(req)
 	if err != nil {
 		t.Fatalf("request through updater client: %v", err)
 	}
@@ -307,5 +307,47 @@ func TestUpdaterUserAgentTransport_StampsMillAgent(t *testing.T) {
 	}
 	if got != "Mill-Updater/0.4.0-beta.7" {
 		t.Errorf("User-Agent = %q, want the Mill-Updater identity", got)
+	}
+}
+
+func TestSetOutboundProxyURL_ValidatesAndPersists(t *testing.T) {
+	set := newTestSettingsService(t)
+	if err := set.SetOutboundProxyURL("http://proxy.example.com:8080"); err != nil {
+		t.Fatalf("valid http proxy rejected: %v", err)
+	}
+	if got := set.OutboundProxyURL(); got != "http://proxy.example.com:8080" {
+		t.Errorf("OutboundProxyURL() = %q after save", got)
+	}
+	if err := set.SetOutboundProxyURL("not a url"); err == nil {
+		t.Error("scheme-less garbage accepted")
+	}
+	if err := set.SetOutboundProxyURL("ftp://x"); err == nil {
+		t.Error("non-http scheme accepted")
+	}
+	if err := set.SetOutboundProxyURL(""); err != nil {
+		t.Fatalf("clearing rejected: %v", err)
+	}
+	if got := set.OutboundProxyURL(); got != "" {
+		t.Errorf("OutboundProxyURL() = %q after clear", got)
+	}
+}
+
+func TestUpdaterProxyFunc_ExplicitURLWinsOverEnvironment(t *testing.T) {
+	t.Setenv("HTTPS_PROXY", "http://env-proxy.local:9999")
+	req, _ := http.NewRequestWithContext(context.Background(), http.MethodGet, "https://example.org/x", nil)
+
+	fixed := updaterProxyFunc("http://set-proxy.local:8080")
+	u, err := fixed(req)
+	if err != nil || u == nil || u.Host != "set-proxy.local:8080" {
+		t.Errorf("explicit proxy not used: url=%v err=%v", u, err)
+	}
+
+	// Empty falls back to the environment resolution. ProxyFromEnvironment
+	// caches per-process on first use, so assert only that the call runs
+	// and returns without error -- the explicit-URL branch above is the
+	// behavior this seam owns.
+	envFn := updaterProxyFunc("")
+	if _, err := envFn(req); err != nil {
+		t.Errorf("environment fallback errored: %v", err)
 	}
 }

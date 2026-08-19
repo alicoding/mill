@@ -138,6 +138,7 @@ func (s *SettingsService) RestoreMenuAccelerators() {
 // instead of bracketing a recording session:
 //   - File > Close (role CloseWindow, accelerator "Cmd+W") -- ⌘W is
 //     the keymap's tab.close, not "close the window."
+//
 // The role is not removed from the menu, only its keyboard shortcut:
 // File > Close still closes the window when chosen by mouse (a
 // reasonable, distinct affordance from ⌘W's tab-close, matching native

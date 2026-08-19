@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"net/url"
 	"os"
 	"strings"
 	"time"
@@ -29,12 +30,16 @@ func (t updaterUserAgentTransport) RoundTrip(req *http.Request) (*http.Response,
 	return t.base.RoundTrip(clone)
 }
 
-func newUpdaterHTTPClient(currentVersion string) *http.Client {
+func newUpdaterHTTPClient(currentVersion, proxyURL string) *http.Client {
+	// A dedicated transport, not http.DefaultTransport: the proxy
+	// choice (goal 0123) must not mutate the process-wide default.
+	base := http.DefaultTransport.(*http.Transport).Clone()
+	base.Proxy = updaterProxyFunc(proxyURL)
 	return &http.Client{
 		Timeout: 30 * time.Second,
 		Transport: updaterUserAgentTransport{
 			agent: "Mill-Updater/" + currentVersion,
-			base:  http.DefaultTransport,
+			base:  base,
 		},
 	}
 }
@@ -66,7 +71,7 @@ func InitUpdater(u *updater.Updater, repo, currentVersion, channel string, s *Se
 		AssetMatcher:  UpdaterAssetMatcher,
 		ChecksumAsset: "SHA256SUMS",
 		Prerelease:    channel == "beta",
-		HTTPClient:    newUpdaterHTTPClient(currentVersion),
+		HTTPClient:    newUpdaterHTTPClient(currentVersion, s.OutboundProxyURL()),
 	})
 	if err != nil {
 		return fmt.Errorf("updater provider init: %w", err)
@@ -174,6 +179,48 @@ func (s *SettingsService) UpdateChannel() string {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return s.updateChannel
+}
+
+// outboundProxyKey persists the app-level outbound proxy URL (goal
+// 0123, the multi-purpose-surface rule's network instance): first
+// consumer is the updater's HTTP client -- a managed network that
+// 403s direct non-browser downloads allows the same fetch through
+// its proxy. Empty = Go's ProxyFromEnvironment (env vars keep
+// working for server-mode/CLI launches; a Finder-launched app has
+// none, which is exactly why this preference exists). Applies at
+// boot, same restart semantics as the channel preference.
+const outboundProxyKey = "outboundProxyURL"
+
+// OutboundProxyURL returns the persisted proxy URL ("" = none).
+func (s *SettingsService) OutboundProxyURL() string {
+	v, _ := s.store.Get(outboundProxyKey).(string)
+	return v
+}
+
+// SetOutboundProxyURL validates and persists the proxy URL; "" clears.
+func (s *SettingsService) SetOutboundProxyURL(raw string) error {
+	raw = strings.TrimSpace(raw)
+	if raw != "" {
+		u, err := url.Parse(raw)
+		if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
+			return fmt.Errorf("the proxy must be an http or https URL, like http://proxy.example.com:8080")
+		}
+	}
+	return s.store.Set(outboundProxyKey, raw)
+}
+
+// updaterProxyFunc picks the transport proxy: the persisted URL when
+// set, else Go's environment resolution -- so an explicit setting
+// always wins and nothing changes for installs that never set one.
+func updaterProxyFunc(proxyURL string) func(*http.Request) (*url.URL, error) {
+	if proxyURL == "" {
+		return http.ProxyFromEnvironment
+	}
+	fixed, err := url.Parse(proxyURL)
+	if err != nil {
+		return http.ProxyFromEnvironment
+	}
+	return http.ProxyURL(fixed)
 }
 
 // updateChannelPreferenceKey persists the user's channel opt-in. A
