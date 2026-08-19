@@ -64,7 +64,15 @@ func (a *AtlasService) RunCardAction(cardID, workflowID string) error {
 	if !slices.Contains(c.ActionWorkflowIDs, workflowID) {
 		return fmt.Errorf("workflow %q is not an attached action of card %q", workflowID, cardID)
 	}
-	values := map[string]string{"cardId": c.ID, "kindId": c.KindID, "cardTitle": c.Title, "changeType": "action"}
-	payload := fmt.Sprintf(`{"cardId":%q,"kindId":%q,"title":%q,"changeType":"action"}`, c.ID, c.KindID, c.Title)
+	// The card's own context flows into the run (goal 0126 slice 1):
+	// sourceUrl and every typed field value join the attribute seed,
+	// so an action like "refresh this page" gets its URL for free
+	// instead of fishing it back out with a find step. Field keys ride
+	// under field: to keep the reserved names collision-free.
+	values := map[string]string{"cardId": c.ID, "kindId": c.KindID, "cardTitle": c.Title, "changeType": "action", "sourceUrl": c.Source}
+	for k, v := range c.Fields {
+		values["field:"+k] = v
+	}
+	payload := fmt.Sprintf(`{"cardId":%q,"kindId":%q,"title":%q,"changeType":"action","sourceUrl":%q}`, c.ID, c.KindID, c.Title, c.Source)
 	return cardActionRunnerFn(workflowID, c.ID, values, payload)
 }
