@@ -183,6 +183,12 @@ var workflowProofRegistry = map[string]seedProof{
 		"backupsvc.TestBackupService_SnapshotSafeWhileASeededWorkflowRunConcurrentlyExecutes",
 		"e2e: settings.spec.ts > Back up now takes a snapshot and updates the last-backup time",
 	),
+	"example-confluence-to-markdown-workflow": proven(
+		"seed: validates + resolves end-to-end; live PAT run is goal 0111's owner acceptance step",
+	),
+	"example-jira-search-workflow": proven(
+		"seed: validates + resolves end-to-end; live PAT run is goal 0111's owner acceptance step",
+	),
 }
 
 // httpRequestProofRegistry: every httprequest.BuiltIn() ID.
@@ -211,6 +217,12 @@ var httpRequestProofRegistry = map[string]seedProof{
 	),
 	httprequest.ExampleQueryParamID: proven(
 		"configuresvc.TestSeededHTTPRequests_LiveEndpointsRespond (liveness, advisory)",
+	),
+	httprequest.ExampleConfluencePageReadID: proven(
+		"seed: validates + resolves end-to-end; live PAT run is goal 0111's owner acceptance step",
+	),
+	httprequest.ExampleJiraSearchID: proven(
+		"seed: validates + resolves end-to-end; live PAT run is goal 0111's owner acceptance step",
 	),
 }
 

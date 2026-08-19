@@ -36,6 +36,20 @@ const (
 	ExampleOAuth1ID     = "example-oauth1-postman-echo"
 	ExampleOAuth2ID     = "example-oauth2-spotify"
 	ExampleQueryParamID = "example-queryparam-httpbin"
+	// ExampleConfluencePageReadID and ExampleJiraSearchID (goal 0111)
+	// demonstrate calling a self-hosted Atlassian Data Center instance
+	// over a user-supplied Personal Access Token. Both are
+	// bring-your-own-host: BaseURL ships as the RFC 2606 reserved
+	// "example.invalid" (guaranteed to never resolve, unlike
+	// "example.com" -- an unconfigured run fails with an obvious DNS
+	// error instead of quietly succeeding against someone else's real
+	// site), same placeholder-not-empty shape the seeded filesystem-watch
+	// example already uses for its own default path. The credential slot
+	// ships unfilled, same shape ExampleOAuth2ID already established for
+	// a capability that can't be demonstrated without the user's own
+	// registration.
+	ExampleConfluencePageReadID = "example-confluence-page-read"
+	ExampleJiraSearchID         = "example-jira-search"
 )
 
 // One-URL model (composition.JoinRequestURL): every seed's BaseURL is
@@ -80,6 +94,34 @@ const typedBearerSpec = `{"openapi":"3.0.3","info":{"title":"httpbin bearer chec
 	`"authenticated":{"type":"boolean","description":"True when the Bearer token was accepted"},` +
 	`"token":{"type":"string","description":"The token httpbin received"}` +
 	`}}}}}}}}}}`
+
+// confluencePageReadSpec declares Confluence's real content-read
+// endpoint (GET /rest/api/content/{contentId}?expand=body.export_view,
+// Confluence Server/Data Center's own documented REST shape) as one
+// literal operation path -- the legacy per-operation-path model (not
+// the one-URL model the httpbin/postman examples above use), since
+// this example's BaseURL is a placeholder host: a real user's own
+// on-prem host replaces it and joins in front of this path at call
+// time (JoinRequestURL). expand=body.export_view is a fixed part of
+// the call (always want rendered HTML), so it's baked into the path
+// literal rather than a bindable parameter; contentId is the one real
+// per-run input, declared as a path parameter.
+const confluencePageReadSpec = `{"openapi":"3.0.3","info":{"title":"Confluence page read (PAT)","version":"1.0.0"},` +
+	`"paths":{"/rest/api/content/{contentId}?expand=body.export_view":{"get":{` +
+	`"summary":"Read a Confluence page as rendered HTML",` +
+	`"parameters":[{"name":"contentId","in":"path","required":true,"schema":{"type":"string","description":"The Confluence content (page) ID"}}],` +
+	`"responses":{"200":{"description":"OK"}}}}}}`
+
+// jiraSearchSpec declares Jira's real JQL search endpoint (GET
+// /rest/api/2/search?jql={jql}&fields=summary,status,assignee&maxResults=50,
+// Jira Server/Data Center's own documented REST shape) the same way:
+// fields/maxResults are fixed parts of the call, jql is the one bound
+// input.
+const jiraSearchSpec = `{"openapi":"3.0.3","info":{"title":"Jira search (PAT)","version":"1.0.0"},` +
+	`"paths":{"/rest/api/2/search?jql={jql}&fields=summary,status,assignee&maxResults=50":{"get":{` +
+	`"summary":"Search Jira issues with a JQL query",` +
+	`"parameters":[{"name":"jql","in":"path","required":true,"schema":{"type":"string","description":"The JQL query string"}}],` +
+	`"responses":{"200":{"description":"OK"}}}}}}`
 
 // BuiltIn returns the seeded example requests -- pure config, no
 // secrets (HTTPRequest never carries one, by design). Whoever owns
@@ -165,6 +207,26 @@ func BuiltIn() []HTTPRequest {
 				"header-based API-key example (httpbin doesn't validate the value).",
 			BaseURL: "https://httpbin.org/get", AuthType: AuthQueryParam, Method: "GET",
 			OpenAPISpec: openAPISpecFor("httpbin query echo"),
+			BuiltIn:     true,
+			Seed:        seedorigin.Stamp(1),
+		},
+		{
+			ID: ExampleConfluencePageReadID, Label: "Example: Confluence page (PAT)",
+			Description: "Reads a Confluence page as rendered HTML. Set your Confluence base URL and paste " +
+				"a personal access token. Works with self-hosted Confluence; cloud sites use a different " +
+				"path and Basic auth.",
+			BaseURL: "https://example.invalid", AuthType: AuthBearer, Method: "GET",
+			OpenAPISpec: confluencePageReadSpec,
+			BuiltIn:     true,
+			Seed:        seedorigin.Stamp(1),
+		},
+		{
+			ID: ExampleJiraSearchID, Label: "Example: Jira search (PAT)",
+			Description: "Searches Jira issues with a JQL query. Set your Jira base URL and paste a " +
+				"personal access token. Works with self-hosted Jira; cloud sites use /rest/api/3/search/jql " +
+				"and Basic auth.",
+			BaseURL: "https://example.invalid", AuthType: AuthBearer, Method: "GET",
+			OpenAPISpec: jiraSearchSpec,
 			BuiltIn:     true,
 			Seed:        seedorigin.Stamp(1),
 		},
