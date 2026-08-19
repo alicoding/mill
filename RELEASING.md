@@ -24,7 +24,10 @@ which is the continuous rehearsal of steps 3–4.
 5. **Docs ride the release.** Any user-visible change since the last
    release has its `userdocs/` section updated (the DoD gate),
    `go generate ./internal/docsgen` output committed fresh
-   (CI-enforced), and the two skills still accurate.
+   (CI-enforced), and the two skills still accurate. Deferred work
+   named during the release's goals has a tracking home (the
+   deferred-capability register discipline) — no release ships
+   "out of scope" sentences with nowhere to land.
 6. **Rollback stance.** The previous release stays downloadable; a
    bad release is superseded by tagging the fix — releases are never
    deleted out from under updaters.
