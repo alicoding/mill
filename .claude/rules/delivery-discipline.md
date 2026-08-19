@@ -122,5 +122,5 @@ making — the 2026-08-19 audit found 133 of them. Review-checked like
 comments.md's provenance rule, not grep-gated (deferral phrasing is
 unbounded). Goal files carry a "Deferred from this goal" section when
 anything in-scope was narrowed — the home exists by construction, and
-the register (docs/goals/0128-deferred-register.md, then BACKLOG
+the register (docs/goals/archive/0128-deferred-register.md, then BACKLOG
 entries it spawns) is part of RELEASING.md's docs review.
