@@ -69,6 +69,26 @@
     overflow: hidden;
     text-overflow: ellipsis;
 }
+/* The draw-time kind-mismatch explanation (ADR-0042 slice 2) -- a
+   transient top-right notice, same danger-scale token React Flow's
+   validation badge already uses (canvasNodeValidation below) so a
+   refusal reads consistently wherever it shows up on the canvas.
+   `margin-top` overrides React Flow's own base .react-flow__panel rule
+   (margin: 15px, confirmed against its shipped CSS -- same tie-broken-
+   by-source-order override .canvasToolbar's own `margin: 0` already
+   relies on above): .canvasToolbar is docked full-width at the pane's
+   actual top edge, so a default-offset top-right Panel renders partly
+   underneath it -- 56px clears the toolbar's own header row. */
+.connectionRefusalHint {
+    margin-top: 56px;
+    max-width: 320px;
+    padding: var(--base-size-8) var(--base-size-12);
+    background: var(--bgColor-default);
+    border: 1px solid var(--borderColor-danger-emphasis);
+    border-radius: var(--borderRadius-medium);
+    box-shadow: var(--shadow-floating-small, 0 2px 8px rgba(0, 0, 0, 0.12));
+    color: var(--fgColor-danger);
+}
 .canvasWrap {
     width: 100%;
     flex: 1 1 auto;

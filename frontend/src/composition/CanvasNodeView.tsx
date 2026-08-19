@@ -83,6 +83,7 @@ export function CanvasNodeView({ id, data, selected }: NodeProps<CanvasNode>) {
     <div
       className={`${styles.canvasNode} ${selected ? styles.canvasNodeSelected : ''}`}
       data-run-status={runStatus}
+      title={data.output ? t('canvasNodeView.outputTitle', { output: data.output }) : undefined}
     >
       {!isTrigger && <Handle type="target" position={RFPosition.Top} />}
       <div className={styles.canvasNodeIcon} style={{ background: KIND_ICON_BG[data.kind] ?? 'var(--bgColor-neutral-emphasis)' }}>
@@ -93,9 +94,9 @@ export function CanvasNodeView({ id, data, selected }: NodeProps<CanvasNode>) {
         <Text size="small" weight="semibold" className={styles.canvasNodeLabel} title={data.label}>
           {data.label}
         </Text>
-        {data.output ? (
-          <Text size="small" className={styles.canvasNodeOutput} title={t('canvasNodeView.outputTitle', { output: data.output })}>
-            → {data.output}
+        {data.contractLine ? (
+          <Text size="small" className={styles.canvasNodeOutput}>
+            {data.contractLine}
           </Text>
         ) : null}
       </div>

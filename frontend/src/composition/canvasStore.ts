@@ -13,9 +13,17 @@ export interface CanvasNodeData extends Record<string, unknown> {
   kind: string
   label: string
   config: Record<string, string>
-  // What payload leaves this step (NodeType.Output) -- the on-card
-  // output signature (docs/SPEC.md §3.8's authoring-style direction).
+  // What payload leaves this step (NodeType.Output) -- kept for the
+  // card's hover title only; the on-card LINE itself is contractLine
+  // below (ADR-0042 §4).
   output?: string
+  // The step I/O contract's compact "takes -> produces" string
+  // (payloadKinds.ts's contractLine, ADR-0042 §4) -- cached onto the
+  // node the same way output above is, at creation/type-change/load
+  // time, since contractLine is a pure function of the node's OWN
+  // NodeType (never the graph position), unlike the effective payload
+  // kind a connection's compatibility check resolves separately.
+  contractLine?: string
   // The step's current guardrail verdict ('ask' | 'deny' | 'allow'),
   // injected by CompositionCanvas from GuardrailService.WorkflowVerdicts
   // -- the nothing-hidden rule (docs/adr/0022's Update): a step that
@@ -66,7 +74,7 @@ export interface CanvasState {
   addNote: (note: CanvasNoteNode) => void
   updateNoteText: (id: string, text: string) => void
   updateNoteColor: (id: string, color: string) => void
-  changeNodeType: (id: string, nodeTypeID: string, label: string, config: Record<string, string>, output?: string) => void
+  changeNodeType: (id: string, nodeTypeID: string, label: string, config: Record<string, string>, output?: string, contractLine?: string) => void
   updateNodeConfig: (id: string, key: string, value: string) => void
   updateEdgeCondition: (id: string, condition: string) => void
   removeSelected: () => void
@@ -134,9 +142,9 @@ export function createCanvasStore(initialNodes: CanvasNode[] = [], initialEdges:
         // only offers same-Kind options), so isValidConnection's
         // per-kind edge rules and any existing edges stay valid
         // untouched.
-        changeNodeType: (id, nodeTypeID, label, config, output) =>
+        changeNodeType: (id, nodeTypeID, label, config, output, contractLine) =>
           set({
-            nodes: get().nodes.map((n) => (n.id === id ? { ...n, data: { ...n.data, nodeTypeID, label, config, output: output ?? '' } } : n)),
+            nodes: get().nodes.map((n) => (n.id === id ? { ...n, data: { ...n.data, nodeTypeID, label, config, output: output ?? '', contractLine: contractLine ?? '' } } : n)),
           }),
         updateNodeConfig: (id, key, value) =>
           set({

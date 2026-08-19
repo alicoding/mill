@@ -213,7 +213,10 @@
     "generateTestPayload": "Generate test payload",
     "hoverToPreviewChild": "Hover to preview the child — click Open to edit it",
     "defaultOption": "(default)",
-    "openStepDetail": "Open step detail"
+    "openStepDetail": "Open step detail",
+    "ioContract": "Takes: {{consumes}} — Produces: {{produced}}",
+    "ioContractPassthrough": "passes its input through",
+    "ioContractOptionalSuffix": "(optional)"
   },
   "stepDetailOverlay": {
     "title": "Step: {{label}}",
@@ -303,7 +306,8 @@
   },
   "compositionCanvas": {
     "onlyDecisionEdgesConfigurable": "Only a Decision step’s outgoing edges are configurable.",
-    "selectNodeToConfigure": "Select a step to configure it."
+    "selectNodeToConfigure": "Select a step to configure it.",
+    "connectionRefusalHint": "Not connected — {{reason}}"
   },
   "compositionView": {
     "heading": "Workflows",

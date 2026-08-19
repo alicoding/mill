@@ -1,12 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent } from 'react'
-import {
-  ReactFlow,
-  ReactFlowProvider,
-  Background,
-  Controls,
-  useReactFlow,
-} from '@xyflow/react'
-import type { Connection, Edge as RFEdge } from '@xyflow/react'
+import { ReactFlow, ReactFlowProvider, Background, Controls, useReactFlow } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 import { useStore } from 'zustand'
 import type { NodeType, Workflow, Issue } from '../../bindings/github.com/alicoding/mill/internal/domain/composition/models'
@@ -14,7 +7,9 @@ import { createCanvasStore, type CanvasNode } from './canvasStore'
 import { rfNodeTypes } from './rfNodeTypes'
 import { findFreeDropPosition } from '../shared/canvasLayout'
 import { CANVAS_NODE_WIDTH, CANVAS_NODE_HEIGHT } from './canvasConstants'
-import { isValidCanvasConnection } from './canvasConnectionRules'
+import { contractLine } from './payloadKinds'
+import { useConnectionRefusalHint } from './useConnectionRefusalHint'
+import { ConnectionRefusalHint } from './ConnectionRefusalHint'
 import { computeInitialCanvas, useCanvasHotExit } from './useCanvasHotExit'
 import { useCanvasSave } from './useCanvasSave'
 import { useCanvasLiveSync } from './useCanvasLiveSync'
@@ -273,19 +268,15 @@ function CanvasInner({ nodeTypes, workflow, tabKey, onBack, onSaved, readOnly, o
     if (!selectedNode) return
     const config: Record<string, string> = {}
     for (const field of newType.ConfigFields ?? []) config[field.Key] = field.Default
-    changeNodeType(selectedNode.id, newType.ID, newType.Label, config, newType.Output ?? '')
+    changeNodeType(selectedNode.id, newType.ID, newType.Label, config, newType.Output ?? '', contractLine(newType))
   }
   const handleNodeConfigChange = (key: string, value: string) => {
     if (!selectedNode) return
     updateNodeConfig(selectedNode.id, key, value)
   }
 
-  // Pure rule extracted to canvasConnectionRules.ts (draw-time mirror
-  // of the backend's buildGraph out-degree/root rules).
-  const isValidConnection = useCallback(
-    (connection: Connection | RFEdge) => isValidCanvasConnection(nodes, edges, connection),
-    [edges, nodes],
-  )
+  // Draw-time refusal + its explanation (ADR-0042 slice 2) -- see useConnectionRefusalHint.ts.
+  const { isValidConnection, refusalHint, onConnectStart, onConnectEnd, onConnect: handleConnect, onNodeDragStart: handleNodeDragStart } = useConnectionRefusalHint(nodes, edges, nodeTypes, onConnect, () => useCanvasStore.temporal.getState().pause())
 
   const onCanvasDrop = useCallback(
     (event: DragEvent<HTMLDivElement>) => {
@@ -315,7 +306,7 @@ function CanvasInner({ nodeTypes, workflow, tabKey, onBack, onSaved, readOnly, o
         id: newLocalID(),
         type: nt.Kind,
         position,
-        data: { nodeTypeID: nt.ID, kind: nt.Kind, label: nt.Label, output: nt.Output ?? '', config },
+        data: { nodeTypeID: nt.ID, kind: nt.Kind, label: nt.Label, output: nt.Output ?? '', contractLine: contractLine(nt), config },
       }
       addNode(node)
     },
@@ -362,7 +353,9 @@ function CanvasInner({ nodeTypes, workflow, tabKey, onBack, onSaved, readOnly, o
             edges={edges}
             onNodesChange={handleNodesChange}
             onEdgesChange={onEdgesChange}
-            onConnect={onConnect}
+            onConnect={handleConnect}
+            onConnectStart={onConnectStart}
+            onConnectEnd={onConnectEnd}
             isValidConnection={isValidConnection}
             nodeTypes={rfNodeTypes}
             onNodeClick={(_, node) => {
@@ -402,7 +395,7 @@ function CanvasInner({ nodeTypes, workflow, tabKey, onBack, onSaved, readOnly, o
               setSelectedNodeId(null)
               setSelectedEdgeId(null)
             }}
-            onNodeDragStart={() => useCanvasStore.temporal.getState().pause()}
+            onNodeDragStart={handleNodeDragStart}
             onNodeDragStop={() => useCanvasStore.temporal.getState().resume()}
             // docs/goals/0022: draggability/connectability go inert in
             // view mode, but elementsSelectable stays true regardless
@@ -427,6 +420,7 @@ function CanvasInner({ nodeTypes, workflow, tabKey, onBack, onSaved, readOnly, o
             <Background />
             <Controls />
             <ThemedMiniMap />
+            <ConnectionRefusalHint hint={refusalHint} />
             <CanvasToolbar
               onBack={onBack}
               readOnly={readOnly}
