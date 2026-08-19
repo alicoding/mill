@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
+import { useRenderStormGuard } from '../shared/renderStormGuard'
 import { useTranslation } from 'react-i18next'
 import { Events } from '@wailsio/runtime'
 import { Text } from '@primer/react'
-import { ViewMode } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
-import type { Card, Position } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
+import { ViewMode, type Card, type Position } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 import { useAtlasCreationRequests } from './useAtlasCreationRequests'
 import { AtlasService } from '../shared/bindings'
 import { downloadJSON } from '../shared/downloadJSON'
@@ -13,8 +13,7 @@ import { useAtlasPerspectives } from './useAtlasPerspectives'
 import { useAtlasNavSignals } from './useAtlasNavSignals'
 import { useAtlasImportConfirm } from './useAtlasImportConfirm'
 import { AtlasToolbar } from './AtlasToolbar'
-import { AtlasBoard } from './AtlasBoard'
-import type { AtlasFocusRequest } from './AtlasBoard'
+import { AtlasBoard, type AtlasFocusRequest } from './AtlasBoard'
 import { AtlasJumpDialog } from './AtlasJumpDialog'
 import { AtlasCardOverlay } from './AtlasCardOverlay'
 import { ContextMenu, type ContextMenuState } from '../shared/ContextMenu'
@@ -42,6 +41,7 @@ import styles from './AtlasView.module.css'
 // Registered in app/App.tsx the same way CompositionView/ConfigureView
 // are -- one top-level surface per bounded-context folder.
 export function AtlasView({ initialCardID }: { initialCardID?: string }) {
+  useRenderStormGuard('AtlasView')
   const { t } = useTranslation('atlas')
   const cards = useAtlasStore((s) => s.cards)
   const kinds = useAtlasStore((s) => s.kinds)
