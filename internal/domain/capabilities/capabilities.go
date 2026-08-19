@@ -28,6 +28,7 @@ const (
 	ViewComposition ViewKind = "composition"
 	ViewConfigure   ViewKind = "configure"
 	ViewAtlas       ViewKind = "atlas"
+	ViewDocs        ViewKind = "docs"
 	ViewPlaceholder ViewKind = "placeholder"
 )
 
@@ -99,6 +100,10 @@ func List() []Capability {
 			// already-built parked-run mechanism, not a new engine.
 			ID: "capability-review", Label: "Review queue", NavLabel: "Review", SpecSection: "8",
 			Status: StatusLocked, View: ViewReview,
+		},
+		{
+			ID: "capability-docs", Label: "Docs", SpecSection: "9",
+			Status: StatusOpen, View: ViewDocs,
 		},
 	}
 }

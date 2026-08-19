@@ -23,6 +23,7 @@ export type {
   ImportEverythingSummary,
 } from '../../bindings/github.com/alicoding/mill/internal/services/backupsvc'
 export { CapabilitiesService } from '../../bindings/github.com/alicoding/mill/internal/services/capabilitysvc'
+export { DocsService } from '../../bindings/github.com/alicoding/mill/internal/services/docssvc'
 export { CompositionService } from '../../bindings/github.com/alicoding/mill/internal/services/compositionsvc'
 export {
   ClipboardApplyAction,

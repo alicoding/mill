@@ -78,6 +78,8 @@ export type View =
   // section: a palette "Open Settings -> <Title>" deep-link
   // (shared/settingsSections.ts) lands directly on that section.
   | { kind: 'settings'; section?: string }
+  // page: which docs page is open (rel path from the docs index).
+  | { kind: 'docs'; page?: string }
   | { kind: 'placeholder'; capabilityId: string }
 
 // Single mapping from a capability's Go-declared View to the frontend's
@@ -95,6 +97,8 @@ export function viewFor(capability: Capability): View {
       return { kind: 'composition' }
     case ViewKind.ViewConfigure:
       return { kind: 'configure' }
+    case ViewKind.ViewDocs:
+      return { kind: 'docs' }
     case ViewKind.ViewAtlas:
       return { kind: 'atlas' }
     default:
