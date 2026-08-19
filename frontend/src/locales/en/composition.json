@@ -216,7 +216,12 @@
     "openStepDetail": "Open step detail",
     "ioContract": "Takes: {{consumes}} — Produces: {{produced}}",
     "ioContractPassthrough": "passes its input through",
-    "ioContractOptionalSuffix": "(optional)"
+    "ioContractOptionalSuffix": "(optional)",
+    "tryItHeading": "Try it",
+    "tryItCaption": "Paste page HTML and see the exact Markdown this step would produce.",
+    "tryItPlaceholder": "Paste HTML here",
+    "tryItConvert": "Convert",
+    "tryItError": "Couldn't convert: {{message}}"
   },
   "stepDetailOverlay": {
     "title": "Step: {{label}}",
