@@ -88,3 +88,27 @@ test('the Inspector states the selected step\'s I/O contract in full', async ({ 
   await clickCanvasNode(page, panel, 'Convert HTML to Markdown')
   await expect(panel.getByTestId('inspector-io-contract')).toHaveText('Takes: HTML — Produces: Markdown')
 })
+
+// The trust-gap "Try it" preview (docs/goals/0115 slice 1): only the
+// converter step gets a live paste-HTML-see-Markdown surface, run
+// through the same converter a real execution uses.
+test('the converter step\'s Inspector offers a Try it preview; other steps do not', async ({ page }) => {
+  await openPaletteOnNewWorkflow(page)
+  await dragPaletteItemToCanvas(page, 'process-html-to-markdown')
+
+  const panel = activePanel(page)
+  await clickCanvasNode(page, panel, 'Convert HTML to Markdown')
+  await expect(panel.getByTestId('try-conversion-section')).toBeVisible()
+
+  await panel.getByTestId('try-html-input').fill('<h1>Hi</h1><ul><li>a</li></ul>')
+  await panel.getByTestId('try-convert').click()
+  const output = panel.getByTestId('try-markdown-output')
+  await expect(output).toBeVisible()
+  await expect(output).toContainText('# Hi')
+  await expect(output).toContainText('- a')
+
+  // The starter trigger node (dropped first, so index 0) has nothing
+  // to try -- the section must not render for it.
+  await panel.locator('.react-flow__node').first().click()
+  await expect(panel.getByTestId('try-conversion-section')).not.toBeVisible()
+})

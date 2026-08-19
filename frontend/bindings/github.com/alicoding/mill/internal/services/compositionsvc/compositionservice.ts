@@ -115,6 +115,18 @@ export function PreviewClipboardApply(jsonData: string): $CancellablePromise<$mo
 }
 
 /**
+ * PreviewHTMLToMarkdown converts html through the same converter
+ * process-html-to-markdown's node execution uses (htmlToMarkdown in
+ * internal/domain/composition/processmarkdown.go), so the inspector's
+ * "Try it" preview always matches what a real run would produce. Empty
+ * input returns empty without invoking the converter -- there's nothing
+ * to preview.
+ */
+export function PreviewHTMLToMarkdown(html: string): $CancellablePromise<string> {
+    return $Call.ByID(600847809, html);
+}
+
+/**
  * PublishExistingVersion moves the live pointer to an already-captured
  * snapshot -- rollback (or roll-forward) without mutating anything.
  */

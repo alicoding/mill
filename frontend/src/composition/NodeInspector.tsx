@@ -8,6 +8,7 @@ import type { CanvasNode } from './canvasStore'
 import { useHotkeyCapture } from './hotkeyCapture'
 import { NodeExecutionSection } from './NodeExecutionSection'
 import { NodeConfigFields } from './NodeConfigFields'
+import { TryConversionSection } from './TryConversionSection'
 import { describeConsumes, describeKind } from './payloadKinds'
 
 // The "Takes: ... -- Produces: ..." sentence's two halves (ADR-0042
@@ -73,7 +74,6 @@ export function NodeInspector({ node, workflowId, attrs, nodeType, sameKindNodeT
           {t('nodeInspector.ioContract', ioContractParts(nodeType, t))}
         </Text>
       )}
-      <NodeExecutionSection step={runStep} />
       <NodeConfigFields
         node={node}
         workflowId={workflowId}
@@ -86,6 +86,8 @@ export function NodeInspector({ node, workflowId, attrs, nodeType, sameKindNodeT
         onChangeType={onChangeType}
         onConfigChange={onConfigChange}
       />
+      <TryConversionSection nodeType={nodeType} />
+      <NodeExecutionSection step={runStep} />
     </Stack>
   )
 }
