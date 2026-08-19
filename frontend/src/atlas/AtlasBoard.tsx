@@ -1,8 +1,7 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import type { DragEvent } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent } from 'react'
+import { useRenderStormGuard } from '../shared/renderStormGuard'
 import { useTranslation } from 'react-i18next'
-import { ReactFlow, ReactFlowProvider, Background, Controls, useNodesState, useReactFlow } from '@xyflow/react'
-import type { EdgeTypes as RFEdgeTypes, NodeTypes as RFNodeTypes } from '@xyflow/react'
+import { ReactFlow, ReactFlowProvider, Background, Controls, useNodesState, useReactFlow, type EdgeTypes as RFEdgeTypes, type NodeTypes as RFNodeTypes } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 import type { Card, Kind, Link, LinkKind, Note } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 import { AtlasService } from '../shared/bindings'
@@ -492,6 +491,7 @@ function AtlasBoardInner({ cards, allCards, kinds, links, linkKinds, notes, pare
 }
 
 export function AtlasBoard(props: Parameters<typeof AtlasBoardInner>[0]) {
+  useRenderStormGuard('AtlasBoard')
   return (
     <ReactFlowProvider>
       <AtlasBoardInner {...props} />
