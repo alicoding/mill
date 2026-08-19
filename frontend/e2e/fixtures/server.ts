@@ -74,6 +74,10 @@ export const UPDATES_BETA_MCP_BASE_PORT = 9825
 // reloads, so it needs its own server like the other updates cases.
 export const UPDATES_CHANNEL_PREF_SERVER_BASE_PORT = 10360
 export const UPDATES_CHANNEL_PREF_MCP_BASE_PORT = 10380
+// goal 0122: the ready-state pill test forces MILL_TEST_UPDATE_READY
+// for its whole server lifetime -- own pair like every updates case.
+export const UPDATES_READY_SERVER_BASE_PORT = 10680
+export const UPDATES_READY_MCP_BASE_PORT = 10700
 // atlas-kind-authoring.spec.ts's own dedicated pair (goal 0079):
 // kinds/link kinds are GLOBAL Atlas vocabulary every board render and
 // picker reads -- the shared worker pool can't isolate that

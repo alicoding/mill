@@ -403,3 +403,44 @@ func TestSetOutboundProxyURL_AcceptsOffSentinel(t *testing.T) {
 		t.Errorf("diagnostics %q", d)
 	}
 }
+
+func TestUpdateNotice_AvailableDismissalIsPerVersion(t *testing.T) {
+	set := newTestSettingsService(t)
+	set.recordAvailableUpdate("0.4.0-beta.700")
+	if n := set.UpdateNoticeState(); n.AvailableVersion != "0.4.0-beta.700" {
+		t.Fatalf("available = %q", n.AvailableVersion)
+	}
+	if err := set.DismissUpdateNotice(); err != nil {
+		t.Fatal(err)
+	}
+	if n := set.UpdateNoticeState(); n.AvailableVersion != "" {
+		t.Errorf("dismissed version still showing: %q", n.AvailableVersion)
+	}
+	set.recordAvailableUpdate("0.4.0-beta.700")
+	if n := set.UpdateNoticeState(); n.AvailableVersion != "" {
+		t.Errorf("dismissal must hold for the same version, got %q", n.AvailableVersion)
+	}
+	set.recordAvailableUpdate("0.4.0-beta.701")
+	if n := set.UpdateNoticeState(); n.AvailableVersion != "0.4.0-beta.701" {
+		t.Errorf("a NEWER version must notify again, got %q", n.AvailableVersion)
+	}
+}
+
+func TestUpdateNotice_ReadyWinsAndAutoCheckPrefPersists(t *testing.T) {
+	set := newTestSettingsService(t)
+	set.recordAvailableUpdate("0.4.0-beta.700")
+	set.markUpdateReady()
+	n := set.UpdateNoticeState()
+	if !n.Ready || n.AvailableVersion != "" {
+		t.Errorf("ready state = %+v, want ready with no available", n)
+	}
+	if set.AutoUpdateCheck() {
+		t.Error("auto-check must default OFF")
+	}
+	if err := set.SetAutoUpdateCheck(true); err != nil {
+		t.Fatal(err)
+	}
+	if !set.AutoUpdateCheck() {
+		t.Error("auto-check did not persist")
+	}
+}

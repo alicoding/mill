@@ -301,6 +301,7 @@ func ResolveUpdateCurrentVersion(effectiveChannel, updateVersion string) string 
 // alicoding/mill) whether a newer version exists.
 func (s *SettingsService) CheckForUpdates() (UpdateCheckResult, error) {
 	if fake := os.Getenv(testUpdateFakeVersionEnv); fake != "" {
+		s.recordAvailableUpdate(fake)
 		return UpdateCheckResult{
 			UpdateAvailable: true,
 			Version:         fake,
@@ -323,6 +324,7 @@ func (s *SettingsService) CheckForUpdates() (UpdateCheckResult, error) {
 	if rel == nil {
 		return UpdateCheckResult{UpdateAvailable: false, CurrentVersion: s.AppVersion()}, nil
 	}
+	s.recordAvailableUpdate(rel.Version)
 	return UpdateCheckResult{UpdateAvailable: true, Version: rel.Version, CurrentVersion: s.AppVersion(), Notes: trimReleaseNotesForApp(rel.Notes)}, nil
 }
 
@@ -362,7 +364,11 @@ func (s *SettingsService) DownloadAndInstallUpdate() error {
 	if u == nil {
 		return fmt.Errorf("updater not configured")
 	}
-	return u.DownloadAndInstall(context.Background())
+	if err := u.DownloadAndInstall(context.Background()); err != nil {
+		return err
+	}
+	s.markUpdateReady()
+	return nil
 }
 
 // RestartApp relaunches into the update DownloadAndInstallUpdate just

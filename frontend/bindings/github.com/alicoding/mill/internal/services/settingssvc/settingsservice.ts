@@ -49,6 +49,13 @@ export function AssignSummonHotkey(mods: string[] | null, key: string): $Cancell
 }
 
 /**
+ * AutoUpdateCheck reports the persisted opt-in.
+ */
+export function AutoUpdateCheck(): $CancellablePromise<boolean> {
+    return $Call.ByID(4217604838);
+}
+
+/**
  * CheckForUpdates asks the configured provider (GitHub Releases,
  * alicoding/mill) whether a newer version exists.
  */
@@ -113,6 +120,14 @@ export function DismissApprovalPrompt(): $CancellablePromise<void> {
  */
 export function DismissPanel(): $CancellablePromise<void> {
     return $Call.ByID(3877156882);
+}
+
+/**
+ * DismissUpdateNotice hides the available-update pill for the current
+ * version only -- the next version notifies again.
+ */
+export function DismissUpdateNotice(): $CancellablePromise<void> {
+    return $Call.ByID(432636977);
 }
 
 /**
@@ -412,6 +427,13 @@ export function SetAttentionIdleThreshold(seconds: number): $CancellablePromise<
 }
 
 /**
+ * SetAutoUpdateCheck persists the opt-in; applies at boot.
+ */
+export function SetAutoUpdateCheck(on: boolean): $CancellablePromise<void> {
+    return $Call.ByID(3808971894, on);
+}
+
+/**
  * SetDisplayDensity persists the preference. Rejects any value besides
  * the two locked tiers so a typo'd/future caller can't wedge the
  * preference into a state no CSS selector matches.
@@ -620,4 +642,11 @@ export function UpdateChannelPreference(): $CancellablePromise<string> {
  */
 export function UpdateDiagnostics(): $CancellablePromise<string> {
     return $Call.ByID(795731779);
+}
+
+/**
+ * UpdateNoticeState reports what the footer pill should show.
+ */
+export function UpdateNoticeState(): $CancellablePromise<$models.UpdateNotice> {
+    return $Call.ByID(437299326);
 }

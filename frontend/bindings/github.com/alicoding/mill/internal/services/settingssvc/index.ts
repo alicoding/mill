@@ -8,5 +8,6 @@ export {
 
 export type {
     BuildInfo,
-    UpdateCheckResult
+    UpdateCheckResult,
+    UpdateNotice
 } from "./models.js";
