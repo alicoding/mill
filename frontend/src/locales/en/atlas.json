@@ -319,6 +319,7 @@
   "filter": {
     "placeholder": "Filter cards…",
     "kinds": "Kinds",
+    "fields": "Fields",
     "clear": "Clear",
     "count": "{{matched}} of {{total}} cards match"
   }

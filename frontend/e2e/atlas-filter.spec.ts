@@ -42,3 +42,29 @@ test('text and kind filters dim non-matches in place with an honest count', asyn
   await expect(dimmed).toHaveCount(0)
   await expect(page.getByTestId('atlas-filter-count')).toHaveCount(0)
 })
+
+// Attribute facets (goal 0129 slice 3): the Fields menu offers the
+// options-typed fields of the kinds on the board; picking a value
+// dims every card not carrying it. Seed truth this rides on: exactly
+// one seeded card ("Getting started", a Topic) has status "Open".
+test('a field-value facet dims cards without that value and chips as Field: Value', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Atlas' }).click()
+  await expect(page.getByTestId('atlas-board')).toBeVisible()
+
+  await page.getByTestId('atlas-filter-toggle').click()
+  await page.getByTestId('atlas-filter-fields').click()
+  await page.getByTestId('atlas-filter-field-status-Open').click()
+  await page.keyboard.press('Escape')
+
+  await expect(page.getByTestId('atlas-filter-count')).toContainText('1 of')
+  await expect(page.locator('[data-testid="atlas-note-card"]').filter({ hasText: 'Getting started' }).first()).toHaveAttribute('data-dimmed', 'false')
+  // Scratchpad carries no field values at all -- it never satisfies a
+  // field criterion, so it dims.
+  await expect(page.locator('[data-testid="atlas-note-card"]').filter({ hasText: 'Scratchpad' }).first()).toHaveAttribute('data-dimmed', 'true')
+  await expect(page.getByTestId('atlas-filter-field-chip')).toContainText('Status: Open')
+
+  // Removing the chip restores the resting board (transient state).
+  await page.getByTestId('atlas-filter-field-chip').locator('button').click()
+  await expect(page.locator('[data-testid="atlas-note-card"][data-dimmed="true"]')).toHaveCount(0)
+})
