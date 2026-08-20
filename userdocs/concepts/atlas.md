@@ -16,8 +16,10 @@ into.
 - **Areas** group cards; drill in to work at a level, breadcrumb back
   out. Perspectives save named views of the map.
 - **Filter without losing the map.** The search control on the board
-  (top right) dims everything that doesn't match your text or chosen
-  kinds — matches stay crisp in place, so you keep the spatial
+  (top right) dims everything that doesn't match your text, chosen
+  kinds, or field values (the Fields menu lists every choice-type
+  field on the board — pick "Status: Open" to light up just those
+  cards) — matches stay crisp in place, so you keep the spatial
   context instead of watching cards vanish. Filters are a question,
   not a setting: they clear with one click and are never saved.
 - **Sync a docs folder**: the seeded "Mirror a docs folder into
