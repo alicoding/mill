@@ -20,6 +20,7 @@ import (
 
 	"github.com/alicoding/mill/internal/adapters/settings"
 	"github.com/alicoding/mill/internal/domain/atlas"
+	"github.com/alicoding/mill/internal/domain/typedfield"
 )
 
 // atlasStateKey is the single settings-store key holding every Atlas
@@ -66,6 +67,9 @@ type AtlasService struct {
 	store     settings.Store
 	kinds     []atlas.Kind
 	linkKinds []atlas.LinkKind
+	// Paste-conversion seams (goal 0138) -- see WirePasteListWrites.
+	pasteListFactory func(label string, columns []typedfield.Field) (string, error)
+	pasteRowAppender func(listID string, values map[string]string) error
 	cards     []atlas.Card
 	links     []atlas.Link
 	notes     []atlas.Note

@@ -77,6 +77,15 @@
   cursor: text;
 }
 
+/* Grid editors get their own compositing layer: WebKit fails to
+   repaint an input under the canvas's scaled transform while typing
+   (value commits, paint lags until blur) -- Chromium never shows it,
+   so this is manual-registry verified on the desktop build. */
+.table td input,
+.table td select {
+  transform: translateZ(0);
+}
+
 /* The engaged header/row lifts above its sticky/later siblings so
    the boundary ⊕ is never painted over by the neighboring column
    (each th is its own stacking context once sticky+z-indexed; the

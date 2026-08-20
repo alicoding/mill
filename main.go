@@ -221,6 +221,7 @@ func main() {
 	// file at the 500-line limit.
 	wiring.WireAtlasProjections(atlasService, configureService, compositionService)
 	wiring.WireValidationSeams(configureService)
+	wiring.WirePasteConversion(atlasService, configureService)
 	// apply-notify's door to the OS notification adapter (goal 0114).
 	// Server mode's adapter refuses by design (ErrUnsupportedInServerMode)
 	// -- that maps to success here: the notification is best-effort

@@ -8,6 +8,7 @@ package wiring
 
 import (
 	"github.com/alicoding/mill/internal/domain/composition"
+	"github.com/alicoding/mill/internal/domain/typedfield"
 	"github.com/alicoding/mill/internal/services/atlassvc"
 	"github.com/alicoding/mill/internal/services/compositionsvc"
 	"github.com/alicoding/mill/internal/services/configuresvc"
@@ -55,4 +56,19 @@ func WireAtlasProjections(atlas *atlassvc.AtlasService, cfg *configuresvc.Config
 		}
 		return proj, true
 	})
+}
+
+// WirePasteConversion connects the board's paste-understanding table
+// path (goal 0138) to Configure's own List writes.
+func WirePasteConversion(atlas *atlassvc.AtlasService, cfg *configuresvc.ConfigureService) {
+	atlas.WirePasteListWrites(
+		func(label string, columns []typedfield.Field) (string, error) {
+			l, err := cfg.CreateList(label, "", columns)
+			return l.ID, err
+		},
+		func(listID string, values map[string]string) error {
+			_, err := cfg.AddListRow(listID, values)
+			return err
+		},
+	)
 }

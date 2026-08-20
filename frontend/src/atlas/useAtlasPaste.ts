@@ -1,5 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { AtlasService } from '../shared/bindings'
+import type { PasteResult } from '../../bindings/github.com/alicoding/mill/internal/services/atlassvc/models'
+import { refreshAtlas } from './atlasStore'
 import { frameContainingPoint } from './atlasFramePoint'
 import type { FrameBox } from './useAtlasDragFiling'
 
@@ -21,16 +23,18 @@ function isEditableTarget(el: Element | null): boolean {
 // last known mouse position (tracked here, cheap: a ref updated on
 // pointermove, no re-renders) rather than a fixed viewport center, so
 // the popover lands near where the user actually is.
-export function useAtlasPaste({ topLevelBoxes, screenToFlowPosition, onPasteText }: {
+export function useAtlasPaste({ topLevelBoxes, screenToFlowPosition, onPasteText, viewedID, onPasteConverted }: {
   topLevelBoxes: FrameBox[]
   screenToFlowPosition: (p: { x: number; y: number }) => { x: number; y: number }
   onPasteText: (anchorPos: { x: number; y: number }, text: string, parentIDOverride?: string) => void
+  viewedID: string
+  onPasteConverted: (res: PasteResult) => void
 }) {
   const lastMouse = useRef<{ x: number; y: number } | null>(null)
-  const stateRef = useRef({ topLevelBoxes, screenToFlowPosition, onPasteText })
+  const stateRef = useRef({ topLevelBoxes, screenToFlowPosition, onPasteText, viewedID, onPasteConverted })
   useEffect(() => {
-    stateRef.current = { topLevelBoxes, screenToFlowPosition, onPasteText }
-  }, [topLevelBoxes, screenToFlowPosition, onPasteText])
+    stateRef.current = { topLevelBoxes, screenToFlowPosition, onPasteText, viewedID, onPasteConverted }
+  }, [topLevelBoxes, screenToFlowPosition, onPasteText, viewedID, onPasteConverted])
 
   useEffect(() => {
     const onPointerMove = (e: PointerEvent) => {
@@ -59,16 +63,42 @@ export function useAtlasPaste({ topLevelBoxes, screenToFlowPosition, onPasteText
       e.preventDefault()
 
       const anchorPos = lastMouse.current ?? { x: window.innerWidth / 2, y: window.innerHeight / 2 }
-      const { topLevelBoxes: boxes, screenToFlowPosition: toFlow, onPasteText: openPopover } = stateRef.current
-      const parentIDOverride = frameContainingPoint(boxes, toFlow(anchorPos)) ?? undefined
+      const { topLevelBoxes: boxes, screenToFlowPosition: toFlow, onPasteText: openPopover, viewedID: viewed, onPasteConverted: converted } = stateRef.current
+      const flowPos = toFlow(anchorPos)
+      const parentIDOverride = frameContainingPoint(boxes, flowPos) ?? undefined
 
-      if (html) {
-        void AtlasService.ConvertHTMLToMarkdown(html)
-          .then((md) => openPopover(anchorPos, md, parentIDOverride))
-          .catch(() => openPopover(anchorPos, text, parentIDOverride))
-      } else {
-        openPopover(anchorPos, text, parentIDOverride)
+      const fallThrough = () => {
+        if (html) {
+          void AtlasService.ConvertHTMLToMarkdown(html)
+            .then((md) => openPopover(anchorPos, md, parentIDOverride))
+            .catch(() => openPopover(anchorPos, text, parentIDOverride))
+        } else {
+          openPopover(anchorPos, text, parentIDOverride)
+        }
       }
+
+      // Paste understanding (goal 0138): diagram-tool payloads become
+      // Mill entities in place -- everything unrecognized falls
+      // through to the popover door exactly as before.
+      if (text) {
+        void AtlasService.PasteToBoard(text, parentIDOverride ?? viewed, flowPos.x, flowPos.y)
+          .then((res) => {
+            if (res.Recognized) {
+              void refreshAtlas()
+              converted(res)
+              return
+            }
+            fallThrough()
+          })
+          .catch((err) => {
+            // A conversion failure falls through to the ordinary paste
+            // door -- logged so a real defect is visible, not silent.
+            console.error('paste conversion failed', err)
+            fallThrough()
+          })
+        return
+      }
+      fallThrough()
     }
     window.addEventListener('paste', onPaste)
     return () => window.removeEventListener('paste', onPaste)

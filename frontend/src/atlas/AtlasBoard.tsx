@@ -56,7 +56,7 @@ import styles from './AtlasBoard.module.css'
 // media-query gate AtlasNoteCardNode.module.css's own flip already
 // uses, read here in JS via usePrefersReducedMotion since React Flow's
 // own transition durations are JS options, not CSS.
-function AtlasBoardInner({ boardFilter, onBoardFilterChange, filterMatchCount, filterTotalCount, filterPresentKindIDs, cards, allCards, kinds, links, linkKinds, notes, parentID, arrangeRequest, viewedID, focusRequest, onDrill, onOpenOverlay, onFocusHandled, onCardContextMenu, onPaneContextMenu, onArteryContextMenu, onEdgeDeleteLink, onEdgeChangeKind, onNoteContextMenu, onFrameContextMenu, onFrameInteriorContextMenu, onMultiSelectContextMenu, onDeleteSelection, onGroupSelection, placementRequest, promoteRequest, groupRequest }: {
+function AtlasBoardInner({ boardFilter, onBoardFilterChange, filterMatchCount, filterTotalCount, filterPresentKindIDs, cards, allCards, kinds, links, linkKinds, notes, parentID, arrangeRequest, viewedID, focusRequest, onDrill, onOpenOverlay, onFocusHandled, onCardContextMenu, onPaneContextMenu, onArteryContextMenu, onEdgeDeleteLink, onEdgeChangeKind, onNoteContextMenu, onFrameContextMenu, onFrameInteriorContextMenu, onMultiSelectContextMenu, onDeleteSelection, onGroupSelection, onPasteConverted, placementRequest, promoteRequest, groupRequest }: {
   // The board filter (goal 0129 slice 1) -- applied as dim-in-place
   // by the node builder; state lives in AtlasView; rendered as a
   // floating top-right Panel (the toolbar row is full by its own
@@ -119,6 +119,7 @@ function AtlasBoardInner({ boardFilter, onBoardFilterChange, filterMatchCount, f
   // React Flow's own deleteKeyCode stays disabled -- a local node
   // removal would just resurrect on the next data refresh.
   onDeleteSelection: (cardIDs: string[], noteIDs: string[]) => void
+  onPasteConverted: (res: import('../../bindings/github.com/alicoding/mill/internal/services/atlassvc/models').PasteResult) => void
   // The selection tray's own "Group into new area" -- the multi-select context menu's own dispatcher, reused.
   onGroupSelection: (cardIDs: string[], noteIDs: string[], pos: { x: number; y: number }) => void
   // AtlasView's own downward creation requests (the pane menu's "Add
@@ -249,7 +250,7 @@ function AtlasBoardInner({ boardFilter, onBoardFilterChange, filterMatchCount, f
 
   // The capture doors (goal 0081 slice A3): own hook files, 500-line cap.
   const fileDrop = useAtlasNativeFileDrop({ parentID, topLevelBoxes, screenToFlowPosition, setPulsedID, reduceMotion })
-  useAtlasPaste({ topLevelBoxes, screenToFlowPosition, onPasteText: creation.openPasteText })
+  useAtlasPaste({ topLevelBoxes, screenToFlowPosition, onPasteText: creation.openPasteText, viewedID, onPasteConverted })
 
   // Handle honesty: no kind restricts linking, so zero legal targets means a board with nothing else on it.
   const hasLegalTargets = renderedIDs.size > 1
