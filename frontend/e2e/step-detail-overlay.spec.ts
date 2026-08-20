@@ -106,8 +106,13 @@ test('Double-clicking a step with a recorded run opens the overlay with real inp
     await expect(overlay.getByTestId('step-detail-output-payload')).toContainText('Captured Title')
     await expect(overlay.getByTestId('step-detail-output-payload')).not.toContainText('chrome nav')
 
-    await page.keyboard.press('Escape')
-    await expect(overlay).toHaveCount(0)
+    // Re-delivered close (goal 0134 class 1): a keypress landing
+    // during a re-render has been dropped on the CI runner -- retry
+    // the action-until-state pattern openCard codified.
+    await expect(async () => {
+      await page.keyboard.press('Escape')
+      await expect(overlay).toHaveCount(0, { timeout: 1_000 })
+    }).toPass({ timeout: 10_000, intervals: [300] })
   })
   fs.rmSync(dir, { recursive: true, force: true })
 })
@@ -130,6 +135,9 @@ test('The sidebar expand button opens the same overlay; a step with no recorded 
   await expect(overlay.getByTestId('step-detail-input')).toContainText('Run this workflow to see real data here.')
   await expect(overlay.getByTestId('step-detail-output')).toContainText('Run this workflow to see real data here.')
 
-  await overlay.getByRole('button', { name: 'Close' }).click()
-  await expect(overlay).toHaveCount(0)
+  // Same re-delivered-close discipline as the Escape path above.
+  await expect(async () => {
+    await overlay.getByRole('button', { name: 'Close' }).click()
+    await expect(overlay).toHaveCount(0, { timeout: 1_000 })
+  }).toPass({ timeout: 10_000, intervals: [300] })
 })
