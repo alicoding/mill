@@ -26,7 +26,7 @@ export function freeChildPosition(allCards: Card[], parentID: string, newSize?: 
       // leaf's note box (goal 0105 -- note-sized clearance landed a
       // table card overlapping the frame beside it).
       dims: isGroupCard(allCards, c) ? computeGroupFrameLayout(allCards, c.ID).size
-        : c.ProjectionListID ? { width: TABLE_WIDTH, height: TABLE_HEIGHT }
+        : c.ProjectionListID ? { width: c.Size?.W ?? TABLE_WIDTH, height: c.Size?.H ?? TABLE_HEIGHT }
           : { width: NOTE_WIDTH, height: NOTE_HEIGHT },
     })),
     newSize ?? { width: NOTE_WIDTH, height: NOTE_HEIGHT },

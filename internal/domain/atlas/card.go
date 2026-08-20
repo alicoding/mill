@@ -38,6 +38,12 @@ type Position struct {
 	Y float64
 }
 
+// Dimensions is a card's persisted board footprint -- see Card.Size.
+type Dimensions struct {
+	W float64
+	H float64
+}
+
 // Card is one instance of a Kind, placed inside another card's
 // containment (or at the root, ParentID == ""). Every structural
 // capability below is optional and exists on every card regardless of
@@ -77,6 +83,14 @@ type Card struct {
 	// column's value color (goal 0105 part 3). Same omitempty
 	// discipline as ProjectionListID.
 	ProjectionDensity string `json:"ProjectionDensity,omitempty"`
+	// Size is the card's user-chosen board footprint (width/height in
+	// canvas units), nil until first resized -- the renderer's default
+	// for the card's face applies then. Structural like Position: any
+	// card face that supports resizing persists here (the table
+	// projection is the first; every richer board unit shares the
+	// field rather than growing its own). omitempty keeps pre-resize
+	// JSON byte-identical (persisted stores and seed fingerprints).
+	Size *Dimensions `json:"Size,omitempty"`
 	// MirrorPath is an optional local file path this card's content is
 	// synced to -- empty until a refresh has actually run once.
 	MirrorPath string

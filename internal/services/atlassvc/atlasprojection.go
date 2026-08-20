@@ -116,6 +116,30 @@ func (a *AtlasService) SetCardProjectionDensity(cardID, density string) (atlas.C
 	return out, nil
 }
 
+// SetCardSize persists a card's user-chosen board footprint (the
+// resize handle's commit). Bounds guard against a degenerate drag:
+// anything under 120x80 canvas units can't render a usable face.
+func (a *AtlasService) SetCardSize(cardID string, w, h float64) (atlas.Card, error) {
+	if w < 120 || h < 80 {
+		return atlas.Card{}, fmt.Errorf("card size %.0fx%.0f is too small", w, h)
+	}
+	a.mu.Lock()
+	idx := a.findCardLocked(cardID)
+	if idx == -1 {
+		a.mu.Unlock()
+		return atlas.Card{}, fmt.Errorf("no card with id %q", cardID)
+	}
+	a.cards[idx].Size = &atlas.Dimensions{W: w, H: h}
+	if err := a.persistLocked(); err != nil {
+		a.mu.Unlock()
+		return atlas.Card{}, err
+	}
+	out := a.cards[idx]
+	a.mu.Unlock()
+	dataevent.Emit("atlas", out.ID)
+	return out, nil
+}
+
 // CardListProjection resolves a projection card's render data. A
 // card without a projection returns the zero value (ListID "");
 // a projection whose List was deleted returns Missing=true with the

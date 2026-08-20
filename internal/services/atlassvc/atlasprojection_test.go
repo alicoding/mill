@@ -81,3 +81,30 @@ func TestCardListProjection_MissingListAndPlainCards(t *testing.T) {
 		t.Errorf("plain card projection = %+v, want zero value", proj)
 	}
 }
+
+// The resize commit persists a card's footprint and refuses degenerate
+// drags (goal 0135 -- the table face was unusably fixed-size before).
+func TestSetCardSize_PersistsAndBoundsChecks(t *testing.T) {
+	a := newTestAtlasService(t)
+	wireFakeProjection(a)
+	kind := firstKindWithLabel(t, a, "Document")
+	card, err := a.CreateListProjectionCard(kind, "Vendors", "", nil, "list-vendors")
+	if err != nil {
+		t.Fatalf("CreateListProjectionCard: %v", err)
+	}
+
+	if _, err := a.SetCardSize(card.ID, 60, 40); err == nil {
+		t.Fatal("a degenerate size must refuse")
+	}
+	if _, err := a.SetCardSize("no-such-card", 400, 300); err == nil {
+		t.Fatal("an unknown card must refuse")
+	}
+
+	got, err := a.SetCardSize(card.ID, 640, 420)
+	if err != nil {
+		t.Fatalf("SetCardSize: %v", err)
+	}
+	if got.Size == nil || got.Size.W != 640 || got.Size.H != 420 {
+		t.Errorf("Size = %+v, want 640x420", got.Size)
+	}
+}

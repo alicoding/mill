@@ -8,7 +8,7 @@ import { EntityRefField } from '../configure/EntityRefField'
 import { KindPicker } from './KindPicker'
 
 type Containment = 'sibling' | 'child'
-type PendingForm = Containment | 'table'
+type PendingForm = Containment | 'table' | 'table-new'
 
 // The "+" affordance (docs/goals/0061): asks sibling-vs-child EXPLICITLY
 // before asking for a Kind/title, so containment is always a deliberate
@@ -19,11 +19,12 @@ type PendingForm = Containment | 'table'
 // plus a List picker; the card lands INSIDE the current space (a
 // projection is content of the board being viewed, so the
 // sibling-vs-child question doesn't arise).
-export function AtlasCreateMenu({ kinds, canAddSibling, onCreate, onCreateTable, openChildRequest }: {
+export function AtlasCreateMenu({ kinds, canAddSibling, onCreate, onCreateTable, onCreateTableNew, openChildRequest }: {
   kinds: Kind[]
   canAddSibling: boolean
   onCreate: (containment: Containment, kindID: string, title: string) => Promise<void>
   onCreateTable: (kindID: string, title: string, listID: string) => Promise<void>
+  onCreateTableNew: (kindID: string, title: string) => Promise<void>
   // The board pane's right-click "Add card…" (goal 0075's audit G3):
   // AtlasView bumps this one-shot counter, this component opens the
   // SAME child-create form the toolbar's own "Add inside this card"
@@ -73,6 +74,7 @@ export function AtlasCreateMenu({ kinds, canAddSibling, onCreate, onCreateTable,
     setError('')
     try {
       if (pending === 'table') await onCreateTable(kindID, title, listID)
+      else if (pending === 'table-new') await onCreateTableNew(kindID, title)
       else await onCreate(pending, kindID, title)
       setPending(null)
     } catch (err) {
@@ -83,7 +85,8 @@ export function AtlasCreateMenu({ kinds, canAddSibling, onCreate, onCreateTable,
   }
 
   const dialogTitle = pending === 'sibling' ? t('create.addBeside')
-    : pending === 'table' ? t('create.addTable') : t('create.addInside')
+    : pending === 'table' ? t('create.addTable')
+      : pending === 'table-new' ? t('create.addTableNew') : t('create.addInside')
 
   return (
     <>
@@ -98,6 +101,9 @@ export function AtlasCreateMenu({ kinds, canAddSibling, onCreate, onCreateTable,
             </ActionList.Item>
             <ActionList.Item onSelect={() => openForm('child')} data-testid="atlas-add-child">
               {t('create.addInside')}
+            </ActionList.Item>
+            <ActionList.Item onSelect={() => openForm('table-new')} data-testid="atlas-add-table-new">
+              {t('create.addTableNew')}
             </ActionList.Item>
             <ActionList.Item onSelect={() => openForm('table')} data-testid="atlas-add-table">
               {t('create.addTable')}

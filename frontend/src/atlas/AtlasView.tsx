@@ -353,7 +353,7 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
     file.text().then(importConfirm.requestImport).catch((err) => setImportError(String(err)))
   }
 
-  const { createCard, createTableCard } = useAtlasCardCreate({ allCards, viewedID, viewedCard })
+  const { createCard, createTableCard, createTableFromScratch } = useAtlasCardCreate({ allCards, viewedID, viewedCard })
 
   useAtlasCommandSignals({ viewedID, onArrange: requestAutoArrange, onExport: exportAtlas, onError: setShareError })
 
@@ -384,6 +384,7 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
         canAddSibling={viewedID !== ''}
         onCreate={createCard}
         onCreateTable={createTableCard}
+        onCreateTableNew={createTableFromScratch}
         onExport={exportAtlas}
         onImportFile={importFile}
         onShareError={setShareError}

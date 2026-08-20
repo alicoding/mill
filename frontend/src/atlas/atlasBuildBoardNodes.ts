@@ -176,8 +176,9 @@ export function buildBoardCardNodes({
         id: card.ID,
         type: 'atlas-table',
         position,
-        width: TABLE_WIDTH,
-        height: TABLE_HEIGHT,
+        // A persisted resize (Card.Size) wins over the default face.
+        width: card.Size?.W ?? TABLE_WIDTH,
+        height: card.Size?.H ?? TABLE_HEIGHT,
         draggable: isFree && !readOnly,
         data: noteData(card),
       })
