@@ -31,3 +31,8 @@
   border-radius: 999px;
   padding: 0 6px;
 }
+
+.card[data-dimmed='true'] {
+  opacity: 0.25;
+  transition: opacity 120ms linear;
+}

@@ -315,5 +315,11 @@
     "deleteConfirm": "Delete"
   },
   "perspectiveEmpty": "Nothing from {{name}} here.",
-  "perspectiveEmptyShowAll": "Show all cards"
+  "perspectiveEmptyShowAll": "Show all cards",
+  "filter": {
+    "placeholder": "Filter cards…",
+    "kinds": "Kinds",
+    "clear": "Clear",
+    "count": "{{matched}} of {{total}} cards match"
+  }
 }

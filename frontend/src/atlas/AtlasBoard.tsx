@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent } from 'react'
 import { useRenderStormGuard } from '../shared/renderStormGuard'
 import { useTranslation } from 'react-i18next'
-import { ReactFlow, ReactFlowProvider, Background, Controls, useNodesState, useReactFlow } from '@xyflow/react'
+import { ReactFlow, ReactFlowProvider, useNodesState, useReactFlow } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 import type { Card, Kind, Link, LinkKind, Note } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 import { AtlasService } from '../shared/bindings'
@@ -10,10 +10,12 @@ import { usePrefersReducedMotion } from '../shared/usePrefersReducedMotion'
 import { computeGroupFrameLayout, isGroupCard } from './atlasBoardLayout'
 import { computeNoteBoxes, computeTopLevelBoxes } from './atlasBoardBoxes'
 import { rfEdgeTypes, rfNodeTypes } from './atlasBoardNodeTypes'
+import { type BoardFilter } from './cardFilter'
+import { AtlasBoardChrome } from './AtlasBoardChrome'
 import { resolveBoardEdges } from './atlasLinkResolution'
 import { useAtlasArrange } from './useAtlasArrange'
 import { useAtlasEdgeInteraction } from './useAtlasEdgeInteraction'
-import { useBoardFocus } from './useBoardFocus'
+import { useBoardFocus, type AtlasFocusRequest } from './useBoardFocus'
 import { useAtlasCreation, type AtlasGroupRequest, type AtlasPlacementRequest, type AtlasPromoteRequest } from './useAtlasCreation'
 import { useAtlasAreaDraw } from './useAtlasAreaDraw'
 import { useAtlasDragFiling, type FrameBox } from './useAtlasDragFiling'
@@ -22,11 +24,8 @@ import { useAtlasSelectAll } from './useAtlasSelectAll'
 import { useAtlasSelectionTray } from './useAtlasSelectionTray'
 import { useAtlasKeyboardNav } from './useAtlasKeyboardNav'
 import { useAtlasMinimapToggle } from './useAtlasMinimapToggle'
-import { AtlasBoardMinimapButton } from './AtlasBoardMinimapButton'
-import { ThemedMiniMap } from '../shared/ThemedMiniMap'
 import { useAtlasSlotDrag } from './useAtlasSlotDrag'
 import { AtlasSlotDragLine } from './AtlasSlotDragLine'
-import { AtlasLinkRefusalHint } from './AtlasLinkRefusalHint'
 import { buildBoardCardNodes } from './atlasBuildBoardNodes'
 import { buildStickyNodes } from './atlasStickyNodes'
 import { AtlasCreationTray, ATLAS_TOOL_DRAG_MIME, type AtlasCreationTool } from './AtlasCreationTray'
@@ -37,18 +36,6 @@ import { useAtlasPaste } from './useAtlasPaste'
 import { FILE_DROP_CONTEXT_BOARD } from './atlasFileDropShared'
 import runbookStyles from '../shared/ListCard.module.css'
 import styles from './AtlasBoard.module.css'
-
-// A ⌘K jump's one-shot request into the board it lands on (goal 0072
-// slice B): AtlasView decides WHETHER a re-root is needed (the target
-// isn't rendered on the current board) and always supplies the target
-// card id; AtlasBoard owns the camera and turns this into a fly-in +
-// pulse + hint (or an immediate overlay open for the ⌘↵ path).
-// AtlasView clears the request (via onFocusHandled) once the fly
-// resolves, so the same jump never re-fires against a later render.
-export interface AtlasFocusRequest {
-  cardID: string
-  openImmediately: boolean
-}
 
 // The one board every level renders through (goal 0072 slice A,
 // retiring the old canvas/shelves split): Auto-arrange positions
@@ -69,7 +56,18 @@ export interface AtlasFocusRequest {
 // media-query gate AtlasNoteCardNode.module.css's own flip already
 // uses, read here in JS via usePrefersReducedMotion since React Flow's
 // own transition durations are JS options, not CSS.
-function AtlasBoardInner({ cards, allCards, kinds, links, linkKinds, notes, parentID, arrangeRequest, viewedID, focusRequest, onDrill, onOpenOverlay, onFocusHandled, onCardContextMenu, onPaneContextMenu, onArteryContextMenu, onEdgeDeleteLink, onEdgeChangeKind, onNoteContextMenu, onFrameContextMenu, onFrameInteriorContextMenu, onMultiSelectContextMenu, onDeleteSelection, onGroupSelection, placementRequest, promoteRequest, groupRequest }: {
+function AtlasBoardInner({ boardFilter, onBoardFilterChange, filterMatchCount, filterTotalCount, filterPresentKindIDs, cards, allCards, kinds, links, linkKinds, notes, parentID, arrangeRequest, viewedID, focusRequest, onDrill, onOpenOverlay, onFocusHandled, onCardContextMenu, onPaneContextMenu, onArteryContextMenu, onEdgeDeleteLink, onEdgeChangeKind, onNoteContextMenu, onFrameContextMenu, onFrameInteriorContextMenu, onMultiSelectContextMenu, onDeleteSelection, onGroupSelection, placementRequest, promoteRequest, groupRequest }: {
+  // The board filter (goal 0129 slice 1) -- applied as dim-in-place
+  // by the node builder; state lives in AtlasView; rendered as a
+  // floating top-right Panel (the toolbar row is full by its own
+  // recorded constraint, and a canvas filter belongs on the canvas).
+  boardFilter: BoardFilter
+  onBoardFilterChange: (next: BoardFilter) => void
+  filterMatchCount: number
+  filterTotalCount: number
+  // Offerable kind facets = kinds of the RENDERED leaves (frame
+  // children included) -- computed by AtlasView beside the counts.
+  filterPresentKindIDs: Set<string>
   cards: Card[]
   allCards: Card[]
   kinds: Kind[]
@@ -260,8 +258,8 @@ function AtlasBoardInner({ cards, allCards, kinds, links, linkKinds, notes, pare
     cards, allCards, kinds, links, linkKinds, isFree, readOnly, boardWidth, freeMoves, arteries,
     pulsedID, hintedID, hoveredFrameID: dragFiling.hoveredFrameID,
     isSoleSelected: selection.isSoleSelected, onOpenOverlay, handleDrill,
-    slotDragSourceID: slotDrag.dragSourceID, onSlotAnchorPointerDown: slotDrag.startDrag, hasLegalTargets,
-  }), [cards, allCards, kinds, links, linkKinds, isFree, readOnly, pulsedID, hintedID, onOpenOverlay, handleDrill, freeMoves, arteries, boardWidth, dragFiling.hoveredFrameID, selection.isSoleSelected, slotDrag.dragSourceID, slotDrag.startDrag, hasLegalTargets])
+    slotDragSourceID: slotDrag.dragSourceID, onSlotAnchorPointerDown: slotDrag.startDrag, hasLegalTargets, boardFilter,
+  }), [cards, allCards, kinds, links, linkKinds, isFree, readOnly, pulsedID, hintedID, onOpenOverlay, handleDrill, freeMoves, arteries, boardWidth, dragFiling.hoveredFrameID, selection.isSoleSelected, slotDrag.dragSourceID, slotDrag.startDrag, hasLegalTargets, boardFilter])
 
   // Edge hover/selection + the edges it drives: useAtlasEdgeInteraction.ts.
   const { edges, setHoveredEdgeID, onSelectionChange } = useAtlasEdgeInteraction({
@@ -454,12 +452,17 @@ function AtlasBoardInner({ cards, allCards, kinds, links, linkKinds, notes, pare
         fitView
         fitViewOptions={{ maxZoom: 1, padding: 0.25, duration: reduceMotion ? 0 : 250 }}
       >
-        <Background />
-        <Controls>
-          <AtlasBoardMinimapButton visible={minimap.visible} onToggle={minimap.toggle} ariaLabel={t('board.minimapToggleAriaLabel')} />
-        </Controls>
-        {minimap.visible && <ThemedMiniMap />}
-        <AtlasLinkRefusalHint hint={slotDrag.refusalHint} />
+        <AtlasBoardChrome
+          kinds={kinds}
+          filterPresentKindIDs={filterPresentKindIDs}
+          boardFilter={boardFilter}
+          onBoardFilterChange={onBoardFilterChange}
+          filterMatchCount={filterMatchCount}
+          filterTotalCount={filterTotalCount}
+          minimapVisible={minimap.visible}
+          onMinimapToggle={minimap.toggle}
+          refusalHint={slotDrag.refusalHint}
+        />
       </ReactFlow>
       {marqueeStyle && <div className={styles.marquee} data-testid="atlas-area-marquee" style={marqueeStyle} />}
       {slotDrag.dragLine && <AtlasSlotDragLine line={slotDrag.dragLine} />}

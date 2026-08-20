@@ -13,7 +13,8 @@ import { useAtlasPerspectives } from './useAtlasPerspectives'
 import { useAtlasNavSignals } from './useAtlasNavSignals'
 import { useAtlasImportConfirm } from './useAtlasImportConfirm'
 import { AtlasToolbar } from './AtlasToolbar'
-import { AtlasBoard, type AtlasFocusRequest } from './AtlasBoard'
+import { AtlasBoard } from './AtlasBoard'
+import { type AtlasFocusRequest } from './useBoardFocus'
 import { AtlasJumpDialog } from './AtlasJumpDialog'
 import { AtlasCardOverlay } from './AtlasCardOverlay'
 import { ContextMenu, type ContextMenuState } from '../shared/ContextMenu'
@@ -22,6 +23,7 @@ import { AtlasCoverageView } from './AtlasCoverageView'
 import { AtlasKindManager } from './AtlasKindManager'
 import { AtlasBoardEmptyState } from './AtlasBoardEmptyState'
 import { isGroupCard } from './atlasBoardLayout'
+import { useAtlasBoardFilter } from './useAtlasBoardFilter'
 import { useAtlasCardCreate } from './useAtlasCardCreate'
 import { useAtlasContainmentMenus } from './useAtlasContainmentMenus'
 import { useAtlasCommandSignals } from './useAtlasCommandSignals'
@@ -209,6 +211,7 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
   const viewedCard = allCards.find((c) => c.ID === viewedID) ?? null
   const childrenAll = childrenOf(boardAllCards, viewedID)
   const presentKinds = groupByKind(childrenAll, allKinds).map((shelf) => shelf.kind)
+  const { boardFilter, setBoardFilter, filterMatchCount, filterTotalCount, filterPresentKindIDs } = useAtlasBoardFilter(boardAllCards, viewedID)
   // The lens filters cards by KIND, but containment is a ROLE
   // orthogonal to kind (ADR-0038 Decision 3): a card currently
   // holding children renders as a region frame and stays on the board
@@ -404,6 +407,11 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
           />
         )}
         <AtlasBoard
+          boardFilter={boardFilter}
+          onBoardFilterChange={setBoardFilter}
+          filterMatchCount={filterMatchCount}
+          filterTotalCount={filterTotalCount}
+          filterPresentKindIDs={filterPresentKindIDs}
           cards={visibleChildren}
           allCards={boardAllCards}
           kinds={allKinds}

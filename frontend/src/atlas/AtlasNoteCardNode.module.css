@@ -220,3 +220,10 @@
     pointer-events: none;
     z-index: 10;
 }
+
+/* The board filter's dim-in-place (goal 0129): outside-the-match
+   cards recede but stay recognizable and clickable. */
+.card[data-dimmed='true'] {
+  opacity: 0.25;
+  transition: opacity 120ms linear;
+}

@@ -3,6 +3,7 @@ import type { Card, Kind, Link, LinkKind } from '../../bindings/github.com/alico
 import { childrenOf } from './atlasGrouping'
 import { computeAutoArrangeLayout, computeGroupFrameLayout, isGroupCard, NOTE_HEIGHT, NOTE_WIDTH, TABLE_HEIGHT, TABLE_WIDTH } from './atlasBoardLayout'
 import { computeFreshnessRollup } from './atlasCardPresentation'
+import { type BoardFilter, filterIsActive, matchesBoardFilter } from './cardFilter'
 import type { AtlasNoteCardRFNode } from './AtlasNoteCardNode'
 import type { AtlasGroupRFNode } from './AtlasGroupNode'
 import type { AtlasRegionChipRFNode } from './AtlasRegionChipNode'
@@ -24,7 +25,7 @@ export type BoardCardRFNode = AtlasNoteCardRFNode | AtlasGroupRFNode | AtlasRegi
 export function buildBoardCardNodes({
   cards, allCards, kinds, links, linkKinds, isFree, readOnly, boardWidth, freeMoves, arteries,
   pulsedID, hintedID, hoveredFrameID, isSoleSelected, onOpenOverlay, handleDrill,
-  slotDragSourceID, onSlotAnchorPointerDown, hasLegalTargets,
+  slotDragSourceID, onSlotAnchorPointerDown, hasLegalTargets, boardFilter,
 }: {
   cards: Card[]
   allCards: Card[]
@@ -58,6 +59,9 @@ export function buildBoardCardNodes({
   // every card's own link handle rather than offering a drag that can
   // never connect.
   hasLegalTargets: boolean
+  // The board filter (goal 0129 slice 1): leaf cards outside the
+  // match DIM in place; frames never dim (structure, not results).
+  boardFilter: BoardFilter
 }): BoardCardRFNode[] {
   const kindByID = new Map(kinds.map((k) => [k.ID, k]))
   const adjacency = new Map<string, string[]>()
@@ -73,8 +77,10 @@ export function buildBoardCardNodes({
   // design §3: "every OTHER top-level card lifts").
   const slotDragHighlight = (id: string) => slotDragSourceID !== null && slotDragSourceID !== id
 
+  const filterActive = filterIsActive(boardFilter)
   const noteData = (card: Card) => ({
     card,
+    dimmed: filterActive && !matchesBoardFilter(card, boardFilter),
     kind: kindByID.get(card.KindID),
     allCards,
     links,

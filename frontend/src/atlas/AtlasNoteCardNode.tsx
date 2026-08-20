@@ -22,6 +22,9 @@ export interface AtlasNoteCardData extends Record<string, unknown> {
   // renders their current on/off state.
   pulsed: boolean
   hinted: boolean
+  // The board filter's dim-in-place (goal 0129): true renders the
+  // card at reduced opacity, still fully interactive.
+  dimmed: boolean
   // The click model's own commit test (goal 0102's gesture table):
   // true when this card was the sole selected node before the current
   // click gesture began -- see useAtlasSelection.ts's own header
@@ -67,6 +70,7 @@ export const AtlasNoteCardNode = memo(function AtlasNoteCardNode({ data }: NodeP
       className={`${styles.card}${slotDragHighlight ? ` ${slotStyles.slotTargetHighlight}` : ''}`}
       data-testid="atlas-note-card"
       data-pulse={pulsed}
+      data-dimmed={data.dimmed}
       data-slot-target={slotDragHighlight}
       role="button"
       tabIndex={0}

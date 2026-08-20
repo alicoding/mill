@@ -266,6 +266,11 @@ into.
   link for its actions.
 - **Areas** group cards; drill in to work at a level, breadcrumb back
   out. Perspectives save named views of the map.
+- **Filter without losing the map.** The search control on the board
+  (top right) dims everything that doesn't match your text or chosen
+  kinds — matches stay crisp in place, so you keep the spatial
+  context instead of watching cards vanish. Filters are a question,
+  not a setting: they clear with one click and are never saved.
 - **Sync a docs folder**: the seeded "Mirror a docs folder into
   Atlas" workflow regenerates a space from a folder of markdown,
   idempotently — a maintained docs set becomes a maintained map.
