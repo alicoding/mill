@@ -1,0 +1,38 @@
+.picker {
+  display: flex;
+  flex-direction: column;
+  gap: var(--base-size-8);
+  padding: var(--base-size-12);
+}
+
+.grid {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.row {
+  display: flex;
+  gap: 3px;
+}
+
+.cell {
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 1px solid var(--borderColor-default);
+  border-radius: 3px;
+  background: var(--bgColor-default);
+  cursor: pointer;
+}
+
+.cell[data-selected='true'] {
+  background: var(--bgColor-accent-muted);
+  border-color: var(--borderColor-accent-emphasis);
+}
+
+.hint {
+  color: var(--fgColor-muted);
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}

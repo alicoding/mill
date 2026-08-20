@@ -15,6 +15,13 @@ import (
 // §2.2) -- atlassvc's own no-hardcode tripwire test greps this
 // package and internal/services/atlassvc, this file excluded, for
 // these exact strings.
+// ReferenceKindID is the seeded Reference kind's stable id -- the
+// exported name exists because the service layer defaults kind-less
+// structural cards (a table projection created from the size picker)
+// to it: the least semantic seeded kind, editable afterwards like any
+// card's.
+const ReferenceKindID = "atlas-kind-reference"
+
 const (
 	// kindSpaceID no longer appears in BuiltInKinds() -- containment is
 	// a role every card already carries (ADR-0038 Decision 3), so a
@@ -39,7 +46,7 @@ const (
 	// isn't in the document family still lands as a typed card, never
 	// refused (LOCKED design §3b -- "a file card is a link path to
 	// somewhere in the filesystem anyway").
-	kindReferenceID = "atlas-kind-reference"
+	kindReferenceID = ReferenceKindID
 	// kindComponentID (goal 0095 slice 3) is the seeded perspectives
 	// example's own Kind, dedicated rather than reusing Topic so the
 	// three landscape cards below never join Topic's own seeded count

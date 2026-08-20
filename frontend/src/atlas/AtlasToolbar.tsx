@@ -57,7 +57,7 @@ export function AtlasToolbar({
   canAddSibling: boolean
   onCreate: (containment: 'sibling' | 'child', kindID: string, title: string) => Promise<void>
   onCreateTable: (kindID: string, title: string, listID: string) => Promise<void>
-  onCreateTableNew: (kindID: string, title: string) => Promise<void>
+  onCreateTableNew: (cols: number, rows: number) => Promise<void>
   onExport: () => void
   onImportFile: (file: File) => void
   onShareError: (message: string) => void

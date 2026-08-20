@@ -3,7 +3,6 @@ import { useTranslation } from 'react-i18next'
 import { Handle, NodeResizer, Position as RFPosition } from '@xyflow/react'
 import type { NodeProps } from '@xyflow/react'
 import { AtlasService } from '../shared/bindings'
-import { kindColorTokens } from './atlasKindColor'
 import { AtlasCardProjectionTable } from './AtlasCardProjectionTable'
 import type { AtlasNoteCardRFNode } from './AtlasNoteCardNode'
 import noteStyles from './AtlasNoteCardNode.module.css'
@@ -17,8 +16,7 @@ import styles from './AtlasTableCardNode.module.css'
 // revisit if the summary face proves insufficient).
 export const AtlasTableCardNode = memo(function AtlasTableCardNode({ data, selected }: NodeProps<AtlasNoteCardRFNode>) {
   const { t } = useTranslation('atlas')
-  const { card, kind, pulsed, isSoleSelected, onCommit } = data
-  const tokens = kindColorTokens(card.KindID)
+  const { card, pulsed, isSoleSelected, onCommit } = data
 
   return (
     <div
@@ -54,13 +52,12 @@ export const AtlasTableCardNode = memo(function AtlasTableCardNode({ data, selec
       />
       <Handle type="target" position={RFPosition.Top} className={noteStyles.handle} />
       <Handle type="source" position={RFPosition.Bottom} className={noteStyles.handle} />
+      {/* No kind chip on the table face (goal 0137): the table's
+          meaning is its content; kind identity lives on the card page.
+          The tag doubles as the density toggle (goal 0105 part 3):
+          grid <-> pills, persisted per card. */}
       <div className={noteStyles.frontHeader}>
-        <span className={noteStyles.glyph} style={{ background: `var(${tokens.emphasis})` }}>
-          {(kind?.Label ?? '?').charAt(0).toUpperCase()}
-        </span>
-        <span className={noteStyles.kindLabel}>{kind?.Label ?? ''}</span>
-        {/* The tag doubles as the density toggle (goal 0105 part 3):
-            grid <-> pills, persisted per card. */}
+        <div className={noteStyles.title}>{card.Title}</div>
         <button
           type="button"
           className={`${styles.tableTag} nodrag`}
@@ -74,7 +71,6 @@ export const AtlasTableCardNode = memo(function AtlasTableCardNode({ data, selec
           {card.ProjectionDensity === 'pills' ? t('projection.pillsTag') : t('projection.tableTag')}
         </button>
       </div>
-      <div className={noteStyles.title}>{card.Title}</div>
       <AtlasCardProjectionTable cardID={card.ID} density={card.ProjectionDensity} />
     </div>
   )

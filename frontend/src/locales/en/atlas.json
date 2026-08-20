@@ -323,5 +323,10 @@
     "fields": "Fields",
     "clear": "Clear",
     "count": "{{matched}} of {{total}} cards match"
+  },
+  "tableSize": {
+    "hint": "Sweep to size, click to create",
+    "dimensions": "{{cols}} × {{rows}}",
+    "cellAriaLabel": "{{cols}} by {{rows}} table"
   }
 }
