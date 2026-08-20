@@ -78,11 +78,19 @@
      floating text. */
   border-right: 1px solid var(--borderColor-muted);
   color: var(--fgColor-default);
-  white-space: nowrap;
   max-width: 180px;
+  cursor: text;
+  /* NO overflow on the cell itself: boundary affordances (the ⊕, the
+     row menu) straddle cell edges by design, and a clipping container
+     cuts them in half. Text clipping lives on .cellText instead --
+     the structural rule this grid follows everywhere now. */
+}
+
+.cellText {
+  display: block;
+  white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  cursor: text;
 }
 
 .table td:last-child,
