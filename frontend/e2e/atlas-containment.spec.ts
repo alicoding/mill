@@ -195,6 +195,34 @@ test('atlas containment: area drawing, marker-box grouping, drag filing, dissolv
     // the header count is the real proof of filing.
     await expect(groupArea.getByTestId('atlas-group-header')).toContainText('4 cards')
 
+    // --- Drag OUT from the preview (goal 0141): WITHOUT drilling in,
+    // grab the child's preview tile inside the frame and drop it on
+    // open canvas -- it leaves the frame (4 -> 3) and lands at the
+    // dropped spot on this level. ---
+    const previewLoner = noteCard(page, 'ZzC2eLoner')
+    await expect(previewLoner).toBeVisible()
+    const previewBox = await previewLoner.boundingBox()
+    if (!previewBox) throw new Error('missing preview box before drag-out')
+    await dragBetween(
+      page,
+      { x: previewBox.x + previewBox.width / 2, y: previewBox.y + previewBox.height / 2 },
+      await boardPoint(board, 0.88, 0.72),
+    )
+    await expect(groupArea.getByTestId('atlas-group-header')).toContainText('3 cards')
+    await expect(noteCard(page, 'ZzC2eLoner')).toBeVisible()
+
+    // Re-file it for the drilled drag-out below (3 -> 4), keeping the
+    // rest of this flow's counts untouched.
+    const lonerBox2 = await noteCard(page, 'ZzC2eLoner').boundingBox()
+    const groupBox3 = await groupArea.boundingBox()
+    if (!lonerBox2 || !groupBox3) throw new Error('missing bounding box before re-file')
+    await dragBetween(
+      page,
+      { x: lonerBox2.x + lonerBox2.width / 2, y: lonerBox2.y + lonerBox2.height / 2 },
+      { x: groupBox3.x + groupBox3.width / 2, y: groupBox3.y + groupBox3.height / 2 },
+    )
+    await expect(groupArea.getByTestId('atlas-group-header')).toContainText('4 cards')
+
     // --- Drag filing OUT: drilled inside the frame, drag the same
     // card past the board's own visible edge -- un-files it back to
     // the level above (header count 4 -> 3 once we return). Dropped

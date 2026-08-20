@@ -14,7 +14,10 @@ into.
   relationship per pair and kind — repeats never duplicate. Hover a
   link for its actions.
 - **Areas** group cards; drill in to work at a level, breadcrumb back
-  out. Perspectives save named views of the map.
+  out. Drag a card onto an area to file it; drag it back out — from
+  the area's preview or from inside — and it moves up a level, or
+  into whichever area you drop it on. Perspectives save named views
+  of the map.
 - **Filter without losing the map.** The search control on the board
   (top right) dims everything that doesn't match your text, chosen
   kinds, or field values (the Fields menu lists every choice-type

@@ -48,10 +48,20 @@ export function useAtlasDragFiling({ allCards, parentID, topLevelBoxes, wrapperR
     return boxesRef.current.find((b) => b.isFrame && b.id !== node.id && cx >= b.x && cx <= b.x + b.width && cy >= b.y && cy <= b.y + b.height) ?? null
   }, [])
 
+  // absNode lifts a frame child's parent-relative position to board
+  // coordinates so the same intersection tests apply (goal 0141).
+  const absNode = useCallback((node: DraggedNode): DraggedNode => {
+    if (!node.parentId) return node
+    const parentBox = boxesRef.current.find((b) => b.id === node.parentId)
+    if (!parentBox) return node
+    return { ...node, position: { x: parentBox.x + node.position.x, y: parentBox.y + node.position.y } }
+  }, [])
+
   const onNodeDrag = useCallback((_e: unknown, node: DraggedNode) => {
-    if (node.parentId) return
-    setHoveredFrameID(frameUnder(node)?.id ?? null)
-  }, [frameUnder])
+    const abs = absNode(node)
+    const target = frameUnder(abs)
+    setHoveredFrameID(target && target.id !== node.parentId ? target.id : null)
+  }, [frameUnder, absNode])
 
   const reparentNote = useCallback((id: string, newParentID: string) => {
     const position = freeChildPosition(allCardsRef.current, newParentID)
@@ -78,11 +88,40 @@ export function useAtlasDragFiling({ allCards, parentID, topLevelBoxes, wrapperR
     return touch ? { x: touch.clientX, y: touch.clientY } : null
   }
 
+  const dragChildOut = useCallback((node: DraggedNode, isNote: boolean, reparent: (id: string, parentID: string) => void) => {
+    const abs = absNode(node)
+    const target = frameUnder(abs)
+    if (target && target.id !== node.parentId) {
+      reparent(node.id, target.id)
+      return
+    }
+    const parentBox = boxesRef.current.find((b) => b.id === node.parentId)
+    if (!parentBox) return
+    const cx = abs.position.x + (node.width ?? 0) / 2
+    const cy = abs.position.y + (node.height ?? 0) / 2
+    const outside = cx < parentBox.x || cx > parentBox.x + parentBox.width || cy < parentBox.y || cy > parentBox.y + parentBox.height
+    if (!outside) return
+    const level = parentIDRef.current
+    const pos = { X: abs.position.x, Y: abs.position.y }
+    const chain = isNote
+      ? AtlasService.MoveNote(node.id, level).then(() => AtlasService.SetNotePosition(node.id, pos)).then(() => undefined)
+      : AtlasService.MoveCard(node.id, level).then(() => AtlasService.SetPosition(node.id, pos)).then(() => undefined)
+    void chain.then(() => refreshAtlas()).catch(console.error)
+  }, [absNode, frameUnder])
+
   const onNodeDragStop = useCallback((e: MouseEvent | TouchEvent, node: DraggedNode) => {
     setHoveredFrameID(null)
-    if (node.parentId) return
     const isNote = node.type === 'atlas-sticky'
     const reparent = isNote ? reparentNote : reparentCard
+
+    // A frame child dropped past its parent's edge leaves the frame
+    // (goal 0141, the drag-out symmetric of filing in): into another
+    // frame when one is under the drop, else onto the board's level
+    // at the dropped spot.
+    if (node.parentId) {
+      dragChildOut(node, isNote, reparent)
+      return
+    }
 
     const target = frameUnder(node)
     if (target) {
@@ -102,7 +141,7 @@ export function useAtlasDragFiling({ allCards, parentID, topLevelBoxes, wrapperR
 
     if (isNote) void AtlasService.SetNotePosition(node.id, { X: node.position.x, Y: node.position.y }).catch(console.error)
     else void AtlasService.SetPosition(node.id, { X: node.position.x, Y: node.position.y }).catch(console.error)
-  }, [frameUnder, reparentNote, reparentCard, wrapperRef])
+  }, [frameUnder, reparentNote, reparentCard, wrapperRef, dragChildOut])
 
   return { hoveredFrameID, onNodeDrag, onNodeDragStop }
 }

@@ -140,8 +140,10 @@ export function buildBoardCardNodes({
             width: child.size.width,
             height: child.size.height,
             parentId: card.ID,
-            extent: 'parent',
-            draggable: false,
+            // Drag-out re-parenting (goal 0141): a frame child is
+            // draggable in Free mode and NOT clamped to its parent --
+            // crossing the frame's edge is how it leaves.
+            draggable: isFree && !readOnly,
             data: {
               card: child.card,
               kind: kindByID.get(child.card.KindID),
@@ -160,8 +162,7 @@ export function buildBoardCardNodes({
             width: child.size.width,
             height: child.size.height,
             parentId: card.ID,
-            extent: 'parent',
-            draggable: false,
+            draggable: isFree && !readOnly,
             data: noteData(child.card),
           })
         }
