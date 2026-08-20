@@ -9,6 +9,7 @@ export {
 
 export type {
     Card,
+    Dimensions,
     Kind,
     LensSetting,
     Link,

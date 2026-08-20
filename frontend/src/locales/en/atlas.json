@@ -103,6 +103,7 @@
     "dropError": "Couldn't read the dropped file."
   },
   "create": {
+    "addTableNew": "New table",
     "addTable": "Table from a List",
     "listLabel": "List",
     "listCaption": "The card shows this List live, read-only — edits go through its own guarded paths.",

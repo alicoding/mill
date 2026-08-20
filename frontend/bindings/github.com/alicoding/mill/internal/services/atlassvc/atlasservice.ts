@@ -619,6 +619,15 @@ export function SetCardProjectionDensity(cardID: string, density: string): $Canc
 }
 
 /**
+ * SetCardSize persists a card's user-chosen board footprint (the
+ * resize handle's commit). Bounds guard against a degenerate drag:
+ * anything under 120x80 canvas units can't render a usable face.
+ */
+export function SetCardSize(cardID: string, w: number, h: number): $CancellablePromise<atlas$0.Card> {
+    return $Call.ByID(4084337105, cardID, w, h);
+}
+
+/**
  * SetLens persists the per-space lens for containerID: which Kind IDs
  * stay hidden when viewing that container's children (ADR-0038's
  * density-is-a-lens-choice principle), and the depth/peek toggle (goal

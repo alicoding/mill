@@ -1,6 +1,6 @@
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Handle, Position as RFPosition } from '@xyflow/react'
+import { Handle, NodeResizer, Position as RFPosition } from '@xyflow/react'
 import type { NodeProps } from '@xyflow/react'
 import { AtlasService } from '../shared/bindings'
 import { kindColorTokens } from './atlasKindColor'
@@ -15,7 +15,7 @@ import styles from './AtlasTableCardNode.module.css'
 // boxes, so there the same card shows its note face with a table chip
 // (atlasBuildBoardNodes; per-size-aware auto layout is the named
 // revisit if the summary face proves insufficient).
-export const AtlasTableCardNode = memo(function AtlasTableCardNode({ data }: NodeProps<AtlasNoteCardRFNode>) {
+export const AtlasTableCardNode = memo(function AtlasTableCardNode({ data, selected }: NodeProps<AtlasNoteCardRFNode>) {
   const { t } = useTranslation('atlas')
   const { card, kind, pulsed, isSoleSelected, onCommit } = data
   const tokens = kindColorTokens(card.KindID)
@@ -41,6 +41,17 @@ export const AtlasTableCardNode = memo(function AtlasTableCardNode({ data }: Nod
         }
       }}
     >
+      {/* Resize persists as Card.Size -- the canvas library's own
+          resizer (frontend.md's overlay/interaction rule), shown only
+          while selected so the face stays quiet at rest. */}
+      <NodeResizer
+        isVisible={selected ?? false}
+        minWidth={280}
+        minHeight={160}
+        onResizeEnd={(_e, params) => {
+          void AtlasService.SetCardSize(card.ID, params.width, params.height)
+        }}
+      />
       <Handle type="target" position={RFPosition.Top} className={noteStyles.handle} />
       <Handle type="source" position={RFPosition.Bottom} className={noteStyles.handle} />
       <div className={noteStyles.frontHeader}>

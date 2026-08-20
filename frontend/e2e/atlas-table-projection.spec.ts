@@ -193,3 +193,122 @@ test('an options column renders pills, edits as a select, and the pills density 
   await expect(overlay).toBeVisible()
   await deleteViaPageMenu(page, overlay)
 })
+
+// Table from scratch (goal 0135): one dialog creates the backing List
+// (starter Item/Notes columns, three empty rows) AND its projection
+// card -- no Configure round trip. Cleanup: the projection card and
+// the List it minted.
+test('New table creates the List and its projection in one action', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Atlas' }).click()
+  await expect(page.getByTestId('atlas-board')).toBeVisible()
+
+  await page.getByTestId('atlas-add-button').click()
+  await page.getByTestId('atlas-add-table-new').click()
+  await selectKind(page, ATLAS_KIND_DOCUMENT, 'atlas-create-kind')
+  await page.getByTestId('atlas-create-title').fill('E2E scratch table')
+  await page.getByRole('button', { name: 'Create' }).click()
+
+  const tableCard = page.getByTestId('atlas-table-card').filter({ hasText: 'E2E scratch table' })
+  await expect(tableCard).toBeVisible()
+  await expect(tableCard.getByTestId('atlas-projection-table')).toContainText('Item')
+  await expect(tableCard.getByTestId('atlas-projection-table')).toContainText('Notes')
+  await expect(tableCard.getByTestId('atlas-projection-table').locator('tbody tr')).toHaveCount(3)
+
+  // The minted List is a real Configure entity named after the card.
+  await page.getByRole('link', { name: 'Configure' }).click()
+  await page.getByRole('tab', { name: 'Lists' }).click()
+  const listRow = page.locator('[data-testid="inventory-row"][data-entity="list"]', { has: page.getByText('E2E scratch table', { exact: true }) })
+  await expect(listRow).toBeVisible()
+
+  // Cleanup: card first, then the List.
+  await page.getByRole('link', { name: 'Atlas' }).click()
+  await openCard(page, tableTitle(tableCard))
+  await deleteViaPageMenu(page, page.locator('[data-component="atlas-card-overlay"]'))
+  await expect(tableCard).not.toBeVisible()
+  await page.getByRole('link', { name: 'Configure' }).click()
+  await page.getByRole('tab', { name: 'Lists' }).click()
+  await clickRowAction(page, listRow, 'Delete')
+  await expect(listRow).toHaveCount(0)
+})
+
+// Card resize (goal 0135): the table face is user-sizable and the
+// chosen footprint persists as Card.Size -- a reload renders the
+// resized box, not the default.
+test('resizing a table card persists its footprint across reload', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Atlas' }).click()
+  await page.getByTestId('atlas-add-button').click()
+  await page.getByTestId('atlas-add-table').click()
+  await page.getByTestId('entity-ref-field').selectOption({ label: 'Example: Country codes' })
+  await selectKind(page, ATLAS_KIND_DOCUMENT, 'atlas-create-kind')
+  await page.getByRole('button', { name: 'Create' }).click()
+  const tableCard = page.getByTestId('atlas-table-card').filter({ hasText: 'Example: Country codes' })
+  await expect(tableCard).toBeVisible()
+
+  const before = await tableCard.boundingBox()
+  if (!before) throw new Error('no table card box')
+
+  // Select the node, then drag the resizer's bottom-right handle.
+  await tableTitle(tableCard).click()
+  // The bottom-right handle sits under the floating create toolbar
+  // (which swallows the pointerdown) -- the top-right handle is clear.
+  const handle = page.locator('.react-flow__resize-control.handle.top.right')
+  await expect(handle).toBeVisible()
+  const hb = await handle.boundingBox()
+  if (!hb) throw new Error('no resize handle box')
+  const startX = hb.x + hb.width / 2
+  const startY = hb.y + hb.height / 2
+  await page.mouse.move(startX, startY)
+  await page.mouse.down()
+  for (let i = 1; i <= 6; i++) {
+    await page.mouse.move(startX + i * 20, startY - i * 10)
+    // The canvas library samples pointer deltas between frames --
+    // coalesced synthetic moves register as zero motion, so each step
+    // must land in its own frame (the recorded pointer-coalescing
+    // class; no DOM-observable condition exists between raw moves).
+    await page.waitForTimeout(50)
+  }
+  await page.mouse.up()
+
+  // The node grew, and the growth survives a reload (persisted Size).
+  await expect.poll(async () => (await tableCard.boundingBox())?.width ?? 0).toBeGreaterThan(before.width + 80)
+  await page.reload()
+  await page.getByRole('link', { name: 'Atlas' }).click()
+  await expect(tableCard).toBeVisible()
+  await expect.poll(async () => (await tableCard.boundingBox())?.width ?? 0).toBeGreaterThan(before.width + 80)
+
+  await openCard(page, tableTitle(tableCard))
+  await deleteViaPageMenu(page, page.locator('[data-component="atlas-card-overlay"]'))
+  await expect(tableCard).not.toBeVisible()
+})
+
+// Regression: the LAST column/row boundary's insert dot straddled the
+// scroll container's edge and rendered half-clipped -- it must sit
+// fully inside the container.
+test('the last boundary insert dot is not clipped by the card edge', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Atlas' }).click()
+  await page.getByTestId('atlas-add-button').click()
+  await page.getByTestId('atlas-add-table').click()
+  await page.getByTestId('entity-ref-field').selectOption({ label: 'Example: Country codes' })
+  await selectKind(page, ATLAS_KIND_DOCUMENT, 'atlas-create-kind')
+  await page.getByRole('button', { name: 'Create' }).click()
+  const tableCard = page.getByTestId('atlas-table-card').filter({ hasText: 'Example: Country codes' })
+  await expect(tableCard).toBeVisible()
+
+  const lastTh = tableCard.locator('thead th').last()
+  await lastTh.hover()
+  const dot = lastTh.locator('button[class*="insertDotColumn"]')
+  await expect(dot).toBeVisible()
+  const [dotBox, scrollBox] = await Promise.all([
+    dot.boundingBox(),
+    tableCard.locator('[class*="scroll"]').first().boundingBox(),
+  ])
+  if (!dotBox || !scrollBox) throw new Error('missing boxes')
+  expect(dotBox.x + dotBox.width).toBeLessThanOrEqual(scrollBox.x + scrollBox.width + 0.5)
+
+  await openCard(page, tableTitle(tableCard))
+  await deleteViaPageMenu(page, page.locator('[data-component="atlas-card-overlay"]'))
+  await expect(tableCard).not.toBeVisible()
+})

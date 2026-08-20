@@ -217,7 +217,7 @@ export function computeAutoArrangeLayout(
     } else if (card.ProjectionListID) {
       // A table projection packs at its real rendered footprint --
       // note-sized packing would overlap its neighbors (goal 0105).
-      place(card.ID, TABLE_WIDTH, TABLE_HEIGHT)
+      place(card.ID, card.Size?.W ?? TABLE_WIDTH, card.Size?.H ?? TABLE_HEIGHT)
     } else {
       place(card.ID, NOTE_WIDTH, NOTE_HEIGHT)
     }
@@ -229,5 +229,5 @@ export function computeAutoArrangeLayout(
 // The List → table projection's Free-mode footprint (goal 0105): wide
 // enough for a few real columns, tall enough for ~6 rows before the
 // inner scroll takes over.
-export const TABLE_WIDTH = 360
-export const TABLE_HEIGHT = 240
+export const TABLE_WIDTH = 520
+export const TABLE_HEIGHT = 320

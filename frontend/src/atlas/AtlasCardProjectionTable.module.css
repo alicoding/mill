@@ -102,6 +102,17 @@
   opacity: 1;
 }
 
+/* The last boundary's dot would straddle the scroll container's edge
+   and get clipped (overflow owns both axes above) -- pin it fully
+   inside; the edge boundary still reads as "append here". */
+.table th:last-child .insertDotColumn {
+  right: 1px;
+}
+
+.table tr:last-child .insertDotRow {
+  bottom: 1px;
+}
+
 .empty,
 .missing {
   padding: var(--base-size-8);

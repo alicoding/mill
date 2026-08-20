@@ -72,6 +72,17 @@ export interface Card {
     "ProjectionDensity"?: string;
 
     /**
+     * Size is the card's user-chosen board footprint (width/height in
+     * canvas units), nil until first resized -- the renderer's default
+     * for the card's face applies then. Structural like Position: any
+     * card face that supports resizing persists here (the table
+     * projection is the first; every richer board unit shares the
+     * field rather than growing its own). omitempty keeps pre-resize
+     * JSON byte-identical (persisted stores and seed fingerprints).
+     */
+    "Size"?: Dimensions | null;
+
+    /**
      * MirrorPath is an optional local file path this card's content is
      * synced to -- empty until a refresh has actually run once.
      */
@@ -126,6 +137,14 @@ export interface Card {
     "DeletedAt": string;
     "BuiltIn": boolean;
     "Seed": seedorigin$0.Origin;
+}
+
+/**
+ * Dimensions is a card's persisted board footprint -- see Card.Size.
+ */
+export interface Dimensions {
+    "W": number;
+    "H": number;
 }
 
 /**
