@@ -1,14 +1,15 @@
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ActionList, ActionMenu, Dialog, FormControl, TextInput } from '@primer/react'
+import { ActionList, ActionMenu, AnchoredOverlay, Dialog, FormControl, TextInput } from '@primer/react'
 import { PlusIcon } from '@primer/octicons-react'
 import type { Kind } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 import { ConfigureService } from '../shared/bindings'
 import { EntityRefField } from '../configure/EntityRefField'
 import { KindPicker } from './KindPicker'
+import { AtlasTableSizePicker } from './AtlasTableSizePicker'
 
 type Containment = 'sibling' | 'child'
-type PendingForm = Containment | 'table' | 'table-new'
+type PendingForm = Containment | 'table'
 
 // The "+" affordance (docs/goals/0061): asks sibling-vs-child EXPLICITLY
 // before asking for a Kind/title, so containment is always a deliberate
@@ -24,7 +25,8 @@ export function AtlasCreateMenu({ kinds, canAddSibling, onCreate, onCreateTable,
   canAddSibling: boolean
   onCreate: (containment: Containment, kindID: string, title: string) => Promise<void>
   onCreateTable: (kindID: string, title: string, listID: string) => Promise<void>
-  onCreateTableNew: (kindID: string, title: string) => Promise<void>
+  // The size picker's click IS the creation (goal 0137).
+  onCreateTableNew: (cols: number, rows: number) => Promise<void>
   // The board pane's right-click "Add card…" (goal 0075's audit G3):
   // AtlasView bumps this one-shot counter, this component opens the
   // SAME child-create form the toolbar's own "Add inside this card"
@@ -33,6 +35,8 @@ export function AtlasCreateMenu({ kinds, canAddSibling, onCreate, onCreateTable,
 }) {
   const { t } = useTranslation('atlas')
   const [pending, setPending] = useState<PendingForm | null>(null)
+  const [sizePickerOpen, setSizePickerOpen] = useState(false)
+  const menuAnchorRef = useRef<HTMLSpanElement>(null)
   const [kindID, setKindID] = useState('')
   const [title, setTitle] = useState('')
   const [listID, setListID] = useState('')
@@ -74,7 +78,6 @@ export function AtlasCreateMenu({ kinds, canAddSibling, onCreate, onCreateTable,
     setError('')
     try {
       if (pending === 'table') await onCreateTable(kindID, title, listID)
-      else if (pending === 'table-new') await onCreateTableNew(kindID, title)
       else await onCreate(pending, kindID, title)
       setPending(null)
     } catch (err) {
@@ -85,11 +88,11 @@ export function AtlasCreateMenu({ kinds, canAddSibling, onCreate, onCreateTable,
   }
 
   const dialogTitle = pending === 'sibling' ? t('create.addBeside')
-    : pending === 'table' ? t('create.addTable')
-      : pending === 'table-new' ? t('create.addTableNew') : t('create.addInside')
+    : pending === 'table' ? t('create.addTable') : t('create.addInside')
 
   return (
     <>
+      <span ref={menuAnchorRef} />
       <ActionMenu>
         <ActionMenu.Button leadingVisual={PlusIcon} variant="primary" size="small" data-testid="atlas-add-button">
           {t('create.addButton')}
@@ -102,7 +105,7 @@ export function AtlasCreateMenu({ kinds, canAddSibling, onCreate, onCreateTable,
             <ActionList.Item onSelect={() => openForm('child')} data-testid="atlas-add-child">
               {t('create.addInside')}
             </ActionList.Item>
-            <ActionList.Item onSelect={() => openForm('table-new')} data-testid="atlas-add-table-new">
+            <ActionList.Item onSelect={() => setSizePickerOpen(true)} data-testid="atlas-add-table-new">
               {t('create.addTableNew')}
             </ActionList.Item>
             <ActionList.Item onSelect={() => openForm('table')} data-testid="atlas-add-table">
@@ -111,6 +114,19 @@ export function AtlasCreateMenu({ kinds, canAddSibling, onCreate, onCreateTable,
           </ActionList>
         </ActionMenu.Overlay>
       </ActionMenu>
+      <AnchoredOverlay
+        open={sizePickerOpen}
+        onClose={() => setSizePickerOpen(false)}
+        anchorRef={menuAnchorRef}
+        renderAnchor={null}
+      >
+        <AtlasTableSizePicker
+          onPick={(cols, rows) => {
+            setSizePickerOpen(false)
+            void onCreateTableNew(cols, rows)
+          }}
+        />
+      </AnchoredOverlay>
       {pending && (
         <Dialog
           title={dialogTitle}

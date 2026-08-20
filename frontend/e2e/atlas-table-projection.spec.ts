@@ -194,31 +194,39 @@ test('an options column renders pills, edits as a select, and the pills density 
   await deleteViaPageMenu(page, overlay)
 })
 
-// Table from scratch (goal 0135): one dialog creates the backing List
-// (starter Item/Notes columns, three empty rows) AND its projection
-// card -- no Configure round trip. Cleanup: the projection card and
-// the List it minted.
-test('New table creates the List and its projection in one action', async ({ page }) => {
+// Table from scratch (goal 0137, the size-picker correction): "New
+// table" opens a sweepable size grid; the click IS the creation --
+// no dialog, identity automatic (Reference kind, auto-unique "Table"
+// title, Column N headers, empty rows at fixed height). Cleanup: the
+// projection card and the List it minted.
+test('New table creates a sized grid instantly from the size picker', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Atlas' }).click()
   await expect(page.getByTestId('atlas-board')).toBeVisible()
 
   await page.getByTestId('atlas-add-button').click()
   await page.getByTestId('atlas-add-table-new').click()
-  await selectKind(page, ATLAS_KIND_DOCUMENT, 'atlas-create-kind')
-  await page.getByTestId('atlas-create-title').fill('E2E scratch table')
-  await page.getByRole('button', { name: 'Create' }).click()
+  await expect(page.getByTestId('atlas-table-size-picker')).toBeVisible()
+  await page.getByTestId('atlas-table-size-3x2').hover()
+  await expect(page.getByTestId('atlas-table-size-label')).toContainText('3 × 2')
+  await page.getByTestId('atlas-table-size-3x2').click()
 
-  const tableCard = page.getByTestId('atlas-table-card').filter({ hasText: 'E2E scratch table' })
+  const tableCard = page.getByTestId('atlas-table-card').filter({ hasText: 'Table' }).first()
   await expect(tableCard).toBeVisible()
-  await expect(tableCard.getByTestId('atlas-projection-table')).toContainText('Item')
-  await expect(tableCard.getByTestId('atlas-projection-table')).toContainText('Notes')
-  await expect(tableCard.getByTestId('atlas-projection-table').locator('tbody tr')).toHaveCount(3)
+  await expect(tableCard.getByTestId('atlas-projection-table')).toContainText('Column 1')
+  await expect(tableCard.getByTestId('atlas-projection-table')).toContainText('Column 3')
+  await expect(tableCard.getByTestId('atlas-projection-table').locator('tbody tr')).toHaveCount(2)
+
+  // The face carries no kind chip (the table's meaning is its
+  // content), and empty rows hold a real grid height.
+  await expect(tableCard.locator('[class*="glyph"]')).toHaveCount(0)
+  const cellHeight = await tableCard.getByTestId('atlas-projection-cell').first().evaluate((el) => el.getBoundingClientRect().height)
+  expect(cellHeight).toBeGreaterThanOrEqual(20)
 
   // The minted List is a real Configure entity named after the card.
   await page.getByRole('link', { name: 'Configure' }).click()
   await page.getByRole('tab', { name: 'Lists' }).click()
-  const listRow = page.locator('[data-testid="inventory-row"][data-entity="list"]', { has: page.getByText('E2E scratch table', { exact: true }) })
+  const listRow = page.locator('[data-testid="inventory-row"][data-entity="list"]', { has: page.getByText('Table', { exact: true }) })
   await expect(listRow).toBeVisible()
 
   // Cleanup: card first, then the List.
@@ -230,6 +238,29 @@ test('New table creates the List and its projection in one action', async ({ pag
   await page.getByRole('tab', { name: 'Lists' }).click()
   await clickRowAction(page, listRow, 'Delete')
   await expect(listRow).toHaveCount(0)
+})
+
+// Regression (goal 0137): the hovered header lifts above its sticky
+// neighbors, so the boundary ⊕ paints over the next column instead of
+// under it.
+test('a hovered header stacks above the neighboring sticky header', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Atlas' }).click()
+  await page.getByTestId('atlas-add-button').click()
+  await page.getByTestId('atlas-add-table').click()
+  await page.getByTestId('entity-ref-field').selectOption({ label: 'Example: Country codes' })
+  await selectKind(page, ATLAS_KIND_DOCUMENT, 'atlas-create-kind')
+  await page.getByRole('button', { name: 'Create' }).click()
+  const tableCard = page.getByTestId('atlas-table-card').filter({ hasText: 'Example: Country codes' })
+  await expect(tableCard).toBeVisible()
+
+  const firstTh = tableCard.locator('thead th').first()
+  await firstTh.hover()
+  await expect.poll(async () => firstTh.evaluate((el) => getComputedStyle(el).zIndex)).toBe('3')
+
+  await openCard(page, tableTitle(tableCard))
+  await deleteViaPageMenu(page, page.locator('[data-component="atlas-card-overlay"]'))
+  await expect(tableCard).not.toBeVisible()
 })
 
 // Card resize (goal 0135): the table face is user-sizable and the

@@ -34,6 +34,7 @@
 .table th {
   position: sticky;
   top: 0;
+  z-index: 1;
   background: var(--bgColor-muted);
   color: var(--fgColor-muted);
   text-align: left;
@@ -62,6 +63,10 @@
 
 .table td {
   position: relative;
+  /* Fixed row height: an empty row holds a real grid shape instead of
+     condensing to a sliver. */
+  height: 24px;
+  box-sizing: border-box;
   padding: 3px 8px;
   border-bottom: 1px solid var(--borderColor-muted);
   color: var(--fgColor-default);
@@ -70,6 +75,18 @@
   overflow: hidden;
   text-overflow: ellipsis;
   cursor: text;
+}
+
+/* The engaged header/row lifts above its sticky/later siblings so
+   the boundary ⊕ is never painted over by the neighboring column
+   (each th is its own stacking context once sticky+z-indexed; the
+   hovered one must win). */
+.table th:hover {
+  z-index: 3;
+}
+
+.table td:hover {
+  z-index: 3;
 }
 
 /* A deprecated column's header recedes (ADR-0040's soft-retire). */

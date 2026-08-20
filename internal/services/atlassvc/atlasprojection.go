@@ -71,6 +71,13 @@ func (a *AtlasService) CreateListProjectionCard(kindID, title, parentID string, 
 	if strings.TrimSpace(listID) == "" {
 		return atlas.Card{}, fmt.Errorf("pick the List this table should mirror")
 	}
+	// An empty kindID defaults to the seeded Reference kind (goal 0137:
+	// the size picker asks no identity questions) -- falling back to
+	// the first kind when Reference was deleted, so creation never
+	// fails over a default the user didn't pick.
+	if strings.TrimSpace(kindID) == "" {
+		kindID = a.defaultProjectionKindLocked()
+	}
 	if a.listProjection == nil {
 		return atlas.Card{}, fmt.Errorf("list projection is not available in this build")
 	}
@@ -120,6 +127,23 @@ func (a *AtlasService) SetCardProjectionDensity(cardID, density string) (atlas.C
 	a.mu.Unlock()
 	dataevent.Emit("atlas", out.ID)
 	return out, nil
+}
+
+// defaultProjectionKindLocked picks the kind a kind-less projection
+// card lands as. Takes the read lock itself; call unlocked.
+func (a *AtlasService) defaultProjectionKindLocked() string {
+	a.mu.RLock()
+	defer a.mu.RUnlock()
+	first := ""
+	for _, k := range a.kinds {
+		if k.ID == atlas.ReferenceKindID {
+			return k.ID
+		}
+		if first == "" {
+			first = k.ID
+		}
+	}
+	return first
 }
 
 // SetCardSize persists a card's user-chosen board footprint (the

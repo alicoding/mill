@@ -33,20 +33,27 @@ export function useAtlasCardCreate({ allCards, viewedID, viewedCard }: {
     await refreshAtlas()
   }
 
-  // Table from scratch (goal 0135): the List and its projection land
-  // in ONE action -- a starter schema plus empty rows, shaped in
-  // place afterwards with the grid's own rename/insert affordances.
-  // The title doubles as the new List's label (the same prefill
-  // convention the from-a-List path uses in reverse).
-  const createTableFromScratch = async (kindID: string, title: string) => {
-    const column = (key: string, label: string): Field => ({
-      Key: key, Label: label, Type: FieldType.TypeText, Required: false, Default: '', Description: '',
-      Options: null, Suggestions: null, Secret: false, RefKind: '', Multiline: false, SystemManaged: false,
-    })
-    const created = await ConfigureService.CreateList(title, '', [column('item', 'Item'), column('notes', 'Notes')])
-    for (let i = 0; i < 3; i++) await ConfigureService.AddListRow(created.ID, {})
+  // Table from scratch (goal 0137, correcting 0135's dialog): the size
+  // picker's click is the WHOLE creation -- identity is automatic.
+  // Kind: blank, defaulted server-side (the seed vocabulary lives
+  // there, never here; it stays editable on the card page). Title:
+  // "Table", uniquified against every card title so two quick tables
+  // don't collide; the minted List's label mirrors it. Columns arrive
+  // as "Column N" (renaming while empty re-keys from the label, the
+  // 0136 semantics), rows arrive empty.
+  const createTableFromScratch = async (cols: number, rowCount: number) => {
+    const titles = new Set(allCards.map((c) => c.Title))
+    let title = 'Table'
+    for (let n = 2; titles.has(title); n++) title = `Table ${n}`
+    const columns: Field[] = Array.from({ length: cols }, (_, i): Field => ({
+      Key: `column-${i + 1}`, Label: `Column ${i + 1}`, Type: FieldType.TypeText,
+      Required: false, Default: '', Description: '', Options: null,
+      Suggestions: null, Secret: false, RefKind: '', Multiline: false, SystemManaged: false,
+    }))
+    const created = await ConfigureService.CreateList(title, '', columns)
+    for (let i = 0; i < rowCount; i++) await ConfigureService.AddListRow(created.ID, {})
     const position: Position | null = freeChildPosition(allCards, viewedID, { width: TABLE_WIDTH, height: TABLE_HEIGHT })
-    await AtlasService.CreateListProjectionCard(kindID, title, viewedID, position, created.ID)
+    await AtlasService.CreateListProjectionCard('', title, viewedID, position, created.ID)
     await refreshAtlas()
   }
 
