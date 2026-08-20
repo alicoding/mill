@@ -64,6 +64,9 @@ interface UISignalState {
   // happened.
   atlasArmToolRequest: { tool: 'card' | 'note' | 'area'; token: number } | null
   requestAtlasArmTool: (tool: 'card' | 'note' | 'area') => void
+  // The tray's table tool (goal 0139) -- opens the size picker.
+  atlasTablePickerRequest: number
+  requestAtlasTablePicker: () => void
   // atlas.undoDelete (⌘Z while the quick-delete undo toast lives, goal
   // 0093): the real keydown handling is a dedicated
   // app/useKeymapDispatch.ts listener (⌘Z is the native text-undo
@@ -128,6 +131,8 @@ export const useUISignalStore = create<UISignalState>()((set) => ({
   requestReviewRules: () => set((s) => ({ reviewRulesRequest: s.reviewRulesRequest + 1 })),
   atlasArmToolRequest: null,
   requestAtlasArmTool: (tool) => set((s) => ({ atlasArmToolRequest: { tool, token: (s.atlasArmToolRequest?.token ?? 0) + 1 } })),
+  atlasTablePickerRequest: 0,
+  requestAtlasTablePicker: () => set((s) => ({ atlasTablePickerRequest: s.atlasTablePickerRequest + 1 })),
   atlasUndoDeletePending: false,
   setAtlasUndoDeletePending: (pending) => set({ atlasUndoDeletePending: pending }),
   atlasUndoDeleteRequest: 0,

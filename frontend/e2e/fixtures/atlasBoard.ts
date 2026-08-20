@@ -190,3 +190,37 @@ export async function clickBreadcrumbSegment(page: Page, segment: Locator, label
   await segment.click()
   await page.getByTestId('atlas-breadcrumb-siblings').getByText(label, { exact: true }).click()
 }
+
+// Toolbar-first creation (goal 0139, the + Add menu's replacement):
+// arm the Card tool, click a free canvas point, complete the
+// placement popover. The default point sits low-left, clear of the
+// seeded board's cards/notes, the bottom-center tray (a card landing
+// under the tray can't be clicked), and the minimap. Kind is the
+// picker's testId contract (atlas-placement-kind); omit to keep the
+// last-used default.
+export async function openPlacementPopover(page: Page, at?: { x: number; y: number }) {
+  await page.getByTestId('atlas-tray-card').click()
+  // Candidate points are tried until one is genuinely empty pane --
+  // an earlier create in the same test may already occupy a spot.
+  const candidates = at ? [at] : [{ x: 400, y: 500 }, { x: 300, y: 620 }, { x: 1000, y: 640 }, { x: 250, y: 250 }]
+  let point = candidates[0]
+  for (const c of candidates) {
+    const isPane = await page.evaluate(([px, py]) => document.elementFromPoint(px, py)?.classList?.contains('react-flow__pane') ?? false, [c.x, c.y])
+    if (isPane) {
+      point = c
+      break
+    }
+  }
+  await page.mouse.click(point.x, point.y)
+  const popover = page.getByTestId('atlas-placement-popover')
+  await expect(popover).toBeVisible()
+  return popover
+}
+
+export async function createCardViaTray(page: Page, title: string, opts?: { kindID?: string; at?: { x: number; y: number } }) {
+  const popover = await openPlacementPopover(page, opts?.at)
+  if (opts?.kindID) await selectKind(page, opts.kindID, 'atlas-placement-kind')
+  await popover.getByTestId('atlas-placement-title').fill(title)
+  await popover.getByTestId('atlas-placement-title').press('Enter')
+  await expect(popover).toHaveCount(0)
+}

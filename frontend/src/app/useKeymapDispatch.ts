@@ -80,7 +80,7 @@ export function useKeymapDispatch(): void {
       if (isEditableTarget(e.target)) return
       if (document.querySelector('[role="dialog"]')) return
       const key = e.key.toUpperCase()
-      const commandId = key === 'C' ? 'atlas.create.card' : key === 'N' ? 'atlas.create.note' : key === 'A' ? 'atlas.create.area' : null
+      const commandId = key === 'C' ? 'atlas.create.card' : key === 'N' ? 'atlas.create.note' : key === 'A' ? 'atlas.create.area' : key === 'T' ? 'atlas.create.table' : null
       if (!commandId) return
       e.preventDefault()
       findCommand(commandId)?.run()

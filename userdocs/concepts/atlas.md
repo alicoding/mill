@@ -30,7 +30,8 @@ into.
   steps (create, update, find, link), and a trigger can fire on card
   changes — the board and the automation layer are one system.
 - **Tables are projections.** Start one from nothing with "New
-  table" (the board's + Add menu): sweep the size grid to the shape
+  table" (the toolbar at the bottom of the board, next to Card,
+  Note, and Area): sweep the size grid to the shape
   you want and click — the table lands instantly, backing List and
   card together, ready to rename columns in place. Or pick "Table
   from a List" to project a List you already have.

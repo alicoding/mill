@@ -55,3 +55,9 @@
     color: var(--fgColor-accent);
     border-color: var(--borderColor-accent-emphasis);
 }
+
+.pickerFooter {
+  display: flex;
+  justify-content: center;
+  padding: 0 var(--base-size-8) var(--base-size-8);
+}

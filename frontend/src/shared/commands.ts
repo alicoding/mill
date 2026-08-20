@@ -318,6 +318,16 @@ export const COMMANDS: Command[] = [
     run: () => useUISignalStore.getState().requestAtlasArmTool('area'),
   },
   {
+    // Bare T (goal 0139) -- same shape as atlas.create.card above;
+    // opens the tray's table size picker rather than arming a
+    // placement tool (the picker's click IS the creation).
+    id: 'atlas.create.table',
+    label: 'New table',
+    defaultBinding: null,
+    surface: ['atlas'],
+    run: () => useUISignalStore.getState().requestAtlasTablePicker(),
+  },
+  {
     // The quick-delete undo toast's own ⌘Z (goal 0093): defaultBinding
     // stays null, same shape atlas.create.card/note/area already use --
     // ⌘Z is ALSO the native text-undo combo, so the real dispatch is a

@@ -1,4 +1,5 @@
 import { chromium, expect, test } from '@playwright/test'
+import { openPlacementPopover } from './fixtures/atlasBoard'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
@@ -77,9 +78,8 @@ test('create a card kind with a choice field, see it in the create picker, edit 
     // The picker offers it: close the dialog, arm a card placement.
     await page.keyboard.press('Escape')
     await expect(dialog(page)).not.toBeVisible()
-    await page.getByTestId('atlas-add-button').click()
-    await page.getByTestId('atlas-add-child').click()
-    await page.getByTestId('atlas-create-kind').click()
+    await openPlacementPopover(page)
+    await page.getByTestId('atlas-placement-kind').click()
     await expect(page.getByText('ZzE2eSignal', { exact: false }).first()).toBeVisible()
     await page.keyboard.press('Escape')
     await page.keyboard.press('Escape')

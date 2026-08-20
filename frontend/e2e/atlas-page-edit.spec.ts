@@ -9,8 +9,8 @@ import {
   type SpawnedServer,
 } from './fixtures/server'
 import { deleteViaPageMenu } from './fixtures/atlasPage'
-import { ATLAS_KIND_TOPIC, selectKind } from './fixtures/kindPicker'
-import { clickBreadcrumbSegment, clickFrameGutter, groupCard, noteCard, openCard } from './fixtures/atlasBoard'
+import { ATLAS_KIND_TOPIC } from './fixtures/kindPicker'
+import { clickBreadcrumbSegment, clickFrameGutter, groupCard, noteCard, openCard, createCardViaTray, openPlacementPopover } from './fixtures/atlasBoard'
 
 // Atlas card page read-is-edit + chip navigation (goal 0081 slice A5,
 // LOCKED design §5b): every field editable in place with a per-save
@@ -243,11 +243,7 @@ test('atlas card page: read-is-edit fields, kind-gated mirror controls, page lin
     // card, delete it, confirm it's gone. ---
     await clickBreadcrumbSegment(page, page.getByTestId('atlas-breadcrumb').getByText('My space', { exact: true }), 'My space')
     const title = 'ZzE2eAtlasPageEditDelete'
-    await page.getByTestId('atlas-add-button').click()
-    await page.getByTestId('atlas-add-child').click()
-    await selectKind(page, ATLAS_KIND_TOPIC, 'atlas-create-kind')
-    await page.getByTestId('atlas-create-title').fill(title)
-    await page.getByRole('button', { name: 'Create' }).click()
+    await createCardViaTray(page, title, { kindID: ATLAS_KIND_TOPIC })
     const throwaway = noteCard(page, title)
     await expect(throwaway).toBeVisible()
     await openCard(page, throwaway)
@@ -259,15 +255,11 @@ test('atlas card page: read-is-edit fields, kind-gated mirror controls, page lin
     // --- Rider (c): AtlasCreateMenu's kind picker (its own legacy
     // native <select>) is now the shared KindPicker -- every option
     // shows its own one-line description, not just a bare name. ---
-    await page.getByTestId('atlas-add-button').click()
-    await page.getByTestId('atlas-add-child').click()
-    await page.getByTestId('atlas-create-kind').click()
-    await expect(page.getByTestId(`atlas-create-kind-option-${ATLAS_KIND_TOPIC}`)).toContainText('Something being tracked or worked through.')
-    // Closed by clicking Cancel directly (registers as an outside
-    // click for KindPicker's own dropdown too), not Escape -- the
-    // picker's hand-rolled Escape listener doesn't stop propagation,
-    // so it would also close the dialog underneath it.
-    await page.getByRole('button', { name: 'Cancel' }).click()
+    await openPlacementPopover(page)
+    await page.getByTestId('atlas-placement-kind').click()
+    await expect(page.getByTestId(`atlas-placement-kind-option-${ATLAS_KIND_TOPIC}`)).toContainText('Something being tracked or worked through.')
+    await page.keyboard.press('Escape')
+    await page.keyboard.press('Escape')
   } finally {
     await server?.stop()
     rmSync(dir, { recursive: true, force: true })
