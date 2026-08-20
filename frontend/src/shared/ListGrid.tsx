@@ -401,7 +401,7 @@ export function ListGrid({ listID, columns, rows, density, schemaEditing = true 
                         setEditing({ rowID: row.ID, key: c.Key, value: row.Values?.[c.Key] ?? '' })
                       }}
                     >
-                      {cellContent(c, row.Values?.[c.Key] ?? '')}
+                      <span className={styles.cellText}>{cellContent(c, row.Values?.[c.Key] ?? '')}</span>
                       {editing && editing.rowID === row.ID && editing.key === c.Key && (
                         <GridCellEditor
                           column={c}

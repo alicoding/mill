@@ -342,6 +342,12 @@ test('the last boundary insert dot is not clipped by the card edge', async ({ pa
   if (!dotBox || !scrollBox) throw new Error('missing boxes')
   expect(dotBox.x + dotBox.width).toBeLessThanOrEqual(scrollBox.x + scrollBox.width + 0.5)
 
+  // Regression: a CELL must never clip -- boundary affordances
+  // straddle cell edges, and td overflow:hidden painted the row ⊕ as
+  // a half-circle (text ellipsis lives on the inner span instead).
+  const tdOverflow = await tableCard.getByTestId('atlas-projection-cell').first().evaluate((el) => getComputedStyle(el).overflow)
+  expect(tdOverflow).toBe('visible')
+
   await openCard(page, tableTitle(tableCard))
   await deleteViaPageMenu(page, page.locator('[data-component="atlas-card-overlay"]'))
   await expect(tableCard).not.toBeVisible()
