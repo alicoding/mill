@@ -9,9 +9,9 @@ import {
   type SpawnedServer,
 } from './fixtures/server'
 import { contextMenu } from './fixtures/contextMenu'
-import { clickBreadcrumbSegment, groupCard, noteCard, openCard } from './fixtures/atlasBoard'
+import { clickBreadcrumbSegment, groupCard, noteCard, openCard, createCardViaTray } from './fixtures/atlasBoard'
 import { deleteViaPageMenu } from './fixtures/atlasPage'
-import { ATLAS_KIND_TOPIC, selectKind } from './fixtures/kindPicker'
+import { ATLAS_KIND_TOPIC } from './fixtures/kindPicker'
 
 // Perspectives (ADR-0041, goal 0095): the switcher (which absorbed the
 // old Lens popover), board membership filtering incl. the ancestry-
@@ -174,11 +174,7 @@ test('authoring a card while a perspective is active adds it automatically; the 
     await createPerspective(page, 'Authoring')
 
     const title = 'ZzE2ePerspectiveAuthored'
-    await page.getByTestId('atlas-add-button').click()
-    await page.getByTestId('atlas-add-child').click()
-    await selectKind(page, ATLAS_KIND_TOPIC, 'atlas-create-kind')
-    await page.getByTestId('atlas-create-title').fill(title)
-    await page.getByRole('button', { name: 'Create' }).click()
+    await createCardViaTray(page, title, { kindID: ATLAS_KIND_TOPIC })
 
     // Authoring-adds-to-active (server-side, keyed off the session's
     // own ActivePerspectiveID) -- the new card renders immediately on
@@ -266,11 +262,7 @@ test('Compare shows the diff between two user-authored perspectives', async ({},
     const oldTitle = 'ZzE2eCompareOld'
     const newTitle = 'ZzE2eCompareNew'
     for (const title of [oldTitle, newTitle]) {
-      await page.getByTestId('atlas-add-button').click()
-      await page.getByTestId('atlas-add-child').click()
-      await selectKind(page, ATLAS_KIND_TOPIC, 'atlas-create-kind')
-      await page.getByTestId('atlas-create-title').fill(title)
-      await page.getByRole('button', { name: 'Create' }).click()
+      await createCardViaTray(page, title, { kindID: ATLAS_KIND_TOPIC })
       await expect(noteCard(page, title)).toBeVisible()
     }
 

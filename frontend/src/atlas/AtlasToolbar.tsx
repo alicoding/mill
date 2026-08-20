@@ -6,7 +6,6 @@ import type { Card, Kind, Link, LinkKind, Perspective } from '../../bindings/git
 import { useUISignalStore } from '../shared/uiSignalStore'
 import { AtlasBreadcrumb } from './AtlasBreadcrumb'
 import { AtlasPerspectiveSwitcher } from './AtlasPerspectiveSwitcher'
-import { AtlasCreateMenu } from './AtlasCreateMenu'
 import { AtlasFolderImport } from './AtlasFolderImport'
 import { AtlasSpaceShareMenu } from './AtlasSpaceShareMenu'
 import styles from './AtlasView.module.css'
@@ -27,8 +26,8 @@ export function AtlasToolbar({
   onAutoArrange,
   perspectives, activePerspectiveID, onSwitchPerspective, onCreatePerspective, onRenamePerspective, onDeletePerspective, onPerspectiveToast,
   links, linkKinds,
-  canAddSibling, onCreate, onCreateTable, onCreateTableNew, onExport, onImportFile, onShareError,
-  onOpenMatrix, onOpenCoverage, onOpenKinds, addChildRequest,
+  onExport, onImportFile, onShareError,
+  onOpenMatrix, onOpenCoverage, onOpenKinds,
 }: {
   cards: Card[]
   viewedID: string
@@ -54,10 +53,6 @@ export function AtlasToolbar({
   // `kinds` above already carry the full (unfiltered) sets.
   links: Link[]
   linkKinds: LinkKind[]
-  canAddSibling: boolean
-  onCreate: (containment: 'sibling' | 'child', kindID: string, title: string) => Promise<void>
-  onCreateTable: (kindID: string, title: string, listID: string) => Promise<void>
-  onCreateTableNew: (cols: number, rows: number) => Promise<void>
   onExport: () => void
   onImportFile: (file: File) => void
   onShareError: (message: string) => void
@@ -69,7 +64,6 @@ export function AtlasToolbar({
   onOpenKinds: () => void
   // The board pane's right-click "Add card…" (goal 0075's audit G3) --
   // forwarded straight through to AtlasCreateMenu, which owns the form.
-  addChildRequest?: number
 }) {
   const { t } = useTranslation('atlas')
   const importInputRef = useRef<HTMLInputElement>(null)
@@ -150,7 +144,6 @@ export function AtlasToolbar({
           kinds={kinds}
           linkKinds={linkKinds}
         />
-        <AtlasCreateMenu kinds={kinds} canAddSibling={canAddSibling} onCreate={onCreate} onCreateTable={onCreateTable} onCreateTableNew={onCreateTableNew} openChildRequest={addChildRequest} />
       </div>
     </div>
   )

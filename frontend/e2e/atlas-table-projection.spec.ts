@@ -20,8 +20,8 @@ test('a table card projects a List live on the board and its page', async ({ pag
   await page.getByRole('link', { name: 'Atlas' }).click()
   await expect(page.getByTestId('atlas-board')).toBeVisible()
 
-  await page.getByTestId('atlas-add-button').click()
-  await page.getByTestId('atlas-add-table').click()
+  await page.getByTestId('atlas-tray-table').click()
+  await page.getByTestId('atlas-table-from-list').click()
   await page.getByTestId('entity-ref-field').selectOption({ label: 'Example: Country codes' })
   // Picking the List prefilled the title with its label.
   await expect(page.getByTestId('atlas-create-title')).toHaveValue('Example: Country codes')
@@ -55,8 +55,8 @@ test('a table card projects a List live on the board and its page', async ({ pag
 test('auto-arrange keeps the table face at its real footprint', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Atlas' }).click()
-  await page.getByTestId('atlas-add-button').click()
-  await page.getByTestId('atlas-add-table').click()
+  await page.getByTestId('atlas-tray-table').click()
+  await page.getByTestId('atlas-table-from-list').click()
   await page.getByTestId('entity-ref-field').selectOption({ label: 'Example: Country codes' })
   await selectKind(page, ATLAS_KIND_DOCUMENT, 'atlas-create-kind')
   await page.getByTestId('atlas-create-title').fill('ZzE2eProjectionArrangeCard')
@@ -90,8 +90,8 @@ test('boundary inserts, cell edits, and column rename all work in place on the c
   await page.getByTestId('save-list').click()
 
   await page.getByRole('link', { name: 'Atlas' }).click()
-  await page.getByTestId('atlas-add-button').click()
-  await page.getByTestId('atlas-add-table').click()
+  await page.getByTestId('atlas-tray-table').click()
+  await page.getByTestId('atlas-table-from-list').click()
   await page.getByTestId('entity-ref-field').selectOption({ label: 'ZzE2eProjectionEditList' })
   await selectKind(page, ATLAS_KIND_DOCUMENT, 'atlas-create-kind')
   await page.getByRole('button', { name: 'Create' }).click()
@@ -154,8 +154,8 @@ test('boundary inserts, cell edits, and column rename all work in place on the c
 test('an options column renders pills, edits as a select, and the pills density tints rows', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Atlas' }).click()
-  await page.getByTestId('atlas-add-button').click()
-  await page.getByTestId('atlas-add-table').click()
+  await page.getByTestId('atlas-tray-table').click()
+  await page.getByTestId('atlas-table-from-list').click()
   await page.getByTestId('entity-ref-field').selectOption({ label: 'Example: Task tracker' })
   await selectKind(page, ATLAS_KIND_DOCUMENT, 'atlas-create-kind')
   await page.getByTestId('atlas-create-title').fill('ZzE2ePillsCard')
@@ -204,8 +204,7 @@ test('New table creates a sized grid instantly from the size picker', async ({ p
   await page.getByRole('link', { name: 'Atlas' }).click()
   await expect(page.getByTestId('atlas-board')).toBeVisible()
 
-  await page.getByTestId('atlas-add-button').click()
-  await page.getByTestId('atlas-add-table-new').click()
+  await page.getByTestId('atlas-tray-table').click()
   await expect(page.getByTestId('atlas-table-size-picker')).toBeVisible()
   await page.getByTestId('atlas-table-size-3x2').hover()
   await expect(page.getByTestId('atlas-table-size-label')).toContainText('3 × 2')
@@ -246,8 +245,8 @@ test('New table creates a sized grid instantly from the size picker', async ({ p
 test('a hovered header stacks above the neighboring sticky header', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Atlas' }).click()
-  await page.getByTestId('atlas-add-button').click()
-  await page.getByTestId('atlas-add-table').click()
+  await page.getByTestId('atlas-tray-table').click()
+  await page.getByTestId('atlas-table-from-list').click()
   await page.getByTestId('entity-ref-field').selectOption({ label: 'Example: Country codes' })
   await selectKind(page, ATLAS_KIND_DOCUMENT, 'atlas-create-kind')
   await page.getByRole('button', { name: 'Create' }).click()
@@ -269,8 +268,8 @@ test('a hovered header stacks above the neighboring sticky header', async ({ pag
 test('resizing a table card persists its footprint across reload', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Atlas' }).click()
-  await page.getByTestId('atlas-add-button').click()
-  await page.getByTestId('atlas-add-table').click()
+  await page.getByTestId('atlas-tray-table').click()
+  await page.getByTestId('atlas-table-from-list').click()
   await page.getByTestId('entity-ref-field').selectOption({ label: 'Example: Country codes' })
   await selectKind(page, ATLAS_KIND_DOCUMENT, 'atlas-create-kind')
   await page.getByRole('button', { name: 'Create' }).click()
@@ -320,8 +319,8 @@ test('resizing a table card persists its footprint across reload', async ({ page
 test('the last boundary insert dot is not clipped by the card edge', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Atlas' }).click()
-  await page.getByTestId('atlas-add-button').click()
-  await page.getByTestId('atlas-add-table').click()
+  await page.getByTestId('atlas-tray-table').click()
+  await page.getByTestId('atlas-table-from-list').click()
   await page.getByTestId('entity-ref-field').selectOption({ label: 'Example: Country codes' })
   await selectKind(page, ATLAS_KIND_DOCUMENT, 'atlas-create-kind')
   await page.getByRole('button', { name: 'Create' }).click()

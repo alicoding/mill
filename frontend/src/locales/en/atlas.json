@@ -81,7 +81,10 @@
     "areaLabel": "Area",
     "cardTooltip": "Add a card (C)",
     "noteTooltip": "Add a note (N)",
-    "areaTooltip": "Draw an area (A)"
+    "areaTooltip": "Draw an area (A)",
+    "tableLabel": "Table",
+    "tableTooltip": "New table — sweep the grid to size it",
+    "tableFromList": "From a List…"
   },
   "placement": {
     "title": "Add card",
@@ -103,13 +106,9 @@
     "dropError": "Couldn't read the dropped file."
   },
   "create": {
-    "addTableNew": "New table",
     "addTable": "Table from a List",
     "listLabel": "List",
     "listCaption": "The card shows this List live, read-only — edits go through its own guarded paths.",
-    "addButton": "Add",
-    "addBeside": "Add beside this card",
-    "addInside": "Add inside this card",
     "kindLabel": "Kind",
     "titleLabel": "Title",
     "createButton": "Create"
@@ -271,7 +270,8 @@
     "editLabel": "Edit label…",
     "removeLink": "Remove link",
     "addToPerspective": "Add to perspective ▸",
-    "removeFromPerspective": "Remove from perspective ▸"
+    "removeFromPerspective": "Remove from perspective ▸",
+    "newSpace": "New space…"
   },
   "confirm": {
     "dissolveTitle": "Dissolve {{title}}?",
@@ -337,5 +337,8 @@
     "cards_other": "{{count}} cards",
     "links_one": "{{count}} link",
     "links_other": "{{count}} links"
+  },
+  "newSpace": {
+    "title": "New space"
   }
 }

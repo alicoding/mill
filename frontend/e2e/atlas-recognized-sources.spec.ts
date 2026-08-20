@@ -1,7 +1,7 @@
 import { test, expect } from './fixtures/server'
 import { deleteViaPageMenu } from './fixtures/atlasPage'
-import { ATLAS_KIND_DOCUMENT, selectKind } from './fixtures/kindPicker'
-import { openCard } from './fixtures/atlasBoard'
+import { ATLAS_KIND_DOCUMENT } from './fixtures/kindPicker'
+import { openCard, createCardViaTray } from './fixtures/atlasBoard'
 import { noteCard } from './fixtures/atlasCards'
 
 // Recognized sources (goal 0126): a card whose Source host matches a
@@ -19,11 +19,7 @@ test('a Source matching a configured Integration offers its declared workflows',
   await page.getByRole('link', { name: 'Atlas' }).click()
   await expect(page.getByTestId('atlas-board')).toBeVisible()
 
-  await page.getByTestId('atlas-add-button').click()
-  await page.getByTestId('atlas-add-child').click()
-  await selectKind(page, ATLAS_KIND_DOCUMENT, 'atlas-create-kind')
-  await page.getByTestId('atlas-create-title').fill(title)
-  await page.getByRole('button', { name: 'Create' }).click()
+  await createCardViaTray(page, title, { kindID: ATLAS_KIND_DOCUMENT })
 
   const card = noteCard(page, title)
   await expect(card).toBeVisible()

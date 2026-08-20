@@ -1,7 +1,7 @@
 import { test, expect } from './fixtures/server'
 import { deleteViaPageMenu } from './fixtures/atlasPage'
 import { ATLAS_KIND_TOPIC, selectKind } from './fixtures/kindPicker'
-import { clickBreadcrumbSegment, openCard } from './fixtures/atlasBoard'
+import { clickBreadcrumbSegment, openCard, createCardViaTray } from './fixtures/atlasBoard'
 
 // Exercises the Atlas surface's one-map board (docs/adr/0038,
 // goal 0072 slice A: AtlasShelves retired, every level renders through
@@ -108,8 +108,9 @@ test('creating a sibling of the auto-entered root surfaces the "All spaces" meta
   // (a sibling of "My space", ParentID "") -- the only path a second
   // root card can be created through, and the one that must surface
   // the meta level once it exists.
-  await page.getByTestId('atlas-add-button').click()
-  await page.getByTestId('atlas-add-sibling').click()
+  // Element-relative position clear of cards, tray, and minimap.
+  await page.getByTestId('atlas-board').click({ button: 'right', position: { x: 180, y: 420 } })
+  await page.getByText('New space…', { exact: true }).click()
   await selectKind(page, ATLAS_KIND_TOPIC, 'atlas-create-kind')
   await page.getByTestId('atlas-create-title').fill(title)
   await page.getByRole('button', { name: 'Create' }).click()
@@ -248,11 +249,7 @@ test('create a child card, edit + persist it via the card page, then delete it',
 
   // Sibling-vs-child is always an explicit choice -- "Add inside this
   // card" lands the new card as a CHILD of the currently viewed space.
-  await page.getByTestId('atlas-add-button').click()
-  await page.getByTestId('atlas-add-child').click()
-  await selectKind(page, ATLAS_KIND_TOPIC, 'atlas-create-kind')
-  await page.getByTestId('atlas-create-title').fill(title)
-  await page.getByRole('button', { name: 'Create' }).click()
+  await createCardViaTray(page, title, { kindID: ATLAS_KIND_TOPIC })
 
   const newCard = noteCard(page, title)
   await expect(newCard).toBeVisible()
@@ -341,14 +338,12 @@ test('a sibling card created into a Free-mode space lands clear of both leaf not
   await exampleArea.getByTestId('atlas-group-header').click()
   await expect(page.getByTestId('atlas-breadcrumb')).toContainText('Example area')
 
+  // Placement decides containment (goal 0139): a "sibling of the
+  // viewed area" is just a create at the parent level -- navigate up,
+  // then create with the tray.
   const title = 'ZzE2eAtlasSiblingCard'
-  await page.getByTestId('atlas-add-button').click()
-  await page.getByTestId('atlas-add-sibling').click()
-  await selectKind(page, ATLAS_KIND_TOPIC, 'atlas-create-kind')
-  await page.getByTestId('atlas-create-title').fill(title)
-  await page.getByRole('button', { name: 'Create' }).click()
-
   await clickBreadcrumbSegment(page, page.getByTestId('atlas-breadcrumb').getByText('My space', { exact: true }), 'My space')
+  await createCardViaTray(page, title, { kindID: ATLAS_KIND_TOPIC })
   const newCard = noteCard(page, title)
   await expect(newCard).toBeVisible()
 

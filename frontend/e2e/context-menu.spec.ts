@@ -1,4 +1,5 @@
 import { test, expect } from './fixtures/server'
+import { openPlacementPopover } from './fixtures/atlasBoard'
 import { groupCard, noteCard } from './fixtures/atlasCards'
 import { contextMenu, rightClickEmptyArea } from './fixtures/contextMenu'
 import { clickRowAction } from './inventoryRow'
@@ -147,18 +148,14 @@ test('right-click on the Atlas board pane offers direct-placement Add card/Add n
   await expect(menu).not.toBeVisible()
 })
 
-test('the Atlas toolbar\'s "+ Add" button still reaches the child-create dialog', async ({ page }) => {
+test('the creation tray\'s Card tool reaches the placement popover (goal 0139: no + Add menu)', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Atlas' }).click()
   await expect(page.getByTestId('atlas-board')).toBeVisible()
 
-  await page.getByTestId('atlas-add-button').click()
-  await page.getByTestId('atlas-add-child').click()
-  const dialog = page.getByRole('dialog')
-  await expect(dialog).toBeVisible()
-  await expect(dialog).toContainText('Add inside this card')
-  await dialog.getByRole('button', { name: 'Cancel' }).click()
-  await expect(dialog).not.toBeVisible()
+  const popover = await openPlacementPopover(page)
+  await page.keyboard.press('Escape')
+  await expect(popover).not.toBeVisible()
 })
 
 test('right-click on the canvas pane: no menu in view mode; Add step… opens the palette in edit mode', async ({ page }) => {

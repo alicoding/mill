@@ -14,6 +14,7 @@ import { useAtlasShareIO } from './useAtlasShareIO'
 import { AtlasToolbar } from './AtlasToolbar'
 import { AtlasBoard } from './AtlasBoard'
 import { pasteSummaryText } from './pasteSummary'
+import { AtlasStructureDialogs } from './AtlasStructureDialogs'
 import { type AtlasFocusRequest } from './useBoardFocus'
 import { AtlasJumpDialog } from './AtlasJumpDialog'
 import { AtlasCardOverlay } from './AtlasCardOverlay'
@@ -272,6 +273,9 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
       y: pos.y,
       items: [
         { id: 'add-card-here', label: t('contextMenu.addCardHere'), commandId: 'atlas.create.card', run: () => creationRequests.requestPlacement('card', pos) },
+        // A second ROOT (goal 0139): only offered while viewing a
+        // root-level board -- the one create placement can't express.
+        ...(viewedCard && viewedCard.ParentID === '' ? [{ id: 'new-space', label: t('contextMenu.newSpace'), run: () => setNewSpaceOpen(true) }] : []),
         { id: 'add-note-here', label: t('contextMenu.addNoteHere'), commandId: 'atlas.create.note', run: () => creationRequests.requestPlacement('note', pos) },
       ],
     })
@@ -340,6 +344,11 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
   const { exportAtlas, importFile, importConfirmDialog } = useAtlasShareIO({ allKinds, allLinkKinds, allCards, allLinks, onError: setImportError })
 
   const { createCard, createTableCard, createTableFromScratch } = useAtlasCardCreate({ allCards, viewedID, viewedCard })
+  // Goal 0139's two surviving dialogs: the from-a-List projection
+  // (reached from the tray picker's footer) and New space (the one
+  // create with no canvas to point at).
+  const [tableFromListOpen, setTableFromListOpen] = useState(false)
+  const [newSpaceOpen, setNewSpaceOpen] = useState(false)
 
   useAtlasCommandSignals({ viewedID, onArrange: requestAutoArrange, onExport: exportAtlas, onError: setShareError })
 
@@ -367,10 +376,6 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
         onPerspectiveToast={quietToast.show}
         links={allLinks}
         linkKinds={allLinkKinds}
-        canAddSibling={viewedID !== ''}
-        onCreate={createCard}
-        onCreateTable={createTableCard}
-        onCreateTableNew={createTableFromScratch}
         onExport={exportAtlas}
         onImportFile={importFile}
         onShareError={setShareError}
@@ -395,6 +400,8 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
         )}
         <AtlasBoard
           onPasteConverted={(res) => quietToast.show(pasteSummaryText(t, res))}
+          onCreateTableSized={(cols, rows) => void createTableFromScratch(cols, rows)}
+          onOpenTableFromList={() => setTableFromListOpen(true)}
           boardFilter={boardFilter}
           onBoardFilterChange={setBoardFilter}
           filterMatchCount={filterMatchCount}
@@ -455,6 +462,7 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
         />
       )}
       {importConfirmDialog}
+      <AtlasStructureDialogs kinds={allKinds} tableFromListOpen={tableFromListOpen} onCloseTableFromList={() => setTableFromListOpen(false)} newSpaceOpen={newSpaceOpen} onCloseNewSpace={() => setNewSpaceOpen(false)} onCreateTable={createTableCard} onCreateSpace={(k, title) => createCard('sibling', k, title)} />
       <ContextMenu state={menu} onClose={() => setMenu(null)} />
       {linkMenus.labelPopover}
       {containmentMenus.dissolveDialog}

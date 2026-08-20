@@ -29,6 +29,7 @@ import { AtlasSlotDragLine } from './AtlasSlotDragLine'
 import { buildBoardCardNodes } from './atlasBuildBoardNodes'
 import { buildStickyNodes } from './atlasStickyNodes'
 import { AtlasCreationTray, ATLAS_TOOL_DRAG_MIME, type AtlasCreationTool } from './AtlasCreationTray'
+import { useTablePickerSignal } from './useTablePickerSignal'
 import { AtlasSelectionTray } from './AtlasSelectionTray'
 import { AtlasPlacementPopover } from './AtlasPlacementPopover'
 import { useAtlasNativeFileDrop } from './useAtlasNativeFileDrop'
@@ -56,7 +57,7 @@ import styles from './AtlasBoard.module.css'
 // media-query gate AtlasNoteCardNode.module.css's own flip already
 // uses, read here in JS via usePrefersReducedMotion since React Flow's
 // own transition durations are JS options, not CSS.
-function AtlasBoardInner({ boardFilter, onBoardFilterChange, filterMatchCount, filterTotalCount, filterPresentKindIDs, cards, allCards, kinds, links, linkKinds, notes, parentID, arrangeRequest, viewedID, focusRequest, onDrill, onOpenOverlay, onFocusHandled, onCardContextMenu, onPaneContextMenu, onArteryContextMenu, onEdgeDeleteLink, onEdgeChangeKind, onNoteContextMenu, onFrameContextMenu, onFrameInteriorContextMenu, onMultiSelectContextMenu, onDeleteSelection, onGroupSelection, onPasteConverted, placementRequest, promoteRequest, groupRequest }: {
+function AtlasBoardInner({ boardFilter, onBoardFilterChange, filterMatchCount, filterTotalCount, filterPresentKindIDs, cards, allCards, kinds, links, linkKinds, notes, parentID, arrangeRequest, viewedID, focusRequest, onDrill, onOpenOverlay, onFocusHandled, onCardContextMenu, onPaneContextMenu, onArteryContextMenu, onEdgeDeleteLink, onEdgeChangeKind, onNoteContextMenu, onFrameContextMenu, onFrameInteriorContextMenu, onMultiSelectContextMenu, onDeleteSelection, onGroupSelection, onPasteConverted, onCreateTableSized, onOpenTableFromList, placementRequest, promoteRequest, groupRequest }: {
   // The board filter (goal 0129 slice 1) -- applied as dim-in-place
   // by the node builder; state lives in AtlasView; rendered as a
   // floating top-right Panel (the toolbar row is full by its own
@@ -120,6 +121,7 @@ function AtlasBoardInner({ boardFilter, onBoardFilterChange, filterMatchCount, f
   // removal would just resurrect on the next data refresh.
   onDeleteSelection: (cardIDs: string[], noteIDs: string[]) => void
   onPasteConverted: (res: import('../../bindings/github.com/alicoding/mill/internal/services/atlassvc/models').PasteResult) => void
+  onCreateTableSized: (cols: number, rows: number) => void; onOpenTableFromList: () => void
   // The selection tray's own "Group into new area" -- the multi-select context menu's own dispatcher, reused.
   onGroupSelection: (cardIDs: string[], noteIDs: string[], pos: { x: number; y: number }) => void
   // AtlasView's own downward creation requests (the pane menu's "Add
@@ -181,6 +183,7 @@ function AtlasBoardInner({ boardFilter, onBoardFilterChange, filterMatchCount, f
   )
   const noteBoxes = useMemo(() => (isFree ? computeNoteBoxes(notes) : []), [notes, isFree])
 
+  const tablePicker = useTablePickerSignal()
   const creation = useAtlasCreation({ parentID, allCards, notes, readOnly, screenToFlowPosition, placementRequest, promoteRequest, groupRequest, cardBoxes: topLevelBoxes, noteBoxes })
   const selection = useAtlasSelection({ cards, notes, onMultiSelectContextMenu })
 
@@ -471,7 +474,7 @@ function AtlasBoardInner({ boardFilter, onBoardFilterChange, filterMatchCount, f
       {fileDrop.dropDuplicateNotice && <div className={styles.dropNotice} data-testid="atlas-file-drop-duplicate-notice">{fileDrop.dropDuplicateNotice}</div>}
       {!readOnly && (haveSelection
         ? <AtlasSelectionTray ref={trayRef} selectedCardCount={selection.selectedCards.length} selectedNoteCount={selection.selectedNotes.length} onGroup={onTrayGroup} onDelete={onTrayDelete} />
-        : <AtlasCreationTray armedTool={creation.armedTool} onToggle={creation.toggleArm} />)}
+        : <AtlasCreationTray armedTool={creation.armedTool} onToggle={creation.toggleArm} tablePickerOpen={tablePicker.open} onTableToggle={tablePicker.setOpen} onPickTableSize={onCreateTableSized} onTableFromList={onOpenTableFromList} />)}
       {creation.popover && (
         <AtlasPlacementPopover
           mode={creation.popover.mode}
