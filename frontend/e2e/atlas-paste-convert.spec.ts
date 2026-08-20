@@ -79,3 +79,32 @@ test('a pasted table selection becomes a Mill table with its List minted', async
   await clickRowAction(page, listRow, 'Delete')
   await expect(listRow).toHaveCount(0)
 })
+
+// Slice 2 (goal 0138): a copied spreadsheet range (TSV text) becomes
+// a Mill table through the same paste surface.
+test('a pasted spreadsheet range becomes a Mill table', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Atlas' }).click()
+  await expect(page.getByTestId('atlas-board')).toBeVisible()
+
+  await page.mouse.move(1000, 220)
+  await page.evaluate(() => {
+    const dt = new DataTransfer()
+    dt.setData('text/plain', 'Name\tStatus\nAcme\tHealthy')
+    window.dispatchEvent(new ClipboardEvent('paste', { clipboardData: dt, bubbles: true, cancelable: true }))
+  })
+
+  const tableCard = page.getByTestId('atlas-table-card').filter({ hasText: 'Imported table' })
+  await expect(tableCard).toBeVisible()
+  await expect(tableCard.getByTestId('atlas-projection-table')).toContainText('Acme')
+
+  // Cleanup: card, then the minted List.
+  await openCard(page, tableCard.locator('[class*="title"]').first())
+  await deleteViaPageMenu(page, page.locator('[data-component="atlas-card-overlay"]'))
+  await expect(tableCard).not.toBeVisible()
+  await page.getByRole('link', { name: 'Configure' }).click()
+  await page.getByRole('tab', { name: 'Lists' }).click()
+  const listRow = page.locator('[data-testid="inventory-row"][data-entity="list"]', { has: page.getByText('Imported table', { exact: true }) })
+  await clickRowAction(page, listRow, 'Delete')
+  await expect(listRow).toHaveCount(0)
+})
