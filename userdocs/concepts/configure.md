@@ -13,8 +13,10 @@ drifting apart would be a bug:
   hover a header or row for the ⊕ that inserts one exactly there,
   and open the header's gear for the column's type, choices, and
   removal. A column's type can change until it holds data. While
-  editing a cell, Tab moves right, Enter moves down, Escape cancels
-  — commits happen as you go.
+  editing a cell, Tab moves right, Enter moves down, Escape steps
+  back to the cell — then arrows walk the grid, typing starts a
+  fresh entry, and Escape again leaves the table. Commits happen as
+  you go.
 - **MCP Servers** — other MCP servers Mill can call as workflow
   steps. (Connecting an agent *to* Mill is the other direction — see
   Settings → MCP access.)

@@ -278,3 +278,50 @@ test('cell editing never shifts the row, and Tab/Enter walk the grid', async ({ 
   await clickRowAction(page, row, 'Delete')
   await expect(row).toHaveCount(0)
 })
+
+// Cell focus layer (goal 0143): Escape from an edit lands on the
+// CELL; arrows walk cells; Enter re-edits; typing starts a fresh
+// edit seeded with the keystroke; Escape again leaves the grid.
+test('escape lands on the cell, arrows walk, typing replaces', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Configure' }).click()
+  await page.getByRole('tab', { name: 'Lists' }).click()
+
+  await page.getByTestId('new-list').click()
+  await page.getByLabel('Label').fill('E2E focus grid')
+  await page.getByRole('button', { name: 'Save list' }).click()
+  await expect(page.getByTestId('list-rows-editor')).toBeVisible()
+  await addGridColumn(page, 'Alpha')
+  await addGridColumn(page, 'Beta')
+  await page.getByTestId('atlas-projection-add-row').click()
+
+  const firstRow = page.getByTestId('atlas-projection-row').first()
+  await firstRow.getByTestId('atlas-projection-cell').first().click()
+  await page.getByTestId('atlas-projection-cell-input').press('Escape')
+  const focusedCell = page.locator('td[data-focused="true"]')
+  await expect(focusedCell).toHaveCount(1)
+
+  await page.keyboard.press('ArrowRight')
+  await expect(focusedCell).toHaveAttribute('data-cell', /\|beta$/)
+
+  // Typing seeds a fresh edit with the keystroke.
+  await page.keyboard.press('x')
+  const input = page.getByTestId('atlas-projection-cell-input')
+  await expect(input).toBeVisible()
+  await expect(input).toHaveValue('x')
+  await input.press('Escape')
+  await expect(focusedCell).toHaveCount(1)
+
+  // Enter re-edits the focused cell; Escape twice leaves the grid.
+  await page.keyboard.press('Enter')
+  await expect(input).toBeVisible()
+  await input.press('Escape')
+  await page.keyboard.press('Escape')
+  await expect(focusedCell).toHaveCount(0)
+
+  // Clean up.
+  await page.getByTestId('configure-lists').getByRole('button', { name: 'Close' }).click()
+  const row = listRow(page, 'E2E focus grid')
+  await clickRowAction(page, row, 'Delete')
+  await expect(row).toHaveCount(0)
+})
