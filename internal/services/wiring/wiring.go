@@ -7,6 +7,7 @@
 package wiring
 
 import (
+	"github.com/alicoding/mill/internal/domain/composition"
 	"github.com/alicoding/mill/internal/services/atlassvc"
 	"github.com/alicoding/mill/internal/services/compositionsvc"
 	"github.com/alicoding/mill/internal/services/configuresvc"
@@ -15,6 +16,12 @@ import (
 // WireAtlasProjections connects AtlasService's recognition (goal 0126)
 // and List-projection (goal 0105) seams to Configure's and
 // Composition's exported readers, adapting types at the boundary.
+// WireValidationSeams connects graph validation's Configure-side
+// checks (goal 0127 slice 3: the credential-presence gap).
+func WireValidationSeams(cfg *configuresvc.ConfigureService) {
+	composition.SetCredentialGapCheck(cfg.RequestCredentialGap)
+}
+
 func WireAtlasProjections(atlas *atlassvc.AtlasService, cfg *configuresvc.ConfigureService, comp *compositionsvc.CompositionService) {
 	atlas.WireSourceRecognition(
 		func() []atlassvc.RecognizedIntegration {

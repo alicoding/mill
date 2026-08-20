@@ -84,6 +84,9 @@ export interface UseLiveRunResult {
 export function useLiveRun(workflowId: string | undefined): UseLiveRunResult {
   const [activeRunId, setActiveRunId] = useState<string | null>(null)
   const [detail, setDetail] = useState<RunDetail | null>(null)
+  // A rejected START (pre-flight refusal) -- distinct from a run that
+  // ran and failed; rendered through the same finished bar.
+  const [startRefusal, setStartRefusal] = useState('')
 
   // On mount (a workflow editor opening), adopt whatever's already in
   // flight for this workflow -- a run parked by a headless trigger fire
@@ -172,6 +175,7 @@ export function useLiveRun(workflowId: string | undefined): UseLiveRunResult {
     // new one starts -- RunWorkflow blocks until completion or park, so
     // there's a real (if usually short) window with nothing to show yet.
     setDetail(null)
+    setStartRefusal('')
     // payload substitutes what the workflow's trigger would have
     // delivered (triggerPayload.ts) -- threaded to both run variants,
     // since a stepped debug run of a trigger-fed workflow needs its
@@ -181,7 +185,10 @@ export function useLiveRun(workflowId: string | undefined): UseLiveRunResult {
       : payload
         ? ExecutionService.RunWorkflowWithPayload(workflowId, RunKind.RunKindTest, values, payload)
         : ExecutionService.RunWorkflow(workflowId, RunKind.RunKindTest, values)
-    call.then((summary) => setActiveRunId(summary.runID)).catch((err) => console.error(err))
+    // A REJECTED start (the run pre-flight's refusal, an unknown
+    // workflow) is user-facing state, never console noise -- the
+    // refusal renders in the same bar a failed run uses.
+    call.then((summary) => setActiveRunId(summary.runID)).catch((err) => setStartRefusal(String(err)))
   }
 
   const resolve = (nodeID: string, approve: boolean, continueRun?: boolean, values?: Record<string, string>) => {
@@ -193,6 +200,7 @@ export function useLiveRun(workflowId: string | undefined): UseLiveRunResult {
   const dismiss = () => {
     setActiveRunId(null)
     setDetail(null)
+    setStartRefusal('')
   }
 
   // DBOS checkpoints a step only once it completes, so there's no
@@ -233,6 +241,7 @@ export function useLiveRun(workflowId: string | undefined): UseLiveRunResult {
   }, [detail])
 
   const barState = useMemo<BarState | null>(() => {
+    if (startRefusal) return { mode: 'finished', status: 'REFUSED', error: startRefusal }
     if (!detail) return null
     if (detail.pending) return { mode: 'parked', pending: detail.pending }
     if (isInFlightStatus(detail.status)) {
@@ -241,7 +250,7 @@ export function useLiveRun(workflowId: string | undefined): UseLiveRunResult {
       return { mode: 'in-flight', activeStepLabel: active ? active.nodeTypeLabel || active.nodeTypeID : 'Running…' }
     }
     return { mode: 'finished', status: detail.status, error: detail.error }
-  }, [detail])
+  }, [detail, startRefusal])
 
   return { detail, statusByNodeId, barState, startRun, resolve, dismiss }
 }

@@ -427,3 +427,40 @@ func TestValidateGraph_RequiredRefWarning_NamesStepByLabelAndSkipsTriggers(t *te
 		t.Errorf("message must name the step by label, never id: %q", willFail[0].Message)
 	}
 }
+
+// The credential-gap check (goal 0127 slice 3): a SET request ref
+// whose integration lacks a stored credential is a WillFail warning
+// naming the step and the fix location; an unwired seam (nil) checks
+// nothing.
+func TestValidateGraph_CredentialGap_WillFailNamingTheIntegration(t *testing.T) {
+	SetCredentialGapCheck(func(requestID string) (bool, string) {
+		return requestID == "req-gap", "Confluence (PAT)"
+	})
+	defer SetCredentialGapCheck(nil)
+
+	nodes := []Node{
+		{ID: "t1", Kind: KindTrigger, NodeTypeID: "trigger-manual", Config: map[string]string{}},
+		{ID: "n1", Kind: KindProcess, NodeTypeID: "integration-http", Config: map[string]string{"requestId": "req-gap"}},
+	}
+	edges := []Edge{{ID: "e1", Source: "t1", Target: "n1"}}
+	var willFail []Issue
+	for _, is := range ValidateGraph(nodes, edges, nil) {
+		if is.WillFail {
+			willFail = append(willFail, is)
+		}
+	}
+	if len(willFail) != 1 {
+		t.Fatalf("WillFail issues = %d, want the one credential gap: %v", len(willFail), willFail)
+	}
+	if !strings.Contains(willFail[0].Message, `"Confluence (PAT)"`) || !strings.Contains(willFail[0].Message, "Configure") {
+		t.Errorf("message must name the integration and the fix location: %q", willFail[0].Message)
+	}
+
+	// A request whose credential exists stays clean.
+	nodes[1].Config["requestId"] = "req-ok"
+	for _, is := range ValidateGraph(nodes, edges, nil) {
+		if is.WillFail {
+			t.Errorf("credentialed request flagged: %+v", is)
+		}
+	}
+}

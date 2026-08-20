@@ -87,7 +87,11 @@ type ConfigureService struct {
 }
 
 func NewConfigureService(store settings.Store, comp *compositionsvc.CompositionService, credentials credential.Store) *ConfigureService {
-	c := &ConfigureService{store: store, composition: comp, credentials: credentials}
+	// Wrapped once here so every credential read/write in this package
+	// flows through the presence cache (credpresence.go) -- validation
+	// asks about presence often, and only this choke point keeps the
+	// cache truthful.
+	c := &ConfigureService{store: store, composition: comp, credentials: newPresenceCachingCredentials(credentials)}
 	c.restore()
 	c.restoreMCPServers()
 	c.restoreDecisions()
