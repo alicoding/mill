@@ -53,12 +53,26 @@ enable agent access there.
 5. Inspect the run's step records — each carries input, output, and
    failure text prefixed by the failing step's ID.
 
+## Testing an integration
+
+`test_request` executes ONE real HTTP call -- the Configure Try-it
+panel's agent twin. Pass `requestId` to test a configured
+integration (stored config and secret fill in) or the full draft
+inline (`baseUrl`/`authType`/`secret`/`openApiSpec`). Nothing is
+persisted, but it is still a gated write (a real outbound call):
+poll `check_write_status` for the statusCode/body result. Test a
+draft BEFORE proposing its import.
+
 ## Atlas
 
 Cards are typed by kinds; links by link kinds, unique per
 (from, to, kind). Mirrored markdown renders in cards (mermaid fences
 included). Prefer updating existing cards (match by source URL or
 ID) over creating duplicates; card writes are gated like any write.
+Kinds themselves are writable via `atlas_propose_kind_write`
+(create/update/delete, gated): on update, omit `fields` to keep the
+existing schema -- a provided list must retain every saved key, and
+deleting a kind is refused while any live card uses it.
 
 ## Conduct
 

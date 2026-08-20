@@ -240,6 +240,7 @@ func (m *MillMCPService) registerAtlasTools() {
 	})
 
 	m.registerAtlasWriteTools()
+	m.registerAuthoringExtTools()
 }
 
 // listAtlasKinds builds atlas_list_kinds' result from the same exported
