@@ -1,4 +1,5 @@
 import { test, expect } from './fixtures/server'
+import { addGridColumn } from './fixtures/listGrid'
 import { clickRowAction } from './inventoryRow'
 
 // Real Go bindings over HTTP (Wails3 server mode), not mocks -- same
@@ -66,12 +67,15 @@ test('Exporting and importing a List round-trips its typed columns and rows', as
 
   await page.getByTestId('new-list').click()
   await page.getByLabel('Label').fill('E2E export list')
-  await page.getByTestId('list-column-key').fill('color')
   await page.getByRole('button', { name: 'Save list' }).click()
 
-  await page.getByTestId('add-list-row').click()
-  await page.getByTestId('list-row').getByRole('textbox').fill('blue')
-  await page.getByTestId('save-list-row').click()
+  await addGridColumn(page, 'Color')
+  await page.getByTestId('atlas-projection-add-row').click()
+  const cell = page.getByTestId('atlas-projection-cell').first()
+  await cell.click()
+  await page.getByTestId('atlas-projection-cell-input').fill('blue')
+  await page.getByTestId('atlas-projection-cell-input').press('Enter')
+  await expect(cell).toContainText('blue')
 
   const originalRow = page.locator('[data-testid="inventory-row"][data-entity="list"]', { has: page.getByText('E2E export list', { exact: true }) })
   await expect(originalRow).toBeVisible()

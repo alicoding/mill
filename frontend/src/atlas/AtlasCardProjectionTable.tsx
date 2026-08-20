@@ -1,55 +1,21 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Events } from '@wailsio/runtime'
-import { Button, Label, Select, Text, TextInput } from '@primer/react'
-import { AtlasService, ConfigureService } from '../shared/bindings'
+import { Text } from '@primer/react'
+import { AtlasService } from '../shared/bindings'
 import type { ListProjection } from '../../bindings/github.com/alicoding/mill/internal/services/atlassvc/models'
-import { type Field, Type as FieldType } from '../../bindings/github.com/alicoding/mill/internal/domain/typedfield/models'
-import { RowStatus } from '../../bindings/github.com/alicoding/mill/internal/domain/list/models'
-import { nextColumnKey } from './projectionColumns'
-import { optionColor } from './projectionColors'
+import { ListGrid } from '../shared/ListGrid'
 import styles from './AtlasCardProjectionTable.module.css'
 
-// The projected List rendered as a table (goal 0105): used by the
-// board's table node AND the card page -- one definition, so both
-// surfaces always agree. Live (re-fetched on every persisted List
-// change) and editable IN PLACE with the boundary-insert pattern the
-// owner pointed at (Confluence/eraser's solved shape): hover a column
-// header and a ⊕ appears at its right edge inserting THERE; hover a
-// row and a ⊕ at its lower-left inserts right below; headers rename
-// on click; cells edit on click; end buttons append as the
-// discoverable fallback. Every edit commits through the List's own
-// ConfigureService methods -- the SAME ungated direct-edit path
-// Configure's editor uses (the guardrail gate governs workflow/agent
-// side effects, never the user's own direct edits) -- and every other
-// projection of the List updates through the same data event.
-
-// cellContent renders an options value as its colored pill; anything
-// else (plain text, or a value outside the declared options) stays
-// text.
-function cellContent(c: { Options: string[] | null; OptionColors: string[] | null; Label: string; Key: string }, value: string) {
-  if (!value || (c.Options?.length ?? 0) === 0) return value
-  const color = optionColor(c.Options, c.OptionColors, value)
-  if (!color) return value
-  return <Label size="small" variant={color} data-testid="atlas-projection-pill">{value}</Label>
-}
-
-// The pills density tints each row by its FIRST options column's
-// value color (the status-board reading: a row IS its state).
-function rowTintStyle(columns: { Options: string[] | null; OptionColors: string[] | null; Key: string }[], values: { [key: string]: string | undefined }) {
-  const statusCol = columns.find((c) => (c.Options?.length ?? 0) > 0)
-  if (!statusCol) return undefined
-  const color = optionColor(statusCol.Options, statusCol.OptionColors, values[statusCol.Key] ?? '')
-  if (!color) return undefined
-  return { background: `var(--bgColor-${color}-muted)` }
-}
-
+// The projected List on a card (goal 0105): the board's table node
+// AND the card page mount the ONE shared grid (shared/ListGrid, goal
+// 0136 -- Configure's List page is its other consumer, so tables read
+// identically everywhere). This wrapper owns only what's card-shaped:
+// the projection fetch (live -- re-fetched on every persisted List
+// change), the honest missing-List state, and the canvas armor.
 export function AtlasCardProjectionTable({ cardID, density }: { cardID: string; density?: string }) {
   const { t } = useTranslation('atlas')
   const [proj, setProj] = useState<ListProjection | null>(null)
-  const [editing, setEditing] = useState<{ rowID: string; key: string; value: string } | null>(null)
-  const [renaming, setRenaming] = useState<{ key: string; label: string } | null>(null)
-  const [error, setError] = useState('')
 
   useEffect(() => {
     const refetch = () => void AtlasService.CardListProjection(cardID).then(setProj).catch(() => setProj(null))
@@ -68,66 +34,6 @@ export function AtlasCardProjectionTable({ cardID, density }: { cardID: string; 
       </Text>
     )
   }
-  const columns = proj.Columns ?? []
-  const rows = proj.Rows ?? []
-  const report = (err: unknown) => setError(String(err))
-  const clearThen = () => setError('')
-
-  const commitCell = () => {
-    if (!editing) return
-    const row = rows.find((r) => r?.ID === editing.rowID)
-    const edit = editing
-    setEditing(null)
-    if (!row) return
-    const values = { ...(row.Values ?? {}), [edit.key]: edit.value }
-    ConfigureService.UpdateListRow(proj.ListID, row.ID, values, (row.Status || 'active') as RowStatus)
-      .then(clearThen).catch(report)
-  }
-
-  const insertRowAt = (index: number) => {
-    ConfigureService.AddListRowAt(proj.ListID, {}, index).then(clearThen).catch(report)
-  }
-
-  // withList runs fn against the projected List's CURRENT full record
-  // (UpdateList replaces the whole columns slice, so inserts/renames
-  // need label+description+columns as they stand right now).
-  const withList = (fn: (l: { ID: string; Label: string; Description: string; Columns: Field[] | null }) => Promise<unknown> | undefined) => {
-    void ConfigureService.Lists().then((lists) => {
-      const l = (lists ?? []).find((x) => x.ID === proj.ListID)
-      if (!l) return
-      return fn(l)
-    }).then(clearThen).catch(report)
-  }
-
-  const insertColumnAt = (index: number) => {
-    withList((l) => {
-      const cols = l.Columns ?? []
-      const key = nextColumnKey(t('projection.newColumnLabel'), cols.map((c) => c.Key))
-      const newColumn: Field = {
-        Key: key, Label: t('projection.newColumnLabel'), Type: FieldType.TypeText,
-        Required: false, Default: '', Description: '', Options: null,
-        Suggestions: null, Secret: false, RefKind: '', Multiline: false, SystemManaged: false,
-      }
-      const next = [...cols.slice(0, index), newColumn, ...cols.slice(index)]
-      // Straight into rename once the insert has LANDED -- opening it
-      // earlier races the rename's own read-modify-write against the
-      // insert's, and the loser silently drops the other's column.
-      return ConfigureService.UpdateList(l.ID, l.Label, l.Description, next, null)
-        .then(() => setRenaming({ key, label: '' }))
-    })
-  }
-
-  const commitRename = () => {
-    if (!renaming) return
-    const rename = renaming
-    setRenaming(null)
-    if (!rename.label.trim()) return
-    withList((l) => {
-      const next = (l.Columns ?? []).map((c) => (c.Key === rename.key ? { ...c, Label: rename.label.trim() } : c))
-      return ConfigureService.UpdateList(l.ID, l.Label, l.Description, next, null)
-    })
-  }
-
   return (
     // nowheel/nodrag: the table scrolls and its inputs receive clicks
     // without zooming or dragging the canvas underneath (React Flow's
@@ -139,129 +45,14 @@ export function AtlasCardProjectionTable({ cardID, density }: { cardID: string; 
     // card, the grid edits the grid).
     <div
       className={`${styles.wrap} nowheel nodrag`}
-      data-testid="atlas-projection-table"
       onClick={(e) => e.stopPropagation()}
     >
-      <div className={styles.scroll}>
-        {columns.length === 0 ? (
-          <Text as="p" size="small" className={styles.empty}>{t('projection.noColumns')}</Text>
-        ) : (
-          <table className={styles.table}>
-            <thead>
-              <tr>
-                {columns.map((c, colIdx) => (
-                  <th key={c.Key} data-testid="atlas-projection-header">
-                    {renaming?.key === c.Key ? (
-                      <TextInput
-                        autoFocus size="small" value={renaming.label}
-                        aria-label={t('projection.renameColumnAriaLabel')}
-                        data-testid="atlas-projection-rename-input"
-                        onChange={(e) => setRenaming({ ...renaming, label: e.target.value })}
-                        onBlur={commitRename}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') commitRename()
-                          if (e.key === 'Escape') setRenaming(null)
-                        }}
-                      />
-                    ) : (
-                      <button
-                        type="button"
-                        className={styles.headerButton}
-                        title={t('projection.renameColumnTitle')}
-                        onClick={() => setRenaming({ key: c.Key, label: c.Label || c.Key })}
-                      >
-                        {c.Label || c.Key}
-                      </button>
-                    )}
-                    <button
-                      type="button"
-                      className={`${styles.insertDot} ${styles.insertDotColumn}`}
-                      aria-label={t('projection.insertColumnAriaLabel')}
-                      title={t('projection.insertColumnAriaLabel')}
-                      data-testid="atlas-projection-insert-column"
-                      onClick={() => insertColumnAt(colIdx + 1)}
-                    >
-                      +
-                    </button>
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((row, rowIdx) => row && (
-                <tr
-                  key={row.ID}
-                  data-testid="atlas-projection-row"
-                  style={density === 'pills' ? rowTintStyle(columns, row.Values ?? {}) : undefined}
-                >
-                  {columns.map((c, colIdx) => (
-                    <td
-                      key={c.Key}
-                      data-testid="atlas-projection-cell"
-                      onClick={() => setEditing({ rowID: row.ID, key: c.Key, value: row.Values?.[c.Key] ?? '' })}
-                    >
-                      {editing && editing.rowID === row.ID && editing.key === c.Key ? (
-                        (c.Options?.length ?? 0) > 0 ? (
-                          // An options column edits as a select over its
-                          // own declared values -- committed immediately
-                          // on pick (there is nothing to type).
-                          <Select
-                            autoFocus size="small" value={editing.value}
-                            aria-label={c.Label || c.Key}
-                            data-testid="atlas-projection-cell-select"
-                            onChange={(e) => { editing.value = e.target.value; commitCell() }}
-                            onBlur={commitCell}
-                          >
-                            <Select.Option value="">{'—'}</Select.Option>
-                            {(c.Options ?? []).map((opt) => <Select.Option key={opt} value={opt}>{opt}</Select.Option>)}
-                          </Select>
-                        ) : (
-                          <TextInput
-                            autoFocus size="small" value={editing.value}
-                            aria-label={c.Label || c.Key}
-                            data-testid="atlas-projection-cell-input"
-                            onChange={(e) => setEditing({ ...editing, value: e.target.value })}
-                            onBlur={commitCell}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter') commitCell()
-                              if (e.key === 'Escape') setEditing(null)
-                            }}
-                          />
-                        )
-                      ) : (
-                        cellContent(c, row.Values?.[c.Key] ?? '')
-                      )}
-                      {colIdx === 0 && (
-                        <button
-                          type="button"
-                          className={`${styles.insertDot} ${styles.insertDotRow}`}
-                          aria-label={t('projection.insertRowAriaLabel')}
-                          title={t('projection.insertRowAriaLabel')}
-                          data-testid="atlas-projection-insert-row"
-                          onClick={(e) => { e.stopPropagation(); insertRowAt(rowIdx + 1) }}
-                        >
-                          +
-                        </button>
-                      )}
-                    </td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
-      <div className={styles.actionsRow}>
-        {columns.length > 0 && (
-          <Button size="small" variant="invisible" data-testid="atlas-projection-add-row" onClick={() => insertRowAt(rows.length)}>
-            {t('projection.addRow')}
-          </Button>
-        )}
-        <Button size="small" variant="invisible" data-testid="atlas-projection-add-column" onClick={() => insertColumnAt(columns.length)}>
-          {t('projection.addColumn')}
-        </Button>
-      </div>
-      {error && <Text as="p" size="small" className={styles.missing} data-testid="atlas-projection-error">{error}</Text>}
+      <ListGrid
+        listID={proj.ListID}
+        columns={proj.Columns ?? []}
+        rows={(proj.Rows ?? []).filter((r) => r !== null)}
+        density={density}
+      />
     </div>
   )
 }

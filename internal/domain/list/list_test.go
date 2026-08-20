@@ -140,3 +140,20 @@ func TestMigrateLegacyEntries_Empty_ReturnsNil(t *testing.T) {
 		t.Errorf("MigrateLegacyEntries(nil) = %+v, %+v, want nil, nil", columns, rows)
 	}
 }
+
+// The rows-aware guard (ADR-0040 amendment): a data-free column may
+// change type; a data-bearing one may not.
+func TestValidateFieldEvolutionWithRows_TypeChangeOnlyWithoutData(t *testing.T) {
+	oldCols := []typedfield.Field{{Key: "amount", Label: "Amount", Type: typedfield.TypeText}}
+	newCols := []typedfield.Field{{Key: "amount", Label: "Amount", Type: typedfield.TypeNumber}}
+
+	empty := []Row{{ID: "r1", Values: map[string]string{"amount": ""}}}
+	if err := ValidateFieldEvolutionWithRows(oldCols, newCols, nil, empty); err != nil {
+		t.Fatalf("type change on a data-free column must be allowed: %v", err)
+	}
+
+	filled := []Row{{ID: "r1", Values: map[string]string{"amount": "12"}}}
+	if err := ValidateFieldEvolutionWithRows(oldCols, newCols, nil, filled); err == nil {
+		t.Fatal("type change under data must refuse")
+	}
+}
