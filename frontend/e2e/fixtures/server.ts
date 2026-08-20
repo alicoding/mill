@@ -178,6 +178,11 @@ export async function spawnMillServer(opts: SpawnServerOptions): Promise<Spawned
       MILL_SETTINGS_PATH: opts.settingsPath,
       MILL_EXECUTION_DB_PATH: opts.executionDbPath,
       MILL_BACKUP_DIR: opts.backupDir,
+      // Every e2e server uses the in-memory keyring: per-worker
+      // isolation for secrets (the real keychain is machine-global),
+      // and identical absent-means-ErrNotFound semantics on the Linux
+      // CI runner, which has no Secret Service at all.
+      MILL_TEST_KEYRING: 'memory',
       // extraEnv is spread BEFORE this block, so a caller-supplied
       // override (e.g. the mirror-dense spec's own folder-pick
       // fixture) would otherwise always lose to this default.

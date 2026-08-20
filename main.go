@@ -127,7 +127,15 @@ func main() {
 	compositionService := compositionsvc.NewCompositionService(settingsStore)
 	triggerService := triggersvc.NewTriggerService(compositionService, logger, settingsStore)
 	compositionService.SetSyncer(triggerService)
-	configureService := configuresvc.NewConfigureService(settingsStore, compositionService, credential.New())
+	// MILL_TEST_KEYRING=memory swaps the OS keychain for a process-
+	// local store (e2e servers only): Linux CI has no Secret Service,
+	// so real-keychain semantics -- including "credential absent" --
+	// are otherwise untestable in server mode.
+	credentialStore := credential.New()
+	if os.Getenv("MILL_TEST_KEYRING") == "memory" {
+		credentialStore = credential.NewInMemory()
+	}
+	configureService := configuresvc.NewConfigureService(settingsStore, compositionService, credentialStore)
 	// docs/adr/0038: Atlas's storage/CRUD layer (cross-surface wiring
 	// arrives below via injected seams, never direct imports).
 	atlasService := atlassvc.NewAtlasService(settingsStore)
