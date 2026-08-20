@@ -232,7 +232,7 @@ export function ListGrid({ listID, columns, rows, density, schemaEditing = true 
   }
 
   const headerCell = (c: GridColumn, colIdx: number) => (
-    <th key={c.Key} data-testid="atlas-projection-header">
+    <th key={c.Key} data-testid="atlas-projection-header" data-deprecated={c.Deprecated ? 'true' : undefined}>
       <span className={styles.headerInner}>
         {renaming?.key === c.Key ? (
           <TextInput

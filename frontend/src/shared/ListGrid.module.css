@@ -72,6 +72,12 @@
   cursor: text;
 }
 
+/* A deprecated column's header recedes (ADR-0040's soft-retire). */
+.table th[data-deprecated='true'] {
+  color: var(--fgColor-disabled);
+  font-style: italic;
+}
+
 /* An expired row reads as retired wherever the grid mounts. */
 .table tr[data-row-status='expired'] td {
   color: var(--fgColor-muted);

@@ -1,6 +1,7 @@
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { test, expect } from './fixtures/server'
+import { addGridColumn } from './fixtures/listGrid'
 import { clickCanvasNode } from './fixtures/canvasNode'
 import { clickRowAction } from './inventoryRow'
 import { workflowRow, activePanel, dragPaletteItemToCanvas, connectNodes } from './fixtures/canvas'
@@ -22,17 +23,6 @@ function listRow(page: import('@playwright/test').Page, label: string) {
 // reuses the seeded "Example: Country codes" List rather than
 // creating a second one, so there's nothing List-shaped to clean up.
 
-// Grid-based column authoring (goal 0136): the boundary/append ⊕
-// drops a placeholder straight into rename; naming it re-keys it from
-// the label (empty columns only), so "SKU" becomes key sku.
-async function addGridColumn(page: import('@playwright/test').Page, label: string) {
-  await page.getByTestId('atlas-projection-add-column').click()
-  const input = page.getByTestId('atlas-projection-rename-input')
-  await expect(input).toBeVisible()
-  await input.fill(label)
-  await input.press('Enter')
-  await expect(page.getByTestId('atlas-projection-header').filter({ hasText: label })).toBeVisible()
-}
 
 
 test('Configuring a typed List: add a column, add a row, both persist', async ({ page }) => {
