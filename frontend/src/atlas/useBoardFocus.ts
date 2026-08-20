@@ -1,6 +1,17 @@
 import { useEffect, useRef } from 'react'
 import type { RefObject } from 'react'
-import type { AtlasFocusRequest } from './AtlasBoard'
+
+// A ⌘K jump's one-shot request into the board it lands on (goal 0072
+// slice B): AtlasView decides WHETHER a re-root is needed (the target
+// isn't rendered on the current board) and always supplies the target
+// card id; AtlasBoard owns the camera and turns this into a fly-in +
+// pulse + hint (or an immediate overlay open for the ⌘↵ path).
+// AtlasView clears the request (via onFocusHandled) once the fly
+// resolves, so the same jump never re-fires against a later render.
+export interface AtlasFocusRequest {
+  cardID: string
+  openImmediately: boolean
+}
 
 // The pulse ring's own lifetime (goal 0072 slice B): two 600ms
 // iterations of the card nodes' pulse animation, or the

@@ -25,6 +25,7 @@ export const AtlasTableCardNode = memo(function AtlasTableCardNode({ data }: Nod
       className={styles.card}
       data-testid="atlas-table-card"
       data-pulse={pulsed}
+      data-dimmed={data.dimmed}
       role="button"
       tabIndex={0}
       aria-label={t('board.cardAriaLabel', { title: card.Title })}
