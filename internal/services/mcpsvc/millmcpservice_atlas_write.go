@@ -65,7 +65,18 @@ type atlasWriteResult struct {
 }
 
 type atlasWriteStatusArgs struct {
-	ApprovalID string `json:"approvalId" jsonschema:"the pending write's id, from atlas_propose_card_write's 'parked pending human approval' response text"`
+	ID string `json:"id,omitempty" jsonschema:"the pending write's id, from atlas_propose_card_write's 'parked pending human approval' response text -- the same id check_write_status takes"`
+	// ApprovalID is the pre-unification name for the same value; ID
+	// wins when both are set. Kept so an agent mid-conversation with
+	// the old schema keeps polling successfully.
+	ApprovalID string `json:"approvalId,omitempty" jsonschema:"alias for id (older name); prefer id"`
+}
+
+func (a atlasWriteStatusArgs) writeID() string {
+	if a.ID != "" {
+		return a.ID
+	}
+	return a.ApprovalID
 }
 
 type atlasWriteStatusResult struct {
@@ -102,11 +113,11 @@ func (m *MillMCPService) registerAtlasWriteTools() {
 
 	mcp.AddTool(m.server, &mcp.Tool{
 		Name:        "atlas_get_write_status",
-		Description: "Poll a parked atlas_propose_card_write's outcome by approvalId (the id from its 'parked pending human approval' response text). status is pending, approved (cardId then names the created/updated card), denied, cancelled, or expired.",
+		Description: "Poll a parked atlas_propose_card_write's outcome by id (the id from its 'parked pending human approval' response text -- the same id every gated write reports and check_write_status takes). status is pending, approved (cardId then names the created/updated card), denied, cancelled, or expired.",
 	}, func(_ context.Context, _ *mcp.CallToolRequest, in atlasWriteStatusArgs) (*mcp.CallToolResult, any, error) {
-		res, ok := m.writeStatus(in.ApprovalID)
+		res, ok := m.writeStatus(in.writeID())
 		if !ok {
-			return nil, nil, fmt.Errorf("no MCP write with id %s (it may have already been swept, 24h after resolution)", in.ApprovalID)
+			return nil, nil, fmt.Errorf("no MCP write with id %s (it may have already been swept, 24h after resolution)", in.writeID())
 		}
 		out := atlasWriteStatusResult{Status: res.Status, Error: res.Error}
 		if res.Status == string(MCPWriteStatusApproved) && res.Result != "" {
