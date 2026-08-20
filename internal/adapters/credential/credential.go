@@ -8,7 +8,11 @@
 // Service on Linux) rather than hand-rolling a vault.
 package credential
 
-import "github.com/zalando/go-keyring"
+import (
+	"sync"
+
+	"github.com/zalando/go-keyring"
+)
 
 // service namespaces every secret this adapter ever stores under one
 // keychain "service" name, with the connector's own ID as the per-secret
@@ -64,4 +68,45 @@ func (keyringStore) Get(connectorID string) (string, error) {
 
 func (keyringStore) Delete(connectorID string) error {
 	return keyring.Delete(service, connectorID)
+}
+
+// memoryStore is a process-local Store for test harnesses. Real
+// keychain behavior differs per platform (Linux CI has no Secret
+// Service at all, so Get errors without ever being "not found"),
+// which made keychain-dependent behavior untestable in server-mode
+// e2e -- this store gives every platform the same honest semantics:
+// absent means ErrNotFound.
+type memoryStore struct {
+	mu      sync.Mutex
+	secrets map[string]string
+}
+
+// NewInMemory returns the test-harness Store -- selected by main.go
+// only under MILL_TEST_KEYRING=memory, never in a real build path.
+func NewInMemory() Store {
+	return &memoryStore{secrets: map[string]string{}}
+}
+
+func (m *memoryStore) Set(connectorID, secret string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.secrets[connectorID] = secret
+	return nil
+}
+
+func (m *memoryStore) Get(connectorID string) (string, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	s, ok := m.secrets[connectorID]
+	if !ok {
+		return "", ErrNotFound
+	}
+	return s, nil
+}
+
+func (m *memoryStore) Delete(connectorID string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	delete(m.secrets, connectorID)
+	return nil
 }

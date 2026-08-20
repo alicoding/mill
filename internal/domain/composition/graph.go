@@ -319,6 +319,7 @@ func ValidateGraph(nodes []Node, edges []Edge, attrs []AttributeDef) []Issue {
 	issues = append(issues, validateOutputBindingSecrets(nodes)...)
 	issues = append(issues, validateLeaves(nodes, outgoingEdges)...)
 	issues = append(issues, validateRequiredRefs(nodes)...)
+	issues = append(issues, validateCredentialGaps(nodes)...)
 	// The step I/O contract (ADR-0042, payloadkind.go): every edge's
 	// upstream effective produce kind must satisfy the downstream's
 	// Consumes declaration -- the server-side mirror of the canvas's
@@ -351,63 +352,6 @@ func ValidateGraphStrict(nodes []Node, edges []Edge, attrs []AttributeDef) error
 	default:
 		return fmt.Errorf("%d problems: %s", len(msgs), strings.Join(msgs, "; "))
 	}
-}
-
-// validateLeaves is docs/adr/0028's ending-model warning: a Capture or
-// Process node with no outgoing edge computed something and delivered
-// it nowhere -- legal to save (fine for a test run), but flagged.
-// KindApply is deliberately exempt (an Apply ending is a real,
-// legitimate ending -- ADR-0028 rejected "unify Apply into terminal" as
-// removing real capability), and so is KindTerminal (the only
-// structurally terminal kind, ADR-0027) since it's neither Capture nor
-// Process to begin with.
-func validateLeaves(nodes []Node, outgoingEdges map[string][]Edge) []Issue {
-	var issues []Issue
-	for _, n := range nodes {
-		if n.Kind != KindCapture && n.Kind != KindProcess {
-			continue
-		}
-		if len(outgoingEdges[n.ID]) > 0 {
-			continue
-		}
-		issues = append(issues, warningIssue(n.ID, "",
-			fmt.Sprintf("step %s: this step's result isn't delivered anywhere -- fine for a test run; add an Apply or Decision step to act on it", stepName(n))))
-	}
-	return issues
-}
-
-// validateRequiredRefs is docs/adr/0028's other new warning: a node
-// whose ConfigField declares a Configure-entity reference (RefKind --
-// requestId/listId/mcpServerId/workflowId/decisionId, docs/adr/0009)
-// but hasn't picked one yet. A warning, not an error: blocking would
-// forbid saving a work-in-progress draft, but the step genuinely will
-// fail the moment it actually runs.
-func validateRequiredRefs(nodes []Node) []Issue {
-	var issues []Issue
-	for _, n := range nodes {
-		// A Trigger never executes as a step (it's the entry point; its
-		// exec is nil), so an empty ref on it cannot fail at run time --
-		// system-event's workflow scope is legitimately empty ("all
-		// workflows").
-		if n.Kind == KindTrigger {
-			continue
-		}
-		nt, ok := nodeType(n.NodeTypeID)
-		if !ok {
-			continue
-		}
-		for _, field := range nt.ConfigFields {
-			if field.RefKind == "" {
-				continue
-			}
-			if strings.TrimSpace(n.Config[field.Key]) != "" {
-				continue
-			}
-			issues = append(issues, willFailIssue(n.ID,
-				fmt.Sprintf("step %s: %s isn't set -- this step isn't configured yet and will fail at run time", stepName(n), field.Label)))
-		}
-	}
-	return issues
 }
 
 // validateOutputBindingSecrets is ADR-0007 Phase 3's secret guardrail:
