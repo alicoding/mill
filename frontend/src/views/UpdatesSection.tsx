@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Events } from '@wailsio/runtime'
 import { useTranslation } from 'react-i18next'
 import { Browser } from '@wailsio/runtime'
 import { writeClipboardText } from '../shared/clipboardWrite'
@@ -48,6 +49,27 @@ function UpdatesSection() {
   const [channelSaved, setChannelSaved] = useState(false)
   const [autoCheck, setAutoCheck] = useState(false)
 
+  // The download phase is SERVER truth (goal 0142): synced on mount
+  // and on every update-notice event, so navigating away and back
+  // never forgets a running download, and a finished one shows the
+  // Restart button here as well as in the footer pill.
+  useEffect(() => {
+    const sync = () => void SettingsService.UpdateNoticeState().then((n) => {
+      setInstallState((prev) => {
+        if (n.downloading) return 'installing'
+        if (n.ready) return 'installed'
+        return prev === 'installing' ? 'idle' : prev
+      })
+      if ((n.downloading || n.ready) && n.availableVersion) {
+        setUpdateResult((prev) => prev ?? { version: n.availableVersion, notes: '' })
+      }
+    }).catch(console.error)
+    sync()
+    return Events.On('mill-data-changed', (evt) => {
+      if ((evt.data as { entity?: string })?.entity === 'update-notice') sync()
+    })
+  }, [])
+
   useEffect(() => {
     SettingsService.AppVersion().then(setAppVersion).catch(console.error)
     SettingsService.UpdateChannel().then((c) => setChannel(c as Channel)).catch(console.error)
@@ -76,7 +98,9 @@ function UpdatesSection() {
     setChecking(true)
     setStatus('')
     setUpdateResult(null)
-    setInstallState('idle')
+    // A running or staged install is server truth -- a fresh check
+    // must not un-show it (the double-click trap this section had).
+    setInstallState((prev) => (prev === 'installing' || prev === 'installed' ? prev : 'idle'))
     setInstallError('')
     SettingsService.CheckForUpdates()
       .then((result) => {

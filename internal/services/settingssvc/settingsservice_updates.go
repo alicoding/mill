@@ -3,6 +3,7 @@ package settingssvc
 import (
 	"context"
 	"fmt"
+	"github.com/alicoding/mill/internal/services/dataevent"
 	"net/http"
 	"net/url"
 	"os"
@@ -342,6 +343,20 @@ func (s *SettingsService) CheckForUpdates() (UpdateCheckResult, error) {
 // outright -- no download, no swap -- same fail-closed posture as the
 // digest check below it.
 func (s *SettingsService) DownloadAndInstallUpdate() error {
+	s.mu.Lock()
+	if s.updateDownloading {
+		s.mu.Unlock()
+		return fmt.Errorf("the update is already downloading -- the Relaunch button appears when it's ready")
+	}
+	s.updateDownloading = true
+	s.mu.Unlock()
+	dataevent.Emit("update-notice", "downloading")
+	defer func() {
+		s.mu.Lock()
+		s.updateDownloading = false
+		s.mu.Unlock()
+		dataevent.Emit("update-notice", "download-finished")
+	}()
 	channel := s.UpdateChannel()
 	if channel != "release" && channel != "beta" {
 		return fmt.Errorf("updates only install on the release or beta channel -- this copy was built from source")

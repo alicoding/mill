@@ -74,4 +74,10 @@ export interface UpdateCheckResult {
 export interface UpdateNotice {
     "ready": boolean;
     "availableVersion": string;
+
+    /**
+     * Downloading survives navigation (goal 0142): the phase lives
+     * here, not in any component, so every surface shows the truth.
+     */
+    "downloading": boolean;
 }

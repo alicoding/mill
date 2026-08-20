@@ -85,6 +85,10 @@ type SettingsService struct {
 	backupRunner  func(keepN int) (string, error)
 	appVersion    string
 	updateChannel string
+	// updateDownloading marks an install in flight (goal 0142) -- the
+	// UI reads it via UpdateNoticeState so navigating away never
+	// forgets a running download.
+	updateDownloading bool
 	// The notice pill's state (goal 0122): set by CheckForUpdates when
 	// a newer version is found (respecting the persisted per-version
 	// dismissal) and by a successful DownloadAndInstallUpdate; read by

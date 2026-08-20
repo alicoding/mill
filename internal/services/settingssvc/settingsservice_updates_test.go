@@ -444,3 +444,21 @@ func TestUpdateNotice_ReadyWinsAndAutoCheckPrefPersists(t *testing.T) {
 		t.Error("auto-check did not persist")
 	}
 }
+
+// A second install click while one is downloading gets a readable
+// refusal, and the notice reports the phase (goal 0142) -- the
+// component-local state this replaced forgot a running download on
+// navigation.
+func TestDownloadAndInstallUpdate_ConcurrentGuardIsReadable(t *testing.T) {
+	s := newTestSettingsService(t)
+	s.mu.Lock()
+	s.updateDownloading = true
+	s.mu.Unlock()
+	if !s.UpdateNoticeState().Downloading {
+		t.Fatal("notice must report the downloading phase")
+	}
+	err := s.DownloadAndInstallUpdate()
+	if err == nil || !strings.Contains(err.Error(), "already downloading") {
+		t.Fatalf("err = %v, want the readable already-downloading refusal", err)
+	}
+}
