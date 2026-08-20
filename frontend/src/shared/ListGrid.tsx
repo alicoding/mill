@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ActionList, ActionMenu, Button, IconButton, Label, Text } from '@primer/react'
+import { ActionList, ActionMenu, Button, IconButton, Text } from '@primer/react'
 import { KebabHorizontalIcon } from '@primer/octicons-react'
 import { ConfigureService } from './bindings'
 import { type Field, Type as FieldType } from '../../bindings/github.com/alicoding/mill/internal/domain/typedfield/models'
 import { RowStatus } from '../../bindings/github.com/alicoding/mill/internal/domain/list/models'
 import { nextColumnKey } from './projectionColumns'
-import { optionColor } from './projectionColors'
+import { cellContent, rowTintStyle } from './listGridCells'
 import { ListGridColumnPopover } from './ListGridColumnPopover'
 import styles from './ListGrid.module.css'
 
@@ -35,26 +35,6 @@ export interface GridRow {
   ID: string
   Status: string
   Values: { [key: string]: string | undefined } | null
-}
-
-// cellContent renders an options value as its colored pill; anything
-// else (plain text, or a value outside the declared options) stays
-// text.
-function cellContent(c: GridColumn, value: string) {
-  if (!value || (c.Options?.length ?? 0) === 0) return value
-  const color = optionColor(c.Options, c.OptionColors, value)
-  if (!color) return value
-  return <Label size="small" variant={color} data-testid="atlas-projection-pill">{value}</Label>
-}
-
-// The pills density tints each row by its FIRST options column's
-// value color (the status-board reading: a row IS its state).
-function rowTintStyle(columns: GridColumn[], values: { [key: string]: string | undefined }) {
-  const statusCol = columns.find((c) => (c.Options?.length ?? 0) > 0)
-  if (!statusCol) return undefined
-  const color = optionColor(statusCol.Options, statusCol.OptionColors, values[statusCol.Key] ?? '')
-  if (!color) return undefined
-  return { background: `var(--bgColor-${color}-muted)` }
 }
 
 // The cell editor is an OVERLAY filling the cell's exact box (goal
@@ -133,6 +113,12 @@ export function ListGrid({ listID, columns, rows, density, schemaEditing = true 
 }) {
   const { t } = useTranslation('common')
   const [editing, setEditing] = useState<{ rowID: string; key: string; value: string } | null>(null)
+  // The focus layer between canvas and editing (goal 0143): Escape
+  // from an edit lands HERE, arrows walk cells, Enter re-edits,
+  // typing starts a fresh edit seeded with the keystroke, Escape
+  // again returns to the canvas.
+  const [focused, setFocused] = useState<{ rowID: string; key: string } | null>(null)
+  const rootRef = useRef<HTMLDivElement>(null)
   const [renaming, setRenaming] = useState<{ key: string; label: string } | null>(null)
   const [error, setError] = useState('')
 
@@ -145,6 +131,55 @@ export function ListGrid({ listID, columns, rows, density, schemaEditing = true 
   useEffect(() => {
     committedRef.current.clear()
   }, [rows])
+
+  // Programmatic DOM focus follows the focused cell so its keydown
+  // handler receives the arrows.
+  useEffect(() => {
+    if (!focused || editing) return
+    const td = rootRef.current?.querySelector<HTMLTableCellElement>(`td[data-cell="${CSS.escape(focused.rowID)}|${CSS.escape(focused.key)}"]`)
+    td?.focus()
+  }, [focused, editing])
+
+  const moveFocus = (dRow: number, dCol: number) => {
+    if (!focused) return
+    const rowIdx = rows.findIndex((r) => r?.ID === focused.rowID)
+    const colIdx = columns.findIndex((c) => c.Key === focused.key)
+    const row = rows[rowIdx + dRow]
+    const col = columns[colIdx + dCol]
+    if (!row || !col) return
+    setFocused({ rowID: row.ID, key: col.Key })
+  }
+
+  const focusedCellKeyDown = (e: React.KeyboardEvent, row: GridRow, c: GridColumn) => {
+    if (editing) return
+    const arrows: Record<string, [number, number]> = { ArrowUp: [-1, 0], ArrowDown: [1, 0], ArrowLeft: [0, -1], ArrowRight: [0, 1] }
+    if (arrows[e.key]) {
+      e.preventDefault()
+      e.stopPropagation()
+      moveFocus(...arrows[e.key])
+      return
+    }
+    if (e.key === 'Enter' || e.key === 'F2') {
+      e.preventDefault()
+      e.stopPropagation()
+      setEditing({ rowID: row.ID, key: c.Key, value: row.Values?.[c.Key] ?? '' })
+      return
+    }
+    if (e.key === 'Escape') {
+      e.preventDefault()
+      e.stopPropagation()
+      setFocused(null)
+      ;(e.target as HTMLElement).blur()
+      return
+    }
+    // A printable keystroke starts a fresh edit seeded with it (the
+    // spreadsheet type-to-replace convention).
+    if (e.key.length === 1 && !e.metaKey && !e.ctrlKey && !e.altKey) {
+      e.preventDefault()
+      e.stopPropagation()
+      setEditing({ rowID: row.ID, key: c.Key, value: e.key })
+    }
+  }
 
   const report = (err: unknown) => setError(String(err))
   const clearThen = () => setError('')
@@ -169,6 +204,7 @@ export function ListGrid({ listID, columns, rows, density, schemaEditing = true 
     const row = rows[nRow]
     const col = columns[nCol]
     if (!row || !col) return
+    setFocused({ rowID: row.ID, key: col.Key })
     setEditing({ rowID: row.ID, key: col.Key, value: row.Values?.[col.Key] ?? '' })
   }
 
@@ -335,7 +371,7 @@ export function ListGrid({ listID, columns, rows, density, schemaEditing = true 
   })
 
   return (
-    <div className={styles.gridRoot} data-testid="atlas-projection-table">
+    <div ref={rootRef} className={styles.gridRoot} data-testid="atlas-projection-table">
       <div className={styles.scroll}>
         {columns.length === 0 ? (
           <Text as="p" size="small" className={styles.empty}>{t('listGrid.noColumns')}</Text>
@@ -356,7 +392,14 @@ export function ListGrid({ listID, columns, rows, density, schemaEditing = true 
                     <td
                       key={c.Key}
                       data-testid="atlas-projection-cell"
-                      onClick={() => setEditing({ rowID: row.ID, key: c.Key, value: row.Values?.[c.Key] ?? '' })}
+                      data-cell={`${row.ID}|${c.Key}`}
+                      data-focused={focused?.rowID === row.ID && focused.key === c.Key ? 'true' : undefined}
+                      tabIndex={-1}
+                      onKeyDown={(e) => focusedCellKeyDown(e, row, c)}
+                      onClick={() => {
+                        setFocused({ rowID: row.ID, key: c.Key })
+                        setEditing({ rowID: row.ID, key: c.Key, value: row.Values?.[c.Key] ?? '' })
+                      }}
                     >
                       {cellContent(c, row.Values?.[c.Key] ?? '')}
                       {editing && editing.rowID === row.ID && editing.key === c.Key && (
@@ -365,7 +408,7 @@ export function ListGrid({ listID, columns, rows, density, schemaEditing = true 
                           editing={editing}
                           onChange={(value) => setEditing({ ...editing, value })}
                           onCommit={commitCell}
-                          onCancel={() => setEditing(null)}
+                          onCancel={() => { setEditing(null); setFocused({ rowID: row.ID, key: c.Key }) }}
                           onAdvance={advanceEdit}
                         />
                       )}

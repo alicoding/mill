@@ -346,3 +346,35 @@ test('the last boundary insert dot is not clipped by the card edge', async ({ pa
   await deleteViaPageMenu(page, page.locator('[data-component="atlas-card-overlay"]'))
   await expect(tableCard).not.toBeVisible()
 })
+
+// Goal 0143: arrows walk cells INSIDE the grid -- they never nudge
+// the table card on the canvas while a cell holds focus.
+test('arrow keys with a focused cell never move the table card', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Atlas' }).click()
+  await page.getByTestId('atlas-tray-table').click()
+  await page.getByTestId('atlas-table-size-2x2').click()
+  const tableCard = page.getByTestId('atlas-table-card').filter({ hasText: 'Table' }).first()
+  await expect(tableCard).toBeVisible()
+
+  await tableCard.getByTestId('atlas-projection-cell').first().click()
+  await page.getByTestId('atlas-projection-cell-input').press('Escape')
+  await expect(page.locator('td[data-focused="true"]')).toHaveCount(1)
+
+  const before = await tableCard.boundingBox()
+  await page.keyboard.press('ArrowRight')
+  await page.keyboard.press('ArrowDown')
+  const after = await tableCard.boundingBox()
+  expect(after?.x).toBe(before?.x)
+  expect(after?.y).toBe(before?.y)
+  await expect(page.locator('td[data-focused="true"]')).toHaveCount(1)
+
+  await openCard(page, tableTitle(tableCard))
+  await deleteViaPageMenu(page, page.locator('[data-component="atlas-card-overlay"]'))
+  await expect(tableCard).not.toBeVisible()
+  await page.getByRole('link', { name: 'Configure' }).click()
+  await page.getByRole('tab', { name: 'Lists' }).click()
+  const listRow = page.locator('[data-testid="inventory-row"][data-entity="list"]', { has: page.getByText('Table', { exact: true }) })
+  await clickRowAction(page, listRow, 'Delete')
+  await expect(listRow).toHaveCount(0)
+})

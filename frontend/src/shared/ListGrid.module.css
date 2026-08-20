@@ -90,6 +90,18 @@
   border-right: none;
 }
 
+/* The focused (not editing) cell wears the ring the editor otherwise
+   wears -- one visual language for "you are here". */
+.table td[data-focused='true'] {
+  outline: 1px solid var(--borderColor-accent-emphasis);
+  outline-offset: -1px;
+}
+
+.table td:focus-visible {
+  outline: 1px solid var(--borderColor-accent-emphasis);
+  outline-offset: -1px;
+}
+
 /* The editor fills the cell's exact box -- nothing outside it moves
    (goal 0140's zero-layout-shift rule). Same font and padding as the
    cell; the accent border is the whole "you are editing" signal. */
