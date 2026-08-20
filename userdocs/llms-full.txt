@@ -221,8 +221,12 @@ drifting apart would be a bug:
 - **Integration** — an HTTP API: base URL, auth (the secret lives in
   your OS keychain, never in config), operations with typed inputs
   and outputs.
-- **Lists** — typed tabular data steps can look up, search, and write;
-  Atlas can project them too.
+- **Lists** — typed tabular data steps can look up, search, and
+  write; Atlas can project them too. A list edits as one table:
+  click a cell to change it, click a header to rename its column,
+  hover a header or row for the ⊕ that inserts one exactly there,
+  and open the header's gear for the column's type, choices, and
+  removal. A column's type can change until it holds data.
 - **MCP Servers** — other MCP servers Mill can call as workflow
   steps. (Connecting an agent *to* Mill is the other direction — see
   Settings → MCP access.)

@@ -178,3 +178,39 @@ func DeriveEntries(l List) map[string]string {
 	}
 	return out
 }
+
+// ValidateFieldEvolutionWithRows applies the schema-evolution guard
+// with the rows in view: a column no row holds a value for MAY change
+// its type (the invariant is "type never changes under data", not
+// "type never changes after creation" -- a grid-authored column
+// commits as text before its author picks a type, and freezing it
+// there would make type selection impossible; ADR-0040 amendment).
+// Data-bearing columns keep the full immutability rule.
+func ValidateFieldEvolutionWithRows(oldFields, newFields []typedfield.Field, tombstones []typedfield.FieldTombstone, rows []Row) error {
+	newByKey := make(map[string]typedfield.Type, len(newFields))
+	for _, f := range newFields {
+		newByKey[f.Key] = f.Type
+	}
+	effectiveOld := make([]typedfield.Field, len(oldFields))
+	copy(effectiveOld, oldFields)
+	for i, old := range effectiveOld {
+		next, present := newByKey[old.Key]
+		if !present || next == old.Type {
+			continue
+		}
+		if columnHasData(rows, old.Key) {
+			continue
+		}
+		effectiveOld[i].Type = next
+	}
+	return typedfield.ValidateFieldEvolution(effectiveOld, newFields, tombstones)
+}
+
+func columnHasData(rows []Row, key string) bool {
+	for _, r := range rows {
+		if r.Values[key] != "" {
+			return true
+		}
+	}
+	return false
+}

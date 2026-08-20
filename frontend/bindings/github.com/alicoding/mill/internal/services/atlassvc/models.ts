@@ -248,8 +248,20 @@ export interface OfferedAction {
 export interface ProjectionColumn {
     "Key": string;
     "Label": string;
+
+    /**
+     * Type is the column's typedfield type name ("text", "number",
+     * "boolean", "options") -- the grid's cell editors key off it.
+     */
+    "Type": string;
     "Options": string[] | null;
     "OptionColors": string[] | null;
+
+    /**
+     * Deprecated mirrors the field's soft-retired flag (ADR-0040) so
+     * the grid's schema popover shows the stored truth.
+     */
+    "Deprecated": boolean;
 }
 
 /**

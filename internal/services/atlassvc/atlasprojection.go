@@ -20,10 +20,16 @@ import (
 // colored pill (goal 0105 part 3) -- color resolution (explicit else
 // palette-by-index) is the frontend's one pure function.
 type ProjectionColumn struct {
-	Key          string
-	Label        string
+	Key   string
+	Label string
+	// Type is the column's typedfield type name ("text", "number",
+	// "boolean", "options") -- the grid's cell editors key off it.
+	Type         string
 	Options      []string
 	OptionColors []string
+	// Deprecated mirrors the field's soft-retired flag (ADR-0040) so
+	// the grid's schema popover shows the stored truth.
+	Deprecated bool
 }
 
 // ProjectionRow is one List row with the identity in-place editing

@@ -143,7 +143,7 @@ func (c *ConfigureService) UpdateList(id, label, description string, columns []t
 	previous := c.lists[idx]
 	l := previous
 	tombstones := typedfield.MergeTombstones(previous.FieldTombstones, newFieldTombstones)
-	if err := typedfield.ValidateFieldEvolution(previous.Columns, columns, tombstones); err != nil {
+	if err := list.ValidateFieldEvolutionWithRows(previous.Columns, columns, tombstones, previous.Rows); err != nil {
 		c.mu.Unlock()
 		return list.List{}, err
 	}

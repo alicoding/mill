@@ -22,6 +22,19 @@ function listRow(page: import('@playwright/test').Page, label: string) {
 // reuses the seeded "Example: Country codes" List rather than
 // creating a second one, so there's nothing List-shaped to clean up.
 
+// Grid-based column authoring (goal 0136): the boundary/append ⊕
+// drops a placeholder straight into rename; naming it re-keys it from
+// the label (empty columns only), so "SKU" becomes key sku.
+async function addGridColumn(page: import('@playwright/test').Page, label: string) {
+  await page.getByTestId('atlas-projection-add-column').click()
+  const input = page.getByTestId('atlas-projection-rename-input')
+  await expect(input).toBeVisible()
+  await input.fill(label)
+  await input.press('Enter')
+  await expect(page.getByTestId('atlas-projection-header').filter({ hasText: label })).toBeVisible()
+}
+
+
 test('Configuring a typed List: add a column, add a row, both persist', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Configure' }).click()
@@ -29,15 +42,16 @@ test('Configuring a typed List: add a column, add a row, both persist', async ({
 
   await page.getByTestId('new-list').click()
   await page.getByLabel('Label').fill('E2E typed list UI')
-  await page.getByTestId('list-column-key').fill('sku')
   await page.getByRole('button', { name: 'Save list' }).click()
 
   await expect(page.getByTestId('list-rows-editor')).toBeVisible()
-  await page.getByTestId('add-list-row').click()
-  const row = page.getByTestId('list-row')
-  await expect(row).toBeVisible()
-  await row.getByRole('textbox').fill('SKU-1')
-  await row.getByTestId('save-list-row').click()
+  await addGridColumn(page, 'SKU')
+  await page.getByTestId('atlas-projection-add-row').click()
+  const cell = page.getByTestId('atlas-projection-cell').first()
+  await cell.click()
+  await page.getByTestId('atlas-projection-cell-input').fill('SKU-1')
+  await page.getByTestId('atlas-projection-cell-input').press('Enter')
+  await expect(cell).toContainText('SKU-1')
 
   await page.getByRole('button', { name: 'Close' }).click()
   const listRow = page.locator('[data-testid="inventory-row"][data-entity="list"]', { has: page.getByText('E2E typed list UI', { exact: true }) })
@@ -117,8 +131,8 @@ test('Configure > Lists: Publish freezes a version, shown in the version list', 
 
   await page.getByTestId('new-list').click()
   await page.getByLabel('Label').fill('E2E publish list')
-  await page.getByTestId('list-column-key').fill('sku')
   await page.getByRole('button', { name: 'Save list' }).click()
+  await addGridColumn(page, 'SKU')
 
   await expect(page.getByTestId('list-published-badge')).toContainText('Never published')
   await expect(page.getByTestId('list-versions-list')).toHaveCount(0)
@@ -145,14 +159,16 @@ test('Configure > Lists: CSV import — mapping preview, one manual remap, a mal
 
   await page.getByTestId('new-list').click()
   await page.getByLabel('Label').fill('E2E CSV import list')
-  await page.getByTestId('list-column-key').fill('sku')
-  await page.getByRole('button', { name: 'Add column' }).click()
-  const columnRows = page.getByTestId('list-column-row')
-  await columnRows.nth(1).getByTestId('list-column-key').fill('qty')
-  await columnRows.nth(1).getByPlaceholder('label').fill('Amount')
-  await columnRows.nth(1).getByTestId('list-column-type').selectOption({ label: 'Number' })
   await page.getByRole('button', { name: 'Save list' }).click()
   await expect(page.getByTestId('list-rows-editor')).toBeVisible()
+  await addGridColumn(page, 'SKU')
+  await addGridColumn(page, 'Amount')
+  // The header gear is the column's schema home -- Amount becomes a
+  // number column there.
+  await page.getByTestId('atlas-projection-header').filter({ hasText: 'Amount' }).hover()
+  await page.getByTestId('list-grid-column-settings-amount').click()
+  await page.getByTestId('list-grid-column-type').selectOption('number')
+  await page.keyboard.press('Escape')
 
   await page.getByTestId('import-list-rows').click()
   await page.getByTestId('import-list-rows-input').setInputFiles(CSV_FIXTURE)
@@ -183,8 +199,8 @@ test('Configure > Lists: CSV import — mapping preview, one manual remap, a mal
 
   // The malformed row never became a real List row -- only the valid one
   // did. TextInput values are DOM `value` attributes, not text nodes.
-  await expect(page.getByTestId('list-row')).toHaveCount(1)
-  await expect(page.getByTestId('list-row').locator('input[value="WIDGET-1"]')).toHaveCount(1)
+  await expect(page.getByTestId('atlas-projection-row')).toHaveCount(1)
+  await expect(page.getByTestId('atlas-projection-row')).toContainText('WIDGET-1')
 
   // Clean up.
   await page.getByRole('button', { name: 'Close' }).click()
@@ -215,10 +231,8 @@ test('Example: Track in a list runs end to end -- creates then updates the same 
   await expect(trackerRow).toBeVisible()
   await trackerRow.click()
 
-  // TextInput values are DOM `value` attributes, not text nodes -- an
-  // attribute selector, not hasText, is what actually finds the row.
-  const shippedRow = page.getByTestId('list-row').filter({ has: page.locator('input[value="Ship goal 0070"]') })
+  const shippedRow = page.getByTestId('atlas-projection-row').filter({ hasText: 'Ship goal 0070' })
   await expect(shippedRow).toHaveCount(1)
-  await expect(shippedRow.getByTestId('list-row-status')).toHaveValue('active')
+  await expect(shippedRow).toHaveAttribute('data-row-status', 'active')
   await page.getByTestId('configure-lists').getByRole('button', { name: 'Close' }).click()
 })

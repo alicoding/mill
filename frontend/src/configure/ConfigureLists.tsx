@@ -1,16 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Button, Checkbox, FormControl, Heading, IconButton, Select, Stack, Text, TextInput, VisuallyHidden } from '@primer/react'
+import { Button, FormControl, Heading, IconButton, Stack, Text, TextInput, VisuallyHidden } from '@primer/react'
 import { DownloadIcon, ListUnorderedIcon, PencilIcon, PlusIcon, TrashIcon, UploadIcon } from '@primer/octicons-react'
 import { DataTable } from '@primer/react/experimental'
 import { StatusStamp } from '../shared/StatusStamp'
 import { ResizableTableContainer } from '../shared/ResizableTable'
 import { ConfigureService } from '../shared/bindings'
 import type { List } from '../../bindings/github.com/alicoding/mill/internal/domain/list/models'
-import { RowStatus } from '../../bindings/github.com/alicoding/mill/internal/domain/list/models'
-import type { Field, FieldTombstone } from '../../bindings/github.com/alicoding/mill/internal/domain/typedfield/models'
-import { Type as ConfigFieldType } from '../../bindings/github.com/alicoding/mill/internal/domain/typedfield/models'
-import { ListRowEditor } from './ListRowEditor'
+import { ListGrid, type GridColumn, type GridRow } from '../shared/ListGrid'
 import { ListRowImport } from './ListRowImport'
 import { ListVersionsSection } from './ListVersionsSection'
 import { downloadJSON } from '../shared/downloadJSON'
@@ -25,35 +22,17 @@ import { useConfirmDelete } from '../shared/useConfirmDelete'
 import { useImportConfirm } from '../shared/useImportConfirm'
 import { describeSeedReset } from '../shared/seedLifecycle'
 import { RestoreExamplesButton } from '../shared/RestoreExamplesButton'
-import { ConfirmDialog } from '../shared/ConfirmDialog'
 import styles from '../shared/ListCard.module.css'
 import PageContainer from '../shared/PageContainer'
 
-function typeLabelFor(t: (key: string) => string): Record<string, string> {
-  return {
-    [ConfigFieldType.TypeText]: t('configureLists.typeLabel.text'),
-    [ConfigFieldType.TypeNumber]: t('configureLists.typeLabel.number'),
-    [ConfigFieldType.TypeBoolean]: t('configureLists.typeLabel.boolean'),
-  }
-}
-
-function emptyColumn(): Field {
-  return {
-    Key: '', Label: '', Type: ConfigFieldType.TypeText, Required: false, Default: '', Description: '',
-    Options: null, Suggestions: null, Secret: false, RefKind: '', Multiline: false, SystemManaged: false,
-  }
-}
-
-// Configure's Lists section (docs/SPEC.md §3.5, docs/goals/0011-lists-
-// maturation.md): CRUD over ConfigureService's typed Lists -- a
-// key/label/type Column-schema editor mirroring ConfigureAttributes.
-// tsx's own flat style (the goal's own instruction), plus a schema-
-// generated row editor once a list's columns are saved. Both a
-// list-lookup and a list-search workflow node resolve against these
-// same Columns/Rows.
+// Configure's Lists section (docs/SPEC.md §3.5): CRUD over
+// ConfigureService's typed Lists. Schema AND data edit in the ONE
+// shared grid (shared/ListGrid, goal 0136) -- header row is the
+// columns editor, cells are the rows, identical to the Atlas table
+// face. Both a list-lookup and a list-search workflow node resolve
+// against these same Columns/Rows.
 export function ConfigureLists() {
   const { t } = useTranslation('configure')
-  const TYPE_LABEL = typeLabelFor(t)
   // Store-shared (refreshLists, shared/configureEntityStore.ts), the
   // same one-fetch-many-consumers pattern store.ts's workflows/requests
   // already use -- so App.tsx's mill-data-changed handler pushing a
@@ -63,16 +42,8 @@ export function ConfigureLists() {
   const [editingID, setEditingID] = useState<string | null>(null)
   const [label, setLabel] = useState('')
   const [description, setDescription] = useState('')
-  const [columns, setColumns] = useState<Field[]>([])
-  // fieldTombstones/originalColumnKeys back docs/adr/0040 decision 3's
-  // field-delete -- see ConfigureDecisions.tsx's identical state for
-  // the full reasoning, applied here to Columns instead of Outputs.
-  const [fieldTombstones, setFieldTombstones] = useState<FieldTombstone[]>([])
-  const [originalColumnKeys, setOriginalColumnKeys] = useState<Set<string>>(new Set())
-  const [pendingDeleteColumnIndex, setPendingDeleteColumnIndex] = useState<number | null>(null)
   const [formOpen, setFormOpen] = useState(false)
   const [error, setError] = useState('')
-  const [rowError, setRowError] = useState('')
   const [importError, setImportError] = useState<string | null>(null)
   const importInputRef = useRef<HTMLInputElement>(null)
   const [viewMode, setViewMode] = useViewMode('mill-lists-view-mode')
@@ -128,12 +99,8 @@ export function ConfigureLists() {
     setEditingID(null)
     setLabel('')
     setDescription('')
-    setColumns([emptyColumn()])
-    setFieldTombstones([])
-    setOriginalColumnKeys(new Set())
     setFormOpen(true)
     setError('')
-    setRowError('')
   }
 
   // configure.new.lists (shared/configureCreateCommands.ts, goal 0071
@@ -155,64 +122,23 @@ export function ConfigureLists() {
     setEditingID(l.ID)
     setLabel(l.Label)
     setDescription(l.Description)
-    setColumns(l.Columns && l.Columns.length > 0 ? l.Columns : [emptyColumn()])
-    setFieldTombstones(l.FieldTombstones ?? [])
-    setOriginalColumnKeys(new Set((l.Columns ?? []).map((c) => c.Key)))
     setFormOpen(true)
     setError('')
-    setRowError('')
   }
 
-  const updateColumn = (i: number, field: keyof Field, value: string) => {
-    setColumns((prev) => prev.map((c, idx) => (idx === i ? { ...c, [field]: value } : c)))
-  }
-
-  const toggleColumnDeprecated = (i: number, deprecated: boolean) => {
-    setColumns((prev) => prev.map((c, idx) => (idx === i ? { ...c, deprecated } : c)))
-  }
-
-  // requestRemoveColumn is the column editor's remove action (docs/adr/
-  // 0040 decision 3) -- see ConfigureDecisions.tsx's requestRemoveOutput
-  // for the full reasoning, applied here to Columns instead of Outputs.
-  const requestRemoveColumn = (i: number) => {
-    if (!originalColumnKeys.has(columns[i].Key)) {
-      setColumns((prev) => prev.filter((_, idx) => idx !== i))
-      return
-    }
-    setPendingDeleteColumnIndex(i)
-  }
-  const confirmRemoveColumn = () => {
-    if (pendingDeleteColumnIndex === null) return
-    const removed = columns[pendingDeleteColumnIndex]
-    setFieldTombstones((prev) => [...prev, { Key: removed.Key, Type: removed.Type }])
-    setColumns((prev) => prev.filter((_, idx) => idx !== pendingDeleteColumnIndex))
-    setPendingDeleteColumnIndex(null)
-  }
-
-  const saveSchema = async () => {
+  // Save persists label/description; the grid below owns columns and
+  // rows through the List's own methods (its read-modify-write always
+  // reloads the record first, so the two never fight).
+  const saveMeta = async () => {
     setError('')
     try {
-      // Drop any never-touched blank column row (the default starting
-      // state for a new list, and what's left if the user deletes down
-      // to nothing) -- same "an empty draft row isn't a real column"
-      // filtering the old key/value editor's rowsToEntries applied, so
-      // Save still works with zero columns declared, not just a full one.
-      const nonEmptyColumns = columns.filter((c) => c.Key.trim() !== '')
       let saved: List
       if (editingID) {
-        saved = await ConfigureService.UpdateList(editingID, label, description, nonEmptyColumns, fieldTombstones)
+        saved = await ConfigureService.UpdateList(editingID, label, description, editingList?.Columns ?? [], null)
       } else {
-        saved = await ConfigureService.CreateList(label, description, nonEmptyColumns)
+        saved = await ConfigureService.CreateList(label, description, [])
       }
       setEditingID(saved.ID)
-      // Re-sync the draft to the persisted truth (docs/adr/0040 decision
-      // 3): a column just Saved is now genuinely persisted, so removing
-      // it on the very next Save must tombstone it too -- the form
-      // stays open after a Save (row editing follows), and only
-      // startEdit re-loaded originalColumnKeys/fieldTombstones before.
-      setColumns(saved.Columns && saved.Columns.length > 0 ? saved.Columns : [emptyColumn()])
-      setFieldTombstones(saved.FieldTombstones ?? [])
-      setOriginalColumnKeys(new Set((saved.Columns ?? []).map((c) => c.Key)))
       refetch()
     } catch (err) {
       setError(String(err))
@@ -249,41 +175,6 @@ export function ConfigureLists() {
     labelOf: (l) => l.Label,
     onConfirm: (l) => remove(l.ID),
   })
-
-  const addRow = async () => {
-    if (!editingID) return
-    setRowError('')
-    const values: Record<string, string> = {}
-    for (const c of columns) values[c.Key] = ''
-    try {
-      await ConfigureService.AddListRow(editingID, values)
-      refetch()
-    } catch (err) {
-      setRowError(String(err))
-    }
-  }
-
-  const updateRow = async (rowID: string, values: Record<string, string>, status: RowStatus) => {
-    if (!editingID) return
-    setRowError('')
-    try {
-      await ConfigureService.UpdateListRow(editingID, rowID, values, status)
-      refetch()
-    } catch (err) {
-      setRowError(String(err))
-    }
-  }
-
-  const deleteRow = async (rowID: string) => {
-    if (!editingID) return
-    setRowError('')
-    try {
-      await ConfigureService.DeleteListRow(editingID, rowID)
-      refetch()
-    } catch (err) {
-      setRowError(String(err))
-    }
-  }
 
   // Last-updated-first, applied once so both view modes render the
   // same order (docs/SPEC.md §3.8's InventoryList entry).
@@ -364,50 +255,9 @@ export function ConfigureLists() {
                 <TextInput value={description} onChange={(e) => setDescription(e.target.value)} block />
               </FormControl>
 
-              <Text size="small" weight="semibold">{t('configureLists.columns')}</Text>
-              {columns.map((c, i) => (
-                <Stack key={i} direction="horizontal" gap="condensed" align="center" className={c.deprecated ? styles.muted : undefined} data-testid="list-column-row">
-                  <TextInput placeholder={t('configureLists.keyPlaceholder')} value={c.Key} onChange={(e) => updateColumn(i, 'Key', e.target.value)} data-testid="list-column-key" />
-                  <TextInput placeholder={t('configureLists.labelPlaceholder')} value={c.Label} onChange={(e) => updateColumn(i, 'Label', e.target.value)} />
-                  <Select value={c.Type} onChange={(e) => updateColumn(i, 'Type', e.target.value)} data-testid="list-column-type">
-                    {Object.entries(TYPE_LABEL).map(([v, l]) => (
-                      <Select.Option key={v} value={v}>{l}</Select.Option>
-                    ))}
-                  </Select>
-                  <Stack direction="horizontal" gap="condensed" align="center">
-                    <Checkbox
-                      checked={c.deprecated ?? false}
-                      aria-label={t('configureLists.deprecatedCheckboxAriaLabel')}
-                      onChange={(e) => toggleColumnDeprecated(i, e.target.checked)}
-                    />
-                    <Text size="small" className={styles.muted}>{t('configureLists.deprecatedLabel')}</Text>
-                  </Stack>
-                  <IconButton
-                    icon={TrashIcon}
-                    aria-label={t('configureLists.removeColumnAriaLabel')}
-                    size="small"
-                    variant="invisible"
-                    onClick={() => requestRemoveColumn(i)}
-                  />
-                </Stack>
-              ))}
-              {pendingDeleteColumnIndex !== null && (
-                <ConfirmDialog
-                  title={t('configureLists.deleteFieldConfirmTitle')}
-                  body={t('configureLists.deleteFieldConfirmBody', { key: columns[pendingDeleteColumnIndex].Key })}
-                  confirmLabel={t('delete')}
-                  cancelLabel={t('configureLists.close')}
-                  onCancel={() => setPendingDeleteColumnIndex(null)}
-                  onConfirm={confirmRemoveColumn}
-                />
-              )}
-              <Button size="small" variant="invisible" leadingVisual={PlusIcon} onClick={() => setColumns((prev) => [...prev, emptyColumn()])}>
-                {t('configureLists.addColumn')}
-              </Button>
-
               {error && <Text as="p" size="small" className={styles.error}>{error}</Text>}
               <Stack direction="horizontal" gap="condensed">
-                <Button variant="primary" size="small" onClick={saveSchema} data-testid="save-list">{t('configureLists.saveList')}</Button>
+                <Button variant="primary" size="small" onClick={saveMeta} data-testid="save-list">{t('configureLists.saveList')}</Button>
                 <Button size="small" variant="invisible" onClick={() => setFormOpen(false)}>{t('configureLists.close')}</Button>
               </Stack>
             </Stack>
@@ -422,31 +272,20 @@ export function ConfigureLists() {
           {editingID && editingList && (
             <div className={styles.card} data-testid="list-rows-editor">
               <Stack direction="vertical" gap="condensed">
-                <Stack direction="horizontal" justify="space-between" align="center">
-                  <Text size="small" weight="semibold">{t('configureLists.rows')}</Text>
-                  {(editingList.Columns ?? []).length > 0 && (
+                {(editingList.Columns ?? []).length > 0 && (
+                  <Stack direction="horizontal" justify="end" align="center">
                     <ListRowImport listId={editingID} columns={editingList.Columns ?? []} onImported={refetch} />
-                  )}
-                </Stack>
-                {(editingList.Columns ?? []).length === 0 ? (
-                  <Text as="p" size="small" className={styles.muted}>{t('configureLists.addColumnFirst')}</Text>
-                ) : (
-                  <>
-                    {(editingList.Rows ?? []).map((r) => (
-                      <ListRowEditor
-                        key={r.ID}
-                        row={r}
-                        columns={editingList.Columns ?? []}
-                        onSave={(values, status) => updateRow(r.ID, values, status)}
-                        onDelete={() => deleteRow(r.ID)}
-                      />
-                    ))}
-                    <Button size="small" variant="invisible" leadingVisual={PlusIcon} onClick={addRow} data-testid="add-list-row">
-                      {t('configureLists.addRow')}
-                    </Button>
-                  </>
+                  </Stack>
                 )}
-                {rowError && <Text as="p" size="small" className={styles.error}>{rowError}</Text>}
+                <ListGrid
+                  listID={editingID}
+                  columns={(editingList.Columns ?? []).map((c): GridColumn => ({
+                    Key: c.Key, Label: c.Label, Type: c.Type,
+                    Options: c.Options, OptionColors: c.OptionColors ?? null,
+                    Deprecated: c.deprecated ?? false,
+                  }))}
+                  rows={(editingList.Rows ?? []).map((r): GridRow => ({ ID: r.ID, Status: r.Status, Values: r.Values }))}
+                />
               </Stack>
             </div>
           )}
