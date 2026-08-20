@@ -354,7 +354,7 @@ func TestAtlasMCP_ProposeCardWrite_ApproveCreatesCardWithFieldsAndLinks(t *testi
 	// atlas_get_write_status is this family's own typed poll tool --
 	// unmarshals the executor's own JSON result back into a typed cardId
 	// rather than leaving that decode to the caller.
-	statusText := h.call(t, "atlas_get_write_status", map[string]any{"approvalId": pending.ID})
+	statusText := h.call(t, "atlas_get_write_status", map[string]any{"id": pending.ID})
 	var status atlasWriteStatusResult
 	if err := json.Unmarshal([]byte(statusText), &status); err != nil {
 		t.Fatalf("atlas_get_write_status result is not the typed JSON: %v", err)
@@ -400,6 +400,7 @@ func TestAtlasMCP_ProposeCardWrite_DenyWritesNothing(t *testing.T) {
 		t.Fatalf("card count = %d, want unchanged %d after deny", got, before)
 	}
 
+	// approvalId is the pre-unification alias -- must keep resolving.
 	statusText := h.call(t, "atlas_get_write_status", map[string]any{"approvalId": pending.ID})
 	var status atlasWriteStatusResult
 	if err := json.Unmarshal([]byte(statusText), &status); err != nil {
