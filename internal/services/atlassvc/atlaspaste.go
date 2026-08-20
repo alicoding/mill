@@ -295,6 +295,15 @@ func (a *AtlasService) WirePasteListWrites(factory func(label string, columns []
 func (a *AtlasService) PasteToBoard(text, parentID string, x, y float64) (PasteResult, error) {
 	model, ok := decodeDiagramText(text)
 	if !ok {
+		// Spreadsheet-shaped text (goal 0138 slice 2): a copied Excel/
+		// Sheets range arrives as TSV -- it becomes a Mill table
+		// through the same List path the diagram tables use.
+		if tsv, isTSV := detectTSV(text); isTSV {
+			if err := a.pasteOneTable(tsv, parentID, &atlas.Position{X: x, Y: y}); err != nil {
+				return PasteResult{Recognized: true}, err
+			}
+			return PasteResult{Recognized: true, Tables: 1}, nil
+		}
 		return PasteResult{}, nil
 	}
 	tables, rest := extractTables(model)
@@ -420,4 +429,37 @@ func (a *AtlasService) defaultLinkKindID() string {
 		return ""
 	}
 	return a.linkKinds[0].ID
+}
+
+// detectTSV recognizes a spreadsheet-shaped text/plain payload (what
+// a spreadsheet's copy puts alongside its HTML): at least two lines,
+// every line carrying the SAME number of tabs (>=1) -- deterministic,
+// so prose that happens to contain a tab never converts. First row
+// becomes headers by the same rule tables use (detectHeaders).
+func detectTSV(text string) (pastedTable, bool) {
+	text = strings.TrimRight(strings.TrimPrefix(text, "\ufeff"), "\n\r")
+	if !strings.Contains(text, "\t") {
+		return pastedTable{}, false
+	}
+	lines := strings.Split(strings.ReplaceAll(text, "\r\n", "\n"), "\n")
+	if len(lines) < 2 {
+		return pastedTable{}, false
+	}
+	tabs := strings.Count(lines[0], "\t")
+	if tabs < 1 {
+		return pastedTable{}, false
+	}
+	var t pastedTable
+	t.Label = "Imported table"
+	for _, line := range lines {
+		if strings.Count(line, "\t") != tabs {
+			return pastedTable{}, false
+		}
+		cells := strings.Split(line, "\t")
+		for i := range cells {
+			cells[i] = strings.TrimSpace(cells[i])
+		}
+		t.Rows = append(t.Rows, cells)
+	}
+	return t, true
 }

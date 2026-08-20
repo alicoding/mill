@@ -131,3 +131,41 @@ func TestPasteToBoard_OrdinaryTextIsLeftAlone(t *testing.T) {
 		t.Fatalf("ordinary text must be left alone, got %+v", res)
 	}
 }
+
+// TSV (goal 0138 slice 2): a copied spreadsheet range converts; prose
+// with a stray tab, or a single line, never does.
+func TestPasteToBoard_TSVBecomesTable(t *testing.T) {
+	a := newTestAtlasService(t)
+	wireFakeProjection(a)
+	var gotFields []typedfield.Field
+	var gotRows []map[string]string
+	a.WirePasteListWrites(
+		func(label string, columns []typedfield.Field) (string, error) {
+			gotFields = columns
+			return "list-vendors", nil
+		},
+		func(listID string, values map[string]string) error {
+			gotRows = append(gotRows, values)
+			return nil
+		},
+	)
+	res, err := a.PasteToBoard("Name\tStatus\nAcme\tHealthy\nGlobex\tBlocked", "", 0, 0)
+	if err != nil {
+		t.Fatalf("PasteToBoard: %v", err)
+	}
+	if !res.Recognized || res.Tables != 1 {
+		t.Fatalf("result = %+v, want one table", res)
+	}
+	if len(gotFields) != 2 || gotFields[0].Key != "name" || gotFields[1].Key != "status" {
+		t.Errorf("fields = %+v, want name/status headers", gotFields)
+	}
+	if len(gotRows) != 2 || gotRows[1]["status"] != "Blocked" {
+		t.Errorf("rows = %+v, want two data rows", gotRows)
+	}
+
+	for _, notTSV := range []string{"prose with\ta tab", "one\ttab\nbut\tthis\tline differs", "Name\tStatus"} {
+		if r, _ := a.PasteToBoard(notTSV, "", 0, 0); r.Recognized {
+			t.Errorf("%q must not convert", notTSV)
+		}
+	}
+}
