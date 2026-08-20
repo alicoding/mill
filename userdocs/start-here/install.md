@@ -17,6 +17,15 @@ it:
    updates → Update now. If your network blocks app downloads, set
    Settings → Updates → Outbound proxy, or use the browser-download
    button the app offers on failure.
+5. A build you downloaded with a browser (steps 1–3, or the
+   fallback button) arrives quarantined by macOS. If the app won't
+   open even after Open Anyway, clear the quarantine in Terminal:
+
+   ```
+   find /Applications/mill.app -exec xattr -d com.apple.quarantine {} +
+   ```
+
+   In-app updates never need this — only browser downloads do.
 
 ## From source
 
