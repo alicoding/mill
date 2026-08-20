@@ -328,5 +328,14 @@
     "hint": "Sweep to size, click to create",
     "dimensions": "{{cols}} × {{rows}}",
     "cellAriaLabel": "{{cols}} by {{rows}} table"
+  },
+  "paste": {
+    "converted": "Pasted as {{what}}",
+    "tables_one": "{{count}} table",
+    "tables_other": "{{count}} tables",
+    "cards_one": "{{count}} card",
+    "cards_other": "{{count}} cards",
+    "links_one": "{{count}} link",
+    "links_other": "{{count}} links"
   }
 }

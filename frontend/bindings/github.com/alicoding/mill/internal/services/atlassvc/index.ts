@@ -20,6 +20,7 @@ export type {
     ImportFolderSuggestionsRequest,
     ListProjection,
     OfferedAction,
+    PasteResult,
     ProjectionColumn,
     ProjectionRow,
     TombstoneResult

@@ -6,14 +6,14 @@ import { Text } from '@primer/react'
 import { type Card } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 import { useAtlasCreationRequests } from './useAtlasCreationRequests'
 import { AtlasService } from '../shared/bindings'
-import { downloadJSON } from '../shared/downloadJSON'
 import { refreshAtlas, useAtlasStore } from './atlasStore'
 import { applyLens, childrenOf, groupByKind, singleRootCard } from './atlasGrouping'
 import { useAtlasPerspectives } from './useAtlasPerspectives'
 import { useAtlasNavSignals } from './useAtlasNavSignals'
-import { useAtlasImportConfirm } from './useAtlasImportConfirm'
+import { useAtlasShareIO } from './useAtlasShareIO'
 import { AtlasToolbar } from './AtlasToolbar'
 import { AtlasBoard } from './AtlasBoard'
+import { pasteSummaryText } from './pasteSummary'
 import { type AtlasFocusRequest } from './useBoardFocus'
 import { AtlasJumpDialog } from './AtlasJumpDialog'
 import { AtlasCardOverlay } from './AtlasCardOverlay'
@@ -337,21 +337,7 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
     void AtlasService.SetLens(viewedID, hidden, peek).catch(console.error)
   }
 
-  const exportAtlas = () => {
-    AtlasService.ExportAtlas()
-      .then((json) => downloadJSON('atlas.json', json))
-      .catch((err) => setImportError(String(err)))
-  }
-
-  const runImport = (text: string) => {
-    AtlasService.ImportAtlas(text)
-      .then(() => { setImportError(null); void refreshAtlas() })
-      .catch((err) => setImportError(String(err)))
-  }
-  const importConfirm = useAtlasImportConfirm({ kinds: allKinds, linkKinds: allLinkKinds, cards: allCards, links: allLinks, onImport: runImport })
-  const importFile = (file: File) => {
-    file.text().then(importConfirm.requestImport).catch((err) => setImportError(String(err)))
-  }
+  const { exportAtlas, importFile, importConfirmDialog } = useAtlasShareIO({ allKinds, allLinkKinds, allCards, allLinks, onError: setImportError })
 
   const { createCard, createTableCard, createTableFromScratch } = useAtlasCardCreate({ allCards, viewedID, viewedCard })
 
@@ -408,6 +394,7 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
           />
         )}
         <AtlasBoard
+          onPasteConverted={(res) => quietToast.show(pasteSummaryText(t, res))}
           boardFilter={boardFilter}
           onBoardFilterChange={setBoardFilter}
           filterMatchCount={filterMatchCount}
@@ -467,7 +454,7 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
           onOpenGroupEntry={openGroupEntry}
         />
       )}
-      {importConfirm.dialog}
+      {importConfirmDialog}
       <ContextMenu state={menu} onClose={() => setMenu(null)} />
       {linkMenus.labelPopover}
       {containmentMenus.dissolveDialog}

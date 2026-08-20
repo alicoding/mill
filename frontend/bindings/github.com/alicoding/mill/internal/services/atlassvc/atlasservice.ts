@@ -452,6 +452,15 @@ export function OpenCardMirror(cardID: string): $CancellablePromise<void> {
 }
 
 /**
+ * PasteToBoard converts understood clipboard text into entities under
+ * parentID, starting placement at (x, y). A user's own paste is a
+ * direct edit -- ungated, like every direct create.
+ */
+export function PasteToBoard(text: string, parentID: string, x: number, y: number): $CancellablePromise<$models.PasteResult> {
+    return $Call.ByID(233648772, text, parentID, x, y);
+}
+
+/**
  * Perspectives returns every perspective across every space -- the
  * frontend/caller scopes by SpaceID (goal 0095's slice-1 read model
  * mirrors Kinds()/LinkKinds()'s own "return everything, caller

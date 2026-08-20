@@ -240,6 +240,17 @@ export interface OfferedAction {
 }
 
 /**
+ * PasteResult reports what a paste became; Recognized=false means the
+ * text wasn't diagram-shaped and nothing was created.
+ */
+export interface PasteResult {
+    "Recognized": boolean;
+    "Cards": number;
+    "Links": number;
+    "Tables": number;
+}
+
+/**
  * ProjectionColumn is one List column's identity for rendering.
  * Options/OptionColors ride along so an options column renders as a
  * colored pill (goal 0105 part 3) -- color resolution (explicit else
