@@ -19,6 +19,22 @@ includes:
   android: ./build/android/Taskfile.yml
 
 tasks:
+  regen:
+    summary: Regenerates every committed derived artifact after a schema/docs/seed change
+    desc: |
+      One command instead of three failed-commit round trips (goal
+      0134): the contract document (schema changes), the generated
+      user docs (userdocs/docsgen changes), the seed-fingerprint
+      record (deliberate golden changes -- the SeedRevision bump in
+      the constructor is still yours to author), and the Wails
+      bindings (bound-method/type changes). Idempotent; run it before
+      committing anything that touches those surfaces.
+    cmds:
+      - go generate ./internal/contract/...
+      - go generate ./internal/docsgen
+      - go test ./internal/services/seeding/ -run TestSeedFingerprints_MatchCommittedRecord -update
+      - PATH="$HOME/go/bin:$PATH" wails3 generate bindings -clean=true -ts -i
+
   clean:
     summary: Removes every build artifact from BIN_DIR
     desc: |

@@ -2,6 +2,7 @@ package seeding
 
 import (
 	"encoding/json"
+	"flag"
 	"os"
 	"sort"
 	"strconv"
@@ -21,8 +22,27 @@ const seedFingerprintsPath = "seed_fingerprints.json"
 // (same fix: add it to seed_fingerprints.json). The failure message
 // prints the complete up-to-date file content so fixing this is a
 // straight copy-paste, not hand-computation.
+// -update rewrites the committed record from the code's current state
+// (the standard golden-file convention) -- `task regen` runs it so a
+// deliberate seed change is one command, not a failed-commit round
+// trip. The AUTHORING discipline is unchanged: the revision bump in
+// the constructor is still yours to write; -update only records it.
+var updateFingerprints = flag.Bool("update", false, "rewrite seed_fingerprints.json from the current code state")
+
 func TestSeedFingerprints_MatchCommittedRecord(t *testing.T) {
 	current := AllSeedFingerprints()
+
+	if *updateFingerprints {
+		data, err := json.MarshalIndent(current, "", "  ")
+		if err != nil {
+			t.Fatalf("marshal fingerprints: %v", err)
+		}
+		if err := os.WriteFile(seedFingerprintsPath, append(data, '\n'), 0o600); err != nil {
+			t.Fatalf("write %s: %v", seedFingerprintsPath, err)
+		}
+		t.Logf("rewrote %s (%d goldens)", seedFingerprintsPath, len(current))
+		return
+	}
 
 	raw, err := os.ReadFile(seedFingerprintsPath)
 	if err != nil {
