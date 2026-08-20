@@ -39,7 +39,8 @@
     "linksHiddenToast_one": "· {{count}} link hidden",
     "linksHiddenToast_other": "· {{count}} links hidden",
     "childrenMovedToast": "· {{count}} moved up",
-    "undo": "Undo"
+    "undo": "Undo",
+    "inlineTitleAriaLabel": "Name this card"
   },
   "jump": {
     "placeholder": "Jump to a card",

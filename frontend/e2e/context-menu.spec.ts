@@ -1,5 +1,6 @@
+import { createCardViaTray, openCard } from './fixtures/atlasBoard'
+import { deleteViaPageMenu } from './fixtures/atlasPage'
 import { test, expect } from './fixtures/server'
-import { openPlacementPopover } from './fixtures/atlasBoard'
 import { groupCard, noteCard } from './fixtures/atlasCards'
 import { contextMenu, rightClickEmptyArea } from './fixtures/contextMenu'
 import { clickRowAction } from './inventoryRow'
@@ -148,14 +149,17 @@ test('right-click on the Atlas board pane offers direct-placement Add card/Add n
   await expect(menu).not.toBeVisible()
 })
 
-test('the creation tray\'s Card tool reaches the placement popover (goal 0139: no + Add menu)', async ({ page }) => {
+test('the creation tray\'s Card tool creates instantly with an inline title (goal 0144)', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Atlas' }).click()
   await expect(page.getByTestId('atlas-board')).toBeVisible()
 
-  const popover = await openPlacementPopover(page)
-  await page.keyboard.press('Escape')
-  await expect(popover).not.toBeVisible()
+  await createCardViaTray(page, 'ZzCtxInline')
+  const card = noteCard(page, 'ZzCtxInline')
+  await expect(card).toBeVisible()
+  await openCard(page, card)
+  await deleteViaPageMenu(page, page.locator('[data-component="atlas-card-overlay"]'))
+  await expect(card).not.toBeVisible()
 })
 
 test('right-click on the canvas pane: no menu in view mode; Add step… opens the palette in edit mode', async ({ page }) => {

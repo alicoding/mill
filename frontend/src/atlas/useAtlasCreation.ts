@@ -6,6 +6,7 @@ import { useUISignalStore } from '../shared/uiSignalStore'
 import { refreshAtlas } from './atlasStore'
 import { titleFromNoteText } from './atlasCreateHelpers'
 import { freeChildPosition } from './atlasContainmentPlacement'
+import { lastUsedKindID } from './atlasCreateHelpers'
 import { computeEnclosedBoundingBoxOrigin } from './atlasBoardBoxes'
 import type { AtlasCreationTool } from './AtlasCreationTray'
 
@@ -71,9 +72,10 @@ export interface AtlasGroupRequest { cardIDs: string[]; noteIDs: string[]; pos: 
 // parentID is the board's OWN current container (AtlasView's viewedID,
 // threaded down unchanged) -- the LOCKED design's "parent = where you
 // are" rule for every canvas-foremost creation door.
-export function useAtlasCreation({ parentID, allCards, notes, readOnly, screenToFlowPosition, placementRequest, promoteRequest, groupRequest, cardBoxes, noteBoxes }: {
+export function useAtlasCreation({ parentID, allCards, kinds, notes, readOnly, screenToFlowPosition, placementRequest, promoteRequest, groupRequest, cardBoxes, noteBoxes }: {
   parentID: string
   allCards: Card[]
+  kinds: import('../../bindings/github.com/alicoding/mill/internal/domain/atlas/models').Kind[]
   notes: Note[]
   readOnly: boolean
   screenToFlowPosition: (p: { x: number; y: number }) => { x: number; y: number }
@@ -92,6 +94,9 @@ export function useAtlasCreation({ parentID, allCards, notes, readOnly, screenTo
   const [draftNoteFlowPos, setDraftNoteFlowPos] = useState<{ x: number; y: number } | null>(null)
   const [draftNoteParentOverride, setDraftNoteParentOverride] = useState<string | null>(null)
   const [editingNoteID, setEditingNoteID] = useState<string | null>(null)
+  // The freshly placed card whose title edits inline on its node
+  // (goal 0144) -- the naming happens ON the object, never in a form.
+  const [editingTitleCardID, setEditingTitleCardID] = useState<string | null>(null)
   // Read at commit/submit time only, never a useCallback dependency --
   // allCards is a fresh array reference on every store refresh, and
   // this hook's callbacks feed a builtNodes-adjacent useMemo elsewhere
@@ -99,8 +104,10 @@ export function useAtlasCreation({ parentID, allCards, notes, readOnly, screenTo
   // loop regression this file already fixed once). Synced via effect,
   // not during render (useBoardFocus.ts's own latest-ref convention).
   const allCardsRef = useRef(allCards)
+  const kindsRef = useRef(kinds)
   useEffect(() => {
     allCardsRef.current = allCards
+    kindsRef.current = kinds
   }, [allCards])
 
   // Every function below is useCallback-wrapped and returned to the
@@ -146,7 +153,19 @@ export function useAtlasCreation({ parentID, allCards, notes, readOnly, screenTo
     }
     const flowPos = screenToFlowPosition(screenPos)
     if (tool === 'card') {
-      setPopover({ mode: 'create', anchorPos: screenPos, flowPos, parentIDOverride })
+      // Instant placement (goal 0144): the click IS the creation --
+      // last-used kind, "Untitled", inline title editor on the node.
+      // The popover survives only for flows that carry richer intent
+      // (promote, area, slot-linked, paste).
+      const kindID = lastUsedKindID(kindsRef.current)
+      const targetParentID = parentIDOverride ?? parentID
+      const position = parentIDOverride ? freeChildPosition(allCardsRef.current, parentIDOverride) : { X: flowPos.x, Y: flowPos.y }
+      void AtlasService.CreateCard(kindID, 'Untitled', '', {}, targetParentID, position, ViewMode.$zero, '', '', '')
+        .then((card) => {
+          setEditingTitleCardID(card.ID)
+          return refreshAtlas()
+        })
+        .catch(console.error)
     } else {
       setDraftNoteFlowPos(flowPos)
       setDraftNoteParentOverride(parentIDOverride ?? null)
@@ -269,6 +288,18 @@ export function useAtlasCreation({ parentID, allCards, notes, readOnly, screenTo
     setDraftNoteParentOverride(null)
   }, [])
 
+  const commitCardTitle = useCallback((cardID: string, title: string) => {
+    setEditingTitleCardID(null)
+    const trimmed = title.trim()
+    if (!trimmed) return
+    const card = allCardsRef.current.find((c) => c.ID === cardID)
+    if (!card) return
+    void AtlasService.UpdateCard(cardID, trimmed, card.Note, card.Fields ?? {}, card.Source, card.MirrorPath, card.RefreshWorkflowID)
+      .then(() => refreshAtlas())
+      .catch(console.error)
+  }, [])
+  const cancelCardTitle = useCallback(() => setEditingTitleCardID(null), [])
+
   const enterNoteEdit = useCallback((noteID: string) => {
     if (!readOnly) setEditingNoteID(noteID)
   }, [readOnly])
@@ -295,6 +326,7 @@ export function useAtlasCreation({ parentID, allCards, notes, readOnly, screenTo
     setDraftNoteFlowPos(null)
     setDraftNoteParentOverride(null)
     setEditingNoteID(null)
+    setEditingTitleCardID(null)
   }, [])
 
   useEffect(() => {
@@ -357,6 +389,7 @@ export function useAtlasCreation({ parentID, allCards, notes, readOnly, screenTo
     popover, cancelPopover, submitPopover, openPromote, openPasteText, openAreaPopover, openSlotLinkedCreate,
     draftNoteFlowPos, commitDraftNote, cancelDraftNote,
     editingNoteID, enterNoteEdit, cancelNoteEdit, commitNoteEdit,
+    editingTitleCardID, commitCardTitle, cancelCardTitle,
     cancelAll,
   }
 }

@@ -8,6 +8,7 @@ import { formatUpdated } from '../shared/inventorySort'
 import { runStatusVariant } from '../shared/runTime'
 import { StatusStamp } from '../shared/StatusStamp'
 import { basenameOf, hostnameOf } from './atlasCardPresentation'
+import { normalizeExternalURL } from '../shared/externalUrl'
 import styles from './AtlasCardPage.module.css'
 
 // The page's own meta rail (goal 0072 slice C): stacked mono rows,
@@ -57,7 +58,7 @@ export function AtlasCardPageMetaRail({
       {card.Source && (
         <div className={styles.metaRow} data-testid="atlas-page-meta-source">
           <span className={styles.metaLabel}>{t('page.metaSource')}</span>
-          <a href={card.Source} data-wml-openURL={card.Source} data-testid="atlas-overlay-source-link" className={styles.metaValue}>
+          <a href={normalizeExternalURL(card.Source)} data-wml-openURL={normalizeExternalURL(card.Source)} data-testid="atlas-overlay-source-link" className={styles.metaValue}>
             {hostnameOf(card.Source)}
           </a>
           {recognizedLabel && (

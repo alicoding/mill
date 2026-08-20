@@ -26,6 +26,7 @@ export function buildBoardCardNodes({
   cards, allCards, kinds, links, linkKinds, isFree, readOnly, boardWidth, freeMoves, arteries,
   pulsedID, hintedID, hoveredFrameID, isSoleSelected, onOpenOverlay, handleDrill,
   slotDragSourceID, onSlotAnchorPointerDown, hasLegalTargets, boardFilter,
+  titleEditCardID, onTitleCommit, onTitleCancel,
 }: {
   cards: Card[]
   allCards: Card[]
@@ -62,6 +63,9 @@ export function buildBoardCardNodes({
   // The board filter (goal 0129 slice 1): leaf cards outside the
   // match DIM in place; frames never dim (structure, not results).
   boardFilter: BoardFilter
+  titleEditCardID: string | null
+  onTitleCommit: (id: string, title: string) => void
+  onTitleCancel: () => void
 }): BoardCardRFNode[] {
   const kindByID = new Map(kinds.map((k) => [k.ID, k]))
   const adjacency = new Map<string, string[]>()
@@ -92,6 +96,9 @@ export function buildBoardCardNodes({
     hasLegalTargets,
     onCommit: onOpenOverlay,
     onSlotAnchorPointerDown: (linkKindID: string, e: ReactPointerEvent) => onSlotAnchorPointerDown(card.ID, linkKindID, e),
+    titleEditing: card.ID === titleEditCardID,
+    onTitleCommit,
+    onTitleCancel,
   })
 
   for (const card of cards) {

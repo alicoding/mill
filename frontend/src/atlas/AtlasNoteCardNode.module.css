@@ -227,3 +227,18 @@
   opacity: 0.25;
   transition: opacity 120ms linear;
 }
+
+/* The inline title editor (goal 0144): the title's own box, accent
+   border as the whole edit signal -- nothing on the card moves. */
+.titleInput {
+  font: inherit;
+  font-weight: 600;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0 2px;
+  border: 1px solid var(--borderColor-accent-emphasis);
+  border-radius: 3px;
+  background: var(--bgColor-default);
+  color: var(--fgColor-default);
+  outline: none;
+}

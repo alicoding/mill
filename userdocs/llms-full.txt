@@ -277,6 +277,10 @@ into.
   the area's preview or from inside — and it moves up a level, or
   into whichever area you drop it on. Perspectives save named views
   of the map.
+- **Create by pointing.** Press C (or pick Card in the toolbar) and
+  click — the card appears right there and you name it in place;
+  Enter keeps the name, Escape keeps it as Untitled. Web addresses
+  on a card are real links — click one to open it in your browser.
 - **Filter without losing the map.** The search control on the board
   (top right) dims everything that doesn't match your text, chosen
   kinds, or field values (the Fields menu lists every choice-type

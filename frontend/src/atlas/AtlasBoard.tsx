@@ -184,7 +184,7 @@ function AtlasBoardInner({ boardFilter, onBoardFilterChange, filterMatchCount, f
   const noteBoxes = useMemo(() => (isFree ? computeNoteBoxes(notes) : []), [notes, isFree])
 
   const tablePicker = useTablePickerSignal()
-  const creation = useAtlasCreation({ parentID, allCards, notes, readOnly, screenToFlowPosition, placementRequest, promoteRequest, groupRequest, cardBoxes: topLevelBoxes, noteBoxes })
+  const creation = useAtlasCreation({ parentID, allCards, kinds, notes, readOnly, screenToFlowPosition, placementRequest, promoteRequest, groupRequest, cardBoxes: topLevelBoxes, noteBoxes })
   const selection = useAtlasSelection({ cards, notes, onMultiSelectContextMenu })
 
   // Delete/Backspace over a live selection -> the shared confirm
@@ -262,8 +262,8 @@ function AtlasBoardInner({ boardFilter, onBoardFilterChange, filterMatchCount, f
     cards, allCards, kinds, links, linkKinds, isFree, readOnly, boardWidth, freeMoves, arteries,
     pulsedID, hintedID, hoveredFrameID: dragFiling.hoveredFrameID,
     isSoleSelected: selection.isSoleSelected, onOpenOverlay, handleDrill,
-    slotDragSourceID: slotDrag.dragSourceID, onSlotAnchorPointerDown: slotDrag.startDrag, hasLegalTargets, boardFilter,
-  }), [cards, allCards, kinds, links, linkKinds, isFree, readOnly, pulsedID, hintedID, onOpenOverlay, handleDrill, freeMoves, arteries, boardWidth, dragFiling.hoveredFrameID, selection.isSoleSelected, slotDrag.dragSourceID, slotDrag.startDrag, hasLegalTargets, boardFilter])
+    slotDragSourceID: slotDrag.dragSourceID, onSlotAnchorPointerDown: slotDrag.startDrag, hasLegalTargets, boardFilter, titleEditCardID: creation.editingTitleCardID, onTitleCommit: creation.commitCardTitle, onTitleCancel: creation.cancelCardTitle,
+  }), [cards, allCards, kinds, links, linkKinds, isFree, readOnly, pulsedID, hintedID, onOpenOverlay, handleDrill, freeMoves, arteries, boardWidth, dragFiling.hoveredFrameID, selection.isSoleSelected, slotDrag.dragSourceID, slotDrag.startDrag, hasLegalTargets, boardFilter, creation.editingTitleCardID, creation.commitCardTitle, creation.cancelCardTitle])
 
   // Edge hover/selection + the edges it drives: useAtlasEdgeInteraction.ts.
   const { edges, setHoveredEdgeID, onSelectionChange } = useAtlasEdgeInteraction({

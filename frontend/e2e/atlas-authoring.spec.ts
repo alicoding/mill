@@ -10,7 +10,7 @@ import {
 } from './fixtures/server'
 import { contextMenu, rightClickEmptyArea } from './fixtures/contextMenu'
 import { ATLAS_KIND_CONTACT, ATLAS_KIND_TOPIC, selectKind } from './fixtures/kindPicker'
-import { clickCorner, groupCard, noteCard, submitCreatePopover, zoomAllTheWayOut } from './fixtures/atlasBoard'
+import { clickCorner, groupCard, noteCard, zoomAllTheWayOut } from './fixtures/atlasBoard'
 
 // Atlas creation core (goal 0081 slice A1): the tray, its placement
 // popover, right-click create, sticky notes, and the note promotion
@@ -136,27 +136,21 @@ test('atlas creation core: tray, placement popover, right-click create, sticky n
     // --- C -> click -> popover -> choose kind + type title -> card
     // appears -- top-right, still clear of the promoted card sitting
     // in the top-left corner. ---
+    await page.evaluate((kindID) => localStorage.setItem('atlas.lastKindId', kindID), ATLAS_KIND_TOPIC)
     await page.keyboard.press('c')
     await expect(cardTool).toHaveAttribute('data-armed', 'true')
     await clickCorner(board, 'top-right')
     await expect(cardTool).toHaveAttribute('data-armed', 'false')
-    await expect(popover).toBeVisible()
 
-    // The create loop (goal 0106 slice B contract item 4: C -> click ->
-    // title -> Enter -> board) audited: the popover's own resting chrome
-    // is the kind chip + title input ONLY -- no "Kind"/"Title" labels,
-    // no visible Submit/Cancel row (Enter/Escape are the only commit/
-    // cancel paths). The title input is already focused.
-    await expect(popover.getByText('Kind', { exact: true })).toHaveCount(0)
-    await expect(popover.getByText('Title', { exact: true })).toHaveCount(0)
-    await expect(popover.getByTestId('atlas-placement-submit')).toHaveCount(0)
-    await expect(popover.getByTestId('atlas-placement-cancel')).toHaveCount(0)
-    await expect(popover.getByTestId('atlas-placement-title')).toBeFocused()
-
-    await selectKind(popover, ATLAS_KIND_TOPIC)
-    await popover.getByTestId('atlas-placement-title').fill('ZzE2eRootCard')
-    await submitCreatePopover(popover)
-    await expect(popover).not.toBeVisible()
+    // The create loop (goal 0144's instant placement): the click IS
+    // the creation -- no popover, no form; the new node's own title
+    // edits inline, already focused.
+    await expect(popover).toHaveCount(0)
+    const inline = page.getByTestId('atlas-inline-title')
+    await expect(inline).toBeFocused()
+    await inline.fill('ZzE2eRootCard')
+    await inline.press('Enter')
+    await expect(inline).toHaveCount(0)
     await expect(noteCard(page, 'ZzE2eRootCard')).toBeVisible()
     // Regression: one confirm creates exactly ONE card. StrictMode
     // double-invokes setState updater functions, so a service call
@@ -177,13 +171,14 @@ test('atlas creation core: tray, placement popover, right-click create, sticky n
     await exampleArea.getByTestId('atlas-group-header').click()
     await expect(page.getByTestId('atlas-breadcrumb')).toContainText('Example area')
     await zoomAllTheWayOut(page)
+    await page.evaluate((kindID) => localStorage.setItem('atlas.lastKindId', kindID), ATLAS_KIND_CONTACT)
     await page.keyboard.press('c')
     await clickCorner(board, 'top-left')
-    await expect(popover).toBeVisible()
-    await selectKind(popover, ATLAS_KIND_CONTACT)
-    await popover.getByTestId('atlas-placement-title').fill('ZzE2eAreaCard')
-    await submitCreatePopover(popover)
-    await expect(popover).not.toBeVisible()
+    const areaInline = page.getByTestId('atlas-inline-title')
+    await expect(areaInline).toBeVisible()
+    await areaInline.fill('ZzE2eAreaCard')
+    await areaInline.press('Enter')
+    await expect(areaInline).toHaveCount(0)
     await expect(noteCard(page, 'ZzE2eAreaCard')).toBeVisible()
 
     await page.keyboard.press('Meta+ArrowUp')
