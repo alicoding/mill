@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ActionList, ActionMenu, Button, Label, Select, Text, TextInput } from '@primer/react'
+import { ActionList, ActionMenu, Button, IconButton, Label, Text } from '@primer/react'
 import { KebabHorizontalIcon } from '@primer/octicons-react'
 import { ConfigureService } from './bindings'
 import { type Field, Type as FieldType } from '../../bindings/github.com/alicoding/mill/internal/domain/typedfield/models'
@@ -57,57 +57,66 @@ function rowTintStyle(columns: GridColumn[], values: { [key: string]: string | u
   return { background: `var(--bgColor-${color}-muted)` }
 }
 
-function GridCellEditor({ column, editing, onChange, onCommit, onCancel }: {
+// The cell editor is an OVERLAY filling the cell's exact box (goal
+// 0140: zero layout shift -- the row's height and every neighbor stay
+// pixel-identical while editing). Plain token-styled form controls,
+// deliberately not the kit's TextInput: its wrapper chrome is taller
+// than a cell, and a bare input is a form control, not overlay
+// machinery. Keyboard: Tab commits + moves right (Shift+Tab left),
+// Enter commits + moves down, Escape cancels -- the spreadsheet
+// model, identical in every consumer.
+function GridCellEditor({ column, editing, onChange, onCommit, onCancel, onAdvance }: {
   column: GridColumn
   editing: { value: string }
   onChange: (value: string) => void
   onCommit: (value?: string) => void
   onCancel: () => void
+  onAdvance: (dRow: number, dCol: number) => void
 }) {
   const { t } = useTranslation('common')
-  if ((column.Options?.length ?? 0) > 0) {
-    // An options column edits as a select over its own declared
-    // values -- committed immediately on pick (nothing to type).
-    return (
-      <Select
-        autoFocus size="small" value={editing.value}
-        aria-label={column.Label || column.Key}
-        data-testid="atlas-projection-cell-select"
-        onChange={(e) => onCommit(e.target.value)}
-        onBlur={() => onCommit()}
-      >
-        <Select.Option value="">{'—'}</Select.Option>
-        {(column.Options ?? []).map((opt) => <Select.Option key={opt} value={opt}>{opt}</Select.Option>)}
-      </Select>
-    )
+  const navKeys = (e: React.KeyboardEvent) => {
+    if (e.key === 'Tab') {
+      e.preventDefault()
+      onAdvance(0, e.shiftKey ? -1 : 1)
+    } else if (e.key === 'Enter') {
+      e.preventDefault()
+      onAdvance(1, 0)
+    } else if (e.key === 'Escape') {
+      e.preventDefault()
+      onCancel()
+    }
   }
-  if (column.Type === FieldType.TypeBoolean) {
+  if ((column.Options?.length ?? 0) > 0 || column.Type === FieldType.TypeBoolean) {
+    const options = (column.Options?.length ?? 0) > 0
+      ? (column.Options ?? []).map((opt) => ({ value: opt, label: opt }))
+      : [{ value: 'true', label: t('listGrid.booleanTrue') }, { value: 'false', label: t('listGrid.booleanFalse') }]
     return (
-      <Select
-        autoFocus size="small" value={editing.value}
+      <select
+        autoFocus
+        className={styles.cellEditor}
+        value={editing.value}
         aria-label={column.Label || column.Key}
         data-testid="atlas-projection-cell-select"
         onChange={(e) => onCommit(e.target.value)}
         onBlur={() => onCommit()}
+        onKeyDown={navKeys}
       >
-        <Select.Option value="">{'—'}</Select.Option>
-        <Select.Option value="true">{t('listGrid.booleanTrue')}</Select.Option>
-        <Select.Option value="false">{t('listGrid.booleanFalse')}</Select.Option>
-      </Select>
+        <option value="">{'—'}</option>
+        {options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+      </select>
     )
   }
   return (
-    <TextInput
-      autoFocus size="small" value={editing.value}
+    <input
+      autoFocus
+      className={styles.cellEditor}
+      value={editing.value}
       type={column.Type === FieldType.TypeNumber ? 'number' : 'text'}
       aria-label={column.Label || column.Key}
       data-testid="atlas-projection-cell-input"
       onChange={(e) => onChange(e.target.value)}
       onBlur={() => onCommit()}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter') onCommit()
-        if (e.key === 'Escape') onCancel()
-      }}
+      onKeyDown={navKeys}
     />
   )
 }
@@ -127,8 +136,41 @@ export function ListGrid({ listID, columns, rows, density, schemaEditing = true 
   const [renaming, setRenaming] = useState<{ key: string; label: string } | null>(null)
   const [error, setError] = useState('')
 
+  // Rapid commits in one row must not lose each other: UpdateListRow
+  // replaces the row's whole values map, and the rows PROP lags the
+  // server, so a Tab-chain's second commit built from props alone
+  // would wipe the first (goal 0140's keyboard chain surfaced it).
+  // This ref carries the session's own commits until fresh rows land.
+  const committedRef = useRef(new Map<string, Record<string, string>>())
+  useEffect(() => {
+    committedRef.current.clear()
+  }, [rows])
+
   const report = (err: unknown) => setError(String(err))
   const clearThen = () => setError('')
+
+  // advanceEdit commits the current cell and opens the neighbor
+  // (goal 0140's Tab/Enter chain); off-grid movement just commits.
+  const advanceEdit = (dRow: number, dCol: number) => {
+    if (!editing) return
+    const rowIdx = rows.findIndex((r) => r?.ID === editing.rowID)
+    const colIdx = columns.findIndex((c) => c.Key === editing.key)
+    commitCell()
+    let nRow = rowIdx
+    let nCol = colIdx + dCol
+    if (nCol >= columns.length) {
+      nCol = 0
+      nRow++
+    } else if (nCol < 0) {
+      nCol = columns.length - 1
+      nRow--
+    }
+    nRow += dRow
+    const row = rows[nRow]
+    const col = columns[nCol]
+    if (!row || !col) return
+    setEditing({ rowID: row.ID, key: col.Key, value: row.Values?.[col.Key] ?? '' })
+  }
 
   const commitCell = (value?: string) => {
     if (!editing) return
@@ -136,7 +178,11 @@ export function ListGrid({ listID, columns, rows, density, schemaEditing = true 
     const edit = { ...editing, value: value ?? editing.value }
     setEditing(null)
     if (!row) return
-    const values = { ...(row.Values ?? {}), [edit.key]: edit.value }
+    const values: Record<string, string> = {}
+    for (const [k, v] of Object.entries(row.Values ?? {})) values[k] = v ?? ''
+    Object.assign(values, committedRef.current.get(row.ID))
+    values[edit.key] = edit.value
+    committedRef.current.set(row.ID, values)
     ConfigureService.UpdateListRow(listID, row.ID, values, (row.Status || 'active') as RowStatus)
       .then(clearThen).catch(report)
   }
@@ -234,9 +280,19 @@ export function ListGrid({ listID, columns, rows, density, schemaEditing = true 
   const headerCell = (c: GridColumn, colIdx: number) => (
     <th key={c.Key} data-testid="atlas-projection-header" data-deprecated={c.Deprecated ? 'true' : undefined}>
       <span className={styles.headerInner}>
-        {renaming?.key === c.Key ? (
-          <TextInput
-            autoFocus size="small" value={renaming.label}
+        <button
+          type="button"
+          className={styles.headerButton}
+          title={t('listGrid.renameColumnTitle')}
+          onClick={() => setRenaming({ key: c.Key, label: c.Label || c.Key })}
+        >
+          {c.Label || c.Key}
+        </button>
+        {renaming?.key === c.Key && (
+          <input
+            autoFocus
+            className={styles.cellEditor}
+            value={renaming.label}
             aria-label={t('listGrid.renameColumnAriaLabel')}
             data-testid="atlas-projection-rename-input"
             onChange={(e) => setRenaming({ ...renaming, label: e.target.value })}
@@ -246,15 +302,6 @@ export function ListGrid({ listID, columns, rows, density, schemaEditing = true 
               if (e.key === 'Escape') setRenaming(null)
             }}
           />
-        ) : (
-          <button
-            type="button"
-            className={styles.headerButton}
-            title={t('listGrid.renameColumnTitle')}
-            onClick={() => setRenaming({ key: c.Key, label: c.Label || c.Key })}
-          >
-            {c.Label || c.Key}
-          </button>
         )}
         {schemaEditing && (
           <ListGridColumnPopover
@@ -311,16 +358,16 @@ export function ListGrid({ listID, columns, rows, density, schemaEditing = true 
                       data-testid="atlas-projection-cell"
                       onClick={() => setEditing({ rowID: row.ID, key: c.Key, value: row.Values?.[c.Key] ?? '' })}
                     >
-                      {editing && editing.rowID === row.ID && editing.key === c.Key ? (
+                      {cellContent(c, row.Values?.[c.Key] ?? '')}
+                      {editing && editing.rowID === row.ID && editing.key === c.Key && (
                         <GridCellEditor
                           column={c}
                           editing={editing}
                           onChange={(value) => setEditing({ ...editing, value })}
                           onCommit={commitCell}
                           onCancel={() => setEditing(null)}
+                          onAdvance={advanceEdit}
                         />
-                      ) : (
-                        cellContent(c, row.Values?.[c.Key] ?? '')
                       )}
                       {colIdx === 0 && (
                         <span className={styles.rowAffordances}>
@@ -337,15 +384,16 @@ export function ListGrid({ listID, columns, rows, density, schemaEditing = true 
                           {schemaEditing && (
                             <span onClick={(e) => e.stopPropagation()} className={styles.rowMenu}>
                               <ActionMenu>
-                                <ActionMenu.Button
-                                  leadingVisual={KebabHorizontalIcon}
-                                  size="small"
-                                  variant="invisible"
-                                  data-testid="atlas-projection-row-menu"
-                                  aria-label={t('listGrid.rowMenuAriaLabel')}
-                                >
-                                  {''}
-                                </ActionMenu.Button>
+                                <ActionMenu.Anchor>
+                                  <IconButton
+                                    icon={KebabHorizontalIcon}
+                                    size="small"
+                                    variant="invisible"
+                                    className={styles.rowMenuButton}
+                                    data-testid="atlas-projection-row-menu"
+                                    aria-label={t('listGrid.rowMenuAriaLabel')}
+                                  />
+                                </ActionMenu.Anchor>
                                 <ActionMenu.Overlay>
                                   <ActionList>
                                     {row.Status === 'expired' ? (

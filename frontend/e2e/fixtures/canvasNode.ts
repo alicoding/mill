@@ -90,5 +90,8 @@ export async function clickCanvasNode(page: Page, panel: Locator, label: string)
     }
     await target.click({ timeout: 3_000 })
     await expect(panel.locator('.react-flow__node.selected')).toHaveAttribute('data-id', nodeID)
-  }).toPass({ timeout: 10_000, intervals: [300] })
+      // CI runners under load need longer than local for the same
+    // re-delivered interaction (0134's shard-1 cluster: three same-day
+    // occurrences of this poll expiring on a loaded runner).
+  }).toPass({ timeout: process.env.CI ? 25_000 : 10_000, intervals: [300] })
 }

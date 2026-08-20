@@ -226,3 +226,55 @@ test('Example: Track in a list runs end to end -- creates then updates the same 
   await expect(shippedRow).toHaveAttribute('data-row-status', 'active')
   await page.getByTestId('configure-lists').getByRole('button', { name: 'Close' }).click()
 })
+
+// Grid editing stability (goal 0140): the editor overlays the cell's
+// exact box (zero layout shift), boundaries are visible, and the
+// spreadsheet keyboard chain works.
+test('cell editing never shifts the row, and Tab/Enter walk the grid', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Configure' }).click()
+  await page.getByRole('tab', { name: 'Lists' }).click()
+
+  await page.getByTestId('new-list').click()
+  await page.getByLabel('Label').fill('E2E keyboard grid')
+  await page.getByRole('button', { name: 'Save list' }).click()
+  await expect(page.getByTestId('list-rows-editor')).toBeVisible()
+  await addGridColumn(page, 'Alpha')
+  await addGridColumn(page, 'Beta')
+  await page.getByTestId('atlas-projection-add-row').click()
+  await page.getByTestId('atlas-projection-add-row').click()
+
+  const firstRow = page.getByTestId('atlas-projection-row').first()
+  const boxBefore = await firstRow.boundingBox()
+  const firstCell = firstRow.getByTestId('atlas-projection-cell').first()
+  await firstCell.click()
+  const input = page.getByTestId('atlas-projection-cell-input')
+  await expect(input).toBeVisible()
+
+  // Zero layout shift: the row's box is identical while editing.
+  const boxDuring = await firstRow.boundingBox()
+  expect(boxDuring?.height).toBe(boxBefore?.height)
+  expect(boxDuring?.y).toBe(boxBefore?.y)
+
+  // Visible boundary: the cell carries a right border.
+  const borderRight = await firstCell.evaluate((el) => getComputedStyle(el).borderRightWidth)
+  expect(borderRight).toBe('1px')
+
+  // Keyboard chain: type in A1, Tab -> B1, type, Enter -> B2.
+  await input.fill('a1')
+  await input.press('Tab')
+  await expect(page.getByTestId('atlas-projection-cell-input')).toBeVisible()
+  await page.getByTestId('atlas-projection-cell-input').fill('b1')
+  await page.getByTestId('atlas-projection-cell-input').press('Enter')
+  await expect(page.getByTestId('atlas-projection-cell-input')).toBeVisible()
+  await page.getByTestId('atlas-projection-cell-input').press('Escape')
+
+  await expect(firstRow.getByTestId('atlas-projection-cell').nth(0)).toContainText('a1')
+  await expect(firstRow.getByTestId('atlas-projection-cell').nth(1)).toContainText('b1')
+
+  // Clean up.
+  await page.getByTestId('configure-lists').getByRole('button', { name: 'Close' }).click()
+  const row = listRow(page, 'E2E keyboard grid')
+  await clickRowAction(page, row, 'Delete')
+  await expect(row).toHaveCount(0)
+})

@@ -79,7 +79,10 @@ export async function openCard(page: Page, card: Locator): Promise<void> {
     await expect(async () => {
       await card.click()
       await expect(selectedWrapper).toHaveCount(1, { timeout: 1_000 })
-    }).toPass({ timeout: 10_000, intervals: [300] })
+        // CI runners under load need longer than local for the same
+    // re-delivered interaction (0134's shard-1 cluster: three same-day
+    // occurrences of this poll expiring on a loaded runner).
+  }).toPass({ timeout: process.env.CI ? 25_000 : 10_000, intervals: [300] })
   }
   await card.click()
   await expect(page.getByTestId('atlas-page-header')).toBeVisible()

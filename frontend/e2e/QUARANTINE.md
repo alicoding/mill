@@ -72,3 +72,13 @@ Entries below left the active register on this date, fixed by applying
   select → member-right-click → Group chain and Delete-over-
   selection. Only the box-drag SYNTHESIS remains quarantined; its
   live check stays in testing.md's manual registry.
+
+## atlas-table-resize (entered 2026-08-20, review 2026-09-20)
+Class: pointer-coalescing (same family as atlas-select-group's
+box-drag). The NodeResizer drag in
+atlas-table-projection.spec.ts's resize test no-ops on CI runners
+(synthesized pointermove deltas coalesce; expected >537px, received
+460 = zero growth) while passing locally 3/3. CI skips the gesture
+via test.skip; the behavior stays covered by TestSetCardSize (Go)
+and the local run. Leave by fix (a deterministic resize driver) or
+review-date decision.

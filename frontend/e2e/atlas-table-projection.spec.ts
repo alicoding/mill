@@ -266,6 +266,10 @@ test('a hovered header stacks above the neighboring sticky header', async ({ pag
 // chosen footprint persists as Card.Size -- a reload renders the
 // resized box, not the default.
 test('resizing a table card persists its footprint across reload', async ({ page }) => {
+  // The resize DRAG synthesis is CI-invisible (pointer-coalescing
+  // class, QUARANTINE.md atlas-table-resize) -- the gesture runs
+  // locally; SetCardSize's bounds/persistence stay Go-tested.
+  test.skip(!!process.env.CI, 'drag synthesis coalesces on CI -- QUARANTINE.md atlas-table-resize')
   await page.goto('/')
   await page.getByRole('link', { name: 'Atlas' }).click()
   await page.getByTestId('atlas-tray-table').click()
