@@ -280,12 +280,18 @@ test('arrow-nudge persists the selected card\'s position', async ({ page }) => {
   await expect.poll(async () => gettingNode.evaluate((el) => (el as HTMLElement).style.transform), { timeout: 10_000 }).toBe(after)
 
   // Cleanup: nudge back to the seeded position (testing.md's
-  // within-file discipline -- no later test in this file depends on
-  // it, but leaving drift around is still unnecessary).
+  // within-file discipline). Press-until-restored, not a fixed count
+  // (goal 0134 class 1): the forward presses can be lost on the CI
+  // runner, so a mirrored fixed count overshoots or undershoots --
+  // re-delivering one press per poll attempt restores the exact
+  // seeded transform regardless of how many forward presses landed.
   await getting.click()
   await expect(selectedWrapper(page, getting)).toHaveCount(1)
-  for (let i = 0; i < 5; i++) await page.keyboard.press('ArrowLeft')
-  await expect.poll(async () => gettingNode.evaluate((el) => (el as HTMLElement).style.transform)).toBe(before)
+  await expect.poll(async () => {
+    const current = (await gettingNode.evaluate((el) => (el as HTMLElement).style.transform)) ?? ''
+    if (current !== before) await page.keyboard.press('ArrowLeft')
+    return gettingNode.evaluate((el) => (el as HTMLElement).style.transform)
+  }, { timeout: 15_000 }).toBe(before)
 })
 
 // Verify-only (goal 0106 slice B's residual audit): arrows with NO
