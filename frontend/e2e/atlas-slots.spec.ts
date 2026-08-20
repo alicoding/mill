@@ -158,8 +158,15 @@ test('atlas typed link slots: page slot rows, hover-handle slot-drag linking, ch
     // reliably left the SVG edge's own mouseleave un-fired here
     // (reproduced twice); dragBetween's own multi-step technique is
     // what actually exercises real hover-transition handlers.
-    await page.mouse.move(cornerBox.x + 12, cornerBox.y + 12, { steps: 20 })
-    await expect(activeLabel).toHaveCount(0)
+    // Re-delivered un-hover (goal 0134 class 1): the CI runner has
+    // dropped a single move's mouseleave with the chip stuck hovered
+    // (3/3 on one run, local-green) -- polling WITH a fresh move per
+    // attempt re-delivers the transition until the handler really
+    // fires, asserting the same property without blind retries.
+    await expect.poll(async () => {
+      await page.mouse.move(cornerBox.x + 12, cornerBox.y + 12, { steps: 20 })
+      return activeLabel.count()
+    }, { timeout: 10_000 }).toBe(0)
 
     // --- Edge right-click: Change link kind / Edit label / Remove link ---
     await edge.click({ button: 'right' })
