@@ -18,6 +18,7 @@ import { AtlasStructureDialogs } from './AtlasStructureDialogs'
 import { type AtlasFocusRequest } from './useBoardFocus'
 import { AtlasJumpDialog } from './AtlasJumpDialog'
 import { AtlasCardOverlay } from './AtlasCardOverlay'
+import { AtlasNoteOverlay } from './AtlasNoteOverlay'
 import { ContextMenu, type ContextMenuState } from '../shared/ContextMenu'
 import { AtlasMatrixView } from './AtlasMatrixView'
 import { AtlasCoverageView } from './AtlasCoverageView'
@@ -64,13 +65,10 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
   const allLinks = links ?? []
   const allNotes = notes ?? []
   const allPerspectives = perspectives ?? []
-  // Board-scoped perspective state + membership filtering (ADR-0041,
-  // goal 0095 slice 2) -- see useAtlasPerspectives.ts's own header
-  // comment. Declared early (ahead of the session-restore effects
-  // below, which need setActivePerspectiveID) rather than grouped with
-  // the other `allX` derivations further down. The breadcrumb
-  // (AtlasToolbar's own `cards` prop below) stays on the UNFILTERED
-  // allCards -- ancestry text is never perspective-narrowed.
+  // Perspective state + membership filtering (ADR-0041): declared
+  // early -- the session-restore effects below need
+  // setActivePerspectiveID. The breadcrumb stays on UNFILTERED
+  // allCards; ancestry text is never perspective-narrowed.
   const {
     activePerspectiveID, setActivePerspectiveID, boardAllCards, boardLinks,
     switchPerspective, createPerspective, renamePerspective, deletePerspective,
@@ -250,6 +248,7 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
   const undoToast = useAtlasUndoToast()
   // A quiet, no-undo toast (membership writes, clipboard feedback).
   const quietToast = useAtlasQuietToast()
+  const [openNoteID, setOpenNoteID] = useState<string | null>(null)
 
   const deleteConfirm = useAtlasDeleteConfirm({ t, allCards, notes: allNotes })
 
@@ -262,8 +261,8 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
     requestLinkedCard: creationRequests.requestLinkedCard, guardDelete: deleteConfirm.guardDelete,
   })
 
-  // The empty-board right-click (goal 0075's audit G3, superseded by
-  // goal 0081 slice A2's rider b): direct-placement doors only -- the
+  // The empty-board right-click (goal 0081 A2 rider b):
+  // direct-placement doors only -- the
   // dialog-based "Add card…" item is gone (the toolbar's own "+ Add"
   // button still reaches that dialog through its own menu, unrelated
   // to this one). Nothing else fired the old openChildRequest counter
@@ -284,7 +283,7 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
 
   const noteMenu = useAtlasNoteMenu({
     t, allNotes, setMenu, onDeleted: undoToast.registerDelete, onError: setShareError,
-    requestPromote: creationRequests.requestPromote,
+    requestPromote: creationRequests.requestPromote, onOpenNote: setOpenNoteID,
   })
 
   // Frame/multi-select context menus + their dissolve/delete-with-
@@ -300,12 +299,9 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
     requestGroup: (cardIDs, noteIDs, pos) => creationRequests.requestGroup(cardIDs, noteIDs, pos), guardDelete: deleteConfirm.guardDelete,
   })
 
-  // ⌘K's GO/OPEN (goal 0072 slice B): a target is already rendered on
-  // the current board either as one of its direct children, or --
-  // AtlasBoard's own one-nesting-level-deep group preview -- as a
-  // grandchild whose parent is itself a rendered child. Anything else
-  // needs a re-root to the target's own parent before AtlasBoard can
-  // fly to it.
+  // ⌘K's GO/OPEN (goal 0072 slice B): a target already rendered (a
+  // direct child, or a preview grandchild) flies; anything else
+  // re-roots to the target's parent first.
   const jumpToCard = (card: Card, openImmediately: boolean) => {
     const parentIsRenderedChild = allCards.find((c) => c.ID === card.ParentID)?.ParentID === viewedID
     if (card.ParentID !== viewedID && !parentIsRenderedChild) setViewedID(card.ParentID)
@@ -432,6 +428,7 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
           onMultiSelectContextMenu={containmentMenus.openMultiSelectMenu}
           onDeleteSelection={containmentMenus.deleteSelection}
           onQuietToast={quietToast.show}
+          onOpenNote={setOpenNoteID}
           onGroupSelection={(cardIDs, noteIDs, pos) => creationRequests.requestGroup(cardIDs, noteIDs, pos)}
           placementRequest={creationRequests.placementRequest}
           promoteRequest={creationRequests.promoteRequest}
@@ -470,6 +467,10 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
       <ContextMenu state={menu} onClose={() => setMenu(null)} />
       {linkMenus.labelPopover}
       {containmentMenus.dissolveDialog}{deleteConfirm.deleteConfirmDialog}
+      {(() => {
+        const openNote = openNoteID ? allNotes.find((n) => n.ID === openNoteID) : null
+        return openNote ? <AtlasNoteOverlay key={openNote.ID} note={openNote} onClose={() => setOpenNoteID(null)} /> : null
+      })()}
 
       <AtlasMatrixView
         open={matrixOpen}
