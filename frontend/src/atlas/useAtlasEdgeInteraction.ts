@@ -1,7 +1,8 @@
 import { useCallback, useMemo, useState } from 'react'
 import type { TFunction } from 'i18next'
 import type { OnSelectionChangeFunc } from '@xyflow/react'
-import type { LinkKind } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
+import type { Card, Kind, LinkKind } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
+import type { Edge } from '@xyflow/react'
 import type { ResolvedBoardEdge } from './atlasLinkResolution'
 import { buildBoardEdges } from './atlasBuildBoardEdges'
 
@@ -11,10 +12,21 @@ import { buildBoardEdges } from './atlasBuildBoardEdges'
 // hovered/pinned drives the hover chip's own visibility, and both
 // states are threaded straight into buildBoardEdges.
 export function useAtlasEdgeInteraction({
-  arteries, linkKinds, t, onEdgeDeleteLink, onEdgeChangeKind, onNodeSelectionChange,
+  arteries, linkKinds, allCards, renderedIDs, kinds, t, onEdgeDeleteLink, onEdgeChangeKind, onNodeSelectionChange,
 }: {
   arteries: ResolvedBoardEdge[]
   linkKinds: LinkKind[]
+  // Every card + the ids actually rendered as nodes (top level AND
+  // one-deep frame previews), for DERIVED cardref edges (goal 0152
+  // slice 2): a card whose cardref field names another rendered card
+  // draws a dashed, non-interactive edge labeled by the field --
+  // derived from the field value on every render, never a stored
+  // Link, so it can't drift from the data. Both endpoints must be
+  // rendered nodes (no artery aggregation to an ancestor -- recorded
+  // limitation in the goal file).
+  allCards: Card[]
+  renderedIDs: Set<string>
+  kinds: Kind[]
   t: TFunction<'atlas'>
   onEdgeDeleteLink: (linkID: string) => void
   onEdgeChangeKind: (linkID: string, pos: { x: number; y: number }) => void
@@ -39,10 +51,30 @@ export function useAtlasEdgeInteraction({
   }, [onNodeSelectionChange])
 
   // Quiet edges (goal 0081 A4): see atlasBuildBoardEdges.ts.
-  const edges = useMemo(
-    () => buildBoardEdges(arteries, linkKinds, hoveredEdgeID, selectedEdgeID, t, onEdgeDeleteLink, onEdgeChangeKind),
-    [arteries, linkKinds, hoveredEdgeID, selectedEdgeID, t, onEdgeDeleteLink, onEdgeChangeKind],
-  )
+  const edges = useMemo(() => {
+    const built: Edge[] = buildBoardEdges(arteries, linkKinds, hoveredEdgeID, selectedEdgeID, t, onEdgeDeleteLink, onEdgeChangeKind)
+    const kindByID = new Map(kinds.map((k) => [k.ID, k]))
+    for (const card of allCards) {
+      if (!renderedIDs.has(card.ID)) continue
+      for (const f of kindByID.get(card.KindID)?.Fields ?? []) {
+        if (f.Type !== 'cardref') continue
+        const target = card.Fields?.[f.Key] ?? ''
+        if (!target || !renderedIDs.has(target) || target === card.ID) continue
+        built.push({
+          id: `cardref-${card.ID}-${f.Key}`,
+          source: card.ID,
+          target,
+          label: f.Label || f.Key,
+          selectable: false,
+          focusable: false,
+          style: { stroke: 'var(--borderColor-emphasis)', strokeWidth: 1.2, strokeDasharray: '4 3', opacity: 0.7 },
+          labelStyle: { fill: 'var(--fgColor-muted)', fontSize: 10 },
+          labelBgStyle: { fill: 'var(--bgColor-default)' },
+        })
+      }
+    }
+    return built
+  }, [arteries, linkKinds, allCards, renderedIDs, kinds, hoveredEdgeID, selectedEdgeID, t, onEdgeDeleteLink, onEdgeChangeKind])
 
   return { edges, hoveredEdgeID, setHoveredEdgeID, onSelectionChange }
 }

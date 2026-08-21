@@ -54,5 +54,12 @@ export async function fillSticky(page: Page, text: string) {
   await page.keyboard.insertText(text)
 }
 export async function blurSticky(page: Page) {
-  await page.locator('[data-testid="atlas-sticky-editor"] .cm-content, [data-testid="atlas-sticky-editor"] textarea').first().blur()
+  // focus() before blur(): HTMLElement.blur() is a no-op on an
+  // element that never held focus, and a fast test can blur before
+  // the sticky's own deferred autofocus lands -- no focusout would
+  // fire and the commit-on-blur never runs.
+  await page.locator('[data-testid="atlas-sticky-editor"] .cm-content, [data-testid="atlas-sticky-editor"] textarea').first().evaluate((el) => {
+    (el as HTMLElement).focus()
+    ;(el as HTMLElement).blur()
+  })
 }

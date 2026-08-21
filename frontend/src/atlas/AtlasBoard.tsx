@@ -269,7 +269,7 @@ function AtlasBoardInner({ boardFilter, onBoardFilterChange, filterMatchCount, f
 
   // Edge hover/selection + the edges it drives: useAtlasEdgeInteraction.ts.
   const { edges, setHoveredEdgeID, onSelectionChange } = useAtlasEdgeInteraction({
-    arteries, linkKinds, t, onEdgeDeleteLink, onEdgeChangeKind, onNodeSelectionChange: selection.onSelectionChange,
+    arteries, linkKinds, allCards, renderedIDs, kinds, t, onEdgeDeleteLink, onEdgeChangeKind, onNodeSelectionChange: selection.onSelectionChange,
   })
 
   // Sticky notes (goal 0081 slice A1): built separately from

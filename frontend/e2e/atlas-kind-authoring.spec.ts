@@ -2,6 +2,7 @@ import { chromium, expect, test } from '@playwright/test'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
+import { contextMenu } from './fixtures/contextMenu'
 import {
   ATLAS_KIND_AUTHORING_MCP_BASE_PORT,
   ATLAS_KIND_AUTHORING_SERVER_BASE_PORT,
@@ -159,6 +160,89 @@ test('show-on-card round-trips in the editor, and the seeded Topic status render
     await dialog(page).getByRole('button', { name: 'Delete ZzE2eFaceKind' }).click()
     await page.getByRole('button', { name: 'Delete', exact: true }).click()
     await expect(row).toHaveCount(0)
+    await page.keyboard.press('Escape')
+  })
+})
+
+// Card-reference fields (goal 0152 slice 2): a Kind field targets
+// exactly one other kind; the card page's picker offers only
+// compatible cards, and a set reference derives a labeled board edge
+// plus (with Show on card) the target's title on the face. The test
+// card is created over the same runtime wire the generated bindings
+// use (mcpTestClient.ts's Call.ByName precedent) -- creating a card
+// of an arbitrary new kind has no dedicated UI flow to drive.
+// eslint-disable-next-line no-empty-pattern -- this test needs `testInfo` (the second arg), not any fixture.
+test('a card-reference field filters to its target kind, derives a board edge, and shows on the face', async ({}, testInfo) => {
+  await withServer(testInfo, async (page) => {
+    // Author the kind: one cardref field targeting Contact, on-card.
+    await page.getByTestId('atlas-open-kinds').click()
+    await expect(dialog(page)).toBeVisible()
+    await dialog(page).getByTestId('atlas-kind-new').click()
+    await page.getByTestId('atlas-kind-label').fill('ZzE2eTicket')
+    await page.getByTestId('atlas-kind-add-field').click()
+    await page.getByTestId('atlas-kind-field-key').fill('owner')
+    await page.getByTestId('atlas-kind-field-label').fill('Owner')
+    await page.getByTestId('atlas-kind-field-type').selectOption('cardref')
+    await page.getByTestId('atlas-kind-field-refkind').selectOption({ label: 'Contact' })
+    await page.getByTestId('atlas-kind-field-showoncard').check()
+    await page.getByTestId('atlas-kind-save').click()
+    await expect(dialog(page).getByTestId('atlas-kind-row').filter({ hasText: 'ZzE2eTicket' })).toBeVisible()
+    await page.keyboard.press('Escape')
+
+    // Create a card of the new kind over the runtime wire.
+    const callBound = async (methodName: string, args: unknown[]) => {
+      const res = await page.request.post(new URL('/wails/runtime', page.url()).toString(), {
+        headers: { 'x-wails-client-id': 'e2e-cardref', 'Content-Type': 'application/json' },
+        data: { object: 0, method: 0, args: { 'call-id': `e2e-cardref-${Date.now()}`, methodName, args } },
+      })
+      const text = await res.text()
+      if (!res.ok()) throw new Error(`${methodName} failed: ${res.status()} ${text}`)
+      return JSON.parse(text)
+    }
+    const kinds = (await callBound('github.com/alicoding/mill/internal/services/atlassvc.AtlasService.Kinds', [])) as { ID: string; Label: string }[]
+    const ticketKindID = kinds.find((k) => k.Label === 'ZzE2eTicket')!.ID
+    // File the card into the root space -- the board renders one
+    // level, and a parentless card sits above it.
+    const allCards = (await callBound('github.com/alicoding/mill/internal/services/atlassvc.AtlasService.Cards', [])) as { ID: string; Title: string }[]
+    const spaceID = allCards.find((c) => c.Title === 'My space')!.ID
+    const created = await callBound('github.com/alicoding/mill/internal/services/atlassvc.AtlasService.CreateCard',
+      [ticketKindID, 'ZzE2eTicketCard', '', {}, spaceID, { X: 120, Y: 480 }, '', '', '', '']) as { ID: string }
+    if (!created.ID) throw new Error('CreateCard returned no ID')
+    // A request-context POST bypasses the page's own event stream --
+    // reload so the board reads the created card deterministically.
+    await page.reload()
+    await page.getByRole('link', { name: 'Atlas' }).click()
+
+    const ticketCard = page.locator('[data-testid="atlas-note-card"]', { hasText: 'ZzE2eTicketCard' })
+    await expect(ticketCard).toBeVisible()
+
+    // The page picker offers only Contact cards.
+    await ticketCard.click({ modifiers: ['Meta'] })
+    const overlay = page.locator('[data-component="atlas-card-overlay"]')
+    await expect(overlay).toBeVisible()
+    // An empty field is a one-line + Add invitation (goal 0106) --
+    // expand it before the picker exists.
+    await overlay.locator('[data-testid="atlas-page-add-field"]', { hasText: 'Owner' }).click()
+    const ownerSelect = overlay.locator('[data-testid="atlas-field"][data-field-key="owner"]')
+    await expect(ownerSelect.locator('option', { hasText: 'Ada Lovelace' })).toHaveCount(1)
+    await expect(ownerSelect.locator('option', { hasText: 'Getting started' })).toHaveCount(0)
+    await ownerSelect.selectOption({ label: 'Ada Lovelace' })
+    await page.keyboard.press('Escape')
+    await expect(overlay).not.toBeVisible()
+
+    // The reference derives a labeled dashed edge and a face value.
+    await expect(page.locator('.react-flow__edge', { hasText: 'Owner' })).toHaveCount(1)
+    await expect(ticketCard.getByTestId('atlas-face-field')).toHaveText('Ada Lovelace')
+
+    // Clean up: card then kind.
+    const menu = contextMenu(page)
+    await ticketCard.click({ button: 'right' })
+    await menu.getByText('Delete', { exact: true }).first().click()
+    await expect(ticketCard).toHaveCount(0)
+    await page.getByTestId('atlas-open-kinds').click()
+    await dialog(page).getByRole('button', { name: 'Delete ZzE2eTicket' }).click()
+    await page.getByRole('button', { name: 'Delete', exact: true }).click()
+    await expect(dialog(page).getByTestId('atlas-kind-row').filter({ hasText: 'ZzE2eTicket' })).toHaveCount(0)
     await page.keyboard.press('Escape')
   })
 })

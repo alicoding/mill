@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/alicoding/mill/internal/domain/atlas"
+	"github.com/alicoding/mill/internal/domain/typedfield"
 	"github.com/alicoding/mill/internal/services/dataevent"
 	"github.com/alicoding/mill/internal/services/seeding"
 )
@@ -75,6 +76,10 @@ func (a *AtlasService) createCardWithID(id, kindID, title, note string, fields m
 	if refreshWorkflowID != "" {
 		c.ActionWorkflowIDs = []string{refreshWorkflowID}
 	}
+	if err := a.validateCardRefsLocked(kind, c.Fields); err != nil {
+		a.mu.Unlock()
+		return atlas.Card{}, err
+	}
 	if err := atlas.ValidateCard(c, kind); err != nil {
 		a.mu.Unlock()
 		return atlas.Card{}, err
@@ -104,6 +109,32 @@ func (a *AtlasService) createCardWithID(id, kindID, title, note string, fields m
 // content edit never has to re-run the cycle check. sourceRunID is
 // always "" here (a manual Atlas UI edit); MergeCardFields is the
 // run-driven counterpart apply-atlas-card-update uses.
+// validateCardRefsLocked checks every cardref field value against live
+// cards (docs/goals/0152 slice 2): the target must exist and, when the
+// field declares a target kind (RefKind carries the atlas kind id for
+// Type cardref), be of that kind. Storage-aware by design -- the pure
+// typedfield layer can't see cards, so this is the write path's own
+// half of the check. Caller holds a.mu.
+func (a *AtlasService) validateCardRefsLocked(kind atlas.Kind, fields map[string]string) error {
+	for _, f := range kind.Fields {
+		if f.Type != typedfield.TypeCardRef {
+			continue
+		}
+		v := fields[f.Key]
+		if v == "" {
+			continue
+		}
+		idx := a.findCardLocked(v)
+		if idx == -1 {
+			return fmt.Errorf("field %q references card %q, which does not exist", f.Label, v)
+		}
+		if f.RefKind != "" && a.cards[idx].KindID != f.RefKind {
+			return fmt.Errorf("field %q must reference a card of its declared kind", f.Label)
+		}
+	}
+	return nil
+}
+
 func (a *AtlasService) UpdateCard(id, title, note string, fields map[string]string, source, mirrorPath, refreshWorkflowID string) (atlas.Card, error) {
 	a.mu.Lock()
 	idx := a.findCardLocked(id)
@@ -122,6 +153,10 @@ func (a *AtlasService) UpdateCard(id, title, note string, fields map[string]stri
 	c.Source, c.MirrorPath, c.RefreshWorkflowID = source, mirrorPath, refreshWorkflowID
 	c.UpdatedAt = time.Now()
 	c.Seed = c.Seed.Touch()
+	if err := a.validateCardRefsLocked(kind, c.Fields); err != nil {
+		a.mu.Unlock()
+		return atlas.Card{}, err
+	}
 	if err := atlas.ValidateCard(c, kind); err != nil {
 		a.mu.Unlock()
 		return atlas.Card{}, err
@@ -173,6 +208,10 @@ func (a *AtlasService) MergeCardFields(id string, fields map[string]string, sour
 	c.Fields = merged
 	c.UpdatedAt = time.Now()
 	c.Seed = c.Seed.Touch()
+	if err := a.validateCardRefsLocked(kind, c.Fields); err != nil {
+		a.mu.Unlock()
+		return atlas.Card{}, err
+	}
 	if err := atlas.ValidateCard(c, kind); err != nil {
 		a.mu.Unlock()
 		return atlas.Card{}, err

@@ -281,6 +281,7 @@ export function AtlasCardOverlay({ card, kinds, allCards, links, linkKinds, onCl
               mirrorPath={mirrorPath} mirrorPathError={errors.mirrorPath ?? ''} onMirrorPathChange={setMirrorPath} onMirrorPathCommit={commitMirrorPath}
               cardID={displayedCard.ID} actionWorkflowIDs={actionWorkflowIDs}
               onActionsChanged={commitActions}
+              cardRefCandidates={(field) => allCards.filter((c) => c.ID !== displayedCard.ID && (!field.RefKind || c.KindID === field.RefKind)).map((c) => ({ id: c.ID, title: c.Title }))}
             />
             <AtlasSlotRows
               card={displayedCard}
