@@ -303,3 +303,55 @@ func TestSystemEvent_RunCompleted_FiresForManualAndTriggeredRuns(t *testing.T) {
 		t.Fatalf("after a triggered run of source, listener has %d successful runs (was %d after the manual run), want strictly more", got, completions)
 	}
 }
+
+// TestSeededUpdateNotifyExample_UpdateAvailable_RunsToCompletion is
+// goal 0146's own proof: the seeded "Notify when an update is
+// available" workflow (enabled by default -- its only effect is a
+// local banner) fires on the update-available system event and its
+// apply-notify step completes through the real engine (server-mode's
+// best-effort notify: unsupported never fails the run).
+func TestSeededUpdateNotifyExample_UpdateAvailable_RunsToCompletion(t *testing.T) {
+	comp, trig, exec, _ := newSystemEventHarness(t)
+
+	// apply-notify's seam, wired the way main.go wires the real
+	// adapter -- recorded so the assertion below proves the banner
+	// call itself, not just run success.
+	var notified int32
+	composition.SetNotifier(func(title, body string) error {
+		atomic.AddInt32(&notified, 1)
+		return nil
+	})
+	t.Cleanup(func() {
+		composition.SetNotifier(func(title, body string) error { return fmt.Errorf("no notifier registered (yet)") })
+	})
+
+	notify := findWorkflowByLabel(t, comp, "Notify when an update is available")
+	if notify.Disabled {
+		t.Fatal("the update-notify seed ships ENABLED -- a local banner carries no outbound risk")
+	}
+	if _, err := comp.PublishWorkflow(notify.ID); err != nil {
+		t.Fatalf("PublishWorkflow: %v", err)
+	}
+	// main.go's own boot pass arms every enabled workflow's trigger.
+	trig.Sync(comp.Workflows())
+
+	trig.DispatchSystemEvent(executionsvc.SystemEvent{
+		Event:   executionsvc.SystemEventUpdateAvailable,
+		Version: "v9.9.9-test",
+		Channel: "beta",
+	})
+
+	deadline := time.Now().Add(10 * time.Second)
+	for time.Now().Before(deadline) {
+		runs, err := exec.ListRunsForWorkflow(notify.ID)
+		if err == nil {
+			for _, r := range runs {
+				if r.Status == "SUCCESS" && atomic.LoadInt32(&notified) > 0 {
+					return
+				}
+			}
+		}
+		time.Sleep(50 * time.Millisecond)
+	}
+	t.Fatal("the update-notify workflow never completed a run for the update-available event")
+}

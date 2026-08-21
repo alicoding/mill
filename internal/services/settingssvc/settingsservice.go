@@ -89,6 +89,9 @@ type SettingsService struct {
 	// UI reads it via UpdateNoticeState so navigating away never
 	// forgets a running download.
 	updateDownloading bool
+	// updateEventSink fires the update-available system event (goal
+	// 0146); nil until wired.
+	updateEventSink func(version, channel string)
 	// The notice pill's state (goal 0122): set by CheckForUpdates when
 	// a newer version is found (respecting the persisted per-version
 	// dismissal) and by a successful DownloadAndInstallUpdate; read by

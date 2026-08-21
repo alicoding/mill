@@ -67,7 +67,7 @@ Fires when Mill's own engine emits an internal event -- a run finishing, failing
 - Takes: nothing — Produces: JSON
 - Effect: none — pure computation
 - Settings:
-  - **Event** — Which internal event fires this trigger. "Decision parked" fires when a guardrail ask or human-review checkpoint parks awaiting approval; the other three fire once a run reaches a terminal state.
+  - **Event** — Which internal event fires this trigger. "Decision parked" fires when a guardrail ask or human-review checkpoint parks awaiting approval; the run events fire once a run reaches a terminal state; "update-available" fires when an update check finds a newer release on this install's channel.
   - **Workflow scope** — Fire for every workflow's matching event, or scope to one specific workflow. Empty means all workflows.
 
 ## Capture

@@ -14,7 +14,10 @@ it:
    Settings → Privacy & Security, scroll to the Mill message, and
    choose **Open Anyway** — one time only.
 4. From then on, update in-app: Settings → Updates → Check for
-   updates → Update now. If your network blocks app downloads, set
+   updates → Update now. With automatic checks on, a new release on
+   your channel also shows a notification — that notification is
+   the "Notify when an update is available" workflow, editable like
+   any other. If your network blocks app downloads, set
    Settings → Updates → Outbound proxy, or use the browser-download
    button the app offers on failure.
 5. A build you downloaded with a browser (steps 1–3, or the
