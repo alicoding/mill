@@ -1,4 +1,5 @@
 import { chromium, expect, test } from '@playwright/test'
+import { blurSticky, fillSticky, stickyEditor } from './fixtures/codeEditor'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
@@ -130,10 +131,9 @@ test('atlas linking: drop-anywhere targeting, hover chip, refusal hint, anchored
     // the creation tray's own bottom-center chrome (clickCorner's own
     // doc comment on the board's reliably-empty regions).
     await board.click({ position: { x: boardBox.width * 0.15, y: boardBox.height * 0.85 } })
-    const draftTextarea = page.getByTestId('atlas-sticky-textarea')
-    await expect(draftTextarea).toBeVisible()
-    await draftTextarea.fill('ZzE2eLinkNote')
-    await draftTextarea.blur()
+    await expect(stickyEditor(page)).toBeVisible()
+    await fillSticky(page, 'ZzE2eLinkNote')
+    await blurSticky(page)
     const stickyNote = page.getByTestId('atlas-sticky-note').filter({ hasText: 'ZzE2eLinkNote' })
     await expect(stickyNote).toBeVisible()
     const noteBox = await stickyNote.boundingBox()
