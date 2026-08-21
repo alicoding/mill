@@ -479,11 +479,13 @@ test('atlas select-all (Cmd+A): guarded inside an editable field, selects every 
     await expect(selectionTray).toBeVisible()
     await expect(page.getByTestId('atlas-selection-count')).toHaveText('5 selected')
 
-    // Cleanup (testing.md's within-file discipline): quick delete +
-    // clock-controlled toast expiry, same pattern this file's other
-    // test already uses.
+    // Cleanup: quick delete + clock-controlled toast expiry. Select-all
+    // includes seeded frames whose unselected children would be
+    // promoted, so this passes the container-delete gate (goal 0149).
     await page.clock.install()
     await page.keyboard.press('Delete')
+    await expect(page.getByRole('button', { name: 'Delete', exact: true })).toBeVisible()
+    await page.getByRole('button', { name: 'Delete', exact: true }).click()
     await expect(noteCard(page, 'ZzA2eSelAllA')).toHaveCount(0)
     await expect(noteCard(page, 'ZzA2eSelAllB')).toHaveCount(0)
     const undoToast = page.getByTestId('atlas-undo-toast')
