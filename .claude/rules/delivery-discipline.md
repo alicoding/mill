@@ -75,6 +75,10 @@ capabilities is goal 0076's audit, not ad-hoc.
 - The goal file's own Acceptance criteria checked against what
   SHIPPED, not what was planned.
 - Nothing secret-shaped staged; a real commit message.
+- The goal's BACKLOG.md line matches reality at close: checked box,
+  archive/ link, and no stale status annotation ("building now",
+  "PR pending") left behind -- a queue label that outlives its truth
+  is the drift the 2026-08-21 sweep found on three shipped goals.
 
 ## Session conduct (adopted from primary-sourced practice, 2026-08-17 research pass)
 - **Reviewer findings get triaged, not chased**: a reviewer prompted
