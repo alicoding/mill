@@ -116,6 +116,11 @@ var registry = []check{
 		run:    checkNoteCardSelectionRing,
 	},
 	{
+		name:   "sticky-click-to-edit",
+		reason: "owner-reported on the installed beta.724 (WebKit): click-to-edit a sticky got jumpy and the editor never opened; Chromium layers all pass -- the exact engine-parity class this registry exists for.",
+		run:    checkStickyClickToEdit,
+	},
+	{
 		name:   "sticky-border-color-flip",
 		reason: "the second burned class: a selected sticky note's border-color flip to the accent token (AtlasStickyNode.module.css) -- a real Note, created live via AtlasService.CreateNote so the check exercises the same call_bound_method path an agent driving Mill would use.",
 		run:    checkStickyBorderColorFlip,
@@ -364,86 +369,4 @@ func checkNoteCardSelectionRing(c mcpCaller) (string, error) {
 		return "", fmt.Errorf("selection ring did not render: box-shadow is none after shift-click select")
 	}
 	return fmt.Sprintf("box-shadow none -> %s on select", after.BoxShadow), nil
-}
-
-// atlasCard mirrors internal/domain/atlas.Card's JSON shape closely
-// enough to read Title/ID/ParentID off AtlasService.Cards() -- the
-// note-nesting parent this check needs is whatever card the seeded
-// "Getting started" card itself lives under, not a hardcoded ID.
-type atlasCard struct {
-	ID       string `json:"ID"`
-	Title    string `json:"Title"`
-	ParentID string `json:"ParentID"`
-}
-
-func checkStickyBorderColorFlip(c mcpCaller) (string, error) {
-	var cards []atlasCard
-	if err := callBoundJSON(c, "github.com/alicoding/mill/internal/services/atlassvc.AtlasService.Cards", []any{}, &cards); err != nil {
-		return "", err
-	}
-	var parentID string
-	for _, card := range cards {
-		if card.Title == "Getting started" {
-			parentID = card.ParentID
-			break
-		}
-	}
-	if parentID == "" {
-		return "", fmt.Errorf("seeded card \"Getting started\" not found -- can't place the check's sticky note at the right board level")
-	}
-
-	var note struct {
-		ID string `json:"ID"`
-	}
-	if err := callBoundJSON(c, "github.com/alicoding/mill/internal/services/atlassvc.AtlasService.CreateNote",
-		[]any{"webview-bridge-smoke check", map[string]any{"X": 340, "Y": 340}, parentID}, &note); err != nil {
-		return "", err
-	}
-
-	selector := `[data-testid="atlas-sticky-note"]`
-	if err := pollJSEval(c, fmt.Sprintf(`return !!document.querySelector('%s');`, selector), 10*time.Second); err != nil {
-		return "", fmt.Errorf("sticky note never rendered after AtlasService.CreateNote: %w", err)
-	}
-
-	before, err := readStickyStyle(c, selector)
-	if err != nil {
-		return "", err
-	}
-	if _, err := c.call("mouse_click", withWindow(map[string]any{
-		"selector":  selector,
-		"modifiers": []string{"shift"},
-	})); err != nil {
-		return "", err
-	}
-	after, err := readStickyStyle(c, selector)
-	if err != nil {
-		return "", err
-	}
-	if before.BorderColor == after.BorderColor {
-		return "", fmt.Errorf("border-color did not flip on selection: stayed %q", before.BorderColor)
-	}
-	if after.BoxShadow == "none" {
-		return "", fmt.Errorf("sticky selection ring did not render: wrapper box-shadow is none after shift-click select")
-	}
-	return fmt.Sprintf("border-color %s -> %s, box-shadow none -> %s", before.BorderColor, after.BorderColor, after.BoxShadow), nil
-}
-
-type stickySnapshot struct {
-	BorderColor string `json:"borderColor"`
-	BoxShadow   string `json:"boxShadow"`
-}
-
-// Border-color reads from the inner sticky element (the accent flip
-// stayed there); box-shadow reads from the wrapper, same reasoning as
-// readRing above.
-func readStickyStyle(c mcpCaller, selector string) (stickySnapshot, error) {
-	var snap stickySnapshot
-	err := c.callJSON("js_eval", withWindow(map[string]any{
-		"js": fmt.Sprintf(`const el = document.querySelector(%q);
-			if (!el) throw new Error('element not found: %s');
-			const wrapper = el.closest('.react-flow__node');
-			if (!wrapper) throw new Error('no react-flow node wrapper above: %s');
-			return { borderColor: getComputedStyle(el).borderColor, boxShadow: getComputedStyle(wrapper).boxShadow };`, selector, selector, selector),
-	}), &snap)
-	return snap, err
 }

@@ -45,11 +45,13 @@ export const AtlasStickyNode = memo(function AtlasStickyNode({ data }: NodeProps
   const [draftText, setDraftText] = useState(note?.Text ?? '')
   const [html, setHtml] = useState('')
   // Guards against a double-fire: Escape (which unmounts this editing
-  // view) must never also let a trailing blur re-commit the same text.
+  // view) must never also let a trailing outside-press re-commit the
+  // same text.
   const settledRef = useRef(false)
   // CodeEditor's onChange lands in state for re-render, but commit
-  // handlers read this ref -- a blur arriving in the same tick as the
-  // last keystroke must never commit the previous render's stale text.
+  // handlers read this ref -- an outside press arriving in the same
+  // tick as the last keystroke must never commit the previous
+  // render's stale text.
   const draftRef = useRef(draftText)
 
   const text = note?.Text ?? ''
@@ -67,7 +69,9 @@ export const AtlasStickyNode = memo(function AtlasStickyNode({ data }: NodeProps
     // Focus whichever editing surface is mounted. The first-ever
     // editor mount swaps a fallback textarea for the lazily-loaded CM6
     // content, dropping focus mid-draft -- retry briefly until the CM
-    // surface exists and holds focus, then stop.
+    // surface exists and holds focus, then stop. Purely a focus
+    // convenience now (commit is pointer-driven, below) -- nothing
+    // about this loop can race or cancel a commit anymore.
     let tries = 0
     const id = window.setInterval(() => {
       const cm = wrapRef.current?.querySelector<HTMLElement>('.cm-content')
@@ -79,6 +83,36 @@ export const AtlasStickyNode = memo(function AtlasStickyNode({ data }: NodeProps
     // note?.Text deliberately excluded: seeding happens on edit ENTRY
     // only, never mid-session when a background refresh lands.
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editing])
+
+  // commitRef always holds the current render's commit closure --
+  // read by the document/window listeners below, which are only
+  // re-registered when `editing` flips, never on every keystroke.
+  const commitRef = useRef<() => void>(() => {})
+
+  // Commit is POINTER-driven (the FigJam/Miro/tldraw canvas
+  // convergence), not focus-driven: a press outside this note while
+  // editing commits it, same as a press anywhere else on the board
+  // deselecting/reselecting -- capture phase so it fires before the
+  // press's own target handling (React Flow's pane click, another
+  // node's select), and never preventDefault so that press still does
+  // whatever it does. A window blur (the whole app losing focus --
+  // app/tab switch) commits too, since no further press is coming.
+  useEffect(() => {
+    if (!editing) return
+    const handlePointerDown = (e: PointerEvent) => {
+      if (wrapRef.current?.contains(e.target as Node | null)) return
+      commitRef.current()
+    }
+    const handleWindowBlur = () => {
+      commitRef.current()
+    }
+    document.addEventListener('pointerdown', handlePointerDown, true)
+    window.addEventListener('blur', handleWindowBlur)
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown, true)
+      window.removeEventListener('blur', handleWindowBlur)
+    }
   }, [editing])
 
   useEffect(() => {
@@ -99,6 +133,12 @@ export const AtlasStickyNode = memo(function AtlasStickyNode({ data }: NodeProps
     settledRef.current = true
     onCommit(draftRef.current)
   }
+  // Refreshes commitRef with this render's closure -- outside render,
+  // per React's own rule (no dependency array: every render's commit
+  // must land, not just the one active when the effect was created).
+  useEffect(() => {
+    commitRef.current = commit
+  })
 
   if (editing) {
     return (
@@ -116,15 +156,6 @@ export const AtlasStickyNode = memo(function AtlasStickyNode({ data }: NodeProps
             e.preventDefault()
             commit()
           }
-        }}
-        onBlur={(e) => {
-          // focusout only counts when focus actually left the sticky --
-          // and only from a surface still in the DOM (the fallback
-          // textarea's unmount during the CM swap fires a detached
-          // blur that must not commit an in-progress draft).
-          if (e.currentTarget.contains(e.relatedTarget as Node | null)) return
-          if (!e.currentTarget.contains(e.target as Node)) return
-          commit()
         }}
       >
         <CodeEditor

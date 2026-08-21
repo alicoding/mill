@@ -1,4 +1,4 @@
-import { fillMarkdownNote } from './fixtures/codeEditor'
+import { fillMarkdownNote, clickOutsideNoteEditor } from './fixtures/codeEditor'
 import { chromium, expect, test } from '@playwright/test'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -187,7 +187,7 @@ test('authoring a card while a perspective is active adds it automatically; the 
     await openCard(page, newCard)
     const overlay = page.locator('[data-component="atlas-card-overlay"]')
     await fillMarkdownNote(page, 'atlas-page-note', 'Edited while a perspective was active.')
-    await page.keyboard.press('Tab')
+    await clickOutsideNoteEditor(overlay)
     await expect(overlay.getByTestId('atlas-page-saved-tick')).toBeVisible()
     await page.keyboard.press('Escape')
     await expect(overlay).not.toBeVisible()

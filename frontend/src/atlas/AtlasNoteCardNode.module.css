@@ -1,5 +1,12 @@
 /* The uniform note card (goal 0072 slice A, re-cut by goal 0106's
-   flip retirement): a fixed 190x128 footprint, one face. */
+   flip retirement): a fixed 190x128 footprint, one face. This root
+   is itself the tabIndex=0 focus target AND (via `overflow`) its own
+   scroll container -- the .linkHandle tab sits at right:-6px,
+   outside the box, so real overflow exists. `clip`, not `hidden`:
+   `hidden` is still programmatically scrollable, so WebKit's
+   reveal-on-focus behavior scrolled this card by a few px on every
+   mousedown of its own tabIndex=-1 link handle; `clip` disables that
+   scrollability while clipping identically. */
 .card {
     position: relative;
     width: 190px;
@@ -12,7 +19,7 @@
     flex-direction: column;
     padding: var(--mill-density-card-pad, 7px 9px 8px);
     cursor: pointer;
-    overflow: hidden;
+    overflow: clip;
 }
 .card:hover {
     border-color: var(--borderColor-emphasis);

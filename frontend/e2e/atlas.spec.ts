@@ -1,5 +1,5 @@
 import { test, expect } from './fixtures/server'
-import { fillMarkdownNote } from './fixtures/codeEditor'
+import { fillMarkdownNote, clickOutsideNoteEditor } from './fixtures/codeEditor'
 import { deleteViaPageMenu } from './fixtures/atlasPage'
 import { ATLAS_KIND_TOPIC, selectKind } from './fixtures/kindPicker'
 import { clickBreadcrumbSegment, openCard, createCardViaTray } from './fixtures/atlasBoard'
@@ -259,7 +259,7 @@ test('create a child card, edit + persist it via the card page, then delete it',
   const overlay = page.locator('[data-component="atlas-card-overlay"]')
   await expect(overlay).toBeVisible()
   await fillMarkdownNote(page, 'atlas-page-note', 'A note written by the e2e suite.')
-  await page.keyboard.press('Tab')
+  await clickOutsideNoteEditor(overlay)
   await expect(overlay.getByTestId('atlas-page-saved-tick')).toBeVisible()
   await page.keyboard.press('Escape')
   await expect(overlay).not.toBeVisible()

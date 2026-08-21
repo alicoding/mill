@@ -7,8 +7,9 @@ import styles from './MarkdownNoteField.module.css'
 // The note as a record (goal 0145): the stored string IS markdown.
 // At rest it renders (same safe GFM path the mirror preview trusts);
 // click to edit the source in the one editor door (CodeEditor,
-// markdown mode); blur commits and returns to the rendered view. An
-// empty note stays an editor -- the write invitation is the field.
+// markdown mode); a press outside the editor commits it and returns
+// to the rendered view. An empty note stays an editor -- the write
+// invitation is the field.
 export function MarkdownNoteField({ value, onChange, onCommit, placeholder, ariaLabel, testId }: {
   value: string
   onChange: (v: string) => void
@@ -22,6 +23,30 @@ export function MarkdownNoteField({ value, onChange, onCommit, placeholder, aria
   const editorWrapRef = useRef<HTMLDivElement>(null)
 
   const showEditor = editing || value.trim() === ''
+
+  // commitRef always holds the current render's commit closure -- see
+  // AtlasStickyNode's own commitRef comment.
+  const commitRef = useRef<() => void>(() => {})
+
+  // Commit is POINTER-driven (same canvas convergence as
+  // AtlasStickyNode): a press outside the editor while editing
+  // commits it; a window blur (app/tab switch) commits too.
+  useEffect(() => {
+    if (!editing) return
+    const handlePointerDown = (e: PointerEvent) => {
+      if (editorWrapRef.current?.contains(e.target as Node | null)) return
+      commitRef.current()
+    }
+    const handleWindowBlur = () => {
+      commitRef.current()
+    }
+    document.addEventListener('pointerdown', handlePointerDown, true)
+    window.addEventListener('blur', handleWindowBlur)
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown, true)
+      window.removeEventListener('blur', handleWindowBlur)
+    }
+  }, [editing])
 
   useEffect(() => {
     if (showEditor) return
@@ -42,6 +67,16 @@ export function MarkdownNoteField({ value, onChange, onCommit, placeholder, aria
     editorWrapRef.current?.querySelector<HTMLElement>('.cm-content, textarea')?.focus()
   }, [editing])
 
+  // Refreshes commitRef with this render's closure -- outside render,
+  // per React's own rule (no dependency array: every render's commit
+  // must land, not just the one active when the effect was created).
+  useEffect(() => {
+    commitRef.current = () => {
+      setEditing(false)
+      onCommit()
+    }
+  })
+
   if (showEditor) {
     return (
       <div
@@ -51,12 +86,6 @@ export function MarkdownNoteField({ value, onChange, onCommit, placeholder, aria
         // this, the first typed character flips the field to rendered
         // mid-keystroke (value no longer empty, editing still false).
         onFocus={() => setEditing(true)}
-        onBlur={(e) => {
-          // focusout only counts when focus actually left the field.
-          if (e.currentTarget.contains(e.relatedTarget as Node | null)) return
-          setEditing(false)
-          onCommit()
-        }}
       >
         <CodeEditor
           value={value}

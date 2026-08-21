@@ -43,14 +43,15 @@ test('sticky notes render markdown; editor live-previews it', async ({ page }) =
   await expect(stickyEditor(page)).toHaveCount(0)
 
   // The big surface (goal 0154): ⌘-click opens the note overlay; the
-  // same markdown machinery edits there and commits on blur; the
-  // sticky face reflects it after close.
+  // same markdown machinery edits there -- the Dialog's own onClose
+  // always commits the current draft (AtlasNoteOverlay.tsx), so
+  // closing via Escape is itself the commit; the sticky face reflects
+  // it after close.
   await sticky.click({ modifiers: ['Meta'] })
   const overlay = page.locator('[data-component="atlas-note-overlay"]')
   await expect(overlay).toBeVisible()
   await expect(overlay.locator('li')).toHaveCount(2)
   await fillMarkdownNote(page, 'atlas-note-overlay-editor', '# Plan v2\n\n- first\n- **second**\n- third')
-  await overlay.locator('[data-testid="atlas-note-overlay-editor"] .cm-content').first().evaluate((el) => (el as HTMLElement).blur())
   await page.keyboard.press('Escape')
   await expect(overlay).not.toBeVisible()
   await expect(sticky.locator('li')).toHaveCount(3)

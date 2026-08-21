@@ -373,7 +373,7 @@ function App() {
   }, [t]);
 
   return (
-    <div className="app-shell" data-sidebar-open={sidebarOpen}>
+    <div className="app-shell" data-sidebar-open={sidebarOpen} data-view={view.kind}>
       {/* The titlebar band (Chrome-style tabs-in-titlebar): a real,
           always-present chrome element at the very top of .app-shell,
           above the PageLayout row. Two segments (App.module.css has the
