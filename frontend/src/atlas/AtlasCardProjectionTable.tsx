@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Events } from '@wailsio/runtime'
 import { Text } from '@primer/react'
@@ -17,13 +17,35 @@ export function AtlasCardProjectionTable({ cardID, density }: { cardID: string; 
   const { t } = useTranslation('atlas')
   const [proj, setProj] = useState<ListProjection | null>(null)
 
+  // Scoped + debounced (goal 0147): a list event names WHICH list
+  // changed (dataevent.Emit's id) -- other lists' bursts are free; a
+  // burst against THIS list coalesces to one refetch. Atlas events
+  // stay unscoped (the projection binding itself may have changed)
+  // but ride the same debounce.
+  const projListIDRef = useRef('')
   useEffect(() => {
-    const refetch = () => void AtlasService.CardListProjection(cardID).then(setProj).catch(() => setProj(null))
+    let timer: ReturnType<typeof setTimeout> | null = null
+    const refetch = () => void AtlasService.CardListProjection(cardID).then((p) => {
+      projListIDRef.current = p.ListID
+      setProj(p)
+    }).catch(() => setProj(null))
+    const schedule = () => {
+      if (timer !== null) return
+      timer = setTimeout(() => {
+        timer = null
+        refetch()
+      }, 150)
+    }
     refetch()
-    return Events.On('mill-data-changed', (evt) => {
-      const entity = (evt.data as { entity?: string })?.entity
-      if (entity === 'list' || entity === 'atlas') refetch()
+    const off = Events.On('mill-data-changed', (evt) => {
+      const data = evt.data as { entity?: string; id?: string } | undefined
+      if (data?.entity === 'atlas') schedule()
+      if (data?.entity === 'list' && (!data.id || data.id === projListIDRef.current)) schedule()
     })
+    return () => {
+      off()
+      if (timer !== null) clearTimeout(timer)
+    }
   }, [cardID])
 
   if (!proj || proj.ListID === '') return null

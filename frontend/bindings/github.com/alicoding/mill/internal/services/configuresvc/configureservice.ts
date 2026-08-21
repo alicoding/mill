@@ -258,6 +258,15 @@ export function ExportMCPServer(id: string): $CancellablePromise<string> {
 }
 
 /**
+ * GetList returns one List by id -- the grid's schema edits read the
+ * current record through this instead of fetching every list (goal
+ * 0147's O(all-lists)-per-column-edit finding).
+ */
+export function GetList(id: string): $CancellablePromise<list$0.List> {
+    return $Call.ByID(1888930756, id);
+}
+
+/**
  * HTTPRequestOperationFields resolves one request operation's declared
  * input/output fields (ADR-0007 Phase 3) -- the data the canvas
  * Inspector's binding editor renders once a user picks an operation

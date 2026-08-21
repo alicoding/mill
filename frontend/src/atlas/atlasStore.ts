@@ -90,3 +90,18 @@ export function refreshAtlasPerspectives(): Promise<void> {
 export function refreshAtlas(): Promise<void> {
   return Promise.all([refreshAtlasKinds(), refreshAtlasLinkKinds(), refreshAtlasCards(), refreshAtlasLinks(), refreshAtlasNotes(), refreshAtlasPerspectives()]).then(() => undefined)
 }
+
+// scheduleAtlasRefresh is the EVENT-DRIVEN door (goal 0147): every
+// mill-data-changed listener routes through this trailing debounce so
+// a burst (a workflow run writing N cards/rows = N events) costs ONE
+// six-collection refetch, not N. Direct post-user-action callers keep
+// calling refreshAtlas() for immediacy.
+let atlasRefreshTimer: ReturnType<typeof setTimeout> | null = null
+
+export function scheduleAtlasRefresh(): void {
+  if (atlasRefreshTimer !== null) return
+  atlasRefreshTimer = setTimeout(() => {
+    atlasRefreshTimer = null
+    void refreshAtlas()
+  }, 150)
+}
