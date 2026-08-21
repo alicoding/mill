@@ -8,6 +8,7 @@ import { formatUpdated } from '../shared/inventorySort'
 import { runStatusVariant } from '../shared/runTime'
 import { StatusStamp } from '../shared/StatusStamp'
 import { basenameOf, hostnameOf } from './atlasCardPresentation'
+import { Browser } from '@wailsio/runtime'
 import { normalizeExternalURL } from '../shared/externalUrl'
 import styles from './AtlasCardPage.module.css'
 
@@ -58,7 +59,19 @@ export function AtlasCardPageMetaRail({
       {card.Source && (
         <div className={styles.metaRow} data-testid="atlas-page-meta-source">
           <span className={styles.metaLabel}>{t('page.metaSource')}</span>
-          <a href={normalizeExternalURL(card.Source)} data-wml-openURL={normalizeExternalURL(card.Source)} data-testid="atlas-overlay-source-link" className={styles.metaValue}>
+          <a
+            href={normalizeExternalURL(card.Source)}
+            data-testid="atlas-overlay-source-link"
+            className={styles.metaValue}
+            onClick={(e) => {
+              // The webview must NEVER navigate itself (a plain href
+              // replaces the whole app with the site) -- the external
+              // browser is the only legal destination, DocsView's own
+              // pattern.
+              e.preventDefault()
+              void Browser.OpenURL(normalizeExternalURL(card.Source))
+            }}
+          >
             {hostnameOf(card.Source)}
           </a>
           {recognizedLabel && (

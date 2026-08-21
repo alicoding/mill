@@ -97,6 +97,11 @@ export interface BuildExtensionsOptions {
   minHeightRows: number
   placeholderText?: string
   onDocChange?: (value: string) => void
+  // prose drops the code chrome (line numbers, active-line stripe) --
+  // a NOTE edits as text that happens to be markdown, not as code
+  // (goal 0145's de-jank: the edit/render swap must not also swap
+  // visual registers).
+  prose?: boolean
 }
 
 // Assembles one editor instance's full extension set. Editing niceties
@@ -105,7 +110,7 @@ export interface BuildExtensionsOptions {
 // highlighting, nothing else, per shared/CodeEditor.tsx's contract.
 export function buildExtensions(opts: BuildExtensionsOptions): Extension[] {
   const ext: Extension[] = [
-    lineNumbers(),
+    ...(opts.prose ? [] : [lineNumbers()]),
     // A long unwrapped line drags the shared horizontal scroll
     // position for every line in the document (CM6's lines share one
     // scroller), hiding the start of shorter lines above/below it once

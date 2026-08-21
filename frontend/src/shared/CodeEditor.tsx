@@ -11,6 +11,7 @@ export interface CodeEditorProps {
   ariaLabel: string
   minHeightRows?: number
   testId?: string
+  prose?: boolean
   placeholder?: string
 }
 
@@ -34,7 +35,7 @@ function loadCore() {
 // still loading -- or if it fails to load at all -- this renders a
 // plain textarea carrying the same value/onChange/aria-label, so the
 // field is never dead.
-export function CodeEditor({ value, onChange, language, ariaLabel, minHeightRows = 6, testId, placeholder }: CodeEditorProps) {
+export function CodeEditor({ value, onChange, language, ariaLabel, minHeightRows = 6, testId, placeholder, prose }: CodeEditorProps) {
   const containerRef = useRef<HTMLDivElement | null>(null)
   const viewRef = useRef<InstanceType<CoreModule['EditorView']> | null>(null)
   const syncingRef = useRef(false)
@@ -65,6 +66,7 @@ export function CodeEditor({ value, onChange, language, ariaLabel, minHeightRows
         doc: value,
         extensions: buildExtensions({
           language,
+          prose,
           editable,
           minHeightRows,
           placeholderText: placeholder,

@@ -66,6 +66,7 @@ export function MarkdownNoteField({ value, onChange, onCommit, placeholder, aria
           placeholder={placeholder}
           minHeightRows={2}
           testId={testId}
+          prose
         />
       </div>
     )

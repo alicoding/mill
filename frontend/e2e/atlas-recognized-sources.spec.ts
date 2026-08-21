@@ -57,3 +57,26 @@ test('a Source matching a configured Integration offers its declared workflows',
   await deleteViaPageMenu(page, overlay)
   await expect(card).not.toBeVisible()
 })
+
+// Regression (goal 0147 rider): clicking the source link must NEVER
+// navigate the webview itself -- the app stays; the external browser
+// is the only destination (the click is intercepted).
+test('the source link never navigates the app window', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Atlas' }).click()
+  await expect(page.getByTestId('atlas-board')).toBeVisible()
+  await createCardViaTray(page, 'ZzE2eLinkStay', { kindID: ATLAS_KIND_DOCUMENT })
+  const card = page.locator('[data-testid="atlas-note-card"]').filter({ hasText: 'ZzE2eLinkStay' })
+  await openCard(page, card)
+  const overlay = page.locator('[data-component="atlas-card-overlay"]')
+  await overlay.getByTestId('atlas-page-add-source').click()
+  await overlay.getByTestId('atlas-page-source').fill('alicoding.com')
+  await overlay.getByTestId('atlas-page-source').blur()
+  await expect(overlay.getByTestId('atlas-overlay-source-link')).toBeVisible()
+  await overlay.getByTestId('atlas-overlay-source-link').click()
+  // Still Mill, not the site: the overlay is intact (server mode has
+  // no external browser; the intercepted click is a no-op here).
+  await expect(overlay.getByTestId('atlas-page-title')).toHaveValue('ZzE2eLinkStay')
+  await deleteViaPageMenu(page, overlay)
+  await expect(card).not.toBeVisible()
+})
