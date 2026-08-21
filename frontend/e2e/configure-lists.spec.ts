@@ -325,3 +325,45 @@ test('escape lands on the cell, arrows walk, typing replaces', async ({ page }) 
   await clickRowAction(page, row, 'Delete')
   await expect(row).toHaveCount(0)
 })
+
+// Goal 0131 (schema-inference half): a sample file proposes a typed
+// schema -- number/boolean/options inferred per column -- the user can
+// edit before one confirm creates the list and imports every row
+// through the same core the row importer uses. The committed sample
+// CSV is the seeded proof (testing.md's per-layer discipline; the
+// inference rules themselves are unit-tested in
+// listSchemaInfer.test.ts).
+test('New from file infers a typed schema and creates the list with its rows', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Configure' }).click()
+  await page.getByRole('tab', { name: 'Lists' }).click()
+
+  await page.getByTestId('new-list-from-file-input').setInputFiles('e2e/fixtures/files/sample-import.csv')
+  const dialog = page.locator('[data-component="new-list-from-file-dialog"]')
+  await expect(dialog).toBeVisible()
+
+  // Inferred proposal: Task=text, Status=options, Points=number, Done=boolean.
+  const typeSelects = dialog.getByTestId('new-list-from-file-type')
+  await expect(typeSelects).toHaveCount(4)
+  await expect(typeSelects.nth(0)).toHaveValue('text')
+  await expect(typeSelects.nth(1)).toHaveValue('options')
+  await expect(typeSelects.nth(2)).toHaveValue('number')
+  await expect(typeSelects.nth(3)).toHaveValue('boolean')
+  await expect(dialog.getByText('open, closed')).toBeVisible()
+
+  await page.getByTestId('new-list-from-file-label').fill('ZzE2eImportedList')
+  await dialog.getByRole('button', { name: 'Create list and import 6 rows' }).click()
+
+  // Lands in the list editor with every row imported.
+  await expect(page.getByTestId('list-rows-editor')).toBeVisible()
+  await expect(page.getByTestId('list-rows-editor').getByText('Ship release')).toBeVisible()
+  await page.getByRole('button', { name: 'Close' }).click()
+
+  const row = page.locator('[data-testid="inventory-row"][data-entity="list"]', { has: page.getByText('ZzE2eImportedList', { exact: true }) })
+  await expect(row).toBeVisible()
+  await expect(row).toContainText('4 columns, 6 rows')
+
+  // Clean up.
+  await clickRowAction(page, row, 'Delete')
+  await expect(row).toHaveCount(0)
+})

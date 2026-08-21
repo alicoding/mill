@@ -1,0 +1,7 @@
+Task,Status,Points,Done
+Write spec,open,3,false
+Fix bug,closed,5,true
+Review PR,open,2,false
+Ship release,closed,8,true
+Plan sprint,open,1,false
+Run retro,closed,2,true

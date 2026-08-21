@@ -163,3 +163,41 @@ export function buildMappedRows(rows: Record<string, string>[], mapping: Record<
 
   return { imported, skipped }
 }
+
+export interface InferredField {
+  key: string
+  label: string
+  type: typeof ConfigFieldType[keyof typeof ConfigFieldType]
+  options: string[] | null
+}
+
+// inferListSchema proposes a typed schema from a parsed file
+// (docs/goals/0131): a column is a number when every non-empty value
+// parses numeric, a boolean when values stay within true/false, an
+// options field when the distinct-value set is small AND genuinely
+// repeats (<= 8 distinct, rows >= 2x distinct -- a column of unique
+// names must never become an 8-option enum), else text. Empty cells
+// never vote. Keys are label slugs, unique within the proposal
+// (nextColumnKey's own rules).
+export function inferListSchema(parsed: ParsedFile, nextKey: (label: string, existing: string[]) => string): InferredField[] {
+  const fields: InferredField[] = []
+  const keys: string[] = []
+  for (const col of parsed.fileColumns) {
+    const values = parsed.rows.map((r) => r[col] ?? '').filter((v) => v !== '')
+    const distinct = [...new Set(values)]
+    let type: InferredField['type'] = ConfigFieldType.TypeText
+    let options: string[] | null = null
+    if (values.length > 0 && values.every((v) => Number.isFinite(Number(v)))) {
+      type = ConfigFieldType.TypeNumber
+    } else if (values.length > 0 && values.every((v) => v === 'true' || v === 'false')) {
+      type = ConfigFieldType.TypeBoolean
+    } else if (values.length > 0 && distinct.length <= 8 && values.length >= distinct.length * 2) {
+      type = ConfigFieldType.TypeOptions
+      options = distinct
+    }
+    const key = nextKey(col, keys)
+    keys.push(key)
+    fields.push({ key, label: col, type, options })
+  }
+  return fields
+}
