@@ -89,6 +89,9 @@ type SettingsService struct {
 	// UI reads it via UpdateNoticeState so navigating away never
 	// forgets a running download.
 	updateDownloading bool
+	// summonGraceUntil suppresses the focus-yield cascade while a
+	// summon is in flight (goal 0151).
+	summonGraceUntil time.Time
 	// updateEventSink fires the update-available system event (goal
 	// 0146); nil until wired.
 	updateEventSink func(version, channel string)

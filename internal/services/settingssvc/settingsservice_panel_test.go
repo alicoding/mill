@@ -2,6 +2,7 @@ package settingssvc
 
 import (
 	"testing"
+	"time"
 )
 
 // docs/adr/0033-quick-panel-second-window.md: TogglePanel/DismissPanel/
@@ -67,5 +68,24 @@ func TestSummonShouldHideMain(t *testing.T) {
 					tc.visible, tc.focused, got, tc.wantShouldHide)
 			}
 		})
+	}
+}
+
+// The summon-grace guard (goal 0151): while a summon is in flight the
+// focus-yield cascade must stay inert -- summoning from a background
+// app momentarily loses the focus race, and without the grace that
+// cascade hid the entire app.
+func TestYieldFocus_InertDuringSummonGrace(t *testing.T) {
+	s := newTestSettingsService(t)
+	s.beginSummonGrace()
+	// No panic, no app lookup crash headless -- and the grace flag is
+	// the property under test: within the window the yield returns
+	// before consulting any window state.
+	s.yieldFocusIfMainHidden()
+	s.mu.Lock()
+	until := s.summonGraceUntil
+	s.mu.Unlock()
+	if !until.After(time.Now()) {
+		t.Fatal("grace window must extend past now right after beginSummonGrace")
 	}
 }
