@@ -282,9 +282,15 @@ into.
 
 - **Cards** carry a kind (Topic, Contact, Document — or your own,
   authored with typed fields), a title, notes, and typed field
-  values. Drop a markdown file on the board and it lands as a card
-  mirroring the file; mirrored markdown renders in the card —
-  including ` ```mermaid ` fences as live diagrams.
+  values. Mark a field "Show on card" in the kind editor and its
+  value appears right on the card's face — choice fields as their
+  colored pills, the way the seeded Topic shows its status. A field
+  can also reference another card of a kind you pick: the page
+  offers only matching cards, and a set reference draws a dashed,
+  labeled line between the two on the board. Drop a markdown file on
+  the board and it lands as a card mirroring the file; mirrored
+  markdown renders in the card — including ` ```mermaid ` fences as
+  live diagrams.
 - **Links** connect cards through link kinds you define. Drag from a
   card's link handle and release anywhere on a highlighted card; one
   relationship per pair and kind — repeats never duplicate. Hover a
