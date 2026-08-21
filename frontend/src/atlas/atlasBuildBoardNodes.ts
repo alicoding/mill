@@ -78,6 +78,7 @@ export function buildBoardCardNodes({
     onEnterEdit: (id: string) => void
     onCancelEdit: () => void
     onCommitEdit: (id: string, text: string) => void
+    onOpenNote: (id: string) => void
   }
 }): BoardCardRFNode[] {
   const kindByID = new Map(kinds.map((k) => [k.ID, k]))
@@ -170,6 +171,7 @@ export function buildBoardCardNodes({
             onCommit: (text: string) => noteHandlers.onCommitEdit(sticky.note.ID, text),
             onCancelEdit: noteHandlers.onCancelEdit,
             onEnterEdit: () => noteHandlers.onEnterEdit(sticky.note.ID),
+            onOpenBig: () => noteHandlers.onOpenNote(sticky.note.ID),
           },
         })
       }

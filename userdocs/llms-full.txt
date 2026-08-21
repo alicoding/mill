@@ -314,7 +314,9 @@ into.
   fades on every line except the one you're editing; at rest the
   note shows the rendered result, and clicking it brings the source
   back. A long sticky note scrolls in place, and grows while you
-  edit it.
+  edit it — and any note opens big: ⌘-click it (or right-click →
+  Open note) for a full-size editor, like opening a note in its own
+  window.
 - **Copy and paste to duplicate.** Select cards or notes and press
   ⌘C, then ⌘V — copies appear where your cursor is, filed into
   whatever area it's over. A copy is just the card itself; when the

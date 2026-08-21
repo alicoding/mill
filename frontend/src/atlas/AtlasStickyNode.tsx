@@ -16,6 +16,10 @@ export interface AtlasStickyData extends Record<string, unknown> {
   onCommit: (text: string) => void
   onCancelEdit: () => void
   onEnterEdit: () => void
+  // The big surface's door (docs/goals/0154): ⌘-click / ⌘↵ / the
+  // context menu's Open note -- the same "⌘ opens the large surface"
+  // meaning cards already carry with their page.
+  onOpenBig: () => void
   // The click model's own commit test (goal 0102's gesture table,
   // uniform across every node type): true when this note was the sole
   // selected node before the current click gesture began -- see
@@ -37,7 +41,7 @@ export type AtlasStickyRFNode = RFNode<AtlasStickyData>
 // updates.
 export const AtlasStickyNode = memo(function AtlasStickyNode({ data }: NodeProps<AtlasStickyRFNode>) {
   const { t } = useTranslation('atlas')
-  const { note, editing, onCommit, onCancelEdit, onEnterEdit, isSoleSelected } = data
+  const { note, editing, onCommit, onCancelEdit, onEnterEdit, onOpenBig, isSoleSelected } = data
   const [draftText, setDraftText] = useState(note?.Text ?? '')
   const [html, setHtml] = useState('')
   // Guards against a double-fire: Escape (which unmounts this editing
@@ -155,7 +159,7 @@ export const AtlasStickyNode = memo(function AtlasStickyNode({ data }: NodeProps
       // reproduce a double-click's outcome with no separate handler.
       onClick={(e) => {
         if (e.shiftKey) return
-        if (e.metaKey || e.ctrlKey) { onEnterEdit(); return }
+        if (e.metaKey || e.ctrlKey) { onOpenBig(); return }
         if (note && isSoleSelected(note.ID)) onEnterEdit()
       }}
       // A REAL double-click's second press can beat the selection
@@ -168,7 +172,10 @@ export const AtlasStickyNode = memo(function AtlasStickyNode({ data }: NodeProps
         onEnterEdit()
       }}
       onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
+        if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+          e.preventDefault()
+          onOpenBig()
+        } else if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault()
           onEnterEdit()
         }

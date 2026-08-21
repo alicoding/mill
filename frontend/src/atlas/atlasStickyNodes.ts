@@ -9,7 +9,7 @@ import type { AtlasStickyRFNode } from './AtlasStickyNode'
 // own builtNodes memo stays a thin composition of card + sticky nodes
 // (architecture.md's 500-line convention).
 export function buildStickyNodes({
-  notes, draftNotePos, editingNoteID, readOnly, isSoleSelected, onCommitDraft, onCancelDraft, onEnterEdit, onCancelEdit, onCommitEdit,
+  notes, draftNotePos, editingNoteID, readOnly, isSoleSelected, onCommitDraft, onCancelDraft, onEnterEdit, onCancelEdit, onCommitEdit, onOpenNote,
 }: {
   notes: Note[]
   draftNotePos: { x: number; y: number } | null
@@ -23,6 +23,7 @@ export function buildStickyNodes({
   onEnterEdit: (id: string) => void
   onCancelEdit: () => void
   onCommitEdit: (id: string, text: string) => void
+  onOpenNote: (id: string) => void
 }): AtlasStickyRFNode[] {
   // While editing, the fixed footprint is omitted so the sticky's own
   // CSS can widen it and grow with the editor's content (goal 0145) --
@@ -40,6 +41,7 @@ export function buildStickyNodes({
       onCommit: (text: string) => onCommitEdit(note.ID, text),
       onCancelEdit,
       onEnterEdit: () => onEnterEdit(note.ID),
+      onOpenBig: () => onOpenNote(note.ID),
     },
   }))
   if (draftNotePos) {
@@ -55,6 +57,7 @@ export function buildStickyNodes({
         onCommit: onCommitDraft,
         onCancelEdit: onCancelDraft,
         onEnterEdit: () => {},
+        onOpenBig: () => {},
       },
     })
   }
