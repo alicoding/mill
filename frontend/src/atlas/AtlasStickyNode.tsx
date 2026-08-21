@@ -47,6 +47,7 @@ export const AtlasStickyNode = memo(function AtlasStickyNode({ data }: NodeProps
   // Guards against a double-fire: Escape (which unmounts this editing
   // view) must never also let a trailing blur re-commit the same text.
   const settledRef = useRef(false)
+  const blurTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   // CodeEditor's onChange lands in state for re-render, but commit
   // handlers read this ref -- a blur arriving in the same tick as the
   // last keystroke must never commit the previous render's stale text.
@@ -118,13 +119,26 @@ export const AtlasStickyNode = memo(function AtlasStickyNode({ data }: NodeProps
           }
         }}
         onBlur={(e) => {
-          // focusout only counts when focus actually left the sticky --
-          // and only from a surface still in the DOM (the fallback
-          // textarea's unmount during the CM swap fires a detached
-          // blur that must not commit an in-progress draft).
           if (e.currentTarget.contains(e.relatedTarget as Node | null)) return
-          if (!e.currentTarget.contains(e.target as Node)) return
-          commit()
+          // DEFERRED commit (the focus-group pattern): WebKit fires
+          // focusout for a REPLACED focused element -- with the target
+          // still attached and relatedTarget null, indistinguishable
+          // from a real click-away at dispatch time (Chromium never
+          // fires it at all, which is what the old same-tick guards
+          // were shaped for). Commit only if focus hasn't landed back
+          // inside by the next beat; the editor's own refocus cancels.
+          if (blurTimerRef.current !== null) clearTimeout(blurTimerRef.current)
+          blurTimerRef.current = setTimeout(() => {
+            blurTimerRef.current = null
+            if (wrapRef.current?.contains(document.activeElement)) return
+            commit()
+          }, 150)
+        }}
+        onFocus={() => {
+          if (blurTimerRef.current !== null) {
+            clearTimeout(blurTimerRef.current)
+            blurTimerRef.current = null
+          }
         }}
       >
         <CodeEditor
@@ -152,6 +166,12 @@ export const AtlasStickyNode = memo(function AtlasStickyNode({ data }: NodeProps
       role="button"
       tabIndex={0}
       aria-label={t('sticky.ariaLabel')}
+      // WebKit scrolls the nearest scrollable ancestor to reveal a
+      // mousedown'd tabIndex element even when (Safari focus rules) no
+      // focus is granted -- the board visibly JUMPS on every click.
+      // Preventing mousedown's default stops the reveal scroll; click,
+      // pointer drag, and wheel are all unaffected.
+      onMouseDown={(e) => e.preventDefault()}
       // The click model (goal 0102's gesture table, uniform across
       // every node type): a note's own commit is entering edit --
       // reached by ⌘-click (instant) or a plain click on the

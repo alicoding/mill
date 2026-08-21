@@ -116,6 +116,11 @@ var registry = []check{
 		run:    checkNoteCardSelectionRing,
 	},
 	{
+		name:   "sticky-click-to-edit",
+		reason: "owner-reported on the installed beta.724 (WebKit): click-to-edit a sticky got jumpy and the editor never opened; Chromium layers all pass -- the exact engine-parity class this registry exists for.",
+		run:    checkStickyClickToEdit,
+	},
+	{
 		name:   "sticky-border-color-flip",
 		reason: "the second burned class: a selected sticky note's border-color flip to the accent token (AtlasStickyNode.module.css) -- a real Note, created live via AtlasService.CreateNote so the check exercises the same call_bound_method path an agent driving Mill would use.",
 		run:    checkStickyBorderColorFlip,
@@ -446,4 +451,83 @@ func readStickyStyle(c mcpCaller, selector string) (stickySnapshot, error) {
 			return { borderColor: getComputedStyle(el).borderColor, boxShadow: getComputedStyle(wrapper).boxShadow };`, selector, selector, selector),
 	}), &snap)
 	return snap, err
+}
+
+// checkStickyClickToEdit reproduces the owner's beta.724 report: a
+// sticky note at the CURRENT level, click-select then click-again --
+// the editor must open, and the note must not jump. Rect sampled at
+// every step so a WebKit-only movement shows in the failure text.
+func checkStickyClickToEdit(c mcpCaller) (string, error) {
+	var cards []atlasCard
+	if err := callBoundJSON(c, "github.com/alicoding/mill/internal/services/atlassvc.AtlasService.Cards", []any{}, &cards); err != nil {
+		return "", err
+	}
+	var parentID string
+	for _, card := range cards {
+		if card.Title == "Getting started" {
+			parentID = card.ParentID
+			break
+		}
+	}
+	var note struct {
+		ID string `json:"ID"`
+	}
+	if err := callBoundJSON(c, "github.com/alicoding/mill/internal/services/atlassvc.AtlasService.CreateNote",
+		[]any{"click to edit probe", map[string]any{"X": 620, "Y": 200}, parentID}, &note); err != nil {
+		return "", err
+	}
+	selector := `[data-testid="atlas-sticky-note"]:not([data-editing="true"])`
+	rect := func(tag string) (string, error) {
+		return c.call("js_eval", withWindow(map[string]any{
+			"js": fmt.Sprintf(`const el = document.querySelector(%q);
+				if (!el) return %q + ': gone';
+				const r = el.getBoundingClientRect();
+				return %q + ': ' + Math.round(r.x) + ',' + Math.round(r.y) + ' ' + Math.round(r.width) + 'x' + Math.round(r.height);`, selector, tag, tag),
+		}))
+	}
+	if err := waitForNodeStable(c, selector); err != nil {
+		return "", err
+	}
+	r0, _ := rect("r0")
+	if _, err := c.call("mouse_click", withWindow(map[string]any{"selector": selector})); err != nil {
+		return "", err
+	}
+	r1, _ := rect("after-click1")
+	scroll, _ := c.call("js_eval", withWindow(map[string]any{"js": `const panes = [...document.querySelectorAll('*')].filter((el) => el.scrollLeft > 0 || el.scrollTop > 0);
+		return panes.slice(0, 4).map((el) => (el.className?.baseVal ?? String(el.className)).slice(0, 40) + '=' + el.scrollLeft + ',' + el.scrollTop).join(' | ') || 'no-scrolled-elements';`}))
+	_ = scroll
+	if err := pollJSEval(c, `const el = document.querySelector('[data-testid="atlas-sticky-note"]');
+		return !!el && !!el.closest('.react-flow__node.selected');`, 5*time.Second); err != nil {
+		return "", fmt.Errorf("first click never selected (%s | %s): %w", r0, r1, err)
+	}
+	if scroll != "no-scrolled-elements" {
+		return "", fmt.Errorf("click scrolled an ancestor (the WebKit reveal-on-mousedown jump): %s (%s -> %s)", scroll, r0, r1)
+	}
+	if _, err := c.call("mouse_click", withWindow(map[string]any{"selector": selector})); err != nil {
+		return "", err
+	}
+	r2, _ := rect("after-click2")
+	if err := pollJSEval(c, `return !!document.querySelector('[data-testid="atlas-sticky-editor"]');`, 5*time.Second); err != nil {
+		editing, _ := c.call("js_eval", withWindow(map[string]any{"js": `const notes = [...document.querySelectorAll('[data-testid="atlas-sticky-note"]')];
+			const eds = document.querySelectorAll('[data-testid="atlas-sticky-editor"]').length;
+			return 'notes=' + notes.map((n) => n.getAttribute('data-editing')).join(',') + ' editors=' + eds
+				+ ' focus=' + (document.activeElement?.tagName ?? 'none')
+				+ ' selected=' + document.querySelectorAll('.react-flow__node.selected').length;`}))
+		return "", fmt.Errorf("second click never opened the editor (%s | %s | %s | state=%s)", r0, r1, r2, editing)
+	}
+	// Type into it and confirm the text lands -- "never able to edit
+	// the content" is the report's second half.
+	if _, err := c.call("keyboard_type", withWindow(map[string]any{"text": "typed!"})); err != nil {
+		return "", err
+	}
+	if err := pollJSEval(c, `const ed = document.querySelector('[data-testid="atlas-sticky-editor"]');
+		return !!ed && (ed.textContent ?? '').includes('typed!');`, 5*time.Second); err != nil {
+		return "", fmt.Errorf("typing never landed in the open editor")
+	}
+	for i := 0; i < 2; i++ {
+		if _, err := c.call("keyboard_press", withWindow(map[string]any{"key": "Escape"})); err != nil {
+			return "", err
+		}
+	}
+	return fmt.Sprintf("click-select, click-edit, typing landed (%s | %s | %s)", r0, r1, r2), nil
 }

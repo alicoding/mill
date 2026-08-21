@@ -20,6 +20,7 @@ export function MarkdownNoteField({ value, onChange, onCommit, placeholder, aria
   const [editing, setEditing] = useState(false)
   const [html, setHtml] = useState('')
   const editorWrapRef = useRef<HTMLDivElement>(null)
+  const blurTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const showEditor = editing || value.trim() === ''
 
@@ -50,12 +51,25 @@ export function MarkdownNoteField({ value, onChange, onCommit, placeholder, aria
         // Interacting with the empty-state editor IS editing -- without
         // this, the first typed character flips the field to rendered
         // mid-keystroke (value no longer empty, editing still false).
-        onFocus={() => setEditing(true)}
+        onFocus={() => {
+          if (blurTimerRef.current !== null) {
+            clearTimeout(blurTimerRef.current)
+            blurTimerRef.current = null
+          }
+          setEditing(true)
+        }}
         onBlur={(e) => {
-          // focusout only counts when focus actually left the field.
           if (e.currentTarget.contains(e.relatedTarget as Node | null)) return
-          setEditing(false)
-          onCommit()
+          // Deferred (the focus-group pattern): WebKit fires focusout
+          // for a replaced focused element -- see AtlasStickyNode's
+          // own onBlur comment. Commit only if focus stays outside.
+          if (blurTimerRef.current !== null) clearTimeout(blurTimerRef.current)
+          blurTimerRef.current = setTimeout(() => {
+            blurTimerRef.current = null
+            if (editorWrapRef.current?.contains(document.activeElement)) return
+            setEditing(false)
+            onCommit()
+          }, 150)
         }}
       >
         <CodeEditor

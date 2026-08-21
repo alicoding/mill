@@ -44,6 +44,8 @@ function AtlasRegionChipNodeInner({ data }: NodeProps<AtlasRegionChipRFNode>) {
       }}
       role="button"
       tabIndex={0}
+      // Same WebKit reveal-scroll guard as AtlasStickyNode's own.
+      onMouseDown={(e) => e.preventDefault()}
       title={data.kind?.Label}
       aria-label={t('board.zoomIntoAriaLabel', { title: data.card.Title })}
       data-testid="atlas-region-chip"
