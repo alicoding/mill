@@ -429,5 +429,12 @@
       "selectConnection": "Select connection",
       "deleteConnection": "Delete connection"
     }
+  },
+  "canvasClipboard": {
+    "copied_one": "Copied {{count}} item",
+    "copied_other": "Copied {{count}} items",
+    "pasted_one": "Pasted {{count}} item",
+    "pasted_other": "Pasted {{count}} items",
+    "triggerRefusal": "The trigger step can't be copied — a workflow has exactly one."
   }
 }
