@@ -108,7 +108,8 @@
       "importConfirmTitle": "Import this backup?",
       "importConfirmButton": "Import",
       "importConfirmEmpty": "This file has nothing new to import.",
-      "familyCount": "{{name}}: {{created}} new, {{updated}} updated"
+      "familyCount": "{{name}}: {{created}} new, {{updated}} updated",
+      "mirrorFilesNote": "The export covers Mill's own data. Files mirrored from folders on disk are referenced by path, not copied in — back those folders up separately."
     }
   },
   "keyboardShortcutsSection": {

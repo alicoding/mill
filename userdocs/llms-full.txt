@@ -242,7 +242,12 @@ drifting apart would be a bug:
   editing a cell, Tab moves right, Enter moves down, Escape steps
   back to the cell — then arrows walk the grid, typing starts a
   fresh entry, and Escape again leaves the table. Commits happen as
-  you go.
+  you go. Bring data in from a CSV or JSON file: "Import rows…" on a
+  list maps file columns to its fields, and "New from file…" on the
+  Lists page proposes a whole typed schema from your sample — edit
+  the proposed names and types, then create the list with every row
+  in one step. Deleting a list is immediate and permanent, so export
+  first if you might want it back.
 - **MCP Servers** — other MCP servers Mill can call as workflow
   steps. (Connecting an agent *to* Mill is the other direction — see
   Settings → MCP access.)

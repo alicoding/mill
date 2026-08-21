@@ -31,7 +31,7 @@ import { perspectiveMembershipMenuItems } from './atlasPerspectiveMenuItems'
 // exact same AtlasService.DeleteCard -- only Dissolve's own confirm
 // copy names the act deliberately, the other doors skip it.
 export function useAtlasContainmentMenus({
-  t, allCards, notes, perspectives, setMenu, drill, onError, onDeleted, onPerspectiveToast, requestPlacementInside, requestGroup,
+  t, allCards, notes, perspectives, setMenu, drill, onError, onDeleted, onPerspectiveToast, requestPlacementInside, requestGroup, guardDelete,
 }: {
   t: TFunction<'atlas'>
   allCards: Card[]
@@ -44,6 +44,10 @@ export function useAtlasContainmentMenus({
   onPerspectiveToast: (message: string) => void
   requestPlacementInside: (tool: AtlasCreationTool, pos: { x: number; y: number }, parentID: string) => void
   requestGroup: (cardIDs: string[], noteIDs: string[], pos: { x: number; y: number }) => void
+  // The container-delete gate (goal 0149 gap 3) -- confirms when the
+  // delete promotes children, runs exec directly otherwise. Dissolve
+  // bypasses it: its own dialog already names the promotion.
+  guardDelete: (cardIDs: string[], noteIDs: string[], exec: () => void) => void
 }) {
   const [dissolveTarget, setDissolveTarget] = useState<Card | null>(null)
 
@@ -71,7 +75,7 @@ export function useAtlasContainmentMenus({
     />
   )
 
-  const deleteSelection = (cardIDs: string[], noteIDs: string[]) => {
+  const deleteSelection = (cardIDs: string[], noteIDs: string[]) => guardDelete(cardIDs, noteIDs, () => {
     Promise.all([
       ...cardIDs.map((id) => AtlasService.DeleteCard(id)),
       ...noteIDs.map((id) => AtlasService.DeleteNote(id)),
@@ -86,7 +90,7 @@ export function useAtlasContainmentMenus({
         void refreshAtlas()
       })
       .catch((err) => onError(String(err)))
-  }
+  })
 
   // Frame interior empty space (LOCKED design §6d): the click point's
   // own frame is the parent, always named in the item -- never a bare
@@ -117,7 +121,7 @@ export function useAtlasContainmentMenus({
         { id: 'zoom', label: t('contextMenu.zoomIn'), run: () => drill(frameID) },
         { id: 'd1', divider: true },
         { id: 'dissolve', label: t('contextMenu.dissolveArea'), run: () => setDissolveTarget(frame) },
-        { id: 'delete', label: t('contextMenu.delete'), danger: true, run: () => deleteCard(frameID) },
+        { id: 'delete', label: t('contextMenu.delete'), danger: true, run: () => guardDelete([frameID], [], () => deleteCard(frameID)) },
       ],
     })
   }

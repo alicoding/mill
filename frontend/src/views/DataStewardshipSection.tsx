@@ -161,6 +161,9 @@ function DataStewardshipSection() {
       <Text as="p" size="small" className={styles.muted} style={{ marginTop: 'var(--base-size-8)' }}>
         {t('settings.dataStewardship.syncedFolderWarning')}
       </Text>
+      <Text as="p" size="small" className={styles.muted} data-testid="export-mirror-note">
+        {t('settings.dataStewardship.mirrorFilesNote')}
+      </Text>
 
       {error && <Text as="p" size="small" className={styles.error}>{error}</Text>}
       {importResult && (
