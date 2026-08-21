@@ -104,6 +104,17 @@ capabilities is goal 0076's audit, not ad-hoc.
   significant checkpoint, so a compaction or restart resumes from
   disk, not from what the summary preserved.
 
+## Green baseline always (owner-mandated 2026-08-21)
+Every check that runs on a PR or a main push must be GREEN. A
+permanently-red job -- required or informational -- is the banned
+state: it trains red-blindness and hides the next real failure
+(0134's register named it; the owner made the call). A check that
+cannot hold green gets fixed same-day or moves OUT of the PR/main
+baseline (scheduled or manual dispatch) with a register entry naming
+its path back in. "Non-required" is not an exemption -- it exists
+only as a promotion staging lane: hold green, build the track
+record, then promote to required.
+
 ## Build-health visibility
 The ruleset (ADR-0034) already makes main unmergeable-red; confirm,
 don't re-enforce:
