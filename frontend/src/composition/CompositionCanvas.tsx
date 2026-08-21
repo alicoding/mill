@@ -10,6 +10,7 @@ import { CANVAS_NODE_WIDTH, CANVAS_NODE_HEIGHT } from './canvasConstants'
 import { contractLine } from './payloadKinds'
 import { useConnectionRefusalHint } from './useConnectionRefusalHint'
 import { ConnectionRefusalHint } from './ConnectionRefusalHint'
+import { useCanvasClipboard } from './useCanvasClipboard'
 import { computeInitialCanvas, useCanvasHotExit } from './useCanvasHotExit'
 import { useCanvasSave } from './useCanvasSave'
 import { useCanvasLiveSync } from './useCanvasLiveSync'
@@ -276,7 +277,8 @@ function CanvasInner({ nodeTypes, workflow, tabKey, onBack, onSaved, readOnly, o
   }
 
   // Draw-time refusal + its explanation (ADR-0042 slice 2) -- see useConnectionRefusalHint.ts.
-  const { isValidConnection, refusalHint, onConnectStart, onConnectEnd, onConnect: handleConnect, onNodeDragStart: handleNodeDragStart } = useConnectionRefusalHint(nodes, edges, nodeTypes, onConnect, () => useCanvasStore.temporal.getState().pause())
+  const { isValidConnection, refusalHint, flash, onConnectStart, onConnectEnd, onConnect: handleConnect, onNodeDragStart: handleNodeDragStart } = useConnectionRefusalHint(nodes, edges, nodeTypes, onConnect, () => useCanvasStore.temporal.getState().pause())
+  useCanvasClipboard({ store: useCanvasStore, readOnly, screenToFlowPosition, flash })
 
   const onCanvasDrop = useCallback(
     (event: DragEvent<HTMLDivElement>) => {

@@ -72,6 +72,9 @@ export interface CanvasState {
   onConnect: (connection: Connection) => void
   addNode: (node: CanvasNode) => void
   addNote: (note: CanvasNoteNode) => void
+  // Pasted clones arrive already selected (goal 0153) -- everything
+  // previously selected deselects so the pasted set IS the selection.
+  addClones: (clones: { nodes: CanvasNode[]; edges: RFEdge[]; notes: CanvasNoteNode[] }) => void
   updateNoteText: (id: string, text: string) => void
   updateNoteColor: (id: string, color: string) => void
   changeNodeType: (id: string, nodeTypeID: string, label: string, config: Record<string, string>, output?: string, contractLine?: string) => void
@@ -129,6 +132,12 @@ export function createCanvasStore(initialNodes: CanvasNode[] = [], initialEdges:
         onConnect: (connection) => set({ edges: rfAddEdge(connection, get().edges) }),
         addNode: (node) => set({ nodes: [...get().nodes, node] }),
         addNote: (note) => set({ notes: [...get().notes, note] }),
+        addClones: ({ nodes, edges, notes }) =>
+          set({
+            nodes: [...get().nodes.map((n) => ({ ...n, selected: false })), ...nodes],
+            edges: [...get().edges, ...edges],
+            notes: [...get().notes.map((n) => ({ ...n, selected: false })), ...notes],
+          }),
         updateNoteText: (id, text) =>
           set({ notes: get().notes.map((n) => (n.id === id ? { ...n, data: { ...n.data, text } } : n)) }),
         updateNoteColor: (id, color) =>

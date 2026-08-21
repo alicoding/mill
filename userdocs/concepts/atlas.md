@@ -31,6 +31,12 @@ into.
   note shows the rendered result, and clicking it brings the source
   back. A long sticky note scrolls in place, and grows while you
   edit it.
+- **Copy and paste to duplicate.** Select cards or notes and press
+  ⌘C, then ⌘V — copies appear where your cursor is, filed into
+  whatever area it's over. A copy is just the card itself; when the
+  original has items inside, the paste offers to copy those too.
+  Links come along only when both ends were copied. The copy is
+  ordinary text on your clipboard, so it pastes across spaces.
 - **Create by pointing.** Press C (or pick Card in the toolbar) and
   click — the card appears right there and you name it in place;
   Enter keeps the name, Escape keeps it as Untitled. Web addresses

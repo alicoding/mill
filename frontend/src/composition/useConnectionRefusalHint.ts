@@ -68,17 +68,25 @@ export function useConnectionRefusalHint(
     lastReasonRef.current = null
   }, [])
 
-  const onConnectEnd = useCallback(() => {
-    const reason = lastReasonRef.current
-    lastReasonRef.current = null
-    if (!reason) return
-    setRefusalHint(t('compositionCanvas.connectionRefusalHint', { reason }))
+  // flash is the panel's generic door (the multi-purpose-surface
+  // rule): any canvas concern may show a transient message through
+  // the same auto-clearing hint -- the clipboard toasts (goal 0153)
+  // are its second consumer.
+  const flash = useCallback((message: string) => {
+    setRefusalHint(message)
     if (clearTimerRef.current) clearTimeout(clearTimerRef.current)
     clearTimerRef.current = setTimeout(() => {
       setRefusalHint(null)
       clearTimerRef.current = null
     }, HINT_DURATION_MS)
-  }, [t])
+  }, [])
+
+  const onConnectEnd = useCallback(() => {
+    const reason = lastReasonRef.current
+    lastReasonRef.current = null
+    if (!reason) return
+    flash(t('compositionCanvas.connectionRefusalHint', { reason }))
+  }, [t, flash])
 
   const onConnect = useCallback(
     (connection: Connection) => {
@@ -93,5 +101,5 @@ export function useConnectionRefusalHint(
     clearRefusalHint()
   }, [pauseUndo, clearRefusalHint])
 
-  return { isValidConnection, refusalHint, onConnectStart, onConnectEnd, onConnect, onNodeDragStart }
+  return { isValidConnection, refusalHint, flash, onConnectStart, onConnectEnd, onConnect, onNodeDragStart }
 }
