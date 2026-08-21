@@ -11,7 +11,7 @@ import {
 } from './fixtures/server'
 import { contextMenu } from './fixtures/contextMenu'
 import { ATLAS_KIND_TOPIC, selectKind } from './fixtures/kindPicker'
-import { armAndPlaceTopicCard, cancelCreatePopover, deleteCardViaMenu, groupCard, noteCard } from './fixtures/atlasBoard'
+import { armAndPlaceTopicCard, deleteCardViaMenu, groupCard, noteCard } from './fixtures/atlasBoard'
 import { waitForViewportStable } from './fixtures/animation'
 
 // A LIGHTER zoom-out than fixtures/atlasBoard.ts's own zoomAllTheWayOut
@@ -275,18 +275,23 @@ test('atlas containment: area drawing, marker-box grouping, drag filing, dissolv
     // tray chrome (goal 0106 slice B) all live in the bottom band, so
     // the vertical middle is the one fraction guaranteed clear of all
     // three regardless of which corner a bottom-anchored point picks. ---
+    // (goal 0144 removed the card-create popover; the kind-picker
+    // portal regression this block checked lives in
+    // atlas-page-edit.spec.ts's New-space dialog check now. The
+    // instant-create path itself lands a card with an inline title --
+    // proven by the flows above.)
     await page.keyboard.press('c')
     const kindCheckBox = await board.boundingBox()
     if (!kindCheckBox) throw new Error('board has no bounding box')
     await board.click({ position: { x: kindCheckBox.width * 0.95, y: kindCheckBox.height * 0.3 } })
-    await expect(popover).toBeVisible()
-    await popover.getByTestId('atlas-placement-kind').click()
-    // The kind dropdown portals out of the popover (Primer Overlay,
-    // goal 0124) -- options resolve at page scope now.
-    await expect(page.getByTestId(`atlas-placement-kind-option-${ATLAS_KIND_TOPIC}`)).toContainText('Something being tracked or worked through.')
-    await page.getByTestId(`atlas-placement-kind-option-${ATLAS_KIND_TOPIC}`).click()
-    await cancelCreatePopover(popover)
-    await expect(popover).not.toBeVisible()
+    const kindCheckInline = page.getByTestId('atlas-inline-title')
+    await expect(kindCheckInline).toBeVisible()
+    await kindCheckInline.press('Escape')
+    // Escape keeps the Untitled card -- delete it so counts stay true.
+    await noteCard(page, 'Untitled').click({ button: 'right' })
+    await expect(menu).toBeVisible()
+    await menu.getByText('Delete', { exact: true }).click()
+    await expect(noteCard(page, 'Untitled')).toHaveCount(0)
 
     // --- Rider (a): a zoomed-into space with zero cards and zero
     // notes still renders the tray + supports right-click create.
