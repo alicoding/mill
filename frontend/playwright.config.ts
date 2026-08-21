@@ -13,6 +13,16 @@ import { defineConfig } from '@playwright/test'
 // exactly once, in globalSetup, before any worker starts.
 export default defineConfig({
   testDir: './e2e',
+  // Playwright's own default testMatch also collects `*.test.ts`, not
+  // just `*.spec.ts` -- goal 0156 put a co-located Vitest unit test
+  // (layoutFitnessPredicate.test.ts) inside this same testDir, and
+  // without this it got collected as a PLAYWRIGHT test too, crashing
+  // on Vitest's `describe` outside a Vitest runner. The convention
+  // this pins, mirroring vite.config.ts's own narrowed exclude:
+  // `.spec.ts` under e2e/ is Playwright, `.test.ts` under e2e/ is
+  // Vitest, co-located by design -- never move the file, narrow the
+  // match instead.
+  testMatch: '**/*.spec.ts',
   // Real cores, not files: 4 locally (tune against the machine), but 1
   // in CI (goal 0024 / ADR-0034's un-deferred CI target architecture --
   // Playwright's own CI guidance is workers: 1 for shared/limited-core
