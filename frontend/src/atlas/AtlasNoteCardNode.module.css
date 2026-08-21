@@ -10,7 +10,7 @@
     background: var(--bgColor-default);
     display: flex;
     flex-direction: column;
-    padding: 7px 9px 8px;
+    padding: var(--mill-density-card-pad, 7px 9px 8px);
     cursor: pointer;
     overflow: hidden;
 }
