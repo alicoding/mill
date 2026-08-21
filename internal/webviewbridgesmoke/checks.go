@@ -247,21 +247,52 @@ func waitForNodeStable(c mcpCaller, selector string) error {
 // so the ring check that follows starts from an unselected board.
 func checkNoteCardCommit(c mcpCaller) (string, error) {
 	selector := `[data-testid="atlas-note-card"]`
-	if err := waitForNodeStable(c, selector); err != nil {
-		return "", fmt.Errorf("board never settled before the select click: %w", err)
+	// Full-gesture retry (the e2e suite's own converged pattern): this
+	// check runs FIRST after the board renders, and on a slow CI
+	// runner the fitView camera can hitch through the stability
+	// sampler -- a click computed against pre-settle coordinates then
+	// misses the card entirely. Re-running stability + click retries
+	// the SYNTHESIS; a genuinely broken click model still fails every
+	// attempt (CI-only 5/6 failures, local 6/6 green, every red run
+	// naming this one check).
+	selectedJS := `const card = document.querySelector('[data-testid="atlas-note-card"]');
+		return !!card && !!card.closest('.react-flow__node.selected');`
+	var lastErr error
+	for attempt := 0; attempt < 3; attempt++ {
+		if err := waitForNodeStable(c, selector); err != nil {
+			lastErr = fmt.Errorf("board never settled before the select click: %w", err)
+			continue
+		}
+		if _, err := c.call("mouse_click", withWindow(map[string]any{"selector": selector})); err != nil {
+			return "", fmt.Errorf("select click: %w", err)
+		}
+		if err := pollJSEval(c, selectedJS, 3*time.Second); err != nil {
+			lastErr = fmt.Errorf("first click never selected the card: %w", err)
+			continue
+		}
+		lastErr = nil
+		break
 	}
-	if _, err := c.call("mouse_click", withWindow(map[string]any{"selector": selector})); err != nil {
-		return "", fmt.Errorf("select click: %w", err)
+	if lastErr != nil {
+		return "", fmt.Errorf("after 3 attempts: %w", lastErr)
 	}
-	if err := pollJSEval(c, `const card = document.querySelector('[data-testid="atlas-note-card"]');
-		return !!card && !!card.closest('.react-flow__node.selected');`, 5*time.Second); err != nil {
-		return "", fmt.Errorf("first click never selected the card: %w", err)
+	// The commit click gets the same treatment: a miss lands on the
+	// pane and deselects; the next attempt's click re-selects, and the
+	// one after commits -- self-healing inside the attempt budget.
+	lastErr = nil
+	for attempt := 0; attempt < 3; attempt++ {
+		if _, err := c.call("mouse_click", withWindow(map[string]any{"selector": selector})); err != nil {
+			return "", fmt.Errorf("commit click: %w", err)
+		}
+		if err := pollJSEval(c, `return !!document.querySelector('[data-testid="atlas-page-header"]');`, 3*time.Second); err != nil {
+			lastErr = fmt.Errorf("second click on the selected card never opened its page: %w", err)
+			continue
+		}
+		lastErr = nil
+		break
 	}
-	if _, err := c.call("mouse_click", withWindow(map[string]any{"selector": selector})); err != nil {
-		return "", fmt.Errorf("commit click: %w", err)
-	}
-	if err := pollJSEval(c, `return !!document.querySelector('[data-testid="atlas-page-header"]');`, 5*time.Second); err != nil {
-		return "", fmt.Errorf("second click on the selected card never opened its page: %w", err)
+	if lastErr != nil {
+		return "", fmt.Errorf("after 3 attempts: %w", lastErr)
 	}
 	for i := 0; i < 2; i++ {
 		if _, err := c.call("keyboard_press", withWindow(map[string]any{"key": "Escape"})); err != nil {
