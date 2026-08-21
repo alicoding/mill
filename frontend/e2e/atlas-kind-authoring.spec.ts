@@ -183,7 +183,7 @@ test('a card-reference field filters to its target kind, derives a board edge, a
     await page.getByTestId('atlas-kind-field-key').fill('owner')
     await page.getByTestId('atlas-kind-field-label').fill('Owner')
     await page.getByTestId('atlas-kind-field-type').selectOption('cardref')
-    await page.getByTestId('atlas-kind-field-refkind').selectOption({ label: 'Contact' })
+    await page.getByTestId('atlas-kind-field-refkind').selectOption({ label: 'Topic' })
     await page.getByTestId('atlas-kind-field-showoncard').check()
     await page.getByTestId('atlas-kind-save').click()
     await expect(dialog(page).getByTestId('atlas-kind-row').filter({ hasText: 'ZzE2eTicket' })).toBeVisible()
@@ -224,15 +224,15 @@ test('a card-reference field filters to its target kind, derives a board edge, a
     // expand it before the picker exists.
     await overlay.locator('[data-testid="atlas-page-add-field"]', { hasText: 'Owner' }).click()
     const ownerSelect = overlay.locator('[data-testid="atlas-field"][data-field-key="owner"]')
-    await expect(ownerSelect.locator('option', { hasText: 'Ada Lovelace' })).toHaveCount(1)
-    await expect(ownerSelect.locator('option', { hasText: 'Getting started' })).toHaveCount(0)
-    await ownerSelect.selectOption({ label: 'Ada Lovelace' })
+    await expect(ownerSelect.locator('option', { hasText: 'Getting started' })).toHaveCount(1)
+    await expect(ownerSelect.locator('option', { hasText: 'Ada Lovelace' })).toHaveCount(0)
+    await ownerSelect.selectOption({ label: 'Getting started' })
     await page.keyboard.press('Escape')
     await expect(overlay).not.toBeVisible()
 
     // The reference derives a labeled dashed edge and a face value.
     await expect(page.locator('.react-flow__edge', { hasText: 'Owner' })).toHaveCount(1)
-    await expect(ticketCard.getByTestId('atlas-face-field')).toHaveText('Ada Lovelace')
+    await expect(ticketCard.getByTestId('atlas-face-field')).toHaveText('Getting started')
 
     // Clean up: card then kind.
     const menu = contextMenu(page)

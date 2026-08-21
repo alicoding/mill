@@ -127,9 +127,15 @@ func BuiltInKinds() []Kind {
 			Description: "A reference to written material, on this machine or elsewhere.",
 			Fields: []typedfield.Field{
 				{Key: "owner", Label: "Owner", Type: typedfield.TypeText},
+				// The seeded cardref example (docs/goals/0152 slice 2).
+				// Additive next to the older free-text owner: converting
+				// a saved field's type is exactly what the evolution
+				// guard forbids, seeds included.
+				{Key: "person", Label: "Person", Type: typedfield.TypeCardRef, RefKind: kindContactID},
 			},
 			CreatedAt: now, UpdatedAt: now,
-			BuiltIn: true, Seed: seedorigin.Stamp(2), // FieldTombstones added, structural only
+			// rev 3: person cardref added (docs/goals/0152).
+			BuiltIn: true, Seed: seedorigin.Stamp(3),
 		},
 		{
 			ID: kindIntakeID, Label: "Intake", Icon: "📥",
@@ -241,10 +247,12 @@ func BuiltInCards() []Card {
 			ID: cardDocumentID, KindID: kindDocumentID, Title: "Project charter",
 			ParentID:          cardExampleAreaID,
 			Source:            "https://example.com/project-charter",
-			Fields:            map[string]string{"owner": "Ada Lovelace"},
+			Fields:            map[string]string{"owner": "Ada Lovelace", "person": cardContactID},
 			ActionWorkflowIDs: []string{composition.ExampleChildWorkflowID},
 			CreatedAt:         now, UpdatedAt: now,
-			BuiltIn: true, Seed: seedorigin.Stamp(5), // Card gained MirrorChecksum (goal 0088) then DeletedAt (goal 0093) -- shape shifts
+			// rev 6: person cardref set to the seeded Contact (goal 0152)
+			// -- the dashed derived edge ships in the example area.
+			BuiltIn: true, Seed: seedorigin.Stamp(6),
 		},
 	}
 }
