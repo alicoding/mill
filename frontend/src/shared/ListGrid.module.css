@@ -40,7 +40,7 @@
   color: var(--fgColor-muted);
   text-align: left;
   font-weight: 600;
-  padding: 3px 8px;
+  padding: var(--mill-density-cell-pad-y, 3px) 8px;
   border-bottom: 1px solid var(--borderColor-default);
   white-space: nowrap;
 }
@@ -72,7 +72,7 @@
      condensing to a sliver. */
   height: 24px;
   box-sizing: border-box;
-  padding: 3px 8px;
+  padding: var(--mill-density-cell-pad-y, 3px) 8px;
   border-bottom: 1px solid var(--borderColor-muted);
   /* Visible cell boundary (goal 0140): columns read as cells, not
      floating text. */

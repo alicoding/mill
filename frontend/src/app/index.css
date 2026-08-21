@@ -55,6 +55,18 @@
    multi-row list; the 44px mobile floor below still wins). */
 :root[data-density="compact"] {
     --mill-density-row-pad-y: var(--base-size-2, 2px);
+    /* Goal 0150 -- more consumers of the ONE toggle, still one lever:
+       each derived value below is consumed via var(..., <that
+       surface's comfortable value>) so Comfortable stays a zero-diff
+       fallthrough exactly like the row token above. */
+    --mill-density-cell-pad-y: 1px; /* ListGrid header/cell rows (3px at rest) */
+    --mill-density-card-pad: 4px 8px 5px; /* canvas card face (7px 9px 8px at rest) */
+    /* Primer Stack's own gap tokens (its gap rule reads
+       --stack-gap-normal/-condensed with rem defaults) -- overriding
+       the framework's token, not its markup, tightens every Stack-built
+       surface (Settings rows included) in one place. */
+    --stack-gap-normal: var(--base-size-8, 8px);
+    --stack-gap-condensed: var(--base-size-4, 4px);
 }
 /* Touch-target floor (docs/goals/0096's DoR: "floor wins over
    density"): at the companion breakpoint, compact's row padding
@@ -66,6 +78,13 @@
 @media (max-width: 767px) {
     :root[data-density="compact"] {
         --mill-density-row-pad-y: var(--base-size-12, 12px);
+        /* `initial` makes each custom property invalid, so every
+           consumer's var() fallback -- its comfortable value -- wins:
+           the 44px floor beats density on touch surfaces. */
+        --mill-density-cell-pad-y: initial;
+        --mill-density-card-pad: initial;
+        --stack-gap-normal: initial;
+        --stack-gap-condensed: initial;
     }
 }
 

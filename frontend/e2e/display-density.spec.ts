@@ -81,3 +81,49 @@ test.describe('mobile viewport', () => {
     await page.getByTestId('density-control').getByRole('button', { name: 'Comfortable' }).click()
   })
 })
+
+// Goal 0150: density must read on every major surface, not just
+// list rows -- canvas card faces (face padding), the grid's cell
+// rows, and Settings' own stacks (Primer Stack gap tokens). Computed
+// styles, not screenshots: each surface consumes the compact token
+// family with its comfortable value as the var() fallback.
+test('Compact reads on canvas cards, the list grid, and Settings stacks', async ({ page }) => {
+  await page.goto('/')
+
+  const cardPad = async () => {
+    await page.getByRole('link', { name: 'Atlas' }).click()
+    const card = page.locator('[data-testid="atlas-note-card"]').first()
+    await expect(card).toBeVisible()
+    return card.evaluate((el) => getComputedStyle(el).paddingTop)
+  }
+  const gridPad = async () => {
+    await page.getByRole('link', { name: 'Configure' }).click()
+    await page.getByRole('tab', { name: 'Lists' }).click()
+    const row = page.locator('[data-testid="inventory-row"][data-entity="list"]').first()
+    await expect(row).toBeVisible()
+    await row.click()
+    const header = page.locator('[data-testid="list-rows-editor"] th').first()
+    await expect(header).toBeVisible()
+    const pad = await header.evaluate((el) => getComputedStyle(el).paddingTop)
+    await page.getByRole('button', { name: 'Close' }).click()
+    return pad
+  }
+  const settingsGap = async () => {
+    await page.getByRole('link', { name: 'Settings' }).click()
+    const stack = page.getByTestId('density-control').locator('..')
+    return stack.evaluate((el) => getComputedStyle(el).rowGap)
+  }
+
+  expect(await cardPad()).toBe('7px')
+  expect(await gridPad()).toBe('3px')
+  const comfortableGap = await settingsGap()
+
+  await setDensity(page, 'Compact')
+  expect(await cardPad()).toBe('4px')
+  expect(await gridPad()).toBe('1px')
+  const compactGap = await settingsGap()
+  expect(parseFloat(compactGap)).toBeLessThan(parseFloat(comfortableGap))
+
+  // Cleanup, same reasoning as the tests above.
+  await setDensity(page, 'Comfortable')
+})
