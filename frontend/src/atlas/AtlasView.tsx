@@ -400,7 +400,7 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
         )}
         <AtlasBoard
           onPasteConverted={(res) => quietToast.show(pasteSummaryText(t, res))}
-          onCreateTableSized={(cols, rows) => void createTableFromScratch(cols, rows)}
+          onCreateTableSized={(cols, rows, at, parentID) => void createTableFromScratch(cols, rows, at, parentID)}
           onOpenTableFromList={() => setTableFromListOpen(true)}
           boardFilter={boardFilter}
           onBoardFilterChange={setBoardFilter}
