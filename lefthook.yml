@@ -89,7 +89,7 @@ pre-commit:
       # go-build-desktop below already build the root package locally,
       # so that requirement (this file's own header comment) already
       # applied before this line did.
-      run: go test . ./internal/... -race -coverprofile=/tmp/mill-cover-lefthook.out && bash scripts/check-go-coverage.sh /tmp/mill-cover-lefthook.out
+      run: OUT="$(mktemp -t mill-cover)" && go test . ./internal/... -race -coverprofile="$OUT" && bash scripts/check-go-coverage.sh "$OUT"
     - name: go-build-desktop
       glob: "*.go"
       run: go build -o /dev/null .
