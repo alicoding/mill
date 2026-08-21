@@ -9,6 +9,7 @@ import { ConfigureService } from '../shared/bindings'
 import type { List } from '../../bindings/github.com/alicoding/mill/internal/domain/list/models'
 import { ListGrid, type GridColumn, type GridRow } from '../shared/ListGrid'
 import { ListRowImport } from './ListRowImport'
+import { NewListFromFile } from './NewListFromFile'
 import { ListVersionsSection } from './ListVersionsSection'
 import { downloadJSON } from '../shared/downloadJSON'
 import { refreshLists, useConfigureEntityStore } from '../shared/configureEntityStore'
@@ -233,6 +234,7 @@ export function ConfigureLists() {
             {t('import')}
           </Button>
           <RestoreExamplesButton items={restorable} onRestore={restoreExample} />
+          <NewListFromFile onCreated={(l) => { refetch(); startEdit(l) }} />
           <Button leadingVisual={PlusIcon} variant="primary" size="small" onClick={startCreate} data-testid="new-list">
             {t('configureLists.newList')}
           </Button>

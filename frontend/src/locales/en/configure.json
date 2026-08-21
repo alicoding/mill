@@ -6,6 +6,7 @@
   "duplicate": "Duplicate",
   "delete": "Delete",
   "import": "Import",
+  "cancel": "Cancel",
   "required": "required",
   "secret": "secret",
   "authTypeLabels": {
@@ -145,6 +146,22 @@
       "confirmButton_other": "Import {{count}} rows",
       "resultSummary_one": "Imported {{count}} row.",
       "resultSummary_other": "Imported {{count}} rows."
+    },
+    "fromFile": {
+      "button": "New from file…",
+      "dialogTitle": "New list from file",
+      "defaultLabel": "Imported list",
+      "schemaHeading": "Proposed fields",
+      "fieldLabelAriaLabel": "Label for {{column}}",
+      "fieldTypeAriaLabel": "Type for {{column}}",
+      "typeText": "Text",
+      "typeNumber": "Number",
+      "typeBoolean": "Boolean",
+      "typeOptions": "Options",
+      "rowCount_one": "{{count}} row will be imported",
+      "rowCount_other": "{{count}} rows will be imported",
+      "confirmButton_one": "Create list and import {{count}} row",
+      "confirmButton_other": "Create list and import {{count}} rows"
     }
   },
   "configureExecEnv": {
