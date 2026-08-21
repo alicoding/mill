@@ -87,7 +87,11 @@ export default defineConfig({
     // e2e/**/*.spec.ts are Playwright tests (real browser + server),
     // not Vitest unit tests -- exclude them here or Vitest tries to run
     // them under its own runner and fails on @playwright/test's APIs.
-    exclude: [...configDefaults.exclude, "e2e/**"],
+    // Narrowed to *.spec.ts only (not all of e2e/**, goal 0156): the
+    // layout-fitness predicate is authored once in e2e/ support code
+    // and unit-tested by a co-located *.test.ts, which this exclude
+    // must let Vitest's own default include glob still pick up.
+    exclude: [...configDefaults.exclude, "e2e/**/*.spec.ts"],
     coverage: {
       provider: "v8",
       // lcov alongside the default text output: the changed-lines

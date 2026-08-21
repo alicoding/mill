@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { isScrollContainer } from '../shared/scrollContainer'
 
 // Scroll-sync + deep-link landing for the Settings TOC (goal 0077).
 // Split out of SettingsView.tsx to keep that file under the 500-line
@@ -47,8 +48,8 @@ export function useSettingsSectionSync(sectionIds: string[], initialSection: str
       // A short final section can never climb above the reading line
       // -- when the scroll container rests at its bottom, the last
       // section is what the reader is looking at. The walk must stop
-      // at the nearest ACTUAL scroll container (overflow-y auto/scroll
-      // AND real overflow), not just the nearest ancestor whose
+      // at the nearest ACTUAL scroll container (shared/scrollContainer.ts's
+      // isScrollContainer), not just the nearest ancestor whose
       // content happens to be taller than its own box: Primer's own
       // PageLayout.Content wrapper (App.tsx's own comment on
       // `view-pane` has the fuller history) sits between pagePanel and
@@ -59,12 +60,8 @@ export function useSettingsSectionSync(sectionIds: string[], initialSection: str
       // too early, on a node where writing .scrollTop is a silent
       // no-op.
       const first = sectionEls.current.get(sectionIds[0])
-      const isRealScroller = (el: HTMLElement) => {
-        const overflowY = getComputedStyle(el).overflowY
-        return (overflowY === 'auto' || overflowY === 'scroll') && el.scrollHeight > el.clientHeight
-      }
       let scroller: HTMLElement | null = first?.parentElement ?? null
-      while (scroller && !isRealScroller(scroller)) scroller = scroller.parentElement
+      while (scroller && !isScrollContainer(scroller)) scroller = scroller.parentElement
       if (scroller && scroller.scrollTop + scroller.clientHeight >= scroller.scrollHeight - 2) {
         candidate = sectionIds[sectionIds.length - 1]
       }

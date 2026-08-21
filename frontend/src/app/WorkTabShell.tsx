@@ -272,7 +272,20 @@ export function WorkTabShell({ pageLabel, pageIcon, titlebarSlot, children }: { 
   return (
     <Tabs value={activeWorkTabKey ?? PAGE_TAB} onValueChange={({ value }) => activateWorkTab(value === PAGE_TAB ? null : value)}>
       {titlebarSlot && createPortal(stripContent, titlebarSlot)}
-      <TabPanel value={PAGE_TAB} className={styles.pagePanel}>{children}</TabPanel>
+      {/* data-clip-intent (goal 0156's layout-fitness audit): this
+          panel only actually clips on the Atlas route
+          (WorkTabShell.module.css's `[data-view='atlas'] .pagePanel`
+          override) -- every other route leaves it unclamped
+          (flex:0 0 auto, no overflow), so the attribute is a no-op
+          there. See .pagePanel's own comment above for why Atlas
+          alone needs the clamp. */}
+      <TabPanel
+        value={PAGE_TAB}
+        className={styles.pagePanel}
+        dataClipIntent="atlas board fills the page-tab panel; the canvas owns its own scroll/pan, the page tab is never the scroller"
+      >
+        {children}
+      </TabPanel>
       {workTabs.map((tab) => (
         <TabPanel key={tab.key} value={tab.key} className={isCanvasTab(tab) ? editorStyles.editorPanel : undefined}>
           {/* Hot-exit "restored" banner (docs/goals/0012) -- shown only

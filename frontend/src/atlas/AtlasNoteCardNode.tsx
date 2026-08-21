@@ -93,6 +93,11 @@ export const AtlasNoteCardNode = memo(function AtlasNoteCardNode({ data }: NodeP
     <div
       className={`${styles.card}${slotDragHighlight ? ` ${slotStyles.slotTargetHighlight}` : ''}`}
       data-testid="atlas-note-card"
+      // Deliberate clamp (goal 0156's layout-fitness audit): the
+      // uniform 190x128 face is a fixed footprint by design
+      // (AtlasNoteCardNode.module.css's own header comment) --
+      // overflowing field/note text is meant to clip, never scroll.
+      data-clip-intent="fixed 190x128 note-card face; overflowing content clips by design"
       data-pulse={pulsed}
       data-dimmed={data.dimmed}
       data-slot-target={slotDragHighlight}
