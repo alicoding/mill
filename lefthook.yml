@@ -17,6 +17,13 @@ pre-commit:
     - name: ui-copy
       glob: "frontend/src/locales/**/*.json"
       run: ./scripts/check-ui-copy.sh
+    - name: docsgen-freshness
+      # A hand-edited userdocs page without a docsgen regeneration
+      # fails only in CI (TestUserDocs_MatchCommitted) -- run the same
+      # freshness test here so the fix is one local `go generate
+      # ./internal/docsgen` away, not a failed PR round trip.
+      glob: "{userdocs/**,internal/docsgen/**}"
+      run: go test ./internal/docsgen/
     - name: doc-paths
       # docs/ is a private nested checkout (absent on public clones):
       # skip silently when missing; mill-docs' own CI is the enforcing
