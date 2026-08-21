@@ -432,6 +432,7 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
           onFrameInteriorContextMenu={containmentMenus.openFrameInteriorMenu}
           onMultiSelectContextMenu={containmentMenus.openMultiSelectMenu}
           onDeleteSelection={containmentMenus.deleteSelection}
+          onQuietToast={quietToast.show}
           onGroupSelection={(cardIDs, noteIDs, pos) => creationRequests.requestGroup(cardIDs, noteIDs, pos)}
           placementRequest={creationRequests.placementRequest}
           promoteRequest={creationRequests.promoteRequest}
@@ -446,7 +447,7 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
             onUndo={undoToast.undo}
           />
         )}
-        {quietToast.message && <AtlasQuietToast message={quietToast.message} />}
+        {quietToast.message && <AtlasQuietToast message={quietToast.message} action={quietToast.action} />}
       </div>
 
       <AtlasJumpDialog open={jumpOpen} onClose={() => setJumpOpen(false)} cards={allCards} kinds={allKinds} onJump={jumpToCard} />

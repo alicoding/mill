@@ -350,5 +350,16 @@
   },
   "newSpace": {
     "title": "New space"
+  },
+  "clipboard": {
+    "copied_one": "Copied {{count}} item",
+    "copied_other": "Copied {{count}} items",
+    "pasted_one": "Pasted {{count}} item",
+    "pasted_other": "Pasted {{count}} items",
+    "includeChildren_one": "Also copy the {{count}} item inside",
+    "includeChildren_other": "Also copy the {{count}} items inside",
+    "childrenCopied_one": "Copied {{count}} item inside",
+    "childrenCopied_other": "Copied {{count}} items inside",
+    "unknownKind": "That copy uses a kind this space doesn't have."
   }
 }

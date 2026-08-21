@@ -82,3 +82,14 @@ atlas-table-projection.spec.ts's resize test no-ops on CI runners
 via test.skip; the behavior stays covered by TestSetCardSize (Go)
 and the local run. Leave by fix (a deterministic resize driver) or
 review-date decision.
+
+## composition-canvas-interactions: process-inject-text Inspector compose
+- Class: local canvas geometry (the same runner-geometry class the
+  test already CI-skips itself for).
+- Entered: 2026-08-21 (deterministic on the dev machine this day,
+  main and feature branch alike -- node actionability never settles
+  on the first Inspector click; unrelated to the 0153 clipboard
+  change it surfaced under).
+- Review: 2026-09-04. Fix shape: the spec's own pane-aware
+  click/stability fixtures, or promote its CI-skip reasoning to a
+  documented manual check if geometry keeps drifting.
