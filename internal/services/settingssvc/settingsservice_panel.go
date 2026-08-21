@@ -3,6 +3,7 @@ package settingssvc
 import (
 	"github.com/wailsapp/wails/v3/pkg/application"
 	"github.com/wailsapp/wails/v3/pkg/events"
+	"time"
 )
 
 // The Quick Panel (docs/adr/0033-quick-panel-second-window.md) is a
@@ -71,7 +72,15 @@ func (s *SettingsService) SetPanelWindow(w *application.WebviewWindow) {
 func (s *SettingsService) yieldFocusIfMainHidden() {
 	s.mu.Lock()
 	main := s.window
+	grace := s.summonGraceUntil
 	s.mu.Unlock()
+	// A summon in flight must never be cancelled by its own focus
+	// churn (goal 0151): summoning from a BACKGROUND app hides main,
+	// then the panel can momentarily lose the focus race -- without
+	// this grace, that cascade called app.Hide() and Mill vanished.
+	if time.Now().Before(grace) {
+		return
+	}
 	if main != nil && main.IsVisible() {
 		return
 	}
@@ -144,9 +153,28 @@ func (s *SettingsService) TogglePanel() {
 	if main != nil && summonShouldHideMain(main.IsVisible(), main.IsFocused()) {
 		main.Hide()
 	}
+	s.beginSummonGrace()
+	// Activate the app before showing the panel: macOS refuses key
+	// status to a non-active app's window, and an unfocused floating
+	// panel dies instantly to its own HideOnFocusLost (goal 0151).
+	// App-level Show doesn't reverse the window-level Hide above.
+	if app := application.Get(); app != nil {
+		app.Show()
+	}
 	p.Show()
 	p.Focus()
 }
+
+// beginSummonGrace opens the window during which yieldFocusIfMainHidden
+// stays inert -- long enough to outlive activation/focus churn, short
+// enough that a real dismiss right after summon still yields.
+func (s *SettingsService) beginSummonGrace() {
+	s.mu.Lock()
+	s.summonGraceUntil = time.Now().Add(summonGraceWindow)
+	s.mu.Unlock()
+}
+
+const summonGraceWindow = 1200 * time.Millisecond
 
 // ShowPanel shows+focuses the Quick Panel -- the bound counterpart to
 // TogglePanel (which stays //wails:ignore, Go-internal-only: the
@@ -171,6 +199,14 @@ func (s *SettingsService) ShowPanel() {
 	}
 	if main != nil && summonShouldHideMain(main.IsVisible(), main.IsFocused()) {
 		main.Hide()
+	}
+	s.beginSummonGrace()
+	// Activate the app before showing the panel: macOS refuses key
+	// status to a non-active app's window, and an unfocused floating
+	// panel dies instantly to its own HideOnFocusLost (goal 0151).
+	// App-level Show doesn't reverse the window-level Hide above.
+	if app := application.Get(); app != nil {
+		app.Show()
 	}
 	p.Show()
 	p.Focus()
