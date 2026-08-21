@@ -272,7 +272,8 @@
     "removeLink": "Remove link",
     "addToPerspective": "Add to perspective ▸",
     "removeFromPerspective": "Remove from perspective ▸",
-    "newSpace": "New space…"
+    "newSpace": "New space…",
+    "openNote": "Open note"
   },
   "confirm": {
     "dissolveTitle": "Dissolve {{title}}?",
@@ -361,5 +362,8 @@
     "childrenCopied_one": "Copied {{count}} item inside",
     "childrenCopied_other": "Copied {{count}} items inside",
     "unknownKind": "That copy uses a kind this space doesn't have."
+  },
+  "noteOverlay": {
+    "title": "Note"
   }
 }

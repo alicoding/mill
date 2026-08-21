@@ -13,7 +13,7 @@ import type { ContextMenuState } from '../shared/ContextMenu'
 // convention), same shape useAtlasLinkMenus/useAtlasContainmentMenus
 // already established for the card/frame menus.
 export function useAtlasNoteMenu({
-  t, allNotes, setMenu, onDeleted, onError, requestPromote,
+  t, allNotes, setMenu, onDeleted, onError, requestPromote, onOpenNote,
 }: {
   t: TFunction<'atlas'>
   allNotes: Note[]
@@ -21,6 +21,7 @@ export function useAtlasNoteMenu({
   onDeleted: (result: TombstoneResult) => void
   onError: (message: string) => void
   requestPromote: (noteID: string, pos: { x: number; y: number }) => void
+  onOpenNote: (noteID: string) => void
 }) {
   const deleteNote = (noteID: string) => {
     AtlasService.DeleteNote(noteID)
@@ -35,6 +36,7 @@ export function useAtlasNoteMenu({
       x: pos.x,
       y: pos.y,
       items: [
+        { id: 'open-note', label: t('contextMenu.openNote'), run: () => onOpenNote(note.ID) },
         { id: 'promote', label: t('contextMenu.promoteToCard'), run: () => requestPromote(note.ID, pos) },
         { id: 'delete-note', label: t('contextMenu.deleteNote'), danger: true, run: () => deleteNote(note.ID) },
       ],

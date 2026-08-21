@@ -59,7 +59,7 @@ import styles from './AtlasBoard.module.css'
 // media-query gate AtlasNoteCardNode.module.css's own flip already
 // uses, read here in JS via usePrefersReducedMotion since React Flow's
 // own transition durations are JS options, not CSS.
-function AtlasBoardInner({ boardFilter, onBoardFilterChange, filterMatchCount, filterTotalCount, filterPresentKindIDs, cards, allCards, kinds, links, linkKinds, notes, allNotes, parentID, arrangeRequest, viewedID, focusRequest, onDrill, onOpenOverlay, onFocusHandled, onCardContextMenu, onPaneContextMenu, onArteryContextMenu, onEdgeDeleteLink, onEdgeChangeKind, onNoteContextMenu, onFrameContextMenu, onFrameInteriorContextMenu, onMultiSelectContextMenu, onDeleteSelection, onGroupSelection, onPasteConverted, onCreateTableSized, onOpenTableFromList, onQuietToast, placementRequest, promoteRequest, groupRequest }: {
+function AtlasBoardInner({ boardFilter, onBoardFilterChange, filterMatchCount, filterTotalCount, filterPresentKindIDs, cards, allCards, kinds, links, linkKinds, notes, allNotes, parentID, arrangeRequest, viewedID, focusRequest, onDrill, onOpenOverlay, onFocusHandled, onCardContextMenu, onPaneContextMenu, onArteryContextMenu, onEdgeDeleteLink, onEdgeChangeKind, onNoteContextMenu, onFrameContextMenu, onFrameInteriorContextMenu, onMultiSelectContextMenu, onDeleteSelection, onGroupSelection, onPasteConverted, onCreateTableSized, onOpenTableFromList, onQuietToast, onOpenNote, placementRequest, promoteRequest, groupRequest }: {
   // The board filter (goal 0129 slice 1) -- applied as dim-in-place
   // by the node builder; state lives in AtlasView; rendered as a
   // floating top-right Panel (the toolbar row is full by its own
@@ -122,14 +122,13 @@ function AtlasBoardInner({ boardFilter, onBoardFilterChange, filterMatchCount, f
   onDeleteSelection: (cardIDs: string[], noteIDs: string[]) => void
   onPasteConverted: (res: import('../../bindings/github.com/alicoding/mill/internal/services/atlassvc/models').PasteResult) => void
   onQuietToast: (text: string, action?: { label: string; run: () => void }) => void
+  onOpenNote: (id: string) => void
   allNotes: import('../../bindings/github.com/alicoding/mill/internal/domain/atlas/models').Note[]
   onCreateTableSized: (cols: number, rows: number, at?: { X: number; Y: number }, parentID?: string) => void; onOpenTableFromList: () => void
   // The selection tray's own "Group into new area" -- the multi-select context menu's own dispatcher, reused.
   onGroupSelection: (cardIDs: string[], noteIDs: string[], pos: { x: number; y: number }) => void
-  // AtlasView's own downward creation requests (the pane menu's "Add
-  // card"/"Add note"/"Promote to card…" items, extended by slice A2's
-  // frame-scoped placements and "Group into new area") -- see
-  // useAtlasCreation.ts's own header comment for the shape.
+  // AtlasView's downward creation requests (pane-menu adds, promote,
+  // frame placements, group) -- useAtlasCreation.ts has the shape.
   placementRequest?: AtlasPlacementRequest | null
   promoteRequest?: AtlasPromoteRequest | null
   groupRequest?: AtlasGroupRequest | null
@@ -265,8 +264,8 @@ function AtlasBoardInner({ boardFilter, onBoardFilterChange, filterMatchCount, f
     pulsedID, hintedID, hoveredFrameID: dragFiling.hoveredFrameID,
     isSoleSelected: selection.isSoleSelected, onOpenOverlay, handleDrill,
     slotDragSourceID: slotDrag.dragSourceID, onSlotAnchorPointerDown: slotDrag.startDrag, hasLegalTargets, boardFilter, titleEditCardID: creation.editingTitleCardID, onTitleCommit: creation.commitCardTitle, onTitleCancel: creation.cancelCardTitle,
-    noteHandlers: { editingNoteID: creation.editingNoteID, onEnterEdit: creation.enterNoteEdit, onCancelEdit: creation.cancelNoteEdit, onCommitEdit: creation.commitNoteEdit },
-  }), [cards, allCards, allNotes, kinds, links, linkKinds, isFree, readOnly, pulsedID, hintedID, onOpenOverlay, handleDrill, freeMoves, arteries, boardWidth, dragFiling.hoveredFrameID, selection.isSoleSelected, slotDrag.dragSourceID, slotDrag.startDrag, hasLegalTargets, boardFilter, creation.editingTitleCardID, creation.commitCardTitle, creation.cancelCardTitle, creation.editingNoteID, creation.enterNoteEdit, creation.cancelNoteEdit, creation.commitNoteEdit])
+    noteHandlers: { editingNoteID: creation.editingNoteID, onEnterEdit: creation.enterNoteEdit, onCancelEdit: creation.cancelNoteEdit, onCommitEdit: creation.commitNoteEdit, onOpenNote },
+  }), [cards, allCards, allNotes, kinds, links, linkKinds, isFree, readOnly, pulsedID, hintedID, onOpenOverlay, handleDrill, freeMoves, arteries, boardWidth, dragFiling.hoveredFrameID, selection.isSoleSelected, slotDrag.dragSourceID, slotDrag.startDrag, hasLegalTargets, boardFilter, creation.editingTitleCardID, creation.commitCardTitle, creation.cancelCardTitle, creation.editingNoteID, creation.enterNoteEdit, creation.cancelNoteEdit, creation.commitNoteEdit, onOpenNote])
 
   const { edges, setHoveredEdgeID, onSelectionChange } = useAtlasEdgeInteraction({
     arteries, linkKinds, cards, kinds, t, onEdgeDeleteLink, onEdgeChangeKind, onNodeSelectionChange: selection.onSelectionChange,
@@ -280,8 +279,8 @@ function AtlasBoardInner({ boardFilter, onBoardFilterChange, filterMatchCount, f
     notes, draftNotePos: creation.draftNoteFlowPos, editingNoteID: creation.editingNoteID, readOnly: readOnly || !isFree,
     isSoleSelected: selection.isSoleSelected,
     onCommitDraft: creation.commitDraftNote, onCancelDraft: creation.cancelDraftNote,
-    onEnterEdit: creation.enterNoteEdit, onCancelEdit: creation.cancelNoteEdit, onCommitEdit: creation.commitNoteEdit,
-  }), [notes, creation.draftNoteFlowPos, creation.editingNoteID, readOnly, isFree, selection.isSoleSelected, creation.commitDraftNote, creation.cancelDraftNote, creation.enterNoteEdit, creation.cancelNoteEdit, creation.commitNoteEdit])
+    onEnterEdit: creation.enterNoteEdit, onCancelEdit: creation.cancelNoteEdit, onCommitEdit: creation.commitNoteEdit, onOpenNote,
+  }), [notes, creation.draftNoteFlowPos, creation.editingNoteID, readOnly, isFree, selection.isSoleSelected, creation.commitDraftNote, creation.cancelDraftNote, creation.enterNoteEdit, creation.cancelNoteEdit, creation.commitNoteEdit, onOpenNote])
 
   const allNodes = useMemo(() => [...builtNodes, ...stickyNodes], [builtNodes, stickyNodes])
   const [nodes, setNodes, onNodesChange] = useNodesState(allNodes)

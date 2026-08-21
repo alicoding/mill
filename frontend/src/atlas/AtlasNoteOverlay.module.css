@@ -1,0 +1,6 @@
+/* A tall reading/writing surface -- the dialog's own width does the
+   horizontal work; min-height keeps a short note from rendering the
+   big door as a sliver. */
+.body {
+    min-height: 46vh;
+}
