@@ -20,6 +20,10 @@ build/android/gen/
 # Playwright MCP tool debug artifacts (console logs, page snapshots)
 .playwright-mcp/
 /mill
+# A stray `go build` invocation without -o writes a same-name binary
+# to the repo root -- ls-lint's root-file-naming check can't see an
+# extensionless file, so one already reached a commit once.
+/webviewbridgesmoke
 
 # agent worktrees (parallel builds) — never tracked
 .claude/worktrees/

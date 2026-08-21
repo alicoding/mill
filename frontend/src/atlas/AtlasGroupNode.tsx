@@ -80,8 +80,6 @@ export const AtlasGroupNode = memo(function AtlasGroupNode({ data }: NodeProps<A
       role="button"
       tabIndex={0}
       aria-label={t('board.zoomIntoAriaLabel', { title: card.Title })}
-      // Same WebKit reveal-scroll guard as AtlasStickyNode's own.
-      onMouseDown={(e) => e.preventDefault()}
       style={{ borderColor: `var(${tokens.fg})`, background: `var(${tokens.muted})` }}
       onClick={bodyClick}
       onKeyDown={(e) => {
@@ -103,8 +101,6 @@ export const AtlasGroupNode = memo(function AtlasGroupNode({ data }: NodeProps<A
         role="button"
         tabIndex={0}
         aria-label={t('board.zoomIntoAriaLabel', { title: card.Title })}
-      // Same WebKit reveal-scroll guard as AtlasStickyNode's own.
-      onMouseDown={(e) => e.preventDefault()}
         onClick={drill}
         onKeyDown={(e) => {
           if (e.key === 'Enter') {

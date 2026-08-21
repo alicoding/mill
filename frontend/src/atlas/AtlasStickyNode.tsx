@@ -68,7 +68,11 @@ export const AtlasStickyNode = memo(function AtlasStickyNode({ data }: NodeProps
     // Focus whichever editing surface is mounted. The first-ever
     // editor mount swaps a fallback textarea for the lazily-loaded CM6
     // content, dropping focus mid-draft -- retry briefly until the CM
-    // surface exists and holds focus, then stop.
+    // surface exists and holds focus, then stop. This retry is also
+    // WebKit's own cancel path for a spurious focusout that same
+    // mount can receive (see the onBlur comment below) -- it must
+    // keep re-focusing unconditionally, never bail out early on an
+    // armed blur timer, or it stops canceling that spurious commit.
     let tries = 0
     const id = window.setInterval(() => {
       const cm = wrapRef.current?.querySelector<HTMLElement>('.cm-content')
@@ -166,12 +170,6 @@ export const AtlasStickyNode = memo(function AtlasStickyNode({ data }: NodeProps
       role="button"
       tabIndex={0}
       aria-label={t('sticky.ariaLabel')}
-      // WebKit scrolls the nearest scrollable ancestor to reveal a
-      // mousedown'd tabIndex element even when (Safari focus rules) no
-      // focus is granted -- the board visibly JUMPS on every click.
-      // Preventing mousedown's default stops the reveal scroll; click,
-      // pointer drag, and wheel are all unaffected.
-      onMouseDown={(e) => e.preventDefault()}
       // The click model (goal 0102's gesture table, uniform across
       // every node type): a note's own commit is entering edit --
       // reached by ⌘-click (instant) or a plain click on the

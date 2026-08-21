@@ -99,12 +99,6 @@ export const AtlasNoteCardNode = memo(function AtlasNoteCardNode({ data }: NodeP
       role="button"
       tabIndex={0}
       aria-label={t('board.cardAriaLabel', { title: card.Title })}
-      // WebKit scrolls the nearest scrollable ancestor to reveal a
-      // mousedown'd tabIndex element even when (Safari focus rules) no
-      // focus is granted -- the board visibly JUMPS on every click.
-      // Preventing mousedown's default stops the reveal scroll; click,
-      // pointer drag, and wheel are all unaffected.
-      onMouseDown={(e) => e.preventDefault()}
       // The click model (goal 0102's gesture table, uniform across
       // every node type): shift-click is React Flow's own multi-select
       // toggle (never also a commit); ⌘-click commits instantly (the
