@@ -113,6 +113,13 @@ type Field struct {
 	// field. Orthogonal to Type: the wire value is still a plain string
 	// ID.
 	RefKind string
+	// ShowOnCard surfaces this field's value on a card's compact face
+	// (docs/goals/0152) -- read by Atlas Kinds only; other
+	// schema-carrying surfaces (List columns, Decision outputs) ignore
+	// it, the same per-surface-facet convention Multiline/Secret
+	// already follow. A presentation facet, freely togglable -- never
+	// part of the Key/Type identity ValidateFieldEvolution pins.
+	ShowOnCard bool `json:"ShowOnCard,omitempty"`
 	// Multiline marks a text field whose values are naturally
 	// multi-line documents (an HTML payload, a JSON arguments object).
 	Multiline bool

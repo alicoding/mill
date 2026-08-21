@@ -106,10 +106,11 @@ func BuiltInKinds() []Kind {
 			Fields: []typedfield.Field{
 				{Key: "summary", Label: "Summary", Type: typedfield.TypeText, Multiline: true},
 				{Key: "status", Label: "Status", Type: typedfield.TypeOptions,
-					Options: []string{"Open", "In progress", "Done"}, Default: "Open"},
+					Options: []string{"Open", "In progress", "Done"}, Default: "Open", ShowOnCard: true},
 			},
 			CreatedAt: now, UpdatedAt: now,
-			BuiltIn: true, Seed: seedorigin.Stamp(2), // FieldTombstones added, structural only
+			// rev 3: status gains ShowOnCard (docs/goals/0152).
+			BuiltIn: true, Seed: seedorigin.Stamp(3),
 		},
 		{
 			ID: kindContactID, Label: "Contact", Icon: "👤",
