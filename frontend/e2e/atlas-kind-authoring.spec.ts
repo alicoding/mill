@@ -1,5 +1,4 @@
 import { chromium, expect, test } from '@playwright/test'
-import { openPlacementPopover } from './fixtures/atlasBoard'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
@@ -78,11 +77,14 @@ test('create a card kind with a choice field, see it in the create picker, edit 
     // The picker offers it: close the dialog, arm a card placement.
     await page.keyboard.press('Escape')
     await expect(dialog(page)).not.toBeVisible()
-    await openPlacementPopover(page)
-    await page.getByTestId('atlas-placement-kind').click()
+    // The kind picker's surviving generic surface is the New space
+    // dialog (goal 0144 removed the placement popover).
+    await page.getByTestId('atlas-board').click({ button: 'right', position: { x: 180, y: 420 } })
+    await page.getByText('New space…', { exact: true }).click()
+    await page.getByTestId('atlas-create-kind').click()
     await expect(page.getByText('ZzE2eSignal', { exact: false }).first()).toBeVisible()
     await page.keyboard.press('Escape')
-    await page.keyboard.press('Escape')
+    await page.getByRole('button', { name: 'Cancel' }).click()
 
     // Delete: unused, so it goes; the row disappears.
     await page.getByTestId('atlas-open-kinds').click()

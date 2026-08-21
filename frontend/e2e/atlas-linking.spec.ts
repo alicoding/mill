@@ -8,8 +8,8 @@ import {
   spawnMillServer,
   type SpawnedServer,
 } from './fixtures/server'
-import { ATLAS_KIND_TOPIC, selectKind } from './fixtures/kindPicker'
-import { clickCorner, dragBetween, noteCard, submitCreatePopover, zoomAllTheWayOut } from './fixtures/atlasBoard'
+import { ATLAS_KIND_TOPIC } from './fixtures/kindPicker'
+import { clickCorner, dragBetween, noteCard, zoomAllTheWayOut } from './fixtures/atlasBoard'
 
 // Atlas linking interaction overhaul (goal 0124 slice 2): drop-anywhere
 // targeting (a release anywhere on a highlighted candidate's own
@@ -55,14 +55,16 @@ test('atlas linking: drop-anywhere targeting, hover chip, refusal hint, anchored
     // empty (zoomAllTheWayOut shrinks existing/seeded content toward
     // the board's CENTER, per clickCorner's own doc comment -- the
     // corners are the empty margin, not the middle). ---
-    await page.keyboard.press('c')
-    await clickCorner(board, 'top-left')
-    await expect(popover).toBeVisible()
-    const kindTrigger = popover.getByTestId('atlas-placement-kind')
+    // (goal 0144: the card-create popover is gone -- the kind picker's
+    // anchoring check runs against the New space dialog's instance of
+    // the SAME component.)
+    await page.getByTestId('atlas-board').click({ button: 'right', position: { x: 180, y: 420 } })
+    await page.getByText('New space…', { exact: true }).click()
+    const kindTrigger = page.getByTestId('atlas-create-kind')
     const triggerBox = await kindTrigger.boundingBox()
     if (!triggerBox) throw new Error('missing kind trigger bounding box')
     await kindTrigger.click()
-    const kindOption = page.getByTestId(`atlas-placement-kind-option-${ATLAS_KIND_TOPIC}`)
+    const kindOption = page.getByTestId(`atlas-create-kind-option-${ATLAS_KIND_TOPIC}`)
     await expect(kindOption).toBeVisible()
     const overlayBox = await page.getByRole('listbox').boundingBox()
     if (!overlayBox) throw new Error('missing kind overlay bounding box')
@@ -74,26 +76,20 @@ test('atlas linking: drop-anywhere targeting, hover chip, refusal hint, anchored
     expect(overlayBox.y).toBeLessThan(triggerBox.y + triggerBox.height + 20)
     expect(overlayBox.x).toBeLessThan(triggerBox.x + triggerBox.width)
     expect(overlayBox.x + overlayBox.width).toBeGreaterThan(triggerBox.x)
-    // Dismiss the dropdown by re-clicking its own trigger (KindPicker's
-    // own toggle) rather than Escape or an outside click -- both of
-    // those also reach the outer popover's own AnchoredOverlay and
-    // close it in the SAME press (Escape bubbles; the dropdown's own
-    // options sit visually on top of the title field so an "outside"
-    // click there just retries against a covered element).
     await kindTrigger.click()
     await expect(kindOption).not.toBeVisible()
-    await popover.getByTestId('atlas-placement-title').press('Escape')
-    await expect(popover).not.toBeVisible()
+    await page.getByRole('button', { name: 'Cancel' }).click()
 
     // --- Place two cards to link between ---
+    await page.evaluate((kindID) => localStorage.setItem('atlas.lastKindId', kindID), ATLAS_KIND_TOPIC)
     for (const [title, corner] of [['ZzE2eLinkA', 'top-left'], ['ZzE2eLinkB', 'top-right']] as const) {
       await page.keyboard.press('c')
       await clickCorner(board, corner)
-      await expect(popover).toBeVisible()
-      await selectKind(popover, ATLAS_KIND_TOPIC)
-      await popover.getByTestId('atlas-placement-title').fill(title)
-      await submitCreatePopover(popover)
-      await expect(popover).not.toBeVisible()
+      const inline = page.getByTestId('atlas-inline-title')
+      await expect(inline).toBeVisible()
+      await inline.fill(title)
+      await inline.press('Enter')
+      await expect(inline).toHaveCount(0)
       await expect(noteCard(page, title)).toBeVisible()
     }
     const cardA = noteCard(page, 'ZzE2eLinkA')

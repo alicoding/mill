@@ -42,6 +42,12 @@ export interface AtlasNoteCardData extends Record<string, unknown> {
   // component only reports where it started.
   slotDragHighlight: boolean
   onSlotAnchorPointerDown: (linkKindID: string, e: ReactPointerEvent) => void
+  // Inline naming for a just-placed card (goal 0144): true renders
+  // the title as a focused input; commit on Enter/blur, Escape keeps
+  // the placeholder title.
+  titleEditing: boolean
+  onTitleCommit: (id: string, title: string) => void
+  onTitleCancel: () => void
   // Handle honesty (goal 0124 slice 2): false when this board has no
   // other card the handle could ever connect to -- the handle stays
   // in the DOM (recognition: never remove it outright) but renders
@@ -114,7 +120,24 @@ export const AtlasNoteCardNode = memo(function AtlasNoteCardNode({ data }: NodeP
           </span>
         )}
       </div>
-      <div className={styles.title}>{card.Title}</div>
+      {data.titleEditing ? (
+        <input
+          autoFocus
+          className={`${styles.titleInput} nodrag`}
+          placeholder={card.Title}
+          aria-label={t('board.inlineTitleAriaLabel')}
+          data-testid="atlas-inline-title"
+          onClick={(e) => e.stopPropagation()}
+          onKeyDown={(e) => {
+            e.stopPropagation()
+            if (e.key === 'Enter') data.onTitleCommit(card.ID, e.currentTarget.value)
+            if (e.key === 'Escape') data.onTitleCancel()
+          }}
+          onBlur={(e) => data.onTitleCommit(card.ID, e.currentTarget.value)}
+        />
+      ) : (
+        <div className={styles.title}>{card.Title}</div>
+      )}
       {card.Note && <div className={styles.noteLine}>{card.Note}</div>}
       <div className={styles.presenceRow}>
         {dot && <span className={`${styles.dot} ${styles[`dot-${dot}`]}`} data-testid="atlas-note-freshness-dot" />}

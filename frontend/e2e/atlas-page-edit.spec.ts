@@ -10,7 +10,7 @@ import {
 } from './fixtures/server'
 import { deleteViaPageMenu } from './fixtures/atlasPage'
 import { ATLAS_KIND_TOPIC } from './fixtures/kindPicker'
-import { clickBreadcrumbSegment, clickFrameGutter, groupCard, noteCard, openCard, createCardViaTray, openPlacementPopover } from './fixtures/atlasBoard'
+import { clickBreadcrumbSegment, clickFrameGutter, groupCard, noteCard, openCard, createCardViaTray } from './fixtures/atlasBoard'
 
 // Atlas card page read-is-edit + chip navigation (goal 0081 slice A5,
 // LOCKED design §5b): every field editable in place with a per-save
@@ -255,11 +255,12 @@ test('atlas card page: read-is-edit fields, kind-gated mirror controls, page lin
     // --- Rider (c): AtlasCreateMenu's kind picker (its own legacy
     // native <select>) is now the shared KindPicker -- every option
     // shows its own one-line description, not just a bare name. ---
-    await openPlacementPopover(page)
-    await page.getByTestId('atlas-placement-kind').click()
-    await expect(page.getByTestId(`atlas-placement-kind-option-${ATLAS_KIND_TOPIC}`)).toContainText('Something being tracked or worked through.')
+    await page.getByTestId('atlas-board').click({ button: 'right', position: { x: 180, y: 420 } })
+    await page.getByText('New space…', { exact: true }).click()
+    await page.getByTestId('atlas-create-kind').click()
+    await expect(page.getByTestId(`atlas-create-kind-option-${ATLAS_KIND_TOPIC}`)).toContainText('Something being tracked or worked through.')
     await page.keyboard.press('Escape')
-    await page.keyboard.press('Escape')
+    await page.getByRole('button', { name: 'Cancel' }).click()
   } finally {
     await server?.stop()
     rmSync(dir, { recursive: true, force: true })

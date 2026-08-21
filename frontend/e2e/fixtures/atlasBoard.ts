@@ -1,6 +1,6 @@
 import { expect } from '@playwright/test'
 import type { Locator, Page } from '@playwright/test'
-import { ATLAS_KIND_TOPIC, selectKind } from './kindPicker'
+import { ATLAS_KIND_TOPIC } from './kindPicker'
 
 // Promoted out of atlas-authoring.spec.ts (goal 0081 slice A2,
 // testing.md's "a helper used by 2+ spec files MUST be promoted" rule)
@@ -107,16 +107,18 @@ export async function closeCard(page: Page, overlay: Locator): Promise<void> {
 
 // Promoted from atlas-containment.spec.ts when atlas-select-group.spec.ts
 // became a second consumer (testing.md's helpers-live-in-fixtures rule).
-export async function armAndPlaceTopicCard(page: Page, board: Locator, popover: Locator, fx: number, fy: number, title: string): Promise<void> {
+export async function armAndPlaceTopicCard(page: Page, board: Locator, _popover: Locator, fx: number, fy: number, title: string): Promise<void> {
+  // Instant placement (goal 0144): the click creates the card
+  // (last-used kind seeded to Topic) and the title edits inline.
+  await page.evaluate((kindID) => localStorage.setItem('atlas.lastKindId', kindID), ATLAS_KIND_TOPIC)
   await page.keyboard.press('c')
   const box = await board.boundingBox()
   if (!box) throw new Error('board has no bounding box')
   await board.click({ position: { x: box.width * fx, y: box.height * fy } })
-  await expect(popover).toBeVisible()
-  await selectKind(popover, ATLAS_KIND_TOPIC)
-  await popover.getByTestId('atlas-placement-title').fill(title)
-  await submitCreatePopover(popover)
-  await expect(popover).not.toBeVisible()
+  const inline = page.getByTestId('atlas-inline-title')
+  await expect(inline).toBeVisible()
+  await inline.fill(title)
+  await inline.press('Enter')
   await expect(noteCard(page, title)).toBeVisible()
 }
 
@@ -221,9 +223,23 @@ export async function openPlacementPopover(page: Page, at?: { x: number; y: numb
 }
 
 export async function createCardViaTray(page: Page, title: string, opts?: { kindID?: string; at?: { x: number; y: number } }) {
-  const popover = await openPlacementPopover(page, opts?.at)
-  if (opts?.kindID) await selectKind(page, opts.kindID, 'atlas-placement-kind')
-  await popover.getByTestId('atlas-placement-title').fill(title)
-  await popover.getByTestId('atlas-placement-title').press('Enter')
-  await expect(popover).toHaveCount(0)
+  // Instant placement (goal 0144): kind rides the last-used seed,
+  // the title edits inline on the new node.
+  if (opts?.kindID) await page.evaluate((kindID) => localStorage.setItem('atlas.lastKindId', kindID), opts.kindID)
+  await page.getByTestId('atlas-tray-card').click()
+  const candidates = opts?.at ? [opts.at] : [{ x: 400, y: 500 }, { x: 300, y: 620 }, { x: 1000, y: 640 }, { x: 250, y: 250 }]
+  let point = candidates[0]
+  for (const c of candidates) {
+    const isPane = await page.evaluate(([px, py]) => document.elementFromPoint(px, py)?.classList?.contains('react-flow__pane') ?? false, [c.x, c.y])
+    if (isPane) {
+      point = c
+      break
+    }
+  }
+  await page.mouse.click(point.x, point.y)
+  const inline = page.getByTestId('atlas-inline-title')
+  await expect(inline).toBeVisible()
+  await inline.fill(title)
+  await inline.press('Enter')
+  await expect(inline).toHaveCount(0)
 }

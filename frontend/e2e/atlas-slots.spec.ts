@@ -88,14 +88,15 @@ test('atlas typed link slots: page slot rows, hover-handle slot-drag linking, ch
     const seededEdgeCount = await page.locator('.react-flow__edge').count()
 
     // --- Place two cards to link between ---
+    await page.evaluate((kindID) => localStorage.setItem('atlas.lastKindId', kindID), ATLAS_KIND_TOPIC)
     for (const [title, corner] of [['ZzE2eSlotA', 'top-left'], ['ZzE2eSlotB', 'top-right']] as const) {
       await page.keyboard.press('c')
       await clickCorner(board, corner)
-      await expect(popover).toBeVisible()
-      await selectKind(popover, ATLAS_KIND_TOPIC)
-      await popover.getByTestId('atlas-placement-title').fill(title)
-      await submitCreatePopover(popover)
-      await expect(popover).not.toBeVisible()
+      const inline = page.getByTestId('atlas-inline-title')
+      await expect(inline).toBeVisible()
+      await inline.fill(title)
+      await inline.press('Enter')
+      await expect(inline).toHaveCount(0)
       await expect(noteCard(page, title)).toBeVisible()
     }
     const cardA = noteCard(page, 'ZzE2eSlotA')
