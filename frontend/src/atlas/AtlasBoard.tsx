@@ -187,7 +187,7 @@ function AtlasBoardInner({ boardFilter, onBoardFilterChange, filterMatchCount, f
   const tablePicker = useTablePickerSignal()
   const creation = useAtlasCreation({ parentID, allCards, kinds, notes, readOnly, screenToFlowPosition, placementRequest, promoteRequest, groupRequest, cardBoxes: topLevelBoxes, noteBoxes })
   const selection = useAtlasSelection({ cards, notes, onMultiSelectContextMenu })
-  const paneClick = useAtlasPaneClick({ tablePicker, topLevelBoxes, screenToFlowPosition, onCreateTableSized, placeAt: creation.placeAt })
+  const wrapperClicks = useAtlasPaneClick({ tablePicker, topLevelBoxes, screenToFlowPosition, onCreateTableSized, placeAt: creation.placeAt })
 
   // Delete/Backspace over a live selection -> the shared confirm
   // (never fires from editable elements; single or multi).
@@ -347,12 +347,12 @@ function AtlasBoardInner({ boardFilter, onBoardFilterChange, filterMatchCount, f
   // selectionKeyCode handling is independent of panOnDrag).
   const areaArmed = isFree && !readOnly && creation.armedTool === 'area'
 
-  const r = areaDraw.dragLocalRect
-  const marqueeStyle = r ? { left: r.x, top: r.y, width: r.width, height: r.height } : null
+  const r = areaDraw.dragLocalRect, marqueeStyle = r ? { left: r.x, top: r.y, width: r.width, height: r.height } : null
 
   return (
     <div
       ref={wrapperRef}
+      onClickCapture={wrapperClicks.onWrapperClickCapture}
       className={styles.board}
       data-testid="atlas-board"
       data-armed={creation.armedTool !== null}
@@ -442,7 +442,7 @@ function AtlasBoardInner({ boardFilter, onBoardFilterChange, filterMatchCount, f
         // A1) -- a no-op when nothing is armed (creation.placeAt's own
         // guard, which also no-ops for the Area tool: its own
         // placement is the drag-drawn rect above, not a click).
-        onPaneClick={paneClick}
+        onPaneClick={wrapperClicks.onPaneClick}
         // Narrow viewports never zoom out past 100% -- a board wider
         // than the screen pans instead of auto-shrinking every card
         // below its own real CSS pixel size (a touch target,

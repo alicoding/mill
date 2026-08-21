@@ -42,8 +42,10 @@ into.
 - **Tables are projections.** Start one from nothing with "New
   table" (the toolbar at the bottom of the board, next to Card,
   Note, and Area): sweep the size grid to the shape
-  you want and click — the table lands instantly, backing List and
-  card together, ready to rename columns in place. Or pick "Table
+  you want, then click the spot on the board where it should live —
+  the table lands right there (inside an area if that's where you
+  point), backing List and card together, ready to rename columns
+  in place. Escape cancels an armed size. Or pick "Table
   from a List" to project a List you already have.
   Either way the List stays the single source of truth, so the table
   is never stale and every board showing it agrees. Edit right on

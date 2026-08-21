@@ -14,15 +14,24 @@ export function useAtlasPaneClick({ tablePicker, topLevelBoxes, screenToFlowPosi
   onCreateTableSized: (cols: number, rows: number, at?: { X: number; Y: number }, parentID?: string) => void
   placeAt: (p: { x: number; y: number }) => void
 }) {
-  return useCallback((e: { clientX: number; clientY: number }) => {
+  // The armed-size placement runs at the WRAPPER's capture phase, not
+  // onPaneClick: a click inside a frame's interior is a NODE click
+  // that never reaches the pane, and filing-by-pointing must work
+  // there too.
+  const onWrapperClickCapture = useCallback((e: React.MouseEvent) => {
     const pending = tablePicker.pendingSize
-    if (pending) {
-      tablePicker.setPendingSize(null)
-      const flowPos = screenToFlowPosition({ x: e.clientX, y: e.clientY })
-      const frameID = frameContainingPoint(topLevelBoxes, flowPos) ?? undefined
-      onCreateTableSized(pending.cols, pending.rows, { X: flowPos.x, Y: flowPos.y }, frameID)
-      return
-    }
+    if (!pending) return
+    e.stopPropagation()
+    e.preventDefault()
+    tablePicker.setPendingSize(null)
+    const flowPos = screenToFlowPosition({ x: e.clientX, y: e.clientY })
+    const frameID = frameContainingPoint(topLevelBoxes, flowPos) ?? undefined
+    onCreateTableSized(pending.cols, pending.rows, { X: flowPos.x, Y: flowPos.y }, frameID)
+  }, [tablePicker, topLevelBoxes, screenToFlowPosition, onCreateTableSized])
+
+  const onPaneClick = useCallback((e: { clientX: number; clientY: number }) => {
     placeAt({ x: e.clientX, y: e.clientY })
-  }, [tablePicker, topLevelBoxes, screenToFlowPosition, onCreateTableSized, placeAt])
+  }, [placeAt])
+
+  return { onWrapperClickCapture, onPaneClick }
 }
