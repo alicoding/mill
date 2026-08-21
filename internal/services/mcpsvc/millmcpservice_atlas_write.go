@@ -62,6 +62,12 @@ func (a atlasProposeCardWriteArgs) isUpdate() bool { return a.CardID != "" }
 type atlasWriteResult struct {
 	CardID string `json:"cardId"`
 	Title  string `json:"title,omitempty"`
+	// KindID/Deleted carry atlas_propose_kind_write's own result --
+	// the kind tool's description points pollers at this same status
+	// tool, so its payload must survive the round trip too (goal
+	// 0130's dogfood finding b).
+	KindID  string `json:"kindId,omitempty"`
+	Deleted bool   `json:"deleted,omitempty"`
 }
 
 type atlasWriteStatusArgs struct {
@@ -80,9 +86,11 @@ func (a atlasWriteStatusArgs) writeID() string {
 }
 
 type atlasWriteStatusResult struct {
-	Status string `json:"status"`
-	CardID string `json:"cardId,omitempty"`
-	Error  string `json:"error,omitempty"`
+	Status  string `json:"status"`
+	CardID  string `json:"cardId,omitempty"`
+	KindID  string `json:"kindId,omitempty"`
+	Deleted bool   `json:"deleted,omitempty"`
+	Error   string `json:"error,omitempty"`
 }
 
 // registerAtlasWriteTools wires atlas_propose_card_write (gated,
@@ -113,7 +121,7 @@ func (m *MillMCPService) registerAtlasWriteTools() {
 
 	mcp.AddTool(m.server, &mcp.Tool{
 		Name:        "atlas_get_write_status",
-		Description: "Poll a parked atlas_propose_card_write's outcome by id (the id from its 'parked pending human approval' response text -- the same id every gated write reports and check_write_status takes). status is pending, approved (cardId then names the created/updated card), denied, cancelled, or expired.",
+		Description: "Poll a parked atlas_propose_card_write or atlas_propose_kind_write outcome by id (the id from its 'parked pending human approval' response text -- the same id every gated write reports and check_write_status takes). status is pending, approved (cardId names the created/updated card; kindId the created/updated/deleted kind), denied, cancelled, or expired.",
 	}, func(_ context.Context, _ *mcp.CallToolRequest, in atlasWriteStatusArgs) (*mcp.CallToolResult, any, error) {
 		res, ok := m.writeStatus(in.writeID())
 		if !ok {
@@ -124,6 +132,8 @@ func (m *MillMCPService) registerAtlasWriteTools() {
 			var wr atlasWriteResult
 			if err := json.Unmarshal([]byte(res.Result), &wr); err == nil {
 				out.CardID = wr.CardID
+				out.KindID = wr.KindID
+				out.Deleted = wr.Deleted
 			}
 		}
 		text, err := jsonText(out)
