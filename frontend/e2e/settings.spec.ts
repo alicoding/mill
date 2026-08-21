@@ -250,9 +250,18 @@ test('Settings TOC navigates to a section and marks it active', async ({ page })
 
   // Regression: a short final section can never cross the reading
   // line, so resting at the scroll bottom must activate it anyway.
+  // The walk to find the real scroll container mirrors
+  // useSettingsSectionSync.ts's own -- see that hook's comment for why
+  // a height-only check (scrollHeight > clientHeight alone) stops one
+  // level too early, on Primer's own non-scrolling PageLayout.Content
+  // wrapper, instead of the real scroller (`.view-pane`).
   await page.getByTestId('settings-section-updates').evaluate((el) => {
+    const isRealScroller = (e: Element) => {
+      const overflowY = getComputedStyle(e).overflowY
+      return (overflowY === 'auto' || overflowY === 'scroll') && e.scrollHeight > e.clientHeight
+    }
     let scroller = el.parentElement
-    while (scroller && scroller.scrollHeight <= scroller.clientHeight) scroller = scroller.parentElement
+    while (scroller && !isRealScroller(scroller)) scroller = scroller.parentElement
     if (scroller) scroller.scrollTop = scroller.scrollHeight
   })
   await expect(page.getByTestId('settings-toc-item-updates')).toHaveAttribute('aria-current', 'location')

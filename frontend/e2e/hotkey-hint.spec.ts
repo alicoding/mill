@@ -121,3 +121,28 @@ test('Settings: rebinding Close other tabs updates the SAME inline hint the tab-
   await page.getByRole('button', { name: 'Close tab' }).click()
   await expect(page.getByRole('tab', { name: 'New workflow' })).toHaveCount(0)
 })
+
+// Regression: a real mouse wheel over Settings never moved the page.
+// WorkTabShell's own pagePanel (the PAGE_TAB TabPanel every view
+// shares) was both height-clamped AND overflow-hidden, so a flow
+// page's real content height (Settings runs well past one screen)
+// got trapped inside that clamped box instead of propagating up to
+// `.view-pane` (index.css), the intended scroller -- `.view-pane`'s
+// own scrollHeight stayed equal to its clientHeight (nothing to
+// wheel-scroll) while pagePanel silently held the overflow, reachable
+// only via a PROGRAMMATIC scrollIntoView (a `hidden` box still honors
+// one), which is exactly why every existing TOC-click/deep-link test
+// kept passing and never caught this.
+test('Settings: a real mouse wheel actually scrolls the page', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Settings' }).click()
+  const viewPane = page.locator('.view-pane')
+  await expect(viewPane).toBeVisible()
+  // Wheel events target whatever's under the pointer, not the last-
+  // focused/clicked element -- move there first.
+  const box = await viewPane.boundingBox()
+  if (!box) throw new Error('view-pane bounding box missing')
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2)
+  await page.mouse.wheel(0, 600)
+  await expect.poll(() => viewPane.evaluate((el) => el.scrollTop)).toBeGreaterThan(0)
+})

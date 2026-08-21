@@ -7,36 +7,43 @@
    .tabStrip element of its own needed here anymore. */
 
 /* The page tab's panel (the section surface: Home, Atlas, Settings,
-   ...) must fill the view pane's remaining height, or any child using
-   height:100% (AtlasBoard's full-height board) resolves against
-   height:auto and collapses to its own min-height floor -- the same
-   gap CompositionView.module.css's .editorPanel already closes for
-   canvas tabs. display:flex stays scoped to :not([hidden]) for the
-   same author-rule-beats-UA-[hidden] reason .editorPanel documents.
+   ...) is NOT a scroll container of its own for a flow page (Settings,
+   Docs, Home, any list) -- it must stay content-sized (no flex-grow,
+   no height clamp, no overflow) so a flow page's real height
+   propagates up to `.view-pane` (index.css), the ONE intended
+   scroller. Clamping this panel's height while ALSO hiding its
+   overflow (the previous shape: flex:1 1 auto + min-height:0 +
+   overflow:hidden) traps that page's overflow inside a box `.view-
+   pane` can never see: `.view-pane`'s own scrollHeight==clientHeight
+   (nothing to wheel-scroll) while this panel silently held the real
+   4784px of Settings content in a 640px box -- reachable only via a
+   PROGRAMMATIC scrollIntoView (which a `hidden` box still honors,
+   which is exactly why the TOC-click/deep-link tests kept passing and
+   masked user wheel-scroll being completely dead). display:flex stays
+   scoped to :not([hidden]) for the same author-rule-beats-UA-[hidden]
+   reason .editorPanel documents; a flex COLUMN with one auto-sized
+   child behaves identically to block for a flow page's own height.
 
-   `overflow` here is VIEW-CONDITIONAL, not a single constant -- the
-   two views that need this panel's overflow behavior want opposite
-   things from the same element (one TabPanel hosts every view, so
-   there is no per-view element of its own to style instead):
-   - Settings/Docs need `hidden`: their own scrollIntoView chain
-     (a TOC click, a deep link) walks up to the nearest
-     programmatically-scrollable ancestor -- `clip` isn't one, so
-     that chain breaks and the target never scrolls into view.
-   - Atlas needs `clip`: WebKit scrolls this panel (still
-     programmatically scrollable under `hidden`) to reveal a
-     mousedown'd focusable board node as a focus candidate, jumping
-     the board on every click even though Safari's own focus rules
-     never actually grant it focus.
-   `hidden` is the base (every OTHER view's real default); the
-   `[data-view='atlas']` override below opts Atlas alone into `clip`,
-   keyed off App.tsx's own `data-view` attribute on `.app-shell` (the
-   current view/page kind, not Primer-owned markup). */
+   Atlas is the one PAGE_TAB view that's NOT a flow page -- it's a
+   fixed, viewport-filling canvas (React Flow), so it alone gets the
+   clamp back via the `[data-view='atlas']` override (keyed off
+   App.tsx's own `data-view` attribute on `.app-shell`, the current
+   view/page kind): `height:100%` so AtlasBoard's own height:100%
+   child resolves against a real number instead of collapsing to its
+   min-height floor, and `overflow:clip` (never `hidden` -- `hidden`
+   is STILL a programmatically scrollable container, which let WebKit
+   reveal-scroll this panel to bring a mousedown'd focusable board
+   node into view as a focus candidate, jumping the board on every
+   click even though Safari's own focus rules never actually grant it
+   focus; `clip` disables that scrollability while clipping
+   identically). */
 .pagePanel {
-    flex: 1 1 auto;
-    min-height: 0;
-    overflow: hidden;
+    flex: 0 0 auto;
 }
 :global([data-view='atlas']) .pagePanel {
+    flex: 1 1 auto;
+    min-height: 0;
+    height: 100%;
     overflow: clip;
 }
 .pagePanel:not([hidden]) {

@@ -46,10 +46,25 @@ export function useSettingsSectionSync(sectionIds: string[], initialSection: str
       }
       // A short final section can never climb above the reading line
       // -- when the scroll container rests at its bottom, the last
-      // section is what the reader is looking at.
+      // section is what the reader is looking at. The walk must stop
+      // at the nearest ACTUAL scroll container (overflow-y auto/scroll
+      // AND real overflow), not just the nearest ancestor whose
+      // content happens to be taller than its own box: Primer's own
+      // PageLayout.Content wrapper (App.tsx's own comment on
+      // `view-pane` has the fuller history) sits between pagePanel and
+      // the real scroller (`.view-pane`) with overflow-y:visible --
+      // its scrollHeight exceeds its clientHeight too (any element
+      // with overflowing children reports that, regardless of its own
+      // overflow property), so a height-only check stops one level
+      // too early, on a node where writing .scrollTop is a silent
+      // no-op.
       const first = sectionEls.current.get(sectionIds[0])
+      const isRealScroller = (el: HTMLElement) => {
+        const overflowY = getComputedStyle(el).overflowY
+        return (overflowY === 'auto' || overflowY === 'scroll') && el.scrollHeight > el.clientHeight
+      }
       let scroller: HTMLElement | null = first?.parentElement ?? null
-      while (scroller && scroller.scrollHeight <= scroller.clientHeight) scroller = scroller.parentElement
+      while (scroller && !isRealScroller(scroller)) scroller = scroller.parentElement
       if (scroller && scroller.scrollTop + scroller.clientHeight >= scroller.scrollHeight - 2) {
         candidate = sectionIds[sectionIds.length - 1]
       }
