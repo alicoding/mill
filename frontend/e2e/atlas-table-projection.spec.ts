@@ -210,6 +210,9 @@ test('New table creates a sized grid instantly from the size picker', async ({ p
   await expect(page.getByTestId('atlas-table-size-label')).toContainText('3 × 2')
   await page.getByTestId('atlas-table-size-3x2').click()
 
+  // Picking a size ARMS the tool (goal 0148) -- the click places the
+  // table at that canvas point.
+  await page.mouse.click(400, 500)
   const tableCard = page.getByTestId('atlas-table-card').filter({ hasText: 'Table' }).first()
   await expect(tableCard).toBeVisible()
   await expect(tableCard.getByTestId('atlas-projection-table')).toContainText('Column 1')
@@ -360,6 +363,7 @@ test('arrow keys with a focused cell never move the table card', async ({ page }
   await page.getByRole('link', { name: 'Atlas' }).click()
   await page.getByTestId('atlas-tray-table').click()
   await page.getByTestId('atlas-table-size-2x2').click()
+  await page.mouse.click(400, 500)
   const tableCard = page.getByTestId('atlas-table-card').filter({ hasText: 'Table' }).first()
   await expect(tableCard).toBeVisible()
 
@@ -378,6 +382,49 @@ test('arrow keys with a focused cell never move the table card', async ({ page }
   await openCard(page, tableTitle(tableCard))
   await deleteViaPageMenu(page, page.locator('[data-component="atlas-card-overlay"]'))
   await expect(tableCard).not.toBeVisible()
+  await page.getByRole('link', { name: 'Configure' }).click()
+  await page.getByRole('tab', { name: 'Lists' }).click()
+  const listRow = page.locator('[data-testid="inventory-row"][data-entity="list"]', { has: page.getByText('Table', { exact: true }) })
+  await clickRowAction(page, listRow, 'Delete')
+  await expect(listRow).toHaveCount(0)
+})
+
+
+// Goal 0148: the armed size respects the canvas like every tool --
+// Escape disarms without creating; a click inside a frame files the
+// table into it.
+test('an armed table size escapes cleanly and files into frames', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Atlas' }).click()
+  await expect(page.getByTestId('atlas-board')).toBeVisible()
+  const tableCount = () => page.getByTestId('atlas-table-card').count()
+  const before = await tableCount()
+
+  await page.getByTestId('atlas-tray-table').click()
+  await page.getByTestId('atlas-table-size-2x2').click()
+  await page.keyboard.press('Escape')
+  await page.mouse.click(400, 500)
+  await expect.poll(tableCount).toBe(before)
+
+  // Armed again, clicking inside "Example area" files the table there
+  // (the frame's header count grows by one).
+  const frame = page.locator('[data-testid="atlas-group-card"]').filter({ hasText: 'Example area' }).first()
+  const frameHeader = frame.getByTestId('atlas-group-header')
+  await expect(frameHeader).toContainText('2 cards')
+  const box = await frame.boundingBox()
+  if (!box) throw new Error('no frame box')
+  await page.getByTestId('atlas-tray-table').click()
+  await page.getByTestId('atlas-table-size-2x2').click()
+  await page.mouse.click(box.x + box.width / 2, box.y + box.height - 30)
+  await expect(frameHeader).toContainText('3 cards')
+
+  // Cleanup: drill in, delete the filed table card, and remove the
+  // minted List.
+  await frameHeader.click()
+  const tableCard = page.getByTestId('atlas-table-card').filter({ hasText: 'Table' }).first()
+  await expect(tableCard).toBeVisible()
+  await openCard(page, tableTitle(tableCard))
+  await deleteViaPageMenu(page, page.locator('[data-component="atlas-card-overlay"]'))
   await page.getByRole('link', { name: 'Configure' }).click()
   await page.getByRole('tab', { name: 'Lists' }).click()
   const listRow = page.locator('[data-testid="inventory-row"][data-entity="list"]', { has: page.getByText('Table', { exact: true }) })

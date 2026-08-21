@@ -7,6 +7,9 @@ import { useUISignalStore } from '../shared/uiSignalStore'
 // signal, consumed here).
 export function useTablePickerSignal() {
   const [open, setOpen] = useState(false)
+  // Picking a size ARMS the tool (goal 0148): the next canvas click
+  // places the C×R table at that point; Escape disarms.
+  const [pendingSize, setPendingSize] = useState<{ cols: number; rows: number } | null>(null)
   const request = useUISignalStore((st) => st.atlasTablePickerRequest)
   const lastRequest = useRef(request)
   useEffect(() => {
@@ -14,5 +17,16 @@ export function useTablePickerSignal() {
     lastRequest.current = request
     setOpen(true)
   }, [request])
-  return { open, setOpen }
+  // Escape disarms an armed size -- owned here so the board's own
+  // Escape ladder needs no extra rung.
+  useEffect(() => {
+    if (!pendingSize) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setPendingSize(null)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [pendingSize])
+
+  return { open, setOpen, pendingSize, setPendingSize }
 }

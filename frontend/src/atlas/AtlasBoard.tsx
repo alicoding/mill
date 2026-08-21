@@ -30,6 +30,7 @@ import { buildBoardCardNodes } from './atlasBuildBoardNodes'
 import { buildStickyNodes } from './atlasStickyNodes'
 import { AtlasCreationTray, ATLAS_TOOL_DRAG_MIME, type AtlasCreationTool } from './AtlasCreationTray'
 import { useTablePickerSignal } from './useTablePickerSignal'
+import { useAtlasPaneClick } from './useAtlasPaneClick'
 import { AtlasSelectionTray } from './AtlasSelectionTray'
 import { AtlasPlacementPopover } from './AtlasPlacementPopover'
 import { useAtlasNativeFileDrop } from './useAtlasNativeFileDrop'
@@ -121,7 +122,7 @@ function AtlasBoardInner({ boardFilter, onBoardFilterChange, filterMatchCount, f
   // removal would just resurrect on the next data refresh.
   onDeleteSelection: (cardIDs: string[], noteIDs: string[]) => void
   onPasteConverted: (res: import('../../bindings/github.com/alicoding/mill/internal/services/atlassvc/models').PasteResult) => void
-  onCreateTableSized: (cols: number, rows: number) => void; onOpenTableFromList: () => void
+  onCreateTableSized: (cols: number, rows: number, at?: { X: number; Y: number }, parentID?: string) => void; onOpenTableFromList: () => void
   // The selection tray's own "Group into new area" -- the multi-select context menu's own dispatcher, reused.
   onGroupSelection: (cardIDs: string[], noteIDs: string[], pos: { x: number; y: number }) => void
   // AtlasView's own downward creation requests (the pane menu's "Add
@@ -186,6 +187,7 @@ function AtlasBoardInner({ boardFilter, onBoardFilterChange, filterMatchCount, f
   const tablePicker = useTablePickerSignal()
   const creation = useAtlasCreation({ parentID, allCards, kinds, notes, readOnly, screenToFlowPosition, placementRequest, promoteRequest, groupRequest, cardBoxes: topLevelBoxes, noteBoxes })
   const selection = useAtlasSelection({ cards, notes, onMultiSelectContextMenu })
+  const wrapperClicks = useAtlasPaneClick({ tablePicker, topLevelBoxes, screenToFlowPosition, onCreateTableSized, placeAt: creation.placeAt })
 
   // Delete/Backspace over a live selection -> the shared confirm
   // (never fires from editable elements; single or multi).
@@ -339,20 +341,18 @@ function AtlasBoardInner({ boardFilter, onBoardFilterChange, filterMatchCount, f
     creation.placeAt({ x: e.clientX, y: e.clientY }, tool)
   }
 
-  // Area drawing's own armed state (goal 0081 slice A2) disables React
-  // Flow's own pane panning so the mousedown/mousemove/mouseup trio
-  // below can own the drag instead -- shift-drag box-select (the
-  // select-then-group door) is unaffected, since RF's own
-  // selectionKeyCode handling is independent of panOnDrag.
+  // Area drawing's own armed state (goal 0081 slice A2) disables the
+  // pane's panning so the mousedown/move/up trio below can own the
+  // drag -- shift-drag box-select is unaffected (RF's own
+  // selectionKeyCode handling is independent of panOnDrag).
   const areaArmed = isFree && !readOnly && creation.armedTool === 'area'
 
-  const marqueeStyle = areaDraw.dragLocalRect
-    ? { left: areaDraw.dragLocalRect.x, top: areaDraw.dragLocalRect.y, width: areaDraw.dragLocalRect.width, height: areaDraw.dragLocalRect.height }
-    : null
+  const r = areaDraw.dragLocalRect, marqueeStyle = r ? { left: r.x, top: r.y, width: r.width, height: r.height } : null
 
   return (
     <div
       ref={wrapperRef}
+      onClickCapture={wrapperClicks.onWrapperClickCapture}
       className={styles.board}
       data-testid="atlas-board"
       data-armed={creation.armedTool !== null}
@@ -442,7 +442,7 @@ function AtlasBoardInner({ boardFilter, onBoardFilterChange, filterMatchCount, f
         // A1) -- a no-op when nothing is armed (creation.placeAt's own
         // guard, which also no-ops for the Area tool: its own
         // placement is the drag-drawn rect above, not a click).
-        onPaneClick={(e) => creation.placeAt({ x: e.clientX, y: e.clientY })}
+        onPaneClick={wrapperClicks.onPaneClick}
         // Narrow viewports never zoom out past 100% -- a board wider
         // than the screen pans instead of auto-shrinking every card
         // below its own real CSS pixel size (a touch target,
@@ -474,7 +474,7 @@ function AtlasBoardInner({ boardFilter, onBoardFilterChange, filterMatchCount, f
       {fileDrop.dropDuplicateNotice && <div className={styles.dropNotice} data-testid="atlas-file-drop-duplicate-notice">{fileDrop.dropDuplicateNotice}</div>}
       {!readOnly && (haveSelection
         ? <AtlasSelectionTray ref={trayRef} selectedCardCount={selection.selectedCards.length} selectedNoteCount={selection.selectedNotes.length} onGroup={onTrayGroup} onDelete={onTrayDelete} />
-        : <AtlasCreationTray armedTool={creation.armedTool} onToggle={creation.toggleArm} tablePickerOpen={tablePicker.open} onTableToggle={tablePicker.setOpen} onPickTableSize={onCreateTableSized} onTableFromList={onOpenTableFromList} />)}
+        : <AtlasCreationTray armedTool={creation.armedTool} onToggle={creation.toggleArm} tablePickerOpen={tablePicker.open || tablePicker.pendingSize !== null} onTableToggle={tablePicker.setOpen} onPickTableSize={(cols, rows) => tablePicker.setPendingSize({ cols, rows })} onTableFromList={onOpenTableFromList} />)}
       {creation.popover && (
         <AtlasPlacementPopover
           mode={creation.popover.mode}

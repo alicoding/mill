@@ -41,7 +41,7 @@ export function useAtlasCardCreate({ allCards, viewedID, viewedCard }: {
   // don't collide; the minted List's label mirrors it. Columns arrive
   // as "Column N" (renaming while empty re-keys from the label, the
   // 0136 semantics), rows arrive empty.
-  const createTableFromScratch = async (cols: number, rowCount: number) => {
+  const createTableFromScratch = async (cols: number, rowCount: number, at?: { X: number; Y: number }, parentIDOverride?: string) => {
     const titles = new Set(allCards.map((c) => c.Title))
     let title = 'Table'
     for (let n = 2; titles.has(title); n++) title = `Table ${n}`
@@ -52,8 +52,9 @@ export function useAtlasCardCreate({ allCards, viewedID, viewedCard }: {
     }))
     const created = await ConfigureService.CreateList(title, '', columns)
     for (let i = 0; i < rowCount; i++) await ConfigureService.AddListRow(created.ID, {})
-    const position: Position | null = freeChildPosition(allCards, viewedID, { width: TABLE_WIDTH, height: TABLE_HEIGHT })
-    await AtlasService.CreateListProjectionCard('', title, viewedID, position, created.ID)
+    const targetParent = parentIDOverride ?? viewedID
+    const position: Position | null = at ?? freeChildPosition(allCards, targetParent, { width: TABLE_WIDTH, height: TABLE_HEIGHT })
+    await AtlasService.CreateListProjectionCard('', title, targetParent, position, created.ID)
     await refreshAtlas()
   }
 
