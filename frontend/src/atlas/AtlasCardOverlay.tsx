@@ -53,7 +53,7 @@ type CardFieldPatch = Partial<{
 // handler (testing.md's stale-setState trap). ParentID/Position/
 // ViewMode never change here (MoveCard/SetPosition/SetViewMode own
 // those, driven by drag/drill actions elsewhere).
-export function AtlasCardOverlay({ card, kinds, allCards, links, linkKinds, onClose, onSaved, onDeleted, onOpenGroupEntry }: {
+export function AtlasCardOverlay({ card, kinds, allCards, links, linkKinds, onClose, onSaved, onDeleted, onOpenGroupEntry, guardDelete }: {
   card: Card
   kinds: Kind[]
   allCards: Card[]
@@ -63,6 +63,8 @@ export function AtlasCardOverlay({ card, kinds, allCards, links, linkKinds, onCl
   onSaved: () => void
   onDeleted: (result: TombstoneResult) => void
   onOpenGroupEntry: (target: Card) => void
+  // The container-delete gate (goal 0149 gap 3).
+  guardDelete: (cardIDs: string[], noteIDs: string[], exec: () => void) => void
 }) {
   const { t } = useTranslation('atlas')
   const requestOpenWorkflow = useAppStore((s) => s.requestOpenWorkflow)
@@ -220,11 +222,11 @@ export function AtlasCardOverlay({ card, kinds, allCards, links, linkKinds, onCl
   // superseding the old edit-section's bare Delete button), instant --
   // no confirm (goal 0093's quick-delete-with-undo guard). onDeleted
   // reports the TombstoneResult up to AtlasView's shared undo toast.
-  const deleteCard = () => {
+  const deleteCard = () => guardDelete([displayedCard.ID], [], () => {
     AtlasService.DeleteCard(displayedCard.ID)
       .then((result) => { onDeleted(result); onSaved(); onClose() })
       .catch((err) => setShareError(String(err)))
-  }
+  })
 
   return (
     // Primer's Dialog only ever forwards its own special-cased

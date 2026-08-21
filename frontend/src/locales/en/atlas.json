@@ -278,7 +278,12 @@
     "dissolveTitle": "Dissolve {{title}}?",
     "dissolveBody_one": "Its {{count}} card moves up a level.",
     "dissolveBody_other": "Its {{count}} cards move up a level.",
-    "dissolveConfirm": "Dissolve"
+    "dissolveConfirm": "Dissolve",
+    "deletePromoteTitle_one": "Delete {{count}} item?",
+    "deletePromoteTitle_other": "Delete {{count}} items?",
+    "deletePromoteBody_one": "{{count}} item inside moves up a level. You can undo right after.",
+    "deletePromoteBody_other": "{{count}} items inside move up a level. You can undo right after.",
+    "deletePromoteConfirm": "Delete"
   },
   "kinds": {
     "dialogTitle": "Kinds",

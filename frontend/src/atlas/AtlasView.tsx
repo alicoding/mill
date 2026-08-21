@@ -27,6 +27,7 @@ import { isGroupCard } from './atlasBoardLayout'
 import { useAtlasBoardFilter } from './useAtlasBoardFilter'
 import { useAtlasCardCreate } from './useAtlasCardCreate'
 import { useAtlasContainmentMenus } from './useAtlasContainmentMenus'
+import { useAtlasDeleteConfirm } from './useAtlasDeleteConfirm'
 import { useAtlasCommandSignals } from './useAtlasCommandSignals'
 import { useAtlasLinkMenus } from './useAtlasLinkMenus'
 import { useAtlasNoteMenu } from './useAtlasNoteMenu'
@@ -252,13 +253,15 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
   // a membership WRITE does.
   const quietToast = useAtlasQuietToast()
 
+  const deleteConfirm = useAtlasDeleteConfirm({ t, allCards, notes: allNotes })
+
   const linkMenus = useAtlasLinkMenus({
     t, allCards, allLinks, allNotes, linkKinds: allLinkKinds, perspectives: allPerspectives, setMenu, drill,
     onOpenCard: (id) => setOverlayCardID(id),
     onError: setShareError,
     onDeleted: undoToast.registerDelete,
     onPerspectiveToast: quietToast.show,
-    requestLinkedCard: creationRequests.requestLinkedCard,
+    requestLinkedCard: creationRequests.requestLinkedCard, guardDelete: deleteConfirm.guardDelete,
   })
 
   // The empty-board right-click (goal 0075's audit G3, superseded by
@@ -296,7 +299,7 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
     onDeleted: undoToast.registerDelete,
     onPerspectiveToast: quietToast.show,
     requestPlacementInside: (tool, pos, parentID) => creationRequests.requestPlacement(tool, pos, parentID),
-    requestGroup: (cardIDs, noteIDs, pos) => creationRequests.requestGroup(cardIDs, noteIDs, pos),
+    requestGroup: (cardIDs, noteIDs, pos) => creationRequests.requestGroup(cardIDs, noteIDs, pos), guardDelete: deleteConfirm.guardDelete,
   })
 
   // ⌘K's GO/OPEN (goal 0072 slice B): a target is already rendered on
@@ -459,13 +462,14 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
           onSaved={() => void refreshAtlas()}
           onDeleted={undoToast.registerDelete}
           onOpenGroupEntry={openGroupEntry}
+          guardDelete={deleteConfirm.guardDelete}
         />
       )}
       {importConfirmDialog}
       <AtlasStructureDialogs kinds={allKinds} tableFromListOpen={tableFromListOpen} onCloseTableFromList={() => setTableFromListOpen(false)} newSpaceOpen={newSpaceOpen} onCloseNewSpace={() => setNewSpaceOpen(false)} onCreateTable={createTableCard} onCreateSpace={(k, title) => createCard('sibling', k, title)} />
       <ContextMenu state={menu} onClose={() => setMenu(null)} />
       {linkMenus.labelPopover}
-      {containmentMenus.dissolveDialog}
+      {containmentMenus.dissolveDialog}{deleteConfirm.deleteConfirmDialog}
 
       <AtlasMatrixView
         open={matrixOpen}

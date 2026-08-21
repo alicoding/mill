@@ -28,7 +28,7 @@ function truncateTitle(title: string): string {
 // (count === 1), since acting on one specific link within a count>1
 // aggregated artery has no per-link picker in this slice.
 export function useAtlasLinkMenus({
-  t, allCards, allLinks, allNotes, linkKinds, perspectives, setMenu, drill, onOpenCard, onError, onDeleted, onPerspectiveToast, requestLinkedCard,
+  t, allCards, allLinks, allNotes, linkKinds, perspectives, setMenu, drill, onOpenCard, onError, onDeleted, onPerspectiveToast, requestLinkedCard, guardDelete,
 }: {
   t: TFunction<'atlas'>
   allCards: Card[]
@@ -43,17 +43,19 @@ export function useAtlasLinkMenus({
   onDeleted: (result: TombstoneResult) => void
   onPerspectiveToast: (message: string) => void
   requestLinkedCard: (fromCardID: string, pos: { x: number; y: number }) => void
+  // The container-delete gate (goal 0149 gap 3).
+  guardDelete: (cardIDs: string[], noteIDs: string[], exec: () => void) => void
 }) {
   const [labelTarget, setLabelTarget] = useState<{ linkID: string; pos: { x: number; y: number }; initialLabel: string } | null>(null)
 
   // Instant, no confirm (goal 0093's quick-delete-with-undo guard) --
   // onDeleted reports the TombstoneResult to AtlasView's shared undo
   // toast.
-  const deleteCard = (id: string) => {
+  const deleteCard = (id: string) => guardDelete([id], [], () => {
     AtlasService.DeleteCard(id)
       .then((result) => { onDeleted(result); void refreshAtlas() })
       .catch((err) => onError(String(err)))
-  }
+  })
 
   const openCardMenu = (cardID: string, pos: { x: number; y: number }) => {
     const card = allCards.find((c) => c.ID === cardID)
