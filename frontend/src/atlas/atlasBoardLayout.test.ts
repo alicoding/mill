@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { Card } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
+import type { Card, Note } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 import {
   BOARD_GAP,
   GROUP_PREVIEW_SLOTS,
@@ -147,5 +147,28 @@ describe('computeAutoArrangeLayout', () => {
     const layoutA = computeAutoArrangeLayout(all, all)
     const layoutB = computeAutoArrangeLayout(all, all)
     expect(layoutA.boxes.get('leaf')).toEqual(layoutB.boxes.get('leaf'))
+  })
+})
+
+describe('computeGroupFrameLayout with filed notes', () => {
+  const card = (id: string, parent: string): Card => ({ ID: id, KindID: 'k', Title: id, ParentID: parent, Position: { X: 0, Y: 0 } } as unknown as Card)
+  const note = (id: string, parent: string): Note => ({ ID: id, Text: id, ParentID: parent, Position: { X: 0, Y: 0 } } as unknown as Note)
+
+  it('draws a filed note as a sticky tile and grows the frame for it', () => {
+    const cards = [card('frame', 'root'), card('kid', 'frame')]
+    const bare = computeGroupFrameLayout(cards, 'frame')
+    const withNote = computeGroupFrameLayout(cards, 'frame', [note('n1', 'frame'), note('elsewhere', 'root')])
+    expect(withNote.stickies).toHaveLength(1)
+    expect(withNote.stickies[0].note.ID).toBe('n1')
+    // The frame's own size accounts for the extra tile.
+    expect(withNote.size.width > bare.size.width || withNote.size.height > bare.size.height).toBe(true)
+  })
+
+  it('notes share the preview cap with cards; the ghost counts both', () => {
+    const cards = [card('frame', 'root'), ...Array.from({ length: 6 }, (_, i) => card(`kid${i}`, 'frame'))]
+    const notes = [note('n1', 'frame'), note('n2', 'frame')]
+    const layout = computeGroupFrameLayout(cards, 'frame', notes)
+    expect(layout.children.length + layout.stickies.length).toBe(5)
+    expect(layout.overflow?.count).toBe(3)
   })
 })

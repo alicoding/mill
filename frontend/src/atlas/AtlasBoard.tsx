@@ -59,7 +59,7 @@ import styles from './AtlasBoard.module.css'
 // media-query gate AtlasNoteCardNode.module.css's own flip already
 // uses, read here in JS via usePrefersReducedMotion since React Flow's
 // own transition durations are JS options, not CSS.
-function AtlasBoardInner({ boardFilter, onBoardFilterChange, filterMatchCount, filterTotalCount, filterPresentKindIDs, cards, allCards, kinds, links, linkKinds, notes, parentID, arrangeRequest, viewedID, focusRequest, onDrill, onOpenOverlay, onFocusHandled, onCardContextMenu, onPaneContextMenu, onArteryContextMenu, onEdgeDeleteLink, onEdgeChangeKind, onNoteContextMenu, onFrameContextMenu, onFrameInteriorContextMenu, onMultiSelectContextMenu, onDeleteSelection, onGroupSelection, onPasteConverted, onCreateTableSized, onOpenTableFromList, onQuietToast, placementRequest, promoteRequest, groupRequest }: {
+function AtlasBoardInner({ boardFilter, onBoardFilterChange, filterMatchCount, filterTotalCount, filterPresentKindIDs, cards, allCards, kinds, links, linkKinds, notes, allNotes, parentID, arrangeRequest, viewedID, focusRequest, onDrill, onOpenOverlay, onFocusHandled, onCardContextMenu, onPaneContextMenu, onArteryContextMenu, onEdgeDeleteLink, onEdgeChangeKind, onNoteContextMenu, onFrameContextMenu, onFrameInteriorContextMenu, onMultiSelectContextMenu, onDeleteSelection, onGroupSelection, onPasteConverted, onCreateTableSized, onOpenTableFromList, onQuietToast, placementRequest, promoteRequest, groupRequest }: {
   // The board filter (goal 0129 slice 1) -- applied as dim-in-place
   // by the node builder; state lives in AtlasView; rendered as a
   // floating top-right Panel (the toolbar row is full by its own
@@ -109,13 +109,11 @@ function AtlasBoardInner({ boardFilter, onBoardFilterChange, filterMatchCount, f
   // LOCKED design §6d): reports the frame's own card id -- AtlasView
   // builds Add-inside/Zoom/Dissolve/Delete.
   onFrameContextMenu: (frameID: string, pos: { x: number; y: number }) => void
-  // Right-click on a frame's own interior empty space (not on a
-  // child): reports the frame's own card id -- AtlasView builds the
-  // frame-scoped Add card/Add note pair.
+  // Right-click on a frame's interior empty space: reports the
+  // frame's card id -- AtlasView builds the frame-scoped Add pair.
   onFrameInteriorContextMenu: (frameID: string, pos: { x: number; y: number }) => void
-  // Right-click on a member of a 2+ multi-selection: reports the
-  // selection's own card/note ids split apart -- AtlasView builds
-  // Group into new area (cards.length >= 2) / Delete.
+  // Right-click on a 2+ multi-selection member: reports the split
+  // card/note ids -- AtlasView builds Group into new area / Delete.
   onMultiSelectContextMenu: (cardIDs: string[], noteIDs: string[], pos: { x: number; y: number }) => void
   // Keyboard Delete/Backspace over the live selection (goal 0089
   // rider): routed through the same confirm dialog as the menu item;
@@ -124,6 +122,7 @@ function AtlasBoardInner({ boardFilter, onBoardFilterChange, filterMatchCount, f
   onDeleteSelection: (cardIDs: string[], noteIDs: string[]) => void
   onPasteConverted: (res: import('../../bindings/github.com/alicoding/mill/internal/services/atlassvc/models').PasteResult) => void
   onQuietToast: (text: string, action?: { label: string; run: () => void }) => void
+  allNotes: import('../../bindings/github.com/alicoding/mill/internal/domain/atlas/models').Note[]
   onCreateTableSized: (cols: number, rows: number, at?: { X: number; Y: number }, parentID?: string) => void; onOpenTableFromList: () => void
   // The selection tray's own "Group into new area" -- the multi-select context menu's own dispatcher, reused.
   onGroupSelection: (cardIDs: string[], noteIDs: string[], pos: { x: number; y: number }) => void
@@ -256,17 +255,18 @@ function AtlasBoardInner({ boardFilter, onBoardFilterChange, filterMatchCount, f
   // The capture doors (goal 0081 slice A3): own hook files, 500-line cap.
   const fileDrop = useAtlasNativeFileDrop({ parentID, topLevelBoxes, screenToFlowPosition, setPulsedID, reduceMotion })
   useAtlasPaste({ topLevelBoxes, screenToFlowPosition, onPasteText: creation.openPasteText, viewedID, onPasteConverted })
-  useAtlasClipboard({ allCards, allNotes: notes, links, kinds, selectedCardIDs: selection.selectedCards, selectedNoteIDs: selection.selectedNotes, topLevelBoxes, screenToFlowPosition, viewedID, readOnly, showToast: onQuietToast })
+  useAtlasClipboard({ allCards, allNotes, links, kinds, selectedCardIDs: selection.selectedCards, selectedNoteIDs: selection.selectedNotes, topLevelBoxes, screenToFlowPosition, viewedID, readOnly, showToast: onQuietToast })
 
   // Handle honesty: no kind restricts linking, so zero legal targets means a board with nothing else on it.
   const hasLegalTargets = renderedIDs.size > 1
 
   const builtNodes = useMemo(() => buildBoardCardNodes({
-    cards, allCards, kinds, links, linkKinds, isFree, readOnly, boardWidth, freeMoves, arteries,
+    cards, allCards, allNotes, kinds, links, linkKinds, isFree, readOnly, boardWidth, freeMoves, arteries,
     pulsedID, hintedID, hoveredFrameID: dragFiling.hoveredFrameID,
     isSoleSelected: selection.isSoleSelected, onOpenOverlay, handleDrill,
     slotDragSourceID: slotDrag.dragSourceID, onSlotAnchorPointerDown: slotDrag.startDrag, hasLegalTargets, boardFilter, titleEditCardID: creation.editingTitleCardID, onTitleCommit: creation.commitCardTitle, onTitleCancel: creation.cancelCardTitle,
-  }), [cards, allCards, kinds, links, linkKinds, isFree, readOnly, pulsedID, hintedID, onOpenOverlay, handleDrill, freeMoves, arteries, boardWidth, dragFiling.hoveredFrameID, selection.isSoleSelected, slotDrag.dragSourceID, slotDrag.startDrag, hasLegalTargets, boardFilter, creation.editingTitleCardID, creation.commitCardTitle, creation.cancelCardTitle])
+    noteHandlers: { editingNoteID: creation.editingNoteID, onEnterEdit: creation.enterNoteEdit, onCancelEdit: creation.cancelNoteEdit, onCommitEdit: creation.commitNoteEdit },
+  }), [cards, allCards, allNotes, kinds, links, linkKinds, isFree, readOnly, pulsedID, hintedID, onOpenOverlay, handleDrill, freeMoves, arteries, boardWidth, dragFiling.hoveredFrameID, selection.isSoleSelected, slotDrag.dragSourceID, slotDrag.startDrag, hasLegalTargets, boardFilter, creation.editingTitleCardID, creation.commitCardTitle, creation.cancelCardTitle, creation.editingNoteID, creation.enterNoteEdit, creation.cancelNoteEdit, creation.commitNoteEdit])
 
   const { edges, setHoveredEdgeID, onSelectionChange } = useAtlasEdgeInteraction({
     arteries, linkKinds, cards, kinds, t, onEdgeDeleteLink, onEdgeChangeKind, onNodeSelectionChange: selection.onSelectionChange,
