@@ -157,6 +157,15 @@ func checkStickyClickToEdit(c mcpCaller) (string, error) {
 			return "", err
 		}
 	}
+	// Delete the probe note: the border-flip check that follows reads
+	// the FIRST sticky on the board, and a leftover (possibly still
+	// selected) probe note poisons its before-selection style read.
+	if err := callBoundJSON(c, "github.com/alicoding/mill/internal/services/atlassvc.AtlasService.DeleteNote", []any{note.ID}, nil); err != nil {
+		return "", fmt.Errorf("cleanup delete: %w", err)
+	}
+	if err := pollJSEval(c, `return !document.querySelector('[data-testid="atlas-sticky-note"]');`, 5*time.Second); err != nil {
+		return "", fmt.Errorf("probe note never left the board after delete: %w", err)
+	}
 	return fmt.Sprintf("click-select, click-edit, typing landed (%s | %s | %s)", r0, r1, r2), nil
 }
 
