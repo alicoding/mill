@@ -1,3 +1,4 @@
+import { fillMarkdownNote } from './fixtures/codeEditor'
 import { chromium, expect, test } from '@playwright/test'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -75,13 +76,17 @@ test('atlas card page: read-is-edit fields, kind-gated mirror controls, page lin
     await expect(overlay.getByTestId('atlas-page-saved-tick')).toBeVisible()
 
     // --- Note edit round trip. ---
-    const noteField = overlay.getByTestId('atlas-page-note')
-    await noteField.fill('Edited by the e2e suite.')
-    await noteField.blur()
+    await fillMarkdownNote(page, 'atlas-page-note', 'Edited **by** the e2e suite.')
+    await page.keyboard.press('Tab')
     await expect(overlay.getByTestId('atlas-page-saved-tick')).toBeVisible()
     await page.keyboard.press('Escape')
     await openCard(page, noteCard(page, 'Getting started'))
-    await expect(overlay.getByTestId('atlas-page-note')).toHaveValue('Edited by the e2e suite.')
+    // Markdown renders at rest (goal 0145): the bold marks became a
+    // real <strong>, and clicking the rendered note reopens the source.
+    const rendered = overlay.getByTestId('atlas-page-note-rendered')
+    await expect(rendered.locator('strong')).toHaveText('by')
+    await rendered.click()
+    await expect(overlay.getByTestId('atlas-page-note')).toBeVisible()
 
     // --- Kind-gated Source/Mirror path (LOCKED design §5b): "Getting
     // started" is a plain Topic card -- neither control renders. ---

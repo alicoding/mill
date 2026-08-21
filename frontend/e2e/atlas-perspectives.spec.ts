@@ -1,3 +1,4 @@
+import { fillMarkdownNote } from './fixtures/codeEditor'
 import { chromium, expect, test } from '@playwright/test'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -185,8 +186,8 @@ test('authoring a card while a perspective is active adds it automatically; the 
     // Edit it while the perspective is still active.
     await openCard(page, newCard)
     const overlay = page.locator('[data-component="atlas-card-overlay"]')
-    await overlay.getByTestId('atlas-page-note').fill('Edited while a perspective was active.')
-    await overlay.getByTestId('atlas-page-note').blur()
+    await fillMarkdownNote(page, 'atlas-page-note', 'Edited while a perspective was active.')
+    await page.keyboard.press('Tab')
     await expect(overlay.getByTestId('atlas-page-saved-tick')).toBeVisible()
     await page.keyboard.press('Escape')
     await expect(overlay).not.toBeVisible()
@@ -195,7 +196,7 @@ test('authoring a card while a perspective is active adds it automatically; the 
     await switcherButton(page).click()
     await switcherPopover(page).getByText('All cards', { exact: true }).click()
     await openCard(page, newCard)
-    await expect(page.getByTestId('atlas-page-note')).toHaveValue('Edited while a perspective was active.')
+    await expect(page.getByTestId('atlas-page-note-rendered')).toContainText('Edited while a perspective was active.')
 
     // Cleanup (testing.md's within-file discipline) -- overlay already open.
     await deleteViaPageMenu(page, page.locator('[data-component="atlas-card-overlay"]'))

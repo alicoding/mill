@@ -23,3 +23,13 @@ export async function fillCodeEditor(page: Page, testId: string, text: string) {
   await page.keyboard.press('Delete')
   await page.keyboard.insertText(text)
 }
+
+// fillMarkdownNote drives the markdown note field (goal 0145) in
+// either mode: a non-empty note renders at rest, so entering edit
+// means clicking the rendered view first; an empty note IS the
+// editor already.
+export async function fillMarkdownNote(page: Page, testId: string, text: string) {
+  const rendered = page.getByTestId(`${testId}-rendered`)
+  if (await rendered.count()) await rendered.click()
+  await fillCodeEditor(page, testId, text)
+}

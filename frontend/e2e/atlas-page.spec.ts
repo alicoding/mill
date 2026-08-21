@@ -44,10 +44,11 @@ test('a title-only card\'s page renders calm: title + property strip + write-inv
   await expect(strip.getByTestId('atlas-page-freshness-dot')).toHaveCount(0)
 
   // Borderless write-invitation: empty, placeholder only.
+  // An empty note IS the editor (goal 0145) -- the CodeEditor mount
+  // with its placeholder is the write invitation.
   const note = overlay.getByTestId('atlas-page-note')
-  await expect(note).toHaveValue('')
-  await expect(note).toHaveAttribute('placeholder', 'Write anything…')
-  expect(await note.evaluate((el) => getComputedStyle(el).borderStyle)).toBe('none')
+  await expect(note).toBeVisible()
+  await expect(note).toContainText('Write anything…')
 
   // The Topic kind's OTHER declared field (Summary) collapses to its
   // own one-line invitation -- status itself never appears here, since

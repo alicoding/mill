@@ -1,0 +1,11 @@
+.editorWrap {
+  width: 100%;
+}
+
+/* The rendered note keeps the field's own footprint and invites the
+   click back into editing. */
+.rendered {
+  cursor: text;
+  min-height: 28px;
+  padding: 2px 0;
+}
