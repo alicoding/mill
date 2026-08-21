@@ -527,6 +527,15 @@ export function RenamePerspective(id: string, name: string, description: string)
 }
 
 /**
+ * RenderNoteMarkdown converts a card note's markdown source to safe
+ * HTML (goal 0145) -- the same GFM renderer + raw-HTML-escaping the
+ * mirror preview and Docs view already trust.
+ */
+export function RenderNoteMarkdown(source: string): $CancellablePromise<string> {
+    return $Call.ByID(4275701807, source);
+}
+
+/**
  * ReorderPerspective assigns Order = index within orderedIDs to every
  * perspective named -- orderedIDs must name EXACTLY the perspectives
  * currently scoped to spaceID, once each (the same "whole ordered set,

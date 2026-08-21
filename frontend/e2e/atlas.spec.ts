@@ -1,4 +1,5 @@
 import { test, expect } from './fixtures/server'
+import { fillMarkdownNote } from './fixtures/codeEditor'
 import { deleteViaPageMenu } from './fixtures/atlasPage'
 import { ATLAS_KIND_TOPIC, selectKind } from './fixtures/kindPicker'
 import { clickBreadcrumbSegment, openCard, createCardViaTray } from './fixtures/atlasBoard'
@@ -257,14 +258,14 @@ test('create a child card, edit + persist it via the card page, then delete it',
   await openCard(page, newCard)
   const overlay = page.locator('[data-component="atlas-card-overlay"]')
   await expect(overlay).toBeVisible()
-  await overlay.getByTestId('atlas-page-note').fill('A note written by the e2e suite.')
-  await overlay.getByTestId('atlas-page-note').blur()
+  await fillMarkdownNote(page, 'atlas-page-note', 'A note written by the e2e suite.')
+  await page.keyboard.press('Tab')
   await expect(overlay.getByTestId('atlas-page-saved-tick')).toBeVisible()
   await page.keyboard.press('Escape')
   await expect(overlay).not.toBeVisible()
 
   await openCard(page, newCard)
-  await expect(page.getByTestId('atlas-page-note')).toHaveValue('A note written by the e2e suite.')
+  await expect(page.getByTestId('atlas-page-note-rendered')).toContainText('A note written by the e2e suite.')
 
   // Cleanup: delete the card this test created (testing.md's
   // within-file cleanup discipline).

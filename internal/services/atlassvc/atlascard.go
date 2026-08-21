@@ -2,6 +2,7 @@ package atlassvc
 
 import (
 	"fmt"
+	"github.com/alicoding/mill/internal/adapters/markdown"
 	"time"
 
 	"github.com/alicoding/mill/internal/domain/atlas"
@@ -305,3 +306,10 @@ func (a *AtlasService) SetViewMode(id string, mode atlas.ViewMode) (atlas.Card, 
 // child's effective parent is resolved at read time, past any
 // tombstoned ancestor) rather than a data rewrite at delete time; the
 // real re-parent only happens at purge.
+
+// RenderNoteMarkdown converts a card note's markdown source to safe
+// HTML (goal 0145) -- the same GFM renderer + raw-HTML-escaping the
+// mirror preview and Docs view already trust.
+func (a *AtlasService) RenderNoteMarkdown(source string) (string, error) {
+	return markdown.RenderHTML(source)
+}

@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Button, FormControl, Text, TextInput, Textarea } from '@primer/react'
+import { Button, FormControl, Text, TextInput } from '@primer/react'
+import { MarkdownNoteField } from './MarkdownNoteField'
 import type { Kind } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 import { AtlasCardActions } from './AtlasCardActions'
 import { AtlasFieldsForm } from './AtlasFieldsForm'
@@ -55,7 +56,6 @@ export function AtlasCardPageFields({
   onActionsChanged: (next: string[]) => void
 }) {
   const { t } = useTranslation('atlas')
-  const noteRef = useRef<HTMLTextAreaElement | null>(null)
   const showMirrorFields = kind ? isMirrorKind(kind.ID) : false
   // The status field renders as the property strip's own chip instead
   // (AtlasCardPropertyStrip.tsx) -- excluded here so it's never shown
@@ -92,32 +92,18 @@ export function AtlasCardPageFields({
   // Auto-grow (LOCKED design §5b's "Note (multiline, auto-growing)"):
   // a textarea's own scrollHeight already accounts for its wrapped
   // line count, so resetting height then reading it back is enough --
-  // no external autosize library needed for a single-element case this
-  // small.
-  useEffect(() => {
-    const el = noteRef.current
-    if (!el) return
-    el.style.height = 'auto'
-    el.style.height = `${el.scrollHeight}px`
-  }, [note])
-
   const expandedKindFields = kindFields.filter((f) => expanded.has(f.Key))
   const collapsedKindFields = kindFields.filter((f) => !expanded.has(f.Key))
 
   return (
     <div className={styles.fieldsCol} data-testid="atlas-page-fields">
-      <Textarea
-        ref={noteRef}
+      <MarkdownNoteField
         value={note}
+        onChange={onNoteChange}
+        onCommit={onNoteCommit}
         placeholder={t('overlay.notePlaceholder')}
-        aria-label={t('overlay.noteLabel')}
-        rows={1}
-        block
-        resize="none"
-        className={styles.noteArea}
-        data-testid="atlas-page-note"
-        onChange={(e) => onNoteChange(e.target.value)}
-        onBlur={onNoteCommit}
+        ariaLabel={t('overlay.noteLabel')}
+        testId="atlas-page-note"
       />
       {noteError && <Text as="p" size="small" className={runbookStyles.error} data-testid="atlas-page-note-error">{noteError}</Text>}
 
