@@ -18,9 +18,13 @@ into.
   the area's preview or from inside — and it moves up a level, or
   into whichever area you drop it on. Perspectives save named views
   of the map.
-- **Notes are markdown.** Write headings, lists, bold, tables —
-  the note renders them at rest and turns back into editable source
-  when you click it.
+- **Notes are markdown.** Write headings, lists, bold, tables — in
+  a card's note or a board sticky note (press N and click). While
+  you type, formatting appears in place and the markdown syntax
+  fades on every line except the one you're editing; at rest the
+  note shows the rendered result, and clicking it brings the source
+  back. A long sticky note scrolls in place, and grows while you
+  edit it.
 - **Create by pointing.** Press C (or pick Card in the toolbar) and
   click — the card appears right there and you name it in place;
   Enter keeps the name, Escape keeps it as Untitled. Web addresses

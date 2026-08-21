@@ -1,0 +1,42 @@
+import { test, expect } from './fixtures/server'
+import { clickCorner } from './fixtures/atlasBoard'
+import { contextMenu } from './fixtures/contextMenu'
+import { fillSticky, stickyEditor, blurSticky } from './fixtures/codeEditor'
+
+// Markdown sticky notes (goal 0145): the N tool's note is a real
+// markdown surface -- the prose editor live-previews formatting while
+// typing, and the resting face renders the markdown (lists, bold,
+// headings), never the raw source. Shared worker pool: every entity
+// this file creates is deleted before the test ends.
+
+test('sticky notes render markdown; editor live-previews it', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Atlas' }).click()
+  const board = page.getByTestId('atlas-board')
+  await expect(board).toBeVisible()
+  await page.keyboard.press('n')
+  await clickCorner(board, 'top-left')
+  await expect(stickyEditor(page)).toBeVisible()
+  await fillSticky(page, '# Plan\n\n- first\n- **second**')
+  // Live preview inside the editor: the heading line carries the
+  // decoration class at heading scale; a mark off the caret line
+  // recedes.
+  const h1 = page.locator('[data-testid="atlas-sticky-editor"] .cm-mill-h1')
+  await expect(h1).toHaveCount(1)
+  const size = await h1.evaluate((el) => parseFloat(getComputedStyle(el).fontSize))
+  expect(size).toBeGreaterThan(14)
+  await expect(page.locator('[data-testid="atlas-sticky-editor"] .cm-mill-mark').first()).toBeVisible()
+  await blurSticky(page)
+  await expect(stickyEditor(page)).toHaveCount(0)
+  // At rest the text renders as markdown: a real list, bold, heading.
+  const sticky = page.getByTestId('atlas-sticky-note')
+  await expect(sticky.locator('li')).toHaveCount(2)
+  await expect(sticky.locator('strong')).toHaveText('second')
+  // The face shows rendered output only -- no raw marks survive.
+  await expect(sticky).not.toContainText('**')
+  // Cleanup (testing.md's within-file discipline).
+  const menu = contextMenu(page)
+  await sticky.click({ button: 'right' })
+  await menu.getByText('Delete note', { exact: true }).click()
+  await expect(sticky).toHaveCount(0)
+})

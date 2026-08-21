@@ -62,6 +62,7 @@ export function MarkdownNoteField({ value, onChange, onCommit, placeholder, aria
           value={value}
           onChange={onChange}
           language="markdown"
+          prose
           ariaLabel={ariaLabel}
           placeholder={placeholder}
           minHeightRows={2}

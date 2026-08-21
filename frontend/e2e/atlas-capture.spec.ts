@@ -1,4 +1,5 @@
 import { test, expect } from './fixtures/server'
+import { blurSticky, stickyEditor } from './fixtures/codeEditor'
 import type { Page } from '@playwright/test'
 import { clickCorner, openCard, submitCreatePopover, zoomAllTheWayOut } from './fixtures/atlasBoard'
 import { deleteViaPageMenu } from './fixtures/atlasPage'
@@ -112,15 +113,15 @@ test('paste is inert while an editable field has focus', async ({ page }) => {
   await zoomAllTheWayOut(page)
   await page.keyboard.press('n')
   await clickCorner(board, 'top-left')
-  const draftTextarea = page.getByTestId('atlas-sticky-textarea')
-  await expect(draftTextarea).toBeVisible()
-  await draftTextarea.focus()
+  const editorContent = page.locator('[data-testid="atlas-sticky-editor"] .cm-content')
+  await editorContent.waitFor()
+  await editorContent.focus()
 
-  await dispatchPaste(page, { text: 'should stay in the textarea' })
+  await dispatchPaste(page, { text: 'should stay in the editor' })
   await expect(page.getByTestId('atlas-placement-popover')).toHaveCount(0)
 
-  await draftTextarea.blur()
-  await expect(draftTextarea).toHaveCount(0)
+  await blurSticky(page)
+  await expect(stickyEditor(page)).toHaveCount(0)
 })
 
 test('Scratchpad seed is a container card with the inbox guidance note', async ({ page }) => {

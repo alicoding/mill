@@ -13,8 +13,42 @@
     cursor: pointer;
     display: flex;
 }
+/* Editing grows the sticky into a real writing surface (goal 0145):
+   wider, auto height with the editor's own content, capped with
+   internal scroll past ~380px. The node's fixed width/height are
+   omitted while editing (buildStickyNodes), so this class owns the
+   editing footprint. */
 .sticky.editing {
     cursor: text;
+    width: 300px;
+    height: auto;
+    min-height: 110px;
+    max-height: 380px;
+    padding: 6px 8px;
+}
+.sticky.editing > * {
+    width: 100%;
+}
+/* Inside the sticky the editor is chromeless -- the tinted sticky IS
+   the surface; a second border/background would read as a form field
+   dropped onto a note. */
+.sticky.editing :global(.cm-editor) {
+    border: none;
+    background: transparent;
+    max-height: 360px;
+}
+.sticky.editing :global(.cm-scroller) {
+    overflow-y: auto;
+    max-height: 360px;
+}
+.sticky.editing textarea {
+    border: none;
+    background: transparent;
+    outline: none;
+    resize: none;
+    width: 100%;
+    font: inherit;
+    font-size: 12px;
 }
 
 /* Selection ring: heavier than the card ring on purpose -- the
@@ -47,15 +81,51 @@
     font-size: 12px;
     line-height: 1.35;
     color: var(--fgColor-default);
-    overflow: hidden;
-    white-space: pre-wrap;
+    width: 100%;
+    overflow-y: auto;
     word-break: break-word;
-    display: -webkit-box;
-    -webkit-line-clamp: 5;
-    -webkit-box-orient: vertical;
     /* Overflow fade, not a hard clip -- a long note visibly continues
-       past the visible edge rather than looking abruptly truncated. */
+       past the visible edge rather than looking abruptly truncated;
+       the body wheel-scrolls in place (nowheel keeps the canvas zoom
+       out of it). */
     mask-image: linear-gradient(to bottom, black 75%, transparent 100%);
+}
+
+/* Rendered-markdown compaction: goldmark's block elements at sticky
+   scale -- tight margins, small headings, real list bullets. */
+.mdBody p,
+.mdBody ul,
+.mdBody ol,
+.mdBody blockquote,
+.mdBody pre {
+    margin: 0 0 4px;
+}
+.mdBody ul,
+.mdBody ol {
+    padding-left: 16px;
+}
+.mdBody h1,
+.mdBody h2,
+.mdBody h3,
+.mdBody h4,
+.mdBody h5,
+.mdBody h6 {
+    margin: 0 0 4px;
+    font-size: 12px;
+    font-weight: 600;
+}
+.mdBody h1 {
+    font-size: 13px;
+}
+.mdBody code {
+    font-family: var(--mill-mono);
+    font-size: 11px;
+    background: var(--bgColor-neutral-muted);
+    border-radius: 3px;
+    padding: 0 3px;
+}
+.mdBody input[type='checkbox'] {
+    margin-right: 4px;
 }
 
 .textarea {

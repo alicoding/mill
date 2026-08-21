@@ -6,6 +6,7 @@ import type { Card, Kind, Link, LinkKind } from '../../bindings/github.com/alico
 import { kindColorTokens } from './atlasKindColor'
 import { deriveFileTag, freshnessDotColor } from './atlasCardPresentation'
 import { childrenOf } from './atlasGrouping'
+import { markdownSnippet } from './markdownSnippet'
 import styles from './AtlasNoteCardNode.module.css'
 import slotStyles from './AtlasSlotRows.module.css'
 import type { PointerEvent as ReactPointerEvent } from 'react'
@@ -138,7 +139,7 @@ export const AtlasNoteCardNode = memo(function AtlasNoteCardNode({ data }: NodeP
       ) : (
         <div className={styles.title}>{card.Title}</div>
       )}
-      {card.Note && <div className={styles.noteLine}>{card.Note}</div>}
+      {card.Note && <div className={styles.noteLine}>{markdownSnippet(card.Note)}</div>}
       <div className={styles.presenceRow}>
         {dot && <span className={`${styles.dot} ${styles[`dot-${dot}`]}`} data-testid="atlas-note-freshness-dot" />}
         {cardLinks.length > 0 && (

@@ -1,4 +1,5 @@
 import { chromium, expect, test } from '@playwright/test'
+import { blurSticky, fillSticky, stickyEditor } from './fixtures/codeEditor'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
@@ -57,11 +58,10 @@ test('atlas creation core: tray, placement popover, right-click create, sticky n
     await expect(noteTool).toHaveAttribute('data-armed', 'true')
     await clickCorner(board, 'top-left')
     await expect(noteTool).toHaveAttribute('data-armed', 'false')
-    const draftTextarea = page.getByTestId('atlas-sticky-textarea')
-    await expect(draftTextarea).toBeVisible()
-    await draftTextarea.fill('ZzE2eStickyNoteText')
-    await draftTextarea.blur()
-    await expect(draftTextarea).toHaveCount(0)
+    await expect(stickyEditor(page)).toBeVisible()
+    await fillSticky(page, 'ZzE2eStickyNoteText')
+    await blurSticky(page)
+    await expect(stickyEditor(page)).toHaveCount(0)
     const sticky = page.getByTestId('atlas-sticky-note').filter({ hasText: 'ZzE2eStickyNoteText' })
     await expect(sticky).toBeVisible()
     // Regression: one blur commits exactly ONE note (the same
@@ -231,10 +231,9 @@ test('an empty note places, renders its placeholder, and takes text later', asyn
 
     await page.keyboard.press('n')
     await clickCorner(board, 'top-left')
-    const draftTextarea = page.getByTestId('atlas-sticky-textarea')
-    await expect(draftTextarea).toBeVisible()
-    await draftTextarea.blur()
-    await expect(draftTextarea).toHaveCount(0)
+    await expect(stickyEditor(page)).toBeVisible()
+    await blurSticky(page)
+    await expect(stickyEditor(page)).toHaveCount(0)
 
     const sticky = page.getByTestId('atlas-sticky-note')
     await expect(sticky).toHaveCount(1)
@@ -244,10 +243,9 @@ test('an empty note places, renders its placeholder, and takes text later', asyn
     // and the placeholder leaves.
     await sticky.click()
     await sticky.click()
-    const editTextarea = page.getByTestId('atlas-sticky-textarea')
-    await expect(editTextarea).toBeVisible()
-    await editTextarea.fill('ZzE2eTypedLater')
-    await editTextarea.blur()
+    await expect(stickyEditor(page)).toBeVisible()
+    await fillSticky(page, 'ZzE2eTypedLater')
+    await blurSticky(page)
     await expect(sticky).toContainText('ZzE2eTypedLater')
     await expect(sticky).not.toContainText('Empty note')
   } finally {

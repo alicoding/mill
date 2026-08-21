@@ -1,4 +1,5 @@
 import { chromium, expect, test } from '@playwright/test'
+import { blurSticky, fillSticky } from './fixtures/codeEditor'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
@@ -211,9 +212,8 @@ test('atlas shift-click select: toggle membership, group via member right-click,
     // 0106 slice B) now occupies the bottom-right corner, offset off
     // the true left edge to clear React Flow's own Controls strip there.
     await page.mouse.click(noteBB.x + 80, noteBB.y + noteBB.height - 80)
-    const noteTA = page.getByTestId('atlas-sticky-textarea')
-    await noteTA.fill('ZzK2eStickySel')
-    await noteTA.blur()
+    await fillSticky(page, 'ZzK2eStickySel')
+    await blurSticky(page)
     const stickyNote = page.locator('[data-testid="atlas-sticky-note"]')
     const restingBorder = await stickyNote.evaluate((el) => getComputedStyle(el).borderColor)
     await stickyNote.click({ modifiers: ['Shift'] })

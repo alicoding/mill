@@ -33,3 +33,26 @@ export async function fillMarkdownNote(page: Page, testId: string, text: string)
   if (await rendered.count()) await rendered.click()
   await fillCodeEditor(page, testId, text)
 }
+
+// The sticky note's editing surface (goal 0145): the shared prose
+// CodeEditor, or its pre-engine textarea fallback. `fillSticky`
+// replaces the draft text; `blurSticky` commits it (the old inline
+// textarea fill/blur pattern, centralized now that the surface is
+// CM6). stickyEditor targets the wrapper CodeEditor renders.
+export function stickyEditor(page: Page) {
+  return page.locator('[data-testid="atlas-sticky-editor"]')
+}
+export async function fillSticky(page: Page, text: string) {
+  // focus(), never click(): a click on the sticky is a React Flow
+  // node click, which select-and-replaces whatever the test had
+  // selected -- the draft editor autofocuses, so focus is enough.
+  const content = page.locator('[data-testid="atlas-sticky-editor"] .cm-content')
+  await content.waitFor()
+  await content.focus()
+  await page.keyboard.press(process.platform === 'darwin' ? 'Meta+a' : 'Control+a')
+  await page.keyboard.press('Delete')
+  await page.keyboard.insertText(text)
+}
+export async function blurSticky(page: Page) {
+  await page.locator('[data-testid="atlas-sticky-editor"] .cm-content, [data-testid="atlas-sticky-editor"] textarea').first().blur()
+}

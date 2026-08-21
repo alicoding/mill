@@ -9,6 +9,7 @@ import { html } from '@codemirror/lang-html'
 import { markdown } from '@codemirror/lang-markdown'
 import { shell } from '@codemirror/legacy-modes/mode/shell'
 import { tags } from '@lezer/highlight'
+import { markdownLivePreview } from './markdownLivePreview'
 
 // The CodeMirror machinery behind shared/CodeEditor.tsx -- reachable
 // only through that component's dynamic import, so every @codemirror/
@@ -76,6 +77,7 @@ export function editorTheme(minHeightRows: number): Extension {
       fontFamily: 'var(--mill-mono)',
       minHeight: `${minHeightRows * 1.4}em`,
     },
+    '&.cm-mill-prose .cm-content': { fontFamily: 'inherit', fontSize: '13px' },
     '.cm-scroller': { fontFamily: 'inherit' },
     '.cm-gutters': {
       backgroundColor: 'var(--bgColor-muted)',
@@ -97,6 +99,10 @@ export interface BuildExtensionsOptions {
   minHeightRows: number
   placeholderText?: string
   onDocChange?: (value: string) => void
+  // Prose mode (goal 0145): writing, not code -- drops line numbers,
+  // uses the UI font, and (for markdown) layers the live-preview
+  // decorations so formatting renders in place while editing.
+  prose?: boolean
 }
 
 // Assembles one editor instance's full extension set. Editing niceties
@@ -105,7 +111,12 @@ export interface BuildExtensionsOptions {
 // highlighting, nothing else, per shared/CodeEditor.tsx's contract.
 export function buildExtensions(opts: BuildExtensionsOptions): Extension[] {
   const ext: Extension[] = [
-    lineNumbers(),
+    ...(opts.prose
+      ? [
+          EditorView.editorAttributes.of({ class: 'cm-mill-prose' }),
+          ...(opts.language === 'markdown' ? [markdownLivePreview()] : []),
+        ]
+      : [lineNumbers()]),
     // A long unwrapped line drags the shared horizontal scroll
     // position for every line in the document (CM6's lines share one
     // scroller), hiding the start of shorter lines above/below it once

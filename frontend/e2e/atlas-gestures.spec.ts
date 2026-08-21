@@ -1,4 +1,5 @@
 import { test, expect } from './fixtures/server'
+import { blurSticky, fillSticky } from './fixtures/codeEditor'
 import { groupCard, noteCard } from './fixtures/atlasCards'
 import { clickCorner, zoomAllTheWayOut, clickFrameGutter } from './fixtures/atlasBoard'
 import { contextMenu } from './fixtures/contextMenu'
@@ -68,9 +69,8 @@ test('a plain click leaves the selection ring visibly showing on the clicked car
   await zoomAllTheWayOut(page)
   await page.keyboard.press('n')
   await clickCorner(board, 'top-right')
-  const noteTA = page.getByTestId('atlas-sticky-textarea')
-  await noteTA.fill('ZzE2eStickyRing')
-  await noteTA.blur()
+  await fillSticky(page, 'ZzE2eStickyRing')
+  await blurSticky(page)
   const sticky = page.locator('[data-testid="atlas-sticky-note"]')
   await sticky.click()
   expect(await page.evaluate(() => document.activeElement?.getAttribute('data-testid'))).toBe('atlas-sticky-note')
