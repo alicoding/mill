@@ -159,6 +159,7 @@ func PageIndex() []DocPage {
 		{"concepts/atlas.md", "Atlas", "the knowledge board: kinds, links, areas, doc mirrors, card actions"},
 		{"concepts/runs-and-review.md", "Runs, review, and debugging", "durable runs, the review queue, breakpoints"},
 		{"reference/steps.md", "Step reference", "every step's contract, generated from the registry"},
+		{"reference/settings.md", "Settings", "app preferences: appearance, hotkeys, shortcuts, MCP access, backups, updates"},
 		{"agents/connect-mcp.md", "Automate with agents", "connecting over MCP and what agents can do"},
 		{"trust/data-and-safety.md", "Trust, data, and safety", "no phone-home, local data, honest limits"},
 	}
