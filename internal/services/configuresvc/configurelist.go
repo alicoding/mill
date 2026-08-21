@@ -453,3 +453,16 @@ type ProjectionRowData struct {
 	Status string
 	Values map[string]string
 }
+
+// GetList returns one List by id -- the grid's schema edits read the
+// current record through this instead of fetching every list (goal
+// 0147's O(all-lists)-per-column-edit finding).
+func (c *ConfigureService) GetList(id string) (list.List, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	idx := c.findListLocked(id)
+	if idx == -1 {
+		return list.List{}, fmt.Errorf("no list with id %q", id)
+	}
+	return c.lists[idx], nil
+}

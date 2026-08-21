@@ -239,13 +239,10 @@ export function ListGrid({ listID, columns, rows, density, schemaEditing = true 
   // withList runs fn against the List's CURRENT full record
   // (UpdateList replaces the whole columns slice, so schema edits need
   // label+description+columns as they stand right now; new tombstones
-  // MERGE server-side, so passing null never wipes stored ones).
+  // MERGE server-side, so passing null never wipes stored ones). One
+  // GetList, never a fetch of every list (goal 0147).
   const withList = (fn: (l: { ID: string; Label: string; Description: string; Columns: Field[] | null }) => Promise<unknown> | undefined) => {
-    void ConfigureService.Lists().then((lists) => {
-      const l = (lists ?? []).find((x) => x.ID === listID)
-      if (!l) return
-      return fn(l)
-    }).then(clearThen).catch(report)
+    void ConfigureService.GetList(listID).then((l) => fn(l)).then(clearThen).catch(report)
   }
 
   const insertColumnAt = (index: number) => {

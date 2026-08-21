@@ -10,7 +10,7 @@ import { useAppStore, refreshWorkflows, refreshRequests, refreshKeybindings } fr
 import {
   useConfigureEntityStore, refreshLists, refreshMCPServers, refreshDecisions, refreshExecEnvs, refreshAIProviders, refreshDeclaredStepTypes,
 } from '../shared/configureEntityStore'
-import { useAtlasStore, refreshAtlasCards, refreshAtlasKinds, refreshAtlasNotes } from '../atlas/atlasStore'
+import { useAtlasStore, scheduleAtlasRefresh, refreshAtlasCards, refreshAtlasKinds, refreshAtlasNotes } from '../atlas/atlasStore'
 import { findRootNode } from '../composition/triggerRowInfo'
 import { sortWorkflowsByPinnedAndFrecency } from './workflowFrecency'
 import { WorkflowRowTrailingVisual } from './WorkflowRowTrailingVisual'
@@ -227,7 +227,9 @@ export function QuickPanel() {
       if (entity === 'execenv') void refreshExecEnvs()
       if (entity === 'aiprovider') void refreshAIProviders()
       if (entity === 'steptype') void refreshDeclaredStepTypes()
-      if (entity === 'atlas') { void refreshAtlasCards(); void refreshAtlasKinds(); void refreshAtlasNotes() }
+      // Coalesced (goal 0147): the shared debounced refresher covers
+      // every store consumer, this window included.
+      if (entity === 'atlas') scheduleAtlasRefresh()
       if (entity === 'hotkey') refreshHotkeyCombos()
       if (entity === 'keybinding') void refreshKeybindings()
     })

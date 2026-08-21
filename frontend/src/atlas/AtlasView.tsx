@@ -6,7 +6,7 @@ import { Text } from '@primer/react'
 import { type Card } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 import { useAtlasCreationRequests } from './useAtlasCreationRequests'
 import { AtlasService } from '../shared/bindings'
-import { refreshAtlas, useAtlasStore } from './atlasStore'
+import { scheduleAtlasRefresh, refreshAtlas, useAtlasStore } from './atlasStore'
 import { applyLens, childrenOf, groupByKind, singleRootCard } from './atlasGrouping'
 import { useAtlasPerspectives } from './useAtlasPerspectives'
 import { useAtlasNavSignals } from './useAtlasNavSignals'
@@ -124,7 +124,7 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
     void refreshAtlas()
     return Events.On('mill-data-changed', (evt) => {
       const entity = (evt.data as { entity?: string })?.entity
-      if (entity === 'atlas') void refreshAtlas()
+      if (entity === 'atlas') scheduleAtlasRefresh()
     })
   }, [])
 
