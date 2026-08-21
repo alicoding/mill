@@ -12,6 +12,14 @@ a run: Manual run, Hotkey pressed, On a schedule, Clipboard changed,
 File changed, System event, Atlas card changed, or Called by another
 workflow (which makes the workflow a callable child with typed inputs).
 
+## Copy and paste steps
+
+Select steps on the canvas and press ⌘C, then ⌘V to paste copies
+where your cursor is — configuration included, connections kept when
+both ends were copied. The copy is plain text on your clipboard, so
+it pastes into another workflow, or another Mill. Trigger steps
+don't copy; a workflow has exactly one.
+
 ## The step contract
 
 Every step declares what it consumes and what it produces — a coarse
