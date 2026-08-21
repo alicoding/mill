@@ -112,6 +112,12 @@ export const AtlasNoteCardNode = memo(function AtlasNoteCardNode({ data }: NodeP
         if (e.metaKey || e.ctrlKey) { onCommit(card.ID); return }
         if (isSoleSelected(card.ID)) onCommit(card.ID)
       }}
+      // Same determinism as the sticky's own handler: a dblclick's
+      // second press can beat the snapshot's re-render.
+      onDoubleClick={(e) => {
+        if (e.shiftKey) return
+        onCommit(card.ID)
+      }}
       onKeyDown={(e) => {
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault()
