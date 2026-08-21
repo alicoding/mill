@@ -10,9 +10,11 @@ import styles from './AtlasNoteOverlay.module.css'
 // The note's big surface (docs/goals/0154): ⌘-click / ⌘↵ / the
 // context menu's Open note lands here -- a centered dialog holding
 // the SAME markdown note machinery the card page uses (rendered at
-// rest, prose editor with live preview on click, blur commits). No
-// title (notes are title-less by design) and no footer -- Escape or
-// the close affordance leaves; edits are already committed on blur.
+// rest, prose editor with live preview on click). No title (notes
+// are title-less by design) and no footer -- Escape or the close
+// affordance leaves, and onClose always commits the current draft
+// (MarkdownNoteField's own pointer/window-blur commit may already
+// have run first; commit() below is idempotent against that).
 export function AtlasNoteOverlay({ note, onClose }: {
   note: Note
   onClose: () => void

@@ -1,4 +1,4 @@
-import { fillMarkdownNote } from './fixtures/codeEditor'
+import { fillMarkdownNote, clickOutsideNoteEditor } from './fixtures/codeEditor'
 import { chromium, expect, test } from '@playwright/test'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -77,7 +77,7 @@ test('atlas card page: read-is-edit fields, kind-gated mirror controls, page lin
 
     // --- Note edit round trip. ---
     await fillMarkdownNote(page, 'atlas-page-note', 'Edited **by** the e2e suite.')
-    await page.keyboard.press('Tab')
+    await clickOutsideNoteEditor(overlay)
     await expect(overlay.getByTestId('atlas-page-saved-tick')).toBeVisible()
     await page.keyboard.press('Escape')
     await openCard(page, noteCard(page, 'Getting started'))

@@ -1,4 +1,4 @@
-import type { Page } from '@playwright/test'
+import type { Locator, Page } from '@playwright/test'
 
 // CodeMirror renders no <textarea> -- its editable surface is a
 // contenteditable `.cm-content` node inside the [data-testid] wrapper
@@ -36,9 +36,8 @@ export async function fillMarkdownNote(page: Page, testId: string, text: string)
 
 // The sticky note's editing surface (goal 0145): the shared prose
 // CodeEditor, or its pre-engine textarea fallback. `fillSticky`
-// replaces the draft text; `blurSticky` commits it (the old inline
-// textarea fill/blur pattern, centralized now that the surface is
-// CM6). stickyEditor targets the wrapper CodeEditor renders.
+// replaces the draft text; `blurSticky` commits it. stickyEditor
+// targets the wrapper CodeEditor renders.
 export function stickyEditor(page: Page) {
   return page.locator('[data-testid="atlas-sticky-editor"]')
 }
@@ -53,13 +52,25 @@ export async function fillSticky(page: Page, text: string) {
   await page.keyboard.press('Delete')
   await page.keyboard.insertText(text)
 }
+// Commit is POINTER-driven now (AtlasStickyNode: a press outside the
+// note, or the whole window losing focus) -- a real user's blur/tab-
+// away is exactly the "press elsewhere" gesture, but Playwright's
+// programmatic `.blur()` isn't a press at all, so it no longer
+// commits anything. ⌘↵ (AtlasStickyNode's own keyboard shortcut,
+// unaffected by the pointer-vs-focus split) is the deterministic
+// commit path for a test -- kept named `blurSticky` so no spec churn.
 export async function blurSticky(page: Page) {
-  // focus() before blur(): HTMLElement.blur() is a no-op on an
-  // element that never held focus, and a fast test can blur before
-  // the sticky's own deferred autofocus lands -- no focusout would
-  // fire and the commit-on-blur never runs.
-  await page.locator('[data-testid="atlas-sticky-editor"] .cm-content, [data-testid="atlas-sticky-editor"] textarea').first().evaluate((el) => {
-    (el as HTMLElement).focus()
-    ;(el as HTMLElement).blur()
-  })
+  const content = page.locator('[data-testid="atlas-sticky-editor"] .cm-content, [data-testid="atlas-sticky-editor"] textarea').first()
+  await content.focus()
+  await page.keyboard.press('Control+Enter')
+  await page.locator('[data-testid="atlas-sticky-editor"]').waitFor({ state: 'detached' })
+}
+
+// clickOutsideNoteEditor commits a page overlay's MarkdownNoteField
+// (atlas-page-note / atlas-note-overlay-editor): its commit is also
+// POINTER-driven (a press outside the field), so a real click lands
+// it -- targeted at the header's own padding corner (never a child
+// control) so the click can't hit anything but empty background.
+export async function clickOutsideNoteEditor(overlay: Locator): Promise<void> {
+  await overlay.getByTestId('atlas-page-header').click({ position: { x: 8, y: 8 } })
 }
