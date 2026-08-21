@@ -248,9 +248,7 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
   // tray Delete, card/note context-menu Delete, frame-header Delete,
   // and the card page's own kebab Delete.
   const undoToast = useAtlasUndoToast()
-  // A quiet, no-undo toast for membership add/remove and a perspective-
-  // service refusal (ADR-0041) -- switching itself shows no toast, only
-  // a membership WRITE does.
+  // A quiet, no-undo toast (membership writes, clipboard feedback).
   const quietToast = useAtlasQuietToast()
 
   const deleteConfirm = useAtlasDeleteConfirm({ t, allCards, notes: allNotes })
@@ -416,6 +414,7 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
           links={boardLinks}
           linkKinds={allLinkKinds}
           notes={visibleNotes}
+          allNotes={allNotes}
           parentID={viewedID}
           arrangeRequest={arrangeRequest}
           viewedID={viewedID}

@@ -1,14 +1,15 @@
 import type { PointerEvent as ReactPointerEvent } from 'react'
-import type { Card, Kind, Link, LinkKind } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
+import type { Card, Kind, Link, LinkKind, Note } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 import { childrenOf } from './atlasGrouping'
 import { computeAutoArrangeLayout, computeGroupFrameLayout, isGroupCard, NOTE_HEIGHT, NOTE_WIDTH, TABLE_HEIGHT, TABLE_WIDTH } from './atlasBoardLayout'
 import { computeFreshnessRollup } from './atlasCardPresentation'
 import { type BoardFilter, filterIsActive, matchesBoardFilter } from './cardFilter'
 import type { AtlasNoteCardRFNode } from './AtlasNoteCardNode'
 import type { AtlasGroupRFNode } from './AtlasGroupNode'
+import type { AtlasStickyRFNode } from './AtlasStickyNode'
 import type { AtlasRegionChipRFNode } from './AtlasRegionChipNode'
 
-export type BoardCardRFNode = AtlasNoteCardRFNode | AtlasGroupRFNode | AtlasRegionChipRFNode
+export type BoardCardRFNode = AtlasNoteCardRFNode | AtlasGroupRFNode | AtlasRegionChipRFNode | AtlasStickyRFNode
 
 // The board's own card/frame/chip React Flow nodes -- pulled out of
 // AtlasBoard.tsx's builtNodes memo (architecture.md's 500-line
@@ -23,13 +24,17 @@ export type BoardCardRFNode = AtlasNoteCardRFNode | AtlasGroupRFNode | AtlasRegi
 // mode; a childless card renders as a flippable note (AtlasNoteCardNode).
 // eslint-disable-next-line sonarjs/cognitive-complexity -- legacy complexity grandfathered at gate adoption; pay down when touched (goal 0109 burn-down)
 export function buildBoardCardNodes({
-  cards, allCards, kinds, links, linkKinds, isFree, readOnly, boardWidth, freeMoves, arteries,
+  cards, allCards, allNotes, kinds, links, linkKinds, isFree, readOnly, boardWidth, freeMoves, arteries,
   pulsedID, hintedID, hoveredFrameID, isSoleSelected, onOpenOverlay, handleDrill,
   slotDragSourceID, onSlotAnchorPointerDown, hasLegalTargets, boardFilter,
-  titleEditCardID, onTitleCommit, onTitleCancel,
+  titleEditCardID, onTitleCommit, onTitleCancel, noteHandlers,
 }: {
   cards: Card[]
   allCards: Card[]
+  // Every note (not just this level's): a frame's preview draws the
+  // stickies filed inside it, so a filed note stays visible from one
+  // level up exactly like a filed card.
+  allNotes: Note[]
   kinds: Kind[]
   links: Link[]
   linkKinds: LinkKind[]
@@ -66,6 +71,14 @@ export function buildBoardCardNodes({
   titleEditCardID: string | null
   onTitleCommit: (id: string, title: string) => void
   onTitleCancel: () => void
+  // The sticky components' own edit/commit contract, shared with
+  // buildStickyNodes so a preview note edits like a level note.
+  noteHandlers: {
+    editingNoteID: string | null
+    onEnterEdit: (id: string) => void
+    onCancelEdit: () => void
+    onCommitEdit: (id: string, text: string) => void
+  }
 }): BoardCardRFNode[] {
   const kindByID = new Map(kinds.map((k) => [k.ID, k]))
   const adjacency = new Map<string, string[]>()
@@ -73,7 +86,7 @@ export function buildBoardCardNodes({
     adjacency.set(a.source, [...(adjacency.get(a.source) ?? []), a.target])
     adjacency.set(a.target, [...(adjacency.get(a.target) ?? []), a.source])
   }
-  const autoLayout = !isFree ? computeAutoArrangeLayout(cards, allCards, adjacency, boardWidth > 0 ? boardWidth - 48 : undefined) : null
+  const autoLayout = !isFree ? computeAutoArrangeLayout(cards, allCards, adjacency, boardWidth > 0 ? boardWidth - 48 : undefined, allNotes) : null
   const moveByID = new Map(freeMoves.map((m) => [m.id, m]))
   const nodes: BoardCardRFNode[] = []
 
@@ -109,7 +122,7 @@ export function buildBoardCardNodes({
       : { x: box?.x ?? 0, y: box?.y ?? 0 }
 
     if (isGroupCard(allCards, card)) {
-      const frame = computeGroupFrameLayout(allCards, card.ID)
+      const frame = computeGroupFrameLayout(allCards, card.ID, allNotes)
       const size = isFree ? frame.size : { width: box?.width ?? frame.size.width, height: box?.height ?? frame.size.height }
       nodes.push({
         id: card.ID,
@@ -138,6 +151,28 @@ export function buildBoardCardNodes({
           onOpenOverlay,
         },
       })
+      for (const sticky of frame.stickies) {
+        nodes.push({
+          id: sticky.note.ID,
+          type: 'atlas-sticky',
+          position: sticky.position,
+          width: sticky.size.width,
+          height: sticky.size.height,
+          parentId: card.ID,
+          // The preview grid is never draggable (this function's own
+          // header contract); note drag-out from a preview is a named
+          // deferral in goal 0153's record.
+          draggable: false,
+          data: {
+            note: sticky.note,
+            editing: noteHandlers.editingNoteID === sticky.note.ID,
+            isSoleSelected,
+            onCommit: (text: string) => noteHandlers.onCommitEdit(sticky.note.ID, text),
+            onCancelEdit: noteHandlers.onCancelEdit,
+            onEnterEdit: () => noteHandlers.onEnterEdit(sticky.note.ID),
+          },
+        })
+      }
       for (const child of frame.children) {
         if (child.variant === 'chip') {
           nodes.push({

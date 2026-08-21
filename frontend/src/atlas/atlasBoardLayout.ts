@@ -1,4 +1,4 @@
-import type { Card } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
+import type { Card, Note } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 import { childrenOf } from './atlasGrouping'
 
 // The one-map board's shared sizing (goal 0072 slice A): every note
@@ -65,6 +65,10 @@ export interface GroupFrameChild {
 export interface GroupFrameLayout {
   size: { width: number; height: number }
   children: GroupFrameChild[]
+  // Sticky notes filed in this frame, drawn in the same preview flow
+  // (a filed note was invisible from one level up before this --
+  // cards previewed, notes didn't).
+  stickies: { note: Note; position: { x: number; y: number }; size: { width: number; height: number } }[]
   // Set when the preview cap truncated the children: how many are NOT
   // drawn, and where the "+ K more" ghost tile sits (a note-sized slot).
   overflow: { count: number; position: { x: number; y: number } } | null
@@ -80,15 +84,20 @@ export interface GroupFrameLayout {
 // persisted, in EITHER board mode -- Free mode's saved positions only
 // ever govern a card's place on its OWN focused board, not this
 // read-only preview of its children from one level up.
-export function computeGroupFrameLayout(allCards: Card[], groupID: string): GroupFrameLayout {
+export function computeGroupFrameLayout(allCards: Card[], groupID: string, allNotes: Note[] = []): GroupFrameLayout {
   const kids = childrenOf(allCards, groupID)
   const areas = stableSort(kids.filter((c) => isGroupCard(allCards, c)))
   const leaves = stableSort(kids.filter((c) => !isGroupCard(allCards, c)))
   const ordered = [...areas, ...leaves]
+  const noteKids = allNotes.filter((n) => n.ParentID === groupID)
 
-  const capped = ordered.length > GROUP_PREVIEW_SLOTS
-  const drawn = capped ? ordered.slice(0, GROUP_PREVIEW_SLOTS - 1) : ordered
-  const overflowCount = ordered.length - drawn.length
+  // Cards and notes share ONE preview budget; cards draw first.
+  const total = ordered.length + noteKids.length
+  const capped = total > GROUP_PREVIEW_SLOTS
+  const budget = capped ? GROUP_PREVIEW_SLOTS - 1 : total
+  const drawn = ordered.slice(0, budget)
+  const drawnNotes = noteKids.slice(0, Math.max(0, budget - drawn.length))
+  const overflowCount = total - drawn.length - drawnNotes.length
 
   let cursorX = 0
   let cursorY = 0
@@ -119,17 +128,24 @@ export function computeGroupFrameLayout(allCards: Card[], groupID: string): Grou
     }
   })
 
+  const stickies = drawnNotes.map((note) => {
+    const size = { width: STICKY_WIDTH, height: STICKY_HEIGHT }
+    const pos = place(size.width, size.height)
+    return { note, position: { x: GROUP_PADDING + pos.x, y: GROUP_HEADER_INSET + pos.y }, size }
+  })
+
   let overflow: GroupFrameLayout['overflow'] = null
   if (overflowCount > 0) {
     const pos = place(NOTE_WIDTH, NOTE_HEIGHT)
     overflow = { count: overflowCount, position: { x: GROUP_PADDING + pos.x, y: GROUP_HEADER_INSET + pos.y } }
   }
 
-  const contentWidth = ordered.length === 0 ? NOTE_WIDTH : maxRight
-  const contentHeight = ordered.length === 0 ? NOTE_HEIGHT : cursorY + rowHeight
+  const empty = ordered.length === 0 && drawnNotes.length === 0
+  const contentWidth = empty ? NOTE_WIDTH : maxRight
+  const contentHeight = empty ? NOTE_HEIGHT : cursorY + rowHeight
   const width = GROUP_PADDING * 2 + contentWidth
   const height = GROUP_HEADER_INSET + GROUP_PADDING + contentHeight
-  return { size: { width, height }, children, overflow }
+  return { size: { width, height }, children, stickies, overflow }
 }
 
 export interface BoardBox {
@@ -191,6 +207,7 @@ export function computeAutoArrangeLayout(
   allCards: Card[],
   adjacency: Map<string, string[]> = new Map(),
   maxRowWidth: number = BOARD_MAX_ROW_WIDTH,
+  allNotes: Note[] = [],
 ): BoardLayout {
   const rowCap = Math.max(BOARD_MAX_ROW_WIDTH, maxRowWidth)
   const ordered = linkAdjacentOrder(cards, allCards, adjacency)
@@ -212,7 +229,7 @@ export function computeAutoArrangeLayout(
 
   for (const card of ordered) {
     if (isGroupCard(allCards, card)) {
-      const { size } = computeGroupFrameLayout(allCards, card.ID)
+      const { size } = computeGroupFrameLayout(allCards, card.ID, allNotes)
       place(card.ID, size.width, size.height)
     } else if (card.ProjectionListID) {
       // A table projection packs at its real rendered footprint --
