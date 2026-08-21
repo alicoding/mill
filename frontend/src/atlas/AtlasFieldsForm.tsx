@@ -23,13 +23,17 @@ import runbookStyles from '../shared/ListCard.module.css'
 // `values` in the same handler -- testing.md's stale-setState trap: a
 // setState call and a same-tick read of the state it set race, since
 // React hasn't re-rendered yet.
-export function AtlasFieldsForm({ fields, values, onChange, onCommit, errors, readOnly = false }: {
+export function AtlasFieldsForm({ fields, values, onChange, onCommit, errors, readOnly = false, cardRefCandidates }: {
   fields: Field[]
   values: Record<string, string>
   onChange: (key: string, value: string) => void
   onCommit?: (key: string, value: string) => void
   errors?: Record<string, string>
   readOnly?: boolean
+  // A cardref field's pickable targets (goal 0152 slice 2), already
+  // filtered to the field's declared kind by the caller -- this form
+  // stays card-store-free.
+  cardRefCandidates?: (field: Field) => { id: string; title: string }[]
 }) {
   if (fields.length === 0) return null
   return (
@@ -62,6 +66,22 @@ export function AtlasFieldsForm({ fields, values, onChange, onCommit, errors, re
             >
               {(field.Options ?? []).map((opt) => (
                 <Select.Option key={opt} value={opt}>{opt}</Select.Option>
+              ))}
+            </Select>
+          ) : field.Type === ConfigFieldType.TypeCardRef ? (
+            <Select
+              value={values[field.Key] ?? ''}
+              data-testid="atlas-field"
+              data-field-key={field.Key}
+              onChange={(e) => {
+                const next = e.target.value
+                onChange(field.Key, next)
+                onCommit?.(field.Key, next)
+              }}
+            >
+              <Select.Option value="">{'—'}</Select.Option>
+              {(cardRefCandidates?.(field) ?? []).map((c) => (
+                <Select.Option key={c.id} value={c.id}>{c.title}</Select.Option>
               ))}
             </Select>
           ) : field.Type === ConfigFieldType.TypeNumber ? (

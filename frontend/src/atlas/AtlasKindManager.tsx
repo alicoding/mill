@@ -102,7 +102,7 @@ export function AtlasKindManager({ open, onClose, kinds, linkKinds }: {
       )}
 
       {pane.view === 'kind' && (
-        <AtlasKindEditor kind={pane.kind} onSaved={backToList} onCancel={backToList} />
+        <AtlasKindEditor kind={pane.kind} kinds={kinds} onSaved={backToList} onCancel={backToList} />
       )}
       {pane.view === 'linkkind' && (
         <AtlasLinkKindEditor linkKind={pane.linkKind} onSaved={backToList} onCancel={backToList} />

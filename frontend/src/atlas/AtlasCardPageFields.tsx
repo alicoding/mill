@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { Button, FormControl, Text, TextInput } from '@primer/react'
 import { MarkdownNoteField } from './MarkdownNoteField'
 import type { Kind } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
+import type { Field } from '../../bindings/github.com/alicoding/mill/internal/domain/typedfield/models'
 import { AtlasCardActions } from './AtlasCardActions'
 import { AtlasFieldsForm } from './AtlasFieldsForm'
 import { isMirrorKind, statusFieldOf } from './atlasCardPageContent'
@@ -32,7 +33,7 @@ export function AtlasCardPageFields({
   fields, fieldErrors, onFieldsChange, onFieldsCommit,
   source, sourceError, onSourceChange, onSourceCommit,
   mirrorPath, mirrorPathError, onMirrorPathChange, onMirrorPathCommit,
-  cardID, actionWorkflowIDs, onActionsChanged,
+  cardID, actionWorkflowIDs, onActionsChanged, cardRefCandidates,
 }: {
   kind: Kind | undefined
   note: string
@@ -54,6 +55,7 @@ export function AtlasCardPageFields({
   cardID: string
   actionWorkflowIDs: string[]
   onActionsChanged: (next: string[]) => void
+  cardRefCandidates?: (field: Field) => { id: string; title: string }[]
 }) {
   const { t } = useTranslation('atlas')
   const showMirrorFields = kind ? isMirrorKind(kind.ID) : false
@@ -108,7 +110,7 @@ export function AtlasCardPageFields({
       {noteError && <Text as="p" size="small" className={runbookStyles.error} data-testid="atlas-page-note-error">{noteError}</Text>}
 
       {expandedKindFields.length > 0 && (
-        <AtlasFieldsForm fields={expandedKindFields} values={fields} onChange={onFieldsChange} onCommit={onFieldsCommit} errors={fieldErrors} />
+        <AtlasFieldsForm fields={expandedKindFields} values={fields} onChange={onFieldsChange} onCommit={onFieldsCommit} errors={fieldErrors} cardRefCandidates={cardRefCandidates} />
       )}
       {collapsedKindFields.map((field) => (
         <Button

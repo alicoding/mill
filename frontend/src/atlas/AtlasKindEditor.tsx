@@ -17,6 +17,7 @@ const FIELD_TYPES: { value: FieldType; labelKey: string }[] = [
   { value: FieldType.TypeNumber, labelKey: 'kinds.fieldTypeNumber' },
   { value: FieldType.TypeBoolean, labelKey: 'kinds.fieldTypeBoolean' },
   { value: FieldType.TypeOptions, labelKey: 'kinds.fieldTypeOptions' },
+  { value: FieldType.TypeCardRef, labelKey: 'kinds.fieldTypeCardRef' },
 ]
 
 function emptyField(): Field {
@@ -29,8 +30,11 @@ function emptyField(): Field {
 // never change; removing a saved field tombstones it, confirmed
 // first). Mirrors ConfigureDecisions' output-field mechanics so the
 // two evolution UIs can't drift apart in behavior.
-export function AtlasKindEditor({ kind, onSaved, onCancel }: {
+export function AtlasKindEditor({ kind, kinds, onSaved, onCancel }: {
   kind: Kind | null
+  // Every kind, for a cardref field's target-kind picker (goal 0152
+  // slice 2: exactly one target kind, the converged relation shape).
+  kinds: Kind[]
   onSaved: () => void
   onCancel: () => void
 }) {
@@ -110,6 +114,17 @@ export function AtlasKindEditor({ kind, onSaved, onCancel }: {
                 ))}
               </Select>
             </FormControl>
+            {f.Type === FieldType.TypeCardRef && (
+              <FormControl>
+                <FormControl.Label>{t('kinds.refTargetKind')}</FormControl.Label>
+                <Select size="small" style={{ minWidth: 110 }} value={f.RefKind ?? ''} onChange={(e) => setField(i, { RefKind: e.target.value })} data-testid="atlas-kind-field-refkind">
+                  <Select.Option value="">{t('kinds.refTargetAny')}</Select.Option>
+                  {kinds.map((k) => (
+                    <Select.Option key={k.ID} value={k.ID}>{k.Label}</Select.Option>
+                  ))}
+                </Select>
+              </FormControl>
+            )}
             {f.Type === FieldType.TypeOptions && (
               <FormControl>
                 <FormControl.Label>{t('kinds.fieldOptions')}</FormControl.Label>

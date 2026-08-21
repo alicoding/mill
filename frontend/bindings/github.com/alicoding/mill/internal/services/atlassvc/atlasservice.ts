@@ -730,13 +730,6 @@ export function UndoDelete(cardIDs: string[] | null, noteIDs: string[] | null): 
     return $Call.ByID(4101274755, cardIDs, noteIDs);
 }
 
-/**
- * UpdateCard replaces a Card's editable content in place -- ParentID/
- * Position move through MoveCard/SetPosition instead, so a plain
- * content edit never has to re-run the cycle check. sourceRunID is
- * always "" here (a manual Atlas UI edit); MergeCardFields is the
- * run-driven counterpart apply-atlas-card-update uses.
- */
 export function UpdateCard(id: string, title: string, note: string, fields: { [_ in string]?: string } | null, source: string, mirrorPath: string, refreshWorkflowID: string): $CancellablePromise<atlas$0.Card> {
     return $Call.ByID(1443506165, id, title, note, fields, source, mirrorPath, refreshWorkflowID);
 }

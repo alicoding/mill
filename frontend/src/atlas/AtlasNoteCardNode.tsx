@@ -78,9 +78,13 @@ export const AtlasNoteCardNode = memo(function AtlasNoteCardNode({ data }: NodeP
   const faceFields = (kind?.Fields ?? [])
     .filter((f) => f.ShowOnCard && (card.Fields?.[f.Key] ?? '') !== '')
     .slice(0, 3)
-    .map((f) => {
-      const value = card.Fields?.[f.Key] ?? ''
-      return { field: f, value, color: f.Type === 'options' ? optionColor(f.Options, f.OptionColors ?? null, value) : null }
+    .flatMap((f) => {
+      const raw = card.Fields?.[f.Key] ?? ''
+      // A cardref value is an ID -- the face shows the target's title,
+      // or nothing while the target doesn't resolve.
+      const value = f.Type === 'cardref' ? (allCards.find((c) => c.ID === raw)?.Title ?? '') : raw
+      if (value === '') return []
+      return [{ field: f, value, color: f.Type === 'options' ? optionColor(f.Options, f.OptionColors ?? null, value) : null }]
     })
   const cardLinks = links.filter((l) => l.FromCardID === card.ID || l.ToCardID === card.ID)
   const defaultLinkKindID = linkKinds[0]?.ID

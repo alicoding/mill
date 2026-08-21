@@ -75,8 +75,12 @@ func (m *MillMCPService) resolveTestRequestInput(in testRequestArgs) (configures
 type kindProposedField struct {
 	Key     string   `json:"key" jsonschema:"the field's stable key (immutable once saved)"`
 	Label   string   `json:"label"`
-	Type    string   `json:"type,omitempty" jsonschema:"text|number|boolean|options (empty = text)"`
+	Type    string   `json:"type,omitempty" jsonschema:"text|number|boolean|options|cardref (empty = text)"`
 	Options []string `json:"options,omitempty" jsonschema:"for type options: the allowed values, in display-color order"`
+	RefKind string   `json:"refKind,omitempty" jsonschema:"for type cardref: the target atlas kind's id (see atlas_list_kinds); empty allows any kind"`
+	// ShowOnCard mirrors the Kinds dialog's Show-on-card toggle
+	// (docs/goals/0152): the field's value surfaces on card faces.
+	ShowOnCard bool `json:"showOnCard,omitempty"`
 }
 
 // atlasProposeKindWriteArgs mirrors atlas_propose_card_write's own
@@ -99,7 +103,7 @@ func kindFieldsFromArgs(fields []kindProposedField) []typedfield.Field {
 		if f.Type == "" {
 			t = typedfield.TypeText
 		}
-		out = append(out, typedfield.Field{Key: f.Key, Label: f.Label, Type: t, Options: f.Options})
+		out = append(out, typedfield.Field{Key: f.Key, Label: f.Label, Type: t, Options: f.Options, RefKind: f.RefKind, ShowOnCard: f.ShowOnCard})
 	}
 	return out
 }

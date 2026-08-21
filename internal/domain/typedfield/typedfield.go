@@ -55,12 +55,24 @@ const (
 	TypeMap      Type = "map"
 	TypeDate     Type = "date"
 	TypeDatetime Type = "datetime"
+
+	// TypeCardRef is a single reference to another Atlas card
+	// (docs/goals/0152 slice 2): the wire value is the target card's
+	// ID, and RefKind carries the TARGET ATLAS KIND's id -- safe reuse,
+	// the field's own Type discriminates the interpretation (for every
+	// other type RefKind names a Configure entity family). Single-value
+	// and single-target-kind deliberately: the converged relation shape
+	// (one target database/table) recorded in the goal file. Existence/
+	// kind checks against live cards belong to the atlas service's own
+	// write path, never here -- this package stays storage-free.
+	TypeCardRef Type = "cardref"
 )
 
 func validType(t Type) bool {
 	switch t {
 	case TypeText, TypeNumber, TypeBoolean, TypeOptions,
-		TypeInteger, TypeObject, TypeArray, TypeMap, TypeDate, TypeDatetime:
+		TypeInteger, TypeObject, TypeArray, TypeMap, TypeDate, TypeDatetime,
+		TypeCardRef:
 		return true
 	}
 	return false
