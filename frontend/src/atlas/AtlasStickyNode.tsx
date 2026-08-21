@@ -217,6 +217,10 @@ export const AtlasStickyNode = memo(function AtlasStickyNode({ data }: NodeProps
       ) : (
         <div
           className={`${styles.text} ${styles.mdBody} nowheel`}
+          // A long note wheel-scrolls in place (AtlasStickyNode.module.css's
+          // `.text` -- overflow-y:auto): a named surface for goal
+          // 0156's layout-fitness audit, not an undeclared scroller.
+          data-scroll-region="sticky-note-body"
           dangerouslySetInnerHTML={{ __html: html }}
         />
       )}

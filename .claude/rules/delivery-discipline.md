@@ -52,6 +52,14 @@ goal NNNN" — never silence:
    companion breakpoints and 44px targets?
 10. **Data stewardship** — does it write user data? → covered by
     export/backup/import paths.
+11. **Interaction primitives** — does it add a user gesture or a
+    UI state transition? The contract names the event primitives
+    that drive each transition (which pointer/key/wheel event
+    enters and ends each state); any focus- or blur-driven
+    transition carries an explicit justification, since focus
+    semantics are the known engine-divergence class (WebKit's
+    focus and reveal-on-mousedown behavior differs from
+    Chromium's).
 
 The triage is a DoR gate, not a build mandate: most answers are one
 honest sentence. Retroactive coverage of already-shipped

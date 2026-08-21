@@ -144,6 +144,10 @@ layer per capability," never "a seed per thing":
   probe only, never CI-badged as parity. Revisit trigger: grow the
   check registry when a WebKit-only bug escapes it, same discipline as
   the manual-only registry below.
+  DoR corollary: a feature whose interaction contract depends on
+  engine-level semantics (focus, selection, scroll-reveal, caret)
+  names at DoR whether it gets a smoke-registry check — "wired" or
+  "deliberately not, because …" — never silence.
   **CI status: non-required/informational; the launch failure was
   the harness's own liveness probe, now fixed.** Every "app process
   exited before the MCP bridge became reachable" failure (CI and
@@ -256,6 +260,21 @@ From the UX point of view the seed layer stays privileged — it's the
 one a human can SEE working — but correctness under change belongs to
 the other layers, and every bug-repro still becomes a committed test
 at whichever layer fits (the rule at the top of this file).
+
+**Tests drive user primitives, not synthetic events.** An interaction
+test reaches behavior through the same primitives a user has — real
+pointer presses and wheel (`click`, `mouse.wheel`), real key presses,
+focus acquired by clicking or tabbing — never `dispatchEvent`,
+programmatic `.focus()`/`.blur()`, or direct style/DOM mutation,
+except as a last-resort escape hatch carrying a same-line comment
+naming why no user primitive can reach the state. This is the
+converged industry stance (Testing Library's guiding principle — the
+more a test resembles real use, the more it proves — and Playwright's
+own actionability model, which frames `dispatchEvent` as the escape
+hatch, not the default). The settings-scroll trap is the canonical
+instance this rule pins: every `scrollIntoView`-driven test stayed
+green while real wheel scrolling was completely dead, because no test
+ever scrolled the way a user does.
 
 ## Testing maturity: gates, thresholds, flake protocol (goal 0080)
 

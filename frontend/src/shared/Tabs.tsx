@@ -87,10 +87,15 @@ export function TabItem({ value, children, kicker, leadingVisual, onClose, onCon
   )
 }
 
-export function TabPanel({ value, className, children }: { value: string; className?: string; children: ReactNode }) {
+export function TabPanel({ value, className, children, dataClipIntent }: { value: string; className?: string; children: ReactNode
+  // Goal 0156's layout-fitness audit: a deliberate overflow:hidden/clip
+  // clamp on this panel needs the exemption attribute on the actual
+  // rendered DOM node, which useTabPanel's own props object doesn't
+  // expose a pass-through for.
+  dataClipIntent?: string }) {
   const { tabPanelProps } = useTabPanel<HTMLDivElement>({ value })
   return (
-    <div {...tabPanelProps} className={className}>
+    <div {...tabPanelProps} className={className} data-clip-intent={dataClipIntent}>
       {children}
     </div>
   )

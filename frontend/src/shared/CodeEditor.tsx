@@ -83,6 +83,12 @@ export function CodeEditor({ value, onChange, language, ariaLabel, minHeightRows
       parent: containerRef.current,
     })
     view.contentDOM.setAttribute('aria-label', ariaLabel)
+    // A named scroll surface for goal 0156's layout-fitness audit:
+    // `.cm-scroller` (CodeMirror's own internal overflow-y:auto
+    // element, CodeEditor.module.css) is DOM CodeMirror generates
+    // itself, not something JSX can attribute directly -- `scrollDOM`
+    // is CodeMirror's own reference to that exact element.
+    view.scrollDOM.setAttribute('data-scroll-region', 'code-editor')
     viewRef.current = view
     return () => {
       view.destroy()
