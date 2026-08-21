@@ -21,6 +21,23 @@ const mod = process.platform === 'darwin' ? 'Meta' : 'Control'
 
 test.setTimeout(180_000)
 
+// panePoint finds a screen point whose top element is the bare canvas
+// pane -- CI viewports differ from local, so fixed fractions can land
+// over a frame and silently FILE the pasted clone into it (the
+// openPlacementPopover fixture's own candidate pattern).
+async function panePoint(page: import('@playwright/test').Page, board: import('@playwright/test').Locator): Promise<{ x: number; y: number }> {
+  const bb = await board.boundingBox()
+  if (!bb) throw new Error('board box missing')
+  const fractions: [number, number][] = [[0.3, 0.6], [0.75, 0.4], [0.2, 0.4], [0.6, 0.75], [0.4, 0.85], [0.85, 0.25]]
+  for (const [fx, fy] of fractions) {
+    const c = { x: bb.x + bb.width * fx, y: bb.y + bb.height * fy }
+    const isPane = await page.evaluate(([px, py]) => document.elementFromPoint(px, py)?.classList?.contains('react-flow__pane') ?? false, [c.x, c.y])
+    if (isPane) return c
+  }
+  throw new Error('no empty pane point found')
+}
+
+
 async function zoomOutLight(page: import('@playwright/test').Page): Promise<void> {
   const zoomOut = page.locator('.react-flow__controls-zoomout')
   for (let i = 0; i < 3; i++) await zoomOut.click()
@@ -59,9 +76,8 @@ test('copy/paste clones a card at the cursor; a frame paste offers its items', a
     await cardA.click()
     await page.keyboard.press(`${mod}+c`)
     await expect(toast).toContainText('Copied 1 item')
-    const bb = await board.boundingBox()
-    if (!bb) throw new Error('board box missing')
-    await page.mouse.move(bb.x + bb.width * 0.3, bb.y + bb.height * 0.6)
+    const p1 = await panePoint(page, board)
+    await page.mouse.move(p1.x, p1.y)
     await page.keyboard.press(`${mod}+v`)
     await expect(toast).toContainText('Pasted 1 item')
     await expect(noteCard(page, 'ZzClipA')).toHaveCount(2)
@@ -104,9 +120,8 @@ test('copy/paste clones a card at the cursor; a frame paste offers its items', a
     await expect(page.locator('.react-flow__node.selected')).toHaveCount(1)
     await page.keyboard.press(`${mod}+c`)
     await expect(toast).toContainText('Copied 1 item')
-    const bb2 = await board.boundingBox()
-    if (!bb2) throw new Error('board box missing after reload')
-    await page.mouse.move(bb2.x + bb2.width * 0.35, bb2.y + bb2.height * 0.7)
+    const p2 = await panePoint(page, board)
+    await page.mouse.move(p2.x, p2.y)
     await page.keyboard.press(`${mod}+v`)
     // Shallow by default: the offer names the two items inside.
     const offer = page.getByTestId('atlas-quiet-toast-action')
