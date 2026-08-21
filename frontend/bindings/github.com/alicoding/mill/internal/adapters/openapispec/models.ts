@@ -81,6 +81,16 @@ export interface Field {
     "RefKind": string;
 
     /**
+     * ShowOnCard surfaces this field's value on a card's compact face
+     * (docs/goals/0152) -- read by Atlas Kinds only; other
+     * schema-carrying surfaces (List columns, Decision outputs) ignore
+     * it, the same per-surface-facet convention Multiline/Secret
+     * already follow. A presentation facet, freely togglable -- never
+     * part of the Key/Type identity ValidateFieldEvolution pins.
+     */
+    "ShowOnCard"?: boolean;
+
+    /**
      * Multiline marks a text field whose values are naturally
      * multi-line documents (an HTML payload, a JSON arguments object).
      */

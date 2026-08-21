@@ -6,6 +6,8 @@ import type { Card, Kind, Link, LinkKind } from '../../bindings/github.com/alico
 import { kindColorTokens } from './atlasKindColor'
 import { deriveFileTag, freshnessDotColor } from './atlasCardPresentation'
 import { childrenOf } from './atlasGrouping'
+import { Label } from '@primer/react'
+import { optionColor } from '../shared/projectionColors'
 import { markdownSnippet } from './markdownSnippet'
 import styles from './AtlasNoteCardNode.module.css'
 import slotStyles from './AtlasSlotRows.module.css'
@@ -69,6 +71,17 @@ export const AtlasNoteCardNode = memo(function AtlasNoteCardNode({ data }: NodeP
   const fileTag = deriveFileTag(card)
   const dot = freshnessDotColor(card)
   const childCount = childrenOf(allCards, card.ID).length
+  // The kind's declared face fields (goal 0152): fields marked
+  // ShowOnCard, in declaration order, rendering this card's non-empty
+  // values -- options as their colored pills, anything else as plain
+  // text. Capped so the fixed face never overflows.
+  const faceFields = (kind?.Fields ?? [])
+    .filter((f) => f.ShowOnCard && (card.Fields?.[f.Key] ?? '') !== '')
+    .slice(0, 3)
+    .map((f) => {
+      const value = card.Fields?.[f.Key] ?? ''
+      return { field: f, value, color: f.Type === 'options' ? optionColor(f.Options, f.OptionColors ?? null, value) : null }
+    })
   const cardLinks = links.filter((l) => l.FromCardID === card.ID || l.ToCardID === card.ID)
   const defaultLinkKindID = linkKinds[0]?.ID
 
@@ -140,6 +153,15 @@ export const AtlasNoteCardNode = memo(function AtlasNoteCardNode({ data }: NodeP
         <div className={styles.title}>{card.Title}</div>
       )}
       {card.Note && <div className={styles.noteLine}>{markdownSnippet(card.Note)}</div>}
+      {faceFields.length > 0 && (
+        <div className={styles.faceFields} data-testid="atlas-face-fields">
+          {faceFields.map(({ field, value, color }) => (
+            color
+              ? <Label key={field.Key} size="small" variant={color} data-testid="atlas-face-field">{value}</Label>
+              : <span key={field.Key} className={styles.faceValue} data-testid="atlas-face-field">{value}</span>
+          ))}
+        </div>
+      )}
       <div className={styles.presenceRow}>
         {dot && <span className={`${styles.dot} ${styles[`dot-${dot}`]}`} data-testid="atlas-note-freshness-dot" />}
         {cardLinks.length > 0 && (

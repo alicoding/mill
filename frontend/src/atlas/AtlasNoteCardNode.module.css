@@ -109,6 +109,24 @@
     text-overflow: ellipsis;
     white-space: nowrap;
 }
+/* The kind-declared face fields (goal 0152): one compact row of
+   values -- pills carry their own Label styling; plain values stay
+   muted so the title keeps the face's emphasis. */
+.faceFields {
+    margin-top: 3px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    overflow: hidden;
+}
+.faceValue {
+    font-size: 10.5px;
+    color: var(--fgColor-muted);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
 .presenceRow {
     margin-top: auto;
     display: flex;

@@ -81,6 +81,9 @@
             "RefKind": {
               "type": "string"
             },
+            "ShowOnCard": {
+              "type": "boolean"
+            },
             "Multiline": {
               "type": "boolean"
             },
@@ -384,6 +387,9 @@
             "RefKind": {
               "type": "string"
             },
+            "ShowOnCard": {
+              "type": "boolean"
+            },
             "Multiline": {
               "type": "boolean"
             },
@@ -550,6 +556,9 @@
             },
             "RefKind": {
               "type": "string"
+            },
+            "ShowOnCard": {
+              "type": "boolean"
             },
             "Multiline": {
               "type": "boolean"
@@ -1095,6 +1104,9 @@
             },
             "RefKind": {
               "type": "string"
+            },
+            "ShowOnCard": {
+              "type": "boolean"
             },
             "Multiline": {
               "type": "boolean"

@@ -319,7 +319,8 @@
     "deleteTitle": "Delete {{label}}?",
     "deleteKindBody": "Only a kind no card uses can be deleted.",
     "deleteLinkKindBody": "Only a link kind no link uses can be deleted.",
-    "deleteConfirm": "Delete"
+    "deleteConfirm": "Delete",
+    "showOnCard": "Show on card"
   },
   "perspectiveEmpty": "Nothing from {{name}} here.",
   "perspectiveEmptyShowAll": "Show all cards",

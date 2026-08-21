@@ -124,3 +124,41 @@ test('create, edit, and delete a link kind; deleting an in-use card kind is refu
     await page.keyboard.press('Escape')
   })
 })
+
+// Face fields (goal 0152 slice 1): a Kind declares which field values
+// surface on its cards' faces. Two proofs on one dedicated server:
+// the editor's Show-on-card toggle round-trips, and the SEEDED Topic
+// kind (status ShowOnCard, seed rev 3) renders its pill on the
+// "Getting started" card's face.
+// eslint-disable-next-line no-empty-pattern -- this test needs `testInfo` (the second arg), not any fixture.
+test('show-on-card round-trips in the editor, and the seeded Topic status renders as a face pill', async ({}, testInfo) => {
+  await withServer(testInfo, async (page) => {
+    // Seeded proof first: Getting started (Topic, status "Open").
+    const getting = page.locator('[data-testid="atlas-note-card"]', { hasText: 'Getting started' })
+    await expect(getting).toBeVisible()
+    await expect(getting.getByTestId('atlas-face-field')).toHaveText('Open')
+
+    // Editor round-trip on a fresh kind (never a seeded one).
+    await page.getByTestId('atlas-open-kinds').click()
+    await expect(dialog(page)).toBeVisible()
+    await dialog(page).getByTestId('atlas-kind-new').click()
+    await page.getByTestId('atlas-kind-label').fill('ZzE2eFaceKind')
+    await page.getByTestId('atlas-kind-add-field').click()
+    await page.getByTestId('atlas-kind-field-key').fill('stage')
+    await page.getByTestId('atlas-kind-field-label').fill('Stage')
+    await page.getByTestId('atlas-kind-field-showoncard').check()
+    await page.getByTestId('atlas-kind-save').click()
+
+    const row = dialog(page).getByTestId('atlas-kind-row').filter({ hasText: 'ZzE2eFaceKind' })
+    await expect(row).toBeVisible()
+    await row.click()
+    await expect(page.getByTestId('atlas-kind-field-showoncard')).toBeChecked()
+    await page.getByTestId('atlas-kind-cancel').click()
+
+    // Clean up.
+    await dialog(page).getByRole('button', { name: 'Delete ZzE2eFaceKind' }).click()
+    await page.getByRole('button', { name: 'Delete', exact: true }).click()
+    await expect(row).toHaveCount(0)
+    await page.keyboard.press('Escape')
+  })
+})

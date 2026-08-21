@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Button, FormControl, IconButton, Select, Stack, Text, TextInput } from '@primer/react'
+import { Button, Checkbox, FormControl, IconButton, Select, Stack, Text, TextInput } from '@primer/react'
 import { TrashIcon } from '@primer/octicons-react'
 import type { Kind, LinkKind } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 import { Type as FieldType } from '../../bindings/github.com/alicoding/mill/internal/domain/typedfield/models'
@@ -121,6 +121,10 @@ export function AtlasKindEditor({ kind, onSaved, onCancel }: {
                 />
               </FormControl>
             )}
+            <FormControl>
+              <FormControl.Label>{t('kinds.showOnCard')}</FormControl.Label>
+              <Checkbox checked={f.ShowOnCard ?? false} onChange={(e) => setField(i, { ShowOnCard: e.target.checked })} data-testid="atlas-kind-field-showoncard" />
+            </FormControl>
             <IconButton icon={TrashIcon} size="small" variant="invisible" aria-label={t('kinds.removeFieldAriaLabel', { key: f.Key })} onClick={() => requestRemove(i)} data-testid="atlas-kind-field-remove" />
           </Stack>
         )
