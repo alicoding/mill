@@ -158,6 +158,15 @@ export const AtlasStickyNode = memo(function AtlasStickyNode({ data }: NodeProps
         if (e.metaKey || e.ctrlKey) { onEnterEdit(); return }
         if (note && isSoleSelected(note.ID)) onEnterEdit()
       }}
+      // A REAL double-click's second press can beat the selection
+      // snapshot's re-render (the ref reads stale, the click-path
+      // commit silently no-ops) -- the explicit handler makes the
+      // gesture table's "double-click commits" deterministic instead
+      // of timing luck.
+      onDoubleClick={(e) => {
+        if (e.shiftKey) return
+        onEnterEdit()
+      }}
       onKeyDown={(e) => {
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault()

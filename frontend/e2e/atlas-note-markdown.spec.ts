@@ -34,6 +34,14 @@ test('sticky notes render markdown; editor live-previews it', async ({ page }) =
   await expect(sticky.locator('strong')).toHaveText('second')
   // The face shows rendered output only -- no raw marks survive.
   await expect(sticky).not.toContainText('**')
+  // Regression: a REAL double-click enters edit -- the second press
+  // used to beat the selection snapshot's re-render and no-op.
+  await page.keyboard.press('Escape')
+  await sticky.dblclick()
+  await expect(stickyEditor(page)).toBeVisible()
+  await page.keyboard.press('Escape')
+  await expect(stickyEditor(page)).toHaveCount(0)
+
   // Cleanup (testing.md's within-file discipline).
   const menu = contextMenu(page)
   await sticky.click({ button: 'right' })
