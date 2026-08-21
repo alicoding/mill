@@ -40,7 +40,32 @@ func builtInSystemEventWorkflows() []Workflow {
 		panic("built-in workflow references an unknown node type: " + err.Error())
 	}
 
+	const (
+		updateTriggerID = "update-available-trigger"
+		updateNotifyID  = "update-available-notify"
+	)
+	updateNodes, err := ResolveNodeDefaults([]Node{
+		{ID: updateTriggerID, NodeTypeID: "trigger-system-event", Position: Position{X: 0, Y: 0},
+			Config: map[string]string{"event": "update-available", "workflowScope": ""}},
+		{ID: updateNotifyID, NodeTypeID: "apply-notify", Position: Position{X: 0, Y: 100},
+			Config: map[string]string{"title": "Mill update", "body": "A new Mill version is ready — open Settings → Updates to install."}},
+	})
+	if err != nil {
+		panic("built-in workflow references an unknown node type: " + err.Error())
+	}
+
 	return []Workflow{
+		{
+			ID:          "update-available-notify-workflow",
+			Label:       "Notify when an update is available",
+			Description: "Fires when an update check finds a newer Mill release on your channel and shows a notification. Edit it like any workflow — change the message, add conditions, or forward to another device through an integration; disable it if the footer badge is enough.",
+			Nodes:       updateNodes,
+			Edges: []Edge{
+				{ID: "update-available-notify-e0", Source: updateTriggerID, Target: updateNotifyID},
+			},
+			BuiltIn: true,
+			Seed:    seedorigin.Stamp(1),
+		},
 		{
 			ID:          "example-forward-approvals-workflow",
 			Label:       "Example: Forward pending approvals",

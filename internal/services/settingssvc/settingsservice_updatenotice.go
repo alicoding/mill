@@ -76,17 +76,45 @@ func (s *SettingsService) SetAutoUpdateCheck(on bool) error {
 	return s.store.Set(autoUpdateCheckKey, on)
 }
 
+// notifiedUpdateVersionKey remembers which version already fired the
+// update-available system event (goal 0146) -- the composed
+// notification fires once per version, surviving restarts, while the
+// pill itself refreshes freely.
+const notifiedUpdateVersionKey = "notifiedUpdateVersion"
+
+// SetUpdateEventSink installs the composition-side listener the
+// update-available system event fires through (wired from the
+// composition root; nil-safe).
+//
+//wails:ignore
+func (s *SettingsService) SetUpdateEventSink(sink func(version, channel string)) {
+	s.mu.Lock()
+	s.updateEventSink = sink
+	s.mu.Unlock()
+}
+
 // recordAvailableUpdate is CheckForUpdates' pill hook: remembers the
-// found version unless the user dismissed exactly it, and emits the
-// live-sync event so every open surface refreshes the pill.
+// found version unless the user dismissed exactly it, emits the
+// live-sync event so every open surface refreshes the pill, and --
+// once per version -- fires the update-available system event so
+// composed workflows (the seeded notification) can react.
 func (s *SettingsService) recordAvailableUpdate(version string) {
 	if dismissed, _ := s.store.Get(dismissedUpdateVersionKey).(string); dismissed == version {
 		return
 	}
 	s.mu.Lock()
 	s.availableUpdate = version
+	sink := s.updateEventSink
 	s.mu.Unlock()
 	dataevent.Emit("update-notice", version)
+	if sink == nil {
+		return
+	}
+	if notified, _ := s.store.Get(notifiedUpdateVersionKey).(string); notified == version {
+		return
+	}
+	_ = s.store.Set(notifiedUpdateVersionKey, version)
+	sink(version, s.UpdateChannel())
 }
 
 // markUpdateReady is DownloadAndInstallUpdate's success hook.
@@ -110,13 +138,20 @@ func (s *SettingsService) StartAutoUpdateChecks() {
 	if !s.AutoUpdateCheck() {
 		return
 	}
+	// Channel-matched cadence (goal 0146): the beta channel releases
+	// per merged change, so "as soon as available" honestly means
+	// hourly polling there; release stays daily.
+	interval := 24 * time.Hour
+	if s.UpdateChannel() == "beta" {
+		interval = time.Hour
+	}
 	go func() {
 		time.Sleep(time.Minute)
 		for {
 			if result, err := s.CheckForUpdates(); err == nil && result.UpdateAvailable {
 				s.recordAvailableUpdate(result.Version)
 			}
-			time.Sleep(24 * time.Hour)
+			time.Sleep(interval)
 		}
 	}()
 }

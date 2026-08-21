@@ -242,6 +242,7 @@ func main() {
 	atlasService.SetGuardedDataPaths(settingsPath, backupsvc.SQLiteDBPath(executionDatabaseURL), backupDir)
 
 	settingsService := settingssvc.NewSettingsService(settingsStore, triggerService, settingsPath != defaultSettingsPath)
+	wiring.WireUpdateEvents(settingsService, triggerService)
 	settingsService.SetAppVersion(millUpdateVersion)
 	// The user's persisted channel opt-in wins over the build stamp --
 	// a source-built copy can deliberately follow the beta feed

@@ -12,6 +12,9 @@ import (
 	"github.com/alicoding/mill/internal/services/atlassvc"
 	"github.com/alicoding/mill/internal/services/compositionsvc"
 	"github.com/alicoding/mill/internal/services/configuresvc"
+	"github.com/alicoding/mill/internal/services/executionsvc"
+	"github.com/alicoding/mill/internal/services/settingssvc"
+	"github.com/alicoding/mill/internal/services/triggersvc"
 )
 
 // WireAtlasProjections connects AtlasService's recognition (goal 0126)
@@ -71,4 +74,18 @@ func WirePasteConversion(atlas *atlassvc.AtlasService, cfg *configuresvc.Configu
 			return err
 		},
 	)
+}
+
+// WireUpdateEvents connects the updater's once-per-version discovery
+// (goal 0146) to the trigger plane's update-available system event --
+// the composed notification workflow is the consumer, never a
+// private send path (ADR-0035).
+func WireUpdateEvents(settings *settingssvc.SettingsService, triggers *triggersvc.TriggerService) {
+	settings.SetUpdateEventSink(func(version, channel string) {
+		triggers.DispatchSystemEvent(executionsvc.SystemEvent{
+			Event:   executionsvc.SystemEventUpdateAvailable,
+			Version: version,
+			Channel: channel,
+		})
+	})
 }

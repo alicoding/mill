@@ -29,6 +29,10 @@ const (
 	SystemEventRunCompleted   SystemEventKind = "run-completed"
 	SystemEventRunFailed      SystemEventKind = "run-failed"
 	SystemEventRunCancelled   SystemEventKind = "run-cancelled"
+	// SystemEventUpdateAvailable fires when an update check finds a
+	// newer release on this install's channel (goal 0146) -- the
+	// composed door for "tell me when there's an update".
+	SystemEventUpdateAvailable SystemEventKind = "update-available"
 )
 
 // SystemEvent is the typed payload a trigger-system-event fire carries as
@@ -44,6 +48,10 @@ type SystemEvent struct {
 	// about any one node.
 	NodeID    string    `json:"nodeId,omitempty"`
 	Timestamp time.Time `json:"timestamp"`
+	// Version/Channel are set only for update-available (omitempty
+	// keeps every other event's payload byte-identical).
+	Version string `json:"version,omitempty"`
+	Channel string `json:"channel,omitempty"`
 }
 
 // SetSystemEventSink installs the dispatch seam. A nil sink (every

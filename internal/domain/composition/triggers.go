@@ -107,16 +107,16 @@ func init() {
 		Consumes:   []PayloadKind{PayloadNone},
 		Produces:   PayloadProduce{Kind: PayloadJSON},
 		Label:      "System event",
-		Output: "JSON payload: {event, runId, workflowId, workflowLabel, nodeId?, timestamp} -- " +
+		Output: "JSON payload: {event, runId, workflowId, workflowLabel, nodeId?, timestamp, version?, channel?} -- " +
 			"the run/decision that caused this event. nodeId is only set for decision-parked (the " +
-			"parked step's ID); empty for run-completed/run-failed/run-cancelled.",
+			"parked step's ID); version/channel only for update-available.",
 		Description: "Fires when Mill's own engine emits an internal event -- a run finishing, failing, or parking for approval -- so a workflow can react to the platform itself, like forwarding pending approvals to another device.",
 		ConfigFields: []ConfigField{
 			{
 				Key: "event", Label: "Event",
-				Description: "Which internal event fires this trigger. \"Decision parked\" fires when a guardrail ask or human-review checkpoint parks awaiting approval; the other three fire once a run reaches a terminal state.",
+				Description: "Which internal event fires this trigger. \"Decision parked\" fires when a guardrail ask or human-review checkpoint parks awaiting approval; the run events fire once a run reaches a terminal state; \"update-available\" fires when an update check finds a newer release on this install's channel.",
 				Default:     "decision-parked", Type: FieldOptions,
-				Options: []string{"decision-parked", "run-completed", "run-failed", "run-cancelled"},
+				Options: []string{"decision-parked", "run-completed", "run-failed", "run-cancelled", "update-available"},
 			},
 			{
 				Key: "workflowScope", Label: "Workflow scope",

@@ -127,6 +127,10 @@ var workflowProofRegistry = map[string]seedProof{
 		"executionsvc.TestCancelRun_KillsARealRunningProcess",
 		"e2e: codeexec.spec.ts > Run copied code (approve path)",
 	),
+	"update-available-notify-workflow": proven(
+		"triggersvc.TestSeededUpdateNotifyExample_UpdateAvailable_RunsToCompletion",
+		"manual-only remainder: the real OS banner (apply-notify's signed-bundle class, testing.md)",
+	),
 	"example-forward-approvals-workflow": proven(
 		"triggersvc.TestSeededForwardApprovalsExample_DecisionParked_PostsRealHTTPCall",
 		"triggersvc.TestSystemEvent_LoopRule_SystemEventTriggeredRunEmitsNothing",

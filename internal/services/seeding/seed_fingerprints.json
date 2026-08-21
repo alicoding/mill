@@ -258,5 +258,9 @@
   "workflow:load-sample-html-workflow": {
     "seedRevision": 1,
     "fingerprint": "add39815b73d840c233f266f01043b9cbec60ed37d04cba12a8306e85ce23214"
+  },
+  "workflow:update-available-notify-workflow": {
+    "seedRevision": 1,
+    "fingerprint": "91c164ae251eeca2ae9d94f21ef6c97e05e4a99441371029009d673da26e2171"
   }
 }

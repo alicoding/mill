@@ -462,3 +462,21 @@ func TestDownloadAndInstallUpdate_ConcurrentGuardIsReadable(t *testing.T) {
 		t.Fatalf("err = %v, want the readable already-downloading refusal", err)
 	}
 }
+
+// The update-available fire is once per version, surviving restarts
+// via the store, and never fires for a dismissed version (goal 0146).
+func TestRecordAvailableUpdate_FiresSinkOncePerVersion(t *testing.T) {
+	s := newTestSettingsService(t)
+	var fired []string
+	s.SetUpdateEventSink(func(version, channel string) { fired = append(fired, version) })
+
+	s.recordAvailableUpdate("v1.2.3")
+	s.recordAvailableUpdate("v1.2.3")
+	if len(fired) != 1 || fired[0] != "v1.2.3" {
+		t.Fatalf("fired = %v, want exactly one v1.2.3", fired)
+	}
+	s.recordAvailableUpdate("v1.2.4")
+	if len(fired) != 2 || fired[1] != "v1.2.4" {
+		t.Fatalf("fired = %v, want the next version to fire once", fired)
+	}
+}
