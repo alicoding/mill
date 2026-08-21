@@ -11,22 +11,32 @@
    height:100% (AtlasBoard's full-height board) resolves against
    height:auto and collapses to its own min-height floor -- the same
    gap CompositionView.module.css's .editorPanel already closes for
-   canvas tabs. This panel itself must never scroll -- pages that
-   overflow (Settings, Docs) own their own inner overflow:auto pane
-   and scroll through the shared .view-pane ancestor one level up
-   (App.tsx's `view-pane`) instead. `overflow: clip` (not `hidden`)
-   is deliberate: it establishes the same block-formatting/clipping
-   context as `hidden` but is NOT a programmatically scrollable
-   container, so no engine can scrollIntoView/reveal-scroll it --
-   `hidden` still let WebKit scroll this panel to reveal a
-   mousedown'd focusable board node (Atlas), jumping the board on
-   every click even though Safari's own focus rules never actually
-   grant it focus. display:flex stays scoped to :not([hidden]) for
-   the same author-rule-beats-UA-[hidden] reason .editorPanel
-   documents. */
+   canvas tabs. display:flex stays scoped to :not([hidden]) for the
+   same author-rule-beats-UA-[hidden] reason .editorPanel documents.
+
+   `overflow` here is VIEW-CONDITIONAL, not a single constant -- the
+   two views that need this panel's overflow behavior want opposite
+   things from the same element (one TabPanel hosts every view, so
+   there is no per-view element of its own to style instead):
+   - Settings/Docs need `hidden`: their own scrollIntoView chain
+     (a TOC click, a deep link) walks up to the nearest
+     programmatically-scrollable ancestor -- `clip` isn't one, so
+     that chain breaks and the target never scrolls into view.
+   - Atlas needs `clip`: WebKit scrolls this panel (still
+     programmatically scrollable under `hidden`) to reveal a
+     mousedown'd focusable board node as a focus candidate, jumping
+     the board on every click even though Safari's own focus rules
+     never actually grant it focus.
+   `hidden` is the base (every OTHER view's real default); the
+   `[data-view='atlas']` override below opts Atlas alone into `clip`,
+   keyed off App.tsx's own `data-view` attribute on `.app-shell` (the
+   current view/page kind, not Primer-owned markup). */
 .pagePanel {
     flex: 1 1 auto;
     min-height: 0;
+    overflow: hidden;
+}
+:global([data-view='atlas']) .pagePanel {
     overflow: clip;
 }
 .pagePanel:not([hidden]) {
