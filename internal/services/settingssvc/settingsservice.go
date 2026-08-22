@@ -92,6 +92,13 @@ type SettingsService struct {
 	// summonGraceUntil suppresses the focus-yield cascade while a
 	// summon is in flight (goal 0151).
 	summonGraceUntil time.Time
+	// mainThreadRun marshals a func onto the OS main thread before it
+	// touches an application.App-level (not window-level) method --
+	// Show/Hide included. Defaults to a direct call so headless tests
+	// (no live application.New()) never block; SetMainThreadRunner
+	// overrides it with application.InvokeSync once a real app exists.
+	// See settingsservice_panel.go's doc comment for why this exists.
+	mainThreadRun func(func())
 	// updateEventSink fires the update-available system event (goal
 	// 0146); nil until wired.
 	updateEventSink func(version, channel string)
@@ -136,7 +143,12 @@ type SettingsService struct {
 // files between a always-running server-mode instance and the desktop
 // app) risks concurrent writes and a scheduled trigger double-firing.
 func NewSettingsService(store settings.Store, trig *triggersvc.TriggerService, isolatedData bool) *SettingsService {
-	s := &SettingsService{store: store, trig: trig, isolatedData: isolatedData}
+	s := &SettingsService{
+		store:         store,
+		trig:          trig,
+		isolatedData:  isolatedData,
+		mainThreadRun: func(fn func()) { fn() },
+	}
 	s.loadPersistedSummonHotkey()
 	s.loadPersistedKeymap()
 	// docs/adr/0035: never silently drop a user's old forward config --

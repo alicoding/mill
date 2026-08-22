@@ -262,13 +262,18 @@ layer per capability," never "a seed per thing":
   workflow via its hotkey while another app is focused and confirming
   the "Markdown is on your clipboard" banner.
 - **Summon from a background app** (goal 0151,
-  `settingsservice_panel.go`'s summon grace + app activation) -- the
-  grace logic is unit-tested, but the real kill chain (hotkey from
-  another app -> activation refused -> HideOnFocusLost -> app.Hide)
-  only exists with a real macOS app activation dance: verify
-  desktop-mode by pressing the summon hotkey from another app and
-  confirming the panel appears and Mill never vanishes; press again
-  to dismiss and confirm focus returns.
+  `settingsservice_panel.go`'s summon grace + app activation, plus the
+  main-thread seam in `settingsservice_mainthread.go` that fixed the
+  P0 SIGTRAP crash the activation fix introduced) -- the grace logic
+  and the seam's routing (`TestSummonKeydownLoop_RoutesThroughMainThreadSeam`)
+  are unit-tested, but the real kill chain (hotkey from another app ->
+  activation refused -> HideOnFocusLost -> app.Hide, all marshalled
+  onto the main thread) only exists with a real macOS app activation
+  dance: verify desktop-mode, on an installed build with Accessibility
+  granted, by pressing the summon hotkey from another app and
+  confirming the panel appears, the process survives (no SIGTRAP), and
+  Mill never vanishes; press again to dismiss and confirm focus
+  returns.
 - **Native file-drop delivery** (goal 0081 A3, `EnableFileDrop` +
   `WindowFilesDropped`) — the landing/derivation logic is Go-tested
   and the flow is e2e-proven at the service level, but a real OS

@@ -325,6 +325,13 @@ func main() {
 		SingleInstance: singleInstanceOptions(func() *application.WebviewWindow { return mainWindow }),
 	})
 
+	// A live application.App now exists, so SettingsService's app-level
+	// Show/Hide calls (the summon hotkey's TogglePanel, ShowPanel,
+	// DismissPanel -- see settingsservice_panel.go's doc comment) can
+	// switch from their headless-test default (a direct call) to the
+	// real main-thread marshal.
+	settingsService.SetMainThreadRunner(application.InvokeSync)
+
 	// Wails3's own first-party self-updater (v3/pkg/updater) -- app.Updater
 	// is constructed by application.New() itself; the provider/Init
 	// wiring is extracted to settingssvc.InitUpdater (keeps this file
