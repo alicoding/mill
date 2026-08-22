@@ -45,6 +45,17 @@ main or the tree is dirty, an agent owns it; and when one does occupy
 it, deploy by building from a throwaway worktree at origin/main
 rather than contending for the checkout.
 
+**In the nested docs repo, stage only the files you changed — never
+`git add -A` there.** Worktrees isolate the mill checkout but NOT the
+nested `docs/` repo: it lives at one physical path that every
+concurrently-running agent shares. A blanket stage therefore sweeps
+other agents' in-flight docs edits into your commit — observed
+2026-08-22, where one goal's SPEC.md edits landed inside an unrelated
+goal's commit. Attribution is the mild symptom; the real risk is
+committing someone else's half-written state. Stage explicit paths,
+and commit docs promptly after writing them rather than leaving them
+uncommitted across a long build.
+
 **Design/UX/spec contracts are the orchestrator's own work-product —
 never delegated (owner-directed 2026-08-15, after a day of live UX
 churn proved the failure mode).** A brief that names capabilities and
