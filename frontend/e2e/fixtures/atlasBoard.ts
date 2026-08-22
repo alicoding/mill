@@ -28,6 +28,39 @@ export async function dragBetween(page: Page, from: { x: number; y: number }, to
   await page.mouse.up()
 }
 
+// A point within `locator`'s own box that real hit-testing
+// (document.elementFromPoint) actually resolves to that element, not
+// just its geometric center. Fixed screen chrome (a minimap, a
+// creation tray) legitimately paints on top of board content wherever
+// panning has left it, so a drag's start point must be verified
+// reachable rather than assumed -- an occluded center silently starts
+// the gesture on whatever chrome is on top instead of the intended
+// card (goal 0170's measured cause; ruled expected canvas behavior,
+// not a product defect -- the fix belongs in the test).
+export async function hittablePointOn(page: Page, locator: Locator): Promise<{ x: number; y: number }> {
+  const box = await locator.boundingBox()
+  if (!box) throw new Error('element has no bounding box')
+  const handle = await locator.elementHandle()
+  if (!handle) throw new Error('element has no handle')
+  try {
+    const fractions = [0.5, 0.25, 0.75, 0.15, 0.85]
+    for (const fy of fractions) {
+      for (const fx of fractions) {
+        const x = box.x + box.width * fx
+        const y = box.y + box.height * fy
+        const hit = await handle.evaluate((el, { x: px, y: py }) => {
+          const top = document.elementFromPoint(px, py)
+          return !!top && (top === el || el.contains(top))
+        }, { x, y })
+        if (hit) return { x, y }
+      }
+    }
+  } finally {
+    await handle.dispose()
+  }
+  throw new Error('no point on the element is actually hittable -- it is fully occluded by fixed chrome')
+}
+
 export function groupCard(page: Page, title: string): Locator {
   return page.locator('[data-testid="atlas-group-card"]').filter({ has: page.locator(`[aria-label="Zoom into ${title}"]`) })
 }
