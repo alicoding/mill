@@ -62,6 +62,80 @@ test('Remote access section discloses reachability and pairs a device on demand'
   await expect(code).toHaveText(/^[A-Z0-9]{8}$/)
 })
 
+// docs/goals/0132-remote-access.md SLICE A: the "Notify me on this
+// device" opt-in control. The worker server is a real mill-server
+// binary (Server build tag), so the control renders here the same as
+// it would over a real Tailscale connection; only the browser's own
+// Notification permission is a per-test variable. Confirmed live: this
+// harness's headless Chromium reports `Notification.permission` as
+// 'denied' unconditionally -- neither leaving it unset nor calling
+// `context.grantPermissions(['notifications'])` produces 'default' or
+// 'granted' (no notification-display surface exists headless for a
+// grant to attach to). Every state below is therefore reached via an
+// `addInitScript` stub of `Notification.permission`/`requestPermission`
+// (testing.md's documented escape hatch for a state no user primitive
+// can reach in this harness), never `dispatchEvent` or a DOM mutation
+// on the app's own elements.
+test.describe('browser notification opt-in control', () => {
+  test('default permission shows the enable button and its caption, never granted/denied text', async ({ page }) => {
+    await page.addInitScript(() => {
+      Object.defineProperty(window.Notification, 'permission', { value: 'default', configurable: true })
+    })
+    await page.goto('/')
+    await page.getByRole('link', { name: 'Settings' }).click()
+    const control = page.getByTestId('browser-notify-control')
+    await control.scrollIntoViewIfNeeded()
+    await expect(page.getByTestId('browser-notify-enable')).toBeVisible()
+    await expect(control).toContainText("this tab isn't in view")
+    await expect(page.getByTestId('browser-notify-granted')).toHaveCount(0)
+    await expect(page.getByTestId('browser-notify-denied')).toHaveCount(0)
+  })
+
+  test('a granted permission renders the granted state with no button', async ({ page }) => {
+    await page.addInitScript(() => {
+      Object.defineProperty(window.Notification, 'permission', { value: 'granted', configurable: true })
+    })
+    await page.goto('/')
+    await page.getByRole('link', { name: 'Settings' }).click()
+    const control = page.getByTestId('browser-notify-control')
+    await control.scrollIntoViewIfNeeded()
+    await expect(page.getByTestId('browser-notify-granted')).toBeVisible()
+    await expect(page.getByTestId('browser-notify-enable')).toHaveCount(0)
+  })
+
+  test('a denied permission states it plainly and offers no retry button', async ({ page }) => {
+    await page.addInitScript(() => {
+      Object.defineProperty(window.Notification, 'permission', { value: 'denied', configurable: true })
+    })
+    await page.goto('/')
+    await page.getByRole('link', { name: 'Settings' }).click()
+    const control = page.getByTestId('browser-notify-control')
+    await control.scrollIntoViewIfNeeded()
+    await expect(page.getByTestId('browser-notify-denied')).toBeVisible()
+    await expect(page.getByTestId('browser-notify-denied')).toContainText('browser')
+    await expect(page.getByTestId('browser-notify-enable')).toHaveCount(0)
+  })
+
+  test('clicking enable calls requestPermission and its result flips the control to granted', async ({ page }) => {
+    // No headless UI exists to click Allow on the real permission
+    // prompt requestPermission() would otherwise show, so the prompt
+    // itself is stubbed to resolve 'granted' -- the click and the
+    // resulting UI transition are both real, only the browser-native
+    // prompt in between is faked.
+    await page.addInitScript(() => {
+      Object.defineProperty(window.Notification, 'permission', { value: 'default', configurable: true })
+      window.Notification.requestPermission = () => Promise.resolve('granted')
+    })
+    await page.goto('/')
+    await page.getByRole('link', { name: 'Settings' }).click()
+    const control = page.getByTestId('browser-notify-control')
+    await control.scrollIntoViewIfNeeded()
+    await page.getByTestId('browser-notify-enable').click()
+    await expect(page.getByTestId('browser-notify-granted')).toBeVisible()
+    await expect(page.getByTestId('browser-notify-enable')).toHaveCount(0)
+  })
+})
+
 // This spec's assertions read the GLOBAL paired-devices list
 // (testing.md's shared-pool-vs-dedicated triage), so each test below
 // seeds its own uniquely-labeled device and revokes it before

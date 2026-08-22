@@ -66,7 +66,14 @@
       "renameAriaLabel": "Rename {{label}}",
       "renameInputAriaLabel": "Device name",
       "renameSaveAriaLabel": "Save name",
-      "renameCancelAriaLabel": "Cancel rename"
+      "renameCancelAriaLabel": "Cancel rename",
+      "notify": {
+        "enable": "Notify me on this device",
+        "caption": "Alerts you here when a decision needs your action and this tab isn't in view.",
+        "granted": "Notifications are on for this device.",
+        "denied": "Notifications are blocked for this device. Turn them on again in your browser's site settings.",
+        "unsupported": "Notifications aren't available over this connection. It needs to be secure (https)."
+      }
     },
     "contract": {
       "description": "The full step catalog, every data schema, and this app's version in one file — hand it to an agent that can't reach Mill directly.",

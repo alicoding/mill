@@ -29,6 +29,7 @@ import { applyDensity } from "../shared/density";
 import { pageIconFor, pageLabelFor } from './pageMeta'
 import { useMillNavigate } from './useMillNavigate'
 import { useKeymapDispatch } from './useKeymapDispatch'
+import { useBrowserNotify } from './useBrowserNotify'
 import styles from "./App.module.css";
 import { newLocalID } from '../shared/localId'
 
@@ -265,6 +266,8 @@ function App() {
 
   useMillNavigate(setView);
 
+  const notifyBrowserTab = useBrowserNotify(buildInfo?.Server === true);
+
   useEffect(() => {
     return Events.On('hotkey-activity', (evt) => {
       pushActivity({
@@ -363,6 +366,7 @@ function App() {
           if (notifiedIds.current.has(item.key)) continue;
           notifiedIds.current.add(item.key);
           void SettingsService.NotifyPendingApproval(item.id, item.description, item.kind, document.hasFocus()).catch(() => {});
+          if (item.kind === 'guardrail') notifyBrowserTab({ dedupeKey: item.id, title: t('browserNotificationTitle'), body: item.description, onClick: () => setView({ kind: 'review' }) });
         }
       });
     };
@@ -370,7 +374,7 @@ function App() {
     const offGuardrail = Events.On('guardrail-pending-changed', refresh);
     const offMCP = Events.On('mcp-write-approval', refresh);
     return () => { offGuardrail(); offMCP(); };
-  }, [t]);
+  }, [t, notifyBrowserTab, setView]);
 
   return (
     <div className="app-shell" data-sidebar-open={sidebarOpen} data-view={view.kind}>

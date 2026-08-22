@@ -66,6 +66,14 @@ from? Stop it, delete its saved device list, and start it again — it
 writes a fresh code to its log, same as an instance that's never been
 paired.
 
+On a phone or another computer's browser tab, turn on "Notify me on
+this device" in Settings > Remote access to get a notification when a
+decision needs your action. Your browser asks for permission the first
+time. Notifications only appear while that tab isn't in view, and
+clicking one brings you straight to the item waiting for you. If
+notifications are blocked, turn them back on in your browser's site
+settings — Mill can't ask again automatically.
+
 ## Backups
 
 Mill snapshots your workflow history and settings automatically —

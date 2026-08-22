@@ -3,10 +3,12 @@ import { useTranslation } from 'react-i18next'
 import { ActionList, Button, IconButton, Stack, Text, TextInput } from '@primer/react'
 import { Blankslate } from '@primer/react/experimental'
 import { CheckIcon, DeviceMobileIcon, PencilIcon, PlusIcon, XIcon } from '@primer/octicons-react'
-import { RemoteAuthService } from '../shared/bindings'
+import { RemoteAuthService, SettingsService } from '../shared/bindings'
 import type { DeviceInfo, PairingCodeInfo } from '../shared/bindings'
 import { ConfirmDialog } from '../shared/ConfirmDialog'
 import { formatUpdated } from '../shared/inventorySort'
+import { getNotificationPermission, requestNotificationPermission } from '../shared/browserNotify'
+import type { BrowserNotifyPermission } from '../shared/browserNotify'
 import listStyles from '../shared/ListCard.module.css'
 import monoStyles from '../shared/monoText.module.css'
 
@@ -25,6 +27,20 @@ function RemoteAccessSection() {
   const [revoking, setRevoking] = useState<DeviceInfo | null>(null)
   const [renamingId, setRenamingId] = useState<string | null>(null)
   const [renameDraft, setRenameDraft] = useState('')
+  // docs/goals/0132 SLICE A: this control has no reason to render on a
+  // desktop build -- the desktop path already gets a native banner with
+  // no opt-in, and browserNotifyPredicate.shouldNotifyBrowserTab never
+  // fires there anyway.
+  const [isServerMode, setIsServerMode] = useState(false)
+  const [notifyPermission, setNotifyPermission] = useState<BrowserNotifyPermission>(() => getNotificationPermission())
+
+  useEffect(() => {
+    SettingsService.GetBuildInfo().then((info) => setIsServerMode(info?.Server === true)).catch(() => {})
+  }, [])
+
+  const enableNotify = () => {
+    requestNotificationPermission().then(setNotifyPermission).catch(() => {})
+  }
 
   const refresh = () => {
     RemoteAuthService.ListDevices()
@@ -89,6 +105,36 @@ function RemoteAccessSection() {
       <Text as="p" size="small" className={listStyles.muted}>
         {t('settings.remoteAccess.macAlwaysAllowed')}
       </Text>
+
+      {isServerMode && (
+        <Stack direction="vertical" gap="condensed" style={{ marginTop: 'var(--base-size-16)' }} data-testid="browser-notify-control">
+          {notifyPermission === 'unsupported' && (
+            <Text as="p" size="small" className={listStyles.muted} data-testid="browser-notify-unsupported">
+              {t('settings.remoteAccess.notify.unsupported')}
+            </Text>
+          )}
+          {notifyPermission === 'default' && (
+            <>
+              <Button size="small" onClick={enableNotify} data-testid="browser-notify-enable">
+                {t('settings.remoteAccess.notify.enable')}
+              </Button>
+              <Text as="p" size="small" className={listStyles.muted}>
+                {t('settings.remoteAccess.notify.caption')}
+              </Text>
+            </>
+          )}
+          {notifyPermission === 'granted' && (
+            <Text as="p" size="small" data-testid="browser-notify-granted">
+              {t('settings.remoteAccess.notify.granted')}
+            </Text>
+          )}
+          {notifyPermission === 'denied' && (
+            <Text as="p" size="small" className={listStyles.error} data-testid="browser-notify-denied">
+              {t('settings.remoteAccess.notify.denied')}
+            </Text>
+          )}
+        </Stack>
+      )}
 
       <Button
         size="small"

@@ -2,6 +2,7 @@
   "reviewPendingAriaLabel": "{{count}} pending in Review",
   "pendingApprovalDescription": "{{workflowLabel}}: {{step}} needs approval",
   "pendingApprovalStepFallback": "a step",
+  "browserNotificationTitle": "Approval needed",
   "openTabs": "Open tabs",
   "search": {
     "noMatchesTitle": "No matches",
