@@ -6,9 +6,8 @@ import { useUISignalStore } from '../shared/uiSignalStore'
 import { refreshAtlas } from './atlasStore'
 import { titleFromNoteText } from './atlasCreateHelpers'
 import { freeChildPosition } from './atlasContainmentPlacement'
-import { lastUsedKindID } from './atlasCreateHelpers'
 import { computeEnclosedBoundingBoxOrigin } from './atlasBoardBoxes'
-import type { AtlasCreationTool } from './AtlasCreationTray'
+import { cardTool, noteTool, areaTool, type AtlasCreationTool } from './atlasTools'
 
 export interface AtlasPlacementPopoverState {
   mode: 'create' | 'promote' | 'area'
@@ -157,10 +156,10 @@ export function useAtlasCreation({ parentID, allCards, kinds, notes, readOnly, s
       // last-used kind, "Untitled", inline title editor on the node.
       // The popover survives only for flows that carry richer intent
       // (promote, area, slot-linked, paste).
-      const kindID = lastUsedKindID(kindsRef.current)
+      const artifact = cardTool.commit({ kinds: kindsRef.current })
       const targetParentID = parentIDOverride ?? parentID
       const position = parentIDOverride ? freeChildPosition(allCardsRef.current, parentIDOverride) : { X: flowPos.x, Y: flowPos.y }
-      void AtlasService.CreateCard(kindID, 'Untitled', '', {}, targetParentID, position, ViewMode.$zero, '', '', '')
+      void AtlasService.CreateCard(artifact.kindID, artifact.title, artifact.note, {}, targetParentID, position, ViewMode.$zero, '', '', '')
         .then((card) => {
           setEditingTitleCardID(card.ID)
           return refreshAtlas()
@@ -236,11 +235,12 @@ export function useAtlasCreation({ parentID, allCards, kinds, notes, readOnly, s
           .then(() => refreshAtlas())
           .catch(console.error)
       } else if (pending.mode === 'create') {
+        const artifact = cardTool.commit({ kinds: kindsRef.current, kindID, title, note: pending.initialNote })
         const targetParentID = pending.parentIDOverride ?? parentID
         const position = pending.parentIDOverride
           ? freeChildPosition(allCardsRef.current, pending.parentIDOverride)
           : (pending.flowPos ? { X: pending.flowPos.x, Y: pending.flowPos.y } : null)
-        void AtlasService.CreateCard(kindID, title, pending.initialNote ?? '', {}, targetParentID, position, ViewMode.$zero, '', '', '')
+        void AtlasService.CreateCard(artifact.kindID, artifact.title, artifact.note, {}, targetParentID, position, ViewMode.$zero, '', '', '')
           .then(() => refreshAtlas())
           .catch(console.error)
       } else if (pending.mode === 'promote' && pending.noteID) {
@@ -248,6 +248,7 @@ export function useAtlasCreation({ parentID, allCards, kinds, notes, readOnly, s
           .then(() => refreshAtlas())
           .catch(console.error)
       } else if (pending.mode === 'area') {
+        const artifact = areaTool.commit({ kindID, title, enclosedCardIDs: pending.enclosedCardIDs ?? [], enclosedNoteIDs: pending.enclosedNoteIDs ?? [] })
         const position = pending.flowPos ? { X: pending.flowPos.x, Y: pending.flowPos.y } : null
         // An area drawn/grouped via a spatial gesture defaults its OWN
         // children to Canvas mode -- drag filing (and the Area tool
@@ -255,10 +256,10 @@ export function useAtlasCreation({ parentID, allCards, kinds, notes, readOnly, s
         // opened into Shelves by default would make its own creator
         // immediately unable to keep filing cards into it after
         // drilling in.
-        void AtlasService.CreateCard(kindID, title, '', {}, parentID, position, ViewMode.ViewModeCanvas, '', '', '')
+        void AtlasService.CreateCard(artifact.kindID, artifact.title, '', {}, parentID, position, ViewMode.ViewModeCanvas, '', '', '')
           .then((created) => Promise.all([
-            ...(pending.enclosedCardIDs ?? []).map((id) => AtlasService.MoveCard(id, created.ID)),
-            ...(pending.enclosedNoteIDs ?? []).map((id) => AtlasService.MoveNote(id, created.ID)),
+            ...artifact.enclosedCardIDs.map((id) => AtlasService.MoveCard(id, created.ID)),
+            ...artifact.enclosedNoteIDs.map((id) => AtlasService.MoveNote(id, created.ID)),
           ]))
           .then(() => refreshAtlas())
           .catch(console.error)
@@ -275,9 +276,10 @@ export function useAtlasCreation({ parentID, allCards, kinds, notes, readOnly, s
       // Empty text still creates: the placement itself is the capture
       // (a spatial placeholder typed into later); Escape is the cancel.
       if (pos) {
+        const artifact = noteTool.commit({ text })
         const targetParentID = override ?? parentID
         const position = override ? freeChildPosition(allCardsRef.current, override) : { X: pos.x, Y: pos.y }
-        void AtlasService.CreateNote(text.trim(), position, targetParentID)
+        void AtlasService.CreateNote(artifact.text, position, targetParentID)
           .then(() => refreshAtlas())
           .catch(console.error)
       }

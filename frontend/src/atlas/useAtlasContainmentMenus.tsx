@@ -7,7 +7,7 @@ import { refreshAtlas } from './atlasStore'
 import { childrenOf } from './atlasGrouping'
 import { ConfirmDialog } from '../shared/ConfirmDialog'
 import type { ContextMenuItem, ContextMenuState } from '../shared/ContextMenu'
-import type { AtlasCreationTool } from './AtlasCreationTray'
+import type { AtlasCreationTool } from './atlasTools'
 import { perspectiveMembershipMenuItems } from './atlasPerspectiveMenuItems'
 
 // AtlasView's own frame/multi-select context menus (goal 0081 slice

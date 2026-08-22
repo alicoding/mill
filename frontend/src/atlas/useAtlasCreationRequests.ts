@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import type { AtlasCreationTool } from './AtlasCreationTray'
+import type { AtlasCreationTool } from './atlasTools'
 import type { AtlasGroupRequest, AtlasPlacementRequest, AtlasPromoteRequest } from './useAtlasCreation'
 
 // AtlasView's own tiny dispatcher for the downward creation requests

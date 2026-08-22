@@ -1,9 +1,9 @@
 import { ViewMode, type Card, type Position } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
-import { Type as FieldType, type Field } from '../../bindings/github.com/alicoding/mill/internal/domain/typedfield/models'
-import { AtlasService, ConfigureService } from '../shared/bindings'
+import { AtlasService } from '../shared/bindings'
 import { refreshAtlas } from './atlasStore'
 import { freeChildPosition } from './atlasContainmentPlacement'
 import { TABLE_HEIGHT, TABLE_WIDTH } from './atlasBoardLayout'
+import { tableTool } from './atlasTools'
 
 // The + Add menu's create handlers -- split out of AtlasView.tsx at
 // the 500-line limit (the view owns WHERE things land, these own the
@@ -38,23 +38,15 @@ export function useAtlasCardCreate({ allCards, viewedID, viewedCard }: {
   // Kind: blank, defaulted server-side (the seed vocabulary lives
   // there, never here; it stays editable on the card page). Title:
   // "Table", uniquified against every card title so two quick tables
-  // don't collide; the minted List's label mirrors it. Columns arrive
-  // as "Column N" (renaming while empty re-keys from the label, the
-  // 0136 semantics), rows arrive empty.
+  // don't collide; the minted List's label mirrors it (tableTool.commit,
+  // atlasTools.ts). Columns arrive as "Column N" (renaming while empty
+  // re-keys from the label, the 0136 semantics), rows arrive empty.
   const createTableFromScratch = async (cols: number, rowCount: number, at?: { X: number; Y: number }, parentIDOverride?: string) => {
-    const titles = new Set(allCards.map((c) => c.Title))
-    let title = 'Table'
-    for (let n = 2; titles.has(title); n++) title = `Table ${n}`
-    const columns: Field[] = Array.from({ length: cols }, (_, i): Field => ({
-      Key: `column-${i + 1}`, Label: `Column ${i + 1}`, Type: FieldType.TypeText,
-      Required: false, Default: '', Description: '', Options: null,
-      Suggestions: null, Secret: false, RefKind: '', Multiline: false, SystemManaged: false,
-    }))
-    const created = await ConfigureService.CreateList(title, '', columns)
-    for (let i = 0; i < rowCount; i++) await ConfigureService.AddListRow(created.ID, {})
+    const existingTitles = new Set(allCards.map((c) => c.Title))
+    const artifact = await tableTool.commit({ cols, rowCount, existingTitles })
     const targetParent = parentIDOverride ?? viewedID
     const position: Position | null = at ?? freeChildPosition(allCards, targetParent, { width: TABLE_WIDTH, height: TABLE_HEIGHT })
-    await AtlasService.CreateListProjectionCard('', title, targetParent, position, created.ID)
+    await AtlasService.CreateListProjectionCard('', artifact.title, targetParent, position, artifact.listID)
     await refreshAtlas()
   }
 
