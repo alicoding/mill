@@ -28,6 +28,23 @@ import (
 // isn't what the user is now looking at either, so macOS hands focus
 // back to the previous app instead of leaving Mill's (now empty)
 // frontmost app state stuck on screen.
+//
+// application.App-level Show/Hide (as opposed to a *WebviewWindow's own
+// Show/Hide) perform raw cgo calls straight into AppKit with no
+// main-thread marshal of their own (confirmed against the pinned
+// v3.0.0-beta.8 source: application_darwin.go's (*macosApp).show/hide
+// call C.show()/C.hide() directly, unlike every WebviewWindow method,
+// which routes through application.InvokeSync). AppKit aborts the
+// process if touched off the main thread, and every caller below can
+// run on a non-main goroutine (the summon hotkey's own callback
+// goroutine, a bound RPC call from JS, or the WindowLostFocus listener
+// SetPanelWindow registers below, which webview_window.go dispatches on
+// its own per-listener goroutine) -- so every app.Show()/app.Hide()
+// call here goes through s.mainThreadRun, never called directly.
+// Nesting an already-marshalled call is safe, not a deadlock:
+// dispatchOnMainThread runs inline once already on the main thread
+// (confirmed directly -- application.go's own dispatchOnMainThread, and
+// restated in webview_window.go's enqueueEventJS doc comment).
 
 // SetPanelWindow wires the Quick Panel window, created by main.go right
 // after every Service already exists (same "wire the rest after
@@ -84,9 +101,11 @@ func (s *SettingsService) yieldFocusIfMainHidden() {
 	if main != nil && main.IsVisible() {
 		return
 	}
-	if app := application.Get(); app != nil {
-		app.Hide()
-	}
+	s.runOnMainThread(func() {
+		if app := application.Get(); app != nil {
+			app.Hide()
+		}
+	})
 }
 
 // summonShouldHideMain reports whether TogglePanel's summon-side guard
@@ -158,9 +177,11 @@ func (s *SettingsService) TogglePanel() {
 	// status to a non-active app's window, and an unfocused floating
 	// panel dies instantly to its own HideOnFocusLost (goal 0151).
 	// App-level Show doesn't reverse the window-level Hide above.
-	if app := application.Get(); app != nil {
-		app.Show()
-	}
+	s.runOnMainThread(func() {
+		if app := application.Get(); app != nil {
+			app.Show()
+		}
+	})
 	p.Show()
 	p.Focus()
 }
@@ -205,9 +226,11 @@ func (s *SettingsService) ShowPanel() {
 	// status to a non-active app's window, and an unfocused floating
 	// panel dies instantly to its own HideOnFocusLost (goal 0151).
 	// App-level Show doesn't reverse the window-level Hide above.
-	if app := application.Get(); app != nil {
-		app.Show()
-	}
+	s.runOnMainThread(func() {
+		if app := application.Get(); app != nil {
+			app.Show()
+		}
+	})
 	p.Show()
 	p.Focus()
 }

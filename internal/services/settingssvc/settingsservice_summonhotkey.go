@@ -70,18 +70,28 @@ func (s *SettingsService) bindSummon(mods []string, key string) error {
 	s.mu.Lock()
 	s.summon = b
 	s.mu.Unlock()
-	go func() {
-		// docs/adr/0033: the summon hotkey now TOGGLES the Quick Panel
-		// (visible -> dismiss it, hidden -> show+focus it) rather than
-		// showing the main window directly -- ShowWindow stays reachable
-		// via the tray icon's own click handler and the panel's own
-		// "Open Mill" row (OpenMainWindow), just no longer via this
-		// hotkey.
-		for range b.Keydown() {
-			s.TogglePanel()
-		}
-	}()
+	// docs/adr/0033: the summon hotkey now TOGGLES the Quick Panel
+	// (visible -> dismiss it, hidden -> show+focus it) rather than
+	// showing the main window directly -- ShowWindow stays reachable
+	// via the tray icon's own click handler and the panel's own
+	// "Open Mill" row (OpenMainWindow), just no longer via this hotkey.
+	go summonKeydownLoop(b.Keydown(), s.runOnMainThread, s.TogglePanel)
 	return nil
+}
+
+// summonKeydownLoop drains events (b.Keydown()'s producer, never the OS
+// main thread) and routes each fire through run -- the mainThreadRun
+// seam -- before calling toggle, since toggle (TogglePanel) reaches
+// application.App-level Show/Hide, and AppKit aborts the process if
+// that's touched off the main thread (settingsservice_panel.go's doc
+// comment has the full reasoning). Extracted from bindSummon as its own
+// function so the routing can be proven with a fake events channel and
+// a recording run -- hotkey.Bind's real registration needs the
+// Accessibility permission a headless test process never has.
+func summonKeydownLoop(events <-chan struct{}, run func(func()), toggle func()) {
+	for range events {
+		run(toggle)
+	}
 }
 
 // AssignSummonHotkey binds mods+key as the app-level summon hotkey,
