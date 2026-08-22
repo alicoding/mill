@@ -24,6 +24,7 @@ import { AtlasMatrixView } from './AtlasMatrixView'
 import { AtlasCoverageView } from './AtlasCoverageView'
 import { AtlasKindManager } from './AtlasKindManager'
 import { AtlasBoardEmptyState } from './AtlasBoardEmptyState'
+import { CompanionPanel } from './CompanionPanel'
 import { isGroupCard } from './atlasBoardLayout'
 import { useAtlasBoardFilter } from './useAtlasBoardFilter'
 import { useAtlasCardCreate } from './useAtlasCardCreate'
@@ -444,6 +445,7 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
           />
         )}
         {quietToast.message && <AtlasQuietToast message={quietToast.message} action={quietToast.action} />}
+        <CompanionPanel viewedID={viewedID} />
       </div>
 
       <AtlasJumpDialog open={jumpOpen} onClose={() => setJumpOpen(false)} cards={allCards} kinds={allKinds} onJump={jumpToCard} />
@@ -489,12 +491,7 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
         linkKinds={allLinkKinds}
         onOpenCard={openCardFromProjection}
       />
-      <AtlasKindManager
-        open={kindsOpen}
-        onClose={() => setKindsOpen(false)}
-        kinds={allKinds}
-        linkKinds={allLinkKinds}
-      />
+      <AtlasKindManager open={kindsOpen} onClose={() => setKindsOpen(false)} kinds={allKinds} linkKinds={allLinkKinds} />
     </div>
   )
 }

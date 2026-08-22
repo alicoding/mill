@@ -21,6 +21,7 @@ import (
 	"github.com/alicoding/mill/internal/services/atlassvc"
 	"github.com/alicoding/mill/internal/services/backupsvc"
 	"github.com/alicoding/mill/internal/services/capabilitysvc"
+	"github.com/alicoding/mill/internal/services/companionsvc"
 	"github.com/alicoding/mill/internal/services/compositionsvc"
 	"github.com/alicoding/mill/internal/services/configuresvc"
 	"github.com/alicoding/mill/internal/services/dataevent"
@@ -81,6 +82,7 @@ func init() {
 	application.RegisterEvent[mcpsvc.MCPWriteActivity]("mcp-write-activity")
 	application.RegisterEvent[dataevent.Changed](dataevent.EventName)
 	application.RegisterEvent[executionsvc.GuardrailPendingChanged]("guardrail-pending-changed")
+	application.RegisterEvent[companionsvc.CompanionDelta](companionsvc.DeltaEventName)
 	// docs/adr/0033: the Quick Panel's "Open Mill"/"Open Settings" rows
 	// (OpenMainWindow) emit this so App.tsx can switch the store's view
 	// once the main window is back in front -- broadcast to every open
@@ -139,6 +141,11 @@ func main() {
 	// docs/adr/0038: Atlas's storage/CRUD layer (cross-surface wiring
 	// arrives below via injected seams, never direct imports).
 	atlasService := atlassvc.NewAtlasService(settingsStore)
+	// docs/goals/0101 slice 1: the companion's own AI-provider lookup
+	// resolves through composition.ResolveAIProvider, which reads the
+	// SAME package-level seam configureService wires just below (no
+	// separate wiring call needed here).
+	companionService := companionsvc.NewCompanionService(atlasService)
 
 	// Separate SQLite file from settings.json (own schema, own lifecycle
 	// -- durable-execution checkpoints, not app config) but the same
@@ -305,6 +312,7 @@ func main() {
 			application.NewService(triggerService),
 			application.NewService(configureService),
 			application.NewService(atlasService),
+			application.NewService(companionService),
 			application.NewService(guardrailService),
 			application.NewService(executionService),
 			application.NewService(settingsService),

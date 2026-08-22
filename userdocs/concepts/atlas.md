@@ -72,6 +72,14 @@ into.
   column or row exactly there. Drag the card's corner while it's
   selected to give a table more room — the size sticks. Workflows
   write the same List through their own guarded steps.
+- **Ask the AI companion.** Click the sparkle icon in the toolbar to
+  open a chat panel beside the board. Pick a configured AI provider,
+  then ask about or describe what you want organized — the reply
+  streams in, and when it proposes cards or a scratchpad note you
+  review and accept before anything is created; collisions with
+  existing cards start unchecked so nothing gets overwritten. Keep
+  talking to refine a proposal instead of accepting it. Closing the
+  panel clears the conversation.
 - **Recognized sources.** A card whose Source URL matches one of your
   configured integrations shows that integration's name beside the
   link, and any workflow declaring "Offer on cards from" that

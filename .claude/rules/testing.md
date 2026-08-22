@@ -255,6 +255,20 @@ layer per capability," never "a seed per thing":
   drag from Finder onto the window only exists desktop-mode: verify
   by dragging a `.md` file onto the running app and confirming the
   card lands with the file's real path.
+- **Companion panel against a real local model** (goal 0101 slice 1,
+  `companionsvc.SendMessage` + `CompanionPanel.tsx`) — the streaming
+  wire parse (both OpenAI-compatible and Anthropic SSE shapes,
+  including mid-stream errors) is unit-tested against `httptest` fake
+  streams, and `atlas-companion.spec.ts` proves the full pipeline
+  end to end (toolbar toggle, the empty-provider state, the provider
+  picker, and a canned reply's proposal card materializing on Accept)
+  against a real local HTTP fixture server standing in for the
+  provider. What stays manual is real-model behavior a fixture can't
+  fake: whether token-by-token rendering reads as responsive against
+  an actual local Ollama's real latency, and whether a real model's
+  free-form replies parse as intended proposals often enough to be
+  useful — verify desktop-mode by running the seeded local-Ollama
+  companion flow with Ollama actually running and judging the feel.
 
 From the UX point of view the seed layer stays privileged — it's the
 one a human can SEE working — but correctness under change belongs to

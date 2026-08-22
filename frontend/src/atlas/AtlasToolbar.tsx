@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button, IconButton } from '@primer/react'
-import { ChecklistIcon, DownloadIcon, TableIcon, UploadIcon, TagIcon } from '@primer/octicons-react'
+import { ChecklistIcon, DownloadIcon, TableIcon, UploadIcon, TagIcon, SparkleFillIcon } from '@primer/octicons-react'
 import type { Card, Kind, Link, LinkKind, Perspective } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 import { useUISignalStore } from '../shared/uiSignalStore'
 import { AtlasBreadcrumb } from './AtlasBreadcrumb'
@@ -67,6 +67,7 @@ export function AtlasToolbar({
 }) {
   const { t } = useTranslation('atlas')
   const importInputRef = useRef<HTMLInputElement>(null)
+  const toggleCompanion = useUISignalStore((s) => s.toggleCompanion)
 
   // atlas.import's own signal (shared/atlasBoardCommands.ts): a click
   // from the palette/keyboard opens the SAME native file picker the
@@ -128,6 +129,9 @@ export function AtlasToolbar({
             overflow strategy instead (Primer's ActionBar is the
             researched candidate -- goal 0079's debt note). */}
         <IconButton icon={TagIcon} size="small" variant="invisible" aria-label={t('toolbar.kinds')} data-testid="atlas-open-kinds" onClick={onOpenKinds} />
+        {/* Icon-only, same overflow-avoidance convention as the Kinds
+            button above (goal 0101 slice 1). */}
+        <IconButton icon={SparkleFillIcon} size="small" variant="invisible" aria-label={t('companionPanel.toggleButton')} data-testid="atlas-open-companion" onClick={toggleCompanion} />
         <AtlasPerspectiveSwitcher
           perspectives={perspectives}
           activePerspectiveID={activePerspectiveID}
