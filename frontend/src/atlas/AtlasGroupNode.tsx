@@ -6,6 +6,7 @@ import type { Card } from '../../bindings/github.com/alicoding/mill/internal/dom
 import { kindColorTokens } from './atlasKindColor'
 import { NOTE_HEIGHT, NOTE_WIDTH } from './atlasBoardLayout'
 import type { FreshnessRollup } from './atlasCardPresentation'
+import { useAtlasDragHighlight } from './atlasDragHighlightContext'
 import styles from './AtlasGroupNode.module.css'
 import slotStyles from './AtlasSlotRows.module.css'
 
@@ -26,10 +27,6 @@ export interface AtlasGroupData extends Record<string, unknown> {
   // frame's children -- where the "+ K more" ghost tile renders, in
   // the frame's own coordinate space.
   overflow: { count: number; position: { x: number; y: number } } | null
-  // Drag filing (goal 0081 slice A2): true while a dragged card's
-  // center is currently over this frame -- the release target's own
-  // live "you'd file into me" affordance.
-  dragHighlighted: boolean
   // A slot-drag is live and this frame is a legal drop target too
   // (goal 0124 slice 2) -- an area IS a card, and can hold a link the
   // same way a leaf card can.
@@ -51,8 +48,13 @@ export type AtlasGroupRFNode = RFNode<AtlasGroupData>
 // frame's body commits too (the same zoom the header always offers).
 export const AtlasGroupNode = memo(function AtlasGroupNode({ data }: NodeProps<AtlasGroupRFNode>) {
   const { t } = useTranslation('atlas')
-  const { card, childCount, freshness, pulsed, hinted, isSoleSelected, overflow, dragHighlighted, slotDragHighlight, onDrill, onOpenOverlay } = data
+  const { card, childCount, freshness, pulsed, hinted, isSoleSelected, overflow, slotDragHighlight, onDrill, onOpenOverlay } = data
   const tokens = kindColorTokens(card.KindID)
+  // Drag filing's own live release-target affordance (goal 0081 slice
+  // A2): read from the narrowly-scoped context (goal 0161 slice 1)
+  // rather than a node data field, so only frame nodes re-render on a
+  // boundary crossing.
+  const dragHighlighted = useAtlasDragHighlight() === card.ID
 
   const drill = (e: { stopPropagation: () => void }) => {
     e.stopPropagation()

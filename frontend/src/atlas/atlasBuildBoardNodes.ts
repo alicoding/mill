@@ -25,7 +25,7 @@ export type BoardCardRFNode = AtlasNoteCardRFNode | AtlasGroupRFNode | AtlasRegi
 // eslint-disable-next-line sonarjs/cognitive-complexity -- legacy complexity grandfathered at gate adoption; pay down when touched (goal 0109 burn-down)
 export function buildBoardCardNodes({
   cards, allCards, allNotes, kinds, links, linkKinds, isFree, readOnly, boardWidth, freeMoves, arteries,
-  pulsedID, hintedID, hoveredFrameID, isSoleSelected, onOpenOverlay, handleDrill,
+  pulsedID, hintedID, isSoleSelected, onOpenOverlay, handleDrill,
   slotDragSourceID, onSlotAnchorPointerDown, hasLegalTargets, boardFilter,
   titleEditCardID, onTitleCommit, onTitleCancel, noteHandlers,
 }: {
@@ -45,9 +45,6 @@ export function buildBoardCardNodes({
   arteries: { source: string; target: string }[]
   pulsedID: string | null
   hintedID: string | null
-  // Drag filing's own live release-target affordance (goal 0081 A2):
-  // the frame currently under a dragged card's center, if any.
-  hoveredFrameID: string | null
   // The click model's own commit test (goal 0102's gesture table):
   // whether a given node id was the SOLE selected node when the
   // current click gesture began -- see useAtlasSelection.ts's own
@@ -142,7 +139,6 @@ export function buildBoardCardNodes({
           pulsed: pulsedID === card.ID,
           hinted: hintedID === card.ID,
           isSoleSelected,
-          dragHighlighted: hoveredFrameID === card.ID,
           // A region frame is a legal link target too (goal 0124
           // slice 2) -- highlight it the same way a leaf card
           // highlights, so "drop anywhere on a highlighted card"
