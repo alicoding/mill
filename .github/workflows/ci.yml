@@ -457,42 +457,13 @@ jobs:
           path: frontend/playwright-report
           retention-days: 7
 
-  # docs/goals/0097 (re-scoped): the real-webview parity smoke
-  # (scripts/webview-bridge-smoke.sh, internal/webviewbridgesmoke) drives
-  # a genuine -tags mcp desktop build over Wails3's own MCP bridge --
-  # the only mechanism that exercises macOS's real WKWebView engine,
-  # since Playwright's "webkit" build never attaches to it (researched-
-  # and-rejected premise, .claude/rules/testing.md). GitHub-hosted
-  # macos-latest runners DO support a real windowed app with no xvfb-
-  # style workaround needed (confirmed via a working precedent: Simon
-  # Willison's Datasette Desktop runs real-window Playwright Electron
-  # tests on macos-latest with zero special display config -- the
-  # self-hosted-runner GUI-session caveats found in research are a
-  # self-hosted concern, GitHub's own hosted image already provides a
-  # console session). Non-required (`continue-on-error`, absent from
-  # ci-gate's `needs:` below) until it's proven stable in real CI runs --
-  # promote once it has a track record, per the goal's own CI-
-  # feasibility instruction not to iterate on live CI cycles up front.
-  webview-bridge-smoke:
-    needs: [changes, frontend]
-    if: success() && needs.changes.outputs.code == 'true'
-    runs-on: macos-latest
-    timeout-minutes: 15
-    continue-on-error: true
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
-        with:
-          go-version: '1.25'
-          cache: true
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
-        with:
-          node-version: '22'
-          cache: 'npm'
-          cache-dependency-path: frontend/package-lock.json
-      - run: npm ci
-        working-directory: frontend
-      - run: ./scripts/webview-bridge-smoke.sh
+  # The real-webview parity smoke used to run here as a non-required
+  # job. It could not hold green on hosted runners, so it moved to
+  # .github/workflows/webview-smoke.yml (scheduled + manual dispatch).
+  # A permanently-red check in the PR baseline trains red-blindness and
+  # hides the next real failure, so the PR/main baseline carries only
+  # checks that hold green -- see .claude/rules/delivery-discipline.md
+  # and docs/goals/0134-pipeline-reliability.md for the path back in.
 
   govulncheck:
     # macos-latest, not ubuntu-latest: govulncheck-action has no way to pass
