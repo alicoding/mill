@@ -27,7 +27,7 @@ export const SETTINGS_SECTIONS: SettingsSection[] = [
   { id: 'general', titleKey: 'settings.sections.general', keywords: ['launch', 'login', 'startup', 'general'] },
   { id: 'keyboard-shortcuts', titleKey: 'settings.sections.keyboardShortcuts', keywords: ['keyboard', 'shortcut', 'hotkey', 'keymap', 'rebind', 'command'] },
   { id: 'global-hotkey', titleKey: 'settings.sections.globalHotkey', keywords: ['hotkey', 'summon', 'quick panel', 'global'] },
-  { id: 'mcp-access', titleKey: 'settings.sections.mcpAccess', keywords: ['mcp', 'import', 'approval', 'access', 'client'] },
+  { id: 'mcp-access', titleKey: 'settings.sections.mcpAccess', keywords: ['mcp', 'import', 'approval', 'access', 'client', 'address', 'port'] },
   { id: 'contract', titleKey: 'settings.sections.contract', keywords: ['contract', 'export', 'schema', 'catalog', 'agent'] },
   { id: 'notifications', titleKey: 'settings.sections.notifications', keywords: ['notification', 'away', 'idle', 'alert', 'approval'] },
   { id: 'backups', titleKey: 'settings.sections.dataStewardship', keywords: ['backup', 'export', 'import', 'snapshot', 'restore'] },

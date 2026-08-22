@@ -28,7 +28,9 @@ Click a row to record a new combo; Reset returns the default.
 
 Lets connected agents read Mill's catalog and, if you turn on
 imports, create workflows and Configure entries. Reading never
-includes secrets. See "Automate with agents" for the full picture.
+includes secrets. Set the address here to accept connections from
+other devices, not just this Mac — changes take effect after you
+restart Mill. See "Automate with agents" for the full picture.
 
 ## Backups
 

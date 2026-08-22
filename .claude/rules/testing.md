@@ -269,6 +269,20 @@ layer per capability," never "a seed per thing":
   free-form replies parse as intended proposals often enough to be
   useful — verify desktop-mode by running the seeded local-Ollama
   companion flow with Ollama actually running and judging the feel.
+- **Configurable MCP access address's editable/save/validate path**
+  (goal 0116, `settingsservice_mcpaddr.go` + `McpAddressField.tsx`) —
+  `ResolveMCPAddr`'s precedence and `ValidateMCPAddr`'s host:port
+  checks are Go-unit-tested across their full input range, and
+  `settings.spec.ts` proves the read-only env-override display state
+  against a real server. It can't prove the OTHER state (the field
+  editable, Save persisting, an invalid address showing the
+  validation message) because every e2e worker's own spawned server
+  sets `MILL_MCP_ADDR` for port isolation (`fixtures/server.ts`), so
+  an env override is structurally always active in the shared pool —
+  verify desktop-mode (no `MILL_MCP_ADDR` set) by typing an address
+  into Settings > MCP access, confirming Save shows the restart note,
+  then entering something malformed and confirming the validation
+  message appears instead.
 
 From the UX point of view the seed layer stays privileged — it's the
 one a human can SEE working — but correctness under change belongs to

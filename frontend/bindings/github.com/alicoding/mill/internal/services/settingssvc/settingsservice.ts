@@ -290,6 +290,23 @@ export function ListWorkflowMinutesSaved(): $CancellablePromise<{ [_ in string]?
 }
 
 /**
+ * MCPAccessAddress returns the persisted bind-address override ("" =
+ * none stored, MCPAddrDefault applies unless the env overrides).
+ */
+export function MCPAccessAddress(): $CancellablePromise<string> {
+    return $Call.ByID(2187975814);
+}
+
+/**
+ * MCPAccessAddressInfo reports the effective bind address and whether
+ * MILL_MCP_ADDR is the reason -- the Settings > MCP access address
+ * field reads this to decide whether it's editable.
+ */
+export function MCPAccessAddressInfo(): $CancellablePromise<$models.MCPAddrInfo> {
+    return $Call.ByID(3235387734);
+}
+
+/**
  * NotifyPendingApproval sends an actionable OS notification AND shows
  * the floating approval prompt (docs/goals/0023 item 1) for a new
  * pending item (docs/adr/0032 §3), but ONLY when isAway(focused) says
@@ -473,6 +490,16 @@ export function SetKeybinding(commandID: string, mods: string[] | null, key: str
  */
 export function SetLaunchAtLogin(enabled: boolean): $CancellablePromise<void> {
     return $Call.ByID(2080722787, enabled);
+}
+
+/**
+ * SetMCPAccessAddress validates and persists the bind-address
+ * override; "" clears it back to MCPAddrDefault. Applies at Mill's
+ * next launch -- MillMCPService.Start is only ever called once, at
+ * boot (main.go).
+ */
+export function SetMCPAccessAddress(raw: string): $CancellablePromise<void> {
+    return $Call.ByID(1008428182, raw);
 }
 
 /**

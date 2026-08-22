@@ -8,6 +8,7 @@ export {
 
 export type {
     BuildInfo,
+    MCPAddrInfo,
     UpdateCheckResult,
     UpdateNotice
 } from "./models.js";
