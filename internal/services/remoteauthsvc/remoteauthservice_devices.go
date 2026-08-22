@@ -6,9 +6,16 @@ import (
 	"crypto/subtle"
 	"encoding/hex"
 	"fmt"
+	"os"
 	"sort"
+	"strings"
 	"time"
 )
+
+// deviceLabelMaxLen caps a renamed device's label so a pasted essay
+// can't blow out the Settings row -- truncated, never rejected, since
+// a length cap is a display concern, not a validity one.
+const deviceLabelMaxLen = 64
 
 // deviceTokenBytes and deviceSaltBytes are the SLICE 1 DESIGN
 // CONTRACT's "32 random bytes" device token verbatim, plus a
@@ -70,6 +77,55 @@ func (s *RemoteAuthService) RevokeDevice(id string) error {
 	}
 	s.devices = kept
 	return s.saveDevices()
+}
+
+// RenameDevice updates a paired device's label -- a device is
+// pre-filled with a self-announced label at pairing time
+// (deviceLabelFor) and renameable afterwards. Empty (after trimming)
+// is rejected rather than silently keeping the old label, so the
+// caller gets an explicit signal a blank name didn't take.
+func (s *RemoteAuthService) RenameDevice(id, label string) error {
+	trimmed := strings.TrimSpace(label)
+	if trimmed == "" {
+		return fmt.Errorf("remoteauthsvc: device label cannot be empty")
+	}
+	if len(trimmed) > deviceLabelMaxLen {
+		trimmed = trimmed[:deviceLabelMaxLen]
+	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for i, d := range s.devices {
+		if d.ID == id {
+			s.devices[i].Label = trimmed
+			return s.saveDevices()
+		}
+	}
+	return fmt.Errorf("remoteauthsvc: no paired device %q", id)
+}
+
+// testAllowDeviceSeedEnv lets the Playwright e2e suite populate a
+// paired device without a real pairing round trip: pairing only ever
+// completes over a non-loopback connection (SLICE 1 DESIGN CONTRACT),
+// which the isolated per-worker server pool never has. Unset in every
+// real deployment, where SeedTestDevice below refuses outright.
+const testAllowDeviceSeedEnv = "MILL_TEST_ALLOW_DEVICE_SEED"
+
+// SeedTestDevice mints a paired device directly, bypassing the HTTP
+// pairing flow entirely -- e2e-only (see testAllowDeviceSeedEnv
+// above), never reachable in a real deployment.
+func (s *RemoteAuthService) SeedTestDevice(label string) (DeviceInfo, error) {
+	if os.Getenv(testAllowDeviceSeedEnv) == "" {
+		return DeviceInfo{}, fmt.Errorf("remoteauthsvc: SeedTestDevice is unavailable outside test mode")
+	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if _, err := s.mintDevice(label); err != nil {
+		return DeviceInfo{}, err
+	}
+	d := s.devices[len(s.devices)-1]
+	return DeviceInfo{ID: d.ID, Label: d.Label, CreatedAt: d.CreatedAt, LastSeenAt: d.LastSeenAt}, nil
 }
 
 // mintDevice pairs a new device: generates its token, stores only a

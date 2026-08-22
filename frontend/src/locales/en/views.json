@@ -62,7 +62,11 @@
       "emptyDescription": "Pair a device to reach Mill from your phone or another computer.",
       "revoke": "Revoke",
       "revokeConfirmTitle": "Revoke {{label}}?",
-      "revokeConfirmBody": "{{label}} won't be able to reach Mill until it's paired again."
+      "revokeConfirmBody": "{{label}} won't be able to reach Mill until it's paired again.",
+      "renameAriaLabel": "Rename {{label}}",
+      "renameInputAriaLabel": "Device name",
+      "renameSaveAriaLabel": "Save name",
+      "renameCancelAriaLabel": "Cancel rename"
     },
     "contract": {
       "description": "The full step catalog, every data schema, and this app's version in one file — hand it to an agent that can't reach Mill directly.",

@@ -233,6 +233,114 @@ func TestMiddleware_ValidCodeMintsTokenThatThenPasses(t *testing.T) {
 	}
 }
 
+// submitResend posts the pairing page's unauthenticated "Get a new
+// code" action, mirroring submitCode's shape for the resend path.
+func submitResend(t *testing.T, handler http.Handler, remoteAddr string) *httptest.ResponseRecorder {
+	t.Helper()
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodPost, ResendSubmitPath, nil)
+	req.RemoteAddr = remoteAddr
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+	return rec
+}
+
+// TestResend_NeverIncludesTheCodeInTheResponse pins the hard security
+// constraint: a resend's ONLY output is the log, never the HTTP
+// response body -- returning it would hand the code to the very
+// device being challenged and defeat the whole gate. Asserted against
+// the actual rendered bytes, not the log.
+func TestResend_NeverIncludesTheCodeInTheResponse(t *testing.T) {
+	s, buf := newTestServiceWithLog(t)
+	handler := s.Middleware()(appHandler())
+
+	rec := submitResend(t, handler, "203.0.113.30:1")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("resend: status = %d, want 200", rec.Code)
+	}
+	code := pairingCodeInLog(t, buf.String())
+	if strings.Contains(rec.Body.String(), code) {
+		t.Fatalf("resend response body contains the fresh code %q: %q", code, rec.Body.String())
+	}
+	if strings.Contains(rec.Header().Get("Set-Cookie"), code) {
+		t.Fatalf("resend response headers contain the fresh code %q: %q", code, rec.Header())
+	}
+}
+
+// TestResend_RateLimitedThroughTheSameLimiterAsPairingAttempts pins
+// SLICE 2 DESIGN CONTRACT item 2: repeated resends from one source
+// alone can trigger the same lockout a wrong pairing code would.
+func TestResend_RateLimitedThroughTheSameLimiterAsPairingAttempts(t *testing.T) {
+	s := newTestService(t)
+	handler := s.Middleware()(appHandler())
+	const source = "203.0.113.31:1"
+
+	for i := 0; i < maxFailuresBeforeLockout; i++ {
+		rec := submitResend(t, handler, source)
+		if rec.Code != http.StatusOK {
+			t.Fatalf("resend %d: status = %d, want 200 (not yet locked out)", i+1, rec.Code)
+		}
+	}
+
+	rec := submitResend(t, handler, source)
+	if rec.Code != http.StatusTooManyRequests {
+		t.Fatalf("resend after %d attempts: status = %d, want 429 (locked out)", maxFailuresBeforeLockout+1, rec.Code)
+	}
+
+	// The same source is also locked out of a genuine pairing attempt --
+	// one shared limiter, not two independent ones.
+	pairRec := submitCode(t, handler, source, "WRONGONE")
+	if pairRec.Code != http.StatusTooManyRequests {
+		t.Fatalf("pairing attempt from a resend-locked source: status = %d, want 429", pairRec.Code)
+	}
+}
+
+// TestResend_NewMintInvalidatesThePreviousCode pins "minting a new
+// code invalidates the previous one": a code issued before a resend
+// must stop working once the resend has run.
+func TestResend_NewMintInvalidatesThePreviousCode(t *testing.T) {
+	s := newTestService(t)
+	handler := s.Middleware()(appHandler())
+
+	info, err := s.GeneratePairingCode()
+	if err != nil {
+		t.Fatalf("GeneratePairingCode() = %v, want nil error", err)
+	}
+
+	if rec := submitResend(t, handler, "203.0.113.32:1"); rec.Code != http.StatusOK {
+		t.Fatalf("resend: status = %d, want 200", rec.Code)
+	}
+
+	stale := submitCode(t, handler, "203.0.113.32:2", info.Code)
+	if stale.Code != http.StatusUnauthorized {
+		t.Fatalf("pairing with the pre-resend code: status = %d, want 401", stale.Code)
+	}
+}
+
+// TestResend_WorksEvenWhenADeviceIsAlreadyPaired pins the lockout fix:
+// BootstrapPairingCode only mints while unpaired, so once a first
+// device pairs, a restart mints nothing further. A device that then
+// loses its cookie needs resend to still work -- gating it on the
+// same "unpaired" condition GeneratePairingCode's logging uses would
+// reproduce the exact lockout this action exists to close.
+func TestResend_WorksEvenWhenADeviceIsAlreadyPaired(t *testing.T) {
+	s, buf := newTestServiceWithLog(t)
+	if _, err := s.mintDevice("Existing Device"); err != nil {
+		t.Fatalf("mintDevice() = %v, want nil error", err)
+	}
+	handler := s.Middleware()(appHandler())
+
+	rec := submitResend(t, handler, "203.0.113.33:1")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("resend with a device already paired: status = %d, want 200", rec.Code)
+	}
+	code := pairingCodeInLog(t, buf.String())
+
+	pairRec := submitCode(t, handler, "203.0.113.33:2", code)
+	if pairRec.Code != http.StatusSeeOther {
+		t.Fatalf("pairing with the resent code: status = %d, want 303 (a usable code)", pairRec.Code)
+	}
+}
+
 // TestMiddleware_RevokedTokenRejectedImmediately covers revocation:
 // the very next request with a since-revoked cookie must fail, no
 // grace window.

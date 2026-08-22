@@ -13,6 +13,12 @@ import (
 // DESIGN CONTRACT: "never the app, never a partial app shell").
 const PairSubmitPath = "/__mill/pair"
 
+// ResendSubmitPath is the pairing page's "Get a new code" action
+// (SLICE 2 DESIGN CONTRACT item 2) -- unauthenticated like
+// PairSubmitPath, and reachable by the same unpaired non-loopback
+// caller the pairing page itself is served to.
+const ResendSubmitPath = "/__mill/resend"
+
 // pairingCodeFormKey is the pairing page's single form field.
 const pairingCodeFormKey = "code"
 
@@ -54,12 +60,27 @@ func (s *RemoteAuthService) Middleware() func(http.Handler) http.Handler {
 				s.handlePairSubmit(w, r)
 				return
 			}
+			if r.Method == http.MethodPost && r.URL.Path == ResendSubmitPath {
+				s.handleResendSubmit(w, r)
+				return
+			}
 
-			w.Header().Set("Content-Type", "text/html; charset=utf-8")
-			w.WriteHeader(http.StatusUnauthorized)
-			writePairingPage(w, pairingPageState{})
+			s.writePairingResponse(w, http.StatusUnauthorized, pairingPageState{})
 		})
 	}
+}
+
+// writePairingResponse renders the pairing page with status, filling
+// in the per-mode Instructions from the service before writing --
+// every response path (the challenge itself, a wrong code, a
+// lockout, a successful resend) shares this so the truthful copy
+// (SLICE 2 DESIGN CONTRACT item 1) can never be forgotten on one
+// branch.
+func (s *RemoteAuthService) writePairingResponse(w http.ResponseWriter, status int, state pairingPageState) {
+	state.Instructions = s.pairingInstructions()
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.WriteHeader(status)
+	writePairingPage(w, state)
 }
 
 // isLoopback determines origin from the actual TCP connection's
@@ -109,9 +130,7 @@ func (s *RemoteAuthService) tokenIsValid(r *http.Request) bool {
 // app content.
 func (s *RemoteAuthService) handlePairSubmit(w http.ResponseWriter, r *http.Request) {
 	if err := r.ParseForm(); err != nil {
-		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		w.WriteHeader(http.StatusBadRequest)
-		writePairingPage(w, pairingPageState{ErrorMessage: pairingErrorGeneric})
+		s.writePairingResponse(w, http.StatusBadRequest, pairingPageState{ErrorMessage: pairingErrorGeneric})
 		return
 	}
 
@@ -121,9 +140,7 @@ func (s *RemoteAuthService) handlePairSubmit(w http.ResponseWriter, r *http.Requ
 	s.mu.Lock()
 	if allowed, retryAfter := s.checkRateLimit(source, now); !allowed {
 		s.mu.Unlock()
-		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		w.WriteHeader(http.StatusTooManyRequests)
-		writePairingPage(w, pairingPageState{ErrorMessage: pairingLockoutMessage(retryAfter)})
+		s.writePairingResponse(w, http.StatusTooManyRequests, pairingPageState{ErrorMessage: pairingLockoutMessage(retryAfter)})
 		return
 	}
 
@@ -131,9 +148,7 @@ func (s *RemoteAuthService) handlePairSubmit(w http.ResponseWriter, r *http.Requ
 	if !s.validatePairingCode(candidate, now) {
 		s.recordPairingFailure(source, now)
 		s.mu.Unlock()
-		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		w.WriteHeader(http.StatusUnauthorized)
-		writePairingPage(w, pairingPageState{ErrorMessage: pairingErrorWrongCode})
+		s.writePairingResponse(w, http.StatusUnauthorized, pairingPageState{ErrorMessage: pairingErrorWrongCode})
 		return
 	}
 	s.recordPairingSuccess(source)
@@ -141,14 +156,40 @@ func (s *RemoteAuthService) handlePairSubmit(w http.ResponseWriter, r *http.Requ
 	s.mu.Unlock()
 	if err != nil {
 		s.logger.Error("remote access: minting device token", "error", err)
-		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		w.WriteHeader(http.StatusInternalServerError)
-		writePairingPage(w, pairingPageState{ErrorMessage: pairingErrorGeneric})
+		s.writePairingResponse(w, http.StatusInternalServerError, pairingPageState{ErrorMessage: pairingErrorGeneric})
 		return
 	}
 
 	setDeviceCookie(w, r, token)
 	http.Redirect(w, r, "/", http.StatusSeeOther)
+}
+
+// handleResendSubmit is the pairing page's "Get a new code" action
+// (SLICE 2 DESIGN CONTRACT item 2): unauthenticated, rate-limited
+// through the same per-source limiter as a pairing-code attempt (a
+// resend counts as an attempt against that limiter, so spamming this
+// alone can still lock a source out), and its ONLY output is a log
+// line -- the fresh code never appears in this response, which would
+// hand it straight to the very device being challenged.
+func (s *RemoteAuthService) handleResendSubmit(w http.ResponseWriter, r *http.Request) {
+	source := sourceKeyForRequest(r)
+	now := time.Now()
+
+	s.mu.Lock()
+	if allowed, retryAfter := s.checkRateLimit(source, now); !allowed {
+		s.mu.Unlock()
+		s.writePairingResponse(w, http.StatusTooManyRequests, pairingPageState{ErrorMessage: pairingLockoutMessage(retryAfter)})
+		return
+	}
+	s.recordPairingFailure(source, now)
+	s.mu.Unlock()
+
+	if _, err := s.resendPairingCode(); err != nil {
+		s.logger.Error("remote access: resending pairing code", "error", err)
+		s.writePairingResponse(w, http.StatusInternalServerError, pairingPageState{ErrorMessage: pairingErrorGeneric})
+		return
+	}
+	s.writePairingResponse(w, http.StatusOK, pairingPageState{InfoMessage: s.resendConfirmation()})
 }
 
 // setDeviceCookie stores the raw device token client-side ONLY --

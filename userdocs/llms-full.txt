@@ -909,19 +909,26 @@ then stay connected until you revoke them.
 
 To reach Mill from your phone or another computer, open Settings on
 this Mac and select "Pair a device." Enter the 8-character code it
-shows on the other device within 5 minutes. Paired devices appear
-below with when they were paired and last seen, and a Revoke button
-that disconnects them immediately.
+shows on the other device within 5 minutes. The pairing page tells you
+how long a paired device stays signed in and that you can revoke it
+anytime. Paired devices appear below with when they were paired and
+last seen, a pencil to rename them, and a Revoke button that
+disconnects them immediately.
 
 If you already have a background Mill instance reachable from another
 device — for example, one kept running over Tailscale — it now asks
 for pairing the first time you reach it after upgrading. A background
-instance has no window to show "Pair a device" in, so it writes a
-pairing code to its own log instead, on every startup, until a first
-device pairs. Find that code wherever you already check the instance's
-output, then pair from any device the same way — enter it within 5
-minutes. Once a device is paired, the instance stops writing codes to
-its log.
+instance has no window to show "Pair a device" in, so the pairing page
+itself tells you to find the code in the instance's log instead, and
+writes one there on every startup until a first device pairs. Find
+that code wherever you already check the instance's output, then pair
+from any device the same way — enter it within 5 minutes. Once a
+device is paired, the instance stops writing codes to its log.
+
+Code expired before you could read it? The pairing page has a "Get a
+new code" button — it writes a fresh code to the instance's log (or to
+Settings, on this Mac) without needing a restart, and works even after
+another device is already paired.
 
 Locked out of a background instance with no paired device left to pair
 from? Stop it, delete its saved device list, and start it again — it

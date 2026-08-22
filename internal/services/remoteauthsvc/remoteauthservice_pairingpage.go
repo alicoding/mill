@@ -1,6 +1,7 @@
 package remoteauthsvc
 
 import (
+	"fmt"
 	"html/template"
 	"io"
 	"time"
@@ -14,6 +15,74 @@ const (
 	pairingErrorGeneric   = "Something went wrong. Try again."
 )
 
+// pairingInstructionsServer and pairingInstructionsDesktop are the
+// SLICE 2 DESIGN CONTRACT's per-mode copy: the browser cannot tell a
+// headless server from a desktop build, so the server names the
+// channel for its own deployment instead of one sentence that is
+// wrong for half of them.
+const (
+	pairingInstructionsServer  = "Find the pairing code in this server's log."
+	pairingInstructionsDesktop = "Open Settings → Remote access on your Mac to see the code."
+)
+
+// resendConfirmationServer and resendConfirmationDesktop are the
+// per-mode confirmation shown after a successful "Get a new code"
+// action -- same reasoning as the instructions above.
+const (
+	resendConfirmationServer  = "A new code is in this server's log."
+	resendConfirmationDesktop = "A new code is showing in Settings → Remote access."
+)
+
+// pairingInstructions returns the truthful, mode-specific sentence
+// telling a pairing device where to find its code.
+func (s *RemoteAuthService) pairingInstructions() string {
+	if s.serverMode {
+		return pairingInstructionsServer
+	}
+	return pairingInstructionsDesktop
+}
+
+// resendConfirmation returns the truthful, mode-specific sentence
+// confirming a successful resend.
+func (s *RemoteAuthService) resendConfirmation() string {
+	if s.serverMode {
+		return resendConfirmationServer
+	}
+	return resendConfirmationDesktop
+}
+
+// pairingDurationMessage is the SLICE 2 DESIGN CONTRACT item 3
+// disclosure, derived from the real cookieLifetime constant so it can
+// never silently drift from what the code actually does.
+var pairingDurationMessage = fmt.Sprintf(
+	"Once paired, this device stays signed in for %s. You can revoke it anytime in Settings.",
+	humanizeDuration(cookieLifetime),
+)
+
+// humanizeDuration renders d as a whole, person-readable span (days/
+// weeks/months/years) -- an approximation for pairing-page copy, not
+// a precise countdown.
+func humanizeDuration(d time.Duration) string {
+	days := int(d.Hours() / 24)
+	switch {
+	case days >= 365:
+		return pluralizeUnit(days/365, "year")
+	case days >= 30:
+		return pluralizeUnit(days/30, "month")
+	case days >= 7:
+		return pluralizeUnit(days/7, "week")
+	default:
+		return pluralizeUnit(days, "day")
+	}
+}
+
+func pluralizeUnit(n int, unit string) string {
+	if n == 1 {
+		return fmt.Sprintf("1 %s", unit)
+	}
+	return fmt.Sprintf("%d %ss", n, unit)
+}
+
 // pairingLockoutMessage turns a rate-limit wait into one plain
 // sentence -- exact seconds remaining isn't useful to a person typing
 // a code, so this buckets rather than counts down.
@@ -24,9 +93,13 @@ func pairingLockoutMessage(retryAfter time.Duration) string {
 	return "Too many attempts. Wait a few minutes, then try again."
 }
 
-// pairingPageState is the pairing page's only variable content.
+// pairingPageState is the pairing page's caller-supplied variable
+// content -- Instructions and DurationMessage are filled in by
+// writePairingResponse from service state, never by callers directly.
 type pairingPageState struct {
 	ErrorMessage string
+	InfoMessage  string
+	Instructions string
 }
 
 // pairingPageTemplate is the standalone page an unpaired non-loopback
@@ -68,19 +141,33 @@ var pairingPageTemplate = template.Must(template.New("pairing").Parse(`<!doctype
     width: 100%; font-size: 14px; font-weight: 600; padding: 10px;
     border: none; border-radius: 8px; background: #1f883d; color: #fff; cursor: pointer;
   }
+  .secondary {
+    background: transparent; color: #1f883d; border: 1px solid #d0d7de;
+    margin-top: 8px;
+  }
+  @media (prefers-color-scheme: dark) { .secondary { color: #3fb950; } }
   .error { color: #cf222e; font-size: 13px; margin: 0 0 16px; }
   @media (prefers-color-scheme: dark) { .error { color: #f85149; } }
+  .info { color: #1f883d; font-size: 13px; margin: 0 0 16px; }
+  @media (prefers-color-scheme: dark) { .info { color: #3fb950; } }
+  .duration { font-size: 12px; color: #59636e; margin: 20px 0 0; }
+  @media (prefers-color-scheme: dark) { .duration { color: #8b949e; } }
 </style>
 </head>
 <body>
   <div class="card">
     <h1>Pair this device</h1>
-    <p>Enter the code shown in Mill on your Mac.</p>
+    <p>{{.Instructions}}</p>
     {{if .ErrorMessage}}<p class="error">{{.ErrorMessage}}</p>{{end}}
+    {{if .InfoMessage}}<p class="info">{{.InfoMessage}}</p>{{end}}
     <form method="post" action="{{.SubmitPath}}">
       <input type="text" name="{{.FormKey}}" maxlength="8" autocomplete="off" autofocus placeholder="8-character code" required>
       <button type="submit">Pair device</button>
     </form>
+    <form method="post" action="{{.ResendPath}}">
+      <button type="submit" class="secondary">Get a new code</button>
+    </form>
+    <p class="duration">{{.DurationMessage}}</p>
   </div>
 </body>
 </html>
@@ -90,7 +177,9 @@ var pairingPageTemplate = template.Must(template.New("pairing").Parse(`<!doctype
 func writePairingPage(w io.Writer, state pairingPageState) {
 	_ = pairingPageTemplate.Execute(w, struct {
 		pairingPageState
-		SubmitPath string
-		FormKey    string
-	}{state, PairSubmitPath, pairingCodeFormKey})
+		SubmitPath      string
+		FormKey         string
+		ResendPath      string
+		DurationMessage string
+	}{state, PairSubmitPath, pairingCodeFormKey, ResendSubmitPath, pairingDurationMessage})
 }

@@ -187,6 +187,10 @@ export async function spawnMillServer(opts: SpawnServerOptions): Promise<Spawned
       // override (e.g. the mirror-dense spec's own folder-pick
       // fixture) would otherwise always lose to this default.
       MILL_TEST_FOLDER_PICK_PATH: opts.extraEnv?.MILL_TEST_FOLDER_PICK_PATH ?? FOLDER_PICK_FIXTURE,
+      // Lets remote-access.spec.ts populate a paired device directly --
+      // pairing itself only completes over a non-loopback connection,
+      // which this isolated per-worker server never has.
+      MILL_TEST_ALLOW_DEVICE_SEED: '1',
     },
     stdio: ['ignore', 'pipe', 'pipe'],
   })
