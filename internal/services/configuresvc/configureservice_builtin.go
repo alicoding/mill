@@ -9,7 +9,6 @@ import (
 	"github.com/alicoding/mill/internal/domain/decision"
 	"github.com/alicoding/mill/internal/domain/httprequest"
 	"github.com/alicoding/mill/internal/domain/list"
-	"github.com/alicoding/mill/internal/domain/mcpserver"
 	"github.com/alicoding/mill/internal/domain/seedorigin"
 	"github.com/alicoding/mill/internal/services/entitystore"
 	"github.com/alicoding/mill/internal/services/seeding"
@@ -258,55 +257,15 @@ func upgradeListToGolden(existing, golden list.List, now time.Time) list.List {
 }
 
 // reconcileBuiltInMCPServers mirrors reconcileBuiltInLists for the
-// seeded example MCP Servers (docs/goals/0010 item 5).
+// seeded example MCP Servers (docs/goals/0010 item 5) via
+// mcpServerDescriptor (configuremcpserver.go, goal 0165).
 func (c *ConfigureService) reconcileBuiltInMCPServers() {
 	tombstones := seeding.LoadTombstones(c.store)
-	now := time.Now()
-	c.mu.Lock()
-	byID := make(map[string]int, len(c.mcpServers))
-	for i, s := range c.mcpServers {
-		byID[s.ID] = i
-	}
-	changed := false
-	for _, golden := range mcpserver.BuiltIn() {
-		idx, present := byID[golden.ID]
-		if !present {
-			if tombstones[golden.ID] {
-				continue
-			}
-			golden.CreatedAt, golden.UpdatedAt = now, now
-			c.mcpServers = append(c.mcpServers, golden)
-			changed = true
-			continue
-		}
-		existing := c.mcpServers[idx]
-		if existing.Seed.SeedRevision == 0 {
-			existing.Seed = seedorigin.Origin{SeedRevision: golden.Seed.SeedRevision, Modified: true}
-			c.mcpServers[idx] = existing
-			changed = true
-			continue
-		}
-		if existing.Seed.Modified {
-			continue
-		}
-		if existing.Seed.SeedRevision < golden.Seed.SeedRevision {
-			c.mcpServers[idx] = upgradeMCPServerToGolden(existing, golden, now)
-			changed = true
-		}
-	}
-	c.mu.Unlock()
-	if changed {
+	if _, changed := entitystore.Reconcile(&c.mu, &c.mcpServers, tombstones, mcpServerDescriptor); changed {
 		if err := c.persistMCPServers(); err != nil {
 			slog.Error("failed to reconcile built-in MCP Servers", "error", err)
 		}
 	}
-}
-
-func upgradeMCPServerToGolden(existing, golden mcpserver.MCPServer, now time.Time) mcpserver.MCPServer {
-	golden.CreatedAt = existing.CreatedAt
-	golden.UpdatedAt = now
-	golden.Seed = seedorigin.Stamp(golden.Seed.SeedRevision)
-	return golden
 }
 
 // reconcileBuiltInExecEnvs mirrors reconcileBuiltInMCPServers for the

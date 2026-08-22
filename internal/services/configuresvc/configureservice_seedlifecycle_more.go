@@ -109,43 +109,12 @@ func (c *ConfigureService) RestoreList(id string) (list.List, error) {
 	return golden, nil
 }
 
-func findGoldenMCPServer(id string) (mcpserver.MCPServer, bool) {
-	for _, g := range mcpserver.BuiltIn() {
-		if g.ID == id {
-			return g, true
-		}
-	}
-	return mcpserver.MCPServer{}, false
-}
-
-// ResetMCPServerToSeed mirrors ResetHTTPRequestToSeed for MCP Servers.
+// ResetMCPServerToSeed mirrors ResetHTTPRequestToSeed for MCP Servers,
+// via mcpServerDescriptor (configuremcpserver.go, goal 0165).
 func (c *ConfigureService) ResetMCPServerToSeed(id string) (mcpserver.MCPServer, error) {
-	golden, ok := findGoldenMCPServer(id)
-	if !ok {
-		return mcpserver.MCPServer{}, fmt.Errorf("no built-in MCP server with id %q", id)
-	}
-	c.mu.Lock()
-	idx := -1
-	for i, s := range c.mcpServers {
-		if s.ID == id {
-			idx = i
-			break
-		}
-	}
-	if idx == -1 {
-		c.mu.Unlock()
-		return mcpserver.MCPServer{}, fmt.Errorf("no MCP server with id %q", id)
-	}
-	previous := c.mcpServers[idx]
-	updated := upgradeMCPServerToGolden(previous, golden, time.Now())
-	c.mcpServers[idx] = updated
-	c.mu.Unlock()
-
-	if err := c.persistMCPServers(); err != nil {
-		c.mu.Lock()
-		c.mcpServers[idx] = previous
-		c.mu.Unlock()
-		return mcpserver.MCPServer{}, fmt.Errorf("save reset MCP server: %w", err)
+	updated, err := entitystore.ResetToSeed(&c.mu, &c.mcpServers, c.persistMCPServers, mcpServerDescriptor, id)
+	if err != nil {
+		return mcpserver.MCPServer{}, err
 	}
 	dataevent.Emit("mcpserver", id) // goal 0017: live-sync every open surface
 	return updated, nil
@@ -153,63 +122,17 @@ func (c *ConfigureService) ResetMCPServerToSeed(id string) (mcpserver.MCPServer,
 
 // RestorableMCPServers mirrors RestorableHTTPRequests for MCP Servers.
 func (c *ConfigureService) RestorableMCPServers() []mcpserver.MCPServer {
-	tombstones := seeding.LoadTombstones(c.store)
-	if len(tombstones) == 0 {
-		return nil
-	}
-	c.mu.Lock()
-	have := make(map[string]bool, len(c.mcpServers))
-	for _, s := range c.mcpServers {
-		have[s.ID] = true
-	}
-	c.mu.Unlock()
-	var out []mcpserver.MCPServer
-	for _, golden := range mcpserver.BuiltIn() {
-		if tombstones[golden.ID] && !have[golden.ID] {
-			out = append(out, golden)
-		}
-	}
-	return out
+	return entitystore.Restorable(&c.mu, &c.mcpServers, seeding.LoadTombstones(c.store), mcpServerDescriptor)
 }
 
 // RestoreMCPServer mirrors RestoreHTTPRequest for MCP Servers.
 func (c *ConfigureService) RestoreMCPServer(id string) (mcpserver.MCPServer, error) {
-	golden, ok := findGoldenMCPServer(id)
-	if !ok {
-		return mcpserver.MCPServer{}, fmt.Errorf("no built-in MCP server with id %q", id)
-	}
-	c.mu.Lock()
-	for _, existing := range c.mcpServers {
-		if existing.ID == id {
-			c.mu.Unlock()
-			return mcpserver.MCPServer{}, fmt.Errorf("MCP server %q is already present, nothing to restore", id)
-		}
-	}
-	c.mu.Unlock()
-
-	if err := seeding.ClearTombstone(c.store, id); err != nil {
-		return mcpserver.MCPServer{}, fmt.Errorf("clear tombstone for %q: %w", id, err)
-	}
-	now := time.Now()
-	golden.CreatedAt, golden.UpdatedAt = now, now
-
-	c.mu.Lock()
-	c.mcpServers = append(c.mcpServers, golden)
-	c.mu.Unlock()
-
-	if err := c.persistMCPServers(); err != nil {
-		c.mu.Lock()
-		for i, s := range c.mcpServers {
-			if s.ID == id {
-				c.mcpServers = append(c.mcpServers[:i], c.mcpServers[i+1:]...)
-				break
-			}
-		}
-		c.mu.Unlock()
-		return mcpserver.MCPServer{}, fmt.Errorf("save restored MCP server: %w", err)
+	restored, err := entitystore.Restore(&c.mu, &c.mcpServers, c.persistMCPServers, c.store, mcpServerDescriptor, id)
+	if err != nil {
+		return mcpserver.MCPServer{}, err
 	}
 	dataevent.Emit("mcpserver", id) // goal 0017: live-sync every open surface
-	return golden, nil
+	return restored, nil
 }
 
 // ResetExecEnvToSeed mirrors ResetHTTPRequestToSeed for ExecEnvs, via
