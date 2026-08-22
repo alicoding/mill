@@ -3,6 +3,7 @@ import { dispatchCommandForEvent, findCommand } from '../shared/commands'
 import { isEditableTarget } from '../shared/keybinding'
 import { useAppStore } from '../shared/store'
 import { useUISignalStore } from '../shared/uiSignalStore'
+import { ATLAS_TOOL_IDENTITIES } from '../shared/atlasToolIdentity'
 
 // App.tsx's window-level keydown handling, split out (CLAUDE.md's
 // 500-line convention) as its own hook rather than inline effects --
@@ -80,10 +81,10 @@ export function useKeymapDispatch(): void {
       if (isEditableTarget(e.target)) return
       if (document.querySelector('[role="dialog"]')) return
       const key = e.key.toUpperCase()
-      const commandId = key === 'C' ? 'atlas.create.card' : key === 'N' ? 'atlas.create.note' : key === 'A' ? 'atlas.create.area' : key === 'T' ? 'atlas.create.table' : null
-      if (!commandId) return
+      const tool = ATLAS_TOOL_IDENTITIES.find((t) => t.shortcutKey === key)
+      if (!tool) return
       e.preventDefault()
-      findCommand(commandId)?.run()
+      findCommand(`atlas.create.${tool.id}`)?.run()
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)

@@ -6,6 +6,7 @@ import { useUISignalStore } from './uiSignalStore'
 import { CONFIGURE_CREATE_COMMANDS } from './configureCreateCommands'
 import { ATLAS_BOARD_COMMANDS } from './atlasBoardCommands'
 import { SETTINGS_COMMANDS } from './settingsCommands'
+import { ATLAS_TOOL_IDENTITIES } from './atlasToolIdentity'
 
 // The command registry (docs/goals/0016-keymap-system.md): named
 // commands with a default binding, dispatched by one window keydown
@@ -285,48 +286,30 @@ export const COMMANDS: Command[] = [
     surface: ['atlas'],
     run: () => useUISignalStore.getState().requestAtlasJump(),
   },
-  {
-    // Bare C/N (goal 0081 slice A1): comboFromEvent requires Cmd/Ctrl by
-    // design (every other keymap default needs one of the two -- see
-    // its own doc comment, shared/keybinding.ts), so a bare letter can
-    // never be this command's REAL dispatched binding -- defaultBinding
-    // stays null, same shape help.shortcuts above already takes for its
-    // own bare `?`. The actual keypress is a dedicated listener
-    // (app/useKeymapDispatch.ts) that calls run() directly; the tray
-    // itself (AtlasCreationTray.tsx) renders the "C" kbd hint as plain
-    // copy, not derived from this binding.
-    id: 'atlas.create.card',
-    label: 'Add a card',
+  // atlas.create.card/note/area/table (bare C/N/A/T, goal 0081 slices
+  // A1/A2, goal 0139): comboFromEvent requires Cmd/Ctrl by design
+  // (every other keymap default needs one of the two -- see its own
+  // doc comment, shared/keybinding.ts), so a bare letter can never be
+  // one of these commands' REAL dispatched binding -- defaultBinding
+  // stays null, same shape help.shortcuts above already takes for its
+  // own bare `?`. The actual keypress is a dedicated listener
+  // (app/useKeymapDispatch.ts) that calls run() directly; the tray
+  // itself (AtlasCreationTray.tsx) renders its own kbd hint from the
+  // SAME registry (atlas/atlasTools.ts), not derived from this
+  // binding. Generated from shared/atlasToolIdentity.ts's identity
+  // list (the cross-layer seed atlas/atlasTools.ts's own descriptors
+  // also read) rather than four separate hand-written commands --
+  // 'arm' tools request a placement arm, 'picker' requests the size
+  // picker (Table's own click-IS-the-creation flow).
+  ...ATLAS_TOOL_IDENTITIES.map((tool): Command => ({
+    id: `atlas.create.${tool.id}`,
+    label: tool.commandLabel,
     defaultBinding: null,
     surface: ['atlas'],
-    run: () => useUISignalStore.getState().requestAtlasArmTool('card'),
-  },
-  {
-    id: 'atlas.create.note',
-    label: 'Add a note',
-    defaultBinding: null,
-    surface: ['atlas'],
-    run: () => useUISignalStore.getState().requestAtlasArmTool('note'),
-  },
-  {
-    // Bare A (goal 0081 slice A2) -- same shape as atlas.create.card/
-    // note above.
-    id: 'atlas.create.area',
-    label: 'Draw an area',
-    defaultBinding: null,
-    surface: ['atlas'],
-    run: () => useUISignalStore.getState().requestAtlasArmTool('area'),
-  },
-  {
-    // Bare T (goal 0139) -- same shape as atlas.create.card above;
-    // opens the tray's table size picker rather than arming a
-    // placement tool (the picker's click IS the creation).
-    id: 'atlas.create.table',
-    label: 'New table',
-    defaultBinding: null,
-    surface: ['atlas'],
-    run: () => useUISignalStore.getState().requestAtlasTablePicker(),
-  },
+    run: () => (tool.requestKind === 'picker'
+      ? useUISignalStore.getState().requestAtlasTablePicker()
+      : useUISignalStore.getState().requestAtlasArmTool(tool.id)),
+  })),
   {
     // The quick-delete undo toast's own ⌘Z (goal 0093): defaultBinding
     // stays null, same shape atlas.create.card/note/area already use --
