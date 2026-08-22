@@ -1,28 +1,26 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Button, FormControl, Heading, IconButton, Select, Stack, Text, TextInput, VisuallyHidden } from '@primer/react'
-import { DownloadIcon, PencilIcon, PlusIcon, TerminalIcon, TrashIcon, UploadIcon } from '@primer/octicons-react'
+import { Button, FormControl, IconButton, Select, Stack, Text, TextInput } from '@primer/react'
+import { DownloadIcon, PencilIcon, PlusIcon, TerminalIcon, TrashIcon } from '@primer/octicons-react'
 import { DataTable } from '@primer/react/experimental'
 import { StatusStamp } from '../shared/StatusStamp'
 import { ResizableTableContainer, TruncatedCell } from '../shared/ResizableTable'
 import { ConfigureService } from '../shared/bindings'
 import type { ExecEnv } from '../../bindings/github.com/alicoding/mill/internal/domain/execenv/models'
 import { Shell, ProfileMode } from '../../bindings/github.com/alicoding/mill/internal/domain/execenv/models'
-import { downloadJSON } from '../shared/downloadJSON'
 import { refreshExecEnvs, useConfigureEntityStore } from '../shared/configureEntityStore'
 import { envToRows, rowsToEnv, type EnvRow } from './execEnvRows'
-import { ViewModeToggle } from '../shared/ViewModeToggle'
 import { useViewMode } from '../shared/viewMode'
 import { InventoryList, type InventoryItem } from '../shared/InventoryList'
 import { ENTITY_ICON } from '../shared/entityIcons'
 import { formatUpdated, sortByUpdatedDesc } from '../shared/inventorySort'
 import { useConfirmDelete } from '../shared/useConfirmDelete'
-import { useImportConfirm } from '../shared/useImportConfirm'
 import { describeSeedReset } from '../shared/seedLifecycle'
-import { RestoreExamplesButton } from '../shared/RestoreExamplesButton'
 import { useUISignalStore } from '../shared/uiSignalStore'
+import { ConfigureEntityPage } from './ConfigureEntityPage'
+import { useSeedLifecycle } from './useSeedLifecycle'
+import { useEntityImportExport } from './useEntityImportExport'
 import styles from '../shared/ListCard.module.css'
-import PageContainer from '../shared/PageContainer'
 
 const TEMP_DIR_SENTINEL = '<mill-temp>'
 
@@ -62,9 +60,12 @@ function profileCaptionFor(t: (key: string) => string): Partial<Record<ProfileMo
 // docs/SPEC.md §6): CRUD over ConfigureService's ExecEnvs, each a
 // reusable, pinned shell/dir/env a code-execution workflow node
 // resolves by ID -- the "materialize, don't inherit" Configure entity
-// ADR-0026's Amendment names. Mirrors ConfigureMCPServers.tsx's shape
-// (the Configure-entity recipe, docs/SPEC.md §9.5) closely: no
-// secret/auth concept here at all, same as MCP Server.
+// ADR-0026's Amendment names. Page chrome (header row, import/export,
+// seed lifecycle, view-mode switch, confirm dialogs) comes from the
+// shared ConfigureEntityPage (docs/goals/0167); the form fields here
+// stay hand-rolled (no typedfield.Field descriptor for ExecEnv yet --
+// its env-var row editor and shell-capture action have no generic
+// equivalent), only the list columns and this form are its own.
 export function ConfigureExecEnv() {
   const { t } = useTranslation('configure')
   const SHELL_LABEL = shellLabelFor(t)
@@ -82,53 +83,26 @@ export function ConfigureExecEnv() {
   const [formOpen, setFormOpen] = useState(false)
   const [capturing, setCapturing] = useState(false)
   const [error, setError] = useState('')
-  const [importError, setImportError] = useState<string | null>(null)
-  const importInputRef = useRef<HTMLInputElement>(null)
   const [viewMode, setViewMode] = useViewMode('mill-execenvs-view-mode')
-  // Seed lifecycle (docs/goals/0037) -- see CompositionView.tsx's
-  // identical state for the full reasoning.
-  const [seedRevisions, setSeedRevisions] = useState<Record<string, number | undefined>>({})
-  const [restorable, setRestorable] = useState<ExecEnv[]>([])
 
-  const refreshSeedLifecycle = () => {
-    ConfigureService.SeedRevisions().then((m) => setSeedRevisions(m ?? {})).catch(console.error)
-    ConfigureService.RestorableExecEnvs().then((r) => setRestorable(r ?? [])).catch(console.error)
-  }
+  const seedLifecycle = useSeedLifecycle<ExecEnv>(() => ConfigureService.RestorableExecEnvs())
 
   const refetch = () => {
     void refreshExecEnvs()
   }
 
-  const exportEnv = (id: string, label: string) => {
-    ConfigureService.ExportExecEnv(id)
-      .then((json) => downloadJSON(`${label.trim() || 'execenv'}.json`, json))
-      .catch((err) => setImportError(String(err)))
-  }
-
-  const openImportPicker = () => {
-    setImportError(null)
-    importInputRef.current?.click()
-  }
-
-  // A payload whose id matches an environment already here updates it
-  // in place instead of creating a new one -- confirmed first via
-  // importConfirm below, naming the environment it will replace.
-  const runImport = (text: string) => {
-    ConfigureService.ImportExecEnv(text)
-      .then(() => { setImportError(null); refetch() })
-      .catch((err) => setImportError(String(err)))
-  }
-  const importConfirm = useImportConfirm({ existing: envs ?? [], onImport: runImport })
-  const handleImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    e.target.value = ''
-    if (!file) return
-    file.text().then(importConfirm.requestImport).catch((err) => setImportError(String(err)))
-  }
+  const importExport = useEntityImportExport<ExecEnv>({
+    existing: envs ?? [],
+    exportEntity: (id) => ConfigureService.ExportExecEnv(id),
+    importEntity: (text) => ConfigureService.ImportExecEnv(text),
+    onImported: refetch,
+    filenameFallback: 'execenv',
+  })
 
   useEffect(() => {
     refetch()
-    refreshSeedLifecycle()
+    seedLifecycle.refresh()
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- mount-only fetch, same reasoning every sibling Configure page's identical effect documents
   }, [])
 
   const startCreate = () => {
@@ -184,8 +158,8 @@ export function ConfigureExecEnv() {
   const remove = (id: string) => {
     ConfigureService.DeleteExecEnv(id).then(() => {
       refetch()
-      refreshSeedLifecycle()
-    }).catch((err) => setImportError(String(err)))
+      seedLifecycle.refresh()
+    }).catch((err) => importExport.setImportError(String(err)))
   }
 
   // Reset-to-shipped-example / restore-deleted-example (docs/goals/0037
@@ -193,14 +167,8 @@ export function ConfigureExecEnv() {
   const resetToSeed = (id: string) => {
     ConfigureService.ResetExecEnvToSeed(id).then(() => {
       refetch()
-      refreshSeedLifecycle()
-    }).catch((err) => setImportError(String(err)))
-  }
-  const restoreExample = (id: string) => {
-    ConfigureService.RestoreExecEnv(id).then(() => {
-      refetch()
-      refreshSeedLifecycle()
-    }).catch((err) => setImportError(String(err)))
+      seedLifecycle.refresh()
+    }).catch((err) => importExport.setImportError(String(err)))
   }
 
   // Table-view direct-wiring half of the Button-semantics convention
@@ -239,7 +207,7 @@ export function ConfigureExecEnv() {
   const sortedEnvs = useMemo(() => sortByUpdatedDesc(envs ?? [], (e) => e.UpdatedAt), [envs])
 
   const envItems: InventoryItem[] = sortedEnvs.map((e) => {
-    const seedReset = describeSeedReset(e.Seed, seedRevisions[e.ID] ?? e.Seed.SeedRevision)
+    const seedReset = describeSeedReset(e.Seed, seedLifecycle.seedRevisions[e.ID] ?? e.Seed.SeedRevision)
     return {
       id: e.ID,
       entity: 'execenv',
@@ -253,7 +221,7 @@ export function ConfigureExecEnv() {
       description: `${SHELL_LABEL[e.Shell] ?? e.Shell} · ${e.ProfileMode} · ${e.Dir === TEMP_DIR_SENTINEL ? t('configureExecEnv.freshTempDirPerRun') : e.Dir}`,
       onOpen: () => startEdit(e),
       menuActions: [
-        { label: t('export'), onClick: () => exportEnv(e.ID, e.Label) },
+        { label: t('export'), onClick: () => importExport.exportItem(e.ID, e.Label) },
         // Reset-to-shipped-example (docs/goals/0037 item 4) -- hidden
         // (not shown-disabled) when already current, same reasoning
         // CompositionView.tsx's identical wiring documents.
@@ -269,129 +237,114 @@ export function ConfigureExecEnv() {
   })
 
   return (
-    <PageContainer data-testid="configure-execenvs">
-      <Stack direction="horizontal" justify="end" align="center" className={styles.sectionHeading}>
-        {/* Design-wave-1 fix #6: the Configure tab already names this
-            section -- visually hidden (not removed) so the aria-labelledby
-            wiring below and the a11y heading structure both stay intact. */}
-        <VisuallyHidden>
-          <Heading as="h2" variant="small" id="execenvs-heading">{t('configureExecEnv.heading')}</Heading>
-        </VisuallyHidden>
-        <Stack direction="horizontal" gap="condensed">
-          <ViewModeToggle mode={viewMode} onChange={setViewMode} />
-          <input
-            ref={importInputRef}
-            type="file"
-            accept="application/json,.json"
-            data-testid="import-execenv-input"
-            style={{ display: 'none' }}
-            onChange={handleImportFile}
-          />
-          <Button leadingVisual={UploadIcon} size="small" onClick={openImportPicker} data-testid="import-execenv">
-            {t('import')}
-          </Button>
-          <RestoreExamplesButton items={restorable} onRestore={restoreExample} />
-          <Button leadingVisual={PlusIcon} variant="primary" size="small" onClick={startCreate} data-testid="new-execenv">
-            {t('configureExecEnv.newEnvironment')}
-          </Button>
-        </Stack>
-      </Stack>
-      {importError && (
-        <Text as="p" size="small" className={styles.error} data-testid="import-execenv-error">{importError}</Text>
+    <ConfigureEntityPage
+      pageTestId="configure-execenvs"
+      headingId="execenvs-heading"
+      headingText={t('configureExecEnv.heading')}
+      viewMode={viewMode}
+      onViewModeChange={setViewMode}
+      importInputRef={importExport.importInputRef}
+      importInputTestId="import-execenv-input"
+      importTestId="import-execenv"
+      onImportFile={importExport.handleImportFile}
+      onImportClick={importExport.openImportPicker}
+      importErrorNode={importExport.importError && (
+        <Text as="p" size="small" className={styles.error} data-testid="import-execenv-error">{importExport.importError}</Text>
       )}
-
-      {formOpen && (
-        <PageContainer variant="narrow">
-        <div className={styles.card}>
-          <Stack direction="vertical" gap="condensed">
-            <FormControl>
-              <FormControl.Label>{t('configureExecEnv.label')}</FormControl.Label>
-              <TextInput value={label} onChange={(e) => setLabel(e.target.value)} block />
-            </FormControl>
-            <FormControl>
-              <FormControl.Label>{t('configureExecEnv.shell')}</FormControl.Label>
-              <Select value={shell} onChange={(e) => setShell(e.target.value as Shell)}>
-                {Object.values(Shell).filter((s) => s !== Shell.$zero).map((s) => (
-                  <Select.Option key={s} value={s}>{SHELL_LABEL[s] ?? s}</Select.Option>
-                ))}
-              </Select>
-            </FormControl>
-            <FormControl>
-              <FormControl.Label>{t('configureExecEnv.profileMode')}</FormControl.Label>
-              {/* data-testid on an inner span: FormControl.Caption doesn't
-                  forward arbitrary props to its rendered element (checked
-                  the hard way -- an e2e getByTestId found nothing). */}
-              <FormControl.Caption><span data-testid="execenv-profile-caption">{PROFILE_CAPTION[profileMode] ?? ''}</span></FormControl.Caption>
-              <Select value={profileMode} onChange={(e) => setProfileMode(e.target.value as ProfileMode)}>
-                {Object.values(ProfileMode).filter((p) => p !== ProfileMode.$zero).map((p) => (
-                  <Select.Option key={p} value={p}>{PROFILE_LABEL[p] ?? p}</Select.Option>
-                ))}
-              </Select>
-            </FormControl>
-            <FormControl>
-              <FormControl.Label>{t('configureExecEnv.workingDirectory')}</FormControl.Label>
-              <FormControl.Caption>{t('configureExecEnv.workingDirectoryCaption', { sentinel: TEMP_DIR_SENTINEL })}</FormControl.Caption>
-              <TextInput value={dir} onChange={(e) => setDir(e.target.value)} block />
-            </FormControl>
-            <Text size="small" weight="semibold">{t('configureExecEnv.environmentVariables')}</Text>
-            <FormControl.Caption>{t('configureExecEnv.environmentVariablesCaption')}</FormControl.Caption>
-            {envRows.map((row, i) => (
-              <Stack key={i} direction="horizontal" gap="condensed" align="center">
-                <TextInput
-                  placeholder={t('configureExecEnv.pathPlaceholder')}
-                  aria-label={t('configureExecEnv.variableNameAriaLabel', { n: i + 1 })}
-                  data-testid="execenv-env-key"
-                  value={row.key}
-                  onChange={(e) => updateEnvRow(i, { key: e.target.value })}
-                  style={{ width: '30%' }}
-                />
-                <TextInput
-                  placeholder={t('configureExecEnv.pathValuePlaceholder')}
-                  aria-label={t('configureExecEnv.variableValueAriaLabel', { n: i + 1 })}
-                  data-testid="execenv-env-value"
-                  value={row.value}
-                  onChange={(e) => updateEnvRow(i, { value: e.target.value })}
-                  block
-                />
-                <IconButton
-                  icon={TrashIcon}
-                  aria-label={t('configureExecEnv.removeVariableAriaLabel')}
-                  size="small"
-                  variant="invisible"
-                  onClick={() => setEnvRows((prev) => prev.filter((_, idx) => idx !== i))}
-                />
-              </Stack>
-            ))}
-            <Stack direction="horizontal" gap="condensed">
-              <Button size="small" variant="invisible" onClick={() => setEnvRows((prev) => [...prev, { key: '', value: '' }])}>
-                {t('configureExecEnv.addVariable')}
-              </Button>
-              {/* ADR-0026's Amendment, "Capture from my shell": snapshot the
-                  real login-shell PATH into the stored, editable env --
-                  determinism through materialization (clean mode AND your
-                  Homebrew/mise paths, written down, never re-derived). */}
-              <Button
+      restorable={seedLifecycle.restorable}
+      onRestore={(id) => ConfigureService.RestoreExecEnv(id).then(() => { refetch(); seedLifecycle.refresh() }).catch((err) => importExport.setImportError(String(err)))}
+      primaryLabel={t('configureExecEnv.newEnvironment')}
+      primaryTestId="new-execenv"
+      onPrimary={startCreate}
+      formOpen={formOpen}
+      formContent={(
+        <Stack direction="vertical" gap="condensed">
+          <FormControl>
+            <FormControl.Label>{t('configureExecEnv.label')}</FormControl.Label>
+            <TextInput value={label} onChange={(e) => setLabel(e.target.value)} block />
+          </FormControl>
+          <FormControl>
+            <FormControl.Label>{t('configureExecEnv.shell')}</FormControl.Label>
+            <Select value={shell} onChange={(e) => setShell(e.target.value as Shell)}>
+              {Object.values(Shell).filter((s) => s !== Shell.$zero).map((s) => (
+                <Select.Option key={s} value={s}>{SHELL_LABEL[s] ?? s}</Select.Option>
+              ))}
+            </Select>
+          </FormControl>
+          <FormControl>
+            <FormControl.Label>{t('configureExecEnv.profileMode')}</FormControl.Label>
+            {/* data-testid on an inner span: FormControl.Caption doesn't
+                forward arbitrary props to its rendered element (checked
+                the hard way -- an e2e getByTestId found nothing). */}
+            <FormControl.Caption><span data-testid="execenv-profile-caption">{PROFILE_CAPTION[profileMode] ?? ''}</span></FormControl.Caption>
+            <Select value={profileMode} onChange={(e) => setProfileMode(e.target.value as ProfileMode)}>
+              {Object.values(ProfileMode).filter((p) => p !== ProfileMode.$zero).map((p) => (
+                <Select.Option key={p} value={p}>{PROFILE_LABEL[p] ?? p}</Select.Option>
+              ))}
+            </Select>
+          </FormControl>
+          <FormControl>
+            <FormControl.Label>{t('configureExecEnv.workingDirectory')}</FormControl.Label>
+            <FormControl.Caption>{t('configureExecEnv.workingDirectoryCaption', { sentinel: TEMP_DIR_SENTINEL })}</FormControl.Caption>
+            <TextInput value={dir} onChange={(e) => setDir(e.target.value)} block />
+          </FormControl>
+          <Text size="small" weight="semibold">{t('configureExecEnv.environmentVariables')}</Text>
+          <FormControl.Caption>{t('configureExecEnv.environmentVariablesCaption')}</FormControl.Caption>
+          {envRows.map((row, i) => (
+            <Stack key={i} direction="horizontal" gap="condensed" align="center">
+              <TextInput
+                placeholder={t('configureExecEnv.pathPlaceholder')}
+                aria-label={t('configureExecEnv.variableNameAriaLabel', { n: i + 1 })}
+                data-testid="execenv-env-key"
+                value={row.key}
+                onChange={(e) => updateEnvRow(i, { key: e.target.value })}
+                style={{ width: '30%' }}
+              />
+              <TextInput
+                placeholder={t('configureExecEnv.pathValuePlaceholder')}
+                aria-label={t('configureExecEnv.variableValueAriaLabel', { n: i + 1 })}
+                data-testid="execenv-env-value"
+                value={row.value}
+                onChange={(e) => updateEnvRow(i, { value: e.target.value })}
+                block
+              />
+              <IconButton
+                icon={TrashIcon}
+                aria-label={t('configureExecEnv.removeVariableAriaLabel')}
                 size="small"
                 variant="invisible"
-                loading={capturing}
-                data-testid="capture-shell-path"
-                onClick={captureShellPath}
-              >
-                {t('configureExecEnv.capturePathFromShell')}
-              </Button>
+                onClick={() => setEnvRows((prev) => prev.filter((_, idx) => idx !== i))}
+              />
             </Stack>
-            {error && <Text as="p" size="small" className={styles.error}>{error}</Text>}
-            <Stack direction="horizontal" gap="condensed">
-              <Button variant="primary" size="small" onClick={save}>{t('configureExecEnv.saveEnvironment')}</Button>
-              <Button size="small" variant="invisible" onClick={() => setFormOpen(false)}>{t('entityRefField.cancel')}</Button>
-            </Stack>
+          ))}
+          <Stack direction="horizontal" gap="condensed">
+            <Button size="small" variant="invisible" onClick={() => setEnvRows((prev) => [...prev, { key: '', value: '' }])}>
+              {t('configureExecEnv.addVariable')}
+            </Button>
+            {/* ADR-0026's Amendment, "Capture from my shell": snapshot the
+                real login-shell PATH into the stored, editable env --
+                determinism through materialization (clean mode AND your
+                Homebrew/mise paths, written down, never re-derived). */}
+            <Button
+              size="small"
+              variant="invisible"
+              loading={capturing}
+              data-testid="capture-shell-path"
+              onClick={captureShellPath}
+            >
+              {t('configureExecEnv.capturePathFromShell')}
+            </Button>
           </Stack>
-        </div>
-        </PageContainer>
+          {error && <Text as="p" size="small" className={styles.error}>{error}</Text>}
+          <Stack direction="horizontal" gap="condensed">
+            <Button variant="primary" size="small" onClick={save}>{t('configureExecEnv.saveEnvironment')}</Button>
+            <Button size="small" variant="invisible" onClick={() => setFormOpen(false)}>{t('entityRefField.cancel')}</Button>
+          </Stack>
+        </Stack>
       )}
-
-      {envs === null && <Text as="p" className={styles.muted}>{t('loading')}</Text>}
-      {envs !== null && viewMode === 'table' && envs.length > 0 && (
+      loading={envs === null}
+      showTable={envs !== null && viewMode === 'table' && envs.length > 0}
+      tableContent={(
         <ResizableTableContainer storageKey="mill-cols-execenvs">
           <DataTable
             aria-labelledby="execenvs-heading"
@@ -406,7 +359,7 @@ export function ConfigureExecEnv() {
                 renderCell: (e) => (
                   <Stack direction="horizontal" gap="condensed">
                     <IconButton icon={PencilIcon} aria-label={t('configureExecEnv.editAriaLabel', { label: e.Label })} size="small" variant="invisible" onClick={() => startEdit(e)} />
-                    <IconButton icon={DownloadIcon} aria-label={t('configureExecEnv.exportAriaLabel', { label: e.Label })} size="small" variant="invisible" onClick={() => exportEnv(e.ID, e.Label)} />
+                    <IconButton icon={DownloadIcon} aria-label={t('configureExecEnv.exportAriaLabel', { label: e.Label })} size="small" variant="invisible" onClick={() => importExport.exportItem(e.ID, e.Label)} />
                     <IconButton icon={TrashIcon} aria-label={t('configureExecEnv.deleteAriaLabel', { label: e.Label })} size="small" variant="invisible" onClick={() => requestDelete(e)} />
                   </Stack>
                 ),
@@ -415,7 +368,8 @@ export function ConfigureExecEnv() {
           />
         </ResizableTableContainer>
       )}
-      {envs !== null && viewMode === 'rows' && !(formOpen && envs.length === 0) && (
+      showRows={envs !== null && viewMode === 'rows' && !(formOpen && envs.length === 0)}
+      rowsContent={(
         <InventoryList
           items={envItems}
           searchPlaceholder={t('configureExecEnv.searchPlaceholder')}
@@ -427,8 +381,8 @@ export function ConfigureExecEnv() {
           }}
         />
       )}
-      {confirmDialog}
-      {importConfirm.dialog}
-    </PageContainer>
+      confirmDialog={confirmDialog}
+      importConfirmDialog={importExport.importConfirm.dialog}
+    />
   )
 }
