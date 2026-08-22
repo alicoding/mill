@@ -70,6 +70,24 @@ async function dragBetween(page: Page, from: { x: number; y: number }, to: { x: 
   await page.mouse.up()
 }
 
+// Same raw pointer sequence as dragBetween, but pauses over the
+// destination (mouse still down) so a caller can assert mid-drag state
+// -- goal 0161 slice 1's own regression coverage: the release-target
+// highlight reaches the frame through a context channel now, decoupled
+// from the board's node-array rebuild, and this proves that channel
+// still delivers the same highlight at the same moment.
+async function dragBetweenAssertingMidway(page: Page, from: { x: number; y: number }, to: { x: number; y: number }, onArrived: () => Promise<void>): Promise<void> {
+  const steps = 12
+  await page.mouse.move(from.x, from.y)
+  await page.mouse.down()
+  await page.waitForTimeout(50)
+  for (let i = 1; i <= steps; i++) {
+    await page.mouse.move(from.x + ((to.x - from.x) * i) / steps, from.y + ((to.y - from.y) * i) / steps)
+  }
+  await onArrived()
+  await page.mouse.up()
+}
+
 // A fractional point within the board's own bounding box -- every
 // placement/drag point below is expressed this way so the whole test
 // scales with whatever viewport Playwright actually renders, rather
@@ -183,20 +201,26 @@ test('atlas containment: area drawing, marker-box grouping, drag filing, dissolv
     await waitForViewportStable(board)
     await expect(groupArea.getByTestId('atlas-group-header')).toContainText('3 cards')
 
-    // --- Drag filing IN: a loner card dragged onto the frame files
-    // into it (header count 3 -> 4). ---
+    // --- Drag filing IN: a loner card dragged onto the frame highlights
+    // it live (goal 0161 slice 1: the highlight now reaches the frame
+    // through AtlasDragHighlightContext, not a board-wide node rebuild)
+    // and files into it on drop (header count 3 -> 4). ---
     await armAndPlaceTopicCard(page, board, popover, 0.90, 0.05, 'ZzC2eLoner')
     const lonerBox = await noteCard(page, 'ZzC2eLoner').boundingBox()
     const groupBox2 = await groupArea.boundingBox()
     if (!lonerBox || !groupBox2) throw new Error('missing bounding box before drag-in')
-    await dragBetween(
+    await dragBetweenAssertingMidway(
       page,
       { x: lonerBox.x + lonerBox.width / 2, y: lonerBox.y + lonerBox.height / 2 },
       { x: groupBox2.x + groupBox2.width / 2, y: groupBox2.y + groupBox2.height / 2 },
+      async () => {
+        await expect(groupArea).toHaveAttribute('data-drag-highlight', 'true')
+      },
     )
     // Same nested-preview caveat as the marker-box members above --
     // the header count is the real proof of filing.
     await expect(groupArea.getByTestId('atlas-group-header')).toContainText('4 cards')
+    await expect(groupArea).toHaveAttribute('data-drag-highlight', 'false')
 
     // --- Drag OUT from the preview (goal 0141): WITHOUT drilling in,
     // grab the child's preview tile inside the frame and drop it on
