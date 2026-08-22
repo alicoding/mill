@@ -8,6 +8,7 @@ import (
 	"github.com/alicoding/mill/internal/domain/aiprovider"
 	"github.com/alicoding/mill/internal/domain/composition"
 	"github.com/alicoding/mill/internal/domain/seedorigin"
+	"github.com/alicoding/mill/internal/domain/typedfield"
 	"github.com/alicoding/mill/internal/services/dataevent"
 	"github.com/alicoding/mill/internal/services/entitystore"
 	"github.com/alicoding/mill/internal/services/seeding"
@@ -101,6 +102,15 @@ func (c *ConfigureService) resolveAIProvider(id string) (composition.ResolvedAIP
 }
 
 // --- AI Providers ---
+
+// AIProviderFields exposes AIProvider's declared shape (docs/adr/0029)
+// to the frontend's generic entity-field renderer
+// (frontend/src/configure/EntityConfigFields.tsx) -- a static
+// descriptor, not per-instance data, mirroring how ListNodeTypes
+// already exposes each NodeType's own ConfigFields.
+func (c *ConfigureService) AIProviderFields() []typedfield.Field {
+	return aiprovider.Fields
+}
 
 func (c *ConfigureService) AIProviders() []aiprovider.AIProvider {
 	c.mu.Lock()

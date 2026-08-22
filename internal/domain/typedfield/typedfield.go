@@ -216,6 +216,31 @@ func ValidateValue(f Field, raw string) error {
 	return nil
 }
 
+// ValidateRequired checks, in fields' declared order, every field
+// whose Key has an entry in messages: if that field is Required and
+// values[Key] is blank, returns messages[Key] verbatim. A Required
+// field with no messages entry is silently skipped -- Field carries
+// no per-field custom message facet (ADR-0029's frozen shape), so a
+// field whose missing-value rule needs its own wording, or is only
+// conditionally required, is left to the caller's own follow-up
+// check (see internal/domain/aiprovider.Validate's Kind/BaseURL
+// checks) rather than misfiring a generic message here. This is the
+// mechanical half every Configure entity declaring its shape as
+// []Field shares; entity-specific conditional/cross-field rules stay
+// local, the same "Stays out" boundary ADR-0029 already draws.
+func ValidateRequired(fields []Field, values map[string]string, messages map[string]string) error {
+	for _, f := range fields {
+		msg, ok := messages[f.Key]
+		if !ok || !f.Required {
+			continue
+		}
+		if strings.TrimSpace(values[f.Key]) == "" {
+			return fmt.Errorf("%s", msg)
+		}
+	}
+	return nil
+}
+
 // FieldTombstone records one schema field a Configure entity has
 // deleted (docs/adr/0040 decision 3): the Key stays reserved after
 // deletion, so ValidateFieldEvolution can reject the same Key

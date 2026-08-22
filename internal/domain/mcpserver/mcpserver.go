@@ -10,11 +10,10 @@
 package mcpserver
 
 import (
-	"fmt"
-	"strings"
 	"time"
 
 	"github.com/alicoding/mill/internal/domain/seedorigin"
+	"github.com/alicoding/mill/internal/domain/typedfield"
 )
 
 // MCPServer is one reusable, named MCP server connection -- Command is
@@ -42,15 +41,28 @@ type MCPServer struct {
 	Seed seedorigin.Origin
 }
 
+// Fields declares MCPServer's scalar editable shape (docs/adr/0029) --
+// Args is deliberately excluded: it's a repeated argument list (a
+// multi-row add/remove editor), not a single "name + typed value"
+// wire string, so it stays its own dedicated editor
+// (ConfigureMCPServers.tsx) outside the generic entity-field renderer
+// -- the same carve-out NodeConfigFields.tsx already applies to
+// non-scalar fields like mcp-tool-call's own argumentsJSON.
+var Fields = []typedfield.Field{
+	{Key: "label", Label: "Label", Type: typedfield.TypeText, Required: true},
+	{Key: "command", Label: "Command", Type: typedfield.TypeText, Required: true,
+		Description: "Run over stdio, e.g. a locally installed MCP server binary."},
+}
+
+var requiredMessages = map[string]string{
+	"label":   "an MCP server needs a label",
+	"command": "an MCP server needs a command",
+}
+
 // Validate checks an MCPServer is well-formed before it's persisted --
 // same "never store an unconfigured/invalid value" discipline
 // internal/domain/connector's own Validate already applies.
 func Validate(s MCPServer) error {
-	if strings.TrimSpace(s.Label) == "" {
-		return fmt.Errorf("an MCP server needs a label")
-	}
-	if strings.TrimSpace(s.Command) == "" {
-		return fmt.Errorf("an MCP server needs a command")
-	}
-	return nil
+	values := map[string]string{"label": s.Label, "command": s.Command}
+	return typedfield.ValidateRequired(Fields, values, requiredMessages)
 }
