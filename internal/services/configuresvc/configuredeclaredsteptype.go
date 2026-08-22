@@ -1,15 +1,37 @@
 package configuresvc
 
 import (
-	"encoding/json"
-	"fmt"
 	"time"
 
 	"github.com/alicoding/mill/internal/domain/composition"
 	"github.com/alicoding/mill/internal/domain/declaredsteptype"
+	"github.com/alicoding/mill/internal/domain/seedorigin"
 	"github.com/alicoding/mill/internal/services/dataevent"
+	"github.com/alicoding/mill/internal/services/entitystore"
 	"github.com/alicoding/mill/internal/services/seeding"
 )
+
+// declaredStepTypeDescriptor is DeclaredStepType's entitystore.
+// Descriptor (goal 0165): the small per-kind shape Create/Update/
+// Delete/reconcile all key off, replacing what used to be ~8
+// hand-copied methods (this kind has no Reset/Restorable/Restore
+// RPCs, unlike the other six Configure entities).
+var declaredStepTypeDescriptor = entitystore.Descriptor[declaredsteptype.DeclaredStepType]{
+	Label:     "declared step type",
+	GetID:     func(d declaredsteptype.DeclaredStepType) string { return d.ID },
+	IsBuiltIn: func(d declaredsteptype.DeclaredStepType) bool { return d.BuiltIn },
+	GetSeed:   func(d declaredsteptype.DeclaredStepType) seedorigin.Origin { return d.Seed },
+	SetSeed: func(d declaredsteptype.DeclaredStepType, o seedorigin.Origin) declaredsteptype.DeclaredStepType {
+		d.Seed = o
+		return d
+	},
+	StampNew: func(d declaredsteptype.DeclaredStepType, now time.Time) declaredsteptype.DeclaredStepType {
+		d.CreatedAt, d.UpdatedAt = now, now
+		return d
+	},
+	Upgrade: upgradeDeclaredStepTypeToGolden,
+	BuiltIn: declaredsteptype.BuiltIn,
+}
 
 // declaredStepTypesKey mirrors decisionsKey/execEnvsKey's shape
 // (configuredecision.go/configureexecenv.go): one atomic JSON blob,
@@ -94,176 +116,65 @@ func (c *ConfigureService) createDeclaredStepTypeWithID(id, label, description s
 		return declaredsteptype.DeclaredStepType{}, err
 	}
 
-	c.mu.Lock()
-	c.declaredStepTypes = append(c.declaredStepTypes, d)
-	c.mu.Unlock()
-
-	if err := c.persistDeclaredStepTypes(); err != nil {
-		c.mu.Lock()
-		for i, existing := range c.declaredStepTypes {
-			if existing.ID == d.ID {
-				c.declaredStepTypes = append(c.declaredStepTypes[:i], c.declaredStepTypes[i+1:]...)
-				break
-			}
-		}
-		c.mu.Unlock()
-		return declaredsteptype.DeclaredStepType{}, fmt.Errorf("save declared step type: %w", err)
+	if err := entitystore.Insert(&c.mu, &c.declaredStepTypes, c.persistDeclaredStepTypes, declaredStepTypeDescriptor, d); err != nil {
+		return declaredsteptype.DeclaredStepType{}, err
 	}
 	dataevent.Emit("steptype", d.ID)
 	return d, nil
 }
 
 func (c *ConfigureService) UpdateDeclaredStepType(id, label, description string, paletteGroup declaredsteptype.PaletteGroup, engine declaredsteptype.Engine, requestID, mcpServerID, toolName, workflowID string, pinnedConfig map[string]string, hiddenFields []string) (declaredsteptype.DeclaredStepType, error) {
-	c.mu.Lock()
-	idx := -1
-	for i, existing := range c.declaredStepTypes {
-		if existing.ID == id {
-			idx = i
-			break
+	updated, err := entitystore.Update(&c.mu, &c.declaredStepTypes, c.persistDeclaredStepTypes, declaredStepTypeDescriptor, id, func(existing declaredsteptype.DeclaredStepType) (declaredsteptype.DeclaredStepType, error) {
+		d := declaredsteptype.DeclaredStepType{
+			ID: id, Label: label, Description: description, PaletteGroup: paletteGroup,
+			Engine: engine, RequestID: requestID, MCPServerID: mcpServerID, ToolName: toolName, WorkflowID: workflowID,
+			PinnedConfig: pinnedConfig, HiddenFields: hiddenFields,
+			BuiltIn: existing.BuiltIn,
+			// CreatedAt is preserved from the stored entity, never trusted
+			// from the wire; UpdatedAt always advances on a real update.
+			CreatedAt: existing.CreatedAt,
+			UpdatedAt: time.Now(),
+			// Modified latch (docs/goals/0037 item 2), same reasoning as
+			// decision/execenv's own UpdateXxx.
+			Seed: existing.Seed.Touch(),
 		}
-	}
-	if idx == -1 {
-		c.mu.Unlock()
-		return declaredsteptype.DeclaredStepType{}, fmt.Errorf("no declared step type with id %q", id)
-	}
-	existing := c.declaredStepTypes[idx]
-	c.mu.Unlock()
-
-	d := declaredsteptype.DeclaredStepType{
-		ID: id, Label: label, Description: description, PaletteGroup: paletteGroup,
-		Engine: engine, RequestID: requestID, MCPServerID: mcpServerID, ToolName: toolName, WorkflowID: workflowID,
-		PinnedConfig: pinnedConfig, HiddenFields: hiddenFields,
-		BuiltIn: existing.BuiltIn,
-		// CreatedAt is preserved from the stored entity, never trusted
-		// from the wire; UpdatedAt always advances on a real update.
-		CreatedAt: existing.CreatedAt,
-		UpdatedAt: time.Now(),
-		// Modified latch (docs/goals/0037 item 2), same reasoning as
-		// decision/execenv's own UpdateXxx.
-		Seed: existing.Seed.Touch(),
-	}
-	if err := declaredsteptype.Validate(d); err != nil {
+		if err := declaredsteptype.Validate(d); err != nil {
+			return declaredsteptype.DeclaredStepType{}, err
+		}
+		return d, nil
+	})
+	if err != nil {
 		return declaredsteptype.DeclaredStepType{}, err
 	}
-
-	c.mu.Lock()
-	idx = -1
-	for i, e := range c.declaredStepTypes {
-		if e.ID == id {
-			idx = i
-			break
-		}
-	}
-	if idx == -1 {
-		c.mu.Unlock()
-		return declaredsteptype.DeclaredStepType{}, fmt.Errorf("no declared step type with id %q", id)
-	}
-	previous := c.declaredStepTypes[idx]
-	c.declaredStepTypes[idx] = d
-	c.mu.Unlock()
-
-	if err := c.persistDeclaredStepTypes(); err != nil {
-		c.mu.Lock()
-		for i, existing := range c.declaredStepTypes {
-			if existing.ID == id {
-				c.declaredStepTypes[i] = previous
-				break
-			}
-		}
-		c.mu.Unlock()
-		return declaredsteptype.DeclaredStepType{}, fmt.Errorf("save declared step type: %w", err)
-	}
-	dataevent.Emit("steptype", d.ID)
-	return d, nil
+	dataevent.Emit("steptype", updated.ID)
+	return updated, nil
 }
 
 func (c *ConfigureService) DeleteDeclaredStepType(id string) error {
-	c.mu.Lock()
-	idx := -1
-	for i, d := range c.declaredStepTypes {
-		if d.ID == id {
-			idx = i
-			break
-		}
-	}
-	if idx == -1 {
-		c.mu.Unlock()
-		return fmt.Errorf("no declared step type with id %q", id)
-	}
-	removed := c.declaredStepTypes[idx]
-	wasBuiltIn := removed.BuiltIn
-	c.declaredStepTypes = append(c.declaredStepTypes[:idx], c.declaredStepTypes[idx+1:]...)
-	c.mu.Unlock()
-
 	// A workflow referencing this id keeps its (now-dangling) NodeTypeID
 	// -- the same dangling-RefKind behavior every other Configure entity
 	// delete already has; real reference-integrity handling is goal
-	// 0046's own scope, not duplicated here.
+	// 0046's own scope, not duplicated here (no refIntegrityError call,
+	// unlike every sibling Delete*).
 	//
 	// A deleted built-in gets a tombstone so top-up seeding never
-	// resurrects it (reconcileBuiltInDeclaredStepTypes,
-	// configuredeclaredsteptype_seed.go) -- same discipline every other
-	// Delete* in this package applies. Removal and tombstone must
-	// succeed together (docs/goals/0025 item 2).
-	if wasBuiltIn {
-		if err := seeding.RecordTombstone(c.store, id); err != nil {
-			c.mu.Lock()
-			c.declaredStepTypes = insertDeclaredStepTypeAt(c.declaredStepTypes, idx, removed)
-			c.mu.Unlock()
-			return fmt.Errorf("tombstone deleted declared step type %q: %w", id, err)
-		}
-	}
-	if err := c.persistDeclaredStepTypes(); err != nil {
-		c.mu.Lock()
-		c.declaredStepTypes = insertDeclaredStepTypeAt(c.declaredStepTypes, idx, removed)
-		c.mu.Unlock()
-		return fmt.Errorf("save declared step type deletion: %w", err)
+	// resurrects it -- same discipline every other Delete* in this
+	// package applies. Removal and tombstone must succeed together
+	// (docs/goals/0025 item 2).
+	recordTombstone := func(id string) error { return seeding.RecordTombstone(c.store, id) }
+	if err := entitystore.DeleteWithTombstone(&c.mu, &c.declaredStepTypes, c.persistDeclaredStepTypes, recordTombstone, declaredStepTypeDescriptor, id); err != nil {
+		return err
 	}
 	dataevent.Emit("steptype", id)
 	return nil
 }
 
-// insertDeclaredStepTypeAt reinserts d at idx (clamped to the current
-// length) -- used to undo DeleteDeclaredStepType's removal when the
-// tombstone or persist step that must accompany it fails.
-func insertDeclaredStepTypeAt(types []declaredsteptype.DeclaredStepType, idx int, d declaredsteptype.DeclaredStepType) []declaredsteptype.DeclaredStepType {
-	if idx < 0 || idx > len(types) {
-		idx = len(types)
-	}
-	types = append(types, declaredsteptype.DeclaredStepType{})
-	copy(types[idx+1:], types[idx:])
-	types[idx] = d
-	return types
-}
-
 // --- persistence ---
 
 func (c *ConfigureService) persistDeclaredStepTypes() error {
-	c.mu.Lock()
-	types := make([]declaredsteptype.DeclaredStepType, len(c.declaredStepTypes))
-	copy(types, c.declaredStepTypes)
-	c.mu.Unlock()
-
-	data, err := json.Marshal(types)
-	if err != nil {
-		return fmt.Errorf("marshal declared step types: %w", err)
-	}
-	if err := c.store.Set(declaredStepTypesKey, string(data)); err != nil {
-		return fmt.Errorf("persist declared step types: %w", err)
-	}
-	return nil
+	return entitystore.Persist(&c.mu, &c.declaredStepTypes, c.store, declaredStepTypesKey, declaredStepTypeDescriptor)
 }
 
 func (c *ConfigureService) restoreDeclaredStepTypes() {
-	raw, ok := c.store.Get(declaredStepTypesKey).(string)
-	if !ok || raw == "" {
-		return
-	}
-	var types []declaredsteptype.DeclaredStepType
-	if err := json.Unmarshal([]byte(raw), &types); err != nil {
-		return
-	}
-	c.mu.Lock()
-	c.declaredStepTypes = types
-	c.mu.Unlock()
+	entitystore.Load(&c.mu, &c.declaredStepTypes, c.store, declaredStepTypesKey)
 }
