@@ -10,7 +10,14 @@ import (
 	"github.com/alicoding/mill/internal/adapters/idletime"
 	"github.com/alicoding/mill/internal/adapters/notify"
 	"github.com/alicoding/mill/internal/adapters/windowing"
+	"github.com/alicoding/mill/internal/domain/notification"
 )
+
+// idleTimeFn is idletime.Seconds's own swappable seam, same shape as
+// dockBounceFn below -- a package var so a test can pin a specific
+// idle reading (goal 0171's "focused-but-idle => notify" regression
+// test) instead of depending on this machine's real HID idle counter.
+var idleTimeFn = idletime.Seconds
 
 // The away-user attention layer (docs/adr/0032 §3, sharpened by
 // docs/goals/0023-attention-escalation.md item 2): the frontend already
@@ -71,19 +78,24 @@ func (s *SettingsService) SetAttentionIdleThreshold(seconds int) error {
 	return nil
 }
 
-// isAway is the ONE presence-gate decision point NotifyPendingApproval
-// uses for both the OS notification and the floating approval prompt
-// (docs/goals/0023 items 1+2): present = focused AND recently-active
-// (idle below the configured threshold); away = anything else. An
-// idletime read error (server mode, or a real desktop failing to read
-// the counter) FAILS TOWARD AWAY -- §8's fail-safe posture: a truly-
-// away user missing a decision is the failure that matters, not a
-// present user seeing one extra notification.
-func (s *SettingsService) isAway(focused bool) bool {
+// IsAway is the ONE presence-gate decision point in the tree (docs/
+// goals/0171): present = focused AND recently-active (idle below the
+// configured threshold); away = anything else. Exported so every
+// notification channel (settingsservice_notifychannels.go) and the
+// browser tab (via this same method, bound as an RPC) share this one
+// definition instead of each re-deriving their own -- the frontend's
+// own focus-only predicate (goal 0132 slice A's shouldNotifyBrowserTab)
+// existed only because there was no shared gate to call into; it is
+// gone now that there is one. An idletime read error (server mode, or
+// a real desktop failing to read the counter) FAILS TOWARD AWAY -- §8's
+// fail-safe posture: a truly-away user missing a decision is the
+// failure that matters, not a present user seeing one extra
+// notification.
+func (s *SettingsService) IsAway(focused bool) bool {
 	if !focused {
 		return true
 	}
-	idle, err := idletime.Seconds()
+	idle, err := idleTimeFn()
 	if err != nil {
 		return true
 	}
@@ -123,50 +135,52 @@ var dockBounceFn = func(w *windowing.Window) {
 // contains a colon.
 func notificationID(kind, id string) string { return kind + ":" + id }
 
-// NotifyPendingApproval sends an actionable OS notification AND shows
-// the floating approval prompt (docs/goals/0023 item 1) for a new
-// pending item (docs/adr/0032 §3), but ONLY when isAway(focused) says
-// the user is away -- the single decision point both surfaces share, so
-// "notify" and "show the floating prompt" can never disagree about
-// presence. focused is the caller's own document.hasFocus() reading
-// (App.tsx) -- only the browser context knows that; everything else
-// about presence (idle time, the threshold) is resolved in isAway.
+// approvalNotificationTitle is every approval channel's fixed title --
+// pulled out to a const so the desktop banner (delivered through
+// desktopBannerChannel) and this method agree on it by construction.
+const approvalNotificationTitle = "Mill: approval needed"
+
+// NotifyPendingApproval publishes a durable notification for a new
+// pending item (docs/goals/0171) and shows the floating approval
+// prompt, but ONLY when IsAway(focused) says the user is away -- the
+// single decision point every surface shares, so "notify" and "show
+// the floating prompt" can never disagree about presence. focused is
+// the caller's own document.hasFocus() reading (App.tsx) -- only the
+// browser context knows that; everything else about presence (idle
+// time, the threshold) is resolved in IsAway.
 //
-// kind "mcp-write" gets Approve/Deny action buttons resolving directly
-// via ResolveMCPWrite; any other kind (a guardrail/human-review park)
-// gets a plain notification whose default click shows+focuses the main
-// window instead -- typed input may be required to resolve those, so
-// blind approval from a notification isn't offered.
+// The desktop banner and dock bounce below now run through Publish's
+// channel registry (settingsservice_notifychannels.go) rather than
+// calling notify.Send*/dockBounceFn directly -- same observable calls,
+// same away verdict, just expressed as registered channels so a future
+// channel is one new struct, not a new branch here. kind "mcp-write"
+// still gets Approve/Deny action buttons resolving via ResolveMCPWrite
+// (desktopBannerChannel.Deliver's own branch); any other kind gets a
+// plain notification whose default click shows+focuses the main window
+// -- typed input may be required to resolve those, so blind approval
+// from a notification isn't offered.
 func (s *SettingsService) NotifyPendingApproval(id, description, kind string, focused bool) error {
-	if !s.isAway(focused) {
+	if s.notificationSvc != nil {
+		evt := notification.Event{
+			Type: kind, Title: approvalNotificationTitle, Body: description,
+			DedupeKey: id, SourceRef: id, Focused: focused,
+		}
+		if _, err := s.notificationSvc.Publish(evt); err != nil {
+			slog.Error("publish pending-approval notification", "id", id, "error", err)
+		}
+	}
+	if !s.IsAway(focused) {
 		// Present: the in-app banner/Review row/canvas already show
 		// this live -- notifying too would be double-noise (§1's
 		// not-harder-than-baseline lock).
 		return nil
 	}
-	// One-shot dock bounce, same kernel attention-layer class as the
-	// dock badge (docs/adr/0032 §3, ADR-0035's kernel/composition
-	// boundary): an away user gets a single informational bounce per
-	// newly-parked item, alongside the notification and the floating
-	// prompt -- never a repeating/critical request.
-	s.mu.Lock()
-	w := s.window
-	s.mu.Unlock()
-	dockBounceFn(w)
-
-	const title = "Mill: approval needed"
-	notifID := notificationID(kind, id)
-	var sendErr error
-	if kind == "mcp-write" {
-		sendErr = notify.SendActionable(notifID, title, description)
-	} else {
-		sendErr = notify.SendPlain(notifID, title, description)
-	}
 	// Both fire on the same away verdict (docs/goals/0023 item 1): the
-	// notification for notification-center persistence, the floating
-	// prompt for on-screen visibility -- neither replaces the other.
+	// notification for notification-center persistence (delivered
+	// above via Publish's channel fan-out), the floating prompt for
+	// on-screen visibility -- neither replaces the other.
 	s.showApprovalPrompt()
-	return sendErr
+	return nil
 }
 
 // SetupAwayAttention registers the notification category and wires the

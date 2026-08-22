@@ -18,6 +18,7 @@ import (
 	"github.com/alicoding/mill/internal/adapters/settings"
 	"github.com/alicoding/mill/internal/adapters/windowing"
 	"github.com/alicoding/mill/internal/services/mcpsvc"
+	"github.com/alicoding/mill/internal/services/notificationsvc"
 	"github.com/alicoding/mill/internal/services/triggersvc"
 	"github.com/wailsapp/wails/v3/pkg/updater"
 )
@@ -109,6 +110,13 @@ type SettingsService struct {
 	resignWarning string
 	isolatedData  bool
 	mcpService    *mcpsvc.MillMCPService
+	// notificationSvc is the notification spine's Publish entry point
+	// (docs/goals/0171), late-bound the same way mcpService is (nil
+	// until SetNotificationService runs) since NotificationService and
+	// SettingsService are constructed independently in main.go and
+	// SettingsService's own channels (settingsservice_notifychannels.go)
+	// register into it afterward.
+	notificationSvc *notificationsvc.NotificationService
 
 	// keymap holds command-keybinding OVERRIDES only (goal 0016 --
 	// docs/goals/0016-keymap-system.md), keyed by command id
@@ -405,6 +413,19 @@ func (s *SettingsService) SetMCPWriteApprovalRequired(required bool) error {
 //
 //wails:ignore
 func (s *SettingsService) SetMCPService(m *mcpsvc.MillMCPService) { s.mcpService = m }
+
+// SetNotificationService late-binds the notification spine's Publish
+// entry point (docs/goals/0171) -- same late-bound-setter shape as
+// SetMCPService above (NotificationService is constructed independently
+// in main.go). NotifyPendingApproval no-ops the Publish call when this
+// is still nil (every test that constructs SettingsService directly
+// without wiring it, same "nil sink means dropped" posture
+// SetSystemEventSink's own doc comment already documents elsewhere).
+//
+//wails:ignore
+func (s *SettingsService) SetNotificationService(n *notificationsvc.NotificationService) {
+	s.notificationSvc = n
+}
 
 // PendingMCPWrites lists MCP writes currently awaiting a human
 // decision (millmcpservice_approval.go, docs/adr/0032).

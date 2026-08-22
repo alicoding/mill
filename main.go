@@ -28,6 +28,7 @@ import (
 	"github.com/alicoding/mill/internal/services/executionsvc"
 	"github.com/alicoding/mill/internal/services/guardrailsvc"
 	"github.com/alicoding/mill/internal/services/mcpsvc"
+	"github.com/alicoding/mill/internal/services/notificationsvc"
 	"github.com/alicoding/mill/internal/services/settingssvc"
 	"github.com/alicoding/mill/internal/services/triggersvc"
 	"github.com/alicoding/mill/internal/services/wiring"
@@ -120,6 +121,8 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	// docs/goals/0171-notification-spine.md: needs only settingsStore.
+	notificationService := notificationsvc.New(settingsStore)
 
 	compositionService := compositionsvc.NewCompositionService(settingsStore)
 	triggerService := triggersvc.NewTriggerService(compositionService, logger, settingsStore)
@@ -191,10 +194,9 @@ func main() {
 	// docs/adr/0010: a child-workflow node's real DBOS parent/child
 	// invocation, wired the same late-bound way for the same reason.
 	executionService.WireChildWorkflowRunner()
-	// docs/adr/0035: the trigger-system-event dispatch seam --
-	// ExecutionService (producer) never imports triggersvc (consumer);
-	// same late-bound-setter shape as every injected seam here.
-	executionService.SetSystemEventSink(triggerService.DispatchSystemEvent)
+	// docs/adr/0035's system-event dispatch seam, plus the notification
+	// spine's second consumer of it (docs/goals/0171-notification-spine.md).
+	wiring.WireSystemEventNotifications(executionService, triggerService, notificationService)
 	// goal 0052 slice 3: the version a run receipt's Build field stamps.
 	executionService.SetVersion(millVersion)
 
@@ -235,6 +237,7 @@ func main() {
 	remoteAuthService := wiring.WireRemoteAuth(settingsStore, logger) // docs/goals/0132-remote-access.md SLICE 1
 
 	settingsService := settingssvc.NewSettingsService(settingsStore, triggerService, settingsPath != defaultSettingsPath)
+	wiring.WireNotificationChannels(settingsService, notificationService) // docs/goals/0171-notification-spine.md
 	wiring.WireUpdateEvents(settingsService, triggerService)
 	settingsService.SetAppVersion(millUpdateVersion)
 	// The user's persisted channel opt-in wins over the build stamp --
@@ -309,6 +312,7 @@ func main() {
 			application.NewService(docssvc.New(userdocsFS)),
 			application.NewService(mcpAuditService),
 			application.NewService(remoteAuthService),
+			application.NewService(notificationService),
 		},
 		Assets: application.AssetOptions{
 			Handler:    application.AssetFileServerFS(assets),

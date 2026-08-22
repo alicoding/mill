@@ -16,12 +16,14 @@ import (
 	"github.com/alicoding/mill/internal/adapters/notify"
 	"github.com/alicoding/mill/internal/adapters/settings"
 	"github.com/alicoding/mill/internal/domain/composition"
+	"github.com/alicoding/mill/internal/domain/notification"
 	"github.com/alicoding/mill/internal/domain/typedfield"
 	"github.com/alicoding/mill/internal/services/atlassvc"
 	"github.com/alicoding/mill/internal/services/compositionsvc"
 	"github.com/alicoding/mill/internal/services/configuresvc"
 	"github.com/alicoding/mill/internal/services/executionsvc"
 	"github.com/alicoding/mill/internal/services/mcpauditsvc"
+	"github.com/alicoding/mill/internal/services/notificationsvc"
 	"github.com/alicoding/mill/internal/services/remoteauthsvc"
 	"github.com/alicoding/mill/internal/services/settingssvc"
 	"github.com/alicoding/mill/internal/services/triggersvc"
@@ -147,4 +149,65 @@ func WireRemoteAuth(store settings.Store, logger *slog.Logger) *remoteauthsvc.Re
 	svc := remoteauthsvc.New(store, logger)
 	svc.BootstrapPairingCode(buildinfo.Read().Server)
 	return svc
+}
+
+// WireNotificationChannels registers settingsService's three delivery
+// channels (desktop banner, dock bounce, browser tab -- docs/goals/
+// 0171-notification-spine.md) into notif, and late-binds notif back
+// into settingsService so NotifyPendingApproval can publish through
+// it. Pulled out of main.go for the same 500-line reason WireMCPAudit
+// above is.
+func WireNotificationChannels(settingsService *settingssvc.SettingsService, notif *notificationsvc.NotificationService) {
+	for _, ch := range settingsService.NotificationChannels() {
+		notif.RegisterChannel(ch)
+	}
+	settingsService.SetNotificationService(notif)
+}
+
+// WireSystemEventNotifications adds the notification spine (docs/goals/
+// 0171) as a SECOND consumer of the existing system-event sink,
+// alongside triggers.DispatchSystemEvent -- ExecutionService's producer
+// side (executionservice_systemevent.go) is untouched; this only
+// changes what main.go passes to SetSystemEventSink, from the trigger
+// dispatch alone to the trigger dispatch plus a durable-notification
+// publish. The two run-completed/run-failed/run-cancelled/
+// update-available kinds this closes the silent-loss gap for can fire
+// with no window open at all (a scheduled workflow finishing
+// unattended); decision-parked is deliberately excluded, since it
+// already publishes through NotifyPendingApproval
+// (settingsservice_attention.go) -- routing it through here too would
+// just be a second producer racing for the same DedupeKey.
+func WireSystemEventNotifications(exec *executionsvc.ExecutionService, triggers *triggersvc.TriggerService, notif *notificationsvc.NotificationService) {
+	exec.SetSystemEventSink(func(ev executionsvc.SystemEvent) {
+		triggers.DispatchSystemEvent(ev)
+		publishSystemEventNotification(notif, ev)
+	})
+}
+
+// publishSystemEventNotification maps one SystemEvent to the
+// notification spine's Event shape -- copy states what happened, never
+// the run's own payload (ux-writing.md: says what waits, not the data
+// being acted on).
+func publishSystemEventNotification(notif *notificationsvc.NotificationService, ev executionsvc.SystemEvent) {
+	var title, body string
+	switch ev.Event {
+	case executionsvc.SystemEventRunCompleted:
+		title, body = "Workflow finished", ev.WorkflowLabel+" finished running."
+	case executionsvc.SystemEventRunFailed:
+		title, body = "Workflow failed", ev.WorkflowLabel+" hit an error and stopped."
+	case executionsvc.SystemEventRunCancelled:
+		title, body = "Workflow cancelled", ev.WorkflowLabel+" was cancelled."
+	case executionsvc.SystemEventUpdateAvailable:
+		title, body = "Update available", "Version " + ev.Version + " is ready to install."
+	default:
+		return
+	}
+	evt := notification.Event{
+		Type: string(ev.Event), Title: title, Body: body,
+		DedupeKey: string(ev.Event) + ":" + ev.RunID + ev.Version,
+		SourceRef: ev.RunID,
+	}
+	if _, err := notif.Publish(evt); err != nil {
+		slog.Warn("publish system-event notification", "event", ev.Event, "error", err)
+	}
 }
