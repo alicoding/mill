@@ -46,8 +46,18 @@ that disconnects them immediately.
 
 If you already have a background Mill instance reachable from another
 device — for example, one kept running over Tailscale — it now asks
-for pairing the first time you reach it after upgrading. Pair it the
-same way, from that instance's own Settings.
+for pairing the first time you reach it after upgrading. A background
+instance has no window to show "Pair a device" in, so it writes a
+pairing code to its own log instead, on every startup, until a first
+device pairs. Find that code wherever you already check the instance's
+output, then pair from any device the same way — enter it within 5
+minutes. Once a device is paired, the instance stops writing codes to
+its log.
+
+Locked out of a background instance with no paired device left to pair
+from? Stop it, delete its saved device list, and start it again — it
+writes a fresh code to its log, same as an instance that's never been
+paired.
 
 ## Backups
 

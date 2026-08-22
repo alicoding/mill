@@ -32,9 +32,12 @@ type PairingCodeInfo struct {
 // demand, replacing any code still outstanding (only one is ever
 // live at a time). Held in memory only -- see devicesSettingsKey's
 // doc comment for why nothing here touches the settings store. The
-// one deliberate log line lets a headless/server-mode run (no
-// Settings UI to show the code in) still complete pairing from a
-// terminal.
+// deliberate log line lets a headless/server-mode run (no Settings UI
+// to show the code in) still complete pairing from a terminal, but
+// only while the instance is unpaired -- once any device is paired,
+// the code is never logged again, no matter which caller generated
+// it (docs/goals/0132-remote-access.md SLICE 1b: "never log the code
+// once paired").
 func (s *RemoteAuthService) GeneratePairingCode() (PairingCodeInfo, error) {
 	code, err := generateCode()
 	if err != nil {
@@ -44,10 +47,47 @@ func (s *RemoteAuthService) GeneratePairingCode() (PairingCodeInfo, error) {
 	s.mu.Lock()
 	expiresAt := time.Now().Add(pairingCodeTTL)
 	s.code = &pairingCode{code: code, expiresAt: expiresAt}
+	unpaired := len(s.devices) == 0
 	s.mu.Unlock()
 
-	s.logger.Info("remote access: pairing code generated", "code", code, "expires", expiresAt)
+	if unpaired {
+		s.logger.Info("remote access: pairing code generated", "code", code, "expires", expiresAt)
+	}
 	return PairingCodeInfo{Code: code, ExpiresAt: expiresAt}, nil
+}
+
+// BootstrapPairingCode closes the SLICE 1b bootstrap deadlock: a
+// server-mode instance bound to a non-loopback interface (Mill's own
+// documented remote-access posture) has no loopback path at all, so
+// every request -- including the one that would call
+// GeneratePairingCode over RPC -- is challenged by the very gate a
+// pairing code is needed to pass. Called once at process construction
+// (internal/services/wiring.WireRemoteAuth), it mints and logs a code
+// directly, in-process, bypassing the RPC path entirely, whenever the
+// instance is still unpaired -- refreshed on every restart until the
+// first device pairs. Reading that log line requires filesystem
+// access to the host, the same bootstrap-authorization shape
+// code-server's config-file password and Syncthing's first-run GUI
+// credentials use.
+//
+// serverMode is passed in rather than sensed here because desktop
+// builds already have a loopback-reachable Settings > Remote access
+// path regardless of pairing state -- auto-minting (and logging) a
+// code on every desktop launch would be log noise for a bootstrap
+// path desktop mode never needs.
+func (s *RemoteAuthService) BootstrapPairingCode(serverMode bool) {
+	if !serverMode {
+		return
+	}
+	s.mu.Lock()
+	unpaired := len(s.devices) == 0
+	s.mu.Unlock()
+	if !unpaired {
+		return
+	}
+	if _, err := s.GeneratePairingCode(); err != nil {
+		s.logger.Error("remote access: bootstrap pairing code", "error", err)
+	}
 }
 
 // generateCode draws pairingCodeLength characters from

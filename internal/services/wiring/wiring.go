@@ -11,6 +11,7 @@ import (
 	"log"
 	"log/slog"
 
+	"github.com/alicoding/mill/internal/adapters/buildinfo"
 	"github.com/alicoding/mill/internal/adapters/mcpclient"
 	"github.com/alicoding/mill/internal/adapters/notify"
 	"github.com/alicoding/mill/internal/adapters/settings"
@@ -138,7 +139,12 @@ func WireMCPAudit(dbPath string, logger *slog.Logger) *mcpauditsvc.MCPAuditServi
 // list (so Settings > Remote access can call it) and
 // application.Options.Assets.Middleware (so it gates every request the
 // AssetServer serves) -- pulled out here for the same 500-line reason
-// WireMCPAudit above is.
+// WireMCPAudit above is. BootstrapPairingCode runs immediately after
+// construction, gated on the build-tag-derived server flag: SLICE 1b's
+// fix for the bootstrap deadlock a non-loopback-bound server instance
+// hits otherwise (see that method's own doc comment).
 func WireRemoteAuth(store settings.Store, logger *slog.Logger) *remoteauthsvc.RemoteAuthService {
-	return remoteauthsvc.New(store, logger)
+	svc := remoteauthsvc.New(store, logger)
+	svc.BootstrapPairingCode(buildinfo.Read().Server)
+	return svc
 }
