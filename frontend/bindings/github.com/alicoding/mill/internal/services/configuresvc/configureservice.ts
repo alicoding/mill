@@ -58,6 +58,17 @@ import * as typedfield$0 from "../../domain/typedfield/models.js";
 // @ts-ignore: Unused imports
 import * as $models from "./models.js";
 
+/**
+ * AIProviderFields exposes AIProvider's declared shape (docs/adr/0029)
+ * to the frontend's generic entity-field renderer
+ * (frontend/src/configure/EntityConfigFields.tsx) -- a static
+ * descriptor, not per-instance data, mirroring how ListNodeTypes
+ * already exposes each NodeType's own ConfigFields.
+ */
+export function AIProviderFields(): $CancellablePromise<typedfield$0.Field[] | null> {
+    return $Call.ByID(2576237682);
+}
+
 export function AIProviders(): $CancellablePromise<aiprovider$0.AIProvider[] | null> {
     return $Call.ByID(3861562536);
 }
@@ -380,6 +391,16 @@ export function Lists(): $CancellablePromise<list$0.List[] | null> {
     return $Call.ByID(2461513153);
 }
 
+/**
+ * MCPServerFields exposes MCPServer's declared scalar shape
+ * (docs/adr/0029) to the frontend's generic entity-field renderer
+ * (frontend/src/configure/EntityConfigFields.tsx) -- see
+ * AIProviderFields' identical doc comment.
+ */
+export function MCPServerFields(): $CancellablePromise<typedfield$0.Field[] | null> {
+    return $Call.ByID(2171620574);
+}
+
 export function MCPServers(): $CancellablePromise<mcpserver$0.MCPServer[] | null> {
     return $Call.ByID(4060206780);
 }
@@ -409,21 +430,24 @@ export function PublishList(id: string): $CancellablePromise<list$0.List> {
 }
 
 /**
- * ResetAIProviderToSeed mirrors ResetMCPServerToSeed for AI providers.
+ * ResetAIProviderToSeed mirrors ResetMCPServerToSeed for AI providers,
+ * via aiProviderDescriptor (configureaiprovider.go, goal 0165).
  */
 export function ResetAIProviderToSeed(id: string): $CancellablePromise<aiprovider$0.AIProvider> {
     return $Call.ByID(2473880440, id);
 }
 
 /**
- * ResetDecisionToSeed mirrors ResetHTTPRequestToSeed for Decisions.
+ * ResetDecisionToSeed mirrors ResetHTTPRequestToSeed for Decisions,
+ * via decisionDescriptor (configuredecision.go, goal 0165).
  */
 export function ResetDecisionToSeed(id: string): $CancellablePromise<decision$0.Decision> {
     return $Call.ByID(3124176177, id);
 }
 
 /**
- * ResetExecEnvToSeed mirrors ResetHTTPRequestToSeed for ExecEnvs.
+ * ResetExecEnvToSeed mirrors ResetHTTPRequestToSeed for ExecEnvs, via
+ * execEnvDescriptor (configureexecenv.go, goal 0165).
  */
 export function ResetExecEnvToSeed(id: string): $CancellablePromise<execenv$0.ExecEnv> {
     return $Call.ByID(654567745, id);
@@ -434,6 +458,7 @@ export function ResetExecEnvToSeed(id: string): $CancellablePromise<execenv$0.Ex
  * golden's and clears the Modified latch (docs/goals/0037 item 4) --
  * an explicit, on-demand act available regardless of current
  * Modified/revision state, unlike reconcile's own conditional upgrade.
+ * Via httpRequestDescriptor (configureservice_builtin.go, goal 0165).
  */
 export function ResetHTTPRequestToSeed(id: string): $CancellablePromise<httprequest$0.HTTPRequest> {
     return $Call.ByID(3582620696, id);
@@ -441,14 +466,16 @@ export function ResetHTTPRequestToSeed(id: string): $CancellablePromise<httprequ
 
 /**
  * ResetListToSeed mirrors ResetHTTPRequestToSeed for Lists -- also
- * replaces Rows wholesale (upgradeListToGolden's own doc comment).
+ * replaces Rows wholesale (upgradeListToGolden's own doc comment), via
+ * listDescriptor (configurelist.go, goal 0165).
  */
 export function ResetListToSeed(id: string): $CancellablePromise<list$0.List> {
     return $Call.ByID(418099123, id);
 }
 
 /**
- * ResetMCPServerToSeed mirrors ResetHTTPRequestToSeed for MCP Servers.
+ * ResetMCPServerToSeed mirrors ResetHTTPRequestToSeed for MCP Servers,
+ * via mcpServerDescriptor (configuremcpserver.go, goal 0165).
  */
 export function ResetMCPServerToSeed(id: string): $CancellablePromise<mcpserver$0.MCPServer> {
     return $Call.ByID(1063578386, id);

@@ -8,6 +8,7 @@ import (
 	"github.com/alicoding/mill/internal/domain/composition"
 	"github.com/alicoding/mill/internal/domain/mcpserver"
 	"github.com/alicoding/mill/internal/domain/seedorigin"
+	"github.com/alicoding/mill/internal/domain/typedfield"
 	"github.com/alicoding/mill/internal/services/dataevent"
 	"github.com/alicoding/mill/internal/services/entitystore"
 	"github.com/alicoding/mill/internal/services/seeding"
@@ -64,6 +65,14 @@ func (c *ConfigureService) resolveMCPServer(id string) (composition.ResolvedMCPS
 }
 
 // --- MCP Servers ---
+
+// MCPServerFields exposes MCPServer's declared scalar shape
+// (docs/adr/0029) to the frontend's generic entity-field renderer
+// (frontend/src/configure/EntityConfigFields.tsx) -- see
+// AIProviderFields' identical doc comment.
+func (c *ConfigureService) MCPServerFields() []typedfield.Field {
+	return mcpserver.Fields
+}
 
 func (c *ConfigureService) MCPServers() []mcpserver.MCPServer {
 	c.mu.Lock()

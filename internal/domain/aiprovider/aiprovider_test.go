@@ -1,6 +1,23 @@
 package aiprovider
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/alicoding/mill/internal/domain/typedfield"
+)
+
+func TestFields_AreWellFormed(t *testing.T) {
+	seen := make(map[string]bool, len(Fields))
+	for _, f := range Fields {
+		if err := typedfield.Validate(f); err != nil {
+			t.Errorf("Fields entry %q fails typedfield.Validate: %v", f.Key, err)
+		}
+		if seen[f.Key] {
+			t.Errorf("duplicate Fields key %q", f.Key)
+		}
+		seen[f.Key] = true
+	}
+}
 
 func TestValidate_RejectsEmptyLabel(t *testing.T) {
 	err := Validate(AIProvider{Kind: KindOpenAICompat, BaseURL: "http://localhost:11434", Model: "llama3.2"})

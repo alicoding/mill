@@ -184,3 +184,48 @@ func TestMergeTombstones_DeterministicOrder(t *testing.T) {
 		}
 	}
 }
+
+func TestValidateRequired_ReturnsCallerMessageForBlankRequiredField(t *testing.T) {
+	fields := []Field{{Key: "label", Required: true}}
+	err := ValidateRequired(fields, map[string]string{"label": "  "}, map[string]string{"label": "needs a label"})
+	if err == nil || err.Error() != "needs a label" {
+		t.Fatalf("expected the caller-supplied message verbatim, got %v", err)
+	}
+}
+
+func TestValidateRequired_AcceptsNonBlankValue(t *testing.T) {
+	fields := []Field{{Key: "label", Required: true}}
+	err := ValidateRequired(fields, map[string]string{"label": "x"}, map[string]string{"label": "needs a label"})
+	if err != nil {
+		t.Fatalf("expected no error for a populated required field, got %v", err)
+	}
+}
+
+func TestValidateRequired_SkipsFieldsAbsentFromMessages(t *testing.T) {
+	// A Required field with no messages entry is the caller's own
+	// follow-up-check case (a conditional requirement, a custom
+	// message) -- ValidateRequired must not misfire a generic error.
+	fields := []Field{{Key: "kind", Required: true}}
+	err := ValidateRequired(fields, map[string]string{"kind": ""}, map[string]string{})
+	if err != nil {
+		t.Fatalf("expected ValidateRequired to skip a field absent from messages, got %v", err)
+	}
+}
+
+func TestValidateRequired_SkipsNonRequiredFieldEvenWithMessage(t *testing.T) {
+	fields := []Field{{Key: "baseURL", Required: false}}
+	err := ValidateRequired(fields, map[string]string{"baseURL": ""}, map[string]string{"baseURL": "needs a base URL"})
+	if err != nil {
+		t.Fatalf("expected ValidateRequired to skip a non-Required field, got %v", err)
+	}
+}
+
+func TestValidateRequired_ChecksFieldsInDeclaredOrder(t *testing.T) {
+	fields := []Field{{Key: "first", Required: true}, {Key: "second", Required: true}}
+	values := map[string]string{"first": "", "second": ""}
+	messages := map[string]string{"first": "first missing", "second": "second missing"}
+	err := ValidateRequired(fields, values, messages)
+	if err == nil || err.Error() != "first missing" {
+		t.Fatalf("expected the first blank field's message to win, got %v", err)
+	}
+}

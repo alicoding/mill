@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/alicoding/mill/internal/domain/seedorigin"
+	"github.com/alicoding/mill/internal/domain/typedfield"
 )
 
 // Kind is a provider's wire-protocol family -- a closed, typed choice
@@ -80,6 +81,34 @@ type AIProvider struct {
 	Seed seedorigin.Origin
 }
 
+// Fields declares AIProvider's full editable shape (docs/adr/0029) --
+// the single source both Validate's required-field pass below and the
+// frontend's generic entity-field renderer
+// (frontend/src/configure/EntityConfigFields.tsx) read, replacing a
+// field list that used to live only as hand-written form JSX. Kind's
+// Options are its own wire values (Kind consts below); the frontend
+// carries their display text separately (typedfield.Field has no
+// per-option display-label facet distinct from an option's wire
+// value -- unlike OptionColors, which pairs a presentation facet by
+// index, no such facet exists for label text).
+var Fields = []typedfield.Field{
+	{Key: "label", Label: "Label", Type: typedfield.TypeText, Required: true},
+	{Key: "kind", Label: "Kind", Type: typedfield.TypeOptions, Required: true,
+		Options: []string{string(KindOpenAICompat), string(KindAnthropic)}},
+	{Key: "baseURL", Label: "Base URL", Type: typedfield.TypeText},
+	{Key: "model", Label: "Model", Type: typedfield.TypeText, Required: true},
+}
+
+// requiredMessages carries Label/Model's exact missing-value wording
+// -- Kind and BaseURL are excluded on purpose (see Validate below):
+// Kind's blank-vs-invalid cases share one message via validKind, and
+// BaseURL's requirement is conditional on Kind, neither of which
+// typedfield.ValidateRequired's plain per-field check can express.
+var requiredMessages = map[string]string{
+	"label": "an AI provider needs a label",
+	"model": "an AI provider needs a model name",
+}
+
 // Validate checks an AIProvider is well-formed before it's persisted --
 // same "never store an unconfigured/invalid value" discipline every
 // other Configure entity's own Validate already applies. BaseURL is
@@ -90,17 +119,15 @@ type AIProvider struct {
 // the user to retype it" convenience Validate itself doesn't need to
 // special-case -- BaseURL blank is legal input for that one Kind.
 func Validate(p AIProvider) error {
-	if strings.TrimSpace(p.Label) == "" {
-		return fmt.Errorf("an AI provider needs a label")
+	values := map[string]string{"label": p.Label, "kind": string(p.Kind), "baseURL": p.BaseURL, "model": p.Model}
+	if err := typedfield.ValidateRequired(Fields, values, requiredMessages); err != nil {
+		return err
 	}
 	if !validKind(p.Kind) {
 		return fmt.Errorf("an AI provider needs a valid kind (got %q)", p.Kind)
 	}
 	if p.Kind == KindOpenAICompat && strings.TrimSpace(p.BaseURL) == "" {
 		return fmt.Errorf("an OpenAI-compatible AI provider needs a base URL (e.g. http://localhost:11434 for local Ollama)")
-	}
-	if strings.TrimSpace(p.Model) == "" {
-		return fmt.Errorf("an AI provider needs a model name")
 	}
 	return nil
 }

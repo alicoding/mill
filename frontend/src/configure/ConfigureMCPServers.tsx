@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Button, FormControl, Heading, IconButton, Stack, Text, TextInput, VisuallyHidden } from '@primer/react'
+import { Button, Heading, IconButton, Stack, Text, TextInput, VisuallyHidden } from '@primer/react'
 import { DownloadIcon, PencilIcon, PlusIcon, ServerIcon, TrashIcon, UploadIcon } from '@primer/octicons-react'
 import { DataTable } from '@primer/react/experimental'
 import { StatusStamp } from '../shared/StatusStamp'
@@ -9,6 +9,7 @@ import { CopyDiagnosisButton } from '../shared/CopyDiagnosisButton'
 import { ConfigureService } from '../shared/bindings'
 import type { MCPServer } from '../../bindings/github.com/alicoding/mill/internal/domain/mcpserver/models'
 import type { Tool } from '../../bindings/github.com/alicoding/mill/internal/adapters/mcpclient/models'
+import type { Field } from '../../bindings/github.com/alicoding/mill/internal/domain/typedfield/models'
 import { downloadJSON } from '../shared/downloadJSON'
 import { refreshMCPServers, useConfigureEntityStore } from '../shared/configureEntityStore'
 import { ViewModeToggle } from '../shared/ViewModeToggle'
@@ -21,6 +22,7 @@ import { useImportConfirm } from '../shared/useImportConfirm'
 import { describeSeedReset } from '../shared/seedLifecycle'
 import { RestoreExamplesButton } from '../shared/RestoreExamplesButton'
 import { useUISignalStore } from '../shared/uiSignalStore'
+import { EntityConfigFields } from './EntityConfigFields'
 import styles from '../shared/ListCard.module.css'
 import PageContainer from '../shared/PageContainer'
 
@@ -46,9 +48,9 @@ export function ConfigureMCPServers() {
   // Store-shared (refreshMCPServers, shared/configureEntityStore.ts) --
   // see ConfigureLists.tsx's identical comment (goal 0017 P1-1).
   const servers = useConfigureEntityStore((s) => s.mcpServers)
+  const [fields, setFields] = useState<Field[]>([])
   const [editingID, setEditingID] = useState<string | null>(null)
-  const [label, setLabel] = useState('')
-  const [command, setCommand] = useState('')
+  const [values, setValues] = useState<Record<string, string>>({ label: '', command: '' })
   const [argRows, setArgRows] = useState<string[]>([])
   const [formOpen, setFormOpen] = useState(false)
   const [error, setError] = useState('')
@@ -100,12 +102,12 @@ export function ConfigureMCPServers() {
   useEffect(() => {
     refetch()
     refreshSeedLifecycle()
+    ConfigureService.MCPServerFields().then((f) => setFields(f ?? [])).catch(console.error)
   }, [])
 
   const startCreate = () => {
     setEditingID(null)
-    setLabel('')
-    setCommand('')
+    setValues({ label: '', command: '' })
     setArgRows([''])
     setFormOpen(true)
     setError('')
@@ -125,21 +127,22 @@ export function ConfigureMCPServers() {
 
   const startEdit = (s: MCPServer) => {
     setEditingID(s.ID)
-    setLabel(s.Label)
-    setCommand(s.Command)
+    setValues({ label: s.Label, command: s.Command })
     setArgRows(argsToRows(s.Args))
     setFormOpen(true)
     setError('')
   }
+
+  const setValue = (key: string, value: string) => setValues((prev) => ({ ...prev, [key]: value }))
 
   const save = async () => {
     setError('')
     try {
       const args = argRows.map((a) => a.trim()).filter(Boolean)
       if (editingID) {
-        await ConfigureService.UpdateMCPServer(editingID, label, command, args)
+        await ConfigureService.UpdateMCPServer(editingID, values.label, values.command, args)
       } else {
-        await ConfigureService.CreateMCPServer(label, command, args)
+        await ConfigureService.CreateMCPServer(values.label, values.command, args)
       }
       setFormOpen(false)
       refetch()
@@ -263,15 +266,12 @@ export function ConfigureMCPServers() {
         <PageContainer variant="narrow">
         <div className={styles.card}>
           <Stack direction="vertical" gap="condensed">
-            <FormControl>
-              <FormControl.Label>{t('configureMCPServers.label')}</FormControl.Label>
-              <TextInput value={label} onChange={(e) => setLabel(e.target.value)} block />
-            </FormControl>
-            <FormControl>
-              <FormControl.Label>{t('configureMCPServers.command')}</FormControl.Label>
-              <FormControl.Caption>{t('configureMCPServers.commandCaption')}</FormControl.Caption>
-              <TextInput value={command} onChange={(e) => setCommand(e.target.value)} placeholder={t('configureMCPServers.commandPlaceholder')} block />
-            </FormControl>
+            <EntityConfigFields
+              fields={fields}
+              values={values}
+              onChange={setValue}
+              placeholders={{ command: t('configureMCPServers.commandPlaceholder') }}
+            />
             <Text size="small" weight="semibold">{t('configureMCPServers.arguments')}</Text>
             {argRows.map((arg, i) => (
               <Stack key={i} direction="horizontal" gap="condensed" align="center">
@@ -293,7 +293,7 @@ export function ConfigureMCPServers() {
                 <Text as="p" size="small" className={styles.error}>{error}</Text>
                 <CopyDiagnosisButton
                   error={error}
-                  context={{ 'Server label': label, Command: command }}
+                  context={{ 'Server label': values.label, Command: values.command }}
                   testId="mcpserver-save-copy-diagnosis"
                 />
               </Stack>
