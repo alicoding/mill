@@ -163,15 +163,28 @@ export function AtlasCardOverlay({ card, kinds, allCards, links, linkKinds, onCl
 
   const persist = async (patch: CardFieldPatch, errorKey: string) => {
     try {
-      await AtlasService.UpdateCard(
+      const sentFields = patch.fields ?? fields
+      const saved = await AtlasService.UpdateCard(
         displayedCard.ID,
         patch.title ?? title,
         patch.note ?? note,
-        patch.fields ?? fields,
+        sentFields,
         patch.source ?? source,
         patch.mirrorPath ?? mirrorPath,
         '',
       )
+      // Adopt server-COMPUTED field keys back into local state -- a
+      // StampOnChange field (a sign-off's verifiedAt) is written by the
+      // server, so it exists only in this response. Every save sends the
+      // whole Fields map, so without this the next save writes the map
+      // back WITHOUT the stamp and silently erases it. Only keys absent
+      // from what was just sent are adopted: an in-flight edit to any
+      // other field can never be clobbered by its own save's response,
+      // which is the same protection the same-card refetch guard above
+      // exists to provide.
+      const savedFields = (saved?.Fields ?? {}) as Record<string, string>
+      const computed = Object.entries(savedFields).filter(([key]) => !(key in sentFields))
+      if (computed.length > 0) setFields((prev) => ({ ...prev, ...Object.fromEntries(computed) }))
       setErrors((prev) => {
         if (!(errorKey in prev)) return prev
         const next = { ...prev }
