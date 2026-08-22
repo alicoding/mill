@@ -126,7 +126,11 @@ export function CompanionPanel({ viewedID }: { viewedID: string }) {
           resize="vertical"
           data-testid="companion-composer"
         />
-        <Button variant="primary" onClick={send} disabled={chat.busy || !draft.trim() || providers.length === 0} data-testid="companion-send">
+        {/* Primer default, not primary -- the proposal card's counted
+            Accept is this panel's one primary action (frontend.md rule
+            (a)/(c): a review plane's affirm wins the single primary,
+            never a composer's plain send). */}
+        <Button onClick={send} disabled={chat.busy || !draft.trim() || providers.length === 0} data-testid="companion-send">
           {t('companionPanel.send')}
         </Button>
       </Stack>
