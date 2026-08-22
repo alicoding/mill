@@ -67,7 +67,11 @@ ls:
   # file to CLAUDE.md (not a symlink: Windows checkouts without
   # Developer Mode/admin can't create real symlinks, so a clone would
   # silently get a broken placeholder instead of Mill's actual context).
-  .*: regex:(README|SECURITY|CONTRIBUTING|CLAUDE|AGENTS|RELEASING|Taskfile|lefthook|go|\.golangci|\.ls-lint)
+  # CHANGELOG: generated at the repo root by release-please on every
+  # release PR, so without it here EVERY release PR fails this gate and
+  # can never merge -- the release branch is the one branch that cannot
+  # simply move the file elsewhere.
+  .*: regex:(README|SECURITY|CONTRIBUTING|CLAUDE|AGENTS|RELEASING|CHANGELOG|Taskfile|lefthook|go|\.golangci|\.ls-lint)
 
 ignore:
   # userdocs/ + skills/ (goal 0125, ADR-0001 extension): user-facing
