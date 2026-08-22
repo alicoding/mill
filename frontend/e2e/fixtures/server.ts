@@ -355,3 +355,11 @@ export const ATLAS_PERSPECTIVES_MCP_BASE_PORT = 10340
 // own-server-own-ports reasoning as atlas-slots above.
 export const ATLAS_LINKING_SERVER_BASE_PORT = 10440
 export const ATLAS_LINKING_MCP_BASE_PORT = 10460
+
+// atlas-delivery-ledger.spec.ts's own dedicated pair (goal 0164 L1):
+// edits the seeded ledger-sync workflow's own folderPath config
+// (global, shared-workflow state per composition's own model) and
+// creates real Atlas cards from a fixture folder, same own-server-
+// own-ports reasoning as atlas-linking above.
+export const ATLAS_LEDGER_SYNC_SERVER_BASE_PORT = 10480
+export const ATLAS_LEDGER_SYNC_MCP_BASE_PORT = 10500

@@ -321,6 +321,17 @@ Creates a typed relation between two existing Atlas cards. "From"/"To" are each 
   - **Relation** — Which kind of relation this is.
   - **Label (optional)** — An optional note describing this specific relation.
 
+### Mirror delivery ledger from a docs folder
+
+Mirrors every frontmattered markdown file in a folder as a Delivered feature card: a file already mirrored keeps its card and only its mirror-owned fields (goal, shipped date, PRs, proof) refresh -- your sign-off, verified date, and notes are never touched. A new file becomes a new card, pending-verify by default.
+
+- Takes: nothing — Produces: its input, unchanged
+- Effect: changes something on this machine
+- Settings:
+  - **Folder path** — Folder of frontmattered markdown files to mirror as ledger cards.
+  - **Parent card title** — Cards land under the card with this title, created if missing. Empty uses the space root.
+  - **Output attribute (optional)** — Which Attributes field receives a summary of what changed.
+
 ### Mirror docs folder into Atlas
 
 Mirrors every markdown file in a folder as a card under one parent: a file already mirrored keeps its card (checksum refreshed), a new file becomes a new card, so re-running stays safe. The parent card is found by title, or created when missing.

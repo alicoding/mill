@@ -150,6 +150,17 @@ type Field struct {
 	// always emitted, even at its zero value; this one field must stay
 	// invisible at its zero value instead).
 	Deprecated bool `json:"deprecated,omitempty"`
+	// StampOnChange names a companion field on the same Kind (a
+	// TypeDate) to stamp with today's date whenever THIS field's own
+	// value changes away from its Default (docs/goals/0164) -- e.g. a
+	// lifecycle Options field ("pending-verify" -> "verified") paired
+	// with a date field recording when that transition happened.
+	// Write-path only (internal/services/atlassvc applies it); this
+	// package stays storage-free and never stamps anything itself.
+	// Empty means no stamping. JSON-tagged with omitempty, matching
+	// Deprecated's own reasoning: a field declaring no pairing marshals
+	// byte-identical to before this facet existed.
+	StampOnChange string `json:"StampOnChange,omitempty"`
 }
 
 // Validate checks a Field is well-formed -- same "never store an

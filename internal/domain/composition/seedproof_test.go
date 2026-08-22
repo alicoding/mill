@@ -166,6 +166,10 @@ var workflowProofRegistry = map[string]seedProof{
 	"example-docssync-workflow": proven(
 		"executionsvc.TestSeededDocsSyncExample_MirrorsFolderIdempotently",
 	),
+	"example-ledgersync-workflow": proven(
+		"executionsvc.TestSeededLedgerSyncExample_MirrorsFolderIdempotently",
+		"executionsvc.TestLedgerSync_ReconcilePreservesOwnerFields",
+	),
 	"example-list-write-workflow": proven(
 		"executionsvc.TestGuardrail_ApplyListRowParks_ApproveWritesRow",
 		"executionsvc.TestSeededTaskTrackerExample_PinnedSearch_ResolvesFrozenV1AfterLiveWrite (via the write-path half of the same test)",

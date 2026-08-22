@@ -92,6 +92,9 @@
             },
             "deprecated": {
               "type": "boolean"
+            },
+            "StampOnChange": {
+              "type": "string"
             }
           },
           "additionalProperties": false,
@@ -398,6 +401,9 @@
             },
             "deprecated": {
               "type": "boolean"
+            },
+            "StampOnChange": {
+              "type": "string"
             }
           },
           "additionalProperties": false,
@@ -568,6 +574,9 @@
             },
             "deprecated": {
               "type": "boolean"
+            },
+            "StampOnChange": {
+              "type": "string"
             }
           },
           "additionalProperties": false,
@@ -1116,6 +1125,9 @@
             },
             "deprecated": {
               "type": "boolean"
+            },
+            "StampOnChange": {
+              "type": "string"
             }
           },
           "additionalProperties": false,
@@ -2916,6 +2928,67 @@
       "Declared": false,
       "PaletteGroup": "",
       "Complexity": "advanced"
+    },
+    {
+      "ID": "apply-atlas-ledger-sync",
+      "Kind": "apply",
+      "Label": "Mirror delivery ledger from a docs folder",
+      "Description": "Mirrors every frontmattered markdown file in a folder as a Delivered feature card: a file already mirrored keeps its card and only its mirror-owned fields (goal, shipped date, PRs, proof) refresh -- your sign-off, verified date, and notes are never touched. A new file becomes a new card, pending-verify by default.",
+      "ConfigFields": [
+        {
+          "Key": "folderPath",
+          "Label": "Folder path",
+          "Type": "text",
+          "Required": false,
+          "Default": "",
+          "Description": "Folder of frontmattered markdown files to mirror as ledger cards.",
+          "Options": null,
+          "Suggestions": null,
+          "Secret": false,
+          "RefKind": "",
+          "Multiline": false,
+          "SystemManaged": false
+        },
+        {
+          "Key": "parentTitle",
+          "Label": "Parent card title",
+          "Type": "text",
+          "Required": false,
+          "Default": "",
+          "Description": "Cards land under the card with this title, created if missing. Empty uses the space root.",
+          "Options": null,
+          "Suggestions": null,
+          "Secret": false,
+          "RefKind": "",
+          "Multiline": false,
+          "SystemManaged": false
+        },
+        {
+          "Key": "outputAttribute",
+          "Label": "Output attribute (optional)",
+          "Type": "text",
+          "Required": false,
+          "Default": "",
+          "Description": "Which Attributes field receives a summary of what changed.",
+          "Options": null,
+          "Suggestions": null,
+          "Secret": false,
+          "RefKind": "",
+          "Multiline": false,
+          "SystemManaged": false
+        }
+      ],
+      "Output": "payload unchanged; a sync-summary JSON -\u003e the output attribute, if named",
+      "Consumes": [
+        "none"
+      ],
+      "Produces": {
+        "passthrough": true
+      },
+      "Effect": "local",
+      "Declared": false,
+      "PaletteGroup": "",
+      "Complexity": "basic"
     },
     {
       "ID": "apply-backup-snapshot",
@@ -4998,6 +5071,67 @@
       "Declared": false,
       "PaletteGroup": "",
       "Complexity": "advanced"
+    },
+    {
+      "ID": "apply-atlas-ledger-sync",
+      "Kind": "apply",
+      "Label": "Mirror delivery ledger from a docs folder",
+      "Description": "Mirrors every frontmattered markdown file in a folder as a Delivered feature card: a file already mirrored keeps its card and only its mirror-owned fields (goal, shipped date, PRs, proof) refresh -- your sign-off, verified date, and notes are never touched. A new file becomes a new card, pending-verify by default.",
+      "ConfigFields": [
+        {
+          "Key": "folderPath",
+          "Label": "Folder path",
+          "Type": "text",
+          "Required": false,
+          "Default": "",
+          "Description": "Folder of frontmattered markdown files to mirror as ledger cards.",
+          "Options": null,
+          "Suggestions": null,
+          "Secret": false,
+          "RefKind": "",
+          "Multiline": false,
+          "SystemManaged": false
+        },
+        {
+          "Key": "parentTitle",
+          "Label": "Parent card title",
+          "Type": "text",
+          "Required": false,
+          "Default": "",
+          "Description": "Cards land under the card with this title, created if missing. Empty uses the space root.",
+          "Options": null,
+          "Suggestions": null,
+          "Secret": false,
+          "RefKind": "",
+          "Multiline": false,
+          "SystemManaged": false
+        },
+        {
+          "Key": "outputAttribute",
+          "Label": "Output attribute (optional)",
+          "Type": "text",
+          "Required": false,
+          "Default": "",
+          "Description": "Which Attributes field receives a summary of what changed.",
+          "Options": null,
+          "Suggestions": null,
+          "Secret": false,
+          "RefKind": "",
+          "Multiline": false,
+          "SystemManaged": false
+        }
+      ],
+      "Output": "payload unchanged; a sync-summary JSON -\u003e the output attribute, if named",
+      "Consumes": [
+        "none"
+      ],
+      "Produces": {
+        "passthrough": true
+      },
+      "Effect": "local",
+      "Declared": false,
+      "PaletteGroup": "",
+      "Complexity": "basic"
     },
     {
       "ID": "apply-backup-snapshot",

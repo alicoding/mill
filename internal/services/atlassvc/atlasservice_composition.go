@@ -26,6 +26,7 @@ func (a *AtlasService) WireCompositionSeams(cardChangeSink func(cardID, kindID, 
 	composition.SetAtlasCardLinker(a.linkCardsForComposition)
 	composition.SetAtlasReplyMaterializer(a.materializeReplyItems)
 	composition.SetAtlasDocsSync(a.SyncDocsFolder)
+	composition.SetAtlasLedgerSync(a.SyncLedgerFolder)
 	SetCardChangeSink(cardChangeSink)
 }
 

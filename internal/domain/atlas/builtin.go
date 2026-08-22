@@ -53,6 +53,10 @@ const (
 	// (atlas-jump.spec.ts's "Topic: " scope asserts an exact census of
 	// the four pre-existing Topic cards).
 	kindComponentID = "atlas-kind-component"
+	// kindDeliveredFeatureID (goal 0164 L1) is the delivery-evidence
+	// ledger's own Kind: cards mirrored from docs/goals/archive's
+	// frontmatter by the seeded "Example: Delivery ledger" workflow.
+	kindDeliveredFeatureID = "atlas-kind-delivered-feature"
 
 	linkKindRelatesToID = "atlas-linkkind-relates-to"
 
@@ -158,6 +162,38 @@ func BuiltInKinds() []Kind {
 			ID: kindComponentID, Label: "Component", Icon: "🧩",
 			Description: "A system or service in an architecture.",
 			CreatedAt:   now, UpdatedAt: now,
+			BuiltIn: true, Seed: seedorigin.Stamp(1),
+		},
+		{
+			// The delivery-evidence ledger (goal 0164 L1): every field
+			// below splits mirror-owned (re-synced from a goal file's own
+			// frontmatter, never hand-edited) from owner-owned (only the
+			// person reviewing evidence ever sets these; a re-sync must
+			// never touch them -- the ledger's whole durability promise).
+			ID: kindDeliveredFeatureID, Label: "Delivered feature", Icon: "📦",
+			Description: "A shipped goal, with its evidence and your sign-off.",
+			Fields: []typedfield.Field{
+				// Mirror-owned: internal/services/atlassvc's ledger sync
+				// writes these via MergeCardFields, which touches only
+				// the keys it's given -- signoff/verifiedAt/notes below
+				// are never in that map.
+				{Key: "goalId", Label: "Goal", Type: typedfield.TypeText},
+				{Key: "shippedDate", Label: "Shipped", Type: typedfield.TypeDate, ShowOnCard: true},
+				{Key: "prs", Label: "PRs", Type: typedfield.TypeText, Multiline: true},
+				{Key: "proof", Label: "Proof", Type: typedfield.TypeText, Multiline: true},
+				// Owner-owned: durable verification state a re-sync must
+				// preserve. StampOnChange means verifiedAt is written by
+				// the service the moment signoff leaves its Default, not
+				// by whatever the edit form happens to submit.
+				{
+					Key: "signoff", Label: "Sign-off", Type: typedfield.TypeOptions,
+					Options: []string{"pending-verify", "verified", "verified-with-notes"},
+					Default: "pending-verify", ShowOnCard: true, StampOnChange: "verifiedAt",
+				},
+				{Key: "verifiedAt", Label: "Verified", Type: typedfield.TypeDate, SystemManaged: true},
+				{Key: "notes", Label: "Notes", Type: typedfield.TypeText, Multiline: true},
+			},
+			CreatedAt: now, UpdatedAt: now,
 			BuiltIn: true, Seed: seedorigin.Stamp(1),
 		},
 	}
