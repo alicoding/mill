@@ -46,7 +46,7 @@ func TestMCPAuthoring_FullLoop(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = exec.Shutdown(2 * time.Second) })
 
-	m := NewMillMCPService("0.0.0-test", comp, cfg, store)
+	m := NewMillMCPService("0.0.0-test", comp, cfg, store, nil)
 	m.SetExecutionService(exec)
 	const addr = "127.0.0.1:18093"
 	if err := m.Start(addr); err != nil {
@@ -208,7 +208,7 @@ func TestUpdateDiffSummary_MalformedJSON_NeverFabricatesCounts(t *testing.T) {
 	store := servicetest.NewFakeStore()
 	comp := compositionsvc.NewCompositionService(store)
 	cfg := configuresvc.NewConfigureService(store, comp, servicetest.FakeCredentialStore{})
-	svc := NewMillMCPService("0.0.0-test", comp, cfg, store)
+	svc := NewMillMCPService("0.0.0-test", comp, cfg, store, nil)
 
 	wf, err := comp.CreateWorkflow("Diff summary target", "",
 		[]composition.Node{{ID: "t", NodeTypeID: "trigger-manual"}, {ID: "c", NodeTypeID: "capture-clipboard-html"}},
@@ -238,7 +238,7 @@ func TestUpdateDiffSummary_WellFormedJSON_StillReportsRealCounts(t *testing.T) {
 	store := servicetest.NewFakeStore()
 	comp := compositionsvc.NewCompositionService(store)
 	cfg := configuresvc.NewConfigureService(store, comp, servicetest.FakeCredentialStore{})
-	svc := NewMillMCPService("0.0.0-test", comp, cfg, store)
+	svc := NewMillMCPService("0.0.0-test", comp, cfg, store, nil)
 
 	wf, err := comp.CreateWorkflow("Diff summary target 2", "",
 		[]composition.Node{{ID: "t", NodeTypeID: "trigger-manual"}},

@@ -80,6 +80,19 @@ func (s *SettingsService) ExportContract() (string, error) {
 	return s.mcpService.ContractDocument()
 }
 
+// ExportSkillDoc returns the mill://skill proficiency doc (goal 0160):
+// the practice-layer companion to ExportContract's reference document,
+// alongside it rather than merged into it -- mill://contract stays a
+// pure JSON schema document, and the skill doc is markdown prose, so
+// the two travel as separate exports through the same Settings →
+// Contract section and the same late-bound s.mcpService proxy.
+func (s *SettingsService) ExportSkillDoc() (string, error) {
+	if s.mcpService == nil {
+		return "", fmt.Errorf("MCP service not running")
+	}
+	return s.mcpService.SkillDocument()
+}
+
 // QuitApp closes this application instance -- the stale-build badge's
 // one-click action (docs/SPEC.md §3.8): when a fresh bundle detects an
 // orphaned old binary behind it, the fix is quitting the stale

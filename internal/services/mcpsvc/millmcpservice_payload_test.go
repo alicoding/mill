@@ -52,7 +52,7 @@ func TestMCPRunWorkflow_PayloadFlowsIntoCaptureFile(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	m := NewMillMCPService("0.0.0-test", comp, cfg, store)
+	m := NewMillMCPService("0.0.0-test", comp, cfg, store, nil)
 	m.SetExecutionService(exec)
 	// run_workflow requires the writes toggle (millmcpservice_tools.go's
 	// requireWriteEnabled) -- set the store key directly, same as the

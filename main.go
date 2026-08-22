@@ -284,7 +284,7 @@ func main() {
 	// is logged, not fatal -- this is additive local tooling, not
 	// something the rest of the app depends on to function.
 	millMCPAddr, _ := settingssvc.ResolveMCPAddr(os.Getenv("MILL_MCP_ADDR"), settingsService.MCPAccessAddress())
-	millMCPService := mcpsvc.NewMillMCPService(millVersion, compositionService, configureService, settingsStore)
+	millMCPService := mcpsvc.NewMillMCPService(millVersion, compositionService, configureService, settingsStore, userdocsFS)
 	settingsService.SetMCPService(millMCPService)
 	millMCPService.SetExecutionService(executionService)
 	millMCPService.SetAtlasService(atlasService)

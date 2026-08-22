@@ -43,7 +43,7 @@ func newIdentifierKindHarness(t *testing.T, addr string) (*compositionsvc.Compos
 	}
 	t.Cleanup(func() { _ = exec.Shutdown(2 * time.Second) })
 
-	m := NewMillMCPService("0.0.0-test", comp, cfg, store)
+	m := NewMillMCPService("0.0.0-test", comp, cfg, store, nil)
 	m.SetExecutionService(exec)
 	if err := store.Set(MCPWriteEnabledKey, "true"); err != nil {
 		t.Fatalf("store.Set(MCPWriteEnabledKey): %v", err)

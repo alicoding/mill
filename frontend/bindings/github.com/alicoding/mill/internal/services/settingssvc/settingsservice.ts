@@ -172,6 +172,18 @@ export function ExportContract(): $CancellablePromise<string> {
 }
 
 /**
+ * ExportSkillDoc returns the mill://skill proficiency doc (goal 0160):
+ * the practice-layer companion to ExportContract's reference document,
+ * alongside it rather than merged into it -- mill://contract stays a
+ * pure JSON schema document, and the skill doc is markdown prose, so
+ * the two travel as separate exports through the same Settings →
+ * Contract section and the same late-bound s.mcpService proxy.
+ */
+export function ExportSkillDoc(): $CancellablePromise<string> {
+    return $Call.ByID(93935163);
+}
+
+/**
  * GetAttentionIdleThreshold returns the configured idle-seconds
  * threshold: the presence gate below treats the user as away once
  * idletime.Seconds() reaches this, even while the window is focused --
