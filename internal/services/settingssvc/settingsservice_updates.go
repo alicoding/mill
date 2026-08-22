@@ -349,6 +349,7 @@ func (s *SettingsService) DownloadAndInstallUpdate() error {
 		return fmt.Errorf("the update is already downloading -- the Relaunch button appears when it's ready")
 	}
 	s.updateDownloading = true
+	s.resignWarning = ""
 	s.mu.Unlock()
 	dataevent.Emit("update-notice", "downloading")
 	defer func() {
@@ -382,6 +383,12 @@ func (s *SettingsService) DownloadAndInstallUpdate() error {
 	if err := u.DownloadAndInstall(context.Background()); err != nil {
 		return sanitizeUpdaterError(err)
 	}
+	// u.DownloadAndInstall already verified the staged download
+	// against the published SHA256 digest before returning -- signing
+	// only ever runs on that already-verified copy, never before or
+	// in place of the digest check (goal 0158's binding order:
+	// verify, then re-sign, then the swap RestartApp triggers).
+	s.resignStagedBundle(u.DownloadedPath())
 	s.markUpdateReady()
 	return nil
 }

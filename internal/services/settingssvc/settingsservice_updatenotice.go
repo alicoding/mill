@@ -36,6 +36,11 @@ type UpdateNotice struct {
 	// Downloading survives navigation (goal 0142): the phase lives
 	// here, not in any component, so every surface shows the truth.
 	Downloading bool `json:"downloading"`
+	// ResignWarning carries a non-fatal re-sign failure forward (goal
+	// 0158): the update installed fine, but re-signing the swapped
+	// bundle with Mill's local identity failed, so Accessibility may
+	// need to be re-granted after restart. Empty on every other path.
+	ResignWarning string `json:"resignWarning"`
 }
 
 // UpdateNoticeState reports what the footer pill should show.
@@ -45,7 +50,7 @@ func (s *SettingsService) UpdateNoticeState() UpdateNotice {
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	return UpdateNotice{Ready: s.updateReady, AvailableVersion: s.availableUpdate, Downloading: s.updateDownloading}
+	return UpdateNotice{Ready: s.updateReady, AvailableVersion: s.availableUpdate, Downloading: s.updateDownloading, ResignWarning: s.resignWarning}
 }
 
 // DismissUpdateNotice hides the available-update pill for the current

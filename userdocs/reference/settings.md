@@ -48,3 +48,18 @@ up separately.
 Pick a release channel and check for updates; Mill can also notify
 you when an update is available (that notification is itself a
 workflow you can edit or turn off).
+
+Mill re-signs itself after each update with a signing identity unique
+to your Mac, so permissions like Accessibility and Input Monitoring
+stay granted across updates instead of asking again every time. The
+first update after this landed still needs one fresh grant per
+permission — macOS treats it as a new app once. If a permission you
+already granted stops working (the summon hotkey goes unresponsive, for
+example), open **System Settings → Privacy & Security**, remove Mill
+from the affected permission, then add it back. On a Mac where that
+doesn't help, clear the stale entry from Terminal and re-grant from
+scratch:
+
+```
+tccutil reset Accessibility com.alicoding.mill
+```

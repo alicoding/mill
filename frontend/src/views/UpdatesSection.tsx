@@ -172,6 +172,9 @@ function UpdatesSection() {
       <Text size="small" className={styles.muted} data-testid="current-app-version">
         {t('settings.updates.currentVersion', { version: appVersion })} · {channelLabel}
       </Text>
+      <Text size="small" className={styles.muted} data-testid="resign-notice">
+        {t('settings.updates.resignNotice')}
+      </Text>
 
       <FormControl>
         <FormControl.Label>{t('settings.updates.channelPickerLabel')}</FormControl.Label>
