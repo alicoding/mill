@@ -9,9 +9,40 @@ import (
 	"github.com/alicoding/mill/internal/contract"
 	"github.com/alicoding/mill/internal/domain/composition"
 	"github.com/alicoding/mill/internal/domain/execenv"
+	"github.com/alicoding/mill/internal/domain/seedorigin"
 	"github.com/alicoding/mill/internal/services/dataevent"
+	"github.com/alicoding/mill/internal/services/entitystore"
 	"github.com/alicoding/mill/internal/services/seeding"
 )
+
+// execEnvDescriptor is ExecEnv's entitystore.Descriptor (goal 0165):
+// the small per-kind shape Create/Update/Delete/reconcile/Reset/
+// Restorable/Restore all key off, replacing what used to be ~10
+// hand-copied methods.
+var execEnvDescriptor = entitystore.Descriptor[execenv.ExecEnv]{
+	Label:     "execution environment",
+	GetID:     func(e execenv.ExecEnv) string { return e.ID },
+	IsBuiltIn: func(e execenv.ExecEnv) bool { return e.BuiltIn },
+	GetSeed:   func(e execenv.ExecEnv) seedorigin.Origin { return e.Seed },
+	SetSeed:   func(e execenv.ExecEnv, s seedorigin.Origin) execenv.ExecEnv { e.Seed = s; return e },
+	StampNew: func(e execenv.ExecEnv, now time.Time) execenv.ExecEnv {
+		e.CreatedAt, e.UpdatedAt = now, now
+		return e
+	},
+	Upgrade: upgradeExecEnvToGolden,
+	BuiltIn: execenv.BuiltIn,
+}
+
+// upgradeExecEnvToGolden replaces existing's content with golden's,
+// preserving existing's identity (ID/CreatedAt) -- shared by
+// reconcileBuiltInExecEnvs' upgrade branch and ResetExecEnvToSeed via
+// execEnvDescriptor.Upgrade.
+func upgradeExecEnvToGolden(existing, golden execenv.ExecEnv, now time.Time) execenv.ExecEnv {
+	golden.CreatedAt = existing.CreatedAt
+	golden.UpdatedAt = now
+	golden.Seed = seedorigin.Stamp(golden.Seed.SeedRevision)
+	return golden
+}
 
 // CaptureShellPath returns the user's real login-shell $PATH -- the
 // ExecEnv form's "Capture from my shell" affordance (ADR-0026's
@@ -87,20 +118,8 @@ func (c *ConfigureService) createExecEnvWithID(id, label string, shell execenv.S
 		return execenv.ExecEnv{}, err
 	}
 
-	c.mu.Lock()
-	c.execEnvs = append(c.execEnvs, e)
-	c.mu.Unlock()
-
-	if err := c.persistExecEnvs(); err != nil {
-		c.mu.Lock()
-		for i, existing := range c.execEnvs {
-			if existing.ID == e.ID {
-				c.execEnvs = append(c.execEnvs[:i], c.execEnvs[i+1:]...)
-				break
-			}
-		}
-		c.mu.Unlock()
-		return execenv.ExecEnv{}, fmt.Errorf("save execution environment: %w", err)
+	if err := entitystore.Insert(&c.mu, &c.execEnvs, c.persistExecEnvs, execEnvDescriptor, e); err != nil {
+		return execenv.ExecEnv{}, err
 	}
 	dataevent.Emit("execenv", e.ID) // goal 0017: live-sync every open surface
 	return e, nil
@@ -112,102 +131,39 @@ func (c *ConfigureService) UpdateExecEnv(id, label string, shell execenv.Shell, 
 		return execenv.ExecEnv{}, err
 	}
 
-	c.mu.Lock()
-	idx := -1
-	for i, existing := range c.execEnvs {
-		if existing.ID == id {
-			idx = i
-			break
-		}
+	updated, err := entitystore.Update(&c.mu, &c.execEnvs, c.persistExecEnvs, execEnvDescriptor, id, func(existing execenv.ExecEnv) (execenv.ExecEnv, error) {
+		// BuiltIn survives an edit (never authorable from this RPC) --
+		// same "carried forward from the existing record" reasoning
+		// every other UpdateXxx in this package already applies.
+		// CreatedAt is preserved from storage, never trusted from the
+		// wire; UpdatedAt always advances on a real update.
+		e.BuiltIn = existing.BuiltIn
+		e.CreatedAt = existing.CreatedAt
+		e.UpdatedAt = time.Now()
+		e.Seed = existing.Seed.Touch() // docs/goals/0037 item 2
+		return e, nil
+	})
+	if err != nil {
+		return execenv.ExecEnv{}, err
 	}
-	if idx == -1 {
-		c.mu.Unlock()
-		return execenv.ExecEnv{}, fmt.Errorf("no execution environment with id %q", id)
-	}
-	// BuiltIn survives an edit (never authorable from this RPC) -- same
-	// "carried forward from the existing record" reasoning every other
-	// UpdateXxx in this package already applies. CreatedAt is preserved
-	// from storage, never trusted from the wire; UpdatedAt always
-	// advances on a real update.
-	e.BuiltIn = c.execEnvs[idx].BuiltIn
-	e.CreatedAt = c.execEnvs[idx].CreatedAt
-	e.UpdatedAt = time.Now()
-	e.Seed = c.execEnvs[idx].Seed.Touch() // docs/goals/0037 item 2
-	previous := c.execEnvs[idx]
-	c.execEnvs[idx] = e
-	c.mu.Unlock()
-
-	if err := c.persistExecEnvs(); err != nil {
-		c.mu.Lock()
-		for i, existing := range c.execEnvs {
-			if existing.ID == id {
-				c.execEnvs[i] = previous
-				break
-			}
-		}
-		c.mu.Unlock()
-		return execenv.ExecEnv{}, fmt.Errorf("save execution environment: %w", err)
-	}
-	dataevent.Emit("execenv", e.ID) // goal 0017: live-sync every open surface
-	return e, nil
+	dataevent.Emit("execenv", updated.ID) // goal 0017: live-sync every open surface
+	return updated, nil
 }
 
 func (c *ConfigureService) DeleteExecEnv(id string) error {
 	if err := c.refIntegrityError("execenv", "execution environment", id); err != nil {
 		return err
 	}
-
-	c.mu.Lock()
-	idx := -1
-	for i, e := range c.execEnvs {
-		if e.ID == id {
-			idx = i
-			break
-		}
-	}
-	if idx == -1 {
-		c.mu.Unlock()
-		return fmt.Errorf("no execution environment with id %q", id)
-	}
-	removed := c.execEnvs[idx]
-	wasBuiltIn := removed.BuiltIn
-	c.execEnvs = append(c.execEnvs[:idx], c.execEnvs[idx+1:]...)
-	c.mu.Unlock()
-
 	// A deleted built-in gets a tombstone so top-up seeding never
-	// resurrects it (topUpBuiltInExecEnvs, configureservice_builtin.go)
-	// -- same discipline every other Delete* in this package applies.
-	// Removal and tombstone must succeed together (docs/goals/0025
-	// item 2).
-	if wasBuiltIn {
-		if err := seeding.RecordTombstone(c.store, id); err != nil {
-			c.mu.Lock()
-			c.execEnvs = insertExecEnvAt(c.execEnvs, idx, removed)
-			c.mu.Unlock()
-			return fmt.Errorf("tombstone deleted execution environment %q: %w", id, err)
-		}
-	}
-	if err := c.persistExecEnvs(); err != nil {
-		c.mu.Lock()
-		c.execEnvs = insertExecEnvAt(c.execEnvs, idx, removed)
-		c.mu.Unlock()
-		return fmt.Errorf("save execution environment deletion: %w", err)
+	// resurrects it -- same discipline every other Delete* in this
+	// package applies. Removal and tombstone must succeed together
+	// (docs/goals/0025 item 2).
+	recordTombstone := func(id string) error { return seeding.RecordTombstone(c.store, id) }
+	if err := entitystore.DeleteWithTombstone(&c.mu, &c.execEnvs, c.persistExecEnvs, recordTombstone, execEnvDescriptor, id); err != nil {
+		return err
 	}
 	dataevent.Emit("execenv", id) // goal 0017: live-sync every open surface
 	return nil
-}
-
-// insertExecEnvAt reinserts e at idx (clamped to the current length) --
-// used to undo DeleteExecEnv's removal when the tombstone or persist
-// step that must accompany it fails.
-func insertExecEnvAt(envs []execenv.ExecEnv, idx int, e execenv.ExecEnv) []execenv.ExecEnv {
-	if idx < 0 || idx > len(envs) {
-		idx = len(envs)
-	}
-	envs = append(envs, execenv.ExecEnv{})
-	copy(envs[idx+1:], envs[idx:])
-	envs[idx] = e
-	return envs
 }
 
 // --- export/import (configureservice_export.go's pattern, kept here
@@ -259,46 +215,30 @@ func (c *ConfigureService) ImportExecEnv(jsonData string) (execenv.ExecEnv, erro
 		return execenv.ExecEnv{}, fmt.Errorf("import execution environment: %w", err)
 	}
 
-	if in.ID != "" {
+	exists := func(id string) bool {
 		c.mu.Lock()
-		found := c.execEnvExistsLocked(in.ID)
-		c.mu.Unlock()
-		if found {
-			return c.UpdateExecEnv(in.ID, in.Label, in.Shell, in.ProfileMode, in.Dir, in.Env)
-		}
-		return c.createExecEnvWithID(in.ID, in.Label, in.Shell, in.ProfileMode, in.Dir, in.Env)
+		defer c.mu.Unlock()
+		return c.execEnvExistsLocked(id)
 	}
-	return c.CreateExecEnv(in.Label, in.Shell, in.ProfileMode, in.Dir, in.Env)
+	return entitystore.DispatchImport(exists, in.ID,
+		func() (execenv.ExecEnv, error) {
+			return c.UpdateExecEnv(in.ID, in.Label, in.Shell, in.ProfileMode, in.Dir, in.Env)
+		},
+		func() (execenv.ExecEnv, error) {
+			return c.createExecEnvWithID(in.ID, in.Label, in.Shell, in.ProfileMode, in.Dir, in.Env)
+		},
+		func() (execenv.ExecEnv, error) {
+			return c.CreateExecEnv(in.Label, in.Shell, in.ProfileMode, in.Dir, in.Env)
+		},
+	)
 }
 
 // --- persistence ---
 
 func (c *ConfigureService) persistExecEnvs() error {
-	c.mu.Lock()
-	execEnvs := make([]execenv.ExecEnv, len(c.execEnvs))
-	copy(execEnvs, c.execEnvs)
-	c.mu.Unlock()
-
-	data, err := json.Marshal(execEnvs)
-	if err != nil {
-		return fmt.Errorf("marshal execution environments: %w", err)
-	}
-	if err := c.store.Set(execEnvsKey, string(data)); err != nil {
-		return fmt.Errorf("persist execution environments: %w", err)
-	}
-	return nil
+	return entitystore.Persist(&c.mu, &c.execEnvs, c.store, execEnvsKey, execEnvDescriptor)
 }
 
 func (c *ConfigureService) restoreExecEnvs() {
-	raw, ok := c.store.Get(execEnvsKey).(string)
-	if !ok || raw == "" {
-		return
-	}
-	var execEnvs []execenv.ExecEnv
-	if err := json.Unmarshal([]byte(raw), &execEnvs); err != nil {
-		return
-	}
-	c.mu.Lock()
-	c.execEnvs = execEnvs
-	c.mu.Unlock()
+	entitystore.Load(&c.mu, &c.execEnvs, c.store, execEnvsKey)
 }

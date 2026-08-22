@@ -9,6 +9,7 @@ import (
 	"github.com/alicoding/mill/internal/domain/list"
 	"github.com/alicoding/mill/internal/domain/mcpserver"
 	"github.com/alicoding/mill/internal/services/dataevent"
+	"github.com/alicoding/mill/internal/services/entitystore"
 	"github.com/alicoding/mill/internal/services/seeding"
 )
 
@@ -211,43 +212,12 @@ func (c *ConfigureService) RestoreMCPServer(id string) (mcpserver.MCPServer, err
 	return golden, nil
 }
 
-func findGoldenExecEnv(id string) (execenv.ExecEnv, bool) {
-	for _, g := range execenv.BuiltIn() {
-		if g.ID == id {
-			return g, true
-		}
-	}
-	return execenv.ExecEnv{}, false
-}
-
-// ResetExecEnvToSeed mirrors ResetHTTPRequestToSeed for ExecEnvs.
+// ResetExecEnvToSeed mirrors ResetHTTPRequestToSeed for ExecEnvs, via
+// execEnvDescriptor (configureexecenv.go, goal 0165).
 func (c *ConfigureService) ResetExecEnvToSeed(id string) (execenv.ExecEnv, error) {
-	golden, ok := findGoldenExecEnv(id)
-	if !ok {
-		return execenv.ExecEnv{}, fmt.Errorf("no built-in execution environment with id %q", id)
-	}
-	c.mu.Lock()
-	idx := -1
-	for i, e := range c.execEnvs {
-		if e.ID == id {
-			idx = i
-			break
-		}
-	}
-	if idx == -1 {
-		c.mu.Unlock()
-		return execenv.ExecEnv{}, fmt.Errorf("no execution environment with id %q", id)
-	}
-	previous := c.execEnvs[idx]
-	updated := upgradeExecEnvToGolden(previous, golden, time.Now())
-	c.execEnvs[idx] = updated
-	c.mu.Unlock()
-
-	if err := c.persistExecEnvs(); err != nil {
-		c.mu.Lock()
-		c.execEnvs[idx] = previous
-		c.mu.Unlock()
-		return execenv.ExecEnv{}, fmt.Errorf("save reset execution environment: %w", err)
+	updated, err := entitystore.ResetToSeed(&c.mu, &c.execEnvs, c.persistExecEnvs, execEnvDescriptor, id)
+	if err != nil {
+		return execenv.ExecEnv{}, err
 	}
 	dataevent.Emit("execenv", id) // goal 0017: live-sync every open surface
 	return updated, nil
@@ -255,63 +225,17 @@ func (c *ConfigureService) ResetExecEnvToSeed(id string) (execenv.ExecEnv, error
 
 // RestorableExecEnvs mirrors RestorableHTTPRequests for ExecEnvs.
 func (c *ConfigureService) RestorableExecEnvs() []execenv.ExecEnv {
-	tombstones := seeding.LoadTombstones(c.store)
-	if len(tombstones) == 0 {
-		return nil
-	}
-	c.mu.Lock()
-	have := make(map[string]bool, len(c.execEnvs))
-	for _, e := range c.execEnvs {
-		have[e.ID] = true
-	}
-	c.mu.Unlock()
-	var out []execenv.ExecEnv
-	for _, golden := range execenv.BuiltIn() {
-		if tombstones[golden.ID] && !have[golden.ID] {
-			out = append(out, golden)
-		}
-	}
-	return out
+	return entitystore.Restorable(&c.mu, &c.execEnvs, seeding.LoadTombstones(c.store), execEnvDescriptor)
 }
 
 // RestoreExecEnv mirrors RestoreHTTPRequest for ExecEnvs.
 func (c *ConfigureService) RestoreExecEnv(id string) (execenv.ExecEnv, error) {
-	golden, ok := findGoldenExecEnv(id)
-	if !ok {
-		return execenv.ExecEnv{}, fmt.Errorf("no built-in execution environment with id %q", id)
-	}
-	c.mu.Lock()
-	for _, existing := range c.execEnvs {
-		if existing.ID == id {
-			c.mu.Unlock()
-			return execenv.ExecEnv{}, fmt.Errorf("execution environment %q is already present, nothing to restore", id)
-		}
-	}
-	c.mu.Unlock()
-
-	if err := seeding.ClearTombstone(c.store, id); err != nil {
-		return execenv.ExecEnv{}, fmt.Errorf("clear tombstone for %q: %w", id, err)
-	}
-	now := time.Now()
-	golden.CreatedAt, golden.UpdatedAt = now, now
-
-	c.mu.Lock()
-	c.execEnvs = append(c.execEnvs, golden)
-	c.mu.Unlock()
-
-	if err := c.persistExecEnvs(); err != nil {
-		c.mu.Lock()
-		for i, e := range c.execEnvs {
-			if e.ID == id {
-				c.execEnvs = append(c.execEnvs[:i], c.execEnvs[i+1:]...)
-				break
-			}
-		}
-		c.mu.Unlock()
-		return execenv.ExecEnv{}, fmt.Errorf("save restored execution environment: %w", err)
+	restored, err := entitystore.Restore(&c.mu, &c.execEnvs, c.persistExecEnvs, c.store, execEnvDescriptor, id)
+	if err != nil {
+		return execenv.ExecEnv{}, err
 	}
 	dataevent.Emit("execenv", id) // goal 0017: live-sync every open surface
-	return golden, nil
+	return restored, nil
 }
 
 func findGoldenAIProvider(id string) (aiprovider.AIProvider, bool) {

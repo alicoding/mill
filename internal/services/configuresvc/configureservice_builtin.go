@@ -7,11 +7,11 @@ import (
 	"github.com/alicoding/mill/internal/domain/aiprovider"
 	"github.com/alicoding/mill/internal/domain/composition"
 	"github.com/alicoding/mill/internal/domain/decision"
-	"github.com/alicoding/mill/internal/domain/execenv"
 	"github.com/alicoding/mill/internal/domain/httprequest"
 	"github.com/alicoding/mill/internal/domain/list"
 	"github.com/alicoding/mill/internal/domain/mcpserver"
 	"github.com/alicoding/mill/internal/domain/seedorigin"
+	"github.com/alicoding/mill/internal/services/entitystore"
 	"github.com/alicoding/mill/internal/services/seeding"
 )
 
@@ -310,55 +310,15 @@ func upgradeMCPServerToGolden(existing, golden mcpserver.MCPServer, now time.Tim
 }
 
 // reconcileBuiltInExecEnvs mirrors reconcileBuiltInMCPServers for the
-// seeded example ExecEnv (docs/adr/0026, goal 0004b).
+// seeded example ExecEnv (docs/adr/0026, goal 0004b) via
+// execEnvDescriptor (configureexecenv.go, goal 0165).
 func (c *ConfigureService) reconcileBuiltInExecEnvs() {
 	tombstones := seeding.LoadTombstones(c.store)
-	now := time.Now()
-	c.mu.Lock()
-	byID := make(map[string]int, len(c.execEnvs))
-	for i, e := range c.execEnvs {
-		byID[e.ID] = i
-	}
-	changed := false
-	for _, golden := range execenv.BuiltIn() {
-		idx, present := byID[golden.ID]
-		if !present {
-			if tombstones[golden.ID] {
-				continue
-			}
-			golden.CreatedAt, golden.UpdatedAt = now, now
-			c.execEnvs = append(c.execEnvs, golden)
-			changed = true
-			continue
-		}
-		existing := c.execEnvs[idx]
-		if existing.Seed.SeedRevision == 0 {
-			existing.Seed = seedorigin.Origin{SeedRevision: golden.Seed.SeedRevision, Modified: true}
-			c.execEnvs[idx] = existing
-			changed = true
-			continue
-		}
-		if existing.Seed.Modified {
-			continue
-		}
-		if existing.Seed.SeedRevision < golden.Seed.SeedRevision {
-			c.execEnvs[idx] = upgradeExecEnvToGolden(existing, golden, now)
-			changed = true
-		}
-	}
-	c.mu.Unlock()
-	if changed {
+	if _, changed := entitystore.Reconcile(&c.mu, &c.execEnvs, tombstones, execEnvDescriptor); changed {
 		if err := c.persistExecEnvs(); err != nil {
 			slog.Error("failed to reconcile built-in ExecEnvs", "error", err)
 		}
 	}
-}
-
-func upgradeExecEnvToGolden(existing, golden execenv.ExecEnv, now time.Time) execenv.ExecEnv {
-	golden.CreatedAt = existing.CreatedAt
-	golden.UpdatedAt = now
-	golden.Seed = seedorigin.Stamp(golden.Seed.SeedRevision)
-	return golden
 }
 
 // reconcileBuiltInAIProviders mirrors reconcileBuiltInMCPServers for the
