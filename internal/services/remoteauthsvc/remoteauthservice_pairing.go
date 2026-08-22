@@ -28,6 +28,23 @@ type PairingCodeInfo struct {
 	ExpiresAt time.Time `json:"expiresAt"`
 }
 
+// mintCode replaces any outstanding code with a fresh one, single live
+// code at a time, and returns it unlogged -- callers decide whether
+// and how to log it.
+func (s *RemoteAuthService) mintCode() (PairingCodeInfo, error) {
+	code, err := generateCode()
+	if err != nil {
+		return PairingCodeInfo{}, fmt.Errorf("remoteauthsvc: generating pairing code: %w", err)
+	}
+
+	s.mu.Lock()
+	expiresAt := time.Now().Add(pairingCodeTTL)
+	s.code = &pairingCode{code: code, expiresAt: expiresAt}
+	s.mu.Unlock()
+
+	return PairingCodeInfo{Code: code, ExpiresAt: expiresAt}, nil
+}
+
 // GeneratePairingCode mints a new single-use enrollment code on
 // demand, replacing any code still outstanding (only one is ever
 // live at a time). Held in memory only -- see devicesSettingsKey's
@@ -37,23 +54,46 @@ type PairingCodeInfo struct {
 // only while the instance is unpaired -- once any device is paired,
 // the code is never logged again, no matter which caller generated
 // it (docs/goals/0132-remote-access.md SLICE 1b: "never log the code
-// once paired").
+// once paired"). This is the RPC path (Settings > Remote access,
+// loopback-only): a desktop owner pairing a second device already
+// sees the code on screen, so logging it too would be redundant.
+// resendPairingCode below is the OTHER caller, unconditional on
+// purpose.
 func (s *RemoteAuthService) GeneratePairingCode() (PairingCodeInfo, error) {
-	code, err := generateCode()
+	info, err := s.mintCode()
 	if err != nil {
-		return PairingCodeInfo{}, fmt.Errorf("remoteauthsvc: generating pairing code: %w", err)
+		return info, err
 	}
 
 	s.mu.Lock()
-	expiresAt := time.Now().Add(pairingCodeTTL)
-	s.code = &pairingCode{code: code, expiresAt: expiresAt}
 	unpaired := len(s.devices) == 0
 	s.mu.Unlock()
 
 	if unpaired {
-		s.logger.Info("remote access: pairing code generated", "code", code, "expires", expiresAt)
+		s.logger.Info("remote access: pairing code generated", "code", info.Code, "expires", info.ExpiresAt)
 	}
-	return PairingCodeInfo{Code: code, ExpiresAt: expiresAt}, nil
+	return info, nil
+}
+
+// resendPairingCode is the pairing page's own unauthenticated "Get a
+// new code" action (SLICE 2 DESIGN CONTRACT item 2). Unlike
+// GeneratePairingCode above it logs UNCONDITIONALLY, regardless of how
+// many devices are already paired -- closing a real lockout:
+// BootstrapPairingCode only mints at process start and only while
+// unpaired, so once a first device pairs, a restart mints nothing
+// further. A device that then loses its cookie (cleared site data, a
+// wiped phone) has no other path back in without this. Reading the
+// log still requires host filesystem access, the same authorization
+// signal the whole bootstrap design already rests on, so an
+// unauthenticated caller triggering this gains nothing -- the code
+// itself never leaves the log (never the HTTP response).
+func (s *RemoteAuthService) resendPairingCode() (PairingCodeInfo, error) {
+	info, err := s.mintCode()
+	if err != nil {
+		return info, err
+	}
+	s.logger.Info("remote access: pairing code generated", "code", info.Code, "expires", info.ExpiresAt)
+	return info, nil
 }
 
 // BootstrapPairingCode closes the SLICE 1b bootstrap deadlock: a
@@ -74,15 +114,22 @@ func (s *RemoteAuthService) GeneratePairingCode() (PairingCodeInfo, error) {
 // builds already have a loopback-reachable Settings > Remote access
 // path regardless of pairing state -- auto-minting (and logging) a
 // code on every desktop launch would be log noise for a bootstrap
-// path desktop mode never needs.
+// path desktop mode never needs. It is recorded on the service either
+// way (even when this call is a no-op below) so the pairing page can
+// always choose its per-mode copy correctly (SLICE 2 DESIGN CONTRACT
+// item 1).
+//
+// Exported for main.go/wiring's own construction flow, not a frontend
+// RPC -- calling this outside process construction would re-run the
+// bootstrap decision against already-live state.
+//
+//wails:ignore
 func (s *RemoteAuthService) BootstrapPairingCode(serverMode bool) {
-	if !serverMode {
-		return
-	}
 	s.mu.Lock()
+	s.serverMode = serverMode
 	unpaired := len(s.devices) == 0
 	s.mu.Unlock()
-	if !unpaired {
+	if !serverMode || !unpaired {
 		return
 	}
 	if _, err := s.GeneratePairingCode(); err != nil {

@@ -1,4 +1,31 @@
+import type { Page } from '@playwright/test'
 import { test, expect } from './fixtures/server'
+
+// seedTestDevice populates a paired device directly through
+// RemoteAuthService.SeedTestDevice (methodID 341728691 in
+// frontend/bindings/.../remoteauthservice.ts), the e2e-only seam
+// gated by MILL_TEST_ALLOW_DEVICE_SEED (set for every worker server in
+// fixtures/server.ts). A real pairing round trip only completes over a
+// non-loopback connection, which this isolated per-worker server never
+// has, so rename/last-seen coverage needs a paired row some other way
+// -- posted straight to the Wails RPC endpoint (same wire shape
+// @wailsio/runtime's Call.ByID uses) rather than through page JS, so
+// this helper works whether or not the bindings module happens to be
+// its own reachable chunk in a given build.
+async function seedTestDevice(page: Page, label: string): Promise<{ id: string; label: string }> {
+  const response = await page.request.post('/wails/runtime', {
+    headers: { 'x-wails-client-id': 'e2e-seed', 'Content-Type': 'application/json' },
+    data: {
+      object: 0, // @wailsio/runtime objectNames.Call
+      method: 0, // the Call object's CallBinding method
+      args: { 'call-id': `e2e-seed-${label}`, methodID: 341728691, args: [label] },
+    },
+  })
+  if (!response.ok()) {
+    throw new Error(`seedTestDevice(${label}) failed: ${response.status()} ${await response.text()}`)
+  }
+  return response.json()
+}
 
 // docs/goals/0132-remote-access.md SLICE 1's own required proof: "an
 // e2e proving the desktop (loopback) path is untouched". Every
@@ -33,4 +60,57 @@ test('Remote access section discloses reachability and pairs a device on demand'
   const code = page.getByTestId('pairing-code')
   await expect(code).toBeVisible()
   await expect(code).toHaveText(/^[A-Z0-9]{8}$/)
+})
+
+// This spec's assertions read the GLOBAL paired-devices list
+// (testing.md's shared-pool-vs-dedicated triage), so each test below
+// seeds its own uniquely-labeled device and revokes it before
+// finishing -- never depending on, or leaving behind, state another
+// test in this file could observe.
+test('renaming a paired device updates its row and survives a reload', async ({ page }) => {
+  // Locate the row by its stable data-device-id, never by its
+  // (about to change) label text -- a text-based filter would stop
+  // matching the instant the label swaps to the rename input.
+  const device = await seedTestDevice(page, 'Old Phone Name')
+
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Settings' }).click()
+  const row = page.locator(`[data-testid="paired-device-row"][data-device-id="${device.id}"]`)
+  await row.scrollIntoViewIfNeeded()
+  await expect(row).toContainText('Old Phone Name')
+
+  await row.getByTestId('device-rename-start').click()
+  await row.getByTestId('device-rename-input').fill('Ali\'s iPhone')
+  await row.getByTestId('device-rename-input').press('Enter')
+
+  await expect(row).toContainText('Ali\'s iPhone')
+  await expect(row).not.toContainText('Old Phone Name')
+
+  await page.reload()
+  await page.getByRole('link', { name: 'Settings' }).click()
+  const rowAfterReload = page.locator(`[data-testid="paired-device-row"][data-device-id="${device.id}"]`)
+  await expect(rowAfterReload).toContainText('Ali\'s iPhone')
+
+  await rowAfterReload.getByTestId('revoke-device').click()
+  await page.getByRole('alertdialog').getByRole('button', { name: 'Revoke' }).click()
+  await expect(page.locator(`[data-device-id="${device.id}"]`)).toHaveCount(0)
+})
+
+test('a paired device row shows when it was paired and when it was last seen', async ({ page }) => {
+  const device = await seedTestDevice(page, 'Freshly Paired Device')
+
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Settings' }).click()
+  const row = page.locator(`[data-testid="paired-device-row"][data-device-id="${device.id}"]`)
+  await row.scrollIntoViewIfNeeded()
+
+  // Paired and last-seen were both stamped "now" by SeedTestDevice --
+  // the shared relative-time formatter (shared/inventorySort.ts)
+  // renders anything that fresh as "just now".
+  await expect(row).toContainText('Paired just now')
+  await expect(row).toContainText('last seen just now')
+
+  await row.getByTestId('revoke-device').click()
+  await page.getByRole('alertdialog').getByRole('button', { name: 'Revoke' }).click()
+  await expect(page.getByText('Freshly Paired Device')).toHaveCount(0)
 })

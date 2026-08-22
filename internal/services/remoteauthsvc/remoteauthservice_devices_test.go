@@ -10,6 +10,45 @@ import (
 	"github.com/alicoding/mill/internal/adapters/settings"
 )
 
+// TestSeedTestDevice_RefusesOutsideTestMode pins the e2e-only seam's
+// guard: absent MILL_TEST_ALLOW_DEVICE_SEED, this must never mint a
+// device -- a real deployment must never expose an unauthenticated
+// device-minting path.
+func TestSeedTestDevice_RefusesOutsideTestMode(t *testing.T) {
+	store, err := settings.New(filepath.Join(t.TempDir(), "settings.json"))
+	if err != nil {
+		t.Fatalf("settings.New() = %v, want nil error", err)
+	}
+	s := New(store, slog.New(slog.DiscardHandler))
+
+	if _, err := s.SeedTestDevice("Phone"); err == nil {
+		t.Fatalf("SeedTestDevice() outside test mode = nil error, want an error")
+	}
+	if len(s.ListDevices()) != 0 {
+		t.Fatalf("ListDevices() = %v, want no device minted", s.ListDevices())
+	}
+}
+
+func TestSeedTestDevice_MintsWhenEnabled(t *testing.T) {
+	t.Setenv(testAllowDeviceSeedEnv, "1")
+	store, err := settings.New(filepath.Join(t.TempDir(), "settings.json"))
+	if err != nil {
+		t.Fatalf("settings.New() = %v, want nil error", err)
+	}
+	s := New(store, slog.New(slog.DiscardHandler))
+
+	info, err := s.SeedTestDevice("Phone")
+	if err != nil {
+		t.Fatalf("SeedTestDevice() = %v, want nil error", err)
+	}
+	if info.Label != "Phone" || info.ID == "" {
+		t.Fatalf("SeedTestDevice() = %+v, want a labeled device with an ID", info)
+	}
+	if len(s.ListDevices()) != 1 {
+		t.Fatalf("ListDevices() = %v, want exactly one device", s.ListDevices())
+	}
+}
+
 func TestMintDevice_PersistsOnlyHashNeverRawToken(t *testing.T) {
 	store, err := settings.New(filepath.Join(t.TempDir(), "settings.json"))
 	if err != nil {
@@ -90,6 +129,72 @@ func TestRevokeDevice_UnknownIDReturnsError(t *testing.T) {
 
 	if err := s.RevokeDevice("does-not-exist"); err == nil {
 		t.Fatalf("RevokeDevice(unknown id) = nil error, want an error")
+	}
+}
+
+func TestRenameDevice_RejectsEmptyAndWhitespace(t *testing.T) {
+	store, err := settings.New(filepath.Join(t.TempDir(), "settings.json"))
+	if err != nil {
+		t.Fatalf("settings.New() = %v, want nil error", err)
+	}
+	s := New(store, slog.New(slog.DiscardHandler))
+	if _, err := s.mintDevice("Phone"); err != nil {
+		t.Fatalf("mintDevice() = %v, want nil error", err)
+	}
+	id := s.ListDevices()[0].ID
+
+	for _, label := range []string{"", "   ", "\t\n"} {
+		if err := s.RenameDevice(id, label); err == nil {
+			t.Errorf("RenameDevice(%q) = nil error, want an error", label)
+		}
+	}
+
+	infos := s.ListDevices()
+	if len(infos) != 1 || infos[0].Label != "Phone" {
+		t.Fatalf("ListDevices() = %+v, want the original label unchanged after a rejected rename", infos)
+	}
+}
+
+func TestRenameDevice_PersistsTheNewLabel(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "settings.json")
+	store1, err := settings.New(path)
+	if err != nil {
+		t.Fatalf("settings.New() = %v, want nil error", err)
+	}
+	s1 := New(store1, slog.New(slog.DiscardHandler))
+	if _, err := s1.mintDevice("Phone"); err != nil {
+		t.Fatalf("mintDevice() = %v, want nil error", err)
+	}
+	id := s1.ListDevices()[0].ID
+
+	if err := s1.RenameDevice(id, "  Ali's iPhone  "); err != nil {
+		t.Fatalf("RenameDevice() = %v, want nil error", err)
+	}
+	infos := s1.ListDevices()
+	if len(infos) != 1 || infos[0].Label != "Ali's iPhone" {
+		t.Fatalf("ListDevices() = %+v, want the trimmed new label", infos)
+	}
+
+	store2, err := settings.New(path)
+	if err != nil {
+		t.Fatalf("second settings.New() = %v, want nil error", err)
+	}
+	s2 := New(store2, slog.New(slog.DiscardHandler))
+	infos2 := s2.ListDevices()
+	if len(infos2) != 1 || infos2[0].Label != "Ali's iPhone" {
+		t.Fatalf("ListDevices() after restart = %+v, want the rename to have persisted", infos2)
+	}
+}
+
+func TestRenameDevice_UnknownIDReturnsError(t *testing.T) {
+	store, err := settings.New(filepath.Join(t.TempDir(), "settings.json"))
+	if err != nil {
+		t.Fatalf("settings.New() = %v, want nil error", err)
+	}
+	s := New(store, slog.New(slog.DiscardHandler))
+
+	if err := s.RenameDevice("does-not-exist", "New Label"); err == nil {
+		t.Fatalf("RenameDevice(unknown id) = nil error, want an error")
 	}
 }
 

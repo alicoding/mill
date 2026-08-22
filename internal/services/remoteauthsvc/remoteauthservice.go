@@ -60,6 +60,13 @@ type RemoteAuthService struct {
 	store  settings.Store
 	logger *slog.Logger
 
+	// serverMode records which deployment this instance is, set once
+	// by BootstrapPairingCode at construction -- the pairing page's
+	// copy is chosen from this, never guessed from the request (a
+	// browser has no way to tell a headless server from a desktop
+	// build).
+	serverMode bool
+
 	devices []device
 	code    *pairingCode
 	limiter map[string]*rateLimitEntry

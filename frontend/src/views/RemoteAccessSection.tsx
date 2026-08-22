@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ActionList, Button, Stack, Text } from '@primer/react'
+import { ActionList, Button, IconButton, Stack, Text, TextInput } from '@primer/react'
 import { Blankslate } from '@primer/react/experimental'
-import { DeviceMobileIcon, PlusIcon } from '@primer/octicons-react'
+import { CheckIcon, DeviceMobileIcon, PencilIcon, PlusIcon, XIcon } from '@primer/octicons-react'
 import { RemoteAuthService } from '../shared/bindings'
 import type { DeviceInfo, PairingCodeInfo } from '../shared/bindings'
 import { ConfirmDialog } from '../shared/ConfirmDialog'
+import { formatUpdated } from '../shared/inventorySort'
 import listStyles from '../shared/ListCard.module.css'
 import monoStyles from '../shared/monoText.module.css'
 
@@ -15,9 +16,6 @@ import monoStyles from '../shared/monoText.module.css'
 // Mac reaches Mill over loopback and is never challenged by that gate
 // -- the two sentences below are this section's honest account of
 // what that means for every OTHER device.
-function formatTimestamp(iso: string) {
-  return new Date(iso).toLocaleString()
-}
 
 function RemoteAccessSection() {
   const { t } = useTranslation('views')
@@ -25,6 +23,8 @@ function RemoteAccessSection() {
   const [pairing, setPairing] = useState<PairingCodeInfo | null>(null)
   const [error, setError] = useState('')
   const [revoking, setRevoking] = useState<DeviceInfo | null>(null)
+  const [renamingId, setRenamingId] = useState<string | null>(null)
+  const [renameDraft, setRenameDraft] = useState('')
 
   const refresh = () => {
     RemoteAuthService.ListDevices()
@@ -46,6 +46,26 @@ function RemoteAccessSection() {
     setRevoking(null)
     RemoteAuthService.RevokeDevice(device.id)
       .then(refresh)
+      .catch((err) => setError(String(err)))
+  }
+
+  const startRename = (d: DeviceInfo) => {
+    setRenamingId(d.id)
+    setRenameDraft(d.label)
+  }
+  const cancelRename = () => {
+    setRenamingId(null)
+    setRenameDraft('')
+  }
+  const saveRename = (id: string) => {
+    const trimmed = renameDraft.trim()
+    if (!trimmed) return
+    RemoteAuthService.RenameDevice(id, trimmed)
+      .then(() => {
+        setRenamingId(null)
+        setRenameDraft('')
+        refresh()
+      })
       .catch((err) => setError(String(err)))
   }
 
@@ -101,11 +121,57 @@ function RemoteAccessSection() {
         <ActionList data-testid="paired-devices-list" style={{ marginTop: 'var(--base-size-8)' }}>
           {list.map((d) => (
             <ActionList.Item key={d.id} data-testid="paired-device-row" data-device-id={d.id}>
-              <Text weight="semibold">{d.label}</Text>
+              {renamingId === d.id ? (
+                <div style={{ pointerEvents: 'auto' }} onClick={(e) => e.stopPropagation()}>
+                  <Stack direction="horizontal" gap="condensed" align="center">
+                    <TextInput
+                      size="small"
+                      autoFocus
+                      value={renameDraft}
+                      onChange={(e) => setRenameDraft(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') saveRename(d.id)
+                        if (e.key === 'Escape') cancelRename()
+                      }}
+                      aria-label={t('settings.remoteAccess.renameInputAriaLabel')}
+                      data-testid="device-rename-input"
+                    />
+                    <IconButton
+                      icon={CheckIcon}
+                      size="small"
+                      aria-label={t('settings.remoteAccess.renameSaveAriaLabel')}
+                      onClick={() => saveRename(d.id)}
+                      data-testid="device-rename-save"
+                    />
+                    <IconButton
+                      icon={XIcon}
+                      size="small"
+                      variant="invisible"
+                      aria-label={t('settings.remoteAccess.renameCancelAriaLabel')}
+                      onClick={cancelRename}
+                      data-testid="device-rename-cancel"
+                    />
+                  </Stack>
+                </div>
+              ) : (
+                <div style={{ pointerEvents: 'auto' }} onClick={(e) => e.stopPropagation()}>
+                  <Stack direction="horizontal" gap="condensed" align="center">
+                    <Text weight="semibold">{d.label}</Text>
+                    <IconButton
+                      icon={PencilIcon}
+                      size="small"
+                      variant="invisible"
+                      aria-label={t('settings.remoteAccess.renameAriaLabel', { label: d.label })}
+                      onClick={() => startRename(d)}
+                      data-testid="device-rename-start"
+                    />
+                  </Stack>
+                </div>
+              )}
               <ActionList.Description variant="block">
                 {t('settings.remoteAccess.deviceMeta', {
-                  created: formatTimestamp(d.createdAt),
-                  lastSeen: formatTimestamp(d.lastSeenAt),
+                  created: formatUpdated(d.createdAt),
+                  lastSeen: formatUpdated(d.lastSeenAt),
                 })}
               </ActionList.Description>
               <ActionList.TrailingVisual>

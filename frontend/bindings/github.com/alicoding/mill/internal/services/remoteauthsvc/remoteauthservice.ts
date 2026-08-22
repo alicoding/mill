@@ -23,9 +23,16 @@ import * as $models from "./models.js";
  * demand, replacing any code still outstanding (only one is ever
  * live at a time). Held in memory only -- see devicesSettingsKey's
  * doc comment for why nothing here touches the settings store. The
- * one deliberate log line lets a headless/server-mode run (no
- * Settings UI to show the code in) still complete pairing from a
- * terminal.
+ * deliberate log line lets a headless/server-mode run (no Settings UI
+ * to show the code in) still complete pairing from a terminal, but
+ * only while the instance is unpaired -- once any device is paired,
+ * the code is never logged again, no matter which caller generated
+ * it (docs/goals/0132-remote-access.md SLICE 1b: "never log the code
+ * once paired"). This is the RPC path (Settings > Remote access,
+ * loopback-only): a desktop owner pairing a second device already
+ * sees the code on screen, so logging it too would be redundant.
+ * resendPairingCode below is the OTHER caller, unconditional on
+ * purpose.
  */
 export function GeneratePairingCode(): $CancellablePromise<$models.PairingCodeInfo> {
     return $Call.ByID(3056783632);
@@ -40,10 +47,30 @@ export function ListDevices(): $CancellablePromise<$models.DeviceInfo[] | null> 
 }
 
 /**
+ * RenameDevice updates a paired device's label -- a device is
+ * pre-filled with a self-announced label at pairing time
+ * (deviceLabelFor) and renameable afterwards. Empty (after trimming)
+ * is rejected rather than silently keeping the old label, so the
+ * caller gets an explicit signal a blank name didn't take.
+ */
+export function RenameDevice(id: string, label: string): $CancellablePromise<void> {
+    return $Call.ByID(1715703988, id, label);
+}
+
+/**
  * RevokeDevice deletes id's paired-device record. Any request still
  * carrying that device's cookie is rejected on its very next request
  * -- validateToken (below) only ever matches against the live list.
  */
 export function RevokeDevice(id: string): $CancellablePromise<void> {
     return $Call.ByID(1929952408, id);
+}
+
+/**
+ * SeedTestDevice mints a paired device directly, bypassing the HTTP
+ * pairing flow entirely -- e2e-only (see testAllowDeviceSeedEnv
+ * above), never reachable in a real deployment.
+ */
+export function SeedTestDevice(label: string): $CancellablePromise<$models.DeviceInfo> {
+    return $Call.ByID(341728691, label);
 }
